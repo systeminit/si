@@ -60,32 +60,7 @@ impl LayeredEventMetadata {
     }
 }
 
-#[derive(Copy, Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
-pub struct LayeredEventId(Ulid);
-
-impl Default for LayeredEventId {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl LayeredEventId {
-    pub fn new() -> Self {
-        LayeredEventId(Ulid::new())
-    }
-
-    pub fn into_inner(self) -> Ulid {
-        self.0
-    }
-}
-
-impl std::str::FromStr for LayeredEventId {
-    type Err = ulid::DecodeError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Self(Ulid::from_str(s)?))
-    }
-}
+pub use si_id::LayeredEventId;
 
 #[remain::sorted]
 #[derive(AsRefStr, Debug, Serialize, Deserialize)]

@@ -1,59 +1,9 @@
-use std::str::FromStr;
-
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use ulid::{Ulid, ULID_LEN};
 
 use crate::{FuncRunId, Tenancy};
 
-#[derive(Copy, Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
-pub struct FuncRunLogId(Ulid);
-
-impl FuncRunLogId {
-    pub fn new() -> FuncRunLogId {
-        FuncRunLogId(Ulid::new())
-    }
-
-    pub fn array_to_str<'buf>(&self, buf: &'buf mut [u8; ULID_LEN]) -> &'buf mut str {
-        self.0.array_to_str(buf)
-    }
-
-    pub fn into_inner(self) -> Ulid {
-        self.0
-    }
-}
-
-impl From<FuncRunLogId> for Ulid {
-    fn from(id: FuncRunLogId) -> Self {
-        id.0
-    }
-}
-
-impl Default for FuncRunLogId {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl FromStr for FuncRunLogId {
-    type Err = ulid::DecodeError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Self(Ulid::from_str(s)?))
-    }
-}
-
-impl From<ulid::Ulid> for FuncRunLogId {
-    fn from(value: ulid::Ulid) -> Self {
-        Self(value)
-    }
-}
-
-impl std::fmt::Display for FuncRunLogId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.0.fmt(f)
-    }
-}
+pub use si_id::FuncRunLogId;
 
 /// A one-to-one mapping of cyclone's "OutputStream" type.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]

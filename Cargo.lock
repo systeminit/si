@@ -4209,6 +4209,7 @@ dependencies = [
  "serde_json",
  "si-data-pg",
  "si-hash",
+ "si-id",
  "si-jwt-public-key",
  "si-pkg",
  "si-posthog",
@@ -6570,7 +6571,6 @@ dependencies = [
  "si-id",
  "strum",
  "thiserror 1.0.69",
- "ulid",
  "xxhash-rust",
 ]
 
@@ -6619,6 +6619,7 @@ version = "0.1.0"
 dependencies = [
  "derive_more",
  "postgres-types",
+ "sea-orm",
  "serde",
  "ulid",
 ]
@@ -6660,6 +6661,7 @@ dependencies = [
  "si-data-nats",
  "si-data-pg",
  "si-events",
+ "si-id",
  "si-runtime",
  "si-std",
  "strum",

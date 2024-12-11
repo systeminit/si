@@ -14,6 +14,7 @@ buck2-resources = { path = "../../lib/buck2-resources" }
 module-index-types = { path = "../../lib/module-index-types" }
 si-data-pg = { path = "../../lib/si-data-pg" }
 si-hash = { path = "../../lib/si-hash" }
+si-id = { path = "../../lib/si-id" }
 si-jwt-public-key = { path = "../../lib/si-jwt-public-key" }
 si-pkg = { path = "../../lib/si-pkg" }
 si-posthog = { path = "../../lib/si-posthog-rs" }

@@ -157,9 +157,9 @@ pub struct FuncRun {
     #[builder(default)]
     schema_name: Option<String>,
     #[builder(default)]
-    action_or_func_id: Option<ulid::Ulid>,
+    action_or_func_id: Option<si_id::ulid_upstream::Ulid>,
     #[builder(default)]
-    prototype_id: Option<ulid::Ulid>,
+    prototype_id: Option<si_id::ulid_upstream::Ulid>,
     #[builder(default)]
     action_kind: Option<ActionKind>,
     #[builder(default)]

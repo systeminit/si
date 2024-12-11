@@ -1,4 +1,7 @@
-use crate::{AttributeValueId, PropId, PropertyEditorPropId, PropertyEditorValueId};
+use crate::{
+    AttributeValueId, ChangeSetId, PropId, PropertyEditorPropId, PropertyEditorValueId,
+    VectorClockChangeSetId,
+};
 
 impl From<PropId> for PropertyEditorPropId {
     fn from(prop_id: PropId) -> Self {
@@ -20,6 +23,12 @@ impl From<AttributeValueId> for PropertyEditorValueId {
 
 impl From<PropertyEditorValueId> for AttributeValueId {
     fn from(id: PropertyEditorValueId) -> Self {
+        Self::from(::ulid::Ulid::from(id))
+    }
+}
+
+impl From<ChangeSetId> for VectorClockChangeSetId {
+    fn from(id: ChangeSetId) -> Self {
         Self::from(::ulid::Ulid::from(id))
     }
 }

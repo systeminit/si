@@ -3,13 +3,9 @@ use sea_orm::{entity::prelude::*, sea_query, TryGetError};
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
-pub mod module_id;
-pub mod schema_id;
-pub mod schema_variant_id;
-
-pub use module_id::ModuleId;
-pub use schema_id::SchemaId;
-pub use schema_variant_id::SchemaVariantId;
+pub use si_id::ModuleIndexModuleId as ModuleId;
+pub use si_id::SchemaId;
+pub use si_id::SchemaVariantId;
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

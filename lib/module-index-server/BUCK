@@ -8,6 +8,7 @@ rust_library(
         "//lib/module-index-types:module-index-types",
         "//lib/si-data-pg:si-data-pg",
         "//lib/si-hash:si-hash",
+        "//lib/si-id:si-id",
         "//lib/si-jwt-public-key:si-jwt-public-key",
         "//lib/si-pkg:si-pkg",
         "//lib/si-posthog-rs:si-posthog",

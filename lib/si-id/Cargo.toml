@@ -11,5 +11,6 @@ publish.workspace = true
 [dependencies]
 derive_more = { workspace = true }
 postgres-types = { workspace = true }
+sea-orm = { workspace = true }
 serde = { workspace = true }
 ulid = { workspace = true }
