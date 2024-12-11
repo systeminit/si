@@ -39,7 +39,6 @@ itertools = { workspace = true }
 jwt-simple = { workspace = true }
 lazy_static = { workspace = true }
 names = { workspace = true }
-opentelemetry-otlp = { workspace = true }
 opentelemetry_sdk = { workspace = true }
 remain = { workspace = true }
 serde = { workspace = true }

@@ -4,18 +4,13 @@ rust_library(
     name = "object-tree",
     deps = [
         "//lib/si-hash:si-hash",
-        "//third-party/rust:blake3",
         "//third-party/rust:petgraph",
         "//third-party/rust:remain",
         "//third-party/rust:serde",
         "//third-party/rust:serde_json",
         "//third-party/rust:strum",
         "//third-party/rust:tar",
-        "//third-party/rust:tempfile",
         "//third-party/rust:thiserror",
-        "//third-party/rust:tokio",
-        "//third-party/rust:vfs",
-        "//third-party/rust:vfs-tar",
     ],
     srcs = glob(["src/**/*.rs"]),
 )

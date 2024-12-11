@@ -8,7 +8,6 @@ rust_library(
         "//third-party/rust:aws-sdk-firehose",
         "//third-party/rust:base64",
         "//third-party/rust:remain",
-        "//third-party/rust:serde_json",
         "//third-party/rust:thiserror",
     ],
     srcs = glob([

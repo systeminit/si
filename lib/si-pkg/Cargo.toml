@@ -9,22 +9,18 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
-base64.workspace = true
+object-tree = { path = "../../lib/object-tree" }
+
+base64 = { workspace = true }
 chrono = { workspace = true }
 derive_builder = { workspace = true }
 indexmap = { workspace = true }
-object-tree = { path = "../../lib/object-tree" }
 petgraph = { workspace = true }
 remain = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-si-hash = { path = "../../lib/si-hash" }
 strum = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 ulid = { workspace = true }
 url = { workspace = true }
-
-[dev-dependencies]
-serde_json = { workspace = true }
-tempfile = { workspace = true }

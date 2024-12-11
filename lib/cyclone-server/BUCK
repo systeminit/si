@@ -6,7 +6,6 @@ rust_library(
         "//lib/bytes-lines-codec:bytes-lines-codec",
         "//lib/cyclone-core:cyclone-core",
         "//lib/si-crypto:si-crypto",
-        "//lib/si-settings:si-settings",
         "//lib/si-std:si-std",
         "//lib/telemetry-http-rs:telemetry-http",
         "//lib/telemetry-rs:telemetry",
