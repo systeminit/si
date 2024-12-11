@@ -54,8 +54,6 @@ import { RouterLink } from "vue-router";
 import * as _ from "lodash-es";
 import clsx from "clsx";
 
-import { ApiRequestStatus } from "../../pinia";
-
 import Icon from "../icons/Icon.vue";
 import { IconNames } from "../icons/icon_set";
 import { Tones } from "../utils/color_utils";
@@ -89,7 +87,7 @@ const props = defineProps({
   loadingIcon: { type: String as PropType<IconNames>, default: "loader" },
 
   requestStatus: {
-    type: [Boolean, Object] as PropType<false | ApiRequestStatus>, // can be false if passing 'someCondition && status'
+    type: [Boolean, Object] as PropType<false | { isSuccess?: boolean }>, // can be false if passing 'someCondition && status'
   },
 
   clickSuccess: { type: Boolean },

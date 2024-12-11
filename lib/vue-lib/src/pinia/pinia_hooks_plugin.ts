@@ -20,6 +20,8 @@ declare module "pinia" {
   }
   export interface PiniaCustomStateProperties<S> {
     trackStoreUsedByComponent(component: ComponentInternalInstance): void;
+    workspaceId: string | undefined | null;
+    changeSetId: string | undefined | null;
   }
 }
 

@@ -5,6 +5,7 @@ import Axios, {
   InternalAxiosRequestConfig,
 } from "axios";
 import { useToast } from "vue-toastification";
+import { TracingApi, URLPattern } from "@si/vue-lib/pinia";
 import { useAuthStore } from "@/store/auth.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { trackEvent } from "@/utils/tracking";
@@ -29,6 +30,17 @@ export const sdfApiInstance = Axios.create({
   },
   baseURL: API_HTTP_URL,
 });
+
+export function useSdfApi(
+  store: {
+    workspaceId?: string | undefined | null;
+    changeSetId?: string | undefined | null;
+  },
+  baseUrl?: string | URLPattern,
+) {
+  return new TracingApi(sdfApiInstance, store, baseUrl);
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 if (typeof window !== "undefined") (window as any).sdf = sdfApiInstance;
 function injectBearerTokenAuth(config: InternalAxiosRequestConfig) {

@@ -221,6 +221,7 @@ export const useRealtimeStore = defineStore("realtime", () => {
       _.isArray(subscriptions) ? subscriptions : [subscriptions],
       (sub) => setupSingleSubscription(subscriberId, topic, sub),
     );
+    return () => unsubscribe(subscriberId);
   }
 
   function destroySingleSubscription(id: SubscriptionId) {

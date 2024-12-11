@@ -16,7 +16,7 @@ NOTES / TODOS / IDEAS
 */
 
 import { PiniaPlugin, PiniaPluginContext } from "pinia";
-import { AxiosError, AxiosInstance } from "axios";
+import { AxiosError, AxiosInstance, AxiosResponse } from "axios";
 import { computed, ComputedRef, reactive, unref, Ref } from "vue";
 import * as _ from "lodash-es";
 import {
@@ -186,10 +186,9 @@ const describePattern = (pattern: URLPattern): [string, string] => {
   return [_url.join("/"), _urlName.join("/")];
 };
 
-export type ApiRequestDescription<
-  Response = any,
+export interface BaseApiRequestDescription<
   RequestParams = Record<string, unknown>,
-> = {
+> {
   api?: AxiosInstance;
   /** http request method, defaults to "get" */
   method?: "get" | "patch" | "post" | "put" | "delete"; // defaults to "get" if empty
@@ -199,7 +198,18 @@ export type ApiRequestDescription<
   params?: RequestParams;
   /** if a multipart form is being sent in a put/post/patch */
   formData?: FormData;
-  /** additional args to key the request status */
+  /** additional headers to pass with request */
+  headers?: Record<string, any>;
+  /** additional axios options */
+  options?: Record<string, any>; // TODO: pull in axios options type?
+  /** add artificial delay (in ms) before fetching */
+  _delay?: number;
+}
+
+export interface ApiRequestDescription<
+  Response = any,
+  RequestParams = Record<string, unknown>,
+> extends BaseApiRequestDescription<RequestParams> {
   keyRequestStatusBy?: RawRequestStatusKeyArg | RawRequestStatusKeyArg[];
   /** function to call if request is successfull (2xx) - usually contains changes to the store */
   onSuccess?(response: Response): Promise<void> | void;
@@ -214,15 +224,9 @@ export type ApiRequestDescription<
   ): Promise<void> | void;
   /** function to call if request fails (>=400) - not common */
   onFail?(response: any): any | void;
-  /** additional headers to pass with request */
-  headers?: Record<string, any>;
-  /** additional axios options */
-  options?: Record<string, any>; // TODO: pull in axios options type?
   /** optional optimistic update fn to call before api request is made, should return a rollback fn called on api error */
   optimistic?: OptimisticFn;
-  /** add artificial delay (in ms) before fetching */
-  _delay?: number;
-};
+}
 
 /** type describing how we store the request statuses */
 type RawApiRequestStatus = {
@@ -271,6 +275,8 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
       // eslint-disable-next-line no-underscore-dangle
       store._customProperties.add("apiRequestStatuses");
     }
+
+    const tracingApi = new TracingApi(config.api, store);
 
     // triggers a named api request passing in a payload
     // this makes the api request, tracks the request status, handles errors, etc
@@ -334,116 +340,18 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
         optimisticRollbackFn = requestSpec.optimistic(requestUlid);
       }
 
-      const {
-        method,
-        url,
-        params: requestParams,
-        options,
-        formData,
-        onSuccess,
-        onNewChangeSet,
-        onFail,
-      } = requestSpec;
-      let { headers } = requestSpec;
-      let _url: string;
+      async function handleResponse(request: Promise<AxiosResponse>) {
+        const { onSuccess, onNewChangeSet, onFail } = requestSpec;
 
-      let urlName;
-      if (Array.isArray(url)) {
-        [_url, urlName] = describePattern(url);
-      } else if (typeof url === "string") {
-        urlName = url; // string
-        _url = url;
-      } else {
-        throw Error("URL is required");
-      }
-
-      const name = `${method?.toUpperCase()} ${urlName}`;
-      return tracer.startActiveSpan(name, async (span: Span) => {
-        const time = window.performance.getEntriesByType(
-          "navigation",
-        )[0] as PerformanceNavigationTiming;
-        const dns_duration = time.domainLookupEnd - time.domainLookupStart;
-        const tcp_duration = time.connectEnd - time.connectStart;
-        span.setAttributes({
-          "http.body": formData
-            ? "multipart form"
-            : JSON.stringify(requestParams),
-          "http.url": _url,
-          "http.method": method,
-          "si.requestUlid": requestUlid,
-          dns_duration,
-          tcp_duration,
-          "si.workspace.id": store.workspaceId,
-          "si.change_set.id": store.changeSetId,
-          ...(formData && requestParams
-            ? { "http.params": JSON.stringify(requestParams) }
-            : {}),
-        });
         try {
-          if (!headers) headers = {};
-          opentelemetry.propagation.inject(
-            opentelemetry.context.active(),
-            headers,
-          );
+          const response = await request;
 
-          // the api (axios instance) to use can be set several ways:
-          // - passed in with the specific request (probably not common)
-          // - use registerApi(api) to create new SpecificApiRequest class with api attached
-          // - fallback to default api that was set when initializing the plugin
-          const api = requestSpec.api || config.api;
-
-          // add artificial delay - helpful to test loading states in UI when using local API which is very fast
-          if (import.meta.env.VITE_DELAY_API_REQUESTS) {
-            await promiseDelay(
-              parseInt(import.meta.env.VITE_DELAY_API_REQUESTS as string),
-            );
-          } else if (requestSpec._delay) {
-            await promiseDelay(requestSpec._delay);
-          }
-
-          // actually trigger the API request (uses the axios instance that was passed in)
-          // may need to handle registering multiple apis if we need to hit more than 1
-
-          let request;
-          if (method === "get") {
-            request = await api({
-              method,
-              url: _url,
-              ...(headers && { headers }),
-              params: requestParams,
-              ...options,
-            });
-          } else {
-            // delete, post, patch, put. Axios's types forbid formData on the
-            // request if method is not one of these , so we have to do branch
-            // on the method types to make a formData request
-            if (formData) {
-              headers["Content-Type"] = "multipart/form-data";
-              request = await api({
-                method,
-                url: _url,
-                ...(headers && { headers }),
-                data: formData,
-                params: requestParams,
-                ...options,
-              });
-            } else {
-              request = await api({
-                method,
-                url: _url,
-                ...(headers && { headers }),
-                data: requestParams,
-                ...options,
-              });
-            }
-          }
-
-          if (request.headers.force_change_set_id)
+          if (response.headers.force_change_set_id)
             if (typeof onNewChangeSet === "function")
               await onNewChangeSet.call(
                 store,
-                request.headers.force_change_set_id,
-                request.data,
+                response.headers.force_change_set_id,
+                response.data,
               );
 
           // request was successful if reaching here
@@ -462,14 +370,12 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
           // call success handler if one was defined - this will usually be what updates the store
           // we may want to bundle this change together with onSuccess somehow? maybe doesnt matter?
           if (typeof onSuccess === "function") {
-            await onSuccess.call(store, request.data);
+            await onSuccess.call(store, response.data);
           }
 
           completed.resolve({
-            data: request.data,
+            data: response.data,
           });
-          span.setAttributes({ "http.status_code": request.status });
-          span.end();
           return await completed.promise;
 
           // normally we want to get any response data from the store directly
@@ -521,11 +427,15 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
           completed.resolve({
             error: err,
           });
-          span.setAttributes({ "http.status_code": err.response.status });
-          span.end();
           return await completed.promise;
         }
-      });
+      }
+
+      return await tracingApi.sendRequest(
+        requestSpec,
+        requestUlid,
+        handleResponse,
+      );
     }
 
     async function fireActionResult(
@@ -680,4 +590,175 @@ export function getCombinedRequestStatus(
       // TODO: do we want to return the first error? an array of errors?
     };
   });
+}
+
+export class TracingApi {
+  constructor(
+    public api: AxiosInstance,
+    public store: {
+      workspaceId?: string | undefined | null;
+      changeSetId?: string | undefined | null;
+    },
+    public url?: string | URLPattern,
+  ) {}
+
+  async get<R = any>(requestOrUrl?: RequestSpecOrUrl): Promise<R> {
+    return this.request<R>({ ...toRequestSpec(requestOrUrl), method: "get" });
+  }
+
+  async put<R = any>(requestOrUrl?: RequestSpecOrUrl): Promise<R> {
+    return this.request<R>({ ...toRequestSpec(requestOrUrl), method: "put" });
+  }
+
+  async post<R = any>(requestOrUrl?: RequestSpecOrUrl): Promise<R> {
+    return this.request<R>({ ...toRequestSpec(requestOrUrl), method: "put" });
+  }
+
+  async delete<R = any>(requestOrUrl?: RequestSpecOrUrl): Promise<R> {
+    return this.request<R>({ ...toRequestSpec(requestOrUrl), method: "put" });
+  }
+
+  async request<R = any>(requestSpec: BaseApiRequestDescription): Promise<R> {
+    const response = await this.sendRequest<R>(requestSpec);
+    return response.data as R;
+  }
+
+  endpoint(...path: URLPattern) {
+    const url = [...toURLPattern(this.url), ...path];
+    return new TracingApi(this.api, this.store, url);
+  }
+
+  async sendRequest<R = any>(
+    requestSpec: BaseApiRequestDescription,
+    requestUlid?: RequestUlid,
+  ): Promise<AxiosResponse<R>>;
+  async sendRequest<T>(
+    requestSpec: BaseApiRequestDescription,
+    requestUlid: RequestUlid,
+    withRequest?: (request: Promise<AxiosResponse>) => Promise<T>,
+  ): Promise<T>;
+  async sendRequest(
+    requestSpec: BaseApiRequestDescription,
+    requestUlid: RequestUlid = ulid(),
+    withRequest?: (request: Promise<AxiosResponse>) => Promise<unknown>,
+  ) {
+    const { method, params, options, formData } = requestSpec;
+    let { headers } = requestSpec;
+
+    if (requestSpec.url === undefined && this.url === undefined)
+      throw Error("URL is required");
+    const [url, urlName] = describePattern([
+      ...toURLPattern(this.url),
+      ...toURLPattern(requestSpec.url),
+    ]);
+
+    const name = `${method?.toUpperCase()} ${urlName}`;
+    return tracer.startActiveSpan(name, async (span: Span) => {
+      const time = window.performance.getEntriesByType(
+        "navigation",
+      )[0] as PerformanceNavigationTiming;
+      const dns_duration = time.domainLookupEnd - time.domainLookupStart;
+      const tcp_duration = time.connectEnd - time.connectStart;
+      span.setAttributes({
+        "http.body": formData ? "multipart form" : JSON.stringify(params),
+        "http.url": url,
+        "http.method": method,
+        "si.requestUlid": requestUlid,
+        dns_duration,
+        tcp_duration,
+        // NOTE: these can also be null, but for backcompat (to make sure we change nothing)
+        // we pretend they aren't and let it behave as it did before
+        "si.workspace.id": this.store.workspaceId as string | undefined,
+        "si.change_set.id": this.store.changeSetId as string | undefined,
+        ...(formData && params
+          ? { "http.params": JSON.stringify(params) }
+          : {}),
+      });
+      if (!headers) headers = {};
+      opentelemetry.propagation.inject(opentelemetry.context.active(), headers);
+
+      // the api (axios instance) to use can be set several ways:
+      // - passed in with the specific request (probably not common)
+      // - use registerApi(api) to create new SpecificApiRequest class with api attached
+      // - fallback to default api that was set when initializing the plugin
+      const api = requestSpec.api || this.api;
+
+      // add artificial delay - helpful to test loading states in UI when using local API which is very fast
+      if (import.meta.env.VITE_DELAY_API_REQUESTS) {
+        await promiseDelay(
+          parseInt(import.meta.env.VITE_DELAY_API_REQUESTS as string),
+        );
+      } else if (requestSpec._delay) {
+        await promiseDelay(requestSpec._delay);
+      }
+
+      // actually trigger the API request (uses the axios instance that was passed in)
+      // may need to handle registering multiple apis if we need to hit more than 1
+
+      let request;
+      if (method === "get") {
+        request = api({
+          method,
+          url,
+          ...(headers && { headers }),
+          params,
+          ...options,
+        });
+      } else {
+        // delete, post, patch, put. Axios's types forbid formData on the
+        // request if method is not one of these , so we have to do branch
+        // on the method types to make a formData request
+        if (formData) {
+          headers["Content-Type"] = "multipart/form-data";
+          request = api({
+            method,
+            url,
+            ...(headers && { headers }),
+            data: formData,
+            params,
+            ...options,
+          });
+        } else {
+          request = api({
+            method,
+            url,
+            ...(headers && { headers }),
+            data: params,
+            ...options,
+          });
+        }
+      }
+
+      try {
+        return withRequest ? await withRequest(request) : await request;
+      } finally {
+        // After the request function has been run, close off the span
+        try {
+          const response = await request;
+          span.setAttributes({ "http.status_code": response.status });
+          span.end();
+        } catch (err: any) {
+          span.setAttributes({ "http.status_code": err.response.status });
+          span.end();
+        }
+      }
+    });
+  }
+}
+
+type RequestSpecOrUrl = string | URLPattern | BaseApiRequestDescription;
+
+function toRequestSpec(
+  requestOrUrl?: RequestSpecOrUrl,
+): BaseApiRequestDescription {
+  if (requestOrUrl === undefined) return {};
+  if (typeof requestOrUrl === "string" || Array.isArray(requestOrUrl))
+    return { url: requestOrUrl };
+  return requestOrUrl;
+}
+
+function toURLPattern(a: string | URLPattern | undefined): URLPattern {
+  if (Array.isArray(a)) return a;
+  if (a === undefined) return [];
+  return [a];
 }
