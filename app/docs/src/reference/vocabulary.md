@@ -81,6 +81,19 @@ will connect to the input sockets of the frame.
 A representation of a relationship between one component's output socket and
 another component's input socket.
 
+## Entity
+
+This word encapsulates relevant objects that can be mutated, used, or are actors in System Initiative.
+The Audit Trail dashboard makes use of this term to standardize all relevant objects seen in Audit Logs.
+
+### Entity Type
+
+This is the type of an entity. A "Component" and a "Func" are entity types in System Initiative.
+
+### Entity name
+
+This is the name of an entity. A "Component" could have the name "Server" and a Func could have the name "Validate Container Image".
+
 ## HEAD
 
 HEAD is the change set that represents "the real world". It can only be altered
