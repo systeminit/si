@@ -422,6 +422,7 @@ import {
   GROUP_RESIZE_HANDLE_SIZE,
   GROUP_TITLE_FONT_SIZE,
   SELECTION_COLOR,
+  MIN_NODE_DIMENSION,
 } from "@/components/ModelingDiagram/diagram_constants";
 import {
   QualificationStatus,
@@ -495,6 +496,8 @@ const viewStore = useViewsStore();
 const irect = computed(() => {
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const r = viewStore.groups[props.group.def.id]!;
+  r.width = Math.max(r.width, MIN_NODE_DIMENSION);
+  r.height = Math.max(r.height, MIN_NODE_DIMENSION);
   return r;
 });
 

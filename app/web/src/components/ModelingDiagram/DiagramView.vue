@@ -84,6 +84,7 @@ import { useTheme, getToneColorHex, Tones } from "@si/vue-lib/design-system";
 import {
   DIAGRAM_FONT_FAMILY,
   SELECTION_COLOR,
+  NODE_WIDTH,
 } from "@/components/ModelingDiagram/diagram_constants";
 import { useViewsStore } from "@/store/views.store";
 import { DiagramViewDef, ElementHoverMeta } from "./diagram_types";
@@ -102,7 +103,8 @@ const props = defineProps<{
 const radius = computed(() => {
   if (props.view.width !== props.view.height)
     throw new Error("Width and Height ought to match");
-  return props.view.width / 2;
+  // protect against trying to render something "too small"
+  return Math.max(props.view.width / 2, NODE_WIDTH / 2);
 });
 
 // step up & down the font size
