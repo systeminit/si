@@ -1552,8 +1552,15 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
         const stopWatchingUrl = watch(
           router.currentRoute,
           () => {
-            if (router.currentRoute.value.name === "workspace-compose")
+            if (
+              router.currentRoute.value.name === "workspace-compose" ||
+              router.currentRoute.value.name === "workspace-compose-view"
+            )
               this.syncUrlIntoSelection();
+            const viewId = router.currentRoute.value.params.viewId;
+            if (viewId) {
+              this.selectView(viewId as string);
+            }
           },
           {
             immediate: true,
