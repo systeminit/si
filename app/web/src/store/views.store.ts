@@ -1559,7 +1559,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
             )
               this.syncUrlIntoSelection();
             const viewId = router.currentRoute.value.params.viewId;
-            if (viewId) {
+            if (viewId && this.selectedViewId !== viewId) {
               this.selectView(viewId as string);
             }
           },
