@@ -55,7 +55,7 @@ const parentOptionsList = computed(() => {
   groups.forEach((group) => {
     if (group.def.id !== selectedComponentId) {
       list.push({
-        label: group.def.displayName,
+        label: `${group.def.displayName} (${group.def.schemaName})`,
         value: group.def.id,
       } as LabelEntry<string>);
     }
@@ -72,7 +72,9 @@ const currentParentNamePropValue = computed(() => {
   return {
     id: currentParent.value?.id,
     propId: currentParent.value?.id,
-    value: currentParent.value?.displayName,
+    value: currentParent.value
+      ? `${currentParent.value.displayName} (${currentParent.value.schemaName})`
+      : null,
     canBeSetBySocket: false,
     isFromExternalSource: false,
     isControlledByDynamicFunc: false,
