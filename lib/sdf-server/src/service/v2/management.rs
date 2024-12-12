@@ -11,11 +11,14 @@ use axum::{
 };
 use dal::{
     diagram::view::ViewId,
+    func::authoring::FuncAuthoringError,
     management::{
         prototype::{ManagementPrototype, ManagementPrototypeError, ManagementPrototypeId},
         ManagementError, ManagementFuncReturn, ManagementOperator,
     },
-    ChangeSet, ChangeSetError, ChangeSetId, ComponentId, TransactionsError, WorkspacePk,
+    schema::variant::authoring::VariantAuthoringError,
+    ChangeSet, ChangeSetError, ChangeSetId, ComponentId, FuncId, SchemaVariantError,
+    TransactionsError, WorkspacePk, WsEventError,
 };
 use serde::{Deserialize, Serialize};
 use si_layer_cache::LayerDbError;
@@ -30,6 +33,7 @@ use crate::{
 
 use super::func::FuncAPIError;
 
+mod generate_template;
 mod history;
 mod latest;
 
@@ -49,6 +53,10 @@ pub enum ManagementApiError {
     ChangeSet(#[from] ChangeSetError),
     #[error("func api error: {0}")]
     FuncAPI(#[from] FuncAPIError),
+    #[error("func authoring error: {0}")]
+    FuncAuthoring(#[from] FuncAuthoringError),
+    #[error("generated mgmt func {0} has no prototype")]
+    FuncMissingPrototype(FuncId),
     #[error("hyper error: {0}")]
     Http(#[from] axum::http::Error),
     #[error("layer db error: {0}")]
@@ -61,10 +69,16 @@ pub enum ManagementApiError {
     ManagementPrototype(#[from] ManagementPrototypeError),
     #[error("management prototype execution failure: {0}")]
     ManagementPrototypeExecutionFailure(ManagementPrototypeId),
+    #[error("schema variant error: {0}")]
+    SchemaVariant(#[from] SchemaVariantError),
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
+    #[error("variant authoring error: {0}")]
+    VariantAuthoring(#[from] VariantAuthoringError),
+    #[error("ws event error: {0}")]
+    WsEvent(#[from] WsEventError),
 }
 
 impl IntoResponse for ManagementApiError {
@@ -156,4 +170,8 @@ pub fn v2_routes() -> Router<AppState> {
             get(latest::latest),
         )
         .route("/history", get(history::history))
+        .route(
+            "/generate_template/:viewId",
+            post(generate_template::generate_template),
+        )
 }

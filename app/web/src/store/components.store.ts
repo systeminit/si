@@ -37,6 +37,7 @@ import { Resource } from "@/api/sdf/dal/resource";
 import { CodeView } from "@/api/sdf/dal/code_view";
 import ComponentUpgrading from "@/components/toasts/ComponentUpgrading.vue";
 import { nonNullable } from "@/utils/typescriptLinter";
+import { ViewId } from "@/api/sdf/dal/views";
 import handleStoreError from "./errors";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useAssetStore } from "./asset.store";
@@ -1163,14 +1164,26 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           },
 
           async CREATE_TEMPLATE_FUNC_FROM_COMPONENTS(templateData: {
-            assetColor: string;
+            color: string;
             assetName: string;
             funcName: string;
-            components: Array<DiagramNodeData | DiagramGroupData>;
+            componentIds: ComponentId[];
+            viewId: ViewId;
           }) {
-            // TODO(Wendy) - this is where the end point would be called!
-            // eslint-disable-next-line no-console
-            console.log(templateData);
+            const { color, assetName, funcName, componentIds, viewId } =
+              templateData;
+
+            return new ApiRequest({
+              method: "post",
+              url: `v2/workspaces/${workspaceId}/change-sets/${changeSetId}/management/generate_template/${viewId}`,
+              params: {
+                componentIds,
+                assetName,
+                funcName,
+                category: "Templates",
+                color,
+              },
+            });
           },
 
           setComponentDisplayName(

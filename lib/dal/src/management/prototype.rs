@@ -636,6 +636,20 @@ impl ManagementPrototype {
 
         Ok(None)
     }
+
+    pub async fn set_managed_schemas(
+        self,
+        ctx: &DalContext,
+        managed_schemas: Option<Vec<SchemaId>>,
+    ) -> ManagementPrototypeResult<()> {
+        self.modify(ctx, |proto| {
+            proto.managed_schemas = managed_schemas.map(|schemas| schemas.into_iter().collect());
+            Ok(())
+        })
+        .await?;
+
+        Ok(())
+    }
 }
 
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]

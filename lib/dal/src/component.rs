@@ -1465,16 +1465,16 @@ impl Component {
         &mut self,
         ctx: &DalContext,
         view_id: ViewId,
-        x: impl Into<isize>,
-        y: impl Into<isize>,
-        width: Option<impl Into<isize>>,
-        height: Option<impl Into<isize>>,
+        x: isize,
+        y: isize,
+        width: Option<isize>,
+        height: Option<isize>,
     ) -> ComponentResult<Geometry> {
         let new_geometry = RawGeometry {
-            x: x.into(),
-            y: y.into(),
-            width: width.map(|w| w.into()),
-            height: height.map(|h| h.into()),
+            x,
+            y,
+            width,
+            height,
         };
 
         self.set_raw_geometry(ctx, new_geometry, view_id).await
