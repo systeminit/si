@@ -121,7 +121,6 @@ jobs:
 
           if [ $n -ge $max_retries ]; then
             echo "All $max_retries attempts failed."
-            exit_code=1
           fi
 
           echo "last_exit_code=$exit_code" >> "$GITHUB_ENV"
