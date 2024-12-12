@@ -1,3 +1,4 @@
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
@@ -5,29 +6,28 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use ulid::Ulid;
 
-use crate::attribute::prototype::AttributePrototypeError;
-use crate::attribute::value::{AttributeValueError, ValueIsFor};
-use crate::func::argument::FuncArgument;
-use crate::func::argument::FuncArgumentError;
-use crate::prop::PropError;
-use crate::socket::input::InputSocketError;
-use crate::socket::output::OutputSocketError;
-use crate::workspace_snapshot::node_weight::NodeWeightError;
-use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    attribute::prototype::argument::{
-        static_value::StaticArgumentValue,
-        value_source::{ValueSource, ValueSourceError},
-        AttributePrototypeArgument, AttributePrototypeArgumentError,
+    attribute::{
+        prototype::{
+            argument::{
+                static_value::StaticArgumentValue,
+                value_source::{ValueSource, ValueSourceError},
+                AttributePrototypeArgument, AttributePrototypeArgumentError,
+            },
+            AttributePrototypeError,
+        },
+        value::{AttributeValueError, ValueIsFor},
     },
     component::socket::ComponentInputSocket,
-};
-use crate::{
+    func::argument::{FuncArgument, FuncArgumentError},
+    prop::PropError,
+    socket::{input::InputSocketError, output::OutputSocketError},
+    workspace_snapshot::{node_weight::NodeWeightError, WorkspaceSnapshotError},
     AttributePrototype, AttributePrototypeId, AttributeValue, AttributeValueId, Component,
     ComponentError, DalContext, Func, FuncError, FuncId, SecretError,
 };
 
-type AttributePrototypeDebugViewResult<T> = Result<T, AttributePrototypeDebugViewError>;
+type AttributePrototypeDebugViewResult<T> = Result<T>;
 
 #[remain::sorted]
 #[derive(Error, Debug)]

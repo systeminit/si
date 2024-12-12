@@ -1,3 +1,4 @@
+use anyhow::Result;
 use axum::{extract::Query, routing::get, Json, Router};
 use dal::{
     workspace_snapshot::{node_weight::NodeWeight, Direction},
@@ -22,8 +23,6 @@ pub enum NodeDebugError {
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
-
-pub type NodeDebugResult<T> = std::result::Result<T, NodeDebugError>;
 
 impl_default_error_into_response!(NodeDebugError);
 
@@ -55,7 +54,7 @@ async fn node_debug(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Query(request): Query<NodeDebugRequest>,
-) -> NodeDebugResult<Json<NodeDebugResponse>> {
+) -> Result<Json<NodeDebugResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let node_id = request.id;

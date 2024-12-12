@@ -1,17 +1,28 @@
 use std::collections::HashMap;
 
-use crate::extract::{HandlerContext, PosthogClient};
-use crate::service::force_change_set_response::ForceChangeSetResponse;
-use crate::service::v2::view::{ViewError, ViewResult};
-use crate::service::v2::AccessBuilder;
-use crate::tracking::track;
-use axum::extract::{Host, OriginalUri, Path};
-use axum::Json;
-use dal::diagram::geometry::Geometry;
-use dal::diagram::view::{View, ViewComponentsUpdateList, ViewId, ViewView};
-use dal::{ChangeSet, ChangeSetId, Component, ComponentError, ComponentId, WorkspacePk, WsEvent};
+use anyhow::Result;
+use axum::{
+    extract::{Host, OriginalUri, Path},
+    Json,
+};
+use dal::{
+    diagram::{
+        geometry::Geometry,
+        view::{View, ViewComponentsUpdateList, ViewId, ViewView},
+    },
+    ChangeSet, ChangeSetId, Component, ComponentError, ComponentId, WorkspacePk, WsEvent,
+};
 use serde::{Deserialize, Serialize};
 use si_frontend_types::{RawGeometry, StringGeometry};
+
+use crate::{
+    extract::{HandlerContext, PosthogClient},
+    service::{
+        force_change_set_response::ForceChangeSetResponse,
+        v2::{view::ViewError, AccessBuilder},
+    },
+    tracking::track,
+};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -44,13 +55,13 @@ pub async fn create_view_and_move(
         remove_from_original_view,
         place_view_at,
     }): Json<Request>,
-) -> ViewResult<ForceChangeSetResponse<ViewView>> {
+) -> Result<ForceChangeSetResponse<ViewView>> {
     let mut ctx = builder
         .build(access_builder.build(change_set_id.into()))
         .await?;
 
     if View::find_by_name(&ctx, name.as_str()).await?.is_some() {
-        return Err(ViewError::NameAlreadyInUse(name));
+        return Err(ViewError::NameAlreadyInUse(name).into());
     }
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
@@ -74,11 +85,14 @@ pub async fn create_view_and_move(
 
         match Component::add_to_view(&ctx, component_id, view_id, geometry.clone()).await {
             Ok(_) => {}
-            Err(err @ ComponentError::ComponentAlreadyInView(_, _)) => {
-                latest_error = Some(err);
-                continue;
-            }
-            Err(err) => return Err(err)?,
+            Err(error) => match error.downcast::<ComponentError>() {
+                Ok(err @ ComponentError::ComponentAlreadyInView(_, _)) => {
+                    latest_error = Some(err);
+                    continue;
+                }
+                Ok(err) => return Err(err.into()),
+                Err(err) => return Err(err),
+            },
         };
 
         successful_erase = true;
@@ -122,7 +136,8 @@ pub async fn create_view_and_move(
         ctx.rollback().await?;
         return Err(ViewError::InvalidRequest(
             "geometry unable to be parsed from create view object request".into(),
-        ));
+        )
+        .into());
     };
 
     let geometry = RawGeometry {

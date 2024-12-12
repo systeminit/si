@@ -1,10 +1,12 @@
-use crate::extract::HandlerContext;
-use crate::service::v2::view::ViewResult;
-use crate::service::v2::AccessBuilder;
+use anyhow::Result;
 use axum::extract::{Json, Path};
-use dal::diagram::view::{View, ViewView};
-use dal::{ChangeSetId, Visibility, WorkspacePk};
+use dal::{
+    diagram::view::{View, ViewView},
+    ChangeSetId, Visibility, WorkspacePk,
+};
 use serde::{Deserialize, Serialize};
+
+use crate::{extract::HandlerContext, service::v2::AccessBuilder};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -19,7 +21,7 @@ pub async fn list_views(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(access_builder): AccessBuilder,
     Path((_workspace_pk, change_set_id)): Path<(WorkspacePk, ChangeSetId)>,
-) -> ViewResult<Json<Response>> {
+) -> Result<Json<Response>> {
     let ctx = builder
         .build(access_builder.build(change_set_id.into()))
         .await?;

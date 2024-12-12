@@ -37,7 +37,8 @@ impl<'a> SiPkgFuncArgument<'a> {
                 return Err(SiPkgError::UnexpectedPkgNodeType(
                     PkgNode::FUNC_ARGUMENT_KIND_STR,
                     unexpected.node_kind_str(),
-                ))
+                )
+                .into())
             }
         };
 
@@ -171,7 +172,8 @@ impl<'a> SiPkgFunc<'a> {
                 return Err(SiPkgError::UnexpectedPkgNodeType(
                     PkgNode::FUNC_KIND_STR,
                     unexpected.node_kind_str(),
-                ))
+                )
+                .into())
             }
         };
 
@@ -280,7 +282,7 @@ impl<'a> SiPkgFunc<'a> {
 }
 
 impl<'a> TryFrom<SiPkgFunc<'a>> for FuncSpec {
-    type Error = SiPkgError;
+    type Error = anyhow::Error;
 
     fn try_from(value: SiPkgFunc<'a>) -> Result<Self, Self::Error> {
         let mut builder = FuncSpec::builder();

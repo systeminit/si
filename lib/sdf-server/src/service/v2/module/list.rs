@@ -1,3 +1,4 @@
+use anyhow::Result;
 use axum::{
     extract::{Host, OriginalUri, Path},
     Json,
@@ -5,9 +6,10 @@ use axum::{
 use dal::{module::Module, ChangeSetId, WorkspacePk};
 use si_frontend_types::ModuleSummary;
 
-use super::ModuleAPIResult;
-use crate::extract::{request::RawAccessToken, HandlerContext, PosthogClient};
-use crate::service::v2::AccessBuilder;
+use crate::{
+    extract::{request::RawAccessToken, HandlerContext, PosthogClient},
+    service::v2::AccessBuilder,
+};
 
 pub async fn list(
     HandlerContext(builder): HandlerContext,
@@ -17,7 +19,7 @@ pub async fn list(
     OriginalUri(_original_uri): OriginalUri,
     Host(_host_name): Host,
     Path((_workspace_pk, change_set_id)): Path<(WorkspacePk, ChangeSetId)>,
-) -> ModuleAPIResult<Json<Vec<ModuleSummary>>> {
+) -> Result<Json<Vec<ModuleSummary>>> {
     let ctx = builder
         .build(access_builder.build(change_set_id.into()))
         .await?;

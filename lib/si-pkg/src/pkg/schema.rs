@@ -62,7 +62,8 @@ impl<'a> SiPkgSchema<'a> {
                 return Err(SiPkgError::UnexpectedPkgNodeType(
                     PkgNode::SCHEMA_KIND_STR,
                     unexpected.node_kind_str(),
-                ))
+                )
+                .into())
             }
         };
 

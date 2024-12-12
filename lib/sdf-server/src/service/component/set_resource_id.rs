@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use anyhow::Result;
 use axum::{
     extract::{Host, OriginalUri},
     Json,
@@ -7,7 +8,6 @@ use axum::{
 use dal::{ChangeSet, Component, ComponentId, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
 
-use super::ComponentResult;
 use crate::{
     extract::{v1::AccessBuilder, HandlerContext, PosthogClient},
     service::force_change_set_response::ForceChangeSetResponse,
@@ -34,7 +34,7 @@ pub async fn set_resource_id(
         resource_id,
         visibility,
     }): Json<SetResourceIdRequest>,
-) -> ComponentResult<ForceChangeSetResponse<()>> {
+) -> Result<ForceChangeSetResponse<()>> {
     let mut ctx = builder.build(request_ctx.build(visibility)).await?;
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;

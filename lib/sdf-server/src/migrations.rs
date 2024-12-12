@@ -1,8 +1,7 @@
 use std::future::IntoFuture as _;
 
-use audit_database::{
-    AuditDatabaseContext, AuditDatabaseContextError, AuditDatabaseMigrationError,
-};
+use anyhow::{Context, Result};
+use audit_database::{AuditDatabaseContext, AuditDatabaseContextError};
 use dal::{
     cached_module::CachedModule, slow_rt::SlowRuntimeError,
     workspace_snapshot::migrator::SnapshotGraphMigrator, ServicesContext,
@@ -23,39 +22,21 @@ pub enum MigratorError {
     Init(#[from] init::InitError),
     #[error("tokio join error: {0}")]
     Join(#[from] JoinError),
-    #[error("error while migrating audit database: {0}")]
-    MigrateAuditDatabase(#[source] AuditDatabaseMigrationError),
-    #[error("error while migrating cached modules: {0}")]
-    MigrateCachedModules(#[source] Box<dyn std::error::Error + 'static + Sync + Send>),
-    #[error("error while migrating dal database: {0}")]
-    MigrateDalDatabase(#[source] dal::ModelError),
-    #[error("error while migrating layer db database: {0}")]
-    MigrateLayerDbDatabase(#[source] si_layer_cache::LayerDbError),
-    #[error("error while migrating snapshots: {0}")]
-    MigrateSnapshots(#[source] Box<dyn std::error::Error + 'static + Sync + Send>),
+    #[error("error while migrating audit database")]
+    MigrateAuditDatabase,
+    #[error("error while migrating cached modules")]
+    MigrateCachedModules,
+    #[error("error while migrating dal database")]
+    MigrateDalDatabase,
+    #[error("error while migrating layer db database")]
+    MigrateLayerDbDatabase,
+    #[error("error while migrating snapshots")]
+    MigrateSnapshots,
     #[error("module index url not set")]
     ModuleIndexNotSet,
     #[error("slow runtime: {0}")]
     SlowRuntime(#[from] SlowRuntimeError),
 }
-
-impl MigratorError {
-    fn migrate_snapshots<E>(err: E) -> Self
-    where
-        E: std::error::Error + 'static + Sync + Send,
-    {
-        Self::MigrateSnapshots(Box::new(err))
-    }
-
-    fn migrate_cached_modules<E>(err: E) -> Self
-    where
-        E: std::error::Error + 'static + Sync + Send,
-    {
-        Self::MigrateCachedModules(Box::new(err))
-    }
-}
-
-type MigratorResult<T> = std::result::Result<T, MigratorError>;
 
 #[derive(Clone)]
 pub struct Migrator {
@@ -69,7 +50,7 @@ impl Migrator {
         config: Config,
         helping_tasks_tracker: &TaskTracker,
         helping_tasks_token: CancellationToken,
-    ) -> MigratorResult<Self> {
+    ) -> Result<Self> {
         let (services_context, layer_db_graceful_shutdown) =
             init::services_context_from_config(&config, helping_tasks_token).await?;
 
@@ -104,7 +85,7 @@ impl Migrator {
             otel.status_message = Empty,
         )
     )]
-    pub async fn run_migrations(self, update_module_cache: bool) -> MigratorResult<()> {
+    pub async fn run_migrations(self, update_module_cache: bool) -> Result<()> {
         let span = current_span_for_instrument_at!("info");
 
         self.migrate_audit_database()
@@ -134,10 +115,10 @@ impl Migrator {
     }
 
     #[instrument(name = "sdf.migrator.migrate_audit_database", level = "info", skip_all)]
-    async fn migrate_audit_database(&self) -> MigratorResult<()> {
+    async fn migrate_audit_database(&self) -> Result<()> {
         audit_database::migrate(&self.audit_database_context)
             .await
-            .map_err(MigratorError::MigrateAuditDatabase)
+            .context(MigratorError::MigrateAuditDatabase)
     }
 
     #[instrument(
@@ -145,47 +126,47 @@ impl Migrator {
         level = "info",
         skip_all
     )]
-    async fn migrate_layer_db_database(&self) -> MigratorResult<()> {
+    async fn migrate_layer_db_database(&self) -> Result<()> {
         self.services_context
             .layer_db()
             .pg_migrate()
             .await
-            .map_err(MigratorError::MigrateLayerDbDatabase)
+            .context(MigratorError::MigrateLayerDbDatabase)
     }
 
     #[instrument(name = "sdf.migrator.migrate_dal_database", level = "info", skip_all)]
-    async fn migrate_dal_database(&self) -> MigratorResult<()> {
+    async fn migrate_dal_database(&self) -> Result<()> {
         dal::migrate_all_with_progress(&self.services_context)
             .await
-            .map_err(MigratorError::MigrateDalDatabase)
+            .context(MigratorError::MigrateDalDatabase)
     }
 
     #[instrument(name = "sdf.migrator.migrate_snapshots", level = "info", skip_all)]
-    async fn migrate_snapshots(&self) -> MigratorResult<()> {
+    async fn migrate_snapshots(&self) -> Result<()> {
         let dal_context = self.services_context.clone().into_builder(true);
         let ctx = dal_context
             .build_default(None)
             .await
-            .map_err(MigratorError::migrate_snapshots)?;
+            .context(MigratorError::MigrateSnapshots)?;
 
         let mut migrator = SnapshotGraphMigrator::new();
         migrator
             .migrate_all(&ctx)
             .await
-            .map_err(MigratorError::migrate_snapshots)?;
+            .context(MigratorError::MigrateSnapshots)?;
         ctx.commit_no_rebase()
             .await
-            .map_err(MigratorError::migrate_snapshots)?;
+            .context(MigratorError::MigrateSnapshots)?;
         Ok(())
     }
 
     #[instrument(name = "sdf.migrator.migrate_module_cache", level = "info", skip_all)]
-    async fn migrate_module_cache(&self) -> MigratorResult<()> {
+    async fn migrate_module_cache(&self) -> Result<()> {
         let dal_context = self.services_context.clone().into_builder(true);
         let ctx = dal_context
             .build_default(None)
             .await
-            .map_err(MigratorError::migrate_cached_modules)?;
+            .context(MigratorError::MigrateCachedModules)?;
 
         info!("Updating local module cache");
 
@@ -193,12 +174,12 @@ impl Migrator {
         tokio::spawn(async move {
             let new_modules = CachedModule::update_cached_modules(&ctx)
                 .await
-                .map_err(MigratorError::migrate_cached_modules)?;
+                .context(MigratorError::MigrateCachedModules)?;
             info!(
                 "{} new builtin assets found in module index",
                 new_modules.len()
             );
-            Ok::<(), MigratorError>(())
+            Ok::<(), anyhow::Error>(())
         });
 
         Ok(())

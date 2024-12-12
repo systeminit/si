@@ -4,6 +4,7 @@ use std::{
     sync::Arc,
 };
 
+use anyhow::Result;
 use chrono::{DateTime, Utc};
 use itertools::Itertools;
 use postgres_types::ToSql;
@@ -50,7 +51,7 @@ pub enum CachedModuleError {
     UrlParse(#[from] url::ParseError),
 }
 
-pub type CachedModuleResult<T> = Result<T, CachedModuleError>;
+pub type CachedModuleResult<T> = Result<T>;
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -144,7 +145,7 @@ impl CachedModule {
         }
 
         let Some(package_data) = &self.package_data else {
-            return Err(CachedModuleError::NoPackageData);
+            return Err(CachedModuleError::NoPackageData.into());
         };
 
         Ok(package_data.as_slice())

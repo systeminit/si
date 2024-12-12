@@ -1,3 +1,4 @@
+use anyhow::Result;
 use axum::{
     extract::Host,
     http::StatusCode,
@@ -254,8 +255,6 @@ async fn request_approval(
 
     Ok(())
 }
-
-type Result<T> = std::result::Result<T, ChangeSetsError>;
 
 #[remain::sorted]
 #[derive(Debug, Error)]

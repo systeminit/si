@@ -25,6 +25,7 @@
     while_true
 )]
 
+use anyhow::Result;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use si_data_pg::{PgError, PgRow};
@@ -51,8 +52,6 @@ pub enum ChangeSetApprovalError {
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
-
-type Result<T> = std::result::Result<T, ChangeSetApprovalError>;
 
 /// An individual approval for applying a [`ChangeSet`](crate::ChangeSet). The checksum reflects
 /// all entities that the approver can be responsible for.
@@ -100,7 +99,7 @@ impl ChangeSetApproval {
         let user_id = match ctx.history_actor() {
             HistoryActor::User(user_id) => user_id,
             HistoryActor::SystemInit => {
-                return Err(ChangeSetApprovalError::InvalidUserForNewApproval)
+                return Err(ChangeSetApprovalError::InvalidUserForNewApproval.into())
             }
         };
 
@@ -113,7 +112,7 @@ impl ChangeSetApproval {
                 &[&change_set_id, &status.to_string(), &user_id, &checksum.to_string()]
             )
             .await?;
-        Self::try_from(row)
+        Self::try_from(row).map_err(Into::into)
     }
 
     /// Returns the ID of the approval.

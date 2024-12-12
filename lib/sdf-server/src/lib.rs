@@ -62,8 +62,8 @@ pub use dal::{
 pub enum ServerError {
     #[error("audit database context error: {0}")]
     AuditDatabaseContext(#[from] AuditDatabaseContextError),
-    #[error("axum error: {0}")]
-    Axum(#[source] hyper::Error),
+    #[error("axum error")]
+    Axum,
     #[error("error while initializing: {0}")]
     Init(#[from] init::InitError),
     #[error("nats multipler error: {0}")]

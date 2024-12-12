@@ -1,13 +1,13 @@
 //! This module contains [`SchemaView`], which is used by the frontend to know and organize all non-hidden
 //! [`Schemas`](Schema) and [`SchemaVariants`](Schema) in the current [`snapshot`](crate::WorkspaceSnapshot).
 
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use thiserror::Error;
 
-use crate::schema::variant::root_prop::component_type::ComponentType;
-use crate::schema::variant::SchemaVariantError;
 use crate::{
+    schema::variant::{root_prop::component_type::ComponentType, SchemaVariantError},
     DalContext, InputSocketId, OutputSocketId, Schema, SchemaError, SchemaId, SchemaVariant,
     SchemaVariantId, Timestamp,
 };
@@ -23,7 +23,7 @@ pub enum SchemaViewError {
     SchemaVariant(#[from] SchemaVariantError),
 }
 
-pub type SchemaViewResult<T> = Result<T, SchemaViewError>;
+pub type SchemaViewResult<T> = Result<T>;
 
 pub type SchemaViews = HashMap<SchemaId, SchemaView>;
 
@@ -97,7 +97,7 @@ impl SchemaView {
                     variants: schema_variant_views,
                 });
             } else {
-                return Err(SchemaViewError::DefaultVariantNotFoundForSchema(schema.id));
+                return Err(SchemaViewError::DefaultVariantNotFoundForSchema(schema.id).into());
             }
         }
 

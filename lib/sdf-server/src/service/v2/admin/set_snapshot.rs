@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use anyhow::Result;
 use axum::{
     extract::{Host, Multipart, OriginalUri, Path},
     response::Json,
@@ -12,7 +13,7 @@ use telemetry::prelude::*;
 
 use crate::{
     extract::PosthogClient,
-    service::v2::admin::{AdminAPIError, AdminAPIResult, AdminUserContext},
+    service::v2::admin::{AdminAPIError, AdminUserContext},
     track_no_ctx,
 };
 
@@ -39,7 +40,7 @@ pub async fn set_snapshot(
     Host(host_name): Host,
     Path((workspace_id, change_set_id)): Path<(WorkspacePk, ChangeSetId)>,
     mut multipart: Multipart,
-) -> AdminAPIResult<Json<SetSnapshotResponse>> {
+) -> Result<Json<SetSnapshotResponse>> {
     ctx.update_tenancy(Tenancy::new(workspace_id));
 
     let span = current_span_for_instrument_at!("info");

@@ -1,3 +1,4 @@
+use anyhow::Result;
 use asset_sprayer::prompt::AwsCliCommandPromptKind;
 use axum::{
     response::{IntoResponse, Response},
@@ -25,8 +26,6 @@ pub enum PromptAPIError {
     #[error("transactions error: {0}")]
     Transactions(#[from] dal::TransactionsError),
 }
-
-pub type Result<T> = std::result::Result<T, PromptAPIError>;
 
 impl IntoResponse for PromptAPIError {
     fn into_response(self) -> Response {

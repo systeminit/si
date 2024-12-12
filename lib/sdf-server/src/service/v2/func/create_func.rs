@@ -1,3 +1,4 @@
+use anyhow::Result;
 use axum::{
     extract::{Host, OriginalUri, Path},
     Json,
@@ -18,13 +19,14 @@ use serde::{Deserialize, Serialize};
 use si_events::audit_log::AuditLogKind;
 use si_frontend_types::{self as frontend_types, FuncBinding, FuncCode, FuncSummary};
 
-use super::{get_code_response, FuncAPIError, FuncAPIResult};
 use crate::{
     extract::{HandlerContext, PosthogClient},
     service::force_change_set_response::ForceChangeSetResponse,
     service::v2::AccessBuilder,
     track,
 };
+
+use super::{get_code_response, FuncAPIError};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -50,13 +52,13 @@ pub async fn create_func(
     Host(host_name): Host,
     Path((_workspace_pk, change_set_id)): Path<(WorkspacePk, ChangeSetId)>,
     Json(request): Json<CreateFuncRequest>,
-) -> FuncAPIResult<ForceChangeSetResponse<CreateFuncResponse>> {
+) -> Result<ForceChangeSetResponse<CreateFuncResponse>> {
     let mut ctx = builder
         .build(access_builder.build(change_set_id.into()))
         .await?;
     if let Some(name) = request.name.as_deref() {
         if dal::func::is_intrinsic(name) {
-            return Err(FuncAPIError::FuncNameReserved(name.into()));
+            return Err(FuncAPIError::FuncNameReserved(name.into()).into());
         }
     }
 
@@ -98,7 +100,7 @@ pub async fn create_func(
                 .await?;
                 func
             } else {
-                return Err(FuncAPIError::WrongFunctionKindForBinding);
+                return Err(FuncAPIError::WrongFunctionKindForBinding.into());
             }
         }
         FuncKind::Attribute => {
@@ -115,7 +117,7 @@ pub async fn create_func(
                 } else if let Some(output_socket_id) = output_socket_id {
                     AttributeFuncDestination::OutputSocket(output_socket_id)
                 } else {
-                    return Err(FuncAPIError::MissingOutputLocationForAttributeFunc);
+                    return Err(FuncAPIError::MissingOutputLocationForAttributeFunc.into());
                 };
                 let eventual_parent = component_id.map(EventualParent::Component);
                 let mut arg_bindings = vec![];
@@ -125,7 +127,7 @@ pub async fn create_func(
                     } else if let Some(input_socket_id) = arg_binding.input_socket_id {
                         AttributeFuncArgumentSource::InputSocket(input_socket_id)
                     } else {
-                        return Err(FuncAPIError::MissingInputLocationForAttributeFunc);
+                        return Err(FuncAPIError::MissingInputLocationForAttributeFunc.into());
                     };
                     arg_bindings.push(AttributeArgumentBinding {
                         func_argument_id: arg_binding.func_argument_id,
@@ -167,7 +169,7 @@ pub async fn create_func(
                                 None,
                             )
                         } else {
-                            return Err(FuncAPIError::MissingSchemaVariantAndFunc);
+                            return Err(FuncAPIError::MissingSchemaVariantAndFunc.into());
                         }
                     }
                     None => {
@@ -199,7 +201,7 @@ pub async fn create_func(
                 .await?;
                 func
             } else {
-                return Err(FuncAPIError::WrongFunctionKindForBinding);
+                return Err(FuncAPIError::WrongFunctionKindForBinding.into());
             }
         }
         FuncKind::Authentication => {
@@ -233,7 +235,7 @@ pub async fn create_func(
                 .await?;
                 func
             } else {
-                return Err(FuncAPIError::WrongFunctionKindForBinding);
+                return Err(FuncAPIError::WrongFunctionKindForBinding.into());
             }
         }
         FuncKind::CodeGeneration => {
@@ -282,7 +284,7 @@ pub async fn create_func(
                 .await?;
                 func
             } else {
-                return Err(FuncAPIError::WrongFunctionKindForBinding);
+                return Err(FuncAPIError::WrongFunctionKindForBinding.into());
             }
         }
         FuncKind::Qualification => {
@@ -332,7 +334,7 @@ pub async fn create_func(
                 .await?;
                 func
             } else {
-                return Err(FuncAPIError::WrongFunctionKindForBinding);
+                return Err(FuncAPIError::WrongFunctionKindForBinding.into());
             }
         }
         FuncKind::Management => {
@@ -373,11 +375,11 @@ pub async fn create_func(
                 .await?;
                 func
             } else {
-                return Err(FuncAPIError::WrongFunctionKindForBinding);
+                return Err(FuncAPIError::WrongFunctionKindForBinding.into());
             }
         }
         FuncKind::Unknown | FuncKind::SchemaVariantDefinition | FuncKind::Intrinsic => {
-            return Err(FuncAPIError::WrongFunctionKindForBinding)
+            return Err(FuncAPIError::WrongFunctionKindForBinding.into())
         }
     };
 

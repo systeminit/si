@@ -1,7 +1,9 @@
+use anyhow::Result;
+use thiserror::Error;
+
 use crate::{
     EdgeWeightKind, EdgeWeightKindDiscriminants, TransactionsError, WorkspaceSnapshotError,
 };
-use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum HelperError {
@@ -13,7 +15,7 @@ pub enum HelperError {
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
 
-pub type HelperResult<T> = Result<T, HelperError>;
+pub type HelperResult<T> = Result<T>;
 
 #[macro_export]
 macro_rules! implement_add_edge_to {
@@ -26,7 +28,7 @@ macro_rules! implement_add_edge_to {
     ) => {
         paste::paste! {
             /// Inserts edge from source to destination with specified weight to the graph
-            pub async fn $add_fn(ctx: &$crate::DalContext, source_id: $source_id, destination_id: $destination_id, weight: $crate::EdgeWeightKind) -> $result<()> {
+            pub async fn $add_fn(ctx: &$crate::DalContext, source_id: $source_id, destination_id: $destination_id, weight: $crate::EdgeWeightKind) -> ::anyhow::Result<()> {
                 if $crate::EdgeWeightKindDiscriminants::from(&weight) != $discriminant {
                     return Err($crate::HelperError::InvalidEdgeWeight(weight, $discriminant))?;
                 }
@@ -43,7 +45,7 @@ macro_rules! implement_add_edge_to {
 
             /// Inserts ordered edge from source to destination with specified weight to the graph
             #[allow(dead_code)]
-            pub async fn [<$add_fn _ordered>](ctx: &DalContext, source_id: $source_id, destination_id: $destination_id, weight: $crate::EdgeWeightKind) -> $result<()> {
+            pub async fn [<$add_fn _ordered>](ctx: &DalContext, source_id: $source_id, destination_id: $destination_id, weight: $crate::EdgeWeightKind) -> ::anyhow::Result<()> {
                 if $crate::EdgeWeightKindDiscriminants::from(&weight) != $discriminant {
                     return Err($crate::HelperError::InvalidEdgeWeight(weight, $discriminant))?;
                 }

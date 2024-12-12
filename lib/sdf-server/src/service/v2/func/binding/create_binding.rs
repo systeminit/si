@@ -1,3 +1,4 @@
+use anyhow::Result;
 use axum::{
     extract::{Host, OriginalUri, Path},
     Json,
@@ -16,10 +17,7 @@ use si_frontend_types as frontend_types;
 use crate::{
     extract::{HandlerContext, PosthogClient},
     service::v2::AccessBuilder,
-    service::{
-        force_change_set_response::ForceChangeSetResponse,
-        v2::func::{FuncAPIError, FuncAPIResult},
-    },
+    service::{force_change_set_response::ForceChangeSetResponse, v2::func::FuncAPIError},
     track,
 };
 
@@ -31,7 +29,7 @@ pub async fn create_binding(
     Host(host_name): Host,
     Path((_workspace_pk, change_set_id, func_id)): Path<(WorkspacePk, ChangeSetId, FuncId)>,
     Json(request): Json<frontend_types::FuncBindings>,
-) -> FuncAPIResult<ForceChangeSetResponse<Vec<si_frontend_types::FuncBinding>>> {
+) -> Result<ForceChangeSetResponse<Vec<si_frontend_types::FuncBinding>>> {
     let mut ctx = builder
         .build(access_builder.build(change_set_id.into()))
         .await?;
@@ -154,7 +152,7 @@ pub async fn create_binding(
                             .await?;
                         }
                         None => {
-                            return Err(FuncAPIError::MissingFuncId);
+                            return Err(FuncAPIError::MissingFuncId.into());
                         }
                     }
                 }
@@ -193,7 +191,7 @@ pub async fn create_binding(
                                 .publish_on_commit(&ctx)
                                 .await?;
                         }
-                        None => return Err(FuncAPIError::MissingFuncId),
+                        None => return Err(FuncAPIError::MissingFuncId.into()),
                     }
                 }
             }
@@ -241,11 +239,11 @@ pub async fn create_binding(
                                 .await?;
                         }
                         _ => {
-                            return Err(FuncAPIError::MissingActionKindForActionFunc);
+                            return Err(FuncAPIError::MissingActionKindForActionFunc.into());
                         }
                     }
                 } else {
-                    return Err(FuncAPIError::MissingActionKindForActionFunc);
+                    return Err(FuncAPIError::MissingActionKindForActionFunc.into());
                 }
             }
         }
@@ -295,7 +293,7 @@ pub async fn create_binding(
                                 .await?;
                         }
                         _ => {
-                            return Err(FuncAPIError::MissingSchemaVariantAndFunc);
+                            return Err(FuncAPIError::MissingSchemaVariantAndFunc.into());
                         }
                     }
                 } else if let frontend_types::FuncBinding::Qualification {
@@ -342,11 +340,11 @@ pub async fn create_binding(
                                 .await?;
                         }
                         _ => {
-                            return Err(FuncAPIError::MissingSchemaVariantAndFunc);
+                            return Err(FuncAPIError::MissingSchemaVariantAndFunc.into());
                         }
                     }
                 } else {
-                    return Err(FuncAPIError::WrongFunctionKindForBinding);
+                    return Err(FuncAPIError::WrongFunctionKindForBinding.into());
                 }
             }
         }
@@ -392,16 +390,16 @@ pub async fn create_binding(
                                 .await?;
                         }
                         _ => {
-                            return Err(FuncAPIError::MissingSchemaVariantAndFunc);
+                            return Err(FuncAPIError::MissingSchemaVariantAndFunc.into());
                         }
                     }
                 } else {
-                    return Err(FuncAPIError::WrongFunctionKindForBinding);
+                    return Err(FuncAPIError::WrongFunctionKindForBinding.into());
                 }
             }
         }
         dal::func::FuncKind::Unknown | dal::func::FuncKind::SchemaVariantDefinition => {
-            return Err(FuncAPIError::WrongFunctionKindForBinding);
+            return Err(FuncAPIError::WrongFunctionKindForBinding.into());
         }
     };
     drop(cycle_check_guard);

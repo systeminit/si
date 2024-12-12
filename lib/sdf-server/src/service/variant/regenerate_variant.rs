@@ -1,3 +1,4 @@
+use anyhow::Result;
 use axum::{
     extract::{Host, OriginalUri},
     Json,
@@ -11,7 +12,7 @@ use si_events::audit_log::AuditLogKind;
 
 use crate::{
     extract::{v1::AccessBuilder, HandlerContext, PosthogClient},
-    service::{force_change_set_response::ForceChangeSetResponse, variant::SchemaVariantResult},
+    service::force_change_set_response::ForceChangeSetResponse,
     track,
 };
 
@@ -42,7 +43,7 @@ pub async fn regenerate_variant(
         code,
         visibility,
     }): Json<RegenerateVariantRequest>,
-) -> SchemaVariantResult<ForceChangeSetResponse<RegenerateVariantResponse>> {
+) -> Result<ForceChangeSetResponse<RegenerateVariantResponse>> {
     let mut ctx = builder.build(request_ctx.build(visibility)).await?;
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;

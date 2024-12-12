@@ -268,8 +268,7 @@ async fn graceful_shutdown_signal(
 }
 
 mod handlers {
-    use std::result;
-
+    use anyhow::Result;
     use dal::{ChangeSet, Workspace, WorkspaceSnapshot, WsEvent};
     use naxum::{
         extract::State,
@@ -325,8 +324,6 @@ mod handlers {
     }
 
     type Error = HandlerError;
-
-    type Result<T> = result::Result<T, HandlerError>;
 
     impl IntoResponse for HandlerError {
         fn into_response(self) -> Response {

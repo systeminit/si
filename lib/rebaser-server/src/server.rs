@@ -6,6 +6,7 @@ use std::{
     time::Duration,
 };
 
+use anyhow::Result;
 use dal::{
     feature_flags::FeatureFlagService, DalContext, DalLayerDb, DedicatedExecutor, JetstreamStreams,
     JobQueueProcessor, NatsProcessor, ServicesContext,
@@ -33,7 +34,7 @@ use telemetry::prelude::*;
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use veritech_client::Client as VeritechClient;
 
-use crate::{app_state::AppState, handlers, Config, Error, Result};
+use crate::{app_state::AppState, handlers, Config, Error};
 
 const TASKS_CONSUMER_NAME: &str = "rebaser-tasks";
 

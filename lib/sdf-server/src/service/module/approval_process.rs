@@ -1,3 +1,4 @@
+use anyhow::Result;
 use axum::{
     extract::{Host, OriginalUri},
     Json,
@@ -9,7 +10,7 @@ use ulid::Ulid;
 
 use crate::{
     extract::{request::RawAccessToken, v1::AccessBuilder, HandlerContext, PosthogClient},
-    service::module::{ModuleError, ModuleResult},
+    service::module::ModuleError,
     track,
 };
 
@@ -27,12 +28,12 @@ pub async fn begin_approval_process(
     AccessBuilder(request_ctx): AccessBuilder,
     RawAccessToken(raw_access_token): RawAccessToken,
     Json(request): Json<BeginImportFlow>,
-) -> ModuleResult<Json<()>> {
+) -> Result<Json<()>> {
     let ctx = builder.build_head(request_ctx).await?;
 
     let module_index_url = match ctx.module_index_url() {
         Some(url) => url,
-        None => return Err(ModuleError::ModuleIndexNotConfigured),
+        None => return Err(ModuleError::ModuleIndexNotConfigured.into()),
     };
 
     let module_index_client =
@@ -47,7 +48,7 @@ pub async fn begin_approval_process(
             .ok_or(ModuleError::InvalidUser(*user_pk))?,
 
         HistoryActor::SystemInit => {
-            return Err(ModuleError::InvalidUserSystemInit);
+            return Err(ModuleError::InvalidUserSystemInit.into());
         }
     };
 
@@ -96,7 +97,7 @@ pub async fn cancel_approval_process(
     PosthogClient(posthog_client): PosthogClient,
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
-) -> ModuleResult<Json<()>> {
+) -> Result<Json<()>> {
     let ctx = builder.build_head(request_ctx).await?;
 
     let user_pk = match ctx.history_actor() {

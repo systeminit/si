@@ -7,14 +7,10 @@ use crate::{
     attribute::prototype::{
         argument::AttributePrototypeArgument, AttributePrototypeEventualParent,
     },
-    func::{
-        argument::{FuncArgument, FuncArgumentError},
-        intrinsics::IntrinsicFunc,
-        FuncKind,
-    },
+    func::{argument::FuncArgument, intrinsics::IntrinsicFunc, FuncKind},
     workspace_snapshot::graph::WorkspaceSnapshotGraphError,
     AttributePrototype, AttributePrototypeId, AttributeValue, Component, DalContext,
-    EdgeWeightKind, Func, FuncBackendKind, FuncId, OutputSocket, Prop, WorkspaceSnapshotError,
+    EdgeWeightKind, Func, FuncBackendKind, FuncId, OutputSocket, Prop,
 };
 
 use super::{
@@ -132,7 +128,8 @@ impl AttributeBinding {
                             component_id,
                             schema_variant_id,
                         ),
-                    ));
+                    )
+                    .into());
                 }
             }
         };
@@ -159,27 +156,27 @@ impl AttributeBinding {
                         input_socket_id,
                         static_argument_value,
                     ),
-                ))
+                ).into())
             }
             (Some(prop_id), Some(input_socket_id), None) => Err(FuncBindingError::MalformedInput(
                 AttributeBindingMalformedInput::InputLocationBothPropAndInputSocketProvided(
                     prop_id,
                     input_socket_id,
                 ),
-            )),
+            ).into()),
             (Some(prop_id), None, Some(static_argument_value)) => {
                 Err(FuncBindingError::MalformedInput(
                     AttributeBindingMalformedInput::InputLocationBothPropAndStaticArgumentValueProvided(prop_id, static_argument_value),
-                ))
+                ).into())
             }
             (None, Some(input_socket_id), Some(static_argument_value)) => {
                 Err(FuncBindingError::MalformedInput(
                     AttributeBindingMalformedInput::InputLocationBothInputSocketAndStaticArgumentValueProvided(input_socket_id, static_argument_value),
-                ))
+                ).into())
             }
             (None, None, None) => Err(FuncBindingError::MalformedInput(
                 AttributeBindingMalformedInput::InputLocationNoOptionProvided,
-            )),
+            ).into()),
         }
     }
 
@@ -197,10 +194,12 @@ impl AttributeBinding {
                     prop_id,
                     output_socket_id,
                 ),
-            )),
+            )
+            .into()),
             (None, None) => Err(FuncBindingError::MalformedInput(
                 AttributeBindingMalformedInput::OutputLocationNoOptionProvided,
-            )),
+            )
+            .into()),
         }
     }
 
@@ -315,7 +314,7 @@ impl AttributeBinding {
         let needs_validate_intrinsic_input = match func.kind {
             FuncKind::Attribute => false,
             FuncKind::Intrinsic => true,
-            kind => return Err(FuncBindingError::UnexpectedFuncKind(kind)),
+            kind => return Err(FuncBindingError::UnexpectedFuncKind(kind).into()),
         };
 
         // if a parent was specified, use it. otherwise find the schema variant
@@ -460,7 +459,8 @@ impl AttributeBinding {
             AttributeFuncDestination::InputSocket(_) => {
                 return Err(FuncBindingError::InvalidAttributePrototypeDestination(
                     output_location,
-                ));
+                )
+                .into());
             }
         }
 
@@ -471,16 +471,14 @@ impl AttributeBinding {
 
         for arg in &prototype_arguments {
             // Ensure a func argument exists for each input location, before creating new Attribute Prototype Arguments
-            if let Err(err) = FuncArgument::get_by_id_or_error(ctx, arg.func_argument_id).await {
-                match err {
-                    FuncArgumentError::WorkspaceSnapshot(
-                        WorkspaceSnapshotError::WorkspaceSnapshotGraph(
-                            WorkspaceSnapshotGraphError::NodeWithIdNotFound(raw_id),
-                        ),
-                    ) if raw_id == arg.func_argument_id.into() => {
-                        continue;
+            if let Err(error) = FuncArgument::get_by_id_or_error(ctx, arg.func_argument_id).await {
+                match error.downcast_ref::<WorkspaceSnapshotGraphError>() {
+                    Some(WorkspaceSnapshotGraphError::NodeWithIdNotFound(raw_id))
+                        if *raw_id == arg.func_argument_id.into() =>
+                    {
+                        continue
                     }
-                    err => return Err(err.into()),
+                    _ => return Err(error),
                 }
             }
 
@@ -523,12 +521,14 @@ impl AttributeBinding {
                 super::AttributeFuncArgumentSource::Secret(secret_id) => {
                     return Err(FuncBindingError::InvalidAttributePrototypeArgumentSource(
                         AttributeFuncArgumentSource::Secret(*secret_id),
-                    ))
+                    )
+                    .into())
                 }
                 super::AttributeFuncArgumentSource::OutputSocket(output_socket_id) => {
                     return Err(FuncBindingError::InvalidAttributePrototypeArgumentSource(
                         AttributeFuncArgumentSource::OutputSocket(*output_socket_id),
-                    ))
+                    )
+                    .into())
                 }
             };
         }
@@ -573,14 +573,14 @@ impl AttributeBinding {
         for arg in &prototype_arguments {
             // Ensure the func argument exists before continuing. By continuing, we will not add the
             // attribute prototype to the id set and will be deleted.
-            if let Err(err) = FuncArgument::get_by_id_or_error(ctx, arg.func_argument_id).await {
-                match err {
-                    FuncArgumentError::WorkspaceSnapshot(
-                        WorkspaceSnapshotError::WorkspaceSnapshotGraph(
-                            WorkspaceSnapshotGraphError::NodeWithIdNotFound(raw_id),
-                        ),
-                    ) if raw_id == arg.func_argument_id.into() => continue,
-                    err => return Err(err.into()),
+            if let Err(error) = FuncArgument::get_by_id_or_error(ctx, arg.func_argument_id).await {
+                match error.downcast_ref::<WorkspaceSnapshotGraphError>() {
+                    Some(WorkspaceSnapshotGraphError::NodeWithIdNotFound(raw_id))
+                        if *raw_id == arg.func_argument_id.into() =>
+                    {
+                        continue
+                    }
+                    _ => return Err(error),
                 }
             }
 
@@ -623,12 +623,14 @@ impl AttributeBinding {
                 super::AttributeFuncArgumentSource::Secret(secret_id) => {
                     return Err(FuncBindingError::InvalidAttributePrototypeArgumentSource(
                         AttributeFuncArgumentSource::Secret(*secret_id),
-                    ))
+                    )
+                    .into())
                 }
                 super::AttributeFuncArgumentSource::OutputSocket(output_socket_id) => {
                     return Err(FuncBindingError::InvalidAttributePrototypeArgumentSource(
                         AttributeFuncArgumentSource::OutputSocket(*output_socket_id),
-                    ))
+                    )
+                    .into())
                 }
             };
         }
@@ -810,10 +812,9 @@ impl AttributeBinding {
                     attribute_func_input_location: arg.attribute_func_input_location.clone(),
                 })
             } else {
-                return Err(FuncBindingError::FuncArgumentMissing(
-                    arg.func_argument_id,
-                    old_arg,
-                ));
+                return Err(
+                    FuncBindingError::FuncArgumentMissing(arg.func_argument_id, old_arg).into(),
+                );
             }
         }
         // delete and recreate attribute prototype and args
@@ -840,9 +841,7 @@ async fn validate_intrinsic_inputs(
 ) -> FuncBindingResult<()> {
     let intrinsic_kind = Func::get_intrinsic_kind_by_id_or_error(ctx, func_id).await?;
     if let EventualParent::Component(component_id) = eventual_parent {
-        return Err(FuncBindingError::CannotSetIntrinsicForComponent(
-            component_id,
-        ));
+        return Err(FuncBindingError::CannotSetIntrinsicForComponent(component_id).into());
     }
     match intrinsic_kind {
         IntrinsicFunc::Identity
@@ -850,7 +849,7 @@ async fn validate_intrinsic_inputs(
         | IntrinsicFunc::ResourcePayloadToValue => {
             // for now we only support configuring one input location at a time
             if prototype_arguments.len() > 1 {
-                return Err(FuncBindingError::InvalidIntrinsicBinding);
+                return Err(FuncBindingError::InvalidIntrinsicBinding.into());
             }
             match output_location {
                 // props can only take input from other props and input sockets
@@ -864,7 +863,7 @@ async fn validate_intrinsic_inputs(
                         AttributeFuncArgumentSource::Secret(_) => true,
                     });
                     if !maybe_invalid_inputs.is_empty() {
-                        return Err(FuncBindingError::InvalidIntrinsicBinding);
+                        return Err(FuncBindingError::InvalidIntrinsicBinding.into());
                     }
                 }
                 // output sockets can take input from props or input sockets
@@ -878,26 +877,27 @@ async fn validate_intrinsic_inputs(
                         AttributeFuncArgumentSource::Secret(_) => true,
                     });
                     if !maybe_invalid_inputs.is_empty() {
-                        return Err(FuncBindingError::InvalidIntrinsicBinding);
+                        return Err(FuncBindingError::InvalidIntrinsicBinding.into());
                     }
                 }
                 // input sockets can't take input from anything this way
                 AttributeFuncDestination::InputSocket(_) => {
                     return Err(FuncBindingError::InvalidAttributePrototypeDestination(
                         output_location,
-                    ))
+                    )
+                    .into())
                 }
             }
         }
         IntrinsicFunc::Unset => {
             // ensure no args are sent
             if !prototype_arguments.is_empty() {
-                return Err(FuncBindingError::InvalidIntrinsicBinding);
+                return Err(FuncBindingError::InvalidIntrinsicBinding.into());
             }
             match output_location {
                 AttributeFuncDestination::Prop(_) | AttributeFuncDestination::OutputSocket(_) => {}
                 AttributeFuncDestination::InputSocket(_) => {
-                    return Err(FuncBindingError::InvalidIntrinsicBinding)
+                    return Err(FuncBindingError::InvalidIntrinsicBinding.into())
                 }
             }
         }
@@ -911,10 +911,10 @@ async fn validate_intrinsic_inputs(
         | IntrinsicFunc::SetString => {
             // ensure there's only one value
             if prototype_arguments.len() > 1 {
-                return Err(FuncBindingError::InvalidIntrinsicBinding);
+                return Err(FuncBindingError::InvalidIntrinsicBinding.into());
             }
         }
-        IntrinsicFunc::Validation => return Err(FuncBindingError::InvalidIntrinsicBinding),
+        IntrinsicFunc::Validation => return Err(FuncBindingError::InvalidIntrinsicBinding.into()),
     };
     Ok(())
 }

@@ -1,3 +1,4 @@
+use anyhow::Result;
 use axum::{extract::Path, Json};
 use dal::{
     management::prototype::{ManagementPrototype, ManagementPrototypeId},
@@ -10,8 +11,6 @@ use crate::{
     service::v2::AccessBuilder,
 };
 
-use super::ManagementApiResult;
-
 pub async fn latest(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
@@ -21,7 +20,7 @@ pub async fn latest(
         ManagementPrototypeId,
         ComponentId,
     )>,
-) -> ManagementApiResult<Json<Option<FuncRunView>>> {
+) -> Result<Json<Option<FuncRunView>>> {
     let ctx = builder
         .build(request_ctx.build(change_set_id.into()))
         .await?;

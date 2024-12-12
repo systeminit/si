@@ -1,9 +1,11 @@
+use anyhow::Result;
 use axum::Json;
 use dal::{User, Workspace};
 use serde::{Deserialize, Serialize};
 
-use super::{SessionError, SessionResult};
 use crate::extract::{v1::AccessBuilder, workspace::WorkspaceAuthorization, HandlerContext};
+
+use super::SessionError;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -18,7 +20,7 @@ pub async fn restore_authentication(
     WorkspaceAuthorization {
         user, workspace_id, ..
     }: WorkspaceAuthorization,
-) -> SessionResult<Json<RestoreAuthenticationResponse>> {
+) -> Result<Json<RestoreAuthenticationResponse>> {
     let ctx = builder.build_head(access_builder).await?;
 
     let workspace = Workspace::get_by_pk(&ctx, &workspace_id)

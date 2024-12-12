@@ -1,3 +1,4 @@
+use anyhow::Result;
 use axum::extract::Path;
 use dal::{
     approval_requirement::{ApprovalRequirement, ApprovalRequirementDefinition},
@@ -12,8 +13,6 @@ use crate::{
     service::{force_change_set_response::ForceChangeSetResponse, v2::AccessBuilder},
 };
 
-use super::ApprovalRequirementDefinitionError;
-
 pub async fn add_individual_approver(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(access_builder): AccessBuilder,
@@ -24,7 +23,7 @@ pub async fn add_individual_approver(
         ApprovalRequirementDefinitionId,
         UserPk,
     )>,
-) -> Result<ForceChangeSetResponse<()>, ApprovalRequirementDefinitionError> {
+) -> Result<ForceChangeSetResponse<()>> {
     let mut ctx = builder
         .build(access_builder.build(change_set_id.into()))
         .await?;

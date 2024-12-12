@@ -61,7 +61,8 @@ impl<'a> SiPkgChangeSet<'a> {
                 return Err(SiPkgError::UnexpectedPkgNodeType(
                     PkgNode::CHANGE_SET_KIND_STR,
                     unexpected.node_kind_str(),
-                ));
+                )
+                .into());
             }
         };
 

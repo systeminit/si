@@ -1,10 +1,11 @@
 //! This module contains [`ComponentDiff`].
+
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
 use crate::code_view::{CodeLanguage, CodeView};
 use crate::component::properties::ComponentProperties;
-use crate::component::ComponentResult;
 use crate::{Component, ComponentId, DalContext};
 
 //
@@ -27,10 +28,7 @@ pub struct ComponentDiff {
 }
 
 impl Component {
-    pub async fn get_diff(
-        ctx: &DalContext,
-        component_id: ComponentId,
-    ) -> ComponentResult<ComponentDiff> {
+    pub async fn get_diff(ctx: &DalContext, component_id: ComponentId) -> Result<ComponentDiff> {
         let component = Self::get_by_id(ctx, component_id).await?;
         let curr_json: String;
         let view = component.view(ctx).await?;
@@ -103,7 +101,7 @@ impl Component {
     pub async fn get_json_representation(
         ctx: &DalContext,
         component_id: ComponentId,
-    ) -> ComponentResult<ComponentProperties> {
+    ) -> Result<ComponentProperties> {
         let component = Self::get_by_id(ctx, component_id).await?;
         let view = component.view(ctx).await?;
 

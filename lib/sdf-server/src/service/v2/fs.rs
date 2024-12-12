@@ -3,6 +3,7 @@ use std::{
     sync::Arc,
 };
 
+use anyhow::Result;
 use axum::{
     extract::{Path, Query},
     middleware,
@@ -133,8 +134,6 @@ pub enum FsError {
     WsEvent(#[from] WsEventError),
 }
 
-pub type FsResult<T> = Result<T, FsError>;
-
 const ASSET_EDITOR_TYPES: &str = include_str!("./fs/editor_typescript.txt");
 
 impl IntoResponse for FsError {
@@ -158,7 +157,7 @@ impl IntoResponse for FsError {
 pub async fn create_change_set(
     WorkspaceDalContext(ref ctx): WorkspaceDalContext,
     Json(request): Json<fs::CreateChangeSetRequest>,
-) -> FsResult<Json<fs::CreateChangeSetResponse>> {
+) -> Result<Json<fs::CreateChangeSetResponse>> {
     let change_set = ChangeSet::fork_head(ctx, request.name).await?;
 
     ctx.write_audit_log(AuditLogKind::CreateChangeSet, change_set.name.clone())
@@ -182,7 +181,7 @@ pub async fn create_change_set(
 pub async fn hydrate(
     WorkspaceDalContext(ref ctx): WorkspaceDalContext,
     tracker: PosthogEventTracker,
-) -> FsResult<Json<Vec<HydratedChangeSet>>> {
+) -> Result<Json<Vec<HydratedChangeSet>>> {
     let open_change_sets = ChangeSet::list_active(ctx).await?;
 
     tracker.track(ctx, "fs/hydrate", serde_json::json!({}));
@@ -280,7 +279,7 @@ pub async fn hydrate(
                 });
             }
 
-            Ok::<HydratedChangeSet, FsError>(HydratedChangeSet {
+            Ok::<HydratedChangeSet, anyhow::Error>(HydratedChangeSet {
                 name: change_set_name,
                 id: change_set.id,
                 funcs: change_set_funcs,
@@ -298,7 +297,7 @@ pub async fn hydrate(
 pub async fn list_change_sets(
     WorkspaceDalContext(ref ctx): WorkspaceDalContext,
     tracker: PosthogEventTracker,
-) -> FsResult<Json<fs::ListChangeSetsResponse>> {
+) -> Result<Json<fs::ListChangeSetsResponse>> {
     let open_change_sets = ChangeSet::list_active(ctx).await?;
 
     tracker.track(ctx, "fs/list_change_sets", serde_json::json!({}));
@@ -314,31 +313,25 @@ pub async fn list_change_sets(
     ))
 }
 
-async fn check_change_set_and_not_head(ctx: &DalContext) -> FsResult<()> {
+async fn check_change_set_and_not_head(ctx: &DalContext) -> Result<()> {
     let change_set = ctx.change_set()?;
     if change_set.id == ctx.get_workspace_default_change_set_id().await? {
-        return Err(FsError::CannotWriteToHead);
+        return Err(FsError::CannotWriteToHead.into());
     }
 
     if change_set.status.is_active() {
         Ok(())
     } else {
-        Err(FsError::ChangeSetInactive(
-            change_set.name.clone(),
-            change_set.id,
-        ))
+        Err(FsError::ChangeSetInactive(change_set.name.clone(), change_set.id).into())
     }
 }
 
-fn check_change_set(ctx: &DalContext) -> FsResult<()> {
+fn check_change_set(ctx: &DalContext) -> Result<()> {
     let change_set = ctx.change_set()?;
     if change_set.status.is_active() {
         Ok(())
     } else {
-        Err(FsError::ChangeSetInactive(
-            change_set.name.clone(),
-            change_set.id,
-        ))
+        Err(FsError::ChangeSetInactive(change_set.name.clone(), change_set.id).into())
     }
 }
 
@@ -347,7 +340,7 @@ pub async fn list_schema_categories(
     AccessBuilder(request_ctx): AccessBuilder,
     tracker: PosthogEventTracker,
     Path((_workspace_id, change_set_id)): Path<(WorkspaceId, ChangeSetId)>,
-) -> FsResult<Json<Vec<String>>> {
+) -> Result<Json<Vec<String>>> {
     let ctx = builder
         .build(request_ctx.build(change_set_id.into()))
         .await?;
@@ -378,7 +371,7 @@ pub async fn list_schemas(
     tracker: PosthogEventTracker,
     Path((_workspace_id, change_set_id)): Path<(WorkspaceId, ChangeSetId)>,
     Query(cat_filter): Query<CategoryFilter>,
-) -> FsResult<Json<Vec<FsSchema>>> {
+) -> Result<Json<Vec<FsSchema>>> {
     let ctx = builder
         .build(request_ctx.build(change_set_id.into()))
         .await?;
@@ -396,7 +389,7 @@ async fn get_schema_list(
     ctx: &DalContext,
     cat_filter: CategoryFilter,
     cached_modules: Option<&[CachedModule]>,
-) -> Result<Vec<FsSchema>, FsError> {
+) -> Result<Vec<FsSchema>> {
     let mut result = vec![];
     let mut installed_set = HashSet::new();
     for schema in dal::Schema::list(ctx).await? {
@@ -446,7 +439,7 @@ async fn list_change_set_funcs(
     AccessBuilder(request_ctx): AccessBuilder,
     tracker: PosthogEventTracker,
     Path((_workspace_id, change_set_id, kind)): Path<(WorkspaceId, ChangeSetId, String)>,
-) -> FsResult<Json<Vec<FsFunc>>> {
+) -> Result<Json<Vec<FsFunc>>> {
     let ctx = builder
         .build(request_ctx.build(change_set_id.into()))
         .await?;
@@ -489,7 +482,7 @@ async fn list_variant_funcs(
         SchemaId,
         String,
     )>,
-) -> FsResult<Json<Vec<FsFunc>>> {
+) -> Result<Json<Vec<FsFunc>>> {
     let ctx = builder
         .build(request_ctx.build(change_set_id.into()))
         .await?;
@@ -532,7 +525,7 @@ async fn lookup_variant_for_schema(
     ctx: &DalContext,
     schema_id: SchemaId,
     unlocked: bool,
-) -> FsResult<Option<SchemaVariant>> {
+) -> Result<Option<SchemaVariant>> {
     lookup_variant_for_schema_with_prefetched_modules(ctx, schema_id, unlocked, &None).await
 }
 
@@ -541,7 +534,7 @@ async fn lookup_variant_for_schema_with_prefetched_modules(
     schema_id: SchemaId,
     unlocked: bool,
     cached_modules: &Option<&[CachedModule]>,
-) -> FsResult<Option<SchemaVariant>> {
+) -> Result<Option<SchemaVariant>> {
     if ctx
         .workspace_snapshot()?
         .get_node_index_by_id_opt(schema_id)
@@ -552,7 +545,7 @@ async fn lookup_variant_for_schema_with_prefetched_modules(
             if cached_modules.iter().any(|m| m.schema_id == schema_id) {
                 return Ok(None);
             } else {
-                return Err(FsError::ResourceNotFound);
+                return Err(FsError::ResourceNotFound.into());
             }
         } else if CachedModule::find_latest_for_schema_id(ctx, schema_id)
             .await?
@@ -560,7 +553,7 @@ async fn lookup_variant_for_schema_with_prefetched_modules(
         {
             return Ok(None);
         } else {
-            return Err(FsError::ResourceNotFound);
+            return Err(FsError::ResourceNotFound.into());
         }
     }
 
@@ -576,7 +569,7 @@ pub async fn get_asset_funcs(
     AccessBuilder(request_ctx): AccessBuilder,
     tracker: PosthogEventTracker,
     Path((_workspace_id, change_set_id, schema_id)): Path<(WorkspaceId, ChangeSetId, SchemaId)>,
-) -> FsResult<Json<AssetFuncs>> {
+) -> Result<Json<AssetFuncs>> {
     let ctx = builder
         .build(request_ctx.build(change_set_id.into()))
         .await?;
@@ -594,7 +587,7 @@ pub async fn get_asset_funcs(
     let result = asset_funcs_for_schema(&ctx, schema_id, None).await?;
 
     if result.locked.is_none() && result.unlocked.is_none() {
-        Err(FsError::ResourceNotFound)
+        Err(FsError::ResourceNotFound.into())
     } else {
         Ok(Json(result))
     }
@@ -604,7 +597,7 @@ async fn asset_funcs_for_schema(
     ctx: &DalContext,
     schema_id: SchemaId,
     cached_modules: Option<&[CachedModule]>,
-) -> FsResult<AssetFuncs> {
+) -> Result<AssetFuncs> {
     let mut result = AssetFuncs {
         locked: None,
         unlocked: None,
@@ -687,7 +680,7 @@ async fn get_func_code(
     AccessBuilder(request_ctx): AccessBuilder,
     tracker: PosthogEventTracker,
     Path((_workspace_id, change_set_id, func_id)): Path<(WorkspaceId, ChangeSetId, FuncId)>,
-) -> FsResult<String> {
+) -> Result<String> {
     let ctx = builder
         .build(request_ctx.build(change_set_id.into()))
         .await?;
@@ -713,7 +706,7 @@ async fn set_func_code(
     tracker: PosthogEventTracker,
     Path((_workspace_id, change_set_id, func_id)): Path<(WorkspaceId, ChangeSetId, FuncId)>,
     Json(request): Json<SetFuncCodeRequest>,
-) -> FsResult<()> {
+) -> Result<()> {
     let ctx = builder
         .build(request_ctx.build(change_set_id.into()))
         .await?;
@@ -739,7 +732,7 @@ async fn set_func_code(
     Ok(())
 }
 
-async fn func_types_size(ctx: &DalContext, func_id: FuncId) -> FsResult<u64> {
+async fn func_types_size(ctx: &DalContext, func_id: FuncId) -> Result<u64> {
     let func = dal::Func::get_by_id_or_error(ctx, func_id).await?;
     Ok(func.get_types(ctx).await?.len() as u64)
 }
@@ -749,7 +742,7 @@ async fn get_func_types(
     AccessBuilder(request_ctx): AccessBuilder,
     tracker: PosthogEventTracker,
     Path((_workspace_id, change_set_id, func_id)): Path<(WorkspaceId, ChangeSetId, FuncId)>,
-) -> FsResult<String> {
+) -> Result<String> {
     let ctx = builder
         .build(request_ctx.build(change_set_id.into()))
         .await?;
@@ -782,7 +775,7 @@ async fn create_func(
         String,
     )>,
     Json(request): Json<fs::CreateFuncRequest>,
-) -> FsResult<Json<FsFunc>> {
+) -> Result<Json<FsFunc>> {
     let kind = fs::kind_from_string(&kind_string).ok_or(FsError::FuncBindingKindMismatch)?;
 
     let ctx = builder
@@ -792,7 +785,7 @@ async fn create_func(
     check_change_set_and_not_head(&ctx).await?;
 
     if !request.binding.kind_matches(kind) {
-        return Err(FsError::FuncBindingKindMismatch);
+        return Err(FsError::FuncBindingKindMismatch.into());
     }
 
     tracker.track(
@@ -808,7 +801,7 @@ async fn create_func(
     let name = request.name.as_str();
 
     if dal::func::is_intrinsic(name) {
-        return Err(FsError::FuncNameReserved);
+        return Err(FsError::FuncNameReserved.into());
     }
 
     let unlocked_variant = get_or_unlock_schema(&ctx, schema_id).await?;
@@ -978,7 +971,7 @@ async fn get_asset_func_code(
     tracker: PosthogEventTracker,
     Path((_workspace_id, change_set_id, schema_id)): Path<(WorkspaceId, ChangeSetId, SchemaId)>,
     Query(variant_query): Query<VariantQuery>,
-) -> FsResult<String> {
+) -> Result<String> {
     let ctx = builder
         .build(request_ctx.build(change_set_id.into()))
         .await?;
@@ -1008,7 +1001,7 @@ async fn set_asset_func_code(
     tracker: PosthogEventTracker,
     Path((_workspace_id, change_set_id, schema_id)): Path<(WorkspaceId, ChangeSetId, SchemaId)>,
     Json(request): Json<SetFuncCodeRequest>,
-) -> FsResult<()> {
+) -> Result<()> {
     let ctx = builder
         .build(request_ctx.build(change_set_id.into()))
         .await?;
@@ -1081,7 +1074,7 @@ async fn install_schema(
     AccessBuilder(request_ctx): AccessBuilder,
     tracker: PosthogEventTracker,
     Path((_workspace_id, change_set_id, schema_id)): Path<(WorkspaceId, ChangeSetId, SchemaId)>,
-) -> FsResult<()> {
+) -> Result<()> {
     let ctx = builder
         .build(request_ctx.build(change_set_id.into()))
         .await?;
@@ -1129,7 +1122,7 @@ async fn get_schema_attrs(
     tracker: PosthogEventTracker,
     Path((_workspace_id, change_set_id, schema_id)): Path<(WorkspaceId, ChangeSetId, SchemaId)>,
     Query(request): Query<VariantQuery>,
-) -> FsResult<Json<SchemaAttributes>> {
+) -> Result<Json<SchemaAttributes>> {
     let ctx = builder
         .build(request_ctx.build(change_set_id.into()))
         .await?;
@@ -1157,7 +1150,7 @@ async fn set_schema_attrs(
     tracker: PosthogEventTracker,
     Path((_workspace_id, change_set_id, schema_id)): Path<(WorkspaceId, ChangeSetId, SchemaId)>,
     Json(attrs): Json<SchemaAttributes>,
-) -> FsResult<()> {
+) -> Result<()> {
     let ctx = builder
         .build(request_ctx.build(change_set_id.into()))
         .await?;
@@ -1219,7 +1212,7 @@ async fn get_asset_func_types(
     AccessBuilder(request_ctx): AccessBuilder,
     tracker: PosthogEventTracker,
     Path((_workspace_id, change_set_id, schema_id)): Path<(WorkspaceId, ChangeSetId, SchemaId)>,
-) -> FsResult<String> {
+) -> Result<String> {
     let ctx = builder
         .build(request_ctx.build(change_set_id.into()))
         .await?;
@@ -1237,7 +1230,7 @@ async fn get_asset_func_types(
     Ok(ASSET_EDITOR_TYPES.into())
 }
 
-async fn get_or_unlock_schema(ctx: &DalContext, schema_id: SchemaId) -> FsResult<SchemaVariant> {
+async fn get_or_unlock_schema(ctx: &DalContext, schema_id: SchemaId) -> Result<SchemaVariant> {
     Ok(
         match lookup_variant_for_schema(ctx, schema_id, true).await? {
             Some(unlocked) => unlocked,
@@ -1281,7 +1274,7 @@ async fn create_schema(
     tracker: PosthogEventTracker,
     Path((_workspace_id, change_set_id)): Path<(WorkspaceId, ChangeSetId)>,
     Json(request): Json<fs::CreateSchemaRequest>,
-) -> FsResult<Json<CreateSchemaResponse>> {
+) -> Result<Json<CreateSchemaResponse>> {
     let ctx = builder
         .build(request_ctx.build(change_set_id.into()))
         .await?;
@@ -1336,7 +1329,7 @@ async fn unlock_schema(
     AccessBuilder(request_ctx): AccessBuilder,
     tracker: PosthogEventTracker,
     Path((_workspace_id, change_set_id, schema_id)): Path<(WorkspaceId, ChangeSetId, SchemaId)>,
-) -> FsResult<Json<AssetFuncs>> {
+) -> Result<Json<AssetFuncs>> {
     let ctx = builder
         .build(request_ctx.build(change_set_id.into()))
         .await?;
@@ -1387,7 +1380,7 @@ async fn unlock_func(
         SchemaId,
         FuncId,
     )>,
-) -> FsResult<Json<FsFunc>> {
+) -> Result<Json<FsFunc>> {
     let ctx = builder
         .build(request_ctx.build(change_set_id.into()))
         .await?;
@@ -1398,7 +1391,7 @@ async fn unlock_func(
         .await?
         .ok_or(FsError::ResourceNotFound)?;
     if !existing_func.is_locked {
-        return Err(FsError::FuncAlreadyUnlocked(func_id));
+        return Err(FsError::FuncAlreadyUnlocked(func_id).into());
     }
 
     tracker.track(
@@ -1465,7 +1458,7 @@ async fn unlock_func(
 async fn process_managed_schemas(
     ctx: &DalContext,
     string_schemas: &Option<Vec<String>>,
-) -> FsResult<Option<Vec<SchemaId>>> {
+) -> Result<Option<Vec<SchemaId>>> {
     let latest_modules: HashMap<String, _> = CachedModule::latest_modules(ctx)
         .await?
         .into_iter()

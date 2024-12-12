@@ -1,18 +1,21 @@
-use clap::CommandFactory;
+use std::{
+    collections::HashMap,
+    fs::{self},
+    path::{Path, PathBuf},
+    sync::{
+        atomic::{AtomicU64, Ordering},
+        Arc,
+    },
+};
+
+use clap::{CommandFactory, Parser, Subcommand};
+use color_eyre::{eyre::eyre, Result};
 use commands::Commands;
 use futures::stream::StreamExt;
 use indicatif::{ProgressBar, ProgressStyle};
-use std::collections::HashMap;
-use std::fs::{self, DirEntry};
-use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::Arc;
-use ulid::Ulid;
-
-use clap::Parser;
-use color_eyre::Result;
 use module_index_client::{ModuleDetailsResponse, ModuleIndexClient};
 use si_pkg::{PkgSpec, SiPkg};
+use ulid::Ulid;
 use url::Url;
 
 mod commands;
@@ -158,8 +161,9 @@ async fn write_spec(client: ModuleIndexClient, module_id: String, out: PathBuf) 
         &client
             .download_module(Ulid::from_string(&module_id)?)
             .await?,
-    )?;
-    let spec = pkg.to_spec().await?;
+    )
+    .map_err(|e| eyre!(Box::new(e)))?;
+    let spec = pkg.to_spec().await.map_err(|e| eyre!(Box::new(e)))?;
     let spec_name = format!("{}.json", spec.name);
     fs::create_dir_all(&out)?;
     fs::write(
@@ -170,8 +174,8 @@ async fn write_spec(client: ModuleIndexClient, module_id: String, out: PathBuf) 
 }
 
 async fn upload_pkg_spec(client: &ModuleIndexClient, pkg: &SiPkg) -> Result<()> {
-    let schema = pkg.schemas()?[0].clone();
-    let metadata = pkg.metadata()?;
+    let schema = pkg.schemas().map_err(|e| eyre!(Box::new(e)))?[0].clone();
+    let metadata = pkg.metadata().map_err(|e| eyre!(Box::new(e)))?;
 
     client
         .upsert_builtin(
@@ -179,8 +183,10 @@ async fn upload_pkg_spec(client: &ModuleIndexClient, pkg: &SiPkg) -> Result<()> 
             metadata.version(),
             Some(metadata.hash().to_string()),
             schema.unique_id().map(String::from),
-            pkg.write_to_bytes()?,
-            schema.variants()?[0].unique_id().map(String::from),
+            pkg.write_to_bytes().map_err(|e| eyre!(Box::new(e)))?,
+            schema.variants().map_err(|e| eyre!(Box::new(e)))?[0]
+                .unique_id()
+                .map(String::from),
             Some(metadata.version().to_string()),
         )
         .await?;
@@ -212,13 +218,13 @@ async fn upload_pkg_specs(
         ));
 
         let pkg = json_to_pkg(spec.path())?;
-        let schema = pkg.schemas()?[0].clone();
+        let schema = pkg.schemas().map_err(|e| eyre!(Box::new(e)))?[0].clone();
         let pkg_schema_id = schema.unique_id().unwrap();
-        let metadata = pkg.metadata()?;
+        let metadata = pkg.metadata().map_err(|e| eyre!(Box::new(e)))?;
 
         match remote_module_state(
             pkg_schema_id.to_string(),
-            pkg.hash()?.to_string(),
+            pkg.hash().map_err(|e| eyre!(Box::new(e)))?.to_string(),
             existing_specs,
         )
         .await?

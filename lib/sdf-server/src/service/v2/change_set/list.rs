@@ -1,15 +1,17 @@
+use anyhow::Result;
 use axum::{
     extract::{Host, OriginalUri, Path, State},
     Json,
 };
 use dal::{ChangeSet, ChangeSetId, WorkspacePk};
 
-use super::{AppState, Error, Result};
 use crate::{
     extract::{HandlerContext, PosthogClient},
     service::v2::AccessBuilder,
     track,
 };
+
+use super::{AppState, Error};
 
 pub async fn list_actionable(
     HandlerContext(builder): HandlerContext,
@@ -55,7 +57,8 @@ pub async fn list_actionable(
         return Err(
             Error::UnexpectedNumberOfOpenChangeSetsMatchingDefaultChangeSet(
                 maybe_head_change_set_id,
-            ),
+            )
+            .into(),
         );
     }
     let workspace = &ctx.get_workspace().await?;

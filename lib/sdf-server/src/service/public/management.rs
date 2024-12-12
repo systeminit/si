@@ -1,3 +1,4 @@
+use anyhow::Result;
 use axum::{
     extract::Path,
     http::StatusCode,
@@ -119,9 +120,7 @@ async fn run_prototype(
         return Ok(Json(RunPrototypeResponse { status, message }));
     }
 
-    Err(ManagementApiError::ManagementPrototypeExecutionFailure(
-        prototype_id,
-    ))
+    Err(ManagementApiError::ManagementPrototypeExecutionFailure(prototype_id).into())
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -176,8 +175,6 @@ enum ManagementApiError {
     #[error("ws event error: {0}")]
     WsEvent(#[from] dal::WsEventError),
 }
-
-type Result<T> = std::result::Result<T, ManagementApiError>;
 
 impl IntoResponse for ManagementApiError {
     fn into_response(self) -> Response {

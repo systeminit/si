@@ -1,5 +1,6 @@
 use std::{path::PathBuf, sync::Arc};
 
+use anyhow::Result;
 use dal::{
     feature_flags::FeatureFlagService, DalLayerDb, DedicatedExecutor, JetstreamStreams,
     JobQueueProcessor, NatsProcessor, ServicesContext,
@@ -55,12 +56,11 @@ impl From<si_data_pg::PgPoolError> for InitError {
         Self::PgPool(Box::new(e))
     }
 }
-type InitResult<T> = std::result::Result<T, InitError>;
 
 pub(crate) async fn services_context_from_config(
     config: &Config,
     helping_tasks_token: CancellationToken,
-) -> InitResult<(ServicesContext, LayerDbGracefulShutdown)> {
+) -> Result<(ServicesContext, LayerDbGracefulShutdown)> {
     dal::init()?;
 
     let encryption_key = load_encryption_key(config.crypto().clone()).await?;
@@ -108,14 +108,14 @@ pub(crate) async fn services_context_from_config(
 #[instrument(name = "sdf.init.load_encryption_key", level = "info", skip_all)]
 pub(crate) async fn load_encryption_key(
     crypto_config: VeritechCryptoConfig,
-) -> InitResult<Arc<VeritechEncryptionKey>> {
+) -> Result<Arc<VeritechEncryptionKey>> {
     Ok(Arc::new(
         VeritechEncryptionKey::from_config(crypto_config).await?,
     ))
 }
 
 #[instrument(name = "sdf.init.connect_to_nats", level = "info", skip_all)]
-pub(crate) async fn connect_to_nats(nats_config: &NatsConfig) -> InitResult<NatsClient> {
+pub(crate) async fn connect_to_nats(nats_config: &NatsConfig) -> Result<NatsClient> {
     let client = NatsClient::new(nats_config)
         .await
         .map_err(InitError::NatsClient)?;
@@ -130,7 +130,7 @@ pub(crate) async fn connect_to_nats(nats_config: &NatsConfig) -> InitResult<Nats
 )]
 pub(crate) async fn get_or_create_jetstream_streams(
     client: NatsClient,
-) -> InitResult<JetstreamStreams> {
+) -> Result<JetstreamStreams> {
     let streams = JetstreamStreams::new(client)
         .await
         .map_err(InitError::DalJetstreamStreams)?;
@@ -139,14 +139,14 @@ pub(crate) async fn get_or_create_jetstream_streams(
 }
 
 #[instrument(name = "sdf.init.create_pg_pool", level = "info", skip_all)]
-pub(crate) async fn create_pg_pool(pg_pool_config: &PgPoolConfig) -> InitResult<PgPool> {
+pub(crate) async fn create_pg_pool(pg_pool_config: &PgPoolConfig) -> Result<PgPool> {
     let pool = PgPool::new(pg_pool_config).await?;
     debug!("successfully started pg pool (note that not all connections may be healthy)");
     Ok(pool)
 }
 
 #[instrument(name = "sdf.init.create_rebaser_client", level = "info", skip_all)]
-async fn create_rebaser_client(nats: NatsClient) -> InitResult<RebaserClient> {
+async fn create_rebaser_client(nats: NatsClient) -> Result<RebaserClient> {
     let client = RebaserClient::new(nats).await?;
     debug!("successfully initialized the rebaser client");
     Ok(client)
@@ -157,7 +157,7 @@ pub(crate) fn create_veritech_client(nats: NatsClient) -> veritech_client::Clien
 }
 
 #[instrument(name = "sdf.init.create_compute_executor", level = "info", skip_all)]
-pub(crate) fn create_compute_executor() -> InitResult<DedicatedExecutor> {
+pub(crate) fn create_compute_executor() -> Result<DedicatedExecutor> {
     dal::compute_executor("sdf").map_err(Into::into)
 }
 
@@ -173,7 +173,7 @@ pub(crate) fn create_job_processor(nats: NatsClient) -> Box<dyn JobQueueProcesso
 )]
 pub(crate) async fn create_symmetric_crypto_service(
     config: &SymmetricCryptoServiceConfig,
-) -> InitResult<SymmetricCryptoService> {
+) -> Result<SymmetricCryptoService> {
     SymmetricCryptoService::from_config(config)
         .await
         .map_err(Into::into)
@@ -184,7 +184,7 @@ pub(crate) async fn initialize_layer_db(
     config: LayerDbConfig,
     compute_executor: DedicatedExecutor,
     token: CancellationToken,
-) -> InitResult<(DalLayerDb, LayerDbGracefulShutdown)> {
+) -> Result<(DalLayerDb, LayerDbGracefulShutdown)> {
     LayerDb::from_config(config, compute_executor, token)
         .await
         .map_err(Into::into)
@@ -198,13 +198,13 @@ pub(crate) async fn initialize_layer_db(
 pub(crate) async fn load_jwt_public_signing_key(
     primary: JwtConfig,
     secondary: Option<JwtConfig>,
-) -> InitResult<JwtPublicSigningKeyChain> {
+) -> Result<JwtPublicSigningKeyChain> {
     Ok(JwtPublicSigningKeyChain::from_config(primary, secondary).await?)
 }
 
 pub(crate) fn initialize_posthog(
     config: &PosthogConfig,
     token: CancellationToken,
-) -> InitResult<(PosthogSender, PosthogClient)> {
+) -> Result<(PosthogSender, PosthogClient)> {
     si_posthog::from_config(config, token).map_err(Into::into)
 }

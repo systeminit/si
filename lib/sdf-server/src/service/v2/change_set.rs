@@ -1,5 +1,4 @@
-use std::result;
-
+use anyhow::Result;
 use axum::{
     http::StatusCode,
     response::IntoResponse,
@@ -84,8 +83,6 @@ impl IntoResponse for Error {
 
 pub type ChangeSetAPIError = Error;
 
-type Result<T> = result::Result<T, Error>;
-
 #[derive(Serialize)]
 struct SlackMessage<'a> {
     text: &'a str,
@@ -110,7 +107,7 @@ pub async fn post_to_webhook(
             if response.status().is_success() {
                 return Ok(());
             } else {
-                return Err(Error::Webhook(webhook_url));
+                return Err(Error::Webhook(webhook_url).into());
             }
         }
     }

@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use anyhow::Result;
 use audit_database::AuditLogRow;
 use axum::{
     extract::{Path, Query, State},
@@ -10,8 +11,9 @@ use serde::{Deserialize, Serialize};
 use si_events::{ChangeSetId, UserPk};
 use si_frontend_types as frontend_types;
 
-use super::{AuditLogError, AuditLogResult};
 use crate::{extract::HandlerContext, service::v2::AccessBuilder, AppState};
+
+use super::AuditLogError;
 
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -33,7 +35,7 @@ pub async fn list_audit_logs(
     Path((_workspace_pk, change_set_id)): Path<(dal::WorkspacePk, dal::ChangeSetId)>,
     Query(request): Query<ListAuditLogsRequest>,
     State(state): State<AppState>,
-) -> AuditLogResult<Json<ListAuditLogsResponse>> {
+) -> Result<Json<ListAuditLogsResponse>> {
     let ctx = builder
         .build(access_builder.build(change_set_id.into()))
         .await?;
@@ -76,7 +78,7 @@ impl Assembler {
         &mut self,
         ctx: &DalContext,
         audit_log: AuditLogRow,
-    ) -> AuditLogResult<si_frontend_types::AuditLog> {
+    ) -> Result<si_frontend_types::AuditLog> {
         let (change_set_id, change_set_name) = self
             .find_change_set_metadata(ctx, audit_log.change_set_id)
             .await?;
@@ -108,7 +110,7 @@ impl Assembler {
         &mut self,
         ctx: &DalContext,
         change_set_id: Option<ChangeSetId>,
-    ) -> AuditLogResult<(Option<ChangeSetId>, Option<String>)> {
+    ) -> Result<(Option<ChangeSetId>, Option<String>)> {
         match change_set_id {
             Some(change_set_id) => {
                 let change_set_name =
@@ -131,7 +133,7 @@ impl Assembler {
         &mut self,
         ctx: &DalContext,
         user_id: Option<UserPk>,
-    ) -> AuditLogResult<(Option<UserPk>, Option<String>, Option<String>)> {
+    ) -> Result<(Option<UserPk>, Option<String>, Option<String>)> {
         match user_id {
             None => Ok((None, None, None)),
             Some(user_id) => {
