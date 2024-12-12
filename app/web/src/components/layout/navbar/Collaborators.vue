@@ -102,13 +102,11 @@ import { useRoute, useRouter } from "vue-router";
 import Popover from "@/components/Popover.vue";
 import { usePresenceStore } from "@/store/presence.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
-import { useViewsStore } from "@/store/views.store";
 import UserIcon from "./UserIcon.vue";
 import UserCard from "./UserCard.vue";
 
 const presenceStore = usePresenceStore();
 const changeSetsStore = useChangeSetsStore();
-const viewsStore = useViewsStore();
 const router = useRouter();
 const route = useRoute();
 
@@ -116,9 +114,10 @@ export type UserInfo = {
   name: string;
   color?: string | null;
   status?: string | null;
-  changeSet?: string;
+  changeSet?: string; // TODO(Wendy) - this should be called changeSetId
   pictureUrl?: string | null;
-  view?: string;
+  view?: string; // TODO(Wendy) - this should be called viewId
+  // TODO(Wendy) - we should probably also send the viewName so we can show it in the tooltip
 };
 
 const moreUsersPopoverRef = ref();
@@ -284,24 +283,23 @@ function goToUserChangeSet(user: UserInfo) {
   if (!user || !user.changeSet) return;
 
   if (user.view) {
-    const viewId = viewsStore.viewsById[user.view]?.id;
-    if (viewId) {
-      router.push({
-        name: "workspace-compose-view",
-        params: {
-          ...route.params,
-          viewId,
-        },
-        query: route.query,
-      });
-    }
+    router.push({
+      name: "workspace-compose-view",
+      params: {
+        ...route.params,
+        changeSetId: user.changeSet,
+        viewId: user.view,
+      },
+      query: route.query,
+    });
+    return;
   }
 
   router.push({
     name: "change-set-home",
     params: {
       ...route.params,
-      changeSetId: changeSetsStore.changeSetsById[user.changeSet]?.id || "auto",
+      changeSetId: user.changeSet,
     },
     query: route.query,
   });
