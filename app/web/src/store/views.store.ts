@@ -1226,13 +1226,13 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                 else {
                   component.parentId = undefined;
                 }
-                componentsStore.processAndStoreRawComponent(componentId);
+                componentsStore.processAndStoreRawComponent(componentId, {});
               });
               // if we change to no parent, we have to follow up and re-process
               Object.values(oldParentIds)
                 .filter(nonNullable)
                 .forEach((parentId) => {
-                  componentsStore.processAndStoreRawComponent(parentId);
+                  componentsStore.processAndStoreRawComponent(parentId, {});
                 });
             },
             onFail: () => {
@@ -1241,10 +1241,11 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                   componentsStore.rawComponentsById[componentId];
                 if (!component) return;
                 component.parentId = oldParentIds[componentId];
-                componentsStore.processAndStoreRawComponent(componentId);
+                componentsStore.processAndStoreRawComponent(componentId, {});
                 if (component.parentId)
                   componentsStore.processAndStoreRawComponent(
                     component.parentId,
+                    {},
                   );
               });
             },
