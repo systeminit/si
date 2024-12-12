@@ -626,7 +626,10 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           },
           processAndStoreRawComponent(
             componentId: ComponentId,
-            processAncestors = true,
+            {
+              processAncestors = true,
+              processChildren = true,
+            }: { processAncestors?: boolean; processChildren?: boolean },
           ): void {
             const component = this.rawComponentsById[componentId];
             if (!component) return;
@@ -649,11 +652,22 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             // is false when iterating over the whole data set... no need to duplicate work
             if (processAncestors) {
               if (component.parentId) {
-                this.processAndStoreRawComponent(
-                  component.parentId,
+                this.processAndStoreRawComponent(component.parentId, {
                   processAncestors,
-                );
+                  processChildren: false,
+                });
               }
+            }
+            if (processChildren) {
+              const children = Object.values(this.allComponentsById).filter(
+                (c) => c.def.parentId === component.id,
+              );
+              children.forEach((child) => {
+                this.processAndStoreRawComponent(child.def.id, {
+                  processAncestors: false,
+                  processChildren: true,
+                });
+              });
             }
           },
 
@@ -718,7 +732,9 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             // this.nodesById = {};
             // this.groupsById = {};
             response.components.forEach((component) => {
-              this.processAndStoreRawComponent(component.id, false);
+              this.processAndStoreRawComponent(component.id, {
+                processAncestors: false,
+              });
             });
 
             const edges =
@@ -1072,7 +1088,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                       },
                     };
 
-                    this.processAndStoreRawComponent(componentId);
+                    this.processAndStoreRawComponent(componentId, {});
                   }
                 }
 
@@ -1090,7 +1106,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                         deletedInfo: undefined,
                       };
 
-                      this.processAndStoreRawComponent(componentId);
+                      this.processAndStoreRawComponent(componentId, {});
                     }
                   }
                 };
@@ -1122,7 +1138,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                       toDelete: false,
                       deletedInfo: undefined,
                     };
-                    this.processAndStoreRawComponent(componentId);
+                    this.processAndStoreRawComponent(componentId, {});
                   }
                 }
               },
@@ -1171,7 +1187,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                   // don't update
                   if (data.changeSetId !== changeSetId) return;
                   this.rawComponentsById[data.component.id] = data.component;
-                  this.processAndStoreRawComponent(data.component.id);
+                  this.processAndStoreRawComponent(data.component.id, {});
                 },
               },
               {
@@ -1250,9 +1266,9 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                     this.rawComponentsById[componentId]?.parentId;
 
                   this.rawComponentsById[componentId] = data.component;
-                  this.processAndStoreRawComponent(componentId);
+                  this.processAndStoreRawComponent(componentId, {});
                   if (oldParent && !data.component.parentId)
-                    this.processAndStoreRawComponent(oldParent);
+                    this.processAndStoreRawComponent(oldParent, {});
                 },
               },
               {
@@ -1295,7 +1311,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                   delete this.nodesById[data.originalComponentId];
                   delete this.groupsById[data.originalComponentId];
                   this.rawComponentsById[data.component.id] = data.component;
-                  this.processAndStoreRawComponent(data.component.id);
+                  this.processAndStoreRawComponent(data.component.id, {});
                 },
               },
               {
@@ -1305,7 +1321,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                   // don't update
                   if (data.changeSetId !== changeSetId) return;
                   this.rawComponentsById[data.component.id] = data.component;
-                  this.processAndStoreRawComponent(data.component.id);
+                  this.processAndStoreRawComponent(data.component.id, {});
                   this.refreshingStatus[data.component.id] = false;
                 },
               },
