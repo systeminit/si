@@ -181,7 +181,7 @@ where
             cache_config
                 .clone()
                 .with_name(workspace_snapshot::CACHE_NAME)
-                .memory_usable_max_percent(50)
+                .memory_usable_max_percent(20)
                 .disk_usable_max_percent(50)
                 .with_path_join(workspace_snapshot::CACHE_NAME),
             compute_executor.clone(),
