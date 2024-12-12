@@ -26,6 +26,7 @@ import {
 } from "@si/ts-lib";
 import { ulid } from "ulid";
 import opentelemetry, { Span } from "@opentelemetry/api";
+import { usePromise, UsePromise } from "../utils/reactivity";
 
 const tracer = opentelemetry.trace.getTracer("si-vue");
 
@@ -602,25 +603,27 @@ export class TracingApi {
     public url?: string | URLPattern,
   ) {}
 
-  async get<R = any>(requestOrUrl?: RequestSpecOrUrl): Promise<R> {
+  get<R = any>(requestOrUrl?: Omit<RequestSpecOrUrl, "method">) {
     return this.request<R>({ ...toRequestSpec(requestOrUrl), method: "get" });
   }
 
-  async put<R = any>(requestOrUrl?: RequestSpecOrUrl): Promise<R> {
+  put<R = any>(requestOrUrl?: Omit<RequestSpecOrUrl, "method">) {
     return this.request<R>({ ...toRequestSpec(requestOrUrl), method: "put" });
   }
 
-  async post<R = any>(requestOrUrl?: RequestSpecOrUrl): Promise<R> {
-    return this.request<R>({ ...toRequestSpec(requestOrUrl), method: "put" });
+  post<R = any>(requestOrUrl?: Omit<RequestSpecOrUrl, "method">) {
+    return this.request<R>({ ...toRequestSpec(requestOrUrl), method: "post" });
   }
 
-  async delete<R = any>(requestOrUrl?: RequestSpecOrUrl): Promise<R> {
-    return this.request<R>({ ...toRequestSpec(requestOrUrl), method: "put" });
+  delete<R = any>(requestOrUrl?: Omit<RequestSpecOrUrl, "method">) {
+    return this.request<R>({
+      ...toRequestSpec(requestOrUrl),
+      method: "delete",
+    });
   }
 
-  async request<R = any>(requestSpec: BaseApiRequestDescription): Promise<R> {
-    const response = await this.sendRequest<R>(requestSpec);
-    return response.data as R;
+  request<R = any>(requestSpec: BaseApiRequestDescription) {
+    return usePromise<R>(this.sendRequest<R>(requestSpec).then((r) => r.data));
   }
 
   endpoint(...path: URLPattern) {

@@ -1,84 +1,69 @@
-import { addStoreHooks } from "@si/vue-lib/pinia";
-import { defineStore } from "pinia";
-import { computed, Reactive, reactive } from "vue";
-import { usePromise } from "@/utils/reactivity";
-import { useRealtimeStore } from "./realtime/realtime.store";
-import { useSdfApi } from "./apis";
+import { computed, reactive, Ref, ref } from "vue";
+import { TracingApi } from "@si/vue-lib/pinia";
+import { ActiveSiStore, defineSiStore } from "./si_store";
 
-export const usePromptStore = addStoreHooks(
-  null,
-  null,
-  defineStore(
-    `wsNONE/admin/prompts`,
-    () => {
-      // Create the prompts state
-      const state = reactive({
-        prompts: [] as PromptEntry[],
-      });
-      // Add in selected prompts (we pass the reactive "prompts" object in so it will be
-      // fully reactive)
-      return Object.assign(state, {
-        selectedPrompt: useSelectedPrompt(state),
-      });
-    },
-    {
-      // On activate, refetch all the prompts, then subscribe to prompt updates
-      async onActivated() {
-        const api = useSdfApi({}).endpoint("v2/admin/prompts");
-        this.prompts = await api.get();
+export const usePromptStore = defineSiStore(
+  `wsNONE/admin/prompts`,
+  ({ sdf, subscribe }) => {
+    const api = computed(() => sdf?.endpoint("v2/admin/prompts"));
+    const kind = ref<PromptKind>();
+    const prompts = computed(() => usePrompts(api.value, subscribe, kind));
+    const text = computed(() => useText(api.value, kind.value));
+    const overridden = computed(
+      () =>
+        prompts.value?.value?.find((p) => p.kind === kind.value)?.overridden,
+    );
 
-        const realtimeStore = useRealtimeStore();
-        return realtimeStore.subscribe(this.$id, "all", [
-          {
-            eventType: "PromptUpdated",
-            callback: ({ kind, overridden }) => {
-              const prompt = this.prompts?.find((p) => p.kind === kind);
-              if (prompt) prompt.overridden = overridden;
-            },
-          },
-        ]);
-      },
-    },
-  ),
+    return reactive({
+      prompts,
+      selectedPrompt: { kind, text, overridden },
+      sdf,
+    });
+  },
 );
 
-function useSelectedPrompt(promptStore: Reactive<{ prompts: PromptEntry[] }>) {
-  // First get the state
-  const state = reactive({
-    kind: undefined as PromptKind | undefined,
-    text: "",
+function usePrompts(
+  api: TracingApi | undefined,
+  subscribe: ActiveSiStore["subscribe"] | undefined,
+  kind: Ref<PromptKind | undefined>,
+) {
+  const prompts = api?.get<PromptEntry[]>();
+
+  subscribe?.("all", [
+    {
+      eventType: "PromptUpdated",
+      callback: ({ kind, overridden }) => {
+        const prompt = prompts?.value?.find((p) => p.kind === kind);
+        if (prompt) prompt.overridden = overridden;
+      },
+    },
+  ]);
+
+  // Also set the kind to the first prompt if it's not set already.
+  prompts?.then((prompts) => {
+    kind.value ??= prompts[0]?.kind;
   });
 
-  function api() {
-    if (state.kind === undefined) return undefined;
-    return useSdfApi({}).endpoint("v2/admin/prompts", { kind: state.kind });
-  }
+  return prompts;
+}
 
-  async function fetchText() {
-    state.text = "";
-    const fetch = api()?.get();
-    if (fetch) {
-      state.text = (await fetch).prompt_yaml;
-      return state.text;
-    }
-  }
-
-  // Add actions and computed values
-  return Object.assign(state, {
-    overridden: computed(
-      () => promptStore.prompts.find((p) => p.kind === state.kind)?.overridden,
-    ),
-    override: () => api()?.put({ params: { prompt_yaml: state.text } }),
-    reset: () => api()?.delete(),
-
-    /** Fetch text whenever kind changes */
-    fetchText: computed(() => usePromise(fetchText())),
-    get isModified() {
-      return this.fetchText.value?.isSuccess
-        ? state.text !== this.fetchText.value.value
-        : false;
+// Reinitialize and refetch text whenever kind changes
+function useText(api?: TracingApi, kind?: PromptKind) {
+  const text = reactive({
+    value: "",
+    fetched: kind ? api?.get({ kind }) : undefined,
+    reset() {
+      return kind ? api?.delete({ kind }) : undefined;
+    },
+    override() {
+      return kind ? api?.put({ kind, prompt_yaml: text.value }) : undefined;
     },
   });
+  // Set the actual text value when it has been retrieved
+  text.fetched?.then(({ prompt_yaml }) => {
+    text.value = prompt_yaml;
+  });
+  return text;
 }
 
 type PromptKind = string;

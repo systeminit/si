@@ -17,7 +17,7 @@
         :disabled="overrideStatus?.isPending || resetStatus?.isPending"
         :requestStatus="overrideStatus"
         loadingText="Overriding ..."
-        @click="overrideStatus = usePromise(prompt.override())"
+        @click="overrideStatus = usePromise(prompt.text.override())"
       />
       <!-- TODO disable unless the prompt is overridden -->
       <VButton
@@ -31,16 +31,16 @@
         "
         :requestStatus="resetStatus"
         loadingText="Resetting ..."
-        @click="resetStatus = usePromise(prompt.reset())"
+        @click="resetStatus = usePromise(prompt.text.reset())"
       />
     </div>
     <!-- TODO show the error when fetch fails-->
     <CodeEditor
       v-if="prompt.kind"
       :id="`prompt-${prompt.kind}`"
-      v-model="prompt.text"
+      v-model="prompt.text.value"
       :recordId="prompt.kind"
-      :disabled="!prompt.fetchText?.isSuccess"
+      :disabled="!prompt.text.fetched?.isSuccess"
       yaml
     />
   </Stack>
@@ -48,9 +48,9 @@
 
 <script lang="ts" setup>
 import { Stack, VButton } from "@si/vue-lib/design-system";
+import { UsePromise, usePromise } from "@si/vue-lib/src/utils/reactivity";
 import { ref } from "vue";
 import { usePromptStore } from "@/store/prompt.store";
-import { UsePromise, usePromise } from "@/utils/reactivity";
 import CodeEditor from "../CodeEditor.vue";
 
 const prompts = usePromptStore();

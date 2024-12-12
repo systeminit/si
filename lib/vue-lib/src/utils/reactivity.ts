@@ -12,24 +12,27 @@ export function usePromise<T>(promise?: PromiseLike<T> | undefined) {
 
   // When the promise completes, update the result state
   // (because these are functions they can access state, even though it's declared later)
-  const setState = promise.then(
+  const setStatePromise = promise.then(
     (value) => {
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
       Object.assign(state, { state: "success", value });
       return value;
     },
     (error) => {
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
       Object.assign(state, { state: "error", error });
       throw error;
     },
   );
 
   // Start with the pending state
-  const state = Object.assign(setState, {
-    state: "pending",
-  } as PromiseState<T>);
+  const state = reactive(
+    Object.assign(setStatePromise, {
+      state: "pending",
+    } as PromiseState<T>),
+  );
 
-  // Make it reactive for the caller
-  return reactive(state);
+  return state;
 }
 
 export type UsePromise<T = unknown> = ReturnType<typeof usePromise<T>>;

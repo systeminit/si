@@ -159,3 +159,4 @@ export const piniaHooksPlugin: PiniaPlugin = ({
     }
   };
 };
+
