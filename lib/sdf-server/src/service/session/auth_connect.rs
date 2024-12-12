@@ -3,8 +3,8 @@ use axum::{
     Json,
 };
 use dal::{
-    DalContext, HistoryActor, KeyPair, Tenancy, User, UserPk, Workspace, WorkspacePk,
-    WorkspaceSnapshotGraph,
+    workspace_integrations::WorkspaceIntegration, DalContext, HistoryActor, KeyPair, Tenancy, User,
+    UserPk, Workspace, WorkspacePk, WorkspaceSnapshotGraph,
 };
 use hyper::Uri;
 use permissions::{Relation, RelationBuilder};
@@ -203,6 +203,15 @@ async fn find_or_create_user_and_workspace(
 
     // ensure workspace is associated to user
     user.associate_workspace(&ctx, *workspace.pk()).await?;
+
+    // Check the workspace integration
+    // We need to ensure that the integrations row is available for older workspaces
+    if WorkspaceIntegration::get_integrations_for_workspace_pk(&ctx)
+        .await?
+        .is_none()
+    {
+        WorkspaceIntegration::new(&ctx, None).await?;
+    }
 
     ctx.write_audit_log_to_head(AuditLogKind::Login {}, "Person".to_string())
         .await?;
