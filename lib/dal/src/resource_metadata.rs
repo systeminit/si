@@ -25,6 +25,7 @@
     while_true
 )]
 
+use anyhow::Result;
 use telemetry::prelude::*;
 use thiserror::Error;
 use veritech_client::ResourceStatus;
@@ -41,7 +42,7 @@ pub enum ResourceMetadataError {
     Component(#[from] ComponentError),
 }
 
-type ResourceMetadataResult<T> = Result<T, ResourceMetadataError>;
+type ResourceMetadataResult<T> = Result<T>;
 
 /// Collect [`ResourceMetadata`] for every [`Component`] in the workspace.
 #[instrument(name = "resource_metadata.list", level = "debug", skip(ctx))]

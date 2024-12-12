@@ -1,3 +1,4 @@
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use si_frontend_types as frontend_types;
 use si_layer_cache::LayerDbError;
@@ -71,7 +72,7 @@ pub enum InputSocketError {
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
 
-pub type InputSocketResult<T> = Result<T, InputSocketError>;
+pub type InputSocketResult<T> = Result<T>;
 
 pub use si_id::InputSocketId;
 
@@ -158,7 +159,6 @@ impl InputSocket {
         ctx.workspace_snapshot()?
             .get_input_socket_by_name_opt(ctx, name, schema_variant_id)
             .await
-            .map_err(Into::into)
     }
 
     pub async fn find_with_name_or_error(
@@ -169,7 +169,9 @@ impl InputSocket {
         let name = name.as_ref();
         Self::find_with_name(ctx, name, schema_variant_id)
             .await?
-            .ok_or_else(|| InputSocketError::NotFoundByName(name.to_string(), schema_variant_id))
+            .ok_or_else(|| {
+                InputSocketError::NotFoundByName(name.to_string(), schema_variant_id).into()
+            })
     }
 
     #[allow(clippy::too_many_arguments)]

@@ -3,6 +3,7 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::Arc;
 
+use anyhow::Result;
 use chrono::Utc;
 use petgraph::{Direction, Outgoing};
 use serde::{Deserialize, Serialize};
@@ -182,7 +183,7 @@ pub enum SchemaVariantError {
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
 
-pub type SchemaVariantResult<T> = Result<T, SchemaVariantError>;
+pub type SchemaVariantResult<T> = Result<T>;
 
 pub use si_id::SchemaVariantId;
 
@@ -734,13 +735,10 @@ impl SchemaVariant {
 
         let node_index = match maybe_node_result {
             Ok(node_index) => node_index,
-            Err(e) => {
-                return if e.is_node_with_id_not_found() {
-                    Ok(None)
-                } else {
-                    Err(SchemaVariantError::from(e))
-                }
-            }
+            Err(error) => match error.downcast_ref::<WorkspaceSnapshotError>() {
+                Some(e) if e.is_node_with_id_not_found() => return Ok(None),
+                _ => return Err(error),
+            },
         };
 
         let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
@@ -923,7 +921,7 @@ impl SchemaVariant {
 
     pub async fn error_if_locked(ctx: &DalContext, id: SchemaVariantId) -> SchemaVariantResult<()> {
         match Self::is_locked_by_id(ctx, id).await? {
-            true => Err(SchemaVariantError::SchemaVariantLocked(id)),
+            true => Err(SchemaVariantError::SchemaVariantLocked(id).into()),
             false => Ok(()),
         }
     }
@@ -1065,7 +1063,7 @@ impl SchemaVariant {
 
     pub fn asset_func_id_or_error(&self) -> SchemaVariantResult<FuncId> {
         self.asset_func_id
-            .ok_or(SchemaVariantError::MissingAssetFuncId(self.id))
+            .ok_or(SchemaVariantError::MissingAssetFuncId(self.id).into())
     }
 
     pub fn is_builtin(&self) -> bool {
@@ -1141,7 +1139,7 @@ impl SchemaVariant {
             }
         }
 
-        Err(SchemaVariantError::RootNodeMissing(schema_variant_id))
+        Err(SchemaVariantError::RootNodeMissing(schema_variant_id).into())
     }
 
     pub async fn create_default_prototypes(
@@ -1565,8 +1563,7 @@ impl SchemaVariant {
                                 component_id,
                                 leaf_kind,
                             )
-                            .await
-                            .map_err(Box::new)?;
+                            .await?;
 
                         let new_attribute_value = AttributeValue::new(
                             ctx,
@@ -1575,8 +1572,7 @@ impl SchemaVariant {
                             Some(parent_attribute_value_id),
                             key.clone(),
                         )
-                        .await
-                        .map_err(Box::new)?;
+                        .await?;
                         new_attribute_value_ids.push(new_attribute_value.id);
                     }
                     if !new_attribute_value_ids.is_empty() {
@@ -2094,7 +2090,7 @@ impl SchemaVariant {
         }
 
         // This should be impossible to hit.
-        Err(SchemaVariantError::NotFoundForProp(prop_id))
+        Err(SchemaVariantError::NotFoundForProp(prop_id).into())
     }
 
     async fn find_for_root_prop_id(
@@ -2118,7 +2114,7 @@ impl SchemaVariant {
             }
         }
 
-        Err(SchemaVariantError::NotFoundForRootProp(root_prop_id))
+        Err(SchemaVariantError::NotFoundForRootProp(root_prop_id).into())
     }
 
     /// Find the [`SchemaVariantId`](SchemaVariant) for the given [`InputSocketId`](InputSocket).
@@ -2146,7 +2142,7 @@ impl SchemaVariant {
             }
         }
 
-        Err(SchemaVariantError::NotFoundForInputSocket(input_socket_id))
+        Err(SchemaVariantError::NotFoundForInputSocket(input_socket_id).into())
     }
 
     /// Find the [`SchemaVariantId`](SchemaVariant) for the given [`OutputSocketId`](OutputSocket).
@@ -2174,9 +2170,7 @@ impl SchemaVariant {
             }
         }
 
-        Err(SchemaVariantError::NotFoundForOutputSocket(
-            output_socket_id,
-        ))
+        Err(SchemaVariantError::NotFoundForOutputSocket(output_socket_id).into())
     }
 
     /// List all [`SchemaVariantIds`](SchemaVariant) for the provided
@@ -2352,7 +2346,8 @@ impl SchemaVariant {
                 SchemaVariantError::SecretDefiningSchemaVariantTooManyOutputSockets(
                     output_socket_ids,
                     secret_defining_id,
-                ),
+                )
+                .into(),
             );
         }
         let secret_output_socket = output_sockets.first().ok_or(

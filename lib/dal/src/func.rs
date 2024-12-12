@@ -1,3 +1,4 @@
+use anyhow::Result;
 use argument::{FuncArgument, FuncArgumentError};
 use authoring::{FuncAuthoringClient, FuncAuthoringError};
 use base64::{engine::general_purpose, Engine};
@@ -93,7 +94,7 @@ pub enum FuncError {
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
 
-pub type FuncResult<T> = Result<T, FuncError>;
+pub type FuncResult<T> = Result<T>;
 
 impl From<Func> for FuncContent {
     fn from(value: Func) -> Self {
@@ -320,7 +321,7 @@ impl Func {
 
         Self::get_intrinsic_kind_by_id(ctx, id)
             .await?
-            .ok_or(FuncError::IntrinsicFuncNotFound(func.name))
+            .ok_or(FuncError::IntrinsicFuncNotFound(func.name).into())
     }
 
     pub async fn get_intrinsic_kind_by_id(
@@ -457,7 +458,7 @@ impl Func {
 
     pub fn error_if_locked(&self) -> FuncResult<()> {
         if self.is_locked {
-            return Err(FuncError::FuncLocked(self.id));
+            return Err(FuncError::FuncLocked(self.id).into());
         }
         Ok(())
     }
@@ -470,10 +471,10 @@ impl Func {
         let id: Ulid = func_id.into();
         let node_index = match workspace_snapshot.get_node_index_by_id(id).await {
             Ok(node_index) => node_index,
-            Err(WorkspaceSnapshotError::WorkspaceSnapshotGraph(
-                WorkspaceSnapshotGraphError::NodeWithIdNotFound(_),
-            )) => return Ok(None),
-            Err(err) => return Err(err.into()),
+            Err(error) => match error.downcast_ref() {
+                Some(WorkspaceSnapshotGraphError::NodeWithIdNotFound(_)) => return Ok(None),
+                _ => return Err(error),
+            },
         };
         let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
 
@@ -567,12 +568,8 @@ impl Func {
     pub async fn delete_by_id(ctx: &DalContext, id: FuncId) -> FuncResult<String> {
         let func = Self::get_by_id_or_error(ctx, id).await?;
         // Check that we can remove the func.
-        if !FuncBinding::for_func_id(ctx, id)
-            .await
-            .map_err(Box::new)?
-            .is_empty()
-        {
-            return Err(FuncError::FuncToBeDeletedHasBindings(id));
+        if !FuncBinding::for_func_id(ctx, id).await?.is_empty() {
+            return Err(FuncError::FuncToBeDeletedHasBindings(id).into());
         }
 
         // Now, we can remove the func.
@@ -586,7 +583,7 @@ impl Func {
         let name = intrinsic.name();
         Self::find_id_by_name_and_kind(ctx, name, FuncKind::Intrinsic)
             .await?
-            .ok_or(FuncError::IntrinsicFuncNotFound(name.to_owned()))
+            .ok_or(FuncError::IntrinsicFuncNotFound(name.to_owned()).into())
     }
 
     /// List all [`Funcs`](Func) in the workspace
@@ -713,18 +710,11 @@ impl Func {
         )
         .await?;
 
-        for arg in FuncArgument::list_for_func(ctx, self.id)
-            .await
-            .map_err(Box::new)?
-        {
+        for arg in FuncArgument::list_for_func(ctx, self.id).await? {
             // create new func args for the new func
-            FuncArgument::new(ctx, arg.name, arg.kind, arg.element_kind, new_func.id)
-                .await
-                .map_err(Box::new)?;
+            FuncArgument::new(ctx, arg.name, arg.kind, arg.element_kind, new_func.id).await?;
         }
-        FuncArgument::list_for_func(ctx, new_func.id)
-            .await
-            .map_err(Box::new)?;
+        FuncArgument::list_for_func(ctx, new_func.id).await?;
         Ok(new_func)
     }
 
@@ -734,7 +724,7 @@ impl Func {
         new_name: String,
     ) -> FuncResult<Self> {
         if new_name == self.name.clone() {
-            return Err(FuncError::FuncNameInUse(new_name));
+            return Err(FuncError::FuncNameInUse(new_name).into());
         }
 
         let duplicated_func = Self::new(
@@ -772,9 +762,7 @@ impl Func {
         let bindings: Vec<si_frontend_types::FuncBinding> =
             bindings.into_iter().map(Into::into).collect_vec();
 
-        let args = FuncArgument::list_for_func(ctx, self.id)
-            .await
-            .map_err(Box::new)?;
+        let args = FuncArgument::list_for_func(ctx, self.id).await?;
         let mut arguments = vec![];
         for arg in args {
             arguments.push(si_frontend_types::FuncArgument {

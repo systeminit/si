@@ -1,3 +1,4 @@
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use telemetry::prelude::*;
@@ -37,7 +38,7 @@ pub struct SocketDebugView {
     pub name: String,
     pub inferred_connections: Vec<Ulid>,
 }
-type SocketDebugViewResult<T> = Result<T, SocketDebugViewError>;
+type SocketDebugViewResult<T> = Result<T>;
 
 #[remain::sorted]
 #[derive(Error, Debug)]
