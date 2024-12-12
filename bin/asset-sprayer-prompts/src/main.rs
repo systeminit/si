@@ -73,11 +73,16 @@ async fn main() -> Result<()> {
     let raw_prompt = asset_sprayer.raw_prompt(args.prompt_kind).await?;
     match args.action {
         Action::Show => {
-            let prompt = prompt.generate(&raw_prompt).await?;
-            println!("{}", serde_yaml::to_string(&prompt)?);
+            for raw_request in prompt.read(&raw_prompt)? {
+                let prompt = prompt.generate(raw_request, "").await?;
+                println!(
+                    "{}\n\n-----------------------------------\n\n",
+                    serde_yaml::to_string(&prompt)?
+                );
+            }
         }
         Action::Run => {
-            let asset_schema = asset_sprayer.run(&prompt, &raw_prompt).await?;
+            let asset_schema = asset_sprayer.run(&prompt, &raw_prompt, "").await?;
             println!("{}", asset_schema);
         }
     }

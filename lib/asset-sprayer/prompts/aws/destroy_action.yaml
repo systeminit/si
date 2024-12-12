@@ -1,399 +1,399 @@
-model: gpt-4o-mini
-temperature: 0.0
-messages:
-  - role: system
-    content: >
-      You are an expert cloud engineer who understands AWS API and CLI usage. Your job is to create new asset functions for use in System Initiative.
+- model: gpt-4o-mini
+  temperature: 0.0
+  messages:
+    - role: system
+      content: >
+        You are an expert cloud engineer who understands AWS API and CLI usage. Your job is to create new asset functions for use in System Initiative.
 
-      The user will provide the current System Initiative schema API documentation.
+        The user will provide the current System Initiative schema API documentation.
 
-      The user will provide the text of the help output from an AWS CLI command.
+        The user will provide the text of the help output from an AWS CLI command.
 
-      Your job is to understand all the documents, and faithfully translate the AWS CLI command to a System Initiative asset function.
+        Your job is to understand all the documents, and faithfully translate the AWS CLI command to a System Initiative asset function.
 
-      You will make sure to pass the region to the command if it is required.
+        You will make sure to pass the region to the command if it is required.
 
-      You will only use APIs that appear in the provided documentation.
-  - role: user
-    content: >
-      What follows is the current System Initiative function API documentation as markdown, between three ^ characters.
+        You will only use APIs that appear in the provided documentation.
+    - role: user
+      content: >
+        What follows is the current System Initiative function API documentation as markdown, between three ^ characters.
 
-      ^^^
-      # Asset Functions Reference
+        ^^^
+        # Asset Functions Reference
 
-      Asset functions are written in TypeScript, and executed within a sandbox
-      environment using [Firecracker](https://firecracker-microvm.github.io/).
+        Asset functions are written in TypeScript, and executed within a sandbox
+        environment using [Firecracker](https://firecracker-microvm.github.io/).
 
-      ## Asset Function Basics
+        ## Asset Function Basics
 
-      There are 5 types of asset functions:
+        There are 5 types of asset functions:
 
-      * Action
-      * Attribute
-      * Authentication
-      * Code Generation
-      * Qualification
+        * Action
+        * Attribute
+        * Authentication
+        * Code Generation
+        * Qualification
 
-      ### Executing shell commands
+        ### Executing shell commands
 
-      Functions frequently execute shell commands to interact with external services.
-      Using the [siExec API](/reference/typescript/sandbox/exec/README).
+        Functions frequently execute shell commands to interact with external services.
+        Using the [siExec API](/reference/typescript/sandbox/exec/README).
 
-      ```typescript
-      const child = siExec.waitUntilEnd("aws", [
-        "ec2",
-        "describe-hosts"
-      ]);
-      ```
+        ```typescript
+        const child = siExec.waitUntilEnd("aws", [
+          "ec2",
+          "describe-hosts"
+        ]);
+        ```
 
-      Would execute the shell command:
+        Would execute the shell command:
 
-      ```shell
-      aws ec2 describe-hosts
-      ```
+        ```shell
+        aws ec2 describe-hosts
+        ```
 
-      A more complex example from an action:
+        A more complex example from an action:
 
-      ```typescript
-      const child = await siExec.waitUntilEnd("aws", [
-          "rds",
-          "create-db-cluster",
-          "--region",
-          input?.properties?.domain?.Region || "",
-          "--cli-input-json",
-          JSON.stringify(code),
-      ]);
-      ```
+        ```typescript
+        const child = await siExec.waitUntilEnd("aws", [
+            "rds",
+            "create-db-cluster",
+            "--region",
+            input?.properties?.domain?.Region || "",
+            "--cli-input-json",
+            JSON.stringify(code),
+        ]);
+        ```
 
-      We're always adding more shell commands to the environment though Nix. [You can
-      see the current list of included commands in the source
-      code](https://github.com/systeminit/si/blob/main/flake.nix#L96).
+        We're always adding more shell commands to the environment though Nix. [You can
+        see the current list of included commands in the source
+        code](https://github.com/systeminit/si/blob/main/flake.nix#L96).
 
-      Send a PR if you need something added.
+        Send a PR if you need something added.
 
-      ### Interacting with HTTP APIs
+        ### Interacting with HTTP APIs
 
-      The [Fetch API](https://developer.mozilla.org/en-US/docs/Web/API/Window/fetch) is supported.
+        The [Fetch API](https://developer.mozilla.org/en-US/docs/Web/API/Window/fetch) is supported.
 
-      ```typescript
-      const webpage = await fetch("http://systeminit.com");
-      ```
+        ```typescript
+        const webpage = await fetch("http://systeminit.com");
+        ```
 
-      ### Using lodash
+        ### Using lodash
 
-      The [lodash API](https://lodash.com/docs/4.17.15) is available from the `_`
-      variable, which makes working with data structures in JavaScript easy.
+        The [lodash API](https://lodash.com/docs/4.17.15) is available from the `_`
+        variable, which makes working with data structures in JavaScript easy.
 
-      ```typescript
-      const result = {};
-      if (component.domain?.Sid) {
-        _.set(result, ["Sid"], component.domain.Sid);
-      }
-      ```
+        ```typescript
+        const result = {};
+        if (component.domain?.Sid) {
+          _.set(result, ["Sid"], component.domain.Sid);
+        }
+        ```
 
-      If you find yourself doing complex data manipulation, lodash is where you
-      should look first.
+        If you find yourself doing complex data manipulation, lodash is where you
+        should look first.
 
-      ### Request Storage
+        ### Request Storage
 
-      When a function has secrets as an input, it runs authentication functions before
-      it is executed. Information is then passed between functions through the Request Storage
-      API:
+        When a function has secrets as an input, it runs authentication functions before
+        it is executed. Information is then passed between functions through the Request Storage
+        API:
 
-      ```typescript
-      requestStorage.getItem("foo");
-      ```
+        ```typescript
+        requestStorage.getItem("foo");
+        ```
 
-      Or to set an item (used only in authentication functions):
+        Or to set an item (used only in authentication functions):
 
-      ```typescript
-      requestStorage.setItem("foo");
-      ```
+        ```typescript
+        requestStorage.setItem("foo");
+        ```
 
-      ## Action Functions
+        ## Action Functions
 
-      Action functions interact with external systems (such as AWS, GCP, or Azure)
-      and return resources. They are are en-queued by users in a change set, and
-      executed when applied to HEAD. The order of execution is determined
-      automatically by walking the relationships between the components.
+        Action functions interact with external systems (such as AWS, GCP, or Azure)
+        and return resources. They are are en-queued by users in a change set, and
+        executed when applied to HEAD. The order of execution is determined
+        automatically by walking the relationships between the components.
 
-      There are four types of action function:
+        There are four types of action function:
 
-      1. Functions that create a resource
-      2. Functions that refresh a resource
-      3. Functions that delete a resource
-      4. Manual functions that update or transform a resource
+        1. Functions that create a resource
+        2. Functions that refresh a resource
+        3. Functions that delete a resource
+        4. Manual functions that update or transform a resource
 
-      Create, refresh, and delete are automatically en-queued when their relevant
-      activity is taken on the diagram. Manual functions must be en-queued from the
-      actions tab of the attribute panel by the user.
+        Create, refresh, and delete are automatically en-queued when their relevant
+        activity is taken on the diagram. Manual functions must be en-queued from the
+        actions tab of the attribute panel by the user.
 
-      ### Action function arguments
+        ### Action function arguments
 
-      Action functions take an `Input` argument. It has a `properties` field which contains an object that has:
+        Action functions take an `Input` argument. It has a `properties` field which contains an object that has:
 
-      * The `si` properties
+        * The `si` properties
 
-        These are the core properties set as meta-data for the function. Name, color, etc.
+          These are the core properties set as meta-data for the function. Name, color, etc.
 
-      * The `domain` properties
+        * The `domain` properties
 
-        These are the properties specified in the schema itself.
+          These are the properties specified in the schema itself.
 
-      * The `resource` data
+        * The `resource` data
 
-        This is the output of the last action, stored as the state of the resource. It contains 3 fields:
+          This is the output of the last action, stored as the state of the resource. It contains 3 fields:
 
-        - _status_: one of "ok", "warning", or "error"
-        - _message_: an optional message
-        - _payload_: the resource payload itself
+          - _status_: one of "ok", "warning", or "error"
+          - _message_: an optional message
+          - _payload_: the resource payload itself
 
-      * The `resource_value` data
+        * The `resource_value` data
 
-        This is information pulled into the component properties from resource payload
-        data. These are properties added with the `addResourceProp()` method of a
-        components schema.
+          This is information pulled into the component properties from resource payload
+          data. These are properties added with the `addResourceProp()` method of a
+          components schema.
 
-      * Any generated `code`
+        * Any generated `code`
 
-        Generated code is available as a map, whose key is the name of the code
-        generation function that generated it.
+          Generated code is available as a map, whose key is the name of the code
+          generation function that generated it.
 
-      ### Action function return value
-
-      Actions return a data structure identical to the resource data above. You should be careful to
-      always return a payload, even on error - frequently, this is the last stored payload if it existed.
-
-      ```typescript
-      if (input?.properties?.resource?.payload) {
-          return {
-              status: "error",
-              message: "Resource already exists",
-              payload: input.properties.resource.payload,
-          };
-      }
-      ```
-
-      Remember that `message` is optional:
-
-      ```typescript
-      return {
-          payload: JSON.parse(child.stdout).DBCluster,
-          status: "ok"
-      };
-      ```
-
-      Payload should be returned as a JavaScript object.
-
-      ### Create action example
-
-      A create action that uses generated code, `siExec` and a secret to create an AWS EKS cluster:
-
-      ```typescript
-      async function main(component: Input): Promise<Output> {
-          if (component.properties.resource?.payload) {
-              return {
-                  status: "error",
-                  message: "Resource already exists",
-                  payload: component.properties.resource.payload,
-              };
-          }
-
-          const code = component.properties.code?.["si:genericAwsCreate"]?.code;
-          const domain = component.properties?.domain;
-
-          const child = await siExec.waitUntilEnd("aws", [
-              "eks",
-              "create-cluster",
-              "--region",
-              domain?.extra?.Region || "",
-              "--cli-input-json",
-              code || "",
-          ]);
-
-          if (child.exitCode !== 0) {
-              console.error(child.stderr);
-              return {
-                  status: "error",
-                  message: `Unable to create; AWS CLI exited with non zero code: ${child.exitCode}`,
-              };
-          }
-
-          const response = JSON.parse(child.stdout).cluster;
-
-          return {
-              resourceId: response.name,
-              status: "ok",
-          };
-      }
-      ```
-
-      ### Refresh action example
-
-      A refresh action example that uses lodash and siExec to update an AWS EKS cluster:
-
-      ```typescript
-      async function main(component: Input): Promise < Output > {
-          let name = component.properties?.si?.resourceId;
-          const resource = component.properties.resource?.payload;
-          if (!name) {
-              name = resource.name;
-          }
-          if (!name) {
-              return {
-                  status: component.properties.resource?.status ?? "error",
-                  message: "Could not refresh, no resourceId present for EKS Cluster component",
-              };
-          }
-
-          const cliArguments = { };
+        ### Action function return value
+
+        Actions return a data structure identical to the resource data above. You should be careful to
+        always return a payload, even on error - frequently, this is the last stored payload if it existed.
+
+        ```typescript
+        if (input?.properties?.resource?.payload) {
+            return {
+                status: "error",
+                message: "Resource already exists",
+                payload: input.properties.resource.payload,
+            };
+        }
+        ```
+
+        Remember that `message` is optional:
+
+        ```typescript
+        return {
+            payload: JSON.parse(child.stdout).DBCluster,
+            status: "ok"
+        };
+        ```
+
+        Payload should be returned as a JavaScript object.
+
+        ### Create action example
+
+        A create action that uses generated code, `siExec` and a secret to create an AWS EKS cluster:
+
+        ```typescript
+        async function main(component: Input): Promise<Output> {
+            if (component.properties.resource?.payload) {
+                return {
+                    status: "error",
+                    message: "Resource already exists",
+                    payload: component.properties.resource.payload,
+                };
+            }
+
+            const code = component.properties.code?.["si:genericAwsCreate"]?.code;
+            const domain = component.properties?.domain;
+
+            const child = await siExec.waitUntilEnd("aws", [
+                "eks",
+                "create-cluster",
+                "--region",
+                domain?.extra?.Region || "",
+                "--cli-input-json",
+                code || "",
+            ]);
+
+            if (child.exitCode !== 0) {
+                console.error(child.stderr);
+                return {
+                    status: "error",
+                    message: `Unable to create; AWS CLI exited with non zero code: ${child.exitCode}`,
+                };
+            }
+
+            const response = JSON.parse(child.stdout).cluster;
+
+            return {
+                resourceId: response.name,
+                status: "ok",
+            };
+        }
+        ```
+
+        ### Refresh action example
+
+        A refresh action example that uses lodash and siExec to update an AWS EKS cluster:
+
+        ```typescript
+        async function main(component: Input): Promise < Output > {
+            let name = component.properties?.si?.resourceId;
+            const resource = component.properties.resource?.payload;
+            if (!name) {
+                name = resource.name;
+            }
+            if (!name) {
+                return {
+                    status: component.properties.resource?.status ?? "error",
+                    message: "Could not refresh, no resourceId present for EKS Cluster component",
+                };
+            }
+
+            const cliArguments = { };
+            _.set(
+                cliArguments,
+                "name",
+                name,
+            );
+
+            const child = await siExec.waitUntilEnd("aws", [
+                "eks",
+                "describe-cluster",
+                "--region",
+                _.get(component, "properties.domain.extra.Region", ""),
+                "--cli-input-json",
+                JSON.stringify(cliArguments),
+            ]);
+
+            if (child.exitCode !== 0) {
+                console.error(child.stderr);
+                if (child.stderr.includes("ResourceNotFoundException")) {
+                    console.log("EKS Cluster not found upstream (ResourceNotFoundException) so removing the resource")
+                    return {
+                        status: "ok",
+                        payload: null,
+                    };
+                }
+                return {
+                    status: "error",
+                    payload: resource,
+                    message: `Refresh error; exit code ${child.exitCode}.\n\nSTDOUT:\n\n${child.stdout}\n\nSTDERR:\n\n${child.stderr}`,
+                };
+            }
+
+            const object = JSON.parse(child.stdout).cluster;
+            return {
+                payload: object,
+                status: "ok",
+            };
+        }
+        ```
+
+        :::warning
+        Ensure you include previous resource payload on failure!
+        :::
+
+        ### Delete action example
+
+        A delete action example that uses lodash and siExec:
+
+        ```typescript
+        async function main(component: Input): Promise<Output> {
+          const cliArguments = {};
           _.set(
-              cliArguments,
-              "name",
-              name,
+            cliArguments,
+            "PolicyArn",
+            _.get(component, "properties.resource_value.Arn"),
           );
 
           const child = await siExec.waitUntilEnd("aws", [
-              "eks",
-              "describe-cluster",
-              "--region",
-              _.get(component, "properties.domain.extra.Region", ""),
-              "--cli-input-json",
-              JSON.stringify(cliArguments),
+            "iam",
+            "delete-policy",
+            "--cli-input-json",
+            JSON.stringify(cliArguments),
           ]);
 
           if (child.exitCode !== 0) {
-              console.error(child.stderr);
-              if (child.stderr.includes("ResourceNotFoundException")) {
-                  console.log("EKS Cluster not found upstream (ResourceNotFoundException) so removing the resource")
-                  return {
-                      status: "ok",
-                      payload: null,
-                  };
-              }
+            const payload = _.get(component, "properties.resource.payload");
+            if (payload) {
               return {
-                  status: "error",
-                  payload: resource,
-                  message: `Refresh error; exit code ${child.exitCode}.\n\nSTDOUT:\n\n${child.stdout}\n\nSTDERR:\n\n${child.stderr}`,
+                status: "error",
+                payload,
+                message:
+                  `Delete error; exit code ${child.exitCode}.\n\nSTDOUT:\n\n${child.stdout}\n\nSTDERR:\n\n${child.stderr}`,
               };
+            } else {
+              return {
+                status: "error",
+                message:
+                  `Delete error; exit code ${child.exitCode}.\n\nSTDOUT:\n\n${child.stdout}\n\nSTDERR:\n\n${child.stderr}`,
+              };
+            }
           }
 
-          const object = JSON.parse(child.stdout).cluster;
           return {
-              payload: object,
-              status: "ok",
+            payload: null,
+            status: "ok",
           };
-      }
-      ```
-
-      :::warning
-      Ensure you include previous resource payload on failure!
-      :::
-
-      ### Delete action example
-
-      A delete action example that uses lodash and siExec:
-
-      ```typescript
-      async function main(component: Input): Promise<Output> {
-        const cliArguments = {};
-        _.set(
-          cliArguments,
-          "PolicyArn",
-          _.get(component, "properties.resource_value.Arn"),
-        );
-
-        const child = await siExec.waitUntilEnd("aws", [
-          "iam",
-          "delete-policy",
-          "--cli-input-json",
-          JSON.stringify(cliArguments),
-        ]);
-
-        if (child.exitCode !== 0) {
-          const payload = _.get(component, "properties.resource.payload");
-          if (payload) {
-            return {
-              status: "error",
-              payload,
-              message:
-                `Delete error; exit code ${child.exitCode}.\n\nSTDOUT:\n\n${child.stdout}\n\nSTDERR:\n\n${child.stderr}`,
-            };
-          } else {
-            return {
-              status: "error",
-              message:
-                `Delete error; exit code ${child.exitCode}.\n\nSTDOUT:\n\n${child.stdout}\n\nSTDERR:\n\n${child.stderr}`,
-            };
-          }
         }
+        ```
 
-        return {
-          payload: null,
-          status: "ok",
-        };
-      }
-      ```
+        Note that the payload returned here is `null` - this ensures the resource will be removed.
 
-      Note that the payload returned here is `null` - this ensures the resource will be removed.
+        ### Manual action example
 
-      ### Manual action example
+        A manual action that updates the cluster configuration on an AWS EKS cluster, usking lodash, siExec and the AWS CLI:
 
-      A manual action that updates the cluster configuration on an AWS EKS cluster, usking lodash, siExec and the AWS CLI:
+        ```typescript
+        async function main(component: Input) {
+            const resource = component.properties.resource;
+            if (!resource) {
+                return {
+                    status: component.properties.resource?.status ?? "ok",
+                    message: component.properties.resource?.message,
+                };
+            }
 
-      ```typescript
-      async function main(component: Input) {
-          const resource = component.properties.resource;
-          if (!resource) {
-              return {
-                  status: component.properties.resource?.status ?? "ok",
-                  message: component.properties.resource?.message,
-              };
-          }
+            let json = {
+                "accessConfig": {
+                    "authenticationMode": component.properties.domain.accessConfig.authenticationMode,
+                },
+                "name": resource.name,
+            };
 
-          let json = {
-              "accessConfig": {
-                  "authenticationMode": component.properties.domain.accessConfig.authenticationMode,
-              },
-              "name": resource.name,
-          };
+            const updateResp = await siExec.waitUntilEnd("aws", [
+                "eks",
+                "update-cluster-config",
+                "--cli-input-json",
+                JSON.stringify(json),
+                "--region",
+                component.properties.domain?.extra.Region || "",
+            ]);
 
-          const updateResp = await siExec.waitUntilEnd("aws", [
-              "eks",
-              "update-cluster-config",
-              "--cli-input-json",
-              JSON.stringify(json),
-              "--region",
-              component.properties.domain?.extra.Region || "",
-          ]);
+            if (updateResp.exitCode !== 0) {
+                console.error(updateResp.stderr);
+                return {
+                    status: "error",
+                    payload: resource,
+                    message: `Unable to update the EKS Cluster Access Config, AWS CLI 2 exited with non zero code: ${updateResp.exitCode}`,
+                };
+            }
 
-          if (updateResp.exitCode !== 0) {
-              console.error(updateResp.stderr);
-              return {
-                  status: "error",
-                  payload: resource,
-                  message: `Unable to update the EKS Cluster Access Config, AWS CLI 2 exited with non zero code: ${updateResp.exitCode}`,
-              };
-          }
+            return {
+                payload: resource,
+                status: "ok"
+            };
+        }
+        ```
+        ^^^
+    - role: user
+      content: >
+        What follows is the official documentation for an AWS CLI command as HTML, between three ^ characters.
 
-          return {
-              payload: resource,
-              status: "ok"
-          };
-      }
-      ```
-      ^^^
-  - role: user
-    content: >
-      What follows is the official documentation for an AWS CLI command as HTML, between three ^ characters.
-
-      ^^^
-      {FETCH}{AWS_CLI_DOCS_URL}/{AWS_COMMAND}/{AWS_SUBCOMMAND}.html{/FETCH}
-      ^^^
-  - role: user
-    content: >
-      Create the destroy action function that calls the AWS CLI command.
-      
-      Show the final function in its entirety, with no other explanation, as plain text.
-      
-      Do not wrap the code in markdown delimiters.
+        ^^^
+        {FETCH}{AWS_CLI_DOCS_URL}/{AWS_COMMAND}/{AWS_SUBCOMMAND}.html{/FETCH}
+        ^^^
+    - role: user
+      content: >
+        Create the destroy action function that calls the AWS CLI command.
+        
+        Show the final function in its entirety, with no other explanation, as plain text.
+        
+        Do not wrap the code in markdown delimiters.

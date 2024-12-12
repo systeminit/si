@@ -89,20 +89,28 @@ impl AssetSprayer {
         }
     }
 
-    pub async fn run(&self, prompt: &Prompt, raw_prompt: &str) -> Result<String> {
+    pub async fn run(
+        &self,
+        prompt: &Prompt,
+        raw_prompt: &str,
+        function_text: &str,
+    ) -> Result<String> {
         debug!("Generating {}", prompt);
-        let request = prompt.generate(raw_prompt).await?;
-        let response = self.openai_client.chat().create(request).await?;
-        let choice = response
-            .choices
-            .into_iter()
-            .next()
-            .ok_or(AssetSprayerError::NoChoices)?;
-        let text = choice
-            .message
-            .content
-            .ok_or(AssetSprayerError::EmptyChoice)?;
-        Ok(text)
+        let mut function_text = function_text.to_string();
+        for raw_request in prompt.read(raw_prompt)? {
+            let request = prompt.generate(raw_request, &function_text).await?;
+            let response = self.openai_client.chat().create(request).await?;
+            let choice = response
+                .choices
+                .into_iter()
+                .next()
+                .ok_or(AssetSprayerError::NoChoices)?;
+            function_text = choice
+                .message
+                .content
+                .ok_or(AssetSprayerError::EmptyChoice)?;
+        }
+        Ok(function_text)
     }
 }
 
@@ -121,6 +129,9 @@ async fn test_do_ai() -> Result<()> {
         prompt::AwsCliCommand::new("sqs", "create-queue"),
     );
     let raw_prompt = asset_sprayer.raw_prompt(prompt.kind()).await?;
-    println!("Done: {}", asset_sprayer.run(&prompt, &raw_prompt).await?);
+    println!(
+        "Done: {}",
+        asset_sprayer.run(&prompt, &raw_prompt, "").await?
+    );
     Ok(())
 }
