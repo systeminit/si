@@ -5,8 +5,8 @@ use axum::{
     Router,
 };
 use dal::{
-    KeyPairError, StandardModelError, TransactionsError, UserError, UserPk, WorkspaceError,
-    WorkspacePk,
+    workspace_integrations::WorkspaceIntegrationsError, KeyPairError, StandardModelError,
+    TransactionsError, UserError, UserPk, WorkspaceError, WorkspacePk,
 };
 use serde::{Deserialize, Serialize};
 use si_data_spicedb::SpiceDbError;
@@ -54,6 +54,8 @@ pub enum SessionError {
     User(#[from] UserError),
     #[error(transparent)]
     Workspace(#[from] WorkspaceError),
+    #[error(transparent)]
+    WorkspaceIntegration(#[from] WorkspaceIntegrationsError),
     #[error("workspace {0} not yet migrated to new snapshot graph version. Migration required")]
     WorkspaceNotYetMigrated(WorkspacePk),
     #[error("invalid workspace permission: {0}")]
