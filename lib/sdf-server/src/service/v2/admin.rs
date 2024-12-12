@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::{extract::AdminAccessBuilder, service::ApiError, AppState};
+use crate::{middleware::SystemPermissionLayer, service::ApiError, AppState};
 
 mod get_snapshot;
 mod kill_execution;
@@ -190,8 +190,8 @@ pub fn v2_routes(state: AppState) -> Router<AppState> {
         )
         .nest("/prompts", prompts::routes())
         .layer(DefaultBodyLimit::max(MAX_UPLOAD_BYTES))
-        .route_layer(axum::middleware::from_extractor_with_state::<
-            AdminAccessBuilder,
-            AppState,
-        >(state))
+        .layer(SystemPermissionLayer::new(
+            state.clone(),
+            permissions::Permission::Administer,
+        ))
 }
