@@ -14,7 +14,7 @@
         ref="dropdownMenuRef"
         v-model="selectedWorkspacePk"
         :options="searchFilteredWorkspaceDropdownOptions"
-        :search="workspaceDropdownOptions.length > 20"
+        :search="workspaceDropdownOptions.length > 10"
         placeholder="-- select a workspace --"
         checkable
         variant="navbar"

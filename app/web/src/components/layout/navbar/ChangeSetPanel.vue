@@ -10,7 +10,7 @@
         ref="dropdownMenuRef"
         v-model="selectedChangeSetId"
         :options="changeSetSearchFilteredOptions"
-        :search="changeSetDropdownOptions.length > 20"
+        :search="changeSetDropdownOptions.length > 10"
         placeholder="-- select a change set --"
         checkable
         variant="navbar"
