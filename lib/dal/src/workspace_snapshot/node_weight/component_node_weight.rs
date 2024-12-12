@@ -90,7 +90,8 @@ impl ComponentNodeWeight {
                 return Err(NodeWeightError::InvalidContentAddressForWeightKind(
                     Into::<ContentAddressDiscriminants>::into(other).to_string(),
                     ContentAddressDiscriminants::Component.to_string(),
-                ));
+                )
+                .into());
             }
         };
 
@@ -132,9 +133,7 @@ impl ComponentNodeWeight {
         default_view_idx: NodeIndex,
         component_node_weight: &ComponentNodeWeight,
     ) -> NodeWeightResult<()> {
-        let component_idx = v4_graph
-            .get_node_index_by_id(component_node_weight.id)
-            .map_err(|e| NodeWeightError::WorkspaceSnapshotGraph(Box::new(e)))?;
+        let component_idx = v4_graph.get_node_index_by_id(component_node_weight.id)?;
 
         let layer_db = ctx.layer_db();
         let cas = layer_db.cas();
@@ -150,7 +149,8 @@ impl ComponentNodeWeight {
             return Err(NodeWeightError::UnexpectedComponentContentVersion(
                 actual,
                 ComponentContentDiscriminants::V1,
-            ));
+            )
+            .into());
         };
 
         // Create geometry node
@@ -169,39 +169,26 @@ impl ComponentNodeWeight {
             ctx.events_actor(),
         )?;
 
-        let geometry_id = v4_graph
-            .generate_ulid()
-            .map_err(|e| NodeWeightError::WorkspaceSnapshotGraph(Box::new(e)))?;
+        let geometry_id = v4_graph.generate_ulid()?;
 
-        let geometry_node_weight = NodeWeight::new_geometry(
-            geometry_id,
-            v4_graph
-                .generate_ulid()
-                .map_err(|e| NodeWeightError::WorkspaceSnapshotGraph(Box::new(e)))?,
-            content_address,
-        );
+        let geometry_node_weight =
+            NodeWeight::new_geometry(geometry_id, v4_graph.generate_ulid()?, content_address);
 
-        let geometry_idx = v4_graph
-            .add_or_replace_node(geometry_node_weight)
-            .map_err(|e| NodeWeightError::WorkspaceSnapshotGraph(Box::new(e)))?;
+        let geometry_idx = v4_graph.add_or_replace_node(geometry_node_weight)?;
 
         // Connect geometry to component
-        v4_graph
-            .add_edge(
-                geometry_idx,
-                EdgeWeight::new(EdgeWeightKind::Represents),
-                component_idx,
-            )
-            .map_err(|e| NodeWeightError::WorkspaceSnapshotGraph(Box::new(e)))?;
+        v4_graph.add_edge(
+            geometry_idx,
+            EdgeWeight::new(EdgeWeightKind::Represents),
+            component_idx,
+        )?;
 
         // Connect geometry to default view
-        v4_graph
-            .add_edge(
-                default_view_idx,
-                EdgeWeight::new(EdgeWeightKind::new_use()),
-                geometry_idx,
-            )
-            .map_err(|e| NodeWeightError::WorkspaceSnapshotGraph(Box::new(e)))?;
+        v4_graph.add_edge(
+            default_view_idx,
+            EdgeWeight::new(EdgeWeightKind::new_use()),
+            geometry_idx,
+        )?;
 
         // Upgrade component content
         let updated_content = ComponentContent::V2(ComponentContentV2 {
@@ -221,9 +208,7 @@ impl ComponentNodeWeight {
             updated_content_address,
         );
 
-        v4_graph
-            .add_or_replace_node(upgraded_node_weight)
-            .map_err(|e| NodeWeightError::WorkspaceSnapshotGraph(Box::new(e)))?;
+        v4_graph.add_or_replace_node(upgraded_node_weight)?;
 
         Ok(())
     }

@@ -2,6 +2,7 @@ use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
+use anyhow::Result;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use si_events::ulid::Ulid;
@@ -66,7 +67,7 @@ pub enum ModuleError {
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
 
-pub type ModuleResult<T> = Result<T, ModuleError>;
+pub type ModuleResult<T> = Result<T>;
 
 pub use si_id::ModuleId;
 
@@ -564,10 +565,7 @@ impl Module {
         let name = name.as_ref().trim();
         let version = version.as_ref().trim();
         if name.is_empty() || version.is_empty() {
-            return Err(ModuleError::EmptyMetadata(
-                name.to_string(),
-                version.to_string(),
-            ));
+            return Err(ModuleError::EmptyMetadata(name.to_string(), version.to_string()).into());
         }
 
         // The frontend will send us the schema variant as this is what we care about from
@@ -583,7 +581,7 @@ impl Module {
             &created_by_email,
             associated_schema.id(),
         );
-        let module_payload = exporter.export_as_bytes(ctx).await.map_err(Box::new)?;
+        let module_payload = exporter.export_as_bytes(ctx).await?;
 
         // Check if local information exists for contribution metadata.
         let (local_module_based_on_hash, local_module_schema_id) =

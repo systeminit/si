@@ -4,9 +4,8 @@ mod dal_test;
 mod expand;
 mod sdf_test;
 
-use std::collections::HashSet;
-
 use proc_macro::TokenStream;
+use std::collections::HashSet;
 use syn::{
     parse::{Parse, ParseStream},
     parse_macro_input,
@@ -53,11 +52,11 @@ fn path_as_string(path: &Path) -> String {
 ///
 /// ## Optional Support for Results
 ///
-/// You can opt to return an `eyre_color::Result<()>` type, allowing for the question mark
+/// You can opt to return an `anyhow::Result<()>` type, allowing for the question mark
 /// operator:
 ///
 /// ```ignore
-/// use color_eyre::Result;
+/// use anyhow::Result;
 /// use crate::dal::test;
 ///
 /// #[test]
@@ -221,11 +220,11 @@ pub fn dal_test(attr: TokenStream, input: TokenStream) -> TokenStream {
 ///
 /// ## Optional Support for Results
 ///
-/// You can opt to return an `eyre_color::Result<()>` type, allowing for the question mark
+/// You can opt to return an `anyhow::Result<()>` type, allowing for the question mark
 /// operator:
 ///
 /// ```ignore
-/// use color_eyre::Result;
+/// use anyhow::Result;
 /// use dal_test::sdf_test as test;
 ///
 /// #[test]

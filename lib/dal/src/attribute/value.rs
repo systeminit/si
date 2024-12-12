@@ -41,6 +41,7 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::Arc;
 
+use anyhow::Result;
 use async_recursion::async_recursion;
 use indexmap::IndexMap;
 use petgraph::prelude::*;
@@ -230,7 +231,7 @@ impl From<ComponentError> for AttributeValueError {
     }
 }
 
-pub type AttributeValueResult<T> = Result<T, AttributeValueError>;
+pub type AttributeValueResult<T> = Result<T>;
 
 pub use si_id::AttributeValueId;
 
@@ -405,7 +406,8 @@ impl AttributeValue {
                 } else {
                     return Err(AttributeValueError::UnexpectedGraphLayout(
                         "we expected a ValueIsFor for a socket type here but did not get one",
-                    ));
+                    )
+                    .into());
                 }
 
                 Component::add_edge_to_socket_attribute_value(
@@ -549,17 +551,15 @@ impl AttributeValue {
             prototype_func_id,
             prepared_args.clone(),
         )
-        .await
-        .map_err(Box::new)?;
+        .await?;
 
         // We have gathered all our inputs and so no longer need a lock on the graph. Be sure not to
         // add graph walk operations below this drop.
         drop(read_guard);
 
         let mut func_values = result_channel
-            .await
-            .map_err(|_| AttributeValueError::FuncRunnerSend)?
-            .map_err(Box::new)?;
+            .await?
+            .map_err(|_| AttributeValueError::FuncRunnerSend)?;
 
         // If the value is for a prop, we need to make sure container-type props are initialized
         // properly when the unprocessed value is populated.
@@ -695,9 +695,7 @@ impl AttributeValue {
                             ]
                         }
                         ValueSource::Secret(secret_id) => {
-                            vec![Secret::payload_for_prototype_execution(ctx, secret_id)
-                                .await
-                                .map_err(Box::new)?]
+                            vec![Secret::payload_for_prototype_execution(ctx, secret_id).await?]
                         }
                         other_source => {
                             let mut values = vec![];
@@ -761,7 +759,8 @@ impl AttributeValue {
                 }
                 _ => {
                     return Err(
-                        AttributeValueError::EmptyAttributePrototypeArgumentsForGroup(arg_name),
+                        AttributeValueError::EmptyAttributePrototypeArgumentsForGroup(arg_name)
+                            .into(),
                     );
                 }
             }
@@ -845,7 +844,7 @@ impl AttributeValue {
     ) -> AttributeValueResult<Func> {
         let prototype_id = Self::prototype_id(ctx, attribute_value_id).await?;
         let prototype_func_id = AttributePrototype::func_id(ctx, prototype_id).await?;
-        Ok(Func::get_by_id_or_error(ctx, prototype_func_id).await?)
+        Func::get_by_id_or_error(ctx, prototype_func_id).await
     }
 
     pub async fn is_set_by_dependent_function(
@@ -1009,9 +1008,9 @@ impl AttributeValue {
 
         // Ensure it actually is an array or map prop.
         if prop_node_weight.kind() != PropKind::Array && prop_node_weight.kind() != PropKind::Map {
-            return Err(AttributeValueError::InsertionForInvalidPropKind(
-                prop_node_weight.kind(),
-            ));
+            return Err(
+                AttributeValueError::InsertionForInvalidPropKind(prop_node_weight.kind()).into(),
+            );
         }
 
         // Find a singular child prop for the map or an array prop (i.e. the "element" or "entry" prop").
@@ -1023,7 +1022,7 @@ impl AttributeValue {
             )
             .await?;
         if child_prop_indices.len() > 1 {
-            return Err(AttributeValueError::PropMoreThanOneChild(prop_id));
+            return Err(AttributeValueError::PropMoreThanOneChild(prop_id).into());
         }
         let element_prop_index = child_prop_indices
             .first()
@@ -1133,7 +1132,8 @@ impl AttributeValue {
                 return Err(AttributeValueError::NodeWeightMismatch(
                     prop_node_index,
                     NodeWeightDiscriminants::Prop,
-                ));
+                )
+                .into());
             }
         };
 
@@ -1333,7 +1333,7 @@ impl AttributeValue {
                     // If we are None, but our prototype hasn't been overridden
                     // for this component, look for a default value
                     if Self::component_prototype_id(ctx, self.id).await?.is_none() {
-                        return Ok(Prop::default_value(ctx, prop_id).await?);
+                        return Prop::default_value(ctx, prop_id).await;
                     }
                     return Ok(None);
                 }
@@ -1406,7 +1406,8 @@ impl AttributeValue {
                 return Err(AttributeValueError::TypeMismatch(
                     PropKind::Object,
                     serde_value_to_string_type(&value),
-                ));
+                )
+                .into());
             }
             None => None,
         };
@@ -1495,7 +1496,8 @@ impl AttributeValue {
                 return Err(AttributeValueError::TypeMismatch(
                     PropKind::Array,
                     serde_value_to_string_type(&value),
-                ));
+                )
+                .into());
             }
             None => return Ok((work_queue_extension, view_stack_extension)),
         };
@@ -1509,7 +1511,7 @@ impl AttributeValue {
                 .await?;
 
             if child_props.len() > 1 {
-                return Err(AttributeValueError::PropMoreThanOneChild(prop_id));
+                return Err(AttributeValueError::PropMoreThanOneChild(prop_id).into());
             }
 
             let element_prop_index = child_props
@@ -1526,7 +1528,8 @@ impl AttributeValue {
                     return Err(AttributeValueError::NodeWeightMismatch(
                         element_prop_index,
                         NodeWeightDiscriminants::Prop,
-                    ));
+                    )
+                    .into());
                 }
             }
         };
@@ -1740,7 +1743,8 @@ impl AttributeValue {
                 return Err(AttributeValueError::TypeMismatch(
                     PropKind::Map,
                     serde_value_to_string_type(&value),
-                ));
+                )
+                .into());
             }
             None => return Ok((work_queue_extension, view_stack_extension)),
         };
@@ -1754,7 +1758,7 @@ impl AttributeValue {
                 .await?;
 
             if child_props.len() > 1 {
-                return Err(AttributeValueError::PropMoreThanOneChild(prop_id));
+                return Err(AttributeValueError::PropMoreThanOneChild(prop_id).into());
             }
 
             let element_prop_index = child_props
@@ -1771,7 +1775,8 @@ impl AttributeValue {
                     return Err(AttributeValueError::NodeWeightMismatch(
                         element_prop_index,
                         NodeWeightDiscriminants::Prop,
-                    ));
+                    )
+                    .into());
                 }
             }
         };
@@ -1878,7 +1883,8 @@ impl AttributeValue {
                 // connections
                 return Err(AttributeValueError::CannotExplicitlySetSocketValues(
                     attribute_value_id,
-                ));
+                )
+                .into());
             }
         };
 
@@ -1942,13 +1948,10 @@ impl AttributeValue {
         };
 
         let result_channel =
-            FuncRunner::run_attribute_value(ctx, attribute_value_id, func_id, func_args)
-                .await
-                .map_err(Box::new)?;
+            FuncRunner::run_attribute_value(ctx, attribute_value_id, func_id, func_args).await?;
         let func_values = result_channel
-            .await
-            .map_err(|_| AttributeValueError::FuncRunnerSend)?
-            .map_err(Box::new)?;
+            .await?
+            .map_err(|_| AttributeValueError::FuncRunnerSend)?;
 
         Self::set_real_values(ctx, attribute_value_id, func_values, func).await?;
         Ok(())
@@ -2205,7 +2208,7 @@ impl AttributeValue {
         attribute_value_id: AttributeValueId,
     ) -> AttributeValueResult<Prop> {
         let prop_id = Self::prop_id(ctx, attribute_value_id).await?;
-        Ok(Prop::get_by_id(ctx, prop_id).await?)
+        Prop::get_by_id(ctx, prop_id).await
     }
 
     pub async fn prop_id(
@@ -2214,7 +2217,7 @@ impl AttributeValue {
     ) -> AttributeValueResult<PropId> {
         Self::prop_id_opt(ctx, attribute_value_id)
             .await?
-            .ok_or(AttributeValueError::PropNotFound(attribute_value_id))
+            .ok_or(AttributeValueError::PropNotFound(attribute_value_id).into())
     }
 
     async fn prop_id_opt(
@@ -2238,7 +2241,8 @@ impl AttributeValue {
                         prop_node_weight.id().into(),
                         already_found_prop_id,
                         attribute_value_id,
-                    ));
+                    )
+                    .into());
                 }
 
                 maybe_prop_id = Some(target_node_weight.id().into());
@@ -2492,7 +2496,8 @@ impl AttributeValue {
                     // It's impossible for get() to fail here, so the or() can't happen
                     child1: *first_children.get(*old_index).unwrap_or(first_child),
                     child2: *first_child,
-                });
+                }
+                .into());
             }
             pair_index.insert(key_or_index, pairs.len());
             pairs.push(ChildAttributeValuePair::FirstOnly(key, *first_child));
@@ -2521,7 +2526,8 @@ impl AttributeValue {
                             key_or_index,
                             child1: old_second_child,
                             child2: second_child,
-                        });
+                        }
+                        .into());
                     }
                 },
             }
@@ -2546,7 +2552,7 @@ impl AttributeValue {
         av_id: AttributeValueId,
     ) -> AttributeValueResult<Vec<InputSocketId>> {
         let prototype_id = Self::prototype_id(ctx, av_id).await?;
-        Ok(AttributePrototype::list_input_socket_sources_for_id(ctx, prototype_id).await?)
+        AttributePrototype::list_input_socket_sources_for_id(ctx, prototype_id).await
     }
 
     /// Get the moral equivalent of the [`PropPath`]for a given [`AttributeValueId`].

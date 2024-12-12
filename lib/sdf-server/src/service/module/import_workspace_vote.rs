@@ -7,7 +7,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     extract::{v1::AccessBuilder, HandlerContext, PosthogClient},
-    service::module::{ModuleError, ModuleResult},
+    routes::AppError,
+    service::module::ModuleError,
     track,
 };
 
@@ -24,7 +25,7 @@ pub async fn import_workspace_vote(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Json(request): Json<ImportVoteRequest>,
-) -> ModuleResult<Json<()>> {
+) -> Result<Json<()>, AppError> {
     let ctx = builder.build_head(request_ctx).await?;
 
     let user = match ctx.history_actor() {
@@ -33,7 +34,7 @@ pub async fn import_workspace_vote(
             .ok_or(ModuleError::InvalidUser(*user_pk))?,
 
         HistoryActor::SystemInit => {
-            return Err(ModuleError::InvalidUserSystemInit);
+            return Err(ModuleError::InvalidUserSystemInit.into());
         }
     };
 

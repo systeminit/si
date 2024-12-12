@@ -6,9 +6,9 @@ use dal::{action::ActionId, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
 use si_events::audit_log::AuditLogKind;
 
-use super::ActionResult;
 use crate::{
     extract::{v1::AccessBuilder, HandlerContext},
+    routes::AppError,
     service::action::ActionError,
 };
 
@@ -24,7 +24,7 @@ pub async fn retry(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Json(request): Json<RetryRequest>,
-) -> ActionResult<()> {
+) -> Result<(), AppError> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
     for action_id in request.ids {
         let action = Action::get_by_id(&ctx, action_id).await?;
@@ -47,7 +47,7 @@ pub async fn retry(
 
         match action.state() {
             ActionState::Running | ActionState::Dispatched => {
-                return Err(ActionError::InvalidOnHoldTransition(action_id))
+                return Err(ActionError::InvalidOnHoldTransition(action_id).into())
             }
             ActionState::Queued | ActionState::Failed | ActionState::OnHold => {}
         }

@@ -268,13 +268,9 @@ async fn graceful_shutdown_signal(
 }
 
 mod handlers {
-    use std::result;
-
+    use anyhow::Result;
     use dal::{ChangeSet, Workspace, WorkspaceSnapshot, WsEvent};
-    use naxum::{
-        extract::State,
-        response::{IntoResponse, Response},
-    };
+    use naxum::extract::State;
     use rebaser_core::api_types::{
         enqueue_updates_request::EnqueueUpdatesRequest,
         enqueue_updates_response::{
@@ -285,10 +281,10 @@ mod handlers {
     use si_data_nats::HeaderMap;
     use telemetry::prelude::*;
     use telemetry_nats::propagation;
-    use telemetry_utils::metric;
     use thiserror::Error;
 
     use crate::{
+        error::AppError,
         extract::{ApiTypesNegotiate, HeaderReply},
         rebase::{perform_rebase, RebaseError},
     };
@@ -326,22 +322,11 @@ mod handlers {
 
     type Error = HandlerError;
 
-    type Result<T> = result::Result<T, HandlerError>;
-
-    impl IntoResponse for HandlerError {
-        fn into_response(self) -> Response {
-            metric!(counter.change_set_processor_task.failed_rebase = 1);
-            // TODO(fnichol): there are different responses, esp. for expected interrupted
-            error!(si.error.message = ?self, "failed to process message");
-            Response::default_internal_server_error()
-        }
-    }
-
     pub(crate) async fn default(
         State(state): State<AppState>,
         HeaderReply(maybe_reply): HeaderReply,
         ApiTypesNegotiate(request): ApiTypesNegotiate<EnqueueUpdatesRequest>,
-    ) -> Result<()> {
+    ) -> Result<(), AppError> {
         let AppState {
             workspace_id,
             change_set_id,

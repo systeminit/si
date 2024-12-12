@@ -1,11 +1,12 @@
 use std::collections::HashMap;
 
+use anyhow::Result;
 use axum::{extract::Path, Json};
 use dal::{ChangeSet, ChangeSetId, Tenancy, WorkspacePk};
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 
-use crate::service::v2::admin::{AdminAPIResult, AdminChangeSet, AdminUserContext};
+use crate::service::v2::admin::{AdminChangeSet, AdminUserContext};
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -17,7 +18,7 @@ pub struct ListChangesetsResponse {
 pub async fn list_change_sets(
     AdminUserContext(mut ctx): AdminUserContext,
     Path(workspace_id): Path<WorkspacePk>,
-) -> AdminAPIResult<Json<ListChangesetsResponse>> {
+) -> Result<Json<ListChangesetsResponse>> {
     ctx.update_tenancy(Tenancy::new(workspace_id));
 
     let change_sets = ChangeSet::list_all_for_workspace(&ctx, workspace_id)

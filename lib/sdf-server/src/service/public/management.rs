@@ -1,21 +1,5 @@
-use axum::{
-    extract::Path,
-    http::StatusCode,
-    response::{IntoResponse, Response},
-    routing::post,
-    Json, Router,
-};
-use serde::{Deserialize, Serialize};
-use si_events::audit_log::AuditLogKind;
-use thiserror::Error;
-use veritech_client::ManagementFuncStatus;
-
-use crate::AppState;
-use crate::{
-    extract::{change_set::ChangeSetDalContext, PosthogEventTracker},
-    service::ApiError,
-};
-
+use anyhow::Result;
+use axum::{extract::Path, routing::post, Json, Router};
 use dal::{
     diagram::view::ViewId,
     management::{
@@ -24,6 +8,16 @@ use dal::{
     },
     schema::variant::authoring::VariantAuthoringError,
     ComponentId, Func, FuncError, WsEvent,
+};
+use serde::{Deserialize, Serialize};
+use si_events::audit_log::AuditLogKind;
+use thiserror::Error;
+use veritech_client::ManagementFuncStatus;
+
+use crate::{
+    extract::{change_set::ChangeSetDalContext, PosthogEventTracker},
+    routes::AppError,
+    AppState,
 };
 
 // /api/public/workspaces/:workspace_id/change-sets/:change_set_id/components
@@ -43,7 +37,7 @@ async fn run_prototype(
         view_id,
     }): Path<RunPrototypePath>,
     Json(request): Json<RunPrototypeRequest>,
-) -> Result<Json<RunPrototypeResponse>> {
+) -> Result<Json<RunPrototypeResponse>, AppError> {
     // TODO check that this is a valid prototypeId
     let mut execution_result =
         ManagementPrototype::execute_by_id(ctx, prototype_id, component_id, view_id.into()).await?;
@@ -119,9 +113,7 @@ async fn run_prototype(
         return Ok(Json(RunPrototypeResponse { status, message }));
     }
 
-    Err(ManagementApiError::ManagementPrototypeExecutionFailure(
-        prototype_id,
-    ))
+    Err(ManagementApiError::ManagementPrototypeExecutionFailure(prototype_id).into())
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -175,18 +167,4 @@ enum ManagementApiError {
     VariantAuthoring(#[from] VariantAuthoringError),
     #[error("ws event error: {0}")]
     WsEvent(#[from] dal::WsEventError),
-}
-
-type Result<T> = std::result::Result<T, ManagementApiError>;
-
-impl IntoResponse for ManagementApiError {
-    fn into_response(self) -> Response {
-        let (status_code, error_message) = match self {
-            ManagementApiError::ManagementPrototype(
-                dal::management::prototype::ManagementPrototypeError::FuncExecutionFailure(message),
-            ) => (StatusCode::BAD_REQUEST, message),
-            _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
-        };
-        ApiError::new(status_code, error_message).into_response()
-    }
 }

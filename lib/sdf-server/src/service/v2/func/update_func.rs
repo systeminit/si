@@ -1,10 +1,4 @@
-use super::FuncAPIResult;
-use crate::{
-    extract::{HandlerContext, PosthogClient},
-    service::force_change_set_response::ForceChangeSetResponse,
-    service::v2::AccessBuilder,
-    track,
-};
+use anyhow::Result;
 use axum::{
     extract::{Host, OriginalUri, Path},
     Json,
@@ -17,6 +11,13 @@ use serde::{Deserialize, Serialize};
 use si_events::audit_log::AuditLogKind;
 use si_frontend_types::FuncSummary;
 use ulid::Ulid;
+
+use crate::{
+    extract::{HandlerContext, PosthogClient},
+    service::force_change_set_response::ForceChangeSetResponse,
+    service::v2::AccessBuilder,
+    track,
+};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -34,7 +35,7 @@ pub async fn update_func(
     Host(host_name): Host,
     Path((_workspace_pk, change_set_id, func_id)): Path<(WorkspacePk, ChangeSetId, FuncId)>,
     Json(request): Json<UpdateFuncRequest>,
-) -> FuncAPIResult<ForceChangeSetResponse<FuncSummary>> {
+) -> Result<ForceChangeSetResponse<FuncSummary>> {
     let mut ctx = builder
         .build(access_builder.build(change_set_id.into()))
         .await?;

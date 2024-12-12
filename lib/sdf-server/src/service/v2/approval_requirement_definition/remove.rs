@@ -1,3 +1,4 @@
+use anyhow::Result;
 use axum::extract::Path;
 use dal::{
     approval_requirement::{
@@ -14,8 +15,6 @@ use crate::{
     service::{force_change_set_response::ForceChangeSetResponse, v2::AccessBuilder},
 };
 
-use super::ApprovalRequirementDefinitionError;
-
 pub async fn remove(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(access_builder): AccessBuilder,
@@ -25,7 +24,7 @@ pub async fn remove(
         ChangeSetId,
         ApprovalRequirementDefinitionId,
     )>,
-) -> Result<ForceChangeSetResponse<()>, ApprovalRequirementDefinitionError> {
+) -> Result<ForceChangeSetResponse<()>> {
     let mut ctx = builder
         .build(access_builder.build(change_set_id.into()))
         .await?;

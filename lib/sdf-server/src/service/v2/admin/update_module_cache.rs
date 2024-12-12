@@ -1,7 +1,14 @@
+use anyhow::Result;
+use axum::{
+    extract::{Host, OriginalUri},
+    http::Uri,
+    response::Json,
+};
+use dal::{cached_module::CachedModule, DalContext, Tenancy, WsEvent};
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
+use ulid::Ulid;
 
-use super::{AdminAPIResult, AdminUserContext};
 use crate::{
     extract::{
         workspace::{TargetWorkspaceIdFromToken, WorkspaceAuthorization},
@@ -10,13 +17,8 @@ use crate::{
     service::async_route::handle_error,
     track,
 };
-use axum::{
-    extract::{Host, OriginalUri},
-    http::Uri,
-    response::Json,
-};
-use dal::{cached_module::CachedModule, DalContext, Tenancy, WsEvent};
-use ulid::Ulid;
+
+use super::AdminUserContext;
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -32,7 +34,7 @@ pub async fn update_module_cache(
     OriginalUri(original_uri): OriginalUri,
     Host(host_name): Host,
     WorkspaceAuthorization { workspace_id, .. }: WorkspaceAuthorization,
-) -> AdminAPIResult<Json<UpdateModuleCacheResponse>> {
+) -> Result<Json<UpdateModuleCacheResponse>> {
     let task_id = Ulid::new();
 
     ctx.update_tenancy(Tenancy::new(workspace_id));
@@ -68,7 +70,7 @@ pub async fn update_cached_modules_inner(
     original_uri: &Uri,
     host_name: &String,
     PosthogClient(posthog_client): PosthogClient,
-) -> AdminAPIResult<()> {
+) -> Result<()> {
     info!("Starting module cache update");
     CachedModule::update_cached_modules(ctx).await?;
 

@@ -1,3 +1,4 @@
+use anyhow::Context;
 use chrono::DateTime;
 use si_pkg::{
     FuncArgumentKind, FuncArgumentSpec, FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType,
@@ -39,7 +40,7 @@ impl IntrinsicFunc {
             builder.func(intrinsic.to_spec()?);
         }
 
-        builder.build().map_err(FuncError::IntrinsicSpecCreation)
+        builder.build().context(FuncError::IntrinsicSpecCreation)
     }
 
     pub fn float_pkg_spec() -> FuncResult<PkgSpec> {
@@ -51,7 +52,7 @@ impl IntrinsicFunc {
         )?);
         builder.created_by("System Initiative");
         builder.func(IntrinsicFunc::SetFloat.to_spec()?);
-        builder.build().map_err(FuncError::IntrinsicSpecCreation)
+        builder.build().context(FuncError::IntrinsicSpecCreation)
     }
 
     pub fn to_spec(&self) -> FuncResult<FuncSpec> {
@@ -77,7 +78,7 @@ impl IntrinsicFunc {
                         .name("identity")
                         .kind(FuncArgumentKind::Any)
                         .build()
-                        .map_err(FuncError::IntrinsicSpecCreation)?,
+                        .context(FuncError::IntrinsicSpecCreation)?,
                 );
             }
             Self::NormalizeToArray => {
@@ -90,7 +91,7 @@ impl IntrinsicFunc {
                         .name("value")
                         .kind(FuncArgumentKind::Any)
                         .build()
-                        .map_err(FuncError::IntrinsicSpecCreation)?,
+                        .context(FuncError::IntrinsicSpecCreation)?,
                 );
             }
             Self::ResourcePayloadToValue => {
@@ -103,7 +104,7 @@ impl IntrinsicFunc {
                         .name("payload")
                         .kind(FuncArgumentKind::Object)
                         .build()
-                        .map_err(FuncError::IntrinsicSpecCreation)?,
+                        .context(FuncError::IntrinsicSpecCreation)?,
                 );
             }
             Self::SetArray => {
@@ -117,7 +118,7 @@ impl IntrinsicFunc {
                         .kind(FuncArgumentKind::Array)
                         .element_kind(FuncArgumentKind::Any)
                         .build()
-                        .map_err(FuncError::IntrinsicSpecCreation)?,
+                        .context(FuncError::IntrinsicSpecCreation)?,
                 );
             }
             Self::SetBoolean => {
@@ -130,7 +131,7 @@ impl IntrinsicFunc {
                         .name("value")
                         .kind(FuncArgumentKind::Boolean)
                         .build()
-                        .map_err(FuncError::IntrinsicSpecCreation)?,
+                        .context(FuncError::IntrinsicSpecCreation)?,
                 );
             }
             Self::SetInteger => {
@@ -143,7 +144,7 @@ impl IntrinsicFunc {
                         .name("value")
                         .kind(FuncArgumentKind::Integer)
                         .build()
-                        .map_err(FuncError::IntrinsicSpecCreation)?,
+                        .context(FuncError::IntrinsicSpecCreation)?,
                 );
             }
             Self::SetFloat => {
@@ -156,7 +157,7 @@ impl IntrinsicFunc {
                         .name("value")
                         .kind(FuncArgumentKind::Float)
                         .build()
-                        .map_err(FuncError::IntrinsicSpecCreation)?,
+                        .context(FuncError::IntrinsicSpecCreation)?,
                 );
             }
             Self::SetMap => {
@@ -170,7 +171,7 @@ impl IntrinsicFunc {
                         .kind(FuncArgumentKind::Map)
                         .element_kind(FuncArgumentKind::Any)
                         .build()
-                        .map_err(FuncError::IntrinsicSpecCreation)?,
+                        .context(FuncError::IntrinsicSpecCreation)?,
                 );
             }
             Self::SetJson => {
@@ -183,7 +184,7 @@ impl IntrinsicFunc {
                         .name("value")
                         .kind(FuncArgumentKind::Json)
                         .build()
-                        .map_err(FuncError::IntrinsicSpecCreation)?,
+                        .context(FuncError::IntrinsicSpecCreation)?,
                 );
             }
             Self::SetObject => {
@@ -196,7 +197,7 @@ impl IntrinsicFunc {
                         .name("value")
                         .kind(FuncArgumentKind::Object)
                         .build()
-                        .map_err(FuncError::IntrinsicSpecCreation)?,
+                        .context(FuncError::IntrinsicSpecCreation)?,
                 );
             }
             Self::SetString => {
@@ -209,7 +210,7 @@ impl IntrinsicFunc {
                         .name("value")
                         .kind(FuncArgumentKind::String)
                         .build()
-                        .map_err(FuncError::IntrinsicSpecCreation)?,
+                        .context(FuncError::IntrinsicSpecCreation)?,
                 );
             }
             Self::Unset => {
@@ -228,19 +229,19 @@ impl IntrinsicFunc {
                         .name("value")
                         .kind(FuncArgumentKind::Any)
                         .build()
-                        .map_err(FuncError::IntrinsicSpecCreation)?,
+                        .context(FuncError::IntrinsicSpecCreation)?,
                 );
             }
         };
 
         let data = data_builder
             .build()
-            .map_err(FuncError::IntrinsicSpecCreation)?;
+            .context(FuncError::IntrinsicSpecCreation)?;
 
         builder
             .data(data)
             .build()
-            .map_err(FuncError::IntrinsicSpecCreation)
+            .context(FuncError::IntrinsicSpecCreation)
     }
 
     pub fn name(&self) -> &str {

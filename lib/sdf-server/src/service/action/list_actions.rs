@@ -9,8 +9,10 @@ use serde::{Deserialize, Serialize};
 use si_events::FuncRunId;
 use telemetry::prelude::*;
 
-use super::ActionResult;
-use crate::extract::{v1::AccessBuilder, HandlerContext};
+use crate::{
+    extract::{v1::AccessBuilder, HandlerContext},
+    routes::AppError,
+};
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -46,7 +48,7 @@ pub async fn list_actions(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Query(request): Query<LoadQueuedRequest>,
-) -> ActionResult<Json<LoadQueuedResponse>> {
+) -> Result<Json<LoadQueuedResponse>, AppError> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let action_ids = Action::list_topologically(&ctx).await?;

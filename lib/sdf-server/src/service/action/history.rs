@@ -7,8 +7,11 @@ use si_events::{
     FuncRunId,
 };
 
-use super::{ActionError, ActionResult};
-use crate::extract::{v1::AccessBuilder, HandlerContext};
+use super::ActionError;
+use crate::{
+    extract::{v1::AccessBuilder, HandlerContext},
+    routes::AppError,
+};
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -29,7 +32,7 @@ pub struct ActionHistoryView {
 }
 
 impl TryFrom<FuncRun> for ActionHistoryView {
-    type Error = ActionError;
+    type Error = AppError;
 
     fn try_from(func_run: FuncRun) -> Result<Self, Self::Error> {
         Ok(Self {
@@ -104,7 +107,7 @@ pub async fn history(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Query(request): Query<ActionHistoryRequest>,
-) -> ActionResult<Json<ActionHistoryResponse>> {
+) -> Result<Json<ActionHistoryResponse>, AppError> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let mut result = Vec::new();

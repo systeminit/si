@@ -6396,6 +6396,7 @@ dependencies = [
 name = "third-party"
 version = "0.0.0"
 dependencies = [
+ "anyhow",
  "async-nats",
  "async-openai",
  "async-recursion",

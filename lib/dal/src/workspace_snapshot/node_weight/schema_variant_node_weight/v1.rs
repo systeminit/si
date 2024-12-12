@@ -131,7 +131,8 @@ impl SchemaVariantNodeWeightV1 {
             SchemaVariantContent::V3(_) => {
                 return Err(SchemaVariantNodeWeightError::InvalidContentForNodeWeight(
                     content_node_weight.id(),
-                ));
+                )
+                .into());
             }
         };
 
@@ -151,9 +152,7 @@ impl SchemaVariantNodeWeightV1 {
         let new_node_weight =
             NodeWeight::SchemaVariant(SchemaVariantNodeWeight::V1(new_node_weight_inner));
 
-        v3_graph
-            .add_or_replace_node(new_node_weight)
-            .map_err(Box::new)?;
+        v3_graph.add_or_replace_node(new_node_weight)?;
 
         Ok(())
     }
@@ -167,7 +166,7 @@ fn update_unlocks(
         Some(Update::NewNode { node_weight }) | Some(Update::ReplaceNode { node_weight }) => {
             let schema_variant_node_weight = match node_weight.get_schema_variant_node_weight() {
                 Ok(node_weight) => node_weight,
-                Err(e) => return Err(e.into()),
+                Err(e) => return Err(e),
             };
             Ok(
                 !node_weight::traits::SiVersionedNodeWeight::inner(&schema_variant_node_weight)
@@ -201,26 +200,15 @@ impl CorrectTransforms for SchemaVariantNodeWeightV1 {
 
         let mut maybe_my_schema_id =
             match workspace_snapshot_graph.schema_id_for_schema_variant_id(self.id.into()) {
-                Err(WorkspaceSnapshotGraphError::SchemaVariant(schema_variant_error)) => {
-                    match *schema_variant_error {
-                        SchemaVariantError::NotFound(_) => {
-                            // This is a brand-new SchemaVariant. The Schema may also be brand-new,
-                            // which means we won't find it until we go through the updates, and find
-                            // an Update::NewNode for it, and a corresponding Update::NewEdge that
-                            // links us to the new node.
-                            None
-                        }
-                        err => {
-                            return Err(
-                                WorkspaceSnapshotGraphError::SchemaVariant(Box::new(err)).into()
-                            );
-                        }
-                    }
-                }
                 Ok(schema_id) => Some(schema_id),
-                Err(err) => {
-                    return Err(err.into());
-                }
+                Err(error) => match error.downcast_ref::<SchemaVariantError>() {
+                    // This is a brand-new SchemaVariant. The Schema may also be brand-new,
+                    // which means we won't find it until we go through the updates, and find
+                    // an Update::NewNode for it, and a corresponding Update::NewEdge that
+                    // links us to the new node.
+                    Some(SchemaVariantError::NotFound(_)) => None,
+                    _ => return Err(error),
+                },
             };
         let mut variants_for_schema: HashMap<SchemaId, HashSet<SchemaVariantId>> = HashMap::new();
         let mut new_schemas = HashSet::new();
@@ -304,23 +292,13 @@ impl CorrectTransforms for SchemaVariantNodeWeightV1 {
                             .schema_id_for_schema_variant_id(node_weight.id().into())
                         {
                             Ok(schema_id) => schema_id,
-                            Err(WorkspaceSnapshotGraphError::SchemaVariant(sv_error)) => {
-                                match *sv_error {
-                                    // Couldn't find the Schema/SchemaVariant; ignore it and keep
-                                    // checking for relevant updates.
-                                    SchemaVariantError::NotFound(_)
-                                    | SchemaVariantError::SchemaNotFound(_) => continue,
-                                    _ => {
-                                        return Err(WorkspaceSnapshotGraphError::SchemaVariant(
-                                            sv_error,
-                                        )
-                                        .into())
-                                    }
-                                }
-                            }
-                            Err(err) => {
-                                return Err(err.into());
-                            }
+                            Err(error) => match error.downcast_ref::<SchemaVariantError>() {
+                                // Couldn't find the Schema/SchemaVariant; ignore it and keep
+                                // checking for relevant updates.
+                                Some(SchemaVariantError::NotFound(_))
+                                | Some(SchemaVariantError::SchemaNotFound(_)) => continue,
+                                _ => return Err(error),
+                            },
                         };
                         variants_for_schema
                             .entry(schema_id)

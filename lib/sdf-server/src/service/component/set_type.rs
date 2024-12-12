@@ -1,18 +1,18 @@
 use std::collections::HashMap;
 
-use super::ComponentResult;
-use crate::{
-    extract::{v1::AccessBuilder, HandlerContext, PosthogClient},
-    service::force_change_set_response::ForceChangeSetResponse,
-    track,
-};
-
 use axum::{
     extract::{Host, OriginalUri},
     Json,
 };
 use dal::{ChangeSet, Component, ComponentId, ComponentType, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
+
+use crate::{
+    extract::{v1::AccessBuilder, HandlerContext, PosthogClient},
+    routes::AppError,
+    service::force_change_set_response::ForceChangeSetResponse,
+    track,
+};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -34,7 +34,7 @@ pub async fn set_type(
         component_type,
         visibility,
     }): Json<SetTypeRequest>,
-) -> ComponentResult<ForceChangeSetResponse<()>> {
+) -> Result<ForceChangeSetResponse<()>, AppError> {
     let mut ctx = builder.build(request_ctx.build(visibility)).await?;
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;

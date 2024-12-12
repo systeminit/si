@@ -6,6 +6,7 @@ use std::{
 };
 use telemetry_utils::metric;
 
+use anyhow::Result;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use si_events::FuncRunValue;
@@ -59,7 +60,7 @@ pub enum DependentValueUpdateError {
     WsEvent(#[from] WsEventError),
 }
 
-pub type DependentValueUpdateResult<T> = Result<T, DependentValueUpdateError>;
+pub type DependentValueUpdateResult<T> = Result<T>;
 
 #[derive(Debug, Deserialize, Serialize)]
 struct DependentValuesUpdateArgs;
@@ -577,6 +578,7 @@ impl TryFrom<JobInfo> for DependentValuesUpdate {
 }
 
 pub mod audit_log {
+    use anyhow::Result;
     use si_events::audit_log::AuditLogKind;
     use telemetry::prelude::*;
     use thiserror::Error;
@@ -586,7 +588,7 @@ pub mod audit_log {
         prop::PropError,
         socket::{input::InputSocketError, output::OutputSocketError},
         AttributeValue, AttributeValueId, Component, ComponentError, DalContext, Func, InputSocket,
-        OutputSocket, Prop, TransactionsError,
+        OutputSocket, Prop,
     };
 
     #[remain::sorted]
@@ -603,7 +605,7 @@ pub mod audit_log {
         #[error("prop error: {0}")]
         Prop(#[from] PropError),
         #[error("write audit log error: {0}")]
-        WriteAuditLog(#[source] TransactionsError),
+        WriteAuditLog(#[source] anyhow::Error),
     }
 
     #[instrument(
@@ -617,7 +619,7 @@ pub mod audit_log {
         input_attribute_value_ids: Vec<AttributeValueId>,
         func: Func,
         before_value: Option<serde_json::Value>,
-    ) -> Result<(), DependentValueUpdateAuditLogError> {
+    ) -> Result<()> {
         // Metadata for who "owns" the attribute value.
         let component_id = AttributeValue::component_id(ctx, finished_value_id).await?;
         let component = Component::get_by_id(ctx, component_id).await?;

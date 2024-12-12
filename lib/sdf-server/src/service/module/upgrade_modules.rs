@@ -12,6 +12,7 @@ use si_frontend_types::SchemaVariant as FrontendVariant;
 
 use crate::{
     extract::{v1::AccessBuilder, HandlerContext, PosthogClient},
+    routes::AppError,
     service::{force_change_set_response::ForceChangeSetResponse, module::ModuleError},
     track,
 };
@@ -33,7 +34,7 @@ pub async fn upgrade_modules(
     OriginalUri(original_uri): OriginalUri,
     Host(host_name): Host,
     Json(request): Json<UpgradeModulesRequest>,
-) -> Result<ForceChangeSetResponse<Vec<FrontendVariant>>, ModuleError> {
+) -> Result<ForceChangeSetResponse<Vec<FrontendVariant>>, AppError> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
@@ -106,7 +107,7 @@ pub async fn upgrade_modules(
             }
             variants.push(front_end_variant);
         } else {
-            return Err(ModuleError::SchemaNotFoundFromInstall(schema_id.into()));
+            return Err(ModuleError::SchemaNotFoundFromInstall(schema_id.into()).into());
         };
     }
 

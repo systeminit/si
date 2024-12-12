@@ -1,5 +1,6 @@
 use std::collections::{HashSet, VecDeque};
 
+use anyhow::Result;
 use petgraph::prelude::*;
 use postgres_types::{FromSql, ToSql};
 use serde::{Deserialize, Serialize};
@@ -62,8 +63,6 @@ pub enum ActionError {
     #[error("ws event error: {0}")]
     WsEvent(#[from] WsEventError),
 }
-
-pub type ActionResult<T> = Result<T, ActionError>;
 
 pub use si_id::ActionId;
 pub use si_id::ActionPrototypeId;
@@ -154,14 +153,14 @@ impl Action {
         destination_id: ComponentId,
         add_fn: add_edge_to_component,
         discriminant: EdgeWeightKindDiscriminants::Use,
-        result: ActionResult,
+        result: Result,
     );
     implement_add_edge_to!(
         source_id: ActionId,
         destination_id: ActionPrototypeId,
         add_fn: add_edge_to_action_prototype,
         discriminant: EdgeWeightKindDiscriminants::Use,
-        result: ActionResult,
+        result: Result,
     );
 
     // Even though we're using `implement_add_edge_to`, we're not creating an edge from Self *TO*
@@ -171,13 +170,13 @@ impl Action {
         destination_id: ActionId,
         add_fn: add_incoming_category_edge,
         discriminant: EdgeWeightKindDiscriminants::Use,
-        result: ActionResult,
+        result: Result,
     );
 
     pub async fn find_for_component_id(
         ctx: &DalContext,
         component_id: ComponentId,
-    ) -> ActionResult<Vec<ActionId>> {
+    ) -> Result<Vec<ActionId>> {
         let mut actions = vec![];
         let snap = ctx.workspace_snapshot()?;
         let action_category_id = snap
@@ -209,7 +208,7 @@ impl Action {
     pub async fn remove_all_for_component_id(
         ctx: &DalContext,
         component_id: ComponentId,
-    ) -> ActionResult<()> {
+    ) -> Result<()> {
         let actions_to_remove = Self::find_for_component_id(ctx, component_id).await?;
         for action_id in actions_to_remove {
             Self::remove_by_id(ctx, action_id).await?;
@@ -221,7 +220,7 @@ impl Action {
         ctx: &DalContext,
         component_id: ComponentId,
         action_states: Vec<ActionState>,
-    ) -> ActionResult<Vec<ActionId>> {
+    ) -> Result<Vec<ActionId>> {
         let mut actions = vec![];
         let actions_for_component = Self::find_for_component_id(ctx, component_id).await?;
         for action_id in actions_for_component {
@@ -237,7 +236,7 @@ impl Action {
         ctx: &DalContext,
         component_id: ComponentId,
         action_kind: ActionKind,
-    ) -> ActionResult<Vec<ActionId>> {
+    ) -> Result<Vec<ActionId>> {
         let actions_for_component = Self::find_for_component_id(ctx, component_id).await?;
         let mut actions = vec![];
         for action_id in actions_for_component {
@@ -254,7 +253,7 @@ impl Action {
         ctx: &DalContext,
         action_prototype_id: ActionPrototypeId,
         maybe_component_id: Option<ComponentId>,
-    ) -> ActionResult<Option<ActionId>> {
+    ) -> Result<Option<ActionId>> {
         let snap = ctx.workspace_snapshot()?;
         let action_category_id = snap
             .get_category_node_or_err(None, CategoryNodeKind::Action)
@@ -284,7 +283,7 @@ impl Action {
         Ok(None)
     }
 
-    pub async fn get_by_id(ctx: &DalContext, id: ActionId) -> ActionResult<Self> {
+    pub async fn get_by_id(ctx: &DalContext, id: ActionId) -> Result<Self> {
         let action: Self = ctx
             .workspace_snapshot()?
             .get_node_weight_by_id(id)
@@ -295,7 +294,7 @@ impl Action {
     }
 
     #[instrument(level = "info", skip_all, fields(si.action.id = ?id, si.action.state = ?state))]
-    pub async fn set_state(ctx: &DalContext, id: ActionId, state: ActionState) -> ActionResult<()> {
+    pub async fn set_state(ctx: &DalContext, id: ActionId, state: ActionState) -> Result<()> {
         let idx = ctx.workspace_snapshot()?.get_node_index_by_id(id).await?;
         let node_weight = ctx
             .workspace_snapshot()?
@@ -315,7 +314,7 @@ impl Action {
         _ctx: &DalContext,
         _id: ActionId,
         _pk: Option<FuncExecutionPk>,
-    ) -> ActionResult<()> {
+    ) -> Result<()> {
         unimplemented!("You should never be setting func_execution_pk; bug!");
     }
 
@@ -324,7 +323,7 @@ impl Action {
         ctx: &DalContext,
         action_prototype_id: ActionPrototypeId,
         maybe_component_id: Option<ComponentId>,
-    ) -> ActionResult<Self> {
+    ) -> Result<Self> {
         let new_id: ActionId = ctx.workspace_snapshot()?.generate_ulid().await?.into();
         let lineage_id = ctx.workspace_snapshot()?.generate_ulid().await?;
 
@@ -373,7 +372,7 @@ impl Action {
         Ok(new_action)
     }
 
-    pub async fn remove_by_id(ctx: &DalContext, action_id: ActionId) -> ActionResult<()> {
+    pub async fn remove_by_id(ctx: &DalContext, action_id: ActionId) -> Result<()> {
         ctx.workspace_snapshot()?
             .remove_node_by_id(action_id)
             .await?;
@@ -384,7 +383,7 @@ impl Action {
         ctx: &DalContext,
         action_prototype_id: ActionPrototypeId,
         maybe_component_id: Option<ComponentId>,
-    ) -> ActionResult<()> {
+    ) -> Result<()> {
         let snap = ctx.workspace_snapshot()?;
 
         if let Some(action_id) =
@@ -398,7 +397,7 @@ impl Action {
     /// Sort the dependency graph of [`Actions`][Action] topologically, breaking ties by listing
     /// [`Actions`][Action] sorted by their ID (oldest first thanks to ULID sorting).
     #[instrument(level = "info", skip_all)]
-    pub async fn list_topologically(ctx: &DalContext) -> ActionResult<Vec<ActionId>> {
+    pub async fn list_topologically(ctx: &DalContext) -> Result<Vec<ActionId>> {
         // TODO: Grab all "running" & "failed" Actions to list first?
         let mut result = Vec::new();
 
@@ -426,10 +425,7 @@ impl Action {
         Ok(result)
     }
 
-    pub async fn prototype_id(
-        ctx: &DalContext,
-        action_id: ActionId,
-    ) -> ActionResult<ActionPrototypeId> {
+    pub async fn prototype_id(ctx: &DalContext, action_id: ActionId) -> Result<ActionPrototypeId> {
         for (_, _tail_node_idx, head_node_idx) in ctx
             .workspace_snapshot()?
             .edges_directed_for_edge_weight_kind(
@@ -448,18 +444,18 @@ impl Action {
             }
         }
 
-        Err(ActionError::PrototypeNotFoundForAction(action_id))
+        Err(ActionError::PrototypeNotFoundForAction(action_id).into())
     }
 
-    pub async fn prototype(ctx: &DalContext, action_id: ActionId) -> ActionResult<ActionPrototype> {
+    pub async fn prototype(ctx: &DalContext, action_id: ActionId) -> Result<ActionPrototype> {
         let prototype_id = Self::prototype_id(ctx, action_id).await?;
-        Ok(ActionPrototype::get_by_id(ctx, prototype_id).await?)
+        ActionPrototype::get_by_id(ctx, prototype_id).await
     }
 
     pub async fn component_id(
         ctx: &DalContext,
         action_id: ActionId,
-    ) -> ActionResult<Option<ComponentId>> {
+    ) -> Result<Option<ComponentId>> {
         for (_, _tail_node_idx, head_node_idx) in ctx
             .workspace_snapshot()?
             .edges_directed_for_edge_weight_kind(
@@ -481,17 +477,14 @@ impl Action {
         Ok(None)
     }
 
-    pub async fn component(
-        ctx: &DalContext,
-        action_id: ActionId,
-    ) -> ActionResult<Option<Component>> {
+    pub async fn component(ctx: &DalContext, action_id: ActionId) -> Result<Option<Component>> {
         match Self::component_id(ctx, action_id).await? {
             Some(component_id) => Ok(Some(Component::get_by_id(ctx, component_id).await?)),
             None => Ok(None),
         }
     }
 
-    pub async fn all_ids(ctx: &DalContext) -> ActionResult<Vec<ActionId>> {
+    pub async fn all_ids(ctx: &DalContext) -> Result<Vec<ActionId>> {
         let mut result = Vec::new();
 
         let action_category_node_index = ctx
@@ -527,7 +520,7 @@ impl Action {
         ctx: &DalContext,
         action_dependency_graph: &ActionDependencyGraph,
         for_action_id: ActionId,
-    ) -> ActionResult<Vec<ActionId>> {
+    ) -> Result<Vec<ActionId>> {
         let mut reasons_for_hold = vec![];
 
         let mut seen_list = HashSet::new();
@@ -568,7 +561,7 @@ impl Action {
     ///   * The graph of values for `DependentValuesUpdate` does *NOT* include
     ///     *ANY* [`AttributeValue`s](AttributeValue) for the same
     ///     [`Component`](crate::Component) as the [`Action`].
-    pub async fn eligible_to_dispatch(ctx: &DalContext) -> ActionResult<Vec<ActionId>> {
+    pub async fn eligible_to_dispatch(ctx: &DalContext) -> Result<Vec<ActionId>> {
         let action_dependency_graph = ActionDependencyGraph::for_workspace(ctx).await?;
         let mut result = Vec::new();
         let dependent_value_graph = DependentValueGraph::new(
@@ -611,7 +604,7 @@ impl Action {
     #[instrument(name = "workspace_snapshot.dispatch_action", level = "info", skip_all, fields(
         si.action.id = ?action_id,
     ))]
-    pub async fn dispatch_action(ctx: &DalContext, action_id: ActionId) -> ActionResult<()> {
+    pub async fn dispatch_action(ctx: &DalContext, action_id: ActionId) -> Result<()> {
         Action::set_state(ctx, action_id, ActionState::Dispatched).await?;
 
         ctx.enqueue_action(ActionJob::new(ctx, action_id)).await?;

@@ -1,25 +1,27 @@
 use std::collections::HashMap;
+
+use anyhow::Result;
+use axum::{
+    extract::{Host, OriginalUri, Path},
+    Json,
+};
+use dal::{
+    change_status::ChangeStatus,
+    component::frame::Frame,
+    diagram::{view::ViewId, SummaryDiagramEdge},
+    ChangeSet, ChangeSetId, Component, ComponentId, WorkspacePk, WsEvent,
+};
+use serde::{Deserialize, Serialize};
+use si_frontend_types::StringGeometry;
 use telemetry::prelude::*;
 
-use super::{ViewError, ViewResult};
+use super::ViewError;
 use crate::{
     extract::{HandlerContext, PosthogClient},
     service::force_change_set_response::ForceChangeSetResponse,
     service::v2::AccessBuilder,
     track,
 };
-use axum::extract::Path;
-use axum::{
-    extract::{Host, OriginalUri},
-    Json,
-};
-use dal::diagram::view::ViewId;
-use dal::{
-    change_status::ChangeStatus, component::frame::Frame, diagram::SummaryDiagramEdge, ChangeSet,
-    ChangeSetId, Component, ComponentId, WorkspacePk, WsEvent,
-};
-use serde::{Deserialize, Serialize};
-use si_frontend_types::StringGeometry;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -44,7 +46,7 @@ pub async fn paste_component(
     Host(host_name): Host,
     Path((_workspace_pk, change_set_id, view_id)): Path<(WorkspacePk, ChangeSetId, ViewId)>,
     Json(request): Json<PasteComponentsRequest>,
-) -> ViewResult<ForceChangeSetResponse<()>> {
+) -> Result<ForceChangeSetResponse<()>> {
     let mut ctx = builder
         .build(access_builder.build(change_set_id.into()))
         .await?;
@@ -133,15 +135,15 @@ pub async fn paste_component(
                         .publish_on_commit(&ctx)
                         .await?;
                 }
-                Err(dal::ComponentError::ComponentNotManagedSchema(_, _, _)) => {
-                    // This error should not occur, but we also don't want to
-                    // fail the paste just because the managed schemas are out
-                    // of sync
-                    error!("Could not manage pasted component, but continuing paste");
-                }
-                Err(err) => {
-                    return Err(err)?;
-                }
+                Err(error) => match error.downcast_ref::<dal::ComponentError>() {
+                    Some(dal::ComponentError::ComponentNotManagedSchema(_, _, _)) => {
+                        // This error should not occur, but we also don't want to
+                        // fail the paste just because the managed schemas are out
+                        // of sync
+                        error!("Could not manage pasted component, but continuing paste");
+                    }
+                    _ => return Err(error),
+                },
             };
         }
 

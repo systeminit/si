@@ -1,6 +1,7 @@
 //! This module contains [`Component`], which is an instance of a
 //! [`SchemaVariant`](SchemaVariant) and a _model_ of a "real world resource".
 
+use anyhow::Result;
 use itertools::Itertools;
 use petgraph::Direction::Outgoing;
 use serde::{Deserialize, Serialize};
@@ -234,8 +235,6 @@ pub enum ComponentError {
     WsEvent(#[from] WsEventError),
 }
 
-pub type ComponentResult<T> = Result<T, ComponentError>;
-
 pub use si_id::ComponentId;
 
 #[derive(Clone, Debug)]
@@ -314,7 +313,7 @@ impl Component {
         self.to_delete
     }
 
-    pub async fn change_status(&self, ctx: &DalContext) -> ComponentResult<ChangeStatus> {
+    pub async fn change_status(&self, ctx: &DalContext) -> Result<ChangeStatus> {
         let status = if self.exists_in_head(ctx).await? {
             if self.to_delete() {
                 ChangeStatus::Deleted
@@ -328,20 +327,20 @@ impl Component {
         Ok(status)
     }
 
-    pub async fn exists_in_head(&self, ctx: &DalContext) -> ComponentResult<bool> {
+    pub async fn exists_in_head(&self, ctx: &DalContext) -> Result<bool> {
         let head_ctx = ctx.clone_with_head().await?;
 
         Ok(Self::try_get_by_id(&head_ctx, self.id).await?.is_some())
     }
 
-    pub async fn view(&self, ctx: &DalContext) -> ComponentResult<Option<serde_json::Value>> {
+    pub async fn view(&self, ctx: &DalContext) -> Result<Option<serde_json::Value>> {
         Self::view_by_id(ctx, self.id).await
     }
 
     pub async fn view_by_id(
         ctx: &DalContext,
         id: ComponentId,
-    ) -> ComponentResult<Option<serde_json::Value>> {
+    ) -> Result<Option<serde_json::Value>> {
         let schema_variant_id = Self::schema_variant_id(ctx, id).await?;
         let root_prop_id =
             Prop::find_prop_id_by_path(ctx, schema_variant_id, &PropPath::new(["root"])).await?;
@@ -350,7 +349,7 @@ impl Component {
             let value_component_id = AttributeValue::component_id(ctx, value_id).await?;
             if value_component_id == id {
                 let root_value = AttributeValue::get_by_id(ctx, value_id).await?;
-                return Ok(root_value.view(ctx).await?);
+                return root_value.view(ctx).await;
             }
         }
 
@@ -363,42 +362,42 @@ impl Component {
         destination_id: SchemaVariantId,
         add_fn: add_edge_to_schema_variant,
         discriminant: EdgeWeightKindDiscriminants::Use,
-        result: ComponentResult,
+        result: Result,
     );
     implement_add_edge_to!(
         source_id: ComponentId,
         destination_id: ComponentId,
         add_fn: add_edge_to_frame,
         discriminant: EdgeWeightKindDiscriminants::FrameContains,
-        result: ComponentResult,
+        result: Result,
     );
     implement_add_edge_to!(
         source_id: ComponentId,
         destination_id: AttributeValueId,
         add_fn: add_edge_to_root_attribute_value,
         discriminant: EdgeWeightKindDiscriminants::Root,
-        result: ComponentResult,
+        result: Result,
     );
     implement_add_edge_to!(
         source_id: ComponentId,
         destination_id: AttributeValueId,
         add_fn: add_edge_to_socket_attribute_value,
         discriminant: EdgeWeightKindDiscriminants::SocketValue,
-        result: ComponentResult,
+        result: Result,
     );
     implement_add_edge_to!(
         source_id: Ulid,
         destination_id: ComponentId,
         add_fn: add_category_edge,
         discriminant: EdgeWeightKindDiscriminants::Use,
-        result: ComponentResult,
+        result: Result,
     );
     implement_add_edge_to!(
         source_id: ComponentId,
         destination_id: ComponentId,
         add_fn: add_manages_edge_to_component,
         discriminant: EdgeWeightKindDiscriminants::Manages,
-        result: ComponentResult,
+        result: Result,
     );
 
     #[instrument(
@@ -413,7 +412,7 @@ impl Component {
         name: impl Into<String>,
         schema_variant_id: SchemaVariantId,
         view_id: ViewId,
-    ) -> ComponentResult<Self> {
+    ) -> Result<Self> {
         let content = ComponentContentV2 {
             timestamp: Timestamp::now(),
         };
@@ -430,9 +429,7 @@ impl Component {
                 .await?;
 
         // Create geometry node
-        Geometry::new_for_component(ctx, component.id, view_id)
-            .await
-            .map_err(|e| ComponentError::Diagram(Box::new(e)))?;
+        Geometry::new_for_component(ctx, component.id, view_id).await?;
 
         Ok(component)
     }
@@ -445,7 +442,7 @@ impl Component {
         name: impl Into<String>,
         schema_variant_id: SchemaVariantId,
         content_address: ContentHash,
-    ) -> ComponentResult<Self> {
+    ) -> Result<Self> {
         let name: String = name.into();
 
         let workspace_snapshot = ctx.workspace_snapshot()?;
@@ -594,9 +591,7 @@ impl Component {
         )
         .await?
         {
-            Action::new(ctx, prototype_id, Some(component.id))
-                .await
-                .map_err(|err| ComponentError::Action(Box::new(err)))?;
+            Action::new(ctx, prototype_id, Some(component.id)).await?;
         }
 
         Ok(component)
@@ -611,7 +606,7 @@ impl Component {
         &self,
         ctx: &DalContext,
         old_component_id: ComponentId,
-    ) -> ComponentResult<()> {
+    ) -> Result<()> {
         let old_root_id = Component::root_attribute_value_id(ctx, old_component_id).await?;
         let self_schema_variant_id = Component::schema_variant_id(ctx, self.id).await?;
         let mut dvu_roots = vec![];
@@ -896,7 +891,7 @@ impl Component {
         self_output_sockets: &HashMap<String, OutputSocketId>,
         self_props: &HashMap<Vec<String>, PropId>,
         key: Option<String>,
-    ) -> ComponentResult<()> {
+    ) -> Result<()> {
         let apa_ids =
             AttributePrototypeArgument::list_ids_for_prototype(ctx, old_component_prototype_id)
                 .await?;
@@ -990,12 +985,12 @@ impl Component {
         &self,
         ctx: &DalContext,
         from_component_id: ComponentId,
-    ) -> ComponentResult<()> {
+    ) -> Result<()> {
         let from_sv_id = Component::schema_variant_id(ctx, from_component_id).await?;
         let dest_sv_id = Component::schema_variant_id(ctx, self.id).await?;
 
         if from_sv_id != dest_sv_id {
-            return Err(ComponentError::CannotCloneFromDifferentVariants);
+            return Err(ComponentError::CannotCloneFromDifferentVariants.into());
         }
 
         // Paste attribute value "values" from original component (or create them for maps/arrays)
@@ -1050,7 +1045,7 @@ impl Component {
     pub async fn outgoing_connections_for_id(
         ctx: &DalContext,
         component_id: ComponentId,
-    ) -> ComponentResult<Vec<OutgoingConnection>> {
+    ) -> Result<Vec<OutgoingConnection>> {
         let mut outgoing_edges = vec![];
 
         for from_output_socket in
@@ -1106,18 +1101,12 @@ impl Component {
         Ok(outgoing_edges)
     }
 
-    pub async fn outgoing_connections(
-        &self,
-        ctx: &DalContext,
-    ) -> ComponentResult<Vec<OutgoingConnection>> {
+    pub async fn outgoing_connections(&self, ctx: &DalContext) -> Result<Vec<OutgoingConnection>> {
         Self::outgoing_connections_for_id(ctx, self.id).await
     }
 
     /// Calls [`Self::incoming_connections_by_id`] by passing in the id from [`self`](Component).
-    pub async fn incoming_connections(
-        &self,
-        ctx: &DalContext,
-    ) -> ComponentResult<Vec<IncomingConnection>> {
+    pub async fn incoming_connections(&self, ctx: &DalContext) -> Result<Vec<IncomingConnection>> {
         Self::incoming_connections_for_id(ctx, self.id).await
     }
 
@@ -1131,7 +1120,7 @@ impl Component {
     pub async fn incoming_connections_for_id(
         ctx: &DalContext,
         id: ComponentId,
-    ) -> ComponentResult<Vec<IncomingConnection>> {
+    ) -> Result<Vec<IncomingConnection>> {
         let mut incoming_connections = vec![];
 
         for component_input_socket in ComponentInputSocket::list_for_component_id(ctx, id).await? {
@@ -1169,7 +1158,7 @@ impl Component {
     pub async fn input_sockets_with_connections(
         ctx: &DalContext,
         component_id: ComponentId,
-    ) -> ComponentResult<Vec<InputSocketId>> {
+    ) -> Result<Vec<InputSocketId>> {
         let mut input_socket_ids = Vec::new();
         for input_socket in ComponentInputSocket::list_for_component_id(ctx, component_id).await? {
             let prototype_id =
@@ -1192,7 +1181,7 @@ impl Component {
     pub async fn get_children_for_id(
         ctx: &DalContext,
         component_id: ComponentId,
-    ) -> ComponentResult<Vec<ComponentId>> {
+    ) -> Result<Vec<ComponentId>> {
         let mut children: Vec<ComponentId> = vec![];
         let workspace_snapshot = ctx.workspace_snapshot()?;
         for children_target in workspace_snapshot
@@ -1218,7 +1207,7 @@ impl Component {
     async fn get_all_descendants_for_id(
         ctx: &DalContext,
         component_id: ComponentId,
-    ) -> ComponentResult<Vec<ComponentId>> {
+    ) -> Result<Vec<ComponentId>> {
         let mut all_descendants = Vec::new();
         let mut work_queue = VecDeque::from(Self::get_children_for_id(ctx, component_id).await?);
         while let Some(child_id) = work_queue.pop_front() {
@@ -1232,7 +1221,7 @@ impl Component {
     pub async fn get_parent_by_id(
         ctx: &DalContext,
         component_id: ComponentId,
-    ) -> ComponentResult<Option<ComponentId>> {
+    ) -> Result<Option<ComponentId>> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
         let mut raw_sources = workspace_snapshot
             .incoming_sources_for_edge_weight_kind(
@@ -1243,7 +1232,7 @@ impl Component {
 
         let maybe_parent = if let Some(raw_parent) = raw_sources.pop() {
             if !raw_sources.is_empty() {
-                return Err(ComponentError::MultipleParentsForComponent(component_id));
+                return Err(ComponentError::MultipleParentsForComponent(component_id).into());
             }
             Some(
                 workspace_snapshot
@@ -1258,14 +1247,14 @@ impl Component {
         Ok(maybe_parent)
     }
 
-    pub async fn parent(&self, ctx: &DalContext) -> ComponentResult<Option<ComponentId>> {
+    pub async fn parent(&self, ctx: &DalContext) -> Result<Option<ComponentId>> {
         Self::get_parent_by_id(ctx, self.id).await
     }
 
     async fn try_get_node_weight_and_content(
         ctx: &DalContext,
         component_id: ComponentId,
-    ) -> ComponentResult<Option<(ComponentNodeWeight, ComponentContentV2)>> {
+    ) -> Result<Option<(ComponentNodeWeight, ComponentContentV2)>> {
         if let Some((component_node_weight, content_hash)) =
             Self::try_get_node_weight_and_content_hash(ctx, component_id).await?
         {
@@ -1287,16 +1276,16 @@ impl Component {
     async fn get_node_weight_and_content(
         ctx: &DalContext,
         component_id: ComponentId,
-    ) -> ComponentResult<(ComponentNodeWeight, ComponentContentV2)> {
+    ) -> Result<(ComponentNodeWeight, ComponentContentV2)> {
         Self::try_get_node_weight_and_content(ctx, component_id)
             .await?
-            .ok_or(ComponentError::NotFound(component_id))
+            .ok_or(ComponentError::NotFound(component_id).into())
     }
 
     async fn try_get_node_weight_and_content_hash(
         ctx: &DalContext,
         component_id: ComponentId,
-    ) -> ComponentResult<Option<(ComponentNodeWeight, ContentHash)>> {
+    ) -> Result<Option<(ComponentNodeWeight, ContentHash)>> {
         let id: Ulid = component_id.into();
         if let Some(node_index) = ctx.workspace_snapshot()?.get_node_index_by_id_opt(id).await {
             let node_weight = ctx
@@ -1313,7 +1302,7 @@ impl Component {
     }
 
     /// List all IDs for all [`Components`](Component) in the workspace.
-    pub async fn list_ids(ctx: &DalContext) -> ComponentResult<Vec<ComponentId>> {
+    pub async fn list_ids(ctx: &DalContext) -> Result<Vec<ComponentId>> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
         let component_category_node_id = workspace_snapshot
@@ -1338,7 +1327,7 @@ impl Component {
         Ok(component_ids)
     }
 
-    pub async fn list(ctx: &DalContext) -> ComponentResult<Vec<Self>> {
+    pub async fn list(ctx: &DalContext) -> Result<Vec<Self>> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
         let mut components = vec![];
@@ -1384,7 +1373,7 @@ impl Component {
         Ok(components)
     }
 
-    pub async fn list_to_be_deleted(ctx: &DalContext) -> ComponentResult<Vec<ComponentId>> {
+    pub async fn list_to_be_deleted(ctx: &DalContext) -> Result<Vec<ComponentId>> {
         let mut to_be_deleted = vec![];
         let components = Self::list(ctx).await?;
         for component in components {
@@ -1398,38 +1387,38 @@ impl Component {
     pub async fn schema_for_component_id(
         ctx: &DalContext,
         component_id: ComponentId,
-    ) -> ComponentResult<Schema> {
+    ) -> Result<Schema> {
         let schema_variant = Self::schema_variant_for_component_id(ctx, component_id).await?;
 
-        Ok(schema_variant.schema(ctx).await?)
+        schema_variant.schema(ctx).await
     }
 
-    pub async fn schema(&self, ctx: &DalContext) -> ComponentResult<Schema> {
+    pub async fn schema(&self, ctx: &DalContext) -> Result<Schema> {
         Self::schema_for_component_id(ctx, self.id).await
     }
 
     pub async fn schema_variant_for_component_id(
         ctx: &DalContext,
         component_id: ComponentId,
-    ) -> ComponentResult<SchemaVariant> {
+    ) -> Result<SchemaVariant> {
         let schema_variant_id = Self::schema_variant_id(ctx, component_id).await?;
-        Ok(SchemaVariant::get_by_id_or_error(ctx, schema_variant_id).await?)
+        SchemaVariant::get_by_id_or_error(ctx, schema_variant_id).await
     }
 
-    pub async fn schema_variant(&self, ctx: &DalContext) -> ComponentResult<SchemaVariant> {
+    pub async fn schema_variant(&self, ctx: &DalContext) -> Result<SchemaVariant> {
         Self::schema_variant_for_component_id(ctx, self.id).await
     }
 
     pub async fn schema_variant_id(
         ctx: &DalContext,
         component_id: ComponentId,
-    ) -> ComponentResult<SchemaVariantId> {
+    ) -> Result<SchemaVariantId> {
         ctx.workspace_snapshot()?
             .schema_variant_id_for_component_id(component_id)
             .await
     }
 
-    pub async fn get_by_id(ctx: &DalContext, component_id: ComponentId) -> ComponentResult<Self> {
+    pub async fn get_by_id(ctx: &DalContext, component_id: ComponentId) -> Result<Self> {
         let (node_weight, content) = Self::get_node_weight_and_content(ctx, component_id).await?;
         Ok(Self::assemble(&node_weight, content))
     }
@@ -1437,7 +1426,7 @@ impl Component {
     pub async fn try_get_by_id(
         ctx: &DalContext,
         component_id: ComponentId,
-    ) -> ComponentResult<Option<Self>> {
+    ) -> Result<Option<Self>> {
         if let Some((node_weight, content)) =
             Self::try_get_node_weight_and_content(ctx, component_id).await?
         {
@@ -1447,10 +1436,8 @@ impl Component {
         Ok(None)
     }
 
-    pub async fn geometry(&self, ctx: &DalContext, view_id: ViewId) -> ComponentResult<Geometry> {
-        Geometry::get_by_component_and_view(ctx, self.id, view_id)
-            .await
-            .map_err(|e| ComponentError::Diagram(Box::new(e)))
+    pub async fn geometry(&self, ctx: &DalContext, view_id: ViewId) -> Result<Geometry> {
+        Geometry::get_by_component_and_view(ctx, self.id, view_id).await
     }
 
     pub async fn set_geometry(
@@ -1461,7 +1448,7 @@ impl Component {
         y: isize,
         width: Option<isize>,
         height: Option<isize>,
-    ) -> ComponentResult<Geometry> {
+    ) -> Result<Geometry> {
         let new_geometry = RawGeometry {
             x,
             y,
@@ -1477,23 +1464,16 @@ impl Component {
         ctx: &DalContext,
         raw_geometry: RawGeometry,
         view_id: ViewId,
-    ) -> ComponentResult<Geometry> {
+    ) -> Result<Geometry> {
         let mut geometry_pre = self.geometry(ctx, view_id).await?;
         if geometry_pre.into_raw() != raw_geometry {
-            geometry_pre
-                .update(ctx, raw_geometry)
-                .await
-                .map_err(|e| ComponentError::Diagram(Box::new(e)))?;
+            geometry_pre.update(ctx, raw_geometry).await?;
         }
 
         Ok(geometry_pre)
     }
 
-    pub async fn set_resource_id(
-        &self,
-        ctx: &DalContext,
-        resource_id: &str,
-    ) -> ComponentResult<()> {
+    pub async fn set_resource_id(&self, ctx: &DalContext, resource_id: &str) -> Result<()> {
         let path = ["root", "si", "resourceId"];
         let sv_id = Self::schema_variant_id(ctx, self.id).await?;
 
@@ -1522,7 +1502,7 @@ impl Component {
         Ok(())
     }
 
-    pub async fn set_name(&self, ctx: &DalContext, name: &str) -> ComponentResult<()> {
+    pub async fn set_name(&self, ctx: &DalContext, name: &str) -> Result<()> {
         let path = ["root", "si", "name"];
         let sv_id = Self::schema_variant_id(ctx, self.id).await?;
         let name_prop_id = Prop::find_prop_id_by_path(ctx, sv_id, &PropPath::new(path)).await?;
@@ -1539,11 +1519,7 @@ impl Component {
         Ok(())
     }
 
-    pub async fn set_resource(
-        &self,
-        ctx: &DalContext,
-        resource: ResourceData,
-    ) -> ComponentResult<()> {
+    pub async fn set_resource(&self, ctx: &DalContext, resource: ResourceData) -> Result<()> {
         let av_for_resource = self
             .attribute_value_for_prop(ctx, &["root", "resource"])
             .await?;
@@ -1553,7 +1529,7 @@ impl Component {
         Ok(())
     }
 
-    pub async fn clear_resource(&self, ctx: &DalContext) -> ComponentResult<()> {
+    pub async fn clear_resource(&self, ctx: &DalContext) -> Result<()> {
         let av_for_resource = self
             .attribute_value_for_prop(ctx, &["root", "resource"])
             .await?;
@@ -1564,15 +1540,12 @@ impl Component {
     }
 
     /// Finds the [`ResourceData`] for a given [`Component`].
-    pub async fn resource(&self, ctx: &DalContext) -> ComponentResult<Option<ResourceData>> {
+    pub async fn resource(&self, ctx: &DalContext) -> Result<Option<ResourceData>> {
         Self::resource_by_id(ctx, self.id).await
     }
 
     /// Finds the [`ResourceData`] for a given [`ComponentId`](Component).
-    pub async fn resource_by_id(
-        ctx: &DalContext,
-        id: ComponentId,
-    ) -> ComponentResult<Option<ResourceData>> {
+    pub async fn resource_by_id(ctx: &DalContext, id: ComponentId) -> Result<Option<ResourceData>> {
         let value_id = Self::attribute_value_for_prop_by_id(ctx, id, &["root", "resource"]).await?;
 
         let av = AttributeValue::get_by_id(ctx, value_id).await?;
@@ -1595,7 +1568,7 @@ impl Component {
     }
 
     /// Returns the name of a [`Component`] for a given [`ComponentId`](Component).
-    pub async fn name_by_id(ctx: &DalContext, id: ComponentId) -> ComponentResult<String> {
+    pub async fn name_by_id(ctx: &DalContext, id: ComponentId) -> Result<String> {
         let name_value_id =
             Self::attribute_value_for_prop_by_id(ctx, id, &["root", "si", "name"]).await?;
 
@@ -1608,12 +1581,12 @@ impl Component {
     }
 
     /// Returns the name of the [`Component`].
-    pub async fn name(&self, ctx: &DalContext) -> ComponentResult<String> {
+    pub async fn name(&self, ctx: &DalContext) -> Result<String> {
         Self::name_by_id(ctx, self.id).await
     }
 
     // Returns the resource id from the prop tree
-    pub async fn resource_id(&self, ctx: &DalContext) -> ComponentResult<String> {
+    pub async fn resource_id(&self, ctx: &DalContext) -> Result<String> {
         let prop_path = PropPath::new(["root", "si", "resourceId"]);
         let prop_id =
             Prop::find_prop_id_by_path_opt(ctx, self.schema_variant(ctx).await?.id, &prop_path)
@@ -1633,7 +1606,7 @@ impl Component {
         }
     }
 
-    pub async fn color(&self, ctx: &DalContext) -> ComponentResult<Option<String>> {
+    pub async fn color(&self, ctx: &DalContext) -> Result<Option<String>> {
         let color_value_id = self
             .attribute_value_for_prop(ctx, &["root", "si", "color"])
             .await?;
@@ -1649,7 +1622,7 @@ impl Component {
     pub async fn get_type_by_id(
         ctx: &DalContext,
         component_id: ComponentId,
-    ) -> ComponentResult<ComponentType> {
+    ) -> Result<ComponentType> {
         let type_value_id =
             Self::attribute_value_for_prop_by_id(ctx, component_id, &["root", "si", "type"])
                 .await?;
@@ -1671,7 +1644,7 @@ impl Component {
         ctx: &DalContext,
         component_id: ComponentId,
         new_type: ComponentType,
-    ) -> ComponentResult<()> {
+    ) -> Result<()> {
         let type_value_id =
             Self::attribute_value_for_prop_by_id(ctx, component_id, &["root", "si", "type"])
                 .await?;
@@ -1685,7 +1658,7 @@ impl Component {
         Ok(())
     }
 
-    pub async fn get_type(&self, ctx: &DalContext) -> ComponentResult<ComponentType> {
+    pub async fn get_type(&self, ctx: &DalContext) -> Result<ComponentType> {
         Self::get_type_by_id(ctx, self.id()).await
     }
 
@@ -1695,7 +1668,7 @@ impl Component {
         ctx: &DalContext,
         component_id: ComponentId,
         new_type: ComponentType,
-    ) -> ComponentResult<()> {
+    ) -> Result<()> {
         // cache the current type
         let current_type = Self::get_type_by_id(ctx, component_id).await?;
 
@@ -1709,7 +1682,7 @@ impl Component {
 
         // if the current component has children, and the new type is a component, return an error
         if new_type == ComponentType::Component && !children.is_empty() {
-            return Err(ComponentError::ComponentHasChildren);
+            return Err(ComponentError::ComponentHasChildren.into());
         }
 
         // no-op if we're not actually changing the type
@@ -1727,10 +1700,11 @@ impl Component {
                 | (ComponentType::ConfigurationFrameUp, ComponentType::Component)
                 | (ComponentType::ConfigurationFrameUp, ComponentType::ConfigurationFrameDown) => {
                     Frame::update_type_from_or_to_frame(ctx, component_id, reference_id, new_type)
-                        .await
-                        .map_err(Box::new)?;
+                        .await?;
                 }
-                (new, old) => return Err(ComponentError::InvalidComponentTypeUpdate(old, new)),
+                (new, old) => {
+                    return Err(ComponentError::InvalidComponentTypeUpdate(old, new).into())
+                }
             }
         } else {
             // this component stands alone, just set the type!
@@ -1740,7 +1714,7 @@ impl Component {
         Ok(())
     }
 
-    async fn set_type(&self, ctx: &DalContext, new_type: ComponentType) -> ComponentResult<()> {
+    async fn set_type(&self, ctx: &DalContext, new_type: ComponentType) -> Result<()> {
         let type_value_id = self
             .attribute_value_for_prop(ctx, &["root", "si", "type"])
             .await?;
@@ -1755,7 +1729,7 @@ impl Component {
     pub async fn root_attribute_value_id(
         ctx: &DalContext,
         component_id: ComponentId,
-    ) -> ComponentResult<AttributeValueId> {
+    ) -> Result<AttributeValueId> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
         let mut maybe_root_attribute_value_id = None;
@@ -1771,25 +1745,26 @@ impl Component {
                             target_node_weight.id().into(),
                             already_found_root_attribute_value_id,
                             component_id,
-                        ));
+                        )
+                        .into());
                     }
                     None => Some(target_node_weight.id().into()),
                 };
             }
         }
         maybe_root_attribute_value_id
-            .ok_or(ComponentError::RootAttributeValueNotFound(component_id))
+            .ok_or_else(|| ComponentError::RootAttributeValueNotFound(component_id).into())
     }
     pub async fn output_socket_attribute_values(
         &self,
         ctx: &DalContext,
-    ) -> ComponentResult<Vec<AttributeValueId>> {
+    ) -> Result<Vec<AttributeValueId>> {
         ComponentOutputSocket::attribute_values_for_component_id(ctx, self.id()).await
     }
     pub async fn input_socket_attribute_values(
         &self,
         ctx: &DalContext,
-    ) -> ComponentResult<Vec<AttributeValueId>> {
+    ) -> Result<Vec<AttributeValueId>> {
         ComponentInputSocket::attribute_values_for_component_id(ctx, self.id()).await
     }
 
@@ -1798,7 +1773,7 @@ impl Component {
         &self,
         ctx: &DalContext,
         prop_path: &[&str],
-    ) -> ComponentResult<Vec<AttributeValueId>> {
+    ) -> Result<Vec<AttributeValueId>> {
         Self::attribute_values_for_prop_by_id(ctx, self.id(), prop_path).await
     }
 
@@ -1807,7 +1782,7 @@ impl Component {
         ctx: &DalContext,
         component_id: ComponentId,
         prop_path: &[&str],
-    ) -> ComponentResult<Vec<AttributeValueId>> {
+    ) -> Result<Vec<AttributeValueId>> {
         let schema_variant_id = Self::schema_variant_id(ctx, component_id).await?;
 
         let prop_id =
@@ -1821,7 +1796,7 @@ impl Component {
         ctx: &DalContext,
         component_id: ComponentId,
         prop_id: PropId,
-    ) -> ComponentResult<Vec<AttributeValueId>> {
+    ) -> Result<Vec<AttributeValueId>> {
         let mut result = vec![];
         for attribute_value_id in
             Prop::all_attribute_values_everywhere_for_prop_id(ctx, prop_id).await?
@@ -1840,17 +1815,14 @@ impl Component {
         ctx: &DalContext,
         component_id: ComponentId,
         prop_id: PropId,
-    ) -> ComponentResult<AttributeValueId> {
+    ) -> Result<AttributeValueId> {
         let values = Self::attribute_values_for_prop_id(ctx, component_id, prop_id).await?;
         if values.len() > 1 {
-            return Err(ComponentError::ComponentHasTooManyValues(
-                component_id,
-                prop_id,
-            ));
+            return Err(ComponentError::ComponentHasTooManyValues(component_id, prop_id).into());
         }
         match values.first() {
             Some(value) => Ok(*value),
-            None => Err(ComponentError::ComponentMissingValue(component_id, prop_id)),
+            None => Err(ComponentError::ComponentMissingValue(component_id, prop_id).into()),
         }
     }
 
@@ -1860,7 +1832,7 @@ impl Component {
         ctx: &DalContext,
         component_id: ComponentId,
         prop_path: &[&str],
-    ) -> ComponentResult<AttributeValueId> {
+    ) -> Result<AttributeValueId> {
         let schema_variant_id = Self::schema_variant_id(ctx, component_id).await?;
         let prop_id =
             Prop::find_prop_id_by_path(ctx, schema_variant_id, &PropPath::new(prop_path)).await?;
@@ -1873,14 +1845,11 @@ impl Component {
         &self,
         ctx: &DalContext,
         prop_path: &[&str],
-    ) -> ComponentResult<AttributeValueId> {
+    ) -> Result<AttributeValueId> {
         Self::attribute_value_for_prop_by_id(ctx, self.id(), prop_path).await
     }
 
-    pub async fn domain_prop_attribute_value(
-        &self,
-        ctx: &DalContext,
-    ) -> ComponentResult<AttributeValueId> {
+    pub async fn domain_prop_attribute_value(&self, ctx: &DalContext) -> Result<AttributeValueId> {
         self.attribute_value_for_prop(ctx, &["root", "domain"])
             .await
     }
@@ -1888,7 +1857,7 @@ impl Component {
     pub async fn attribute_values_for_all_sockets(
         ctx: &DalContext,
         component_id: ComponentId,
-    ) -> ComponentResult<Vec<AttributeValueId>> {
+    ) -> Result<Vec<AttributeValueId>> {
         let mut socket_values: Vec<AttributeValueId> = vec![];
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
@@ -1920,7 +1889,7 @@ impl Component {
         destination_component_id: ComponentId,
         destination_input_socket_id: InputSocketId,
         destination_prototype_id: AttributePrototypeId,
-    ) -> ComponentResult<AttributePrototypeArgumentId> {
+    ) -> Result<AttributePrototypeArgumentId> {
         debug!(
             "Creating new Component connection: {:?}, {:?}, {:?}, {:?}",
             source_component_id,
@@ -1949,7 +1918,7 @@ impl Component {
         ctx: &DalContext,
         parent_id: ComponentId,
         child_id: ComponentId,
-    ) -> ComponentResult<()> {
+    ) -> Result<()> {
         ctx.workspace_snapshot()?
             .remove_edge_for_ulids(
                 parent_id,
@@ -1971,7 +1940,7 @@ impl Component {
         source_output_socket_id: OutputSocketId,
         destination_component_id: ComponentId,
         destination_input_socket_id: InputSocketId,
-    ) -> ComponentResult<Option<AttributePrototypeArgumentId>> {
+    ) -> Result<Option<AttributePrototypeArgumentId>> {
         let total_start = std::time::Instant::now();
         // Make sure both source & destination Components exist in the "current" change set.
         // Eventually, this should probably be reported as an error actionable by the frontend, but
@@ -2067,7 +2036,7 @@ impl Component {
         destination_component_id: ComponentId,
         destination_input_socket_id: InputSocketId,
         destination_prototype_id: AttributePrototypeId,
-    ) -> ComponentResult<()> {
+    ) -> Result<()> {
         let input_socket = InputSocket::get_by_id(ctx, destination_input_socket_id).await?;
         if input_socket.arity() == SocketArity::One {
             let existing_attribute_prototype_args =
@@ -2108,7 +2077,7 @@ impl Component {
         source_output_socket_id: OutputSocketId,
         destination_component_id: ComponentId,
         destination_input_socket_id: InputSocketId,
-    ) -> ComponentResult<Option<AttributePrototypeArgumentId>> {
+    ) -> Result<Option<AttributePrototypeArgumentId>> {
         debug!(
             "Restoring connection from base change set: {:?}, {:?}, {:?}, {:?}",
             source_component_id,
@@ -2196,7 +2165,8 @@ impl Component {
                 return Err(
                     ComponentError::WrongNumberOfPrototypesForAttributePrototypeArgument(
                         base_change_set_connection.attribute_prototype_argument_id,
-                    ),
+                    )
+                    .into(),
                 );
             };
 
@@ -2285,7 +2255,7 @@ impl Component {
     pub async fn list_av_controlling_func_ids_for_id(
         ctx: &DalContext,
         component_id: ComponentId,
-    ) -> ComponentResult<HashMap<AttributeValueId, ControllingFuncData>> {
+    ) -> Result<HashMap<AttributeValueId, ControllingFuncData>> {
         let root_av_id: AttributeValueId =
             Component::root_attribute_value_id(ctx, component_id).await?;
 
@@ -2385,7 +2355,7 @@ impl Component {
         ctx: &DalContext,
         destination_component_id: ComponentId,
         source_component_id: ComponentId,
-    ) -> ComponentResult<bool> {
+    ) -> Result<bool> {
         let destination_component_is_delete =
             Self::is_set_to_delete(ctx, destination_component_id).await?;
         let source_component_is_delete = Self::is_set_to_delete(ctx, source_component_id).await?;
@@ -2400,10 +2370,7 @@ impl Component {
     }
 
     /// Simply gets the to_delete status for a component via the Node Weight
-    async fn is_set_to_delete(
-        ctx: &DalContext,
-        component_id: ComponentId,
-    ) -> ComponentResult<Option<bool>> {
+    async fn is_set_to_delete(ctx: &DalContext, component_id: ComponentId) -> Result<Option<bool>> {
         match ctx
             .workspace_snapshot()?
             .get_node_index_by_id_opt(component_id)
@@ -2421,9 +2388,9 @@ impl Component {
         }
     }
 
-    async fn modify<L>(self, ctx: &DalContext, lambda: L) -> ComponentResult<Self>
+    async fn modify<L>(self, ctx: &DalContext, lambda: L) -> Result<Self>
     where
-        L: FnOnce(&mut Self) -> ComponentResult<()>,
+        L: FnOnce(&mut Self) -> Result<()>,
     {
         let original_component = self.clone();
         let mut component = self;
@@ -2474,20 +2441,16 @@ impl Component {
 
     /// Remove a [Component] from the graph, and all related nodes
     #[instrument(level = "info", skip(ctx))]
-    pub async fn remove(ctx: &DalContext, id: ComponentId) -> ComponentResult<()> {
+    pub async fn remove(ctx: &DalContext, id: ComponentId) -> Result<()> {
         let component = Self::get_by_id(ctx, id).await?;
 
         if let Some(parent_id) = component.parent(ctx).await? {
             // if we are removing a component with children, re-parent them if I have a parent
             // if this component doesn't have a parent, it's children will be orphaned anyways
             for child_id in Component::get_children_for_id(ctx, id).await? {
-                Frame::upsert_parent(ctx, child_id, parent_id)
-                    .await
-                    .map_err(Box::new)?;
+                Frame::upsert_parent(ctx, child_id, parent_id).await?;
             }
-            Frame::orphan_child(ctx, id)
-                .await
-                .map_err(|e| ComponentError::Frame(Box::new(e)))?;
+            Frame::orphan_child(ctx, id).await?;
         }
 
         for incoming_connection in component.incoming_connections(ctx).await? {
@@ -2516,14 +2479,10 @@ impl Component {
         }
 
         // Remove all geometries for the component
-        Geometry::remove_all_for_component_id(ctx, id)
-            .await
-            .map_err(|e| ComponentError::Diagram(Box::new(e)))?;
+        Geometry::remove_all_for_component_id(ctx, id).await?;
 
         // Remove all actions for this component from queue
-        Action::remove_all_for_component_id(ctx, id)
-            .await
-            .map_err(|err| ComponentError::Action(Box::new(err)))?;
+        Action::remove_all_for_component_id(ctx, id).await?;
         WsEvent::action_list_updated(ctx)
             .await?
             .publish_on_commit(ctx)
@@ -2541,7 +2500,7 @@ impl Component {
     /// 2. It is not feeding data to a [`Component`] that has a populated resource.
     /// 3. It doesn't have descendants with resources
     #[instrument(level = "debug", skip_all)]
-    pub async fn allowed_to_be_removed(&self, ctx: &DalContext) -> ComponentResult<bool> {
+    pub async fn allowed_to_be_removed(&self, ctx: &DalContext) -> Result<bool> {
         if self.resource(ctx).await?.is_some() {
             debug!(
                 "component {:?} cannot be removed because it has a resource",
@@ -2599,7 +2558,7 @@ impl Component {
         Ok(true)
     }
 
-    pub async fn delete(self, ctx: &DalContext) -> ComponentResult<Option<Self>> {
+    pub async fn delete(self, ctx: &DalContext) -> Result<Option<Self>> {
         if self.allowed_to_be_removed(ctx).await? {
             Self::remove(ctx, self.id).await?;
             Ok(None)
@@ -2608,7 +2567,7 @@ impl Component {
         }
     }
 
-    pub async fn set_to_delete(self, ctx: &DalContext, to_delete: bool) -> ComponentResult<Self> {
+    pub async fn set_to_delete(self, ctx: &DalContext, to_delete: bool) -> Result<Self> {
         let component_id = self.id;
         let schema_variant_id = Self::schema_variant_id(ctx, component_id).await?;
         let original_to_delete = self.to_delete;
@@ -2659,15 +2618,11 @@ impl Component {
             )
             .await?
             {
-                Action::new(ctx, prototype_id, Some(component_id))
-                    .await
-                    .map_err(|err| ComponentError::Action(Box::new(err)))?;
+                Action::new(ctx, prototype_id, Some(component_id)).await?;
             }
         } else if !to_delete {
             // Remove delete actions for component
-            Action::remove_all_for_component_id(ctx, component_id)
-                .await
-                .map_err(|err| ComponentError::Action(Box::new(err)))?;
+            Action::remove_all_for_component_id(ctx, component_id).await?;
             WsEvent::action_list_updated(ctx)
                 .await?
                 .publish_on_commit(ctx)
@@ -2682,7 +2637,7 @@ impl Component {
     pub async fn enqueue_relevant_update_actions(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
-    ) -> ComponentResult<Vec<Action>> {
+    ) -> Result<Vec<Action>> {
         let mut enqueued_actions = Vec::new();
 
         // first check the initial component
@@ -2724,7 +2679,7 @@ impl Component {
     async fn enqueue_update_action_if_applicable(
         ctx: &DalContext,
         component_id: ComponentId,
-    ) -> ComponentResult<Vec<Action>> {
+    ) -> Result<Vec<Action>> {
         let mut enqueued_actions = Vec::new();
         if Component::resource_by_id(ctx, component_id)
             .await?
@@ -2742,13 +2697,10 @@ impl Component {
             for prototype_id in prototypes_for_variant {
                 // don't enqueue the same action twice!
                 if Action::find_equivalent(ctx, prototype_id, Some(component_id))
-                    .await
-                    .map_err(|err| ComponentError::Action(Box::new(err)))?
+                    .await?
                     .is_none()
                 {
-                    let new_action = Action::new(ctx, prototype_id, Some(component_id))
-                        .await
-                        .map_err(|err| ComponentError::Action(Box::new(err)))?;
+                    let new_action = Action::new(ctx, prototype_id, Some(component_id)).await?;
                     enqueued_actions.push(new_action);
                 }
             }
@@ -2759,7 +2711,7 @@ impl Component {
     pub async fn autoconnect(
         ctx: &DalContext,
         component_id: ComponentId,
-    ) -> ComponentResult<Vec<InputSocketId>> {
+    ) -> Result<Vec<InputSocketId>> {
         let mut available_input_sockets_to_connect = HashMap::new();
         let incoming_connections =
             Component::incoming_connections_for_id(ctx, component_id).await?;
@@ -2992,7 +2944,7 @@ impl Component {
     async fn downstream_attribute_value_ids(
         &self,
         ctx: &DalContext,
-    ) -> ComponentResult<Vec<AttributeValueId>> {
+    ) -> Result<Vec<AttributeValueId>> {
         let mut results = Vec::new();
 
         let output_sockets: Vec<ComponentOutputSocket> =
@@ -3038,7 +2990,7 @@ impl Component {
         ctx: &DalContext,
         view_id: ViewId,
         component_geometry: RawGeometry,
-    ) -> ComponentResult<Self> {
+    ) -> Result<Self> {
         let schema_variant = self.schema_variant(ctx).await?;
 
         let mut pasted_comp = Component::new(
@@ -3069,26 +3021,17 @@ impl Component {
         component_id: ComponentId,
         view_id: ViewId,
         raw_geometry: RawGeometry,
-    ) -> ComponentResult<()> {
+    ) -> Result<()> {
         if Geometry::try_get_by_component_and_view(ctx, component_id, view_id)
-            .await
-            .map_err(|e| ComponentError::Diagram(Box::new(e)))?
+            .await?
             .is_some()
         {
-            return Err(ComponentError::ComponentAlreadyInView(
-                component_id,
-                view_id,
-            ));
+            return Err(ComponentError::ComponentAlreadyInView(component_id, view_id).into());
         }
 
-        let mut geometry = Geometry::new_for_component(ctx, component_id, view_id)
-            .await
-            .map_err(|e| ComponentError::Diagram(Box::new(e)))?;
+        let mut geometry = Geometry::new_for_component(ctx, component_id, view_id).await?;
 
-        geometry
-            .update(ctx, raw_geometry)
-            .await
-            .map_err(|e| ComponentError::Diagram(Box::new(e)))?;
+        geometry.update(ctx, raw_geometry).await?;
 
         Ok(())
     }
@@ -3101,7 +3044,7 @@ impl Component {
     pub async fn inferred_incoming_connections(
         &self,
         ctx: &DalContext,
-    ) -> ComponentResult<Vec<InferredConnection>> {
+    ) -> Result<Vec<InferredConnection>> {
         let to_component_id = self.id();
         let mut connections = vec![];
 
@@ -3142,7 +3085,7 @@ impl Component {
     pub async fn inferred_outgoing_connections(
         &self,
         ctx: &DalContext,
-    ) -> ComponentResult<Vec<InferredConnection>> {
+    ) -> Result<Vec<InferredConnection>> {
         let mut connections = vec![];
 
         let workspace_snapshot = ctx.workspace_snapshot()?;
@@ -3185,7 +3128,7 @@ impl Component {
         source_output_socket_id: OutputSocketId,
         destination_component_id: ComponentId,
         destination_input_socket_id: InputSocketId,
-    ) -> ComponentResult<()> {
+    ) -> Result<()> {
         let input_socket_prototype_id =
             AttributePrototype::find_for_input_socket(ctx, destination_input_socket_id)
                 .await?
@@ -3272,7 +3215,7 @@ impl Component {
         &self,
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
-    ) -> ComponentResult<Component> {
+    ) -> Result<Component> {
         let original_component = Self::get_by_id(ctx, self.id).await?;
 
         // ================================================================================
@@ -3295,9 +3238,7 @@ impl Component {
         let original_parent = original_component.parent(ctx).await?;
         let original_children = Component::get_children_for_id(ctx, original_component_id).await?;
 
-        let geometry_ids = Geometry::list_ids_by_component(ctx, self.id)
-            .await
-            .map_err(|e| ComponentError::Diagram(Box::new(e)))?;
+        let geometry_ids = Geometry::list_ids_by_component(ctx, self.id).await?;
 
         // ================================================================================
         // Create new component and run changes that depend on the old one still existing
@@ -3330,7 +3271,8 @@ impl Component {
         if new_schema_variant_id != schema_variant_id {
             return Err(ComponentError::ComponentIncorrectSchemaVariant(
                 new_component_with_temp_id.id(),
-            ));
+            )
+            .into());
         }
 
         new_component_with_temp_id
@@ -3346,7 +3288,8 @@ impl Component {
         {
             return Err(ComponentError::ComponentIncorrectSchemaVariant(
                 new_component_with_temp_id.id(),
-            ));
+            )
+            .into());
         }
 
         // Remove old component connections
@@ -3416,7 +3359,7 @@ impl Component {
         // Remove all children from the "old" frame before we delete it. We'll add them all to the
         // new frame after we've deleted the old one.
         for &child in &original_children {
-            Frame::orphan_child(ctx, child).await.map_err(Box::new)?;
+            Frame::orphan_child(ctx, child).await?;
         }
 
         // Remove the original resource so that we don't queue a delete action
@@ -3449,16 +3392,12 @@ impl Component {
 
         // Restore parent connection on new component
         if let Some(parent) = original_parent {
-            Frame::upsert_parent(ctx, finalized_new_component.id(), parent)
-                .await
-                .map_err(Box::new)?;
+            Frame::upsert_parent(ctx, finalized_new_component.id(), parent).await?;
         }
 
         // Restore child connections on new component
         for child in original_children {
-            Frame::upsert_parent(ctx, child, finalized_new_component.id())
-                .await
-                .map_err(Box::new)?;
+            Frame::upsert_parent(ctx, child, finalized_new_component.id()).await?;
         }
 
         // Restore connections on new component
@@ -3554,41 +3493,28 @@ impl Component {
         old_component_id: ComponentId,
         new_component_id: ComponentId,
         new_schema_variant_id: SchemaVariantId,
-    ) -> ComponentResult<()> {
+    ) -> Result<()> {
         // Remove any actions created for the new component as a side effect of the upgrade
         // Then loop through the existing queued actions for the old component and re-add them piecemeal.
-        Action::remove_all_for_component_id(ctx, new_component_id)
-            .await
-            .map_err(|err| ComponentError::Action(Box::new(err)))?;
+        Action::remove_all_for_component_id(ctx, new_component_id).await?;
 
-        let queued_for_old_component = Action::find_for_component_id(ctx, old_component_id)
-            .await
-            .map_err(|err| ComponentError::Action(Box::new(err)))?;
-        let available_for_new_component = ActionPrototype::for_variant(ctx, new_schema_variant_id)
-            .await
-            .map_err(|err| ComponentError::ActionPrototype(Box::new(err)))?;
+        let queued_for_old_component = Action::find_for_component_id(ctx, old_component_id).await?;
+        let available_for_new_component =
+            ActionPrototype::for_variant(ctx, new_schema_variant_id).await?;
         for existing_queued in queued_for_old_component {
-            let action = Action::get_by_id(ctx, existing_queued)
-                .await
-                .map_err(|err| ComponentError::Action(Box::new(err)))?;
-            let action_prototype_id = Action::prototype_id(ctx, existing_queued)
-                .await
-                .map_err(|err| ComponentError::Action(Box::new(err)))?;
+            let action = Action::get_by_id(ctx, existing_queued).await?;
+            let action_prototype_id = Action::prototype_id(ctx, existing_queued).await?;
             // what do we do about the various states?
             // maybe you shouldn't upgrade a component if an action
             // is dispatched or running for the current?
             match action.state() {
                 ActionState::Failed | ActionState::OnHold | ActionState::Queued => {
-                    let func_id = ActionPrototype::func_id(ctx, action_prototype_id)
-                        .await
-                        .map_err(|err| ComponentError::ActionPrototype(Box::new(err)))?;
+                    let func_id = ActionPrototype::func_id(ctx, action_prototype_id).await?;
                     let queued_func = Func::get_by_id_or_error(ctx, func_id).await?;
 
                     for available_action_prototype in available_for_new_component.clone() {
                         let available_func_id =
-                            ActionPrototype::func_id(ctx, available_action_prototype.id())
-                                .await
-                                .map_err(|err| ComponentError::ActionPrototype(Box::new(err)))?;
+                            ActionPrototype::func_id(ctx, available_action_prototype.id()).await?;
                         let available_func =
                             Func::get_by_id_or_error(ctx, available_func_id).await?;
 
@@ -3600,8 +3526,7 @@ impl Component {
                                 available_action_prototype.id(),
                                 Some(new_component_id),
                             )
-                            .await
-                            .map_err(|err| ComponentError::Action(Box::new(err)))?;
+                            .await?;
                         }
                     }
                 }
@@ -3625,7 +3550,7 @@ impl Component {
         ctx: &DalContext,
         component_id: ComponentId,
         leaf_kind: LeafKind,
-    ) -> ComponentResult<AttributeValueId> {
+    ) -> Result<AttributeValueId> {
         let attribute_value_id = match leaf_kind {
             LeafKind::CodeGeneration => {
                 Component::find_code_map_attribute_value_id(ctx, component_id).await?
@@ -3640,7 +3565,7 @@ impl Component {
     pub async fn restore_from_base_change_set(
         ctx: &DalContext,
         component_id: ComponentId,
-    ) -> ComponentResult<()> {
+    ) -> Result<()> {
         let base_change_set_ctx = ctx.clone_with_base().await?;
 
         ctx.workspace_snapshot()?
@@ -3652,9 +3577,7 @@ impl Component {
         ctx.add_dependent_values_and_enqueue(component.input_socket_attribute_values(ctx).await?)
             .await?;
 
-        Geometry::restore_all_for_component_id(ctx, component_id)
-            .await
-            .map_err(|e| ComponentError::Diagram(Box::new(e)))?;
+        Geometry::restore_all_for_component_id(ctx, component_id).await?;
 
         Ok(())
     }
@@ -3662,7 +3585,7 @@ impl Component {
     pub async fn exists_on_head(
         ctx: &DalContext,
         component_ids: &[ComponentId],
-    ) -> ComponentResult<HashSet<ComponentId>> {
+    ) -> Result<HashSet<ComponentId>> {
         let mut components = HashSet::new();
         let base_change_set_ctx = ctx.clone_with_base().await?;
         for &component_id in component_ids {
@@ -3676,7 +3599,7 @@ impl Component {
     }
 
     /// Is there a newer version of the schema variant that this component is using?
-    pub async fn can_be_upgraded(&self, ctx: &DalContext) -> ComponentResult<bool> {
+    pub async fn can_be_upgraded(&self, ctx: &DalContext) -> Result<bool> {
         let schema_variant = self.schema_variant(ctx).await?;
         let schema = self.schema(ctx).await?;
         let default_schema_variant_id =
@@ -3713,7 +3636,7 @@ impl Component {
         ctx: &DalContext,
         manager_component_id: ComponentId,
         managed_component_id: ComponentId,
-    ) -> ComponentResult<()> {
+    ) -> Result<()> {
         ctx.workspace_snapshot()?
             .remove_edge_for_ulids(
                 manager_component_id,
@@ -3732,7 +3655,7 @@ impl Component {
         ctx: &DalContext,
         manager_component_id: ComponentId,
         managed_component_id: ComponentId,
-    ) -> ComponentResult<SummaryDiagramManagementEdge> {
+    ) -> Result<SummaryDiagramManagementEdge> {
         let manager_schema_id = Component::schema_for_component_id(ctx, manager_component_id)
             .await?
             .id();
@@ -3751,7 +3674,8 @@ impl Component {
                 managed_component_id,
                 managed_component_schema_id,
                 manager_component_id,
-            ));
+            )
+            .into());
         }
 
         let guard = ctx.workspace_snapshot()?.enable_cycle_check().await;
@@ -3775,7 +3699,7 @@ impl Component {
     }
 
     /// Return the ids of all the components that manage this component
-    pub async fn managers(&self, ctx: &DalContext) -> ComponentResult<Vec<ComponentId>> {
+    pub async fn managers(&self, ctx: &DalContext) -> Result<Vec<ComponentId>> {
         let mut result = vec![];
 
         let snapshot = ctx.workspace_snapshot()?;
@@ -3794,7 +3718,7 @@ impl Component {
     }
 
     /// Return the ids of all the components managed by this component
-    pub async fn get_managed(&self, ctx: &DalContext) -> ComponentResult<Vec<ComponentId>> {
+    pub async fn get_managed(&self, ctx: &DalContext) -> Result<Vec<ComponentId>> {
         let mut result = vec![];
 
         let snapshot = ctx.workspace_snapshot()?;
@@ -3818,7 +3742,7 @@ impl Component {
         maybe_geometry: Option<&Geometry>,
         change_status: ChangeStatus,
         diagram_sockets: &mut HashMap<SchemaVariantId, Vec<DiagramSocket>>,
-    ) -> ComponentResult<DiagramComponentView> {
+    ) -> Result<DiagramComponentView> {
         let schema_variant = self.schema_variant(ctx).await?;
 
         let sockets = match diagram_sockets.entry(schema_variant.id()) {
@@ -3908,9 +3832,7 @@ impl Component {
         let maybe_parent = self.parent(ctx).await?;
 
         let geometry = if let Some(geometry) = maybe_geometry {
-            let view_id = Geometry::get_view_id_by_id(ctx, geometry.id())
-                .await
-                .map_err(|e| ComponentError::Diagram(Box::new(e)))?;
+            let view_id = Geometry::get_view_id_by_id(ctx, geometry.id()).await?;
 
             Some(GeometryAndView {
                 view_id,
@@ -3952,10 +3874,8 @@ impl Component {
         ctx: &DalContext,
         change_status: ChangeStatus,
         diagram_sockets: &mut HashMap<SchemaVariantId, Vec<DiagramSocket>>,
-    ) -> ComponentResult<DiagramComponentView> {
-        let default_view_id = View::get_id_for_default(ctx)
-            .await
-            .map_err(|e| ComponentError::Diagram(Box::new(e)))?;
+    ) -> Result<DiagramComponentView> {
+        let default_view_id = View::get_id_for_default(ctx).await?;
         let geometry = self.geometry(ctx, default_view_id).await?;
 
         self.into_frontend_type(ctx, Some(&geometry), change_status, diagram_sockets)

@@ -1,12 +1,12 @@
 //! This module contains the ability to work with "resources" for [`Components`](crate::Component).
 
+use anyhow::Result;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use veritech_client::{ActionRunResultSuccess, ResourceStatus};
 
-use crate::component::ComponentResult;
 use crate::{Component, ComponentId, DalContext};
 
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
@@ -46,10 +46,7 @@ pub struct ResourceView {
 }
 
 impl ResourceView {
-    pub async fn get_by_component_id(
-        ctx: &DalContext,
-        component_id: ComponentId,
-    ) -> ComponentResult<Self> {
+    pub async fn get_by_component_id(ctx: &DalContext, component_id: ComponentId) -> Result<Self> {
         let component = Component::get_by_id(ctx, component_id).await?;
 
         let resource = Self::assemble(component.resource(ctx).await?);

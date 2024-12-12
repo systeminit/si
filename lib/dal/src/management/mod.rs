@@ -1,5 +1,6 @@
 use std::collections::{hash_map, HashMap, HashSet, VecDeque};
 
+use anyhow::Result;
 use prototype::ManagementPrototypeExecution;
 use serde::{Deserialize, Serialize};
 use si_events::audit_log::AuditLogKind;
@@ -9,13 +10,6 @@ use thiserror::Error;
 
 use veritech_client::{ManagementFuncStatus, ManagementResultSuccess};
 
-use crate::component::delete::{delete_components, ComponentDeletionStatus};
-use crate::component::frame::{Frame, FrameError, InferredEdgeChanges};
-use crate::component::ControllingFuncData;
-use crate::dependency_graph::DependencyGraph;
-use crate::diagram::geometry::Geometry;
-use crate::diagram::view::{View, ViewComponentsUpdateSingle, ViewId, ViewView};
-use crate::diagram::{DiagramError, SummaryDiagramInferredEdge, SummaryDiagramManagementEdge};
 use crate::{
     action::{
         prototype::{ActionKind, ActionPrototype, ActionPrototypeError},
@@ -26,16 +20,25 @@ use crate::{
         value::AttributeValueError,
     },
     change_status::ChangeStatus::Added,
-    component::IncomingConnection,
-    diagram::{geometry::RawGeometry, SummaryDiagramEdge},
+    component::{
+        delete::{delete_components, ComponentDeletionStatus},
+        frame::{Frame, FrameError, InferredEdgeChanges},
+        ControllingFuncData, IncomingConnection,
+    },
+    dependency_graph::DependencyGraph,
+    diagram::{
+        geometry::{Geometry, RawGeometry},
+        view::{View, ViewComponentsUpdateSingle, ViewId, ViewView},
+        DiagramError, SummaryDiagramEdge, SummaryDiagramInferredEdge, SummaryDiagramManagementEdge,
+    },
     history_event::HistoryEventMetadata,
     prop::{PropError, PropPath},
     socket::{input::InputSocketError, output::OutputSocketError},
     ActorView, AttributeValue, Component, ComponentError, ComponentId, ComponentType, DalContext,
-    Func, FuncError, InputSocket, InputSocketId, OutputSocket, OutputSocketId, Prop, PropKind,
-    Schema, SchemaError, SchemaId, SchemaVariantId, StandardModelError, WsEvent, WsEventError,
+    EdgeWeightKind, Func, FuncError, InputSocket, InputSocketId, OutputSocket, OutputSocketId,
+    Prop, PropKind, Schema, SchemaError, SchemaId, SchemaVariantId, StandardModelError,
+    TransactionsError, WorkspaceSnapshotError, WsEvent, WsEventError,
 };
-use crate::{EdgeWeightKind, TransactionsError, WorkspaceSnapshotError};
 
 pub mod generator;
 pub mod prototype;
@@ -100,7 +103,7 @@ pub enum ManagementError {
     WsEvent(#[from] WsEventError),
 }
 
-pub type ManagementResult<T> = Result<T, ManagementError>;
+pub type ManagementResult<T> = Result<T>;
 
 const DEFAULT_FRAME_WIDTH: f64 = 950.0;
 const DEFAULT_FRAME_HEIGHT: f64 = 750.0;
@@ -936,13 +939,14 @@ impl<'a> ManagementOperator<'a> {
         if let Some(creates) = &creates {
             for (placeholder, operation) in creates {
                 if placeholder == SELF_ID {
-                    return Err(ManagementError::CannotCreateComponentWithSelfPlaceholder);
+                    return Err(ManagementError::CannotCreateComponentWithSelfPlaceholder.into());
                 }
 
                 if self.component_id_placeholders.contains_key(placeholder) {
                     return Err(ManagementError::DuplicateComponentPlaceholder(
                         placeholder.to_owned(),
-                    ));
+                    )
+                    .into());
                 }
 
                 let CreatedComponent {
@@ -1008,9 +1012,8 @@ impl<'a> ManagementOperator<'a> {
     }
 
     fn get_managed_component_id(&self, placeholder: &str) -> ManagementResult<ComponentId> {
-        self.get_managed_component_id_opt(placeholder).ok_or(
-            ManagementError::ComponentWithPlaceholderNotFound(placeholder.to_owned()),
-        )
+        self.get_managed_component_id_opt(placeholder)
+            .ok_or(ManagementError::ComponentWithPlaceholderNotFound(placeholder.to_owned()).into())
     }
 
     fn get_managed_or_external_component_id(
@@ -1022,6 +1025,7 @@ impl<'a> ManagementOperator<'a> {
             // If we don't find the component by name, see if it's a component id and use that!
             None => placeholder_or_id.parse().map_err(|_| {
                 ManagementError::ComponentWithPlaceholderNotFound(placeholder_or_id.to_owned())
+                    .into()
             }),
         }
     }
@@ -1381,10 +1385,10 @@ impl<'a> ManagementOperator<'a> {
                 {
                     let removed_from_view = match Geometry::remove(self.ctx, geometry.id()).await {
                         Ok(_) => true,
-                        Err(DiagramError::DeletingLastGeometryForComponent(_, _)) => false,
-                        Err(err) => {
-                            return Err(err)?;
-                        }
+                        Err(error) => match error.downcast_ref::<DiagramError>() {
+                            Some(DiagramError::DeletingLastGeometryForComponent(_, _)) => false,
+                            _ => return Err(error),
+                        },
                     };
 
                     if removed_from_view {
@@ -1614,10 +1618,9 @@ async fn add_action(
                 .iter()
                 .find(|proto| proto.kind == action.kind)
             else {
-                return Err(ManagementError::ComponentDoesNotHaveAction(
-                    action.kind,
-                    component_id,
-                ));
+                return Err(
+                    ManagementError::ComponentDoesNotHaveAction(action.kind, component_id).into(),
+                );
             };
 
             action_prototype.id()
@@ -1627,7 +1630,8 @@ async fn add_action(
                 return Err(ManagementError::ComponentDoesNotHaveAction(
                     ActionKind::Manual,
                     component_id,
-                ));
+                )
+                .into());
             };
 
             let mut proto_id = None;
@@ -1650,7 +1654,8 @@ async fn add_action(
                 return Err(ManagementError::ComponentDoesNotHaveManualAction(
                     manual_func_name,
                     component_id,
-                ));
+                )
+                .into());
             };
 
             proto_id

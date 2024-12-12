@@ -1,3 +1,4 @@
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
@@ -36,7 +37,7 @@ pub enum UserError {
     Transactions(#[from] TransactionsError),
 }
 
-pub type UserResult<T> = Result<T, UserError>;
+pub type UserResult<T> = Result<T>;
 
 pub use si_id::UserPk;
 
@@ -118,7 +119,7 @@ impl User {
     pub async fn get_by_pk_or_error(ctx: &DalContext, pk: UserPk) -> UserResult<Self> {
         Self::get_by_pk(ctx, pk)
             .await?
-            .ok_or_else(|| UserError::NotFoundInTenancy(pk, *ctx.tenancy()))
+            .ok_or_else(|| UserError::NotFoundInTenancy(pk, *ctx.tenancy()).into())
     }
 
     pub async fn associate_workspace(

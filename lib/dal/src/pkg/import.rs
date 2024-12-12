@@ -1,40 +1,43 @@
+use std::{
+    collections::{HashMap, HashSet},
+    fmt::Debug,
+    path::Path,
+    str::FromStr,
+};
+
+use anyhow::Result;
 use chrono::NaiveDateTime;
 use si_events::ulid::Ulid;
 use si_pkg::{
     SchemaVariantSpecPropRoot, SiPkg, SiPkgActionFunc, SiPkgAttrFuncInputView, SiPkgAuthFunc,
-    SiPkgComponent, SiPkgEdge, SiPkgError, SiPkgFunc, SiPkgFuncArgument, SiPkgFuncData, SiPkgKind,
+    SiPkgComponent, SiPkgEdge, SiPkgFunc, SiPkgFuncArgument, SiPkgFuncData, SiPkgKind,
     SiPkgLeafFunction, SiPkgManagementFunc, SiPkgMetadata, SiPkgProp, SiPkgPropData, SiPkgSchema,
     SiPkgSchemaData, SiPkgSchemaVariant, SiPkgSocket, SiPkgSocketData, SocketSpecKind,
 };
-use std::collections::HashSet;
-use std::fmt::Debug;
-use std::str::FromStr;
-use std::{collections::HashMap, path::Path};
 use telemetry::prelude::*;
 use tokio::sync::Mutex;
 
-use crate::attribute::prototype::argument::{
-    value_source::ValueSource, AttributePrototypeArgument, AttributePrototypeArgumentId,
-};
-use crate::authentication_prototype::{AuthenticationPrototype, AuthenticationPrototypeId};
-use crate::func::intrinsics::IntrinsicFunc;
-use crate::func::FuncKind;
-use crate::management::prototype::ManagementPrototype;
-use crate::module::{Module, ModuleId};
-use crate::schema::variant::SchemaVariantJson;
-use crate::socket::connection_annotation::ConnectionAnnotation;
-use crate::SocketKind;
 use crate::{
     action::prototype::ActionPrototype,
-    func::argument::FuncArgument,
+    attribute::prototype::argument::{
+        value_source::ValueSource, AttributePrototypeArgument, AttributePrototypeArgumentId,
+    },
+    authentication_prototype::{AuthenticationPrototype, AuthenticationPrototypeId},
+    func::{argument::FuncArgument, intrinsics::IntrinsicFunc, FuncKind},
+    management::prototype::ManagementPrototype,
+    module::{Module, ModuleId},
     prop::PropPath,
-    schema::variant::leaves::{LeafInputLocation, LeafKind},
-    DalContext, EdgeWeightKind, Func, FuncId, InputSocket, OutputSocket, OutputSocketId, Prop,
-    PropId, PropKind, Schema, SchemaVariant, SchemaVariantId,
+    schema::variant::{
+        leaves::{LeafInputLocation, LeafKind},
+        SchemaVariantJson,
+    },
+    socket::connection_annotation::ConnectionAnnotation,
+    AttributePrototype, AttributePrototypeId, DalContext, EdgeWeightKind, Func, FuncId,
+    InputSocket, OutputSocket, OutputSocketId, Prop, PropId, PropKind, Schema, SchemaVariant,
+    SchemaVariantId, SocketKind,
 };
-use crate::{AttributePrototype, AttributePrototypeId};
 
-use super::{PkgError, PkgResult};
+use super::PkgError;
 
 #[derive(Clone, Debug)]
 pub enum Thing {
@@ -86,7 +89,7 @@ async fn import_change_set(
     installed_module: Option<Module>,
     thing_map: &mut ThingMap,
     options: &ImportOptions,
-) -> PkgResult<(
+) -> Result<(
     Vec<SchemaVariantId>,
     Vec<(String, Vec<bool /*ImportAttributeSkip*/>)>,
     Vec<bool /*ImportEdgeSkip*/>,
@@ -122,7 +125,8 @@ async fn import_change_set(
                 if !override_intrinsic_func_specs.is_empty() {
                     return Err(PkgError::IntrinsicFuncSpecsMultipleForName(
                         intrinsic.name().to_owned(),
-                    ));
+                    )
+                    .into());
                 }
 
                 // We need to override the unique ID so that accessors grab the correct func.
@@ -256,7 +260,7 @@ pub async fn import_pkg_from_pkg(
     ctx: &DalContext,
     pkg: &SiPkg,
     options: Option<ImportOptions>,
-) -> PkgResult<(
+) -> Result<(
     Option<ModuleId>,
     Vec<SchemaVariantId>,
     Option<Vec<bool /*ImportSkips*/>>,
@@ -266,7 +270,7 @@ pub async fn import_pkg_from_pkg(
     let options = options.unwrap_or_default();
 
     if Module::find_by_root_hash(ctx, &root_hash).await?.is_some() {
-        return Err(PkgError::PackageAlreadyInstalled(root_hash));
+        return Err(PkgError::PackageAlreadyInstalled(root_hash).into());
     }
 
     let metadata = pkg.metadata()?;
@@ -307,11 +311,11 @@ pub async fn import_pkg_from_pkg(
 
             Ok((None, installed_schema_variant_ids, None))
         }
-        SiPkgKind::WorkspaceBackup => Err(PkgError::WorkspaceExportNotSupported()),
+        SiPkgKind::WorkspaceBackup => Err(PkgError::WorkspaceExportNotSupported().into()),
     }
 }
 
-pub async fn import_pkg(ctx: &DalContext, pkg_file_path: impl AsRef<Path>) -> PkgResult<SiPkg> {
+pub async fn import_pkg(ctx: &DalContext, pkg_file_path: impl AsRef<Path>) -> Result<SiPkg> {
     println!("Importing package from {:?}", pkg_file_path.as_ref());
     let pkg = SiPkg::load_from_file(&pkg_file_path).await?;
 
@@ -324,7 +328,7 @@ async fn create_func(
     ctx: &DalContext,
     func_spec: &SiPkgFunc<'_>,
     is_builtin: bool,
-) -> PkgResult<Func> {
+) -> Result<Func> {
     let name = func_spec.name();
 
     let func_spec_data = func_spec
@@ -352,11 +356,7 @@ async fn create_func(
 }
 
 #[allow(dead_code)]
-async fn update_func(
-    ctx: &DalContext,
-    func: Func,
-    func_spec_data: &SiPkgFuncData,
-) -> PkgResult<Func> {
+async fn update_func(ctx: &DalContext, func: Func, func_spec_data: &SiPkgFuncData) -> Result<Func> {
     let func = func
         .modify(ctx, |func| {
             func_spec_data.name().clone_into(&mut func.name);
@@ -384,7 +384,7 @@ pub async fn import_func(
     installed_module: Option<Module>,
     thing_map: &mut ThingMap,
     create_unlocked: bool,
-) -> PkgResult<Func> {
+) -> Result<Func> {
     let mut existing_func: Option<Func> = None;
     if let Some(installed_pkg) = installed_module.clone() {
         let associated_funcs = installed_pkg.list_associated_funcs(ctx).await?;
@@ -427,7 +427,7 @@ async fn create_func_argument(
     ctx: &DalContext,
     func_id: FuncId,
     func_arg: &SiPkgFuncArgument<'_>,
-) -> PkgResult<FuncArgument> {
+) -> Result<FuncArgument> {
     Ok(FuncArgument::new(
         ctx,
         func_arg.name(),
@@ -442,7 +442,7 @@ async fn import_func_arguments(
     ctx: &DalContext,
     func_id: FuncId,
     func_arguments: &[SiPkgFuncArgument<'_>],
-) -> PkgResult<()> {
+) -> Result<()> {
     for arg in func_arguments {
         create_func_argument(ctx, func_id, arg).await?;
     }
@@ -454,7 +454,7 @@ async fn create_schema(
     ctx: &DalContext,
     maybe_existing_schema_id: Option<Ulid>,
     schema_spec_data: &SiPkgSchemaData,
-) -> PkgResult<Schema> {
+) -> Result<Schema> {
     let schema = match maybe_existing_schema_id {
         Some(id) => Schema::new_with_id(ctx, id.into(), schema_spec_data.name()).await?,
         None => Schema::new(ctx, schema_spec_data.name()).await?,
@@ -475,7 +475,7 @@ async fn import_schema(
     thing_map: &mut ThingMap,
     create_unlocked: bool,
     past_hashes: Option<Vec<String>>,
-) -> PkgResult<Vec<SchemaVariantId>> {
+) -> Result<Vec<SchemaVariantId>> {
     let mut existing_schema: Option<Schema> = None;
     let mut existing_schema_id = None;
 
@@ -535,7 +535,7 @@ async fn import_schema_variants_for_imported_schema(
     create_unlocked: bool,
     schema: Schema,
     schema_already_existed: bool,
-) -> PkgResult<Vec<SchemaVariantId>> {
+) -> Result<Vec<SchemaVariantId>> {
     if let Some(unique_id) = schema_spec.unique_id() {
         thing_map.insert(unique_id.to_owned(), Thing::Schema(schema.to_owned()));
     }
@@ -688,7 +688,7 @@ async fn import_leaf_function(
     leaf_func: SiPkgLeafFunction<'_>,
     schema_variant_id: SchemaVariantId,
     thing_map: &mut ThingMap,
-) -> PkgResult<()> {
+) -> Result<()> {
     let inputs: Vec<LeafInputLocation> = leaf_func
         .inputs()
         .iter()
@@ -706,14 +706,15 @@ async fn import_leaf_function(
             return Err(PkgError::MissingFuncUniqueId(
                 leaf_func.func_unique_id().to_string(),
                 "error found while importing leaf function",
-            ));
+            )
+            .into());
         }
     }
 
     Ok(())
 }
 
-async fn get_identity_func(ctx: &DalContext) -> PkgResult<FuncId> {
+async fn get_identity_func(ctx: &DalContext) -> Result<FuncId> {
     Ok(Func::find_intrinsic(ctx, IntrinsicFunc::Identity).await?)
 }
 
@@ -721,7 +722,7 @@ async fn create_socket(
     ctx: &DalContext,
     data: &SiPkgSocketData,
     schema_variant_id: SchemaVariantId,
-) -> PkgResult<(Option<InputSocket>, Option<OutputSocket>)> {
+) -> Result<(Option<InputSocket>, Option<OutputSocket>)> {
     let identity_func_id = get_identity_func(ctx).await?;
 
     let connection_annotations: Vec<ConnectionAnnotation> =
@@ -798,7 +799,7 @@ async fn import_socket(
     socket_spec: SiPkgSocket<'_>,
     schema_variant_id: SchemaVariantId,
     thing_map: &mut ThingMap,
-) -> PkgResult<()> {
+) -> Result<()> {
     let (input_socket, output_socket) = {
         let data = socket_spec
             .data()
@@ -845,7 +846,7 @@ async fn create_action_prototype(
     action_func_spec: &SiPkgActionFunc<'_>,
     func_id: FuncId,
     schema_variant_id: SchemaVariantId,
-) -> PkgResult<ActionPrototype> {
+) -> Result<ActionPrototype> {
     let kind: crate::action::prototype::ActionKind = action_func_spec.kind().into();
     let name = action_func_spec
         .name()
@@ -860,13 +861,14 @@ async fn import_management_func(
     management_func_spec: &SiPkgManagementFunc<'_>,
     schema_variant_id: SchemaVariantId,
     thing_map: &ThingMap,
-) -> PkgResult<ManagementPrototype> {
+) -> Result<ManagementPrototype> {
     let Some(Thing::Func(func)) = thing_map.get(&management_func_spec.func_unique_id().to_owned())
     else {
         return Err(PkgError::MissingFuncUniqueId(
             management_func_spec.func_unique_id().into(),
             "error found while importing management func",
-        ));
+        )
+        .into());
     };
     let func_id = func.id;
 
@@ -894,7 +896,7 @@ async fn import_action_func(
     action_func_spec: &SiPkgActionFunc<'_>,
     schema_variant_id: SchemaVariantId,
     thing_map: &ThingMap,
-) -> PkgResult<Option<ActionPrototype>> {
+) -> Result<Option<ActionPrototype>> {
     let prototype = match thing_map.get(&action_func_spec.func_unique_id().to_owned()) {
         Some(Thing::Func(func)) => {
             let func_id = func.id;
@@ -902,7 +904,7 @@ async fn import_action_func(
             if let Some(unique_id) = action_func_spec.unique_id() {
                 match thing_map.get(&unique_id.to_owned()) {
                     Some(Thing::ActionPrototype(_prototype)) => {
-                        return Err(PkgError::WorkspaceExportNotSupported())
+                        return Err(PkgError::WorkspaceExportNotSupported().into());
                     }
                     _ => {
                         if action_func_spec.deleted() {
@@ -930,7 +932,8 @@ async fn import_action_func(
             return Err(PkgError::MissingFuncUniqueId(
                 action_func_spec.func_unique_id().into(),
                 "error found while importing action func",
-            ));
+            )
+            .into());
         }
     };
 
@@ -942,7 +945,7 @@ async fn import_auth_func(
     func_spec: &SiPkgAuthFunc<'_>,
     schema_variant_id: SchemaVariantId,
     thing_map: &ThingMap,
-) -> PkgResult<Option<AuthenticationPrototype>> {
+) -> Result<Option<AuthenticationPrototype>> {
     let prototype = match thing_map.get(&func_spec.func_unique_id().to_owned()) {
         Some(Thing::Func(func)) => {
             let func_id = func.id;
@@ -950,7 +953,7 @@ async fn import_auth_func(
             if let Some(unique_id) = func_spec.unique_id() {
                 match thing_map.get(&unique_id.to_owned()) {
                     Some(Thing::AuthPrototype(_prototype)) => {
-                        return Err(PkgError::WorkspaceExportNotSupported())
+                        return Err(PkgError::WorkspaceExportNotSupported().into());
                     }
                     _ => {
                         if func_spec.deleted() {
@@ -985,7 +988,8 @@ async fn import_auth_func(
             return Err(PkgError::MissingFuncUniqueId(
                 func_spec.func_unique_id().into(),
                 "error found while importing auth func",
-            ));
+            )
+            .into());
         }
     };
 
@@ -1023,7 +1027,7 @@ async fn create_props(
     prop_root: SchemaVariantSpecPropRoot,
     prop_root_prop_id: PropId,
     schema_variant_id: SchemaVariantId,
-) -> PkgResult<CreatePropsSideEffects> {
+) -> Result<CreatePropsSideEffects> {
     let context = PropVisitContext {
         ctx,
         schema_variant_id,
@@ -1052,7 +1056,7 @@ async fn create_props(
 pub async fn import_only_new_funcs(
     ctx: &DalContext,
     funcs: Vec<SiPkgFunc<'_>>,
-) -> PkgResult<ThingMap> {
+) -> Result<ThingMap> {
     let mut thing_map = ThingMap::new();
 
     // Cache the intrinsic funcs pkg in case we need it.
@@ -1081,7 +1085,8 @@ pub async fn import_only_new_funcs(
                     if !override_intrinsic_func_specs.is_empty() {
                         return Err(PkgError::IntrinsicFuncSpecsMultipleForName(
                             intrinsic.name().to_owned(),
-                        ));
+                        )
+                        .into());
                     }
 
                     // Use the override func spec to create the func.
@@ -1147,7 +1152,7 @@ pub(crate) async fn import_schema_variant(
     installed_module: Option<Module>,
     thing_map: &mut ThingMap,
     installed_schema_variant: Option<SchemaVariant>,
-) -> PkgResult<SchemaVariant> {
+) -> Result<SchemaVariant> {
     let mut existing_schema_variant: Option<SchemaVariant> = None;
     if let Some(installed_pkg) = installed_module.clone() {
         let associated_schema_variants = installed_pkg.list_associated_schema_variants(ctx).await?;
@@ -1437,10 +1442,7 @@ pub(crate) async fn import_schema_variant(
     Ok(schema_variant)
 }
 
-async fn set_default_value(
-    ctx: &DalContext,
-    default_value_info: DefaultValueInfo,
-) -> PkgResult<()> {
+async fn set_default_value(ctx: &DalContext, default_value_info: DefaultValueInfo) -> Result<()> {
     let prop_id = match &default_value_info {
         DefaultValueInfo::Number { prop_id, .. }
         | DefaultValueInfo::String { prop_id, .. }
@@ -1472,7 +1474,7 @@ async fn import_attr_func_for_prop(
     }: AttrFuncInfo,
     key: Option<String>,
     thing_map: &mut ThingMap,
-) -> PkgResult<()> {
+) -> Result<()> {
     match thing_map.get(&func_unique_id.to_owned()) {
         Some(Thing::Func(func)) => {
             import_attr_func(
@@ -1490,7 +1492,8 @@ async fn import_attr_func_for_prop(
             return Err(PkgError::MissingFuncUniqueId(
                 func_unique_id.to_string(),
                 "error found while importing attribute func for prop",
-            ))
+            )
+            .into());
         }
     }
 
@@ -1504,7 +1507,7 @@ async fn import_attr_func_for_output_socket(
     func_unique_id: &str,
     inputs: Vec<SiPkgAttrFuncInputView>,
     thing_map: &mut ThingMap,
-) -> PkgResult<()> {
+) -> Result<()> {
     match thing_map.get(&func_unique_id.to_owned()) {
         Some(Thing::Func(func)) => {
             import_attr_func(
@@ -1522,7 +1525,8 @@ async fn import_attr_func_for_output_socket(
             return Err(PkgError::MissingFuncUniqueId(
                 func_unique_id.to_string(),
                 "import attribute func for output socket",
-            ))
+            )
+            .into());
         }
     }
 
@@ -1533,7 +1537,7 @@ async fn get_prototype_for_context(
     ctx: &DalContext,
     context: AttrFuncContext,
     key: Option<String>,
-) -> PkgResult<AttributePrototypeId> {
+) -> Result<AttributePrototypeId> {
     if key.is_some() {
         #[allow(clippy::infallible_destructuring_match)]
         let map_prop_id = match context {
@@ -1550,7 +1554,8 @@ async fn get_prototype_for_context(
                 map_prop_id,
                 key.to_owned().expect("check above ensures this is some"),
                 map_prop.kind,
-            ));
+            )
+            .into());
         }
 
         let element_prop_id = Prop::element_prop_id(ctx, map_prop.id).await?;
@@ -1594,7 +1599,7 @@ async fn create_attr_proto_arg(
     input: &SiPkgAttrFuncInputView,
     func_id: FuncId,
     schema_variant_id: SchemaVariantId,
-) -> PkgResult<AttributePrototypeArgumentId> {
+) -> Result<AttributePrototypeArgumentId> {
     let arg = match &input {
         SiPkgAttrFuncInputView::Prop { name, .. }
         | SiPkgAttrFuncInputView::InputSocket { name, .. }
@@ -1633,7 +1638,8 @@ async fn create_attr_proto_arg(
             return Err(PkgError::TakingOutputSocketAsInputForPropUnsupported(
                 name.to_owned(),
                 socket_name.to_owned(),
-            ));
+            )
+            .into());
         }
     })
 }
@@ -1653,7 +1659,7 @@ async fn import_attr_func(
     func_id: FuncId,
     inputs: Vec<SiPkgAttrFuncInputView>,
     _thing_map: &mut ThingMap,
-) -> PkgResult<()> {
+) -> Result<()> {
     let prototype_id = get_prototype_for_context(ctx, context, key).await?;
 
     let prototype_func_id = AttributePrototype::func_id(ctx, prototype_id).await?;
@@ -1688,34 +1694,36 @@ async fn create_dal_prop(
     kind: PropKind,
     schema_variant_id: SchemaVariantId,
     parent_prop_info: Option<ParentPropInfo>,
-) -> PkgResult<Prop> {
+) -> Result<Prop> {
     let prop = match parent_prop_info {
-        Some(parent_info) => Prop::new(
-            ctx,
-            &data.name,
-            kind,
-            data.hidden,
-            data.doc_link.as_ref().map(|l| l.to_string()),
-            data.documentation.clone(),
-            Some(((&data.widget_kind).into(), data.widget_options.to_owned())),
-            data.validation_format.clone(),
-            parent_info.prop_id,
-        )
-        .await
-        .map_err(SiPkgError::visit_prop)?,
-        None => Prop::new_root(
-            ctx,
-            &data.name,
-            kind,
-            data.hidden,
-            data.doc_link.as_ref().map(|l| l.to_string()),
-            data.documentation.clone(),
-            Some(((&data.widget_kind).into(), data.widget_options.to_owned())),
-            data.validation_format.clone(),
-            schema_variant_id,
-        )
-        .await
-        .map_err(SiPkgError::visit_prop)?,
+        Some(parent_info) => {
+            Prop::new(
+                ctx,
+                &data.name,
+                kind,
+                data.hidden,
+                data.doc_link.as_ref().map(|l| l.to_string()),
+                data.documentation.clone(),
+                Some(((&data.widget_kind).into(), data.widget_options.to_owned())),
+                data.validation_format.clone(),
+                parent_info.prop_id,
+            )
+            .await?
+        }
+        None => {
+            Prop::new_root(
+                ctx,
+                &data.name,
+                kind,
+                data.hidden,
+                data.doc_link.as_ref().map(|l| l.to_string()),
+                data.documentation.clone(),
+                Some(((&data.widget_kind).into(), data.widget_options.to_owned())),
+                data.validation_format.clone(),
+                schema_variant_id,
+            )
+            .await?
+        }
     };
 
     Ok(prop)
@@ -1730,7 +1738,7 @@ async fn create_prop(
     spec: SiPkgProp<'_>,
     parent_prop_info: Option<ParentPropInfo>,
     ctx: &PropVisitContext<'_>,
-) -> PkgResult<Option<ParentPropInfo>> {
+) -> Result<Option<ParentPropInfo>> {
     let prop = {
         let data = spec.data().ok_or(PkgError::DataNotFound("prop".into()))?;
         create_dal_prop(
@@ -1828,7 +1836,7 @@ async fn create_prop(
 pub async fn attach_resource_payload_to_value(
     ctx: &DalContext,
     schema_variant_id: SchemaVariantId,
-) -> PkgResult<()> {
+) -> Result<()> {
     let name = "si:resourcePayloadToValue";
     let func_id = if let Some(func_id) =
         Func::find_id_by_name_and_kind(ctx, name, FuncKind::Intrinsic).await?
@@ -1846,7 +1854,7 @@ pub async fn attach_resource_payload_to_value(
             .pop()
             .ok_or(PkgError::IntrinsicFuncSpecsNoneForName(name.to_owned()))?;
         if !intrinsic_func_specs.is_empty() {
-            return Err(PkgError::IntrinsicFuncSpecsMultipleForName(name.to_owned()));
+            return Err(PkgError::IntrinsicFuncSpecsMultipleForName(name.to_owned()).into());
         }
 
         // Create the func and arguments without interacting with the thing map and import flow. We

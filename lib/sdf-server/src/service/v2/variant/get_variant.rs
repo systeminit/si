@@ -1,3 +1,4 @@
+use anyhow::Result;
 use axum::{
     extract::{Host, OriginalUri, Path},
     Json,
@@ -7,7 +8,6 @@ use si_frontend_types as frontend_types;
 
 use crate::{
     extract::{HandlerContext, PosthogClient},
-    service::v2::variant::SchemaVariantsAPIError,
     service::v2::AccessBuilder,
     track,
 };
@@ -23,7 +23,7 @@ pub async fn get_variant(
         ChangeSetId,
         SchemaVariantId,
     )>,
-) -> Result<Json<frontend_types::SchemaVariant>, SchemaVariantsAPIError> {
+) -> Result<Json<frontend_types::SchemaVariant>> {
     let ctx = builder
         .build(access_builder.build(change_set_id.into()))
         .await?;

@@ -1,3 +1,4 @@
+use anyhow::Result;
 use chrono::{DateTime, Utc};
 use petgraph::Direction;
 use serde::{Deserialize, Serialize};
@@ -93,7 +94,7 @@ pub enum WorkspaceError {
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
 
-pub type WorkspaceResult<T> = Result<T, WorkspaceError>;
+pub type WorkspaceResult<T> = Result<T>;
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct Workspace {
@@ -267,7 +268,7 @@ impl Workspace {
     pub async fn list_for_user(ctx: &DalContext) -> WorkspaceResult<Vec<Self>> {
         let user_pk = match ctx.history_actor() {
             HistoryActor::User(user_pk) => *user_pk,
-            _ => return Err(WorkspaceError::NoUserInContext),
+            _ => return Err(WorkspaceError::NoUserInContext.into()),
         };
         let rows = ctx
             .txns()
@@ -276,7 +277,7 @@ impl Workspace {
             .query(WORKSPACE_LIST_FOR_USER, &[&user_pk])
             .await?;
 
-        Ok(standard_model::objects_from_rows(rows)?)
+        standard_model::objects_from_rows(rows)
     }
 
     pub async fn search(
@@ -316,7 +317,7 @@ impl Workspace {
                 .await?
         };
 
-        Ok(standard_model::objects_from_rows(rows)?)
+        standard_model::objects_from_rows(rows)
     }
 
     pub async fn find_first_user_workspace(ctx: &DalContext) -> WorkspaceResult<Option<Self>> {
@@ -341,7 +342,7 @@ impl Workspace {
         let workspace_snapshot = WorkspaceSnapshot::initial(ctx).await?;
         ctx.set_workspace_snapshot(workspace_snapshot);
 
-        migrate_intrinsics_no_commit(ctx).await.map_err(Box::new)?;
+        migrate_intrinsics_no_commit(ctx).await?;
 
         let workspace_snapshot_address = ctx.workspace_snapshot()?.write(ctx).await?;
 
@@ -401,7 +402,7 @@ impl Workspace {
             )
             .await?;
 
-        Self::try_from(row)
+        Ok(Self::try_from(row)?)
     }
 
     pub async fn new_from_builtin(
@@ -413,7 +414,7 @@ impl Workspace {
         // Get the default change set from the builtin workspace.
         let builtin = match Self::find_builtin(ctx).await? {
             Some(found_builtin) => found_builtin,
-            None => return Err(WorkspaceError::BuiltinWorkspaceNotFound),
+            None => return Err(WorkspaceError::BuiltinWorkspaceNotFound.into()),
         };
 
         // Create a new change set whose base is the default change set of the workspace.
@@ -475,7 +476,7 @@ impl Workspace {
     ) -> WorkspaceResult<Workspace> {
         Self::get_by_pk(ctx, &pk)
             .await?
-            .ok_or(WorkspaceError::WorkspaceNotFound(pk))
+            .ok_or(WorkspaceError::WorkspaceNotFound(pk).into())
     }
 
     pub async fn generate_export_data(
@@ -681,7 +682,7 @@ impl Workspace {
         ChangeSet::find(ctx, self.default_change_set_id)
             .await?
             .ok_or_else(|| {
-                WorkspaceError::DefaultChangeSetNotFound(self.pk, self.default_change_set_id)
+                WorkspaceError::DefaultChangeSetNotFound(self.pk, self.default_change_set_id).into()
             })
     }
 

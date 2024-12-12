@@ -1,23 +1,27 @@
 use std::collections::HashSet;
 
+use anyhow::Result;
 use itertools::Itertools;
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::attribute::value::AttributeValueError;
-use crate::component::inferred_connection_graph::InferredConnection;
-use crate::diagram::SummaryDiagramInferredEdge;
-use crate::socket::input::InputSocketError;
-use crate::socket::output::OutputSocketError;
-use crate::workspace_snapshot::edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants};
-use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
+    attribute::value::AttributeValueError,
+    component::inferred_connection_graph::InferredConnection,
+    diagram::SummaryDiagramInferredEdge,
+    socket::{input::InputSocketError, output::OutputSocketError},
+    workspace_snapshot::{
+        edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants},
+        WorkspaceSnapshotError,
+    },
     Component, ComponentError, ComponentId, ComponentType, DalContext, InputSocket, OutputSocket,
     TransactionsError, WsEvent, WsEventError,
 };
 
-use super::inferred_connection_graph::InferredConnectionGraphError;
-use super::socket::{ComponentInputSocket, ComponentOutputSocket};
+use super::{
+    inferred_connection_graph::InferredConnectionGraphError,
+    socket::{ComponentInputSocket, ComponentOutputSocket},
+};
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -50,7 +54,7 @@ struct SocketAttributeValuePair {
     component_output_socket: ComponentOutputSocket,
 }
 
-pub type FrameResult<T> = Result<T, FrameError>;
+pub type FrameResult<T> = Result<T>;
 
 /// A unit struct containing logic for working with frames.
 pub struct Frame;
@@ -205,9 +209,11 @@ impl Frame {
                         .await?,
                 ))
             }
-            ComponentType::Component => Err(FrameError::ParentIsNotAFrame(child_id, new_parent_id)),
+            ComponentType::Component => {
+                Err(FrameError::ParentIsNotAFrame(child_id, new_parent_id).into())
+            }
             ComponentType::AggregationFrame => {
-                Err(FrameError::AggregateFramesUnsupported(new_parent_id))
+                Err(FrameError::AggregateFramesUnsupported(new_parent_id).into())
             }
         }
     }

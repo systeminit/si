@@ -1,3 +1,4 @@
+use anyhow::Result;
 use axum::{
     extract::{Host, OriginalUri, Path, Query},
     Json,
@@ -12,7 +13,7 @@ use crate::{
     track,
 };
 
-use super::{ModuleAPIResult, ModulesAPIError};
+use super::ModulesAPIError;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -62,18 +63,14 @@ pub async fn module_by_hash(
     Host(host_name): Host,
     Path((_workspace_pk, change_set_id)): Path<(WorkspacePk, ChangeSetId)>,
     Query(request): Query<GetModuleByHashRequest>,
-) -> ModuleAPIResult<Json<GetModuleByHashResponse>> {
+) -> Result<Json<GetModuleByHashResponse>> {
     let ctx = builder
         .build(access_builder.build(change_set_id.into()))
         .await?;
 
     let installed_pkg = match Module::find_by_root_hash(&ctx, &request.hash).await? {
         Some(m) => m,
-        None => {
-            return Err(ModulesAPIError::ModuleHashNotFound(
-                request.hash.to_string(),
-            ))
-        }
+        None => return Err(ModulesAPIError::ModuleHashNotFound(request.hash.to_string()).into()),
     };
 
     let mut pkg_schemas: Vec<String> = installed_pkg

@@ -95,7 +95,8 @@ impl PropNodeWeight {
                 return Err(NodeWeightError::InvalidContentAddressForWeightKind(
                     Into::<ContentAddressDiscriminants>::into(other).to_string(),
                     ContentAddressDiscriminants::Prop.to_string(),
-                ));
+                )
+                .into());
             }
         };
 

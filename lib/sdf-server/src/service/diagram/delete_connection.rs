@@ -1,9 +1,3 @@
-use super::DiagramResult;
-use crate::{
-    extract::{v1::AccessBuilder, HandlerContext, PosthogClient},
-    service::force_change_set_response::ForceChangeSetResponse,
-    track,
-};
 use axum::{
     extract::{Host, OriginalUri},
     Json,
@@ -15,6 +9,13 @@ use dal::{
 };
 use serde::{Deserialize, Serialize};
 use si_events::audit_log::AuditLogKind;
+
+use crate::{
+    extract::{v1::AccessBuilder, HandlerContext, PosthogClient},
+    routes::AppError,
+    service::force_change_set_response::ForceChangeSetResponse,
+    track,
+};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -35,7 +36,7 @@ pub async fn delete_connection(
     OriginalUri(original_uri): OriginalUri,
     Host(host_name): Host,
     Json(request): Json<DeleteConnectionRequest>,
-) -> DiagramResult<ForceChangeSetResponse<()>> {
+) -> Result<ForceChangeSetResponse<()>, AppError> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;

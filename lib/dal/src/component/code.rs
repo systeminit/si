@@ -1,10 +1,12 @@
-use crate::workspace_snapshot::edge_weight::EdgeWeightKindDiscriminants;
+use anyhow::Result;
+
 use crate::{
-    code_view::CodeView, schema::variant::root_prop::RootPropChild, AttributeValueId, Component,
+    code_view::CodeView, schema::variant::root_prop::RootPropChild,
+    workspace_snapshot::edge_weight::EdgeWeightKindDiscriminants, AttributeValueId, Component,
     ComponentId, DalContext,
 };
 
-use super::{ComponentError, ComponentResult};
+use super::ComponentError;
 
 impl Component {
     /// List all [`CodeViews`](crate::CodeView) for based on the "code generation"
@@ -12,7 +14,7 @@ impl Component {
     pub async fn list_code_generated(
         ctx: &DalContext,
         component_id: ComponentId,
-    ) -> ComponentResult<(Vec<CodeView>, bool)> {
+    ) -> Result<(Vec<CodeView>, bool)> {
         let component = Self::get_by_id(ctx, component_id).await?;
         let _schema_variant = component.schema_variant(ctx).await?;
 
@@ -62,7 +64,7 @@ impl Component {
     pub async fn find_code_map_attribute_value_id(
         ctx: &DalContext,
         component_id: ComponentId,
-    ) -> ComponentResult<AttributeValueId> {
+    ) -> Result<AttributeValueId> {
         match Self::attribute_values_for_prop_by_id(
             ctx,
             component_id,
@@ -72,7 +74,7 @@ impl Component {
         .first()
         {
             Some(qualification_map_attribute_value_id) => Ok(*qualification_map_attribute_value_id),
-            None => Err(ComponentError::MissingCodeValue(component_id)),
+            None => Err(ComponentError::MissingCodeValue(component_id).into()),
         }
     }
 }

@@ -1,20 +1,20 @@
 use std::collections::HashMap;
 
-use super::DiagramResult;
-use crate::{
-    extract::{v1::AccessBuilder, HandlerContext},
-    service::force_change_set_response::ForceChangeSetResponse,
-};
 use axum::Json;
-use dal::diagram::view::View;
 use dal::{
     component::{frame::Frame, InferredConnection},
-    diagram::SummaryDiagramInferredEdge,
+    diagram::{view::View, SummaryDiagramInferredEdge},
     ChangeSet, Component, ComponentId, ComponentType, Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
 use si_frontend_types::{RawGeometry, StringGeometry};
 use ulid::Ulid;
+
+use crate::{
+    extract::{v1::AccessBuilder, HandlerContext},
+    routes::AppError,
+    service::force_change_set_response::ForceChangeSetResponse,
+};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -44,7 +44,7 @@ pub async fn set_component_position(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Json(request): Json<SetComponentPositionRequest>,
-) -> DiagramResult<ForceChangeSetResponse<SetComponentPositionResponse>> {
+) -> Result<ForceChangeSetResponse<SetComponentPositionResponse>, AppError> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;

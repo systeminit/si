@@ -1,6 +1,5 @@
+use anyhow::{anyhow, Result};
 use async_recursion::async_recursion;
-use color_eyre::eyre::eyre;
-use color_eyre::Result;
 use dal::property_editor::schema::{
     PropertyEditorProp, PropertyEditorPropKind, PropertyEditorSchema,
 };
@@ -29,9 +28,9 @@ impl PropEditorTestView {
         for &prop_name in prop_path.iter().skip(1) {
             value = value
                 .get("children")
-                .ok_or(eyre!("nothing found in children entry for view"))?
+                .ok_or(anyhow!("nothing found in children entry for view"))?
                 .get(prop_name)
-                .ok_or(eyre!("specific child entry not found for view"))?
+                .ok_or(anyhow!("specific child entry not found for view"))?
                 .clone();
         }
 
@@ -41,7 +40,7 @@ impl PropEditorTestView {
     /// Gets the "value" for a given [`Prop`](dal::Prop) path.
     pub fn get_value(&self, prop_path: &[&str]) -> crate::Result<Value> {
         let view = self.get_view(prop_path)?;
-        Ok(view.get("value").ok_or(eyre!("value not found"))?.clone())
+        Ok(view.get("value").ok_or(anyhow!("value not found"))?.clone())
     }
 
     /// Generates a [`PropEditorTestView`] for a given [`ComponentId`](Component).
@@ -63,12 +62,12 @@ impl PropEditorTestView {
         let root_view = {
             let value = values
                 .get(&root_value_id)
-                .ok_or(eyre!("no value for root value"))?
+                .ok_or(anyhow!("no value for root value"))?
                 .clone();
 
             let prop = props
                 .get(&value.prop_id)
-                .ok_or(eyre!("property editor prop not found"))?;
+                .ok_or(anyhow!("property editor prop not found"))?;
 
             Self {
                 prop: prop.clone(),
@@ -102,11 +101,11 @@ impl PropEditorTestView {
         for (index, child_id) in enumerate(
             child_values
                 .get(&parent_value_id)
-                .ok_or(eyre!("could not get children for parent"))?,
+                .ok_or(anyhow!("could not get children for parent"))?,
         ) {
             let value = values
                 .get(child_id)
-                .ok_or(eyre!("could not get value for child"))?
+                .ok_or(anyhow!("could not get value for child"))?
                 .clone();
             let real_prop = Prop::get_by_id(ctx, value.prop_id.into_inner().into()).await?;
             if real_prop.hidden {
@@ -115,7 +114,7 @@ impl PropEditorTestView {
 
             let prop = props
                 .get(&value.prop_id)
-                .ok_or(eyre!("could not get property editor prop"))?;
+                .ok_or(anyhow!("could not get property editor prop"))?;
 
             let key = match parent_prop_kind {
                 PropertyEditorPropKind::Array => index.to_string(),

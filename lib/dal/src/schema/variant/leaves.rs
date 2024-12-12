@@ -6,17 +6,16 @@ use serde::{Deserialize, Serialize};
 use strum::EnumIter;
 use telemetry::prelude::*;
 
-use crate::attribute::prototype::argument::AttributePrototypeArgument;
-use crate::workspace_snapshot::edge_weight::EdgeWeightKind;
 use crate::{
+    attribute::prototype::argument::AttributePrototypeArgument,
+    func::argument::{FuncArgumentId, FuncArgumentKind},
+    prop::PropPath,
+    schema::variant::root_prop::RootPropChild,
+    workspace_snapshot::edge_weight::EdgeWeightKind,
     AttributePrototype, AttributePrototypeId, DalContext, Func, FuncBackendKind,
     FuncBackendResponseType, FuncId, Prop, PropId, SchemaVariant, SchemaVariantId,
 };
 use si_pkg::{LeafInputLocation as PkgLeafInputLocation, LeafKind as PkgLeafKind};
-
-use crate::func::argument::{FuncArgumentId, FuncArgumentKind};
-use crate::prop::PropPath;
-use crate::schema::variant::root_prop::RootPropChild;
 
 use super::{SchemaVariantError, SchemaVariantResult};
 
@@ -230,14 +229,15 @@ impl SchemaVariant {
 
         // Ensure the func matches what we need.
         if func.backend_kind != FuncBackendKind::JsAttribute {
-            return Err(SchemaVariantError::LeafFunctionMustBeJsAttribute(func.id));
+            return Err(SchemaVariantError::LeafFunctionMustBeJsAttribute(func.id).into());
         }
         if func.backend_response_type != leaf_kind.into() {
             return Err(SchemaVariantError::LeafFunctionMismatch(
                 func_id,
                 func.backend_response_type,
                 leaf_kind,
-            ));
+            )
+            .into());
         }
 
         // The key is the name of the func. This assume func names are unique.

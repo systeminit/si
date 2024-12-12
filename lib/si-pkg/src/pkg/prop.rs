@@ -139,7 +139,8 @@ impl<'a> SiPkgProp<'a> {
                 return Err(SiPkgError::UnexpectedPkgNodeType(
                     PkgNode::PROP_KIND_STR,
                     unexpected.node_kind_str(),
-                ));
+                )
+                .into());
             }
         };
 

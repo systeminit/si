@@ -11,7 +11,7 @@
 
 use std::sync::Arc;
 
-use content_node_weight::ContentNodeWeight;
+use anyhow::Result;
 use petgraph::Direction;
 use serde::{Deserialize, Serialize};
 use si_events::ulid::Ulid;
@@ -20,25 +20,30 @@ use strum::{AsRefStr, Display, EnumDiscriminants};
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::attribute::prototype::argument::value_source::ValueSource;
-use crate::attribute::prototype::argument::AttributePrototypeArgument;
-use crate::attribute::value::AttributeValueError;
-use crate::change_set::ChangeSetError;
-use crate::func::intrinsics::IntrinsicFunc;
-use crate::layer_db_types::{AttributePrototypeContent, AttributePrototypeContentV1};
-use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
-use crate::workspace_snapshot::edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants};
-use crate::workspace_snapshot::node_weight::{
-    content_node_weight, traits::SiNodeWeight, NodeWeight, NodeWeightDiscriminants, NodeWeightError,
-};
-use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    attribute::prototype::argument::AttributePrototypeArgumentId, implement_add_edge_to,
-    AttributeValue, AttributeValueId, ComponentId, DalContext, FuncId, HelperError, InputSocketId,
-    OutputSocketId, PropId, SchemaVariant, SchemaVariantError, SchemaVariantId, Timestamp,
-    TransactionsError,
+    attribute::{
+        prototype::argument::{
+            value_source::ValueSource, AttributePrototypeArgument, AttributePrototypeArgumentId,
+        },
+        value::AttributeValueError,
+    },
+    change_set::ChangeSetError,
+    func::intrinsics::IntrinsicFunc,
+    implement_add_edge_to,
+    layer_db_types::{AttributePrototypeContent, AttributePrototypeContentV1},
+    workspace_snapshot::{
+        content_address::{ContentAddress, ContentAddressDiscriminants},
+        edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants},
+        node_weight::{
+            traits::SiNodeWeight, ContentNodeWeight, NodeWeight, NodeWeightDiscriminants,
+            NodeWeightError,
+        },
+        WorkspaceSnapshotError,
+    },
+    AttributeValue, AttributeValueId, ComponentId, DalContext, Func, FuncError, FuncId,
+    HelperError, InputSocketId, OutputSocketId, PropId, SchemaVariant, SchemaVariantError,
+    SchemaVariantId, Timestamp, TransactionsError,
 };
-use crate::{Func, FuncError};
 
 pub mod argument;
 pub mod debug;
@@ -84,7 +89,7 @@ pub enum AttributePrototypeError {
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
 
-pub type AttributePrototypeResult<T> = Result<T, AttributePrototypeError>;
+pub type AttributePrototypeResult<T> = Result<T>;
 
 /// Indicates the _one and only one_ eventual parent of a corresponding [`AttributePrototype`].
 ///
@@ -179,14 +184,14 @@ impl AttributePrototype {
             }
         }
 
-        Err(AttributePrototypeError::MissingFunction(prototype_id))
+        Err(AttributePrototypeError::MissingFunction(prototype_id).into())
     }
 
     pub async fn func(
         ctx: &DalContext,
         prototype_id: AttributePrototypeId,
     ) -> AttributePrototypeResult<Func> {
-        Ok(Func::get_by_id_or_error(ctx, Self::func_id(ctx, prototype_id).await?).await?)
+        Func::get_by_id_or_error(ctx, Self::func_id(ctx, prototype_id).await?).await
     }
 
     pub async fn find_for_prop(
@@ -540,40 +545,31 @@ impl AttributePrototype {
         let eventual_parent = match node_weight {
             NodeWeight::AttributeValue(attribute_value_id) => {
                 AttributePrototypeEventualParent::Component(
-                    AttributeValue::component_id(ctx, node_weight_id.into())
-                        .await
-                        .map_err(Box::new)?,
+                    AttributeValue::component_id(ctx, node_weight_id.into()).await?,
                     attribute_value_id.id().into(),
                 )
             }
             NodeWeight::Prop(_) => AttributePrototypeEventualParent::SchemaVariantFromProp(
-                SchemaVariant::find_for_prop_id(ctx, node_weight_id.into())
-                    .await
-                    .map_err(Box::new)?,
+                SchemaVariant::find_for_prop_id(ctx, node_weight_id.into()).await?,
                 node_weight_id.into(),
             ),
             NodeWeight::InputSocket(_) => {
                 AttributePrototypeEventualParent::SchemaVariantFromInputSocket(
-                    SchemaVariant::find_for_input_socket_id(ctx, node_weight_id.into())
-                        .await
-                        .map_err(Box::new)?,
+                    SchemaVariant::find_for_input_socket_id(ctx, node_weight_id.into()).await?,
                     node_weight_id.into(),
                 )
             }
             NodeWeight::Content(inner) => match inner.content_address().into() {
                 ContentAddressDiscriminants::InputSocket => {
                     AttributePrototypeEventualParent::SchemaVariantFromInputSocket(
-                        SchemaVariant::find_for_input_socket_id(ctx, node_weight_id.into())
-                            .await
-                            .map_err(Box::new)?,
+                        SchemaVariant::find_for_input_socket_id(ctx, node_weight_id.into()).await?,
                         node_weight_id.into(),
                     )
                 }
                 ContentAddressDiscriminants::OutputSocket => {
                     AttributePrototypeEventualParent::SchemaVariantFromOutputSocket(
                         SchemaVariant::find_for_output_socket_id(ctx, node_weight_id.into())
-                            .await
-                            .map_err(Box::new)?,
+                            .await?,
                         node_weight_id.into(),
                     )
                 }
@@ -582,7 +578,8 @@ impl AttributePrototype {
                         AttributePrototypeError::UnexpectedNodeUsingAttributePrototype(
                             node_weight_id,
                             id,
-                        ),
+                        )
+                        .into(),
                     )
                 }
             },
@@ -591,7 +588,8 @@ impl AttributePrototype {
                     AttributePrototypeError::UnexpectedNodeUsingAttributePrototype(
                         node_weight_id,
                         id,
-                    ),
+                    )
+                    .into(),
                 )
             }
         };
@@ -701,13 +699,11 @@ impl AttributePrototype {
             if func.name == IntrinsicFunc::Unset.name() {
                 return Ok(None);
             }
-            return Err(AttributePrototypeError::NonIdentityFunc(func.id));
+            return Err(AttributePrototypeError::NonIdentityFunc(func.id).into());
         }
         let args = AttributePrototype::list_arguments_for_id(ctx, ap_id).await?;
         match args.first() {
-            None => Err(AttributePrototypeError::NoArgumentsToIdentityFunction(
-                ap_id,
-            )),
+            None => Err(AttributePrototypeError::NoArgumentsToIdentityFunction(ap_id).into()),
             Some(apa_id) => Ok(Some(*apa_id)),
         }
     }

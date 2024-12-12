@@ -25,6 +25,7 @@
     while_true
 )]
 
+use anyhow::Result;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -148,7 +149,7 @@ pub enum SecretError {
 }
 
 #[allow(missing_docs)]
-pub type SecretResult<T> = Result<T, SecretError>;
+pub type SecretResult<T> = Result<T>;
 
 pub use si_id::SecretId;
 
@@ -327,9 +328,11 @@ impl Secret {
 
         match encrypted_secret.key_pair(ctx).await {
             Ok(_) => Ok(true),
-            Err(SecretError::KeyPair(KeyPairError::KeyPairNotFound(_)))
-            | Err(SecretError::KeyPair(KeyPairError::UnauthorizedKeyAccess)) => Ok(false),
-            Err(err) => Err(err),
+            Err(error) => match error.downcast_ref::<KeyPairError>() {
+                Some(KeyPairError::KeyPairNotFound(_))
+                | Some(KeyPairError::UnauthorizedKeyAccess) => Ok(false),
+                _ => Err(error),
+            },
         }
     }
 
@@ -551,7 +554,7 @@ impl Secret {
             }
         }
 
-        Err(SecretError::NotFoundForKey)
+        Err(SecretError::NotFoundForKey.into())
     }
 
     /// Lists all [`Secrets`](Secret) in the current [`snapshot`](crate::WorkspaceSnapshot).

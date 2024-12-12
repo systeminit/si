@@ -1,24 +1,25 @@
 [package]
-name = "rebaser-client"
-version.workspace = true
-authors.workspace = true
-license.workspace = true
-repository.workspace = true
-edition.workspace = true
+name                   = "rebaser-client"
+version.workspace      = true
+authors.workspace      = true
+license.workspace      = true
+repository.workspace   = true
+edition.workspace      = true
 rust-version.workspace = true
-publish.workspace = true
+publish.workspace      = true
 
 [dependencies]
 pending-events = { path = "../../lib/pending-events" }
-rebaser-core = { path = "../../lib/rebaser-core" }
-si-data-nats = { path = "../../lib/si-data-nats" }
-si-events = { path = "../../lib/si-events-rs" }
-telemetry = { path = "../../lib/telemetry-rs" }
+rebaser-core   = { path = "../../lib/rebaser-core" }
+si-data-nats   = { path = "../../lib/si-data-nats" }
+si-events      = { path = "../../lib/si-events-rs" }
+telemetry      = { path = "../../lib/telemetry-rs" }
 telemetry-nats = { path = "../../lib/telemetry-nats-rs" }
 
-futures = { workspace = true }
+anyhow           = { workspace = true }
+futures          = { workspace = true }
 pin-project-lite = { workspace = true }
-remain = { workspace = true }
-serde = { workspace = true }
-serde_json = { workspace = true }
-thiserror = { workspace = true }
+remain           = { workspace = true }
+serde            = { workspace = true }
+serde_json       = { workspace = true }
+thiserror        = { workspace = true }

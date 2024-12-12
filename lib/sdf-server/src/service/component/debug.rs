@@ -6,9 +6,9 @@ use dal::{component::debug::ComponentDebugView, ComponentId, Visibility};
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 
-use super::ComponentResult;
 use crate::{
     extract::{v1::AccessBuilder, HandlerContext, PosthogClient},
+    routes::AppError,
     track,
 };
 
@@ -28,7 +28,7 @@ pub async fn debug_component(
     Host(host_name): Host,
     PosthogClient(posthog_client): PosthogClient,
     Query(request): Query<DebugComponentRequest>,
-) -> ComponentResult<Json<ComponentDebugView>> {
+) -> Result<Json<ComponentDebugView>, AppError> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
     let debug_view = ComponentDebugView::new(&ctx, request.component_id).await?;
     track(

@@ -27,38 +27,45 @@
     while_true
 )]
 
-use base64::engine::general_purpose;
-use base64::Engine;
+use anyhow::Result;
+use base64::{engine::general_purpose, Engine};
 use si_events::FuncRunId;
 use si_layer_cache::LayerDbError;
 use std::sync::Arc;
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::action::prototype::{ActionKind, ActionPrototypeError};
-use crate::attribute::prototype::argument::{
-    AttributePrototypeArgument, AttributePrototypeArgumentError,
-};
-use crate::attribute::prototype::AttributePrototypeError;
-use crate::attribute::value::AttributeValueError;
-use crate::func::argument::{FuncArgument, FuncArgumentError, FuncArgumentId, FuncArgumentKind};
-use crate::func::FuncKind;
-use crate::prop::PropError;
-use crate::schema::variant::authoring::{VariantAuthoringClient, VariantAuthoringError};
-use crate::schema::variant::leaves::{LeafInputLocation, LeafKind};
-use crate::socket::output::OutputSocketError;
 use crate::{
+    action::prototype::{ActionKind, ActionPrototypeError},
+    attribute::{
+        prototype::{
+            argument::{AttributePrototypeArgument, AttributePrototypeArgumentError},
+            AttributePrototypeError,
+        },
+        value::AttributeValueError,
+    },
+    func::{
+        argument::{FuncArgument, FuncArgumentError, FuncArgumentId, FuncArgumentKind},
+        FuncKind,
+    },
+    prop::PropError,
+    schema::variant::{
+        authoring::{VariantAuthoringClient, VariantAuthoringError},
+        leaves::{LeafInputLocation, LeafKind},
+    },
+    socket::output::OutputSocketError,
     AttributePrototype, AttributePrototypeId, ComponentError, ComponentId, DalContext, Func,
     FuncBackendKind, FuncBackendResponseType, FuncError, FuncId, SchemaVariant, SchemaVariantError,
     SchemaVariantId, TransactionsError, WorkspaceSnapshotError, WsEvent, WsEventError,
 };
 
-use super::binding::attribute::AttributeBinding;
-use super::binding::{
-    AttributeArgumentBinding, AttributeFuncDestination, EventualParent, FuncBinding,
-    FuncBindingError,
+use super::{
+    binding::{
+        attribute::AttributeBinding, AttributeArgumentBinding, AttributeFuncDestination,
+        EventualParent, FuncBinding, FuncBindingError,
+    },
+    runner::{FuncRunner, FuncRunnerError},
 };
-use super::runner::{FuncRunner, FuncRunnerError};
 
 mod create;
 mod execute;
@@ -130,7 +137,7 @@ pub enum FuncAuthoringError {
     WsEvent(#[from] WsEventError),
 }
 
-type FuncAuthoringResult<T> = Result<T, FuncAuthoringError>;
+type FuncAuthoringResult<T> = Result<T>;
 
 /// This unit struct is the primary interface for the [`Func`](crate::Func) authoring experience.
 #[derive(Debug)]
@@ -329,7 +336,7 @@ impl FuncAuthoringClient {
                 warn!("skipping action execution...");
                 return Ok(());
             }
-            kind => return Err(FuncAuthoringError::NotRunnable(id, kind)),
+            kind => return Err(FuncAuthoringError::NotRunnable(id, kind).into()),
         };
 
         Ok(())
@@ -351,7 +358,8 @@ impl FuncAuthoringClient {
         if func.kind != FuncKind::Attribute {
             return Err(FuncAuthoringError::UnexpectedFuncKindCreatingFuncArgument(
                 func.id, func.kind,
-            ));
+            )
+            .into());
         }
 
         let func_argument = FuncArgument::new(ctx, name, kind, element_kind, id).await?;
@@ -440,8 +448,7 @@ impl FuncAuthoringClient {
         } else if current_schema_variant.is_default(ctx).await? {
             let new_schema_variant =
                 VariantAuthoringClient::create_unlocked_variant_copy(ctx, schema_variant_id)
-                    .await
-                    .map_err(Box::new)?;
+                    .await?;
             let new_schema_variant_id = new_schema_variant.id();
 
             let unlocked_latest =
@@ -464,9 +471,9 @@ impl FuncAuthoringClient {
 
             new_func
         } else {
-            return Err(FuncAuthoringError::CannotUnlockNonDefaultSchemaVariant(
-                schema_variant_id,
-            ));
+            return Err(
+                FuncAuthoringError::CannotUnlockNonDefaultSchemaVariant(schema_variant_id).into(),
+            );
         };
 
         Ok(new_func)
@@ -496,8 +503,7 @@ impl FuncAuthoringClient {
                 // func after creating a copy)
                 let new_schema_variant =
                     VariantAuthoringClient::create_unlocked_variant_copy(ctx, schema_variant_id)
-                        .await
-                        .map_err(Box::new)?;
+                        .await?;
                 new_schema_variants.push(new_schema_variant);
             }
         }

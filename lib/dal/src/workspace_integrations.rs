@@ -1,4 +1,5 @@
 use crate::{workspace::WorkspaceId, DalContext, TransactionsError};
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use si_data_pg::{PgError, PgRow};
 use thiserror::Error;
@@ -12,7 +13,7 @@ pub enum WorkspaceIntegrationsError {
     Transactions(#[from] TransactionsError),
 }
 
-pub type WorkspaceIntegrationsResult<T> = Result<T, WorkspaceIntegrationsError>;
+pub type WorkspaceIntegrationsResult<T> = Result<T>;
 
 pub use si_id::WorkspaceIntegrationId;
 

@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use anyhow::Result;
 use async_trait::async_trait;
 use telemetry::prelude::*;
 
@@ -9,7 +10,6 @@ use crate::{
     workspace_snapshot::{
         graph::{InputSocketExt as InputSocketExtGraph, LineageId},
         node_weight::{traits::SiVersionedNodeWeight, InputSocketNodeWeight},
-        WorkspaceSnapshotResult,
     },
     AttributePrototype, AttributeValueId, ComponentId, DalContext, EdgeWeight, EdgeWeightKind,
     FuncId, InputSocket, InputSocketId, SchemaVariantId, SocketArity, SocketKind, Timestamp,
@@ -19,11 +19,7 @@ use crate::{
 #[async_trait]
 pub trait InputSocketExt {
     /// Retrieve the [`InputSocket`] with the specified [`InputSocketId`].
-    async fn get_input_socket(
-        &self,
-        ctx: &DalContext,
-        id: InputSocketId,
-    ) -> WorkspaceSnapshotResult<InputSocket>;
+    async fn get_input_socket(&self, ctx: &DalContext, id: InputSocketId) -> Result<InputSocket>;
 
     /// Retrieve the [`InputSocket`] with the specified name for the given [`SchemaVariantId`].
     async fn get_input_socket_by_name_opt(
@@ -31,7 +27,7 @@ pub trait InputSocketExt {
         ctx: &DalContext,
         name: &str,
         schema_variant_id: SchemaVariantId,
-    ) -> WorkspaceSnapshotResult<Option<InputSocket>>;
+    ) -> Result<Option<InputSocket>>;
 
     /// Create a new [`InputSocket`].
     #[allow(clippy::too_many_arguments)]
@@ -44,20 +40,20 @@ pub trait InputSocketExt {
         arity: SocketArity,
         kind: SocketKind,
         connection_annotations: Option<Vec<ConnectionAnnotation>>,
-    ) -> WorkspaceSnapshotResult<InputSocket>;
+    ) -> Result<InputSocket>;
 
     /// List all [`InputSocketId`]s for the given [`SchemaVariantId`].
     async fn list_input_socket_ids_for_schema_variant(
         &self,
         schema_variant_id: SchemaVariantId,
-    ) -> WorkspaceSnapshotResult<Vec<InputSocketId>>;
+    ) -> Result<Vec<InputSocketId>>;
 
     /// List all [`InputSocket`] for the given [`SchemaVariantId`].
     async fn list_input_sockets(
         &self,
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
-    ) -> WorkspaceSnapshotResult<Vec<InputSocket>>;
+    ) -> Result<Vec<InputSocket>>;
 
     /// Get all [`AttributeValueId`] across all [`Component`][crate::Component] for the given
     /// [`InputSocketId`]
@@ -68,18 +64,18 @@ pub trait InputSocketExt {
     async fn all_attribute_value_ids_everywhere_for_input_socket_id(
         &self,
         input_socket_id: InputSocketId,
-    ) -> WorkspaceSnapshotResult<Vec<AttributeValueId>>;
+    ) -> Result<Vec<AttributeValueId>>;
 
     async fn component_attribute_value_id_for_input_socket_id(
         &self,
         input_socket_id: InputSocketId,
         component_id: ComponentId,
-    ) -> WorkspaceSnapshotResult<AttributeValueId>;
+    ) -> Result<AttributeValueId>;
 
     async fn input_socket_id_find_for_attribute_value_id(
         &self,
         attribute_value_id: AttributeValueId,
-    ) -> WorkspaceSnapshotResult<Option<InputSocketId>>;
+    ) -> Result<Option<InputSocketId>>;
 }
 
 #[async_trait]
@@ -93,7 +89,7 @@ impl InputSocketExt for WorkspaceSnapshot {
         arity: SocketArity,
         kind: SocketKind,
         connection_annotations: Option<Vec<ConnectionAnnotation>>,
-    ) -> WorkspaceSnapshotResult<InputSocket> {
+    ) -> Result<InputSocket> {
         debug!(%schema_variant_id, %name, "creating input socket");
 
         let connection_annotations = if let Some(ca) = connection_annotations {
@@ -129,9 +125,7 @@ impl InputSocketExt for WorkspaceSnapshot {
             hash,
         )?;
 
-        let attribute_prototype = AttributePrototype::new(ctx, func_id)
-            .await
-            .map_err(Box::new)?;
+        let attribute_prototype = AttributePrototype::new(ctx, func_id).await?;
 
         self.working_copy_mut().await.add_edge_between_ids(
             input_socket_id.into(),
@@ -142,23 +136,15 @@ impl InputSocketExt for WorkspaceSnapshot {
         let input_socket = input_socket_from_node_weight_and_content(
             &input_socket_node_weight,
             InputSocketContent::V2(content),
-        )
-        .map_err(Box::new)?;
+        )?;
 
         Ok(input_socket)
     }
 
-    async fn get_input_socket(
-        &self,
-        ctx: &DalContext,
-        id: InputSocketId,
-    ) -> WorkspaceSnapshotResult<InputSocket> {
+    async fn get_input_socket(&self, ctx: &DalContext, id: InputSocketId) -> Result<InputSocket> {
         let input_socket_node_weight = self.working_copy().await.get_input_socket(id)?;
 
-        input_socket_from_node_weight(ctx, &input_socket_node_weight)
-            .await
-            .map_err(Box::new)
-            .map_err(Into::into)
+        input_socket_from_node_weight(ctx, &input_socket_node_weight).await
     }
 
     async fn get_input_socket_by_name_opt(
@@ -166,7 +152,7 @@ impl InputSocketExt for WorkspaceSnapshot {
         ctx: &DalContext,
         name: &str,
         schema_variant_id: SchemaVariantId,
-    ) -> WorkspaceSnapshotResult<Option<InputSocket>> {
+    ) -> Result<Option<InputSocket>> {
         Ok(self
             .list_input_sockets(ctx, schema_variant_id)
             .await?
@@ -178,7 +164,7 @@ impl InputSocketExt for WorkspaceSnapshot {
     async fn list_input_socket_ids_for_schema_variant(
         &self,
         schema_variant_id: SchemaVariantId,
-    ) -> WorkspaceSnapshotResult<Vec<InputSocketId>> {
+    ) -> Result<Vec<InputSocketId>> {
         Ok(self
             .working_copy()
             .await
@@ -192,17 +178,15 @@ impl InputSocketExt for WorkspaceSnapshot {
         &self,
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
-    ) -> WorkspaceSnapshotResult<Vec<InputSocket>> {
+    ) -> Result<Vec<InputSocket>> {
         let mut result = Vec::new();
         for input_socket_node_weight in self
             .working_copy()
             .await
             .list_input_sockets_for_schema_variant(schema_variant_id)?
         {
-            let input_socket = input_socket_from_node_weight(ctx, &input_socket_node_weight)
-                .await
-                .map_err(Box::new)
-                .map_err(WorkspaceSnapshotError::from)?;
+            let input_socket =
+                input_socket_from_node_weight(ctx, &input_socket_node_weight).await?;
             result.push(input_socket);
         }
 
@@ -212,7 +196,7 @@ impl InputSocketExt for WorkspaceSnapshot {
     async fn all_attribute_value_ids_everywhere_for_input_socket_id(
         &self,
         input_socket_id: InputSocketId,
-    ) -> WorkspaceSnapshotResult<Vec<AttributeValueId>> {
+    ) -> Result<Vec<AttributeValueId>> {
         self.working_copy()
             .await
             .all_attribute_value_ids_everywhere_for_input_socket_id(input_socket_id)
@@ -223,7 +207,7 @@ impl InputSocketExt for WorkspaceSnapshot {
         &self,
         input_socket_id: InputSocketId,
         component_id: ComponentId,
-    ) -> WorkspaceSnapshotResult<AttributeValueId> {
+    ) -> Result<AttributeValueId> {
         self.working_copy()
             .await
             .component_attribute_value_id_for_input_socket_id(input_socket_id, component_id)
@@ -233,7 +217,7 @@ impl InputSocketExt for WorkspaceSnapshot {
     async fn input_socket_id_find_for_attribute_value_id(
         &self,
         attribute_value_id: AttributeValueId,
-    ) -> WorkspaceSnapshotResult<Option<InputSocketId>> {
+    ) -> Result<Option<InputSocketId>> {
         self.working_copy()
             .await
             .input_socket_id_find_for_attribute_value_id(attribute_value_id)

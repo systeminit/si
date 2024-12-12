@@ -1,5 +1,6 @@
 use std::path::{Path, PathBuf};
 
+use anyhow::Result;
 use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
@@ -129,8 +130,6 @@ pub enum ModuleError {
     WsEvent(#[from] WsEventError),
 }
 
-pub type ModuleResult<T> = Result<T, ModuleError>;
-
 impl IntoResponse for ModuleError {
     fn into_response(self) -> Response {
         let (status_code, error_message) = match self {
@@ -154,14 +153,14 @@ pub struct PkgView {
     hash: Option<String>,
 }
 
-pub async fn get_pkgs_path(builder: &DalContextBuilder) -> ModuleResult<&PathBuf> {
+pub async fn get_pkgs_path(builder: &DalContextBuilder) -> Result<&PathBuf> {
     match builder.pkgs_path().await {
-        None => Err(ModuleError::NoPackagesPath),
+        None => Err(ModuleError::NoPackagesPath.into()),
         Some(path) => Ok(path),
     }
 }
 
-pub async fn list_pkg_dir_entries(pkgs_path: &Path) -> ModuleResult<Vec<String>> {
+pub async fn list_pkg_dir_entries(pkgs_path: &Path) -> Result<Vec<String>> {
     let mut result = vec![];
     let mut entries = read_dir(pkgs_path).await?;
 
@@ -172,10 +171,7 @@ pub async fn list_pkg_dir_entries(pkgs_path: &Path) -> ModuleResult<Vec<String>>
     Ok(result)
 }
 
-pub async fn pkg_lookup(
-    pkgs_path: &Path,
-    name: &str,
-) -> ModuleResult<(Option<PathBuf>, Option<String>)> {
+pub async fn pkg_lookup(pkgs_path: &Path, name: &str) -> Result<(Option<PathBuf>, Option<String>)> {
     let real_pkg_path = safe_canonically_join(pkgs_path, name)?;
     let file_name = real_pkg_path
         .file_name()
@@ -197,7 +193,7 @@ pub async fn get_new_pkg_path(
     builder: &DalContextBuilder,
     name: &str,
     version: &str,
-) -> ModuleResult<PathBuf> {
+) -> Result<PathBuf> {
     let name_kebabed = name.to_case(Case::Kebab);
     let version_kebabed = version.to_case(Case::Kebab);
 
@@ -206,14 +202,15 @@ pub async fn get_new_pkg_path(
         let file_name = add_pkg_extension(&name_kebabed, &version_kebabed, attempts);
 
         let real_pkg_path = match Path::new(&file_name).file_name() {
-            None => return Err(ModuleError::InvalidPackageFileName(file_name)),
+            None => return Err(ModuleError::InvalidPackageFileName(file_name).into()),
             Some(file_name) => Path::join(get_pkgs_path(builder).await?, file_name),
         };
 
         if attempts > MAX_NAME_SEARCH_ATTEMPTS {
             return Err(ModuleError::PackageAlreadyOnDisk(
                 real_pkg_path.to_string_lossy().to_string(),
-            ));
+            )
+            .into());
         } else if real_pkg_path.is_file() {
             attempts = 1;
             continue;
@@ -223,11 +220,11 @@ pub async fn get_new_pkg_path(
     }
 }
 
-pub async fn pkg_open(builder: &DalContextBuilder, file_name: &str) -> ModuleResult<SiPkg> {
+pub async fn pkg_open(builder: &DalContextBuilder, file_name: &str) -> Result<SiPkg> {
     let pkg_tuple = pkg_lookup(get_pkgs_path(builder).await?, file_name).await?;
 
     let real_pkg_path = match pkg_tuple {
-        (None, _) => return Err(ModuleError::PackageNotFound(file_name.to_string())),
+        (None, _) => return Err(ModuleError::PackageNotFound(file_name.to_string()).into()),
         (Some(real_pkg_path), _) => real_pkg_path,
     };
 

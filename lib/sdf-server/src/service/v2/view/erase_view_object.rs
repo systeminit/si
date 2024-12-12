@@ -1,3 +1,4 @@
+use anyhow::Result;
 use axum::{
     extract::{Host, OriginalUri, Path},
     Json,
@@ -19,8 +20,6 @@ use crate::{
     track,
 };
 
-use super::ViewResult;
-
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Request {
@@ -41,7 +40,7 @@ pub async fn erase_view_object(
     Json(Request {
         view_ids: component_ids,
     }): Json<Request>,
-) -> ViewResult<ForceChangeSetResponse<()>> {
+) -> Result<ForceChangeSetResponse<()>> {
     let mut ctx = builder
         .build(access_builder.build(change_set_id.into()))
         .await?;

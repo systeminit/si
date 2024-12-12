@@ -5,9 +5,9 @@ use axum::{
 use dal::{AttributeValue, AttributeValueId, ChangeSet, Visibility};
 use serde::{Deserialize, Serialize};
 
-use super::ComponentResult;
 use crate::{
     extract::{v1::AccessBuilder, HandlerContext, PosthogClient},
+    routes::AppError,
     service::force_change_set_response::ForceChangeSetResponse,
     track,
 };
@@ -27,7 +27,7 @@ pub async fn restore_default_function(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Json(request): Json<RestoreDefaultFunctionRequest>,
-) -> ComponentResult<ForceChangeSetResponse<()>> {
+) -> Result<ForceChangeSetResponse<()>, AppError> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;

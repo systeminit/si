@@ -1,5 +1,6 @@
 use crate::attribute::value::AttributeValueError;
 use crate::{AttributeValue, AttributeValueId, DalContext};
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use strum::{AsRefStr, Display};
 use thiserror::Error;
@@ -15,7 +16,7 @@ pub enum CodeViewError {
     Serde(#[from] serde_json::Error),
 }
 
-pub type CodeViewResult<T> = Result<T, CodeViewError>;
+pub type CodeViewResult<T> = Result<T>;
 
 #[remain::sorted]
 #[derive(Deserialize, Serialize, Debug, Clone, Display, AsRefStr, PartialEq, Eq, Copy)]
@@ -32,7 +33,7 @@ pub enum CodeLanguage {
 impl TryFrom<String> for CodeLanguage {
     type Error = CodeViewError;
 
-    fn try_from(value: String) -> CodeViewResult<Self> {
+    fn try_from(value: String) -> std::result::Result<Self, CodeViewError> {
         match value.to_lowercase().as_str() {
             "diff" => Ok(Self::Diff),
             "json" => Ok(Self::Json),
@@ -75,7 +76,7 @@ impl CodeView {
     pub async fn new(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
-    ) -> Result<Option<Self>, CodeViewError> {
+    ) -> CodeViewResult<Option<Self>> {
         let attribute_value = AttributeValue::get_by_id(ctx, attribute_value_id).await?;
         let code_view_name = match attribute_value.key(ctx).await? {
             Some(key) => key,

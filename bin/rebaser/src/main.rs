@@ -68,7 +68,12 @@ async fn async_main() -> Result<()> {
         &layer_db_tracker,
         layer_db_token.clone(),
     )
-    .await?;
+    .await
+    .map_err(|err| {
+        color_eyre::eyre::eyre!(Box::<dyn std::error::Error + Send + Sync + 'static>::from(
+            err
+        ))
+    })?;
 
     main_tracker.spawn(async move {
         info!("ready to receive messages");

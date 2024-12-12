@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     extract::{v1::AccessBuilder, HandlerContext},
-    service::component::ComponentResult,
+    routes::AppError,
 };
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -27,7 +27,7 @@ pub async fn conflicts_for_component(
         component_id: _,
         visibility,
     }): Json<ConflictsForComponentRequest>,
-) -> ComponentResult<Json<ConflictsForComponentResponse>> {
+) -> Result<Json<ConflictsForComponentResponse>, AppError> {
     let _ctx = builder.build(request_ctx.build(visibility)).await?;
 
     Ok(Json(HashMap::new()))

@@ -1,9 +1,10 @@
+use anyhow::Result;
 use axum::{extract::Query, Json};
 use dal::Workspace;
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 
-use crate::service::v2::admin::{AdminAPIResult, AdminUserContext, AdminWorkspace};
+use crate::service::v2::admin::{AdminUserContext, AdminWorkspace};
 
 const SEARCH_LIMIT: usize = 50;
 
@@ -21,7 +22,7 @@ pub struct SearchWorkspacesResponse {
 pub async fn search_workspaces(
     AdminUserContext(ctx): AdminUserContext,
     Query(request): Query<SearchWorkspacesRequest>,
-) -> AdminAPIResult<Json<SearchWorkspacesResponse>> {
+) -> Result<Json<SearchWorkspacesResponse>> {
     let workspaces = Workspace::search(&ctx, request.query.as_deref(), SEARCH_LIMIT)
         .await?
         .into_iter()

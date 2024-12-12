@@ -1,26 +1,27 @@
 use petgraph::prelude::*;
 use si_events::ulid::Ulid;
-use std::collections::HashSet;
-use std::collections::{hash_map::Entry, HashMap, VecDeque};
-use std::{fs::File, io::Write};
+use std::{
+    collections::{hash_map::Entry, HashMap, HashSet, VecDeque},
+    fs::File,
+    io::Write,
+};
 use telemetry::prelude::*;
 
-use crate::component::socket::ComponentOutputSocket;
-use crate::component::ControllingFuncData;
-use crate::workspace_snapshot::node_weight::NodeWeightDiscriminants;
-use crate::workspace_snapshot::DependentValueRoot;
 use crate::{
     attribute::{
         prototype::{argument::AttributePrototypeArgument, AttributePrototype},
         value::ValueIsFor,
     },
+    component::{socket::ComponentOutputSocket, ControllingFuncData},
     dependency_graph::DependencyGraph,
-    workspace_snapshot::edge_weight::EdgeWeightKindDiscriminants,
-    Component, DalContext, Secret,
+    workspace_snapshot::{
+        edge_weight::EdgeWeightKindDiscriminants, node_weight::NodeWeightDiscriminants,
+        DependentValueRoot,
+    },
+    Component, ComponentError, ComponentId, DalContext, Prop, PropKind, Secret,
 };
-use crate::{ComponentError, ComponentId, Prop, PropKind};
 
-use super::{AttributeValue, AttributeValueError, AttributeValueId, AttributeValueResult};
+use super::{AttributeValue, AttributeValueId, AttributeValueResult};
 
 #[derive(Debug, Clone)]
 pub struct DependentValueGraph {
@@ -116,9 +117,7 @@ impl DependentValueGraph {
                     // However, since the first set of independent values all have a secret as their
                     // parent and not an attribute value, they need to be processed in DVU.
                     let direct_dependents =
-                        Secret::direct_dependent_attribute_values(ctx, root_ulid.into())
-                            .await
-                            .map_err(Box::new)?;
+                        Secret::direct_dependent_attribute_values(ctx, root_ulid.into()).await?;
                     self.values_that_need_to_execute_from_prototype_function
                         .extend(direct_dependents.clone());
                     values.extend(
@@ -211,8 +210,7 @@ impl DependentValueGraph {
                                     targets.destination_component_id,
                                     targets.source_component_id,
                                 )
-                                .await
-                                .map_err(|e| AttributeValueError::Component(Box::new(e)))?
+                                .await?
                                 {
                                     relevant_apas.push(apa)
                                 }
@@ -260,10 +258,14 @@ impl DependentValueGraph {
                             // When we first run dvu, the component type might not be set yet.
                             // In this case, we can assume there aren't downstream inputs that need to
                             // be queued up.
-                            Err(ComponentError::ComponentMissingTypeValueMaterializedView(_)) => {
-                                vec![]
-                            }
-                            Err(err) => return Err(AttributeValueError::Component(Box::new(err))),
+                            Err(error) => match error.downcast_ref::<ComponentError>() {
+                                Some(
+                                    ComponentError::ComponentMissingTypeValueMaterializedView(_),
+                                ) => {
+                                    vec![]
+                                }
+                                _ => return Err(error),
+                            },
                         };
 
                     for component_input_socket in maybe_values_depend_on {
@@ -277,8 +279,7 @@ impl DependentValueGraph {
                             destination_component_id,
                             component_input_socket.component_id,
                         )
-                        .await
-                        .map_err(|e| AttributeValueError::Component(Box::new(e)))?
+                        .await?
                         {
                             work_queue.push_back(WorkQueueValue::Discovered(
                                 component_input_socket.attribute_value_id,
@@ -435,8 +436,7 @@ impl DependentValueGraph {
                 Entry::Vacant(entry) => {
                     let controlling_func_data =
                         Component::list_av_controlling_func_ids_for_id(ctx, current_component_id)
-                            .await
-                            .map_err(Box::new)?;
+                            .await?;
                     let data = controlling_func_data
                         .get(&current_attribute_value_id)
                         .copied();

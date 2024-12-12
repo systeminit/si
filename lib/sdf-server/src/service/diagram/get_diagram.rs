@@ -1,14 +1,15 @@
-use super::{DiagramError, DiagramResult};
-use crate::{
-    extract::{v1::AccessBuilder, HandlerContext, PosthogClient},
-    track,
-};
 use axum::{
     extract::{Host, OriginalUri, Query},
     Json,
 };
 use dal::{diagram::Diagram, slow_rt, Visibility};
 use serde::{Deserialize, Serialize};
+
+use crate::{
+    extract::{v1::AccessBuilder, HandlerContext, PosthogClient},
+    routes::AppError,
+    track,
+};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -26,13 +27,13 @@ pub async fn get_diagram(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Query(request): Query<GetDiagramRequest>,
-) -> DiagramResult<Json<GetDiagramResponse>> {
+) -> Result<Json<GetDiagramResponse>, AppError> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
     let ctx_clone = ctx.clone();
 
     let response = slow_rt::spawn(async move {
         let ctx = &ctx_clone;
-        Ok::<Diagram, DiagramError>(Diagram::assemble_for_default_view(ctx).await?)
+        Ok::<Diagram, anyhow::Error>(Diagram::assemble_for_default_view(ctx).await?)
     })?
     .await??;
 

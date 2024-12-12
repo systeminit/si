@@ -30,7 +30,8 @@ impl<'a> SiPkgManagementFunc<'a> {
                 return Err(SiPkgError::UnexpectedPkgNodeType(
                     PkgNode::MANAGEMENT_FUNC_KIND_STR,
                     unexpected.node_kind_str(),
-                ))
+                )
+                .into())
             }
         };
 

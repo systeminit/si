@@ -1,19 +1,19 @@
 use std::collections::HashSet;
 
+use anyhow::Result;
 use petgraph::prelude::*;
 use si_id::ComponentId;
 
 use crate::{
     diagram::view::ViewId,
     workspace_snapshot::graph::{
-        traits::diagram::view::ViewExt, WorkspaceSnapshotGraphError, WorkspaceSnapshotGraphResult,
-        WorkspaceSnapshotGraphV4,
+        traits::diagram::view::ViewExt, WorkspaceSnapshotGraphError, WorkspaceSnapshotGraphV4,
     },
     EdgeWeightKindDiscriminants, NodeWeightDiscriminants,
 };
 
 impl ViewExt for WorkspaceSnapshotGraphV4 {
-    fn view_remove(&mut self, view_id: ViewId) -> WorkspaceSnapshotGraphResult<()> {
+    fn view_remove(&mut self, view_id: ViewId) -> Result<()> {
         // If there are any Components remaining in the View, this View _CANNOT_ be the only View they
         // are in. If this View is the only View _ANY_ of the items are in, we do not allow removal
         // of the View.
@@ -79,7 +79,8 @@ impl ViewExt for WorkspaceSnapshotGraphV4 {
         if !would_be_orphaned_component_ids.is_empty() {
             return Err(WorkspaceSnapshotGraphError::ViewRemovalWouldOrphanItems(
                 would_be_orphaned_component_ids,
-            ));
+            )
+            .into());
         }
 
         let mut edge_idxs_to_remove = Vec::new();
@@ -116,10 +117,7 @@ impl ViewExt for WorkspaceSnapshotGraphV4 {
         Ok(())
     }
 
-    fn list_for_component_id(
-        &self,
-        component_id: ComponentId,
-    ) -> WorkspaceSnapshotGraphResult<Vec<ViewId>> {
+    fn list_for_component_id(&self, component_id: ComponentId) -> Result<Vec<ViewId>> {
         let mut view_ids_set: HashSet<ViewId> = HashSet::new();
 
         if let Some(component_idx) = self.get_node_index_by_id_opt(component_id.into_inner()) {

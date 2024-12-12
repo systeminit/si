@@ -154,7 +154,7 @@ fn tracing_init_inner(span_events_env_var: &str, log_env_var: &str) {
 
 /// This function is used during macro expansion for setting up the workspace for integration tests.
 pub async fn workspace_signup(ctx: &DalContext) -> crate::Result<(WorkspaceSignup, String)> {
-    use color_eyre::eyre::WrapErr;
+    use anyhow::Context as _;
 
     let mut ctx = ctx.clone_with_head().await?;
 
@@ -165,7 +165,7 @@ pub async fn workspace_signup(ctx: &DalContext) -> crate::Result<(WorkspaceSignu
 
     let nw = WorkspaceSignup::new(&mut ctx, &workspace_name, &user_name, &user_email, &token)
         .await
-        .wrap_err("cannot signup a new workspace")?;
+        .context("cannot signup a new workspace")?;
     let auth_token = create_auth_token(SiJwtClaims::for_web(nw.user.pk(), *nw.workspace.pk()))
         .await
         .expect("could not create auth token");

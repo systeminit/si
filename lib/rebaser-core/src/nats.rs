@@ -1,5 +1,7 @@
 use si_data_nats::{async_nats, jetstream};
 
+use anyhow::Result;
+
 const NATS_REBASER_REQUESTS_STREAM_NAME: &str = "REBASER_REQUESTS";
 const NATS_REBASER_REQUESTS_STREAM_SUBJECTS: &[&str] = &["rebaser.requests.>"];
 const NATS_REBASER_TASKS_STREAM_NAME: &str = "REBASER_TASKS";
@@ -9,8 +11,7 @@ pub const NATS_HEADER_REPLY_INBOX_NAME: &str = "X-Reply-Inbox";
 
 pub async fn rebaser_tasks_jetstream_stream(
     context: &jetstream::Context,
-) -> Result<async_nats::jetstream::stream::Stream, async_nats::jetstream::context::CreateStreamError>
-{
+) -> Result<async_nats::jetstream::stream::Stream> {
     let prefix = context.metadata().subject_prefix();
 
     let subjects: Vec<_> = NATS_REBASER_TASKS_STREAM_SUBJECTS
@@ -37,8 +38,7 @@ pub async fn rebaser_tasks_jetstream_stream(
 
 pub async fn rebaser_requests_jetstream_stream(
     context: &jetstream::Context,
-) -> Result<async_nats::jetstream::stream::Stream, async_nats::jetstream::context::CreateStreamError>
-{
+) -> Result<async_nats::jetstream::stream::Stream> {
     let prefix = context.metadata().subject_prefix();
 
     let subjects: Vec<_> = NATS_REBASER_REQUESTS_STREAM_SUBJECTS

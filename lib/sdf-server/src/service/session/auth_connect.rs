@@ -1,3 +1,4 @@
+use anyhow::Result;
 use axum::{
     extract::{Host, OriginalUri, State},
     Json,
@@ -14,7 +15,7 @@ use si_data_spicedb::SpiceDbClient;
 use si_events::audit_log::AuditLogKind;
 use telemetry::tracing::warn;
 
-use super::{SessionError, SessionResult};
+use super::SessionError;
 use crate::{
     extract::{
         request::{RawAccessToken, RequestUlidFromHeader},
@@ -100,7 +101,7 @@ async fn find_or_create_user_and_workspace(
     create_workspace_allowlist: &[String],
     on_demand_assets: bool,
     spicedb_client: Option<&mut SpiceDbClient>,
-) -> SessionResult<(User, Workspace)> {
+) -> Result<(User, Workspace)> {
     // lookup user or create if we've never seen it before
     let maybe_user = User::get_by_pk(&ctx, auth_api_user.id).await?;
     let user = match maybe_user {
@@ -129,7 +130,7 @@ async fn find_or_create_user_and_workspace(
             }
 
             if workspace.snapshot_version() != WorkspaceSnapshotGraph::current_discriminant() {
-                return Err(SessionError::WorkspaceNotYetMigrated(*workspace.pk()));
+                return Err(SessionError::WorkspaceNotYetMigrated(*workspace.pk()).into());
             }
 
             workspace
@@ -150,7 +151,8 @@ async fn find_or_create_user_and_workspace(
                 );
                 return Err(SessionError::WorkspacePermission(
                     "you do not have permission to create a workspace on this instance",
-                ));
+                )
+                .into());
             }
 
             let workspace = if on_demand_assets {
@@ -232,7 +234,7 @@ pub async fn auth_connect(
     RequestUlidFromHeader(request_ulid): RequestUlidFromHeader,
     State(state): State<AppState>,
     Json(request): Json<AuthConnectRequest>,
-) -> SessionResult<Json<AuthConnectResponse>> {
+) -> Result<Json<AuthConnectResponse>> {
     let client = reqwest::Client::new();
 
     let res = client
@@ -247,7 +249,7 @@ pub async fn auth_connect(
             .await
             .map_err(|err| SessionError::AuthApiError(err.to_string()))?;
         println!("code exchange failed = {:?}", res_err_body.message);
-        return Err(SessionError::AuthApiError(res_err_body.message));
+        return Err(SessionError::AuthApiError(res_err_body.message).into());
     }
 
     let res_body = res.json::<AuthApiConnectResponse>().await?;
@@ -283,7 +285,7 @@ pub async fn auth_reconnect(
     RequestUlidFromHeader(request_ulid): RequestUlidFromHeader,
     RawAccessToken(raw_access_token): RawAccessToken,
     State(state): State<AppState>,
-) -> SessionResult<Json<AuthReconnectResponse>> {
+) -> Result<Json<AuthReconnectResponse>> {
     let client = reqwest::Client::new();
     let auth_response = client
         .get(format!("{}/auth-reconnect", state.auth_api_url()))
@@ -297,7 +299,7 @@ pub async fn auth_reconnect(
             .await
             .map_err(|err| SessionError::AuthApiError(err.to_string()))?;
         println!("reconnect failed = {:?}", res_err_body.message);
-        return Err(SessionError::AuthApiError(res_err_body.message));
+        return Err(SessionError::AuthApiError(res_err_body.message).into());
     }
 
     let auth_response_body = auth_response.json::<AuthApiReconnectResponse>().await?;
@@ -326,7 +328,7 @@ pub async fn user_has_permission_to_create_workspace(
     user: &User,
     mode: WorkspacePermissionsMode,
     allowlist: &[WorkspacePermissions],
-) -> SessionResult<bool> {
+) -> Result<bool> {
     match mode {
         WorkspacePermissionsMode::Open => Ok(true),
         WorkspacePermissionsMode::Closed => Ok(user.is_first_user(ctx).await?),
@@ -356,7 +358,7 @@ async fn ensure_workspace_creator_is_owner_of_workspace(
     client: &mut SpiceDbClient,
     user_id: UserPk,
     workspace_id: WorkspacePk,
-) -> SessionResult<()> {
+) -> Result<()> {
     let owner_relation = RelationBuilder::new()
         .workspace_object(workspace_id)
         .relation(Relation::Owner);

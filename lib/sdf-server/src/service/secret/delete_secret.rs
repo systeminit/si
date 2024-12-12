@@ -1,9 +1,10 @@
+use anyhow::Result;
 use axum::Json;
 use dal::{ChangeSet, Secret, SecretId, SecretView, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
 use si_events::audit_log::AuditLogKind;
 
-use super::{SecretError, SecretResult};
+use super::SecretError;
 use crate::extract::{v1::AccessBuilder, HandlerContext};
 use crate::service::force_change_set_response::ForceChangeSetResponse;
 
@@ -21,7 +22,7 @@ pub async fn delete_secret(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_tx): AccessBuilder,
     Json(request): Json<DeleteSecretRequest>,
-) -> SecretResult<ForceChangeSetResponse<()>> {
+) -> Result<ForceChangeSetResponse<()>> {
     let mut ctx = builder.build(request_tx.build(request.visibility)).await?;
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
 
@@ -30,7 +31,7 @@ pub async fn delete_secret(
 
     let connected_components = secret.clone().find_connected_components(&ctx).await?;
     if !connected_components.is_empty() {
-        return Err(SecretError::CantDeleteSecret(request.id));
+        return Err(SecretError::CantDeleteSecret(request.id).into());
     }
 
     ctx.write_audit_log(

@@ -1,5 +1,6 @@
 use std::time::SystemTime;
 
+use anyhow::Result;
 use chrono::{DateTime, Utc};
 use derive_builder::{Builder, UninitializedFieldError};
 use serde::{Deserialize, Serialize};
@@ -34,7 +35,7 @@ use super::SiPkgKind;
 
 #[derive(Builder, Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-#[builder(build_fn(error = "SpecError"))]
+#[builder(build_fn(error = "anyhow::Error"))]
 pub struct PkgSpec {
     #[builder(setter(into), default = "SiPkgKind::Module")]
     pub kind: SiPkgKind,
@@ -122,9 +123,9 @@ impl PkgSpecBuilder {
 }
 
 impl TryFrom<PkgSpecBuilder> for PkgSpec {
-    type Error = SpecError;
+    type Error = anyhow::Error;
 
-    fn try_from(value: PkgSpecBuilder) -> Result<Self, Self::Error> {
+    fn try_from(value: PkgSpecBuilder) -> std::result::Result<Self, Self::Error> {
         value.build()
     }
 }

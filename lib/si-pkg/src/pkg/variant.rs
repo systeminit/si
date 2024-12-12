@@ -1,15 +1,15 @@
+use anyhow::Result;
 use itertools::Itertools;
 use object_tree::{Hash, HashedNode};
 use petgraph::prelude::*;
 use std::collections::{hash_map::Entry, HashMap, VecDeque};
 use std::future::Future;
 use tokio::sync::Mutex;
-
 use url::Url;
 
 use super::{
-    PkgResult, SiPkgActionFunc, SiPkgError, SiPkgLeafFunction, SiPkgManagementFunc, SiPkgProp,
-    SiPkgPropData, SiPkgSiPropFunc, SiPkgSocket, Source,
+    SiPkgActionFunc, SiPkgError, SiPkgLeafFunction, SiPkgManagementFunc, SiPkgProp, SiPkgPropData,
+    SiPkgSiPropFunc, SiPkgSocket, Source,
 };
 
 use crate::{
@@ -69,7 +69,7 @@ pub struct SiPkgSchemaVariant<'a> {
 
 macro_rules! impl_variant_children_from_graph {
     ($fn_name:ident, SchemaVariantChildNode::$child_node:ident, $pkg_type:ident) => {
-        pub fn $fn_name(&self) -> PkgResult<Vec<$pkg_type>> {
+        pub fn $fn_name(&self) -> Result<Vec<$pkg_type>> {
             let mut entries = vec![];
             if let Some(child_idxs) = self
                 .source
@@ -102,7 +102,7 @@ impl<'a> SiPkgSchemaVariant<'a> {
     pub fn from_graph(
         graph: &'a Graph<HashedNode<PkgNode>, ()>,
         node_idx: NodeIndex,
-    ) -> PkgResult<Self> {
+    ) -> Result<Self> {
         let schema_variant_hashed_node = &graph[node_idx];
         let schema_variant_node = match schema_variant_hashed_node.inner() {
             PkgNode::SchemaVariant(node) => node.clone(),
@@ -110,7 +110,8 @@ impl<'a> SiPkgSchemaVariant<'a> {
                 return Err(SiPkgError::UnexpectedPkgNodeType(
                     PkgNode::SCHEMA_VARIANT_KIND_STR,
                     unexpected.node_kind_str(),
-                ));
+                )
+                .into());
             }
         };
 
@@ -197,7 +198,7 @@ impl<'a> SiPkgSchemaVariant<'a> {
         source: &Source<'a>,
         node_idx: NodeIndex,
         parent_info: Option<I>,
-    ) -> PkgResult<Vec<(SiPkgProp<'a>, Option<I>)>>
+    ) -> Result<Vec<(SiPkgProp<'a>, Option<I>)>>
     where
         I: ToOwned + Clone + std::fmt::Debug,
     {
@@ -235,7 +236,9 @@ impl<'a> SiPkgSchemaVariant<'a> {
                                     .insert(child_prop.0.name().to_owned(), child_prop)
                                     .is_some()
                                 {
-                                    return Err(SiPkgError::prop_tree_invalid("duplicate prop"));
+                                    return Err(
+                                        SiPkgError::prop_tree_invalid("duplicate prop").into()
+                                    );
                                 }
                             }
 
@@ -250,7 +253,9 @@ impl<'a> SiPkgSchemaVariant<'a> {
                                 })
                                 .try_collect()?;
                             if !props_by_name.is_empty() {
-                                return Err(SiPkgError::prop_tree_invalid("prop order missing"));
+                                return Err(
+                                    SiPkgError::prop_tree_invalid("prop order missing").into()
+                                );
                             }
                             child_props
                         }
@@ -267,7 +272,7 @@ impl<'a> SiPkgSchemaVariant<'a> {
     async fn get_prop_root_idx(
         &self,
         prop_root: SchemaVariantSpecPropRoot,
-    ) -> PkgResult<Option<NodeIndex>> {
+    ) -> Result<Option<NodeIndex>> {
         let maybe_node_index = self
             .source
             .graph
@@ -316,21 +321,20 @@ impl<'a> SiPkgSchemaVariant<'a> {
                 _ => "resource",
             };
 
-            Err(SiPkgError::SchemaVariantChildNotFound(maybe_kind))
+            Err(SiPkgError::SchemaVariantChildNotFound(maybe_kind).into())
         }
     }
 
-    pub async fn visit_prop_tree<F, Fut, I, C, E>(
+    pub async fn visit_prop_tree<F, Fut, I, C>(
         &self,
         prop_root: SchemaVariantSpecPropRoot,
         process_prop_fn: F,
         parent_info: Option<I>,
         context: C,
-    ) -> Result<(), E>
+    ) -> Result<(), anyhow::Error>
     where
         F: Fn(SiPkgProp<'a>, Option<I>, C) -> Fut,
-        Fut: Future<Output = Result<Option<I>, E>>,
-        E: std::convert::From<SiPkgError>,
+        Fut: Future<Output = Result<Option<I>, anyhow::Error>>,
         I: ToOwned + Clone + std::fmt::Debug,
         C: 'a + Copy,
     {
@@ -378,7 +382,7 @@ impl<'a> SiPkgSchemaVariant<'a> {
         &self,
         prop_root: SchemaVariantSpecPropRoot,
         builder: &mut SchemaVariantSpecBuilder,
-    ) -> PkgResult<()> {
+    ) -> Result<()> {
         let context = PropSpecVisitContext {
             prop_stack: Mutex::new(VecDeque::new()),
             prop_parents: Mutex::new(HashMap::new()),
@@ -404,7 +408,8 @@ impl<'a> SiPkgSchemaVariant<'a> {
                         if children.len() > 1 {
                             return Err(SiPkgError::prop_tree_invalid(
                                 "Array or map has more than one direct child",
-                            ));
+                            )
+                            .into());
                         }
                         let type_prop = children.first().ok_or(SiPkgError::prop_tree_invalid(
                             "Array or map prop missing type prop",
@@ -423,7 +428,8 @@ impl<'a> SiPkgSchemaVariant<'a> {
                     _ => {
                         return Err(SiPkgError::prop_tree_invalid(
                             "Leaf prop (String, Number, Boolean) cannot have children",
-                        ));
+                        )
+                        .into());
                     }
                 }
             }
@@ -457,7 +463,7 @@ impl<'a> SiPkgSchemaVariant<'a> {
         Ok(())
     }
 
-    pub async fn to_spec(&self) -> PkgResult<SchemaVariantSpec> {
+    pub async fn to_spec(&self) -> Result<SchemaVariantSpec> {
         let mut builder = SchemaVariantSpec::builder();
 
         builder.version(self.version()).deleted(self.deleted);
@@ -526,7 +532,7 @@ async fn create_prop_stack(
     spec: SiPkgProp<'_>,
     parent_path: Option<String>,
     ctx: &PropSpecVisitContext,
-) -> PkgResult<Option<String>> {
+) -> Result<Option<String>> {
     let path = match &parent_path {
         Some(parent_path) => format!("{}{}{}", parent_path, PROP_PATH_SEPARATOR, spec.name()),
         None => spec.name().to_owned(),
@@ -633,9 +639,7 @@ async fn create_prop_stack(
     if let Some(parent_path) = parent_path {
         match ctx.prop_parents.lock().await.entry(path.to_owned()) {
             Entry::Occupied(_) => {
-                return Err(SiPkgError::prop_tree_invalid(
-                    "Prop has more than one parent",
-                ));
+                return Err(SiPkgError::prop_tree_invalid("Prop has more than one parent").into());
             }
             Entry::Vacant(entry) => {
                 entry.insert(parent_path);

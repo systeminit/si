@@ -8,9 +8,9 @@ use axum::{
 use dal::{ChangeSet, Component, ComponentId, DalContext, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
 
-use super::DiagramResult;
 use crate::{
     extract::{v1::AccessBuilder, HandlerContext, PosthogClient},
+    routes::AppError,
     service::force_change_set_response::ForceChangeSetResponse,
     track,
 };
@@ -29,7 +29,7 @@ async fn remove_single_delete_intent(
     original_uri: &Uri,
     host_name: &String,
     PosthogClient(posthog_client): &PosthogClient,
-) -> DiagramResult<()> {
+) -> Result<(), AppError> {
     let comp = Component::get_by_id(ctx, component_id).await?;
 
     let comp_schema = comp.schema(ctx).await?;
@@ -58,7 +58,7 @@ async fn restore_component_from_base_change_set(
     original_uri: &Uri,
     host_name: &String,
     PosthogClient(posthog_client): &PosthogClient,
-) -> DiagramResult<()> {
+) -> Result<(), AppError> {
     Component::restore_from_base_change_set(ctx, component_id).await?;
     let comp = Component::get_by_id(ctx, component_id).await?;
     let comp_schema = comp.schema(ctx).await?;
@@ -96,7 +96,7 @@ pub async fn remove_delete_intent(
     OriginalUri(original_uri): OriginalUri,
     Host(host_name): Host,
     Json(request): Json<RemoveDeleteIntentRequest>,
-) -> DiagramResult<ForceChangeSetResponse<()>> {
+) -> Result<ForceChangeSetResponse<()>, AppError> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;

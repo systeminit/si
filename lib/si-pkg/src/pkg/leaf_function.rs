@@ -33,7 +33,8 @@ impl<'a> SiPkgLeafFunction<'a> {
                 return Err(SiPkgError::UnexpectedPkgNodeType(
                     PkgNode::LEAF_FUNCTION_KIND_STR,
                     unexpected.node_kind_str(),
-                ));
+                )
+                .into());
             }
         };
 

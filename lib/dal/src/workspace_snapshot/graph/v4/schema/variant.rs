@@ -1,10 +1,11 @@
+use anyhow::Result;
 use petgraph::prelude::*;
 
 use crate::{
     workspace_snapshot::{
         content_address::ContentAddressDiscriminants,
         edge_weight::EdgeWeightKindDiscriminants,
-        graph::{SchemaVariantExt, WorkspaceSnapshotGraphResult, WorkspaceSnapshotGraphV4},
+        graph::{SchemaVariantExt, WorkspaceSnapshotGraphV4},
         node_weight::NodeWeight,
     },
     EdgeWeight, EdgeWeightKind, InputSocketId, SchemaId, SchemaVariantError, SchemaVariantId,
@@ -14,7 +15,7 @@ impl SchemaVariantExt for WorkspaceSnapshotGraphV4 {
     fn schema_id_for_schema_variant_id(
         &self,
         schema_variant_id: SchemaVariantId,
-    ) -> WorkspaceSnapshotGraphResult<SchemaId> {
+    ) -> Result<SchemaId> {
         let schema_variant_node_index = self
             .node_index_by_id
             .get(&schema_variant_id.into())
@@ -51,7 +52,7 @@ impl SchemaVariantExt for WorkspaceSnapshotGraphV4 {
         &mut self,
         schema_variant_id: SchemaVariantId,
         input_socket_id: InputSocketId,
-    ) -> WorkspaceSnapshotGraphResult<()> {
+    ) -> Result<()> {
         self.add_edge_between_ids(
             schema_variant_id.into(),
             EdgeWeight::new(EdgeWeightKind::Socket),
@@ -64,7 +65,7 @@ impl SchemaVariantExt for WorkspaceSnapshotGraphV4 {
     fn schema_variant_ids_for_schema_id_opt(
         &self,
         schema_id: SchemaId,
-    ) -> WorkspaceSnapshotGraphResult<Option<Vec<SchemaVariantId>>> {
+    ) -> Result<Option<Vec<SchemaVariantId>>> {
         let schema_node_index = match self.node_index_by_id.get(&schema_id.into()) {
             Some(schema_idx) => *schema_idx,
             None => return Ok(None),

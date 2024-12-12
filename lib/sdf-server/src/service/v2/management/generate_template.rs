@@ -1,8 +1,9 @@
-use crate::service::force_change_set_response::ForceChangeSetResponse;
+use anyhow::Result;
 use axum::{
     extract::{Host, OriginalUri, Path},
     Json,
 };
+use convert_case::{Case, Casing};
 use dal::{
     diagram::view::ViewId, func::authoring::FuncAuthoringClient,
     management::prototype::ManagementPrototype, schema::variant::authoring::VariantAuthoringClient,
@@ -13,12 +14,12 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 use si_events::audit_log::AuditLogKind;
 
-use crate::extract::{HandlerContext, PosthogClient};
-use crate::service::v2::AccessBuilder;
+use crate::{
+    extract::{HandlerContext, PosthogClient},
+    service::{force_change_set_response::ForceChangeSetResponse, v2::AccessBuilder},
+};
 
-use super::{track, ManagementApiError, ManagementApiResult};
-
-use convert_case::{Case, Casing};
+use super::{track, ManagementApiError};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -45,7 +46,7 @@ pub async fn generate_template(
     Host(host_name): Host,
     Path((_workspace_pk, change_set_id, view_id)): Path<(WorkspacePk, ChangeSetId, ViewId)>,
     Json(request): Json<GenerateTemplateRequest>,
-) -> ManagementApiResult<ForceChangeSetResponse<GenerateTemplateResponse>> {
+) -> Result<ForceChangeSetResponse<GenerateTemplateResponse>> {
     let mut ctx = builder
         .build(access_builder.build(change_set_id.into()))
         .await?;

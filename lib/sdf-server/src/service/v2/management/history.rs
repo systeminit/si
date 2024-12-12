@@ -1,3 +1,4 @@
+use anyhow::Result;
 use axum::{extract::Query, Json};
 use chrono::{DateTime, Utc};
 use dal::Visibility;
@@ -8,7 +9,7 @@ use si_events::{
 
 use crate::{extract::HandlerContext, service::v2::AccessBuilder};
 
-use super::{ManagementApiError, ManagementApiResult};
+use super::ManagementApiError;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -37,7 +38,7 @@ pub async fn history(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Query(request): Query<ManagementHistoryRequest>,
-) -> ManagementApiResult<Json<Vec<ManagementHistoryItem>>> {
+) -> Result<Json<Vec<ManagementHistoryItem>>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let mut result = vec![];
@@ -59,7 +60,7 @@ pub async fn history(
 }
 
 impl TryFrom<FuncRun> for ManagementHistoryItem {
-    type Error = ManagementApiError;
+    type Error = anyhow::Error;
 
     fn try_from(func_run: FuncRun) -> Result<Self, Self::Error> {
         Ok(Self {

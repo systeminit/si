@@ -5,9 +5,9 @@ use dal::WsEvent;
 use si_events::audit_log::AuditLogKind;
 use si_frontend_types::{CreateChangeSetRequest, CreateChangeSetResponse};
 
-use super::ChangeSetResult;
 use crate::{
     extract::{v1::AccessBuilder, HandlerContext, PosthogClient},
+    routes::AppError,
     track,
 };
 
@@ -18,7 +18,7 @@ pub async fn create_change_set(
     OriginalUri(original_uri): OriginalUri,
     Host(host_name): Host,
     Json(request): Json<CreateChangeSetRequest>,
-) -> ChangeSetResult<Json<CreateChangeSetResponse>> {
+) -> Result<Json<CreateChangeSetResponse>, AppError> {
     let ctx = builder.build_head(access_builder).await?;
 
     let change_set_name = &request.change_set_name;

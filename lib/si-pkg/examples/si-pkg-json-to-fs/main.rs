@@ -1,10 +1,12 @@
 use std::{env::args, path::Path};
+
+use anyhow::Result;
 use tokio::fs;
 
-use si_pkg::{PkgSpec, SchemaVariantSpecPropRoot, SiPkg, SiPkgError, SiPkgProp};
+use si_pkg::{PkgSpec, SchemaVariantSpecPropRoot, SiPkg, SiPkgProp};
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> Result<()> {
     let mut args = args();
     let input = args.nth(1).expect("usage: program <JSON_FILE> <DEST_DIR>");
     let dst = args.next().expect("usage: program <JSON_FILE> <DEST_DIR>");
@@ -40,7 +42,7 @@ async fn process_prop(
     prop: SiPkgProp<'_>,
     _parent_id: Option<()>,
     _context: &(),
-) -> Result<Option<()>, SiPkgError> {
+) -> Result<Option<()>> {
     dbg!(prop);
     Ok(None)
 }

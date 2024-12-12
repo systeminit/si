@@ -14,6 +14,7 @@ use ulid::Ulid;
 
 use crate::{
     extract::{request::RawAccessToken, v1::AccessBuilder, HandlerContext, PosthogClient},
+    routes::AppError,
     service::{force_change_set_response::ForceChangeSetResponse, module::ModuleError},
     track,
 };
@@ -36,14 +37,14 @@ pub async fn install_module(
     OriginalUri(original_uri): OriginalUri,
     Host(host_name): Host,
     Json(request): Json<InstallModuleRequest>,
-) -> Result<ForceChangeSetResponse<Vec<FrontendVariant>>, ModuleError> {
+) -> Result<ForceChangeSetResponse<Vec<FrontendVariant>>, AppError> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
 
     let module_index_url = match ctx.module_index_url() {
         Some(url) => url,
-        None => return Err(ModuleError::ModuleIndexNotConfigured),
+        None => return Err(ModuleError::ModuleIndexNotConfigured.into()),
     };
 
     let mut variants = Vec::new();
@@ -66,7 +67,8 @@ pub async fn install_module(
                 return Err(ModuleError::UnlockedSchemaVariantForModuleToInstall(
                     module_details.id,
                     schema_id.into(),
-                ));
+                )
+                .into());
             }
         } else {
             // NOTE(nick): I don't love this. Basically, if you install an old module, it can
@@ -147,7 +149,7 @@ pub async fn install_module(
             }
             variants.push(front_end_variant);
         } else {
-            return Err(ModuleError::SchemaNotFoundFromInstall(id));
+            return Err(ModuleError::SchemaNotFoundFromInstall(id).into());
         };
     }
 

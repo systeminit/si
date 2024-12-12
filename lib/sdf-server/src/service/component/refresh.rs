@@ -8,9 +8,9 @@ use dal::{
 };
 use serde::{Deserialize, Serialize};
 
-use super::ComponentResult;
 use crate::{
     extract::{v1::AccessBuilder, HandlerContext, PosthogClient},
+    routes::AppError,
     track,
 };
 
@@ -35,7 +35,7 @@ pub async fn refresh(
     OriginalUri(original_uri): OriginalUri,
     Host(host_name): Host,
     Json(request): Json<RefreshRequest>,
-) -> ComponentResult<Json<RefreshResponse>> {
+) -> Result<Json<RefreshResponse>, AppError> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let component_ids = vec![request.component_id];

@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     extract::{v1::AccessBuilder, HandlerContext, PosthogClient},
-    service::change_set::ChangeSetResult,
+    routes::AppError,
     track,
 };
 
@@ -32,7 +32,7 @@ pub async fn begin_approval_process(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Json(request): Json<BeginMergeFlow>,
-) -> ChangeSetResult<Json<()>> {
+) -> Result<Json<()>, AppError> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let mut change_set = ChangeSet::get_by_id(&ctx, ctx.visibility().change_set_id).await?;
@@ -62,7 +62,7 @@ pub async fn cancel_approval_process(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Json(request): Json<CancelMergeFlow>,
-) -> ChangeSetResult<Json<()>> {
+) -> Result<Json<()>, AppError> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let mut change_set = ChangeSet::get_by_id(&ctx, ctx.visibility().change_set_id).await?;

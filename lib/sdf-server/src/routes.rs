@@ -9,19 +9,14 @@ use axum::{
 use hyper::header;
 use hyper::Method;
 use serde_json::{json, Value};
-use si_data_nats::NatsError;
-use si_data_pg::PgError;
-use telemetry::prelude::*;
-use thiserror::Error;
 use tower_http::{
     compression::CompressionLayer,
     cors::{AllowOrigin, CorsLayer},
 };
 
-use crate::{
-    app_state::{AppState, ApplicationRuntimeMode},
-    ServerError,
-};
+use crate::app_state::{AppState, ApplicationRuntimeMode};
+
+pub type AppError = crate::error::ServerError;
 
 const MAINTENANCE_MODE_MESSAGE: &str = concat!(
     " SI is currently in maintenance mode. ",
@@ -125,32 +120,4 @@ pub fn dev_routes() -> Router<AppState> {
 pub fn dev_routes() -> Router<AppState> {
     telemetry::prelude::debug!("skipping dev routes...");
     Router::new()
-}
-
-#[allow(clippy::large_enum_variant)]
-#[remain::sorted]
-#[derive(Debug, Error)]
-pub enum AppError {
-    #[error(transparent)]
-    Nats(#[from] NatsError),
-    #[error(transparent)]
-    Pg(#[from] PgError),
-    #[error(transparent)]
-    Server(#[from] ServerError),
-}
-
-impl IntoResponse for AppError {
-    fn into_response(self) -> Response {
-        let (status, error_message) = (StatusCode::INTERNAL_SERVER_ERROR, self.to_string());
-
-        let body = Json(serde_json::json!({
-            "error": {
-                "message": error_message,
-                "code": 42,
-                "statusCode": status.as_u16(),
-            },
-        }));
-        error!(si.error.message = error_message);
-        (status, body).into_response()
-    }
 }

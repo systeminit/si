@@ -1,16 +1,20 @@
+use anyhow::Result;
 use axum::{
     extract::{OriginalUri, Path},
     Json,
 };
-use dal::func::binding::FuncBinding;
-use dal::{ChangeSetId, DalContext, Func, SchemaId, SchemaVariant, SchemaVariantId, WorkspacePk};
+use dal::{
+    func::binding::FuncBinding, ChangeSetId, DalContext, Func, SchemaId, SchemaVariant,
+    SchemaVariantId, WorkspacePk,
+};
 use si_frontend_types as frontend_types;
 use std::collections::HashMap;
 use telemetry::prelude::*;
 
-use super::FuncAPIResult;
-use crate::extract::{HandlerContext, PosthogClient};
-use crate::service::v2::AccessBuilder;
+use crate::{
+    extract::{HandlerContext, PosthogClient},
+    service::v2::AccessBuilder,
+};
 
 pub async fn list_funcs(
     HandlerContext(builder): HandlerContext,
@@ -18,7 +22,7 @@ pub async fn list_funcs(
     PosthogClient(_posthog_client): PosthogClient,
     OriginalUri(_original_uri): OriginalUri,
     Path((_workspace_pk, change_set_id)): Path<(WorkspacePk, ChangeSetId)>,
-) -> FuncAPIResult<Json<Vec<frontend_types::FuncSummary>>> {
+) -> Result<Json<Vec<frontend_types::FuncSummary>>> {
     let ctx = builder
         .build(access_builder.build(change_set_id.into()))
         .await?;
@@ -44,7 +48,7 @@ pub async fn list_funcs(
 async fn treat_single_function(
     ctx: &DalContext,
     func: &Func,
-) -> FuncAPIResult<Option<frontend_types::FuncSummary>> {
+) -> Result<Option<frontend_types::FuncSummary>> {
     // compute bindings
     let bindings = FuncBinding::for_func_id(ctx, func.id).await?;
 

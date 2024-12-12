@@ -5,9 +5,9 @@ use axum::{
 use dal::{code_view::CodeView, Component, ComponentId, Visibility};
 use serde::{Deserialize, Serialize};
 
-use super::ComponentResult;
 use crate::{
     extract::{v1::AccessBuilder, HandlerContext, PosthogClient},
+    routes::AppError,
     track,
 };
 
@@ -33,7 +33,7 @@ pub async fn get_code(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Query(request): Query<GetCodeRequest>,
-) -> ComponentResult<Json<GetCodeResponse>> {
+) -> Result<Json<GetCodeResponse>, AppError> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let (code_views, has_code) = Component::list_code_generated(&ctx, request.component_id).await?;

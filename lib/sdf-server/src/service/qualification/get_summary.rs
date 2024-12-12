@@ -1,12 +1,10 @@
+use anyhow::Result;
 use axum::{extract::Query, Json};
 use dal::qualification::{QualificationSummary, QualificationSummaryForComponent};
 use dal::{ComponentId, Visibility};
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    extract::{v1::AccessBuilder, HandlerContext},
-    service::qualification::QualificationResult,
-};
+use crate::extract::{v1::AccessBuilder, HandlerContext};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -65,8 +63,8 @@ pub async fn get_summary(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Query(request): Query<GetSummaryRequest>,
-) -> QualificationResult<Json<QualificationSummaryResponse>> {
-    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
+) -> Result<Json<QualificationSummaryResponse>> {
+    let ctx: dal::DalContext = builder.build(request_ctx.build(request.visibility)).await?;
 
     let qual_summary = QualificationSummary::get_summary(&ctx).await?;
 

@@ -1,3 +1,4 @@
+use anyhow::Result;
 use axum::{
     extract::{Host, OriginalUri, Path},
     http::StatusCode,
@@ -34,8 +35,6 @@ use super::func::FuncAPIError;
 mod generate_template;
 mod history;
 mod latest;
-
-pub type ManagementApiResult<T> = Result<T, ManagementApiError>;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -113,7 +112,7 @@ pub async fn run_prototype(
         ViewId,
     )>,
     Json(request): Json<RunPrototypeRequest>,
-) -> ManagementApiResult<ForceChangeSetResponse<RunPrototypeResponse>> {
+) -> Result<ForceChangeSetResponse<RunPrototypeResponse>> {
     let mut ctx = builder
         .build(access_builder.build(change_set_id.into()))
         .await?;
@@ -200,9 +199,7 @@ pub async fn run_prototype(
         ));
     }
 
-    Err(ManagementApiError::ManagementPrototypeExecutionFailure(
-        prototype_id,
-    ))
+    Err(ManagementApiError::ManagementPrototypeExecutionFailure(prototype_id).into())
 }
 
 pub fn v2_routes() -> Router<AppState> {

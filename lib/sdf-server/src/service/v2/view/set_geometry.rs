@@ -1,8 +1,4 @@
-use super::ViewResult;
-use crate::{
-    extract::HandlerContext, service::force_change_set_response::ForceChangeSetResponse,
-    service::v2::AccessBuilder,
-};
+use anyhow::Result;
 use axum::{extract::Path, Json};
 use dal::{
     diagram::view::{View, ViewId},
@@ -12,6 +8,11 @@ use serde::{Deserialize, Serialize};
 use si_frontend_types::{RawGeometry, StringGeometry};
 use std::collections::HashMap;
 use ulid::Ulid;
+
+use crate::{
+    extract::HandlerContext, service::force_change_set_response::ForceChangeSetResponse,
+    service::v2::AccessBuilder,
+};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -32,7 +33,7 @@ pub async fn set_component_geometry(
     AccessBuilder(access_builder): AccessBuilder,
     Path((_workspace_pk, change_set_id, view_id)): Path<(WorkspacePk, ChangeSetId, ViewId)>,
     Json(request): Json<SetComponentGeometryRequest>,
-) -> ViewResult<ForceChangeSetResponse<Response>> {
+) -> Result<ForceChangeSetResponse<Response>> {
     let mut ctx = builder
         .build(access_builder.build(change_set_id.into()))
         .await?;
@@ -114,7 +115,7 @@ pub async fn set_view_object_geometry(
         ViewId,
     )>,
     Json(request): Json<SetViewObjectGeometryRequest>,
-) -> ViewResult<ForceChangeSetResponse<Response>> {
+) -> Result<ForceChangeSetResponse<Response>> {
     let mut ctx = builder
         .build(access_builder.build(change_set_id.into()))
         .await?;

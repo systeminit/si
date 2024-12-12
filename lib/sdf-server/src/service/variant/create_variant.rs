@@ -9,7 +9,8 @@ use si_frontend_types::SchemaVariant as FrontendVariant;
 
 use crate::{
     extract::{v1::AccessBuilder, HandlerContext, PosthogClient},
-    service::{force_change_set_response::ForceChangeSetResponse, variant::SchemaVariantResult},
+    routes::AppError,
+    service::force_change_set_response::ForceChangeSetResponse,
     track,
 };
 
@@ -29,7 +30,7 @@ pub async fn create_variant(
     OriginalUri(original_uri): OriginalUri,
     Host(host_name): Host,
     Json(request): Json<CreateVariantRequest>,
-) -> SchemaVariantResult<ForceChangeSetResponse<FrontendVariant>> {
+) -> Result<ForceChangeSetResponse<FrontendVariant>, AppError> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;

@@ -1,10 +1,9 @@
+use anyhow::Result;
 use axum::{extract::Path, Json};
 use dal::{UserPk, WorkspacePk};
 use serde::{Deserialize, Serialize};
 
 use crate::{extract::HandlerContext, service::v2::AccessBuilder};
-
-use super::WorkspaceAPIError;
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -34,7 +33,7 @@ pub async fn list_workspace_users(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(access_builder): AccessBuilder,
     Path(workspace_id): Path<WorkspacePk>,
-) -> Result<Json<Response>, WorkspaceAPIError> {
+) -> Result<Json<Response>> {
     let ctx = builder.build_head(access_builder).await?;
 
     let users = dal::User::list_members_for_workspace(&ctx, workspace_id.to_string())

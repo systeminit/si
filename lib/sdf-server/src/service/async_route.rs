@@ -10,8 +10,9 @@ pub async fn handle_error(
     ctx: &DalContext,
     uri: Uri,
     task_id: TaskId,
-    err: impl std::error::Error,
+    err: impl Into<anyhow::Error>,
 ) {
+    let err: anyhow::Error = err.into();
     let err_string = err.to_string();
     error!("async route '{}' error: {}", uri.to_string(), err_string);
     match WsEvent::async_error(ctx, task_id, err_string).await {

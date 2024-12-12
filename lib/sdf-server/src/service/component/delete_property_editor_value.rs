@@ -9,7 +9,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     extract::{v1::AccessBuilder, HandlerContext},
-    service::{component::ComponentResult, force_change_set_response::ForceChangeSetResponse},
+    routes::AppError,
+    service::force_change_set_response::ForceChangeSetResponse,
 };
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -27,7 +28,7 @@ pub async fn delete_property_editor_value(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Json(request): Json<DeletePropertyEditorValueRequest>,
-) -> ComponentResult<ForceChangeSetResponse<()>> {
+) -> Result<ForceChangeSetResponse<()>, AppError> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;

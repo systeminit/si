@@ -1,3 +1,4 @@
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
@@ -70,7 +71,7 @@ pub enum ValidationError {
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
 
-pub type ValidationResult<T> = Result<T, ValidationError>;
+pub type ValidationResult<T> = Result<T>;
 
 pub use si_id::ValidationOutputId;
 
@@ -250,8 +251,7 @@ impl ValidationOutput {
         attribute_value_id: AttributeValueId,
     ) -> ValidationResult<Option<String>> {
         Ok(AttributeValue::prop_opt(ctx, attribute_value_id)
-            .await
-            .map_err(Box::new)?
+            .await?
             .and_then(|prop| prop.validation_format))
     }
 
@@ -272,8 +272,7 @@ impl ValidationOutput {
 
         let result_channel =
             FuncRunner::run_validation_format(ctx, attribute_value_id, value, validation_format)
-                .await
-                .map_err(Box::new)?;
+                .await?;
 
         let mut validation_output = None;
 
@@ -282,14 +281,16 @@ impl ValidationOutput {
             .map_err(|_| ValidationError::FuncRunGone)?
         {
             Ok(func_run_result) => func_run_result,
-            Err(FuncRunnerError::ResultFailure { kind, message, .. }) => {
-                let _ = validation_output.insert(ValidationOutput {
-                    status: ValidationStatus::Error,
-                    message: Some(format!("{kind}: {message}")),
-                });
-                return Ok(validation_output);
-            }
-            Err(e) => return Err(Box::new(e).into()),
+            Err(error) => match error.downcast_ref::<FuncRunnerError>() {
+                Some(FuncRunnerError::ResultFailure { kind, message, .. }) => {
+                    let _ = validation_output.insert(ValidationOutput {
+                        status: ValidationStatus::Error,
+                        message: Some(format!("{kind}: {message}")),
+                    });
+                    return Ok(validation_output);
+                }
+                _ => return Err(error),
+            },
         };
 
         let message = match func_result_value.value() {
@@ -326,13 +327,8 @@ impl ValidationOutput {
         ctx: &DalContext,
         component_id: ComponentId,
     ) -> ValidationResult<Vec<(AttributeValueId, ValidationOutput)>> {
-        let component = Component::get_by_id(ctx, component_id)
-            .await
-            .map_err(Box::new)?;
-        let domain_av = component
-            .domain_prop_attribute_value(ctx)
-            .await
-            .map_err(Box::new)?;
+        let component = Component::get_by_id(ctx, component_id).await?;
+        let domain_av = component.domain_prop_attribute_value(ctx).await?;
 
         let mut outputs = vec![];
         let mut queue = VecDeque::from(vec![domain_av]);
@@ -343,9 +339,7 @@ impl ValidationOutput {
                     .map(|node| node.validation);
 
             let children_av_ids =
-                AttributeValue::get_child_av_ids_in_order(ctx, attribute_value_id)
-                    .await
-                    .map_err(Box::new)?;
+                AttributeValue::get_child_av_ids_in_order(ctx, attribute_value_id).await?;
 
             queue.extend(children_av_ids);
 

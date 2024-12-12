@@ -1,5 +1,7 @@
-use axum::extract::Path;
-use axum::Json;
+use std::sync::Arc;
+
+use anyhow::Result;
+use axum::{extract::Path, Json};
 use chrono::{DateTime, Utc};
 use dal::{ContentHash, DalContext, WorkspacePk};
 use serde::{Deserialize, Serialize};
@@ -8,11 +10,8 @@ use si_events::{
     ChangeSetId, ComponentId, FuncBackendKind, FuncBackendResponseType, FuncKind, FuncRun,
     FuncRunId, FuncRunLog, FuncRunLogId, FuncRunState, OutputLine,
 };
-use std::sync::Arc;
 
-use crate::{
-    extract::HandlerContext, service::v2::func::FuncAPIResult, service::v2::AccessBuilder,
-};
+use crate::{extract::HandlerContext, service::v2::AccessBuilder};
 
 /// A one-to-one mapping of cyclone's "OutputStream" type.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
@@ -151,7 +150,7 @@ pub struct GetFuncRunResponse {
     pub func_run: Option<FuncRunView>,
 }
 
-pub async fn get_func_run_view(ctx: &DalContext, func_run: &FuncRun) -> FuncAPIResult<FuncRunView> {
+pub async fn get_func_run_view(ctx: &DalContext, func_run: &FuncRun) -> Result<FuncRunView> {
     let arguments: Option<CasValue> = ctx
         .layer_db()
         .cas()
@@ -217,7 +216,7 @@ pub async fn get_func_run(
         dal::ChangeSetId,
         FuncRunId,
     )>,
-) -> FuncAPIResult<Json<GetFuncRunResponse>> {
+) -> Result<Json<GetFuncRunResponse>> {
     let ctx = builder
         .build(access_builder.build(change_set_id.into()))
         .await?;

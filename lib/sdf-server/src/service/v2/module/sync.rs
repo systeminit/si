@@ -1,3 +1,4 @@
+use anyhow::Result;
 use axum::{
     extract::{Host, OriginalUri, Path},
     Json,
@@ -5,7 +6,6 @@ use axum::{
 use dal::{module::Module, ChangeSetId, WorkspacePk};
 use si_frontend_types as frontend_types;
 
-use super::ModulesAPIError;
 use crate::{
     extract::{HandlerContext, PosthogClient},
     service::v2::AccessBuilder,
@@ -19,7 +19,7 @@ pub async fn sync(
     OriginalUri(original_uri): OriginalUri,
     Host(host_name): Host,
     Path((_workspace_pk, change_set_id)): Path<(WorkspacePk, ChangeSetId)>,
-) -> Result<Json<frontend_types::SyncedModules>, ModulesAPIError> {
+) -> Result<Json<frontend_types::SyncedModules>> {
     let ctx = builder
         .build(access_builder.build(change_set_id.into()))
         .await?;

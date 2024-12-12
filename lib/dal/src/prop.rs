@@ -1,3 +1,4 @@
+use anyhow::Result;
 use async_recursion::async_recursion;
 use petgraph::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -85,7 +86,7 @@ pub enum PropError {
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
 
-pub type PropResult<T> = Result<T, PropError>;
+pub type PropResult<T> = Result<T>;
 
 pub const SECRET_KIND_WIDGET_OPTION_LABEL: &str = "secretKind";
 
@@ -485,8 +486,7 @@ impl Prop {
             root_prop.id,
             EdgeWeightKind::new_use(),
         )
-        .await
-        .map_err(Box::new)?;
+        .await?;
 
         Ok(root_prop)
     }
@@ -594,14 +594,14 @@ impl Prop {
                             content_inner.content_address().into();
                         match content_addr_discrim {
                             ContentAddressDiscriminants::SchemaVariant => None,
-                            _ => return Err(PropError::PropParentInvalid(prop_id)),
+                            _ => return Err(PropError::PropParentInvalid(prop_id).into()),
                         }
                     }
                     NodeWeight::SchemaVariant(_) => None,
-                    _ => return Err(PropError::PropParentInvalid(prop_id)),
+                    _ => return Err(PropError::PropParentInvalid(prop_id).into()),
                 },
             ),
-            None => Err(PropError::PropIsOrphan(prop_id)),
+            None => Err(PropError::PropIsOrphan(prop_id).into()),
         }
     }
 
@@ -650,7 +650,8 @@ impl Prop {
                 prop_id,
                 single_child_prop_id,
                 direct_child_prop_ids_should_only_be_one,
-            ));
+            )
+            .into());
         }
 
         Ok(single_child_prop_id)
@@ -748,7 +749,7 @@ impl Prop {
             .await?
             .first()
             .copied()
-            .ok_or(PropError::MapOrArrayMissingElementProp(prop_id))
+            .ok_or(PropError::MapOrArrayMissingElementProp(prop_id).into())
     }
 
     pub async fn find_child_prop_index_by_name(
@@ -774,10 +775,7 @@ impl Prop {
             }
         }
 
-        Err(PropError::ChildPropNotFoundByName(
-            node_index,
-            child_name.as_ref().to_string(),
-        ))
+        Err(PropError::ChildPropNotFoundByName(node_index, child_name.as_ref().to_string()).into())
     }
 
     /// Find the `SchemaVariantId`` for a given prop. If the prop tree is
@@ -807,7 +805,7 @@ impl Prop {
                     NodeWeight::SchemaVariant(schema_variant) => {
                         Ok(Some(schema_variant.id().into()))
                     }
-                    _ => Err(PropError::PropParentInvalid(root_prop_id)),
+                    _ => Err(PropError::PropParentInvalid(root_prop_id).into()),
                 }
             }
             None => Ok(None),
@@ -832,9 +830,10 @@ impl Prop {
     ) -> PropResult<Option<PropId>> {
         match Self::find_prop_id_by_path(ctx, schema_variant_id, path).await {
             Ok(prop_id) => Ok(Some(prop_id)),
-            Err(err) => match err {
-                PropError::ChildPropNotFoundByName(_, _) => Ok(None),
-                err => Err(err),
+            Err(error) => match error.downcast_ref::<PropError>() {
+                Some(PropError::ChildPropNotFoundByName(_, _)) => Ok(None),
+                Some(_prop_err) => Err(error),
+                None => Err(error),
             },
         }
     }
@@ -936,7 +935,7 @@ impl Prop {
 
     pub async fn input_socket_sources(&self, ctx: &DalContext) -> PropResult<Vec<InputSocketId>> {
         let prototype_id = Self::prototype_id(ctx, self.id).await?;
-        Ok(AttributePrototype::list_input_socket_sources_for_id(ctx, prototype_id).await?)
+        AttributePrototype::list_input_socket_sources_for_id(ctx, prototype_id).await
     }
 
     /// Is this prop set by a function that takes another prop (or socket) as an input?
@@ -993,7 +992,7 @@ impl Prop {
 
         let prop = Self::get_by_id(ctx, prop_id).await?;
         if !prop.kind.is_scalar() {
-            return Err(PropError::SetDefaultForNonScalar(prop_id, prop.kind));
+            return Err(PropError::SetDefaultForNonScalar(prop_id, prop.kind).into());
         }
 
         let prototype_id = Self::prototype_id(ctx, prop_id).await?;

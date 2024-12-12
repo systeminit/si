@@ -1,3 +1,4 @@
+use anyhow::Result;
 use axum::{
     extract::{Host, OriginalUri, Path},
     http::Uri,
@@ -18,7 +19,7 @@ use crate::{
     track,
 };
 
-use super::{WorkspaceAPIError, WorkspaceAPIResult};
+use super::WorkspaceAPIError;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -34,7 +35,7 @@ pub async fn install_workspace(
     OriginalUri(original_uri): OriginalUri,
     Host(host_name): Host,
     Path(req_workspace_pk): Path<WorkspacePk>,
-) -> WorkspaceAPIResult<Json<InstallWorkspaceResponse>> {
+) -> Result<Json<InstallWorkspaceResponse>> {
     let ctx = builder.build_head(request_ctx).await?;
 
     let current_workspace = {
@@ -87,12 +88,12 @@ async fn install_workspace_inner(
     host_name: &String,
     PosthogClient(posthog_client): PosthogClient,
     raw_access_token: String,
-) -> WorkspaceAPIResult<()> {
+) -> Result<()> {
     info!("Importing workspace backup");
     let workspace_data = {
         let module_index_url = match ctx.module_index_url() {
             Some(url) => url,
-            None => return Err(WorkspaceAPIError::ModuleIndexUrlNotSet),
+            None => return Err(WorkspaceAPIError::ModuleIndexUrlNotSet.into()),
         };
         let module_index_client =
             ModuleIndexClient::new(module_index_url.try_into()?, &raw_access_token);

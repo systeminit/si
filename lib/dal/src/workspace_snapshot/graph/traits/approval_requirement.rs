@@ -1,10 +1,11 @@
 use std::collections::{HashMap, HashSet};
 
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use si_events::{merkle_tree_hash::MerkleTreeHash, workspace_snapshot::EntityKind};
 use si_id::{ApprovalRequirementDefinitionId, EntityId, UserPk, WorkspacePk};
 
-use crate::workspace_snapshot::graph::{detector::Change, WorkspaceSnapshotGraphResult};
+use crate::workspace_snapshot::graph::detector::Change;
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ApprovalRequirementPermissionLookup {
@@ -41,7 +42,7 @@ pub trait ApprovalRequirementExt {
         &self,
         workspace_id: WorkspacePk,
         changes: &[Change],
-    ) -> WorkspaceSnapshotGraphResult<(
+    ) -> Result<(
         Vec<ApprovalRequirementsBag>,
         HashMap<EntityId, MerkleTreeHash>,
     )>;
@@ -49,10 +50,10 @@ pub trait ApprovalRequirementExt {
     fn approval_requirement_definitions_for_entity_id_opt(
         &self,
         entity_id: EntityId,
-    ) -> WorkspaceSnapshotGraphResult<Option<Vec<ApprovalRequirementDefinitionId>>>;
+    ) -> Result<Option<Vec<ApprovalRequirementDefinitionId>>>;
 
     fn entity_id_for_approval_requirement(
         &self,
         approval_requirement_definition_id: ApprovalRequirementDefinitionId,
-    ) -> WorkspaceSnapshotGraphResult<EntityId>;
+    ) -> Result<EntityId>;
 }

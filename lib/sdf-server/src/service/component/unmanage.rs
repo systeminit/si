@@ -7,11 +7,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     extract::{v1::AccessBuilder, HandlerContext, PosthogClient},
+    routes::AppError,
     service::force_change_set_response::ForceChangeSetResponse,
     track,
 };
-
-use super::ComponentResult;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -33,7 +32,7 @@ pub async fn unmanage(
         managed_component_id,
         visibility,
     }): Json<UnmanageComponentRequest>,
-) -> ComponentResult<ForceChangeSetResponse<()>> {
+) -> Result<ForceChangeSetResponse<()>, AppError> {
     let mut ctx = builder.build(request_ctx.build(visibility)).await?;
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
 

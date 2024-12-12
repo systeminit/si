@@ -1,3 +1,4 @@
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -16,7 +17,7 @@ pub enum SecretDefinitionViewError {
     SchemaVariant(#[from] SchemaVariantError),
 }
 
-type SecretDefinitionViewResult<T> = Result<T, SecretDefinitionViewError>;
+type SecretDefinitionViewResult<T> = Result<T>;
 
 /// A view of the definition of a [`Secret`](crate::Secret).
 #[derive(Deserialize, Serialize, Debug)]

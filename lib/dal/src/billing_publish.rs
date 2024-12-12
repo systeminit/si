@@ -25,6 +25,7 @@
     while_true
 )]
 
+use anyhow::Result;
 use billing_events::{BillingEvent, BillingEventKind, BillingEventsError};
 use chrono::Utc;
 use si_events::FuncRunId;
@@ -55,7 +56,7 @@ pub enum BillingPublishError {
     Transactions(#[from] TransactionsError),
 }
 
-type BillingPublishResult<T> = Result<T, BillingPublishError>;
+type BillingPublishResult<T> = Result<T>;
 
 #[instrument(
     name = "billing_publish.for_head_change_set_pointer_update",

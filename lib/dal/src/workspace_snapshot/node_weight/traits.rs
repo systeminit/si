@@ -5,6 +5,7 @@ use crate::{
     },
     EdgeWeightKindDiscriminants, WorkspaceSnapshotGraphVCurrent,
 };
+use anyhow::Result;
 use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
 use thiserror::Error;
 
@@ -27,7 +28,7 @@ pub enum CorrectTransformsError {
     WorkspaceSnapshotGraph(#[from] WorkspaceSnapshotGraphError),
 }
 
-pub type CorrectTransformsResult<T> = Result<T, CorrectTransformsError>;
+pub type CorrectTransformsResult<T> = Result<T>;
 
 pub trait CorrectTransforms {
     fn correct_transforms(

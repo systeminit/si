@@ -1,13 +1,15 @@
+use anyhow::Result;
 use axum::extract::{Host, OriginalUri, Path};
 use dal::{ChangeSet, ChangeSetId, WorkspacePk, WsEvent};
 use si_events::audit_log::AuditLogKind;
 
-use super::{post_to_webhook, Error, Result};
 use crate::{
     extract::{HandlerContext, PosthogClient},
     service::v2::AccessBuilder,
     track,
 };
+
+use super::{post_to_webhook, Error};
 
 pub async fn approve(
     HandlerContext(builder): HandlerContext,
@@ -34,7 +36,7 @@ pub async fn approve(
         // its via helpers or through the change set methods directly. In addition, they test
         // for success and failure, not solely for success. We should still do this, but not within
         // the PR corresponding to when this message was written.
-        return Err(Error::DvuRootsNotEmpty(ctx.change_set_id()));
+        return Err(Error::DvuRootsNotEmpty(ctx.change_set_id()).into());
     }
 
     let mut change_set = ChangeSet::get_by_id(&ctx, ctx.visibility().change_set_id).await?;

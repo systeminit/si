@@ -128,7 +128,8 @@ impl CorrectTransforms for GeometryNodeWeightV1 {
         let Some(container_view_for_self) = maybe_container_view_for_self else {
             return Err(CorrectTransformsError::InvalidUpdates(
                 "Trying to create a geometry without a container view".to_string(),
-            ));
+            )
+            .into());
         };
 
         // If geometry is not for diagram object, there's no need to run this check
@@ -145,7 +146,8 @@ impl CorrectTransforms for GeometryNodeWeightV1 {
                 else {
                     return Err(CorrectTransformsError::InvalidUpdates(
                         "Diagram object should exist on graph".to_string(),
-                    ));
+                    )
+                    .into());
                 };
 
                 let diagram_object_node = workspace_snapshot_graph
@@ -226,7 +228,7 @@ impl CorrectTransforms for GeometryNodeWeightV1 {
                 // Update::NewNode, then something has gone horribly wrong, as we got the
                 // idx by iterating over the updates, and looking at what kind of thing was
                 // there.
-                _ => return Err(CorrectTransformsError::InvalidUpdates("Updates list is no longer what is expected. Expected Update::NewNode at index, but element is either missing, or not the expected variant".to_string())),
+                _ => return Err(CorrectTransformsError::InvalidUpdates("Updates list is no longer what is expected. Expected Update::NewNode at index, but element is either missing, or not the expected variant".to_string()).into()),
             }
 
             self_updates.sort();

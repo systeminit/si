@@ -1,6 +1,7 @@
 use core::fmt;
 use std::{collections::HashMap, convert::Infallible, path::Path, sync::Arc};
 
+use anyhow::Result;
 use chrono::{DateTime, Utc};
 use object_tree::{
     GraphError, Hash, HashedNode, NameStr, NodeChild, ObjectTree, TarReadError, TarWriter,
@@ -84,7 +85,7 @@ impl SiPkgError {
     }
 }
 
-pub type PkgResult<T> = Result<T, SiPkgError>;
+pub type PkgResult<T> = Result<T>;
 
 impl SiPkgError {
     pub fn visit_prop(source: impl std::error::Error + Send + Sync + 'static) -> Self {
@@ -260,7 +261,7 @@ impl SiPkg {
             }
         }
 
-        Ok(builder.build()?)
+        builder.build()
     }
 }
 
@@ -385,7 +386,8 @@ impl SiPkgMetadata {
                 return Err(SiPkgError::UnexpectedPkgNodeType(
                     PkgNode::PACKAGE_KIND_STR,
                     unexpected.node_kind_str(),
-                ));
+                )
+                .into());
             }
         };
 

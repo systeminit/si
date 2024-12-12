@@ -27,7 +27,10 @@ use crate::{
     models::si_module::{
         self, make_module_details_response, ModuleId, ModuleKind, SchemaId, SchemaVariantId,
     },
+    routes::AppError,
 };
+
+type Result<T> = std::result::Result<T, AppError>;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -79,19 +82,22 @@ pub async fn upsert_module_route(
     ExtractedS3Bucket(s3_bucket): ExtractedS3Bucket,
     DbConnection(txn): DbConnection,
     mut multipart: Multipart,
-) -> Result<Json<ModuleDetailsResponse>, UpsertModuleError> {
+) -> Result<Json<ModuleDetailsResponse>> {
     let multiparts = extract_multiparts(&mut multipart).await?;
     let new_module = upsert_module(multiparts, &txn, user_claim, s3_bucket).await?;
 
     let (module, linked_modules) = si_module::Entity::find_by_id(new_module.id)
         .find_with_linked(si_module::SchemaIdReferenceLink)
         .all(&txn)
-        .await?
+        .await
+        .map_err(anyhow::Error::from)?
         .first()
         .cloned()
-        .ok_or(UpsertModuleError::NotFoundAfterInsert(new_module.id))?;
+        .ok_or(anyhow::Error::from(UpsertModuleError::NotFoundAfterInsert(
+            new_module.id,
+        )))?;
 
-    txn.commit().await?;
+    txn.commit().await.map_err(anyhow::Error::from)?;
 
     Ok(Json(make_module_details_response(module, linked_modules)))
 }
@@ -104,30 +110,29 @@ pub struct SiMultipartData {
     pub module_data: Option<Bytes>,
 }
 
-pub async fn extract_multiparts(
-    multipart: &mut Multipart,
-) -> Result<SiMultipartData, UpsertModuleError> {
+pub async fn extract_multiparts(multipart: &mut Multipart) -> Result<SiMultipartData> {
     let mut module_data = None;
     let mut module_based_on_hash = None;
     let mut module_schema_id = None;
     let mut module_schema_variant_id = None;
     let mut module_schema_variant_version = None;
-    while let Some(field) = multipart.next_field().await? {
+    while let Some(field) = multipart.next_field().await.map_err(anyhow::Error::from)? {
         match field.name() {
             Some(MODULE_BUNDLE_FIELD_NAME) => {
-                module_data = Some(field.bytes().await?);
+                module_data = Some(field.bytes().await.map_err(anyhow::Error::from)?);
             }
             Some(MODULE_BASED_ON_HASH_FIELD_NAME) => {
-                module_based_on_hash = Some(field.text().await?);
+                module_based_on_hash = Some(field.text().await.map_err(anyhow::Error::from)?);
             }
             Some(MODULE_SCHEMA_ID_FIELD_NAME) => {
-                module_schema_id = Some(field.text().await?);
+                module_schema_id = Some(field.text().await.map_err(anyhow::Error::from)?);
             }
             Some(MODULE_SCHEMA_VARIANT_ID_FIELD_NAME) => {
-                module_schema_variant_id = Some(field.text().await?);
+                module_schema_variant_id = Some(field.text().await.map_err(anyhow::Error::from)?);
             }
             Some(MODULE_SCHEMA_VARIANT_VERSION_FIELD_NAME) => {
-                module_schema_variant_version = Some(field.text().await?);
+                module_schema_variant_version =
+                    Some(field.text().await.map_err(anyhow::Error::from)?);
             }
             _ => debug!("Unknown multipart form field on module upload, skipping..."),
         }
@@ -147,10 +152,10 @@ pub async fn upsert_module(
     txn: &sea_orm::DatabaseTransaction,
     user_claim: si_jwt_public_key::SiJwtClaims,
     s3_bucket: s3::Bucket,
-) -> Result<si_module::Model, UpsertModuleError> {
+) -> Result<si_module::Model> {
     let data = multi_part_data
         .module_data
-        .ok_or(UpsertModuleError::UploadRequiredError)?;
+        .ok_or_else(|| anyhow::Error::from(UpsertModuleError::UploadRequiredError))?;
     let loaded_module = SiPkg::load_from_bytes(&data)?;
     let module_metadata = loaded_module.metadata()?;
     info!(
@@ -166,7 +171,9 @@ pub async fn upsert_module(
     let schema_id = match module_kind {
         ModuleKind::WorkspaceBackup => None,
         ModuleKind::Module => match multi_part_data.schema_id {
-            Some(schema_id_string) => Some(SchemaId::from_str(&schema_id_string)?),
+            Some(schema_id_string) => {
+                Some(SchemaId::from_str(&schema_id_string).map_err(anyhow::Error::from)?)
+            }
             None => match multi_part_data.module_based_on_hash {
                 None => new_schema_id,
                 Some(based_on_hash) => {
@@ -175,7 +182,8 @@ pub async fn upsert_module(
                         .filter(si_module::Column::LatestHash.eq(based_on_hash))
                         .limit(1)
                         .all(txn)
-                        .await?
+                        .await
+                        .map_err(anyhow::Error::from)?
                         .first()
                     {
                         None => new_schema_id,
@@ -185,7 +193,7 @@ pub async fn upsert_module(
                                 // If we found matching past hash but it has no schema id, backfill it to match the one we're generating
                                 let mut active: si_module::ActiveModel = module.to_owned().into();
                                 active.schema_id = Set(new_schema_id);
-                                active.update(txn).await?;
+                                active.update(txn).await.map_err(anyhow::Error::from)?;
 
                                 new_schema_id
                             }
@@ -215,9 +223,10 @@ pub async fn upsert_module(
     let schema_variant_id = match module_kind {
         ModuleKind::WorkspaceBackup => None,
         ModuleKind::Module => match multi_part_data.schema_variant_id {
-            Some(schema_variant_id_string) => {
-                Some(SchemaVariantId::from_str(&schema_variant_id_string)?)
-            }
+            Some(schema_variant_id_string) => Some(
+                SchemaVariantId::from_str(&schema_variant_id_string)
+                    .map_err(anyhow::Error::from)?,
+            ),
             _ => None,
         },
     };
@@ -243,7 +252,8 @@ pub async fn upsert_module(
             version,
             schemas,
             funcs,
-        })?),
+        })
+        .map_err(anyhow::Error::from)?),
         kind: Set(module_kind),
         schema_id: Set(schema_id),
         schema_variant_id: Set(schema_variant_id),
@@ -252,8 +262,9 @@ pub async fn upsert_module(
     };
     s3_bucket
         .put_object(format!("{}.sipkg", module_metadata.hash()), &data)
-        .await?;
-    let new_module: si_module::Model = new_module.insert(txn).await?;
+        .await
+        .map_err(anyhow::Error::from)?;
+    let new_module: si_module::Model = new_module.insert(txn).await.map_err(anyhow::Error::from)?;
 
     Ok(new_module)
 }

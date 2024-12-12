@@ -7,9 +7,9 @@ use axum::{
 use dal::{ChangeSet, Component, ComponentId, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
 
-use super::ComponentResult;
 use crate::{
     extract::{v1::AccessBuilder, HandlerContext, PosthogClient},
+    routes::AppError,
     service::force_change_set_response::ForceChangeSetResponse,
     track,
 };
@@ -34,7 +34,7 @@ pub async fn set_name(
         name,
         visibility,
     }): Json<SetNameRequest>,
-) -> ComponentResult<ForceChangeSetResponse<()>> {
+) -> Result<ForceChangeSetResponse<()>, AppError> {
     let mut ctx = builder.build(request_ctx.build(visibility)).await?;
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;

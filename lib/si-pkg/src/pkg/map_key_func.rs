@@ -25,7 +25,8 @@ impl<'a> SiPkgMapKeyFunc<'a> {
                 return Err(SiPkgError::UnexpectedPkgNodeType(
                     PkgNode::MAP_KEY_FUNC_KIND_STR,
                     unexpected.node_kind_str(),
-                ))
+                )
+                .into())
             }
         };
 
@@ -69,7 +70,7 @@ impl<'a> SiPkgMapKeyFunc<'a> {
 }
 
 impl<'a> TryFrom<SiPkgMapKeyFunc<'a>> for MapKeyFuncSpec {
-    type Error = SiPkgError;
+    type Error = anyhow::Error;
 
     fn try_from(value: SiPkgMapKeyFunc<'a>) -> Result<Self, Self::Error> {
         let mut builder = MapKeyFuncSpec::builder();

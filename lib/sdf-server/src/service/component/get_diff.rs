@@ -5,9 +5,9 @@ use axum::{
 use dal::{component::diff::ComponentDiff, Component, ComponentId, Visibility};
 use serde::{Deserialize, Serialize};
 
-use super::ComponentResult;
 use crate::{
     extract::{v1::AccessBuilder, HandlerContext, PosthogClient},
+    routes::AppError,
     track,
 };
 
@@ -32,7 +32,7 @@ pub async fn get_diff(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Query(request): Query<GetDiffRequest>,
-) -> ComponentResult<Json<GetDiffResponse>> {
+) -> Result<Json<GetDiffResponse>, AppError> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let component_diff = Component::get_diff(&ctx, request.component_id).await?;

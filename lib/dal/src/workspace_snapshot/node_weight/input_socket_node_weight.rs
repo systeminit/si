@@ -1,3 +1,4 @@
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use si_events::{ulid::Ulid, ContentHash};
 use si_layer_cache::LayerDbError;
@@ -29,7 +30,7 @@ pub enum InputSocketNodeWeightError {
     WorkspaceSnapshotGraph(#[from] Box<WorkspaceSnapshotGraphError>),
 }
 
-pub type InputSocketNodeWeightResult<T> = Result<T, InputSocketNodeWeightError>;
+pub type InputSocketNodeWeightResult<T> = Result<T>;
 
 #[derive(
     Debug, Clone, Serialize, Deserialize, PartialEq, Eq, dal_macros::SiVersionedNodeWeight,

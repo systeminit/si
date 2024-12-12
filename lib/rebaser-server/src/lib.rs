@@ -32,6 +32,7 @@ use thiserror::Error;
 mod app_state;
 mod change_set_processor_task;
 mod config;
+pub mod error;
 pub mod extract;
 mod handlers;
 mod rebase;
@@ -100,8 +101,6 @@ impl ServerError {
 }
 
 type Error = ServerError;
-
-type Result<T> = std::result::Result<T, ServerError>;
 
 #[derive(Debug)]
 pub(crate) enum Shutdown {

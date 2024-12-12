@@ -6,6 +6,7 @@ rust_library(
         "//lib/si-data-pg:si-data-pg",
         "//lib/si-events-rs:si-events",
         "//lib/telemetry-rs:telemetry",
+        "//third-party/rust:anyhow",
         "//third-party/rust:chrono",
         "//third-party/rust:refinery",
         "//third-party/rust:remain",

@@ -2,9 +2,8 @@
 
 use std::time::Duration;
 
+use anyhow::{anyhow, Result};
 use audit_database::{AuditDatabaseContext, AuditLogRow};
-use color_eyre::eyre::eyre;
-use color_eyre::Result;
 use dal::component::socket::{ComponentInputSocket, ComponentOutputSocket};
 use dal::key_pair::KeyPairPk;
 use dal::schema::variant::authoring::VariantAuthoringClient;
@@ -30,7 +29,7 @@ use serde_json::Value;
 pub fn generate_fake_name() -> Result<String> {
     Generator::with_naming(Name::Numbered)
         .next()
-        .ok_or(eyre!("could not generate fake name"))
+        .ok_or(anyhow!("could not generate fake name"))
 }
 
 /// Creates a connection annotation string.
@@ -45,26 +44,26 @@ macro_rules! connection_annotation_string {
 /// Creates a dummy key pair.
 pub async fn create_key_pair(ctx: &DalContext) -> Result<KeyPair> {
     let name = generate_fake_name()?;
-    Ok(KeyPair::new(ctx, &name).await?)
+    KeyPair::new(ctx, &name).await
 }
 
 /// Creates a dummy user.
 pub async fn create_user(ctx: &DalContext) -> Result<User> {
     let name = generate_fake_name()?;
-    Ok(User::new(
+    User::new(
         ctx,
         UserPk::generate(),
         &name,
         &format!("{name}@test.systeminit.com"),
         None::<&str>,
     )
-    .await?)
+    .await
 }
 
 /// Creates a dummy schema.
 pub async fn create_schema(ctx: &DalContext) -> Result<Schema> {
     let name = generate_fake_name()?;
-    Ok(Schema::new(ctx, &name).await?)
+    Schema::new(ctx, &name).await
 }
 
 /// Finds the [`Schema`] with the given name, finds the default [`SchemaVariant`], creates an unlocked copy of it, and returns the [`SchemaVariantId`]
@@ -101,7 +100,7 @@ pub async fn create_component_for_default_schema_name(
 ) -> Result<Component> {
     let schema_variant_id = SchemaVariant::default_id_for_schema_name(ctx, schema_name).await?;
 
-    Ok(Component::new(ctx, name.as_ref().to_string(), schema_variant_id, view_id).await?)
+    Component::new(ctx, name.as_ref().to_string(), schema_variant_id, view_id).await
 }
 
 /// Creates a [`Component`] from the default [`SchemaVariant`] corresponding to a provided
@@ -114,16 +113,16 @@ pub async fn create_component_for_unlocked_schema_name_on_default_view(
     let schema = Schema::get_by_name(ctx, schema_name).await?;
     let schema_variant_id = SchemaVariant::get_unlocked_for_schema(ctx, schema.id())
         .await?
-        .ok_or(eyre!("no unlocked schema variant for schema name"))?;
+        .ok_or(anyhow!("no unlocked schema variant for schema name"))?;
     let view_id = ExpectView::get_id_for_default(ctx).await;
 
-    Ok(Component::new(
+    Component::new(
         ctx,
         name.as_ref().to_string(),
         schema_variant_id.id(),
         view_id,
     )
-    .await?)
+    .await
 }
 
 /// Creates a [`Component`] from the default [`SchemaVariant`] corresponding to a provided
@@ -162,7 +161,7 @@ pub async fn create_named_component_for_schema_variant_on_default_view(
 ) -> Result<Component> {
     let view_id = ExpectView::get_id_for_default(ctx).await;
 
-    Ok(Component::new(ctx, name.as_ref().to_string(), schema_variant_id, view_id).await?)
+    Component::new(ctx, name.as_ref().to_string(), schema_variant_id, view_id).await
 }
 
 /// Connects two [`Components`](Component) for a given set of socket names.
@@ -177,7 +176,7 @@ pub async fn connect_components_with_socket_names(
         let sv_id = Component::schema_variant_id(ctx, source_component_id).await?;
         OutputSocket::find_with_name(ctx, output_socket_name, sv_id)
             .await?
-            .ok_or(eyre!("no output socket found"))?
+            .ok_or(anyhow!("no output socket found"))?
             .id()
     };
 
@@ -185,7 +184,7 @@ pub async fn connect_components_with_socket_names(
         let sv_id = Component::schema_variant_id(ctx, destination_component_id).await?;
         InputSocket::find_with_name(ctx, input_socket_name, sv_id)
             .await?
-            .ok_or(eyre!("no input socket found"))?
+            .ok_or(anyhow!("no input socket found"))?
             .id()
     };
 
@@ -212,7 +211,7 @@ pub async fn disconnect_components_with_socket_names(
         let sv_id = Component::schema_variant_id(ctx, source_component_id).await?;
         OutputSocket::find_with_name(ctx, output_socket_name, sv_id)
             .await?
-            .ok_or(eyre!("no output socket found"))?
+            .ok_or(anyhow!("no output socket found"))?
             .id()
     };
 
@@ -220,7 +219,7 @@ pub async fn disconnect_components_with_socket_names(
         let sv_id = Component::schema_variant_id(ctx, destination_component_id).await?;
         InputSocket::find_with_name(ctx, input_socket_name, sv_id)
             .await?
-            .ok_or(eyre!("no input socket found"))?
+            .ok_or(anyhow!("no input socket found"))?
             .id()
     };
 
@@ -246,16 +245,16 @@ pub async fn get_component_input_socket_value(
         ComponentInputSocket::list_for_component_id(ctx, component_id).await?;
     let input_socket = InputSocket::find_with_name(ctx, input_socket_name, schema_variant_id)
         .await?
-        .ok_or(eyre!("no input socket found"))?;
+        .ok_or(anyhow!("no input socket found"))?;
     let component_input_socket = component_input_sockets
         .into_iter()
         .filter(|socket| socket.input_socket_id == input_socket.id())
         .collect_vec()
         .pop()
-        .ok_or(eyre!("no input socket match found"))?;
+        .ok_or(anyhow!("no input socket match found"))?;
     let input_socket_av =
         AttributeValue::get_by_id(ctx, component_input_socket.attribute_value_id).await?;
-    Ok(input_socket_av.view(ctx).await?)
+    input_socket_av.view(ctx).await
 }
 /// Gets the [`Value`] for a specific [`Component`]'s [`InputSocket`] by the [`InputSocket`] name
 pub async fn get_component_input_socket_attribute_value(
@@ -268,13 +267,13 @@ pub async fn get_component_input_socket_attribute_value(
         ComponentInputSocket::list_for_component_id(ctx, component_id).await?;
     let input_socket = InputSocket::find_with_name(ctx, input_socket_name, schema_variant_id)
         .await?
-        .ok_or(eyre!("no input socket found"))?;
+        .ok_or(anyhow!("no input socket found"))?;
     let component_input_socket = component_input_sockets
         .into_iter()
         .filter(|socket| socket.input_socket_id == input_socket.id())
         .collect_vec()
         .pop()
-        .ok_or(eyre!("no input socket match found"))?;
+        .ok_or(anyhow!("no input socket match found"))?;
     let input_socket_av =
         AttributeValue::get_by_id(ctx, component_input_socket.attribute_value_id).await?;
     Ok(input_socket_av)
@@ -291,16 +290,16 @@ pub async fn get_component_output_socket_value(
         ComponentOutputSocket::list_for_component_id(ctx, component_id).await?;
     let output_socket = OutputSocket::find_with_name(ctx, output_socket_name, schema_variant_id)
         .await?
-        .ok_or(eyre!("no output socket found"))?;
+        .ok_or(anyhow!("no output socket found"))?;
     let component_output_socket = component_output_sockets
         .into_iter()
         .filter(|socket| socket.output_socket_id == output_socket.id())
         .collect_vec()
         .pop()
-        .ok_or(eyre!("no input socket match found"))?;
+        .ok_or(anyhow!("no input socket match found"))?;
     let output_socket_av =
         AttributeValue::get_by_id(ctx, component_output_socket.attribute_value_id).await?;
-    Ok(output_socket_av.view(ctx).await?)
+    output_socket_av.view(ctx).await
 }
 
 /// Update the [`Value`] for a specific [`AttributeValue`] for the given [`Component`](ComponentId) by the [`PropPath`]
@@ -314,9 +313,9 @@ pub async fn update_attribute_value_for_component(
     let mut attribute_value_ids = component.attribute_values_for_prop(ctx, prop_path).await?;
     let attribute_value_id = attribute_value_ids
         .pop()
-        .ok_or(eyre!("unexpected: no attribute values found"))?;
+        .ok_or(anyhow!("unexpected: no attribute values found"))?;
     if !attribute_value_ids.is_empty() {
-        return Err(eyre!("unexpected: more than one attribute value found"));
+        return Err(anyhow!("unexpected: more than one attribute value found"));
     }
     AttributeValue::update(ctx, attribute_value_id, Some(value)).await?;
     Ok(())
@@ -332,7 +331,7 @@ pub async fn get_attribute_value_for_component(
     let mut attribute_value_ids = component.attribute_values_for_prop(ctx, prop_path).await?;
     let attribute_value_id = attribute_value_ids
         .pop()
-        .ok_or(eyre!("unexpected, no attribute values found for prop"))?;
+        .ok_or(anyhow!("unexpected, no attribute values found for prop"))?;
     assert!(attribute_value_ids.is_empty());
 
     let attribute_value = AttributeValue::get_by_id(ctx, attribute_value_id).await?;
@@ -369,9 +368,9 @@ pub async fn fetch_resource_last_synced_value(
     .await?;
     let attribute_value_id = attribute_value_ids
         .pop()
-        .ok_or(eyre!("unexpected: no attribute values found"))?;
+        .ok_or(anyhow!("unexpected: no attribute values found"))?;
     if !attribute_value_ids.is_empty() {
-        return Err(eyre!("unexpected: more than one attribute value found"));
+        return Err(anyhow!("unexpected: more than one attribute value found"));
     }
 
     let last_synced_value = AttributeValue::get_by_id(ctx, attribute_value_id)
@@ -387,10 +386,10 @@ pub fn extract_value_and_validation(
 ) -> Result<serde_json::Value> {
     let value = prop_editor_value
         .get("value")
-        .ok_or(eyre!("get value from property editor value"))?;
+        .ok_or(anyhow!("get value from property editor value"))?;
     let validation = prop_editor_value
         .get("validation")
-        .ok_or(eyre!("get validation from property editor value"))?;
+        .ok_or(anyhow!("get validation from property editor value"))?;
 
     Ok(serde_json::json!({
         "value": value,
@@ -418,7 +417,7 @@ pub async fn confirm_jetstream_stream_has_no_messages(
         tokio::time::sleep(interval).await;
     }
 
-    Err(eyre!(
+    Err(anyhow!(
         "hit timeout and stream still has at least one message: {message_count}"
     ))
 }
@@ -447,7 +446,7 @@ pub async fn list_audit_logs_until_expected_number_of_rows(
         tokio::time::sleep(interval).await;
     }
 
-    Err(eyre!(
+    Err(anyhow!(
         "hit timeout before audit logs query returns expected number of rows (expected: {expected_number_of_rows}, actual: {actual_number_of_rows})"
     ))
 }

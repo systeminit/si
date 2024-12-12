@@ -1,3 +1,4 @@
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use si_events::ContentHash;
 use si_frontend_types as frontend_types;
@@ -70,7 +71,7 @@ pub enum OutputSocketError {
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
 
-pub type OutputSocketResult<T> = Result<T, OutputSocketError>;
+pub type OutputSocketResult<T> = Result<T>;
 
 pub use si_id::OutputSocketId;
 
@@ -191,8 +192,7 @@ impl OutputSocket {
             id.into(),
             EdgeWeightKind::Socket,
         )
-        .await
-        .map_err(Box::new)?;
+        .await?;
 
         let attribute_prototype = AttributePrototype::new(ctx, func_id).await?;
 
@@ -280,16 +280,13 @@ impl OutputSocket {
             Self::all_attribute_values_everywhere_for_output_socket_id(ctx, output_socket_id)
                 .await?
         {
-            if AttributeValue::component_id(ctx, attribute_value_id)
-                .await
-                .map_err(Box::new)?
-                == component_id
-            {
+            if AttributeValue::component_id(ctx, attribute_value_id).await? == component_id {
                 if result.is_some() {
                     return Err(OutputSocketError::FoundTooManyForOutputSocketId(
                         output_socket_id,
                         component_id,
-                    ));
+                    )
+                    .into());
                 }
                 result = Some(attribute_value_id);
             }
@@ -299,7 +296,8 @@ impl OutputSocket {
             None => Err(OutputSocketError::MissingAttributeValueForComponent(
                 output_socket_id,
                 component_id,
-            )),
+            )
+            .into()),
         }
     }
 
@@ -400,7 +398,8 @@ impl OutputSocket {
                             already_found.id(),
                             output_socket.id(),
                             schema_variant_id,
-                        ));
+                        )
+                        .into());
                     }
                     None => maybe_output_socket = Some(output_socket),
                 }
@@ -417,7 +416,9 @@ impl OutputSocket {
         let name = name.as_ref();
         Self::find_with_name(ctx, name, schema_variant_id)
             .await?
-            .ok_or_else(|| OutputSocketError::NotFoundByName(name.to_string(), schema_variant_id))
+            .ok_or_else(|| {
+                OutputSocketError::NotFoundByName(name.to_string(), schema_variant_id).into()
+            })
     }
 
     #[instrument(level="debug" skip(ctx))]
@@ -460,7 +461,8 @@ impl OutputSocket {
             if !raw_sources.is_empty() {
                 return Err(OutputSocketError::MultipleSocketsForAttributeValue(
                     attribute_value_id,
-                ));
+                )
+                .into());
             }
             Some(
                 workspace_snapshot

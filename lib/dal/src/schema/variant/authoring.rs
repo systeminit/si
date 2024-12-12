@@ -1,17 +1,14 @@
-use std::collections::HashMap;
-use std::fmt::Debug;
+use std::{collections::HashMap, fmt::Debug};
 
-use base64::engine::general_purpose;
-use base64::Engine;
+use anyhow::Result;
+use base64::{engine::general_purpose, Engine};
 use chrono::Utc;
 use convert_case::{Case, Casing};
 use serde::{Deserialize, Serialize};
 use serde_json::error::Category;
 use thiserror::Error;
 
-use pkg::import::import_schema_variant;
-use si_events::ulid::Ulid;
-use si_events::FuncRunId;
+use si_events::{ulid::Ulid, FuncRunId};
 use si_layer_cache::LayerDbError;
 use si_pkg::{
     FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType, FuncSpecData, MergeSkip, PkgSpec,
@@ -19,21 +16,23 @@ use si_pkg::{
 };
 use telemetry::prelude::*;
 
-use crate::action::prototype::ActionPrototypeError;
-use crate::attribute::prototype::argument::AttributePrototypeArgumentError;
-use crate::attribute::prototype::AttributePrototypeError;
-use crate::func::authoring::FuncAuthoringError;
-use crate::func::intrinsics::IntrinsicFunc;
-use crate::func::runner::{FuncRunner, FuncRunnerError};
-use crate::pkg::export::PkgExporter;
-use crate::pkg::import::import_only_new_funcs;
-use crate::pkg::{import_pkg_from_pkg, ImportOptions, PkgError};
-use crate::prop::PropError;
-use crate::schema::variant::{SchemaVariantJson, SchemaVariantMetadataJson};
-use crate::socket::input::InputSocketError;
-use crate::socket::output::OutputSocketError;
 use crate::{
-    pkg, Component, ComponentError, ComponentType, DalContext, Func, FuncBackendKind,
+    action::prototype::ActionPrototypeError,
+    attribute::prototype::{argument::AttributePrototypeArgumentError, AttributePrototypeError},
+    func::{
+        authoring::FuncAuthoringError,
+        intrinsics::IntrinsicFunc,
+        runner::{FuncRunner, FuncRunnerError},
+    },
+    pkg::{
+        export::PkgExporter,
+        import::{import_only_new_funcs, import_schema_variant},
+        import_pkg_from_pkg, ImportOptions, PkgError,
+    },
+    prop::PropError,
+    schema::variant::{SchemaVariantJson, SchemaVariantMetadataJson},
+    socket::{input::InputSocketError, output::OutputSocketError},
+    Component, ComponentError, ComponentType, DalContext, Func, FuncBackendKind,
     FuncBackendResponseType, FuncError, FuncId, HistoryEventError, Schema, SchemaError, SchemaId,
     SchemaVariant, SchemaVariantError, SchemaVariantId,
 };
@@ -106,7 +105,7 @@ pub enum VariantAuthoringError {
     Spec(#[from] SpecError),
 }
 
-type VariantAuthoringResult<T> = Result<T, VariantAuthoringError>;
+type VariantAuthoringResult<T> = Result<T>;
 
 const DEFAULT_ASSET_CODE: &str = r#"function main() {
   const asset = new AssetBuilder();
@@ -137,7 +136,7 @@ impl VariantAuthoringClient {
     ) -> VariantAuthoringResult<SchemaVariant> {
         let name = name.into();
         if Schema::is_name_taken(ctx, &name).await? {
-            return Err(VariantAuthoringError::DuplicatedSchemaName(name));
+            return Err(VariantAuthoringError::DuplicatedSchemaName(name).into());
         };
 
         let variant_version = SchemaVariant::generate_version_string();
@@ -232,7 +231,7 @@ impl VariantAuthoringClient {
         schema_name: String,
     ) -> VariantAuthoringResult<(SchemaVariant, Schema)> {
         if Schema::is_name_taken(ctx, &schema_name).await? {
-            return Err(VariantAuthoringError::DuplicatedSchemaName(schema_name));
+            return Err(VariantAuthoringError::DuplicatedSchemaName(schema_name).into());
         };
 
         let variant = SchemaVariant::get_by_id_or_error(ctx, schema_variant_id).await?;
@@ -294,9 +293,9 @@ impl VariantAuthoringClient {
                 schema,
             ))
         } else {
-            return Err(VariantAuthoringError::SchemaVariantAssetNotFound(
-                schema_variant_id,
-            ));
+            return Err(
+                VariantAuthoringError::SchemaVariantAssetNotFound(schema_variant_id).into(),
+            );
         }
     }
 
@@ -312,7 +311,7 @@ impl VariantAuthoringClient {
         let schema_variant = SchemaVariant::get_by_id_or_error(ctx, schema_variant_id).await?;
 
         if schema_variant.is_locked {
-            return Err(VariantAuthoringError::LockedVariant(schema_variant_id));
+            return Err(VariantAuthoringError::LockedVariant(schema_variant_id).into());
         };
 
         let schema = schema_variant.schema(ctx).await?;
@@ -486,7 +485,8 @@ impl VariantAuthoringClient {
         if new_schema_variant.id != current_schema_variant_id {
             return Err(VariantAuthoringError::SchemaVariantUpdatedFailed(
                 current_schema_variant_id,
-            ));
+            )
+            .into());
         }
 
         // Let's update the SV struct now to reflect any changes
@@ -626,9 +626,7 @@ impl VariantAuthoringClient {
         let schema = locked_variant.schema(ctx).await?;
 
         if let Some(variant) = SchemaVariant::get_unlocked_for_schema(ctx, schema.id).await? {
-            return Err(VariantAuthoringError::SchemaAlreadyUnlocked(
-                schema.id, variant.id,
-            ));
+            return Err(VariantAuthoringError::SchemaAlreadyUnlocked(schema.id, variant.id).into());
         }
 
         // Create copy of asset func
@@ -724,7 +722,7 @@ impl VariantAuthoringClient {
         let schema_variant = SchemaVariant::get_by_id_or_error(ctx, schema_variant_id).await?;
 
         if schema_variant.is_locked {
-            return Err(VariantAuthoringError::LockedVariant(schema_variant_id));
+            return Err(VariantAuthoringError::LockedVariant(schema_variant_id).into());
         };
 
         let schema = schema_variant.schema(ctx).await?;
@@ -819,21 +817,21 @@ impl VariantAuthoringClient {
                 return Err(VariantAuthoringError::AssetTypeNotReturnedForAssetFunc(
                     asset_func.id,
                     err.to_string(),
-                ));
+                )
+                .into());
             }
             Err(err) => return Err(err.into()),
         };
 
         if let Some(error) = &wrapper.error {
-            return Err(VariantAuthoringError::FuncExecutionFailure(
-                error.to_owned(),
-            ));
+            return Err(VariantAuthoringError::FuncExecutionFailure(error.to_owned()).into());
         }
 
         let Some(definition) = wrapper.definition else {
             return Err(VariantAuthoringError::FuncExecutionFailure(
                 "definition cannot be undefined or null".to_string(),
-            ));
+            )
+            .into());
         };
 
         ctx.layer_db()

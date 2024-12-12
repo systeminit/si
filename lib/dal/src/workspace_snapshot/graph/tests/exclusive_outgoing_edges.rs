@@ -2,13 +2,14 @@
 #[allow(clippy::panic_in_result_fn)]
 #[cfg(test)]
 mod test {
+    use anyhow::Result;
     use si_events::{ulid::Ulid, ContentHash};
 
     use crate::{
         action::prototype::ActionKind,
         workspace_snapshot::{
             content_address::ContentAddress,
-            graph::{detector::Update, WorkspaceSnapshotGraphResult},
+            graph::detector::Update,
             node_weight::{
                 traits::{CorrectExclusiveOutgoingEdge, CorrectTransforms},
                 NodeWeight,
@@ -19,7 +20,7 @@ mod test {
     };
 
     #[test]
-    fn correct_exclusive_outgoing_edges() -> WorkspaceSnapshotGraphResult<()> {
+    fn correct_exclusive_outgoing_edges() -> Result<()> {
         let mut graph = WorkspaceSnapshotGraphVCurrent::new_for_unit_tests()?;
 
         let schema_variant_1_id = graph.generate_ulid()?;
@@ -171,7 +172,7 @@ mod test {
     }
 
     #[test]
-    fn correct_exclusive_outgoing_action_edges() -> WorkspaceSnapshotGraphResult<()> {
+    fn correct_exclusive_outgoing_action_edges() -> Result<()> {
         let mut graph = WorkspaceSnapshotGraphVCurrent::new_for_unit_tests()?;
 
         let action_id = graph.generate_ulid()?;

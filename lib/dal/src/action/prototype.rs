@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use anyhow::Result;
 use petgraph::{Direction::Incoming, Outgoing};
 use serde::{Deserialize, Serialize};
 use si_events::{ActionResultState, FuncRunId};
@@ -66,7 +67,7 @@ pub enum ActionPrototypeError {
     WsEvent(#[from] WsEventError),
 }
 
-pub type ActionPrototypeResult<T> = Result<T, ActionPrototypeError>;
+pub type ActionPrototypeResult<T> = Result<T>;
 
 #[remain::sorted]
 #[derive(Debug, Copy, Clone, Deserialize, Serialize, PartialEq, Eq, Display, Hash)]
@@ -234,7 +235,7 @@ impl ActionPrototype {
             }
         }
 
-        Err(ActionPrototypeError::FuncNotFoundForPrototype(id))
+        Err(ActionPrototypeError::FuncNotFoundForPrototype(id).into())
     }
 
     /// Lists all [`ActionPrototypes`](ActionPrototype) for a given
@@ -289,7 +290,7 @@ impl ActionPrototype {
                 }
             }
         }
-        Err(ActionPrototypeError::SchemaVariantNotFoundForPrototype(id))
+        Err(ActionPrototypeError::SchemaVariantNotFoundForPrototype(id).into())
     }
 
     pub async fn run(

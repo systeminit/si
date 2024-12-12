@@ -12,6 +12,7 @@ pub use workspace::{
 
 #[cfg(test)]
 mod tests {
+    use anyhow::Result;
     use petgraph::dot::Dot;
     use tokio::sync::Mutex;
 
@@ -26,7 +27,7 @@ mod tests {
         prop: SiPkgProp<'_>,
         _parent_id: Option<()>,
         context: &Mutex<Vec<String>>,
-    ) -> Result<Option<()>, SiPkgError> {
+    ) -> Result<Option<()>> {
         context.lock().await.push(prop.name().to_string());
 
         Ok(None)

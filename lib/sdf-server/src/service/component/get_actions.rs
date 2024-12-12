@@ -8,9 +8,9 @@ use dal::{
 };
 use serde::{Deserialize, Serialize};
 
-use super::ComponentResult;
 use crate::{
     extract::{v1::AccessBuilder, HandlerContext, PosthogClient},
+    routes::AppError,
     track,
 };
 
@@ -26,7 +26,7 @@ impl ActionPrototypeView {
     pub async fn new(
         ctx: &DalContext,
         prototype: ActionPrototype,
-    ) -> ComponentResult<ActionPrototypeView> {
+    ) -> Result<ActionPrototypeView, AppError> {
         let func =
             Func::get_by_id_or_error(ctx, ActionPrototype::func_id(ctx, prototype.id).await?)
                 .await?;
@@ -60,7 +60,7 @@ pub async fn get_actions(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Query(request): Query<GetActionsRequest>,
-) -> ComponentResult<Json<GetActionsResponse>> {
+) -> Result<Json<GetActionsResponse>, AppError> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let schema_variant = Component::get_by_id(&ctx, request.component_id)

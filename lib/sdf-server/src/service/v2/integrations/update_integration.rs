@@ -1,13 +1,20 @@
-use crate::extract::{HandlerContext, PosthogClient};
-use crate::service::v2::AccessBuilder;
-
-use axum::extract::{Host, OriginalUri, Path};
-use axum::Json;
-use dal::workspace_integrations::{WorkspaceIntegration, WorkspaceIntegrationId};
-use dal::WorkspacePk;
+use anyhow::Result;
+use axum::{
+    extract::{Host, OriginalUri, Path},
+    Json,
+};
+use dal::{
+    workspace_integrations::{WorkspaceIntegration, WorkspaceIntegrationId},
+    WorkspacePk,
+};
 use serde::{Deserialize, Serialize};
 
-use super::{IntegrationsError, IntegrationsResult};
+use crate::{
+    extract::{HandlerContext, PosthogClient},
+    service::v2::AccessBuilder,
+};
+
+use super::IntegrationsError;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -29,7 +36,7 @@ pub async fn update_integration(
     Host(_host_name): Host,
     Path((_workspace_pk, workspace_integration_id)): Path<(WorkspacePk, WorkspaceIntegrationId)>,
     Json(request): Json<UpdateIntegrationRequest>,
-) -> IntegrationsResult<Json<UpdateIntegrationResponse>> {
+) -> Result<Json<UpdateIntegrationResponse>> {
     let ctx = builder.build_head(access_builder).await?;
 
     let mut integration = WorkspaceIntegration::get_by_pk(&ctx, workspace_integration_id)

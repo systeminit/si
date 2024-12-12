@@ -88,7 +88,8 @@ impl SecretNodeWeight {
                 return Err(NodeWeightError::InvalidContentAddressForWeightKind(
                     Into::<ContentAddressDiscriminants>::into(other).to_string(),
                     ContentAddressDiscriminants::Secret.to_string(),
-                ));
+                )
+                .into());
             }
         };
 

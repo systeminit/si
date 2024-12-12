@@ -119,7 +119,8 @@ impl<'a> SiPkgAttrFuncInput<'a> {
                 return Err(SiPkgError::UnexpectedPkgNodeType(
                     PkgNode::ATTR_FUNC_INPUT_KIND_STR,
                     unexpected.node_kind_str(),
-                ))
+                )
+                .into())
             }
         };
         let hash = hashed_node.hash();

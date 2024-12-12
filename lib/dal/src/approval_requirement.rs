@@ -29,6 +29,7 @@
 
 use std::collections::{HashMap, HashSet};
 
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use si_events::merkle_tree_hash::MerkleTreeHash;
 use si_id::{ulid::Ulid, ApprovalRequirementDefinitionId, EntityId, UserPk};
@@ -55,8 +56,6 @@ pub enum ApprovalRequirementError {
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
-
-type Result<T> = std::result::Result<T, ApprovalRequirementError>;
 
 #[derive(Debug)]
 pub struct ApprovalRequirementExplicit {
@@ -174,7 +173,7 @@ impl ApprovalRequirementDefinition {
             return Ok(approval_requirement_definitions);
         }
 
-        Err(ApprovalRequirementError::EntityNotFound(entity_id))
+        Err(ApprovalRequirementError::EntityNotFound(entity_id).into())
     }
 
     pub fn assemble(

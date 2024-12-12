@@ -413,6 +413,7 @@ dependencies = [
 name = "audit-database"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "chrono",
  "refinery",
  "remain",
@@ -1830,6 +1831,7 @@ dependencies = [
 name = "dal"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "async-recursion",
  "async-trait",
  "audit-database",
@@ -1920,6 +1922,7 @@ dependencies = [
 name = "dal-test"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "async-recursion",
  "audit-database",
  "base64 0.22.1",
@@ -4330,6 +4333,7 @@ dependencies = [
 name = "module-index-server"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "auth-api-client",
  "axum 0.6.20",
  "base64 0.22.1",
@@ -5120,6 +5124,7 @@ dependencies = [
 name = "pinga-server"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "buck2-resources",
  "dal",
  "derive_builder",
@@ -5646,6 +5651,7 @@ dependencies = [
 name = "rebaser-client"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "futures",
  "pending-events",
  "pin-project-lite",
@@ -5664,6 +5670,7 @@ dependencies = [
 name = "rebaser-core"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "naxum-api-types",
  "remain",
  "serde",
@@ -5676,6 +5683,7 @@ dependencies = [
 name = "rebaser-server"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "audit-logs-stream",
  "buck2-resources",
  "dal",
@@ -6263,6 +6271,7 @@ dependencies = [
 name = "sdf-server"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "asset-sprayer",
  "async-openai",
  "async-trait",
@@ -6952,6 +6961,7 @@ dependencies = [
 name = "si-pkg"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "base64 0.22.1",
  "chrono",
  "derive_builder",
@@ -7064,6 +7074,10 @@ dependencies = [
 name = "si-test-macros"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
+ "color-eyre",
+ "darling 0.20.10",
+ "manyhow",
  "proc-macro2",
  "quote",
  "syn 2.0.98",

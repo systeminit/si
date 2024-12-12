@@ -1,20 +1,24 @@
-use super::{DiagramError, DiagramResult};
-use crate::{
-    extract::{v1::AccessBuilder, HandlerContext, PosthogClient},
-    service::force_change_set_response::ForceChangeSetResponse,
-    track,
-};
 use axum::{
     extract::{Host, OriginalUri},
     Json,
 };
 use dal::{
-    change_status::ChangeStatus, diagram::SummaryDiagramEdge, ChangeSet, Component, ComponentId,
-    InputSocket, InputSocketId, OutputSocketId, Visibility, WsEvent,
+    change_status::ChangeStatus,
+    diagram::{SummaryDiagramEdge, SummaryDiagramInferredEdge},
+    ChangeSet, Component, ComponentId, InputSocket, InputSocketId, OutputSocket, OutputSocketId,
+    Visibility, WsEvent,
 };
-use dal::{diagram::SummaryDiagramInferredEdge, OutputSocket};
 use serde::{Deserialize, Serialize};
 use si_events::audit_log::AuditLogKind;
+
+use crate::{
+    extract::{v1::AccessBuilder, HandlerContext, PosthogClient},
+    routes::AppError,
+    service::force_change_set_response::ForceChangeSetResponse,
+    track,
+};
+
+use super::DiagramError;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -34,7 +38,7 @@ pub async fn create_connection(
     OriginalUri(original_uri): OriginalUri,
     Host(host_name): Host,
     Json(request): Json<CreateConnectionRequest>,
-) -> DiagramResult<ForceChangeSetResponse<()>> {
+) -> Result<ForceChangeSetResponse<()>, AppError> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;

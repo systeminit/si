@@ -256,7 +256,8 @@ impl CorrectTransforms for OrderingNodeWeight {
                 _ => {
                     return Err(CorrectTransformsError::UnexpectedNodeWeight(
                         NodeWeightDiscriminants::Ordering,
-                    ))
+                    )
+                    .into());
                 }
             };
         }

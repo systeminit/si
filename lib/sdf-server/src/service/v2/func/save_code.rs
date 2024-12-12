@@ -1,3 +1,4 @@
+use anyhow::Result;
 use axum::{
     extract::{Host, OriginalUri, Path},
     Json,
@@ -8,13 +9,14 @@ use dal::{
 };
 use serde::{Deserialize, Serialize};
 
-use super::{get_code_response, FuncAPIResult};
 use crate::{
     extract::{HandlerContext, PosthogClient},
     service::force_change_set_response::ForceChangeSetResponse,
     service::v2::AccessBuilder,
     track,
 };
+
+use super::get_code_response;
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -30,7 +32,7 @@ pub async fn save_code(
     Host(host_name): Host,
     Path((_workspace_pk, change_set_id, func_id)): Path<(WorkspacePk, ChangeSetId, FuncId)>,
     Json(request): Json<SaveCodeRequest>,
-) -> FuncAPIResult<ForceChangeSetResponse<()>> {
+) -> Result<ForceChangeSetResponse<()>> {
     let mut ctx = builder
         .build(access_builder.build(change_set_id.into()))
         .await?;

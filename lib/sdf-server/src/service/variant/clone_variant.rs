@@ -11,7 +11,8 @@ use si_frontend_types::SchemaVariant as FrontendVariant;
 
 use crate::{
     extract::{v1::AccessBuilder, HandlerContext, PosthogClient},
-    service::{force_change_set_response::ForceChangeSetResponse, variant::SchemaVariantResult},
+    routes::AppError,
+    service::force_change_set_response::ForceChangeSetResponse,
     track,
 };
 
@@ -33,10 +34,10 @@ pub async fn clone_variant(
     OriginalUri(original_uri): OriginalUri,
     Host(host_name): Host,
     Json(request): Json<CloneVariantRequest>,
-) -> SchemaVariantResult<ForceChangeSetResponse<FrontendVariant>> {
+) -> Result<ForceChangeSetResponse<FrontendVariant>, AppError> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
     if Schema::is_name_taken(&ctx, &request.name).await? {
-        return Err(SchemaVariantError::SchemaNameAlreadyTaken(request.name));
+        return Err(SchemaVariantError::SchemaNameAlreadyTaken(request.name).into());
     }
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;

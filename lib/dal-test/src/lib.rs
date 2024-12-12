@@ -34,13 +34,14 @@ use std::{
     sync::{Arc, Once},
 };
 
+use ::anyhow::{anyhow as anyhow_error, Context};
 use audit_database::AuditDatabaseContext;
 use buck2_resources::Buck2Resources;
 use dal::{
     builtins::func,
     feature_flags::FeatureFlagService,
     job::processor::{JobQueueProcessor, NatsProcessor},
-    DalContext, DalLayerDb, JetstreamStreams, ModelResult, ServicesContext, Workspace,
+    DalContext, DalLayerDb, JetstreamStreams, ServicesContext, Workspace,
 };
 use derive_builder::Builder;
 use jwt_simple::prelude::RS256KeyPair;
@@ -65,18 +66,14 @@ pub mod expected;
 pub mod helpers;
 pub mod prelude {
     //! This module provides a standard set of tools for authoring DAL integration tests.
-    pub use crate::helpers::ChangeSetTestHelpers;
-    pub use crate::WorkspaceSignup;
-    pub use color_eyre::eyre::OptionExt;
-    pub use color_eyre::Result;
+    pub use crate::{anyhow_to_eyre, helpers::ChangeSetTestHelpers, WorkspaceSignup};
+    pub use ::anyhow::{Context as AnyhowContext, Result};
 }
 mod signup;
 mod test_exclusive_schemas;
 
-pub use color_eyre::{
-    self,
-    eyre::{eyre, Result, WrapErr},
-};
+pub use ::anyhow::{self, Context as AnyhowContext, Result};
+pub use color_eyre;
 pub use si_test_macros::{dal_test as test, sdf_test};
 pub use signup::WorkspaceSignup;
 pub use telemetry;
@@ -280,8 +277,8 @@ impl ContextBuilderState {
     fn config(&self) -> Result<&Config> {
         match self {
             Self::Created(builder) => Ok(&builder.config),
-            Self::Errored(msg) => Err(eyre!("global setup has failed: {msg}")),
-            Self::Uninitialized => Err(eyre!("global setup is uninitialized")),
+            Self::Errored(msg) => Err(anyhow_error!("global setup has failed: {msg}")),
+            Self::Uninitialized => Err(anyhow_error!("global setup is uninitialized")),
         }
     }
 }
@@ -399,7 +396,7 @@ impl TestContext {
             ContextBuilderState::Created(builder) => builder.build_for_test().await,
             ContextBuilderState::Errored(message) => {
                 error!(error = %message, "global setup failed, aborting test");
-                Err(eyre!("global setup failed: {}", message))
+                Err(anyhow_error!("global setup failed: {}", message))
             }
         }
     }
@@ -480,7 +477,7 @@ impl TestContextBuilder {
         let encryption_key = Arc::new(
             VeritechEncryptionKey::load(&config.veritech_encryption_key_path)
                 .await
-                .wrap_err("failed to load EncryptionKey")?,
+                .context("failed to load EncryptionKey")?,
         );
 
         Ok(Self {
@@ -493,7 +490,7 @@ impl TestContextBuilder {
     async fn build_for_global(&self) -> Result<TestContext> {
         let pg_pool = PgPool::new(&self.config.pg)
             .await
-            .wrap_err("failed to create global setup PgPool")?;
+            .context("failed to create global setup PgPool")?;
         let layer_cache_pg_pool = PgPool::new(&self.config.layer_cache_pg_pool).await?;
         let audit_pg_pool = PgPool::new(&self.config.audit_pg_pool).await?;
 
@@ -536,10 +533,10 @@ impl TestContextBuilder {
 
         let nats_conn = NatsClient::new(&nats_config)
             .await
-            .wrap_err("failed to create NatsClient")?;
+            .context("failed to create NatsClient")?;
         let nats_streams = JetstreamStreams::new(nats_conn.clone())
             .await
-            .wrap_err("failed to create NatsStreams")?;
+            .context("failed to create NatsStreams")?;
         let job_processor = Box::new(NatsProcessor::new(nats_conn.clone()))
             as Box<dyn JobQueueProcessor + Send + Sync>;
 
@@ -573,11 +570,11 @@ impl TestContextBuilder {
         new_pg_pool_config.dbname = "postgres".to_string();
         let new_pg_pool = PgPool::new(&new_pg_pool_config)
             .await
-            .wrap_err("failed to create PgPool to db 'postgres'")?;
+            .context("failed to create PgPool to db 'postgres'")?;
         let db_conn = new_pg_pool
             .get()
             .await
-            .wrap_err("failed to connect to db 'postgres'")?;
+            .context("failed to connect to db 'postgres'")?;
 
         // Create new database from template
         let db_name_suffix = random_identifier_string();
@@ -598,7 +595,7 @@ impl TestContextBuilder {
                 .execute(&query, &[])
                 .instrument(debug_span!("creating test database from template"))
                 .await
-                .wrap_err("failed to create test specific database")?;
+                .context("failed to create test specific database")?;
         } else {
             info!(dbname = %dbname, "test-specific database already exists");
         }
@@ -613,7 +610,7 @@ impl TestContextBuilder {
         new_pg_pool_config.dbname = dbname;
         PgPool::new(&new_pg_pool_config)
             .await
-            .wrap_err("failed to create PgPool to db 'postgres'")
+            .context("failed to create PgPool to db 'postgres'")
     }
 }
 
@@ -654,11 +651,11 @@ pub async fn jwt_private_signing_key() -> Result<RS256KeyPair> {
     let key_str = {
         let mut file = File::open(key_path)
             .await
-            .wrap_err("failed to open RSA256 key file")?;
+            .context("failed to open RSA256 key file")?;
         let mut buf = String::new();
         file.read_to_string(&mut buf)
             .await
-            .wrap_err("failed to read from RSA256 file")?;
+            .context("failed to read from RSA256 file")?;
         buf
     };
 
@@ -676,10 +673,10 @@ pub async fn pinga_server(
     let config: pinga_server::Config = {
         let mut config_file = pinga_server::ConfigFile::default();
         pinga_server::detect_and_configure_development(&mut config_file)
-            .wrap_err("failed to detect and configure Pinga ConfigFile")?;
+            .context("failed to detect and configure Pinga ConfigFile")?;
         config_file
             .try_into()
-            .wrap_err("failed to build Pinga server config")?
+            .context("failed to build Pinga server config")?
     };
 
     let server = pinga_server::Server::from_services(
@@ -690,7 +687,7 @@ pub async fn pinga_server(
         shutdown_token,
     )
     .await
-    .wrap_err("failed to create Pinga server")?;
+    .context("failed to create Pinga server")?;
 
     Ok(server)
 }
@@ -703,7 +700,7 @@ pub async fn rebaser_server(
 ) -> Result<rebaser_server::Server> {
     let config: rebaser_server::Config = rebaser_server::ConfigFile::default()
         .try_into()
-        .wrap_err("failed to build Rebaser server config")?;
+        .context("failed to build Rebaser server config")?;
 
     let server = rebaser_server::Server::from_services(
         config.instance_id(),
@@ -713,7 +710,7 @@ pub async fn rebaser_server(
         shutdown_token,
     )
     .await
-    .wrap_err("failed to create Rebaser server")?;
+    .context("failed to create Rebaser server")?;
 
     Ok(server)
 }
@@ -729,15 +726,15 @@ pub async fn veritech_server_for_uds_cyclone(
         config_file.nats = nats_config;
         config_file.cyclone.set_pool_size(4);
         veritech_server::detect_and_configure_development(&mut config_file)
-            .wrap_err("failed to detect and configure Veritech ConfigFile")?;
+            .context("failed to detect and configure Veritech ConfigFile")?;
         config_file
             .try_into()
-            .wrap_err("failed to build Veritech server config")?
+            .context("failed to build Veritech server config")?
     };
 
     let server = veritech_server::Server::from_config(config, token)
         .await
-        .wrap_err("failed to create Veritech server")?;
+        .context("failed to create Veritech server")?;
 
     Ok(server)
 }
@@ -751,7 +748,7 @@ pub async fn forklift_server(
 ) -> Result<forklift_server::Server> {
     let config: forklift_server::Config = forklift_server::ConfigFile::default()
         .try_into()
-        .wrap_err("failed to build forklift server config")?;
+        .context("failed to build forklift server config")?;
 
     let connection_metadata = Arc::new(nats.metadata().to_owned());
     let jetstream_context = jetstream::new(nats);
@@ -769,7 +766,7 @@ pub async fn forklift_server(
         token,
     )
     .await
-    .wrap_err("failed to create forklift server")?;
+    .context("failed to create forklift server")?;
 
     Ok(server)
 }
@@ -793,7 +790,7 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
     .await?;
 
     debug!("initializing crypto");
-    sodiumoxide::init().map_err(|_| eyre!("failed to init sodiumoxide crypto"))?;
+    sodiumoxide::init().map_err(|_| anyhow_error!("failed to init sodiumoxide crypto"))?;
 
     let token = CancellationToken::new();
     let tracker = TaskTracker::new();
@@ -810,7 +807,7 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
         .pg_pool()
         .test_connection()
         .await
-        .wrap_err("failed to connect to database, is it running and available?")?;
+        .context("failed to connect to database, is it running and available?")?;
 
     #[allow(clippy::disallowed_methods)] // Environment variables are used exclusively in test and
     // all are prefixed with `SI_TEST_`
@@ -818,12 +815,12 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
         info!("dropping old test-specific databases for dal");
         drop_old_test_databases(services_ctx.pg_pool())
             .await
-            .wrap_err("failed to drop old databases")?;
+            .context("failed to drop old databases")?;
 
         info!("dropping old test-specific layerdb databases");
         drop_old_test_databases(services_ctx.layer_db().pg_pool())
             .await
-            .wrap_err("failed to drop old test-specific content store databases")?;
+            .context("failed to drop old test-specific content store databases")?;
     }
 
     // Ensure the database is totally clean, then run all migrations
@@ -832,28 +829,28 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
         .pg_pool()
         .drop_and_create_public_schema()
         .await
-        .wrap_err("failed to drop and create the database")?;
+        .context("failed to drop and create the database")?;
 
     services_ctx
         .layer_db()
         .pg_pool()
         .drop_and_create_public_schema()
         .await
-        .wrap_err("failed to drop and create layer db database")?;
+        .context("failed to drop and create layer db database")?;
 
     info!("running database migrations");
     {
         dal::migrate(services_ctx.pg_pool())
             .await
-            .wrap_err("failed to migrate database")?;
+            .context("failed to migrate database")?;
         services_ctx
             .layer_db()
             .pg_migrate()
             .await
-            .wrap_err("failed to migrate layerdb")?;
+            .context("failed to migrate layerdb")?;
         audit_database::migrate(&test_context.audit_database_context)
             .await
-            .wrap_err("failed to migrate audit database")?;
+            .context("failed to migrate audit database")?;
     }
 
     // Startup up a Forklift server exclusively for migrations
@@ -914,7 +911,7 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
         services_ctx.compute_executor().clone(),
     )
     .await
-    .wrap_err("failed to run builtin migrations")?;
+    .context("failed to run builtin migrations")?;
 
     // Cancel and wait for all outstanding tasks to complete
     info!("shutting down dependent services");
@@ -941,7 +938,7 @@ async fn migrate_local_builtins(
     layer_db: DalLayerDb,
     feature_flag_service: FeatureFlagService,
     compute_executor: DedicatedExecutor,
-) -> ModelResult<()> {
+) -> Result<()> {
     let services_context = ServicesContext::new(
         dal_pg.clone(),
         nats.clone(),
@@ -1114,4 +1111,16 @@ fn detect_and_configure_testing_for_cargo(dir: String, builder: &mut ConfigBuild
     builder.pkgs_path(Some(pkgs_path.into()));
 
     Ok(())
+}
+
+/// Convert [`anyhow::Error`] to [`color_eyre::Report`], maintining source information.
+#[macro_export]
+macro_rules! anyhow_to_eyre {
+    ($expr:expr) => {
+        $expr.map_err(|err| {
+            ::dal_test::color_eyre::eyre::eyre!(Box::<
+                dyn ::std::error::Error + Send + Sync + 'static,
+            >::from(err))
+        })
+    };
 }

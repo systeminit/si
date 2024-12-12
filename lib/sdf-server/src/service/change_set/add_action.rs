@@ -9,9 +9,9 @@ use dal::{
 use serde::{Deserialize, Serialize};
 use si_events::audit_log::AuditLogKind;
 
-use super::ChangeSetResult;
 use crate::{
     extract::{v1::AccessBuilder, HandlerContext, PosthogClient},
+    routes::AppError,
     service::force_change_set_response::ForceChangeSetResponse,
     track,
 };
@@ -32,7 +32,7 @@ pub async fn add_action(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Json(request): Json<AddActionRequest>,
-) -> ChangeSetResult<ForceChangeSetResponse<()>> {
+) -> Result<ForceChangeSetResponse<()>, AppError> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
@@ -45,7 +45,7 @@ pub async fn add_action(
                 Action::find_for_kind_and_component_id(&ctx, request.component_id, prototype.kind)
                     .await?;
             if !maybe_duplicate_action.is_empty() {
-                return Err(super::ChangeSetError::ActionAlreadyEnqueued(prototype.id));
+                return Err(super::ChangeSetError::ActionAlreadyEnqueued(prototype.id).into());
             }
         }
 

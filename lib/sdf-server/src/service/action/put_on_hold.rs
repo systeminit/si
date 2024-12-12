@@ -6,9 +6,9 @@ use dal::{
 use serde::{Deserialize, Serialize};
 use si_events::audit_log::AuditLogKind;
 
-use super::ActionResult;
 use crate::{
     extract::{v1::AccessBuilder, HandlerContext},
+    routes::AppError,
     service::action::ActionError,
 };
 
@@ -24,14 +24,14 @@ pub async fn put_on_hold(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Json(request): Json<PutOnHoldRequest>,
-) -> ActionResult<()> {
+) -> Result<(), AppError> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
     for action_id in request.ids {
         let action = Action::get_by_id(&ctx, action_id).await?;
 
         match action.state() {
             ActionState::Running | ActionState::Dispatched | ActionState::OnHold => {
-                return Err(ActionError::InvalidOnHoldTransition(action_id))
+                return Err(ActionError::InvalidOnHoldTransition(action_id).into())
             }
             ActionState::Queued | ActionState::Failed => {}
         }

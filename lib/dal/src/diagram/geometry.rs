@@ -222,9 +222,9 @@ impl Geometry {
             | NodeWeight::Geometry(_)
             | NodeWeight::View(_)
             | NodeWeight::ApprovalRequirementDefinition(_) => {
-                return Err(DiagramError::GeometryCannotRepresentNodeWeight(
-                    node_weight.into(),
-                ))
+                return Err(
+                    DiagramError::GeometryCannotRepresentNodeWeight(node_weight.into()).into(),
+                )
             }
             NodeWeight::Component(w) => GeometryRepresents::Component(w.id.into()),
             NodeWeight::DiagramObject(w) => {
@@ -382,7 +382,9 @@ impl Geometry {
     ) -> DiagramResult<Self> {
         Self::try_get_by_component_and_view(ctx, component_id, view_id)
             .await?
-            .ok_or_else(|| DiagramError::GeometryNotFoundForComponentAndView(component_id, view_id))
+            .ok_or_else(|| {
+                DiagramError::GeometryNotFoundForComponentAndView(component_id, view_id).into()
+            })
     }
 
     pub async fn get_by_object_view_and_container_view(
@@ -418,7 +420,8 @@ impl Geometry {
             return Err(DiagramError::GeometryNotFoundForViewObjectAndView(
                 object_view,
                 container_view,
-            ));
+            )
+            .into());
         };
 
         let content = Self::try_get_content(ctx, &node_weight.content_hash())
@@ -452,7 +455,7 @@ impl Geometry {
     ) -> DiagramResult<(GeometryNodeWeight, GeometryContent)> {
         Self::try_get_node_weight_and_content(ctx, geometry_id)
             .await?
-            .ok_or(DiagramError::GeometryNotFound(geometry_id))
+            .ok_or_else(|| DiagramError::GeometryNotFound(geometry_id).into())
     }
 
     async fn try_get_node_weight_and_content(
@@ -533,14 +536,17 @@ impl Geometry {
                     return Err(DiagramError::DeletingLastGeometryForComponent(
                         view_id,
                         component_id,
-                    ));
+                    )
+                    .into());
                 }
             }
             // There's no problem in deleting all geometries for a view
             Ok(GeometryRepresents::View(_)) => {}
-            // There's no problem in deleting orphan geometries
-            Err(DiagramError::RepresentedNotFoundForGeometry(_)) => {}
-            Err(e) => return Err(e),
+            Err(error) => match error.downcast_ref::<DiagramError>() {
+                // There's no problem in deleting orphan geometries
+                Some(DiagramError::RepresentedNotFoundForGeometry(_)) => {}
+                _ => return Err(error),
+            },
         }
 
         ctx.workspace_snapshot()?

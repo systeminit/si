@@ -11,10 +11,8 @@ use si_events::audit_log::AuditLogKind;
 
 use crate::{
     extract::{v1::AccessBuilder, HandlerContext, PosthogClient},
-    service::{
-        component::{ComponentError, ComponentResult},
-        force_change_set_response::ForceChangeSetResponse,
-    },
+    routes::AppError,
+    service::{component::ComponentError, force_change_set_response::ForceChangeSetResponse},
     track,
 };
 
@@ -33,7 +31,7 @@ pub async fn upgrade(
     OriginalUri(original_uri): OriginalUri,
     Host(host_name): Host,
     Json(request): Json<UpgradeComponentRequest>,
-) -> ComponentResult<ForceChangeSetResponse<()>> {
+) -> Result<ForceChangeSetResponse<()>, AppError> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
@@ -50,7 +48,7 @@ pub async fn upgrade(
 
     // This is just a check to see if someone has made a request incorrectly!
     if current_schema_variant.id() == upgrade_target_variant.id() {
-        return Err(ComponentError::SchemaVariantUpgradeSkipped);
+        return Err(ComponentError::SchemaVariantUpgradeSkipped.into());
     }
 
     // block upgrades if there are running or dispatched actions for this component!
@@ -61,7 +59,7 @@ pub async fn upgrade(
     )
     .await?;
     if !current_blocking_actions.is_empty() {
-        return Err(ComponentError::UpgradeSkippedDueToActions);
+        return Err(ComponentError::UpgradeSkippedDueToActions.into());
     }
 
     current_component

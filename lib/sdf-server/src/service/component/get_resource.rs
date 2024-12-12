@@ -5,9 +5,9 @@ use axum::{
 use dal::{component::resource::ResourceView, ComponentId, Visibility};
 use serde::{Deserialize, Serialize};
 
-use super::ComponentResult;
 use crate::{
     extract::{v1::AccessBuilder, HandlerContext, PosthogClient},
+    routes::AppError,
     track,
 };
 
@@ -32,7 +32,7 @@ pub async fn get_resource(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Query(request): Query<GetResourceRequest>,
-) -> ComponentResult<Json<GetResourceResponse>> {
+) -> Result<Json<GetResourceResponse>, AppError> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let resource = ResourceView::get_by_component_id(&ctx, request.component_id).await?;

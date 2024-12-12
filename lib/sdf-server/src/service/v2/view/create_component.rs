@@ -1,24 +1,21 @@
 use std::collections::HashMap;
 
-use axum::extract::Path;
+use anyhow::Result;
 use axum::{
-    extract::{Host, OriginalUri},
+    extract::{Host, OriginalUri, Path},
     Json,
 };
-use dal::diagram::geometry::Geometry;
-use dal::Func;
-use serde::{Deserialize, Serialize};
-
-use dal::diagram::view::ViewId;
 use dal::{
     cached_module::CachedModule,
     change_status::ChangeStatus,
     component::frame::Frame,
+    diagram::{geometry::Geometry, view::ViewId},
     generate_name,
     pkg::{import_pkg_from_pkg, ImportOptions},
-    ChangeSet, ChangeSetId, Component, ComponentId, Schema, SchemaId, SchemaVariant,
+    ChangeSet, ChangeSetId, Component, ComponentId, Func, Schema, SchemaId, SchemaVariant,
     SchemaVariantId, WorkspacePk, WsEvent,
 };
+use serde::{Deserialize, Serialize};
 use si_events::audit_log::AuditLogKind;
 use si_frontend_types::SchemaVariant as FrontendVariant;
 
@@ -29,7 +26,7 @@ use crate::{
     track,
 };
 
-use super::{ViewError, ViewResult};
+use super::ViewError;
 
 #[derive(Deserialize, Serialize, Debug, Clone, Copy)]
 #[serde(rename_all = "camelCase")]
@@ -66,7 +63,7 @@ pub async fn create_component(
     Host(host_name): Host,
     Path((_workspace_pk, change_set_id, view_id)): Path<(WorkspacePk, ChangeSetId, ViewId)>,
     Json(request): Json<CreateComponentRequest>,
-) -> ViewResult<ForceChangeSetResponse<CreateComponentResponse>> {
+) -> Result<ForceChangeSetResponse<CreateComponentResponse>> {
     let mut ctx = builder
         .build(access_builder.build(change_set_id.into()))
         .await?;
@@ -180,7 +177,8 @@ pub async fn create_component(
         ctx.rollback().await?;
         return Err(ViewError::InvalidRequest(
             "geometry unable to be parsed from create component request".into(),
-        ));
+        )
+        .into());
     }
 
     let mut maybe_inferred_edges = None;

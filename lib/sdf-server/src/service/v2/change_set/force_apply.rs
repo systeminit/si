@@ -1,8 +1,8 @@
+use anyhow::Result;
 use axum::extract::{Host, OriginalUri, Path};
 use dal::{ChangeSet, ChangeSetId, WorkspacePk};
 use si_events::audit_log::AuditLogKind;
 
-use super::Result;
 use crate::{
     extract::{HandlerContext, PosthogClient},
     service::v2::AccessBuilder,

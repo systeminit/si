@@ -1,5 +1,4 @@
-use std::result;
-
+use anyhow::{Context as _, Result};
 use futures::{future::BoxFuture, StreamExt as _};
 use pending_events::{PendingEventsError, PendingEventsStream};
 use rebaser_core::{
@@ -14,7 +13,7 @@ use rebaser_core::{
     nats::{self, NATS_HEADER_REPLY_INBOX_NAME},
 };
 use si_data_nats::{
-    async_nats::{self, jetstream::context::PublishError},
+    async_nats::jetstream::context::PublishError,
     header,
     jetstream::{self, Context},
     HeaderMap, Message, NatsClient, Subject,
@@ -31,8 +30,8 @@ pub use rebaser_core::{api_types, api_types::RequestId};
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ClientError {
-    #[error("error creating jetstream stream: {0}")]
-    CreateStream(#[source] async_nats::jetstream::context::CreateStreamError),
+    #[error("error creating jetstream stream")]
+    CreateStream,
     #[error("pending events error: {0}")]
     PendingEvents(#[from] PendingEventsError),
     #[error("request publish error: {0}")]
@@ -61,8 +60,6 @@ pub enum ClientError {
 
 type Error = ClientError;
 
-type Result<T> = result::Result<T, ClientError>;
-
 pub type RebaserClient = Client;
 
 #[derive(Clone, Debug)]
@@ -78,10 +75,10 @@ impl Client {
         // Ensure that the streams are already created
         let _ = nats::rebaser_tasks_jetstream_stream(&context)
             .await
-            .map_err(Error::CreateStream)?;
+            .context(Error::CreateStream)?;
         let _ = nats::rebaser_requests_jetstream_stream(&context)
             .await
-            .map_err(Error::CreateStream)?;
+            .context(Error::CreateStream)?;
 
         Ok(Self { nats, context })
     }
@@ -333,13 +330,13 @@ where
     let headers = message.headers().ok_or(Error::ReplyMissingHeaders)?;
     let info = ContentInfo::try_from(headers)?;
     if !T::is_content_type_supported(info.content_type.as_str()) {
-        return Err(Error::ReplyUnsupportedContentType);
+        return Err(Error::ReplyUnsupportedContentType.into());
     }
     if !T::is_message_type_supported(info.message_type.as_str()) {
-        return Err(Error::ReplyUnsupportedMessageType);
+        return Err(Error::ReplyUnsupportedMessageType.into());
     }
     if !T::is_message_version_supported(info.message_version.as_u64()) {
-        return Err(Error::ReplyUnsupportedMessageVersion);
+        return Err(Error::ReplyUnsupportedMessageVersion.into());
     }
 
     let deserialized_version = T::from_slice(info.content_type.as_str(), message.payload())?;

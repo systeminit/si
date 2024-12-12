@@ -72,7 +72,8 @@ pub(crate) async fn create_action_func(
             return Err(FuncAuthoringError::ActionKindAlreadyExists(
                 action_kind,
                 schema_variant_id,
-            ));
+            )
+            .into());
         }
     }
 
@@ -205,7 +206,7 @@ async fn create_func_stub(
 ) -> FuncAuthoringResult<Func> {
     let name = name.unwrap_or(generate_name());
     if Func::find_id_by_name(ctx, &name).await?.is_some() {
-        return Err(FuncAuthoringError::FuncNameExists(name));
+        return Err(FuncAuthoringError::FuncNameExists(name).into());
     }
 
     let code_base64 = general_purpose::STANDARD_NO_PAD.encode(code);

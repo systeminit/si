@@ -118,7 +118,7 @@ impl View {
     pub async fn get_by_id(ctx: &DalContext, view_id: ViewId) -> DiagramResult<Self> {
         Self::try_get_by_id(ctx, view_id)
             .await?
-            .ok_or(DiagramError::ViewNotFound(view_id))
+            .ok_or_else(|| DiagramError::ViewNotFound(view_id).into())
     }
 
     pub async fn try_get_by_id(ctx: &DalContext, view_id: ViewId) -> DiagramResult<Option<Self>> {
@@ -216,7 +216,7 @@ impl View {
             if let Some(view) = current_views.first() {
                 return Ok(view.id);
             } else {
-                return Err(DiagramError::DefaultViewNotFound);
+                return Err(DiagramError::DefaultViewNotFound.into());
             }
         };
 

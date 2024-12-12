@@ -1,5 +1,6 @@
-use std::{result, str::Utf8Error, sync::Arc};
+use std::{str::Utf8Error, sync::Arc};
 
+use anyhow::Result;
 use dal::{
     job::{
         consumer::{JobConsumer, JobConsumerError, JobInfo},
@@ -20,7 +21,7 @@ use telemetry_nats::propagation;
 use telemetry_utils::metric;
 use thiserror::Error;
 
-use crate::{app_state::AppState, server::ServerMetadata};
+use crate::{app_state::AppState, server::ServerMetadata, ServerError};
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -35,8 +36,6 @@ pub enum HandlerError {
     Utf8(#[source] Utf8Error),
 }
 
-type Result<T> = result::Result<T, HandlerError>;
-
 impl IntoResponse for HandlerError {
     fn into_response(self) -> Response {
         error!(si.error.message = ?self, "failed to process message");
@@ -49,7 +48,7 @@ pub async fn process_request(
     subject: Subject,
     Headers(maybe_headers): Headers,
     Json(job_info): Json<JobInfo>,
-) -> Result<()> {
+) -> Result<(), ServerError> {
     let workspace_id = job_info
         .access_builder
         .tenancy()
@@ -197,7 +196,7 @@ async fn execute_job_inner(mut ctx_builder: DalContextBuilder, job_info: JobInfo
         }
         stringify!(ComputeValidation) => Box::new(ComputeValidation::try_from(job_info.clone())?)
             as Box<dyn JobConsumer + Send + Sync>,
-        kind => return Err(HandlerError::UnknownJobKind(kind.to_owned())),
+        kind => return Err(HandlerError::UnknownJobKind(kind.to_owned()).into()),
     };
 
     info!("Processing job");

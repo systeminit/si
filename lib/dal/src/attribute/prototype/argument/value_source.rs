@@ -1,5 +1,6 @@
 use core::fmt;
 
+use anyhow::Result;
 use si_events::ulid::Ulid;
 use thiserror::Error;
 
@@ -37,7 +38,7 @@ pub enum ValueSourceError {
     SourceHasNoValues(ValueSource),
 }
 
-pub type ValueSourceResult<T> = Result<T, ValueSourceError>;
+pub type ValueSourceResult<T> = Result<T>;
 
 #[remain::sorted]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -98,9 +99,9 @@ impl ValueSource {
                 InputSocket::all_attribute_values_everywhere_for_input_socket_id(ctx, *ip_id)
                     .await?
             }
-            Self::Secret(_) => return Err(ValueSourceError::SourceHasNoValues(*self)),
+            Self::Secret(_) => return Err(ValueSourceError::SourceHasNoValues(*self).into()),
             Self::StaticArgumentValue(_) => {
-                return Err(ValueSourceError::SourceHasNoValues(*self));
+                return Err(ValueSourceError::SourceHasNoValues(*self).into());
             }
         })
     }
@@ -131,8 +132,10 @@ impl ValueSource {
                 // function, we might encounter an orphaned value (since we're
                 // walking backwards from the prop to the values here). That's
                 // fine, just skip it. It will be cleaned up on write.
-                Err(AttributeValueError::OrphanedAttributeValue(_)) => None,
-                Err(other_err) => Err(ValueSourceError::AttributeValue(other_err.to_string()))?,
+                Err(error) => match error.downcast_ref::<AttributeValueError>() {
+                    Some(AttributeValueError::OrphanedAttributeValue(_)) => None,
+                    _ => return Err(error),
+                },
             };
 
             if value_component_id == Some(component_id) {
@@ -154,14 +157,11 @@ impl ValueSource {
             .attribute_values_for_component_id(ctx, component_id)
             .await?;
         if values.len() > 1 {
-            return Err(ValueSourceError::ComponentHasMultipleValues(
-                component_id,
-                *self,
-            ));
+            return Err(ValueSourceError::ComponentHasMultipleValues(component_id, *self).into());
         }
         match values.first() {
             Some(value) => Ok(*value),
-            None => Err(ValueSourceError::ComponentHasNoValues(component_id, *self)),
+            None => Err(ValueSourceError::ComponentHasNoValues(component_id, *self).into()),
         }
     }
 }

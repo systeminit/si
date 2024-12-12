@@ -1,13 +1,13 @@
-use si_id::EntityId;
-
+use anyhow::Result;
 use si_events::workspace_snapshot::EntityKind as EntityKindEvents;
+use si_id::EntityId;
+use thiserror::Error;
 
 use crate::{
     diagram::{view::View, DiagramError},
     workspace_snapshot::EntityKindExt,
     DalContext, SchemaVariant, SchemaVariantError, WorkspaceSnapshotError,
 };
-use thiserror::Error;
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -19,7 +19,7 @@ pub enum EntityKindError {
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
-pub type EntityKindResult<T> = Result<T, EntityKindError>;
+pub type EntityKindResult<T> = Result<T>;
 pub struct EntityKind;
 
 impl EntityKind {

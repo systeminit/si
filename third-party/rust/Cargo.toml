@@ -28,6 +28,7 @@ rust-version = "1.82"
 publish = false
 
 [dependencies]
+anyhow = { version = "1.0.96" }
 async-nats = { version = "0.38.0", features = ["service"] }
 async-openai = "0.26.0"
 async-recursion = "1.1.1"

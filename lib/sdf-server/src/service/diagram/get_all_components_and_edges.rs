@@ -1,15 +1,15 @@
-use crate::service::component::ComponentResult;
-use crate::{
-    extract::{v1::AccessBuilder, HandlerContext, PosthogClient},
-    track,
-};
 use axum::{
     extract::{Host, OriginalUri, Query},
     Json,
 };
-use dal::diagram::Diagram;
-use dal::{slow_rt, Visibility};
+use dal::{diagram::Diagram, slow_rt, Visibility};
 use serde::{Deserialize, Serialize};
+
+use crate::{
+    extract::{v1::AccessBuilder, HandlerContext, PosthogClient},
+    routes::AppError,
+    track,
+};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -25,7 +25,7 @@ pub async fn get_all_components_and_edges(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Query(request): Query<Request>,
-) -> ComponentResult<Json<Diagram>> {
+) -> Result<Json<Diagram>, AppError> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let ctx_clone = ctx.clone();

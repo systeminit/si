@@ -7,9 +7,9 @@ use axum::{
 use dal::{component::delete, ChangeSet, Component, ComponentId, Visibility};
 use serde::{Deserialize, Serialize};
 
-use super::DiagramResult;
 use crate::{
     extract::{v1::AccessBuilder, HandlerContext, PosthogClient},
+    routes::AppError,
     service::force_change_set_response::ForceChangeSetResponse,
     track,
 };
@@ -31,7 +31,7 @@ pub async fn delete_components(
     OriginalUri(original_uri): OriginalUri,
     Host(host_name): Host,
     Json(request): Json<DeleteComponentsRequest>,
-) -> DiagramResult<ForceChangeSetResponse<HashMap<ComponentId, bool>>> {
+) -> Result<ForceChangeSetResponse<HashMap<ComponentId, bool>>, AppError> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;

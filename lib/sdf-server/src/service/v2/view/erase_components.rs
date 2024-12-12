@@ -1,11 +1,18 @@
 use std::collections::HashMap;
 
-use axum::extract::Path;
+use anyhow::Result;
 use axum::{
-    extract::{Host, OriginalUri},
+    extract::{Host, OriginalUri, Path},
     Json,
 };
 use dal::diagram::geometry::Geometry;
+use dal::{
+    diagram::{
+        view::{View, ViewComponentsUpdateSingle, ViewId},
+        DiagramError,
+    },
+    ChangeSet, ChangeSetId, ComponentId, WorkspacePk, WsEvent,
+};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -14,11 +21,6 @@ use crate::{
     service::v2::AccessBuilder,
     track,
 };
-use dal::diagram::view::{View, ViewComponentsUpdateSingle, ViewId};
-use dal::diagram::DiagramError;
-use dal::{ChangeSet, ChangeSetId, ComponentId, WorkspacePk, WsEvent};
-
-use super::ViewResult;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -34,7 +36,7 @@ pub async fn erase_components(
     Host(host_name): Host,
     Path((_workspace_pk, change_set_id, view_id)): Path<(WorkspacePk, ChangeSetId, ViewId)>,
     Json(Request { component_ids }): Json<Request>,
-) -> ViewResult<ForceChangeSetResponse<()>> {
+) -> Result<ForceChangeSetResponse<()>> {
     let mut ctx = builder
         .build(access_builder.build(change_set_id.into()))
         .await?;
@@ -52,11 +54,14 @@ pub async fn erase_components(
 
         match Geometry::remove(&ctx, geometry.id()).await {
             Ok(_) => {}
-            Err(err @ DiagramError::DeletingLastGeometryForComponent(_, _)) => {
-                latest_error = Some(err);
-                continue;
-            }
-            Err(err) => return Err(err)?,
+            Err(error) => match error.downcast::<DiagramError>() {
+                Ok(err @ DiagramError::DeletingLastGeometryForComponent(_, _)) => {
+                    latest_error = Some(err);
+                    continue;
+                }
+                Ok(err) => return Err(err.into()),
+                Err(err) => return Err(err),
+            },
         };
 
         successful_erase = true;

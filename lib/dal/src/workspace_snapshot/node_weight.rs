@@ -1,5 +1,6 @@
 use std::num::TryFromIntError;
 
+use anyhow::Result;
 use finished_dependent_value_root_node_weight::FinishedDependentValueRootNodeWeight;
 use serde::{Deserialize, Serialize};
 use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash, EncryptedSecretKey};
@@ -123,7 +124,7 @@ pub enum NodeWeightError {
     WorkspaceSnapshotGraph(#[from] Box<WorkspaceSnapshotGraphError>),
 }
 
-pub type NodeWeightResult<T> = Result<T, NodeWeightError>;
+pub type NodeWeightResult<T> = Result<T>;
 
 /// **WARNING**: the order of this enum is important! Do not re-order elements.
 /// New variants must go at the end, even if it's not in lexical order!
@@ -427,7 +428,9 @@ impl NodeWeight {
             | NodeWeight::DependentValueRoot(_)
             | NodeWeight::FinishedDependentValueRoot(_)
             | NodeWeight::Ordering(_)
-            | NodeWeight::DiagramObject(_) => Err(NodeWeightError::CannotSetContentHashOnKind),
+            | NodeWeight::DiagramObject(_) => {
+                Err(NodeWeightError::CannotSetContentHashOnKind.into())
+            }
             NodeWeight::Geometry(w) => {
                 traits::SiVersionedNodeWeight::inner_mut(w).new_content_hash(content_hash);
                 Ok(())
@@ -526,7 +529,7 @@ impl NodeWeight {
             | NodeWeight::DiagramObject(_)
             | NodeWeight::SchemaVariant(_)
             | NodeWeight::ApprovalRequirementDefinition(_) => {
-                Err(NodeWeightError::CannotSetOrderOnKind)
+                Err(NodeWeightError::CannotSetOrderOnKind.into())
             }
         }
     }
@@ -577,7 +580,8 @@ impl NodeWeight {
             other => Err(NodeWeightError::UnexpectedNodeWeightVariant(
                 NodeWeightDiscriminants::Action,
                 other.into(),
-            )),
+            )
+            .into()),
         }
     }
 
@@ -587,7 +591,8 @@ impl NodeWeight {
             other => Err(NodeWeightError::UnexpectedNodeWeightVariant(
                 NodeWeightDiscriminants::ActionPrototype,
                 other.into(),
-            )),
+            )
+            .into()),
         }
     }
 
@@ -599,7 +604,8 @@ impl NodeWeight {
             other => Err(NodeWeightError::UnexpectedNodeWeightVariant(
                 NodeWeightDiscriminants::AttributePrototypeArgument,
                 other.into(),
-            )),
+            )
+            .into()),
         }
     }
 
@@ -609,7 +615,8 @@ impl NodeWeight {
             other => Err(NodeWeightError::UnexpectedNodeWeightVariant(
                 NodeWeightDiscriminants::AttributeValue,
                 other.into(),
-            )),
+            )
+            .into()),
         }
     }
 
@@ -621,7 +628,8 @@ impl NodeWeight {
             other => Err(NodeWeightError::UnexpectedNodeWeightVariant(
                 NodeWeightDiscriminants::DependentValueRoot,
                 other.into(),
-            )),
+            )
+            .into()),
         }
     }
 
@@ -631,7 +639,8 @@ impl NodeWeight {
             other => Err(NodeWeightError::UnexpectedNodeWeightVariant(
                 NodeWeightDiscriminants::Category,
                 other.into(),
-            )),
+            )
+            .into()),
         }
     }
 
@@ -641,7 +650,8 @@ impl NodeWeight {
             other => Err(NodeWeightError::UnexpectedNodeWeightVariant(
                 NodeWeightDiscriminants::Component,
                 other.into(),
-            )),
+            )
+            .into()),
         }
     }
 
@@ -651,7 +661,8 @@ impl NodeWeight {
             other => Err(NodeWeightError::UnexpectedNodeWeightVariant(
                 NodeWeightDiscriminants::Geometry,
                 other.into(),
-            )),
+            )
+            .into()),
         }
     }
 
@@ -661,7 +672,8 @@ impl NodeWeight {
             other => Err(NodeWeightError::UnexpectedNodeWeightVariant(
                 NodeWeightDiscriminants::View,
                 other.into(),
-            )),
+            )
+            .into()),
         }
     }
 
@@ -671,7 +683,8 @@ impl NodeWeight {
             other => Err(NodeWeightError::UnexpectedNodeWeightVariant(
                 NodeWeightDiscriminants::DiagramObject,
                 other.into(),
-            )),
+            )
+            .into()),
         }
     }
 
@@ -683,7 +696,8 @@ impl NodeWeight {
             other => Err(NodeWeightError::UnexpectedNodeWeightVariant(
                 NodeWeightDiscriminants::ApprovalRequirementDefinition,
                 other.into(),
-            )),
+            )
+            .into()),
         }
     }
 
@@ -693,7 +707,8 @@ impl NodeWeight {
             other => Err(NodeWeightError::UnexpectedNodeWeightVariant(
                 NodeWeightDiscriminants::Prop,
                 other.into(),
-            )),
+            )
+            .into()),
         }
     }
 
@@ -703,7 +718,8 @@ impl NodeWeight {
             other => Err(NodeWeightError::UnexpectedNodeWeightVariant(
                 NodeWeightDiscriminants::Func,
                 other.into(),
-            )),
+            )
+            .into()),
         }
     }
 
@@ -713,7 +729,8 @@ impl NodeWeight {
             other => Err(NodeWeightError::UnexpectedNodeWeightVariant(
                 NodeWeightDiscriminants::FuncArgument,
                 other.into(),
-            )),
+            )
+            .into()),
         }
     }
 
@@ -723,7 +740,8 @@ impl NodeWeight {
             other => Err(NodeWeightError::UnexpectedNodeWeightVariant(
                 NodeWeightDiscriminants::Secret,
                 other.into(),
-            )),
+            )
+            .into()),
         }
     }
 
@@ -733,7 +751,8 @@ impl NodeWeight {
             other => Err(NodeWeightError::UnexpectedNodeWeightVariant(
                 NodeWeightDiscriminants::Ordering,
                 other.into(),
-            )),
+            )
+            .into()),
         }
     }
 
@@ -743,7 +762,8 @@ impl NodeWeight {
             other => Err(NodeWeightError::UnexpectedNodeWeightVariant(
                 NodeWeightDiscriminants::Content,
                 other.into(),
-            )),
+            )
+            .into()),
         }
     }
 
@@ -759,7 +779,8 @@ impl NodeWeight {
                     return Err(NodeWeightError::UnexpectedContentAddressVariant(
                         content_addr_discrim,
                         inner_addr_discrim,
-                    ));
+                    )
+                    .into());
                 }
 
                 Ok(inner.to_owned())
@@ -767,7 +788,8 @@ impl NodeWeight {
             other => Err(NodeWeightError::UnexpectedNodeWeightVariant(
                 NodeWeightDiscriminants::Content,
                 other.into(),
-            )),
+            )
+            .into()),
         }
     }
 
@@ -794,7 +816,8 @@ impl NodeWeight {
             other => Err(NodeWeightError::UnexpectedNodeWeightVariant(
                 NodeWeightDiscriminants::InputSocket,
                 other.into(),
-            )),
+            )
+            .into()),
         }
     }
 
@@ -804,7 +827,8 @@ impl NodeWeight {
             other => Err(NodeWeightError::UnexpectedNodeWeightVariant(
                 NodeWeightDiscriminants::SchemaVariant,
                 other.into(),
-            )),
+            )
+            .into()),
         }
     }
 
@@ -817,7 +841,8 @@ impl NodeWeight {
                 NodeWeightDiscriminants::SchemaVariant,
                 // &*other is to convert the `&mut` to `&`.
                 NodeWeightDiscriminants::from(&*other),
-            )),
+            )
+            .into()),
         }
     }
 

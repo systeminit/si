@@ -1,3 +1,4 @@
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use si_data_pg::PgError;
 use si_layer_cache::LayerDbError;
@@ -47,7 +48,7 @@ pub enum QualificationSummaryError {
     StandardModel(#[from] StandardModelError),
 }
 
-pub type QualificationSummaryResult<T> = Result<T, QualificationSummaryError>;
+pub type QualificationSummaryResult<T> = Result<T>;
 
 impl QualificationSummary {
     #[instrument(level = "debug", skip_all)]
@@ -175,7 +176,7 @@ impl QualificationView {
     pub async fn new(
         ctx: &DalContext,
         attribute_value: AttributeValue,
-    ) -> Result<Option<Self>, QualificationError> {
+    ) -> QualificationSummaryResult<Option<Self>> {
         let maybe_qual_run = ctx
             .layer_db()
             .func_run()
@@ -252,7 +253,7 @@ impl QualificationView {
     pub async fn new_for_validations(
         ctx: &DalContext,
         component_id: ComponentId,
-    ) -> Result<Option<Self>, QualificationError> {
+    ) -> QualificationSummaryResult<Option<Self>> {
         let mut output = Vec::new();
 
         let mut status = QualificationSubCheckStatus::Success;

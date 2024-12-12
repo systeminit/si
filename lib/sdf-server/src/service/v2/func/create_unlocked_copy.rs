@@ -1,3 +1,4 @@
+use anyhow::Result;
 use axum::{
     extract::{Host, OriginalUri, Path},
     Json,
@@ -10,13 +11,14 @@ use serde::{Deserialize, Serialize};
 use si_events::audit_log::AuditLogKind;
 use si_frontend_types::{FuncCode, FuncSummary};
 
-use super::{get_code_response, FuncAPIError, FuncAPIResult};
 use crate::{
     extract::{HandlerContext, PosthogClient},
     service::force_change_set_response::ForceChangeSetResponse,
     service::v2::AccessBuilder,
     track,
 };
+
+use super::{get_code_response, FuncAPIError};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -38,7 +40,7 @@ pub async fn create_unlocked_copy(
     Host(host_name): Host,
     Path((_workspace_pk, change_set_id, func_id)): Path<(WorkspacePk, ChangeSetId, FuncId)>,
     Json(request): Json<UnlockFuncRequest>,
-) -> FuncAPIResult<ForceChangeSetResponse<CreateFuncResponse>> {
+) -> Result<ForceChangeSetResponse<CreateFuncResponse>> {
     let mut ctx = builder
         .build(access_builder.build(change_set_id.into()))
         .await?;
@@ -47,7 +49,7 @@ pub async fn create_unlocked_copy(
 
     let existing_func = Func::get_by_id_or_error(&ctx, func_id).await?;
     if !existing_func.is_locked {
-        return Err(FuncAPIError::FuncAlreadyUnlocked(func_id));
+        return Err(FuncAPIError::FuncAlreadyUnlocked(func_id).into());
     }
 
     let new_func =

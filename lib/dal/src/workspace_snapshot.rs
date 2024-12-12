@@ -3,54 +3,58 @@
 //! having code outside of the specific graph version implementation that requires having knowledge
 //! of how the internals of that specific version of the graph work.
 
-use std::collections::{HashMap, HashSet};
-use std::sync::atomic::AtomicBool;
-use std::sync::Arc;
+use std::{
+    collections::{HashMap, HashSet},
+    sync::{atomic::AtomicBool, Arc},
+};
 
-use graph::correct_transforms::correct_transforms;
-use graph::detector::{Change, Update};
-use graph::{RebaseBatch, WorkspaceSnapshotGraph};
+use anyhow::Result;
 use node_weight::traits::CorrectTransformsError;
 use petgraph::prelude::*;
 use serde::{Deserialize, Serialize};
 use si_data_pg::PgError;
-use si_events::merkle_tree_hash::MerkleTreeHash;
-use si_events::workspace_snapshot::Checksum;
-use si_events::{ulid::Ulid, ContentHash, WorkspaceSnapshotAddress};
+use si_events::{
+    merkle_tree_hash::MerkleTreeHash, ulid::Ulid, workspace_snapshot::Checksum, ContentHash,
+    WorkspaceSnapshotAddress,
+};
 use si_id::{ApprovalRequirementDefinitionId, EntityId};
 use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
 use thiserror::Error;
-use tokio::sync::{Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard};
-use tokio::task::JoinError;
-
-use crate::action::{Action, ActionError};
-use crate::attribute::prototype::argument::AttributePrototypeArgumentError;
-use crate::attribute::prototype::AttributePrototypeError;
-use crate::change_set::{ChangeSetError, ChangeSetId};
-use crate::component::inferred_connection_graph::{
-    InferredConnectionGraph, InferredConnectionGraphError,
-};
-use crate::component::{ComponentResult, IncomingConnection};
-use crate::slow_rt::{self, SlowRuntimeError};
-use crate::socket::connection_annotation::ConnectionAnnotationError;
-use crate::socket::input::InputSocketError;
-use crate::workspace_snapshot::{
-    content_address::ContentAddressDiscriminants,
-    edge_weight::{EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants},
-    graph::{LineageId, WorkspaceSnapshotGraphDiscriminants},
-    node_weight::{category_node_weight::CategoryNodeKind, NodeWeight},
-};
-use crate::{
-    workspace_snapshot::{graph::WorkspaceSnapshotGraphError, node_weight::NodeWeightError},
-    DalContext, TransactionsError, WorkspaceSnapshotGraphVCurrent,
-};
-use crate::{
-    AttributeValueId, Component, ComponentError, ComponentId, InputSocketId, OutputSocketId,
-    SchemaId, SchemaVariantId, TenancyError, Workspace, WorkspaceError,
+use tokio::{
+    sync::{Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard},
+    task::JoinError,
 };
 
-use self::node_weight::{NodeWeightDiscriminants, OrderingNodeWeight};
+use crate::{
+    action::{Action, ActionError},
+    attribute::prototype::{argument::AttributePrototypeArgumentError, AttributePrototypeError},
+    change_set::{ChangeSetError, ChangeSetId},
+    component::{
+        inferred_connection_graph::{InferredConnectionGraph, InferredConnectionGraphError},
+        IncomingConnection,
+    },
+    slow_rt::{self, SlowRuntimeError},
+    socket::{connection_annotation::ConnectionAnnotationError, input::InputSocketError},
+    workspace_snapshot::{
+        content_address::ContentAddressDiscriminants,
+        edge_weight::{EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants},
+        graph::{LineageId, WorkspaceSnapshotGraphDiscriminants, WorkspaceSnapshotGraphError},
+        node_weight::{category_node_weight::CategoryNodeKind, NodeWeight, NodeWeightError},
+    },
+    AttributeValueId, Component, ComponentError, ComponentId, DalContext, InputSocketId,
+    OutputSocketId, SchemaId, SchemaVariantId, TenancyError, TransactionsError, Workspace,
+    WorkspaceError, WorkspaceSnapshotGraphVCurrent,
+};
+
+use self::{
+    graph::{
+        correct_transforms::correct_transforms,
+        detector::{Change, Update},
+        RebaseBatch, WorkspaceSnapshotGraph,
+    },
+    node_weight::{NodeWeightDiscriminants, OrderingNodeWeight},
+};
 
 pub mod content_address;
 pub mod edge_weight;
@@ -174,8 +178,6 @@ impl WorkspaceSnapshotError {
         )
     }
 }
-
-pub type WorkspaceSnapshotResult<T> = Result<T, WorkspaceSnapshotError>;
 
 /// The workspace graph. The public interface for this is provided through the the various `Ext`
 /// traits that are implemented for [`WorkspaceSnapshot`].
@@ -359,7 +361,7 @@ impl From<DependentValueRoot> for Ulid {
 
 impl WorkspaceSnapshot {
     #[instrument(name = "workspace_snapshot.initial", level = "debug", skip_all)]
-    pub async fn initial(ctx: &DalContext) -> WorkspaceSnapshotResult<Self> {
+    pub async fn initial(ctx: &DalContext) -> Result<Self> {
         let graph: WorkspaceSnapshotGraphVCurrent =
             WorkspaceSnapshotGraphVCurrent::new(ctx).await?;
 
@@ -383,8 +385,8 @@ impl WorkspaceSnapshot {
         WorkspaceSnapshotGraphDiscriminants::from(&(*self.read_only_graph))
     }
 
-    pub async fn generate_ulid(&self) -> WorkspaceSnapshotResult<Ulid> {
-        Ok(self.working_copy_mut().await.generate_ulid()?)
+    pub async fn generate_ulid(&self) -> Result<Ulid> {
+        self.working_copy_mut().await.generate_ulid()
     }
 
     /// Enables cycle checks on calls to [`Self::add_edge`]. Does not force
@@ -415,13 +417,13 @@ impl WorkspaceSnapshot {
         level = "info",
         skip_all
     )]
-    pub async fn current_rebase_batch(&self) -> WorkspaceSnapshotResult<Option<RebaseBatch>> {
+    pub async fn current_rebase_batch(&self) -> Result<Option<RebaseBatch>> {
         let self_clone = self.clone();
         let updates = slow_rt::spawn(async move {
             let mut working_copy = self_clone.working_copy_mut().await;
             working_copy.cleanup_and_merkle_tree_hash()?;
 
-            Ok::<Vec<Update>, WorkspaceSnapshotGraphError>(
+            Ok::<Vec<Update>, anyhow::Error>(
                 self_clone.read_only_graph.detect_updates(&working_copy),
             )
         })?
@@ -443,11 +445,11 @@ impl WorkspaceSnapshot {
     pub async fn calculate_rebase_batch(
         base_snapshot: Arc<WorkspaceSnapshot>,
         updated_snapshot: Arc<WorkspaceSnapshot>,
-    ) -> WorkspaceSnapshotResult<Option<RebaseBatch>> {
+    ) -> Result<Option<RebaseBatch>> {
         let updates = slow_rt::spawn(async move {
             let updates = base_snapshot.detect_updates(&updated_snapshot).await?;
 
-            Ok::<Vec<Update>, WorkspaceSnapshotError>(updates)
+            Ok::<Vec<Update>, anyhow::Error>(updates)
         })?
         .await??;
 
@@ -465,16 +467,16 @@ impl WorkspaceSnapshot {
         &self,
         updates: Vec<Update>,
         from_different_change_set: bool,
-    ) -> WorkspaceSnapshotResult<Vec<Update>> {
+    ) -> Result<Vec<Update>> {
         let self_clone = self.clone();
-        Ok(slow_rt::spawn(async move {
+        slow_rt::spawn(async move {
             correct_transforms(
                 &*self_clone.working_copy().await,
                 updates,
                 from_different_change_set,
             )
         })?
-        .await??)
+        .await?
     }
 
     #[instrument(
@@ -485,10 +487,7 @@ impl WorkspaceSnapshot {
             si.workspace_snapshot.address = Empty,
         )
     )]
-    pub async fn write(
-        &self,
-        ctx: &DalContext,
-    ) -> WorkspaceSnapshotResult<WorkspaceSnapshotAddress> {
+    pub async fn write(&self, ctx: &DalContext) -> Result<WorkspaceSnapshotAddress> {
         let span = current_span_for_instrument_at!("debug");
 
         // Pull out the working copy and clean it up.
@@ -514,7 +513,7 @@ impl WorkspaceSnapshot {
                     events_actor,
                 )?;
 
-                Ok::<WorkspaceSnapshotAddress, WorkspaceSnapshotError>(new_address)
+                Ok::<WorkspaceSnapshotAddress, anyhow::Error>(new_address)
             })?
             .await??;
 
@@ -539,10 +538,7 @@ impl WorkspaceSnapshot {
         level = "info",
         skip_all
     )]
-    pub async fn write_readonly_graph(
-        &self,
-        ctx: &DalContext,
-    ) -> WorkspaceSnapshotResult<WorkspaceSnapshotAddress> {
+    pub async fn write_readonly_graph(&self, ctx: &DalContext) -> Result<WorkspaceSnapshotAddress> {
         let events_tenancy = ctx.events_tenancy();
         let events_actor = ctx.events_actor();
 
@@ -560,7 +556,7 @@ impl WorkspaceSnapshot {
         *self.address.read().await
     }
 
-    pub async fn root(&self) -> WorkspaceSnapshotResult<NodeIndex> {
+    pub async fn root(&self) -> Result<NodeIndex> {
         Ok(self.working_copy().await.root())
     }
 
@@ -597,12 +593,12 @@ impl WorkspaceSnapshot {
         }
     }
 
-    pub async fn serialized(&self) -> WorkspaceSnapshotResult<Vec<u8>> {
+    pub async fn serialized(&self) -> Result<Vec<u8>> {
         let graph = self.working_copy().await.clone();
         Ok(si_layer_cache::db::serialize::to_vec(&WorkspaceSnapshotGraph::V4(graph))?.0)
     }
 
-    pub fn from_bytes(bytes: &[u8]) -> WorkspaceSnapshotResult<Self> {
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
         let graph: Arc<WorkspaceSnapshotGraph> = si_layer_cache::db::serialize::from_bytes(bytes)?;
 
         Ok(Self {
@@ -623,28 +619,20 @@ impl WorkspaceSnapshot {
 
     /// Adds this node to the graph, or replaces it if a node with the same id
     /// already exists.
-    pub async fn add_or_replace_node(
-        &self,
-        node: NodeWeight,
-    ) -> WorkspaceSnapshotResult<NodeIndex> {
+    pub async fn add_or_replace_node(&self, node: NodeWeight) -> Result<NodeIndex> {
         let new_node_index = self.working_copy_mut().await.add_or_replace_node(node)?;
         Ok(new_node_index)
     }
 
-    pub async fn add_ordered_node(&self, node: NodeWeight) -> WorkspaceSnapshotResult<NodeIndex> {
+    pub async fn add_ordered_node(&self, node: NodeWeight) -> Result<NodeIndex> {
         let new_node_index = self.working_copy_mut().await.add_ordered_node(node)?;
         Ok(new_node_index)
     }
 
-    pub async fn update_content(
-        &self,
-        id: Ulid,
-        new_content_hash: ContentHash,
-    ) -> WorkspaceSnapshotResult<()> {
-        Ok(self
-            .working_copy_mut()
+    pub async fn update_content(&self, id: Ulid, new_content_hash: ContentHash) -> Result<()> {
+        self.working_copy_mut()
             .await
-            .update_content(id, new_content_hash)?)
+            .update_content(id, new_content_hash)
     }
 
     #[instrument(
@@ -658,7 +646,7 @@ impl WorkspaceSnapshot {
         from_node_id: impl Into<Ulid>,
         edge_weight: EdgeWeight,
         to_node_id: impl Into<Ulid>,
-    ) -> WorkspaceSnapshotResult<()> {
+    ) -> Result<()> {
         let from_node_index = self
             .working_copy()
             .await
@@ -687,7 +675,7 @@ impl WorkspaceSnapshot {
         from_node_index: NodeIndex,
         edge_weight: EdgeWeight,
         to_node_index: NodeIndex,
-    ) -> WorkspaceSnapshotResult<()> {
+    ) -> Result<()> {
         self.working_copy_mut()
             .await
             .add_edge(from_node_index, edge_weight, to_node_index)?;
@@ -700,7 +688,7 @@ impl WorkspaceSnapshot {
         from_node_id: impl Into<Ulid>,
         edge_weight: EdgeWeight,
         to_node_id: impl Into<Ulid>,
-    ) -> WorkspaceSnapshotResult<()> {
+    ) -> Result<()> {
         let from_node_index = self
             .working_copy()
             .await
@@ -719,7 +707,7 @@ impl WorkspaceSnapshot {
     pub async fn detect_updates(
         &self,
         onto_workspace_snapshot: &WorkspaceSnapshot,
-    ) -> WorkspaceSnapshotResult<Vec<Update>> {
+    ) -> Result<Vec<Update>> {
         let self_clone = self.clone();
         let onto_clone = onto_workspace_snapshot.clone();
 
@@ -736,17 +724,17 @@ impl WorkspaceSnapshot {
     pub async fn detect_changes(
         &self,
         onto_workspace_snapshot: &WorkspaceSnapshot,
-    ) -> WorkspaceSnapshotResult<Vec<Change>> {
+    ) -> Result<Vec<Change>> {
         let self_clone = self.clone();
         let onto_clone = onto_workspace_snapshot.clone();
 
-        Ok(slow_rt::spawn(async move {
+        slow_rt::spawn(async move {
             self_clone
                 .working_copy()
                 .await
                 .detect_changes(&*onto_clone.working_copy().await)
         })?
-        .await??)
+        .await?
     }
 
     /// A wrapper around [`Self::detect_changes`](Self::detect_changes) where the "onto" snapshot is derived from the
@@ -756,10 +744,7 @@ impl WorkspaceSnapshot {
         level = "debug",
         skip_all
     )]
-    pub async fn detect_changes_from_head(
-        &self,
-        ctx: &DalContext,
-    ) -> WorkspaceSnapshotResult<Vec<Change>> {
+    pub async fn detect_changes_from_head(&self, ctx: &DalContext) -> Result<Vec<Change>> {
         let head_change_set_id = ctx.get_workspace_default_change_set_id().await?;
         let head_snapshot = Self::find_for_change_set(ctx, head_change_set_id).await?;
         head_snapshot
@@ -777,7 +762,7 @@ impl WorkspaceSnapshot {
         &self,
         ctx: &DalContext,
         mut ids_with_hashes: Vec<(EntityId, MerkleTreeHash)>,
-    ) -> WorkspaceSnapshotResult<Checksum> {
+    ) -> Result<Checksum> {
         // If an empty list of IDs with hashes wass passed in, then we use the root node's ID and
         // merkle tree hash as our sole ID and hash so that algorithms using the checksum can
         // "invalidate" as needed.
@@ -807,11 +792,8 @@ impl WorkspaceSnapshot {
     }
 
     /// Gives the exact node index endpoints of an edge.
-    pub async fn edge_endpoints(
-        &self,
-        edge_index: EdgeIndex,
-    ) -> WorkspaceSnapshotResult<(NodeIndex, NodeIndex)> {
-        Ok(self.working_copy_mut().await.edge_endpoints(edge_index)?)
+    pub async fn edge_endpoints(&self, edge_index: EdgeIndex) -> Result<(NodeIndex, NodeIndex)> {
+        self.working_copy_mut().await.edge_endpoints(edge_index)
     }
 
     #[instrument(
@@ -823,18 +805,14 @@ impl WorkspaceSnapshot {
         &self,
         other: &Self,
         component_id: ComponentId,
-    ) -> WorkspaceSnapshotResult<()> {
+    ) -> Result<()> {
         let component_node_index = other.read_only_graph.get_node_index_by_id(component_id)?;
-        Ok(self
-            .working_copy_mut()
+        self.working_copy_mut()
             .await
-            .import_component_subgraph(&other.read_only_graph, component_node_index)?)
+            .import_component_subgraph(&other.read_only_graph, component_node_index)
     }
 
-    pub async fn get_node_weight_by_id(
-        &self,
-        id: impl Into<Ulid>,
-    ) -> WorkspaceSnapshotResult<NodeWeight> {
+    pub async fn get_node_weight_by_id(&self, id: impl Into<Ulid>) -> Result<NodeWeight> {
         let node_idx = self.get_node_index_by_id(id).await?;
         Ok(self
             .working_copy()
@@ -843,10 +821,7 @@ impl WorkspaceSnapshot {
             .to_owned())
     }
 
-    pub async fn get_node_weight(
-        &self,
-        node_index: NodeIndex,
-    ) -> WorkspaceSnapshotResult<NodeWeight> {
+    pub async fn get_node_weight(&self, node_index: NodeIndex) -> Result<NodeWeight> {
         Ok(self
             .working_copy()
             .await
@@ -871,18 +846,17 @@ impl WorkspaceSnapshot {
         &self,
         id: Ulid,
         lineage_id: Ulid,
-    ) -> WorkspaceSnapshotResult<Option<NodeIndex>> {
-        Ok(self
-            .working_copy()
+    ) -> Result<Option<NodeIndex>> {
+        self.working_copy()
             .await
-            .find_equivalent_node(id, lineage_id)?)
+            .find_equivalent_node(id, lineage_id)
     }
 
     /// Remove any nodes without incoming edges from the graph, and update the
     /// index tables. If you are about to persist the graph, or calculate
     /// updates based on this graph and another one, then you want to call
     /// `Self::cleanup_and_merkle_tree_hash` instead.
-    pub async fn cleanup(&self) -> WorkspaceSnapshotResult<()> {
+    pub async fn cleanup(&self) -> Result<()> {
         self.working_copy_mut().await.cleanup();
         Ok(())
     }
@@ -891,7 +865,7 @@ impl WorkspaceSnapshot {
     /// recalculate the merkle tree hash based on the nodes touched. *ALWAYS*
     /// call this before persisting a snapshot, or calculating updates (it is
     /// called already in `Self::write` and `Self::calculate_rebase_batch`)
-    pub async fn cleanup_and_merkle_tree_hash(&self) -> WorkspaceSnapshotResult<()> {
+    pub async fn cleanup_and_merkle_tree_hash(&self) -> Result<()> {
         let mut working_copy = self.working_copy_mut().await;
 
         working_copy.cleanup_and_merkle_tree_hash()?;
@@ -900,7 +874,7 @@ impl WorkspaceSnapshot {
     }
 
     #[instrument(name = "workspace_snapshot.nodes", level = "debug", skip_all, fields())]
-    pub async fn nodes(&self) -> WorkspaceSnapshotResult<Vec<(NodeWeight, NodeIndex)>> {
+    pub async fn nodes(&self) -> Result<Vec<(NodeWeight, NodeIndex)>> {
         Ok(self
             .working_copy()
             .await
@@ -910,7 +884,7 @@ impl WorkspaceSnapshot {
     }
 
     #[instrument(name = "workspace_snapshot.edges", level = "debug", skip_all, fields())]
-    pub async fn edges(&self) -> WorkspaceSnapshotResult<Vec<(EdgeWeight, NodeIndex, NodeIndex)>> {
+    pub async fn edges(&self) -> Result<Vec<(EdgeWeight, NodeIndex, NodeIndex)>> {
         Ok(self
             .working_copy()
             .await
@@ -952,11 +926,8 @@ impl WorkspaceSnapshot {
         self.read_only_graph.write_to_disk(file_suffix);
     }
 
-    pub async fn get_node_index_by_id(
-        &self,
-        id: impl Into<Ulid>,
-    ) -> WorkspaceSnapshotResult<NodeIndex> {
-        Ok(self.working_copy().await.get_node_index_by_id(id)?)
+    pub async fn get_node_index_by_id(&self, id: impl Into<Ulid>) -> Result<NodeIndex> {
+        self.working_copy().await.get_node_index_by_id(id)
     }
 
     pub async fn get_node_index_by_id_opt(&self, id: impl Into<Ulid>) -> Option<NodeIndex> {
@@ -967,7 +938,7 @@ impl WorkspaceSnapshot {
     pub async fn find(
         ctx: &DalContext,
         workspace_snapshot_addr: WorkspaceSnapshotAddress,
-    ) -> WorkspaceSnapshotResult<Self> {
+    ) -> Result<Self> {
         let snapshot = match ctx
             .layer_db()
             .workspace_snapshot()
@@ -981,7 +952,8 @@ impl WorkspaceSnapshot {
                 LayerDbError::Postcard(_) => {
                     return Err(WorkspaceSnapshotError::WorkspaceSnapshotNotMigrated(
                         workspace_snapshot_addr,
-                    ));
+                    )
+                    .into());
                 }
                 err => Err(err)?,
             },
@@ -997,10 +969,7 @@ impl WorkspaceSnapshot {
         })
     }
 
-    pub async fn find_for_change_set(
-        ctx: &DalContext,
-        change_set_id: ChangeSetId,
-    ) -> WorkspaceSnapshotResult<Self> {
+    pub async fn find_for_change_set(ctx: &DalContext, change_set_id: ChangeSetId) -> Result<Self> {
         // There's a race between finding which address to retrieve and actually retrieving it
         // where it's possible for the content at the address to be garbage collected, and no
         // longer be retrievable. We'll re-fetch which snapshot address to use, and will retry,
@@ -1027,15 +996,23 @@ impl WorkspaceSnapshot {
 
             match Self::find(ctx, address).await {
                 Ok(snapshot) => return Ok(snapshot),
-                Err(WorkspaceSnapshotError::WorkspaceSnapshotGraphMissing(_)) => {
-                    warn!(
-                        "Unable to retrieve snapshot {:?} for change set {:?}. Retries remaining: {}",
-                        address, change_set_id, retries
-                    );
-                    tokio::time::sleep(tokio::time::Duration::from_millis(5)).await;
-                    continue;
-                }
-                Err(e) => return Err(e),
+                Err(error) => match error.downcast_ref::<WorkspaceSnapshotError>() {
+                    Some(err) => {
+                        if let WorkspaceSnapshotError::WorkspaceSnapshotGraphMissing(_) = err {
+                            {
+                                warn!(
+                                    "Unable to retrieve snapshot {:?} for change set {:?}. Retries remaining: {}",
+                                    address, change_set_id, retries
+                                                        );
+                                tokio::time::sleep(tokio::time::Duration::from_millis(5)).await;
+                                continue;
+                            }
+                        }
+
+                        return Err(error);
+                    }
+                    None => return Err(error),
+                },
             }
         }
 
@@ -1043,24 +1020,24 @@ impl WorkspaceSnapshot {
             "Retries exceeded trying to fetch workspace snapshot for change set {:?}",
             change_set_id
         );
-        Err(WorkspaceSnapshotError::WorkspaceSnapshotNotFetched)
+        Err(WorkspaceSnapshotError::WorkspaceSnapshotNotFetched.into())
     }
 
     pub async fn get_category_node_or_err(
         &self,
         source: Option<Ulid>,
         kind: CategoryNodeKind,
-    ) -> WorkspaceSnapshotResult<Ulid> {
+    ) -> Result<Ulid> {
         self.get_category_node(source, kind)
             .await?
-            .ok_or(WorkspaceSnapshotError::CategoryNodeNotFound(kind))
+            .ok_or(WorkspaceSnapshotError::CategoryNodeNotFound(kind).into())
     }
 
     pub async fn get_category_node(
         &self,
         source: Option<Ulid>,
         kind: CategoryNodeKind,
-    ) -> WorkspaceSnapshotResult<Option<Ulid>> {
+    ) -> Result<Option<Ulid>> {
         Ok(self
             .working_copy()
             .await
@@ -1072,7 +1049,7 @@ impl WorkspaceSnapshot {
         &self,
         id: impl Into<Ulid>,
         direction: Direction,
-    ) -> WorkspaceSnapshotResult<Vec<(EdgeWeight, NodeIndex, NodeIndex)>> {
+    ) -> Result<Vec<(EdgeWeight, NodeIndex, NodeIndex)>> {
         let node_index = self.working_copy().await.get_node_index_by_id(id)?;
         Ok(self
             .working_copy()
@@ -1093,7 +1070,7 @@ impl WorkspaceSnapshot {
         id: impl Into<Ulid>,
         direction: Direction,
         edge_kind: EdgeWeightKindDiscriminants,
-    ) -> WorkspaceSnapshotResult<Vec<(EdgeWeight, NodeIndex, NodeIndex)>> {
+    ) -> Result<Vec<(EdgeWeight, NodeIndex, NodeIndex)>> {
         let node_index = self.working_copy().await.get_node_index_by_id(id)?;
 
         Ok(self
@@ -1106,7 +1083,7 @@ impl WorkspaceSnapshot {
         &self,
         node_index: NodeIndex,
         direction: Direction,
-    ) -> WorkspaceSnapshotResult<Vec<(EdgeWeight, NodeIndex, NodeIndex)>> {
+    ) -> Result<Vec<(EdgeWeight, NodeIndex, NodeIndex)>> {
         Ok(self
             .working_copy()
             .await
@@ -1121,7 +1098,7 @@ impl WorkspaceSnapshot {
             .collect())
     }
 
-    pub async fn remove_all_edges(&self, id: impl Into<Ulid>) -> WorkspaceSnapshotResult<()> {
+    pub async fn remove_all_edges(&self, id: impl Into<Ulid>) -> Result<()> {
         let id = id.into();
         for (edge_weight, source, target) in self.edges_directed(id, Direction::Outgoing).await? {
             self.remove_edge(source, target, edge_weight.kind().into())
@@ -1138,7 +1115,7 @@ impl WorkspaceSnapshot {
         &self,
         id: impl Into<Ulid>,
         edge_weight_kind_discrim: EdgeWeightKindDiscriminants,
-    ) -> WorkspaceSnapshotResult<Vec<NodeIndex>> {
+    ) -> Result<Vec<NodeIndex>> {
         Ok(self
             .edges_directed(id.into(), Direction::Incoming)
             .await?
@@ -1157,7 +1134,7 @@ impl WorkspaceSnapshot {
         &self,
         id: impl Into<Ulid>,
         edge_weight_kind_discrim: EdgeWeightKindDiscriminants,
-    ) -> WorkspaceSnapshotResult<Vec<NodeIndex>> {
+    ) -> Result<Vec<NodeIndex>> {
         let id = id.into();
         Ok(self
             .edges_directed(id, Direction::Outgoing)
@@ -1177,7 +1154,7 @@ impl WorkspaceSnapshot {
         &self,
         node_index: NodeIndex,
         edge_weight_kind_discrim: EdgeWeightKindDiscriminants,
-    ) -> WorkspaceSnapshotResult<Vec<NodeIndex>> {
+    ) -> Result<Vec<NodeIndex>> {
         Ok(self
             .edges_directed_by_index(node_index, Direction::Outgoing)
             .await?
@@ -1192,10 +1169,7 @@ impl WorkspaceSnapshot {
             .collect())
     }
 
-    pub async fn all_outgoing_targets(
-        &self,
-        id: impl Into<Ulid>,
-    ) -> WorkspaceSnapshotResult<Vec<NodeWeight>> {
+    pub async fn all_outgoing_targets(&self, id: impl Into<Ulid>) -> Result<Vec<NodeWeight>> {
         let mut result = vec![];
         let target_idxs: Vec<NodeIndex> = self
             .edges_directed(id, Direction::Outgoing)
@@ -1212,10 +1186,7 @@ impl WorkspaceSnapshot {
         Ok(result)
     }
 
-    pub async fn all_incoming_sources(
-        &self,
-        id: impl Into<Ulid>,
-    ) -> WorkspaceSnapshotResult<Vec<NodeWeight>> {
+    pub async fn all_incoming_sources(&self, id: impl Into<Ulid>) -> Result<Vec<NodeWeight>> {
         let mut result = vec![];
         let source_idxs: Vec<NodeIndex> = self
             .edges_directed(id, Direction::Incoming)
@@ -1236,7 +1207,7 @@ impl WorkspaceSnapshot {
         &self,
         target_id: impl Into<Ulid>,
         kind: EdgeWeightKindDiscriminants,
-    ) -> WorkspaceSnapshotResult<()> {
+    ) -> Result<()> {
         let target_id = target_id.into();
 
         let sources = self
@@ -1255,7 +1226,7 @@ impl WorkspaceSnapshot {
         &self,
         from_node_id: Ulid,
         to_node_id: Ulid,
-    ) -> WorkspaceSnapshotResult<Vec<EdgeWeight>> {
+    ) -> Result<Vec<EdgeWeight>> {
         let from_node_index = self.get_node_index_by_id(from_node_id).await?;
 
         let to_node_index = self.get_node_index_by_id(to_node_id).await?;
@@ -1280,7 +1251,7 @@ impl WorkspaceSnapshot {
         skip_all,
         fields()
     )]
-    pub async fn remove_node_by_id(&self, id: impl Into<Ulid>) -> WorkspaceSnapshotResult<()> {
+    pub async fn remove_node_by_id(&self, id: impl Into<Ulid>) -> Result<()> {
         let id: Ulid = id.into();
         let node_idx = self.get_node_index_by_id(id).await?;
         self.remove_all_edges(id).await?;
@@ -1295,7 +1266,7 @@ impl WorkspaceSnapshot {
         source_node_index: NodeIndex,
         target_node_index: NodeIndex,
         edge_kind: EdgeWeightKindDiscriminants,
-    ) -> WorkspaceSnapshotResult<()> {
+    ) -> Result<()> {
         self.working_copy_mut().await.remove_edge(
             source_node_index,
             target_node_index,
@@ -1327,7 +1298,7 @@ impl WorkspaceSnapshot {
         source_node_id: impl Into<Ulid>,
         target_node_id: impl Into<Ulid>,
         edge_kind: EdgeWeightKindDiscriminants,
-    ) -> WorkspaceSnapshotResult<()> {
+    ) -> Result<()> {
         let source_node_index = self
             .working_copy()
             .await
@@ -1348,16 +1319,16 @@ impl WorkspaceSnapshot {
         skip_all,
         fields()
     )]
-    pub async fn perform_updates(&self, updates: &[Update]) -> WorkspaceSnapshotResult<()> {
+    pub async fn perform_updates(&self, updates: &[Update]) -> Result<()> {
         let self_clone = self.clone();
         let updates = updates.to_vec();
-        Ok(slow_rt::spawn(async move {
+        slow_rt::spawn(async move {
             self_clone
                 .working_copy_mut()
                 .await
                 .perform_updates(&updates)
         })?
-        .await??)
+        .await?
     }
 
     /// Mark whether a prop can be used as an input to a function. Props below
@@ -1366,7 +1337,7 @@ impl WorkspaceSnapshot {
     pub async fn mark_prop_as_able_to_be_used_as_prototype_arg(
         &self,
         node_index: NodeIndex,
-    ) -> WorkspaceSnapshotResult<()> {
+    ) -> Result<()> {
         self.working_copy_mut()
             .await
             .update_node_weight(node_index, |node_weight| match node_weight {
@@ -1383,9 +1354,9 @@ impl WorkspaceSnapshot {
     pub async fn ordering_node_for_container(
         &self,
         id: impl Into<Ulid>,
-    ) -> WorkspaceSnapshotResult<Option<OrderingNodeWeight>> {
+    ) -> Result<Option<OrderingNodeWeight>> {
         let idx = self.get_node_index_by_id(id).await?;
-        Ok(self.working_copy().await.ordering_node_for_container(idx)?)
+        self.working_copy().await.ordering_node_for_container(idx)
     }
 
     pub async fn update_node_id(
@@ -1393,7 +1364,7 @@ impl WorkspaceSnapshot {
         current_id: impl Into<Ulid>,
         new_id: impl Into<Ulid>,
         new_lineage_id: LineageId,
-    ) -> WorkspaceSnapshotResult<()> {
+    ) -> Result<()> {
         let idx = self.get_node_index_by_id(current_id).await?;
         self.working_copy_mut()
             .await
@@ -1405,7 +1376,7 @@ impl WorkspaceSnapshot {
     pub async fn ordered_children_for_node(
         &self,
         id: impl Into<Ulid>,
-    ) -> WorkspaceSnapshotResult<Option<Vec<Ulid>>> {
+    ) -> Result<Option<Vec<Ulid>>> {
         let idx = self.get_node_index_by_id(id.into()).await?;
         let mut result = vec![];
         Ok(
@@ -1429,13 +1400,11 @@ impl WorkspaceSnapshot {
     pub async fn socket_edges_removed_relative_to_base(
         &self,
         ctx: &DalContext,
-    ) -> WorkspaceSnapshotResult<Vec<IncomingConnection>> {
+    ) -> Result<Vec<IncomingConnection>> {
         // Even though the default change set for a workspace can have a base change set, we don't
         // want to consider anything as new/modified/removed when looking at the default change
         // set.
-        let workspace = Workspace::get_by_pk_or_error(ctx, ctx.tenancy().workspace_pk()?)
-            .await
-            .map_err(Box::new)?;
+        let workspace = Workspace::get_by_pk_or_error(ctx, ctx.tenancy().workspace_pk()?).await?;
         if workspace.default_change_set_id() == ctx.change_set_id() {
             return Ok(Vec::new());
         }
@@ -1443,9 +1412,7 @@ impl WorkspaceSnapshot {
         let base_change_set_ctx = ctx.clone_with_base().await?;
         let base_change_set_ctx = &base_change_set_ctx;
 
-        let base_components = Component::list(base_change_set_ctx)
-            .await
-            .map_err(Box::new)?;
+        let base_components = Component::list(base_change_set_ctx).await?;
         #[derive(Hash, Clone, PartialEq, Eq)]
         struct UniqueEdge {
             to_component_id: ComponentId,
@@ -1458,8 +1425,7 @@ impl WorkspaceSnapshot {
         for base_component in base_components {
             let incoming_edges = base_component
                 .incoming_connections(base_change_set_ctx)
-                .await
-                .map_err(Box::new)?;
+                .await?;
 
             for conn in incoming_edges {
                 let hash = UniqueEdge {
@@ -1473,13 +1439,12 @@ impl WorkspaceSnapshot {
             }
         }
 
-        let current_components = Component::list(ctx).await.map_err(Box::new)?;
+        let current_components = Component::list(ctx).await?;
         let mut current_incoming_edges = HashSet::new();
         for current_component in current_components {
             let incoming_edges: Vec<UniqueEdge> = current_component
                 .incoming_connections(ctx)
-                .await
-                .map_err(Box::new)?
+                .await?
                 .into_iter()
                 .map(|conn| UniqueEdge {
                     to_component_id: conn.to_component_id,
@@ -1502,22 +1467,17 @@ impl WorkspaceSnapshot {
     }
 
     /// Returns whether or not any Actions were dispatched.
-    pub async fn dispatch_actions(ctx: &DalContext) -> WorkspaceSnapshotResult<bool> {
+    pub async fn dispatch_actions(ctx: &DalContext) -> Result<bool> {
         let mut did_dispatch = false;
-        for dispatchable_ation_id in Action::eligible_to_dispatch(ctx).await.map_err(Box::new)? {
-            Action::dispatch_action(ctx, dispatchable_ation_id)
-                .await
-                .map_err(Box::new)?;
+        for dispatchable_ation_id in Action::eligible_to_dispatch(ctx).await? {
+            Action::dispatch_action(ctx, dispatchable_ation_id).await?;
             did_dispatch = true;
         }
 
         Ok(did_dispatch)
     }
 
-    pub async fn add_dependent_value_root(
-        &self,
-        root: DependentValueRoot,
-    ) -> WorkspaceSnapshotResult<()> {
+    pub async fn add_dependent_value_root(&self, root: DependentValueRoot) -> Result<()> {
         // ensure we don't grow the graph unnecessarily by adding the same value
         // in a single edit session
         {
@@ -1557,7 +1517,7 @@ impl WorkspaceSnapshot {
         Ok(())
     }
 
-    pub async fn has_dependent_value_roots(&self) -> WorkspaceSnapshotResult<bool> {
+    pub async fn has_dependent_value_roots(&self) -> Result<bool> {
         Ok(
             match self
                 .get_category_node(None, CategoryNodeKind::DependentValueRoots)
@@ -1576,7 +1536,7 @@ impl WorkspaceSnapshot {
     }
 
     /// Removes all the dependent value nodes from the category and returns the value_ids
-    pub async fn take_dependent_values(&self) -> WorkspaceSnapshotResult<Vec<DependentValueRoot>> {
+    pub async fn take_dependent_values(&self) -> Result<Vec<DependentValueRoot>> {
         let dv_category_id = match self
             .get_category_node(None, CategoryNodeKind::DependentValueRoots)
             .await?
@@ -1620,9 +1580,7 @@ impl WorkspaceSnapshot {
     }
 
     /// List all the `value_ids` from the dependent value nodes in the category.
-    pub async fn get_dependent_value_roots(
-        &self,
-    ) -> WorkspaceSnapshotResult<Vec<DependentValueRoot>> {
+    pub async fn get_dependent_value_roots(&self) -> Result<Vec<DependentValueRoot>> {
         let dv_category_id = match self
             .get_category_node(None, CategoryNodeKind::DependentValueRoots)
             .await?
@@ -1656,7 +1614,7 @@ impl WorkspaceSnapshot {
     pub async fn associated_attribute_value_id(
         &self,
         node_weight: NodeWeight,
-    ) -> WorkspaceSnapshotResult<Option<AttributeValueId>> {
+    ) -> Result<Option<AttributeValueId>> {
         let mut this_node_weight = node_weight;
         while let Some(edge_kind) = match &this_node_weight {
             NodeWeight::AttributeValue(av) => return Ok(Some(av.id().into())),
@@ -1730,7 +1688,8 @@ impl WorkspaceSnapshot {
                         edge_kind,
                         NodeWeightDiscriminants::from(&this_node_weight),
                         this_node_weight.id(),
-                    ))
+                    )
+                    .into());
                 }
             };
         }
@@ -1741,7 +1700,7 @@ impl WorkspaceSnapshot {
     pub async fn schema_variant_id_for_component_id(
         &self,
         component_id: ComponentId,
-    ) -> ComponentResult<SchemaVariantId> {
+    ) -> Result<SchemaVariantId> {
         self.working_copy()
             .await
             .schema_variant_id_for_component_id(component_id)
@@ -1750,7 +1709,7 @@ impl WorkspaceSnapshot {
     pub async fn frame_contains_components(
         &self,
         component_id: ComponentId,
-    ) -> ComponentResult<Vec<ComponentId>> {
+    ) -> Result<Vec<ComponentId>> {
         self.working_copy()
             .await
             .frame_contains_components(component_id)
@@ -1760,11 +1719,10 @@ impl WorkspaceSnapshot {
     pub async fn inferred_connection_graph(
         &self,
         ctx: &DalContext,
-    ) -> WorkspaceSnapshotResult<InferredConnectionsWriteGuard<'_>> {
+    ) -> Result<InferredConnectionsWriteGuard<'_>> {
         let mut inferred_connection_write_guard = self.inferred_connection_graph.write().await;
         if inferred_connection_write_guard.is_none() {
-            *inferred_connection_write_guard =
-                Some(InferredConnectionGraph::new(ctx).await.map_err(Box::new)?);
+            *inferred_connection_write_guard = Some(InferredConnectionGraph::new(ctx).await?);
         }
 
         Ok(InferredConnectionsWriteGuard {

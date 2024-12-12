@@ -1,3 +1,4 @@
+use anyhow::Result;
 use axum::{
     extract::{Host, OriginalUri, Path, Query},
     Json,
@@ -14,7 +15,7 @@ use crate::{
     track,
 };
 
-use super::{ModuleAPIResult, ModulesAPIError};
+use super::ModulesAPIError;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -34,14 +35,14 @@ pub async fn remote_module_by_id(
     Host(host_name): Host,
     Path((_workspace_pk, change_set_id)): Path<(WorkspacePk, ChangeSetId)>,
     Query(request): Query<GetRemoteModuleDetailsRequest>,
-) -> ModuleAPIResult<Json<RemoteModuleDetailsResponse>> {
+) -> Result<Json<RemoteModuleDetailsResponse>> {
     let ctx = builder
         .build(access_builder.build(change_set_id.into()))
         .await?;
 
     let module_index_url = match ctx.module_index_url() {
         Some(url) => url,
-        None => return Err(ModulesAPIError::ModuleIndexNotConfigured),
+        None => return Err(ModulesAPIError::ModuleIndexNotConfigured.into()),
     };
 
     let module_index_client =

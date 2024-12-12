@@ -1,3 +1,4 @@
+use anyhow::Result;
 use axum::extract::{Host, OriginalUri, Path};
 use dal::{
     func::{
@@ -11,8 +12,8 @@ use si_frontend_types::FuncSummary;
 
 use crate::{
     extract::{HandlerContext, PosthogClient},
+    service::force_change_set_response::ForceChangeSetResponse,
     service::v2::AccessBuilder,
-    service::{force_change_set_response::ForceChangeSetResponse, v2::func::FuncAPIResult},
     track,
 };
 
@@ -28,7 +29,7 @@ pub async fn delete_func_argument(
         FuncId,
         FuncArgumentId,
     )>,
-) -> FuncAPIResult<ForceChangeSetResponse<FuncSummary>> {
+) -> Result<ForceChangeSetResponse<FuncSummary>> {
     let mut ctx = builder
         .build(access_builder.build(change_set_id.into()))
         .await?;

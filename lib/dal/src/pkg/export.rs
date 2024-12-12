@@ -1,8 +1,7 @@
-use std::collections::HashSet;
-use std::collections::{hash_map::Entry, HashMap};
-use std::ops::Deref;
-
-use strum::IntoEnumIterator;
+use std::{
+    collections::{hash_map::Entry, HashMap, HashSet},
+    ops::Deref,
+};
 
 use si_pkg::{
     ActionFuncSpec, AttrFuncInputSpec, AttrFuncInputSpecKind, AuthenticationFuncSpec,
@@ -12,23 +11,20 @@ use si_pkg::{
     SchemaVariantSpecData, SchemaVariantSpecPropRoot, SiPkg, SiPkgKind, SiPropFuncSpec,
     SiPropFuncSpecKind, SocketSpec, SocketSpecData, SocketSpecKind, SpecError,
 };
+use strum::IntoEnumIterator;
 use telemetry::prelude::*;
 
-use crate::action::prototype::ActionPrototype;
-use crate::attribute::prototype::argument::{
-    AttributePrototypeArgument, AttributePrototypeArgumentId,
-};
-
-use crate::func::FuncKind;
-use crate::management::prototype::ManagementPrototype;
-use crate::schema::variant::leaves::{LeafInputLocation, LeafKind};
 use crate::{
-    func::{argument::FuncArgument, intrinsics::IntrinsicFunc},
+    action::prototype::ActionPrototype,
+    attribute::prototype::argument::{AttributePrototypeArgument, AttributePrototypeArgumentId},
+    func::{argument::FuncArgument, intrinsics::IntrinsicFunc, FuncKind},
+    management::prototype::ManagementPrototype,
     prop::PropPath,
-    AttributePrototype, DalContext, Func, FuncId, Prop, PropId, PropKind, Schema, SchemaId,
-    SchemaVariant, SchemaVariantId, Workspace,
+    schema::variant::leaves::{LeafInputLocation, LeafKind},
+    AttributePrototype, AttributePrototypeId, DalContext, Func, FuncBackendKind, FuncId,
+    InputSocket, OutputSocket, Prop, PropId, PropKind, Schema, SchemaId, SchemaVariant,
+    SchemaVariantId, Workspace,
 };
-use crate::{AttributePrototypeId, FuncBackendKind, InputSocket, OutputSocket};
 
 use super::{import_pkg_from_pkg, PkgError, PkgResult};
 
@@ -87,7 +83,9 @@ impl PkgExporter {
     pub async fn export_as_bytes(&mut self, ctx: &DalContext) -> PkgResult<Vec<u8>> {
         match self.kind {
             SiPkgKind::Module => info!("Building module package"),
-            SiPkgKind::WorkspaceBackup => return Err(PkgError::WorkspaceExportNotSupported()),
+            SiPkgKind::WorkspaceBackup => {
+                return Err(PkgError::WorkspaceExportNotSupported().into())
+            }
         }
 
         let pkg = self.export(ctx).await?;
@@ -616,7 +614,7 @@ impl PkgExporter {
         } else if is_optional_prop {
             return Ok(());
         } else {
-            return Err(PkgError::PropNotFoundByName(prop_root.to_string()));
+            return Err(PkgError::PropNotFoundByName(prop_root.to_string()).into());
         }
 
         #[derive(Debug)]
@@ -713,7 +711,8 @@ impl PkgExporter {
                                 return Err(PkgError::PropSpecChildrenInvalid(format!(
                                     "found multiple children for map/array for prop id {}",
                                     entry.prop_id,
-                                )));
+                                ))
+                                .into());
                             }
                             entry.builder.type_prop(type_prop);
                             maybe_type_prop_id = Some(type_prop_id);
@@ -726,7 +725,8 @@ impl PkgExporter {
                             return Err(PkgError::PropSpecChildrenInvalid(format!(
                                 "primitve prop type should have no children for prop id {}",
                                 entry.prop_id,
-                            )));
+                            ))
+                            .into());
                         }
                     },
                     None => {
@@ -1116,7 +1116,9 @@ impl PkgExporter {
                 pkg_spec_builder.funcs(funcs);
                 pkg_spec_builder.schemas(schemas);
             }
-            SiPkgKind::WorkspaceBackup => return Err(PkgError::WorkspaceExportNotSupported()),
+            SiPkgKind::WorkspaceBackup => {
+                return Err(PkgError::WorkspaceExportNotSupported().into())
+            }
         }
 
         Ok(pkg_spec_builder.build()?)

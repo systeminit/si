@@ -31,7 +31,7 @@ pub(crate) fn expand_test(item: ItemFn, _args: Args, fn_setup: impl FnSetup) -> 
     let (fn_setups, fn_args) = fn_setup.into_parts();
 
     let fn_call = if rt_is_result {
-        quote! {let _ = test_fn(#fn_args).await?;}
+        quote! {let _ = ::dal_test::anyhow_to_eyre!(test_fn(#fn_args).await)?;}
     } else {
         quote! {test_fn(#fn_args).await;}
     };
@@ -42,8 +42,9 @@ pub(crate) fn expand_test(item: ItemFn, _args: Args, fn_setup: impl FnSetup) -> 
     quote! {
         #test_attr
         #(#attrs)*
-        fn #test_name() -> ::dal_test::Result<()> {
-            use ::dal_test::WrapErr;
+        fn #test_name() -> ::dal_test::color_eyre::Result<()> {
+            use ::dal_test::anyhow::Context;
+            // use ::dal_test::color_eyre::WrapErr;
             use ::std::io::Write;
             use ::dal_test::telemetry::tracing;
 

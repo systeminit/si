@@ -2,8 +2,10 @@ use axum::{extract::Query, Json};
 use dal::{property_editor::schema::PropertyEditorSchema, Component, ComponentId, Visibility};
 use serde::{Deserialize, Serialize};
 
-use super::ComponentResult;
-use crate::extract::{v1::AccessBuilder, HandlerContext};
+use crate::{
+    extract::{v1::AccessBuilder, HandlerContext},
+    routes::AppError,
+};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -19,7 +21,7 @@ pub async fn get_property_editor_schema(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Query(request): Query<GetPropertyEditorSchemaRequest>,
-) -> ComponentResult<Json<GetPropertyEditorSchemaResponse>> {
+) -> Result<Json<GetPropertyEditorSchemaResponse>, AppError> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let schema_variant =

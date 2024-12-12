@@ -1,3 +1,4 @@
+use anyhow::Result;
 use axum::{
     extract::{Host, OriginalUri, Path},
     response::Response,
@@ -8,7 +9,7 @@ use hyper::{header, Body};
 
 use crate::{
     extract::PosthogClient,
-    service::v2::admin::{AdminAPIError, AdminAPIResult, AdminUserContext},
+    service::v2::admin::{AdminAPIError, AdminUserContext},
     track_no_ctx,
 };
 
@@ -18,7 +19,7 @@ pub async fn get_snapshot(
     OriginalUri(original_uri): OriginalUri,
     Host(host_name): Host,
     Path((workspace_id, change_set_id)): Path<(WorkspacePk, ChangeSetId)>,
-) -> AdminAPIResult<Response<Body>> {
+) -> Result<Response<Body>> {
     ctx.update_tenancy(Tenancy::new(workspace_id));
 
     let change_set = ChangeSet::get_by_id(&ctx, change_set_id).await?;

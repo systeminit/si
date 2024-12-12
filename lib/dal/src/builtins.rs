@@ -3,18 +3,19 @@
 //! [migrate()](crate::builtins::migrate_local()) function. However, they may have some functionality
 //! exposed for "dev mode" use cases.
 
+use anyhow::Result;
 use telemetry::prelude::*;
 use thiserror::Error;
 
 use si_pkg::{SiPkgError, SpecError};
 
-use crate::func::argument::FuncArgumentError;
-use crate::func::FuncError;
-use crate::module::ModuleError;
-use crate::pkg::PkgError;
 use crate::{
-    action::prototype::ActionPrototypeError, AttributeValueId, PropId, SchemaVariantError,
-    SchemaVariantId, StandardModelError, TransactionsError,
+    action::prototype::ActionPrototypeError,
+    func::{argument::FuncArgumentError, FuncError},
+    module::ModuleError,
+    pkg::PkgError,
+    AttributeValueId, PropId, SchemaVariantError, SchemaVariantId, StandardModelError,
+    TransactionsError,
 };
 
 pub mod func;
@@ -71,4 +72,4 @@ pub enum BuiltinsError {
     Transactions(#[from] TransactionsError),
 }
 
-pub type BuiltinsResult<T> = Result<T, BuiltinsError>;
+pub type BuiltinsResult<T> = Result<T>;

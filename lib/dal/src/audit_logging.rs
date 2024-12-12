@@ -1,5 +1,6 @@
 //! This module provides audit logging functionality to the rest of the crate.
 
+use anyhow::Result;
 use audit_database::AuditDatabaseContext;
 use audit_database::AuditDatabaseError;
 use audit_database::AuditLogRow;
@@ -44,7 +45,7 @@ pub enum AuditLoggingError {
     Transactions(#[from] Box<TransactionsError>),
 }
 
-type Result<T> = std::result::Result<T, AuditLoggingError>;
+// type Result<T> = std::result::Result<T, AuditLoggingError>;
 
 /// Publishes all pending [`AuditLogs`](AuditLog) to the audit logs stream for the event session.
 ///
@@ -66,8 +67,10 @@ pub(crate) async fn publish_pending(
     // TODO(nick): nuke this from intergalactic orbit. Then do it again.
     let workspace_id = match ctx.workspace_pk() {
         Ok(workspace_id) => workspace_id,
-        Err(TransactionsError::Tenancy(TenancyError::NoWorkspace)) => return Ok(()),
-        Err(err) => return Err(AuditLoggingError::Transactions(Box::new(err))),
+        Err(error) => match error.downcast_ref::<TenancyError>() {
+            Some(TenancyError::NoWorkspace) => return Ok(()),
+            _ => return Err(error),
+        },
     };
 
     let (tracker, provided_tracker) = match tracker {
@@ -203,8 +206,10 @@ pub(crate) async fn write(
     // TODO(nick): nuke this from intergalactic orbit. Then do it again.
     let workspace_id = match ctx.workspace_pk() {
         Ok(workspace_id) => workspace_id,
-        Err(TransactionsError::Tenancy(TenancyError::NoWorkspace)) => return Ok(()),
-        Err(err) => return Err(AuditLoggingError::Transactions(Box::new(err))),
+        Err(error) => match error.downcast_ref::<TenancyError>() {
+            Some(TenancyError::NoWorkspace) => return Ok(()),
+            _ => return Err(error),
+        },
     };
 
     let destination_change_set_id =
@@ -234,8 +239,10 @@ pub(crate) async fn write_final_message(ctx: &DalContext) -> Result<()> {
     // TODO(nick): nuke this from intergalactic orbit. Then do it again.
     let workspace_id = match ctx.workspace_pk() {
         Ok(workspace_id) => workspace_id,
-        Err(TransactionsError::Tenancy(TenancyError::NoWorkspace)) => return Ok(()),
-        Err(err) => return Err(AuditLoggingError::Transactions(Box::new(err))),
+        Err(error) => match error.downcast_ref::<TenancyError>() {
+            Some(TenancyError::NoWorkspace) => return Ok(()),
+            _ => return Err(error),
+        },
     };
 
     let pending_events_stream = PendingEventsStream::get_or_create(ctx.jetstream_context()).await?;
@@ -252,25 +259,17 @@ pub async fn list(
     size: usize,
     sort_ascending: bool,
 ) -> Result<(Vec<AuditLogRow>, bool)> {
-    let workspace_id = ctx.workspace_pk().map_err(Box::new)?;
+    let workspace_id = ctx.workspace_pk()?;
     let change_set_id = ctx.change_set_id();
 
     let change_set_ids = {
         let mut change_set_ids = vec![change_set_id];
-        if ctx
-            .get_workspace_default_change_set_id()
-            .await
-            .map_err(Box::new)?
-            == change_set_id
-        {
+        if ctx.get_workspace_default_change_set_id().await? == change_set_id {
             // NOTE(nick,fletcher,brit,paul): we need to decide what this entails on HEAD in the long term. For now,
             // it is all non-open, non-abandoned change sets... which are just the applied ones. In the future, we may
             // or will need to ability to tell a story about abandoned change sets. This is for future us or future
             // victims to solve. Good luck!
-            for applied_change_set in ChangeSet::list_all_applied(ctx, workspace_id)
-                .await
-                .map_err(Box::new)?
-            {
+            for applied_change_set in ChangeSet::list_all_applied(ctx, workspace_id).await? {
                 change_set_ids.push(applied_change_set.id);
             }
         }

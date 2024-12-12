@@ -1,3 +1,4 @@
+use anyhow::Result;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use si_pkg::{FuncSpecBackendKind, FuncSpecBackendResponseType, SiPkgError, SpecError};
@@ -5,29 +6,34 @@ use std::collections::HashMap;
 use thiserror::Error;
 use url::ParseError;
 
-use crate::attribute::prototype::argument::{
-    AttributePrototypeArgumentError, AttributePrototypeArgumentId,
-};
-use crate::attribute::prototype::AttributePrototypeError;
-use crate::attribute::value::AttributeValueError;
-use crate::func::argument::FuncArgumentId;
-use crate::management::prototype::ManagementPrototypeError;
-use crate::schema::variant::SchemaVariantError;
 use crate::{
     action::prototype::ActionPrototypeError,
+    attribute::{
+        prototype::{
+            argument::{AttributePrototypeArgumentError, AttributePrototypeArgumentId},
+            AttributePrototypeError,
+        },
+        value::AttributeValueError,
+    },
     change_set::ChangeSetError,
-    func::{argument::FuncArgumentError, FuncError},
+    func::{
+        argument::{FuncArgumentError, FuncArgumentId},
+        FuncError,
+    },
+    management::prototype::ManagementPrototypeError,
+    module::ModuleError,
     prop::PropError,
-    socket::input::InputSocketError,
-    socket::output::OutputSocketError,
+    schema::variant::SchemaVariantError,
+    socket::{
+        connection_annotation::ConnectionAnnotationError, input::InputSocketError,
+        output::OutputSocketError,
+    },
     workspace_snapshot::WorkspaceSnapshotError,
-    DalContext, FuncBackendKind, FuncBackendResponseType, OutputSocketId, SchemaError,
-    TransactionsError, UserPk, WorkspaceError, WorkspacePk, WsEvent, WsEventResult, WsPayload,
+    AttributePrototypeId, DalContext, FuncBackendKind, FuncBackendResponseType, FuncId,
+    HistoryEventError, OutputSocketId, PropId, PropKind, SchemaError, TransactionsError, UserPk,
+    WorkspaceError, WorkspacePk, WsEvent, WsEventResult, WsPayload,
 };
-use crate::{AttributePrototypeId, FuncId, HistoryEventError, PropId, PropKind};
 
-use crate::module::ModuleError;
-use crate::socket::connection_annotation::ConnectionAnnotationError;
 pub use import::{import_pkg, import_pkg_from_pkg, ImportOptions};
 
 pub mod export;
@@ -132,7 +138,7 @@ pub enum PkgError {
     WorkspaceSnaphot(#[from] WorkspaceSnapshotError),
 }
 
-pub type PkgResult<T> = Result<T, PkgError>;
+pub type PkgResult<T> = Result<T>;
 
 impl From<FuncBackendKind> for FuncSpecBackendKind {
     fn from(value: FuncBackendKind) -> Self {

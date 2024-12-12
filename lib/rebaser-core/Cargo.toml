@@ -13,6 +13,7 @@ naxum-api-types = { path = "../../lib/naxum-api-types" }
 si-data-nats = { path = "../../lib/si-data-nats" }
 si-events = { path = "../../lib/si-events-rs" }
 
+anyhow = { workspace = true }
 remain = { workspace = true }
 serde = { workspace = true }
 strum = { workspace = true }

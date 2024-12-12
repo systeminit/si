@@ -1,16 +1,21 @@
-use crate::service::force_change_set_response::ForceChangeSetResponse;
-use crate::service::v2::view::{ViewError, ViewResult};
-use crate::tracking::track;
-use crate::{
-    extract::{HandlerContext, PosthogClient},
-    service::v2::AccessBuilder,
+use anyhow::Result;
+use axum::{
+    extract::{Host, OriginalUri, Path},
+    Json,
 };
-use axum::extract::{Host, OriginalUri, Path};
-use axum::Json;
 use dal::diagram::view::{View, ViewId, ViewView};
 use dal::{ChangeSet, ChangeSetId, WorkspacePk, WsEvent};
 use serde::{Deserialize, Serialize};
 use si_events::audit_log::AuditLogKind;
+
+use crate::{
+    extract::{HandlerContext, PosthogClient},
+    service::{
+        force_change_set_response::ForceChangeSetResponse,
+        v2::{view::ViewError, AccessBuilder},
+    },
+    tracking::track,
+};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -26,7 +31,7 @@ pub async fn update_view(
     Host(host_name): Host,
     Path((_workspace_pk, change_set_id, view_id)): Path<(WorkspacePk, ChangeSetId, ViewId)>,
     Json(Request { name }): Json<Request>,
-) -> ViewResult<ForceChangeSetResponse<()>> {
+) -> Result<ForceChangeSetResponse<()>> {
     let mut ctx = builder
         .build(access_builder.build(change_set_id.into()))
         .await?;
@@ -37,7 +42,7 @@ pub async fn update_view(
         if view.id() == view_id {
             false
         } else {
-            return Err(ViewError::NameAlreadyInUse(name));
+            return Err(ViewError::NameAlreadyInUse(name).into());
         }
     } else {
         true

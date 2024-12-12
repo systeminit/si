@@ -650,11 +650,12 @@ impl ExpectComponent {
         let mut execution_result = management_prototype
             .execute(ctx, self.id(), Some(self.view_id(ctx).await))
             .await
-            .map_err(|err| {
-                if let ManagementPrototypeError::FuncExecutionFailure(ref err) = err {
+            .inspect_err(|err| {
+                if let Some(ManagementPrototypeError::FuncExecutionFailure(ref err)) =
+                    err.downcast_ref::<ManagementPrototypeError>()
+                {
                     println!("Error: {}", err);
                 }
-                err
             })
             .expect("should execute management prototype func");
         let result: ManagementFuncReturn = execution_result

@@ -5,12 +5,11 @@
 
 use std::collections::HashSet;
 
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::workspace_snapshot::graph::WorkspaceSnapshotGraphError;
-use crate::workspace_snapshot::node_weight::traits::SiNodeWeight;
 use crate::{
     change_set::ChangeSetError,
     func::argument::{FuncArgument, FuncArgumentError, FuncArgumentId},
@@ -20,8 +19,8 @@ use crate::{
         content_address::ContentAddressDiscriminants,
         edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants},
         node_weight::{
-            AttributePrototypeArgumentNodeWeight, NodeWeight, NodeWeightDiscriminants,
-            NodeWeightError,
+            traits::SiNodeWeight, AttributePrototypeArgumentNodeWeight, NodeWeight,
+            NodeWeightDiscriminants, NodeWeightError,
         },
         WorkspaceSnapshotError,
     },
@@ -69,6 +68,8 @@ pub enum AttributePrototypeArgumentError {
     NodeWeight(#[from] NodeWeightError),
     #[error("no targets for prototype argument: {0}")]
     NoTargets(AttributePrototypeArgumentId),
+    #[error("AttributePrototypeArgument {0} not found")]
+    NotFound(AttributePrototypeArgumentId),
     #[error("prototype argument not found for attribute prototype {0} and func arg {1}")]
     NotFoundForApAndFuncArg(AttributePrototypeId, FuncArgumentId),
     #[error("serde json error: {0}")]
@@ -89,7 +90,7 @@ pub enum AttributePrototypeArgumentError {
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
 
-pub type AttributePrototypeArgumentResult<T> = Result<T, AttributePrototypeArgumentError>;
+pub type AttributePrototypeArgumentResult<T> = Result<T>;
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct AttributePrototypeArgument {
@@ -181,7 +182,9 @@ impl AttributePrototypeArgument {
     ) -> AttributePrototypeArgumentResult<Self> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
-        let node_index = workspace_snapshot.get_node_index_by_id(id).await?;
+        let Some(node_index) = workspace_snapshot.get_node_index_by_id_opt(id).await else {
+            return Err(AttributePrototypeArgumentError::NotFound(id).into());
+        };
         let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
 
         Ok(node_weight
@@ -246,7 +249,7 @@ impl AttributePrototypeArgument {
         let func_arg_ids = FuncArgument::list_ids_for_func(ctx, prototype_func_id).await?;
 
         if func_arg_ids.len() > 1 {
-            return Err(AttributePrototypeArgumentError::InterComponentDestinationPrototypeHasTooManyFuncArgs(destination_attribute_prototype_id));
+            return Err(AttributePrototypeArgumentError::InterComponentDestinationPrototypeHasTooManyFuncArgs(destination_attribute_prototype_id).into());
         }
 
         let func_arg_id = func_arg_ids.first().ok_or(
@@ -295,7 +298,7 @@ impl AttributePrototypeArgument {
         ctx: &DalContext,
     ) -> AttributePrototypeArgumentResult<FuncArgument> {
         let func_arg_id = Self::func_argument_id_by_id(ctx, self.id).await?;
-        Ok(FuncArgument::get_by_id_or_error(ctx, func_arg_id).await?)
+        FuncArgument::get_by_id_or_error(ctx, func_arg_id).await
     }
 
     pub async fn func_argument_id_by_id(
@@ -316,12 +319,14 @@ impl AttributePrototypeArgument {
                 Ok(func_argument_node_weight) => {
                     return Ok(func_argument_node_weight.id().into());
                 }
-                Err(NodeWeightError::UnexpectedNodeWeightVariant(_, _)) => continue,
-                Err(e) => Err(e)?,
+                Err(error) => match error.downcast_ref::<NodeWeightError>() {
+                    Some(NodeWeightError::UnexpectedNodeWeightVariant(_, _)) => continue,
+                    _ => return Err(error),
+                },
             }
         }
 
-        Err(AttributePrototypeArgumentError::MissingFuncArgument(apa_id))
+        Err(AttributePrototypeArgumentError::MissingFuncArgument(apa_id).into())
     }
 
     pub async fn find_by_func_argument_id_and_attribute_prototype_id(
@@ -387,7 +392,8 @@ impl AttributePrototypeArgument {
                             return Err(
                                 AttributePrototypeArgumentError::UnexpectedValueSourceContent(
                                     apa_id, other,
-                                ),
+                                )
+                                .into(),
                             );
                         }
                     }));
@@ -399,7 +405,8 @@ impl AttributePrototypeArgument {
                     return Err(AttributePrototypeArgumentError::UnexpectedValueSourceNode(
                         apa_id,
                         other.into(),
-                    ));
+                    )
+                    .into());
                 }
             }
         }
@@ -650,12 +657,19 @@ impl AttributePrototypeArgument {
         let attribute_prototype_argument =
             match Self::get_by_id(ctx, attribute_prototype_argument_id).await {
                 Ok(found_attribute_prototype_argument) => found_attribute_prototype_argument,
-                Err(AttributePrototypeArgumentError::WorkspaceSnapshot(
-                    WorkspaceSnapshotError::WorkspaceSnapshotGraph(
-                        WorkspaceSnapshotGraphError::NodeWithIdNotFound(raw_id),
-                    ),
-                )) if raw_id == attribute_prototype_argument_id.into() => return Ok(()),
-                Err(err) => return Err(err),
+                Err(error) => match error.downcast_ref::<AttributePrototypeArgumentError>() {
+                    // Err(AttributePrototypeArgumentError::WorkspaceSnapshot(
+                    //     WorkspaceSnapshotError::WorkspaceSnapshotGraph(
+                    //         WorkspaceSnapshotGraphError::NodeWithIdNotFound(raw_id),
+                    //     ),
+                    // )) if raw_id == attribute_prototype_argument_id.into() => return Ok(()),
+                    Some(AttributePrototypeArgumentError::NotFound(raw_id))
+                        if *raw_id == attribute_prototype_argument_id =>
+                    {
+                        return Ok(())
+                    }
+                    _ => return Err(error),
+                },
             };
 
         attribute_prototype_argument.remove_inner(ctx).await?;

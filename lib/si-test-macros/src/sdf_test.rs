@@ -320,7 +320,7 @@ impl SdfTestFnSetupExpander {
                     .api_key("not-a-key")
                     .enabled(false)
                     .build(#cancellation_token.clone())
-                    .wrap_err("failed to create posthost client and sender")?;
+                    .wrap_err("failed to create posthosg client and sender")?;
                 drop(::tokio::spawn(sender.run()));
                 client
             };

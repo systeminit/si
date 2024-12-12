@@ -1,8 +1,6 @@
 use std::collections::HashMap;
 
-use action::ActionBinding;
-use attribute::AttributeBinding;
-use authentication::AuthBinding;
+use anyhow::Result;
 use itertools::Itertools;
 use leaf::LeafBinding;
 use management::ManagementBinding;
@@ -11,32 +9,34 @@ use strum::{Display, EnumDiscriminants};
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::action::prototype::{ActionKind, ActionPrototypeError};
-use crate::attribute::prototype::argument::value_source::ValueSource;
-use crate::attribute::prototype::argument::{
-    AttributePrototypeArgumentError, AttributePrototypeArgumentId,
-};
-use crate::attribute::prototype::AttributePrototypeError;
-use crate::attribute::value::AttributeValueError;
-use crate::func::argument::FuncArgumentError;
-use crate::func::argument::FuncArgumentId;
-use crate::func::binding::attribute::AttributeBindingMalformedInput;
-use crate::func::FuncKind;
-use crate::management::prototype::ManagementPrototypeError;
-use crate::prop::PropError;
-use crate::schema::variant::leaves::LeafKind;
-use crate::socket::output::OutputSocketError;
+use self::{action::ActionBinding, attribute::AttributeBinding, authentication::AuthBinding};
 use crate::{
-    socket::input::InputSocketError, AttributePrototypeId, ComponentError, DalContext, Func,
-    FuncError, FuncId, PropId, SchemaVariantError, SchemaVariantId,
-};
-use crate::{
-    ComponentId, InputSocket, InputSocketId, OutputSocket, OutputSocketId, Prop, SchemaError,
-    SchemaId, SchemaVariant, WorkspaceSnapshotError, WsEventError,
+    action::prototype::{ActionKind, ActionPrototypeError},
+    attribute::{
+        prototype::{
+            argument::{
+                value_source::ValueSource, AttributePrototypeArgumentError,
+                AttributePrototypeArgumentId,
+            },
+            AttributePrototypeError,
+        },
+        value::AttributeValueError,
+    },
+    func::{
+        argument::{FuncArgumentError, FuncArgumentId},
+        binding::attribute::AttributeBindingMalformedInput,
+        FuncKind,
+    },
+    management::prototype::ManagementPrototypeError,
+    prop::PropError,
+    schema::variant::leaves::LeafKind,
+    socket::{input::InputSocketError, output::OutputSocketError},
+    AttributePrototypeId, ComponentError, ComponentId, DalContext, Func, FuncError, FuncId,
+    InputSocket, InputSocketId, OutputSocket, OutputSocketId, Prop, PropId, SchemaError, SchemaId,
+    SchemaVariant, SchemaVariantError, SchemaVariantId, WorkspaceSnapshotError, WsEventError,
 };
 
-pub use attribute_argument::AttributeArgumentBinding;
-pub use attribute_argument::AttributeFuncArgumentSource;
+pub use attribute_argument::{AttributeArgumentBinding, AttributeFuncArgumentSource};
 
 pub mod action;
 pub mod attribute;
@@ -114,7 +114,7 @@ pub enum FuncBindingError {
     WsEvent(#[from] WsEventError),
 }
 
-type FuncBindingResult<T> = Result<T, FuncBindingError>;
+type FuncBindingResult<T> = Result<T>;
 
 /// Represents the location where the function ultimately writes to
 /// We currently only allow Attribute Funcs to be attached to Props
@@ -629,7 +629,8 @@ impl FuncBinding {
                     return Err(FuncBindingError::UnexpectedFuncBindingVariant(
                         other_binding.into(),
                         FuncBindingDiscriminants::Authentication,
-                    ))
+                    )
+                    .into())
                 }
             }
         }
@@ -652,7 +653,8 @@ impl FuncBinding {
                     return Err(FuncBindingError::UnexpectedFuncBindingVariant(
                         other_binding.into(),
                         FuncBindingDiscriminants::Authentication,
-                    ))
+                    )
+                    .into())
                 }
             }
         }
@@ -675,7 +677,8 @@ impl FuncBinding {
                     return Err(FuncBindingError::UnexpectedFuncBindingVariant(
                         other_binding.into(),
                         FuncBindingDiscriminants::Authentication,
-                    ))
+                    )
+                    .into())
                 }
             }
         }
@@ -698,7 +701,8 @@ impl FuncBinding {
                     return Err(FuncBindingError::UnexpectedFuncBindingVariant(
                         other_binding.into(),
                         FuncBindingDiscriminants::Authentication,
-                    ))
+                    )
+                    .into())
                 }
             }
         }
@@ -720,7 +724,8 @@ impl FuncBinding {
                     return Err(FuncBindingError::UnexpectedFuncBindingVariant(
                         other_binding.into(),
                         FuncBindingDiscriminants::Authentication,
-                    ))
+                    )
+                    .into())
                 }
             }
         }

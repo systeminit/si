@@ -5,9 +5,9 @@ use axum::{
 use dal::{qualification::QualificationView, Component, ComponentId, Visibility};
 use serde::{Deserialize, Serialize};
 
-use super::ComponentResult;
 use crate::{
     extract::{v1::AccessBuilder, HandlerContext, PosthogClient},
+    routes::AppError,
     track,
 };
 
@@ -28,7 +28,7 @@ pub async fn list_qualifications(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Query(request): Query<ListQualificationsRequest>,
-) -> ComponentResult<Json<QualificationResponse>> {
+) -> Result<Json<QualificationResponse>, AppError> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let qualifications = Component::list_qualifications(&ctx, request.component_id).await?;

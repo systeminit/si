@@ -9,8 +9,7 @@ use hyper::StatusCode;
 use serde_json::{json, Value};
 use si_data_pg::PgError;
 use thiserror::Error;
-use tower_http::compression::CompressionLayer;
-use tower_http::cors::CorsLayer;
+use tower_http::{compression::CompressionLayer, cors::CorsLayer};
 
 mod download_builtin_route;
 mod download_module_route;
@@ -89,6 +88,8 @@ async fn system_status_route() -> Json<Value> {
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum AppError {
+    #[error(transparent)]
+    Anyhow(#[from] anyhow::Error),
     #[error(transparent)]
     Pg(#[from] PgError),
     #[error(transparent)]

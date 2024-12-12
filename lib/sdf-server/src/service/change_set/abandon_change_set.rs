@@ -6,9 +6,9 @@ use dal::{change_set::ChangeSet, ChangeSetId};
 use serde::{Deserialize, Serialize};
 use si_events::audit_log::AuditLogKind;
 
-use super::ChangeSetResult;
 use crate::{
     extract::{v1::AccessBuilder, HandlerContext, PosthogClient},
+    routes::AppError,
     service::change_set::ChangeSetError,
     track,
 };
@@ -32,11 +32,11 @@ pub async fn abandon_change_set(
     OriginalUri(original_uri): OriginalUri,
     Host(host_name): Host,
     Json(request): Json<AbandonChangeSetRequest>,
-) -> ChangeSetResult<()> {
+) -> Result<(), AppError> {
     let mut ctx = builder.build_head(access_builder).await?;
     let maybe_head_changeset = ctx.get_workspace_default_change_set_id().await?;
     if maybe_head_changeset == request.change_set_id {
-        return Err(ChangeSetError::CannotAbandonHead);
+        return Err(ChangeSetError::CannotAbandonHead.into());
     }
     let mut change_set = ChangeSet::get_by_id(&ctx, request.change_set_id).await?;
     let old_status = change_set.status;

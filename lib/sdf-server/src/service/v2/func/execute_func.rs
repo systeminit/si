@@ -1,10 +1,10 @@
+use anyhow::Result;
 use axum::extract::{Host, OriginalUri, Path};
 use dal::{
     func::authoring::FuncAuthoringClient, ChangeSet, ChangeSetId, Func, FuncId, WorkspacePk,
 };
 use si_events::audit_log::AuditLogKind;
 
-use super::FuncAPIResult;
 use crate::{
     extract::{HandlerContext, PosthogClient},
     service::force_change_set_response::ForceChangeSetResponse,
@@ -19,7 +19,7 @@ pub async fn execute_func(
     OriginalUri(original_uri): OriginalUri,
     Host(host_name): Host,
     Path((_workspace_pk, change_set_id, func_id)): Path<(WorkspacePk, ChangeSetId, FuncId)>,
-) -> FuncAPIResult<ForceChangeSetResponse<()>> {
+) -> Result<ForceChangeSetResponse<()>> {
     let mut ctx = builder
         .build(access_builder.build(change_set_id.into()))
         .await?;

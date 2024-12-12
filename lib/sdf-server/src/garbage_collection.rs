@@ -1,5 +1,6 @@
 use std::{collections::HashSet, future::IntoFuture as _};
 
+use anyhow::Result;
 use dal::{ChangeSetStatus, ServicesContext, TransactionsError, WorkspaceSnapshotAddress};
 use si_data_pg::{PgError, PgPoolError};
 use si_layer_cache::LayerDbError;
@@ -26,8 +27,6 @@ pub enum GarbageCollectorError {
     #[error("Unable to query workspace snapshots")]
     UnableToQuerySnapshots,
 }
-
-type Result<T> = std::result::Result<T, GarbageCollectorError>;
 
 pub struct SnapshotGarbageCollector {
     services_context: ServicesContext,

@@ -1,8 +1,10 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-use crate::change_set::{ChangeSet, ChangeSetError, ChangeSetId, ChangeSetResult};
-use crate::{ChangeSetStatus, DalContext, UserPk};
+use crate::{
+    change_set::{ChangeSet, ChangeSetError, ChangeSetId, ChangeSetResult},
+    ChangeSetStatus, DalContext, UserPk,
+};
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -58,7 +60,8 @@ impl OpenChangeSetsView {
             return Err(
                 ChangeSetError::UnexpectedNumberOfOpenChangeSetsMatchingDefaultChangeSet(
                     maybe_head_change_set_id,
-                ),
+                )
+                .into(),
             );
         }
 

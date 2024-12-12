@@ -5,6 +5,7 @@ use std::{
     sync::Arc,
 };
 
+use anyhow::Result;
 use dal::{
     feature_flags::FeatureFlagService, DalContext, DedicatedExecutor, JetstreamStreams,
     JobQueueProcessor, NatsProcessor, ServicesContext,
@@ -34,7 +35,7 @@ use telemetry_utils::metric;
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use veritech_client::Client as VeritechClient;
 
-use crate::{app_state::AppState, handlers, Config, ServerError, ServerResult};
+use crate::{app_state::AppState, handlers, Config};
 
 const CONSUMER_NAME: &str = "pinga-server";
 
@@ -79,7 +80,7 @@ impl Server {
         token: CancellationToken,
         layer_db_tracker: &TaskTracker,
         layer_db_token: CancellationToken,
-    ) -> ServerResult<Self> {
+    ) -> Result<Self> {
         dal::init()?;
 
         let encryption_key = Self::load_encryption_key(config.crypto().clone()).await?;
@@ -134,7 +135,7 @@ impl Server {
         max_deliver: i64,
         services_context: ServicesContext,
         shutdown_token: CancellationToken,
-    ) -> ServerResult<Self> {
+    ) -> Result<Self> {
         let metadata = Arc::new(ServerMetadata {
             instance_id: instance_id.into(),
             job_invoked_provider: "si",
@@ -200,8 +201,8 @@ impl Server {
         }
     }
 
-    pub async fn try_run(self) -> ServerResult<()> {
-        self.inner.await.map_err(ServerError::Naxum)?;
+    pub async fn try_run(self) -> Result<()> {
+        self.inner.await?;
         info!("pinga main loop shutdown complete");
         Ok(())
     }
@@ -209,30 +210,28 @@ impl Server {
     #[instrument(name = "pinga.init.load_encryption_key", level = "info", skip_all)]
     async fn load_encryption_key(
         crypto_config: VeritechCryptoConfig,
-    ) -> ServerResult<Arc<VeritechEncryptionKey>> {
+    ) -> Result<Arc<VeritechEncryptionKey>> {
         Ok(Arc::new(
             VeritechEncryptionKey::from_config(crypto_config).await?,
         ))
     }
 
     #[instrument(name = "pinga.init.connect_to_nats", level = "info", skip_all)]
-    async fn connect_to_nats(nats_config: &NatsConfig) -> ServerResult<NatsClient> {
-        let client = NatsClient::new(nats_config)
-            .await
-            .map_err(ServerError::NatsClient)?;
+    async fn connect_to_nats(nats_config: &NatsConfig) -> Result<NatsClient> {
+        let client = NatsClient::new(nats_config).await?;
         debug!("successfully connected nats client");
         Ok(client)
     }
 
     #[instrument(name = "pinga.init.create_pg_pool", level = "info", skip_all)]
-    async fn create_pg_pool(pg_pool_config: &PgPoolConfig) -> ServerResult<PgPool> {
+    async fn create_pg_pool(pg_pool_config: &PgPoolConfig) -> Result<PgPool> {
         let pool = PgPool::new(pg_pool_config).await?;
         debug!("successfully started pg pool (note that not all connections may be healthy)");
         Ok(pool)
     }
 
     #[instrument(name = "pinga.init.create_rebaser_client", level = "info", skip_all)]
-    async fn create_rebaser_client(nats: NatsClient) -> ServerResult<RebaserClient> {
+    async fn create_rebaser_client(nats: NatsClient) -> Result<RebaserClient> {
         let client = RebaserClient::new(nats).await?;
         debug!("successfully initialized the rebaser client");
         Ok(client)
@@ -255,14 +254,14 @@ impl Server {
     )]
     async fn create_symmetric_crypto_service(
         config: &SymmetricCryptoServiceConfig,
-    ) -> ServerResult<SymmetricCryptoService> {
+    ) -> Result<SymmetricCryptoService> {
         SymmetricCryptoService::from_config(config)
             .await
             .map_err(Into::into)
     }
 
     #[instrument(name = "pinga.init.create_compute_executor", level = "info", skip_all)]
-    fn create_compute_executor() -> ServerResult<DedicatedExecutor> {
+    fn create_compute_executor() -> Result<DedicatedExecutor> {
         dal::compute_executor("pinga").map_err(Into::into)
     }
 

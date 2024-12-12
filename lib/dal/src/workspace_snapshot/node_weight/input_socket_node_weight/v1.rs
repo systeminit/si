@@ -100,7 +100,8 @@ impl InputSocketNodeWeightV1 {
             InputSocketContent::V2(_) => {
                 return Err(InputSocketNodeWeightError::InvalidContentForNodeWeight(
                     content_node_weight.id(),
-                ));
+                )
+                .into());
             }
         };
 
@@ -121,9 +122,7 @@ impl InputSocketNodeWeightV1 {
         let new_node_weight =
             NodeWeight::InputSocket(InputSocketNodeWeight::V1(new_node_weight_inner));
 
-        v3_graph
-            .add_or_replace_node(new_node_weight)
-            .map_err(Box::new)?;
+        v3_graph.add_or_replace_node(new_node_weight)?;
 
         Ok(())
     }

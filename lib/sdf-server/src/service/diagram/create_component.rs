@@ -4,19 +4,19 @@ use axum::{
     extract::{Host, OriginalUri},
     Json,
 };
-use serde::{Deserialize, Serialize};
-
 use dal::{
     change_status::ChangeStatus, component::frame::Frame, generate_name, ChangeSet, Component,
     ComponentId, Schema, SchemaId, SchemaVariant, SchemaVariantId, Visibility, WsEvent,
 };
 use dal::{diagram::view::View, Func};
+use serde::{Deserialize, Serialize};
 use si_events::audit_log::AuditLogKind;
 use si_frontend_types::SchemaVariant as FrontendVariant;
 
 use crate::{
     extract::{v1::AccessBuilder, HandlerContext, PosthogClient},
-    service::{diagram::DiagramResult, force_change_set_response::ForceChangeSetResponse},
+    routes::AppError,
+    service::force_change_set_response::ForceChangeSetResponse,
     track,
 };
 
@@ -58,7 +58,7 @@ pub async fn create_component(
     OriginalUri(original_uri): OriginalUri,
     Host(host_name): Host,
     Json(request): Json<CreateComponentRequest>,
-) -> DiagramResult<ForceChangeSetResponse<CreateComponentResponse>> {
+) -> Result<ForceChangeSetResponse<CreateComponentResponse>, AppError> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
@@ -148,7 +148,8 @@ pub async fn create_component(
         ctx.rollback().await?;
         return Err(DiagramError::InvalidRequest(
             "geometry unable to be parsed from create component request".into(),
-        ));
+        )
+        .into());
     }
 
     if let Some(frame_id) = request.parent_id {

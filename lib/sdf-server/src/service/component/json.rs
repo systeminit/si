@@ -2,8 +2,10 @@ use axum::{extract::Query, Json};
 use dal::{component::properties::ComponentProperties, Component, ComponentId, Visibility};
 use serde::{Deserialize, Serialize};
 
-use super::ComponentResult;
-use crate::extract::{v1::AccessBuilder, HandlerContext};
+use crate::{
+    extract::{v1::AccessBuilder, HandlerContext},
+    routes::AppError,
+};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -23,7 +25,7 @@ pub async fn json(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Query(request): Query<JsonRequest>,
-) -> ComponentResult<Json<JsonResponse>> {
+) -> Result<Json<JsonResponse>, AppError> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let json = Component::get_json_representation(&ctx, request.component_id).await?;

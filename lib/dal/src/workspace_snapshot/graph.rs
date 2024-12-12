@@ -107,8 +107,6 @@ pub enum WorkspaceSnapshotGraphError {
     WorkspacesConflict,
 }
 
-pub type WorkspaceSnapshotGraphResult<T> = Result<T, WorkspaceSnapshotGraphError>;
-
 #[derive(Debug, Deserialize, Serialize, Clone, EnumDiscriminants)]
 #[strum_discriminants(derive(strum::Display, Serialize, Deserialize, EnumString, EnumIter))]
 pub enum WorkspaceSnapshotGraph {

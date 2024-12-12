@@ -9,10 +9,11 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     extract::{v1::AccessBuilder, HandlerContext},
+    routes::AppError,
     service::force_change_set_response::ForceChangeSetResponse,
 };
 
-use super::{ComponentError, ComponentResult};
+use super::ComponentError;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -30,7 +31,7 @@ pub async fn insert_property_editor_value(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Json(request): Json<InsertPropertyEditorValueRequest>,
-) -> ComponentResult<ForceChangeSetResponse<()>> {
+) -> Result<ForceChangeSetResponse<()>, AppError> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
@@ -40,7 +41,7 @@ pub async fn insert_property_editor_value(
             AttributeValue::child_keys_for_id(&ctx, request.parent_attribute_value_id).await?;
 
         if parent_keys.contains(key) {
-            return Err(ComponentError::KeyAlreadyExists(key.to_owned()));
+            return Err(ComponentError::KeyAlreadyExists(key.to_owned()).into());
         }
     }
 

@@ -5,6 +5,7 @@ use std::{
     sync::Arc,
 };
 
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use si_events::FuncRunId;
 use telemetry::prelude::*;
@@ -83,7 +84,7 @@ pub enum ManagementPrototypeError {
     WsEvent(#[from] WsEventError),
 }
 
-pub type ManagementPrototypeResult<T> = Result<T, ManagementPrototypeError>;
+pub type ManagementPrototypeResult<T> = Result<T>;
 
 pub use si_id::ManagementPrototypeId;
 
@@ -202,7 +203,7 @@ async fn build_incoming_connections(
         let name = input_socket.name().to_owned();
         let connection_values = match input_socket.arity() {
             SocketArity::One if connection_values.len() > 1 => {
-                return Err(ManagementPrototypeError::MoreThanOneInputConnection(name))
+                return Err(ManagementPrototypeError::MoreThanOneInputConnection(name).into());
             }
             SocketArity::One => SocketRefsAndValues::One(connection_values.pop()),
             SocketArity::Many => SocketRefsAndValues::Many(connection_values),
@@ -463,7 +464,7 @@ impl ManagementPrototype {
             }
         }
 
-        Err(ManagementPrototypeError::MissingFunction(id))
+        Err(ManagementPrototypeError::MissingFunction(id).into())
     }
 
     pub async fn execute(
@@ -560,11 +561,21 @@ impl ManagementPrototype {
                 .await?;
 
         let run_value = match result_channel.await {
-            Ok(Err(FuncRunnerError::ResultFailure {
-                kind: _,
-                message,
-                backend: _,
-            })) => return Err(ManagementPrototypeError::FuncExecutionFailure(message)),
+            Ok(Err(error)) if error.downcast_ref::<FuncRunnerError>().is_some() => {
+                match error.downcast_ref::<FuncRunnerError>() {
+                    Some(FuncRunnerError::ResultFailure {
+                        kind: _,
+                        message,
+                        backend: _,
+                    }) => {
+                        return Err(ManagementPrototypeError::FuncExecutionFailure(
+                            message.to_owned(),
+                        )
+                        .into())
+                    }
+                    _ => return Err(error),
+                }
+            }
             other => other.map_err(|_| ManagementPrototypeError::FuncRunnerRecvError)??,
         };
 
@@ -644,14 +655,10 @@ impl ManagementPrototype {
             )
             .await?;
         if node_indexes.len() > 1 {
-            return Err(ManagementPrototypeError::TooManyVariants(
-                management_prototype_id,
-            ));
+            return Err(ManagementPrototypeError::TooManyVariants(management_prototype_id).into());
         }
         let Some(node_index) = node_indexes.first() else {
-            return Err(ManagementPrototypeError::TooFewVariants(
-                management_prototype_id,
-            ));
+            return Err(ManagementPrototypeError::TooFewVariants(management_prototype_id).into());
         };
         let node_weight = workspace_snapshot.get_node_weight(*node_index).await?;
         let schema_variant_id = node_weight.id();

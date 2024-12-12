@@ -2,8 +2,7 @@
 
 use std::time::Duration;
 
-use color_eyre::eyre::eyre;
-use color_eyre::Result;
+use anyhow::{anyhow, Result};
 use dal::action::dependency_graph::ActionDependencyGraph;
 use dal::action::{Action, ActionState};
 use dal::{ChangeSet, DalContext, Func, Schema, SchemaVariant};
@@ -51,7 +50,7 @@ impl ChangeSetTestHelpers {
             count += 1;
             tokio::time::sleep(Duration::from_millis(100)).await;
         }
-        Err(eyre!(
+        Err(anyhow!(
             "timeout waiting for actions to clear from test workspace"
         ))
     }
@@ -100,7 +99,7 @@ impl ChangeSetTestHelpers {
         let applied_change_set = ChangeSet::apply_to_base_change_set(ctx).await?;
 
         ctx.update_visibility_and_snapshot_to_visibility(
-            applied_change_set.base_change_set_id.ok_or(eyre!(
+            applied_change_set.base_change_set_id.ok_or(anyhow!(
                 "base change set not found for change set: {}",
                 applied_change_set.id
             ))?,

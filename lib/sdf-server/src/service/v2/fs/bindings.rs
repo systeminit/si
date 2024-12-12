@@ -1,5 +1,6 @@
 use std::collections::{BTreeMap, HashSet};
 
+use anyhow::Result;
 use axum::{
     extract::{Path, Query},
     Json,
@@ -45,14 +46,14 @@ use crate::{
 
 use super::{
     check_change_set, check_change_set_and_not_head, dal_func_to_fs_func, func_types_size,
-    get_or_unlock_schema, lookup_variant_for_schema, process_managed_schemas, FsError, FsResult,
+    get_or_unlock_schema, lookup_variant_for_schema, process_managed_schemas, FsError,
 };
 
 pub async fn get_bindings_for_func_and_schema_variant(
     ctx: &DalContext,
     func_id: FuncId,
     schema_variant_id: Option<SchemaVariantId>,
-) -> FsResult<Vec<FuncBinding>> {
+) -> Result<Vec<FuncBinding>> {
     let func = dal::Func::get_by_id_or_error(ctx, func_id).await?;
 
     Ok(match func.kind {
@@ -95,7 +96,7 @@ pub async fn get_bindings(
     ctx: &DalContext,
     func_id: FuncId,
     schema_id: SchemaId,
-) -> FsResult<(fs::Bindings, Vec<FuncBinding>)> {
+) -> Result<(fs::Bindings, Vec<FuncBinding>)> {
     let func = Func::get_by_id_or_error(ctx, func_id).await?;
 
     // Locked functions could be on unlocked schemas
@@ -139,7 +140,7 @@ pub async fn func_binding_to_fs_binding(
     ctx: &DalContext,
     func_id: FuncId,
     binding: FuncBinding,
-) -> FsResult<fs::Binding> {
+) -> Result<fs::Binding> {
     Ok(match binding {
         FuncBinding::Action { kind, .. } => fs::Binding::Action {
             kind: kind.unwrap_or(ActionKind::Manual),
@@ -171,7 +172,7 @@ pub async fn func_binding_to_fs_binding(
 async fn management_binding_to_fs_management_binding(
     ctx: &DalContext,
     managed_schemas: Option<Vec<SchemaId>>,
-) -> FsResult<fs::Binding> {
+) -> Result<fs::Binding> {
     Ok(if let Some(schemas) = managed_schemas {
         let mut managed_names = vec![];
         for managed_schema_id in schemas {
@@ -203,7 +204,7 @@ async fn attribute_binding_to_fs_attribute_binding(
     prop_id: Option<dal::PropId>,
     output_socket_id: Option<dal::OutputSocketId>,
     argument_bindings: Vec<si_frontend_types::AttributeArgumentBinding>,
-) -> FsResult<fs::Binding> {
+) -> Result<fs::Binding> {
     let output_to = if let Some(prop_id) = prop_id {
         let path = Prop::get_by_id(ctx, prop_id)
             .await?
@@ -219,7 +220,7 @@ async fn attribute_binding_to_fs_attribute_binding(
             .to_string();
         AttributeOutputTo::OutputSocket(name)
     } else {
-        return Err(FsError::AttributeFuncNotBound);
+        return Err(FsError::AttributeFuncNotBound.into());
     };
     let mut inputs = BTreeMap::new();
     for func_arg in FuncArgument::list_for_func(ctx, func_id).await? {
@@ -246,7 +247,7 @@ async fn attribute_binding_to_fs_attribute_binding(
                     .to_string();
                 AttributeInputFrom::InputSocket(name)
             } else {
-                return Err(FsError::AttributeInputNotBound);
+                return Err(FsError::AttributeInputNotBound.into());
             }),
             None => None,
         };
@@ -267,7 +268,7 @@ fn parse_code_gen_bindings_for_update(
     final_bindings: &mut Vec<FuncBinding>,
     func_binding: FuncBinding,
     update_inputs: &[si_frontend_types::LeafInputLocation],
-) -> FsResult<()> {
+) -> Result<()> {
     let FuncBinding::CodeGeneration {
         schema_variant_id,
         component_id,
@@ -294,7 +295,7 @@ pub async fn output_to_into_func_destination(
     ctx: &DalContext,
     output_to: &AttributeOutputTo,
     schema_variant_id: SchemaVariantId,
-) -> FsResult<AttributeFuncDestination> {
+) -> Result<AttributeFuncDestination> {
     Ok(match output_to {
         AttributeOutputTo::OutputSocket(name) => {
             let socket = OutputSocket::find_with_name(ctx, name, schema_variant_id)
@@ -320,7 +321,7 @@ async fn parse_attr_bindings_for_update(
     func_binding: FuncBinding,
     output_to: &AttributeOutputTo,
     inputs: &BTreeMap<String, AttributeFuncInput>,
-) -> FsResult<()> {
+) -> Result<()> {
     let FuncBinding::Attribute {
         func_id,
         attribute_prototype_id,
@@ -328,7 +329,7 @@ async fn parse_attr_bindings_for_update(
         ..
     } = func_binding
     else {
-        return Err(FsError::FuncBindingKindMismatch);
+        return Err(FsError::FuncBindingKindMismatch.into());
     };
 
     // todo: make special errors for all 3
@@ -376,7 +377,7 @@ async fn inputs_into_attribute_argument_bindings(
     func_id: FuncId,
     proto_id: Option<dal::AttributePrototypeId>,
     schema_variant_id: SchemaVariantId,
-) -> FsResult<Vec<si_frontend_types::AttributeArgumentBinding>> {
+) -> Result<Vec<si_frontend_types::AttributeArgumentBinding>> {
     let mut argument_bindings = vec![];
 
     let mut current_arg_names = HashSet::new();
@@ -464,7 +465,7 @@ fn parse_action_bindings(
     final_bindings: &mut Vec<FuncBinding>,
     func_binding: FuncBinding,
     update_kind: ActionKind,
-) -> FsResult<()> {
+) -> Result<()> {
     let FuncBinding::Action {
         schema_variant_id,
         action_prototype_id,
@@ -472,7 +473,7 @@ fn parse_action_bindings(
         ..
     } = func_binding
     else {
-        return Err(FsError::FuncBindingKindMismatch);
+        return Err(FsError::FuncBindingKindMismatch.into());
     };
 
     final_bindings.push(FuncBinding::Action {
@@ -490,7 +491,7 @@ async fn parse_binding_for_update(
     binding_update: &Binding,
     bindings_to_update: &mut Vec<FuncBinding>,
     func_binding: FuncBinding,
-) -> Result<(), FsError> {
+) -> Result<()> {
     match binding_update {
         Binding::Action { kind: update_kind } => {
             parse_action_bindings(bindings_to_update, func_binding, *update_kind)?;
@@ -535,7 +536,7 @@ async fn parse_binding_for_create(
     binding: Binding,
     schema_variant_id: SchemaVariantId,
     func_id: FuncId,
-) -> FsResult<FuncBinding> {
+) -> Result<FuncBinding> {
     Ok(match binding {
         Binding::Action { kind } => FuncBinding::Action {
             schema_variant_id: Some(schema_variant_id),
@@ -607,7 +608,7 @@ fn parse_qualification_bindings_for_update(
     final_bindings: &mut Vec<FuncBinding>,
     func_binding: FuncBinding,
     update_inputs: &[si_frontend_types::LeafInputLocation],
-) -> FsResult<()> {
+) -> Result<()> {
     let FuncBinding::Qualification {
         schema_variant_id,
         component_id,
@@ -616,7 +617,7 @@ fn parse_qualification_bindings_for_update(
         ..
     } = func_binding
     else {
-        return Err(FsError::FuncBindingKindMismatch);
+        return Err(FsError::FuncBindingKindMismatch.into());
     };
 
     final_bindings.push(FuncBinding::Qualification {
@@ -635,7 +636,7 @@ async fn parse_mgmt_bindings_for_update(
     final_bindings: &mut Vec<FuncBinding>,
     func_binding: FuncBinding,
     updated_schemas: &Option<Vec<String>>,
-) -> FsResult<()> {
+) -> Result<()> {
     let FuncBinding::Management {
         schema_variant_id,
         management_prototype_id,
@@ -643,7 +644,7 @@ async fn parse_mgmt_bindings_for_update(
         ..
     } = func_binding
     else {
-        return Err(FsError::FuncBindingKindMismatch);
+        return Err(FsError::FuncBindingKindMismatch.into());
     };
 
     let managed_schemas = process_managed_schemas(ctx, updated_schemas).await?;
@@ -663,7 +664,7 @@ async fn create_action_binding(
     func_id: FuncId,
     action_kind: ActionKind,
     schema_variant_id: SchemaVariantId,
-) -> FsResult<()> {
+) -> Result<()> {
     ActionBinding::create_action_binding(ctx, func_id, action_kind.into(), schema_variant_id)
         .await?;
     let func = Func::get_by_id_or_error(ctx, func_id).await?;
@@ -686,7 +687,7 @@ async fn create_auth_binding(
     ctx: &DalContext,
     func_id: FuncId,
     schema_variant_id: SchemaVariantId,
-) -> FsResult<()> {
+) -> Result<()> {
     AuthBinding::create_auth_binding(ctx, func_id, schema_variant_id).await?;
 
     let func = Func::get_by_id_or_error(ctx, func_id).await?;
@@ -709,7 +710,7 @@ async fn create_leaf_binding(
     schema_variant_id: SchemaVariantId,
     leaf_kind: LeafKind,
     inputs: Vec<si_frontend_types::LeafInputLocation>,
-) -> FsResult<()> {
+) -> Result<()> {
     let inputs: Vec<_> = inputs.into_iter().map(Into::into).collect();
     LeafBinding::create_leaf_func_binding(
         ctx,
@@ -751,7 +752,7 @@ async fn create_management_binding(
     func_id: FuncId,
     schema_variant_id: SchemaVariantId,
     managed_schemas: Option<Vec<SchemaId>>,
-) -> FsResult<()> {
+) -> Result<()> {
     ManagementBinding::create_management_binding(
         ctx,
         func_id,
@@ -784,7 +785,7 @@ async fn create_attribute_binding(
     output_socket_id: Option<dal::OutputSocketId>,
     argument_bindings: Vec<si_frontend_types::AttributeArgumentBinding>,
     func_id: FuncId,
-) -> FsResult<()> {
+) -> Result<()> {
     let eventual_parent = EventualParent::SchemaVariant(schema_variant_id);
     let output_location =
         AttributeBinding::assemble_attribute_output_location(prop_id, output_socket_id)?;
@@ -854,7 +855,7 @@ async fn create_attribute_binding(
     Ok(())
 }
 
-async fn create_func_binding(ctx: &DalContext, binding: FuncBinding) -> FsResult<()> {
+async fn create_func_binding(ctx: &DalContext, binding: FuncBinding) -> Result<()> {
     let maybe_schema_variant_id = match binding {
         FuncBinding::Action {
             schema_variant_id,
@@ -971,7 +972,7 @@ async fn delete_binding(
     func_binding: FuncBinding,
     schema_variant_id: SchemaVariantId,
     func_id: FuncId,
-) -> FsResult<()> {
+) -> Result<()> {
     let did_delete = match func_binding {
         FuncBinding::Action {
             action_prototype_id: Some(action_prototype_id),
@@ -1035,7 +1036,7 @@ async fn delete_binding(
 pub async fn get_identity_bindings_for_variant(
     ctx: &DalContext,
     variant_id: SchemaVariantId,
-) -> FsResult<IdentityBindings> {
+) -> Result<IdentityBindings> {
     let identity_func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Identity).await?;
     let unset_func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Unset).await?;
 
@@ -1152,7 +1153,7 @@ pub async fn set_func_bindings(
         FuncId,
     )>,
     Json(request): Json<SetFuncBindingsRequest>,
-) -> FsResult<Json<Option<fs::Func>>> {
+) -> Result<Json<Option<fs::Func>>> {
     let ctx = builder
         .build(request_ctx.build(change_set_id.into()))
         .await?;
@@ -1185,7 +1186,7 @@ pub async fn set_func_bindings(
         func.kind,
         FuncKind::Authentication | FuncKind::Intrinsic | FuncKind::Unknown
     ) {
-        return Err(FsError::FuncBindingKindMismatch);
+        return Err(FsError::FuncBindingKindMismatch.into());
     }
 
     let (fs_bindings, current_bindings) = get_bindings(&ctx, func_id, schema_id).await?;
@@ -1256,7 +1257,7 @@ pub async fn set_func_bindings(
             FuncKind::Management => {
                 update_mangement_func_bindings(&ctx, bindings_to_update).await?;
             }
-            _ => return Err(FsError::FuncBindingKindMismatch),
+            _ => return Err(FsError::FuncBindingKindMismatch.into()),
         }
 
         if let Some(new_bindings) = bindings_to_create {
@@ -1306,7 +1307,7 @@ pub async fn get_func_bindings(
         SchemaId,
         FuncId,
     )>,
-) -> FsResult<Json<fs::Bindings>> {
+) -> Result<Json<fs::Bindings>> {
     let ctx = builder
         .build(request_ctx.build(change_set_id.into()))
         .await?;
@@ -1333,7 +1334,7 @@ pub async fn get_identity_bindings(
     tracker: PosthogEventTracker,
     Path((_workspace_id, change_set_id, schema_id)): Path<(WorkspaceId, ChangeSetId, SchemaId)>,
     Query(variant_query): Query<VariantQuery>,
-) -> FsResult<Json<IdentityBindings>> {
+) -> Result<Json<IdentityBindings>> {
     let ctx = builder
         .build(request_ctx.build(change_set_id.into()))
         .await?;
@@ -1364,7 +1365,7 @@ pub async fn set_identity_bindings(
     tracker: PosthogEventTracker,
     Path((_workspace_id, change_set_id, schema_id)): Path<(WorkspaceId, ChangeSetId, SchemaId)>,
     Json(request): Json<IdentityBindings>,
-) -> FsResult<()> {
+) -> Result<()> {
     let ctx = builder
         .build(request_ctx.build(change_set_id.into()))
         .await?;

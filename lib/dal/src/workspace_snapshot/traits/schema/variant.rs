@@ -1,9 +1,10 @@
+use anyhow::Result;
 use async_trait::async_trait;
 
 use crate::{
     workspace_snapshot::{
         graph::SchemaVariantExt as SchemaVariantExtGraph, SchemaId, SchemaVariantId,
-        WorkspaceSnapshot, WorkspaceSnapshotResult,
+        WorkspaceSnapshot,
     },
     InputSocketId,
 };
@@ -15,13 +16,13 @@ pub trait SchemaVariantExt {
     async fn schema_id_for_schema_variant_id(
         &self,
         schema_variant_id: SchemaVariantId,
-    ) -> WorkspaceSnapshotResult<SchemaId>;
+    ) -> Result<SchemaId>;
 
     async fn schema_variant_add_edge_to_input_socket(
         &self,
         schema_variant_id: SchemaVariantId,
         input_socket_id: InputSocketId,
-    ) -> WorkspaceSnapshotResult<()>;
+    ) -> Result<()>;
 }
 
 #[async_trait]
@@ -29,7 +30,7 @@ impl SchemaVariantExt for WorkspaceSnapshot {
     async fn schema_id_for_schema_variant_id(
         &self,
         schema_variant_id: SchemaVariantId,
-    ) -> WorkspaceSnapshotResult<SchemaId> {
+    ) -> Result<SchemaId> {
         self.working_copy()
             .await
             .schema_id_for_schema_variant_id(schema_variant_id)
@@ -40,7 +41,7 @@ impl SchemaVariantExt for WorkspaceSnapshot {
         &self,
         schema_variant_id: SchemaVariantId,
         input_socket_id: InputSocketId,
-    ) -> WorkspaceSnapshotResult<()> {
+    ) -> Result<()> {
         self.working_copy_mut()
             .await
             .schema_variant_add_edge_to_input_socket(schema_variant_id, input_socket_id)?;

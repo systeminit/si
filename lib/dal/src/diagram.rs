@@ -2,27 +2,29 @@ mod diagram_object;
 pub mod geometry;
 pub mod view;
 
+use anyhow::Result;
 use petgraph::prelude::*;
 use serde::{Deserialize, Serialize};
 use si_data_pg::PgError;
-use std::collections::{HashMap, HashSet};
+use si_frontend_types::{DiagramComponentView, DiagramSocket};
+use si_layer_cache::LayerDbError;
 use std::{
+    collections::{HashMap, HashSet},
     num::{ParseFloatError, ParseIntError},
     sync::Arc,
 };
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::approval_requirement::ApprovalRequirementError;
-use crate::workspace_snapshot::node_weight::NodeWeight;
 use crate::{
+    approval_requirement::ApprovalRequirementError,
     attribute::{
         prototype::argument::{AttributePrototypeArgumentError, AttributePrototypeArgumentId},
         value::AttributeValueError,
     },
     change_status::ChangeStatus,
     component::{
-        inferred_connection_graph::InferredConnectionGraphError, ComponentError, ComponentResult,
+        inferred_connection_graph::InferredConnectionGraphError, ComponentError,
         IncomingConnection, InferredConnection, OutgoingConnection,
     },
     diagram::{
@@ -32,17 +34,14 @@ use crate::{
     schema::variant::SchemaVariantError,
     socket::{input::InputSocketError, output::OutputSocketError},
     workspace_snapshot::{
-        node_weight::{category_node_weight::CategoryNodeKind, NodeWeightError},
+        node_weight::{category_node_weight::CategoryNodeKind, NodeWeight, NodeWeightError},
         WorkspaceSnapshotError,
     },
     AttributePrototypeId, ChangeSetError, Component, ComponentId, DalContext,
-    EdgeWeightKindDiscriminants, HelperError, HistoryEventError, InputSocketId,
-    NodeWeightDiscriminants, OutputSocketId, SchemaId, SchemaVariantId, StandardModelError,
-    TransactionsError, Workspace, WorkspaceError, WorkspaceSnapshot,
+    EdgeWeightKindDiscriminants, FuncError, HelperError, HistoryEventError, InputSocketId,
+    NodeWeightDiscriminants, OutputSocketId, SchemaId, SchemaVariant, SchemaVariantId,
+    StandardModelError, TransactionsError, Workspace, WorkspaceError, WorkspaceSnapshot,
 };
-use crate::{FuncError, SchemaVariant};
-use si_frontend_types::{DiagramComponentView, DiagramSocket};
-use si_layer_cache::LayerDbError;
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -145,7 +144,7 @@ pub enum DiagramError {
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
 
-pub type DiagramResult<T> = Result<T, DiagramError>;
+pub type DiagramResult<T> = Result<T>;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all(serialize = "camelCase"))]
@@ -162,7 +161,7 @@ pub struct SummaryDiagramEdge {
 }
 
 impl SummaryDiagramEdge {
-    pub fn assemble_just_added(incoming_connection: IncomingConnection) -> ComponentResult<Self> {
+    pub fn assemble_just_added(incoming_connection: IncomingConnection) -> Result<Self> {
         Ok(SummaryDiagramEdge {
             from_component_id: incoming_connection.from_component_id,
             from_socket_id: incoming_connection.from_output_socket_id,
@@ -181,7 +180,7 @@ impl SummaryDiagramEdge {
         from_component: &Component,
         to_component: &Component,
         change_status: ChangeStatus,
-    ) -> ComponentResult<Self> {
+    ) -> Result<Self> {
         Ok(SummaryDiagramEdge {
             from_component_id: incoming_connection.from_component_id,
             from_socket_id: incoming_connection.from_output_socket_id,
@@ -200,7 +199,7 @@ impl SummaryDiagramEdge {
         from_component: &Component,
         to_component: &Component,
         change_status: ChangeStatus,
-    ) -> ComponentResult<Self> {
+    ) -> Result<Self> {
         Ok(SummaryDiagramEdge {
             from_component_id: outgoing_connection.from_component_id,
             from_socket_id: outgoing_connection.from_output_socket_id,
@@ -667,21 +666,23 @@ impl Diagram {
                 for geometry in Geometry::list_by_view_id(ctx, view_id).await? {
                     let geo_represents = match Geometry::represented_id(ctx, geometry.id()).await {
                         Ok(r) => r,
-                        Err(DiagramError::RepresentedNotFoundForGeometry(geo_id)) => {
-                            let changeset_id = ctx.change_set_id();
-                            // NOTE(victor): The first version of views didn't delete geometries with components,
-                            // so we have dangling geometries in some workspaces. We should clean this up at some point,
-                            // but we just skip orphan geometries here to make assemble work.
+                        Err(error) => match error.downcast_ref() {
+                            Some(DiagramError::RepresentedNotFoundForGeometry(geo_id)) => {
+                                let changeset_id = ctx.change_set_id();
+                                // NOTE(victor): The first version of views didn't delete geometries with components,
+                                // so we have dangling geometries in some workspaces. We should clean this up at some point,
+                                // but we just skip orphan geometries here to make assemble work.
 
-                            debug!(
-                                si.change_set.id = %changeset_id,
-                                si.geometry.id = %geo_id,
-                                "Could not find represented node for geometry - skipping"
-                            );
+                                debug!(
+                                    si.change_set.id = %changeset_id,
+                                    si.geometry.id = %geo_id,
+                                    "Could not find represented node for geometry - skipping"
+                                );
 
-                            continue;
-                        }
-                        Err(e) => return Err(e),
+                                continue;
+                            }
+                            _ => return Err(error),
+                        },
                     };
                     match geo_represents {
                         GeometryRepresents::Component(component_id) => {

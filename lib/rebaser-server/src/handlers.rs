@@ -1,9 +1,7 @@
-use std::{result, str::FromStr, sync::Arc};
+use std::{str::FromStr, sync::Arc};
 
-use naxum::{
-    extract::State,
-    response::{IntoResponse, Response},
-};
+use anyhow::Result;
+use naxum::extract::State;
 use rebaser_core::nats;
 use si_data_nats::{
     async_nats::jetstream::{
@@ -22,6 +20,7 @@ use ulid::Ulid;
 use crate::{
     app_state::AppState,
     change_set_processor_task::{ChangeSetProcessorTask, ChangeSetProcessorTaskError},
+    error::AppError,
     serial_dvu_task::{SerialDvuTask, SerialDvuTaskError},
     Shutdown,
 };
@@ -57,30 +56,10 @@ pub(crate) enum HandlerError {
 
 type Error = HandlerError;
 
-type Result<T> = result::Result<T, HandlerError>;
-
-impl IntoResponse for HandlerError {
-    fn into_response(self) -> Response {
-        match self {
-            HandlerError::SubjectParse(_, _) => {
-                warn!(si.error.message = ?self, "subject parse error");
-                Response::default_bad_request()
-            }
-            // While propagated as an `Err`, a task being interupted is expected behavior and is
-            // not an error (rather we use `Err` to ensure the task persists in the stream)
-            HandlerError::TaskInterrupted(subject) => {
-                debug!(subject, "task interrupted");
-                Response::default_service_unavailable()
-            }
-            _ => {
-                error!(si.error.message = ?self, "failed to process message");
-                Response::default_internal_server_error()
-            }
-        }
-    }
-}
-
-pub(crate) async fn default(State(state): State<AppState>, subject: Subject) -> Result<()> {
+pub(crate) async fn default(
+    State(state): State<AppState>,
+    subject: Subject,
+) -> Result<(), AppError> {
     let AppState {
         metadata,
         nats,
@@ -168,19 +147,19 @@ pub(crate) async fn default(State(state): State<AppState>, subject: Subject) -> 
             );
             // Task may not be complete but was interupted; reply `Err` to nack for task to persist
             // and retry to continue progress
-            Err(Error::TaskInterrupted(subject_str.to_string()))
+            Err(anyhow::Error::from(Error::TaskInterrupted(subject_str.to_string())))
         }
         // Processor task completed
         processor_task_result_result = processor_task_result => {
             match processor_task_result_result {
                 // Processor exited cleanly, but unexpectedly; reply `Err` to nack for task to
                 // persist and retry
-                Ok(Ok(())) => Err(Error::ChangeSetProcessorCompleted),
+                Ok(Ok(())) => Err(anyhow::Error::from(Error::ChangeSetProcessorCompleted)),
                 // Processor exited with error; reply `Err` to nack for task to persist and retry
-                Ok(Err(err)) => Err(Error::ChangeSetProcessor(err)),
+                Ok(Err(err)) => Err(anyhow::Error::from(Error::ChangeSetProcessor(err))),
                 // Tokio join error on processor exit; reply `Err` to nack for task to persist and
                 // retry
-                Err(_join_err) => Err(Error::ChangeSetProcessorJoin),
+                Err(_join_err) => Err(anyhow::Error::from(Error::ChangeSetProcessorJoin)),
             }
         }
         // Serial dvu task completed
@@ -190,12 +169,17 @@ pub(crate) async fn default(State(state): State<AppState>, subject: Subject) -> 
                 Ok(Ok(Shutdown::Quiesced)) => Ok(()),
                 // Serial dvu exited cleanly, but unexpectedly; reply `Err` to nack for task to
                 // persist and retry
-                Ok(Ok(Shutdown::Graceful)) => Err(Error::SerialDvuCompleted),
+                Ok(Ok(Shutdown::Graceful)) => Err(anyhow::Error::from(Error::SerialDvuCompleted)),
                 // Serial dvu exited with error; reply `Err` to nack for task to persist and retry
-                Ok(Err(err)) => Err(Error::SerialDvu(err)),
+                Ok(Err(err)) => {
+                    match err.downcast::<SerialDvuTaskError>() {
+                        Ok(err) => Err(anyhow::Error::from(Error::SerialDvu(err))),
+                        Err(e) => Err(e),
+                    }
+                }
                 // Tokio join error on serial dvu exit; reply `Err` to nack for task to persist and
                 // retry
-                Err(_join_err) => Err(Error::SerialDvuJoin),
+                Err(_join_err) => Err(anyhow::Error::from(Error::SerialDvuJoin)),
             }
         }
     };
@@ -208,32 +192,37 @@ pub(crate) async fn default(State(state): State<AppState>, subject: Subject) -> 
     // another message was published to our subject (such as during this handler waiting on the
     // serial dvu task to finish). In this case, we'll return a new `Err` variant to ensure the
     // task message is `nack`d and the task will be redelivered.
-    if let Err(Error::ChangeSetProcessorCompleted) = result {
-        match requests_stream
-            .get_last_raw_message_by_subject(requests_stream_filter_subject.as_str())
-            .await
-        {
-            // We found a message on the subject
-            Ok(message) => {
-                debug!(
-                    messaging.message.id = message.sequence,
-                    messaging.destination.name = message.subject.as_str(),
-                    service.instance.id = metadata.instance_id(),
-                    si.change_set.id = %change_set.str,
-                    si.workspace.id = %workspace.str,
-                    "message found after graceful shutdown",
-                );
-                Err(Error::TaskHasMessages(
-                    requests_stream_filter_subject.to_string(),
-                ))
+    match &result {
+        Ok(_) => result.map_err(Into::into),
+        Err(error) => match error.downcast_ref::<HandlerError>() {
+            Some(_) => {
+                match requests_stream
+                    .get_last_raw_message_by_subject(requests_stream_filter_subject.as_str())
+                    .await
+                {
+                    // We found a message on the subject
+                    Ok(message) => {
+                        debug!(
+                            messaging.message.id = message.sequence,
+                            messaging.destination.name = message.subject.as_str(),
+                            service.instance.id = metadata.instance_id(),
+                            si.change_set.id = %change_set.str,
+                            si.workspace.id = %workspace.str,
+                            "message found after graceful shutdown",
+                        );
+                        Err(
+                            Error::TaskHasMessages(requests_stream_filter_subject.to_string())
+                                .into(),
+                        )
+                    }
+                    // Either there was not a message or another error with this call. Either way, we can
+                    // return the current `result` value
+                    Err(_) => result.map_err(Into::into),
+                }
             }
-            // Either there was not a message or another error with this call. Either way, we can
-            // return the current `result` value
-            Err(_) => result,
-        }
-    } else {
-        // In all other cases, return our computed `result` value
-        result
+            // In all other cases, return our computed `result` value
+            None => result.map_err(Into::into),
+        },
     }
 }
 
@@ -265,14 +254,16 @@ fn parse_subject<'a>(
                     format!(
                         "found unexpected subject prefix; expected={prefix}, parsed={unexpected}"
                     ),
-                ))
+                )
+                .into())
             }
             // Prefix part not found but expected
             None => {
                 return Err(HandlerError::SubjectParse(
                     subject_str.to_string(),
                     format!("expected subject prefix not found; expected={prefix}"),
-                ))
+                )
+                .into())
             }
         };
     }
@@ -320,7 +311,8 @@ fn parse_subject<'a>(
         _ => Err(HandlerError::SubjectParse(
             subject_str.to_string(),
             "subject failed to parse with unexpected parts".to_string(),
-        )),
+        )
+        .into()),
     }
 }
 

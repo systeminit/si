@@ -1,55 +1,56 @@
 [package]
-name = "dal-test"
-version.workspace = true
-authors.workspace = true
-license.workspace = true
-repository.workspace = true
-edition.workspace = true
+name                   = "dal-test"
+version.workspace      = true
+authors.workspace      = true
+license.workspace      = true
+repository.workspace   = true
+edition.workspace      = true
 rust-version.workspace = true
-publish.workspace = true
+publish.workspace      = true
 
 [dependencies]
-audit-database = { path = "../../lib/audit-database" }
-buck2-resources = { path = "../../lib/buck2-resources" }
-dal = { path = "../../lib/dal" }
-forklift-server = { path = "../../lib/forklift-server" }
-pinga-server = { path = "../../lib/pinga-server" }
-rebaser-client = { path = "../../lib/rebaser-client" }
-rebaser-server = { path = "../../lib/rebaser-server" }
-si-crypto = { path = "../../lib/si-crypto" }
-si-data-nats = { path = "../../lib/si-data-nats" }
-si-data-pg = { path = "../../lib/si-data-pg" }
-si-events = { path = "../../lib/si-events-rs" }
-si-id = { path = "../../lib/si-id" }
+audit-database    = { path = "../../lib/audit-database" }
+buck2-resources   = { path = "../../lib/buck2-resources" }
+dal               = { path = "../../lib/dal" }
+forklift-server   = { path = "../../lib/forklift-server" }
+pinga-server      = { path = "../../lib/pinga-server" }
+rebaser-client    = { path = "../../lib/rebaser-client" }
+rebaser-server    = { path = "../../lib/rebaser-server" }
+si-crypto         = { path = "../../lib/si-crypto" }
+si-data-nats      = { path = "../../lib/si-data-nats" }
+si-data-pg        = { path = "../../lib/si-data-pg" }
+si-events         = { path = "../../lib/si-events-rs" }
+si-id             = { path = "../../lib/si-id" }
 si-jwt-public-key = { path = "../../lib/si-jwt-public-key" }
-si-layer-cache = { path = "../../lib/si-layer-cache" }
-si-pkg = { path = "../../lib/si-pkg" }
-si-runtime = { path = "../../lib/si-runtime-rs" }
-si-std = { path = "../../lib/si-std" }
-si-test-macros = { path = "../../lib/si-test-macros" }
-telemetry = { path = "../../lib/telemetry-rs" }
-veritech-client = { path = "../../lib/veritech-client" }
-veritech-server = { path = "../../lib/veritech-server" }
+si-layer-cache    = { path = "../../lib/si-layer-cache" }
+si-pkg            = { path = "../../lib/si-pkg" }
+si-runtime        = { path = "../../lib/si-runtime-rs" }
+si-std            = { path = "../../lib/si-std" }
+si-test-macros    = { path = "../../lib/si-test-macros" }
+telemetry         = { path = "../../lib/telemetry-rs" }
+veritech-client   = { path = "../../lib/veritech-client" }
+veritech-server   = { path = "../../lib/veritech-server" }
 
-async-recursion = { workspace = true }
-base64 = { workspace = true }
-color-eyre = { workspace = true }
-derive_builder = { workspace = true }
-derive_more = { workspace = true }
-itertools = { workspace = true }
-jwt-simple = { workspace = true }
-lazy_static = { workspace = true }
-names = { workspace = true }
-opentelemetry_sdk = { workspace = true }
-remain = { workspace = true }
-serde = { workspace = true }
-serde_json = { workspace = true }
-sodiumoxide = { workspace = true }
-tempfile = { workspace = true }
-thiserror = { workspace = true }
-tokio = { workspace = true }
-tokio-util = { workspace = true }
+anyhow                = { workspace = true }
+async-recursion       = { workspace = true }
+base64                = { workspace = true }
+color-eyre            = { workspace = true }
+derive_builder        = { workspace = true }
+derive_more           = { workspace = true }
+itertools             = { workspace = true }
+jwt-simple            = { workspace = true }
+lazy_static           = { workspace = true }
+names                 = { workspace = true }
+opentelemetry_sdk     = { workspace = true }
+remain                = { workspace = true }
+serde                 = { workspace = true }
+serde_json            = { workspace = true }
+sodiumoxide           = { workspace = true }
+tempfile              = { workspace = true }
+thiserror             = { workspace = true }
+tokio                 = { workspace = true }
+tokio-util            = { workspace = true }
 tracing-opentelemetry = { workspace = true }
-tracing-subscriber = { workspace = true }
-ulid = { workspace = true }
-uuid = { workspace = true }
+tracing-subscriber    = { workspace = true }
+ulid                  = { workspace = true }
+uuid                  = { workspace = true }

@@ -1,5 +1,6 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 
+use anyhow::Result;
 use axum::{extract::Query, routing::get, Json, Router};
 use dal::{
     attribute::value::AttributeValueError,
@@ -43,8 +44,6 @@ pub enum GraphVizError {
     #[error("workspace snapshot error")]
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
-
-type GraphVizResult<T> = Result<T, GraphVizError>;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -97,7 +96,7 @@ pub async fn schema_variant(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Query(request): Query<SchemaVariantVizRequest>,
-) -> GraphVizResult<Json<GraphVizResponse>> {
+) -> Result<Json<GraphVizResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let mut func_nodes = vec![];
@@ -299,7 +298,7 @@ pub async fn components(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Query(request): Query<GraphVizRequest>,
-) -> GraphVizResult<Json<GraphVizResponse>> {
+) -> Result<Json<GraphVizResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let workspace_snapshot = ctx.workspace_snapshot()?;
@@ -396,7 +395,7 @@ pub async fn nodes_edges(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Query(request): Query<GraphVizRequest>,
-) -> GraphVizResult<Json<GraphVizResponse>> {
+) -> Result<Json<GraphVizResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let workspace_snapshot = ctx.workspace_snapshot()?;

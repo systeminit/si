@@ -1,3 +1,4 @@
+use anyhow::Result;
 use axum::extract::{Host, OriginalUri, Path};
 use dal::{
     diagram::view::{View, ViewId},
@@ -12,7 +13,7 @@ use crate::{
     track,
 };
 
-use super::{ViewError, ViewResult};
+use super::ViewError;
 
 pub async fn remove_view(
     HandlerContext(builder): HandlerContext,
@@ -21,7 +22,7 @@ pub async fn remove_view(
     OriginalUri(original_uri): OriginalUri,
     Host(host_name): Host,
     Path((_workspace_pk, change_set_id, view_id)): Path<(WorkspacePk, ChangeSetId, ViewId)>,
-) -> ViewResult<ForceChangeSetResponse<()>> {
+) -> Result<ForceChangeSetResponse<()>> {
     let mut ctx = builder
         .build(access_builder.build(change_set_id.into()))
         .await?;
@@ -30,7 +31,7 @@ pub async fn remove_view(
 
     let current_view_list = View::list(&ctx).await?;
     if current_view_list.len() == 1 {
-        return Err(ViewError::CantDeleteOnlyView());
+        return Err(ViewError::CantDeleteOnlyView().into());
     }
 
     let view = View::get_by_id(&ctx, view_id).await?;

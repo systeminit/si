@@ -1,3 +1,4 @@
+use anyhow::Result;
 use axum::{
     extract::{Host, OriginalUri, Path},
     response::IntoResponse,
@@ -8,12 +9,13 @@ use module_index_client::ModuleIndexClient;
 use si_events::audit_log::AuditLogKind;
 use si_frontend_types as frontend_types;
 
-use super::ModulesAPIError;
 use crate::{
     extract::{request::RawAccessToken, HandlerContext, PosthogClient},
     service::v2::AccessBuilder,
     track,
 };
+
+use super::ModulesAPIError;
 
 #[allow(clippy::too_many_arguments)]
 pub async fn contribute(
@@ -25,7 +27,7 @@ pub async fn contribute(
     Host(host_name): Host,
     Path((_workspace_pk, change_set_id)): Path<(WorkspacePk, ChangeSetId)>,
     Json(request): Json<frontend_types::ModuleContributeRequest>,
-) -> Result<impl IntoResponse, ModulesAPIError> {
+) -> Result<impl IntoResponse> {
     let ctx = builder
         .build(access_builder.build(change_set_id.into()))
         .await?;
@@ -33,7 +35,7 @@ pub async fn contribute(
     // Prepare a module index client. We'll re-use it for every request.
     let module_index_url = match ctx.module_index_url() {
         Some(url) => url,
-        None => return Err(ModulesAPIError::ModuleIndexNotConfigured),
+        None => return Err(ModulesAPIError::ModuleIndexNotConfigured.into()),
     };
     let index_client = ModuleIndexClient::new(module_index_url.try_into()?, &raw_access_token);
 

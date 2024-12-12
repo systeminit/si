@@ -11,6 +11,7 @@ publish.workspace = true
 [dependencies]
 object-tree = { path = "../../lib/object-tree" }
 
+anyhow = { workspace = true }
 base64 = { workspace = true }
 chrono = { workspace = true }
 derive_builder = { workspace = true }

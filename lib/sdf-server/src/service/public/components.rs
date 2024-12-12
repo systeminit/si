@@ -1,18 +1,16 @@
 use std::collections::HashMap;
 
+use anyhow::Result;
 use axum::{
     extract::Path,
-    http::StatusCode,
-    response::{IntoResponse, Response},
     routing::{get, put},
     Json, Router,
 };
 use dal::{
     diagram::{geometry::Geometry, view::View},
     management::prototype::ManagementPrototype,
-    prop::{PropPath, PropResult, PROP_PATH_SEPARATOR},
-    AttributeValue, Component, ComponentError, ComponentId, DalContext, Prop, PropId,
-    SchemaVariantId, WsEvent,
+    prop::{PropPath, PROP_PATH_SEPARATOR},
+    AttributeValue, Component, ComponentId, DalContext, Prop, PropId, SchemaVariantId, WsEvent,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -21,8 +19,11 @@ use si_frontend_types::{DiagramComponentView, GeometryAndView};
 use si_id::ManagementPrototypeId;
 use thiserror::Error;
 
-use crate::extract::{change_set::ChangeSetDalContext, PosthogEventTracker};
-use crate::AppState;
+use crate::{
+    extract::{change_set::ChangeSetDalContext, PosthogEventTracker},
+    routes::AppError,
+    AppState,
+};
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -47,18 +48,6 @@ pub enum ChangeSetsError {
     WsEvent(#[from] dal::WsEventError),
 }
 
-type Result<T> = std::result::Result<T, ChangeSetsError>;
-
-impl IntoResponse for ChangeSetsError {
-    fn into_response(self) -> Response {
-        let status_code = match &self {
-            ChangeSetsError::Component(ComponentError::NotFound(_)) => StatusCode::NOT_FOUND,
-            _ => StatusCode::INTERNAL_SERVER_ERROR,
-        };
-        (status_code, self.to_string()).into_response()
-    }
-}
-
 // /api/public/workspaces/:workspace_id/change-sets/:change_set_id/components
 pub fn routes() -> Router<AppState> {
     Router::new().nest(
@@ -74,9 +63,10 @@ async fn update_component_properties(
     tracker: PosthogEventTracker,
     Path(ComponentRequestPath { component_id }): Path<ComponentRequestPath>,
     Json(payload): Json<UpdateComponentPropertiesRequest>,
-) -> Result<Json<UpdateComponentPropertiesResponse>> {
+) -> Result<Json<UpdateComponentPropertiesResponse>, AppError> {
     tracker.track(ctx, "update_component_properties", json!(payload));
 
+    // TODO: .context(HttpResponse::NOT_FOUND { ... });
     let component = Component::get_by_id(ctx, component_id).await?;
     let component_name = component.name(ctx).await?;
     let schema_variant = component.schema_variant(ctx).await?;
@@ -172,7 +162,7 @@ impl ComponentPropKey {
         &self,
         ctx: &dal::DalContext,
         schema_variant_id: SchemaVariantId,
-    ) -> PropResult<PropId> {
+    ) -> Result<PropId> {
         match self {
             ComponentPropKey::PropId(prop_id) => Ok(*prop_id),
             ComponentPropKey::PropPath(path) => {
@@ -196,7 +186,7 @@ async fn get_component(
     ChangeSetDalContext(ref ctx): ChangeSetDalContext,
     // tracker: PosthogEventTracker,
     Path(ComponentRequestPath { component_id }): Path<ComponentRequestPath>,
-) -> Result<Json<GetComponentResponse>> {
+) -> Result<Json<GetComponentResponse>, AppError> {
     let component = Component::get_by_id(ctx, component_id).await?;
     let domain_av_id = component.domain_prop_attribute_value(ctx).await?;
     let domain = AttributeValue::get_by_id(ctx, domain_av_id)

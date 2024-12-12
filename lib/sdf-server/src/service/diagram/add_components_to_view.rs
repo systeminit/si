@@ -1,15 +1,24 @@
-use crate::extract::{v1::AccessBuilder, HandlerContext, PosthogClient};
-use crate::service::diagram::DiagramResult;
-use crate::service::force_change_set_response::ForceChangeSetResponse;
-use crate::tracking::track;
-use axum::extract::{Host, OriginalUri};
-use axum::Json;
-use dal::diagram::geometry::Geometry;
-use dal::diagram::view::{View, ViewComponentsUpdateList, ViewId};
-use dal::{ChangeSet, Component, ComponentError, ComponentId, Visibility, WsEvent};
+use axum::{
+    extract::{Host, OriginalUri},
+    Json,
+};
+use dal::{
+    diagram::{
+        geometry::Geometry,
+        view::{View, ViewComponentsUpdateList, ViewId},
+    },
+    ChangeSet, Component, ComponentError, ComponentId, Visibility, WsEvent,
+};
 use serde::{Deserialize, Serialize};
 use si_frontend_types::{RawGeometry, StringGeometry};
 use std::collections::HashMap;
+
+use crate::{
+    extract::{v1::AccessBuilder, HandlerContext, PosthogClient},
+    routes::AppError,
+    service::force_change_set_response::ForceChangeSetResponse,
+    tracking::track,
+};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -35,7 +44,7 @@ pub async fn add_components_to_view(
         remove_from_original_view,
         visibility,
     }): Json<Request>,
-) -> DiagramResult<ForceChangeSetResponse<()>> {
+) -> Result<ForceChangeSetResponse<()>, AppError> {
     let mut ctx = builder
         .build(access_builder.build(visibility.change_set_id.into()))
         .await?;
@@ -55,11 +64,14 @@ pub async fn add_components_to_view(
             .await
         {
             Ok(_) => {}
-            Err(err @ ComponentError::ComponentAlreadyInView(_, _)) => {
-                latest_error = Some(err);
-                continue;
-            }
-            Err(err) => return Err(err)?,
+            Err(error) => match error.downcast::<ComponentError>() {
+                Ok(err @ ComponentError::ComponentAlreadyInView(_, _)) => {
+                    latest_error = Some(err);
+                    continue;
+                }
+                Ok(err) => return Err(err.into()),
+                Err(err) => return Err(err.into()),
+            },
         };
 
         successful_erase = true;

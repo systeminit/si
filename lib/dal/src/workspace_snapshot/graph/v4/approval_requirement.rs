@@ -1,5 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
+use anyhow::Result;
 use petgraph::{prelude::*, Direction};
 use si_events::{merkle_tree_hash::MerkleTreeHash, workspace_snapshot::EntityKind};
 use si_id::{ApprovalRequirementDefinitionId, EntityId, WorkspacePk};
@@ -13,7 +14,7 @@ use crate::{
                 ApprovalRequirementPermissionLookup, ApprovalRequirementRule,
                 ApprovalRequirementsBag,
             },
-            WorkspaceSnapshotGraphError, WorkspaceSnapshotGraphResult,
+            WorkspaceSnapshotGraphError,
         },
         node_weight::traits::SiNodeWeight,
     },
@@ -27,7 +28,7 @@ impl ApprovalRequirementExt for WorkspaceSnapshotGraphV4 {
         &self,
         workspace_id: WorkspacePk,
         changes: &[Change],
-    ) -> WorkspaceSnapshotGraphResult<(
+    ) -> Result<(
         Vec<ApprovalRequirementsBag>,
         HashMap<EntityId, MerkleTreeHash>,
     )> {
@@ -138,7 +139,8 @@ impl ApprovalRequirementExt for WorkspaceSnapshotGraphV4 {
                             change.entity_id,
                             change.merkle_tree_hash,
                             existing_merkle_tree_hash,
-                        ),
+                        )
+                        .into(),
                     );
                 };
 
@@ -176,7 +178,7 @@ impl ApprovalRequirementExt for WorkspaceSnapshotGraphV4 {
     fn approval_requirement_definitions_for_entity_id_opt(
         &self,
         entity_id: EntityId,
-    ) -> WorkspaceSnapshotGraphResult<Option<Vec<ApprovalRequirementDefinitionId>>> {
+    ) -> Result<Option<Vec<ApprovalRequirementDefinitionId>>> {
         let mut explicit_approval_requirement_definition_ids = Vec::new();
         if let Some(entity_node_index) = self.get_node_index_by_id_opt(entity_id) {
             for (_, _, requirement_node_index) in self.edges_directed_for_edge_weight_kind(
@@ -200,7 +202,7 @@ impl ApprovalRequirementExt for WorkspaceSnapshotGraphV4 {
     fn entity_id_for_approval_requirement(
         &self,
         approval_requirement_definition_id: ApprovalRequirementDefinitionId,
-    ) -> WorkspaceSnapshotGraphResult<EntityId> {
+    ) -> Result<EntityId> {
         if let Some(approval_requirement_index) =
             self.get_node_index_by_id_opt(approval_requirement_definition_id)
         {
@@ -217,7 +219,8 @@ impl ApprovalRequirementExt for WorkspaceSnapshotGraphV4 {
         Err(
             WorkspaceSnapshotGraphError::EntityNotFoundForApprovalRequirementDefinition(
                 approval_requirement_definition_id,
-            ),
+            )
+            .into(),
         )
     }
 }
@@ -225,7 +228,7 @@ impl ApprovalRequirementExt for WorkspaceSnapshotGraphV4 {
 fn new_virtual_requirement_rule(
     workspace_id: WorkspacePk,
     change: &Change,
-) -> WorkspaceSnapshotGraphResult<Option<ApprovalRequirementRule>> {
+) -> Result<Option<ApprovalRequirementRule>> {
     match change.entity_kind {
         // Default approval requirement rule for actions, funcs, schemas, schema variants,
         // and views until we get proper fallback logic for who should be approving what.

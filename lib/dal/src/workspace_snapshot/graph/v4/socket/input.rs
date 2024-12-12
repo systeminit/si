@@ -1,13 +1,11 @@
+use anyhow::Result;
 use petgraph::prelude::*;
 use si_events::{ulid::Ulid, ContentHash};
 
 use crate::{
     socket::input::InputSocketError,
     workspace_snapshot::{
-        graph::{
-            traits::socket::input::InputSocketExt, LineageId, WorkspaceSnapshotGraphResult,
-            WorkspaceSnapshotGraphV4,
-        },
+        graph::{traits::socket::input::InputSocketExt, LineageId, WorkspaceSnapshotGraphV4},
         node_weight::{InputSocketNodeWeight, NodeWeight, NodeWeightError},
     },
     AttributeValueId, ComponentId, EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants,
@@ -22,7 +20,7 @@ impl InputSocketExt for WorkspaceSnapshotGraphV4 {
         lineage_id: LineageId,
         arity: SocketArity,
         content_hash: ContentHash,
-    ) -> WorkspaceSnapshotGraphResult<InputSocketNodeWeight> {
+    ) -> Result<InputSocketNodeWeight> {
         let node_weight =
             NodeWeight::new_input_socket(input_socket_id.into(), lineage_id, arity, content_hash);
         self.add_or_replace_node(node_weight)?;
@@ -40,7 +38,7 @@ impl InputSocketExt for WorkspaceSnapshotGraphV4 {
     fn get_input_socket(
         &self,
         input_socket_id: crate::InputSocketId,
-    ) -> WorkspaceSnapshotGraphResult<InputSocketNodeWeight> {
+    ) -> Result<InputSocketNodeWeight> {
         let node_weight = self.get_node_weight_by_id(input_socket_id)?;
 
         match node_weight {
@@ -58,7 +56,7 @@ impl InputSocketExt for WorkspaceSnapshotGraphV4 {
     fn list_input_sockets_for_schema_variant(
         &self,
         schema_variant_id: crate::SchemaVariantId,
-    ) -> WorkspaceSnapshotGraphResult<Vec<InputSocketNodeWeight>> {
+    ) -> Result<Vec<InputSocketNodeWeight>> {
         let schema_variant_index = self.get_node_index_by_id(schema_variant_id)?;
 
         let mut input_sockets = Vec::new();
@@ -84,7 +82,7 @@ impl InputSocketExt for WorkspaceSnapshotGraphV4 {
     fn all_attribute_value_ids_everywhere_for_input_socket_id(
         &self,
         input_socket_id: InputSocketId,
-    ) -> WorkspaceSnapshotGraphResult<Vec<AttributeValueId>> {
+    ) -> Result<Vec<AttributeValueId>> {
         let input_socket_idx = self.get_node_index_by_id(input_socket_id)?;
         let mut result = Vec::new();
         for (_edge_weight, av_idx, _input_socket_idx) in self.edges_directed_for_edge_weight_kind(
@@ -104,7 +102,7 @@ impl InputSocketExt for WorkspaceSnapshotGraphV4 {
         &self,
         input_socket_id: InputSocketId,
         component_id: ComponentId,
-    ) -> WorkspaceSnapshotGraphResult<AttributeValueId> {
+    ) -> Result<AttributeValueId> {
         let mut result = None;
         let component_idx = self.get_node_index_by_id(Ulid::from(component_id))?;
         let input_socket_idx = self.get_node_index_by_id(Ulid::from(input_socket_id))?;
@@ -148,7 +146,7 @@ impl InputSocketExt for WorkspaceSnapshotGraphV4 {
     fn input_socket_id_find_for_attribute_value_id(
         &self,
         attribute_value_id: AttributeValueId,
-    ) -> WorkspaceSnapshotGraphResult<Option<InputSocketId>> {
+    ) -> Result<Option<InputSocketId>> {
         let mut result = None;
         let mut found_sockets = false;
         let attribute_value_idx = self.get_node_index_by_id(Ulid::from(attribute_value_id))?;

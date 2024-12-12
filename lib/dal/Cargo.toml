@@ -36,6 +36,7 @@ telemetry-nats = { path = "../../lib/telemetry-nats-rs" }
 telemetry-utils = { path = "../../lib/telemetry-utils-rs" }
 veritech-client = { path = "../../lib/veritech-client" }
 
+anyhow = { workspace = true }
 async-recursion = { workspace = true }
 async-trait = { workspace = true }
 base64 = { workspace = true }

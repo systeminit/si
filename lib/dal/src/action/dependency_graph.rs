@@ -1,3 +1,4 @@
+use anyhow::Result;
 use itertools::Itertools;
 use petgraph::prelude::*;
 use std::collections::{HashMap, HashSet, VecDeque};
@@ -11,7 +12,7 @@ use crate::{
 
 use super::{
     prototype::{ActionKind, ActionPrototype},
-    ActionError, ActionResult,
+    ActionError,
 };
 
 #[derive(Debug, Clone)]
@@ -43,7 +44,7 @@ impl ActionDependencyGraph {
         name = "action.dependency_graph.for_workspace",
         skip(ctx)
     )]
-    pub async fn for_workspace(ctx: &DalContext) -> ActionResult<Self> {
+    pub async fn for_workspace(ctx: &DalContext) -> Result<Self> {
         // * Get all ActionId -> ComponentId mappings.
         // * For each of these ComponentIds (A):
         //     * For each Input Socket:

@@ -1,8 +1,6 @@
 use axum::{
     extract::Host,
-    http::StatusCode,
     middleware,
-    response::{IntoResponse, Response},
     routing::{get, post},
     Json, Router,
 };
@@ -25,6 +23,7 @@ use crate::{
         workspace::{WorkspaceAuthorization, WorkspaceDalContext},
         PosthogEventTracker,
     },
+    routes::AppError,
     service::v2::change_set::post_to_webhook,
 };
 use crate::{middleware::WorkspacePermissionLayer, AppState};
@@ -53,7 +52,7 @@ async fn create_change_set(
     WorkspaceDalContext(ref ctx): WorkspaceDalContext,
     tracker: PosthogEventTracker,
     Json(payload): Json<CreateChangeSetRequest>,
-) -> Result<Json<CreateChangeSetResponse>> {
+) -> Result<Json<CreateChangeSetResponse>, AppError> {
     let change_set = ChangeSet::fork_head(ctx, &payload.change_set_name).await?;
 
     tracker.track(ctx, "fs_create_change_set", json!(payload));
@@ -86,7 +85,7 @@ struct CreateChangeSetResponse {
 // Get status of a change set and its actions
 async fn merge_status(
     ChangeSetDalContext(ref ctx): ChangeSetDalContext,
-) -> Result<Json<MergeStatusResponse>> {
+) -> Result<Json<MergeStatusResponse>, AppError> {
     let change_set = ctx.change_set()?.into_frontend_type(ctx).await?;
 
     let actions = match change_set.status {
@@ -106,7 +105,7 @@ async fn merge_status(
 async fn get_action_statuses(
     ctx: &DalContext,
     change_set_id: ChangeSetId,
-) -> Result<Vec<MergeStatusResponseAction>> {
+) -> Result<Vec<MergeStatusResponseAction>, AppError> {
     let mut actions = Vec::new();
 
     for action_id in Action::all_ids(ctx).await? {
@@ -161,7 +160,7 @@ struct MergeStatusResponseActionComponent {
 async fn force_apply(
     ChangeSetDalContext(ref mut ctx): ChangeSetDalContext,
     tracker: PosthogEventTracker,
-) -> Result<()> {
+) -> Result<(), AppError> {
     let change_set_id = ctx.change_set_id();
     let old_status = ctx.change_set()?.status;
     ChangeSet::prepare_for_force_apply(ctx).await?;
@@ -202,7 +201,7 @@ async fn request_approval(
     WorkspaceAuthorization { user, .. }: WorkspaceAuthorization,
     tracker: PosthogEventTracker,
     Host(host_name): Host,
-) -> Result<()> {
+) -> Result<(), AppError> {
     let workspace_pk = ctx.workspace_pk()?;
     let mut change_set = ctx.change_set()?.clone();
     let change_set_id = change_set.id;
@@ -255,8 +254,6 @@ async fn request_approval(
     Ok(())
 }
 
-type Result<T> = std::result::Result<T, ChangeSetsError>;
-
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ChangeSetsError {
@@ -282,10 +279,4 @@ pub enum ChangeSetsError {
     WorkspaceSnapshot(#[from] dal::WorkspaceSnapshotError),
     #[error("ws event error: {0}")]
     WsEvent(#[from] dal::WsEventError),
-}
-
-impl IntoResponse for ChangeSetsError {
-    fn into_response(self) -> Response {
-        (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()).into_response()
-    }
 }

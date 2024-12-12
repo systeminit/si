@@ -35,7 +35,8 @@ impl<'a> SiPkgEdge<'a> {
                 return Err(SiPkgError::UnexpectedPkgNodeType(
                     PkgNode::NODE_KIND_EDGE_STR,
                     unexpected.node_kind_str(),
-                ))
+                )
+                .into())
             }
         };
 

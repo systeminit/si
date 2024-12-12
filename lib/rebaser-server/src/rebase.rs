@@ -1,3 +1,4 @@
+use anyhow::Result;
 use audit_logs_stream::AuditLogsStreamError;
 use dal::{
     change_set::{ChangeSet, ChangeSetError, ChangeSetId},
@@ -46,8 +47,6 @@ pub(crate) enum RebaseError {
     WsEvent(#[from] WsEventError),
 }
 
-type RebaseResult<T> = Result<T, RebaseError>;
-
 #[instrument(
     name = "rebase.perform_rebase",
     level = "info",
@@ -64,7 +63,7 @@ pub async fn perform_rebase(
     ctx: &mut DalContext,
     request: &EnqueueUpdatesRequest,
     server_tracker: &TaskTracker,
-) -> RebaseResult<RebaseStatus> {
+) -> Result<RebaseStatus> {
     let span = current_span_for_instrument_at!("info");
 
     let start = Instant::now();
@@ -228,7 +227,7 @@ pub async fn perform_rebase(
 pub(crate) async fn evict_unused_snapshots(
     ctx: &DalContext,
     workspace_snapshot_address: &WorkspaceSnapshotAddress,
-) -> RebaseResult<()> {
+) -> Result<()> {
     if !ChangeSet::workspace_snapshot_address_in_use(ctx, workspace_snapshot_address).await? {
         ctx.layer_db().workspace_snapshot().evict(
             workspace_snapshot_address,
@@ -245,7 +244,7 @@ async fn replay_changes(
     change_set_id: ChangeSetId,
     updates_address: RebaseBatchAddress,
     from_change_set_id: ChangeSetId,
-) -> RebaseResult<()> {
+) -> Result<()> {
     ctx.run_async_rebase_from_change_set(
         workspace_pk,
         change_set_id,
@@ -257,7 +256,7 @@ async fn replay_changes(
     Ok(())
 }
 
-async fn get_workspace(ctx: &DalContext) -> RebaseResult<Workspace> {
+async fn get_workspace(ctx: &DalContext) -> Result<Workspace> {
     let workspace_pk = ctx
         .tenancy()
         .workspace_pk_opt()
@@ -265,5 +264,5 @@ async fn get_workspace(ctx: &DalContext) -> RebaseResult<Workspace> {
 
     Workspace::get_by_pk(ctx, &workspace_pk)
         .await?
-        .ok_or(RebaseError::WorkspaceMissing(workspace_pk))
+        .ok_or(RebaseError::WorkspaceMissing(workspace_pk).into())
 }

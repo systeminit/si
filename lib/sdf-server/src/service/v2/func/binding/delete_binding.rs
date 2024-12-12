@@ -1,29 +1,29 @@
-use crate::{
-    extract::{HandlerContext, PosthogClient},
-    service::v2::AccessBuilder,
-    service::{
-        force_change_set_response::ForceChangeSetResponse,
-        v2::func::{FuncAPIError, FuncAPIResult},
-    },
-    track,
-};
+use std::collections::HashSet;
+
+use anyhow::Result;
 use axum::{
     extract::{Host, OriginalUri, Path},
     Json,
 };
 use dal::{
-    func::binding::{
-        action::ActionBinding, authentication::AuthBinding, leaf::LeafBinding, EventualParent,
+    func::{
+        binding::{
+            action::ActionBinding, authentication::AuthBinding, leaf::LeafBinding,
+            management::ManagementBinding, EventualParent,
+        },
+        FuncKind,
     },
-    ChangeSet, ChangeSetId, Func, FuncId, SchemaVariant, WorkspacePk, WsEvent,
-};
-use dal::{
-    func::{binding::management::ManagementBinding, FuncKind},
-    Component,
+    ChangeSet, ChangeSetId, Component, Func, FuncId, SchemaVariant, WorkspacePk, WsEvent,
 };
 use si_events::audit_log::AuditLogKind;
 use si_frontend_types as frontend_types;
-use std::collections::HashSet;
+
+use crate::{
+    extract::{HandlerContext, PosthogClient},
+    service::v2::AccessBuilder,
+    service::{force_change_set_response::ForceChangeSetResponse, v2::func::FuncAPIError},
+    track,
+};
 
 pub async fn delete_binding(
     HandlerContext(builder): HandlerContext,
@@ -33,7 +33,7 @@ pub async fn delete_binding(
     Host(host_name): Host,
     Path((_workspace_pk, change_set_id, func_id)): Path<(WorkspacePk, ChangeSetId, FuncId)>,
     Json(request): Json<frontend_types::FuncBindings>,
-) -> FuncAPIResult<ForceChangeSetResponse<Vec<frontend_types::FuncBinding>>> {
+) -> Result<ForceChangeSetResponse<Vec<frontend_types::FuncBinding>>> {
     let mut ctx = builder
         .build(access_builder.build(change_set_id.into()))
         .await?;
@@ -53,7 +53,7 @@ pub async fn delete_binding(
                     ..
                 } = binding
                 else {
-                    return Err(FuncAPIError::MissingActionPrototype);
+                    return Err(FuncAPIError::MissingActionPrototype.into());
                 };
 
                 ActionBinding::delete_action_binding(&ctx, action_prototype_id.into_raw_id().into())
@@ -65,11 +65,11 @@ pub async fn delete_binding(
                     func_id,
                 } = binding
                 else {
-                    return Err(FuncAPIError::WrongFunctionKindForBinding);
+                    return Err(FuncAPIError::WrongFunctionKindForBinding.into());
                 };
 
                 let Some(func_id) = func_id else {
-                    return Err(FuncAPIError::MissingFuncId);
+                    return Err(FuncAPIError::MissingFuncId.into());
                 };
 
                 AuthBinding::delete_auth_binding(&ctx, func_id, schema_variant_id).await?
@@ -84,11 +84,11 @@ pub async fn delete_binding(
                     ..
                 }) = binding
                 else {
-                    return Err(FuncAPIError::WrongFunctionKindForBinding);
+                    return Err(FuncAPIError::WrongFunctionKindForBinding.into());
                 };
 
                 let Some(attribute_prototype_id) = attribute_prototype_id else {
-                    return Err(FuncAPIError::MissingPrototypeId);
+                    return Err(FuncAPIError::MissingPrototypeId.into());
                 };
 
                 LeafBinding::delete_leaf_func_binding(
@@ -103,7 +103,7 @@ pub async fn delete_binding(
                     ..
                 } = binding
                 else {
-                    return Err(FuncAPIError::MissingActionPrototype);
+                    return Err(FuncAPIError::MissingActionPrototype.into());
                 };
 
                 ManagementBinding::delete_management_binding(
@@ -115,7 +115,7 @@ pub async fn delete_binding(
             FuncKind::Attribute
             | FuncKind::Intrinsic
             | FuncKind::SchemaVariantDefinition
-            | FuncKind::Unknown => return Err(FuncAPIError::CannotDeleteBindingForFunc),
+            | FuncKind::Unknown => return Err(FuncAPIError::CannotDeleteBindingForFunc.into()),
         };
         match eventual_parent {
             EventualParent::SchemaVariant(schema_variant_id) => {

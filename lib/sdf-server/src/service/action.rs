@@ -1,5 +1,3 @@
-use axum::http::StatusCode;
-use axum::response::{IntoResponse, Response};
 use axum::routing::post;
 use axum::{routing::get, Router};
 use dal::{FuncError as DalFuncError, WsEventError};
@@ -12,7 +10,6 @@ use dal::{
 };
 use dal::{ComponentError, ComponentId, StandardModelError, TransactionsError, UserError, UserPk};
 
-use super::ApiError;
 use crate::AppState;
 
 mod cancel;
@@ -62,18 +59,16 @@ pub enum ActionError {
     WsEventError(#[from] WsEventError),
 }
 
-pub type ActionResult<T> = std::result::Result<T, ActionError>;
+// impl IntoResponse for ActionError {
+//     fn into_response(self) -> Response {
+//         let (status_code, error_message) = match self {
+//             ActionError::InvalidOnHoldTransition(_) => (StatusCode::NOT_MODIFIED, self.to_string()),
+//             _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
+//         };
 
-impl IntoResponse for ActionError {
-    fn into_response(self) -> Response {
-        let (status_code, error_message) = match self {
-            ActionError::InvalidOnHoldTransition(_) => (StatusCode::NOT_MODIFIED, self.to_string()),
-            _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
-        };
-
-        ApiError::new(status_code, error_message).into_response()
-    }
-}
+//         ApiError::new(status_code, error_message).into_response()
+//     }
+// }
 
 pub fn routes() -> Router<AppState> {
     Router::new()

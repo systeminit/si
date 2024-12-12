@@ -1,5 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
+use anyhow::Result;
 use petgraph::{
     prelude::*,
     visit::{Control, DfsEvent},
@@ -9,16 +10,11 @@ use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, workspace_snapshot
 use si_id::EntityId;
 use strum::EnumDiscriminants;
 
+use super::{traits::entity_kind::EntityKindExt, WorkspaceSnapshotGraphVCurrent};
 use crate::{
     workspace_snapshot::{node_weight::NodeWeight, NodeInformation},
     EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants,
 };
-
-use super::{
-    traits::entity_kind::EntityKindExt, WorkspaceSnapshotGraphError, WorkspaceSnapshotGraphVCurrent,
-};
-
-type Result<T> = std::result::Result<T, WorkspaceSnapshotGraphError>;
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, EnumDiscriminants)]
 pub enum Update {

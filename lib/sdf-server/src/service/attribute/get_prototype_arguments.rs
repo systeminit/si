@@ -6,9 +6,9 @@ use dal::{AttributeValue, OutputSocket, OutputSocketId, Prop, PropId, Visibility
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use super::AttributeResult;
 use crate::{
     extract::{v1::AccessBuilder, HandlerContext, PosthogClient},
+    routes::AppError,
     service::attribute::AttributeError,
     track,
 };
@@ -34,7 +34,7 @@ pub async fn get_prototype_arguments(
     OriginalUri(original_uri): OriginalUri,
     Host(host_name): Host,
     Query(request): Query<GetPrototypeArgumentsRequest>,
-) -> AttributeResult<Json<GetPrototypeArgumentsResponse>> {
+) -> Result<Json<GetPrototypeArgumentsResponse>, AppError> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     // Find the attribute values for the provided output location corresponding to the attribute
@@ -47,7 +47,8 @@ pub async fn get_prototype_arguments(
                 return Err(AttributeError::MultipleAttributeValuesForProp(
                     attribute_value_ids.to_owned(),
                     prop_id,
-                ));
+                )
+                .into());
             }
             *attribute_value_ids
                 .first()
@@ -64,18 +65,18 @@ pub async fn get_prototype_arguments(
                 return Err(AttributeError::MultipleAttributeValuesForOutputSocket(
                     attribute_value_ids.to_owned(),
                     output_socket_id,
-                ));
+                )
+                .into());
             }
             *attribute_value_ids.first().ok_or(
                 AttributeError::NoAttributeValuesFoundForOutputSocket(output_socket_id),
             )?
         }
-        (None, None) => return Err(AttributeError::NoOutputLocationsProvided),
+        (None, None) => return Err(AttributeError::NoOutputLocationsProvided.into()),
         (Some(prop_id), Some(ouput_socket_id)) => {
-            return Err(AttributeError::MultipleOutputLocationsProvided(
-                prop_id,
-                ouput_socket_id,
-            ))
+            return Err(
+                AttributeError::MultipleOutputLocationsProvided(prop_id, ouput_socket_id).into(),
+            )
         }
     };
 

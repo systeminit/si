@@ -1,5 +1,6 @@
 use std::collections::HashSet;
 
+use anyhow::Result;
 use axum::{extract::Path, Json};
 use dal::{
     approval_requirement::{ApprovalRequirement, ApprovalRequirementApprover},
@@ -15,8 +16,6 @@ use crate::{
     service::{force_change_set_response::ForceChangeSetResponse, v2::AccessBuilder},
 };
 
-use super::ApprovalRequirementDefinitionError;
-
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Request {
@@ -31,7 +30,7 @@ pub async fn new(
     tracker: PosthogEventTracker,
     Path((_workspace_pk, change_set_id)): Path<(WorkspacePk, ChangeSetId)>,
     Json(request): Json<Request>,
-) -> Result<ForceChangeSetResponse<()>, ApprovalRequirementDefinitionError> {
+) -> Result<ForceChangeSetResponse<()>> {
     let mut ctx = builder
         .build(access_builder.build(change_set_id.into()))
         .await?;

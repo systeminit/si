@@ -74,7 +74,8 @@ impl<'a> SiPkgAttributeValue<'a> {
                 return Err(SiPkgError::UnexpectedPkgNodeType(
                     PkgNode::ATTRIBUTE_VALUE_KIND_STR,
                     unexpected.node_kind_str(),
-                ))
+                )
+                .into())
             }
         };
 
@@ -176,7 +177,7 @@ impl<'a> SiPkgAttributeValue<'a> {
 }
 
 impl<'a> TryFrom<SiPkgAttributeValue<'a>> for AttributeValueSpec {
-    type Error = SiPkgError;
+    type Error = anyhow::Error;
 
     fn try_from(value: SiPkgAttributeValue<'a>) -> Result<Self, Self::Error> {
         let mut builder = AttributeValueSpec::builder();

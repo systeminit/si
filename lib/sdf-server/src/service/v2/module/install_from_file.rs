@@ -1,17 +1,22 @@
-use crate::extract::change_set::ChangeSetDalContext;
-use crate::service::force_change_set_response::ForceChangeSetResponse;
-use crate::service::v2::module::ModulesAPIError;
+use anyhow::Result;
 use axum::extract::Multipart;
-use dal::pkg::import_pkg_from_pkg;
-use dal::{pkg::ImportOptions, ChangeSet, Func, SchemaVariant, WsEvent};
+use dal::{
+    pkg::{import_pkg_from_pkg, ImportOptions},
+    ChangeSet, Func, SchemaVariant, WsEvent,
+};
 use si_frontend_types::SchemaVariant as FrontendVariant;
 use si_pkg::{PkgSpec, SiPkg};
 use telemetry::prelude::*;
 
+use crate::{
+    extract::change_set::ChangeSetDalContext,
+    service::{force_change_set_response::ForceChangeSetResponse, v2::module::ModulesAPIError},
+};
+
 pub async fn install_module_from_file(
     ChangeSetDalContext(ref mut ctx): ChangeSetDalContext,
     mut multipart: Multipart,
-) -> Result<ForceChangeSetResponse<Vec<FrontendVariant>>, ModulesAPIError> {
+) -> Result<ForceChangeSetResponse<Vec<FrontendVariant>>> {
     let force_change_set_id = ChangeSet::force_new(ctx).await?;
 
     let mut maybe_module_json = None;
@@ -25,7 +30,7 @@ pub async fn install_module_from_file(
     }
 
     let Some(module_bytes) = maybe_module_json else {
-        return Err(ModulesAPIError::PkgFileError("Missing file"));
+        return Err(ModulesAPIError::PkgFileError("Missing file").into());
     };
 
     let module_string = String::from_utf8_lossy(&module_bytes);
@@ -37,9 +42,7 @@ pub async fn install_module_from_file(
 
     // After validating that we can install the modules, get on with it.
     if pkg.schemas()?.len() != 1 {
-        return Err(ModulesAPIError::PkgFileError(
-            "Pkg has more than one schema",
-        ));
+        return Err(ModulesAPIError::PkgFileError("Pkg has more than one schema").into());
     }
 
     let (_, variant_ids, _) = import_pkg_from_pkg(
@@ -71,7 +74,7 @@ pub async fn install_module_from_file(
         }
         variants.push(front_end_variant);
     } else {
-        return Err(ModulesAPIError::PkgFileError("Pkg has no variants"));
+        return Err(ModulesAPIError::PkgFileError("Pkg has no variants").into());
     };
 
     ctx.commit().await?;
