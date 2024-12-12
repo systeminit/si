@@ -14,7 +14,9 @@
         ref="dropdownMenuRef"
         v-model="selectedWorkspacePk"
         :options="searchFilteredWorkspaceDropdownOptions"
-        :search="workspaceDropdownOptions.length > 10"
+        :search="
+          workspaceDropdownOptions.length > DEFAULT_DROPDOWN_SEARCH_THRESHOLD
+        "
         placeholder="-- select a workspace --"
         checkable
         variant="navbar"
@@ -43,6 +45,7 @@
 import * as _ from "lodash-es";
 import SiLogo from "@si/vue-lib/brand-assets/si-logo-symbol.svg?component";
 import {
+  DEFAULT_DROPDOWN_SEARCH_THRESHOLD,
   DropdownMenuButton,
   DropdownMenuItem,
   Icon,
