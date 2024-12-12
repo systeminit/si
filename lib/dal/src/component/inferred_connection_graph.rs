@@ -14,6 +14,7 @@
 
 use std::collections::{BTreeSet, HashMap, HashSet};
 
+use anyhow::Result;
 use petgraph::{
     prelude::*,
     visit::{Control, DfsEvent},
@@ -52,7 +53,7 @@ pub enum InferredConnectionGraphError {
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
 
-pub type InferredConnectionGraphResult<T> = Result<T, InferredConnectionGraphError>;
+pub type InferredConnectionGraphResult<T> = Result<T>;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct InferredConnectionGraph {

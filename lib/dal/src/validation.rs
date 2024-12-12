@@ -1,3 +1,4 @@
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
@@ -70,7 +71,7 @@ pub enum ValidationError {
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
 
-pub type ValidationResult<T> = Result<T, ValidationError>;
+pub type ValidationResult<T> = Result<T>;
 
 pub use si_id::ValidationOutputId;
 
@@ -250,8 +251,7 @@ impl ValidationOutput {
         attribute_value_id: AttributeValueId,
     ) -> ValidationResult<Option<String>> {
         Ok(AttributeValue::prop_opt(ctx, attribute_value_id)
-            .await
-            .map_err(Box::new)?
+            .await?
             .and_then(|prop| prop.validation_format))
     }
 
@@ -326,13 +326,8 @@ impl ValidationOutput {
         ctx: &DalContext,
         component_id: ComponentId,
     ) -> ValidationResult<Vec<(AttributeValueId, ValidationOutput)>> {
-        let component = Component::get_by_id(ctx, component_id)
-            .await
-            .map_err(Box::new)?;
-        let domain_av = component
-            .domain_prop_attribute_value(ctx)
-            .await
-            .map_err(Box::new)?;
+        let component = Component::get_by_id(ctx, component_id).await?;
+        let domain_av = component.domain_prop_attribute_value(ctx).await?;
 
         let mut outputs = vec![];
         let mut queue = VecDeque::from(vec![domain_av]);
@@ -343,9 +338,7 @@ impl ValidationOutput {
                     .map(|node| node.validation);
 
             let children_av_ids =
-                AttributeValue::get_child_av_ids_in_order(ctx, attribute_value_id)
-                    .await
-                    .map_err(Box::new)?;
+                AttributeValue::get_child_av_ids_in_order(ctx, attribute_value_id).await?;
 
             queue.extend(children_av_ids);
 

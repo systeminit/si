@@ -1,3 +1,4 @@
+use anyhow::Result;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use si_data_nats::NatsError;
@@ -30,7 +31,7 @@ pub enum HistoryEventError {
     User(String),
 }
 
-pub type HistoryEventResult<T> = Result<T, HistoryEventError>;
+pub type HistoryEventResult<T> = Result<T>;
 
 #[remain::sorted]
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, StrumDisplay, Clone, Copy, Hash)]

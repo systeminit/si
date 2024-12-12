@@ -3,54 +3,56 @@
 //! having code outside of the specific graph version implementation that requires having knowledge
 //! of how the internals of that specific version of the graph work.
 
-use std::collections::{HashMap, HashSet};
-use std::sync::atomic::AtomicBool;
-use std::sync::Arc;
+use std::{
+    collections::{HashMap, HashSet},
+    sync::{atomic::AtomicBool, Arc},
+};
 
-use graph::approval::ApprovalRequirement;
-use graph::correct_transforms::correct_transforms;
-use graph::detector::{Change, Update};
-use graph::{RebaseBatch, WorkspaceSnapshotGraph};
+use anyhow::Result;
 use node_weight::traits::CorrectTransformsError;
 use petgraph::prelude::*;
 use serde::{Deserialize, Serialize};
 use si_data_pg::PgError;
-use si_events::workspace_snapshot::Checksum;
-use si_events::{ulid::Ulid, ContentHash, WorkspaceSnapshotAddress};
+use si_events::{ulid::Ulid, workspace_snapshot::Checksum, ContentHash, WorkspaceSnapshotAddress};
 use si_id::{EntityId, WorkspacePk};
 use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
 use thiserror::Error;
-use tokio::sync::{Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard};
-use tokio::task::JoinError;
-
-use crate::action::{Action, ActionError};
-use crate::attribute::prototype::argument::AttributePrototypeArgumentError;
-use crate::attribute::prototype::AttributePrototypeError;
-use crate::change_set::{ChangeSetError, ChangeSetId};
-use crate::component::inferred_connection_graph::{
-    InferredConnectionGraph, InferredConnectionGraphError,
-};
-use crate::component::{ComponentResult, IncomingConnection};
-use crate::slow_rt::{self, SlowRuntimeError};
-use crate::socket::connection_annotation::ConnectionAnnotationError;
-use crate::socket::input::InputSocketError;
-use crate::workspace_snapshot::{
-    content_address::ContentAddressDiscriminants,
-    edge_weight::{EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants},
-    graph::{LineageId, WorkspaceSnapshotGraphDiscriminants},
-    node_weight::{category_node_weight::CategoryNodeKind, NodeWeight},
-};
-use crate::{
-    workspace_snapshot::{graph::WorkspaceSnapshotGraphError, node_weight::NodeWeightError},
-    DalContext, TransactionsError, WorkspaceSnapshotGraphVCurrent,
-};
-use crate::{
-    AttributeValueId, Component, ComponentError, ComponentId, InputSocketId, OutputSocketId,
-    SchemaId, SchemaVariantId, TenancyError, Workspace, WorkspaceError,
+use tokio::{
+    sync::{Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard},
+    task::JoinError,
 };
 
-use self::node_weight::{NodeWeightDiscriminants, OrderingNodeWeight};
+use crate::{
+    action::{Action, ActionError},
+    attribute::prototype::{argument::AttributePrototypeArgumentError, AttributePrototypeError},
+    change_set::{ChangeSetError, ChangeSetId},
+    component::{
+        inferred_connection_graph::{InferredConnectionGraph, InferredConnectionGraphError},
+        ComponentResult, IncomingConnection,
+    },
+    slow_rt::{self, SlowRuntimeError},
+    socket::{connection_annotation::ConnectionAnnotationError, input::InputSocketError},
+    workspace_snapshot::{
+        content_address::ContentAddressDiscriminants,
+        edge_weight::{EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants},
+        graph::{LineageId, WorkspaceSnapshotGraphDiscriminants, WorkspaceSnapshotGraphError},
+        node_weight::{category_node_weight::CategoryNodeKind, NodeWeight, NodeWeightError},
+    },
+    AttributeValueId, Component, ComponentError, ComponentId, DalContext, InputSocketId,
+    OutputSocketId, SchemaId, SchemaVariantId, TenancyError, TransactionsError, Workspace,
+    WorkspaceError, WorkspaceSnapshotGraphVCurrent,
+};
+
+use self::{
+    graph::{
+        approval::ApprovalRequirement,
+        correct_transforms::correct_transforms,
+        detector::{Change, Update},
+        RebaseBatch, WorkspaceSnapshotGraph,
+    },
+    node_weight::{NodeWeightDiscriminants, OrderingNodeWeight},
+};
 
 pub mod content_address;
 pub mod edge_weight;
@@ -171,7 +173,7 @@ impl WorkspaceSnapshotError {
     }
 }
 
-pub type WorkspaceSnapshotResult<T> = Result<T, WorkspaceSnapshotError>;
+pub type WorkspaceSnapshotResult<T> = Result<T>;
 
 /// The workspace graph. The public interface for this is provided through the the various `Ext`
 /// traits that are implemented for [`WorkspaceSnapshot`].
@@ -1054,7 +1056,7 @@ impl WorkspaceSnapshot {
     ) -> WorkspaceSnapshotResult<Ulid> {
         self.get_category_node(source, kind)
             .await?
-            .ok_or(WorkspaceSnapshotError::CategoryNodeNotFound(kind))
+            .ok_or(WorkspaceSnapshotError::CategoryNodeNotFound(kind).into())
     }
 
     pub async fn get_category_node(
@@ -1762,8 +1764,7 @@ impl WorkspaceSnapshot {
     ) -> WorkspaceSnapshotResult<InferredConnectionsWriteGuard<'_>> {
         let mut inferred_connection_write_guard = self.inferred_connection_graph.write().await;
         if inferred_connection_write_guard.is_none() {
-            *inferred_connection_write_guard =
-                Some(InferredConnectionGraph::new(ctx).await.map_err(Box::new)?);
+            *inferred_connection_write_guard = Some(InferredConnectionGraph::new(ctx).await?);
         }
 
         Ok(InferredConnectionsWriteGuard {
