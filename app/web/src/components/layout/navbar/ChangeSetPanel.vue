@@ -10,7 +10,9 @@
         ref="dropdownMenuRef"
         v-model="selectedChangeSetId"
         :options="changeSetSearchFilteredOptions"
-        :search="changeSetDropdownOptions.length > 20"
+        :search="
+          changeSetDropdownOptions.length > DEFAULT_DROPDOWN_SEARCH_THRESHOLD
+        "
         placeholder="-- select a change set --"
         checkable
         variant="navbar"
@@ -126,6 +128,7 @@ import {
   useValidatedInputGroup,
   DropdownMenuButton,
   DropdownMenuItem,
+  DEFAULT_DROPDOWN_SEARCH_THRESHOLD,
 } from "@si/vue-lib/design-system";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { ChangeSetStatus } from "@/api/sdf/dal/change_set";
