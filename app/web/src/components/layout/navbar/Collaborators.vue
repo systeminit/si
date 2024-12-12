@@ -102,11 +102,13 @@ import { useRoute, useRouter } from "vue-router";
 import Popover from "@/components/Popover.vue";
 import { usePresenceStore } from "@/store/presence.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
+import { useViewsStore } from "@/store/views.store";
 import UserIcon from "./UserIcon.vue";
 import UserCard from "./UserCard.vue";
 
 const presenceStore = usePresenceStore();
 const changeSetsStore = useChangeSetsStore();
+const viewsStore = useViewsStore();
 const router = useRouter();
 const route = useRoute();
 
@@ -116,6 +118,7 @@ export type UserInfo = {
   status?: string | null;
   changeSet?: string;
   pictureUrl?: string | null;
+  view?: string;
 };
 
 const moreUsersPopoverRef = ref();
@@ -140,6 +143,7 @@ const users = computed<UserInfo[]>(() => {
       status: user.idle ? "idle" : "active",
       changeSet: user.changeSetId,
       pictureUrl: user.pictureUrl,
+      view: user.viewId,
     });
   }
 
@@ -278,6 +282,20 @@ const filteredUsers = computed(() => {
 
 function goToUserChangeSet(user: UserInfo) {
   if (!user || !user.changeSet) return;
+
+  if (user.view) {
+    const viewId = viewsStore.viewsById[user.view]?.id;
+    if (viewId) {
+      router.push({
+        name: "workspace-compose-view",
+        params: {
+          ...route.params,
+          viewId,
+        },
+        query: route.query,
+      });
+    }
+  }
 
   router.push({
     name: "change-set-home",
