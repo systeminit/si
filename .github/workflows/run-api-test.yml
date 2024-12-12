@@ -111,7 +111,8 @@ jobs:
             # Check the exit code
             if [ -z "$exit_code" ]; then
               echo "Deno task succeeded [ or the orchestration failed for a totally non-valid reason ]!"
-              exit 0
+              exit_code="53"
+              #exit 0 TODO(johnrwatson): put back to normal after
             fi
 
             n=$((n+1))
@@ -121,23 +122,20 @@ jobs:
 
           if [ $n -ge $max_retries ]; then
             echo "All $max_retries attempts failed."
-            exit_code=1
           fi
 
           echo "last_exit_code=$exit_code" >> "$GITHUB_ENV"
           exit "$exit_code"
 
       - name: Upload artifact if exit code 53
-        if: failure()
+        if: ${{ failure() && env.last_exit_code == '53' }}
         run: |
-          if [ "${{ env.last_exit_code }}" == "53" ]; then
-            echo "Uploading marker for test ${{ matrix.tests.name }}"
-            mkdir -p artifacts/${{ matrix.tests.name }}
-            echo "failure-marker" > artifacts/${{ matrix.tests.name }}/failure-marker
-          fi
+          echo "Uploading marker for test ${{ matrix.tests.name }}"
+          mkdir -p artifacts/${{ matrix.tests.name }}
+          echo "failure-marker" > artifacts/${{ matrix.tests.name }}/failure-marker
 
       - name: Upload artifacts
-        if: failure()
+        if: ${{ failure() && env.last_exit_code == '53' }}
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.tests.name }}
@@ -165,7 +163,9 @@ jobs:
             fi
           done
           # If at least one valid failure marker is present, then page
-          if [ "$has_artifacts" = true ] && [ "${{ github.ref_name }}" = "main" ]; then
+          if [ "$has_artifacts" = true ] && [ "${{ github.ref_name }}" = "feat/fixup-e2e-test" ]; then
+              echo "would've pinged!"
+              exit 0
               curl --location "${{ secrets.FIREHYDRANT_WEBHOOK_URL }}" \
               --header "Content-Type: application/json" \
               --data "{
@@ -183,6 +183,7 @@ jobs:
               }" 
           fi
       - run: |
+          exit 0 #TODO(johnrwatson): disable pings when I dev this out
           # Always send the Internal Slack Notification if failure detected, regardless of error source
           curl --location "${{ secrets.SLACK_WEBHOOK_URL }}" -X POST \
             --header 'Content-type: application/json' \
