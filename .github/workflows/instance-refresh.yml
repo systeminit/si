@@ -4,8 +4,8 @@ run-name: Replacing instances for ${{ inputs.service }}
 
 # Required for IDP JWT and actions/checkout
 permissions:
-      id-token: write
-      contents: read
+  id-token: write
+  contents: read
 
 on:
   workflow_call:

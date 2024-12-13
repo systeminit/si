@@ -1,0 +1,52 @@
+name: Service Restart
+
+run-name: Restarts the service on a given node
+
+# Required for IDP JWT and actions/checkout
+permissions:
+  id-token: write
+  contents: read
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        type: string
+        required: true
+        description: "where to deploy"
+      service:
+        type: string
+        required: true
+        description: "service to deploy"
+
+jobs:
+  restart:
+    environment: ${{ inputs.environment }}
+    concurrency:
+      group: instance-restart-${{ inputs.environment }}-${{ inputs.service }}
+      cancel-in-progress: true
+    name: Service Restart
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ASSUME_ROLE_ARN }}
+          role-session-name: GitHub_to_AWS_via_FederatedOIDC
+          aws-region: us-east-1
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Toggle maintenance if SDF
+        if:  ${{ inputs.service == 'sdf' }}
+        run: |
+          component/toolbox/awsi.sh toggle-maintenance -p pull-from-env -r us-east-1 -s ${{ inputs.service }} -m y -a y
+      # Without a farily involved re-work this is the easiest way to use our existing tooling to achieve the goal.
+      # Basically just quickly drop them all and bring them all back. Not ideal, but hopefully outside of SDF 
+      # The user impact is extremely minimal/short.
+      - name: Down Service Replicas
+        run: |
+          component/toolbox/awsi.sh service-state -p pull-from-env -r us-east-1 -s ${{ inputs.service }} -S down -a y
+
+      - name: Up Service Replicas
+        run: |
+          component/toolbox/awsi.sh service-state -p pull-from-env -r us-east-1 -s ${{ inputs.service }} -S up -a y
