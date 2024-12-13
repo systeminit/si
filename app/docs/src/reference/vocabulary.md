@@ -68,17 +68,17 @@ cloud providers, etc.
 
 ## Configuration Frame (down)
 
-A "down" frame is one where the output sockets of the frame will automatically
+A "down" frame is one where the Output Sockets of the frame will automatically
 connect to any components placed within the frame.
 
 ## Configuration Frame (up)
 
-An "up" frame is one where the output sockets of the components within the frame
+An "up" frame is one where the Output Sockets of the components within the frame
 will connect to the input sockets of the frame.
 
 ## Edge
 
-A representation of a relationship between one component's output socket and
+A representation of a relationship between one component's Output Socket and
 another component's input socket.
 
 ## Entity
@@ -156,3 +156,9 @@ is referred to as a Schema Variant.
 
 Secrets are encrypted data stored for a given type of credential. They are
 defined by a credential component.
+
+## View
+
+Views are a uniquely named and organized collection of components built to create 
+representations of infrastructure configurations that are semantically relevant 
+to a given workflow or user.

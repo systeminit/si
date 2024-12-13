@@ -23,22 +23,22 @@ We will cover:
 
 ## What it will look like when completed
 
-When you have completed this guide, you should have components that look like
-this in your diagram:
+When you have completed this guide, you should have Components that look like
+this in your Diagram:
 
 ![AWS VPC Diagram](./aws-vpc/aws-vpc-complete.png)
 
 ## Walkthrough
 
-### Create a change set
+### Create a Change Set
 
-![Create a change set](./aws-vpc/create-change-set.png)
+![Create a Change Set](./aws-vpc/create-change-set.png)
 
-Create a change set named `VPC How-to`.
+Create a Change Set named `VPC How-to`.
 
 ### Create AWS Credentials
 
-Add a `AWS Credential` to your change set and configure your AWS credentials
+Add a `AWS Credential` to your Change Set and configure your AWS credentials
 
 <video src="./aws-vpc/create-aws-credential.mp4" controls></video>
 
@@ -46,19 +46,19 @@ Add a `AWS Credential` to your change set and configure your AWS credentials
 
 ![Select an AWS Region](./aws-vpc/select-an-aws-region.png)
 
-Add a `AWS Region` to your change set and set the `region` property to
+Add a `AWS Region` to your Change Set and set the `region` property to
 `us-east-1`.
 
-### Create a VPC component
+### Create a VPC Component
 
-![Create a VPC component](./aws-vpc/create-a-vpc-component.png)
+![Create a VPC Component](./aws-vpc/create-a-vpc-Component.png)
 
 Add a `VPC` to your `us-east-1` region frame.
 
-Set the component type to be `Down Frame` and expand it to fill the region
+Set the Component type to be `Down Frame` and expand it to fill the region
 frame.
 
-Set the component name to be `How to VPC`.
+Set the Component name to be `How to VPC`.
 
 Set the `CidrBlock` to be `10.0.0.0/16`
 
@@ -71,7 +71,7 @@ Enable `EnableDnsResolution`.
 ![Create the Public Subnet Components](./aws-vpc/create-public-subnet.png)
 
 This VPC will span multiple availability zones in our AWS Region. Add 3 `Subnet`
-components to your VPC frame and configure them as follows:
+Components to your VPC frame and configure them as follows:
 
 | Component Name | `CidrBlock`   | `AvailabilityZone` | `IsPublic` |
 | -------------- | ------------- | ------------------ | ---------- |
@@ -79,52 +79,52 @@ components to your VPC frame and configure them as follows:
 | Public 2       | 10.0.144.0/20 | us-east-1b         | true       |
 | Public 3       | 10.0.160.0/20 | us-east-1c         | true       |
 
-Set the component type for each of the public subnet components to be
+Set the Component type for each of the public subnet Components to be
 `Configuration Frame (down)`.
 
 ### Create the NAT Gateway Components
 
 ![Create the NAT Gateway Components](./aws-vpc/create-nat-gateway.png)
 
-Add a `NAT Gateway` component to each of the `Public` subnet frames.
+Add a `NAT Gateway` Component to each of the `Public` subnet frames.
 
-Set name names of the component to be `NAT Gateway (1|2|3)` - the index should
+Set name names of the Component to be `NAT Gateway (1|2|3)` - the index should
 align with the subnet it is inside.
 
 ### Create the Elastic IPs for each NAT Gateway
 
 ![Create the Elastic IPs for each NAT Gateway](./aws-vpc/create-elastic-ip.png)
 
-To each of the `Public` subnet frames, add an `Elastic IP` component.
+To each of the `Public` subnet frames, add an `Elastic IP` Component.
 
-Set the names of the components to be `NAT Gateway IP (1|2|3)` - the index
+Set the names of the Components to be `NAT Gateway IP (1|2|3)` - the index
 should align with the subnet it is inside, and match the `NAT Gateway`
-component.
+Component.
 
-Connect the `Allocation ID` output socket of the `Elastic IP` component to the
-`Allocation ID` input socket of the `NAT Gateway` component. The connections
+Connect the `Allocation ID` Output Socket of the `Elastic IP` Component to the
+`Allocation ID` Input Socket of the `NAT Gateway` Component. The connections
 should be in the same subnet.
 
 ### Create the Public Route Table Component
 
 ![Create the Public Route Table Component](./aws-vpc/create-public-route-table.png)
 
-Add a `Route Table` component to the VPC frame.
+Add a `Route Table` Component to the VPC frame.
 
-Set the component type to be `Configuration Frame (down)`.
+Set the Component type to be `Configuration Frame (down)`.
 
-Set the component name to be `Public Route Table`.
+Set the Component name to be `Public Route Table`.
 
-Connect the `Subnet ID` output socket of the Public `Subnet` components to the
-`Subnet ID` input socket of the `Public Route Table` component.
+Connect the `Subnet ID` Output Socket of the Public `Subnet` Components to the
+`Subnet ID` Input Socket of the `Public Route Table` Component.
 
 ### Create a Route Component
 
 ![Create a Route Component](./aws-vpc/create-route.png)
 
-Add a `Route` component to the `Public Route Table` frame.
+Add a `Route` Component to the `Public Route Table` frame.
 
-Set the component name to be `Route to Internet`.
+Set the Component name to be `Route to Internet`.
 
 Set `DestinationCidrBlock` to be `0.0.0.0/0`.
 
@@ -132,27 +132,27 @@ Set `DestinationCidrBlock` to be `0.0.0.0/0`.
 
 ![Create IGW](./aws-vpc/create-igw.png)
 
-Add an `Internet Gateway` component to the VPC frame.
+Add an `Internet Gateway` Component to the VPC frame.
 
 Set the name to be `IGW`.
 
-Connect the `Gateway ID` output socket of the `IGW` component to the
-`Gateway ID` input socket of the `Route to Internet` component in the
+Connect the `Gateway ID` Output Socket of the `IGW` Component to the
+`Gateway ID` Input Socket of the `Route to Internet` Component in the
 `Public Route Table` frame.
 
 ### Create the Private Subnet Components
 
 ![Create the Private Subnet Components](./aws-vpc/create-private-subnet.png)
 
-Add 3 `Subnet` components to your VPC frame and configure them as follows:
+Add 3 `Subnet` Components to your VPC frame and configure them as follows:
 
-| component name | `CidrBlock`  | `AvailabilityZone` |
+| Component name | `CidrBlock`  | `AvailabilityZone` |
 | -------------- | ------------ | ------------------ |
 | Private 1      | 10.0.0.0/19  | us-east-1a         |
 | Private 2      | 10.0.32.0/19 | us-east-1b         |
 | Private 3      | 10.0.64.0/19 | us-east-1c         |
 
-Set the component type for each of the public subnet components to be
+Set the Component type for each of the public subnet Components to be
 `Configuration Frame (down)`.
 
 ### Create the Private Route Table Components
@@ -164,28 +164,28 @@ To each of the `Private` subnet frames, add a `Route Table` Component.
 Set the name to be `Private Route Table 1(2|3)` - the index should align with
 the subnet frame it is inside.
 
-Set the component type for each of the `Private Route Table` components to be
+Set the Component type for each of the `Private Route Table` Components to be
 `Configuration Frame (down)`.
 
 ### Create the Private Route Components
 
 ![Create the Private Route Components](./aws-vpc/create-private-route.png)
 
-Add a `Route` component to each of the `Private Route Table` frames.
+Add a `Route` Component to each of the `Private Route Table` frames.
 
-Set the component name to be `Route to Internet (1|2|3)` - the index should
+Set the Component name to be `Route to Internet (1|2|3)` - the index should
 align with the route table frame it is inside.
 
 Set `DestinationCidrBlock` to be `0.0.0.0/0`.
 
-Connect the output socket `NAT Gateway ID` of `NAT Gateway 1` component to the
-`NAT Gateway ID` input socket of `Route to Internet 1` component.
+Connect the Output Socket `NAT Gateway ID` of `NAT Gateway 1` Component to the
+`NAT Gateway ID` Input Socket of `Route to Internet 1` Component.
 
-Connect the output socket `NAT Gateway ID` of `NAT Gateway 2` component to the
-`NAT Gateway ID` input socket of `Route to Internet 2` component.
+Connect the Output Socket `NAT Gateway ID` of `NAT Gateway 2` Component to the
+`NAT Gateway ID` Input Socket of `Route to Internet 2` Component.
 
-Connect the output socket `NAT Gateway ID` of `NAT Gateway 3` component to the
-`NAT Gateway ID` input socket of `Route to Internet 3` component.
+Connect the Output Socket `NAT Gateway ID` of `NAT Gateway 3` Component to the
+`NAT Gateway ID` Input Socket of `Route to Internet 3` Component.
 
 ### Apply your Change Set
 
@@ -196,7 +196,7 @@ Workspace.
 
 Click the `Apply Change Set` button to:
 
-- Create a VPC component
+- Create a VPC Component
 - Create 6 Subnets
 - Create an Internet Gateway
 - Create 3 Elastic IPs and 3 NAT Gateways
@@ -211,11 +211,15 @@ of your new resources.
 
 ### Clean Up
 
-Create a new change set called `Clean up VPC How-to`
+Create a new Change Set called `Clean up VPC How-to`
 
-Delete your `VPC How-to` VPC frame. All of the components inside will be marked
+Delete your `VPC How-to` VPC frame. All of the Components inside will be marked
 for deletion.
 
 Click `Apply Change Set`.
 
 All your new resources should be deleted from your AWS account.
+
+## Vocabulary
+In this guide bits of System Initiative Vocabulary will be shown with a capital letter. 
+All definitions for these can be found here: [System Initative - Vocabulary](https://docs.systeminit.com/reference/vocabulary) 

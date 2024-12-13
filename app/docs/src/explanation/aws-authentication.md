@@ -11,13 +11,13 @@ System Initiative provides a number of ways to authenticate to AWS.
 
 If you have generated static access keys for a user then you can set
 `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` directly in the `AWS Credential`
-asset.
+Asset.
 
 ## AWS SSO Credentials
 
 If you have generated credentials via the command `aws sso login` then you can
 set `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` and `AWS_SESSION_TOKEN`
-directly in the `AWS Credential` asset.
+directly in the `AWS Credential` Asset.
 
 ## Assuming a Role
 
@@ -28,7 +28,7 @@ nothing except assume roles in other accounts. The ARN of the user is
 
 Every workspace has a unique token assigned to it at creation. It is accessible
 from within your workspace via the gear icon in the upper right. Please treat
-this as a secret.
+this as a Secret.
 
 You can create a role using the token and the arn above, with a trust
 relationship as below and attach any required permissions you want to give the
@@ -55,6 +55,6 @@ role:
 ```
 
 Take the arn of the role that you created and set that in the `AssumeRole` field
-in the AWS Credential asset. You don’t need to set an access key or a secret
-access key. You can ensure it works by putting an AWS Credential on the asset,
-selecting the secret you created and it will validate your credentials.
+in the AWS Credential Asset. You don’t need to set an access key or a secret
+access key. You can ensure it works by putting an AWS Credential on the Asset,
+selecting the Secret you created and it will validate your credentials.

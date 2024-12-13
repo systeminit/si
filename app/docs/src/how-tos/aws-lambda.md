@@ -30,24 +30,24 @@ We will cover:
 
 All activities in this how-to happen within an AWS Region and AWS Credential.
 
-Start in a change set named `ECR Infrastructure How-to`.
+Start in a Change Set named `ECR Infrastructure How-to`.
 
 ## Walkthrough
 
 ### What it will look like
 
-When you are through with this guide, you should have components that look like
-this in your diagram:
+When you are through with this guide, you should have Components that look like
+this in your Diagram:
 
 ![AWS ECS Diagram](./aws-lambda/complete.png)
 
 ### Create AWS Credentials
 
-Add an `AWS Credential` to your change set and configure your AWS credentials
+Add an `AWS Credential` to your Change Set and configure your AWS credentials
 
 ### Select an AWS Region
 
-Add an `AWS Region` to your change set and set the `region` property to
+Add an `AWS Region` to your Change Set and set the `region` property to
 `us-east-1`.
 
 ### Create an ECR Repository
@@ -56,9 +56,9 @@ Add an `AWS Region` to your change set and set the `region` property to
 
 Add an `ECR Private Repository` to your `us-east-1` region frame.
 
-Set the component name to be `lambda-how-to-repository`.
+Set the Component name to be `lambda-how-to-repository`.
 
-Set the component type to be `Configuration Frame (down)`.
+Set the Component type to be `Configuration Frame (down)`.
 
 Set the `repositoryName` to be `lambda-how-to-repository`.
 
@@ -70,15 +70,15 @@ Set `ForceDelete` to be `true`.
 
 Add an `ECR Repository Policy` to your `demo-app-repo` repository frame.
 
-Set the component name to be `lambda-how-to-repository policy`
+Set the Component name to be `lambda-how-to-repository policy`
 
-Set the component type to be `Configuration Frame (up)`.
+Set the Component type to be `Configuration Frame (up)`.
 
 ### Create an IAM Policy Statement
 
 Add an `IAM Policy Statement` to the `lambda-how-to-repository policy` frame.
 
-Set the component name to be `AllowLambdaAccess`.
+Set the Component name to be `AllowLambdaAccess`.
 
 Set the `Sid` to be `AllowLambdaAccess`.
 
@@ -209,17 +209,17 @@ curl "http://localhost:9000/2015-03-31/functions/function/invocations" -d '{}'
 That should give you the correct API response from the container to prove that
 the container has been built correctly.
 
-### Create a new Change set
+### Create a new Change Set
 
-Create a new change set called `Lambda Infra`.
+Create a new Change Set called `Lambda Infra`.
 
 ### Create an IAM Role for the Lambda
 
 ![Create IAM Role](./aws-lambda/create-iam-role-for-lambda.png)
 
-Add an `AWS IAM Role` component to your `us-east-1` region frame.
+Add an `AWS IAM Role` Component to your `us-east-1` region frame.
 
-Set the component name to `Lambda Trust Policy`.
+Set the Component name to `Lambda Trust Policy`.
 
 Set the `RoleName` to `LambdaTrustPolicy`.
 
@@ -232,7 +232,7 @@ Set the `Description` to `IAM Role to for Lambda execution`.
 Add an `AWS IAM Policy Statement` within the `Lambda Trust Policy` AWS IAM Role
 frame.
 
-Set the component name to `LambdaTrustPolicyStatement`.
+Set the Component name to `LambdaTrustPolicyStatement`.
 
 Set the `Effect` to `Allow`.
 
@@ -250,10 +250,10 @@ Set the value to be `lambda.amazonaws.com`.
 
 ![Create IAM Cusstomer Managed Identity Policy](./aws-lambda/create-lambda-identity-policy.png)
 
-Add an `AWS IAM Customer Managed Identity Policy` component to your `us-east-1`
+Add an `AWS IAM Customer Managed Identity Policy` Component to your `us-east-1`
 region frame.
 
-Set the component name to `LambdaECRExecutionRole`.
+Set the Component name to `LambdaECRExecutionRole`.
 
 Set the `RoleName` to `LambdaECRExecutionRole`.
 
@@ -264,7 +264,7 @@ Set the `RoleName` to `LambdaECRExecutionRole`.
 Add an `AWS IAM Policy Statement` within the `LambdaECRExecutionRole` AWS IAM
 Role frame.
 
-Set the component name to `LambdaPermission`.
+Set the Component name to `LambdaPermission`.
 
 Set the `Effect` to `Allow`.
 
@@ -276,8 +276,8 @@ Set the values to be:
 - `ecr:BatchGetImage`
 - `ecr:BatchCheckLayerAvailability`
 
-Connect the `Repository ARN` output socket of the `lambda-how-to-repository` to
-the `Resource` input socket of this `LambdaPermission` component.
+Connect the `Repository ARN` Output Socket of the `lambda-how-to-repository` to
+the `Resource` Input Socket of this `LambdaPermission` Component.
 
 ### Create an AWS IAM Role Policy
 
@@ -285,13 +285,13 @@ the `Resource` input socket of this `LambdaPermission` component.
 
 Add an `AWS IAM Role Policy` to your `us-east-1` region frame.
 
-Set the component name to `Attach Lambda ECR Permissions`.
+Set the Component name to `Attach Lambda ECR Permissions`.
 
-Connect the `RoleName` output socket of the `Lambda Trust Policy` component to
-the `RoleName` of this `Attach Lambda ECR Permissions` component.
+Connect the `RoleName` Output Socket of the `Lambda Trust Policy` Component to
+the `RoleName` of this `Attach Lambda ECR Permissions` Component.
 
-Connect the `ARN` output socket of the `LambdaECRExecutionRole` to the
-`Policy ARN` input socket of this `Attach Lambda ECR Permissions` component.
+Connect the `ARN` Output Socket of the `LambdaECRExecutionRole` to the
+`Policy ARN` Input Socket of this `Attach Lambda ECR Permissions` Component.
 
 ### Create a Lambda Function
 
@@ -299,9 +299,9 @@ Connect the `ARN` output socket of the `LambdaECRExecutionRole` to the
 
 Add a `Lambda Function` to your `us-east-1` region frame.
 
-Set the component name to be `HelloWorldNodeFunction`.
+Set the Component name to be `HelloWorldNodeFunction`.
 
-Set the component type to be `Configuration Frame (down)`.
+Set the Component type to be `Configuration Frame (down)`.
 
 Set the `FunctionName` to be `HelloWorldNodeFunction`.
 
@@ -309,11 +309,11 @@ Set `Publish` to be `true`.
 
 Set `Architectures` to be `arm64`.
 
-Connect the `Repository URI` output socket of the `lambda-how-to-repository` to
-the `Container Image` input socket of this `HelloWorldNodeFunction` component.
+Connect the `Repository URI` Output Socket of the `lambda-how-to-repository` to
+the `Container Image` Input Socket of this `HelloWorldNodeFunction` Component.
 
-Connect the `ARN` output socket of the `Lambda Trust Policy` component to the
-`Role ARN` input socket of this `HelloWorldNodeFunction` component.
+Connect the `ARN` Output Socket of the `Lambda Trust Policy` Component to the
+`Role ARN` Input Socket of this `HelloWorldNodeFunction` Component.
 
 In order to ensure that you are setting the correct version of the container
 image, you can inspect the docker container manifest to ensure you set the
@@ -359,7 +359,7 @@ In this case, I would set the `ContainerImageVersion` to be
 Add a `Lambda Permission` to your `HelloWorldNodeFunction` Lambda function
 frame.
 
-Set the component name to be `FunctionPublicPermission`.
+Set the Component name to be `FunctionPublicPermission`.
 
 Set `Action` to be `lambda:InvokeFunctionUrl`.
 
@@ -376,7 +376,7 @@ Set `StatementId` to be `AllowPublicAccess`.
 Add a `Lambda Function Url` to your `HelloWorldNodeFunction` Lambda function
 frame.
 
-Set the component name to be `FunctionPublicUrl`.
+Set the Component name to be `FunctionPublicUrl`.
 
 Set the `AuthType` to be `NONE`.
 
@@ -397,16 +397,20 @@ Click the `Apply Change Set` button to:
 Review the completed AWS resources by clicking the `Resource` sub-panel for each
 of your new resources.
 
-Select the `FunctionPublicUrl` component on the model. Go to the `Resource Data`
+Select the `FunctionPublicUrl` Component on the Model. Go to the `Resource Data`
 screen and you will find the `FunctionUrl`. You can visit that URL in the
 browser and inspect the running application.
 
 ### Clean Up
 
-Create a new change set called `Clean up How-to`
+Create a new Change Set called `Clean up How-to`
 
-Delete all of the components.
+Delete all of the Components.
 
 Click `Apply Change Set`.
 
 All your new resources should be deleted from your AWS account.
+
+## Vocabulary
+In this guide bits of System Initiative Vocabulary will be shown with a capital letter. 
+All definitions for these can be found here: [System Initative - Vocabulary](https://docs.systeminit.com/reference/vocabulary) 
