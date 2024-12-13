@@ -67,6 +67,7 @@ url = "$SI_NATS_URL"
 [layer_db_config.cache_config]
 disk_path = "$SI_LAYER_CACHE_DISK_PATH"
 disk_admission_rate_limit = $SI_LAYER_CACHE_DISK_ADMISSION_RATE_LIMIT
+disk_recover_concurrency = $SI_LAYER_CACHE_DISK_RECOVER_CONURRENCY
 
 [audit.pg]
 user = "si"
