@@ -1,5 +1,6 @@
 use audit_database::AuditDatabaseContext;
 use audit_logs_stream::AuditLogsStream;
+use color_eyre::eyre::OptionExt;
 use dal::{prop::PropPath, AttributeValue, DalContext, Prop, Schema, SchemaVariant};
 use dal_test::helpers::{
     confirm_jetstream_stream_has_no_messages,
@@ -20,22 +21,21 @@ const STREAM_RETRY_INTERVAL_MILLISECONDS: u64 = 100;
 const SIZE: usize = 200;
 
 #[test]
-async fn round_trip(ctx: &mut DalContext, audit_database_context: AuditDatabaseContext) {
+async fn round_trip(
+    ctx: &mut DalContext,
+    audit_database_context: AuditDatabaseContext,
+) -> color_eyre::Result<()> {
     let context = audit_database_context;
 
     // Collect schema information.
     let schema = Schema::find_by_name(ctx, "swifty")
-        .await
-        .expect("could not perform find by name")
-        .expect("schema not found by name");
+        .await?
+        .ok_or_eyre("schema not found by name")?;
     let schema_variant_id = schema
         .get_default_schema_variant_id(ctx)
-        .await
-        .expect("could not get default schema variant id")
-        .expect("no default schema variant id found");
-    let schema_variant = SchemaVariant::get_by_id_or_error(ctx, schema_variant_id)
-        .await
-        .expect("could not get schema variant");
+        .await?
+        .ok_or_eyre("no default schema variant id found")?;
+    let schema_variant = SchemaVariant::get_by_id_or_error(ctx, schema_variant_id).await?;
 
     // Create a component and commit. Mimic sdf by audit logging here.
     let component_name = "nyj despair_club";
@@ -44,8 +44,7 @@ async fn round_trip(ctx: &mut DalContext, audit_database_context: AuditDatabaseC
         component_name,
         schema_variant_id,
     )
-    .await
-    .expect("could not create component");
+    .await?;
     ctx.write_audit_log(
         AuditLogKind::CreateComponent {
             name: component_name.to_string(),
@@ -55,28 +54,17 @@ async fn round_trip(ctx: &mut DalContext, audit_database_context: AuditDatabaseC
         },
         component_name.to_string(),
     )
-    .await
-    .expect("could not write audit log");
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("could not commit and update snapshot to visibility");
+    .await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
     // Collect the streams needed throughout the test.
     let (source_stream, destination_stream) = {
-        let source_stream_wrapper = PendingEventsStream::get_or_create(ctx.jetstream_context())
-            .await
-            .expect("could not get or create pending events stream");
-        let destination_stream_wrapper = AuditLogsStream::get_or_create(ctx.jetstream_context())
-            .await
-            .expect("could not get or create audit logs stream");
-        let source_stream = source_stream_wrapper
-            .stream()
-            .await
-            .expect("could not get inner stream");
-        let destination_stream = destination_stream_wrapper
-            .stream()
-            .await
-            .expect("could not get inner destination stream");
+        let source_stream_wrapper =
+            PendingEventsStream::get_or_create(ctx.jetstream_context()).await?;
+        let destination_stream_wrapper =
+            AuditLogsStream::get_or_create(ctx.jetstream_context()).await?;
+        let source_stream = source_stream_wrapper.stream().await?;
+        let destination_stream = destination_stream_wrapper.stream().await?;
         (source_stream, destination_stream)
     };
 
@@ -88,14 +76,8 @@ async fn round_trip(ctx: &mut DalContext, audit_database_context: AuditDatabaseC
             STREAM_RETRY_TIMEOUT_SECONDS,
             STREAM_RETRY_INTERVAL_MILLISECONDS,
         )
-        .await
-        .expect("stream message count is greater than zero");
-        let destination_stream_message_count = destination_stream
-            .get_info()
-            .await
-            .expect("could not get destination stream info")
-            .state
-            .messages;
+        .await?;
+        let destination_stream_message_count = destination_stream.get_info().await?.state.messages;
         assert_eq!(
             expected_total,                   // expected
             destination_stream_message_count  // actual
@@ -108,33 +90,26 @@ async fn round_trip(ctx: &mut DalContext, audit_database_context: AuditDatabaseC
             DATABASE_RETRY_TIMEOUT_SECONDS,
             DATABASE_RETRY_INTERVAL_MILLISECONDS,
         )
-        .await
-        .expect("could not list audit logs");
+        .await?;
     }
 
     // Update a property editor value and commit. Mimic sdf by audit logging here.
     let prop_path_raw = ["root", "domain", "name"];
-    let prop = Prop::find_prop_by_path(ctx, schema_variant_id, &PropPath::new(prop_path_raw))
-        .await
-        .expect("could not find prop by path");
+    let prop =
+        Prop::find_prop_by_path(ctx, schema_variant_id, &PropPath::new(prop_path_raw)).await?;
     let mut attribute_value_ids = component
         .attribute_values_for_prop(ctx, &prop_path_raw)
-        .await
-        .expect("could not get attribute values for prop");
+        .await?;
     let attribute_value_id = attribute_value_ids
         .pop()
-        .expect("no attribute values found");
+        .ok_or_eyre("no attribute values found")?;
     assert!(attribute_value_ids.is_empty());
     let before_value = AttributeValue::get_by_id(ctx, attribute_value_id)
-        .await
-        .expect("could not get attribute value by id")
+        .await?
         .value(ctx)
-        .await
-        .expect("could not get value for attribute value");
+        .await?;
     let after_value = Some(serde_json::json!("pain."));
-    AttributeValue::update(ctx, attribute_value_id, after_value.to_owned())
-        .await
-        .expect("could not update attribute value");
+    AttributeValue::update(ctx, attribute_value_id, after_value.to_owned()).await?;
     ctx.write_audit_log(
         AuditLogKind::UpdatePropertyEditorValue {
             component_id: component.id(),
@@ -149,11 +124,8 @@ async fn round_trip(ctx: &mut DalContext, audit_database_context: AuditDatabaseC
         },
         component_name.to_string(),
     )
-    .await
-    .expect("could not write audit log");
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("could not commit and update snapshot to visibility");
+    .await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
     // Check that everything looks as we expect.
     {
@@ -163,14 +135,8 @@ async fn round_trip(ctx: &mut DalContext, audit_database_context: AuditDatabaseC
             STREAM_RETRY_TIMEOUT_SECONDS,
             STREAM_RETRY_INTERVAL_MILLISECONDS,
         )
-        .await
-        .expect("stream message count is greater than zero");
-        let destination_stream_message_count = destination_stream
-            .get_info()
-            .await
-            .expect("could not get destination stream info")
-            .state
-            .messages;
+        .await?;
+        let destination_stream_message_count = destination_stream.get_info().await?.state.messages;
         assert_eq!(
             expected_total,                   // expected
             destination_stream_message_count  // actual
@@ -183,8 +149,7 @@ async fn round_trip(ctx: &mut DalContext, audit_database_context: AuditDatabaseC
             DATABASE_RETRY_TIMEOUT_SECONDS,
             DATABASE_RETRY_INTERVAL_MILLISECONDS,
         )
-        .await
-        .expect("could not list audit logs");
+        .await?;
     }
 
     // Delete a component and commit. Mimic sdf by audit logging here.
@@ -197,16 +162,9 @@ async fn round_trip(ctx: &mut DalContext, audit_database_context: AuditDatabaseC
         },
         component_name.to_string(),
     )
-    .await
-    .expect("could not write audit log");
-    assert!(component
-        .delete(ctx)
-        .await
-        .expect("unable to delete component")
-        .is_none());
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("could not commit and update snapshot to visibility");
+    .await?;
+    assert!(component.delete(ctx).await?.is_none());
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
     // Check that everything looks as we expect.
     {
@@ -216,14 +174,8 @@ async fn round_trip(ctx: &mut DalContext, audit_database_context: AuditDatabaseC
             STREAM_RETRY_TIMEOUT_SECONDS,
             STREAM_RETRY_INTERVAL_MILLISECONDS,
         )
-        .await
-        .expect("stream message count is greater than zero");
-        let destination_stream_message_count = destination_stream
-            .get_info()
-            .await
-            .expect("could not get destination stream info")
-            .state
-            .messages;
+        .await?;
+        let destination_stream_message_count = destination_stream.get_info().await?.state.messages;
         assert_eq!(
             expected_total,                   // expected
             destination_stream_message_count  // actual
@@ -236,7 +188,8 @@ async fn round_trip(ctx: &mut DalContext, audit_database_context: AuditDatabaseC
             DATABASE_RETRY_TIMEOUT_SECONDS,
             DATABASE_RETRY_INTERVAL_MILLISECONDS,
         )
-        .await
-        .expect("could not list audit logs");
+        .await?;
     }
+
+    Ok(())
 }

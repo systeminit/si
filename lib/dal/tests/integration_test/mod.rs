@@ -1,7 +1,6 @@
 mod action;
 mod asset;
 mod attribute;
-mod audit_logging;
 mod change_set;
 mod component;
 mod connection;
@@ -27,3 +26,6 @@ mod secret;
 mod validations;
 mod view;
 mod workspace;
+
+#[warn(clippy::unwrap_used, clippy::expect::used)]
+mod audit_logging;

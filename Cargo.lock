@@ -1838,6 +1838,7 @@ dependencies = [
  "chrono",
  "ciborium",
  "clap",
+ "color-eyre",
  "convert_case 0.6.0",
  "dal-macros",
  "dal-test",
