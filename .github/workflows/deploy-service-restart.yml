@@ -1,0 +1,70 @@
+name: Restart Services to refresh memory
+
+run-name: Refresh Service Unit in ${{ inputs.environment }} by @${{ github.actor }}
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        type: string
+        default: "tools"
+
+  workflow_dispatch:
+    inputs:
+      environment:
+        type: choice
+        required: true
+        description: "Where to deploy"
+        default: "tools"
+        options:
+          - tools
+          - production
+
+# We only one one deploy happening at a time per environment, so if one is
+# in progress, we'll wait for it to finish before starting the
+# next one.
+# Note that this will also wait for E2E tests to finish, as per the crons workflows
+concurrency:
+  group: deploy-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+
+  restart-rebaser:
+    uses: ./.github/workflows/service-restart.yml
+    with:
+      environment: ${{ inputs.environment }}
+      service: rebaser
+    secrets: inherit
+
+  restart-pinga:
+    needs: restart-rebaser
+    uses: ./.github/workflows/service-restart.yml
+    with:
+      environment: ${{ inputs.environment }}
+      service: pinga
+    secrets: inherit
+
+  restart-sdf:
+    needs: restart-pinga
+    uses: ./.github/workflows/service-restart.yml
+    with:
+      environment: ${{ inputs.environment }}
+      service: sdf
+    secrets: inherit
+
+  e2e-validation:
+    needs:
+      - restart-sdf
+    uses: ./.github/workflows/e2e-validation.yml
+    with:
+      environment: ${{ inputs.environment }}
+    secrets: inherit
+
+  api-test:
+    needs:
+      - restart-sdf
+    uses: ./.github/workflows/run-api-test.yml
+    with:
+      environment: ${{ inputs.environment }}
+    secrets: inherit
