@@ -265,11 +265,16 @@ async function execute(
 }
 
 const wrapCode = (code: string) => `
-return (async (component) => {
+module.exports = function(component, callback) {
   ${code}
-  const returnValue = await main(component);
-  return returnValue;
-})()`;
+  const returnValue = main(component);
+  if (returnValue instanceof Promise) {
+    returnValue.then((data) => callback(data))
+  } else {
+    callback(returnValue);
+  }
+};`;
+
 
 export default {
   debug,

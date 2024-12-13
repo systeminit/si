@@ -1,6 +1,6 @@
 import * as _ from "lodash-es";
 import process from "node:process";
-import { base64ToJs } from "./base64.ts";
+import { base64Decode } from "./base64.ts";
 import { createSandbox } from "./sandbox.ts";
 import { ctxFromRequest, Request, RequestCtx } from "./request.ts";
 import joi_validation, {
@@ -18,6 +18,7 @@ import action_run, { ActionRunFunc } from "./function_kinds/action_run.ts";
 import before from "./function_kinds/before.ts";
 import { rawStorageRequest } from "./sandbox/requestStorage.ts";
 import { Debugger } from "./debug.ts";
+import { bundle } from "jsr:@deno/emit";
 
 export enum FunctionKind {
   ActionRun = "actionRun",
@@ -217,7 +218,7 @@ export async function executor<F extends Func, Result>(
 ) {
   let originalCode = "";
   if (!_.isEmpty(func.codeBase64)) {
-    originalCode = await base64ToJs(func.codeBase64);
+    originalCode = base64Decode(func.codeBase64);
   }
 
   const code = wrapCode(originalCode, func.handler);
@@ -241,10 +242,19 @@ export async function runCode(
   execution_id: string,
   with_arg: Record<string, unknown>,
 ): Promise<Record<string, unknown>> {
+  const bundled = await bundleCode(code);
   const sandbox = createSandbox(func_kind, execution_id);
   const keys = Object.keys(sandbox);
   const values = Object.values(sandbox);
 
-  const func = new Function(...keys, "with_arg", code as string);
+  const func = new Function(...keys, "with_arg", bundled);
   return await func(...values, with_arg);
+}
+
+async function bundleCode(code: string) {
+  const tempDir = await Deno.makeTempDir();
+  const tempFile = `${tempDir}/script.ts`;
+  await Deno.writeTextFile(tempFile, code);
+  const fileUrl = new URL(tempFile, import.meta.url);
+  return (await bundle(fileUrl)).code;
 }

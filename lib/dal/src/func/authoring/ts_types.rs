@@ -91,6 +91,10 @@ pub(crate) fn compile_langjs_types() -> &'static str {
         function getKeys(): string[];
     }
 
+    declare namespace package {
+        async function importPackage(pkg: string): Promise<unknown>;
+    }
+
     declare namespace siExec {
 
     interface WatchArgs {
@@ -101,6 +105,7 @@ pub(crate) fn compile_langjs_types() -> &'static str {
         maxRetryCount?: number,
         callback: (child: execa.ExecaReturnValue<string>) => Promise<boolean>,
     }
+
 
     interface WatchResult {
         result: SiExecResult,
