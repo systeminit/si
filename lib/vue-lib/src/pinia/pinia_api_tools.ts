@@ -26,7 +26,7 @@ import {
 } from "@si/ts-lib";
 import { ulid } from "ulid";
 import opentelemetry, { Span } from "@opentelemetry/api";
-import { usePromise, UsePromise } from "../utils/reactivity";
+import { usePromise } from "../utils/reactivity";
 
 const tracer = opentelemetry.trace.getTracer("si-vue");
 

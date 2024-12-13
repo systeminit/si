@@ -1,74 +1,42 @@
-import { computed, reactive, Ref, ref } from "vue";
-import { TracingApi } from "@si/vue-lib/pinia";
-import { ActiveSiStore, defineSiStore } from "./si_store";
+import { computed, reactive } from "vue";
+import { defineSiStore } from "./si_store";
 
 export const usePromptStore = defineSiStore(
-  `wsNONE/admin/prompts`,
-  ({ sdf, subscribe }) => {
-    const api = computed(() => sdf?.endpoint("v2/admin/prompts"));
-    const kind = ref<PromptKind>();
-    const prompts = computed(() => usePrompts(api.value, subscribe, kind));
-    const text = computed(() => useText(api.value, kind.value));
-    const overridden = computed(
-      () =>
-        prompts.value?.value?.find((p) => p.kind === kind.value)?.overridden,
-    );
+  "wsNONE/admin/prompts",
+  (active) => {
+    // When the active state changes, reset and refetch the prompt list.
+    const fetchAll = computed(() => {
+      const _fetchAll = active.sdf?.get<PromptEntry[]>("v2/admin/prompts");
+      // Before fetching, subscribe to updates to keep the list up to date
+      active.subscribe?.("all", [
+        {
+          eventType: "PromptUpdated",
+          callback: ({ kind, overridden }) => {
+            const prompt = _fetchAll?.value?.find((p) => p.kind === kind);
+            if (prompt) prompt.overridden = overridden;
+          },
+        },
+      ]);
+      return _fetchAll;
+    });
 
     return reactive({
-      prompts,
-      selectedPrompt: { kind, text, overridden },
-      sdf,
+      get all() {
+        return fetchAll.value?.value;
+      },
+      get(kind: PromptKind | undefined) {
+        return fetchAll.value?.value?.find((p) => p.kind === kind);
+      },
+      get api() {
+        return active.sdf?.endpoint("v2/admin/prompts");
+      },
     });
   },
 );
 
-function usePrompts(
-  api: TracingApi | undefined,
-  subscribe: ActiveSiStore["subscribe"] | undefined,
-  kind: Ref<PromptKind | undefined>,
-) {
-  const prompts = api?.get<PromptEntry[]>();
+export type PromptKind = string;
 
-  subscribe?.("all", [
-    {
-      eventType: "PromptUpdated",
-      callback: ({ kind, overridden }) => {
-        const prompt = prompts?.value?.find((p) => p.kind === kind);
-        if (prompt) prompt.overridden = overridden;
-      },
-    },
-  ]);
-
-  // Also set the kind to the first prompt if it's not set already.
-  prompts?.then((prompts) => {
-    kind.value ??= prompts[0]?.kind;
-  });
-
-  return prompts;
-}
-
-// Reinitialize and refetch text whenever kind changes
-function useText(api?: TracingApi, kind?: PromptKind) {
-  const text = reactive({
-    value: "",
-    fetched: kind ? api?.get({ kind }) : undefined,
-    reset() {
-      return kind ? api?.delete({ kind }) : undefined;
-    },
-    override() {
-      return kind ? api?.put({ kind, prompt_yaml: text.value }) : undefined;
-    },
-  });
-  // Set the actual text value when it has been retrieved
-  text.fetched?.then(({ prompt_yaml }) => {
-    text.value = prompt_yaml;
-  });
-  return text;
-}
-
-type PromptKind = string;
-
-interface PromptEntry {
+export interface PromptEntry {
   kind: PromptKind;
   overridden: boolean;
 }
