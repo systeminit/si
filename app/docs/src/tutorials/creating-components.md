@@ -1,7 +1,7 @@
 # Creating Components
 
 This tutorial will teach you how to create new
-[components](/reference/vocabulary#components).
+[Components](/reference/vocabulary#Components).
 
 To follow along, you should:
 
@@ -10,27 +10,27 @@ To follow along, you should:
 
 2. You should have your System Initiative workspace open in another window.
 
-This tutorial shows you how to create components and add functions to them.
+This tutorial shows you how to create Components and add functions to them.
 It's focus is on introducing you to the user interface and various high level
 concepts. For deeper details on writing specific function types, [see the
 reference guides](../reference/index.md).
 
 :::tip
 
-While creating components and writing functions does require you to write
+While creating Components and writing functions does require you to write
 TypeScript, don't worry if you aren't familiar with the language. System
 Initiative functions tend to be quite short and easy to reason about. You'll
 pick it up.
 
 :::
 
-## Create a change set
+## Create a Change Set
 
-Click the create change set button.
+Click the create Change Set button.
 
-Name your new change set `Creating Components`
+Name your new Change Set `Creating Components`
 
-Click the `Create change set` button.
+Click the `Create Change Set` button.
 
 ## Switch to the Customize Screen
 
@@ -38,7 +38,7 @@ Click the `Beaker` icon to switch to the customize screen.
 
 ## Create a new Hello World Component
 
-![Create a new Hello World Component](./creating-components/create-a-new-hello-world-component.png)
+![Create a new Hello World Component](./creating-Components/create-a-new-hello-world-Component.png)
 
 Click the `New Asset` button (represented by a `+` icon) in the Assets pallete
 in the left side panel.
@@ -53,13 +53,13 @@ of the screen.
 :::tip
 
 Assets are anything you might need to use in System Initiative - today, they are
-synonymous with components.
+synonymous with Components.
 
 :::
 
 ## Set the Hello World meta-data
 
-![Set the Hello World meta-data](./creating-components/set-the-hello-world-meta-data.png)
+![Set the Hello World meta-data](./creating-Components/set-the-hello-world-meta-data.png)
 
 Set the `Category` to `Tutorial`.
 
@@ -69,12 +69,12 @@ Set the `Description` to `Hello World`.
 
 Set the `color` to `#6cdcf8`.
 
-## Add properties to the Hello World schema
+## Add properties to the Hello World Schema
 
-![Add properties](./creating-components/add-properties.png)
+![Add properties](./creating-Components/add-properties.png)
 
-In the center of the screen is a text editor showing the empty schema of your
-`Hello World` component.
+In the center of the screen is a text editor showing the empty Schema of your
+`Hello World` Component.
 
 The code will look like this when you are finished:
 
@@ -107,7 +107,7 @@ function main() {
 }
 ```
 
-This will create a component with two properties:
+This will create a Component with two properties:
 
 - _Hello_: a string that must be all lowercase
 - _Tags_: an array of Key/Value objects
@@ -116,13 +116,13 @@ Here is how you would write it yourself, step by step.
 
 ### 1. Schema function
 
-You define your components schema by writing a TypeScript function named
+You define your Components schema by writing a TypeScript function named
 `main()`. The function begins by creating a new `AssetBuilder()`, stored in a
 variable named `asset`.
 
 :::tip
 
-This `builder` pattern is a recurring one in schema definition. You will create
+This `builder` pattern is a recurring one in Schema definition. You will create
 new `Builder` objects, then call functions to configure them, and finally call
 `.build()` to output the final definition.
 
@@ -138,7 +138,7 @@ string property will be added.
 The new prop definition starts with a `new PropBuilder()`, on which you will
 call functions on to configure your property.
 
-- `setName` sets the properties name as it will appear in the component
+- `setName` sets the properties name as it will appear in the Component
   attributes panel; in this case, `KeyName`.
 - `setKind` specifies the datatype for this property; in this case, `string`.
 - `setWidget` controls how this property is rendered in the attributes panel;
@@ -183,40 +183,40 @@ auto-format your function as you go.
 
 ### 4. Return the compiled asset
 
-With all your properties added to the schema, you can now return the compiled
+With all your properties added to the Schema, you can now return the compiled
 asset definition with `return asset.build()`.
 
 ## Regenerate the asset
 
-![Regenerate Asset](./creating-components/regenerate-asset.png)
+![Regenerate Asset](./creating-Components/regenerate-asset.png)
 
 Click the `Regenerate Asset` button in the right-side panel.
 
-This will execute your schema definition function and update System Initiative
-with the new schema.
+This will execute your Schema definition function and update System Initiative
+with the new Schema.
 
-## Check your new component
+## Check your new Component
 
-![Check your component](./creating-components/check-your-component.png)
+![Check your Component](./creating-Components/check-your-Component.png)
 
 Click the `Graph` icon to switch to the modeling screen.
 
-Click the `Hello World` component from the Tutorial section of your Assets
-panel, and drop it on the diagram.
+Click the `Hello World` Component from the Tutorial section of your Assets
+panel, and drop it on the Diagram.
 
-Name your `Hello World` component `First Component`.
+Name your `Hello World` Component `First Component`.
 
 You will see that you have the following properties:
 
 - Hello, an empty string field that accepts only lowercase letters
 - Tags, an array of Key/Value objects
 
-## Add a qualification function
+## Add a Qualification function
 
-![Add qualification function](./creating-components/add-qualification-function.png)
+![Add Qualification function](./creating-Components/add-qualification-function.png)
 
 Click the `Beaker` icon to switch back to the customize screen. Ensure you
-`Hello World` asset is selected.
+`Hello World` Asset is selected.
 
 In the `Asset Functions` panel in the left pane, click the `Attach Function`
 button, represented by the blue links icon, and select `+ New Function`.
@@ -228,24 +228,24 @@ Name your Qualification `helloWorldTags`.
 
 ## Set the qualifications meta-data
 
-![Qualification Metadata](./creating-components/qualification-metadata.png)
+![Qualification Metadata](./creating-Components/qualification-metadata.png)
 
 Set the `Display Name` to `Hello World Tags`
 
 ## Write the qualification function
 
-![Write Qualification](./creating-components/write-qualification.png)
+![Write Qualification](./creating-Components/write-qualification.png)
 
-Ensure that any `Hello World` components have a tag with the key `Super` and
+Ensure that any `Hello World` Components have a tag with the key `Super` and
 value is `Duper`.
 
 The code will look like this when you are finished:
 
 ```typescript
-async function main(component: Input): Promise<Output> {
+async function main(Component: Input): Promise<Output> {
   let result: "failure" | "success" = "failure";
   let message = "Must have a tag of Super:Duper.";
-  for (const tag of component.domain.Tags) {
+  for (const tag of Component.domain.Tags) {
     if (tag.Key == "Super" && tag.Value == "Duper") {
       result = "success";
       message = "You are Super Duper!";
@@ -278,20 +278,20 @@ helpful message.
 
 Finally, return the `result` and `message`.
 
-## Check your new qualification function
+## Check your new Qualification function
 
-![Check Qualification](./creating-components/check-qualification.png)
+![Check Qualification](./creating-Components/check-qualification.png)
 
 Click the `Graph` icon to switch to the modeling screen.
 
-Select your `Hello World` component on the diagram.
+Select your `Hello World` Component on the Diagram.
 
 Select the Qualifications sub-panel, and see that your `Hello World Tags`
 function is failing.
 
 ## Clean Up
 
-Abandon your change set to clean up.
+Abandon your Change Set to clean up.
 
 ## Congratulations
 
@@ -299,17 +299,21 @@ In this tutorial you learned:
 
 - How to add a new Asset
 - Configure its meta-data
-- Define its schema
-- Regenerate the asset to update its schema
-- Inspect your new asset
-- Add a qualification function
-- Write qualification function in TypeScript
+- Define its Schema
+- Regenerate the Asset to update its Schema
+- Inspect your new Asset
+- Add a Qualification function
+- Write Qualification function in TypeScript
 
 ## Next Steps
 
 To learn more, explore the reference documentation:
 
 - [Asset Schema Reference](/reference/asset/schema.md) for more information on
-  how to author asset schema, including input and output sockets.
+  how to author Asset Schema, including Input Sockets and Output Sockets.
 - [Asset Function Reference](/reference/asset/function.md) for more information
   on how to write functions
+
+## Vocabulary
+In this tutorial bits of System Initiative Vocabulary will be shown with a capital letter. 
+All definitions for these can be found here: [System Initative - Vocabulary](https://docs.systeminit.com/reference/vocabulary) 

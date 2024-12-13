@@ -28,32 +28,32 @@ you will not be able to release the host before the 24 hour period expires.
 
 ## What it will look like when completed
 
-When you have completed this guide, you should have components that look like
-this in your diagram:
+When you have completed this guide, you should have Components that look like
+this in your Diagram:
 
 ![AWS macOS Diagram](./aws-macos/aws-macos-complete.png)
 
 ## Walkthrough
 
-### Create a change set
+### Create a Change Set
 
-![Create a change set](./aws-macos/create-change-set.png)
+![Create a Change Set](./aws-macos/create-change-set.png)
 
-Create a change set named `MacOS How-to`.
+Create a Change Set named `MacOS How-to`.
 
 ### Create AWS Credentials
 
-Add a `AWS Credential` to your change set and configure your AWS credentials as
+Add a `AWS Credential` to your Change Set and configure your AWS credentials as
 per the
-[getting started guide](../tutorials/getting-started#add-an-aws-credential-component)
+[getting started guide](../tutorials/getting-started#add-an-aws-credential-Component)
 
 ### Select an AWS Region
 
 ![Select an AWS Region](./aws-macos/select-an-aws-region.png)
 
-Add a `AWS Region` to your change set.
+Add a `AWS Region` to your Change Set.
 
-Set the component name to be `us-east-1`.
+Set the Component name to be `us-east-1`.
 
 Set the `region` property to `us-east-1`.
 
@@ -61,64 +61,64 @@ Set the `region` property to `us-east-1`.
 
 ![Select an Ec2 Dedicated Host](./aws-macos/create-ec2-dedicated-host.png)
 
-Add an `EC2 Host` component to the `us-east-1` frame.
+Add an `EC2 Host` Component to the `us-east-1` frame.
 
-Change the component type to be `Down Frame`.
+Change the Component type to be `Down Frame`.
 
-Set the component name to be `macOS dedicated host`
+Set the Component name to be `macOS dedicated host`
 
 Set the `InstanceType` to be `mac2-m2pro.metal`.
 
 Set the `AvailabilityZone` to be `us-east-1c`.
 
-Resize the frame to allow space for a child component to be inside it.
+Resize the frame to allow space for a child Component to be inside it.
 
 ### Select an EC2 Instance Component
 
-![Select an EC2 Instance](./aws-macos/create-ec2-instance-component.png)
+![Select an EC2 Instance](./aws-macos/create-ec2-instance-Component.png)
 
-Add an `EC2 Instance` component to the `macOS dedicated host` frame.
+Add an `EC2 Instance` Component to the `macOS dedicated host` frame.
 
-Set the component name to be `macos-1`.
+Set the Component name to be `macos-1`.
 
 Set the `InstanceType` to be `mac2-m2pro.metal`
 
 ### Create an AMI Component
 
-![Select an AMI](./aws-macos/create-ami-component.png)
+![Select an AMI](./aws-macos/create-ami-Component.png)
 
-Add an `AMI` component to the `us-east-1` frame.
+Add an `AMI` Component to the `us-east-1` frame.
 
-Set the component name to be `macOS Sonoma 14.6.1`
+Set the Component name to be `macOS Sonoma 14.6.1`
 
 Set the `ImageId` to be `ami-083104674423416b8`.
 
-Connect the `Image ID` output socket to the `Image ID` input socket of the
-`macos-1` component.
+Connect the `Image ID` Output Socket to the `Image ID` Input Socket of the
+`macos-1` Component.
 
 ### Create a Security Group Component
 
-![Select a Security Group](./aws-macos/create-security-group-component.png)
+![Select a Security Group](./aws-macos/create-security-group-Component.png)
 
-Add a `Security Group` component to the `us-east-1` frame.
+Add a `Security Group` Component to the `us-east-1` frame.
 
-Set the component name to be `macos-sg`.
+Set the Component name to be `macos-sg`.
 
 Set the `GroupName` to be `macos-sg`.
 
 Set the `Description` to be
 `Security Group to control access to my macOS instance`.
 
-Connect the `Security Group ID` output socket to the `Security Group ID` input
-socket of the `macos-1` component.
+Connect the `Security Group ID` Output Socket to the `Security Group ID` input
+socket of the `macos-1` Component.
 
 ### Create a Security Group Ingress Rule Component
 
-![Select a Security Group Rule Ingress](./aws-macos/create-security-group-ingress-component.png)
+![Select a Security Group Rule Ingress](./aws-macos/create-security-group-ingress-Component.png)
 
-Add a `Security Group Rule (Ingress)` component to the `us-east-1` frame.
+Add a `Security Group Rule (Ingress)` Component to the `us-east-1` frame.
 
-Set the component name to be `ssh ingress rule`
+Set the Component name to be `ssh ingress rule`
 
 Set the `Description` to be `22 inbound to the node`.
 
@@ -129,21 +129,21 @@ Add an `IpRange` array item.
 Set the `IP Range [CIDR]` to be `0.0.0.0/0` and the `Description` to be
 `The world`.
 
-Connect the `Security Group ID` output socket of `macos-sg` component to the
-`Security Group ID` input socket of this `ssh-ingress-rule` component.
+Connect the `Security Group ID` Output Socket of `macos-sg` Component to the
+`Security Group ID` Input Socket of this `ssh-ingress-rule` Component.
 
 ### Create a KeyPair Component
 
-![Select a Key Pair](./aws-macos/create-key-pair-component.png)
+![Select a Key Pair](./aws-macos/create-key-pair-Component.png)
 
-Add a `Key Pair` component to the `us-east-1` frame.
+Add a `Key Pair` Component to the `us-east-1` frame.
 
-Set the component name to be `macos-key`.
+Set the Component name to be `macos-key`.
 
 Set the `KeyName` to be `macos-key`.
 
-Connect the `Key Name` output socket to the `Key Name` input socket of the
-`macos-1` component.
+Connect the `Key Name` Output Socket to the `Key Name` Input Socket of the
+`macos-1` Component.
 
 ### Apply your Change Set
 
@@ -165,11 +165,15 @@ of your new resources.
 
 ### Clean Up
 
-Create a new change set called `Clean up How-to`
+Create a new Change Set called `Clean up How-to`
 
-Delete your `us-east-1` Region frame. All of the components inside will be
+Delete your `us-east-1` Region frame. All of the Components inside will be
 marked for deletion.
 
 Click `Apply Change Set`.
 
 All your new resources should be deleted from your AWS account.
+
+## Vocabulary
+In this guide bits of System Initiative Vocabulary will be shown with a capital letter. 
+All definitions for these can be found here: [System Initative - Vocabulary](https://docs.systeminit.com/reference/vocabulary) 

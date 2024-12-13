@@ -27,24 +27,24 @@ We will cover:
 All activities in this how-to happen within a configured VPC, AWS Region, and AWS
 Credential.
 
-Start in a change set named `EKS How-to`.
+Start in a Change Set named `EKS How-to`.
 
 ## Walkthrough
 
 ### What it will look like
 
-When you are through with this guide, you should have components that look like
-this in your diagram:
+When you are through with this guide, you should have Components that look like
+this in your Diagram:
 
 ![AWS EKS Diagram](./aws-eks/complete.png)
 
-### Create an EKS cluster component
+### Create an EKS cluster Component
 
 ![Create Security Group](./aws-eks/create-eks-cluster.png)
 
 Add an `EKS Cluster` to your `VPC How-to` vpc frame.
 
-Set the component name to `demo-eks-cluster`.
+Set the Component name to `demo-eks-cluster`.
 
 Set the `name` to `demo-eks-cluster`.
 
@@ -56,31 +56,31 @@ Set the value of that array item to `api`.
 
 Set `resourcesVpcConfig.endpointPublicAccess` to be `true`.
 
-Connect the `Subnet ID` output socket of each of the private subnet components
-to the `Subnet ID` input socket of this `demo-eks-cluster` component.
+Connect the `Subnet ID` Output Socket of each of the private subnet Components
+to the `Subnet ID` Input Socket of this `demo-eks-cluster` Component.
 
-### Create a Security Group component for the Cluster
+### Create a Security Group Component for the Cluster
 
 ![Create Security Group](./aws-eks/create-ec2-security-group.png)
 
 Add a `Security Group` to your `VPC How-to` vpc frame.
 
-Set the component name to `eks-cluster-sg`.
+Set the Component name to `eks-cluster-sg`.
 
 Set the `GroupName` to `eks-cluster-sg`.
 
 Set the `Description` to `Security Group to allow access to the EKS Cluster`
 
-Connect the `Security Group ID` output socket of `eks-cluster-sg` component to
-the `Security Group ID` input socket of the `demo-eks-cluster` frame.
+Connect the `Security Group ID` Output Socket of `eks-cluster-sg` Component to
+the `Security Group ID` Input Socket of the `demo-eks-cluster` frame.
 
-### Create an Ingress Rule component
+### Create an Ingress Rule Component
 
 ![Create Ingress Rule](./aws-eks/create-security-group-ingress.png)
 
 Add a `Security Group Rule (Ingress)` to your `VPC How-to` vpc frame.
 
-Set the component name to `eks-cluster-443-ingress`.
+Set the Component name to `eks-cluster-443-ingress`.
 
 Set the `Description` to `Ingress to allow 443 from the world`.
 
@@ -91,24 +91,24 @@ Add an `IpRange` array item.
 Set the `IP Range [CIDR]` to `0.0.0.0/0` and the `Description` to
 `The world`.
 
-Connect the `Security Group ID` output socket of `eks-cluster-sg` component to
-the `Security Group ID` input socket of this `eks-cluster-443-ingress`
-component.
+Connect the `Security Group ID` Output Socket of `eks-cluster-sg` Component to
+the `Security Group ID` Input Socket of this `eks-cluster-443-ingress`
+Component.
 
 ### Create an IAM Role
 
 ![Create IAM Role](./aws-eks/create-iam-role.png)
 
-Add an `AWS IAM Role` component to your `VPC How-to` vpc frame.
+Add an `AWS IAM Role` Component to your `VPC How-to` vpc frame.
 
-Set the component name to `eks-cluster-role`.
+Set the Component name to `eks-cluster-role`.
 
 Set the `RoleName` to `eks-cluster-role`.
 
 Set the `Description` to `IAM Role for EKS Cluster`.
 
-Connect the `ARN` output socket of the `eks-cluster-role` AWS IAM Role to the
-`Role ARN` input socket of your `demo-eks-cluster` EKS Cluster.
+Connect the `ARN` Output Socket of the `eks-cluster-role` AWS IAM Role to the
+`Role ARN` Input Socket of your `demo-eks-cluster` EKS Cluster.
 
 ### Create an AWS IAM Policy Statement
 
@@ -117,7 +117,7 @@ Connect the `ARN` output socket of the `eks-cluster-role` AWS IAM Role to the
 Add an `AWS IAM Policy Statement` within the `demo-eks-cluster-role` AWS IAM
 Role frame.
 
-Set the component name to `eks-cluster-role-policy`.
+Set the Component name to `eks-cluster-role-policy`.
 
 Set the `Effect` to `Allow`.
 
@@ -130,17 +130,17 @@ Set the `[0]` value for the `Action` array to `sts:AssumeRole`.
 Add an `AWS IAM Service Principal` within the `demo-eks-cluster-role` AWS IAM
 Role frame.
 
-Set the component name to `eks.amazonaws.com`.
+Set the Component name to `eks.amazonaws.com`.
 
 Set the `Service` to `eks.amazonaws.com`.
 
-Connect the `Principal` output socket of the `eks.amazonaws.com` AWS IAM AWS
-Service Principal to the `Principal` input socket of your
+Connect the `Principal` Output Socket of the `eks.amazonaws.com` AWS IAM AWS
+Service Principal to the `Principal` Input Socket of your
 `eks-cluster-role-policy` AWS IAM Policy Statement.
 
 ### Connect Additional Access Policies to the IAM Role
 
-Add 2 `Aws IAM Role Policy` components to the `demo-eks-cluster-role` AWS IAM
+Add 2 `Aws IAM Role Policy` Components to the `demo-eks-cluster-role` AWS IAM
 Role frame.
 
 Configure them as follows:
@@ -150,8 +150,8 @@ Configure them as follows:
 | AmazonEKSClusterPolicy | arn:aws:iam::aws:policy/AmazonEKSClusterPolicy |
 | AmazonEKSServicePolicy | arn:aws:iam::aws:policy/AmazonEKSServicePolicy |
 
-Connect the `RoleName` output socket of the `demo-eks-cluster-role` to the
-`RoleName` input socket of each of the AWS IAM Role Policy components in that
+Connect the `RoleName` Output Socket of the `demo-eks-cluster-role` to the
+`RoleName` Input Socket of each of the AWS IAM Role Policy Components in that
 frame.
 
 ### Create a Fargate Profile
@@ -160,18 +160,18 @@ frame.
 
 Add a `Fargate Profile` to your `demo-eks-cluster` eks cluster frame.
 
-Set the component type to `Up Frame`.
+Set the Component type to `Up Frame`.
 
-Set the component name to `demo-fargate-profile`.
+Set the Component name to `demo-fargate-profile`.
 
 Set the `fargateProfileName` to `demo-fargate-profile`.
 
-Connect the `Subnet ID` output socket of each of the private subnet components
-to the `Subnet ID` input socket of this `demo-fargate-profile` component.
+Connect the `Subnet ID` Output Socket of each of the private subnet Components
+to the `Subnet ID` Input Socket of this `demo-fargate-profile` Component.
 
-Add a `POD Profile Selector` component inside the `demo-fargate-profile` frame.
+Add a `POD Profile Selector` Component inside the `demo-fargate-profile` frame.
 
-Set the component name to `default namespace`.
+Set the Component name to `default namespace`.
 
 Set the `namespace` to `default`.
 
@@ -179,16 +179,16 @@ Set the `namespace` to `default`.
 
 ![Create IAM Role for Fargate Profile](./aws-eks/create-iam-role-for-fargate.png)
 
-Add an `AWS IAM Role` component to your `VPC How-to` vpc frame.
+Add an `AWS IAM Role` Component to your `VPC How-to` vpc frame.
 
-Set the component name to `fargate-profile-role`.
+Set the Component name to `fargate-profile-role`.
 
 Set the `RoleName` to `fargate-profile-role`.
 
 Set the `Description` to `IAM Role for EKS Cluster`.
 
-Connect the `ARN` output socket of the `fargate-profile-role` AWS IAM Role to
-the `Role ARN` input socket of your `demo-fargate-profile` Fargate Profile.
+Connect the `ARN` Output Socket of the `fargate-profile-role` AWS IAM Role to
+the `Role ARN` Input Socket of your `demo-fargate-profile` Fargate Profile.
 
 ### Create an AWS IAM Policy Statement
 
@@ -197,7 +197,7 @@ the `Role ARN` input socket of your `demo-fargate-profile` Fargate Profile.
 Add an `AWS IAM Policy Statement` within the `fargate-profile-role` AWS IAM Role
 frame.
 
-Set the component name to `fargate-profile-role-policy`.
+Set the Component name to `fargate-profile-role-policy`.
 
 Set the `Effect` to `Allow`.
 
@@ -210,17 +210,17 @@ Set the `[0]` value for the `Action` array to `sts:AssumeRole`.
 Add an `AWS IAM Service Principal` within the `fargate-profile-role` AWS IAM
 Role frame.
 
-Set the component name to `eks-fargate-pods.amazonaws.com`.
+Set the Component name to `eks-fargate-pods.amazonaws.com`.
 
 Set the `Service` to `eks-fargate-pods.amazonaws.com`.
 
-Connect the `Principal` output socket of the `eks-fargate-pods.amazonaws.com`
-AWS IAM AWS Service Principal to the `Principal` input socket of your
+Connect the `Principal` Output Socket of the `eks-fargate-pods.amazonaws.com`
+AWS IAM AWS Service Principal to the `Principal` Input Socket of your
 `fargate-profile-role-policy` AWS IAM Policy Statement.
 
 ### Connect Additional Access Policy to the IAM Role
 
-Add an `Aws IAM Role Policy` component to the `fargate-profile-role` AWS IAM
+Add an `Aws IAM Role Policy` Component to the `fargate-profile-role` AWS IAM
 Role frame.
 
 Configure it as follows:
@@ -229,17 +229,17 @@ Configure it as follows:
 | -------------------------------------- | -------------------------------------------------------------- |
 | AmazonEKSFargatePodExecutionRolePolicy | arn:aws:iam::aws:policy/AmazonEKSFargatePodExecutionRolePolicy |
 
-Connect the `RoleName` output socket of the `demo-eks-cluster-role` to the
-`RoleName` input socket of each of the AWS IAM Role Policy components in that
+Connect the `RoleName` Output Socket of the `demo-eks-cluster-role` to the
+`RoleName` Input Socket of each of the AWS IAM Role Policy Components in that
 frame.
 
-### Create a NodeGroup component
+### Create a NodeGroup Component
 
 ![Create NodeGroup](./aws-eks/create-nodegroup.png)
 
 Add a `NodeGroup` to your `demo-eks-cluster` eks-cluster frame.
 
-Set the component name to `demo-nodegroup`.
+Set the Component name to `demo-nodegroup`.
 
 Set the `nodegroupName` to `demo-nodegroup`.
 
@@ -255,34 +255,34 @@ Set the `scalingConfig.maxSize` to `3`.
 
 Set the `scalingConfig.minSize` to `1`.
 
-Connect the `Subnet ID` output socket of each of the private subnet components
-to the `Subnet ID` input socket of the `demo-nodegroup` component.
+Connect the `Subnet ID` Output Socket of each of the private subnet Components
+to the `Subnet ID` Input Socket of the `demo-nodegroup` Component.
 
-### Create a Key Pair component
+### Create a Key Pair Component
 
 ![Create Key Pair](./aws-eks/create-key-pair.png)
 
 Add a `Key Pair` to your `demo-eks-cluster` frame.
 
-Set the component name to `demo-eks-nodegroup-key-pair`.
+Set the Component name to `demo-eks-nodegroup-key-pair`.
 
 Set the `KeyName` to `demo-eks-nodegroup-key-pair`.
 
-Connect the `Key Name` output socket of this `demo-eks-nodegroup-key-pair`
-component to the `Key Name` input socket of the `demo-nodegroup` component.
+Connect the `Key Name` Output Socket of this `demo-eks-nodegroup-key-pair`
+Component to the `Key Name` Input Socket of the `demo-nodegroup` Component.
 
 ### Create an IAM Role for Node Group
 
-Add an `AWS IAM Role` component to your `VPC How-to` vpc frame.
+Add an `AWS IAM Role` Component to your `VPC How-to` vpc frame.
 
-Set the component name to `nodegroup-profile-role`.
+Set the Component name to `nodegroup-profile-role`.
 
 Set the `RoleName` to `nodegroup-profile-role`.
 
 Set the `Description` to `IAM Role for EKS Cluster NodeGroup`.
 
-Connect the `ARN` output socket of the `nodegroup-profile-role` AWS IAM Role to
-the `Node Role ARN` input socket of your `demo-nodegroup` NodeGroup.
+Connect the `ARN` Output Socket of the `nodegroup-profile-role` AWS IAM Role to
+the `Node Role ARN` Input Socket of your `demo-nodegroup` NodeGroup.
 
 ### Create an AWS IAM Policy Statement
 
@@ -291,7 +291,7 @@ the `Node Role ARN` input socket of your `demo-nodegroup` NodeGroup.
 Add an `AWS IAM Policy Statement` within the `nodegroup-profile-role` AWS IAM
 Role frame.
 
-Set the component name to `nodegroup-profile-role-policy`.
+Set the Component name to `nodegroup-profile-role-policy`.
 
 Set the `Effect` to `Allow`.
 
@@ -304,17 +304,17 @@ Set the `[0]` value for the `Action` array to `sts:AssumeRole`.
 Add an `AWS IAM Service Principal` within the `nodegroup-profile-role` AWS IAM
 Role frame.
 
-Set the component name to `ec2.amazonaws.com`.
+Set the Component name to `ec2.amazonaws.com`.
 
 Set the `Service` to `ec2.amazonaws.com`.
 
-Connect the `Principal` output socket of the `ec2.amazonaws.com` AWS IAM AWS
-Service Principal to the `Principal` input socket of your
+Connect the `Principal` Output Socket of the `ec2.amazonaws.com` AWS IAM AWS
+Service Principal to the `Principal` Input Socket of your
 `nodegroup-profile-role-policy` AWS IAM Policy Statement.
 
 ### Connect Additional Access Policies to the IAM Role
 
-Add 3 `Aws IAM Role Policy` component to the `nodegroup-profile-role` AWS IAM
+Add 3 `Aws IAM Role Policy` Component to the `nodegroup-profile-role` AWS IAM
 Role frame.
 
 Configure it as follows:
@@ -325,46 +325,46 @@ Configure it as follows:
 | AmazonEC2ContainerRegistryReadOnly | arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly |
 | AmazonEKSWorkerNodePolicy          | arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy          |
 
-Connect the `RoleName` output socket of the `nodegroup-profile-role` to the
-`RoleName` input socket of each of the AWS IAM Role Policy components in that
+Connect the `RoleName` Output Socket of the `nodegroup-profile-role` to the
+`RoleName` Input Socket of each of the AWS IAM Role Policy Components in that
 frame.
 
-### Create a Security Group component for the NodeGroup
+### Create a Security Group Component for the NodeGroup
 
 ![Create Security Group](./aws-eks/create-ec2-security-group-for-nodegroup.png)
 
 Add a `Security Group` to your `demo-eks-cluster` eks cluster frame.
 
-Set the component name to `demo-eks-nodegroup-sg`.
+Set the Component name to `demo-eks-nodegroup-sg`.
 
 Set the `GroupName` to `demo-eks-nodegroup-sg`.
 
 Set the `Description` to `Security Group for the EKS NodeGroup`
 
-Connect the `Security Group ID` output socket of `demo-eks-nodegroup-sg`
-component to the `Security Group ID` input socket of the `demo-nodegroup` frame.
+Connect the `Security Group ID` Output Socket of `demo-eks-nodegroup-sg`
+Component to the `Security Group ID` Input Socket of the `demo-nodegroup` frame.
 
-### Create an Ingress Rule component
+### Create an Ingress Rule Component
 
 ![Create Ingress Rule](./aws-eks/create-security-group-ingress-for-nodegroup.png)
 
 Add a `Security Group Rule (Ingress)` to your `demo-eks-cluster` eks cluster
 frame.
 
-Set the component name to `nodegroup-all-protocol-all-ports`.
+Set the Component name to `nodegroup-all-protocol-all-ports`.
 
 Set the `Description` to
 `Ingress to allow all ports and protocols on the NodeGroup`.
 
 Set the `TrafficPort` to `-1/-1`.
 
-Connect the `Security Group ID` output socket of `demo-eks-nodegroup-sg`
-component to the `Security Group ID` input socket of this
-`nodegroup-all-protocol-all-ports` component.
+Connect the `Security Group ID` Output Socket of `demo-eks-nodegroup-sg`
+Component to the `Security Group ID` Input Socket of this
+`nodegroup-all-protocol-all-ports` Component.
 
-Connect the `Security Group ID` output socket of
-eks-cluster-sg`component to the`Source Traffic Security Group
-ID`input socket of this`nodegroup-all-protocol-all-ports` component.
+Connect the `Security Group ID` Output Socket of
+eks-cluster-sg`Component to the`Source Traffic Security Group
+ID`Input Socket of this`nodegroup-all-protocol-all-ports` Component.
 
 ### Apply your Change Set
 
@@ -425,7 +425,7 @@ error: You must be logged in to the server (Unauthorized)
 This is because my local user does not have any access to the apiserver/nothing
 has been granted within the Cluster access configuration
 
-Start in a change set named `EKS Cluster Access`.
+Start in a Change Set named `EKS Cluster Access`.
 
 ### Update EKS Cluster Access Config
 
@@ -434,7 +434,7 @@ Start in a change set named `EKS Cluster Access`.
 Update the `demo-eks-cluster` `accessConfig.authenticationMode` to be
 `API_AND_CONFIG_MAP`
 
-Right-click on the component and select `Update Cluster Access Config`.
+Right-click on the Component and select `Update Cluster Access Config`.
 
 Note: This change needs to take effect in the cluster before you can add access
 policies. So you will need to retry the failed access entry actions.
@@ -445,7 +445,7 @@ policies. So you will need to retry the failed access entry actions.
 
 Add an `Access Entry` to your `demo-eks-cluster` eks cluster frame.
 
-Set the component name to `My User`.
+Set the Component name to `My User`.
 
 Set the `type` to `STANDARD`.
 
@@ -454,7 +454,7 @@ Set the `principalArn` to `<enter your userArn>`.
 NOTE: The `principalArn` is the ARN of the user I want to grant access to my
 cluster.
 
-Add 2 `Access Policy` components to your `demo-eks-cluster` eks cluster frame.
+Add 2 `Access Policy` Components to your `demo-eks-cluster` eks cluster frame.
 
 Configure them to be as follows:
 
@@ -463,8 +463,8 @@ Configure them to be as follows:
 | AmazonEKSAdminPolicy        | arn:aws:eks::aws:cluster-access-policy/AmazonEKSAdminPolicy        | cluster            |
 | AmazonEKSClusterAdminPolicy | arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy | cluster            |
 
-Connect the `Principal ARN` output socket of the `My User` component to the
-`Principal ARN` input sockets of the Access Policy components
+Connect the `Principal ARN` Output Socket of the `My User` Component to the
+`Principal ARN` Input Sockets of the Access Policy Components
 
 ### Apply your Change Set
 
@@ -515,11 +515,15 @@ of your new resources.
 
 ### Clean Up
 
-Create a new change set called `Clean up How-to`
+Create a new Change Set called `Clean up How-to`
 
-Delete your `VPC How-to` VPC frame. All of the components inside will be marked
+Delete your `VPC How-to` VPC frame. All of the Components inside will be marked
 for deletion.
 
 Click `Apply Change Set`.
 
 All your new resources should be deleted from your AWS account.
+
+## Vocabulary
+In this guide bits of System Initiative Vocabulary will be shown with a capital letter. 
+All definitions for these can be found here: [System Initative - Vocabulary](https://docs.systeminit.com/reference/vocabulary) 

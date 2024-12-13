@@ -15,30 +15,30 @@ To follow along, you should:
 
 3. You should have your System Initiative workspace open in another window.
 
-## Create a change set
+## Create a Change Set
 
-![Create a change set](./actions-and-resources/create-a-change-set.png)
+![Create a Change Set](./actions-and-resources/create-a-change-set.png)
 
-Click the create change set button.
+Click the create Change Set button.
 
-Name your new change set `Actions Tutorial`, and click the `Create change set`
+Name your new Change Set `Actions Tutorial`, and click the `Create Change Set`
 button.
 
-## Add an AWS Credential component and set its properties
+## Add an AWS Credential Component and set its properties
 
-![Add an AWS Credential component and set its properties](./actions-and-resources/add-an-aws-credential-and-set-its-properties.png)
+![Add an AWS Credential Component and set its properties](./actions-and-resources/add-an-aws-credential-and-set-its-properties.png)
 
 Click `AWS Credential` from the AWS category of the asset pallete, and drop it
-on the diagram canvas.
+on the Diagram canvas.
 
-`Resize` the component until it fills most of the visible canvas by dragging the
+`Resize` the Component until it fills most of the visible canvas by dragging the
 lower right corner of the frame.
 
-Name your AWS Credential component `Actions`.
+Name your AWS Credential Component `Actions`.
 
 Click the `Select/add secret` button of the `AWS Credential` property.
 
-If you have completed the Getting Started tutorial, you may have a credential
+If you have completed the Getting Started tutorial, you may have a Credential
 already present you can use. If so, select it, and move on to the next section.
 
 If not, click the `Add Secret` button.
@@ -46,27 +46,27 @@ If not, click the `Add Secret` button.
 Fill in your AWS accounts `Access Key Id` and `Secret Access Key`.
 [Refer to the AWS documentation if you do not know what they are](https://aws.amazon.com/blogs/security/how-to-find-update-access-keys-password-mfa-aws-management-console/).
 
-Click `Store Secret` to securely encrypt and save your secret.
+Click `Store Secret` to securely encrypt and save your Secret.
 
-## Add an AWS Region component and set its properties
+## Add an AWS Region Component and set its properties
 
-![Add an AWS Region component and set its properties](./actions-and-resources/add-an-aws-region-component-and-set-its-properties.png)
+![Add an AWS Region Component and set its properties](./actions-and-resources/add-an-aws-region-Component-and-set-its-properties.png)
 
-Click `Region` from the AWS category of the asset pallete, and drop it on the
-diagram canvas.
+Click `Region` from the AWS category of the Asset pallete, and drop it on the
+Diagram canvas.
 
-`Resize` the component until it fills the credential frame.
+`Resize` the Component until it fills the Credential frame.
 
-Name your AWS Region component `Northern Virginia`.
+Name your AWS Region Component `Northern Virginia`.
 
 Set the `region` property to `us-east-1`.
 
-## Add a VPC component and set its properties
+## Add a VPC Component and set its properties
 
-![Add a VPC component and set its properties](./actions-and-resources/add-a-vpc-component-and-set-its-properties.png)
+![Add a VPC Component and set its properties](./actions-and-resources/add-a-vpc-Component-and-set-its-properties.png)
 
-Click `VPC` from the AWS EC2 category of the asset pallete, and drop it on the
-diagram canvas.
+Click `VPC` from the AWS EC2 category of the Asset pallete, and drop it on the
+Diagram canvas.
 
 Name your VPC `Tutorial Network`.
 
@@ -77,7 +77,7 @@ Name your VPC `Tutorial Network`.
 Click the `Actions` tab in the right side panel. You will see a list of all the
 available [actions](/reference/vocabulary#actions) for the VPC.
 
-The `Tutorial Network` component was created in this change set - so System
+The `Tutorial Network` Component was created in this Change Set - so System
 Initiative has automatically enqueued the `Create VPC` action for you.
 
 ## Apply the Change Set
@@ -96,7 +96,7 @@ Press the `Escape` key or click on an empty area of the canvas to select the
 workspace itself.
 
 Notice that there is a create action for the `VPC Tutorial Network`. All the
-actions enqueued for a change set will be shown here.
+actions enqueued for a Change Set will be shown here.
 
 Click `Apply Change Set`.
 
@@ -165,19 +165,19 @@ Close the panel by clicking the `X`.
 ![Create another Change Set](./actions-and-resources/create-another-change-set.png)
 
 To finish creating your VPC, you need to add a valid `CidrBlock`. To do that,
-you need to create a new change set.
+you need to create a new Change Set.
 
-Click the `Create change set` button.
+Click the `Create Change Set` button.
 
-Name your change set `Fix VPC`.
+Name your Change Set `Fix VPC`.
 
-Click `Create change set`.
+Click `Create Change Set`.
 
 ## Add the CidrBlock property to your VPC
 
 ![Add the CidrBlock property to your VPC](./actions-and-resources/add-the-cidrblock-property-to-your-vpc.png)
 
-Select the `Tutorial Network` VPC component.
+Select the `Tutorial Network` VPC Component.
 
 Set the `CidrBlock` property to `10.0.0.0/24`.
 
@@ -187,12 +187,12 @@ Set the `CidrBlock` property to `10.0.0.0/24`.
 
 Hit `Escape` or click on the diagram background to select the workspace.
 
-Your create action is still enqueued, so this change set shows no proposed
+Your create action is still enqueued, so this Change Set shows no proposed
 actions.
 
 Click `Apply Change Set`.
 
-Confirm that you want to apply this change set by clicking `Apply Changes` in
+Confirm that you want to apply this Change Set by clicking `Apply Changes` in
 the modal.
 
 ## Try to create the VPC again
@@ -271,7 +271,7 @@ has not done so yet.
 
 ![Refreshing the Tutorial Network Resource](./actions-and-resources/refreshing-the-tutorial-network-resource.png)
 
-Click the `Tutorial Network` VPC component on the diagram.
+Click the `Tutorial Network` VPC Component on the diagram.
 
 Click the `Resource` tab in the right side panel.
 
@@ -282,20 +282,20 @@ Click the `Refresh Resource` button, above the `Resource` tab, to ensure you
 have the most up to date resource data.
 
 ::: tip You can also refresh the resource data from the `Diagram Outline` in the
-left panel. Hover over the components entry, and click the small `Refresh` icon.
+left panel. Hover over the Components entry, and click the small `Refresh` icon.
 :::
 
-## Create a new change set
+## Create a new Change Set
 
-![Create a new change set](./actions-and-resources/create-a-new-change-set-part-3.png)
+![Create a new Change Set](./actions-and-resources/create-a-new-change-set-part-3.png)
 
 Now we will update some properties of our VPC, and add
 
-Click the `Create change set` button.
+Click the `Create Change Set` button.
 
-Name your change set `Update VPC`.
+Name your Change Set `Update VPC`.
 
-Click `Create change set`.
+Click `Create Change Set`.
 
 ## Update the properties of the Tutorial Network VPC
 
@@ -305,9 +305,9 @@ Select the `Tutorial Network` VPC.
 
 Click the `Component` tab.
 
-Set the component type to `Configuration Frame (Down)`.
+Set the Component type to `Configuration Frame (Down)`.
 
-`Resize` the frame large enough to hold a new component.
+`Resize` the frame large enough to hold a new Component.
 
 Set the `EnableDnsHostnames` property to true.
 
@@ -322,7 +322,7 @@ Click the `Actions` tab in the right side panel.
 Toggle the `Update VPC Attributes` action to `on`.
 
 This will update the `Tutorial Network` VPC resource to reflect your changed
-component properties when the change set is applied.
+Component properties when the Change Set is applied.
 
 ## Add a Subnet and set its properties
 
@@ -351,16 +351,16 @@ Subnet.
 Click the `...` button next to the `Subnet Create` action. You will see that it
 is `Waiting On` the manual action to update the VPC.
 
-When you apply the change set, the action to update the attributes will run
+When you apply the Change Set, the action to update the attributes will run
 first. If it succeeds, then the action to create your Subnet will run.
 
 ## Apply the Change Set
 
-![Apply the change set](./actions-and-resources/apply-the-change-set-the-end.png)
+![Apply the Change Set](./actions-and-resources/apply-the-change-set-the-end.png)
 
 Click `Apply Change Set`.
 
-Confirm that you want to apply this change set by clicking `Apply Changes` in
+Confirm that you want to apply this Change Set by clicking `Apply Changes` in
 the modal.
 
 ## Observe the action order
@@ -395,7 +395,7 @@ Click the `Apply Changes` button in the modal to confirm.
 
 In this tutorial you learned:
 
-- How to use the Actions tab to enable/disable an action in a change set
+- How to use the Actions tab to enable/disable an action in a Change Set
 - Enqueued actions can be seen in the changes tab
 - Enqueued actions are persisent across change-sets until they succeed
 - Actions are executed in order according to their configuration relationships
@@ -405,3 +405,7 @@ In this tutorial you learned:
 - Updating resources requires changing both properties and enqueing an action
 - Actions set a models resource value through their return value
 - Resources can be refreshed as needed, to ensure an accurate view of the system
+
+## Vocabulary
+In this tutorial bits of System Initiative Vocabulary will be shown with a capital letter. 
+All definitions for these can be found here: [System Initative - Vocabulary](https://docs.systeminit.com/reference/vocabulary) 

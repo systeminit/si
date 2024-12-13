@@ -18,7 +18,7 @@ We will cover:
 - Creating a customer managed identity policy
 - Adding complex statements to the policy
 - Attaching our policy to a user
-- Using the AWS ARN component to manipulate ARNs
+- Using the AWS ARN Component to manipulate ARNs
 
 We will be creating a policy to
 [restrict EC2 access to a specific region](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ExamplePolicies_EC2.html).
@@ -28,19 +28,19 @@ We will be creating a policy to
 All activities in this how-to happen within a configured AWS Region and AWS
 Credential.
 
-Start in a change set named `IAM How-to`. See the [AWS VPC How To](./aws-vpc.md)
+Start in a Change Set named `IAM How-to`. See the [AWS VPC How To](./aws-vpc.md)
 for instructions on how to set this up.
 
 ## Walkthrough
 
 ### What it will look like
 
-When you are through with this guide, you should have components that look like
-this in your diagram:
+When you are through with this guide, you should have Components that look like
+this in your Diagram:
 
 ![AWS IAM Diagram](./aws-iam/aws-iam-complete.png)
 
-### Create an AWS IAM Customer Managed Identity Policy component
+### Create an AWS IAM Customer Managed Identity Policy Component
 
 ![AWS IAM Diagram](./aws-iam/create-managed-identity-policy.png)
 
@@ -49,13 +49,13 @@ You can learn more about
 
 Add an AWS IAM Customer Managed Identity Policy to your `Region` frame.
 
-Set the components name to `Only EC2 In North Virginia`.
+Set the Components name to `Only EC2 In North Virginia`.
 
 Set the `Path` to `/si-howto/`.
 
 Set the `PolicyName` to `only-ec2-in-north-virginia`
 
-### Create an AWS IAM Policy Statement component
+### Create an AWS IAM Policy Statement Component
 
 ![AWS Policy Statement](./aws-iam/create-iam-policy-statement.png)
 
@@ -68,23 +68,23 @@ Set the `Effect` to `Deny`.
 
 Add an item to the `Action` array, and set the value `ec2:*`.
 
-### Create an AWS IAM Any component
+### Create an AWS IAM Any Component
 
 ![AWS IAM Any](./aws-iam/create-iam-any.png)
 
-Add an `AWS IAM Any` component inside your `Only EC2 In North Virginia` policy
+Add an `AWS IAM Any` Component inside your `Only EC2 In North Virginia` policy
 frame.
 
 Set the name to `Any EC2 Resource`.
 
-Connect the `Resource` output socket to the `Resource` input socket of your
+Connect the `Resource` Output Socket to the `Resource` Input Socket of your
 `Only EC2 In North Virginia` statement.
 
-### Create an AWS IAM Condition Operator component
+### Create an AWS IAM Condition Operator Component
 
 ![AWS IAM Condition Operator](./aws-iam/create-condition-operator.png)
 
-Add an `AWS IAM Condition Operator` component inside your
+Add an `AWS IAM Condition Operator` Component inside your
 `Only EC2 In North Virginia` policy frame.
 
 Set the name to `Only allow us-east-1`.
@@ -97,7 +97,7 @@ Change the `ConditionValue` from being set via socket to being set `manually`.
 
 Add an item to the `ConditionValue` array, and set the value to `us-east-1`.
 
-Connect the `Condition` output socket to the `Condition` input socket of your
+Connect the `Condition` Output Socket to the `Condition` Input Socket of your
 `Only EC2 In North Virginia` statement.
 
 ### Review your policy
@@ -131,10 +131,10 @@ following:
 }
 ```
 
-Your components should be passing all their
+Your Components should be passing all their
 [qualifications](/reference/vocabulary#Qualification).
 
-### Create an AWS IAM User component
+### Create an AWS IAM User Component
 
 ![Create IAM User](./aws-iam/create-iam-user.png)
 
@@ -147,19 +147,19 @@ Set the `UserName` to `bobo`.
 
 Set the `Path` to `/si-howto/`.
 
-### Create an AWS IAM User Policy component
+### Create an AWS IAM User Policy Component
 
 ![Create IAM User](./aws-iam/create-iam-user-policy.png)
 
-Add an `AWS IAM User Policy` component to your `Region` frame.
+Add an `AWS IAM User Policy` Component to your `Region` frame.
 
 Set the name to `bobo EC2 Restrictions`.
 
-Connect the `UserName` output socket of your `bobo` AWS IAM User to the
-`UserName` input socket of your `bobo EC2 Restrictions` AWS IAM User Policy.
+Connect the `UserName` Output Socket of your `bobo` AWS IAM User to the
+`UserName` Input Socket of your `bobo EC2 Restrictions` AWS IAM User Policy.
 
-Connect the `ARN` output socket of the `Only EC2 In North Virginia` AWS IAM
-Customer Managed Identity Policy to the `Policy ARN` input socket of your
+Connect the `ARN` Output Socket of the `Only EC2 In North Virginia` AWS IAM
+Customer Managed Identity Policy to the `Policy ARN` Input Socket of your
 `bobo EC2 Restrictions` AWS IAM User Policy.
 
 ### Apply your Change Set
@@ -184,7 +184,7 @@ of your new resources.
 
 ### Clean Up
 
-Create a new change set called `Clean up IAM How-to`
+Create a new Change Set called `Clean up IAM How-to`
 
 Delete your `Only EC2 In North Virginia` policy frame.
 
@@ -212,27 +212,27 @@ Add an `S3 Bucket` in your `region` frame.
 
 Set the name to `bobo-logs`.
 
-#### Create an IAM Policy Statement component
+#### Create an IAM Policy Statement Component
 
-Add an `AWS IAM Policy Statement` component within your Region.
+Add an `AWS IAM Policy Statement` Component within your Region.
 
 Set the name to `Example Policy`.
 
-Connect the `ARN` output socket of `bobo-logs` to the `Resource` input socket of
+Connect the `ARN` Output Socket of `bobo-logs` to the `Resource` Input Socket of
 `Example Policy`.
 
-#### Create an AWS ARN component
+#### Create an AWS ARN Component
 
-Add an `AWS ARN` component within your Region.
+Add an `AWS ARN` Component within your Region.
 
 Set the name to `bobo-logs/*`.
 
-Connect the `ARN` output socket of `bobo-logs` to the `ARN` input socket of
+Connect the `ARN` Output Socket of `bobo-logs` to the `ARN` Input Socket of
 `bobo-logs/*`.
 
 Set the `resource-postfix` to `/*`.
 
-Connect the `ARN` output socket of `bobo-logs/*` to the `Resource` input socket
+Connect the `ARN` Output Socket of `bobo-logs/*` to the `Resource` Input Socket
 of `Example Policy`.
 
 #### Examine the Example Policy
@@ -245,4 +245,8 @@ You can use this style to override or extend any ARN.
 
 #### Clean up
 
-Abandon your `Complex ARN Example` change set.
+Abandon your `Complex ARN Example` Change Set.
+
+## Vocabulary
+In this guide bits of System Initiative Vocabulary will be shown with a capital letter. 
+All definitions for these can be found here: [System Initative - Vocabulary](https://docs.systeminit.com/reference/vocabulary) 

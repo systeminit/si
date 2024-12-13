@@ -28,23 +28,23 @@ We will cover:
 All activities in this how-to happen within a configured VPC, AWS Region and AWS
 Credential.
 
-Start in a change set named `EC2 HA How-to`.
+Start in a Change Set named `EC2 HA How-to`.
 
 ## Walkthrough
 
 ### What it will look like
 
-When you are through with this guide, you should have components that look like
-this in your diagram:
+When you are through with this guide, you should have Components that look like
+this in your Diagram:
 
 ![AWS HA EC2 Diagram](./aws-ha-ec2/aws-ha-ec2-complete.png)
 
-### Create a Loadbalancer component
+### Create a Loadbalancer Component
 
 ![Create Loadbalancer](./aws-ha-ec2/create-loadbalancer.png) Add a
 `Loadbalancer` to your `VPC How-to` vpc frame.
 
-Set the component name to `application-lb`.
+Set the Component name to `application-lb`.
 
 Set the `LbName` to `application-alb`.
 
@@ -54,32 +54,32 @@ Set the `LbType` to be `application`.
 
 Set the `Scheme` to be `internet-facing`.
 
-Connect the `Subnet ID` output socket of each of the public subnet components to
-the `Subnet ID` input socket of the `application-alb` component.
+Connect the `Subnet ID` Output Socket of each of the public subnet Components to
+the `Subnet ID` Input Socket of the `application-alb` Component.
 
-### Create an EC2 security group component for the Loadbalancer
+### Create an EC2 security group Component for the Loadbalancer
 
 ![Create Security Group](./aws-ha-ec2/create-security-group.png)
 
 Add a `Security Group` to your `application-alb` loadbalancer frame.
 
-Set the component name to `ALB Security Group`.
+Set the Component name to `ALB Security Group`.
 
 Set the `GroupName` to `ALB Security Group`.
 
 Set the `Description` to be `ALB to the world`
 
-Connect the `Security Group ID` output socket of `ALB Security Group` component
-to the `Security Group ID` input socket of the `application-alb` frame.
+Connect the `Security Group ID` Output Socket of `ALB Security Group` Component
+to the `Security Group ID` Input Socket of the `application-alb` frame.
 
-### Create an Ec2 Ingress Rule component
+### Create an Ec2 Ingress Rule Component
 
 ![Create Security Group](./aws-ha-ec2/create-security-group-ingress.png)
 
 Add a `Security Group Rule (Ingress)` to your `application-alb` loadbalancer
 frame.
 
-Set the component name to be `alb-8080-ingress`.
+Set the Component name to be `alb-8080-ingress`.
 
 Set the `Description` to be `Public traffic to HTTP 8080`.
 
@@ -90,30 +90,30 @@ Add an `IpRange` array item.
 Set the `IP Range [CIDR]` to be `0.0.0.0/0` and the `Description` to be
 `The world`.
 
-Connect the `Security Group ID` output socket of `ALB Security Group` component
-to the `Security Group ID` input socket of this `alb-8080-ingress` component.
+Connect the `Security Group ID` Output Socket of `ALB Security Group` Component
+to the `Security Group ID` Input Socket of this `alb-8080-ingress` Component.
 
-### Create a Listener component
+### Create a Listener Component
 
 ![Create Listener](./aws-ha-ec2/create-listener.png)
 
-Add a `Listener` component to your `application-alb` loadbalancer frame.
+Add a `Listener` Component to your `application-alb` loadbalancer frame.
 
-Set the component name to `HTTP:8080`.
+Set the Component name to `HTTP:8080`.
 
 Set the `Port` to be `8080`.
 
 Set the `Protocol` to be `HTTP`.
 
-Resize the frame to be large enough to fit another component.
+Resize the frame to be large enough to fit another Component.
 
 ### Create a Target Group
 
 ![Create Target Group](./aws-ha-ec2/create-target-group.png)
 
-Add a `Target Group` component to your `Listener` frame.
+Add a `Target Group` Component to your `Listener` frame.
 
-Set the component name to `app-tg`.
+Set the Component name to `app-tg`.
 
 Set `TgName` to be `app-tg`.
 
@@ -139,26 +139,26 @@ Set `Protocol` to be `HTTP`.
 
 Set `UnhealthyThresholdCount` to be `2`.
 
-Connect the `Target Group ARN` output socket of `app-tg` component to the
-`Target Group ARN` input socket of the `HTTP:8080` frame.
+Connect the `Target Group ARN` Output Socket of `app-tg` Component to the
+`Target Group ARN` Input Socket of the `HTTP:8080` frame.
 
 ### Create an Application Frame
 
 ![Create Application Frame](./aws-ha-ec2/create-application-frame.png)
 
-Add a `Generic Frame` component to your `VPC` frame.
+Add a `Generic Frame` Component to your `VPC` frame.
 
-Set the component name to be `Application`.
+Set the Component name to be `Application`.
 
-Resize the frame to hold many components.
+Resize the frame to hold many Components.
 
 ### Create an IAM Role
 
 ![Create IAM Role](./aws-ha-ec2/create-iam-role.png)
 
-Add an `AWS IAM Role` component to your `Application` frame.
+Add an `AWS IAM Role` Component to your `Application` frame.
 
-Set the component name to `application-role`.
+Set the Component name to `application-role`.
 
 Set the `RoleName` to `application-role`.
 
@@ -173,7 +173,7 @@ Set the `Path` to `/si-tutorial/`.
 Add an `AWS IAM Policy Statement` within the `application-role` AWS IAM Role
 frame.
 
-Set the component name to `allow-ec2`.
+Set the Component name to `allow-ec2`.
 
 Set the `Effect` to `Allow`.
 
@@ -188,12 +188,12 @@ Set the `[0]` value for the `Action` array to `sts:AssumeRole`.
 Add an `AWS IAM Service Principal` within the `application-role` AWS IAM Role
 frame.
 
-Set the component name to `ec2 service`.
+Set the Component name to `ec2 service`.
 
 Set the `Service` to `ec2.amazonaws.com`.
 
-Connect the `Principal` output socket of the `ec2-service` AWS IAM AWS Service
-Principal to the `Principal` input socket of your `allow-ec2` AWS IAM Policy
+Connect the `Principal` Output Socket of the `ec2-service` AWS IAM AWS Service
+Principal to the `Principal` Input Socket of your `allow-ec2` AWS IAM Policy
 Statement.
 
 ### Create an IAM Instance Profile
@@ -202,75 +202,75 @@ Statement.
 
 Add an `IAM Instance Profile` to your `Application` frame.
 
-Set the component name to `application-instance-profile-how-to`.
+Set the Component name to `application-instance-profile-how-to`.
 
 Set the `InstanceProfileName` to `application-instance-profile-how-to`.
 
 Set the `Path` to `/si-tutorial/`.
 
-Connect the `Role Name` output socket of `application-role` IAM Role component
-to the `Role Name` input socket of the `application-instance-profile` IAM
-Instance Profile component.
+Connect the `Role Name` Output Socket of `application-role` IAM Role Component
+to the `Role Name` Input Socket of the `application-instance-profile` IAM
+Instance Profile Component.
 
-### Create a Security Group component for the Application
+### Create a Security Group Component for the Application
 
 ![Create Security Group](./aws-ha-ec2/create-security-group-application.png)
 
 Add a `Security Group` to your `Application` frame.
 
-Set the component name to `application-sg`
+Set the Component name to `application-sg`
 
 Set the `GroupName` to `application-sg`.
 
 Set the `Description` to be `Application Security Group`
 
-### Create an Ec2 Ingress Rule component
+### Create an Ec2 Ingress Rule Component
 
 ![Application Ingress](./aws-ha-ec2/create-application-ingress.png)
 
 Add a `Security Group Rule (Ingress)` to your `Application` frame.
 
-Set the component name to be `application-8080-ingress`.
+Set the Component name to be `application-8080-ingress`.
 
 Set the `Description` to be `8080 inbound to the node`.
 
 Set the `TrafficPort` to be `8080/tcp`.
 
-Connect the `Security Group ID` output socket of `application-sg` component to
-the `Security Group ID` input socket of this `application-8080-ingress`
-component.
+Connect the `Security Group ID` Output Socket of `application-sg` Component to
+the `Security Group ID` Input Socket of this `application-8080-ingress`
+Component.
 
-Connect the `Security Group ID` output socket of `ALB Security Group` component
-to the `Source Traffic Security Group ID` input socket of this
-`application-8080-ingress` component.
+Connect the `Security Group ID` Output Socket of `ALB Security Group` Component
+to the `Source Traffic Security Group ID` Input Socket of this
+`application-8080-ingress` Component.
 
-### Create a Key Pair component
+### Create a Key Pair Component
 
 ![Create Key Pair](./aws-ha-ec2/create-key-pair.png)
 
 Add a `Key Pair` to your `Application` frame.
 
-Set the component name to `application-key-pair`.
+Set the Component name to `application-key-pair`.
 
 Set the `KeyName` to `application-key-pair`.
 
-### Create an AMI component
+### Create an AMI Component
 
 ![Create AMI](./aws-ha-ec2/create-ami.png)
 
 Add an `AMI` to your `Application` frame.
 
-Set the component name to be `Amazon Linux 2023`.
+Set the Component name to be `Amazon Linux 2023`.
 
 Set the `ImageId` to be `ami-0ba9883b710b05ac6`.
 
-### Create a Launch Template component
+### Create a Launch Template Component
 
 ![Create Launch Template](./aws-ha-ec2/create-launch-template.png)
 
-Add a `Launch Template` component to your `Application` frame.
+Add a `Launch Template` Component to your `Application` frame.
 
-Set the component name to `application-launch-template-how-to`.
+Set the Component name to `application-launch-template-how-to`.
 
 Set the `LaunchTemplateName` to `application-launch-template-how-to`.
 
@@ -351,27 +351,27 @@ systemctl enable flask-app
 systemctl start flask-app
 ```
 
-Connect the `Security Group ID` output socket of `application-sg` component to
-the `Security Group ID` input socket of this `application-launch-template`
-component.
+Connect the `Security Group ID` Output Socket of `application-sg` Component to
+the `Security Group ID` Input Socket of this `application-launch-template`
+Component.
 
-Connect the `Key Name` output socket of `application-key-pair-how-to` component
-to the `Key Name` input socket of this `application-launch-template` component.
+Connect the `Key Name` Output Socket of `application-key-pair-how-to` Component
+to the `Key Name` Input Socket of this `application-launch-template` Component.
 
-Connect the `ARN` output socket of `application-instance-profile` component to
-the `Instance Profile ARN` input socket of this `application-launch-template`
-component.
+Connect the `ARN` Output Socket of `application-instance-profile` Component to
+the `Instance Profile ARN` Input Socket of this `application-launch-template`
+Component.
 
-Connect the `Image ID` output socket of `Amazon Linux 2023` component to the
-`Image ID` input socket of this `application-launch-template` component.
+Connect the `Image ID` Output Socket of `Amazon Linux 2023` Component to the
+`Image ID` Input Socket of this `application-launch-template` Component.
 
-### Create an AutoScaling Group component
+### Create an AutoScaling Group Component
 
 ![Create AutoScaling Group](./aws-ha-ec2/create-asg.png)
 
-Add an `AutoScaling Group` component to the `Application` frame.
+Add an `AutoScaling Group` Component to the `Application` frame.
 
-Set the component name to `application-asg`.
+Set the Component name to `application-asg`.
 
 Set `AutoScalingGroupName` to be `application-asg`.
 
@@ -381,16 +381,16 @@ Set `MaxSize` to be 1.
 
 Set `MinSize` to be 0.
 
-Connect the `Launch Template` output socket of `application-launch-template`
-component to the `Launch Template` input socket of this `application-asg`
-component.
+Connect the `Launch Template` Output Socket of `application-launch-template`
+Component to the `Launch Template` Input Socket of this `application-asg`
+Component.
 
-Connect the `Subnet ID` output socket of each of the `Public` subnet components
-to the `Subnet ID` input socket of this `application-asg` component.
+Connect the `Subnet ID` Output Socket of each of the `Public` subnet Components
+to the `Subnet ID` Input Socket of this `application-asg` Component.
 
-Connect the `Target Group ARN` output socket of each of the `app-tg` Target
-Group to the `Target Group ARN` input socket of this `application-asg`
-component.
+Connect the `Target Group ARN` Output Socket of each of the `app-tg` Target
+Group to the `Target Group ARN` Input Socket of this `application-asg`
+Component.
 
 ### Apply your Change Set
 
@@ -415,11 +415,15 @@ of your new resources.
 
 ### Clean Up
 
-Create a new change set called `Clean up How-to`
+Create a new Change Set called `Clean up How-to`
 
-Delete your `VPC How-to` VPC frame. All of the components inside will be marked
+Delete your `VPC How-to` VPC frame. All of the Components inside will be marked
 for deletion.
 
 Click `Apply Change Set`.
 
 All your new resources should be deleted from your AWS account.
+
+## Vocabulary
+In this guide bits of System Initiative Vocabulary will be shown with a capital letter. 
+All definitions for these can be found here: [System Initative - Vocabulary](https://docs.systeminit.com/reference/vocabulary) 

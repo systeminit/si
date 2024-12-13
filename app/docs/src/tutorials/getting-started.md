@@ -20,37 +20,37 @@ To follow along, you'll need three things:
 Your AWS account must have a [Default VPC](https://docs.aws.amazon.com/vpc/latest/userguide/default-vpc.html) to complete the quick start guide. Most accounts do!
 :::
 
-## Creating a change set
+## Creating a Change Set
 
 ![Creating a Change Set](./getting-started/creating-a-change-set.png)
 
-Click the create [change set](../reference/vocabulary#change-set) button.
+Click the create [Change Set](../reference/vocabulary#change-set) button.
 
-Name your new change set `Getting started`, and click the `Create change set`
+Name your new Change Set `Getting started`, and click the `Create Change Set`
 button.
 
-## Add an AWS Credential component
+## Add an AWS Credential Component
 
-![Adding an AWS Credential component](./getting-started/add-an-aws-credential-component.png)
+![Adding an AWS Credential Component](./getting-started/add-an-aws-credential-Component.png)
 
-Click `AWS Credential` from the AWS category of the asset pallete, and drop it
-on the diagram canvas. This creates a new
+Click `AWS Credential` from the AWS category of the Asset pallete, and drop it
+on the Diagram canvas. This creates a new
 [credential](../reference/vocabulary#credential)
-[ component](../reference/vocabulary#component).
+[ Component](../reference/vocabulary#Component).
 
-`Resize` the component until it fills most of the visible canvas by dragging the
+`Resize` the Component until it fills most of the visible canvas by dragging the
 lower right corner of the frame.
 
-## Name your component
+## Name your Component
 
-![Name your component](./getting-started/name-your-component.png)
+![Name your Component](./getting-started/name-your-Component.png)
 
 Click on the `AWS Credential` you just added to the canvas. The panel on the
 right side of your screen will show its properties. It will have a default
 name like `si-1234`.
 
 Change the name to be `Tutorial`. Pressing enter or clicking outside the textbox
-will update the diagram with your new name.
+will update the Diagram with your new name.
 
 ## Add a secret
 
@@ -59,7 +59,7 @@ will update the diagram with your new name.
 Click the `Select/Add Secret` button next to the AWS Credential property. Then
 click `Add Secret`.
 
-Name your secret `Tutorial Secret`.
+Name your Secret `Tutorial Secret`.
 
 Fill in your AWS accounts `Access Key Id` and `Secret Access Key`.
 [Refer to the AWS documentation if you do not know what they are](https://aws.amazon.com/blogs/security/how-to-find-update-access-keys-password-mfa-aws-management-console/).
@@ -68,20 +68,20 @@ Click `Store Secret` to securely encrypt and save your
 [secret](../reference/vocabulary#secret).
 
 :::tip
-If you see a red hexagon in the lower corner of your AWS credential frame (its [qualification](/reference/vocabulary#qualification)) after
+If you see a red hexagon in the lower corner of your AWS Credential frame (its [Qualification](/reference/vocabulary#qualification)) after
 this step, it means that the credentials are invalid and need to be re-entered.
 
 In some cases, you may need to also add your AWS Session Key.
 :::
 
-## Add an AWS Region component and set its properties
+## Add an AWS Region Component and set its properties
 
-![Add an AWS Region component](./getting-started/add-an-aws-region-component-and-set-its-properties.png)
+![Add an AWS Region Component](./getting-started/add-an-aws-region-Component-and-set-its-properties.png)
 
-Click on the `Region` from the AWS category of the asset pallete, and drop it
-inside your `Tutorial` credential frame.
+Click on the `Region` from the AWS category of the Asset pallete, and drop it
+inside your `Tutorial` Credential frame.
 
-Resize the region to fill the space inside the `Tutorial` credential frame.
+Resize the region to fill the space inside the `Tutorial` Credential frame.
 
 Name your region `Northern Virginia`.
 
@@ -91,7 +91,7 @@ Set the `region` property to `us-east-1`.
 
 ![Add an AWS EC2 Key Pair](./getting-started/add-an-aws-ec2-key-pair-and-set-its-properties.png)
 
-Click on the `Key Pair` from the AWS EC2 category of the asset pallete, and drop
+Click on the `Key Pair` from the AWS EC2 category of the Asset pallete, and drop
 it inside your `Northern Virginia` region frame.
 
 Name your key pair `si-tutorial`.
@@ -102,7 +102,7 @@ Set the KeyName property to `si-tutorial`.
 
 ![Add an EC2 Instance](./getting-started/add-an-aws-ec2-instance-and-set-its-properties.png)
 
-Click on the `EC2 Instance` from the AWS EC2 category of the asset pallete, and
+Click on the `EC2 Instance` from the AWS EC2 category of the Asset pallete, and
 drop it inside your `Northern Virginia` region frame.
 
 Name your EC2 Instance `si-tutorial`.
@@ -113,15 +113,15 @@ Set the `InstanceType` property to `t2.micro`.
 
 ![Connect the Key Pair to the EC2 Instance](./getting-started/connect-the-key-pair-to-the-ec2-instance.png)
 
-Click the `Key Name` output socket of your `si-tutorial` Key Pair and connect it
-to the `Key Name` input socket of your new EC2 Instance component by dragging
+Click the `Key Name` Output Socket of your `si-tutorial` Key Pair and connect it
+to the `Key Name` Input Socket of your new EC2 Instance Component by dragging
 the line between them.
 
-## Add an AWS EC2 AMI component and set its properties
+## Add an AWS EC2 AMI Component and set its properties
 
-![Add an AWS EC2 AMI component and set its properties](./getting-started/add-an-aws-ec2-ami-component-and-set-its-properties.png)
+![Add an AWS EC2 AMI Component and set its properties](./getting-started/add-an-aws-ec2-ami-Component-and-set-its-properties.png)
 
-Click on the `AMI` from the AWS EC2 category of the asset pallete, and drop it
+Click on the `AMI` from the AWS EC2 category of the Asset pallete, and drop it
 inside your `Northern Virginia` region frame.
 
 Name your AMI `Fedora CoreOS`.
@@ -132,12 +132,12 @@ Set the `ImageId` property to `ami-068493ac5013f0936`.
 
 ![Connect the AMI to the EC2 Instance](./getting-started/connect-the-ami-to-the-ec2-instance.png)
 
-Connect the `Image ID` output socket of your AMI component to the `Image Id`
-input socket of your EC2 Instance component.
+Connect the `Image ID` Output Socket of your AMI Component to the `Image Id`
+Input Socket of your EC2 Instance Component.
 
-## Apply the change set
+## Apply the Change Set
 
-![Apply the change set](./getting-started/apply-the-change-set.png)
+![Apply the Change Set](./getting-started/apply-the-change-set.png)
 
 Press the Escape key, or click on the background of the canvas, to ensure the
 workspace itself is selected.
@@ -154,10 +154,10 @@ Press the `Apply Changes` button in the dialog to confirm.
 
 ![Create the Key Pair and EC2 Instance Resources](./getting-started/create-the-key-pair-and-ec2-instance-resources.png)
 
-Applying the change set redirects you to the `HEAD` change set, and enqueues
+Applying the Change Set redirects you to the `HEAD` Change Set, and enqueues
 your actions. The proposed changes panel on the right side of the screen shows
 your two pending actions. As the actions are run on AWS, their resulting
-[resources](../reference/vocabulary#resource) are added to each model. As this
+[resources](../reference/vocabulary#resource) are added to each Model. As this
 happens, the actions will disappear from the proposed changes list.
 
 Once both actions have been run, you'll see some confetti, and the changes panel
@@ -177,17 +177,17 @@ Congratulations! You have created your first resources with System Initiative.
 
 ![Clean up](./getting-started/clean-up.png)
 
-Create a new change set called `Cleanup`.
+Create a new Change Set called `Cleanup`.
 
-Select the `Tutorial AWS Credential` component. Press the delete key.
+Select the `Tutorial AWS Credential` Component. Press the delete key.
 
-You'll be presented with a dialog confirming you want to delete the components
+You'll be presented with a dialog confirming you want to delete the Components
 we created previously. Click Confirm.
 
 Press the escape key or click on the canvas background to select the workspace.
 
 Click the Apply Change Set button to delete your EC2 Instance and Key Pair.
-Confirm you want to apply the change set.
+Confirm you want to apply the Change Set.
 
 After the two delete actions are run, you will have a blank workspace, and no
 more resources running in AWS.
@@ -197,9 +197,13 @@ more resources running in AWS.
 Congratulations - you've created your first resources with System Initiative.
 You learned how to:
 
-- Create new change sets
+- Create new Change Sets
 - Add a credentials and secrets
-- Add components to the diagram canvas
-- Configure components by setting their properties
-- Connect components input and output sockets to dynamically configure them
-- Execute actions and create resources by applying a change set
+- Add Components to the Diagram canvas
+- Configure Components by setting their properties
+- Connect Components Input Sockets and Output Sockets to dynamically configure them
+- Execute actions and create resources by applying a Change Set
+
+## Vocabulary
+In this tutorial bits of System Initiative Vocabulary will be shown with a capital letter. 
+All definitions for these can be found here: [System Initative - Vocabulary](https://docs.systeminit.com/reference/vocabulary) 
