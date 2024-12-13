@@ -26,6 +26,7 @@ const DEFAULT_DISK_BUFFER_SIZE: usize = 1024 * 1024 * 128; // 128mb
 const DEFAULT_DISK_BUFFER_FLUSHERS: usize = 2;
 const DEFAULT_DISK_INDEXER_SHARDS: usize = 64;
 const DEFAULT_DISK_RECLAIMERS: usize = 2;
+const DEFAULT_DISK_RECOVER_CONCURRENCY: usize = 8;
 
 static TOTAL_SYSTEM_MEMORY_BYTES: LazyLock<u64> = LazyLock::new(|| {
     let sys = sysinfo::System::new_all();
@@ -126,6 +127,7 @@ where
                     .with_buffer_pool_size(config.disk_buffer_size)
                     .with_eviction_pickers(vec![Box::<FifoPicker>::default()])
                     .with_flushers(config.disk_buffer_flushers)
+                    .with_recover_concurrency(config.disk_recover_concurrency)
                     .with_indexer_shards(config.disk_indexer_shards)
                     .with_reclaimers(config.disk_reclaimers),
             )
@@ -208,6 +210,7 @@ pub struct CacheConfig {
     disk_indexer_shards: usize,
     disk_path: PathBuf,
     disk_reclaimers: usize,
+    disk_recover_concurrency: usize,
 }
 
 impl Default for CacheConfig {
@@ -229,6 +232,7 @@ impl Default for CacheConfig {
             disk_indexer_shards: DEFAULT_DISK_INDEXER_SHARDS,
             disk_path,
             disk_reclaimers: DEFAULT_DISK_RECLAIMERS,
+            disk_recover_concurrency: DEFAULT_DISK_RECOVER_CONCURRENCY,
         }
     }
 }
