@@ -22,7 +22,7 @@ the infrastructure.
 
 [Read the blog post to learn more.](https://www.systeminit.com/blog/opportunity-management-functions)
 
-### Management Functions  (Generally Available)
+### Management Functions (Generally Available)
 
 Management functions allow a model to manage its own attributes; create, update,
 and delete components; and enqueue actions. In their first iteration, they’ll be
@@ -42,6 +42,14 @@ to learn more about import functionality
 Discover builds on import where you can discover all infrastructure within a
 cloud environment
 
+### Visual Templates (In development)
+
+Visual templates will allow you to model your infrastructure and then extract
+that to a management function. The management function will keep all the
+geometry and connections between the components as well as the properties of the
+components. The management function will get added to a newly created asset
+which you can reuse on the diagram.
+
 ## Enterprise Features
 
 Custom authentication, ubiquitous access control, history, etc.
@@ -59,13 +67,19 @@ Read our
 [announcement blog post](https://www.systeminit.com/blog/announcing-approval-workflows)
 to learn more about our approval workflows
 
-### Audit History  (Generally Available)
+### Audit History (Generally Available)
 
 We are providing the functionality that allows users of a workspace to see every
 change that has happened, who made them and when. The first iteration of this
 work will allow users to be able to have basic sorting and filtering of events.
 
-## Views  (Generally Available)
+### Fine Grained Access Control (In planning)
+
+We are providing the ability to attach approvers to specific sets of components,
+via views. This means core parts of the infrastructure can have approvers
+attached to them ensuring safer changes to the infrastructure.
+
+## Views (Generally Available)
 
 <iframe width="560" height="315" src="https://www.youtube.com/embed/qpNxaAojuzI?si=XLnnJy7uWF4ruEVY" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
 
@@ -75,6 +89,13 @@ multiple views. Components in a view can connect to components in another view.
 This enables teams to create diagrams that are specific to their application or
 area of specialization.
 [Read the blog post to learn more.](https://www.systeminit.com/blog/opportunity-views)
+
+## GitHub Actions to drive SI (In development)
+
+We are building the ability for a user to embed System Initiative in their CI/CD
+pipeline. We are building the capability to create an access token for a
+workspace, pass data to a component and trigger a management function and check
+the status of the resulting action.
 
 ## Growing coverage of cloud platforms
 
