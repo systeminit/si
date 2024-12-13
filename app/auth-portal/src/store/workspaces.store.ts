@@ -218,6 +218,13 @@ export const useWorkspacesStore = defineStore("workspaces", {
       });
     },
 
+    async CREATE_AUTOMATION_TOKEN(workspaceId: WorkspaceId) {
+      return new ApiRequest<{ token: string }>({
+        method: "post",
+        url: `/workspaces/${workspaceId}/createAutomationToken`,
+      });
+    },
+
     async CHANGE_MEMBERSHIP(
       workspaceId: WorkspaceId,
       userId: UserId,

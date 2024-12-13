@@ -8,8 +8,8 @@ import { ApiError } from "../lib/api-error";
 import { setCache } from "../lib/cache";
 import { createJWT, verifyJWT } from "../lib/jwt";
 import { tryCatch } from "../lib/try-catch";
-import { getUserById } from "./users.service";
-import { getWorkspaceById } from "./workspaces.service";
+import { getUserById, UserId } from "./users.service";
+import { getWorkspaceById, WorkspaceId } from "./workspaces.service";
 import { posthog } from "../lib/posthog";
 
 export const SI_COOKIE_NAME = "si-auth";
@@ -48,23 +48,33 @@ export async function decodeAuthToken(token: string) {
 
 // Auth tokens used for communication between the user's browser and SDF
 // and between that SDF instance and this auth api if necessary
-type SdfAuthTokenData = {
+export type SdfAuthTokenPayload = SdfAuthTokenPayloadV1 | SdfAuthTokenPayloadV2;
+export type CurrentSdfAuthTokenPayload = SdfAuthTokenPayloadV2;
+export interface SdfAuthTokenPermission {
+  workspaceId: WorkspaceId | "*";
+  roles: ["web" | "automation"];
+}
+
+interface SdfAuthTokenPayloadV2 {
+  version: 2;
+  userId: UserId;
+  allow: SdfAuthTokenPermission[];
+}
+
+// Old auth token versions
+interface SdfAuthTokenPayloadV1 {
   user_pk: string;
   workspace_pk: string;
-};
+}
 
 // will figure out what we want to pass in here...
-export function createSdfAuthToken(userId: string, workspaceId: string) {
-  const payload: SdfAuthTokenData = {
-    user_pk: userId,
-    workspace_pk: workspaceId,
-  };
+export function createSdfAuthToken(payload: SdfAuthTokenPayloadV2) {
   // can add more metadata, expiry, etc...
-  return createJWT(payload, { subject: userId });
+  return createJWT(payload, { subject: payload.userId });
 }
 
 export async function decodeSdfAuthToken(token: string) {
-  return verifyJWT(token) as SdfAuthTokenData & JwtPayload;
+  return verifyJWT(token) as SdfAuthTokenPayload & JwtPayload;
 }
 
 function wipeAuthCookie(ctx: Koa.Context) {

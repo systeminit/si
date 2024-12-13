@@ -69,19 +69,21 @@ async function extractOwnWorkspaceIdParam(ctx: CustomRouteContext) {
   return workspace;
 }
 
-async function isWorkspaceOwner(ctx: CustomRouteContext) {
+async function authorizeWorkspaceRoute(ctx: CustomRouteContext, role?: RoleType) {
   const workspace = await extractWorkspaceIdParam(ctx);
-
   const authUser = extractAuthUser(ctx);
-  const memberRole = await userRoleForWorkspace(authUser.id, workspace.id);
-  if (memberRole !== RoleType.OWNER) {
-    throw new ApiError(
-      "Forbidden",
-      "You do not have the correct permisison to edit this workspace",
-    );
+
+  if (role) {
+    const memberRole = await userRoleForWorkspace(authUser.id, workspace.id);
+    if (memberRole !== role) {
+      throw new ApiError(
+        "Forbidden",
+        "You do not have the correct permission to edit this workspace",
+      );
+    }
   }
 
-  return true;
+  return { authUser, workspace };
 }
 
 router.get("/workspaces/:workspaceId", async (ctx) => {
@@ -141,10 +143,7 @@ router.post("/workspaces/new", async (ctx) => {
 });
 
 router.patch("/workspaces/:workspaceId", async (ctx) => {
-  const authUser = extractAuthUser(ctx);
-  await isWorkspaceOwner(ctx);
-
-  const workspace = await extractOwnWorkspaceIdParam(ctx);
+  const { authUser, workspace } = await authorizeWorkspaceRoute(ctx, RoleType.OWNER);
 
   const reqBody = validate(
     ctx.request.body,
@@ -181,9 +180,7 @@ export type Member = {
   signupAt: Date | null;
 };
 router.get("/workspace/:workspaceId/members", async (ctx) => {
-  extractAuthUser(ctx);
-
-  const workspace = await extractOwnWorkspaceIdParam(ctx);
+  const { workspace } = await authorizeWorkspaceRoute(ctx);
 
   const members: Member[] = [];
   const workspaceMembers = await getWorkspaceMembers(workspace.id);
@@ -202,11 +199,7 @@ router.get("/workspace/:workspaceId/members", async (ctx) => {
 });
 
 router.post("/workspace/:workspaceId/membership", async (ctx) => {
-  // user must be logged in
-  const authUser = extractAuthUser(ctx);
-  await isWorkspaceOwner(ctx);
-
-  const workspace = await extractOwnWorkspaceIdParam(ctx);
+  const { authUser, workspace } = await authorizeWorkspaceRoute(ctx, RoleType.OWNER);
 
   const reqBody = validate(
     ctx.request.body,
@@ -241,11 +234,7 @@ router.post("/workspace/:workspaceId/membership", async (ctx) => {
 });
 
 router.post("/workspace/:workspaceId/members", async (ctx) => {
-  // user must be logged in
-  const authUser = extractAuthUser(ctx);
-  await isWorkspaceOwner(ctx);
-
-  const workspace = await extractOwnWorkspaceIdParam(ctx);
+  const { authUser, workspace } = await authorizeWorkspaceRoute(ctx, RoleType.OWNER);
 
   const reqBody = validate(
     ctx.request.body,
@@ -273,11 +262,7 @@ router.post("/workspace/:workspaceId/members", async (ctx) => {
 });
 
 router.delete("/workspace/:workspaceId/members", async (ctx) => {
-  // user must be logged in
-  const authUser = extractAuthUser(ctx);
-  await isWorkspaceOwner(ctx);
-
-  const workspace = await extractOwnWorkspaceIdParam(ctx);
+  const { authUser, workspace } = await authorizeWorkspaceRoute(ctx, RoleType.OWNER);
 
   const reqBody = validate(
     ctx.request.body,
@@ -310,9 +295,7 @@ router.delete("/workspace/:workspaceId/members", async (ctx) => {
 });
 
 router.patch("/workspaces/:workspaceId/setDefault", async (ctx) => {
-  const authUser = extractAuthUser(ctx);
-
-  const workspace = await extractWorkspaceIdParam(ctx);
+  const { authUser, workspace } = await authorizeWorkspaceRoute(ctx);
 
   tracker.trackEvent(authUser, "set_default_workspace", {
     defaultWorkspaceSetBy: authUser.email,
@@ -327,9 +310,7 @@ router.patch("/workspaces/:workspaceId/setDefault", async (ctx) => {
 });
 
 router.patch("/workspaces/:workspaceId/favourite", async (ctx) => {
-  const authUser = extractAuthUser(ctx);
-
-  const workspace = await extractWorkspaceIdParam(ctx);
+  const { authUser, workspace } = await authorizeWorkspaceRoute(ctx);
 
   const reqBody = validate(
     ctx.request.body,
@@ -366,16 +347,15 @@ router.patch("/workspaces/:workspaceId/favourite", async (ctx) => {
 });
 
 router.get("/workspaces/:workspaceId/go", async (ctx) => {
-  const workspace = await extractOwnWorkspaceIdParam(ctx);
+  const { authUser, workspace } = await authorizeWorkspaceRoute(ctx);
 
+  // TODO check this in all endpoints?
   if (workspace.quarantinedAt !== null) {
     throw new ApiError(
       "Unauthorized",
       `This workspace (ID ${workspace.id}) is quarantined. Contact SI support`,
     );
   }
-
-  const authUser = extractAuthUser(ctx);
 
   // we require the user to have verified their email before they can log into a workspace
   if (!authUser.emailVerified) {
@@ -424,6 +404,18 @@ router.get("/workspaces/:workspaceId/go", async (ctx) => {
   ctx.redirect(redirectUrl);
 });
 
+router.post("/workspaces/:workspaceId/createAutomationToken", async (ctx) => {
+  const { authUser, workspace } = await authorizeWorkspaceRoute(ctx, RoleType.OWNER);
+
+  const token = createSdfAuthToken({
+    version: 2,
+    userId: authUser.id,
+    allow: [{ workspaceId: workspace.id, roles: ["automation"] }],
+  });
+
+  ctx.body = { token };
+});
+
 router.post("/complete-auth-connect", async (ctx) => {
   const reqBody = validate(
     ctx.request.body,
@@ -441,7 +433,11 @@ router.post("/complete-auth-connect", async (ctx) => {
   const user = await getUserById(connectPayload.userId);
   if (!user) throw new ApiError("Conflict", "User no longer exists");
 
-  const token = createSdfAuthToken(user.id, workspace.id);
+  const token = createSdfAuthToken({
+    version: 2,
+    userId: user.id,
+    allow: [{ workspaceId: workspace.id, roles: ["web"] }],
+  });
 
   ctx.body = {
     user,

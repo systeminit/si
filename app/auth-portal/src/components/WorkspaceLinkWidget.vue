@@ -45,6 +45,15 @@
         size="sm"
         iconIdleTone="shade"
         class="flex-none"
+        @click.stop="createToken"
+      />
+      <IconButton
+        tooltip="Settings"
+        tooltipPlacement="top"
+        icon="settings"
+        size="sm"
+        iconIdleTone="shade"
+        class="flex-none"
         @click.stop="openSettings"
       />
     </div>
@@ -157,6 +166,18 @@ const openSettings = async () => {
     name: "workspace-settings",
     params: { workspaceId: props.workspaceId },
   });
+};
+
+const createToken = async () => {
+  if (!props.workspaceId || !workspace.value) return;
+
+  const token = await workspacesStore.CREATE_AUTOMATION_TOKEN(
+    props.workspaceId,
+  );
+  if (token.result.success) {
+    // eslint-disable-next-line no-alert
+    alert(`Token: ${token.result.data.token}`);
+  }
 };
 
 const emit = defineEmits<{
