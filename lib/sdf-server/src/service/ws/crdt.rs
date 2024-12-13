@@ -71,7 +71,7 @@ pub async fn crdt(
     State(broadcast_groups): State<BroadcastGroups>,
     State(nats_multiplexer_clients): State<NatsMultiplexerClients>,
 ) -> Result<impl IntoResponse, WsError> {
-    let workspace_pk = claim.workspace_pk;
+    let workspace_pk = claim.workspace_id();
     let channel_name = Subject::from(format!("crdt.{workspace_pk}.{id}"));
 
     let receiver = nats_multiplexer_clients

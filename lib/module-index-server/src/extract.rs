@@ -4,7 +4,7 @@ use axum::{async_trait, extract::FromRequestParts, http::request::Parts, Json};
 use hyper::StatusCode;
 use s3::{Bucket as S3Bucket, Region as AwsRegion};
 use sea_orm::{DatabaseTransaction, TransactionTrait};
-use si_jwt_public_key::SiJwtClaims;
+use si_jwt_public_key::{SiJwtClaimRole, SiJwtClaims};
 
 use super::app_state::AppState;
 
@@ -95,15 +95,18 @@ impl FromRequestParts<AppState> for Authorization {
         let headers = &parts.headers;
         let authorization_header_value = headers
             .get("Authorization")
-            .ok_or_else(unauthorized_error)?;
+            .ok_or_else(|| unauthorized_error("No Authorization header"))?;
         let auth_token = authorization_header_value
             .to_str()
             .map_err(internal_error)?;
         let user_claim =
-            si_jwt_public_key::validate_bearer_token(jwt_public_signing_key.clone(), &auth_token)
+            si_jwt_public_key::validate_bearer_token(jwt_public_signing_key.clone(), auth_token)
                 .await
-                .map_err(|_| unauthorized_error())?
+                .map_err(unauthorized_error)?
                 .custom;
+        if !user_claim.authorized_for(SiJwtClaimRole::Web) {
+            return Err(unauthorized_error("Not authorized for web role"));
+        }
 
         Ok(Self {
             user_claim,
@@ -126,13 +129,13 @@ fn internal_error(message: impl fmt::Display) -> (StatusCode, Json<serde_json::V
     )
 }
 
-fn unauthorized_error() -> (StatusCode, Json<serde_json::Value>) {
+fn unauthorized_error(message: impl fmt::Display) -> (StatusCode, Json<serde_json::Value>) {
     let status_code = StatusCode::UNAUTHORIZED;
     (
         status_code,
         Json(serde_json::json!({
             "error": {
-                "message": "unauthorized",
+                "message": message.to_string(),
                 "statusCode": status_code.as_u16(),
                 "code": 42,
             },

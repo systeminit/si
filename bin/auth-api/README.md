@@ -36,6 +36,7 @@ instances.
 While working on the auth stack, we still need to run it locally and configure things to point to our local auth stack:
 
 - update auth-api env vars in `bin/auth-api/.env.local`
+    - if you don't have .env.local yet, copy the `auth api local dev .env.local` key into the `.env.local` file.
     - fill in `AUTH0_CLIENT_SECRET` and `AUTH0_M2M_CLIENT_SECRET` and `STRIPE_API_KEY` (get from 1pass)
     - (OPTIONAL) set auth-api redis url to a locally running redis instance (ex: `REDIS_URL=127.0.0.1:6379`) only if
       needing to test redis. Falls back to in-memory storage...
@@ -44,12 +45,14 @@ While working on the auth stack, we still need to run it locally and configure t
     VITE_AUTH_API_URL=http://localhost:9001
     VITE_AUTH_PORTAL_URL=http://localhost:9000
   ```
-- run the backend but using the local auth stack by setting env var `SI_AUTH_API_URL=http://localhost:9001` (
-  ex: `SI_AUTH_API_URL=http://localhost:9001 buck2 run dev:up`)
-- run the db migrations (`pnpm run db:reset`) locally after booting your local database
+- run the db migrations (`pnpm run db:reset`) locally after booting your local database (run `buck2 dev:stop` and then `buck2 dev` and hope nobody connects in the meantime!).
 - run the auth api `pnpm run dev` in this directory or `pnpm dev:auth-api` at the root
 - run the auth portal `pnpm run dev` in `app/auth-portal` or `pnpm dev:auth-portal` at the root
-- (or run both by running `pnpm run dev:auth` at the root)
+- (or run both by running `pnpm run dev:auth` at the root, but running them separately gives you nice console output)
+- Run the backend, but pointing at your shiny new auth API:
+  ```bash
+  SI_AUTH_API_URL=http://localhost:9001 SI_CREATE_WORKSPACE_PERMISSIONS=open buck2 run dev
+  ```
 
 ## Deploy the Auth API to Production
 

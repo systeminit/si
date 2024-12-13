@@ -3,10 +3,11 @@
 //! _Caution:_ functions in this module may appear to be unused, but they are likely used during
 //! macro expansion.
 
-use dal::{ChangeSet, ChangeSetId, DalContext, UserClaim};
+use dal::{ChangeSet, ChangeSetId, DalContext};
 use jwt_simple::algorithms::RSAKeyPairLike;
 use jwt_simple::claims::Claims;
 use jwt_simple::prelude::Duration;
+use si_jwt_public_key::SiJwtClaims;
 use tracing_subscriber::{fmt, util::SubscriberInitExt, EnvFilter, Registry};
 
 use crate::{
@@ -164,21 +165,18 @@ pub async fn workspace_signup(ctx: &DalContext) -> crate::Result<(WorkspaceSignu
     let nw = WorkspaceSignup::new(&mut ctx, &workspace_name, &user_name, &user_email, &token)
         .await
         .wrap_err("cannot signup a new workspace")?;
-    let auth_token = create_auth_token(UserClaim {
-        user_pk: nw.user.pk(),
-        workspace_pk: *nw.workspace.pk(),
-    })
-    .await
-    .expect("could not create auth token");
+    let auth_token = create_auth_token(SiJwtClaims::for_web(nw.user.pk(), *nw.workspace.pk()))
+        .await
+        .expect("could not create auth token");
     Ok((nw, auth_token))
 }
 
-async fn create_auth_token(claim: UserClaim) -> crate::Result<String> {
+async fn create_auth_token(claim: SiJwtClaims) -> crate::Result<String> {
     let key_pair = jwt_private_signing_key().await?;
-    let claim = Claims::with_custom_claims(claim, Duration::from_days(1))
+    let claim = Claims::with_custom_claims(claim.clone(), Duration::from_days(1))
         .with_audience("https://app.systeminit.com")
         .with_issuer("https://app.systeminit.com")
-        .with_subject(claim.user_pk);
+        .with_subject(claim.user_id());
 
     Ok(key_pair.sign(claim).expect("could not sign"))
 }

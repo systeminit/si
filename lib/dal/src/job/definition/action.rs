@@ -49,7 +49,7 @@ pub struct ActionJob {
 
 impl ActionJob {
     pub fn new(ctx: &DalContext, id: ActionId) -> Box<Self> {
-        let access_builder = AccessBuilder::from(ctx.clone());
+        let access_builder = ctx.access_builder();
         let visibility = *ctx.visibility();
 
         Box::new(Self {

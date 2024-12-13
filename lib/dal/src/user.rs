@@ -2,9 +2,6 @@ use serde::{Deserialize, Serialize};
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
 use si_events::ViewId;
-use si_jwt_public_key::{
-    validate_bearer_token, JwtPublicSigningKeyChain, JwtPublicSigningKeyError, SiJwtClaims,
-};
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::task::JoinError;
@@ -25,8 +22,6 @@ pub enum UserError {
     HistoryEvent(#[from] HistoryEventError),
     #[error("failed to join long lived async task; bug!")]
     Join(#[from] JoinError),
-    #[error(transparent)]
-    JwtKey(#[from] JwtPublicSigningKeyError),
     #[error("nats txn error: {0}")]
     Nats(#[from] NatsError),
     #[error("user not found in tenancy: {0} {1:?}")]
@@ -126,18 +121,6 @@ impl User {
             .ok_or_else(|| UserError::NotFoundInTenancy(pk, *ctx.tenancy()))
     }
 
-    pub async fn authorize(
-        ctx: &DalContext,
-        user_pk: &UserPk,
-        workspace_pk: &WorkspacePk,
-    ) -> UserResult<bool> {
-        let workspace_members =
-            User::list_members_for_workspace(ctx, workspace_pk.to_string()).await?;
-
-        let is_member = workspace_members.into_iter().any(|m| m.pk == *user_pk);
-        Ok(is_member)
-    }
-
     pub async fn associate_workspace(
         &self,
         ctx: &DalContext,
@@ -206,38 +189,6 @@ impl User {
         }
 
         Ok(users)
-    }
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone, Copy)]
-pub struct UserClaim {
-    pub user_pk: UserPk,
-    pub workspace_pk: WorkspacePk,
-}
-
-impl From<SiJwtClaims> for UserClaim {
-    fn from(value: SiJwtClaims) -> Self {
-        Self {
-            user_pk: value.user_pk.into_raw_id().into(),
-            workspace_pk: value.workspace_pk.into_raw_id().into(),
-        }
-    }
-}
-
-impl UserClaim {
-    pub fn new(user_pk: UserPk, workspace_pk: WorkspacePk) -> Self {
-        UserClaim {
-            user_pk,
-            workspace_pk,
-        }
-    }
-
-    pub async fn from_bearer_token(
-        public_key: JwtPublicSigningKeyChain,
-        token: impl AsRef<str>,
-    ) -> UserResult<UserClaim> {
-        let claims = validate_bearer_token(public_key, token).await?;
-        Ok(claims.custom.into())
     }
 }
 

@@ -14,18 +14,20 @@ pub struct RestoreAuthenticationResponse {
 
 pub async fn restore_authentication(
     HandlerContext(builder): HandlerContext,
+    // NOTE: these two lines *both* go to the DB and check the token for web-level access.
+    // We should probably only do this once.
     AccessBuilder(access_builder): AccessBuilder,
     Authorization(claim): Authorization,
 ) -> SessionResult<Json<RestoreAuthenticationResponse>> {
     let ctx = builder.build_head(access_builder).await?;
 
-    let workspace = Workspace::get_by_pk(&ctx, &claim.workspace_pk)
+    let workspace = Workspace::get_by_pk(&ctx, &claim.workspace_id())
         .await?
-        .ok_or(SessionError::InvalidWorkspace(claim.workspace_pk))?;
+        .ok_or(SessionError::InvalidWorkspace(claim.workspace_id()))?;
 
-    let user = User::get_by_pk(&ctx, claim.user_pk)
+    let user = User::get_by_pk(&ctx, claim.user_id())
         .await?
-        .ok_or(SessionError::InvalidUser(claim.user_pk))?;
+        .ok_or(SessionError::InvalidUser(claim.user_id()))?;
 
     let reply = RestoreAuthenticationResponse { user, workspace };
 

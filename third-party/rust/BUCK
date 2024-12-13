@@ -9796,6 +9796,56 @@ cargo.rust_library(
     visibility = [],
 )
 
+alias(
+    name = "monostate",
+    actual = ":monostate-0.1.13",
+    visibility = ["PUBLIC"],
+)
+
+http_archive(
+    name = "monostate-0.1.13.crate",
+    sha256 = "0d208407d7552cd041d8cdb69a1bc3303e029c598738177a3d87082004dc0e1e",
+    strip_prefix = "monostate-0.1.13",
+    urls = ["https://static.crates.io/crates/monostate/0.1.13/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "monostate-0.1.13",
+    srcs = [":monostate-0.1.13.crate"],
+    crate = "monostate",
+    crate_root = "monostate-0.1.13.crate/src/lib.rs",
+    edition = "2021",
+    visibility = [],
+    deps = [
+        ":monostate-impl-0.1.13",
+        ":serde-1.0.216",
+    ],
+)
+
+http_archive(
+    name = "monostate-impl-0.1.13.crate",
+    sha256 = "a7ce64b975ed4f123575d11afd9491f2e37bbd5813fbfbc0f09ae1fbddea74e0",
+    strip_prefix = "monostate-impl-0.1.13",
+    urls = ["https://static.crates.io/crates/monostate-impl/0.1.13/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "monostate-impl-0.1.13",
+    srcs = [":monostate-impl-0.1.13.crate"],
+    crate = "monostate_impl",
+    crate_root = "monostate-impl-0.1.13.crate/src/lib.rs",
+    edition = "2021",
+    proc_macro = True,
+    visibility = [],
+    deps = [
+        ":proc-macro2-1.0.92",
+        ":quote-1.0.37",
+        ":syn-2.0.90",
+    ],
+)
+
 http_archive(
     name = "multer-2.1.0.crate",
     sha256 = "01acbdc23469fd8fe07ab135923371d5f5a422fbf9c522158677c8eb15bc51c2",

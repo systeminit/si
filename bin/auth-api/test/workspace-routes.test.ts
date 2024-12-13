@@ -180,8 +180,8 @@ t.test('Workspace routes', async () => {
           const token = res.body.token;
           const decoded = await decodeSdfAuthToken(token);
           // check the token includes the user and workspace ids
-          expect(decoded.user_pk).to.equal(user.id);
-          expect(decoded.workspace_pk).to.equal(workspace.id);
+          expect(decoded.userId).to.equal(user.id);
+          expect(decoded.workspaceId).to.equal(workspace.id);
         });
     });
 

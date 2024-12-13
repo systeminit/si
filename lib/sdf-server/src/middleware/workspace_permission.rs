@@ -8,6 +8,7 @@ use axum::{
 };
 use futures::future::BoxFuture;
 use permissions::{Permission, PermissionBuilder};
+use si_jwt_public_key::SiJwtClaimRole;
 use tower::{Layer, Service};
 
 use crate::{
@@ -73,17 +74,19 @@ where
 
             if let Some(client) = me.state.spicedb_client() {
                 let is_allowed = match PermissionBuilder::new()
-                    .workspace_object(claim.workspace_pk)
+                    .workspace_object(claim.workspace_id())
                     .permission(me.permission)
-                    .user_subject(claim.user_pk)
+                    .user_subject(claim.user_id())
                     .has_permission(client)
                     .await
                 {
                     Ok(is_allowed) => is_allowed,
-                    Err(_) => return Ok(extract::unauthorized_error().into_response()),
+                    Err(e) => return Ok(extract::unauthorized_error(e).into_response()),
                 };
-                if !is_allowed {
-                    return Ok(extract::unauthorized_error().into_response());
+                if !is_allowed || !claim.authorized_for(SiJwtClaimRole::Web) {
+                    return Ok(
+                        extract::unauthorized_error("not authorized for web role").into_response()
+                    );
                 }
             }
 
