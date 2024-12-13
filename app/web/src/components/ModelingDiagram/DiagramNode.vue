@@ -265,16 +265,21 @@
       </v-group>
     </v-group>
 
-    <!-- deleted icon overlay (large centered) -->
-    <!-- <DiagramIcon
-      v-if="isDeleted"
-      icon="minus-square"
-      shadeBg
-      :color="getToneColorHex('destructive')"
-      :size="DELETED_X_SIZE"
-      :x="0"
-      :y="nodeHeight / 2"
-    /> -->
+    <!-- debug text to show the node width and height -->
+    <v-text
+      v-if="debug"
+      :config="{
+        x: -nodeWidth / 2,
+        y: -22,
+        verticalAlign: 'top',
+        align: 'left',
+        text: `width: ${nodeWidth} height: ${nodeHeight}`,
+        fill: 'red',
+        fontStyle: 'bold',
+        fontFamily: DIAGRAM_FONT_FAMILY,
+        listening: false,
+      }"
+    />
   </v-group>
 </template>
 
@@ -309,7 +314,6 @@ import {
   NODE_TITLE_HEADER_MARGIN_RIGHT as NODE_HEADER_MARGIN_RIGHT,
   NODE_HEADER_HEIGHT,
   NODE_HEADER_TEXT_HEIGHT,
-  NODE_WIDTH,
 } from "./diagram_constants";
 import DiagramIcon from "./DiagramIcon.vue";
 
@@ -417,9 +421,11 @@ const parentComponentId = computed(() => props.node.def.parentId);
 const position = computed(() => {
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const r = viewStore.components[props.node.def.id]!;
-  r.width = Math.max(r.width, NODE_WIDTH);
-  r.height = Math.max(r.height, NODE_WIDTH);
-  return r;
+
+  return {
+    x: r.x,
+    y: r.y,
+  };
 });
 
 const colors = computed(() => {

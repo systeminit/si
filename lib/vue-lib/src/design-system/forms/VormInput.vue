@@ -67,6 +67,7 @@ you can pass in options as props too */
                   'bg-neutral-100 border-neutral-400',
                   'bg-neutral-900 border-neutral-600',
                 ),
+            isError && 'border-destructive-600',
           ],
         )
       "
@@ -81,13 +82,13 @@ you can pass in options as props too */
               }
             : null
         "
-        class="vorm-input__input-wrap"
         :class="
           clsx(
             'vorm-input__input-wrap',
             showCautionLines
               ? themeClasses('bg-caution-lines-light', 'bg-caution-lines-dark')
               : '',
+            compact && isError && 'border-b border-destructive-600',
           )
         "
       >
@@ -282,11 +283,23 @@ you can pass in options as props too */
         <slot name="instructions">{{ instructions }}</slot>
       </div>
 
-      <div v-if="validationState.isError" class="vorm-input__error-message">
-        {{ validationState.errorMessage }}
-      </div>
-      <div v-if="error_set" class="vorm-input__error-message">
-        {{ error_set }}
+      <div
+        v-if="isError"
+        :class="
+          clsx(
+            compact && [
+              'border-b',
+              isFocus ? 'border-transparent' : 'border-destructive-600',
+            ],
+          )
+        "
+      >
+        <div v-if="validationState.isError" class="vorm-input__error-message">
+          {{ validationState.errorMessage }}
+        </div>
+        <div v-if="error_set" class="vorm-input__error-message">
+          {{ error_set }}
+        </div>
       </div>
     </div>
     <slot name="rightOfInput"></slot>
@@ -517,8 +530,10 @@ watch(
 
 const { theme } = useTheme();
 
+const isError = computed(() => validationState.isError || error_set.value);
+
 const computedClasses = computed(() => ({
-  "--error": validationState.isError || error_set.value,
+  "--error": isError.value,
   "--focused": isFocus.value,
   "--disabled": disabledBySelfOrParent.value,
   [`--type-${props.type}`]: true,
@@ -901,6 +916,13 @@ defineExpose({
       color: currentColor;
     }
   }
+
+  .vorm-input__instructions,
+  .vorm-input__error-message {
+    @apply capsize text-xs;
+    padding-top: @vertical-gap;
+    padding-bottom: 4px;
+  }
 }
 
 // this class is on whatever the input is, whether its input, textarea, select, etc
@@ -1016,13 +1038,6 @@ defineExpose({
   margin-top: -1px;
 }
 
-.vorm-input__instructions,
-.vorm-input__error-message {
-  @apply capsize text-xs;
-  padding-top: @vertical-gap;
-  padding-bottom: 4px;
-}
-
 .vorm-input__instructions {
   color: var(--text-color-muted);
 
@@ -1047,9 +1062,6 @@ defineExpose({
   &:empty {
     display: none;
   }
-}
-
-.vorm-input__error-message {
 }
 
 .vorm-input__input-wrap {
@@ -1152,6 +1164,14 @@ defineExpose({
       --header-bg-color: @colors-neutral-300;
       --header-text-color: @colors-black;
     }
+  }
+
+  .vorm-input__instructions,
+  .vorm-input__error-message {
+    font-size: 12px;
+    padding-top: 2px;
+    padding-bottom: 2px;
+    color: @colors-destructive-600;
   }
 }
 

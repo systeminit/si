@@ -14,7 +14,6 @@
           <ComponentCard
             v-for="component in viewStore.erasableSelectedComponents"
             :key="component.def.id"
-            :titleCard="false"
             :component="component"
           />
         </Stack>

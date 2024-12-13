@@ -104,7 +104,7 @@ import {
 } from "./ModelingDiagram/diagram_types";
 
 const props = defineProps<{
-  titleCard: boolean;
+  titleCard?: boolean;
   component: DiagramGroupData | DiagramNodeData | DiagramViewData;
 }>();
 

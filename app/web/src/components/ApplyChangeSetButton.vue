@@ -1,6 +1,8 @@
 <template>
   <VButton
-    v-if="ffStore.DEV_SLICE_REBASING && statusWithBase?.conflictsWithBase"
+    v-if="
+      featureFlagsStore.DEV_SLICE_REBASING && statusWithBase?.conflictsWithBase
+    "
     size="md"
     tone="destructive"
     disabled
@@ -9,7 +11,9 @@
   >
   </VButton>
   <VButton
-    v-else-if="ffStore.DEV_SLICE_REBASING && statusWithBase?.baseHasUpdates"
+    v-else-if="
+      featureFlagsStore.DEV_SLICE_REBASING && statusWithBase?.baseHasUpdates
+    "
     size="md"
     tone="warning"
     square
@@ -141,7 +145,6 @@ const statusStoreUpdating = computed(() => {
   } else return false;
 });
 
-const ffStore = useFeatureFlagsStore();
 const statusWithBase = computed(
   () =>
     changeSetsStore.statusWithBase[changeSetsStore.selectedChangeSetId || ""],

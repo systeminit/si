@@ -238,6 +238,7 @@ import {
   VButton,
   VormInput,
   Icon,
+  ColorPicker,
 } from "@si/vue-lib/design-system";
 import * as _ from "lodash-es";
 import { useToast } from "vue-toastification";
@@ -264,7 +265,6 @@ import {
 } from "@/api/sdf/dal/schema";
 import { useFuncStore } from "@/store/func/funcs.store";
 import { PropId } from "@/api/sdf/dal/prop";
-import ColorPicker from "./ColorPicker.vue";
 import AssetFuncAttachModal from "./AssetFuncAttachModal.vue";
 import AssetNameModal from "./AssetNameModal.vue";
 import AssetDetailIntrinsicInput from "./AssetDetailIntrinsicInput.vue";

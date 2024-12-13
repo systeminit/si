@@ -195,7 +195,7 @@ const props = defineProps<{
 
 const funcStore = useFuncStore();
 const assetStore = useAssetStore();
-const ffStore = useFeatureFlagsStore();
+const featureFlagsStore = useFeatureFlagsStore();
 
 const createFuncStarted = ref(false);
 
@@ -213,7 +213,7 @@ const funcKindOptions = Object.keys(CUSTOMIZABLE_FUNC_TYPES)
   .filter((kind) => {
     if (
       kind === CustomizableFuncKind.Management &&
-      !ffStore.MANAGEMENT_FUNCTIONS
+      !featureFlagsStore.MANAGEMENT_FUNCTIONS
     )
       return false;
     return true;

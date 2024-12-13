@@ -362,6 +362,7 @@
       />
     </v-group>
 
+    <!-- upgrade icon -->
     <DiagramIcon
       v-if="group.def.canBeUpgraded"
       :color="getToneColorHex('action')"
@@ -395,6 +396,22 @@
       @click="onClick('diff')"
       @mouseover="diffIconHover = true"
       @mouseout="diffIconHover = false"
+    />
+
+    <!-- debug text to show the group width and height -->
+    <v-text
+      v-if="debug"
+      :config="{
+        x: -nodeWidth / 2,
+        y: -(NODE_HEADER_HEIGHT + GROUP_HEADER_BOTTOM_MARGIN + 22),
+        verticalAlign: 'top',
+        align: 'left',
+        text: `width: ${irect.width} height: ${irect.height}`,
+        fill: 'red',
+        fontStyle: 'bold',
+        fontFamily: DIAGRAM_FONT_FAMILY,
+        listening: false,
+      }"
     />
   </v-group>
 </template>
@@ -496,9 +513,13 @@ const viewStore = useViewsStore();
 const irect = computed(() => {
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const r = viewStore.groups[props.group.def.id]!;
-  r.width = Math.max(r.width, MIN_NODE_DIMENSION);
-  r.height = Math.max(r.height, MIN_NODE_DIMENSION);
-  return r;
+
+  return {
+    x: r.x,
+    y: r.y,
+    width: Math.max(r.width, MIN_NODE_DIMENSION),
+    height: Math.max(r.height, MIN_NODE_DIMENSION),
+  };
 });
 
 const isDeleted = computed(

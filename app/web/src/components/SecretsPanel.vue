@@ -241,7 +241,6 @@
               <ComponentCard
                 v-for="component of filteredComponents"
                 :key="component.def.id"
-                :titleCard="false"
                 :component="component"
               />
             </div>

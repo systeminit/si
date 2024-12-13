@@ -311,6 +311,7 @@ import { useStatusStore } from "@/store/status.store";
 import { useQualificationsStore } from "@/store/qualifications.store";
 import { nonNullable } from "@/utils/typescriptLinter";
 import { ViewId } from "@/api/sdf/dal/views";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import DiagramGridBackground from "./DiagramGridBackground.vue";
 import {
   DiagramDrawEdgeState,
@@ -370,6 +371,10 @@ import DiagramView from "./DiagramView.vue";
 
 const LEFT_PANEL_DRAWER_WIDTH = 230;
 
+// SET THIS BOOLEAN TO TRUE TO ENABLE DEBUG MODE!
+// VERY HELPFUL FOR DEBUGGING ISSUES ON THE DIAGRAM!
+const enableDebugMode = false;
+
 const route = useRoute();
 const toast = useToast();
 
@@ -394,11 +399,10 @@ const emit = defineEmits<{
 const componentsStore = useComponentsStore();
 const viewStore = useViewsStore();
 const statusStore = useStatusStore();
+const featureFlagsStore = useFeatureFlagsStore();
 const modelingEventBus = componentsStore.eventBus;
 
 const fetchDiagramReqStatus = viewStore.getRequestStatus("FETCH_VIEW");
-
-const enableDebugMode = false;
 
 const customFontsLoaded = useCustomFontsLoaded();
 
@@ -878,6 +882,17 @@ async function onKeyDown(e: KeyboardEvent) {
   ) {
     e.preventDefault();
     renameOnDiagramByComponentId(viewStore.selectedComponentId);
+  }
+  if (
+    !props.readOnly &&
+    featureFlagsStore.TEMPLATE_MGMT_FUNC_GENERATION &&
+    e.key === "t" &&
+    viewStore.restorableSelectedComponents.length === 0 &&
+    viewStore.selectedComponents.length > 0 &&
+    !viewStore.selectedComponents.some((c) => c instanceof DiagramViewData)
+  ) {
+    e.preventDefault();
+    modelingEventBus.emit("templateFromSelection");
   }
 }
 
