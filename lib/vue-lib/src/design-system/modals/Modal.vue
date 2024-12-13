@@ -62,6 +62,13 @@
                 )
               "
             >
+              <!-- fake input to prevent initial focus... only way to stop headless UI -->
+              <input
+                v-if="noAutoFocus"
+                ref="noAutoFocusTrapRef"
+                class="absolute w-0 h-0"
+              />
+
               <div
                 :class="
                   clsx(
@@ -191,9 +198,7 @@ const isOpen = ref(props.beginOpen);
 function open() {
   hideFocusTrap.value = false;
   isOpen.value = true;
-  if (!props.noAutoFocus) {
-    setTimeout(fixAutoFocusElement);
-  }
+  setTimeout(fixAutoFocusElement);
 }
 function close() {
   emit("close");
@@ -202,13 +207,20 @@ function close() {
 
 const focusTrapRef = ref();
 const hideFocusTrap = ref(false);
+const noAutoFocusTrapRef = ref<HTMLInputElement>();
 
 const exitButtonRef = ref();
 function fixAutoFocusElement() {
   // Headless UI automatically traps focus within the modal and focuses on the first focusable element it finds.
   // While focusing on an input (if there is one) feels good, focusing on an "OK" button or the close/X button
   // feels a bit agressive and looks strange
-  const focusedEl = document.activeElement;
+  const focusedEl = document.activeElement as HTMLElement;
+
+  if (props.noAutoFocus) {
+    focusedEl.blur();
+    noAutoFocusTrapRef.value?.classList.add("hidden");
+  }
+
   if (
     focusedEl?.classList.contains("modal-close-button") ||
     focusedEl?.classList.contains("vbutton") ||

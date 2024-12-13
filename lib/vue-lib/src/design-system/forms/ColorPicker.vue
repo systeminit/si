@@ -7,8 +7,9 @@
         :aria-required="required ?? false"
         :class="
           clsx(
-            'absolute z-80 h-7 px-2xs flex flex-row gap-xs items-center dark:hover:text-action-300 hover:text-action-500',
+            'absolute h-7 px-2xs flex flex-row gap-xs items-center dark:hover:text-action-300 hover:text-action-500',
             !disabled && 'cursor-pointer',
+            insideModal ? 'z-100' : 'z-80',
           )
         "
       >
@@ -32,6 +33,7 @@ const props = defineProps<{
   required?: boolean;
   modelValue: string;
   disabled?: boolean;
+  insideModal?: boolean;
 }>();
 
 const emit = defineEmits<{

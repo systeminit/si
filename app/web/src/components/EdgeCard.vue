@@ -1,6 +1,6 @@
 <template>
   <div v-if="fromComponent && toComponent">
-    <ComponentCard :component="fromComponent" :titleCard="false" />
+    <ComponentCard :component="fromComponent" />
     <div class="_connection-label text-xs italic">
       <!-- currently output and input socket always have the same label/name -->
       <span v-if="edge?.isManagement" class="capsize">Manages</span>
@@ -8,7 +8,7 @@
       <!-- <div>to</div>
         <span class="capsize">{{ toSocket?.name }}</span> -->
     </div>
-    <ComponentCard :component="toComponent" :titleCard="false" />
+    <ComponentCard :component="toComponent" />
   </div>
 </template>
 

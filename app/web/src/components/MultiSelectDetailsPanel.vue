@@ -21,7 +21,6 @@
         <ComponentCard
           v-for="component in viewStore.selectedComponents"
           :key="component.def.id"
-          :titleCard="false"
           :component="component"
         />
       </Stack>

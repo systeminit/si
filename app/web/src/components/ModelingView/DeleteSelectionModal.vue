@@ -23,7 +23,6 @@
             <ComponentCard
               v-for="component in erasableViews"
               :key="component.def.id"
-              :titleCard="false"
               :component="component"
             />
           </Stack>
@@ -50,7 +49,6 @@
             <ComponentCard
               v-for="component in deletableComponentsInView"
               :key="component.def.id"
-              :titleCard="false"
               :component="component"
             />
           </Stack>

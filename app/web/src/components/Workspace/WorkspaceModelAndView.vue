@@ -99,6 +99,9 @@
   <DeleteSelectionModal />
   <RestoreSelectionModal />
   <EraseSelectionModal />
+  <TemplateSelectionModal
+    v-if="featureFlagsStore.TEMPLATE_MGMT_FUNC_GENERATION"
+  />
   <CommandModal />
 </template>
 
@@ -137,6 +140,7 @@ import NoSelectionDetailsPanel from "../NoSelectionDetailsPanel.vue";
 import ModelingRightClickMenu from "../ModelingView/ModelingRightClickMenu.vue";
 import DeleteSelectionModal from "../ModelingView/DeleteSelectionModal.vue";
 import RestoreSelectionModal from "../ModelingView/RestoreSelectionModal.vue";
+import TemplateSelectionModal from "../ModelingView/TemplateSelectionModal.vue";
 import CommandModal from "./CommandModal.vue";
 import InsetApprovalModal from "../InsetApprovalModal.vue";
 

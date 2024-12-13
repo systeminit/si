@@ -165,6 +165,7 @@ type EventBusEvents = {
   restoreSelection: void;
   refreshSelectionResource: void;
   eraseSelection: void;
+  templateFromSelection: void;
   panToComponent: {
     component: DiagramNodeData | DiagramGroupData;
     center?: boolean;
@@ -1159,6 +1160,17 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 // do nothing
               },
             });
+          },
+
+          async CREATE_TEMPLATE_FUNC_FROM_COMPONENTS(templateData: {
+            assetColor: string;
+            assetName: string;
+            funcName: string;
+            components: Array<DiagramNodeData | DiagramGroupData>;
+          }) {
+            // TODO(Wendy) - this is where the end point would be called!
+            // eslint-disable-next-line no-console
+            console.log(templateData);
           },
 
           setComponentDisplayName(

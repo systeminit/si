@@ -74,7 +74,7 @@ const componentsStore = useComponentsStore();
 const funcStore = useFuncStore();
 const actionsStore = useActionsStore();
 const viewStore = useViewsStore();
-const ffStore = useFeatureFlagsStore();
+const featureFlagsStore = useFeatureFlagsStore();
 
 const {
   selectedComponentId,
@@ -265,7 +265,7 @@ const rightClickMenuItems = computed(() => {
   const items: DropdownMenuItemObjectDef[] = [];
   const disabled = false;
 
-  if (ffStore.OUTLINER_VIEWS) {
+  if (featureFlagsStore.OUTLINER_VIEWS) {
     items.push({
       label: "VIEWS",
       header: true,
@@ -365,7 +365,7 @@ const rightClickMenuItems = computed(() => {
   // management funcs for a single selected component
   if (
     funcStore.managementFunctionsForSelectedComponent.length > 0 &&
-    ffStore.MANAGEMENT_FUNCTIONS
+    featureFlagsStore.MANAGEMENT_FUNCTIONS
   ) {
     const submenuItems: DropdownMenuItemObjectDef[] = [];
     funcStore.managementFunctionsForSelectedComponent.forEach((fn) => {
@@ -384,7 +384,7 @@ const rightClickMenuItems = computed(() => {
     });
   }
 
-  // you copy, restore, delete,
+  // you copy, restore, delete, template
   items.push({
     label: `Copy`,
     shortcut: "⌘C",
@@ -413,6 +413,18 @@ const rightClickMenuItems = computed(() => {
       shortcut: "⌫",
       icon: "trash",
       onSelect: triggerDeleteSelection,
+      disabled,
+    });
+  }
+  if (
+    restorableSelectedComponents.value.length === 0 &&
+    featureFlagsStore.TEMPLATE_MGMT_FUNC_GENERATION
+  ) {
+    items.push({
+      label: `Create Template`,
+      shortcut: "T",
+      icon: "tools",
+      onSelect: triggerTemplateFromSelection,
       disabled,
     });
   }
@@ -546,6 +558,11 @@ function triggerDeleteSelection() {
 
 function triggerRestoreSelection() {
   modelingEventBus.emit("restoreSelection");
+  elementPos.value = null;
+}
+
+function triggerTemplateFromSelection() {
+  modelingEventBus.emit("templateFromSelection");
   elementPos.value = null;
 }
 
