@@ -18,7 +18,6 @@ import {
   makeBeforeRequestStorage,
   makeMainRequestStorage,
 } from "./sandbox/requestStorage.ts";
-import { makePackage } from "./sandbox/package.ts";
 
 export type Sandbox = Record<string, unknown>;
 
@@ -37,7 +36,6 @@ function commonSandbox(executionId: string): Sandbox {
     path,
     Joi,
     toml,
-    package: makePackage(executionId),
   };
 }
 

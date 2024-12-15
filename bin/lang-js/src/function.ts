@@ -1,7 +1,6 @@
 import * as _ from "lodash-es";
 import process from "node:process";
 import { base64Decode } from "./base64.ts";
-import { createSandbox } from "./sandbox.ts";
 import { ctxFromRequest, Request, RequestCtx } from "./request.ts";
 import joi_validation, {
   JoiValidationFunc,
@@ -17,8 +16,9 @@ import management_run, { ManagementFunc } from "./function_kinds/management.ts";
 import action_run, { ActionRunFunc } from "./function_kinds/action_run.ts";
 import before from "./function_kinds/before.ts";
 import { rawStorageRequest } from "./sandbox/requestStorage.ts";
-import { Debugger } from "./debug.ts";
-import { bundle } from "jsr:@deno/emit";
+import { Debug, Debugger } from "./debug.ts";
+import { transpile } from "jsr:@deno/emit";
+import * as w from "./worker.js";
 
 export enum FunctionKind {
   ActionRun = "actionRun",
@@ -221,7 +221,8 @@ export async function executor<F extends Func, Result>(
     originalCode = base64Decode(func.codeBase64);
   }
 
-  const code = wrapCode(originalCode, func.handler);
+  // const code = wrapCode(originalCode, func.handler);
+  const code = originalCode;
 
   debug({ code });
 
@@ -240,21 +241,48 @@ export async function runCode(
   code: string,
   func_kind: FunctionKind,
   execution_id: string,
-  with_arg: Record<string, unknown>,
+  with_arg?: Record<string, unknown>,
 ): Promise<Record<string, unknown>> {
+  const debug = Debug("debuggin");
   const bundled = await bundleCode(code);
-  const sandbox = createSandbox(func_kind, execution_id);
-  const keys = Object.keys(sandbox);
-  const values = Object.values(sandbox);
 
-  const func = new Function(...keys, "with_arg", bundled);
-  return await func(...values, with_arg);
+  const worker = new Worker(new URL("./worker.js", import.meta.url), {
+    type: "module",
+  });
+  return new Promise((resolve, reject) => {
+    worker.postMessage({
+      bundledCode: bundled,
+      func_kind,
+      execution_id,
+      with_arg,
+    });
+
+    worker.onmessage = (event) => {
+      debug({ event });
+      const result = event.data;
+      resolve(result);
+      worker.terminate();
+    };
+
+    worker.onerror = (error) => {
+      debug({ error });
+      reject(error);
+      worker.terminate();
+    };
+  });
 }
 
-async function bundleCode(code: string) {
+async function bundleCode(code: string): Promise<string> {
   const tempDir = await Deno.makeTempDir();
   const tempFile = `${tempDir}/script.ts`;
   await Deno.writeTextFile(tempFile, code);
   const fileUrl = new URL(tempFile, import.meta.url);
-  return (await bundle(fileUrl)).code;
+
+  // try {
+  const bundled = (await transpile(fileUrl)).get(fileUrl.href) as string;
+  return bundled;
+  // } finally {
+  //   // Clean up temporary directory
+  //   await Deno.removeDirRecursively(tempDir);
+  // }
 }
