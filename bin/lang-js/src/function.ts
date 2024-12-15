@@ -243,7 +243,7 @@ export async function runCode(
   execution_id: string,
   with_arg?: Record<string, unknown>,
 ): Promise<Record<string, unknown>> {
-  const debug = Debug("debuggin");
+  const debug = Debug("");
   const bundled = await bundleCode(code);
 
   const worker = new Worker(new URL("./worker.js", import.meta.url), {
