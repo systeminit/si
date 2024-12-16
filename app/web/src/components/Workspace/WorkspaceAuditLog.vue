@@ -140,7 +140,7 @@
           </template>
         </tbody>
       </table>
-      <template v-if="initialLoadRequestStatus.isSuccess">
+      <template v-if="initialLoadLogsRequestStatus.isSuccess">
         <span
           v-if="noRowsMessage"
           class="flex flex-row items-center justify-center pt-md"
@@ -155,14 +155,14 @@
             :disabled="!canLoadMore"
             :label="canLoadMore ? 'Load 50 More' : 'All Entries Loaded'"
             loadingText="Loading More Logs..."
-            :requestStatus="loadMoreRequestStatus"
-            @click="loadMore()"
+            :requestStatus="loadLogsRequestStatus"
+            @click="loadLogs(true, false)"
           />
         </div>
       </template>
       <RequestStatusMessage
         v-else
-        :requestStatus="initialLoadRequestStatus"
+        :requestStatus="initialLoadLogsRequestStatus"
         loadingMessage="Loading Logs..."
       />
     </ScrollArea>
@@ -197,7 +197,7 @@ const changeSetsStore = useChangeSetsStore();
 const logsStore = useLogsStore();
 
 const logs = computed(() => logsStore.logs);
-const size = computed(() => logsStore.size);
+const sizeForWatcher = computed(() => logsStore.size);
 const canLoadMore = computed(() => logsStore.canLoadMore);
 
 const selectedChangeSetName = computed(
@@ -213,38 +213,41 @@ const collapseAllRows = () => {
   rowCollapseState.value = new Array(logs.value.length).fill(false);
 };
 
-// TODO(nick): restore pagination once the audit trail feature is shipped.
-// const loadLogs = async () => {
-//   collapseAllRows();
-//   logsStore.LOAD_PAGE(size.value);
-//   trackEvent("load-audit-logs", { size: size.value });
-// };
-
-const initialLoadRequestIdentifier = "initialLoad";
-const initialLoadRequestStatus = logsStore.getRequestStatus(
+const initialLoadLogsRequestIdentifier = "initialLoadLogs";
+const initialLoadLogsRequestStatus = logsStore.getRequestStatus(
   "LOAD_PAGE",
-  initialLoadRequestIdentifier,
+  initialLoadLogsRequestIdentifier,
 );
-const performInitialLoad = async () => {
+const performInitialLoadLogs = async () => {
   collapseAllRows();
-  logsStore.LOAD_PAGE(size.value, initialLoadRequestIdentifier);
-  trackEvent("load-audit-logs", { size: size.value });
+  const size = logsStore.size;
+  const sortAscending = logsStore.sortAscending;
+  logsStore.LOAD_PAGE(size, sortAscending, initialLoadLogsRequestIdentifier);
+  trackEvent("load-audit-logs", { size, sortAscending });
 };
 
-const loadMoreRequestIdentifier = "loadMore";
-const loadMoreRequestStatus = logsStore.getRequestStatus(
+const loadLogsRequestIdentifier = "loadLogs";
+const loadLogsRequestStatus = logsStore.getRequestStatus(
   "LOAD_PAGE",
-  loadMoreRequestIdentifier,
+  loadLogsRequestIdentifier,
 );
-const loadMore = async () => {
-  logsStore.size += 50;
-  const newSize = logsStore.size;
-  logsStore.LOAD_PAGE(newSize, loadMoreRequestIdentifier);
-  trackEvent("load-audit-logs", { size: newSize });
+const loadLogs = async (expandSize: boolean, toggleTimestampSort: boolean) => {
+  if (expandSize === true) {
+    logsStore.size += 50;
+  }
+  if (toggleTimestampSort) {
+    logsStore.sortAscending = !logsStore.sortAscending;
+  }
+
+  const size = logsStore.size;
+  const sortAscending = logsStore.sortAscending;
+
+  logsStore.LOAD_PAGE(size, sortAscending, loadLogsRequestIdentifier);
+  trackEvent("load-audit-logs", { size, sortAscending });
 };
 
 // Load the logs when this component is loaded.
-performInitialLoad();
+performInitialLoadLogs();
 
 const columnHelper = createColumnHelper<AuditLogDisplay>();
 
@@ -319,18 +322,15 @@ const table = useVueTable({
   getFilteredRowModel: getFilteredRowModel(),
 });
 
-table.setPageSize(size.value);
-watch(size, (size) => {
-  table.setPageSize(size);
+table.setPageSize(sizeForWatcher.value);
+watch(sizeForWatcher, (sizeForWatcher) => {
+  table.setPageSize(sizeForWatcher);
 });
 
 const onHeaderClick = (id: string) => {
-  // NOTE(nick): restore timestamp sort after the audit trail feature is shipped.
-  // if (id === "timestamp") {
-  //   logsStore.filters.sortTimestampAscending = !logsStore.filters.sortTimestampAscending;
-  //   loadLogs();
-  // } else if (id === "json" && anyRowsOpen.value) {
-  if (id === "json" && anyRowsOpen.value) {
+  if (id === "timestamp") {
+    loadLogs(false, true);
+  } else if (id === "json" && anyRowsOpen.value) {
     collapseAllRows();
   }
 };
@@ -387,7 +387,8 @@ const clearFilters = (id: string) => {
 };
 
 const noRowsMessage = computed(() => {
-  if (logs.value.length < 1) return "No logs exist in the workspace.";
+  if (logs.value.length < 1)
+    return "No logs exist for the selected Change Set.";
   if (table.getRowModel().rows.length === 0)
     return "No entries match selected filter criteria.";
   return null;

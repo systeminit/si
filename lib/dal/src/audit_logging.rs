@@ -249,6 +249,7 @@ pub async fn list(
     ctx: &DalContext,
     audit_database_context: &AuditDatabaseContext,
     size: usize,
+    sort_ascending: bool,
 ) -> Result<(Vec<AuditLogRow>, bool)> {
     let workspace_id = ctx.workspace_pk().map_err(Box::new)?;
     let change_set_id = ctx.change_set_id();
@@ -275,7 +276,14 @@ pub async fn list(
         change_set_ids
     };
 
-    Ok(AuditLogRow::list(audit_database_context, workspace_id, change_set_ids, size).await?)
+    Ok(AuditLogRow::list(
+        audit_database_context,
+        workspace_id,
+        change_set_ids,
+        size,
+        sort_ascending,
+    )
+    .await?)
 }
 
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
