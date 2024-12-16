@@ -273,7 +273,6 @@ const wrapCode = (code: string) => `
 })(with_arg);
 `;
 
-
 export default {
   debug,
   wrapCode,

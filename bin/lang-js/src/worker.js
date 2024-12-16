@@ -11,34 +11,20 @@ self.onmessage = async (event) => {
   const keys = Object.keys(sandbox);
   const values = Object.values(sandbox);
 
-  debug({"bundledCode": bundledCode})
+  debug({ "bundledCode": bundledCode });
   try {
-    // Create the function with import support
     const func = new Function(
       ...keys,
       "with_arg",
       `
       return (async () => {
-        // Try using a bare specifier that Deno might recognize
-        // const importDynamic = (specifier) => {
-        //   try {
-        //     return import(specifier);
-        //   } catch (e) {
-        //     console.error('Import failed:', e);
-        //     throw e;
-        //   }
-        // };
-        // const import_func = importDynamic;
         ${bundledCode}
         return await main(with_arg);
       })()
     `,
     );
-    debug(func.toString())
 
     const result = await func(...values, with_arg);
-    debug(result);
-
     self.postMessage(result);
   } catch (err) {
     self.postMessage({

@@ -37,7 +37,7 @@ function commonSandbox(executionId: string): Sandbox {
     path,
     Joi,
     toml,
-    package: makePackage(executionId),
+    pkg: makePackage(executionId),
   };
 }
 
