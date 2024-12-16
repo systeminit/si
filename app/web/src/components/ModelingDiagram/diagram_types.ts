@@ -19,6 +19,24 @@ import {
   SOCKET_TOP_MARGIN,
 } from "./diagram_constants";
 
+export type Bounds = {
+  left: number;
+  top: number;
+  bottom: number;
+  right: number;
+};
+export function toRequiredBounds({
+  left,
+  right,
+  top,
+  bottom,
+}: Partial<Bounds>): Bounds {
+  if (left === undefined) throw new Error("no left!");
+  if (right === undefined) throw new Error("no right!");
+  if (top === undefined) throw new Error("no top!");
+  if (bottom === undefined) throw new Error("no bottom!");
+  return { left, right, top, bottom };
+}
 export type GridPoint = { x: number; y: number };
 export type Size2D = { width: number; height: number };
 export type Direction = "up" | "down" | "left" | "right";

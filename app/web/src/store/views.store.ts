@@ -623,6 +623,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
             this.components = view.components;
             this.groups = view.groups;
             this.viewNodes = view.viewNodes;
+            this.setGroupZIndex();
             // derive the socket position from the component position
             // to begin, and then adjust it via delta when things move
             this.sockets = view.sockets;
@@ -700,6 +701,8 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                     view.groups[componentId] = {
                       // this one is actually an IRect
                       ...geometry,
+                      size: geometry.width * geometry.height,
+                      zIndex: 0,
                     };
                   }
                   for (const [key, loc] of Object.entries(
@@ -709,6 +712,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                   }
                 },
               );
+              this.setGroupZIndex();
             },
           });
         },
@@ -839,6 +843,8 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
             groups[group.id] = {
               // this one is actually an IRect
               ...geometry,
+              size: geometry.width * geometry.height,
+              zIndex: 0,
             };
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             const node = componentsStore.allComponentsById[
@@ -1149,7 +1155,12 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
           geometry.width = Math.round(geometry.width);
           geometry.height = Math.round(geometry.height);
 
-          this.groups[component.def.id] = { ...geometry };
+          this.groups[component.def.id] = {
+            ...geometry,
+            size: geometry.width * geometry.height,
+            zIndex: 0,
+          };
+          this.setGroupZIndex();
 
           for (const [key, loc] of Object.entries(
             setSockets(component, geometry),
@@ -1533,6 +1544,21 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
             },
           });
         },
+
+        setGroupZIndex() {
+          const groupSizes: {
+            id: string;
+            size: number;
+          }[] = Object.entries(this.groups).map(([id, g]) => {
+            return { id, size: g.size };
+          });
+          groupSizes.sort((a, b) => b.size - a.size);
+          for (const [idx, groupSize] of groupSizes.entries()) {
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            const g = this.groups[groupSize.id]!;
+            g.zIndex = idx;
+          }
+        },
       },
       async onActivated() {
         if (!changeSetId) return;
@@ -1614,7 +1640,12 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                 } else {
                   if (!geometry.width) geometry.width = 500;
                   if (!geometry.height) geometry.height = 500;
-                  view.groups[data.component.id] = geometry as IRect;
+                  view.groups[data.component.id] = {
+                    ...(geometry as IRect),
+                    size: geometry.width * geometry.height,
+                    zIndex: 0,
+                  };
+                  this.setGroupZIndex();
                   const node = processRawComponent(
                     data.component,
                     componentsStore.rawComponentsById,
@@ -1704,7 +1735,12 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                   } else {
                     if (!finalGeo.width) finalGeo.width = 500;
                     if (!finalGeo.height) finalGeo.height = 500;
-                    view.groups[data.component.id] = finalGeo as IRect;
+                    view.groups[data.component.id] = {
+                      ...(finalGeo as IRect),
+                      size: finalGeo.width * finalGeo.height,
+                      zIndex: 0,
+                    };
+                    this.setGroupZIndex();
                   }
                 });
 
@@ -1895,8 +1931,14 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                     Object.entries(added).forEach(([componentId, geo]) => {
                       const c = componentsStore.allComponentsById[componentId];
                       if (!c) return;
-                      if (c.def.isGroup) view.groups[componentId] = geo;
-                      else view.components[componentId] = geo;
+                      if (c.def.isGroup) {
+                        view.groups[componentId] = {
+                          ...geo,
+                          size: geo.height * geo.width,
+                          zIndex: 0,
+                        };
+                        this.setGroupZIndex();
+                      } else view.components[componentId] = geo;
                       if (geo) {
                         for (const [key, loc] of Object.entries(
                           setSockets(c, geo),

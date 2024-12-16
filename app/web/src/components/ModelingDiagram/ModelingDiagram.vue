@@ -312,6 +312,7 @@ import { useQualificationsStore } from "@/store/qualifications.store";
 import { nonNullable } from "@/utils/typescriptLinter";
 import { ViewId } from "@/api/sdf/dal/views";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
+import { DefaultMap } from "@/utils/defaultmap";
 import DiagramGridBackground from "./DiagramGridBackground.vue";
 import {
   DiagramDrawEdgeState,
@@ -328,6 +329,8 @@ import {
   ElementHoverMeta,
   MoveElementsState,
   DiagramViewData,
+  Bounds,
+  toRequiredBounds,
 } from "./diagram_types";
 import DiagramNode from "./DiagramNode.vue";
 import DiagramCursor from "./DiagramCursor.vue";
@@ -347,6 +350,7 @@ import {
   GROUP_HEADER_BOTTOM_MARGIN,
   NODE_TITLE_HEADER_MARGIN_RIGHT,
   GROUP_HEADER_ICON_SIZE,
+  NODE_HEADER_HEIGHT,
 } from "./diagram_constants";
 import {
   vectorDistance,
@@ -1734,7 +1738,9 @@ function endDragElements() {
     },
   );
 
-  const setParents: Set<ComponentId> = new Set();
+  // note that this is a set which does `===` equality, which for objec
+  const setParents: Record<ComponentId, DiagramNodeData | DiagramGroupData> =
+    {};
   nonChildElements.forEach((component) => {
     if (!("parentId" in component.def)) return;
     // if their current parent is NOT in this view, do not re-parent!!!
@@ -1743,22 +1749,70 @@ function endDragElements() {
       !Object.keys(viewStore.groups).includes(component.def.parentId)
     )
       return;
+
+    // views dont have parents
+    if (component instanceof DiagramViewData) return;
     // no parent, no call needed
     if (!component.def.parentId && detach) return;
     // same parent, no call needed
     if (component.def.parentId === newParent?.def.id) return;
 
-    if (component.def.parentId && detach) setParents.add(component.def.id);
+    if (component.def.parentId && detach)
+      setParents[component.def.id] = component;
 
     if (!component.def.parentId && newParent?.def.id)
-      setParents.add(component.def.id);
+      setParents[component.def.id] = component;
 
     if (component.def.parentId !== newParent?.def.id)
-      setParents.add(component.def.id);
+      setParents[component.def.id] = component;
   });
 
-  if (setParents.size > 0) {
-    viewStore.SET_PARENT([...setParents], newParent?.def.id ?? null);
+  if (Object.keys(setParents).length > 0) {
+    viewStore.SET_PARENT(Object.keys(setParents), newParent?.def.id ?? null);
+  }
+
+  // do i need to resize the new parent to fit the children?
+  const parentSize = viewStore.groups[newParent?.def.id || ""];
+  if (parentSize && newParent) {
+    const newSize: Partial<Bounds> = {};
+    Object.values(setParents).forEach((el) => {
+      const geo =
+        el.def.componentType === ComponentType.Component
+          ? viewStore.components[el.def.id]
+          : viewStore.groups[el.def.id];
+      if (!geo) return;
+
+      if (!newSize.left || geo.x < newSize.left) newSize.left = geo.x;
+      if (!newSize.top || geo.y < newSize.top)
+        newSize.top = geo.y - NODE_HEADER_HEIGHT * 2;
+      const right = geo.x + geo.width;
+      const bottom = geo.y + geo.height;
+      if (!newSize.right || right > newSize.right) newSize.right = right;
+      if (!newSize.bottom || bottom > newSize.bottom) newSize.bottom = bottom;
+    });
+    const bounds = toRequiredBounds(newSize); // removes the Partial
+    const newRect: IRect = {
+      x: bounds.left,
+      y: bounds.top,
+      width: bounds.right - bounds.left,
+      height: bounds.bottom - bounds.top,
+    };
+
+    // does the parent needs to be larger?
+    if (!rectContainsAnother(parentSize, newRect)) {
+      const DEFAULT_GUTTER_SIZE = 10; // leaving room for sockets
+
+      newRect.width += DEFAULT_GUTTER_SIZE * 6;
+      newRect.height += HEADER_SIZE;
+      newRect.height += DEFAULT_GUTTER_SIZE * 4;
+
+      // we need just a bit more padding space between the parent to fix resizability
+      newRect.height += 30;
+      viewStore.RESIZE_COMPONENT(newParent, newRect, {
+        writeToChangeSet: true,
+        broadcastToClients: true,
+      });
+    }
   }
 
   if (_components.length > 0)
@@ -2826,33 +2880,36 @@ const nodes = computed(() => {
 });
 
 const groups = computed(() => {
+  // order groups biggest at the back, smallest at the front (not according to lineage)
   const componentIds = Object.keys(viewStore.groups);
-  const orderedGroups = _.orderBy(
-    Object.values(componentsStore.groupsById).filter((g) =>
-      componentIds.includes(g.def.id),
-    ),
-    (g) => {
-      // order by "depth" in frames
-      let zIndex = g.def.ancestorIds?.length || 0;
-
-      // if being dragged (or ancestor being dragged), bump up to front, but maintain order within that frame
-      // TODO change this to being position comparisons not parentage
-      if (
-        dragElementsActive.value ||
-        viewStore.selectedComponentIds.length > 0
-      ) {
-        if (
-          _.intersection(
-            [g.def.componentId, ...(g.def.ancestorIds || [])],
-            viewStore.selectedComponentIds,
-          ).length
-        ) {
-          zIndex += 1000;
-        }
-      }
-      return zIndex;
-    },
+  const frames = Object.values(componentsStore.groupsById).filter((g) =>
+    componentIds.includes(g.def.id),
   );
+  const ancestryByBounds = new DefaultMap<ComponentId, ComponentId[]>(() => []);
+  frames.forEach((g) => {
+    const childIds = findChildrenByBoundingBox(g).map((el) => el.def.id);
+    childIds.forEach((child) => {
+      const ancestors = ancestryByBounds.get(child);
+      ancestors.push(g.def.id);
+      ancestryByBounds.set(child, ancestors);
+    });
+  });
+  const orderedGroups = _.orderBy(frames, (g) => {
+    const viewGroup = viewStore.groups[g.def.id]!;
+    let zIndex = viewGroup.zIndex;
+    // if being dragged (or ancestor being dragged), bump up to front, but maintain order within that frame
+    if (dragElementsActive.value || viewStore.selectedComponentIds.length > 0) {
+      if (
+        _.intersection(
+          [g.def.componentId, ...ancestryByBounds.get(g.def.componentId)],
+          viewStore.selectedComponentIds,
+        ).length
+      ) {
+        zIndex += 1000;
+      }
+    }
+    return zIndex;
+  });
 
   return orderedGroups;
 });
