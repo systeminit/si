@@ -185,6 +185,7 @@ impl AuditLogRow {
         workspace_id: WorkspacePk,
         change_set_ids: Vec<ChangeSetId>,
         size: usize,
+        sort_ascending: bool,
     ) -> Result<(Vec<Self>, bool)> {
         let size = size as i64;
         let change_set_ids: Vec<String> = change_set_ids.iter().map(|id| id.to_string()).collect();
@@ -199,12 +200,15 @@ impl AuditLogRow {
         let count: i64 = row.try_get("count")?;
         let can_load_more = count > size;
 
+        let query = if sort_ascending {
+            "SELECT * from audit_logs WHERE workspace_id = $1 AND change_set_id = ANY($2) ORDER BY timestamp ASC LIMIT $3"
+        } else {
+            "SELECT * from audit_logs WHERE workspace_id = $1 AND change_set_id = ANY($2) ORDER BY timestamp DESC LIMIT $3"
+        };
+
         let mut result = Vec::new();
         let rows = client
-            .query(
-                "SELECT * from audit_logs WHERE workspace_id = $1 AND change_set_id = ANY($2) ORDER BY timestamp DESC LIMIT $3",
-                &[&workspace_id, &change_set_ids, &size],
-            )
+            .query(query, &[&workspace_id, &change_set_ids, &size])
             .await?;
         for row in rows {
             result.push(Self::try_from(row)?);

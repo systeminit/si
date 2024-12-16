@@ -16,14 +16,15 @@
           classic: 'p-xs pr-sm',
           compact: 'px-xs py-2xs pr-xs',
           editor: [header ? 'p-xs' : 'p-2xs pr-xs', 'h-7'],
-        }[menuCtx.variant as DropdownMenuVariant], 
+        }[menuCtx.variant as DropdownMenuVariant],
         isFocused && !header && 'bg-action-500',
-        (!menuCtx.isCheckable.value || disableCheckable) && 
+        (!menuCtx.isCheckable.value || disableCheckable) &&
           !icon &&
           !$slots.icon &&
           !header &&
           !toggleIcon &&
           'pl-sm',
+        centerHeader && header && 'justify-center',
       )
     "
     :data-no-close-on-click="noCloseOnClick ? true : ''"
@@ -69,6 +70,7 @@
       </div>
     </div>
     <div
+      v-if="!(centerHeader && header)"
       :class="
         clsx('ml-auto shrink-0', shortcut && !endLinkTo && 'capsize text-xs')
       "
@@ -141,6 +143,7 @@ export interface DropdownMenuItemProps {
   target?: string;
 
   header?: boolean;
+  centerHeader?: boolean;
   disabled?: boolean;
 
   checkable?: boolean;

@@ -20,6 +20,7 @@ use crate::{
 #[serde(rename_all = "camelCase")]
 pub struct ListAuditLogsRequest {
     size: Option<usize>,
+    sort_ascending: Option<bool>,
 }
 
 #[derive(Debug, Serialize)]
@@ -44,6 +45,7 @@ pub async fn list_audit_logs(
         &ctx,
         state.audit_database_context(),
         request.size.unwrap_or(0),
+        request.sort_ascending.unwrap_or(false),
     )
     .await?;
 

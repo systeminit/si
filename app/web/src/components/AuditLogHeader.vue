@@ -60,10 +60,18 @@
         <DropdownMenu
           v-if="header.id !== 'timestamp' && header.id !== 'json'"
           ref="dropdownMenuRef"
-          :items="dropdownMenuItems"
+          :items="filteredDropdownMenuItems"
           :anchorTo="{ $el: thRef }"
+          :search="dropdownMenuItems.length > 0"
           alignCenter
-        />
+          @search="onSearch"
+        >
+          <DropdownMenuItem
+            v-if="filteredDropdownMenuItems.length < 1"
+            header
+            label="No matching filters found"
+          />
+        </DropdownMenu>
       </template>
     </div>
   </th>
@@ -72,6 +80,7 @@
 <script lang="ts" setup>
 import {
   DropdownMenu,
+  DropdownMenuItem,
   DropdownMenuItemObjectDef,
   IconButton,
   themeClasses,
@@ -110,12 +119,10 @@ const logsStore = useLogsStore();
 const label = computed(() => props.header.column.columnDef.header as string);
 
 const icon = computed(() => {
-  // NOTE(nick): restore timestamp sort after audit trail is shipped.
-  // if (props.header.id === "timestamp") {
-  // if (props.filters.sortTimestampAscending) return "chevron--up";
-  // else return "chevron--down";
-  // } else if (selectedFilters.value.length > 0) {
-  if (selectedFilters.value.length > 0) {
+  if (props.header.id === "timestamp") {
+    if (logsStore.sortAscending) return "chevron--up";
+    return "chevron--down";
+  } else if (selectedFilters.value.length > 0) {
     return "filter";
   }
   return "none";
@@ -150,11 +157,9 @@ const selectedFilters = computed(() => {
 
 const headerText = computed(() => {
   if (label.value === "Time") {
-    // NOTE(nick): restore timestamp sort after audit trail is shipped.
-    // return `Sorting By Timestamp ${
-    //   props.filters.sortTimestampAscending ? "(Oldest)" : "(Newest)"
-    // }`;
-    return "Sorted by Timestamp (Newest)";
+    return `Sorting By Timestamp ${
+      logsStore.sortAscending ? "(Oldest)" : "(Newest)"
+    }`;
   }
   if (selectedFilters.value.length > 0) {
     return `Filtering by ${selectedFilters.value.length} selection${
@@ -189,6 +194,8 @@ const dropdownMenuItems = computed(() => {
   items.push({
     label: headerText.value,
     header: true,
+    centerHeader: true,
+    disableCheckable: true,
   });
 
   for (const k of filterOptions.value) {
@@ -212,6 +219,19 @@ const dropdownMenuItems = computed(() => {
   }
 
   return items;
+});
+
+const searchString = ref("");
+const onSearch = (search: string) => {
+  searchString.value = search.trim().toLocaleLowerCase();
+};
+
+const filteredDropdownMenuItems = computed(() => {
+  if (!dropdownMenuRef.value || searchString.value === "")
+    return dropdownMenuItems.value;
+  return dropdownMenuItems.value.filter((item) =>
+    item.label?.toLocaleLowerCase().includes(searchString.value),
+  );
 });
 
 const onClick = () => {

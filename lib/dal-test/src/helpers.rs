@@ -427,7 +427,7 @@ pub async fn list_audit_logs_until_expected_number_of_rows(
     let mut actual_number_of_rows = 0;
 
     while start.elapsed() < timeout {
-        let (audit_logs, _) = audit_logging::list(ctx, context, size).await?;
+        let (audit_logs, _) = audit_logging::list(ctx, context, size, false).await?;
         actual_number_of_rows = audit_logs.len();
         if actual_number_of_rows == expected_number_of_rows {
             return Ok(audit_logs);

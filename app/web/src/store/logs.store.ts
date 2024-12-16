@@ -86,8 +86,9 @@ export const useLogsStore = (forceChangeSetId?: ChangeSetId) => {
       `ws${workspaceId || "NONE"}/cs${changeSetId || "NONE"}/audit-logs`,
       {
         state: () => ({
-          logs: [] as AuditLogDisplay[],
           size: 50 as number,
+          sortAscending: false as boolean,
+          logs: [] as AuditLogDisplay[],
           canLoadMore: true as boolean,
           filters: {
             changeSetFilter: [],
@@ -105,10 +106,14 @@ export const useLogsStore = (forceChangeSetId?: ChangeSetId) => {
           } as AuditLogHeaderOptions,
         }),
         actions: {
-          async LOAD_PAGE(size: number, identifier?: string) {
+          async LOAD_PAGE(
+            size: number,
+            sortAscending: boolean,
+            identifier?: string,
+          ) {
             return new ApiRequest<{ logs: AuditLog[]; canLoadMore: boolean }>({
               url: API_PREFIX,
-              params: { ...visibility, size },
+              params: { ...visibility, size, sortAscending },
               keyRequestStatusBy: identifier,
               method: "get",
               onSuccess: (response) => {
@@ -191,10 +196,14 @@ export const useLogsStore = (forceChangeSetId?: ChangeSetId) => {
               },
             });
           },
-          enqueueLoadPage(size: number, identifier: string) {
+          enqueueLoadPage(
+            size: number,
+            sortAscending: boolean,
+            identifier: string,
+          ) {
             if (!debouncer) {
               debouncer = keyedDebouncer((identifier: string) => {
-                this.LOAD_PAGE(size, identifier);
+                this.LOAD_PAGE(size, sortAscending, identifier);
               }, 500);
             }
             const loadPage = debouncer(identifier);
@@ -214,13 +223,21 @@ export const useLogsStore = (forceChangeSetId?: ChangeSetId) => {
                     // If the change set of the event is the same as ours, then let's reload. Otherwise, let's only
                     // reload if we are on HEAD and the change set has been applied or abandoned.
                     if (changeSetId === payload.changeSetId) {
-                      this.enqueueLoadPage(this.size, "event");
+                      this.enqueueLoadPage(
+                        this.size,
+                        this.sortAscending,
+                        "event",
+                      );
                     } else if (
                       changeSetId === changeSetsStore.headChangeSetId &&
                       (payload.changeSetStatus === "Applied" ||
                         payload.changeSetStatus === "Abandoned")
                     ) {
-                      this.enqueueLoadPage(this.size, "event");
+                      this.enqueueLoadPage(
+                        this.size,
+                        this.sortAscending,
+                        "event",
+                      );
                     }
                   }
                 },
