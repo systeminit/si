@@ -33,28 +33,31 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, PropType } from "vue";
+import { UseAsyncStateReturn } from "@vueuse/core";
+import { computed } from "vue";
 import clsx from "clsx";
-import { ApiRequestStatus } from "../../pinia";
+import { ApiRequestStatus, getErrorMessage } from "../../pinia";
 import { Tones } from "../utils/color_utils";
 import { Icon, themeClasses, IconNames } from "..";
 
 export type ErrorMessageVariant = "classic" | "block";
 
-const props = defineProps({
-  message: { type: String },
-  requestStatus: { type: Object as PropType<ApiRequestStatus> },
-  tone: { type: String as PropType<Tones>, default: "destructive" },
-  noPadding: { type: Boolean },
-  variant: {
-    type: String as PropType<ErrorMessageVariant>,
-    default: "classic",
+const props = withDefaults(
+  defineProps<{
+    message?: string;
+    requestStatus?: ApiRequestStatus;
+    asyncState?: UseAsyncStateReturn<unknown, unknown[], boolean>;
+    tone?: Tones;
+    noPadding?: boolean;
+    variant?: ErrorMessageVariant;
+    icon?: IconNames;
+  }>(),
+  {
+    tone: "destructive",
+    variant: "classic",
+    icon: "alert-triangle",
   },
-  icon: { type: String as PropType<IconNames>, default: "alert-triangle" },
-});
+);
 
-const computedMessage = computed(() => {
-  if (props.message) return props.message;
-  return props.requestStatus?.errorMessage;
-});
+const computedMessage = computed(() => props.message ?? getErrorMessage(props));
 </script>

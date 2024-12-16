@@ -1,26 +1,17 @@
 <template>
   <div class="overflow-hidden">
     <template v-if="loadWorkspacesReqStatus.isSuccess || createMode">
-      <div class="flex flex-row gap-sm items-center mb-md">
-        <div class="flex flex-col gap-2xs grow">
-          <div
-            ref="workspaceNameRef"
-            v-tooltip="workspaceNameTooltip"
-            class="text-lg font-bold line-clamp-3 break-words"
-          >
-            {{
-              draftWorkspace.displayName ||
-              (createMode ? "Create New Workspace" : "Workspace Details")
-            }}
-          </div>
-          <div>
-            {{
-              createMode
-                ? "Fill out this form to create a new workspace."
-                : "From here you can manage this workspace and invite users to be part of it."
-            }}
-          </div>
-        </div>
+      <WorkspacePageHeader
+        :title="
+          draftWorkspace.displayName ||
+          (createMode ? 'Create New Workspace' : 'Workspace Details')
+        "
+        :subtitle="
+          createMode
+            ? 'Fill out this form to create a new workspace.'
+            : 'From here you can manage this workspace and invite users to be part of it.'
+        "
+      >
         <template v-if="isDefaultWorkspace">
           <div
             :class="
@@ -36,18 +27,21 @@
             DEFAULT
           </div>
         </template>
-        <IconButton
-          v-if="featureFlagsStore.AUTOMATION_API"
-          tooltip="Create API Token for Automation"
-          tooltipPlacement="top"
-          :icon="'clipboard-copy'"
-          size="lg"
-          class="flex-none"
-          iconTone="warning"
-          :iconIdleTone="draftWorkspace.isFavourite ? 'warning' : 'shade'"
-          iconBgActiveTone="action"
-          @click="createAutomationToken()"
-        />
+        <RouterLink
+          v-if="!createMode && featureFlagsStore.AUTOMATION_API"
+          :to="{ name: 'workspace-auth-tokens', params: { workspaceId } }"
+        >
+          <Icon
+            name="circle-stack"
+            tooltip="API Tokens"
+            tooltipPlacement="top"
+            size="lg"
+            class="flex-none"
+            iconTone="warning"
+            iconIdleTone="shade"
+            iconBgActiveTone="action"
+          />
+        </RouterLink>
         <IconButton
           :tooltip="
             draftWorkspace.isFavourite ? 'Remove Favourite' : 'Add Favourite'
@@ -61,14 +55,7 @@
           iconBgActiveTone="action"
           @click="favouriteWorkspace(!draftWorkspace.isFavourite)"
         />
-        <RouterLink
-          :to="{
-            name: 'workspaces',
-          }"
-        >
-          <VButton label="Return To Workspaces" tone="neutral" />
-        </RouterLink>
-      </div>
+      </WorkspacePageHeader>
 
       <Stack>
         <ErrorMessage
@@ -261,17 +248,16 @@ import {
 import clsx from "clsx";
 import { useHead } from "@vueuse/head";
 import { useRouter } from "vue-router";
-import { useAuthStore } from "@/store/auth.store";
 import { useWorkspacesStore, WorkspaceId } from "@/store/workspaces.store";
 import { tracker } from "@/lib/posthog";
 import { API_HTTP_URL } from "@/store/api";
 import MemberListItem from "@/components/MemberListItem.vue";
+import WorkspacePageHeader from "@/components/WorkspacePageHeader.vue";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 
-const authStore = useAuthStore();
 const workspacesStore = useWorkspacesStore();
-const router = useRouter();
 const featureFlagsStore = useFeatureFlagsStore();
+const router = useRouter();
 
 const props = defineProps({
   workspaceId: { type: String as PropType<WorkspaceId>, required: true },
@@ -334,23 +320,15 @@ const setDefaultReqStatus = workspacesStore.getRequestStatus(
   "SET_DEFAULT_WORKSPACE",
 );
 
-const loadWorkspacesReqStatus =
-  workspacesStore.getRequestStatus("LOAD_WORKSPACES");
-
-function reloadWorkspaces() {
-  if (import.meta.env.SSR) return;
-  if (!authStore.userIsLoggedIn) return;
-
-  // eslint-disable-next-line @typescript-eslint/no-floating-promises
-  workspacesStore.LOAD_WORKSPACES();
-}
-watch(() => authStore.userIsLoggedIn, reloadWorkspaces, { immediate: true });
-
+// Reload the workspace on page load, when user logs in, when workspace ID changes or
+// default workspace is set (TODO last one probably not needed, in which case a computed
+// value for workspace will suffice rather than a watch)
+const loadWorkspacesReqStatus = workspacesStore.refreshWorkspaces();
 watch(
   [() => props.workspaceId, setDefaultReqStatus],
-  () => {
+  async () => {
     if (!setDefaultReqStatus.value.isSuccess) return;
-    reloadWorkspaces();
+    await workspacesStore.LOAD_WORKSPACES();
   },
   { immediate: true },
 );
@@ -442,17 +420,6 @@ const favouriteWorkspace = async (isFavourite: boolean) => {
   draftWorkspace.isFavourite = isFavourite;
 };
 
-const createAutomationToken = async () => {
-  if (!props.workspaceId) return;
-
-  const { result } = await workspacesStore.CREATE_AUTOMATION_TOKEN(
-    props.workspaceId,
-  );
-  if (result.success) {
-    await navigator.clipboard.writeText(result.data.token);
-  }
-};
-
 const deleteWorkspace = async () => {
   const res = await workspacesStore.DELETE_WORKSPACE(props.workspaceId);
   if (res.result.success) {
@@ -487,21 +454,6 @@ const inviteButtonHandler = async () => {
     }, 20000);
   }
 };
-
-const workspaceNameRef = ref();
-const workspaceNameTooltip = computed(() => {
-  if (
-    workspaceNameRef.value &&
-    workspaceNameRef.value.scrollHeight > workspaceNameRef.value.offsetHeight
-  ) {
-    return {
-      content: draftWorkspace.displayName,
-      delay: { show: 700, hide: 10 },
-    };
-  } else {
-    return {};
-  }
-});
 
 type WorkspaceType = "saas" | "local" | "url";
 

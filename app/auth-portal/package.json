@@ -18,6 +18,7 @@
   "dependencies": {
     "@si/ts-lib": "workspace:*",
     "@si/vue-lib": "workspace:*",
+    "@vueuse/core": "^12.0.0",
     "@vueuse/head": "^1.3.1",
     "axios": "^1.7.7",
     "clsx": "^1.2.1",
