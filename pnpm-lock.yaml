@@ -7939,11 +7939,6 @@ packages:
     resolution: {integrity: sha512-QADzlaHc8icV8I7vbaJXJwod9HWYp8uCqf1xa4OfNu1T7JVxQIrUgOWtHdNDtPiywmFbiS12VjotIXLrKM3orQ==}
     dev: true
 
-  /cookie@0.3.1:
-    resolution: {integrity: sha512-+IJOX0OqlHCszo2mBUq+SrEbCj6w7Kpffqx60zYbPTFaO4+yYgRjHwcZNpWvaTylDHaV7PPmBHzSecZiMhtPgw==}
-    engines: {node: '>= 0.6'}
-    dev: false
-
   /cookie@0.7.1:
     resolution: {integrity: sha512-6DnInpx7SJ2AK3+CTUE/ZM0vWTUboZCegxhC2xiIydHR9jNuTAASBrfEpHhiGOZw/nX51bHt6YQl8jsGo4y/0w==}
     engines: {node: '>= 0.6'}
@@ -13534,7 +13529,7 @@ packages:
   /local-storage-fallback@4.1.2:
     resolution: {integrity: sha512-oMTj4q8vnZ5FUB/tclzrTgMppSJgGs3ng4fm7qXEK/NjdzNKkVVncMRlsML+l6FwV0WBoOk8rVD5GqNQIhcz8Q==}
     dependencies:
-      cookie: 0.3.1
+      cookie: 0.7.1
     dev: false
 
   /locate-path@2.0.0:
