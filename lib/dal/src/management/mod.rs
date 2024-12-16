@@ -32,6 +32,7 @@ use crate::{
 };
 use crate::{EdgeWeightKind, WorkspaceSnapshotError};
 
+pub mod generator;
 pub mod prototype;
 
 #[derive(Debug, Error)]
@@ -214,12 +215,16 @@ pub struct ManagementActionOperation {
     remove: Option<Vec<String>>,
 }
 
+pub type ManagementCreateOperations = HashMap<String, ManagementCreateOperation>;
+pub type ManagementUpdateOperations = HashMap<String, ManagementUpdateOperation>;
+pub type ManagementActionOperations = HashMap<String, ManagementActionOperation>;
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ManagementOperations {
-    create: Option<HashMap<String, ManagementCreateOperation>>,
-    update: Option<HashMap<String, ManagementUpdateOperation>>,
-    actions: Option<HashMap<String, ManagementActionOperation>>,
+    create: Option<ManagementCreateOperations>,
+    update: Option<ManagementUpdateOperations>,
+    actions: Option<ManagementActionOperations>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

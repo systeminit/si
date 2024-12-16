@@ -81,11 +81,7 @@ import { useComponentsStore } from "@/store/components.store";
 import { useViewsStore } from "@/store/views.store";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import ComponentCard from "../ComponentCard.vue";
-import {
-  DiagramGroupData,
-  DiagramNodeData,
-  DiagramViewData,
-} from "../ModelingDiagram/diagram_types";
+import { DiagramViewData } from "../ModelingDiagram/diagram_types";
 
 const componentsStore = useComponentsStore();
 const viewsStore = useViewsStore();
@@ -147,15 +143,19 @@ onBeforeUnmount(() => {
 });
 
 const onCreateTemplate = () => {
-  if (!readyToSubmit.value || !validSelectedComponents.value) return;
+  if (
+    !readyToSubmit.value ||
+    !validSelectedComponents.value ||
+    !viewsStore.selectedViewId
+  )
+    return;
 
   const templateData = {
-    assetColor: assetColor.value,
+    color: assetColor.value,
     assetName: assetName.value,
     funcName: funcName.value,
-    components: selectedComponents.value as Array<
-      DiagramNodeData | DiagramGroupData
-    >,
+    componentIds: selectedComponents.value.map((component) => component.def.id),
+    viewId: viewsStore.selectedViewId,
   };
 
   componentsStore.CREATE_TEMPLATE_FUNC_FROM_COMPONENTS(templateData);

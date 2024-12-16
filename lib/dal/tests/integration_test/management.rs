@@ -15,6 +15,8 @@ use dal_test::{
 };
 use veritech_client::ManagementFuncStatus;
 
+pub mod generator;
+
 #[test]
 async fn update_managed_components_in_view(ctx: &DalContext) {
     let small_odd_lego = create_component_for_default_schema_name_in_default_view(
