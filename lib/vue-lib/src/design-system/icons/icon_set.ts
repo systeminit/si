@@ -89,6 +89,7 @@ import Logout from "~icons/material-symbols/logout";
 import Cat from "~icons/fa6-solid/cat";
 import Filter from "~icons/heroicons/funnel-20-solid";
 import Menu from "~icons/heroicons-solid/menu-alt-1";
+import CircleStack from "~icons/heroicons-solid/circle-stack";
 import BulletListIndented from "~icons/fluent/text-bullet-list-tree-16-regular";
 import BulletList from "~icons/material-symbols/list";
 import UserCircle from "~icons/heroicons/user-circle-solid";
@@ -228,6 +229,7 @@ export const ICONS = Object.freeze({
   "circle-empty": MdiCheckboxBlankCircleOutline,
   "circle-full": MdiCheckboxBlankCircle,
   "circle-slash": CircleSlash,
+  "circle-stack": CircleStack,
   "circle-stop": MaterialSymbolsStopCircleOutlineRounded,
   click: MdiCursorDefaultClickOutline,
   "clipboard-copy": ClipboardCopy,

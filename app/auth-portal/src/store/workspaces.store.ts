@@ -1,10 +1,12 @@
 import * as _ from "lodash-es";
 import { defineStore } from "pinia";
+import { watch } from "vue";
 import { ApiRequest } from "@si/vue-lib/pinia";
 import { UserId, useAuthStore, User } from "./auth.store";
 import { ISODateString } from "./shared-types";
 
 export type WorkspaceId = string;
+export type AuthTokenId = string;
 
 // TODO: do we want to share this type with the backend?
 export type Workspace = {
@@ -86,6 +88,20 @@ export const useWorkspacesStore = defineStore("workspaces", {
     },
   },
   actions: {
+    // Reloads workspaces immediately and reactively when the user logs in.
+    refreshWorkspaces() {
+      if (!import.meta.env.SSR) {
+        const authStore = useAuthStore();
+        watch(
+          () => authStore.userIsLoggedIn,
+          async (userIsLoggedIn) => {
+            if (userIsLoggedIn) await this.LOAD_WORKSPACES();
+          },
+          { immediate: true },
+        );
+      }
+      return this.getRequestStatus("LOAD_WORKSPACES");
+    },
     async LOAD_WORKSPACES() {
       return new ApiRequest<Workspace[]>({
         url: "/workspaces",
@@ -215,13 +231,6 @@ export const useWorkspacesStore = defineStore("workspaces", {
             (u) => u.userId,
           );
         },
-      });
-    },
-
-    async CREATE_AUTOMATION_TOKEN(workspaceId: WorkspaceId) {
-      return new ApiRequest<{ token: string }>({
-        method: "post",
-        url: `/workspaces/${workspaceId}/createAutomationToken`,
       });
     },
 

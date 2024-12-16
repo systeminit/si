@@ -1,6 +1,10 @@
 <template>
   <div
-    v-if="requestStatus === undefined || requestStatus.isPending"
+    v-if="
+      requestStatus?.isPending ||
+      asyncState?.isLoading ||
+      (!requestStatus && !asyncState)
+    "
     :class="
       clsx('w-full flex flex-col items-center gap-sm', !noPadding && 'p-xl')
     "
@@ -16,14 +20,16 @@
 </template>
 
 <script lang="ts" setup>
-import { PropType } from "vue";
+import { UseAsyncStateReturn } from "@vueuse/core";
 import clsx from "clsx";
 import { ApiRequestStatus } from "../../pinia";
 import { Icon } from "..";
 
-const props = defineProps({
-  message: { type: String },
-  requestStatus: { type: Object as PropType<ApiRequestStatus> },
-  noPadding: { type: Boolean },
-});
+// Convert this to the defineProps() syntax with PropType
+defineProps<{
+  message?: string;
+  requestStatus?: ApiRequestStatus;
+  asyncState?: UseAsyncStateReturn<unknown, unknown[], boolean>;
+  noPadding?: boolean;
+}>();
 </script>
