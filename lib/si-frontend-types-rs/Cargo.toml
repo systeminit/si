@@ -11,6 +11,7 @@ publish.workspace = true
 [dependencies]
 module-index-types = { path = "../../lib/module-index-types" }
 si-events = { path = "../../lib/si-events-rs" }
+si-id = { path = "../../lib/si-id" }
 
 chrono = { workspace = true }
 remain = { workspace = true }

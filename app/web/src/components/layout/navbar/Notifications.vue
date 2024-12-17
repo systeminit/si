@@ -51,7 +51,9 @@ const pendingApprovalModalRef = ref<InstanceType<
   typeof ApprovalPendingModal
 > | null>(null);
 
-const userIsApprover = computed(() => changeSetsStore.currentUserIsApprover);
+const userIsApprover = computed(
+  () => changeSetsStore.currentUserIsDefaultApprover,
+);
 const pendingApprovalCount = computed(
   () => changeSetsStore.changeSetsNeedingApproval.length,
 );
