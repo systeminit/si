@@ -6097,6 +6097,7 @@ dependencies = [
  "once_cell",
  "pathdiff",
  "permissions",
+ "pretty_assertions_sorted",
  "rand 0.8.5",
  "rebaser-client",
  "remain",
@@ -6110,6 +6111,7 @@ dependencies = [
  "si-data-spicedb",
  "si-events",
  "si-frontend-types",
+ "si-id",
  "si-jwt-public-key",
  "si-layer-cache",
  "si-pkg",
@@ -6617,6 +6619,7 @@ dependencies = [
  "serde",
  "serde_json",
  "si-events",
+ "si-id",
  "strum",
 ]
 

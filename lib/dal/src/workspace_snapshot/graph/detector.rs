@@ -5,8 +5,9 @@ use petgraph::{
     visit::{Control, DfsEvent},
 };
 use serde::{Deserialize, Serialize};
-use si_events::ulid::Ulid;
+use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid};
 use strum::EnumDiscriminants;
+use telemetry::prelude::*;
 
 use crate::{
     workspace_snapshot::{node_weight::NodeWeight, NodeInformation},
@@ -35,6 +36,12 @@ pub enum Update {
     },
 }
 
+#[derive(Debug)]
+pub struct Change {
+    pub id: Ulid,
+    pub merkle_tree_hash: MerkleTreeHash,
+}
+
 #[derive(Clone, Debug)]
 enum NodeDifference {
     NewNode,
@@ -55,6 +62,42 @@ impl<'a, 'b> Detector<'a, 'b> {
             base_graph,
             updated_graph,
         }
+    }
+
+    /// Performs a post order walk of the updated graph, finding the updates
+    /// made to it when compared to the base graph, using the Merkle tree hash
+    /// to detect changes and ignore unchanged branches.
+    ///
+    /// This assumes that all graphs involved to not have any "garbage" laying around. If in doubt,
+    /// run [`cleanup`][WorkspaceSnapshotGraph::cleanup] on all involved graphs, before handing
+    /// them over to the [`Detector`].
+    pub fn detect_updates(&self) -> Vec<Update> {
+        let mut updates = vec![];
+        let mut difference_cache = HashMap::new();
+
+        petgraph::visit::depth_first_search(
+            self.updated_graph.graph(),
+            Some(self.updated_graph.root()),
+            |event| self.calculate_updates_dfs_event(event, &mut updates, &mut difference_cache),
+        );
+
+        updates
+    }
+
+    /// Performs a post order walk of an updated graph, finding the nodes that have been added, removed or modified.
+    ///
+    /// This assumes that all graphs involved to not have any "garbage" laying around. If in doubt, perform "cleanup"
+    /// on both graphs before creating the [`Detector`].
+    pub fn detect_changes(&self) -> Vec<Change> {
+        let mut changes = Vec::new();
+
+        petgraph::visit::depth_first_search(
+            self.updated_graph.graph(),
+            Some(self.updated_graph.root()),
+            |event| self.calculate_changes_dfs_event(event, &mut changes),
+        );
+
+        changes
     }
 
     fn node_diff_from_base_graph(
@@ -328,23 +371,30 @@ impl<'a, 'b> Detector<'a, 'b> {
         }
     }
 
-    /// Performs a post order walk of the updated graph, finding the updates
-    /// made to it when compared to the base graph, using the Merkle tree hash
-    /// to detect changes and ignore unchanged branches.
-    ///
-    /// This assumes that all graphs involved to not have any "garbage" laying around. If in doubt,
-    /// run [`cleanup`][WorkspaceSnapshotGraph::cleanup] on all involved graphs, before handing
-    /// them over to the [`Detector`].
-    pub fn detect_updates(&self) -> Vec<Update> {
-        let mut updates = vec![];
-        let mut difference_cache = HashMap::new();
+    fn calculate_changes_dfs_event(
+        &self,
+        event: DfsEvent<NodeIndex>,
+        changes: &mut Vec<Change>,
+    ) -> Control<()> {
+        if let DfsEvent::Discover(updated_graph_index, _) = event {
+            match self.updated_graph.get_node_weight(updated_graph_index) {
+                Ok(updated_node_weight) => {
+                    if let Some(original_node_weight) = self.base_graph.get_node_weight_by_id_opt(updated_node_weight.id()) {
+                        if original_node_weight.merkle_tree_hash() == updated_node_weight.merkle_tree_hash() {
+                            return Control::Prune;
+                        }
+                    }
 
-        petgraph::visit::depth_first_search(
-            self.updated_graph.graph(),
-            Some(self.updated_graph.root()),
-            |event| self.calculate_updates_dfs_event(event, &mut updates, &mut difference_cache),
-        );
-
-        updates
+                    // If either the original node weight was not found or it was found the merkle tree hashes differ,
+                    // then we have information that needs to be collected!
+                    changes.push(Change {
+                        id: updated_node_weight.id(),
+                        merkle_tree_hash: updated_node_weight.merkle_tree_hash(),
+                    });
+                }
+                Err(err) => error!(?err, "heat death of the universe error: updated node weight not found by updated node index from the same graph"),
+            }
+        }
+        Control::Continue
     }
 }

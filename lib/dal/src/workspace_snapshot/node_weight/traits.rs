@@ -1,6 +1,6 @@
 use crate::{
     workspace_snapshot::{
-        graph::{detect_updates::Update, WorkspaceSnapshotGraphError},
+        graph::{detector::Update, WorkspaceSnapshotGraphError},
         NodeInformation,
     },
     EdgeWeightKindDiscriminants, WorkspaceSnapshotGraphVCurrent,

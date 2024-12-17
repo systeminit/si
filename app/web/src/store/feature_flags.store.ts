@@ -14,6 +14,7 @@ const FLAG_MAPPING = {
   REBAC: "rebac",
   SLACK_WEBHOOK: "slack_webhook",
   TEMPLATE_MGMT_FUNC_GENERATION: "template-mgmt-func-generation",
+  FINE_GRAINED_ACCESS_CONTROL: "fine-grained-access-control",
 };
 
 const WORKSPACE_FLAG_MAPPING = {
