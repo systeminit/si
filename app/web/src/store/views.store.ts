@@ -3,7 +3,6 @@ import * as _ from "lodash-es";
 import { addStoreHooks, ApiRequest, URLPattern } from "@si/vue-lib/pinia";
 import { IRect, Vector2d } from "konva/lib/types";
 import { useToast } from "vue-toastification";
-import { watch } from "vue";
 import { IconNames } from "@si/vue-lib/design-system";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import {
@@ -592,17 +591,19 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
           this.selectedComponentIds = valid;
           this.syncSelectionIntoUrl();
         },
-        selectView(id: ViewId) {
+        async selectView(id: ViewId) {
           const view = this.viewsById[id];
           if (view) {
             const route = router.currentRoute;
+            const params = {
+              ...route.value.params,
+              viewId: id,
+            };
             router.push({
               name: "workspace-compose-view",
-              params: {
-                ...route.value.params,
-                viewId: id,
-              },
+              params,
             });
+
             // move the currently selected view to the top of the
             if (this.selectedViewId) {
               this.pushRecentView(this.selectedViewId);
@@ -628,7 +629,10 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
             // to begin, and then adjust it via delta when things move
             this.sockets = view.sockets;
           } else {
-            throw new Error(`${id} does not exist`);
+            const res = await this.FETCH_VIEW(id);
+            if (!res.result.success) {
+              throw new Error(`${id} does not exist`);
+            }
           }
         },
         closeRecentView(id: ViewId) {
@@ -1575,25 +1579,6 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
         }
         this.LIST_VIEWS();
 
-        // TODO: prob want to take loading state into consideration as this will set it before its loaded
-        const stopWatchingUrl = watch(
-          router.currentRoute,
-          () => {
-            if (
-              router.currentRoute.value.name === "workspace-compose" ||
-              router.currentRoute.value.name === "workspace-compose-view"
-            )
-              this.syncUrlIntoSelection();
-            const viewId = router.currentRoute.value.params.viewId;
-            if (viewId && this.selectedViewId !== viewId) {
-              this.selectView(viewId as string);
-            }
-          },
-          {
-            immediate: true,
-          },
-        );
-
         if (router.currentRoute.value.name === "workspace-compose") {
           const key = `${changeSetId}_selected_component`;
           const lastId = window.localStorage.getItem(key);
@@ -1984,7 +1969,6 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
           this.selectedComponentIds = [];
           this.selectedEdgeId = null;
           actionUnsub();
-          stopWatchingUrl();
           realtimeStore.unsubscribe(`${this.$id}-changeset`);
           realtimeStore.unsubscribe(`${this.$id}-workspace`);
         };
