@@ -8,7 +8,7 @@ use si_events::{ulid::Ulid, ContentHash};
 use crate::{
     workspace_snapshot::{
         content_address::{ContentAddress, ContentAddressDiscriminants},
-        graph::{deprecated::v1::DeprecatedContentNodeWeightV1, detect_updates::Update, LineageId},
+        graph::{deprecated::v1::DeprecatedContentNodeWeightV1, detector::Update, LineageId},
         node_weight::{traits::CorrectTransforms, NodeWeightError, NodeWeightResult},
         NodeInformation,
     },

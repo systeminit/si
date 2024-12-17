@@ -21,8 +21,10 @@ use thiserror::Error;
 mod app;
 mod app_state;
 mod config;
+pub mod dal_wrapper;
 mod extract;
 mod init;
+pub mod key_generation;
 pub mod middleware;
 mod migrations;
 mod nats_multiplexer;
@@ -32,7 +34,6 @@ mod server;
 pub mod service;
 mod tracking;
 mod uds;
-pub mod util;
 
 pub use self::{
     app::AxumApp,

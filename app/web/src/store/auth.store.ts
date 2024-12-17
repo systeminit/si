@@ -33,6 +33,12 @@ interface LoginResponse {
   token: string;
 }
 
+export interface WorkspaceUser {
+  id: string;
+  name: string;
+  email: string;
+}
+
 export const useAuthStore = () => {
   const realtimeStore = useRealtimeStore();
   return defineStore("auth", {
@@ -42,6 +48,7 @@ export const useAuthStore = () => {
 
       // TODO: these maybe should live in another module related to the user/org/groups/etc
       user: null as User | null,
+      workspaceUsers: {} as Record<string, WorkspaceUser>,
     }),
     getters: {
       // previously we checked only for the token existing
@@ -61,6 +68,21 @@ export const useAuthStore = () => {
       },
     },
     actions: {
+      // stolen from admin store for a second
+      async LIST_WORKSPACE_USERS(workspaceId: string) {
+        return new ApiRequest<{ users: WorkspaceUser[] }>({
+          method: "get",
+          // TODO(nick): move workspace users list out of the admin routes in sdf.
+          url: `v2/admin/workspaces/${workspaceId}/users`,
+          onSuccess: (response) => {
+            this.workspaceUsers = {};
+            response.users.forEach((u) => {
+              this.workspaceUsers[u.id] = u;
+            });
+          },
+        });
+      },
+
       // fetches user + workspace info from SDF - called on page refresh
       async RESTORE_AUTH() {
         return new ApiRequest<Omit<LoginResponse, "jwt">>({

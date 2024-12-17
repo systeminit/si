@@ -26,7 +26,7 @@ use self::{
     schema_variant_node_weight::SchemaVariantNodeWeightError,
 };
 use super::graph::{
-    deprecated::v1::DeprecatedNodeWeightV1, detect_updates::Update, WorkspaceSnapshotGraphError,
+    deprecated::v1::DeprecatedNodeWeightV1, detector::Update, WorkspaceSnapshotGraphError,
 };
 use crate::layer_db_types::ComponentContentDiscriminants;
 use crate::workspace_snapshot::node_weight::diagram_object_node_weight::{
@@ -683,6 +683,16 @@ impl NodeWeight {
             NodeWeight::Ordering(inner) => Ok(inner.to_owned()),
             other => Err(NodeWeightError::UnexpectedNodeWeightVariant(
                 NodeWeightDiscriminants::Ordering,
+                other.into(),
+            )),
+        }
+    }
+
+    pub fn get_content_node_weight(&self) -> NodeWeightResult<ContentNodeWeight> {
+        match self {
+            NodeWeight::Content(inner) => Ok(inner.to_owned()),
+            other => Err(NodeWeightError::UnexpectedNodeWeightVariant(
+                NodeWeightDiscriminants::Content,
                 other.into(),
             )),
         }
