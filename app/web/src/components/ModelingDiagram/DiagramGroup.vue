@@ -439,7 +439,9 @@ import {
   GROUP_RESIZE_HANDLE_SIZE,
   GROUP_TITLE_FONT_SIZE,
   SELECTION_COLOR,
-  MIN_NODE_DIMENSION,
+  NODE_SUBTITLE_TEXT_HEIGHT,
+  SOCKET_MARGIN_TOP,
+  NODE_PADDING_BOTTOM,
 } from "@/components/ModelingDiagram/diagram_constants";
 import {
   QualificationStatus,
@@ -514,11 +516,18 @@ const irect = computed(() => {
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const r = viewStore.groups[props.group.def.id]!;
 
+  const minimum =
+    NODE_SUBTITLE_TEXT_HEIGHT +
+    SOCKET_MARGIN_TOP +
+    NODE_PADDING_BOTTOM +
+    30 +
+    NODE_HEADER_HEIGHT;
+
   return {
     x: r.x,
     y: r.y,
-    width: Math.max(r.width, MIN_NODE_DIMENSION),
-    height: Math.max(r.height, MIN_NODE_DIMENSION),
+    width: Math.max(r.width, minimum),
+    height: Math.max(r.height, minimum),
   };
 });
 

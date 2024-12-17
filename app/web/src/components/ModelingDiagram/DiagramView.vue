@@ -92,7 +92,7 @@ import DiagramIcon from "./DiagramIcon.vue";
 
 const { theme } = useTheme();
 
-const viewStore = useViewsStore();
+const viewsStore = useViewsStore();
 
 const props = defineProps<{
   view: DiagramViewDef;
@@ -148,7 +148,7 @@ interface ViewStats {
 
 const statusIcons = computed(() => {
   const icons: ViewStats[] = [];
-  const stats = viewStore.viewStats[props.view.id];
+  const stats = viewsStore.viewStats[props.view.id];
   if (!stats) return icons;
 
   if (stats.components > 0)
@@ -246,17 +246,17 @@ const config = computed(() => {
 
 function onMouseOver(evt: KonvaEventObject<MouseEvent>, type?: string) {
   evt.cancelBubble = true;
-  viewStore.setHoveredComponentId(
+  viewsStore.setHoveredComponentId(
     props.view.id,
     type ? ({ type } as ElementHoverMeta) : undefined,
   );
 }
 
 function onMouseOut() {
-  viewStore.setHoveredComponentId(null);
+  viewsStore.setHoveredComponentId(null);
 }
 
 const goto = () => {
-  viewStore.selectView(props.view.id);
+  viewsStore.selectView(props.view.id);
 };
 </script>

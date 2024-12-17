@@ -102,6 +102,7 @@ import { useRoute, useRouter } from "vue-router";
 import Popover from "@/components/Popover.vue";
 import { usePresenceStore } from "@/store/presence.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
+import { useViewsStore } from "@/store/views.store";
 import UserIcon from "./UserIcon.vue";
 import UserCard from "./UserCard.vue";
 
@@ -283,15 +284,20 @@ function goToUserChangeSet(user: UserInfo) {
   if (!user || !user.changeSet) return;
 
   if (user.view) {
-    router.push({
-      name: "workspace-compose-view",
-      params: {
-        ...route.params,
-        changeSetId: user.changeSet,
-        viewId: user.view,
-      },
-      query: route.query,
-    });
+    if (user.changeSet === changeSetsStore.selectedChangeSetId) {
+      const viewsStore = useViewsStore(); // have to access the store here to prevent ending up with the none change set views store
+      viewsStore.selectView(user.view);
+    } else {
+      router.push({
+        name: "workspace-compose-view",
+        params: {
+          ...route.params,
+          changeSetId: user.changeSet,
+          viewId: user.view,
+        },
+        query: route.query,
+      });
+    }
     return;
   }
 

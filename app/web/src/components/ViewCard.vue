@@ -12,7 +12,10 @@
       )
     "
   >
-    <div class="flex-grow min-w-0" @click="() => viewStore.selectView(view.id)">
+    <div
+      class="flex-grow min-w-0"
+      @click="() => viewsStore.selectView(view.id)"
+    >
       <div class="flex flex-col">
         <TruncateWithTooltip class="w-full">
           <span class="text-sm">
@@ -23,21 +26,21 @@
           <div
             class="flex place-content-center items-center min-w-fit text-xs gap-0.5 truncate text-success-600 font-bold"
           >
-            <div>{{ viewStore.viewStats[view.id]?.components }}</div>
+            <div>{{ viewsStore.viewStats[view.id]?.components }}</div>
             <Icon name="check-hex-outline" tone="success" size="sm" />
           </div>
           <div
-            v-if="viewStore.viewStats[view.id]?.components || 0 > 0"
+            v-if="viewsStore.viewStats[view.id]?.components || 0 > 0"
             class="flex place-content-center items-center min-w-fit x text-xs gap-0.5 truncate text-success-600 font-bold"
           >
-            <div>{{ viewStore.viewStats[view.id]?.resources }}</div>
+            <div>{{ viewsStore.viewStats[view.id]?.resources }}</div>
             <Icon name="check-hex" tone="success" size="sm" />
           </div>
           <div
-            v-if="viewStore.viewStats[view.id]?.failed || 0 > 0"
+            v-if="viewsStore.viewStats[view.id]?.failed || 0 > 0"
             class="flex place-content-center items-center min-w-fit text-xs gap-0.5 truncate text-destructive-600 font-bold"
           >
-            <div>{{ viewStore.viewStats[view.id]?.failed }}</div>
+            <div>{{ viewsStore.viewStats[view.id]?.failed }}</div>
             <Icon name="x-hex-outline" tone="destructive" size="sm" />
           </div>
         </div>
@@ -55,12 +58,13 @@
       />
       <DropdownMenuItem
         :disabled="
-          viewStore.selectedViewId === view.id && !viewStore.viewNodes[view.id]
+          viewsStore.selectedViewId === view.id &&
+          !viewsStore.viewNodes[view.id]
         "
         label="Add to Diagram"
         icon="plus"
         @click="(e: MouseEvent) => {
-          if (viewStore.selectedViewId === view.id && !viewStore.viewNodes[view.id]) return;
+          if (viewsStore.selectedViewId === view.id && !viewsStore.viewNodes[view.id]) return;
           onAdd(view.id, e);
         }"
       />
@@ -69,7 +73,7 @@
         icon="eye"
         :onSelect="
           () => {
-            viewStore.selectView(view.id);
+            viewsStore.selectView(view.id);
           }
         "
       />
@@ -78,7 +82,7 @@
         icon="bullet-list-indented"
         :onSelect="
           () => {
-            viewStore.setOutlinerView(view.id);
+            viewsStore.setOutlinerView(view.id);
           }
         "
       />
@@ -154,7 +158,7 @@ import NodeSkeleton from "@/components/NodeSkeleton.vue";
 import DetailsPanelMenuIcon from "./DetailsPanelMenuIcon.vue";
 
 const toast = useToast();
-const viewStore = useViewsStore();
+const viewsStore = useViewsStore();
 
 const props = defineProps<{
   selected?: boolean;
@@ -175,8 +179,8 @@ const updateMouseNode = (e: MouseEvent) => {
 
 const onMouseDown = (e: MouseEvent) => {
   updateMouseNode(e);
-  if (viewStore.addComponentId) {
-    viewStore.cancelAdd();
+  if (viewsStore.addComponentId) {
+    viewsStore.cancelAdd();
   }
 };
 
@@ -195,19 +199,19 @@ onBeforeUnmount(() => {
 });
 
 const addingView = computed(() => {
-  if (viewStore.addViewId)
-    return viewStore.viewList.find((v) => v.id === viewStore.addViewId);
+  if (viewsStore.addViewId)
+    return viewsStore.viewList.find((v) => v.id === viewsStore.addViewId);
   return undefined;
 });
 
 function onAdd(id: string, e: MouseEvent) {
   // cannot dupe views
-  if (Object.keys(viewStore.viewNodes).includes(id)) return;
+  if (Object.keys(viewsStore.viewNodes).includes(id)) return;
 
-  if (viewStore.addViewId === id) {
-    viewStore.cancelAdd();
+  if (viewsStore.addViewId === id) {
+    viewsStore.cancelAdd();
   } else {
-    viewStore.addViewId = id;
+    viewsStore.addViewId = id;
     if (e) {
       nextTick(() => {
         updateMouseNode(e);
@@ -227,14 +231,14 @@ const updateName = (e?: Event) => {
   if (!viewName.value) {
     labelRef.value?.setError("Name is required");
   } else {
-    viewStore.UPDATE_VIEW_NAME(props.view.id, viewName.value);
+    viewsStore.UPDATE_VIEW_NAME(props.view.id, viewName.value);
     modalRef.value?.close();
     viewName.value = "";
   }
 };
 
 const deleteView = async (view: ViewDescription) => {
-  const resp = await viewStore.DELETE_VIEW(view.id);
+  const resp = await viewsStore.DELETE_VIEW(view.id);
   if (!resp.result.success) {
     if (resp.result.statusCode === 409) {
       /* We cannot easily pass JSON data as an error, punting for now with a generic message
