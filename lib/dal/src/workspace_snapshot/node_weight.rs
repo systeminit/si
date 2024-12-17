@@ -26,7 +26,7 @@ use self::{
     schema_variant_node_weight::SchemaVariantNodeWeightError,
 };
 use super::graph::{
-    deprecated::v1::DeprecatedNodeWeightV1, detect_updates::Update, WorkspaceSnapshotGraphError,
+    deprecated::v1::DeprecatedNodeWeightV1, detector::Update, WorkspaceSnapshotGraphError,
 };
 use crate::layer_db_types::ComponentContentDiscriminants;
 use crate::workspace_snapshot::node_weight::diagram_object_node_weight::{

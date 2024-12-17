@@ -66,6 +66,7 @@ id!(WorkspaceSnapshotNodeId);
 id_with_pg_types!(ActionId);
 id_with_pg_types!(CachedModuleId);
 id_with_pg_types!(ChangeSetId);
+id_with_pg_types!(ChangeSetApprovalId);
 id_with_pg_types!(ComponentId);
 id_with_pg_types!(FuncId);
 id_with_pg_types!(FuncRunId);

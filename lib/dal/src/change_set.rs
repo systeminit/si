@@ -26,6 +26,7 @@ use crate::{
     WorkspaceError,
 };
 
+pub mod approval;
 pub mod event;
 pub mod status;
 pub mod view;
