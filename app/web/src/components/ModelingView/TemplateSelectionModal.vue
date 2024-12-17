@@ -5,34 +5,21 @@
         This will create a new template function based on
         {{
           selectedComponents.length === 1
-            ? "this component"
-            : `the following ${selectedComponents.length} components`
+            ? "the selected component"
+            : `the ${selectedComponents.length} selected components`
         }}. The new function will be attached to a new asset.
       </div>
 
-      <div class="flex flex-col flex-1 gap-xs overflow-y-auto">
+      <!-- if we ever want to show the components, here's the code for that -->
+      <!-- <div class="flex flex-col flex-1 gap-xs overflow-y-auto">
         <ComponentCard
           v-for="component in selectedComponents"
           :key="component.def.id"
           :component="component"
         />
-      </div>
+      </div> -->
 
       <div class="flex flex-col flex-none">
-        <VormInput
-          compact
-          compactWide
-          required
-          label="Asset Color"
-          type="container"
-        >
-          <ColorPicker
-            id="asset-color"
-            v-model="assetColor"
-            insideModal
-            @change="null"
-          />
-        </VormInput>
         <VormInput
           v-model="assetName"
           compact
@@ -49,6 +36,28 @@
           required
           placeholder="A name for your generated Template Function."
         />
+        <VormInput
+          v-model="category"
+          compact
+          compactWide
+          required
+          label="Category"
+          placeholder="A category for your generated Template Asset."
+        />
+        <VormInput
+          compact
+          compactWide
+          required
+          label="Asset Color"
+          type="container"
+        >
+          <ColorPicker
+            id="asset-color"
+            v-model="assetColor"
+            insideModal
+            @change="null"
+          />
+        </VormInput>
       </div>
 
       <div class="flex flex-row gap-sm flex-none">
@@ -80,7 +89,6 @@ import { storeToRefs } from "pinia";
 import { useComponentsStore } from "@/store/components.store";
 import { useViewsStore } from "@/store/views.store";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
-import ComponentCard from "../ComponentCard.vue";
 import { DiagramViewData } from "../ModelingDiagram/diagram_types";
 
 const componentsStore = useComponentsStore();
@@ -107,6 +115,7 @@ const randomDefaultColor = () => {
 const assetColor = ref(randomDefaultColor());
 const assetName = ref("");
 const funcName = ref("");
+const category = ref("Templates");
 
 const validSelectedComponents = computed(
   () =>
@@ -131,6 +140,7 @@ const open = () => {
   assetColor.value = randomDefaultColor();
   assetName.value = "";
   funcName.value = "";
+  category.value = "Templates";
   openModal();
 };
 
@@ -156,6 +166,7 @@ const onCreateTemplate = () => {
     funcName: funcName.value,
     componentIds: selectedComponents.value.map((component) => component.def.id),
     viewId: viewsStore.selectedViewId,
+    category: category.value,
   };
 
   componentsStore.CREATE_TEMPLATE_FUNC_FROM_COMPONENTS(templateData);

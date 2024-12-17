@@ -41,7 +41,7 @@ overflow hidden */
       >
         <LoadingMessage message="Loading change set" />
       </div>
-      <DiagramEmptyState v-else-if="viewStore.diagramIsEmpty" />
+      <DiagramEmptyState v-else-if="viewsStore.diagramIsEmpty" />
     </div>
     <!-- This section contains the main v-stage with all of the components/frames/cursors, as well as the DiagramControls -->
     <div
@@ -125,7 +125,7 @@ overflow hidden */
             />
           </template>
           <template
-            v-for="view in Object.values(viewStore.viewNodes)"
+            v-for="view in Object.values(viewsStore.viewNodes)"
             :key="view.id"
           >
             <DiagramView
@@ -140,7 +140,7 @@ overflow hidden */
             :cursor="mouseCursor"
           />
           <DiagramEdge
-            v-for="edge in viewStore.edges"
+            v-for="edge in viewsStore.edges"
             :key="edge.uniqueKey"
             :edge="edge"
             :fromPoint="getSocketLocationInfo('from', edge)?.center"
@@ -158,7 +158,7 @@ overflow hidden */
           <template
             v-for="(
               pendingInsert, pendingInsertId
-            ) in viewStore.pendingInsertedComponents"
+            ) in viewsStore.pendingInsertedComponents"
             :key="pendingInsertId"
           >
             <v-rect
@@ -401,12 +401,12 @@ const emit = defineEmits<{
 }>();
 
 const componentsStore = useComponentsStore();
-const viewStore = useViewsStore();
+const viewsStore = useViewsStore();
 const statusStore = useStatusStore();
 const featureFlagsStore = useFeatureFlagsStore();
 const modelingEventBus = componentsStore.eventBus;
 
-const fetchDiagramReqStatus = viewStore.getRequestStatus("FETCH_VIEW");
+const fetchDiagramReqStatus = viewsStore.getRequestStatus("FETCH_VIEW");
 
 const customFontsLoaded = useCustomFontsLoaded();
 
@@ -652,13 +652,13 @@ watch(
               if (component) {
                 let viewComponent;
                 if (component.def.isGroup) {
-                  viewComponent = viewStore.groups[geo.componentId];
+                  viewComponent = viewsStore.groups[geo.componentId];
                   if (viewComponent && geo.height && geo.width) {
                     viewComponent.height = geo.height;
                     viewComponent.width = geo.width;
                   }
                 } else {
-                  viewComponent = viewStore.components[geo.componentId];
+                  viewComponent = viewsStore.components[geo.componentId];
                 }
                 if (viewComponent) {
                   viewComponent.x = geo.x;
@@ -795,15 +795,15 @@ async function onKeyDown(e: KeyboardEvent) {
   if (
     (e.metaKey || e.ctrlKey) &&
     e.key === "c" &&
-    viewStore.selectedComponentIds.length
+    viewsStore.selectedComponentIds.length
   ) {
-    const component = viewStore.selectedComponents
+    const component = viewsStore.selectedComponents
       .filter(
         (c): c is DiagramNodeData | DiagramGroupData =>
           !(c instanceof DiagramViewData),
       )
       .pop();
-    const containsUpgradeable = viewStore.selectedComponents.some(
+    const containsUpgradeable = viewsStore.selectedComponents.some(
       (c) => "canBeUpgraded" in c.def && c.def.canBeUpgraded,
     );
     if (containsUpgradeable) {
@@ -813,10 +813,10 @@ async function onKeyDown(e: KeyboardEvent) {
       window.localStorage.setItem(
         CLIPBOARD_LOCALSTORAGE_KEY.value,
         JSON.stringify({
-          componentIds: viewStore.selectedComponentIds,
+          componentIds: viewsStore.selectedComponentIds,
           copyingFrom: component.def.isGroup
-            ? { ...viewStore.groups[component.def.id] }
-            : { ...viewStore.components[component.def.id] },
+            ? { ...viewsStore.groups[component.def.id] }
+            : { ...viewsStore.components[component.def.id] },
         }),
       );
     }
@@ -825,7 +825,7 @@ async function onKeyDown(e: KeyboardEvent) {
     if (json !== null && json !== "null") {
       try {
         const { componentIds, copyingFrom } = JSON.parse(json);
-        viewStore.selectedComponentIds = componentIds;
+        viewsStore.selectedComponentIds = componentIds;
         componentsStore.copyingFrom = copyingFrom;
         triggerPasteElements();
       } catch {
@@ -870,30 +870,30 @@ async function onKeyDown(e: KeyboardEvent) {
   if (
     !props.readOnly &&
     e.key === "r" &&
-    viewStore.selectedComponent?.def &&
-    "hasResource" in viewStore.selectedComponent.def &&
-    viewStore.selectedComponent?.def.hasResource &&
+    viewsStore.selectedComponent?.def &&
+    "hasResource" in viewsStore.selectedComponent.def &&
+    viewsStore.selectedComponent?.def.hasResource &&
     changeSetsStore.selectedChangeSetId === changeSetsStore.headChangeSetId
   ) {
-    componentsStore.REFRESH_RESOURCE_INFO(viewStore.selectedComponent.def.id);
+    componentsStore.REFRESH_RESOURCE_INFO(viewsStore.selectedComponent.def.id);
   }
   if (
     !props.readOnly &&
     e.key === "n" &&
-    viewStore.selectedComponentId &&
-    viewStore.selectedComponent &&
-    !(viewStore.selectedComponent instanceof DiagramViewData)
+    viewsStore.selectedComponentId &&
+    viewsStore.selectedComponent &&
+    !(viewsStore.selectedComponent instanceof DiagramViewData)
   ) {
     e.preventDefault();
-    renameOnDiagramByComponentId(viewStore.selectedComponentId);
+    renameOnDiagramByComponentId(viewsStore.selectedComponentId);
   }
   if (
     !props.readOnly &&
     featureFlagsStore.TEMPLATE_MGMT_FUNC_GENERATION &&
     e.key === "t" &&
-    viewStore.restorableSelectedComponents.length === 0 &&
-    viewStore.selectedComponents.length > 0 &&
-    !viewStore.selectedComponents.some((c) => c instanceof DiagramViewData)
+    viewsStore.restorableSelectedComponents.length === 0 &&
+    viewsStore.selectedComponents.length > 0 &&
+    !viewsStore.selectedComponents.some((c) => c instanceof DiagramViewData)
   ) {
     e.preventDefault();
     modelingEventBus.emit("templateFromSelection");
@@ -1154,10 +1154,10 @@ const hoveredElementKey = computed(() => {
   // dont recompute this while we're dragging
   if (dragElementsActive.value) return undefined;
 
-  if (viewStore.hoveredComponentId) {
-    return getDiagramElementKeyForComponentId(viewStore.hoveredComponentId);
-  } else if (viewStore.hoveredEdgeId) {
-    return DiagramEdgeData.generateUniqueKey(viewStore.hoveredEdgeId);
+  if (viewsStore.hoveredComponentId) {
+    return getDiagramElementKeyForComponentId(viewsStore.hoveredComponentId);
+  } else if (viewsStore.hoveredEdgeId) {
+    return DiagramEdgeData.generateUniqueKey(viewsStore.hoveredEdgeId);
   }
   return undefined;
 });
@@ -1175,7 +1175,7 @@ const hoveredElement = computed(() => {
   if (!elm) {
     // putting this last, using a find
     const id = hoveredElementKey.value?.substring(2);
-    elm = viewStore.edges.find((edge) => edge.def.id === id);
+    elm = viewsStore.edges.find((edge) => edge.def.id === id);
   }
   return elm;
 });
@@ -1184,7 +1184,7 @@ const hoveredElement = computed(() => {
 // NOTE - we'll receive 2 events when hovering sockets, one for the node and one for the socket
 
 // more detailed info about what inside an element is being hovered (like resize direction, socket, etc)
-const hoveredElementMeta = computed(() => viewStore.hoveredComponentMeta);
+const hoveredElementMeta = computed(() => viewsStore.hoveredComponentMeta);
 
 const disableHoverEvents = computed(() => {
   if (dragToPanArmed.value || dragToPanActive.value) return true;
@@ -1252,8 +1252,8 @@ function panToComponent(payload: {
 }) {
   const nodeRect =
     payload.component instanceof DiagramNodeData
-      ? viewStore.components[payload.component.def.id]
-      : viewStore.groups[payload.component.def.id];
+      ? viewsStore.components[payload.component.def.id]
+      : viewsStore.groups[payload.component.def.id];
   if (!nodeRect) return;
 
   if (payload.center) {
@@ -1274,17 +1274,19 @@ function panToComponent(payload: {
 
 // ELEMENT SELECTION /////////////////////////////////////////////////////////////////////////////////
 const currentSelectionKeys = computed(() => {
-  if (viewStore.selectedEdgeId) {
-    return _.compact([getDiagramElementKeyForEdgeId(viewStore.selectedEdgeId)]);
+  if (viewsStore.selectedEdgeId) {
+    return _.compact([
+      getDiagramElementKeyForEdgeId(viewsStore.selectedEdgeId),
+    ]);
   } else {
     return _.compact(
-      _.map(viewStore.selectedComponentIds, (componentId) => {
+      _.map(viewsStore.selectedComponentIds, (componentId) => {
         let component:
           | DiagramNodeData
           | DiagramGroupData
           | DiagramViewData
           | undefined = componentsStore.allComponentsById[componentId];
-        if (!component) component = viewStore.viewNodes[componentId];
+        if (!component) component = viewsStore.viewNodes[componentId];
         return component?.uniqueKey;
       }),
     );
@@ -1302,7 +1304,7 @@ function setSelectionByKey(
   toSelect?: DiagramElementUniqueKey | DiagramElementUniqueKey[],
 ) {
   if (!toSelect || !toSelect.length) {
-    viewStore.setSelectedComponentId(null);
+    viewsStore.setSelectedComponentId(null);
     return;
   }
 
@@ -1310,14 +1312,14 @@ function setSelectionByKey(
 
   // TODO: unsure if this edge check works
   if (els.length === 1 && els[0] instanceof DiagramEdgeData) {
-    viewStore.setSelectedEdgeId(els[0].def.id);
+    viewsStore.setSelectedEdgeId(els[0].def.id);
   } else {
     const ids: string[] = [];
     els.forEach((e) => {
       if ("componentId" in e.def) ids.push(e.def.componentId);
       else if ("componentType" in e.def) ids.push(e.def.id); // view
     });
-    viewStore.setSelectedComponentId(ids);
+    viewsStore.setSelectedComponentId(ids);
   }
 }
 
@@ -1333,11 +1335,11 @@ function toggleSelectedByKey(
     else if ("componentType" in el.def) elIds.push(el.def.id); // view
   });
   // second true enables "toggle" mode
-  viewStore.setSelectedComponentId(elIds, { toggle: true });
+  viewsStore.setSelectedComponentId(elIds, { toggle: true });
 }
 
 function clearSelection() {
-  viewStore.setSelectedComponentId(null);
+  viewsStore.setSelectedComponentId(null);
 }
 
 function elementIsHovered(el: DiagramElementData) {
@@ -1424,7 +1426,7 @@ function endDragSelect(doSelection = true) {
   dragSelectActive.value = false;
 
   const selectedInBoxKeys: DiagramElementUniqueKey[] = [];
-  _.each(viewStore.groups, (nodeRect, nodeKey) => {
+  _.each(viewsStore.groups, (nodeRect, nodeKey) => {
     const rect = { ...nodeRect };
     rect.x -= rect.width / 2;
     const inSelectionBox = checkRectanglesOverlap(
@@ -1434,7 +1436,7 @@ function endDragSelect(doSelection = true) {
     if (inSelectionBox)
       selectedInBoxKeys.push(DiagramGroupData.generateUniqueKey(nodeKey));
   });
-  _.each(viewStore.components, (rect, nodeKey) => {
+  _.each(viewsStore.components, (rect, nodeKey) => {
     const inSelectionBox = checkRectanglesOverlap(
       pointsToRect(dragSelectStartPos.value!, dragSelectEndPos.value!),
       rect,
@@ -1442,7 +1444,7 @@ function endDragSelect(doSelection = true) {
     if (inSelectionBox)
       selectedInBoxKeys.push(DiagramNodeData.generateUniqueKey(nodeKey));
   });
-  _.each(viewStore.viewNodes, (node, nodeKey) => {
+  _.each(viewsStore.viewNodes, (node, nodeKey) => {
     const inSelectionBox = checkRectanglesOverlap(
       pointsToRect(dragSelectStartPos.value!, dragSelectEndPos.value!),
       node.def,
@@ -1509,8 +1511,8 @@ const findChildrenByBoundingBox = (
   el: DiagramNodeData | DiagramGroupData,
 ): (DiagramNodeData | DiagramGroupData | DiagramViewData)[] => {
   const cRect = el.def.isGroup
-    ? viewStore.groups[el.def.id]
-    : viewStore.components[el.def.id];
+    ? viewsStore.groups[el.def.id]
+    : viewsStore.components[el.def.id];
   if (!cRect) return [];
 
   const rect = { ...cRect };
@@ -1540,9 +1542,9 @@ const findChildrenByBoundingBox = (
     }
   };
 
-  Object.entries(viewStore.groups).forEach(process);
-  Object.entries(viewStore.components).forEach(process);
-  Object.values(viewStore.viewNodes).forEach((viewNode) => {
+  Object.entries(viewsStore.groups).forEach(process);
+  Object.entries(viewsStore.components).forEach(process);
+  Object.values(viewsStore.viewNodes).forEach((viewNode) => {
     const _r = {
       x: viewNode.def.x,
       y: viewNode.def.y,
@@ -1588,7 +1590,7 @@ function beginDragElements() {
   draggedElementsPositionsPreDrag.value = currentSelectionMovableElements.value
     .concat(draggedChildren.value)
     .reduce((obj, el) => {
-      const geo = viewStore.geoFrom(el);
+      const geo = viewsStore.geoFrom(el);
 
       if (geo) obj[el.uniqueKey] = { ...geo };
       return obj;
@@ -1637,8 +1639,8 @@ function onDragElementsMove() {
 
       // if we are going to move the element within a new parent we may need to adjust
       // the position to stay inside of it
-      const parentRect = viewStore.groups[parentOrCandidate.def.id];
-      const elRect = viewStore.geoFrom(el);
+      const parentRect = viewsStore.groups[parentOrCandidate.def.id];
+      const elRect = viewsStore.geoFrom(el);
       if (!parentRect || !elRect) return;
       const movedElRect = {
         x: newPosition.x - elRect.width / 2,
@@ -1690,11 +1692,11 @@ function onDragElementsMove() {
     else _components.push(c as DiagramGroupData | DiagramNodeData);
   });
   if (_components.length > 0)
-    viewStore.MOVE_COMPONENTS(_components, deltaFromLast, {
+    viewsStore.MOVE_COMPONENTS(_components, deltaFromLast, {
       broadcastToClients: true,
     });
   if (_views.length > 0)
-    viewStore.MOVE_VIEWS(_views, deltaFromLast, {
+    viewsStore.MOVE_VIEWS(_views, deltaFromLast, {
       broadcastToClients: true,
     });
 
@@ -1746,7 +1748,7 @@ function endDragElements() {
     // if their current parent is NOT in this view, do not re-parent!!!
     if (
       component.def.parentId &&
-      !Object.keys(viewStore.groups).includes(component.def.parentId)
+      !Object.keys(viewsStore.groups).includes(component.def.parentId)
     )
       return;
 
@@ -1768,18 +1770,18 @@ function endDragElements() {
   });
 
   if (Object.keys(setParents).length > 0) {
-    viewStore.SET_PARENT(Object.keys(setParents), newParent?.def.id ?? null);
+    viewsStore.SET_PARENT(Object.keys(setParents), newParent?.def.id ?? null);
   }
 
   // do i need to resize the new parent to fit the children?
-  const parentSize = viewStore.groups[newParent?.def.id || ""];
+  const parentSize = viewsStore.groups[newParent?.def.id || ""];
   if (parentSize && newParent) {
     const newSize: Partial<Bounds> = {};
     Object.values(setParents).forEach((el) => {
       const geo =
         el.def.componentType === ComponentType.Component
-          ? viewStore.components[el.def.id]
-          : viewStore.groups[el.def.id];
+          ? viewsStore.components[el.def.id]
+          : viewsStore.groups[el.def.id];
       if (!geo) return;
 
       if (!newSize.left || geo.x < newSize.left) newSize.left = geo.x;
@@ -1808,7 +1810,7 @@ function endDragElements() {
 
       // we need just a bit more padding space between the parent to fix resizability
       newRect.height += 30;
-      viewStore.RESIZE_COMPONENT(newParent, newRect, {
+      viewsStore.RESIZE_COMPONENT(newParent, newRect, {
         writeToChangeSet: true,
         broadcastToClients: true,
       });
@@ -1816,13 +1818,13 @@ function endDragElements() {
   }
 
   if (_components.length > 0)
-    viewStore.MOVE_COMPONENTS(
+    viewsStore.MOVE_COMPONENTS(
       _components,
       { x: 0, y: 0 },
       { writeToChangeSet: true },
     );
   if (_views.length > 0)
-    viewStore.MOVE_VIEWS(_views, { x: 0, y: 0 }, { writeToChangeSet: true });
+    viewsStore.MOVE_VIEWS(_views, { x: 0, y: 0 }, { writeToChangeSet: true });
   draggedChildren.value = [];
 }
 
@@ -1913,7 +1915,7 @@ function alignSelection(direction: Direction) {
   let alignedX: number | undefined;
   let alignedY: number | undefined;
   const positions = _.map(currentSelectionMovableElements.value, (el) =>
-    viewStore.geoFrom(el),
+    viewsStore.geoFrom(el),
   ).filter(nonNullable);
   const xPositions = _.map(positions, (p) => p.x);
   const yPositions = _.map(positions, (p) => p.y);
@@ -1930,13 +1932,13 @@ function alignSelection(direction: Direction) {
     else _components.push(c as DiagramGroupData | DiagramNodeData);
   });
   if (_components.length)
-    viewStore.MOVE_COMPONENTS(
+    viewsStore.MOVE_COMPONENTS(
       _components,
       { x: alignedX ?? 0, y: alignedY ?? 0 },
       { writeToChangeSet: true },
     );
   if (_views.length)
-    viewStore.MOVE_VIEWS(
+    viewsStore.MOVE_VIEWS(
       _views,
       { x: alignedX ?? 0, y: alignedY ?? 0 },
       { writeToChangeSet: true },
@@ -1965,12 +1967,12 @@ function nudgeSelection(direction: Direction, largeNudge: boolean) {
   });
 
   if (_components.length > 0)
-    viewStore.MOVE_COMPONENTS(_components, nudgeVector, {
+    viewsStore.MOVE_COMPONENTS(_components, nudgeVector, {
       broadcastToClients: true,
     });
   if (!debouncedNudgeFn && _components.length > 0) {
     debouncedNudgeFn = _.debounce(() => {
-      viewStore.MOVE_COMPONENTS(
+      viewsStore.MOVE_COMPONENTS(
         _components,
         { x: 0, y: 0 },
         { writeToChangeSet: true },
@@ -1981,12 +1983,12 @@ function nudgeSelection(direction: Direction, largeNudge: boolean) {
   }
 
   if (_views.length > 0)
-    viewStore.MOVE_VIEWS(_views, nudgeVector, {
+    viewsStore.MOVE_VIEWS(_views, nudgeVector, {
       broadcastToClients: true,
     });
   if (!debouncedNudgeFnViews && _views.length > 0) {
     debouncedNudgeFnViews = _.debounce(() => {
-      viewStore.MOVE_VIEWS(_views, { x: 0, y: 0 }, { writeToChangeSet: true });
+      viewsStore.MOVE_VIEWS(_views, { x: 0, y: 0 }, { writeToChangeSet: true });
       debouncedNudgeFn = null;
     }, 300);
     debouncedNudgeFnViews();
@@ -2004,7 +2006,7 @@ const cursorWithinGroupKey = computed(() => {
     // skip groups that are selected
     if (currentSelectionKeys.value.includes(group.uniqueKey)) return false;
 
-    const frameRect = viewStore.groups[group.def.id];
+    const frameRect = viewsStore.groups[group.def.id];
     if (!frameRect) {
       return false;
     }
@@ -2034,7 +2036,7 @@ function beginResizeElement() {
 
   resizeElementDirection.value = lastMouseDownHoverMeta.value.direction;
 
-  const irect = viewStore.groups[lastMouseDownElement.value.def.id];
+  const irect = viewsStore.groups[lastMouseDownElement.value.def.id];
   if (!irect) return; // not a group
 
   resizeElement.value = lastMouseDownElement.value as DiagramGroupData;
@@ -2046,11 +2048,11 @@ function endResizeElement() {
   const el = resizeElement.value;
   if (!el) return;
 
-  const geometry = viewStore.groups[el.def.id];
+  const geometry = viewsStore.groups[el.def.id];
   if (!geometry) {
     return;
   }
-  viewStore.RESIZE_COMPONENT(el, geometry, {
+  viewsStore.RESIZE_COMPONENT(el, geometry, {
     writeToChangeSet: true,
   });
 
@@ -2232,7 +2234,7 @@ function onResizeMove() {
 
   // Make sure the frame doesn't shrink to be smaller than it's children
   const contentsBox =
-    viewStore.contentBoundingBoxesByGroupId[resizeElement.value.def.id];
+    viewsStore.contentBoundingBoxesByGroupId[resizeElement.value.def.id];
 
   if (contentsBox) {
     // Resized element with top-left corner xy coordinates instead of top-center
@@ -2289,7 +2291,7 @@ function onResizeMove() {
 
   // Make sure the frame doesn't get larger than parent
   const parentGeometry =
-    viewStore.groups[resizeElement.value.def.parentId || ""];
+    viewsStore.groups[resizeElement.value.def.parentId || ""];
 
   if (parentGeometry) {
     // Resized element with top-left corner xy coordinates instead of top-center
@@ -2347,7 +2349,7 @@ function onResizeMove() {
     newNodeSize.height = newNodeRect.height;
   }
 
-  viewStore.RESIZE_COMPONENT(
+  viewsStore.RESIZE_COMPONENT(
     resizeElement.value,
     { ...newNodePosition, ...newNodeSize },
     { broadcastToClients: true },
@@ -2473,7 +2475,7 @@ function onDrawEdgeMove() {
   const socketPointerDistances = _.map(
     drawEdgePossibleTargetSocketKeys.value,
     (socketKey) => {
-      const socketLocation = viewStore.sockets[socketKey];
+      const socketLocation = viewsStore.sockets[socketKey];
       // Not sure what this should do if we can't find a location
       const center = socketLocation?.center ?? { x: 0, y: 0 };
       return {
@@ -2528,14 +2530,14 @@ async function endDrawEdge() {
 
 const pasteElementsActive = computed(() => {
   return (
-    componentsStore.copyingFrom && viewStore.selectedComponentIds.length > 0
+    componentsStore.copyingFrom && viewsStore.selectedComponentIds.length > 0
   );
 });
 
 // TODO: I dont think we need to compute this
 // we can do the work directly in the paste function
 const currentSelectionEnclosure: Ref<IRect | undefined> = computed(() => {
-  const componentIds = viewStore.selectedComponentIds;
+  const componentIds = viewsStore.selectedComponentIds;
 
   if (componentIds.length === 0) return;
 
@@ -2544,7 +2546,7 @@ const currentSelectionEnclosure: Ref<IRect | undefined> = computed(() => {
   let right;
   let bottom;
   for (const id of componentIds) {
-    const geometry = viewStore.components[id] || viewStore.groups[id];
+    const geometry = viewsStore.components[id] || viewsStore.groups[id];
     if (!geometry) continue;
 
     const thisBoundaries = {
@@ -2609,7 +2611,7 @@ async function triggerPasteElements() {
 
   // if we're pasting into a new parent, fit the selection area into it first by shrinking and then translating
   if (newParentId) {
-    const parentGeometry = viewStore.groups[newParentId];
+    const parentGeometry = viewsStore.groups[newParentId];
     if (!parentGeometry) throw new Error("Couldn't get parent geometry");
 
     // the x in component geometry is centered, so we need to translate it to represent the top left
@@ -2659,8 +2661,8 @@ async function triggerPasteElements() {
     selectionOffset.y -= fitOffset.y;
   }
 
-  const pasteTargets = _.map(viewStore.selectedComponentIds, (id) => {
-    const thisGeometry = viewStore.components[id] || viewStore.groups[id];
+  const pasteTargets = _.map(viewsStore.selectedComponentIds, (id) => {
+    const thisGeometry = viewsStore.components[id] || viewsStore.groups[id];
 
     if (!thisGeometry) throw new Error("Rendered Component not found");
 
@@ -2699,7 +2701,7 @@ async function triggerPasteElements() {
 
   componentsStore.copyingFrom = null;
 
-  await viewStore.PASTE_COMPONENTS(pasteTargets, newParentId);
+  await viewsStore.PASTE_COMPONENTS(pasteTargets, newParentId);
 }
 
 // ELEMENT ADDITION
@@ -2707,8 +2709,8 @@ const insertElementActive = computed(
   () => !!componentsStore.selectedInsertCategoryVariantId,
 );
 
-const outlinerAddActive = computed(() => !!viewStore.addComponentId);
-const viewAddActive = computed(() => !!viewStore.addViewId);
+const outlinerAddActive = computed(() => !!viewsStore.addComponentId);
+const viewAddActive = computed(() => !!viewsStore.addViewId);
 
 const HEADER_SIZE = 60; // The height of the component header bar; TODO find a better way to detect this
 function fitChildInsideParentFrame(
@@ -2740,17 +2742,17 @@ function fitChildInsideParentFrame(
 }
 
 async function triggerAddViewToView() {
-  if (!viewAddActive.value || !viewStore.addViewId)
+  if (!viewAddActive.value || !viewsStore.addViewId)
     throw new Error("insert element mode must be active");
   if (!gridPointerPos.value)
     throw new Error("Cursor must be in grid to insert element");
 
-  const addingViewId = viewStore.addViewId;
-  viewStore.addViewId = null;
+  const addingViewId = viewsStore.addViewId;
+  viewsStore.addViewId = null;
 
   const geo = { ...gridPointerPos.value, radius: 250 };
 
-  viewStore.ADD_VIEW_TO(viewStore.selectedViewId!, addingViewId, geo);
+  viewsStore.ADD_VIEW_TO(viewsStore.selectedViewId!, addingViewId, geo);
 }
 
 async function triggerAddToView() {
@@ -2759,11 +2761,11 @@ async function triggerAddToView() {
   if (!gridPointerPos.value)
     throw new Error("Cursor must be in grid to insert element");
 
-  const originView = viewStore.viewsById[viewStore.outlinerViewId || ""];
+  const originView = viewsStore.viewsById[viewsStore.outlinerViewId || ""];
   if (!originView) throw new Error("Origin view does not exist");
   const component =
-    componentsStore.allComponentsById[viewStore.addComponentId || ""];
-  viewStore.addComponentId = null;
+    componentsStore.allComponentsById[viewsStore.addComponentId || ""];
+  viewsStore.addComponentId = null;
   if (!component) throw new Error("Adding component does not exist");
   const createAtSize: IRect = component.def.isGroup
     ? originView.groups[component.def.id]!
@@ -2773,10 +2775,10 @@ async function triggerAddToView() {
   const components: Record<ComponentId, IRect> = {};
   components[component.def.id] = { ...createAtSize, ...createAtPosition };
 
-  viewStore.ADD_TO(
-    viewStore.outlinerViewId!,
+  viewsStore.ADD_TO(
+    viewsStore.outlinerViewId!,
     components,
-    viewStore.selectedViewId!,
+    viewsStore.selectedViewId!,
     false,
   );
 }
@@ -2821,7 +2823,7 @@ async function triggerInsertElement() {
     }
 
     if (parentComponent) {
-      const geometry = viewStore.groups[parentComponent.def.id];
+      const geometry = viewsStore.groups[parentComponent.def.id];
       if (
         parentComponent?.def.childIds &&
         parentComponent.def.childIds?.length > 0
@@ -2841,7 +2843,7 @@ async function triggerInsertElement() {
 
   // as this stands, the client will send a width/height for non-frames, that the API endpoint ignores
   // TODO: is there is a good way to determine whether this schemaID is a frame?
-  viewStore.CREATE_COMPONENT(
+  viewsStore.CREATE_COMPONENT(
     insertVariantId,
     createAtPosition,
     parentId,
@@ -2860,17 +2862,17 @@ function getSocketLocationInfo(
   if (edge) {
     // if from component is collapsed, return the position of its center
     const key = direction === "from" ? edge.fromSocketKey : edge.toSocketKey;
-    return viewStore.sockets[key];
+    return viewsStore.sockets[key];
   }
 
   if (!socketKey) return undefined;
-  return viewStore.sockets[socketKey];
+  return viewsStore.sockets[socketKey];
 }
 
 // DIAGRAM CONTENTS HELPERS //////////////////////////////////////////////////
 
 const nodes = computed(() => {
-  const componentIds = Object.keys(viewStore.components);
+  const componentIds = Object.keys(viewsStore.components);
   const components: DiagramNodeData[] = [];
   componentIds.forEach((id) => {
     const c = componentsStore.nodesById[id];
@@ -2881,7 +2883,7 @@ const nodes = computed(() => {
 
 const groups = computed(() => {
   // order groups biggest at the back, smallest at the front (not according to lineage)
-  const componentIds = Object.keys(viewStore.groups);
+  const componentIds = Object.keys(viewsStore.groups);
   const frames = Object.values(componentsStore.groupsById).filter((g) =>
     componentIds.includes(g.def.id),
   );
@@ -2895,14 +2897,17 @@ const groups = computed(() => {
     });
   });
   const orderedGroups = _.orderBy(frames, (g) => {
-    const viewGroup = viewStore.groups[g.def.id]!;
+    const viewGroup = viewsStore.groups[g.def.id]!;
     let zIndex = viewGroup.zIndex;
     // if being dragged (or ancestor being dragged), bump up to front, but maintain order within that frame
-    if (dragElementsActive.value || viewStore.selectedComponentIds.length > 0) {
+    if (
+      dragElementsActive.value ||
+      viewsStore.selectedComponentIds.length > 0
+    ) {
       if (
         _.intersection(
           [g.def.componentId, ...ancestryByBounds.get(g.def.componentId)],
-          viewStore.selectedComponentIds,
+          viewsStore.selectedComponentIds,
         ).length
       ) {
         zIndex += 1000;
@@ -2926,8 +2931,8 @@ const allElementsByKey = computed(() =>
       ...nodes.value,
       ...groups.value,
       ...sockets.value,
-      ...viewStore.edges,
-      ...Object.values(viewStore.viewNodes),
+      ...viewsStore.edges,
+      ...Object.values(viewsStore.viewNodes),
     ],
     (e) => e.uniqueKey,
   ),
@@ -2945,7 +2950,7 @@ const selectionRects = computed(() => {
     const isGroup = uniqueKey.startsWith("g-");
     const id = uniqueKey.slice(2); // remove the prefix
     if (isView) {
-      const rect = viewStore.viewNodes[id]?.def;
+      const rect = viewsStore.viewNodes[id]?.def;
       if (rect) {
         const r = {
           x: rect.x - rect.width / 2,
@@ -2956,7 +2961,7 @@ const selectionRects = computed(() => {
         rects.push(r);
       }
     } else {
-      const rect = viewStore.components[id] || viewStore.groups[id];
+      const rect = viewsStore.components[id] || viewsStore.groups[id];
       if (rect) {
         const r = {
           x: rect.x - rect.width / 2,
@@ -2987,7 +2992,7 @@ function getDiagramElementKeyForComponentId(
     | DiagramGroupData
     | DiagramViewData
     | undefined = componentsStore.allComponentsById[componentId];
-  if (!component) component = viewStore.viewNodes[componentId];
+  if (!component) component = viewsStore.viewNodes[componentId];
   return component?.uniqueKey;
 }
 
@@ -3025,7 +3030,7 @@ function getCenterPointOfElement(el: DiagramElementData) {
     return pointAlongLinePct(fromPoint, toPoint, 0.5);
   } else if ("componentId" in el.def) {
     const comp =
-      viewStore.components[el.def.id] || viewStore.groups[el.def.id]!;
+      viewsStore.components[el.def.id] || viewsStore.groups[el.def.id]!;
     const position = { ...comp };
     position.y += position.height / 2;
     return position;
@@ -3048,8 +3053,8 @@ const renameEndFunc = ref();
 function fixRenameInputPosition() {
   if (renameElement.value) {
     const componentBox =
-      viewStore.components[renameElement.value.def.id] ||
-      viewStore.groups[renameElement.value.def.id];
+      viewsStore.components[renameElement.value.def.id] ||
+      viewsStore.groups[renameElement.value.def.id];
     if (componentBox && renameInputWrapperRef.value) {
       const { x, y } = convertGridCoordsToContainerCoords(componentBox);
       const z = zoomLevel.value;
@@ -3097,8 +3102,8 @@ function renameOnDiagramByComponentId(componentId: ComponentId) {
   if (!component) return;
   const nodeRect =
     component instanceof DiagramNodeData
-      ? viewStore.components[component.def.id]
-      : viewStore.groups[component.def.id];
+      ? viewsStore.components[component.def.id]
+      : viewsStore.groups[component.def.id];
   if (!nodeRect) return;
 
   // TODO - for now, renaming from the event bus resets the zoom level
@@ -3112,7 +3117,7 @@ function renameOnDiagram(
   endFunc: () => void,
 ) {
   const componentBox =
-    viewStore.components[el.def.id] || viewStore.groups[el.def.id];
+    viewsStore.components[el.def.id] || viewsStore.groups[el.def.id];
 
   if (componentBox && renameInputWrapperRef.value && renameInputRef.value) {
     renameElement.value = el;
@@ -3159,13 +3164,19 @@ const helpModalRef = ref();
 
 onMounted(() => {
   componentsStore.copyingFrom = null;
-  componentsStore.eventBus.on("panToComponent", panToComponent);
+  modelingEventBus.on("panToComponent", panToComponent);
   modelingEventBus.on("rename", renameOnDiagramByComponentId);
+  modelingEventBus.on("setSelection", selectComponents);
 });
 onBeforeUnmount(() => {
-  componentsStore.eventBus.off("panToComponent", panToComponent);
+  modelingEventBus.off("panToComponent", panToComponent);
   modelingEventBus.off("rename", renameOnDiagramByComponentId);
+  modelingEventBus.off("setSelection", selectComponents);
 });
+
+const selectComponents = (components: ComponentId[]) => {
+  viewsStore.setSelectedComponentId(components);
+};
 
 // this object gets provided to the children within the diagram that need it
 const context: DiagramContext = {

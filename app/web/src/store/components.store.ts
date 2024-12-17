@@ -3,7 +3,7 @@ import * as _ from "lodash-es";
 import { Vector2d } from "konva/lib/types";
 import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 import { IconNames } from "@si/vue-lib/design-system";
-import { useToast } from "vue-toastification";
+import { POSITION, useToast } from "vue-toastification";
 
 import mitt from "mitt";
 import { connectionAnnotationFitsReference } from "@si/ts-lib";
@@ -38,6 +38,7 @@ import { CodeView } from "@/api/sdf/dal/code_view";
 import ComponentUpgrading from "@/components/toasts/ComponentUpgrading.vue";
 import { nonNullable } from "@/utils/typescriptLinter";
 import { ViewId } from "@/api/sdf/dal/views";
+import CreatingTemplate from "@/components/toasts/CreatingTemplate.vue";
 import handleStoreError from "./errors";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useAssetStore } from "./asset.store";
@@ -171,6 +172,7 @@ type EventBusEvents = {
     component: DiagramNodeData | DiagramGroupData;
     center?: boolean;
   };
+  setSelection: ComponentId[];
   rename: ComponentId;
 };
 
@@ -1169,21 +1171,57 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             funcName: string;
             componentIds: ComponentId[];
             viewId: ViewId;
+            category: string;
           }) {
-            const { color, assetName, funcName, componentIds, viewId } =
-              templateData;
+            const {
+              color,
+              assetName,
+              funcName,
+              componentIds,
+              viewId,
+              category,
+            } = templateData;
 
-            return new ApiRequest({
+            const toastID = toast(
+              {
+                component: CreatingTemplate,
+                props: {
+                  updating: true,
+                },
+              },
+              {
+                timeout: false,
+                closeOnClick: false,
+                position: POSITION.TOP_CENTER,
+                toastClassName: "si-toast-no-defaults",
+              },
+            );
+
+            const req = new ApiRequest({
               method: "post",
               url: `v2/workspaces/${workspaceId}/change-sets/${changeSetId}/management/generate_template/${viewId}`,
               params: {
                 componentIds,
                 assetName,
                 funcName,
-                category: "Templates",
+                category,
                 color,
               },
+              onSuccess: (_response) => {
+                toast.update(toastID, {
+                  content: {
+                    props: { updating: false, templateName: assetName },
+                    component: CreatingTemplate,
+                  },
+                  options: { timeout: 500, closeOnClick: true },
+                });
+              },
+              onFail: (_response) => {
+                toast.dismiss(toastID);
+              },
             });
+
+            return req;
           },
 
           setComponentDisplayName(
