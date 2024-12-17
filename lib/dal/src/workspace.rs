@@ -1,3 +1,4 @@
+use anyhow::Result;
 use chrono::{DateTime, Utc};
 use petgraph::Direction;
 use serde::{Deserialize, Serialize};
@@ -93,7 +94,7 @@ pub enum WorkspaceError {
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
 
-pub type WorkspaceResult<T> = Result<T, WorkspaceError>;
+pub type WorkspaceResult<T> = Result<T>;
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct Workspace {

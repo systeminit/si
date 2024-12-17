@@ -1,3 +1,4 @@
+use anyhow::Result;
 use serde_json;
 use std::collections::VecDeque;
 use std::sync::Arc;
@@ -146,7 +147,7 @@ pub enum FuncRunnerError {
     WsEvent(#[from] WsEventError),
 }
 
-pub type FuncRunnerResult<T> = Result<T, FuncRunnerError>;
+pub type FuncRunnerResult<T> = Result<T>;
 
 pub type FuncRunnerValueChannel = oneshot::Receiver<FuncRunnerResult<FuncRunValue>>;
 
@@ -1024,16 +1025,12 @@ impl FuncRunner {
             span: &Span,
         ) -> FuncRunnerResult<FuncRunner> {
             let func = Func::get_by_id_or_error(ctx, func_id).await?;
-            let prototype = ActionPrototype::get_by_id(ctx, action_prototype_id)
-                .await
-                .map_err(Box::new)?;
+            let prototype = ActionPrototype::get_by_id(ctx, action_prototype_id).await?;
             let maybe_action_id =
-                Action::find_equivalent(ctx, action_prototype_id, Some(component_id))
-                    .await
-                    .map_err(Box::new)?;
+                Action::find_equivalent(ctx, action_prototype_id, Some(component_id)).await?;
             let maybe_action_originating_change_set_id = match maybe_action_id {
                 Some(action_id) => {
-                    let action = Action::get_by_id(ctx, action_id).await.map_err(Box::new)?;
+                    let action = Action::get_by_id(ctx, action_id).await?;
                     Some(action.originating_changeset_id())
                 }
                 None => None,
@@ -1196,7 +1193,7 @@ impl FuncRunner {
         }
 
         if !ctx.history_actor().email_is_systeminit(ctx).await? {
-            return Err(FuncRunnerError::DoNotHavePermissionToKillExecution);
+            return Err(FuncRunnerError::DoNotHavePermissionToKillExecution.into());
         }
 
         let result = ctx
@@ -1226,7 +1223,7 @@ impl FuncRunner {
                 // suffice... oh words, do not haunt me.
                 Ok(())
             }
-            FunctionResult::Failure(err) => Err(FuncRunnerError::KillExecutionFailure(err)),
+            FunctionResult::Failure(err) => Err(FuncRunnerError::KillExecutionFailure(err).into()),
         }
     }
 
@@ -1291,10 +1288,11 @@ impl FuncRunner {
             // Skip secret if unauthorized
             // Skip secret if we can't find keypair
             let decrypted_secret = match encrypted_secret.decrypt(ctx).await {
-                Err(SecretError::KeyPair(KeyPairError::UnauthorizedKeyAccess))
-                | Err(SecretError::KeyPair(KeyPairError::KeyPairNotFound(_))) => {
-                    continue;
-                }
+                Err(error) => match error.downcast_ref() {
+                    Some(KeyPairError::UnauthorizedKeyAccess)
+                    | Some(KeyPairError::KeyPairNotFound(_)) => continue,
+                    _ => Err(error),
+                },
                 other_result => other_result,
             }?;
 
@@ -1362,7 +1360,8 @@ impl FuncRunner {
                     return Err(FuncRunnerError::TooManyAttributeValues(
                         component_id,
                         secret_child_prop_id,
-                    ));
+                    )
+                    .into());
                 }
                 let attribute_value_id =
                     *attribute_value_ids
@@ -1384,7 +1383,8 @@ impl FuncRunner {
                         component_id,
                         secret_child_prop_id,
                         attribute_prototype_argument_ids.clone(),
-                    ));
+                    )
+                    .into());
                 }
 
                 // If there's not attribute prototype argument yet, the prototype is either using "si:unset" or nothing
@@ -1441,7 +1441,8 @@ impl FuncRunner {
                             secret_child_prop_id,
                             attribute_prototype_argument_id,
                             component_id,
-                        ))
+                        )
+                        .into())
                     }
                 }
             }
@@ -1716,18 +1717,19 @@ impl FuncRunnerExecutionTask {
                 .await
             }
             FuncBackendKind::JsReconciliation => {
-                return Err(FuncRunnerError::ReconciliationFuncsNoLongerSupported(
-                    self.func.id,
-                ))
+                return Err(
+                    FuncRunnerError::ReconciliationFuncsNoLongerSupported(self.func.id).into(),
+                )
             }
             FuncBackendKind::JsValidation => {
-                return Err(FuncRunnerError::DirectValidationFuncsNoLongerSupported(
-                    self.func.id,
-                ))
+                return Err(
+                    FuncRunnerError::DirectValidationFuncsNoLongerSupported(self.func.id).into(),
+                )
             }
             FuncBackendKind::JsAuthentication => {
                 return Err(
-                    FuncRunnerError::DirectAuthenticationFuncExecutionUnsupported(self.func.id),
+                    FuncRunnerError::DirectAuthenticationFuncExecutionUnsupported(self.func.id)
+                        .into(),
                 )
             }
             FuncBackendKind::Management => {
@@ -1815,7 +1817,8 @@ impl FuncRunnerExecutionTask {
                     kind,
                     message,
                     backend,
-                }));
+                }
+                .into()));
             }
             Err(err) => {
                 let mut next_state_inner = Arc::unwrap_or_clone(running_state_func_run.clone());

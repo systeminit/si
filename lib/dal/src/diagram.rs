@@ -2,6 +2,7 @@ mod diagram_object;
 pub mod geometry;
 pub mod view;
 
+use anyhow::Result;
 use petgraph::prelude::*;
 use serde::{Deserialize, Serialize};
 use si_data_pg::PgError;
@@ -138,7 +139,7 @@ pub enum DiagramError {
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
 
-pub type DiagramResult<T> = Result<T, DiagramError>;
+pub type DiagramResult<T> = Result<T>;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all(serialize = "camelCase"))]
@@ -641,21 +642,23 @@ impl Diagram {
                 for geometry in Geometry::list_by_view_id(ctx, view_id).await? {
                     let geo_represents = match Geometry::represented_id(ctx, geometry.id()).await {
                         Ok(r) => r,
-                        Err(DiagramError::RepresentedNotFoundForGeometry(geo_id)) => {
-                            let changeset_id = ctx.change_set_id();
-                            // NOTE(victor): The first version of views didn't delete geometries with components,
-                            // so we have dangling geometries in some workspaces. We should clean this up at some point,
-                            // but we just skip orphan geometries here to make assemble work.
+                        Err(error) => match error.downcast_ref() {
+                            Some(DiagramError::RepresentedNotFoundForGeometry(geo_id)) => {
+                                let changeset_id = ctx.change_set_id();
+                                // NOTE(victor): The first version of views didn't delete geometries with components,
+                                // so we have dangling geometries in some workspaces. We should clean this up at some point,
+                                // but we just skip orphan geometries here to make assemble work.
 
-                            debug!(
-                                si.change_set.id = %changeset_id,
-                                si.geometry.id = %geo_id,
-                                "Could not find represented node for geometry - skipping"
-                            );
+                                debug!(
+                                    si.change_set.id = %changeset_id,
+                                    si.geometry.id = %geo_id,
+                                    "Could not find represented node for geometry - skipping"
+                                );
 
-                            continue;
-                        }
-                        Err(e) => return Err(e),
+                                continue;
+                            }
+                            _ => return Err(error),
+                        },
                     };
                     match geo_represents {
                         GeometryRepresents::Component(component_id) => {

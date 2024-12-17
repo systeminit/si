@@ -2,6 +2,7 @@ use std::collections::HashSet;
 use std::time::Duration;
 use std::{fmt, mem, path::PathBuf, sync::Arc};
 
+use anyhow::Result;
 use futures::future::BoxFuture;
 use futures::Future;
 use rebaser_client::api_types::enqueue_updates_response::v1::RebaseStatus;
@@ -234,9 +235,9 @@ impl ConnectionState {
 
     async fn start_txns(self) -> TransactionsResult<Self> {
         match self {
-            Self::Invalid => Err(TransactionsError::TxnStart("invalid")),
+            Self::Invalid => Err(TransactionsError::TxnStart("invalid").into()),
             Self::Connections(conns) => Ok(Self::Transactions(conns.start_txns().await?)),
-            Self::Transactions(_) => Err(TransactionsError::TxnStart("transactions")),
+            Self::Transactions(_) => Err(TransactionsError::TxnStart("transactions").into()),
         }
     }
 
@@ -310,7 +311,7 @@ impl ConnectionState {
                 let conns = txns.blocking_commit_into_conns(maybe_rebase).await?;
                 Ok(Self::Connections(conns))
             }
-            Self::Invalid => Err(TransactionsError::TxnCommit),
+            Self::Invalid => Err(TransactionsError::TxnCommit.into()),
         }
     }
 
@@ -324,7 +325,7 @@ impl ConnectionState {
                 let conns = txns.rollback_into_conns().await?;
                 Ok(Self::Connections(conns))
             }
-            Self::Invalid => Err(TransactionsError::TxnRollback),
+            Self::Invalid => Err(TransactionsError::TxnRollback.into()),
         }
     }
 }
@@ -381,7 +382,7 @@ impl DalContext {
         Ok(workspace.default_change_set_id())
     }
 
-    pub async fn get_workspace_token(&self) -> Result<Option<String>, TransactionsError> {
+    pub async fn get_workspace_token(&self) -> Result<Option<String>> {
         let workspace_pk = self
             .tenancy()
             .workspace_pk_opt()
@@ -392,7 +393,7 @@ impl DalContext {
         Ok(workspace.token())
     }
 
-    pub async fn get_workspace(&self) -> Result<Workspace, TransactionsError> {
+    pub async fn get_workspace(&self) -> Result<Workspace> {
         let workspace_pk = self.tenancy().workspace_pk().unwrap_or(WorkspacePk::NONE);
         let workspace = Workspace::get_by_pk(self, &workspace_pk)
             .await?
@@ -408,22 +409,17 @@ impl DalContext {
             .map_err(|err| TransactionsError::ChangeSet(err.to_string()))?
             .ok_or(TransactionsError::ChangeSetNotFound(self.change_set_id()))?;
 
-        let workspace_snapshot = WorkspaceSnapshot::find_for_change_set(self, change_set.id)
-            .await
-            .map_err(|err| TransactionsError::WorkspaceSnapshot(Box::new(err)))?;
+        let workspace_snapshot =
+            WorkspaceSnapshot::find_for_change_set(self, change_set.id).await?;
 
         self.set_change_set(change_set)?;
         self.set_workspace_snapshot(workspace_snapshot);
         Ok(())
     }
 
-    pub async fn write_snapshot(
-        &self,
-    ) -> Result<Option<WorkspaceSnapshotAddress>, TransactionsError> {
+    pub async fn write_snapshot(&self) -> Result<Option<WorkspaceSnapshotAddress>> {
         if let Some(snapshot) = &self.workspace_snapshot {
-            Ok(Some(snapshot.write(self).await.map_err(|err| {
-                TransactionsError::WorkspaceSnapshot(Box::new(err))
-            })?))
+            Ok(Some(snapshot.write(self).await?))
         } else {
             Ok(None)
         }
@@ -472,9 +468,10 @@ impl DalContext {
         from_change_set_id: ChangeSetId,
     ) -> TransactionsResult<(
         RequestId,
-        BoxFuture<'static, Result<EnqueueUpdatesResponse, rebaser_client::ClientError>>,
+        BoxFuture<'static, Result<EnqueueUpdatesResponse>>,
     )> {
-        self.rebaser()
+        Ok(self
+            .rebaser()
             .enqueue_updates_from_change_set_with_reply(
                 workspace_pk,
                 change_set_id,
@@ -482,8 +479,7 @@ impl DalContext {
                 from_change_set_id,
                 self.event_session_id,
             )
-            .await
-            .map_err(Into::into)
+            .await?)
     }
 
     async fn commit_internal(
@@ -541,9 +537,7 @@ impl DalContext {
         Ok(rebase_batch_address)
     }
 
-    async fn write_current_rebase_batch(
-        &self,
-    ) -> Result<Option<RebaseBatchAddress>, TransactionsError> {
+    async fn write_current_rebase_batch(&self) -> Result<Option<RebaseBatchAddress>> {
         Ok(if let Some(snapshot) = &self.workspace_snapshot {
             if let Some(rebase_batch) = snapshot.current_rebase_batch().await.map_err(Box::new)? {
                 Some(self.write_rebase_batch(rebase_batch).await?)
@@ -641,7 +635,7 @@ impl DalContext {
     }
 
     /// Fetch the workspace snapshot for the current visibility
-    pub fn workspace_snapshot(&self) -> Result<Arc<WorkspaceSnapshot>, WorkspaceSnapshotError> {
+    pub fn workspace_snapshot(&self) -> Result<Arc<WorkspaceSnapshot>> {
         match &self.workspace_snapshot {
             Some(workspace_snapshot) => Ok(workspace_snapshot.clone()),
             None => Err(WorkspaceSnapshotError::WorkspaceSnapshotNotFetched),
@@ -818,7 +812,7 @@ impl DalContext {
     pub async fn add_dependent_values_and_enqueue(
         &self,
         ids: Vec<impl Into<si_events::ulid::Ulid>>,
-    ) -> Result<(), WorkspaceSnapshotError> {
+    ) -> Result<()> {
         for id in ids {
             self.workspace_snapshot()?
                 .add_dependent_value_root(DependentValueRoot::Unfinished(id.into()))
@@ -896,7 +890,7 @@ impl DalContext {
     }
 
     /// Gets the dal context's txns.
-    pub async fn txns(&self) -> Result<MappedMutexGuard<'_, Transactions>, TransactionsError> {
+    pub async fn txns(&self) -> Result<MappedMutexGuard<'_, Transactions>> {
         let mut guard = self.conns_state.lock().await;
 
         let conns_state = guard.take();
@@ -1246,7 +1240,7 @@ impl DalContextBuilder {
                 // access to, *AND* that the Change Set requested is one of the Change Sets for _that_
                 // workspace.
                 if !(user_workspaces.contains(&workspace_pk) && workspace_has_change_set) {
-                    return Err(TransactionsError::BadWorkspaceAndChangeSet);
+                    return Err(TransactionsError::BadWorkspaceAndChangeSet.into());
                 }
             }
         }
@@ -1358,7 +1352,7 @@ pub enum TransactionsError {
     WorkspaceSnapshot(#[from] Box<WorkspaceSnapshotError>),
 }
 
-pub type TransactionsResult<T> = Result<T, TransactionsError>;
+pub type TransactionsResult<T> = Result<T>;
 
 impl From<WorkspaceError> for TransactionsError {
     fn from(err: WorkspaceError) -> Self {

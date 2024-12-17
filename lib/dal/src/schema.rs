@@ -1,3 +1,4 @@
+use anyhow::Result;
 use petgraph::Outgoing;
 use serde::{Deserialize, Serialize};
 use si_events::ContentHash;
@@ -65,7 +66,7 @@ pub enum SchemaError {
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
 
-pub type SchemaResult<T> = Result<T, SchemaError>;
+pub type SchemaResult<T> = Result<T>;
 
 pub use si_id::SchemaId;
 
@@ -214,7 +215,7 @@ impl Schema {
     ) -> SchemaResult<SchemaVariantId> {
         Self::get_default_schema_variant_by_id(ctx, schema_id)
             .await?
-            .ok_or(SchemaError::DefaultSchemaVariantNotFound(schema_id))
+            .ok_or(SchemaError::DefaultSchemaVariantNotFound(schema_id).into())
     }
 
     /// This method returns all [`SchemaVariantIds`](SchemaVariant) that are used by the [`Schema`]
@@ -508,11 +509,7 @@ impl Schema {
     pub async fn all_func_ids(ctx: &DalContext, id: SchemaId) -> SchemaResult<HashSet<FuncId>> {
         let mut func_ids = HashSet::new();
         for schema_variant_id in Self::list_schema_variant_ids(ctx, id).await? {
-            func_ids.extend(
-                SchemaVariant::all_func_ids(ctx, schema_variant_id)
-                    .await
-                    .map_err(Box::new)?,
-            );
+            func_ids.extend(SchemaVariant::all_func_ids(ctx, schema_variant_id).await?);
         }
         Ok(func_ids)
     }

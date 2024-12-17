@@ -107,13 +107,15 @@ impl ContentNodeWeight {
                 return Err(NodeWeightError::InvalidContentAddressForWeightKind(
                     "Geometry".to_string(),
                     "Content".to_string(),
-                ));
+                )
+                .into());
             }
             ContentAddress::InputSocket(_) => {
                 return Err(NodeWeightError::InvalidContentAddressForWeightKind(
                     "InputSocket".to_string(),
                     "Content".to_string(),
-                ));
+                )
+                .into());
             }
             ContentAddress::JsonValue(_) => ContentAddress::JsonValue(content_hash),
             ContentAddress::Module(_) => ContentAddress::Module(content_hash),
@@ -121,21 +123,26 @@ impl ContentNodeWeight {
                 return Err(NodeWeightError::InvalidContentAddressForWeightKind(
                     "Prop".to_string(),
                     "Content".to_string(),
-                ));
+                )
+                .into());
             }
-            ContentAddress::Root => return Err(NodeWeightError::CannotUpdateRootNodeContentHash),
+            ContentAddress::Root => {
+                return Err(NodeWeightError::CannotUpdateRootNodeContentHash.into())
+            }
             ContentAddress::Schema(_) => ContentAddress::Schema(content_hash),
             ContentAddress::SchemaVariant(_) => {
                 return Err(NodeWeightError::InvalidContentAddressForWeightKind(
                     "SchemaVariant".to_string(),
                     "Content".to_string(),
-                ));
+                )
+                .into());
             }
             ContentAddress::Secret(_) => {
                 return Err(NodeWeightError::InvalidContentAddressForWeightKind(
                     "Secret".to_string(),
                     "Content".to_string(),
-                ));
+                )
+                .into());
             }
             ContentAddress::StaticArgumentValue(_) => {
                 ContentAddress::StaticArgumentValue(content_hash)
@@ -151,7 +158,8 @@ impl ContentNodeWeight {
                 return Err(NodeWeightError::InvalidContentAddressForWeightKind(
                     "Geometry".to_string(),
                     "Content".to_string(),
-                ));
+                )
+                .into());
             }
         };
 

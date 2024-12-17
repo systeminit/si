@@ -1,5 +1,6 @@
 use std::num::ParseIntError;
 
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
@@ -69,7 +70,7 @@ pub enum WsEventError {
     Transactions(#[from] TransactionsError),
 }
 
-pub type WsEventResult<T> = Result<T, WsEventError>;
+pub type WsEventResult<T> = Result<T>;
 
 #[remain::sorted]
 #[derive(Deserialize, Serialize, Debug, Clone, Eq, PartialEq)]
@@ -174,7 +175,7 @@ impl WsEvent {
         let workspace_pk = match ctx.tenancy().workspace_pk_opt() {
             Some(pk) => pk,
             None => {
-                return Err(WsEventError::NoWorkspaceInTenancy);
+                return Err(WsEventError::NoWorkspaceInTenancy.into());
             }
         };
         let change_set_pk = ctx.change_set_id();

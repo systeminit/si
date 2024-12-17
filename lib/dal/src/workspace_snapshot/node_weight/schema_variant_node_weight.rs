@@ -1,3 +1,4 @@
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use si_events::{ulid::Ulid, ContentHash};
 use si_layer_cache::LayerDbError;
@@ -28,7 +29,7 @@ pub enum SchemaVariantNodeWeightError {
     WorkspaceSnapshotGraph(#[from] Box<WorkspaceSnapshotGraphError>),
 }
 
-pub type SchemaVariantNodeWeightResult<T> = Result<T, SchemaVariantNodeWeightError>;
+pub type SchemaVariantNodeWeightResult<T> = Result<T>;
 
 #[derive(
     Debug, Clone, Serialize, Deserialize, PartialEq, Eq, dal_macros::SiVersionedNodeWeight,

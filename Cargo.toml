@@ -88,6 +88,7 @@ rust-version = "1.82"
 publish = false
 
 [workspace.dependencies]
+anyhow = { version = "1.0.94" }
 async-nats = { version = "0.38.0", features = ["service"] }
 async-openai = "0.26.0"
 async-recursion = "1.1.1"
@@ -105,7 +106,12 @@ bollard = "0.18.1"
 bytes = "1.9.0"
 chrono = { version = "0.4.39", features = ["serde"] }
 ciborium = "0.2.2"
-clap = { version = "4.5.23", features = ["derive", "color", "env", "wrap_help"] }
+clap = { version = "4.5.23", features = [
+    "derive",
+    "color",
+    "env",
+    "wrap_help",
+] }
 color-eyre = "0.6.3"
 config = { version = "0.14.1", default-features = false, features = ["toml"] }
 convert_case = "0.6.0"
