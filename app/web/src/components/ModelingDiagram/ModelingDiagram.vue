@@ -1775,7 +1775,7 @@ function endDragElements() {
 
   // do i need to resize the new parent to fit the children?
   const parentSize = viewsStore.groups[newParent?.def.id || ""];
-  if (parentSize && newParent) {
+  if (parentSize && newParent && Object.values(setParents).length > 0) {
     const newSize: Partial<Bounds> = {};
     Object.values(setParents).forEach((el) => {
       const geo =
