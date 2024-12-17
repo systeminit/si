@@ -149,9 +149,10 @@ impl Schema {
 
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
-        let lineage_id = workspace_snapshot.generate_ulid().await?;
+        // Lineage id has to match id here, otherwise every new schema will be
+        // treated as a new node, even though it has the same id
         let node_weight =
-            NodeWeight::new_content(id.into(), lineage_id, ContentAddress::Schema(hash));
+            NodeWeight::new_content(id.into(), id.into(), ContentAddress::Schema(hash));
 
         workspace_snapshot.add_or_replace_node(node_weight).await?;
 
