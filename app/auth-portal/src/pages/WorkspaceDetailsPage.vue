@@ -37,6 +37,18 @@
           </div>
         </template>
         <IconButton
+          v-if="featureFlagsStore.AUTOMATION_API"
+          tooltip="Create API Token for Automation"
+          tooltipPlacement="top"
+          :icon="'clipboard-copy'"
+          size="lg"
+          class="flex-none"
+          iconTone="warning"
+          :iconIdleTone="draftWorkspace.isFavourite ? 'warning' : 'shade'"
+          iconBgActiveTone="action"
+          @click="createAutomationToken()"
+        />
+        <IconButton
           :tooltip="
             draftWorkspace.isFavourite ? 'Remove Favourite' : 'Add Favourite'
           "
@@ -254,10 +266,12 @@ import { useWorkspacesStore, WorkspaceId } from "@/store/workspaces.store";
 import { tracker } from "@/lib/posthog";
 import { API_HTTP_URL } from "@/store/api";
 import MemberListItem from "@/components/MemberListItem.vue";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 
 const authStore = useAuthStore();
 const workspacesStore = useWorkspacesStore();
 const router = useRouter();
+const featureFlagsStore = useFeatureFlagsStore();
 
 const props = defineProps({
   workspaceId: { type: String as PropType<WorkspaceId>, required: true },
@@ -426,6 +440,17 @@ const favouriteWorkspace = async (isFavourite: boolean) => {
   await workspacesStore.SET_FAVOURITE(props.workspaceId, isFavourite);
 
   draftWorkspace.isFavourite = isFavourite;
+};
+
+const createAutomationToken = async () => {
+  if (!props.workspaceId) return;
+
+  const { result } = await workspacesStore.CREATE_AUTOMATION_TOKEN(
+    props.workspaceId,
+  );
+  if (result.success) {
+    await navigator.clipboard.writeText(result.data.token);
+  }
 };
 
 const deleteWorkspace = async () => {

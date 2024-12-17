@@ -1,5 +1,5 @@
 import { User, Workspace } from "@prisma/client";
-import { JwtPayload } from "jsonwebtoken";
+import { JwtPayload, SignOptions } from "jsonwebtoken";
 import * as Koa from "koa";
 import { nanoid } from "nanoid";
 import _ from "lodash";
@@ -8,8 +8,8 @@ import { ApiError } from "../lib/api-error";
 import { setCache } from "../lib/cache";
 import { createJWT, verifyJWT } from "../lib/jwt";
 import { tryCatch } from "../lib/try-catch";
-import { getUserById } from "./users.service";
-import { getWorkspaceById } from "./workspaces.service";
+import { getUserById, UserId } from "./users.service";
+import { getWorkspaceById, WorkspaceId } from "./workspaces.service";
 import { posthog } from "../lib/posthog";
 
 export const SI_COOKIE_NAME = "si-auth";
@@ -48,23 +48,45 @@ export async function decodeAuthToken(token: string) {
 
 // Auth tokens used for communication between the user's browser and SDF
 // and between that SDF instance and this auth api if necessary
-type SdfAuthTokenData = {
+export type SdfAuthTokenPayload = SdfAuthTokenPayloadV1 | SdfAuthTokenPayloadV2;
+export type SdfAuthTokenRole = "web" | "automation";
+
+interface SdfAuthTokenPayloadV2 {
+  version: "2";
+  userId: UserId;
+  workspaceId: WorkspaceId;
+  role: SdfAuthTokenRole;
+}
+
+// Old auth token versions
+interface SdfAuthTokenPayloadV1 {
   user_pk: string;
   workspace_pk: string;
-};
+}
 
-// will figure out what we want to pass in here...
-export function createSdfAuthToken(userId: string, workspaceId: string) {
-  const payload: SdfAuthTokenData = {
-    user_pk: userId,
-    workspace_pk: workspaceId,
-  };
-  // can add more metadata, expiry, etc...
-  return createJWT(payload, { subject: userId });
+// Pass a V2 token in.
+export function createSdfAuthToken(
+  payload: Omit<SdfAuthTokenPayloadV2, "version">,
+  options?: Omit<SignOptions, 'algorithm' | 'subject'>,
+) {
+  function createPayload(): SdfAuthTokenPayload {
+    switch (payload.role) {
+      case "web":
+        // For web tokens, generate the old version until prod is able to handle new ones.
+        return { user_pk: payload.userId, workspace_pk: payload.workspaceId };
+      case "automation":
+        // Expire automation tokens quickly right now
+        return { version: "2", ...payload };
+      default:
+        return payload.role satisfies never;
+    }
+  }
+
+  return createJWT(createPayload(), { subject: payload.userId, ...(options ?? {}) });
 }
 
 export async function decodeSdfAuthToken(token: string) {
-  return verifyJWT(token) as SdfAuthTokenData & JwtPayload;
+  return verifyJWT(token) as SdfAuthTokenPayload & JwtPayload;
 }
 
 function wipeAuthCookie(ctx: Koa.Context) {

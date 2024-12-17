@@ -24,7 +24,6 @@ rust_library(
         "//lib/si-frontend-types-rs:si-frontend-types",
         "//lib/si-hash:si-hash",
         "//lib/si-id:si-id",
-        "//lib/si-jwt-public-key:si-jwt-public-key",
         "//lib/si-layer-cache:si-layer-cache",
         "//lib/si-pkg:si-pkg",
         "//lib/si-runtime-rs:si-runtime",

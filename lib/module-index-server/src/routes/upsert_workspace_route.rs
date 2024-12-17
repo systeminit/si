@@ -83,7 +83,7 @@ pub async fn upsert_workspace_route(
     let new_module = si_module::ActiveModel {
         name: Set(export_metadata.name.to_owned()),
         description: Set(Some(export_metadata.description.to_owned())),
-        owner_user_id: Set(user_claim.user_pk.to_string()),
+        owner_user_id: Set(user_claim.user_id().to_string()),
         owner_display_name: Set(Some(export_metadata.created_by.to_owned())),
         latest_hash: Set(hash.to_string()),
         latest_hash_created_at: Set(DateTime::<FixedOffset>::from_naive_utc_and_offset(

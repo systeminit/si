@@ -74,7 +74,11 @@ router.post("/auth/login", async (ctx) => {
     throw new ApiError("Forbidden", "You do not have access to that workspace");
   }
 
-  const token = createSdfAuthToken(user.id, workspaceId);
+  const token = createSdfAuthToken({
+    userId: user.id,
+    workspaceId,
+    role: "web",
+  });
 
   ctx.body = { token };
 });

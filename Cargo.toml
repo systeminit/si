@@ -149,6 +149,7 @@ lazy_static = "1.5.0"
 manyhow = { version = "0.11.4", features = ["darling"] }
 mime_guess = { version = "=2.0.4" } # TODO(fnichol): 2.0.5 sets an env var in build.rs which needs to be tracked, required by reqwest
 miniz_oxide = { version = "0.8.0", features = ["simd"] }
+monostate = "0.1.13"
 names = { version = "0.14.0", default-features = false }
 nix = { version = "0.26.0", features = [
     "fs",

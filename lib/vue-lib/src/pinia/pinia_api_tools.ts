@@ -107,12 +107,16 @@ export class ApiRequest<
   // we use a getter to get the result so that we can add further type restrictions
   // ie, checking success guarantees data is present
   get result():
-    | { success: true; data: Response }
+    | {
+        success: true;
+        data: Response;
+      }
     | {
         success: false;
         err: Error;
         errBody?: any;
         statusCode?: number | undefined;
+        data?: Response extends undefined ? never : undefined;
       } {
     /* eslint-disable @typescript-eslint/no-non-null-assertion */
     if (this.rawSuccess === undefined)

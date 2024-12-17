@@ -67,7 +67,7 @@ pub async fn list_module_route(
         .filter(si_module::Column::RejectedAt.is_null())
         .filter(si_module::Column::Kind.eq(kind.to_db_kind()));
     let query = if !su {
-        let user_id = user_claim.user_pk.to_string();
+        let user_id = user_claim.user_id().to_string();
         query.filter(si_module::Column::OwnerUserId.eq(user_id))
     } else {
         query

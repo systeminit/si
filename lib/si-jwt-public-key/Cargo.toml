@@ -19,3 +19,4 @@ remain = { workspace = true }
 serde = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
+monostate = { workspace = true }

@@ -25,7 +25,6 @@ si-data-pg = { path = "../../lib/si-data-pg" }
 si-events = { path = "../../lib/si-events-rs" }
 si-frontend-types = { path = "../../lib/si-frontend-types-rs" }
 si-hash = { path = "../../lib/si-hash" }
-si-jwt-public-key = { path = "../../lib/si-jwt-public-key" }
 si-id = { path = "../../lib/si-id" }
 si-layer-cache = { path = "../../lib/si-layer-cache" }
 si-pkg = { path = "../../lib/si-pkg" }

@@ -1108,12 +1108,6 @@ impl AccessBuilder {
     }
 }
 
-impl From<DalContext> for AccessBuilder {
-    fn from(ctx: DalContext) -> Self {
-        Self::new(ctx.tenancy, ctx.history_actor)
-    }
-}
-
 /// A builder for a [`DalContext`].
 #[derive(Clone)]
 pub struct DalContextBuilder {

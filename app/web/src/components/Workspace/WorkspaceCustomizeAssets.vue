@@ -172,6 +172,7 @@ const funcStore = useFuncStore();
 const moduleStore = useModuleStore();
 
 const selectedVariantId = computed(() => assetStore.selectedVariantId);
+
 const selectedFuncId = computed(() => funcStore.selectedFuncId);
 const loadAssetsRequestStatus = assetStore.getRequestStatus(
   "LOAD_SCHEMA_VARIANT_LIST",

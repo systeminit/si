@@ -29,8 +29,8 @@ pub struct GenerateAwsFunctionQuery {
 #[allow(clippy::too_many_arguments)]
 pub async fn generate_aws_function(
     HandlerContext(builder): HandlerContext,
-    AssetSprayer(asset_sprayer): AssetSprayer,
     AccessBuilder(access_builder): AccessBuilder,
+    AssetSprayer(asset_sprayer): AssetSprayer,
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
     Host(host_name): Host,

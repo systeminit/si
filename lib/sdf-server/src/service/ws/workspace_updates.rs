@@ -28,7 +28,7 @@ pub async fn workspace_updates(
         run_workspace_updates_proto(
             socket,
             nats,
-            claim.workspace_pk,
+            claim.workspace_id(),
             channel_multiplexer_clients.ws,
             shutdown_token,
         )
