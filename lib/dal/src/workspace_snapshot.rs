@@ -3,52 +3,21 @@
 //! having code outside of the specific graph version implementation that requires having knowledge
 //! of how the internals of that specific version of the graph work.
 
-// #![warn(
-//     missing_debug_implementations,
-//     missing_docs,
-//     unreachable_pub,
-//     bad_style,
-//     dead_code,
-//     improper_ctypes,
-//     non_shorthand_field_patterns,
-//     no_mangle_generic_items,
-//     overflowing_literals,
-//     path_statements,
-//     patterns_in_fns_without_body,
-//     unconditional_recursion,
-//     unused,
-//     unused_allocation,
-//     unused_comparisons,
-//     unused_parens,
-//     while_true,
-//     clippy::missing_panics_doc
-// )]
-
-pub mod content_address;
-pub mod edge_weight;
-pub mod graph;
-pub mod lamport_clock;
-pub mod migrator;
-pub mod node_weight;
-pub mod traits;
-pub mod update;
-pub mod vector_clock;
-
-pub use traits::{schema::variant::SchemaVariantExt, socket::input::InputSocketExt};
-
-use graph::correct_transforms::correct_transforms;
-use graph::detect_updates::Update;
-use graph::{RebaseBatch, WorkspaceSnapshotGraph};
-use node_weight::traits::CorrectTransformsError;
 use std::collections::{HashMap, HashSet};
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 
+use graph::approval::ApprovalRequirement;
+use graph::correct_transforms::correct_transforms;
+use graph::detector::{Change, Update};
+use graph::{RebaseBatch, WorkspaceSnapshotGraph};
+use node_weight::traits::CorrectTransformsError;
 use petgraph::prelude::*;
-pub use petgraph::Direction;
 use serde::{Deserialize, Serialize};
 use si_data_pg::PgError;
+use si_events::workspace_snapshot::Checksum;
 use si_events::{ulid::Ulid, ContentHash, WorkspaceSnapshotAddress};
+use si_id::{EntityId, WorkspacePk};
 use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -83,7 +52,21 @@ use crate::{
 
 use self::node_weight::{NodeWeightDiscriminants, OrderingNodeWeight};
 
+pub mod content_address;
+pub mod edge_weight;
+pub mod graph;
+pub mod lamport_clock;
+pub mod migrator;
+pub mod node_weight;
+pub mod traits;
+pub mod update;
+pub mod vector_clock;
+
+pub use petgraph::Direction;
 pub use si_id::WorkspaceSnapshotNodeId as NodeId;
+pub use traits::{
+    entity_kind::EntityKindExt, schema::variant::SchemaVariantExt, socket::input::InputSocketExt,
+};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct NodeInformation {
@@ -713,12 +696,7 @@ impl WorkspaceSnapshot {
         Ok(())
     }
 
-    #[instrument(
-        name = "workspace_snapshot.detect_updates",
-        level = "debug",
-        skip_all,
-        fields()
-    )]
+    #[instrument(name = "workspace_snapshot.detect_updates", level = "debug", skip_all)]
     pub async fn detect_updates(
         &self,
         onto_workspace_snapshot: &WorkspaceSnapshot,
@@ -733,6 +711,100 @@ impl WorkspaceSnapshot {
                 .detect_updates(&*onto_clone.working_copy().await)
         })?
         .await?)
+    }
+
+    #[instrument(name = "workspace_snapshot.detect_changes", level = "debug", skip_all)]
+    pub async fn detect_changes(
+        &self,
+        onto_workspace_snapshot: &WorkspaceSnapshot,
+    ) -> WorkspaceSnapshotResult<Vec<Change>> {
+        let self_clone = self.clone();
+        let onto_clone = onto_workspace_snapshot.clone();
+
+        Ok(slow_rt::spawn(async move {
+            self_clone
+                .working_copy()
+                .await
+                .detect_changes(&*onto_clone.working_copy().await)
+        })?
+        .await?)
+    }
+
+    /// A wrapper around [`Self::detect_changes`](Self::detect_changes) where the "onto" snapshot is derived from the
+    /// workspace's default [`ChangeSet`](crate::ChangeSet).
+    #[instrument(
+        name = "workspace_snapshot.detect_changes_from_head",
+        level = "debug",
+        skip_all
+    )]
+    pub async fn detect_changes_from_head(
+        &self,
+        ctx: &DalContext,
+    ) -> WorkspaceSnapshotResult<Vec<Change>> {
+        let head_change_set_id = ctx.get_workspace_default_change_set_id().await?;
+        let head_snapshot = Self::find_for_change_set(ctx, head_change_set_id).await?;
+        head_snapshot
+            .detect_changes(&ctx.workspace_snapshot()?.clone())
+            .await
+    }
+
+    /// Collects all the [`ApprovalRequirements`](ApprovalRequirement) based on the changes passed in.
+    #[instrument(
+        name = "workspace_snapshot.approval_requirements_for_changes",
+        level = "debug",
+        skip_all
+    )]
+    pub async fn approval_requirements_for_changes(
+        &self,
+        workspace_id: WorkspacePk,
+        changes: &[Change],
+    ) -> WorkspaceSnapshotResult<Vec<ApprovalRequirement>> {
+        Ok(self
+            .working_copy()
+            .await
+            .approval_requirements_for_changes(workspace_id, changes)?)
+    }
+
+    /// Calculates the checksum based on a list of IDs passed in.
+    #[instrument(
+        name = "workspace_snapshot.calculate_checksum",
+        level = "debug",
+        skip_all
+    )]
+    pub async fn calculate_checksum(
+        &self,
+        ctx: &DalContext,
+        mut ids: Vec<EntityId>,
+    ) -> WorkspaceSnapshotResult<Checksum> {
+        // If an empty list of IDs were passed in, then we use the root node's ID as our sole ID so
+        // that algorithms using the checksum can "invalidate" as needed.
+        if ids.is_empty() {
+            let root_node_index = ctx.workspace_snapshot()?.root().await?;
+            ids.push(
+                ctx.workspace_snapshot()?
+                    .get_node_weight(root_node_index)
+                    .await?
+                    .id()
+                    .into(),
+            );
+        }
+
+        // We MUST sort IDs before creating the checksum.
+        ids.sort();
+
+        // Now that we have strictly ordered IDs and there's at least one present, we can create
+        // the checksum.
+        let snapshot = self.working_copy().await;
+        let mut hasher = Checksum::hasher();
+        for id in ids {
+            hasher.update(
+                snapshot
+                    .get_node_weight_by_id(id)?
+                    .merkle_tree_hash()
+                    .as_bytes(),
+            );
+        }
+        Ok(hasher.finalize())
     }
 
     /// Gives the exact node index endpoints of an edge.

@@ -28,7 +28,7 @@ pub async fn list_actionable(
     for change_set in open_change_sets {
         views.push(change_set.into_frontend_type(&ctx).await?);
     }
-    let client = state.spicedb_client().ok_or(Error::SpiceDBNotFound)?;
+    let client = state.spicedb_client().ok_or(Error::SpiceDBClientNotFound)?;
     //todo(brit): wire this through the spicedb internals
     let approvers = client
         .lookup_subjects(

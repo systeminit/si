@@ -16,7 +16,8 @@ const FLAG_MAPPING = {
 };
 
 const WORKSPACE_FLAG_MAPPING = {
-  WORKSPACE_FGAC: "workspace-fine-grained-access-control",
+  WORKSPACE_FINE_GRAINED_ACCESS_CONTROL:
+    "workspace-fine-grained-access-control",
 };
 
 type KeysOfUnion<T> = T extends T ? keyof T : never;

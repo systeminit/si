@@ -3,6 +3,7 @@ pub mod content_hash;
 pub mod encrypted_secret;
 pub mod merkle_tree_hash;
 pub mod rebase_batch_address;
+pub mod workspace_snapshot;
 pub mod workspace_snapshot_address;
 pub mod xxhash_type;
 
@@ -10,6 +11,7 @@ pub use si_id::ulid;
 
 mod actor;
 mod cas;
+mod change_set_approval;
 mod change_set_status;
 mod event_session;
 mod func;
@@ -30,6 +32,7 @@ pub use crate::{
     actor::Actor,
     actor::UserPk,
     cas::CasValue,
+    change_set_approval::ChangeSetApprovalStatus,
     change_set_status::ChangeSetStatus,
     content_hash::ContentHash,
     encrypted_secret::EncryptedSecretKey,

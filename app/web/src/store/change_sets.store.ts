@@ -21,6 +21,7 @@ import { useRealtimeStore } from "./realtime/realtime.store";
 import { useRouterStore } from "./router.store";
 import handleStoreError from "./errors";
 import { useStatusStore } from "./status.store";
+import { useFeatureFlagsStore } from "./feature_flags.store";
 
 const toast = useToast();
 
@@ -37,11 +38,37 @@ export interface OpenChangeSetsView {
   changeSets: ChangeSet[];
 }
 
+export type ChangeSetApprovalId = string;
+export type Ulid = string;
+export interface ChangeSetApprovalRequirement {
+  entityId: Ulid;
+  entityKind: string;
+  requiredCount: number;
+  isSatisfied: boolean;
+  applicableApprovalIds: ChangeSetApprovalId[];
+  approvingGroups: string[];
+}
+
+export interface ChangeSetApproval {
+  id: ChangeSetApprovalId;
+  userPk: UserId;
+  status: "Approved";
+  isValid: boolean; // is this approval "out of date" based on the checksum
+}
+
+export interface ApprovalData {
+  requirements: ChangeSetApprovalRequirement[];
+  latestApprovals: ChangeSetApproval[];
+}
+
 export function useChangeSetsStore() {
   const workspacesStore = useWorkspacesStore();
   const workspacePk = workspacesStore.selectedWorkspacePk;
+
   const authStore = useAuthStore();
+  const featureFlagsStore = useFeatureFlagsStore();
   const realtimeStore = useRealtimeStore();
+
   const BASE_API = [
     "v2",
     "workspaces",
@@ -62,13 +89,14 @@ export function useChangeSetsStore() {
         postAbandonActor: null as string | null,
         changeSetApprovals: {} as Record<UserId, string>,
         statusWithBase: {} as Record<ChangeSetId, StatusWithBase>,
-        approvers: [] as UserId[],
+        defaultApprovers: [] as UserId[],
+        changeSetsApprovalData: {} as Record<ChangeSetId, ApprovalData>,
       }),
       getters: {
-        currentUserIsApprover(): boolean {
+        currentUserIsDefaultApprover(): boolean {
           const userPk = authStore.user?.pk;
           if (!userPk) return false;
-          return this.approvers.includes(userPk);
+          return this.defaultApprovers.includes(userPk);
         },
         allChangeSets: (state) => _.values(state.changeSetsById),
         changeSetsNeedingApproval(): ChangeSet[] {
@@ -147,6 +175,18 @@ export function useChangeSetsStore() {
           statusStore.resetWhenChangingChangeset();
         },
 
+        async FETCH_APPROVAL_STATUS(changeSetId: ChangeSetId) {
+          if (featureFlagsStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL) {
+            return new ApiRequest<ApprovalData>({
+              method: "get",
+              url: BASE_API.concat([{ changeSetId }, "approval_status"]),
+              onSuccess: (response) => {
+                this.changeSetsApprovalData[changeSetId] = response;
+              },
+            });
+          }
+        },
+
         async FETCH_CHANGE_SETS() {
           return new ApiRequest<WorkspaceMetadata>({
             method: "get",
@@ -154,7 +194,7 @@ export function useChangeSetsStore() {
             onSuccess: (response) => {
               this.headChangeSetId = response.defaultChangeSetId;
               this.changeSetsById = _.keyBy(response.changeSets, "id");
-              this.approvers = response.approvers;
+              this.defaultApprovers = response.approvers;
             },
           });
         },
@@ -291,10 +331,21 @@ export function useChangeSetsStore() {
           const changeSetId = id || this.selectedChangeSetId;
 
           if (!changeSetId) throw new Error("Select a change set");
-          return new ApiRequest({
-            method: "post",
-            url: BASE_API.concat([{ changeSetId }, "approve"]),
-          });
+
+          if (featureFlagsStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL) {
+            return new ApiRequest({
+              method: "post",
+              url: BASE_API.concat([{ changeSetId }, "approve_v2"]),
+              params: {
+                status: "Approved",
+              },
+            });
+          } else {
+            return new ApiRequest({
+              method: "post",
+              url: BASE_API.concat([{ changeSetId }, "approve"]),
+            });
+          }
         },
         async REJECT_CHANGE_SET_APPLY(id?: ChangeSetId) {
           const changeSetId = id || this.selectedChangeSetId;
@@ -504,7 +555,7 @@ export function useChangeSetsStore() {
               }
               // if I'm an approver, and a change set now needs approval - toast
               else if (
-                this.currentUserIsApprover &&
+                this.currentUserIsDefaultApprover &&
                 data.changeSet.status === ChangeSetStatus.NeedsApproval
               ) {
                 toast({
@@ -694,6 +745,12 @@ export function useChangeSetsStore() {
             eventType: "ChangeSetWritten",
             callback: (changeSetId) => {
               this.changeSetsWrittenAtById[changeSetId] = new Date();
+            },
+          },
+          {
+            eventType: "ChangeSetApprovalStatusChanged",
+            callback: (changeSetId) => {
+              this.FETCH_APPROVAL_STATUS(changeSetId);
             },
           },
           {

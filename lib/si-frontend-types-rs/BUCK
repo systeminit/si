@@ -10,6 +10,7 @@ rust_library(
     deps = [
         "//lib/module-index-types:module-index-types",
         "//lib/si-events-rs:si-events",
+        "//lib/si-id:si-id",
         "//third-party/rust:chrono",
         "//third-party/rust:remain",
         "//third-party/rust:serde",
