@@ -19,6 +19,7 @@ use super::{ManagementApiError, ManagementApiResult};
 pub struct GenerateTemplateRequest {
     component_ids: Vec<ComponentId>,
     asset_name: String,
+    func_name: String,
     category: String,
     color: String,
 }
@@ -52,7 +53,7 @@ pub async fn generate_template(
 
     let func = FuncAuthoringClient::create_new_management_func(
         &ctx,
-        Some(request.asset_name.to_owned()),
+        Some(request.func_name),
         new_variant.id(),
     )
     .await?;
@@ -75,13 +76,17 @@ pub async fn generate_template(
     });
 
     let return_value_string = serde_json::to_string_pretty(&return_value)?;
+    let formatted = format_code(&return_value_string, 4, 1);
 
     let code = format!(
-        r#"async function main({{ thisComponent, components }}: Input): Promise<Output> {{
-  return {};
+        r#"async function main({{
+    thisComponent,
+    components
+}}: Input): Promise < Output > {{
+    return {};
 }}
 "#,
-        return_value_string
+        formatted
     );
 
     FuncAuthoringClient::save_code(&ctx, func.id, code).await?;
@@ -102,4 +107,38 @@ pub async fn generate_template(
     ctx.commit().await?;
 
     Ok(ForceChangeSetResponse::empty(force_change_set_id))
+}
+
+const MAX_DEPTH: usize = 2048;
+fn format_code(input: &str, tab_size: usize, initial_depth: usize) -> String {
+    let (formatted, _) = input.lines().fold(
+        (String::new(), initial_depth),
+        |(formatted, mut depth), next_line| {
+            if formatted.is_empty() {
+                (next_line.to_string(), depth)
+            } else {
+                if formatted.ends_with("{") {
+                    depth = depth.saturating_add(1);
+                } else if !formatted.ends_with(",") {
+                    depth = depth.saturating_sub(1);
+                }
+
+                // prevent panics from massive repeat allocations
+                if depth > MAX_DEPTH {
+                    depth = MAX_DEPTH;
+                }
+
+                (
+                    format!(
+                        "{formatted}\n{}{}",
+                        " ".repeat(depth.saturating_mul(tab_size)),
+                        next_line.trim()
+                    ),
+                    depth,
+                )
+            }
+        },
+    );
+
+    formatted
 }
