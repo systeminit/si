@@ -204,6 +204,7 @@ export const useFuncStore = () => {
         generatingFuncCode: {} as Record<FuncId, AwsCliCommand>,
         /** Whether the "generate AWS function" panel is toggled open */
         generateAwsFunctionPanelToggled: false,
+        executingPrompt: false,
         // So we can ignore websocket update originated by this client
         clientUlid: ulid(),
       }),
@@ -715,6 +716,8 @@ export const useFuncStore = () => {
           if (changeSetsStore.headSelected)
             changeSetsStore.creatingChangeSet = true;
 
+          this.executingPrompt = true;
+
           return new ApiRequest<{
             command: string;
             subcommand: string;
@@ -723,6 +726,12 @@ export const useFuncStore = () => {
             url: API_PREFIX.concat([funcId, "generate_aws_function"]),
             params: { command, subcommand, schemaVariantId },
             keyRequestStatusBy: funcId,
+            onSuccess: (response) => {
+              this.executingPrompt = false;
+            },
+            onFail: () => {
+              this.executingPrompt = false;
+            },
           });
         },
 
