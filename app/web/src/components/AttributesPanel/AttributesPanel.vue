@@ -18,6 +18,22 @@
       Loading asset schema
     </LoadingMessage>
     <div
+      v-else-if="
+        domainTree &&
+        domainTree.children.length === 0 &&
+        secretsTree &&
+        secretsTree.children.length === 0
+      "
+      :class="
+        clsx(
+          'text-center px-xs py-sm italic',
+          themeClasses('text-neutral-700', 'text-neutral-300'),
+        )
+      "
+    >
+      No attributes to display.
+    </div>
+    <div
       v-else-if="domainTree"
       :class="
         clsx(

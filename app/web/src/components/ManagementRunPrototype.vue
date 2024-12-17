@@ -129,6 +129,9 @@ const runPrototype = async (viewId: ViewId) => {
   );
 
   if (result.result.success) {
+    // TODO(WENDY) - for template functions, select the returned componentIds
+    // modelingEventBus.emit("setSelection", componentIds);
+
     lastExecution.value = result.result.data;
     if (result.result.data.message) {
       const toastOptions = {
