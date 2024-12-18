@@ -670,22 +670,32 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
             viewId: ViewId;
             name: string;
             components: Record<ComponentId, Vector2d & Partial<Size2D>>;
+            views: Record<ViewId, Vector2d & Size2D>;
           }>({
             method: "get",
             url: API_PREFIX.concat([{ viewId }, "get_geometry"]),
             onSuccess: (response) => {
-              let view = this.viewsById[viewId];
-              if (!view) {
-                view = {
-                  id: response.viewId,
-                  name: response.name,
-                  components: {},
-                  groups: {},
-                  sockets: {},
-                  viewNodes: {},
-                };
-                this.viewsById[response.viewId] = view;
-              }
+              const view: View = {
+                id: response.viewId,
+                name: response.name,
+                components: {},
+                groups: {},
+                sockets: {},
+                viewNodes: {},
+              };
+              this.viewsById[response.viewId] = view;
+
+              Object.entries(response.views).forEach(([viewId, geo]) => {
+                const v = this.viewList.find((_v) => _v.id === viewId);
+                if (!v) return;
+
+                view.viewNodes[v.id] = new DiagramViewData({
+                  ...v,
+                  ...VIEW_DEFAULTS,
+                  ...geo,
+                  componentType: ComponentType.View,
+                });
+              });
 
               Object.entries(response.components).forEach(
                 ([componentId, geo]) => {
