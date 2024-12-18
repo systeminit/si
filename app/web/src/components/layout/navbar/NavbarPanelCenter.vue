@@ -8,10 +8,7 @@
       :selected="
         ['workspace-compose', 'workspace-compose-view'].includes(route.name as string)
       "
-      :linkTo="{
-        name: 'workspace-compose',
-        params: { changeSetId: 'auto' },
-      }"
+      :linkTo="modelingLink()"
     />
 
     <NavbarButton
@@ -40,8 +37,35 @@
 <script setup lang="ts">
 import { useRoute } from "vue-router";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
+import { useViewsStore } from "@/store/views.store";
+import { useChangeSetsStore } from "@/store/change_sets.store";
 import NavbarButton from "./NavbarButton.vue";
 
 const route = useRoute();
 const featureFlagsStore = useFeatureFlagsStore();
+
+const modelingLink = () => {
+  const viewsStore = useViewsStore();
+  const changeSetStore = useChangeSetsStore();
+  if (changeSetStore.selectedChangeSetId) {
+    if (viewsStore.selectedViewId) {
+      return {
+        name: "workspace-compose-view",
+        params: {
+          changeSetId: changeSetStore.selectedChangeSetId,
+          viewId: viewsStore.selectedViewId,
+        },
+      };
+    } else {
+      return {
+        name: "workspace-compose",
+        params: { changeSetId: changeSetStore.selectedChangeSetId },
+      };
+    }
+  }
+  return {
+    name: "workspace-compose",
+    params: { changeSetId: "auto" },
+  };
+};
 </script>
