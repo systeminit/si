@@ -65,7 +65,7 @@ where
     }
 
     pub async fn get(&self, key: Arc<str>) -> LayerDbResult<Option<V>> {
-        Ok(match self.cache.get(&key).await {
+        Ok(match self.cache.get(key.clone()).await {
             Some(memory_value) => Some(memory_value),
 
             None => match self.pg.get(&key).await? {
@@ -80,6 +80,18 @@ where
                 None => None,
             },
         })
+    }
+
+    #[instrument(
+        name = "layer_cache.get_from_memory",
+        level = "debug",
+        skip_all,
+        fields(
+            si.layer_cache.key = key.as_ref(),
+        ),
+    )]
+    pub async fn get_from_memory(&self, key: Arc<str>) -> LayerDbResult<Option<V>> {
+        Ok(self.cache().get_from_memory(key).await)
     }
 
     #[instrument(
@@ -107,7 +119,7 @@ where
 
         for key in keys {
             let key_str: Arc<str> = key.to_string().into();
-            if let Some(found) = match self.cache.get(&key_str).await {
+            if let Some(found) = match self.cache.get(key_str.clone()).await {
                 Some(value) => Some(value),
                 None => {
                     not_found.push(key_str.clone());

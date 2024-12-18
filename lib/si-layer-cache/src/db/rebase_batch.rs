@@ -102,7 +102,7 @@ where
         let mut tried = 0;
         let read_wait = Instant::now();
         while tried < MAX_TRIES {
-            if let Some(v) = self.cache.cache().get(&key).await {
+            if let Some(v) = self.cache.cache().get_from_memory(key.clone()).await {
                 span.record("si.layer_cache.memory_cache.hit", true);
                 span.record(
                     "si.layer_cache.memory_cache.read_wait_ms",

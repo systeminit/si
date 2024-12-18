@@ -37,7 +37,7 @@ async fn empty_insert_and_get() {
     // Confirm the insert went into the memory cache
     let memory_result = layer_cache
         .cache()
-        .get(&skid_row)
+        .get(skid_row.clone())
         .await
         .expect("cannot find value in memory cache");
     assert_eq!("slave to the grind", &memory_result[..]);

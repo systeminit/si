@@ -1,16 +1,22 @@
 use foyer::opentelemetry_0_26::OpenTelemetryMetricsRegistry;
-use foyer::{Cache as MemCache, CacheBuilder};
+use foyer::{
+    DirectFsDeviceOptions, Engine, FifoPicker, HybridCache, HybridCacheBuilder, LargeEngineOptions,
+    RateLimitPicker, RecoverMode, TokioRuntimeOptions,
+};
+use std::cmp::max;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, LazyLock};
 use telemetry::opentelemetry::global;
 use telemetry::tracing::{error, info};
+use tokio::fs;
 
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 use crate::db::serialize;
 use crate::error::LayerDbResult;
+use crate::LayerDbError;
 
-const _FOYER_DISK_CACHE_MINUMUM: u64 = 1024 * 1024 * 1024; // 1gb
+const FOYER_DISK_CACHE_MINUMUM: u64 = 1024 * 1024 * 1024; // 1gb
 const DEFAULT_MEMORY_RESERVED_PERCENT: u8 = 40;
 const DEFAULT_MEMORY_USABLE_MAX_PERCENT: u8 = 100;
 const DEFAULT_DISK_RESERVED_PERCENT: u8 = 5;
@@ -41,7 +47,7 @@ pub struct Cache<V>
 where
     V: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
-    cache: MemCache<Arc<str>, MaybeDeserialized<V>>,
+    cache: HybridCache<Arc<str>, MaybeDeserialized<V>>,
 }
 
 impl<V> Cache<V>
@@ -64,8 +70,28 @@ where
             computed_memory_cache_capacity_bytes.try_into()?
         };
 
+        fs::create_dir_all(config.disk_path.as_path()).await?;
+        // Compute total disk which is in use for `disk_path`
+        let total_disk_bytes = fs4::total_space(config.disk_path.as_path())?;
+
+        let disk_cache_capacity_bytes = {
+            // Subtract reserved disk percentage to determine total usable cache disk
+            let total_usable_disk_bytes = (total_disk_bytes as f64
+                * (1.0 - (config.disk_reserved_percent as f64 / 100.0)))
+                .floor() as u64;
+            // Compute final usable disk as a percentage of the maximum usable disk
+            let computed_disk_cache_capacity_bytes = (total_usable_disk_bytes as f64
+                * (config.disk_usable_max_percent as f64 / 100.0))
+                .floor() as u64;
+
+            // Ensure that the computed value is at least as big as the Foyer minimum
+            max(computed_disk_cache_capacity_bytes, FOYER_DISK_CACHE_MINUMUM).try_into()?
+        };
+
         info!(
             cache.name = &config.name,
+            cache.disk.total_bytes = total_disk_bytes,
+            cache.disk.size_bytes = disk_cache_capacity_bytes,
             cache.disk.reserved_percent = config.disk_reserved_percent,
             cache.disk.usable_max_percent = config.disk_usable_max_percent,
             cache.disk.rate_limit = config.disk_admission_rate_limit,
@@ -78,47 +104,77 @@ where
 
         let cache_name: &'static str = config.name.leak();
 
-        let cache: MemCache<Arc<str>, MaybeDeserialized<V>> =
-            CacheBuilder::new(memory_cache_capacity_bytes)
-                .with_name(cache_name)
-                .with_metrics_registry(OpenTelemetryMetricsRegistry::new(global::meter(cache_name)))
-                .with_weighter(
-                    |_key: &Arc<str>, value: &MaybeDeserialized<V>| match value {
-                        MaybeDeserialized::RawBytes(bytes) => bytes.len(),
-                        MaybeDeserialized::DeserializedValue { size_hint, .. } => *size_hint,
-                    },
-                )
-                .build();
+        let cache: HybridCache<Arc<str>, MaybeDeserialized<V>> = HybridCacheBuilder::new()
+            .with_name(cache_name)
+            .with_metrics_registry(OpenTelemetryMetricsRegistry::new(global::meter(cache_name)))
+            .memory(memory_cache_capacity_bytes)
+            .with_weighter(
+                |_key: &Arc<str>, value: &MaybeDeserialized<V>| match value {
+                    MaybeDeserialized::RawBytes(bytes) => bytes.len(),
+                    MaybeDeserialized::DeserializedValue { size_hint, .. } => *size_hint,
+                },
+            )
+            .storage(Engine::Large)
+            .with_runtime_options(foyer::RuntimeOptions::Unified(TokioRuntimeOptions {
+                max_blocking_threads: 0,
+                worker_threads: 0,
+            }))
+            .with_admission_picker(Arc::new(RateLimitPicker::new(
+                config.disk_admission_rate_limit,
+            )))
+            .with_device_options(
+                DirectFsDeviceOptions::new(config.disk_path)
+                    .with_capacity(disk_cache_capacity_bytes),
+            )
+            .with_large_object_disk_cache_options(
+                LargeEngineOptions::new()
+                    .with_buffer_pool_size(config.disk_buffer_size)
+                    .with_eviction_pickers(vec![Box::<FifoPicker>::default()])
+                    .with_flushers(config.disk_buffer_flushers)
+                    .with_recover_concurrency(config.disk_recover_concurrency)
+                    .with_indexer_shards(config.disk_indexer_shards)
+                    .with_reclaimers(config.disk_reclaimers),
+            )
+            .with_recover_mode(RecoverMode::Quiet)
+            .build()
+            .await
+            .map_err(|e| LayerDbError::Foyer(e.into()))?;
 
         Ok(Self { cache })
     }
 
-    pub async fn get(&self, key: &str) -> Option<V> {
-        match self.cache.get(key) {
-            Some(entry) => match entry.value() {
-                MaybeDeserialized::DeserializedValue { value, .. } => Some(value.clone()),
-                MaybeDeserialized::RawBytes(bytes) => {
-                    // If we fail to deserialize the raw bytes for some reason, pretend that we never
-                    // had the key in the first place, and also remove it from the cache.
-                    match serialize::from_bytes_async::<V>(bytes).await {
-                        Ok(deserialized) => {
-                            self.insert(key.into(), deserialized.clone(), bytes.len());
-                            Some(deserialized)
-                        }
-                        Err(e) => {
-                            error!(
-                        "Failed to deserialize stored bytes from memory cache for key ({:?}): {}",
-                        key,
-                        e
-                    );
-                            self.remove(key);
-                            None
-                        }
+    pub async fn get(&self, key: Arc<str>) -> Option<V> {
+        if let Ok(Some(entry)) = self.cache.obtain(key.clone()).await {
+            return self.maybe_deserialize(key, entry.value().clone()).await;
+        }
+        None
+    }
+
+    pub async fn get_from_memory(&self, key: Arc<str>) -> Option<V> {
+        if let Some(entry) = self.cache.memory().get(&key) {
+            return self.maybe_deserialize(key, entry.value().clone()).await;
+        }
+        None
+    }
+
+    async fn maybe_deserialize(&self, key: Arc<str>, entry: MaybeDeserialized<V>) -> Option<V> {
+        match entry {
+            MaybeDeserialized::DeserializedValue { value, .. } => Some(value.clone()),
+            MaybeDeserialized::RawBytes(bytes) => {
+                // If we fail to deserialize the raw bytes for some reason, pretend that we never
+                // had the key in the first place, and also remove it from the cache.
+                match serialize::from_bytes_async::<V>(&bytes).await {
+                    Ok(deserialized) => {
+                        self.insert(key, deserialized.clone(), bytes.len());
+                        Some(deserialized)
+                    }
+                    Err(e) => {
+                        error!("Failed to deserialize stored bytes from memory cache for key ({:?}): {}", key, e);
+                        self.remove(&key);
+                        None
                     }
                 }
-            },
-
-            _ => None,
+            }
         }
     }
 
@@ -143,7 +199,10 @@ where
     }
 
     pub async fn close(&self) -> LayerDbResult<()> {
-        self.cache.clear();
+        self.cache
+            .close()
+            .await
+            .map_err(|e| LayerDbError::Foyer(e.into()))?;
         Ok(())
     }
 }

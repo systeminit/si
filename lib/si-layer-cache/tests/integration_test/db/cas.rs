@@ -43,7 +43,7 @@ async fn write_to_db() {
     let cas_pk_str: Arc<str> = cas_pk.to_string().into();
 
     // Are we in memory?
-    let in_memory = ldb.cas().cache.cache().get(&cas_pk_str).await;
+    let in_memory = ldb.cas().cache.cache().get(cas_pk_str.clone()).await;
     assert_eq!(Some(cas_value.clone()), in_memory);
 
     // Are we in pg?
@@ -145,7 +145,7 @@ async fn cold_read_from_db() {
 
     // Delete from cache
     ldb.cas().cache.cache().remove(&cas_pk_str);
-    let not_in_cache = ldb.cas().cache.cache().get(&cas_pk_str).await;
+    let not_in_cache = ldb.cas().cache.cache().get(cas_pk_str.clone()).await;
     assert_eq!(not_in_cache, None);
 
     // Read the data from the cache
@@ -159,7 +159,7 @@ async fn cold_read_from_db() {
     assert_eq!(&cas_value, &data);
 
     // Are we in cache after the read?
-    let in_cache = ldb.cas().cache.cache().get(&cas_pk_str).await;
+    let in_cache = ldb.cas().cache.cache().get(cas_pk_str.clone()).await;
     assert_eq!(Some(cas_value.clone()), in_cache);
 
     // Are we in pg?
@@ -233,7 +233,7 @@ async fn writes_are_gossiped() {
 
     let mut memory_check_count = 0;
     while memory_check_count <= max_check_count {
-        let in_memory = ldb_axl.cas().cache.cache().get(&cas_pk_str).await;
+        let in_memory = ldb_axl.cas().cache.cache().get(cas_pk_str.clone()).await;
         match in_memory {
             Some(value) => {
                 assert_eq!(cas_value.clone(), value);
@@ -311,7 +311,7 @@ async fn stress_test() {
         let cas_value = Arc::new(CasValue::String(big_string.to_string()));
         let (postcard_value, _) =
             serialize::to_vec(&cas_value).expect("cannot deserialize big ass string");
-        let cas_pk_string = ContentHash::new(&postcard_value).to_string();
+        let cas_pk_string: Arc<str> = ContentHash::new(&postcard_value).to_string().into();
         let ldb_slash_task = ldb_slash.clone();
         let _write_big_string = big_string.clone();
         let write_cas_value = cas_value.clone();
@@ -333,7 +333,12 @@ async fn stress_test() {
             let max_check_count = 10_000;
             let mut memory_check_count = 0;
             while memory_check_count < max_check_count {
-                let in_memory = ldb_axl_task.cas().cache.cache().get(&cas_pk_string).await;
+                let in_memory = ldb_axl_task
+                    .cas()
+                    .cache
+                    .cache()
+                    .get(cas_pk_string.clone())
+                    .await;
                 match in_memory {
                     Some(value) => {
                         let cas_value: Arc<CasValue> =
