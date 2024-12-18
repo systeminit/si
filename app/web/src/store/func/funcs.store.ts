@@ -955,22 +955,22 @@ export const GenerateAwsFunctionKinds = {
   AssetSchema: {
     description: "AWS Asset Schema",
     exampleCommand: {
-      command: "sqs",
-      subcommand: "create-queue",
+      service: "sqs",
+      command: "create-queue",
     },
   },
   Action: {
     description: "AWS Action Function",
     exampleCommand: {
-      command: "sqs",
-      subcommand: "describe-queue",
+      service: "sqs",
+      command: "describe-queue",
     },
   },
   Management: {
     description: "AWS Import Function",
     exampleCommand: {
-      command: "sqs",
-      subcommand: "describe-queue",
+      service: "sqs",
+      command: "describe-queue",
     },
   },
 } as const;
