@@ -668,7 +668,7 @@
             </option>
           </select>
           <div class="block truncate py-[5px] pr-6 pl-xs">
-            {{ currentValue }}
+            {{ currentLabelForDropdown }}
           </div>
           <Icon
             class="absolute right-1 top-1 text-neutral-400 dark:text-neutral-600"
@@ -924,7 +924,11 @@ import {
   PropertyEditorValue,
   ValidationOutput,
 } from "@/api/sdf/dal/property_editor";
-import { DoubleLabelEntry, DoubleLabelList } from "@/api/sdf/dal/label_list";
+import {
+  DoubleLabelEntry,
+  DoubleLabelList,
+  LabelList,
+} from "@/api/sdf/dal/label_list";
 import { ViewDescription } from "@/api/sdf/dal/views";
 import CodeEditor from "../CodeEditor.vue";
 import SecretsModal from "../SecretsModal.vue";
@@ -1125,7 +1129,18 @@ const headerZIndex = computed(() => 300 - props.level);
 const newMapChildKey = ref("");
 
 const currentValue = computed(() => props.treeDef.value?.value);
+const currentLabelForDropdown = computed(() => {
+  if (!widgetOptions.value) return currentValue.value;
 
+  const options = widgetOptions.value as LabelList<string>;
+  const labelOption = options.find(
+    (option) => option.value === currentValue.value,
+  );
+
+  if (labelOption) return labelOption.label;
+
+  return currentValue.value;
+});
 const clipIcon = ref<IconNames>("clipboard-copy");
 const copyToClipboard = () => {
   navigator.clipboard.writeText(currentValue.value as string);
