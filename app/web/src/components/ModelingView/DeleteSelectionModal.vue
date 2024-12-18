@@ -146,7 +146,8 @@ const allErasableViews = computed(() => {
   );
   return (
     allViews &&
-    erasableViews.value.length === viewStore.selectedComponents.length
+    erasableViews.value.length === viewStore.selectedComponents.length &&
+    viewStore.selectedComponents.length > 0
   );
 });
 
