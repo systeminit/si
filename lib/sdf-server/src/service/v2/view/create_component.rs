@@ -6,6 +6,7 @@ use axum::{
     Json,
 };
 use dal::diagram::geometry::Geometry;
+use dal::Func;
 use serde::{Deserialize, Serialize};
 
 use dal::diagram::view::ViewId;
@@ -120,6 +121,14 @@ pub async fn create_component(
                 .await?
                 .publish_on_commit(&ctx)
                 .await?;
+            for func_id in front_end_variant.func_ids.iter() {
+                let func = Func::get_by_id_or_error(&ctx, *func_id).await?;
+                let front_end_func = func.into_frontend_type(&ctx).await?;
+                WsEvent::func_updated(&ctx, front_end_func, None)
+                    .await?
+                    .publish_on_commit(&ctx)
+                    .await?;
+            }
 
             (
                 variant_id,

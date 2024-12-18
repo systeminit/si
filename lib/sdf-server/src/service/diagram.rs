@@ -15,8 +15,8 @@ use dal::{
     slow_rt::SlowRuntimeError,
     socket::{input::InputSocketError, output::OutputSocketError},
     workspace_snapshot::WorkspaceSnapshotError,
-    ChangeSetError, SchemaError, SchemaId, SchemaVariantId, StandardModelError, TransactionsError,
-    WsEventError,
+    ChangeSetError, FuncError, SchemaError, SchemaId, SchemaVariantId, StandardModelError,
+    TransactionsError, WsEventError,
 };
 use std::num::{ParseFloatError, ParseIntError};
 use telemetry::prelude::*;
@@ -75,6 +75,8 @@ pub enum DiagramError {
     EdgeNotFound,
     #[error("frame socket not found for schema variant id: {0}")]
     FrameSocketNotFound(SchemaVariantId),
+    #[error("func error: {0}")]
+    Func(#[from] FuncError),
     #[error("invalid header name {0}")]
     Hyper(#[from] hyper::http::Error),
     #[error("InferredConnectionGraph error: {0}")]
