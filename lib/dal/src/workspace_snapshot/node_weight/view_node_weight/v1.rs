@@ -99,7 +99,6 @@ impl CorrectTransforms for ViewNodeWeightV1 {
 
         if let Some(view_removal_update_idx) = maybe_view_removal_update_idx {
             let view_node_index = workspace_snapshot_graph.get_node_index_by_id(self.id())?;
-            dbg!(&updates);
 
             // Make sure that any pre-existing Geometry has a removal in the set of updates.
             for (_edge_weight, _source, destination) in workspace_snapshot_graph
