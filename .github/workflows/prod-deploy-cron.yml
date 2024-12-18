@@ -1,4 +1,4 @@
-name: Production Crons
+name: Production Deploy Cron
 
 on:
   schedule:
