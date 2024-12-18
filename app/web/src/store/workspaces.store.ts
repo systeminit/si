@@ -184,11 +184,12 @@ export const useWorkspacesStore = () => {
             method: "get",
             url: `v2/workspaces/${this.selectedWorkspacePk}/integrations`,
             onSuccess: (response) => {
-              this.integrations = {
-                pk: response.integration.pk,
-                workspaceId: response.integration.workspace_pk,
-                slackWebhookUrl: response.integration.slack_webhook_url,
-              };
+              if (response)
+                this.integrations = {
+                  pk: response.integration.pk,
+                  workspaceId: response.integration.workspace_pk,
+                  slackWebhookUrl: response.integration.slack_webhook_url,
+                };
             },
           });
         },
