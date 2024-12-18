@@ -642,14 +642,15 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
           this.recentViews.push(id);
         },
         async LIST_VIEWS(all = false) {
-          await componentsStore.FETCH_ALL_COMPONENTS();
-
           return new ApiRequest<ViewDescription[]>({
             method: "get",
             url: API_PREFIX,
             onSuccess: async (views) => {
               this.viewList = views;
               this.SORT_LIST_VIEWS();
+              if (!all)
+                // e.g. initial page load
+                await componentsStore.FETCH_ALL_COMPONENTS();
               for (const { id } of views) {
                 // assuming we're coming from "on load", we have the FETCH that gets the selectedViewId
                 if (all || id !== this.selectedViewId)
@@ -666,6 +667,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
           });
         },
         async FETCH_VIEW_GEOMETRY(viewId: ViewId) {
+          // requires all components to be in place!
           return new ApiRequest<{
             viewId: ViewId;
             name: string;
@@ -701,7 +703,6 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                 ([componentId, geo]) => {
                   const node = componentsStore.allComponentsById[componentId];
                   if (!node) return;
-                  if (!view) return; // no idea why linting is complaining that i need this
                   let geometry: IRect;
                   if ("width" in node) {
                     geo.width = node.width;
@@ -1963,6 +1964,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                 // If the applied change set has rebased into this change set,
                 // then refetch (i.e. there might be updates!)
                 if (data.toRebaseChangeSetId === changeSetId) {
+                  await componentsStore.FETCH_ALL_COMPONENTS();
                   this.LIST_VIEWS(true); // loads all other view data
                 }
               },
