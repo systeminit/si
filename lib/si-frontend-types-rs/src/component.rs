@@ -23,7 +23,7 @@ pub struct GridPoint {
     pub y: isize,
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone, Eq, PartialEq)]
+#[derive(Deserialize, Serialize, Debug, Clone, Eq, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct RawGeometry {
     pub x: isize,

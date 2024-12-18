@@ -4,7 +4,7 @@ use dal::{
     Component, DalContext, Ulid, WorkspaceSnapshotError,
 };
 use dal_test::{
-    expected::{generate_fake_name, ExpectView},
+    expected::{self, generate_fake_name, ExpectView},
     helpers::{
         create_component_for_default_schema_name,
         create_component_for_default_schema_name_in_default_view,
@@ -279,5 +279,88 @@ async fn remove_view_with_removal_of_exclusive_components(ctx: &mut DalContext) 
     assert_eq!(
         1,
         View::list(ctx).await.expect("Unable to list views").len()
+    );
+}
+
+#[test]
+async fn remove_view_that_previously_contained_another_view_that_has_been_removed(
+    ctx: &mut DalContext,
+) {
+    let containing_view = ExpectView::create(ctx).await;
+    let contained_view = ExpectView::create(ctx).await;
+    assert_eq!(
+        0,
+        Geometry::list_by_view_id(ctx, containing_view.id())
+            .await
+            .expect("Unable to list Geometry for containing View")
+            .len()
+    );
+    View::add_to_another_view(
+        ctx,
+        contained_view.id(),
+        containing_view.id(),
+        RawGeometry::default(),
+    )
+    .await
+    .expect("Unable to add contained view to container view");
+    expected::commit_and_update_snapshot_to_visibility(ctx).await;
+
+    assert_eq!(
+        3,
+        View::list(ctx).await.expect("Unable to list Views").len(),
+    );
+
+    assert_eq!(
+        1,
+        Geometry::list_by_view_id(ctx, containing_view.id())
+            .await
+            .expect("Unable to list Geometry for containing View")
+            .len()
+    );
+
+    View::remove(ctx, contained_view.id())
+        .await
+        .expect("Unable to remove contained View");
+
+    assert_eq!(
+        2,
+        View::list(ctx).await.expect("Unable to list Views").len(),
+    );
+
+    assert_eq!(
+        0,
+        Geometry::list_by_view_id(ctx, containing_view.id())
+            .await
+            .expect("Unable to list Geometry for containing View")
+            .len()
+    );
+    expected::commit_and_update_snapshot_to_visibility(ctx).await;
+
+    assert_eq!(
+        2,
+        View::list(ctx).await.expect("Unable to list Views").len(),
+    );
+
+    assert_eq!(
+        0,
+        Geometry::list_by_view_id(ctx, containing_view.id())
+            .await
+            .expect("Unable to list Geometry for containing View")
+            .len()
+    );
+
+    View::remove(ctx, containing_view.id())
+        .await
+        .expect("Unable to remove containing View");
+
+    assert_eq!(
+        1,
+        View::list(ctx).await.expect("Unable to list Views").len(),
+    );
+    expected::commit_and_update_snapshot_to_visibility(ctx).await;
+
+    assert_eq!(
+        1,
+        View::list(ctx).await.expect("Unable to list Views").len(),
     );
 }
