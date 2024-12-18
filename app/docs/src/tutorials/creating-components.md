@@ -10,10 +10,10 @@ To follow along, you should:
 
 2. You should have your System Initiative workspace open in another window.
 
-This tutorial shows you how to create Components and add functions to them.
-It's focus is on introducing you to the user interface and various high level
-concepts. For deeper details on writing specific function types, [see the
-reference guides](../reference/index.md).
+This tutorial shows you how to create Components and add functions to them. It's
+focus is on introducing you to the user interface and various high level
+concepts. For deeper details on writing specific function types,
+[see the reference guides](../reference/index.md).
 
 :::tip
 
@@ -38,7 +38,7 @@ Click the `Beaker` icon to switch to the customize screen.
 
 ## Create a new Hello World Component
 
-![Create a new Hello World Component](./creating-Components/create-a-new-hello-world-Component.png)
+![Create a new Hello World Component](./creating-components/create-a-new-hello-world-component.png)
 
 Click the `New Asset` button (represented by a `+` icon) in the Assets pallete
 in the left side panel.
@@ -59,7 +59,7 @@ synonymous with Components.
 
 ## Set the Hello World meta-data
 
-![Set the Hello World meta-data](./creating-Components/set-the-hello-world-meta-data.png)
+![Set the Hello World meta-data](./creating-components/set-the-hello-world-meta-data.png)
 
 Set the `Category` to `Tutorial`.
 
@@ -71,7 +71,7 @@ Set the `color` to `#6cdcf8`.
 
 ## Add properties to the Hello World Schema
 
-![Add properties](./creating-Components/add-properties.png)
+![Add properties](./creating-components/add-properties.png)
 
 In the center of the screen is a text editor showing the empty Schema of your
 `Hello World` Component.
@@ -188,7 +188,7 @@ asset definition with `return asset.build()`.
 
 ## Regenerate the asset
 
-![Regenerate Asset](./creating-Components/regenerate-asset.png)
+![Regenerate Asset](./creating-components/regenerate-asset.png)
 
 Click the `Regenerate Asset` button in the right-side panel.
 
@@ -197,7 +197,7 @@ with the new Schema.
 
 ## Check your new Component
 
-![Check your Component](./creating-Components/check-your-Component.png)
+![Check your Component](./creating-components/check-your-component.png)
 
 Click the `Graph` icon to switch to the modeling screen.
 
@@ -213,7 +213,7 @@ You will see that you have the following properties:
 
 ## Add a Qualification function
 
-![Add Qualification function](./creating-Components/add-qualification-function.png)
+![Add Qualification function](./creating-components/add-qualification-function.png)
 
 Click the `Beaker` icon to switch back to the customize screen. Ensure you
 `Hello World` Asset is selected.
@@ -228,13 +228,13 @@ Name your Qualification `helloWorldTags`.
 
 ## Set the qualifications meta-data
 
-![Qualification Metadata](./creating-Components/qualification-metadata.png)
+![Qualification Metadata](./creating-components/qualification-metadata.png)
 
 Set the `Display Name` to `Hello World Tags`
 
 ## Write the qualification function
 
-![Write Qualification](./creating-Components/write-qualification.png)
+![Write Qualification](./creating-components/write-qualification.png)
 
 Ensure that any `Hello World` Components have a tag with the key `Super` and
 value is `Duper`.
@@ -280,7 +280,7 @@ Finally, return the `result` and `message`.
 
 ## Check your new Qualification function
 
-![Check Qualification](./creating-Components/check-qualification.png)
+![Check Qualification](./creating-components/check-qualification.png)
 
 Click the `Graph` icon to switch to the modeling screen.
 
@@ -315,5 +315,7 @@ To learn more, explore the reference documentation:
   on how to write functions
 
 ## Vocabulary
-In this tutorial bits of System Initiative Vocabulary will be shown with a capital letter. 
-All definitions for these can be found here: [System Initative - Vocabulary](https://docs.systeminit.com/reference/vocabulary) 
+
+In this tutorial bits of System Initiative Vocabulary will be shown with a
+capital letter. All definitions for these can be found here:
+[System Initative - Vocabulary](https://docs.systeminit.com/reference/vocabulary)

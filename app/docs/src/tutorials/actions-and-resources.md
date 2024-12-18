@@ -50,7 +50,7 @@ Click `Store Secret` to securely encrypt and save your Secret.
 
 ## Add an AWS Region Component and set its properties
 
-![Add an AWS Region Component and set its properties](./actions-and-resources/add-an-aws-region-Component-and-set-its-properties.png)
+![Add an AWS Region Component and set its properties](./actions-and-resources/add-an-aws-region-component-and-set-its-properties.png)
 
 Click `Region` from the AWS category of the Asset pallete, and drop it on the
 Diagram canvas.
@@ -63,7 +63,7 @@ Set the `region` property to `us-east-1`.
 
 ## Add a VPC Component and set its properties
 
-![Add a VPC Component and set its properties](./actions-and-resources/add-a-vpc-Component-and-set-its-properties.png)
+![Add a VPC Component and set its properties](./actions-and-resources/add-a-vpc-component-and-set-its-properties.png)
 
 Click `VPC` from the AWS EC2 category of the Asset pallete, and drop it on the
 Diagram canvas.
