@@ -45,7 +45,7 @@ Create a Change Set named `MacOS How-to`.
 
 Add a `AWS Credential` to your Change Set and configure your AWS credentials as
 per the
-[getting started guide](../tutorials/getting-started#add-an-aws-credential-Component)
+[getting started guide](../tutorials/getting-started#add-an-aws-credential-component)
 
 ### Select an AWS Region
 
@@ -75,7 +75,7 @@ Resize the frame to allow space for a child Component to be inside it.
 
 ### Select an EC2 Instance Component
 
-![Select an EC2 Instance](./aws-macos/create-ec2-instance-Component.png)
+![Select an EC2 Instance](./aws-macos/create-ec2-instance-component.png)
 
 Add an `EC2 Instance` Component to the `macOS dedicated host` frame.
 
@@ -85,7 +85,7 @@ Set the `InstanceType` to be `mac2-m2pro.metal`
 
 ### Create an AMI Component
 
-![Select an AMI](./aws-macos/create-ami-Component.png)
+![Select an AMI](./aws-macos/create-ami-component.png)
 
 Add an `AMI` Component to the `us-east-1` frame.
 
@@ -98,7 +98,7 @@ Connect the `Image ID` Output Socket to the `Image ID` Input Socket of the
 
 ### Create a Security Group Component
 
-![Select a Security Group](./aws-macos/create-security-group-Component.png)
+![Select a Security Group](./aws-macos/create-security-group-component.png)
 
 Add a `Security Group` Component to the `us-east-1` frame.
 
@@ -114,7 +114,7 @@ socket of the `macos-1` Component.
 
 ### Create a Security Group Ingress Rule Component
 
-![Select a Security Group Rule Ingress](./aws-macos/create-security-group-ingress-Component.png)
+![Select a Security Group Rule Ingress](./aws-macos/create-security-group-ingress-component.png)
 
 Add a `Security Group Rule (Ingress)` Component to the `us-east-1` frame.
 
@@ -134,7 +134,7 @@ Connect the `Security Group ID` Output Socket of `macos-sg` Component to the
 
 ### Create a KeyPair Component
 
-![Select a Key Pair](./aws-macos/create-key-pair-Component.png)
+![Select a Key Pair](./aws-macos/create-key-pair-component.png)
 
 Add a `Key Pair` Component to the `us-east-1` frame.
 

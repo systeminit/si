@@ -31,7 +31,7 @@ button.
 
 ## Add an AWS Credential Component
 
-![Adding an AWS Credential Component](./getting-started/add-an-aws-credential-Component.png)
+![Adding an AWS Credential Component](./getting-started/add-an-aws-credential-component.png)
 
 Click `AWS Credential` from the AWS category of the Asset pallete, and drop it
 on the Diagram canvas. This creates a new
@@ -43,7 +43,7 @@ lower right corner of the frame.
 
 ## Name your Component
 
-![Name your Component](./getting-started/name-your-Component.png)
+![Name your Component](./getting-started/name-your-component.png)
 
 Click on the `AWS Credential` you just added to the canvas. The panel on the
 right side of your screen will show its properties. It will have a default
@@ -76,7 +76,7 @@ In some cases, you may need to also add your AWS Session Key.
 
 ## Add an AWS Region Component and set its properties
 
-![Add an AWS Region Component](./getting-started/add-an-aws-region-Component-and-set-its-properties.png)
+![Add an AWS Region Component](./getting-started/add-an-aws-region-component-and-set-its-properties.png)
 
 Click on the `Region` from the AWS category of the Asset pallete, and drop it
 inside your `Tutorial` Credential frame.
@@ -119,7 +119,7 @@ the line between them.
 
 ## Add an AWS EC2 AMI Component and set its properties
 
-![Add an AWS EC2 AMI Component and set its properties](./getting-started/add-an-aws-ec2-ami-Component-and-set-its-properties.png)
+![Add an AWS EC2 AMI Component and set its properties](./getting-started/add-an-aws-ec2-ami-component-and-set-its-properties.png)
 
 Click on the `AMI` from the AWS EC2 category of the Asset pallete, and drop it
 inside your `Northern Virginia` region frame.

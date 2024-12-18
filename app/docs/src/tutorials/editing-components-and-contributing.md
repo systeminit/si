@@ -20,7 +20,7 @@ specific function types, [see the reference guides](../reference/index.md).
 
 ## Create a Change Set
 
-![Create a Change Set](./editing-Components-and-contributing/create-change-set.png)
+![Create a Change Set](./editing-components-and-contributing/create-change-set.png)
 
 Click the create Change Set button.
 
@@ -30,7 +30,7 @@ Click the `Create Change Set` button.
 
 ## Create a Generic Frame
 
-![Create a Generic Frame](./editing-Components-and-contributing/create-a-generic-frame.png)
+![Create a Generic Frame](./editing-components-and-contributing/create-a-generic-frame.png)
 
 Click the `Generic Frame` from the Asset panel, then place it on the Diagram canvas.
 
@@ -38,13 +38,13 @@ Name it `Editing Frame`.
 
 ## Switch to the Customize Screen
 
-![Switch to the Customize Screen](./editing-Components-and-contributing/switch-to-customize-screen.png)
+![Switch to the Customize Screen](./editing-components-and-contributing/switch-to-customize-screen.png)
 
 Click the `Beaker` icon to switch to the customize screen.
 
 ## Edit the Generic Frame Schema
 
-![Edit the Generic Frame Schema](./editing-Components-and-contributing/edit-the-generic-frame-schema.png)
+![Edit the Generic Frame Schema](./editing-components-and-contributing/edit-the-generic-frame-schema.png)
 
 Select the `Generic Frame` Asset from the Assets panel in the left of the customize screen.
 
@@ -54,7 +54,7 @@ This will create a new `Editing` version of the Generic Frame.
 
 ## Add a new property to the Generic Frame
 
-![Edit the Generic Frame Schema](./editing-Components-and-contributing/add-a-new-property-to-the-generic-frame.png)
+![Edit the Generic Frame Schema](./editing-components-and-contributing/add-a-new-property-to-the-generic-frame.png)
 
 Add a new `Awesome` boolean property to the `Generic Frame`.
 
@@ -78,7 +78,7 @@ Click `Regenerate Asset` when you are done.
 
 ## Upgrade to your new Generic Frame
 
-![Upgrade to your new Generic Frame](./editing-Components-and-contributing/upgrade-to-your-new-generic-frame.png)
+![Upgrade to your new Generic Frame](./editing-components-and-contributing/upgrade-to-your-new-generic-frame.png)
 
 Click the `Graph` icon to switch to the modeling screen.
 
@@ -91,13 +91,13 @@ this Component can be upgraded to.
 
 Click the `Upgrade` icon in the attribute panel to upgrade your `Editing Frame`.
 
-![Now with more awesome](./editing-Components-and-contributing/now-with-more-awesome.png)
+![Now with more awesome](./editing-components-and-contributing/now-with-more-awesome.png)
 
 It will now have a property named `Awesome` with a true/false check-box!
 
 ## Edit a function
 
-![Edit a function](./editing-Components-and-contributing/edit-a-function.png)
+![Edit a function](./editing-components-and-contributing/edit-a-function.png)
 
 Click the `Beaker` icon to switch to the customize screen.
 
@@ -114,7 +114,7 @@ version of the Asset.
 
 ## Abandon your Change Set
 
-![Edit a function](./editing-Components-and-contributing/abandon-change-set.png)
+![Edit a function](./editing-components-and-contributing/abandon-change-set.png)
 
 Since both of these are useful working assets, abandon your Change Set to
 ensure your edits are not persisted by clicking the `Abandon Change Set` button
@@ -122,7 +122,7 @@ ensure your edits are not persisted by clicking the `Abandon Change Set` button
 
 ## Updating Assets from System Initiative
 
-![Updating Assets from System Initiative](./editing-Components-and-contributing/updating-assets-from-system-initiative.png)
+![Updating Assets from System Initiative](./editing-components-and-contributing/updating-assets-from-system-initiative.png)
 
 You can update assets as new versions are published from System Initiative from
 the customize screen. If an Asset can be updated, you will see an `Update All`
@@ -132,7 +132,7 @@ they have an update available.
 
 ## Install New Assets from System Initiative
 
-![Install New Assets from System Initiative](./editing-Components-and-contributing/install-new-assets-from-system-initiative.png)
+![Install New Assets from System Initiative](./editing-components-and-contributing/install-new-assets-from-system-initiative.png)
 
 New assets published by System Initiative can be installed by clicking the
 `New Assets` sub-panel of the Assets tab on the customize screen.
@@ -143,7 +143,7 @@ Install the Asset by clicking the `Install Module` button.
 
 ## Contributing Assets to System Initiative
 
-![Contributing Assets to System Initiative](./editing-Components-and-contributing/contributing-assets-to-system-initiative.png)
+![Contributing Assets to System Initiative](./editing-components-and-contributing/contributing-assets-to-system-initiative.png)
 
 If you have created or edited an Asset that you want to contribute to the community,
 you can do so once you've applied it to your workspace.
