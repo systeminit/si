@@ -86,6 +86,7 @@ import {
 } from "@si/vue-lib/design-system";
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { storeToRefs } from "pinia";
+import { useRouter } from "vue-router";
 import { useComponentsStore } from "@/store/components.store";
 import { useViewsStore } from "@/store/views.store";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
@@ -94,6 +95,7 @@ import { DiagramViewData } from "../ModelingDiagram/diagram_types";
 const componentsStore = useComponentsStore();
 const viewsStore = useViewsStore();
 const featureFlagsStore = useFeatureFlagsStore();
+const router = useRouter();
 
 const { selectedComponents, restorableSelectedComponents } =
   storeToRefs(viewsStore);
@@ -169,7 +171,7 @@ const onCreateTemplate = () => {
     category: category.value,
   };
 
-  componentsStore.CREATE_TEMPLATE_FUNC_FROM_COMPONENTS(templateData);
+  componentsStore.CREATE_TEMPLATE_FUNC_FROM_COMPONENTS(templateData, router);
 
   close();
 };

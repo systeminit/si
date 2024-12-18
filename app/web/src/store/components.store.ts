@@ -7,6 +7,7 @@ import { POSITION, useToast } from "vue-toastification";
 
 import mitt from "mitt";
 import { connectionAnnotationFitsReference } from "@si/ts-lib";
+import { Router } from "vue-router";
 import {
   DiagramEdgeData,
   DiagramEdgeDef,
@@ -1165,14 +1166,17 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             });
           },
 
-          async CREATE_TEMPLATE_FUNC_FROM_COMPONENTS(templateData: {
-            color: string;
-            assetName: string;
-            funcName: string;
-            componentIds: ComponentId[];
-            viewId: ViewId;
-            category: string;
-          }) {
+          async CREATE_TEMPLATE_FUNC_FROM_COMPONENTS(
+            templateData: {
+              color: string;
+              assetName: string;
+              funcName: string;
+              componentIds: ComponentId[];
+              viewId: ViewId;
+              category: string;
+            },
+            router: Router,
+          ) {
             const {
               color,
               assetName,
@@ -1197,7 +1201,10 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               },
             );
 
-            const req = new ApiRequest({
+            const req = new ApiRequest<{
+              schemaVariantId: string;
+              funcId: string;
+            }>({
               method: "post",
               url: `v2/workspaces/${workspaceId}/change-sets/${changeSetId}/management/generate_template/${viewId}`,
               params: {
@@ -1207,13 +1214,24 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 category,
                 color,
               },
-              onSuccess: (_response) => {
+              onSuccess: (response) => {
                 toast.update(toastID, {
                   content: {
-                    props: { updating: false, templateName: assetName },
+                    props: {
+                      updating: false,
+                      templateName: assetName,
+                      schemaVariantId: response.schemaVariantId,
+                      funcId: response.funcId,
+                      router: (s: string) => {
+                        router.push({
+                          name: "workspace-lab-assets",
+                          query: { s },
+                        });
+                      },
+                    },
                     component: CreatingTemplate,
                   },
-                  options: { timeout: 500, closeOnClick: true },
+                  options: { timeout: false, closeOnClick: true },
                 });
               },
               onFail: (_response) => {

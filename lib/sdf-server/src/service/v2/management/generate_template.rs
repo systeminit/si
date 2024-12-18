@@ -6,7 +6,7 @@ use axum::{
 use dal::{
     diagram::view::ViewId, func::authoring::FuncAuthoringClient,
     management::prototype::ManagementPrototype, schema::variant::authoring::VariantAuthoringClient,
-    ChangeSet, ChangeSetId, ComponentId, WorkspacePk, WsEvent,
+    ChangeSet, ChangeSetId, ComponentId, FuncId, SchemaVariantId, WorkspacePk, WsEvent,
 };
 use serde::{Deserialize, Serialize};
 
@@ -24,6 +24,13 @@ pub struct GenerateTemplateRequest {
     color: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GenerateTemplateResponse {
+    schema_variant_id: SchemaVariantId,
+    func_id: FuncId,
+}
+
 pub async fn generate_template(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(access_builder): AccessBuilder,
@@ -32,7 +39,7 @@ pub async fn generate_template(
     Host(_host_name): Host,
     Path((_workspace_pk, change_set_id, view_id)): Path<(WorkspacePk, ChangeSetId, ViewId)>,
     Json(request): Json<GenerateTemplateRequest>,
-) -> ManagementApiResult<ForceChangeSetResponse<()>> {
+) -> ManagementApiResult<ForceChangeSetResponse<GenerateTemplateResponse>> {
     let mut ctx = builder
         .build(access_builder.build(change_set_id.into()))
         .await?;
@@ -106,7 +113,13 @@ pub async fn generate_template(
 
     ctx.commit().await?;
 
-    Ok(ForceChangeSetResponse::empty(force_change_set_id))
+    Ok(ForceChangeSetResponse::new(
+        force_change_set_id,
+        GenerateTemplateResponse {
+            schema_variant_id: new_variant.id,
+            func_id: func.id,
+        },
+    ))
 }
 
 const MAX_DEPTH: usize = 2048;
