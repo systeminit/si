@@ -46,7 +46,7 @@ async fn write_to_db() {
         .expect("failed to write to layerdb");
 
     // Are we in memory?
-    let in_memory = ldb.func_run().cache.cache().get(&key_str).await;
+    let in_memory = ldb.func_run().cache.cache().get(key_str.clone()).await;
     assert_eq!(value.id(), in_memory.expect("func run not in memory").id());
 
     // Are we in pg?
@@ -104,7 +104,7 @@ async fn update() {
         .expect("failed to write to layerdb");
 
     // Are we in memory?
-    let in_memory = ldb.func_run().cache.cache().get(&key_str).await;
+    let in_memory = ldb.func_run().cache.cache().get(key_str.clone()).await;
     assert_eq!(value.id(), in_memory.expect("func run not in memory").id());
 
     // Are we in pg?
@@ -132,7 +132,7 @@ async fn update() {
         .expect("failed to write to layerdb");
 
     // Are we in memory?
-    let in_memory = ldb.func_run().cache.cache().get(&key_str).await;
+    let in_memory = ldb.func_run().cache.cache().get(key_str.clone()).await;
     assert_eq!(
         update_func_run.state(),
         in_memory.expect("func run not in memory").state(),
@@ -155,7 +155,12 @@ async fn update() {
     let max_check_count = 10;
     let mut memory_check_count = 0;
     while memory_check_count <= max_check_count {
-        let in_memory = ldb_remote.func_run().cache.cache().get(&key_str).await;
+        let in_memory = ldb_remote
+            .func_run()
+            .cache
+            .cache()
+            .get(key_str.clone())
+            .await;
         match in_memory {
             Some(value) => {
                 assert_eq!(update_func_run.state(), value.state());

@@ -45,7 +45,12 @@ async fn write_to_db() {
     let key_str: Arc<str> = key.to_string().into();
 
     // Are we in memory?
-    let in_memory = ldb.workspace_snapshot().cache.cache().get(&key_str).await;
+    let in_memory = ldb
+        .workspace_snapshot()
+        .cache
+        .cache()
+        .get(key_str.clone())
+        .await;
     assert_eq!(Some(value.clone()), in_memory);
 
     // Are we in pg?
@@ -109,7 +114,12 @@ async fn evict_from_db() {
     }
 
     // Are we in memory?
-    let in_memory = ldb.workspace_snapshot().cache.cache().get(&key_str).await;
+    let in_memory = ldb
+        .workspace_snapshot()
+        .cache
+        .cache()
+        .get(key_str.clone())
+        .await;
     assert_ne!(Some(value.clone()), in_memory);
 
     assert!(
@@ -188,7 +198,7 @@ async fn evictions_are_gossiped() {
             .workspace_snapshot()
             .cache
             .cache()
-            .get(&pk_str)
+            .get(pk_str.clone())
             .await;
         match in_memory {
             Some(value) => {
@@ -241,7 +251,7 @@ async fn evictions_are_gossiped() {
             .workspace_snapshot()
             .cache
             .cache()
-            .get(&pk_str)
+            .get(pk_str.clone())
             .await;
         match in_memory {
             Some(_value) => {
