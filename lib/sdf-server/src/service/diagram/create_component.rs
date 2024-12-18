@@ -6,11 +6,11 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 
-use dal::diagram::view::View;
 use dal::{
     change_status::ChangeStatus, component::frame::Frame, generate_name, ChangeSet, Component,
     ComponentId, Schema, SchemaId, SchemaVariant, SchemaVariantId, Visibility, WsEvent,
 };
+use dal::{diagram::view::View, Func};
 use si_events::audit_log::AuditLogKind;
 use si_frontend_types::SchemaVariant as FrontendVariant;
 
@@ -94,6 +94,14 @@ pub async fn create_component(
                 .await?
                 .publish_on_commit(&ctx)
                 .await?;
+            for func_id in front_end_variant.func_ids.iter() {
+                let func = Func::get_by_id_or_error(&ctx, *func_id).await?;
+                let front_end_func = func.into_frontend_type(&ctx).await?;
+                WsEvent::func_updated(&ctx, front_end_func, None)
+                    .await?
+                    .publish_on_commit(&ctx)
+                    .await?;
+            }
 
             (variant_id, Some(front_end_variant))
         }

@@ -13,6 +13,7 @@ use std::{
 use telemetry::prelude::*;
 use thiserror::Error;
 
+use crate::FuncError;
 use crate::{
     attribute::{
         prototype::argument::{AttributePrototypeArgumentError, AttributePrototypeArgumentId},
@@ -76,6 +77,8 @@ pub enum DiagramError {
     DiagramObjectNotFoundForView(ViewId),
     #[error("edge not found")]
     EdgeNotFound,
+    #[error("func error: {0}")]
+    Func(#[from] FuncError),
     #[error("geometry can't represent: {0}")]
     GeometryCannotRepresentNodeWeight(NodeWeightDiscriminants),
     #[error("geometry not found: {0}")]

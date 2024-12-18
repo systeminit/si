@@ -13,8 +13,8 @@ use dal::{
     pkg::PkgError,
     slow_rt::SlowRuntimeError,
     workspace_snapshot::graph::WorkspaceSnapshotGraphError,
-    ChangeSetError, ComponentError, SchemaError, SchemaId, SchemaVariantError, TransactionsError,
-    WorkspaceSnapshotError, WsEventError,
+    ChangeSetError, ComponentError, FuncError, SchemaError, SchemaId, SchemaVariantError,
+    TransactionsError, WorkspaceSnapshotError, WsEventError,
 };
 use thiserror::Error;
 use tokio::task::JoinError;
@@ -46,6 +46,8 @@ pub enum ViewError {
     DalDiagram(#[from] dal::diagram::DiagramError),
     #[error("frame error: {0}")]
     Frame(#[from] FrameError),
+    #[error("func error: {0}")]
+    Func(#[from] FuncError),
     #[error("inferred connection graph error: {0}")]
     InferredConnectionGraph(#[from] InferredConnectionGraphError),
     #[error("invalid request: {0}")]
