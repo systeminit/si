@@ -8,7 +8,7 @@ To follow along, you should:
 1. Finish the [Getting Started tutorial](./getting-started), to have basic
    knowledge of System Initiative.
 
-2. Finished the [Creating Components tutorial](./creating-Components.md).
+2. Finished the [Creating Components tutorial](./creating-components.md).
 
 3. You should have your System Initiative workspace open in another window.
 

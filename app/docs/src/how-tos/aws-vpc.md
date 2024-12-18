@@ -51,7 +51,7 @@ Add a `AWS Region` to your Change Set and set the `region` property to
 
 ### Create a VPC Component
 
-![Create a VPC Component](./aws-vpc/create-a-vpc-Component.png)
+![Create a VPC Component](./aws-vpc/create-a-vpc-component.png)
 
 Add a `VPC` to your `us-east-1` region frame.
 
@@ -221,5 +221,7 @@ Click `Apply Change Set`.
 All your new resources should be deleted from your AWS account.
 
 ## Vocabulary
-In this guide bits of System Initiative Vocabulary will be shown with a capital letter. 
-All definitions for these can be found here: [System Initative - Vocabulary](https://docs.systeminit.com/reference/vocabulary) 
+
+In this guide bits of System Initiative Vocabulary will be shown with a capital
+letter. All definitions for these can be found here:
+[System Initative - Vocabulary](https://docs.systeminit.com/reference/vocabulary)
