@@ -8,8 +8,9 @@ use dal::{
         leaf::LeafBinding, management::ManagementBinding, AttributeArgumentBinding, EventualParent,
     },
     schema::variant::leaves::{LeafInputLocation, LeafKind},
-    ChangeSet, ChangeSetId, Func, FuncId, SchemaVariant, WorkspacePk, WsEvent,
+    ChangeSet, ChangeSetId, Component, Func, FuncId, SchemaVariant, WorkspacePk, WsEvent,
 };
+use si_events::audit_log::AuditLogKind;
 use si_frontend_types as frontend_types;
 
 use crate::{
@@ -91,23 +92,56 @@ pub async fn create_binding(
                                 arguments,
                             )
                             .await?;
-                            if let Some(EventualParent::SchemaVariant(schema_variant_id)) =
-                                eventual_parent
-                            {
-                                let schema = SchemaVariant::schema_id_for_schema_variant_id(
-                                    &ctx,
-                                    schema_variant_id,
-                                )
+                            let (subject_name, component_id, schema_variant_id): (
+                                String,
+                                Option<si_events::ComponentId>,
+                                Option<si_events::SchemaVariantId>,
+                            ) = match eventual_parent {
+                                Some(eventual_parent) => {
+                                    if let EventualParent::Component(component_id) = eventual_parent
+                                    {
+                                        (
+                                            Component::get_by_id(&ctx, component_id)
+                                                .await?
+                                                .name(&ctx)
+                                                .await?,
+                                            Some(component_id),
+                                            None,
+                                        )
+                                    } else {
+                                        return Err(FuncAPIError::MissingSchemaVariantAndFunc);
+                                    }
+                                }
+                                None => {
+                                    let schema_variant_id =
+                                        attribute_output_location.find_schema_variant(&ctx).await?;
+                                    (
+                                        SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id)
+                                            .await?
+                                            .display_name()
+                                            .to_string(),
+                                        None,
+                                        Some(schema_variant_id),
+                                    )
+                                }
+                            };
+                            let destination_name = attribute_output_location
+                                .get_name_of_destination(&ctx)
                                 .await?;
-                                let schema_variant =
-                                    SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id)
-                                        .await?;
-
-                                WsEvent::schema_variant_updated(&ctx, schema, schema_variant)
-                                    .await?
-                                    .publish_on_commit(&ctx)
-                                    .await?;
-                            }
+                            ctx.write_audit_log(
+                                AuditLogKind::AttachAttributeFunc {
+                                    func_id: func.id,
+                                    func_display_name: func.display_name.clone(),
+                                    schema_variant_id,
+                                    component_id,
+                                    subject_name,
+                                    prop_id,
+                                    output_socket_id,
+                                    destination_name,
+                                },
+                                func.name.clone(),
+                            )
+                            .await?;
                         }
                         None => {
                             return Err(FuncAPIError::MissingFuncId);
@@ -134,7 +168,16 @@ pub async fn create_binding(
                             .await?;
                             let schema_variant =
                                 SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id).await?;
-
+                            let func = Func::get_by_id_or_error(&ctx, func_id).await?;
+                            ctx.write_audit_log(
+                                AuditLogKind::AttachAuthFunc {
+                                    func_id: func.id,
+                                    func_display_name: func.display_name.clone(),
+                                    schema_variant_id: Some(schema_variant_id),
+                                },
+                                func.name.clone(),
+                            )
+                            .await?;
                             WsEvent::schema_variant_updated(&ctx, schema, schema_variant)
                                 .await?
                                 .publish_on_commit(&ctx)
@@ -170,7 +213,18 @@ pub async fn create_binding(
                             .await?;
                             let schema_variant =
                                 SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id).await?;
-
+                            let func = Func::get_by_id_or_error(&ctx, func_id).await?;
+                            ctx.write_audit_log(
+                                AuditLogKind::AttachActionFunc {
+                                    func_id: func.id,
+                                    func_display_name: func.display_name.clone(),
+                                    schema_variant_id: Some(schema_variant_id),
+                                    component_id: None,
+                                    action_kind: Some(action_kind),
+                                },
+                                func.name.clone(),
+                            )
+                            .await?;
                             WsEvent::schema_variant_updated(&ctx, schema, schema_variant)
                                 .await?
                                 .publish_on_commit(&ctx)
@@ -213,7 +267,18 @@ pub async fn create_binding(
                             .await?;
                             let schema_variant =
                                 SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id).await?;
-
+                            let func = Func::get_by_id_or_error(&ctx, func_id).await?;
+                            ctx.write_audit_log(
+                                AuditLogKind::AttachCodeGenFunc {
+                                    func_id: func.id,
+                                    func_display_name: func.display_name.clone(),
+                                    schema_variant_id: Some(schema_variant_id),
+                                    component_id: None,
+                                    subject_name: schema_variant.display_name().to_owned(),
+                                },
+                                func.name.clone(),
+                            )
+                            .await?;
                             WsEvent::schema_variant_updated(&ctx, schema, schema_variant)
                                 .await?
                                 .publish_on_commit(&ctx)
@@ -249,7 +314,18 @@ pub async fn create_binding(
                             .await?;
                             let schema_variant =
                                 SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id).await?;
-
+                            let func = Func::get_by_id_or_error(&ctx, func_id).await?;
+                            ctx.write_audit_log(
+                                AuditLogKind::AttachQualificationFunc {
+                                    func_id: func.id,
+                                    func_display_name: func.display_name.clone(),
+                                    schema_variant_id: Some(schema_variant_id),
+                                    component_id: None,
+                                    subject_name: schema_variant.display_name().to_owned(),
+                                },
+                                func.name.clone(),
+                            )
+                            .await?;
                             WsEvent::schema_variant_updated(&ctx, schema, schema_variant)
                                 .await?
                                 .publish_on_commit(&ctx)
@@ -288,7 +364,18 @@ pub async fn create_binding(
                             .await?;
                             let schema_variant =
                                 SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id).await?;
-
+                            let func = Func::get_by_id_or_error(&ctx, func_id).await?;
+                            ctx.write_audit_log(
+                                AuditLogKind::AttachManagementFunc {
+                                    func_id: func.id,
+                                    func_display_name: func.display_name.clone(),
+                                    schema_variant_id: Some(schema_variant_id),
+                                    component_id: None,
+                                    subject_name: schema_variant.display_name().to_owned(),
+                                },
+                                func.name.clone(),
+                            )
+                            .await?;
                             WsEvent::schema_variant_updated(&ctx, schema, schema_variant)
                                 .await?
                                 .publish_on_commit(&ctx)

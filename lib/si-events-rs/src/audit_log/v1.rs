@@ -2,9 +2,10 @@ use serde::{Deserialize, Serialize};
 use strum::{Display, EnumDiscriminants};
 
 use crate::{
-    ActionKind, ActionPrototypeId, Actor, AttributeValueId, ChangeSetId, ChangeSetStatus,
-    ComponentId, FuncId, InputSocketId, OutputSocketId, PropId, SchemaId, SchemaVariantId,
-    SecretId, WorkspacePk,
+    func_run::FuncArgumentKind, ActionKind, ActionPrototypeId, Actor, AttributeValueId,
+    ChangeSetId, ChangeSetStatus, ComponentId, FuncArgumentId, FuncId, FuncKind, FuncRunId,
+    InputSocketId, OutputSocketId, PropId, SchemaId, SchemaVariantId, SecretId, ViewId,
+    WorkspacePk,
 };
 
 type MetadataDiscrim = AuditLogMetadataV1Discriminants;
@@ -37,12 +38,61 @@ pub enum AuditLogKindV1 {
     ApproveChangeSetApply {
         from_status: ChangeSetStatus,
     },
+    AttachActionFunc {
+        func_id: FuncId,
+        func_display_name: Option<String>,
+        schema_variant_id: Option<SchemaVariantId>,
+        component_id: Option<ComponentId>,
+        action_kind: Option<ActionKind>,
+    },
+    AttachAttributeFunc {
+        func_id: FuncId,
+        func_display_name: Option<String>,
+        schema_variant_id: Option<SchemaVariantId>,
+        component_id: Option<ComponentId>,
+        subject_name: String,
+        prop_id: Option<PropId>,
+        output_socket_id: Option<OutputSocketId>,
+        destination_name: String,
+    },
+    AttachAuthFunc {
+        func_id: FuncId,
+        func_display_name: Option<String>,
+        schema_variant_id: Option<SchemaVariantId>,
+    },
+    AttachCodeGenFunc {
+        func_id: FuncId,
+        func_display_name: Option<String>,
+        schema_variant_id: Option<SchemaVariantId>,
+        component_id: Option<ComponentId>,
+        subject_name: String,
+    },
+    AttachManagementFunc {
+        func_id: FuncId,
+        func_display_name: Option<String>,
+        schema_variant_id: Option<SchemaVariantId>,
+        component_id: Option<ComponentId>,
+        subject_name: String,
+    },
+    AttachQualificationFunc {
+        func_id: FuncId,
+        func_display_name: Option<String>,
+        schema_variant_id: Option<SchemaVariantId>,
+        component_id: Option<ComponentId>,
+        subject_name: String,
+    },
     CancelAction {
         prototype_id: ActionPrototypeId,
         action_kind: ActionKind,
         func_id: FuncId,
         func_display_name: Option<String>,
         func_name: String,
+    },
+    ContributeModule {
+        version: String,
+        schema_id: Option<SchemaId>,
+        schema_variant_id: Option<SchemaVariantId>,
+        schema_variant_version: Option<String>,
     },
     CreateChangeSet,
     CreateComponent {
@@ -51,9 +101,37 @@ pub enum AuditLogKindV1 {
         schema_variant_id: SchemaVariantId,
         schema_variant_name: String,
     },
+    CreateConnection {
+        from_component_id: ComponentId,
+        from_component_name: String,
+        from_socket_id: OutputSocketId,
+        from_socket_name: String,
+        to_component_id: ComponentId,
+        to_component_name: String,
+        to_socket_id: InputSocketId,
+        to_socket_name: String,
+    },
+    CreateFunc {
+        func_display_name: Option<String>,
+        func_kind: FuncKind,
+    },
+    CreateFuncArgument {
+        func_id: FuncId,
+        func_display_name: Option<String>,
+        func_name: String,
+        kind: FuncArgumentKind,
+        element_kind: Option<FuncArgumentKind>,
+    },
+    CreateSchemaVariant {
+        schema_id: SchemaId,
+        schema_variant_id: SchemaVariantId,
+    },
     CreateSecret {
         name: String,
         secret_id: SecretId,
+    },
+    CreateView {
+        view_id: ViewId,
     },
     DeleteComponent {
         name: String,
@@ -61,9 +139,48 @@ pub enum AuditLogKindV1 {
         schema_variant_id: SchemaVariantId,
         schema_variant_name: String,
     },
+    DeleteConnection {
+        from_component_id: ComponentId,
+        from_component_name: String,
+        from_socket_id: OutputSocketId,
+        from_socket_name: String,
+        to_component_id: ComponentId,
+        to_component_name: String,
+        to_socket_id: InputSocketId,
+        to_socket_name: String,
+    },
+    DeleteFunc {
+        func_id: FuncId,
+        func_display_name: Option<String>,
+        func_kind: FuncKind,
+    },
+    DeleteFuncArgument {
+        func_id: FuncId,
+        func_display_name: Option<String>,
+        func_name: String,
+        func_argument_id: FuncArgumentId,
+    },
+    DeleteSchemaVariant {
+        schema_variant_id: SchemaVariantId,
+        schema_id: SchemaId,
+    },
     DeleteSecret {
         name: String,
         secret_id: SecretId,
+    },
+    DeleteView {
+        view_id: ViewId,
+    },
+    DetachFunc {
+        func_id: FuncId,
+        func_display_name: Option<String>,
+        schema_variant_id: Option<SchemaVariantId>,
+        component_id: Option<ComponentId>,
+        subject_name: String,
+    },
+    ExecuteFunc {
+        func_id: FuncId,
+        func_display_name: Option<String>,
     },
     ExportWorkspace {
         id: WorkspacePk,
@@ -76,12 +193,21 @@ pub enum AuditLogKindV1 {
         version: String,
     },
     Login,
+    OrphanComponent {
+        component_id: ComponentId,
+        previous_parent_id: ComponentId,
+        previous_parent_name: String,
+    },
+
     PutActionOnHold {
         prototype_id: ActionPrototypeId,
         action_kind: ActionKind,
         func_id: FuncId,
         func_display_name: Option<String>,
         func_name: String,
+    },
+    RegenerateSchemaVariant {
+        schema_variant_id: SchemaVariantId,
     },
     RejectChangeSetApply {
         from_status: ChangeSetStatus,
@@ -107,6 +233,29 @@ pub enum AuditLogKindV1 {
         func_display_name: Option<String>,
         func_name: String,
         run_status: bool,
+    },
+    TestFunction {
+        func_id: FuncId,
+        func_display_name: Option<String>,
+        func_run_id: FuncRunId,
+    },
+    UnlockFunc {
+        func_id: FuncId,
+        func_display_name: Option<String>,
+        schema_variant_id: Option<SchemaVariantId>,
+        component_id: Option<ComponentId>,
+        subject_name: Option<String>,
+    },
+    UnlockSchemaVariant {
+        schema_variant_id: SchemaVariantId,
+        schema_variant_display_name: String,
+    },
+    UpdateComponentParent {
+        component_id: ComponentId,
+        old_parent_id: Option<ComponentId>,
+        old_parent_name: Option<String>,
+        new_parent_id: ComponentId,
+        new_parent_name: String,
     },
     UpdateDependentInputSocket {
         input_socket_id: InputSocketId,
@@ -153,6 +302,13 @@ pub enum AuditLogKindV1 {
         before_value: Option<serde_json::Value>,
         after_value: Option<serde_json::Value>,
     },
+    UpdateFuncMetadata {
+        func_id: FuncId,
+        old_display_name: Option<String>,
+        new_display_name: Option<String>,
+        old_description: Option<String>,
+        new_description: Option<String>,
+    },
     UpdatePropertyEditorValue {
         component_id: ComponentId,
         component_name: String,
@@ -177,9 +333,28 @@ pub enum AuditLogKindV1 {
         after_secret_name: Option<String>,
         after_secret_id: Option<SecretId>,
     },
+    UpdateSchemaVariant {
+        old_display_name: String,
+        new_display_name: String,
+        old_description: String,
+        new_description: String,
+        old_category: String,
+        new_category: String,
+        old_link: String,
+        new_link: String,
+        old_color: String,
+        new_color: String,
+        old_component_type: String,
+        new_component_type: String,
+        //todo: what to do about the code?
+    },
     UpdateSecret {
         name: String,
         secret_id: SecretId,
+    },
+    UpdateView {
+        view_id: ViewId,
+        old_name: String,
     },
     UpgradeComponent {
         name: String,
@@ -220,6 +395,55 @@ pub enum AuditLogMetadataV1 {
     #[serde(rename_all = "camelCase")]
     ApproveChangeSetApply { from_status: ChangeSetStatus },
     #[serde(rename_all = "camelCase")]
+    AttachActionFunc {
+        func_id: FuncId,
+        func_display_name: Option<String>,
+        schema_variant_id: Option<SchemaVariantId>,
+        component_id: Option<ComponentId>,
+        action_kind: Option<ActionKind>,
+    },
+    #[serde(rename_all = "camelCase")]
+    AttachAttributeFunc {
+        func_id: FuncId,
+        func_display_name: Option<String>,
+        schema_variant_id: Option<SchemaVariantId>,
+        component_id: Option<ComponentId>,
+        subject_name: String,
+        prop_id: Option<PropId>,
+        output_socket_id: Option<OutputSocketId>,
+        destination_name: String,
+    },
+    #[serde(rename_all = "camelCase")]
+    AttachAuthFunc {
+        func_id: FuncId,
+        func_display_name: Option<String>,
+        schema_variant_id: Option<SchemaVariantId>,
+    },
+    #[serde(rename_all = "camelCase")]
+    AttachCodeGenFunc {
+        func_id: FuncId,
+        func_display_name: Option<String>,
+        schema_variant_id: Option<SchemaVariantId>,
+        component_id: Option<ComponentId>,
+        subject_name: String,
+    },
+    #[serde(rename_all = "camelCase")]
+    AttachManagementFunc {
+        func_id: FuncId,
+        func_display_name: Option<String>,
+        schema_variant_id: Option<SchemaVariantId>,
+        component_id: Option<ComponentId>,
+        subject_name: String,
+    },
+    #[serde(rename_all = "camelCase")]
+    AttachQualificationFunc {
+        func_id: FuncId,
+        func_display_name: Option<String>,
+        schema_variant_id: Option<SchemaVariantId>,
+        component_id: Option<ComponentId>,
+        subject_name: String,
+    },
+    #[serde(rename_all = "camelCase")]
     CancelAction {
         prototype_id: ActionPrototypeId,
         action_kind: ActionKind,
@@ -227,7 +451,13 @@ pub enum AuditLogMetadataV1 {
         func_display_name: Option<String>,
         func_name: String,
     },
-
+    #[serde(rename_all = "camelCase")]
+    ContributeModule {
+        version: String,
+        schema_id: Option<SchemaId>,
+        schema_variant_id: Option<SchemaVariantId>,
+        schema_variant_version: Option<String>,
+    },
     #[serde(rename_all = "camelCase")]
     CreateChangeSet,
     #[serde(rename_all = "camelCase")]
@@ -238,7 +468,38 @@ pub enum AuditLogMetadataV1 {
         schema_variant_name: String,
     },
     #[serde(rename_all = "camelCase")]
+    CreateConnection {
+        from_component_id: ComponentId,
+        from_component_name: String,
+        from_socket_id: OutputSocketId,
+        from_socket_name: String,
+        to_component_id: ComponentId,
+        to_component_name: String,
+        to_socket_id: InputSocketId,
+        to_socket_name: String,
+    },
+    #[serde(rename_all = "camelCase")]
+    CreateFunc {
+        func_display_name: Option<String>,
+        func_kind: FuncKind,
+    },
+    #[serde(rename_all = "camelCase")]
+    CreateFuncArgument {
+        func_id: FuncId,
+        func_display_name: Option<String>,
+        func_name: String,
+        kind: FuncArgumentKind,
+        element_kind: Option<FuncArgumentKind>,
+    },
+    #[serde(rename_all = "camelCase")]
+    CreateSchemaVariant {
+        schema_id: SchemaId,
+        schema_variant_id: SchemaVariantId,
+    },
+    #[serde(rename_all = "camelCase")]
     CreateSecret { name: String, secret_id: SecretId },
+    #[serde(rename_all = "camelCase")]
+    CreateView { view_id: ViewId },
     #[serde(rename_all = "camelCase")]
     DeleteComponent {
         name: String,
@@ -247,7 +508,51 @@ pub enum AuditLogMetadataV1 {
         schema_variant_name: String,
     },
     #[serde(rename_all = "camelCase")]
+    DeleteConnection {
+        from_component_id: ComponentId,
+        from_component_name: String,
+        from_socket_id: OutputSocketId,
+        from_socket_name: String,
+        to_component_id: ComponentId,
+        to_component_name: String,
+        to_socket_id: InputSocketId,
+        to_socket_name: String,
+    },
+    #[serde(rename_all = "camelCase")]
+    DeleteFunc {
+        func_id: FuncId,
+        func_display_name: Option<String>,
+        func_kind: FuncKind,
+    },
+    #[serde(rename_all = "camelCase")]
+    DeleteFuncArgument {
+        func_id: FuncId,
+        func_display_name: Option<String>,
+        func_name: String,
+        func_argument_id: FuncArgumentId,
+    },
+    #[serde(rename_all = "camelCase")]
+    DeleteSchemaVariant {
+        schema_variant_id: SchemaVariantId,
+        schema_id: SchemaId,
+    },
+    #[serde(rename_all = "camelCase")]
     DeleteSecret { name: String, secret_id: SecretId },
+    #[serde(rename_all = "camelCase")]
+    DeleteView { view_id: ViewId },
+    #[serde(rename_all = "camelCase")]
+    DetachFunc {
+        func_id: FuncId,
+        func_display_name: Option<String>,
+        schema_variant_id: Option<SchemaVariantId>,
+        component_id: Option<ComponentId>,
+        subject_name: String,
+    },
+    #[serde(rename_all = "camelCase")]
+    ExecuteFunc {
+        func_id: FuncId,
+        func_display_name: Option<String>,
+    },
     #[serde(rename_all = "camelCase")]
     ExportWorkspace {
         id: WorkspacePk,
@@ -263,6 +568,12 @@ pub enum AuditLogMetadataV1 {
     #[serde(rename_all = "camelCase")]
     Login,
     #[serde(rename_all = "camelCase")]
+    OrphanComponent {
+        component_id: ComponentId,
+        previous_parent_id: ComponentId,
+        previous_parent_name: String,
+    },
+    #[serde(rename_all = "camelCase")]
     PutActionOnHold {
         prototype_id: ActionPrototypeId,
         action_kind: ActionKind,
@@ -270,6 +581,8 @@ pub enum AuditLogMetadataV1 {
         func_display_name: Option<String>,
         func_name: String,
     },
+    #[serde(rename_all = "camelCase")]
+    RegenerateSchemaVariant { schema_variant_id: SchemaVariantId },
     #[serde(rename_all = "camelCase")]
     RejectChangeSetApply { from_status: ChangeSetStatus },
     #[serde(rename_all = "camelCase")]
@@ -292,6 +605,33 @@ pub enum AuditLogMetadataV1 {
         func_display_name: Option<String>,
         func_name: String,
         run_status: bool,
+    },
+    #[serde(rename_all = "camelCase")]
+    TestFunction {
+        func_id: FuncId,
+        func_display_name: Option<String>,
+        func_run_id: FuncRunId,
+    },
+    #[serde(rename_all = "camelCase")]
+    UnlockFunc {
+        func_id: FuncId,
+        func_display_name: Option<String>,
+        schema_variant_id: Option<SchemaVariantId>,
+        component_id: Option<ComponentId>,
+        subject_name: Option<String>,
+    },
+    #[serde(rename_all = "camelCase")]
+    UnlockSchemaVariant {
+        schema_variant_id: SchemaVariantId,
+        schema_variant_display_name: String,
+    },
+    #[serde(rename_all = "camelCase")]
+    UpdateComponentParent {
+        component_id: ComponentId,
+        old_parent_id: Option<ComponentId>,
+        old_parent_name: Option<String>,
+        new_parent_id: ComponentId,
+        new_parent_name: String,
     },
     #[serde(rename_all = "camelCase")]
     UpdateDependentInputSocket {
@@ -342,6 +682,14 @@ pub enum AuditLogMetadataV1 {
         after_value: Option<serde_json::Value>,
     },
     #[serde(rename_all = "camelCase")]
+    UpdateFuncMetadata {
+        func_id: FuncId,
+        old_display_name: Option<String>,
+        new_display_name: Option<String>,
+        old_description: Option<String>,
+        new_description: Option<String>,
+    },
+    #[serde(rename_all = "camelCase")]
     UpdatePropertyEditorValue {
         component_id: ComponentId,
         component_name: String,
@@ -368,7 +716,25 @@ pub enum AuditLogMetadataV1 {
         after_secret_id: Option<SecretId>,
     },
     #[serde(rename_all = "camelCase")]
+    UpdateSchemaVariant {
+        old_display_name: String,
+        new_display_name: String,
+        old_description: String,
+        new_description: String,
+        old_category: String,
+        new_category: String,
+        old_link: String,
+        new_link: String,
+        old_color: String,
+        new_color: String,
+        old_component_type: String,
+        new_component_type: String,
+        //todo: what to do about the code?
+    },
+    #[serde(rename_all = "camelCase")]
     UpdateSecret { name: String, secret_id: SecretId },
+    #[serde(rename_all = "camelCase")]
+    UpdateView { view_id: ViewId, old_name: String },
     #[serde(rename_all = "camelCase")]
     UpgradeComponent {
         name: String,
@@ -394,16 +760,39 @@ impl AuditLogMetadataV1 {
             MetadataDiscrim::ApproveChangeSetApply => {
                 ("Approved Request to Apply", Some("Change Set"))
             }
+            MetadataDiscrim::AttachActionFunc => ("Attached", Some("Action Function")),
+            MetadataDiscrim::AttachAttributeFunc => ("Attached", Some("Attribute Function")),
+            MetadataDiscrim::AttachAuthFunc => ("Attached", Some("Authentication Function")),
+            MetadataDiscrim::AttachCodeGenFunc => ("Attached", Some("Code Generation Function")),
+            MetadataDiscrim::AttachManagementFunc => ("Attached", Some("Management Function")),
+            MetadataDiscrim::AttachQualificationFunc => {
+                ("Attached", Some("Qualification Function"))
+            }
             MetadataDiscrim::CancelAction => ("Removed", Some("Action")),
+            MetadataDiscrim::ContributeModule => ("Contributed", Some("Module")),
             MetadataDiscrim::CreateChangeSet => ("Created", Some("Change Set")),
             MetadataDiscrim::CreateComponent => ("Created", Some("Component")),
+            MetadataDiscrim::CreateConnection => ("Created", Some("Connection")),
+            MetadataDiscrim::CreateFunc => ("Created", Some("Function")),
+            MetadataDiscrim::CreateFuncArgument => ("Created", Some("Function Argument")),
+            MetadataDiscrim::CreateSchemaVariant => ("Created", Some("Schema Variant")),
             MetadataDiscrim::CreateSecret => ("Created", Some("Secret")),
+            MetadataDiscrim::CreateView => ("Created", Some("View")),
             MetadataDiscrim::DeleteComponent => ("Deleted", Some("Component")),
+            MetadataDiscrim::DeleteConnection => ("Deleted", Some("Connection")),
+            MetadataDiscrim::DeleteFunc => ("Deleted", Some("Function")),
+            MetadataDiscrim::DeleteFuncArgument => ("Deleted", Some("Function Argument")),
+            MetadataDiscrim::DeleteSchemaVariant => ("Deleted", Some("Schema Variant")),
             MetadataDiscrim::DeleteSecret => ("Deleted", Some("Secret")),
+            MetadataDiscrim::DeleteView => ("Deleted", Some("View")),
+            MetadataDiscrim::DetachFunc => ("Detached", Some("Function")),
+            MetadataDiscrim::ExecuteFunc => ("Executed", Some("Function")),
             MetadataDiscrim::ExportWorkspace => ("Exported", Some("Workspace")),
             MetadataDiscrim::InstallWorkspace => ("Installed", Some("Workspace")),
             MetadataDiscrim::Login => ("Authenticated", None),
+            MetadataDiscrim::OrphanComponent => ("Orphaned", Some("Component")),
             MetadataDiscrim::PutActionOnHold => ("Paused", Some("Action")),
+            MetadataDiscrim::RegenerateSchemaVariant => ("Regenerated", Some("Schema Variant")),
             MetadataDiscrim::RejectChangeSetApply => {
                 ("Rejected Request to Apply", Some("Change Set"))
             }
@@ -411,16 +800,23 @@ impl AuditLogMetadataV1 {
             MetadataDiscrim::RequestChangeSetApproval => ("Requested to Apply", Some("Change Set")),
             MetadataDiscrim::RetryAction => ("Retried", Some("Action")),
             MetadataDiscrim::RunAction => ("Ran", Some("Action")),
+            MetadataDiscrim::TestFunction => ("Tested", Some("Function")),
+            MetadataDiscrim::UnlockFunc => ("Unlocked", Some("Function")),
+            MetadataDiscrim::UnlockSchemaVariant => ("Unlocked", Some("Schema Variant")),
+            MetadataDiscrim::UpdateComponentParent => ("Updated Parent", Some("Component")),
             MetadataDiscrim::UpdateDependentInputSocket => ("Set Dependent", Some("Input Socket")),
             MetadataDiscrim::UpdateDependentOutputSocket => {
                 ("Set Dependent", Some("Output Socket"))
             }
             MetadataDiscrim::UpdateDependentProperty => ("Set Dependent", Some("Property")),
+            MetadataDiscrim::UpdateFuncMetadata => ("Updated Func", Some("Metadata")),
             MetadataDiscrim::UpdatePropertyEditorValue => ("Updated Component", Some("Property")),
             MetadataDiscrim::UpdatePropertyEditorValueForSecret => {
                 ("Updated Component", Some("Property for Secret"))
             }
             MetadataDiscrim::UpdateSecret => ("Updated", Some("Secret")),
+            MetadataDiscrim::UpdateSchemaVariant => ("Updated", Some("Schema Variant")),
+            MetadataDiscrim::UpdateView => ("Updated", Some("View")),
             MetadataDiscrim::UpgradeComponent => ("Upgraded", Some("Component")),
             MetadataDiscrim::WithdrawRequestForChangeSetApply => {
                 ("Withdrew Request to Apply", Some("Change Set"))
@@ -452,6 +848,86 @@ impl From<Kind> for Metadata {
             Kind::ApproveChangeSetApply { from_status } => {
                 Self::ApproveChangeSetApply { from_status }
             }
+            Kind::AttachActionFunc {
+                func_id,
+                func_display_name,
+                schema_variant_id,
+                component_id,
+                action_kind,
+            } => Self::AttachActionFunc {
+                func_id,
+                func_display_name,
+                schema_variant_id,
+                component_id,
+                action_kind,
+            },
+            Kind::AttachAttributeFunc {
+                func_id,
+                func_display_name,
+                schema_variant_id,
+                component_id,
+                subject_name,
+                prop_id,
+                output_socket_id,
+                destination_name,
+            } => Self::AttachAttributeFunc {
+                func_id,
+                func_display_name,
+                schema_variant_id,
+                component_id,
+                subject_name,
+                prop_id,
+                output_socket_id,
+                destination_name,
+            },
+            Kind::AttachAuthFunc {
+                func_id,
+                func_display_name,
+                schema_variant_id,
+            } => Self::AttachAuthFunc {
+                func_id,
+                func_display_name,
+                schema_variant_id,
+            },
+            Kind::AttachCodeGenFunc {
+                func_id,
+                func_display_name,
+                schema_variant_id,
+                component_id,
+                subject_name,
+            } => Self::AttachCodeGenFunc {
+                func_id,
+                func_display_name,
+                schema_variant_id,
+                component_id,
+                subject_name,
+            },
+            Kind::AttachManagementFunc {
+                func_id,
+                func_display_name,
+                schema_variant_id,
+                component_id,
+                subject_name,
+            } => Self::AttachManagementFunc {
+                func_id,
+                func_display_name,
+                schema_variant_id,
+                component_id,
+                subject_name,
+            },
+            Kind::AttachQualificationFunc {
+                func_id,
+                func_display_name,
+                schema_variant_id,
+                component_id,
+                subject_name,
+            } => Self::AttachQualificationFunc {
+                func_id,
+                func_display_name,
+                schema_variant_id,
+                component_id,
+                subject_name,
+            },
             Kind::CancelAction {
                 prototype_id,
                 action_kind,
@@ -465,6 +941,17 @@ impl From<Kind> for Metadata {
                 func_display_name,
                 func_name,
             },
+            Kind::ContributeModule {
+                version,
+                schema_id,
+                schema_variant_id,
+                schema_variant_version,
+            } => Self::ContributeModule {
+                version,
+                schema_id,
+                schema_variant_id,
+                schema_variant_version,
+            },
             Kind::CreateChangeSet => Self::CreateChangeSet,
             Kind::CreateComponent {
                 name,
@@ -477,7 +964,54 @@ impl From<Kind> for Metadata {
                 schema_variant_id,
                 schema_variant_name,
             },
+            Kind::CreateConnection {
+                from_component_id,
+                from_component_name,
+                from_socket_id,
+                from_socket_name,
+                to_component_id,
+                to_component_name,
+                to_socket_id,
+                to_socket_name,
+            } => Self::CreateConnection {
+                from_component_id,
+                from_component_name,
+                from_socket_id,
+                from_socket_name,
+                to_component_id,
+                to_component_name,
+                to_socket_id,
+                to_socket_name,
+            },
+            Kind::CreateFunc {
+                func_display_name,
+                func_kind,
+            } => Self::CreateFunc {
+                func_display_name,
+                func_kind,
+            },
+            Kind::CreateFuncArgument {
+                func_id,
+                func_display_name,
+                func_name,
+                kind,
+                element_kind,
+            } => Self::CreateFuncArgument {
+                func_id,
+                func_display_name,
+                func_name,
+                kind,
+                element_kind,
+            },
+            Kind::CreateSchemaVariant {
+                schema_id,
+                schema_variant_id,
+            } => Self::CreateSchemaVariant {
+                schema_id,
+                schema_variant_id,
+            },
             Kind::CreateSecret { name, secret_id } => Self::CreateSecret { name, secret_id },
+            Kind::CreateView { view_id } => Self::CreateView { view_id },
             Kind::DeleteComponent {
                 name,
                 component_id,
@@ -489,7 +1023,74 @@ impl From<Kind> for Metadata {
                 schema_variant_id,
                 schema_variant_name,
             },
+            Kind::DeleteConnection {
+                from_component_id,
+                from_component_name,
+                from_socket_id,
+                from_socket_name,
+                to_component_id,
+                to_component_name,
+                to_socket_id,
+                to_socket_name,
+            } => Self::DeleteConnection {
+                from_component_id,
+                from_component_name,
+                from_socket_id,
+                from_socket_name,
+                to_component_id,
+                to_component_name,
+                to_socket_id,
+                to_socket_name,
+            },
+            Kind::DeleteFunc {
+                func_id,
+                func_display_name,
+                func_kind,
+            } => Self::DeleteFunc {
+                func_id,
+                func_display_name,
+                func_kind,
+            },
+            Kind::DeleteFuncArgument {
+                func_id,
+                func_display_name,
+                func_name,
+                func_argument_id,
+            } => Self::DeleteFuncArgument {
+                func_id,
+                func_display_name,
+                func_name,
+                func_argument_id,
+            },
+            Kind::DeleteSchemaVariant {
+                schema_variant_id,
+                schema_id,
+            } => Self::DeleteSchemaVariant {
+                schema_variant_id,
+                schema_id,
+            },
             Kind::DeleteSecret { name, secret_id } => Self::DeleteSecret { name, secret_id },
+            Kind::DeleteView { view_id } => Self::DeleteView { view_id },
+            Kind::DetachFunc {
+                func_id,
+                func_display_name,
+                schema_variant_id,
+                component_id,
+                subject_name,
+            } => Self::DetachFunc {
+                func_id,
+                func_display_name,
+                schema_variant_id,
+                component_id,
+                subject_name,
+            },
+            Kind::ExecuteFunc {
+                func_id,
+                func_display_name,
+            } => Self::ExecuteFunc {
+                func_id,
+                func_display_name,
+            },
             Kind::ExportWorkspace { id, name, version } => {
                 Self::ExportWorkspace { id, name, version }
             }
@@ -497,6 +1098,15 @@ impl From<Kind> for Metadata {
                 Self::InstallWorkspace { id, name, version }
             }
             Kind::Login => Self::Login,
+            Kind::OrphanComponent {
+                component_id,
+                previous_parent_id,
+                previous_parent_name,
+            } => Self::OrphanComponent {
+                component_id,
+                previous_parent_id,
+                previous_parent_name,
+            },
             Kind::PutActionOnHold {
                 prototype_id,
                 action_kind,
@@ -510,6 +1120,9 @@ impl From<Kind> for Metadata {
                 func_display_name,
                 func_name,
             },
+            Kind::RegenerateSchemaVariant { schema_variant_id } => {
+                Self::RegenerateSchemaVariant { schema_variant_id }
+            }
             Kind::RejectChangeSetApply { from_status } => {
                 Self::RejectChangeSetApply { from_status }
             }
@@ -544,6 +1157,48 @@ impl From<Kind> for Metadata {
                 func_display_name,
                 func_name,
                 run_status,
+            },
+            Kind::TestFunction {
+                func_id,
+                func_display_name,
+                func_run_id,
+            } => Self::TestFunction {
+                func_id,
+                func_display_name,
+                func_run_id,
+            },
+            Kind::UnlockFunc {
+                func_id,
+                func_display_name,
+                schema_variant_id,
+                component_id,
+                subject_name,
+            } => Self::UnlockFunc {
+                func_id,
+                func_display_name,
+                schema_variant_id,
+                component_id,
+                subject_name,
+            },
+            Kind::UnlockSchemaVariant {
+                schema_variant_id,
+                schema_variant_display_name,
+            } => Self::UnlockSchemaVariant {
+                schema_variant_id,
+                schema_variant_display_name,
+            },
+            Kind::UpdateComponentParent {
+                component_id,
+                old_parent_id,
+                old_parent_name,
+                new_parent_id,
+                new_parent_name,
+            } => Self::UpdateComponentParent {
+                component_id,
+                old_parent_id,
+                old_parent_name,
+                new_parent_id,
+                new_parent_name,
             },
             Kind::UpdateDependentInputSocket {
                 input_socket_id,
@@ -632,6 +1287,19 @@ impl From<Kind> for Metadata {
                 before_value,
                 after_value,
             },
+            Kind::UpdateFuncMetadata {
+                func_id,
+                old_display_name,
+                new_display_name,
+                old_description,
+                new_description,
+            } => Self::UpdateFuncMetadata {
+                func_id,
+                old_display_name,
+                new_display_name,
+                old_description,
+                new_description,
+            },
             Kind::UpdatePropertyEditorValue {
                 component_id,
                 component_name,
@@ -678,7 +1346,35 @@ impl From<Kind> for Metadata {
                 after_secret_name,
                 after_secret_id,
             },
+            Kind::UpdateSchemaVariant {
+                old_display_name,
+                new_display_name,
+                old_description,
+                new_description,
+                old_category,
+                new_category,
+                old_link,
+                new_link,
+                old_color,
+                new_color,
+                old_component_type,
+                new_component_type,
+            } => Self::UpdateSchemaVariant {
+                old_display_name,
+                new_display_name,
+                old_description,
+                new_description,
+                old_category,
+                new_category,
+                old_link,
+                new_link,
+                old_color,
+                new_color,
+                old_component_type,
+                new_component_type,
+            },
             Kind::UpdateSecret { name, secret_id } => Self::UpdateSecret { name, secret_id },
+            Kind::UpdateView { view_id, old_name } => Self::UpdateView { view_id, old_name },
             Kind::UpgradeComponent {
                 name,
                 component_id,

@@ -31,8 +31,8 @@ use crate::{
     FuncError, FuncId, PropId, SchemaVariantError, SchemaVariantId,
 };
 use crate::{
-    ComponentId, InputSocketId, OutputSocketId, SchemaError, SchemaId, SchemaVariant,
-    WorkspaceSnapshotError, WsEventError,
+    ComponentId, InputSocket, InputSocketId, OutputSocket, OutputSocketId, Prop, SchemaError,
+    SchemaId, SchemaVariant, WorkspaceSnapshotError, WsEventError,
 };
 
 pub use attribute_argument::AttributeArgumentBinding;
@@ -127,7 +127,7 @@ pub enum AttributeFuncDestination {
 }
 
 impl AttributeFuncDestination {
-    pub(crate) async fn find_schema_variant(
+    pub async fn find_schema_variant(
         &self,
         ctx: &DalContext,
     ) -> FuncBindingResult<SchemaVariantId> {
@@ -143,6 +143,25 @@ impl AttributeFuncDestination {
             }
         };
         Ok(schema_variant_id)
+    }
+
+    pub async fn get_name_of_destination(&self, ctx: &DalContext) -> FuncBindingResult<String> {
+        let name = match self {
+            AttributeFuncDestination::Prop(prop_id) => Prop::get_by_id(ctx, *prop_id).await?.name,
+            AttributeFuncDestination::OutputSocket(output_socket_id) => {
+                OutputSocket::get_by_id(ctx, *output_socket_id)
+                    .await?
+                    .name()
+                    .to_string()
+            }
+            AttributeFuncDestination::InputSocket(input_socket_id) => {
+                InputSocket::get_by_id(ctx, *input_socket_id)
+                    .await?
+                    .name()
+                    .to_string()
+            }
+        };
+        Ok(name)
     }
 }
 

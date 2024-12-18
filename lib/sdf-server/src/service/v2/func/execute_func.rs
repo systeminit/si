@@ -2,6 +2,7 @@ use axum::extract::{Host, OriginalUri, Path};
 use dal::{
     func::authoring::FuncAuthoringClient, ChangeSet, ChangeSetId, Func, FuncId, WorkspacePk,
 };
+use si_events::audit_log::AuditLogKind;
 
 use super::FuncAPIResult;
 use crate::{
@@ -26,8 +27,14 @@ pub async fn execute_func(
     FuncAuthoringClient::execute_func(&ctx, func_id).await?;
     let func = Func::get_by_id_or_error(&ctx, func_id).await?;
 
-    // ws event?
-
+    ctx.write_audit_log(
+        AuditLogKind::ExecuteFunc {
+            func_id,
+            func_display_name: func.display_name,
+        },
+        func.name.to_owned(),
+    )
+    .await?;
     track(
         &posthog_client,
         &ctx,

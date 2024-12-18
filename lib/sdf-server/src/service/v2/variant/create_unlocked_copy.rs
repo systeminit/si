@@ -1,5 +1,6 @@
 use axum::extract::{Host, OriginalUri, Path};
 
+use si_events::audit_log::AuditLogKind;
 use si_frontend_types::SchemaVariant as FrontendVariant;
 
 use dal::{
@@ -54,7 +55,14 @@ pub async fn create_unlocked_copy(
 
     let unlocked_variant =
         VariantAuthoringClient::create_unlocked_variant_copy(&ctx, original_variant.id()).await?;
-
+    ctx.write_audit_log(
+        AuditLogKind::UnlockSchemaVariant {
+            schema_variant_id: unlocked_variant.id(),
+            schema_variant_display_name: unlocked_variant.display_name().to_owned(),
+        },
+        schema.name().to_owned(),
+    )
+    .await?;
     track(
         &posthog_client,
         &ctx,

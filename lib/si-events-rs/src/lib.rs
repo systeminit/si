@@ -38,7 +38,7 @@ pub use crate::{
     func_execution::*,
     func_run::{
         ActionId, ActionKind, ActionPrototypeId, ActionResultState, AttributePrototypeArgumentId,
-        AttributePrototypeId, AttributeValueId, ComponentId, FuncBackendKind,
+        AttributePrototypeId, AttributeValueId, ComponentId, FuncArgumentKind, FuncBackendKind,
         FuncBackendResponseType, FuncKind, FuncRun, FuncRunBuilder, FuncRunBuilderError, FuncRunId,
         FuncRunState, FuncRunValue, ManagementPrototypeId, ViewId,
     },

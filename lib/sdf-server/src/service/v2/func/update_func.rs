@@ -9,9 +9,11 @@ use axum::{
     Json,
 };
 use dal::{
-    func::authoring::FuncAuthoringClient, ChangeSet, ChangeSetId, FuncId, WorkspacePk, WsEvent,
+    func::authoring::FuncAuthoringClient, ChangeSet, ChangeSetId, Func, FuncId, WorkspacePk,
+    WsEvent,
 };
 use serde::{Deserialize, Serialize};
+use si_events::audit_log::AuditLogKind;
 use si_frontend_types::FuncSummary;
 use ulid::Ulid;
 
@@ -36,7 +38,7 @@ pub async fn update_func(
         .build(access_builder.build(change_set_id.into()))
         .await?;
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
-
+    let old_func = Func::get_by_id_or_error(&ctx, func_id).await?;
     let updated_func =
         FuncAuthoringClient::update_func(&ctx, func_id, request.display_name, request.description)
             .await?
@@ -47,6 +49,17 @@ pub async fn update_func(
         .await?
         .publish_on_commit(&ctx)
         .await?;
+    ctx.write_audit_log(
+        AuditLogKind::UpdateFuncMetadata {
+            func_id,
+            old_display_name: old_func.display_name,
+            new_display_name: updated_func.display_name.clone(),
+            old_description: old_func.description,
+            new_description: updated_func.description.clone(),
+        },
+        updated_func.name.clone(),
+    )
+    .await?;
     track(
         &posthog_client,
         &ctx,

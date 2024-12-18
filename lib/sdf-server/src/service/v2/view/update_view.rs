@@ -7,6 +7,7 @@ use axum::Json;
 use dal::diagram::view::{View, ViewId, ViewView};
 use dal::{ChangeSet, ChangeSetId, WorkspacePk, WsEvent};
 use serde::{Deserialize, Serialize};
+use si_events::audit_log::AuditLogKind;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -60,7 +61,14 @@ pub async fn update_view(
                 "change_set_id": ctx.change_set_id(),
             }),
         );
-
+        ctx.write_audit_log(
+            AuditLogKind::UpdateView {
+                view_id,
+                old_name: old_view_name.clone(),
+            },
+            view.name().to_owned(),
+        )
+        .await?;
         let view_view = ViewView::from_view(&ctx, view).await?;
 
         WsEvent::view_updated(&ctx, view_view.clone())

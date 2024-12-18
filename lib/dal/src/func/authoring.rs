@@ -344,7 +344,7 @@ impl FuncAuthoringClient {
         name: impl Into<String>,
         kind: FuncArgumentKind,
         element_kind: Option<FuncArgumentKind>,
-    ) -> FuncAuthoringResult<()> {
+    ) -> FuncAuthoringResult<FuncArgument> {
         let func = Func::get_by_id_or_error(ctx, id).await?;
         // don't create a func argument if the function is locked
         func.error_if_locked()?;
@@ -354,9 +354,9 @@ impl FuncAuthoringClient {
             ));
         }
 
-        let _func_argument = FuncArgument::new(ctx, name, kind, element_kind, id).await?;
+        let func_argument = FuncArgument::new(ctx, name, kind, element_kind, id).await?;
 
-        Ok(())
+        Ok(func_argument)
     }
 
     /// Deletes a [`FuncArgument`].

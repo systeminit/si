@@ -4,6 +4,7 @@ use axum::{
 };
 use dal::{schema::variant::authoring::VariantAuthoringClient, ChangeSet, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
+use si_events::audit_log::AuditLogKind;
 use si_frontend_types::SchemaVariant as FrontendVariant;
 
 use crate::{
@@ -62,6 +63,15 @@ pub async fn create_variant(
         .await?
         .publish_on_commit(&ctx)
         .await?;
+
+    ctx.write_audit_log(
+        AuditLogKind::CreateSchemaVariant {
+            schema_id: schema.id(),
+            schema_variant_id: created_schema_variant.id(),
+        },
+        created_schema_variant.display_name().to_string(),
+    )
+    .await?;
 
     ctx.commit().await?;
 

@@ -8,12 +8,13 @@ use axum::{
     extract::{Host, OriginalUri},
     Json,
 };
-use dal::diagram::SummaryDiagramInferredEdge;
 use dal::{
     change_status::ChangeStatus, diagram::SummaryDiagramEdge, ChangeSet, Component, ComponentId,
-    InputSocketId, OutputSocketId, Visibility, WsEvent,
+    InputSocket, InputSocketId, OutputSocketId, Visibility, WsEvent,
 };
+use dal::{diagram::SummaryDiagramInferredEdge, OutputSocket};
 use serde::{Deserialize, Serialize};
+use si_events::audit_log::AuditLogKind;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -112,6 +113,28 @@ pub async fn create_connection(
                 .await?;
         }
     }
+    let to_component_name = to_component.name(&ctx).await?;
+    let to_socket_name = InputSocket::get_by_id(&ctx, request.to_socket_id)
+        .await?
+        .name()
+        .to_string();
+    ctx.write_audit_log(
+        AuditLogKind::CreateConnection {
+            from_component_id: request.from_component_id,
+            from_component_name: from_component.name(&ctx).await?,
+            from_socket_id: request.from_socket_id,
+            from_socket_name: OutputSocket::get_by_id(&ctx, request.from_socket_id)
+                .await?
+                .name()
+                .to_string(),
+            to_component_id: request.to_component_id,
+            to_component_name: to_component_name.clone(),
+            to_socket_id: request.to_socket_id,
+            to_socket_name: to_socket_name.clone(),
+        },
+        format!("{to_component_name} --- {to_socket_name}"),
+    )
+    .await?;
 
     ctx.commit().await?;
 

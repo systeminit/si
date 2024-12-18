@@ -6,7 +6,7 @@ use dal::{
     func::authoring::FuncAuthoringClient, ChangeSetId, ComponentId, Func, FuncId, WorkspacePk,
 };
 use serde::{Deserialize, Serialize};
-use si_events::FuncRunId;
+use si_events::{audit_log::AuditLogKind, FuncRunId};
 
 use super::FuncAPIResult;
 use crate::{
@@ -64,7 +64,15 @@ pub async fn test_execute(
             "component_id": request.component_id,
         }),
     );
-
+    ctx.write_audit_log(
+        AuditLogKind::TestFunction {
+            func_id,
+            func_display_name: func.display_name,
+            func_run_id,
+        },
+        func.name.clone(),
+    )
+    .await?;
     ctx.commit().await?;
 
     Ok(Json(TestExecuteFuncResponse { func_run_id }))

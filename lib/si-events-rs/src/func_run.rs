@@ -42,6 +42,19 @@ pub enum FuncKind {
     Management,
 }
 
+/// Describes the kind of [`FuncArgument`](crate::FuncArgument).
+#[derive(AsRefStr, Deserialize, Display, Serialize, Debug, Eq, PartialEq, Clone, Copy, Hash)]
+pub enum FuncArgumentKind {
+    Any,
+    Array,
+    Boolean,
+    Integer,
+    Json,
+    Map,
+    Object,
+    String,
+}
+
 // NOTE(nick,zack): do not add "remain::sorted" for postcard de/ser. We need the order to be
 // retained.
 #[derive(

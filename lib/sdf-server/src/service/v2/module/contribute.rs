@@ -5,6 +5,7 @@ use axum::{
 };
 use dal::{module::Module, ChangeSetId, WorkspacePk};
 use module_index_client::ModuleIndexClient;
+use si_events::audit_log::AuditLogKind;
 use si_frontend_types as frontend_types;
 
 use super::ModulesAPIError;
@@ -60,11 +61,20 @@ pub async fn contribute(
             schema_id.map(|id| id.to_string()),
             payload,
             Some(request.schema_variant_id.to_string()),
-            Some(schema_variant_version),
+            Some(schema_variant_version.clone()),
         )
         .await?;
 
-    ctx.commit().await?;
+    ctx.write_audit_log(
+        AuditLogKind::ContributeModule {
+            version: version.clone(),
+            schema_id: schema_id.map(Into::into),
+            schema_variant_id: request.schema_variant_id.into(),
+            schema_variant_version: Some(schema_variant_version.clone()),
+        },
+        name.clone(),
+    )
+    .await?;
 
     track(
         &posthog_client,
@@ -83,6 +93,7 @@ pub async fn contribute(
             "pkg_hash": response.latest_hash,
         }),
     );
+    ctx.commit().await?;
 
     Ok(axum::response::Response::builder().body(axum::body::Empty::new())?)
 }

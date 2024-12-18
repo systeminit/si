@@ -1,5 +1,6 @@
 use axum::extract::{Host, OriginalUri, Path};
 use dal::{ChangeSet, ChangeSetId, SchemaVariant, SchemaVariantId, WorkspacePk, WsEvent};
+use si_events::audit_log::AuditLogKind;
 
 use super::{SchemaVariantsAPIError, SchemaVariantsAPIResult};
 use crate::{
@@ -51,6 +52,14 @@ pub async fn delete_unlocked_variant(
             "schema_variant_version": schema_variant.version(),
         }),
     );
+    ctx.write_audit_log(
+        AuditLogKind::DeleteSchemaVariant {
+            schema_variant_id,
+            schema_id: schema.id(),
+        },
+        schema_variant.display_name().to_owned(),
+    )
+    .await?;
     ctx.commit().await?;
 
     Ok(ForceChangeSetResponse::new(

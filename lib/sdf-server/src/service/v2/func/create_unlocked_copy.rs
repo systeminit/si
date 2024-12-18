@@ -3,10 +3,11 @@ use axum::{
     Json,
 };
 use dal::{
-    func::authoring::FuncAuthoringClient, ChangeSet, ChangeSetId, Func, FuncId, SchemaVariantId,
-    WorkspacePk, WsEvent,
+    func::authoring::FuncAuthoringClient, ChangeSet, ChangeSetId, Func, FuncId, SchemaVariant,
+    SchemaVariantId, WorkspacePk, WsEvent,
 };
 use serde::{Deserialize, Serialize};
+use si_events::audit_log::AuditLogKind;
 use si_frontend_types::{FuncCode, FuncSummary};
 
 use super::{get_code_response, FuncAPIError, FuncAPIResult};
@@ -54,6 +55,11 @@ pub async fn create_unlocked_copy(
     let code = get_code_response(&ctx, new_func.id).await?;
     let summary = new_func.into_frontend_type(&ctx).await?;
 
+    let variant = if let Some(schema_variant_id) = request.schema_variant_id {
+        SchemaVariant::get_by_id(&ctx, schema_variant_id).await?
+    } else {
+        None
+    };
     WsEvent::func_created(&ctx, summary.clone())
         .await?
         .publish_on_commit(&ctx)
@@ -72,7 +78,17 @@ pub async fn create_unlocked_copy(
             "func_kind": summary.kind,
         }),
     );
-
+    ctx.write_audit_log(
+        AuditLogKind::UnlockFunc {
+            func_id,
+            func_display_name: summary.display_name.clone(),
+            schema_variant_id: request.schema_variant_id,
+            component_id: None,
+            subject_name: variant.map(|v| v.display_name().to_owned()),
+        },
+        summary.name.clone(),
+    )
+    .await?;
     ctx.commit().await?;
 
     Ok(ForceChangeSetResponse::new(

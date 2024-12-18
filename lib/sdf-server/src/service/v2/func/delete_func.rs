@@ -1,6 +1,7 @@
 use axum::extract::{Host, OriginalUri, Path};
 use dal::{func::binding::FuncBinding, ChangeSet, ChangeSetId, Func, FuncId, WorkspacePk, WsEvent};
 use serde::{Deserialize, Serialize};
+use si_events::audit_log::AuditLogKind;
 
 use super::{FuncAPIError, FuncAPIResult};
 use crate::{
@@ -57,7 +58,15 @@ pub async fn delete_func(
             "func_kind": func.kind.clone(),
         }),
     );
-
+    ctx.write_audit_log(
+        AuditLogKind::DeleteFunc {
+            func_id,
+            func_display_name: func.display_name,
+            func_kind: func.kind.into(),
+        },
+        func.name.clone(),
+    )
+    .await?;
     ctx.commit().await?;
 
     Ok(ForceChangeSetResponse::new(
