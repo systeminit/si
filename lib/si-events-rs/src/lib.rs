@@ -10,6 +10,7 @@ pub use si_id::ulid;
 
 mod actor;
 mod cas;
+mod change_set_approval;
 mod change_set_status;
 mod event_session;
 mod func;
@@ -30,6 +31,8 @@ pub use crate::{
     actor::Actor,
     actor::UserPk,
     cas::CasValue,
+    change_set_approval::ChangesChecksum,
+    change_set_approval::{ChangeSetApprovalKind, ChangeSetApprovalStatus},
     change_set_status::ChangeSetStatus,
     content_hash::ContentHash,
     encrypted_secret::EncryptedSecretKey,

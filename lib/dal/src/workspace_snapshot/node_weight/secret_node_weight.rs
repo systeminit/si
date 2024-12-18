@@ -5,7 +5,7 @@ use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash, Encry
 
 use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
 use crate::workspace_snapshot::graph::deprecated::v1::DeprecatedSecretNodeWeightV1;
-use crate::workspace_snapshot::graph::detect_updates::Update;
+use crate::workspace_snapshot::graph::detector::Update;
 use crate::workspace_snapshot::NodeId;
 use crate::workspace_snapshot::{
     content_address::ContentAddress,

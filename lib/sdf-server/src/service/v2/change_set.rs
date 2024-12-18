@@ -27,9 +27,15 @@ mod rename;
 mod reopen;
 mod request_approval;
 
+// NOTE(nick): move these to the above group and remove old modules once the feature flag has been removed;
+mod approval_status;
+mod approve_v2;
+
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum Error {
+    #[error("change set approval error: {0}")]
+    Approval(#[from] dal::change_set::approval::ChangeSetApprovalError),
     #[error("change set error: {0}")]
     ChangeSet(#[from] dal::ChangeSetError),
     #[error("change set apply error: {0}")]
@@ -158,7 +164,9 @@ pub fn v2_routes(state: AppState) -> Router<AppState> {
                         permissions::Permission::Approve,
                     )),
                 )
-                .route("/rename", post(rename::rename)),
+                .route("/rename", post(rename::rename))
+                .route("/approval_status", get(approval_status::approval_status))
+                .route("/approve_v2", post(approve_v2::approve)),
         )
         .route("/", get(list::list_actionable))
 }
