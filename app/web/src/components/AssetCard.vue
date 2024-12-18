@@ -28,7 +28,7 @@
         </Stack>
 
         <!-- ICONS AFTER THIS POINT ARE RIGHT ALIGNED DUE TO THE ml-auto STYLE ON THIS DIV -->
-        <div class="ml-auto flex flex-none gap-xs">
+        <div class="ml-auto flex flex-row items-center flex-none gap-xs">
           <EditingPill v-if="!asset.isLocked" :color="asset.color" />
           <IconButton
             v-if="canContribute"

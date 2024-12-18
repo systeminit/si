@@ -2,6 +2,7 @@
   <div class="flex flex-row gap-xs items-end p-xs justify-end w-full">
     <VormInput
       v-model="aws"
+      v-tooltip="'This feature currently only supports AWS.'"
       label="CLI"
       type="text"
       disabled
@@ -10,14 +11,18 @@
     />
     <VormInput
       v-model="awsCommand.command"
-      label="Command"
+      label="Service"
+      :placeholder="`AWS service (e.g. &quot;${kind?.exampleCommand.service}&quot;)`"
+      class="flex-grow"
       type="text"
       :disabled="!!isLocked || generateRequestStatus.isPending"
       @enterPressed="generateAwsFunction"
     />
     <VormInput
       v-model="awsCommand.subcommand"
-      label="Subcommand"
+      label="Command"
+      :placeholder="`AWS command (e.g. &quot;${kind?.exampleCommand.command}&quot;)`"
+      class="flex-grow"
       type="text"
       :disabled="!!isLocked || generateRequestStatus.isPending"
       @enterPressed="generateAwsFunction"
@@ -73,7 +78,6 @@ const awsCommand = reactive({ command: "", subcommand: "" });
 function setCommand(command?: Readonly<AwsCliCommand>) {
   if (command) Object.assign(awsCommand, command);
 }
-watch(() => props.kind?.exampleCommand, setCommand, { immediate: true });
 watch(() => funcStore.generatingFuncCode[props.funcId], setCommand, {
   immediate: true,
 });

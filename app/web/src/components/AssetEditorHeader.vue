@@ -57,7 +57,9 @@
         v-if="generateAwsFunction.available"
         icon="sparkles"
         size="lg"
-        :tooltip="`Generate ${generateAwsFunction.kind?.description}`"
+        :tooltip="`${generateAwsFunction.visible ? 'Close ' : ''}Generate ${
+          generateAwsFunction.kind?.description
+        }`"
         :selected="generateAwsFunction.visible"
         @click="generateAwsFunction.toggle()"
       />
