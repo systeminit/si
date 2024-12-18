@@ -34,11 +34,16 @@ impl ViewExt for WorkspaceSnapshotGraphV4 {
         {
             // Find the "thing" this Geometry is representing, so we can make sure it is also
             // represented by at least one Geometry in another View.
-            let represented_thing_idx = self.get_edge_weight_kind_target_idx(
+            let Some(represented_thing_idx) = self.get_edge_weight_kind_target_idx_opt(
                 geometry_node_idx,
                 Direction::Outgoing,
                 EdgeWeightKindDiscriminants::Represents,
-            )?;
+            )?
+            else {
+                // We found a `Geometry` that doesn't actually "represent" anything, so removing
+                // this view can't be orphaning something that doesn't exist.
+                continue;
+            };
             let represented_thing_node_weight = self.get_node_weight(represented_thing_idx)?;
 
             if NodeWeightDiscriminants::Component != represented_thing_node_weight.into() {
@@ -84,11 +89,20 @@ impl ViewExt for WorkspaceSnapshotGraphV4 {
             EdgeWeightKindDiscriminants::DiagramObject,
         )?;
         let mut edge_idxs_to_remove = Vec::new();
+        let mut view_geometry_idxs = Vec::new();
         for diagram_object_edgeref in self.edges_directed(diagram_object_idx, Direction::Incoming) {
             edge_idxs_to_remove.push(diagram_object_edgeref.id());
+            if EdgeWeightKindDiscriminants::Represents
+                == diagram_object_edgeref.weight().kind().into()
+            {
+                view_geometry_idxs.push(diagram_object_edgeref.source());
+            }
         }
         for view_edgeref in self.edges_directed(view_node_idx, Direction::Incoming) {
             edge_idxs_to_remove.push(view_edgeref.id());
+        }
+        for view_geometry_idx in view_geometry_idxs {
+            self.remove_node(view_geometry_idx);
         }
         for edge_idx in edge_idxs_to_remove {
             self.remove_edge_by_idx(edge_idx)?;
