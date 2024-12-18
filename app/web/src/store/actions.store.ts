@@ -1,7 +1,6 @@
 import { defineStore } from "pinia";
 import * as _ from "lodash-es";
 import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
-import JSConfetti from "js-confetti";
 import { Resource } from "@/api/sdf/dal/resource";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { DefaultMap } from "@/utils/defaultmap";
@@ -100,16 +99,6 @@ export interface ChangeSetDetail {
 export type FuncRunId = string;
 
 // END STUFF
-
-let jsConfetti: JSConfetti;
-const confettis = [
-  { emojis: ["🎉"] },
-  { emojis: ["🍿"] },
-  { emojis: ["🤘", "🤘🏻", "🤘🏼", "🤘🏽", "🤘🏾", "🤘🏿"] },
-  { emojis: ["❤️", "🧡", "💛", "💚", "💙", "💜"] },
-  { emojis: ["🍾", "🍷", "🍸", "🍹", "🍺", "🥂", "🍻"] },
-  { emojis: ["🏳️‍🌈", "🏳️‍⚧️", "⚡️", "🌈", "✨", "🔥", "🇧🇷"] },
-];
 
 export const useActionsStore = () => {
   const workspacesStore = useWorkspacesStore();
@@ -280,13 +269,6 @@ export const useActionsStore = () => {
                 visibility_change_set_pk: changeSetId,
               },
               onSuccess: (response) => {
-                if (
-                  this.actions.length > 0 &&
-                  response.length === 0 &&
-                  changeSetsStore.headSelected
-                )
-                  jsConfetti.addConfetti(_.sample(confettis));
-
                 this.actions = response;
               },
             });
@@ -379,11 +361,6 @@ export const useActionsStore = () => {
           },
         },
         onActivated() {
-          jsConfetti = new JSConfetti({
-            canvas:
-              (document.getElementById("confetti") as HTMLCanvasElement) ||
-              undefined,
-          });
           if (!changeSetId) return;
 
           this.LOAD_ACTIONS();
