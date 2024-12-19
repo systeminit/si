@@ -1,5 +1,5 @@
 import * as _ from "lodash-es";
-import { makeConsole } from "./console";
+import { makeConsole } from "./console.ts";
 
 // Since a lang-js process only lasts for a single function request, this
 // storage will only live for that time also, but every call to a

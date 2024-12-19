@@ -1,4 +1,5 @@
-import { OutputLine } from "../function";
+import { OutputLine } from "../function.ts";
+import { Debug } from "../debug.ts";
 
 const normalizeMessage = (msg: unknown[]): string => {
   return msg

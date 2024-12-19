@@ -1,22 +1,21 @@
 #!/usr/bin/env node
 
-import fs from "fs";
+import process from "node:process";
 import { Command } from "commander";
-import { makeConsole } from "./sandbox/console";
-import { Request } from "./request";
+import { makeConsole } from "./sandbox/console.ts";
+import { Request } from "./request.ts";
 import {
   executeFunction,
   failureExecution,
   FunctionKind,
   functionKinds,
-} from "./function";
-import { Debug } from "./debug";
+} from "./function.ts";
+import { Debug } from "./debug.ts";
 
 // This is the default timeout for a function, in seconds.
 const defaultTimeout = 1800;
 
 const debug = Debug("langJs");
-const STDIN_FD = 0;
 
 function onError(
   errorFn: (...args: unknown[]) => void,
@@ -59,7 +58,9 @@ async function main() {
   if (options.timeout) {
     timeout = parseInt(options.timeout);
     if (Number.isNaN(timeout) || !Number.isFinite(timeout)) {
-      console.error(`Unsupported value for timeout (expected 'number'): ${options.timeout}`);
+      console.error(
+        `Unsupported value for timeout (expected 'number'): ${options.timeout}`,
+      );
       process.exit(1);
     }
   }
@@ -69,7 +70,11 @@ async function main() {
   let errorFn = makeConsole(executionId).error;
 
   try {
-    const requestJson = fs.readFileSync(STDIN_FD, "utf8");
+    const decoder = new TextDecoder();
+    let requestJson = "";
+    for await (const chunk of Deno.stdin.readable) {
+      requestJson += decoder.decode(chunk);
+    }
     debug({ request: requestJson });
     const request: Request = JSON.parse(requestJson);
     if (request.executionId) {
