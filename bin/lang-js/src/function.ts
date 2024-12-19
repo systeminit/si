@@ -205,9 +205,10 @@ export async function executor<F extends Func, Result>(
   {
     debug,
     execute,
+    wrapCode,
   }: {
     debug: Debugger;
-    wrapCode: (code: string, handler: string) => string;
+    wrapCode: (code: string) => string;
     execute: (
       ctx: RequestCtx,
       func: F,
@@ -220,8 +221,7 @@ export async function executor<F extends Func, Result>(
     originalCode = base64Decode(func.codeBase64);
   }
 
-  // const code = wrapCode(originalCode, func.handler);
-  const code = originalCode;
+  const code = wrapCode(originalCode);
 
   // Following section throws on timeout or execution error
   const result = await Promise.race([
@@ -239,7 +239,7 @@ export async function runCode(
   with_arg?: Record<string, unknown>,
 ): Promise<Record<string, unknown>> {
   const debug = Debug("runCode");
-  const bundled = await bundleCode(code);
+  code = await bundleCode(code);
   const currentEnv = rawStorage().env;
 
   const worker = new Worker(new URL("./worker.js", import.meta.url), {
@@ -256,9 +256,10 @@ export async function runCode(
       },
     },
   });
+
   return new Promise((resolve, reject) => {
     worker.postMessage({
-      bundledCode: bundled,
+      bundledCode: code,
       func_kind,
       execution_id,
       with_arg,
@@ -266,7 +267,6 @@ export async function runCode(
     });
 
     worker.onmessage = (event) => {
-      debug({ event });
       const { result, env } = event.data;
       if (env) {
         Object.assign(rawStorage().env, env);
@@ -276,7 +276,6 @@ export async function runCode(
     };
 
     worker.onerror = (error) => {
-      debug({ error });
       reject(error);
       worker.terminate();
     };

@@ -11,7 +11,7 @@ self.onmessage = async (event) => {
   try {
     if (env) {
       Object.assign(rawStorage().env, env);
-      for (const [key, value] of Object.entries(rawStorage.env)) {
+      for (const [key, value] of Object.entries(rawStorage().env || {})) {
         Deno.env.set(key, value);
       }
     }
@@ -22,7 +22,7 @@ self.onmessage = async (event) => {
       `
       return (async () => {
         ${bundledCode}
-        return await main(with_arg);
+        return await run(with_arg);
       })()
     `,
     );

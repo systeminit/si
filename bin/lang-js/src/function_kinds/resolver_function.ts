@@ -265,12 +265,11 @@ async function execute(
 }
 
 const wrapCode = (code: string) => `
-(async (component) => {
+async function run(component) {
   ${code}
   const returnValue = await main(component);
   return returnValue;
-})(with_arg);
-`;
+}`;
 
 export default {
   debug,
