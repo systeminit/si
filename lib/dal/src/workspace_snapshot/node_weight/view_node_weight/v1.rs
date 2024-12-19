@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use crate::{
     workspace_snapshot::{
         content_address::ContentAddress,
-        graph::{detect_updates::Update, LineageId, WorkspaceSnapshotGraphError},
+        graph::{detector::Update, LineageId, WorkspaceSnapshotGraphError},
         node_weight::{
             traits::{CorrectExclusiveOutgoingEdge, CorrectTransforms, SiNodeWeight},
             NodeWeight, NodeWeightDiscriminants,
@@ -49,10 +49,10 @@ impl CorrectTransforms for ViewNodeWeightV1 {
     fn correct_transforms(
         &self,
         workspace_snapshot_graph: &crate::WorkspaceSnapshotGraphVCurrent,
-        mut updates: Vec<crate::workspace_snapshot::graph::detect_updates::Update>,
+        mut updates: Vec<crate::workspace_snapshot::graph::detector::Update>,
         _from_different_change_set: bool,
     ) -> crate::workspace_snapshot::node_weight::traits::CorrectTransformsResult<
-        Vec<crate::workspace_snapshot::graph::detect_updates::Update>,
+        Vec<crate::workspace_snapshot::graph::detector::Update>,
     > {
         let mut maybe_view_removal_update_idx = None;
         let mut removed_geometries = HashSet::new();

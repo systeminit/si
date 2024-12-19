@@ -1,10 +1,8 @@
 use std::{fs::File, io::Write};
 
 use deprecated::DeprecatedWorkspaceSnapshotGraphV1;
-use detect_updates::Update;
+use detector::Update;
 use petgraph::prelude::*;
-/// Ensure [`NodeIndex`], and [`Direction`] are usable externally.
-pub use petgraph::{graph::NodeIndex, Direction};
 use serde::{Deserialize, Serialize};
 use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid};
 use si_layer_cache::db::serialize;
@@ -12,6 +10,9 @@ use si_layer_cache::LayerDbError;
 use strum::{EnumDiscriminants, EnumIter, EnumString, IntoEnumIterator};
 use telemetry::prelude::*;
 use thiserror::Error;
+
+/// Ensure [`NodeIndex`], and [`Direction`] are usable externally.
+pub use petgraph::{graph::NodeIndex, Direction};
 
 use crate::{
     socket::input::InputSocketError,
@@ -21,7 +22,7 @@ use crate::{
 
 pub mod correct_transforms;
 pub mod deprecated;
-pub mod detect_updates;
+pub mod detector;
 mod tests;
 pub mod traits;
 pub mod v2;
@@ -44,8 +45,6 @@ pub enum WorkspaceSnapshotGraphError {
     CannotCompareOrderedAndUnorderedContainers(NodeIndex, NodeIndex),
     #[error("could not find category node of kind: {0:?}")]
     CategoryNodeNotFound(CategoryNodeKind),
-    // #[error("ChangeSet error: {0}")]
-    // ChangeSet(#[from] ChangeSetError),
     #[error("Component error: {0}")]
     Component(#[from] Box<ComponentError>),
     #[error("Unable to retrieve content for ContentHash")]

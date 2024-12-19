@@ -4,7 +4,7 @@ use petgraph::prelude::*;
 
 use crate::{
     workspace_snapshot::{
-        edge_weight::EdgeWeightKindDiscriminants, graph::detect_updates::Update, NodeInformation,
+        edge_weight::EdgeWeightKindDiscriminants, graph::detector::Update, NodeInformation,
     },
     WorkspaceSnapshotGraphVCurrent,
 };

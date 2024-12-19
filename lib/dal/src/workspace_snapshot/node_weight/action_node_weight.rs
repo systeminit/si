@@ -7,7 +7,7 @@ use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
 use crate::{
     action::ActionState,
     workspace_snapshot::{
-        graph::{deprecated::v1::DeprecatedActionNodeWeightV1, detect_updates::Update, LineageId},
+        graph::{deprecated::v1::DeprecatedActionNodeWeightV1, detector::Update, LineageId},
         node_weight::{traits::CorrectTransforms, NodeWeight},
         NodeId, NodeInformation,
     },
