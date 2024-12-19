@@ -40,7 +40,6 @@
 <script lang="ts" setup>
 import { ref, computed, onMounted, watch } from "vue";
 import clsx from "clsx";
-import { useToast } from "vue-toastification";
 import {
   DropdownMenu,
   DropdownMenuItem,
@@ -69,7 +68,6 @@ import FuncRunTabDropdown from "./FuncRunTabDropdown.vue";
 const funcStore = useFuncStore();
 const viewStore = useViewsStore();
 const router = useRouter();
-const toast = useToast();
 const managementRunsStore = useManagementRunsStore();
 const viewsStore = useViewsStore();
 
@@ -129,27 +127,7 @@ const runPrototype = async (viewId: ViewId) => {
   );
 
   if (result.result.success) {
-    // TODO(WENDY) - for template functions, select the returned componentIds
-    // modelingEventBus.emit("setSelection", componentIds);
-
     lastExecution.value = result.result.data;
-    if (result.result.data.message) {
-      const toastOptions = {
-        pauseOnHover: true,
-        timeout: 5000,
-      };
-      if (result.result.data.status === "ok") {
-        toast.success(
-          `${props.prototype.label}: ${result.result.data.message}`,
-          toastOptions,
-        );
-      } else {
-        toast.warning(
-          `${props.prototype.label}: ${result.result.data.message}`,
-          toastOptions,
-        );
-      }
-    }
   }
 };
 

@@ -8,7 +8,7 @@ use std::{
 use serde::{Deserialize, Serialize};
 use si_events::FuncRunId;
 use thiserror::Error;
-use veritech_client::ManagementResultSuccess;
+use veritech_client::{ManagementFuncStatus, ManagementResultSuccess};
 
 use crate::{
     cached_module::{CachedModule, CachedModuleError},
@@ -24,7 +24,7 @@ use crate::{
     Component, ComponentError, ComponentId, DalContext, EdgeWeightKind,
     EdgeWeightKindDiscriminants, FuncId, HelperError, NodeWeightDiscriminants, Schema, SchemaError,
     SchemaId, SchemaVariant, SchemaVariantError, SchemaVariantId, TransactionsError,
-    WorkspaceSnapshotError, WsEvent, WsEventError, WsEventResult,
+    WorkspaceSnapshotError, WsEvent, WsEventError, WsEventResult, WsPayload,
 };
 
 use super::ManagementGeometry;
@@ -660,6 +660,16 @@ pub struct ManagementFuncExecutedPayload {
     func_run_id: FuncRunId,
 }
 
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ManagementOperationsCompletePayload {
+    request_ulid: Option<ulid::Ulid>,
+    func_name: String,
+    status: ManagementFuncStatus,
+    message: Option<String>,
+    created_component_ids: Option<Vec<ComponentId>>,
+}
+
 impl WsEvent {
     pub async fn management_func_executed(
         ctx: &DalContext,
@@ -669,10 +679,31 @@ impl WsEvent {
     ) -> WsEventResult<Self> {
         WsEvent::new(
             ctx,
-            crate::WsPayload::ManagementFuncExecuted(ManagementFuncExecutedPayload {
+            WsPayload::ManagementFuncExecuted(ManagementFuncExecutedPayload {
                 prototype_id,
                 manager_component_id,
                 func_run_id,
+            }),
+        )
+        .await
+    }
+
+    pub async fn management_operations_complete(
+        ctx: &DalContext,
+        request_ulid: Option<ulid::Ulid>,
+        func_name: String,
+        message: Option<String>,
+        status: ManagementFuncStatus,
+        created_component_ids: Option<Vec<ComponentId>>,
+    ) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::ManagementOperationsComplete(ManagementOperationsCompletePayload {
+                request_ulid,
+                func_name,
+                status,
+                message,
+                created_component_ids,
             }),
         )
         .await

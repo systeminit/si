@@ -25,7 +25,9 @@ use crate::func::runner::FuncRunLogUpdatedPayload;
 use crate::func::{
     FuncWsEventCodeSaved, FuncWsEventFuncSummary, FuncWsEventGenerating, FuncWsEventPayload,
 };
-use crate::management::prototype::ManagementFuncExecutedPayload;
+use crate::management::prototype::{
+    ManagementFuncExecutedPayload, ManagementOperationsCompletePayload,
+};
 use crate::pkg::{
     ImportWorkspaceVotePayload, WorkspaceActorPayload, WorkspaceImportApprovalActorPayload,
 };
@@ -113,6 +115,7 @@ pub enum WsPayload {
     InferredEdgeRemove(InferredEdgeRemovePayload),
     InferredEdgeUpsert(InferredEdgeUpsertPayload),
     ManagementFuncExecuted(ManagementFuncExecutedPayload),
+    ManagementOperationsComplete(ManagementOperationsCompletePayload),
     ModuleImported(Vec<si_frontend_types::SchemaVariant>),
     Online(OnlinePayload),
     PromptUpdated(PromptUpdatedPayload),

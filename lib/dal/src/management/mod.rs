@@ -1010,7 +1010,7 @@ impl<'a> ManagementOperator<'a> {
         Ok(())
     }
 
-    pub async fn operate(&mut self) -> ManagementResult<()> {
+    pub async fn operate(&mut self) -> ManagementResult<Option<Vec<ComponentId>>> {
         let mut pending_operations = self.creates().await?;
         let mut component_graph = DependencyGraph::new();
         pending_operations.extend(self.updates().await?);
@@ -1028,6 +1028,9 @@ impl<'a> ManagementOperator<'a> {
                 .await?;
             component_graph.id_depends_on(pending_parent.child_component_id, parent_id);
         }
+
+        let created_component_ids = (!self.created_components.is_empty())
+            .then_some(self.created_components.iter().copied().collect());
 
         self.send_component_ws_events(component_graph).await?;
 
@@ -1061,7 +1064,7 @@ impl<'a> ManagementOperator<'a> {
 
         self.actions().await?;
 
-        Ok(())
+        Ok(created_component_ids)
     }
 }
 
