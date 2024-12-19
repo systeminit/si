@@ -8,6 +8,7 @@ use dal_test::{
     test,
 };
 use pretty_assertions_sorted::assert_eq;
+use si_frontend_types::RawGeometry;
 
 #[test]
 async fn correct_transforms_remove_view_all_geometries_removed(ctx: &mut DalContext) {
@@ -242,5 +243,69 @@ async fn correct_transforms_remove_view_no_other_views(ctx: &mut DalContext) {
             .await
             .expect("Unable to list Geometries in new View")
             .len(),
+    );
+}
+
+#[test]
+async fn correct_transforms_remove_view_with_component_in_another_view(ctx: &mut DalContext) {
+    let default_view_id = ExpectView::get_id_for_default(ctx).await;
+    let new_view = ExpectView::create(ctx).await;
+    let component = create_component_for_default_schema_name(
+        ctx,
+        "swifty",
+        generate_fake_name(),
+        default_view_id,
+    )
+    .await
+    .expect("Unable to create Component in default View");
+    Component::add_to_view(ctx, component.id(), new_view.id(), RawGeometry::default())
+        .await
+        .expect("Unable to add Component to new View");
+    expected::commit_and_update_snapshot_to_visibility(ctx).await;
+    expected::apply_change_set_to_base(ctx).await;
+
+    assert_eq!(
+        2,
+        View::list(ctx).await.expect("Unable to list Views").len(),
+    );
+    assert_eq!(
+        2,
+        Geometry::list_ids_by_component(ctx, component.id())
+            .await
+            .expect("Unable to get Geometries for Component")
+            .len()
+    );
+
+    expected::fork_from_head_change_set(ctx).await;
+
+    View::remove(ctx, new_view.id())
+        .await
+        .expect("Unable to remove new View");
+    expected::commit_and_update_snapshot_to_visibility(ctx).await;
+
+    assert_eq!(
+        1,
+        View::list(ctx).await.expect("Unable to list Views").len(),
+    );
+    assert_eq!(
+        1,
+        Geometry::list_ids_by_component(ctx, component.id())
+            .await
+            .expect("Unable to get Geometries for Component")
+            .len()
+    );
+
+    expected::apply_change_set_to_base(ctx).await;
+
+    assert_eq!(
+        1,
+        View::list(ctx).await.expect("Unable to list Views").len(),
+    );
+    assert_eq!(
+        1,
+        Geometry::list_ids_by_component(ctx, component.id())
+            .await
+            .expect("Unable to get Geometries for Component")
+            .len()
     );
 }

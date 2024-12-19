@@ -1,9 +1,11 @@
 use petgraph::prelude::*;
+use si_id::ViewId;
 
 use crate::{
     component::ComponentResult,
     workspace_snapshot::{
-        edge_weight::EdgeWeightKindDiscriminants, graph::WorkspaceSnapshotGraphV4,
+        edge_weight::EdgeWeightKindDiscriminants,
+        graph::{WorkspaceSnapshotGraphResult, WorkspaceSnapshotGraphV4},
         node_weight::NodeWeightDiscriminants,
     },
     ComponentError, ComponentId, SchemaVariantId, WorkspaceSnapshotError,
@@ -62,5 +64,35 @@ impl WorkspaceSnapshotGraphV4 {
         }
 
         Err(ComponentError::SchemaVariantNotFound(component_id))
+    }
+
+    pub fn component_contained_in_views(
+        &self,
+        component_id: ComponentId,
+    ) -> WorkspaceSnapshotGraphResult<Vec<ViewId>> {
+        // Component <--Represents-- Geometry <--Use-- View
+        let component_node_index = *self
+            .node_index_by_id
+            .get(&component_id.into())
+            .ok_or(ComponentError::NotFound(component_id))
+            .map_err(Box::new)?;
+        let mut results = Vec::new();
+        for (_edge_weight, geometry_node_index, _component_node_index) in self
+            .edges_directed_for_edge_weight_kind(
+                component_node_index,
+                Incoming,
+                EdgeWeightKindDiscriminants::Represents,
+            )
+        {
+            let view_node_index = self.get_edge_weight_kind_target_idx(
+                geometry_node_index,
+                Incoming,
+                EdgeWeightKindDiscriminants::Use,
+            )?;
+            let view_id = self.get_node_weight(view_node_index)?.id();
+            results.push(view_id.into());
+        }
+
+        Ok(results)
     }
 }

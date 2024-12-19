@@ -17,6 +17,7 @@ use dal_macros::SiNodeWeight;
 use jwt_simple::prelude::{Deserialize, Serialize};
 use petgraph::prelude::*;
 use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
+use si_id::ViewId;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, SiNodeWeight)]
 #[si_node_weight(discriminant = NodeWeightDiscriminants::View)]
@@ -134,6 +135,17 @@ impl CorrectTransforms for ViewNodeWeightV1 {
                             // If both the View and the Components represented in the View are being
                             // removed, then there won't be individual Update::RemoveEdge for the
                             // Geometry, so we need to check if the Component itself is being removed.
+                            continue;
+                        }
+
+                        // If the Component isn't being removed, we need to make sure that it still
+                        // exists in at least one other View to make sure we're not orphaning it.
+                        let mut appears_in_views = workspace_snapshot_graph
+                            .component_contained_in_views(component.id().into())?;
+                        let my_id: ViewId = self.id().into();
+                        appears_in_views.retain(|&view_id| my_id != view_id);
+
+                        if !appears_in_views.is_empty() {
                             continue;
                         }
                     }
