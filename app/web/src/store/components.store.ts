@@ -1417,29 +1417,11 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             ],
           );
 
-          realtimeStore.subscribe(
-            `${this.$id}-workspace`,
-            `workspace/${workspaceId}`,
-            [
-              {
-                eventType: "ChangeSetApplied",
-                callback: (data) => {
-                  // If the applied change set has rebased into this change set,
-                  // then refetch (i.e. there might be updates!)
-                  if (data.toRebaseChangeSetId === changeSetId) {
-                    this.FETCH_ALL_COMPONENTS();
-                  }
-                },
-              },
-            ],
-          );
-
           const actionUnsub = this.$onAction(handleStoreError);
 
           return () => {
             actionUnsub();
             realtimeStore.unsubscribe(`${this.$id}-changeset`);
-            realtimeStore.unsubscribe(`${this.$id}-workspace`);
           };
         },
       },
