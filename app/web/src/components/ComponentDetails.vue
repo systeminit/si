@@ -19,20 +19,22 @@
         <Icon name="loader" size="xs" class="text-action-500 shrink-0" />
         <div class="grow truncate text-xs italic">Updating...</div>
       </div>
-      <div v-else class="flex flex-row items-center">
+      <div
+        v-else
+        :class="
+          clsx('flex flex-row items-center', showRefreshButton && 'ml-xs mb-xs')
+        "
+      >
         <DetailsPanelTimestamps
           :changeStatus="props.component.def.changeStatus"
           :created="props.component.def.createdInfo"
           :modified="props.component.def.updatedInfo"
           :deleted="props.component.def.deletedInfo"
+          :noMargin="showRefreshButton"
         />
         <div class="pr-xs shrink-0">
           <VButton
-            v-if="
-              props.component.def.hasResource &&
-              changeSetsStore.selectedChangeSetId ===
-                changeSetsStore.headChangeSetId
-            "
+            v-if="showRefreshButton"
             icon="refresh"
             size="sm"
             variant="ghost"
@@ -188,6 +190,7 @@ import {
   TabGroupItem,
   VButton,
 } from "@si/vue-lib/design-system";
+import clsx from "clsx";
 import { useComponentsStore } from "@/store/components.store";
 import { useStatusStore } from "@/store/status.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
@@ -265,6 +268,12 @@ const componentSubTabsRef = ref<InstanceType<typeof TabGroup>>();
 function onTabSelected(newTabSlug?: string) {
   viewStore.setComponentDetailsTab(newTabSlug || null);
 }
+
+const showRefreshButton = computed(
+  () =>
+    props.component.def.hasResource &&
+    changeSetsStore.selectedChangeSetId === changeSetsStore.headChangeSetId,
+);
 
 watch(
   () => viewStore.selectedComponentDetailsTab,

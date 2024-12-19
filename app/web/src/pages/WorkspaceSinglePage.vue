@@ -204,8 +204,6 @@ function handleUrlChange() {
     return;
   }
 
-  window.localStorage.setItem("tab_group_proposed_right", "actions_proposed");
-
   if (
     !changeSetId ||
     (changeSetsReqStatus.value.isSuccess &&
