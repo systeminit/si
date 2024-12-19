@@ -2,6 +2,7 @@ import * as _ from "lodash-es";
 import { defineStore } from "pinia";
 import { addStoreHooks, ApiRequest, URLPattern } from "@si/vue-lib/pinia";
 import { ulid } from "ulid";
+import { useToast } from "vue-toastification";
 import { Visibility } from "@/api/sdf/dal/visibility";
 import {
   FuncArgument,
@@ -83,6 +84,7 @@ export type MgmtPrototype = {
 export type MgmtPrototypeResult = {
   message?: string;
   status: "ok" | "error";
+  createdComponentIds?: ComponentId[];
 };
 
 export function actionBindingsForVariant(
@@ -207,6 +209,7 @@ export const useFuncStore = () => {
         executingPrompt: false,
         // So we can ignore websocket update originated by this client
         clientUlid: ulid(),
+        pendingManagementRunRequestUlid: undefined as string | undefined,
       }),
       getters: {
         selectedFuncSummary(state): FuncSummary | undefined {
@@ -318,6 +321,9 @@ export const useFuncStore = () => {
               { componentId },
               { viewId },
             ]),
+            optimistic: (requestUlid) => {
+              this.pendingManagementRunRequestUlid = requestUlid;
+            },
           });
         },
 
@@ -937,6 +943,35 @@ export const useFuncStore = () => {
                     this.FETCH_CODE(this.selectedFuncId);
                   }
                 }
+              }
+            },
+          },
+          {
+            eventType: "ManagementOperationsComplete",
+            callback: (
+              { requestUlid, status, message, createdComponentIds, funcName },
+              _metadata,
+            ) => {
+              if (
+                requestUlid &&
+                requestUlid === this.pendingManagementRunRequestUlid &&
+                createdComponentIds?.length
+              ) {
+                viewStore.setSelectedComponentId(createdComponentIds);
+                this.pendingManagementRunRequestUlid = undefined;
+              }
+
+              const toast = useToast();
+              const toastOptions = {
+                timeout: 5000,
+              };
+              const toastMessage = message?.length
+                ? `Ran ${funcName}: ${message}`
+                : `Ran ${funcName}`;
+              if (status === "ok") {
+                toast.success(toastMessage, toastOptions);
+              } else {
+                toast.warning(toastMessage, toastOptions);
               }
             },
           },

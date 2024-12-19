@@ -7,7 +7,7 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
     routing::{get, post},
-    Router,
+    Json, Router,
 };
 use dal::{
     diagram::view::ViewId,
@@ -17,8 +17,8 @@ use dal::{
         ManagementError, ManagementFuncReturn, ManagementOperator,
     },
     schema::variant::authoring::VariantAuthoringError,
-    ChangeSet, ChangeSetError, ChangeSetId, ComponentId, FuncId, SchemaVariantError,
-    TransactionsError, WorkspacePk, WsEventError,
+    ChangeSet, ChangeSetError, ChangeSetId, ComponentId, Func, FuncError, FuncId,
+    SchemaVariantError, TransactionsError, WorkspacePk, WsEvent, WsEventError,
 };
 use serde::{Deserialize, Serialize};
 use si_layer_cache::LayerDbError;
@@ -37,13 +37,6 @@ mod generate_template;
 mod history;
 mod latest;
 
-#[derive(Debug, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RunPrototypeResponse {
-    status: ManagementFuncStatus,
-    message: Option<String>,
-}
-
 pub type ManagementApiResult<T> = Result<T, ManagementApiError>;
 
 #[remain::sorted]
@@ -51,6 +44,8 @@ pub type ManagementApiResult<T> = Result<T, ManagementApiError>;
 pub enum ManagementApiError {
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
+    #[error("func error: {0}")]
+    Func(#[from] FuncError),
     #[error("func api error: {0}")]
     FuncAPI(#[from] FuncAPIError),
     #[error("func authoring error: {0}")]
@@ -87,6 +82,19 @@ impl IntoResponse for ManagementApiError {
     }
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RunPrototypeRequest {
+    request_ulid: Option<ulid::Ulid>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RunPrototypeResponse {
+    status: ManagementFuncStatus,
+    message: Option<String>,
+}
+
 pub async fn run_prototype(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(access_builder): AccessBuilder,
@@ -100,6 +108,7 @@ pub async fn run_prototype(
         ComponentId,
         ViewId,
     )>,
+    Json(request): Json<RunPrototypeRequest>,
 ) -> ManagementApiResult<ForceChangeSetResponse<RunPrototypeResponse>> {
     let mut ctx = builder
         .build(access_builder.build(change_set_id.into()))
@@ -128,9 +137,10 @@ pub async fn run_prototype(
 
     if let Some(result) = execution_result.result.take() {
         let result: ManagementFuncReturn = result.try_into()?;
+        let mut created_component_ids = None;
         if result.status == ManagementFuncStatus::Ok {
             if let Some(operations) = result.operations {
-                ManagementOperator::new(
+                created_component_ids = ManagementOperator::new(
                     &ctx,
                     component_id,
                     operations,
@@ -142,6 +152,21 @@ pub async fn run_prototype(
                 .await?;
             }
         }
+
+        let func_id = ManagementPrototype::func_id(&ctx, prototype_id).await?;
+        let func = Func::get_by_id_or_error(&ctx, func_id).await?;
+
+        WsEvent::management_operations_complete(
+            &ctx,
+            request.request_ulid,
+            func.name,
+            result.message.clone(),
+            result.status,
+            created_component_ids,
+        )
+        .await?
+        .publish_on_commit(&ctx)
+        .await?;
 
         ctx.commit().await?;
 

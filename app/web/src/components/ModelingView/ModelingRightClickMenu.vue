@@ -43,7 +43,6 @@ import { storeToRefs } from "pinia";
 import { computed, ref } from "vue";
 // import plur from "plur";
 import { RouteLocationRaw } from "vue-router";
-import { useToast } from "vue-toastification";
 import { IRect } from "konva/lib/types";
 import { ComponentType } from "@/api/sdf/dal/schema";
 import { useComponentsStore } from "@/store/components.store";
@@ -68,7 +67,6 @@ import {
 
 const contextMenuRef = ref<InstanceType<typeof DropdownMenu>>();
 
-const toast = useToast();
 const changeSetsStore = useChangeSetsStore();
 const componentsStore = useComponentsStore();
 const funcStore = useFuncStore();
@@ -519,29 +517,11 @@ const runManagementFunc = async (prototype: MgmtPrototype) => {
   if (!selectedComponent.value) return;
   if (!viewStore.selectedViewId) return;
 
-  const result = await funcStore.RUN_MGMT_PROTOTYPE(
+  await funcStore.RUN_MGMT_PROTOTYPE(
     prototype.managementPrototypeId,
     selectedComponent.value.def.id,
     viewStore.selectedViewId,
   );
-
-  if (result.result.success && result.result.data.message) {
-    const toastOptions = {
-      pauseOnHover: true,
-      timeout: 5000,
-    };
-    if (result.result.data.status === "ok") {
-      toast.success(
-        `${prototype.label}: ${result.result.data.message}`,
-        toastOptions,
-      );
-    } else {
-      toast.warning(
-        `${prototype.label}: ${result.result.data.message}`,
-        toastOptions,
-      );
-    }
-  }
 };
 
 function triggerCopySelection() {

@@ -216,12 +216,21 @@ export type WsEventPayloadMap = {
         fromComponentId: string;
         toComponentId: string;
       };
+
   ManagementFuncExecuted: {
     managerComponentId: string;
     prototypeId: string;
     funcRunId: FuncRunId;
     changeSetId: string;
   };
+  ManagementOperationsComplete: {
+    requestUlid?: string;
+    funcName: string;
+    status: "ok" | "error";
+    message?: string;
+    createdComponentIds?: ComponentId[];
+  };
+
   ModuleImported: SchemaVariant[];
   WorkspaceImportBeginApprovalProcess: {
     workspacePk: WorkspacePk;
