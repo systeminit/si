@@ -116,7 +116,7 @@ async function execute(
 }
 
 const wrapCode = (code: string) => `
-async function run(arg) {
+(async (arg) => {
   try {
     ${code}
     arg = Array.isArray(arg) ? arg : [arg];
@@ -133,8 +133,7 @@ async function run(arg) {
               message: err.message,
            }
   }
-}
-return run(with_arg)`;
+})(with_arg)`;
 
 export default {
   debug,

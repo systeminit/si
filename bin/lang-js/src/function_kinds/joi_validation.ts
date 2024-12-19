@@ -60,32 +60,33 @@ async function execute(
   }
 }
 
-const wrapCode = (_: string, __: string) => `
-async function run({ value, validationFormat }) {
-  let definition;
-  let message;
-  try {
-    definition = JSON.parse(validationFormat);
-  } catch (e) {
-    e.name = "JoiValidationJsonParsingError";
-    message = e;
-  }
+const wrapCode = (_: string) => `
+(async ({ value, validationFormat }) => {
+  async function main(value, validationFormat) {
+    let definition;
+    let message;
+    try {
+      definition = JSON.parse(validationFormat);
+    } catch (e) {
+      e.name = "JoiValidationJsonParsingError";
+      message = e;
+    }
 
-  let schema;
-  try {
-    schema = Joi.build(definition);
-  } catch (e) {
-    e.name = "JoiValidationFormatError";
-    e.message = e.message.replace("\\"value\\"", "validationFormat")
-    message = e;
-  }
+    let schema;
+    try {
+      schema = Joi.build(definition);
+    } catch (e) {
+      e.name = "JoiValidationFormatError";
+      e.message = e.message.replace("\\"value\\"", "validationFormat")
+      message = e;
+    }
 
-  const { error } = schema.validate(value);
-  const err = error?.message;
-  message = err;
-  return { "err": message }
-}
-return run(with_arg)`;
+    const { error } = schema.validate(value);
+    const err = error?.message;
+    message = err;
+    return { "err": message }
+  }
+})(with_arg)`;
 
 export default {
   debug,

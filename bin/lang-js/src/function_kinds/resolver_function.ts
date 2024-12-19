@@ -268,7 +268,6 @@ const wrapCode = (code: string) => `
 (async (component) => {
   ${code}
   const returnValue = await main(component);
-  console.log(returnValue)
   return returnValue;
 })(with_arg);
 `;

@@ -15,7 +15,7 @@ import schema_variant_definition, {
 import management_run, { ManagementFunc } from "./function_kinds/management.ts";
 import action_run, { ActionRunFunc } from "./function_kinds/action_run.ts";
 import before from "./function_kinds/before.ts";
-import { rawStorageRequest } from "./sandbox/requestStorage.ts";
+import { rawStorage, rawStorageRequest } from "./sandbox/requestStorage.ts";
 import { Debug, Debugger } from "./debug.ts";
 import { transpile } from "jsr:@deno/emit";
 import * as w from "./worker.js";
@@ -204,7 +204,6 @@ export async function executor<F extends Func, Result>(
   timeout: number,
   {
     debug,
-    wrapCode,
     execute,
   }: {
     debug: Debugger;
@@ -224,10 +223,6 @@ export async function executor<F extends Func, Result>(
   // const code = wrapCode(originalCode, func.handler);
   const code = originalCode;
 
-  debug({ code });
-
-  debug({ timeout });
-
   // Following section throws on timeout or execution error
   const result = await Promise.race([
     execute(ctx, func, code),
@@ -243,8 +238,9 @@ export async function runCode(
   execution_id: string,
   with_arg?: Record<string, unknown>,
 ): Promise<Record<string, unknown>> {
-  const debug = Debug("");
+  const debug = Debug("runCode");
   const bundled = await bundleCode(code);
+  const currentEnv = rawStorage().env;
 
   const worker = new Worker(new URL("./worker.js", import.meta.url), {
     type: "module",
@@ -254,6 +250,7 @@ export async function runCode(
         env: true,
         net: true,
         read: true,
+        run: true,
         sys: true,
         write: true,
       },
@@ -265,11 +262,15 @@ export async function runCode(
       func_kind,
       execution_id,
       with_arg,
+      env: currentEnv ?? {}
     });
 
     worker.onmessage = (event) => {
       debug({ event });
-      const result = event.data;
+      const { result, env } = event.data;
+      if (env) {
+        Object.assign(rawStorage().env, env);
+      }
       resolve(result);
       worker.terminate();
     };
@@ -288,11 +289,10 @@ async function bundleCode(code: string): Promise<string> {
   await Deno.writeTextFile(tempFile, code);
   const fileUrl = new URL(tempFile, import.meta.url);
 
-  // try {
-  const bundled = (await transpile(fileUrl)).get(fileUrl.href) as string;
-  return bundled;
-  // } finally {
-  //   // Clean up temporary directory
-  //   await Deno.removeDirRecursively(tempDir);
-  // }
+  try {
+    const bundled = (await transpile(fileUrl)).get(fileUrl.href) as string;
+    return bundled;
+  } finally {
+    await Deno.remove(tempDir, { recursive: true });
+  }
 }

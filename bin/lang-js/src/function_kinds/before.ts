@@ -46,12 +46,13 @@ async function execute(
 }
 
 const wrapCode = (code: string) => `
-async function run(arg) {
+(async (arg) => {
   ${code}
   const returnValue = await main(arg);
+  console.log(returnValue)
   return returnValue;
-}
-return run(with_arg)`;
+})(with_arg);
+`;
 
 export default {
   debug,
