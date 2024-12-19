@@ -10,7 +10,7 @@ use crate::component::frame::{Frame, FrameError};
 use crate::dependency_graph::DependencyGraph;
 use crate::diagram::geometry::Geometry;
 use crate::diagram::view::{View, ViewId};
-use crate::diagram::{DiagramError, SummaryDiagramManagementEdge};
+use crate::diagram::{DiagramError, SummaryDiagramInferredEdge, SummaryDiagramManagementEdge};
 use crate::{
     action::{
         prototype::{ActionKind, ActionPrototype, ActionPrototypeError},
@@ -690,7 +690,7 @@ impl<'a> ManagementOperator<'a> {
         &self,
         child_id: ComponentId,
         parent_placeholder: &String,
-    ) -> ManagementResult<ComponentId> {
+    ) -> ManagementResult<(ComponentId, Option<Vec<SummaryDiagramInferredEdge>>)> {
         let new_parent_id = self
             .component_id_placeholders
             .get(parent_placeholder)
@@ -699,9 +699,9 @@ impl<'a> ManagementOperator<'a> {
                 parent_placeholder.to_owned(),
             ))?;
 
-        Frame::upsert_parent(self.ctx, child_id, new_parent_id).await?;
+        let inferred_edges = Frame::upsert_parent(self.ctx, child_id, new_parent_id).await?;
 
-        Ok(new_parent_id)
+        Ok((new_parent_id, inferred_edges))
     }
 
     async fn manage(
@@ -942,6 +942,7 @@ impl<'a> ManagementOperator<'a> {
     async fn send_component_ws_events(
         &mut self,
         mut parentage_graph: DependencyGraph<ComponentId>,
+        inferred_edges_by_component_id: HashMap<ComponentId, Vec<SummaryDiagramInferredEdge>>,
     ) -> ManagementResult<()> {
         loop {
             let independent_ids = parentage_graph.independent_ids();
@@ -950,7 +951,8 @@ impl<'a> ManagementOperator<'a> {
             }
             for id in independent_ids {
                 if self.created_components.contains(&id) {
-                    self.send_created_event(id).await?;
+                    self.send_created_event(id, inferred_edges_by_component_id.get(&id).cloned())
+                        .await?;
                     self.created_components.remove(&id);
                 } else if self.updated_components.contains(&id) {
                     self.send_updated_event(id).await?;
@@ -961,7 +963,11 @@ impl<'a> ManagementOperator<'a> {
         }
 
         for &created_id in &self.created_components {
-            self.send_created_event(created_id).await?;
+            self.send_created_event(
+                created_id,
+                inferred_edges_by_component_id.get(&created_id).cloned(),
+            )
+            .await?;
         }
 
         for &updated_id in &self.updated_components {
@@ -971,9 +977,13 @@ impl<'a> ManagementOperator<'a> {
         Ok(())
     }
 
-    async fn send_created_event(&self, id: ComponentId) -> ManagementResult<()> {
+    async fn send_created_event(
+        &self,
+        id: ComponentId,
+        inferred_edges: Option<Vec<SummaryDiagramInferredEdge>>,
+    ) -> ManagementResult<()> {
         let component = Component::get_by_id(self.ctx, id).await?;
-        WsEvent::component_created(
+        WsEvent::component_created_with_inferred_edges(
             self.ctx,
             component
                 .into_frontend_type(
@@ -983,6 +993,7 @@ impl<'a> ManagementOperator<'a> {
                     &mut HashMap::new(),
                 )
                 .await?,
+            inferred_edges,
         )
         .await?
         .publish_on_commit(self.ctx)
@@ -1014,6 +1025,7 @@ impl<'a> ManagementOperator<'a> {
         let mut pending_operations = self.creates().await?;
         let mut component_graph = DependencyGraph::new();
         pending_operations.extend(self.updates().await?);
+        let mut inferred_edges_by_component_id = HashMap::new();
 
         // Parents have to be set before component events are sent
         for pending_parent in pending_operations
@@ -1023,16 +1035,22 @@ impl<'a> ManagementOperator<'a> {
                 _ => None,
             })
         {
-            let parent_id = self
+            let (parent_id, inferred_edges) = self
                 .set_parent(pending_parent.child_component_id, &pending_parent.parent)
                 .await?;
+            if let Some(inferred_edges) = inferred_edges {
+                inferred_edges_by_component_id
+                    .insert(pending_parent.child_component_id, inferred_edges);
+            }
+
             component_graph.id_depends_on(pending_parent.child_component_id, parent_id);
         }
 
         let created_component_ids = (!self.created_components.is_empty())
             .then_some(self.created_components.iter().copied().collect());
 
-        self.send_component_ws_events(component_graph).await?;
+        self.send_component_ws_events(component_graph, inferred_edges_by_component_id)
+            .await?;
 
         // Now, the rest of the pending ops can be executed, which need to have
         // their wsevents sent *after* the component ws events (otherwise some
