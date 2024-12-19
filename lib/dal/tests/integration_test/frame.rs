@@ -163,7 +163,7 @@ async fn convert_component_to_frame_and_attach_no_nesting(ctx: &mut DalContext) 
 
     // Attempt to attach a child to a parent that is a not a frame.
     match Frame::upsert_parent(ctx, fallout_component.id(), starfield_component.id()).await {
-        Ok(()) => panic!("attaching child to parent should fail if parent is not a frame"),
+        Ok(_) => panic!("attaching child to parent should fail if parent is not a frame"),
         Err(FrameError::ParentIsNotAFrame(..)) => {}
         Err(other_error) => panic!("unexpected error: {0}", other_error),
     }
