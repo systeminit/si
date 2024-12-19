@@ -121,7 +121,7 @@ export function useChangeSetsStore() {
         selectedWorkspacePk: () => workspacePk,
       },
       actions: {
-        async setActiveChangeset(changeSetId: string) {
+        async setActiveChangeset(changeSetId: string, stayOnView = false) {
           // We need to force refetch changesets since there's a race condition in which redirects
           // will be triggered but the frontend won't have refreshed the list of changesets
           if (!this.changeSetsById[changeSetId]) {
@@ -132,7 +132,7 @@ export function useChangeSetsStore() {
           const params = { ...route.params };
           let name = route.name;
           // if abandoning changeset and you were looking at view, it may not exist in HEAD
-          if (name === "workspace-compose-view") {
+          if (!stayOnView && name === "workspace-compose-view") {
             name = "workspace-compose";
             delete params.viewId;
           }
@@ -530,7 +530,7 @@ export function useChangeSetsStore() {
               const changeSetName = this.selectedChangeSet?.name;
               if (data.changeSetId === this.selectedChangeSetId) {
                 if (this.headChangeSetId) {
-                  await this.setActiveChangeset(this.headChangeSetId);
+                  await this.setActiveChangeset(this.headChangeSetId, false);
                   toast({
                     component: MovedToHead,
                     props: {

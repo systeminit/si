@@ -238,8 +238,7 @@ function onSelectChangeSet(newVal: string) {
 
     // keep everything in the current route except the change set id
     // note - we use push here, so there is a new browser history entry
-    let name = route.name;
-    if (name === "workspace-compose-view") name = "workspace-compose";
+    const name = route.name;
     router.push({
       name,
       params: {

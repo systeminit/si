@@ -50,6 +50,7 @@ async function handleForcedChangesetRedirection(response: AxiosResponse) {
     const changeSetsStore = useChangeSetsStore();
     await changeSetsStore.setActiveChangeset(
       response.headers.force_change_set_id,
+      true,
     );
   }
 

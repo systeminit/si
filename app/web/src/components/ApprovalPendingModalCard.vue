@@ -70,7 +70,7 @@ defineProps({
 });
 
 const goToChangeSet = (id: ChangeSetId) => {
-  changeSetsStore.setActiveChangeset(id);
+  changeSetsStore.setActiveChangeset(id, true);
   emit("closeModal");
 };
 const rejectChangeSet = (id: ChangeSetId) => {
