@@ -17,12 +17,6 @@
     <template v-else>
       <CachedAppNotification />
       <RouterView :key="selectedWorkspace?.pk" />
-      <Teleport to="body">
-        <canvas
-          id="confetti"
-          class="fixed w-full h-full top-0 left-0 pointer-events-none z-100"
-        ></canvas>
-      </Teleport>
     </template>
   </div>
 </template>
