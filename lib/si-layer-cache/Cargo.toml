@@ -12,7 +12,7 @@ publish.workspace = true
 si-data-nats = { path = "../../lib/si-data-nats" }
 si-data-pg = { path = "../../lib/si-data-pg" }
 si-events = { path = "../../lib/si-events-rs" }
-si-id = { path = "../../lib/si-id" }
+si-id = { path = "../../lib/si-id", features = ["postgres-types"] }
 si-runtime = { path = "../../lib/si-runtime-rs" }
 si-std = { path = "../../lib/si-std" }
 telemetry = { path = "../../lib/telemetry-rs" }

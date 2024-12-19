@@ -63,24 +63,24 @@ id!(ViewId);
 id!(WorkspaceSnapshotNodeId);
 
 // Please keep these alphabetically sorted!
-id_with_pg_types!(ActionId);
-id_with_pg_types!(CachedModuleId);
-id_with_pg_types!(ChangeSetId);
-id_with_pg_types!(ComponentId);
-id_with_pg_types!(FuncId);
-id_with_pg_types!(FuncRunId);
-id_with_pg_types!(UserPk);
-id_with_pg_types!(WorkspaceIntegrationId);
+id_with_postgres_types!(ActionId);
+id_with_postgres_types!(CachedModuleId);
+id_with_postgres_types!(ChangeSetId);
+id_with_postgres_types!(ComponentId);
+id_with_postgres_types!(FuncId);
+id_with_postgres_types!(FuncRunId);
+id_with_postgres_types!(UserPk);
+id_with_postgres_types!(WorkspaceIntegrationId);
 
 // Please keep these alphabetically sorted!
-id_with_pg_and_sea_orm_types!(ModuleIndexModuleId);
-id_with_pg_and_sea_orm_types!(SchemaId);
+id_with_postgres_and_sea_orm_types!(ModuleIndexModuleId);
+id_with_postgres_and_sea_orm_types!(SchemaId);
 
 // Please keep these alphabetically sorted!
 id_with_none_and_sea_orm_types!(SchemaVariantId);
 
 // Please keep these alphabetically sorted!
-id_with_none_and_pg_types!(AttributeValueId);
-id_with_none_and_pg_types!(KeyPairPk);
-id_with_none_and_pg_types!(WorkspacePk);
-id_with_none_and_pg_types!(WorkspaceId);
+id_with_none_and_postgres_types!(AttributeValueId);
+id_with_none_and_postgres_types!(KeyPairPk);
+id_with_none_and_postgres_types!(WorkspacePk);
+id_with_none_and_postgres_types!(WorkspaceId);

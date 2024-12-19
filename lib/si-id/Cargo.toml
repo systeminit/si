@@ -8,9 +8,13 @@ edition.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 
+[features]
+postgres-types = ["dep:postgres-types"]
+sea-orm-types = ["dep:sea-orm"]
+
 [dependencies]
 derive_more = { workspace = true }
-postgres-types = { workspace = true }
-sea-orm = { workspace = true }
+postgres-types = { workspace = true, optional = true }
+sea-orm = { workspace = true, optional = true }
 serde = { workspace = true }
 ulid = { workspace = true }
