@@ -1,5 +1,6 @@
 <template>
   <div
+    v-if="mode !== 'error'"
     :class="
       clsx(
         'max-w-md flex flex-col gap-sm p-sm shadow-2xl',
@@ -61,13 +62,15 @@
         ERROR - this message should not ever show. Something has gone wrong!
       </template>
     </ErrorMessage>
-    <div class="text-sm mb-sm">
-      These actions will be applied to the real world:
-    </div>
-    <div
-      class="flex-grow overflow-y-auto mb-sm border border-neutral-100 dark:border-neutral-700"
-    >
-      <ActionsList slim kind="proposed" noInteraction />
+    <div class="flex flex-col gap-xs">
+      <div class="text-sm">
+        These actions will be applied to the real world:
+      </div>
+      <div
+        class="flex-grow overflow-y-auto border border-neutral-100 dark:border-neutral-700"
+      >
+        <ActionsList slim kind="proposed" noInteraction />
+      </div>
     </div>
     <div
       v-if="requesterIsYou || mode === 'rejected' || userIsApprover"
@@ -108,21 +111,42 @@ import {
   IconNames,
   themeClasses,
 } from "@si/vue-lib/design-system";
-import { computed, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import clsx from "clsx";
+import { useRoute, useRouter } from "vue-router";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { useAuthStore } from "@/store/auth.store";
 import { ChangeSetStatus } from "@/api/sdf/dal/change_set";
+import { useViewsStore } from "@/store/views.store";
 import ActionsList from "./Actions/ActionsList.vue";
 
-export type InsetApprovalModalMode = "requested" | "approved" | "rejected";
+export type InsetApprovalModalMode =
+  | "requested"
+  | "approved"
+  | "rejected"
+  | "error";
 
 const changeSetsStore = useChangeSetsStore();
 const changeSetName = computed(() => changeSetsStore.selectedChangeSet?.name);
 const authStore = useAuthStore();
 const applyingChangeSet = ref(false);
+const route = useRoute();
+const router = useRouter();
 
-// TODO(Wendy) - Mock data we need to replace with real data!
+onMounted(() => {
+  if (mode.value === "error") {
+    try {
+      throw Error(
+        `User arrived at InsetApprovalModal with invalid changeSet status - ${changeSetsStore.selectedChangeSet?.status}`,
+      );
+    } catch (e) {
+      reportError(e);
+    }
+    // dump the user back to head after reporting the error!
+    window.location.href = `/w/${route.params.workspacePk}/head`;
+  }
+});
+
 const mode = computed(() => {
   if (
     changeSetsStore.selectedChangeSet?.status === ChangeSetStatus.NeedsApproval
@@ -136,7 +160,7 @@ const mode = computed(() => {
     changeSetsStore.selectedChangeSet?.status === ChangeSetStatus.Rejected
   ) {
     return "rejected";
-  } else return "";
+  } else return "error";
 });
 
 const requesterEmail = computed(
@@ -195,7 +219,7 @@ const modalData = computed(() => {
   return {
     title: "ERROR!",
     date: new Date(),
-    buttonText: "Error!",
+    buttonText: "Go Back To HEAD",
     buttonTone: "destructive" as Tones,
     messageTone: "destructive" as Tones,
   };
@@ -211,10 +235,23 @@ const confirmHandler = () => {
   } else if (mode.value === "approved") {
     if (authStore.user) {
       applyingChangeSet.value = true;
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      const viewsStore = useViewsStore(changeSetsStore.headChangeSetId!);
+      // need to clear selections prior to applying, having them is causing bugs (BUG-725)
+      viewsStore.clearSelections();
+      viewsStore.syncSelectionIntoUrl();
       changeSetsStore.APPLY_CHANGE_SET(authStore.user.name);
     }
   } else if (mode.value === "rejected") {
     changeSetsStore.REOPEN_CHANGE_SET();
+  } else {
+    router.push({
+      name: "change-set-home",
+      params: {
+        ...route.params,
+        changeSetId: "head",
+      },
+    });
   }
 };
 

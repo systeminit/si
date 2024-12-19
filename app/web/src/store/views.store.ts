@@ -478,6 +478,13 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
 
           this.syncSelectionIntoUrl();
         },
+        clearSelections() {
+          this.selectedEdgeId = null;
+          this.selectedComponentIds = [];
+          this.selectedComponentDetailsTab = null;
+          const key = `${changeSetId}_selected_component`;
+          window.localStorage.removeItem(key);
+        },
         syncSelectionIntoUrl() {
           let selectedIds: string[] = [];
           if (this.selectedEdgeId) {

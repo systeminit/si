@@ -85,6 +85,7 @@ import { useActionsStore } from "@/store/actions.store";
 import { useAuthStore } from "@/store/auth.store";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import RetryApply from "@/components/toasts/RetryApply.vue";
+import { useViewsStore } from "@/store/views.store";
 import ApprovalFlowModal from "./ApprovalFlowModal.vue";
 import ApprovalFlowModal2 from "./ApprovalFlowModal2.vue";
 
@@ -121,6 +122,11 @@ const openApprovalFlowModal = () => {
 const applyChangeSet = async () => {
   if (!route.name) return;
   // if (featureFlagsStore.REBAC) return;
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  const viewsStore = useViewsStore(changeSetsStore.headChangeSetId!);
+  // need to clear selections prior to applying, having them is causing bugs (BUG-725)
+  viewsStore.clearSelections();
+  viewsStore.syncSelectionIntoUrl();
   const resp = await changeSetsStore.APPLY_CHANGE_SET(
     authStore.user?.email ?? "",
   );

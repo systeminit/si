@@ -1,6 +1,11 @@
 <template>
   <div
-    class="m-xs mt-0 text-xs italic text-neutral-300 grow flex flex-row justify-between"
+    :class="
+      clsx(
+        'text-xs italic text-neutral-300 grow flex flex-col justify-between',
+        !noMargin && 'm-xs mt-0',
+      )
+    "
   >
     <div
       :class="
@@ -74,10 +79,11 @@ import { ChangeStatus } from "@/api/sdf/dal/change_set";
 import { ActorAndTimestamp } from "@/api/sdf/dal/component";
 import StatusIndicatorIcon from "./StatusIndicatorIcon.vue";
 
-const props = defineProps({
+defineProps({
   changeStatus: { type: String as PropType<ChangeStatus> },
   created: { type: Object as PropType<ActorAndTimestamp>, required: true },
   modified: { type: Object as PropType<ActorAndTimestamp> },
   deleted: { type: Object as PropType<ActorAndTimestamp> },
+  noMargin: { type: Boolean },
 });
 </script>
