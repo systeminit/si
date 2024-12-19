@@ -3646,6 +3646,7 @@ impl Component {
 #[serde(rename_all = "camelCase")]
 pub struct ComponentCreatedPayload {
     pub component: DiagramComponentView,
+    pub inferred_edges: Option<Vec<SummaryDiagramInferredEdge>>,
     change_set_id: ChangeSetId,
 }
 
@@ -3852,6 +3853,23 @@ impl WsEvent {
             ctx,
             WsPayload::ComponentCreated(ComponentCreatedPayload {
                 change_set_id: ctx.change_set_id(),
+                inferred_edges: None,
+                component,
+            }),
+        )
+        .await
+    }
+
+    pub async fn component_created_with_inferred_edges(
+        ctx: &DalContext,
+        component: DiagramComponentView,
+        inferred_edges: Option<Vec<SummaryDiagramInferredEdge>>,
+    ) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::ComponentCreated(ComponentCreatedPayload {
+                change_set_id: ctx.change_set_id(),
+                inferred_edges,
                 component,
             }),
         )

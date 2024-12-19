@@ -1269,6 +1269,16 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                   if (data.changeSetId !== changeSetId) return;
                   this.rawComponentsById[data.component.id] = data.component;
                   this.processAndStoreRawComponent(data.component.id, {});
+
+                  data.inferredEdges?.forEach((edge) => {
+                    const e = edgeFromRawEdge({
+                      isManagement: false,
+                      isInferred: true,
+                    })(edge);
+
+                    this.rawEdgesById[e.id] = e;
+                    this.processRawEdge(e.id);
+                  });
                 },
               },
               {

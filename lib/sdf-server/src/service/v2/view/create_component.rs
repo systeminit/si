@@ -181,8 +181,9 @@ pub async fn create_component(
         ));
     }
 
+    let mut maybe_inferred_edges = None;
     if let Some(frame_id) = request.parent_id {
-        Frame::upsert_parent(&ctx, component.id(), frame_id).await?;
+        maybe_inferred_edges = Frame::upsert_parent(&ctx, component.id(), frame_id).await?;
 
         track(
             &posthog_client,
@@ -224,7 +225,7 @@ pub async fn create_component(
             &mut diagram_sockets,
         )
         .await?;
-    WsEvent::component_created(&ctx, payload)
+    WsEvent::component_created_with_inferred_edges(&ctx, payload, maybe_inferred_edges)
         .await?
         .publish_on_commit(&ctx)
         .await?;

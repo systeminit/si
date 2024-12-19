@@ -164,26 +164,23 @@ impl Frame {
         ctx: &DalContext,
         child_id: ComponentId,
         new_parent_id: ComponentId,
-    ) -> FrameResult<()> {
+    ) -> FrameResult<Option<Vec<SummaryDiagramInferredEdge>>> {
         // let's see if we need to even do anything
         if let Some(current_parent_id) = Component::get_parent_by_id(ctx, child_id).await? {
             if current_parent_id == new_parent_id {
-                return Ok(());
+                return Ok(None);
             }
         }
 
         match Component::get_type_by_id(ctx, new_parent_id).await? {
-            ComponentType::ConfigurationFrameDown | ComponentType::ConfigurationFrameUp => {
-                Self::attach_child_to_parent_inner(ctx, new_parent_id, child_id).await?;
-            }
-            ComponentType::Component => {
-                return Err(FrameError::ParentIsNotAFrame(child_id, new_parent_id))
-            }
+            ComponentType::ConfigurationFrameDown | ComponentType::ConfigurationFrameUp => Ok(
+                Some(Self::attach_child_to_parent_inner(ctx, new_parent_id, child_id).await?),
+            ),
+            ComponentType::Component => Err(FrameError::ParentIsNotAFrame(child_id, new_parent_id)),
             ComponentType::AggregationFrame => {
-                return Err(FrameError::AggregateFramesUnsupported(new_parent_id))
+                Err(FrameError::AggregateFramesUnsupported(new_parent_id))
             }
         }
-        Ok(())
     }
 
     /// Removes the existing parent connection if it exists and adds the new one.
@@ -194,7 +191,7 @@ impl Frame {
         ctx: &DalContext,
         parent_id: ComponentId,
         child_id: ComponentId,
-    ) -> FrameResult<()> {
+    ) -> FrameResult<Vec<SummaryDiagramInferredEdge>> {
         // cache current map of input <-> output sockets based on what the parent knows about right now!!!!
         let initial_impacted_values: HashSet<SocketAttributeValuePair> =
             Self::get_all_inferred_connections_for_component_tree(ctx, parent_id, child_id).await?;
@@ -281,7 +278,7 @@ impl Frame {
                 inferred_edges_to_upsert.push(edge);
             }
         }
-        WsEvent::upsert_inferred_edges(ctx, inferred_edges_to_upsert)
+        WsEvent::upsert_inferred_edges(ctx, inferred_edges_to_upsert.clone())
             .await?
             .publish_on_commit(ctx)
             .await?;
@@ -312,7 +309,7 @@ impl Frame {
         )
         .await?;
 
-        Ok(())
+        Ok(inferred_edges_to_upsert)
     }
 
     #[instrument(

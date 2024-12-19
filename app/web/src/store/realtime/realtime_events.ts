@@ -176,6 +176,7 @@ export type WsEventPayloadMap = {
 
   ComponentCreated: {
     component: RawComponent;
+    inferredEdges?: RawEdge[];
     changeSetId: string;
   };
   ComponentDeleted: {
