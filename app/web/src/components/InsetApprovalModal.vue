@@ -111,7 +111,7 @@ import {
   IconNames,
   themeClasses,
 } from "@si/vue-lib/design-system";
-import { computed, onMounted, ref } from "vue";
+import { computed, ref } from "vue";
 import clsx from "clsx";
 import { useRoute, useRouter } from "vue-router";
 import { useChangeSetsStore } from "@/store/change_sets.store";
@@ -133,6 +133,15 @@ const applyingChangeSet = ref(false);
 const route = useRoute();
 const router = useRouter();
 
+/*
+This is breaking on the happy path of applying a change set :)
+1. the selected change set is <SHA-NOT-HEAD>
+2. we apply the changeset, and set its status to applied
+3. we push the router change to head, but the URL has not changed yet
+4. WorkspaceModelAndView re-renders
+5. Which re-mounts this component
+6. selectedChangeSet is the <SHA-NOT-HEAD> b/c the url has not changed
+7. and its status is applied
 onMounted(() => {
   if (mode.value === "error") {
     try {
@@ -146,6 +155,7 @@ onMounted(() => {
     window.location.href = `/w/${route.params.workspacePk}/head`;
   }
 });
+*/
 
 const mode = computed(() => {
   if (
