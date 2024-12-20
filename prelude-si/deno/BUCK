@@ -9,6 +9,10 @@ export_file(
     name = "build_deno_bin.py",
 )
 
+export_file(
+    name = "deno_format.py",
+)
+
 yapf_check(
     name = "check-format-python",
     srcs = glob(["**/*.py"]),

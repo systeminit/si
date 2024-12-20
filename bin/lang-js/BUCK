@@ -22,6 +22,7 @@ load(
 load(
     "@prelude-si//:deno.bzl",
     "deno_binary",
+    "deno_format",
 )
 
 export_file(
@@ -62,6 +63,18 @@ deno_binary(
         "worker-options",
     ],
     visibility = ["PUBLIC"],
+)
+
+deno_format(
+    name = "fix-format",
+    srcs = glob(["**/*.ts", "**/*.js"]),
+    ignore = ["node_modules"],
+)
+
+deno_format(
+    name = "check-format",
+    srcs = glob(["**/*.ts", "**/*.js"]),
+    check = True,
 )
 
 dev_deps_srcs = {

@@ -69,3 +69,55 @@ deno_binary = rule(
         ),
     },
 )
+
+def deno_format_impl(ctx: AnalysisContext) -> list[Provider]:
+    """Implementation of the deno_format rule."""
+    deno_toolchain = ctx.attrs._deno_toolchain[DenoToolchainInfo]
+
+    cmd = cmd_args(
+        ctx.attrs._python_toolchain[PythonToolchainInfo].interpreter,
+        deno_toolchain.format_deno[DefaultInfo].default_outputs[0],
+    )
+
+    for src in ctx.attrs.srcs:
+        cmd.add("--input", src)
+
+    if ctx.attrs.check:
+        cmd.add("--check")
+
+    if ctx.attrs.ignore:
+        for ignore_path in ctx.attrs.ignore:
+            cmd.add("--ignore=" + ignore_path)
+
+    return [
+        DefaultInfo(),
+        RunInfo(args = cmd),
+    ]
+
+deno_format = rule(
+    impl = deno_format_impl,
+    attrs = {
+        "srcs": attrs.list(
+            attrs.source(),
+            default = [],
+            doc = "The source files to format",
+        ),
+        "check": attrs.bool(
+            default = False,
+            doc = "Check if files are formatted without making changes",
+        ),
+        "ignore": attrs.list(
+            attrs.string(),
+            default = [],
+            doc = "List of files or directories to ignore",
+        ),
+        "_python_toolchain": attrs.toolchain_dep(
+            default = "toolchains//:python",
+            providers = [PythonToolchainInfo],
+        ),
+        "_deno_toolchain": attrs.toolchain_dep(
+            default = "toolchains//:deno",
+            providers = [DenoToolchainInfo],
+        ),
+    },
+)
