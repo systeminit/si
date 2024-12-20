@@ -616,6 +616,13 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
           // to begin, and then adjust it via delta when things move
           this.sockets = view.sockets;
         },
+        clearSelectedView() {
+          this.selectedViewId = null;
+          this.sockets = {};
+          this.components = {};
+          this.groups = {};
+          this.viewNodes = {};
+        },
         async selectView(id: ViewId) {
           const view = this.viewsById[id];
           if (view) {

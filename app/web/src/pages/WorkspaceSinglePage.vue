@@ -130,6 +130,7 @@ import {
   VormInput,
 } from "@si/vue-lib/design-system";
 import { useChangeSetsStore } from "@/store/change_sets.store";
+import { useViewsStore } from "@/store/views.store";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { useAuthStore } from "@/store/auth.store";
 import AppLayout from "@/components/layout/AppLayout.vue";
@@ -191,13 +192,30 @@ function handleUrlChange() {
   const changeSetId = route.params.changeSetId as string | undefined;
   if ([undefined, "null", "undefined", "auto"].includes(changeSetId ?? "")) {
     const id = changeSetsStore.getAutoSelectedChangeSetId();
+    const newChangeSetId =
+      id === false || id === changeSetsStore.headChangeSetId ? "head" : id;
+
+    const viewId = route.params.viewId as string | undefined;
+    if (viewId) {
+      const viewStore = useViewsStore(newChangeSetId);
+      if (!viewStore.viewsById[viewId]) {
+        delete route.params.viewId;
+        const defaultView =
+          viewStore.viewList.find((v) => v.id === viewId) ||
+          viewStore.viewList[0];
+        if (viewStore.outlinerViewId === viewId)
+          viewStore.outlinerViewId = defaultView?.id ?? null;
+        if (viewStore.selectedViewId === viewId)
+          if (defaultView?.id) viewStore.selectView(defaultView.id);
+          else viewStore.clearSelectedView();
+      }
+    }
 
     router.replace({
       name: route.name, // eslint-disable-line @typescript-eslint/no-non-null-assertion
       params: {
         ...route.params,
-        changeSetId:
-          id === false || id === changeSetsStore.headChangeSetId ? "head" : id,
+        changeSetId: newChangeSetId,
       },
       query: { ...route.query },
     });
