@@ -581,13 +581,11 @@ fn buck2_development(config: &mut ConfigFile) -> Result<()> {
         .map_err(ConfigError::cyclone_spec_build)?
         .to_string_lossy()
         .to_string();
-    let lang_server_cmd_path = "/home/scott/projects/si/lang-js";
-
-    // resources
-    // .get_ends_with("lang-js")
-    // .map_err(ConfigError::cyclone_spec_build)?
-    // .to_string_lossy()
-    // .to_string();
+    let lang_server_cmd_path = resources
+        .get_ends_with("lang-js")
+        .map_err(ConfigError::cyclone_spec_build)?
+        .to_string_lossy()
+        .to_string();
 
     warn!(
         cyclone_cmd_path = cyclone_cmd_path.as_str(),

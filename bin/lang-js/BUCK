@@ -19,6 +19,10 @@ load(
     "pnpm_task_binary",
     "pnpm_task_test",
 )
+load(
+    "@prelude-si//:deno.bzl",
+    "deno_binary",
+)
 
 export_file(
     name = "package.json",
@@ -47,6 +51,19 @@ prod_deps_srcs = {
     "lib/ts-lib": "//lib/ts-lib:src",
 }
 
+deno_binary(
+    name = "lang-js",
+    main = "src/index.ts",
+    out = "lang-js",
+    permissions = [
+        "allow-all",
+    ],
+    unstable_flags = [
+        "worker-options",
+    ],
+    visibility = ["PUBLIC"],
+)
+
 dev_deps_srcs = {
     "lib/eslint-config": "//lib/eslint-config:src",
     "lib/tsconfig": "//lib/tsconfig:src",
@@ -64,14 +81,14 @@ typescript_dist(
     dev_deps_srcs = dev_deps_srcs,
 )
 
-typescript_runnable_dist(
-    name = "lang-js",
-)
+# typescript_runnable_dist(
+#     name = "lang-js",
+# )
 
-typescript_runnable_dist_bin(
-    name = "bin",
-    typescript_runnable_dist = ":lang-js",
-)
+# typescript_runnable_dist_bin(
+#     name = "bin",
+#     typescript_runnable_dist = ":lang-js",
+# )
 
 eslint(
     name = "check-lint",
