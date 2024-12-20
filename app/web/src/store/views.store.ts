@@ -734,6 +734,12 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                 },
               );
               this.setGroupZIndex();
+
+              if (this.selectedViewId === view.id) {
+                this.components = view.components;
+                this.groups = view.groups;
+                this.viewNodes = view.viewNodes;
+              }
             },
           });
         },
