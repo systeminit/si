@@ -22,6 +22,7 @@ import { useRealtimeStore } from "./realtime/realtime.store";
 import { useRouterStore } from "./router.store";
 import handleStoreError from "./errors";
 import { useStatusStore } from "./status.store";
+import { useViewsStore } from "./views.store";
 
 const toast = useToast();
 
@@ -603,6 +604,21 @@ export function useChangeSetsStore() {
                 const route = useRouterStore().currentRoute;
 
                 if (route?.name) {
+                  // am i on a view, and about to move to head
+                  // where that view does not yet exist
+                  if ("viewId" in route.params) {
+                    const routeViewId = route.params.viewId as string;
+                    if (!this.headChangeSetId) delete route.params.viewId;
+                    else {
+                      const headViewStore = useViewsStore(this.headChangeSetId);
+                      const onHead = headViewStore.viewList.find(
+                        (v) => v.id === routeViewId,
+                      );
+                      if (!onHead || !headViewStore.viewsById[routeViewId])
+                        delete route.params.viewId;
+                    }
+                  }
+
                   router.push({
                     name: route.name,
                     params: {
