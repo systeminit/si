@@ -86,8 +86,10 @@ impl ActionDependencyGraph {
         // things they are feeding data into.
         for component_id in actions_by_component_id.keys().copied() {
             let component = Component::get_by_id(ctx, component_id).await?;
-            let component_index = component_dependencies.add_node(component_id);
-            component_dependencies_index_by_id.insert(component_id, component_index);
+            let component_index = component_dependencies_index_by_id
+                .entry(component_id)
+                .or_insert_with(|| component_dependencies.add_node(component_id))
+                .to_owned();
             for incoming_connection in component.incoming_connections(ctx).await? {
                 component_dependencies_index_by_id
                     .entry(incoming_connection.from_component_id)
