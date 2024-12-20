@@ -182,6 +182,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
     changeSetId,
     defineStore(`ws${workspaceId || "NONE"}/cs${changeSetId || "NONE"}/views`, {
       state: () => ({
+        activatedAndFetched: false,
         selectedViewId: null as ViewId | null,
         outlinerViewId: null as ViewId | null,
         recentViews: new UniqueStack() as UniqueStack<ViewId>,
@@ -1596,6 +1597,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
             route?.name as string,
           )
         ) {
+          this.activatedAndFetched = true;
           if (route?.params.viewId) viewId = route.params.viewId as string;
           await this.FETCH_VIEW(viewId);
           // ^ selects the view

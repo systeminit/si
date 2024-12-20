@@ -311,7 +311,6 @@ import { ComponentType } from "@/api/sdf/dal/schema";
 import { useStatusStore } from "@/store/status.store";
 import { useQualificationsStore } from "@/store/qualifications.store";
 import { nonNullable } from "@/utils/typescriptLinter";
-import { ViewId } from "@/api/sdf/dal/views";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { DefaultMap } from "@/utils/defaultmap";
 import DiagramGridBackground from "./DiagramGridBackground.vue";
@@ -392,7 +391,6 @@ const ZOOM_PAN_FACTOR = 0.5;
 
 const props = defineProps<{
   cursors?: DiagramCursorDef[];
-  viewId: ViewId | undefined;
   readOnly?: boolean;
 }>();
 
