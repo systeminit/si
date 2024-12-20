@@ -567,7 +567,6 @@ export function useChangeSetsStore() {
           {
             eventType: "ChangeSetApplied",
             callback: (data) => {
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               const { changeSetId, userPk, toRebaseChangeSetId } = data;
               const changeSet = this.changeSetsById[changeSetId];
               if (changeSet) {
