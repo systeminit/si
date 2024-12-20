@@ -599,6 +599,23 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
           this.selectedComponentIds = valid;
           this.syncSelectionIntoUrl();
         },
+        viewAssignment(view: View) {
+          /* *
+           * i think i want to set these as in-memory references
+           * that way i don't have to do two writes for incoming WsEvents
+           * or two writes for user actions
+           *
+           * this does mean that `draggedElementsPositionsPreDrag` and
+           * `resizedElementSizesPreResize` need to be populated
+           * but those could just be a `structuredClone` of this data
+           * */
+          this.components = view.components;
+          this.groups = view.groups;
+          this.viewNodes = view.viewNodes;
+          // derive the socket position from the component position
+          // to begin, and then adjust it via delta when things move
+          this.sockets = view.sockets;
+        },
         async selectView(id: ViewId) {
           const view = this.viewsById[id];
           if (view) {
@@ -620,22 +637,8 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
             this.selectedViewId = id;
             this.outlinerViewId = id;
             this._enforceSelectedComponents();
-            /* *
-             * i think i want to set these as in-memory references
-             * that way i don't have to do two writes for incoming WsEvents
-             * or two writes for user actions
-             *
-             * this does mean that `draggedElementsPositionsPreDrag` and
-             * `resizedElementSizesPreResize` need to be populated
-             * but those could just be a `structuredClone` of this data
-             * */
-            this.components = view.components;
-            this.groups = view.groups;
-            this.viewNodes = view.viewNodes;
             this.setGroupZIndex();
-            // derive the socket position from the component position
-            // to begin, and then adjust it via delta when things move
-            this.sockets = view.sockets;
+            this.viewAssignment(view);
           } else {
             const res = await this.FETCH_VIEW(id);
             if (!res.result.success) {
@@ -734,12 +737,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                 },
               );
               this.setGroupZIndex();
-
-              if (this.selectedViewId === view.id) {
-                this.components = view.components;
-                this.groups = view.groups;
-                this.viewNodes = view.viewNodes;
-              }
+              if (this.selectedViewId === view.id) this.viewAssignment(view);
             },
           });
         },
