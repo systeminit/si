@@ -122,37 +122,39 @@ impl CorrectTransforms for ViewNodeWeightV1 {
                 // We want the one most likely to have the smaller cardinality to be the one we
                 // loop over in the inner loop to try to minimize the number of iterations.
                 if !removed_geometries.contains(&existing_geometry_id.into()) {
-                    let represented_thing_idx = workspace_snapshot_graph
-                        .get_edge_weight_kind_target_idx(
+                    if let Ok(Some(represented_thing_idx)) = workspace_snapshot_graph
+                        .get_edge_weight_kind_target_idx_opt(
                             destination,
                             Direction::Outgoing,
                             EdgeWeightKindDiscriminants::Represents,
-                        )?;
-                    if let NodeWeight::Component(component) =
-                        workspace_snapshot_graph.get_node_weight(represented_thing_idx)?
+                        )
                     {
-                        if removed_components.contains(&component.id().into()) {
-                            // If both the View and the Components represented in the View are being
-                            // removed, then there won't be individual Update::RemoveEdge for the
-                            // Geometry, so we need to check if the Component itself is being removed.
-                            continue;
+                        if let NodeWeight::Component(component) =
+                            workspace_snapshot_graph.get_node_weight(represented_thing_idx)?
+                        {
+                            if removed_components.contains(&component.id().into()) {
+                                // If both the View and the Components represented in the View are being
+                                // removed, then there won't be individual Update::RemoveEdge for the
+                                // Geometry, so we need to check if the Component itself is being removed.
+                                continue;
+                            }
+
+                            // If the Component isn't being removed, we need to make sure that it still
+                            // exists in at least one other View to make sure we're not orphaning it.
+                            let mut appears_in_views = workspace_snapshot_graph
+                                .component_contained_in_views(component.id().into())?;
+                            let my_id: ViewId = self.id().into();
+                            appears_in_views.retain(|&view_id| my_id != view_id);
+
+                            if !appears_in_views.is_empty() {
+                                continue;
+                            }
                         }
 
-                        // If the Component isn't being removed, we need to make sure that it still
-                        // exists in at least one other View to make sure we're not orphaning it.
-                        let mut appears_in_views = workspace_snapshot_graph
-                            .component_contained_in_views(component.id().into())?;
-                        let my_id: ViewId = self.id().into();
-                        appears_in_views.retain(|&view_id| my_id != view_id);
+                        updates.remove(view_removal_update_idx);
 
-                        if !appears_in_views.is_empty() {
-                            continue;
-                        }
+                        return Ok(updates);
                     }
-
-                    updates.remove(view_removal_update_idx);
-
-                    return Ok(updates);
                 }
             }
         }
