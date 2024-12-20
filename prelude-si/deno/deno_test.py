@@ -14,32 +14,26 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--input",
-        action='append',
+        action="append",
         required=True,
         type=pathlib.Path,
-        help="The test file to run (can be specified multiple times)"
+        help="The test file to run (can be specified multiple times)",
     )
     parser.add_argument(
         "--filter",
         type=str,
-        help="Run tests with this string or pattern in the test name"
+        help="Run tests with this string or pattern in the test name",
     )
-    parser.add_argument(
-        "--ignore",
-        nargs='*',
-        default=[],
-        help="List of files or directories to ignore"
-    )
-    parser.add_argument(
-        "--parallel",
-        action="store_true",
-        help="Run tests in parallel"
-    )
-    parser.add_argument(
-        "--watch",
-        action="store_true",
-        help="Watch for file changes and restart tests"
-    )
+    parser.add_argument("--ignore",
+                        nargs="*",
+                        default=[],
+                        help="List of files or directories to ignore")
+    parser.add_argument("--parallel",
+                        action="store_true",
+                        help="Run tests in parallel")
+    parser.add_argument("--watch",
+                        action="store_true",
+                        help="Watch for file changes and restart tests")
 
     return parser.parse_args()
 
@@ -49,7 +43,7 @@ def run_tests(
     filter_pattern: str | None,
     ignore_paths: List[str],
     parallel: bool,
-    watch: bool
+    watch: bool,
 ) -> None:
     """Run deno test with the specified arguments."""
     cmd = ["deno", "test"]
@@ -69,11 +63,7 @@ def run_tests(
     cmd.extend(input_paths)
 
     try:
-        result = subprocess.run(
-            cmd,
-            check=True,
-            text=True
-        )
+        result = subprocess.run(cmd, check=True, text=True)
         if result.stdout:
             print(result.stdout)
     except subprocess.CalledProcessError as e:
@@ -96,18 +86,12 @@ def main() -> int:
             abs_path = os.path.abspath(input_path)
             if not os.path.exists(abs_path):
                 print(f"Error: Input path not found: {abs_path}",
-                      file=sys.stderr
-                      )
+                      file=sys.stderr)
                 return 1
             input_paths.append(abs_path)
 
-        run_tests(
-            input_paths,
-            args.filter,
-            args.ignore,
-            args.parallel,
-            args.watch
-        )
+        run_tests(input_paths, args.filter, args.ignore, args.parallel,
+                  args.watch)
 
         print("Tests completed successfully.")
         return 0

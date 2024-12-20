@@ -13,18 +13,15 @@ from typing import List
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--input",
-        required=True,
-        type=pathlib.Path,
-        help="The path to compile, ideally a index.ts file"
-    )
+    parser.add_argument("--input",
+                        required=True,
+                        type=pathlib.Path,
+                        help="The path to compile, ideally a index.ts file")
     parser.add_argument(
         "--output",
         required=True,
         type=pathlib.Path,
-        help="The target directory for outputting the artifact"
-    )
+        help="The target directory for outputting the artifact")
     parser.add_argument(
         "--permissions",
         nargs='*',
@@ -51,19 +48,10 @@ def parse_unstable_flags(flags: List[str]) -> List[str]:
     return [f'--unstable-{flag}' for flag in flags]
 
 
-def run_compile(
-    input_path: str,
-    output_path: str,
-    permissions: List[str],
-    flags: List[str]
-) -> None:
+def run_compile(input_path: str, output_path: str, permissions: List[str],
+                flags: List[str]) -> None:
     """Run deno compile with the specified arguments."""
-    cmd = [
-        "deno",
-        "compile",
-        "--output",
-        output_path
-    ]
+    cmd = ["deno", "compile", "--output", output_path]
 
     if permissions:
         cmd.extend(permissions)
@@ -74,12 +62,7 @@ def run_compile(
     cmd.append(input_path)
 
     try:
-        subprocess.run(
-            cmd,
-            check=True,
-            capture_output=True,
-            text=True
-        )
+        subprocess.run(cmd, check=True, capture_output=True, text=True)
     except subprocess.CalledProcessError as e:
         print("Error compiling Deno binary:", file=sys.stderr)
         print(f"Command: {' '.join(cmd)}", file=sys.stderr)
@@ -98,8 +81,7 @@ def main() -> int:
 
         if not os.path.exists(abs_input_path):
             print(f"Error: Input file not found: {abs_input_path}",
-                  file=sys.stderr
-                  )
+                  file=sys.stderr)
             return 1
 
         os.makedirs(os.path.dirname(abs_output_path), exist_ok=True)
@@ -107,12 +89,8 @@ def main() -> int:
         permissions_list = parse_permissions(args.permissions)
         flags_list = parse_unstable_flags(args.unstable_flags)
 
-        run_compile(
-                abs_input_path,
-                abs_output_path,
-                permissions_list,
-                flags_list
-                )
+        run_compile(abs_input_path, abs_output_path, permissions_list,
+                    flags_list)
 
         os.chmod(
             abs_output_path,

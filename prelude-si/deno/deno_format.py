@@ -12,33 +12,25 @@ from typing import List
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--input",
-        action='append',
-        required=True,
-        type=pathlib.Path,
-        help="The files or directories to format"
-    )
+    parser.add_argument("--input",
+                        action='append',
+                        required=True,
+                        type=pathlib.Path,
+                        help="The files or directories to format")
     parser.add_argument(
         "--check",
         action="store_true",
-        help="Check if files are formatted without making changes"
-    )
-    parser.add_argument(
-        "--ignore",
-        nargs='*',
-        default=[],
-        help="List of files or directories to ignore"
-    )
+        help="Check if files are formatted without making changes")
+    parser.add_argument("--ignore",
+                        nargs='*',
+                        default=[],
+                        help="List of files or directories to ignore")
 
     return parser.parse_args()
 
 
-def run_format(
-    input_paths: List[str],
-    check_only: bool,
-    ignore_paths: List[str]
-) -> None:
+def run_format(input_paths: List[str], check_only: bool,
+               ignore_paths: List[str]) -> None:
     """Run deno fmt with the specified arguments."""
     cmd = ["deno", "fmt"]
 
@@ -52,11 +44,7 @@ def run_format(
     cmd.extend(input_paths)
 
     try:
-        result = subprocess.run(
-            cmd,
-            check=True,
-            text=True
-        )
+        result = subprocess.run(cmd, check=True, text=True)
         if result.stdout:
             print(result.stdout)
     except subprocess.CalledProcessError as e:
@@ -79,16 +67,11 @@ def main() -> int:
             abs_path = os.path.abspath(input_path)
             if not os.path.exists(abs_path):
                 print(f"Error: Input path not found: {abs_path}",
-                      file=sys.stderr
-                      )
+                      file=sys.stderr)
                 return 1
             input_paths.append(abs_path)
 
-        run_format(
-            input_paths,
-            args.check,
-            args.ignore
-        )
+        run_format(input_paths, args.check, args.ignore)
 
         if args.check:
             print("Format check completed successfully.")
