@@ -1747,6 +1747,11 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                     finalGeo.height = node.height;
                     finalGeo.width = node.width;
                     view.components[data.component.id] = finalGeo as IRect;
+                    for (const [key, loc] of Object.entries(
+                      setSockets(node, finalGeo),
+                    )) {
+                      view.sockets[key] = loc;
+                    }
                   } else {
                     if (!finalGeo.width) finalGeo.width = 500;
                     if (!finalGeo.height) finalGeo.height = 500;
@@ -1755,6 +1760,15 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                       size: finalGeo.width * finalGeo.height,
                       zIndex: 0,
                     };
+                    const node = processRawComponent(
+                      data.component,
+                      componentsStore.rawComponentsById,
+                    ) as DiagramGroupData;
+                    for (const [key, loc] of Object.entries(
+                      setSockets(node, finalGeo),
+                    )) {
+                      view.sockets[key] = loc;
+                    }
                   }
                 });
                 this.setGroupZIndex();
