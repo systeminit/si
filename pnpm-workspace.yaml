@@ -7,6 +7,7 @@ packages:
   - bin/lang-js
   - lib/eslint-config
   - lib/ts-lib
+  - lib/ts-lib-deno
   - lib/tsconfig
   - lib/vue-lib
   - lib/yjs-codemirror-plugin
