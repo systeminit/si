@@ -129,9 +129,7 @@ impl InputSocketExt for WorkspaceSnapshot {
             hash,
         )?;
 
-        let attribute_prototype = AttributePrototype::new(ctx, func_id)
-            .await
-            .map_err(Box::new)?;
+        let attribute_prototype = AttributePrototype::new(ctx, func_id).await?;
 
         self.working_copy_mut().await.add_edge_between_ids(
             input_socket_id.into(),

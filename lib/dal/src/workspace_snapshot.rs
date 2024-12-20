@@ -44,6 +44,7 @@ use std::collections::{HashMap, HashSet};
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 
+use anyhow::Result;
 use petgraph::prelude::*;
 pub use petgraph::Direction;
 use serde::{Deserialize, Serialize};
@@ -188,7 +189,7 @@ impl WorkspaceSnapshotError {
     }
 }
 
-pub type WorkspaceSnapshotResult<T> = Result<T, WorkspaceSnapshotError>;
+pub type WorkspaceSnapshotResult<T> = Result<T>;
 
 /// The workspace graph. The public interface for this is provided through the the various `Ext`
 /// traits that are implemented for [`WorkspaceSnapshot`].
@@ -982,7 +983,7 @@ impl WorkspaceSnapshot {
     ) -> WorkspaceSnapshotResult<Ulid> {
         self.get_category_node(source, kind)
             .await?
-            .ok_or(WorkspaceSnapshotError::CategoryNodeNotFound(kind))
+            .ok_or(WorkspaceSnapshotError::CategoryNodeNotFound(kind).into())
     }
 
     pub async fn get_category_node(
@@ -1690,8 +1691,7 @@ impl WorkspaceSnapshot {
     ) -> WorkspaceSnapshotResult<InferredConnectionsWriteGuard<'_>> {
         let mut inferred_connection_write_guard = self.inferred_connection_graph.write().await;
         if inferred_connection_write_guard.is_none() {
-            *inferred_connection_write_guard =
-                Some(InferredConnectionGraph::new(ctx).await.map_err(Box::new)?);
+            *inferred_connection_write_guard = Some(InferredConnectionGraph::new(ctx).await?);
         }
 
         Ok(InferredConnectionsWriteGuard {

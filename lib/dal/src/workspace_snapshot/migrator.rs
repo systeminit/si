@@ -14,6 +14,7 @@ use crate::{
     ChangeSet, ChangeSetError, ChangeSetStatus, DalContext, TransactionsError, Visibility,
     Workspace, WorkspaceError, WorkspaceSnapshot, WorkspaceSnapshotError,
 };
+use anyhow::Result;
 use si_events::WorkspaceSnapshotAddress;
 use si_layer_cache::LayerDbError;
 use std::sync::Arc;
@@ -55,7 +56,7 @@ pub enum SnapshotGraphMigratorError {
     WorkspaceSnapshotGraph(#[from] WorkspaceSnapshotGraphError),
 }
 
-pub type SnapshotGraphMigratorResult<T> = Result<T, SnapshotGraphMigratorError>;
+pub type SnapshotGraphMigratorResult<T> = Result<T>;
 
 pub struct SnapshotGraphMigrator;
 
@@ -126,7 +127,7 @@ impl SnapshotGraphMigrator {
                             .await?;
                         continue;
                     } else {
-                        return Err(err)?;
+                        return Err(err);
                     }
                 }
             };
@@ -194,7 +195,8 @@ impl SnapshotGraphMigrator {
                     return Err(SnapshotGraphMigratorError::UnexpectedGraphVersion(
                         workspace_snapshot_address,
                         working_graph.into(),
-                    ));
+                    )
+                    .into());
                 }
                 WorkspaceSnapshotGraph::V1(inner_graph) => {
                     working_graph = WorkspaceSnapshotGraph::V2(migrate_v1_to_v2(inner_graph)?);

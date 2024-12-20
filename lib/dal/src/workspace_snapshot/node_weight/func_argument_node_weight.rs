@@ -72,7 +72,8 @@ impl FuncArgumentNodeWeight {
                 return Err(NodeWeightError::InvalidContentAddressForWeightKind(
                     Into::<ContentAddressDiscriminants>::into(other).to_string(),
                     ContentAddressDiscriminants::FuncArg.to_string(),
-                ));
+                )
+                .into());
             }
         };
 

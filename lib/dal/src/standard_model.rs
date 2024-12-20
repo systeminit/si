@@ -1,4 +1,5 @@
 use crate::{Tenancy, TransactionsError, UserError, UserPk};
+use anyhow::Result;
 use chrono::{DateTime, Utc};
 use postgres_types::ToSql;
 use serde::{de::DeserializeOwned, Serialize};
@@ -32,7 +33,7 @@ pub enum StandardModelError {
     UserNotFound(UserPk),
 }
 
-pub type StandardModelResult<T> = Result<T, StandardModelError>;
+pub type StandardModelResult<T> = Result<T>;
 
 #[remain::sorted]
 #[derive(AsRefStr, Debug, Eq, PartialEq)]
@@ -505,7 +506,7 @@ where
         )
         .await?;
     row.try_get("updated_at")
-        .map_err(|_| StandardModelError::ModelMissing(table.to_string(), id.to_string()))
+        .map_err(|_| StandardModelError::ModelMissing(table.to_string(), id.to_string()).into())
 }
 
 #[instrument(level = "trace", skip(ctx))]
@@ -541,7 +542,7 @@ pub async fn delete_by_id<ID: Send + Sync + ToSql + std::fmt::Display>(
         )
         .await?;
     row.try_get("deleted_at")
-        .map_err(|_| StandardModelError::ModelMissing(table.to_string(), id.to_string()))
+        .map_err(|_| StandardModelError::ModelMissing(table.to_string(), id.to_string()).into())
 }
 
 #[instrument(level = "trace", skip(ctx))]
@@ -560,7 +561,7 @@ pub async fn delete_by_pk<PK: Send + Sync + ToSql + std::fmt::Display>(
         )
         .await?;
     row.try_get("updated_at")
-        .map_err(|_| StandardModelError::ModelMissing(table.to_string(), pk.to_string()))
+        .map_err(|_| StandardModelError::ModelMissing(table.to_string(), pk.to_string()).into())
 }
 
 #[instrument(level = "trace", skip(ctx))]
@@ -579,7 +580,7 @@ pub async fn undelete<PK: Send + Sync + ToSql + std::fmt::Display>(
         )
         .await?;
     row.try_get("updated_at")
-        .map_err(|_| StandardModelError::ModelMissing(table.to_string(), pk.to_string()))
+        .map_err(|_| StandardModelError::ModelMissing(table.to_string(), pk.to_string()).into())
 }
 
 #[instrument(level = "trace", skip(ctx))]

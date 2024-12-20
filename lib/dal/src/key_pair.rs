@@ -1,3 +1,4 @@
+use anyhow::Result;
 use base64::{engine::general_purpose, Engine};
 use serde::{Deserialize, Serialize};
 use si_crypto::{SymmetricCryptoError, SymmetricCryptoService, SymmetricNonce};
@@ -50,7 +51,7 @@ pub enum KeyPairError {
     Workspace(#[from] Box<WorkspaceError>),
 }
 
-pub type KeyPairResult<T> = Result<T, KeyPairError>;
+pub type KeyPairResult<T> = Result<T>;
 
 pub use si_id::KeyPairPk;
 
@@ -113,13 +114,13 @@ impl KeyPair {
 
     pub async fn get_by_pk(ctx: &DalContext, pk: KeyPairPk) -> KeyPairResult<Self> {
         let Some(row) = ctx.txns().await?.pg().query_opt(GET_BY_PK, &[&pk]).await? else {
-            return Err(KeyPairError::KeyPairNotFound(pk));
+            return Err(KeyPairError::KeyPairNotFound(pk).into());
         };
         let json: serde_json::Value = row.try_get("object")?;
         let key_pair_row: KeyPairRow = serde_json::from_value(json)?;
 
         if key_pair_row.workspace_pk != ctx.tenancy().workspace_pk()? {
-            return Err(KeyPairError::UnauthorizedKeyAccess);
+            return Err(KeyPairError::UnauthorizedKeyAccess.into());
         }
 
         let key_pair = key_pair_row.decrypt_into(ctx.symmetric_crypto_service())?;
@@ -134,9 +135,8 @@ impl KeyPair {
 
     pub async fn workspace(&self, ctx: &DalContext) -> KeyPairResult<Workspace> {
         Workspace::get_by_pk(ctx, &self.workspace_pk)
-            .await
-            .map_err(Box::new)?
-            .ok_or(KeyPairError::InvalidWorkspace(self.workspace_pk))
+            .await?
+            .ok_or(KeyPairError::InvalidWorkspace(self.workspace_pk).into())
     }
 
     fn gen_keys(
