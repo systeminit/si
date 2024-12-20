@@ -159,6 +159,13 @@ defined by a credential component.
 
 ## View
 
-Views are a uniquely named and organized collection of components built to create 
-representations of infrastructure configurations that are semantically relevant 
+Views are a uniquely named and organized collection of components built to create
+representations of infrastructure configurations that are semantically relevant
 to a given workflow or user.
+
+## Workspace
+
+A workspace named space where all modelling and real world representations are
+stored which can be accessed by a group of users. Objects such as assets,
+functions, components, edges, resources, secrets, views, and change sets are
+found in a workspace.
