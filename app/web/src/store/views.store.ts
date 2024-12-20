@@ -637,8 +637,8 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
             this.selectedViewId = id;
             this.outlinerViewId = id;
             this._enforceSelectedComponents();
-            this.setGroupZIndex();
             this.viewAssignment(view);
+            this.setGroupZIndex();
           } else {
             const res = await this.FETCH_VIEW(id);
             if (!res.result.success) {
@@ -736,8 +736,8 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                   }
                 },
               );
-              this.setGroupZIndex();
               if (this.selectedViewId === view.id) this.viewAssignment(view);
+              this.setGroupZIndex();
             },
           });
         },
@@ -829,8 +829,8 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                 groups,
                 views,
               });
-              this.setGroupZIndex();
               this.selectView(response.view.id);
+              this.setGroupZIndex();
             },
           });
         },
