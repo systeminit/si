@@ -1,31 +1,17 @@
 load(
     "@prelude-si//:macros.bzl",
-    "eslint",
     "export_file",
-    "ts_test",
     "nix_omnibus_pkg",
-    "node_pkg_bin",
-    "npm_bin",
-    "package_node_modules",
-    "prettier_check",
-    "typescript_check",
-    "typescript_dist",
-    "typescript_runnable_dist",
-    "typescript_runnable_dist_bin",
 )
 load(
-    "@prelude-si//:pnpm.bzl",
-    "pnpm_task_library",
-    "pnpm_task_binary",
-    "pnpm_task_test",
+    "@prelude-si//:deno.bzl",
+    "deno_compile",
+    "deno_format",
+    "deno_test",
 )
 
 export_file(
     name = "package.json",
-)
-
-package_node_modules(
-    name = "node_modules",
 )
 
 filegroup(
@@ -44,70 +30,47 @@ filegroup(
 )
 
 prod_deps_srcs = {
-    "lib/ts-lib": "//lib/ts-lib:src",
+    "lib/ts-lib-deno": "//lib/ts-lib-deno:src",
 }
+
+deno_compile(
+    name = "bin",
+    main = "src/index.ts",
+    out = "lang-js",
+    permissions = [
+        "allow-all",
+    ],
+    unstable_flags = [
+        "worker-options",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+deno_format(
+    name = "fix-format",
+    srcs = glob(["**/*.ts", "**/*.js"]),
+    ignore = ["node_modules"],
+)
+
+deno_format(
+    name = "check-format",
+    srcs = glob(["**/*.ts", "**/*.js"]),
+    check = True,
+)
+
+deno_test(
+    name = "test",
+    srcs = glob(["**/*_test.ts", "**/*.test.ts"]),
+    ignore = ["node_modules"],
+)
 
 dev_deps_srcs = {
     "lib/eslint-config": "//lib/eslint-config:src",
     "lib/tsconfig": "//lib/tsconfig:src",
 }
 
-npm_bin(
-    name = "tsup",
-)
-
-typescript_dist(
-    name = "dist",
-    srcs = [":src"],
-    tsup = ":tsup",
-    prod_deps_srcs = prod_deps_srcs,
-    dev_deps_srcs = dev_deps_srcs,
-)
-
-typescript_runnable_dist(
-    name = "lang-js",
-)
-
-typescript_runnable_dist_bin(
-    name = "bin",
-    typescript_runnable_dist = ":lang-js",
-)
-
-eslint(
-    name = "check-lint",
-    directories = ["src", "tests"],
-    srcs = [":src", ":test_src"] + glob([".eslint*"]),
-    prod_deps_srcs = prod_deps_srcs,
-    dev_deps_srcs = dev_deps_srcs,
-)
-
-typescript_check(
-    name = "check-type",
-    srcs = [":src"],
-    prod_deps_srcs = prod_deps_srcs,
-    dev_deps_srcs = dev_deps_srcs,
-)
-
-ts_test(
-    name = "test-unit",
-    srcs = [":src", ":test_src"],
-    prod_deps_srcs = prod_deps_srcs,
-    dev_deps_srcs = dev_deps_srcs,
-)
-
 nix_omnibus_pkg(
     name = "omnibus",
     pkg_name = "lang-js",
     build_dep = "//bin/lang-js:bin",
-)
-
-pnpm_task_binary(
-    name = "docs",
-    command = "docs",
-    srcs = glob(["src/**/*"]),
-    path = "bin/lang-js",
-    deps = [
-        "//:node_modules",
-    ],
-    visibility = ["PUBLIC"],
 )

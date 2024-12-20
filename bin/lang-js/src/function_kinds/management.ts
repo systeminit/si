@@ -1,14 +1,15 @@
 import * as _ from "lodash-es";
-import { NodeVM } from "vm2";
-import { Debug } from "../debug";
+import { Debug } from "../debug.ts";
 import {
   failureExecution,
   Func,
+  FunctionKind,
   ResultFailure,
   ResultSuccess,
-} from "../function";
-import { ComponentWithGeometry, Geometry } from "../component";
-import { RequestCtx } from "../request";
+  runCode,
+} from "../function.ts";
+import { ComponentWithGeometry, Geometry } from "../component.ts";
+import { RequestCtx } from "../request.ts";
 
 const debug = Debug("langJs:management");
 
@@ -17,7 +18,7 @@ export interface ManagementFunc extends Func {
   thisComponent: ComponentWithGeometry;
   components: {
     [key: string]: ComponentWithGeometry;
-  }
+  };
 }
 
 export type ManagementFuncResult =
@@ -25,11 +26,11 @@ export type ManagementFuncResult =
   | ManagementFuncResultFailure;
 
 export interface ManagmentConnect {
-  from: string,
+  from: string;
   to: {
     component: string;
     socket: string;
-  }
+  };
 }
 
 export interface ManagementOperations {
@@ -39,8 +40,8 @@ export interface ManagementOperations {
       properties?: object;
       geometry?: Geometry;
       parent?: string;
-      connect?: ManagmentConnect[],
-    }
+      connect?: ManagmentConnect[];
+    };
   };
   update?: {
     [key: string]: {
@@ -48,38 +49,39 @@ export interface ManagementOperations {
       geometry?: { [key: string]: Geometry };
       parent?: string;
       connect: {
-        add?: ManagmentConnect[],
-        remove?: ManagmentConnect[],
-      }
-    }
+        add?: ManagmentConnect[];
+        remove?: ManagmentConnect[];
+      };
+    };
   };
   actions?: {
     [key: string]: {
-      add?: string[],
-      remove?: string[],
-    }
+      add?: string[];
+      remove?: string[];
+    };
   };
 }
 
 export interface ManagementFuncResultSuccess extends ResultSuccess {
-  health: "ok" | "error",
-  operations?: ManagementOperations,
+  health: "ok" | "error";
+  operations?: ManagementOperations;
   message?: string;
 }
-export interface ManagementFuncResultFailure extends ResultFailure { }
+export interface ManagementFuncResultFailure extends ResultFailure {}
 
 async function execute(
-  vm: NodeVM,
   { executionId }: RequestCtx,
   { thisComponent, components, currentView }: ManagementFunc,
   code: string,
 ): Promise<ManagementFuncResult> {
   let managementResult: Record<string, unknown> | undefined | null;
   try {
-    const runner = vm.run(code);
-    managementResult = await new Promise((resolve) => {
-      runner({ thisComponent, components, currentView }, (resolution: Record<string, unknown>) => resolve(resolution));
-    });
+    managementResult = await runCode(
+      code,
+      FunctionKind.Management,
+      executionId,
+      { thisComponent, components, currentView },
+    );
   } catch (err) {
     return failureExecution(err as Error, executionId);
   }
@@ -92,7 +94,8 @@ async function execute(
       executionId,
       error: {
         kind: "InvalidReturnType",
-        message: "Management functions must return an object with a status field",
+        message:
+          "Management functions must return an object with a status field",
       },
     };
   }
@@ -104,7 +107,8 @@ async function execute(
       executionId,
       error: {
         kind: "InvalidReturnType",
-        message: "Management functions must return a status of either \"ok\" or \"error\"",
+        message:
+          'Management functions must return a status of either "ok" or "error"',
       },
     };
   }
@@ -119,17 +123,12 @@ async function execute(
   };
 }
 
-// Should we wrap this in a try/catch ?
-const wrapCode = (code: string, handle: string) => `
-module.exports = function(input, callback) {
+const wrapCode = (code: string) => `
+async function run(arg) {
   ${code}
-  const returnValue = ${handle}(input);
-  if (returnValue instanceof Promise) {
-    returnValue.then((data) => callback(data))
-  } else {
-    callback(returnValue);
-  }
-};`;
+  const returnValue = await main(arg);
+  return returnValue;
+}`;
 
 export default {
   debug,

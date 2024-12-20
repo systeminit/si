@@ -1,13 +1,13 @@
-import { NodeVM } from "vm2";
-
 import {
   failureExecution,
   Func,
+  FunctionKind,
   ResultFailure,
   ResultSuccess,
-} from "../function";
-import { RequestCtx } from "../request";
-import { Debug } from "../debug";
+  runCode,
+} from "../function.ts";
+import { RequestCtx } from "../request.ts";
+import { Debug } from "../debug.ts";
 
 const debug = Debug("langJs:schemaVariantDefinition");
 
@@ -24,17 +24,18 @@ export type SchemaVariantDefinitionResult =
   | SchemaVariantDefinitionResultFailure;
 
 async function execute(
-  vm: NodeVM,
   { executionId }: RequestCtx,
   _: SchemaVariantDefinitionFunc,
   code: string,
 ): Promise<SchemaVariantDefinitionResult> {
   let result: Record<string, unknown>;
   try {
-    const runner = vm.run(code);
-    result = await new Promise((resolve) => {
-      runner((resolution: Record<string, unknown>) => resolve(resolution));
-    });
+    result = await runCode(
+      code,
+      FunctionKind.SchemaVariantDefinition,
+      executionId,
+      {},
+    );
     debug({ result: JSON.stringify(result) });
   } catch (err) {
     return failureExecution(err as Error, executionId);
@@ -48,22 +49,12 @@ async function execute(
   };
 }
 
-const wrapCode = (code: string, handler: string) => `
-module.exports = function(callback) {
+const wrapCode = (code: string) => `
+async function run(arg) {
   ${code}
-  const returnValue = ${handler}();
-  if (returnValue instanceof Promise) {
-    returnValue.then((data) => callback(data))
-      .catch((err) => {
-        callback({
-          success: false,
-          message: err.message,
-        })
-      });
-  } else {
-    callback(returnValue);
-  }
-};`;
+  const returnValue = await main(arg);
+  return returnValue;
+}`;
 
 export default {
   debug,

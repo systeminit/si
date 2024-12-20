@@ -1,6 +1,6 @@
-import { setTimeout } from "timers/promises";
+import { setTimeout } from "node:timers/promises";
 import execa, { ExecaReturnValue, Options } from "execa";
-import { Debug } from "../debug";
+import { Debug } from "../debug.ts";
 
 export interface WatchArgs {
   cmd: string;
@@ -27,7 +27,7 @@ const defaultOptions: Options = {
   all: true,
   buffer: true,
   reject: false,
-  stdin: 'ignore',
+  stdin: "ignore",
 };
 
 /**
@@ -37,7 +37,7 @@ function mergedOptions(userOptions?: Options): Options {
   return {
     ...defaultOptions,
     ...userOptions,
-    stdin: userOptions?.input ? 'pipe' : 'ignore',
+    stdin: userOptions?.input ? "pipe" : "ignore",
   };
 }
 
@@ -53,16 +53,18 @@ export const makeExec = (executionId: string) => {
    *   "ec2",
    *   "describe-hosts"
    * ]);
-    */
+   */
   async function waitUntilEnd(
     execaFile: string,
     execaArgs?: readonly string[],
     execaOptions?: Options<string>,
   ): Promise<SiExecResult> {
     debug(
-      `running command; executionId="${executionId}"; cmd="${execaFile} ${execaArgs
-        ?.map((a) => `'${a}'`)
-        ?.join(" ")}"`,
+      `running command; executionId="${executionId}"; cmd="${execaFile} ${
+        execaArgs
+          ?.map((a) => `'${a}'`)
+          ?.join(" ")
+      }"`,
     );
     console.log(
       JSON.stringify({
@@ -71,9 +73,11 @@ export const makeExec = (executionId: string) => {
         stream: "stderr",
         level: "debug",
         group: "log",
-        message: `Running CLI command: "${execaFile} ${execaArgs
-          ?.map((a) => `'${a}'`)
-          ?.join(" ")}"`,
+        message: `Running CLI command: "${execaFile} ${
+          execaArgs
+            ?.map((a) => `'${a}'`)
+            ?.join(" ")
+        }"`,
       }),
     );
 

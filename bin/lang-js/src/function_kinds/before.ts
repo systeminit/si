@@ -1,13 +1,14 @@
-import { NodeVM } from "vm2";
-import { Debug } from "../debug";
+import { Debug } from "../debug.ts";
 
 import {
   failureExecution,
   Func,
   ResultFailure,
   ResultSuccess,
-} from "../function";
-import { RequestCtx } from "../request";
+  runCode,
+} from "../function.ts";
+import { RequestCtx } from "../request.ts";
+import { FunctionKind } from "../function.ts";
 
 const debug = Debug("langJs:before");
 
@@ -22,17 +23,17 @@ export type BeforeResultFailure = ResultFailure;
 export type BeforeResult = BeforeResultSuccess | BeforeResultFailure;
 
 async function execute(
-  vm: NodeVM,
   { executionId }: RequestCtx,
   { arg }: BeforeFunc,
   code: string,
 ): Promise<BeforeResult> {
   try {
-    const runner = vm.run(code);
-    await new Promise((resolve) => {
-      runner(arg, (resolution: Record<string, unknown>) => resolve(resolution));
-    });
-    debug({ result: "<void>" });
+    await runCode(
+      code,
+      FunctionKind.Before,
+      executionId,
+      arg as Record<string, unknown>,
+    );
   } catch (err) {
     return failureExecution(err as Error, executionId);
   }
@@ -44,22 +45,12 @@ async function execute(
   };
 }
 
-const wrapCode = (code: string, handler: string) => `
-module.exports = function(arg, callback) {
+const wrapCode = (code: string) => `
+async function run(arg) {
   ${code}
-  const returnValue = ${handler}(arg);
-  if (returnValue instanceof Promise) {
-    returnValue.then((data) => callback(data))
-      .catch((err) => {
-        callback({
-          success: false,
-          message: err.message,
-        })
-      });
-  } else {
-    callback(returnValue);
-  }
-};`;
+  const returnValue = await main(arg);
+  return returnValue;
+}`;
 
 export default {
   debug,

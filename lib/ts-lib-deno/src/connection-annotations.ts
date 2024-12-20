@@ -1,0 +1,1 @@
+../../ts-lib/src/connection-annotations.ts

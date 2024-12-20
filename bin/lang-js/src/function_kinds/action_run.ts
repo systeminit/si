@@ -1,13 +1,14 @@
-import { NodeVM } from "vm2";
 import * as _ from "lodash-es";
-import { Debug } from "../debug";
+import { Debug } from "../debug.ts";
 import {
   failureExecution,
   Func,
   ResultFailure,
   ResultSuccess,
-} from "../function";
-import { RequestCtx } from "../request";
+  runCode,
+} from "../function.ts";
+import { RequestCtx } from "../request.ts";
+import { FunctionKind } from "../function.ts";
 
 const debug = Debug("langJs:actionRun");
 
@@ -27,18 +28,17 @@ export interface ActionRunResultSuccess extends ResultSuccess {
 export type ActionRunResultFailure = ResultFailure;
 
 async function execute(
-  vm: NodeVM,
   { executionId }: RequestCtx,
   { args }: ActionRunFunc,
   code: string,
 ): Promise<ActionRunResult> {
-  let actionRunResult: Record<string, unknown>;
   try {
-    const actionRunRunner = vm.run(code);
-    // Node(paulo): NodeVM doesn't support async rejection, we need a better way of handling it
-    actionRunResult = await new Promise((resolve) => {
-      actionRunRunner(args, (resolution: Record<string, unknown>) => resolve(resolution));
-    });
+    const actionRunResult = await runCode(
+      code,
+      FunctionKind.ActionRun,
+      executionId,
+      args as Record<string, unknown>,
+    );
 
     if (_.isUndefined(actionRunResult) || _.isNull(actionRunResult)) {
       return {
@@ -53,8 +53,8 @@ async function execute(
     }
 
     if (
-      !_.isString(actionRunResult.status)
-      || !["ok", "warning", "error"].includes(actionRunResult.status)
+      !_.isString(actionRunResult.status) ||
+      !["ok", "warning", "error"].includes(actionRunResult.status as string)
     ) {
       return {
         protocol: "result",
@@ -63,14 +63,14 @@ async function execute(
         error: {
           kind: "ActionFieldWrongType",
           message:
-            "The status field type must be either \"ok\", \"warning\" or \"error\"",
+            'The status field type must be either "ok", "warning" or "error"',
         },
       };
     }
 
     if (
-      actionRunResult.status === "ok"
-      && !_.isUndefined(actionRunResult.message)
+      actionRunResult.status === "ok" &&
+      !_.isUndefined(actionRunResult.message)
     ) {
       return {
         protocol: "result",
@@ -79,14 +79,14 @@ async function execute(
         error: {
           kind: "ActionFieldWrongType",
           message:
-            "The message field type must be undefined when status is \"ok\"",
+            'The message field type must be undefined when status is "ok"',
         },
       };
     }
 
     if (
-      actionRunResult.status !== "ok"
-      && !_.isString(actionRunResult.message)
+      actionRunResult.status !== "ok" &&
+      !_.isString(actionRunResult.message)
     ) {
       return {
         protocol: "result",
@@ -95,7 +95,7 @@ async function execute(
         error: {
           kind: "ActionFieldWrongType",
           message:
-            "The message field type must be string when status is either \"warning\" or \"error\"",
+            'The message field type must be string when status is either "warning" or "error"',
         },
       };
     }
@@ -115,25 +115,25 @@ async function execute(
   }
 }
 
-const wrapCode = (code: string, handle: string) => `
-module.exports = function(arg, callback) {
-  ${code}
-  arg = Array.isArray(arg) ? arg : [arg];
-  const resourceId = arg[0]?.properties?.si?.resourceId;
-  const payload = arg[0]?.properties?.resource?.payload ?? null;
-  const returnValue = ${handle}(...arg, callback);
-  if (returnValue instanceof Promise) {
-    returnValue.then((data) => callback(data))
-        .catch((err) => callback({
-          status: "error",
-          payload,
-          resourceId,
-          message: err.message,
-  }));
-  } else {
-    callback(returnValue);
+const wrapCode = (code: string) => `
+async function run(arg) {
+  try {
+    ${code}
+    arg = Array.isArray(arg) ? arg : [arg];
+    const resourceId = arg[0]?.properties?.si?.resourceId;
+    const payload = arg[0]?.properties?.resource?.payload ?? null;
+
+    const returnValue = await main(with_arg);
+    return returnValue;
+  } catch (err) {
+    return {
+              status: "error",
+              payload,
+              resourceId,
+              message: err.message,
+           }
   }
-};`;
+}`;
 
 export default {
   debug,
