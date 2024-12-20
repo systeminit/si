@@ -97,33 +97,25 @@ pub async fn create_binding(
                                 Option<si_events::ComponentId>,
                                 Option<si_events::SchemaVariantId>,
                             ) = match eventual_parent {
-                                Some(eventual_parent) => {
-                                    if let EventualParent::Component(component_id) = eventual_parent
-                                    {
-                                        (
-                                            Component::get_by_id(&ctx, component_id)
-                                                .await?
-                                                .name(&ctx)
-                                                .await?,
-                                            Some(component_id),
-                                            None,
-                                        )
-                                    } else {
-                                        return Err(FuncAPIError::MissingSchemaVariantAndFunc);
-                                    }
-                                }
-                                None => {
-                                    let schema_variant_id =
-                                        attribute_output_location.find_schema_variant(&ctx).await?;
-                                    (
+                                Some(eventual_parent) => match eventual_parent {
+                                    EventualParent::SchemaVariant(schema_variant_id) => (
                                         SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id)
                                             .await?
                                             .display_name()
                                             .to_string(),
                                         None,
                                         Some(schema_variant_id),
-                                    )
-                                }
+                                    ),
+                                    EventualParent::Component(component_id) => (
+                                        Component::get_by_id(&ctx, component_id)
+                                            .await?
+                                            .name(&ctx)
+                                            .await?,
+                                        Some(component_id),
+                                        None,
+                                    ),
+                                },
+                                None => (String::new(), None, None),
                             };
                             let destination_name = attribute_output_location
                                 .get_name_of_destination(&ctx)
