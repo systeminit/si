@@ -5,7 +5,7 @@ outline:
 
 # Road map
 
-Updated December 13, 2024.
+Updated December 20, 2024.
 
 Want to influence the road map?
 [Learn more about how to work on System Initiative](../explanation/working-on-si.md).
@@ -73,7 +73,7 @@ We are providing the functionality that allows users of a workspace to see every
 change that has happened, who made them and when. The first iteration of this
 work will allow users to be able to have basic sorting and filtering of events.
 
-### Fine Grained Access Control (In planning)
+### Fine Grained Access Control (In development)
 
 We are providing the ability to attach approvers to specific sets of components,
 via views. This means core parts of the infrastructure can have approvers
