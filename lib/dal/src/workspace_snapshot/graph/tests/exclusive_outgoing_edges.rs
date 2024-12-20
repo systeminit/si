@@ -8,7 +8,7 @@ mod test {
         action::prototype::ActionKind,
         workspace_snapshot::{
             content_address::ContentAddress,
-            graph::{detect_updates::Update, WorkspaceSnapshotGraphResult},
+            graph::{detector::Update, WorkspaceSnapshotGraphResult},
             node_weight::{
                 traits::{CorrectExclusiveOutgoingEdge, CorrectTransforms},
                 NodeWeight,
