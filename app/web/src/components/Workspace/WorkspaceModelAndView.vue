@@ -53,7 +53,6 @@
   <ModelingDiagram
     v-else
     ref="diagramRef"
-    :viewId="viewId"
     @mouseout="presenceStore.clearCursor"
     @right-click-element="onRightClickElement"
     @close-right-click-menu="closeRightClickMenu"
@@ -212,6 +211,8 @@ const onKeyDown = async (e: KeyboardEvent) => {
 onMounted(() => {
   window.addEventListener("keydown", onKeyDown);
   statusStore.FETCH_DVU_ROOTS();
+  if (!viewStore.selectedViewId && !viewStore.activatedAndFetched)
+    viewStore.FETCH_VIEW(viewId.value);
 });
 
 onBeforeUnmount(() => {
