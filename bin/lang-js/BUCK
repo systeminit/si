@@ -30,7 +30,7 @@ filegroup(
 )
 
 prod_deps_srcs = {
-    "lib/ts-lib": "//lib/ts-lib:src",
+    "lib/ts-lib-deno": "//lib/ts-lib-deno:src",
 }
 
 deno_compile(
