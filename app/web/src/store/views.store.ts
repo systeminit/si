@@ -829,6 +829,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                 groups,
                 views,
               });
+              this.setGroupZIndex();
               this.selectView(response.view.id);
             },
           });
@@ -1747,9 +1748,9 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                       size: finalGeo.width * finalGeo.height,
                       zIndex: 0,
                     };
-                    this.setGroupZIndex();
                   }
                 });
+                this.setGroupZIndex();
 
                 if (this.selectedComponentId === data.component.id) {
                   if (data.component.changeStatus !== "deleted")
@@ -1778,6 +1779,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                   delete view?.components[data.componentId];
                   delete view?.groups[data.componentId];
                 });
+                this.setGroupZIndex();
 
                 // remove invalid component IDs from the selection
                 const validComponentIds = _.intersection(
