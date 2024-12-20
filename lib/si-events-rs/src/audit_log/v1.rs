@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use si_id::ManagementPrototypeId;
 use strum::{Display, EnumDiscriminants};
 
 use crate::{
@@ -187,12 +188,31 @@ pub enum AuditLogKindV1 {
         name: String,
         version: String,
     },
+
+    GenerateTemplate {
+        schema_variant_id: SchemaVariantId,
+        management_prototype_id: ManagementPrototypeId,
+        func_id: FuncId,
+        func_name: String,
+        asset_name: String,
+    },
+
     InstallWorkspace {
         id: WorkspacePk,
         name: String,
         version: String,
     },
     Login,
+
+    ManagementOperationsComplete {
+        component_id: ComponentId,
+        prototype_id: ManagementPrototypeId,
+        func_id: FuncId,
+        func_name: String,
+        status: String,
+        message: Option<String>,
+    },
+
     OrphanComponent {
         component_id: ComponentId,
         previous_parent_id: ComponentId,
@@ -559,14 +579,36 @@ pub enum AuditLogMetadataV1 {
         name: String,
         version: String,
     },
+
+    #[serde(rename_all = "camelCase")]
+    GenerateTemplate {
+        schema_variant_id: SchemaVariantId,
+        management_prototype_id: ManagementPrototypeId,
+        func_id: FuncId,
+        func_name: String,
+        asset_name: String,
+    },
+
     #[serde(rename_all = "camelCase")]
     InstallWorkspace {
         id: WorkspacePk,
         name: String,
         version: String,
     },
+
     #[serde(rename_all = "camelCase")]
     Login,
+
+    #[serde(rename_all = "camelCase")]
+    ManagementOperationsComplete {
+        component_id: ComponentId,
+        prototype_id: ManagementPrototypeId,
+        func_id: FuncId,
+        func_name: String,
+        status: String,
+        message: Option<String>,
+    },
+
     #[serde(rename_all = "camelCase")]
     OrphanComponent {
         component_id: ComponentId,
@@ -789,7 +831,11 @@ impl AuditLogMetadataV1 {
             MetadataDiscrim::ExecuteFunc => ("Executed", Some("Function")),
             MetadataDiscrim::ExportWorkspace => ("Exported", Some("Workspace")),
             MetadataDiscrim::InstallWorkspace => ("Installed", Some("Workspace")),
+            MetadataDiscrim::GenerateTemplate => ("Generated", Some("Template")),
             MetadataDiscrim::Login => ("Authenticated", None),
+            MetadataDiscrim::ManagementOperationsComplete => {
+                ("Executed", Some("Management Operations"))
+            }
             MetadataDiscrim::OrphanComponent => ("Orphaned", Some("Component")),
             MetadataDiscrim::PutActionOnHold => ("Paused", Some("Action")),
             MetadataDiscrim::RegenerateSchemaVariant => ("Regenerated", Some("Schema Variant")),
@@ -1094,10 +1140,38 @@ impl From<Kind> for Metadata {
             Kind::ExportWorkspace { id, name, version } => {
                 Self::ExportWorkspace { id, name, version }
             }
+            Kind::GenerateTemplate {
+                schema_variant_id,
+                management_prototype_id,
+                func_id,
+                func_name,
+                asset_name,
+            } => Self::GenerateTemplate {
+                schema_variant_id,
+                management_prototype_id,
+                func_id,
+                func_name,
+                asset_name,
+            },
             Kind::InstallWorkspace { id, name, version } => {
                 Self::InstallWorkspace { id, name, version }
             }
             Kind::Login => Self::Login,
+            Kind::ManagementOperationsComplete {
+                component_id,
+                prototype_id,
+                func_id,
+                func_name,
+                status,
+                message,
+            } => Self::ManagementOperationsComplete {
+                component_id,
+                prototype_id,
+                func_id,
+                func_name,
+                status,
+                message,
+            },
             Kind::OrphanComponent {
                 component_id,
                 previous_parent_id,

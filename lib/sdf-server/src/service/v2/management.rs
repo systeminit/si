@@ -21,6 +21,7 @@ use dal::{
     SchemaVariantError, TransactionsError, WorkspacePk, WsEvent, WsEventError,
 };
 use serde::{Deserialize, Serialize};
+use si_events::audit_log::AuditLogKind;
 use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -159,13 +160,30 @@ pub async fn run_prototype(
         WsEvent::management_operations_complete(
             &ctx,
             request.request_ulid,
-            func.name,
+            func.name.clone(),
             result.message.clone(),
             result.status,
             created_component_ids,
         )
         .await?
         .publish_on_commit(&ctx)
+        .await?;
+
+        ctx.write_audit_log(
+            AuditLogKind::ManagementOperationsComplete {
+                component_id,
+                prototype_id,
+                func_id,
+                func_name: func.name.clone(),
+                status: match result.status {
+                    ManagementFuncStatus::Ok => "ok",
+                    ManagementFuncStatus::Error => "error",
+                }
+                .to_string(),
+                message: result.message.clone(),
+            },
+            func.name,
+        )
         .await?;
 
         ctx.commit().await?;
