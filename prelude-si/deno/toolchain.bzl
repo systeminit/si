@@ -1,6 +1,7 @@
 DenoToolchainInfo = provider(fields = {
-    "build_deno_bin": provider_field(typing.Any, default = None),
-    "format_deno": provider_field(typing.Any, default = None),
+    "deno_compile": provider_field(typing.Any, default = None),
+    "deno_format": provider_field(typing.Any, default = None),
+    "deno_test": provider_field(typing.Any, default = None),
 })
 
 def deno_toolchain_impl(ctx) -> list[[DefaultInfo, DenoToolchainInfo]]:
@@ -10,20 +11,25 @@ def deno_toolchain_impl(ctx) -> list[[DefaultInfo, DenoToolchainInfo]]:
     return [
         DefaultInfo(default_outputs = []),
         DenoToolchainInfo(
-            build_deno_bin = ctx.attrs._build_deno_bin,
-            format_deno = ctx.attrs._format_deno,
+            deno_compile = ctx.attrs._deno_compile,
+            deno_format = ctx.attrs._deno_format,
+            deno_test = ctx.attrs._deno_test,
         ),
     ]
 
 deno_toolchain = rule(
     impl = deno_toolchain_impl,
     attrs = {
-        "_build_deno_bin": attrs.dep(
-            default = "prelude-si//deno:build_deno_bin.py",
+        "_deno_compile": attrs.dep(
+            default = "prelude-si//deno:deno_compile.py",
             providers = [DefaultInfo],
         ),
-       "_format_deno": attrs.dep(
+       "_deno_format": attrs.dep(
             default = "prelude-si//deno:deno_format.py",
+            providers = [DefaultInfo],
+        ),
+       "_deno_test": attrs.dep(
+            default = "prelude-si//deno:deno_test.py",
             providers = [DefaultInfo],
         ),
     },

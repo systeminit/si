@@ -11,14 +11,14 @@ load(
     "PythonToolchainInfo",
 )
 
-def deno_binary_impl(ctx: AnalysisContext) -> list[Provider]:
+def deno_compile_impl(ctx: AnalysisContext) -> list[Provider]:
     out = ctx.actions.declare_output(paths.basename(ctx.attrs.out))
 
     deno_toolchain = ctx.attrs._deno_toolchain[DenoToolchainInfo]
 
     cmd = cmd_args(
         ctx.attrs._python_toolchain[PythonToolchainInfo].interpreter,
-        deno_toolchain.build_deno_bin[DefaultInfo].default_outputs[0],
+        deno_toolchain.deno_compile[DefaultInfo].default_outputs[0],
         "--input",
         ctx.attrs.main,
         "--output",
@@ -33,15 +33,15 @@ def deno_binary_impl(ctx: AnalysisContext) -> list[Provider]:
         cmd.add("--unstable-flags")
         cmd.add(ctx.attrs.unstable_flags)
 
-    ctx.actions.run(cmd, category = "deno", identifier = "deno_binary")
+    ctx.actions.run(cmd, category = "deno", identifier = "deno_compile")
 
     return [
         DefaultInfo(default_output = out),
         RunInfo(args = cmd_args(out)),
     ]
 
-deno_binary = rule(
-    impl = deno_binary_impl,
+deno_compile = rule(
+    impl = deno_compile_impl,
     attrs = {
         "main": attrs.source(
             doc = "The entry point TypeScript/JavaScript file",
@@ -76,7 +76,7 @@ def deno_format_impl(ctx: AnalysisContext) -> list[Provider]:
 
     cmd = cmd_args(
         ctx.attrs._python_toolchain[PythonToolchainInfo].interpreter,
-        deno_toolchain.format_deno[DefaultInfo].default_outputs[0],
+        deno_toolchain.deno_format[DefaultInfo].default_outputs[0],
     )
 
     for src in ctx.attrs.srcs:
@@ -110,6 +110,73 @@ deno_format = rule(
             attrs.string(),
             default = [],
             doc = "List of files or directories to ignore",
+        ),
+        "_python_toolchain": attrs.toolchain_dep(
+            default = "toolchains//:python",
+            providers = [PythonToolchainInfo],
+        ),
+        "_deno_toolchain": attrs.toolchain_dep(
+            default = "toolchains//:deno",
+            providers = [DenoToolchainInfo],
+        ),
+    },
+)
+
+def deno_test_impl(ctx: AnalysisContext) -> list[Provider]:
+    """Implementation of the deno_test rule."""
+    deno_toolchain = ctx.attrs._deno_toolchain[DenoToolchainInfo]
+
+    cmd = cmd_args(
+        ctx.attrs._python_toolchain[PythonToolchainInfo].interpreter,
+        deno_toolchain.deno_test[DefaultInfo].default_outputs[0],
+    )
+
+    for src in ctx.attrs.srcs:
+        cmd.add("--input", src)
+
+    if ctx.attrs.filter:
+        cmd.add("--filter", ctx.attrs.filter)
+
+    if ctx.attrs.ignore:
+        for ignore_path in ctx.attrs.ignore:
+            cmd.add("--ignore", ignore_path)
+
+    if ctx.attrs.parallel:
+        cmd.add("--parallel")
+
+    if ctx.attrs.watch:
+        cmd.add("--watch")
+
+    return [
+        DefaultInfo(),
+        RunInfo(args = cmd),
+    ]
+
+deno_test = rule(
+    impl = deno_test_impl,
+    attrs = {
+        "srcs": attrs.list(
+            attrs.source(),
+            default = [],
+            doc = "The test files to run",
+        ),
+        "filter": attrs.option(
+            attrs.string(),
+            default = None,
+            doc = "Run tests with this string or pattern in the test name",
+        ),
+        "ignore": attrs.list(
+            attrs.string(),
+            default = [],
+            doc = "List of files or directories to ignore",
+        ),
+        "parallel": attrs.bool(
+            default = True,
+            doc = "Run tests in parallel",
+        ),
+        "watch": attrs.bool(
+            default = False,
+            doc = "Watch for file changes and restart tests",
         ),
         "_python_toolchain": attrs.toolchain_dep(
             default = "toolchains//:python",

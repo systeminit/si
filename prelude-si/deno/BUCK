@@ -6,11 +6,15 @@ load(
 )
 
 export_file(
-    name = "build_deno_bin.py",
+    name = "deno_compile.py",
 )
 
 export_file(
     name = "deno_format.py",
+)
+
+export_file(
+    name = "deno_test.py",
 )
 
 yapf_check(
