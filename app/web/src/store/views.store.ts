@@ -760,11 +760,6 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
             method: "post",
             url: API_PREFIX,
             params: { name, clientUlid },
-            onSuccess: (view) => {
-              const idx = this.viewList.findIndex((v) => v.name === name);
-              // confirming we dont already have the data
-              if (idx === -1) this.viewList.push(view);
-            },
           });
         },
         async UPDATE_VIEW_NAME(view_id: ViewId, name: string) {
