@@ -281,6 +281,7 @@ import {
   Ref,
   provide,
   inject,
+  toRaw,
 } from "vue";
 import { Stage as KonvaStage } from "konva/lib/Stage";
 import Konva from "konva";
@@ -1774,19 +1775,28 @@ function endDragElements() {
   }
 
   // do i need to resize the new parent to fit the children?
-  const parentSize = viewsStore.groups[newParent?.def.id || ""];
+  const parentSize = structuredClone(
+    toRaw(viewsStore.groups[newParent?.def.id || ""]),
+  );
   if (parentSize && newParent && Object.values(setParents).length > 0) {
+    parentSize.x -= parentSize.width / 2;
     const newSize: Partial<Bounds> = {};
     Object.values(setParents).forEach((el) => {
-      const geo =
-        el.def.componentType === ComponentType.Component
-          ? viewsStore.components[el.def.id]
-          : viewsStore.groups[el.def.id];
+      const isGroup = el.def.componentType !== ComponentType.Component;
+      const geo = structuredClone(
+        toRaw(
+          isGroup
+            ? viewsStore.groups[el.def.id]
+            : viewsStore.components[el.def.id],
+        ),
+      );
       if (!geo) return;
+
+      geo.x -= geo.width / 2;
 
       if (!newSize.left || geo.x < newSize.left) newSize.left = geo.x;
       if (!newSize.top || geo.y < newSize.top)
-        newSize.top = geo.y - NODE_HEADER_HEIGHT * 2;
+        newSize.top = geo.y - (isGroup ? NODE_HEADER_HEIGHT * 2 : 0);
       const right = geo.x + geo.width;
       const bottom = geo.y + geo.height;
       if (!newSize.right || right > newSize.right) newSize.right = right;
@@ -1810,10 +1820,28 @@ function endDragElements() {
 
       // we need just a bit more padding space between the parent to fix resizability
       newRect.height += 30;
-      viewsStore.RESIZE_COMPONENT(newParent, newRect, {
-        writeToChangeSet: true,
-        broadcastToClients: true,
-      });
+
+      // don't make the parent smaller
+      if (
+        newRect.width * newRect.height >
+        parentSize.width * parentSize.height
+      ) {
+        newRect.x += newRect.width / 2;
+        viewsStore.RESIZE_COMPONENT(newParent, newRect, {
+          writeToChangeSet: true,
+          broadcastToClients: true,
+        });
+      } else {
+        try {
+          throw new Error(
+            `We prevented making a parent smaller ${JSON.stringify(
+              parentSize,
+            )} vs ${JSON.stringify(newRect)}`,
+          );
+        } catch (e) {
+          reportError(e);
+        }
+      }
     }
   }
 
