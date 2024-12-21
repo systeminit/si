@@ -1,0 +1,16 @@
+name: Production Service Restart Cron
+
+on:
+  schedule:
+    - cron: "0 20 * * 1-5" # Deploys every weekday at 8pm UTC
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy-production:
+    uses: ./.github/workflows/deploy-service-restart.yml
+    with:
+      environment: production
+    secrets: inherit
