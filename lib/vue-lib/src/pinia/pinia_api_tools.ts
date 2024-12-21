@@ -277,14 +277,29 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
       store._customProperties.add("apiRequestStatuses");
     }
 
-    const tracker = new ApiRequestActionDebouncer(
+    const tracker = new ApiRequestDebouncer(
       store.apiRequestStatuses,
       config.api,
-      store,
-      store.workspaceId,
-      store.changeSetId,
     );
 
+    function getTrackingKey(
+      actionName: string,
+      requestSpec: ApiRequestDescription,
+    ) {
+      // determine the key we will use when storing the request status
+      // most requests are tracked only by their name, for example LOGIN
+      // but some requests we may want to track multiple instances of and split by id or other params
+      // for example GET_THING%1, GET_THING%2 or GET_OAUTH_ACCOUNT%google%abc123
+      const trackingKeyArray: RawRequestStatusKeyArg[] = [actionName];
+      if (requestSpec.keyRequestStatusBy) {
+        if (_.isArray(requestSpec.keyRequestStatusBy)) {
+          trackingKeyArray.push(...requestSpec.keyRequestStatusBy);
+        } else {
+          trackingKeyArray.push(requestSpec.keyRequestStatusBy);
+        }
+      }
+      return trackingKeyArray.join(TRACKING_KEY_SEPARATOR);
+    }
     // wrap each action in a fn that will take an action result that is an ApiRequest
     // and actually trigger the request, waiting to finish until the request is complete
     function wrapApiAction(
@@ -295,7 +310,14 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
       return async function wrappedActionFn(...args: any[]) {
         const actionResult: any = await originalActionFn(...args);
         if (actionResult instanceof ApiRequest) {
-          await tracker.fireActionResult(actionName, actionResult);
+          const trackingKey = getTrackingKey(
+            actionName,
+            actionResult.requestSpec,
+          );
+          await tracker.fireActionResult(trackingKey, actionResult, store, {
+            "si.workspace.id": store.workspaceId,
+            "si.change_set.id": store.changeSetId,
+          });
         }
         return actionResult;
       };
@@ -328,10 +350,39 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
       }
     });
 
+    function getKey(requestKey: string, ...keyedByArgs: RequestStatusKeyArg[]) {
+      const rawKeyedByArgs = _.map(keyedByArgs, unref);
+      return [requestKey, ..._.compact(rawKeyedByArgs)].join(
+        TRACKING_KEY_SEPARATOR,
+      );
+    }
+
     return {
-      getRequestStatus: tracker.getRequestStatus,
-      getRequestStatuses: tracker.getRequestStatuses,
-      clearRequestStatus: tracker.clearRequestStatus,
+      getRequestStatus(
+        requestKey: string, // will allow only action names that return an ApiRequest
+        ...keyedByArgs: RequestStatusKeyArg[]
+      ): ComputedRef<ApiRequestStatus> {
+        const fullKey = getKey(requestKey, ...keyedByArgs);
+        return tracker.getRequestStatus(fullKey);
+      },
+      getRequestStatuses(
+        requestKey: string, // will allow only action names that return an ApiRequest
+        keyedByArgs: RequestStatusKeyArg[] | ComputedRef<RequestStatusKeyArg[]>,
+      ): ComputedRef<Record<string, ApiRequestStatus>> {
+        return computed(() => {
+          return _.mapValues(
+            _.keyBy(unref(keyedByArgs)),
+            (arg) => tracker.getRequestStatus(getKey(requestKey, arg)).value,
+          );
+        });
+      },
+      clearRequestStatus(
+        requestKey: string, // will allow only action names that return an ApiRequest
+        ...keyedByArgs: RequestStatusKeyArg[]
+      ): void {
+        const fullKey = getKey(requestKey, ...keyedByArgs);
+        tracker.clearRequestStatus(fullKey);
+      },
       ...apiRequestActions,
     };
   };
@@ -404,38 +455,26 @@ export async function apiData<T>(request: Promise<ApiRequest<T>>) {
   return result.data;
 }
 
-class ApiRequestActionDebouncer {
+class ApiRequestDebouncer {
   constructor(
     private apiRequestStatuses: RawRequestStatusesByKey,
     public api: AxiosInstance,
-    public callbackArg: any,
-    public workspaceId?: string,
-    public changeSetId?: string,
   ) {}
 
   // triggers a named api request passing in a payload
   // this makes the api request, tracks the request status, handles errors, etc
   // TODO: probably will rework this a bit to get better type-checking
   async triggerApiRequest(
-    actionName: string,
+    trackingKey: string,
     requestSpec: ApiRequestDescription,
+    callbackArg: any,
+    extraTracingArgs: {
+      "si.workspace.id"?: string;
+      "si.change_set.id"?: string;
+    },
   ): Promise<any> {
     /* eslint-disable no-param-reassign,consistent-return */
     // console.log('trigger api request', actionName, requestSpec);
-
-    // determine the key we will use when storing the request status
-    // most requests are tracked only by their name, for example LOGIN
-    // but some requests we may want to track multiple instances of and split by id or other params
-    // for example GET_THING%1, GET_THING%2 or GET_OAUTH_ACCOUNT%google%abc123
-    const trackingKeyArray: RawRequestStatusKeyArg[] = [actionName];
-    if (requestSpec.keyRequestStatusBy) {
-      if (_.isArray(requestSpec.keyRequestStatusBy)) {
-        trackingKeyArray.push(...requestSpec.keyRequestStatusBy);
-      } else {
-        trackingKeyArray.push(requestSpec.keyRequestStatusBy);
-      }
-    }
-    const trackingKey = trackingKeyArray.join(TRACKING_KEY_SEPARATOR);
 
     // check if we have already have a pending identical request (same tracking key, and identical payload)
     // if so, we can skip triggering the new api call
@@ -515,8 +554,7 @@ class ApiRequestActionDebouncer {
         "si.requestUlid": requestUlid,
         dns_duration,
         tcp_duration,
-        "si.workspace.id": this.workspaceId,
-        "si.change_set.id": this.changeSetId,
+        ...extraTracingArgs,
         ...(formData && requestParams
           ? { "http.params": JSON.stringify(requestParams) }
           : {}),
@@ -583,7 +621,7 @@ class ApiRequestActionDebouncer {
         if (request.headers.force_change_set_id)
           if (typeof onNewChangeSet === "function")
             await onNewChangeSet.call(
-              this.callbackArg,
+              callbackArg,
               request.headers.force_change_set_id,
               request.data,
             );
@@ -604,7 +642,7 @@ class ApiRequestActionDebouncer {
         // call success handler if one was defined - this will usually be what updates the store
         // we may want to bundle this change together with onSuccess somehow? maybe doesnt matter?
         if (typeof onSuccess === "function") {
-          await onSuccess.call(this.callbackArg, request.data);
+          await onSuccess.call(callbackArg, request.data);
         }
 
         completed.resolve({
@@ -674,14 +712,24 @@ class ApiRequestActionDebouncer {
     });
   }
 
-  async fireActionResult(actionName: string, actionResult: ApiRequest) {
+  async fireActionResult(
+    trackingKey: string,
+    actionResult: ApiRequest,
+    callbackArg: any,
+    extraTracingArgs: {
+      "si.workspace.id"?: string;
+      "si.change_set.id"?: string;
+    },
+  ) {
     const request = actionResult;
     const triggerResult = await this.triggerApiRequest(
-      actionName,
+      trackingKey,
       request.requestSpec,
+      callbackArg,
+      extraTracingArgs,
     );
     if (!triggerResult) {
-      throw new Error(`No trigger result for ${actionName}`);
+      throw new Error(`No trigger result for ${trackingKey}`);
     }
 
     if (triggerResult.error) {
@@ -692,16 +740,8 @@ class ApiRequestActionDebouncer {
   }
 
   // helper to get the current status of a request in a format that is easy to work with
-  getRequestStatus(
-    requestKey: string,
-    ...keyedByArgs: RawRequestStatusKeyArg[]
-  ): ComputedRef<ApiRequestStatus> {
+  getRequestStatus(fullKey: string): ComputedRef<ApiRequestStatus> {
     return computed(() => {
-      const rawKeyedByArgs = _.map(keyedByArgs, unref);
-      const fullKey = [requestKey, ..._.compact(rawKeyedByArgs)].join(
-        TRACKING_KEY_SEPARATOR,
-      );
-
       const rawStatus = this.apiRequestStatuses[fullKey];
       if (!rawStatus?.requestedAt) {
         return {
@@ -727,27 +767,7 @@ class ApiRequestActionDebouncer {
     });
   }
 
-  getRequestStatuses(
-    requestKey: string,
-    arrayOfArgs: string[] | ComputedRef<string[]>,
-  ): ComputedRef<Record<string, ApiRequestStatus>> {
-    return computed(() => {
-      return _.mapValues(
-        _.keyBy(unref(arrayOfArgs)),
-        (arg: string) => this.getRequestStatus(requestKey, arg).value,
-      );
-    });
-  }
-
-  clearRequestStatus(
-    requestKey: string,
-    ...keyedByArgs: RawRequestStatusKeyArg[]
-  ): void {
-    const rawKeyedByArgs = _.map(keyedByArgs, unref);
-    const fullKey = [requestKey, ..._.compact(rawKeyedByArgs)].join(
-      TRACKING_KEY_SEPARATOR,
-    );
-
+  clearRequestStatus(fullKey: string): void {
     delete this.apiRequestStatuses[fullKey];
   }
 }
