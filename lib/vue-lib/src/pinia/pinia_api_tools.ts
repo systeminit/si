@@ -240,15 +240,17 @@ type RawApiRequestStatus = {
   completed?: DeferredPromise<any>;
 };
 /** type describing the computed getter with some convenience properties */
-export type ApiRequestStatus = Partial<RawApiRequestStatus> & {
-  isRequested: boolean;
-  isPending: boolean;
-  isFirstLoad: boolean;
-  isError: boolean;
-  isSuccess: boolean;
-  errorMessage?: string;
-  errorCode?: string;
-};
+export type ApiRequestStatus = Readonly<
+  Partial<RawApiRequestStatus> & {
+    isRequested: boolean;
+    isPending: boolean;
+    isFirstLoad: boolean;
+    isError: boolean;
+    isSuccess: boolean;
+    errorMessage?: string;
+    errorCode?: string;
+  }
+>;
 
 export type ConflictsForRetry = Record<RequestUlid, [string, ApiRequest]>;
 
@@ -319,7 +321,6 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
           // TODO: probably need to add more options here for caching/dedupe request/logic
           // ex: let us skip certain requests if already successful, not just pending
           await store.apiRequestDebouncers[trackingKey].fireActionResult(
-            trackingKey,
             actionResult,
             store,
             {
@@ -373,28 +374,10 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
       ): ComputedRef<ApiRequestStatus> {
         const fullKey = getKey(requestKey, ...keyedByArgs);
         return computed(() => {
-          const rawStatus = store.apiRequestDebouncers[fullKey]?.request;
-          if (!rawStatus?.requestedAt) {
-            return {
-              isRequested: false,
-              isFirstLoad: false,
-              isPending: false,
-              isError: false,
-              isSuccess: false,
-            };
-          }
-          return {
-            ...rawStatus,
-            isRequested: true,
-            isPending: !rawStatus.receivedAt,
-            isFirstLoad: !rawStatus.receivedAt && !rawStatus.lastSuccessAt,
-            isSuccess: !!rawStatus.receivedAt && !rawStatus.error,
-            isError: !!rawStatus.error,
-            ...(rawStatus.error && {
-              errorMessage: getApiStatusRequestErrorMessage(rawStatus.error),
-              errorCode: rawStatus.error.data?.error?.type,
-            }),
-          };
+          store.apiRequestDebouncers[fullKey] ??= new ApiRequestDebouncer(
+            config.api,
+          );
+          return store.apiRequestDebouncers[fullKey] satisfies ApiRequestStatus;
         });
       },
       getRequestStatuses(
@@ -488,17 +471,13 @@ export async function apiData<T>(request: Promise<ApiRequest<T>>) {
 }
 
 class ApiRequestDebouncer {
-  request?: RawApiRequestStatus;
+  private request?: RawApiRequestStatus;
   constructor(public api: AxiosInstance) {}
-  get isPending() {
-    return !this.request?.receivedAt;
-  }
 
   // triggers a named api request passing in a payload
   // this makes the api request, tracks the request status, handles errors, etc
   // TODO: probably will rework this a bit to get better type-checking
-  async triggerApiRequest(
-    trackingKey: string,
+  private async triggerApiRequest(
     requestSpec: ApiRequestDescription,
     callbackArg: any,
     extraTracingArgs: {
@@ -510,11 +489,12 @@ class ApiRequestDebouncer {
     // console.log('trigger api request', actionName, requestSpec);
 
     if (
-      this.isPending &&
-      _.isEqual(this.request?.payload, requestSpec.params)
+      !!this.request &&
+      !this.request.receivedAt &&
+      _.isEqual(this.request.payload, requestSpec.params)
     ) {
       // return original promise so caller can use the result directly if necessary
-      return this.request?.completed?.promise;
+      return this.request.completed?.promise;
     }
 
     const requestUlid = ulid();
@@ -663,8 +643,8 @@ class ApiRequestDebouncer {
         // TODO: we may want to reverse the order here of calling success and marking received?
         // ideally we would mark received at the same time as the changes made during onSuccess, but not sure it's possible
         // store.$patch((state) => {
-        (this.request as ApiRequestStatus).lastSuccessAt = new Date();
-        (this.request as ApiRequestStatus).receivedAt = new Date();
+        (this.request as RawApiRequestStatus).lastSuccessAt = new Date();
+        (this.request as RawApiRequestStatus).receivedAt = new Date();
         // });
 
         // call success handler if one was defined - this will usually be what updates the store
@@ -685,7 +665,7 @@ class ApiRequestDebouncer {
         // like redirecting to a newly created ID, so we return the api response
       } catch (err: any) {
         // store.$patch((state) => {
-        (this.request as ApiRequestStatus).receivedAt = new Date();
+        (this.request as RawApiRequestStatus).receivedAt = new Date();
         // });
 
         /* eslint-disable-next-line no-console */
@@ -710,14 +690,14 @@ class ApiRequestDebouncer {
         // mark the request as failure and store the error info
         // TODO maybe use Axios.isAxiosError instead, but don't want to change behavior right now
         if (err.response) {
-          (this.request as ApiRequestStatus).error = (
+          (this.request as RawApiRequestStatus).error = (
             err as AxiosError
           ).response;
         } else {
           // if error was not http error or had no response body
           // we still want some kind of fallback message to show
           // and we keep it in a similar format to what the http error response bodies
-          (this.request as ApiRequestStatus).error = {
+          (this.request as RawApiRequestStatus).error = {
             data: {
               error: {
                 message: err.message,
@@ -739,23 +719,20 @@ class ApiRequestDebouncer {
   }
 
   async fireActionResult(
-    trackingKey: string,
-    actionResult: ApiRequest,
+    request: ApiRequest,
     callbackArg: any,
     extraTracingArgs: {
       "si.workspace.id"?: string;
       "si.change_set.id"?: string;
     },
   ) {
-    const request = actionResult;
     const triggerResult = await this.triggerApiRequest(
-      trackingKey,
       request.requestSpec,
       callbackArg,
       extraTracingArgs,
     );
     if (!triggerResult) {
-      throw new Error(`No trigger result for ${trackingKey}`);
+      throw new Error(`No trigger result`);
     }
 
     if (triggerResult.error) {
@@ -763,5 +740,61 @@ class ApiRequestDebouncer {
     } else {
       request.setSuccessfulResult(triggerResult.data);
     }
+  }
+
+  // RawApiRequestStatus helpers
+  get requestedAt() {
+    return this.request?.requestedAt;
+  }
+  get receivedAt() {
+    return this.request?.receivedAt;
+  }
+  get completedAt() {
+    return this.request?.completedAt;
+  }
+  get lastSuccessAt() {
+    return this.request?.lastSuccessAt;
+  }
+  get payload() {
+    return this.request?.payload;
+  }
+  get error() {
+    return this.request?.error;
+  }
+  get completed() {
+    return this.request?.completed;
+  }
+  // ApiRequestStatus helpers
+  get isRequested() {
+    //     isRequested: true,
+    return !!this.request;
+  }
+  get isFirstLoad() {
+    //     isFirstLoad: !rawStatus.receivedAt && !rawStatus.lastSuccessAt,
+    return (
+      !!this.request && !this.request.receivedAt && !this.request.lastSuccessAt
+    );
+  }
+  get isPending() {
+    //     isPending: !rawStatus.receivedAt,
+    return !!this.request && !this.request.receivedAt;
+  }
+  get isError() {
+    //     isError: !!rawStatus.error,
+    return !!this.request?.error;
+  }
+  get isSuccess() {
+    //     isSuccess: !!rawStatus.receivedAt && !rawStatus.error,
+    return !!this.request && !!this.request.receivedAt && !this.request.error;
+  }
+  get errorMessage() {
+    //     ...(rawStatus.error && {
+    //       errorMessage: getApiStatusRequestErrorMessage(rawStatus.error),
+    return getApiStatusRequestErrorMessage(this.request?.error);
+  }
+  get errorCode() {
+    //       errorCode: rawStatus.error.data?.error?.type,
+    //     }),
+    return this.request?.error?.data?.error?.type as string | undefined;
   }
 }
