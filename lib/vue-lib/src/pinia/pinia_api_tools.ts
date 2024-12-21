@@ -383,7 +383,7 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
           store.apiRequestDebouncers[fullKey] ??= new ApiRequestDebouncer(
             config.api,
           );
-          return store.apiRequestDebouncers[fullKey] satisfies ApiRequestStatus;
+          return store.apiRequestDebouncers[fullKey].getRawStatus();
         });
       },
       getRequestStatuses(
@@ -724,59 +724,28 @@ class ApiRequestDebouncer {
     });
   }
 
-  // RawApiRequestStatus helpers
-  get requestedAt() {
-    return this.request?.requestedAt;
-  }
-  get receivedAt() {
-    return this.request?.receivedAt;
-  }
-  get completedAt() {
-    return this.request?.completedAt;
-  }
-  get lastSuccessAt() {
-    return this.request?.lastSuccessAt;
-  }
-  get payload() {
-    return this.request?.payload;
-  }
-  get error() {
-    return this.request?.error;
-  }
-  get completed() {
-    return this.request?.completed;
-  }
-  // ApiRequestStatus helpers
-  get isRequested() {
-    //     isRequested: true,
-    return !!this.request;
-  }
-  get isFirstLoad() {
-    //     isFirstLoad: !rawStatus.receivedAt && !rawStatus.lastSuccessAt,
-    return (
-      !!this.request && !this.request.receivedAt && !this.request.lastSuccessAt
-    );
-  }
-  get isPending() {
-    //     isPending: !rawStatus.receivedAt,
-    return !!this.request && !this.request.receivedAt;
-  }
-  get isError() {
-    //     isError: !!rawStatus.error,
-    return !!this.request?.error;
-  }
-  get isSuccess() {
-    //     isSuccess: !!rawStatus.receivedAt && !rawStatus.error,
-    return !!this.request && !!this.request.receivedAt && !this.request.error;
-  }
-  get errorMessage() {
-    //     ...(rawStatus.error && {
-    //       errorMessage: getApiStatusRequestErrorMessage(rawStatus.error),
-    return getApiStatusRequestErrorMessage(this.request?.error);
-  }
-  get errorCode() {
-    //       errorCode: rawStatus.error.data?.error?.type,
-    //     }),
-    return this.request?.error?.data?.error?.type as string | undefined;
+  getRawStatus() {
+    const rawStatus = this.request;
+    if (!rawStatus?.requestedAt) {
+      return {
+        isRequested: false,
+        isFirstLoad: false,
+        isPending: false,
+        isError: false,
+        isSuccess: false,
+      };
+    }
+    return {
+      ...rawStatus,
+      isRequested: true,
+      isPending: !rawStatus.receivedAt,
+      isFirstLoad: !rawStatus.receivedAt && !rawStatus.lastSuccessAt,
+      isSuccess: !!rawStatus.receivedAt && !rawStatus.error,
+      isError: !!rawStatus.error,
+      ...(rawStatus.error && {
+        errorMessage: getApiStatusRequestErrorMessage(rawStatus.error),
+        errorCode: rawStatus.error.data?.error?.type,
+      }),
+    };
   }
 }
