@@ -616,6 +616,13 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
           // to begin, and then adjust it via delta when things move
           this.sockets = view.sockets;
         },
+        clearSelectedView() {
+          this.selectedViewId = null;
+          this.sockets = {};
+          this.components = {};
+          this.groups = {};
+          this.viewNodes = {};
+        },
         async selectView(id: ViewId) {
           const view = this.viewsById[id];
           if (view) {
@@ -753,11 +760,6 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
             method: "post",
             url: API_PREFIX,
             params: { name, clientUlid },
-            onSuccess: (view) => {
-              const idx = this.viewList.findIndex((v) => v.name === name);
-              // confirming we dont already have the data
-              if (idx === -1) this.viewList.push(view);
-            },
           });
         },
         async UPDATE_VIEW_NAME(view_id: ViewId, name: string) {
@@ -1740,6 +1742,11 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                     finalGeo.height = node.height;
                     finalGeo.width = node.width;
                     view.components[data.component.id] = finalGeo as IRect;
+                    for (const [key, loc] of Object.entries(
+                      setSockets(node, finalGeo),
+                    )) {
+                      view.sockets[key] = loc;
+                    }
                   } else {
                     if (!finalGeo.width) finalGeo.width = 500;
                     if (!finalGeo.height) finalGeo.height = 500;
@@ -1748,6 +1755,15 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                       size: finalGeo.width * finalGeo.height,
                       zIndex: 0,
                     };
+                    const node = processRawComponent(
+                      data.component,
+                      componentsStore.rawComponentsById,
+                    ) as DiagramGroupData;
+                    for (const [key, loc] of Object.entries(
+                      setSockets(node, finalGeo),
+                    )) {
+                      view.sockets[key] = loc;
+                    }
                   }
                 });
                 this.setGroupZIndex();

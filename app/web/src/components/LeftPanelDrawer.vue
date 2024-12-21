@@ -80,9 +80,11 @@ import {
 } from "@si/vue-lib/design-system";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
 import { useViewsStore } from "@/store/views.store";
+import { useChangeSetsStore } from "@/store/change_sets.store";
 import ViewCard from "./ViewCard.vue";
 
 const viewStore = useViewsStore();
+const changeSetsStore = useChangeSetsStore();
 
 const emit = defineEmits<{
   (e: "closed"): void;
@@ -116,7 +118,13 @@ const create = async () => {
   if (!viewName.value) {
     labelRef.value?.setError("Name is required");
   } else {
+    const onHead = changeSetsStore.headSelected;
+    // creating a view will force a changeset if you're on head
     const resp = await viewStore.CREATE_VIEW(viewName.value);
+    // while awaiting CREATE_VIEW, the changeSet changes
+    // and the viewStore we _currently_ have is still the HEAD viewStore
+    // so we need to keep that in a variable
+    if (onHead) return;
     if (resp.result.success) {
       modalRef.value?.close();
       viewStore.selectView(resp.result.data.id);
