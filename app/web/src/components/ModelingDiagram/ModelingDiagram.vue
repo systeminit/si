@@ -1508,6 +1508,7 @@ const currentSelectionMovableElements = computed(() => {
 
 const findChildrenByBoundingBox = (
   el: DiagramNodeData | DiagramGroupData,
+  allowDeletedChildrenToBeFilteredOut: boolean,
 ): (DiagramNodeData | DiagramGroupData | DiagramViewData)[] => {
   const cRect = el.def.isGroup
     ? viewsStore.groups[el.def.id]
@@ -1526,16 +1527,18 @@ const findChildrenByBoundingBox = (
     if (rectContainsAnother(rect, _r)) {
       const component = componentsStore.allComponentsById[id];
       if (component) {
-        if (
-          "changeStatus" in component.def &&
-          component.def.changeStatus === "deleted"
-        )
-          return;
-        if (
-          "fromBaseChangeSet" in component.def &&
-          component.def.fromBaseChangeSet
-        )
-          return;
+        if (allowDeletedChildrenToBeFilteredOut) {
+          if (
+            "changeStatus" in component.def &&
+            component.def.changeStatus === "deleted"
+          )
+            return;
+          if (
+            "fromBaseChangeSet" in component.def &&
+            component.def.fromBaseChangeSet
+          )
+            return;
+        }
         nodes.push(component);
       }
     }
@@ -1579,6 +1582,7 @@ function beginDragElements() {
     if (el.def.componentType !== ComponentType.View) {
       const childs = findChildrenByBoundingBox(
         el as DiagramNodeData | DiagramGroupData,
+        true,
       );
       childs.forEach((c) => children.add(c));
     }
@@ -2915,7 +2919,7 @@ const groups = computed(() => {
   );
   const ancestryByBounds = new DefaultMap<ComponentId, ComponentId[]>(() => []);
   frames.forEach((g) => {
-    const childIds = findChildrenByBoundingBox(g).map((el) => el.def.id);
+    const childIds = findChildrenByBoundingBox(g, false).map((el) => el.def.id);
     childIds.forEach((child) => {
       const ancestors = ancestryByBounds.get(child);
       ancestors.push(g.def.id);
