@@ -315,19 +315,25 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
           store.apiRequestDebouncers[trackingKey] ??= new ApiRequestDebouncer(
             config.api,
           );
-          const debouncer = store.apiRequestDebouncers;
           // check if we have already have a pending identical request (same tracking key, and identical payload)
           // if so, we can skip triggering the new api call
           // TODO: probably need to add more options here for caching/dedupe request/logic
           // ex: let us skip certain requests if already successful, not just pending
-          await store.apiRequestDebouncers[trackingKey].fireActionResult(
-            actionResult,
-            store,
-            {
-              "si.workspace.id": store.workspaceId,
-              "si.change_set.id": store.changeSetId,
-            },
-          );
+          const triggerResult = await store.apiRequestDebouncers[
+            trackingKey
+          ].triggerApiRequest(actionResult.requestSpec, store, {
+            "si.workspace.id": store.workspaceId,
+            "si.change_set.id": store.changeSetId,
+          });
+          if (!triggerResult) {
+            throw new Error(`No trigger result for ${trackingKey}`);
+          }
+
+          if (triggerResult.error) {
+            actionResult.setFailedResult(triggerResult.error);
+          } else {
+            actionResult.setSuccessfulResult(triggerResult.data);
+          }
         }
         return actionResult;
       };
@@ -477,7 +483,7 @@ class ApiRequestDebouncer {
   // triggers a named api request passing in a payload
   // this makes the api request, tracks the request status, handles errors, etc
   // TODO: probably will rework this a bit to get better type-checking
-  private async triggerApiRequest(
+  async triggerApiRequest(
     requestSpec: ApiRequestDescription,
     callbackArg: any,
     extraTracingArgs: {
@@ -716,30 +722,6 @@ class ApiRequestDebouncer {
         return await completed.promise;
       }
     });
-  }
-
-  async fireActionResult(
-    request: ApiRequest,
-    callbackArg: any,
-    extraTracingArgs: {
-      "si.workspace.id"?: string;
-      "si.change_set.id"?: string;
-    },
-  ) {
-    const triggerResult = await this.triggerApiRequest(
-      request.requestSpec,
-      callbackArg,
-      extraTracingArgs,
-    );
-    if (!triggerResult) {
-      throw new Error(`No trigger result`);
-    }
-
-    if (triggerResult.error) {
-      request.setFailedResult(triggerResult.error);
-    } else {
-      request.setSuccessfulResult(triggerResult.data);
-    }
   }
 
   // RawApiRequestStatus helpers
