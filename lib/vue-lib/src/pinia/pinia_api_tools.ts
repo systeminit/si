@@ -81,7 +81,7 @@ declare module "pinia" {
 
   // augments the store's state
   export interface PiniaCustomStateProperties<S> {
-    apiRequestDebouncer: ApiRequestDebouncer;
+    apiRequestDebouncers: ApiRequestDebouncersByKey;
   }
 }
 
@@ -250,7 +250,6 @@ export type ApiRequestStatus = Partial<RawApiRequestStatus> & {
   errorCode?: string;
 };
 
-type RawRequestStatusesByKey = Record<string, RawApiRequestStatus>;
 export type ConflictsForRetry = Record<RequestUlid, [string, ApiRequest]>;
 
 const TRACKING_KEY_SEPARATOR = "%";
@@ -265,11 +264,11 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
     /* eslint-disable no-param-reassign */
 
     // bail if plugin already called - not sure if necessary but previous pinia version needed it
-    if (store.apiRequestDebouncer) return;
+    if (store.apiRequestDebouncers) return;
 
     // have to attach our new state to both the store itself and store.$state
-    store.apiRequestDebouncer = new ApiRequestDebouncer(config.api);
-    (store.$state as any).apiRequestDebouncer = store.apiRequestDebouncer;
+    store.apiRequestDebouncers = new ApiRequestDebouncersByKey(config.api);
+    (store.$state as any).apiRequestDebouncer = store.apiRequestDebouncers;
 
     // make available to devtools
     if (import.meta.env.DEV) {
@@ -309,7 +308,7 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
             actionName,
             actionResult.requestSpec,
           );
-          await store.apiRequestDebouncer.fireActionResult(
+          await store.apiRequestDebouncers.fireActionResult(
             trackingKey,
             actionResult,
             store,
@@ -363,7 +362,7 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
         ...keyedByArgs: RequestStatusKeyArg[]
       ): ComputedRef<ApiRequestStatus> {
         const fullKey = getKey(requestKey, ...keyedByArgs);
-        return store.apiRequestDebouncer.getRequestStatus(fullKey);
+        return store.apiRequestDebouncers.getRequestStatus(fullKey);
       },
       getRequestStatuses(
         requestKey: string, // will allow only action names that return an ApiRequest
@@ -373,7 +372,7 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
           return _.mapValues(
             _.keyBy(unref(keyedByArgs)),
             (arg) =>
-              store.apiRequestDebouncer.getRequestStatus(
+              store.apiRequestDebouncers.getRequestStatus(
                 getKey(requestKey, arg),
               ).value,
           );
@@ -384,7 +383,7 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
         ...keyedByArgs: RequestStatusKeyArg[]
       ): void {
         const fullKey = getKey(requestKey, ...keyedByArgs);
-        store.apiRequestDebouncer.clearRequestStatus(fullKey);
+        store.apiRequestDebouncers.clearRequestStatus(fullKey);
       },
       ...apiRequestActions,
     };
@@ -459,7 +458,16 @@ export async function apiData<T>(request: Promise<ApiRequest<T>>) {
 }
 
 class ApiRequestDebouncer {
-  private apiRequestStatuses = reactive({} as RawRequestStatusesByKey);
+  request?: RawApiRequestStatus;
+  get isPending() {
+    return !this.request?.receivedAt;
+  }
+}
+
+class ApiRequestDebouncersByKey {
+  private readonly apiRequestDebouncers = reactive(
+    {} as { [key in string]?: ApiRequestDebouncer },
+  );
   constructor(public api: AxiosInstance) {}
 
   // triggers a named api request passing in a payload
@@ -481,13 +489,14 @@ class ApiRequestDebouncer {
     // if so, we can skip triggering the new api call
     // TODO: probably need to add more options here for caching/dedupe request/logic
     // ex: let us skip certain requests if already successful, not just pending
-    const existingRequest = this.getRequestStatus(trackingKey).value;
+    this.apiRequestDebouncers[trackingKey] ??= new ApiRequestDebouncer();
+    const debouncer = this.apiRequestDebouncers[trackingKey];
     if (
-      existingRequest.isPending &&
-      _.isEqual(existingRequest.payload, requestSpec.params)
+      debouncer.isPending &&
+      _.isEqual(debouncer.request?.payload, requestSpec.params)
     ) {
       // return original promise so caller can use the result directly if necessary
-      return existingRequest.completed?.promise;
+      return debouncer.request?.completed?.promise;
     }
 
     const requestUlid = ulid();
@@ -500,12 +509,12 @@ class ApiRequestDebouncer {
     // which we'll use to not make the same request multiple times at the same time, but still be able to await the result
     const completed = createDeferredPromise();
     // store.$patch((state) => {
-    this.apiRequestStatuses[trackingKey] = {
+    debouncer.request = {
       requestedAt: new Date(),
       payload: requestSpec.params,
       completed,
       // do not clear "last success at" so we know if this request has ever succeeded
-      lastSuccessAt: this.apiRequestStatuses[trackingKey]?.lastSuccessAt,
+      lastSuccessAt: debouncer.request?.lastSuccessAt,
     };
     // });
 
@@ -636,8 +645,8 @@ class ApiRequestDebouncer {
         // TODO: we may want to reverse the order here of calling success and marking received?
         // ideally we would mark received at the same time as the changes made during onSuccess, but not sure it's possible
         // store.$patch((state) => {
-        this.apiRequestStatuses[trackingKey].lastSuccessAt = new Date();
-        this.apiRequestStatuses[trackingKey].receivedAt = new Date();
+        (debouncer.request as ApiRequestStatus).lastSuccessAt = new Date();
+        (debouncer.request as ApiRequestStatus).receivedAt = new Date();
         // });
 
         // call success handler if one was defined - this will usually be what updates the store
@@ -658,7 +667,7 @@ class ApiRequestDebouncer {
         // like redirecting to a newly created ID, so we return the api response
       } catch (err: any) {
         // store.$patch((state) => {
-        this.apiRequestStatuses[trackingKey].receivedAt = new Date();
+        (debouncer.request as ApiRequestStatus).receivedAt = new Date();
         // });
 
         /* eslint-disable-next-line no-console */
@@ -682,7 +691,7 @@ class ApiRequestDebouncer {
 
         // mark the request as failure and store the error info
         // store.$patch((state) => {
-        const apiRequestStatus = this.apiRequestStatuses[
+        const apiRequestStatus = this.apiRequestDebouncers[
           trackingKey
         ] as ApiRequestStatus;
         // TODO maybe use Axios.isAxiosError instead, but don't want to change behavior right now
@@ -743,7 +752,7 @@ class ApiRequestDebouncer {
   // helper to get the current status of a request in a format that is easy to work with
   getRequestStatus(fullKey: string): ComputedRef<ApiRequestStatus> {
     return computed(() => {
-      const rawStatus = this.apiRequestStatuses[fullKey];
+      const rawStatus = this.apiRequestDebouncers[fullKey]?.request;
       if (!rawStatus?.requestedAt) {
         return {
           isRequested: false,
@@ -769,6 +778,6 @@ class ApiRequestDebouncer {
   }
 
   clearRequestStatus(fullKey: string): void {
-    delete this.apiRequestStatuses[fullKey];
+    delete this.apiRequestDebouncers[fullKey];
   }
 }
