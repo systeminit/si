@@ -81,7 +81,7 @@ declare module "pinia" {
 
   // augments the store's state
   export interface PiniaCustomStateProperties<S> {
-    apiRequestStatuses: RawRequestStatusesByKey;
+    apiRequestDebouncer: ApiRequestDebouncer;
   }
 }
 
@@ -265,22 +265,17 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
     /* eslint-disable no-param-reassign */
 
     // bail if plugin already called - not sure if necessary but previous pinia version needed it
-    if (store.apiRequestStatuses) return;
+    if (store.apiRequestDebouncer) return;
 
     // have to attach our new state to both the store itself and store.$state
-    store.apiRequestStatuses = reactive({} as RawRequestStatusesByKey);
-    (store.$state as any).apiRequestStatuses = store.apiRequestStatuses;
+    store.apiRequestDebouncer = new ApiRequestDebouncer(config.api);
+    (store.$state as any).apiRequestDebouncer = store.apiRequestDebouncer;
 
     // make available to devtools
     if (import.meta.env.DEV) {
       // eslint-disable-next-line no-underscore-dangle
-      store._customProperties.add("apiRequestStatuses");
+      store._customProperties.add("apiRequestDebouncer");
     }
-
-    const tracker = new ApiRequestDebouncer(
-      store.apiRequestStatuses,
-      config.api,
-    );
 
     function getTrackingKey(
       actionName: string,
@@ -314,10 +309,15 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
             actionName,
             actionResult.requestSpec,
           );
-          await tracker.fireActionResult(trackingKey, actionResult, store, {
-            "si.workspace.id": store.workspaceId,
-            "si.change_set.id": store.changeSetId,
-          });
+          await store.apiRequestDebouncer.fireActionResult(
+            trackingKey,
+            actionResult,
+            store,
+            {
+              "si.workspace.id": store.workspaceId,
+              "si.change_set.id": store.changeSetId,
+            },
+          );
         }
         return actionResult;
       };
@@ -363,7 +363,7 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
         ...keyedByArgs: RequestStatusKeyArg[]
       ): ComputedRef<ApiRequestStatus> {
         const fullKey = getKey(requestKey, ...keyedByArgs);
-        return tracker.getRequestStatus(fullKey);
+        return store.apiRequestDebouncer.getRequestStatus(fullKey);
       },
       getRequestStatuses(
         requestKey: string, // will allow only action names that return an ApiRequest
@@ -372,7 +372,10 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
         return computed(() => {
           return _.mapValues(
             _.keyBy(unref(keyedByArgs)),
-            (arg) => tracker.getRequestStatus(getKey(requestKey, arg)).value,
+            (arg) =>
+              store.apiRequestDebouncer.getRequestStatus(
+                getKey(requestKey, arg),
+              ).value,
           );
         });
       },
@@ -381,7 +384,7 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
         ...keyedByArgs: RequestStatusKeyArg[]
       ): void {
         const fullKey = getKey(requestKey, ...keyedByArgs);
-        tracker.clearRequestStatus(fullKey);
+        store.apiRequestDebouncer.clearRequestStatus(fullKey);
       },
       ...apiRequestActions,
     };
@@ -456,10 +459,8 @@ export async function apiData<T>(request: Promise<ApiRequest<T>>) {
 }
 
 class ApiRequestDebouncer {
-  constructor(
-    private apiRequestStatuses: RawRequestStatusesByKey,
-    public api: AxiosInstance,
-  ) {}
+  private apiRequestStatuses = reactive({} as RawRequestStatusesByKey);
+  constructor(public api: AxiosInstance) {}
 
   // triggers a named api request passing in a payload
   // this makes the api request, tracks the request status, handles errors, etc
