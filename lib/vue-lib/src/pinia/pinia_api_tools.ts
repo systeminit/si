@@ -277,287 +277,13 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
       store._customProperties.add("apiRequestStatuses");
     }
 
-    // triggers a named api request passing in a payload
-    // this makes the api request, tracks the request status, handles errors, etc
-    // TODO: probably will rework this a bit to get better type-checking
-    async function triggerApiRequest(
-      actionName: string,
-      requestSpec: ApiRequestDescription,
-      requestUlid: RequestUlid,
-    ): Promise<any> {
-      /* eslint-disable no-param-reassign,consistent-return */
-      // console.log('trigger api request', actionName, requestSpec);
-
-      // determine the key we will use when storing the request status
-      // most requests are tracked only by their name, for example LOGIN
-      // but some requests we may want to track multiple instances of and split by id or other params
-      // for example GET_THING%1, GET_THING%2 or GET_OAUTH_ACCOUNT%google%abc123
-      const trackingKeyArray: RawRequestStatusKeyArg[] = [actionName];
-      if (requestSpec.keyRequestStatusBy) {
-        if (_.isArray(requestSpec.keyRequestStatusBy)) {
-          trackingKeyArray.push(...requestSpec.keyRequestStatusBy);
-        } else {
-          trackingKeyArray.push(requestSpec.keyRequestStatusBy);
-        }
-      }
-      const trackingKey = trackingKeyArray.join(TRACKING_KEY_SEPARATOR);
-
-      // check if we have already have a pending identical request (same tracking key, and identical payload)
-      // if so, we can skip triggering the new api call
-      // TODO: probably need to add more options here for caching/dedupe request/logic
-      // ex: let us skip certain requests if already successful, not just pending
-      const existingRequest = store.getRequestStatus(trackingKey).value;
-      if (
-        existingRequest.isPending &&
-        _.isEqual(existingRequest.payload, requestSpec.params)
-      ) {
-        // return original promise so caller can use the result directly if necessary
-        return existingRequest.completed?.promise;
-      }
-
-      if (!requestSpec.params) requestSpec.params = {};
-      requestSpec.params.requestUlid = requestUlid;
-
-      // mark the request as pending in the store
-      // and attach a deferred promise we'll resolve when completed
-      // which we'll use to not make the same request multiple times at the same time, but still be able to await the result
-      const completed = createDeferredPromise();
-      store.$patch((state) => {
-        state.apiRequestStatuses[trackingKey] = {
-          requestedAt: new Date(),
-          payload: requestSpec.params,
-          completed,
-          // do not clear "last success at" so we know if this request has ever succeeded
-          lastSuccessAt: state.apiRequestStatuses[trackingKey]?.lastSuccessAt,
-        };
-      });
-
-      // if optimistic update logic is defined, we trigger it here, before actually making the API request
-      // that fn should return a fn to call which rolls back any optimistic updates in case the request fails
-      let optimisticRollbackFn: OptimisticReturn;
-      if (requestSpec.optimistic) {
-        optimisticRollbackFn = requestSpec.optimistic(requestUlid);
-      }
-
-      const {
-        method,
-        url,
-        params: requestParams,
-        options,
-        formData,
-        onSuccess,
-        onNewChangeSet,
-        onFail,
-      } = requestSpec;
-      let { headers } = requestSpec;
-      let _url: string;
-
-      let urlName;
-      if (Array.isArray(url)) {
-        [_url, urlName] = describePattern(url);
-      } else if (typeof url === "string") {
-        urlName = url; // string
-        _url = url;
-      } else {
-        throw Error("URL is required");
-      }
-
-      const name = `${method?.toUpperCase()} ${urlName}`;
-      return tracer.startActiveSpan(name, async (span: Span) => {
-        const time = window.performance.getEntriesByType(
-          "navigation",
-        )[0] as PerformanceNavigationTiming;
-        const dns_duration = time.domainLookupEnd - time.domainLookupStart;
-        const tcp_duration = time.connectEnd - time.connectStart;
-        span.setAttributes({
-          "http.body": formData
-            ? "multipart form"
-            : JSON.stringify(requestParams),
-          "http.url": _url,
-          "http.method": method,
-          "si.requestUlid": requestUlid,
-          dns_duration,
-          tcp_duration,
-          "si.workspace.id": store.workspaceId,
-          "si.change_set.id": store.changeSetId,
-          ...(formData && requestParams
-            ? { "http.params": JSON.stringify(requestParams) }
-            : {}),
-        });
-        try {
-          if (!headers) headers = {};
-          opentelemetry.propagation.inject(
-            opentelemetry.context.active(),
-            headers,
-          );
-
-          // the api (axios instance) to use can be set several ways:
-          // - passed in with the specific request (probably not common)
-          // - use registerApi(api) to create new SpecificApiRequest class with api attached
-          // - fallback to default api that was set when initializing the plugin
-          const api = requestSpec.api || config.api;
-
-          // add artificial delay - helpful to test loading states in UI when using local API which is very fast
-          if (import.meta.env.VITE_DELAY_API_REQUESTS) {
-            await promiseDelay(
-              parseInt(import.meta.env.VITE_DELAY_API_REQUESTS as string),
-            );
-          } else if (requestSpec._delay) {
-            await promiseDelay(requestSpec._delay);
-          }
-
-          // actually trigger the API request (uses the axios instance that was passed in)
-          // may need to handle registering multiple apis if we need to hit more than 1
-
-          let request;
-          if (method === "get") {
-            request = await api({
-              method,
-              url: _url,
-              ...(headers && { headers }),
-              params: requestParams,
-              ...options,
-            });
-          } else {
-            // delete, post, patch, put. Axios's types forbid formData on the
-            // request if method is not one of these , so we have to do branch
-            // on the method types to make a formData request
-            if (formData) {
-              headers["Content-Type"] = "multipart/form-data";
-              request = await api({
-                method,
-                url: _url,
-                ...(headers && { headers }),
-                data: formData,
-                params: requestParams,
-                ...options,
-              });
-            } else {
-              request = await api({
-                method,
-                url: _url,
-                ...(headers && { headers }),
-                data: requestParams,
-                ...options,
-              });
-            }
-          }
-
-          if (request.headers.force_change_set_id)
-            if (typeof onNewChangeSet === "function")
-              await onNewChangeSet.call(
-                store,
-                request.headers.force_change_set_id,
-                request.data,
-              );
-
-          // request was successful if reaching here
-          // because axios throws an error if http status >= 400, timeout, etc
-
-          // TODO: trigger global success hook that can be added on plugin init (or split by api)
-
-          // mark request as received, which in absence of an error also means successful
-          // TODO: we may want to reverse the order here of calling success and marking received?
-          // ideally we would mark received at the same time as the changes made during onSuccess, but not sure it's possible
-          store.$patch((state) => {
-            state.apiRequestStatuses[trackingKey].lastSuccessAt = new Date();
-            state.apiRequestStatuses[trackingKey].receivedAt = new Date();
-          });
-
-          // call success handler if one was defined - this will usually be what updates the store
-          // we may want to bundle this change together with onSuccess somehow? maybe doesnt matter?
-          if (typeof onSuccess === "function") {
-            await onSuccess.call(store, request.data);
-          }
-
-          completed.resolve({
-            data: request.data,
-          });
-          span.setAttributes({ "http.status_code": request.status });
-          span.end();
-          return await completed.promise;
-
-          // normally we want to get any response data from the store directly
-          // but there are cases where its useful to be able to get it from the return value
-          // like redirecting to a newly created ID, so we return the api response
-        } catch (err: any) {
-          store.$patch((state) => {
-            state.apiRequestStatuses[trackingKey].receivedAt = new Date();
-          });
-
-          /* eslint-disable-next-line no-console */
-          console.log(err);
-          // TODO: trigger global error hook that can be added on plugin init (or split by api)
-
-          // if we made an optimistic update, we'll roll it back here
-          if (optimisticRollbackFn) optimisticRollbackFn();
-
-          // call explicit failure handler if one is defined (usually rare)
-          if (typeof onFail === "function") {
-            const convertedData = onFail(err);
-
-            if (convertedData) {
-              err.response = {
-                ...err.response,
-                data: convertedData,
-              };
-            }
-          }
-
-          // mark the request as failure and store the error info
-          store.$patch((state) => {
-            const apiRequestStatus = state.apiRequestStatuses[
-              trackingKey
-            ] as ApiRequestStatus;
-            // TODO maybe use Axios.isAxiosError instead, but don't want to change behavior right now
-            if (err.response) {
-              apiRequestStatus.error = (err as AxiosError).response;
-            } else {
-              // if error was not http error or had no response body
-              // we still want some kind of fallback message to show
-              // and we keep it in a similar format to what the http error response bodies
-              apiRequestStatus.error = {
-                data: {
-                  error: {
-                    message: err.message,
-                  },
-                },
-              };
-            }
-          });
-
-          // return false so caller can easily detect a failure
-          completed.resolve({
-            error: err,
-          });
-          span.setAttributes({ "http.status_code": err.response.status });
-          span.end();
-          return await completed.promise;
-        }
-      });
-    }
-
-    async function fireActionResult(
-      actionName: string,
-      actionResult: ApiRequest,
-      requestUlid: RequestUlid,
-    ) {
-      const request = actionResult;
-      const triggerResult = await triggerApiRequest(
-        actionName,
-        request.requestSpec,
-        requestUlid,
-      );
-      if (!triggerResult) {
-        throw new Error(`No trigger result for ${actionName}`);
-      }
-
-      if (triggerResult.error) {
-        request.setFailedResult(triggerResult.error);
-      } else {
-        request.setSuccessfulResult(triggerResult.data);
-      }
-    }
+    const tracker = new ApiRequestActionDebouncer(
+      store.apiRequestStatuses,
+      config.api,
+      store,
+      store.workspaceId,
+      store.changeSetId,
+    );
 
     // wrap each action in a fn that will take an action result that is an ApiRequest
     // and actually trigger the request, waiting to finish until the request is complete
@@ -570,7 +296,7 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
         const requestUlid = ulid();
         const actionResult: any = await originalActionFn(...args);
         if (actionResult instanceof ApiRequest) {
-          await fireActionResult(actionName, actionResult, requestUlid);
+          await tracker.fireActionResult(actionName, actionResult, requestUlid);
         }
         return actionResult;
       };
@@ -603,69 +329,10 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
       }
     });
 
-    // helper to get the current status of a request in a format that is easy to work with
-    const getRequestStatus = (
-      requestKey: string,
-      ...keyedByArgs: RawRequestStatusKeyArg[]
-    ) => {
-      return computed(() => {
-        const rawKeyedByArgs = _.map(keyedByArgs, unref);
-        const fullKey = [requestKey, ..._.compact(rawKeyedByArgs)].join(
-          TRACKING_KEY_SEPARATOR,
-        );
-
-        const rawStatus = store.$state.apiRequestStatuses[fullKey];
-        if (!rawStatus?.requestedAt) {
-          return {
-            isRequested: false,
-            isFirstLoad: false,
-            isPending: false,
-            isError: false,
-            isSuccess: false,
-          };
-        }
-        return {
-          ...rawStatus,
-          isRequested: true,
-          isPending: !rawStatus.receivedAt,
-          isFirstLoad: !rawStatus.receivedAt && !rawStatus.lastSuccessAt,
-          isSuccess: !!rawStatus.receivedAt && !rawStatus.error,
-          isError: !!rawStatus.error,
-          ...(rawStatus.error && {
-            errorMessage: getApiStatusRequestErrorMessage(rawStatus.error),
-            errorCode: rawStatus.error.data?.error?.type,
-          }),
-        };
-      });
-    };
-    const getRequestStatuses = (
-      requestKey: string,
-      arrayOfArgs: string[] | ComputedRef<string[]>,
-    ) => {
-      return computed(() => {
-        return _.mapValues(
-          _.keyBy(unref(arrayOfArgs)),
-          (arg: string) => getRequestStatus(requestKey, arg).value,
-        );
-      });
-    };
-
-    const clearRequestStatus = (
-      requestKey: string,
-      ...keyedByArgs: RawRequestStatusKeyArg[]
-    ) => {
-      const rawKeyedByArgs = _.map(keyedByArgs, unref);
-      const fullKey = [requestKey, ..._.compact(rawKeyedByArgs)].join(
-        TRACKING_KEY_SEPARATOR,
-      );
-
-      delete store.$state.apiRequestStatuses[fullKey];
-    };
-
     return {
-      getRequestStatus,
-      getRequestStatuses,
-      clearRequestStatus,
+      getRequestStatus: tracker.getRequestStatus,
+      getRequestStatuses: tracker.getRequestStatuses,
+      clearRequestStatus: tracker.clearRequestStatus,
       ...apiRequestActions,
     };
   };
@@ -736,4 +403,356 @@ export async function apiData<T>(request: Promise<ApiRequest<T>>) {
   const { result } = await request;
   if (!result.success) throw result.err;
   return result.data;
+}
+
+class ApiRequestActionDebouncer {
+  constructor(
+    private apiRequestStatuses: RawRequestStatusesByKey,
+    public api: AxiosInstance,
+    public callbackArg: any,
+    public workspaceId?: string,
+    public changeSetId?: string,
+  ) {}
+
+  // triggers a named api request passing in a payload
+  // this makes the api request, tracks the request status, handles errors, etc
+  // TODO: probably will rework this a bit to get better type-checking
+  async triggerApiRequest(
+    actionName: string,
+    requestSpec: ApiRequestDescription,
+    requestUlid: RequestUlid,
+  ): Promise<any> {
+    /* eslint-disable no-param-reassign,consistent-return */
+    // console.log('trigger api request', actionName, requestSpec);
+
+    // determine the key we will use when storing the request status
+    // most requests are tracked only by their name, for example LOGIN
+    // but some requests we may want to track multiple instances of and split by id or other params
+    // for example GET_THING%1, GET_THING%2 or GET_OAUTH_ACCOUNT%google%abc123
+    const trackingKeyArray: RawRequestStatusKeyArg[] = [actionName];
+    if (requestSpec.keyRequestStatusBy) {
+      if (_.isArray(requestSpec.keyRequestStatusBy)) {
+        trackingKeyArray.push(...requestSpec.keyRequestStatusBy);
+      } else {
+        trackingKeyArray.push(requestSpec.keyRequestStatusBy);
+      }
+    }
+    const trackingKey = trackingKeyArray.join(TRACKING_KEY_SEPARATOR);
+
+    // check if we have already have a pending identical request (same tracking key, and identical payload)
+    // if so, we can skip triggering the new api call
+    // TODO: probably need to add more options here for caching/dedupe request/logic
+    // ex: let us skip certain requests if already successful, not just pending
+    const existingRequest = this.getRequestStatus(trackingKey).value;
+    if (
+      existingRequest.isPending &&
+      _.isEqual(existingRequest.payload, requestSpec.params)
+    ) {
+      // return original promise so caller can use the result directly if necessary
+      return existingRequest.completed?.promise;
+    }
+
+    if (!requestSpec.params) requestSpec.params = {};
+    requestSpec.params.requestUlid = requestUlid;
+
+    // mark the request as pending in the store
+    // and attach a deferred promise we'll resolve when completed
+    // which we'll use to not make the same request multiple times at the same time, but still be able to await the result
+    const completed = createDeferredPromise();
+    // store.$patch((state) => {
+    this.apiRequestStatuses[trackingKey] = {
+      requestedAt: new Date(),
+      payload: requestSpec.params,
+      completed,
+      // do not clear "last success at" so we know if this request has ever succeeded
+      lastSuccessAt: this.apiRequestStatuses[trackingKey]?.lastSuccessAt,
+    };
+    // });
+
+    // if optimistic update logic is defined, we trigger it here, before actually making the API request
+    // that fn should return a fn to call which rolls back any optimistic updates in case the request fails
+    let optimisticRollbackFn: OptimisticReturn;
+    if (requestSpec.optimistic) {
+      optimisticRollbackFn = requestSpec.optimistic(requestUlid);
+    }
+
+    const {
+      method,
+      url,
+      params: requestParams,
+      options,
+      formData,
+      onSuccess,
+      onNewChangeSet,
+      onFail,
+    } = requestSpec;
+    let { headers } = requestSpec;
+    let _url: string;
+
+    let urlName;
+    if (Array.isArray(url)) {
+      [_url, urlName] = describePattern(url);
+    } else if (typeof url === "string") {
+      urlName = url; // string
+      _url = url;
+    } else {
+      throw Error("URL is required");
+    }
+
+    const name = `${method?.toUpperCase()} ${urlName}`;
+    return tracer.startActiveSpan(name, async (span: Span) => {
+      const time = window.performance.getEntriesByType(
+        "navigation",
+      )[0] as PerformanceNavigationTiming;
+      const dns_duration = time.domainLookupEnd - time.domainLookupStart;
+      const tcp_duration = time.connectEnd - time.connectStart;
+      span.setAttributes({
+        "http.body": formData
+          ? "multipart form"
+          : JSON.stringify(requestParams),
+        "http.url": _url,
+        "http.method": method,
+        "si.requestUlid": requestUlid,
+        dns_duration,
+        tcp_duration,
+        "si.workspace.id": this.workspaceId,
+        "si.change_set.id": this.changeSetId,
+        ...(formData && requestParams
+          ? { "http.params": JSON.stringify(requestParams) }
+          : {}),
+      });
+      try {
+        if (!headers) headers = {};
+        opentelemetry.propagation.inject(
+          opentelemetry.context.active(),
+          headers,
+        );
+
+        // the api (axios instance) to use can be set several ways:
+        // - passed in with the specific request (probably not common)
+        // - use registerApi(api) to create new SpecificApiRequest class with api attached
+        // - fallback to default api that was set when initializing the plugin
+        const api = requestSpec.api || this.api;
+
+        // add artificial delay - helpful to test loading states in UI when using local API which is very fast
+        if (import.meta.env.VITE_DELAY_API_REQUESTS) {
+          await promiseDelay(
+            parseInt(import.meta.env.VITE_DELAY_API_REQUESTS as string),
+          );
+        } else if (requestSpec._delay) {
+          await promiseDelay(requestSpec._delay);
+        }
+
+        // actually trigger the API request (uses the axios instance that was passed in)
+        // may need to handle registering multiple apis if we need to hit more than 1
+
+        let request;
+        if (method === "get") {
+          request = await api({
+            method,
+            url: _url,
+            ...(headers && { headers }),
+            params: requestParams,
+            ...options,
+          });
+        } else {
+          // delete, post, patch, put. Axios's types forbid formData on the
+          // request if method is not one of these , so we have to do branch
+          // on the method types to make a formData request
+          if (formData) {
+            headers["Content-Type"] = "multipart/form-data";
+            request = await api({
+              method,
+              url: _url,
+              ...(headers && { headers }),
+              data: formData,
+              params: requestParams,
+              ...options,
+            });
+          } else {
+            request = await api({
+              method,
+              url: _url,
+              ...(headers && { headers }),
+              data: requestParams,
+              ...options,
+            });
+          }
+        }
+
+        if (request.headers.force_change_set_id)
+          if (typeof onNewChangeSet === "function")
+            await onNewChangeSet.call(
+              this.callbackArg,
+              request.headers.force_change_set_id,
+              request.data,
+            );
+
+        // request was successful if reaching here
+        // because axios throws an error if http status >= 400, timeout, etc
+
+        // TODO: trigger global success hook that can be added on plugin init (or split by api)
+
+        // mark request as received, which in absence of an error also means successful
+        // TODO: we may want to reverse the order here of calling success and marking received?
+        // ideally we would mark received at the same time as the changes made during onSuccess, but not sure it's possible
+        // store.$patch((state) => {
+        this.apiRequestStatuses[trackingKey].lastSuccessAt = new Date();
+        this.apiRequestStatuses[trackingKey].receivedAt = new Date();
+        // });
+
+        // call success handler if one was defined - this will usually be what updates the store
+        // we may want to bundle this change together with onSuccess somehow? maybe doesnt matter?
+        if (typeof onSuccess === "function") {
+          await onSuccess.call(this.callbackArg, request.data);
+        }
+
+        completed.resolve({
+          data: request.data,
+        });
+        span.setAttributes({ "http.status_code": request.status });
+        span.end();
+        return await completed.promise;
+
+        // normally we want to get any response data from the store directly
+        // but there are cases where its useful to be able to get it from the return value
+        // like redirecting to a newly created ID, so we return the api response
+      } catch (err: any) {
+        // store.$patch((state) => {
+        this.apiRequestStatuses[trackingKey].receivedAt = new Date();
+        // });
+
+        /* eslint-disable-next-line no-console */
+        console.log(err);
+        // TODO: trigger global error hook that can be added on plugin init (or split by api)
+
+        // if we made an optimistic update, we'll roll it back here
+        if (optimisticRollbackFn) optimisticRollbackFn();
+
+        // call explicit failure handler if one is defined (usually rare)
+        if (typeof onFail === "function") {
+          const convertedData = onFail(err);
+
+          if (convertedData) {
+            err.response = {
+              ...err.response,
+              data: convertedData,
+            };
+          }
+        }
+
+        // mark the request as failure and store the error info
+        // store.$patch((state) => {
+        const apiRequestStatus = this.apiRequestStatuses[
+          trackingKey
+        ] as ApiRequestStatus;
+        // TODO maybe use Axios.isAxiosError instead, but don't want to change behavior right now
+        if (err.response) {
+          apiRequestStatus.error = (err as AxiosError).response;
+        } else {
+          // if error was not http error or had no response body
+          // we still want some kind of fallback message to show
+          // and we keep it in a similar format to what the http error response bodies
+          apiRequestStatus.error = {
+            data: {
+              error: {
+                message: err.message,
+              },
+            },
+          };
+        }
+        // });
+
+        // return false so caller can easily detect a failure
+        completed.resolve({
+          error: err,
+        });
+        span.setAttributes({ "http.status_code": err.response.status });
+        span.end();
+        return await completed.promise;
+      }
+    });
+  }
+
+  async fireActionResult(
+    actionName: string,
+    actionResult: ApiRequest,
+    requestUlid: RequestUlid,
+  ) {
+    const request = actionResult;
+    const triggerResult = await this.triggerApiRequest(
+      actionName,
+      request.requestSpec,
+      requestUlid,
+    );
+    if (!triggerResult) {
+      throw new Error(`No trigger result for ${actionName}`);
+    }
+
+    if (triggerResult.error) {
+      request.setFailedResult(triggerResult.error);
+    } else {
+      request.setSuccessfulResult(triggerResult.data);
+    }
+  }
+
+  // helper to get the current status of a request in a format that is easy to work with
+  getRequestStatus(
+    requestKey: string,
+    ...keyedByArgs: RawRequestStatusKeyArg[]
+  ): ComputedRef<ApiRequestStatus> {
+    return computed(() => {
+      const rawKeyedByArgs = _.map(keyedByArgs, unref);
+      const fullKey = [requestKey, ..._.compact(rawKeyedByArgs)].join(
+        TRACKING_KEY_SEPARATOR,
+      );
+
+      const rawStatus = this.apiRequestStatuses[fullKey];
+      if (!rawStatus?.requestedAt) {
+        return {
+          isRequested: false,
+          isFirstLoad: false,
+          isPending: false,
+          isError: false,
+          isSuccess: false,
+        };
+      }
+      return {
+        ...rawStatus,
+        isRequested: true,
+        isPending: !rawStatus.receivedAt,
+        isFirstLoad: !rawStatus.receivedAt && !rawStatus.lastSuccessAt,
+        isSuccess: !!rawStatus.receivedAt && !rawStatus.error,
+        isError: !!rawStatus.error,
+        ...(rawStatus.error && {
+          errorMessage: getApiStatusRequestErrorMessage(rawStatus.error),
+          errorCode: rawStatus.error.data?.error?.type,
+        }),
+      };
+    });
+  }
+
+  getRequestStatuses(
+    requestKey: string,
+    arrayOfArgs: string[] | ComputedRef<string[]>,
+  ): ComputedRef<Record<string, ApiRequestStatus>> {
+    return computed(() => {
+      return _.mapValues(
+        _.keyBy(unref(arrayOfArgs)),
+        (arg: string) => this.getRequestStatus(requestKey, arg).value,
+      );
+    });
+  }
+
+  clearRequestStatus(
+    requestKey: string,
+    ...keyedByArgs: RawRequestStatusKeyArg[]
+  ): void {
+    const rawKeyedByArgs = _.map(keyedByArgs, unref);
+    const fullKey = [requestKey, ..._.compact(rawKeyedByArgs)].join(
+      TRACKING_KEY_SEPARATOR,
+    );
+
+    delete this.apiRequestStatuses[fullKey];
+  }
 }
