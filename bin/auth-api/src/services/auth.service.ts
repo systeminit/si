@@ -60,11 +60,23 @@ interface SdfAuthTokenPayloadV2 {
 
 // Old auth token versions
 interface SdfAuthTokenPayloadV1 {
-  user_pk: string;
-  workspace_pk: string;
+  version?: undefined;
+  user_pk: UserId;
+  workspace_pk: WorkspaceId;
 }
 
 // Pass a V2 token in.
+export function createSdfAuthToken(
+  payload: Omit<SdfAuthTokenPayloadV2, "version"> & { role: "automation" },
+  options: (
+    Omit<SignOptions, 'algorithm' | 'subject' | 'expiresIn' | 'jwtid'>
+    & Required<Pick<SignOptions, 'expiresIn' | 'jwtid'>>
+  ),
+): string;
+export function createSdfAuthToken(
+  payload: Omit<SdfAuthTokenPayloadV2, "version"> & { role: "web" },
+  options?: Omit<SignOptions, 'algorithm' | 'subject'>,
+): string;
 export function createSdfAuthToken(
   payload: Omit<SdfAuthTokenPayloadV2, "version">,
   options?: Omit<SignOptions, 'algorithm' | 'subject'>,
@@ -87,6 +99,19 @@ export function createSdfAuthToken(
 
 export async function decodeSdfAuthToken(token: string) {
   return verifyJWT(token) as SdfAuthTokenPayload & JwtPayload;
+}
+
+export function normalizeSdfAuthTokenPayload(token: SdfAuthTokenPayload): Omit<SdfAuthTokenPayloadV2, "version"> {
+  if ("user_pk" in token) {
+    return {
+      userId: token.user_pk,
+      workspaceId: token.workspace_pk,
+      role: "web",
+    };
+  } else {
+    const { userId, workspaceId, role } = token;
+    return { userId, workspaceId, role };
+  }
 }
 
 function wipeAuthCookie(ctx: Koa.Context) {

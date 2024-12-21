@@ -55,8 +55,17 @@ model User {
   /// Timestamp of the latest account suspension. `undefined` if not suspended
   suspendedAt DateTime? @map("suspended_at")
 
+  /// List of automation tokens a user has created
+  tokens AuthToken[]
+
   @@index(fields: [email])
   @@map("users")
+}
+
+enum InstanceEnvType {
+  LOCAL
+  PRIVATE
+  SI
 }
 
 model Workspace {
@@ -95,8 +104,16 @@ model Workspace {
   /// Denotes whether this will show up in a users favourite workspaces list
   isFavourite Boolean @default(false) @map("is_favourite")
 
+  tokens AuthToken[]
+
   @@index(fields: [creatorUserId])
   @@map("workspaces")
+}
+
+enum RoleType {
+  OWNER
+  APPROVER
+  EDITOR
 }
 
 model WorkspaceMembers {
@@ -135,14 +152,29 @@ model TosAgreement {
   @@map("tos_agreements")
 }
 
-enum InstanceEnvType {
-  LOCAL
-  PRIVATE
-  SI
-}
+/// A JWT authenticating a user and granting permissions to a particular workspace
+model AuthToken {
+  // Token ULID used to look up and revoke the token
+  id          String    @id @db.Char(26)
+  // Display name of token for Auth Portal UI
+  name        String?
+  /// User this token authenticates
+  user        User      @relation(fields: [userId], references: [id])
+  userId      String    @db.Char(26)
+  /// Workspace this token grants access to
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+  workspaceId String    @db.Char(26)
+  /// When this token was created
+  createdAt   DateTime  @default(now())
+  /// When this token is set to expire (could be in the past).
+  /// Null if it doesn't have a direct expiration date
+  expiresAt   DateTime?
+  /// Json claims in token
+  /// - role ("web" | "automation")
+  claims      Json
 
-enum RoleType {
-  OWNER
-  APPROVER
-  EDITOR
+  /// When this token was last used
+  lastUsedAt DateTime?
+  /// From where this token was last used
+  lastUsedIp String?
 }

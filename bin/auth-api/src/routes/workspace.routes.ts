@@ -6,6 +6,7 @@ import { getCache, setCache } from "../lib/cache";
 import {
   getUserById,
   refreshUserAuth0Profile,
+  UserId,
 } from "../services/users.service";
 import {
   createWorkspace,
@@ -21,14 +22,12 @@ import {
   SAAS_WORKSPACE_URL,
   changeWorkspaceMembership,
   setUpdatedDefaultWorkspace,
+  WorkspaceId,
 } from "../services/workspaces.service";
 import { validate } from "../lib/validation-helpers";
 
 import { CustomRouteContext } from "../custom-state";
-import {
-  makeAuthConnectUrl,
-  createSdfAuthToken,
-} from "../services/auth.service";
+import { makeAuthConnectUrl, createSdfAuthToken } from "../services/auth.service";
 import { tracker } from "../lib/tracker";
 import { findLatestTosForUser } from "../services/tos.service";
 import { posthog } from "../lib/posthog";
@@ -69,7 +68,7 @@ async function extractOwnWorkspaceIdParam(ctx: CustomRouteContext) {
   return workspace;
 }
 
-async function authorizeWorkspaceRoute(ctx: CustomRouteContext, role?: RoleType) {
+export async function authorizeWorkspaceRoute(ctx: CustomRouteContext, role?: RoleType) {
   const workspace = await extractWorkspaceIdParam(ctx);
   const authUser = extractAuthUser(ctx);
 
@@ -83,7 +82,13 @@ async function authorizeWorkspaceRoute(ctx: CustomRouteContext, role?: RoleType)
     }
   }
 
-  return { authUser, workspace };
+  return {
+    authUser,
+    workspace,
+    // Conveniences for destructuring for routes that just need IDs
+    userId: authUser.id as UserId,
+    workspaceId: workspace.id as WorkspaceId,
+  };
 }
 
 router.get("/workspaces/:workspaceId", async (ctx) => {
@@ -91,13 +96,13 @@ router.get("/workspaces/:workspaceId", async (ctx) => {
 });
 
 router.delete("/workspaces/:workspaceId", async (ctx) => {
-  const authUser = extractAuthUser(ctx);
-  const workspace = await extractOwnWorkspaceIdParam(ctx);
+  // TODO RoleType.OWNER? Seems like not just anybody should be able to do this ...
+  const { authUser, workspaceId } = await authorizeWorkspaceRoute(ctx);
 
-  await deleteWorkspace(workspace.id);
+  await deleteWorkspace(workspaceId);
 
   tracker.trackEvent(authUser, "workspace_deleted", {
-    workspaceId: workspace.id,
+    workspaceId,
     workspaceDeletedAt: new Date(),
     workspaceDeletedBy: authUser.email,
   });
@@ -143,7 +148,10 @@ router.post("/workspaces/new", async (ctx) => {
 });
 
 router.patch("/workspaces/:workspaceId", async (ctx) => {
-  const { authUser, workspace } = await authorizeWorkspaceRoute(ctx, RoleType.OWNER);
+  const {
+    authUser,
+    workspace,
+  } = await authorizeWorkspaceRoute(ctx, RoleType.OWNER);
 
   const reqBody = validate(
     ctx.request.body,
@@ -199,7 +207,10 @@ router.get("/workspace/:workspaceId/members", async (ctx) => {
 });
 
 router.post("/workspace/:workspaceId/membership", async (ctx) => {
-  const { authUser, workspace } = await authorizeWorkspaceRoute(ctx, RoleType.OWNER);
+  const {
+    authUser,
+    workspace,
+  } = await authorizeWorkspaceRoute(ctx, RoleType.OWNER);
 
   const reqBody = validate(
     ctx.request.body,
@@ -234,7 +245,10 @@ router.post("/workspace/:workspaceId/membership", async (ctx) => {
 });
 
 router.post("/workspace/:workspaceId/members", async (ctx) => {
-  const { authUser, workspace } = await authorizeWorkspaceRoute(ctx, RoleType.OWNER);
+  const {
+    authUser,
+    workspace,
+  } = await authorizeWorkspaceRoute(ctx, RoleType.OWNER);
 
   const reqBody = validate(
     ctx.request.body,
@@ -262,7 +276,10 @@ router.post("/workspace/:workspaceId/members", async (ctx) => {
 });
 
 router.delete("/workspace/:workspaceId/members", async (ctx) => {
-  const { authUser, workspace } = await authorizeWorkspaceRoute(ctx, RoleType.OWNER);
+  const {
+    authUser,
+    workspace,
+  } = await authorizeWorkspaceRoute(ctx, RoleType.OWNER);
 
   const reqBody = validate(
     ctx.request.body,
@@ -402,20 +419,6 @@ router.get("/workspaces/:workspaceId/go", async (ctx) => {
 
   // redirect to instance (frontend) with single use auth code
   ctx.redirect(redirectUrl);
-});
-
-router.post("/workspaces/:workspaceId/createAutomationToken", async (ctx) => {
-  const { authUser, workspace } = await authorizeWorkspaceRoute(ctx, RoleType.OWNER);
-
-  const token = createSdfAuthToken({
-    userId: authUser.id,
-    workspaceId: workspace.id,
-    role: "automation",
-  }, {
-    expiresIn: "1 day",
-  });
-
-  ctx.body = { token };
 });
 
 router.post("/complete-auth-connect", async (ctx) => {

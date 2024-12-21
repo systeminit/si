@@ -17,6 +17,7 @@ import ProfilePage from "./pages/ProfilePage.vue";
 import DefaultWorkspacePage from "./pages/DefaultWorkspacePage.vue";
 import WorkspaceGoPage from "./pages/WorkspaceGoPage.vue";
 import SetupProductionUser from "./pages/SetupProductionUser.vue";
+import WorkspaceAuthTokensPage from "./pages/WorkspaceAuthTokensPage.vue";
 
 // normally we'd initialize a router directly, but instead we pass the options to ViteSSG
 export const routerOptions: RouterOptions = {
@@ -74,6 +75,12 @@ export const routerOptions: RouterOptions = {
       path: "/workspace/:workspaceId",
       name: "workspace-settings",
       component: WorkspaceDetailsPage,
+      props: true,
+    },
+    {
+      path: "/workspace/:workspaceId/authTokens",
+      name: "workspace-auth-tokens",
+      component: WorkspaceAuthTokensPage,
       props: true,
     },
     {

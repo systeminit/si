@@ -85,63 +85,65 @@
 
     <!-- WORKSPACES LIST -->
 
-    <RequestStatusMessage
-      v-if="
-        loadWorkspacesReqStatus.isPending || loadWorkspacesReqStatus.isError
-      "
-      message="Loading Workspaces..."
+    <LoadStatus
       :requestStatus="loadWorkspacesReqStatus"
-    />
-
-    <div v-else-if="loadWorkspacesReqStatus.isSuccess" class="flex flex-col">
-      <div class="flex flex-row items-center">
-        <!-- TODO(Wendy) - this is where the filtering and sorting bar goes -->
-      </div>
-
-      <div class="grid grid-cols-4 gap-sm">
-        <div
-          :class="
-            clsx(
-              'group/newworkspace',
-              'flex flex-col items-center justify-center gap-sm rounded border-2 border-dashed hover:border-solid cursor-pointer',
-              themeClasses(
-                'border-action-200 hover:border-action-500 hover:bg-action-200 active:bg-action-400 active:border-shade-100',
-                'border-action-900 hover:border-action-400 hover:bg-action-900 active:bg-action-400 active:border-shade-0',
-              ),
-            )
-          "
-          @click="createNewWorkspace"
-        >
-          <div
-            :class="
-              clsx(
-                'rounded-lg p-xs text-shade-0 bg-action-400 group-hover/newworkspace:bg-action-600',
-              )
-            "
-          >
-            <Icon name="git-branch-plus" rotate="left" size="lg" />
+      loadingMessage="Loading Workspaces..."
+    >
+      <template #success>
+        <div class="flex flex-col">
+          <div class="flex flex-row items-center">
+            <!-- TODO(Wendy) - this is where the filtering and sorting bar goes -->
           </div>
-          <div
-            :class="
-              clsx(
-                'select-none',
-                themeClasses('group-active/newworkspace:text-shade-0', ''),
-              )
-            "
-          >
-            Create New Workspace
+
+          <div class="grid grid-cols-4 gap-sm">
+            <div
+              :class="
+                clsx(
+                  'group/newworkspace',
+                  'flex flex-col items-center justify-center gap-sm rounded border-2 border-dashed hover:border-solid cursor-pointer',
+                  themeClasses(
+                    'border-action-200 hover:border-action-500 hover:bg-action-200 active:bg-action-400 active:border-shade-100',
+                    'border-action-900 hover:border-action-400 hover:bg-action-900 active:bg-action-400 active:border-shade-0',
+                  ),
+                )
+              "
+              @click="createNewWorkspace"
+            >
+              <div
+                :class="
+                  clsx(
+                    'rounded-lg p-xs text-shade-0 bg-action-400 group-hover/newworkspace:bg-action-600',
+                  )
+                "
+              >
+                <Icon name="git-branch-plus" rotate="left" size="lg" />
+              </div>
+              <div
+                :class="
+                  clsx(
+                    'select-none',
+                    themeClasses('group-active/newworkspace:text-shade-0', ''),
+                  )
+                "
+              >
+                Create New Workspace
+              </div>
+            </div>
+            <WorkspaceLinkWidget
+              v-for="workspace in sortedWorkspaces(workspaces)"
+              :key="workspace.id"
+              :workspaceId="workspace.id"
+            />
           </div>
         </div>
-        <WorkspaceLinkWidget
-          v-for="workspace in sortedWorkspaces(workspaces)"
-          :key="workspace.id"
-          :workspaceId="workspace.id"
-        />
-      </div>
-    </div>
-  </div>
-  <div v-else>
-    You will not be able to use System Initiative until you verify your email.
+      </template>
+      <template #uninitialized>
+        <div>
+          You will not be able to use System Initiative until you verify your
+          email.
+        </div>
+      </template>
+    </LoadStatus>
   </div>
 </template>
 
@@ -151,7 +153,7 @@ import {
   Icon,
   Timestamp,
   themeClasses,
-  RequestStatusMessage,
+  LoadStatus,
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { useRouter } from "vue-router";
@@ -196,17 +198,7 @@ const user = computed(() => authStore.user);
 
 useHead({ title: "Workspaces" });
 
-const loadWorkspacesReqStatus =
-  workspacesStore.getRequestStatus("LOAD_WORKSPACES");
-
-function reloadWorkspaces() {
-  if (import.meta.env.SSR) return;
-  if (!authStore.userIsLoggedIn) return;
-
-  // eslint-disable-next-line @typescript-eslint/no-floating-promises
-  workspacesStore.LOAD_WORKSPACES();
-}
-watch(() => authStore.userIsLoggedIn, reloadWorkspaces, { immediate: true });
+const loadWorkspacesReqStatus = workspacesStore.refreshWorkspaces();
 
 const activeSubscriptionDetails = computed(() => authStore.activeSubscription);
 
