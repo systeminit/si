@@ -293,10 +293,9 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
     ) {
       // NOTE - have to be careful here to deal with non-async actions properly
       return async function wrappedActionFn(...args: any[]) {
-        const requestUlid = ulid();
         const actionResult: any = await originalActionFn(...args);
         if (actionResult instanceof ApiRequest) {
-          await tracker.fireActionResult(actionName, actionResult, requestUlid);
+          await tracker.fireActionResult(actionName, actionResult);
         }
         return actionResult;
       };
@@ -420,7 +419,6 @@ class ApiRequestActionDebouncer {
   async triggerApiRequest(
     actionName: string,
     requestSpec: ApiRequestDescription,
-    requestUlid: RequestUlid,
   ): Promise<any> {
     /* eslint-disable no-param-reassign,consistent-return */
     // console.log('trigger api request', actionName, requestSpec);
@@ -451,6 +449,8 @@ class ApiRequestActionDebouncer {
       // return original promise so caller can use the result directly if necessary
       return existingRequest.completed?.promise;
     }
+
+    const requestUlid = ulid();
 
     if (!requestSpec.params) requestSpec.params = {};
     requestSpec.params.requestUlid = requestUlid;
@@ -674,16 +674,11 @@ class ApiRequestActionDebouncer {
     });
   }
 
-  async fireActionResult(
-    actionName: string,
-    actionResult: ApiRequest,
-    requestUlid: RequestUlid,
-  ) {
+  async fireActionResult(actionName: string, actionResult: ApiRequest) {
     const request = actionResult;
     const triggerResult = await this.triggerApiRequest(
       actionName,
       request.requestSpec,
-      requestUlid,
     );
     if (!triggerResult) {
       throw new Error(`No trigger result for ${actionName}`);
