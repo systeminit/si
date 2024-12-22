@@ -2,14 +2,14 @@
 
 import { AxiosError, AxiosInstance, AxiosResponse } from "axios";
 import * as _ from "lodash-es";
+import { ulid } from "ulid";
+import opentelemetry, { Span } from "@opentelemetry/api";
+import { UseAsyncStateReturn } from "@vueuse/core";
 import {
   promiseDelay,
   createDeferredPromise,
   DeferredPromise,
 } from "@si/ts-lib";
-import { ulid } from "ulid";
-import opentelemetry, { Span } from "@opentelemetry/api";
-import { UseAsyncStateReturn } from "@vueuse/core";
 
 const tracer = opentelemetry.trace.getTracer("si-vue");
 
@@ -56,7 +56,7 @@ export type ApiRequestDescription<
   /** if a multipart form is being sent in a put/post/patch */
   formData?: FormData;
   /** additional args to key the request status */
-  keyRequestStatusBy?: RawRequestStatusKeyArg | RawRequestStatusKeyArg[];
+  keyRequestStatusBy?: RequestStatusKeyArg | RequestStatusKeyArg[];
   /** function to call if request is successfull (2xx) - usually contains changes to the store */
   onSuccess?(response: Response): Promise<void> | void;
   /**
@@ -81,7 +81,7 @@ export type ApiRequestDescription<
 };
 
 // TODO: need to rework these types, and be more flexible... See vue-query for ideas
-export type RawRequestStatusKeyArg = string | number | undefined | null;
+export type RequestStatusKeyArg = string | number | undefined | null;
 
 /**
  * type describing how we store a single request status

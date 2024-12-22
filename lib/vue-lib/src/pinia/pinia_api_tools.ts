@@ -17,18 +17,15 @@ NOTES / TODOS / IDEAS
 
 import { PiniaPlugin, PiniaPluginContext } from "pinia";
 import { AxiosError, AxiosInstance } from "axios";
-import { computed, ComputedRef, reactive, unref, Ref } from "vue";
+import { computed, ComputedRef, reactive, unref, MaybeRef } from "vue";
 import * as _ from "lodash-es";
 import {
   ApiRequestDebouncer,
   ApiRequestDescription,
   ApiRequestStatus,
-  RawRequestStatusKeyArg,
+  RequestStatusKeyArg,
   RequestUlid,
 } from "../utils/api_debouncer";
-
-// TODO: need to rework these types, and be more flexible... See vue-query for ideas
-type RequestStatusKeyArg = RawRequestStatusKeyArg | Ref<RawRequestStatusKeyArg>;
 
 // this helper filters an object to only the keys that extend a specific type
 // see https://www.piotrl.net/typescript-condition-subset-types/
@@ -58,17 +55,19 @@ declare module "pinia" {
   export interface PiniaCustomProperties<Id, S, G, A> {
     getRequestStatus(
       requestKey: keyof ApiRequestActionsOnly<A>, // will allow only action names that return an ApiRequest
-      ...keyedByArgs: RequestStatusKeyArg[]
+      ...keyedByArgs: MaybeRef<RequestStatusKeyArg>[]
     ): ComputedRef<ApiRequestStatus>; // TODO add the proper type here
 
     getRequestStatuses(
       requestKey: keyof ApiRequestActionsOnly<A>, // will allow only action names that return an ApiRequest
-      keyedByArgs: RequestStatusKeyArg[] | ComputedRef<RequestStatusKeyArg[]>,
+      keyedByArgs:
+        | MaybeRef<RequestStatusKeyArg>[]
+        | ComputedRef<MaybeRef<RequestStatusKeyArg>[]>,
     ): ComputedRef<Record<string, ApiRequestStatus>>;
 
     clearRequestStatus(
       requestKey: keyof ApiRequestActionsOnly<A>, // will allow only action names that return an ApiRequest
-      ...keyedByArgs: RequestStatusKeyArg[]
+      ...keyedByArgs: MaybeRef<RequestStatusKeyArg>[]
     ): void;
     RETRY_CONFLICT(requestUlid: RequestUlid): Promise<ApiRequest>;
   }
@@ -193,7 +192,7 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
       // most requests are tracked only by their name, for example LOGIN
       // but some requests we may want to track multiple instances of and split by id or other params
       // for example GET_THING%1, GET_THING%2 or GET_OAUTH_ACCOUNT%google%abc123
-      const trackingKeyArray: RawRequestStatusKeyArg[] = [actionName];
+      const trackingKeyArray: RequestStatusKeyArg[] = [actionName];
       if (requestSpec.keyRequestStatusBy) {
         if (_.isArray(requestSpec.keyRequestStatusBy)) {
           trackingKeyArray.push(...requestSpec.keyRequestStatusBy);
@@ -271,7 +270,10 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
       }
     });
 
-    function getKey(requestKey: string, ...keyedByArgs: RequestStatusKeyArg[]) {
+    function getKey(
+      requestKey: string,
+      ...keyedByArgs: MaybeRef<RequestStatusKeyArg>[]
+    ) {
       const rawKeyedByArgs = _.map(keyedByArgs, unref);
       return [requestKey, ..._.compact(rawKeyedByArgs)].join(
         TRACKING_KEY_SEPARATOR,
@@ -281,7 +283,7 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
     return {
       getRequestStatus(
         requestKey: string, // will allow only action names that return an ApiRequest
-        ...keyedByArgs: RequestStatusKeyArg[]
+        ...keyedByArgs: MaybeRef<RequestStatusKeyArg>[]
       ): ComputedRef<ApiRequestStatus> {
         const fullKey = getKey(requestKey, ...keyedByArgs);
         return computed(() => {
@@ -293,7 +295,9 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
       },
       getRequestStatuses(
         requestKey: string, // will allow only action names that return an ApiRequest
-        keyedByArgs: RequestStatusKeyArg[] | ComputedRef<RequestStatusKeyArg[]>,
+        keyedByArgs:
+          | MaybeRef<RequestStatusKeyArg>[]
+          | ComputedRef<MaybeRef<RequestStatusKeyArg>[]>,
       ): ComputedRef<Record<string, ApiRequestStatus>> {
         return computed(() => {
           return _.mapValues(
@@ -304,7 +308,7 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
       },
       clearRequestStatus(
         requestKey: string, // will allow only action names that return an ApiRequest
-        ...keyedByArgs: RequestStatusKeyArg[]
+        ...keyedByArgs: MaybeRef<RequestStatusKeyArg>[]
       ): void {
         const fullKey = getKey(requestKey, ...keyedByArgs);
         delete store.apiRequestDebouncers[fullKey];
