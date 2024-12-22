@@ -107,10 +107,6 @@ interface RawApiRequestStatus<
   receivedAt?: Date;
   // completedAt?: Date; // REMOVED: unused
   /**
-   * The last time the request was successful (if ever).
-   */
-  lastSuccessAt?: Date;
-  /**
    * The request payload that was sent. Used to determine if a request is a duplicate.
    */
   payload: RequestParams & { requestUlid: RequestUlid };
@@ -132,20 +128,22 @@ interface RawApiRequestStatus<
 
 /**
  * Debounced API request status. type describing the computed getter with some convenience properties */
-export type ApiRequestStatus<
+export interface ApiRequestStatus<
   Response = any,
   RequestParams = Record<string, unknown>,
-> = Readonly<
-  Partial<RawApiRequestStatus<Response, RequestParams>> & {
-    isRequested: boolean;
-    isPending: boolean;
-    isFirstLoad: boolean;
-    isError: boolean;
-    isSuccess: boolean;
-    errorMessage?: string;
-    errorCode?: string;
-  }
->;
+> extends Readonly<Partial<RawApiRequestStatus<Response, RequestParams>>> {
+  /**
+   * The last time the request was successful (if ever).
+   */
+  lastSuccessAt?: Date;
+  isRequested: boolean;
+  isPending: boolean;
+  isFirstLoad: boolean;
+  isError: boolean;
+  isSuccess: boolean;
+  errorMessage?: string;
+  errorCode?: string;
+}
 
 export type DataOrError<Response = any> =
   | { data: Response; error?: undefined }
@@ -156,6 +154,7 @@ export class ApiRequestDebouncer<
   RequestParams = Record<string, unknown>,
 > {
   private request?: RawApiRequestStatus;
+  private lastSuccessAt?: Date;
 
   // triggers a named api request passing in a payload
   // this makes the api request, tracks the request status, handles errors, etc
@@ -198,8 +197,6 @@ export class ApiRequestDebouncer<
       requestedAt: new Date(),
       payload,
       completed,
-      // do not clear "last success at" so we know if this request has ever succeeded
-      lastSuccessAt: this.request?.lastSuccessAt,
     };
     // });
 
@@ -324,7 +321,7 @@ export class ApiRequestDebouncer<
         // TODO: we may want to reverse the order here of calling success and marking received?
         // ideally we would mark received at the same time as the changes made during onSuccess, but not sure it's possible
         // store.$patch((state) => {
-        (this.request as RawApiRequestStatus).lastSuccessAt = new Date();
+        this.lastSuccessAt = new Date();
         (this.request as RawApiRequestStatus).receivedAt = new Date();
         // });
 
@@ -410,9 +407,10 @@ export class ApiRequestDebouncer<
     }
     return {
       ...rawStatus,
+      lastSuccessAt: this.lastSuccessAt,
       isRequested: true,
       isPending: !rawStatus.receivedAt,
-      isFirstLoad: !rawStatus.receivedAt && !rawStatus.lastSuccessAt,
+      isFirstLoad: !rawStatus.receivedAt && !this.lastSuccessAt,
       isSuccess: !!rawStatus.receivedAt && !rawStatus.error,
       isError: !!rawStatus.error,
       ...(rawStatus.error && {
