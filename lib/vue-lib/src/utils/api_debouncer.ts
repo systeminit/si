@@ -24,7 +24,8 @@ type OptimisticFn = (requestUlid: RequestUlid) => OptimisticReturn;
 export type URLPattern = Array<
   string | Record<string, string | undefined | null>
 >;
-const describePattern = (pattern: URLPattern): [string, string] => {
+
+function describePattern(pattern: URLPattern): [string, string] {
   const _url: string[] = [];
   const _urlName: string[] = [];
   pattern.forEach((p) => {
@@ -40,13 +41,12 @@ const describePattern = (pattern: URLPattern): [string, string] => {
     }
   });
   return [_url.join("/"), _urlName.join("/")];
-};
+}
 
-export type ApiRequestDescription<
+export interface ApiRequestDescription<
   Response = any,
   RequestParams = Record<string, unknown>,
-> = {
-  api?: AxiosInstance;
+> {
   /** http request method, defaults to "get" */
   method?: "get" | "patch" | "post" | "put" | "delete"; // defaults to "get" if empty
   /** url to request, or url pattern for improved instrumentation when the url path constains data */
@@ -55,8 +55,6 @@ export type ApiRequestDescription<
   params?: RequestParams & { requestUlid?: RequestUlid };
   /** if a multipart form is being sent in a put/post/patch */
   formData?: FormData;
-  /** additional args to key the request status */
-  keyRequestStatusBy?: RequestStatusKeyArg | RequestStatusKeyArg[];
   /** function to call if request is successfull (2xx) - usually contains changes to the store */
   onSuccess?(response: Response): Promise<void> | void;
   /**
@@ -78,7 +76,7 @@ export type ApiRequestDescription<
   optimistic?: OptimisticFn;
   /** add artificial delay (in ms) before fetching */
   _delay?: number;
-};
+}
 
 // TODO: need to rework these types, and be more flexible... See vue-query for ideas
 export type RequestStatusKeyArg = string | number | undefined | null;
@@ -92,10 +90,10 @@ export type RequestStatusKeyArg = string | number | undefined | null;
  *
  * completed, requestedAt and payload are always set.
  */
-type RawApiRequestStatus<
+interface RawApiRequestStatus<
   Response = any,
   RequestParams = Record<string, unknown>,
-> = {
+> {
   /**
    * When the current request was made.
    * When this is set, we are in the pending, error or success state.
@@ -130,8 +128,10 @@ type RawApiRequestStatus<
    * - `{ error: any }` if the request failed
    */
   completed: DeferredPromise<DataOrError<Response>>;
-};
-/** type describing the computed getter with some convenience properties */
+}
+
+/**
+ * Debounced API request status. type describing the computed getter with some convenience properties */
 export type ApiRequestStatus<
   Response = any,
   RequestParams = Record<string, unknown>,
@@ -147,47 +147,7 @@ export type ApiRequestStatus<
   }
 >;
 
-type AnyStatus = {
-  requestStatus?: ApiRequestStatus;
-  asyncState?: UseAsyncStateReturn<unknown, unknown[], boolean>;
-};
-
-/** Get the error message from an ApiRequestStatus or UseAsyncState */
-export function getErrorMessage({ requestStatus, asyncState }: AnyStatus) {
-  return (
-    requestStatus?.errorMessage ??
-    getApiStatusRequestErrorMessage(
-      asyncState?.error.value as ApiRequestStatus["error"],
-    ) ??
-    (asyncState?.error.value as Error | undefined)?.message
-  );
-}
-
-export type LoadStatus = "uninitialized" | "loading" | "error" | "success";
-
-/** Get the state of an ApiRequestStatus or UseAsyncState */
-export function getLoadStatus({
-  requestStatus,
-  asyncState,
-}: AnyStatus): LoadStatus {
-  if (requestStatus?.isPending || asyncState?.isLoading.value) return "loading";
-  if (requestStatus?.isError || asyncState?.error.value) return "error";
-  if (requestStatus?.isSuccess || asyncState?.isReady.value) return "success";
-  return "uninitialized";
-}
-
-function getApiStatusRequestErrorMessage(
-  error: ApiRequestStatus["error"],
-): string | undefined {
-  // TODO the statusText bit doesn't seem to ever happen
-  return (
-    error?.data?.error?.message ||
-    error?.data?.message ||
-    (error as any)?.statusText
-  );
-}
-
-type DataOrError<Response = any> =
+export type DataOrError<Response = any> =
   | { data: Response; error?: undefined }
   | { error: any; data?: undefined };
 
@@ -196,12 +156,12 @@ export class ApiRequestDebouncer<
   RequestParams = Record<string, unknown>,
 > {
   private request?: RawApiRequestStatus;
-  constructor(public api: AxiosInstance) {}
 
   // triggers a named api request passing in a payload
   // this makes the api request, tracks the request status, handles errors, etc
   // TODO: probably will rework this a bit to get better type-checking
   async triggerApiRequest(
+    api: AxiosInstance,
     requestSpec: ApiRequestDescription<Response, RequestParams>,
     callbackArg: any,
     extraTracingArgs: {
@@ -300,12 +260,6 @@ export class ApiRequestDebouncer<
           opentelemetry.context.active(),
           headers,
         );
-
-        // the api (axios instance) to use can be set several ways:
-        // - passed in with the specific request (probably not common)
-        // - use registerApi(api) to create new SpecificApiRequest class with api attached
-        // - fallback to default api that was set when initializing the plugin
-        const api = requestSpec.api || this.api;
 
         // add artificial delay - helpful to test loading states in UI when using local API which is very fast
         if (import.meta.env.VITE_DELAY_API_REQUESTS) {
@@ -467,4 +421,44 @@ export class ApiRequestDebouncer<
       }),
     };
   }
+}
+
+type AnyStatus = {
+  requestStatus?: ApiRequestStatus;
+  asyncState?: UseAsyncStateReturn<unknown, unknown[], boolean>;
+};
+
+/** Get the error message from an ApiRequestStatus or UseAsyncState */
+export function getErrorMessage({ requestStatus, asyncState }: AnyStatus) {
+  return (
+    requestStatus?.errorMessage ??
+    getApiStatusRequestErrorMessage(
+      asyncState?.error.value as ApiRequestStatus["error"],
+    ) ??
+    (asyncState?.error.value as Error | undefined)?.message
+  );
+}
+
+export type LoadStatus = "uninitialized" | "loading" | "error" | "success";
+
+/** Get the state of an ApiRequestStatus or UseAsyncState */
+export function getLoadStatus({
+  requestStatus,
+  asyncState,
+}: AnyStatus): LoadStatus {
+  if (requestStatus?.isPending || asyncState?.isLoading.value) return "loading";
+  if (requestStatus?.isError || asyncState?.error.value) return "error";
+  if (requestStatus?.isSuccess || asyncState?.isReady.value) return "success";
+  return "uninitialized";
+}
+
+function getApiStatusRequestErrorMessage(
+  error: ApiRequestStatus["error"],
+): string | undefined {
+  // TODO the statusText bit doesn't seem to ever happen
+  return (
+    error?.data?.error?.message ||
+    error?.data?.message ||
+    (error as any)?.statusText
+  );
 }

@@ -78,6 +78,15 @@ declare module "pinia" {
   }
 }
 
+interface ExtendedApiRequestDescription<
+  Response = any,
+  RequestParams = Record<string, unknown>,
+> extends ApiRequestDescription<Response, RequestParams> {
+  api?: AxiosInstance;
+  /** additional args to key the request status */
+  keyRequestStatusBy?: RequestStatusKeyArg | RequestStatusKeyArg[];
+}
+
 export class ApiRequest<
   Response = any,
   RequestParams = Record<string, unknown>,
@@ -134,7 +143,7 @@ export class ApiRequest<
 
   // eslint-disable-next-line @typescript-eslint/no-useless-constructor
   constructor(
-    public requestSpec: ApiRequestDescription<Response, RequestParams>,
+    public requestSpec: ExtendedApiRequestDescription<Response, RequestParams>,
   ) {
     if (!this.requestSpec.api) {
       this.requestSpec.api = (this.constructor as any).api;
@@ -186,7 +195,7 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
 
     function getTrackingKey(
       actionName: string,
-      requestSpec: ApiRequestDescription,
+      requestSpec: ExtendedApiRequestDescription,
     ) {
       // determine the key we will use when storing the request status
       // most requests are tracked only by their name, for example LOGIN
@@ -202,6 +211,7 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
       }
       return trackingKeyArray.join(TRACKING_KEY_SEPARATOR);
     }
+
     // wrap each action in a fn that will take an action result that is an ApiRequest
     // and actually trigger the request, waiting to finish until the request is complete
     function wrapApiAction(
@@ -216,19 +226,23 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
             actionName,
             actionResult.requestSpec,
           );
-          store.apiRequestDebouncers[trackingKey] ??= new ApiRequestDebouncer(
-            config.api,
-          );
+          store.apiRequestDebouncers[trackingKey] ??= new ApiRequestDebouncer();
+
           // check if we have already have a pending identical request (same tracking key, and identical payload)
           // if so, we can skip triggering the new api call
           // TODO: probably need to add more options here for caching/dedupe request/logic
           // ex: let us skip certain requests if already successful, not just pending
           const triggerResult = await store.apiRequestDebouncers[
             trackingKey
-          ].triggerApiRequest(actionResult.requestSpec, store, {
-            "si.workspace.id": store.workspaceId,
-            "si.change_set.id": store.changeSetId,
-          });
+          ].triggerApiRequest(
+            actionResult.requestSpec.api ?? config.api,
+            actionResult.requestSpec,
+            store,
+            {
+              "si.workspace.id": store.workspaceId,
+              "si.change_set.id": store.changeSetId,
+            },
+          );
           if (!triggerResult) {
             throw new Error(`No trigger result for ${trackingKey}`);
           }
@@ -287,9 +301,7 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
       ): ComputedRef<ApiRequestStatus> {
         const fullKey = getKey(requestKey, ...keyedByArgs);
         return computed(() => {
-          store.apiRequestDebouncers[fullKey] ??= new ApiRequestDebouncer(
-            config.api,
-          );
+          store.apiRequestDebouncers[fullKey] ??= new ApiRequestDebouncer();
           return store.apiRequestDebouncers[fullKey].getRawStatus();
         });
       },
