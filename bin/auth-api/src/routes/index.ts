@@ -74,5 +74,5 @@ const routeFilePaths = globSync(`${__dirname}/**/*.routes.{js,ts}`);
     // if we see problems, we can switch over to importing manually...
     await import(routeFilePath.replace(__dirname, "./"));
   }
-  routesLoadedDefer.resolve();
+  routesLoadedDefer.resolve(undefined);
 }());

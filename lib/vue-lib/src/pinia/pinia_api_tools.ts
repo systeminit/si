@@ -65,7 +65,7 @@ declare module "pinia" {
     getRequestStatus(
       requestKey: keyof ApiRequestActionsOnly<A>, // will allow only action names that return an ApiRequest
       ...keyedByArgs: RequestStatusKeyArg[]
-    ): ComputedRef<ApiRequestStatus>;
+    ): ComputedRef<ApiRequestStatus>; // TODO add the proper type here
 
     getRequestStatuses(
       requestKey: keyof ApiRequestActionsOnly<A>, // will allow only action names that return an ApiRequest
@@ -164,7 +164,6 @@ export function registerApi(axiosInstance: AxiosInstance) {
 }
 
 // types to describe our api request definitions
-type ApiRequestDescriptionGenerator = (payload: any) => ApiRequestDescription;
 type OptimisticReturn = (() => void) | void;
 type OptimisticFn = (requestUlid: RequestUlid) => OptimisticReturn;
 
@@ -201,7 +200,7 @@ export type ApiRequestDescription<
   /** url to request, or url pattern for improved instrumentation when the url path constains data */
   url?: string | URLPattern;
   /** request data, passed as querystring for GET, body for everything else */
-  params?: RequestParams;
+  params?: RequestParams & { requestUlid?: RequestUlid };
   /** if a multipart form is being sent in a put/post/patch */
   formData?: FormData;
   /** additional args to key the request status */
@@ -229,19 +228,60 @@ export type ApiRequestDescription<
   _delay?: number;
 };
 
-/** type describing how we store the request statuses */
-type RawApiRequestStatus = {
+/**
+ * type describing how we store a single request status
+ *
+ * Requests are in one of 2 states, determined by `receivedAt` and `error`:
+ * - **pending**: receivedAt is undefined.
+ * - **completed**: receivedAt is set. If `error` is undefined, it was a success.
+ *
+ * completed, requestedAt and payload are always set.
+ */
+type RawApiRequestStatus<
+  Response = any,
+  RequestParams = Record<string, unknown>,
+> = {
+  /**
+   * When the current request was made.
+   * When this is set, we are in the pending, error or success state.
+   */
   requestedAt: Date;
+  /**
+   * When the response was received.
+   *
+   * When this is set, we are in the error or success state.
+   */
   receivedAt?: Date;
-  completedAt?: Date;
+  // completedAt?: Date; // REMOVED: unused
+  /**
+   * The last time the request was successful (if ever).
+   */
   lastSuccessAt?: Date;
-  payload?: any;
+  /**
+   * The request payload that was sent. Used to determine if a request is a duplicate.
+   */
+  payload: RequestParams & { requestUlid: RequestUlid };
+  /**
+   * The error.
+   *
+   * undefined means there is no error, and it is in the init, pending or success state.
+   */
   error?: AxiosResponse | { data: { error: { message: string } } };
-  completed?: DeferredPromise<any>;
+  /**
+   * A promise that resolves when the request completes, whether it succeeds or not.
+   *
+   * It will resolve with either:
+   * - `{ data: Response }` if the request was successful
+   * - `{ error: any }` if the request failed
+   */
+  completed: DeferredPromise<DataOrError<Response>>;
 };
 /** type describing the computed getter with some convenience properties */
-export type ApiRequestStatus = Readonly<
-  Partial<RawApiRequestStatus> & {
+export type ApiRequestStatus<
+  Response = any,
+  RequestParams = Record<string, unknown>,
+> = Readonly<
+  Partial<RawApiRequestStatus<Response, RequestParams>> & {
     isRequested: boolean;
     isPending: boolean;
     isFirstLoad: boolean;
@@ -476,7 +516,14 @@ export async function apiData<T>(request: Promise<ApiRequest<T>>) {
   return result.data;
 }
 
-class ApiRequestDebouncer {
+type DataOrError<Response = any> =
+  | { data: Response; error?: undefined }
+  | { error: any; data?: undefined };
+
+class ApiRequestDebouncer<
+  Response = any,
+  RequestParams = Record<string, unknown>,
+> {
   private request?: RawApiRequestStatus;
   constructor(public api: AxiosInstance) {}
 
@@ -484,13 +531,13 @@ class ApiRequestDebouncer {
   // this makes the api request, tracks the request status, handles errors, etc
   // TODO: probably will rework this a bit to get better type-checking
   async triggerApiRequest(
-    requestSpec: ApiRequestDescription,
+    requestSpec: ApiRequestDescription<Response, RequestParams>,
     callbackArg: any,
     extraTracingArgs: {
       "si.workspace.id"?: string;
       "si.change_set.id"?: string;
     },
-  ): Promise<any> {
+  ): Promise<DataOrError<Response>> {
     /* eslint-disable no-param-reassign,consistent-return */
     // console.log('trigger api request', actionName, requestSpec);
 
@@ -505,17 +552,20 @@ class ApiRequestDebouncer {
 
     const requestUlid = ulid();
 
-    if (!requestSpec.params) requestSpec.params = {};
-    requestSpec.params.requestUlid = requestUlid;
+    const payload = (requestSpec.params ?? {}) as RequestParams & {
+      requestUlid: RequestUlid;
+    };
+    payload.requestUlid = requestUlid;
+    if (!requestSpec.params) requestSpec.params = payload;
 
     // mark the request as pending in the store
     // and attach a deferred promise we'll resolve when completed
     // which we'll use to not make the same request multiple times at the same time, but still be able to await the result
-    const completed = createDeferredPromise();
+    const completed = createDeferredPromise<DataOrError<Response>>();
     // store.$patch((state) => {
     this.request = {
       requestedAt: new Date(),
-      payload: requestSpec.params,
+      payload,
       completed,
       // do not clear "last success at" so we know if this request has ever succeeded
       lastSuccessAt: this.request?.lastSuccessAt,
@@ -598,9 +648,9 @@ class ApiRequestDebouncer {
         // actually trigger the API request (uses the axios instance that was passed in)
         // may need to handle registering multiple apis if we need to hit more than 1
 
-        let request;
+        let response: AxiosResponse<Response>;
         if (method === "get") {
-          request = await api({
+          response = await api({
             method,
             url: _url,
             ...(headers && { headers }),
@@ -613,7 +663,7 @@ class ApiRequestDebouncer {
           // on the method types to make a formData request
           if (formData) {
             headers["Content-Type"] = "multipart/form-data";
-            request = await api({
+            response = await api({
               method,
               url: _url,
               ...(headers && { headers }),
@@ -622,7 +672,7 @@ class ApiRequestDebouncer {
               ...options,
             });
           } else {
-            request = await api({
+            response = await api({
               method,
               url: _url,
               ...(headers && { headers }),
@@ -632,12 +682,12 @@ class ApiRequestDebouncer {
           }
         }
 
-        if (request.headers.force_change_set_id)
+        if (response.headers.force_change_set_id)
           if (typeof onNewChangeSet === "function")
             await onNewChangeSet.call(
               callbackArg,
-              request.headers.force_change_set_id,
-              request.data,
+              response.headers.force_change_set_id,
+              response.data,
             );
 
         // request was successful if reaching here
@@ -656,13 +706,11 @@ class ApiRequestDebouncer {
         // call success handler if one was defined - this will usually be what updates the store
         // we may want to bundle this change together with onSuccess somehow? maybe doesnt matter?
         if (typeof onSuccess === "function") {
-          await onSuccess.call(callbackArg, request.data);
+          await onSuccess.call(callbackArg, response.data);
         }
 
-        completed.resolve({
-          data: request.data,
-        });
-        span.setAttributes({ "http.status_code": request.status });
+        completed.resolve({ data: response.data });
+        span.setAttributes({ "http.status_code": response.status });
         span.end();
         return await completed.promise;
 
