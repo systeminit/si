@@ -37,7 +37,6 @@ pub mod get_module;
 pub mod import_workspace_vote;
 pub mod install_module;
 mod install_workspace;
-pub mod list_modules;
 pub mod reject_module;
 pub mod remote_module_spec;
 
@@ -254,7 +253,6 @@ pub fn routes() -> Router<AppState> {
             "/install_workspace",
             post(install_workspace::install_workspace),
         )
-        .route("/list_modules", get(list_modules::list_modules))
         .route(
             "/remote_module_spec",
             get(remote_module_spec::remote_module_spec),

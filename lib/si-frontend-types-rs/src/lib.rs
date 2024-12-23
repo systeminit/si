@@ -20,7 +20,8 @@ pub use crate::func::{
     FuncSummary, LeafInputLocation,
 };
 pub use crate::module::{
-    BuiltinModules, LatestModule, ModuleContributeRequest, ModuleDetails, SyncedModules,
+    BuiltinModules, LatestModule, ModuleContributeRequest, ModuleDetails, ModuleSummary,
+    SyncedModules,
 };
 pub use crate::schema_variant::{
     ComponentType, InputSocket, OutputSocket, Prop, PropKind, SchemaVariant, UninstalledVariant,
