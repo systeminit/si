@@ -252,15 +252,15 @@ export const useModuleStore = () => {
           },
 
           async LOAD_LOCAL_MODULES() {
-            return new ApiRequest<{ modules: LocalModuleSummary[] }>({
-              url: "/module/list_modules",
-              params: { ...getVisibilityParams() },
+            return new ApiRequest<LocalModuleSummary[]>({
+              method: "get",
+              url: API_PREFIX,
               onSuccess: (response) => {
                 // TODO: remove this
                 // the backend currently needs the full tar file name
                 // but we want the actual name in the module metadata
                 // easier to strip off temporarily but we'll need to change what the backend is storing
-                const modulesWithNamesFixed = _.map(response.modules, (m) => ({
+                const modulesWithNamesFixed = _.map(response, (m) => ({
                   ...m,
                   name: m.name.replace(/-\d\d\d\d-\d\d-\d\d\.sipkg/, ""),
                 }));

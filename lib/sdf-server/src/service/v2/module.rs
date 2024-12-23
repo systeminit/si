@@ -11,7 +11,10 @@ use thiserror::Error;
 use crate::{service::ApiError, AppState};
 
 mod contribute;
+mod list;
 mod sync;
+
+pub type ModuleAPIResult<T> = Result<T, ModulesAPIError>;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -57,4 +60,5 @@ pub fn v2_routes() -> Router<AppState> {
     Router::new()
         .route("/contribute", post(contribute::contribute))
         .route("/sync", get(sync::sync))
+        .route("/", get(list::list))
 }

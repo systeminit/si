@@ -28,3 +28,10 @@ pub struct ModuleContributeRequest {
     pub version: String,
     pub schema_variant_id: SchemaVariantId,
 }
+
+#[derive(Clone, Debug, Deserialize, Eq, Serialize, PartialEq, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct ModuleSummary {
+    pub name: String,
+    pub hash: String,
+}
