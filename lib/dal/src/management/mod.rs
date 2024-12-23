@@ -2,6 +2,7 @@ use std::collections::{hash_map, HashMap, HashSet, VecDeque};
 
 use prototype::ManagementPrototypeExecution;
 use serde::{Deserialize, Serialize};
+use si_events::audit_log::AuditLogKind;
 use thiserror::Error;
 
 use veritech_client::{ManagementFuncStatus, ManagementResultSuccess};
@@ -9,7 +10,7 @@ use veritech_client::{ManagementFuncStatus, ManagementResultSuccess};
 use crate::component::frame::{Frame, FrameError};
 use crate::dependency_graph::DependencyGraph;
 use crate::diagram::geometry::Geometry;
-use crate::diagram::view::{View, ViewId};
+use crate::diagram::view::{View, ViewId, ViewView};
 use crate::diagram::{DiagramError, SummaryDiagramInferredEdge, SummaryDiagramManagementEdge};
 use crate::{
     action::{
@@ -30,7 +31,7 @@ use crate::{
     Func, FuncError, InputSocket, InputSocketId, OutputSocket, OutputSocketId, Prop, PropKind,
     Schema, SchemaError, SchemaId, SchemaVariantId, StandardModelError, WsEvent, WsEventError,
 };
-use crate::{EdgeWeightKind, WorkspaceSnapshotError};
+use crate::{EdgeWeightKind, TransactionsError, WorkspaceSnapshotError};
 
 pub mod generator;
 pub mod prototype;
@@ -55,6 +56,8 @@ pub enum ManagementError {
         "cannot add a manual action named {0} because component {1} does not have a manual action with that name"
     )]
     ComponentDoesNotHaveManualAction(String, ComponentId),
+    #[error("Component somehow not created! This is a bug.")]
+    ComponentNotCreated,
     #[error("Component with management placeholder {0} could not be found")]
     ComponentWithPlaceholderNotFound(String),
     #[error("Diagram Error {0}")]
@@ -69,6 +72,8 @@ pub enum ManagementError {
     InputSocket(#[from] InputSocketError),
     #[error("Cannot connect component {0} to component {1} because component {1} does not have an input socket with name {2}")]
     InputSocketDoesNotExist(ComponentId, ComponentId, String),
+    #[error("No existing or created view could be found named: {0}")]
+    NoSuchView(String),
     #[error("output socket error: {0}")]
     OutputSocket(#[from] OutputSocketError),
     #[error("Cannot connect component {0} to component {1} because component {0} does not have an output socket with name {2}")]
@@ -81,6 +86,8 @@ pub enum ManagementError {
     SchemaDoesNotExist(String),
     #[error("standard model error: {0}")]
     StandardModel(#[from] StandardModelError),
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
     #[error("ws event error: {0}")]
@@ -88,6 +95,9 @@ pub enum ManagementError {
 }
 
 pub type ManagementResult<T> = Result<T, ManagementError>;
+
+const DEFAULT_FRAME_WIDTH: f64 = 950.0;
+const DEFAULT_FRAME_HEIGHT: f64 = 750.0;
 
 /// Geometry type for deserialization lang-js, so even if we should only care about integers,
 /// until we implement custom deserialization we can't merge it with [RawGeometry](RawGeometry)
@@ -194,11 +204,20 @@ pub struct ManagementUpdateOperation {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", untagged)]
+pub enum ManagementCreateGeometry {
+    #[serde(rename_all = "camelCase")]
+    WithViews(HashMap<String, ManagementGeometry>),
+    #[serde(rename_all = "camelCase")]
+    CurrentView(ManagementGeometry),
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ManagementCreateOperation {
     kind: Option<String>,
     properties: Option<serde_json::Value>,
-    geometry: Option<ManagementGeometry>,
+    geometry: Option<ManagementCreateGeometry>,
     connect: Option<Vec<ManagementConnection>>,
     parent: Option<String>,
 }
@@ -221,10 +240,18 @@ pub type ManagementActionOperations = HashMap<String, ManagementActionOperation>
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct ManagementViewOperations {
+    create: Option<Vec<String>>,
+    remove: Option<Vec<String>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ManagementOperations {
     create: Option<ManagementCreateOperations>,
     update: Option<ManagementUpdateOperations>,
     actions: Option<ManagementActionOperations>,
+    views: Option<ManagementViewOperations>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -381,18 +408,18 @@ impl VariantSocketMap {
 pub struct ManagementOperator<'a> {
     ctx: &'a DalContext,
     manager_component_id: ComponentId,
-    manager_component_geometry: ManagementGeometry,
+    manager_component_geometry: HashMap<ViewId, ManagementGeometry>,
     manager_schema_id: SchemaId,
-    last_component_geometry: ManagementGeometry,
+    last_component_geometry: HashMap<ViewId, ManagementGeometry>,
     operations: ManagementOperations,
     schema_map: HashMap<String, SchemaId>,
     component_id_placeholders: HashMap<String, ComponentId>,
     component_schema_map: ComponentSchemaMap,
     socket_map: VariantSocketMap,
-    view_id: ViewId,
-    views: HashMap<String, ViewId>,
-    created_components: HashSet<ComponentId>,
-    updated_components: HashSet<ComponentId>,
+    current_view_id: ViewId,
+    view_placeholders: HashMap<String, ViewId>,
+    created_components: HashMap<ComponentId, Vec<ViewId>>,
+    updated_components: HashMap<ComponentId, Vec<ViewId>>,
 }
 
 #[derive(Clone, Debug)]
@@ -423,7 +450,7 @@ enum PendingOperation {
 
 struct CreatedComponent {
     component: Component,
-    geometry: ManagementGeometry,
+    geometry: HashMap<ViewId, ManagementGeometry>,
     schema_id: SchemaId,
 }
 
@@ -446,38 +473,60 @@ impl<'a> ManagementOperator<'a> {
             .variant_for_component_id(ctx, manager_component_id)
             .await?;
 
-        let view_id = match view_id {
+        let current_view_id = match view_id {
             Some(view_id) => view_id,
             None => View::get_id_for_default(ctx).await?,
         };
 
-        let manager_component_geometry_in_view: ManagementGeometry =
-            Geometry::get_by_component_and_view(ctx, manager_component_id, view_id)
-                .await?
-                .into_raw()
-                .into();
+        let mut manager_component_geometry_in_view = HashMap::new();
 
         let mut views = HashMap::new();
         for view in View::list(ctx).await? {
-            views.insert(view.name().to_owned(), view_id);
+            views.insert(view.name().to_owned(), view.id());
+            if let Some(geo) =
+                Geometry::try_get_by_component_and_view(ctx, manager_component_id, view.id())
+                    .await?
+                    .map(|geo| geo.into_raw().into())
+            {
+                manager_component_geometry_in_view.insert(view.id(), geo);
+            }
         }
 
         Ok(Self {
             ctx,
             manager_component_id,
             manager_schema_id,
-            last_component_geometry: manager_component_geometry_in_view,
+            last_component_geometry: manager_component_geometry_in_view.clone(),
             manager_component_geometry: manager_component_geometry_in_view,
             operations,
             schema_map: management_execution.managed_schema_map,
             component_id_placeholders,
             component_schema_map,
             socket_map: VariantSocketMap::new(),
-            view_id,
-            views,
-            created_components: HashSet::new(),
-            updated_components: HashSet::new(),
+            current_view_id,
+            view_placeholders: views,
+            created_components: HashMap::new(),
+            updated_components: HashMap::new(),
         })
+    }
+
+    fn get_auto_geometry_for_view(&self, view_id: ViewId) -> ManagementGeometry {
+        let mut geo = self
+            .last_component_geometry
+            .get(&view_id)
+            .cloned()
+            .unwrap_or(ManagementGeometry {
+                x: Some(0.0),
+                y: Some(0.0),
+                width: None,
+                height: None,
+            })
+            .offset_by(Some(75.0), Some(75.0));
+
+        geo.height.take();
+        geo.width.take();
+
+        geo
     }
 
     async fn create_component(
@@ -495,48 +544,138 @@ impl<'a> ManagementOperator<'a> {
         };
 
         let variant_id = Schema::get_or_install_default_variant(self.ctx, schema_id).await?;
+        let mut created_geometries = HashMap::new();
 
-        let mut component = Component::new(self.ctx, placeholder, variant_id, self.view_id).await?;
-        let will_be_frame =
-            component_will_be_frame(self.ctx, &component, operation.properties.as_ref()).await?;
+        let component = match &operation.geometry {
+            Some(ManagementCreateGeometry::WithViews(geometries)) => {
+                let mut component: Option<Component> = None;
+                let mut will_be_frame = None;
 
-        let mut auto_geometry = self
-            .last_component_geometry
-            .offset_by(75.0.into(), 75.0.into());
+                for (view_placeholder, geometry) in geometries {
+                    let geometry_view_id = self
+                        .view_placeholders
+                        .get(view_placeholder)
+                        .copied()
+                        .ok_or(ManagementError::NoSuchView(view_placeholder.to_owned()))?;
 
-        auto_geometry.width.take();
-        auto_geometry.height.take();
+                    let mut comp = match component.as_ref() {
+                        Some(component) => component.to_owned(),
+                        None => {
+                            let comp =
+                                Component::new(self.ctx, placeholder, variant_id, geometry_view_id)
+                                    .await?;
+                            will_be_frame = Some(
+                                component_will_be_frame(
+                                    self.ctx,
+                                    &comp,
+                                    operation.properties.as_ref(),
+                                )
+                                .await?,
+                            );
 
-        let mut geometry = if let Some(mut create_geometry) = &operation.geometry {
-            create_geometry
-                .x
-                .get_or_insert(auto_geometry.x.unwrap_or(0.0));
+                            comp
+                        }
+                    };
 
-            create_geometry
-                .y
-                .get_or_insert(auto_geometry.y.unwrap_or(0.0));
+                    let auto_geometry = self.get_auto_geometry_for_view(geometry_view_id);
 
-            // Creation geometry is relative to the manager component
-            create_geometry.offset_by(
-                self.manager_component_geometry.x,
-                self.manager_component_geometry.y,
-            )
-        } else {
-            auto_geometry
+                    // If the manager component exists in this view, then use
+                    // that as the origin. Otherwise, use the position of the
+                    // manager component in the view the function was executed
+                    // in as the origin for relative geometry
+                    let origin_geometry = self
+                        .manager_component_geometry
+                        .get(&geometry_view_id)
+                        .or_else(|| self.manager_component_geometry.get(&self.current_view_id))
+                        .copied();
+
+                    let geometry = process_geometry(
+                        geometry,
+                        auto_geometry.x,
+                        auto_geometry.y,
+                        origin_geometry.and_then(|geo| geo.x),
+                        origin_geometry.and_then(|geo| geo.y),
+                        will_be_frame.unwrap_or(false),
+                    );
+
+                    created_geometries.insert(geometry_view_id, geometry);
+
+                    match component.as_ref().map(|c| c.id()) {
+                        Some(component_id) => {
+                            Component::add_to_view(
+                                self.ctx,
+                                component_id,
+                                geometry_view_id,
+                                geometry.into(),
+                            )
+                            .await?;
+                        }
+                        None => {
+                            comp.set_raw_geometry(self.ctx, geometry.into(), geometry_view_id)
+                                .await?;
+                            component = Some(comp);
+                        }
+                    }
+                }
+
+                component
+            }
+            Some(ManagementCreateGeometry::CurrentView(geometry)) => {
+                let mut component =
+                    Component::new(self.ctx, placeholder, variant_id, self.current_view_id).await?;
+                let will_be_frame =
+                    component_will_be_frame(self.ctx, &component, operation.properties.as_ref())
+                        .await?;
+
+                let auto_geometry = self.get_auto_geometry_for_view(self.current_view_id);
+                let geometry = process_geometry(
+                    geometry,
+                    auto_geometry.x,
+                    auto_geometry.y,
+                    self.manager_component_geometry
+                        .get(&self.current_view_id)
+                        .and_then(|geo| geo.x),
+                    self.manager_component_geometry
+                        .get(&self.current_view_id)
+                        .and_then(|geo| geo.y),
+                    will_be_frame,
+                );
+
+                created_geometries.insert(self.current_view_id, geometry);
+
+                component
+                    .set_raw_geometry(self.ctx, geometry.into(), self.current_view_id)
+                    .await?;
+
+                Some(component)
+            }
+            None => {
+                let mut component =
+                    Component::new(self.ctx, placeholder, variant_id, self.current_view_id).await?;
+                let will_be_frame =
+                    component_will_be_frame(self.ctx, &component, operation.properties.as_ref())
+                        .await?;
+
+                let auto_geometry = self.get_auto_geometry_for_view(self.current_view_id);
+
+                let geometry =
+                    process_geometry(&auto_geometry, None, None, None, None, will_be_frame);
+
+                created_geometries.insert(self.current_view_id, geometry);
+
+                component
+                    .set_raw_geometry(self.ctx, geometry.into(), self.current_view_id)
+                    .await?;
+
+                Some(component)
+            }
         };
 
-        if will_be_frame && geometry.width.zip(geometry.height).is_none() {
-            geometry.width = Some(500.0);
-            geometry.height = Some(500.0);
-        }
-
-        component
-            .set_raw_geometry(self.ctx, geometry.into(), self.view_id)
-            .await?;
+        let component = component.ok_or(ManagementError::ComponentNotCreated)?;
 
         Ok(CreatedComponent {
             component,
-            geometry,
+            geometry: created_geometries,
             schema_id,
         })
     }
@@ -760,7 +899,8 @@ impl<'a> ManagementOperator<'a> {
 
                 let component_id = component.id();
 
-                self.created_components.insert(component_id);
+                self.created_components
+                    .insert(component_id, geometry.keys().copied().collect());
 
                 self.component_id_placeholders
                     .insert(placeholder.to_owned(), component_id);
@@ -784,7 +924,7 @@ impl<'a> ManagementOperator<'a> {
                     }
                 }
 
-                self.last_component_geometry = geometry;
+                self.last_component_geometry.extend(geometry);
 
                 if let Some(parent) = &operation.parent {
                     pending_operations.push(PendingOperation::Parent(PendingParent {
@@ -822,63 +962,95 @@ impl<'a> ManagementOperator<'a> {
         for (placeholder, operation) in updates {
             let component_id = self.get_real_component_id(placeholder).await?;
             let mut component = Component::get_by_id(self.ctx, component_id).await?;
+            let mut view_ids = HashSet::new();
 
             let will_be_frame =
                 component_will_be_frame(self.ctx, &component, operation.properties.as_ref())
                     .await?;
 
-            for (view_name, &view_id) in &self.views {
-                let maybe_geometry = operation
+            for geometry_id in Geometry::list_ids_by_component(self.ctx, component_id).await? {
+                let view_id = Geometry::get_view_id_by_id(self.ctx, geometry_id).await?;
+                view_ids.insert(view_id);
+            }
+
+            // we have to ensure frames get a size
+            let geometries = if will_be_frame
+                && operation
                     .geometry
                     .as_ref()
-                    .and_then(|geo_map| geo_map.get(view_name))
-                    .copied();
-
-                let maybe_geometry = if will_be_frame && maybe_geometry.is_none() {
-                    Some(ManagementGeometry {
-                        x: None,
-                        y: None,
-                        width: None,
-                        height: None,
-                    })
-                } else {
-                    maybe_geometry
-                };
-
-                if let Some(mut view_geometry) = maybe_geometry {
-                    // If the component does not exist in this view then there's nothing to do
-                    let Some(current_geometry) =
+                    .is_none_or(|geometries| geometries.is_empty())
+            {
+                let mut geometries = HashMap::new();
+                for &view_id in &view_ids {
+                    if let Some(geo) =
                         Geometry::try_get_by_component_and_view(self.ctx, component_id, view_id)
                             .await?
-                    else {
-                        continue;
-                    };
-
-                    let current_geometry: ManagementGeometry = current_geometry.into_raw().into();
-
-                    view_geometry
-                        .x
-                        .get_or_insert(current_geometry.x.unwrap_or(0.0));
-                    view_geometry
-                        .y
-                        .get_or_insert(current_geometry.y.unwrap_or(0.0));
-                    if let Some(current_width) = current_geometry.width {
-                        view_geometry.width.get_or_insert(current_width);
+                    {
+                        geometries.insert(view_id, (geo.into_raw().into(), true));
                     }
-                    if let Some(current_height) = current_geometry.height {
-                        view_geometry.width.get_or_insert(current_height);
-                    }
-
-                    // Ensure frames have a width and height
-                    if view_geometry.width.zip(view_geometry.height).is_none() && will_be_frame {
-                        view_geometry.width = Some(500.0);
-                        view_geometry.height = Some(500.0);
-                    }
-
-                    component
-                        .set_raw_geometry(self.ctx, view_geometry.into(), view_id)
-                        .await?;
                 }
+                geometries
+            } else if let Some(update_geometries) = &operation.geometry {
+                let mut geometries = HashMap::new();
+
+                for (view_name, &geometry) in update_geometries {
+                    let view_id = self
+                        .view_placeholders
+                        .get(view_name)
+                        .copied()
+                        .ok_or(ManagementError::NoSuchView(view_name.to_owned()))?;
+                    geometries.insert(view_id, (geometry, false));
+                }
+
+                geometries
+            } else {
+                HashMap::new()
+            };
+
+            for (view_id, (mut view_geometry, is_current)) in geometries {
+                let current_geometry: ManagementGeometry = if is_current {
+                    view_geometry
+                } else {
+                    match Geometry::try_get_by_component_and_view(self.ctx, component_id, view_id)
+                        .await?
+                    {
+                        Some(geometry) => geometry.into_raw().into(),
+                        None => {
+                            view_ids.insert(view_id);
+                            Component::add_to_view(
+                                self.ctx,
+                                component_id,
+                                view_id,
+                                view_geometry.into(),
+                            )
+                            .await?;
+                            view_geometry
+                        }
+                    }
+                };
+
+                view_geometry
+                    .x
+                    .get_or_insert(current_geometry.x.unwrap_or(0.0));
+                view_geometry
+                    .y
+                    .get_or_insert(current_geometry.y.unwrap_or(0.0));
+                if let Some(current_width) = current_geometry.width {
+                    view_geometry.width.get_or_insert(current_width);
+                }
+                if let Some(current_height) = current_geometry.height {
+                    view_geometry.width.get_or_insert(current_height);
+                }
+
+                // Ensure frames have a width and height
+                if view_geometry.width.zip(view_geometry.height).is_none() && will_be_frame {
+                    view_geometry.width = Some(500.0);
+                    view_geometry.height = Some(500.0);
+                }
+
+                component
+                    .set_raw_geometry(self.ctx, view_geometry.into(), view_id)
+                    .await?;
             }
 
             if let Some(properties) = &operation.properties {
@@ -912,7 +1084,8 @@ impl<'a> ManagementOperator<'a> {
                 }));
             }
 
-            self.updated_components.insert(component_id);
+            self.updated_components
+                .insert(component_id, view_ids.iter().copied().collect());
         }
 
         Ok(pending)
@@ -938,7 +1111,8 @@ impl<'a> ManagementOperator<'a> {
     // Using the dep graph to ensure we send ws events for components in parent
     // to child order, so that parents exist in the frontend before their
     // children / parents are rendered as frames before their children report
-    // their parentage
+    // their parentage. We have to send an update for every view for which the
+    // component has a geometry.
     async fn send_component_ws_events(
         &mut self,
         mut parentage_graph: DependencyGraph<ComponentId>,
@@ -950,28 +1124,33 @@ impl<'a> ManagementOperator<'a> {
                 break;
             }
             for id in independent_ids {
-                if self.created_components.contains(&id) {
-                    self.send_created_event(id, inferred_edges_by_component_id.get(&id).cloned())
-                        .await?;
+                if let Some(view_ids) = self.created_components.get(&id) {
+                    self.send_created_event(
+                        id,
+                        view_ids,
+                        inferred_edges_by_component_id.get(&id).cloned(),
+                    )
+                    .await?;
                     self.created_components.remove(&id);
-                } else if self.updated_components.contains(&id) {
-                    self.send_updated_event(id).await?;
+                } else if let Some(view_ids) = self.updated_components.get(&id) {
+                    self.send_updated_event(id, view_ids).await?;
                     self.updated_components.remove(&id);
                 }
                 parentage_graph.remove_id(id);
             }
         }
 
-        for &created_id in &self.created_components {
+        for (&created_id, view_ids) in &self.created_components {
             self.send_created_event(
                 created_id,
+                view_ids,
                 inferred_edges_by_component_id.get(&created_id).cloned(),
             )
             .await?;
         }
 
-        for &updated_id in &self.updated_components {
-            self.send_updated_event(updated_id).await?;
+        for (&updated_id, view_ids) in &self.updated_components {
+            self.send_updated_event(updated_id, view_ids).await?;
         }
 
         Ok(())
@@ -980,48 +1159,100 @@ impl<'a> ManagementOperator<'a> {
     async fn send_created_event(
         &self,
         id: ComponentId,
+        view_ids: &[ViewId],
         inferred_edges: Option<Vec<SummaryDiagramInferredEdge>>,
     ) -> ManagementResult<()> {
         let component = Component::get_by_id(self.ctx, id).await?;
-        WsEvent::component_created_with_inferred_edges(
-            self.ctx,
-            component
-                .into_frontend_type(
-                    self.ctx,
-                    Some(&component.geometry(self.ctx, self.view_id).await?),
-                    Added,
-                    &mut HashMap::new(),
-                )
-                .await?,
-            inferred_edges,
-        )
-        .await?
-        .publish_on_commit(self.ctx)
-        .await?;
+
+        for &view_id in view_ids {
+            WsEvent::component_created_with_inferred_edges(
+                self.ctx,
+                component
+                    .into_frontend_type(
+                        self.ctx,
+                        Some(&component.geometry(self.ctx, view_id).await?),
+                        Added,
+                        &mut HashMap::new(),
+                    )
+                    .await?,
+                inferred_edges.clone(),
+            )
+            .await?
+            .publish_on_commit(self.ctx)
+            .await?;
+        }
 
         Ok(())
     }
-    async fn send_updated_event(&self, id: ComponentId) -> ManagementResult<()> {
+    async fn send_updated_event(
+        &self,
+        id: ComponentId,
+        view_ids: &[ViewId],
+    ) -> ManagementResult<()> {
         let component = Component::get_by_id(self.ctx, id).await?;
-        WsEvent::component_updated(
-            self.ctx,
-            component
-                .into_frontend_type(
-                    self.ctx,
-                    Some(&component.geometry(self.ctx, self.view_id).await?),
-                    component.change_status(self.ctx).await?,
-                    &mut HashMap::new(),
+        for &view_id in view_ids {
+            WsEvent::component_updated(
+                self.ctx,
+                component
+                    .into_frontend_type(
+                        self.ctx,
+                        Some(&component.geometry(self.ctx, view_id).await?),
+                        component.change_status(self.ctx).await?,
+                        &mut HashMap::new(),
+                    )
+                    .await?,
+            )
+            .await?
+            .publish_on_commit(self.ctx)
+            .await?;
+        }
+
+        Ok(())
+    }
+
+    async fn create_views(&mut self) -> ManagementResult<()> {
+        let Some(create_views) = self
+            .operations
+            .views
+            .as_ref()
+            .and_then(|view_ops| view_ops.create.to_owned())
+        else {
+            return Ok(());
+        };
+
+        for new_view_name in create_views {
+            if View::find_by_name(self.ctx, &new_view_name)
+                .await?
+                .is_some()
+            {
+                // view already exists, just skip it
+                continue;
+            }
+
+            let new_view = View::new(self.ctx, &new_view_name).await?;
+            let view_id = new_view.id();
+            let view_view = ViewView::from_view(self.ctx, new_view).await?;
+
+            self.ctx
+                .write_audit_log(
+                    AuditLogKind::CreateView { view_id },
+                    new_view_name.to_owned(),
                 )
-                .await?,
-        )
-        .await?
-        .publish_on_commit(self.ctx)
-        .await?;
+                .await?;
+
+            WsEvent::view_created(self.ctx, view_view)
+                .await?
+                .publish_on_commit(self.ctx)
+                .await?;
+
+            self.view_placeholders.insert(new_view_name, view_id);
+        }
 
         Ok(())
     }
 
     pub async fn operate(&mut self) -> ManagementResult<Option<Vec<ComponentId>>> {
+        self.create_views().await?;
         let mut pending_operations = self.creates().await?;
         let mut component_graph = DependencyGraph::new();
         pending_operations.extend(self.updates().await?);
@@ -1047,7 +1278,7 @@ impl<'a> ManagementOperator<'a> {
         }
 
         let created_component_ids = (!self.created_components.is_empty())
-            .then_some(self.created_components.iter().copied().collect());
+            .then_some(self.created_components.keys().copied().collect());
 
         self.send_component_ws_events(component_graph, inferred_edges_by_component_id)
             .await?;
@@ -1438,4 +1669,25 @@ fn type_being_set(properties: Option<&serde_json::Value>) -> Option<ComponentTyp
     }
 
     None
+}
+
+fn process_geometry(
+    geometry: &ManagementGeometry,
+    default_x: Option<f64>,
+    default_y: Option<f64>,
+    origin_x: Option<f64>,
+    origin_y: Option<f64>,
+    will_be_frame: bool,
+) -> ManagementGeometry {
+    let mut geometry = geometry.to_owned();
+
+    if will_be_frame && geometry.height.zip(geometry.width).is_none() {
+        geometry.height = Some(DEFAULT_FRAME_HEIGHT);
+        geometry.width = Some(DEFAULT_FRAME_WIDTH);
+    }
+
+    geometry.x.get_or_insert(default_x.unwrap_or(0.0));
+    geometry.y.get_or_insert(default_y.unwrap_or(0.0));
+
+    geometry.offset_by(origin_x, origin_y)
 }

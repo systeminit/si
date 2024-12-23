@@ -3,19 +3,52 @@ use std::collections::HashSet;
 use dal::{
     diagram::{geometry::Geometry, view::View},
     management::{
-        prototype::ManagementPrototype, ManagementFuncReturn, ManagementGeometry,
-        ManagementOperator,
+        prototype::{ManagementPrototype, ManagementPrototypeExecution},
+        ManagementFuncReturn, ManagementGeometry, ManagementOperator,
     },
-    AttributeValue, Component, DalContext, SchemaId,
+    AttributeValue, Component, ComponentId, DalContext, SchemaId,
 };
 use dal_test::expected::{apply_change_set_to_base, ExpectView};
 use dal_test::{
     helpers::create_component_for_default_schema_name_in_default_view, test,
     SCHEMA_ID_SMALL_EVEN_LEGO,
 };
+use si_id::ViewId;
 use veritech_client::ManagementFuncStatus;
 
 pub mod generator;
+
+async fn exec_mgmt_func(
+    ctx: &DalContext,
+    component_id: ComponentId,
+    prototype_name: &str,
+    view_id: Option<ViewId>,
+) -> (ManagementPrototypeExecution, ManagementFuncReturn) {
+    let schema_variant_id = Component::schema_variant_id(ctx, component_id)
+        .await
+        .expect("get schema variant id");
+
+    let management_prototype = ManagementPrototype::list_for_variant_id(ctx, schema_variant_id)
+        .await
+        .expect("get prototypes")
+        .into_iter()
+        .find(|proto| proto.name() == prototype_name)
+        .expect("could not find prototype");
+
+    let mut execution_result = management_prototype
+        .execute(ctx, component_id, view_id)
+        .await
+        .expect("should execute management prototype func");
+
+    let result: ManagementFuncReturn = execution_result
+        .result
+        .take()
+        .expect("should have a result success")
+        .try_into()
+        .expect("should be a valid management func return");
+
+    (execution_result, result)
+}
 
 #[test]
 async fn update_managed_components_in_view(ctx: &DalContext) {
@@ -47,29 +80,13 @@ async fn update_managed_components_in_view(ctx: &DalContext) {
         .await
         .expect("add manages edge");
 
-    let manager_variant = small_odd_lego
-        .schema_variant(ctx)
-        .await
-        .expect("get variant");
-
-    let management_prototype = ManagementPrototype::list_for_variant_id(ctx, manager_variant.id())
-        .await
-        .expect("get prototypes")
-        .into_iter()
-        .find(|proto| proto.name() == "Update in View")
-        .expect("could not find prototype");
-
-    let mut execution_result = management_prototype
-        .execute(ctx, small_odd_lego.id(), Some(new_view_id))
-        .await
-        .expect("should execute management prototype func");
-
-    let result: ManagementFuncReturn = execution_result
-        .result
-        .take()
-        .expect("should have a result success")
-        .try_into()
-        .expect("should be a valid management func return");
+    let (execution_result, result) = exec_mgmt_func(
+        ctx,
+        small_odd_lego.id(),
+        "Update in View",
+        Some(new_view_id),
+    )
+    .await;
 
     assert_eq!(ManagementFuncStatus::Ok, result.status);
     assert_eq!(Some(view_name), result.message.as_deref());
@@ -139,29 +156,7 @@ async fn update_managed_components(ctx: &DalContext) {
         .await
         .expect("add manages edge");
 
-    let manager_variant = small_odd_lego
-        .schema_variant(ctx)
-        .await
-        .expect("get variant");
-
-    let management_prototype = ManagementPrototype::list_for_variant_id(ctx, manager_variant.id())
-        .await
-        .expect("get prototypes")
-        .into_iter()
-        .find(|proto| proto.name() == "Update")
-        .expect("could not find prototype");
-
-    let mut execution_result = management_prototype
-        .execute(ctx, small_odd_lego.id(), None)
-        .await
-        .expect("should execute management prototype func");
-
-    let result: ManagementFuncReturn = execution_result
-        .result
-        .take()
-        .expect("should have a result success")
-        .try_into()
-        .expect("should be a valid management func return");
+    let (execution_result, result) = exec_mgmt_func(ctx, small_odd_lego.id(), "Update", None).await;
 
     assert_eq!(result.status, ManagementFuncStatus::Ok);
 
@@ -224,29 +219,7 @@ async fn create_component_of_other_schema(ctx: &DalContext) {
         .await
         .expect("add manages edge");
 
-    let manager_variant = small_odd_lego
-        .schema_variant(ctx)
-        .await
-        .expect("get variant");
-
-    let management_prototype = ManagementPrototype::list_for_variant_id(ctx, manager_variant.id())
-        .await
-        .expect("get prototypes")
-        .into_iter()
-        .find(|proto| proto.name() == "Clone")
-        .expect("could not find prototype");
-
-    let mut execution_result = management_prototype
-        .execute(ctx, small_odd_lego.id(), None)
-        .await
-        .expect("should execute management prototype func");
-
-    let result: ManagementFuncReturn = execution_result
-        .result
-        .take()
-        .expect("should have a result success")
-        .try_into()
-        .expect("should be a valid management func return");
+    let (execution_result, result) = exec_mgmt_func(ctx, small_odd_lego.id(), "Clone", None).await;
 
     assert_eq!(result.status, ManagementFuncStatus::Ok);
 
@@ -313,29 +286,13 @@ async fn create_and_connect_to_self_as_children(ctx: &mut DalContext) {
         .await
         .expect("able to update value");
 
-    let manager_variant = small_odd_lego
-        .schema_variant(ctx)
-        .await
-        .expect("get variant");
-
-    let management_prototype = ManagementPrototype::list_for_variant_id(ctx, manager_variant.id())
-        .await
-        .expect("get prototypes")
-        .into_iter()
-        .find(|proto| proto.name() == "Create and Connect to Self as Children")
-        .expect("could not find prototype");
-
-    let mut execution_result = management_prototype
-        .execute(ctx, small_odd_lego.id(), None)
-        .await
-        .expect("should execute management prototype func");
-
-    let result: ManagementFuncReturn = execution_result
-        .result
-        .take()
-        .expect("should have a result success")
-        .try_into()
-        .expect("should be a valid management func return");
+    let (execution_result, result) = exec_mgmt_func(
+        ctx,
+        small_odd_lego.id(),
+        "Create and Connect to Self as Children",
+        None,
+    )
+    .await;
 
     assert_eq!(result.status, ManagementFuncStatus::Ok);
 
@@ -446,29 +403,8 @@ async fn create_and_connect_to_self(ctx: &DalContext) {
         .await
         .expect("able to update value");
 
-    let manager_variant = small_odd_lego
-        .schema_variant(ctx)
-        .await
-        .expect("get variant");
-
-    let management_prototype = ManagementPrototype::list_for_variant_id(ctx, manager_variant.id())
-        .await
-        .expect("get prototypes")
-        .into_iter()
-        .find(|proto| proto.name() == "Create and Connect to Self")
-        .expect("could not find prototype");
-
-    let mut execution_result = management_prototype
-        .execute(ctx, small_odd_lego.id(), None)
-        .await
-        .expect("should execute management prototype func");
-
-    let result: ManagementFuncReturn = execution_result
-        .result
-        .take()
-        .expect("should have a result success")
-        .try_into()
-        .expect("should be a valid management func return");
+    let (execution_result, result) =
+        exec_mgmt_func(ctx, small_odd_lego.id(), "Create and Connect to Self", None).await;
 
     assert_eq!(result.status, ManagementFuncStatus::Ok);
 
@@ -538,29 +474,13 @@ async fn create_and_connect_from_self(ctx: &DalContext) {
         .await
         .expect("able to update value");
 
-    let manager_variant = small_odd_lego
-        .schema_variant(ctx)
-        .await
-        .expect("get variant");
-
-    let management_prototype = ManagementPrototype::list_for_variant_id(ctx, manager_variant.id())
-        .await
-        .expect("get prototypes")
-        .into_iter()
-        .find(|proto| proto.name() == "Create and Connect From Self")
-        .expect("could not find prototype");
-
-    let mut execution_result = management_prototype
-        .execute(ctx, small_odd_lego.id(), None)
-        .await
-        .expect("should execute management prototype func");
-
-    let result: ManagementFuncReturn = execution_result
-        .result
-        .take()
-        .expect("should have a result success")
-        .try_into()
-        .expect("should be a valid management func return");
+    let (execution_result, result) = exec_mgmt_func(
+        ctx,
+        small_odd_lego.id(),
+        "Create and Connect From Self",
+        None,
+    )
+    .await;
 
     assert_eq!(result.status, ManagementFuncStatus::Ok);
 
@@ -602,30 +522,8 @@ async fn create_component_of_same_schema(ctx: &DalContext) {
     )
     .await
     .expect("could not create component");
-    let variant = small_odd_lego
-        .schema_variant(ctx)
-        .await
-        .expect("get variant");
 
-    let management_prototype = ManagementPrototype::list_for_variant_id(ctx, variant.id())
-        .await
-        .expect("get prototypes")
-        .into_iter()
-        .find(|proto| proto.name() == "Clone")
-        .expect("could not find prototype");
-
-    let mut execution_result = management_prototype
-        .execute(ctx, small_odd_lego.id(), None)
-        .await
-        .expect("should execute management prototype func");
-
-    let result: ManagementFuncReturn = execution_result
-        .result
-        .take()
-        .expect("should have a result success")
-        .try_into()
-        .expect("should be a valid management func return");
-
+    let (execution_result, result) = exec_mgmt_func(ctx, small_odd_lego.id(), "Clone", None).await;
     assert_eq!(result.status, ManagementFuncStatus::Ok);
 
     let operations = result.operations.expect("should have operations");
@@ -669,17 +567,7 @@ async fn create_component_of_same_schema(ctx: &DalContext) {
         "should have the same manager"
     );
 
-    let mut execution_result = management_prototype
-        .execute(ctx, small_odd_lego.id(), None)
-        .await
-        .expect("should execute management prototype func");
-
-    let result: ManagementFuncReturn = execution_result
-        .result
-        .take()
-        .expect("should have a result success")
-        .try_into()
-        .expect("should be a valid management func return");
+    let (execution_result, result) = exec_mgmt_func(ctx, small_odd_lego.id(), "Clone", None).await;
 
     assert_eq!(result.status, ManagementFuncStatus::Ok);
 
@@ -715,10 +603,6 @@ async fn execute_management_func(ctx: &DalContext) {
     )
     .await
     .expect("could not create component");
-    let variant = small_odd_lego
-        .schema_variant(ctx)
-        .await
-        .expect("get variant");
 
     let av_id = Component::attribute_value_for_prop_by_id(
         ctx,
@@ -732,24 +616,8 @@ async fn execute_management_func(ctx: &DalContext) {
         .await
         .expect("able to update value");
 
-    let management_prototype = ManagementPrototype::list_for_variant_id(ctx, variant.id())
-        .await
-        .expect("get prototypes")
-        .into_iter()
-        .find(|proto| proto.name() == "Import small odd lego")
-        .expect("could not find prototype");
-
-    let mut execution_result = management_prototype
-        .execute(ctx, small_odd_lego.id(), None)
-        .await
-        .expect("should execute management prototype func");
-
-    let result: ManagementFuncReturn = execution_result
-        .result
-        .take()
-        .expect("should have a result success")
-        .try_into()
-        .expect("should be a valid management func return");
+    let (execution_result, result) =
+        exec_mgmt_func(ctx, small_odd_lego.id(), "Import small odd lego", None).await;
 
     assert_eq!(result.status, ManagementFuncStatus::Ok);
 
@@ -788,29 +656,9 @@ async fn deeply_nested_children(ctx: &DalContext) {
     )
     .await
     .expect("could not create component");
-    let variant = small_odd_lego
-        .schema_variant(ctx)
-        .await
-        .expect("get variant");
-    let management_prototype = ManagementPrototype::list_for_variant_id(ctx, variant.id())
-        .await
-        .expect("get prototypes")
-        .into_iter()
-        .find(|proto| proto.name() == "Deeply Nested Children")
-        .expect("could not find prototype");
 
-    let mut execution_result = management_prototype
-        .execute(ctx, small_odd_lego.id(), None)
-        .await
-        .expect("should execute management prototype func");
-
-    let result: ManagementFuncReturn = execution_result
-        .result
-        .take()
-        .expect("should have a result success")
-        .try_into()
-        .expect("should be a valid management func return");
-
+    let (execution_result, result) =
+        exec_mgmt_func(ctx, small_odd_lego.id(), "Deeply Nested Children", None).await;
     assert_eq!(result.status, ManagementFuncStatus::Ok);
 
     let operations = result.operations.expect("should have operations");
@@ -853,4 +701,152 @@ async fn deeply_nested_children(ctx: &DalContext) {
         ],
         component_names
     )
+}
+
+#[test]
+async fn create_in_views(ctx: &DalContext) {
+    let mut small_odd_lego = create_component_for_default_schema_name_in_default_view(
+        ctx,
+        "small odd lego",
+        "small odd lego",
+    )
+    .await
+    .expect("could not create component");
+
+    let default_view_id = ExpectView::get_id_for_default(ctx).await;
+
+    let manager_x = 50;
+    let manager_y = 75;
+
+    small_odd_lego
+        .set_geometry(ctx, default_view_id, manager_x, manager_y, None, None)
+        .await
+        .expect("set manager component geometry");
+
+    let av_id = Component::attribute_value_for_prop_by_id(
+        ctx,
+        small_odd_lego.id(),
+        &["root", "si", "resourceId"],
+    )
+    .await
+    .expect("av should exist");
+
+    let view_name = "the black lodge";
+    let view = ExpectView::create_with_name(ctx, view_name).await;
+
+    AttributeValue::update(ctx, av_id, Some(serde_json::json!(view_name)))
+        .await
+        .expect("able to update value");
+
+    let (execution_result, result) =
+        exec_mgmt_func(ctx, small_odd_lego.id(), "Create in Other Views", None).await;
+
+    let operations = result.operations.expect("should have operations");
+
+    let component_id =
+        ManagementOperator::new(ctx, small_odd_lego.id(), operations, execution_result, None)
+            .await
+            .expect("should create operator")
+            .operate()
+            .await
+            .expect("should operate")
+            .expect("should return component ids")
+            .pop()
+            .expect("should have a component id");
+
+    let geometries = Geometry::by_view_for_component_id(ctx, component_id)
+        .await
+        .expect("get geometries");
+
+    assert_eq!(2, geometries.len());
+
+    let black_lodge_geometry = geometries
+        .get(&view.id())
+        .cloned()
+        .expect("has a geometry in the black lodge");
+
+    assert_eq!(15, black_lodge_geometry.x() - manager_x);
+    assert_eq!(15, black_lodge_geometry.y() - manager_y);
+
+    let default_geometry = geometries
+        .get(&default_view_id)
+        .cloned()
+        .expect("has a geometry in the default view");
+
+    assert_eq!(100, default_geometry.x() - manager_x);
+    assert_eq!(100, default_geometry.y() - manager_y);
+}
+
+#[test]
+async fn create_view_and_in_view(ctx: &DalContext) {
+    let mut small_odd_lego = create_component_for_default_schema_name_in_default_view(
+        ctx,
+        "small odd lego",
+        "small odd lego",
+    )
+    .await
+    .expect("could not create component");
+
+    let default_view_id = ExpectView::get_id_for_default(ctx).await;
+
+    let manager_x = 50;
+    let manager_y = 75;
+
+    small_odd_lego
+        .set_geometry(ctx, default_view_id, manager_x, manager_y, None, None)
+        .await
+        .expect("set manager component geometry");
+
+    let av_id = Component::attribute_value_for_prop_by_id(
+        ctx,
+        small_odd_lego.id(),
+        &["root", "si", "resourceId"],
+    )
+    .await
+    .expect("av should exist");
+
+    let view_name = "the red room";
+    AttributeValue::update(ctx, av_id, Some(serde_json::json!(view_name)))
+        .await
+        .expect("able to update value");
+
+    let (execution_result, result) = exec_mgmt_func(
+        ctx,
+        small_odd_lego.id(),
+        "Create View and Component in View",
+        None,
+    )
+    .await;
+
+    let operations = result.operations.expect("should have operations");
+
+    let component_id =
+        ManagementOperator::new(ctx, small_odd_lego.id(), operations, execution_result, None)
+            .await
+            .expect("should create operator")
+            .operate()
+            .await
+            .expect("should operate")
+            .expect("should return component ids")
+            .pop()
+            .expect("should have a component id");
+
+    let red_room = View::find_by_name(ctx, view_name)
+        .await
+        .expect("find view")
+        .expect("view exists");
+
+    let geometries = Geometry::by_view_for_component_id(ctx, component_id)
+        .await
+        .expect("get geometries");
+
+    assert_eq!(1, geometries.len());
+
+    let red_room_geo = geometries
+        .get(&red_room.id())
+        .cloned()
+        .expect("has a geometry in the red room");
+
+    assert_eq!(315, red_room_geo.x() - manager_x);
+    assert_eq!(315, red_room_geo.y() - manager_y);
 }

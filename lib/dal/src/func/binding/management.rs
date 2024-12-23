@@ -113,7 +113,7 @@ impl ManagementBinding {
                                 {{
                                     kind: "{name}",
                                     properties?: {sv_type},
-                                    geometry?: Geometry,
+                                    geometry?: Geometry | {{ [key: string]: Geometry }},
                                     connect?: {{
                                         from: string,
                                         to: {{
@@ -155,6 +155,7 @@ type Geometry = {{
 type Output = {{
   status: 'ok' | 'error';
   ops?: {{
+    views?: {{ create: string[]; }},
     create?: {{ [key: string]: {component_create_type} }},
     update?: {{ [key: string]: {{ 
         properties?: {{ [key: string]: unknown }}, 

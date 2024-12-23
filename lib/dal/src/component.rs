@@ -1487,7 +1487,7 @@ impl Component {
         view_id: ViewId,
     ) -> ComponentResult<Geometry> {
         let mut geometry_pre = self.geometry(ctx, view_id).await?;
-        if geometry_pre.clone().into_raw() != raw_geometry {
+        if geometry_pre.into_raw() != raw_geometry {
             geometry_pre
                 .update(ctx, raw_geometry)
                 .await
@@ -3594,7 +3594,7 @@ impl Component {
 
             Some(GeometryAndView {
                 view_id,
-                geometry: geometry.clone().into_raw(),
+                geometry: geometry.into_raw(),
             })
         } else {
             None

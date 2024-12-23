@@ -15,6 +15,7 @@ use jwt_simple::prelude::{Deserialize, Serialize};
 use si_events::ulid::Ulid;
 use si_events::ContentHash;
 pub use si_frontend_types::RawGeometry;
+use std::collections::HashMap;
 use std::sync::Arc;
 
 const DEFAULT_COMPONENT_X_POSITION: &str = "0";
@@ -41,7 +42,7 @@ pub enum GeometryRepresents {
 }
 
 /// Represents spatial data for something to be shown on a view
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, Copy)]
 pub struct Geometry {
     id: GeometryId,
     #[serde(flatten)]
@@ -262,6 +263,47 @@ impl Geometry {
         }
 
         Ok(geometries)
+    }
+
+    /// Returns all geometries for a component in a map, keyed by the view id
+    pub async fn by_view_for_component_id(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> DiagramResult<HashMap<ViewId, Self>> {
+        let mut result = HashMap::new();
+        let snap = ctx.workspace_snapshot()?;
+
+        for geometry_idx in snap
+            .incoming_sources_for_edge_weight_kind(
+                component_id,
+                EdgeWeightKindDiscriminants::Represents,
+            )
+            .await?
+        {
+            let NodeWeight::Geometry(geo_inner) = snap.get_node_weight(geometry_idx).await? else {
+                continue;
+            };
+
+            let geo_id = geo_inner.id();
+
+            let Some(view_idx) = snap
+                .incoming_sources_for_edge_weight_kind(geo_id, EdgeWeightKindDiscriminants::Use)
+                .await?
+                .pop()
+            else {
+                continue;
+            };
+
+            let NodeWeight::View(view_inner) = snap.get_node_weight(view_idx).await? else {
+                continue;
+            };
+
+            let geo = Self::get_by_id(ctx, geo_id.into()).await?;
+
+            result.insert(view_inner.id().into(), geo);
+        }
+
+        Ok(result)
     }
 
     pub async fn list_by_view_id(

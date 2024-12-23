@@ -1939,6 +1939,7 @@ dependencies = [
  "si-data-nats",
  "si-data-pg",
  "si-events",
+ "si-id",
  "si-jwt-public-key",
  "si-layer-cache",
  "si-pkg",

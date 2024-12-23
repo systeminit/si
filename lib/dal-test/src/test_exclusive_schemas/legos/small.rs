@@ -333,6 +333,61 @@ pub(crate) async fn migrate_test_exclusive_schema_small_odd_lego(
     let deeply_nested_children =
         build_management_func(deeply_nested_children_code, "test:deeplyNestedChildren")?;
 
+    let create_component_in_other_views_code = r#"
+    async function main({ thisComponent, currentView }: Input): Promise<Output> {
+        const thisView = thisComponent.properties?.si?.resourceId ?? currentView;
+
+        const name = `component in ${thisView}`;
+
+        return {
+            status: "ok",
+            ops: {
+                create: {
+                    [name]: { 
+                        geometry: {
+                            [currentView]: { x: 100, y: 100 },
+                            [thisView]: { x: 15, y: 15 }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    "#;
+
+    let create_component_in_other_views = build_management_func(
+        create_component_in_other_views_code,
+        "test:createComponentsInOtherViews",
+    )?;
+
+    let create_view_and_component_in_view_code = r#"
+    async function main({ thisComponent, currentView }: Input): Promise<Output> {
+        const thisView = thisComponent.properties?.si?.resourceId ?? currentView;
+
+        const componentName = `component in ${thisView}`;
+
+        return {
+            status: "ok",
+            ops: {
+                views: {
+                    create: [thisView],
+                },
+                create: {
+                    [componentName]: { 
+                        geometry: {
+                            [thisView]: { x: 315, y: 315 }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    "#;
+    let create_view_and_component_in_view = build_management_func(
+        create_view_and_component_in_view_code,
+        "test:createViewAndComponentInView",
+    )?;
+
     let fn_name = "test:deleteActionSmallLego";
     let delete_action_func = build_action_func(delete_action_code, fn_name)?;
 
@@ -466,11 +521,23 @@ pub(crate) async fn migrate_test_exclusive_schema_small_odd_lego(
                         .func_unique_id(&create_and_connect_to_self_as_children_func.unique_id)
                         .build()?,
                 )
+                .management_func(
+                    ManagementFuncSpec::builder()
+                        .name("Create in Other Views")
+                        .func_unique_id(&create_component_in_other_views.unique_id)
+                        .build()?,
+                )
+                .management_func(
+                    ManagementFuncSpec::builder()
+                        .name("Create View and Component in View")
+                        .func_unique_id(&create_view_and_component_in_view.unique_id)
+                        .build()?,
+                )
                 .build()?,
         )
         .build()?;
 
-    let small_lego_spec = small_lego_builder
+    let small_odd_lego_spec = small_lego_builder
         .func(identity_func_spec)
         .func(refresh_action_func)
         .func(create_action_func)
@@ -486,10 +553,12 @@ pub(crate) async fn migrate_test_exclusive_schema_small_odd_lego(
         .func(create_and_connect_to_self_func)
         .func(create_and_connect_to_self_as_children_func)
         .func(deeply_nested_children)
+        .func(create_component_in_other_views)
+        .func(create_view_and_component_in_view)
         .schema(small_lego_schema)
         .build()?;
 
-    let pkg = SiPkg::load_from_spec(small_lego_spec)?;
+    let pkg = SiPkg::load_from_spec(small_odd_lego_spec)?;
     import_pkg_from_pkg(
         ctx,
         &pkg,
