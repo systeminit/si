@@ -4,12 +4,14 @@ use axum::{
     routing::{get, post},
     Router,
 };
+use dal::UserError;
 use si_frontend_types as frontend_types;
 use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{service::ApiError, AppState};
 
+mod builtins;
 mod contribute;
 mod list;
 mod sync;
@@ -35,6 +37,8 @@ pub enum ModulesAPIError {
     Transactions(#[from] dal::TransactionsError),
     #[error("url parse error: {0}")]
     UrlParse(#[from] url::ParseError),
+    #[error("user error: {0}")]
+    User(#[from] UserError),
 }
 
 impl IntoResponse for ModulesAPIError {
@@ -61,4 +65,6 @@ pub fn v2_routes() -> Router<AppState> {
         .route("/contribute", post(contribute::contribute))
         .route("/sync", get(sync::sync))
         .route("/", get(list::list))
+        .route("/:module_id/builtins/reject", post(builtins::reject))
+        .route("/:module_id/builtins/promote", post(builtins::promote))
 }

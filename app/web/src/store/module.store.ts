@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
 import * as _ from "lodash-es";
-import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
+import { addStoreHooks, ApiRequest, URLPattern } from "@si/vue-lib/pinia";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import router from "@/router";
@@ -133,7 +133,7 @@ export const useModuleStore = () => {
     "change-sets",
     { changeSetId },
     "modules",
-  ];
+  ] as URLPattern;
 
   const WORKSPACE_API_PREFIX = ["v2", "workspaces", { workspaceId }];
 
@@ -399,7 +399,7 @@ export const useModuleStore = () => {
           async REJECT_REMOTE_MODULE(moduleId: ModuleId) {
             return new ApiRequest<{ success: true }>({
               method: "post",
-              url: "/module/reject_module",
+              url: API_PREFIX.concat([{ moduleId }, "builtins", "reject"]),
               params: { id: moduleId, ...getVisibilityParams() },
               optimistic: () => {
                 // remove selection from URL
@@ -418,8 +418,7 @@ export const useModuleStore = () => {
           async PROMOTE_TO_BUILTIN(moduleId: ModuleId) {
             return new ApiRequest<{ success: true }>({
               method: "post",
-              url: "/module/set_as_builtin",
-              params: { id: moduleId, ...getVisibilityParams() },
+              url: API_PREFIX.concat([{ moduleId }, "builtins", "promote"]),
               optimistic: () => {
                 // remove selection from URL
                 router.replace({
