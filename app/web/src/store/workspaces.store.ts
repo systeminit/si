@@ -130,10 +130,7 @@ export const useWorkspacesStore = () => {
           this.importError = undefined;
           return new ApiRequest<{ id: string }>({
             method: "post",
-            url: "/module/install_workspace",
-            params: {
-              id: moduleId,
-            },
+            url: `/v2/workspaces/${moduleId}/install`,
             onSuccess: (data) => {
               this.workspaceImportSummary = null;
               this.importId = data.id;

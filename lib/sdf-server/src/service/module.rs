@@ -32,11 +32,9 @@ const MAX_NAME_SEARCH_ATTEMPTS: usize = 100;
 
 pub mod approval_process;
 pub mod builtin_module_spec;
-mod export_workspace;
 pub mod get_module;
 pub mod import_workspace_vote;
 pub mod install_module;
-mod install_workspace;
 pub mod reject_module;
 pub mod remote_module_spec;
 
@@ -243,16 +241,8 @@ pub async fn pkg_open(builder: &DalContextBuilder, file_name: &str) -> ModuleRes
 
 pub fn routes() -> Router<AppState> {
     Router::new()
-        .route(
-            "/export_workspace",
-            post(export_workspace::export_workspace),
-        )
         .route("/get_module_by_hash", get(get_module::get_module_by_hash))
         .route("/install_module", post(install_module::install_module))
-        .route(
-            "/install_workspace",
-            post(install_workspace::install_workspace),
-        )
         .route(
             "/remote_module_spec",
             get(remote_module_spec::remote_module_spec),
