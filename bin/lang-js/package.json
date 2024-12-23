@@ -57,7 +57,7 @@
     "vitest": "^1.0.4"
   },
   "dependencies": {
-    "@si/ts-lib": "workspace:*",
+    "@si/ts-lib-deno": "workspace:*",
     "@typescript/vfs": "^1.4.0",
     "commander": "^9.2.0",
     "execa": "^5.1.1",
@@ -80,7 +80,7 @@
     "sourcemap": true,
     "clean": true,
     "noExternal": [
-      "@si/ts-lib",
+      "@si/ts-lib-deno",
       "lodash-es"
     ]
   }

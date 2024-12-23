@@ -1,0 +1,7 @@
+{
+  "workspace": ["./bin/lang-js", "./lib/ts-lib-deno"],
+  "imports": {
+    "@deno/emit": "jsr:@deno/emit@^0.46.0"
+  },
+  "nodeModulesDir": "auto"
+}
