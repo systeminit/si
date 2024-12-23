@@ -31,11 +31,9 @@ const PKG_EXTENSION: &str = "sipkg";
 const MAX_NAME_SEARCH_ATTEMPTS: usize = 100;
 
 pub mod approval_process;
-pub mod builtin_module_spec;
 pub mod get_module;
 pub mod import_workspace_vote;
 pub mod install_module;
-pub mod reject_module;
 pub mod remote_module_spec;
 
 #[remain::sorted]
@@ -247,11 +245,6 @@ pub fn routes() -> Router<AppState> {
             "/remote_module_spec",
             get(remote_module_spec::remote_module_spec),
         )
-        .route(
-            "/set_as_builtin",
-            post(builtin_module_spec::promote_to_builtin),
-        )
-        .route("/reject_module", post(reject_module::reject_module))
         .route(
             "/begin_approval_process",
             post(approval_process::begin_approval_process),
