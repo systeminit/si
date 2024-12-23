@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
-    routing::{get, post},
+    routing::post,
     Router,
 };
 use convert_case::{Case, Casing};
@@ -31,10 +31,8 @@ const PKG_EXTENSION: &str = "sipkg";
 const MAX_NAME_SEARCH_ATTEMPTS: usize = 100;
 
 pub mod approval_process;
-pub mod get_module;
 pub mod import_workspace_vote;
 pub mod install_module;
-pub mod remote_module_spec;
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -239,12 +237,7 @@ pub async fn pkg_open(builder: &DalContextBuilder, file_name: &str) -> ModuleRes
 
 pub fn routes() -> Router<AppState> {
     Router::new()
-        .route("/get_module_by_hash", get(get_module::get_module_by_hash))
         .route("/install_module", post(install_module::install_module))
-        .route(
-            "/remote_module_spec",
-            get(remote_module_spec::remote_module_spec),
-        )
         .route(
             "/begin_approval_process",
             post(approval_process::begin_approval_process),
