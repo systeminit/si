@@ -1,44 +1,46 @@
 use axum::{
-    extract::{Host, OriginalUri, Query},
+    extract::{Host, OriginalUri, Path, Query},
     Json,
 };
-use dal::Visibility;
+use dal::{ChangeSetId, WorkspacePk};
 use module_index_client::ModuleIndexClient;
 use serde::{Deserialize, Serialize};
 use si_pkg::SiPkg;
 use ulid::Ulid;
 
-use super::ModuleResult;
 use crate::{
     extract::{AccessBuilder, HandlerContext, PosthogClient, RawAccessToken},
-    service::module::ModuleError,
     track,
 };
 
+use super::{ModuleAPIResult, ModulesAPIError};
+
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct RemoteModuleDetailsRequest {
+pub struct GetRemoteModuleDetailsRequest {
     pub id: Ulid,
-    #[serde(flatten)]
-    pub visibility: Visibility,
 }
 
 pub type RemoteModuleDetailsResponse = si_pkg::PkgSpec;
 
-pub async fn remote_module_spec(
+#[allow(clippy::too_many_arguments)]
+pub async fn remote_module_by_id(
     HandlerContext(builder): HandlerContext,
-    AccessBuilder(request_ctx): AccessBuilder,
+    AccessBuilder(access_builder): AccessBuilder,
     RawAccessToken(raw_access_token): RawAccessToken,
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
     Host(host_name): Host,
-    Query(request): Query<RemoteModuleDetailsRequest>,
-) -> ModuleResult<Json<RemoteModuleDetailsResponse>> {
-    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
+    Path((_workspace_pk, change_set_id)): Path<(WorkspacePk, ChangeSetId)>,
+    Query(request): Query<GetRemoteModuleDetailsRequest>,
+) -> ModuleAPIResult<Json<RemoteModuleDetailsResponse>> {
+    let ctx = builder
+        .build(access_builder.build(change_set_id.into()))
+        .await?;
 
     let module_index_url = match ctx.module_index_url() {
         Some(url) => url,
-        None => return Err(ModuleError::ModuleIndexNotConfigured),
+        None => return Err(ModulesAPIError::ModuleIndexNotConfigured),
     };
 
     let module_index_client =
