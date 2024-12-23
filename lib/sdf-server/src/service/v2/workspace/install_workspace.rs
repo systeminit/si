@@ -1,5 +1,9 @@
-use axum::{extract::OriginalUri, http::Uri, response::IntoResponse, Json};
-use dal::{DalContext, Workspace, WsEvent};
+use axum::{
+    extract::{Host, OriginalUri, Path},
+    http::Uri,
+    Json,
+};
+use dal::{DalContext, Workspace, WorkspacePk, WsEvent};
 use module_index_client::ModuleIndexClient;
 use serde::{Deserialize, Serialize};
 use si_events::audit_log::AuditLogKind;
@@ -7,17 +11,13 @@ use si_pkg::WorkspaceExportContentV0;
 use telemetry::prelude::info;
 use ulid::Ulid;
 
-use super::ModuleResult;
 use crate::{
     extract::{AccessBuilder, HandlerContext, PosthogClient, RawAccessToken},
-    service::{async_route::handle_error, module::ModuleError},
+    service::async_route::handle_error,
+    track,
 };
 
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct InstallWorkspaceRequest {
-    pub id: Ulid,
-}
+use super::{WorkspaceAPIError, WorkspaceAPIResult};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -31,27 +31,30 @@ pub async fn install_workspace(
     RawAccessToken(raw_access_token): RawAccessToken,
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
-    Json(request): Json<InstallWorkspaceRequest>,
-) -> ModuleResult<impl IntoResponse> {
+    Host(host_name): Host,
+    Path(req_workspace_pk): Path<WorkspacePk>,
+) -> WorkspaceAPIResult<Json<InstallWorkspaceResponse>> {
     let ctx = builder.build_head(request_ctx).await?;
 
-    let workspace = {
+    let current_workspace = {
         let workspace_pk = ctx
             .tenancy()
             .workspace_pk_opt()
-            .ok_or(ModuleError::ExportingImportingWithRootTenancy)?;
+            .ok_or(WorkspaceAPIError::ExportingImportingWithRootTenancy)?;
         Workspace::get_by_pk(&ctx, &workspace_pk)
             .await?
-            .ok_or(ModuleError::WorkspaceNotFound(workspace_pk))?
+            .ok_or(WorkspaceAPIError::WorkspaceNotFound(workspace_pk))?
     };
 
     let id = Ulid::new();
+
     tokio::task::spawn(async move {
         if let Err(err) = install_workspace_inner(
             &ctx,
-            request,
-            workspace,
+            req_workspace_pk,
+            current_workspace,
             &original_uri,
+            &host_name,
             PosthogClient(posthog_client),
             raw_access_token,
         )
@@ -77,41 +80,63 @@ pub async fn install_workspace(
 
 async fn install_workspace_inner(
     ctx: &DalContext,
-    request: InstallWorkspaceRequest,
-    mut workspace: Workspace,
-    _original_uri: &Uri,
-    PosthogClient(_posthog_client): PosthogClient,
+    workspace_pk: WorkspacePk,
+    mut current_workspace: Workspace,
+    original_uri: &Uri,
+    host_name: &String,
+    PosthogClient(posthog_client): PosthogClient,
     raw_access_token: String,
-) -> ModuleResult<()> {
+) -> WorkspaceAPIResult<()> {
     info!("Importing workspace backup");
     let workspace_data = {
         let module_index_url = match ctx.module_index_url() {
             Some(url) => url,
-            None => return Err(ModuleError::ModuleIndexNotConfigured),
+            None => return Err(WorkspaceAPIError::ModuleIndexNotConfigured),
         };
         let module_index_client =
             ModuleIndexClient::new(module_index_url.try_into()?, &raw_access_token);
-        module_index_client.download_workspace(request.id).await?
+        module_index_client
+            .download_workspace(workspace_pk.into())
+            .await?
     };
 
-    workspace.import(ctx, workspace_data.clone()).await?;
+    current_workspace
+        .import(ctx, workspace_data.clone())
+        .await?;
 
     let WorkspaceExportContentV0 {
         change_sets: _,
         content_store_values: _,
         metadata,
     } = workspace_data.into_latest();
-    let workspace_id = *workspace.pk();
+    let workspace_id = *current_workspace.pk();
 
     ctx.write_audit_log(
         AuditLogKind::InstallWorkspace {
             id: workspace_id,
-            name: workspace.name().clone(),
-            version: metadata.version,
+            name: current_workspace.name().clone(),
+            version: metadata.version.clone(),
         },
-        workspace.name().to_string(),
+        current_workspace.name().to_string(),
     )
     .await?;
+
+    // Track
+    {
+        track(
+            &posthog_client,
+            ctx,
+            original_uri,
+            host_name,
+            "import_workspace",
+            serde_json::json!({
+                "pkg_name": current_workspace.name().to_owned(),
+                "pkg_version": metadata.version.clone(),
+                "pkg_created_by_email": metadata.created_by,
+                "pkg_created_at":  metadata.created_at,
+            }),
+        );
+    }
 
     ctx.commit_no_rebase().await?;
 

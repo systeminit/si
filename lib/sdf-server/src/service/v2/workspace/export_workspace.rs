@@ -1,30 +1,22 @@
 use axum::{
-    extract::{Host, OriginalUri},
+    extract::{Host, OriginalUri, Path},
     http::Uri,
     Json,
 };
 use chrono::Utc;
-use dal::{DalContext, HistoryActor, User, Visibility, Workspace, WorkspaceError, WsEvent};
+use dal::{DalContext, HistoryActor, User, Workspace, WorkspacePk, WsEvent};
 use serde::{Deserialize, Serialize};
 use si_events::audit_log::AuditLogKind;
-use telemetry::prelude::*;
+use telemetry::prelude::info;
 use ulid::Ulid;
 
 use crate::{
     extract::{AccessBuilder, HandlerContext, PosthogClient, RawAccessToken},
-    service::{
-        async_route::handle_error,
-        module::{ModuleError, ModuleResult},
-    },
+    service::async_route::handle_error,
     track,
 };
 
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct ExportWorkspaceRequest {
-    #[serde(flatten)]
-    pub visibility: Visibility,
-}
+use super::{WorkspaceAPIError, WorkspaceAPIResult};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -39,24 +31,26 @@ pub async fn export_workspace(
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
     Host(host_name): Host,
-    Json(request): Json<ExportWorkspaceRequest>,
-) -> ModuleResult<Json<ExportWorkspaceResponse>> {
-    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
+    Path(_workspace_pk): Path<WorkspacePk>,
+) -> WorkspaceAPIResult<Json<ExportWorkspaceResponse>> {
+    let ctx = builder.build_head(request_ctx).await?;
+
+    let current_workspace = {
+        let workspace_pk = ctx
+            .tenancy()
+            .workspace_pk_opt()
+            .ok_or(WorkspaceAPIError::ExportingImportingWithRootTenancy)?;
+        Workspace::get_by_pk(&ctx, &workspace_pk)
+            .await?
+            .ok_or(WorkspaceAPIError::WorkspaceNotFound(workspace_pk))?
+    };
 
     let task_id = Ulid::new();
-
-    let workspace_pk = ctx
-        .tenancy()
-        .workspace_pk_opt()
-        .ok_or(ModuleError::ExportingImportingWithRootTenancy)?;
-    let workspace = Workspace::get_by_pk(&ctx, &workspace_pk)
-        .await?
-        .ok_or(ModuleError::WorkspaceNotFound(workspace_pk))?;
 
     tokio::task::spawn(async move {
         if let Err(err) = export_workspace_inner(
             &ctx,
-            workspace,
+            current_workspace,
             &original_uri,
             &host_name,
             PosthogClient(posthog_client),
@@ -84,38 +78,44 @@ pub async fn export_workspace(
 
 pub async fn export_workspace_inner(
     ctx: &DalContext,
-    workspace: Workspace,
+    current_workspace: Workspace,
     original_uri: &Uri,
     host_name: &String,
     PosthogClient(posthog_client): PosthogClient,
     RawAccessToken(raw_access_token): RawAccessToken,
-) -> ModuleResult<()> {
+) -> WorkspaceAPIResult<()> {
     info!("Exporting workspace backup");
     let version = Utc::now().format("%Y-%m-%d_%H:%M:%S").to_string();
 
     let index_client = {
         let module_index_url = match ctx.module_index_url() {
             Some(url) => url,
-            None => return Err(ModuleError::ModuleIndexNotConfigured),
+            None => return Err(WorkspaceAPIError::ModuleIndexNotConfigured),
         };
 
         module_index_client::ModuleIndexClient::new(module_index_url.try_into()?, &raw_access_token)
     };
 
-    let workspace_payload = workspace.generate_export_data(ctx, &version).await?;
-
-    index_client
-        .upload_workspace(workspace.name().as_str(), &version, workspace_payload)
+    let workspace_payload = current_workspace
+        .generate_export_data(ctx, &version)
         .await?;
 
-    let workspace_id = *workspace.pk();
+    index_client
+        .upload_workspace(
+            current_workspace.name().as_str(),
+            &version,
+            workspace_payload,
+        )
+        .await?;
+
+    let workspace_id = *current_workspace.pk();
     ctx.write_audit_log(
         AuditLogKind::ExportWorkspace {
             id: workspace_id,
-            name: workspace.name().clone(),
+            name: current_workspace.name().clone(),
             version: version.clone(),
         },
-        workspace.name().to_string(),
+        current_workspace.name().to_string(),
     )
     .await?;
 
@@ -124,7 +124,7 @@ pub async fn export_workspace_inner(
         let created_by = if let HistoryActor::User(user_pk) = ctx.history_actor() {
             let user = User::get_by_pk(ctx, *user_pk)
                 .await?
-                .ok_or(WorkspaceError::InvalidUser(*user_pk))?;
+                .ok_or(WorkspaceAPIError::InvalidUser(*user_pk))?;
 
             user.email().clone()
         } else {
@@ -138,7 +138,7 @@ pub async fn export_workspace_inner(
             host_name,
             "export_workspace",
             serde_json::json!({
-                "pkg_name": workspace.name().to_owned(),
+                "pkg_name": current_workspace.name().to_owned(),
                 "pkg_version": version,
                 "pkg_created_by_email": created_by,
             }),

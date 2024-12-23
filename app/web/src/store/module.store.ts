@@ -135,6 +135,8 @@ export const useModuleStore = () => {
     "modules",
   ];
 
+  const WORKSPACE_API_PREFIX = ["v2", "workspaces", { workspaceId }];
+
   return addStoreHooks(
     workspaceId,
     changeSetId,
@@ -439,8 +441,7 @@ export const useModuleStore = () => {
 
             return new ApiRequest<{ id: string }>({
               method: "post",
-              url: "/module/export_workspace",
-              params: { ...getVisibilityParams() },
+              url: WORKSPACE_API_PREFIX.concat(["export"]),
               onSuccess: (response) => {
                 this.exportingWorkspaceOperationId = response.id;
               },
@@ -473,7 +474,6 @@ export const useModuleStore = () => {
             {
               eventType: "AsyncFinish",
               callback: async ({ id }: { id: string }) => {
-                await this.LOAD_LOCAL_MODULES();
                 if (id === this.exportingWorkspaceOperationId) {
                   this.exportingWorkspaceOperationRunning = false;
                 }
