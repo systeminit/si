@@ -5,11 +5,11 @@ on:
     - cron: "0 20 * * 1-5" # Deploys every weekday at 8pm UTC
 
 concurrency:
-  group: deploy-production
+  group: restart-production
   cancel-in-progress: false
 
 jobs:
-  deploy-production:
+  restart-production:
     uses: ./.github/workflows/deploy-service-restart.yml
     with:
       environment: production
