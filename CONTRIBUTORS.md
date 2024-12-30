@@ -36,3 +36,4 @@ We contributors to System Initiative:
 * Ikko Eltociear Ashimine (@eltociear)
 * Nick Downs (@nickryand)
 * Croxx (@MrCroxx)
+* Arne Keller (@FliegendeWurst)
