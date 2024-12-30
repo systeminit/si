@@ -69,8 +69,8 @@ Those include, but are not limited to the following: Ubuntu, Fedora, Debian, Arc
 
 #### What about NixOS?
 
-If using NixOS, you need [Docker](https://nixos.wiki/wiki/Docker) to be installed and [Flakes](https://nixos.wiki/wiki/Flakes) to be enabled.
-If not using `direnv`, you can use `nix develop` or [Nix command](https://nixos.wiki/wiki/Nix_command).
+If using NixOS, you need [Docker](https://wiki.nixos.org/wiki/Docker) to be installed and [Flakes](https://wiki.nixos.org/wiki/Flakes) to be enabled.
+If not using `direnv`, you can use `nix develop` or [Nix command](https://wiki.nixos.org/wiki/Nix_command).
 
 ### Windows
 
@@ -136,7 +136,7 @@ For all supported platforms, there are two dependencies that must be installed, 
 We use `nix` as our package manager for the repository.
 It ensures that our developers are all using the same versions of all packages and libraries for developing SI.
 
-Regardless of how `nix` is installed, it must have the [flakes](https://nixos.wiki/wiki/Flakes) feature enabled.
+Regardless of how `nix` is installed, it must have the [flakes](https://wiki.nixos.org/wiki/Flakes) feature enabled.
 We highly recommend using the [Determinate Nix Installer](https://github.com/DeterminateSystems/nix-installer) over the official installer; one reason being that the former will enable flakes by default.
 
 > [!TIP]
