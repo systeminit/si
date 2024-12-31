@@ -53,9 +53,17 @@ jobs:
       service: sdf
     secrets: inherit
 
+  sleep-between:
+    name: Wait for 5 minutes
+    needs: restart-sdf
+    runs-on: ubuntu-latest
+    steps:
+      - name: Sleep for 5 minutes
+        run: sleep 300
+
   e2e-validation:
     needs:
-      - restart-sdf
+      - sleep-between
     uses: ./.github/workflows/e2e-validation.yml
     with:
       environment: ${{ inputs.environment }}
@@ -63,7 +71,7 @@ jobs:
 
   api-test:
     needs:
-      - restart-sdf
+      - sleep-between
     uses: ./.github/workflows/run-api-test.yml
     with:
       environment: ${{ inputs.environment }}
