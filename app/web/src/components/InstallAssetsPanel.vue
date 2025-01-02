@@ -100,7 +100,7 @@ const selectModule = (module: LatestModule) => {
 };
 
 onMounted(() => {
-  // how come we're doing this?
+  // TODO: how come we're doing this?
   if (route.query.s) {
     router.replace({
       query: {},

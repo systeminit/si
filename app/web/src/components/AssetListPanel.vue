@@ -235,6 +235,7 @@ const updateAllAssets = () => {
     (m) => m.id,
   );
   moduleStore.INSTALL_REMOTE_MODULE(moduleIds);
+  // TODO i don't think we need this anymore??
   router.replace({
     name: "workspace-lab-assets",
   });
