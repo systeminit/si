@@ -16,12 +16,28 @@ load(
     "get_roots",
 )
 load(
+    "@prelude//cxx:preprocessor.bzl",
+    "CPreprocessor",
+    "CPreprocessorArgs",
+    "cxx_inherited_preprocessor_infos",
+    "cxx_merge_cpreprocessors",
+    "format_system_include_arg",
+)
+load(
     "@prelude//linking:linkable_graph.bzl",
     "create_linkable_graph",
     "create_linkable_graph_node",
 )
+load(
+    "@prelude//third-party:build.bzl",
+    "create_third_party_build_root",
+    "prefix_from_label",
+    "project_from_label",
+)
+load("@prelude//third-party:providers.bzl", "ThirdPartyBuild", "third_party_build_info")
+load("@prelude//unix:providers.bzl", "UnixEnv", "create_unix_env_info")
 load(":compile.bzl", "compile_manifests")
-load(":manifest.bzl", "create_manifest_for_source_dir")
+load(":manifest.bzl", "ManifestInfo", "create_manifest_for_source_dir")
 load(
     ":python_library.bzl",
     "create_python_library_info",
@@ -34,8 +50,29 @@ def prebuilt_python_library_impl(ctx: AnalysisContext) -> list[Provider]:
 
     # Extract prebuilt wheel and wrap in python library provider.
     # TODO(nmj): Make sure all attrs are used if necessary, esp compile
+    entry_points = ctx.actions.declare_output("entry_points.manifest")
+    entry_points_dir = ctx.actions.declare_output("__entry_points__", dir = True)
     extracted_src = ctx.actions.declare_output("{}_extracted".format(ctx.label.name), dir = True)
-    ctx.actions.run([ctx.attrs._extract[RunInfo], ctx.attrs.binary_src, "--output", extracted_src.as_output()], category = "py_extract_prebuilt_library")
+    cmd = cmd_args(
+        ctx.attrs._extract[RunInfo],
+        ctx.attrs.binary_src,
+        "--output",
+        extracted_src.as_output(),
+        "--entry-points-manifest",
+        entry_points.as_output(),
+        "--entry-points",
+        entry_points_dir.as_output(),
+    )
+    if ctx.attrs.strip_soabi_tags:
+        cmd.add("--strip-soabi-tags")
+    inferred_cxx_header_dirs = None
+    if ctx.attrs.infer_cxx_header_dirs:
+        inferred_cxx_header_dirs = ctx.actions.declare_output("__cxx_header_dirs__.txt")
+        cmd.add(
+            "--cxx-header-dirs",
+            inferred_cxx_header_dirs.as_output(),
+        )
+    ctx.actions.run(cmd, category = "py_extract_prebuilt_library")
     deps, shared_deps = gather_dep_libraries(ctx.attrs.deps)
     src_manifest = create_manifest_for_source_dir(ctx, "binary_src", extracted_src, exclude = "\\.pyc$")
     bytecode = compile_manifests(ctx, [src_manifest])
@@ -49,6 +86,11 @@ def prebuilt_python_library_impl(ctx: AnalysisContext) -> list[Provider]:
         shared_libraries = shared_deps,
     )
     providers.append(library_info)
+
+    entry_points_manifest = ManifestInfo(
+        manifest = entry_points,
+        artifacts = [(entry_points_dir, "")],
+    )
 
     # Create, augment and provide the linkable graph.
     linkable_graph = create_linkable_graph(
@@ -70,5 +112,101 @@ def prebuilt_python_library_impl(ctx: AnalysisContext) -> list[Provider]:
         label = ctx.label,
         deps = ctx.attrs.deps,
     )))
+
+    # Allow third-party-build rules to depend on Python rules.
+    tp_project = project_from_label(ctx.label)
+    tp_prefix = prefix_from_label(ctx.label)
+    providers.append(
+        third_party_build_info(
+            actions = ctx.actions,
+            build = ThirdPartyBuild(
+                project = tp_project,
+                prefix = tp_prefix,
+                root = create_third_party_build_root(
+                    ctx = ctx,
+                    paths = [
+                        ("lib/python", extracted_src),
+                    ],
+                    manifests = [
+                        ("bin", entry_points_manifest),
+                    ],
+                ),
+                manifest = ctx.actions.write_json(
+                    "third_party_build_manifest.json",
+                    dict(
+                        prefix = tp_prefix,
+                        project = tp_project,
+                        py_lib_paths = ["lib/python"],
+                    ),
+                ),
+            ),
+            deps = ctx.attrs.deps,
+        ),
+    )
+
+    # Unix env provider.
+    providers.append(
+        create_unix_env_info(
+            actions = ctx.actions,
+            env = UnixEnv(
+                label = ctx.label,
+                python_libs = [library_info],
+                binaries = [entry_points_manifest],
+            ),
+            deps = ctx.attrs.deps,
+        ),
+    )
+
+    # If this prebuilt wheel contains headers, export them via a C++ provider.
+    pp_args = []
+    if ctx.attrs.cxx_header_dirs:
+        for header_dir in ctx.attrs.cxx_header_dirs:
+            pp_args.append(
+                format_system_include_arg(
+                    cmd_args(extracted_src.project(header_dir)),
+                    "clang",
+                ),
+            )
+    if inferred_cxx_header_dirs != None:
+        pp_argsfile = ctx.actions.declare_output("__cxx_header_dirs__.py_cxx_header_argsfile")
+
+        def write_argsfile(actions, header_dirs, output):
+            lines = []
+            for header_dir in header_dirs.read_string().splitlines():
+                lines.append(format_system_include_arg(
+                    cmd_args(extracted_src.project(header_dir)),
+                    "clang",
+                ))
+            actions.write(output, lines)
+
+        ctx.actions.dynamic_output(
+            dynamic = [inferred_cxx_header_dirs],
+            inputs = [],
+            outputs = [pp_argsfile.as_output()],
+            f = lambda ctx, artifacts, outputs: write_argsfile(
+                ctx.actions,
+                artifacts[inferred_cxx_header_dirs],
+                outputs[pp_argsfile],
+            ),
+        )
+        pp_args.append(
+            cmd_args(
+                pp_argsfile,
+                format = "@{}",
+                hidden = [extracted_src],
+            ),
+        )
+    if pp_args:
+        providers.append(cxx_merge_cpreprocessors(
+            ctx = ctx,
+            own = [
+                CPreprocessor(
+                    args = CPreprocessorArgs(
+                        args = pp_args,
+                    ),
+                ),
+            ],
+            xs = cxx_inherited_preprocessor_infos(ctx.attrs.deps),
+        ))
 
     return providers

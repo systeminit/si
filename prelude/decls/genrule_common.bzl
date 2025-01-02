@@ -110,6 +110,13 @@ def _cmd_exe_arg():
 """),
     }
 
+def _weight_arg():
+    return {
+        "weight": attrs.option(attrs.int(), default = None, doc = """
+    How many local slots these genrule should take when executing locally.
+"""),
+    }
+
 def _out_arg():
     return {
         "out": attrs.option(attrs.string(), default = None, doc = """
@@ -180,6 +187,13 @@ def _environment_expansion_separator():
 """),
     }
 
+def _env_arg():
+    return {
+        "env": attrs.dict(key = attrs.string(), value = attrs.arg(), sorted = False, default = {}, doc = """
+        A map of variables to be set in the environment where the shell command is run.
+"""),
+    }
+
 genrule_common = struct(
     srcs_arg = _srcs_arg,
     cmd_arg = _cmd_arg,
@@ -187,5 +201,7 @@ genrule_common = struct(
     cmd_exe_arg = _cmd_exe_arg,
     out_arg = _out_arg,
     type_arg = _type_arg,
+    weight_arg = _weight_arg,
     environment_expansion_separator = _environment_expansion_separator,
+    env_arg = _env_arg,
 )

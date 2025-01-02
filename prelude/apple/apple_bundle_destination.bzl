@@ -25,6 +25,7 @@ AppleBundleDestination = enum(
     "bundleroot",
     "loginitems",
     "appclips",
+    "extensionkit_extensions",
 )
 
 AppleBundleDestinationPaths = record(
@@ -41,6 +42,7 @@ AppleBundleDestinationPaths = record(
     bundleroot = field(str, ""),
     loginitems = field(str, ""),
     appclips = field(str, ""),
+    extensionkit_extensions = field(str, ""),
 )
 
 _IOSBundleDestinationPaths = AppleBundleDestinationPaths(
@@ -50,6 +52,7 @@ _IOSBundleDestinationPaths = AppleBundleDestinationPaths(
     watchapp = "Watch",
     quicklook = "Library/QuickLook",
     appclips = "AppClips",
+    extensionkit_extensions = "Extensions",
 )
 
 _IOSFrameworkBundleDestinationPaths = AppleBundleDestinationPaths(
@@ -78,6 +81,7 @@ _MacOSBundleDestinationPaths = AppleBundleDestinationPaths(
 _MacOSFrameworkBundleDestinationPaths = AppleBundleDestinationPaths(
     resources = "Resources",
     frameworks = "Frameworks",
+    plugins = "PlugIns",
     xpcservices = "XPCServices",
     metadata = "Resources",
     headers = "Headers",
@@ -88,6 +92,7 @@ macOS_versioned_path = "Versions/A"
 _MacOSVersionedFrameworkBundleDestinationPaths = AppleBundleDestinationPaths(
     resources = paths.join(macOS_versioned_path, "Resources"),
     frameworks = paths.join(macOS_versioned_path, "Frameworks"),
+    plugins = paths.join(macOS_versioned_path, "PlugIns"),
     xpcservices = paths.join(macOS_versioned_path, "XPCServices"),
     metadata = paths.join(macOS_versioned_path, "Resources"),
     headers = paths.join(macOS_versioned_path, "Headers"),
@@ -122,6 +127,8 @@ def bundle_relative_path_for_destination(destination: AppleBundleDestination, sd
         return bundle_destinations.frameworks
     elif destination.value == "executables":
         return bundle_destinations.executables
+    elif destination.value == "extensionkit_extensions":
+        return bundle_destinations.extensionkit_extensions
     elif destination.value == "plugins":
         return bundle_destinations.plugins
     elif destination.value == "xpcservices":

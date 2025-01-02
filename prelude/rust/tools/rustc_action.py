@@ -42,6 +42,7 @@ if sys.version_info[:2] < (3, 7):
 
 
 def key_value_arg(s: str) -> Tuple[str, str]:
+    s = arg_eval(s)
     key_value = s.split("=", maxsplit=1)
     if len(key_value) == 2:
         return (key_value[0], key_value[1])
@@ -58,6 +59,7 @@ class Args(NamedTuple):
     buck_target: Optional[str]
     failure_filter: Optional[IO[bytes]]
     required_output: Optional[List[Tuple[str, str]]]
+    echo: Optional[IO[bytes]]
     rustc: List[str]
 
 
@@ -119,9 +121,14 @@ def arg_parse() -> Args:
         "(and filled with a placeholder on a filtered failure)",
     )
     parser.add_argument(
+        "--echo",
+        type=argparse.FileType("wb"),
+        help="Write the input command line to this file, without running it",
+    )
+    parser.add_argument(
         "rustc",
         nargs=argparse.REMAINDER,
-        type=str,
+        type=arg_eval,
         help="Compiler command line",
     )
 
@@ -230,6 +237,10 @@ async def handle_output(  # noqa: C901
 async def main() -> int:
     args = arg_parse()
 
+    if args.echo:
+        args.echo.write("".join(arg + "\n" for arg in args.rustc).encode("utf-8"))
+        return 0
+
     # Inherit a very limited initial environment, then add the new things
     env = {
         k: os.environ[k]
@@ -244,6 +255,7 @@ async def main() -> int:
             "LOCALAPPDATA",
             "PROGRAMDATA",
             "TEMP",
+            "TMP",
             # TODO(andirauter): Required by RE. Remove them when no longer required T119466023
             "EXECUTION_ID",
             "SESSION_ID",
@@ -272,15 +284,14 @@ async def main() -> int:
             {k: v.replace("\\n", "\n").replace("\\\n", "\\n") for k, v in args.env}
         )
     if args.path_env:
-        env.update({k: str(Path(v).resolve()) for k, v in args.path_env})
+        env.update({k: os.path.abspath(v) for k, v in args.path_env})
 
     crate_map = dict(args.crate_map) if args.crate_map else {}
 
     if DEBUG:
         print(f"args {repr(args)} env {env} crate_map {crate_map}", end="\n")
 
-    rustc_cmd = args.rustc[:1]
-    rustc_args = [arg_eval(arg) for arg in args.rustc[1:]]
+    rustc_cmd, rustc_args = args.rustc[:1], args.rustc[1:]
 
     if args.remap_cwd_prefix is not None:
         rustc_args.append(
@@ -397,6 +408,4 @@ def nix_env(env: Dict[str, str]):
         env.update({k: v for k, v in vars_starting_with.items()})
 
 
-# There is a bug with asyncio.run() on Windows:
-# https://bugs.python.org/issue39232
-sys.exit(asyncio.new_event_loop().run_until_complete(main()))
+sys.exit(asyncio.run(main()))

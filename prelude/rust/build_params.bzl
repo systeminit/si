@@ -7,6 +7,7 @@
 
 # Rules for mapping requirements to options
 
+load("@prelude//cxx:cxx_toolchain_types.bzl", "LinkerType")
 load(
     "@prelude//linking:link_info.bzl",
     "LibOutputStyle",
@@ -64,6 +65,7 @@ Emit = enum(
     "dep-info",
     "mir",
     "expand",  # pseudo emit alias for -Zunpretty=expanded
+    "clippy",
     # Rustc actually has two different forms of metadata:
     #  - The full flavor, which is what's outputted when passing
     #    `--emit link,metadata` and can be used as a part of pipelined builds
@@ -84,12 +86,19 @@ MetadataKind = enum(
 
 # Emitting this artifact generates code
 def dep_metadata_of_emit(emit: Emit) -> MetadataKind:
-    if emit.value in ("asm", "llvm-bc", "llvm-ir", "obj", "link", "mir"):
-        return MetadataKind("link")
-    elif emit.value == "metadata-fast":
-        return MetadataKind("fast")
-    else:
-        return MetadataKind("full")
+    return {
+        Emit("asm"): MetadataKind("link"),
+        Emit("llvm-bc"): MetadataKind("link"),
+        Emit("llvm-ir"): MetadataKind("link"),
+        Emit("obj"): MetadataKind("link"),
+        Emit("link"): MetadataKind("link"),
+        Emit("mir"): MetadataKind("link"),
+        Emit("metadata-fast"): MetadataKind("fast"),
+        Emit("clippy"): MetadataKind("fast"),
+        Emit("dep-info"): MetadataKind("full"),
+        Emit("expand"): MetadataKind("full"),
+        Emit("metadata-full"): MetadataKind("full"),
+    }[emit]
 
 # Represents a way of invoking rustc to produce an artifact. These values are computed from
 # information such as the rule type, linkstyle, crate type, etc.
@@ -123,6 +132,7 @@ _EMIT_PREFIX_SUFFIX = {
     Emit("dep-info"): ("", ".d"),
     Emit("mir"): (None, ".mir"),
     Emit("expand"): (None, ".rs"),
+    Emit("clippy"): ("lib", ".rmeta"),  # Treated like metadata-fast
 }
 
 # Return the filename for a particular emitted artifact type
@@ -177,20 +187,20 @@ _RUST_STATIC_NON_PIC_LIBRARY = 7
 _NATIVE_LINKABLE_STATIC_PIC = 8
 _NATIVE_LINKABLE_STATIC_NON_PIC = 9
 
-def _executable_prefix_suffix(linker_type: str, target_os_type: OsLookup) -> (str, str):
+def _executable_prefix_suffix(linker_type: LinkerType, target_os_type: OsLookup) -> (str, str):
     return {
-        "darwin": ("", ""),
-        "gnu": ("", ".exe") if target_os_type.platform == "windows" else ("", ""),
-        "wasm": ("", ".wasm"),
-        "windows": ("", ".exe"),
+        LinkerType("darwin"): ("", ""),
+        LinkerType("gnu"): ("", ".exe") if target_os_type.platform == "windows" else ("", ""),
+        LinkerType("wasm"): ("", ".wasm"),
+        LinkerType("windows"): ("", ".exe"),
     }[linker_type]
 
-def _library_prefix_suffix(linker_type: str, target_os_type: OsLookup) -> (str, str):
+def _library_prefix_suffix(linker_type: LinkerType, target_os_type: OsLookup) -> (str, str):
     return {
-        "darwin": ("lib", ".dylib"),
-        "gnu": ("", ".dll") if target_os_type.platform == "windows" else ("lib", ".so"),
-        "wasm": ("", ".wasm"),
-        "windows": ("", ".dll"),
+        LinkerType("darwin"): ("lib", ".dylib"),
+        LinkerType("gnu"): ("", ".dll") if target_os_type.platform == "windows" else ("lib", ".so"),
+        LinkerType("wasm"): ("", ".wasm"),
+        LinkerType("windows"): ("", ".dll"),
     }[linker_type]
 
 _BUILD_PARAMS = {
@@ -329,7 +339,7 @@ def build_params(
         link_strategy: LinkStrategy | None,
         lib_output_style: LibOutputStyle | None,
         lang: LinkageLang,
-        linker_type: str,
+        linker_type: LinkerType,
         target_os_type: OsLookup) -> BuildParams:
     if rule == RuleType("binary"):
         expect(link_strategy != None)

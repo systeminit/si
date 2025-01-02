@@ -126,7 +126,7 @@ prebuilt_python_library = prelude_rule(
     name = "prebuilt_python_library",
     docs = """
         A `prebuilt_python_library()` rule is used to include prebuilt python packages into the output of a
-        top-level `python_binary()`or `python_test()`rule.
+        top-level `python_binary()` or `python_test()` rule.
 
 
         These prebuilt libraries can either be [whl files](https://www.python.org/dev/peps/pep-0427/) or eggs
@@ -191,9 +191,21 @@ prebuilt_python_library = prelude_rule(
         {
             "compile": attrs.bool(default = False),
             "contacts": attrs.list(attrs.string(), default = []),
+            "cxx_header_dirs": attrs.option(attrs.list(attrs.string()), default = None),
+            "infer_cxx_header_dirs": attrs.bool(default = False),
             "default_host_platform": attrs.option(attrs.configuration_label(), default = None),
             "ignore_compile_errors": attrs.bool(default = False),
             "licenses": attrs.list(attrs.source(), default = []),
+            "strip_soabi_tags": attrs.bool(
+                default = False,
+                doc = """
+                    Strip the SOABI tags from extensions in the prebuilt library.
+
+                    Note that this should be considered unsafe, as it removes builtin
+                    protections that fail fast when a potententially incompatible
+                    native extension is imported.
+                """,
+            ),
         }
     ),
 )
@@ -278,6 +290,8 @@ python_binary = prelude_rule(
             "platform_deps": attrs.list(attrs.tuple(attrs.regex(), attrs.set(attrs.dep(), sorted = True)), default = []),
             "platform_linker_flags": attrs.list(attrs.tuple(attrs.regex(), attrs.list(attrs.arg(anon_target_compatible = True))), default = []),
             "platform_preload_deps": attrs.list(attrs.tuple(attrs.regex(), attrs.set(attrs.dep(), sorted = False)), default = []),
+            "repl_only_deps": attrs.list(attrs.dep(), default = []),
+            "repl_main": attrs.option(attrs.string(), default = None),
             "prefer_stripped_native_objects": attrs.bool(default = False),
             "version_universe": attrs.option(attrs.string(), default = None),
             "zip_safe": attrs.option(attrs.bool(), default = None),
@@ -396,6 +410,7 @@ python_test = prelude_rule(
     further = None,
     attrs = (
         # @unsorted-dict-items
+        buck.inject_test_env_arg() |
         buck.labels_arg() |
         python_common.srcs_arg() |
         python_common.platform_srcs_arg() |
@@ -456,6 +471,8 @@ python_test = prelude_rule(
             "platform_deps": attrs.list(attrs.tuple(attrs.regex(), attrs.set(attrs.dep(), sorted = True)), default = []),
             "platform_linker_flags": attrs.list(attrs.tuple(attrs.regex(), attrs.list(attrs.arg(anon_target_compatible = True))), default = []),
             "platform_preload_deps": attrs.list(attrs.tuple(attrs.regex(), attrs.set(attrs.dep(), sorted = False)), default = []),
+            "repl_only_deps": attrs.list(attrs.dep(), default = []),
+            "repl_main": attrs.option(attrs.string(), default = None),
             "prefer_stripped_native_objects": attrs.bool(default = False),
             "runner": attrs.option(attrs.dep(), default = None),
             "specs": attrs.option(attrs.arg(json = True), default = None),

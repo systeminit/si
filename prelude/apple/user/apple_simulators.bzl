@@ -13,29 +13,12 @@ def _rule_impl(ctx: AnalysisContext) -> list[Provider]:
         LocalResourceInfo(
             setup = cmd_args([ctx.attrs.broker[RunInfo], "--simulator-manager", ctx.attrs.idb_targets[RunInfo]] + ctx.attrs.args),
             resource_env_vars = {
-                "IDB_COMPANION": "socket_address",
+                "DEVICE_SET_PATH": "device_set_path",
+                "DEVICE_UDID": "udid",
             },
             setup_timeout_seconds = ctx.attrs.setup_timeout_seconds,
         ),
     ]
-
-# We don't want `apple_simulators` target to be configured differently and handled as a different resource broker by buck2 core.
-# By nuking a platform we make sure there is only a single configured target for a resource broker which manages resources of certain type.
-def _transition_impl(platform: PlatformInfo, refs: struct) -> PlatformInfo:
-    # buildifier: disable=unused-variable
-    _ = (platform, refs)
-    return PlatformInfo(
-        label = "apple_simulators",
-        configuration = ConfigurationInfo(
-            constraints = {},
-            values = {},
-        ),
-    )
-
-apple_simulators_transition = transition(
-    impl = _transition_impl,
-    refs = {},
-)
 
 registration_spec = RuleRegistrationSpec(
     name = "apple_simulators",

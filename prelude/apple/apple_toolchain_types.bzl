@@ -28,7 +28,7 @@ AppleToolchainInfo = provider(
         "libtool": provider_field(RunInfo),
         "lipo": provider_field(RunInfo),
         "mapc": provider_field(RunInfo | None, default = None),
-        "min_version": provider_field(str),
+        "merge_index_store": provider_field(RunInfo),
         "momc": provider_field(RunInfo),
         "objdump": provider_field(RunInfo | None, default = None),
         "platform_path": provider_field(str | Artifact),
@@ -39,7 +39,6 @@ AppleToolchainInfo = provider(
         # TODO(T124581557) Make it non-optional once there is no "selected xcode" toolchain
         "sdk_version": provider_field(str | None, default = None),
         "swift_toolchain_info": provider_field(SwiftToolchainInfo),
-        "target_sdk_version": provider_field(str | None, default = None),
         "xcode_build_version": provider_field(str | None, default = None),
         "xcode_version": provider_field(str | None, default = None),
         "xctest": provider_field(RunInfo),
@@ -58,6 +57,7 @@ AppleToolsInfo = provider(
         "ipa_package_maker": provider_field(RunInfo),
         "make_modulemap": provider_field(RunInfo),
         "make_vfsoverlay": provider_field(RunInfo),
+        "framework_sanitizer": provider_field(RunInfo),
         "xcframework_maker": provider_field(RunInfo),
     },
 )

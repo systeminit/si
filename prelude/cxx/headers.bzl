@@ -6,6 +6,7 @@
 # of this source tree.
 
 load("@prelude//:paths.bzl", "paths")
+load("@prelude//cxx:cxx_toolchain_types.bzl", "LinkerType")
 load("@prelude//cxx:cxx_utility.bzl", "cxx_attrs_get_allow_cache_upload")
 load("@prelude//utils:expect.bzl", "expect")
 load("@prelude//utils:lazy.bzl", "lazy")
@@ -334,7 +335,7 @@ def _get_dict_header_namespace(namespace: str, naming: CxxHeadersNaming) -> str:
 
 def _get_debug_prefix_args(ctx: AnalysisContext, header_dir: Artifact) -> [cmd_args, None]:
     # NOTE(@christylee): Do we need to enable debug-prefix-map for darwin and windows?
-    if get_cxx_toolchain_info(ctx).linker_info.type != "gnu":
+    if get_cxx_toolchain_info(ctx).linker_info.type != LinkerType("gnu"):
         return None
 
     fmt = "-fdebug-prefix-map={}=" + value_or(header_dir.owner.cell, ".")
@@ -352,10 +353,10 @@ def _mk_hmap(ctx: AnalysisContext, name: str, headers: dict[str, (Artifact, str)
         # We don't care about the header contents -- just their names.
         header_args.add(cmd_args(path, format = fmt, ignore_artifacts = True))
 
-    hmap_args_file = ctx.actions.write(output.basename + ".argsfile", cmd_args(header_args, quote = "shell"))
+    hmap_args_file = ctx.actions.write(output.basename + ".cxx_hmap_argsfile", cmd_args(header_args, quote = "shell"))
 
     cmd = cmd_args(
-        [get_cxx_toolchain_info(ctx).mk_hmap] +
+        [get_cxx_toolchain_info(ctx).internal_tools.hmap_wrapper] +
         ["--output", output.as_output()] +
         ["--mappings-file", hmap_args_file],
         hidden = header_args,
