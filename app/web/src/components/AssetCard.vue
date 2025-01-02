@@ -273,9 +273,6 @@ const deleteUnlockedVariant = async () => {
     );
     if (resp.result.success) {
       assetStore.setSchemaVariantSelection("");
-      router.replace({
-        name: "workspace-lab-assets",
-      });
     }
   }
 };
