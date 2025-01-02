@@ -27,5 +27,5 @@ mod validations;
 mod view;
 mod workspace;
 
-#[warn(clippy::unwrap_used, clippy::expect::used)]
+#[warn(clippy::unwrap_used, clippy::expect_used)]
 mod audit_logging;
