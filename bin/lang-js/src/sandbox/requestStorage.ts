@@ -1,16 +1,21 @@
 import * as _ from "lodash-es";
-import { makeConsole } from "./console";
+import { makeConsole } from "./console.ts";
 
 // Since a lang-js process only lasts for a single function request, this
 // storage will only live for that time also, but every call to a
 // Make*RequestStorage points to the same Record instance
-const requestStorage: {
+// In bin/lang-js/src/sandbox/requestStorage.ts
+export type RequestStorage = {
   data: Record<string, unknown>;
   env: Record<string, string>;
-} = {
+};
+
+const requestStorage: RequestStorage = {
   data: {},
   env: {},
 };
+
+export const rawStorage = (): RequestStorage => requestStorage;
 
 export const makeMainRequestStorage = () => {
   const getEnv = (key: string) => requestStorage.env[key];
@@ -59,7 +64,6 @@ export const makeBeforeRequestStorage = (executionId: string) => {
 };
 
 export const rawStorageRequest = () => {
-  const env = () => requestStorage.env;
-
+  const env = () => rawStorage().env;
   return { env };
 };

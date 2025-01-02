@@ -1,0 +1,22 @@
+{
+  "name": "@si/ts-lib-deno",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "lint": "eslint src --ext .ts,.js,.cjs,.vue",
+    "lint:fix": "pnpm run lint --fix"
+  },
+  "dependencies": {
+    "lodash-es": "^4.17.21"
+  },
+  "devDependencies": {
+    "@si/eslint-config": "workspace:*",
+    "@si/tsconfig": "workspace:*",
+    "@types/lodash-es": "^4.17.12",
+    "eslint": "^8.57.1",
+    "typescript": "^4.9.5"
+  }
+}
