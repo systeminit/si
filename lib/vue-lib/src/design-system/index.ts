@@ -7,12 +7,13 @@ export * from "./forms/helpers/form-validation";
 
 // ./general
 export { default as Card } from "./general/Card.vue";
+export { default as LoadStatus } from "./general/LoadStatus.vue";
+export { default as RequestStatusMessage } from "./general/RequestStatusMessage.vue";
 export { default as ErrorMessage } from "./general/ErrorMessage.vue";
 export { default as LoadingMessage } from "./general/LoadingMessage.vue";
 export { default as PillCounter } from "./general/PillCounter.vue";
 export { default as Toggle } from "./general/Toggle.vue";
 
-export { default as RequestStatusMessage } from "./general/RequestStatusMessage.vue";
 export { default as RichText } from "./general/RichText.vue";
 export { default as Timestamp } from "./general/Timestamp.vue";
 export { default as VButton } from "./general/VButton.vue";

@@ -16,7 +16,7 @@ NOTES / TODOS / IDEAS
 */
 
 import { PiniaPlugin, PiniaPluginContext } from "pinia";
-import { AxiosError, AxiosInstance } from "axios";
+import { AxiosError, AxiosInstance, AxiosResponse } from "axios";
 import { computed, ComputedRef, reactive, unref, Ref } from "vue";
 import * as _ from "lodash-es";
 import {
@@ -26,6 +26,7 @@ import {
 } from "@si/ts-lib";
 import { ulid } from "ulid";
 import opentelemetry, { Span } from "@opentelemetry/api";
+import { UseAsyncStateReturn } from "@vueuse/core";
 
 const tracer = opentelemetry.trace.getTracer("si-vue");
 
@@ -235,7 +236,7 @@ type RawApiRequestStatus = {
   completedAt?: Date;
   lastSuccessAt?: Date;
   payload?: any;
-  error?: any;
+  error?: AxiosResponse | { data: { error: { message: string } } };
   completed?: DeferredPromise<any>;
 };
 /** type describing the computed getter with some convenience properties */
@@ -505,16 +506,20 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
 
           // mark the request as failure and store the error info
           store.$patch((state) => {
+            const apiRequestStatus = state.apiRequestStatuses[
+              trackingKey
+            ] as ApiRequestStatus;
+            // TODO maybe use Axios.isAxiosError instead, but don't want to change behavior right now
             if (err.response) {
-              state.apiRequestStatuses[trackingKey].error = err.response;
+              apiRequestStatus.error = (err as AxiosError).response;
             } else {
               // if error was not http error or had no response body
               // we still want some kind of fallback message to show
               // and we keep it in a similar format to what the http error response bodies
-              state.apiRequestStatuses[trackingKey].error = {
+              apiRequestStatus.error = {
                 data: {
                   error: {
-                    message: "Something went wrong, please contact support",
+                    message: err.message,
                   },
                 },
               };
@@ -627,10 +632,7 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
           isSuccess: !!rawStatus.receivedAt && !rawStatus.error,
           isError: !!rawStatus.error,
           ...(rawStatus.error && {
-            errorMessage:
-              rawStatus.error.data?.error?.message ||
-              rawStatus.error.data?.message ||
-              rawStatus.error.statusText,
+            errorMessage: getApiStatusRequestErrorMessage(rawStatus.error),
             errorCode: rawStatus.error.data?.error?.type,
           }),
         };
@@ -684,4 +686,54 @@ export function getCombinedRequestStatus(
       // TODO: do we want to return the first error? an array of errors?
     };
   });
+}
+
+type AnyStatus = {
+  requestStatus?: ApiRequestStatus;
+  asyncState?: UseAsyncStateReturn<unknown, unknown[], boolean>;
+};
+
+/** Get the error message from an ApiRequestStatus or UseAsyncState */
+export function getErrorMessage({ requestStatus, asyncState }: AnyStatus) {
+  return (
+    requestStatus?.errorMessage ??
+    getApiStatusRequestErrorMessage(
+      asyncState?.error.value as ApiRequestStatus["error"],
+    ) ??
+    (asyncState?.error.value as Error | undefined)?.message
+  );
+}
+
+export type LoadStatus = "uninitialized" | "loading" | "error" | "success";
+
+/** Get the state of an ApiRequestStatus or UseAsyncState */
+export function getLoadStatus({
+  requestStatus,
+  asyncState,
+}: AnyStatus): LoadStatus {
+  if (requestStatus?.isPending || asyncState?.isLoading.value) return "loading";
+  if (requestStatus?.isError || asyncState?.error.value) return "error";
+  if (requestStatus?.isSuccess || asyncState?.isReady.value) return "success";
+  return "uninitialized";
+}
+
+function getApiStatusRequestErrorMessage(
+  error: ApiRequestStatus["error"],
+): string | undefined {
+  // TODO the statusText bit doesn't seem to ever happen
+  return (
+    error?.data?.error?.message ||
+    error?.data?.message ||
+    (error as any)?.statusText
+  );
+}
+
+/**
+ * Turns the response from an API action into an async function
+ * that returns data on success and throws error on error.
+ */
+export async function apiData<T>(request: Promise<ApiRequest<T>>) {
+  const { result } = await request;
+  if (!result.success) throw result.err;
+  return result.data;
 }
