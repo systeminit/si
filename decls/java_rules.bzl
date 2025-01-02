@@ -59,6 +59,7 @@ jar_genrule = prelude_rule(
             "enable_sandbox": attrs.option(attrs.bool(), default = None),
             "environment_expansion_separator": attrs.option(attrs.string(), default = None),
             "labels": attrs.list(attrs.string(), default = []),
+            "weight": attrs.option(attrs.int(), default = None),
             "licenses": attrs.list(attrs.source(), default = []),
             "need_android_tools": attrs.bool(default = False),
             "remote": attrs.option(attrs.bool(), default = None),
@@ -231,7 +232,7 @@ java_library = prelude_rule(
                  If any of the files in this list end in `.src.zip`,
                  then the entries in the ZIP file that end in `.java` will be
                  included as ordinary inputs to compilation. This is common when using
-                 a `genrule()`to auto-generate some Java source code that
+                 a `genrule()` to auto-generate some Java source code that
                  needs to be compiled with some hand-written Java code.
             """),
         } |
@@ -256,12 +257,6 @@ java_library = prelude_rule(
             "java_version": attrs.option(attrs.string(), default = None, doc = """
                 Equivalent to setting both `source` and `target`  to the given value. Setting this and `source` or `target` (or both!) is an error.
             """),
-            "javac": attrs.option(attrs.source(), default = None, doc = """
-                Specifies the Java compiler program to use for this rule.
-                 The value is a source path (e.g., //foo/bar:bar).
-                 Overrides the value in "javac" in the "tools" section
-                 of `.buckconfig`.
-            """),
             "extra_arguments": attrs.list(attrs.string(), default = [], doc = """
                 List of additional arguments to pass into the Java compiler. These
                  arguments follow the ones specified in `.buckconfig`.
@@ -275,6 +270,8 @@ java_library = prelude_rule(
         jvm_common.source_only_abi_deps() |
         jvm_common.required_for_source_only_abi() |
         jvm_common.on_unused_dependencies() |
+        jvm_common.plugins() |
+        jvm_common.javac() |
         {
             "annotation_processor_deps": attrs.list(attrs.dep(), default = []),
             "annotation_processor_params": attrs.list(attrs.string(), default = []),
@@ -287,11 +284,9 @@ java_library = prelude_rule(
             "manifest_file": attrs.option(attrs.source(), default = None),
             "maven_coords": attrs.option(attrs.string(), default = None),
             "never_mark_as_unused_dependency": attrs.option(attrs.bool(), default = None),
-            "plugins": attrs.list(attrs.dep(), default = []),
             "proguard_config": attrs.option(attrs.source(), default = None),
             "runtime_deps": attrs.list(attrs.dep(), default = []),
             "source_abi_verification_mode": attrs.option(attrs.enum(SourceAbiVerificationMode), default = None),
-            "_wip_java_plugin_arguments": attrs.dict(attrs.label(), attrs.list(attrs.string()), default = {}),
         }
     ),
 )
@@ -327,6 +322,7 @@ java_test = prelude_rule(
     further = None,
     attrs = (
         # @unsorted-dict-items
+        buck.inject_test_env_arg() |
         {
             "srcs": attrs.list(attrs.source(), default = [], doc = """
                 Like `java_library()`,
@@ -379,7 +375,7 @@ java_test = prelude_rule(
                 Same as `std_out_log_level`, but for std err.
             """),
             "use_cxx_libraries": attrs.option(attrs.bool(), default = None, doc = """
-                Whether or not to build and link against `cxx\\_library()`dependencies when testing.
+                Whether or not to build and link against `cxx_library()` dependencies when testing.
             """),
             "cxx_library_whitelist": attrs.list(attrs.dep(), default = [], doc = """
                 EXPERIMENTAL.
@@ -406,13 +402,11 @@ java_test = prelude_rule(
             "jar_postprocessor": attrs.option(attrs.exec_dep(), default = None),
             "java_version": attrs.option(attrs.string(), default = None),
             "java": attrs.option(attrs.dep(), default = None),
-            "javac": attrs.option(attrs.source(), default = None),
             "licenses": attrs.list(attrs.source(), default = []),
             "manifest_file": attrs.option(attrs.source(), default = None),
             "maven_coords": attrs.option(attrs.string(), default = None),
             "never_mark_as_unused_dependency": attrs.option(attrs.bool(), default = None),
             "on_unused_dependencies": attrs.option(attrs.enum(UnusedDependenciesAction), default = None),
-            "plugins": attrs.list(attrs.dep(), default = []),
             "proguard_config": attrs.option(attrs.source(), default = None),
             "provided_deps": attrs.list(attrs.dep(), default = []),
             "remove_classes": attrs.list(attrs.regex(), default = []),
@@ -426,9 +420,8 @@ java_test = prelude_rule(
             "test_case_timeout_ms": attrs.option(attrs.int(), default = None),
             "unbundled_resources_root": attrs.option(attrs.source(allow_directory = True), default = None),
             "use_dependency_order_classpath": attrs.option(attrs.bool(), default = None),
-            "_wip_java_plugin_arguments": attrs.dict(attrs.label(), attrs.list(attrs.string()), default = {}),
         }
-    ),
+    ) | jvm_common.plugins() | jvm_common.javac(),
 )
 
 java_test_runner = prelude_rule(
@@ -450,7 +443,6 @@ java_test_runner = prelude_rule(
             "exported_provided_deps": attrs.list(attrs.dep(), default = []),
             "extra_arguments": attrs.list(attrs.string(), default = []),
             "java_version": attrs.option(attrs.string(), default = None),
-            "javac": attrs.option(attrs.source(), default = None),
             "labels": attrs.list(attrs.string(), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
             "main_class": attrs.string(default = ""),
@@ -458,7 +450,6 @@ java_test_runner = prelude_rule(
             "maven_coords": attrs.option(attrs.string(), default = None),
             "never_mark_as_unused_dependency": attrs.option(attrs.bool(), default = None),
             "on_unused_dependencies": attrs.option(attrs.enum(UnusedDependenciesAction), default = None),
-            "plugins": attrs.list(attrs.dep(), default = []),
             "proguard_config": attrs.option(attrs.source(), default = None),
             "provided_deps": attrs.list(attrs.dep(), default = []),
             "remove_classes": attrs.list(attrs.regex(), default = []),
@@ -471,8 +462,7 @@ java_test_runner = prelude_rule(
             "source_only_abi_deps": attrs.list(attrs.dep(), default = []),
             "srcs": attrs.list(attrs.source(), default = []),
             "target": attrs.option(attrs.string(), default = None),
-            "_wip_java_plugin_arguments": attrs.dict(attrs.label(), attrs.list(attrs.string()), default = {}),
-        }
+        } | jvm_common.plugins() | jvm_common.javac()
     ),
 )
 

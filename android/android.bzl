@@ -57,17 +57,38 @@ FORCE_SINGLE_CPU = read_root_config("buck2", "android_force_single_cpu") in ("Tr
 FORCE_SINGLE_DEFAULT_CPU = read_root_config("buck2", "android_force_single_default_cpu") in ("True", "true")
 DISABLE_STRIPPING = read_root_config("android", "disable_stripping") in ("True", "true")
 
+# Format is {"ovveride_name": {"re_cap_key": "re_cap_value"}}; for example:
+#    {
+#        "dynamic-listing": {
+#            "platform": "riot",
+#            "pool": "EUREKA_POOL",
+#        },
+#        "test-execution": {
+#            "platform": "riot",
+#            "pool": "EUREKA_POOL",
+#        },
+#    }
+_RE_CAPS = attrs.option(attrs.dict(key = attrs.string(), value = attrs.dict(key = attrs.string(), value = attrs.string())), default = None)
+
+# Format is {"ovveride_name": "re_use_case"}; for example:
+#     {
+#         "dynamic-listing": "riot",
+#         "test-execution": "riot",
+#     }
+_RE_USE_CASE = attrs.option(attrs.dict(key = attrs.string(), value = attrs.string()), default = None)
+
 extra_attributes = {
     "android_aar": {
         "abi_generation_mode": attrs.option(attrs.enum(AbiGenerationMode), default = None),
         "compress_asset_libraries": attrs.default_only(attrs.bool(default = False)),
         "cpu_filters": attrs.list(attrs.enum(TargetCpuType), default = ALL_CPU_FILTERS),
         "deps": attrs.list(attrs.split_transition_dep(cfg = cpu_split_transition), default = []),
-        "javac": attrs.option(attrs.one_of(attrs.exec_dep(), attrs.source()), default = None),
         "min_sdk_version": attrs.option(attrs.int(), default = None),
         "native_library_merge_glue": attrs.option(attrs.split_transition_dep(cfg = cpu_split_transition), default = None),
         "native_library_merge_linker_args": attrs.option(attrs.dict(key = attrs.string(), value = attrs.list(attrs.arg())), default = None),
-        "package_asset_libraries": attrs.default_only(attrs.bool(default = True)),
+        "package_asset_libraries": attrs.bool(default = True),
+        "package_resources": attrs.bool(default = True),
+        "relinker_extra_deps": attrs.list(attrs.split_transition_dep(cfg = cpu_split_transition), default = []),
         "resources_root": attrs.option(attrs.string(), default = None),
         "strip_libraries": attrs.default_only(attrs.bool(default = not DISABLE_STRIPPING)),
         "_android_toolchain": toolchains_common.android(),
@@ -83,6 +104,7 @@ extra_attributes = {
     },
     "android_binary": {
         "aapt_mode": attrs.enum(AaptMode, default = "aapt1"),  # Match default in V1
+        "application_module_blacklist": attrs.option(attrs.list(attrs.transition_dep(cfg = cpu_transition)), default = None),
         "application_module_configs": attrs.dict(key = attrs.string(), value = attrs.list(attrs.transition_dep(cfg = cpu_transition)), sorted = False, default = {}),
         "build_config_values_file": attrs.option(attrs.one_of(attrs.transition_dep(cfg = cpu_transition), attrs.source()), default = None),
         "constraint_overrides": attrs.list(attrs.string(), default = []),
@@ -96,6 +118,7 @@ extra_attributes = {
         "native_library_merge_code_generator": attrs.option(attrs.exec_dep(), default = None),
         "native_library_merge_glue": attrs.option(attrs.split_transition_dep(cfg = cpu_split_transition), default = None),
         "native_library_merge_linker_args": attrs.option(attrs.dict(key = attrs.string(), value = attrs.list(attrs.arg())), default = None),
+        "relinker_extra_deps": attrs.list(attrs.split_transition_dep(cfg = cpu_split_transition), default = []),
         "strip_libraries": attrs.bool(default = not DISABLE_STRIPPING),
         "_android_toolchain": toolchains_common.android(),
         "_cxx_toolchain": attrs.split_transition_dep(cfg = cpu_split_transition, default = "toolchains//:android-hack"),
@@ -115,6 +138,7 @@ extra_attributes = {
     },
     "android_bundle": {
         "aapt_mode": attrs.enum(AaptMode, default = "aapt1"),  # Match default in V1
+        "application_module_blacklist": attrs.option(attrs.list(attrs.transition_dep(cfg = cpu_transition)), default = None),
         "application_module_configs": attrs.dict(key = attrs.string(), value = attrs.list(attrs.transition_dep(cfg = cpu_transition)), sorted = False, default = {}),
         "build_config_values_file": attrs.option(attrs.one_of(attrs.transition_dep(cfg = cpu_transition), attrs.source()), default = None),
         "deps": attrs.list(attrs.split_transition_dep(cfg = cpu_split_transition), default = []),
@@ -127,6 +151,7 @@ extra_attributes = {
         "native_library_merge_code_generator": attrs.option(attrs.exec_dep(), default = None),
         "native_library_merge_glue": attrs.option(attrs.split_transition_dep(cfg = cpu_split_transition), default = None),
         "native_library_merge_linker_args": attrs.option(attrs.dict(key = attrs.string(), value = attrs.list(attrs.arg())), default = None),
+        "relinker_extra_deps": attrs.list(attrs.split_transition_dep(cfg = cpu_split_transition), default = []),
         "use_derived_apk": attrs.bool(default = False),
         "_android_toolchain": toolchains_common.android(),
         "_cxx_toolchain": attrs.split_transition_dep(cfg = cpu_split_transition, default = "toolchains//:android-hack"),
@@ -159,10 +184,12 @@ extra_attributes = {
         "_java_toolchain": toolchains_common.java_for_android(),
     },
     "android_instrumentation_test": {
-        "extra_instrumentation_args": attrs.option(attrs.dict(key = attrs.string(), value = attrs.string()), default = None),
+        "extra_instrumentation_args": attrs.option(attrs.dict(key = attrs.string(), value = attrs.arg()), default = None),
         "instrumentation_test_listener": attrs.option(attrs.exec_dep(), default = None),
         "instrumentation_test_listener_class": attrs.option(attrs.string(), default = None),
         "is_self_instrumenting": attrs.bool(default = False),
+        "re_caps": _RE_CAPS,
+        "re_use_case": _RE_USE_CASE,
         "_android_toolchain": toolchains_common.android(),
         "_exec_os_type": buck.exec_os_type_arg(),
         "_java_test_toolchain": toolchains_common.java_for_host_test(),
@@ -171,11 +198,14 @@ extra_attributes = {
     "android_library": {
         "abi_generation_mode": attrs.option(attrs.enum(AbiGenerationMode), default = None),
         "android_optional_jars": attrs.option(attrs.list(attrs.source()), default = None),
-        "javac": attrs.option(attrs.one_of(attrs.exec_dep(), attrs.source()), default = None),
         "resources_root": attrs.option(attrs.string(), default = None),
         VALIDATION_DEPS_ATTR_NAME: attrs.set(attrs.dep(), sorted = True, default = []),
         "_android_toolchain": toolchains_common.android(),
         "_build_only_native_code": attrs.default_only(attrs.bool(default = is_build_only_native_code())),
+        "_compose_stability_config": attrs.option(attrs.source(), default = select({
+            "DEFAULT": None,
+            "fbsource//tools/build_defs/android/compose:enable-compose-stability-config": "fbsource//tools/build_defs/android/compose:stability_config",
+        })),
         "_dex_min_sdk_version": attrs.default_only(attrs.option(attrs.int(), default = dex_min_sdk_version())),
         "_dex_toolchain": toolchains_common.dex(),
         "_exec_os_type": buck.exec_os_type_arg(),
@@ -205,6 +235,7 @@ extra_attributes = {
         "res": attrs.option(attrs.one_of(attrs.source(allow_directory = True), attrs.dict(key = attrs.string(), value = attrs.source(), sorted = True)), default = None),
         "_android_toolchain": toolchains_common.android(),
         "_build_only_native_code": attrs.default_only(attrs.bool(default = is_build_only_native_code())),
+        "_java_toolchain": toolchains_common.java_for_android(),
     },
     "apk_genrule": genrule_attributes() | {
         "default_outs": attrs.option(attrs.set(attrs.string(), sorted = False), default = None),
@@ -228,7 +259,6 @@ extra_attributes = {
         "abi_generation_mode": attrs.option(attrs.enum(AbiGenerationMode), default = None),
         "android_optional_jars": attrs.option(attrs.list(attrs.source()), default = None),
         "java_agents": attrs.list(attrs.source(), default = []),
-        "javac": attrs.option(attrs.one_of(attrs.exec_dep(), attrs.source()), default = None),
         "resources_root": attrs.option(attrs.string(), default = None),
         "robolectric_runtime_dependencies": attrs.list(attrs.source(), default = []),
         "test_class_names_file": attrs.option(attrs.source(), default = None),

@@ -18,6 +18,7 @@ load(
     "create_java_library_providers",
     "create_native_providers",
     "derive_compiling_deps",
+    "generate_java_classpath_snapshot",
     "make_compile_outputs",
     "to_list",
 )
@@ -440,12 +441,14 @@ def _create_jar_artifact(
     has_postprocessor = hasattr(ctx.attrs, "jar_postprocessor") and ctx.attrs.jar_postprocessor
     final_jar = postprocess_jar(ctx.actions, ctx.attrs.jar_postprocessor[RunInfo], jar_out, actions_identifier) if has_postprocessor else jar_out
 
+    jar_snapshot = generate_java_classpath_snapshot(ctx.actions, java_toolchain.cp_snapshot_generator, abi or final_jar, actions_identifier)
     return make_compile_outputs(
         full_library = final_jar,
         preprocessed_library = jar_out,
         class_abi = abi,
         required_for_source_only_abi = required_for_source_only_abi,
         annotation_processor_output = generated_sources_dir,
+        abi_jar_snapshot = jar_snapshot,
     )
 
 def _check_dep_types(deps: list[Dependency]):
@@ -669,9 +672,10 @@ def build_java_library(
     )
     extra_sub_targets = extra_sub_targets | class_to_src_map_sub_targets
 
-    java_library_info, java_packaging_info, shared_library_info, cxx_resource_info, linkable_graph, template_placeholder_info, intellij_info = create_java_library_providers(
+    java_library_info, java_packaging_info, global_code_info, shared_library_info, cxx_resource_info, linkable_graph, template_placeholder_info, intellij_info = create_java_library_providers(
         ctx,
         library_output = outputs.classpath_entry if outputs else None,
+        global_code_config = java_toolchain.global_code_config,
         declared_deps = ctx.attrs.deps + deps_query,
         exported_deps = ctx.attrs.exported_deps,
         provided_deps = ctx.attrs.provided_deps + provided_deps_query,
@@ -696,6 +700,7 @@ def build_java_library(
         java_library_info = java_library_info,
         java_library_intellij_info = intellij_info,
         java_packaging_info = java_packaging_info,
+        java_global_code_info = global_code_info,
         shared_library_info = shared_library_info,
         cxx_resource_info = cxx_resource_info,
         linkable_graph = linkable_graph,

@@ -6,7 +6,11 @@
 # of this source tree.
 
 load("@prelude//:paths.bzl", "paths")
-load("@prelude//cxx:cxx_toolchain_types.bzl", "CxxToolchainInfo")
+load(
+    "@prelude//cxx:cxx_toolchain_types.bzl",
+    "CxxToolchainInfo",
+    "LinkerType",
+)
 load("@prelude//cxx:cxx_utility.bzl", "cxx_attrs_get_allow_cache_upload")
 load("@prelude//os_lookup:defs.bzl", "OsLookup")
 
@@ -17,6 +21,7 @@ def _extract_symbol_names(
         objects: list[Artifact],
         category: str,
         identifier: [str, None] = None,
+        defined_only: bool = False,
         undefined_only: bool = False,
         dynamic: bool = False,
         prefer_local: bool = False,
@@ -31,6 +36,9 @@ def _extract_symbol_names(
     if not objects:
         fail("no objects provided")
 
+    if defined_only and undefined_only:
+        fail("only one of defined_only and undefined_only should be True")
+
     nm = cxx_toolchain.binary_utilities_info.nm
     output = ctx.actions.declare_output(paths.join("__symbols__", name))
 
@@ -44,8 +52,12 @@ def _extract_symbol_names(
         nm_flags += "u"
 
     # darwin objects don't have dynamic symbol tables.
-    if dynamic and cxx_toolchain.linker_info.type != "darwin":
+    if dynamic and cxx_toolchain.linker_info.type != LinkerType("darwin"):
         nm_flags += "D"
+
+    # llvm-nm supports -U for this but gnu nm doesn't.
+    if defined_only:
+        nm_flags += " --defined-only"
 
     is_windows = hasattr(ctx.attrs, "_exec_os_type") and ctx.attrs._exec_os_type[OsLookup].platform == "windows"
 
@@ -58,7 +70,12 @@ def _extract_symbol_names(
                 $lines = $lines | ForEach-Object {{ ($_ -split '@')[0] }}
                 $lines = $lines | Where-Object {{ $_ -notmatch '__odr_asan_gen_.*' }}
                 $lines = $lines | Sort-Object -Unique
-                [IO.File]::WriteAllLines('{{}}', $lines)
+                # Avoid a trailing newline for empty symbol lists
+                if ($lines.count -eq 0) {{
+                    [IO.File]::WriteAllText('{{}}', $lines)
+                }} else {{
+                    [IO.File]::WriteAllLines('{{}}', $lines)
+                }}
             }}""".format(nm_flags)
         )
         symbol_extraction_args = [
@@ -78,11 +95,14 @@ def _extract_symbol_names(
             # handled by a separate asan_dynamic_list.txt list of asan patterns.
             # BUT MORE IMPORTANTLY, symbols like __odr_asan_XXX[abi:cxx11] force
             # lld into a code path that repeatedly does a linear scan of all
-            # symbols for O(num_patterns_with_bracket * num_symbols).  This
-            # totally tanks link time for builds with sanitizers!  Anecdotally,
-            # a binary with 3.7M symbols and 2K __odr_asan_XXX[abi:cxx11] can
-            # spend 6 mins processing patterns and 10s actually linking.
-            " | grep -v -E '__odr_asan_gen_.*'" +
+            # symbols for O(num_patterns_with_bracket * num_symbols) (because of
+            # the [] being treated as a glob pattern). This totally tanks link
+            # time for builds with sanitizers! Anecdotally, a binary with 3.7M
+            # symbols and 2K __odr_asan_XXX[abi:cxx11] can spend 6 mins
+            # processing patterns and 10s actually linking. We use sed instead
+            # of grep -v here to avoid an error exit code when there's no input
+            # symbols, which is not an error for us.
+            ' | sed "/__odr_asan_gen_.*/d"' +
             # Sort and dedup symbols.  Use the `C` locale and do it in-memory to
             # make it significantly faster. CAUTION: if ten of these processes
             # run in parallel, they'll have cumulative allocations larger than RAM.
@@ -187,6 +207,29 @@ def extract_symbol_names(
             **kwargs
         )
 
+def extract_defined_syms(
+        ctx: AnalysisContext,
+        cxx_toolchain: CxxToolchainInfo,
+        output: Artifact,
+        category_prefix: str,
+        prefer_local: bool = False,
+        anonymous: bool = False,
+        allow_cache_upload: bool = False) -> Artifact:
+    return extract_symbol_names(
+        ctx = ctx,
+        cxx_toolchain = cxx_toolchain,
+        name = output.short_path + ".defined_syms.txt",
+        objects = [output],
+        dynamic = True,
+        global_only = True,
+        defined_only = True,
+        category = "{}_defined_syms".format(category_prefix),
+        identifier = output.short_path,
+        prefer_local = prefer_local,
+        anonymous = anonymous,
+        allow_cache_upload = allow_cache_upload,
+    )
+
 def extract_undefined_syms(
         ctx: AnalysisContext,
         cxx_toolchain: CxxToolchainInfo,
@@ -275,7 +318,7 @@ def get_undefined_symbols_args(
         category: [str, None] = None,
         identifier: [str, None] = None,
         prefer_local: bool = False) -> cmd_args:
-    if cxx_toolchain.linker_info.type == "gnu":
+    if cxx_toolchain.linker_info.type == LinkerType("gnu"):
         # linker script is only supported in gnu linkers
         linker_script = create_undefined_symbols_linker_script(
             ctx.actions,

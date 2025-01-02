@@ -23,8 +23,7 @@ load("@prelude//java/utils:java_utils.bzl", "declare_prefixed_name")
 load("@prelude//utils:expect.bzl", "expect")
 
 def add_java_7_8_bootclasspath(target_level: int, bootclasspath_entries: list[Artifact], java_toolchain: JavaToolchainInfo) -> list[Artifact]:
-    if target_level == 7:
-        return bootclasspath_entries + java_toolchain.bootclasspath_7
+    # bootclasspath_7 is deprecated.
     if target_level == 8:
         return bootclasspath_entries + java_toolchain.bootclasspath_8
     return bootclasspath_entries
@@ -97,7 +96,6 @@ OutputPaths = record(
     jar = Artifact,
     classes = Artifact,
     annotations = Artifact,
-    scratch = Artifact,
 )
 
 def qualified_name_with_subtarget(label: Label) -> str:
@@ -127,7 +125,6 @@ def define_output_paths(actions: AnalysisActions, prefix: [str, None], label: La
         jar = jar_parent.project("{}.jar".format(label.name)),
         classes = declare_prefixed_output(actions, prefix, "__classes__", dir = True),
         annotations = declare_prefixed_output(actions, prefix, "__gen__", dir = True),
-        scratch = declare_prefixed_output(actions, prefix, "scratch", dir = True),
     )
 
 # buildifier: disable=uninitialized
@@ -139,7 +136,6 @@ def output_paths_to_hidden_cmd_args(output_paths: OutputPaths, path_to_class_has
     hidden.append(output_paths.jar.as_output())
     hidden.append(output_paths.classes.as_output())
     hidden.append(output_paths.annotations.as_output())
-    hidden.append(output_paths.scratch.as_output())
     return cmd_args(hidden = hidden)
 
 def encode_output_paths(label: Label, paths: OutputPaths, target_type: TargetType) -> struct:
@@ -147,8 +143,6 @@ def encode_output_paths(label: Label, paths: OutputPaths, target_type: TargetTyp
         classesDir = paths.classes.as_output(),
         outputJarDirPath = paths.jar_parent.as_output(),
         annotationPath = paths.annotations.as_output(),
-        pathToSourcesList = cmd_args([paths.scratch.as_output(), "/", "__srcs__"], delimiter = ""),
-        workingDirectory = paths.scratch.as_output(),
         outputJarPath = paths.jar.as_output(),
     )
 
@@ -201,6 +195,7 @@ def get_compiling_deps_tset(
                 abi = entry,
                 abi_as_dir = None,
                 required_for_source_only_abi = True,
+                abi_jar_snapshot = None,
             )))
         compiling_deps_tset = actions.tset(JavaCompilingDepsTSet, children = children)
 
@@ -293,16 +288,20 @@ def encode_base_jar_command(
         manifest_file: Artifact | None,
         extra_arguments: cmd_args,
         source_only_abi_compiling_deps: list[JavaClasspathEntry],
-        track_class_usage: bool) -> struct:
+        track_class_usage: bool,
+        is_incremental: bool = False) -> struct:
     library_jar_params = encode_jar_params(remove_classes, output_paths, manifest_file)
     qualified_name = get_qualified_name(label, target_type)
     if target_type == TargetType("source_only_abi"):
         compiling_classpath = classpath_jars_tag.tag_artifacts([dep.abi for dep in source_only_abi_compiling_deps])
+        compiling_classpath_snapshot = {}
     else:
         expect(len(source_only_abi_compiling_deps) == 0)
+        compiling_deps_list = filter(None, list(compiling_deps_tset.traverse(ordering = "topological"))) if compiling_deps_tset else []
         compiling_classpath = classpath_jars_tag.tag_artifacts(
-            compiling_deps_tset.project_as_json("javacd_json") if compiling_deps_tset else None,
+            [dep.abi for dep in compiling_deps_list],
         )
+        compiling_classpath_snapshot = {dep.abi: dep.abi_jar_snapshot or "" for dep in compiling_deps_list} if is_incremental else {}
 
     build_target_value = struct(
         fullyQualifiedName = qualified_name,
@@ -333,6 +332,7 @@ def encode_base_jar_command(
     return struct(
         outputPathsValue = encode_output_paths(label, output_paths, target_type),
         compileTimeClasspathPaths = compiling_classpath,
+        compileTimeClasspathSnapshotPaths = compiling_classpath_snapshot,
         javaSrcs = srcs,
         # TODO(cjhopman): populate jar infos. I think these are only used for unused dependencies (and appear to be broken in buck1 w/javacd anyway).
         fullJarInfos = [],

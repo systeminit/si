@@ -25,7 +25,7 @@ load(
 load("@prelude//cxx:link_types.bzl", "link_options")
 load(
     "@prelude//cxx:symbols.bzl",
-    "extract_global_syms",
+    "extract_defined_syms",
     "extract_undefined_syms",
 )
 load("@prelude//java:java_library.bzl", "compile_to_jar")  # @unused
@@ -230,6 +230,7 @@ def get_android_binary_native_library_info(
             abi = mergemap_gencode_jar,
             abi_as_dir = None,
             required_for_source_only_abi = False,
+            abi_jar_snapshot = None,
         )
         generated_java_code.append(
             JavaLibraryInfo(
@@ -241,8 +242,15 @@ def get_android_binary_native_library_info(
 
     def dynamic_native_libs_info(ctx: AnalysisContext, artifacts, outputs):
         get_module_from_target = all_targets_in_root_module
+        get_module_tdeps = all_targets_in_root_module
+        get_calculated_module_deps = all_targets_in_root_module
+        get_deps_debug_data = None
         if apk_module_graph_file:
-            get_module_from_target = get_apk_module_graph_info(ctx, apk_module_graph_file, artifacts).target_to_module_mapping_function
+            apk_module_graph = get_apk_module_graph_info(ctx, apk_module_graph_file, artifacts)
+            get_module_from_target = apk_module_graph.target_to_module_mapping_function
+            get_module_tdeps = apk_module_graph.transitive_module_deps_function
+            get_calculated_module_deps = apk_module_graph.calculated_deps_function
+            get_deps_debug_data = apk_module_graph.get_deps_debug_data
 
         split_groups = None
         merged_shared_lib_targets_by_platform = {}  # dict[str, dict[Label, str]]
@@ -356,6 +364,23 @@ def get_android_binary_native_library_info(
             "{}/{}".format(platform, lib.short_path): lib
             for lib, platform in unstripped_libs.items()
         })
+
+        if ctx.attrs._android_toolchain[AndroidToolchainInfo].cross_module_native_deps_check:
+            # note: can only detect these if linkable_nodes_by_platform is created, ie. if using relinker or merging
+            cross_module_link_errors = []
+            for linkable_nodes in linkable_nodes_by_platform.values():
+                for target, node in linkable_nodes.items():
+                    node_target = str(target.raw_target())
+                    node_module = get_module_from_target(node_target)
+                    for dep in node.deps:
+                        dep_target = str(dep.raw_target())
+                        dep_module = get_module_from_target(dep_target)
+                        if not is_root_module(dep_module) and node_module != dep_module and dep_module not in get_module_tdeps(node_module) and dep_module not in get_calculated_module_deps(node_module):
+                            cross_module_link_errors.append("{} (module: {}) -> {} (module: {}) ".format(node_target, node_module, dep_target, dep_module))
+
+            if cross_module_link_errors:
+                cross_module_link_errors.append(get_deps_debug_data())
+                fail("Native libraries in modules should only depend on libraries in the same module or the root. Remove these deps:\n" + "\n".join(cross_module_link_errors))
 
         dynamic_info = _get_native_libs_and_assets(
             ctx,
@@ -1589,6 +1614,20 @@ def _create_merged_link_args(
 # 5. extract the list of undefined symbols in the relinked libs (i.e. those symbols needed from dependencies and what had been
 #    used in (1) above from higher nodes).
 def relink_libraries(ctx: AnalysisContext, libraries_by_platform: dict[str, dict[str, SharedLibrary]]) -> dict[str, dict[str, SharedLibrary]]:
+    relinker_extra_deps = getattr(ctx.attrs, "relinker_extra_deps", None)
+    red_linkables = {}
+    if relinker_extra_deps:
+        for red_elem in relinker_extra_deps:
+            for platform, red in red_elem.items():
+                red_link_graph = red.get(LinkableGraph)
+                expect(red_link_graph != None, "relinker_extra_deps (`{}`) should be a linkable target", red.label)
+                red_linkable = red_link_graph.nodes.value.linkable
+                expect(red_linkable != None, "relinker_extra_deps (`{}`) should be a linkable target", red.label)
+                expect(red_linkable.preferred_linkage == Linkage("static"), "buck2 currently only supports preferred_linkage='static' relinker_extra_deps")
+                if platform not in red_linkables:
+                    red_linkables[platform] = []
+                red_linkables[platform].append((red.label, red_linkable.link_infos[LibOutputStyle("pic_archive")].default))
+
     relinked_libraries_by_platform = {}
     for platform, shared_libraries in libraries_by_platform.items():
         cxx_toolchain = ctx.attrs._cxx_toolchain[platform][CxxToolchainInfo]
@@ -1625,7 +1664,11 @@ def relink_libraries(ctx: AnalysisContext, libraries_by_platform: dict[str, dict
                 provided_symbols = provided_symbols_file,
                 needed_symbols = needed_symbols_for_this,
             )
-            relinker_link_args = original_shared_library.link_args + [LinkArgs(flags = [cmd_args(relinker_version_script, format = "-Wl,--version-script={}")])]
+            relinker_link_args = (
+                original_shared_library.link_args +
+                [LinkArgs(flags = [cmd_args(relinker_version_script, format = "-Wl,--version-script={}")])] +
+                ([LinkArgs(infos = [set_link_info_link_whole(red_linkable[1]) for red_linkable in red_linkables[platform]])] if len(red_linkables) > 0 else [])
+            )
 
             shared_lib = create_shared_lib(
                 ctx,
@@ -1647,7 +1690,7 @@ def relink_libraries(ctx: AnalysisContext, libraries_by_platform: dict[str, dict
     return relinked_libraries_by_platform
 
 def extract_provided_symbols(ctx: AnalysisContext, toolchain: CxxToolchainInfo, lib: Artifact) -> Artifact:
-    return extract_global_syms(ctx, toolchain, lib, "relinker_extract_provided_symbols")
+    return extract_defined_syms(ctx, toolchain, lib, "relinker_extract_provided_symbols")
 
 def create_relinker_version_script(actions: AnalysisActions, relinker_allowlist: list[regex], output: Artifact, provided_symbols: Artifact, needed_symbols: list[Artifact]):
     def create_version_script(ctx, artifacts, outputs):

@@ -23,15 +23,16 @@ load(
 )
 load(":apple_bundle_destination.bzl", "AppleBundleDestination")
 load(":apple_bundle_part.bzl", "AppleBundlePart")
-load(":apple_bundle_types.bzl", "AppleBundleInfo", "AppleBundleTypeAppClip", "AppleBundleTypeDefault", "AppleBundleTypeWatchApp")
-load(":apple_bundle_utility.bzl", "get_bundle_resource_processing_options", "get_default_binary_dep", "get_extension_attr", "get_flattened_binary_deps", "get_product_name")
+load(":apple_bundle_types.bzl", "AppleBundleInfo", "AppleBundleTypeAppClip", "AppleBundleTypeDefault", "AppleBundleTypeExtensionKitExtension", "AppleBundleTypeWatchApp")
+load(":apple_bundle_utility.bzl", "get_bundle_resource_processing_options", "get_default_binary_dep", "get_extension_attr", "get_flattened_binary_deps", "get_is_watch_bundle", "get_product_name")
 load(":apple_core_data.bzl", "compile_apple_core_data")
 load(
     ":apple_core_data_types.bzl",
     "AppleCoreDataSpec",  # @unused Used as a type
 )
 load(":apple_info_plist.bzl", "process_info_plist", "process_plist")
-load(":apple_library.bzl", "AppleLibraryForDistributionInfo", "AppleLibraryInfo")
+load(":apple_library.bzl", "AppleLibraryForDistributionInfo")
+load(":apple_library_types.bzl", "AppleLibraryInfo")
 load(
     ":apple_resource_types.bzl",
     "AppleResourceDestination",
@@ -158,12 +159,12 @@ def _copy_privacy_manifest_if_needed(ctx: AnalysisContext) -> list[AppleBundlePa
     else:
         output = ctx.actions.declare_output("PrivacyInfo.xcprivacy")
         artifact = ctx.actions.copy_file(output.as_output(), privacy_manifest)
-    return [AppleBundlePart(source = artifact, destination = AppleBundleDestination("metadata"))]
+    return [AppleBundlePart(source = artifact, destination = AppleBundleDestination("resources"))]
 
 def _select_resources(ctx: AnalysisContext) -> ((list[AppleResourceSpec], list[AppleAssetCatalogSpec], list[AppleCoreDataSpec], list[SceneKitAssetsSpec], list[CxxResourceSpec])):
     resource_group_info = get_resource_group_info(ctx)
     if resource_group_info:
-        resource_groups_deps = resource_group_info.implicit_deps
+        resource_groups_deps = resource_group_info.resource_group_to_implicit_deps_mapping.get(ctx.attrs.resource_group, []) if ctx.attrs.resource_group else []
         resource_group_mappings = resource_group_info.mappings
     else:
         resource_groups_deps = []
@@ -284,7 +285,23 @@ def _copied_bundle_spec(bundle_info: AppleBundleInfo) -> [None, AppleBundlePart]
         destination = AppleBundleDestination(app_destination_type)
         codesign_on_copy = False
     elif bundle_extension == ".appex":
-        destination = AppleBundleDestination("plugins")
+        # We have two types of extensions: App Extensions and ExtensionKit Extensions
+        #
+        # +----------------------+-------------------------------+-------------------------------+
+        # |                      |        App Extension          |   ExtensionKit Extension      |
+        # +----------------------+-------------------------------+-------------------------------+
+        # | xcode project type   | com.apple.product-type.app-   | com.apple.product-type.       |
+        # |                      | extension                     | extensionkit-extension        |
+        # +----------------------+-------------------------------+-------------------------------+
+        # | Info.plist           | NSExtensions                  | EXAppExtensionAttributes      |
+        # +----------------------+-------------------------------+-------------------------------+
+        # | bundle folder        | *.app/PlugIns                 | *.app/Extensions              |
+        # +----------------------+-------------------------------+-------------------------------+
+        #
+        if bundle_info.bundle_type == AppleBundleTypeExtensionKitExtension:
+            destination = AppleBundleDestination("extensionkit_extensions")
+        else:
+            destination = AppleBundleDestination("plugins")
         codesign_on_copy = False
     elif bundle_extension == ".qlgenerator":
         destination = AppleBundleDestination("quicklook")
@@ -383,7 +400,14 @@ def _run_ibtool(
         command = ibtool_command
 
     processing_options = get_bundle_resource_processing_options(ctx)
-    ctx.actions.run(command, prefer_local = processing_options.prefer_local, allow_cache_upload = processing_options.allow_cache_upload, category = "apple_ibtool", identifier = action_identifier)
+    ctx.actions.run(
+        command,
+        prefer_local = processing_options.prefer_local,
+        prefer_remote = processing_options.prefer_remote,
+        allow_cache_upload = processing_options.allow_cache_upload,
+        category = "apple_ibtool",
+        identifier = action_identifier,
+    )
 
 def _ibtool_identifier(action: str, raw_file: Artifact) -> str:
     "*.xib files can live in .lproj folders and have the same name, so we need to split the id"
@@ -484,6 +508,3 @@ def _get_dest_subpath_for_variant_file(variant_file: Artifact) -> str:
 def _get_variant_dirname(variant_file: Artifact) -> str | None:
     dir_name = paths.basename(paths.dirname(variant_file.short_path))
     return dir_name if dir_name.endswith("lproj") else None
-
-def get_is_watch_bundle(ctx: AnalysisContext) -> bool:
-    return ctx.attrs._apple_toolchain[AppleToolchainInfo].sdk_name.startswith("watch")
