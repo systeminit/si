@@ -19,6 +19,7 @@ load("@prelude-si//python:toolchain.bzl", "si_python_toolchain")
 load("@prelude-si//rust:toolchain.bzl", "si_rust_toolchain")
 load("@prelude-si//shell:toolchain.bzl", "shell_toolchain")
 load("@prelude-si//rootfs:toolchain.bzl", "rootfs_toolchain")
+load("@prelude-si//deno:toolchain.bzl", "deno_toolchain")
 
 remote_test_execution_toolchain(
     name = "remote_test_execution",
@@ -138,5 +139,10 @@ shell_toolchain(
 
 rootfs_toolchain(
     name = "rootfs",
+    visibility = ["PUBLIC"],
+)
+
+deno_toolchain(
+    name = "deno",
     visibility = ["PUBLIC"],
 )
