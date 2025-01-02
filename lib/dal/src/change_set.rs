@@ -3,6 +3,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
 
+use anyhow::Result;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use si_data_pg::{PgError, PgRow};
@@ -116,7 +117,7 @@ impl From<WsEventError> for ChangeSetError {
 }
 
 /// The primary result type for this module.
-pub type ChangeSetResult<T> = Result<T, ChangeSetError>;
+pub type ChangeSetResult<T> = Result<T>;
 
 /// A superset of [`ChangeSetError`] used when performing apply logic.
 #[remain::sorted]
@@ -145,7 +146,7 @@ pub enum ChangeSetApplyError {
 }
 
 /// A superset of [`ChangeSetResult`] used when performing apply logic.
-pub type ChangeSetApplyResult<T> = Result<T, ChangeSetApplyError>;
+pub type ChangeSetApplyResult<T> = Result<T>;
 
 pub use si_id::ChangeSetId;
 
@@ -199,15 +200,13 @@ impl ChangeSet {
         let id: Ulid = Ulid::new();
         let change_set_id: ChangeSetId = id.into();
 
-        let workspace_snapshot = WorkspaceSnapshot::find(ctx, workspace_snapshot_address)
-            .await
-            .map_err(Box::new)?;
+        let workspace_snapshot = WorkspaceSnapshot::find(ctx, workspace_snapshot_address).await?;
         // The workspace snapshot needs to be marked as seen by this new
         // changeset, so that edit sessions are able to know what is net new in
         // the edit session vs what the changeset already contained. The "onto"
         // changeset needs to have seen the "to_rebase" or we will treat them as
         // completely disjoint changesets.
-        let workspace_snapshot_address = workspace_snapshot.write(ctx).await.map_err(Box::new)?;
+        let workspace_snapshot_address = workspace_snapshot.write(ctx).await?;
 
         let workspace_id = ctx.tenancy().workspace_pk_opt();
         let name = name.as_ref();
@@ -326,7 +325,7 @@ impl ChangeSet {
     }
 
     pub fn workspace_id(&self) -> ChangeSetResult<WorkspacePk> {
-        self.workspace_id.ok_or(ChangeSetError::NoTenancySet)
+        self.workspace_id.ok_or(ChangeSetError::NoTenancySet.into())
     }
 
     async fn workspace(&self, ctx: &DalContext) -> ChangeSetResult<Workspace> {
@@ -353,9 +352,7 @@ impl ChangeSet {
 
         self.workspace_snapshot_address = workspace_snapshot_address;
 
-        billing_publish::for_head_change_set_pointer_update(ctx, self)
-            .await
-            .map_err(Box::new)?;
+        billing_publish::for_head_change_set_pointer_update(ctx, self).await?;
 
         Ok(())
     }
@@ -375,9 +372,7 @@ impl ChangeSet {
             .await?;
 
         self.status = status;
-        billing_publish::for_change_set_status_update(ctx, self)
-            .await
-            .map_err(Box::new)?;
+        billing_publish::for_change_set_status_update(ctx, self).await?;
         Ok(())
     }
 
@@ -447,11 +442,9 @@ impl ChangeSet {
 
         // Ensure that DVU roots are empty before continuing.
         if !ctx
-            .workspace_snapshot()
-            .map_err(Box::new)?
+            .workspace_snapshot()?
             .get_dependent_value_roots()
-            .await
-            .map_err(Box::new)?
+            .await?
             .is_empty()
         {
             // TODO(nick): we should consider requiring this check in integration tests too. Why did I
@@ -459,44 +452,32 @@ impl ChangeSet {
             // its via helpers or through the change set methods directly. In addition, they test
             // for success and failure, not solely for success. We should still do this, but not within
             // the PR corresponding to when this message was written.
-            return Err(ChangeSetError::DvuRootsNotEmpty(ctx.change_set_id()));
+            return Err(ChangeSetError::DvuRootsNotEmpty(ctx.change_set_id()).into());
         }
 
         // if the change set status isn't approved, we shouldn't go
         // locking stuff
         if change_set.status != ChangeSetStatus::Approved {
-            return Err(ChangeSetError::ChangeSetNotApprovedForApply(
-                change_set.status,
-            ));
+            return Err(ChangeSetError::ChangeSetNotApprovedForApply(change_set.status).into());
         }
 
         // Lock all unlocked variants
-        for schema_id in Schema::list_ids(ctx).await.map_err(Box::new)? {
-            let schema = Schema::get_by_id_or_error(ctx, schema_id)
-                .await
-                .map_err(Box::new)?;
-            let Some(variant) = SchemaVariant::get_unlocked_for_schema(ctx, schema_id)
-                .await
-                .map_err(Box::new)?
+        for schema_id in Schema::list_ids(ctx).await? {
+            let schema = Schema::get_by_id_or_error(ctx, schema_id).await?;
+            let Some(variant) = SchemaVariant::get_unlocked_for_schema(ctx, schema_id).await?
             else {
                 continue;
             };
 
             let variant_id = variant.id();
 
-            variant.lock(ctx).await.map_err(Box::new)?;
-            schema
-                .set_default_schema_variant(ctx, variant_id)
-                .await
-                .map_err(Box::new)?;
+            variant.lock(ctx).await?;
+            schema.set_default_schema_variant(ctx, variant_id).await?;
         }
         // Lock all unlocked functions too
-        for func in Func::list_for_default_and_editing(ctx)
-            .await
-            .map_err(Box::new)?
-        {
+        for func in Func::list_for_default_and_editing(ctx).await? {
             if !func.is_locked {
-                func.lock(ctx).await.map_err(Box::new)?;
+                func.lock(ctx).await?;
             }
         }
         Ok(())
@@ -720,18 +701,13 @@ impl ChangeSet {
             .base_change_set_id
             .ok_or(ChangeSetError::NoBaseChangeSet(self.id))?;
 
-        let base_snapshot = Arc::new(
-            WorkspaceSnapshot::find_for_change_set(ctx, base_change_set_id)
-                .await
-                .map_err(Box::new)?,
-        );
+        let base_snapshot =
+            Arc::new(WorkspaceSnapshot::find_for_change_set(ctx, base_change_set_id).await?);
 
-        Ok(WorkspaceSnapshot::calculate_rebase_batch(
-            base_snapshot,
-            ctx.workspace_snapshot().map_err(Box::new)?,
+        Ok(
+            WorkspaceSnapshot::calculate_rebase_batch(base_snapshot, ctx.workspace_snapshot()?)
+                .await?,
         )
-        .await
-        .map_err(Box::new)?)
     }
 
     /// Applies the current [`ChangeSet`] in the provided [`DalContext`] to its base
@@ -916,14 +892,8 @@ impl ChangeSet {
     }
     pub async fn extract_userid_from_context_or_error(ctx: &DalContext) -> ChangeSetResult<UserPk> {
         let user_id = match ctx.history_actor() {
-            HistoryActor::User(user_pk) => {
-                let maybe_user = User::get_by_pk_or_error(ctx, *user_pk).await;
-                match maybe_user {
-                    Ok(user) => user.pk(),
-                    Err(err) => return Err(ChangeSetError::User(err)),
-                }
-            }
-            HistoryActor::SystemInit => return Err(ChangeSetError::InvalidUserSystemInit),
+            HistoryActor::User(user_pk) => User::get_by_pk_or_error(ctx, *user_pk).await?.pk(),
+            HistoryActor::SystemInit => return Err(ChangeSetError::InvalidUserSystemInit.into()),
         };
         Ok(user_id)
     }

@@ -11,6 +11,7 @@
 
 use std::sync::Arc;
 
+use anyhow::Result;
 use content_node_weight::ContentNodeWeight;
 use petgraph::Direction;
 use serde::{Deserialize, Serialize};
@@ -84,7 +85,7 @@ pub enum AttributePrototypeError {
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
 
-pub type AttributePrototypeResult<T> = Result<T, AttributePrototypeError>;
+pub type AttributePrototypeResult<T> = Result<T>;
 
 /// Indicates the _one and only one_ eventual parent of a corresponding [`AttributePrototype`].
 ///

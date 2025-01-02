@@ -41,6 +41,7 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::Arc;
 
+use anyhow::Result;
 use async_recursion::async_recursion;
 use indexmap::IndexMap;
 use petgraph::prelude::*;
@@ -230,7 +231,7 @@ impl From<ComponentError> for AttributeValueError {
     }
 }
 
-pub type AttributeValueResult<T> = Result<T, AttributeValueError>;
+pub type AttributeValueResult<T> = Result<T>;
 
 pub use si_id::AttributeValueId;
 

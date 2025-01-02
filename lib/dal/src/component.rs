@@ -1,6 +1,7 @@
 //! This module contains [`Component`], which is an instance of a
 //! [`SchemaVariant`](SchemaVariant) and a _model_ of a "real world resource".
 
+use anyhow::Result;
 use itertools::Itertools;
 use petgraph::Direction::Outgoing;
 use serde::{Deserialize, Serialize};
@@ -227,7 +228,7 @@ pub enum ComponentError {
     WsEvent(#[from] WsEventError),
 }
 
-pub type ComponentResult<T> = Result<T, ComponentError>;
+pub type ComponentResult<T> = Result<T>;
 
 pub use si_id::ComponentId;
 
@@ -423,9 +424,7 @@ impl Component {
                 .await?;
 
         // Create geometry node
-        Geometry::new_for_component(ctx, component.id, view_id)
-            .await
-            .map_err(|e| ComponentError::Diagram(Box::new(e)))?;
+        Geometry::new_for_component(ctx, component.id, view_id).await?;
 
         Ok(component)
     }
@@ -582,9 +581,7 @@ impl Component {
         )
         .await?
         {
-            Action::new(ctx, prototype_id, Some(component.id))
-                .await
-                .map_err(|err| ComponentError::Action(Box::new(err)))?;
+            Action::new(ctx, prototype_id, Some(component.id)).await?;
         }
 
         Ok(component)
@@ -983,7 +980,7 @@ impl Component {
         let dest_sv_id = Component::schema_variant_id(ctx, self.id).await?;
 
         if from_sv_id != dest_sv_id {
-            return Err(ComponentError::CannotCloneFromDifferentVariants);
+            return Err(ComponentError::CannotCloneFromDifferentVariants.into());
         }
 
         // Paste attribute value "values" from original component (or create them for maps/arrays)
@@ -1251,7 +1248,7 @@ impl Component {
 
         let maybe_parent = if let Some(raw_parent) = raw_sources.pop() {
             if !raw_sources.is_empty() {
-                return Err(ComponentError::MultipleParentsForComponent(component_id));
+                return Err(ComponentError::MultipleParentsForComponent(component_id).into());
             }
             Some(
                 workspace_snapshot
@@ -1298,7 +1295,7 @@ impl Component {
     ) -> ComponentResult<(ComponentNodeWeight, ComponentContentV2)> {
         Self::try_get_node_weight_and_content(ctx, component_id)
             .await?
-            .ok_or(ComponentError::NotFound(component_id))
+            .ok_or(ComponentError::NotFound(component_id).into())
     }
 
     async fn try_get_node_weight_and_content_hash(
@@ -1456,9 +1453,7 @@ impl Component {
     }
 
     pub async fn geometry(&self, ctx: &DalContext, view_id: ViewId) -> ComponentResult<Geometry> {
-        Geometry::get_by_component_and_view(ctx, self.id, view_id)
-            .await
-            .map_err(|e| ComponentError::Diagram(Box::new(e)))
+        Ok(Geometry::get_by_component_and_view(ctx, self.id, view_id).await?)
     }
 
     pub async fn set_geometry(
@@ -1488,10 +1483,7 @@ impl Component {
     ) -> ComponentResult<Geometry> {
         let mut geometry_pre = self.geometry(ctx, view_id).await?;
         if geometry_pre.clone().into_raw() != raw_geometry {
-            geometry_pre
-                .update(ctx, raw_geometry)
-                .await
-                .map_err(|e| ComponentError::Diagram(Box::new(e)))?;
+            geometry_pre.update(ctx, raw_geometry).await?;
         }
 
         Ok(geometry_pre)
@@ -1717,7 +1709,7 @@ impl Component {
 
         // if the current component has children, and the new type is a component, return an error
         if new_type == ComponentType::Component && !children.is_empty() {
-            return Err(ComponentError::ComponentHasChildren);
+            return Err(ComponentError::ComponentHasChildren.into());
         }
 
         // no-op if we're not actually changing the type
@@ -1735,10 +1727,11 @@ impl Component {
                 | (ComponentType::ConfigurationFrameUp, ComponentType::Component)
                 | (ComponentType::ConfigurationFrameUp, ComponentType::ConfigurationFrameDown) => {
                     Frame::update_type_from_or_to_frame(ctx, component_id, reference_id, new_type)
-                        .await
-                        .map_err(Box::new)?;
+                        .await?;
                 }
-                (new, old) => return Err(ComponentError::InvalidComponentTypeUpdate(old, new)),
+                (new, old) => {
+                    return Err(ComponentError::InvalidComponentTypeUpdate(old, new).into())
+                }
             }
         } else {
             // this component stands alone, just set the type!
@@ -1779,14 +1772,15 @@ impl Component {
                             target_node_weight.id().into(),
                             already_found_root_attribute_value_id,
                             component_id,
-                        ));
+                        )
+                        .into());
                     }
                     None => Some(target_node_weight.id().into()),
                 };
             }
         }
         maybe_root_attribute_value_id
-            .ok_or(ComponentError::RootAttributeValueNotFound(component_id))
+            .ok_or_else(|| ComponentError::RootAttributeValueNotFound(component_id).into())
     }
     pub async fn output_socket_attribute_values(
         &self,
@@ -1851,14 +1845,11 @@ impl Component {
     ) -> ComponentResult<AttributeValueId> {
         let values = Self::attribute_values_for_prop_id(ctx, component_id, prop_id).await?;
         if values.len() > 1 {
-            return Err(ComponentError::ComponentHasTooManyValues(
-                component_id,
-                prop_id,
-            ));
+            return Err(ComponentError::ComponentHasTooManyValues(component_id, prop_id).into());
         }
         match values.first() {
             Some(value) => Ok(*value),
-            None => Err(ComponentError::ComponentMissingValue(component_id, prop_id)),
+            None => Err(ComponentError::ComponentMissingValue(component_id, prop_id).into()),
         }
     }
 
@@ -2204,7 +2195,8 @@ impl Component {
                 return Err(
                     ComponentError::WrongNumberOfPrototypesForAttributePrototypeArgument(
                         base_change_set_connection.attribute_prototype_argument_id,
-                    ),
+                    )
+                    .into(),
                 );
             };
 
@@ -2524,14 +2516,10 @@ impl Component {
         }
 
         // Remove all geometries for the component
-        Geometry::remove_all_for_component_id(ctx, id)
-            .await
-            .map_err(|e| ComponentError::Diagram(Box::new(e)))?;
+        Geometry::remove_all_for_component_id(ctx, id).await?;
 
         // Remove all actions for this component from queue
-        Action::remove_all_for_component_id(ctx, id)
-            .await
-            .map_err(|err| ComponentError::Action(Box::new(err)))?;
+        Action::remove_all_for_component_id(ctx, id).await?;
         WsEvent::action_list_updated(ctx)
             .await?
             .publish_on_commit(ctx)
@@ -2667,15 +2655,11 @@ impl Component {
             )
             .await?
             {
-                Action::new(ctx, prototype_id, Some(component_id))
-                    .await
-                    .map_err(|err| ComponentError::Action(Box::new(err)))?;
+                Action::new(ctx, prototype_id, Some(component_id)).await?;
             }
         } else if !to_delete {
             // Remove delete actions for component
-            Action::remove_all_for_component_id(ctx, component_id)
-                .await
-                .map_err(|err| ComponentError::Action(Box::new(err)))?;
+            Action::remove_all_for_component_id(ctx, component_id).await?;
             WsEvent::action_list_updated(ctx)
                 .await?
                 .publish_on_commit(ctx)
@@ -2768,24 +2752,15 @@ impl Component {
         raw_geometry: RawGeometry,
     ) -> ComponentResult<()> {
         if Geometry::try_get_by_component_and_view(ctx, component_id, view_id)
-            .await
-            .map_err(|e| ComponentError::Diagram(Box::new(e)))?
+            .await?
             .is_some()
         {
-            return Err(ComponentError::ComponentAlreadyInView(
-                component_id,
-                view_id,
-            ));
+            return Err(ComponentError::ComponentAlreadyInView(component_id, view_id).into());
         }
 
-        let mut geometry = Geometry::new_for_component(ctx, component_id, view_id)
-            .await
-            .map_err(|e| ComponentError::Diagram(Box::new(e)))?;
+        let mut geometry = Geometry::new_for_component(ctx, component_id, view_id).await?;
 
-        geometry
-            .update(ctx, raw_geometry)
-            .await
-            .map_err(|e| ComponentError::Diagram(Box::new(e)))?;
+        geometry.update(ctx, raw_geometry).await?;
 
         Ok(())
     }
@@ -2990,9 +2965,7 @@ impl Component {
         let original_parent = original_component.parent(ctx).await?;
         let original_children = Component::get_children_for_id(ctx, original_component_id).await?;
 
-        let geometry_ids = Geometry::list_ids_by_component(ctx, self.id)
-            .await
-            .map_err(|e| ComponentError::Diagram(Box::new(e)))?;
+        let geometry_ids = Geometry::list_ids_by_component(ctx, self.id).await?;
 
         // ================================================================================
         // Create new component and run changes that depend on the old one still existing
@@ -3025,7 +2998,8 @@ impl Component {
         if new_schema_variant_id != schema_variant_id {
             return Err(ComponentError::ComponentIncorrectSchemaVariant(
                 new_component_with_temp_id.id(),
-            ));
+            )
+            .into());
         }
 
         new_component_with_temp_id
@@ -3041,7 +3015,8 @@ impl Component {
         {
             return Err(ComponentError::ComponentIncorrectSchemaVariant(
                 new_component_with_temp_id.id(),
-            ));
+            )
+            .into());
         }
 
         // Remove old component connections
@@ -3237,38 +3212,25 @@ impl Component {
     ) -> ComponentResult<()> {
         // Remove any actions created for the new component as a side effect of the upgrade
         // Then loop through the existing queued actions for the old component and re-add them piecemeal.
-        Action::remove_all_for_component_id(ctx, new_component_id)
-            .await
-            .map_err(|err| ComponentError::Action(Box::new(err)))?;
+        Action::remove_all_for_component_id(ctx, new_component_id).await?;
 
-        let queued_for_old_component = Action::find_for_component_id(ctx, old_component_id)
-            .await
-            .map_err(|err| ComponentError::Action(Box::new(err)))?;
-        let available_for_new_component = ActionPrototype::for_variant(ctx, new_schema_variant_id)
-            .await
-            .map_err(|err| ComponentError::ActionPrototype(Box::new(err)))?;
+        let queued_for_old_component = Action::find_for_component_id(ctx, old_component_id).await?;
+        let available_for_new_component =
+            ActionPrototype::for_variant(ctx, new_schema_variant_id).await?;
         for existing_queued in queued_for_old_component {
-            let action = Action::get_by_id(ctx, existing_queued)
-                .await
-                .map_err(|err| ComponentError::Action(Box::new(err)))?;
-            let action_prototype_id = Action::prototype_id(ctx, existing_queued)
-                .await
-                .map_err(|err| ComponentError::Action(Box::new(err)))?;
+            let action = Action::get_by_id(ctx, existing_queued).await?;
+            let action_prototype_id = Action::prototype_id(ctx, existing_queued).await?;
             // what do we do about the various states?
             // maybe you shouldn't upgrade a component if an action
             // is dispatched or running for the current?
             match action.state() {
                 ActionState::Failed | ActionState::OnHold | ActionState::Queued => {
-                    let func_id = ActionPrototype::func_id(ctx, action_prototype_id)
-                        .await
-                        .map_err(|err| ComponentError::ActionPrototype(Box::new(err)))?;
+                    let func_id = ActionPrototype::func_id(ctx, action_prototype_id).await?;
                     let queued_func = Func::get_by_id_or_error(ctx, func_id).await?;
 
                     for available_action_prototype in available_for_new_component.clone() {
                         let available_func_id =
-                            ActionPrototype::func_id(ctx, available_action_prototype.id())
-                                .await
-                                .map_err(|err| ComponentError::ActionPrototype(Box::new(err)))?;
+                            ActionPrototype::func_id(ctx, available_action_prototype.id()).await?;
                         let available_func =
                             Func::get_by_id_or_error(ctx, available_func_id).await?;
 
@@ -3280,8 +3242,7 @@ impl Component {
                                 available_action_prototype.id(),
                                 Some(new_component_id),
                             )
-                            .await
-                            .map_err(|err| ComponentError::Action(Box::new(err)))?;
+                            .await?;
                         }
                     }
                 }
@@ -3332,9 +3293,7 @@ impl Component {
         ctx.add_dependent_values_and_enqueue(component.input_socket_attribute_values(ctx).await?)
             .await?;
 
-        Geometry::restore_all_for_component_id(ctx, component_id)
-            .await
-            .map_err(|e| ComponentError::Diagram(Box::new(e)))?;
+        Geometry::restore_all_for_component_id(ctx, component_id).await?;
 
         Ok(())
     }
@@ -3431,7 +3390,8 @@ impl Component {
                 managed_component_id,
                 managed_component_schema_id,
                 manager_component_id,
-            ));
+            )
+            .into());
         }
 
         let guard = ctx.workspace_snapshot()?.enable_cycle_check().await;
@@ -3588,9 +3548,7 @@ impl Component {
         let maybe_parent = self.parent(ctx).await?;
 
         let geometry = if let Some(geometry) = maybe_geometry {
-            let view_id = Geometry::get_view_id_by_id(ctx, geometry.id())
-                .await
-                .map_err(|e| ComponentError::Diagram(Box::new(e)))?;
+            let view_id = Geometry::get_view_id_by_id(ctx, geometry.id()).await?;
 
             Some(GeometryAndView {
                 view_id,
@@ -3632,9 +3590,7 @@ impl Component {
         change_status: ChangeStatus,
         diagram_sockets: &mut HashMap<SchemaVariantId, Vec<DiagramSocket>>,
     ) -> ComponentResult<DiagramComponentView> {
-        let default_view_id = View::get_id_for_default(ctx)
-            .await
-            .map_err(|e| ComponentError::Diagram(Box::new(e)))?;
+        let default_view_id = View::get_id_for_default(ctx).await?;
         let geometry = self.geometry(ctx, default_view_id).await?;
 
         self.into_frontend_type(ctx, Some(&geometry), change_status, diagram_sockets)

@@ -1,5 +1,6 @@
 use std::collections::{HashSet, VecDeque};
 
+use anyhow::Result;
 use petgraph::prelude::*;
 use postgres_types::{FromSql, ToSql};
 use serde::{Deserialize, Serialize};
@@ -63,7 +64,7 @@ pub enum ActionError {
     WsEvent(#[from] WsEventError),
 }
 
-pub type ActionResult<T> = Result<T, ActionError>;
+pub type ActionResult<T> = Result<T>;
 
 pub use si_id::ActionId;
 pub use si_id::ActionPrototypeId;
@@ -448,7 +449,7 @@ impl Action {
             }
         }
 
-        Err(ActionError::PrototypeNotFoundForAction(action_id))
+        Err(ActionError::PrototypeNotFoundForAction(action_id).into())
     }
 
     pub async fn component_id(
