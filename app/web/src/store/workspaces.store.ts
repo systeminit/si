@@ -290,10 +290,9 @@ export const useWorkspacesStore = () => {
                       router.push({
                         name: "workspace-compose",
                         params: {
-                          ...route.params,
+                          workspacePk: route.params.workspacePk,
                           changeSetId: "head",
                         },
-                        query: route.query,
                       });
                     }
                   },
