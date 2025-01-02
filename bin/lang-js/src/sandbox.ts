@@ -1,7 +1,8 @@
-import os from "os";
-import fs from "fs";
-import path from "path";
-import zlib from "zlib";
+import { Buffer } from "node:buffer";
+import os from "node:os";
+import fs from "node:fs";
+import path from "node:path";
+import zlib from "node:zlib";
 import fetch from "node-fetch";
 import toml from "toml";
 
@@ -9,14 +10,15 @@ import * as _ from "lodash-es";
 import * as yaml from "js-yaml";
 
 import Joi from "joi";
-import { FunctionKind } from "./function";
-import { makeConsole } from "./sandbox/console";
-import { makeExec } from "./sandbox/exec";
-import * as assetBuilder from "./asset_builder";
+import { FunctionKind } from "./function.ts";
+import { makeConsole } from "./sandbox/console.ts";
+import { makeExec } from "./sandbox/exec.ts";
+import * as assetBuilder from "./asset_builder.ts";
 import {
   makeBeforeRequestStorage,
   makeMainRequestStorage,
-} from "./sandbox/requestStorage";
+} from "./sandbox/requestStorage.ts";
+import { makePackage } from "./sandbox/package.ts";
 
 export type Sandbox = Record<string, unknown>;
 
@@ -35,6 +37,7 @@ function commonSandbox(executionId: string): Sandbox {
     path,
     Joi,
     toml,
+    pkg: makePackage(executionId),
   };
 }
 
@@ -48,7 +51,8 @@ function schemaVariantDefinitionSandbox(): Sandbox {
     SocketDefinitionBuilder: assetBuilder.SocketDefinitionBuilder,
     MapKeyFuncBuilder: assetBuilder.MapKeyFuncBuilder,
     PropWidgetDefinitionBuilder: assetBuilder.PropWidgetDefinitionBuilder,
-    SiPropValueFromDefinitionBuilder: assetBuilder.SiPropValueFromDefinitionBuilder,
+    SiPropValueFromDefinitionBuilder:
+      assetBuilder.SiPropValueFromDefinitionBuilder,
   };
 }
 

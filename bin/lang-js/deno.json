@@ -1,0 +1,5 @@
+{
+  "imports": {
+    "@deno/emit": "jsr:@deno/emit@^0.46.0"
+  }
+}
