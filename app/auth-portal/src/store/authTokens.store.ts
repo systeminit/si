@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { ApiRequest } from "@si/vue-lib/pinia";
+import { ApiRequest } from "@si/vue-lib/src/utils/api_debouncer";
 import { WorkspaceId } from "./workspaces.store";
 
 export type AuthTokenId = string;

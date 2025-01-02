@@ -16,16 +16,19 @@ NOTES / TODOS / IDEAS
 */
 
 import { PiniaPlugin, PiniaPluginContext } from "pinia";
-import { AxiosError, AxiosInstance } from "axios";
+import { AxiosInstance } from "axios";
 import { computed, ComputedRef, reactive, unref, MaybeRef } from "vue";
 import * as _ from "lodash-es";
 import {
+  ApiRequest,
   ApiRequestDebouncer,
   ApiRequestDescription,
   ApiRequestStatus,
   RequestStatusKeyArg,
   RequestUlid,
 } from "../utils/api_debouncer";
+
+export * from "../utils/api_debouncer";
 
 // this helper filters an object to only the keys that extend a specific type
 // see https://www.piotrl.net/typescript-condition-subset-types/
@@ -39,9 +42,7 @@ type SubType<Base, CheckExtends> = Pick<
 // here we are filtering all the actions down to those that return an ApiRequest object only
 type ApiRequestActionsOnly<A> = SubType<
   A,
-  (
-    ...args: any
-  ) => Promise<ApiRequest<unknown, unknown> | typeof ApiRequest.noop>
+  (...args: any) => Promise<ApiRequest<unknown, unknown>>
 >;
 
 // augment pinia TS types for our plugin - see https://pinia.vuejs.org/core-concepts/plugins.html#typescript
@@ -76,82 +77,6 @@ declare module "pinia" {
   export interface PiniaCustomStateProperties<S> {
     apiRequestDebouncers: { [key in string]?: ApiRequestDebouncer };
   }
-}
-
-interface ExtendedApiRequestDescription<
-  Response = any,
-  RequestParams = Record<string, unknown>,
-> extends ApiRequestDescription<Response, RequestParams> {
-  api?: AxiosInstance;
-  /** additional args to key the request status */
-  keyRequestStatusBy?: RequestStatusKeyArg | RequestStatusKeyArg[];
-}
-
-export class ApiRequest<
-  Response = any,
-  RequestParams = Record<string, unknown>,
-> {
-  // these are used to attach the result which can be used directly by the caller
-  // most data and request status info should be used via the store, but it is useful sometimes
-  rawResponseData: Response | undefined;
-  rawResponseError: Error | AxiosError | undefined;
-  rawSuccess?: boolean;
-
-  setSuccessfulResult(data: Response | undefined) {
-    this.rawSuccess = true;
-    this.rawResponseData = data;
-  }
-
-  setFailedResult(err: AxiosError | Error) {
-    this.rawSuccess = false;
-    this.rawResponseError = err;
-  }
-
-  // we use a getter to get the result so that we can add further type restrictions
-  // ie, checking success guarantees data is present
-  get result():
-    | {
-        success: true;
-        data: Response;
-      }
-    | {
-        success: false;
-        err: Error;
-        errBody?: any;
-        statusCode?: number | undefined;
-        data?: Response extends undefined ? never : undefined;
-      } {
-    /* eslint-disable @typescript-eslint/no-non-null-assertion */
-    if (this.rawSuccess === undefined)
-      throw new Error("You must await the request to access the result");
-
-    if (this.rawSuccess) {
-      return { success: true, data: this.rawResponseData! };
-    } else {
-      return {
-        success: false,
-        // the raw error object - usually an AxiosError
-        err: this.rawResponseError!,
-        // the (json) body of the failed request, if applicable
-        ...(this.rawResponseError instanceof AxiosError && {
-          errBody: this.rawResponseError.response?.data,
-          statusCode: this.rawResponseError.response?.status,
-        }),
-      };
-    }
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-useless-constructor
-  constructor(
-    public requestSpec: ExtendedApiRequestDescription<Response, RequestParams>,
-  ) {
-    if (!this.requestSpec.api) {
-      this.requestSpec.api = (this.constructor as any).api;
-    }
-    if (!this.requestSpec.method) this.requestSpec.method = "get";
-  }
-
-  static noop = Symbol("API_REQUEST_NOOP");
 }
 
 export function registerApi(axiosInstance: AxiosInstance) {
@@ -195,7 +120,7 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
 
     function getTrackingKey(
       actionName: string,
-      requestSpec: ExtendedApiRequestDescription,
+      requestSpec: ApiRequestDescription,
     ) {
       // determine the key we will use when storing the request status
       // most requests are tracked only by their name, for example LOGIN
@@ -234,24 +159,14 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
           // ex: let us skip certain requests if already successful, not just pending
           const triggerResult = await store.apiRequestDebouncers[
             trackingKey
-          ].triggerApiRequest(
-            actionResult.requestSpec.api ?? config.api,
-            actionResult.requestSpec,
-            store,
-            {
-              "si.workspace.id": store.workspaceId,
-              "si.change_set.id": store.changeSetId,
-            },
-          );
+          ].trigger(config.api, actionResult, store, {
+            "si.workspace.id": store.workspaceId,
+            "si.change_set.id": store.changeSetId,
+          });
           if (!triggerResult) {
             throw new Error(`No trigger result for ${trackingKey}`);
           }
-
-          if (triggerResult.error) {
-            actionResult.setFailedResult(triggerResult.error);
-          } else {
-            actionResult.setSuccessfulResult(triggerResult.data);
-          }
+          return triggerResult;
         }
         return actionResult;
       };
@@ -302,7 +217,7 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
         const fullKey = getKey(requestKey, ...keyedByArgs);
         return computed(() => {
           store.apiRequestDebouncers[fullKey] ??= new ApiRequestDebouncer();
-          return store.apiRequestDebouncers[fullKey].getRawStatus();
+          return store.apiRequestDebouncers[fullKey];
         });
       },
       getRequestStatuses(
@@ -345,14 +260,4 @@ export function getCombinedRequestStatus(
       // TODO: do we want to return the first error? an array of errors?
     };
   });
-}
-
-/**
- * Turns the response from an API action into an async function
- * that returns data on success and throws error on error.
- */
-export async function apiData<T>(request: Promise<ApiRequest<T>>) {
-  const { result } = await request;
-  if (!result.success) throw result.err;
-  return result.data;
 }

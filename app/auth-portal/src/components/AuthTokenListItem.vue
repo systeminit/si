@@ -27,7 +27,6 @@
 
 <script lang="ts" setup>
 import { ErrorMessage, VButton } from "@si/vue-lib/design-system";
-import { apiData } from "@si/vue-lib/pinia";
 import { useAsyncState } from "@vueuse/core";
 import { Workspace } from "@/store/workspaces.store";
 import { AuthToken, useAuthTokensApi } from "@/store/authTokens.store";
@@ -48,7 +47,7 @@ const emit = defineEmits<{
 const revoke = useAsyncState(
   async () => {
     const { workspace, authToken } = props;
-    await apiData(api.REVOKE_AUTH_TOKEN(workspace.id, authToken.id));
+    await api.REVOKE_AUTH_TOKEN(workspace.id, authToken.id);
     emit("revoked");
   },
   undefined,
