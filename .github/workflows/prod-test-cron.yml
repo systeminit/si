@@ -2,14 +2,10 @@ name: Production Crons
 
 on:
   schedule:
-    # Weekdays: Every 15 minutes except 7:45 PM and 8:00 PM UTC
-    - cron: "0-44/15 0-19 * * 1-5"  # Every 15 minutes from 12:00 AM to 7:44 PM UTC (Monday to Friday)
-    - cron: "15-59/15 20-23 * * 1-5" # Every 15 minutes from 8:15 PM to 11:59 PM UTC (Monday to Friday)
-    # Weekends: Every 15 minutes including 8:00 PM UTC
-    - cron: "*/15 * * * 6,0" # Every 15 minutes on Saturday (6) and Sunday (0)
+    - cron: "*/15 * * * *" # Runs every 15 minutes
 
-# Prod deployment cron is currently disabled, but this should `not` cancel the synthetic
-# e2e runner cron
+# We will wait until these tests finish before starting a deploy
+# We will also wait for a deploy to finish before starting to run tests
 concurrency:
   group: deploy-production
   cancel-in-progress: false
