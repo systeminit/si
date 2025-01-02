@@ -136,6 +136,7 @@ import { useAuthStore } from "@/store/auth.store";
 import AppLayout from "@/components/layout/AppLayout.vue";
 import Navbar from "@/components/layout/navbar/Navbar.vue";
 import StatusBar from "@/components/StatusBar/StatusBar.vue";
+import { useRouterStore } from "@/store/router.store";
 
 const props = defineProps({
   changeSetId: { type: String as PropType<string | "auto"> },
@@ -143,6 +144,7 @@ const props = defineProps({
 
 const router = useRouter();
 const route = useRoute();
+const routerStore = useRouterStore();
 
 const workspacesStore = useWorkspacesStore();
 const changeSetsStore = useChangeSetsStore();
@@ -211,27 +213,29 @@ function handleUrlChange() {
       }
     }
 
+    if (!routerStore.currentRoute) return;
     router.replace({
-      name: route.name, // eslint-disable-line @typescript-eslint/no-non-null-assertion
+      name: routerStore.currentRoute.name, // eslint-disable-line @typescript-eslint/no-non-null-assertion
       params: {
-        ...route.params,
+        ...routerStore.currentRoute.params,
         changeSetId: newChangeSetId,
       },
-      query: { ...route.query },
+      query: { ...routerStore.currentRoute.query },
     });
     return;
   }
 
   if (
-    !changeSetId ||
-    (changeSetsReqStatus.value.isSuccess &&
-      !changeSetsStore.selectedChangeSet &&
-      changeSetsStore.selectedChangeSetId)
+    (!changeSetId ||
+      (changeSetsReqStatus.value.isSuccess &&
+        !changeSetsStore.selectedChangeSet &&
+        changeSetsStore.selectedChangeSetId)) &&
+    routerStore.currentRoute
   ) {
     router.replace({
-      name: route.name,
+      name: routerStore.currentRoute.name,
       params: {
-        ...route.params,
+        ...routerStore.currentRoute.params,
         changeSetId: "head",
       },
       query: route.query,
