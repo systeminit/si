@@ -8,7 +8,10 @@
       transition: 'left 0.15s ease-out',
     }"
   >
-    <LeftPanelDrawer @closed="toggleDrawer" />
+    <LeftPanelDrawer
+      :changeSetId="changeSetsStore.selectedChangeSetId"
+      @closed="toggleDrawer"
+    />
     <component
       :is="ResizablePanel"
       ref="leftResizablePanelRef"
@@ -103,8 +106,7 @@
 
 <script lang="ts" setup>
 import * as _ from "lodash-es";
-import { useRoute } from "vue-router";
-import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, onBeforeMount, onBeforeUnmount, onMounted, ref } from "vue";
 import { ResizablePanel, themeClasses } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { IRect } from "konva/lib/types";
@@ -120,6 +122,9 @@ import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import { useViewsStore } from "@/store/views.store";
 import { ComponentType } from "@/api/sdf/dal/schema";
+import { useRouterStore } from "@/store/router.store";
+import { useAssetStore } from "@/store/asset.store";
+import { useFuncStore } from "@/store/func/funcs.store";
 import LeftPanelDrawer from "../LeftPanelDrawer.vue";
 import ModelingDiagram from "../ModelingDiagram/ModelingDiagram.vue";
 import AssetPalette from "../AssetPalette.vue";
@@ -144,11 +149,11 @@ const changeSetsStore = useChangeSetsStore();
 const viewStore = useViewsStore();
 const actionsStore = useActionsStore();
 const presenceStore = usePresenceStore();
+const assetStore = useAssetStore();
 const _secretsStore = useSecretsStore(); // adding this so we fetch once
 const statusStore = useStatusStore();
+const funcStore = useFuncStore();
 const featureFlagsStore = useFeatureFlagsStore();
-
-const route = useRoute();
 
 const actionsAreRunning = computed(
   () =>
@@ -203,11 +208,43 @@ const onKeyDown = async (e: KeyboardEvent) => {
   }
 };
 
-onMounted(() => {
+const routeStore = useRouterStore();
+
+onBeforeMount(async () => {
+  // get to first paint ASAP
+  await Promise.all([
+    viewStore.LIST_VIEWS(),
+    assetStore.LOAD_SCHEMA_VARIANT_LIST(),
+  ]);
+  let viewId;
+  if (routeStore.currentRoute?.params.viewId)
+    viewId = routeStore.currentRoute?.params.viewId as string;
+
+  await Promise.all([
+    viewStore.FETCH_VIEW(viewId), // draws the minimal diagram, later gets all geometry and component
+    funcStore.FETCH_FUNC_LIST(), // required for actions of a selected component to work
+  ]);
+
+  const key = `${changeSetsStore.selectedChangeSetId}_selected_component`;
+  const lastId = window.localStorage.getItem(key);
+  window.localStorage.removeItem(key);
+  if (
+    lastId &&
+    Object.values(viewStore.selectedComponentIds).filter(Boolean).length === 0
+  ) {
+    viewStore.setSelectedComponentId(lastId);
+  }
+
+  // filling out the rest of the needed data
+  await Promise.all([
+    actionsStore.LOAD_ACTIONS(),
+    actionsStore.LOAD_ACTION_HISTORY(),
+    statusStore.FETCH_DVU_ROOTS(),
+  ]);
+});
+
+onMounted(async () => {
   window.addEventListener("keydown", onKeyDown);
-  statusStore.FETCH_DVU_ROOTS();
-  if (!viewStore.selectedViewId && !viewStore.activatedAndFetched)
-    viewStore.FETCH_VIEW(viewId.value);
 });
 
 onBeforeUnmount(() => {
@@ -271,6 +308,4 @@ function onThreeDotMenuClick(mouse: MouseEvent) {
 function closeRightClickMenu() {
   contextMenuRef.value?.close();
 }
-
-const viewId = computed(() => route.params.viewId as string | undefined);
 </script>

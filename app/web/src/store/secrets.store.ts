@@ -111,6 +111,8 @@ export function useSecretsStore() {
   const toast = useToast();
   const changeSetsStore = useChangeSetsStore();
 
+  const realtimeStore = useRealtimeStore();
+
   // this needs some work... but we'll probably want a way to force using HEAD
   // so we can load HEAD data in some scenarios while also loading a change set?
   const changeSetId = changeSetsStore.selectedChangeSetId;
@@ -522,12 +524,18 @@ export function useSecretsStore() {
               },
             });
           },
+
+          registerRequestsBegin(requestUlid: string, actionName: string) {
+            realtimeStore.inflightRequests.set(requestUlid, actionName);
+          },
+          registerRequestsEnd(requestUlid: string) {
+            realtimeStore.inflightRequests.delete(requestUlid);
+          },
         },
         onActivated() {
           this.LOAD_SECRETS();
           this.GET_PUBLIC_KEY();
 
-          const realtimeStore = useRealtimeStore();
           realtimeStore.subscribe(this.$id, `changeset/${changeSetId}`, [
             {
               eventType: "ChangeSetApplied",

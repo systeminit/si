@@ -52,6 +52,7 @@ export const useQualificationsStore = () => {
   const changeSetsStore = useChangeSetsStore();
   const changeSetId = changeSetsStore.selectedChangeSetId;
 
+  const realtimeStore = useRealtimeStore();
   const workspacesStore = useWorkspacesStore();
   const workspaceId = workspacesStore.selectedWorkspacePk;
   return addStoreHooks(
@@ -185,13 +186,19 @@ export const useQualificationsStore = () => {
               },
             });
           },
+
+          registerRequestsBegin(requestUlid: string, actionName: string) {
+            realtimeStore.inflightRequests.set(requestUlid, actionName);
+          },
+          registerRequestsEnd(requestUlid: string) {
+            realtimeStore.inflightRequests.delete(requestUlid);
+          },
         },
-        onActivated() {
+        async onActivated() {
           if (!changeSetId) return;
 
-          this.FETCH_QUALIFICATIONS_SUMMARY();
+          await this.FETCH_QUALIFICATIONS_SUMMARY();
 
-          const realtimeStore = useRealtimeStore();
           realtimeStore.subscribe(this.$id, `changeset/${changeSetId}`, [
             {
               eventType: "ChangeSetWritten",

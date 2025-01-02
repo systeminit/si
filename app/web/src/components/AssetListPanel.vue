@@ -128,7 +128,6 @@ import {
   SiSearch,
   Filter,
 } from "@si/vue-lib/design-system";
-import { useRouter } from "vue-router";
 import { useAssetStore } from "@/store/asset.store";
 import { SchemaVariant } from "@/api/sdf/dal/schema";
 import { getAssetIcon } from "@/store/components.store";
@@ -139,7 +138,6 @@ import SidebarSubpanelTitle from "./SidebarSubpanelTitle.vue";
 
 const assetStore = useAssetStore();
 const moduleStore = useModuleStore();
-const router = useRouter();
 
 const { variantList: assetList } = storeToRefs(assetStore);
 
@@ -222,7 +220,6 @@ const syncModules = async () => moduleStore.SYNC();
 const newAsset = async (newAssetName: string) => {
   const result = await assetStore.CREATE_VARIANT(newAssetName);
   if (result.result.success) {
-    assetStore.setSchemaVariantSelection(result.result.data.schemaVariantId);
     newAssetModalRef.value?.modal?.close();
   } else if (result.result.statusCode === 409) {
     newAssetModalRef.value?.setError("That name is already in use");
@@ -235,9 +232,7 @@ const updateAllAssets = () => {
     (m) => m.id,
   );
   moduleStore.INSTALL_REMOTE_MODULE(moduleIds);
-  router.replace({
-    name: "workspace-lab-assets",
-  });
+  assetStore.clearSchemaVariantSelection();
 };
 
 const filters = computed(() => [

@@ -43,6 +43,7 @@ export function useChangeSetsStore() {
   const workspacePk = workspacesStore.selectedWorkspacePk;
   const featureFlagsStore = useFeatureFlagsStore();
   const authStore = useAuthStore();
+  const realtimeStore = useRealtimeStore();
   const BASE_API = [
     "v2",
     "workspaces",
@@ -456,10 +457,17 @@ export function useChangeSetsStore() {
           });
           return `Change Set ${latestNum + 1}`;
         },
+
+        registerRequestsBegin(requestUlid: string, actionName: string) {
+          realtimeStore.inflightRequests.set(requestUlid, actionName);
+        },
+        registerRequestsEnd(requestUlid: string) {
+          realtimeStore.inflightRequests.delete(requestUlid);
+        },
       },
-      onActivated() {
+      async onActivated() {
         if (!workspacePk) return;
-        this.FETCH_CHANGE_SETS();
+        await this.FETCH_CHANGE_SETS();
         const stopWatchSelectedChangeSet = watch(
           () => this.selectedChangeSet,
           () => {
@@ -474,7 +482,6 @@ export function useChangeSetsStore() {
           { immediate: true },
         );
 
-        const realtimeStore = useRealtimeStore();
         realtimeStore.subscribe(this.$id, `workspace/${workspacePk}`, [
           {
             eventType: "ChangeSetCreated",

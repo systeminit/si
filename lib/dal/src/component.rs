@@ -3812,6 +3812,8 @@ impl WsEvent {
         WsEvent::new_raw(
             workspace_pk,
             Some(change_set_id),
+            None,
+            None,
             WsPayload::SetComponentPosition(payload),
         )
         .await

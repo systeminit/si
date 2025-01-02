@@ -139,7 +139,14 @@
 </template>
 
 <script lang="ts" setup>
-import { onBeforeUnmount, onMounted, ref, computed, watch } from "vue";
+import {
+  onBeforeUnmount,
+  onMounted,
+  ref,
+  computed,
+  watch,
+  onBeforeMount,
+} from "vue";
 import {
   ResizablePanel,
   ScrollArea,
@@ -238,6 +245,14 @@ const onKeyDown = async (e: KeyboardEvent) => {
     }
   }
 };
+
+onBeforeMount(async () => {
+  await assetStore.LOAD_SCHEMA_VARIANT_LIST();
+  if (Object.values(route.query).length > 0) {
+    assetStore.syncUrlIntoSelection(); // loads selected assets/funcs
+  }
+  await Promise.all([moduleStore.SYNC(), funcStore.FETCH_FUNC_LIST()]);
+});
 
 onMounted(() => {
   window.addEventListener("keydown", onKeyDown);

@@ -135,6 +135,7 @@ export const useFuncRunsStore = () => {
 
   const changeSetsStore = useChangeSetsStore();
   const changeSetId = changeSetsStore.selectedChangeSetId;
+  const realtimeStore = useRealtimeStore();
 
   const API_PREFIX = `v2/workspaces/${workspaceId}/change-sets/${changeSetId}`;
 
@@ -159,10 +160,16 @@ export const useFuncRunsStore = () => {
             },
           });
         },
+
+        registerRequestsBegin(requestUlid: string, actionName: string) {
+          realtimeStore.inflightRequests.set(requestUlid, actionName);
+        },
+        registerRequestsEnd(requestUlid: string) {
+          realtimeStore.inflightRequests.delete(requestUlid);
+        },
       },
       onActivated() {
         const actionUnsub = this.$onAction(handleStoreError);
-        const realtimeStore = useRealtimeStore();
 
         realtimeStore.subscribe(this.$id, `changeset/${changeSetId}`, [
           {

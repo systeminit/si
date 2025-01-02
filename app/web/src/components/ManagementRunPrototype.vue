@@ -48,11 +48,7 @@ import {
   TruncateWithTooltip,
 } from "@si/vue-lib/design-system";
 import { useRouter } from "vue-router";
-import {
-  useFuncStore,
-  MgmtPrototype,
-  MgmtPrototypeResult,
-} from "@/store/func/funcs.store";
+import { useFuncStore, MgmtPrototype } from "@/store/func/funcs.store";
 import { FuncRunId } from "@/store/func_runs.store";
 import { useManagementRunsStore } from "@/store/management_runs.store";
 import { useViewsStore } from "@/store/views.store";
@@ -72,8 +68,6 @@ const managementRunsStore = useManagementRunsStore();
 const viewsStore = useViewsStore();
 
 const viewSelectorMenuRef = ref<InstanceType<typeof DropdownMenu>>();
-
-const lastExecution = ref<MgmtPrototypeResult | undefined>(undefined);
 
 const props = defineProps<{
   prototype: MgmtPrototype;
@@ -119,16 +113,14 @@ watch(latestRunId, (latest) => {
   }
 });
 
+const lastExecution = computed(() => funcStore.managementOperationExecution);
+
 const runPrototype = async (viewId: ViewId) => {
-  const result = await funcStore.RUN_MGMT_PROTOTYPE(
+  funcStore.RUN_MGMT_PROTOTYPE(
     props.prototype.managementPrototypeId,
     props.component.def.id,
     viewId,
   );
-
-  if (result.result.success) {
-    lastExecution.value = result.result.data;
-  }
 };
 
 const runClick = async (e?: MouseEvent) => {

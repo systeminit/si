@@ -7,7 +7,7 @@ import { POSITION, useToast } from "vue-toastification";
 
 import mitt from "mitt";
 import { connectionAnnotationFitsReference } from "@si/ts-lib";
-import { Router } from "vue-router";
+import { toRaw } from "vue";
 import {
   DiagramEdgeData,
   DiagramEdgeDef,
@@ -46,6 +46,7 @@ import { useAssetStore } from "./asset.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import { useWorkspacesStore } from "./workspaces.store";
 import { useFeatureFlagsStore } from "./feature_flags.store";
+import { useRouterStore } from "./router.store";
 
 export type ComponentNodeId = string;
 
@@ -219,7 +220,7 @@ const edgeFromRawEdge =
     isManagement?: boolean;
   }) =>
   (e: RawEdge): Edge => {
-    const edge = structuredClone(e) as Edge;
+    const edge = structuredClone(toRaw(e)) as Edge;
     if (isManagement) {
       edge.id = `mgmt-${edge.toComponentId}_${edge.fromComponentId}`;
     } else {
@@ -464,6 +465,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
   const workspaceId = workspacesStore.selectedWorkspacePk;
   const changeSetsStore = useChangeSetsStore();
   const featureFlagsStore = useFeatureFlagsStore();
+  const routerStore = useRouterStore();
+  const realtimeStore = useRealtimeStore();
 
   // this needs some work... but we'll probably want a way to force using HEAD
   // so we can load HEAD data in some scenarios while also loading a change set?
@@ -1160,17 +1163,14 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             });
           },
 
-          async CREATE_TEMPLATE_FUNC_FROM_COMPONENTS(
-            templateData: {
-              color: string;
-              assetName: string;
-              funcName: string;
-              componentIds: ComponentId[];
-              viewId: ViewId;
-              category: string;
-            },
-            router: Router,
-          ) {
+          async CREATE_TEMPLATE_FUNC_FROM_COMPONENTS(templateData: {
+            color: string;
+            assetName: string;
+            funcName: string;
+            componentIds: ComponentId[];
+            viewId: ViewId;
+            category: string;
+          }) {
             const {
               color,
               assetName,
@@ -1179,21 +1179,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               viewId,
               category,
             } = templateData;
-
-            const toastID = toast(
-              {
-                component: CreatingTemplate,
-                props: {
-                  updating: true,
-                },
-              },
-              {
-                timeout: false,
-                closeOnClick: false,
-                position: POSITION.TOP_CENTER,
-                toastClassName: "si-toast-no-defaults",
-              },
-            );
 
             const req = new ApiRequest<{
               schemaVariantId: string;
@@ -1208,28 +1193,25 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 category,
                 color,
               },
-              onSuccess: (response) => {
-                toast.update(toastID, {
-                  content: {
-                    props: {
-                      updating: false,
-                      templateName: assetName,
-                      schemaVariantId: response.schemaVariantId,
-                      funcId: response.funcId,
-                      router: (s: string) => {
-                        router.push({
-                          name: "workspace-lab-assets",
-                          query: { s },
-                        });
-                      },
-                    },
+              optimistic: (requestUlid) => {
+                toast(
+                  {
+                    id: requestUlid,
                     component: CreatingTemplate,
+                    props: {
+                      updating: true,
+                    },
                   },
-                  options: { timeout: false, closeOnClick: true },
-                });
+                  {
+                    timeout: false,
+                    closeOnClick: false,
+                    position: POSITION.TOP_CENTER,
+                    toastClassName: "si-toast-no-defaults",
+                  },
+                );
               },
-              onFail: (_response) => {
-                toast.dismiss(toastID);
+              onFail: (_response, requestUlid) => {
+                toast.dismiss(requestUlid);
               },
             });
 
@@ -1244,13 +1226,15 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             if (!c) return;
             c.displayName = name;
           },
+
+          registerRequestsBegin(requestUlid: string, actionName: string) {
+            realtimeStore.inflightRequests.set(requestUlid, actionName);
+          },
+          registerRequestsEnd(requestUlid: string) {
+            realtimeStore.inflightRequests.delete(requestUlid);
+          },
         },
         onActivated() {
-          if (!changeSetId) return;
-
-          // realtime subs
-          const realtimeStore = useRealtimeStore();
-
           realtimeStore.subscribe(
             `${this.$id}-changeset`,
             `changeset/${changeSetId}`,
@@ -1393,6 +1377,35 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                   this.rawComponentsById[data.component.id] = data.component;
                   this.processAndStoreRawComponent(data.component.id, {});
                   this.refreshingStatus[data.component.id] = false;
+                },
+              },
+              {
+                eventType: "TemplateGenerated",
+                callback: (data, metadata) => {
+                  if (metadata.change_set_id !== changeSetId) return;
+
+                  const didIFireThisRequest =
+                    realtimeStore.inflightRequests.get(metadata.requestUlid);
+                  if (!didIFireThisRequest) return;
+
+                  toast.update(metadata.requestUlid, {
+                    content: {
+                      props: {
+                        updating: false,
+                        templateName: data.assetName,
+                        schemaVariantId: data.schemaVariantId,
+                        funcId: data.funcId,
+                        router: (s: string) => {
+                          routerStore.push(metadata.change_set_id, {
+                            name: "workspace-lab-assets",
+                            query: { s },
+                          });
+                        },
+                      },
+                      component: CreatingTemplate,
+                    },
+                    options: { timeout: false, closeOnClick: true },
+                  });
                 },
               },
               /* { TODO PUT BACK

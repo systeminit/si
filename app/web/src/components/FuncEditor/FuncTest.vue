@@ -525,6 +525,9 @@ const startTest = async () => {
 
   readyToTest.value = true;
 
+  // TODO: @brit - currently test does not create a changeset
+  // so this will work fine
+  // but once we force a change set, this will need to change
   if (response.result.success) {
     const funcRunId = response.result.data.funcRunId;
     await funcRunsStore.GET_FUNC_RUN(funcRunId);

@@ -107,10 +107,22 @@ pub async fn generate_template(
         .set_managed_schemas(&ctx, Some(managed_schemas))
         .await?;
 
+    let schema_variant_id = new_variant.id();
     WsEvent::schema_variant_created(&ctx, schema_id, new_variant.clone())
         .await?
         .publish_on_commit(&ctx)
         .await?;
+
+    WsEvent::template_generated(
+        &ctx,
+        schema_id,
+        schema_variant_id,
+        func.id,
+        request.asset_name.clone(),
+    )
+    .await?
+    .publish_on_commit(&ctx)
+    .await?;
 
     track(
         &posthog_client,

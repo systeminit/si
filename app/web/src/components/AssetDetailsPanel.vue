@@ -649,9 +649,8 @@ const cloneAsset = async (name: string) => {
       name,
     );
     if (result.result.success) {
-      assetStore.setSchemaVariantSelection(result.result.data.schemaVariantId);
       cloneAssetModalRef.value?.modal?.close();
-    } else if (result.result.statusCode === 409) {
+    } else if (!result.result.success && result.result.statusCode === 409) {
       cloneAssetModalRef.value?.setError(
         "That name is already in use, please choose another",
       );

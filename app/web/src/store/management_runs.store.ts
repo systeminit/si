@@ -30,6 +30,7 @@ export const useManagementRunsStore = () => {
   const changeSetsStore = useChangeSetsStore();
   const changeSetId = changeSetsStore.selectedChangeSetId;
   const funcRunsStore = useFuncRunsStore();
+  const realtimeStore = useRealtimeStore();
 
   const API_PREFIX = `v2/workspaces/${workspaceId}/change-sets/${changeSetId}`;
 
@@ -96,10 +97,16 @@ export const useManagementRunsStore = () => {
             `${prototypeId}-${componentId}`
           ] = funcRunId;
         },
+
+        registerRequestsBegin(requestUlid: string, actionName: string) {
+          realtimeStore.inflightRequests.set(requestUlid, actionName);
+        },
+        registerRequestsEnd(requestUlid: string) {
+          realtimeStore.inflightRequests.delete(requestUlid);
+        },
       },
       onActivated() {
         const actionUnsub = this.$onAction(handleStoreError);
-        const realtimeStore = useRealtimeStore();
 
         this.GET_MANAGEMENT_RUN_HISTORY();
 

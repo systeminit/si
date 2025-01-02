@@ -1,4 +1,3 @@
-import { watch, nextTick } from "vue";
 import { defineStore } from "pinia";
 import * as _ from "lodash-es";
 import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
@@ -21,6 +20,8 @@ import { useChangeSetsStore } from "./change_sets.store";
 import { useModuleStore } from "./module.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import handleStoreError from "./errors";
+import { useRouterStore } from "./router.store";
+import { useAuthStore } from "./auth.store";
 
 export interface InstalledPkgAssetView {
   assetId: string;
@@ -101,6 +102,9 @@ export const useAssetStore = (forceChangeSetId?: ChangeSetId) => {
 
   const funcStore = useFuncStore();
   const moduleStore = useModuleStore();
+  const routerStore = useRouterStore();
+  const authStore = useAuthStore();
+  const realtimeStore = useRealtimeStore();
 
   let assetSaveDebouncer: ReturnType<typeof keyedDebouncer> | undefined;
 
@@ -209,6 +213,11 @@ export const useAssetStore = (forceChangeSetId?: ChangeSetId) => {
             this.syncSelectionIntoUrl();
           }
         },
+        clearSchemaVariantSelection() {
+          this.setFuncSelection(undefined);
+          this.selectedSchemaVariants = [];
+          this.syncSelectionIntoUrl();
+        },
         setSchemaVariantSelection(id: SchemaVariantId) {
           this.setFuncSelection(undefined);
 
@@ -260,8 +269,9 @@ export const useAssetStore = (forceChangeSetId?: ChangeSetId) => {
           };
           if (returnQuery) return newQueryObj;
 
-          if (!_.isEqual(router.currentRoute.value.query, newQueryObj)) {
-            router.replace({
+          if (!_.isEqual(routerStore.currentRoute?.query, newQueryObj)) {
+            routerStore.replace(changeSetId, {
+              params: { ...routerStore.currentRoute?.params },
               query: newQueryObj,
             });
           }
@@ -378,13 +388,6 @@ export const useAssetStore = (forceChangeSetId?: ChangeSetId) => {
               ...visibility,
               id: schemaVariantId,
               name,
-            },
-            onSuccess: (variant) => {
-              const savedAssetIdx = this.variantList.findIndex(
-                (a) => a.schemaVariantId === variant.schemaVariantId,
-              );
-              if (savedAssetIdx === -1) this.variantList.push(variant);
-              else this.variantList.splice(savedAssetIdx, 1, variant);
             },
           });
         },
@@ -509,37 +512,6 @@ export const useAssetStore = (forceChangeSetId?: ChangeSetId) => {
             method: "post",
             url: API_PREFIX.concat([id]),
             keyRequestStatusBy: id,
-            onNewChangeSet: async (newChangeSetId, variant) => {
-              nextTick(() => {
-                // `this` store is not the same store that exists after the force change set
-                // and pinia_api_tools can't easily reference any stores
-                const newStore = useAssetStore(newChangeSetId);
-                // the API call for the variants list is in flight, so we need to watch when we get it
-                const watchForLoad = watch(
-                  () => Object.keys(newStore.variantFromListById).length,
-                  (newLen, _oldLen) => {
-                    if (newLen > 0) {
-                      // once we have it, set the variant, which will fetch the code
-                      newStore.setSchemaVariantSelection(
-                        variant.schemaVariantId,
-                      );
-                      // and close the watcher
-                      watchForLoad();
-                    }
-                  },
-                );
-              });
-            },
-            onSuccess: (variant) => {
-              const savedAssetIdx = this.variantList.findIndex(
-                (a) => a.schemaVariantId === variant.schemaVariantId,
-              );
-
-              if (savedAssetIdx === -1) this.variantList.push(variant);
-              else this.variantList.splice(savedAssetIdx, 1, variant);
-
-              this.setSchemaVariantSelection(variant.schemaVariantId);
-            },
           });
         },
         async DELETE_UNLOCKED_VARIANT(id: SchemaVariantId) {
@@ -564,30 +536,15 @@ export const useAssetStore = (forceChangeSetId?: ChangeSetId) => {
             },
           });
         },
+
+        registerRequestsBegin(requestUlid: string, actionName: string) {
+          realtimeStore.inflightRequests.set(requestUlid, actionName);
+        },
+        registerRequestsEnd(requestUlid: string) {
+          realtimeStore.inflightRequests.delete(requestUlid);
+        },
       },
       async onActivated() {
-        await Promise.all([
-          this.LOAD_SCHEMA_VARIANT_LIST(),
-          moduleStore.SYNC(),
-        ]);
-        const stopWatchingUrl = watch(
-          () => {
-            return router.currentRoute.value.name;
-          },
-          () => {
-            if (
-              router.currentRoute.value.name === "workspace-lab-assets" &&
-              Object.values(router.currentRoute.value.query).length > 0
-            ) {
-              this.syncUrlIntoSelection(); // handles PAGE LOAD
-            }
-          },
-          {
-            immediate: true,
-          },
-        );
-
-        const realtimeStore = useRealtimeStore();
         realtimeStore.subscribe(this.$id, `changeset/${changeSetId}`, [
           {
             eventType: "SchemaVariantCreated",
@@ -598,6 +555,18 @@ export const useAssetStore = (forceChangeSetId?: ChangeSetId) => {
               );
               if (savedAssetIdx === -1) this.variantList.push(variant);
               else this.variantList.splice(savedAssetIdx, 1, variant);
+
+              const actionWhichCreatedView = realtimeStore.inflightRequests.get(
+                metadata.requestUlid,
+              );
+              if (
+                metadata.actor !== "System" &&
+                metadata.actor.User === authStore.userPk &&
+                actionWhichCreatedView !==
+                  "CREATE_TEMPLATE_FUNC_FROM_COMPONENTS"
+              ) {
+                this.setSchemaVariantSelection(variant.schemaVariantId);
+              }
             },
           },
           {
@@ -612,10 +581,19 @@ export const useAssetStore = (forceChangeSetId?: ChangeSetId) => {
           },
           {
             eventType: "SchemaVariantCloned",
-            callback: (data) => {
+            callback: async (data, metadata) => {
+              // TODO: ship the actual variant
               if (data.changeSetId !== changeSetId) return;
-              this.LOAD_SCHEMA_VARIANT_LIST();
-              moduleStore.SYNC();
+              await Promise.all([
+                this.LOAD_SCHEMA_VARIANT_LIST(),
+                moduleStore.SYNC(),
+              ]);
+              if (
+                metadata.actor !== "System" &&
+                metadata.actor.User === authStore.userPk
+              ) {
+                this.setSchemaVariantSelection(data.schemaVariantId);
+              }
             },
           },
           {
@@ -723,8 +701,14 @@ export const useAssetStore = (forceChangeSetId?: ChangeSetId) => {
                 );
                 if (savedAssetIdx !== -1) {
                   this.variantList.splice(savedAssetIdx, 1, variant);
-                  this.setSchemaVariantSelection(variant.schemaVariantId);
                 } else this.variantList.push(variant);
+
+                if (
+                  metadata.actor !== "System" &&
+                  metadata.actor.User === authStore.userPk
+                ) {
+                  this.setSchemaVariantSelection(variant.schemaVariantId);
+                }
               }
             },
           },
@@ -770,7 +754,6 @@ export const useAssetStore = (forceChangeSetId?: ChangeSetId) => {
 
         const actionUnsub = this.$onAction(handleStoreError);
         return () => {
-          stopWatchingUrl();
           actionUnsub();
           realtimeStore.unsubscribe(this.$id);
         };

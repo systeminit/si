@@ -52,6 +52,7 @@ import { useRealtimeStore } from "./realtime/realtime.store";
 import { useWorkspacesStore } from "./workspaces.store";
 import { useRouterStore } from "./router.store";
 import { useQualificationsStore } from "./qualifications.store";
+import { useAuthStore } from "./auth.store";
 
 const MAX_RETRIES = 5;
 
@@ -154,6 +155,9 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
   const changeSetsStore = useChangeSetsStore();
   const componentsStore = useComponentsStore(forceChangeSetId);
   const qualStore = useQualificationsStore();
+  const routerStore = useRouterStore();
+  const authStore = useAuthStore();
+  const realtimeStore = useRealtimeStore();
   const toast = useToast();
 
   let changeSetId: ChangeSetId | undefined;
@@ -479,13 +483,6 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
 
           this.syncSelectionIntoUrl();
         },
-        clearSelections() {
-          this.selectedEdgeId = null;
-          this.selectedComponentIds = [];
-          this.selectedComponentDetailsTab = null;
-          const key = `${changeSetId}_selected_component`;
-          window.localStorage.removeItem(key);
-        },
         syncSelectionIntoUrl() {
           let selectedIds: string[] = [];
           if (this.selectedEdgeId) {
@@ -501,8 +498,9 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
             }),
           };
 
-          if (!_.isEqual(router.currentRoute.value.query, newQueryObj)) {
-            router.replace({
+          if (!_.isEqual(routerStore.currentRoute?.query, newQueryObj)) {
+            routerStore.replace(changeSetId, {
+              params: { ...routerStore.currentRoute?.params },
               query: newQueryObj,
             });
           }
@@ -623,18 +621,20 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
           this.groups = {};
           this.viewNodes = {};
         },
-        async selectView(id: ViewId) {
+        selectView(id: ViewId, navigable = true) {
           const view = this.viewsById[id];
           if (view) {
-            const route = router.currentRoute;
-            const params = {
-              ...route.value.params,
-              viewId: id,
-            };
-            router.push({
-              name: "workspace-compose-view",
-              params,
-            });
+            if (navigable) {
+              const route = router.currentRoute;
+              const params = {
+                ...route.value.params,
+                viewId: id,
+              };
+              routerStore.push(changeSetId, {
+                name: "workspace-compose-view",
+                params,
+              });
+            }
 
             // move the currently selected view to the top of the
             if (this.selectedViewId) {
@@ -647,10 +647,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
             this.viewAssignment(view);
             this.setGroupZIndex();
           } else {
-            const res = await this.FETCH_VIEW(id);
-            if (!res.result.success) {
-              throw new Error(`${id} does not exist`);
-            }
+            this.FETCH_VIEW(id);
           }
         },
         closeRecentView(id: ViewId) {
@@ -799,7 +796,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
               ) {
                 const params = { ...route.params };
                 delete params.viewId;
-                router.push({
+                routerStore.push(changeSetId, {
                   name: "workspace-compose",
                   params,
                 });
@@ -833,7 +830,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                 groups,
                 views,
               });
-              this.selectView(response.view.id);
+              this.selectView(response.view.id, false);
               this.setGroupZIndex();
             },
           });
@@ -1589,38 +1586,14 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
             g.zIndex = idx;
           }
         },
+        registerRequestsBegin(requestUlid: string, actionName: string) {
+          realtimeStore.inflightRequests.set(requestUlid, actionName);
+        },
+        registerRequestsEnd(requestUlid: string) {
+          realtimeStore.inflightRequests.delete(requestUlid);
+        },
       },
       async onActivated() {
-        if (!changeSetId) return;
-        const route = useRouterStore().currentRoute;
-        let viewId;
-        if (
-          ["workspace-compose", "workspace-compose-view"].includes(
-            route?.name as string,
-          )
-        ) {
-          this.activatedAndFetched = true;
-          if (route?.params.viewId) viewId = route.params.viewId as string;
-          await this.FETCH_VIEW(viewId);
-          // ^ selects the view
-        }
-        this.LIST_VIEWS();
-
-        if (router.currentRoute.value.name === "workspace-compose") {
-          const key = `${changeSetId}_selected_component`;
-          const lastId = window.localStorage.getItem(key);
-          window.localStorage.removeItem(key);
-          if (
-            lastId &&
-            Object.values(this.selectedComponentIds).filter(Boolean).length ===
-              0
-          ) {
-            this.setSelectedComponentId(lastId);
-          }
-        }
-
-        const realtimeStore = useRealtimeStore();
-
         realtimeStore.subscribe(
           `${this.$id}-changeset`,
           `changeset/${changeSetId}`,
@@ -1682,7 +1655,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
             },
             {
               eventType: "ComponentUpgraded",
-              callback: (data) => {
+              callback: (data, metadata) => {
                 // If the component that updated wasn't in this change set,
                 // don't update
                 if (data.changeSetId !== changeSetId) return;
@@ -1729,7 +1702,12 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                   }
                 });
 
-                this.setSelectedComponentId(data.component.id);
+                if (
+                  metadata.actor !== "System" &&
+                  metadata.actor.User === authStore.userPk
+                ) {
+                  this.setSelectedComponentId(data.component.id);
+                }
               },
             },
             {
@@ -1924,15 +1902,24 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
 
             {
               eventType: "ViewCreated",
-              callback: ({ view }, metadata) => {
+              callback: async ({ view }, metadata) => {
                 if (metadata.change_set_id !== changeSetId) return;
                 const idx = this.viewList.findIndex((v) => v.id === view.id);
                 if (idx !== -1) this.viewList.splice(idx, 1, view);
                 else {
                   this.viewList.push(view);
                 }
-                this.FETCH_VIEW_GEOMETRY(view.id);
                 this.SORT_LIST_VIEWS();
+                await this.FETCH_VIEW_GEOMETRY(view.id);
+                const actionWhichCreatedView =
+                  realtimeStore.inflightRequests.get(metadata.requestUlid);
+                if (
+                  metadata.actor !== "System" &&
+                  metadata.actor.User === authStore.userPk &&
+                  actionWhichCreatedView !== "RUN_MGMT_PROTOTYPE"
+                ) {
+                  this.selectView(view.id);
+                }
               },
             },
             {

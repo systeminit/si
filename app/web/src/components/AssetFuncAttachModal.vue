@@ -442,15 +442,11 @@ const attachExistingFunc = async () => {
     bindings.push(attr);
   }
   if (bindings.length > 0 && selectedExistingFunc.value.value !== nilId()) {
-    const response = await funcStore.CREATE_BINDING(
+    const resp = await funcStore.CREATE_BINDING(
       selectedExistingFunc.value.value as string,
       bindings,
     );
-    if (response.result.success && props.schemaVariantId) {
-      const funcId = response.result.data.pop()?.funcId;
-      if (funcId) assetStore.setFuncSelection(funcId);
-      close();
-    }
+    if (resp.result.success) close();
   }
 };
 
@@ -476,18 +472,13 @@ const attachNewFunc = async () => {
         attributePrototypeId: null,
       } as Attribute;
     }
-    const result = await funcStore.CREATE_FUNC({
+    await funcStore.CREATE_FUNC({
       name: name.value,
       displayName: name.value,
       description: "",
       binding,
       kind: funcKind.value.value,
     });
-    if (result.result.success) {
-      funcStore.selectedFuncId = result.result.data.summary.funcId;
-      assetStore.addFuncSelection(result.result.data.summary.funcId);
-      if (props.schemaVariantId) close();
-    }
   }
 };
 

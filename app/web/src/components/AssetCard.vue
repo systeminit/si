@@ -131,7 +131,6 @@ import {
   ErrorMessage,
   IconButton,
 } from "@si/vue-lib/design-system";
-import { useRouter } from "vue-router";
 import { format as dateFormat } from "date-fns";
 import { useAssetStore } from "@/store/asset.store";
 import { SchemaVariantId, SchemaVariant } from "@/api/sdf/dal/schema";
@@ -148,7 +147,6 @@ const props = defineProps({
 
 const assetStore = useAssetStore();
 const moduleStore = useModuleStore();
-const router = useRouter();
 const { theme } = useTheme();
 
 const installStatus = moduleStore.getRequestStatus(
@@ -215,9 +213,7 @@ const updateAsset = () => {
   }
 
   moduleStore.INSTALL_REMOTE_MODULE([module.id]);
-  router.replace({
-    name: "workspace-lab-assets",
-  });
+  assetStore.clearSchemaVariantSelection();
 
   return;
 };
@@ -252,14 +248,7 @@ const createUnlockedVariantReqStatus = assetStore.getRequestStatus(
 );
 
 const unlock = async () => {
-  if (asset.value) {
-    const resp = await assetStore.CREATE_UNLOCKED_COPY(
-      asset.value.schemaVariantId,
-    );
-    if (resp.result.success) {
-      assetStore.setSchemaVariantSelection(resp.result.data?.schemaVariantId);
-    }
-  }
+  if (asset.value) assetStore.CREATE_UNLOCKED_COPY(asset.value.schemaVariantId);
 };
 
 const deleteUnlockedVariantReqStatus = assetStore.getRequestStatus(
@@ -273,9 +262,6 @@ const deleteUnlockedVariant = async () => {
     );
     if (resp.result.success) {
       assetStore.setSchemaVariantSelection("");
-      router.replace({
-        name: "workspace-lab-assets",
-      });
     }
   }
 };

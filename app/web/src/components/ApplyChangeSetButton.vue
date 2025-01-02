@@ -47,7 +47,7 @@
 <script lang="ts" setup>
 import { computed, ref } from "vue";
 import * as _ from "lodash-es";
-import { useRouter, useRoute } from "vue-router";
+import { useRouter } from "vue-router";
 import {
   VButton,
   Icon,
@@ -62,7 +62,7 @@ import { useActionsStore } from "@/store/actions.store";
 import { useAuthStore } from "@/store/auth.store";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import RetryApply from "@/components/toasts/RetryApply.vue";
-import { useViewsStore } from "@/store/views.store";
+import { useRouterStore } from "@/store/router.store";
 import ApprovalFlowModal from "./ApprovalFlowModal.vue";
 import ApprovalFlowModal2 from "./ApprovalFlowModal2.vue";
 
@@ -70,8 +70,8 @@ const featureFlagsStore = useFeatureFlagsStore();
 const actionsStore = useActionsStore();
 const authStore = useAuthStore();
 const changeSetsStore = useChangeSetsStore();
-const route = useRoute();
 const router = useRouter();
+const routerStore = useRouterStore();
 const statusStore = useStatusStore();
 const toast = useToast();
 
@@ -97,24 +97,19 @@ const openApprovalFlowModal = () => {
 
 // Applies the current change set3
 const applyChangeSet = async () => {
-  if (!route.name) return;
-  // if (featureFlagsStore.REBAC) return;
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  const viewsStore = useViewsStore(changeSetsStore.headChangeSetId!);
-  // need to clear selections prior to applying, having them is causing bugs (BUG-725)
-  viewsStore.clearSelections();
-  viewsStore.syncSelectionIntoUrl();
   const resp = await changeSetsStore.APPLY_CHANGE_SET(
     authStore.user?.email ?? "",
   );
   if (resp.result.success) {
-    router.replace({
-      name: route.name,
-      params: {
-        ...route.params,
-        changeSetId: "head",
-      },
-    });
+    if (routerStore.currentRoute) {
+      router.replace({
+        name: routerStore.currentRoute.name,
+        params: {
+          ...routerStore.currentRoute.params,
+          changeSetId: "head",
+        },
+      });
+    }
   } else if (resp.result.statusCode === 428) {
     toast({
       component: RetryApply,

@@ -405,33 +405,10 @@ const unlock = async () => {
   if (editingFunc.value?.funcId === undefined) return;
 
   unlocking.value = true;
-  const resp = await funcStore.CREATE_UNLOCKED_COPY(
+  await funcStore.CREATE_UNLOCKED_COPY(
     editingFunc.value.funcId,
     assetStore.selectedVariantId,
   );
-  if (resp.result.success) {
-    try {
-      let unlockedAssetId =
-        assetStore.unlockedVariantIdForId[assetStore.selectedVariantId ?? ""];
-      if (!unlockedAssetId) {
-        await assetStore.LOAD_SCHEMA_VARIANT_LIST();
-      }
-      unlockedAssetId =
-        assetStore.unlockedVariantIdForId[assetStore.selectedVariantId ?? ""];
-
-      if (!unlockedAssetId) {
-        unlocking.value = false;
-        throw Error("Unlocked asset without unlocking variant?");
-      }
-
-      assetStore.setSchemaVariantSelection(unlockedAssetId);
-
-      await assetStore.setFuncSelection(resp.result.data.summary.funcId);
-    } catch (err) {
-      unlocking.value = false;
-      throw err;
-    }
-  }
 
   unlocking.value = false;
 };
