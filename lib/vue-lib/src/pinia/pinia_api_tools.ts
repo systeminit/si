@@ -32,12 +32,9 @@ export * from "../utils/api_debouncer";
 
 // this helper filters an object to only the keys that extend a specific type
 // see https://www.piotrl.net/typescript-condition-subset-types/
-type SubType<Base, CheckExtends> = Pick<
-  Base,
-  {
-    [Key in keyof Base]: Base[Key] extends CheckExtends ? Key : never;
-  }[keyof Base]
->;
+type SubType<Base, CheckExtends> = {
+  [Key in keyof Base]: Base[Key] extends CheckExtends ? Key : never;
+};
 
 // here we are filtering all the actions down to those that return an ApiRequest object only
 type ApiRequestActionsOnly<A> = SubType<
