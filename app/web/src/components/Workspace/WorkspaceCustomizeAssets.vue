@@ -139,7 +139,14 @@
 </template>
 
 <script lang="ts" setup>
-import { onBeforeUnmount, onMounted, ref, computed, watch } from "vue";
+import {
+  onBeforeUnmount,
+  onMounted,
+  ref,
+  computed,
+  watch,
+  onBeforeMount,
+} from "vue";
 import {
   ResizablePanel,
   ScrollArea,
@@ -238,6 +245,12 @@ const onKeyDown = async (e: KeyboardEvent) => {
     }
   }
 };
+
+onBeforeMount(() => {
+  if (Object.values(route.query).length > 0) {
+    assetStore.syncUrlIntoSelection(); // handles PAGE LOAD
+  }
+});
 
 onMounted(() => {
   window.addEventListener("keydown", onKeyDown);

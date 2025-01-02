@@ -21,6 +21,7 @@ import { useChangeSetsStore } from "./change_sets.store";
 import { useModuleStore } from "./module.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import handleStoreError from "./errors";
+import { useRouterStore } from "./router.store";
 
 export interface InstalledPkgAssetView {
   assetId: string;
@@ -101,6 +102,7 @@ export const useAssetStore = (forceChangeSetId?: ChangeSetId) => {
 
   const funcStore = useFuncStore();
   const moduleStore = useModuleStore();
+  const routerStore = useRouterStore();
 
   let assetSaveDebouncer: ReturnType<typeof keyedDebouncer> | undefined;
 
@@ -260,8 +262,9 @@ export const useAssetStore = (forceChangeSetId?: ChangeSetId) => {
           };
           if (returnQuery) return newQueryObj;
 
-          if (!_.isEqual(router.currentRoute.value.query, newQueryObj)) {
+          if (!_.isEqual(routerStore.currentRoute?.query, newQueryObj)) {
             router.replace({
+              params: { ...routerStore.currentRoute?.params },
               query: newQueryObj,
             });
           }

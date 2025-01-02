@@ -74,11 +74,6 @@ function closeModalHandler() {
 function applyButtonHandler() {
   if (userIsApprover.value) {
     if (authStore.user) {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      const viewsStore = useViewsStore(changeSetsStore.headChangeSetId!);
-      // need to clear selections prior to applying, having them is causing bugs (BUG-725)
-      viewsStore.clearSelections();
-      viewsStore.syncSelectionIntoUrl();
       changeSetsStore.FORCE_APPLY_CHANGE_SET(authStore.user.name);
       closeModalHandler();
     }

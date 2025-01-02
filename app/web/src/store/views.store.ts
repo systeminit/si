@@ -154,6 +154,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
   const changeSetsStore = useChangeSetsStore();
   const componentsStore = useComponentsStore(forceChangeSetId);
   const qualStore = useQualificationsStore();
+  const routerStore = useRouterStore();
   const toast = useToast();
 
   let changeSetId: ChangeSetId | undefined;
@@ -479,13 +480,6 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
 
           this.syncSelectionIntoUrl();
         },
-        clearSelections() {
-          this.selectedEdgeId = null;
-          this.selectedComponentIds = [];
-          this.selectedComponentDetailsTab = null;
-          const key = `${changeSetId}_selected_component`;
-          window.localStorage.removeItem(key);
-        },
         syncSelectionIntoUrl() {
           let selectedIds: string[] = [];
           if (this.selectedEdgeId) {
@@ -501,8 +495,9 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
             }),
           };
 
-          if (!_.isEqual(router.currentRoute.value.query, newQueryObj)) {
+          if (!_.isEqual(routerStore.currentRoute?.query, newQueryObj)) {
             router.replace({
+              params: { ...routerStore.currentRoute?.params },
               query: newQueryObj,
             });
           }
@@ -623,7 +618,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
           this.groups = {};
           this.viewNodes = {};
         },
-        async selectView(id: ViewId) {
+        selectView(id: ViewId) {
           const view = this.viewsById[id];
           if (view) {
             const route = router.currentRoute;
@@ -647,10 +642,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
             this.viewAssignment(view);
             this.setGroupZIndex();
           } else {
-            const res = await this.FETCH_VIEW(id);
-            if (!res.result.success) {
-              throw new Error(`${id} does not exist`);
-            }
+            this.FETCH_VIEW(id);
           }
         },
         closeRecentView(id: ViewId) {
@@ -1590,32 +1582,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
       },
       async onActivated() {
         if (!changeSetId) return;
-        const route = useRouterStore().currentRoute;
-        let viewId;
-        if (
-          ["workspace-compose", "workspace-compose-view"].includes(
-            route?.name as string,
-          )
-        ) {
-          this.activatedAndFetched = true;
-          if (route?.params.viewId) viewId = route.params.viewId as string;
-          await this.FETCH_VIEW(viewId);
-          // ^ selects the view
-        }
         this.LIST_VIEWS();
-
-        if (router.currentRoute.value.name === "workspace-compose") {
-          const key = `${changeSetId}_selected_component`;
-          const lastId = window.localStorage.getItem(key);
-          window.localStorage.removeItem(key);
-          if (
-            lastId &&
-            Object.values(this.selectedComponentIds).filter(Boolean).length ===
-              0
-          ) {
-            this.setSelectedComponentId(lastId);
-          }
-        }
 
         const realtimeStore = useRealtimeStore();
 

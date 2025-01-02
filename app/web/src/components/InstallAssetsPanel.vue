@@ -63,11 +63,13 @@ import { useRoute } from "vue-router";
 import router from "@/router";
 import { useModuleStore } from "@/store/module.store";
 import { LatestModule } from "@/api/sdf/dal/module";
+import { useRouterStore } from "@/store/router.store";
 import EmptyStateCard from "./EmptyStateCard.vue";
 import SidebarSubpanelTitle from "./SidebarSubpanelTitle.vue";
 
 const moduleStore = useModuleStore();
 const route = useRoute();
+const routerStore = useRouterStore();
 
 const searchRef = ref<InstanceType<typeof SiSearch>>();
 const searchString = ref("");
@@ -92,13 +94,17 @@ const selectModule = (module: LatestModule) => {
     ...{ m: module.id },
   };
   router.replace({
+    params: { ...routerStore.currentRoute?.params },
     query: newQueryObj,
   });
 };
 
 onMounted(() => {
+  // how come we're doing this?
   if (route.query.s) {
-    router.replace({ query: {} });
+    router.replace({
+      query: {},
+    });
   }
 });
 

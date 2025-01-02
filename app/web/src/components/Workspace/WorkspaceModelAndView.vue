@@ -10,6 +10,7 @@
   >
     <LeftPanelDrawer
       v-if="featureFlagsStore.OUTLINER_VIEWS"
+      :changeSetId="changeSetsStore.selectedChangeSetId"
       @closed="toggleDrawer"
     />
     <component
@@ -106,11 +107,11 @@
 
 <script lang="ts" setup>
 import * as _ from "lodash-es";
-import { useRoute } from "vue-router";
-import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, onBeforeMount, onBeforeUnmount, onMounted, ref } from "vue";
 import { ResizablePanel, themeClasses } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { IRect } from "konva/lib/types";
+import { useRoute } from "vue-router";
 import ComponentDetails from "@/components/ComponentDetails.vue";
 import { useActionsStore } from "@/store/actions.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
@@ -150,8 +151,6 @@ const presenceStore = usePresenceStore();
 const _secretsStore = useSecretsStore(); // adding this so we fetch once
 const statusStore = useStatusStore();
 const featureFlagsStore = useFeatureFlagsStore();
-
-const route = useRoute();
 
 const actionsAreRunning = computed(
   () =>
@@ -208,11 +207,28 @@ const onKeyDown = async (e: KeyboardEvent) => {
   }
 };
 
-onMounted(() => {
-  window.addEventListener("keydown", onKeyDown);
+// only used for onMounted
+const route = useRoute();
+
+onBeforeMount(async () => {
   statusStore.FETCH_DVU_ROOTS();
-  if (!viewStore.selectedViewId && !viewStore.activatedAndFetched)
-    viewStore.FETCH_VIEW(viewId.value);
+  let viewId;
+  if (route?.params.viewId) viewId = route.params.viewId as string;
+  await viewStore.FETCH_VIEW(viewId);
+
+  const key = `${changeSetsStore.selectedChangeSetId}_selected_component`;
+  const lastId = window.localStorage.getItem(key);
+  window.localStorage.removeItem(key);
+  if (
+    lastId &&
+    Object.values(viewStore.selectedComponentIds).filter(Boolean).length === 0
+  ) {
+    viewStore.setSelectedComponentId(lastId);
+  }
+});
+
+onMounted(async () => {
+  window.addEventListener("keydown", onKeyDown);
 });
 
 onBeforeUnmount(() => {
@@ -276,6 +292,4 @@ function onThreeDotMenuClick(mouse: MouseEvent) {
 function closeRightClickMenu() {
   contextMenuRef.value?.close();
 }
-
-const viewId = computed(() => route.params.viewId as string | undefined);
 </script>
