@@ -171,7 +171,7 @@ const onCreateTemplate = () => {
     category: category.value,
   };
 
-  componentsStore.CREATE_TEMPLATE_FUNC_FROM_COMPONENTS(templateData, router);
+  componentsStore.CREATE_TEMPLATE_FUNC_FROM_COMPONENTS(templateData);
 
   close();
 };

@@ -1,6 +1,8 @@
 import { defineStore } from "pinia";
 import * as _ from "lodash-es";
-import { RouteLocationNormalizedLoaded } from "vue-router";
+import { RouteLocationNormalizedLoaded, RouteLocationRaw } from "vue-router";
+import router from "@/router";
+import { ChangeSetId } from "@/api/sdf/dal/change_set";
 
 /**
  * PSA: we are using this `currentRoute` to denote the route we are navigating TO!
@@ -17,4 +19,22 @@ export const useRouterStore = defineStore("router", {
   state: () => ({
     currentRoute: null as RouteLocationNormalizedLoaded | null,
   }),
+  actions: {
+    replace(
+      originChangeSetId: ChangeSetId | undefined,
+      location: RouteLocationRaw,
+    ) {
+      // if you're not operating on the same change set we are viewing, you can't change the router/URL
+      if (this.currentRoute?.params.changeSetId === originChangeSetId)
+        router.replace(location);
+    },
+    push(
+      originChangeSetId: ChangeSetId | undefined,
+      location: RouteLocationRaw,
+    ) {
+      // if you're not operating on the same change set we are viewing, you can't change the router/URL
+      if (this.currentRoute?.params.changeSetId === originChangeSetId)
+        router.replace(location);
+    },
+  },
 });

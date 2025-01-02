@@ -215,7 +215,7 @@ function handleUrlChange() {
 
     if (!routerStore.currentRoute) return;
     router.replace({
-      name: routerStore.currentRoute.name, // eslint-disable-line @typescript-eslint/no-non-null-assertion
+      name: routerStore.currentRoute.name,
       params: {
         ...routerStore.currentRoute.params,
         changeSetId: newChangeSetId,

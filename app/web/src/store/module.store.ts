@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
 import * as _ from "lodash-es";
 import { addStoreHooks, ApiRequest, URLPattern } from "@si/vue-lib/pinia";
+import { useRoute } from "vue-router";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import router from "@/router";
@@ -125,6 +126,7 @@ export const useModuleStore = () => {
 
   const workspacesStore = useWorkspacesStore();
   const workspaceId = workspacesStore.selectedWorkspacePk;
+  const routerStore = useRouterStore();
 
   const API_PREFIX = [
     "v2",
@@ -403,7 +405,7 @@ export const useModuleStore = () => {
               params: { id: moduleId, ...getVisibilityParams() },
               optimistic: () => {
                 // remove selection from URL
-                router.replace({
+                routerStore.replace(changeSetId, {
                   name: "workspace-lab-packages",
                 });
               },
@@ -421,7 +423,7 @@ export const useModuleStore = () => {
               url: API_PREFIX.concat([{ moduleId }, "builtins", "promote"]),
               optimistic: () => {
                 // remove selection from URL
-                router.replace({
+                routerStore.replace(changeSetId, {
                   name: "workspace-lab-packages",
                 });
               },

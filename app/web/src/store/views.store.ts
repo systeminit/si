@@ -496,7 +496,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
           };
 
           if (!_.isEqual(routerStore.currentRoute?.query, newQueryObj)) {
-            router.replace({
+            routerStore.replace(changeSetId, {
               params: { ...routerStore.currentRoute?.params },
               query: newQueryObj,
             });
@@ -626,7 +626,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
               ...route.value.params,
               viewId: id,
             };
-            router.push({
+            routerStore.push(changeSetId, {
               name: "workspace-compose-view",
               params,
             });
@@ -789,7 +789,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
               ) {
                 const params = { ...route.params };
                 delete params.viewId;
-                router.push({
+                routerStore.push(changeSetId, {
                   name: "workspace-compose",
                   params,
                 });

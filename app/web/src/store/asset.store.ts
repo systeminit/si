@@ -263,7 +263,7 @@ export const useAssetStore = (forceChangeSetId?: ChangeSetId) => {
           if (returnQuery) return newQueryObj;
 
           if (!_.isEqual(routerStore.currentRoute?.query, newQueryObj)) {
-            router.replace({
+            routerStore.replace(changeSetId, {
               params: { ...routerStore.currentRoute?.params },
               query: newQueryObj,
             });

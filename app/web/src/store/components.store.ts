@@ -46,6 +46,7 @@ import { useAssetStore } from "./asset.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import { useWorkspacesStore } from "./workspaces.store";
 import { useFeatureFlagsStore } from "./feature_flags.store";
+import { useRouterStore } from "./router.store";
 
 export type ComponentNodeId = string;
 
@@ -469,6 +470,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
   const workspaceId = workspacesStore.selectedWorkspacePk;
   const changeSetsStore = useChangeSetsStore();
   const featureFlagsStore = useFeatureFlagsStore();
+  const routerStore = useRouterStore();
 
   // this needs some work... but we'll probably want a way to force using HEAD
   // so we can load HEAD data in some scenarios while also loading a change set?
@@ -1166,17 +1168,14 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             });
           },
 
-          async CREATE_TEMPLATE_FUNC_FROM_COMPONENTS(
-            templateData: {
-              color: string;
-              assetName: string;
-              funcName: string;
-              componentIds: ComponentId[];
-              viewId: ViewId;
-              category: string;
-            },
-            router: Router,
-          ) {
+          async CREATE_TEMPLATE_FUNC_FROM_COMPONENTS(templateData: {
+            color: string;
+            assetName: string;
+            funcName: string;
+            componentIds: ComponentId[];
+            viewId: ViewId;
+            category: string;
+          }) {
             const {
               color,
               assetName,
@@ -1223,7 +1222,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                       schemaVariantId: response.schemaVariantId,
                       funcId: response.funcId,
                       router: (s: string) => {
-                        router.push({
+                        routerStore.push(changeSetId, {
                           name: "workspace-lab-assets",
                           query: { s },
                         });
