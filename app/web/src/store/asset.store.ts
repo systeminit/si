@@ -211,6 +211,11 @@ export const useAssetStore = (forceChangeSetId?: ChangeSetId) => {
             this.syncSelectionIntoUrl();
           }
         },
+        clearSchemaVariantSelection() {
+          this.setFuncSelection(undefined);
+          this.selectedSchemaVariants = [];
+          this.syncSelectionIntoUrl();
+        },
         setSchemaVariantSelection(id: SchemaVariantId) {
           this.setFuncSelection(undefined);
 

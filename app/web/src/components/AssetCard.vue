@@ -215,10 +215,7 @@ const updateAsset = () => {
   }
 
   moduleStore.INSTALL_REMOTE_MODULE([module.id]);
-  // TODO i don't think we need this anymore??
-  router.replace({
-    name: "workspace-lab-assets",
-  });
+  assetStore.clearSchemaVariantSelection();
 
   return;
 };
