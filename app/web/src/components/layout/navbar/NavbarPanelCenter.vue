@@ -22,7 +22,6 @@
     />
 
     <NavbarButton
-      v-if="featureFlagsStore.AUDIT_PAGE"
       tooltipText="Audit"
       icon="eye"
       :selected="route.matched.some((r) => r.name === 'workspace-audit')"
@@ -36,13 +35,11 @@
 
 <script setup lang="ts">
 import { useRoute } from "vue-router";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { useViewsStore } from "@/store/views.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import NavbarButton from "./NavbarButton.vue";
 
 const route = useRoute();
-const featureFlagsStore = useFeatureFlagsStore();
 
 const modelingLink = () => {
   const viewsStore = useViewsStore();
