@@ -185,7 +185,6 @@ const closeFirstTimeModal = () => {
   firstTimeModalRef.value?.close();
 };
 
-// TODO: this logic needs some work
 function handleUrlChange() {
   changeSetsStore.creatingChangeSet = false;
 
@@ -197,11 +196,13 @@ function handleUrlChange() {
     const newChangeSetId =
       id === false || id === changeSetsStore.headChangeSetId ? "head" : id;
 
-    const viewId = route.params.viewId as string | undefined;
+    const viewId = routerStore.currentRoute?.params.viewId as
+      | string
+      | undefined;
     if (viewId) {
       const viewStore = useViewsStore(newChangeSetId);
       if (!viewStore.viewsById[viewId]) {
-        delete route.params.viewId;
+        delete routerStore.currentRoute?.params.viewId;
         const defaultView =
           viewStore.viewList.find((v) => v.id === viewId) ||
           viewStore.viewList[0];

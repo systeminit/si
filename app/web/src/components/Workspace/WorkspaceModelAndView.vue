@@ -124,6 +124,7 @@ import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import { useViewsStore } from "@/store/views.store";
 import { ComponentType } from "@/api/sdf/dal/schema";
+import { useRouterStore } from "@/store/router.store";
 import LeftPanelDrawer from "../LeftPanelDrawer.vue";
 import ModelingDiagram from "../ModelingDiagram/ModelingDiagram.vue";
 import AssetPalette from "../AssetPalette.vue";
@@ -207,13 +208,13 @@ const onKeyDown = async (e: KeyboardEvent) => {
   }
 };
 
-// only used for onMounted
-const route = useRoute();
+const routeStore = useRouterStore();
 
 onBeforeMount(async () => {
   statusStore.FETCH_DVU_ROOTS();
   let viewId;
-  if (route?.params.viewId) viewId = route.params.viewId as string;
+  if (routeStore.currentRoute?.params.viewId)
+    viewId = routeStore.currentRoute?.params.viewId as string;
   await viewStore.FETCH_VIEW(viewId);
 
   const key = `${changeSetsStore.selectedChangeSetId}_selected_component`;

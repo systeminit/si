@@ -242,10 +242,12 @@ export const useRealtimeStore = defineStore("realtime", () => {
       if (bufferedEvent.ttl <= Date.now()) {
         // even though its not run, we're using this to clear out the data
         eventsRun.push(bufferedEvent.ulid);
-        return;
+        continue;
       }
       // prevent events already fired from repeatedly firing with every new subscriber
-      if (eventsRun.includes(bufferedEvent.ulid)) return;
+      if (eventsRun.includes(bufferedEvent.ulid)) {
+        continue;
+      }
 
       const topics = [
         `workspace/${bufferedEvent.metadata.workspace_pk}`,
@@ -349,9 +351,9 @@ export const useRealtimeStore = defineStore("realtime", () => {
     if (!dispatched && eventKind !== "Cursor" && eventKind !== "Online") {
       if (
         // should we buffer an incoming event because we just created a changeset and the stores aren't set up yet?
-        bufferWatchList.filter(
+        bufferWatchList.some(
           (changeSetId) => eventMetadata.change_set_id === changeSetId,
-        ).length > 0
+        )
       ) {
         const id = ulid();
         wsEventBuffer.value[id] = {
