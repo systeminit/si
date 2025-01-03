@@ -126,12 +126,6 @@ const create = async () => {
     if (resp.result.success) {
       modalRef.value?.close();
       viewName.value = "";
-
-      // so we need to check that our new view exists before selecting it
-      const viewExists = viewStore.viewList.find(
-        (v) => v.id === resp.result.data?.id,
-      );
-      if (viewExists) viewStore.selectView(resp.result.data.id);
     } else if (resp.result.statusCode === 409) {
       labelRef.value?.setError(
         `${viewName.value} is already in use. Please choose another name`,

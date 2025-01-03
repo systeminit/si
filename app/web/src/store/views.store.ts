@@ -52,6 +52,7 @@ import { useRealtimeStore } from "./realtime/realtime.store";
 import { useWorkspacesStore } from "./workspaces.store";
 import { useRouterStore } from "./router.store";
 import { useQualificationsStore } from "./qualifications.store";
+import { useAuthStore } from "./auth.store";
 
 const MAX_RETRIES = 5;
 
@@ -155,6 +156,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
   const componentsStore = useComponentsStore(forceChangeSetId);
   const qualStore = useQualificationsStore();
   const routerStore = useRouterStore();
+  const authStore = useAuthStore();
   const toast = useToast();
 
   let changeSetId: ChangeSetId | undefined;
@@ -1582,7 +1584,8 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
       },
       async onActivated() {
         if (!changeSetId) return;
-        this.LIST_VIEWS();
+
+        await this.LIST_VIEWS();
 
         const realtimeStore = useRealtimeStore();
 
@@ -1868,15 +1871,21 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
 
             {
               eventType: "ViewCreated",
-              callback: ({ view }, metadata) => {
+              callback: async ({ view }, metadata) => {
                 if (metadata.change_set_id !== changeSetId) return;
                 const idx = this.viewList.findIndex((v) => v.id === view.id);
                 if (idx !== -1) this.viewList.splice(idx, 1, view);
                 else {
                   this.viewList.push(view);
                 }
-                this.FETCH_VIEW_GEOMETRY(view.id);
                 this.SORT_LIST_VIEWS();
+                await this.FETCH_VIEW_GEOMETRY(view.id);
+                if (
+                  metadata.actor !== "System" &&
+                  metadata.actor.User === authStore.userPk
+                ) {
+                  this.selectView(view.id);
+                }
               },
             },
             {
