@@ -620,18 +620,20 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
           this.groups = {};
           this.viewNodes = {};
         },
-        selectView(id: ViewId) {
+        selectView(id: ViewId, navigable = true) {
           const view = this.viewsById[id];
           if (view) {
-            const route = router.currentRoute;
-            const params = {
-              ...route.value.params,
-              viewId: id,
-            };
-            routerStore.push(changeSetId, {
-              name: "workspace-compose-view",
-              params,
-            });
+            if (navigable) {
+              const route = router.currentRoute;
+              const params = {
+                ...route.value.params,
+                viewId: id,
+              };
+              routerStore.push(changeSetId, {
+                name: "workspace-compose-view",
+                params,
+              });
+            }
 
             // move the currently selected view to the top of the
             if (this.selectedViewId) {
@@ -825,7 +827,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                 groups,
                 views,
               });
-              this.selectView(response.view.id);
+              this.selectView(response.view.id, false);
               this.setGroupZIndex();
             },
           });
