@@ -1,5 +1,5 @@
 use super::{GeometryNodeWeight, NodeWeightDiscriminants};
-use crate::workspace_snapshot::graph::detect_updates::Update;
+use crate::workspace_snapshot::graph::detector::Update;
 use crate::workspace_snapshot::node_weight::diagram_object_node_weight::DiagramObjectKind;
 use crate::workspace_snapshot::node_weight::traits::{
     CorrectTransformsError, CorrectTransformsResult,

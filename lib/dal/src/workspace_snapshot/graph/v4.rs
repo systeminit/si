@@ -23,7 +23,7 @@ use crate::{
     workspace_snapshot::{
         content_address::ContentAddress,
         graph::{
-            detect_updates::{Detector, Update},
+            detector::{Detector, Update},
             MerkleTreeHash, WorkspaceSnapshotGraphError, WorkspaceSnapshotGraphResult,
         },
         node_weight::{CategoryNodeWeight, NodeWeight},
@@ -32,6 +32,8 @@ use crate::{
     DalContext, EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants, NodeWeightDiscriminants,
     Timestamp,
 };
+
+use super::detector::Change;
 
 pub mod component;
 pub mod diagram;
@@ -687,6 +689,10 @@ impl WorkspaceSnapshotGraphV4 {
 
     pub fn detect_updates(&self, updated_graph: &Self) -> Vec<Update> {
         Detector::new(self, updated_graph).detect_updates()
+    }
+
+    pub fn detect_changes(&self, updated_graph: &Self) -> Vec<Change> {
+        Detector::new(self, updated_graph).detect_changes()
     }
 
     #[allow(dead_code)]

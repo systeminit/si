@@ -10,7 +10,7 @@ mod test {
         workspace_snapshot::{
             content_address::ContentAddress,
             edge_weight::{EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants},
-            graph::detect_updates::Update,
+            graph::detector::Update,
             node_weight::NodeWeight,
             NodeInformation,
         },

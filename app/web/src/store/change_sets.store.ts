@@ -302,6 +302,13 @@ export function useChangeSetsStore() {
           const changeSetId = id || this.selectedChangeSetId;
 
           if (!changeSetId) throw new Error("Select a change set");
+
+          if (featureFlagsStore.FINE_GRAINED_ACCESS_CONTROL) {
+            return new ApiRequest({
+              method: "post",
+              url: BASE_API.concat([{ changeSetId }, "approve_v2"]),
+            });
+          }
           return new ApiRequest({
             method: "post",
             url: BASE_API.concat([{ changeSetId }, "approve"]),

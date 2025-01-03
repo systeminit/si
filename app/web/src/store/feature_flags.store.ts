@@ -19,6 +19,7 @@ const FLAG_MAPPING = {
   OUTLINER_VIEWS: "diagram-outline-show-views",
   SLACK_WEBHOOK: "slack_webhook",
   TEMPLATE_MGMT_FUNC_GENERATION: "template-mgmt-func-generation",
+  FINE_GRAINED_ACCESS_CONTROL: "fine-grained-access-control",
 };
 
 type FeatureFlags = keyof typeof FLAG_MAPPING;

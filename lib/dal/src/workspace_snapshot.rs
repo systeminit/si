@@ -37,7 +37,7 @@ pub mod vector_clock;
 pub use traits::{schema::variant::SchemaVariantExt, socket::input::InputSocketExt};
 
 use graph::correct_transforms::correct_transforms;
-use graph::detect_updates::Update;
+use graph::detector::{Change, Update};
 use graph::{RebaseBatch, WorkspaceSnapshotGraph};
 use node_weight::traits::CorrectTransformsError;
 use std::collections::{HashMap, HashSet};
@@ -713,12 +713,7 @@ impl WorkspaceSnapshot {
         Ok(())
     }
 
-    #[instrument(
-        name = "workspace_snapshot.detect_updates",
-        level = "debug",
-        skip_all,
-        fields()
-    )]
+    #[instrument(name = "workspace_snapshot.detect_updates", level = "debug", skip_all)]
     pub async fn detect_updates(
         &self,
         onto_workspace_snapshot: &WorkspaceSnapshot,
@@ -733,6 +728,41 @@ impl WorkspaceSnapshot {
                 .detect_updates(&*onto_clone.working_copy().await)
         })?
         .await?)
+    }
+
+    #[instrument(name = "workspace_snapshot.detect_changes", level = "debug", skip_all)]
+    pub async fn detect_changes(
+        &self,
+        onto_workspace_snapshot: &WorkspaceSnapshot,
+    ) -> WorkspaceSnapshotResult<Vec<Change>> {
+        let self_clone = self.clone();
+        let onto_clone = onto_workspace_snapshot.clone();
+
+        Ok(slow_rt::spawn(async move {
+            self_clone
+                .working_copy()
+                .await
+                .detect_changes(&*onto_clone.working_copy().await)
+        })?
+        .await?)
+    }
+
+    /// A wrapper around [`Self::detect_changes`](Self::detect_changes) where the "onto" snapshot is derived from the
+    /// workspace's default [`ChangeSet`](crate::ChangeSet).
+    #[instrument(
+        name = "workspace_snapshot.detect_changes_from_head",
+        level = "debug",
+        skip_all
+    )]
+    pub async fn detect_changes_from_head(
+        &self,
+        ctx: &DalContext,
+    ) -> WorkspaceSnapshotResult<Vec<Change>> {
+        let head_change_set_id = ctx.get_workspace_default_change_set_id().await?;
+        let head_snapshot = Self::find_for_change_set(&ctx, head_change_set_id).await?;
+        Ok(head_snapshot
+            .detect_changes(&ctx.workspace_snapshot()?.clone())
+            .await?)
     }
 
     /// Gives the exact node index endpoints of an edge.
