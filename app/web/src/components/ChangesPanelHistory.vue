@@ -1,6 +1,5 @@
 <template>
   <div
-    v-if="featureFlagsStore.MANAGEMENT_FUNCTIONS"
     class="w-full h-full flex flex-col overflow-hidden relative"
     @click="deselectOnClickEmptySpace"
   >
@@ -82,26 +81,6 @@
       :selectedTab="selectedTab"
     />
   </div>
-  <div v-else ref="actionDivRef" class="py-2xs w-full h-full">
-    <template v-if="actionsStore.historyActions.length > 0">
-      <ActionsList
-        v-for="[detail, actions] in actionsStore.historyActionsGrouped"
-        :key="detail.changeSetId"
-        :actions="actions"
-        :changeSet="getChangeSet(detail)"
-        :clickAction="clickActionOrMgmtRun"
-        :selectedFuncRunIds="selectedFuncRunId ? [selectedFuncRunId] : []"
-        kind="history"
-        @history="openHistory"
-      />
-    </template>
-    <EmptyStateCard
-      v-else
-      iconName="actions"
-      primaryText="No Actions Have Been Executed"
-      secondaryText="There is no action history to display for this change set."
-    />
-  </div>
 </template>
 
 <script lang="ts" setup>
@@ -115,7 +94,6 @@ import {
   useActionsStore,
 } from "@/store/actions.store";
 import { FuncRun, FuncRunId, useFuncRunsStore } from "@/store/func_runs.store";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { ChangeSet, ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import {
@@ -131,7 +109,6 @@ const actionsStore = useActionsStore();
 const funcRunsStore = useFuncRunsStore();
 const managementRunsStore = useManagementRunsStore();
 const changeSetsStore = useChangeSetsStore();
-const featureFlagsStore = useFeatureFlagsStore();
 
 const actionDivRef = ref();
 const managementDivRef = ref();

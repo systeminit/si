@@ -361,10 +361,7 @@ const rightClickMenuItems = computed(() => {
   }
 
   // management funcs for a single selected component
-  if (
-    funcStore.managementFunctionsForSelectedComponent.length > 0 &&
-    featureFlagsStore.MANAGEMENT_FUNCTIONS
-  ) {
+  if (funcStore.managementFunctionsForSelectedComponent.length > 0) {
     const submenuItems: DropdownMenuItemObjectDef[] = [];
     funcStore.managementFunctionsForSelectedComponent.forEach((fn) => {
       submenuItems.push({

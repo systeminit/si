@@ -10,7 +10,6 @@ const FLAG_MAPPING = {
   DEV_SLICE_REBASING: "dev-slice-rebasing",
   ADMIN_PANEL_ACCESS: "si_admin_panel_access",
   ON_DEMAND_ASSETS: "on_demand_assets",
-  MANAGEMENT_FUNCTIONS: "management-functions",
   AI_GENERATOR: "ai-generator",
   REBAC: "rebac",
   OUTLINER_VIEWS: "diagram-outline-show-views",
