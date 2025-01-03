@@ -4,8 +4,8 @@ use si_frontend_types::RawGeometry;
 use si_id::{ComponentId, SchemaId, ViewId};
 
 use crate::management::{
-    ConnectionIdentifier, ManagementConnection, ManagementCreateOperation, ManagementGeometry,
-    IGNORE_PATHS,
+    ConnectionIdentifier, ManagementConnection, ManagementCreateGeometry,
+    ManagementCreateOperation, ManagementGeometry, IGNORE_PATHS,
 };
 use crate::prop::PropPath;
 use crate::{AttributeValue, Component, DalContext, InputSocket, OutputSocket, Prop, PropKind};
@@ -191,7 +191,7 @@ pub async fn generate_template(
         let create = ManagementCreateOperation {
             kind: Some(kind),
             properties,
-            geometry,
+            geometry: geometry.map(ManagementCreateGeometry::CurrentView),
             connect,
             parent,
         };

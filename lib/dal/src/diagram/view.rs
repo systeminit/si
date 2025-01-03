@@ -378,7 +378,7 @@ impl View {
         view_id: ViewId,
     ) -> DiagramResult<Geometry> {
         let mut geometry_pre = self.geometry(ctx, view_id).await?;
-        if geometry_pre.clone().into_raw() != raw_geometry {
+        if geometry_pre.into_raw() != raw_geometry {
             geometry_pre.update(ctx, raw_geometry).await?;
         }
 

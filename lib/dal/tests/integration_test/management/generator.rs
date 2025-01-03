@@ -62,13 +62,7 @@ async fn calculates_top_and_center(ctx: &DalContext) {
         .expect("set geo for left lego");
 
     let mut geometries = HashMap::new();
-    for geo in [
-        center_geo.clone(),
-        left_geo,
-        right_geo,
-        btm_geo.clone(),
-        top_geo.clone(),
-    ] {
+    for geo in [center_geo, left_geo, right_geo, btm_geo, top_geo] {
         geometries.insert(ComponentId::generate(), geo.into_raw());
     }
 
