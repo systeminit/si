@@ -11,7 +11,6 @@ const FLAG_MAPPING = {
   ADMIN_PANEL_ACCESS: "si_admin_panel_access",
   ON_DEMAND_ASSETS: "on_demand_assets",
   MANAGEMENT_FUNCTIONS: "management-functions",
-  MANAGEMENT_EDGES: "management-edges",
   AI_GENERATOR: "ai-generator",
   REBAC: "rebac",
   OUTLINER_VIEWS: "diagram-outline-show-views",

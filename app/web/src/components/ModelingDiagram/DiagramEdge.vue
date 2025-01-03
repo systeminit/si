@@ -77,7 +77,6 @@ import {
   useTheme,
 } from "@si/vue-lib/design-system";
 import { isDevMode } from "@/utils/debug";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { useViewsStore } from "@/store/views.store";
 import { SELECTION_COLOR, SOCKET_SIZE } from "./diagram_constants";
 import { DiagramEdgeData } from "./diagram_types";
@@ -107,8 +106,6 @@ const { theme } = useTheme();
 
 const diagramContext = useDiagramContext();
 const { drawEdgeState } = diagramContext;
-
-const featureFlagsStore = useFeatureFlagsStore();
 
 const isDeleted = computed(
   () => props.edge.def.changeStatus === "deleted" || props.edge.def.toDelete,
@@ -174,7 +171,7 @@ const showEdge = computed(() => {
     return false;
   }
 
-  if (props.edge.def.isManagement && featureFlagsStore.MANAGEMENT_EDGES) {
+  if (props.edge.def.isManagement) {
     return isFromOrToSelected.value || props.isSelected;
   }
 

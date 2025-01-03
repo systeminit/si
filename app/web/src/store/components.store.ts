@@ -399,7 +399,6 @@ export const processRawComponent = (
   component: RawComponent,
   allComponents: Record<ComponentId, RawComponent>,
 ) => {
-  const featureFlagsStore = useFeatureFlagsStore();
   const typeIcon = getAssetIcon(component?.schemaCategory);
 
   const ancestorIds = getAncestorIds(allComponents, component.id);
@@ -417,10 +416,6 @@ export const processRawComponent = (
     ...s,
     schemaId: component.schemaId,
   }));
-
-  if (!featureFlagsStore.MANAGEMENT_EDGES) {
-    component.sockets = component.sockets.filter((s) => !s.isManagement);
-  }
 
   const fullComponent = {
     ...component,
@@ -756,8 +751,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 : [];
 
             const management =
-              response.managementEdges?.length > 0 &&
-              featureFlagsStore.MANAGEMENT_EDGES
+              response.managementEdges?.length > 0
                 ? response.managementEdges.map(
                     edgeFromRawEdge({ isInferred: false, isManagement: true }),
                   )
