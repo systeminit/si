@@ -19,4 +19,6 @@ quote = { workspace = true }
 syn = { workspace = true }
 
 [dev-dependencies]
+dal = { path = "../../lib/dal" }
+si-events = { path = "../../lib/si-events-rs" }
 trybuild = { workspace = true }
