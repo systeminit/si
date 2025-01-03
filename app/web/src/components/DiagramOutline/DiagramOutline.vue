@@ -166,6 +166,8 @@ const componentsStore = useComponentsStore();
 const viewStore = useViewsStore();
 const qualificationsStore = useQualificationsStore();
 
+// TODO: this is only for the initial load of the page...
+// which means if it ever fails it never clears and the diagram outline is broken
 const fetchComponentsReq = viewStore.getRequestStatus("FETCH_VIEW");
 
 const viewId = computed(
