@@ -578,22 +578,6 @@ export const useAssetStore = (forceChangeSetId?: ChangeSetId) => {
           this.LOAD_SCHEMA_VARIANT_LIST(),
           moduleStore.SYNC(),
         ]);
-        const stopWatchingUrl = watch(
-          () => {
-            return router.currentRoute.value.name;
-          },
-          () => {
-            if (
-              router.currentRoute.value.name === "workspace-lab-assets" &&
-              Object.values(router.currentRoute.value.query).length > 0
-            ) {
-              this.syncUrlIntoSelection(); // handles PAGE LOAD
-            }
-          },
-          {
-            immediate: true,
-          },
-        );
 
         const realtimeStore = useRealtimeStore();
         realtimeStore.subscribe(this.$id, `changeset/${changeSetId}`, [
@@ -778,7 +762,6 @@ export const useAssetStore = (forceChangeSetId?: ChangeSetId) => {
 
         const actionUnsub = this.$onAction(handleStoreError);
         return () => {
-          stopWatchingUrl();
           actionUnsub();
           realtimeStore.unsubscribe(this.$id);
         };
