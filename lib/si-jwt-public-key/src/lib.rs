@@ -86,6 +86,16 @@ pub enum SiJwtClaimRole {
     Automation,
 }
 
+impl SiJwtClaimRole {
+    pub fn is_superset_of(&self, other: Self) -> bool {
+        match (self, other) {
+            (Self::Web, Self::Web | Self::Automation) => true,
+            (Self::Automation, Self::Automation) => true,
+            (Self::Automation, Self::Web) => false,
+        }
+    }
+}
+
 #[derive(Deserialize, Serialize, Debug, Clone, Eq, PartialEq)]
 #[serde(untagged)]
 pub enum SiJwtClaims {
@@ -93,6 +103,9 @@ pub enum SiJwtClaims {
     #[serde(rename_all = "snake_case")]
     V1(SiJwtClaimsV1),
 }
+
+/** The whole token */
+pub type SiJwt = JWTClaims<SiJwtClaims>;
 
 #[derive(Deserialize, Serialize, Debug, Clone, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -125,12 +138,15 @@ impl SiJwtClaims {
         }
     }
 
-    pub fn authorized_for(&self, required_role: SiJwtClaimRole) -> bool {
-        let role = match self {
+    pub fn role(&self) -> SiJwtClaimRole {
+        match self {
             Self::V2(SiJwtClaimsV2 { role, .. }) => *role,
             Self::V1(SiJwtClaimsV1 { .. }) => SiJwtClaimRole::Web,
-        };
-        role == required_role
+        }
+    }
+
+    pub fn authorized_for(&self, required_role: SiJwtClaimRole) -> bool {
+        self.role().is_superset_of(required_role)
     }
 
     pub fn for_web(user_id: UserPk, workspace_id: WorkspacePk) -> Self {
@@ -149,6 +165,14 @@ impl SiJwtClaims {
         let claims = validate_bearer_token(public_key, token).await?;
         Ok(claims.custom)
     }
+
+    pub async fn from_raw_token(
+        public_key: JwtPublicSigningKeyChain,
+        token: impl Into<String>,
+    ) -> JwtKeyResult<SiJwtClaims> {
+        let claims = validate_raw_token(public_key, token).await?;
+        Ok(claims.custom)
+    }
 }
 
 #[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]
@@ -160,11 +184,7 @@ pub enum JwtAlgo {
 
 pub trait JwtPublicKeyVerify: std::fmt::Debug + Send + Sync {
     fn algo(&self) -> JwtAlgo;
-    fn verify(
-        &self,
-        token: &str,
-        options: Option<VerificationOptions>,
-    ) -> JwtKeyResult<JWTClaims<SiJwtClaims>>;
+    fn verify(&self, token: &str, options: Option<VerificationOptions>) -> JwtKeyResult<SiJwt>;
 }
 
 impl JwtPublicKeyVerify for RS256PublicKey {
@@ -172,11 +192,7 @@ impl JwtPublicKeyVerify for RS256PublicKey {
         JwtAlgo::RS256
     }
 
-    fn verify(
-        &self,
-        token: &str,
-        options: Option<VerificationOptions>,
-    ) -> JwtKeyResult<JWTClaims<SiJwtClaims>> {
+    fn verify(&self, token: &str, options: Option<VerificationOptions>) -> JwtKeyResult<SiJwt> {
         self.verify_token(token, options)
             .map_err(|err| JwtPublicSigningKeyError::Verify(format!("{err}")))
     }
@@ -187,11 +203,7 @@ impl JwtPublicKeyVerify for ES256PublicKey {
         JwtAlgo::ES256
     }
 
-    fn verify(
-        &self,
-        token: &str,
-        options: Option<VerificationOptions>,
-    ) -> JwtKeyResult<JWTClaims<SiJwtClaims>> {
+    fn verify(&self, token: &str, options: Option<VerificationOptions>) -> JwtKeyResult<SiJwt> {
         self.verify_token(token, options)
             .map_err(|err| JwtPublicSigningKeyError::Verify(format!("{err}")))
     }
@@ -223,7 +235,7 @@ impl JwtPublicSigningKeyChain {
         &self,
         token: &str,
         options: Option<VerificationOptions>,
-    ) -> JwtKeyResult<JWTClaims<SiJwtClaims>> {
+    ) -> JwtKeyResult<SiJwt> {
         match self.primary.verify(token, options.clone()) {
             Ok(claims) => Ok(claims),
             Err(err) => match self.secondary.as_ref() {
@@ -240,17 +252,25 @@ impl JwtPublicSigningKeyChain {
     }
 }
 
-#[instrument(level = "debug", skip_all)]
 pub async fn validate_bearer_token(
     public_key: JwtPublicSigningKeyChain,
     bearer_token: impl AsRef<str>,
-) -> JwtKeyResult<JWTClaims<SiJwtClaims>> {
+) -> JwtKeyResult<SiJwt> {
     let token = bearer_token
         .as_ref()
         .strip_prefix("Bearer ")
         .ok_or(JwtPublicSigningKeyError::BearerToken)?
         .to_string();
 
+    validate_raw_token(public_key, token).await
+}
+
+#[instrument(level = "debug", skip_all)]
+pub async fn validate_raw_token(
+    public_key: JwtPublicSigningKeyChain,
+    token: impl Into<String>,
+) -> JwtKeyResult<SiJwt> {
+    let token = token.into();
     let claims =
         tokio::task::spawn_blocking(move || public_key.verify_token(&token, None)).await??;
 

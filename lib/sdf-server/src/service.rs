@@ -23,6 +23,7 @@ pub mod secret;
 pub mod session;
 pub mod v2;
 pub mod variant;
+pub mod whoami;
 pub mod ws;
 
 /// A module containing dev routes for local development only.

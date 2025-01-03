@@ -21,7 +21,7 @@ use y_sync::net::BroadcastGroup;
 
 use super::WsError;
 use crate::{
-    extract::{Nats, WsAuthorization},
+    extract::{EndpointAuthorization, Nats, TokenFromQueryParam},
     nats_multiplexer::NatsMultiplexerClients,
 };
 
@@ -62,16 +62,18 @@ pub struct Id {
     id: String,
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn crdt(
     wsu: WebSocketUpgrade,
     Nats(nats): Nats,
-    WsAuthorization(claim): WsAuthorization,
+    _: TokenFromQueryParam, // This tells it to pull the token from the "token" param
+    auth: EndpointAuthorization,
     Query(Id { id }): Query<Id>,
     State(shutdown_token): State<CancellationToken>,
     State(broadcast_groups): State<BroadcastGroups>,
     State(nats_multiplexer_clients): State<NatsMultiplexerClients>,
 ) -> Result<impl IntoResponse, WsError> {
-    let workspace_pk = claim.workspace_id();
+    let workspace_pk = auth.workspace_id;
     let channel_name = Subject::from(format!("crdt.{workspace_pk}.{id}"));
 
     let receiver = nats_multiplexer_clients

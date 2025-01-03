@@ -3,7 +3,7 @@ use dal::{User, Workspace};
 use serde::{Deserialize, Serialize};
 
 use super::{SessionError, SessionResult};
-use crate::extract::{AccessBuilder, Authorization, HandlerContext};
+use crate::extract::{AccessBuilder, EndpointAuthorization, HandlerContext};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -14,21 +14,16 @@ pub struct RestoreAuthenticationResponse {
 
 pub async fn restore_authentication(
     HandlerContext(builder): HandlerContext,
-    // NOTE: these two lines *both* go to the DB and check the token for web-level access.
-    // We should probably only do this once.
     AccessBuilder(access_builder): AccessBuilder,
-    Authorization(claim): Authorization,
+    EndpointAuthorization {
+        user, workspace_id, ..
+    }: EndpointAuthorization,
 ) -> SessionResult<Json<RestoreAuthenticationResponse>> {
     let ctx = builder.build_head(access_builder).await?;
 
-    let workspace = Workspace::get_by_pk(&ctx, &claim.workspace_id())
+    let workspace = Workspace::get_by_pk(&ctx, &workspace_id)
         .await?
-        .ok_or(SessionError::InvalidWorkspace(claim.workspace_id()))?;
-
-    let user = User::get_by_pk(&ctx, claim.user_id())
-        .await?
-        .ok_or(SessionError::InvalidUser(claim.user_id()))?;
-
+        .ok_or(SessionError::InvalidWorkspace(workspace_id))?;
     let reply = RestoreAuthenticationResponse { user, workspace };
 
     Ok(Json(reply))

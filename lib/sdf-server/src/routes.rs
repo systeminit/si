@@ -65,6 +65,7 @@ pub fn routes(state: AppState) -> Router {
         .nest("/api/module", crate::service::module::routes())
         .nest("/api/variant", crate::service::variant::routes())
         .nest("/api/v2", crate::service::v2::routes(state.clone()))
+        .nest("/api/whoami", crate::service::whoami::routes())
         .layer(CompressionLayer::new())
         // allows us to be permissive about cors from our owned subdomains
         .layer(

@@ -1,36 +1,42 @@
-use std::{collections::HashMap, fmt};
+use std::fmt;
 
 use axum::{
     async_trait,
     extract::{FromRequestParts, Query},
     http::request::Parts,
+    http::StatusCode,
     Json,
 };
 use dal::{
     context::{self, DalContextBuilder},
-    User,
+    User, WorkspacePk,
 };
-use derive_more::Deref;
-use hyper::StatusCode;
-use si_jwt_public_key::{SiJwtClaimRole, SiJwtClaims};
+use derive_more::{Deref, Into};
+use serde::Deserialize;
+use si_jwt_public_key::{validate_raw_token, SiJwt, SiJwtClaimRole};
 
 use crate::app_state::AppState;
 
+type ErrorResponse = (StatusCode, Json<serde_json::Value>);
+
+/// An authorized user + workspace
+#[derive(Clone, Debug, Deref, Into)]
 pub struct AccessBuilder(pub context::AccessBuilder);
 
 #[async_trait]
 impl FromRequestParts<AppState> for AccessBuilder {
-    type Rejection = (StatusCode, Json<serde_json::Value>);
+    type Rejection = ErrorResponse;
 
     async fn from_request_parts(
         parts: &mut Parts,
         state: &AppState,
     ) -> Result<Self, Self::Rejection> {
-        let Authorization(claim) = Authorization::from_request_parts(parts, state).await?;
+        // Ensure the endpoint is authorized
+        let auth = EndpointAuthorization::from_request_parts(parts, state).await?;
 
         Ok(Self(context::AccessBuilder::new(
-            dal::Tenancy::new(claim.workspace_id()),
-            dal::HistoryActor::from(claim.user_id()),
+            dal::Tenancy::new(auth.workspace_id),
+            dal::HistoryActor::from(auth.user.pk()),
         )))
     }
 }
@@ -43,7 +49,7 @@ pub struct AdminAccessBuilder;
 
 #[async_trait]
 impl FromRequestParts<AppState> for AdminAccessBuilder {
-    type Rejection = (StatusCode, Json<serde_json::Value>);
+    type Rejection = ErrorResponse;
 
     async fn from_request_parts(
         parts: &mut Parts,
@@ -97,37 +103,12 @@ impl FromRequestParts<AppState> for AdminAccessBuilder {
     }
 }
 
-pub struct RawAccessToken(pub String);
-
-#[async_trait]
-impl FromRequestParts<AppState> for RawAccessToken {
-    type Rejection = (StatusCode, Json<serde_json::Value>);
-
-    async fn from_request_parts(
-        parts: &mut Parts,
-        _state: &AppState,
-    ) -> Result<Self, Self::Rejection> {
-        let raw_token_header = &parts
-            .headers
-            .get("Authorization")
-            .ok_or_else(|| unauthorized_error("no Authorization header"))?;
-
-        let full_raw_token = raw_token_header.to_str().map_err(unauthorized_error)?;
-
-        // token looks like "Bearer asdf" so we strip off the "bearer"
-        let raw_token = full_raw_token
-            .strip_prefix("Bearer ")
-            .ok_or_else(|| unauthorized_error("No Bearer in Authorization header"))?;
-
-        Ok(Self(raw_token.to_owned()))
-    }
-}
-
+#[derive(Clone, Debug, Deref, Into)]
 pub struct HandlerContext(pub DalContextBuilder);
 
 #[async_trait]
 impl FromRequestParts<AppState> for HandlerContext {
-    type Rejection = (StatusCode, Json<serde_json::Value>);
+    type Rejection = ErrorResponse;
 
     async fn from_request_parts(
         _parts: &mut Parts,
@@ -142,12 +123,12 @@ impl FromRequestParts<AppState> for HandlerContext {
     }
 }
 
-#[derive(Deref)]
+#[derive(Clone, Debug, Deref, Into)]
 pub struct AssetSprayer(pub asset_sprayer::AssetSprayer);
 
 #[async_trait]
 impl FromRequestParts<AppState> for AssetSprayer {
-    type Rejection = (StatusCode, Json<serde_json::Value>);
+    type Rejection = ErrorResponse;
 
     async fn from_request_parts(
         _parts: &mut Parts,
@@ -160,11 +141,12 @@ impl FromRequestParts<AppState> for AssetSprayer {
     }
 }
 
+#[derive(Clone, Debug, Deref, Into)]
 pub struct PosthogClient(pub crate::app_state::PosthogClient);
 
 #[async_trait]
 impl FromRequestParts<AppState> for PosthogClient {
-    type Rejection = (StatusCode, Json<serde_json::Value>);
+    type Rejection = ErrorResponse;
 
     async fn from_request_parts(
         _parts: &mut Parts,
@@ -174,11 +156,12 @@ impl FromRequestParts<AppState> for PosthogClient {
     }
 }
 
+#[derive(Clone, Debug, Deref, Into)]
 pub struct Nats(pub si_data_nats::NatsClient);
 
 #[async_trait]
 impl FromRequestParts<AppState> for Nats {
-    type Rejection = (StatusCode, Json<serde_json::Value>);
+    type Rejection = ErrorResponse;
 
     async fn from_request_parts(
         _parts: &mut Parts,
@@ -189,105 +172,327 @@ impl FromRequestParts<AppState> for Nats {
     }
 }
 
-/** Represents a user who is authorized for the web */
+///
+/// Handles the whole endpoint authorization (checking if the user is a member of the workspace
+/// as well as checking that their token has the correct role).
+///
+/// Equivalent to calling both AuthorizedRole (or AuthorizedForWeb/AutomationRole) and WorkspaceMember.
+///
+/// Unless you have already used the `TokenParamAccessToken` extractor to get the token from
+/// query parameters, this will retrieve the token from the Authorization header.
+///
+/// Unless you have already used the `AuthorizeForAutomationRole` extractor to check that the
+/// token has the automation role, this will check for maximal permissions (the web role).
+///
 #[derive(Clone, Debug)]
-pub struct Authorization(pub SiJwtClaims);
+pub struct EndpointAuthorization {
+    pub user: User,
+    pub workspace_id: WorkspacePk,
+    pub authorized_role: SiJwtClaimRole,
+}
 
 #[async_trait]
-impl FromRequestParts<AppState> for Authorization {
-    type Rejection = (StatusCode, Json<serde_json::Value>);
+impl FromRequestParts<AppState> for EndpointAuthorization {
+    type Rejection = ErrorResponse;
 
     async fn from_request_parts(
         parts: &mut Parts,
         state: &AppState,
     ) -> Result<Self, Self::Rejection> {
-        // If we already authorized this request for the web, don't do it again
-        if let Some(authorization) = parts.extensions.get::<Authorization>() {
-            return Ok(authorization.clone());
+        let WorkspaceMember { user, workspace_id } =
+            WorkspaceMember::from_request_parts(parts, state).await?;
+        let AuthorizedRole(authorized_role) =
+            AuthorizedRole::from_request_parts(parts, state).await?;
+        Ok(Self {
+            user,
+            workspace_id,
+            authorized_role,
+        })
+    }
+}
+
+///
+/// A user who has been validated as a member of the workspace, but whose role has *not*
+/// been checked for authorization.
+///
+#[derive(Clone, Debug)]
+struct WorkspaceMember {
+    pub user: User,
+    pub workspace_id: WorkspacePk,
+}
+
+#[async_trait]
+impl FromRequestParts<AppState> for WorkspaceMember {
+    type Rejection = ErrorResponse;
+
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &AppState,
+    ) -> Result<Self, Self::Rejection> {
+        if let Some(result) = parts.extensions.get::<Self>() {
+            return Ok(result.clone());
         }
 
+        // Get the claims from the JWT
+        let token = ValidatedToken::from_request_parts(parts, state).await?.0;
+        let workspace_id = token.custom.workspace_id();
+
+        // Get a context associated with the workspace
         let HandlerContext(builder) = HandlerContext::from_request_parts(parts, state).await?;
         let mut ctx = builder.build_default().await.map_err(internal_error)?;
-        let jwt_public_signing_key = state.jwt_public_signing_key_chain().clone();
+        ctx.update_tenancy(dal::Tenancy::new(workspace_id));
 
-        let headers = &parts.headers;
-        let authorization_header_value = headers
+        // Check if the user is a member of the workspace (and get the record if so)
+        let workspace_members = User::list_members_for_workspace(&ctx, workspace_id.to_string())
+            .await
+            .map_err(internal_error)?;
+        let user = workspace_members
+            .into_iter()
+            .find(|m| m.pk() == token.custom.user_id())
+            .ok_or_else(|| unauthorized_error("User not a member of the workspace"))?;
+
+        // Stash and return the result
+        let result = Self { user, workspace_id };
+        parts.extensions.insert(result.clone());
+        Ok(result)
+    }
+}
+
+///
+/// Confirms that this endpoint has been authorized for the desired role, but *not* that they
+/// are .
+///
+/// Stores the role that was authorized.
+///
+/// To authorize for something other than web, use the `AuthorizeForAutomationRole` extractor.
+///
+/// If it has not been authorized, this requires both that the maximal permissions (the web role).
+///
+#[derive(Clone, Copy, Debug)]
+struct AuthorizedRole(pub SiJwtClaimRole);
+
+impl AuthorizedRole {
+    async fn authorize_for(
+        parts: &mut Parts,
+        state: &AppState,
+        role: SiJwtClaimRole,
+    ) -> Result<AuthorizedRole, ErrorResponse> {
+        // This must not be done twice.
+        if parts.extensions.get::<AuthorizedRole>().is_some() {
+            return Err(internal_error(
+                "Must only specify explicit endpoint authorization once",
+            ));
+        }
+
+        // Validate the token meets the role
+        let token = ValidatedToken::from_request_parts(parts, state).await?.0;
+        if !token.custom.authorized_for(role) {
+            return Err(unauthorized_error("Not authorized for web role"));
+        }
+
+        // Stash the authorization
+        parts.extensions.insert(AuthorizedRole(role));
+
+        Ok(AuthorizedRole(role))
+    }
+}
+
+#[async_trait]
+impl FromRequestParts<AppState> for AuthorizedRole {
+    type Rejection = ErrorResponse;
+
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &AppState,
+    ) -> Result<Self, Self::Rejection> {
+        if let Some(&result) = parts.extensions.get::<AuthorizedRole>() {
+            return Ok(result);
+        }
+        AuthorizedRole::authorize_for(parts, state, SiJwtClaimRole::Web).await
+    }
+}
+
+///
+/// A user who has been authorized for the given workspace for the web role.
+///
+/// Does *not* validate that the user is a member of the workspace. EndpointAuthorization
+/// (and WorkspaceMember) handle that.
+///
+#[derive(Clone, Copy, Debug)]
+pub struct AuthorizedForWebRole;
+
+#[async_trait]
+impl FromRequestParts<AppState> for AuthorizedForWebRole {
+    type Rejection = ErrorResponse;
+
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &AppState,
+    ) -> Result<Self, Self::Rejection> {
+        AuthorizedRole::authorize_for(parts, state, SiJwtClaimRole::Web).await?;
+        Ok(Self)
+    }
+}
+
+///
+/// A user who has been authorized for the given workspace for the web role.
+///
+#[derive(Clone, Copy, Debug)]
+pub struct AuthorizedForAutomationRole;
+
+#[async_trait]
+impl FromRequestParts<AppState> for AuthorizedForAutomationRole {
+    type Rejection = ErrorResponse;
+
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &AppState,
+    ) -> Result<Self, Self::Rejection> {
+        AuthorizedRole::authorize_for(parts, state, SiJwtClaimRole::Automation).await?;
+        Ok(Self)
+    }
+}
+
+///
+/// Validated JWT with unverified claims inside.
+///
+/// Will retrieve this from RawAccessToken, which defaults to getting the Authorization header.
+/// Use TokenParamAccessToken to get it from query parameters instead (for WS connections).
+///
+/// Have not checked whether the user is a member of the workspace or has permissions.
+///
+#[derive(Clone, Debug, Deref, Into)]
+pub struct ValidatedToken(pub SiJwt);
+
+#[async_trait]
+impl FromRequestParts<AppState> for ValidatedToken {
+    type Rejection = ErrorResponse;
+
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &AppState,
+    ) -> Result<Self, Self::Rejection> {
+        if let Some(Self(claims)) = parts.extensions.get::<Self>() {
+            return Ok(Self(claims.clone()));
+        }
+
+        let raw_token = RawAccessToken::from_request_parts(parts, state).await?.0;
+
+        let jwt_public_signing_key = state.jwt_public_signing_key_chain().clone();
+        let token = validate_raw_token(jwt_public_signing_key, raw_token)
+            .await
+            .map_err(unauthorized_error)?;
+        parts.extensions.insert(Self(token.clone()));
+        Ok(Self(token))
+    }
+}
+
+/// The raw JWT token string.
+///
+/// If this has not been extracted from the request, it will be extracted from the
+/// Authorization header.
+///
+/// Call TokenParamAccessToken to get the token from the query parameters (for WS connections)
+#[derive(Clone, Debug, Deref, Into)]
+pub struct RawAccessToken(pub String);
+
+#[async_trait]
+impl FromRequestParts<AppState> for RawAccessToken {
+    type Rejection = ErrorResponse;
+
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &AppState,
+    ) -> Result<Self, Self::Rejection> {
+        if let Some(RawAccessToken(token)) = parts.extensions.get::<RawAccessToken>() {
+            return Ok(Self(token.clone()));
+        }
+
+        let token = TokenFromAuthorizationHeader::from_request_parts(parts, state)
+            .await?
+            .0;
+        Ok(Self(token))
+    }
+}
+
+/// Gets the access token from the Authorization: header and strips the "Bearer" prefix
+#[derive(Clone, Debug, Deref, Into)]
+pub struct TokenFromAuthorizationHeader(pub String);
+
+#[async_trait]
+impl FromRequestParts<AppState> for TokenFromAuthorizationHeader {
+    type Rejection = ErrorResponse;
+
+    async fn from_request_parts(
+        parts: &mut Parts,
+        _state: &AppState,
+    ) -> Result<Self, Self::Rejection> {
+        if let Some(RawAccessToken(token)) = parts.extensions.get::<RawAccessToken>() {
+            return Ok(Self(token.clone()));
+        }
+
+        let raw_token_header = &parts
+            .headers
             .get("Authorization")
             .ok_or_else(|| unauthorized_error("no Authorization header"))?;
-        let authorization = authorization_header_value
-            .to_str()
-            .map_err(internal_error)?;
-        let claim = SiJwtClaims::from_bearer_token(jwt_public_signing_key, authorization)
-            .await
-            .map_err(unauthorized_error)?;
-        ctx.update_tenancy(dal::Tenancy::new(claim.workspace_id()));
 
-        if !is_authorized_for(&ctx, &claim, SiJwtClaimRole::Web)
-            .await
-            .map_err(internal_error)?
-        {
-            return Err(unauthorized_error("not authorized for web role"));
-        }
+        let bearer_token = raw_token_header.to_str().map_err(unauthorized_error)?;
 
-        parts.extensions.insert(Self);
+        // token looks like "Bearer asdf" so we strip off the "bearer"
+        let token = bearer_token
+            .strip_prefix("Bearer ")
+            .ok_or_else(|| unauthorized_error("No Bearer in Authorization header"))?
+            .to_owned();
 
-        Ok(Self(claim))
+        parts.extensions.insert(RawAccessToken(token.clone()));
+
+        Ok(Self(token))
     }
 }
 
-async fn is_authorized_for(
-    ctx: &dal::DalContext,
-    claim: &SiJwtClaims,
-    role: SiJwtClaimRole,
-) -> dal::UserResult<bool> {
-    let workspace_members =
-        User::list_members_for_workspace(ctx, claim.workspace_id().to_string()).await?;
+/// Gets the access token from the "token" query parameter and strips the "Bearer" prefix
+#[derive(Clone, Debug, Deref, Into)]
+pub struct TokenFromQueryParam(pub String);
 
-    let is_member = workspace_members
-        .into_iter()
-        .any(|m| m.pk() == claim.user_id());
-
-    Ok(is_member && claim.authorized_for(role))
+#[derive(Deserialize)]
+struct TokenParam {
+    token: String,
 }
 
-pub struct WsAuthorization(pub SiJwtClaims);
-
 #[async_trait]
-impl FromRequestParts<AppState> for WsAuthorization {
-    type Rejection = (StatusCode, Json<serde_json::Value>);
+impl FromRequestParts<AppState> for TokenFromQueryParam {
+    type Rejection = ErrorResponse;
 
     async fn from_request_parts(
         parts: &mut Parts,
         state: &AppState,
     ) -> Result<Self, Self::Rejection> {
-        let HandlerContext(builder) = HandlerContext::from_request_parts(parts, state).await?;
-        let mut ctx = builder.build_default().await.map_err(internal_error)?;
-        let jwt_public_signing_key = state.jwt_public_signing_key_chain().clone();
-
-        let query: Query<HashMap<String, String>> = Query::from_request_parts(parts, state)
+        let TokenParam { token } = Query::from_request_parts(parts, state)
             .await
-            .map_err(unauthorized_error)?;
-        let authorization = query
-            .get("token")
-            .ok_or_else(|| unauthorized_error("No token in query"))?;
+            .map_err(unauthorized_error)?
+            .0;
 
-        let claim = SiJwtClaims::from_bearer_token(jwt_public_signing_key, authorization)
-            .await
-            .map_err(unauthorized_error)?;
-        ctx.update_tenancy(dal::Tenancy::new(claim.workspace_id()));
-
-        if !is_authorized_for(&ctx, &claim, SiJwtClaimRole::Web)
-            .await
-            .map_err(internal_error)?
-        {
-            return Err(unauthorized_error("not authorized for web role"));
+        // TODO there is a chance that somebody retrieved the token during the await, though
+        // the headers should come *after* the params in all cases ... may need to do something
+        // to force other extractors to wait (like put an awaitable rawaccesstoken instead of a
+        // finished one).
+        if parts.extensions.get::<RawAccessToken>().is_some() {
+            return Err(internal_error("Token was already extracted!"));
         }
 
-        Ok(Self(claim))
+        // token looks like "Bearer asdf" so we strip off the "bearer"
+        let token = token
+            .strip_prefix("Bearer ")
+            .ok_or_else(|| unauthorized_error("No Bearer in token query parameter"))?
+            .to_owned();
+
+        parts.extensions.insert(RawAccessToken(token.clone()));
+
+        Ok(Self(token))
     }
 }
 
-fn internal_error(message: impl fmt::Display) -> (StatusCode, Json<serde_json::Value>) {
+fn internal_error(message: impl fmt::Display) -> ErrorResponse {
     let status_code = StatusCode::INTERNAL_SERVER_ERROR;
     (
         status_code,
@@ -301,7 +506,7 @@ fn internal_error(message: impl fmt::Display) -> (StatusCode, Json<serde_json::V
     )
 }
 
-pub fn unauthorized_error(message: impl fmt::Display) -> (StatusCode, Json<serde_json::Value>) {
+pub fn unauthorized_error(message: impl fmt::Display) -> ErrorResponse {
     let status_code = StatusCode::UNAUTHORIZED;
     (
         status_code,
@@ -315,7 +520,7 @@ pub fn unauthorized_error(message: impl fmt::Display) -> (StatusCode, Json<serde
     )
 }
 
-fn not_found_error(message: &str) -> (StatusCode, Json<serde_json::Value>) {
+fn not_found_error(message: &str) -> ErrorResponse {
     let status_code = StatusCode::NOT_FOUND;
     (
         status_code,
