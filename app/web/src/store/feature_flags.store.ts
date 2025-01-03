@@ -13,7 +13,6 @@ const FLAG_MAPPING = {
   ON_DEMAND_ASSETS: "on_demand_assets",
   MANAGEMENT_FUNCTIONS: "management-functions",
   MANAGEMENT_EDGES: "management-edges",
-  AUDIT_PAGE: "audit-page",
   AI_GENERATOR: "ai-generator",
   REBAC: "rebac",
   OUTLINER_VIEWS: "diagram-outline-show-views",
