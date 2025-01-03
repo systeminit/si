@@ -1,68 +1,74 @@
-lockfileVersion: '6.0'
+lockfileVersion: '9.0'
 
 settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
-dependencies:
-  turbo:
-    specifier: ^1.10.3
-    version: 1.10.3
+importers:
+
+  .:
+    dependencies:
+      turbo:
+        specifier: ^1.10.3
+        version: 1.10.3
 
 packages:
 
-  /turbo-darwin-64@1.10.3:
+  turbo-darwin-64@1.10.3:
     resolution: {integrity: sha512-IIB9IomJGyD3EdpSscm7Ip1xVWtYb7D0x7oH3vad3gjFcjHJzDz9xZ/iw/qItFEW+wGFcLSRPd+1BNnuLM8AsA==}
     cpu: [x64]
     os: [darwin]
-    requiresBuild: true
-    dev: false
-    optional: true
 
-  /turbo-darwin-arm64@1.10.3:
+  turbo-darwin-arm64@1.10.3:
     resolution: {integrity: sha512-SBNmOZU9YEB0eyNIxeeQ+Wi0Ufd+nprEVp41rgUSRXEIpXjsDjyBnKnF+sQQj3+FLb4yyi/yZQckB+55qXWEsw==}
     cpu: [arm64]
     os: [darwin]
-    requiresBuild: true
-    dev: false
-    optional: true
 
-  /turbo-linux-64@1.10.3:
+  turbo-linux-64@1.10.3:
     resolution: {integrity: sha512-kvAisGKE7xHJdyMxZLvg53zvHxjqPK1UVj4757PQqtx9dnjYHSc8epmivE6niPgDHon5YqImzArCjVZJYpIGHQ==}
     cpu: [x64]
     os: [linux]
-    requiresBuild: true
-    dev: false
-    optional: true
 
-  /turbo-linux-arm64@1.10.3:
+  turbo-linux-arm64@1.10.3:
     resolution: {integrity: sha512-Qgaqln0IYRgyL0SowJOi+PNxejv1I2xhzXOI+D+z4YHbgSx87ox1IsALYBlK8VRVYY8VCXl+PN12r1ioV09j7A==}
     cpu: [arm64]
     os: [linux]
-    requiresBuild: true
-    dev: false
-    optional: true
 
-  /turbo-windows-64@1.10.3:
+  turbo-windows-64@1.10.3:
     resolution: {integrity: sha512-rbH9wManURNN8mBnN/ZdkpUuTvyVVEMiUwFUX4GVE5qmV15iHtZfDLUSGGCP2UFBazHcpNHG1OJzgc55GFFrUw==}
     cpu: [x64]
     os: [win32]
-    requiresBuild: true
-    dev: false
-    optional: true
 
-  /turbo-windows-arm64@1.10.3:
+  turbo-windows-arm64@1.10.3:
     resolution: {integrity: sha512-ThlkqxhcGZX39CaTjsHqJnqVe+WImjX13pmjnpChz6q5HHbeRxaJSFzgrHIOt0sUUVx90W/WrNRyoIt/aafniw==}
     cpu: [arm64]
     os: [win32]
-    requiresBuild: true
-    dev: false
-    optional: true
 
-  /turbo@1.10.3:
+  turbo@1.10.3:
     resolution: {integrity: sha512-U4gKCWcKgLcCjQd4Pl8KJdfEKumpyWbzRu75A6FCj6Ctea1PIm58W6Ltw1QXKqHrl2pF9e1raAskf/h6dlrPCA==}
     hasBin: true
-    requiresBuild: true
+
+snapshots:
+
+  turbo-darwin-64@1.10.3:
+    optional: true
+
+  turbo-darwin-arm64@1.10.3:
+    optional: true
+
+  turbo-linux-64@1.10.3:
+    optional: true
+
+  turbo-linux-arm64@1.10.3:
+    optional: true
+
+  turbo-windows-64@1.10.3:
+    optional: true
+
+  turbo-windows-arm64@1.10.3:
+    optional: true
+
+  turbo@1.10.3:
     optionalDependencies:
       turbo-darwin-64: 1.10.3
       turbo-darwin-arm64: 1.10.3
@@ -70,4 +76,3 @@ packages:
       turbo-linux-arm64: 1.10.3
       turbo-windows-64: 1.10.3
       turbo-windows-arm64: 1.10.3
-    dev: false
