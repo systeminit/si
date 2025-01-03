@@ -3,6 +3,7 @@ use std::num::ParseIntError;
 use serde::{Deserialize, Serialize};
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
+use si_events::Actor;
 use si_frontend_types as frontend_types;
 use thiserror::Error;
 use ulid::Ulid;
@@ -157,6 +158,7 @@ pub struct WsEvent {
     version: i64,
     workspace_pk: WorkspacePk,
     change_set_id: Option<ChangeSetId>,
+    actor: Option<Actor>,
     payload: WsPayload,
 }
 
@@ -164,12 +166,14 @@ impl WsEvent {
     pub async fn new_raw(
         workspace_pk: WorkspacePk,
         change_set_id: Option<ChangeSetId>,
+        actor: Option<Actor>,
         payload: WsPayload,
     ) -> WsEventResult<Self> {
         Ok(WsEvent {
             version: 1,
             workspace_pk,
             change_set_id,
+            actor,
             payload,
         })
     }
@@ -181,7 +185,13 @@ impl WsEvent {
             }
         };
         let change_set_pk = ctx.change_set_id();
-        Self::new_raw(workspace_pk, Some(change_set_pk), payload).await
+        Self::new_raw(
+            workspace_pk,
+            Some(change_set_pk),
+            Some(ctx.events_actor()),
+            payload,
+        )
+        .await
     }
 
     pub async fn new_for_workspace(ctx: &DalContext, payload: WsPayload) -> WsEventResult<Self> {
@@ -191,7 +201,7 @@ impl WsEvent {
                 return Err(WsEventError::NoWorkspaceInTenancy);
             }
         };
-        Self::new_raw(workspace_pk, None, payload).await
+        Self::new_raw(workspace_pk, None, Some(ctx.events_actor()), payload).await
     }
 
     pub fn workspace_pk(&self) -> WorkspacePk {

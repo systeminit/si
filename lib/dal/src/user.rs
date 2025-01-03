@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
-use si_events::ViewId;
+use si_events::{Actor, ViewId};
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::task::JoinError;
@@ -222,10 +222,10 @@ impl WsEvent {
         change_set_id: Option<ChangeSetId>,
         cursor: CursorPayload,
     ) -> WsEventResult<Self> {
-        WsEvent::new_raw(workspace_pk, change_set_id, WsPayload::Cursor(cursor)).await
+        WsEvent::new_raw(workspace_pk, change_set_id, None, WsPayload::Cursor(cursor)).await
     }
 
     pub async fn online(workspace_pk: WorkspacePk, online: OnlinePayload) -> WsEventResult<Self> {
-        WsEvent::new_raw(workspace_pk, None, WsPayload::Online(online)).await
+        WsEvent::new_raw(workspace_pk, None, None, WsPayload::Online(online)).await
     }
 }

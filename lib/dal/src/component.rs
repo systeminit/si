@@ -4,6 +4,7 @@
 use itertools::Itertools;
 use petgraph::Direction::Outgoing;
 use serde::{Deserialize, Serialize};
+use si_events::Actor;
 use si_pkg::KeyOrIndex;
 use socket::{ComponentInputSocket, ComponentOutputSocket};
 use std::collections::{hash_map, HashMap, HashSet, VecDeque};
@@ -3811,6 +3812,7 @@ impl WsEvent {
         WsEvent::new_raw(
             workspace_pk,
             Some(change_set_id),
+            None,
             WsPayload::SetComponentPosition(payload),
         )
         .await
