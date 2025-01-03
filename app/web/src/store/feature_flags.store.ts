@@ -7,13 +7,8 @@ import { posthog } from "@/utils/posthog";
 const FLAG_MAPPING = {
   // STORE_FLAG_NAME: "posthogFlagName",
   MODULES_TAB: "modules_tab",
-  FIRST_TIME_TUTORIAL_MODAL: "first_time_tutorial_modal",
-  DEV_SLICE_REBASING: "dev-slice-rebasing",
   ADMIN_PANEL_ACCESS: "si_admin_panel_access",
   ON_DEMAND_ASSETS: "on_demand_assets",
-  MANAGEMENT_FUNCTIONS: "management-functions",
-  MANAGEMENT_EDGES: "management-edges",
-  AUDIT_PAGE: "audit-page",
   AI_GENERATOR: "ai-generator",
   REBAC: "rebac",
   OUTLINER_VIEWS: "diagram-outline-show-views",

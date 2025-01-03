@@ -1,29 +1,6 @@
 <template>
   <VButton
-    v-if="
-      featureFlagsStore.DEV_SLICE_REBASING && statusWithBase?.conflictsWithBase
-    "
-    size="md"
-    tone="destructive"
-    disabled
-    square
-    label="Cannot Merge or Rebase, Resolve Conflicts First"
-  >
-  </VButton>
-  <VButton
-    v-else-if="
-      featureFlagsStore.DEV_SLICE_REBASING && statusWithBase?.baseHasUpdates
-    "
-    size="md"
-    tone="warning"
-    square
-    label="Rebase from Head"
-    @click="rebase"
-  >
-  </VButton>
-  <!-- TODO: we can change this v-else-if to look at `statusWithBase.changeSetHasUpdates` -->
-  <VButton
-    v-else-if="!changeSetsStore.headSelected"
+    v-if="!changeSetsStore.headSelected"
     ref="applyButtonRef"
     size="md"
     tone="success"
@@ -150,14 +127,4 @@ const statusStoreUpdating = computed(() => {
     return statusStore.globalStatus.isUpdating;
   } else return false;
 });
-
-const statusWithBase = computed(
-  () =>
-    changeSetsStore.statusWithBase[changeSetsStore.selectedChangeSetId || ""],
-);
-
-const rebase = () => {
-  if (changeSetsStore.selectedChangeSetId)
-    changeSetsStore.REBASE_ON_BASE(changeSetsStore.selectedChangeSetId);
-};
 </script>
