@@ -219,6 +219,7 @@ export const useModuleStore = () => {
           },
         },
         actions: {
+          // Modules API V2
           async SYNC() {
             return new ApiRequest<
               {
@@ -278,14 +279,88 @@ export const useModuleStore = () => {
           async GET_LOCAL_MODULE_DETAILS(hash: ModuleHash) {
             return new ApiRequest<LocalModuleDetails>({
               method: "get",
-              url: "/module/get_module_by_hash",
-              params: { hash, ...getVisibilityParams() },
+              url: API_PREFIX.concat(["module_by_hash"]),
+              params: { hash },
               onSuccess: (response) => {
                 this.localModuleDetailsByName[response.name] = response;
               },
             });
           },
 
+          async GET_REMOTE_MODULE_SPEC(id: ModuleId) {
+            return new ApiRequest<ModuleSpec>({
+              method: "get",
+              url: API_PREFIX.concat(["module_by_id"]),
+              keyRequestStatusBy: id,
+              params: { id },
+              onSuccess: (response) => {
+                this.remoteModuleSpecsById[id] = response;
+              },
+            });
+          },
+
+          async INSTALL_REMOTE_MODULE(moduleIds: ModuleId[]) {
+            if (changeSetsStore.creatingChangeSet)
+              throw new Error("race, wait until the change set is created");
+            if (changeSetId === changeSetsStore.headChangeSetId)
+              changeSetsStore.creatingChangeSet = true;
+
+            return new ApiRequest<{ id: string }>({
+              method: "post",
+              url: "/module/install_module",
+              keyRequestStatusBy: moduleIds,
+              params: {
+                ids: moduleIds,
+                ...getVisibilityParams(),
+              },
+              onFail: () => {
+                changeSetsStore.creatingChangeSet = false;
+              },
+              onSuccess: () => {
+                // reset installed list
+                this.SYNC();
+              },
+            });
+          },
+
+          async REJECT_REMOTE_MODULE(moduleId: ModuleId) {
+            return new ApiRequest<{ success: true }>({
+              method: "post",
+              url: API_PREFIX.concat([{ moduleId }, "builtins", "reject"]),
+              params: { id: moduleId, ...getVisibilityParams() },
+              optimistic: () => {
+                // remove selection from URL
+                router.replace({
+                  name: "workspace-lab-packages",
+                });
+              },
+              onSuccess: (_response) => {
+                // response is just success, so we have to reload the remote modules
+                this.LOAD_LOCAL_MODULES();
+                this.GET_REMOTE_MODULES_LIST({ su: true });
+              },
+            });
+          },
+
+          async PROMOTE_TO_BUILTIN(moduleId: ModuleId) {
+            return new ApiRequest<{ success: true }>({
+              method: "post",
+              url: API_PREFIX.concat([{ moduleId }, "builtins", "promote"]),
+              optimistic: () => {
+                // remove selection from URL
+                router.replace({
+                  name: "workspace-lab-packages",
+                });
+              },
+              onSuccess: (_response) => {
+                // response is just success, so we have to reload the remote modules
+                this.LOAD_LOCAL_MODULES();
+                this.GET_REMOTE_MODULES_LIST({ su: true });
+              },
+            });
+          },
+
+          // Module Index API
           async LIST_WORKSPACE_EXPORTS() {
             return new ModuleIndexApiRequest<{
               modules: (RemoteModuleSummary & {
@@ -360,79 +435,7 @@ export const useModuleStore = () => {
             });
           },
 
-          async GET_REMOTE_MODULE_SPEC(id: ModuleId) {
-            return new ApiRequest<ModuleSpec>({
-              method: "get",
-              url: "/module/remote_module_spec",
-              keyRequestStatusBy: id,
-              params: { id, ...getVisibilityParams() },
-              onSuccess: (response) => {
-                this.remoteModuleSpecsById[id] = response;
-              },
-            });
-          },
-
-          async INSTALL_REMOTE_MODULE(moduleIds: ModuleId[]) {
-            if (changeSetsStore.creatingChangeSet)
-              throw new Error("race, wait until the change set is created");
-            if (changeSetId === changeSetsStore.headChangeSetId)
-              changeSetsStore.creatingChangeSet = true;
-
-            return new ApiRequest<{ id: string }>({
-              method: "post",
-              url: "/module/install_module",
-              keyRequestStatusBy: moduleIds,
-              params: {
-                ids: moduleIds,
-                ...getVisibilityParams(),
-              },
-              onFail: () => {
-                changeSetsStore.creatingChangeSet = false;
-              },
-              onSuccess: () => {
-                // reset installed list
-                this.SYNC();
-              },
-            });
-          },
-
-          async REJECT_REMOTE_MODULE(moduleId: ModuleId) {
-            return new ApiRequest<{ success: true }>({
-              method: "post",
-              url: API_PREFIX.concat([{ moduleId }, "builtins", "reject"]),
-              params: { id: moduleId, ...getVisibilityParams() },
-              optimistic: () => {
-                // remove selection from URL
-                router.replace({
-                  name: "workspace-lab-packages",
-                });
-              },
-              onSuccess: (_response) => {
-                // response is just success, so we have to reload the remote modules
-                this.LOAD_LOCAL_MODULES();
-                this.GET_REMOTE_MODULES_LIST({ su: true });
-              },
-            });
-          },
-
-          async PROMOTE_TO_BUILTIN(moduleId: ModuleId) {
-            return new ApiRequest<{ success: true }>({
-              method: "post",
-              url: API_PREFIX.concat([{ moduleId }, "builtins", "promote"]),
-              optimistic: () => {
-                // remove selection from URL
-                router.replace({
-                  name: "workspace-lab-packages",
-                });
-              },
-              onSuccess: (_response) => {
-                // response is just success, so we have to reload the remote modules
-                this.LOAD_LOCAL_MODULES();
-                this.GET_REMOTE_MODULES_LIST({ su: true });
-              },
-            });
-          },
-
+          // Workspace API V2
           async EXPORT_WORKSPACE() {
             this.exportingWorkspaceOperationId = null;
             this.exportingWorkspaceOperationError = undefined;

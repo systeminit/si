@@ -1,11 +1,9 @@
-use std::cmp::{Ord, PartialOrd};
-
 use axum::{
-    extract::{Host, OriginalUri, Query},
+    extract::{Host, OriginalUri, Path, Query},
     Json,
 };
 use chrono::{DateTime, Utc};
-use dal::{module::Module, Visibility};
+use dal::{module::Module, ChangeSetId, WorkspacePk};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -13,14 +11,12 @@ use crate::{
     track,
 };
 
-use super::{ModuleError, ModuleResult};
+use super::{ModuleAPIResult, ModulesAPIError};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct PkgGetRequest {
+pub struct GetModuleByHashRequest {
     pub hash: String,
-    #[serde(flatten)]
-    pub visibility: Visibility,
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
@@ -45,7 +41,7 @@ impl PartialOrd for PkgFuncView {
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct PkgGetResponse {
+pub struct GetModuleByHashResponse {
     pub name: String,
     pub hash: String,
     pub version: String,
@@ -57,19 +53,26 @@ pub struct PkgGetResponse {
     pub installed: bool,
 }
 
-pub async fn get_module_by_hash(
+pub async fn module_by_hash(
     HandlerContext(builder): HandlerContext,
-    AccessBuilder(request_ctx): AccessBuilder,
+    AccessBuilder(access_builder): AccessBuilder,
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
     Host(host_name): Host,
-    Query(request): Query<PkgGetRequest>,
-) -> ModuleResult<Json<PkgGetResponse>> {
-    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
+    Path((_workspace_pk, change_set_id)): Path<(WorkspacePk, ChangeSetId)>,
+    Query(request): Query<GetModuleByHashRequest>,
+) -> ModuleAPIResult<Json<GetModuleByHashResponse>> {
+    let ctx = builder
+        .build(access_builder.build(change_set_id.into()))
+        .await?;
 
     let installed_pkg = match Module::find_by_root_hash(&ctx, &request.hash).await? {
         Some(m) => m,
-        None => return Err(ModuleError::ModuleHashNotFound(request.hash.to_string())),
+        None => {
+            return Err(ModulesAPIError::ModuleHashNotFound(
+                request.hash.to_string(),
+            ))
+        }
     };
 
     let mut pkg_schemas: Vec<String> = installed_pkg
@@ -99,14 +102,14 @@ pub async fn get_module_by_hash(
         &host_name,
         "get_module",
         serde_json::json!({
-                    "pkg_name": installed_pkg.clone().name(),
-                    "pkg_version": installed_pkg.clone().version(),
-                    "pkg_schema_count": pkg_schemas.len(),
-                    "pkg_funcs_count":  pkg_funcs.len(),
+            "pkg_name": installed_pkg.clone().name(),
+            "pkg_version": installed_pkg.clone().version(),
+            "pkg_schema_count": pkg_schemas.len(),
+            "pkg_funcs_count":  pkg_funcs.len(),
         }),
     );
 
-    Ok(Json(PkgGetResponse {
+    Ok(Json(GetModuleByHashResponse {
         hash: installed_pkg.root_hash().to_string(),
         name: installed_pkg.name().to_string(),
         version: installed_pkg.version().to_string(),
