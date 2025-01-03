@@ -111,7 +111,6 @@ import { computed, onBeforeMount, onBeforeUnmount, onMounted, ref } from "vue";
 import { ResizablePanel, themeClasses } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { IRect } from "konva/lib/types";
-import { useRoute } from "vue-router";
 import ComponentDetails from "@/components/ComponentDetails.vue";
 import { useActionsStore } from "@/store/actions.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
