@@ -36,7 +36,7 @@ pub struct ContentInfo<'a> {
     pub message_version: MessageVersion,
 }
 
-impl<'a> ContentInfo<'a> {
+impl ContentInfo<'_> {
     /// Injects the content information into NATS message headers.
     pub fn inject_into_headers(&self, headers: &mut HeaderMap) {
         headers.insert(NATS_HEADER_CONTENT_TYPE_NAME, self.content_type.as_str());
@@ -89,7 +89,7 @@ where
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ContentType<'a>(Cow<'a, str>);
 
-impl<'a> ContentType<'a> {
+impl ContentType<'_> {
     /// Returns the interior data as a borrowed string.
     pub fn as_str(&self) -> &str {
         self.0.as_ref()

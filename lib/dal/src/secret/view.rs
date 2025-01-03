@@ -16,7 +16,6 @@ pub enum SecretViewError {
 }
 
 #[allow(missing_docs)]
-
 pub type SecretViewResult<T> = Result<T, SecretViewError>;
 
 /// A [`view`](SecretView) of a corresponding [`Secret`].

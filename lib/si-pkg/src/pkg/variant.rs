@@ -196,7 +196,7 @@ impl<'a> SiPkgSchemaVariant<'a> {
         source: Source<'a>,
         node_idx: NodeIndex,
         parent_info: Option<I>,
-    ) -> PkgResult<Vec<(SiPkgProp, Option<I>)>>
+    ) -> PkgResult<Vec<(SiPkgProp<'a>, Option<I>)>>
     where
         I: ToOwned + Clone,
     {
