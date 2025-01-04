@@ -11,10 +11,17 @@
 # well-formatted (and then delete this TODO)
 
 load("@prelude//apple:apple_common.bzl", "apple_common")
+load("@prelude//apple:apple_rules_impl_utility.bzl", "apple_dsymutil_attrs", "apple_test_extra_attrs", "get_apple_toolchain_attr")
+load("@prelude//apple:apple_test_host_app_transition.bzl", "apple_test_host_app_transition")
+load("@prelude//apple:apple_toolchain_types.bzl", "AppleToolsInfo")
+load("@prelude//apple:apple_universal_executable.bzl", "apple_universal_executable_impl")
+load("@prelude//apple:cxx_universal_executable.bzl", "cxx_universal_executable_impl")
 load("@prelude//apple:resource_groups.bzl", "RESOURCE_GROUP_MAP_ATTR")
+load("@prelude//apple/user:cpu_split_transition.bzl", "cpu_split_transition")
 load("@prelude//cxx:link_groups_types.bzl", "LINK_GROUP_MAP_ATTR")
 load("@prelude//linking:types.bzl", "Linkage")
-load(":common.bzl", "CxxRuntimeType", "CxxSourceType", "HeadersAsRawHeadersMode", "IncludeType", "buck", "prelude_rule")
+load("@prelude//decls/toolchains_common.bzl", "toolchains_common")
+load(":common.bzl", "CxxRuntimeType", "CxxSourceType", "HeadersAsRawHeadersMode", "IncludeType", "LinkableDepType", "buck", "prelude_rule")
 load(":cxx_common.bzl", "cxx_common")
 load(":native_common.bzl", "native_common")
 
@@ -88,7 +95,7 @@ apple_binary = prelude_rule(
     docs = """
         An `apple_binary()` rule builds a native executable - such as an iOS or OSX app - from
         the supplied set of Objective-C/C++ source files and dependencies. It is similar to
-        a `cxx\\_binary()`rule with which it shares many attributes. In addition
+        a `cxx_binary()` rule with which it shares many attributes. In addition
         to those common attributes, `apple_binary()` has a some additional attributes
         that are specific to binaries intended to be built using the Apple toolchain.
         Note, however, that `apple_binary()` and `cxx_binary()` differ
@@ -155,6 +162,8 @@ apple_binary = prelude_rule(
         apple_common.target_sdk_version() |
         apple_common.extra_xcode_sources() |
         apple_common.extra_xcode_files() |
+        apple_common.serialize_debugging_options_arg() |
+        apple_common.uses_explicit_modules_arg() |
         {
             "bridging_header": attrs.option(attrs.source(), default = None),
             "can_be_asset": attrs.option(attrs.bool(), default = None),
@@ -213,17 +222,16 @@ apple_binary = prelude_rule(
             "raw_headers": attrs.set(attrs.source(), sorted = True, default = []),
             "reexport_all_header_dependencies": attrs.option(attrs.bool(), default = None),
             "sdk_modules": attrs.list(attrs.string(), default = []),
-            "serialize_debugging_options": attrs.bool(default = False),
             "soname": attrs.option(attrs.string(), default = None),
             "static_library_basename": attrs.option(attrs.string(), default = None),
             "supported_platforms_regex": attrs.option(attrs.regex(), default = None),
             "supports_merged_linking": attrs.option(attrs.bool(), default = None),
             "swift_compiler_flags": attrs.list(attrs.arg(), default = []),
+            "swift_module_skip_function_bodies": attrs.bool(default = True),
             "swift_version": attrs.option(attrs.string(), default = None),
             "thin_lto": attrs.bool(default = False),
-            "use_submodules": attrs.bool(default = False),
+            "use_submodules": attrs.bool(default = True),
             "uses_cxx_explicit_modules": attrs.bool(default = False),
-            "uses_explicit_modules": attrs.bool(default = False),
             "uses_modules": attrs.bool(default = False),
         } |
         buck.allow_cache_upload_arg()
@@ -448,6 +456,9 @@ apple_library = prelude_rule(
         cxx_common.exported_deps_arg() |
         apple_common.extra_xcode_sources() |
         apple_common.extra_xcode_files() |
+        apple_common.serialize_debugging_options_arg() |
+        apple_common.uses_explicit_modules_arg() |
+        apple_common.meta_apple_library_validation_enabled_arg() |
         {
             "bridging_header": attrs.option(attrs.source(), default = None),
             "can_be_asset": attrs.option(attrs.bool(), default = None),
@@ -502,17 +513,16 @@ apple_library = prelude_rule(
             "public_system_include_directories": attrs.set(attrs.string(), sorted = True, default = []),
             "raw_headers": attrs.set(attrs.source(), sorted = True, default = []),
             "sdk_modules": attrs.list(attrs.string(), default = []),
-            "serialize_debugging_options": attrs.bool(default = False),
             "soname": attrs.option(attrs.string(), default = None),
             "static_library_basename": attrs.option(attrs.string(), default = None),
             "supported_platforms_regex": attrs.option(attrs.regex(), default = None),
             "supports_merged_linking": attrs.option(attrs.bool(), default = None),
             "swift_compiler_flags": attrs.list(attrs.arg(), default = []),
+            "swift_module_skip_function_bodies": attrs.bool(default = True),
             "swift_version": attrs.option(attrs.string(), default = None),
             "thin_lto": attrs.bool(default = False),
-            "use_submodules": attrs.bool(default = False),
+            "use_submodules": attrs.bool(default = True),
             "uses_cxx_explicit_modules": attrs.bool(default = False),
-            "uses_explicit_modules": attrs.bool(default = False),
             "uses_modules": attrs.bool(default = False),
         } |
         buck.allow_cache_upload_arg()
@@ -665,7 +675,7 @@ apple_test = prelude_rule(
         apple_common.info_plist_arg() |
         apple_common.info_plist_substitutions_arg() |
         {
-            "test_host_app": attrs.option(attrs.dep(), default = None, doc = """
+            "test_host_app": attrs.option(attrs.transition_dep(cfg = apple_test_host_app_transition), default = None, doc = """
                 A build target identifying
                  an `apple_bundle()` rule that builds an
                  application bundle. Output of the specified rule will be used as a test host of this test. This
@@ -675,6 +685,9 @@ apple_test = prelude_rule(
                  to be specified as a dependency of this target and `['-undefined', 'dynamic_lookup']`  needs to be added to this target's `linker_flags` (this will suppress undefined
                  reference errors during compilation, but if the symbols do not exist, it might result in runtime
                  crashes).
+            """),
+            "embed_xctest_frameworks_in_test_host_app": attrs.option(attrs.bool(), default = None, doc = """
+                Controls whether a marker constraint is added to the `test_host_app`.
             """),
         } |
         cxx_common.srcs_arg() |
@@ -686,12 +699,13 @@ apple_test = prelude_rule(
         cxx_common.compiler_flags_arg() |
         cxx_common.platform_compiler_flags_arg() |
         cxx_common.linker_flags_arg() |
-        native_common.link_style() |
         apple_common.target_sdk_version() |
         buck.run_test_separately_arg(run_test_separately_type = attrs.bool(default = False)) |
         buck.test_label_arg() |
         apple_common.extra_xcode_sources() |
         apple_common.extra_xcode_files() |
+        apple_common.serialize_debugging_options_arg() |
+        apple_common.uses_explicit_modules_arg() |
         {
             "asset_catalogs_compilation_options": attrs.dict(key = attrs.string(), value = attrs.any(), default = {}),
             "bridging_header": attrs.option(attrs.source(), default = None),
@@ -741,6 +755,9 @@ apple_test = prelude_rule(
             "licenses": attrs.list(attrs.source(), default = []),
             "link_group": attrs.option(attrs.string(), default = None),
             "link_group_map": LINK_GROUP_MAP_ATTR,
+            # Used to create the shared test library. Any library deps whose `preferred_linkage` isn't "shared" will
+            # be treated as "static" deps and linked into the shared test library.
+            "link_style": attrs.enum(LinkableDepType, default = "static"),
             "link_whole": attrs.option(attrs.bool(), default = None),
             "linker_extra_outputs": attrs.list(attrs.string(), default = []),
             "modular": attrs.bool(default = False),
@@ -752,8 +769,8 @@ apple_test = prelude_rule(
             "platform_preprocessor_flags": attrs.list(attrs.tuple(attrs.regex(), attrs.list(attrs.arg())), default = []),
             "post_linker_flags": attrs.list(attrs.arg(), default = []),
             "post_platform_linker_flags": attrs.list(attrs.tuple(attrs.regex(), attrs.list(attrs.arg())), default = []),
-            "precompiled_header": attrs.option(attrs.source(), default = None),
-            "preferred_linkage": attrs.option(attrs.enum(Linkage.values()), default = None),
+            # The test source code and lib dependencies should be built into a shared library.
+            "preferred_linkage": attrs.enum(Linkage.values(), default = "shared"),
             "prefix_header": attrs.option(attrs.source(), default = None),
             "public_include_directories": attrs.set(attrs.string(), sorted = True, default = []),
             "public_system_include_directories": attrs.set(attrs.string(), sorted = True, default = []),
@@ -761,7 +778,6 @@ apple_test = prelude_rule(
             "reexport_all_header_dependencies": attrs.option(attrs.bool(), default = None),
             "runner": attrs.option(attrs.dep(), default = None),
             "sdk_modules": attrs.list(attrs.string(), default = []),
-            "serialize_debugging_options": attrs.bool(default = False),
             "skip_copying_swift_stdlib": attrs.option(attrs.bool(), default = None),
             "snapshot_reference_images_path": attrs.option(attrs.one_of(attrs.source(), attrs.string()), default = None),
             "soname": attrs.option(attrs.string(), default = None),
@@ -770,18 +786,20 @@ apple_test = prelude_rule(
             "supported_platforms_regex": attrs.option(attrs.regex(), default = None),
             "supports_merged_linking": attrs.option(attrs.bool(), default = None),
             "swift_compiler_flags": attrs.list(attrs.arg(), default = []),
+            "swift_module_skip_function_bodies": attrs.bool(default = True),
             "swift_version": attrs.option(attrs.string(), default = None),
             "test_rule_timeout_ms": attrs.option(attrs.int(), default = None),
             "thin_lto": attrs.bool(default = False),
             "try_skip_code_signing": attrs.option(attrs.bool(), default = None),
             "ui_test_target_app": attrs.option(attrs.dep(), default = None),
-            "use_submodules": attrs.bool(default = False),
+            "use_submodules": attrs.bool(default = True),
             "uses_cxx_explicit_modules": attrs.bool(default = False),
-            "uses_explicit_modules": attrs.bool(default = False),
             "uses_modules": attrs.bool(default = False),
             "xcode_product_type": attrs.option(attrs.string(), default = None),
         } |
-        buck.allow_cache_upload_arg()
+        buck.allow_cache_upload_arg() |
+        buck.inject_test_env_arg() |
+        apple_test_extra_attrs()
     ),
 )
 
@@ -910,7 +928,6 @@ prebuilt_apple_framework = prelude_rule(
                  `static` will copy the resources of the framework into
                  an Apple bundle.
             """),
-            "code_sign_on_copy": attrs.option(attrs.bool(), default = None),
             "contacts": attrs.list(attrs.string(), default = []),
             "default_host_platform": attrs.option(attrs.configuration_label(), default = None),
             "deps": attrs.list(attrs.dep(), default = []),
@@ -950,6 +967,7 @@ swift_library = prelude_rule(
     further = None,
     attrs = (
         # @unsorted-dict-items
+        apple_common.serialize_debugging_options_arg() |
         {
             "bridging_header": attrs.option(attrs.source(), default = None),
             "compiler_flags": attrs.list(attrs.arg(), default = []),
@@ -965,14 +983,13 @@ swift_library = prelude_rule(
             "module_name": attrs.option(attrs.string(), default = None),
             "preferred_linkage": attrs.option(attrs.enum(Linkage.values()), default = None),
             "sdk_modules": attrs.list(attrs.string(), default = []),
-            "serialize_debugging_options": attrs.bool(default = False),
             "soname": attrs.option(attrs.string(), default = None),
             "srcs": attrs.list(attrs.source(), default = []),
             "supported_platforms_regex": attrs.option(attrs.regex(), default = None),
             "target_sdk_version": attrs.option(attrs.string(), default = None),
-            "uses_explicit_modules": attrs.bool(default = False),
             "version": attrs.option(attrs.string(), default = None),
-        }
+        } |
+        apple_common.uses_explicit_modules_arg()
     ),
 )
 
@@ -996,7 +1013,6 @@ swift_toolchain = prelude_rule(
             "runtime_paths_for_bundling": attrs.list(attrs.string(), default = []),
             "runtime_paths_for_linking": attrs.list(attrs.string(), default = []),
             "runtime_run_paths": attrs.list(attrs.string(), default = []),
-            "sdk_dependencies_path": attrs.option(attrs.string(), default = None),
             "sdk_path": attrs.source(),
             "static_runtime_paths": attrs.list(attrs.string(), default = []),
             "supports_relative_resource_dir": attrs.bool(default = False),
@@ -1011,6 +1027,114 @@ swift_toolchain = prelude_rule(
     ),
 )
 
+_APPLE_TOOLCHAIN_ATTR = get_apple_toolchain_attr()
+
+def _apple_universal_executable_attrs():
+    attribs = {
+        "executable": attrs.split_transition_dep(cfg = cpu_split_transition, doc = """
+                A build target identifying the binary which will be built for multiple architectures.
+                The target will be transitioned into different configurations, with distinct architectures.
+
+                The target can be one of:
+                - `apple_binary()` and `cxx_binary()`
+                - `[shared]` subtarget of `apple_library()` and `cxx_library()`
+                - `apple_library()` and `cxx_library()` which have `preferred_linkage = shared` attribute
+            """),
+        "executable_name": attrs.option(attrs.string(), default = None, doc = """
+                By default, the name of the universal executable is same as the name of the binary
+                from the `binary` target attribute. Set `executable_name` to override the default.
+            """),
+        "labels": attrs.list(attrs.string(), default = []),
+        "split_arch_dsym": attrs.bool(default = False, doc = """
+                If enabled, each architecture gets its own dSYM binary. Use this if the combined
+                universal dSYM binary exceeds 4GiB.
+            """),
+        "universal": attrs.option(attrs.bool(), default = None, doc = """
+                Controls whether the output is universal binary. Any value overrides the presence
+                of the `config//cpu/constraints:universal-enabled` constraint. Read the rule docs
+                for more information on resolution.
+            """),
+        "_apple_toolchain": _APPLE_TOOLCHAIN_ATTR,
+        "_apple_tools": attrs.exec_dep(default = "prelude//apple/tools:apple-tools", providers = [AppleToolsInfo]),
+    }
+    attribs.update(apple_dsymutil_attrs())
+    return attribs
+
+apple_universal_executable = prelude_rule(
+    name = "apple_universal_executable",
+    impl = apple_universal_executable_impl,
+    docs = """
+        An `apple_universal_executable()` rule takes a target via its
+        `binary` attribute, builds it for multiple architectures and
+        combines the result into a single binary using `lipo`.
+
+        The output of the rule is a universal binary:
+        - If `config//cpu/constraints:universal-enabled` is present in the target platform.
+        - If the `universal` attribute is set to `True`.
+
+        If none of the conditions are met, then the rule acts as a nop `alias()`.
+
+        The `universal` attribute, if present, takes precedence over constraint.
+        For example, if `universal = False`, then the presence of the constraint
+        would not affect the output.
+
+        `apple_bundle()` supports building of universal binaries,
+        `apple_universal_executable()` is only needed if you have a standalone
+        binary target which is not embedded in an `apple_bundle()` (usually a
+        CLI tool).
+    """,
+    examples = None,
+    further = None,
+    attrs = _apple_universal_executable_attrs(),
+)
+
+def _cxx_universal_executable_attrs():
+    return {
+        "executable": attrs.split_transition_dep(cfg = cpu_split_transition, doc = """
+                A build target identifying the binary which will be built for multiple architectures.
+                The target will be transitioned into different configurations, with distinct architectures.
+
+                The target can be one of:
+                - `cxx_binary()`
+                - `[shared]` subtarget `cxx_library()`
+                - `cxx_library()` which have `preferred_linkage = shared` attribute
+            """),
+        "executable_name": attrs.option(attrs.string(), default = None, doc = """
+                By default, the name of the universal executable is same as the name of the binary
+                from the `binary` target attribute. Set `executable_name` to override the default.
+            """),
+        "labels": attrs.list(attrs.string(), default = []),
+        "universal": attrs.option(attrs.bool(), default = None, doc = """
+                Controls whether the output is universal binary. Any value overrides the presence
+                of the `config//cpu/constraints:universal-enabled` constraint. Read the rule docs
+                for more information on resolution.
+            """),
+        "_cxx_toolchain": toolchains_common.cxx(),
+    }
+
+cxx_universal_executable = prelude_rule(
+    name = "cxx_universal_executable",
+    impl = cxx_universal_executable_impl,
+    docs = """
+        A `cxx_universal_executable()` rule takes a target via its
+        `binary` attribute, builds it for multiple architectures and
+        combines the result into a single binary using `lipo`.
+
+        The output of the rule is a universal binary:
+        - If `config//cpu/constraints:universal-enabled` is present in the target platform.
+        - If the `universal` attribute is set to `True`.
+
+        If none of the conditions are met, then the rule acts as a nop `alias()`.
+
+        The `universal` attribute, if present, takes precedence over constraint.
+        For example, if `universal = False`, then the presence of the constraint
+        would not affect the output.
+    """,
+    examples = None,
+    further = None,
+    attrs = _cxx_universal_executable_attrs(),
+)
+
 ios_rules = struct(
     apple_asset_catalog = apple_asset_catalog,
     apple_binary = apple_binary,
@@ -1021,7 +1145,9 @@ ios_rules = struct(
     apple_test = apple_test,
     apple_toolchain = apple_toolchain,
     apple_toolchain_set = apple_toolchain_set,
+    apple_universal_executable = apple_universal_executable,
     core_data_model = core_data_model,
+    cxx_universal_executable = cxx_universal_executable,
     prebuilt_apple_framework = prebuilt_apple_framework,
     scene_kit_assets = scene_kit_assets,
     swift_library = swift_library,

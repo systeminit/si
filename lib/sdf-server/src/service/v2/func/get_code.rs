@@ -11,12 +11,11 @@ use crate::extract::{AccessBuilder, HandlerContext, PosthogClient};
 
 use super::{get_code_response, FuncAPIResult};
 
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-
 // TODO: find the right way to pass a Vec<FuncId>
 // the API call uses the `id[]=<...>&id[]=<...?` format
 // but that doesn't work here with Rust
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct GetRequest {
     pub id: FuncId,
 }

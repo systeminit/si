@@ -82,7 +82,7 @@ mkdir -pv "$ROOTFSMOUNT"
 # which 10gb. If you make the image below larger than that, you must increase
 # the size of the overlays. They can be found in
 # lib/si-firecracker/src/scripts/{firecracker-setup|prepare_jailer}.sh
-dd if=/dev/zero of="$ROOTFS" bs=1M count=6144
+dd if=/dev/zero of="$ROOTFS" bs=1M count=7189
 mkfs.ext4 -v "$ROOTFS"
 sudo mount -v "$ROOTFS" "$ROOTFSMOUNT"
 

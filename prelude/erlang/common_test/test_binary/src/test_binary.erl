@@ -9,13 +9,13 @@
 
 -module(test_binary).
 
--export([main/1]).
+-export([main/1, main/0]).
 -include_lib("common/include/buck_ct_records.hrl").
 -include_lib("common/include/tpx_records.hrl").
 -include_lib("kernel/include/logger.hrl").
 
-% in ms, the time we give to init to stop before halting.
--define(INIT_STOP_TIMEOUT, 5000).
+main() ->
+    main(init:get_plain_arguments()).
 
 main([TestInfoFile, "list", OutputDir]) ->
     test_logger:set_up_logger(OutputDir, test_listing),
@@ -75,79 +75,11 @@ main(Other) ->
     ),
     erlang:halt(3).
 
--spec load_test_info(string()) -> #test_info{}.
-load_test_info(TestInfoFile) ->
-    {ok, [
-        #{
-            "dependencies" := Dependencies,
-            "test_suite" := SuiteName,
-            "test_dir" := TestDir,
-            "config_files" := ConfigFiles,
-            "providers" := Providers,
-            "ct_opts" := CtOpts,
-            "extra_ct_hooks" := ExtraCtHooks,
-            "erl_cmd" := ErlCmd,
-            "extra_flags" := ExtraFlags,
-            "artifact_annotation_mfa" := ArtifactAnnotationMFA,
-            "common_app_env" := CommonAppEnv
-        }
-    ]} = file:consult(TestInfoFile),
-    Providers1 = buck_ct_parser:parse_str(Providers),
-    CtOpts1 = make_ct_opts(
-        buck_ct_parser:parse_str(CtOpts),
-        [buck_ct_parser:parse_str(CTH) || CTH <- ExtraCtHooks]
-    ),
-    #test_info{
-        dependencies = [filename:absname(Dep) || Dep <- Dependencies],
-        test_suite = filename:join(filename:absname(TestDir), [SuiteName, ".beam"]),
-        config_files = lists:map(fun(ConfigFile) -> filename:absname(ConfigFile) end, ConfigFiles),
-        providers = Providers1,
-        artifact_annotation_mfa = parse_mfa(ArtifactAnnotationMFA),
-        ct_opts = CtOpts1,
-        erl_cmd = ErlCmd,
-        extra_flags = ExtraFlags,
-        common_app_env = CommonAppEnv
-    }.
-
--spec parse_mfa(string()) -> artifact_annotations:annotation_function() | {error, term()}.
-parse_mfa(MFA) ->
-    case erl_scan:string(MFA) of
-        {ok,
-            [
-                {'fun', _},
-                {atom, _, Module},
-                {':', _},
-                {atom, _, Function},
-                {'/', _},
-                {integer, _, 1}
-            ],
-            _} ->
-            fun Module:Function/1;
-        {ok,
-            [
-                {atom, _, Module},
-                {':', _},
-                {atom, _, Function},
-                {'/', _},
-                {integer, _, 1}
-            ],
-            _} ->
-            fun Module:Function/1;
-        Reason ->
-            {error, Reason}
-    end.
-
--type ctopt() :: term().
--type cth() :: module() | {module(), term()}.
-
--spec make_ct_opts([ctopt()], [cth()]) -> [ctopt()].
-make_ct_opts(CtOpts, []) -> CtOpts;
-make_ct_opts(CtOpts, ExtraCtHooks) -> [{ct_hooks, ExtraCtHooks} | CtOpts].
-
--spec load_suite(string()) -> [{atom(), string()}].
+-spec load_suite(binary()) -> atom().
 load_suite(SuitePath) ->
-    {module, Module} = code:load_abs(filename:rootname(filename:absname(SuitePath))),
-    {Module, filename:absname(SuitePath)}.
+    Path = unicode:characters_to_list(filename:rootname(filename:absname(SuitePath))),
+    {module, Module} = code:load_abs(Path),
+    Module.
 
 -spec get_hooks(#test_info{}) -> [module()].
 get_hooks(TestInfo) ->
@@ -163,20 +95,20 @@ get_hooks(TestInfo) ->
 
 -spec listing(string(), string()) -> ok.
 listing(TestInfoFile, OutputDir) ->
-    TestInfo = load_test_info(TestInfoFile),
+    TestInfo = test_info:load_from_file(TestInfoFile),
     Listing = get_listing(TestInfo, OutputDir),
     listing_interfacer:produce_xml_file(OutputDir, Listing).
 
 -spec running(string(), string(), [string()]) -> ok.
 running(TestInfoFile, OutputDir, Tests) ->
     AbsOutputDir = filename:absname(OutputDir),
-    TestInfo = load_test_info(TestInfoFile),
+    TestInfo = test_info:load_from_file(TestInfoFile),
     Listing = get_listing(TestInfo, AbsOutputDir),
     test_runner:run_tests(Tests, TestInfo, AbsOutputDir, Listing).
 
 get_listing(TestInfo, OutputDir) ->
     code:add_paths(TestInfo#test_info.dependencies),
-    {Suite, _Path} = load_suite(TestInfo#test_info.test_suite),
+    Suite = load_suite(TestInfo#test_info.test_suite),
 
     {ok, ProjectRoot} = file:get_cwd(),
     true = os:putenv("PROJECT_ROOT", ProjectRoot),
@@ -197,7 +129,7 @@ get_listing(TestInfo, OutputDir) ->
 
 list_and_run(TestInfoFile, OutputDir) ->
     os:putenv("ERLANG_BUCK_DEBUG_PRINT", "disabled"),
-    TestInfo = load_test_info(TestInfoFile),
+    TestInfo = test_info:load_from_file(TestInfoFile),
     Listing = get_listing(TestInfo, OutputDir),
     Tests = listing_to_testnames(Listing),
     running(TestInfoFile, OutputDir, Tests),
@@ -214,7 +146,7 @@ listing_to_testnames(Listing) ->
 -spec print_results(file:filename()) -> boolean().
 print_results(ResultsFile) ->
     {ok, Data} = file:read_file(ResultsFile),
-    Results = jsone:decode(Data),
+    Results = json:decode(Data),
     {Summary, AnyFailure} = lists:foldl(fun print_individual_results/2, {#{}, false}, Results),
     io:format("~n~10s: ~b~n~n", ["TOTAL", lists:sum(maps:values(Summary))]),
     [

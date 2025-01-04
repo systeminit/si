@@ -90,7 +90,7 @@ impl Serializer {
     }
 }
 
-impl<'a> ser::Serializer for &'a mut Serializer {
+impl ser::Serializer for &mut Serializer {
     type Ok = ();
     type Error = SerializerError;
 
@@ -258,7 +258,7 @@ impl<'a> ser::Serializer for &'a mut Serializer {
     }
 }
 
-impl<'a> ser::SerializeSeq for &'a mut Serializer {
+impl ser::SerializeSeq for &mut Serializer {
     type Ok = ();
     type Error = SerializerError;
 
@@ -279,7 +279,7 @@ impl<'a> ser::SerializeSeq for &'a mut Serializer {
     }
 }
 
-impl<'a> ser::SerializeTuple for &'a mut Serializer {
+impl ser::SerializeTuple for &mut Serializer {
     type Ok = ();
     type Error = SerializerError;
 
@@ -292,7 +292,7 @@ impl<'a> ser::SerializeTuple for &'a mut Serializer {
     }
 }
 
-impl<'a> ser::SerializeTupleStruct for &'a mut Serializer {
+impl ser::SerializeTupleStruct for &mut Serializer {
     type Ok = ();
     type Error = SerializerError;
 
@@ -305,7 +305,7 @@ impl<'a> ser::SerializeTupleStruct for &'a mut Serializer {
     }
 }
 
-impl<'a> ser::SerializeTupleVariant for &'a mut Serializer {
+impl ser::SerializeTupleVariant for &mut Serializer {
     type Ok = ();
     type Error = SerializerError;
 
@@ -318,7 +318,7 @@ impl<'a> ser::SerializeTupleVariant for &'a mut Serializer {
     }
 }
 
-impl<'a> ser::SerializeMap for &'a mut Serializer {
+impl ser::SerializeMap for &mut Serializer {
     type Ok = ();
     type Error = SerializerError;
 
@@ -343,7 +343,7 @@ impl<'a> ser::SerializeMap for &'a mut Serializer {
     }
 }
 
-impl<'a> ser::SerializeStruct for &'a mut Serializer {
+impl ser::SerializeStruct for &mut Serializer {
     type Ok = ();
     type Error = SerializerError;
 
@@ -371,7 +371,7 @@ impl<'a> ser::SerializeStruct for &'a mut Serializer {
     }
 }
 
-impl<'a> ser::SerializeStructVariant for &'a mut Serializer {
+impl ser::SerializeStructVariant for &mut Serializer {
     type Ok = ();
     type Error = SerializerError;
 
@@ -396,7 +396,7 @@ struct MapKeySerializer<'a> {
     ser: &'a mut Serializer,
 }
 
-impl<'a> MapKeySerializer<'a> {
+impl MapKeySerializer<'_> {
     fn push_key(&mut self, key: &str) {
         if !self.ser.key.is_empty() {
             self.ser.key.push('.');
@@ -405,7 +405,7 @@ impl<'a> MapKeySerializer<'a> {
     }
 }
 
-impl<'a> ser::Serializer for MapKeySerializer<'a> {
+impl ser::Serializer for MapKeySerializer<'_> {
     type Ok = ();
     type Error = SerializerError;
 

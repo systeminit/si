@@ -21,11 +21,6 @@ CxxCompilationDbInfo = provider(fields = {
     "toolchain": provider_field(typing.Any, default = None),  # toolchain for this compilation database
 })
 
-# Provider that exposes the .gcno files produced during compilation
-GcnoFilesInfo = provider(fields = {
-    "gcno_files": provider_field(list[Artifact]),
-})
-
 def make_compilation_db_info(src_compile_cmds: list[CxxSrcCompileCommand], toolchainInfo: CxxToolchainInfo, platformInfo: CxxPlatformInfo) -> CxxCompilationDbInfo:
     info = {}
     for src_compile_cmd in src_compile_cmds:
@@ -37,10 +32,7 @@ def create_compilation_database(
         ctx: AnalysisContext,
         src_compile_cmds: list[CxxSrcCompileCommand],
         identifier: str) -> DefaultInfo:
-    mk_comp_db = get_cxx_toolchain_info(ctx).mk_comp_db
-    if mk_comp_db == None:
-        return DefaultInfo()
-    mk_comp_db = mk_comp_db[RunInfo]
+    mk_comp_db = get_cxx_toolchain_info(ctx).internal_tools.make_comp_db
 
     # Generate the per-source compilation DB entries.
     entries = {}
@@ -75,7 +67,7 @@ def create_compilation_database(
     cmd.add(cmd_args(db.as_output(), format = "--output={}"))
     cmd.add(at_argfile(
         actions = ctx.actions,
-        name = paths.join(identifier, "comp_db.argsfile"),
+        name = identifier + ".cxx_comp_db_argsfile",
         args = entries.values(),
     ))
 

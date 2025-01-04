@@ -324,7 +324,7 @@ impl<'a> Source<'a> {
     }
 }
 
-impl<'a> fmt::Debug for Source<'a> {
+impl fmt::Debug for Source<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Source")
             .field("graph", &"...")

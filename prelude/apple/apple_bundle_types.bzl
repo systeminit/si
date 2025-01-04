@@ -13,6 +13,15 @@ AppleBundleType = enum(
     "watchapp",
     # Bundle represents an App Clip to be embedded
     "appclip",
+    # Bundle represents an ExtensionKit extension to be embedded
+    "extensionkit_extension",
+)
+
+ApplePackageExtension = enum(
+    "ipa",
+    "pkg",
+    "dmg",
+    "zip",
 )
 
 AppleBundleManifestLogFiles = record(
@@ -84,9 +93,11 @@ AppleBundleBinaryOutput = record(
 AppleBundleTypeDefault = AppleBundleType("default")
 AppleBundleTypeWatchApp = AppleBundleType("watchapp")
 AppleBundleTypeAppClip = AppleBundleType("appclip")
+AppleBundleTypeExtensionKitExtension = AppleBundleType("extensionkit_extension")
 
 # Represents the user-visible type which is distinct from the internal one (`AppleBundleType`)
 AppleBundleTypeAttributeType = enum(
     "appclip",
+    "extensionkit_extension",
     "watchapp",
 )

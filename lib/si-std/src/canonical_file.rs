@@ -168,11 +168,9 @@ pub fn safe_canonically_join(
     })?;
 
     match canonicalized.file_name() {
-        None => {
-            return Err(CanonicalFileError::NoFileNameAfterJoin(
-                full_path.as_os_str().to_string_lossy().to_string(),
-            ))
-        }
+        None => Err(CanonicalFileError::NoFileNameAfterJoin(
+            full_path.as_os_str().to_string_lossy().to_string(),
+        )),
         Some(file_name) => Ok(dir_path.join(file_name)),
     }
 }

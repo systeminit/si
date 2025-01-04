@@ -28,12 +28,14 @@ JavaToolchainInfo = provider(
         "class_abi_generator": provider_field(typing.Any, default = None),
         "class_loader_bootstrapper": provider_field(typing.Any, default = None),
         "compile_and_package": provider_field(typing.Any, default = None),
+        "cp_snapshot_generator": provider_field(typing.Any, default = None),
         "dep_files": provider_field(typing.Any, default = None),
         "fat_jar": provider_field(typing.Any, default = None),
         "fat_jar_main_class_lib": provider_field(typing.Any, default = None),
         "gen_class_to_source_map": provider_field(typing.Any, default = None),
         "gen_class_to_source_map_debuginfo": provider_field(typing.Any, default = None),  # optional
         "gen_class_to_source_map_include_sourceless_compiled_packages": provider_field(typing.Any, default = None),
+        "global_code_config": provider_field(typing.Any, default = None),
         "graalvm_java": provider_field(typing.Any, default = None),
         "is_bootstrap_toolchain": provider_field(typing.Any, default = None),
         "jar": provider_field(typing.Any, default = None),
@@ -86,6 +88,9 @@ PrebuiltJarToolchainInfo = provider(
     doc = "prebuilt_jar toolchain info",
     fields = {
         "class_abi_generator": provider_field(typing.Any, default = None),
+        "cp_snapshot_generator": provider_field(typing.Any, default = None),
+        "global_code_config": provider_field(typing.Any, default = None),
         "is_bootstrap_toolchain": provider_field(typing.Any, default = None),
+        "java": provider_field(typing.Any, default = None),
     },
 )

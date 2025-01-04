@@ -24,6 +24,7 @@ load(":coverage.bzl", "GoCoverageMode")
 load(":link.bzl", "link")
 load(":package_builder.bzl", "build_package")
 load(":packages.bzl", "go_attr_pkg_name")
+load(":toolchain.bzl", "GoToolchainInfo", "evaluate_cgo_enabled")
 
 def _gen_test_main(
         ctx: AnalysisContext,
@@ -54,6 +55,8 @@ def is_subpackage_of(other_pkg_name: str, pkg_name: str) -> bool:
     return pkg_name == other_pkg_name or other_pkg_name.startswith(pkg_name + "/")
 
 def go_test_impl(ctx: AnalysisContext) -> list[Provider]:
+    go_toolchain = ctx.attrs._go_toolchain[GoToolchainInfo]
+
     deps = ctx.attrs.deps
     srcs = ctx.attrs.srcs
     pkg_name = go_attr_pkg_name(ctx)
@@ -75,7 +78,7 @@ def go_test_impl(ctx: AnalysisContext) -> list[Provider]:
     pkgs = {}
 
     # Compile all tests into a package.
-    tests = build_package(
+    tests, tests_pkg_info = build_package(
         ctx,
         pkg_name,
         srcs = srcs,
@@ -83,13 +86,13 @@ def go_test_impl(ctx: AnalysisContext) -> list[Provider]:
         deps = deps,
         pkgs = pkgs,
         compiler_flags = ctx.attrs.compiler_flags,
+        tags = ctx.attrs._tags,
         coverage_mode = coverage_mode,
         race = ctx.attrs._race,
         asan = ctx.attrs._asan,
         embedcfg = ctx.attrs.embedcfg,
         tests = True,
-        # We need to set CGO_DESABLED for "pure" Go libraries, otherwise CGo files may be selected for compilation.
-        force_disable_cgo = True,
+        cgo_enabled = evaluate_cgo_enabled(go_toolchain, ctx.attrs.cgo_enabled),
     )
 
     if coverage_mode != None:
@@ -99,26 +102,26 @@ def go_test_impl(ctx: AnalysisContext) -> list[Provider]:
         for name, pkg in get_inherited_compile_pkgs(deps).items():
             if ctx.label != None and is_subpackage_of(name, ctx.label.package):
                 coverage_vars[name] = pkg.coverage_vars
-                pkgs[name] = pkg.pkg
+                pkgs[name] = pkg
 
-    pkgs[pkg_name] = tests.pkg
+    pkgs[pkg_name] = tests
 
     # Generate a main function which runs the tests and build that into another
     # package.
     gen_main = _gen_test_main(ctx, pkg_name, coverage_mode, coverage_vars, tests.srcs_list)
-    main = build_package(ctx, "main", [gen_main], package_root = "", pkgs = pkgs, coverage_mode = coverage_mode, race = ctx.attrs._race, asan = ctx.attrs._asan, cgo_gen_dir_name = "cgo_gen_test_main")
+    main, _ = build_package(ctx, "main", [gen_main], package_root = "", pkgs = pkgs, coverage_mode = coverage_mode, race = ctx.attrs._race, asan = ctx.attrs._asan, cgo_gen_dir_name = "cgo_gen_test_main")
 
     # Link the above into a Go binary.
     (bin, runtime_files, external_debug_info) = link(
         ctx = ctx,
-        main = main.pkg,
+        main = main,
         pkgs = pkgs,
         deps = deps,
         link_style = value_or(map_val(LinkStyle, ctx.attrs.link_style), LinkStyle("static")),
         linker_flags = ctx.attrs.linker_flags,
-        shared = False,
         race = ctx.attrs._race,
         asan = ctx.attrs._asan,
+        external_linker_flags = ctx.attrs.external_linker_flags,
     )
 
     # As per v1, copy in resources next to binary.
@@ -150,4 +153,5 @@ def go_test_impl(ctx: AnalysisContext) -> list[Provider]:
             default_output = bin,
             other_outputs = [gen_main] + runtime_files + external_debug_info,
         ),
+        tests_pkg_info,
     ]

@@ -13,6 +13,7 @@ load(":apple_bundle_types.bzl", "AppleBundleManifest", "AppleBundleManifestInfo"
 load(":apple_bundle_utility.bzl", "get_extension_attr", "get_product_name")
 load(":apple_code_signing_types.bzl", "CodeSignConfiguration", "CodeSignType")
 load(":apple_entitlements.bzl", "get_entitlements_codesign_args", "should_include_entitlements")
+load(":apple_error_handler.bzl", "apple_build_error_handler")
 load(":apple_sdk.bzl", "get_apple_sdk_name")
 load(":apple_sdk_metadata.bzl", "get_apple_sdk_metadata_for_sdk_name")
 load(":apple_swift_stdlib.bzl", "should_copy_swift_stdlib")
@@ -59,7 +60,8 @@ def assemble_bundle(
         info_plist_part: [AppleBundlePart, None],
         swift_stdlib_args: [SwiftStdlibArguments, None],
         extra_hidden: list[Artifact] = [],
-        skip_adhoc_signing: bool = False) -> AppleBundleConstructionResult:
+        skip_adhoc_signing: bool = False,
+        incremental_bundling_override = None) -> AppleBundleConstructionResult:
     """
     Returns extra subtargets related to bundling.
     """
@@ -78,7 +80,10 @@ def assemble_bundle(
         codesign_configuration_args = ["--codesign-configuration", "dry-run"]
         codesign_tool = tools.dry_codesign_tool
     elif code_signing_configuration == CodeSignConfiguration("fast-adhoc"):
-        codesign_configuration_args = ["--codesign-configuration", "fast-adhoc"]
+        if _get_fast_adhoc_signing_enabled(ctx):
+            codesign_configuration_args = ["--codesign-configuration", "fast-adhoc"]
+        else:
+            codesign_configuration_args = []
     elif code_signing_configuration == CodeSignConfiguration("none"):
         codesign_configuration_args = []
     else:
@@ -101,6 +106,8 @@ def assemble_bundle(
             bundle_relative_path_for_destination(AppleBundleDestination("frameworks"), sdk_name, ctx.attrs.extension, ctx.attrs.versioned_macos_bundle),
             "--plugins-destination",
             bundle_relative_path_for_destination(AppleBundleDestination("plugins"), sdk_name, ctx.attrs.extension, ctx.attrs.versioned_macos_bundle),
+            "--extensionkit-extensions-destination",
+            bundle_relative_path_for_destination(AppleBundleDestination("extensionkit_extensions"), sdk_name, ctx.attrs.extension, ctx.attrs.versioned_macos_bundle),
             "--appclips-destination",
             bundle_relative_path_for_destination(AppleBundleDestination("appclips"), sdk_name, ctx.attrs.extension, ctx.attrs.versioned_macos_bundle),
             "--swift-stdlib-command",
@@ -152,6 +159,12 @@ def assemble_bundle(
         ] if info_plist_part else []
         codesign_args.extend(info_plist_args)
 
+        if ctx.attrs.provisioning_profile_filter:
+            codesign_args.extend([
+                "--provisioning-profile-filter",
+                ctx.attrs.provisioning_profile_filter,
+            ])
+
         strict_provisioning_profile_search = value_or(ctx.attrs.strict_provisioning_profile_search, ctx.attrs._strict_provisioning_profile_search_default)
         if strict_provisioning_profile_search:
             codesign_args.append("--strict-provisioning-profile-search")
@@ -179,6 +192,8 @@ def assemble_bundle(
 
     # Fallback to value from buckconfig
     incremental_bundling_enabled = ctx.attrs.incremental_bundling_enabled or ctx.attrs._incremental_bundling_enabled
+    if incremental_bundling_override != None:
+        incremental_bundling_enabled = incremental_bundling_override
 
     if incremental_bundling_enabled:
         command.add("--incremental-state", incremental_state)
@@ -255,7 +270,7 @@ def assemble_bundle(
         prefer_local = not force_local_bundling,
         category = category,
         env = env,
-        error_handler = _apple_bundle_error_handler,
+        error_handler = apple_build_error_handler,
         **run_incremental_args
     )
     return AppleBundleConstructionResult(sub_targets = subtargets, providers = providers)
@@ -344,12 +359,8 @@ def _convert_bundle_manifest_to_json_object(manifest: AppleBundleManifest) -> di
         }
     return manifest_dict
 
-def _apple_bundle_error_handler(ctx: ActionErrorCtx) -> list[ActionSubError]:
-    categories = []
-
-    if "CodeSignProvisioningError" in ctx.stderr:
-        categories.append(ctx.new_sub_error(
-            category = "code_sign_provisioning_error",
-        ))
-
-    return categories
+def _get_fast_adhoc_signing_enabled(ctx: AnalysisContext) -> bool:
+    fast_adhoc_signing_enabled = ctx.attrs.fast_adhoc_signing_enabled
+    if fast_adhoc_signing_enabled != None:
+        return fast_adhoc_signing_enabled
+    return ctx.attrs._fast_adhoc_signing_enabled_default

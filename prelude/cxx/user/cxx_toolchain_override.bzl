@@ -5,11 +5,29 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
-load("@prelude//cxx:cxx_toolchain_types.bzl", "AsCompilerInfo", "AsmCompilerInfo", "BinaryUtilitiesInfo", "CCompilerInfo", "CxxCompilerInfo", "CxxObjectFormat", "CxxPlatformInfo", "CxxToolchainInfo", "LinkerInfo", "LinkerType", "PicBehavior", "ShlibInterfacesMode", "StripFlagsInfo", "cxx_toolchain_infos")
+load(
+    "@prelude//cxx:cxx_toolchain_types.bzl",
+    "AsCompilerInfo",
+    "AsmCompilerInfo",
+    "BinaryUtilitiesInfo",
+    "CCompilerInfo",
+    "CxxCompilerInfo",
+    "CxxInternalTools",
+    "CxxObjectFormat",
+    "CxxPlatformInfo",
+    "CxxToolchainInfo",
+    "LinkerInfo",
+    "LinkerType",
+    "PicBehavior",
+    "ShlibInterfacesMode",
+    "StripFlagsInfo",
+    "cxx_toolchain_infos",
+)
 load("@prelude//cxx:cxx_utility.bzl", "cxx_toolchain_allow_cache_upload_args")
 load("@prelude//cxx:debug.bzl", "SplitDebugMode")
 load("@prelude//cxx:headers.bzl", "HeaderMode")
 load("@prelude//cxx:linker.bzl", "is_pdb_generated")
+load("@prelude//cxx:target_sdk_version.bzl", "get_toolchain_target_sdk_version")
 load(
     "@prelude//linking:link_info.bzl",
     "LinkStyle",
@@ -31,7 +49,6 @@ def _cxx_toolchain_override(ctx):
             preprocessor = _pick_bin(ctx.attrs.as_compiler, base_as_info.preprocessor),
             preprocessor_type = base_as_info.preprocessor_type,
             preprocessor_flags = _pick(ctx.attrs.as_preprocessor_flags, base_as_info.preprocessor_flags),
-            dep_files_processor = base_as_info.dep_files_processor,
         )
     asm_info = base_toolchain.asm_compiler_info
     if asm_info != None:
@@ -42,7 +59,6 @@ def _cxx_toolchain_override(ctx):
             preprocessor = _pick_bin(ctx.attrs.asm_compiler, asm_info.preprocessor),
             preprocessor_type = asm_info.preprocessor_type,
             preprocessor_flags = _pick(ctx.attrs.asm_preprocessor_flags, asm_info.preprocessor_flags),
-            dep_files_processor = asm_info.dep_files_processor,
         )
     base_c_info = base_toolchain.c_compiler_info
     c_info = CCompilerInfo(
@@ -52,7 +68,6 @@ def _cxx_toolchain_override(ctx):
         preprocessor = _pick_bin(ctx.attrs.c_compiler, base_c_info.preprocessor),
         preprocessor_type = base_c_info.preprocessor_type,
         preprocessor_flags = _pick(ctx.attrs.c_preprocessor_flags, base_c_info.preprocessor_flags),
-        dep_files_processor = base_c_info.dep_files_processor,
         allow_cache_upload = _pick_raw(ctx.attrs.c_compiler_allow_cache_upload, base_c_info.allow_cache_upload),
     )
     base_cxx_info = base_toolchain.cxx_compiler_info
@@ -63,11 +78,10 @@ def _cxx_toolchain_override(ctx):
         preprocessor = _pick_bin(ctx.attrs.cxx_compiler, base_cxx_info.preprocessor),
         preprocessor_type = base_cxx_info.preprocessor_type,
         preprocessor_flags = _pick(ctx.attrs.cxx_preprocessor_flags, base_cxx_info.preprocessor_flags),
-        dep_files_processor = base_cxx_info.dep_files_processor,
         allow_cache_upload = _pick_raw(ctx.attrs.cxx_compiler_allow_cache_upload, base_cxx_info.allow_cache_upload),
     )
     base_linker_info = base_toolchain.linker_info
-    linker_type = ctx.attrs.linker_type if ctx.attrs.linker_type != None else base_linker_info.type
+    linker_type = LinkerType(ctx.attrs.linker_type) if ctx.attrs.linker_type != None else base_linker_info.type
     pdb_expected = is_pdb_generated(linker_type, ctx.attrs.linker_flags) if ctx.attrs.linker_flags != None else base_linker_info.is_pdb_generated
 
     # This handles case when linker type is overridden to non-windows from
@@ -76,7 +90,7 @@ def _cxx_toolchain_override(ctx):
     # we can't inspect base linker flags and disable PDB subtargets.
     # This shouldn't be a problem because to use windows linker after non-windows
     # linker flags should be changed as well.
-    pdb_expected = linker_type == "windows" and pdb_expected
+    pdb_expected = linker_type == LinkerType("windows") and pdb_expected
     shlib_interfaces = ShlibInterfacesMode(ctx.attrs.shared_library_interface_mode) if ctx.attrs.shared_library_interface_mode else None
     sanitizer_runtime_files = flatten([runtime_file[DefaultInfo].default_outputs for runtime_file in ctx.attrs.sanitizer_runtime_files]) if ctx.attrs.sanitizer_runtime_files != None else None
     linker_info = LinkerInfo(
@@ -142,6 +156,7 @@ def _cxx_toolchain_override(ctx):
     return [
         DefaultInfo(),
     ] + cxx_toolchain_infos(
+        internal_tools = ctx.attrs._internal_tools[CxxInternalTools],
         platform_name = ctx.attrs.platform_name if ctx.attrs.platform_name != None else ctx.attrs.base[CxxPlatformInfo].name,
         platform_deps_aliases = ctx.attrs.platform_deps_aliases if ctx.attrs.platform_deps_aliases != None else [],
         linker_info = linker_info,
@@ -157,9 +172,6 @@ def _cxx_toolchain_override(ctx):
         hip_compiler_info = base_toolchain.hip_compiler_info,
         header_mode = HeaderMode(ctx.attrs.header_mode) if ctx.attrs.header_mode != None else base_toolchain.header_mode,
         headers_as_raw_headers_mode = base_toolchain.headers_as_raw_headers_mode,
-        mk_comp_db = _pick_bin(ctx.attrs.mk_comp_db, base_toolchain.mk_comp_db),
-        mk_hmap = _pick_bin(ctx.attrs.mk_hmap, base_toolchain.mk_hmap),
-        dist_lto_tools_info = base_toolchain.dist_lto_tools_info,
         use_dep_files = base_toolchain.use_dep_files,
         clang_remarks = base_toolchain.clang_remarks,
         gcno_files = base_toolchain.gcno_files,
@@ -169,7 +181,7 @@ def _cxx_toolchain_override(ctx):
         strip_flags_info = strip_flags_info,
         pic_behavior = PicBehavior(ctx.attrs.pic_behavior) if ctx.attrs.pic_behavior != None else base_toolchain.pic_behavior.value,
         split_debug_mode = SplitDebugMode(value_or(ctx.attrs.split_debug_mode, base_toolchain.split_debug_mode.value)),
-        target_sdk_version = base_toolchain.target_sdk_version,
+        target_sdk_version = value_or(get_toolchain_target_sdk_version(ctx), base_toolchain.target_sdk_version),
     )
 
 cxx_toolchain_override_registration_spec = RuleRegistrationSpec(
@@ -205,11 +217,11 @@ cxx_toolchain_override_registration_spec = RuleRegistrationSpec(
         "link_weight": attrs.option(attrs.int(), default = None),
         "linker": attrs.option(attrs.exec_dep(providers = [RunInfo]), default = None),
         "linker_flags": attrs.option(attrs.list(attrs.arg()), default = None),
-        "linker_type": attrs.option(attrs.enum(LinkerType), default = None),
+        "linker_type": attrs.option(attrs.enum(LinkerType.values()), default = None),
+        "lipo": attrs.option(attrs.exec_dep(providers = [RunInfo]), default = None),
         "llvm_link": attrs.option(attrs.exec_dep(providers = [RunInfo]), default = None),
         "lto_mode": attrs.option(attrs.enum(LtoMode.values()), default = None),
-        "mk_comp_db": attrs.option(attrs.exec_dep(providers = [RunInfo]), default = None),
-        "mk_hmap": attrs.option(attrs.exec_dep(providers = [RunInfo]), default = None),
+        "min_sdk_version": attrs.option(attrs.string(), default = None),
         "mk_shlib_intf": attrs.option(attrs.exec_dep(providers = [RunInfo]), default = None),
         "nm": attrs.option(attrs.exec_dep(providers = [RunInfo]), default = None),
         "objcopy": attrs.option(attrs.exec_dep(providers = [RunInfo]), default = None),
@@ -231,7 +243,9 @@ cxx_toolchain_override_registration_spec = RuleRegistrationSpec(
         "strip_all_flags": attrs.option(attrs.list(attrs.arg()), default = None),
         "strip_debug_flags": attrs.option(attrs.list(attrs.arg()), default = None),
         "strip_non_global_flags": attrs.option(attrs.list(attrs.arg()), default = None),
+        "target_sdk_version": attrs.option(attrs.string(), default = None),
         "use_archiver_flags": attrs.option(attrs.bool(), default = None),
+        "_internal_tools": attrs.default_only(attrs.exec_dep(providers = [CxxInternalTools], default = "prelude//cxx/tools:internal_tools")),
     } | cxx_toolchain_allow_cache_upload_args(),
     is_toolchain_rule = True,
 )

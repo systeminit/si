@@ -18,7 +18,6 @@ use si_events::audit_log::AuditLogKind;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-
 pub struct DeleteConnectionRequest {
     pub from_socket_id: OutputSocketId,
     pub from_component_id: ComponentId,

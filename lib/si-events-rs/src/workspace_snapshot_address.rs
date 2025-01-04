@@ -50,7 +50,7 @@ impl Serialize for WorkspaceSnapshotAddress {
 
 struct WorkspaceSnapshotAddressVisitor;
 
-impl<'de> Visitor<'de> for WorkspaceSnapshotAddressVisitor {
+impl Visitor<'_> for WorkspaceSnapshotAddressVisitor {
     type Value = WorkspaceSnapshotAddress;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {

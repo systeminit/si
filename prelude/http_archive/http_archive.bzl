@@ -13,6 +13,7 @@ load(":exec_deps.bzl", "HttpArchiveExecDeps")
 # Flags to apply to decompress the various types of archives.
 _TAR_FLAGS = {
     "tar": [],
+    "tar.bz2": ["-j"],
     "tar.gz": ["-z"],
     "tar.xz": ["-J"],
     "tar.zst": ["--use-compress-program=unzstd"],
@@ -194,7 +195,7 @@ def http_archive_impl(ctx: AnalysisContext) -> list[Provider]:
         [
             cmd_args(script_output, format = mkdir),
             cmd_args(script_output, format = "cd {}"),
-            cmd_args([unarchive_cmd] + exclude_flags, delimiter = " ").relative_to(script_output),
+            cmd_args([unarchive_cmd] + exclude_flags, delimiter = " ", relative_to = script_output),
         ],
         is_executable = True,
         allow_args = True,

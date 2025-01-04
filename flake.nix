@@ -23,7 +23,6 @@
       overlays = [
         (self: super: {
           nodejs = super.nodejs-18_x;
-          pnpm = super.nodePackages.pnpm;
         })
         (import rust-overlay)
       ];
@@ -33,6 +32,10 @@
       rustVersion = pkgs.rust-bin.fromRustupToolchainFile ./rust-toolchain;
       rust-toolchain = rustVersion.override {
         extensions = ["rust-analyzer" "rust-src"];
+      };
+
+      nodePkgs = pkgs.nodePackages.override {
+        nodejs = pkgs.nodejs_18;
       };
 
       buck2NativeBuildInputs = with pkgs;
@@ -47,7 +50,7 @@
           makeWrapper
           nodejs
           deno
-          pnpm
+          nodePkgs.pnpm
           protobuf
           python3
           ripgrep

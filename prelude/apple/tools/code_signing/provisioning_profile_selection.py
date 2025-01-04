@@ -9,6 +9,7 @@
 
 import datetime
 import logging
+import re
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import Any, cast, Dict, List, Optional, Tuple
@@ -169,6 +170,21 @@ class SelectedProvisioningProfileInfo:
     identity: CodeSigningIdentity
 
 
+def _filter_matching_selected_provisioning_profile_infos(
+    selected_profile_infos: list[SelectedProvisioningProfileInfo],
+    provisioning_profile_filter: Optional[str],
+) -> list[SelectedProvisioningProfileInfo]:
+    if len(selected_profile_infos) <= 1 or (not provisioning_profile_filter):
+        return selected_profile_infos
+
+    preference_regex = re.compile(provisioning_profile_filter)
+    return [
+        matching_profile_info
+        for matching_profile_info in selected_profile_infos
+        if preference_regex.search(matching_profile_info.profile.file_path.name)
+    ]
+
+
 # See `ProvisioningProfileStore::getBestProvisioningProfile` in `ProvisioningProfileStore.java` for Buck v1 equivalent
 def select_best_provisioning_profile(
     info_plist_metadata: InfoPlistMetadata,
@@ -177,6 +193,7 @@ def select_best_provisioning_profile(
     entitlements: Optional[Dict[str, Any]],
     platform: ApplePlatform,
     strict_search: bool,
+    provisioning_profile_filter: Optional[str],
 ) -> Tuple[
     Optional[SelectedProvisioningProfileInfo], List[IProvisioningProfileDiagnostics]
 ]:
@@ -198,7 +215,6 @@ def select_best_provisioning_profile(
     maybe_team_id_constraint = _parse_team_id_from_entitlements(entitlements)
 
     best_match_length = -1
-    result = None
 
     # Used for error messages
     diagnostics: List[IProvisioningProfileDiagnostics] = []
@@ -209,7 +225,7 @@ def select_best_provisioning_profile(
             f"Skipping provisioning profile `{mismatch.profile.file_path.name}`: {mismatch.log_message()}"
         )
 
-    profiles_for_match_length = defaultdict(list)
+    selected_profile_infos_for_match_length = defaultdict(list)
 
     for profile in provisioning_profiles:
         app_id = profile.get_app_id()
@@ -282,16 +298,29 @@ def select_best_provisioning_profile(
             f"Matching provisioning profile `{profile.file_path.name}` with score {current_match_length}"
         )
 
-        profiles_for_match_length[current_match_length] += [profile]
+        selected_profile_info = SelectedProvisioningProfileInfo(profile, certificate)
+        selected_profile_infos_for_match_length[current_match_length] += [
+            selected_profile_info
+        ]
 
         if current_match_length > best_match_length:
             best_match_length = current_match_length
-            result = SelectedProvisioningProfileInfo(profile, certificate)
 
-    all_matching_profiles = (
-        profiles_for_match_length[best_match_length] if result else []
+    all_matching_selected_profile_infos = selected_profile_infos_for_match_length.get(
+        best_match_length, []
     )
-    if len(all_matching_profiles) > 1:
+
+    all_matching_selected_profile_infos = (
+        _filter_matching_selected_provisioning_profile_infos(
+            all_matching_selected_profile_infos, provisioning_profile_filter
+        )
+    )
+
+    if len(all_matching_selected_profile_infos) > 1:
+        all_matching_profiles = [
+            selected_profile_info.profile
+            for selected_profile_info in all_matching_selected_profile_infos
+        ]
         multiple_profiles_message = _make_multiple_matching_profiles_message(
             all_matching_profiles,
             strict_search,
@@ -299,6 +328,13 @@ def select_best_provisioning_profile(
         _LOGGER.info(multiple_profiles_message)
         if strict_search:
             raise CodeSignProvisioningError(multiple_profiles_message)
+
+    result = (
+        # By definition, we always pick the _last_ matching prov profile
+        all_matching_selected_profile_infos[-1]
+        if all_matching_selected_profile_infos
+        else None
+    )
 
     if result:
         _LOGGER.info(

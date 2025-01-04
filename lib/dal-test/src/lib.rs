@@ -132,7 +132,7 @@ impl fmt::Debug for DalContextHead {
 /// To use mutably borrowed `DalContext` version, use [`DalContextHeadMutRef`].
 pub struct DalContextHeadRef<'a>(pub &'a DalContext);
 
-impl<'a> fmt::Debug for DalContextHeadRef<'a> {
+impl fmt::Debug for DalContextHeadRef<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("DalContextHeadRef").finish_non_exhaustive()
     }
@@ -145,7 +145,7 @@ impl<'a> fmt::Debug for DalContextHeadRef<'a> {
 /// To use a borrowed `DalContext` version, use [`DalContextHeadRef`].
 pub struct DalContextHeadMutRef<'a>(pub &'a mut DalContext);
 
-impl<'a> fmt::Debug for DalContextHeadMutRef<'a> {
+impl fmt::Debug for DalContextHeadMutRef<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("DalContextHeadMutRef")
             .finish_non_exhaustive()
