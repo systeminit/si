@@ -5,20 +5,20 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
-load("@prelude//apple:apple_bundle_attrs.bzl", "get_apple_info_plist_build_system_identification_attrs")
 load("@prelude//apple:apple_bundle_resources.bzl", "get_apple_bundle_resource_part_list")
 load("@prelude//apple:apple_bundle_types.bzl", "AppleBundleResourceInfo")
+load("@prelude//apple:apple_rules_impl_utility.bzl", "get_apple_info_plist_build_system_identification_attrs")
 load("@prelude//apple:apple_toolchain_types.bzl", "AppleToolchainInfo", "AppleToolsInfo")
 load("@prelude//apple:resource_groups.bzl", "RESOURCE_GROUP_MAP_ATTR")
 load("@prelude//apple/user:cpu_split_transition.bzl", "cpu_split_transition")
 load("@prelude//user:rule_spec.bzl", "RuleRegistrationSpec")
-load("@prelude//decls/ios_rules.bzl", "AppleBundleExtension")
+load("@prelude//decls/apple_rules.bzl", "AppleBundleExtension")
 
 def _get_apple_resources_toolchain_attr():
     # FIXME: prelude// should be standalone (not refer to fbcode//)
     return attrs.toolchain_dep(default = "fbcode//buck2/platform/toolchain:apple-resources", providers = [AppleToolchainInfo])
 
-def _impl(ctx: AnalysisContext) -> list[Provider]:
+def _apple_resource_bundle_impl(ctx: AnalysisContext) -> list[Provider]:
     resource_output = get_apple_bundle_resource_part_list(ctx)
     return [
         DefaultInfo(),
@@ -58,6 +58,6 @@ def _apple_resource_bundle_attrs():
 
 registration_spec = RuleRegistrationSpec(
     name = "apple_resource_bundle",
-    impl = _impl,
+    impl = _apple_resource_bundle_impl,
     attrs = _apple_resource_bundle_attrs(),
 )

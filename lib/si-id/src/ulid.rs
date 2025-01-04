@@ -34,7 +34,7 @@ impl Ulid {
 
 struct UlidVisitor;
 
-impl<'de> ::serde::de::Visitor<'de> for UlidVisitor {
+impl ::serde::de::Visitor<'_> for UlidVisitor {
     type Value = Ulid;
 
     fn expecting(&self, formatter: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {

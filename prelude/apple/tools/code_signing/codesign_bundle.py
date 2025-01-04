@@ -8,6 +8,7 @@
 # pyre-strict
 
 import asyncio
+import importlib.resources
 import logging
 import os
 import shutil
@@ -29,6 +30,7 @@ from .codesign_command_factory import (
     ICodesignCommandFactory,
 )
 from .fast_adhoc import is_fast_adhoc_codesign_allowed, should_skip_adhoc_signing_path
+from .identity import CodeSigningIdentity
 from .info_plist_metadata import InfoPlistMetadata
 from .list_codesign_identities import IListCodesignIdentities
 from .prepare_code_signing_entitlements import prepare_code_signing_entitlements
@@ -73,6 +75,17 @@ class CodesignedPath:
     """
 
 
+def _log_codesign_identities(identities: List[CodeSigningIdentity]) -> None:
+    if len(identities) == 0:
+        _LOGGER.warning("ZERO codesign identities available")
+    else:
+        _LOGGER.info("Listing available codesign identities")
+        for identity in identities:
+            _LOGGER.info(
+                f"    Subject Common Name: {identity.subject_common_name}, Fingerprint: {identity.fingerprint}"
+            )
+
+
 def _select_provisioning_profile(
     info_plist_metadata: InfoPlistMetadata,
     provisioning_profiles_dir: Path,
@@ -81,12 +94,14 @@ def _select_provisioning_profile(
     list_codesign_identities: IListCodesignIdentities,
     should_use_fast_provisioning_profile_parsing: bool,
     strict_provisioning_profile_search: bool,
+    provisioning_profile_filter: Optional[str],
     log_file_path: Optional[Path] = None,
 ) -> SelectedProvisioningProfileInfo:
     read_provisioning_profile_command_factory = (
         _default_read_provisioning_profile_command_factory
     )
     identities = list_codesign_identities.list_codesign_identities()
+    _log_codesign_identities(identities)
     _LOGGER.info(
         f"Fast provisioning profile parsing enabled: {should_use_fast_provisioning_profile_parsing}"
     )
@@ -120,6 +135,7 @@ def _select_provisioning_profile(
         entitlements,
         platform,
         strict_provisioning_profile_search,
+        provisioning_profile_filter,
     )
     if selected_profile_info is None:
         if not mismatches:
@@ -170,6 +186,7 @@ def signing_context_with_profile_selection(
     log_file_path: Optional[Path] = None,
     should_use_fast_provisioning_profile_parsing: bool = False,
     strict_provisioning_profile_search: bool = False,
+    provisioning_profile_filter: Optional[str] = None,
 ) -> SigningContextWithProfileSelection:
     with open(info_plist_source, mode="rb") as info_plist_file:
         info_plist_metadata = InfoPlistMetadata.from_file(info_plist_file)
@@ -182,6 +199,7 @@ def signing_context_with_profile_selection(
         log_file_path=log_file_path,
         should_use_fast_provisioning_profile_parsing=should_use_fast_provisioning_profile_parsing,
         strict_provisioning_profile_search=strict_provisioning_profile_search,
+        provisioning_profile_filter=provisioning_profile_filter,
     )
 
     return SigningContextWithProfileSelection(
@@ -465,6 +483,12 @@ def _codesign_everything(
         platform=platform,
         fast_adhoc_signing=fast_adhoc_signing,
     )
+    # If we have > 1 paths to sign (including root bundle), access keychain first to avoid user playing whack-a-mole
+    # with permission grant dialog windows.
+    if codesign_on_copy_filtered_paths:
+        obtain_keychain_permissions(
+            identity_fingerprint, tmp_dir, codesign_command_factory
+        )
     _codesign_paths(
         codesign_on_copy_filtered_paths,
         identity_fingerprint,
@@ -587,3 +611,27 @@ def _filter_out_fast_adhoc_paths(
             p.path, identity_fingerprint, p.entitlements, platform
         )
     ]
+
+
+def obtain_keychain_permissions(
+    identity_fingerprint: str,
+    tmp_dir: str,
+    codesign_command_factory: ICodesignCommandFactory,
+) -> None:
+    with ExitStack() as stack, importlib.resources.path(
+        __package__, "dummy_binary_for_signing"
+    ) as dummy_binary_path:
+        # Copy the binary to avoid races vs other bundling actions
+        dummy_binary_copied = os.path.join(tmp_dir, "dummy_binary_for_signing")
+        shutil.copyfile(dummy_binary_path, dummy_binary_copied, follow_symlinks=True)
+        p = _spawn_codesign_process(
+            path=CodesignedPath(
+                path=Path(dummy_binary_copied), entitlements=None, flags=[]
+            ),
+            identity_fingerprint=identity_fingerprint,
+            tmp_dir=tmp_dir,
+            codesign_command_factory=codesign_command_factory,
+            stack=stack,
+        )
+        p.process.wait()
+    p.check_result()

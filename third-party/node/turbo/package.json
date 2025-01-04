@@ -5,8 +5,7 @@
     "turbo": "^1.10.3"
   },
   "engines": {
-    "node": ">=18 <19",
-    "pnpm": ">=8 <9"
+    "node": ">=18 <19"
   },
   "packageManager": "pnpm@8.5.0"
 }

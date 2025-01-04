@@ -10,7 +10,11 @@ load(
     "ArtifactTSet",
     "make_artifact_tset",
 )
-load("@prelude//cxx:cxx_toolchain_types.bzl", "PicBehavior")
+load(
+    "@prelude//cxx:cxx_toolchain_types.bzl",
+    "LinkerType",
+    "PicBehavior",
+)
 load(
     "@prelude//cxx:linker.bzl",
     "get_link_whole_args",
@@ -77,7 +81,7 @@ ArchiveLinkable = record(
     archive = field(Archive),
     # If a bitcode bundle was created for this artifact it will be present here
     bitcode_bundle = field(Artifact | None, None),
-    linker_type = field(str),
+    linker_type = field(LinkerType),
     link_whole = field(bool, False),
     # Indicates if this archive may contain LTO bit code.  Can be set to `False`
     # to e.g. tell dist LTO handling that a potentially expensive archive doesn't
@@ -96,7 +100,7 @@ ObjectsLinkable = record(
     objects = field([list[Artifact], None], None),
     # Any of the objects that are in bitcode format
     bitcode_bundle = field(Artifact | None, None),
-    linker_type = field(str),
+    linker_type = field(LinkerType),
     link_whole = field(bool, False),
 )
 
@@ -151,6 +155,7 @@ LinkInfo = record(
     # An informative name for this LinkInfo. This may be used in user messages
     # or when constructing intermediate output paths and does not need to be unique.
     name = field([str, None], None),
+    dist_thin_lto_codegen_flags = field(list[typing.Any], []),
     # Opaque cmd_arg-likes to be added pre/post this item on a linker command line.
     pre_flags = field(list[typing.Any], []),
     post_flags = field(list[typing.Any], []),
@@ -310,6 +315,8 @@ def link_info_to_args(value: LinkInfo, argument_type_filter: LinkInfoArgumentFil
 LinkInfos = record(
     # Link info to use by default.
     default = field(LinkInfo),
+    # Link info for objects compiler with extra optimizations (EXPERIMENTAL)
+    optimized = field([LinkInfo, None], None),
     # Link info stripped of debug symbols.
     stripped = field([LinkInfo, None], None),
 )
@@ -421,6 +428,11 @@ LinkedObject = record(
     linker_command = field([cmd_args, None], None),
     # This sub-target is only available for distributed thinLTO builds.
     index_argsfile = field(Artifact | None, None),
+    # This sub-target is only available for distributed thinLTO builds.
+    dist_thin_lto_codegen_argsfile = field([Artifact, None], None),
+    # This sub-target is only available for distributed thinLTO builds. This is similar to
+    # index_argsfile, but only includes flags that can be determined at analysis time, no input files.
+    dist_thin_lto_index_argsfile = field([Artifact, None], None),
     # Import library for linking with DLL on Windows.
     # If not on Windows it's always None.
     import_library = field(Artifact | None, None),
@@ -619,7 +631,8 @@ def create_merged_link_info_for_propagation(
 
 def get_link_info(
         infos: LinkInfos,
-        prefer_stripped: bool = False) -> LinkInfo:
+        prefer_stripped: bool = False,
+        prefer_optimized: bool = False) -> LinkInfo:
     """
     Helper for getting a `LinkInfo` out of a `LinkInfos`.
     """
@@ -627,6 +640,8 @@ def get_link_info(
     # When requested, prefer using pre-stripped link info.
     if prefer_stripped and infos.stripped != None:
         return infos.stripped
+    if prefer_optimized and infos.optimized:
+        return infos.optimized
 
     return infos.default
 
@@ -708,7 +723,7 @@ def map_to_link_infos(links: list[LinkArgs]) -> list[LinkInfo]:
     res = []
 
     def append(v):
-        if v.pre_flags or v.post_flags or v.linkables:
+        if v.pre_flags or v.post_flags or v.dist_thin_lto_codegen_flags or v.linkables:
             res.append(v)
 
     for link in links:
@@ -894,13 +909,13 @@ def merge_swiftmodule_linkables(ctx: AnalysisContext, linkables: list[[Swiftmodu
         ],
     ))
 
-def wrap_with_no_as_needed_shared_libs_flags(linker_type: str, link_info: LinkInfo) -> LinkInfo:
+def wrap_with_no_as_needed_shared_libs_flags(linker_type: LinkerType, link_info: LinkInfo) -> LinkInfo:
     """
     Wrap link info in args used to prevent linkers from dropping unused shared
     library dependencies from the e.g. DT_NEEDED tags of the link.
     """
 
-    if linker_type == "gnu":
+    if linker_type == LinkerType("gnu"):
         return wrap_link_info(
             inner = link_info,
             pre_flags = (
@@ -910,7 +925,7 @@ def wrap_with_no_as_needed_shared_libs_flags(linker_type: str, link_info: LinkIn
             post_flags = ["-Wl,--pop-state"],
         )
 
-    if linker_type == "darwin":
+    if linker_type == LinkerType("darwin"):
         return link_info
 
     fail("Linker type {} not supported".format(linker_type))
@@ -923,6 +938,8 @@ LinkCommandDebugOutput = record(
     command = ArgLike,
     argsfile = Artifact,
     filelist = Artifact | None,
+    dist_thin_lto_codegen_argsfile = Artifact | None,
+    dist_thin_lto_index_argsfile = Artifact | None,
 )
 
 # NB: Debug output is _not_ transitive over deps, so tsets are not used here.
@@ -937,31 +954,52 @@ UnstrippedLinkOutputInfo = provider(fields = {
 })
 
 def make_link_command_debug_output(linked_object: LinkedObject) -> [LinkCommandDebugOutput, None]:
-    if not linked_object.output or not linked_object.linker_command or not linked_object.linker_argsfile:
+    local_link_debug_info_present = linked_object.output and linked_object.linker_command and linked_object.linker_argsfile
+    distributed_link_debug_info_present = linked_object.dist_thin_lto_index_argsfile and linked_object.dist_thin_lto_codegen_argsfile
+    if not local_link_debug_info_present and not distributed_link_debug_info_present:
         return None
     return LinkCommandDebugOutput(
         filename = linked_object.output.short_path,
         command = linked_object.linker_command,
         argsfile = linked_object.linker_argsfile,
         filelist = linked_object.linker_filelist,
+        dist_thin_lto_index_argsfile = linked_object.dist_thin_lto_index_argsfile,
+        dist_thin_lto_codegen_argsfile = linked_object.dist_thin_lto_codegen_argsfile,
     )
 
 # Given a list of `LinkCommandDebugOutput`, it will produce a JSON info file.
 # The JSON info file will contain entries for each link command. In addition,
 # it will _not_ materialize any inputs to the link command except:
+#
+# For local thin-LTO:
 # - linker argfile
 # - linker filelist (if present - only applicable to Darwin linkers)
+#
+# For distributed thin-LTO:
+# - thin-link argsfile (without inputs just flags)
+# - codegen argsfile (without inputs just flags)
 def make_link_command_debug_output_json_info(ctx: AnalysisContext, debug_outputs: list[LinkCommandDebugOutput]) -> Artifact:
     json_info = []
     associated_artifacts = []
     for debug_output in debug_outputs:
-        json_info.append({
-            "command": debug_output.command,
-            "filename": debug_output.filename,
-        })
+        is_distributed_link = debug_output.dist_thin_lto_index_argsfile and debug_output.dist_thin_lto_codegen_argsfile
+        if is_distributed_link:
+            json_info.append({
+                "dist_thin_lto_codegen_argsfile": debug_output.dist_thin_lto_codegen_argsfile,
+                "dist_thin_lto_index_argsfile": debug_output.dist_thin_lto_index_argsfile,
+                "filename": debug_output.filename,
+            })
 
-        # Ensure all argsfile and filelists get materialized, as those are needed for debugging
-        associated_artifacts.extend(filter(None, [debug_output.argsfile, debug_output.filelist]))
+            associated_artifacts.extend([debug_output.dist_thin_lto_codegen_argsfile, debug_output.dist_thin_lto_index_argsfile])
+        else:
+            json_info.append({
+                "argsfile": debug_output.argsfile,
+                "command": debug_output.command,
+                "filename": debug_output.filename,
+            })
+
+            # Ensure all argsfile and filelists get materialized, as those are needed for debugging
+            associated_artifacts.extend(filter(None, [debug_output.argsfile, debug_output.filelist]))
 
     # Explicitly drop all inputs by using `with_inputs = False`, we don't want
     # to materialize all inputs to the link actions (which includes all object files

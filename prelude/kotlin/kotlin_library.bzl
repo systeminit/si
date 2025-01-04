@@ -319,6 +319,11 @@ def build_kotlin_library(
         )
 
     else:
+        compose_stability_config = getattr(ctx.attrs, "compose_stability_config", None)
+        if compose_stability_config != None:
+            ctx.attrs.extra_kotlinc_arguments.append("-P")
+            ctx.attrs.extra_kotlinc_arguments.append(cmd_args(["plugin:androidx.compose.compiler.plugins.kotlin:stabilityConfigurationPath", ctx.attrs._compose_stability_config], delimiter = "="))
+
         deps_query = getattr(ctx.attrs, "deps_query", []) or []
         provided_deps_query = getattr(ctx.attrs, "provided_deps_query", []) or []
         _check_exported_deps(ctx.attrs.exported_deps, "exported_deps")
@@ -387,9 +392,10 @@ def build_kotlin_library(
                 ),
                 "bootclasspath_entries": bootclasspath_entries,
                 "debug_port": getattr(ctx.attrs, "debug_port", None),
-                "deps": deps,
+                "deps": deps + [kotlin_toolchain.kotlin_stdlib],
                 "extra_kotlinc_arguments": ctx.attrs.extra_kotlinc_arguments,
                 "friend_paths": ctx.attrs.friend_paths,
+                "incremental": ctx.attrs.incremental,
                 "is_building_android_binary": ctx.attrs._is_building_android_binary,
                 "jar_postprocessor": ctx.attrs.jar_postprocessor[RunInfo] if hasattr(ctx.attrs, "jar_postprocessor") and ctx.attrs.jar_postprocessor else None,
                 "java_toolchain": ctx.attrs._java_toolchain[JavaToolchainInfo],
@@ -414,6 +420,11 @@ def build_kotlin_library(
                 actions_identifier = "",
                 **common_kotlincd_kwargs
             )
+
+            if outputs and outputs.incremental_state_dir:
+                extra_sub_targets = extra_sub_targets | {"incremental_state_dir": [
+                    DefaultInfo(default_output = outputs.incremental_state_dir),
+                ]}
 
             if outputs and outputs.annotation_processor_output:
                 generated_sources = [outputs.annotation_processor_output]
@@ -452,9 +463,10 @@ def build_kotlin_library(
             )
             extra_sub_targets = extra_sub_targets | class_to_src_map_sub_targets
 
-            java_library_info, java_packaging_info, shared_library_info, cxx_resource_info, linkable_graph, template_placeholder_info, intellij_info = create_java_library_providers(
+            java_library_info, java_packaging_info, global_code_info, shared_library_info, cxx_resource_info, linkable_graph, template_placeholder_info, intellij_info = create_java_library_providers(
                 ctx,
                 library_output = outputs.classpath_entry if outputs else None,
+                global_code_config = java_toolchain.global_code_config,
                 declared_deps = ctx.attrs.deps + deps_query,
                 exported_deps = ctx.attrs.exported_deps,
                 provided_deps = ctx.attrs.provided_deps + provided_deps_query,
@@ -478,6 +490,7 @@ def build_kotlin_library(
                 java_library_info = java_library_info,
                 java_library_intellij_info = intellij_info,
                 java_packaging_info = java_packaging_info,
+                java_global_code_info = global_code_info,
                 shared_library_info = shared_library_info,
                 cxx_resource_info = cxx_resource_info,
                 linkable_graph = linkable_graph,

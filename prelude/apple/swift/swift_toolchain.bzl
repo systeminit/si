@@ -29,12 +29,13 @@ def traverse_sdk_modules_graph(
     elif not uncompiled_sdk_module_info.is_swiftmodule and uncompiled_sdk_module_info.module_name in clang_sdk_module_name_to_deps:
         return
 
-    for uncompiled_dep in uncompiled_sdk_module_info.deps:
+    for uncompiled_dep in uncompiled_sdk_module_info.deps + uncompiled_sdk_module_info.cxx_deps:
         traverse_sdk_modules_graph(swift_sdk_module_name_to_deps, clang_sdk_module_name_to_deps, uncompiled_dep)
-        if uncompiled_sdk_module_info.is_swiftmodule:
-            swift_sdk_module_name_to_deps[uncompiled_sdk_module_info.module_name] = sdk_module_dep
-        else:
-            clang_sdk_module_name_to_deps[uncompiled_sdk_module_info.module_name] = sdk_module_dep
+
+    if uncompiled_sdk_module_info.is_swiftmodule:
+        swift_sdk_module_name_to_deps[uncompiled_sdk_module_info.module_name] = sdk_module_dep
+    else:
+        clang_sdk_module_name_to_deps[uncompiled_sdk_module_info.module_name] = sdk_module_dep
 
 def swift_toolchain_impl(ctx):
     # All Clang's PCMs need to be compiled with cxx flags of the target that imports them,
@@ -55,26 +56,23 @@ def swift_toolchain_impl(ctx):
         SwiftToolchainInfo(
             architecture = ctx.attrs.architecture,
             can_toolchain_emit_obj_c_header_textually = ctx.attrs.can_toolchain_emit_obj_c_header_textually,
-            # TODO(T99038725): until we add -debug-compilation-dir we need to wrap
-            # the Swift invocations so that we can apply a debug prefix map for
-            # the current directory while maintaining cache hit.
-            uncompiled_swift_sdk_modules_deps = uncompiled_swift_sdk_modules_deps,
-            uncompiled_clang_sdk_modules_deps = uncompiled_clang_sdk_modules_deps,
             compiler = cmd_args(ctx.attrs._swiftc_wrapper[RunInfo]).add(ctx.attrs.swiftc[RunInfo]),
             compiler_flags = ctx.attrs.swiftc_flags,
-            prefix_serialized_debugging_options = ctx.attrs.prefix_serialized_debug_info,
+            mk_swift_comp_db = ctx.attrs.make_swift_comp_db,
+            mk_swift_interface = cmd_args(ctx.attrs._swiftc_wrapper[RunInfo]).add(ctx.attrs.make_swift_interface[RunInfo]),
             object_format = SwiftObjectFormat(ctx.attrs.object_format) if ctx.attrs.object_format else SwiftObjectFormat("object"),
+            prefix_serialized_debugging_options = ctx.attrs.prefix_serialized_debug_info,
             resource_dir = ctx.attrs.resource_dir,
             runtime_run_paths = ctx.attrs.runtime_run_paths,
             sdk_path = ctx.attrs._internal_sdk_path or ctx.attrs.sdk_path,
-            swift_stdlib_tool = ctx.attrs.swift_stdlib_tool[RunInfo],
-            swift_stdlib_tool_flags = ctx.attrs.swift_stdlib_tool_flags,
-            swift_ide_test_tool = ctx.attrs.swift_ide_test_tool[RunInfo] if ctx.attrs.swift_ide_test_tool else None,
-            mk_swift_interface = cmd_args(ctx.attrs._swiftc_wrapper[RunInfo]).add(ctx.attrs.make_swift_interface[RunInfo]),
+            supports_cxx_interop_requirement_at_import = ctx.attrs.supports_cxx_interop_requirement_at_import,
             supports_relative_resource_dir = ctx.attrs.supports_relative_resource_dir,
             supports_swift_cxx_interoperability_mode = ctx.attrs.supports_swift_cxx_interoperability_mode,
             supports_swift_importing_objc_forward_declarations = ctx.attrs.supports_swift_importing_obj_c_forward_declarations,
-            supports_cxx_interop_requirement_at_import = ctx.attrs.supports_cxx_interop_requirement_at_import,
-            mk_swift_comp_db = ctx.attrs.make_swift_comp_db,
+            swift_ide_test_tool = ctx.attrs.swift_ide_test_tool[RunInfo] if ctx.attrs.swift_ide_test_tool else None,
+            swift_stdlib_tool = ctx.attrs.swift_stdlib_tool[RunInfo],
+            swift_stdlib_tool_flags = ctx.attrs.swift_stdlib_tool_flags,
+            uncompiled_clang_sdk_modules_deps = uncompiled_clang_sdk_modules_deps,
+            uncompiled_swift_sdk_modules_deps = uncompiled_swift_sdk_modules_deps,
         ),
     ]

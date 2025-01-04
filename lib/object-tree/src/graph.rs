@@ -247,7 +247,7 @@ impl<'a, T> NodeWithEntriesRef<'a, T> {
     }
 }
 
-impl<'a, T> WriteBytes for NodeWithEntriesRef<'a, T>
+impl<T> WriteBytes for NodeWithEntriesRef<'_, T>
 where
     T: WriteBytes,
 {

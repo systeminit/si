@@ -210,7 +210,7 @@ common_app_env_args(Env) ->
     lists:append([["-common", Key, Value] || {Key, Value} <- maps:to_list(Env)]).
 
 -spec start_test_node(
-    Erl :: string(),
+    Erl :: [binary()],
     ExtraFlags :: [string()],
     CodePath :: [file:filename_all()],
     ConfigFiles :: [file:filename_all()],
@@ -236,7 +236,7 @@ start_test_node(
     ).
 
 -spec start_test_node(
-    Erl :: string(),
+    Erl :: [binary()],
     ExtraFlags :: [string()],
     CodePath :: [file:filename_all()],
     ConfigFiles :: [file:filename_all()],
@@ -254,10 +254,7 @@ start_test_node(
     ReplayIo
 ) ->
     % split of args from Erl which can contain emulator flags
-    [_Executable | Flags] = string:split(ErlCmd, " ", all),
-    % we ignore the executable we got, and use the erl command from the
-    % toolchain that executes this code
-    ErlExecutable = os:find_executable("erl"),
+    [ErlExecutable | Flags] = ErlCmd,
 
     % HomeDir is the execution directory.
     HomeDir = set_home_dir(OutputDir),
@@ -319,16 +316,48 @@ config_arg(ConfigFiles) -> ["-config"] ++ ConfigFiles.
 %% Each test execution will have a separate home dir with a
 %% erlang default cookie file, setting the default cookie to
 %% buck2-test-runner-cookie
--spec set_home_dir(file:filename()) -> file:filename().
+-spec set_home_dir(file:filename_all()) -> file:filename_all().
 set_home_dir(OutputDir) ->
     HomeDir = filename:join(OutputDir, "HOME"),
     ErlangCookieFile = filename:join(HomeDir, ".erlang.cookie"),
     ok = filelib:ensure_dir(ErlangCookieFile),
     ok = file:write_file(ErlangCookieFile, atom_to_list(cookie())),
     ok = file:change_mode(ErlangCookieFile, 8#00400),
+
+    % In case the system is using dotslash, we leave a symlink to
+    % the real dotslash cache, otherwise erl could be re-downloaded, etc
+    try_setup_dotslash_cache(HomeDir),
+
     HomeDir.
 
--spec cookie() -> string().
+-spec try_setup_dotslash_cache(FakeHomeDir :: file:filename_all()) -> ok.
+try_setup_dotslash_cache(FakeHomeDir) ->
+    case init:get_argument(home) of
+        {ok, [[RealHomeDir]]} ->
+            RealDotslashCacheDir = filename:basedir(user_cache, "dotslash"),
+
+            case filelib:is_file(RealDotslashCacheDir) of
+                false ->
+                    ok;
+                true ->
+                    RealHomeDirParts = filename:split(RealHomeDir),
+                    RealDotslashCacheDirParts = filename:split(RealDotslashCacheDir),
+
+                    case lists:split(length(RealHomeDirParts), RealDotslashCacheDirParts) of
+                        {RealHomeDirParts, GenDotslashCacheDirParts} ->
+                            FakeHomeDotslashCacheDir = filename:join([FakeHomeDir | GenDotslashCacheDirParts]),
+                            ok = filelib:ensure_path(filename:dirname(FakeHomeDotslashCacheDir)),
+                            ok = file:make_symlink(RealDotslashCacheDir, FakeHomeDotslashCacheDir),
+                            ok;
+                        _ ->
+                            ok
+                    end
+            end;
+        _ ->
+            ok
+    end.
+
+-spec cookie() -> atom().
 cookie() ->
     'buck2-test-runner-cookie'.
 

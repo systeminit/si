@@ -99,8 +99,5 @@
     ],
     "before": "test/helpers/global-setup.ts",
     "after": "test/helpers/global-teardown.ts"
-  },
-  "volta": {
-    "extends": "../../package.json"
   }
 }

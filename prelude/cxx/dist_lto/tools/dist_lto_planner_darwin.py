@@ -43,7 +43,7 @@ from typing import List
 def _get_argsfile(args) -> str:
     # go through the flags passed to linker and find the index argsfile
     argsfiles = list(
-        filter(lambda arg: arg.endswith("thinlto.index.argsfile"), args.index_args)
+        filter(lambda arg: arg.endswith("thinlto_index_argsfile"), args.index_args)
     )
     assert (
         len(argsfiles) == 1
@@ -146,6 +146,26 @@ def main(argv):
                 "index_dir": archive_index_dir,
             }
 
+    # We read the `index`` and `index.full`` files produced by linker in index stage
+    # and translate them to 2 outputs:
+    # 1. A link plan build final_link args. (This one may be able to be removed if we refactor the workflow)
+    # 2. A files list (*.final_link_index) used for final link stage which includes all the
+    #    files needed. it's based on index.full with some modification, like path updates
+    #    and redundant(added by toolchain) dependencies removing.
+    index = {}
+    index_files_set = set()
+    loaded_input_bitcode_files = set()
+    with open(index_path("index")) as indexfile:
+        for line in indexfile:
+            line = line.strip()
+            index_files_set.add(line)
+            path = os.path.relpath(line, start=args.index)
+            loaded_input_bitcode_files.add(path)
+            index[mapping[path]["index"]] = 1
+
+    def _input_bitcode_file_path_is_loaded_by_linker(path):
+        return path in loaded_input_bitcode_files
+
     non_lto_objects = {}
     for path, data in sorted(mapping.items(), key=lambda v: v[0]):
         output_loc = data["output"]
@@ -208,8 +228,16 @@ def main(argv):
             if os.path.exists(imports_path):
                 bc_file = index_path(obj) + bitcode_suffix
                 os.rename(bc_file, os.path.join(output_path, os.path.basename(bc_file)))
-                imports = read_imports(path, imports_path)
+                if not _input_bitcode_file_path_is_loaded_by_linker(obj):
+                    object_plans.append(
+                        {
+                            "not_loaded_by_linker": True,
+                            "is_bc": True,
+                        }
+                    )
+                    continue
 
+                imports = read_imports(path, imports_path)
                 imports_list = []
                 archives_list = []
                 for path in imports:
@@ -241,34 +269,6 @@ def main(argv):
         with open(archive["plan"], "w") as planout:
             json.dump(archive_plan, planout, sort_keys=True)
 
-    # We read the `index`` and `index.full`` files produced by linker in index stage
-    # and translate them to 2 outputs:
-    # 1. A link plan build final_link args. (This one may be able to be removed if we refactor the workflow)
-    # 2. A files list (*.final_link_index) used for final link stage which includes all the
-    #    files needed. it's based on index.full with some modification, like path updates
-    #    and redundant(added by toolchain) dependencies removing.
-    index = {}
-    index_files_set = set()
-    # TODO(T130322878): since we call linker wrapper twice (in index and in final_link), to avoid these libs get
-    # added twice we remove them from the index file for now.
-    KNOWN_REMOVABLE_DEPS_SUFFIX = [
-        "glibc/lib/crt1.o",
-        "glibc/lib/crti.o",
-        "glibc/lib/Scrt1.o",
-        "crtbegin.o",
-        "crtbeginS.o",
-        ".build_info.o",
-        "crtend.o",
-        "crtendS.o",
-        "glibc/lib/crtn.o",
-    ]
-    with open(index_path("index")) as indexfile:
-        for line in indexfile:
-            line = line.strip()
-            index_files_set.add(line)
-            path = os.path.relpath(line, start=args.index)
-            index[mapping[path]["index"]] = 1
-
     with open(args.link_plan, "w") as outfile:
         json.dump(
             {
@@ -292,8 +292,6 @@ def main(argv):
         final_link_index_output.write("\n".join(lib_search_path) + "\n")
         for line in full_index_input:
             line = line.strip()
-            if any(filter(line.endswith, KNOWN_REMOVABLE_DEPS_SUFFIX)):
-                continue
             path = os.path.relpath(line, start=args.index)
             if line in index_files_set:
                 if mapping[path]["output"]:

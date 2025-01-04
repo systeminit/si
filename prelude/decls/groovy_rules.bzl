@@ -11,6 +11,7 @@
 # well-formatted (and then delete this TODO)
 
 load(":common.bzl", "ForkMode", "LogLevel", "SourceAbiVerificationMode", "TestType", "UnusedDependenciesAction", "prelude_rule")
+load(":jvm_common.bzl", "jvm_common")
 
 groovy_library = prelude_rule(
     name = "groovy_library",
@@ -70,22 +71,22 @@ groovy_library = prelude_rule(
                  `.java`, cross compilation using the jdk found in `JAVA_HOME` will occur.
             """),
             "resources": attrs.list(attrs.source(), default = [], doc = """
-                This is the same as in `java\\_library()`.
+                This is the same as in `java_library()`.
             """),
             "deps": attrs.list(attrs.dep(), default = [], doc = """
                 Rules (usually other `groovy_library` or ``java_library()`` rules)
                  that are used to generate the classpath required to compile this `groovy_library`.
 
-                 This is the same as in `java\\_library()`.
+                 This is the same as in `java_library()`.
             """),
             "exported_deps": attrs.list(attrs.dep(), default = [], doc = """
                 Other `groovy_library` and ``java_library()`` rules that depend
                  on this rule will also include its `exported_deps` in their classpaths.
 
-                 This is the same as in `java\\_library()`.
+                 This is the same as in `java_library()`.
             """),
             "provided_deps": attrs.list(attrs.dep(), default = [], doc = """
-                This is the same as in `java\\_library()`.
+                This is the same as in `java_library()`.
             """),
             "extra_groovyc_arguments": attrs.list(attrs.string(), default = [], doc = """
                 List of additional arguments to pass into the Groovy compiler.
@@ -93,22 +94,22 @@ groovy_library = prelude_rule(
             "source": attrs.option(attrs.string(), default = None, doc = """
                 Only used during cross compilation.
 
-                 This is the same as in `java\\_library()`.
+                 This is the same as in `java_library()`.
             """),
             "target": attrs.option(attrs.string(), default = None, doc = """
                 Only used during cross compilation.
 
-                 This is the same as in `java\\_library()`.
+                 This is the same as in `java_library()`.
             """),
             "java_version": attrs.option(attrs.string(), default = None, doc = """
                 Only used during cross compilation.
 
-                 This is the same as in `java\\_library()`.
+                 This is the same as in `java_library()`.
             """),
             "extra_arguments": attrs.list(attrs.string(), default = [], doc = """
                 Only used during cross compilation.
 
-                 This is the same as in `java\\_library()`.
+                 This is the same as in `java_library()`.
             """),
             "annotation_processor_deps": attrs.list(attrs.dep(), default = []),
             "annotation_processor_params": attrs.list(attrs.string(), default = []),
@@ -116,14 +117,12 @@ groovy_library = prelude_rule(
             "contacts": attrs.list(attrs.string(), default = []),
             "default_host_platform": attrs.option(attrs.configuration_label(), default = None),
             "exported_provided_deps": attrs.list(attrs.dep(), default = []),
-            "javac": attrs.option(attrs.source(), default = None),
             "labels": attrs.list(attrs.string(), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
             "manifest_file": attrs.option(attrs.source(), default = None),
             "maven_coords": attrs.option(attrs.string(), default = None),
             "never_mark_as_unused_dependency": attrs.option(attrs.bool(), default = None),
             "on_unused_dependencies": attrs.option(attrs.enum(UnusedDependenciesAction), default = None),
-            "plugins": attrs.list(attrs.dep(), default = []),
             "proguard_config": attrs.option(attrs.source(), default = None),
             "remove_classes": attrs.list(attrs.regex(), default = []),
             "required_for_source_only_abi": attrs.bool(default = False),
@@ -131,9 +130,8 @@ groovy_library = prelude_rule(
             "runtime_deps": attrs.list(attrs.dep(), default = []),
             "source_abi_verification_mode": attrs.option(attrs.enum(SourceAbiVerificationMode), default = None),
             "source_only_abi_deps": attrs.list(attrs.dep(), default = []),
-            "_wip_java_plugin_arguments": attrs.dict(attrs.label(), attrs.list(attrs.string()), default = {}),
         }
-    ),
+    ) | jvm_common.plugins() | jvm_common.javac(),
 )
 
 groovy_test = prelude_rule(
@@ -160,14 +158,12 @@ groovy_test = prelude_rule(
             "extra_groovyc_arguments": attrs.list(attrs.string(), default = []),
             "fork_mode": attrs.enum(ForkMode, default = "none"),
             "java_version": attrs.option(attrs.string(), default = None),
-            "javac": attrs.option(attrs.source(), default = None),
             "labels": attrs.list(attrs.string(), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
             "manifest_file": attrs.option(attrs.source(), default = None),
             "maven_coords": attrs.option(attrs.string(), default = None),
             "never_mark_as_unused_dependency": attrs.option(attrs.bool(), default = None),
             "on_unused_dependencies": attrs.option(attrs.enum(UnusedDependenciesAction), default = None),
-            "plugins": attrs.list(attrs.dep(), default = []),
             "proguard_config": attrs.option(attrs.source(), default = None),
             "provided_deps": attrs.list(attrs.dep(), default = []),
             "remove_classes": attrs.list(attrs.regex(), default = []),
@@ -189,9 +185,8 @@ groovy_test = prelude_rule(
             "use_cxx_libraries": attrs.option(attrs.bool(), default = None),
             "use_dependency_order_classpath": attrs.option(attrs.bool(), default = None),
             "vm_args": attrs.list(attrs.arg(), default = []),
-            "_wip_java_plugin_arguments": attrs.dict(attrs.label(), attrs.list(attrs.string()), default = {}),
         }
-    ),
+    ) | jvm_common.plugins() | jvm_common.javac(),
 )
 
 groovy_rules = struct(

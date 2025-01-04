@@ -20,6 +20,7 @@ load(
 load(
     "@prelude//cxx:cxx_toolchain_types.bzl",
     "CxxToolchainInfo",
+    "LinkerType",
     "PicBehavior",
 )
 load("@prelude//cxx:groups.bzl", "get_dedupped_roots_from_groups")
@@ -252,7 +253,7 @@ def haskell_prebuilt_library_impl(ctx: AnalysisContext) -> list[Provider]:
         def archive_linkable(lib):
             return ArchiveLinkable(
                 archive = Archive(artifact = lib),
-                linker_type = "gnu",
+                linker_type = LinkerType("gnu"),
             )
 
         def shared_linkable(lib):
@@ -284,12 +285,14 @@ def haskell_prebuilt_library_impl(ctx: AnalysisContext) -> list[Provider]:
         link_infos[link_style] = LinkInfos(
             default = LinkInfo(
                 pre_flags = ctx.attrs.exported_linker_flags,
+                post_flags = ctx.attrs.exported_post_linker_flags,
                 linkables = linkables,
             ),
         )
         prof_link_infos[link_style] = LinkInfos(
             default = LinkInfo(
                 pre_flags = ctx.attrs.exported_linker_flags,
+                post_flags = ctx.attrs.exported_post_linker_flags,
                 linkables = prof_linkables,
             ),
         )
@@ -372,12 +375,12 @@ def haskell_prebuilt_library_impl(ctx: AnalysisContext) -> list[Provider]:
 def _srcs_to_objfiles(
         ctx: AnalysisContext,
         odir: Artifact,
-        osuf: str) -> cmd_args:
-    objfiles = cmd_args()
+        osuf: str) -> list[Artifact]:
+    objfiles = []
     for src, _ in srcs_to_pairs(ctx.attrs.srcs):
         # Don't link boot sources, as they're only meant to be used for compiling.
         if is_haskell_src(src):
-            objfiles.add(cmd_args([odir, "/", paths.replace_extension(src, "." + osuf)], delimiter = ""))
+            objfiles.append(odir.project(paths.replace_extension(src, "." + osuf)))
     return objfiles
 
 _REGISTER_PACKAGE = """\
@@ -495,10 +498,12 @@ HaskellLibBuildOutput = record(
     libs = list[Artifact],
 )
 
-def _get_haskell_shared_library_name_linker_flags(linker_type: str, soname: str) -> list[str]:
-    if linker_type == "gnu":
+def _get_haskell_shared_library_name_linker_flags(
+        linker_type: LinkerType,
+        soname: str) -> list[str]:
+    if linker_type == LinkerType("gnu"):
         return ["-Wl,-soname,{}".format(soname)]
-    elif linker_type == "darwin":
+    elif linker_type == LinkerType("darwin"):
         # Passing `-install_name @rpath/...` or
         # `-Xlinker -install_name -Xlinker @rpath/...` instead causes
         # ghc-9.6.3: panic! (the 'impossible' happened)
@@ -590,7 +595,7 @@ def _build_haskell_lib(
     else:  # static flavours
         # TODO: avoid making an archive for a single object, like cxx does
         # (but would that work with Template Haskell?)
-        archive = make_archive(ctx, lib_short_path, [compiled.objects], objfiles)
+        archive = make_archive(ctx, lib_short_path, objfiles)
         lib = archive.artifact
         libs = [lib] + archive.external_objects
         link_infos = LinkInfos(
@@ -956,6 +961,7 @@ def haskell_binary_impl(ctx: AnalysisContext) -> list[Provider]:
 
     sos = []
 
+    link_strategy = to_link_strategy(link_style)
     if link_group_info != None:
         own_binary_link_flags = []
         auto_link_groups = {}
@@ -978,6 +984,7 @@ def haskell_binary_impl(ctx: AnalysisContext) -> list[Provider]:
         if auto_link_group_specs != None:
             linked_link_groups = create_link_groups(
                 ctx = ctx,
+                link_strategy = link_strategy,
                 link_group_mappings = link_group_info.mappings,
                 link_group_preferred_linkage = link_group_preferred_linkage,
                 executable_deps = executable_deps,
@@ -1005,7 +1012,7 @@ def haskell_binary_impl(ctx: AnalysisContext) -> list[Provider]:
             roots = get_dedupped_roots_from_groups(link_group_info.groups.values()),
         )
 
-        labels_to_links_map = get_filtered_labels_to_links_map(
+        labels_to_links = get_filtered_labels_to_links_map(
             public_nodes = public_nodes,
             linkable_graph_node_map = linkable_graph_node_map,
             link_group = None,
@@ -1016,7 +1023,7 @@ def haskell_binary_impl(ctx: AnalysisContext) -> list[Provider]:
                 name: (lib.label, lib.shared_link_infos)
                 for name, lib in link_group_libs.items()
             },
-            link_strategy = to_link_strategy(link_style),
+            link_strategy = link_strategy,
             roots = (
                 [
                     d.linkable_graph.nodes.value.label
@@ -1048,14 +1055,15 @@ def haskell_binary_impl(ctx: AnalysisContext) -> list[Provider]:
                 pre_flags = own_binary_link_flags,
             ),
         )
-        link_infos.extend(get_filtered_links(labels_to_links_map, set(public_nodes)))
+        link_infos.extend(get_filtered_links(labels_to_links.map, set(public_nodes)))
         infos = LinkArgs(infos = link_infos)
 
         link_group_ctx = LinkGroupContext(
             link_group_mappings = link_group_info.mappings,
             link_group_libs = link_group_libs,
             link_group_preferred_linkage = link_group_preferred_linkage,
-            labels_to_links_map = labels_to_links_map,
+            labels_to_links_map = labels_to_links.map,
+            targets_consumed_by_link_groups = {},
         )
 
         for shared_lib in traverse_shared_library_info(shlib_info):
@@ -1086,7 +1094,7 @@ def haskell_binary_impl(ctx: AnalysisContext) -> list[Provider]:
 
     link.add(at_argfile(
         actions = ctx.actions,
-        name = "haskell_link.argsfile",
+        name = "args.haskell_link_argsfile",
         args = link_args,
         allow_args = True,
     ))

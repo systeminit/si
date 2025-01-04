@@ -1903,10 +1903,12 @@ dependencies = [
 name = "dal-macros"
 version = "0.1.0"
 dependencies = [
+ "dal",
  "darling 0.20.10",
  "manyhow",
  "proc-macro2",
  "quote",
+ "si-events",
  "syn 2.0.90",
  "trybuild",
 ]

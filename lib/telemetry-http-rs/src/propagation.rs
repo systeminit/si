@@ -63,7 +63,7 @@ mod headers {
 
     pub struct HeaderInjector<'a>(pub &'a mut http::HeaderMap);
 
-    impl<'a> Injector for HeaderInjector<'a> {
+    impl Injector for HeaderInjector<'_> {
         /// Set a key and value in the HeaderMap.  Does nothing if the key or value are not valid inputs.
         fn set(&mut self, key: &str, value: String) {
             if let Ok(name) = http::header::HeaderName::from_bytes(key.as_bytes()) {
@@ -76,7 +76,7 @@ mod headers {
 
     pub struct HeaderExtractor<'a>(pub &'a http::HeaderMap);
 
-    impl<'a> Extractor for HeaderExtractor<'a> {
+    impl Extractor for HeaderExtractor<'_> {
         /// Get a value for a key from the HeaderMap.  If the value is not valid ASCII, returns None.
         fn get(&self, key: &str) -> Option<&str> {
             self.0.get(key).and_then(|value| value.to_str().ok())

@@ -10,6 +10,8 @@
 # the generated docs, and so those should be verified to be accurate and
 # well-formatted (and then delete this TODO)
 
+load("@prelude//:is_full_meta_repo.bzl", "is_full_meta_repo")
+
 def _headers_arg():
     return {
         "headers": attrs.named_set(attrs.source(), sorted = True, default = [], doc = """
@@ -133,6 +135,78 @@ def _privacy_manifest_arg():
 """),
     }
 
+def _debug_artifacts_validators_arg():
+    return {
+        "debug_artifacts_validators": attrs.dict(
+            attrs.string(),
+            attrs.tuple(
+                # A target which will be passed two named arguments:
+                # --artifacts: A path to a file containing a list of artifact paths to inspect.
+                # --output: The path to write the analysis output to.
+                attrs.exec_dep(providers = [RunInfo]),
+                # A target which is passed the outputs of the previous script
+                # and emits a ValidationSpec validation_result JSON file.
+                # --analysis-json-path: A path to a JSON artifact. Keys are the configured target.
+                # --output: The path to write the ValidationSpec validation_result JSON file.
+                # value is a list of artifact outputs from the previous script.
+                attrs.exec_dep(providers = [RunInfo]),
+            ),
+            default = {},
+        ),
+    }
+
+def _serialize_debugging_options_arg():
+    return {
+        # Need ability to distinguish between no value provided by users
+        # vs value explicitly set to `True` (in the latter case, we should
+        # show warning if value cannot be respected in mixed modules while
+        # in the former, we do not show a warning).
+        #
+        # Lack of value defaults to enabling serialized debugging options.
+        "serialize_debugging_options": attrs.option(attrs.bool(), default = None),
+    }
+
+def _uses_explicit_modules_arg():
+    return {
+        "uses_explicit_modules": attrs.bool(default = False),
+    }
+
+def _meta_apple_library_validation_enabled_default_value():
+    if not is_full_meta_repo():
+        return False
+
+    meta_apple_library_validation_enabled_default = (read_root_config("apple", "meta_apple_library_validation", "false").lower() == "true")
+    return select({
+        "DEFAULT": select({
+            "DEFAULT": meta_apple_library_validation_enabled_default,
+            "config//features/apple:fb_xplat_suffixing_check_disabled": False,
+            "config//features/apple:fb_xplat_suffixing_check_enabled": True,
+        }),
+        # arvr targets do not use suffixed targets, as any xplat target deps
+        # get rewritten without the Apple-specific suffixes.
+        "config//build_mode/constraints:arvr_mode_enabled": False,
+    })
+
+def _meta_apple_library_validation_enabled_arg():
+    return {
+        "_meta_apple_library_validation_enabled": attrs.bool(default = _meta_apple_library_validation_enabled_default_value()),
+    }
+
+def _skip_universal_resource_dedupe_default_value():
+    if not is_full_meta_repo():
+        return False
+
+    return select({
+        "DEFAULT": False,
+        "config//features/apple:skip_universal_resource_dedupe_disabled": False,
+        "config//features/apple:skip_universal_resource_dedupe_enabled": True,
+    })
+
+def _skip_universal_resource_dedupe_arg():
+    return {
+        "skip_universal_resource_dedupe": attrs.bool(default = _skip_universal_resource_dedupe_default_value()),
+    }
+
 apple_common = struct(
     headers_arg = _headers_arg,
     exported_headers_arg = _exported_headers_arg,
@@ -144,4 +218,9 @@ apple_common = struct(
     extra_xcode_sources = _extra_xcode_sources,
     extra_xcode_files = _extra_xcode_files,
     privacy_manifest_arg = _privacy_manifest_arg,
+    debug_artifacts_validators_arg = _debug_artifacts_validators_arg,
+    serialize_debugging_options_arg = _serialize_debugging_options_arg,
+    uses_explicit_modules_arg = _uses_explicit_modules_arg,
+    meta_apple_library_validation_enabled_arg = _meta_apple_library_validation_enabled_arg,
+    skip_universal_resource_dedupe_arg = _skip_universal_resource_dedupe_arg,
 )

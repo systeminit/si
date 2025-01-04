@@ -169,17 +169,19 @@ def _generate_input_mapping(build_environment: BuildEnvironment, input_artifacts
 
 def _generated_source_artifacts(ctx: AnalysisContext, toolchain: Toolchain, name: str) -> PathArtifactMapping:
     """Generate source output artifacts and build actions for generated erl files."""
-    inputs = [src for src in ctx.attrs.srcs if _is_xyrl(src)]
-    outputs = {
-        module_name(src): _build_xyrl(
+
+    def build(src, custom_include_opt):
+        return _build_xyrl(
             ctx,
             toolchain,
             src,
+            custom_include_opt,
             ctx.actions.declare_output(generated_erl_path(toolchain, name, src)),
         )
-        for src in inputs
-    }
-    return outputs
+
+    yrl_outputs = {module_name(src): build(src, "yrl_includefile") for src in ctx.attrs.srcs if _is_yrl(src)}
+    xrl_outputs = {module_name(src): build(src, "xrl_includefile") for src in ctx.attrs.srcs if _is_xrl(src)}
+    return yrl_outputs | xrl_outputs
 
 def _generate_include_artifacts(
         ctx: AnalysisContext,
@@ -285,8 +287,8 @@ def _generate_beam_artifacts(
         input_mapping = build_environment.input_mapping,
     )
 
-    dep_info_content = to_term_args(_build_dep_info_data(updated_build_environment))
-    dep_info_file = ctx.actions.write(_dep_info_name(toolchain), dep_info_content)
+    dep_info_content = _build_dep_info_data(updated_build_environment)
+    dep_info_file = ctx.actions.write_json(_dep_info_name(toolchain), dep_info_content)
 
     for erl in src_artifacts:
         _build_erl(ctx, toolchain, updated_build_environment, dep_info_file, erl, beam_mapping[module_name(erl)])
@@ -388,6 +390,8 @@ def _get_deps_file(ctx: AnalysisContext, toolchain: Toolchain, src: Artifact) ->
             "minimal",
             "-noinput",
             "-noshell",
+            "-pa",
+            toolchain.utility_modules,
             "-run",
             "escript",
             "start",
@@ -418,21 +422,19 @@ def _build_xyrl(
         ctx: AnalysisContext,
         toolchain: Toolchain,
         xyrl: Artifact,
+        custom_include_opt: str,
         output: Artifact) -> Artifact:
     """Generate an erl file out of an xrl or yrl input file."""
     erlc = toolchain.otp_binaries.erlc
-    erlc_cmd = cmd_args(
-        [
-            erlc,
-            "-o",
-            cmd_args(output.as_output(), parent = 1),
-            xyrl,
-        ],
-    )
+    custom_include = getattr(ctx.attrs, custom_include_opt, None)
+    cmd = cmd_args(erlc)
+    if custom_include:
+        cmd.add("-I", custom_include)
+    cmd.add("-o", cmd_args(output.as_output(), parent = 1), xyrl)
     _run_with_env(
         ctx,
         toolchain,
-        erlc_cmd,
+        cmd,
         category = "erlc",
         identifier = action_identifier(toolchain, xyrl.basename),
     )
@@ -452,25 +454,15 @@ def _build_erl(
 
     final_dep_file = ctx.actions.declare_output(_dep_final_name(toolchain, src))
     finalize_deps_cmd = cmd_args(
-        toolchain.otp_binaries.erl,
-        "+A0",
-        "+S1:1",
-        "+sbtu",
-        "-mode",
-        "minimal",
-        "-noinput",
-        "-noshell",
-        "-run",
-        "escript",
-        "start",
-        "--",
-        toolchain.dependency_finalizer,
         src,
         dep_info_file,
         final_dep_file.as_output(),
         hidden = build_environment.deps_files.values(),
     )
-    ctx.actions.run(
+    _run_escript(
+        ctx,
+        toolchain,
+        toolchain.dependency_finalizer,
         finalize_deps_cmd,
         category = "dependency_finalizer",
         identifier = action_identifier(toolchain, src.basename),
@@ -762,9 +754,13 @@ def _is_erl(in_file: Artifact) -> bool:
     """ Returns True if the artifact is an erl file """
     return _is_ext(in_file, [".erl"])
 
-def _is_xyrl(in_file: Artifact) -> bool:
-    """ Returns True if the artifact is a xrl or yrl file """
-    return _is_ext(in_file, [".yrl", ".xrl"])
+def _is_yrl(in_file: Artifact) -> bool:
+    """ Returns True if the artifact is a yrl file """
+    return _is_ext(in_file, [".yrl"])
+
+def _is_xrl(in_file: Artifact) -> bool:
+    """ Returns True if the artifact is a xrl file """
+    return _is_ext(in_file, [".xrl"])
 
 def _is_ext(in_file: Artifact, extensions: list[str]) -> bool:
     """ Returns True if the artifact has an extension listed in extensions """
@@ -831,6 +827,28 @@ def _run_with_env(ctx: AnalysisContext, toolchain: Toolchain, *args, **kwargs):
     kwargs["env"] = env
     ctx.actions.run(*args, **kwargs)
 
+def _run_escript(ctx: AnalysisContext, toolchain: Toolchain, script: Artifact, args: cmd_args, **kwargs) -> None:
+    """ run escript with env and providing toolchain-configured utility modules"""
+    cmd = cmd_args([
+        toolchain.otp_binaries.erl,
+        "+A0",
+        "+S1:1",
+        "+sbtu",
+        "-mode",
+        "minimal",
+        "-noinput",
+        "-noshell",
+        "-pa",
+        toolchain.utility_modules,
+        "-run",
+        "escript",
+        "start",
+        "--",
+        script,
+        args,
+    ])
+    _run_with_env(ctx, toolchain, cmd, **kwargs)
+
 def _peek_private_includes(
         ctx: AnalysisContext,
         toolchain: Toolchain,
@@ -882,12 +900,14 @@ erlang_build = struct(
     utils = struct(
         is_hrl = _is_hrl,
         is_erl = _is_erl,
-        is_xyrl = _is_xyrl,
+        is_yrl = _is_yrl,
+        is_xrl = _is_xrl,
         module_name = module_name,
         private_include_name = private_include_name,
         make_dir_anchor = _make_dir_anchor,
         build_dir = _build_dir,
         run_with_env = _run_with_env,
+        run_escript = _run_escript,
         peek_private_includes = _peek_private_includes,
     ),
 )

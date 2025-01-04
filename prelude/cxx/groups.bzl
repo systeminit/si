@@ -44,6 +44,7 @@ _VALID_ATTRS = [
     "linker_flags",
     "requires_root_node_exists",
     "prohibit_file_duplicates",
+    "prefer_optimized_experimental",
 ]
 
 # Traversal types in this list will only assign the node
@@ -106,6 +107,7 @@ def parse_groups_definitions(
             linker_flags = attrs.get("linker_flags", []),
             requires_root_node_exists = attrs.get("requires_root_node_exists", True),
             prohibit_file_duplicates = attrs.get("prohibit_file_duplicates", False),
+            prefer_optimized_experimental = attrs.get("prefer_optimized_experimental", False),
         )
 
         parsed_mappings = []
@@ -217,7 +219,23 @@ def _find_targets_in_mapping(
     # If we have no filtering, we don't need to do any traversal to find targets to include.
     if not mapping.filters:
         if not mapping.roots:
-            fail("no filter or explicit root given: {}", mapping)
+            # Some link groups may want to partially define their mapping roots based on constraint
+            # that potentially can be resolved to `None`.
+            #
+            # E.g:
+            # ```
+            # ("evict-mkl", [
+            #   (":mkl_ilp64_omp", "node", None, "shared"),
+            #   (select(
+            #     {"DEFAULT": None, "ovr_config//runtime:platform010": "//IntelComposerXE:mkl_ilp64_omp" }),
+            #     "node", None, "shared"
+            #   ),
+            # ])
+            # ```
+            # Second mapping will be resolved to `(None, "node", None, "shared")` and will not handle anything.
+            # There is no convenient way to gracefully handle that in user-facing link groups API.
+            return []
+
         elif mapping.traversal != Traversal("intersect_any_roots"):
             return mapping.roots
 
@@ -420,5 +438,5 @@ def make_info_subtarget_providers(ctx: AnalysisContext, groups: list[Group], map
         "groups": {group.name: _make_json_info_for_group(group) for group in groups},
         "mappings": mappings,
     }
-    json_output = ctx.actions.write_json("link_group_map_info.json", info_json)
+    json_output = ctx.actions.write_json("link_group_map_info.json", info_json, pretty = True)
     return [DefaultInfo(default_output = json_output)]

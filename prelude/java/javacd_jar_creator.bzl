@@ -9,6 +9,7 @@ load(
     "@prelude//java:java_providers.bzl",
     "JavaClasspathEntry",  # @unused Used as a type
     "JavaCompileOutputs",  # @unused Used as a type
+    "generate_java_classpath_snapshot",
     "make_compile_outputs",
 )
 load("@prelude//java:java_resources.bzl", "get_resources_map")
@@ -248,9 +249,6 @@ def create_jar_artifact_javacd(
 
         args.add(output_paths_to_hidden_cmd_args(output_paths, path_to_class_hashes))
 
-        # TODO(cjhopman): make sure this works both locally and remote.
-        event_pipe_out = declare_prefixed_output(actions, actions_identifier, "events.data")
-
         dep_files = {}
         if not is_creating_subtarget and srcs and (java_toolchain.dep_files == DepFiles("per_jar") or java_toolchain.dep_files == DepFiles("per_class")) and track_class_usage:
             abi_to_abi_dir_map = None
@@ -279,7 +277,6 @@ def create_jar_artifact_javacd(
             args,
             env = {
                 "BUCK_CLASSPATH": compiler,
-                "BUCK_EVENT_PIPE": event_pipe_out.as_output(),
                 "JAVACD_ABSOLUTE_PATHS_ARE_RELATIVE_TO_CWD": "1",
             },
             category = "{}javacd_jar".format(category_prefix),
@@ -336,6 +333,7 @@ def create_jar_artifact_javacd(
             define_action = define_javacd_action,
         )
 
+        abi_jar_snapshot = generate_java_classpath_snapshot(ctx.actions, java_toolchain.cp_snapshot_generator, classpath_abi, actions_identifier)
         result = make_compile_outputs(
             full_library = final_jar_output.final_jar,
             preprocessed_library = final_jar_output.preprocessed_jar,
@@ -346,12 +344,15 @@ def create_jar_artifact_javacd(
             classpath_abi_dir = classpath_abi_dir,
             required_for_source_only_abi = required_for_source_only_abi,
             annotation_processor_output = output_paths.annotations,
+            abi_jar_snapshot = abi_jar_snapshot,
         )
     else:
+        full_jar_snapshot = generate_java_classpath_snapshot(ctx.actions, java_toolchain.cp_snapshot_generator, final_jar_output.final_jar, actions_identifier)
         result = make_compile_outputs(
             full_library = final_jar_output.final_jar,
             preprocessed_library = final_jar_output.preprocessed_jar,
             required_for_source_only_abi = required_for_source_only_abi,
             annotation_processor_output = output_paths.annotations,
+            abi_jar_snapshot = full_jar_snapshot,
         )
     return result

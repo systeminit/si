@@ -18,9 +18,6 @@
     "vitepress": "~1.0.2",
     "vitepress-plugin-lightbox": "^1.0.2"
   },
-  "volta": {
-    "extends": "../../package.json"
-  },
   "dependencies": {
     "dotenv": "^16.0.3",
     "posthog-js": "^1.148.2"

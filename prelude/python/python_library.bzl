@@ -17,7 +17,6 @@ load(
     "gather_resources",
 )
 load("@prelude//cxx:cxx_link_utility.bzl", "shared_libs_symlink_tree_name")
-load("@prelude//cxx:cxx_toolchain_types.bzl", "CxxPlatformInfo")
 load(
     "@prelude//cxx:omnibus.bzl",
     "get_excluded",
@@ -35,6 +34,14 @@ load(
 )
 load("@prelude//linking:shared_libraries.bzl", "SharedLibraryInfo", "merge_shared_libraries")
 load("@prelude//python:toolchain.bzl", "PythonPlatformInfo", "get_platform_attr")
+load(
+    "@prelude//third-party:build.bzl",
+    "create_third_party_build_root",
+    "prefix_from_label",
+    "project_from_label",
+)
+load("@prelude//third-party:providers.bzl", "ThirdPartyBuild", "third_party_build_info")
+load("@prelude//unix:providers.bzl", "UnixEnv", "create_unix_env_info")
 load("@prelude//utils:arglike.bzl", "ArgLike")  # @unused Used as a type
 load("@prelude//utils:expect.bzl", "expect")
 load("@prelude//utils:utils.bzl", "flatten", "from_named_set")
@@ -195,19 +202,22 @@ def _exclude_deps_from_omnibus(
 
 def _attr_srcs(ctx: AnalysisContext) -> dict[str, Artifact]:
     python_platform = ctx.attrs._python_toolchain[PythonPlatformInfo]
-    cxx_platform = ctx.attrs._cxx_toolchain[CxxPlatformInfo]
+    cxx_toolchain = ctx.attrs._cxx_toolchain
     all_srcs = {}
     all_srcs.update(from_named_set(ctx.attrs.srcs))
-    for srcs in get_platform_attr(python_platform, cxx_platform, ctx.attrs.platform_srcs):
+    for srcs in get_platform_attr(python_platform, cxx_toolchain, ctx.attrs.platform_srcs):
         all_srcs.update(from_named_set(srcs))
     return all_srcs
 
 def _attr_resources(ctx: AnalysisContext) -> dict[str, Artifact | Dependency]:
     python_platform = ctx.attrs._python_toolchain[PythonPlatformInfo]
-    cxx_platform = ctx.attrs._cxx_toolchain[CxxPlatformInfo]
+    cxx_toolchain = ctx.attrs._cxx_toolchain
     all_resources = {}
     all_resources.update(from_named_set(ctx.attrs.resources))
-    for resources in get_platform_attr(python_platform, cxx_platform, ctx.attrs.platform_resources):
+
+    # `python_binary` doesn't have `platform_resources`
+    platform_resources = getattr(ctx.attrs, "platform_resources", [])
+    for resources in get_platform_attr(python_platform, cxx_toolchain, platform_resources):
         all_resources.update(from_named_set(resources))
     return all_resources
 
@@ -262,7 +272,7 @@ def python_library_impl(ctx: AnalysisContext) -> list[Provider]:
     expect(not ctx.attrs.versioned_resources)
 
     python_platform = ctx.attrs._python_toolchain[PythonPlatformInfo]
-    cxx_platform = ctx.attrs._cxx_toolchain[CxxPlatformInfo]
+    cxx_toolchain = ctx.attrs._cxx_toolchain
 
     providers = []
     sub_targets = {}
@@ -290,21 +300,65 @@ def python_library_impl(ctx: AnalysisContext) -> list[Provider]:
 
     raw_deps = ctx.attrs.deps
     raw_deps.extend(flatten(
-        get_platform_attr(python_platform, cxx_platform, ctx.attrs.platform_deps),
+        get_platform_attr(python_platform, cxx_toolchain, ctx.attrs.platform_deps),
     ))
+    resource_manifest = py_resources(ctx, resources) if resources else None
     deps, shared_libraries = gather_dep_libraries(raw_deps)
     library_info = create_python_library_info(
         ctx.actions,
         ctx.label,
         srcs = src_manifest,
         src_types = src_type_manifest,
-        resources = py_resources(ctx, resources) if resources else None,
+        resources = resource_manifest,
         bytecode = bytecode,
         dep_manifest = dep_manifest,
         deps = deps,
         shared_libraries = shared_libraries,
     )
     providers.append(library_info)
+
+    providers.append(
+        create_unix_env_info(
+            actions = ctx.actions,
+            env = UnixEnv(
+                label = ctx.label,
+                python_libs = [library_info],
+            ),
+            deps = raw_deps,
+        ),
+    )
+
+    # Allow third-party-build rules to depend on Python rules.
+    tp_project = project_from_label(ctx.label)
+    tp_prefix = prefix_from_label(ctx.label)
+    providers.append(
+        third_party_build_info(
+            actions = ctx.actions,
+            build = ThirdPartyBuild(
+                # TODO(agallagher): Figure out a way to get a unique name?
+                project = tp_project,
+                prefix = tp_prefix,
+                root = create_third_party_build_root(
+                    ctx = ctx,
+                    # TODO(agallagher): use constraints to get py version.
+                    manifests = (
+                        [("lib/python", src_manifest)] if src_manifest != None else []
+                    ) + (
+                        [("lib/python", resource_manifest[0])] if resource_manifest != None else []
+                    ),
+                ),
+                manifest = ctx.actions.write_json(
+                    "third_party_build_manifest.json",
+                    dict(
+                        project = tp_project,
+                        prefix = tp_prefix,
+                        py_lib_paths = ["lib/python"],
+                    ),
+                ),
+            ),
+            deps = raw_deps,
+        ),
+    )
 
     providers.append(create_python_needed_coverage_info(ctx.label, ctx.attrs.base_module, srcs.keys()))
 

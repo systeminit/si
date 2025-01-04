@@ -43,6 +43,8 @@ rust_toolchain_attrs = {
     # Rustc flags, except that they are applied on the command line after the
     # target's rustc flags
     "extra_rustc_flags": provider_field(list[typing.Any], default = []),
+    # Flags applied only on check builds
+    "rustc_check_flags": provider_field(list[typing.Any], default = []),
     # Extra flags when building binaries
     "rustc_binary_flags": provider_field(list[typing.Any], default = []),
     # Extra flags for doing building tests
@@ -51,19 +53,13 @@ rust_toolchain_attrs = {
     # FIXME(JakobDegen): Can't use `list[str]` here, because then the default is wrong, but can't
     # use a non-empty list as the default because lists are mutable
     "rustc_coverage_flags": provider_field(typing.Any, default = ("-Cinstrument-coverage",)),
+    # Extra env variables that should be made available to the rustdoc executable.
+    "rustdoc_env": provider_field(dict[str, typing.Any], default = {}),
     # Extra flags for rustdoc invocations
     "rustdoc_flags": provider_field(list[typing.Any], default = []),
     # When you `buck test` a library, also compile and run example code in its
     # documentation comments.
     "doctests": provider_field(bool, default = False),
-    # Filter out failures when we just need diagnostics. That is,
-    # a rule which fails with a compilation failure will report
-    # success as an RE action, but a "failure filter" action will
-    # report the failure if some downstream action needs one of the
-    # artifacts. If all you need is diagnostics, then it will report
-    # success. This doubles the number of actions, so it should only
-    # be explicitly enabled when needed.
-    "failure_filter": provider_field(bool, default = False),
     # The Rust compiler (rustc)
     "compiler": provider_field(RunInfo | None, default = None),
     # Rust documentation extractor (rustdoc)
@@ -76,6 +72,12 @@ rust_toolchain_attrs = {
     "rustdoc_test_with_resources": provider_field(RunInfo | None, default = None),
     # Wrapper for rustdoc coverage
     "rustdoc_coverage": provider_field(RunInfo | None, default = None),
+    # These two scripts are used to implement deferred linking, where the link action
+    # is separate from the rustc invocation action. The benefit here is that we can
+    # decouple the action graph such that rustc can compile libs without waiting for
+    # the link step from shared lib dependencies from completing.
+    "deferred_link_action": provider_field(RunInfo | None, default = None),
+    "extract_link_action": provider_field(RunInfo | None, default = None),
     # Failure filter action
     "failure_filter_action": provider_field(RunInfo | None, default = None),
     # The default edition to use, if not specified.
@@ -84,11 +86,23 @@ rust_toolchain_attrs = {
     "allow_lints": provider_field(list[typing.Any], default = []),
     "deny_lints": provider_field(list[typing.Any], default = []),
     "warn_lints": provider_field(list[typing.Any], default = []),
+    # Deny-on-Check lints are handled differently depending on the build.
+    #
+    # For check builds, e.g. [check], [diag.json], [clippy.json] subtargets, or the default target
+    # for `rust_library` rules, these lints will be applied as Deny Lints. Importantly, this means
+    # that when you call `buck build :rust_lib` or use tools like arc rust-check or rustfix, these
+    # lints will be surfaced as errors.
+    #
+    # However, for "regular" builds, e.g. when building tests or binaries, or building this target
+    # as a dependency of another target, these flags will be surfaced only as warnings. The primary
+    # benefit here is that you can develop + test your code as normal and will not be blocked by
+    # these lints. However, once you run rust check, or submit your code to phabricator, these
+    # lints will prevent you from landing your code. This way we can introduce lints that we'd like
+    # to deny from our codebase without slowing down your inner dev loop, or encouraging you to
+    # --cap-warns=lint for your projects.
+    "deny_on_check_lints": provider_field(list[typing.Any], default = []),
     # Clippy configuration file clippy.toml
     "clippy_toml": provider_field(Artifact | None, default = None),
-    # URL prefix (e.g. /path/to/docs) where crates' docs are hosted. Used for
-    # linking types in signatures to their definition in another crate.
-    "extern_html_root_url_prefix": provider_field(str | None, default = None),
     # Utilities used for building flagfiles containing dynamic crate names
     "transitive_dependency_symlinks_tool": provider_field(RunInfo | None, default = None),
     # Setting this enables additional behaviors that improves linking at the
@@ -123,6 +137,9 @@ rust_toolchain_attrs = {
     #
     # FIXME(JakobDegen): Fix `enum` so that we can set `unwind` as the default
     "panic_runtime": provider_field(PanicRuntime),
+    # Setting this allows Rust rules to use features which are only available
+    # on nightly release.
+    "nightly_features": provider_field(bool, default = False),
 }
 
 RustToolchainInfo = provider(fields = rust_toolchain_attrs)

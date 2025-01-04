@@ -3,20 +3,20 @@ load(
     "ArtifactGroupInfo",
 )
 load(
-    "@prelude//decls/re_test_common.bzl",
-    "re_test_common",
-)
-load(
-    "@prelude//test/inject_test_run_info.bzl",
-    "inject_test_run_info",
-)
-load(
     "@prelude//:paths.bzl",
     "paths",
 )
 load(
+    "@prelude//decls/re_test_common.bzl",
+    "re_test_common",
+)
+load(
     "@prelude//python:toolchain.bzl",
     "PythonToolchainInfo",
+)
+load(
+    "@prelude//test/inject_test_run_info.bzl",
+    "inject_test_run_info",
 )
 load(
     "@prelude//tests:re_utils.bzl",
@@ -740,8 +740,8 @@ def typescript_runnable_dist_bin_impl(ctx: AnalysisContext) -> list[[DefaultInfo
         "--rel-path",
         paths.basename(bin),
         out.as_output(),
+        hidden = [base_path],
     )
-    cmd.hidden([base_path])
 
     ctx.actions.run(cmd, category = "pnpm", identifier = "typescript_runnable_dist_bin")
 
@@ -863,6 +863,7 @@ def workspace_node_modules_impl(ctx: AnalysisContext) -> list[DefaultInfo]:
     cmd = cmd_args(
         ctx.attrs._python_toolchain[PythonToolchainInfo].interpreter,
         pnpm_toolchain.build_workspace_node_modules[DefaultInfo].default_outputs,
+        hidden = [ctx.attrs.pnpm_lock],
     )
     if ctx.attrs.root_workspace:
         cmd.add("--package-dir")
@@ -871,7 +872,6 @@ def workspace_node_modules_impl(ctx: AnalysisContext) -> list[DefaultInfo]:
         cmd.add("--root-dir")
         cmd.add(package_dir)
     cmd.add(out.as_output())
-    cmd.hidden([ctx.attrs.pnpm_lock])
 
     ctx.actions.run(cmd, category = "pnpm", identifier = "install")
 
@@ -916,6 +916,7 @@ def node_modules_context(
         pnpm_toolchain.build_package_node_modules[DefaultInfo].default_outputs,
         "--turbo-bin",
         ctx.attrs.turbo[RunInfo],
+        hidden = [ctx.attrs.pnpm_lock],
     )
     if ctx.attrs.package_name:
         cmd.add("--package-name")
@@ -929,7 +930,6 @@ def node_modules_context(
     if prod_only:
         cmd.add("--prod-only")
     cmd.add(out.as_output())
-    cmd.hidden([ctx.attrs.pnpm_lock])
 
     ctx.actions.run(cmd, category = "pnpm", identifier = "install " + ctx.label.package)
 
@@ -1029,9 +1029,10 @@ fi
 """, is_executable = True)
     out = ctx.actions.declare_output("out", dir = True)
     output_join = " ".join(ctx.attrs.outs)
-    args = cmd_args([script, ctx.attrs.path, ctx.attrs.command, out.as_output(), output_join])
-    args.hidden([ctx.attrs.srcs])
-    args.hidden([ctx.attrs.deps])
+    args = cmd_args(
+        [script, ctx.attrs.path, ctx.attrs.command, out.as_output(), output_join],
+        hidden = [ctx.attrs.srcs, ctx.attrs.deps],
+    )
     ctx.actions.run(args, category = "pnpm", identifier = "run_library", local_only = True)
     return [DefaultInfo(default_outputs = [out])]
 
@@ -1055,9 +1056,10 @@ npm_run_command="$2"
 cd "$rootpath/$npm_package_path"
 pnpm run --report-summary "$npm_run_command"
 """, is_executable = True)
-    args = cmd_args([script, ctx.attrs.path, ctx.attrs.command])
-    args.hidden([ctx.attrs.deps])
-    args.hidden([ctx.attrs.srcs])
+    args = cmd_args(
+        [script, ctx.attrs.path, ctx.attrs.command],
+        hidden = [ctx.attrs.deps, ctx.attrs.srcs],
+    )
     return [DefaultInfo(), RunInfo(args = args)]
 
 pnpm_task_binary = rule(impl = pnpm_task_binary_impl, attrs = {
@@ -1079,9 +1081,10 @@ npm_run_command="$2"
 cd "$rootpath/$npm_package_path"
 pnpm run --report-summary "$npm_run_command"
 """, is_executable = True)
-    args = cmd_args([script, ctx.attrs.path, ctx.attrs.command])
-    args.hidden([ctx.attrs.deps])
-    args.hidden([ctx.attrs.srcs])
+    args = cmd_args(
+        [script, ctx.attrs.path, ctx.attrs.command],
+        hidden = [ctx.attrs.deps, ctx.attrs.srcs],
+    )
     return [DefaultInfo(), ExternalRunnerTestInfo(type = "integration", command = [script, ctx.attrs.path, ctx.attrs.command])]
 
 pnpm_task_test = rule(impl = pnpm_task_test_impl, attrs = {

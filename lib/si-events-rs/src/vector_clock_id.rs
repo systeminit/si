@@ -11,7 +11,7 @@ pub struct VectorClockId {
 
 pub struct VectorClockIdStringDeserializeVisitor;
 
-impl<'de> serde::de::Visitor<'de> for VectorClockIdStringDeserializeVisitor {
+impl serde::de::Visitor<'_> for VectorClockIdStringDeserializeVisitor {
     type Value = VectorClockId;
 
     fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {

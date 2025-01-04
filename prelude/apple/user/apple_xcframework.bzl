@@ -8,7 +8,7 @@
 load("@prelude//apple:apple_toolchain_types.bzl", "AppleToolsInfo")
 load("@prelude//user:rule_spec.bzl", "RuleRegistrationSpec")
 
-def _impl(ctx: AnalysisContext) -> list[Provider]:
+def _apple_xcframework_impl(ctx: AnalysisContext) -> list[Provider]:
     apple_tools = ctx.attrs._apple_tools[AppleToolsInfo]
 
     xcframework_dir = ctx.actions.declare_output(ctx.attrs.framework_name + ".xcframework", dir = True)
@@ -76,7 +76,6 @@ def _apple_xcframework_framework_attrib_split_transition_impl(
     new_platforms = _normalize_platforms(attrs.platforms).items()
     for os_value, cpu_values in new_platforms:
         updated_constraints = _strip_os_sdk_and_runtime_constraints(platform, refs)
-        updated_constraints[refs.swift_library_evolution[ConstraintSettingInfo].label] = refs.swift_library_evolution_enabled[ConstraintValueInfo]
 
         canonical_platform_suffix = ""
 
@@ -169,7 +168,7 @@ framework_split_transition = transition(
 
 registration_spec = RuleRegistrationSpec(
     name = "apple_xcframework",
-    impl = _impl,
+    impl = _apple_xcframework_impl,
     attrs = {
         "framework": attrs.split_transition_dep(cfg = framework_split_transition),
         "framework_name": attrs.string(),

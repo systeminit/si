@@ -40,9 +40,9 @@ load(
     "MergedLinkInfo",  # @unused Used as a type
     "SharedLibLinkable",
     "create_merged_link_info",
-    "create_merged_link_info_for_propagation",
     "get_lib_output_style",
     "legacy_output_style_to_link_style",
+    "set_link_info_link_whole",
 )
 load(
     "@prelude//linking:linkable_graph.bzl",
@@ -60,6 +60,8 @@ load(
 )
 load("@prelude//linking:types.bzl", "Linkage")
 load("@prelude//os_lookup:defs.bzl", "OsLookup")
+load("@prelude//rust/rust-analyzer:provider.bzl", "rust_analyzer_provider")
+load("@prelude//unix:providers.bzl", "UnixEnv", "create_unix_env_info")
 load(
     ":build.bzl",
     "compile_context",
@@ -101,6 +103,7 @@ load(
     "resolve_rust_deps",
     "strategy_info",
 )
+load(":named_deps.bzl", "write_named_deps_names")
 load(
     ":outputs.bzl",
     "RustcExtraOutputsInfo",
@@ -111,6 +114,8 @@ load(":proc_macro_alias.bzl", "rust_proc_macro_alias")
 load(":resources.bzl", "rust_attr_resources")
 load(":rust_toolchain.bzl", "RustToolchainInfo")
 load(":targets.bzl", "targets")
+
+_DEFAULT_ROOTS = ["lib.rs"]
 
 def rust_library_impl(ctx: AnalysisContext) -> list[Provider]:
     compile_ctx = compile_context(ctx)
@@ -124,21 +129,22 @@ def rust_library_impl(ctx: AnalysisContext) -> list[Provider]:
     # Grab the artifacts to use for the check subtargets. Picking a good
     # `LibOutputStyle` ensures that the subtarget shares work with the main
     # build if possible
-    check_params = lang_style_param[(LinkageLang("rust"), DEFAULT_STATIC_LIB_OUTPUT_STYLE)]
+    meta_params = lang_style_param[(LinkageLang("rust"), DEFAULT_STATIC_LIB_OUTPUT_STYLE)]
 
     meta_fast = rust_compile(
         ctx = ctx,
         compile_ctx = compile_ctx,
         emit = Emit("metadata-fast"),
-        params = check_params,
-        default_roots = ["lib.rs"],
-        designated_clippy = True,
+        params = meta_params,
+        default_roots = _DEFAULT_ROOTS,
+        incremental_enabled = ctx.attrs.incremental_enabled,
     )
 
     # Generate the actions to build various output artifacts. Given the set of
     # parameters we need, populate maps to the linkable and metadata
     # artifacts by linkage lang.
     rust_param_artifact = {}
+    rust_param_subtargets = {}
     native_param_artifact = {}
     for params, langs in param_lang.items():
         link = rust_compile(
@@ -146,7 +152,8 @@ def rust_library_impl(ctx: AnalysisContext) -> list[Provider]:
             compile_ctx = compile_ctx,
             emit = Emit("link"),
             params = params,
-            default_roots = ["lib.rs"],
+            default_roots = _DEFAULT_ROOTS,
+            incremental_enabled = ctx.attrs.incremental_enabled,
         )
 
         if LinkageLang("rust") in langs:
@@ -157,9 +164,21 @@ def rust_library_impl(ctx: AnalysisContext) -> list[Provider]:
                     compile_ctx = compile_ctx,
                     emit = Emit("metadata-full"),
                     params = params,
-                    default_roots = ["lib.rs"],
+                    default_roots = _DEFAULT_ROOTS,
+                    incremental_enabled = ctx.attrs.incremental_enabled,
                 ),
                 MetadataKind("fast"): meta_fast,
+            }
+
+            rust_param_subtargets[params] = {
+                "llvm-ir": rust_compile(
+                    ctx = ctx,
+                    compile_ctx = compile_ctx,
+                    emit = Emit("llvm-ir"),
+                    params = params,
+                    default_roots = _DEFAULT_ROOTS,
+                    incremental_enabled = ctx.attrs.incremental_enabled,
+                ),
             }
 
         if LinkageLang("native") in langs or LinkageLang("native-unbundled") in langs:
@@ -170,6 +189,13 @@ def rust_library_impl(ctx: AnalysisContext) -> list[Provider]:
         compile_ctx = compile_ctx,
         lang_style_param = lang_style_param,
         rust_param_artifact = rust_param_artifact,
+    )
+
+    link_infos = _link_infos(
+        ctx = ctx,
+        compile_ctx = compile_ctx,
+        lang_style_param = lang_style_param,
+        param_artifact = native_param_artifact,
     )
 
     # For doctests, we need to know two things to know how to link them. The
@@ -205,12 +231,11 @@ def rust_library_impl(ctx: AnalysisContext) -> list[Provider]:
     # Among {rustdoc, doctests, macro expand}, doctests are the only one which
     # cares about linkage. So whatever build params we picked for the doctests,
     # reuse them for the other two as well
-    default_roots = ["lib.rs"]
     rustdoc = generate_rustdoc(
         ctx = ctx,
         compile_ctx = compile_ctx,
         params = static_library_params,
-        default_roots = default_roots,
+        default_roots = _DEFAULT_ROOTS,
         document_private_items = False,
     )
 
@@ -218,7 +243,7 @@ def rust_library_impl(ctx: AnalysisContext) -> list[Provider]:
         ctx = ctx,
         compile_ctx = compile_ctx,
         params = static_library_params,
-        default_roots = default_roots,
+        default_roots = _DEFAULT_ROOTS,
     )
 
     expand = rust_compile(
@@ -226,7 +251,13 @@ def rust_library_impl(ctx: AnalysisContext) -> list[Provider]:
         compile_ctx = compile_ctx,
         emit = Emit("expand"),
         params = static_library_params,
-        default_roots = default_roots,
+        default_roots = _DEFAULT_ROOTS,
+        # This is needed as rustc can generate expanded sources that do not
+        # fully compile, but will report an error even if it succeeds.
+        # TODO(pickett): Handle this at the rustc action level, we shouldn't
+        # need to pass a special arg here, expand should just work.
+        infallible_diagnostics = True,
+        incremental_enabled = ctx.attrs.incremental_enabled,
     )
 
     # If doctests=True or False is set on the individual target, respect that.
@@ -247,29 +278,57 @@ def rust_library_impl(ctx: AnalysisContext) -> list[Provider]:
     rustdoc_test = generate_rustdoc_test(
         ctx = ctx,
         compile_ctx = compile_ctx,
-        link_strategy = rustdoc_test_params.dep_link_strategy,
         rlib = rust_param_artifact[static_library_params][MetadataKind("link")].output,
+        link_infos = link_infos,
         params = rustdoc_test_params,
-        default_roots = default_roots,
+        default_roots = _DEFAULT_ROOTS,
     )
 
-    check_artifacts = rust_param_artifact[check_params]
+    # infallible_diagnostics allows us to circumvent compilation failures and
+    # treat the resulting rustc action as a success, even if a metadata
+    # artifact was not generated. This allows us to generate diagnostics
+    # even when the target has bugs.
+    diag_artifacts = {}
+    clippy_artifacts = {}
+    for incr in (True, False):
+        diag_artifacts[incr] = rust_compile(
+            ctx = ctx,
+            compile_ctx = compile_ctx,
+            emit = Emit("metadata-fast"),
+            params = meta_params,
+            default_roots = _DEFAULT_ROOTS,
+            infallible_diagnostics = True,
+            incremental_enabled = incr,
+        )
+        clippy_artifacts[incr] = rust_compile(
+            ctx = ctx,
+            compile_ctx = compile_ctx,
+            emit = Emit("clippy"),
+            params = meta_params,
+            default_roots = _DEFAULT_ROOTS,
+            infallible_diagnostics = True,
+            incremental_enabled = incr,
+        )
 
+    incr_enabled = ctx.attrs.incremental_enabled
     providers = []
     providers += _default_providers(
         lang_style_param = lang_style_param,
         rust_param_artifact = rust_param_artifact,
+        rust_param_subtargets = rust_param_subtargets,
         native_param_artifact = native_param_artifact,
         rustdoc = rustdoc,
         rustdoc_test = rustdoc_test,
         doctests_enabled = doctests_enabled,
-        check_artifacts = output_as_diag_subtargets(check_artifacts[MetadataKind("fast")]),
+        check_artifacts = output_as_diag_subtargets(diag_artifacts[incr_enabled], clippy_artifacts[incr_enabled]),
         expand = expand.output,
         sources = compile_ctx.symlinked_srcs,
         rustdoc_coverage = rustdoc_coverage,
+        named_deps_names = write_named_deps_names(ctx, compile_ctx),
     )
     providers += _rust_metadata_providers(
-        check_artifacts = check_artifacts,
+        diag_artifacts = diag_artifacts,
+        clippy_artifacts = clippy_artifacts,
     )
 
     if ctx.attrs.proc_macro:
@@ -277,32 +336,24 @@ def rust_library_impl(ctx: AnalysisContext) -> list[Provider]:
             ctx = ctx,
             rust_artifacts = rust_artifacts,
         )
-    else:
-        link_infos = _link_infos(
+    elif toolchain_info.advanced_unstable_linking:
+        providers += _advanced_unstable_link_providers(
             ctx = ctx,
             compile_ctx = compile_ctx,
             lang_style_param = lang_style_param,
-            param_artifact = native_param_artifact,
+            rust_artifacts = rust_artifacts,
+            native_param_artifact = native_param_artifact,
+            link_infos = link_infos,
         )
-
-        if toolchain_info.advanced_unstable_linking:
-            providers += _advanced_unstable_link_providers(
-                ctx = ctx,
-                compile_ctx = compile_ctx,
-                lang_style_param = lang_style_param,
-                rust_artifacts = rust_artifacts,
-                native_param_artifact = native_param_artifact,
-                link_infos = link_infos,
-            )
-        else:
-            providers += _stable_link_providers(
-                ctx = ctx,
-                compile_ctx = compile_ctx,
-                lang_style_param = lang_style_param,
-                rust_artifacts = rust_artifacts,
-                native_param_artifact = native_param_artifact,
-                link_infos = link_infos,
-            )
+    else:
+        providers += _stable_link_providers(
+            ctx = ctx,
+            compile_ctx = compile_ctx,
+            lang_style_param = lang_style_param,
+            rust_artifacts = rust_artifacts,
+            native_param_artifact = native_param_artifact,
+            link_infos = link_infos,
+        )
 
     deps = [dep.dep for dep in resolve_deps(ctx, compile_ctx.dep_ctx)]
     providers.append(ResourceInfo(resources = gather_resources(
@@ -312,6 +363,12 @@ def rust_library_impl(ctx: AnalysisContext) -> list[Provider]:
     )))
 
     providers.append(merge_android_packageable_info(ctx.label, ctx.actions, deps))
+
+    providers.append(rust_analyzer_provider(
+        ctx = ctx,
+        compile_ctx = compile_ctx,
+        default_roots = _DEFAULT_ROOTS,
+    ))
 
     return providers
 
@@ -389,10 +446,14 @@ def _link_infos(
                 default = LinkInfo(
                     linkables = [SharedLibLinkable(lib = lib.output)],
                     external_debug_info = external_debug_info,
+                    pre_flags = ctx.attrs.exported_linker_flags,
+                    post_flags = ctx.attrs.exported_post_linker_flags,
                 ),
                 stripped = LinkInfo(
                     linkables = [SharedLibLinkable(lib = lib.stripped_output)],
                     external_debug_info = external_debug_info,
+                    pre_flags = ctx.attrs.exported_linker_flags,
+                    post_flags = ctx.attrs.exported_post_linker_flags,
                 ),
             )
         else:
@@ -403,12 +464,16 @@ def _link_infos(
                         linker_type = linker_type,
                     )],
                     external_debug_info = external_debug_info,
+                    pre_flags = ctx.attrs.exported_linker_flags,
+                    post_flags = ctx.attrs.exported_post_linker_flags,
                 ),
                 stripped = LinkInfo(
                     linkables = [ArchiveLinkable(
                         archive = Archive(artifact = lib.stripped_output),
                         linker_type = linker_type,
                     )],
+                    pre_flags = ctx.attrs.exported_linker_flags,
+                    post_flags = ctx.attrs.exported_post_linker_flags,
                 ),
             )
     return link_infos
@@ -469,19 +534,23 @@ def _default_providers(
         lang_style_param: dict[(LinkageLang, LibOutputStyle), BuildParams],
         rust_param_artifact: dict[BuildParams, dict[MetadataKind, RustcOutput]],
         native_param_artifact: dict[BuildParams, RustcOutput],
+        rust_param_subtargets: dict[BuildParams, dict[str, RustcOutput]],
         rustdoc: Artifact,
         rustdoc_test: cmd_args,
         doctests_enabled: bool,
         check_artifacts: dict[str, Artifact | None],
         expand: Artifact,
         sources: Artifact,
-        rustdoc_coverage: Artifact) -> list[Provider]:
+        rustdoc_coverage: Artifact,
+        named_deps_names: Artifact | None) -> list[Provider]:
     targets = {}
     targets.update(check_artifacts)
     targets["sources"] = sources
     targets["expand"] = expand
     targets["doc"] = rustdoc
     targets["doc-coverage"] = rustdoc_coverage
+    if named_deps_names:
+        targets["named_deps"] = named_deps_names
     sub_targets = {
         k: [DefaultInfo(default_output = v)]
         for (k, v) in targets.items()
@@ -492,8 +561,9 @@ def _default_providers(
     # determined by `get_output_styles_for_linkage` in `linking/link_info.bzl`.
     # Do we want to do the same?
     for output_style in LibOutputStyle:
-        link = rust_param_artifact[lang_style_param[(LinkageLang("rust"), output_style)]][MetadataKind("link")]
-        nested_sub_targets = {}
+        param = lang_style_param[(LinkageLang("rust"), output_style)]
+        link = rust_param_artifact[param][MetadataKind("link")]
+        nested_sub_targets = {k: [DefaultInfo(default_output = v.output)] for k, v in rust_param_subtargets[param].items()}
         if link.pdb:
             nested_sub_targets[PDB_SUB_TARGET] = get_pdb_providers(pdb = link.pdb, binary = link.output)
 
@@ -542,11 +612,13 @@ def _default_providers(
 
     return providers
 
-def _rust_metadata_providers(check_artifacts: dict[MetadataKind, RustcOutput]) -> list[Provider]:
+def _rust_metadata_providers(diag_artifacts: dict[bool, RustcOutput], clippy_artifacts: dict[bool, RustcOutput]) -> list[Provider]:
     return [
         RustcExtraOutputsInfo(
-            metadata_full = check_artifacts[MetadataKind("full")],
-            metadata_fast = check_artifacts[MetadataKind("fast")],
+            metadata = diag_artifacts[False],
+            metadata_incr = diag_artifacts[True],
+            clippy = clippy_artifacts[False],
+            clippy_incr = clippy_artifacts[True],
         ),
     ]
 
@@ -558,7 +630,7 @@ def _proc_macro_link_providers(
     return [RustLinkInfo(
         crate = attr_crate(ctx),
         strategies = rust_artifacts,
-        merged_link_info = create_merged_link_info_for_propagation(ctx, []),
+        merged_link_infos = {},
         exported_link_deps = [],
         shared_libs = merge_shared_libraries(ctx.actions),
         linkable_graphs = [],
@@ -578,7 +650,6 @@ def _advanced_unstable_link_providers(
     providers = []
 
     dep_ctx = compile_ctx.dep_ctx
-    linker_info = compile_ctx.cxx_toolchain_info.linker_info
 
     inherited_link_infos = inherited_merged_link_infos(ctx, dep_ctx)
     inherited_shlibs = inherited_shared_libs(ctx, dep_ctx)
@@ -590,7 +661,7 @@ def _advanced_unstable_link_providers(
         ctx,
         pic_behavior,
         link_infos,
-        deps = inherited_link_infos,
+        deps = inherited_link_infos.values(),
         exported_deps = filter(None, [d.get(MergedLinkInfo) for d in inherited_exported_deps]),
         preferred_linkage = preferred_linkage,
     )
@@ -656,16 +727,7 @@ def _advanced_unstable_link_providers(
         label = ctx.label,
         name = shlib_name,
         link_infos = LinkInfos(
-            default = LinkInfo(
-                linkables = [ArchiveLinkable(
-                    archive = Archive(
-                        artifact = shared_lib_output,
-                    ),
-                    linker_type = linker_info.type,
-                    link_whole = True,
-                )],
-                external_debug_info = link_infos[LibOutputStyle("pic_archive")].default.external_debug_info,
-            ),
+            default = set_link_info_link_whole(link_infos[LibOutputStyle("pic_archive")].default),
         ),
         deps = inherited_graphs,
     )
@@ -684,15 +746,9 @@ def _advanced_unstable_link_providers(
     providers.append(RustLinkInfo(
         crate = crate,
         strategies = rust_artifacts,
-        merged_link_info = merged_link_info,
+        merged_link_infos = inherited_link_infos | {ctx.label.configured_target(): merged_link_info},
         exported_link_deps = inherited_exported_deps,
         shared_libs = shared_library_info,
-        # We've already reported transitive deps on the inherited graphs, so for
-        # most purposes it would be fine to just have `linkable_graph` here.
-        # However, link groups do an analysis that relies on each symbol
-        # reference having a matching edge in the link graph, and so reexports
-        # and generics mean that we have to report a dependency on all
-        # transitive Rust deps and their immediate non-Rust deps
         linkable_graphs = inherited_graphs + [linkable_graph],
     ))
 
@@ -709,13 +765,13 @@ def _stable_link_providers(
 
     crate = attr_crate(ctx)
 
-    merged_link_info, shared_libs, linkable_graphs, exported_link_deps = _rust_link_providers(ctx, compile_ctx.dep_ctx)
+    merged_link_infos, shared_libs, linkable_graphs, exported_link_deps = _rust_link_providers(ctx, compile_ctx.dep_ctx)
 
     # Create rust library provider.
     rust_link_info = RustLinkInfo(
         crate = crate,
         strategies = rust_artifacts,
-        merged_link_info = merged_link_info,
+        merged_link_infos = merged_link_infos,
         exported_link_deps = exported_link_deps,
         shared_libs = shared_libs,
         linkable_graphs = linkable_graphs,
@@ -728,7 +784,7 @@ def _stable_link_providers(
 def _rust_link_providers(
         ctx: AnalysisContext,
         dep_ctx: DepCollectionContext) -> (
-    MergedLinkInfo,
+    dict[ConfiguredTargetLabel, MergedLinkInfo],
     SharedLibraryInfo,
     list[LinkableGraph],
     list[Dependency],
@@ -738,12 +794,11 @@ def _rust_link_providers(
     inherited_graphs = inherited_linkable_graphs(ctx, dep_ctx)
     inherited_exported_deps = inherited_exported_link_deps(ctx, dep_ctx)
 
-    merged_link_info = create_merged_link_info_for_propagation(ctx, inherited_link_infos)
     shared_libs = merge_shared_libraries(
         ctx.actions,
         deps = inherited_shlibs,
     )
-    return (merged_link_info, shared_libs, inherited_graphs, inherited_exported_deps)
+    return (inherited_link_infos, shared_libs, inherited_graphs, inherited_exported_deps)
 
 def _native_link_providers(
         ctx: AnalysisContext,
@@ -758,13 +813,10 @@ def _native_link_providers(
     """
 
     # We collected transitive deps in the Rust link providers
-    inherited_link_infos = [rust_link_info.merged_link_info]
+    inherited_link_infos = rust_link_info.merged_link_infos
     inherited_shlibs = [rust_link_info.shared_libs]
     inherited_link_graphs = rust_link_info.linkable_graphs
     inherited_exported_deps = rust_link_info.exported_link_deps
-
-    linker_info = compile_ctx.cxx_toolchain_info.linker_info
-    linker_type = linker_info.type
 
     providers = []
 
@@ -778,7 +830,7 @@ def _native_link_providers(
         ctx,
         compile_ctx.cxx_toolchain_info.pic_behavior,
         link_infos,
-        deps = inherited_link_infos,
+        deps = inherited_link_infos.values(),
         exported_deps = filter(None, [d.get(MergedLinkInfo) for d in inherited_exported_deps]),
         preferred_linkage = preferred_linkage,
     ))
@@ -812,16 +864,7 @@ def _native_link_providers(
         label = ctx.label,
         name = shlib_name,
         link_infos = LinkInfos(
-            default = LinkInfo(
-                linkables = [ArchiveLinkable(
-                    archive = Archive(
-                        artifact = shared_lib_output,
-                    ),
-                    linker_type = linker_type,
-                    link_whole = True,
-                )],
-                external_debug_info = link_infos[LibOutputStyle("pic_archive")].default.external_debug_info,
-            ),
+            default = set_link_info_link_whole(link_infos[LibOutputStyle("pic_archive")].default),
         ),
         deps = inherited_link_graphs,
     )
@@ -855,6 +898,19 @@ def _native_link_providers(
     # cannot act as link group libs, especially given that they only support
     # auto link groups anyway
     providers.append(merge_link_group_lib_info(children = inherited_link_group_lib_infos(ctx, compile_ctx.dep_ctx)))
+
+    providers.append(
+        create_unix_env_info(
+            actions = ctx.actions,
+            env = UnixEnv(
+                label = ctx.label,
+                native_libs = [shared_libs],
+            ),
+            #deps = [dep.dep for dep in resolve_deps(ctx, compile_ctx.dep_ctx)]
+            #deps = deps,
+            deps = inherited_exported_deps,
+        ),
+    )
 
     return providers
 

@@ -153,6 +153,12 @@ rules_attributes = {
                 This field indicates if global parse_tranforms should be applied to this application as well. It often makes sense
                 for third-party dependencies to not be subjected to global parse_transforms, similar to OTP applications.
             """),
+        "xrl_includefile": attrs.option(attrs.source(), default = None, doc = """
+                Customised prologue file to replace the default. See [`includefile` option](https://www.erlang.org/doc/apps/parsetools/leex.html#file/2) for details.
+        """),
+        "yrl_includefile": attrs.option(attrs.source(), default = None, doc = """
+                Customised prologue file to replace the default. See [`includefile` option](https://www.erlang.org/doc/apps/parsetools/yecc.html#file/2) for details.
+        """),
     } | common_application_attributes,
     "erlang_app_includes": {
         "application_name": attrs.string(),
@@ -282,10 +288,10 @@ rules_attributes = {
         "_cli_lib": attrs.dep(default = "prelude//erlang/common_test/test_cli_lib:test_cli_lib"),
         "_ct_opts": attrs.string(default = read_root_config("erlang", "erlang_test_ct_opts", "")),
         "_providers": attrs.string(default = ""),
-        "_test_binary": attrs.dep(default = "prelude//erlang/common_test/test_binary:escript"),
         "_test_binary_lib": attrs.dep(default = "prelude//erlang/common_test/test_binary:test_binary"),
         "_toolchain": attrs.toolchain_dep(default = "toolchains//:erlang-default"),
-        "_trampoline": attrs.option(attrs.dep(), default = None),
+        "_trampoline": attrs.option(attrs.dep(), default = None, doc = "DEPRECATED. Use _trampolines instead."),
+        "_trampolines": attrs.option(attrs.list(attrs.dep()), default = None),
     } | common_shell_attributes | re_test_args(),
 }
 

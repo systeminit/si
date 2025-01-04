@@ -7,7 +7,7 @@
 
 load("@prelude//cxx:debug.bzl", "SplitDebugMode")
 
-LinkerType = ["gnu", "darwin", "windows", "wasm"]
+LinkerType = enum("gnu", "darwin", "windows", "wasm")
 
 ShlibInterfacesMode = enum("disabled", "enabled", "defined_only", "stub_from_library", "stub_from_headers")
 
@@ -18,13 +18,16 @@ LinkerInfo = provider(
     fields = {
         "archiver": provider_field(typing.Any, default = None),
         "archiver_flags": provider_field(typing.Any, default = None),
+        "archiver_reads_inputs": provider_field(bool, default = True),
         "archiver_supports_argfiles": provider_field(typing.Any, default = None),
         "archiver_type": provider_field(typing.Any, default = None),
         "archive_contents": provider_field(typing.Any, default = None),
         "archive_objects_locally": provider_field(typing.Any, default = None),
+        "archive_symbol_table": provider_field(bool, default = True),
         # "archiver_platform",
         # "" on Unix, "exe" on Windows
         "binary_extension": provider_field(typing.Any, default = None),  # str
+        "dist_thin_lto_codegen_flags": provider_field([cmd_args, None], default = None),
         "generate_linker_maps": provider_field(typing.Any, default = None),  # bool
         # Whether to run native links locally.  We support this for fbcode platforms
         # to avoid issues with C++ static links (see comment in
@@ -39,11 +42,11 @@ LinkerInfo = provider(
         "link_ordering": provider_field(typing.Any, default = None),  # LinkOrdering
         "linker": provider_field(typing.Any, default = None),
         "linker_flags": provider_field(typing.Any, default = None),
-        "post_linker_flags": provider_field(typing.Any, default = None),
         "lto_mode": provider_field(typing.Any, default = None),
         "mk_shlib_intf": provider_field(typing.Any, default = None),
         # "o" on Unix, "obj" on Windows
         "object_file_extension": provider_field(typing.Any, default = None),  # str
+        "post_linker_flags": provider_field(typing.Any, default = None),
         "sanitizer_runtime_enabled": provider_field(bool, default = False),
         "sanitizer_runtime_files": provider_field(list[Artifact], default = []),
         "shlib_interfaces": provider_field(ShlibInterfacesMode),
@@ -61,7 +64,7 @@ LinkerInfo = provider(
         "requires_objects": provider_field(typing.Any, default = None),
         "supports_distributed_thinlto": provider_field(typing.Any, default = None),
         "independent_shlib_interface_linker_flags": provider_field(typing.Any, default = None),
-        "type": provider_field(typing.Any, default = None),  # of "LinkerType" type
+        "type": LinkerType,
         "use_archiver_flags": provider_field(typing.Any, default = None),
         "force_full_hybrid_if_capable": provider_field(typing.Any, default = None),
         "is_pdb_generated": provider_field(typing.Any, default = None),  # bool
@@ -118,9 +121,9 @@ _compiler_fields = [
     "preprocessor",
     "preprocessor_type",
     "preprocessor_flags",
-    "dep_files_processor",
     # Controls cache upload for object files
     "allow_cache_upload",
+    "supports_two_phase_compilation",
 ]
 
 HipCompilerInfo = provider(fields = _compiler_fields)
@@ -132,10 +135,22 @@ CxxCompilerInfo = provider(fields = _compiler_fields)
 AsmCompilerInfo = provider(fields = _compiler_fields)
 AsCompilerInfo = provider(fields = _compiler_fields)
 
-DistLtoToolsInfo = provider(
-    # @unsorted-dict-items
-    fields = {"planner": provider_field(typing.Any, default = None), "opt": provider_field(typing.Any, default = None), "prepare": provider_field(typing.Any, default = None), "copy": provider_field(typing.Any, default = None)},
-)
+DistLtoToolsInfo = provider(fields = dict(
+    planner = dict[LinkerType, RunInfo],
+    opt = dict[LinkerType, RunInfo],
+    prepare = RunInfo,
+    copy = RunInfo,
+))
+
+CxxInternalTools = provider(fields = dict(
+    concatenate_diagnostics = RunInfo,
+    dep_file_processor = RunInfo,
+    dist_lto = DistLtoToolsInfo,
+    hmap_wrapper = RunInfo,
+    make_comp_db = RunInfo,
+    remap_cwd = RunInfo,
+    stderr_to_file = RunInfo,
+))
 
 CxxObjectFormat = enum(
     "native",
@@ -172,6 +187,7 @@ PicBehavior = enum(
 CxxToolchainInfo = provider(
     # @unsorted-dict-items
     fields = {
+        "internal_tools": provider_field(CxxInternalTools),
         "conflicting_header_basename_allowlist": provider_field(typing.Any, default = None),
         "use_distributed_thinlto": provider_field(typing.Any, default = None),
         "header_mode": provider_field(typing.Any, default = None),
@@ -187,10 +203,7 @@ CxxToolchainInfo = provider(
         "cuda_compiler_info": provider_field(typing.Any, default = None),
         "cvtres_compiler_info": provider_field(typing.Any, default = None),
         "rc_compiler_info": provider_field(typing.Any, default = None),
-        "mk_comp_db": provider_field(typing.Any, default = None),
-        "mk_hmap": provider_field(typing.Any, default = None),
         "llvm_link": provider_field(typing.Any, default = None),
-        "dist_lto_tools_info": provider_field(typing.Any, default = None),
         "use_dep_files": provider_field(typing.Any, default = None),
         "clang_remarks": provider_field(typing.Any, default = None),
         "gcno_files": provider_field(typing.Any, default = None),
@@ -203,6 +216,9 @@ CxxToolchainInfo = provider(
         "pic_behavior": provider_field(typing.Any, default = None),
         "dumpbin_toolchain_path": provider_field(typing.Any, default = None),
         "target_sdk_version": provider_field([str, None], default = None),
+        "lipo": provider_field([RunInfo, None], default = None),
+        "remap_cwd": provider_field(bool, default = False),
+        "optimization_compiler_flags_EXPERIMENTAL": provider_field(typing.Any, default = []),
     },
 )
 
@@ -230,6 +246,7 @@ def cxx_toolchain_infos(
         linker_info,
         binary_utilities_info,
         header_mode,
+        internal_tools: CxxInternalTools,
         headers_as_raw_headers_mode = None,
         conflicting_header_basename_allowlist = [],
         asm_compiler_info = None,
@@ -239,8 +256,6 @@ def cxx_toolchain_infos(
         cvtres_compiler_info = None,
         rc_compiler_info = None,
         object_format = CxxObjectFormat("native"),
-        mk_comp_db = None,
-        mk_hmap = None,
         use_distributed_thinlto = False,
         use_dep_files = False,
         clang_remarks = None,
@@ -249,14 +264,16 @@ def cxx_toolchain_infos(
         cpp_dep_tracking_mode = DepTrackingMode("none"),
         cuda_dep_tracking_mode = DepTrackingMode("none"),
         strip_flags_info = None,
-        dist_lto_tools_info: [DistLtoToolsInfo, None] = None,
         split_debug_mode = SplitDebugMode("none"),
         bolt_enabled = False,
         llvm_link = None,
         platform_deps_aliases = [],
         pic_behavior = PicBehavior("supported"),
         dumpbin_toolchain_path = None,
-        target_sdk_version = None):
+        target_sdk_version = None,
+        lipo = None,
+        remap_cwd = False,
+        optimization_compiler_flags_EXPERIMENTAL = []):
     """
     Creates the collection of cxx-toolchain Infos for a cxx toolchain.
 
@@ -269,6 +286,7 @@ def cxx_toolchain_infos(
     _validate_linker_info(linker_info)
 
     toolchain_info = CxxToolchainInfo(
+        internal_tools = internal_tools,
         conflicting_header_basename_allowlist = conflicting_header_basename_allowlist,
         header_mode = header_mode,
         headers_as_raw_headers_mode = headers_as_raw_headers_mode,
@@ -283,10 +301,7 @@ def cxx_toolchain_infos(
         cuda_compiler_info = cuda_compiler_info,
         cvtres_compiler_info = cvtres_compiler_info,
         rc_compiler_info = rc_compiler_info,
-        mk_comp_db = mk_comp_db,
-        mk_hmap = mk_hmap,
         object_format = object_format,
-        dist_lto_tools_info = dist_lto_tools_info,
         use_distributed_thinlto = use_distributed_thinlto,
         use_dep_files = use_dep_files,
         clang_remarks = clang_remarks,
@@ -300,6 +315,9 @@ def cxx_toolchain_infos(
         pic_behavior = pic_behavior,
         dumpbin_toolchain_path = dumpbin_toolchain_path,
         target_sdk_version = target_sdk_version,
+        lipo = lipo,
+        remap_cwd = remap_cwd,
+        optimization_compiler_flags_EXPERIMENTAL = optimization_compiler_flags_EXPERIMENTAL,
     )
 
     # Provide placeholder mappings, used primarily by cxx_genrule.

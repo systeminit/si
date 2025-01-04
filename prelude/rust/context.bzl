@@ -11,7 +11,7 @@ load(":build_params.bzl", "BuildParams", "CrateType", "Emit")
 load(":rust_toolchain.bzl", "PanicRuntime", "RustExplicitSysrootDeps", "RustToolchainInfo")
 
 CrateName = record(
-    simple = field(str),
+    simple = field(str | ResolvedStringWithMacros),
     dynamic = field(Artifact | None),
 )
 
@@ -24,7 +24,7 @@ CommonArgsInfo = record(
     crate_type = field(CrateType),
     params = field(BuildParams),
     emit = field(Emit),
-    is_check = field(bool),
+    emit_requires_linking = field(bool),
     crate_map = field(list[(CrateName, Label)]),
 )
 
@@ -55,7 +55,7 @@ CompileContext = record(
     # Clippy wrapper (wrapping clippy-driver so it has the same CLI as rustc).
     clippy_wrapper = field(cmd_args),
     # Memoized common args for reuse.
-    common_args = field(dict[(CrateType, Emit, LinkStrategy, bool), CommonArgsInfo]),
+    common_args = field(dict[(CrateType, Emit, LinkStrategy, bool, bool, bool), CommonArgsInfo]),
     transitive_dependency_dirs = field(dict[Artifact, None]),
     sysroot_args = field(cmd_args),
 )

@@ -18,7 +18,6 @@ app/web/cypress/downloads/
 app/web/cypress/screenshots/
 app/web/cypress/videos/
 bin/si/src/version.txt
-prelude
 
 app/docs/src/.vitepress/cache/
 app/docs/dist/

@@ -266,7 +266,7 @@ impl ChangeSet {
             if let Some(merge_requested_by) = self.merge_requested_by_user_id {
                 User::get_by_pk(ctx, merge_requested_by).await?.map(|user| {
                     if user.name().is_empty() {
-                        return user.email().clone();
+                        user.email().clone()
                     } else {
                         user.name().clone()
                     }
@@ -278,7 +278,7 @@ impl ChangeSet {
         let reviewed_by_user = if let Some(reviewed_by) = self.reviewed_by_user_id {
             User::get_by_pk(ctx, reviewed_by).await?.map(|user| {
                 if user.name().is_empty() {
-                    return user.email().clone();
+                    user.email().clone()
                 } else {
                     user.name().clone()
                 }

@@ -1,5 +1,4 @@
 load("@prelude//utils:source_listing.bzl", "source_listing")
-load(":defs.bzl", "generate_tag_constraints")
 
 oncall("build_infra")
 
@@ -7,12 +6,6 @@ source_listing()
 
 constraint_setting(
     name = "cgo_enabled",
-    visibility = ["PUBLIC"],
-)
-
-constraint_value(
-    name = "cgo_enabled_auto",
-    constraint_setting = ":cgo_enabled",
     visibility = ["PUBLIC"],
 )
 
@@ -101,5 +94,3 @@ constraint_value(
     constraint_setting = ":coverage_mode",
     visibility = ["PUBLIC"],
 )
-
-generate_tag_constraints()

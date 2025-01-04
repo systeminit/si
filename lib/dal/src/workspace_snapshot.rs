@@ -264,7 +264,7 @@ struct SnapshotWriteGuard<'a> {
     working_copy_write_guard: RwLockWriteGuard<'a, Option<WorkspaceSnapshotGraphVCurrent>>,
 }
 
-impl<'a> std::ops::Deref for SnapshotReadGuard<'a> {
+impl std::ops::Deref for SnapshotReadGuard<'_> {
     type Target = WorkspaceSnapshotGraphVCurrent;
 
     fn deref(&self) -> &Self::Target {
@@ -277,7 +277,7 @@ impl<'a> std::ops::Deref for SnapshotReadGuard<'a> {
     }
 }
 
-impl<'a> std::ops::Deref for SnapshotWriteGuard<'a> {
+impl std::ops::Deref for SnapshotWriteGuard<'_> {
     type Target = WorkspaceSnapshotGraphVCurrent;
 
     fn deref(&self) -> &Self::Target {
@@ -288,7 +288,7 @@ impl<'a> std::ops::Deref for SnapshotWriteGuard<'a> {
     }
 }
 
-impl<'a> std::ops::DerefMut for SnapshotWriteGuard<'a> {
+impl std::ops::DerefMut for SnapshotWriteGuard<'_> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         let option: &mut Option<WorkspaceSnapshotGraphVCurrent> =
             &mut self.working_copy_write_guard;
@@ -306,7 +306,7 @@ pub struct InferredConnectionsWriteGuard<'a> {
     inferred_connection_graph: RwLockWriteGuard<'a, Option<InferredConnectionGraph>>,
 }
 
-impl<'a> std::ops::Deref for InferredConnectionsReadGuard<'a> {
+impl std::ops::Deref for InferredConnectionsReadGuard<'_> {
     type Target = InferredConnectionGraph;
 
     fn deref(&self) -> &Self::Target {
@@ -317,7 +317,7 @@ impl<'a> std::ops::Deref for InferredConnectionsReadGuard<'a> {
     }
 }
 
-impl<'a> std::ops::Deref for InferredConnectionsWriteGuard<'a> {
+impl std::ops::Deref for InferredConnectionsWriteGuard<'_> {
     type Target = InferredConnectionGraph;
 
     fn deref(&self) -> &Self::Target {
@@ -328,7 +328,7 @@ impl<'a> std::ops::Deref for InferredConnectionsWriteGuard<'a> {
     }
 }
 
-impl<'a> std::ops::DerefMut for InferredConnectionsWriteGuard<'a> {
+impl std::ops::DerefMut for InferredConnectionsWriteGuard<'_> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         let maybe: &mut Option<InferredConnectionGraph> = &mut self.inferred_connection_graph;
         &mut *maybe

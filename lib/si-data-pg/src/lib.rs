@@ -2068,7 +2068,7 @@ impl<'a> InstrumentedTransaction<'a> {
             net.transport = %self.metadata.net_transport,
         )
     )]
-    pub fn client(&'a self) -> &Client {
+    pub fn client(&'a self) -> &'a Client {
         let span = current_span_for_instrument_at!("debug");
 
         span.follows_from(&self.tx_span);
@@ -2076,7 +2076,7 @@ impl<'a> InstrumentedTransaction<'a> {
     }
 }
 
-impl<'a> fmt::Debug for InstrumentedTransaction<'a> {
+impl fmt::Debug for InstrumentedTransaction<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("InstrumentedTransaction")
             .field("metadata", &self.metadata)
@@ -2201,7 +2201,7 @@ impl<'a> InstrumentedTransactionBuilder<'a> {
     }
 }
 
-impl<'a> fmt::Debug for InstrumentedTransactionBuilder<'a> {
+impl fmt::Debug for InstrumentedTransactionBuilder<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("InstrumentedTransactionBuilder")
             .field("metadata", &self.metadata)

@@ -69,9 +69,6 @@
     "typescript": "^4.9.5",
     "vm2": "^3.9.19"
   },
-  "volta": {
-    "extends": "../../package.json"
-  },
   "tsup": {
     "entry": [
       "src/index.ts"

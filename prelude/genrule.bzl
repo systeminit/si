@@ -9,6 +9,7 @@
 
 load("@prelude//:cache_mode.bzl", "CacheModeInfo")
 load("@prelude//:genrule_local_labels.bzl", "genrule_labels_require_local")
+load("@prelude//:genrule_prefer_local_labels.bzl", "genrule_labels_prefer_local")
 load("@prelude//:genrule_toolchain.bzl", "GenruleToolchainInfo")
 load("@prelude//:is_full_meta_repo.bzl", "is_full_meta_repo")
 load("@prelude//android:build_only_native_code.bzl", "is_build_only_native_code")
@@ -41,6 +42,7 @@ _BUILD_ROOT_LABELS = {label: True for label in [
     "windows_long_path_issue",  # Windows: relative path length exceeds PATH_MAX, program cannot access file
     "flowtype_ota_safety_target",  # produces JSON containing file paths that are project-relative
     "ctrlr_setting_paths",
+    "llvm_buck_genrule",
 ]}
 
 # In Buck1 the SRCS environment variable is only set if the substring SRCS is on the command line.
@@ -65,6 +67,9 @@ def _requires_build_root(ctx: AnalysisContext) -> bool:
 
 def _requires_local(ctx: AnalysisContext) -> bool:
     return genrule_labels_require_local(ctx.attrs.labels)
+
+def _prefers_local(ctx: AnalysisContext) -> bool:
+    return genrule_labels_prefer_local(ctx.attrs.labels)
 
 def _ignore_artifacts(ctx: AnalysisContext) -> bool:
     return "buck2_ignore_artifacts" in ctx.attrs.labels
@@ -135,6 +140,7 @@ def process_genrule(
         fail("Only one of `out` and `outs` should be set. Got out=`%s`, outs=`%s`" % (repr(out_attr), repr(outs_attr)))
 
     local_only = _requires_local(ctx)
+    prefer_local = _prefers_local(ctx)
 
     # NOTE: Eventually we shouldn't require local_only here, since we should be
     # fine with caching local fallbacks if necessary (or maybe that should be
@@ -232,6 +238,10 @@ def process_genrule(
     if local_only:
         env_vars["__BUCK2_LOCAL_ONLY_CACHE_BUSTER"] = cmd_args("")
 
+    # see comment above
+    if prefer_local:
+        env_vars["__BUCK2_PREFER_LOCAL_CACHE_BUSTER"] = cmd_args("")
+
     # For now, when uploads are enabled, be safe and avoid sharing cache hits.
     cache_bust = _get_cache_mode(ctx).cache_bust_genrules
 
@@ -288,15 +298,19 @@ def process_genrule(
 
         if is_windows:
             rewrite_scratch_path = cmd_args(
-                cmd_args(ctx.label.project_root).relative_to(srcs_artifact),
+                cmd_args(ctx.label.project_root, relative_to = srcs_artifact),
                 format = 'set "BUCK_SCRATCH_PATH={}\\%BUCK_SCRATCH_PATH%"',
             )
         else:
             srcs_dir = cmd_args(srcs_dir, quote = "shell")
             rewrite_scratch_path = cmd_args(
-                cmd_args(ctx.label.project_root, quote = "shell").relative_to(srcs_artifact),
+                cmd_args(ctx.label.project_root, quote = "shell", relative_to = srcs_artifact),
                 format = "export BUCK_SCRATCH_PATH={}/$BUCK_SCRATCH_PATH",
             )
+
+        # Relativize all paths in the command to the sandbox dir.
+        for script_cmd in script:
+            script_cmd.relative_to(srcs_artifact)
 
         script = (
             [
@@ -305,12 +319,14 @@ def process_genrule(
                 # Change to the directory that genrules expect.
                 cmd_args(srcs_dir, format = "cd {}"),
             ] +
-            # Relativize all paths in the command to the sandbox dir.
-            [cmd.relative_to(srcs_artifact) for cmd in script]
+            script
         )
 
         # Relative all paths in the env to the sandbox dir.
-        env_vars = {key: val.relative_to(srcs_artifact) for key, val in env_vars.items()}
+        env_vars = {
+            key: cmd_args(value, relative_to = srcs_artifact)
+            for key, value in env_vars.items()
+        }
 
     if is_windows:
         # Should be in the beginning.
@@ -344,6 +360,8 @@ def process_genrule(
         cmd_args(script_args, hidden = [cmd, srcs_artifact, out_artifact.as_output()] + hidden),
         env = env_vars,
         local_only = local_only,
+        prefer_local = prefer_local,
+        weight = value_or(ctx.attrs.weight, 1),
         allow_cache_upload = cacheable,
         category = category,
         identifier = identifier,

@@ -5,7 +5,11 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
-load("@prelude//cxx:cxx_toolchain_types.bzl", "PicBehavior")
+load(
+    "@prelude//cxx:cxx_toolchain_types.bzl",
+    "LinkerType",
+    "PicBehavior",
+)
 load(
     "@prelude//cxx:preprocessor.bzl",
     "CPreprocessor",
@@ -45,6 +49,7 @@ load(
 )
 load("@prelude//linking:strip.bzl", "strip_debug_info")
 load("@prelude//linking:types.bzl", "Linkage")
+load("@prelude//unix:providers.bzl", "UnixEnv", "create_unix_env_info")
 load("@prelude//utils:expect.bzl", "expect")
 load("@prelude//utils:utils.bzl", "flatten_dict")
 load(":cxx_context.bzl", "get_cxx_toolchain_info")
@@ -112,7 +117,7 @@ def _parse_macro(arg: str) -> [(str, str), None]:
 
 def _get_static_link_infos(
         ctx: AnalysisContext,
-        linker_type: str,
+        linker_type: LinkerType,
         libs: list[Artifact],
         args: list[str]) -> LinkInfos:
     """
@@ -364,5 +369,16 @@ def prebuilt_cxx_library_group_impl(ctx: AnalysisContext) -> list[Provider]:
     providers.append(linkable_graph)
 
     providers.append(merge_link_group_lib_info(deps = deps + exported_deps))
+
+    providers.append(
+        create_unix_env_info(
+            actions = ctx.actions,
+            env = UnixEnv(
+                label = ctx.label,
+                native_libs = [shared_libs],
+            ),
+            deps = deps + exported_deps,
+        ),
+    )
 
     return providers

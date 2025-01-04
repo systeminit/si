@@ -5,6 +5,7 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
+load("@prelude//:attrs_validators.bzl", "get_attrs_validators_outputs")
 load("@prelude//:paths.bzl", "paths")
 load("@prelude//:validation_deps.bzl", "get_validation_deps_outputs")
 load("@prelude//apple:apple_stripping.bzl", "apple_strip_args")
@@ -41,6 +42,7 @@ load(
     "cxx_get_regular_cxx_headers_layout",
     "prepare_headers",
 )
+load("@prelude//cxx:index_store.bzl", "create_index_store_subtargets_and_provider")
 load(
     "@prelude//cxx:link_groups.bzl",
     "get_link_group_info",
@@ -63,8 +65,9 @@ load(":apple_bundle_utility.bzl", "get_bundle_infos_from_graph", "merge_bundle_l
 load(":apple_code_signing_types.bzl", "AppleEntitlementsInfo")
 load(":apple_dsym.bzl", "DSYM_SUBTARGET", "get_apple_dsym")
 load(":apple_entitlements.bzl", "entitlements_link_flags")
+load(":apple_error_handler.bzl", "apple_build_error_handler")
 load(":apple_frameworks.bzl", "get_framework_search_path_flags")
-load(":apple_target_sdk_version.bzl", "get_min_deployment_version_for_node", "get_min_deployment_version_target_linker_flags", "get_min_deployment_version_target_preprocessor_flags")
+load(":apple_target_sdk_version.bzl", "get_min_deployment_version_for_node")
 load(":apple_utility.bzl", "get_apple_cxx_headers_layout", "get_apple_stripped_attr_value_with_default_fallback")
 load(":debug.bzl", "AppleDebuggableInfo")
 load(":resource_groups.bzl", "create_resource_graph")
@@ -97,7 +100,7 @@ def apple_binary_impl(ctx: AnalysisContext) -> [list[Provider], Promise]:
 
         extra_linker_output_flags, extra_linker_output_providers = [], {} # @oss-enable
         # @oss-disable: extra_linker_output_flags, extra_linker_output_providers = add_extra_linker_outputs(ctx) 
-        extra_link_flags = get_min_deployment_version_target_linker_flags(ctx) + entitlements_link_flags(ctx) + extra_linker_output_flags
+        extra_link_flags = entitlements_link_flags(ctx) + extra_linker_output_flags
 
         framework_search_path_pre = CPreprocessor(
             args = CPreprocessorArgs(args = [framework_search_path_flags]),
@@ -134,10 +137,11 @@ def apple_binary_impl(ctx: AnalysisContext) -> [list[Provider], Promise]:
                         ),
                     ],
                 },
+                external_debug_info_tags = [],  # This might be used to materialise all transitive Swift related object files with ArtifactInfoTag("swiftmodule")
             ),
             extra_link_input = swift_object_files,
             extra_link_input_has_external_debug_info = True,
-            extra_preprocessors = get_min_deployment_version_target_preprocessor_flags(ctx) + [framework_search_path_pre] + swift_preprocessor,
+            extra_preprocessors = [framework_search_path_pre] + swift_preprocessor,
             strip_executable = stripped,
             strip_args_factory = apple_strip_args,
             cxx_populate_xcode_attributes_func = lambda local_ctx, **kwargs: apple_populate_xcode_attributes(local_ctx, contains_swift_sources = contains_swift_sources, **kwargs),
@@ -154,6 +158,9 @@ def apple_binary_impl(ctx: AnalysisContext) -> [list[Provider], Promise]:
             lang_preprocessor_flags = ctx.attrs.lang_preprocessor_flags,
             platform_preprocessor_flags = ctx.attrs.platform_preprocessor_flags,
             lang_platform_preprocessor_flags = ctx.attrs.lang_platform_preprocessor_flags,
+            error_handler = apple_build_error_handler,
+            index_stores = swift_compile.index_stores if swift_compile else None,
+            executable_name = ctx.attrs.executable_name,
         )
         cxx_output = cxx_executable(ctx, constructor_params)
 
@@ -180,11 +187,13 @@ def apple_binary_impl(ctx: AnalysisContext) -> [list[Provider], Promise]:
         min_version = get_min_deployment_version_for_node(ctx)
         min_version_providers = [AppleMinDeploymentVersionInfo(version = min_version)]
 
+        non_exported_deps = cxx_attr_deps(ctx)
+        exported_deps = cxx_attr_exported_deps(ctx)
         resource_graph = create_resource_graph(
             ctx = ctx,
             labels = ctx.attrs.labels,
-            deps = cxx_attr_deps(ctx),
-            exported_deps = cxx_attr_exported_deps(ctx),
+            deps = non_exported_deps,
+            exported_deps = exported_deps,
         )
         bundle_infos = get_bundle_infos_from_graph(resource_graph)
         if cxx_output.linker_map_data:
@@ -198,8 +207,18 @@ def apple_binary_impl(ctx: AnalysisContext) -> [list[Provider], Promise]:
         if cxx_output.sanitizer_runtime_files:
             sanitizer_runtime_providers.append(CxxSanitizerRuntimeInfo(runtime_files = cxx_output.sanitizer_runtime_files))
 
+        attrs_validators_providers, attrs_validators_subtargets = get_attrs_validators_outputs(ctx)
+
+        index_stores = []
+        if swift_compile and swift_compile.index_stores:
+            index_stores.extend(swift_compile.index_stores)
+        index_stores.extend(cxx_output.index_stores)
+
+        index_store_subtargets, index_store_info = create_index_store_subtargets_and_provider(ctx, index_stores, non_exported_deps + exported_deps)
+        cxx_output.sub_targets.update(index_store_subtargets)
+
         return [
-            DefaultInfo(default_output = cxx_output.binary, sub_targets = cxx_output.sub_targets),
+            DefaultInfo(default_output = cxx_output.binary, sub_targets = cxx_output.sub_targets | attrs_validators_subtargets),
             RunInfo(args = cmd_args(cxx_output.binary, hidden = cxx_output.runtime_files)),
             AppleEntitlementsInfo(entitlements_file = ctx.attrs.entitlements_file),
             AppleDebuggableInfo(dsyms = [dsym_artifact], debug_info_tset = cxx_output.external_debug_info),
@@ -207,7 +226,8 @@ def apple_binary_impl(ctx: AnalysisContext) -> [list[Provider], Promise]:
             cxx_output.compilation_db,
             merge_bundle_linker_maps_info(bundle_infos),
             UnstrippedLinkOutputInfo(artifact = unstripped_binary),
-        ] + [resource_graph] + min_version_providers + link_command_providers + sanitizer_runtime_providers
+            index_store_info,
+        ] + [resource_graph] + min_version_providers + link_command_providers + sanitizer_runtime_providers + attrs_validators_providers
 
     if uses_explicit_modules(ctx):
         return get_swift_anonymous_targets(ctx, get_apple_binary_providers)

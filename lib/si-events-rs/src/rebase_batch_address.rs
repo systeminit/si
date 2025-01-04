@@ -50,7 +50,7 @@ impl Serialize for RebaseBatchAddress {
 
 struct RebaseBatchAddressVisitor;
 
-impl<'de> Visitor<'de> for RebaseBatchAddressVisitor {
+impl Visitor<'_> for RebaseBatchAddressVisitor {
     type Value = RebaseBatchAddress;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {

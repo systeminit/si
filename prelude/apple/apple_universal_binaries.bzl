@@ -11,20 +11,42 @@ load(":apple_bundle_types.bzl", "AppleBundleBinaryOutput")
 load(":apple_toolchain_types.bzl", "AppleToolsInfo")
 load(":debug.bzl", "AppleDebuggableInfo")
 
-def create_universal_binary(
+def get_universal_binary_name(ctx: AnalysisContext) -> str:
+    if ctx.attrs.executable_name:
+        return ctx.attrs.executable_name
+    binary_deps = ctx.attrs.executable
+
+    # Because `binary_deps` is a split transition of the same target,
+    # the filenames would be identical, so we just pick the first one.
+    first_binary_dep = binary_deps.values()[0]
+    first_binary_artifact = first_binary_dep[DefaultInfo].default_outputs[0]
+
+    # The universal executable should have the same name as the base/thin ones
+    return first_binary_artifact.short_path
+
+def lipo_binaries(
         ctx: AnalysisContext,
         binary_deps: dict[str, Dependency],
         binary_name: [str, None],
-        dsym_bundle_name: [str, None],
-        split_arch_dsym: bool) -> AppleBundleBinaryOutput:
+        lipo: RunInfo) -> Artifact:
     binary_output = ctx.actions.declare_output("UniversalBinary" if binary_name == None else binary_name, dir = False)
-    lipo_cmd = [ctx.attrs._apple_toolchain[AppleToolchainInfo].lipo]
+    lipo_cmd = [lipo]
 
     for (_, binary) in binary_deps.items():
         lipo_cmd.append(cmd_args(binary[DefaultInfo].default_outputs[0]))
 
     lipo_cmd.extend(["-create", "-output", binary_output.as_output()])
     ctx.actions.run(cmd_args(lipo_cmd), category = "lipo")
+
+    return binary_output
+
+def create_universal_binary(
+        ctx: AnalysisContext,
+        binary_deps: dict[str, Dependency],
+        binary_name: [str, None],
+        dsym_bundle_name: [str, None],
+        split_arch_dsym: bool) -> AppleBundleBinaryOutput:
+    binary_output = lipo_binaries(ctx, binary_deps, binary_name, ctx.attrs._apple_toolchain[AppleToolchainInfo].lipo)
 
     # Universal binaries can be created out of plain `cxx_binary()` / `cxx_library()`
     # which lack the `AppleDebuggableInfo` provider.

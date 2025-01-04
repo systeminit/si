@@ -20,16 +20,18 @@ def cargo_clippy_impl(ctx: AnalysisContext) -> list[[
     RunInfo,
     ExternalRunnerTestInfo,
 ]]:
-    run_cmd_args = cmd_args([
-        "cargo",
-        "clippy",
-        "--all-targets",
-        "--no-deps",
-        "--package",
-        ctx.attrs.crate,
-        "--",
-    ])
-    run_cmd_args.hidden(ctx.attrs.srcs)
+    run_cmd_args = cmd_args(
+        [
+            "cargo",
+            "clippy",
+            "--all-targets",
+            "--no-deps",
+            "--package",
+            ctx.attrs.crate,
+            "--",
+        ],
+        hidden = ctx.attrs.srcs,
+    )
 
     args_file = ctx.actions.write("cargo-clippy-args.txt", run_cmd_args)
 
@@ -72,19 +74,21 @@ cargo_clippy = rule(
 )
 
 def cargo_clippy_fix_impl(ctx: AnalysisContext) -> list[[DefaultInfo, RunInfo]]:
-    run_cmd_args = cmd_args([
-        "cargo",
-        "clippy",
-        "--fix",
-        "--allow-dirty",
-        "--allow-staged",
-        "--all-targets",
-        "--no-deps",
-        "--package",
-        ctx.attrs.crate,
-        "--",
-    ])
-    run_cmd_args.hidden(ctx.attrs.srcs)
+    run_cmd_args = cmd_args(
+        [
+            "cargo",
+            "clippy",
+            "--fix",
+            "--allow-dirty",
+            "--allow-staged",
+            "--all-targets",
+            "--no-deps",
+            "--package",
+            ctx.attrs.crate,
+            "--",
+        ],
+        hidden = ctx.attrs.srcs,
+    )
 
     args_file = ctx.actions.write("cargo-clippy-args.txt", run_cmd_args)
 
@@ -114,15 +118,17 @@ def cargo_check_impl(ctx: AnalysisContext) -> list[[
     RunInfo,
     ExternalRunnerTestInfo,
 ]]:
-    run_cmd_args = cmd_args([
-        "cargo",
-        "check",
-        "--all-targets",
-        "--package",
-        ctx.attrs.crate,
-        "--",
-    ])
-    run_cmd_args.hidden(ctx.attrs.srcs)
+    run_cmd_args = cmd_args(
+        [
+            "cargo",
+            "check",
+            "--all-targets",
+            "--package",
+            ctx.attrs.crate,
+            "--",
+        ],
+        hidden = ctx.attrs.srcs,
+    )
 
     args_file = ctx.actions.write("cargo-check-args.txt", run_cmd_args)
 
@@ -165,14 +171,16 @@ cargo_check = rule(
 )
 
 def cargo_doc_impl(ctx: AnalysisContext) -> list[[DefaultInfo, RunInfo]]:
-    run_cmd_args = cmd_args([
-        "cargo",
-        "doc",
-        "--no-deps",
-        "--package",
-        ctx.attrs.crate,
-    ])
-    run_cmd_args.hidden(ctx.attrs.srcs)
+    run_cmd_args = cmd_args(
+        [
+            "cargo",
+            "doc",
+            "--no-deps",
+            "--package",
+            ctx.attrs.crate,
+        ],
+        hidden = ctx.attrs.srcs,
+    )
 
     args_file = ctx.actions.write("cargo-doc-args.txt", run_cmd_args)
 
@@ -224,7 +232,7 @@ def cargo_doc_check_impl(ctx: AnalysisContext) -> list[[
         is_executable = True,
         allow_args = True,
     )
-    run_cmd_args = cmd_args([script]).hidden(ctx.attrs.srcs)
+    run_cmd_args = cmd_args([script], hidden = ctx.attrs.srcs)
 
     # Setup a RE executor based on the `remote_execution` param.
     re_executor, executor_overrides = get_re_executors_from_props(ctx)
@@ -265,14 +273,16 @@ cargo_doc_check = rule(
 )
 
 def cargo_fmt_impl(ctx: AnalysisContext) -> list[[DefaultInfo, RunInfo]]:
-    run_cmd_args = cmd_args([
-        "cargo",
-        "fmt",
-        "--package",
-        ctx.attrs.crate,
-        "--",
-    ])
-    run_cmd_args.hidden(ctx.attrs.srcs)
+    run_cmd_args = cmd_args(
+        [
+            "cargo",
+            "fmt",
+            "--package",
+            ctx.attrs.crate,
+            "--",
+        ],
+        hidden = ctx.attrs.srcs,
+    )
 
     args_file = ctx.actions.write("cargo-fmt-args.txt", run_cmd_args)
 
@@ -302,15 +312,17 @@ def cargo_fmt_check_impl(ctx: AnalysisContext) -> list[[
     RunInfo,
     ExternalRunnerTestInfo,
 ]]:
-    run_cmd_args = cmd_args([
-        "cargo",
-        "fmt",
-        "--check",
-        "--package",
-        ctx.attrs.crate,
-        "--",
-    ])
-    run_cmd_args.hidden(ctx.attrs.srcs)
+    run_cmd_args = cmd_args(
+        [
+            "cargo",
+            "fmt",
+            "--check",
+            "--package",
+            ctx.attrs.crate,
+            "--",
+        ],
+        hidden = ctx.attrs.srcs,
+    )
 
     args_file = ctx.actions.write("cargo-fmt-args.txt", run_cmd_args)
 
@@ -357,14 +369,16 @@ def cargo_test_impl(ctx: AnalysisContext) -> list[[
     RunInfo,
     ExternalRunnerTestInfo,
 ]]:
-    run_cmd_args = cmd_args([
-        "cargo",
-        "test",
-        "--package",
-        ctx.attrs.crate,
-        "--",
-    ])
-    run_cmd_args.hidden(ctx.attrs.srcs)
+    run_cmd_args = cmd_args(
+        [
+            "cargo",
+            "test",
+            "--package",
+            ctx.attrs.crate,
+            "--",
+        ],
+        hidden = ctx.attrs.srcs,
+    )
 
     args_file = ctx.actions.write("cargo-test-args.txt", run_cmd_args)
 

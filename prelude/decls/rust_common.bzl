@@ -70,6 +70,18 @@ def _linker_flags_arg():
 """),
     }
 
+def _exported_linker_flags_arg():
+    return {
+        "exported_linker_flags": attrs.list(attrs.arg(anon_target_compatible = True), default = [], doc = """
+    A set of additional flag to pass before this item on the link line, even if
+    this items is compiled to a DSO.
+"""),
+        "exported_post_linker_flags": attrs.list(attrs.arg(anon_target_compatible = True), default = [], doc = """
+    A set of additional flag to pass after this item on the link line, even if
+    this items is compiled to a DSO.
+"""),
+    }
+
 def _crate(crate_type):
     return {
         "crate": crate_type,
@@ -83,11 +95,37 @@ def _crate_root():
 """),
     }
 
+def _default_roots_arg():
+    return {
+        "default_roots": attrs.option(attrs.list(attrs.string()), default = None, doc = """
+    Set the candidate source names to consider for crate root. Typically used to disambiguate between
+     lib.rs or main.rs for rust_test, which may be declare a test suite for either library or binary
+     rules. Has no effect if an explicit `crate_root` is provided.
+"""),
+    }
+
 def _env_arg():
     return {
         "env": attrs.dict(key = attrs.string(), value = attrs.arg(), sorted = False, default = {}, doc = """
     Set environment variables for this rule's invocations of rustc. The environment variable
      values may include macros which are expanded.
+"""),
+    }
+
+def _run_env_arg():
+    return {
+        "run_env": attrs.dict(key = attrs.string(), value = attrs.arg(), sorted = False, default = {}, doc = """
+    Set environment variables during test execution. The environment variable values may
+     include macros which are expanded.
+"""),
+    }
+
+def _build_and_run_env_arg():
+    # Same as env_arg(), but with different documentation.
+    return {
+        "env": attrs.dict(key = attrs.string(), value = attrs.arg(), sorted = False, default = {}, doc = """
+    Set environment variables for this rule's invocations of rustc *and* during execution of
+     the tests. The environment variable values may include macros which are expanded.
 """),
     }
 
@@ -106,7 +144,7 @@ def _mapped_srcs_arg():
 
 def _named_deps_arg(is_binary: bool):
     return {
-        "named_deps": attrs.dict(key = attrs.string(), value = rust_target_dep(is_binary), sorted = False, default = {}, doc = """
+        "named_deps": attrs.one_of(attrs.dict(key = attrs.string(), value = rust_target_dep(is_binary), sorted = False), attrs.list(attrs.tuple(attrs.arg(), rust_target_dep(is_binary))), default = {}, doc = """
     Add crate dependencies and define a local name by which to use that dependency by. This
      allows a crate to have multiple dependencies with the same crate name. For example:
      `named_deps = {"local_name", ":some_rust_crate" }`.
@@ -140,9 +178,13 @@ rust_common = struct(
     edition_arg = _edition_arg,
     rustc_flags_arg = _rustc_flags_arg,
     linker_flags_arg = _linker_flags_arg,
+    exported_linker_flags_arg = _exported_linker_flags_arg,
     crate = _crate,
     crate_root = _crate_root,
+    default_roots_arg = _default_roots_arg,
     env_arg = _env_arg,
+    run_env_arg = _run_env_arg,
+    build_and_run_env_arg = _build_and_run_env_arg,
     mapped_srcs_arg = _mapped_srcs_arg,
     named_deps_arg = _named_deps_arg,
     rust_toolchain_arg = _rust_toolchain_arg,

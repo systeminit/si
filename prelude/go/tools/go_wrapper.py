@@ -58,7 +58,7 @@ def main(argv):
 
     wrapped_binary = Path(argv[1]).resolve()
 
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(fromfile_prefix_chars="@")
     parser.add_argument("--workdir", type=Path, default=None)
     parser.add_argument("--output", type=argparse.FileType("w"), default=sys.stdout)
     parsed, unknown = parser.parse_known_args(argv[2:])
@@ -79,6 +79,8 @@ def main(argv):
             var_value = go_join(shlex.split(env[env_var]))
             # HACK: Replace %cwd% with the current working directory to make it work when `go` does `cd` to a tmp-dir.
             env[env_var] = var_value.replace("%cwd%", cwd)
+
+    unknown = [arg.replace("%cwd%", cwd) for arg in unknown]
 
     retcode = subprocess.call(
         [wrapped_binary] + unknown, env=env, cwd=parsed.workdir, stdout=parsed.output

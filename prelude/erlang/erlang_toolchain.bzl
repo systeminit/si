@@ -386,27 +386,3 @@ toolchain_utilities = rule(
         "utility_modules": attrs.list(attrs.source()),
     },
 )
-
-# Resources that need to be plugged in through toolchain// :
-# - jsone
-
-toolchain_resources = rule(
-    impl = lambda ctx: [
-        DefaultInfo(
-            sub_targets = {
-                "jsone": ctx.attrs.jsone.providers,
-            },
-        ),
-    ],
-    attrs = {
-        "jsone": attrs.dep(),
-    },
-    is_toolchain_rule = True,
-)
-
-toolchain_resources_internal = rule(
-    impl = lambda ctx: ctx.attrs._resources.providers,
-    attrs = {
-        "_resources": attrs.toolchain_dep(default = "toolchains//:erlang-resources"),
-    },
-)
