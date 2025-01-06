@@ -101,11 +101,7 @@
               <TabGroupItem label="Attributes" slug="attributes">
                 <AttributesPanel />
               </TabGroupItem>
-              <TabGroupItem
-                v-if="featureFlagsStore.OUTLINER_VIEWS"
-                label="Connections"
-                slug="connections"
-              >
+              <TabGroupItem label="Connections" slug="connections">
                 <ComponentConnectionsPanel />
               </TabGroupItem>
               <TabGroupItem label="Code" slug="code">
@@ -194,7 +190,6 @@ import { useChangeSetsStore } from "@/store/change_sets.store";
 import { useQualificationsStore } from "@/store/qualifications.store";
 import { ComponentType } from "@/api/sdf/dal/schema";
 import { useFuncStore } from "@/store/func/funcs.store";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { useViewsStore } from "@/store/views.store";
 import ComponentCard from "./ComponentCard.vue";
 import DetailsPanelTimestamps from "./DetailsPanelTimestamps.vue";
@@ -229,8 +224,6 @@ const viewStore = useViewsStore();
 const qualificationsStore = useQualificationsStore();
 const changeSetsStore = useChangeSetsStore();
 const funcStore = useFuncStore();
-
-const featureFlagsStore = useFeatureFlagsStore();
 
 const modelingEventBus = componentsStore.eventBus;
 

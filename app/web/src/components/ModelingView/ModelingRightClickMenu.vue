@@ -263,34 +263,32 @@ const rightClickMenuItems = computed(() => {
   const items: DropdownMenuItemObjectDef[] = [];
   const disabled = false;
 
-  if (featureFlagsStore.OUTLINER_VIEWS) {
-    items.push({
-      label: "VIEWS",
-      header: true,
-    });
+  items.push({
+    label: "VIEWS",
+    header: true,
+  });
 
-    // you can do these operations no matter how many elements selected
-    if (!anyViews.value) {
-      items.push({
-        label: "Move to",
-        icon: "arrows-out",
-        submenuItems: viewsSubitems(viewAdd(true)).concat({
-          label: "Create new View ...",
-          onSelect: newView,
-        }),
-      });
-      items.push({
-        label: "Copy to",
-        icon: "clipboard-copy",
-        submenuItems: viewsSubitems(viewAdd(false)),
-      });
-    }
+  // you can do these operations no matter how many elements selected
+  if (!anyViews.value) {
     items.push({
-      label: "Remove",
-      icon: "x-circle",
-      onSelect: removeFromView,
+      label: "Move to",
+      icon: "arrows-out",
+      submenuItems: viewsSubitems(viewAdd(true)).concat({
+        label: "Create new View ...",
+        onSelect: newView,
+      }),
+    });
+    items.push({
+      label: "Copy to",
+      icon: "clipboard-copy",
+      submenuItems: viewsSubitems(viewAdd(false)),
     });
   }
+  items.push({
+    label: "Remove",
+    icon: "x-circle",
+    onSelect: removeFromView,
+  });
 
   // if you've selected a view, you can't do anything else
   if (anyViews.value) return items;

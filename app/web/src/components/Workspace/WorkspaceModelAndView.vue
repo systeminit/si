@@ -8,10 +8,7 @@
       transition: 'left 0.15s ease-out',
     }"
   >
-    <LeftPanelDrawer
-      v-if="featureFlagsStore.OUTLINER_VIEWS"
-      @closed="toggleDrawer"
-    />
+    <LeftPanelDrawer @closed="toggleDrawer" />
     <component
       :is="ResizablePanel"
       ref="leftResizablePanelRef"
@@ -171,13 +168,11 @@ const rightPanelSize = (size: number) => {
 };
 
 const drawerLeftPos = computed(() => {
-  if (!featureFlagsStore.OUTLINER_VIEWS) return 0;
   if (presenceStore.leftDrawerOpen) return 0;
   else return -230;
 });
 
 const toggleDrawer = () => {
-  if (!featureFlagsStore.OUTLINER_VIEWS) return;
   presenceStore.leftDrawerOpen = !presenceStore.leftDrawerOpen;
 };
 
