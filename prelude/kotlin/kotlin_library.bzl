@@ -393,9 +393,9 @@ def build_kotlin_library(
                 "bootclasspath_entries": bootclasspath_entries,
                 "debug_port": getattr(ctx.attrs, "debug_port", None),
                 "deps": deps + [kotlin_toolchain.kotlin_stdlib],
+                "enable_used_classes": ctx.attrs.enable_used_classes,
                 "extra_kotlinc_arguments": ctx.attrs.extra_kotlinc_arguments,
                 "friend_paths": ctx.attrs.friend_paths,
-                "incremental": ctx.attrs.incremental,
                 "is_building_android_binary": ctx.attrs._is_building_android_binary,
                 "jar_postprocessor": ctx.attrs.jar_postprocessor[RunInfo] if hasattr(ctx.attrs, "jar_postprocessor") and ctx.attrs.jar_postprocessor else None,
                 "java_toolchain": ctx.attrs._java_toolchain[JavaToolchainInfo],
@@ -414,13 +414,16 @@ def build_kotlin_library(
                 "srcs": srcs,
                 "target_level": target_level,
             }
-            outputs = create_jar_artifact_kotlincd(
+            outputs, proto = create_jar_artifact_kotlincd(
                 plugin_params = create_plugin_params(ctx, ctx.attrs.plugins),
                 extra_arguments = extra_arguments,
                 actions_identifier = "",
+                incremental = ctx.attrs.incremental,
                 **common_kotlincd_kwargs
             )
 
+            if proto:
+                extra_sub_targets = extra_sub_targets | {"jar_command_proto_json": [DefaultInfo(default_output = proto)]}
             if outputs and outputs.incremental_state_dir:
                 extra_sub_targets = extra_sub_targets | {"incremental_state_dir": [
                     DefaultInfo(default_output = outputs.incremental_state_dir),
@@ -448,6 +451,7 @@ def build_kotlin_library(
                         # To make sure that even for pure Kotlin targets empty output dir is always present
                         optional_dirs = [nullsafe_info.output.as_output()],
                         is_creating_subtarget = True,
+                        incremental = False,
                         **common_kotlincd_kwargs
                     )
 

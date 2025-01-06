@@ -10,6 +10,7 @@
 # the generated docs, and so those should be verified to be accurate and
 # well-formatted (and then delete this TODO)
 
+load("@prelude//decls:test_common.bzl", "test_common")
 load(":common.bzl", "AbiGenerationMode", "LogLevel", "SourceAbiVerificationMode", "TestType", "UnusedDependenciesAction", "buck", "prelude_rule")
 load(":jvm_common.bzl", "jvm_common")
 load(":re_test_common.bzl", "re_test_common")
@@ -102,6 +103,13 @@ java_binary = prelude_rule(
     attrs = (
         # @unsorted-dict-items
         {
+            "base_dep": attrs.option(attrs.dep(), default = None, doc = """
+                Rule (normally of type `java_library`) that should be
+                 compiled and used as a base JAR to receive all dependencies through an append operation.
+            """),
+            "build_manifest": attrs.option(attrs.source(), default = None, doc = """
+                MANIFEST containing stamped build attributes, that should be merged into the main jar manifest
+            """),
             "deps": attrs.list(attrs.dep(), default = [], doc = """
                 Rules (normally of type `java_library`) that should be
                  compiled and whose `.class` files and resources should be
@@ -153,11 +161,15 @@ java_binary = prelude_rule(
 
                 ```
             """),
+            "concat_deps": attrs.bool(default = False, doc = "Use zip concatenation instead of repacking all dependency jars, which is faster"),
             "contacts": attrs.list(attrs.string(), default = []),
             "default_cxx_platform": attrs.option(attrs.string(), default = None),
             "default_host_platform": attrs.option(attrs.configuration_label(), default = None),
             "generate_wrapper": attrs.bool(default = False),
             "do_not_create_inner_jar": attrs.bool(default = False),
+            "incremental_target_prefix": attrs.option(attrs.string(), default = None),
+            "java_version": attrs.option(attrs.string(), default = None, doc = "Expected java version used at compile time"),
+            "java_runtime": attrs.option(attrs.string(), default = None, doc = "Expected java version used at runtime"),
             "labels": attrs.list(attrs.string(), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
         }
@@ -421,7 +433,7 @@ java_test = prelude_rule(
             "unbundled_resources_root": attrs.option(attrs.source(allow_directory = True), default = None),
             "use_dependency_order_classpath": attrs.option(attrs.bool(), default = None),
         }
-    ) | jvm_common.plugins() | jvm_common.javac(),
+    ) | jvm_common.plugins() | jvm_common.javac() | test_common.attributes(),
 )
 
 java_test_runner = prelude_rule(

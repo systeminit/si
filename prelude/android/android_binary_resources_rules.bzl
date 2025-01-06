@@ -13,6 +13,7 @@ load("@prelude//android:android_resource.bzl", "aapt2_compile")
 load("@prelude//android:android_toolchain.bzl", "AndroidToolchainInfo")
 load("@prelude//android:r_dot_java.bzl", "generate_r_dot_javas")
 load("@prelude//android:voltron.bzl", "ROOT_MODULE", "get_apk_module_graph_info", "is_root_module")
+load("@prelude//decls:android_rules.bzl", "RType")
 load(
     "@prelude//java:java_providers.bzl",
     "JavaPackagingDep",  # @unused Used as type
@@ -20,7 +21,6 @@ load(
 load("@prelude//utils:expect.bzl", "expect")
 load("@prelude//utils:set.bzl", "set_type")  # @unused Used as a type
 load("@prelude//utils:utils.bzl", "flatten")
-load("@prelude//decls/android_rules.bzl", "RType")
 
 _FilteredResourcesOutput = record(
     resource_infos = list[AndroidResourceInfo],
@@ -443,7 +443,7 @@ def get_manifest(
 
     android_toolchain = ctx.attrs._android_toolchain[AndroidToolchainInfo]
     if ctx.attrs.manifest:
-        expect(ctx.attrs.manifest_skeleton == None, "Only one of manifest and manifest_skeleton should be declared")
+        expect(getattr(ctx.attrs, "manifest_skeleton", None) == None, "Only one of manifest and manifest_skeleton should be declared")
         if isinstance(ctx.attrs.manifest, Dependency):
             android_manifest = ctx.attrs.manifest[DefaultInfo].default_outputs[0]
         else:
@@ -465,7 +465,7 @@ def get_manifest(
         )
 
     if android_toolchain.set_application_id_to_specified_package and should_replace_application_id_placeholders:
-        android_manifest_with_replaced_application_id = ctx.actions.declare_output("android_manifest_with_replaced_application_id/AndroidManifest.xml")
+        android_manifest_with_replaced_application_id = ctx.actions.declare_output("replaced/AndroidManifest.xml")
         replace_application_id_placeholders_cmd = cmd_args([
             ctx.attrs._android_toolchain[AndroidToolchainInfo].replace_application_id_placeholders[RunInfo],
             "--manifest",

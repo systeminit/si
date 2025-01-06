@@ -7,9 +7,11 @@
 
 load(
     "@prelude//:artifact_tset.bzl",
+    "ArtifactInfo",
     "ArtifactInfoTag",
 )
-load("@prelude//apple:apple_toolchain_types.bzl", "AppleToolsInfo")
+load("@prelude//apple:apple_common.bzl", "apple_common")
+load("@prelude//apple:apple_toolchain_types.bzl", "AppleToolchainInfo", "AppleToolsInfo")
 load(
     "@prelude//linking:execution_preference.bzl",
     "LinkExecutionPreference",
@@ -42,8 +44,9 @@ AppleSelectiveDebuggingInfo = provider(
 )
 
 AppleSelectiveDebuggingFilteredDebugInfo = record(
-    map = field(dict[Label, list[Artifact]]),
+    infos = field(list[ArtifactInfo]),
     swift_modules_labels = field(list[Label]),
+    metadata = field(Artifact),
 )
 
 # The type of selective debugging json input to utilze.
@@ -58,6 +61,35 @@ _SelectiveDebuggingJsonTypes = [
 _SelectiveDebuggingJsonType = enum(*_SelectiveDebuggingJsonTypes)
 
 _LOCAL_LINK_THRESHOLD = 0.2
+
+_OBJECT_FILE_EXTENSIONS = [
+    ".o",
+    ".a",
+]
+
+def _apple_skip_adhoc_resigning_scrubbed_frameworks_attr_value(bundle_ctx: AnalysisContext) -> bool:
+    override_value = bundle_ctx.attrs._skip_adhoc_resigning_scrubbed_frameworks_override
+    if override_value != None:
+        # Override takes precedence over any other value
+        return override_value
+
+    skip = bundle_ctx.attrs.skip_adhoc_resigning_scrubbed_frameworks
+    return skip if skip != None else bundle_ctx.attrs._skip_adhoc_resigning_scrubbed_frameworks_default
+
+def _should_skip_adhoc_sign_after_scrubbing(bundle_ctx: AnalysisContext) -> bool:
+    sdk_name = bundle_ctx.attrs._apple_toolchain[AppleToolchainInfo].sdk_name
+    if bundle_ctx.attrs.extension == "framework" and "iphonesimulator" in sdk_name:
+        # While scrubbing invalidates the code signature, the signature of frameworks
+        # are generally not checked by the system (unless running against the hardened
+        # runtime for macOS apps). Re-signing scrubbed frameworks can take non-trivial
+        # time, so skip it if it's not needed.
+        return _apple_skip_adhoc_resigning_scrubbed_frameworks_attr_value(bundle_ctx)
+    return False
+
+def _generate_metadata_json_object(is_any_selected_target_linked: bool) -> dict[str, typing.Any]:
+    return {
+        "contains_focused_targets": is_any_selected_target_linked,
+    }
 
 def _apple_selective_debugging_impl(ctx: AnalysisContext) -> list[Provider]:
     json_type = _SelectiveDebuggingJsonType(ctx.attrs.json_type)
@@ -140,15 +172,17 @@ def _apple_selective_debugging_impl(ctx: AnalysisContext) -> list[Provider]:
             executable: Artifact,
             executable_link_execution_preference: LinkExecutionPreference,
             adhoc_codesign_tool: [RunInfo, None],
-            focused_targets_labels: list[Label]) -> Artifact:
+            focused_targets_labels: list[Label],
+            identifier: None | str = None) -> Artifact:
         inner_cmd = cmd_args(cmd)
-        output = inner_ctx.actions.declare_output("debug_scrubbed/{}".format(executable.short_path))
+        subdir = "{}/".format(identifier) if identifier else ""
+        output = inner_ctx.actions.declare_output("debug_scrubbed/{}{}".format(subdir, executable.short_path))
 
         action_execution_properties = get_action_execution_attributes(executable_link_execution_preference)
 
         # If we're provided a codesign tool, provider it to the scrubber binary so that it may sign
         # the binary after scrubbing.
-        if adhoc_codesign_tool:
+        if adhoc_codesign_tool and (not _should_skip_adhoc_sign_after_scrubbing(inner_ctx)):
             inner_cmd.add(["--adhoc-codesign-tool", adhoc_codesign_tool])
         inner_cmd.add(["--input", executable])
         inner_cmd.add(["--output", output.as_output()])
@@ -161,7 +195,7 @@ def _apple_selective_debugging_impl(ctx: AnalysisContext) -> list[Provider]:
         inner_ctx.actions.run(
             inner_cmd,
             category = "scrub_binary",
-            identifier = executable.short_path,
+            identifier = output.short_path,
             prefer_local = action_execution_properties.prefer_local,
             prefer_remote = action_execution_properties.prefer_remote,
             local_only = action_execution_properties.local_only,
@@ -169,24 +203,85 @@ def _apple_selective_debugging_impl(ctx: AnalysisContext) -> list[Provider]:
         )
         return output
 
-    def filter_debug_info(debug_info: TransitiveSetIterator) -> AppleSelectiveDebuggingFilteredDebugInfo:
-        map = {}
+    def filter_debug_info(inner_ctx: AnalysisContext, debug_info: TransitiveSetIterator) -> AppleSelectiveDebuggingFilteredDebugInfo:
+        artifact_infos = []
+        linked_targets = set()
+        is_any_selected_target_linked = False
+        is_using_spec = (json_type == _SelectiveDebuggingJsonType("spec"))
         selected_targets_contain_swift = False
         for infos in debug_info:
             for info in infos:
                 is_swiftmodule = ArtifactInfoTag("swiftmodule") in info.tags
                 is_swift_pcm = ArtifactInfoTag("swift_pcm") in info.tags
                 is_swift_related = is_swiftmodule or is_swift_pcm
-                if _is_label_included(info.label, selection_criteria) or (selected_targets_contain_swift and is_swift_related):
+
+                is_label_included = _is_label_included(info.label, selection_criteria)
+
+                is_any_selected_target_linked_when_using_spec = is_using_spec and is_any_selected_target_linked
+                if not is_any_selected_target_linked_when_using_spec:
+                    # When using spec mode and there's already a selected target, there's no need
+                    # to continue the search whether a selected target is linked - we know at least
+                    # one is already linked. So, the if statement acts as a short-circuit for perf
+                    # reasons to avoid unnecessary work.
+                    #
+                    # In targets mode (i.e., non-spec mode), the full list of `linked_targets` must
+                    # be computed, as that value is used behind a dynamic output, so it's not possible
+                    # terminate the search early (as we cannot determine whether a selected target is linked
+                    # as the list of selected targets is stored in the targets JSON file, which is not available
+                    # at analysis time, only avail behind a dynamic output).
+                    debug_artifact_contains_object_code = lazy.is_any(lambda debug_artifact: debug_artifact.extension in _OBJECT_FILE_EXTENSIONS, info.artifacts)
+                    if debug_artifact_contains_object_code:
+                        if is_using_spec and is_label_included:
+                            is_any_selected_target_linked = True
+                        if not is_using_spec:
+                            # `linked_targets` only used in targets mode, avoid costs in all other modes
+                            linked_targets.add(info.label)
+
+                if is_label_included or (selected_targets_contain_swift and is_swift_related):
                     # There might be a few ArtifactInfo corresponding to the same Label,
                     # so to avoid overwriting, we need to preserve all artifacts.
-                    if info.label in map:
-                        map[info.label] += info.artifacts
-                    else:
-                        map[info.label] = list(info.artifacts)
-
+                    artifact_infos.append(info)
                     selected_targets_contain_swift = selected_targets_contain_swift or ArtifactInfoTag("swiftmodule") in info.tags
-        return AppleSelectiveDebuggingFilteredDebugInfo(map = map, swift_modules_labels = [])
+
+        if json_type == _SelectiveDebuggingJsonType("spec"):
+            metadata_output = inner_ctx.actions.write_json(
+                "selective_metadata_with_spec.json",
+                _generate_metadata_json_object(is_any_selected_target_linked),
+                pretty = True,
+            )
+        elif json_type == _SelectiveDebuggingJsonType("targets"):
+            def generate_metadata_output(dynamic_ctx: AnalysisContext, artifacts, outputs):
+                targets = artifacts[targets_json_file].read_json()["targets"]
+                is_any_selected_target_linked_inner = False
+                for target in targets:
+                    cell, package_with_target_name = target.split("//")
+                    package, target_name = package_with_target_name.split(":")
+
+                    is_any_selected_target_linked_inner = lazy.is_any(lambda linked_target: linked_target.cell == cell and linked_target.package == package and linked_target.name == target_name, linked_targets)
+                    if is_any_selected_target_linked_inner:
+                        break
+
+                dynamic_ctx.actions.write_json(
+                    outputs.values()[0],
+                    _generate_metadata_json_object(is_any_selected_target_linked_inner),
+                    pretty = True,
+                )
+
+            metadata_output = inner_ctx.actions.declare_output("selective_metadata_with_targets_file.json")
+            inner_ctx.actions.dynamic_output(
+                dynamic = [targets_json_file],
+                inputs = [],
+                outputs = [metadata_output.as_output()],
+                f = generate_metadata_output,
+            )
+        else:
+            fail("Unexpected type: {}".format(json_type))
+
+        return AppleSelectiveDebuggingFilteredDebugInfo(
+            infos = artifact_infos,
+            swift_modules_labels = [],
+            metadata = metadata_output,
+        )
 
     def preference_for_links(links: list[Label], deps_preferences: list[LinkExecutionPreferenceInfo]) -> LinkExecutionPreference:
         # If any dependent links were run locally, prefer that the current link is also performed locally,
@@ -228,8 +323,7 @@ registration_spec = RuleRegistrationSpec(
         "include_regular_expressions": attrs.list(attrs.string(), default = []),
         "json_type": attrs.enum(_SelectiveDebuggingJsonTypes),
         "targets_json_file": attrs.option(attrs.source(), default = None),
-        "_apple_tools": attrs.exec_dep(default = "prelude//apple/tools:apple-tools", providers = [AppleToolsInfo]),
-    },
+    } | apple_common.apple_tools_arg(),
 )
 
 def _is_label_included(label: Label, selection_criteria: _SelectionCriteria) -> bool:

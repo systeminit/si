@@ -15,12 +15,13 @@ load("@prelude//apple:apple_common.bzl", "apple_common")
 load("@prelude//apple/swift:swift_incremental_support.bzl", "SwiftCompilationMode")
 load("@prelude//apple/swift:swift_toolchain.bzl", "swift_toolchain_impl")
 load("@prelude//apple/swift:swift_toolchain_types.bzl", "SwiftObjectFormat")
-load("@prelude//apple/user:apple_xcframework.bzl", "apple_xcframework_extra_attrs")
+load("@prelude//apple/user:apple_spm_package.bzl", "apple_spm_package_extra_attrs")
 load("@prelude//cxx:headers.bzl", "CPrecompiledHeaderInfo", "HeaderMode")
 load("@prelude//cxx:link_groups_types.bzl", "LINK_GROUP_MAP_ATTR")
 load("@prelude//linking:execution_preference.bzl", "link_execution_preference_attr")
 load("@prelude//linking:link_info.bzl", "LinkOrdering")
 load("@prelude//linking:types.bzl", "Linkage")
+load("@prelude//transitions:constraint_overrides.bzl", "constraint_overrides")
 load(":apple_asset_catalog.bzl", "apple_asset_catalog_impl")
 load(":apple_binary.bzl", "apple_binary_impl")
 load(":apple_bundle.bzl", "apple_bundle_impl")
@@ -43,7 +44,6 @@ load(
 )
 load(":apple_test.bzl", "apple_test_impl")
 load(":apple_toolchain.bzl", "apple_toolchain_impl")
-load(":apple_toolchain_types.bzl", "AppleToolsInfo")
 load(":apple_xcuitest.bzl", "apple_xcuitest_impl")
 load(":prebuilt_apple_framework.bzl", "prebuilt_apple_framework_impl")
 load(":scene_kit_assets.bzl", "scene_kit_assets_impl")
@@ -85,15 +85,17 @@ def _apple_binary_extra_attrs():
         "swift_compilation_mode": attrs.enum(SwiftCompilationMode.values(), default = "wmo"),
         "swift_package_name": attrs.option(attrs.string(), default = None),
         "_apple_toolchain": _APPLE_TOOLCHAIN_ATTR,
-        "_apple_tools": attrs.exec_dep(default = "prelude//apple/tools:apple-tools", providers = [AppleToolsInfo]),
         "_apple_xctoolchain": get_apple_xctoolchain_attr(),
         "_apple_xctoolchain_bundle_id": get_apple_xctoolchain_bundle_id_attr(),
         "_enable_library_evolution": get_enable_library_evolution(),
         "_stripped_default": attrs.bool(default = False),
+        "_swift_enable_testing": attrs.default_only(attrs.bool(default = False)),
         VALIDATION_DEPS_ATTR_NAME: VALIDATION_DEPS_ATTR_TYPE,
         ATTRS_VALIDATORS_NAME: ATTRS_VALIDATORS_TYPE,
     }
+    attribs.update(apple_common.apple_tools_arg())
     attribs.update(apple_dsymutil_attrs())
+    attribs.update(constraint_overrides.attributes)
     return attribs
 
 def _apple_library_extra_attrs():
@@ -118,15 +120,19 @@ def _apple_library_extra_attrs():
         "swift_package_name": attrs.option(attrs.string(), default = None),
         "use_archive": attrs.option(attrs.bool(), default = None),
         "_apple_toolchain": _APPLE_TOOLCHAIN_ATTR,
-        "_apple_tools": attrs.exec_dep(default = "prelude//apple/tools:apple-tools", providers = [AppleToolsInfo]),
         "_apple_xctoolchain": get_apple_xctoolchain_attr(),
         "_apple_xctoolchain_bundle_id": get_apple_xctoolchain_bundle_id_attr(),
         "_enable_library_evolution": get_enable_library_evolution(),
         "_stripped_default": attrs.bool(default = False),
+        "_swift_enable_testing": attrs.bool(default = select({
+            "DEFAULT": False,
+            "config//features/apple:swift_enable_testing_enabled": True,
+        })),
         APPLE_ARCHIVE_OBJECTS_LOCALLY_OVERRIDE_ATTR_NAME: attrs.option(attrs.bool(), default = None),
         ATTRS_VALIDATORS_NAME: ATTRS_VALIDATORS_TYPE,
         VALIDATION_DEPS_ATTR_NAME: VALIDATION_DEPS_ATTR_TYPE,
     }
+    attribs.update(apple_common.apple_tools_arg())
     attribs.update(apple_dsymutil_attrs())
     return attribs
 
@@ -150,10 +156,9 @@ extra_attributes = {
             ),
             default = [],
         ),
-        "_apple_tools": attrs.exec_dep(default = "prelude//apple/tools:apple-tools", providers = [AppleToolsInfo]),
         "_ipa_compression_level": attrs.enum(IpaCompressionLevel.values()),
         "_ipa_package": attrs.dep(),
-    },
+    } | apple_common.apple_tools_arg(),
     "apple_resource": {
         "codesign_entitlements": attrs.option(attrs.source(), default = None),
         "codesign_flags_override": attrs.option(attrs.list(attrs.string()), default = None),
@@ -162,6 +167,7 @@ extra_attributes = {
         "dirs": attrs.list(attrs.source(allow_directory = True), default = []),
         "files": attrs.list(attrs.one_of(attrs.dep(), attrs.source()), default = []),
     } | apple_common.skip_universal_resource_dedupe_arg(),
+    "apple_spm_package": apple_spm_package_extra_attrs(),
     "apple_toolchain": {
         # The Buck v1 attribute specs defines those as `attrs.source()` but
         # we want to properly handle any runnable tools that might have
@@ -207,7 +213,6 @@ extra_attributes = {
         #                   pass abs paths during development and using the currently selected Xcode.
         "_internal_sdk_path": attrs.option(attrs.string(), default = None),
     },
-    "apple_xcframework": apple_xcframework_extra_attrs(),
     "apple_xcuitest": apple_xcuitest_extra_attrs(),
     "core_data_model": {
         "module": attrs.option(attrs.string(), default = None),
@@ -217,13 +222,13 @@ extra_attributes = {
         "contains_swift": attrs.bool(default = False),
         "dsyms": attrs.list(attrs.source(allow_directory = True), default = []),
         "framework": attrs.option(attrs.source(allow_directory = True), default = None),
+        "modular": attrs.bool(default = True),
         "preferred_linkage": attrs.enum(Linkage.values(), default = "any"),
         "sdk_modules": attrs.list(attrs.string(), default = []),
         "stripped": attrs.option(attrs.bool(), default = None),
         "_apple_toolchain": _APPLE_TOOLCHAIN_ATTR,
-        "_apple_tools": attrs.default_only(attrs.exec_dep(default = "prelude//apple/tools:apple-tools", providers = [AppleToolsInfo])),
         "_stripped_default": attrs.bool(default = False),
-    },
+    } | apple_common.apple_tools_arg(),
     "scene_kit_assets": {
         "path": attrs.source(allow_directory = True),
     },

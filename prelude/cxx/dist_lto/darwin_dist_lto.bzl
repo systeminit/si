@@ -7,7 +7,7 @@
 
 load(
     "@prelude//:artifact_tset.bzl",
-    "ArtifactTSet",
+    "make_artifact_tset",
 )
 load("@prelude//:paths.bzl", "paths")
 load("@prelude//cxx:cxx_context.bzl", "get_cxx_toolchain_info")
@@ -23,6 +23,7 @@ load("@prelude//cxx:target_sdk_version.bzl", "get_target_sdk_version_flags")
 load(
     "@prelude//linking:link_info.bzl",
     "ArchiveLinkable",
+    "ExtraLinkerOutputs",
     "FrameworksLinkable",  # @unused Used as a type
     "LinkInfo",
     "LinkedObject",
@@ -32,6 +33,7 @@ load(
     "SwiftmoduleLinkable",  # @unused Used as a type
     "append_linkable_args",
     "map_to_link_infos",
+    "unpack_external_debug_info",
 )
 load("@prelude//linking:strip.bzl", "strip_object")
 load("@prelude//utils:argfile.bzl", "at_argfile")
@@ -43,6 +45,7 @@ _BitcodeLinkData = record(
     bc_file = Artifact,
     plan = Artifact,
     opt_object = Artifact,
+    merged_bc = field([Artifact, None]),
 )
 
 _ArchiveLinkData = record(
@@ -55,6 +58,7 @@ _ArchiveLinkData = record(
     indexes_dir = Artifact,
     plan = Artifact,
     link_whole = bool,
+    merged_bc_dir = field([Artifact, None]),
 )
 
 _DynamicLibraryLinkData = record(
@@ -77,7 +81,9 @@ def cxx_darwin_dist_link(
         # The destination for the link output.
         output: Artifact,
         opts: LinkOptions,
-        linker_map: Artifact | None = None) -> LinkedObject:
+        premerger_enabled: bool,
+        executable_link: bool,
+        linker_map: Artifact | None = None) -> (LinkedObject, dict[str, list[DefaultInfo]]):
     """
     Perform a distributed thin-lto link into the supplied output
 
@@ -176,6 +182,10 @@ def cxx_darwin_dist_link(
                     bc_output = ctx.actions.declare_output(name + ".thinlto.bc")
                     plan_output = ctx.actions.declare_output(name + ".opt.plan")
                     opt_output = ctx.actions.declare_output(name + ".opt.o")
+                    merged_bc_output = None
+                    if premerger_enabled:
+                        merged_bc_output = ctx.actions.declare_output(name + ".merged.bc")
+                        plan_outputs.append(merged_bc_output.as_output())
 
                     data = _IndexLinkData(
                         data_type = _DataType("bitcode"),
@@ -185,10 +195,12 @@ def cxx_darwin_dist_link(
                             bc_file = bc_output,
                             plan = plan_output,
                             opt_object = opt_output,
+                            merged_bc = merged_bc_output,
                         ),
                     )
                     unsorted_index_link_data.append(data)
                     plan_outputs.extend([bc_output.as_output(), plan_output.as_output()])
+
             elif isinstance(linkable, ArchiveLinkable):
                 # Our implementation of Distributed ThinLTO operates on individual objects, not archives. Since these
                 # archives might still contain LTO-able bitcode, we first extract the objects within the archive into
@@ -204,6 +216,11 @@ def cxx_darwin_dist_link(
                 archive_indexes = ctx.actions.declare_output("%s/%s/indexes" % (prepare_cat, name), dir = True)
                 archive_plan = ctx.actions.declare_output("%s/%s/plan.json" % (prepare_cat, name))
                 archive_opt_manifest = ctx.actions.declare_output("%s/%s/opt_objects.manifest" % (prepare_cat, name))
+                archive_merged_bc_files = None
+                if premerger_enabled:
+                    archive_merged_bc_files = ctx.actions.declare_output("%s/%s/merged_bc_files" % (prepare_cat, name), dir = True)
+                    plan_outputs.append(archive_merged_bc_files.as_output())
+
                 prepare_args = cmd_args([
                     lto_prepare,
                     "--manifest-out",
@@ -230,6 +247,7 @@ def cxx_darwin_dist_link(
                         indexes_dir = archive_indexes,
                         plan = archive_plan,
                         link_whole = linkable.link_whole,
+                        merged_bc_dir = archive_merged_bc_files,
                     ),
                 )
                 unsorted_index_link_data.append(data)
@@ -273,7 +291,7 @@ def cxx_darwin_dist_link(
     index_argsfile_out = ctx.actions.declare_output(output.basename + ".thinlto_index_argsfile")
     final_link_index = ctx.actions.declare_output(output.basename + ".final_link_index")
 
-    def prepare_index_flags(include_inputs: bool, index_args_out: cmd_args, index_meta_args_out: cmd_args, ctx: AnalysisContext, artifacts, outputs):
+    def prepare_index_flags(include_inputs: bool, index_args_out: cmd_args, index_meta_records_out: list, ctx: AnalysisContext, artifacts, outputs):
         for flag in linker_flags:
             index_args_out.add(flag)
 
@@ -284,7 +302,17 @@ def cxx_darwin_dist_link(
 
                 if artifact.data_type == _DataType("bitcode"):
                     index_args_out.add(link_data.initial_object)
-                    index_meta_args_out.add(link_data.initial_object, outputs[link_data.bc_file].as_output(), outputs[link_data.plan].as_output(), str(idx), "", "", "")
+                    eager_object_file_record = {
+                        "input_object_file_path": link_data.initial_object,
+                        "output_index_shard_file_path": outputs[link_data.bc_file].as_output(),
+                        "output_plan_file_path": outputs[link_data.plan].as_output(),
+                        "record_type": "EAGER",
+                        "starlark_array_index": idx,
+                    }
+                    if premerger_enabled:
+                        eager_object_file_record["output_premerged_bitcode_file_path"] = outputs[link_data.merged_bc].as_output()
+
+                    index_meta_records_out.append(eager_object_file_record)
 
                 elif artifact.data_type == _DataType("archive"):
                     manifest = artifacts[link_data.manifest].read_json()
@@ -292,8 +320,11 @@ def cxx_darwin_dist_link(
                     if not manifest["objects"]:
                         # Despite not having any objects (and thus not needing a plan), we still need to bind the plan output.
                         ctx.actions.write(outputs[link_data.plan].as_output(), "{}")
-                        cmd = cmd_args(["/bin/sh", "-c", "mkdir", "-p", outputs[link_data.indexes_dir].as_output()])
-                        ctx.actions.run(cmd, category = make_cat("thin_lto_mkdir"), identifier = link_data.name)
+                        make_indexes_dir_cmd = cmd_args(["/bin/sh", "-c", "mkdir", "-p", outputs[link_data.indexes_dir].as_output()])
+                        ctx.actions.run(make_indexes_dir_cmd, category = make_cat("thin_lto_mkdir"), identifier = link_data.name + "_indexes_dir")
+                        if premerger_enabled:
+                            make_merged_bc_dir_cmd = cmd_args(["/bin/sh", "-c", "mkdir", "-p", outputs[link_data.merged_bc_dir].as_output()])
+                            ctx.actions.run(make_merged_bc_dir_cmd, category = make_cat("thin_lto_mkdir"), identifier = link_data.name + "_merged_bc_dir")
                         continue
 
                     index_args_out.add(cmd_args(hidden = link_data.objects_dir))
@@ -302,7 +333,18 @@ def cxx_darwin_dist_link(
                         index_args_out.add("-Wl,--start-lib")
 
                     for obj in manifest["objects"]:
-                        index_meta_args_out.add(obj, "", "", str(idx), link_data.name, outputs[link_data.plan].as_output(), outputs[link_data.indexes_dir].as_output())
+                        lazy_object_file_record = {
+                            "input_object_file_path": obj,
+                            "output_index_shards_directory_path": outputs[link_data.indexes_dir].as_output(),
+                            "output_plan_file_path": outputs[link_data.plan].as_output(),
+                            "record_type": "LAZY",
+                            "starlark_array_index": idx,
+                        }
+                        if premerger_enabled:
+                            lazy_object_file_record["output_premerged_bitcode_directory_path"] = outputs[link_data.merged_bc_dir].as_output()
+
+                        index_meta_records_out.append(lazy_object_file_record)
+
                         index_args_out.add(obj)
 
                     if not link_data.link_whole:
@@ -320,11 +362,11 @@ def cxx_darwin_dist_link(
     # The flags used for the thin-link action. Unlike index_args, this does not include input files, and
     # is only used for debugging and testing, and can be determined without dynamic output.
     index_flags_for_debugging = cmd_args()
-    index_cmd_parts = cxx_link_cmd_parts(cxx_toolchain)
+    index_cmd_parts = cxx_link_cmd_parts(cxx_toolchain, executable_link)
     index_flags_for_debugging.add(index_cmd_parts.linker_flags)
     index_flags_for_debugging.add(common_link_flags)
     index_flags_for_debugging.add(index_cmd_parts.post_linker_flags)
-    prepare_index_flags(include_inputs = False, index_args_out = index_flags_for_debugging, index_meta_args_out = cmd_args(), ctx = ctx, artifacts = None, outputs = None)
+    prepare_index_flags(include_inputs = False, index_args_out = index_flags_for_debugging, index_meta_records_out = [], ctx = ctx, artifacts = None, outputs = None)
     index_flags_for_debugging_argsfile, _ = ctx.actions.write(output.basename + ".thinlto_index_debugging_argsfile", index_flags_for_debugging, allow_args = True)
 
     def dynamic_plan(link_plan: Artifact, index_argsfile_out: Artifact, final_link_index: Artifact):
@@ -333,9 +375,9 @@ def cxx_darwin_dist_link(
             index_args = cmd_args()
 
             # See comments in dist_lto_planner.py for semantics on the values that are pushed into index_meta.
-            index_meta = cmd_args()
+            index_meta_records = []
 
-            prepare_index_flags(include_inputs = True, index_args_out = index_args, index_meta_args_out = index_meta, ctx = ctx, artifacts = artifacts, outputs = outputs)
+            prepare_index_flags(include_inputs = True, index_args_out = index_args, index_meta_records_out = index_meta_records, ctx = ctx, artifacts = artifacts, outputs = outputs)
 
             index_argfile, _ = ctx.actions.write(
                 outputs[index_argsfile_out].as_output(),
@@ -347,7 +389,7 @@ def cxx_darwin_dist_link(
             index_file_out = ctx.actions.declare_output(make_id(index_cat) + "/index")
             index_out_dir = cmd_args(index_file_out.as_output(), parent = 1)
 
-            index_cmd_parts = cxx_link_cmd_parts(cxx_toolchain)
+            index_cmd_parts = cxx_link_cmd_parts(cxx_toolchain, executable_link)
 
             index_cmd = index_cmd_parts.link_cmd
             index_cmd.add(common_link_flags)
@@ -356,21 +398,25 @@ def cxx_darwin_dist_link(
             index_cmd.add(cmd_args(index_file_out.as_output(), format = "-Wl,--thinlto-index-only={}"))
             index_cmd.add("-Wl,--thinlto-emit-imports-files")
             index_cmd.add("-Wl,--thinlto-full-index")
+
+            # By default the linker will write artifacts (import files and sharded indices) next to input bitcode files with
+            # a different suffix. This can be problematic if you are running two distributed links on the same machine at the # same time consuming the same input bitcode files. That is the links would overwrite each other's artifacts. This
+            # flag allows you to write all these artifacts into a unique directory per link to avoid this problem.
             index_cmd.add(cmd_args(index_out_dir, format = "-Wl,--thinlto-prefix-replace=;{}/"))
             index_cmd.add(index_cmd_parts.post_linker_flags)
 
-            # Terminate the index file with a newline.
-            index_meta.add("")
-            index_meta_file = ctx.actions.write(
-                output.basename + ".thinlto.meta",
-                index_meta,
+            index_meta_file = ctx.actions.write_json(
+                output.basename + ".thinlto.meta.json",
+                index_meta_records,
+                with_inputs = True,
             )
 
-            plan_cmd = cmd_args([lto_planner, "--meta", index_meta_file, "--index", index_out_dir, "--link-plan", outputs[link_plan].as_output(), "--final-link-index", outputs[final_link_index].as_output(), "--"])
-            plan_cmd.add(index_cmd)
+            plan_cmd = cmd_args([lto_planner, "--meta", index_meta_file, "--index", index_out_dir, "--link-plan", outputs[link_plan].as_output(), "--final-link-index", outputs[final_link_index].as_output()])
+            if premerger_enabled:
+                plan_cmd.add("--enable-premerger")
+            plan_cmd.add("--", index_cmd)
 
             plan_cmd.add(cmd_args(hidden = [
-                index_meta,
                 index_args,
             ]))
 
@@ -415,21 +461,31 @@ def cxx_darwin_dist_link(
     # opt actions, but an action needs to re-run whenever the analysis that
     # produced it re-runs. And so, with a single dynamic_output, we'd need to
     # re-run all actions when any of the plans changed.
-    def dynamic_optimize(name: str, initial_object: Artifact, bc_file: Artifact, plan: Artifact, opt_object: Artifact):
+    def dynamic_optimize(name: str, initial_object: Artifact, bc_file: Artifact, plan: Artifact, opt_object: Artifact, merged_bc: Artifact | None):
         def optimize_object(ctx: AnalysisContext, artifacts, outputs):
             plan_json = artifacts[plan].read_json()
 
             # If the object was not compiled with thinlto flags, then there
             # won't be valid outputs for it from the indexing, but we still
             # need to bind the artifact. Similarily, if a bitcode file is not
-            # loaded by the indexing phase, there is no point optimizing it.
-            if "not_loaded_by_linker" in plan_json or not plan_json["is_bc"]:
+            # loaded by the indexing phase, or is absorbed by another module,
+            # there is no point optimizing it.
+            if "not_loaded_by_linker" in plan_json or not plan_json["is_bc"] or ("merge_state" in plan_json and plan_json["merge_state"] == "ABSORBED"):
                 ctx.actions.write(outputs[opt_object], "")
                 return
 
             opt_cmd = cmd_args(lto_opt)
             opt_cmd.add("--out", outputs[opt_object].as_output())
-            opt_cmd.add("--input", initial_object)
+            if premerger_enabled:
+                if plan_json["merge_state"] == "STANDALONE":
+                    opt_cmd.add("--input", initial_object)
+                elif plan_json["merge_state"] == "ROOT":
+                    opt_cmd.add("--input", merged_bc)
+                else:
+                    fail("Invalid merge state {} for bitcode file: {}".format(plan_json["merge_state"], bc_file))
+            else:
+                opt_cmd.add("--input", initial_object)
+
             opt_cmd.add("--index", bc_file)
 
             opt_cmd.add(cmd_args(hidden = common_opt_cmd))
@@ -438,9 +494,15 @@ def cxx_darwin_dist_link(
             opt_cmd.add("--")
             opt_cmd.add(cxx_toolchain.cxx_compiler_info.compiler)
 
-            imports = [sorted_index_link_data[idx].link_data.initial_object for idx in plan_json["imports"]]
-            archives = [sorted_index_link_data[idx].link_data.objects_dir for idx in plan_json["archive_imports"]]
-            opt_cmd.add(cmd_args(hidden = imports + archives))
+            imported_input_bitcode_files = [sorted_index_link_data[idx].link_data.initial_object for idx in plan_json["imports"]]
+            imported_archives_input_bitcode_files_directory = [sorted_index_link_data[idx].link_data.objects_dir for idx in plan_json["archive_imports"]]
+
+            if premerger_enabled:
+                imported_merged_input_bitcode_files = [sorted_index_link_data[idx].link_data.merged_bc for idx in plan_json["imports"]]
+                imported_archives_merged_bitcode_files_directory = [sorted_index_link_data[idx].link_data.merged_bc_dir for idx in plan_json["archive_imports"]]
+                opt_cmd.add(cmd_args(hidden = imported_merged_input_bitcode_files + imported_archives_merged_bitcode_files_directory))
+
+            opt_cmd.add(cmd_args(hidden = imported_input_bitcode_files + imported_archives_input_bitcode_files_directory))
             ctx.actions.run(opt_cmd, category = make_cat("thin_lto_opt_object"), identifier = name)
 
         ctx.actions.dynamic_output(dynamic = [plan], inputs = [], outputs = [opt_object.as_output()], f = optimize_object)
@@ -458,6 +520,9 @@ def cxx_darwin_dist_link(
             output_manifest = cmd_args()
             for entry in plan_json["objects"]:
                 if "not_loaded_by_linker" in entry:
+                    continue
+
+                if premerger_enabled and entry["merge_state"] == "ABSORBED":
                     continue
 
                 base_dir = plan_json["base_dir"]
@@ -481,7 +546,10 @@ def cxx_darwin_dist_link(
                 output_dir[source_path] = opt_object
                 opt_cmd = cmd_args(lto_opt)
                 opt_cmd.add("--out", opt_object.as_output())
-                opt_cmd.add("--input", entry["path"])
+                if premerger_enabled and entry["merge_state"] == "ROOT":
+                    opt_cmd.add("--input", entry["merged_bitcode_path"])
+                else:
+                    opt_cmd.add("--input", entry["path"])
                 opt_cmd.add("--index", entry["bitcode_file"])
 
                 opt_cmd.add(cmd_args(hidden = common_opt_cmd))
@@ -490,10 +558,15 @@ def cxx_darwin_dist_link(
                 opt_cmd.add("--")
                 opt_cmd.add(cxx_toolchain.cxx_compiler_info.compiler)
 
-                imports = [sorted_index_link_data[idx].link_data.initial_object for idx in entry["imports"]]
-                archives = [sorted_index_link_data[idx].link_data.objects_dir for idx in entry["archive_imports"]]
+                imported_input_bitcode_files = [sorted_index_link_data[idx].link_data.initial_object for idx in entry["imports"]]
+                imported_archives_input_bitcode_files_directory = [sorted_index_link_data[idx].link_data.objects_dir for idx in entry["archive_imports"]]
+                if premerger_enabled:
+                    imported_merged_input_bitcode_files = [sorted_index_link_data[idx].link_data.merged_bc for idx in entry["imports"]]
+                    imported_archives_merged_bitcode_files_directory = [sorted_index_link_data[idx].link_data.merged_bc_dir for idx in entry["archive_imports"]]
+                    opt_cmd.add(cmd_args(hidden = imported_merged_input_bitcode_files + imported_archives_merged_bitcode_files_directory + [archive.merged_bc_dir]))
+
                 opt_cmd.add(cmd_args(
-                    hidden = imports + archives + [archive.indexes_dir, archive.objects_dir],
+                    hidden = imported_input_bitcode_files + imported_archives_input_bitcode_files_directory + [archive.indexes_dir, archive.objects_dir],
                 ))
                 ctx.actions.run(opt_cmd, category = make_cat("thin_lto_opt_archive"), identifier = source_path)
 
@@ -513,16 +586,19 @@ def cxx_darwin_dist_link(
                 bc_file = link_data.bc_file,
                 plan = link_data.plan,
                 opt_object = link_data.opt_object,
+                merged_bc = link_data.merged_bc,
             )
         elif artifact.data_type == _DataType("archive"):
             dynamic_optimize_archive(link_data)
 
     linker_argsfile_out = ctx.actions.declare_output(output.basename + ".thinlto_link_argsfile")
 
+    # Declare any extra outputs here so we can look them up in the final_link closure
+    extra_outputs = opts.extra_linker_outputs_factory(ctx) if opts.extra_linker_outputs_factory else ExtraLinkerOutputs()
+
     def thin_lto_final_link(ctx: AnalysisContext, artifacts, outputs):
         plan = artifacts[link_plan_out].read_json()
         link_args = cmd_args()
-        plan_index = {int(k): v for k, v in plan["index"].items()}
 
         # non_lto_objects are the ones that weren't compiled with thinlto
         # flags. In that case, we need to link against the original object.
@@ -535,15 +611,20 @@ def cxx_darwin_dist_link(
             if artifact.data_type == _DataType("dynamic_library"):
                 append_linkable_args(link_args, artifact.link_data.linkable)
             elif artifact.data_type == _DataType("bitcode"):
-                if idx in plan_index:
-                    opt_objects.append(artifact.link_data.opt_object)
-                elif idx in non_lto_objects:
+                if idx in non_lto_objects:
                     opt_objects.append(artifact.link_data.initial_object)
+                else:
+                    opt_objects.append(artifact.link_data.opt_object)
 
-        link_cmd_parts = cxx_link_cmd_parts(cxx_toolchain)
+        link_cmd_parts = cxx_link_cmd_parts(cxx_toolchain, executable_link)
         link_cmd = link_cmd_parts.link_cmd
         link_cmd.add(common_link_flags)
         link_cmd_hidden = []
+
+        if opts.extra_linker_outputs_flags_factory != None:
+            # We need the inner artifacts here
+            mapped_outputs = {output_type: outputs[artifact] for output_type, artifact in extra_outputs.artifacts.items()}
+            link_cmd.add(opts.extra_linker_outputs_flags_factory(ctx, mapped_outputs))
 
         # buildifier: disable=uninitialized
         for artifact in sorted_index_link_data:
@@ -569,10 +650,16 @@ def cxx_darwin_dist_link(
         ctx.actions.run(link_cmd, category = make_cat("thin_lto_link"), identifier = identifier, local_only = True)
 
     final_link_inputs = [link_plan_out, final_link_index] + archive_opt_manifests
+    final_link_outputs = [output.as_output(), linker_argsfile_out.as_output()]
+    if linker_map:
+        final_link_outputs.append(linker_map.as_output())
+
+    final_link_outputs += [o.as_output() for o in extra_outputs.artifacts.values()]
+
     ctx.actions.dynamic_output(
         dynamic = final_link_inputs,
         inputs = [],
-        outputs = [output.as_output()] + ([linker_map.as_output()] if linker_map else []) + [linker_argsfile_out.as_output()],
+        outputs = final_link_outputs,
         f = thin_lto_final_link,
     )
 
@@ -582,16 +669,39 @@ def cxx_darwin_dist_link(
         strip_args = opts.strip_args_factory(ctx) if opts.strip_args_factory else cmd_args()
         final_output = strip_object(ctx, cxx_toolchain, final_output, strip_args, category_suffix)
 
+    # dsym-util will create a dSYM from an executable by loading native object files pointed to
+    # by paths embedded in the executable. We need to collect the artifacts representing these native
+    # object files such that they can be provided as hidden dependencies to the dysm creation action.
+    native_object_files_required_for_dsym_creation = []
+    for artifact in sorted_index_link_data:
+        # Without reading dynamic output, we cannot know if a given artifact represents bitcode to be included in LTO, or a native object file already (some inputs to a dthin-lto link are still native object files). We just include both the initial object (that may or may not be bitcode) and the produced bitcode file. dsym-util will only ever need one or the other, we just need to matieralize both.
+        if artifact.data_type == _DataType("bitcode"):
+            native_object_files_required_for_dsym_creation.append(artifact.link_data.initial_object)
+            native_object_files_required_for_dsym_creation.append(artifact.link_data.opt_object)
+        elif artifact.data_type == _DataType("archive"):
+            native_object_files_required_for_dsym_creation.append(artifact.link_data.objects_dir)
+            native_object_files_required_for_dsym_creation.append(artifact.link_data.opt_objects_dir)
+
+    external_debug_info = make_artifact_tset(
+        actions = ctx.actions,
+        artifacts = native_object_files_required_for_dsym_creation,
+        label = ctx.label,
+        children = [
+            unpack_external_debug_info(ctx.actions, link_args)
+            for link_args in links
+        ],
+    )
+
     return LinkedObject(
         output = final_output,
         unstripped_output = unstripped_output,
         prebolt_output = output,
         dwp = None,
-        external_debug_info = ArtifactTSet(),
+        external_debug_info = external_debug_info,
         linker_argsfile = linker_argsfile_out,
         linker_filelist = None,  # DistLTO doesn't use filelists
         linker_command = None,  # There is no notion of a single linker command for DistLTO
         index_argsfile = index_argsfile_out,
         dist_thin_lto_codegen_argsfile = opt_flags_for_debugging_argsfile,
         dist_thin_lto_index_argsfile = index_flags_for_debugging_argsfile,
-    )
+    ), extra_outputs.providers

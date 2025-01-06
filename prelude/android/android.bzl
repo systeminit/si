@@ -5,17 +5,18 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
+load("@prelude//:genrule.bzl", "genrule_attributes")
 load(
     "@prelude//:validation_deps.bzl",
     "VALIDATION_DEPS_ATTR_NAME",
 )
 load("@prelude//android:cpu_filters.bzl", "ALL_CPU_FILTERS")
+load("@prelude//decls:android_rules.bzl", "DuplicateResourceBehaviour")
+load("@prelude//decls:common.bzl", "buck")
+load("@prelude//decls:core_rules.bzl", "TargetCpuType")
+load("@prelude//decls:toolchains_common.bzl", "toolchains_common")
 load("@prelude//java:java.bzl", "AbiGenerationMode", "dex_min_sdk_version")
-load("@prelude//decls/android_rules.bzl", "AaptMode", "DuplicateResourceBehaviour")
-load("@prelude//decls/common.bzl", "buck")
-load("@prelude//decls/core_rules.bzl", "TargetCpuType")
-load("@prelude//decls/toolchains_common.bzl", "toolchains_common")
-load("@prelude//genrule.bzl", "genrule_attributes")
+load("@prelude//transitions:constraint_overrides.bzl", "constraint_overrides")
 load(":android_aar.bzl", "android_aar_impl")
 load(":android_apk.bzl", "android_apk_impl")
 load(":android_build_config.bzl", "android_build_config_impl")
@@ -103,13 +104,10 @@ extra_attributes = {
         "_build_only_native_code": attrs.default_only(attrs.bool(default = is_build_only_native_code())),
     },
     "android_binary": {
-        "aapt_mode": attrs.enum(AaptMode, default = "aapt1"),  # Match default in V1
-        "application_module_blacklist": attrs.option(attrs.list(attrs.transition_dep(cfg = cpu_transition)), default = None),
+        "application_module_blocklist": attrs.option(attrs.list(attrs.transition_dep(cfg = cpu_transition)), default = None),
         "application_module_configs": attrs.dict(key = attrs.string(), value = attrs.list(attrs.transition_dep(cfg = cpu_transition)), sorted = False, default = {}),
         "build_config_values_file": attrs.option(attrs.one_of(attrs.transition_dep(cfg = cpu_transition), attrs.source()), default = None),
-        "constraint_overrides": attrs.list(attrs.string(), default = []),
         "deps": attrs.list(attrs.split_transition_dep(cfg = cpu_split_transition), default = []),
-        "dex_tool": attrs.string(default = "d8"),  # Match default in V1
         "duplicate_resource_behavior": attrs.enum(DuplicateResourceBehaviour, default = "allow_by_default"),  # Match default in V1
         "manifest": attrs.option(attrs.one_of(attrs.transition_dep(cfg = cpu_transition), attrs.source()), default = None),
         "manifest_skeleton": attrs.option(attrs.one_of(attrs.transition_dep(cfg = cpu_transition), attrs.source()), default = None),
@@ -129,7 +127,7 @@ extra_attributes = {
         "_is_force_single_default_cpu": attrs.default_only(attrs.bool(default = FORCE_SINGLE_DEFAULT_CPU)),
         "_java_toolchain": toolchains_common.java_for_android(),
         VALIDATION_DEPS_ATTR_NAME: attrs.set(attrs.transition_dep(cfg = cpu_transition), sorted = True, default = []),
-    },
+    } | constraint_overrides.attributes,
     "android_build_config": {
         "_android_toolchain": toolchains_common.android(),
         "_build_only_native_code": attrs.default_only(attrs.bool(default = is_build_only_native_code())),
@@ -137,12 +135,10 @@ extra_attributes = {
         "_java_toolchain": toolchains_common.java_for_android(),
     },
     "android_bundle": {
-        "aapt_mode": attrs.enum(AaptMode, default = "aapt1"),  # Match default in V1
-        "application_module_blacklist": attrs.option(attrs.list(attrs.transition_dep(cfg = cpu_transition)), default = None),
+        "application_module_blocklist": attrs.option(attrs.list(attrs.transition_dep(cfg = cpu_transition)), default = None),
         "application_module_configs": attrs.dict(key = attrs.string(), value = attrs.list(attrs.transition_dep(cfg = cpu_transition)), sorted = False, default = {}),
         "build_config_values_file": attrs.option(attrs.one_of(attrs.transition_dep(cfg = cpu_transition), attrs.source()), default = None),
         "deps": attrs.list(attrs.split_transition_dep(cfg = cpu_split_transition), default = []),
-        "dex_tool": attrs.string(default = "d8"),  # Match default in V1
         "duplicate_resource_behavior": attrs.enum(DuplicateResourceBehaviour, default = "allow_by_default"),  # Match default in V1
         "manifest": attrs.option(attrs.one_of(attrs.transition_dep(cfg = cpu_transition), attrs.source()), default = None),
         "manifest_skeleton": attrs.option(attrs.one_of(attrs.transition_dep(cfg = cpu_transition), attrs.source()), default = None),
@@ -164,11 +160,9 @@ extra_attributes = {
         VALIDATION_DEPS_ATTR_NAME: attrs.set(attrs.transition_dep(cfg = cpu_transition), sorted = True, default = []),
     },
     "android_instrumentation_apk": {
-        "aapt_mode": attrs.enum(AaptMode, default = "aapt1"),  # Match default in V1
         "apk": attrs.dep(),
         "cpu_filters": attrs.list(attrs.enum(TargetCpuType), default = []),
         "deps": attrs.list(attrs.split_transition_dep(cfg = cpu_split_transition), default = []),
-        "dex_tool": attrs.string(default = "d8"),  # Match default in V1
         "is_self_instrumenting": attrs.bool(default = False),
         "manifest": attrs.option(attrs.one_of(attrs.transition_dep(cfg = cpu_transition), attrs.source()), default = None),
         "manifest_skeleton": attrs.option(attrs.one_of(attrs.transition_dep(cfg = cpu_transition), attrs.source()), default = None),

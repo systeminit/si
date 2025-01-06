@@ -29,13 +29,13 @@ load(
 )
 load("@prelude//cxx:cxx_utility.bzl", "cxx_toolchain_allow_cache_upload_args")
 load("@prelude//cxx:debug.bzl", "SplitDebugMode")
-load("@prelude//cxx:headers.bzl", "HeaderMode", "HeadersAsRawHeadersMode")
+load("@prelude//cxx:headers.bzl", "HeaderMode", "HeadersAsRawHeadersMode", "RawHeadersAsHeadersMode")
 load("@prelude//cxx:linker.bzl", "LINKERS", "is_pdb_generated")
 load("@prelude//cxx:target_sdk_version.bzl", "get_toolchain_target_sdk_version")
+load("@prelude//decls:cxx_rules.bzl", "cxx_rules")
 load("@prelude//linking:link_info.bzl", "LinkOrdering", "LinkStyle")
 load("@prelude//linking:lto.bzl", "LtoMode", "lto_compiler_flags")
 load("@prelude//utils:utils.bzl", "flatten", "value_or")
-load("@prelude//decls/cxx_rules.bzl", "cxx_rules")
 
 def cxx_toolchain_impl(ctx):
     c_compiler = _get_maybe_wrapped_msvc(ctx.attrs.c_compiler[RunInfo], ctx.attrs.c_compiler_type or ctx.attrs.compiler_type, ctx.attrs._msvc_hermetic_exec[RunInfo])
@@ -123,8 +123,11 @@ def cxx_toolchain_impl(ctx):
         link_ordering = ctx.attrs.link_ordering,
         linker = ctx.attrs.linker[RunInfo],
         linker_flags = cmd_args(ctx.attrs.linker_flags, c_lto_flags),
+        executable_linker_flags = ctx.attrs.executable_linker_flags,
+        binary_linker_flags = ctx.attrs.binary_linker_flags,
         dist_thin_lto_codegen_flags = cmd_args(ctx.attrs.dist_thin_lto_codegen_flags) if ctx.attrs.dist_thin_lto_codegen_flags else None,
         post_linker_flags = cmd_args(ctx.attrs.post_linker_flags),
+        link_metadata_flag = ctx.attrs.link_metadata_flag,
         lto_mode = lto_mode,
         mk_shlib_intf = ctx.attrs.shared_library_interface_producer,
         object_file_extension = ctx.attrs.object_file_extension or "o",
@@ -142,6 +145,7 @@ def cxx_toolchain_impl(ctx):
         static_dep_runtime_ld_flags = ctx.attrs.static_dep_runtime_ld_flags,
         static_library_extension = ctx.attrs.static_library_extension or "a",
         static_pic_dep_runtime_ld_flags = ctx.attrs.static_pic_dep_runtime_ld_flags,
+        thin_lto_premerger_enabled = ctx.attrs.thin_lto_premerger_enabled,
         type = linker_type,
         use_archiver_flags = ctx.attrs.use_archiver_flags,
     )
@@ -183,6 +187,7 @@ def cxx_toolchain_impl(ctx):
         llvm_link = ctx.attrs.llvm_link[RunInfo] if ctx.attrs.llvm_link else None,
         object_format = CxxObjectFormat(object_format),
         headers_as_raw_headers_mode = HeadersAsRawHeadersMode(ctx.attrs.headers_as_raw_headers_mode) if ctx.attrs.headers_as_raw_headers_mode != None else None,
+        raw_headers_as_headers_mode = RawHeadersAsHeadersMode(ctx.attrs.raw_headers_as_headers_mode) if ctx.attrs.raw_headers_as_headers_mode != None else None,
         conflicting_header_basename_allowlist = ctx.attrs.conflicting_header_basename_exemptions,
         pic_behavior = PicBehavior(ctx.attrs.pic_behavior),
         split_debug_mode = SplitDebugMode(ctx.attrs.split_debug_mode),
@@ -259,6 +264,7 @@ def cxx_toolchain_extra_attributes(is_toolchain_rule):
         "supports_distributed_thinlto": attrs.bool(default = False),
         # Darwin only: the deployment target to use for this build
         "target_sdk_version": attrs.option(attrs.string(), default = None),
+        "thin_lto_premerger_enabled": attrs.bool(default = False),
         "use_archiver_flags": attrs.bool(default = True),
         "use_dep_files": attrs.option(attrs.bool(), default = None),
         # TODO(scottcao): Figure out a slightly better way to integrate this. In theory, this is only needed for clang toolchain.
@@ -271,8 +277,8 @@ def cxx_toolchain_extra_attributes(is_toolchain_rule):
                 # windows exec platform.
                 "DEFAULT": None,
                 # FIXME: prelude// should be standalone (not refer to fbsource//)
-                "ovr_config//cpu:x86_32": "fbsource//arvr/third-party/toolchains/visual_studio:cl_x86_and_tools",
-                "ovr_config//cpu:x86_64": "fbsource//arvr/third-party/toolchains/visual_studio:cl_x64_and_tools",
+                "ovr_config//cpu:x86_32": "fbsource//third-party/toolchains/visual_studio:cl_x86_and_tools",
+                "ovr_config//cpu:x86_64": "fbsource//third-party/toolchains/visual_studio:cl_x64_and_tools",
             }),
         }) if is_full_meta_repo() else None)),
         "_internal_tools": attrs.default_only(dep_type(providers = [CxxInternalTools], default = "prelude//cxx/tools:internal_tools")),

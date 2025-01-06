@@ -10,6 +10,7 @@ load(
     "ArtifactTSet",
     "make_artifact_tset",
     "project_artifacts",
+    "project_identified_artifacts",
 )
 load(
     "@prelude//cxx:cxx_bolt.bzl",
@@ -33,6 +34,7 @@ load("@prelude//linking:execution_preference.bzl", "LinkExecutionPreference", "L
 load(
     "@prelude//linking:link_info.bzl",
     "ArchiveLinkable",
+    "ExtraLinkerOutputs",
     "LinkArgs",
     "LinkOrdering",
     "LinkedObject",
@@ -65,6 +67,7 @@ load(
     "linker_map_args",
     "make_link_args",
 )
+load(":debug.bzl", "SplitDebugMode")
 load(":dwp.bzl", "dwp", "dwp_available")
 load(":link_types.bzl", "CxxLinkResultType", "LinkOptions", "merge_link_options")
 load(
@@ -89,6 +92,9 @@ CxxLinkResult = record(
     link_execution_preference_info = LinkExecutionPreferenceInfo,
     # A list of runtime shared libraries
     sanitizer_runtime_files = field(list[Artifact]),
+    # A dictionary of extra linker outputs generated from
+    # the extra_linker_outputs_factory
+    extra_outputs = field(dict[str, list[DefaultInfo]], default = {}),
 )
 
 def link_external_debug_info(
@@ -152,10 +158,12 @@ def cxx_link_into(
 
         linker_type = linker_info.type
         if linker_type == LinkerType("darwin"):
-            exe = cxx_darwin_dist_link(
+            exe, extra_outputs = cxx_darwin_dist_link(
                 ctx,
                 output,
                 opts,
+                linker_info.thin_lto_premerger_enabled,
+                is_result_executable,
                 linker_map,
             )
         elif linker_type == LinkerType("gnu"):
@@ -167,6 +175,7 @@ def cxx_link_into(
                 should_generate_dwp,
                 is_result_executable,
             )
+            extra_outputs = {}
         else:
             fail("Linker type {} not supported for distributed thin-lto".format(linker_type))
 
@@ -177,6 +186,7 @@ def cxx_link_into(
                 preference = opts.link_execution_preference,
             ),
             sanitizer_runtime_files = [],
+            extra_outputs = extra_outputs,
         )
 
     if linker_info.generate_linker_maps:
@@ -184,9 +194,17 @@ def cxx_link_into(
     else:
         links_with_linker_map = opts.links
 
-    link_cmd_parts = cxx_link_cmd_parts(cxx_toolchain_info)
+    link_cmd_parts = cxx_link_cmd_parts(cxx_toolchain_info, is_result_executable)
     all_link_args = cmd_args(link_cmd_parts.linker_flags)
     all_link_args.add(get_output_flags(linker_info.type, output))
+
+    # Add the linker args required for any extra linker outputs requested
+    extra_linker_outputs = opts.extra_linker_outputs_factory(ctx) if opts.extra_linker_outputs_factory != None else ExtraLinkerOutputs()
+    if len(extra_linker_outputs.artifacts) > 0:
+        if opts.extra_linker_outputs_flags_factory == None:
+            fail("Extra outputs requested but missing flag factory")
+
+        all_link_args.add(opts.extra_linker_outputs_flags_factory(ctx, extra_linker_outputs.artifacts))
 
     # Darwin LTO requires extra link outputs to preserve debug info
     split_debug_output = None
@@ -318,13 +336,14 @@ def cxx_link_into(
 
     dwp_artifact = None
     if should_generate_dwp:
-        # TODO(T110378144): Once we track split dwarf from compiles, we should
-        # just pass in `binary.external_debug_info` here instead of all link
-        # args.
         dwp_inputs = cmd_args()
-        for link in opts.links:
-            dwp_inputs.add(unpack_link_args(link))
-        dwp_inputs.add(project_artifacts(ctx.actions, [external_debug_info]))
+        dwp_from_dwo = getattr(ctx.attrs, "separate_debug_info", False) and cxx_toolchain_info.split_debug_mode == SplitDebugMode("split")
+        if dwp_from_dwo:
+            dwp_inputs.add(project_identified_artifacts(ctx.actions, [external_debug_info]))
+        else:
+            for link in opts.links:
+                dwp_inputs.add(unpack_link_args(link))
+            dwp_inputs.add(project_artifacts(ctx.actions, [external_debug_info]))
 
         dwp_artifact = dwp(
             ctx,
@@ -337,6 +356,7 @@ def cxx_link_into(
             # just pass in the full link line and extract all inputs from that,
             # which is a bit of an overspecification.
             referenced_objects = [dwp_inputs],
+            from_exe = not dwp_from_dwo,
         )
 
     linked_object = LinkedObject(
@@ -360,6 +380,7 @@ def cxx_link_into(
         linker_map_data = linker_map_data,
         link_execution_preference_info = link_execution_preference_info,
         sanitizer_runtime_files = sanitizer_runtime_args.sanitizer_runtime_files,
+        extra_outputs = extra_linker_outputs.providers,
     )
 
 _AnonLinkInfo = provider(fields = {

@@ -5,14 +5,13 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
-load("@prelude//:buck2_compatibility.bzl", "BUCK2_COMPATIBILITY_ATTRIB_NAME", "BUCK2_COMPATIBILITY_ATTRIB_TYPE", "check_buck2_compatibility")
-load("@prelude//apple:apple_platforms.bzl", "APPLE_PLATFORMS_KEY")
-load("@prelude//configurations:rules.bzl", _config_implemented_rules = "implemented_rules")
-load("@prelude//decls/common.bzl", "prelude_rule")
-load("@prelude//is_full_meta_repo.bzl", "is_full_meta_repo")
+load("@prelude//:is_full_meta_repo.bzl", "is_full_meta_repo")
 
 # Combine the attributes we generate, we the custom implementations we have.
-load("@prelude//rules_impl.bzl", "extra_attributes", "extra_implemented_rules", "rule_decl_records", "toolchain_rule_names", "transitions")
+load("@prelude//:rules_impl.bzl", "extra_attributes", "extra_implemented_rules", "rule_decl_records", "toolchain_rule_names", "transitions")
+load("@prelude//apple:apple_platforms.bzl", "APPLE_PLATFORMS_KEY")
+load("@prelude//configurations:rules.bzl", _config_implemented_rules = "implemented_rules")
+load("@prelude//decls:common.bzl", "prelude_rule")
 
 def _unimplemented(name, ctx):
     fail("Unimplemented rule type `{}` for target `{}`.".format(name, ctx.label))
@@ -37,9 +36,6 @@ def _mk_rule(rule_spec: typing.Any, extra_attrs: dict[str, typing.Any] = dict(),
         for toolchain_attr in ("_apple_toolchain", "_cxx_toolchain", "_go_toolchain"):
             if toolchain_attr in attributes:
                 fat_platform_compatible = False
-
-    #Add buck2_compatibility attribute to all rules
-    extra_attrs[BUCK2_COMPATIBILITY_ATTRIB_NAME] = BUCK2_COMPATIBILITY_ATTRIB_TYPE
 
     # Fat platforms is an idea specific to our toolchains, so doesn't apply to
     # open source. Ideally this restriction would be done at the toolchain level.
@@ -93,17 +89,10 @@ def _mk_rule(rule_spec: typing.Any, extra_attrs: dict[str, typing.Any] = dict(),
     extra_args.setdefault("is_configuration_rule", name in _config_implemented_rules)
     extra_args.setdefault("is_toolchain_rule", name in toolchain_rule_names)
     return rule(
-        impl = buck2_compatibility_check_wrapper(impl),
+        impl = impl,
         attrs = attributes,
         **extra_args
     )
-
-def buck2_compatibility_check_wrapper(impl) -> typing.Callable:
-    def buck2_compatibility_shim(ctx: AnalysisContext) -> [list[Provider], Promise]:
-        check_buck2_compatibility(ctx)
-        return impl(ctx)
-
-    return buck2_compatibility_shim
 
 def _flatten_decls():
     decls = {}

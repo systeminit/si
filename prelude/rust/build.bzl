@@ -95,7 +95,7 @@ load(":outputs.bzl", "RustcOutput")
 load(":resources.bzl", "rust_attr_resources")
 load(":rust_toolchain.bzl", "PanicRuntime", "RustToolchainInfo")
 
-def compile_context(ctx: AnalysisContext) -> CompileContext:
+def compile_context(ctx: AnalysisContext, binary: bool = False) -> CompileContext:
     toolchain_info = ctx.attrs._rust_toolchain[RustToolchainInfo]
     cxx_toolchain_info = get_cxx_toolchain_info(ctx)
 
@@ -121,7 +121,7 @@ def compile_context(ctx: AnalysisContext) -> CompileContext:
     if not symlinked_srcs:
         symlinked_srcs = ctx.actions.symlinked_dir("__srcs", srcs)
 
-    linker = _linker_args(ctx, cxx_toolchain_info.linker_info)
+    linker = _linker_args(ctx, cxx_toolchain_info.linker_info, binary = binary)
     clippy_wrapper = _clippy_wrapper(ctx, toolchain_info)
 
     dep_ctx = DepCollectionContext(
@@ -382,6 +382,7 @@ def generate_rustdoc_test(
     plain_env["RUSTC_BOOTSTRAP"] = cmd_args("1")
     unstable_options = ["-Zunstable-options"]
 
+    path_sep = "\\" if exec_is_windows else "/"
     rustdoc_cmd = cmd_args(
         [cmd_args("--env=", k, "=", v, delimiter = "") for k, v in plain_env.items()],
         [cmd_args("--path-env=", k, "=", v, delimiter = "") for k, v in path_env.items()],
@@ -401,6 +402,7 @@ def generate_rustdoc_test(
         cmd_args("--runtool-arg=--resources=", resources, delimiter = ""),
         "--color=always",
         "--test-args=--color=always",
+        cmd_args("--remap-path-prefix=", compile_ctx.symlinked_srcs, path_sep, "=", ctx.label.path, path_sep, delimiter = ""),
         hidden = [
             compile_ctx.symlinked_srcs,
             link_args_output.hidden,
@@ -608,7 +610,7 @@ def rust_compile(
 
             # The -o flag passed to the linker by rustc is a temporary file. So we will strip it
             # out in `extract_link_action.py` and provide our own output path here.
-            deferred_link_cmd.add(cmd_args(emit_op.output.as_output(), format = "-o {}"))
+            deferred_link_cmd.add("-o", emit_op.output.as_output())
         else:
             rustc_cmd.add(cmd_args(linker_argsfile, format = "-Clink-arg=@{}"))
             rustc_cmd.add(cmd_args(hidden = link_args_output.hidden))
@@ -674,8 +676,7 @@ def rust_compile(
         dwo_output_directory = None
         extra_external_debug_info = []
 
-    if params.crate_type == CrateType("bin") and \
-       emit == Emit("link") and \
+    if emit == Emit("link") and \
        dwp_available(compile_ctx.cxx_toolchain_info):
         dwp_output = dwp(
             ctx,
@@ -845,7 +846,7 @@ def dynamic_symlinked_dirs(
 
 def _lintify(flag: str, clippy: bool, lints: list[ResolvedStringWithMacros]) -> cmd_args:
     return cmd_args(
-        [lint for lint in lints if str(lint).startswith("\"clippy::") == clippy],
+        [lint for lint in lints if clippy or not str(lint).startswith("\"clippy::")],
         format = "-{}{{}}".format(flag),
     )
 
@@ -1036,8 +1037,7 @@ def _compute_common_args(
         # referenced by executable was not found" when dealing with chains of
         # dependencies from Rust -> C++ -> Rust (T147665047).
         SplitDebugMode("single"): ["-Csplit-debuginfo=unpacked"],
-
-        # TODO: SplitDebugMode("split"): ["-Csplit-debuginfo=unpacked"],
+        SplitDebugMode("split"): ["-Csplit-debuginfo=unpacked"],
     }[compile_ctx.cxx_toolchain_info.split_debug_mode or SplitDebugMode("none")]
 
     args = cmd_args(
@@ -1130,10 +1130,16 @@ def _clippy_wrapper(
 # and add -Clinker=
 def _linker_args(
         ctx: AnalysisContext,
-        linker_info: LinkerInfo) -> cmd_args:
+        linker_info: LinkerInfo,
+        binary: bool = False) -> cmd_args:
     linker = cmd_args(
         linker_info.linker,
         linker_info.linker_flags or [],
+        # For "binary" rules, add C++ toolchain binary-specific linker flags.
+        # TODO(agallagher): This feels a bit wrong -- it might be better to have
+        # the Rust toolchain have it's own `binary_linker_flags` instead of
+        # implicltly using the one from the C++ toolchain.
+        linker_info.binary_linker_flags if binary else [],
         ctx.attrs.linker_flags,
     )
 

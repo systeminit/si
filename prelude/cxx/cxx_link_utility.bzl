@@ -27,6 +27,7 @@ load("@prelude//linking:lto.bzl", "LtoMode")
 load(
     "@prelude//linking:shared_libraries.bzl",
     "SharedLibrary",  # @unused Used as a type
+    "create_shlib_dwp_tree",
     "create_shlib_symlink_tree",
 )
 load("@prelude//utils:arglike.bzl", "ArgLike")  # @unused Used as a type
@@ -144,9 +145,21 @@ def make_link_args(
         if filelists:
             # If we are using a filelist, only add argument that aren't already in the
             # filelist. This is to avoid duplicate inputs in the link command.
-            args.add(unpack_link_args_excluding_filelist(link, link_ordering = link_ordering))
+            args.add(
+                unpack_link_args_excluding_filelist(
+                    link,
+                    link_ordering = link_ordering,
+                    link_metadata_flag = linker_info.link_metadata_flag,
+                ),
+            )
         else:
-            args.add(unpack_link_args(link, link_ordering = link_ordering))
+            args.add(
+                unpack_link_args(
+                    link,
+                    link_ordering = link_ordering,
+                    link_metadata_flag = linker_info.link_metadata_flag,
+                ),
+            )
 
     # On Darwin, filelist args _must_ come last as the order can affect symbol
     # resolution and result in binary size increases.
@@ -166,6 +179,9 @@ def make_link_args(
 def shared_libs_symlink_tree_name(output: Artifact) -> str:
     return "__{}__shared_libs_symlink_tree".format(output.short_path)
 
+def _dwp_symlink_tree_name(output: Artifact) -> str:
+    return "__{}__dwp_symlink_tree".format(output.short_path)
+
 ExecutableSharedLibArguments = record(
     extra_link_args = field(list[ArgLike], []),
     # Files that must be present for the executable to run successfully. These
@@ -178,6 +194,7 @@ ExecutableSharedLibArguments = record(
     external_debug_info = field(list[TransitiveSetArgsProjection], []),
     # Optional shared libs symlink tree symlinked_dir action.
     shared_libs_symlink_tree = field(list[Artifact] | Artifact | None, None),
+    dwp_symlink_tree = field(list[Artifact] | Artifact | None, None),
 )
 
 CxxSanitizerRuntimeArguments = record(
@@ -250,6 +267,7 @@ def executable_shared_lib_arguments(
 
     linker_type = cxx_toolchain.linker_info.type
 
+    dwp_symlink_tree = None
     if len(shared_libs) > 0:
         if linker_type == LinkerType("windows"):
             shared_libs_symlink_tree = [ctx.actions.symlink_file(
@@ -265,6 +283,7 @@ def executable_shared_lib_arguments(
                 out = shared_libs_symlink_tree_name(output),
                 shared_libs = shared_libs,
             )
+            dwp_symlink_tree = create_shlib_dwp_tree(ctx.actions, _dwp_symlink_tree_name(output), shared_libs)
             runtime_files.append(shared_libs_symlink_tree)
             rpath_reference = get_rpath_origin(linker_type)
 
@@ -282,6 +301,7 @@ def executable_shared_lib_arguments(
         runtime_files = runtime_files,
         external_debug_info = external_debug_info,
         shared_libs_symlink_tree = shared_libs_symlink_tree,
+        dwp_symlink_tree = dwp_symlink_tree,
     )
 
 LinkCmdParts = record(
@@ -292,7 +312,7 @@ LinkCmdParts = record(
     link_cmd = cmd_args,
 )
 
-def cxx_link_cmd_parts(toolchain: CxxToolchainInfo) -> LinkCmdParts:
+def cxx_link_cmd_parts(toolchain: CxxToolchainInfo, executable: bool) -> LinkCmdParts:
     # `toolchain_linker_flags` can either be a list of strings, `cmd_args` or `None`,
     # so we need to do a bit more work to satisfy the type checker
     toolchain_linker_flags = toolchain.linker_info.linker_flags
@@ -301,6 +321,12 @@ def cxx_link_cmd_parts(toolchain: CxxToolchainInfo) -> LinkCmdParts:
         toolchain_linker_flags = cmd_args()
     elif not type(toolchain_linker_flags) == "cmd_args":
         toolchain_linker_flags = cmd_args(toolchain_linker_flags)
+
+    if executable:
+        toolchain_linker_flags = cmd_args(
+            toolchain_linker_flags,
+            toolchain.linker_info.executable_linker_flags,
+        )
 
     if toolchain_post_linker_flags == None:
         toolchain_post_linker_flags = cmd_args()

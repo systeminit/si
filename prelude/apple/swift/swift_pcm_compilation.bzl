@@ -6,7 +6,6 @@
 # of this source tree.
 
 load("@prelude//apple:apple_toolchain_types.bzl", "AppleToolchainInfo")
-load("@prelude//apple:apple_utility.bzl", "get_module_name")
 load("@prelude//cxx:preprocessor.bzl", "cxx_inherited_preprocessor_infos", "cxx_merge_cpreprocessors")
 load(
     ":apple_sdk_modules_utility.bzl",
@@ -38,18 +37,27 @@ def get_swift_pcm_anon_targets(
         uncompiled_deps: list[Dependency],
         swift_cxx_args: list[str],
         enable_cxx_interop: bool):
-    deps = [
-        {
+    deps = []
+    for uncompiled_dep in uncompiled_deps:
+        if SwiftPCMUncompiledInfo not in uncompiled_dep:
+            continue
+
+        # T209485965: workaround for depagg to avoid duplicate clang modules
+        # when traversing deps through the base target and [headers] subtarget.
+        # By always requesting the [headers] subtarget we should use the same
+        # anon actions for both paths.
+        if "headers" in uncompiled_dep[DefaultInfo].sub_targets:
+            uncompiled_dep = uncompiled_dep.sub_target("headers")
+
+        deps.append((_swift_pcm_compilation, {
             "dep": uncompiled_dep,
             "enable_cxx_interop": enable_cxx_interop,
             "name": uncompiled_dep.label,
             "swift_cxx_args": swift_cxx_args,
             "_apple_toolchain": ctx.attrs._apple_toolchain,
-        }
-        for uncompiled_dep in uncompiled_deps
-        if SwiftPCMUncompiledInfo in uncompiled_dep
-    ]
-    return [(_swift_pcm_compilation, d) for d in deps]
+        }))
+
+    return deps
 
 def _compile_with_argsfile(
         ctx: AnalysisContext,
@@ -277,11 +285,11 @@ def compile_framework_pcm(
 
 def compile_underlying_pcm(
         ctx: AnalysisContext,
+        module_name: str,
         uncompiled_pcm_info: SwiftPCMUncompiledInfo,
         compiled_pcm_deps_providers,
         swift_cxx_args: list[str],
         framework_search_path_flags: cmd_args) -> SwiftCompiledModuleInfo:
-    module_name = get_module_name(ctx)
     modulemap_path = uncompiled_pcm_info.exported_preprocessor.modulemap_path
     cmd = cmd_args([
         "-Xcc",

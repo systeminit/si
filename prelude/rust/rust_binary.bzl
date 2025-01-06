@@ -45,12 +45,12 @@ load(
 )
 load("@prelude//os_lookup:defs.bzl", "OsLookup")
 load("@prelude//rust/rust-analyzer:provider.bzl", "rust_analyzer_provider")
+load("@prelude//test:inject_test_run_info.bzl", "inject_test_run_info")
 load(
     "@prelude//tests:re_utils.bzl",
     "get_re_executors_from_props",
 )
 load("@prelude//utils:utils.bzl", "flatten_dict")
-load("@prelude//test/inject_test_run_info.bzl", "inject_test_run_info")
 load(
     ":build.bzl",
     "compile_context",
@@ -365,7 +365,7 @@ def _rust_binary_common(
                     shlib.lib.dwp
                     for shlib in shared_libs
                     if shlib.lib.dwp
-                ],
+                ] + ([executable_args.dwp_symlink_tree] if executable_args.dwp_symlink_tree else []),
             ),
         ]
 
@@ -400,7 +400,7 @@ def _rust_binary_common(
     return (providers, args)
 
 def rust_binary_impl(ctx: AnalysisContext) -> list[Provider]:
-    compile_ctx = compile_context(ctx)
+    compile_ctx = compile_context(ctx, binary = True)
 
     providers, args = _rust_binary_common(
         ctx = ctx,
@@ -413,7 +413,7 @@ def rust_binary_impl(ctx: AnalysisContext) -> list[Provider]:
     return providers + [RunInfo(args = args)]
 
 def rust_test_impl(ctx: AnalysisContext) -> list[Provider]:
-    compile_ctx = compile_context(ctx)
+    compile_ctx = compile_context(ctx, binary = True)
     toolchain_info = compile_ctx.toolchain_info
 
     extra_flags = toolchain_info.rustc_test_flags or []

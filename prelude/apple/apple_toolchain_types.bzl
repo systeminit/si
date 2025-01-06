@@ -59,5 +59,7 @@ AppleToolsInfo = provider(
         "make_vfsoverlay": provider_field(RunInfo),
         "framework_sanitizer": provider_field(RunInfo),
         "xcframework_maker": provider_field(RunInfo),
+        "static_archive_linker": provider_field(RunInfo),
+        "spm_packager": provider_field(RunInfo),
     },
 )

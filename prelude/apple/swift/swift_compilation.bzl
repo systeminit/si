@@ -12,12 +12,11 @@ load(
     "make_artifact_tset",
     "project_artifacts",
 )
-load("@prelude//:paths.bzl", "paths")
 load("@prelude//apple:apple_error_handler.bzl", "apple_build_error_handler")
 load("@prelude//apple:apple_toolchain_types.bzl", "AppleToolchainInfo")
 load("@prelude//apple:apple_utility.bzl", "get_disable_pch_validation_flags", "get_module_name")
 load("@prelude//apple:modulemap.bzl", "preprocessor_info_for_modulemap")
-load("@prelude//apple/swift:swift_types.bzl", "SWIFTMODULE_EXTENSION", "SWIFT_EXTENSION", "get_implicit_framework_search_path_providers")
+load("@prelude//apple/swift:swift_types.bzl", "SWIFTMODULE_EXTENSION", "SWIFT_EXTENSION", "SwiftVersion", "get_implicit_framework_search_path_providers")
 load("@prelude//cxx:argsfiles.bzl", "CompileArgsfile", "CompileArgsfiles")
 load("@prelude//cxx:cxx_context.bzl", "get_cxx_toolchain_info")
 load("@prelude//cxx:cxx_library_utility.bzl", "cxx_use_shlib_intfs_mode")
@@ -128,15 +127,20 @@ SwiftCompilationOutput = record(
     # An optional artifact with files that support consuming the generated library with later versions of the swift compiler.
     swift_library_for_distribution_output = field(SwiftLibraryForDistributionOutput | None),
     # A list of artifacts that stores the index data
-    index_stores = field(list[Artifact]),
+    index_store = field(Artifact),
     # A list of artifacts of the swiftdeps files produced during incremental compilation.
     swiftdeps = field(list[Artifact]),
+    compiled_underlying_pcm_artifact = field(Artifact | None),
 )
 
 SwiftDebugInfo = record(
     static = list[ArtifactTSet],
     shared = list[ArtifactTSet],
 )
+
+_IS_USER_BUILD = True # @oss-enable
+# @oss-disable: # To determine whether we're running on CI or not, we expect user.sandcastle_alias to be set.
+# @oss-disable: _IS_USER_BUILD = (read_root_config("user", "sandcastle_alias", None) == None) 
 
 _REQUIRED_SDK_MODULES = ["Swift", "SwiftOnoneSupport", "Darwin", "_Concurrency", "_StringProcessing"]
 
@@ -191,7 +195,7 @@ def get_swift_anonymous_targets(ctx: AnalysisContext, get_apple_library_provider
     # passing apple_library's cxx flags through that must be used for all downward PCM compilations.
     pcm_targets = get_swift_pcm_anon_targets(
         ctx,
-        ctx.attrs.deps + ctx.attrs.exported_deps,
+        ctx.attrs.deps + getattr(ctx.attrs, "exported_deps", []),
         swift_cxx_flags,
         ctx.attrs.enable_cxx_interop,
     )
@@ -241,13 +245,49 @@ def get_swift_cxx_flags(ctx: AnalysisContext) -> list[str]:
 
     return gather
 
+def _get_compiled_underlying_pcm(
+        ctx: AnalysisContext,
+        module_name: str,
+        module_pp_info: CPreprocessor | None,
+        deps_providers: list,
+        swift_cxx_flags: list[str],
+        framework_search_paths: cmd_args) -> SwiftCompiledModuleInfo | None:
+    underlying_swift_pcm_uncompiled_info = get_swift_pcm_uncompile_info(
+        ctx,
+        None,
+        module_pp_info,
+    )
+    if not underlying_swift_pcm_uncompiled_info:
+        return None
+
+    return compile_underlying_pcm(
+        ctx,
+        module_name,
+        underlying_swift_pcm_uncompiled_info,
+        deps_providers,
+        swift_cxx_flags,
+        framework_search_paths,
+    )
+
+def _should_compile_with_swift_interface(ctx):
+    if not ctx.attrs._apple_toolchain[AppleToolchainInfo].swift_toolchain_info.library_interface_uses_swiftinterface:
+        return False
+
+    if ctx.attrs._swift_enable_testing:
+        return False
+
+    return ctx.attrs.swift_interface_compilation_enabled and uses_explicit_modules(ctx)
+
 def compile_swift(
         ctx: AnalysisContext,
         srcs: list[CxxSrcWithFlags],
         parse_as_library: bool,
         deps_providers: list,
+        module_name: str,
+        private_module_name: str,
         exported_headers: list[CHeader],
-        objc_modulemap_pp_info: [CPreprocessor, None],
+        exported_objc_modulemap_pp_info: [CPreprocessor, None],
+        private_objc_modulemap_pp_info: [CPreprocessor, None],
         framework_search_paths_flags: cmd_args,
         extra_search_paths_flags: list[ArgLike] = []) -> ([SwiftCompilationOutput, None], DefaultInfo):
     # If this target imports XCTest we need to pass the search path to its swiftmodule.
@@ -261,35 +301,38 @@ def compile_swift(
 
     # If a target exports ObjC headers and Swift explicit modules are enabled,
     # we need to precompile a PCM of the underlying module and supply it to the Swift compilation.
-    if objc_modulemap_pp_info and uses_explicit_modules(ctx):
-        underlying_swift_pcm_uncompiled_info = get_swift_pcm_uncompile_info(
+    swift_cxx_flags = get_swift_cxx_flags(ctx)
+    if uses_explicit_modules(ctx):
+        exported_compiled_underlying_pcm = _get_compiled_underlying_pcm(
             ctx,
-            None,
-            objc_modulemap_pp_info,
-        )
-        if underlying_swift_pcm_uncompiled_info:
-            compiled_underlying_pcm = compile_underlying_pcm(
-                ctx,
-                underlying_swift_pcm_uncompiled_info,
-                deps_providers,
-                get_swift_cxx_flags(ctx),
-                framework_search_paths,
-            )
-        else:
-            compiled_underlying_pcm = None
+            module_name,
+            exported_objc_modulemap_pp_info,
+            deps_providers,
+            swift_cxx_flags,
+            framework_search_paths,
+        ) if exported_objc_modulemap_pp_info else None
+        private_compiled_underlying_pcm = _get_compiled_underlying_pcm(
+            ctx,
+            private_module_name,
+            private_objc_modulemap_pp_info,
+            deps_providers,
+            swift_cxx_flags,
+            framework_search_paths,
+        ) if private_objc_modulemap_pp_info else None
     else:
-        compiled_underlying_pcm = None
-
-    module_name = get_module_name(ctx)
+        exported_compiled_underlying_pcm = None
+        private_compiled_underlying_pcm = None
 
     shared_flags = _get_shared_flags(
         ctx,
         deps_providers,
         parse_as_library,
-        compiled_underlying_pcm,
+        private_compiled_underlying_pcm,
+        exported_compiled_underlying_pcm,
         module_name,
         exported_headers,
-        objc_modulemap_pp_info,
+        private_objc_modulemap_pp_info,
+        exported_objc_modulemap_pp_info,
         extra_search_paths_flags,
     )
     shared_flags.add(framework_search_paths)
@@ -312,26 +355,46 @@ def compile_swift(
     output_swiftmodule = ctx.actions.declare_output(module_name + SWIFTMODULE_EXTENSION)
 
     swift_framework_output = None
+    swiftinterface_output = None
     if _should_compile_with_evolution(ctx):
         swift_framework_output = SwiftLibraryForDistributionOutput(
             swiftinterface = ctx.actions.declare_output(module_name + ".swiftinterface"),
             private_swiftinterface = ctx.actions.declare_output(module_name + ".private.swiftinterface"),
             swiftdoc = ctx.actions.declare_output(module_name + ".swiftdoc"),  #this is generated automatically once we pass -emit-module-info, so must have this name
         )
+    elif _should_compile_with_swift_interface(ctx):
+        swiftinterface_output = ctx.actions.declare_output(get_module_name(ctx) + ".swiftinterface")
 
     output_symbols = None
-
     if cxx_use_shlib_intfs_mode(ctx, ShlibInterfacesMode("stub_from_headers")):
         output_symbols = ctx.actions.declare_output("__tbd__/" + module_name + ".swift_symbols.txt")
 
-    _compile_swiftmodule(ctx, toolchain, shared_flags, srcs, output_swiftmodule, output_header, output_symbols, swift_framework_output)
+    _compile_swiftmodule(
+        ctx,
+        toolchain,
+        shared_flags,
+        srcs,
+        swiftinterface_output,
+        output_swiftmodule,
+        output_header,
+        output_symbols,
+        swift_framework_output,
+    )
 
     object_output = _compile_object(ctx, toolchain, shared_flags, srcs)
 
-    index_stores = _compile_index_stores(ctx, toolchain, shared_flags, srcs)
+    index_store = _compile_index_store(ctx, toolchain, shared_flags, srcs)
 
     # Swift libraries extend the ObjC modulemaps to include the -Swift.h header
-    modulemap_pp_info = preprocessor_info_for_modulemap(ctx, "swift-extended", exported_headers, output_header)
+    modulemap_pp_info = preprocessor_info_for_modulemap(
+        ctx,
+        name = "swift-extended",
+        module_name = module_name,
+        headers = exported_headers,
+        swift_header = output_header,
+        mark_headers_private = False,
+        additional_args = None,
+    )
     exported_swift_header = CHeader(
         artifact = output_header,
         name = output_header.basename,
@@ -360,17 +423,28 @@ def compile_swift(
         object_files = object_output.object_files,
         object_format = toolchain.object_format,
         swiftmodule = output_swiftmodule,
-        dependency_info = get_swift_dependency_info(ctx, output_swiftmodule, deps_providers),
+        compiled_underlying_pcm_artifact = exported_compiled_underlying_pcm.output_artifact if exported_compiled_underlying_pcm else None,
+        dependency_info = get_swift_dependency_info(ctx, output_swiftmodule, swiftinterface_output, deps_providers),
         pre = pre,
         exported_pre = exported_pp_info,
         exported_swift_header = exported_swift_header.artifact,
         argsfiles = object_output.argsfiles,
         swift_debug_info = extract_and_merge_swift_debug_infos(ctx, deps_providers, [output_swiftmodule]),
-        clang_debug_info = extract_and_merge_clang_debug_infos(ctx, deps_providers),
+        clang_debug_info = extract_and_merge_clang_debug_infos(
+            ctx,
+            deps_providers,
+            filter(
+                None,
+                [
+                    exported_compiled_underlying_pcm.output_artifact if exported_compiled_underlying_pcm else None,
+                    private_compiled_underlying_pcm.output_artifact if private_compiled_underlying_pcm else None,
+                ],
+            ),
+        ),
         compilation_database = _create_compilation_database(ctx, srcs, object_output.argsfiles.relative[SWIFT_EXTENSION]),
         exported_symbols = output_symbols,
         swift_library_for_distribution_output = swift_framework_output,
-        index_stores = index_stores,
+        index_store = index_store,
         swiftdeps = object_output.swiftdeps,
     ), swift_interface_info)
 
@@ -383,45 +457,93 @@ def _compile_swiftmodule(
         toolchain: SwiftToolchainInfo,
         shared_flags: cmd_args,
         srcs: list[CxxSrcWithFlags],
+        output_swiftinterface: Artifact | None,
         output_swiftmodule: Artifact,
         output_header: Artifact,
         output_symbols: Artifact | None,
         swift_framework_output: SwiftLibraryForDistributionOutput | None) -> CompileArgsfiles:
-    argfile_cmd = cmd_args(shared_flags)
-    argfile_cmd.add([
-        "-disable-cmo",
-        "-emit-module",
-        "-experimental-emit-module-separately",
-        "-wmo",
-    ])
+    if output_swiftinterface:
+        # We compile the interface in two passes:
+        #  1. generate the ObjC header and swiftinterface file
+        #  2. generate the swiftmodule file from the intermediate swiftinterface file
+        #
+        # This is more work overall, but as the swiftinterface file only contains
+        # the public API we should have improved cache hit reducing the amount of
+        # subsequent swiftmodule compile actions.
+        swiftinterface_argsfile = cmd_args(shared_flags)
+        swiftinterface_argsfile.add([
+            # Required as emitting a swiftinterface without library evolution
+            # produces a warning.
+            "-no-warnings-as-errors",
+            # Workaround to avoid producing swiftdoc and other auxiliary outputs.
+            "-typecheck",
+            "-wmo",
+        ])
+        swiftinterface_cmd = cmd_args([
+            "-emit-objc-header",
+            "-emit-objc-header-path",
+            output_header.as_output(),
+            "-emit-module-interface",
+            "-emit-module-interface-path",
+            output_swiftinterface.as_output(),
+            "-remove-module-prefixes",
+        ])
+        _compile_with_argsfile(ctx, "emit_swiftinterface", ".swiftinterface", swiftinterface_argsfile, srcs, swiftinterface_cmd, toolchain, num_threads = 1)
 
-    if ctx.attrs.swift_module_skip_function_bodies:
+        argfile_cmd = cmd_args(shared_flags)
         argfile_cmd.add([
+            "-disable-cmo",
+            "-wmo",
+        ])
+        cmd = cmd_args([
+            "-c",
             "-Xfrontend",
-            "-experimental-skip-non-inlinable-function-bodies-without-types",
+            "-compile-module-from-interface",
+            output_swiftinterface,
+            "-o",
+            output_swiftmodule.as_output(),
         ])
 
-    if _should_compile_with_evolution(ctx):
-        argfile_cmd.add(["-enable-library-evolution"])
-        argfile_cmd.add(["-emit-module-interface"])
-
-    cmd = cmd_args([
-        "-emit-objc-header",
-        "-emit-objc-header-path",
-        output_header.as_output(),
-        "-emit-module-path",
-        output_swiftmodule.as_output(),
-    ])
-
-    if swift_framework_output:
-        # this is generated implicitly once we pass -emit-module
-        cmd.add(cmd_args(hidden = swift_framework_output.swiftdoc.as_output()))
-        cmd.add([
-            "-emit-parseable-module-interface-path",
-            swift_framework_output.swiftinterface.as_output(),
-            "-emit-private-module-interface-path",
-            swift_framework_output.private_swiftinterface.as_output(),
+        # We don't need the Swift srcs to compile a swiftmodule
+        # from a generated swiftinterface file.
+        srcs = []
+    else:
+        argfile_cmd = cmd_args(shared_flags)
+        argfile_cmd.add([
+            "-disable-cmo",
+            "-experimental-emit-module-separately",
+            "-wmo",
         ])
+
+        if ctx.attrs.swift_module_skip_function_bodies:
+            argfile_cmd.add([
+                "-Xfrontend",
+                "-experimental-skip-non-inlinable-function-bodies-without-types",
+            ])
+
+        cmd = cmd_args([
+            "-emit-objc-header",
+            "-emit-objc-header-path",
+            output_header.as_output(),
+            "-emit-module",
+            "-emit-module-path",
+            output_swiftmodule.as_output(),
+        ])
+
+        if swift_framework_output:
+            argfile_cmd.add([
+                "-enable-library-evolution",
+            ])
+            cmd.add([
+                "-emit-module-interface",
+                "-emit-module-interface-path",
+                swift_framework_output.swiftinterface.as_output(),
+                "-emit-private-module-interface-path",
+                swift_framework_output.private_swiftinterface.as_output(),
+            ])
+
+            # There is no driver flag to specify the swiftdoc output path
+            cmd.add(cmd_args(hidden = swift_framework_output.swiftdoc.as_output()))
 
     output_tbd = None
     if output_symbols != None:
@@ -495,56 +617,48 @@ def _compile_object(
         swiftdeps = swiftdeps,
     )
 
-def _compile_index_stores(
+def _compile_index_store(
         ctx: AnalysisContext,
         toolchain: SwiftToolchainInfo,
         shared_flags: cmd_args,
-        srcs: list[CxxSrcWithFlags]) -> list[Artifact]:
-    index_stores = []
+        srcs: list[CxxSrcWithFlags]) -> Artifact:
+    module_name = get_module_name(ctx)
+
+    # We need an output file map with index-unit-output-path entries to be able
+    # to index all of the srcs in a single pass.
+    output_file_map = {}
     for src in srcs:
-        additional_flags = cmd_args()
+        output_file_map[src.file] = {
+            # The output here is only used for the identifier of the index unit file
+            "index-unit-output-path": src.file,
+            "object": "/dev/null",
+        }
 
-        # With -index-file flag, swiftc will not go through all phases of the compiler
-        # and will not ouput anything except the index data
-        # The output here is only used for the identifier of the index unit file
-        # The output path is used for computing the hash value in the unit file name
-        output_name = paths.join(
-            ctx.label.cell,
-            ctx.label.package,
-            ctx.label.name,
-            "{}.indexData".format(src.file.short_path),
-        )
-        additional_flags.add(["-o", output_name])
+    output_file_map_json = ctx.actions.write_json("__indexstore__/{}_output_file_map.json".format(module_name), output_file_map)
+    index_store_output = ctx.actions.declare_output("__indexstore__/swift_{}".format(module_name), dir = True)
+    additional_flags = cmd_args([
+        "-output-file-map",
+        output_file_map_json,
+        "-index-ignore-system-modules",
+        "-index-store-path",
+        index_store_output.as_output(),
+        "-c",
+        "-disable-batch-mode",
+    ])
 
-        index_store_folder_name = paths.join("__indexstore__", get_module_name(ctx), src.file.short_path, "index_store")
-        index_store = ctx.actions.declare_output(index_store_folder_name, dir = True)
+    _compile_with_argsfile(
+        ctx,
+        "swift_index_compile",
+        module_name,
+        shared_flags,
+        srcs,
+        additional_flags,
+        toolchain,
+        module_name,
+        cacheable = False,
+    )
 
-        additional_flags.add([
-            "-index-file",
-            "-index-ignore-system-modules",
-            "-index-store-path",
-            index_store.as_output(),
-        ])
-
-        # -index-file-path only can accept one file, so we need to build index data for each source file
-        additional_flags.add([
-            "-index-file-path",
-            src.file,
-        ])
-
-        _compile_with_argsfile(
-            ctx,
-            "swift_index_compile",
-            index_store_folder_name,
-            shared_flags,
-            srcs,
-            additional_flags,
-            toolchain,
-            index_store_folder_name,
-        )
-        index_stores.append(index_store)
-
-    return index_stores
+    return index_store_output
 
 def _compile_with_argsfile(
         ctx: AnalysisContext,
@@ -555,7 +669,8 @@ def _compile_with_argsfile(
         additional_flags: cmd_args,
         toolchain: SwiftToolchainInfo,
         identifier: str | None = None,
-        num_threads: int = 1) -> CompileArgsfiles:
+        num_threads: int = 1,
+        cacheable: bool = True) -> CompileArgsfiles:
     shell_quoted_args = cmd_args(shared_flags, quote = "shell")
     argsfile, _ = ctx.actions.write(extension + "_compile_argsfile", shell_quoted_args, allow_args = True)
     input_args = [shared_flags]
@@ -566,37 +681,28 @@ def _compile_with_argsfile(
     cmd.add(additional_flags)
     cmd.add(cmd_form)
 
-    # If we prefer to execute locally (e.g., for perf reasons), ensure we upload to the cache,
-    # so that CI builds populate caches used by developer machines.
+    build_swift_incrementally = should_build_swift_incrementally(ctx, len(srcs))
     explicit_modules_enabled = uses_explicit_modules(ctx)
 
-    build_swift_incrementally = should_build_swift_incrementally(ctx, len(srcs))
+    # If we prefer to execute locally (e.g., for perf reasons), ensure we upload to the cache,
+    # so that CI builds populate caches used by developer machines.
+    allow_cache_upload = True
+    local_only = False
 
-    # When Swift code is built incrementally, the swift-driver embeds absolute paths into the artifacts.
-    # Unfortunately, this compels us to execute these actions locally.
-    run_extra_args = {
-        # Even though the incremental artifacts (`.priors`, `.swiftdeps`) contain abs paths and
-        # are not cacheable, it's actually fine to still upload to the cache. This is because
-        # the downside of cached incremental artifacts with abs paths is that it will perform
-        # a full module compile on the first source change in a module (or any of its transitive
-        # deps where the public API changes). But this is exactly what would happen if we did not
-        # allow any caching at all - instead, every cold build would have to rebuild *everything*
-        # as there will be zero caching (as all incremental actions must run locally and do not
-        # allow cache upload).
-        #
-        # Thus, by allowing cache uploads, we get cold build caching, even if we end up caching
-        # non-hermetic Swift incremental artifacts. It's just that those non-hermetic artifacts
-        # do not result in further build perf efficiency later on when modules need to be recompiled.
-        "allow_cache_upload": True,
-    }
-    if build_swift_incrementally and not toolchain.supports_relative_resource_dir:
-        # When adding -working-directory= we end up with absolute paths in the
-        # swiftdeps files.
-        run_extra_args["local_only"] = True
-    else:
-        # Swift compilation on RE without explicit modules is impractically expensive
-        # because there's no shared module cache across different libraries.
-        run_extra_args["prefer_local"] = not explicit_modules_enabled
+    # Swift compilation on RE without explicit modules is impractically expensive
+    # because there's no shared module cache across different libraries.
+    prefer_local = not explicit_modules_enabled
+
+    if (not cacheable) or (build_swift_incrementally and not toolchain.supports_relative_resource_dir):
+        # When Swift code is built incrementally, the swift-driver embeds absolute paths into
+        # the artifacts without relative resource dir support. In this case we can only build locally.
+        allow_cache_upload = False
+        local_only = True
+        prefer_local = False
+    elif build_swift_incrementally and _IS_USER_BUILD:
+        # Swift incremental compilation requires the swiftdep files which are only present when
+        # compiling locally. Prefer local unless otherwise overridden.
+        prefer_local = True
 
     # Make it easier to debug whether Swift actions get compiled with explicit modules or not
     category = category_prefix + ("_with_explicit_mods" if explicit_modules_enabled else "")
@@ -608,7 +714,9 @@ def _compile_with_argsfile(
         no_outputs_cleanup = build_swift_incrementally,
         error_handler = apple_build_error_handler,
         weight = num_threads,
-        **run_extra_args
+        allow_cache_upload = allow_cache_upload,
+        local_only = local_only,
+        prefer_local = prefer_local,
     )
 
     argsfile = CompileArgsfile(
@@ -631,10 +739,12 @@ def _get_shared_flags(
         ctx: AnalysisContext,
         deps_providers: list,
         parse_as_library: bool,
-        underlying_module: [SwiftCompiledModuleInfo, None],
+        private_module: SwiftCompiledModuleInfo | None,
+        public_module: SwiftCompiledModuleInfo | None,
         module_name: str,
         objc_headers: list[CHeader],
-        objc_modulemap_pp_info: [CPreprocessor, None],
+        private_modulemap_pp_info: CPreprocessor | None,
+        public_modulemap_pp_info: CPreprocessor | None,
         extra_search_paths_flags: list[ArgLike] = []) -> cmd_args:
     toolchain = ctx.attrs._apple_toolchain[AppleToolchainInfo].swift_toolchain_info
     cmd = cmd_args()
@@ -659,6 +769,10 @@ def _get_shared_flags(
         module_name,
         "-Xfrontend",
         "-enable-cross-import-overlays",
+        "-Xfrontend",
+        "-disable-cxx-interop-requirement-at-import",
+        "-Xfrontend",
+        "-emit-clang-header-nonmodular-includes",
     ])
 
     if parse_as_library:
@@ -699,12 +813,16 @@ def _get_shared_flags(
 
     if ctx.attrs.swift_version:
         cmd.add(["-swift-version", ctx.attrs.swift_version])
+        swift_version = ctx.attrs.swift_version
+    else:
+        # Swift compiler defaults to 5 and therefore so do we
+        # use the version 5 for upcoming features passed to tools
+        # like the ide-tool for swift-interface generation below
+        # https://www.internalfb.com/code/osmeta-external-swift/[toolchain%2Fpika%2F16%3A5e394d813955f6d922cc853d011eeb3b6bead4c6]/include/swift/Basic/LangOptions.h?lines=175-176
+        swift_version = SwiftVersion[0]  # "5"
 
     if ctx.attrs.enable_cxx_interop:
-        if toolchain.supports_swift_cxx_interoperability_mode:
-            cmd.add(["-cxx-interoperability-mode=default"])
-        else:
-            cmd.add(["-enable-experimental-cxx-interop"])
+        cmd.add(["-cxx-interoperability-mode=default"])
 
     serialize_debugging_options = _get_serialize_debugging_options_attr_value(ctx) and (not explicit_modules_enabled) and (not objc_headers) and toolchain.prefix_serialized_debugging_options
     if serialize_debugging_options:
@@ -720,25 +838,27 @@ def _get_shared_flags(
             "-no-serialize-debugging-options",
         ])
 
-    if toolchain.can_toolchain_emit_obj_c_header_textually:
-        cmd.add([
-            "-Xfrontend",
-            "-emit-clang-header-nonmodular-includes",
-        ])
+    upcoming_features = toolchain.swift_upcoming_features[swift_version]
+    experimental_features = toolchain.swift_experimental_features[swift_version]
 
-    if toolchain.supports_cxx_interop_requirement_at_import:
-        cmd.add([
-            "-Xfrontend",
-            "-disable-cxx-interop-requirement-at-import",
-        ])
-
-    if toolchain.supports_swift_importing_objc_forward_declarations and ctx.attrs.import_obj_c_forward_declarations and ctx.attrs.swift_version != "6":
+    for feature in upcoming_features:
         cmd.add([
             "-Xfrontend",
             "-enable-upcoming-feature",
             "-Xfrontend",
-            "ImportObjcForwardDeclarations",
+            feature,
         ])
+
+    for feature in experimental_features:
+        cmd.add([
+            "-Xfrontend",
+            "-enable-experimental-feature",
+            "-Xfrontend",
+            feature,
+        ])
+
+    if ctx.attrs._swift_enable_testing:
+        cmd.add("-enable-testing")
 
     pcm_deps_tset = get_compiled_pcm_deps_tset(ctx, deps_providers)
 
@@ -757,7 +877,14 @@ def _get_shared_flags(
     _add_swift_deps_flags(ctx, cmd)
 
     # Add flags for importing the ObjC part of this library
-    _add_mixed_library_flags_to_cmd(ctx, cmd, underlying_module, objc_headers, objc_modulemap_pp_info)
+    _add_mixed_library_flags_to_cmd(
+        ctx,
+        cmd,
+        private_module,
+        public_module,
+        private_modulemap_pp_info,
+        public_modulemap_pp_info,
+    )
 
     # Add toolchain and target flags last to allow for overriding defaults
     cmd.add(toolchain.compiler_flags)
@@ -776,7 +903,7 @@ def _add_swift_module_map_args(
     sdk_swiftmodule_deps_tset = [sdk_swiftmodule_deps_tset] if sdk_swiftmodule_deps_tset else []
     all_deps_tset = ctx.actions.tset(
         SwiftCompiledModuleTset,
-        children = _get_swift_paths_tsets(ctx.attrs.deps + ctx.attrs.exported_deps) + [pcm_deps_tset, sdk_deps_tset] + sdk_swiftmodule_deps_tset,
+        children = _get_swift_paths_tsets(ctx.attrs.deps + getattr(ctx.attrs, "exported_deps", [])) + [pcm_deps_tset, sdk_deps_tset] + sdk_swiftmodule_deps_tset,
     )
     swift_module_map_artifact = write_swift_module_map_with_deps(
         ctx,
@@ -803,7 +930,7 @@ def _add_swift_deps_flags(
             "-disable-implicit-swift-modules",
         ])
     else:
-        depset = ctx.actions.tset(SwiftCompiledModuleTset, children = _get_swift_paths_tsets(ctx.attrs.deps + ctx.attrs.exported_deps))
+        depset = ctx.actions.tset(SwiftCompiledModuleTset, children = _get_swift_paths_tsets(ctx.attrs.deps + getattr(ctx.attrs, "exported_deps", [])))
         cmd.add(depset.project_as_args("module_search_path"))
 
         implicit_search_path_tset = get_implicit_framework_search_path_providers(
@@ -820,7 +947,7 @@ def _add_clang_deps_flags(
     if uses_explicit_modules(ctx):
         cmd.add(pcm_deps_tset.project_as_args("clang_importer_flags"))
     else:
-        inherited_preprocessor_infos = cxx_inherited_preprocessor_infos(ctx.attrs.deps + ctx.attrs.exported_deps)
+        inherited_preprocessor_infos = cxx_inherited_preprocessor_infos(ctx.attrs.deps + getattr(ctx.attrs, "exported_deps", []))
         preprocessors = cxx_merge_cpreprocessors(ctx, [], inherited_preprocessor_infos)
         cmd.add(cmd_args(preprocessors.set.project_as_args("args"), prepend = "-Xcc"))
         cmd.add(cmd_args(preprocessors.set.project_as_args("modular_args"), prepend = "-Xcc"))
@@ -829,20 +956,22 @@ def _add_clang_deps_flags(
 def _add_mixed_library_flags_to_cmd(
         ctx: AnalysisContext,
         cmd: cmd_args,
-        underlying_module: [SwiftCompiledModuleInfo, None],
-        objc_headers: list[CHeader],
-        objc_modulemap_pp_info: [CPreprocessor, None]) -> None:
+        private_module: SwiftCompiledModuleInfo | None,
+        underlying_module: SwiftCompiledModuleInfo | None,
+        private_modulemap_pp_info: CPreprocessor | None,
+        public_modulemap_pp_info: CPreprocessor | None) -> None:
     if uses_explicit_modules(ctx):
+        if private_module:
+            cmd.add(private_module.clang_importer_args)
+            cmd.add(private_module.clang_module_file_args)
+
         if underlying_module:
             cmd.add(underlying_module.clang_importer_args)
             cmd.add(underlying_module.clang_module_file_args)
             cmd.add("-import-underlying-module")
         return
 
-    if not objc_headers:
-        return
-
-    if objc_modulemap_pp_info:
+    for objc_modulemap_pp_info in filter(None, [private_modulemap_pp_info, public_modulemap_pp_info]):
         # TODO(T99100029): We cannot use VFS overlays to mask this import from
         # the debugger as they require absolute paths. Instead we will enforce
         # that mixed libraries do not have serialized debugging info and rely on
@@ -855,7 +984,8 @@ def _add_mixed_library_flags_to_cmd(
             cmd.add("-Xcc")
             cmd.add(arg)
 
-    cmd.add("-import-underlying-module")
+    if public_modulemap_pp_info:
+        cmd.add("-import-underlying-module")
 
 def _get_swift_paths_tsets(deps: list[Dependency]) -> list[SwiftCompiledModuleTset]:
     return [
@@ -913,6 +1043,7 @@ def create_swift_dependency_info(
 def get_swift_dependency_info(
         ctx: AnalysisContext,
         output_module: Artifact | None,
+        output_interface: Artifact | None,
         deps_providers: list) -> SwiftDependencyInfo:
     exported_deps = _exported_deps(ctx)
 
@@ -923,14 +1054,15 @@ def get_swift_dependency_info(
             is_swiftmodule = True,
             module_name = get_module_name(ctx),
             output_artifact = output_module,
+            interface_artifact = output_interface,
         )
     else:
         compiled_info = None
 
     debug_info_tset = make_artifact_tset(
         actions = ctx.actions,
-        artifacts = [output_module] if output_module != None else [],
-        children = get_external_debug_info_tsets(ctx.attrs.deps + ctx.attrs.exported_deps),
+        artifacts = filter(None, [output_module, output_interface]),
+        children = get_external_debug_info_tsets(ctx.attrs.deps + getattr(ctx.attrs, "exported_deps", [])),
         label = ctx.label,
         tags = [ArtifactInfoTag("swiftmodule")],
     )
@@ -1079,9 +1211,9 @@ def _create_swift_interface(ctx: AnalysisContext, shared_flags: cmd_args, module
 
 def _exported_deps(ctx) -> list[Dependency]:
     if ctx.attrs.reexport_all_header_dependencies:
-        return ctx.attrs.exported_deps + ctx.attrs.deps
+        return getattr(ctx.attrs, "exported_deps", []) + ctx.attrs.deps
     else:
-        return ctx.attrs.exported_deps
+        return getattr(ctx.attrs, "exported_deps", [])
 
 def _should_compile_with_evolution(ctx) -> bool:
     if ctx.attrs.enable_library_evolution != None:

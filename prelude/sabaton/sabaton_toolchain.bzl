@@ -5,20 +5,10 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
-# pyre-strict
-
-import os
-import signal
-from dataclasses import dataclass
-from io import TextIOWrapper
-
-
-@dataclass
-class IdbCompanion:
-    socket_address: str
-    pid: int
-    stderr: TextIOWrapper
-
-    def cleanup(self) -> None:
-        os.kill(self.pid, signal.SIGTERM)
-        self.stderr.close()
+SabatonToolchainInfo = provider(
+    doc = "SabatonToolchainInfo toolchain info",
+    fields = {
+        "runtime": provider_field(typing.Any, default = None),
+        "worker": provider_field(typing.Any, default = None),
+    },
+)

@@ -29,7 +29,7 @@ load(
     "@prelude//cxx:linker.bzl",
     "SharedLibraryFlagOverrides",
 )
-load("@prelude//ide_integrations:xcode.bzl", "XcodeDataInfoKeys")
+load("@prelude//ide_integrations/xcode:data.bzl", "XcodeDataInfoKeys")
 load(
     "@prelude//utils:dicts.bzl",
     "flatten_x",
@@ -268,7 +268,6 @@ def _get_test_info(ctx: AnalysisContext, xctest_bundle: Artifact, test_host_app_
         local_resources = {
             "ios_booted_simulator": ctx.attrs._ios_booted_simulator.label,
             "ios_unbooted_simulator": ctx.attrs._ios_unbooted_simulator.label,
-            "macos_idb_companion": ctx.attrs._macos_idb_companion.label,
         },
     )
 
@@ -323,6 +322,8 @@ def _xcode_populate_attributes(
         **_kwargs) -> dict[str, typing.Any]:
     data = apple_populate_xcode_attributes(ctx = ctx, srcs = srcs, argsfiles = argsfiles, product_name = ctx.attrs.name)
     data[XcodeDataInfoKeys.OUTPUT] = xctest_bundle
+
+    # TODO: We should be able to extract this information in BXL. XcodeData is primarily necessary for derived data from the rules.
     if ctx.attrs.ui_test_target_app:
         data[XcodeDataInfoKeys.TEST_TYPE] = "ui-test"
         data[XcodeDataInfoKeys.TEST_TARGET] = ctx.attrs.ui_test_target_app.label.raw_target()
@@ -330,6 +331,7 @@ def _xcode_populate_attributes(
         data[XcodeDataInfoKeys.TEST_TYPE] = "unit-test"
         if test_host_app_binary:
             data[XcodeDataInfoKeys.TEST_HOST_APP_BINARY] = test_host_app_binary
+            data[XcodeDataInfoKeys.TEST_HOST_APP_TARGET] = ctx.attrs.test_host_app.label.raw_target()
     return data
 
 def _get_xctest_framework_search_paths(ctx: AnalysisContext) -> (cmd_args, cmd_args):
