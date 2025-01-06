@@ -99,6 +99,7 @@ import TreeParents from "~icons/fluent-mdl2/breadcrumb";
 import Docs from "~icons/fluent/book-question-mark-20-filled";
 import Password from "~icons/material-symbols-light/password";
 import Key from "~icons/material-symbols/key";
+import TiltedKey from "~icons/heroicons/key";
 import Scissors from "~icons/clarity/scissors-solid";
 import Frame from "~icons/iconamoon/frame-light";
 import MaterialSymbolsKeyboardDoubleArrowLeftRounded from "~icons/material-symbols/keyboard-double-arrow-left-rounded";
@@ -280,6 +281,7 @@ export const ICONS = Object.freeze({
   "input-type-string": InputTypeString,
   "input-type-text": InputTypeText,
   key: Key,
+  "key-tilted": TiltedKey,
   laptop: Laptop,
   link: Link,
   loader: Loader,

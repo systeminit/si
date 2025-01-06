@@ -78,8 +78,8 @@ export const routerOptions: RouterOptions = {
       props: true,
     },
     {
-      path: "/workspace/:workspaceId/authTokens",
-      name: "workspace-auth-tokens",
+      path: "/workspace/:workspaceId/tokens",
+      name: "workspace-api-tokens",
       component: WorkspaceAuthTokensPage,
       props: true,
     },
