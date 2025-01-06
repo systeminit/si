@@ -8,11 +8,10 @@ use axum::{
 };
 use futures::future::BoxFuture;
 use permissions::{Permission, PermissionBuilder};
-use si_jwt_public_key::SiJwtClaimRole;
 use tower::{Layer, Service};
 
 use crate::{
-    extract::{self, Authorization},
+    extract::{self, EndpointAuthorization},
     AppState,
 };
 
@@ -66,24 +65,24 @@ where
         Box::pin(async move {
             let (mut parts, body) = req.into_parts();
 
-            let Authorization(claim) =
-                match Authorization::from_request_parts(&mut parts, &me.state).await {
-                    Ok(claim) => claim,
-                    Err(err) => return Ok(err.into_response()),
-                };
+            let auth = match EndpointAuthorization::from_request_parts(&mut parts, &me.state).await
+            {
+                Ok(auth) => auth,
+                Err(err) => return Ok(err.into_response()),
+            };
 
             if let Some(client) = me.state.spicedb_client() {
                 let is_allowed = match PermissionBuilder::new()
-                    .workspace_object(claim.workspace_id())
+                    .workspace_object(auth.workspace_id)
                     .permission(me.permission)
-                    .user_subject(claim.user_id())
+                    .user_subject(auth.user.pk())
                     .has_permission(client)
                     .await
                 {
                     Ok(is_allowed) => is_allowed,
                     Err(e) => return Ok(extract::unauthorized_error(e).into_response()),
                 };
-                if !is_allowed || !claim.authorized_for(SiJwtClaimRole::Web) {
+                if !is_allowed {
                     return Ok(
                         extract::unauthorized_error("not authorized for web role").into_response()
                     );
