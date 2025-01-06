@@ -161,10 +161,7 @@
             <AssetActionsDetails :component="props.component" />
           </TabGroupItem>
           <TabGroupItem
-            v-if="
-              featureFlagsStore.MANAGEMENT_FUNCTIONS &&
-              funcStore.managementFunctionsForSelectedComponent.length > 0
-            "
+            v-if="funcStore.managementFunctionsForSelectedComponent.length > 0"
             slug="management"
             label="Mgmt Fns"
           >

@@ -6,7 +6,6 @@ import { useWorkspacesStore } from "./workspaces.store";
 import { useChangeSetsStore } from "./change_sets.store";
 import handleStoreError from "./errors";
 import { useRealtimeStore } from "./realtime/realtime.store";
-import { useFeatureFlagsStore } from "./feature_flags.store";
 import { FuncRun, FuncRunId, useFuncRunsStore } from "./func_runs.store";
 
 export interface ManagementHistoryItem {
@@ -30,7 +29,6 @@ export const useManagementRunsStore = () => {
 
   const changeSetsStore = useChangeSetsStore();
   const changeSetId = changeSetsStore.selectedChangeSetId;
-  const featureFlagsStore = useFeatureFlagsStore();
   const funcRunsStore = useFuncRunsStore();
 
   const API_PREFIX = `v2/workspaces/${workspaceId}/change-sets/${changeSetId}`;
@@ -54,7 +52,6 @@ export const useManagementRunsStore = () => {
       },
       actions: {
         async GET_MANAGEMENT_RUN_HISTORY() {
-          if (!featureFlagsStore.MANAGEMENT_FUNCTIONS) return;
           return new ApiRequest<ManagementHistoryItem[]>({
             url: `${API_PREFIX}/management/history`,
             headers: { accept: "application/json" },

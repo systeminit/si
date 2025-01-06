@@ -185,7 +185,6 @@ import SelectMenu, {
 } from "@/components/SelectMenu.vue";
 import { useFuncStore } from "@/store/func/funcs.store";
 import { useAssetStore } from "@/store/asset.store";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { nilId } from "@/utils/nilId";
 import CodeEditor from "./CodeEditor.vue";
 
@@ -195,7 +194,6 @@ const props = defineProps<{
 
 const funcStore = useFuncStore();
 const assetStore = useAssetStore();
-const featureFlagsStore = useFeatureFlagsStore();
 
 const createFuncStarted = ref(false);
 
@@ -209,19 +207,10 @@ const schemaVariantId = computed(() =>
 
 const showLoading = computed(() => createFuncReqStatus.value.isPending);
 
-const funcKindOptions = Object.keys(CUSTOMIZABLE_FUNC_TYPES)
-  .filter((kind) => {
-    if (
-      kind === CustomizableFuncKind.Management &&
-      !featureFlagsStore.MANAGEMENT_FUNCTIONS
-    )
-      return false;
-    return true;
-  })
-  .map((kind) => ({
-    label: CUSTOMIZABLE_FUNC_TYPES[kind as CustomizableFuncKind]?.singularLabel,
-    value: kind as FuncKind,
-  }));
+const funcKindOptions = Object.keys(CUSTOMIZABLE_FUNC_TYPES).map((kind) => ({
+  label: CUSTOMIZABLE_FUNC_TYPES[kind as CustomizableFuncKind]?.singularLabel,
+  value: kind as FuncKind,
+}));
 
 const attachExisting = ref(false);
 

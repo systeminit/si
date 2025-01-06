@@ -55,9 +55,6 @@ import {
   FUNC_TYPES,
   FuncSummary,
 } from "@/api/sdf/dal/func";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
-
-const featureFlagsStore = useFeatureFlagsStore();
 
 // filtering out a func type if FF for mgmt functions is off
 // When you use an enum as keys in a record
@@ -66,11 +63,6 @@ const featureFlagsStore = useFeatureFlagsStore();
 // So, I can Partial to make all keys optional
 const funcKindOptions: Partial<FUNC_TYPES> = {};
 Object.entries(CUSTOMIZABLE_FUNC_TYPES).forEach(([key, value]) => {
-  if (
-    !featureFlagsStore.MANAGEMENT_FUNCTIONS &&
-    key === CustomizableFuncKind.Management
-  )
-    return;
   funcKindOptions[key] = value;
 });
 
