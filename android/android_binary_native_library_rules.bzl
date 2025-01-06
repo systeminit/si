@@ -64,7 +64,7 @@ load("@prelude//linking:strip.bzl", "strip_object")
 load("@prelude//linking:types.bzl", "Linkage")
 load("@prelude//utils:argfile.bzl", "argfile")
 load("@prelude//utils:expect.bzl", "expect")
-load("@prelude//utils:graph_utils.bzl", "GraphTraversal", "depth_first_traversal_by", "post_order_traversal", "pre_order_traversal")
+load("@prelude//utils:graph_utils.bzl", "post_order_traversal", "pre_order_traversal", "rust_matching_topological_traversal")
 load("@prelude//utils:set.bzl", "set", "set_type")  # @unused Used as a type
 load("@prelude//utils:utils.bzl", "dedupe_by_value")
 
@@ -183,6 +183,7 @@ def get_android_binary_native_library_info(
     linkable_nodes_by_platform = {}
     native_library_merge_sequence = getattr(ctx.attrs, "native_library_merge_sequence", None)
     native_library_merge_map = getattr(ctx.attrs, "native_library_merge_map", None)
+    native_library_merge_non_asset_libs = getattr(ctx.attrs, "native_library_merge_non_asset_libs", False)
     has_native_merging = native_library_merge_sequence or native_library_merge_map
     enable_relinker = getattr(ctx.attrs, "enable_relinker", False)
 
@@ -211,6 +212,8 @@ def get_android_binary_native_library_info(
         mergemap_cmd.add(cmd_args(native_library_merge_input_file, format = "--mergemap-input={}"))
         if apk_module_graph_file:
             mergemap_cmd.add(cmd_args(apk_module_graph_file, format = "--apk-module-graph={}"))
+        if native_library_merge_non_asset_libs:
+            mergemap_cmd.add(cmd_args("--merge-non-asset-libs"))
         native_library_merge_dir = ctx.actions.declare_output("merge_sequence_output")
         native_library_merge_map = native_library_merge_dir.project("merge.map")
         split_groups_map = native_library_merge_dir.project("split_groups.map")
@@ -1154,8 +1157,9 @@ def _get_merged_linkables_for_platform(
         group_deps = link_groups_graph_builder.setdefault(target_group, {})
         for dep in linkable_nodes_graph[target]:
             dep_group = target_to_link_group[dep]
-            if target_group != dep_group:
-                group_deps[dep_group] = True
+            if target_group != dep_group and dep_group not in group_deps:
+                # Store one example of why target_group depends on dep_group
+                group_deps[dep_group] = (target, dep)
     link_groups_graph = {k: list(v.keys()) for k, v in link_groups_graph_builder.items()}
 
     archive_output_style = LibOutputStyle("pic_archive")
@@ -1165,9 +1169,17 @@ def _get_merged_linkables_for_platform(
     group_shared_libs = {}
     included_default_solibs = {}
 
+    def edge_explainer(src_group, dest_group):
+        """Explains in an error why src_group has a dependency on dest_group"""
+        if src_group not in link_groups_graph_builder or dest_group not in link_groups_graph_builder[src_group]:
+            return ["Unknown"]
+
+        src_target, dest_target = link_groups_graph_builder[src_group][dest_group]
+        return ["   " + str(src_target), "-> " + str(dest_target)]
+
     # Now we will traverse from the leaves up the graph (the link groups graph). As we traverse, we will produce
     # a link group linkablenode for each group.
-    for group in post_order_traversal(link_groups_graph):
+    for group in post_order_traversal(link_groups_graph, edge_explainer = edge_explainer):
         group_data = link_groups[group]
         is_actually_merged = len(group_data.constituents) > 1
 
@@ -1446,42 +1458,6 @@ def _create_relinkable_links(
 
     return {lib.soname.ensure_str(): lib for lib in shared_libs.values()}, debug_link_deps
 
-# To support migration from a tset-based link strategy, we are trying to match buck's internal tset
-# traversal logic here.  Look for implementation of TopologicalTransitiveSetIteratorGen
-def _rust_matching_topological_traversal(
-        roots: list[typing.Any],
-        get_nodes_to_traverse_func: typing.Callable) -> list[typing.Any]:
-    counts = {}
-
-    for label in depth_first_traversal_by(None, roots, get_nodes_to_traverse_func, GraphTraversal("preorder-right-to-left")):
-        for dep in get_nodes_to_traverse_func(label):
-            if dep in counts:
-                counts[dep] += 1
-            else:
-                counts[dep] = 1
-
-    # some of the targets in roots might be transitive deps of others, we only put those that are true roots
-    # in the stack at this point
-    stack = [root_target for root_target in roots if not root_target in counts]
-    true_roots = len(stack)
-
-    result = []
-    for _ in range(2000000000):
-        if not stack:
-            break
-        next = stack.pop()
-        result.append(next)
-        deps = get_nodes_to_traverse_func(next)
-        for child in deps[::-1]:  # reverse order ensures we put things on the stack in the same order as rust's tset traversal
-            counts[child] -= 1
-            if counts[child] == 0:
-                stack.append(child)
-
-    if len(result) != true_roots + len(counts):
-        fail()  # fail_cycle
-
-    return result
-
 def _create_link_args(
         *,
         cxx_toolchain: CxxToolchainInfo,
@@ -1519,7 +1495,7 @@ def _create_link_args(
 
     links = []
     shlib_deps = []
-    for target in _rust_matching_topological_traversal([root_target], link_traversal):
+    for target in rust_matching_topological_traversal(None, [root_target], link_traversal):
         is_root = target == root_target
         node = graph[target]
         preferred_linkable_type = get_lib_output_style(link_strategy, node.preferred_linkage, PicBehavior("supported"))
@@ -1577,7 +1553,7 @@ def _create_merged_link_args(
 
     links = []
     shlib_deps = []
-    for label in _rust_matching_topological_traversal([root_target.label], link_traversal):
+    for label in rust_matching_topological_traversal(None, [root_target.label], link_traversal):
         if label == root_target.label:
             links.extend(root_target.constituent_link_infos)
         else:

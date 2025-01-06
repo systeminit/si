@@ -9,6 +9,7 @@ load(
     "@prelude//linking:link_info.bzl",
     "LinkStyle",
 )
+load("@prelude//test:inject_test_run_info.bzl", "inject_test_run_info")
 load(
     "@prelude//tests:re_utils.bzl",
     "get_re_executors_from_props",
@@ -18,7 +19,6 @@ load(
     "map_val",
     "value_or",
 )
-load("@prelude//test/inject_test_run_info.bzl", "inject_test_run_info")
 load(":compile.bzl", "GoTestInfo", "get_inherited_compile_pkgs")
 load(":coverage.bzl", "GoCoverageMode")
 load(":link.bzl", "link")
@@ -81,12 +81,13 @@ def go_test_impl(ctx: AnalysisContext) -> list[Provider]:
     tests, tests_pkg_info = build_package(
         ctx,
         pkg_name,
+        main = False,
         srcs = srcs,
         package_root = ctx.attrs.package_root,
         deps = deps,
         pkgs = pkgs,
         compiler_flags = ctx.attrs.compiler_flags,
-        tags = ctx.attrs._tags,
+        build_tags = ctx.attrs._build_tags,
         coverage_mode = coverage_mode,
         race = ctx.attrs._race,
         asan = ctx.attrs._asan,
@@ -109,7 +110,7 @@ def go_test_impl(ctx: AnalysisContext) -> list[Provider]:
     # Generate a main function which runs the tests and build that into another
     # package.
     gen_main = _gen_test_main(ctx, pkg_name, coverage_mode, coverage_vars, tests.srcs_list)
-    main, _ = build_package(ctx, "main", [gen_main], package_root = "", pkgs = pkgs, coverage_mode = coverage_mode, race = ctx.attrs._race, asan = ctx.attrs._asan, cgo_gen_dir_name = "cgo_gen_test_main")
+    main, _ = build_package(ctx, pkg_name + ".test", True, [gen_main], package_root = "", pkgs = pkgs, coverage_mode = coverage_mode, race = ctx.attrs._race, asan = ctx.attrs._asan, cgo_gen_dir_name = "cgo_gen_test_main")
 
     # Link the above into a Go binary.
     (bin, runtime_files, external_debug_info) = link(

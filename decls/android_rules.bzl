@@ -10,15 +10,14 @@
 # the generated docs, and so those should be verified to be accurate and
 # well-formatted (and then delete this TODO)
 
-load("@prelude//utils/clear_platform.bzl", "clear_platform_transition")
+load("@prelude//decls:test_common.bzl", "test_common")
+load("@prelude//utils:clear_platform.bzl", "clear_platform_transition")
 load(":android_common.bzl", "android_common")
 load(":common.bzl", "AbiGenerationMode", "AnnotationProcessingTool", "ForkMode", "LogLevel", "OnDuplicateEntry", "SourceAbiVerificationMode", "TestType", "UnusedDependenciesAction", "buck", "prelude_rule")
 load(":core_rules.bzl", "TargetCpuType")
 load(":genrule_common.bzl", "genrule_common")
 load(":jvm_common.bzl", "jvm_common")
 load(":re_test_common.bzl", "re_test_common")
-
-AaptMode = ["aapt1", "aapt2"]
 
 CompressionAlgorithm = ["xz", "zstd"]
 
@@ -126,6 +125,7 @@ android_aar = prelude_rule(
             "language": attrs.option(attrs.enum(JvmLanguage), default = None),
             "licenses": attrs.list(attrs.source(), default = []),
             "manifest": attrs.option(attrs.source(), default = None),
+            "manifest_entries": attrs.dict(key = attrs.string(), value = attrs.any(), default = {}),
             "manifest_file": attrs.option(attrs.source(), default = None),
             "maven_coords": attrs.option(attrs.string(), default = None),
             "native_library_merge_code_generator": attrs.option(attrs.exec_dep(), default = None),
@@ -133,6 +133,7 @@ android_aar = prelude_rule(
             "native_library_merge_map": attrs.option(attrs.dict(key = attrs.string(), value = attrs.list(attrs.regex()), sorted = False), default = None),
             "native_library_merge_sequence": attrs.option(attrs.list(attrs.any()), default = None),
             "native_library_merge_sequence_blocklist": attrs.option(attrs.list(attrs.regex()), default = None),
+            "native_library_merge_non_asset_libs": attrs.bool(default = False),
             "never_mark_as_unused_dependency": attrs.option(attrs.bool(), default = None),
             "on_unused_dependencies": attrs.option(attrs.enum(UnusedDependenciesAction), default = None),
             "proguard_config": attrs.option(attrs.source(), default = None),
@@ -161,7 +162,7 @@ android_app_modularity = prelude_rule(
     attrs = (
         # @unsorted-dict-items
         {
-            "application_module_blacklist": attrs.option(attrs.list(attrs.dep()), default = None),
+            "application_module_blocklist": attrs.option(attrs.list(attrs.dep()), default = None),
             "application_module_configs": attrs.dict(key = attrs.string(), value = attrs.list(attrs.dep()), sorted = False, default = {}),
             "application_module_dependencies": attrs.option(attrs.dict(key = attrs.string(), value = attrs.list(attrs.string()), sorted = False), default = None),
             "contacts": attrs.list(attrs.string(), default = []),
@@ -187,12 +188,11 @@ android_binary = prelude_rule(
             "aapt2_keep_raw_values": attrs.bool(default = False),
             "aapt2_locale_filtering": attrs.bool(default = False),
             "aapt2_preferred_density": attrs.option(attrs.string(), default = None),
-            "aapt_mode": attrs.enum(AaptMode, default = "aapt1"),
             "additional_aapt_params": attrs.list(attrs.string(), default = []),
             "allow_r_dot_java_in_secondary_dex": attrs.bool(default = False),
             "allowed_duplicate_resource_types": attrs.list(attrs.enum(RType), default = []),
             "android_sdk_proguard_config": attrs.option(attrs.enum(SdkProguardType), default = None),
-            "application_module_blacklist": attrs.option(attrs.list(attrs.dep()), default = None),
+            "application_module_blocklist": attrs.option(attrs.list(attrs.dep()), default = None),
             "application_module_configs": attrs.dict(key = attrs.string(), value = attrs.list(attrs.dep()), sorted = False, default = {}),
             "application_module_dependencies": attrs.option(attrs.dict(key = attrs.string(), value = attrs.list(attrs.string()), sorted = False), default = None),
             "asset_compression_algorithm": attrs.option(attrs.enum(CompressionAlgorithm), default = None),
@@ -207,10 +207,10 @@ android_binary = prelude_rule(
             "deps": attrs.list(attrs.dep(), default = []),
             "dex_compression": attrs.option(attrs.enum(DexStore), default = None),
             "dex_group_lib_limit": attrs.int(default = 0),
-            "dex_tool": attrs.string(default = ""),
             "disable_pre_dex": attrs.bool(default = False),
             "duplicate_resource_behavior": attrs.enum(DuplicateResourceBehaviour, default = "allow_by_default"),
             "duplicate_resource_whitelist": attrs.option(attrs.source(), default = None),
+            "enable_bootstrap_dexes": attrs.bool(default = False),
             "enable_relinker": attrs.bool(default = False),
             "exopackage_modes": attrs.list(attrs.enum(ExopackageMode), default = []),
             "extra_no_compress_asset_extensions": attrs.list(attrs.string(), default = []),
@@ -236,6 +236,7 @@ android_binary = prelude_rule(
             "native_library_merge_map": attrs.option(attrs.dict(key = attrs.string(), value = attrs.list(attrs.regex()), sorted = False), default = None),
             "native_library_merge_sequence": attrs.option(attrs.list(attrs.any()), default = None),
             "native_library_merge_sequence_blocklist": attrs.option(attrs.list(attrs.regex()), default = None),
+            "native_library_merge_non_asset_libs": attrs.bool(default = False),
             "no_auto_add_overlay_resources": attrs.bool(default = False),
             "no_auto_version_resources": attrs.bool(default = False),
             "no_dx": attrs.list(attrs.dep(), default = []),
@@ -420,12 +421,11 @@ android_bundle = prelude_rule(
             "aapt2_keep_raw_values": attrs.bool(default = False),
             "aapt2_locale_filtering": attrs.bool(default = False),
             "aapt2_preferred_density": attrs.option(attrs.string(), default = None),
-            "aapt_mode": attrs.enum(AaptMode, default = "aapt1"),
             "additional_aapt_params": attrs.list(attrs.string(), default = []),
             "allow_r_dot_java_in_secondary_dex": attrs.bool(default = False),
             "allowed_duplicate_resource_types": attrs.list(attrs.enum(RType), default = []),
             "android_sdk_proguard_config": attrs.option(attrs.enum(SdkProguardType), default = None),
-            "application_module_blacklist": attrs.option(attrs.list(attrs.dep()), default = None),
+            "application_module_blocklist": attrs.option(attrs.list(attrs.dep()), default = None),
             "application_module_configs": attrs.dict(key = attrs.string(), value = attrs.list(attrs.dep()), sorted = False, default = {}),
             "application_module_dependencies": attrs.option(attrs.dict(key = attrs.string(), value = attrs.list(attrs.string()), sorted = False), default = None),
             "asset_compression_algorithm": attrs.option(attrs.enum(CompressionAlgorithm), default = None),
@@ -441,10 +441,10 @@ android_bundle = prelude_rule(
             "deps": attrs.list(attrs.dep(), default = []),
             "dex_compression": attrs.option(attrs.enum(DexStore), default = None),
             "dex_group_lib_limit": attrs.int(default = 0),
-            "dex_tool": attrs.string(default = ""),
             "disable_pre_dex": attrs.bool(default = False),
             "duplicate_resource_behavior": attrs.enum(DuplicateResourceBehaviour, default = "allow_by_default"),
             "duplicate_resource_whitelist": attrs.option(attrs.source(), default = None),
+            "enable_bootstrap_dexes": attrs.bool(default = False),
             "enable_relinker": attrs.bool(default = False),
             "exopackage_modes": attrs.list(attrs.enum(ExopackageMode), default = []),
             "extra_no_compress_asset_extensions": attrs.list(attrs.string(), default = []),
@@ -470,6 +470,7 @@ android_bundle = prelude_rule(
             "native_library_merge_map": attrs.option(attrs.dict(key = attrs.string(), value = attrs.list(attrs.regex()), sorted = False), default = None),
             "native_library_merge_sequence": attrs.option(attrs.list(attrs.any()), default = None),
             "native_library_merge_sequence_blocklist": attrs.option(attrs.list(attrs.regex()), default = None),
+            "native_library_merge_non_asset_libs": attrs.bool(default = False),
             "no_auto_add_overlay_resources": attrs.bool(default = False),
             "no_auto_version_resources": attrs.bool(default = False),
             "no_dx": attrs.list(attrs.dep(), default = []),
@@ -566,10 +567,8 @@ android_instrumentation_apk = prelude_rule(
         } |
         android_common.deps_apk_arg() |
         {
-            "aapt_mode": attrs.enum(AaptMode, default = "aapt1"),
             "contacts": attrs.list(attrs.string(), default = []),
             "default_host_platform": attrs.option(attrs.configuration_label(), default = None),
-            "dex_tool": attrs.string(default = ""),
             "disable_pre_dex": attrs.bool(default = False),
             "includes_vector_drawables": attrs.bool(default = False),
             "labels": attrs.list(attrs.string(), default = []),
@@ -654,7 +653,8 @@ android_instrumentation_test = prelude_rule(
             "_android_emulators": attrs.option(attrs.transition_dep(cfg = clear_platform_transition, providers = [LocalResourceInfo]), default = None, doc = """
                 If provided, local resource of "android_emulators" type will be required to run this test locally and this target will be used to manage it. If omitted, local resource of "android_emulators" type will be ignored even if requested by the test runner.
             """),
-        }
+        } |
+        test_common.attributes()
     ),
 )
 
@@ -671,7 +671,7 @@ android_library = prelude_rule(
          `android_resource()` rule.
         This would be a common arrangement for a standard Android Library project
         as defined by
-         <http://developer.android.com/tools/projects/index.html>
+         [http://developer.android.com/tools/projects/index.html](http://developer.android.com/tools/projects/index.html)
 
         ```
 
@@ -752,6 +752,7 @@ android_library = prelude_rule(
         jvm_common.kotlin_compiler_plugins() |
         jvm_common.incremental() |
         jvm_common.javac() |
+        jvm_common.enable_used_classes() |
         {
             "remove_classes": attrs.list(attrs.regex(), default = [], doc = """
                 List of classes to remove from the output jar. It only removes classes from the target's own
@@ -1409,9 +1410,6 @@ robolectric_test = prelude_rule(
                 Robolectric only runs in offline mode with buck. Specify the relative
                  directory containing all the jars Robolectric uses at runtime.
             """),
-            "robolectric_manifest": attrs.source(doc = """
-                An [Android Manifest](http://developer.android.com/guide/topics/manifest/manifest-intro.html) for the rule to declare any permissions or intents it may need or want to handle. May either be a file or an `android_manifest()` target.
-            """),
             "extra_kotlinc_arguments": attrs.list(attrs.string(), default = [], doc = """
                 List of additional arguments to pass into the Kotlin compiler.
             """),
@@ -1438,7 +1436,6 @@ robolectric_test = prelude_rule(
             "language": attrs.option(attrs.enum(JvmLanguage), default = None),
             "licenses": attrs.list(attrs.source(), default = []),
             "locales_for_binary_resources": attrs.list(attrs.string(), default = []),
-            "manifest": attrs.option(attrs.source(), default = None),
             "manifest_entries": attrs.dict(key = attrs.string(), value = attrs.any(), default = {}),
             "manifest_file": attrs.option(attrs.source(), default = None),
             "maven_coords": attrs.option(attrs.string(), default = None),
@@ -1474,12 +1471,15 @@ robolectric_test = prelude_rule(
             "use_jvm_abi_gen": attrs.option(attrs.bool(), default = None),
             "vm_args": attrs.list(attrs.arg(), default = []),
         } |
+        android_common.manifest_arg() |
         jvm_common.k2() |
         jvm_common.incremental() |
         jvm_common.plugins() |
         jvm_common.kotlin_compiler_plugins() |
         jvm_common.javac() |
-        re_test_common.test_args()
+        jvm_common.enable_used_classes() |
+        re_test_common.test_args() |
+        test_common.attributes()
     ),
 )
 

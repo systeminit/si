@@ -11,6 +11,7 @@ load(
     ":types.bzl",
     "ConditionalModifierInfo",
     "Modifier",
+    "ModifierBuckconfigLocation",
     "ModifierCliLocation",
     "ModifierInfo",
     "ModifierLocation",
@@ -33,6 +34,8 @@ def location_to_string(location: ModifierLocation) -> str:
         return _TARGET_LOCATION_STR
     if isinstance(location, ModifierCliLocation):
         return _CLI_LOCATION_STR
+    if isinstance(location, ModifierBuckconfigLocation):
+        return "buckconfig {}.{}".format(location.section, location.property)
     fail("Internal error. Unrecognized location type `{}` for location `{}`".format(type(location), location))
 
 def get_tagged_modifiers(
@@ -220,3 +223,24 @@ def get_constraint_setting_deps(
     # Get all constraint settings depended on by a modifier (from keys of `modifier_select`). The modifiers
     # for these constraint settings must be resolved before this modifier can be resolved.
     return dedupe(_get_constraint_setting_deps(modifier_info))
+
+def add_to_constraint_setting_to_modifier_infos(
+        constraint_setting_to_modifier_infos: dict[TargetLabel, list[ModifierInfo]],
+        constraint_setting_label: TargetLabel,
+        modifier_info: ModifierInfo):
+    modifier_infos = constraint_setting_to_modifier_infos.get(constraint_setting_label) or []
+    modifier_infos.append(modifier_info)
+    constraint_setting_to_modifier_infos[constraint_setting_label] = modifier_infos
+
+def get_and_insert_modifier_info(
+        constraint_setting_to_modifier_infos: dict[TargetLabel, list[ModifierInfo]],
+        refs: dict[str, ProviderCollection],
+        modifier: Modifier,
+        location: ModifierLocation) -> (TargetLabel, ModifierInfo):
+    constraint_setting_label, modifier_info = get_modifier_info(
+        refs = refs,
+        modifier = modifier,
+        location = location,
+    )
+    add_to_constraint_setting_to_modifier_infos(constraint_setting_to_modifier_infos, constraint_setting_label, modifier_info)
+    return (constraint_setting_label, modifier_info)

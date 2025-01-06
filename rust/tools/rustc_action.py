@@ -30,6 +30,39 @@ from typing import Any, Dict, IO, List, NamedTuple, Optional, Tuple
 
 DEBUG = False
 
+NIX_ENV_VARS = [
+    "NIX_BINTOOLS",
+    "NIX_BINTOOLS_FOR_TARGET",
+    "NIX_CC",
+    "NIX_CC_FOR_TARGET",
+    "NIX_CFLAGS_COMPILE",
+    "NIX_CFLAGS_COMPILE_FOR_TARGET",
+    "NIX_COREFOUNDATION_RPATH",
+    "NIX_DONT_SET_RPATH",
+    "NIX_DONT_SET_RPATH_FOR_BUILD",
+    "NIX_ENFORCE_NO_NATIVE",
+    "NIX_HARDENING_ENABLE",
+    "NIX_IGNORE_LD_THROUGH_GCC",
+    "NIX_LDFLAGS",
+    "NIX_LDFLAGS_FOR_TARGET",
+    "NIX_NO_SELF_RPATH",
+]
+NIX_ENV_VAR_PREFIXES = [
+    "NIX_BINTOOLS_WRAPPER_TARGET_HOST_",
+    "NIX_BINTOOLS_WRAPPER_TARGET_TARGET_",
+    "NIX_CC_WRAPPER_TARGET_HOST_",
+    "NIX_CC_WRAPPER_TARGET_TARGET_",
+]
+
+
+def nix_env(env: Dict[str, str]):
+    env.update({k: os.environ[k] for k in NIX_ENV_VARS if k in os.environ})
+    for prefix in NIX_ENV_VAR_PREFIXES:
+        vars_starting_with = dict(
+            filter(lambda pair: pair[0].startswith(prefix), os.environ.items())
+        )
+        env.update(vars_starting_with.items())
+
 
 def eprint(*args: Any, **kwargs: Any) -> None:
     print(*args, end="\n", file=sys.stderr, flush=True, **kwargs)
@@ -234,7 +267,7 @@ async def handle_output(  # noqa: C901
     return got_error_diag
 
 
-async def main() -> int:
+async def main() -> int:  # noqa: C901
     args = arg_parse()
 
     if args.echo:
@@ -273,9 +306,15 @@ async def main() -> int:
             "SYSROOT_MULTIPLEXER_DEBUG",
             # Required on Windows for getpass.getuser() to work.
             "USERNAME",
+            # Option to disable hg pre-fork client.
+            # We might pass it to avoid long-running process created inside a per-action cgroup.
+            # Such long-running process make it impossible to clean up systemd slices.
+            # Context https://fb.workplace.com/groups/mercurialusers/permalink/2901424916673036/
+            "CHGDISABLE",
         ]
         if k in os.environ
     }
+    nix_env(env)
     if args.env:
         # Unescape previously escaped newlines.
         # Example: \\\\n\\n -> \\\n\n -> \\n\n
@@ -307,9 +346,13 @@ async def main() -> int:
         prefix="rustc-args-",
         suffix=".txt",
         delete=False,
+        # This isn't set when running doctests. Once that's fixed, we won't need
+        # `tempfile`
+        dir=os.environ.get("BUCK_SCRATCH_PATH", None),
     ) as args_file:
         args_file.write("\n".join(rustc_args).encode() + b"\n")
         args_file.flush()
+        args_file.close()
         # Kick off the action
         proc = await asyncio.create_subprocess_exec(
             *rustc_cmd,
@@ -322,6 +365,10 @@ async def main() -> int:
         )
         got_error_diag = await handle_output(proc, args, crate_map)
         res = await proc.wait()
+
+        # TODO: When Python 3.12 becomes the baseline, replace this with:
+        #   `NamedTemporaryFile(delete=True, delete_on_close=False)`
+        os.unlink(args_file.name)
 
     if DEBUG:
         print(

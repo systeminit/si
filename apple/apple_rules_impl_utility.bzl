@@ -9,15 +9,16 @@ load("@prelude//:attrs_validators.bzl", "ATTRS_VALIDATORS_NAME", "ATTRS_VALIDATO
 load("@prelude//apple:apple_bundle_types.bzl", "AppleBundleResourceInfo", "AppleBundleTypeAttributeType")
 load("@prelude//apple:apple_code_signing_types.bzl", "CodeSignConfiguration", "CodeSignType")
 load("@prelude//apple:apple_common.bzl", "apple_common")
-load("@prelude//apple:apple_toolchain_types.bzl", "AppleToolchainInfo", "AppleToolsInfo")
+load("@prelude//apple:apple_toolchain_types.bzl", "AppleToolchainInfo")
 load("@prelude//apple:resource_groups.bzl", "RESOURCE_GROUP_MAP_ATTR")
 load("@prelude//apple/swift:swift_incremental_support.bzl", "SwiftCompilationMode")
 load("@prelude//apple/user:apple_selective_debugging.bzl", "AppleSelectiveDebuggingInfo")
 load("@prelude//apple/user:cpu_split_transition.bzl", "cpu_split_transition")
 load("@prelude//cxx:headers.bzl", "CPrecompiledHeaderInfo")
+load("@prelude//ide_integrations/xcode:scheme_settings.bzl", "XCODE_SCHEME_SETTINGS_ATTR_NAME", "XCODE_SCHEME_SETTINGS_ATTR_TYPE")
 load("@prelude//linking:execution_preference.bzl", "link_execution_preference_attr")
 load("@prelude//linking:link_info.bzl", "LinkOrdering")
-load("@prelude//utils/clear_platform.bzl", "clear_platform_transition")
+load("@prelude//utils:clear_platform.bzl", "clear_platform_transition")
 
 def get_apple_toolchain_attr():
     # FIXME: prelude// should be standalone (not refer to fbcode//)
@@ -61,6 +62,14 @@ def _fast_adhoc_signing_enabled_default_attr():
         "config//features/apple:fast_adhoc_signing_enabled": True,
     }))
 
+def _skip_adhoc_resigning_scrubbed_frameworks_default_attr():
+    default_value = (read_root_config("apple", "skip_adhoc_resigning_scrubbed_frameworks", "").lower() == "true")
+    return attrs.bool(default = select({
+        "DEFAULT": default_value,
+        "config//features/apple/constraints:skip_adhoc_resigning_scrubbed_frameworks_disabled": False,
+        "config//features/apple/constraints:skip_adhoc_resigning_scrubbed_frameworks_enabled": True,
+    }))
+
 APPLE_ARCHIVE_OBJECTS_LOCALLY_OVERRIDE_ATTR_NAME = "_archive_objects_locally_override"
 APPLE_USE_ENTITLEMENTS_WHEN_ADHOC_CODE_SIGNING_CONFIG_OVERRIDE_ATTR_NAME = "_use_entitlements_when_adhoc_code_signing"
 APPLE_USE_ENTITLEMENTS_WHEN_ADHOC_CODE_SIGNING_ATTR_NAME = "use_entitlements_when_adhoc_code_signing"
@@ -86,12 +95,14 @@ def get_apple_info_plist_build_system_identification_attrs():
 def _apple_bundle_like_common_attrs():
     # `apple_bundle()` and `apple_test()` share a common set of extra attrs
     attribs = {
+        # Target-level attribute always takes precedence over buckconfigs.
+        "code_signing_configuration": attrs.option(attrs.enum(CodeSignConfiguration.values()), default = None),
         "codesign_type": attrs.option(attrs.enum(CodeSignType.values()), default = None),
         "fast_adhoc_signing_enabled": attrs.option(attrs.bool(), default = None),
         "provisioning_profile_filter": attrs.option(attrs.string(), default = None),
+        "skip_adhoc_resigning_scrubbed_frameworks": attrs.option(attrs.bool(), default = None),
         "strict_provisioning_profile_search": attrs.option(attrs.bool(), default = None),
         "versioned_macos_bundle": attrs.bool(default = False),
-        "_apple_tools": attrs.exec_dep(default = "prelude//apple/tools:apple-tools", providers = [AppleToolsInfo]),
         "_apple_xctoolchain": get_apple_xctoolchain_attr(),
         "_apple_xctoolchain_bundle_id": get_apple_xctoolchain_bundle_id_attr(),
         "_bundling_cache_buster": attrs.option(attrs.string(), default = None),
@@ -108,15 +119,19 @@ def _apple_bundle_like_common_attrs():
         # FIXME: prelude// should be standalone (not refer to fbsource//)
         "_provisioning_profiles": attrs.dep(default = "fbsource//xplat/buck2/platform/apple:provisioning_profiles"),
         "_resource_bundle": attrs.option(attrs.dep(providers = [AppleBundleResourceInfo]), default = None),
+        "_skip_adhoc_resigning_scrubbed_frameworks_default": _skip_adhoc_resigning_scrubbed_frameworks_default_attr(),
+        "_skip_adhoc_resigning_scrubbed_frameworks_override": attrs.option(attrs.bool(), default = None),
         "_strict_provisioning_profile_search_default": _strict_provisioning_profile_search_default_attr(),
         APPLE_USE_ENTITLEMENTS_WHEN_ADHOC_CODE_SIGNING_CONFIG_OVERRIDE_ATTR_NAME: attrs.option(attrs.bool(), default = None),
         APPLE_USE_ENTITLEMENTS_WHEN_ADHOC_CODE_SIGNING_ATTR_NAME: attrs.bool(default = False),
         APPLE_EMBED_PROVISIONING_PROFILE_WHEN_ADHOC_CODE_SIGNING_CONFIG_OVERRIDE_ATTR_NAME: attrs.option(attrs.bool(), default = None),
         APPLE_EMBED_PROVISIONING_PROFILE_WHEN_ADHOC_CODE_SIGNING_ATTR_NAME: attrs.bool(default = False),
         APPLE_VALIDATION_DEPS_ATTR_NAME: APPLE_VALIDATION_DEPS_ATTR_TYPE,
+        XCODE_SCHEME_SETTINGS_ATTR_NAME: XCODE_SCHEME_SETTINGS_ATTR_TYPE,
     }
     attribs.update(get_apple_info_plist_build_system_identification_attrs())
     attribs.update(apple_dsymutil_attrs())
+    attribs.update(apple_common.apple_tools_arg())
     return attribs
 
 def apple_test_extra_attrs():
@@ -128,6 +143,8 @@ def apple_test_extra_attrs():
         # Expected by `apple_bundle`, for `apple_test` this field is always None.
         "binary": attrs.option(attrs.dep(), default = None),
         "enable_library_evolution": attrs.option(attrs.bool(), default = None),
+        # FIXME(T206479753): we should remove exported_deps on apple_test
+        "exported_deps": attrs.list(attrs.dep(), default = []),
         # The resulting test bundle should have .xctest extension.
         "extension": attrs.string(),
         "extra_xcode_sources": attrs.list(attrs.source(allow_directory = True), default = []),
@@ -155,7 +172,7 @@ def apple_test_extra_attrs():
         "_enable_library_evolution": get_enable_library_evolution(),
         "_ios_booted_simulator": attrs.transition_dep(cfg = clear_platform_transition, default = "fbsource//xplat/buck2/platform/apple:ios_booted_simulator", providers = [LocalResourceInfo]),
         "_ios_unbooted_simulator": attrs.transition_dep(cfg = clear_platform_transition, default = "fbsource//xplat/buck2/platform/apple:ios_unbooted_simulator", providers = [LocalResourceInfo]),
-        "_macos_idb_companion": attrs.transition_dep(cfg = clear_platform_transition, default = "fbsource//xplat/buck2/platform/apple:macos_idb_companion", providers = [LocalResourceInfo]),
+        "_swift_enable_testing": attrs.default_only(attrs.bool(default = True)),
     }
     attribs.update(_apple_bundle_like_common_attrs())
     return attribs

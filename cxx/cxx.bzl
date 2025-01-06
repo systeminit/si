@@ -17,6 +17,10 @@ load(
     "@prelude//cxx:link_groups_types.bzl",
     "LinkGroupInfo",  # @unused Used as a type
 )
+load(
+    "@prelude//cxx:runtime_dependency_handling.bzl",
+    "cxx_attr_runtime_dependency_handling",
+)
 load("@prelude//linking:execution_preference.bzl", "LinkExecutionPreference")
 load(
     "@prelude//linking:link_groups.bzl",
@@ -68,6 +72,7 @@ load("@prelude//linking:strip.bzl", "strip_debug_info")
 load("@prelude//linking:types.bzl", "Linkage")
 load("@prelude//os_lookup:defs.bzl", "OsLookup")
 load("@prelude//python:manifest.bzl", "create_manifest_for_entries")
+load("@prelude//test:inject_test_run_info.bzl", "inject_test_run_info")
 load(
     "@prelude//tests:re_utils.bzl",
     "get_re_executors_from_props",
@@ -83,7 +88,6 @@ load(
     "filter_and_map_idx",
     "value_or",
 )
-load("@prelude//test/inject_test_run_info.bzl", "inject_test_run_info")
 load(":cxx_context.bzl", "get_cxx_toolchain_info")
 load(":cxx_executable.bzl", "cxx_executable")
 load(
@@ -93,6 +97,7 @@ load(
 )
 load(
     ":cxx_library_utility.bzl",
+    "cxx_attr_dep_metadata",
     "cxx_attr_deps",
     "cxx_attr_exported_deps",
     "cxx_attr_linker_flags_all",
@@ -274,6 +279,7 @@ def cxx_binary_impl(ctx: AnalysisContext) -> list[Provider]:
         platform_preprocessor_flags = ctx.attrs.platform_preprocessor_flags,
         lang_platform_preprocessor_flags = ctx.attrs.lang_platform_preprocessor_flags,
         use_header_units = ctx.attrs.use_header_units,
+        runtime_dependency_handling = cxx_attr_runtime_dependency_handling(ctx),
     )
     output = cxx_executable(ctx, params)
 
@@ -485,8 +491,7 @@ def prebuilt_cxx_library_impl(ctx: AnalysisContext) -> list[Provider]:
                     archive = Archive(artifact = lib),
                     linker_type = linker_type,
                     link_whole = ctx.attrs.link_whole,
-                    # prebuilt archives are compiled to object code instead of IR
-                    supports_lto = False,
+                    supports_lto = ctx.attrs.supports_lto,
                 )
 
             if output_style == LibOutputStyle("archive"):
@@ -581,18 +586,21 @@ def prebuilt_cxx_library_impl(ctx: AnalysisContext) -> list[Provider]:
 
         # TODO(cjhopman): is it okay that we sometimes don't have a linkable?
         outputs[output_style] = out
+        dep_metadata = cxx_attr_dep_metadata(ctx)
         libraries[output_style] = LinkInfos(
             default = LinkInfo(
                 name = ctx.attrs.name,
                 pre_flags = linker_flags.exported_flags,
                 post_flags = linker_flags.exported_post_flags,
                 linkables = [linkable] if linkable else [],
+                metadata = dep_metadata,
             ),
             stripped = None if linkable_stripped == None else LinkInfo(
                 name = ctx.attrs.name,
                 pre_flags = linker_flags.exported_flags,
                 post_flags = linker_flags.exported_post_flags,
                 linkables = [linkable_stripped],
+                metadata = dep_metadata,
             ),
         )
 
@@ -683,6 +691,7 @@ def prebuilt_cxx_library_impl(ctx: AnalysisContext) -> list[Provider]:
                     link_whole = True,
                 )],
                 post_flags = linker_flags.exported_post_flags,
+                metadata = cxx_attr_dep_metadata(ctx),
             )),
             deps = exported_first_order_deps,
         )
@@ -765,6 +774,8 @@ def cxx_test_impl(ctx: AnalysisContext) -> list[Provider]:
         lang_preprocessor_flags = ctx.attrs.lang_preprocessor_flags,
         platform_preprocessor_flags = ctx.attrs.platform_preprocessor_flags,
         lang_platform_preprocessor_flags = ctx.attrs.lang_platform_preprocessor_flags,
+        use_header_units = ctx.attrs.use_header_units,
+        runtime_dependency_handling = cxx_attr_runtime_dependency_handling(ctx),
     )
     output = cxx_executable(ctx, params, is_cxx_test = True)
 

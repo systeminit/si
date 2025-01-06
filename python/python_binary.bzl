@@ -10,6 +10,8 @@ load(
     "ArtifactGroupInfo",
     "ArtifactOutputs",  # @unused Used as a type
 )
+load("@prelude//:paths.bzl", "paths")
+load("@prelude//:resources.bzl", "gather_resources")
 load("@prelude//cxx:cxx.bzl", "create_shared_lib_link_group_specs")
 load("@prelude//cxx:cxx_context.bzl", "get_cxx_toolchain_info")
 load("@prelude//cxx:cxx_executable.bzl", "cxx_executable")
@@ -65,6 +67,7 @@ load(
     "LinkableGraph",
     "LinkableGraphTSet",
     "create_linkable_graph",
+    _linkable_graph = "linkable_graph",
 )
 load(
     "@prelude//linking:linkables.bzl",
@@ -81,8 +84,6 @@ load(
 load("@prelude//linking:strip.bzl", "strip_debug_with_gnu_debuglink")
 load("@prelude//linking:types.bzl", "Linkage")
 load("@prelude//utils:utils.bzl", "flatten", "value_or")
-load("@prelude//paths.bzl", "paths")
-load("@prelude//resources.bzl", "gather_resources")
 load(":compile.bzl", "compile_manifests")
 load(
     ":interface.bzl",
@@ -93,12 +94,11 @@ load(
 load(":make_py_package.bzl", "PexModules", "PexProviders", "make_default_info", "make_py_package", "make_run_info")
 load(
     ":manifest.bzl",
-    "create_dep_manifest_for_source_map",
     "create_manifest_for_extensions",
     "create_manifest_for_source_map",
 )
-load(":native_python_util.bzl", "merge_cxx_extension_info")
-load(":python.bzl", "PythonLibraryInfo", "info_to_interface")
+load(":native_python_util.bzl", "merge_cxx_extension_info", "reduce_cxx_extension_info")
+load(":python.bzl", "info_to_interface")
 load(
     ":python_library.bzl",
     "create_python_library_info",
@@ -107,7 +107,7 @@ load(
     "py_resources",
     "qualify_srcs",
 )
-load(":source_db.bzl", "create_dbg_source_db", "create_python_source_db_info", "create_source_db", "create_source_db_no_deps")
+load(":source_db.bzl", "create_dbg_source_db", "create_python_source_db_info", "create_source_db_no_deps")
 load(":toolchain.bzl", "NativeLinkStrategy", "PackageStyle", "PythonPlatformInfo", "PythonToolchainInfo", "get_package_style", "get_platform_attr")
 load(":typing.bzl", "create_per_target_type_check")
 
@@ -318,7 +318,8 @@ def python_executable(
         ctx: AnalysisContext,
         main: EntryPoint,
         srcs: dict[str, Artifact],
-        resources: dict[str, ArtifactOutputs],
+        default_resources: dict[str, ArtifactOutputs],
+        standalone_resources: dict[str, ArtifactOutputs] | None,
         compile: bool,
         allow_cache_upload: bool) -> PexProviders:
     # Returns a three tuple: the Python binary, all its potential runtime files,
@@ -353,32 +354,36 @@ def python_executable(
         src_manifest = create_manifest_for_source_map(ctx, "srcs", srcs)
         bytecode_manifest = compile_manifests(ctx, [src_manifest])
 
-    dep_manifest = None
-    if python_toolchain.emit_dependency_metadata and srcs:
-        dep_manifest = create_dep_manifest_for_source_map(ctx, python_toolchain, srcs)
-
-    all_resources = {}
-    all_resources.update(resources)
+    all_default_resources = {}
+    all_standalone_resources = {}
+    cxx_extra_resources = {}
     for cxx_resources in gather_resources(ctx.label, deps = raw_deps).values():
         for name, resource in cxx_resources.items():
-            all_resources[paths.join("__cxx_resources__", name)] = resource
+            cxx_extra_resources[paths.join("__cxx_resources__", name)] = resource
+    all_default_resources.update(cxx_extra_resources)
+    all_standalone_resources.update(cxx_extra_resources)
+
+    if default_resources:
+        all_default_resources.update(default_resources)
+    if standalone_resources:
+        all_standalone_resources.update(standalone_resources)
 
     library_info = create_python_library_info(
         ctx.actions,
         ctx.label,
         srcs = src_manifest,
         src_types = src_manifest,
-        dep_manifest = dep_manifest,
-        resources = py_resources(ctx, all_resources) if all_resources else None,
+        default_resources = py_resources(ctx, all_default_resources) if all_default_resources else None,
+        standalone_resources = py_resources(ctx, all_standalone_resources, "_standalone") if all_standalone_resources else None,
         bytecode = bytecode_manifest,
         deps = python_deps,
         shared_libraries = shared_deps,
     )
 
-    source_db = create_source_db(ctx, src_manifest, python_deps)
     source_db_no_deps = create_source_db_no_deps(ctx, srcs)
 
-    dbg_source_db = create_dbg_source_db(ctx, src_manifest, python_deps)
+    dbg_source_db_output = ctx.actions.declare_output("dbg-db.json")
+    dbg_source_db = create_dbg_source_db(ctx, dbg_source_db_output, src_manifest, python_deps)
 
     exe = _convert_python_library_to_executable(
         ctx,
@@ -390,17 +395,23 @@ def python_executable(
         raw_deps,
         compile,
         allow_cache_upload,
-        dbg_source_db,
+        dbg_source_db_output,
     )
-    if python_toolchain.emit_dependency_metadata:
-        exe.sub_targets["dep-report"] = [create_dep_report(ctx, python_toolchain, main[1], library_info)]
-    if dep_manifest:
-        exe.sub_targets["dep-manifest"] = [DefaultInfo(default_output = dep_manifest.manifest, other_outputs = dep_manifest.artifacts)]
+
+    exe = PexProviders(
+        default_output = exe.default_output,
+        other_outputs = exe.other_outputs,
+        other_outputs_prefix = exe.other_outputs_prefix,
+        hidden_resources = exe.hidden_resources,
+        sub_targets = exe.sub_targets,
+        run_cmd = exe.run_cmd,
+        dbg_source_db = dbg_source_db_output,
+    )
+
     exe.sub_targets.update({
         "dbg-source-db": [dbg_source_db],
         "library-info": [library_info],
         "main": [DefaultInfo(default_output = ctx.actions.write_json("main.json", main))],
-        "source-db": [source_db],
         "source-db-no-deps": [source_db_no_deps, create_python_source_db_info(library_info.manifests)],
     })
 
@@ -417,27 +428,12 @@ def python_executable(
                     typeshed = python_toolchain.typeshed_stubs,
                     py_version = ctx.attrs.py_version_for_type_checking,
                     typing_enabled = ctx.attrs.typing,
+                    sharding_enabled = ctx.attrs.shard_typing,
                 ),
             ],
         })
 
     return exe
-
-def create_dep_report(
-        ctx: AnalysisContext,
-        python_toolchain: PythonToolchainInfo,
-        main: str,
-        library_info: PythonLibraryInfo) -> DefaultInfo:
-    out = ctx.actions.declare_output("dep-report.json")
-    cmd = cmd_args(
-        python_toolchain.traverse_dep_manifest,
-        cmd_args(main, format = "--main={}"),
-        cmd_args(out.as_output(), format = "--outfile={}"),
-        cmd_args(library_info.manifests.project_as_args("dep_manifests")),
-        hidden = library_info.manifests.project_as_args("dep_artifacts"),
-    )
-    ctx.actions.run(cmd, category = "write_dep_report")
-    return DefaultInfo(default_output = out)
 
 def _convert_python_library_to_executable(
         ctx: AnalysisContext,
@@ -446,17 +442,18 @@ def _convert_python_library_to_executable(
         deps: list[Dependency],
         compile: bool,
         allow_cache_upload: bool,
-        dbg_source_db: [DefaultInfo, None]) -> PexProviders:
+        dbg_source_db: [Artifact, None]) -> PexProviders:
     extra = {}
 
     python_toolchain = ctx.attrs._python_toolchain[PythonToolchainInfo]
     package_style = get_package_style(ctx)
 
     # Convert preloaded deps to a set of their names to be loaded by.
-    preload_labels = {d.label: None for d in ctx.attrs.preload_deps}
+    preload_labels = {_linkable_graph(d).label: None for d in ctx.attrs.preload_deps if _linkable_graph(d)}
 
     extensions = {}
     extra_artifacts = {}
+    link_args = []
     for manifest in library.iter_manifests():
         if manifest.extensions:
             _merge_extensions(extensions, manifest.label, manifest.extensions)
@@ -466,6 +463,9 @@ def _convert_python_library_to_executable(
         shared_libs = [
             ("", shared_lib)
             for shared_lib in library.shared_libraries()
+        ] + [
+            ("", shared_lib)
+            for shared_lib in library.extension_shared_libraries()
         ]
     elif _link_strategy(ctx) == NativeLinkStrategy("merged"):
         # If we're using omnibus linking, re-link libraries and extensions and
@@ -490,7 +490,13 @@ def _convert_python_library_to_executable(
         omnibus_libs = create_omnibus_libraries(
             ctx,
             omnibus_graph,
-            python_toolchain.linker_flags + ctx.attrs.linker_flags,
+            extra_ldflags = (
+                # TODO(agallagher): Should these "binary" linker flags comes
+                # from the Python toolchain instead?
+                get_cxx_toolchain_info(ctx).linker_info.binary_linker_flags +
+                python_toolchain.linker_flags +
+                ctx.attrs.linker_flags
+            ),
             prefer_stripped_objects = ctx.attrs.prefer_stripped_native_objects,
         )
 
@@ -549,13 +555,16 @@ def _convert_python_library_to_executable(
             # Add in dlopen-enabled libs from first-order deps.
             shared_deps = ctx.attrs.deps + ctx.attrs.preload_deps,
         )
+        extension_info_reduced = reduce_cxx_extension_info(extension_info)
         inherited_preprocessor_info = cxx_inherited_preprocessor_infos(executable_deps)
 
         # Generate an additional C file as input
         static_extension_info_out = ctx.actions.declare_output("static_extension_info.cpp")
         cmd = cmd_args(python_toolchain.generate_static_extension_info[RunInfo])
         cmd.add(cmd_args(static_extension_info_out.as_output(), format = "--output={}"))
-        cmd.add(cmd_args(["{}:{}".format(k, v) for k, v in extension_info.python_module_names.items()], format = "--extension={}"))
+        cmd.add(
+            extension_info.set.project_as_args("python_module_names"),
+        )
 
         # TODO we don't need to do this ...
         ctx.actions.run(cmd, category = "generate_static_extension_info")
@@ -574,15 +583,15 @@ def _convert_python_library_to_executable(
         # All deps inolved in the link.
         link_deps = (
             linkables(executable_deps + ctx.attrs.preload_deps) +
-            list(extension_info.linkable_providers.traverse())
+            extension_info_reduced.linkable_providers
         )
 
         link_group_info, auto_link_group_specs = _get_link_group_info(
             ctx,
             link_deps,
-            extension_info.dlopen_deps.values(),
-            extension_info.unembeddable_extensions,
-            extension_info.shared_only_libs.values(),
+            extension_info_reduced.dlopen_deps,
+            extension_info_reduced.unembeddable_extensions,
+            extension_info_reduced.shared_only_libs,
         )
 
         extra_binary_link_flags = []
@@ -618,13 +627,14 @@ def _convert_python_library_to_executable(
             extra_shared_libs = traverse_shared_library_info(
                 merge_shared_libraries(
                     actions = ctx.actions,
-                    deps = [d.shared_library_info for d in extension_info.shared_only_libs.values()],
+                    deps =
+                        [d.shared_library_info for d in extension_info_reduced.shared_only_libs],
                 ),
             ),
             extra_link_roots = (
-                extension_info.unembeddable_extensions.values() +
-                extension_info.dlopen_deps.values() +
-                extension_info.shared_only_libs.values() +
+                extension_info_reduced.unembeddable_extensions.values() +
+                extension_info_reduced.dlopen_deps +
+                extension_info_reduced.shared_only_libs +
                 linkables(ctx.attrs.link_group_deps)
             ),
             exe_allow_cache_upload = allow_cache_upload,
@@ -658,7 +668,7 @@ def _convert_python_library_to_executable(
                 executable_info.auto_link_groups[name],
                 link.linkable_graph.nodes.value.label,
             )
-            for name, link in extension_info.unembeddable_extensions.items()
+            for name, link in extension_info_reduced.unembeddable_extensions.items()
         }
 
         # Put native libraries into the runtime location, as we need to unpack
@@ -666,7 +676,7 @@ def _convert_python_library_to_executable(
         shared_libs = [("runtime/lib", s) for s in executable_info.shared_libs]
 
         # TODO expect(len(executable_info.runtime_files) == 0, "OH NO THERE ARE RUNTIME FILES")
-        extra_artifacts.update(dict(extension_info.artifacts))
+        extra_artifacts.update(extension_info_reduced.artifacts)
         shared_libs.append((
             "runtime/bin",
             create_shlib(
@@ -680,6 +690,7 @@ def _convert_python_library_to_executable(
             ),
         ))
 
+        link_args = executable_info.link_args
         extra_artifacts["static_extension_finder.py"] = ctx.attrs.static_extension_finder
     else:
         shared_libs = [
@@ -687,8 +698,16 @@ def _convert_python_library_to_executable(
             for shared_lib in library.shared_libraries()
         ]
 
+        if (not ctx.attrs.standalone_extensions) or ctx.attrs.link_style == "shared":
+            # darwin and windows expect self-contained dynamically linked
+            # python extensions without additional transitive shared libraries
+            shared_libs += [
+                ("", extension_shared_lib)
+                for extension_shared_lib in library.extension_shared_libraries()
+            ]
+
     if dbg_source_db:
-        extra_artifacts["dbg-db.json"] = dbg_source_db.default_outputs[0]
+        extra_artifacts["dbg-db.json"] = dbg_source_db
 
     if python_toolchain.default_sitecustomize != None:
         extra_artifacts["sitecustomize.py"] = python_toolchain.default_sitecustomize
@@ -768,8 +787,6 @@ def _convert_python_library_to_executable(
         ) if extensions else None,
     )
 
-    hidden_resources = library.hidden_resources() if library.has_hidden_resources() else None
-
     # Build the PEX.
     pex = make_py_package(
         ctx = ctx,
@@ -780,9 +797,9 @@ def _convert_python_library_to_executable(
         pex_modules = pex_modules,
         shared_libraries = shared_libs,
         main = main,
-        hidden_resources = hidden_resources,
         allow_cache_upload = allow_cache_upload,
         debuginfo_files = debuginfo_files,
+        link_args = link_args,
     )
 
     pex.sub_targets.update(extra)
@@ -824,13 +841,16 @@ def python_binary_impl(ctx: AnalysisContext) -> list[Provider]:
     if ctx.attrs.main != None:
         srcs[ctx.attrs.main.short_path] = ctx.attrs.main
     srcs = qualify_srcs(ctx.label, ctx.attrs.base_module, srcs)
-    resources = qualify_srcs(ctx.label, ctx.attrs.base_module, py_attr_resources(ctx))
+    default_resources_map, standalone_resources_map = py_attr_resources(ctx)
+    standalone_resources = qualify_srcs(ctx.label, ctx.attrs.base_module, standalone_resources_map)
+    default_resources = qualify_srcs(ctx.label, ctx.attrs.base_module, default_resources_map)
 
     pex = python_executable(
         ctx,
         main,
         srcs,
-        resources,
+        default_resources,
+        standalone_resources,
         compile = value_or(ctx.attrs.compile, False),
         allow_cache_upload = cxx_attrs_get_allow_cache_upload(ctx.attrs),
     )

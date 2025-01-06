@@ -10,7 +10,7 @@ load(
     "make_artifact_tset",
     "project_artifacts",
 )
-load("@prelude//:attrs_validators.bzl", "get_attrs_validators_outputs")
+load("@prelude//:attrs_validators.bzl", "get_attrs_validators_info")
 load("@prelude//:paths.bzl", "paths")
 load("@prelude//:validation_deps.bzl", "get_validation_deps_outputs")
 load("@prelude//apple:apple_dsym.bzl", "DSYM_SUBTARGET", "get_apple_dsym")
@@ -18,7 +18,8 @@ load("@prelude//apple:apple_error_handler.bzl", "apple_build_error_handler")
 load("@prelude//apple:apple_stripping.bzl", "apple_strip_args")
 load("@prelude//apple:apple_toolchain_types.bzl", "AppleToolchainInfo")
 # @oss-disable: load("@prelude//apple/meta_only:apple_library_meta_validation.bzl", "apple_library_validate_for_meta_restrictions") 
-# @oss-disable: load("@prelude//apple/meta_only:linker_outputs.bzl", "add_extra_linker_outputs") 
+# @oss-disable: load("@prelude//apple/meta_only:linker_outputs.bzl", "get_extra_linker_output_flags", "get_extra_linker_outputs") 
+load("@prelude//apple/mockingbird:mockingbird_types.bzl", "MockingbirdLibraryInfo", "MockingbirdLibraryInfoTSet", "MockingbirdLibraryRecord", "MockingbirdSourcesInfo", "MockingbirdTargetType")
 load(
     "@prelude//apple/swift:swift_compilation.bzl",
     "SwiftLibraryForDistributionOutput",  # @unused Used as a type
@@ -67,7 +68,7 @@ load(
     "CxxRuleProviderParams",
     "CxxRuleSubTargetParams",
 )
-load("@prelude//cxx:headers.bzl", "cxx_attr_exported_headers", "cxx_attr_headers_list")
+load("@prelude//cxx:headers.bzl", "cxx_attr_exported_headers", "cxx_attr_headers", "cxx_attr_headers_list")
 load(
     "@prelude//cxx:linker.bzl",
     "SharedLibraryFlagOverrides",
@@ -81,11 +82,11 @@ load(
 load("@prelude//cxx:target_sdk_version.bzl", "get_unversioned_target_triple")
 load(
     "@prelude//linking:link_info.bzl",
+    "ExtraLinkerOutputs",
     "LibOutputStyle",
 )
 load("@prelude//utils:arglike.bzl", "ArgLike")
 load("@prelude//utils:expect.bzl", "expect")
-load("@prelude//apple/mockingbird/mockingbird_types.bzl", "MockingbirdLibraryInfo", "MockingbirdLibraryInfoTSet", "MockingbirdLibraryRecord", "MockingbirdSourcesInfo", "MockingbirdTargetType")
 load(":apple_bundle_types.bzl", "AppleBundleLinkerMapInfo", "AppleMinDeploymentVersionInfo")
 load(":apple_frameworks.bzl", "get_framework_search_path_flags")
 load(":apple_library_types.bzl", "AppleLibraryInfo")
@@ -223,7 +224,8 @@ def _compile_index_store(ctx: AnalysisContext, src_compile_cmd: CxxSrcCompileCom
         cmd,
         category = category,
         identifier = identifier,
-        allow_cache_upload = True,
+        allow_cache_upload = False,
+        local_only = True,
     )
 
     return index_store
@@ -311,13 +313,39 @@ def apple_library_rule_constructor_params_and_swift_providers(ctx: AnalysisConte
 
     cxx_srcs, swift_srcs = _filter_swift_srcs(ctx, mockingbird_gen_sources)
 
+    header_layout = get_apple_cxx_headers_layout(ctx)
+    exported_hdrs = cxx_attr_exported_headers(ctx, header_layout)
+
+    module_name = get_module_name(ctx)
+    private_module_name = module_name + "_Private"
+
     # First create a modulemap if necessary. This is required for importing
     # ObjC code in Swift so must be done before Swift compilation.
-    exported_hdrs = cxx_attr_exported_headers(ctx, get_apple_cxx_headers_layout(ctx))
-    if (ctx.attrs.modular or swift_srcs) and exported_hdrs:
-        modulemap_pre = preprocessor_info_for_modulemap(ctx, "exported", exported_hdrs, None)
+    if ctx.attrs.modular or swift_srcs:
+        private_hdrs = cxx_attr_headers(ctx, header_layout)
+        modulemap_name = module_name
+        exported_modulemap_pre = preprocessor_info_for_modulemap(
+            ctx,
+            name = modulemap_name,
+            module_name = module_name,
+            headers = exported_hdrs,
+            swift_header = None,
+            mark_headers_private = False,
+            additional_args = None,
+        ) if exported_hdrs else None
+        private_modulemap_pre = preprocessor_info_for_modulemap(
+            ctx,
+            # If you change the .private suffix, check your E2E tests.
+            name = modulemap_name + ".private",
+            module_name = private_module_name,
+            headers = private_hdrs,
+            swift_header = None,
+            mark_headers_private = True,
+            additional_args = exported_modulemap_pre.args if exported_modulemap_pre else None,
+        ) if private_hdrs and ctx.attrs.enable_private_swift_module else None
     else:
-        modulemap_pre = None
+        exported_modulemap_pre = None
+        private_modulemap_pre = None
 
     framework_search_paths_flags = get_framework_search_path_flags(ctx)
     swift_compile, swift_interface = compile_swift(
@@ -325,8 +353,11 @@ def apple_library_rule_constructor_params_and_swift_providers(ctx: AnalysisConte
         swift_srcs,
         True,  # parse_as_library
         deps_providers,
+        module_name,
+        private_module_name,
         exported_hdrs,
-        modulemap_pre,
+        exported_modulemap_pre,
+        private_modulemap_pre,
         framework_search_paths_flags,
         params.extra_swift_compiler_flags,
     )
@@ -341,14 +372,14 @@ def apple_library_rule_constructor_params_and_swift_providers(ctx: AnalysisConte
         # We also include the -Swift.h header to this libraries preprocessor
         # info, so that we can import it unprefixed in this module.
         swift_pre = swift_compile.pre
-    elif modulemap_pre:
+    elif exported_modulemap_pre:
         # Otherwise if this library is modular we export a modulemap of
         # the ObjC exported headers.
-        exported_pre = modulemap_pre
+        exported_pre = exported_modulemap_pre
     else:
         exported_pre = None
 
-    swift_dependency_info = swift_compile.dependency_info if swift_compile else get_swift_dependency_info(ctx, None, deps_providers)
+    swift_dependency_info = swift_compile.dependency_info if swift_compile else get_swift_dependency_info(ctx, None, None, deps_providers)
     swift_debug_info = get_swift_debug_infos(
         ctx,
         swift_dependency_info,
@@ -378,8 +409,6 @@ def apple_library_rule_constructor_params_and_swift_providers(ctx: AnalysisConte
     contains_swift_sources = bool(swift_srcs)
     xctest_swift_support_provider = xctest_swift_support_info(ctx, contains_swift_sources, is_test_target)
 
-    attrs_validators_providers, attrs_validators_subtargets = get_attrs_validators_outputs(ctx)
-
     def additional_providers_factory(propagated_exported_preprocessor_info: [CPreprocessorInfo, None]) -> list[Provider]:
         # Expose `SwiftPCMUncompiledInfo` which represents the ObjC part of a target,
         # if a target also has a Swift part, the provider will expose the generated `-Swift.h` header.
@@ -392,7 +421,7 @@ def apple_library_rule_constructor_params_and_swift_providers(ctx: AnalysisConte
         providers = [swift_pcm_uncompile_info] if swift_pcm_uncompile_info else []
         providers.append(swift_dependency_info)
         providers.append(xctest_swift_support_provider)
-        providers.extend(attrs_validators_providers)
+        providers.extend(get_attrs_validators_info(ctx))
 
         return providers
 
@@ -425,6 +454,9 @@ def apple_library_rule_constructor_params_and_swift_providers(ctx: AnalysisConte
         "swift-interface": [swift_interface],
         "swiftmodule": [DefaultInfo(default_output = None)],
     }
+    if swift_compile and swift_compile.compiled_underlying_pcm_artifact:
+        subtargets["underlying-pcm"] = [DefaultInfo(default_output = swift_compile.compiled_underlying_pcm_artifact)]
+
     if swift_compile:
         subtargets["swift-compilation-database"] = [
             DefaultInfo(
@@ -432,7 +464,12 @@ def apple_library_rule_constructor_params_and_swift_providers(ctx: AnalysisConte
                 other_outputs = [swift_compile.compilation_database.other_outputs],
             ),
         ]
-        subtargets["swift-compile"] = [DefaultInfo(default_outputs = swift_compile.object_files)]
+        subtargets["swift-compile"] = [
+            DefaultInfo(
+                default_output = swift_compile.object_files[0],
+                other_outputs = swift_compile.object_files[1:],
+            ),
+        ]
 
         if swift_compile.output_map_artifact:
             subtargets["swift-output-file-map"] = [DefaultInfo(default_output = swift_compile.output_map_artifact)]
@@ -466,7 +503,7 @@ def apple_library_rule_constructor_params_and_swift_providers(ctx: AnalysisConte
             # follow.
             static_external_debug_info = swift_debug_info.static,
             shared_external_debug_info = swift_debug_info.shared,
-            subtargets = subtargets | attrs_validators_subtargets,
+            subtargets = subtargets,
             additional_providers_factory = additional_providers_factory,
             external_debug_info_tags = [],  # This might be used to materialise all transitive Swift related object files with ArtifactInfoTag("swiftmodule")
         ),
@@ -482,7 +519,8 @@ def apple_library_rule_constructor_params_and_swift_providers(ctx: AnalysisConte
         generate_providers = params.generate_providers,
         # Some apple rules rely on `static` libs *not* following dependents.
         link_groups_force_static_follows_dependents = False,
-        extra_linker_outputs_factory = _get_extra_linker_flags_and_outputs,
+        extra_linker_outputs_factory = _get_extra_linker_outputs,
+        extra_linker_outputs_flags_factory = _get_extra_linker_outputs_flags,
         swiftmodule_linkable = get_swiftmodule_linkable(swift_compile),
         extra_shared_library_interfaces = [swift_compile.exported_symbols] if (swift_compile and swift_compile.exported_symbols) else None,
         compiler_flags = ctx.attrs.compiler_flags,
@@ -496,14 +534,18 @@ def apple_library_rule_constructor_params_and_swift_providers(ctx: AnalysisConte
         swift_objc_header = swift_objc_header,
         error_handler = apple_build_error_handler,
         index_store_factory = _compile_index_store,
-        index_stores = swift_compile.index_stores if swift_compile else None,
+        index_stores = [swift_compile.index_store] if swift_compile else None,
     )
 
-def _get_extra_linker_flags_and_outputs(
-        ctx: AnalysisContext) -> (list[ArgLike], dict[str, list[DefaultInfo]]):
+def _get_extra_linker_outputs(ctx: AnalysisContext) -> ExtraLinkerOutputs:
     _ = ctx  # buildifier: disable=unused-variable
-    # @oss-disable: return add_extra_linker_outputs(ctx) 
-    return [], {} # @oss-enable
+    # @oss-disable: return get_extra_linker_outputs(ctx) 
+    return ExtraLinkerOutputs() # @oss-enable
+
+def _get_extra_linker_outputs_flags(ctx: AnalysisContext, outputs: dict[str, Artifact]) -> list[ArgLike]:
+    _ = ctx  # buildifier: disable=unused-variable
+    # @oss-disable: return get_extra_linker_output_flags(ctx, outputs) 
+    return [] # @oss-enable
 
 def _filter_swift_srcs(ctx: AnalysisContext, additional_srcs: list = []) -> (list[CxxSrcWithFlags], list[CxxSrcWithFlags]):
     cxx_srcs = []

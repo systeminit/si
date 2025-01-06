@@ -8,6 +8,10 @@
 load("@prelude//:paths.bzl", "paths")
 load("@prelude//cxx:cxx_toolchain_types.bzl", "CxxToolchainInfo")
 load("@prelude//cxx:cxx_utility.bzl", "cxx_attrs_get_allow_cache_upload")
+load(
+    "@prelude//ide_integrations/xcode:argsfiles.bzl",
+    "XCODE_ARG_SUBSTITUTIONS",
+)
 load("@prelude//linking:lto.bzl", "LtoMode")
 load(
     "@prelude//utils:utils.bzl",
@@ -56,6 +60,7 @@ AsmExtensions = enum(
 CxxExtension = enum(
     ".cpp",
     ".cc",
+    ".cl",
     ".cxx",
     ".c++",
     ".c",
@@ -192,14 +197,6 @@ CxxCompileFlavor = enum(
     # using optimization flags from toolchain
     "pic_optimized",
 )
-
-_XCODE_ARG_SUBSTITUTION = [
-    (regex("-filter-error=.+"), "-fcolor-diagnostics"),
-    (regex("-filter-ignore=.+"), "-fcolor-diagnostics"),
-    (regex("-filter-warning=.+"), "-fcolor-diagnostics"),
-    # @oss-disable: (regex("-fobjc-export-direct-methods"), "-fcolor-diagnostics"), 
-    # @oss-disable: (regex("-fpika-runtime-checks"), "-fcolor-diagnostics"), 
-]
 
 def get_source_extension_for_header(header_extension: str, default: CxxExtension) -> CxxExtension:
     """
@@ -418,11 +415,13 @@ def _compile_index_store(ctx: AnalysisContext, src_compile_cmd: CxxSrcCompileCom
         return src_compile_cmd.index_store_factory(ctx, src_compile_cmd, toolchain, compile_cmd, pic)
     return None
 
+COMMON_PREPROCESSOR_OUTPUT_ARGS = cmd_args("-E", "-dD")
+
 def _compile_single_cxx(
         ctx: AnalysisContext,
         toolchain: CxxToolchainInfo,
         default_object_format: CxxObjectFormat,
-        bitcode_args: cmd_args,
+        bitcode_args: list,
         optimization_flags: list,
         src_compile_cmd: CxxSrcCompileCommand,
         pic: bool,
@@ -445,8 +444,9 @@ def _compile_single_cxx(
         identifier += " (optimized) "
 
     filename_base = filename_base + (".optimized" if optimization_flags else "")
+    folder_name = "__objects__"
     object = ctx.actions.declare_output(
-        "__objects__",
+        folder_name,
         "{}.{}".format(filename_base, toolchain.linker_info.object_file_extension),
     )
 
@@ -456,9 +456,9 @@ def _compile_single_cxx(
         src_compile_cmd = src_compile_cmd,
         pic = pic,
         use_header_units = use_header_units,
-        output_args = cmd_args(get_output_flags(compiler_type, object)),
+        output_args = get_output_flags(compiler_type, object),
     )
-    cmd.add(cmd_args(optimization_flags))
+    cmd.add(optimization_flags)
 
     action_dep_files = {}
 
@@ -513,6 +513,14 @@ def _compile_single_cxx(
     if src_compile_cmd.error_handler:
         error_handler_args["error_handler"] = src_compile_cmd.error_handler
 
+    external_debug_info = None
+    if getattr(ctx.attrs, "separate_debug_info", False) and toolchain.split_debug_mode == SplitDebugMode("split") and compiler_type == "clang":
+        external_debug_info = ctx.actions.declare_output(
+            folder_name,
+            "{}.{}".format(filename_base, "dwo"),
+        )
+        cmd.add(cmd_args(external_debug_info.as_output(), format = "--fbcc-create-external-debug-info={}"))
+
     ctx.actions.run(
         cmd,
         category = src_compile_cmd.cxx_compile_cmd.category,
@@ -563,7 +571,7 @@ def _compile_single_cxx(
             bitcode_args = bitcode_args,
             src_compile_cmd = src_compile_cmd,
             pic = pic,
-            output_args = cmd_args("-S", get_output_flags(compiler_type, assembly)),
+            output_args = ["-S"] + get_output_flags(compiler_type, assembly),
         )
         ctx.actions.run(
             assembly_cmd,
@@ -585,7 +593,7 @@ def _compile_single_cxx(
             bitcode_args = bitcode_args,
             src_compile_cmd = src_compile_cmd,
             pic = pic,
-            output_args = cmd_args("-fsyntax-only"),
+            output_args = ["-fsyntax-only"],
         )
         ctx.actions.run(
             [
@@ -607,7 +615,7 @@ def _compile_single_cxx(
         "__preprocessed__",
         "{}.{}".format(filename_base, "i"),
     )
-    preproc_cmd = _get_base_compile_cmd(bitcode_args, src_compile_cmd, pic, cmd_args("-E", "-dD", get_output_flags(compiler_type, preproc)))
+    preproc_cmd = _get_base_compile_cmd(bitcode_args, src_compile_cmd, pic, [COMMON_PREPROCESSOR_OUTPUT_ARGS, get_output_flags(compiler_type, preproc)])
     ctx.actions.run(
         preproc_cmd,
         category = src_compile_cmd.cxx_compile_cmd.category,
@@ -621,6 +629,7 @@ def _compile_single_cxx(
         object = object,
         object_format = object_format,
         object_has_external_debug_info = object_has_external_debug_info,
+        external_debug_info = external_debug_info,
         clang_remarks = clang_remarks,
         clang_trace = clang_trace,
         gcno_file = gcno_file,
@@ -631,10 +640,10 @@ def _compile_single_cxx(
     )
 
 def _get_base_compile_cmd(
-        bitcode_args: cmd_args,
+        bitcode_args: cmd_args | list,
         src_compile_cmd: CxxSrcCompileCommand,
         pic: bool,
-        output_args: cmd_args | None = None,
+        output_args: list | None = None,
         use_header_units: bool = False) -> cmd_args:
     """
     Construct a shared compile command for a single CXX source based on
@@ -646,18 +655,15 @@ def _get_base_compile_cmd(
 
     compiler_type = src_compile_cmd.cxx_compile_cmd.compiler_type
 
-    args = cmd_args()
-
     if pic:
-        args.add(get_pic_flags(compiler_type))
+        cmd.add(get_pic_flags(compiler_type))
 
     if use_header_units and src_compile_cmd.cxx_compile_cmd.private_header_units_argsfile:
-        args.add(src_compile_cmd.cxx_compile_cmd.private_header_units_argsfile.cmd_form)
+        cmd.add(src_compile_cmd.cxx_compile_cmd.private_header_units_argsfile.cmd_form)
 
-    args.add(src_compile_cmd.cxx_compile_cmd.argsfile.cmd_form)
-    args.add(src_compile_cmd.args)
+    cmd.add(src_compile_cmd.cxx_compile_cmd.argsfile.cmd_form)
+    cmd.add(src_compile_cmd.args)
 
-    cmd.add(args)
     cmd.add(bitcode_args)
 
     return cmd
@@ -679,26 +685,27 @@ def compile_cxx(
     # enabled) or the third hybrid state where the bitcode is embedded into a section of the
     # native code, allowing the file to be used as either (but at twice the size)
     default_object_format = toolchain.object_format or CxxObjectFormat("native")
-    bitcode_args = cmd_args()
+    bitcode_args = []
     if linker_info.lto_mode == LtoMode("none"):
         if toolchain.object_format == CxxObjectFormat("bitcode"):
-            bitcode_args.add("-emit-llvm")
+            bitcode_args.append("-emit-llvm")
             default_object_format = CxxObjectFormat("bitcode")
         elif toolchain.object_format == CxxObjectFormat("embedded-bitcode"):
-            bitcode_args.add("-fembed-bitcode")
+            bitcode_args.append("-fembed-bitcode")
             default_object_format = CxxObjectFormat("embedded-bitcode")
     else:
         # LTO always produces bitcode object in any mode (thin, full, etc)
         default_object_format = CxxObjectFormat("bitcode")
 
     objects = []
+    optimization_flags = toolchain.optimization_compiler_flags_EXPERIMENTAL if flavor == CxxCompileFlavor("pic_optimized") else []
     for src_compile_cmd in src_compile_cmds:
         cxx_compile_output = _compile_single_cxx(
             ctx = ctx,
             toolchain = toolchain,
             default_object_format = default_object_format,
             bitcode_args = bitcode_args,
-            optimization_flags = toolchain.optimization_compiler_flags_EXPERIMENTAL if flavor == CxxCompileFlavor("pic_optimized") else [],
+            optimization_flags = optimization_flags,
             src_compile_cmd = src_compile_cmd,
             pic = flavor != CxxCompileFlavor("default"),
             provide_syntax_only = provide_syntax_only,
@@ -728,13 +735,13 @@ def _get_import_filename(ctx: AnalysisContext, group_name: str) -> str:
 def _is_standalone_header(header: CHeader) -> bool:
     if header.artifact.extension not in HeaderExtension.values():
         return False
-    if header.name.endswith("-inl.h"):
+    if header.name.endswith("-inl.h") or header.name.endswith("-inl.hpp"):
         return False
     if header.name.endswith(".tcc"):
         return False
-    if header.name.endswith("-pre.h"):
+    if header.name.endswith("-pre.h") or header.name.endswith("-pre.hpp"):
         return False
-    if header.name.endswith("-post.h"):
+    if header.name.endswith("-post.h") or header.name.endswith("-post.hpp"):
         return False
     return True
 
@@ -996,7 +1003,7 @@ def _validate_target_headers(ctx: AnalysisContext, preprocessor: list[CPreproces
 
 def _get_compiler_info(toolchain: CxxToolchainInfo, ext: CxxExtension) -> typing.Any:
     compiler_info = None
-    if ext.value in (".cpp", ".cc", ".mm", ".cxx", ".c++", ".h", ".hpp", ".hh", ".h++", ".hxx", ".bc"):
+    if ext.value in (".cpp", ".cc", ".cl", ".mm", ".cxx", ".c++", ".h", ".hpp", ".hh", ".h++", ".hxx", ".bc"):
         compiler_info = toolchain.cxx_compiler_info
     elif ext.value in (".c", ".m"):
         compiler_info = toolchain.c_compiler_info
@@ -1018,7 +1025,7 @@ def _get_compiler_info(toolchain: CxxToolchainInfo, ext: CxxExtension) -> typing
     return compiler_info
 
 def _get_category(ext: CxxExtension) -> str:
-    if ext.value in (".cpp", ".cc", ".cxx", ".c++", ".h", ".hpp", ".hh", ".h++", ".hxx"):
+    if ext.value in (".cpp", ".cc", ".cl", ".cxx", ".c++", ".h", ".hpp", ".hh", ".h++", ".hxx"):
         return "cxx_compile"
     if ext.value == ".c":
         return "c_compile"
@@ -1063,7 +1070,7 @@ def _dep_file_type(ext: CxxExtension) -> [DepFileType, None]:
         return None
 
     # Return the file type as well
-    if ext.value in (".cpp", ".cc", ".mm", ".cxx", ".c++", ".h", ".hpp", ".hh", ".h++", ".hxx"):
+    if ext.value in (".cpp", ".cc", ".cl", ".mm", ".cxx", ".c++", ".h", ".hpp", ".hh", ".h++", ".hxx"):
         return DepFileType("cpp")
     elif ext.value in (".c", ".m"):
         return DepFileType("c")
@@ -1095,7 +1102,7 @@ def _mk_argsfile(
         is_xcode_argsfile: bool) -> Artifact:
     if is_xcode_argsfile:
         replace_regex = []
-        for re, sub in _XCODE_ARG_SUBSTITUTION:
+        for re, sub in XCODE_ARG_SUBSTITUTIONS:
             replace_regex.append((re, sub))
         file_args = cmd_args(args_list, replace_regex = replace_regex)
     else:
@@ -1166,7 +1173,7 @@ def _mk_argsfiles(
 
     if is_xcode_argsfile:
         replace_regex = []
-        for re, sub in _XCODE_ARG_SUBSTITUTION:
+        for re, sub in XCODE_ARG_SUBSTITUTIONS:
             replace_regex.append((re, sub))
         args = cmd_args(args_list, replace_regex = replace_regex)
         file_args = cmd_args(argsfiles, format = "@{}")
