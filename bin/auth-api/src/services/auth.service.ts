@@ -81,20 +81,7 @@ export function createSdfAuthToken(
   payload: Omit<SdfAuthTokenPayloadV2, "version">,
   options?: Omit<SignOptions, 'algorithm' | 'subject'>,
 ) {
-  function createPayload(): SdfAuthTokenPayload {
-    switch (payload.role) {
-      case "web":
-        // For web tokens, generate the old version until prod is able to handle new ones.
-        return { user_pk: payload.userId, workspace_pk: payload.workspaceId };
-      case "automation":
-        // Expire automation tokens quickly right now
-        return { version: "2", ...payload };
-      default:
-        return payload.role satisfies never;
-    }
-  }
-
-  return createJWT(createPayload(), { subject: payload.userId, ...(options ?? {}) });
+  return createJWT({ version: "2", ...payload }, { subject: payload.userId, ...(options ?? {}) });
 }
 
 export async function decodeSdfAuthToken(token: string) {
