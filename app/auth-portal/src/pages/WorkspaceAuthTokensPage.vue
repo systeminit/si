@@ -6,8 +6,8 @@
     <template #success>
       <div class="overflow-hidden">
         <WorkspacePageHeader
-          :title="`${workspace.displayName} > API Tokens`"
-          subtitle="From here you can manage API tokens for your workspace. Enter the name and expiration of the API token below and click the Generate API Token button"
+          :title="`${workspace.displayName} > Automation Tokens`"
+          subtitle="From here you can manage automation tokens for your workspace. Enter the name and expiration of the token below and click the Generate Automation Token button"
         >
           <RouterLink
             :to="{ name: 'workspace-settings', params: { workspaceId } }"

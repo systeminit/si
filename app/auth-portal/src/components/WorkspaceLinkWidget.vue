@@ -1,6 +1,7 @@
 <template>
   <div
     v-if="workspace"
+    v-tooltip="{ content: workspace.instanceUrl, placement: 'bottom' }"
     :class="
       clsx(
         'flex flex-col rounded border cursor-pointer',
@@ -21,32 +22,39 @@
         )
       "
     >
-      <Icon name="cloud" class="flex-none" size="sm" />
+      <Icon class="flex-none" name="cloud" size="sm" />
       <TruncateWithTooltip class="text-md flex-grow py-2xs">
         <a :href="`${API_HTTP_URL}/workspaces/${workspace.id}/go`">
           {{ workspace.displayName }}
         </a>
       </TruncateWithTooltip>
       <IconButton
-        :tooltip="workspace.isFavourite ? 'Remove Favourite' : 'Set Favourite'"
-        tooltipPlacement="top"
         :icon="workspace.isFavourite ? 'star' : 'starOutline'"
-        size="sm"
-        class="flex-none"
-        iconTone="warning"
         :iconIdleTone="workspace.isFavourite ? 'warning' : 'shade'"
+        :tooltip="workspace.isFavourite ? 'Remove Favourite' : 'Set Favourite'"
+        class="flex-none"
         iconBgActiveTone="action"
+        iconTone="warning"
+        size="sm"
+        tooltipPlacement="top"
         @click.stop="starWorkspace"
       />
       <IconButton
+        class="flex-none"
+        icon="settings"
+        iconIdleTone="shade"
+        size="sm"
         tooltip="Settings"
         tooltipPlacement="top"
-        icon="settings"
-        size="sm"
-        iconIdleTone="shade"
-        class="flex-none"
-        @click.stop="openSettings"
+        @click.stop="dropdownMenuRef?.open($event) || _.noop"
       />
+      <DropdownMenu ref="dropdownMenuRef" forceAlignRight>
+        <DropdownMenuItem label="Settings" @click.stop="openSettings" />
+        <DropdownMenuItem
+          label="Automation Tokens"
+          @click.stop="openAutomationTokens"
+        />
+      </DropdownMenu>
     </div>
     <div class="flex flex-col p-xs text-xs gap-xs min-h-[80px]">
       <div class="flex flex-col justify-between text-md gap-xs">
@@ -99,9 +107,11 @@
   </div>
 </template>
 
-<script setup lang="ts">
-import { computed, PropType } from "vue";
+<script lang="ts" setup>
+import { computed, PropType, ref } from "vue";
 import {
+  DropdownMenu,
+  DropdownMenuItem,
   Icon,
   IconButton,
   themeClasses,
@@ -109,6 +119,7 @@ import {
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { useRouter } from "vue-router";
+import * as _ from "lodash-es";
 import { useWorkspacesStore, WorkspaceId } from "@/store/workspaces.store";
 
 import { API_HTTP_URL } from "@/store/api";
@@ -152,9 +163,18 @@ const starWorkspace = async () => {
   workspace.value.isFavourite = !workspace.value.isFavourite;
 };
 
+const dropdownMenuRef = ref<InstanceType<typeof DropdownMenu>>();
+
 const openSettings = async () => {
   await router.push({
     name: "workspace-settings",
+    params: { workspaceId: props.workspaceId },
+  });
+};
+
+const openAutomationTokens = async () => {
+  await router.push({
+    name: "workspace-auth-tokens",
     params: { workspaceId: props.workspaceId },
   });
 };
