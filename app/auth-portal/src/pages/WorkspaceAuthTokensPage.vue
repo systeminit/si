@@ -13,96 +13,65 @@
             :to="{ name: 'workspace-settings', params: { workspaceId } }"
           >
             <Icon
+              class="flex-none"
+              iconBgActiveTone="action"
+              iconIdleTone="shade"
+              iconTone="warning"
               name="settings"
+              size="lg"
               tooltip="Settings"
               tooltipPlacement="top"
-              size="lg"
-              class="flex-none"
-              iconTone="warning"
-              iconIdleTone="shade"
-              iconBgActiveTone="action"
             />
           </RouterLink>
         </WorkspacePageHeader>
 
         <Stack>
           <ErrorMessage :asyncState="createAuthToken" />
-          <div class="flex flex-row flex-wrap items-end gap-xs">
+          <div
+            v-if="workspace.role === 'OWNER'"
+            class="flex flex-row flex-wrap items-end gap-md"
+          >
             <VormInput
               v-model="createAuthTokenName"
-              :disabled="workspace.role !== 'OWNER'"
-              required
-              label="Token Name"
-              defaultValue="My API Token"
+              inlineLabel
+              label="Token Name*"
+              @keydown.enter.prevent="createAuthToken.execute()"
             />
             <VButton
-              :disabled="workspace.role !== 'OWNER'"
+              :disabled="!(createAuthTokenName?.length > 0)"
               :loading="createAuthToken.isLoading.value"
               loadingText="Creating ..."
-              iconRight="chevron--down"
               tone="action"
               variant="solid"
               @click="createAuthToken.execute()"
             >
-              Create Automation Token
+              Generate Automation Token
             </VButton>
           </div>
-          <Stack
-            v-if="createAuthToken.state.value"
-            class="border-2 outline-2 rounded p-8"
-          >
-            <div>Token successfully created!</div>
-            <div class="text-lg font-bold">
-              This is the last time you will ever see this token value.
-            </div>
-            <VormInput
-              :modelValue="createAuthToken.state.value"
-              type="textarea"
-              label="Your API Token"
-              disabled
-            />
-            <div>
-              Click the button below to copy it before navigating away or doing
-              anything else!
-            </div>
-            <VButton
-              icon="clipboard-copy"
-              tone="action"
-              label="Copy API Token To Clipboard"
-              class="mt-xs"
-              clickSuccess
-              successText="Copied to clipboard!"
-              @click="copyToken"
-            />
-          </Stack>
           <ErrorMessage :asyncState="authTokens" />
           <div v-if="authTokens.state.value" class="relative">
             <Stack>
-              <table
-                class="w-full divide-y divide-neutral-400 dark:divide-neutral-600 border-b border-neutral-400 dark:border-neutral-600"
-              >
+              <table class="w-full">
                 <thead>
                   <tr
-                    class="children:pb-xs children:px-md children:font-bold text-left text-xs uppercase"
+                    class="children:py-xs children:px-sm children:font-bold text-left text-xs uppercase bg-black"
                   >
                     <th scope="col">Name</th>
                     <th scope="col">Created</th>
                     <th scope="col">Expires</th>
-                    <th scope="col">Revoke</th>
+                    <th class="text-center" scope="col">Revoke</th>
                   </tr>
                 </thead>
                 <tbody
                   class="divide-y divide-neutral-300 dark:divide-neutral-700"
                 >
                   <AuthTokenListItem
-                    v-for="authToken of Object.values(
-                      authTokens.state.value,
-                    ).reverse()"
+                    v-for="authToken of listedTokens"
                     :key="authToken.id"
                     :authToken="authToken"
                     :workspace="workspace"
-                    @revoked="delete authTokens.state.value[authToken.id]"
                     @renamed="(newName) => (authToken.name = newName)"
+                    @revoked="delete authTokens.state.value[authToken.id]"
                   />
                 </tbody>
               </table>
@@ -110,6 +79,45 @@
           </div>
         </Stack>
       </div>
+      <Modal ref="tokenDisplayModalRef" size="lg" title="Token Generated">
+        <ErrorMessage
+          v-if="tokenCopied"
+          class="rounded-md text-md px-xs py-xs"
+          icon="check-circle"
+          tone="success"
+          variant="block"
+        >
+          <b>Token copied!</b>
+          We are only showing you the value of this token once. Store it
+          somewhere secure, please.
+        </ErrorMessage>
+        <ErrorMessage
+          v-else
+          class="rounded-md text-md px-xs py-xs"
+          icon="alert-circle"
+          tone="info"
+          variant="block"
+        >
+          We are only showing you the value of this token once. Store it
+          somewhere secure, please.
+        </ErrorMessage>
+        <div class="flex mt-sm gap-xs">
+          <VormInput
+            :modelValue="createAuthToken.state.value"
+            class="flex-grow text-sm"
+            disabled
+            noLabel
+            type="text"
+          />
+          <IconButton
+            class="flex-shrink-0"
+            icon="clipboard-copy"
+            tooltip="Copy token to clipboard"
+            tooltipPlacement="right"
+            @click="copyToken"
+          />
+        </div>
+      </Modal>
     </template>
   </LoadStatus>
 </template>
@@ -124,13 +132,18 @@ import {
   VButton,
   LoadStatus,
   ErrorMessage,
+  Modal,
+  IconButton,
 } from "@si/vue-lib/design-system";
 import { useAsyncState } from "@vueuse/core";
 import { apiData } from "@si/vue-lib/pinia";
+import { useHead } from "@vueuse/head";
 import { useWorkspacesStore, WorkspaceId } from "@/store/workspaces.store";
 import WorkspacePageHeader from "@/components/WorkspacePageHeader.vue";
 import { useAuthTokensApi } from "@/store/authTokens.store";
 import AuthTokenListItem from "@/components/AuthTokenListItem.vue";
+
+useHead({ title: "Automation Tokens" });
 
 const workspacesStore = useWorkspacesStore();
 const api = useAuthTokensApi();
@@ -157,15 +170,26 @@ const authTokens = useAsyncState(
   { shallow: false },
 );
 
+const listedTokens = computed(() =>
+  _.reverse(_.sortBy(_.values(authTokens.state.value), "createdAt")),
+);
+
 /** Action to create auth token. Sets .state when done. */
 const createAuthToken = useAsyncState(
   async () => {
+    if (_.isEmpty(createAuthTokenName.value)) return;
+
     const { authToken, token } = await apiData(
       api.CREATE_AUTH_TOKEN(props.workspaceId, createAuthTokenName.value),
     );
     if (authTokens.state.value) {
       authTokens.state.value[authToken.id] = authToken;
     }
+
+    tokenCopied.value = false;
+    createAuthTokenName.value = "";
+    tokenDisplayModalRef.value?.open();
+
     return token;
   },
   undefined,
@@ -175,8 +199,14 @@ const createAuthToken = useAsyncState(
 /** Name of token to create */
 const createAuthTokenName = ref("");
 
+/** Token modal */
+const tokenDisplayModalRef = ref<InstanceType<typeof Modal> | null>(null);
+
+const tokenCopied = ref(false);
 async function copyToken() {
-  if (createAuthToken.state.value)
-    await navigator.clipboard.writeText(createAuthToken.state.value);
+  if (createAuthToken.state.value) {
+    await navigator.clipboard?.writeText(createAuthToken.state.value);
+  }
+  tokenCopied.value = true;
 }
 </script>

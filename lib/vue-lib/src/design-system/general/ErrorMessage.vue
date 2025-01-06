@@ -10,6 +10,7 @@
           tone === 'destructive' &&
             'border-destructive-500 text-destructive-400',
           tone === 'warning' && 'border-warning-500 text-warning-400',
+          tone === 'info' && 'border-action-900 text-action-200',
         ],
         variant === 'block' && [
           'p-2xs text-xs',
@@ -20,7 +21,8 @@
             ),
           tone === 'destructive' &&
             'bg-destructive-300 text-destructive-900 dark:bg-destructive-900 dark:text-destructive-200',
-          tone === 'success' && 'bg-success-200 text-success-900',
+          tone === 'success' && 'text-success-200 bg-success-900',
+          tone === 'info' && 'bg-action-900 text-action-200',
         ],
       )
     "
