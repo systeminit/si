@@ -7,6 +7,7 @@ use thiserror::Error;
 
 use veritech_client::{ManagementFuncStatus, ManagementResultSuccess};
 
+use crate::component::delete::{delete_components, ComponentDeletionStatus};
 use crate::component::frame::{Frame, FrameError};
 use crate::dependency_graph::DependencyGraph;
 use crate::diagram::geometry::Geometry;
@@ -250,6 +251,11 @@ pub struct ManagementViewOperations {
 pub struct ManagementOperations {
     create: Option<ManagementCreateOperations>,
     update: Option<ManagementUpdateOperations>,
+    // marks as to delete, enqueues a delete action
+    delete: Option<Vec<String>>,
+    // delete the component even if it has a resource, do not automatically
+    // enqueue an action
+    erase: Option<Vec<String>>,
     actions: Option<ManagementActionOperations>,
     views: Option<ManagementViewOperations>,
 }
@@ -413,6 +419,7 @@ pub struct ManagementOperator<'a> {
     last_component_geometry: HashMap<ViewId, ManagementGeometry>,
     operations: ManagementOperations,
     schema_map: HashMap<String, SchemaId>,
+    managed_component_id_placeholders: HashMap<String, ComponentId>,
     component_id_placeholders: HashMap<String, ComponentId>,
     component_schema_map: ComponentSchemaMap,
     socket_map: VariantSocketMap,
@@ -462,7 +469,7 @@ impl<'a> ManagementOperator<'a> {
         management_execution: ManagementPrototypeExecution,
         view_id: Option<ViewId>,
     ) -> ManagementResult<Self> {
-        let mut component_id_placeholders = management_execution.placeholders;
+        let mut component_id_placeholders = HashMap::new();
         component_id_placeholders.insert(SELF_ID.to_string(), manager_component_id);
 
         let mut component_schema_map = ComponentSchemaMap::new();
@@ -478,7 +485,8 @@ impl<'a> ManagementOperator<'a> {
             None => View::get_id_for_default(ctx).await?,
         };
 
-        let mut manager_component_geometry_in_view = HashMap::new();
+        let mut manager_component_geometry_in_view: HashMap<ViewId, ManagementGeometry> =
+            HashMap::new();
 
         let mut views = HashMap::new();
         for view in View::list(ctx).await? {
@@ -500,6 +508,7 @@ impl<'a> ManagementOperator<'a> {
             manager_component_geometry: manager_component_geometry_in_view,
             operations,
             schema_map: management_execution.managed_schema_map,
+            managed_component_id_placeholders: management_execution.managed_component_placeholders,
             component_id_placeholders,
             component_schema_map,
             socket_map: VariantSocketMap::new(),
@@ -695,13 +704,7 @@ impl<'a> ManagementOperator<'a> {
             .add_sockets_for_variant(self.ctx, from_variant_id)
             .await?;
 
-        let destination_component_id = self
-            .component_id_placeholders
-            .get(&connection.to.component)
-            .copied()
-            .ok_or(ManagementError::ComponentWithPlaceholderNotFound(
-                connection.to.component.clone(),
-            ))?;
+        let destination_component_id = self.get_real_component_id(&connection.to.component)?;
 
         let to_variant_id = self
             .component_schema_map
@@ -830,14 +833,7 @@ impl<'a> ManagementOperator<'a> {
         child_id: ComponentId,
         parent_placeholder: &String,
     ) -> ManagementResult<(ComponentId, Option<Vec<SummaryDiagramInferredEdge>>)> {
-        let new_parent_id = self
-            .component_id_placeholders
-            .get(parent_placeholder)
-            .copied()
-            .ok_or(ManagementError::ComponentWithPlaceholderNotFound(
-                parent_placeholder.to_owned(),
-            ))?;
-
+        let new_parent_id = self.get_real_component_id(parent_placeholder)?;
         let inferred_edges = Frame::upsert_parent(self.ctx, child_id, new_parent_id).await?;
 
         Ok((new_parent_id, inferred_edges))
@@ -942,9 +938,15 @@ impl<'a> ManagementOperator<'a> {
         Ok(pending_operations)
     }
 
-    async fn get_real_component_id(&self, placeholder: &String) -> ManagementResult<ComponentId> {
+    fn get_real_component_id(&self, placeholder: &String) -> ManagementResult<ComponentId> {
+        // Created component placeholders take priority over managed component
+        // placeholders (if you create a component with the same name as a
+        // managed component, references in updates, connections and actions
+        // will be to the created component, not the pre-existing managed
+        // component)
         self.component_id_placeholders
             .get(placeholder)
+            .or_else(|| self.managed_component_id_placeholders.get(placeholder))
             .copied()
             .ok_or(ManagementError::ComponentWithPlaceholderNotFound(
                 placeholder.to_owned(),
@@ -960,7 +962,7 @@ impl<'a> ManagementOperator<'a> {
         };
 
         for (placeholder, operation) in updates {
-            let component_id = self.get_real_component_id(placeholder).await?;
+            let component_id = self.get_real_component_id(placeholder)?;
             let mut component = Component::get_by_id(self.ctx, component_id).await?;
             let mut view_ids = HashSet::new();
 
@@ -1094,7 +1096,7 @@ impl<'a> ManagementOperator<'a> {
     async fn actions(&self) -> ManagementResult<()> {
         if let Some(actions) = &self.operations.actions {
             for (placeholder, operations) in actions {
-                let component_id = self.get_real_component_id(placeholder).await?;
+                let component_id = self.get_real_component_id(placeholder)?;
 
                 operate_actions(self.ctx, component_id, operations).await?;
             }
@@ -1251,7 +1253,41 @@ impl<'a> ManagementOperator<'a> {
         Ok(())
     }
 
+    async fn deletes(&mut self, force_erase: bool) -> ManagementResult<()> {
+        let Some(deletes) = (if force_erase {
+            self.operations.erase.take()
+        } else {
+            self.operations.delete.take()
+        }) else {
+            return Ok(());
+        };
+
+        let mut component_ids_to_delete = vec![];
+        for placeholder in &deletes {
+            component_ids_to_delete.push(self.get_real_component_id(placeholder)?);
+        }
+
+        let deletion_statuses =
+            delete_components(self.ctx, &component_ids_to_delete, force_erase).await?;
+
+        for placeholder in &deletes {
+            let component_id = self.get_real_component_id(placeholder)?;
+            if let Some(
+                ComponentDeletionStatus::Deleted | ComponentDeletionStatus::StillExistsOnHead,
+            ) = deletion_statuses.get(&component_id)
+            {
+                self.managed_component_id_placeholders.remove(placeholder);
+                self.managed_component_id_placeholders
+                    .remove(&component_id.to_string());
+            }
+        }
+
+        Ok(())
+    }
+
     pub async fn operate(&mut self) -> ManagementResult<Option<Vec<ComponentId>>> {
+        self.deletes(true).await?;
+        self.deletes(false).await?;
         self.create_views().await?;
         let mut pending_operations = self.creates().await?;
         let mut component_graph = DependencyGraph::new();

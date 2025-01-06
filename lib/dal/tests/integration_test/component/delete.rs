@@ -2,6 +2,7 @@ use std::time::Duration;
 
 use dal::action::prototype::{ActionKind, ActionPrototype};
 use dal::action::Action;
+use dal::component::delete::{delete_components, ComponentDeletionStatus};
 use dal::component::frame::Frame;
 use dal::component::resource::ResourceData;
 use dal::func::intrinsics::IntrinsicFunc;
@@ -969,4 +970,146 @@ async fn delete_with_frames_and_resources(ctx: &mut DalContext) {
         .expect("could not list components");
     // make sure there are no more components left!
     assert_eq!(components.len(), 0);
+}
+
+#[test]
+async fn delete_multiple_components(ctx: &mut DalContext) {
+    ChangeSetTestHelpers::fork_from_head_change_set(ctx)
+        .await
+        .expect("could not fork head");
+
+    let component_still_on_head = create_component_for_default_schema_name_in_default_view(
+        ctx,
+        "small odd lego",
+        "component still on head",
+    )
+    .await
+    .expect("could not create component");
+
+    ChangeSetTestHelpers::apply_change_set_to_base(ctx)
+        .await
+        .expect("could not apply change set");
+
+    ChangeSetTestHelpers::fork_from_head_change_set(ctx)
+        .await
+        .expect("could not fork head");
+
+    let component_with_resource_to_delete =
+        create_component_for_default_schema_name_in_default_view(
+            ctx,
+            "small odd lego",
+            "component with resource to delete",
+        )
+        .await
+        .expect("could not create component");
+
+    let component_with_resource_to_erase =
+        create_component_for_default_schema_name_in_default_view(
+            ctx,
+            "small odd lego",
+            "component with resource to erase",
+        )
+        .await
+        .expect("could not create component");
+
+    let resource_data = ResourceData::new(
+        ResourceStatus::Ok,
+        Some(serde_json::json![{"resource": "something"}]),
+    );
+
+    component_with_resource_to_delete
+        .set_resource(ctx, resource_data.clone())
+        .await
+        .expect("failed to set resource");
+    component_with_resource_to_erase
+        .set_resource(ctx, resource_data.clone())
+        .await
+        .expect("failed to set resource");
+
+    let component_to_delete = create_component_for_default_schema_name_in_default_view(
+        ctx,
+        "small odd lego",
+        "component to delete",
+    )
+    .await
+    .expect("could not create component");
+
+    let expected_deletion_statuses = &[
+        (component_to_delete.id(), ComponentDeletionStatus::Deleted),
+        (
+            component_with_resource_to_delete.id(),
+            ComponentDeletionStatus::MarkedForDeletion,
+        ),
+        (
+            component_still_on_head.id(),
+            ComponentDeletionStatus::StillExistsOnHead,
+        ),
+        (
+            component_with_resource_to_erase.id(),
+            ComponentDeletionStatus::Deleted,
+        ),
+    ];
+
+    let mut deletion_statuses = delete_components(
+        ctx,
+        &[
+            component_to_delete.id(),
+            component_with_resource_to_delete.id(),
+            component_still_on_head.id(),
+        ],
+        false,
+    )
+    .await
+    .expect("should be able to delete");
+
+    deletion_statuses.extend(
+        delete_components(ctx, &[component_with_resource_to_erase.id()], true)
+            .await
+            .expect("should be able to force erase"),
+    );
+
+    for (component_id, status) in expected_deletion_statuses {
+        assert_eq!(Some(status), deletion_statuses.get(component_id));
+    }
+
+    assert!(
+        Component::try_get_by_id(ctx, component_to_delete.id())
+            .await
+            .expect("should succeed")
+            .is_none(),
+        "deleted component should be gone"
+    );
+
+    assert!(
+        Component::try_get_by_id(ctx, component_still_on_head.id())
+            .await
+            .expect("should succeed")
+            .is_none(),
+        "deleted component that is still on head should be gone in this change set"
+    );
+
+    assert!(
+        Component::exists_on_head(ctx, &[component_still_on_head.id()])
+            .await
+            .expect("should be able to check for components on head")
+            .contains(&component_still_on_head.id()),
+        "component should still exist on head"
+    );
+
+    assert!(
+        Component::try_get_by_id(ctx, component_with_resource_to_erase.id())
+            .await
+            .expect("should be able to look for component")
+            .is_none(),
+        "erased component should be gone"
+    );
+
+    let component_with_resource_to_delete =
+        Component::get_by_id(ctx, component_with_resource_to_delete.id())
+            .await
+            .expect("component with resource should still exist");
+    assert!(
+        component_with_resource_to_delete.to_delete(),
+        "component with resource should be marked as to delete"
+    );
 }

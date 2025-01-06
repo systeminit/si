@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 
 use dal::{
+    component::resource::ResourceData,
     diagram::{geometry::Geometry, view::View},
     management::{
         prototype::{ManagementPrototype, ManagementPrototypeExecution},
@@ -8,13 +9,16 @@ use dal::{
     },
     AttributeValue, Component, ComponentId, DalContext, SchemaId,
 };
-use dal_test::expected::{apply_change_set_to_base, ExpectView};
+use dal_test::{
+    expected::{apply_change_set_to_base, ExpectView},
+    helpers::ChangeSetTestHelpers,
+};
 use dal_test::{
     helpers::create_component_for_default_schema_name_in_default_view, test,
     SCHEMA_ID_SMALL_EVEN_LEGO,
 };
 use si_id::ViewId;
-use veritech_client::ManagementFuncStatus;
+use veritech_client::{ManagementFuncStatus, ResourceStatus};
 
 pub mod generator;
 
@@ -849,4 +853,162 @@ async fn create_view_and_in_view(ctx: &DalContext) {
 
     assert_eq!(315, red_room_geo.x() - manager_x);
     assert_eq!(315, red_room_geo.y() - manager_y);
+}
+
+#[test]
+async fn delete_and_erase_components(ctx: &mut DalContext) {
+    let manager = create_component_for_default_schema_name_in_default_view(
+        ctx,
+        "small odd lego",
+        "middle manager",
+    )
+    .await
+    .expect("could not create component");
+
+    let component_with_resource_to_delete =
+        create_component_for_default_schema_name_in_default_view(
+            ctx,
+            "small odd lego",
+            "component with resource to delete",
+        )
+        .await
+        .expect("could not create component");
+
+    let component_still_on_head = create_component_for_default_schema_name_in_default_view(
+        ctx,
+        "small odd lego",
+        "component still on head",
+    )
+    .await
+    .expect("could not create component");
+
+    let component_with_resource_to_erase =
+        create_component_for_default_schema_name_in_default_view(
+            ctx,
+            "small odd lego",
+            "component with resource to erase",
+        )
+        .await
+        .expect("could not create component");
+
+    for component_id in [
+        component_with_resource_to_delete.id(),
+        component_still_on_head.id(),
+        component_with_resource_to_erase.id(),
+    ] {
+        Component::manage_component(ctx, manager.id(), component_id)
+            .await
+            .expect("failed to create management edge");
+    }
+
+    ChangeSetTestHelpers::apply_change_set_to_base(ctx)
+        .await
+        .expect("could not apply change set");
+
+    ChangeSetTestHelpers::fork_from_head_change_set(ctx)
+        .await
+        .expect("could not fork head");
+
+    let resource_data = ResourceData::new(
+        ResourceStatus::Ok,
+        Some(serde_json::json![{"resource": "something"}]),
+    );
+
+    component_with_resource_to_delete
+        .set_resource(ctx, resource_data.clone())
+        .await
+        .expect("failed to set resource");
+    component_with_resource_to_erase
+        .set_resource(ctx, resource_data.clone())
+        .await
+        .expect("failed to set resource");
+
+    let component_to_delete = create_component_for_default_schema_name_in_default_view(
+        ctx,
+        "small odd lego",
+        "component to delete",
+    )
+    .await
+    .expect("could not create component");
+
+    Component::manage_component(ctx, manager.id(), component_to_delete.id())
+        .await
+        .expect("failed to create management edge");
+
+    let av_id =
+        Component::attribute_value_for_prop_by_id(ctx, manager.id(), &["root", "si", "resourceId"])
+            .await
+            .expect("av should exist");
+
+    let resource_id = format!(
+        "{},{},{},{}",
+        component_to_delete.name(ctx).await.expect("get name"),
+        component_with_resource_to_delete
+            .name(ctx)
+            .await
+            .expect("get name"),
+        component_still_on_head.name(ctx).await.expect("get name"),
+        component_with_resource_to_erase
+            .name(ctx)
+            .await
+            .expect("get name")
+    );
+
+    AttributeValue::update(ctx, av_id, Some(serde_json::json!(resource_id)))
+        .await
+        .expect("able to update value");
+
+    let (execution_result, result) =
+        exec_mgmt_func(ctx, manager.id(), "Delete and Erase", None).await;
+    assert_eq!(ManagementFuncStatus::Ok, result.status);
+
+    let operations = result.operations.expect("should have operations");
+
+    ManagementOperator::new(ctx, manager.id(), operations, execution_result, None)
+        .await
+        .expect("should create operator")
+        .operate()
+        .await
+        .expect("should operate");
+
+    assert!(
+        Component::try_get_by_id(ctx, component_to_delete.id())
+            .await
+            .expect("should succeed")
+            .is_none(),
+        "deleted component should be gone"
+    );
+
+    assert!(
+        Component::try_get_by_id(ctx, component_still_on_head.id())
+            .await
+            .expect("should succeed")
+            .is_none(),
+        "deleted component that is still on head should be gone in this change set"
+    );
+
+    assert!(
+        Component::exists_on_head(ctx, &[component_still_on_head.id()])
+            .await
+            .expect("should be able to check for components on head")
+            .contains(&component_still_on_head.id()),
+        "component should still exist on head"
+    );
+
+    assert!(
+        Component::try_get_by_id(ctx, component_with_resource_to_erase.id())
+            .await
+            .expect("should be able to look for component")
+            .is_none(),
+        "erased component should be gone"
+    );
+
+    let component_with_resource_to_delete =
+        Component::get_by_id(ctx, component_with_resource_to_delete.id())
+            .await
+            .expect("component with resource should still exist");
+    assert!(
+        component_with_resource_to_delete.to_delete(),
+        "component with resource should be marked as to delete"
+    );
 }
