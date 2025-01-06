@@ -13,7 +13,6 @@ you can pass in options as props too */
   <div
     :key="formInputId"
     ref="wrapperRef"
-    class="vorm-input"
     :class="
       clsx(
         computedClasses,
@@ -21,6 +20,7 @@ you can pass in options as props too */
         compact ? 'vorm-input-compact' : 'vorm-input-standard',
       )
     "
+    class="vorm-input"
   >
     <label
       v-if="!noLabel"
@@ -42,8 +42,8 @@ you can pass in options as props too */
     <Icon
       v-if="iconRight"
       :class="clsx('vorm-input__right-icon')"
-      :rotate="iconRightRotate"
       :name="iconRight"
+      :rotate="iconRightRotate"
     />
     <div
       :class="
@@ -110,15 +110,15 @@ you can pass in options as props too */
             ]"
             :disabled="disabledBySelfOrParent"
             :value="valueForSelectField"
-            @focus="onFocus"
             @blur="onBlur"
             @change="onSelectChange"
+            @focus="onFocus"
           >
             <VormInputOption
               v-if="placeholder"
-              :value="null"
-              :hidden="!placeholderSelectable"
               :disabled="!placeholderSelectable"
+              :hidden="!placeholderSelectable"
+              :value="null"
             >
               {{ placeholder }}
             </VormInputOption>
@@ -159,9 +159,9 @@ you can pass in options as props too */
             ]"
             :disabled="disabledBySelfOrParent"
             :value="valueForSelectField"
-            @focus="onFocus"
             @blur="onBlur"
             @change="onSelectChange"
+            @focus="onFocus"
           >
             <optgroup
               v-for="(inner, innerLabel) in objectOptionsFromProps"
@@ -207,13 +207,13 @@ you can pass in options as props too */
           <input
             :id="formInputId"
             ref="inputRef"
-            :class="compact ? 'vorm-input-compact__input' : 'vorm-input__input'"
             :checked="modelValue === checkedValue"
-            type="checkbox"
+            :class="compact ? 'vorm-input-compact__input' : 'vorm-input__input'"
             :disabled="disabledBySelfOrParent"
+            type="checkbox"
             @input="onCheckboxChange"
           />
-          <label class="vorm-input__checkbox-text" :for="formInputId">
+          <label :for="formInputId" class="vorm-input__checkbox-text">
             <slot />
           </label>
         </template>
@@ -222,13 +222,13 @@ you can pass in options as props too */
           <textarea
             :id="formInputId"
             ref="inputRef"
-            :value="modelValueForTextArea"
             :class="compact ? 'vorm-input-compact__input' : 'vorm-input__input'"
-            :placeholder="computedPlaceholder"
             :disabled="disabledBySelfOrParent"
             :maxlength="maxLength"
-            @focus="onFocus"
+            :placeholder="computedPlaceholder"
+            :value="modelValueForTextArea"
             @blur="onBlur"
+            @focus="onFocus"
             @input="onChange"
           />
         </template>
@@ -236,21 +236,32 @@ you can pass in options as props too */
         <template v-else>
           <Icon
             v-if="type === 'password' && allowShowPassword"
-            class="vorm-input__pass-show-hide-toggle"
             :name="isPasswordMasked ? 'show' : 'hide'"
             allow-pointer-events
+            class="vorm-input__pass-show-hide-toggle"
             @click="isPasswordMasked = !isPasswordMasked"
           />
           <input
             :id="formInputId"
             ref="inputRef"
-            :value="modelValue"
+            :autocomplete="autocomplete"
             :class="
               clsx(
                 compact ? 'vorm-input-compact__input' : 'vorm-input__input',
                 compact && rename && 'vorm-input-compact__input__rename',
               )
             "
+            :disabled="disabledBySelfOrParent"
+            :maxlength="maxLength"
+            :minlength="minLength"
+            :name="name"
+            :passwordrules="
+              type === 'password'
+                ? `minlength: ${minLength}; maxlength: ${maxLength}; required: lower; required: upper; required: digit; required: special;`
+                : undefined
+            "
+            :placeholder="computedPlaceholder"
+            :step.prop="nativeInputNumberStepProp"
             :style="
               compact && rename
                 ? `font-size: ${
@@ -258,23 +269,12 @@ you can pass in options as props too */
                   }px; height: ${renameZoom > 1 ? 26 * renameZoom : 26}px;`
                 : ''
             "
-            :autocomplete="autocomplete"
-            :name="name"
             :type="nativeInputTagTypeProp"
-            :placeholder="computedPlaceholder"
-            :disabled="disabledBySelfOrParent"
-            :step.prop="nativeInputNumberStepProp"
-            :minlength="minLength"
-            :maxlength="maxLength"
-            :passwordrules="
-              type === 'password'
-                ? `minlength: ${minLength}; maxlength: ${maxLength}; required: lower; required: upper; required: digit; required: special;`
-                : undefined
-            "
-            @keydown="onKeyboardEvent"
-            @focus="onFocus"
+            :value="modelValue"
             @blur="onBlur"
+            @focus="onFocus"
             @input="onChange"
+            @keydown="onKeyboardEvent"
           />
         </template>
       </div>
