@@ -39,8 +39,8 @@ export interface ManagementCreate {
     properties?: object;
     geometry?: Geometry | { [key: string]: Geometry };
     parent?: string;
-    connect?: ManagmentConnect[],
-  }
+    connect?: ManagmentConnect[];
+  };
 }
 
 export interface ManagementOperations {
