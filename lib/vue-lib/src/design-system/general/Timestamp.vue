@@ -64,8 +64,7 @@ const tooltip = computed(() => {
 
   return {
     content: props.date,
-    delay: { show: 0, hide: 100 },
-    instantMove: true,
+    theme: "instant-show",
   };
 });
 

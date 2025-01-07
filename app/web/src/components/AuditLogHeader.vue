@@ -174,8 +174,7 @@ const tooltip = computed(() => {
     if (props.anyRowsOpen) {
       return {
         content: "Collapse All",
-        delay: { show: 0, hide: 100 },
-        instantMove: true,
+        theme: "instant-show",
       };
     }
     return null;
@@ -183,8 +182,7 @@ const tooltip = computed(() => {
 
   return {
     content: headerText.value,
-    delay: { show: 0, hide: 100 },
-    instantMove: true,
+    theme: "instant-show",
   };
 });
 

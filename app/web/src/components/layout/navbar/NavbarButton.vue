@@ -3,13 +3,12 @@
     :is="linkTo ? RouterLink : 'button'"
     v-tooltip="{
       content: tooltipText,
-      delay: { show: 0, hide: 100 },
-      instantMove: true,
+      theme: 'instant-show',
     }"
     :to="linkTo"
     :class="
       clsx(
-        'relative h-full flex items-center children:pointer-events-none p-sm',
+        'relative h-full flex flex-row items-center children:pointer-events-none p-sm',
         isSelectedOrMenuOpen && 'bg-action-500',
         !isSelectedOrMenuOpen && 'hover:bg-black',
       )

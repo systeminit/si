@@ -4,7 +4,7 @@
       clsx(
         'navbar bg-neutral-900 text-white relative shadow-[0_4px_4px_0_rgba(0,0,0,0.15)]',
         'z-90 h-[60px] overflow-hidden shrink-0 flex flex-row justify-between select-none',
-        windowWidth > 700 && 'gap-sm',
+        windowWidth > 740 && 'gap-sm',
       )
     "
   >

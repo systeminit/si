@@ -1,8 +1,9 @@
 <template>
   <div
-    class="flex flex-row flex-1 basis-1/2 items-center min-w-0 h-full justify-end overflow-hidden"
+    class="flex flex-row flex-1 basis-1/2 items-center min-w-0 h-full justify-end"
   >
     <Collaborators />
+    <Notifications />
 
     <template v-if="!collapse">
       <NavbarButton
@@ -28,11 +29,12 @@
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import NavbarButton from "./NavbarButton.vue";
 import Collaborators from "./Collaborators.vue";
+import Notifications from "./Notifications.vue";
 import WorkspaceSettingsMenu from "./WorkspaceSettingsMenu.vue";
 import ProfileButton from "./ProfileButton.vue";
 
 const windowWidth = ref(window.innerWidth);
-const collapse = computed(() => windowWidth.value < 850);
+const collapse = computed(() => windowWidth.value < 1200);
 
 const windowResizeHandler = () => {
   windowWidth.value = window.innerWidth;
