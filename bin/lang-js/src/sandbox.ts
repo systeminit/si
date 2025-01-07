@@ -4,6 +4,7 @@ import path from "path";
 import zlib from "zlib";
 import fetch from "node-fetch";
 import toml from "toml";
+import * as jsonpatch from "fast-json-patch";
 
 import * as _ from "lodash-es";
 import * as yaml from "js-yaml";
@@ -35,6 +36,7 @@ function commonSandbox(executionId: string): Sandbox {
     path,
     Joi,
     toml,
+    jsonpatch,
   };
 }
 
