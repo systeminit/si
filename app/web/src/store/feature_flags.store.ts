@@ -11,7 +11,6 @@ const FLAG_MAPPING = {
   ON_DEMAND_ASSETS: "on_demand_assets",
   AI_GENERATOR: "ai-generator",
   REBAC: "rebac",
-  OUTLINER_VIEWS: "diagram-outline-show-views",
   SLACK_WEBHOOK: "slack_webhook",
   TEMPLATE_MGMT_FUNC_GENERATION: "template-mgmt-func-generation",
 };
