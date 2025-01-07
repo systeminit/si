@@ -17,7 +17,10 @@ import before from "./function_kinds/before.ts";
 import { rawStorage } from "./sandbox/requestStorage.ts";
 import { Debugger } from "./debug.ts";
 import { transpile } from "jsr:@deno/emit";
+import { Debug } from "./debug.ts";
 import * as _worker from "./worker.js";
+
+const debug = Debug("langJs:function");
 
 export enum FunctionKind {
   ActionRun = "actionRun",
@@ -216,7 +219,7 @@ export async function runCode(
   with_arg?: Record<string, unknown>,
 ): Promise<Record<string, unknown>> {
   code = await bundleCode(code);
-  const currentEnv = rawStorage().env;
+  const currentStorage = rawStorage();
 
   const worker = new Worker(new URL("./worker.js", import.meta.url), {
     type: "module",
@@ -233,20 +236,23 @@ export async function runCode(
     },
   });
 
+  debug({"function kind": func_kind});
+  debug({"arg": with_arg});
+  debug({"code": code});
   return new Promise((resolve, reject) => {
     worker.postMessage({
       bundledCode: code,
       func_kind,
       execution_id,
       with_arg,
-      env: currentEnv ?? {},
+      storage: currentStorage ?? {},
       timeout,
     });
 
     worker.onmessage = (event) => {
-      const { result, env } = event.data;
-      if (env) {
-        rawStorage().env = { ...env };
+      const { result, storage } = event.data;
+      if (storage) {
+        Object.assign(rawStorage(), storage);
       }
       resolve(result);
       worker.terminate();
@@ -260,14 +266,25 @@ export async function runCode(
 }
 
 async function bundleCode(code: string): Promise<string> {
+  debug({"code before bundle": code});
   const tempDir = await Deno.makeTempDir();
   const tempFile = `${tempDir}/script.ts`;
+
   await Deno.writeTextFile(tempFile, code);
   const fileUrl = new URL(tempFile, import.meta.url);
 
   try {
-    const bundled = (await transpile(fileUrl)).get(fileUrl.href) as string;
+    const result = await transpile(fileUrl);
+
+    const bundled = result.get(fileUrl.href) as string;
+    if (!bundled) {
+      throw new Error('Transpilation resulted in empty output');
+    }
+
+    debug({"code after bundle": code});
     return bundled;
+  } catch (error) {
+    throw error;
   } finally {
     await Deno.remove(tempDir, { recursive: true });
   }

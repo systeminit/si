@@ -9,7 +9,7 @@ class TimeoutError extends Error {
 }
 
 self.onmessage = async (event) => {
-  const { bundledCode, func_kind, execution_id, with_arg, env, timeout } =
+  const { bundledCode, func_kind, execution_id, with_arg, storage, timeout } =
     event.data ||
     {};
 
@@ -17,8 +17,8 @@ self.onmessage = async (event) => {
   const keys = Object.keys(sandbox);
   const values = Object.values(sandbox);
 
-  if (env) {
-    Object.assign(rawStorage().env, env);
+  if (storage) {
+    Object.assign(rawStorage(), storage);
     for (const [key, value] of Object.entries(rawStorage().env || {})) {
       Deno.env.set(key, value);
     }
@@ -53,7 +53,7 @@ self.onmessage = async (event) => {
     clearTimeout(timeoutId);
     self.postMessage({
       result,
-      env: rawStorage().env,
+      storage: rawStorage(),
     });
   } catch (e) {
     clearTimeout(timeoutId);

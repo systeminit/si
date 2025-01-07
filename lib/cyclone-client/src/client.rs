@@ -522,6 +522,7 @@ mod tests {
         builder: &mut ConfigBuilder,
         tmp_socket: &TempPath,
     ) -> UdsClient {
+        env::set_var("SI_LANG_JS_LOG", "debug");
         let server = uds_server(builder, tmp_socket).await;
         let path = server
             .local_socket()
@@ -549,6 +550,7 @@ mod tests {
     }
 
     async fn http_client_for_running_server(builder: &mut ConfigBuilder) -> HttpClient {
+        env::set_var("SI_LANG_JS_LOG", "debug");
         let server = http_server(builder).await;
         let socket = *server
             .local_socket()
