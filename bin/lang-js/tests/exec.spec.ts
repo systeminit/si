@@ -1,15 +1,16 @@
-import { describe, expect, test } from "vitest";
-import { makeExec } from "../src/sandbox/exec";
+import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
+import { makeExec } from "../src/sandbox/exec.ts";
 
-describe("exec", () => {
-  test("exec a command", async () => {
+Deno.test("exec", async (t) => {
+  await t.step("exec a command", async () => {
     const e = makeExec("p");
     const r = await e.waitUntilEnd("echo", ["poop"]);
-    expect(r.all).toBe("poop");
+    console.log(r);
+    assertEquals(r.all, "poop");
   });
 
-  describe("watch a command", () => {
-    test("until it succeeds", async () => {
+  await t.step("watch a command", async (t) => {
+    await t.step("until it succeeds", async () => {
       const e = makeExec("p");
       const getCurrentTime = await e.waitUntilEnd("date", ["+%s"]);
       const startSeconds = getCurrentTime.all || "3";
@@ -23,10 +24,10 @@ describe("exec", () => {
           return elapsed > waitUntil;
         },
       });
-      expect(r.result.exitCode).toBe(0);
+      assertEquals(r.result.exitCode, 0);
     });
 
-    test("fail immediately if the command fails", async () => {
+    await t.step("fail immediately if the command fails", async () => {
       const e = makeExec("p");
       let didIt = "nope";
       const r = await e.watch({
@@ -39,12 +40,12 @@ describe("exec", () => {
           return true;
         },
       });
-      expect(r.result.failed).toBe(true);
-      expect(r.failed).toBe("commandFailed");
-      expect(didIt).toBe("nope");
+      assertEquals(r.result.failed, true);
+      assertEquals(r.failed, "commandFailed");
+      assertEquals(didIt, "nope");
     });
 
-    test("fail if the deadline is exceeded", async () => {
+    await t.step("fail if the deadline is exceeded", async () => {
       const e = makeExec("p");
       const getCurrentTime = await e.waitUntilEnd("date", ["+%s"]);
       const startSeconds = getCurrentTime.all || "3";
@@ -60,8 +61,8 @@ describe("exec", () => {
         },
       });
 
-      expect(r.result.exitCode).toBe(0);
-      expect(r.failed).toBe("deadlineExceeded");
+      assertEquals(r.result.exitCode, 0);
+      assertEquals(r.failed, "deadlineExceeded");
     });
   });
 });
