@@ -15,11 +15,13 @@ export type AnyFunction =
   | SchemaVariantDefinitionFunc
   | ManagementFunc;
 
-export type Request = AnyFunction &
-RequestCtx & {
-  before?: BeforeFunc[];
-  timeout?: number,
-};
+export type Request =
+  & AnyFunction
+  & RequestCtx
+  & {
+    before?: BeforeFunc[];
+    timeout?: number;
+  };
 
 export interface RequestCtx {
   executionId: string;

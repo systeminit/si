@@ -32,23 +32,23 @@ async function main() {
   let kind: FunctionKind | undefined;
 
   const { options } = await new Command()
-  .name("lang-js")
-  .version("0.0.1")
-  .option(
-    "--timeout <seconds:number>",
-    `timeout for a function execution in seconds (default: ${defaultTimeout})`,
-    { default: defaultTimeout }
-  )
-  .arguments("<kind:string>")
-  .action((_options, kind_arg: string) => {
-    if (functionKinds().includes(kind_arg)) {
-      kind = kind_arg as FunctionKind;
-    } else {
-      console.error(`Unsupported function kind: '${kind_arg}'`);
-      Deno.exit(1);
-    }
-  })
-  .parse(Deno.args);
+    .name("lang-js")
+    .version("0.0.1")
+    .option(
+      "--timeout <seconds:number>",
+      `timeout for a function execution in seconds (default: ${defaultTimeout})`,
+      { default: defaultTimeout },
+    )
+    .arguments("<kind:string>")
+    .action((_options, kind_arg: string) => {
+      if (functionKinds().includes(kind_arg)) {
+        kind = kind_arg as FunctionKind;
+      } else {
+        console.error(`Unsupported function kind: '${kind_arg}'`);
+        Deno.exit(1);
+      }
+    })
+    .parse(Deno.args);
 
   let timeout: number = defaultTimeout;
   if (options.timeout) {
