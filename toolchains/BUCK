@@ -13,6 +13,7 @@ load(
 load("@prelude//toolchains:rust.bzl", "system_rust_toolchain")
 load("@prelude-si//artifact:toolchain.bzl", "artifact_toolchain")
 load("@prelude-si//build_context:toolchain.bzl", "build_context_toolchain")
+load("@prelude-si//deno:toolchain.bzl", "deno_toolchain")
 load("@prelude-si//docker:toolchain.bzl", "docker_toolchain")
 load("@prelude-si//e2e:toolchain.bzl", "e2e_toolchain")
 load("@prelude-si//git:toolchain.bzl", "git_toolchain")
@@ -97,6 +98,11 @@ build_context_toolchain(
     visibility = ["PUBLIC"],
 )
 
+deno_toolchain(
+    name = "deno",
+    visibility = ["PUBLIC"],
+)
+
 docker_toolchain(
     name = "docker",
     visibility = ["PUBLIC"],
@@ -128,6 +134,11 @@ pnpm_toolchain(
     visibility = ["PUBLIC"],
 )
 
+rootfs_toolchain(
+    name = "rootfs",
+    visibility = ["PUBLIC"],
+)
+
 si_python_toolchain(
     name = "si_python",
     visibility = ["PUBLIC"],
@@ -142,10 +153,5 @@ si_rust_toolchain(
 shell_toolchain(
     name = "shell",
     editorconfig = "root//:.editorconfig",
-    visibility = ["PUBLIC"],
-)
-
-rootfs_toolchain(
-    name = "rootfs",
     visibility = ["PUBLIC"],
 )
