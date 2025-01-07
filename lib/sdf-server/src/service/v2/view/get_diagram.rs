@@ -8,6 +8,7 @@ use dal::diagram::view::{View, ViewId, ViewView};
 use dal::diagram::{Diagram, DiagramError};
 use dal::{slow_rt, ChangeSetId, ComponentId, DalContext, WorkspacePk};
 use serde::{Deserialize, Serialize};
+use si_frontend_types::RawGeometry;
 use telemetry::prelude::debug;
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -15,8 +16,8 @@ use telemetry::prelude::debug;
 pub struct GeometryResponse {
     view_id: ViewId,
     name: String,
-    components: HashMap<ComponentId, Geometry>,
-    views: HashMap<ViewId, Geometry>,
+    components: HashMap<ComponentId, RawGeometry>,
+    views: HashMap<ViewId, RawGeometry>,
 }
 
 pub async fn get_geometry(
@@ -55,10 +56,10 @@ pub async fn get_geometry(
 
         match geo_represents {
             GeometryRepresents::Component(component_id) => {
-                components.insert(component_id, geometry);
+                components.insert(component_id, geometry.into_raw());
             }
             GeometryRepresents::View(view_id) => {
-                views.insert(view_id, geometry);
+                views.insert(view_id, geometry.into_raw());
             }
         }
     }

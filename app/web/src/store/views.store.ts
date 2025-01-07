@@ -708,9 +708,11 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                 if (!v) return;
 
                 view.viewNodes[v.id] = new DiagramViewData({
-                  ...v,
                   ...VIEW_DEFAULTS,
                   ...geo,
+                  // if geo has properties like "id" we don't want them to overwrite view props
+                  // so we spread v last
+                  ...v,
                   componentType: ComponentType.View,
                 });
               });
