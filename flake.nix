@@ -220,42 +220,7 @@
 
           cyclone = binDerivation {pkgName = "cyclone";};
 
-          # This one's awful: we don't have a stanalone binary here, we have a
-          # directory of stuff with a `bin/$name` entrypoint shell script to
-          # invoke this beast. Additionally there are `node_modules` symlinks
-          # everywhere and Buck2's normal `buck2 build ... --out ...` option
-          # dies on some symlinks referring to directories and not files.
-          # Instead we'll have to parse a build report JSON to get the output
-          # path and copy it ourselves.
-          lang-js = buck2Derivation {
-            pathPrefix = "bin";
-            pkgName = "lang-js";
-            extraBuildInputs = [pkgs.jq];
-            stdBuildPhase = ''
-              buck2 build "$buck2_target" --verbose 8 --build-report report.log
-              dist_dir="$(jq -r \
-                '.results | to_entries | map(.value)[0].outputs.DEFAULT[0]' \
-                <report.log
-              )"
-              cp -rpv "$dist_dir" "build/$name-$system"
-            '';
-            installPhase = ''
-              mkdir -pv "$out"
-              cp -rpv "build/$name-$system"/* "$out"/
-              mv -v "$out/bin/lang-js" "$out/bin/.lang-js"
-              # Need to escape this shell variable which should not be
-              # iterpreted in Nix as a variable nor a shell variable when run
-              # but rather a literal string which happens to be a shell
-              # variable. Nuclear arms race of quoting and escaping special
-              # characters to make this work...
-              substituteInPlace "$out/bin/.lang-js" \
-                --replace "#!${pkgs.coreutils}/bin/env sh" "#!${pkgs.bash}/bin/sh" \
-                --replace "\''${0%/*}/../lib/" "$out/lib/" \
-                --replace "exec node" "exec ${pkgs.nodejs}/bin/node"
-              makeWrapper "$out/bin/.lang-js" "$out/bin/lang-js" \
-                --prefix PATH : ${pkgs.lib.makeBinPath langJsExtraPkgs}
-            '';
-          };
+          lang-js = binDerivation {pkgName = "lang-js";};
 
           forklift = binDerivation {pkgName = "forklift";};
 

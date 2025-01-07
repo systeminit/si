@@ -590,7 +590,7 @@ fn buck2_development(config: &mut ConfigFile) -> Result<()> {
     warn!(
         cyclone_cmd_path = cyclone_cmd_path.as_str(),
         decryption_key_path = decryption_key_path.as_str(),
-        lang_server_cmd_path = lang_server_cmd_path.as_str(),
+        lang_server_cmd_path = lang_server_cmd_path,
         "detected development run",
     );
 
@@ -598,7 +598,7 @@ fn buck2_development(config: &mut ConfigFile) -> Result<()> {
     config.crypto.decryption_key_file = decryption_key_path.parse().ok();
     config
         .cyclone
-        .set_lang_server_cmd_path(lang_server_cmd_path);
+        .set_lang_server_cmd_path(lang_server_cmd_path.to_string());
 
     Ok(())
 }
