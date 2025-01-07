@@ -38,7 +38,7 @@
           clsx(
             'absolute translate-x-[-50%] h-8 w-8 cursor-pointer bg-black',
             'border-2 border-shade-0 rounded-full overflow-hidden',
-            'flex flex-row items-center',
+            'flex flex-row items-center hover:border-action-300',
             moreUsersNumber < 10
               ? 'text-base'
               : moreUsersNumber < 100
@@ -49,7 +49,8 @@
         @click="openMoreUsersPopover"
       >
         <div class="text-center w-full font-bold">
-          <template v-if="moreUsersNumber < 100"
+          <Icon v-if="showOneIcon" name="user-circle" size="full" />
+          <template v-else-if="moreUsersNumber < 100"
             >+{{ moreUsersNumber }}</template
           >
           <template v-else>+</template>
@@ -96,7 +97,7 @@
 <script lang="ts" setup>
 import * as _ from "lodash-es";
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
-import { SiSearch } from "@si/vue-lib/design-system";
+import { SiSearch, Icon } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { useRoute, useRouter } from "vue-router";
 import Popover from "@/components/Popover.vue";
@@ -260,7 +261,7 @@ onBeforeUnmount(() => {
   window.removeEventListener("resize", windowResizeHandler);
 });
 
-const showOneIcon = computed(() => windowWidth.value < 700);
+const showOneIcon = computed(() => windowWidth.value < 850);
 
 const filterString = ref("");
 const filterStringCleaned = computed(() => {

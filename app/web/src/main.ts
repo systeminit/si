@@ -23,7 +23,7 @@ import "./utils/posthog";
 import router from "./router";
 import store from "./store";
 
-export const APP_MINIMUM_WIDTH = 650;
+export const APP_MINIMUM_WIDTH = 700;
 
 const { envVariables } = getProjectEnvVariables();
 
@@ -113,6 +113,9 @@ app.use(FloatingVue, {
     },
     "attribute-source-icon": {
       $extend: "tooltip",
+    },
+    notifications: {
+      $extend: "instant-show",
     },
   },
 });

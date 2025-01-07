@@ -400,7 +400,7 @@ function readjustMenuPosition() {
   }
 }
 
-const APP_MINIMUM_WIDTH = 650;
+const APP_MINIMUM_WIDTH = 700; // APP_MINIMUM_WIDTH
 const getWindowWidth = () => {
   if (window.innerWidth > APP_MINIMUM_WIDTH) return window.innerWidth;
   else return APP_MINIMUM_WIDTH;

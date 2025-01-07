@@ -59,7 +59,7 @@ const { theme: rootTheme } = useThemeContainer();
 const windowWidth = ref(window.innerWidth);
 const windowSizeClasses = computed(() =>
   windowWidth.value < APP_MINIMUM_WIDTH
-    ? tw`min-w-[650px] overflow-x-auto` // APP_MINIMUM_WIDTH
+    ? tw`min-w-[700px] overflow-x-auto` // APP_MINIMUM_WIDTH
     : "",
 );
 

@@ -40,29 +40,6 @@
         </template>
       </SidebarSubpanelTitle>
       <div
-        v-if="
-          featureFlagsStore.REBAC && userIsApprover && pendingApprovalCount > 0
-        "
-        :class="
-          clsx(
-            'group/tree',
-            'px-xs py-2xs flex flex-row cursor-pointer font-bold border border-transparent',
-            changeSetsStore.headSelected &&
-              themeClasses('border-b-neutral-200', 'border-b-neutral-600'),
-            themeClasses(
-              'hover:text-action-500  hover:border-action-500',
-              'hover:text-action-300 bg-neutral-700  hover:border-action-300',
-            ),
-          )
-        "
-        @click="openPendingApprovalsModal"
-      >
-        <div class="text-sm grow group-hover/tree:underline">
-          Pending Approval{{ pendingApprovalCount > 1 ? "s" : "" }}
-        </div>
-        <PillCounter :count="pendingApprovalCount" showHoverInsideTreeNode />
-      </div>
-      <div
         v-if="!changeSetsStore.headSelected"
         :class="
           clsx(
@@ -92,10 +69,6 @@
         </TabGroupItem>
       </TabGroup>
     </div>
-    <ApprovalPendingModal
-      v-if="pendingApprovalCount > 0"
-      ref="pendingApprovalModalRef"
-    />
   </ScrollArea>
 </template>
 
@@ -106,42 +79,25 @@ import {
   TabGroupItem,
   themeClasses,
   ScrollArea,
-  PillCounter,
   DropdownMenu,
   DropdownMenuItem,
   Modal,
   VormInput,
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
-import { computed, ref } from "vue";
+import { ref } from "vue";
 import ApplyChangeSetButton from "@/components/ApplyChangeSetButton.vue";
 import { useChangeSetsStore } from "@/store/change_sets.store";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import SidebarSubpanelTitle from "./SidebarSubpanelTitle.vue";
 import SecretsPanel from "./SecretsPanel.vue";
 import ChangesPanelProposed from "./ChangesPanelProposed.vue";
 import ChangesPanelHistory from "./ChangesPanelHistory.vue";
-import ApprovalPendingModal from "./ApprovalPendingModal.vue";
 import DetailsPanelMenuIcon from "./DetailsPanelMenuIcon.vue";
 
 const changeSetsStore = useChangeSetsStore();
-const featureFlagsStore = useFeatureFlagsStore();
 
 const dropdownMenuRef = ref<InstanceType<typeof DropdownMenu>>();
 const renameModalRef = ref<InstanceType<typeof Modal>>();
-
-const pendingApprovalModalRef = ref<InstanceType<
-  typeof ApprovalPendingModal
-> | null>(null);
-
-const userIsApprover = computed(() => changeSetsStore.currentUserIsApprover);
-const pendingApprovalCount = computed(
-  () => changeSetsStore.changeSetsNeedingApproval.length,
-);
-
-const openPendingApprovalsModal = () => {
-  pendingApprovalModalRef.value?.open();
-};
 
 const openMenu = (e: MouseEvent) => {
   dropdownMenuRef.value?.open(e);

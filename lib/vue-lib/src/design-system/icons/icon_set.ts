@@ -75,7 +75,7 @@ import CubePlus from "./custom-icons/cube-plus.svg?raw";
 import Clock from "~icons/heroicons-solid/clock";
 import ExclamationCircle from "~icons/heroicons-solid/exclamation-circle";
 import CreditCard from "~icons/heroicons-solid/credit-card";
-import Bell from "~icons/heroicons-solid/bell";
+import MaterialSymbolsNotifications from "~icons/material-symbols/notifications";
 import CheckBadge from "~icons/heroicons-solid/badge-check";
 import DotsHorizontal from "~icons/heroicons-solid/dots-horizontal";
 import DotsVertical from "~icons/heroicons-solid/dots-vertical";
@@ -210,7 +210,7 @@ export const ICONS = Object.freeze({
   "arrows-out": PhArrowsOutCardinal,
   backspace: MaterialSymbolsBackspaceOutline,
   beaker: Beaker,
-  bell: Bell,
+  bell: MaterialSymbolsNotifications,
   bolt: Bolt,
   "brackets-angle": BracketsAngle,
   "brackets-curly": BracketsCurly,

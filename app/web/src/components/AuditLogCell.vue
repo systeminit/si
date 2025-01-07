@@ -60,8 +60,7 @@ const tooltip = computed(() => {
   if (props.cell.column.id === "json") {
     return {
       content: props.rowExpanded ? "Collapse Row" : "Expand Row",
-      delay: { show: 0, hide: 100 },
-      instantMove: true,
+      theme: "instant-show",
     };
   }
 
