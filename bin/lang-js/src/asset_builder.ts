@@ -1,4 +1,4 @@
-import { parseConnectionAnnotation } from "@si/ts-lib";
+import { parseConnectionAnnotation } from "@scope/ts-lib-deno";
 import Joi from "joi";
 
 export type ValueFromKind = "inputSocket" | "outputSocket" | "prop";

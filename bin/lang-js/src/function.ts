@@ -1,24 +1,23 @@
-import * as _ from "lodash-es";
-import { NodeVM } from "vm2";
-import { base64ToJs } from "./base64";
-import { createNodeVm } from "./vm";
-import { createSandbox } from "./sandbox";
-import { ctxFromRequest, Request, RequestCtx } from "./request";
+import * as _ from "npm:lodash-es";
+import { base64Decode } from "./base64.ts";
+import { ctxFromRequest, Request, RequestCtx } from "./request.ts";
 import joi_validation, {
   JoiValidationFunc,
   JoiValidationResult,
-} from "./function_kinds/joi_validation";
+} from "./function_kinds/joi_validation.ts";
 import resolver_function, {
   ResolverFunc,
-} from "./function_kinds/resolver_function";
+} from "./function_kinds/resolver_function.ts";
 import schema_variant_definition, {
   SchemaVariantDefinitionFunc,
-} from "./function_kinds/schema_variant_definition";
-import management_run, { ManagementFunc } from "./function_kinds/management";
-import action_run, { ActionRunFunc } from "./function_kinds/action_run";
-import before from "./function_kinds/before";
-import { rawStorageRequest } from "./sandbox/requestStorage";
-import { Debugger } from "./debug";
+} from "./function_kinds/schema_variant_definition.ts";
+import management_run, { ManagementFunc } from "./function_kinds/management.ts";
+import action_run, { ActionRunFunc } from "./function_kinds/action_run.ts";
+import before from "./function_kinds/before.ts";
+import { rawStorage } from "./sandbox/requestStorage.ts";
+import { Debugger } from "./debug.ts";
+import { transpile } from "jsr:@deno/emit";
+import * as _worker from "./worker.js";
 
 export enum FunctionKind {
   ActionRun = "actionRun",
@@ -36,8 +35,8 @@ export function functionKinds(): Array<string> {
 export type Parameters = Record<string, unknown>;
 
 export interface Func {
-  handler: string;
   codeBase64: string;
+  handler: string;
 }
 
 export interface Result {
@@ -56,7 +55,7 @@ export interface ResultFailure extends Result {
   executionId: string;
   error: {
     kind: string | {
-      "UserCodeException": string
+      "UserCodeException": string;
     };
     message: string;
   };
@@ -92,26 +91,28 @@ export interface OutputLine {
   message: string;
 }
 
-export async function executeFunction(kind: FunctionKind, request: Request, timeout: number) {
+export async function executeFunction(
+  kind: FunctionKind,
+  request: Request,
+  timeout: number,
+) {
   // Run Before Functions
   const ctx = ctxFromRequest(request);
 
   for (const beforeFunction of request.before || []) {
-    await executor(ctx, beforeFunction, FunctionKind.Before, timeout, before);
-    // Set process environment variables, set from requestStorage
-    {
-      const requestStorageEnv = rawStorageRequest().env();
-      for (const key in requestStorageEnv) {
-        process.env[key] = requestStorageEnv[key];
-      }
-    }
+    await executor(ctx, beforeFunction, timeout, before);
   }
 
   // TODO Create Func types instead of casting request objs
   let result;
   switch (kind) {
     case FunctionKind.ActionRun:
-      result = await executor(ctx, request as ActionRunFunc, kind, timeout, action_run);
+      result = await executor(
+        ctx,
+        request as ActionRunFunc,
+        timeout,
+        action_run,
+      );
 
       console.log(
         JSON.stringify({
@@ -129,7 +130,6 @@ export async function executeFunction(kind: FunctionKind, request: Request, time
       result = await executor(
         ctx,
         request as ResolverFunc,
-        kind,
         timeout,
         resolver_function,
       );
@@ -146,13 +146,17 @@ export async function executeFunction(kind: FunctionKind, request: Request, time
       );
       break;
     case FunctionKind.Validation:
-      result = await executor(ctx, request as JoiValidationFunc, kind, timeout, joi_validation);
+      result = await executor(
+        ctx,
+        request as JoiValidationFunc,
+        timeout,
+        joi_validation,
+      );
       break;
     case FunctionKind.SchemaVariantDefinition:
       result = await executor(
         ctx,
         request as SchemaVariantDefinitionFunc,
-        kind,
         timeout,
         schema_variant_definition,
       );
@@ -161,7 +165,6 @@ export async function executeFunction(kind: FunctionKind, request: Request, time
       result = await executor(
         ctx,
         request as ManagementFunc,
-        kind,
         timeout,
         management_run,
       );
@@ -173,58 +176,99 @@ export async function executeFunction(kind: FunctionKind, request: Request, time
   console.log(JSON.stringify(result));
 }
 
-class TimeoutError extends Error {
-  constructor(seconds: number) {
-    super(`function timed out after ${seconds} seconds`);
-    this.name = "TimeoutError";
-  }
-}
-
-async function timer(seconds: number): Promise<never> {
-  const ms = seconds * 1000;
-  return new Promise((_, reject) => {
-    setTimeout(() => reject(new TimeoutError(seconds)), ms);
-  });
-}
-
 export async function executor<F extends Func, Result>(
   ctx: RequestCtx,
   func: F,
-  kind: FunctionKind,
   timeout: number,
   {
     debug,
-    wrapCode,
     execute,
+    wrapCode,
   }: {
     debug: Debugger;
     wrapCode: (code: string, handler: string) => string;
     execute: (
-      vm: NodeVM,
       ctx: RequestCtx,
       func: F,
-      code: string
+      code: string,
+      timeout: number,
     ) => Promise<JoiValidationResult | Result>;
   },
 ) {
   let originalCode = "";
   if (!_.isEmpty(func.codeBase64)) {
-    originalCode = base64ToJs(func.codeBase64);
+    originalCode = base64Decode(func.codeBase64);
   }
 
   const code = wrapCode(originalCode, func.handler);
 
-  debug({ code });
-
-  const vm = createNodeVm(createSandbox(kind, ctx.executionId));
-
-  debug({ timeout });
-
   // Following section throws on timeout or execution error
-  const result = await Promise.race([
-    execute(vm, ctx, func, code),
-    timer(timeout),
-  ]);
+  const result = await execute(ctx, func, code, timeout);
   debug({ result });
   return result;
+}
+
+export async function runCode(
+  code: string,
+  func_kind: FunctionKind,
+  execution_id: string,
+  timeout: number,
+  with_arg?: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+  code = await bundleCode(code);
+  const currentEnv = rawStorage().env;
+
+  const worker = new Worker(new URL("./worker.js", import.meta.url), {
+    type: "module",
+    deno: {
+      permissions: {
+        import: true,
+        env: true,
+        net: true,
+        read: true,
+        run: true,
+        sys: true,
+        write: true,
+      },
+    },
+  });
+
+  return new Promise((resolve, reject) => {
+    worker.postMessage({
+      bundledCode: code,
+      func_kind,
+      execution_id,
+      with_arg,
+      env: currentEnv ?? {},
+      timeout,
+    });
+
+    worker.onmessage = (event) => {
+      const { result, env } = event.data;
+      if (env) {
+        rawStorage().env = { ...env };
+      }
+      resolve(result);
+      worker.terminate();
+    };
+
+    worker.onerror = (error) => {
+      reject(error);
+      worker.terminate();
+    };
+  });
+}
+
+async function bundleCode(code: string): Promise<string> {
+  const tempDir = await Deno.makeTempDir();
+  const tempFile = `${tempDir}/script.ts`;
+  await Deno.writeTextFile(tempFile, code);
+  const fileUrl = new URL(tempFile, import.meta.url);
+
+  try {
+    const bundled = (await transpile(fileUrl)).get(fileUrl.href) as string;
+    return bundled;
+  } finally {
+    await Deno.remove(tempDir, { recursive: true });
+  }
 }

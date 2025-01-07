@@ -1,6 +1,6 @@
-import { setTimeout } from "timers/promises";
+import { setTimeout } from "node:timers/promises";
 import execa, { ExecaReturnValue, Options } from "execa";
-import { Debug } from "../debug";
+import { Debug } from "../debug.ts";
 
 export interface WatchArgs {
   cmd: string;
