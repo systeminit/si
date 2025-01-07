@@ -6,8 +6,8 @@
     <template #success>
       <div class="overflow-hidden">
         <WorkspacePageHeader
-          :title="`${workspace.displayName} > Automation Tokens`"
-          subtitle="From here you can manage automation tokens for your workspace. Enter the name and expiration of the token below and click the Generate Automation Token button"
+          :title="`${workspace.displayName} > API Tokens`"
+          subtitle="From here you can manage API tokens for your workspace. Enter the name and expiration of the token below and click the Generate API Token button"
         >
           <RouterLink
             :to="{ name: 'workspace-settings', params: { workspaceId } }"
@@ -45,7 +45,7 @@
               variant="solid"
               @click="createAuthToken.execute()"
             >
-              Generate Automation Token
+              Generate API Token
             </VButton>
           </div>
           <ErrorMessage :asyncState="authTokens" />
@@ -143,7 +143,7 @@ import WorkspacePageHeader from "@/components/WorkspacePageHeader.vue";
 import { useAuthTokensApi } from "@/store/authTokens.store";
 import AuthTokenListItem from "@/components/AuthTokenListItem.vue";
 
-useHead({ title: "Automation Tokens" });
+useHead({ title: "API Tokens" });
 
 const workspacesStore = useWorkspacesStore();
 const api = useAuthTokensApi();

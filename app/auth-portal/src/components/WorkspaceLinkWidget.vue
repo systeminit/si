@@ -49,10 +49,15 @@
         @click.stop="dropdownMenuRef?.open($event) || _.noop"
       />
       <DropdownMenu ref="dropdownMenuRef" forceAlignRight>
-        <DropdownMenuItem label="Settings" @click.stop="openSettings" />
         <DropdownMenuItem
-          label="Automation Tokens"
-          @click.stop="openAutomationTokens"
+          icon="settings"
+          label="Settings"
+          @click.stop="openSettings"
+        />
+        <DropdownMenuItem
+          icon="key-tilted"
+          label="API Tokens"
+          @click.stop="openApiTokens"
         />
       </DropdownMenu>
     </div>
@@ -172,9 +177,9 @@ const openSettings = async () => {
   });
 };
 
-const openAutomationTokens = async () => {
+const openApiTokens = async () => {
   await router.push({
-    name: "workspace-auth-tokens",
+    name: "workspace-api-tokens",
     params: { workspaceId: props.workspaceId },
   });
 };

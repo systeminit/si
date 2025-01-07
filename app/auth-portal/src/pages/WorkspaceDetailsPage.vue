@@ -2,14 +2,14 @@
   <div class="overflow-hidden">
     <template v-if="loadWorkspacesReqStatus.isSuccess || createMode">
       <WorkspacePageHeader
-        :title="
-          draftWorkspace.displayName ||
-          (createMode ? 'Create New Workspace' : 'Workspace Details')
-        "
         :subtitle="
           createMode
             ? 'Fill out this form to create a new workspace.'
             : 'From here you can manage this workspace and invite users to be part of it.'
+        "
+        :title="
+          draftWorkspace.displayName ||
+          (createMode ? 'Create New Workspace' : 'Workspace Details')
         "
       >
         <template v-if="isDefaultWorkspace">
@@ -27,32 +27,29 @@
             DEFAULT
           </div>
         </template>
-        <RouterLink
-          v-if="!createMode && featureFlagsStore.AUTOMATION_API"
-          :to="{ name: 'workspace-auth-tokens', params: { workspaceId } }"
-        >
-          <Icon
-            name="circle-stack"
-            tooltip="API Tokens"
-            tooltipPlacement="top"
-            size="lg"
-            class="flex-none"
-            iconTone="warning"
-            iconIdleTone="shade"
-            iconBgActiveTone="action"
-          />
-        </RouterLink>
         <IconButton
+          v-if="!createMode && featureFlagsStore.AUTOMATION_API"
+          class="flex-none"
+          icon="key-tilted"
+          iconBgActiveTone="action"
+          iconIdleTone="shade"
+          iconTone="warning"
+          size="lg"
+          tooltip="API Tokens"
+          tooltipPlacement="top"
+          @click="openApiTokens"
+        />
+        <IconButton
+          :icon="draftWorkspace.isFavourite ? 'star' : 'starOutline'"
+          :iconIdleTone="draftWorkspace.isFavourite ? 'warning' : 'shade'"
           :tooltip="
             draftWorkspace.isFavourite ? 'Remove Favourite' : 'Add Favourite'
           "
-          tooltipPlacement="top"
-          :icon="draftWorkspace.isFavourite ? 'star' : 'starOutline'"
-          size="lg"
           class="flex-none"
-          iconTone="warning"
-          :iconIdleTone="draftWorkspace.isFavourite ? 'warning' : 'shade'"
           iconBgActiveTone="action"
+          iconTone="warning"
+          size="lg"
+          tooltipPlacement="top"
           @click="favouriteWorkspace(!draftWorkspace.isFavourite)"
         />
       </WorkspacePageHeader>
@@ -103,18 +100,18 @@
         <div class="flex flex-row flex-wrap items-center w-full gap-xs">
           <VButton
             v-if="!createMode || createWorkspaceType"
+            :class="
+              clsx(
+                'basis-[calc(75%-0.5rem)]',
+                createMode ? 'flex-grow' : 'flex-grow-0',
+              )
+            "
             :disabled="
               validationState.isError || (!isWorkspaceOwner && !createMode)
             "
             :loadingText="createMode ? 'Creating...' : 'Applying...'"
             :requestStatus="
               createMode ? createWorkspaceReqStatus : editWorkspaceReqStatus
-            "
-            :class="
-              clsx(
-                'basis-[calc(75%-0.5rem)]',
-                createMode ? 'flex-grow' : 'flex-grow-0',
-              )
             "
             iconRight="chevron--right"
             tone="action"
@@ -127,8 +124,8 @@
             v-if="!createMode"
             :disabled="isDefaultWorkspace"
             class="basis-[calc(25%-0.5rem)] flex-grow-0"
-            loadingText="Setting as default..."
             iconRight="chevron--right"
+            loadingText="Setting as default..."
             tone="action"
             variant="solid"
             @click="setDefaultWorkspace()"
@@ -166,8 +163,8 @@
                   <MemberListItem
                     v-for="memUser in members"
                     :key="memUser.userId"
-                    :memUser="memUser"
                     :draftWorkspace="draftWorkspace"
+                    :memUser="memUser"
                     :workspaceId="workspaceId"
                   />
                 </tbody>
@@ -188,9 +185,9 @@
             @enterPressed="inviteButtonHandler"
           />
           <VButton
+            :disabled="!isWorkspaceOwner"
             :requestStatus="inviteUserReqStatus"
             class="flex-none"
-            :disabled="!isWorkspaceOwner"
             tone="action"
             variant="solid"
             @click="inviteButtonHandler"
@@ -412,6 +409,12 @@ const editWorkspace = async () => {
   }
 };
 
+const openApiTokens = async () => {
+  await router.push({
+    name: "workspace-api-tokens",
+    params: { workspaceId: props.workspaceId },
+  });
+};
 const favouriteWorkspace = async (isFavourite: boolean) => {
   if (!props.workspaceId) return;
 
