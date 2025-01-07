@@ -158,7 +158,7 @@ pub(crate) async fn migrate_test_exclusive_schema_starfield(
         .build()?;
 
     let starfield_kripke_func_code = "async function hesperus_is_phosphorus(input) {
-            if input.hesperus === \"hesperus\" { return \"phosphorus\"; }
+            if (input.hesperus === \"hesperus\") { return \"phosphorus\"; }
             else return \"not hesperus\";
         }";
     let starfield_kripke_func_name = "hesperus_is_phosphorus";
@@ -622,7 +622,7 @@ pub(crate) async fn migrate_test_exclusive_schema_etoiles(
     let etoiles_kripke_func_code = "async function la_belle_etoile(input) {
             let rigid_designator = 'not hesperus';
 
-            if input?.possible_world_a?.wormhole_1?.wormhole_2?.wormhole_3?.rigid_designator === \"hesperus\" { rigid_designator = \"phosphorus\"; }
+            if (input?.possible_world_a?.wormhole_1?.wormhole_2?.wormhole_3?.rigid_designator === \"hesperus\") { rigid_designator = \"phosphorus\"; }
 
             return {
                 wormhole_1: {
