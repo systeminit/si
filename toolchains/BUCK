@@ -1,4 +1,4 @@
-load(":toolchain.bzl", "toolchain_alias")
+load("@prelude//tests:test_toolchain.bzl", "noop_test_toolchain")
 load("@prelude//toolchains:cxx.bzl", "system_cxx_toolchain")
 load("@prelude//toolchains:genrule.bzl", "system_genrule_toolchain")
 load(
@@ -6,22 +6,31 @@ load(
     "system_python_bootstrap_toolchain",
     "system_python_toolchain",
 )
-load("@prelude-si//e2e:toolchain.bzl", "e2e_toolchain")
-load("@prelude//toolchains:remote_test_execution.bzl", "remote_test_execution_toolchain")
+load(
+    "@prelude//toolchains:remote_test_execution.bzl",
+    "remote_test_execution_toolchain",
+)
 load("@prelude//toolchains:rust.bzl", "system_rust_toolchain")
+load("@prelude-si//artifact:toolchain.bzl", "artifact_toolchain")
 load("@prelude-si//build_context:toolchain.bzl", "build_context_toolchain")
 load("@prelude-si//docker:toolchain.bzl", "docker_toolchain")
-load("@prelude-si//artifact:toolchain.bzl", "artifact_toolchain")
+load("@prelude-si//e2e:toolchain.bzl", "e2e_toolchain")
 load("@prelude-si//git:toolchain.bzl", "git_toolchain")
 load("@prelude-si//nix:toolchain.bzl", "nix_toolchain")
 load("@prelude-si//pnpm:toolchain.bzl", "pnpm_toolchain")
 load("@prelude-si//python:toolchain.bzl", "si_python_toolchain")
+load("@prelude-si//rootfs:toolchain.bzl", "rootfs_toolchain")
 load("@prelude-si//rust:toolchain.bzl", "si_rust_toolchain")
 load("@prelude-si//shell:toolchain.bzl", "shell_toolchain")
-load("@prelude-si//rootfs:toolchain.bzl", "rootfs_toolchain")
+load(":toolchain.bzl", "toolchain_alias")
 
 remote_test_execution_toolchain(
     name = "remote_test_execution",
+    visibility = ["PUBLIC"],
+)
+
+noop_test_toolchain(
+    name = "test",
     visibility = ["PUBLIC"],
 )
 
@@ -56,8 +65,8 @@ system_rust_toolchain(
         "-Cdebug-assertions=false",
         "-Coverflow-checks=false",
         "-Clto=false",
-        "-Ccodegen-units=16"
-    ]
+        "-Ccodegen-units=16",
+    ],
 )
 
 system_rust_toolchain(
@@ -71,7 +80,7 @@ system_rust_toolchain(
         "-Ccodegen-units=256",
         "-Cdebug-assertions=true",
         "-Coverflow-checks=true",
-    ]
+    ],
 )
 
 toolchain_alias(
