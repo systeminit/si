@@ -59,7 +59,7 @@
                     <th scope="col">Name</th>
                     <th scope="col">Created</th>
                     <th scope="col">Expires</th>
-                    <th class="text-center" scope="col">Revoke</th>
+                    <!--th class="text-center" scope="col">Revoke</th-->
                   </tr>
                 </thead>
                 <tbody

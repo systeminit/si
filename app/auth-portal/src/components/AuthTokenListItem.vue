@@ -20,7 +20,7 @@
     <!-- TODO show user of token if it's not current user--right now only owner can create -->
     <td>{{ createdAt }}</td>
     <td>{{ expiresAt }}</td>
-    <td class="text-center">
+    <!--td class="text-center">
       <ErrorMessage :asyncState="revoke" />
       <VButton
         v-if="workspace.role === 'OWNER'"
@@ -32,20 +32,18 @@
         variant="transparent"
         @click="revoke.execute()"
       />
-    </td>
+    </td-->
   </tr>
 </template>
 
 <script lang="ts" setup>
 import clsx from "clsx";
-import { ErrorMessage, themeClasses, VButton } from "@si/vue-lib/design-system";
-import { apiData } from "@si/vue-lib/pinia";
-import { useAsyncState } from "@vueuse/core";
+import { themeClasses } from "@si/vue-lib/design-system";
 import { computed } from "vue";
 import { Workspace } from "@/store/workspaces.store";
-import { AuthToken, useAuthTokensApi } from "@/store/authTokens.store";
+import { AuthToken } from "@/store/authTokens.store";
 
-const api = useAuthTokensApi();
+// const api = useAuthTokensApi();
 
 const props = defineProps<{
   authToken: AuthToken;
@@ -58,15 +56,15 @@ const emit = defineEmits<{
 }>();
 
 /** Action to revoke token */
-const revoke = useAsyncState(
-  async () => {
-    const { workspace, authToken } = props;
-    await apiData(api.REVOKE_AUTH_TOKEN(workspace.id, authToken.id));
-    emit("revoked");
-  },
-  undefined,
-  { immediate: false },
-);
+// const revoke = useAsyncState(
+//   async () => {
+//     const { workspace, authToken } = props;
+//     await apiData(api.REVOKE_AUTH_TOKEN(workspace.id, authToken.id));
+//     emit("revoked");
+//   },
+//   undefined,
+//   { immediate: false },
+// );
 
 const createdAt = computed(() =>
   new Date(props.authToken.createdAt).toLocaleString(),
