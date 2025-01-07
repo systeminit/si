@@ -9,7 +9,11 @@ import {
   decodeSdfAuthToken,
 } from "../services/auth.service";
 import {
-  AuthTokenId, getAuthToken, registerAuthToken, updateAuthToken, deleteAuthToken,
+  AuthTokenId,
+  getAuthToken,
+  registerAuthToken,
+  updateAuthToken,
+  deleteAuthToken,
   getAuthTokens,
 } from "../services/auth_tokens.service";
 import { authorizeWorkspaceRoute } from "./workspace.routes";
@@ -17,7 +21,7 @@ import { ApiError } from "../lib/api-error";
 import { router } from ".";
 
 router.get("/workspaces/:workspaceId/authTokens", async (ctx) => {
-  const { workspaceId } = await authorizeWorkspaceRoute(ctx, RoleType.OWNER);
+  const { workspaceId } = await authorizeWorkspaceRoute(ctx, undefined);
 
   const authTokens = await getAuthTokens(workspaceId);
 
@@ -25,7 +29,10 @@ router.get("/workspaces/:workspaceId/authTokens", async (ctx) => {
 });
 
 router.post("/workspaces/:workspaceId/authTokens", async (ctx) => {
-  const { userId, workspaceId } = await authorizeWorkspaceRoute(ctx, RoleType.OWNER);
+  const {
+    userId,
+    workspaceId,
+  } = await authorizeWorkspaceRoute(ctx, RoleType.OWNER);
 
   // Get params from body
   const { name } = validate(
@@ -52,12 +59,12 @@ router.post("/workspaces/:workspaceId/authTokens", async (ctx) => {
 });
 
 router.get("/workspaces/:workspaceId/authTokens/:authTokenId", async (ctx) => {
-  const { authToken } = await authorizeAuthTokenRoute(ctx);
+  const { authToken } = await authorizeAuthTokenRoute(ctx, undefined);
   ctx.body = { authToken };
 });
 
 router.put("/workspaces/:workspaceId/authTokens/:authTokenId", async (ctx) => {
-  const { authToken } = await authorizeAuthTokenRoute(ctx);
+  const { authToken } = await authorizeAuthTokenRoute(ctx, RoleType.OWNER);
 
   // Get params from body
   const { name } = validate(
@@ -73,7 +80,7 @@ router.put("/workspaces/:workspaceId/authTokens/:authTokenId", async (ctx) => {
 });
 
 router.delete("/workspaces/:workspaceId/authTokens/:authTokenId", async (ctx) => {
-  const { authTokenId } = await authorizeAuthTokenRoute(ctx);
+  const { authTokenId } = await authorizeAuthTokenRoute(ctx, RoleType.OWNER);
 
   const removed = await deleteAuthToken(authTokenId);
 
@@ -81,12 +88,13 @@ router.delete("/workspaces/:workspaceId/authTokens/:authTokenId", async (ctx) =>
 });
 
 // Authorize /workspaces/:workspaceId/authTokens/:authTokenId
-async function authorizeAuthTokenRoute(ctx: CustomRouteContext) {
+// FIXME: APPROVER and EDITOR cannot be explicitly set since it would disallow OWNER
+async function authorizeAuthTokenRoute(ctx: CustomRouteContext, role: "OWNER" | undefined) {
   if (!ctx.params.authTokenId) {
     throw new Error(`No :authTokenId param on route: ${ctx.params}`);
   }
 
-  const route = await authorizeWorkspaceRoute(ctx, RoleType.OWNER);
+  const route = await authorizeWorkspaceRoute(ctx, role);
   const authToken = await getAuthToken(ctx.params.authTokenId);
   if (!authToken) {
     throw new ApiError("NotFound", "AuthToken not found");

@@ -11,7 +11,7 @@ import {
 } from "../services/workspaces.service";
 import { validate } from "../lib/validation-helpers";
 import { tracker } from "../lib/tracker";
-import { extractWorkspaceIdParam } from "./workspace.routes";
+import { extractWorkspaceIdParamWithoutAuthorizing } from "./workspace.routes";
 import { extractAdminAuthUser, router } from ".";
 
 export type WorkspaceLookup = {
@@ -25,7 +25,7 @@ router.get("/workspaces/admin-lookup/:workspaceId", async (ctx) => {
   // Just for authorization, result is discarded
   extractAdminAuthUser(ctx);
 
-  const workspace = await extractWorkspaceIdParam(ctx);
+  const workspace = await extractWorkspaceIdParamWithoutAuthorizing(ctx);
   const user = await getUserById(workspace.creatorUserId);
 
   const workspaceDetails: WorkspaceLookup = {
@@ -97,7 +97,7 @@ router.post("/workspaces/setup-production-workspace-by-userid", async (ctx) => {
 router.get("/workspaces/:workspaceId/ownerWorkspaces", async (ctx) => {
   extractAdminAuthUser(ctx);
 
-  const workspace = await extractWorkspaceIdParam(ctx);
+  const workspace = await extractWorkspaceIdParamWithoutAuthorizing(ctx);
 
   ctx.body = {
     workspaceId: workspace.id,
@@ -109,7 +109,7 @@ router.get("/workspaces/:workspaceId/ownerWorkspaces", async (ctx) => {
 router.patch("/workspaces/:workspaceId/quarantine", async (ctx) => {
   const authUser = extractAdminAuthUser(ctx);
 
-  const workspace = await extractWorkspaceIdParam(ctx);
+  const workspace = await extractWorkspaceIdParamWithoutAuthorizing(ctx);
 
   const reqBody = validate(
     ctx.request.body,

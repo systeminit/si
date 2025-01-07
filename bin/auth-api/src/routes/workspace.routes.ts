@@ -27,7 +27,10 @@ import {
 import { validate } from "../lib/validation-helpers";
 
 import { CustomRouteContext } from "../custom-state";
-import { makeAuthConnectUrl, createSdfAuthToken } from "../services/auth.service";
+import {
+  makeAuthConnectUrl,
+  createSdfAuthToken,
+} from "../services/auth.service";
 import { tracker } from "../lib/tracker";
 import { findLatestTosForUser } from "../services/tos.service";
 import { posthog } from "../lib/posthog";
@@ -38,8 +41,8 @@ router.get("/workspaces", async (ctx) => {
   ctx.body = await getUserWorkspaces(authUser.id);
 });
 
-// :workspaceId named param handler - little easier for TS this way than using router.param
-export async function extractWorkspaceIdParam(ctx: CustomRouteContext) {
+/// Extract the workspace data from the request. YOU WANT TO USE authorizeWorkspaceRoute
+export async function extractWorkspaceIdParamWithoutAuthorizing(ctx: CustomRouteContext) {
   if (!ctx.params.workspaceId) {
     throw new Error(
       "Only use this fn with routes containing :workspaceId param",
@@ -55,31 +58,25 @@ export async function extractWorkspaceIdParam(ctx: CustomRouteContext) {
   return workspace;
 }
 
-// Get a workspace from the param, error if the auth user does not have permission on it
-async function extractOwnWorkspaceIdParam(ctx: CustomRouteContext) {
-  const workspace = await extractWorkspaceIdParam(ctx);
-
+// TODO this means that admin do not get automatic access to endpoints that call this
+export async function authorizeWorkspaceRoute(ctx: CustomRouteContext, role: RoleType | undefined) {
+  const workspace = await extractWorkspaceIdParamWithoutAuthorizing(ctx);
   const authUser = extractAuthUser(ctx);
+
   const memberRole = await userRoleForWorkspace(authUser.id, workspace.id);
+
   if (!memberRole) {
-    throw new ApiError("Forbidden", "You do not have access to that workspace");
+    throw new ApiError(
+      "Forbidden",
+      "You are not member of this workspace",
+    );
   }
 
-  return workspace;
-}
-
-export async function authorizeWorkspaceRoute(ctx: CustomRouteContext, role?: RoleType) {
-  const workspace = await extractWorkspaceIdParam(ctx);
-  const authUser = extractAuthUser(ctx);
-
-  if (role) {
-    const memberRole = await userRoleForWorkspace(authUser.id, workspace.id);
-    if (memberRole !== role) {
-      throw new ApiError(
-        "Forbidden",
-        "You do not have the correct permission to edit this workspace",
-      );
-    }
+  if (role && memberRole !== role) {
+    throw new ApiError(
+      "Forbidden",
+      `You must be ${role} to interact with this workspace`,
+    );
   }
 
   return {
@@ -92,12 +89,16 @@ export async function authorizeWorkspaceRoute(ctx: CustomRouteContext, role?: Ro
 }
 
 router.get("/workspaces/:workspaceId", async (ctx) => {
-  ctx.body = await extractOwnWorkspaceIdParam(ctx);
+  const { workspace } = await authorizeWorkspaceRoute(ctx, undefined);
+  ctx.body = workspace;
 });
 
 router.delete("/workspaces/:workspaceId", async (ctx) => {
   // TODO RoleType.OWNER? Seems like not just anybody should be able to do this ...
-  const { authUser, workspaceId } = await authorizeWorkspaceRoute(ctx);
+  const {
+    authUser,
+    workspaceId,
+  } = await authorizeWorkspaceRoute(ctx, undefined);
 
   await deleteWorkspace(workspaceId);
 
@@ -188,7 +189,7 @@ export type Member = {
   signupAt: Date | null;
 };
 router.get("/workspace/:workspaceId/members", async (ctx) => {
-  const { workspace } = await authorizeWorkspaceRoute(ctx);
+  const { workspace } = await authorizeWorkspaceRoute(ctx, undefined);
 
   const members: Member[] = [];
   const workspaceMembers = await getWorkspaceMembers(workspace.id);
@@ -312,7 +313,7 @@ router.delete("/workspace/:workspaceId/members", async (ctx) => {
 });
 
 router.patch("/workspaces/:workspaceId/setDefault", async (ctx) => {
-  const { authUser, workspace } = await authorizeWorkspaceRoute(ctx);
+  const { authUser, workspace } = await authorizeWorkspaceRoute(ctx, undefined);
 
   tracker.trackEvent(authUser, "set_default_workspace", {
     defaultWorkspaceSetBy: authUser.email,
@@ -327,7 +328,7 @@ router.patch("/workspaces/:workspaceId/setDefault", async (ctx) => {
 });
 
 router.patch("/workspaces/:workspaceId/favourite", async (ctx) => {
-  const { authUser, workspace } = await authorizeWorkspaceRoute(ctx);
+  const { authUser, workspace } = await authorizeWorkspaceRoute(ctx, undefined);
 
   const reqBody = validate(
     ctx.request.body,
@@ -364,15 +365,7 @@ router.patch("/workspaces/:workspaceId/favourite", async (ctx) => {
 });
 
 router.get("/workspaces/:workspaceId/go", async (ctx) => {
-  const { authUser, workspace } = await authorizeWorkspaceRoute(ctx);
-
-  // TODO check this in all endpoints?
-  if (workspace.quarantinedAt !== null) {
-    throw new ApiError(
-      "Unauthorized",
-      `This workspace (ID ${workspace.id}) is quarantined. Contact SI support`,
-    );
-  }
+  const { authUser, workspace } = await authorizeWorkspaceRoute(ctx, undefined);
 
   // we require the user to have verified their email before they can log into a workspace
   if (!authUser.emailVerified) {
