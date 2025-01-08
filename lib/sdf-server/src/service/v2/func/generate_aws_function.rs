@@ -107,7 +107,13 @@ async fn generate_and_save_code(
         Some(prompt_override) => prompt_override.into(),
         None => asset_sprayer.raw_prompt(prompt.kind()).await?,
     };
-    let code = asset_sprayer.run(prompt, &raw_prompt).await?;
+    let function_text = Func::get_by_id_or_error(ctx, func_id)
+        .await?
+        .code_plaintext()?
+        .unwrap_or("".to_string());
+    let code = asset_sprayer
+        .run(prompt, &raw_prompt, &function_text)
+        .await?;
     FuncAuthoringClient::save_code(ctx, func_id, code).await?;
     ctx.commit().await?;
     Ok(())

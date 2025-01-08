@@ -52,18 +52,20 @@ impl Prompt {
         *kind
     }
 
-    pub async fn generate(&self, raw_prompt: &str) -> Result<CreateChatCompletionRequest> {
-        let request = serde_yaml::from_str(raw_prompt)?;
-        self.generate_request(request).await
+    pub fn read(&self, raw_prompt: &str) -> Result<Vec<CreateChatCompletionRequest>> {
+        Ok(serde_yaml::from_str(raw_prompt)?)
     }
 
-    async fn generate_request(
+    pub async fn generate(
         &self,
         raw_request: CreateChatCompletionRequest,
+        function_text: &str,
     ) -> Result<CreateChatCompletionRequest> {
         let mut request = raw_request;
         for message in request.messages.iter_mut() {
-            *message = self.generate_message(message.clone()).await?;
+            *message = self
+                .generate_message(message.clone(), function_text)
+                .await?;
         }
         Ok(request)
     }
@@ -71,6 +73,7 @@ impl Prompt {
     async fn generate_message(
         &self,
         message: ChatCompletionRequestMessage,
+        function_text: &str,
     ) -> Result<ChatCompletionRequestMessage> {
         let mut message = message;
         match &mut message {
@@ -81,13 +84,13 @@ impl Prompt {
             | ChatCompletionRequestMessage::System(ChatCompletionRequestSystemMessage {
                 content: ChatCompletionRequestSystemMessageContent::Text(text),
                 ..
-            }) => *text = self.generate_message_text(text).await?,
+            }) => *text = self.generate_message_text(text, function_text).await?,
             _ => {}
         };
         Ok(message)
     }
 
-    async fn generate_message_text(&self, text: &str) -> Result<String> {
+    async fn generate_message_text(&self, text: &str, function_text: &str) -> Result<String> {
         let text = match self {
             Self::AwsCliCommandPrompt(_, command) => text
                 .replace("{AWS_COMMAND}", command.command())
@@ -96,7 +99,8 @@ impl Prompt {
         let text = text
             .replace("{AWS_CLI_DOCS_URL}", AWS_CLI_DOCS_URL)
             .replace("{SI_DOCS_URL}", SI_DOCS_URL);
-        self.fetch_message_text(&text).await
+        let text = self.fetch_message_text(&text).await?;
+        Ok(text.replace("{FUNCTION_TEXT}", function_text))
     }
 
     async fn fetch_message_text(&self, text: &str) -> Result<String> {
