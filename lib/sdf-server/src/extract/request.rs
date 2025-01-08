@@ -16,13 +16,10 @@ use super::{internal_error, unauthorized_error, ErrorResponse};
 pub struct RequestUlidFromHeader(pub Option<Ulid>);
 
 #[async_trait]
-impl FromRequestParts<AppState> for RequestUlidFromHeader {
+impl<S> FromRequestParts<S> for RequestUlidFromHeader {
     type Rejection = ErrorResponse;
 
-    async fn from_request_parts(
-        parts: &mut Parts,
-        _state: &AppState,
-    ) -> Result<Self, Self::Rejection> {
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
         let request_ulid = parts
             .headers
             .get("X-SI-REQUEST-ULID")
@@ -134,13 +131,10 @@ impl FromRequestParts<AppState> for RawAccessToken {
 pub struct TokenFromAuthorizationHeader(pub String);
 
 #[async_trait]
-impl FromRequestParts<AppState> for TokenFromAuthorizationHeader {
+impl<S> FromRequestParts<S> for TokenFromAuthorizationHeader {
     type Rejection = ErrorResponse;
 
-    async fn from_request_parts(
-        parts: &mut Parts,
-        _state: &AppState,
-    ) -> Result<Self, Self::Rejection> {
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
         if let Some(RawAccessToken(token)) = parts.extensions.get::<RawAccessToken>() {
             return Ok(Self(token.clone()));
         }

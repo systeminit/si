@@ -46,24 +46,9 @@ async fn app_state_middeware<B>(
 
 #[allow(clippy::too_many_arguments)]
 pub fn routes(state: AppState) -> Router {
-    let mut router: Router<AppState> = Router::new();
-    router = router
-        .nest("/api/action", crate::service::action::routes())
-        .nest("/api/node_debug", crate::service::node_debug::routes())
-        .nest("/api/attribute", crate::service::attribute::routes())
-        .nest("/api/change_set", crate::service::change_set::routes())
-        .nest("/api/component", crate::service::component::routes())
-        .nest("/api/diagram", crate::service::diagram::routes())
-        .nest("/api/graphviz", crate::service::graphviz::routes())
-        .nest(
-            "/api/qualification",
-            crate::service::qualification::routes(),
-        )
-        .nest("/api/secret", crate::service::secret::routes())
-        .nest("/api/session", crate::service::session::routes())
-        .nest("/api/ws", crate::service::ws::routes())
-        .nest("/api/module", crate::service::module::routes())
-        .nest("/api/variant", crate::service::variant::routes())
+    Router::new()
+        .nest("/api", v1_routes())
+        .nest("/api/public", crate::service::public::routes(state.clone()))
         .nest("/api/v2", crate::service::v2::routes(state.clone()))
         .nest("/api/whoami", crate::service::whoami::routes())
         .layer(CompressionLayer::new())
@@ -102,14 +87,29 @@ pub fn routes(state: AppState) -> Router {
         .nest(
             "/api/",
             Router::new().route("/", get(system_status_route).layer(CorsLayer::permissive())),
-        );
+        )
+        // Load dev routes if we are in dev mode (decided by "opt-level" at the moment).
+        .nest("/api/dev", dev_routes())
+        // Consider turning app state into an Arc so that all of the middleware
+        // share the same state object, instead of cloning
+        .with_state(state)
+}
 
-    // Load dev routes if we are in dev mode (decided by "opt-level" at the moment).
-    router = dev_routes(router);
-
-    // Consider turning app state into an Arc so that all of the middleware
-    // share the same state object, instead of cloning
-    router.with_state(state)
+fn v1_routes() -> Router<AppState> {
+    Router::new()
+        .nest("/action", crate::service::action::routes())
+        .nest("/node_debug", crate::service::node_debug::routes())
+        .nest("/attribute", crate::service::attribute::routes())
+        .nest("/change_set", crate::service::change_set::routes())
+        .nest("/component", crate::service::component::routes())
+        .nest("/diagram", crate::service::diagram::routes())
+        .nest("/graphviz", crate::service::graphviz::routes())
+        .nest("/qualification", crate::service::qualification::routes())
+        .nest("/secret", crate::service::secret::routes())
+        .nest("/session", crate::service::session::routes())
+        .nest("/ws", crate::service::ws::routes())
+        .nest("/module", crate::service::module::routes())
+        .nest("/variant", crate::service::variant::routes())
 }
 
 async fn system_status_route() -> Json<Value> {
@@ -117,15 +117,14 @@ async fn system_status_route() -> Json<Value> {
 }
 
 #[cfg(debug_assertions)]
-pub fn dev_routes(mut router: Router<AppState>) -> Router<AppState> {
-    router = router.nest("/api/dev", crate::service::dev::routes());
-    router
+pub fn dev_routes() -> Router<AppState> {
+    crate::service::dev::routes()
 }
 
 #[cfg(not(debug_assertions))]
-pub fn dev_routes(router: Router<AppState>) -> Router<AppState> {
+pub fn dev_routes() -> Router<AppState> {
     telemetry::prelude::debug!("skipping dev routes...");
-    router
+    Router::new()
 }
 
 #[allow(clippy::large_enum_variant)]
