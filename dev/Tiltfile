@@ -20,12 +20,14 @@ groups = {
         "pinga",
         "veritech",
         "sdf",
-        "module-index",
         "rebaser",
         "forklift",
+        "auth-api",
+        "module-index",
     ],
     "frontend": [
         "web",
+        "auth-portal",
     ],
     "testing": [
         "db-test",
@@ -57,37 +59,58 @@ for arg in cfg.get("to-run", []):
         enabled_resources.append(arg)
 config.set_enabled_resources(enabled_resources)
 
-# Parse the CLI args to get the rustc build mode or default to release
-standard_rustc_build_mode = cfg.get('standard-rustc-build-mode', False)
-debug_rustc_build_mode = cfg.get('debug-rustc-build-mode', False)
-debug_no_rebaser_rustc_build_mode = cfg.get('debug-no-rebaser-rustc-build-mode', False)
-rustc_build_mode = 'release'
+RUST_RESOURCE_ARGS = {
+    "serve_env": {"SI_FORCE_COLOR": "true"},
+    "allow_parallel": True,
+    "trigger_mode": TRIGGER_MODE_MANUAL,
+}
 
-# TODO(nick): the bzl logic for writing arguments out does not know how
-# to group string ("config.define_string") arguments with the argument
-# call (i.e. it thinks "--foo bar" is one argument rather than having
-# argument "--foo" be passed value "bar"). Thus, we use two booleans to
-# get around this. If we get both, greedily choose the standard mode.
-if standard_rustc_build_mode:
-    rustc_build_mode = 'standard'
-elif debug_rustc_build_mode:
-    rustc_build_mode = 'debug'
-elif debug_no_rebaser_rustc_build_mode:
-    rustc_build_mode = 'debug'
+def si_buck2_resource(target, *, name=None, buck2_serve_args=None, tee=True, **kwargs):
+    # Figure name from build command: //app/web:dev -> web
+    if name == None:
+        name = target.split("/")[-1].split(":")[0]
 
-# Default trigger mode to manual so that (importantly) backend services don't rebuild/restart
-# automatically. This is opt-in in the Tilt UI in the `Mode` column
-trigger_mode = TRIGGER_MODE_MANUAL
+    # Get build mode for buck2 commands
+    # TODO(nick): the bzl logic for writing arguments out does not know how
+    # to group string ("config.define_string") arguments with the argument
+    # call (i.e. it thinks "--foo bar" is one argument rather than having
+    # argument "--foo" be passed value "bar"). Thus, we use two booleans to
+    # get around this. If we get both, greedily choose the standard mode.
+    if cfg.get('standard-rustc-build-mode', False):
+        mode_and_target = target
+    elif cfg.get('debug-rustc-build-mode', False):
+        mode_and_target = "@//mode/debug {}".format(target)
+    elif cfg.get('debug-no-rebaser-rustc-build-mode', False) and target != '//bin/rebaser:rebaser':
+        mode_and_target = "@//mode/debug {}".format(target)
+    else:
+        mode_and_target = "@//mode/release {}".format(target)
 
-def _buck2_dep_inputs(target):
-    cmd = [
-        "buck2",
-        "uquery",
-        "\"inputs(deps('{}'))\"".format(target),
-    ]
-    file_paths = str(local(" ".join(cmd))).splitlines()
+    # Get buck2 build command
+    cmd = "buck2 build {}".format(mode_and_target)
 
-    return file_paths
+    # Get buck2 run command
+    serve_cmd = "buck2 run {}".format(mode_and_target)
+    if buck2_serve_args != None:
+        serve_cmd += " -- {}".format(buck2_serve_args)
+    if tee and mode_and_target != target:
+        # TODO different resources currently tee differently depending on mode. Seems like
+        # copypasta error but ask around to see if it's intended.
+        serve_cmd += " | tee /tmp/si-logs/{}".format(name)
+
+    # Bring in deps
+    deps_cmd = "buck2 uquery \"inputs(deps('{}'))\"".format(target)
+
+    # Lookup group and add to labels
+    group_names = [group for group in groups if group != "all" and name in groups[group]]
+
+    local_resource(
+        name,
+        labels = group_names,
+        cmd = cmd,
+        serve_cmd = serve_cmd,
+        deps = str(local(deps_cmd)).splitlines(),
+        **kwargs,
+    )
 
 # From the Tilt docs:
 #
@@ -129,171 +152,54 @@ for service in compose_services:
 
     dc_resource(service, links = links, labels = [find_group(service, groups)])
 
-
 # Locally build and run `rebaser`
-rebaser_target = "//bin/rebaser:rebaser"
-
-cmd = "buck2 build @//mode/release {}".format(rebaser_target)
-serve_cmd = "buck2 run @//mode/release {} | tee /tmp/si-logs/rebaser".format(rebaser_target)
-if rustc_build_mode == 'standard':
-    cmd = "buck2 build {}".format(rebaser_target)
-    serve_cmd = "buck2 run {}".format(rebaser_target)
-elif debug_no_rebaser_rustc_build_mode:
-    cmd = "buck2 build @//mode/release {}".format(rebaser_target)
-    serve_cmd = "buck2 run @//mode/release {} | tee /tmp/si-logs/rebaser".format(rebaser_target)
-elif rustc_build_mode == 'debug':
-    cmd = "buck2 build @//mode/debug {}".format(rebaser_target)
-    serve_cmd = "buck2 run @//mode/debug {} | tee /tmp/si-logs/rebaser".format(rebaser_target)
-
-local_resource(
-    "rebaser",
-    labels = ["backend"],
-    cmd = cmd,
-    serve_cmd = serve_cmd,
-    serve_env = {"SI_FORCE_COLOR": "true"},
-    allow_parallel = True,
+si_buck2_resource(
+    "//bin/rebaser:rebaser",
     resource_deps = [
         "nats",
         "otelcol",
         "postgres",
     ],
-    deps = _buck2_dep_inputs(rebaser_target),
-    trigger_mode = trigger_mode
+    **RUST_RESOURCE_ARGS,
 )
 
 # Locally build and run `forklift`
-forklift_target = "//bin/forklift:forklift"
-
-cmd = "buck2 build @//mode/release {}".format(forklift_target)
-serve_cmd = "buck2 run @//mode/release {} | tee /tmp/si-logs/forklift".format(forklift_target)
-if rustc_build_mode == 'standard':
-    cmd = "buck2 build {}".format(forklift_target)
-    serve_cmd = "buck2 run {}".format(forklift_target)
-elif rustc_build_mode == 'debug':
-    cmd = "buck2 build @//mode/debug {}".format(forklift_target)
-    serve_cmd = "buck2 run @//mode/debug {} | tee /tmp/si-logs/forklift".format(forklift_target)
-
-local_resource(
-    "forklift",
-    labels = ["backend"],
-    cmd = cmd,
-    serve_cmd = serve_cmd,
-    serve_env = {"SI_FORCE_COLOR": "true"},
-    allow_parallel = True,
+si_buck2_resource(
+    "//bin/forklift:forklift",
     resource_deps = [
         "nats",
         "otelcol",
     ],
-    deps = _buck2_dep_inputs(forklift_target),
-    trigger_mode = trigger_mode
-)
-
-# Locally build and run `module-index`
-module_index_target = "//bin/module-index:module-index"
-
-cmd = "buck2 build @//mode/release {}".format(module_index_target)
-serve_cmd = "buck2 run @//mode/release {}".format(module_index_target)
-if rustc_build_mode == 'standard':
-    cmd = "buck2 build {}".format(module_index_target)
-    serve_cmd = "buck2 run {}".format(module_index_target)
-elif rustc_build_mode == 'debug':
-    cmd = "buck2 build @//mode/debug {}".format(module_index_target)
-    serve_cmd = "buck2 run @//mode/debug {}".format(module_index_target)
-
-local_resource(
-    "module-index",
-    labels = ["backend"],
-    cmd = cmd,
-    serve_cmd = serve_cmd,
-    serve_env = {"SI_FORCE_COLOR": "true"},
-    allow_parallel = True,
-    auto_init = False,
-    resource_deps = [
-        "otelcol",
-        "postgres",
-    ],
-    deps = _buck2_dep_inputs(module_index_target),
-    trigger_mode = trigger_mode,
+    **RUST_RESOURCE_ARGS,
 )
 
 # Locally build and run `pinga`
-pinga_target = "//bin/pinga:pinga"
-
-cmd = "buck2 build @//mode/release {}".format(pinga_target)
-serve_cmd = "buck2 run @//mode/release {} | tee /tmp/si-logs/pinga".format(pinga_target)
-if rustc_build_mode == 'standard':
-    cmd = "buck2 build {}".format(pinga_target)
-    serve_cmd = "buck2 run {}".format(pinga_target)
-elif rustc_build_mode == 'debug':
-    cmd = "buck2 build @//mode/debug {}".format(pinga_target)
-    serve_cmd = "buck2 run @//mode/debug {}".format(pinga_target)
-
-local_resource(
-    "pinga",
-    labels = ["backend"],
-    cmd = cmd,
-    serve_cmd = serve_cmd,
-    serve_env = {"SI_FORCE_COLOR": "true"},
-    allow_parallel = True,
+si_buck2_resource(
+    "//bin/pinga:pinga",
     resource_deps = [
         "nats",
         "otelcol",
         "veritech",
     ],
-    deps = _buck2_dep_inputs(pinga_target),
-    trigger_mode = trigger_mode,
+    **RUST_RESOURCE_ARGS,
 )
 
 # Locally build and run `veritech`
-veritech_target = "//bin/veritech:veritech"
-
-cmd = "buck2 build @//mode/release {}".format(veritech_target)
-# Add something like this to then push it + consume the logs from prom tail
-serve_cmd = "buck2 run @//mode/release {} | tee /tmp/si-logs/veritech".format(veritech_target)
-if rustc_build_mode == 'standard':
-    cmd = "buck2 build {}".format(veritech_target)
-    serve_cmd = "buck2 run {}".format(veritech_target)
-elif rustc_build_mode == 'debug':
-    cmd = "buck2 build @//mode/debug {}".format(veritech_target)
-    serve_cmd = "buck2 run @//mode/debug {}".format(veritech_target)
-
-local_resource(
-    "veritech",
-    labels = ["backend"],
-    cmd = cmd,
-    serve_cmd = serve_cmd,
-    # serve_cmd = "buck2 run {} -- --cyclone-local-firecracker --cyclone-pool-size 10".format(veritech_target),
-    # This ^ is the serve command you might need if you want to execute on firecracker for 10 functione executions.
+si_buck2_resource(
+    "//bin/veritech:veritech",
+    # serve_cmd_args = "--cyclone-local-firecracker --cyclone-pool-size 10",
+    # This ^ is the serve command you might need if you want to execute on firecracker for 10 function executions.
     # NB: BUCK2 MUST RUN AS ROOT OR THIS WILL NOT WORK
-    serve_env = {"SI_FORCE_COLOR": "true"},
-    allow_parallel = True,
     resource_deps = [
         "nats",
         "otelcol",
     ],
-    deps = _buck2_dep_inputs(veritech_target),
-    trigger_mode = trigger_mode,
+    **RUST_RESOURCE_ARGS,
 )
 
 # Locally build and run `sdf`
-sdf_target = "//bin/sdf:sdf"
-
-cmd = "buck2 build @//mode/release {}".format(sdf_target)
-serve_cmd = "buck2 run @//mode/release {} | tee /tmp/si-logs/sdf".format(sdf_target)
-if rustc_build_mode == 'standard':
-    cmd = "buck2 build {}".format(sdf_target)
-    serve_cmd = "buck2 run {} | tee /tmp/si-logs/sdf".format(sdf_target)
-elif rustc_build_mode == 'debug':
-    cmd = "buck2 build @//mode/debug {}".format(sdf_target)
-    serve_cmd = "buck2 run @//mode/debug {} | tee /tmp/si-logs/sdf".format(sdf_target)
-
-local_resource(
-    "sdf",
-    labels = ["backend"],
-    cmd = cmd,
-    serve_cmd = serve_cmd,
-    serve_env = {"SI_FORCE_COLOR": "true"},
-    allow_parallel = True,
+si_buck2_resource(
+    "//bin/sdf:sdf",
     resource_deps = [
         "spicedb",
         "nats",
@@ -304,8 +210,6 @@ local_resource(
         "rebaser",
         "forklift",
     ],
-    deps = _buck2_dep_inputs(sdf_target),
-    trigger_mode = trigger_mode,
     readiness_probe = probe(
         period_secs = 5,
         http_get = http_get_action(
@@ -316,15 +220,12 @@ local_resource(
     links = [
         "localhost:5156",
     ],
+    **RUST_RESOURCE_ARGS,
 )
 
 # Locally build and run `web` in dev mode
-web_target = "//app/web:dev"
-local_resource(
-    "web",
-    labels = ["frontend"],
-    cmd = "buck2 build {}".format(web_target),
-    serve_cmd = "buck2 run {}".format(web_target),
+si_buck2_resource(
+    "//app/web:dev",
     allow_parallel = True,
     resource_deps = [
         "sdf",
@@ -341,12 +242,8 @@ local_resource(
     ],
 )
 
-docs_target = "//app/docs:dev"
-local_resource(
-    "docs",
-    labels = ["docs"],
-    cmd = "buck2 build {}".format(docs_target),
-    serve_cmd = "buck2 run {}".format(docs_target),
+si_buck2_resource(
+    "//app/docs:dev",
     allow_parallel = True,
     resource_deps = [],
     readiness_probe = probe(
@@ -359,3 +256,64 @@ local_resource(
         link("http://localhost:5173", "docs"),
     ],
 )
+
+# Locally build and run `module-index`
+si_buck2_resource(
+    "//bin/module-index:module-index",
+    auto_init = False,
+    tee = False,
+    resource_deps = [
+        "otelcol",
+        "postgres",
+    ],
+    readiness_probe = probe(
+        period_secs = 5,
+        http_get = http_get_action(
+            port = 5157,
+            path = "/",
+        ),
+    ),
+    links = [
+        "localhost:5157",
+    ],
+    **RUST_RESOURCE_ARGS,
+)
+
+# Locally build and run `auth-api`
+si_buck2_resource(
+    "//bin/auth-api:dev",
+    auto_init = False,
+    resource_deps = [
+        "postgres",
+    ],
+    readiness_probe = probe(
+        period_secs = 5,
+        http_get = http_get_action(
+            port = 9001,
+            path = "/",
+        ),
+    ),
+    links = [
+        "localhost:9001",
+    ],
+    trigger_mode = TRIGGER_MODE_MANUAL,
+)
+
+# Locally build and run `auth-portal` in dev mode
+si_buck2_resource(
+    "//app/auth-portal:dev",
+    allow_parallel = True,
+    resource_deps = [
+        "auth-api",
+    ],
+    readiness_probe = probe(
+        period_secs = 5,
+        http_get = http_get_action(
+            port = 9000,
+        ),
+    ),
+    links = [
+        link("http://127.0.0.1:9000", "web"),
+    ],
+)
+
