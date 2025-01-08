@@ -17,6 +17,7 @@ use dal_test::{
     helpers::create_component_for_default_schema_name_in_default_view, test,
     SCHEMA_ID_SMALL_EVEN_LEGO,
 };
+use si_frontend_types::RawGeometry;
 use si_id::ViewId;
 use veritech_client::{ManagementFuncStatus, ResourceStatus};
 
@@ -1011,4 +1012,128 @@ async fn delete_and_erase_components(ctx: &mut DalContext) {
         component_with_resource_to_delete.to_delete(),
         "component with resource should be marked as to delete"
     );
+}
+
+#[test]
+async fn remove_view_and_component_from_view(ctx: &DalContext) {
+    let manager =
+        create_component_for_default_schema_name_in_default_view(ctx, "small odd lego", "c-suite")
+            .await
+            .expect("could not create component");
+
+    let new_view_name = "vista del mar";
+    let new_view = ExpectView::create_with_name(ctx, new_view_name).await;
+
+    let component_in_both_views_1 = create_component_for_default_schema_name_in_default_view(
+        ctx,
+        "small odd lego",
+        "both views 1",
+    )
+    .await
+    .expect("could not create component");
+
+    let component_in_both_views_2 = create_component_for_default_schema_name_in_default_view(
+        ctx,
+        "small odd lego",
+        "both views 2",
+    )
+    .await
+    .expect("could not create component");
+
+    for component_id in [
+        component_in_both_views_1.id(),
+        component_in_both_views_2.id(),
+    ] {
+        let raw_geometry = RawGeometry {
+            x: 25,
+            y: 25,
+            width: None,
+            height: None,
+        };
+
+        Component::manage_component(ctx, manager.id(), component_id)
+            .await
+            .expect("could not manage component");
+
+        Component::add_to_view(ctx, component_id, new_view.id(), raw_geometry)
+            .await
+            .expect("could not add to view");
+    }
+
+    let av_id =
+        Component::attribute_value_for_prop_by_id(ctx, manager.id(), &["root", "si", "resourceId"])
+            .await
+            .expect("av should exist");
+
+    AttributeValue::update(ctx, av_id, Some(serde_json::json!(new_view_name)))
+        .await
+        .expect("able to update value");
+
+    let (execution_result, result) =
+        exec_mgmt_func(ctx, manager.id(), "Remove View and Components", None).await;
+
+    assert_eq!(ManagementFuncStatus::Ok, result.status);
+
+    let operations = result.operations.expect("should have operations");
+
+    ManagementOperator::new(ctx, manager.id(), operations, execution_result, None)
+        .await
+        .expect("should create operator")
+        .operate()
+        .await
+        .expect("should operate");
+
+    assert!(View::find_by_name(ctx, new_view_name)
+        .await
+        .expect("could not search views by name")
+        .is_none());
+
+    for component_id in [
+        component_in_both_views_1.id(),
+        component_in_both_views_2.id(),
+    ] {
+        let geometries = Geometry::by_view_for_component_id(ctx, component_id)
+            .await
+            .expect("get geometries by view for component");
+        assert!(!geometries.is_empty());
+        assert!(!geometries.contains_key(&new_view.id()));
+    }
+
+    // try to delete the default view
+    let av_id =
+        Component::attribute_value_for_prop_by_id(ctx, manager.id(), &["root", "si", "resourceId"])
+            .await
+            .expect("av should exist");
+
+    AttributeValue::update(ctx, av_id, Some(serde_json::json!("DEFAULT")))
+        .await
+        .expect("able to update value");
+
+    let default_view_id = ExpectView::get_id_for_default(ctx).await;
+
+    let (execution_result, result) =
+        exec_mgmt_func(ctx, manager.id(), "Remove View and Components", None).await;
+
+    assert_eq!(ManagementFuncStatus::Ok, result.status);
+
+    let operations = result.operations.expect("should have operations");
+
+    ManagementOperator::new(ctx, manager.id(), operations, execution_result, None)
+        .await
+        .expect("should create operator")
+        .operate()
+        .await
+        .expect("Should succeed, even though the view will not be removed since the removal would orphan the manager");
+
+    assert_eq!(default_view_id, ExpectView::get_id_for_default(ctx).await);
+
+    for component_id in [
+        component_in_both_views_1.id(),
+        component_in_both_views_2.id(),
+    ] {
+        let geometries = Geometry::by_view_for_component_id(ctx, component_id)
+            .await
+            .expect("get geometries by view for component");
+        assert!(!geometries.is_empty());
+    }
 }
