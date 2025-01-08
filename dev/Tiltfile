@@ -302,6 +302,7 @@ si_buck2_resource(
 # Locally build and run `auth-portal` in dev mode
 si_buck2_resource(
     "//app/auth-portal:dev",
+    auto_init = False,
     allow_parallel = True,
     resource_deps = [
         "auth-api",
