@@ -12,7 +12,7 @@
     "
     @click="goToChangeSet(changeSet.id)"
   >
-    <div class="group-hover/pendingcard:underline flex-1">
+    <div class="group-hover/pendingcard:underline flex-1 min-w-0">
       <div class="font-bold line-clamp-2">
         {{ changeSet.name }}
       </div>

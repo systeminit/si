@@ -16,7 +16,7 @@
           <div
             ref="componentNameRef"
             v-tooltip="componentNameTooltip"
-            class="font-bold break-all line-clamp-4 pb-3xs"
+            class="font-bold break-all line-clamp-4 pb-[1px]"
           >
             <template v-if="asset.displayName">
               {{ asset.displayName }}

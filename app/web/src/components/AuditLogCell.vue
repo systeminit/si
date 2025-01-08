@@ -17,6 +17,12 @@
       size="xs"
       @click="emit('toggleExpand')"
     />
+    <span v-else-if="cellDataTruncated" v-tooltip="{ content: cellRawData }">
+      <FlexRender
+        :render="cell.column.columnDef.cell"
+        :props="{ ...cell.getContext(), getValue: () => cellDataTruncated }"
+      />
+    </span>
     <FlexRender
       v-else
       :render="cell.column.columnDef.cell"
@@ -30,6 +36,8 @@ import { IconButton, themeClasses } from "@si/vue-lib/design-system";
 import { FlexRender, Cell } from "@tanstack/vue-table";
 import clsx from "clsx";
 import { computed, PropType } from "vue";
+
+const MAX_STRING_LENGTH = 100;
 
 const props = defineProps({
   cell: {
@@ -65,6 +73,17 @@ const tooltip = computed(() => {
   }
 
   return null;
+});
+
+const cellRawData = computed(
+  () => props.cell.getContext().getValue() as string,
+);
+
+const cellDataTruncated = computed(() => {
+  if (cellRawData.value.length > MAX_STRING_LENGTH) {
+    return `${cellRawData.value.substring(0, MAX_STRING_LENGTH)}...`;
+  }
+  return undefined;
 });
 
 const emit = defineEmits<{

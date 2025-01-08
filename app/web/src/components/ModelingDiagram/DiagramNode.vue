@@ -81,7 +81,7 @@
           y: NODE_HEADER_TEXT_HEIGHT + 6,
           verticalAlign: 'top',
           align: 'left',
-          text: node.def.subtitle,
+          text: truncatedNodeSubtitle,
           width: nodeWidth - NODE_HEADER_MARGIN_RIGHT,
           padding: 0,
           fill: colors.bodyText,
@@ -403,11 +403,21 @@ const connectedEdgesBySocketKey = computed(() => {
 });
 
 const MAX_TITLE_LENGTH = 14;
+const MAX_SUBTITLE_LENGTH = 30;
 
 const truncatedNodeTitle = computed(() => {
   if (props.node.def.title.length > MAX_TITLE_LENGTH) {
-    return `${props.node.def.title.substring(0, MAX_TITLE_LENGTH)}...`;
+    return `${props.node.def.title.substring(0, MAX_TITLE_LENGTH).trim()}...`;
   } else return props.node.def.title;
+});
+
+const truncatedNodeSubtitle = computed(() => {
+  if (!props.node.def.subtitle) return "";
+  else if (props.node.def.subtitle.length > MAX_SUBTITLE_LENGTH) {
+    return `${props.node.def.subtitle
+      .substring(0, MAX_SUBTITLE_LENGTH)
+      .trim()}...`;
+  } else return props.node.def.subtitle;
 });
 
 const nodeWidth = computed(() => props.node.width);

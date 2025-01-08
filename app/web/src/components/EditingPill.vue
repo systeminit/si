@@ -1,6 +1,6 @@
 <template>
   <div
-    class="p-2xs m-0 rounded text-xs font-bold max-h-fit"
+    class="p-3xs m-0 rounded text-xs font-bold max-h-fit"
     :style="{
       backgroundColor: $props.color,
       color: `#${text.toHex()}`,

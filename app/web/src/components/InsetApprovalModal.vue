@@ -9,6 +9,9 @@
     "
   >
     <div class="flex flex-col gap-2xs">
+      <TruncateWithTooltip class="font-bold italic pb-2xs">
+        {{ changeSetName }}
+      </TruncateWithTooltip>
       <div class="font-bold">{{ modalData.title }}</div>
       <div class="text-sm italic">
         <Timestamp :date="modalData.date" showTimeIfToday size="extended" />
@@ -110,6 +113,7 @@ import {
   ErrorMessage,
   IconNames,
   themeClasses,
+  TruncateWithTooltip,
 } from "@si/vue-lib/design-system";
 import { computed, ref } from "vue";
 import clsx from "clsx";
@@ -195,7 +199,7 @@ const userIsApprover = computed(() => changeSetsStore.currentUserIsApprover);
 const modalData = computed(() => {
   if (mode.value === "requested") {
     return {
-      title: `${changeSetName.value} Approval Requested by ${
+      title: `Approval Requested by ${
         requesterIsYou.value ? "You" : requesterEmail.value
       }`,
       date: requestDate.value,
