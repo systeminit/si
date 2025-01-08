@@ -13,7 +13,9 @@
     @click.right.prevent
   >
     <template #label>
-      <div class="text-xs w-full truncate flex flex-row items-center gap-1">
+      <div
+        class="text-xs w-full truncate flex flex-row items-center gap-2xs h-[20px]"
+      >
         <div class="truncate">
           {{ schemaVariantDisplayName(a) }}
           <template v-if="!a.canCreateNewComponents">

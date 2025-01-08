@@ -28,7 +28,7 @@
         size="lg"
         class="shrink-0"
       />
-      <Stack spacing="xs" class="">
+      <Stack spacing="xs" class="min-w-0">
         <div
           ref="componentNameRef"
           v-tooltip="componentNameTooltip"
@@ -37,7 +37,9 @@
           {{ displayName }}
         </div>
         <div class="text-xs italic capsize">
-          <div class="truncate pr-xs">{{ component.def.schemaName }}</div>
+          <TruncateWithTooltip class="pr-xs">
+            {{ component.def.schemaName }}
+          </TruncateWithTooltip>
         </div>
       </Stack>
 
@@ -91,6 +93,7 @@ import {
   useTheme,
   Icon,
   Stack,
+  TruncateWithTooltip,
   COMPONENT_TYPE_ICONS,
 } from "@si/vue-lib/design-system";
 import { useComponentsStore } from "@/store/components.store";
