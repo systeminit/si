@@ -55,6 +55,11 @@ pub type FrameResult<T> = Result<T, FrameError>;
 /// A unit struct containing logic for working with frames.
 pub struct Frame;
 
+pub struct InferredEdgeChanges {
+    pub removed_edges: Vec<SummaryDiagramInferredEdge>,
+    pub upserted_edges: Vec<SummaryDiagramInferredEdge>,
+}
+
 impl Frame {
     /// Given a [`ComponentId`] and either the parent or a child of it,
     /// calculate what needs to be updated given the change in [`ComponentType`]
@@ -164,7 +169,28 @@ impl Frame {
         ctx: &DalContext,
         child_id: ComponentId,
         new_parent_id: ComponentId,
-    ) -> FrameResult<Option<Vec<SummaryDiagramInferredEdge>>> {
+    ) -> FrameResult<Option<InferredEdgeChanges>> {
+        Self::upsert_parent_inner(ctx, child_id, new_parent_id, true).await
+    }
+
+    /// Provides the ability to attach or replace a child [`Component`]'s
+    /// parent, but does not automatically send WsEvents related to the changes
+    #[instrument(level = "info", skip(ctx))]
+    pub async fn upsert_parent_no_events(
+        ctx: &DalContext,
+        child_id: ComponentId,
+        new_parent_id: ComponentId,
+    ) -> FrameResult<Option<InferredEdgeChanges>> {
+        Self::upsert_parent_inner(ctx, child_id, new_parent_id, false).await
+    }
+
+    #[instrument(level = "info", skip(ctx))]
+    async fn upsert_parent_inner(
+        ctx: &DalContext,
+        child_id: ComponentId,
+        new_parent_id: ComponentId,
+        send_events: bool,
+    ) -> FrameResult<Option<InferredEdgeChanges>> {
         // let's see if we need to even do anything
         if let Some(current_parent_id) = Component::get_parent_by_id(ctx, child_id).await? {
             if current_parent_id == new_parent_id {
@@ -173,9 +199,12 @@ impl Frame {
         }
 
         match Component::get_type_by_id(ctx, new_parent_id).await? {
-            ComponentType::ConfigurationFrameDown | ComponentType::ConfigurationFrameUp => Ok(
-                Some(Self::attach_child_to_parent_inner(ctx, new_parent_id, child_id).await?),
-            ),
+            ComponentType::ConfigurationFrameDown | ComponentType::ConfigurationFrameUp => {
+                Ok(Some(
+                    Self::attach_child_to_parent_inner(ctx, new_parent_id, child_id, send_events)
+                        .await?,
+                ))
+            }
             ComponentType::Component => Err(FrameError::ParentIsNotAFrame(child_id, new_parent_id)),
             ComponentType::AggregationFrame => {
                 Err(FrameError::AggregateFramesUnsupported(new_parent_id))
@@ -191,7 +220,8 @@ impl Frame {
         ctx: &DalContext,
         parent_id: ComponentId,
         child_id: ComponentId,
-    ) -> FrameResult<Vec<SummaryDiagramInferredEdge>> {
+        send_events: bool,
+    ) -> FrameResult<InferredEdgeChanges> {
         // cache current map of input <-> output sockets based on what the parent knows about right now!!!!
         let initial_impacted_values: HashSet<SocketAttributeValuePair> =
             Self::get_all_inferred_connections_for_component_tree(ctx, parent_id, child_id).await?;
@@ -256,14 +286,17 @@ impl Frame {
                 to_delete: false, // irrelevant
             })
         }
-        WsEvent::remove_inferred_edges(ctx, inferred_edges_to_remove.clone())
-            .await?
-            .publish_on_commit(ctx)
-            .await?;
+
+        if send_events {
+            WsEvent::remove_inferred_edges(ctx, inferred_edges_to_remove.clone())
+                .await?
+                .publish_on_commit(ctx)
+                .await?;
+        }
 
         // After we let the frontend know what edges should be removed, now we should handle upsertion.
         let removed_edges_to_skip: HashSet<SummaryDiagramInferredEdge> =
-            HashSet::from_iter(inferred_edges_to_remove.into_iter());
+            HashSet::from_iter(inferred_edges_to_remove.clone().into_iter());
 
         let mut inferred_edges_to_upsert = Vec::new();
         for pair in &current_impacted_values {
@@ -278,10 +311,13 @@ impl Frame {
                 inferred_edges_to_upsert.push(edge);
             }
         }
-        WsEvent::upsert_inferred_edges(ctx, inferred_edges_to_upsert.clone())
-            .await?
-            .publish_on_commit(ctx)
-            .await?;
+
+        if send_events {
+            WsEvent::upsert_inferred_edges(ctx, inferred_edges_to_upsert.clone())
+                .await?
+                .publish_on_commit(ctx)
+                .await?;
+        }
 
         // an input socket needs to rerun if:
         // the input socket has a new/different output socket driving it
@@ -309,7 +345,10 @@ impl Frame {
         )
         .await?;
 
-        Ok(inferred_edges_to_upsert)
+        Ok(InferredEdgeChanges {
+            removed_edges: inferred_edges_to_remove,
+            upserted_edges: inferred_edges_to_upsert,
+        })
     }
 
     #[instrument(

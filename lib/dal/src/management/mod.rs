@@ -8,7 +8,7 @@ use thiserror::Error;
 use veritech_client::{ManagementFuncStatus, ManagementResultSuccess};
 
 use crate::component::delete::{delete_components, ComponentDeletionStatus};
-use crate::component::frame::{Frame, FrameError};
+use crate::component::frame::{Frame, FrameError, InferredEdgeChanges};
 use crate::dependency_graph::DependencyGraph;
 use crate::diagram::geometry::Geometry;
 use crate::diagram::view::{View, ViewId, ViewView};
@@ -450,6 +450,8 @@ struct PendingManage {
 #[derive(Clone, Debug)]
 enum PendingOperation {
     Connect(PendingConnect),
+    InferredEdgeRemoveEvent(Vec<SummaryDiagramInferredEdge>),
+    InferredEdgeUpsertEvent(Vec<SummaryDiagramInferredEdge>),
     Manage(PendingManage),
     Parent(PendingParent),
     RemoveConnection(PendingConnect),
@@ -832,9 +834,10 @@ impl<'a> ManagementOperator<'a> {
         &self,
         child_id: ComponentId,
         parent_placeholder: &String,
-    ) -> ManagementResult<(ComponentId, Option<Vec<SummaryDiagramInferredEdge>>)> {
+    ) -> ManagementResult<(ComponentId, Option<InferredEdgeChanges>)> {
         let new_parent_id = self.get_real_component_id(parent_placeholder)?;
-        let inferred_edges = Frame::upsert_parent(self.ctx, child_id, new_parent_id).await?;
+        let inferred_edges =
+            Frame::upsert_parent_no_events(self.ctx, child_id, new_parent_id).await?;
 
         Ok((new_parent_id, inferred_edges))
     }
@@ -1295,6 +1298,8 @@ impl<'a> ManagementOperator<'a> {
         let mut inferred_edges_by_component_id = HashMap::new();
 
         // Parents have to be set before component events are sent
+
+        let mut new_pending_ops_from_parentage = vec![];
         for pending_parent in pending_operations
             .iter()
             .filter_map(|pending_op| match pending_op {
@@ -1306,8 +1311,22 @@ impl<'a> ManagementOperator<'a> {
                 .set_parent(pending_parent.child_component_id, &pending_parent.parent)
                 .await?;
             if let Some(inferred_edges) = inferred_edges {
-                inferred_edges_by_component_id
-                    .insert(pending_parent.child_component_id, inferred_edges);
+                inferred_edges_by_component_id.insert(
+                    pending_parent.child_component_id,
+                    inferred_edges.upserted_edges.clone(),
+                );
+
+                // Inferred edge events should also come after all component events
+                if !inferred_edges.upserted_edges.is_empty() {
+                    new_pending_ops_from_parentage.push(PendingOperation::InferredEdgeUpsertEvent(
+                        inferred_edges.upserted_edges,
+                    ));
+                }
+                if !inferred_edges.removed_edges.is_empty() {
+                    new_pending_ops_from_parentage.push(PendingOperation::InferredEdgeRemoveEvent(
+                        inferred_edges.removed_edges,
+                    ));
+                }
             }
 
             component_graph.id_depends_on(pending_parent.child_component_id, parent_id);
@@ -1323,7 +1342,10 @@ impl<'a> ManagementOperator<'a> {
         // their wsevents sent *after* the component ws events (otherwise some
         // will be discarded by the frontend, since it does not know about the
         // newly created components until the above events are sent)
-        for pending_op in pending_operations {
+        for pending_op in pending_operations
+            .into_iter()
+            .chain(new_pending_ops_from_parentage.into_iter())
+        {
             match pending_op {
                 PendingOperation::Connect(pending_connect) => {
                     self.create_connection(
@@ -1341,6 +1363,18 @@ impl<'a> ManagementOperator<'a> {
                     managed_component_schema_id,
                 }) => {
                     self.manage(managed_component_id, managed_component_schema_id)
+                        .await?;
+                }
+                PendingOperation::InferredEdgeRemoveEvent(removed_edges) => {
+                    WsEvent::remove_inferred_edges(self.ctx, removed_edges)
+                        .await?
+                        .publish_on_commit(self.ctx)
+                        .await?;
+                }
+                PendingOperation::InferredEdgeUpsertEvent(upserted_edges) => {
+                    WsEvent::upsert_inferred_edges(self.ctx, upserted_edges)
+                        .await?
+                        .publish_on_commit(self.ctx)
                         .await?;
                 }
                 PendingOperation::Parent(_) => {}
