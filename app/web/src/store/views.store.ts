@@ -1687,11 +1687,22 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                 // don't update
                 if (data.changeSetId !== changeSetId) return;
 
-                this.setSelectedComponentId(data.component.id);
-                const node = processRawComponent(
-                  data.component,
-                  componentsStore.rawComponentsById,
-                );
+                const oldId = data.originalComponentId;
+                delete componentsStore.rawComponentsById[oldId];
+                delete componentsStore.allComponentsById[oldId];
+                delete componentsStore.nodesById[oldId];
+                delete componentsStore.groupsById[oldId];
+                componentsStore.rawComponentsById[data.component.id] =
+                  data.component;
+                componentsStore.processAndStoreRawComponent(
+                  data.component.id,
+                  {},
+                ); // now the component exists in the component store
+
+                const node =
+                  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                  componentsStore.allComponentsById[data.component.id]!;
+
                 // upgrades can change the sockets on a component
                 // so we need to go through all the views this component is on
                 // and re-set their socket data
@@ -1702,6 +1713,14 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                   let geo = view.components[data.component.id];
                   if (!geo) geo = view.groups[data.component.id];
                   if (geo) {
+                    if ("height" in node) {
+                      // this covers components
+                      geo.height = node.height;
+                      geo.width = node.width;
+                      // note: if a person added a hundred sockets to a component
+                      // and that component was a frame, it would not resize itself
+                      // and the sockets would appear outside the frame
+                    }
                     for (const [key, loc] of Object.entries(
                       setSockets(node, geo),
                     )) {
@@ -1709,6 +1728,8 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                     }
                   }
                 });
+
+                this.setSelectedComponentId(data.component.id);
               },
             },
             {

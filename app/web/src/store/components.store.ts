@@ -1385,21 +1385,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 },
               },
               {
-                eventType: "ComponentUpgraded",
-                callback: (data) => {
-                  // If the component that updated wasn't in this change set,
-                  // don't update
-                  if (data.changeSetId !== changeSetId) return;
-                  // the componentIds ought to be the same, but just in case we'll delete first
-                  delete this.rawComponentsById[data.originalComponentId];
-                  delete this.allComponentsById[data.originalComponentId];
-                  delete this.nodesById[data.originalComponentId];
-                  delete this.groupsById[data.originalComponentId];
-                  this.rawComponentsById[data.component.id] = data.component;
-                  this.processAndStoreRawComponent(data.component.id, {});
-                },
-              },
-              {
                 eventType: "ResourceRefreshed",
                 callback: (data) => {
                   // If the component that updated wasn't in this change set,
