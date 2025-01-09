@@ -97,7 +97,7 @@ pub struct ManagementPrototypeExecution {
     pub result: Option<ManagementResultSuccess>,
     pub manager_component_geometry: HashMap<String, ManagementGeometry>,
     pub managed_schema_map: HashMap<String, SchemaId>,
-    pub placeholders: HashMap<String, ComponentId>,
+    pub managed_component_placeholders: HashMap<String, ComponentId>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -402,6 +402,7 @@ impl ManagementPrototype {
         let management_func_id = ManagementPrototype::func_id(ctx, id).await?;
         let manager_component = Component::get_by_id(ctx, manager_component_id).await?;
 
+        let mut managed_component_placeholders = HashMap::new();
         let mut managed_components = HashMap::new();
         for component_id in manager_component.get_managed(ctx).await? {
             let schema_id = Component::schema_for_component_id(ctx, component_id)
@@ -413,14 +414,11 @@ impl ManagementPrototype {
                     ManagedComponent::new(ctx, component_id, managed_schema_name, &views).await?;
 
                 managed_components.insert(component_id, managed_component);
+                let name = Component::name_by_id(ctx, component_id).await?;
+                managed_component_placeholders.insert(name, component_id);
+                managed_component_placeholders.insert(component_id.to_string(), component_id);
             }
         }
-
-        let placeholders: HashMap<_, _> = managed_components
-            .keys()
-            .copied()
-            .map(|id| (id.to_string(), id))
-            .collect();
 
         let this_schema = Component::schema_for_component_id(ctx, manager_component_id)
             .await?
@@ -505,7 +503,7 @@ impl ManagementPrototype {
             result: maybe_run_result,
             manager_component_geometry,
             managed_schema_map,
-            placeholders,
+            managed_component_placeholders,
         })
     }
 

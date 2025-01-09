@@ -70,6 +70,7 @@ use crate::{
 
 pub mod code;
 pub mod debug;
+pub mod delete;
 pub mod diff;
 pub mod frame;
 pub mod inferred_connection_graph;
@@ -3341,11 +3342,11 @@ impl Component {
 
     pub async fn exists_on_head(
         ctx: &DalContext,
-        component_ids: Vec<ComponentId>,
+        component_ids: &[ComponentId],
     ) -> ComponentResult<HashSet<ComponentId>> {
         let mut components = HashSet::new();
         let base_change_set_ctx = ctx.clone_with_base().await?;
-        for component_id in component_ids {
+        for &component_id in component_ids {
             let maybe_component =
                 Component::try_get_by_id(&base_change_set_ctx, component_id).await?;
             if maybe_component.is_some() {

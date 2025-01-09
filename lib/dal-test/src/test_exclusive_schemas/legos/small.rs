@@ -16,6 +16,9 @@ use crate::test_exclusive_schemas::{
     SCHEMA_ID_SMALL_EVEN_LEGO,
 };
 
+/// The "small odd lego" has a special importance for our tests. It is a
+/// repository of example management functions used for management function
+/// integration tests
 pub(crate) async fn migrate_test_exclusive_schema_small_odd_lego(
     ctx: &DalContext,
     schema_id: SchemaId,
@@ -388,6 +391,33 @@ pub(crate) async fn migrate_test_exclusive_schema_small_odd_lego(
         "test:createViewAndComponentInView",
     )?;
 
+    let delete_and_erase_components_code = r#"
+    async function main({ thisComponent, currentView }: Input): Promise<Output> {
+        const components = thisComponent.properties?.si?.resourceId?.split(",");
+        console.log(components);
+        const deleteComponent = components[0];
+        const deleteComponentWithResource = components[1];
+        const deleteComponentStillOnHead = components[2];
+        const eraseComponent = components[3]; 
+
+        return {
+            status: "ok",
+            ops: {
+                delete: [
+                    deleteComponent,
+                    deleteComponentWithResource,
+                    deleteComponentStillOnHead
+                ],
+                erase: [eraseComponent],
+            }
+        };
+    }
+    "#;
+    let delete_and_erase_components = build_management_func(
+        delete_and_erase_components_code,
+        "test:deleteAndEraseComponents",
+    )?;
+
     let fn_name = "test:deleteActionSmallLego";
     let delete_action_func = build_action_func(delete_action_code, fn_name)?;
 
@@ -533,6 +563,12 @@ pub(crate) async fn migrate_test_exclusive_schema_small_odd_lego(
                         .func_unique_id(&create_view_and_component_in_view.unique_id)
                         .build()?,
                 )
+                .management_func(
+                    ManagementFuncSpec::builder()
+                        .name("Delete and Erase")
+                        .func_unique_id(&delete_and_erase_components.unique_id)
+                        .build()?,
+                )
                 .build()?,
         )
         .build()?;
@@ -555,6 +591,7 @@ pub(crate) async fn migrate_test_exclusive_schema_small_odd_lego(
         .func(deeply_nested_children)
         .func(create_component_in_other_views)
         .func(create_view_and_component_in_view)
+        .func(delete_and_erase_components)
         .schema(small_lego_schema)
         .build()?;
 

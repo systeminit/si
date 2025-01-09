@@ -111,7 +111,7 @@ impl ManagementBinding {
                                 let component_create_type = format!(
                                     r#"
                                 {{
-                                    kind: "{name}",
+                                    kind?: "{name}",
                                     properties?: {sv_type},
                                     geometry?: Geometry | {{ [key: string]: Geometry }},
                                     connect?: {{
@@ -166,6 +166,8 @@ type Output = {{
         }},
         parent?: string,
     }} }},
+    delete?: string[],
+    erase?: string[],
     actions?: {{ [key: string]: {{
       add?: ("create" | "update" | "refresh" | "delete" | string)[];
       remove?: ("create" | "update" | "refresh" | "delete" | string)[];
