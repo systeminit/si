@@ -37,3 +37,4 @@ We contributors to System Initiative:
 * Nick Downs (@nickryand)
 * Croxx (@MrCroxx)
 * Arne Keller (@FliegendeWurst)
+* Henry Hermes (@sandalwing)
