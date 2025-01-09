@@ -1,0 +1,239 @@
+{
+  "sourceUrl": "https://github.com/aws-cloudformation/aws-cloudformation-resource-providers-autoscaling.git",
+  "tagging": {
+    "taggable": false
+  },
+  "handlers": {
+    "read": {
+      "permissions": ["autoscaling:DescribeLaunchConfigurations"]
+    },
+    "create": {
+      "permissions": [
+        "autoscaling:CreateLaunchConfiguration",
+        "autoscaling:DescribeLaunchConfigurations",
+        "iam:PassRole"
+      ]
+    },
+    "list": {
+      "permissions": ["autoscaling:DescribeLaunchConfigurations"]
+    },
+    "delete": {
+      "permissions": [
+        "autoscaling:DeleteLaunchConfiguration",
+        "autoscaling:DescribeLaunchConfigurations"
+      ]
+    }
+  },
+  "typeName": "AWS::AutoScaling::LaunchConfiguration",
+  "description": "The AWS::AutoScaling::LaunchConfiguration resource specifies the launch configuration that can be used by an Auto Scaling group to configure Amazon EC2 instances.",
+  "writeOnlyProperties": ["/properties/InstanceId"],
+  "createOnlyProperties": [
+    "/properties/AssociatePublicIpAddress",
+    "/properties/BlockDeviceMappings",
+    "/properties/ClassicLinkVPCId",
+    "/properties/ClassicLinkVPCSecurityGroups",
+    "/properties/EbsOptimized",
+    "/properties/IamInstanceProfile",
+    "/properties/ImageId",
+    "/properties/InstanceId",
+    "/properties/InstanceMonitoring",
+    "/properties/InstanceType",
+    "/properties/KernelId",
+    "/properties/KeyName",
+    "/properties/LaunchConfigurationName",
+    "/properties/MetadataOptions",
+    "/properties/PlacementTenancy",
+    "/properties/RamDiskId",
+    "/properties/SecurityGroups",
+    "/properties/SpotPrice",
+    "/properties/UserData"
+  ],
+  "additionalProperties": false,
+  "primaryIdentifier": ["/properties/LaunchConfigurationName"],
+  "definitions": {
+    "MetadataOptions": {
+      "description": "MetadataOptions is a property of AWS::AutoScaling::LaunchConfiguration that describes metadata options for the instances.",
+      "additionalProperties": false,
+      "type": "object",
+      "properties": {
+        "HttpPutResponseHopLimit": {
+          "description": "The desired HTTP PUT response hop limit for instance metadata requests.",
+          "type": "integer"
+        },
+        "HttpTokens": {
+          "description": "The state of token usage for your instance metadata requests.",
+          "type": "string"
+        },
+        "HttpEndpoint": {
+          "description": "This parameter enables or disables the HTTP metadata endpoint on your instances.",
+          "type": "string"
+        }
+      }
+    },
+    "BlockDeviceMapping": {
+      "description": "BlockDeviceMapping is a property of AWS::AutoScaling::LaunchConfiguration that describes a block device mapping for an Auto Scaling group.",
+      "additionalProperties": false,
+      "type": "object",
+      "properties": {
+        "Ebs": {
+          "description": "Parameters used to automatically set up EBS volumes when an instance is launched.",
+          "$ref": "#/definitions/BlockDevice"
+        },
+        "NoDevice": {
+          "description": "Setting this value to true suppresses the specified device included in the block device mapping of the AMI.",
+          "type": "boolean"
+        },
+        "VirtualName": {
+          "description": "The name of the virtual device.",
+          "type": "string"
+        },
+        "DeviceName": {
+          "description": "The device name exposed to the EC2 instance (for example, /dev/sdh or xvdh). ",
+          "type": "string"
+        }
+      },
+      "required": ["DeviceName"]
+    },
+    "BlockDevice": {
+      "description": "BlockDevice is a subproperty of BlockDeviceMapping that describes an Amazon EBS volume.",
+      "additionalProperties": false,
+      "type": "object",
+      "properties": {
+        "SnapshotId": {
+          "description": "The snapshot ID of the volume to use.",
+          "type": "string"
+        },
+        "VolumeType": {
+          "description": "The volume type.",
+          "type": "string"
+        },
+        "Encrypted": {
+          "description": "Specifies whether the volume should be encrypted. ",
+          "type": "boolean"
+        },
+        "Throughput": {
+          "description": "The throughput (MiBps) to provision for a gp3 volume.",
+          "type": "integer"
+        },
+        "Iops": {
+          "description": "The number of input/output (I/O) operations per second (IOPS) to provision for the volume. ",
+          "type": "integer"
+        },
+        "VolumeSize": {
+          "description": "The volume size, in GiBs.",
+          "type": "integer"
+        },
+        "DeleteOnTermination": {
+          "description": "Indicates whether the volume is deleted on instance termination. ",
+          "type": "boolean"
+        }
+      }
+    }
+  },
+  "properties": {
+    "PlacementTenancy": {
+      "description": "The tenancy of the instance, either default or dedicated.",
+      "type": "string"
+    },
+    "SecurityGroups": {
+      "description": "A list that contains the security groups to assign to the instances in the Auto Scaling group.",
+      "insertionOrder": false,
+      "type": "array",
+      "items": {
+        "anyOf": [{
+          "relationshipRef": {
+            "typeName": "AWS::EC2::SecurityGroup",
+            "propertyPath": "/properties/GroupId"
+          }
+        }, {
+          "relationshipRef": {
+            "typeName": "AWS::EC2::SecurityGroup",
+            "propertyPath": "/properties/Id"
+          }
+        }],
+        "type": "string"
+      }
+    },
+    "LaunchConfigurationName": {
+      "minLength": 1,
+      "description": "The name of the launch configuration. This name must be unique per Region per account.",
+      "type": "string",
+      "maxLength": 255
+    },
+    "MetadataOptions": {
+      "description": "The metadata options for the instances.",
+      "$ref": "#/definitions/MetadataOptions"
+    },
+    "InstanceId": {
+      "description": "The ID of the Amazon EC2 instance you want to use to create the launch configuration.",
+      "type": "string"
+    },
+    "UserData": {
+      "description": "The Base64-encoded user data to make available to the launched EC2 instances.",
+      "type": "string",
+      "maxLength": 21847
+    },
+    "ClassicLinkVPCSecurityGroups": {
+      "description": "The IDs of one or more security groups for the VPC that you specified in the ClassicLinkVPCId property.",
+      "insertionOrder": false,
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "BlockDeviceMappings": {
+      "uniqueItems": true,
+      "description": "Specifies how block devices are exposed to the instance. You can specify virtual devices and EBS volumes.",
+      "insertionOrder": false,
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/BlockDeviceMapping"
+      }
+    },
+    "IamInstanceProfile": {
+      "description": "Provides the name or the Amazon Resource Name (ARN) of the instance profile associated with the IAM role for the instance. The instance profile contains the IAM role.",
+      "type": "string"
+    },
+    "KernelId": {
+      "description": "Provides the ID of the kernel associated with the EC2 AMI.",
+      "type": "string"
+    },
+    "AssociatePublicIpAddress": {
+      "description": "For Auto Scaling groups that are running in a virtual private cloud (VPC), specifies whether to assign a public IP address to the group's instances.",
+      "type": "boolean"
+    },
+    "ClassicLinkVPCId": {
+      "description": "The ID of a ClassicLink-enabled VPC to link your EC2-Classic instances to.",
+      "type": "string"
+    },
+    "EbsOptimized": {
+      "description": "Specifies whether the launch configuration is optimized for EBS I/O (true) or not (false).",
+      "type": "boolean"
+    },
+    "KeyName": {
+      "description": "Provides the name of the EC2 key pair.",
+      "type": "string"
+    },
+    "SpotPrice": {
+      "description": "The maximum hourly price you are willing to pay for any Spot Instances launched to fulfill the request.",
+      "type": "string"
+    },
+    "ImageId": {
+      "description": "Provides the unique ID of the Amazon Machine Image (AMI) that was assigned during registration.",
+      "type": "string"
+    },
+    "InstanceType": {
+      "description": "Specifies the instance type of the EC2 instance.",
+      "type": "string"
+    },
+    "RamDiskId": {
+      "description": "The ID of the RAM disk to select.",
+      "type": "string"
+    },
+    "InstanceMonitoring": {
+      "description": "Controls whether instances in this group are launched with detailed (true) or basic (false) monitoring.",
+      "type": "boolean"
+    }
+  },
+  "required": ["ImageId", "InstanceType"]
+}

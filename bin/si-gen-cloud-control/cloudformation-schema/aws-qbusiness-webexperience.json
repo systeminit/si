@@ -1,0 +1,282 @@
+{
+  "typeName": "AWS::QBusiness::WebExperience",
+  "description": "Definition of AWS::QBusiness::WebExperience Resource Type",
+  "definitions": {
+    "IdentityProviderConfiguration": {
+      "oneOf": [{
+        "type": "object",
+        "title": "SamlConfiguration",
+        "properties": {
+          "SamlConfiguration": {
+            "$ref": "#/definitions/SamlProviderConfiguration"
+          }
+        },
+        "required": ["SamlConfiguration"],
+        "additionalProperties": false
+      }, {
+        "type": "object",
+        "title": "OpenIDConnectConfiguration",
+        "properties": {
+          "OpenIDConnectConfiguration": {
+            "$ref": "#/definitions/OpenIDConnectProviderConfiguration"
+          }
+        },
+        "required": ["OpenIDConnectConfiguration"],
+        "additionalProperties": false
+      }]
+    },
+    "OpenIDConnectProviderConfiguration": {
+      "type": "object",
+      "properties": {
+        "SecretsArn": {
+          "type": "string",
+          "maxLength": 1284,
+          "minLength": 0,
+          "pattern": "^arn:[a-z0-9-\\.]{1,63}:[a-z0-9-\\.]{0,63}:[a-z0-9-\\.]{0,63}:[a-z0-9-\\.]{0,63}:[^/].{0,1023}$"
+        },
+        "SecretsRole": {
+          "type": "string",
+          "maxLength": 1284,
+          "minLength": 0,
+          "pattern": "^arn:[a-z0-9-\\.]{1,63}:[a-z0-9-\\.]{0,63}:[a-z0-9-\\.]{0,63}:[a-z0-9-\\.]{0,63}:[^/].{0,1023}$"
+        }
+      },
+      "required": ["SecretsArn", "SecretsRole"],
+      "additionalProperties": false
+    },
+    "SamlProviderConfiguration": {
+      "type": "object",
+      "properties": {
+        "AuthenticationUrl": {
+          "type": "string",
+          "maxLength": 1284,
+          "minLength": 1,
+          "pattern": "^https://.*$"
+        }
+      },
+      "required": ["AuthenticationUrl"],
+      "additionalProperties": false
+    },
+    "Tag": {
+      "type": "object",
+      "properties": {
+        "Key": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "Value": {
+          "type": "string",
+          "maxLength": 256,
+          "minLength": 0
+        }
+      },
+      "required": ["Key", "Value"],
+      "additionalProperties": false
+    },
+    "WebExperienceSamplePromptsControlMode": {
+      "type": "string",
+      "enum": ["ENABLED", "DISABLED"]
+    },
+    "WebExperienceStatus": {
+      "type": "string",
+      "enum": [
+        "CREATING",
+        "ACTIVE",
+        "DELETING",
+        "FAILED",
+        "PENDING_AUTH_CONFIG"
+      ]
+    },
+    "Origin": {
+      "type": "string",
+      "maxLength": 64,
+      "minLength": 1,
+      "pattern": "^(http:\\/\\/|https:\\/\\/)[a-zA-Z0-9-_.]+(?::[0-9]{1,5})?$"
+    },
+    "CustomizationConfiguration": {
+      "type": "object",
+      "properties": {
+        "CustomCSSUrl": {
+          "type": "string",
+          "maxLength": 1284,
+          "minLength": 0,
+          "pattern": "^(https?://[a-zA-Z0-9-_.+%/]+\\.css)?$"
+        },
+        "LogoUrl": {
+          "type": "string",
+          "maxLength": 1284,
+          "minLength": 0,
+          "pattern": "^(https?://[a-zA-Z0-9-_.+%/]+\\.(svg|png))?$"
+        },
+        "FontUrl": {
+          "type": "string",
+          "maxLength": 1284,
+          "minLength": 0,
+          "pattern": "^(https?://[a-zA-Z0-9-_.+%/]+\\.(ttf|woff|woff2|otf))?$"
+        },
+        "FaviconUrl": {
+          "type": "string",
+          "maxLength": 1284,
+          "minLength": 0,
+          "pattern": "^(https?://[a-zA-Z0-9-_.+%/]+\\.(svg|ico))?$"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "ApplicationId": {
+      "type": "string",
+      "maxLength": 36,
+      "minLength": 36,
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9-]{35}$"
+    },
+    "CreatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "DefaultEndpoint": {
+      "type": "string",
+      "maxLength": 2048,
+      "minLength": 1,
+      "pattern": "^(https?|ftp|file)://([^\\s]*)$"
+    },
+    "IdentityProviderConfiguration": {
+      "$ref": "#/definitions/IdentityProviderConfiguration"
+    },
+    "RoleArn": {
+      "type": "string",
+      "maxLength": 1284,
+      "minLength": 0,
+      "pattern": "^arn:[a-z0-9-\\.]{1,63}:[a-z0-9-\\.]{0,63}:[a-z0-9-\\.]{0,63}:[a-z0-9-\\.]{0,63}:[^/].{0,1023}$"
+    },
+    "SamplePromptsControlMode": {
+      "$ref": "#/definitions/WebExperienceSamplePromptsControlMode"
+    },
+    "Status": {
+      "$ref": "#/definitions/WebExperienceStatus"
+    },
+    "Subtitle": {
+      "type": "string",
+      "maxLength": 500,
+      "minLength": 0,
+      "pattern": "^[\\s\\S]*$"
+    },
+    "Tags": {
+      "type": "array",
+      "insertionOrder": false,
+      "items": {
+        "$ref": "#/definitions/Tag"
+      },
+      "maxItems": 200,
+      "minItems": 0
+    },
+    "Title": {
+      "type": "string",
+      "maxLength": 500,
+      "minLength": 0,
+      "pattern": "^[\\s\\S]*$"
+    },
+    "UpdatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "WebExperienceArn": {
+      "type": "string",
+      "maxLength": 1284,
+      "minLength": 0,
+      "pattern": "^arn:[a-z0-9-\\.]{1,63}:[a-z0-9-\\.]{0,63}:[a-z0-9-\\.]{0,63}:[a-z0-9-\\.]{0,63}:[^/].{0,1023}$"
+    },
+    "WebExperienceId": {
+      "type": "string",
+      "maxLength": 36,
+      "minLength": 36,
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9-]*$"
+    },
+    "WelcomeMessage": {
+      "type": "string",
+      "maxLength": 300,
+      "minLength": 0
+    },
+    "Origins": {
+      "type": "array",
+      "insertionOrder": false,
+      "items": {
+        "$ref": "#/definitions/Origin"
+      },
+      "maxItems": 10,
+      "minItems": 0
+    },
+    "CustomizationConfiguration": {
+      "$ref": "#/definitions/CustomizationConfiguration"
+    }
+  },
+  "required": ["ApplicationId"],
+  "readOnlyProperties": [
+    "/properties/CreatedAt",
+    "/properties/DefaultEndpoint",
+    "/properties/Status",
+    "/properties/UpdatedAt",
+    "/properties/WebExperienceArn",
+    "/properties/WebExperienceId"
+  ],
+  "createOnlyProperties": ["/properties/ApplicationId"],
+  "primaryIdentifier": [
+    "/properties/ApplicationId",
+    "/properties/WebExperienceId"
+  ],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "iam:PassRole",
+        "qbusiness:CreateWebExperience",
+        "qbusiness:GetWebExperience",
+        "qbusiness:ListTagsForResource",
+        "qbusiness:TagResource",
+        "sso:PutApplicationGrant",
+        "sso:UpdateApplication"
+      ]
+    },
+    "read": {
+      "permissions": [
+        "qbusiness:GetWebExperience",
+        "qbusiness:ListTagsForResource"
+      ]
+    },
+    "update": {
+      "permissions": [
+        "iam:PassRole",
+        "qbusiness:GetWebExperience",
+        "qbusiness:ListTagsForResource",
+        "qbusiness:TagResource",
+        "qbusiness:UntagResource",
+        "qbusiness:UpdateWebExperience",
+        "sso:PutApplicationGrant",
+        "sso:UpdateApplication"
+      ]
+    },
+    "delete": {
+      "permissions": [
+        "qbusiness:DeleteWebExperience",
+        "qbusiness:GetWebExperience"
+      ]
+    },
+    "list": {
+      "permissions": ["qbusiness:ListWebExperiences"],
+      "handlerSchema": {
+        "properties": {
+          "ApplicationId": {
+            "$ref": "#/properties/ApplicationId"
+          }
+        },
+        "required": ["ApplicationId"]
+      }
+    }
+  },
+  "tagging": {
+    "taggable": true
+  },
+  "sourceUrl": "https://github.com/aws-cloudformation/aws-cloudformation-resource-providers-qbusiness",
+  "additionalProperties": false
+}

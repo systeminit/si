@@ -1,0 +1,35 @@
+{
+  "sourceUrl": "https://github.com/aws-cloudformation/aws-cloudformation-resource-providers-apigateway",
+  "tagging": {
+    "taggable": false
+  },
+  "handlers": {
+    "read": {
+      "permissions": ["apigateway:GET"]
+    },
+    "create": {
+      "permissions": ["apigateway:PATCH", "iam:GetRole", "iam:PassRole"]
+    },
+    "update": {
+      "permissions": ["apigateway:PATCH", "iam:GetRole", "iam:PassRole"]
+    },
+    "delete": {
+      "permissions": ["apigateway:PATCH"]
+    }
+  },
+  "typeName": "AWS::ApiGateway::Account",
+  "readOnlyProperties": ["/properties/Id"],
+  "description": "The ``AWS::ApiGateway::Account`` resource specifies the IAM role that Amazon API Gateway uses to write API logs to Amazon CloudWatch Logs. To avoid overwriting other roles, you should only have one ``AWS::ApiGateway::Account`` resource per region per account.",
+  "additionalProperties": false,
+  "primaryIdentifier": ["/properties/Id"],
+  "properties": {
+    "Id": {
+      "description": "",
+      "type": "string"
+    },
+    "CloudWatchRoleArn": {
+      "description": "",
+      "type": "string"
+    }
+  }
+}

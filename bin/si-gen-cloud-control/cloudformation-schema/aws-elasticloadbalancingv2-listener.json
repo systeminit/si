@@ -1,0 +1,477 @@
+{
+  "tagging": {
+    "taggable": false,
+    "tagOnCreate": false,
+    "tagUpdatable": false,
+    "cloudFormationSystemTags": false
+  },
+  "typeName": "AWS::ElasticLoadBalancingV2::Listener",
+  "readOnlyProperties": ["/properties/ListenerArn"],
+  "description": "Specifies a listener for an Application Load Balancer, Network Load Balancer, or Gateway Load Balancer.",
+  "createOnlyProperties": ["/properties/LoadBalancerArn"],
+  "primaryIdentifier": ["/properties/ListenerArn"],
+  "required": ["LoadBalancerArn", "DefaultActions"],
+  "sourceUrl": "https://github.com/aws-cloudformation/aws-cloudformation-resource-providers-elasticloadbalancingv2.git",
+  "handlers": {
+    "read": {
+      "permissions": [
+        "elasticloadbalancing:DescribeListeners",
+        "elasticloadbalancing:DescribeListenerAttributes"
+      ]
+    },
+    "create": {
+      "permissions": [
+        "elasticloadbalancing:CreateListener",
+        "elasticloadbalancing:DescribeListeners",
+        "cognito-idp:DescribeUserPoolClient",
+        "elasticloadbalancing:ModifyListenerAttributes"
+      ]
+    },
+    "update": {
+      "permissions": [
+        "elasticloadbalancing:ModifyListener",
+        "elasticloadbalancing:DescribeListeners",
+        "cognito-idp:DescribeUserPoolClient",
+        "elasticloadbalancing:ModifyListenerAttributes"
+      ]
+    },
+    "list": {
+      "permissions": ["elasticloadbalancing:DescribeListeners"],
+      "handlerSchema": {
+        "oneOf": [{
+          "required": ["LoadBalancerArn"]
+        }, {
+          "required": ["ListenerArns"]
+        }],
+        "properties": {
+          "LoadBalancerArn": {
+            "$ref": "#/properties/LoadBalancerArn"
+          },
+          "ListenerArns": {
+            "uniqueItems": false,
+            "type": "array",
+            "items": {
+              "$ref": "#/properties/ListenerArn"
+            }
+          }
+        }
+      }
+    },
+    "delete": {
+      "permissions": [
+        "elasticloadbalancing:DeleteListener",
+        "elasticloadbalancing:DescribeListeners"
+      ]
+    }
+  },
+  "writeOnlyProperties": [
+    "/properties/DefaultActions/*/AuthenticateOidcConfig/ClientSecret"
+  ],
+  "additionalProperties": false,
+  "definitions": {
+    "MutualAuthentication": {
+      "description": "Specifies the configuration information for mutual authentication.",
+      "additionalProperties": false,
+      "type": "object",
+      "properties": {
+        "IgnoreClientCertificateExpiry": {
+          "description": "Indicates whether expired client certificates are ignored.",
+          "type": "boolean"
+        },
+        "Mode": {
+          "description": "The client certificate handling method. Options are ``off``, ``passthrough`` or ``verify``. The default value is ``off``.",
+          "type": "string"
+        },
+        "TrustStoreArn": {
+          "description": "The Amazon Resource Name (ARN) of the trust store.",
+          "type": "string"
+        },
+        "AdvertiseTrustStoreCaNames": {
+          "description": "",
+          "type": "string"
+        }
+      }
+    },
+    "FixedResponseConfig": {
+      "description": "Specifies information required when returning a custom HTTP response.",
+      "additionalProperties": false,
+      "type": "object",
+      "properties": {
+        "ContentType": {
+          "description": "The content type.\n Valid Values: text/plain | text/css | text/html | application/javascript | application/json",
+          "type": "string"
+        },
+        "StatusCode": {
+          "description": "The HTTP response code (2XX, 4XX, or 5XX).",
+          "type": "string"
+        },
+        "MessageBody": {
+          "description": "The message.",
+          "type": "string"
+        }
+      },
+      "required": ["StatusCode"]
+    },
+    "TargetGroupTuple": {
+      "description": "Information about how traffic will be distributed between multiple target groups in a forward rule.",
+      "additionalProperties": false,
+      "type": "object",
+      "properties": {
+        "TargetGroupArn": {
+          "relationshipRef": {
+            "typeName": "AWS::ElasticLoadBalancingV2::TargetGroup",
+            "propertyPath": "/properties/TargetGroupArn"
+          },
+          "description": "The Amazon Resource Name (ARN) of the target group.",
+          "type": "string"
+        },
+        "Weight": {
+          "description": "The weight. The range is 0 to 999.",
+          "type": "integer"
+        }
+      }
+    },
+    "Action": {
+      "description": "Specifies an action for a listener rule.",
+      "additionalProperties": false,
+      "type": "object",
+      "properties": {
+        "Order": {
+          "description": "The order for the action. This value is required for rules with multiple actions. The action with the lowest value for order is performed first.",
+          "type": "integer"
+        },
+        "TargetGroupArn": {
+          "relationshipRef": {
+            "typeName": "AWS::ElasticLoadBalancingV2::TargetGroup",
+            "propertyPath": "/properties/TargetGroupArn"
+          },
+          "description": "The Amazon Resource Name (ARN) of the target group. Specify only when ``Type`` is ``forward`` and you want to route to a single target group. To route to one or more target groups, use ``ForwardConfig`` instead.",
+          "type": "string"
+        },
+        "FixedResponseConfig": {
+          "description": "[Application Load Balancer] Information for creating an action that returns a custom HTTP response. Specify only when ``Type`` is ``fixed-response``.",
+          "$ref": "#/definitions/FixedResponseConfig"
+        },
+        "AuthenticateCognitoConfig": {
+          "description": "[HTTPS listeners] Information for using Amazon Cognito to authenticate users. Specify only when ``Type`` is ``authenticate-cognito``.",
+          "$ref": "#/definitions/AuthenticateCognitoConfig"
+        },
+        "Type": {
+          "description": "The type of action.",
+          "type": "string"
+        },
+        "RedirectConfig": {
+          "description": "[Application Load Balancer] Information for creating a redirect action. Specify only when ``Type`` is ``redirect``.",
+          "$ref": "#/definitions/RedirectConfig"
+        },
+        "ForwardConfig": {
+          "description": "Information for creating an action that distributes requests among one or more target groups. For Network Load Balancers, you can specify a single target group. Specify only when ``Type`` is ``forward``. If you specify both ``ForwardConfig`` and ``TargetGroupArn``, you can specify only one target group using ``ForwardConfig`` and it must be the same target group specified in ``TargetGroupArn``.",
+          "$ref": "#/definitions/ForwardConfig"
+        },
+        "AuthenticateOidcConfig": {
+          "description": "[HTTPS listeners] Information about an identity provider that is compliant with OpenID Connect (OIDC). Specify only when ``Type`` is ``authenticate-oidc``.",
+          "$ref": "#/definitions/AuthenticateOidcConfig"
+        }
+      },
+      "required": ["Type"]
+    },
+    "AuthenticateCognitoConfig": {
+      "description": "Specifies information required when integrating with Amazon Cognito to authenticate users.",
+      "additionalProperties": false,
+      "type": "object",
+      "properties": {
+        "OnUnauthenticatedRequest": {
+          "description": "The behavior if the user is not authenticated. The following are possible values:\n  +  deny```` - Return an HTTP 401 Unauthorized error.\n  +  allow```` - Allow the request to be forwarded to the target.\n  +  authenticate```` - Redirect the request to the IdP authorization endpoint. This is the default value.",
+          "type": "string"
+        },
+        "UserPoolClientId": {
+          "anyOf": [{
+            "relationshipRef": {
+              "typeName": "AWS::Cognito::UserPoolClient",
+              "propertyPath": "/properties/UserPoolId"
+            }
+          }, {
+            "relationshipRef": {
+              "typeName": "AWS::Cognito::UserPoolClient",
+              "propertyPath": "/properties/ClientId"
+            }
+          }],
+          "description": "The ID of the Amazon Cognito user pool client.",
+          "type": "string"
+        },
+        "UserPoolDomain": {
+          "relationshipRef": {
+            "typeName": "AWS::Cognito::UserPoolDomain",
+            "propertyPath": "/properties/Id"
+          },
+          "description": "The domain prefix or fully-qualified domain name of the Amazon Cognito user pool.",
+          "type": "string"
+        },
+        "SessionTimeout": {
+          "description": "The maximum duration of the authentication session, in seconds. The default is 604800 seconds (7 days).",
+          "type": "string"
+        },
+        "Scope": {
+          "description": "The set of user claims to be requested from the IdP. The default is ``openid``.\n To verify which scope values your IdP supports and how to separate multiple values, see the documentation for your IdP.",
+          "type": "string"
+        },
+        "SessionCookieName": {
+          "description": "The name of the cookie used to maintain session information. The default is AWSELBAuthSessionCookie.",
+          "type": "string"
+        },
+        "UserPoolArn": {
+          "relationshipRef": {
+            "typeName": "AWS::Cognito::UserPool",
+            "propertyPath": "/properties/Arn"
+          },
+          "description": "The Amazon Resource Name (ARN) of the Amazon Cognito user pool.",
+          "type": "string"
+        },
+        "AuthenticationRequestExtraParams": {
+          "patternProperties": {
+            "[a-zA-Z0-9]+": {
+              "type": "string"
+            }
+          },
+          "description": "The query parameters (up to 10) to include in the redirect request to the authorization endpoint.",
+          "type": "object"
+        }
+      },
+      "required": ["UserPoolClientId", "UserPoolDomain", "UserPoolArn"]
+    },
+    "RedirectConfig": {
+      "description": "Information about a redirect action.\n A URI consists of the following components: protocol://hostname:port/path?query. You must modify at least one of the following components to avoid a redirect loop: protocol, hostname, port, or path. Any components that you do not modify retain their original values.\n You can reuse URI components using the following reserved keywords:\n  +  #{protocol}\n  +  #{host}\n  +  #{port}\n  +  #{path} (the leading \"/\" is removed)\n  +  #{query}\n  \n For example, you can change the path to \"/new/#{path}\", the hostname to \"example.#{host}\", or the query to \"#{query}&value=xyz\".",
+      "additionalProperties": false,
+      "type": "object",
+      "properties": {
+        "Path": {
+          "description": "The absolute path, starting with the leading \"/\". This component is not percent-encoded. The path can contain #{host}, #{path}, and #{port}.",
+          "type": "string"
+        },
+        "Query": {
+          "description": "The query parameters, URL-encoded when necessary, but not percent-encoded. Do not include the leading \"?\", as it is automatically added. You can specify any of the reserved keywords.",
+          "type": "string"
+        },
+        "Port": {
+          "description": "The port. You can specify a value from 1 to 65535 or #{port}.",
+          "type": "string"
+        },
+        "Host": {
+          "description": "The hostname. This component is not percent-encoded. The hostname can contain #{host}.",
+          "type": "string"
+        },
+        "Protocol": {
+          "description": "The protocol. You can specify HTTP, HTTPS, or #{protocol}. You can redirect HTTP to HTTP, HTTP to HTTPS, and HTTPS to HTTPS. You can't redirect HTTPS to HTTP.",
+          "type": "string"
+        },
+        "StatusCode": {
+          "description": "The HTTP redirect code. The redirect is either permanent (HTTP 301) or temporary (HTTP 302).",
+          "type": "string"
+        }
+      },
+      "required": ["StatusCode"]
+    },
+    "TargetGroupStickinessConfig": {
+      "description": "Information about the target group stickiness for a rule.",
+      "additionalProperties": false,
+      "type": "object",
+      "properties": {
+        "Enabled": {
+          "description": "Indicates whether target group stickiness is enabled.",
+          "type": "boolean"
+        },
+        "DurationSeconds": {
+          "description": "The time period, in seconds, during which requests from a client should be routed to the same target group. The range is 1-604800 seconds (7 days).",
+          "type": "integer"
+        }
+      }
+    },
+    "ListenerAttribute": {
+      "description": "Information about a listener attribute.",
+      "additionalProperties": false,
+      "type": "object",
+      "properties": {
+        "Value": {
+          "description": "The value of the attribute.",
+          "type": "string"
+        },
+        "Key": {
+          "description": "The name of the attribute.\n The following attribute is supported by Network Load Balancers, and Gateway Load Balancers.\n  +   ``tcp.idle_timeout.seconds`` - The tcp idle timeout value, in seconds. The valid range is 60-6000 seconds. The default is 350 seconds.",
+          "type": "string"
+        }
+      }
+    },
+    "ForwardConfig": {
+      "description": "Information for creating an action that distributes requests among one or more target groups. For Network Load Balancers, you can specify a single target group. Specify only when ``Type`` is ``forward``. If you specify both ``ForwardConfig`` and ``TargetGroupArn``, you can specify only one target group using ``ForwardConfig`` and it must be the same target group specified in ``TargetGroupArn``.",
+      "additionalProperties": false,
+      "type": "object",
+      "properties": {
+        "TargetGroupStickinessConfig": {
+          "description": "Information about the target group stickiness for a rule.",
+          "$ref": "#/definitions/TargetGroupStickinessConfig"
+        },
+        "TargetGroups": {
+          "uniqueItems": true,
+          "description": "Information about how traffic will be distributed between multiple target groups in a forward rule.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/TargetGroupTuple"
+          }
+        }
+      }
+    },
+    "AuthenticateOidcConfig": {
+      "anyOf": [{
+        "required": ["ClientSecret"]
+      }, {
+        "required": ["UseExistingClientSecret"]
+      }],
+      "description": "Specifies information required using an identity provide (IdP) that is compliant with OpenID Connect (OIDC) to authenticate users.",
+      "additionalProperties": false,
+      "type": "object",
+      "properties": {
+        "OnUnauthenticatedRequest": {
+          "description": "The behavior if the user is not authenticated. The following are possible values:\n  +  deny```` - Return an HTTP 401 Unauthorized error.\n  +  allow```` - Allow the request to be forwarded to the target.\n  +  authenticate```` - Redirect the request to the IdP authorization endpoint. This is the default value.",
+          "type": "string"
+        },
+        "TokenEndpoint": {
+          "description": "The token endpoint of the IdP. This must be a full URL, including the HTTPS protocol, the domain, and the path.",
+          "type": "string"
+        },
+        "UseExistingClientSecret": {
+          "description": "Indicates whether to use the existing client secret when modifying a rule. If you are creating a rule, you can omit this parameter or set it to false.",
+          "type": "boolean"
+        },
+        "SessionTimeout": {
+          "description": "The maximum duration of the authentication session, in seconds. The default is 604800 seconds (7 days).",
+          "type": "string"
+        },
+        "Scope": {
+          "description": "The set of user claims to be requested from the IdP. The default is ``openid``.\n To verify which scope values your IdP supports and how to separate multiple values, see the documentation for your IdP.",
+          "type": "string"
+        },
+        "Issuer": {
+          "description": "The OIDC issuer identifier of the IdP. This must be a full URL, including the HTTPS protocol, the domain, and the path.",
+          "type": "string"
+        },
+        "ClientSecret": {
+          "description": "The OAuth 2.0 client secret. This parameter is required if you are creating a rule. If you are modifying a rule, you can omit this parameter if you set ``UseExistingClientSecret`` to true.",
+          "type": "string"
+        },
+        "UserInfoEndpoint": {
+          "description": "The user info endpoint of the IdP. This must be a full URL, including the HTTPS protocol, the domain, and the path.",
+          "type": "string"
+        },
+        "ClientId": {
+          "description": "The OAuth 2.0 client identifier.",
+          "type": "string"
+        },
+        "AuthorizationEndpoint": {
+          "description": "The authorization endpoint of the IdP. This must be a full URL, including the HTTPS protocol, the domain, and the path.",
+          "type": "string"
+        },
+        "SessionCookieName": {
+          "description": "The name of the cookie used to maintain session information. The default is AWSELBAuthSessionCookie.",
+          "type": "string"
+        },
+        "AuthenticationRequestExtraParams": {
+          "patternProperties": {
+            "[a-zA-Z0-9]+": {
+              "type": "string"
+            }
+          },
+          "description": "The query parameters (up to 10) to include in the redirect request to the authorization endpoint.",
+          "type": "object"
+        }
+      },
+      "required": [
+        "TokenEndpoint",
+        "Issuer",
+        "UserInfoEndpoint",
+        "ClientId",
+        "AuthorizationEndpoint"
+      ]
+    },
+    "Certificate": {
+      "description": "Specifies an SSL server certificate to use as the default certificate for a secure listener.",
+      "additionalProperties": false,
+      "type": "object",
+      "properties": {
+        "CertificateArn": {
+          "anyOf": [{
+            "relationshipRef": {
+              "typeName": "AWS::CertificateManager::Certificate",
+              "propertyPath": "/properties/Id"
+            }
+          }, {
+            "relationshipRef": {
+              "typeName": "AWS::IAM::ServerCertificate",
+              "propertyPath": "/properties/Arn"
+            }
+          }],
+          "description": "The Amazon Resource Name (ARN) of the certificate.",
+          "type": "string"
+        }
+      }
+    }
+  },
+  "properties": {
+    "ListenerArn": {
+      "description": "",
+      "type": "string"
+    },
+    "MutualAuthentication": {
+      "description": "The mutual authentication configuration information.",
+      "$ref": "#/definitions/MutualAuthentication"
+    },
+    "ListenerAttributes": {
+      "arrayType": "AttributeList",
+      "uniqueItems": true,
+      "description": "The listener attributes.",
+      "insertionOrder": false,
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/ListenerAttribute"
+      }
+    },
+    "AlpnPolicy": {
+      "description": "[TLS listener] The name of the Application-Layer Protocol Negotiation (ALPN) policy.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "SslPolicy": {
+      "description": "[HTTPS and TLS listeners] The security policy that defines which protocols and ciphers are supported.\n Updating the security policy can result in interruptions if the load balancer is handling a high volume of traffic.\n For more information, see [Security policies](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/create-https-listener.html#describe-ssl-policies) in the *Application Load Balancers Guide* and [Security policies](https://docs.aws.amazon.com/elasticloadbalancing/latest/network/create-tls-listener.html#describe-ssl-policies) in the *Network Load Balancers Guide*.",
+      "type": "string"
+    },
+    "LoadBalancerArn": {
+      "description": "The Amazon Resource Name (ARN) of the load balancer.",
+      "type": "string"
+    },
+    "DefaultActions": {
+      "uniqueItems": true,
+      "description": "The actions for the default rule. You cannot define a condition for a default rule.\n To create additional rules for an Application Load Balancer, use [AWS::ElasticLoadBalancingV2::ListenerRule](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-elasticloadbalancingv2-listenerrule.html).",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Action"
+      }
+    },
+    "Port": {
+      "description": "The port on which the load balancer is listening. You can't specify a port for a Gateway Load Balancer.",
+      "type": "integer"
+    },
+    "Certificates": {
+      "uniqueItems": true,
+      "description": "The default SSL server certificate for a secure listener. You must provide exactly one certificate if the listener protocol is HTTPS or TLS.\n To create a certificate list for a secure listener, use [AWS::ElasticLoadBalancingV2::ListenerCertificate](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-elasticloadbalancingv2-listenercertificate.html).",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Certificate"
+      }
+    },
+    "Protocol": {
+      "description": "The protocol for connections from clients to the load balancer. For Application Load Balancers, the supported protocols are HTTP and HTTPS. For Network Load Balancers, the supported protocols are TCP, TLS, UDP, and TCP_UDP. You can’t specify the UDP or TCP_UDP protocol if dual-stack mode is enabled. You can't specify a protocol for a Gateway Load Balancer.",
+      "type": "string"
+    }
+  }
+}

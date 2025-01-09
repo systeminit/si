@@ -1,0 +1,132 @@
+{
+  "typeName": "AWS::ManagedBlockchain::Accessor",
+  "description": "Definition of AWS::ManagedBlockchain::com.amazonaws.taiga.webservice.api#Accessor Resource Type",
+  "definitions": {
+    "AccessorStatus": {
+      "type": "string",
+      "enum": ["AVAILABLE", "PENDING_DELETION", "DELETED"]
+    },
+    "AccessorType": {
+      "type": "string",
+      "enum": ["BILLING_TOKEN"]
+    },
+    "NetworkAccessorType": {
+      "type": "string",
+      "enum": [
+        "ETHEREUM_GOERLI",
+        "ETHEREUM_MAINNET",
+        "ETHEREUM_MAINNET_AND_GOERLI",
+        "POLYGON_MAINNET",
+        "POLYGON_MUMBAI"
+      ]
+    },
+    "Tag": {
+      "description": "A key-value pair to associate with a resource.",
+      "type": "object",
+      "properties": {
+        "Key": {
+          "type": "string",
+          "description": "The key name of the tag. You can specify a value that is 1 to 127 Unicode characters in length and cannot be prefixed with aws:. You can use any of the following characters: the set of Unicode letters, digits, whitespace, _, ., /, =, +, and -. ",
+          "minLength": 1,
+          "maxLength": 127
+        },
+        "Value": {
+          "type": "string",
+          "description": "The value for the tag. You can specify a value that is 1 to 255 Unicode characters in length and cannot be prefixed with aws:. You can use any of the following characters: the set of Unicode letters, digits, whitespace, _, ., /, =, +, and -. ",
+          "minLength": 1,
+          "maxLength": 255
+        }
+      },
+      "required": ["Key", "Value"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "Arn": {
+      "type": "string",
+      "maxLength": 1011,
+      "minLength": 1,
+      "pattern": "^arn:.+:.+:.+:.+:.+$"
+    },
+    "BillingToken": {
+      "type": "string",
+      "maxLength": 42,
+      "minLength": 42
+    },
+    "CreationDate": {
+      "type": "string"
+    },
+    "Id": {
+      "type": "string",
+      "maxLength": 32,
+      "minLength": 1
+    },
+    "Status": {
+      "$ref": "#/definitions/AccessorStatus"
+    },
+    "AccessorType": {
+      "$ref": "#/definitions/AccessorType"
+    },
+    "NetworkType": {
+      "$ref": "#/definitions/NetworkAccessorType"
+    },
+    "Tags": {
+      "type": "array",
+      "maxItems": 50,
+      "insertionOrder": false,
+      "uniqueItems": true,
+      "description": "An array of key-value pairs to apply to this resource.",
+      "items": {
+        "$ref": "#/definitions/Tag"
+      }
+    }
+  },
+  "tagging": {
+    "taggable": true,
+    "tagOnCreate": true,
+    "tagUpdatable": true,
+    "cloudFormationSystemTags": true
+  },
+  "required": ["AccessorType"],
+  "readOnlyProperties": [
+    "/properties/Arn",
+    "/properties/Id",
+    "/properties/BillingToken",
+    "/properties/CreationDate",
+    "/properties/Status"
+  ],
+  "createOnlyProperties": [
+    "/properties/AccessorType",
+    "/properties/NetworkType"
+  ],
+  "writeOnlyProperties": ["/properties/Tags"],
+  "primaryIdentifier": ["/properties/Id"],
+  "additionalIdentifiers": [["/properties/Arn"]],
+  "additionalProperties": false,
+  "handlers": {
+    "create": {
+      "permissions": [
+        "managedblockchain:CreateAccessor",
+        "managedblockchain:TagResource",
+        "managedblockchain:GetAccessor"
+      ]
+    },
+    "read": {
+      "permissions": ["managedblockchain:GetAccessor"]
+    },
+    "update": {
+      "permissions": [
+        "managedblockchain:GetAccessor",
+        "managedblockchain:CreateAccessor",
+        "managedblockchain:TagResource",
+        "managedblockchain:UntagResource"
+      ]
+    },
+    "delete": {
+      "permissions": ["managedblockchain:DeleteAccessor"]
+    },
+    "list": {
+      "permissions": ["managedblockchain:ListAccessors"]
+    }
+  }
+}

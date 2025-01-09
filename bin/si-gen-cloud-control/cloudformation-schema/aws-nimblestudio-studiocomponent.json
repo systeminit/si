@@ -1,0 +1,188 @@
+{
+  "typeName": "AWS::NimbleStudio::StudioComponent",
+  "description": "Resource Type definition for AWS::NimbleStudio::StudioComponent",
+  "additionalProperties": false,
+  "properties": {
+    "InitializationScripts": {
+      "type": "array",
+      "uniqueItems": false,
+      "items": {
+        "$ref": "#/definitions/StudioComponentInitializationScript"
+      }
+    },
+    "Type": {
+      "type": "string"
+    },
+    "Description": {
+      "type": "string"
+    },
+    "Configuration": {
+      "$ref": "#/definitions/StudioComponentConfiguration"
+    },
+    "Ec2SecurityGroupIds": {
+      "type": "array",
+      "uniqueItems": false,
+      "items": {
+        "type": "string"
+      }
+    },
+    "ScriptParameters": {
+      "type": "array",
+      "uniqueItems": false,
+      "items": {
+        "$ref": "#/definitions/ScriptParameterKeyValue"
+      }
+    },
+    "StudioId": {
+      "type": "string"
+    },
+    "StudioComponentId": {
+      "type": "string"
+    },
+    "Subtype": {
+      "type": "string"
+    },
+    "Tags": {
+      "type": "object",
+      "patternProperties": {
+        "[a-zA-Z0-9]+": {
+          "type": "string"
+        }
+      }
+    },
+    "Name": {
+      "type": "string"
+    }
+  },
+  "definitions": {
+    "LicenseServiceConfiguration": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "Endpoint": {
+          "type": "string"
+        }
+      }
+    },
+    "StudioComponentInitializationScript": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "Script": {
+          "type": "string"
+        },
+        "RunContext": {
+          "type": "string"
+        },
+        "LaunchProfileProtocolVersion": {
+          "type": "string"
+        },
+        "Platform": {
+          "type": "string"
+        }
+      }
+    },
+    "ComputeFarmConfiguration": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ActiveDirectoryUser": {
+          "type": "string"
+        },
+        "Endpoint": {
+          "type": "string"
+        }
+      }
+    },
+    "SharedFileSystemConfiguration": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "FileSystemId": {
+          "type": "string"
+        },
+        "ShareName": {
+          "type": "string"
+        },
+        "Endpoint": {
+          "type": "string"
+        },
+        "WindowsMountDrive": {
+          "type": "string"
+        },
+        "LinuxMountPoint": {
+          "type": "string"
+        }
+      }
+    },
+    "ActiveDirectoryConfiguration": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ComputerAttributes": {
+          "type": "array",
+          "uniqueItems": false,
+          "items": {
+            "$ref": "#/definitions/ActiveDirectoryComputerAttribute"
+          }
+        },
+        "DirectoryId": {
+          "type": "string"
+        },
+        "OrganizationalUnitDistinguishedName": {
+          "type": "string"
+        }
+      }
+    },
+    "ActiveDirectoryComputerAttribute": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "Value": {
+          "type": "string"
+        },
+        "Name": {
+          "type": "string"
+        }
+      }
+    },
+    "ScriptParameterKeyValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "Value": {
+          "type": "string"
+        },
+        "Key": {
+          "type": "string"
+        }
+      }
+    },
+    "StudioComponentConfiguration": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "LicenseServiceConfiguration": {
+          "$ref": "#/definitions/LicenseServiceConfiguration"
+        },
+        "ComputeFarmConfiguration": {
+          "$ref": "#/definitions/ComputeFarmConfiguration"
+        },
+        "ActiveDirectoryConfiguration": {
+          "$ref": "#/definitions/ActiveDirectoryConfiguration"
+        },
+        "SharedFileSystemConfiguration": {
+          "$ref": "#/definitions/SharedFileSystemConfiguration"
+        }
+      }
+    }
+  },
+  "required": ["Type", "StudioId", "Name"],
+  "createOnlyProperties": [
+    "/properties/Subtype",
+    "/properties/StudioId",
+    "/properties/Tags"
+  ],
+  "primaryIdentifier": ["/properties/StudioComponentId"],
+  "readOnlyProperties": ["/properties/StudioComponentId"]
+}

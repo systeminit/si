@@ -1,0 +1,119 @@
+{
+  "tagging": {
+    "taggable": false
+  },
+  "typeName": "AWS::DataZone::ProjectMembership",
+  "description": "Definition of AWS::DataZone::ProjectMembership Resource Type",
+  "createOnlyProperties": [
+    "/properties/DomainIdentifier",
+    "/properties/ProjectIdentifier",
+    "/properties/Member"
+  ],
+  "primaryIdentifier": [
+    "/properties/DomainIdentifier",
+    "/properties/MemberIdentifier",
+    "/properties/MemberIdentifierType",
+    "/properties/ProjectIdentifier"
+  ],
+  "required": [
+    "Designation",
+    "DomainIdentifier",
+    "ProjectIdentifier",
+    "Member"
+  ],
+  "sourceUrl": "https://github.com/aws-cloudformation/aws-cloudformation-resource-providers-datazone",
+  "handlers": {
+    "read": {
+      "permissions": ["datazone:ListProjectMemberships"]
+    },
+    "create": {
+      "permissions": [
+        "datazone:CreateProjectMembership",
+        "datazone:ListProjectMemberships",
+        "iam:GetRole",
+        "datazone:GetGroupProfile",
+        "datazone:GetUserProfile"
+      ]
+    },
+    "update": {
+      "permissions": [
+        "datazone:CreateProjectMembership",
+        "datazone:DeleteProjectMembership"
+      ]
+    },
+    "list": {
+      "permissions": ["datazone:ListProjectMemberships"],
+      "handlerSchema": {
+        "properties": {
+          "ProjectIdentifier": {
+            "$ref": "#/properties/ProjectIdentifier"
+          },
+          "DomainIdentifier": {
+            "$ref": "#/properties/DomainIdentifier"
+          }
+        },
+        "required": ["DomainIdentifier", "ProjectIdentifier"]
+      }
+    },
+    "delete": {
+      "permissions": ["datazone:DeleteProjectMembership"]
+    }
+  },
+  "writeOnlyProperties": ["/properties/Designation", "/properties/Member"],
+  "additionalProperties": false,
+  "definitions": {
+    "UserDesignation": {
+      "type": "string",
+      "enum": [
+        "PROJECT_OWNER",
+        "PROJECT_CONTRIBUTOR",
+        "PROJECT_CATALOG_VIEWER",
+        "PROJECT_CATALOG_CONSUMER",
+        "PROJECT_CATALOG_STEWARD"
+      ]
+    },
+    "MemberIdentifierType": {
+      "type": "string",
+      "enum": ["USER_IDENTIFIER", "GROUP_IDENTIFIER"]
+    },
+    "Member": {
+      "oneOf": [{
+        "additionalProperties": false,
+        "type": "object",
+        "title": "UserIdentifier",
+        "properties": {
+          "UserIdentifier": {
+            "type": "string"
+          }
+        },
+        "required": ["UserIdentifier"]
+      }, {
+        "additionalProperties": false,
+        "type": "object",
+        "title": "GroupIdentifier",
+        "properties": {
+          "GroupIdentifier": {
+            "type": "string"
+          }
+        },
+        "required": ["GroupIdentifier"]
+      }]
+    }
+  },
+  "properties": {
+    "ProjectIdentifier": {
+      "pattern": "^[a-zA-Z0-9_-]{1,36}$",
+      "type": "string"
+    },
+    "Designation": {
+      "$ref": "#/definitions/UserDesignation"
+    },
+    "Member": {
+      "$ref": "#/definitions/Member"
+    },
+    "DomainIdentifier": {
+      "pattern": "^dzd[-_][a-zA-Z0-9_-]{1,36}$",
+      "type": "string"
+    }
+  }
+}

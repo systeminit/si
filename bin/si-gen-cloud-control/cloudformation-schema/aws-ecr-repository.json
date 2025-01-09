@@ -1,0 +1,215 @@
+{
+  "typeName": "AWS::ECR::Repository",
+  "description": "The ``AWS::ECR::Repository`` resource specifies an Amazon Elastic Container Registry (Amazon ECR) repository, where users can push and pull Docker images, Open Container Initiative (OCI) images, and OCI compatible artifacts. For more information, see [Amazon ECR private repositories](https://docs.aws.amazon.com/AmazonECR/latest/userguide/Repositories.html) in the *Amazon ECR User Guide*.",
+  "sourceUrl": "https://github.com/aws-cloudformation/aws-cloudformation-resource-providers-ecr.git",
+  "definitions": {
+    "LifecyclePolicy": {
+      "type": "object",
+      "description": "The ``LifecyclePolicy`` property type specifies a lifecycle policy. For information about lifecycle policy syntax, see [Lifecycle policy template](https://docs.aws.amazon.com/AmazonECR/latest/userguide/LifecyclePolicies.html) in the *Amazon ECR User Guide*.",
+      "properties": {
+        "LifecyclePolicyText": {
+          "$ref": "#/definitions/LifecyclePolicyText",
+          "description": "The JSON repository policy text to apply to the repository."
+        },
+        "RegistryId": {
+          "$ref": "#/definitions/RegistryId",
+          "description": "The AWS account ID associated with the registry that contains the repository. If you do  not specify a registry, the default registry is assumed."
+        }
+      },
+      "additionalProperties": false
+    },
+    "LifecyclePolicyText": {
+      "type": "string",
+      "description": "The JSON repository policy text to apply to the repository.",
+      "minLength": 100,
+      "maxLength": 30720
+    },
+    "RegistryId": {
+      "type": "string",
+      "description": "The AWS account ID associated with the registry that contains the repository. If you do not specify a registry, the default registry is assumed. ",
+      "minLength": 12,
+      "maxLength": 12,
+      "pattern": "^[0-9]{12}$"
+    },
+    "Tag": {
+      "description": "The metadata to apply to a resource to help you categorize and organize them. Each tag consists of a key and a value, both of which you define. Tag keys can have a maximum character length of 128 characters, and tag values can have a maximum length of 256 characters.",
+      "type": "object",
+      "properties": {
+        "Key": {
+          "type": "string",
+          "description": "One part of a key-value pair that make up a tag. A ``key`` is a general label that acts like a category for more specific tag values.",
+          "minLength": 1,
+          "maxLength": 127
+        },
+        "Value": {
+          "type": "string",
+          "description": "A ``value`` acts as a descriptor within a tag category (key).",
+          "minLength": 1,
+          "maxLength": 255
+        }
+      },
+      "required": ["Value", "Key"],
+      "additionalProperties": false
+    },
+    "ImageScanningConfiguration": {
+      "type": "object",
+      "description": "The image scanning configuration for a repository.",
+      "properties": {
+        "ScanOnPush": {
+          "$ref": "#/definitions/ScanOnPush",
+          "description": "The setting that determines whether images are scanned after being pushed to a repository. If set to ``true``, images will be scanned after being pushed. If this parameter is not specified, it will default to ``false`` and images will not be scanned unless a scan is manually started."
+        }
+      },
+      "additionalProperties": false
+    },
+    "ScanOnPush": {
+      "type": "boolean",
+      "description": "The setting that determines whether images are scanned after being pushed to a repository."
+    },
+    "EncryptionConfiguration": {
+      "type": "object",
+      "description": "The encryption configuration for the repository. This determines how the contents of your repository are encrypted at rest.\n By default, when no encryption configuration is set or the ``AES256`` encryption type is used, Amazon ECR uses server-side encryption with Amazon S3-managed encryption keys which encrypts your data at rest using an AES-256 encryption algorithm. This does not require any action on your part.\n For more control over the encryption of the contents of your repository, you can use server-side encryption with KMSlong key stored in KMSlong (KMS) to encrypt your images. For more information, see [Amazon ECR encryption at rest](https://docs.aws.amazon.com/AmazonECR/latest/userguide/encryption-at-rest.html) in the *Amazon Elastic Container Registry User Guide*.",
+      "properties": {
+        "EncryptionType": {
+          "$ref": "#/definitions/EncryptionType",
+          "description": "The encryption type to use.\n If you use the ``KMS`` encryption type, the contents of the repository will be encrypted using server-side encryption with KMSlong key stored in KMS. When you use KMS to encrypt your data, you can either use the default AWS managed KMS key for Amazon ECR, or specify your own KMS key, which you already created. For more information, see [Protecting data using server-side encryption with an key stored in (SSE-KMS)](https://docs.aws.amazon.com/AmazonS3/latest/dev/UsingKMSEncryption.html) in the *Amazon Simple Storage Service Console Developer Guide*.\n If you use the ``AES256`` encryption type, Amazon ECR uses server-side encryption with Amazon S3-managed encryption keys which encrypts the images in the repository using an AES-256 encryption algorithm. For more information, see [Protecting data using server-side encryption with Amazon S3-managed encryption keys (SSE-S3)](https://docs.aws.amazon.com/AmazonS3/latest/dev/UsingServerSideEncryption.html) in the *Amazon Simple Storage Service Console Developer Guide*."
+        },
+        "KmsKey": {
+          "$ref": "#/definitions/KmsKey",
+          "description": "If you use the ``KMS`` encryption type, specify the KMS key to use for encryption. The alias, key ID, or full ARN of the KMS key can be specified. The key must exist in the same Region as the repository. If no key is specified, the default AWS managed KMS key for Amazon ECR will be used."
+        }
+      },
+      "required": ["EncryptionType"],
+      "additionalProperties": false
+    },
+    "EncryptionType": {
+      "type": "string",
+      "description": "The encryption type to use.",
+      "enum": ["AES256", "KMS", "KMS_DSSE"]
+    },
+    "KmsKey": {
+      "type": "string",
+      "description": "If you use the KMS or KMS_DSSE encryption type, specify the CMK to use for encryption. The alias, key ID, or full ARN of the CMK can be specified. The key must exist in the same Region as the repository. If no key is specified, the default AWS managed CMK for Amazon ECR will be used.",
+      "minLength": 1,
+      "maxLength": 2048
+    },
+    "EmptyOnDelete": {
+      "type": "boolean",
+      "description": "If true, deleting the repository force deletes the contents of the repository. Without a force delete, you can only delete empty repositories."
+    }
+  },
+  "properties": {
+    "EmptyOnDelete": {
+      "$ref": "#/definitions/EmptyOnDelete",
+      "description": "If true, deleting the repository force deletes the contents of the repository. If false, the repository must be empty before attempting to delete it."
+    },
+    "LifecyclePolicy": {
+      "$ref": "#/definitions/LifecyclePolicy",
+      "description": "Creates or updates a lifecycle policy. For information about lifecycle policy syntax, see [Lifecycle policy template](https://docs.aws.amazon.com/AmazonECR/latest/userguide/LifecyclePolicies.html)."
+    },
+    "RepositoryName": {
+      "type": "string",
+      "description": "The name to use for the repository. The repository name may be specified on its own (such as ``nginx-web-app``) or it can be prepended with a namespace to group the repository into a category (such as ``project-a/nginx-web-app``). If you don't specify a name, CFNlong generates a unique physical ID and uses that ID for the repository name. For more information, see [Name type](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-name.html).\n The repository name must start with a letter and can only contain lowercase letters, numbers, hyphens, underscores, and forward slashes.\n  If you specify a name, you cannot perform updates that require replacement of this resource. You can perform updates that require no or some interruption. If you must replace the resource, specify a new name.",
+      "minLength": 2,
+      "maxLength": 256,
+      "pattern": "^(?=.{2,256}$)((?:[a-z0-9]+(?:[._-][a-z0-9]+)*/)*[a-z0-9]+(?:[._-][a-z0-9]+)*)$"
+    },
+    "RepositoryPolicyText": {
+      "type": ["object", "string"],
+      "description": "The JSON repository policy text to apply to the repository. For more information, see [Amazon ECR repository policies](https://docs.aws.amazon.com/AmazonECR/latest/userguide/repository-policy-examples.html) in the *Amazon Elastic Container Registry User Guide*."
+    },
+    "Tags": {
+      "type": "array",
+      "maxItems": 50,
+      "uniqueItems": true,
+      "insertionOrder": false,
+      "description": "An array of key-value pairs to apply to this resource.",
+      "items": {
+        "$ref": "#/definitions/Tag"
+      }
+    },
+    "Arn": {
+      "type": "string",
+      "description": ""
+    },
+    "RepositoryUri": {
+      "type": "string",
+      "description": ""
+    },
+    "ImageTagMutability": {
+      "type": "string",
+      "description": "The tag mutability setting for the repository. If this parameter is omitted, the default setting of ``MUTABLE`` will be used which will allow image tags to be overwritten. If ``IMMUTABLE`` is specified, all image tags within the repository will be immutable which will prevent them from being overwritten.",
+      "enum": ["MUTABLE", "IMMUTABLE"]
+    },
+    "ImageScanningConfiguration": {
+      "$ref": "#/definitions/ImageScanningConfiguration",
+      "description": "The image scanning configuration for the repository. This determines whether images are scanned for known vulnerabilities after being pushed to the repository."
+    },
+    "EncryptionConfiguration": {
+      "$ref": "#/definitions/EncryptionConfiguration",
+      "description": "The encryption configuration for the repository. This determines how the contents of your repository are encrypted at rest."
+    }
+  },
+  "createOnlyProperties": [
+    "/properties/RepositoryName",
+    "/properties/EncryptionConfiguration",
+    "/properties/EncryptionConfiguration/EncryptionType",
+    "/properties/EncryptionConfiguration/KmsKey"
+  ],
+  "readOnlyProperties": ["/properties/Arn", "/properties/RepositoryUri"],
+  "writeOnlyProperties": ["/properties/EmptyOnDelete"],
+  "primaryIdentifier": ["/properties/RepositoryName"],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "ecr:CreateRepository",
+        "ecr:PutLifecyclePolicy",
+        "ecr:SetRepositoryPolicy",
+        "ecr:TagResource",
+        "kms:DescribeKey",
+        "kms:CreateGrant",
+        "kms:RetireGrant"
+      ]
+    },
+    "read": {
+      "permissions": [
+        "ecr:DescribeRepositories",
+        "ecr:GetLifecyclePolicy",
+        "ecr:GetRepositoryPolicy",
+        "ecr:ListTagsForResource"
+      ]
+    },
+    "update": {
+      "permissions": [
+        "ecr:DescribeRepositories",
+        "ecr:PutLifecyclePolicy",
+        "ecr:SetRepositoryPolicy",
+        "ecr:ListTagsForResource",
+        "ecr:TagResource",
+        "ecr:UntagResource",
+        "ecr:DeleteLifecyclePolicy",
+        "ecr:DeleteRepositoryPolicy",
+        "ecr:PutImageScanningConfiguration",
+        "ecr:PutImageTagMutability",
+        "kms:DescribeKey",
+        "kms:CreateGrant",
+        "kms:RetireGrant"
+      ]
+    },
+    "delete": {
+      "permissions": ["ecr:DeleteRepository", "kms:RetireGrant"]
+    },
+    "list": {
+      "permissions": ["ecr:DescribeRepositories"]
+    }
+  },
+  "tagging": {
+    "taggable": true,
+    "tagOnCreate": true,
+    "tagUpdatable": true,
+    "cloudFormationSystemTags": true,
+    "tagProperty": "/properties/Tags",
+    "permissions": ["ecr:TagResource", "ecr:UntagResource"]
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,90 @@
+{
+  "typeName": "AWS::S3::AccessGrantsInstance",
+  "description": "The AWS::S3::AccessGrantsInstance resource is an Amazon S3 resource type that hosts Access Grants and their associated locations",
+  "sourceUrl": "https://github.com/aws-cloudformation/aws-cloudformation-resource-providers-s3",
+  "definitions": {
+    "AccessGrantsInstanceArn": {
+      "description": "The Amazon Resource Name (ARN) of the specified Access Grants instance.",
+      "type": "string"
+    },
+    "IdentityCenterArn": {
+      "description": "The Amazon Resource Name (ARN) of the specified AWS Identity Center.",
+      "type": "string"
+    },
+    "Tag": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "Key": {
+          "type": "string"
+        },
+        "Value": {
+          "type": "string"
+        }
+      },
+      "required": ["Value", "Key"]
+    }
+  },
+  "properties": {
+    "AccessGrantsInstanceArn": {
+      "$ref": "#/definitions/AccessGrantsInstanceArn",
+      "description": "The Amazon Resource Name (ARN) of the specified Access Grants instance.",
+      "examples": ["arn:aws:s3:us-east-2:479290226168:access-grants/default"]
+    },
+    "IdentityCenterArn": {
+      "$ref": "#/definitions/IdentityCenterArn",
+      "description": "The Amazon Resource Name (ARN) of the specified AWS Identity Center.",
+      "examples": ["arn:aws:sso:::instance/ssoins-6987e6a2fc43873b"]
+    },
+    "AccessGrantsInstanceId": {
+      "type": "string",
+      "description": "A unique identifier for the specified access grants instance."
+    },
+    "Tags": {
+      "type": "array",
+      "insertionOrder": false,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/definitions/Tag"
+      }
+    }
+  },
+  "required": [],
+  "readOnlyProperties": [
+    "/properties/AccessGrantsInstanceArn",
+    "/properties/AccessGrantsInstanceId"
+  ],
+  "createOnlyProperties": ["/properties/Tags"],
+  "writeOnlyProperties": ["/properties/Tags"],
+  "primaryIdentifier": ["/properties/AccessGrantsInstanceArn"],
+  "tagging": {
+    "taggable": true,
+    "tagOnCreate": true,
+    "tagUpdatable": true,
+    "cloudFormationSystemTags": false,
+    "tagProperty": "/properties/Tags",
+    "permissions": [
+      "s3:UntagResource",
+      "s3:TagResource",
+      "s3:ListTagsForResource"
+    ]
+  },
+  "handlers": {
+    "create": {
+      "permissions": ["s3:CreateAccessGrantsInstance", "s3:TagResource"]
+    },
+    "read": {
+      "permissions": ["s3:GetAccessGrantsInstance", "s3:ListTagsForResource"]
+    },
+    "delete": {
+      "permissions": ["s3:DeleteAccessGrantsInstance"]
+    },
+    "update": {
+      "permissions": ["s3:TagResource", "s3:UntagResource"]
+    },
+    "list": {
+      "permissions": ["s3:ListAccessGrantsInstances"]
+    }
+  },
+  "additionalProperties": false
+}

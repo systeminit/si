@@ -1,0 +1,154 @@
+{
+  "typeName": "AWS::Bedrock::FlowAlias",
+  "description": "Definition of AWS::Bedrock::FlowAlias Resource Type",
+  "sourceUrl": "https://github.com/aws-cloudformation/aws-cloudformation-resource-providers-bedrock-flows",
+  "definitions": {
+    "FlowAliasRoutingConfigurationListItem": {
+      "type": "object",
+      "description": "Details about the routing configuration for a Flow alias.",
+      "properties": {
+        "FlowVersion": {
+          "type": "string",
+          "maxLength": 5,
+          "minLength": 1,
+          "pattern": "^(DRAFT|[0-9]{0,4}[1-9][0-9]{0,4})$",
+          "description": "Version."
+        }
+      },
+      "additionalProperties": false
+    },
+    "TagsMap": {
+      "type": "object",
+      "description": "A map of tag keys and values",
+      "patternProperties": {
+        "^[a-zA-Z0-9\\s._:/=+@-]*$": {
+          "type": "string",
+          "maxLength": 256,
+          "minLength": 0,
+          "pattern": "^[a-zA-Z0-9\\s._:/=+@-]*$",
+          "description": "Value of a tag"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "Arn": {
+      "type": "string",
+      "maxLength": 2048,
+      "pattern": "^arn:aws(-[^:]+)?:bedrock:[a-z0-9-]{1,20}:[0-9]{12}:flow/[0-9a-zA-Z]{10}/alias/[0-9a-zA-Z]{10}$",
+      "description": "Arn of the Flow Alias"
+    },
+    "FlowArn": {
+      "type": "string",
+      "maxLength": 2048,
+      "pattern": "^arn:aws(-[^:]+)?:bedrock:[a-z0-9-]{1,20}:[0-9]{12}:flow/[0-9a-zA-Z]{10}$",
+      "description": "Arn representation of the Flow"
+    },
+    "CreatedAt": {
+      "type": "string",
+      "description": "Time Stamp.",
+      "format": "date-time"
+    },
+    "Description": {
+      "type": "string",
+      "maxLength": 200,
+      "minLength": 1,
+      "description": "Description of the Resource."
+    },
+    "FlowId": {
+      "type": "string",
+      "pattern": "^[0-9a-zA-Z]{10}$",
+      "description": "Identifier for a flow resource."
+    },
+    "Id": {
+      "type": "string",
+      "maxLength": 10,
+      "minLength": 10,
+      "pattern": "^(\\bTSTALIASID\\b|[0-9a-zA-Z]+)$",
+      "description": "Id for a Flow Alias generated at the server side."
+    },
+    "Name": {
+      "type": "string",
+      "pattern": "^([0-9a-zA-Z][_-]?){1,100}$",
+      "description": "Name for a resource."
+    },
+    "RoutingConfiguration": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/FlowAliasRoutingConfigurationListItem"
+      },
+      "maxItems": 1,
+      "minItems": 1,
+      "description": "Routing configuration for a Flow alias.",
+      "insertionOrder": true
+    },
+    "UpdatedAt": {
+      "type": "string",
+      "description": "Time Stamp.",
+      "format": "date-time"
+    },
+    "Tags": {
+      "$ref": "#/definitions/TagsMap"
+    }
+  },
+  "required": ["Name", "FlowArn", "RoutingConfiguration"],
+  "readOnlyProperties": [
+    "/properties/Arn",
+    "/properties/CreatedAt",
+    "/properties/FlowId",
+    "/properties/Id",
+    "/properties/UpdatedAt"
+  ],
+  "createOnlyProperties": ["/properties/FlowArn"],
+  "primaryIdentifier": ["/properties/Arn", "/properties/FlowArn"],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "bedrock:CreateFlowAlias",
+        "bedrock:GetFlowAlias",
+        "bedrock:TagResource",
+        "bedrock:ListTagsForResource"
+      ]
+    },
+    "read": {
+      "permissions": ["bedrock:GetFlowAlias", "bedrock:ListTagsForResource"]
+    },
+    "update": {
+      "permissions": [
+        "bedrock:UpdateFlowAlias",
+        "bedrock:GetFlowAlias",
+        "bedrock:TagResource",
+        "bedrock:UntagResource",
+        "bedrock:ListTagsForResource"
+      ]
+    },
+    "delete": {
+      "permissions": ["bedrock:DeleteFlowAlias"]
+    },
+    "list": {
+      "permissions": ["bedrock:ListFlowAliases"],
+      "handlerSchema": {
+        "properties": {
+          "FlowArn": {
+            "$ref": "#/properties/FlowArn"
+          }
+        },
+        "required": ["FlowArn"]
+      }
+    }
+  },
+  "tagging": {
+    "cloudFormationSystemTags": false,
+    "tagOnCreate": true,
+    "tagProperty": "/properties/Tags",
+    "tagUpdatable": true,
+    "taggable": true,
+    "permissions": [
+      "bedrock:TagResource",
+      "bedrock:UntagResource",
+      "bedrock:ListTagsForResource"
+    ]
+  },
+  "additionalProperties": false
+}

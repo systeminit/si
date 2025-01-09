@@ -1,0 +1,637 @@
+{
+  "typeName": "AWS::Bedrock::KnowledgeBase",
+  "description": "Definition of AWS::Bedrock::KnowledgeBase Resource Type",
+  "definitions": {
+    "KnowledgeBaseConfiguration": {
+      "type": "object",
+      "description": "Contains details about the embeddings model used for the knowledge base.",
+      "properties": {
+        "Type": {
+          "$ref": "#/definitions/KnowledgeBaseType"
+        },
+        "VectorKnowledgeBaseConfiguration": {
+          "$ref": "#/definitions/VectorKnowledgeBaseConfiguration"
+        },
+        "KendraKnowledgeBaseConfiguration": {
+          "$ref": "#/definitions/KendraKnowledgeBaseConfiguration"
+        }
+      },
+      "required": ["Type"],
+      "additionalProperties": false
+    },
+    "KnowledgeBaseStatus": {
+      "type": "string",
+      "description": "The status of a knowledge base.",
+      "enum": [
+        "CREATING",
+        "ACTIVE",
+        "DELETING",
+        "UPDATING",
+        "FAILED",
+        "DELETE_UNSUCCESSFUL"
+      ]
+    },
+    "KnowledgeBaseStorageType": {
+      "type": "string",
+      "description": "The storage type of a knowledge base.",
+      "enum": ["OPENSEARCH_SERVERLESS", "PINECONE", "RDS", "MONGO_DB_ATLAS"]
+    },
+    "KnowledgeBaseType": {
+      "type": "string",
+      "description": "The type of a knowledge base.",
+      "enum": ["VECTOR", "KENDRA"]
+    },
+    "OpenSearchServerlessConfiguration": {
+      "type": "object",
+      "description": "Contains the storage configuration of the knowledge base in Amazon OpenSearch Service.",
+      "properties": {
+        "CollectionArn": {
+          "type": "string",
+          "maxLength": 2048,
+          "pattern": "^arn:aws(|-cn|-us-gov|-iso):aoss:[a-z]{2}(-gov)?-[a-z]+-\\d{1}:\\d{12}:collection/[a-z0-9-]{3,32}$",
+          "description": "The ARN of the OpenSearch Service vector store."
+        },
+        "VectorIndexName": {
+          "type": "string",
+          "maxLength": 2048,
+          "pattern": "^.*$",
+          "description": "The name of the vector store."
+        },
+        "FieldMapping": {
+          "$ref": "#/definitions/OpenSearchServerlessFieldMapping"
+        }
+      },
+      "required": ["CollectionArn", "FieldMapping", "VectorIndexName"],
+      "additionalProperties": false
+    },
+    "OpenSearchServerlessFieldMapping": {
+      "type": "object",
+      "description": "A mapping of Bedrock Knowledge Base fields to OpenSearch Serverless field names",
+      "properties": {
+        "VectorField": {
+          "type": "string",
+          "maxLength": 2048,
+          "pattern": "^.*$",
+          "description": "The name of the field in which Amazon Bedrock stores the vector embeddings for your data sources."
+        },
+        "TextField": {
+          "type": "string",
+          "maxLength": 2048,
+          "pattern": "^.*$",
+          "description": "The name of the field in which Amazon Bedrock stores the raw text from your data. The text is split according to the chunking strategy you choose."
+        },
+        "MetadataField": {
+          "type": "string",
+          "maxLength": 2048,
+          "pattern": "^.*$",
+          "description": "The name of the field in which Amazon Bedrock stores metadata about the vector store."
+        }
+      },
+      "required": ["MetadataField", "TextField", "VectorField"],
+      "additionalProperties": false
+    },
+    "PineconeConfiguration": {
+      "type": "object",
+      "description": "Contains the storage configuration of the knowledge base in Pinecone.",
+      "properties": {
+        "ConnectionString": {
+          "type": "string",
+          "maxLength": 2048,
+          "pattern": "^.*$",
+          "description": "The endpoint URL for your index management page."
+        },
+        "CredentialsSecretArn": {
+          "type": "string",
+          "pattern": "^arn:aws(|-cn|-us-gov):secretsmanager:[a-z0-9-]{1,20}:([0-9]{12}|):secret:[a-zA-Z0-9!/_+=.@-]{1,512}$",
+          "description": "The ARN of the secret that you created in AWS Secrets Manager that is linked to your Pinecone API key."
+        },
+        "Namespace": {
+          "type": "string",
+          "maxLength": 2048,
+          "pattern": "^.*$",
+          "description": "The namespace to be used to write new data to your database."
+        },
+        "FieldMapping": {
+          "$ref": "#/definitions/PineconeFieldMapping"
+        }
+      },
+      "required": ["ConnectionString", "CredentialsSecretArn", "FieldMapping"],
+      "additionalProperties": false
+    },
+    "PineconeFieldMapping": {
+      "type": "object",
+      "description": "Contains the names of the fields to which to map information about the vector store.",
+      "properties": {
+        "TextField": {
+          "type": "string",
+          "maxLength": 2048,
+          "pattern": "^.*$",
+          "description": "The name of the field in which Amazon Bedrock stores the raw text from your data. The text is split according to the chunking strategy you choose."
+        },
+        "MetadataField": {
+          "type": "string",
+          "maxLength": 2048,
+          "pattern": "^.*$",
+          "description": "The name of the field in which Amazon Bedrock stores metadata about the vector store."
+        }
+      },
+      "required": ["MetadataField", "TextField"],
+      "additionalProperties": false
+    },
+    "RdsConfiguration": {
+      "type": "object",
+      "description": "Contains details about the storage configuration of the knowledge base in Amazon RDS. For more information, see Create a vector index in Amazon RDS.",
+      "properties": {
+        "ResourceArn": {
+          "type": "string",
+          "pattern": "^arn:aws(|-cn|-us-gov):rds:[a-zA-Z0-9-]*:[0-9]{12}:cluster:[a-zA-Z0-9-]{1,63}$",
+          "description": "The ARN of the vector store."
+        },
+        "CredentialsSecretArn": {
+          "type": "string",
+          "pattern": "^arn:aws(|-cn|-us-gov):secretsmanager:[a-z0-9-]{1,20}:([0-9]{12}|):secret:[a-zA-Z0-9!/_+=.@-]{1,512}$",
+          "description": "The ARN of the secret that you created in AWS Secrets Manager that is linked to your Amazon RDS database."
+        },
+        "DatabaseName": {
+          "type": "string",
+          "maxLength": 63,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "The name of your Amazon RDS database."
+        },
+        "TableName": {
+          "type": "string",
+          "maxLength": 63,
+          "pattern": "^[a-zA-Z0-9_\\.\\-]+$",
+          "description": "The name of the table in the database."
+        },
+        "FieldMapping": {
+          "$ref": "#/definitions/RdsFieldMapping"
+        }
+      },
+      "required": [
+        "CredentialsSecretArn",
+        "DatabaseName",
+        "FieldMapping",
+        "ResourceArn",
+        "TableName"
+      ],
+      "additionalProperties": false
+    },
+    "RdsFieldMapping": {
+      "type": "object",
+      "description": "Contains the names of the fields to which to map information about the vector store.",
+      "properties": {
+        "PrimaryKeyField": {
+          "type": "string",
+          "maxLength": 63,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "The name of the field in which Amazon Bedrock stores the ID for each entry."
+        },
+        "VectorField": {
+          "type": "string",
+          "maxLength": 63,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "The name of the field in which Amazon Bedrock stores the vector embeddings for your data sources."
+        },
+        "TextField": {
+          "type": "string",
+          "maxLength": 63,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "The name of the field in which Amazon Bedrock stores the raw text from your data. The text is split according to the chunking strategy you choose."
+        },
+        "MetadataField": {
+          "type": "string",
+          "maxLength": 63,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "The name of the field in which Amazon Bedrock stores metadata about the vector store."
+        }
+      },
+      "required": [
+        "MetadataField",
+        "PrimaryKeyField",
+        "TextField",
+        "VectorField"
+      ],
+      "additionalProperties": false
+    },
+    "RedisEnterpriseCloudConfiguration": {
+      "type": "object",
+      "description": "Contains the storage configuration of the knowledge base in Redis Enterprise Cloud.",
+      "properties": {
+        "Endpoint": {
+          "type": "string",
+          "maxLength": 2048,
+          "pattern": "^.*$",
+          "description": "The endpoint URL of the Redis Enterprise Cloud database."
+        },
+        "VectorIndexName": {
+          "type": "string",
+          "maxLength": 2048,
+          "pattern": "^.*$",
+          "description": "The name of the vector index."
+        },
+        "CredentialsSecretArn": {
+          "type": "string",
+          "pattern": "^arn:aws(|-cn|-us-gov):secretsmanager:[a-z0-9-]{1,20}:([0-9]{12}|):secret:[a-zA-Z0-9!/_+=.@-]{1,512}$",
+          "description": "The ARN of the secret that you created in AWS Secrets Manager that is linked to your Redis Enterprise Cloud database."
+        },
+        "FieldMapping": {
+          "$ref": "#/definitions/RedisEnterpriseCloudFieldMapping"
+        }
+      },
+      "required": [
+        "CredentialsSecretArn",
+        "Endpoint",
+        "FieldMapping",
+        "VectorIndexName"
+      ],
+      "additionalProperties": false
+    },
+    "RedisEnterpriseCloudFieldMapping": {
+      "type": "object",
+      "description": "Contains the names of the fields to which to map information about the vector store.",
+      "properties": {
+        "VectorField": {
+          "type": "string",
+          "maxLength": 2048,
+          "pattern": "^.*$",
+          "description": "The name of the field in which Amazon Bedrock stores the vector embeddings for your data sources."
+        },
+        "TextField": {
+          "type": "string",
+          "maxLength": 2048,
+          "pattern": "^.*$",
+          "description": "The name of the field in which Amazon Bedrock stores the raw text from your data. The text is split according to the chunking strategy you choose."
+        },
+        "MetadataField": {
+          "type": "string",
+          "maxLength": 2048,
+          "pattern": "^.*$",
+          "description": "The name of the field in which Amazon Bedrock stores metadata about the vector store."
+        }
+      },
+      "required": ["MetadataField", "TextField", "VectorField"],
+      "additionalProperties": false
+    },
+    "MongoDbAtlasFieldMapping": {
+      "type": "object",
+      "description": "Contains the names of the fields to which to map information about the vector store.",
+      "properties": {
+        "VectorField": {
+          "type": "string",
+          "maxLength": 2048,
+          "pattern": "^.*$",
+          "description": "The name of the field in which Amazon Bedrock stores the vector embeddings for your data sources."
+        },
+        "TextField": {
+          "type": "string",
+          "maxLength": 2048,
+          "pattern": "^.*$",
+          "description": "The name of the field in which Amazon Bedrock stores the raw text from your data. The text is split according to the chunking strategy you choose."
+        },
+        "MetadataField": {
+          "type": "string",
+          "maxLength": 2048,
+          "pattern": "^.*$",
+          "description": "The name of the field in which Amazon Bedrock stores metadata about the vector store."
+        }
+      },
+      "required": ["VectorField", "MetadataField", "TextField"],
+      "additionalProperties": false
+    },
+    "MongoDbAtlasConfiguration": {
+      "type": "object",
+      "description": "Contains the storage configuration of the knowledge base in MongoDb Atlas Cloud.",
+      "properties": {
+        "Endpoint": {
+          "type": "string",
+          "maxLength": 2048,
+          "pattern": "^[a-zA-Z0-9_-]+\\.[a-zA-Z0-9_-]+\\.mongodb\\.net$",
+          "description": "MongoDB Atlas endpoint."
+        },
+        "CredentialsSecretArn": {
+          "type": "string",
+          "pattern": "^arn:aws(|-cn|-us-gov):secretsmanager:[a-z0-9-]{1,20}:([0-9]{12}|):secret:[a-zA-Z0-9!/_+=.@-]{1,512}$",
+          "description": "The ARN of the secret that you created in AWS Secrets Manager that is linked to your Amazon Mongo database."
+        },
+        "DatabaseName": {
+          "type": "string",
+          "maxLength": 63,
+          "pattern": "^.*$",
+          "description": "Name of the database within MongoDB Atlas."
+        },
+        "CollectionName": {
+          "type": "string",
+          "maxLength": 63,
+          "pattern": "^.*$",
+          "description": "Name of the collection within MongoDB Atlas."
+        },
+        "VectorIndexName": {
+          "type": "string",
+          "maxLength": 2048,
+          "pattern": "^.*$",
+          "description": "Name of a MongoDB Atlas index."
+        },
+        "EndpointServiceName": {
+          "type": "string",
+          "maxLength": 255,
+          "pattern": "^(?:arn:aws(?:-us-gov|-cn|-iso|-iso-[a-z])*:.+:.*:\\d+:.+/.+$|[a-zA-Z0-9*]+[a-zA-Z0-9._-]*)$",
+          "description": "MongoDB Atlas endpoint service name."
+        },
+        "FieldMapping": {
+          "$ref": "#/definitions/MongoDbAtlasFieldMapping"
+        }
+      },
+      "required": [
+        "Endpoint",
+        "CredentialsSecretArn",
+        "DatabaseName",
+        "CollectionName",
+        "VectorIndexName",
+        "FieldMapping"
+      ],
+      "additionalProperties": false
+    },
+    "StorageConfiguration": {
+      "type": "object",
+      "description": "The vector store service in which the knowledge base is stored.",
+      "properties": {
+        "Type": {
+          "$ref": "#/definitions/KnowledgeBaseStorageType"
+        },
+        "OpensearchServerlessConfiguration": {
+          "$ref": "#/definitions/OpenSearchServerlessConfiguration"
+        },
+        "PineconeConfiguration": {
+          "$ref": "#/definitions/PineconeConfiguration"
+        },
+        "RdsConfiguration": {
+          "$ref": "#/definitions/RdsConfiguration"
+        },
+        "MongoDbAtlasConfiguration": {
+          "$ref": "#/definitions/MongoDbAtlasConfiguration"
+        }
+      },
+      "required": ["Type"],
+      "oneOf": [{
+        "required": ["OpensearchServerlessConfiguration"]
+      }, {
+        "required": ["PineconeConfiguration"]
+      }, {
+        "required": ["RdsConfiguration"]
+      }, {
+        "required": ["MongoDbAtlasConfiguration"]
+      }],
+      "additionalProperties": false
+    },
+    "TagsMap": {
+      "type": "object",
+      "description": "A map of tag keys and values",
+      "patternProperties": {
+        "^[a-zA-Z0-9\\s._:/=+@-]*$": {
+          "type": "string",
+          "maxLength": 256,
+          "minLength": 0,
+          "pattern": "^[a-zA-Z0-9\\s._:/=+@-]*$",
+          "description": "Value of a tag"
+        }
+      },
+      "additionalProperties": false
+    },
+    "BedrockEmbeddingModelConfiguration": {
+      "type": "object",
+      "description": "The vector configuration details for the Bedrock embeddings model.",
+      "properties": {
+        "Dimensions": {
+          "type": "integer",
+          "maximum": 4096,
+          "minimum": 0,
+          "description": "The dimensions details for the vector configuration used on the Bedrock embeddings model."
+        }
+      },
+      "additionalProperties": false
+    },
+    "EmbeddingModelConfiguration": {
+      "type": "object",
+      "description": "The embeddings model configuration details for the vector model used in Knowledge Base.",
+      "properties": {
+        "BedrockEmbeddingModelConfiguration": {
+          "$ref": "#/definitions/BedrockEmbeddingModelConfiguration"
+        }
+      },
+      "additionalProperties": false
+    },
+    "VectorKnowledgeBaseConfiguration": {
+      "type": "object",
+      "description": "Contains details about the model used to create vector embeddings for the knowledge base.",
+      "properties": {
+        "EmbeddingModelArn": {
+          "type": "string",
+          "maxLength": 2048,
+          "minLength": 20,
+          "pattern": "^(arn:aws(-[^:]+)?:[a-z0-9-]+:[a-z0-9-]{1,20}:[0-9]{0,12}:[a-zA-Z0-9-:/._+]+)$",
+          "description": "The ARN of the model used to create vector embeddings for the knowledge base."
+        },
+        "EmbeddingModelConfiguration": {
+          "$ref": "#/definitions/EmbeddingModelConfiguration"
+        },
+        "SupplementalDataStorageConfiguration": {
+          "$ref": "#/definitions/SupplementalDataStorageConfiguration"
+        }
+      },
+      "required": ["EmbeddingModelArn"],
+      "additionalProperties": false
+    },
+    "S3Location": {
+      "type": "object",
+      "description": "An Amazon S3 location.",
+      "properties": {
+        "URI": {
+          "type": "string",
+          "maxLength": 2048,
+          "minLength": 1,
+          "pattern": "^s3://.{1,128}$",
+          "description": "The location's URI"
+        }
+      },
+      "required": ["URI"],
+      "additionalProperties": false
+    },
+    "SupplementalDataStorageLocationType": {
+      "type": "string",
+      "description": "Supplemental data storage location type.",
+      "enum": ["S3"]
+    },
+    "SupplementalDataStorageLocation": {
+      "type": "object",
+      "description": "Supplemental data storage location.",
+      "properties": {
+        "SupplementalDataStorageLocationType": {
+          "$ref": "#/definitions/SupplementalDataStorageLocationType"
+        },
+        "S3Location": {
+          "$ref": "#/definitions/S3Location"
+        }
+      },
+      "required": ["SupplementalDataStorageLocationType"],
+      "additionalProperties": false
+    },
+    "SupplementalDataStorageLocations": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/SupplementalDataStorageLocation"
+      },
+      "maxItems": 1,
+      "minItems": 1,
+      "description": "List of supplemental data storage locations.",
+      "insertionOrder": false
+    },
+    "SupplementalDataStorageConfiguration": {
+      "type": "object",
+      "description": "Configurations for supplemental data storage.",
+      "properties": {
+        "SupplementalDataStorageLocations": {
+          "$ref": "#/definitions/SupplementalDataStorageLocations"
+        }
+      },
+      "required": ["SupplementalDataStorageLocations"],
+      "additionalProperties": false
+    },
+    "KendraKnowledgeBaseConfiguration": {
+      "type": "object",
+      "description": "Configurations for a Kendra knowledge base",
+      "properties": {
+        "KendraIndexArn": {
+          "$ref": "#/definitions/KendraIndexArn"
+        }
+      },
+      "required": ["KendraIndexArn"],
+      "additionalProperties": false
+    },
+    "KendraIndexArn": {
+      "type": "string",
+      "description": "Arn of a Kendra index",
+      "pattern": "^arn:aws(|-cn|-us-gov):kendra:[a-z0-9-]{1,20}:([0-9]{12}|):index/([a-zA-Z0-9][a-zA-Z0-9-]{35}|[a-zA-Z0-9][a-zA-Z0-9-]{35}-[a-zA-Z0-9][a-zA-Z0-9-]{35})$"
+    }
+  },
+  "properties": {
+    "Description": {
+      "type": "string",
+      "maxLength": 200,
+      "minLength": 1,
+      "description": "Description of the Resource."
+    },
+    "KnowledgeBaseConfiguration": {
+      "$ref": "#/definitions/KnowledgeBaseConfiguration"
+    },
+    "KnowledgeBaseId": {
+      "type": "string",
+      "pattern": "^[0-9a-zA-Z]{10}$",
+      "description": "The unique identifier of the knowledge base."
+    },
+    "KnowledgeBaseArn": {
+      "type": "string",
+      "maxLength": 128,
+      "minLength": 0,
+      "pattern": "^arn:aws(|-cn|-us-gov):bedrock:[a-zA-Z0-9-]*:[0-9]{12}:knowledge-base/[0-9a-zA-Z]+$",
+      "description": "The ARN of the knowledge base."
+    },
+    "Name": {
+      "type": "string",
+      "pattern": "^([0-9a-zA-Z][_-]?){1,100}$",
+      "description": "The name of the knowledge base."
+    },
+    "Status": {
+      "$ref": "#/definitions/KnowledgeBaseStatus"
+    },
+    "RoleArn": {
+      "type": "string",
+      "maxLength": 2048,
+      "pattern": "^arn:aws(-[^:]+)?:iam::([0-9]{12})?:role/.+$",
+      "description": "The ARN of the IAM role with permissions to invoke API operations on the knowledge base. The ARN must begin with AmazonBedrockExecutionRoleForKnowledgeBase_"
+    },
+    "CreatedAt": {
+      "type": "string",
+      "description": "The time at which the knowledge base was created."
+    },
+    "FailureReasons": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "maxLength": 2048,
+        "description": "Failure Reason for Error."
+      },
+      "maxItems": 2048,
+      "description": "A list of reasons that the API operation on the knowledge base failed.",
+      "insertionOrder": false
+    },
+    "UpdatedAt": {
+      "type": "string",
+      "description": "The time at which the knowledge base was last updated."
+    },
+    "StorageConfiguration": {
+      "$ref": "#/definitions/StorageConfiguration"
+    },
+    "Tags": {
+      "$ref": "#/definitions/TagsMap"
+    }
+  },
+  "required": ["KnowledgeBaseConfiguration", "Name", "RoleArn"],
+  "readOnlyProperties": [
+    "/properties/KnowledgeBaseId",
+    "/properties/KnowledgeBaseArn",
+    "/properties/CreatedAt",
+    "/properties/UpdatedAt",
+    "/properties/FailureReasons",
+    "/properties/Status"
+  ],
+  "createOnlyProperties": [
+    "/properties/StorageConfiguration",
+    "/properties/KnowledgeBaseConfiguration"
+  ],
+  "primaryIdentifier": ["/properties/KnowledgeBaseId"],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "bedrock:CreateKnowledgeBase",
+        "bedrock:GetKnowledgeBase",
+        "bedrock:TagResource",
+        "bedrock:ListTagsForResource",
+        "bedrock:AssociateThirdPartyKnowledgeBase",
+        "iam:PassRole"
+      ]
+    },
+    "read": {
+      "permissions": ["bedrock:GetKnowledgeBase", "bedrock:ListTagsForResource"]
+    },
+    "update": {
+      "permissions": [
+        "bedrock:GetKnowledgeBase",
+        "bedrock:UpdateKnowledgeBase",
+        "bedrock:TagResource",
+        "bedrock:UntagResource",
+        "bedrock:ListTagsForResource",
+        "bedrock:AssociateThirdPartyKnowledgeBase",
+        "iam:PassRole"
+      ]
+    },
+    "delete": {
+      "permissions": [
+        "bedrock:GetKnowledgeBase",
+        "bedrock:DeleteKnowledgeBase",
+        "bedrock:ListDataSources"
+      ]
+    },
+    "list": {
+      "permissions": ["bedrock:ListKnowledgeBases"]
+    }
+  },
+  "tagging": {
+    "cloudFormationSystemTags": true,
+    "tagOnCreate": true,
+    "tagProperty": "/properties/Tags",
+    "tagUpdatable": true,
+    "taggable": true
+  },
+  "additionalProperties": false
+}

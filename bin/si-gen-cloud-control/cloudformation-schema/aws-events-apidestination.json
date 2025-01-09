@@ -1,0 +1,77 @@
+{
+  "typeName": "AWS::Events::ApiDestination",
+  "description": "Resource Type definition for AWS::Events::ApiDestination.",
+  "properties": {
+    "Name": {
+      "description": "Name of the apiDestination.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "[\\.\\-_A-Za-z0-9]+"
+    },
+    "Description": {
+      "type": "string",
+      "maxLength": 512
+    },
+    "ConnectionArn": {
+      "description": "The arn of the connection.",
+      "type": "string",
+      "pattern": "^arn:aws([a-z]|\\-)*:events:([a-z]|\\d|\\-)*:([0-9]{12})?:connection/[\\.\\-_A-Za-z0-9]+/[\\-A-Za-z0-9]+$"
+    },
+    "Arn": {
+      "description": "The arn of the api destination.",
+      "type": "string",
+      "pattern": "^arn:aws([a-z]|\\-)*:events:([a-z]|\\d|\\-)*:([0-9]{12})?:api-destination/[\\.\\-_A-Za-z0-9]+/[\\-A-Za-z0-9]+$"
+    },
+    "InvocationRateLimitPerSecond": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "InvocationEndpoint": {
+      "description": "Url endpoint to invoke.",
+      "type": "string",
+      "pattern": "^((%[0-9A-Fa-f]{2}|[-()_.!~*';/?:@\\x26=+$,A-Za-z0-9])+)([).!';/?:,])?$"
+    },
+    "HttpMethod": {
+      "type": "string",
+      "enum": ["GET", "HEAD", "POST", "OPTIONS", "PUT", "DELETE", "PATCH"]
+    }
+  },
+  "additionalProperties": false,
+  "createOnlyProperties": ["/properties/Name"],
+  "readOnlyProperties": ["/properties/Arn"],
+  "required": ["ConnectionArn", "InvocationEndpoint", "HttpMethod"],
+  "primaryIdentifier": ["/properties/Name"],
+  "tagging": {
+    "taggable": false,
+    "tagOnCreate": false,
+    "tagUpdatable": false,
+    "cloudFormationSystemTags": false
+  },
+  "handlers": {
+    "create": {
+      "permissions": [
+        "events:CreateApiDestination",
+        "events:DescribeApiDestination"
+      ]
+    },
+    "read": {
+      "permissions": ["events:DescribeApiDestination"]
+    },
+    "update": {
+      "permissions": [
+        "events:UpdateApiDestination",
+        "events:DescribeApiDestination"
+      ]
+    },
+    "delete": {
+      "permissions": [
+        "events:DeleteApiDestination",
+        "events:DescribeApiDestination"
+      ]
+    },
+    "list": {
+      "permissions": ["events:ListApiDestinations"]
+    }
+  }
+}

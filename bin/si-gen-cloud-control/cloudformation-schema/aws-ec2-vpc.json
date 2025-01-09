@@ -1,0 +1,148 @@
+{
+  "tagging": {
+    "permissions": ["ec2:DeleteTags", "ec2:CreateTags"],
+    "taggable": true,
+    "tagOnCreate": true,
+    "tagUpdatable": true,
+    "tagProperty": "/properties/Tags",
+    "cloudFormationSystemTags": true
+  },
+  "handlers": {
+    "read": {
+      "permissions": [
+        "ec2:DescribeVpcs",
+        "ec2:DescribeSecurityGroups",
+        "ec2:DescribeNetworkAcls",
+        "ec2:DescribeVpcAttribute"
+      ]
+    },
+    "create": {
+      "permissions": [
+        "ec2:CreateVpc",
+        "ec2:DescribeVpcs",
+        "ec2:ModifyVpcAttribute",
+        "ec2:CreateTags"
+      ]
+    },
+    "update": {
+      "permissions": [
+        "ec2:CreateTags",
+        "ec2:ModifyVpcAttribute",
+        "ec2:DeleteTags",
+        "ec2:ModifyVpcTenancy"
+      ]
+    },
+    "list": {
+      "permissions": ["ec2:DescribeVpcs"]
+    },
+    "delete": {
+      "permissions": ["ec2:DeleteVpc", "ec2:DescribeVpcs"]
+    }
+  },
+  "typeName": "AWS::EC2::VPC",
+  "readOnlyProperties": [
+    "/properties/CidrBlockAssociations",
+    "/properties/DefaultNetworkAcl",
+    "/properties/DefaultSecurityGroup",
+    "/properties/Ipv6CidrBlocks",
+    "/properties/VpcId"
+  ],
+  "description": "Specifies a virtual private cloud (VPC).\n To add an IPv6 CIDR block to the VPC, see [AWS::EC2::VPCCidrBlock](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-vpccidrblock.html).\n For more information, see [Virtual private clouds (VPC)](https://docs.aws.amazon.com/vpc/latest/userguide/configure-your-vpc.html) in the *Amazon VPC User Guide*.",
+  "writeOnlyProperties": [
+    "/properties/Ipv4IpamPoolId",
+    "/properties/Ipv4NetmaskLength"
+  ],
+  "createOnlyProperties": [
+    "/properties/CidrBlock",
+    "/properties/Ipv4IpamPoolId",
+    "/properties/Ipv4NetmaskLength"
+  ],
+  "additionalProperties": false,
+  "primaryIdentifier": ["/properties/VpcId"],
+  "definitions": {
+    "Tag": {
+      "description": "Specifies a tag. For more information, see [Resource tags](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-resource-tags.html).",
+      "additionalProperties": false,
+      "type": "object",
+      "properties": {
+        "Value": {
+          "description": "The tag value.",
+          "type": "string"
+        },
+        "Key": {
+          "description": "The tag key.",
+          "type": "string"
+        }
+      },
+      "required": ["Value", "Key"]
+    }
+  },
+  "properties": {
+    "VpcId": {
+      "description": "",
+      "type": "string"
+    },
+    "InstanceTenancy": {
+      "description": "The allowed tenancy of instances launched into the VPC.\n  +   ``default``: An instance launched into the VPC runs on shared hardware by default, unless you explicitly specify a different tenancy during instance launch.\n  +   ``dedicated``: An instance launched into the VPC runs on dedicated hardware by default, unless you explicitly specify a tenancy of ``host`` during instance launch. You cannot specify a tenancy of ``default`` during instance launch.\n  \n Updating ``InstanceTenancy`` requires no replacement only if you are updating its value from ``dedicated`` to ``default``. Updating ``InstanceTenancy`` from ``default`` to ``dedicated`` requires replacement.",
+      "type": "string"
+    },
+    "Ipv4NetmaskLength": {
+      "description": "The netmask length of the IPv4 CIDR you want to allocate to this VPC from an Amazon VPC IP Address Manager (IPAM) pool. For more information about IPAM, see [What is IPAM?](https://docs.aws.amazon.com//vpc/latest/ipam/what-is-it-ipam.html) in the *Amazon VPC IPAM User Guide*.",
+      "type": "integer"
+    },
+    "CidrBlockAssociations": {
+      "uniqueItems": false,
+      "description": "",
+      "insertionOrder": false,
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "CidrBlock": {
+      "description": "The IPv4 network range for the VPC, in CIDR notation. For example, ``10.0.0.0/16``. We modify the specified CIDR block to its canonical form; for example, if you specify ``100.68.0.18/18``, we modify it to ``100.68.0.0/18``.\n You must specify either``CidrBlock`` or ``Ipv4IpamPoolId``.",
+      "type": "string"
+    },
+    "Ipv4IpamPoolId": {
+      "description": "The ID of an IPv4 IPAM pool you want to use for allocating this VPC's CIDR. For more information, see [What is IPAM?](https://docs.aws.amazon.com//vpc/latest/ipam/what-is-it-ipam.html) in the *Amazon VPC IPAM User Guide*.\n You must specify either``CidrBlock`` or ``Ipv4IpamPoolId``.",
+      "type": "string"
+    },
+    "DefaultNetworkAcl": {
+      "description": "",
+      "insertionOrder": false,
+      "type": "string"
+    },
+    "EnableDnsSupport": {
+      "description": "Indicates whether the DNS resolution is supported for the VPC. If enabled, queries to the Amazon provided DNS server at the 169.254.169.253 IP address, or the reserved IP address at the base of the VPC network range \"plus two\" succeed. If disabled, the Amazon provided DNS service in the VPC that resolves public DNS hostnames to IP addresses is not enabled. Enabled by default. For more information, see [DNS attributes in your VPC](https://docs.aws.amazon.com/vpc/latest/userguide/vpc-dns.html#vpc-dns-support).",
+      "type": "boolean"
+    },
+    "Ipv6CidrBlocks": {
+      "uniqueItems": false,
+      "description": "",
+      "insertionOrder": false,
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "DefaultSecurityGroup": {
+      "description": "",
+      "insertionOrder": false,
+      "type": "string"
+    },
+    "EnableDnsHostnames": {
+      "description": "Indicates whether the instances launched in the VPC get DNS hostnames. If enabled, instances in the VPC get DNS hostnames; otherwise, they do not. Disabled by default for nondefault VPCs. For more information, see [DNS attributes in your VPC](https://docs.aws.amazon.com/vpc/latest/userguide/vpc-dns.html#vpc-dns-support).\n You can only enable DNS hostnames if you've enabled DNS support.",
+      "type": "boolean"
+    },
+    "Tags": {
+      "uniqueItems": false,
+      "description": "The tags for the VPC.",
+      "insertionOrder": false,
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Tag"
+      }
+    }
+  },
+  "conditionalCreateOnlyProperties": ["/properties/InstanceTenancy"]
+}

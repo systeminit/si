@@ -1,0 +1,516 @@
+{
+  "typeName": "AWS::SageMaker::Space",
+  "description": "Resource Type definition for AWS::SageMaker::Space",
+  "additionalProperties": false,
+  "properties": {
+    "SpaceArn": {
+      "type": "string",
+      "description": "The space Amazon Resource Name (ARN).",
+      "maxLength": 256,
+      "pattern": "arn:aws[a-z\\-]*:sagemaker:[a-z0-9\\-]*:[0-9]{12}:space/.*"
+    },
+    "DomainId": {
+      "type": "string",
+      "description": "The ID of the associated Domain.",
+      "minLength": 1,
+      "maxLength": 63
+    },
+    "SpaceName": {
+      "type": "string",
+      "description": "A name for the Space.",
+      "minLength": 1,
+      "maxLength": 63
+    },
+    "SpaceSettings": {
+      "$ref": "#/definitions/SpaceSettings",
+      "description": "A collection of settings.",
+      "uniqueItems": false,
+      "minItems": 0,
+      "maxItems": 50
+    },
+    "Tags": {
+      "type": "array",
+      "description": "A list of tags to apply to the space.",
+      "uniqueItems": false,
+      "minItems": 0,
+      "maxItems": 50,
+      "items": {
+        "$ref": "#/definitions/Tag"
+      }
+    },
+    "OwnershipSettings": {
+      "$ref": "#/definitions/OwnershipSettings"
+    },
+    "SpaceSharingSettings": {
+      "$ref": "#/definitions/SpaceSharingSettings"
+    },
+    "SpaceDisplayName": {
+      "type": "string",
+      "maxLength": 64,
+      "pattern": "^(?!\\s*$).+"
+    },
+    "Url": {
+      "type": "string",
+      "maxLength": 1024
+    }
+  },
+  "definitions": {
+    "SpaceSharingSettings": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "SharingType": {
+          "type": "string",
+          "enum": ["Private", "Shared"]
+        }
+      },
+      "required": ["SharingType"]
+    },
+    "OwnershipSettings": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "OwnerUserProfileName": {
+          "type": "string",
+          "maxLength": 63,
+          "pattern": "^[a-zA-Z0-9](-*[a-zA-Z0-9]){0,62}"
+        }
+      },
+      "required": ["OwnerUserProfileName"]
+    },
+    "SpaceSettings": {
+      "type": "object",
+      "description": "A collection of settings that apply to spaces of Amazon SageMaker Studio. These settings are specified when the CreateSpace API is called.",
+      "additionalProperties": false,
+      "properties": {
+        "JupyterServerAppSettings": {
+          "$ref": "#/definitions/JupyterServerAppSettings",
+          "description": "The Jupyter server's app settings."
+        },
+        "KernelGatewayAppSettings": {
+          "$ref": "#/definitions/KernelGatewayAppSettings",
+          "description": "The kernel gateway app settings."
+        },
+        "JupyterLabAppSettings": {
+          "$ref": "#/definitions/SpaceJupyterLabAppSettings",
+          "description": "The JupyterLab app settings."
+        },
+        "CodeEditorAppSettings": {
+          "$ref": "#/definitions/SpaceCodeEditorAppSettings",
+          "description": "The CodeEditor app settings."
+        },
+        "SpaceStorageSettings": {
+          "$ref": "#/definitions/SpaceStorageSettings",
+          "description": "Default storage settings for a space."
+        },
+        "AppType": {
+          "$ref": "#/definitions/AppType"
+        },
+        "CustomFileSystems": {
+          "$ref": "#/definitions/CustomFileSystems"
+        }
+      }
+    },
+    "AppType": {
+      "type": "string",
+      "enum": [
+        "JupyterServer",
+        "KernelGateway",
+        "TensorBoard",
+        "RStudioServerPro",
+        "RSessionGateway",
+        "JupyterLab",
+        "CodeEditor"
+      ]
+    },
+    "CustomFileSystems": {
+      "type": "array",
+      "uniqueItems": true,
+      "minItems": 0,
+      "maxItems": 1,
+      "items": {
+        "$ref": "#/definitions/CustomFileSystem"
+      }
+    },
+    "CustomFileSystem": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "EFSFileSystem": {
+          "$ref": "#/definitions/EFSFileSystem"
+        },
+        "FSxLustreFileSystem": {
+          "$ref": "#/definitions/FSxLustreFileSystem"
+        }
+      }
+    },
+    "EFSFileSystem": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "FileSystemId": {
+          "type": "string",
+          "minLength": 11,
+          "maxLength": 21,
+          "pattern": "^(fs-[0-9a-f]{8,})$"
+        }
+      },
+      "required": ["FileSystemId"]
+    },
+    "FSxLustreFileSystem": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "FileSystemId": {
+          "type": "string",
+          "minLength": 11,
+          "maxLength": 21,
+          "pattern": "^(fs-[0-9a-f]{8,})$"
+        }
+      },
+      "required": ["FileSystemId"]
+    },
+    "SpaceJupyterLabAppSettings": {
+      "type": "object",
+      "description": "The JupyterServer app settings.",
+      "additionalProperties": false,
+      "properties": {
+        "DefaultResourceSpec": {
+          "$ref": "#/definitions/ResourceSpec"
+        },
+        "AppLifecycleManagement": {
+          "$ref": "#/definitions/SpaceAppLifecycleManagement"
+        },
+        "CodeRepositories": {
+          "type": "array",
+          "description": "A list of CodeRepositories available for use with JupyterLab apps.",
+          "uniqueItems": false,
+          "minItems": 0,
+          "maxItems": 30,
+          "items": {
+            "$ref": "#/definitions/CodeRepository"
+          }
+        }
+      }
+    },
+    "SpaceAppLifecycleManagement": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "IdleSettings": {
+          "$ref": "#/definitions/SpaceIdleSettings"
+        }
+      }
+    },
+    "SpaceIdleSettings": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "IdleTimeoutInMinutes": {
+          "type": "integer",
+          "description": "The space idle timeout value set in minutes",
+          "minimum": 60,
+          "maximum": 525600
+        }
+      }
+    },
+    "CodeRepository": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "RepositoryUrl": {
+          "type": "string",
+          "description": "A CodeRepository (valid URL) to be used within Jupyter's Git extension.",
+          "maxLength": 256,
+          "pattern": "^https://([.\\-_a-zA-Z0-9]+/?){3,1016}$"
+        }
+      },
+      "required": ["RepositoryUrl"]
+    },
+    "SpaceCodeEditorAppSettings": {
+      "type": "object",
+      "description": "The CodeEditor app settings.",
+      "additionalProperties": false,
+      "properties": {
+        "DefaultResourceSpec": {
+          "$ref": "#/definitions/ResourceSpec"
+        },
+        "AppLifecycleManagement": {
+          "$ref": "#/definitions/SpaceAppLifecycleManagement"
+        }
+      }
+    },
+    "JupyterServerAppSettings": {
+      "type": "object",
+      "description": "The JupyterServer app settings.",
+      "additionalProperties": false,
+      "properties": {
+        "DefaultResourceSpec": {
+          "$ref": "#/definitions/ResourceSpec"
+        },
+        "LifecycleConfigArns": {
+          "type": "array",
+          "description": "A list of LifecycleConfigArns available for use with JupyterServer apps.",
+          "uniqueItems": false,
+          "minItems": 0,
+          "maxItems": 30,
+          "items": {
+            "$ref": "#/definitions/StudioLifecycleConfigArn"
+          }
+        }
+      }
+    },
+    "SpaceStorageSettings": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "EbsStorageSettings": {
+          "$ref": "#/definitions/EbsStorageSettings"
+        }
+      }
+    },
+    "EbsStorageSettings": {
+      "type": "object",
+      "description": "Properties related to the space's Amazon Elastic Block Store volume.",
+      "additionalProperties": false,
+      "properties": {
+        "EbsVolumeSizeInGb": {
+          "description": "Size of the Amazon EBS volume in Gb",
+          "$ref": "#/definitions/SpaceEbsVolumeSizeInGb"
+        }
+      },
+      "required": ["EbsVolumeSizeInGb"]
+    },
+    "SpaceEbsVolumeSizeInGb": {
+      "type": "integer",
+      "minimum": 5,
+      "maximum": 16384
+    },
+    "ResourceSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "InstanceType": {
+          "type": "string",
+          "description": "The instance type that the image version runs on.",
+          "enum": [
+            "system",
+            "ml.t3.micro",
+            "ml.t3.small",
+            "ml.t3.medium",
+            "ml.t3.large",
+            "ml.t3.xlarge",
+            "ml.t3.2xlarge",
+            "ml.m5.large",
+            "ml.m5.xlarge",
+            "ml.m5.2xlarge",
+            "ml.m5.4xlarge",
+            "ml.m5.8xlarge",
+            "ml.m5.12xlarge",
+            "ml.m5.16xlarge",
+            "ml.m5.24xlarge",
+            "ml.c5.large",
+            "ml.c5.xlarge",
+            "ml.c5.2xlarge",
+            "ml.c5.4xlarge",
+            "ml.c5.9xlarge",
+            "ml.c5.12xlarge",
+            "ml.c5.18xlarge",
+            "ml.c5.24xlarge",
+            "ml.p3.2xlarge",
+            "ml.p3.8xlarge",
+            "ml.p3.16xlarge",
+            "ml.g4dn.xlarge",
+            "ml.g4dn.2xlarge",
+            "ml.g4dn.4xlarge",
+            "ml.g4dn.8xlarge",
+            "ml.g4dn.12xlarge",
+            "ml.g4dn.16xlarge",
+            "ml.r5.large",
+            "ml.r5.xlarge",
+            "ml.r5.2xlarge",
+            "ml.r5.4xlarge",
+            "ml.r5.8xlarge",
+            "ml.r5.12xlarge",
+            "ml.r5.16xlarge",
+            "ml.r5.24xlarge",
+            "ml.p3dn.24xlarge",
+            "ml.m5d.large",
+            "ml.m5d.xlarge",
+            "ml.m5d.2xlarge",
+            "ml.m5d.4xlarge",
+            "ml.m5d.8xlarge",
+            "ml.m5d.12xlarge",
+            "ml.m5d.16xlarge",
+            "ml.m5d.24xlarge",
+            "ml.g5.xlarge",
+            "ml.g5.2xlarge",
+            "ml.g5.4xlarge",
+            "ml.g5.8xlarge",
+            "ml.g5.12xlarge",
+            "ml.g5.16xlarge",
+            "ml.g5.24xlarge",
+            "ml.g5.48xlarge",
+            "ml.p4d.24xlarge",
+            "ml.p4de.24xlarge",
+            "ml.geospatial.interactive",
+            "ml.trn1.2xlarge",
+            "ml.trn1.32xlarge",
+            "ml.trn1n.32xlarge"
+          ]
+        },
+        "SageMakerImageArn": {
+          "type": "string",
+          "description": "The ARN of the SageMaker image that the image version belongs to.",
+          "maxLength": 256,
+          "pattern": "^arn:aws(-[\\w]+)*:sagemaker:.+:[0-9]{12}:image/[a-z0-9]([-.]?[a-z0-9])*$"
+        },
+        "SageMakerImageVersionArn": {
+          "type": "string",
+          "description": "The ARN of the image version created on the instance.",
+          "maxLength": 256,
+          "pattern": "^arn:aws(-[\\w]+)*:sagemaker:.+:[0-9]{12}:image-version/[a-z0-9]([-.]?[a-z0-9])*/[0-9]+$"
+        },
+        "LifecycleConfigArn": {
+          "type": "string",
+          "description": "The Amazon Resource Name (ARN) of the Lifecycle Configuration to attach to the Resource.",
+          "maxLength": 256,
+          "pattern": "arn:aws[a-z\\-]*:sagemaker:[a-z0-9\\-]*:[0-9]{12}:studio-lifecycle-config/.*"
+        }
+      }
+    },
+    "KernelGatewayAppSettings": {
+      "type": "object",
+      "description": "The kernel gateway app settings.",
+      "additionalProperties": false,
+      "properties": {
+        "CustomImages": {
+          "type": "array",
+          "description": "A list of custom SageMaker images that are configured to run as a KernelGateway app.",
+          "uniqueItems": false,
+          "minItems": 0,
+          "maxItems": 30,
+          "items": {
+            "$ref": "#/definitions/CustomImage"
+          }
+        },
+        "DefaultResourceSpec": {
+          "$ref": "#/definitions/ResourceSpec",
+          "description": "The default instance type and the Amazon Resource Name (ARN) of the default SageMaker image used by the KernelGateway app."
+        },
+        "LifecycleConfigArns": {
+          "type": "array",
+          "description": "A list of LifecycleConfigArns available for use with KernelGateway apps.",
+          "uniqueItems": false,
+          "minItems": 0,
+          "maxItems": 30,
+          "items": {
+            "$ref": "#/definitions/StudioLifecycleConfigArn"
+          }
+        }
+      }
+    },
+    "StudioLifecycleConfigArn": {
+      "type": "string",
+      "description": "The Amazon Resource Name (ARN) of the Lifecycle Configuration to attach to the Resource.",
+      "maxLength": 256,
+      "pattern": "arn:aws[a-z\\-]*:sagemaker:[a-z0-9\\-]*:[0-9]{12}:studio-lifecycle-config/.*"
+    },
+    "CustomImage": {
+      "type": "object",
+      "description": "A custom SageMaker image.",
+      "additionalProperties": false,
+      "properties": {
+        "AppImageConfigName": {
+          "type": "string",
+          "description": "The Name of the AppImageConfig.",
+          "maxLength": 63,
+          "pattern": "^[a-zA-Z0-9](-*[a-zA-Z0-9]){0,62}"
+        },
+        "ImageName": {
+          "type": "string",
+          "description": "The name of the CustomImage. Must be unique to your account.",
+          "maxLength": 63,
+          "pattern": "^[a-zA-Z0-9]([-.]?[a-zA-Z0-9]){0,62}$"
+        },
+        "ImageVersionNumber": {
+          "type": "integer",
+          "description": "The version number of the CustomImage.",
+          "minimum": 0
+        }
+      },
+      "required": ["AppImageConfigName", "ImageName"]
+    },
+    "Tag": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "Value": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "Key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      },
+      "required": ["Key", "Value"]
+    }
+  },
+  "required": ["DomainId", "SpaceName"],
+  "createOnlyProperties": [
+    "/properties/DomainId",
+    "/properties/SpaceName",
+    "/properties/SpaceSharingSettings",
+    "/properties/OwnershipSettings"
+  ],
+  "writeOnlyProperties": ["/properties/SpaceSettings"],
+  "primaryIdentifier": ["/properties/DomainId", "/properties/SpaceName"],
+  "readOnlyProperties": ["/properties/SpaceArn", "/properties/Url"],
+  "tagging": {
+    "taggable": true,
+    "tagOnCreate": true,
+    "tagUpdatable": true,
+    "cloudFormationSystemTags": false,
+    "tagProperty": "/properties/Tags",
+    "permissions": [
+      "sagemaker:AddTags",
+      "sagemaker:DeleteTags",
+      "sagemaker:ListTags"
+    ]
+  },
+  "handlers": {
+    "create": {
+      "permissions": [
+        "sagemaker:CreateSpace",
+        "sagemaker:DescribeSpace",
+        "sagemaker:ListTags",
+        "sagemaker:AddTags"
+      ]
+    },
+    "read": {
+      "permissions": ["sagemaker:DescribeSpace", "sagemaker:ListTags"]
+    },
+    "update": {
+      "permissions": [
+        "sagemaker:UpdateSpace",
+        "sagemaker:DescribeSpace",
+        "sagemaker:AddTags",
+        "sagemaker:DeleteTags",
+        "sagemaker:ListTags"
+      ]
+    },
+    "delete": {
+      "permissions": [
+        "sagemaker:DeleteSpace",
+        "sagemaker:DescribeSpace",
+        "sagemaker:DeleteTags"
+      ]
+    },
+    "list": {
+      "permissions": ["sagemaker:ListSpaces", "sagemaker:ListTags"]
+    }
+  }
+}

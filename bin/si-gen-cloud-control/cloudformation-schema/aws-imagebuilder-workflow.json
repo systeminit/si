@@ -1,0 +1,123 @@
+{
+  "typeName": "AWS::ImageBuilder::Workflow",
+  "description": "Resource schema for AWS::ImageBuilder::Workflow",
+  "sourceUrl": "https://github.com/aws-cloudformation/aws-cloudformation-resource-providers-imagebuilder",
+  "properties": {
+    "Arn": {
+      "description": "The Amazon Resource Name (ARN) of the workflow.",
+      "type": "string"
+    },
+    "Name": {
+      "description": "The name of the workflow.",
+      "type": "string"
+    },
+    "Version": {
+      "description": "The version of the workflow.",
+      "type": "string"
+    },
+    "Description": {
+      "description": "The description of the workflow.",
+      "type": "string"
+    },
+    "ChangeDescription": {
+      "description": "The change description of the workflow.",
+      "type": "string"
+    },
+    "Type": {
+      "description": "The type of the workflow denotes whether the workflow is used to build, test, or distribute.",
+      "type": "string",
+      "enum": ["BUILD", "TEST", "DISTRIBUTION"]
+    },
+    "Data": {
+      "description": "The data of the workflow.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 16000
+    },
+    "Uri": {
+      "description": "The uri of the workflow.",
+      "type": "string"
+    },
+    "KmsKeyId": {
+      "description": "The KMS key identifier used to encrypt the workflow.",
+      "type": "string"
+    },
+    "Tags": {
+      "description": "The tags associated with the workflow.",
+      "type": "object",
+      "additionalProperties": false,
+      "patternProperties": {
+        ".{1,}": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "additionalProperties": false,
+  "required": ["Name", "Type", "Version"],
+  "oneOf": [{
+    "required": ["Data"]
+  }, {
+    "required": ["Uri"]
+  }],
+  "primaryIdentifier": ["/properties/Arn"],
+  "readOnlyProperties": ["/properties/Arn"],
+  "writeOnlyProperties": ["/properties/Data", "/properties/Uri"],
+  "createOnlyProperties": [
+    "/properties/Name",
+    "/properties/Version",
+    "/properties/ChangeDescription",
+    "/properties/Description",
+    "/properties/Data",
+    "/properties/Uri",
+    "/properties/Type",
+    "/properties/KmsKeyId",
+    "/properties/Tags"
+  ],
+  "tagging": {
+    "taggable": false
+  },
+  "handlers": {
+    "create": {
+      "permissions": [
+        "iam:GetRole",
+        "kms:GenerateDataKey",
+        "kms:GenerateDataKeyPair",
+        "kms:GenerateDataKeyPairWithoutPlaintext",
+        "kms:GenerateDataKeyWithoutPlaintext",
+        "kms:Encrypt",
+        "kms:Decrypt",
+        "s3:GetObject",
+        "s3:HeadBucket",
+        "s3:GetBucketLocation",
+        "imagebuilder:TagResource",
+        "imagebuilder:GetWorkflow",
+        "imagebuilder:CreateWorkflow"
+      ]
+    },
+    "read": {
+      "permissions": ["imagebuilder:GetWorkflow", "kms:Decrypt"]
+    },
+    "delete": {
+      "permissions": [
+        "imagebuilder:GetWorkflow",
+        "imagebuilder:UnTagResource",
+        "imagebuilder:DeleteWorkflow"
+      ]
+    },
+    "list": {
+      "permissions": [
+        "imagebuilder:ListWorkflows",
+        "imagebuilder:ListWorkflowBuildVersions"
+      ],
+      "handlerSchema": {
+        "properties": {
+          "Arn": {
+            "$ref": "#/properties/Arn"
+          }
+        },
+        "required": ["Arn"]
+      }
+    }
+  }
+}

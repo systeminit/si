@@ -1,0 +1,83 @@
+{
+  "sourceUrl": "https://github.com/aws-cloudformation/aws-cloudformation-resource-providers-ec2.git",
+  "tagging": {
+    "taggable": true,
+    "tagOnCreate": true,
+    "tagUpdatable": true,
+    "tagProperty": "/properties/Tags",
+    "cloudFormationSystemTags": true
+  },
+  "handlers": {
+    "read": {
+      "permissions": ["ec2:DescribeNetworkAcls", "ec2:DescribeTags"]
+    },
+    "create": {
+      "permissions": [
+        "ec2:CreateNetworkAcl",
+        "ec2:DescribeNetworkAcls",
+        "ec2:CreateTags"
+      ]
+    },
+    "update": {
+      "permissions": [
+        "ec2:DescribeNetworkAcls",
+        "ec2:DeleteTags",
+        "ec2:CreateTags"
+      ]
+    },
+    "list": {
+      "permissions": ["ec2:DescribeNetworkAcls"]
+    },
+    "delete": {
+      "permissions": [
+        "ec2:DeleteTags",
+        "ec2:DeleteNetworkAcl",
+        "ec2:DescribeNetworkAcls"
+      ]
+    }
+  },
+  "typeName": "AWS::EC2::NetworkAcl",
+  "readOnlyProperties": ["/properties/Id"],
+  "description": "Specifies a network ACL for your VPC.\n To add a network ACL entry, see [AWS::EC2::NetworkAclEntry](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-networkaclentry.html).",
+  "createOnlyProperties": ["/properties/VpcId"],
+  "additionalProperties": false,
+  "primaryIdentifier": ["/properties/Id"],
+  "definitions": {
+    "Tag": {
+      "description": "Specifies a tag. For more information, see [Resource tags](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-resource-tags.html).",
+      "additionalProperties": false,
+      "type": "object",
+      "properties": {
+        "Value": {
+          "description": "The tag value.",
+          "type": "string"
+        },
+        "Key": {
+          "description": "The tag key.",
+          "type": "string"
+        }
+      },
+      "required": ["Value", "Key"]
+    }
+  },
+  "properties": {
+    "VpcId": {
+      "description": "The ID of the VPC for the network ACL.",
+      "type": "string"
+    },
+    "Id": {
+      "description": "",
+      "type": "string"
+    },
+    "Tags": {
+      "uniqueItems": false,
+      "description": "The tags for the network ACL.",
+      "insertionOrder": false,
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Tag"
+      }
+    }
+  },
+  "required": ["VpcId"]
+}

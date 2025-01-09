@@ -1,0 +1,162 @@
+{
+  "typeName": "AWS::DMS::InstanceProfile",
+  "description": "Resource schema for AWS::DMS::InstanceProfile.",
+  "sourceUrl": "https://github.com/aws-cloudformation/aws-cloudformation-csf.git",
+  "tagging": {
+    "taggable": true,
+    "tagOnCreate": true,
+    "tagUpdatable": true,
+    "cloudFormationSystemTags": false,
+    "tagProperty": "/properties/Tags",
+    "permissions": [
+      "dms:AddTagsToResource",
+      "dms:RemoveTagsFromResource",
+      "dms:ListTagsForResource"
+    ]
+  },
+  "definitions": {
+    "Tag": {
+      "description": "A key-value pair to associate with a resource.",
+      "type": "object",
+      "properties": {
+        "Key": {
+          "type": "string",
+          "description": "The key name of the tag. You can specify a value that is 1 to 128 Unicode characters in length and cannot be prefixed with aws:. You can use any of the following characters: the set of Unicode letters, digits, whitespace, _, ., /, =, +, and -.",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "Value": {
+          "type": "string",
+          "description": "The value for the tag. You can specify a value that is 0 to 256 Unicode characters in length and cannot be prefixed with aws:. You can use any of the following characters: the set of Unicode letters, digits, whitespace, _, ., /, =, +, and -.",
+          "minLength": 0,
+          "maxLength": 256
+        }
+      },
+      "required": ["Key", "Value"],
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "InstanceProfileArn": {
+      "description": "The property describes an ARN of the instance profile.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "InstanceProfileIdentifier": {
+      "description": "The property describes an identifier for the instance profile. It is used for describing/deleting/modifying. Can be name/arn",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "AvailabilityZone": {
+      "description": "The property describes an availability zone of the instance profile.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "Description": {
+      "description": "The optional description of the instance profile.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "KmsKeyArn": {
+      "description": "The property describes kms key arn for the instance profile.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "PubliclyAccessible": {
+      "description": "The property describes the publicly accessible of the instance profile",
+      "type": "boolean",
+      "default": false
+    },
+    "NetworkType": {
+      "description": "The property describes a network type for the instance profile.",
+      "type": "string",
+      "enum": ["IPV4", "DUAL"]
+    },
+    "InstanceProfileName": {
+      "description": "The property describes a name for the instance profile.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "InstanceProfileCreationTime": {
+      "description": "The property describes a creating time of the instance profile.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 40
+    },
+    "SubnetGroupIdentifier": {
+      "description": "The property describes a subnet group identifier for the instance profile.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "VpcSecurityGroups": {
+      "description": "The property describes vps security groups for the instance profile.",
+      "type": "array",
+      "uniqueItems": true,
+      "insertionOrder": false,
+      "items": {
+        "type": "string"
+      }
+    },
+    "Tags": {
+      "description": "An array of key-value pairs to apply to this resource.",
+      "type": "array",
+      "uniqueItems": true,
+      "insertionOrder": false,
+      "items": {
+        "$ref": "#/definitions/Tag"
+      }
+    }
+  },
+  "readOnlyProperties": [
+    "/properties/InstanceProfileArn",
+    "/properties/InstanceProfileCreationTime"
+  ],
+  "primaryIdentifier": ["/properties/InstanceProfileArn"],
+  "additionalIdentifiers": [["/properties/InstanceProfileName"]],
+  "writeOnlyProperties": ["/properties/InstanceProfileIdentifier"],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "dms:CreateInstanceProfile",
+        "dms:ListInstanceProfiles",
+        "dms:DescribeInstanceProfiles",
+        "dms:AddTagsToResource",
+        "dms:ListTagsForResource"
+      ]
+    },
+    "read": {
+      "permissions": [
+        "dms:ListInstanceProfiles",
+        "dms:DescribeInstanceProfiles",
+        "dms:ListTagsForResource"
+      ]
+    },
+    "update": {
+      "permissions": [
+        "dms:UpdateInstanceProfile",
+        "dms:ModifyInstanceProfile",
+        "dms:AddTagsToResource",
+        "dms:RemoveTagsFromResource",
+        "dms:ListTagsForResource"
+      ]
+    },
+    "delete": {
+      "permissions": ["dms:DeleteInstanceProfile"]
+    },
+    "list": {
+      "permissions": [
+        "dms:ListInstanceProfiles",
+        "dms:DescribeInstanceProfiles",
+        "dms:ListTagsForResource"
+      ]
+    }
+  }
+}

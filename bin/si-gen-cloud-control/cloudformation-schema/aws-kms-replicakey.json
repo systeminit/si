@@ -1,0 +1,118 @@
+{
+  "tagging": {
+    "taggable": true,
+    "tagOnCreate": true,
+    "tagUpdatable": true,
+    "tagProperty": "/properties/Tags",
+    "cloudFormationSystemTags": false
+  },
+  "typeName": "AWS::KMS::ReplicaKey",
+  "readOnlyProperties": ["/properties/Arn", "/properties/KeyId"],
+  "description": "The AWS::KMS::ReplicaKey resource specifies a multi-region replica AWS KMS key in AWS Key Management Service (AWS KMS).",
+  "createOnlyProperties": ["/properties/PrimaryKeyArn"],
+  "primaryIdentifier": ["/properties/KeyId"],
+  "required": ["PrimaryKeyArn", "KeyPolicy"],
+  "sourceUrl": "https://github.com/aws-cloudformation/aws-cloudformation-resource-providers-kms",
+  "handlers": {
+    "read": {
+      "permissions": [
+        "kms:DescribeKey",
+        "kms:GetKeyPolicy",
+        "kms:ListResourceTags"
+      ]
+    },
+    "create": {
+      "permissions": [
+        "kms:ReplicateKey",
+        "kms:CreateKey",
+        "kms:DescribeKey",
+        "kms:DisableKey",
+        "kms:TagResource"
+      ]
+    },
+    "update": {
+      "permissions": [
+        "kms:DescribeKey",
+        "kms:DisableKey",
+        "kms:EnableKey",
+        "kms:PutKeyPolicy",
+        "kms:TagResource",
+        "kms:UntagResource",
+        "kms:UpdateKeyDescription"
+      ]
+    },
+    "list": {
+      "permissions": ["kms:ListKeys", "kms:DescribeKey"]
+    },
+    "delete": {
+      "permissions": ["kms:DescribeKey", "kms:ScheduleKeyDeletion"]
+    }
+  },
+  "writeOnlyProperties": ["/properties/PendingWindowInDays"],
+  "additionalProperties": false,
+  "definitions": {
+    "Tag": {
+      "description": "A key-value pair to associate with a resource.",
+      "additionalProperties": false,
+      "type": "object",
+      "properties": {
+        "Value": {
+          "minLength": 0,
+          "description": "The value for the tag. You can specify a value that is 0 to 256 Unicode characters in length and cannot be prefixed with aws:. You can use any of the following characters: the set of Unicode letters, digits, whitespace, _, ., /, =, +, and -.",
+          "type": "string",
+          "maxLength": 256
+        },
+        "Key": {
+          "minLength": 1,
+          "description": "The key name of the tag. You can specify a value that is 1 to 128 Unicode characters in length and cannot be prefixed with aws:. You can use any of the following characters: the set of Unicode letters, digits, whitespace, _, ., /, =, +, and -.",
+          "type": "string",
+          "maxLength": 128
+        }
+      },
+      "required": ["Key", "Value"]
+    }
+  },
+  "properties": {
+    "Description": {
+      "minLength": 0,
+      "description": "A description of the AWS KMS key. Use a description that helps you to distinguish this AWS KMS key from others in the account, such as its intended use.",
+      "type": "string",
+      "maxLength": 8192
+    },
+    "PendingWindowInDays": {
+      "description": "Specifies the number of days in the waiting period before AWS KMS deletes an AWS KMS key that has been removed from a CloudFormation stack. Enter a value between 7 and 30 days. The default value is 30 days.",
+      "maximum": 30,
+      "type": "integer",
+      "minimum": 7
+    },
+    "KeyPolicy": {
+      "description": "The key policy that authorizes use of the AWS KMS key. The key policy must observe the following rules.",
+      "type": ["object", "string"]
+    },
+    "PrimaryKeyArn": {
+      "minLength": 1,
+      "description": "Identifies the primary AWS KMS key to create a replica of. Specify the Amazon Resource Name (ARN) of the AWS KMS key. You cannot specify an alias or key ID. For help finding the ARN, see Finding the Key ID and ARN in the AWS Key Management Service Developer Guide.",
+      "type": "string",
+      "maxLength": 256
+    },
+    "Enabled": {
+      "description": "Specifies whether the AWS KMS key is enabled. Disabled AWS KMS keys cannot be used in cryptographic operations.",
+      "type": "boolean"
+    },
+    "KeyId": {
+      "type": "string"
+    },
+    "Arn": {
+      "type": "string"
+    },
+    "Tags": {
+      "uniqueItems": true,
+      "description": "An array of key-value pairs to apply to this resource.",
+      "insertionOrder": false,
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Tag"
+      }
+    }
+  }
+}

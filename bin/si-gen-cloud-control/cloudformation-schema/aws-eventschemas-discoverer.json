@@ -1,0 +1,110 @@
+{
+  "typeName": "AWS::EventSchemas::Discoverer",
+  "description": "Resource Type definition for AWS::EventSchemas::Discoverer",
+  "additionalProperties": false,
+  "properties": {
+    "DiscovererArn": {
+      "type": "string",
+      "description": "The ARN of the discoverer."
+    },
+    "DiscovererId": {
+      "type": "string",
+      "description": "The Id of the discoverer."
+    },
+    "Description": {
+      "type": "string",
+      "description": "A description for the discoverer."
+    },
+    "SourceArn": {
+      "type": "string",
+      "description": "The ARN of the event bus."
+    },
+    "CrossAccount": {
+      "type": "boolean",
+      "default": true,
+      "description": "Defines whether event schemas from other accounts are discovered. Default is True."
+    },
+    "State": {
+      "type": "string",
+      "description": "Defines the current state of the discoverer."
+    },
+    "Tags": {
+      "type": "array",
+      "uniqueItems": false,
+      "items": {
+        "$ref": "#/definitions/TagsEntry"
+      },
+      "description": "Tags associated with the resource."
+    }
+  },
+  "definitions": {
+    "TagsEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "Value": {
+          "type": "string"
+        },
+        "Key": {
+          "type": "string"
+        }
+      },
+      "required": ["Value", "Key"]
+    }
+  },
+  "required": ["SourceArn"],
+  "primaryIdentifier": ["/properties/DiscovererArn"],
+  "readOnlyProperties": [
+    "/properties/DiscovererArn",
+    "/properties/DiscovererId",
+    "/properties/State"
+  ],
+  "createOnlyProperties": ["/properties/SourceArn"],
+  "tagging": {
+    "taggable": true,
+    "tagOnCreate": true,
+    "tagUpdatable": true,
+    "cloudFormationSystemTags": false,
+    "tagProperty": "/properties/Tags"
+  },
+  "handlers": {
+    "create": {
+      "permissions": [
+        "schemas:CreateDiscoverer",
+        "schemas:DescribeDiscoverer",
+        "schemas:TagResource",
+        "events:PutRule",
+        "events:PutTargets",
+        "events:EnableRule",
+        "events:ListTargetsByRule",
+        "iam:CreateServiceLinkedRole"
+      ]
+    },
+    "read": {
+      "permissions": ["schemas:DescribeDiscoverer"]
+    },
+    "update": {
+      "permissions": [
+        "schemas:DescribeDiscoverer",
+        "schemas:UpdateDiscoverer",
+        "schemas:TagResource",
+        "schemas:UntagResource",
+        "schemas:ListTagsForResource",
+        "events:PutTargets",
+        "events:PutRule"
+      ]
+    },
+    "delete": {
+      "permissions": [
+        "schemas:DescribeDiscoverer",
+        "schemas:DeleteDiscoverer",
+        "events:DeleteRule",
+        "events:DisableRule",
+        "events:RemoveTargets"
+      ]
+    },
+    "list": {
+      "permissions": ["schemas:ListDiscoverers"]
+    }
+  }
+}

@@ -1,0 +1,163 @@
+{
+  "typeName": "AWS::ECR::RepositoryCreationTemplate",
+  "description": "AWS::ECR::RepositoryCreationTemplate is used to create repository with configuration from a pre-defined template.",
+  "sourceUrl": "https://github.com/aws-cloudformation/aws-cloudformation-resource-providers-ecr.git",
+  "definitions": {
+    "EncryptionConfiguration": {
+      "type": "object",
+      "description": "The encryption configuration for the repository. This determines how the contents of your repository are encrypted at rest. By default, when no encryption configuration is set or the AES256 encryption type is used, Amazon ECR uses server-side encryption with Amazon S3-managed encryption keys which encrypts your data at rest using an AES-256 encryption algorithm. This does not require any action on your part.\n\nFor more information, see https://docs.aws.amazon.com/AmazonECR/latest/userguide/encryption-at-rest.html",
+      "properties": {
+        "EncryptionType": {
+          "$ref": "#/definitions/EncryptionType"
+        },
+        "KmsKey": {
+          "$ref": "#/definitions/KmsKey"
+        }
+      },
+      "required": ["EncryptionType"],
+      "additionalProperties": false
+    },
+    "EncryptionType": {
+      "type": "string",
+      "description": "The encryption type to use.",
+      "enum": ["AES256", "KMS", "KMS_DSSE"]
+    },
+    "KmsKey": {
+      "type": "string",
+      "description": "If you use the KMS or KMS_DSSE encryption type, specify the CMK to use for encryption. The alias, key ID, or full ARN of the CMK can be specified. The key must exist in the same Region as the repository. If no key is specified, the default AWS managed CMK for Amazon ECR will be used.",
+      "minLength": 1,
+      "maxLength": 2048
+    },
+    "Tag": {
+      "description": "An array of key-value pairs to apply to this resource.",
+      "type": "object",
+      "properties": {
+        "Key": {
+          "type": "string",
+          "description": "The key name of the tag. You can specify a value that is 1 to 128 Unicode characters in length and cannot be prefixed with aws:. You can use any of the following characters: the set of Unicode letters, digits, whitespace, _, ., /, =, +, and -.",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "Value": {
+          "type": "string",
+          "description": "The value for the tag. You can specify a value that is 0 to 256 Unicode characters in length and cannot be prefixed with aws:. You can use any of the following characters: the set of Unicode letters, digits, whitespace, _, ., /, =, +, and -.",
+          "minLength": 0,
+          "maxLength": 256
+        }
+      },
+      "required": ["Key", "Value"],
+      "additionalProperties": false
+    },
+    "AppliedForItem": {
+      "type": "string",
+      "description": "Enumerable Strings representing the repository creation scenarios that the template will apply towards.",
+      "enum": ["REPLICATION", "PULL_THROUGH_CACHE"]
+    }
+  },
+  "properties": {
+    "Prefix": {
+      "description": "The prefix use to match the repository name and apply the template.",
+      "type": "string",
+      "pattern": "^((?:[a-z0-9]+(?:[._-][a-z0-9]+)*/)*[a-z0-9]+(?:[._-][a-z0-9]+)*/?|ROOT)$",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "Description": {
+      "description": "The description of the template.",
+      "type": "string",
+      "minLength": 0,
+      "maxLength": 256
+    },
+    "ImageTagMutability": {
+      "type": "string",
+      "description": "The image tag mutability setting for the repository.",
+      "enum": ["MUTABLE", "IMMUTABLE"]
+    },
+    "RepositoryPolicy": {
+      "type": "string",
+      "description": "The JSON repository policy text to apply to the repository. For more information, see https://docs.aws.amazon.com/AmazonECR/latest/userguide/RepositoryPolicyExamples.html"
+    },
+    "LifecyclePolicy": {
+      "type": "string",
+      "description": "The JSON lifecycle policy text to apply to the repository. For information about lifecycle policy syntax, see https://docs.aws.amazon.com/AmazonECR/latest/userguide/LifecyclePolicies.html",
+      "minLength": 100,
+      "maxLength": 30720
+    },
+    "EncryptionConfiguration": {
+      "$ref": "#/definitions/EncryptionConfiguration"
+    },
+    "ResourceTags": {
+      "type": "array",
+      "maxItems": 50,
+      "uniqueItems": true,
+      "insertionOrder": false,
+      "description": "An array of key-value pairs to apply to this resource.",
+      "items": {
+        "$ref": "#/definitions/Tag"
+      }
+    },
+    "AppliedFor": {
+      "type": "array",
+      "uniqueItems": true,
+      "insertionOrder": false,
+      "description": "A list of enumerable Strings representing the repository creation scenarios that the template will apply towards.",
+      "items": {
+        "$ref": "#/definitions/AppliedForItem"
+      }
+    },
+    "CustomRoleArn": {
+      "type": "string",
+      "description": "The ARN of the role to be assumed by ECR. This role must be in the same account as the registry that you are configuring.",
+      "maxLength": 2048,
+      "pattern": "^arn:aws[-a-z0-9]*:iam::[0-9]{12}:role/[A-Za-z0-9+=,-.@_]*$"
+    },
+    "CreatedAt": {
+      "description": "Create timestamp of the template.",
+      "type": "string"
+    },
+    "UpdatedAt": {
+      "description": "Update timestamp of the template.",
+      "type": "string"
+    }
+  },
+  "required": ["Prefix", "AppliedFor"],
+  "createOnlyProperties": ["/properties/Prefix"],
+  "readOnlyProperties": ["/properties/CreatedAt", "/properties/UpdatedAt"],
+  "primaryIdentifier": ["/properties/Prefix"],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "ecr:CreateRepositoryCreationTemplate",
+        "ecr:PutLifecyclePolicy",
+        "ecr:SetRepositoryPolicy",
+        "ecr:CreateRepository",
+        "iam:CreateServiceLinkedRole",
+        "iam:PassRole"
+      ]
+    },
+    "read": {
+      "permissions": ["ecr:DescribeRepositoryCreationTemplates"]
+    },
+    "update": {
+      "permissions": [
+        "ecr:DescribeRepositoryCreationTemplates",
+        "ecr:UpdateRepositoryCreationTemplate",
+        "ecr:PutLifecyclePolicy",
+        "ecr:SetRepositoryPolicy",
+        "ecr:CreateRepository",
+        "iam:CreateServiceLinkedRole",
+        "iam:PassRole"
+      ]
+    },
+    "delete": {
+      "permissions": ["ecr:DeleteRepositoryCreationTemplate"]
+    },
+    "list": {
+      "permissions": ["ecr:DescribeRepositoryCreationTemplates"]
+    }
+  },
+  "tagging": {
+    "taggable": false
+  },
+  "additionalProperties": false
+}

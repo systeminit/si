@@ -1,0 +1,169 @@
+{
+  "typeName": "AWS::Panorama::PackageVersion",
+  "description": "Registers a package version.",
+  "sourceUrl": "https://github.com/aws-cloudformation/aws-cloudformation-resource-providers-panorama.git",
+  "definitions": {
+    "PackageOwnerAccount": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 12,
+      "pattern": "^[0-9a-z\\_]+$"
+    },
+    "NodePackageId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255,
+      "pattern": "^[a-zA-Z0-9\\-\\_\\/]+$"
+    },
+    "NodePackageArn": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "NodePackageName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[a-zA-Z0-9\\-\\_]+$"
+    },
+    "NodePackageVersion": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255,
+      "pattern": "^([0-9]+)\\.([0-9]+)$"
+    },
+    "NodePackagePatchVersion": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255,
+      "pattern": "^[a-z0-9]+$"
+    },
+    "PackageVersionStatus": {
+      "type": "string",
+      "enum": ["REGISTER_PENDING", "REGISTER_COMPLETED", "FAILED", "DELETING"]
+    },
+    "PackageVersionStatusDescription": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "TimeStamp": {
+      "type": "integer"
+    }
+  },
+  "properties": {
+    "OwnerAccount": {
+      "$ref": "#/definitions/PackageOwnerAccount",
+      "description": "An owner account."
+    },
+    "PackageId": {
+      "$ref": "#/definitions/NodePackageId",
+      "description": "A package ID."
+    },
+    "PackageArn": {
+      "$ref": "#/definitions/NodePackageArn",
+      "description": ""
+    },
+    "PackageVersion": {
+      "$ref": "#/definitions/NodePackageVersion",
+      "description": "A package version."
+    },
+    "PatchVersion": {
+      "$ref": "#/definitions/NodePackagePatchVersion",
+      "description": "A patch version."
+    },
+    "MarkLatest": {
+      "type": "boolean",
+      "description": "Whether to mark the new version as the latest version."
+    },
+    "IsLatestPatch": {
+      "type": "boolean",
+      "description": ""
+    },
+    "PackageName": {
+      "$ref": "#/definitions/NodePackageName",
+      "description": ""
+    },
+    "Status": {
+      "$ref": "#/definitions/PackageVersionStatus",
+      "description": ""
+    },
+    "StatusDescription": {
+      "$ref": "#/definitions/PackageVersionStatusDescription",
+      "description": ""
+    },
+    "RegisteredTime": {
+      "$ref": "#/definitions/TimeStamp",
+      "description": ""
+    },
+    "UpdatedLatestPatchVersion": {
+      "$ref": "#/definitions/NodePackagePatchVersion",
+      "description": "If the version was marked latest, the new version to maker as latest."
+    }
+  },
+  "additionalProperties": false,
+  "taggable": false,
+  "required": ["PackageId", "PackageVersion", "PatchVersion"],
+  "readOnlyProperties": [
+    "/properties/PackageName",
+    "/properties/PackageArn",
+    "/properties/Status",
+    "/properties/StatusDescription",
+    "/properties/IsLatestPatch",
+    "/properties/RegisteredTime"
+  ],
+  "createOnlyProperties": [
+    "/properties/OwnerAccount",
+    "/properties/PackageId",
+    "/properties/PackageVersion",
+    "/properties/PatchVersion"
+  ],
+  "writeOnlyProperties": ["/properties/UpdatedLatestPatchVersion"],
+  "primaryIdentifier": [
+    "/properties/PackageId",
+    "/properties/PackageVersion",
+    "/properties/PatchVersion"
+  ],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "panorama:RegisterPackageVersion",
+        "panorama:DescribePackageVersion",
+        "s3:ListBucket",
+        "s3:PutObject",
+        "s3:GetObject",
+        "s3:GetObjectVersion"
+      ]
+    },
+    "read": {
+      "permissions": [
+        "panorama:DescribePackageVersion",
+        "s3:ListBucket",
+        "s3:GetObject",
+        "s3:GetObjectVersion"
+      ]
+    },
+    "update": {
+      "permissions": [
+        "panorama:DescribePackageVersion",
+        "panorama:RegisterPackageVersion",
+        "s3:ListBucket",
+        "s3:PutObject",
+        "s3:GetObject",
+        "s3:GetObjectVersion"
+      ]
+    },
+    "delete": {
+      "permissions": [
+        "panorama:DeregisterPackageVersion",
+        "panorama:DescribePackageVersion",
+        "s3:DeleteObject",
+        "s3:DeleteObjectVersion",
+        "s3:DeleteObjectVersionTagging",
+        "s3:ListBucket",
+        "s3:GetObject",
+        "s3:GetObjectVersion"
+      ]
+    }
+  }
+}

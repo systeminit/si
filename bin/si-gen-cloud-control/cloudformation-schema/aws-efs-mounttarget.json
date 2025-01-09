@@ -1,0 +1,85 @@
+{
+  "typeName": "AWS::EFS::MountTarget",
+  "description": "The ``AWS::EFS::MountTarget`` resource is an Amazon EFS resource that creates a mount target for an EFS file system. You can then mount the file system on Amazon EC2 instances or other resources by using the mount target.",
+  "sourceUrl": "https://github.com/aws-cloudformation/aws-cloudformation-rpdk.git",
+  "properties": {
+    "Id": {
+      "type": "string",
+      "description": ""
+    },
+    "IpAddress": {
+      "type": "string",
+      "description": "Valid IPv4 address within the address range of the specified subnet."
+    },
+    "FileSystemId": {
+      "type": "string",
+      "description": "The ID of the file system for which to create the mount target."
+    },
+    "SecurityGroups": {
+      "type": "array",
+      "insertionOrder": false,
+      "uniqueItems": true,
+      "items": {
+        "type": "string"
+      },
+      "description": "Up to five VPC security group IDs, of the form ``sg-xxxxxxxx``. These must be for the same VPC as subnet specified."
+    },
+    "SubnetId": {
+      "type": "string",
+      "description": "The ID of the subnet to add the mount target in. For One Zone file systems, use the subnet that is associated with the file system's Availability Zone."
+    }
+  },
+  "additionalProperties": false,
+  "required": ["FileSystemId", "SecurityGroups", "SubnetId"],
+  "createOnlyProperties": [
+    "/properties/IpAddress",
+    "/properties/SubnetId",
+    "/properties/FileSystemId"
+  ],
+  "primaryIdentifier": ["/properties/Id"],
+  "readOnlyProperties": ["/properties/Id"],
+  "tagging": {
+    "taggable": false
+  },
+  "handlers": {
+    "create": {
+      "permissions": [
+        "elasticfilesystem:CreateMountTarget",
+        "elasticfilesystem:DescribeMountTargets"
+      ]
+    },
+    "read": {
+      "permissions": [
+        "elasticfilesystem:DescribeMountTargets",
+        "elasticfilesystem:DescribeMountTargetSecurityGroups"
+      ]
+    },
+    "update": {
+      "permissions": [
+        "elasticfilesystem:DescribeMountTargets",
+        "elasticfilesystem:DescribeMountTargetSecurityGroups",
+        "elasticfilesystem:ModifyMountTargetSecurityGroups"
+      ]
+    },
+    "delete": {
+      "permissions": [
+        "elasticfilesystem:DescribeMountTargets",
+        "elasticfilesystem:DeleteMountTarget"
+      ]
+    },
+    "list": {
+      "permissions": [
+        "elasticfilesystem:DescribeMountTargets",
+        "elasticfilesystem:DescribeMountTargetSecurityGroups"
+      ],
+      "handlerSchema": {
+        "properties": {
+          "FileSystemId": {
+            "$ref": "#/properties/FileSystemId"
+          }
+        },
+        "required": ["FileSystemId"]
+      }
+    }
+  }
+}

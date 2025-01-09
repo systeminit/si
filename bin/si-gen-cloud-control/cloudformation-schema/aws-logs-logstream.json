@@ -1,0 +1,50 @@
+{
+  "sourceUrl": "https://github.com/aws-cloudformation/aws-cloudformation-resource-providers-logs.git",
+  "tagging": {
+    "taggable": false
+  },
+  "handlers": {
+    "read": {
+      "permissions": ["logs:DescribeLogStreams"]
+    },
+    "create": {
+      "permissions": ["logs:CreateLogStream", "logs:DescribeLogStreams"]
+    },
+    "list": {
+      "permissions": ["logs:DescribeLogStreams"],
+      "handlerSchema": {
+        "properties": {
+          "LogGroupName": {
+            "$ref": "#/properties/LogGroupName"
+          }
+        },
+        "required": ["LogGroupName"]
+      }
+    },
+    "delete": {
+      "permissions": ["logs:DeleteLogStream"]
+    }
+  },
+  "typeName": "AWS::Logs::LogStream",
+  "description": "Resource Type definition for AWS::Logs::LogStream",
+  "createOnlyProperties": [
+    "/properties/LogGroupName",
+    "/properties/LogStreamName"
+  ],
+  "additionalProperties": false,
+  "primaryIdentifier": [
+    "/properties/LogGroupName",
+    "/properties/LogStreamName"
+  ],
+  "properties": {
+    "LogStreamName": {
+      "description": "The name of the log stream. The name must be unique wihtin the log group.",
+      "type": "string"
+    },
+    "LogGroupName": {
+      "description": "The name of the log group where the log stream is created.",
+      "type": "string"
+    }
+  },
+  "required": ["LogGroupName"]
+}
