@@ -12,12 +12,10 @@
           <RouterLink
             :to="{ name: 'workspace-settings', params: { workspaceId } }"
           >
-            <Icon
+            <IconButton
               class="flex-none"
-              iconBgActiveTone="action"
+              icon="settings"
               iconIdleTone="shade"
-              iconTone="warning"
-              name="settings"
               size="lg"
               tooltip="Settings"
               tooltipPlacement="top"
@@ -126,7 +124,6 @@
 import * as _ from "lodash-es";
 import { computed, ref } from "vue";
 import {
-  Icon,
   VormInput,
   Stack,
   VButton,
