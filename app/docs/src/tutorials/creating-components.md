@@ -1,7 +1,7 @@
 # Creating Components
 
 This tutorial will teach you how to create new
-[Components](/reference/vocabulary#Components).
+[Components](/reference/vocabulary#components).
 
 To follow along, you should:
 
