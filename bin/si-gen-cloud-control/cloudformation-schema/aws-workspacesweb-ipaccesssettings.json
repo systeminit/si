@@ -1,0 +1,196 @@
+{
+  "typeName": "AWS::WorkSpacesWeb::IpAccessSettings",
+  "description": "Definition of AWS::WorkSpacesWeb::IpAccessSettings Resource Type",
+  "definitions": {
+    "EncryptionContextMap": {
+      "type": "object",
+      "patternProperties": {
+        "^[\\s\\S]*$": {
+          "type": "string",
+          "maxLength": 131072,
+          "minLength": 0,
+          "pattern": "^[\\s\\S]*$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "IpRule": {
+      "type": "object",
+      "properties": {
+        "IpRange": {
+          "type": "string",
+          "pattern": "^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}(?:/([0-9]|[12][0-9]|3[0-2])|)$",
+          "description": "A single IP address or an IP address range in CIDR notation"
+        },
+        "Description": {
+          "type": "string",
+          "maxLength": 256,
+          "minLength": 1,
+          "pattern": "^.+$"
+        }
+      },
+      "required": ["IpRange"],
+      "additionalProperties": false
+    },
+    "Tag": {
+      "type": "object",
+      "properties": {
+        "Key": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^([\\p{L}\\p{Z}\\p{N}_.:/=+\\-@]*)$"
+        },
+        "Value": {
+          "type": "string",
+          "maxLength": 256,
+          "minLength": 0,
+          "pattern": "^([\\p{L}\\p{Z}\\p{N}_.:/=+\\-@]*)$"
+        }
+      },
+      "required": ["Key", "Value"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "AdditionalEncryptionContext": {
+      "$ref": "#/definitions/EncryptionContextMap"
+    },
+    "AssociatedPortalArns": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "maxLength": 2048,
+        "minLength": 20,
+        "pattern": "^arn:[\\w+=\\/,.@-]+:[a-zA-Z0-9\\-]+:[a-zA-Z0-9\\-]*:[a-zA-Z0-9]{1,12}:[a-zA-Z]+(\\/[a-fA-F0-9\\-]{36})+$"
+      },
+      "insertionOrder": false
+    },
+    "CreationDate": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "CustomerManagedKey": {
+      "type": "string",
+      "maxLength": 2048,
+      "minLength": 20,
+      "pattern": "^arn:[\\w+=\\/,.@-]+:kms:[a-zA-Z0-9\\-]*:[a-zA-Z0-9]{1,12}:key\\/[a-zA-Z0-9-]+$"
+    },
+    "Description": {
+      "type": "string",
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^.+$"
+    },
+    "DisplayName": {
+      "type": "string",
+      "maxLength": 64,
+      "minLength": 1,
+      "pattern": "^.+$"
+    },
+    "IpAccessSettingsArn": {
+      "type": "string",
+      "maxLength": 2048,
+      "minLength": 20,
+      "pattern": "^arn:[\\w+=\\/,.@-]+:[a-zA-Z0-9\\-]+:[a-zA-Z0-9\\-]*:[a-zA-Z0-9]{1,12}:[a-zA-Z]+(\\/[a-fA-F0-9\\-]{36})+$"
+    },
+    "IpRules": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/IpRule"
+      },
+      "maxItems": 100,
+      "minItems": 1,
+      "insertionOrder": false
+    },
+    "Tags": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Tag"
+      },
+      "maxItems": 200,
+      "minItems": 0,
+      "insertionOrder": false
+    }
+  },
+  "required": ["IpRules"],
+  "readOnlyProperties": [
+    "/properties/AssociatedPortalArns",
+    "/properties/CreationDate",
+    "/properties/IpAccessSettingsArn"
+  ],
+  "createOnlyProperties": [
+    "/properties/AdditionalEncryptionContext",
+    "/properties/CustomerManagedKey"
+  ],
+  "primaryIdentifier": ["/properties/IpAccessSettingsArn"],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "workspaces-web:CreateIpAccessSettings",
+        "workspaces-web:GetIpAccessSettings",
+        "workspaces-web:ListIpAccessSettings",
+        "workspaces-web:ListTagsForResource",
+        "workspaces-web:TagResource",
+        "kms:DescribeKey",
+        "kms:GenerateDataKey",
+        "kms:Decrypt",
+        "kms:GenerateDataKeyWithoutPlaintext",
+        "kms:ReEncryptTo",
+        "kms:ReEncryptFrom"
+      ]
+    },
+    "read": {
+      "permissions": [
+        "workspaces-web:GetIpAccessSettings",
+        "workspaces-web:ListIpAccessSettings",
+        "workspaces-web:ListTagsForResource",
+        "kms:CreateGrant",
+        "kms:DescribeKey",
+        "kms:GenerateDataKey",
+        "kms:Decrypt"
+      ]
+    },
+    "update": {
+      "permissions": [
+        "workspaces-web:UpdateIpAccessSettings",
+        "workspaces-web:TagResource",
+        "workspaces-web:UntagResource",
+        "workspaces-web:GetIpAccessSettings",
+        "workspaces-web:ListIpAccessSettings",
+        "workspaces-web:ListTagsForResource",
+        "kms:CreateGrant",
+        "kms:DescribeKey",
+        "kms:GenerateDataKey",
+        "kms:Decrypt"
+      ]
+    },
+    "delete": {
+      "permissions": [
+        "workspaces-web:GetIpAccessSettings",
+        "workspaces-web:ListIpAccessSettings",
+        "workspaces-web:DeleteIpAccessSettings",
+        "kms:CreateGrant",
+        "kms:DescribeKey",
+        "kms:GenerateDataKey",
+        "kms:Decrypt"
+      ]
+    },
+    "list": {
+      "permissions": ["workspaces-web:ListIpAccessSettings"]
+    }
+  },
+  "tagging": {
+    "cloudFormationSystemTags": false,
+    "tagOnCreate": true,
+    "tagProperty": "/properties/Tags",
+    "tagUpdatable": true,
+    "taggable": true,
+    "permissions": [
+      "workspaces-web:UntagResource",
+      "workspaces-web:ListTagsForResource",
+      "workspaces-web:TagResource"
+    ]
+  },
+  "additionalProperties": false
+}

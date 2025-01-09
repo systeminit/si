@@ -1,0 +1,288 @@
+{
+  "typeName": "AWS::Bedrock::PromptVersion",
+  "description": "Definition of AWS::Bedrock::PromptVersion Resource Type",
+  "sourceUrl": "https://github.com/aws-cloudformation/aws-cloudformation-resource-providers-bedrock-prompts",
+  "definitions": {
+    "PromptTemplateType": {
+      "type": "string",
+      "description": "Prompt template type",
+      "enum": ["TEXT"]
+    },
+    "PromptVariant": {
+      "type": "object",
+      "description": "Prompt variant",
+      "properties": {
+        "Name": {
+          "type": "string",
+          "pattern": "^([0-9a-zA-Z][_-]?){1,100}$",
+          "description": "Name for a variant."
+        },
+        "TemplateType": {
+          "$ref": "#/definitions/PromptTemplateType"
+        },
+        "TemplateConfiguration": {
+          "$ref": "#/definitions/PromptTemplateConfiguration"
+        },
+        "ModelId": {
+          "type": "string",
+          "maxLength": 2048,
+          "minLength": 1,
+          "pattern": "^(arn:aws(-[^:]{1,12})?:(bedrock|sagemaker):[a-z0-9-]{1,20}:([0-9]{12})?:([a-z-]+/)?)?([a-zA-Z0-9.-]{1,63}){0,2}(([:][a-z0-9-]{1,63}){0,2})?(/[a-z0-9]{1,12})?$",
+          "description": "ARN or Id of a Bedrock Foundational Model or Inference Profile, or the ARN of a imported model, or a provisioned throughput ARN for custom models."
+        },
+        "InferenceConfiguration": {
+          "$ref": "#/definitions/PromptInferenceConfiguration"
+        }
+      },
+      "required": ["Name", "TemplateType", "TemplateConfiguration"],
+      "additionalProperties": false
+    },
+    "TextPromptTemplateConfiguration": {
+      "type": "object",
+      "description": "Configuration for text prompt template",
+      "properties": {
+        "Text": {
+          "type": "string",
+          "maxLength": 200000,
+          "minLength": 1,
+          "description": "Prompt content for String prompt template"
+        },
+        "InputVariables": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PromptInputVariable"
+          },
+          "maxItems": 5,
+          "minItems": 0,
+          "description": "List of input variables",
+          "insertionOrder": true
+        }
+      },
+      "required": ["Text"],
+      "additionalProperties": false
+    },
+    "PromptTemplateConfiguration": {
+      "description": "Prompt template configuration",
+      "oneOf": [{
+        "type": "object",
+        "title": "Text",
+        "properties": {
+          "Text": {
+            "$ref": "#/definitions/TextPromptTemplateConfiguration"
+          }
+        },
+        "required": ["Text"],
+        "additionalProperties": false
+      }]
+    },
+    "PromptModelInferenceConfiguration": {
+      "type": "object",
+      "description": "Prompt model inference configuration",
+      "properties": {
+        "Temperature": {
+          "type": "number",
+          "maximum": 1,
+          "minimum": 0,
+          "description": "Controls randomness, higher values increase diversity"
+        },
+        "TopP": {
+          "type": "number",
+          "maximum": 1,
+          "minimum": 0,
+          "description": "Cumulative probability cutoff for token selection"
+        },
+        "MaxTokens": {
+          "type": "number",
+          "maximum": 4096,
+          "minimum": 0,
+          "description": "Maximum length of output"
+        },
+        "StopSequences": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 4,
+          "minItems": 0,
+          "description": "List of stop sequences",
+          "insertionOrder": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "PromptInferenceConfiguration": {
+      "description": "Model inference configuration",
+      "oneOf": [{
+        "type": "object",
+        "title": "Text",
+        "properties": {
+          "Text": {
+            "$ref": "#/definitions/PromptModelInferenceConfiguration"
+          }
+        },
+        "required": ["Text"],
+        "additionalProperties": false
+      }]
+    },
+    "PromptInputVariable": {
+      "type": "object",
+      "description": "Input variable",
+      "properties": {
+        "Name": {
+          "type": "string",
+          "pattern": "^([0-9a-zA-Z][_-]?){1,100}$",
+          "description": "Name for an input variable"
+        }
+      },
+      "additionalProperties": false
+    },
+    "TagsMap": {
+      "type": "object",
+      "description": "A map of tag keys and values",
+      "patternProperties": {
+        "^[a-zA-Z0-9\\s._:/=+@-]*$": {
+          "type": "string",
+          "maxLength": 256,
+          "minLength": 0,
+          "pattern": "^[a-zA-Z0-9\\s._:/=+@-]*$",
+          "description": "Value of a tag"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "PromptArn": {
+      "type": "string",
+      "maxLength": 2048,
+      "minLength": 1,
+      "pattern": "^(arn:aws(-[^:]+)?:bedrock:[a-z0-9-]{1,20}:[0-9]{12}:prompt/[0-9a-zA-Z]{10})$",
+      "description": "ARN of a prompt resource possibly with a version"
+    },
+    "Arn": {
+      "type": "string",
+      "maxLength": 2048,
+      "minLength": 1,
+      "pattern": "^(arn:aws(-[^:]+)?:bedrock:[a-z0-9-]{1,20}:[0-9]{12}:prompt/[0-9a-zA-Z]{10}:[0-9]{1,20})$",
+      "description": "ARN of a prompt version resource"
+    },
+    "CreatedAt": {
+      "type": "string",
+      "description": "Time Stamp.",
+      "format": "date-time"
+    },
+    "PromptId": {
+      "type": "string",
+      "pattern": "^[0-9a-zA-Z]{10}$",
+      "description": "Identifier for a Prompt"
+    },
+    "UpdatedAt": {
+      "type": "string",
+      "description": "Time Stamp.",
+      "format": "date-time"
+    },
+    "Version": {
+      "type": "string",
+      "maxLength": 5,
+      "minLength": 1,
+      "pattern": "^(DRAFT|[0-9]{0,4}[1-9][0-9]{0,4})$",
+      "description": "Version."
+    },
+    "Variants": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/PromptVariant"
+      },
+      "maxItems": 1,
+      "minItems": 1,
+      "description": "List of prompt variants",
+      "insertionOrder": true
+    },
+    "DefaultVariant": {
+      "type": "string",
+      "pattern": "^([0-9a-zA-Z][_-]?){1,100}$",
+      "description": "Name for a variant."
+    },
+    "Description": {
+      "type": "string",
+      "maxLength": 200,
+      "minLength": 1,
+      "description": "Description for a prompt version resource."
+    },
+    "CustomerEncryptionKeyArn": {
+      "type": "string",
+      "maxLength": 2048,
+      "minLength": 1,
+      "pattern": "^arn:aws(|-cn|-us-gov):kms:[a-zA-Z0-9-]*:[0-9]{12}:key/[a-zA-Z0-9-]{36}$",
+      "description": "A KMS key ARN"
+    },
+    "Name": {
+      "type": "string",
+      "pattern": "^([0-9a-zA-Z][_-]?){1,100}$",
+      "description": "Name for a prompt resource."
+    },
+    "Tags": {
+      "$ref": "#/definitions/TagsMap"
+    }
+  },
+  "required": ["PromptArn"],
+  "readOnlyProperties": [
+    "/properties/Arn",
+    "/properties/CreatedAt",
+    "/properties/PromptId",
+    "/properties/UpdatedAt",
+    "/properties/Version",
+    "/properties/Name",
+    "/properties/DefaultVariant",
+    "/properties/Variants",
+    "/properties/CustomerEncryptionKeyArn"
+  ],
+  "primaryIdentifier": ["/properties/Arn"],
+  "createOnlyProperties": [
+    "/properties/PromptArn",
+    "/properties/Description",
+    "/properties/Tags"
+  ],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "bedrock:CreatePromptVersion",
+        "bedrock:GetPrompt",
+        "bedrock:TagResource",
+        "bedrock:ListTagsForResource",
+        "kms:GenerateDataKey",
+        "kms:Decrypt"
+      ]
+    },
+    "read": {
+      "permissions": [
+        "bedrock:GetPrompt",
+        "bedrock:ListTagsForResource",
+        "kms:Decrypt"
+      ]
+    },
+    "delete": {
+      "permissions": ["bedrock:DeletePrompt", "bedrock:GetPrompt"]
+    },
+    "list": {
+      "permissions": ["bedrock:ListPrompts"],
+      "handlerSchema": {
+        "properties": {
+          "PromptArn": {
+            "$ref": "#/properties/PromptArn"
+          }
+        },
+        "required": ["PromptArn"]
+      }
+    }
+  },
+  "tagging": {
+    "cloudFormationSystemTags": false,
+    "tagOnCreate": true,
+    "tagProperty": "/properties/Tags",
+    "tagUpdatable": false,
+    "taggable": true,
+    "permissions": ["bedrock:TagResource", "bedrock:ListTagsForResource"]
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,336 @@
+{
+  "typeName": "AWS::QBusiness::Plugin",
+  "description": "Definition of AWS::QBusiness::Plugin Resource Type",
+  "definitions": {
+    "APISchema": {
+      "oneOf": [{
+        "type": "object",
+        "title": "Payload",
+        "properties": {
+          "Payload": {
+            "type": "string"
+          }
+        },
+        "required": ["Payload"],
+        "additionalProperties": false
+      }, {
+        "type": "object",
+        "title": "S3",
+        "properties": {
+          "S3": {
+            "$ref": "#/definitions/S3"
+          }
+        },
+        "required": ["S3"],
+        "additionalProperties": false
+      }]
+    },
+    "APISchemaType": {
+      "type": "string",
+      "enum": ["OPEN_API_V3"]
+    },
+    "BasicAuthConfiguration": {
+      "type": "object",
+      "properties": {
+        "SecretArn": {
+          "type": "string",
+          "maxLength": 1284,
+          "minLength": 0,
+          "pattern": "^arn:[a-z0-9-\\.]{1,63}:[a-z0-9-\\.]{0,63}:[a-z0-9-\\.]{0,63}:[a-z0-9-\\.]{0,63}:[^/].{0,1023}$"
+        },
+        "RoleArn": {
+          "type": "string",
+          "maxLength": 1284,
+          "minLength": 0,
+          "pattern": "^arn:[a-z0-9-\\.]{1,63}:[a-z0-9-\\.]{0,63}:[a-z0-9-\\.]{0,63}:[a-z0-9-\\.]{0,63}:[^/].{0,1023}$"
+        }
+      },
+      "required": ["RoleArn", "SecretArn"],
+      "additionalProperties": false
+    },
+    "CustomPluginConfiguration": {
+      "type": "object",
+      "properties": {
+        "Description": {
+          "type": "string",
+          "maxLength": 200,
+          "minLength": 1
+        },
+        "ApiSchemaType": {
+          "$ref": "#/definitions/APISchemaType"
+        },
+        "ApiSchema": {
+          "$ref": "#/definitions/APISchema"
+        }
+      },
+      "required": ["ApiSchema", "ApiSchemaType", "Description"],
+      "additionalProperties": false
+    },
+    "NoAuthConfiguration": {
+      "type": "object",
+      "additionalProperties": false
+    },
+    "OAuth2ClientCredentialConfiguration": {
+      "type": "object",
+      "properties": {
+        "SecretArn": {
+          "type": "string",
+          "maxLength": 1284,
+          "minLength": 0,
+          "pattern": "^arn:[a-z0-9-\\.]{1,63}:[a-z0-9-\\.]{0,63}:[a-z0-9-\\.]{0,63}:[a-z0-9-\\.]{0,63}:[^/].{0,1023}$"
+        },
+        "RoleArn": {
+          "type": "string",
+          "maxLength": 1284,
+          "minLength": 0,
+          "pattern": "^arn:[a-z0-9-\\.]{1,63}:[a-z0-9-\\.]{0,63}:[a-z0-9-\\.]{0,63}:[a-z0-9-\\.]{0,63}:[^/].{0,1023}$"
+        },
+        "AuthorizationUrl": {
+          "type": "string",
+          "maxLength": 2048,
+          "minLength": 1,
+          "pattern": "^(https?|ftp|file)://([^\\s]*)$"
+        },
+        "TokenUrl": {
+          "type": "string",
+          "maxLength": 2048,
+          "minLength": 1,
+          "pattern": "^(https?|ftp|file)://([^\\s]*)$"
+        }
+      },
+      "required": ["RoleArn", "SecretArn"],
+      "additionalProperties": false
+    },
+    "PluginAuthConfiguration": {
+      "oneOf": [{
+        "type": "object",
+        "title": "BasicAuthConfiguration",
+        "properties": {
+          "BasicAuthConfiguration": {
+            "$ref": "#/definitions/BasicAuthConfiguration"
+          }
+        },
+        "required": ["BasicAuthConfiguration"],
+        "additionalProperties": false
+      }, {
+        "type": "object",
+        "title": "OAuth2ClientCredentialConfiguration",
+        "properties": {
+          "OAuth2ClientCredentialConfiguration": {
+            "$ref": "#/definitions/OAuth2ClientCredentialConfiguration"
+          }
+        },
+        "required": ["OAuth2ClientCredentialConfiguration"],
+        "additionalProperties": false
+      }, {
+        "type": "object",
+        "title": "NoAuthConfiguration",
+        "properties": {
+          "NoAuthConfiguration": {
+            "$ref": "#/definitions/NoAuthConfiguration"
+          }
+        },
+        "required": ["NoAuthConfiguration"],
+        "additionalProperties": false
+      }]
+    },
+    "PluginBuildStatus": {
+      "type": "string",
+      "enum": [
+        "READY",
+        "CREATE_IN_PROGRESS",
+        "CREATE_FAILED",
+        "UPDATE_IN_PROGRESS",
+        "UPDATE_FAILED",
+        "DELETE_IN_PROGRESS",
+        "DELETE_FAILED"
+      ]
+    },
+    "PluginState": {
+      "type": "string",
+      "enum": ["ENABLED", "DISABLED"]
+    },
+    "PluginType": {
+      "type": "string",
+      "enum": [
+        "SERVICE_NOW",
+        "SALESFORCE",
+        "JIRA",
+        "ZENDESK",
+        "CUSTOM",
+        "QUICKSIGHT",
+        "SERVICENOW_NOW_PLATFORM",
+        "JIRA_CLOUD",
+        "SALESFORCE_CRM",
+        "ZENDESK_SUITE",
+        "ATLASSIAN_CONFLUENCE",
+        "GOOGLE_CALENDAR",
+        "MICROSOFT_TEAMS",
+        "MICROSOFT_EXCHANGE",
+        "PAGERDUTY_ADVANCE",
+        "SMARTSHEET",
+        "ASANA"
+      ]
+    },
+    "S3": {
+      "type": "object",
+      "properties": {
+        "Bucket": {
+          "type": "string",
+          "maxLength": 63,
+          "minLength": 1,
+          "pattern": "^[a-z0-9][\\.\\-a-z0-9]{1,61}[a-z0-9]$"
+        },
+        "Key": {
+          "type": "string",
+          "maxLength": 1024,
+          "minLength": 1
+        }
+      },
+      "required": ["Bucket", "Key"],
+      "additionalProperties": false
+    },
+    "Tag": {
+      "type": "object",
+      "properties": {
+        "Key": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "Value": {
+          "type": "string",
+          "maxLength": 256,
+          "minLength": 0
+        }
+      },
+      "required": ["Key", "Value"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "ApplicationId": {
+      "type": "string",
+      "maxLength": 36,
+      "minLength": 36,
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9-]{35}$"
+    },
+    "AuthConfiguration": {
+      "$ref": "#/definitions/PluginAuthConfiguration"
+    },
+    "BuildStatus": {
+      "$ref": "#/definitions/PluginBuildStatus"
+    },
+    "CreatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "CustomPluginConfiguration": {
+      "$ref": "#/definitions/CustomPluginConfiguration"
+    },
+    "DisplayName": {
+      "type": "string",
+      "maxLength": 100,
+      "minLength": 1,
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_-]*$"
+    },
+    "PluginArn": {
+      "type": "string",
+      "maxLength": 1284,
+      "minLength": 0,
+      "pattern": "^arn:[a-z0-9-\\.]{1,63}:[a-z0-9-\\.]{0,63}:[a-z0-9-\\.]{0,63}:[a-z0-9-\\.]{0,63}:[^/].{0,1023}$"
+    },
+    "PluginId": {
+      "type": "string",
+      "maxLength": 36,
+      "minLength": 36,
+      "pattern": "^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$"
+    },
+    "ServerUrl": {
+      "type": "string",
+      "maxLength": 2048,
+      "minLength": 1,
+      "pattern": "^(https?|ftp|file)://([^\\s]*)$"
+    },
+    "State": {
+      "$ref": "#/definitions/PluginState"
+    },
+    "Tags": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Tag"
+      },
+      "maxItems": 200,
+      "minItems": 0
+    },
+    "Type": {
+      "$ref": "#/definitions/PluginType"
+    },
+    "UpdatedAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": ["AuthConfiguration", "DisplayName", "Type"],
+  "readOnlyProperties": [
+    "/properties/BuildStatus",
+    "/properties/CreatedAt",
+    "/properties/PluginArn",
+    "/properties/PluginId",
+    "/properties/UpdatedAt"
+  ],
+  "createOnlyProperties": ["/properties/ApplicationId", "/properties/Type"],
+  "primaryIdentifier": ["/properties/ApplicationId", "/properties/PluginId"],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "iam:PassRole",
+        "qbusiness:CreatePlugin",
+        "qbusiness:GetPlugin",
+        "qbusiness:ListTagsForResource",
+        "qbusiness:TagResource"
+      ]
+    },
+    "read": {
+      "permissions": ["qbusiness:GetPlugin", "qbusiness:ListTagsForResource"]
+    },
+    "update": {
+      "permissions": [
+        "iam:PassRole",
+        "qbusiness:GetPlugin",
+        "qbusiness:ListTagsForResource",
+        "qbusiness:TagResource",
+        "qbusiness:UntagResource",
+        "qbusiness:UpdatePlugin"
+      ]
+    },
+    "delete": {
+      "permissions": ["qbusiness:DeletePlugin", "qbusiness:GetPlugin"]
+    },
+    "list": {
+      "permissions": ["qbusiness:ListPlugins"],
+      "handlerSchema": {
+        "properties": {
+          "ApplicationId": {
+            "$ref": "#/properties/ApplicationId"
+          }
+        },
+        "required": ["ApplicationId"]
+      }
+    }
+  },
+  "tagging": {
+    "taggable": true,
+    "tagUpdatable": true,
+    "tagOnCreate": true,
+    "cloudFormationSystemTags": true,
+    "tagProperty": "/properties/Tags",
+    "permissions": [
+      "qbusiness:UntagResource",
+      "qbusiness:TagResource",
+      "qbusiness:ListTagsForResource"
+    ]
+  },
+  "sourceUrl": "https://github.com/aws-cloudformation/aws-cloudformation-resource-providers-qbusiness",
+  "additionalProperties": false
+}

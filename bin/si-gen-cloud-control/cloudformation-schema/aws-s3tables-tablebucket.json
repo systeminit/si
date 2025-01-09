@@ -1,0 +1,92 @@
+{
+  "typeName": "AWS::S3Tables::TableBucket",
+  "description": "Creates an Amazon S3 Tables table bucket in the same AWS Region where you create the AWS CloudFormation stack.",
+  "properties": {
+    "TableBucketARN": {
+      "$ref": "#/definitions/TableBucketARN"
+    },
+    "TableBucketName": {
+      "$ref": "#/definitions/TableBucketName"
+    },
+    "UnreferencedFileRemoval": {
+      "$ref": "#/definitions/UnreferencedFileRemoval"
+    }
+  },
+  "definitions": {
+    "TableBucketARN": {
+      "description": "The Amazon Resource Name (ARN) of the specified table bucket.",
+      "type": "string",
+      "examples": [
+        "arn:aws:s3tables:us-west-2:123456789012:bucket/mytablebucket"
+      ]
+    },
+    "TableBucketName": {
+      "description": "A name for the table bucket.",
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 63
+    },
+    "UnreferencedFileRemoval": {
+      "description": "Settings governing the Unreferenced File Removal maintenance action. Unreferenced file removal identifies and deletes all objects that are not referenced by any table snapshots.",
+      "additionalProperties": false,
+      "type": "object",
+      "properties": {
+        "Status": {
+          "description": "Indicates whether the Unreferenced File Removal maintenance action is enabled.",
+          "type": "string",
+          "enum": ["Enabled", "Disabled"]
+        },
+        "UnreferencedDays": {
+          "description": "For any object not referenced by your table and older than the UnreferencedDays property, S3 creates a delete marker and marks the object version as noncurrent.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "NoncurrentDays": {
+          "description": "S3 permanently deletes noncurrent objects after the number of days specified by the NoncurrentDays property.",
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    }
+  },
+  "additionalProperties": false,
+  "required": ["TableBucketName"],
+  "createOnlyProperties": ["/properties/TableBucketName"],
+  "readOnlyProperties": ["/properties/TableBucketARN"],
+  "primaryIdentifier": ["/properties/TableBucketARN"],
+  "tagging": {
+    "taggable": false,
+    "tagOnCreate": false,
+    "tagUpdatable": false,
+    "cloudFormationSystemTags": false
+  },
+  "handlers": {
+    "create": {
+      "permissions": [
+        "s3tables:CreateTableBucket",
+        "s3tables:PutTableBucketMaintenanceConfiguration",
+        "s3tables:GetTableBucket",
+        "s3tables:GetTableBucketMaintenanceConfiguration"
+      ]
+    },
+    "read": {
+      "permissions": [
+        "s3tables:GetTableBucket",
+        "s3tables:GetTableBucketMaintenanceConfiguration"
+      ]
+    },
+    "update": {
+      "permissions": [
+        "s3tables:PutTableBucketMaintenanceConfiguration",
+        "s3tables:GetTableBucket",
+        "s3tables:GetTableBucketMaintenanceConfiguration"
+      ]
+    },
+    "delete": {
+      "permissions": ["s3tables:DeleteTableBucket"]
+    },
+    "list": {
+      "permissions": ["s3tables:ListTableBuckets"]
+    }
+  }
+}

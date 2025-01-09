@@ -1,0 +1,214 @@
+{
+  "typeName": "AWS::SageMaker::PartnerApp",
+  "description": "Resource Type definition for AWS::SageMaker::PartnerApp",
+  "additionalProperties": false,
+  "properties": {
+    "Arn": {
+      "type": "string",
+      "description": "The Amazon Resource Name (ARN) of the created PartnerApp.",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "arn:aws[a-z\\-]*:sagemaker:[a-z0-9\\-]*:[0-9]{12}:partner-app/app-[A-Z0-9]{12}$"
+    },
+    "Name": {
+      "type": "string",
+      "description": "A name for the PartnerApp.",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^[a-zA-Z0-9]+"
+    },
+    "Type": {
+      "type": "string",
+      "description": "The type of PartnerApp.",
+      "enum": ["lakera-guard", "comet", "deepchecks-llm-evaluation", "fiddler"]
+    },
+    "ExecutionRoleArn": {
+      "type": "string",
+      "description": "The execution role for the user.",
+      "minLength": 20,
+      "maxLength": 2048,
+      "pattern": "^arn:aws[a-z\\-]*:iam::\\d{12}:role/?[a-zA-Z_0-9+=,.@\\-_/]+$"
+    },
+    "Tier": {
+      "type": "string",
+      "description": "The tier of the PartnerApp.",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "EnableIamSessionBasedIdentity": {
+      "type": "boolean",
+      "description": "Enables IAM Session based Identity for PartnerApp."
+    },
+    "ApplicationConfig": {
+      "$ref": "#/definitions/PartnerAppConfig",
+      "description": "A collection of settings that specify the maintenance schedule for the PartnerApp."
+    },
+    "AuthType": {
+      "type": "string",
+      "description": "The Auth type of PartnerApp.",
+      "enum": ["IAM"]
+    },
+    "BaseUrl": {
+      "type": "string",
+      "description": "The AppServerUrl based on app and account-info.",
+      "maxLength": 2048
+    },
+    "MaintenanceConfig": {
+      "$ref": "#/definitions/PartnerAppMaintenanceConfig",
+      "description": "A collection of settings that specify the maintenance schedule for the PartnerApp."
+    },
+    "ClientToken": {
+      "type": "string",
+      "description": "The client token for the PartnerApp.",
+      "minLength": 1,
+      "maxLength": 36,
+      "pattern": "^[a-zA-Z0-9-]+$"
+    },
+    "Tags": {
+      "type": "array",
+      "description": "A list of tags to apply to the PartnerApp.",
+      "uniqueItems": false,
+      "insertionOrder": false,
+      "minItems": 0,
+      "maxItems": 50,
+      "items": {
+        "$ref": "#/definitions/Tag"
+      }
+    }
+  },
+  "definitions": {
+    "PartnerAppConfig": {
+      "type": "object",
+      "description": "A collection of configuration settings for the PartnerApp.",
+      "additionalProperties": false,
+      "properties": {
+        "AdminUsers": {
+          "type": "array",
+          "description": "A list of users with administrator privileges for the PartnerApp.",
+          "uniqueItems": true,
+          "insertionOrder": false,
+          "minItems": 0,
+          "maxItems": 5,
+          "items": {
+            "$ref": "#/definitions/PartnerAppAdminUserList"
+          }
+        },
+        "Arguments": {
+          "description": "A list of arguments to pass to the PartnerApp.",
+          "type": "object",
+          "additionalProperties": false,
+          "maxProperties": 5,
+          "patternProperties": {
+            "^(?!\\s*$).{1,256}$": {
+              "type": "string",
+              "pattern": "^.{0,1024}$",
+              "maxLength": 1024
+            }
+          }
+        }
+      }
+    },
+    "PartnerAppAdminUserList": {
+      "type": "string",
+      "description": "A collection of AdminUsers for the PartnerApp",
+      "additionalProperties": false,
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "PartnerAppMaintenanceConfig": {
+      "type": "object",
+      "description": "A collection of settings that specify the maintenance schedule for the PartnerApp.",
+      "additionalProperties": false,
+      "properties": {
+        "MaintenanceWindowStart": {
+          "type": "string",
+          "description": "The maintenance window start day and time for the PartnerApp.",
+          "maxLength": 9,
+          "pattern": "(Mon|Tue|Wed|Thu|Fri|Sat|Sun):([01]\\d|2[0-3]):([0-5]\\d)"
+        }
+      },
+      "required": ["MaintenanceWindowStart"]
+    },
+    "Tag": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "Value": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "Key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      },
+      "required": ["Key", "Value"]
+    }
+  },
+  "required": ["Name", "Type", "AuthType", "ExecutionRoleArn", "Tier"],
+  "createOnlyProperties": [
+    "/properties/Name",
+    "/properties/Type",
+    "/properties/ExecutionRoleArn",
+    "/properties/AuthType"
+  ],
+  "readOnlyProperties": ["/properties/Arn", "/properties/BaseUrl"],
+  "writeOnlyProperties": ["/properties/ClientToken"],
+  "deprecatedProperties": ["/properties/ClientToken"],
+  "primaryIdentifier": ["/properties/Arn"],
+  "replacementStrategy": "delete_then_create",
+  "handlers": {
+    "create": {
+      "permissions": [
+        "sagemaker:CreatePartnerApp",
+        "sagemaker:DescribePartnerApp",
+        "sagemaker:AddTags",
+        "sagemaker:ListTags",
+        "iam:PassRole"
+      ],
+      "timeoutInMinutes": 180
+    },
+    "read": {
+      "permissions": ["sagemaker:DescribePartnerApp", "sagemaker:ListTags"]
+    },
+    "update": {
+      "permissions": [
+        "sagemaker:UpdatePartnerApp",
+        "sagemaker:DescribePartnerApp",
+        "sagemaker:AddTags",
+        "sagemaker:ListTags",
+        "sagemaker:DeleteTags"
+      ],
+      "timeoutInMinutes": 180
+    },
+    "delete": {
+      "permissions": [
+        "sagemaker:DeletePartnerApp",
+        "sagemaker:DescribePartnerApp",
+        "sagemaker:DeleteTags"
+      ],
+      "timeoutInMinutes": 240
+    },
+    "list": {
+      "permissions": [
+        "sagemaker:ListPartnerApps",
+        "sagemaker:DescribePartnerApp",
+        "sagemaker:ListTags"
+      ]
+    }
+  },
+  "tagging": {
+    "taggable": true,
+    "tagOnCreate": true,
+    "tagUpdatable": true,
+    "cloudFormationSystemTags": false,
+    "tagProperty": "/properties/Tags",
+    "permissions": [
+      "sagemaker:AddTags",
+      "sagemaker:DeleteTags",
+      "sagemaker:ListTags"
+    ]
+  }
+}

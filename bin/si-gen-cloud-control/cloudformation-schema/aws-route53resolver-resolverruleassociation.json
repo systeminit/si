@@ -1,0 +1,53 @@
+{
+  "typeName": "AWS::Route53Resolver::ResolverRuleAssociation",
+  "description": "In the response to an [AssociateResolverRule](https://docs.aws.amazon.com/Route53/latest/APIReference/API_route53resolver_AssociateResolverRule.html), [DisassociateResolverRule](https://docs.aws.amazon.com/Route53/latest/APIReference/API_route53resolver_DisassociateResolverRule.html), or [ListResolverRuleAssociations](https://docs.aws.amazon.com/Route53/latest/APIReference/API_route53resolver_ListResolverRuleAssociations.html) request, provides information about an association between a resolver rule and a VPC. The association determines which DNS queries that originate in the VPC are forwarded to your network.",
+  "additionalProperties": false,
+  "properties": {
+    "VPCId": {
+      "description": "The ID of the VPC that you associated the Resolver rule with.",
+      "type": "string"
+    },
+    "ResolverRuleId": {
+      "description": "The ID of the Resolver rule that you associated with the VPC that is specified by ``VPCId``.",
+      "type": "string"
+    },
+    "ResolverRuleAssociationId": {
+      "description": "",
+      "type": "string"
+    },
+    "Name": {
+      "description": "The name of an association between a Resolver rule and a VPC.",
+      "type": "string"
+    }
+  },
+  "required": ["VPCId", "ResolverRuleId"],
+  "readOnlyProperties": ["/properties/ResolverRuleAssociationId"],
+  "createOnlyProperties": [
+    "/properties/Name",
+    "/properties/VPCId",
+    "/properties/ResolverRuleId"
+  ],
+  "primaryIdentifier": ["/properties/ResolverRuleAssociationId"],
+  "taggable": false,
+  "handlers": {
+    "create": {
+      "permissions": [
+        "route53resolver:AssociateResolverRule",
+        "route53resolver:GetResolverRuleAssociation",
+        "ec2:DescribeVpcs"
+      ]
+    },
+    "read": {
+      "permissions": ["route53resolver:GetResolverRuleAssociation"]
+    },
+    "delete": {
+      "permissions": [
+        "route53resolver:DisassociateResolverRule",
+        "route53resolver:GetResolverRuleAssociation"
+      ]
+    },
+    "list": {
+      "permissions": ["route53resolver:ListResolverRuleAssociations"]
+    }
+  }
+}

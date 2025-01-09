@@ -1,0 +1,173 @@
+{
+  "typeName": "AWS::Route53Resolver::OutpostResolver",
+  "description": "Resource schema for AWS::Route53Resolver::OutpostResolver.",
+  "sourceUrl": "https://github.com/aws-cloudformation/aws-cloudformation-rpdk.git",
+  "definitions": {
+    "Tag": {
+      "description": "A key-value pair to associate with a resource.",
+      "type": "object",
+      "properties": {
+        "Key": {
+          "type": "string",
+          "description": "The key name of the tag. You can specify a value that is 1 to 128 Unicode characters in length and cannot be prefixed with aws:. You can use any of the following characters: the set of Unicode letters, digits, whitespace, _, ., /, =, +, and -.",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "Value": {
+          "type": "string",
+          "description": "The value for the tag. You can specify a value that is 0 to 256 Unicode characters in length and cannot be prefixed with aws:. You can use any of the following characters: the set of Unicode letters, digits, whitespace, _, ., /, =, +, and -.",
+          "minLength": 0,
+          "maxLength": 256
+        }
+      },
+      "required": ["Key", "Value"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "Id": {
+      "description": "Id",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "CreatorRequestId": {
+      "description": "The id of the creator request.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "Name": {
+      "description": "The OutpostResolver name.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "Arn": {
+      "description": "The OutpostResolver ARN.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1024
+    },
+    "OutpostArn": {
+      "description": "The Outpost ARN.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1024
+    },
+    "PreferredInstanceType": {
+      "description": "The OutpostResolver instance type.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "Status": {
+      "description": "The OutpostResolver status, possible values are CREATING, OPERATIONAL, UPDATING, DELETING, ACTION_NEEDED, FAILED_CREATION and FAILED_DELETION.",
+      "type": "string",
+      "enum": [
+        "CREATING",
+        "OPERATIONAL",
+        "DELETING",
+        "UPDATING",
+        "ACTION_NEEDED",
+        "FAILED_CREATION",
+        "FAILED_DELETION"
+      ]
+    },
+    "StatusMessage": {
+      "description": "The OutpostResolver status message.",
+      "type": "string"
+    },
+    "InstanceCount": {
+      "description": "The number of OutpostResolvers.",
+      "type": "integer",
+      "minimum": 4,
+      "maximum": 256
+    },
+    "CreationTime": {
+      "description": "The OutpostResolver creation time",
+      "type": "string",
+      "minLength": 20,
+      "maxLength": 40
+    },
+    "ModificationTime": {
+      "description": "The OutpostResolver last modified time",
+      "type": "string",
+      "minLength": 20,
+      "maxLength": 40
+    },
+    "Tags": {
+      "description": "An array of key-value pairs to apply to this resource.",
+      "type": "array",
+      "uniqueItems": true,
+      "insertionOrder": false,
+      "items": {
+        "$ref": "#/definitions/Tag"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "tagging": {
+    "taggable": true,
+    "tagOnCreate": true,
+    "tagUpdatable": true,
+    "cloudFormationSystemTags": true,
+    "tagProperty": "/properties/Tags",
+    "permissions": [
+      "route53resolver:TagResource",
+      "route53resolver:UntagResource"
+    ]
+  },
+  "required": ["OutpostArn", "PreferredInstanceType", "Name"],
+  "readOnlyProperties": [
+    "/properties/Id",
+    "/properties/Arn",
+    "/properties/Status",
+    "/properties/StatusMessage",
+    "/properties/CreationTime",
+    "/properties/ModificationTime",
+    "/properties/CreatorRequestId"
+  ],
+  "createOnlyProperties": ["/properties/OutpostArn"],
+  "primaryIdentifier": ["/properties/Id"],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "route53resolver:CreateOutpostResolver",
+        "route53resolver:GetOutpostResolver",
+        "route53resolver:ListTagsForResource",
+        "outposts:GetOutpost",
+        "route53resolver:TagResource"
+      ]
+    },
+    "read": {
+      "permissions": [
+        "route53resolver:GetOutpostResolver",
+        "route53resolver:ListTagsForResource"
+      ]
+    },
+    "update": {
+      "permissions": [
+        "route53resolver:UpdateOutpostResolver",
+        "route53resolver:GetOutpostResolver",
+        "route53resolver:UntagResource",
+        "route53resolver:TagResource",
+        "route53resolver:ListTagsForResource"
+      ]
+    },
+    "delete": {
+      "permissions": [
+        "route53resolver:DeleteOutpostResolver",
+        "route53resolver:GetOutpostResolver",
+        "route53resolver:ListOutpostResolvers",
+        "route53resolver:ListResolverEndpoints"
+      ]
+    },
+    "list": {
+      "permissions": [
+        "route53resolver:ListOutpostResolvers",
+        "route53resolver:ListTagsForResource"
+      ]
+    }
+  }
+}

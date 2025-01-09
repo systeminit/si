@@ -1,0 +1,135 @@
+{
+  "typeName": "AWS::ElasticLoadBalancingV2::TrustStoreRevocation",
+  "description": "Resource Type definition for AWS::ElasticLoadBalancingV2::TrustStoreRevocation",
+  "sourceUrl": "https://github.com/aws-cloudformation/aws-cloudformation-resource-providers-elasticloadbalancingv2",
+  "documentationUrl": "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-elasticloadbalancingv2-truststorerevocation.html",
+  "additionalProperties": false,
+  "properties": {
+    "RevocationContents": {
+      "type": "array",
+      "description": "The attributes required to create a trust store revocation.",
+      "uniqueItems": true,
+      "insertionOrder": false,
+      "items": {
+        "$ref": "#/definitions/RevocationContent"
+      }
+    },
+    "TrustStoreArn": {
+      "type": "string",
+      "description": "The Amazon Resource Name (ARN) of the trust store."
+    },
+    "RevocationId": {
+      "type": "integer",
+      "format": "int64",
+      "description": "The ID associated with the revocation."
+    },
+    "TrustStoreRevocations": {
+      "type": "array",
+      "description": "The data associated with a trust store revocation",
+      "uniqueItems": true,
+      "insertionOrder": false,
+      "items": {
+        "$ref": "#/definitions/TrustStoreRevocation"
+      }
+    }
+  },
+  "definitions": {
+    "RevocationId": {
+      "type": "string"
+    },
+    "RevocationContent": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "S3Bucket": {
+          "type": "string"
+        },
+        "S3Key": {
+          "type": "string"
+        },
+        "S3ObjectVersion": {
+          "type": "string"
+        },
+        "RevocationType": {
+          "type": "string"
+        }
+      }
+    },
+    "TrustStoreRevocation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "TrustStoreArn": {
+          "type": "string"
+        },
+        "RevocationId": {
+          "type": "string"
+        },
+        "RevocationType": {
+          "type": "string"
+        },
+        "NumberOfRevokedEntries": {
+          "type": "integer",
+          "format": "int64"
+        }
+      }
+    }
+  },
+  "primaryIdentifier": [
+    "/properties/RevocationId",
+    "/properties/TrustStoreArn"
+  ],
+  "createOnlyProperties": [
+    "/properties/TrustStoreArn",
+    "/properties/RevocationContents"
+  ],
+  "writeOnlyProperties": ["/properties/RevocationContents"],
+  "readOnlyProperties": [
+    "/properties/RevocationId",
+    "/properties/TrustStoreRevocations"
+  ],
+  "tagging": {
+    "taggable": false,
+    "tagOnCreate": false,
+    "tagUpdatable": false,
+    "cloudFormationSystemTags": false
+  },
+  "handlers": {
+    "create": {
+      "permissions": [
+        "elasticloadbalancing:AddTrustStoreRevocations",
+        "elasticloadbalancing:DescribeTrustStoreRevocations",
+        "s3:GetObject",
+        "s3:GetObjectVersion"
+      ]
+    },
+    "delete": {
+      "permissions": [
+        "elasticloadbalancing:DescribeTrustStoreRevocations",
+        "elasticloadbalancing:RemoveTrustStoreRevocations"
+      ]
+    },
+    "list": {
+      "handlerSchema": {
+        "properties": {
+          "TrustStoreArn": {
+            "$ref": "#/properties/TrustStoreArn"
+          },
+          "RevocationIds": {
+            "type": "array",
+            "uniqueItems": false,
+            "insertionOrder": false,
+            "items": {
+              "$ref": "#/properties/RevocationId"
+            }
+          }
+        },
+        "required": ["TrustStoreArn"]
+      },
+      "permissions": ["elasticloadbalancing:DescribeTrustStoreRevocations"]
+    },
+    "read": {
+      "permissions": ["elasticloadbalancing:DescribeTrustStoreRevocations"]
+    }
+  }
+}

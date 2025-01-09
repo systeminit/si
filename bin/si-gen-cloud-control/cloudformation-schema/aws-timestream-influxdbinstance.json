@@ -1,0 +1,300 @@
+{
+  "typeName": "AWS::Timestream::InfluxDBInstance",
+  "description": "The AWS::Timestream::InfluxDBInstance resource creates an InfluxDB instance.",
+  "sourceUrl": "https://github.com/aws-cloudformation/aws-cloudformation-resource-providers-timestream.git",
+  "definitions": {
+    "Tag": {
+      "description": "A key-value pair to associate with a resource.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "Key": {
+          "type": "string",
+          "description": "The key name of the tag. You can specify a value that is 1 to 128 Unicode characters in length and cannot be prefixed with aws:. You can use any of the following characters: the set of Unicode letters, digits, whitespace, _, ., /, =, +, and -. ",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "Value": {
+          "type": "string",
+          "description": "The value for the tag. You can specify a value that is 0 to 256 Unicode characters in length and cannot be prefixed with aws:. You can use any of the following characters: the set of Unicode letters, digits, whitespace, _, ., /, =, +, and -. ",
+          "minLength": 0,
+          "maxLength": 256
+        }
+      },
+      "required": ["Key"]
+    }
+  },
+  "properties": {
+    "Username": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "description": "The username for the InfluxDB instance."
+    },
+    "Password": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 64,
+      "pattern": "^[a-zA-Z0-9]+$",
+      "description": "The password for the InfluxDB instance."
+    },
+    "Organization": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "description": "The organization for the InfluxDB instance."
+    },
+    "Bucket": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 64,
+      "pattern": "^[^_][^\"]*$",
+      "description": "The bucket for the InfluxDB instance."
+    },
+    "DbInstanceType": {
+      "type": "string",
+      "enum": [
+        "db.influx.medium",
+        "db.influx.large",
+        "db.influx.xlarge",
+        "db.influx.2xlarge",
+        "db.influx.4xlarge",
+        "db.influx.8xlarge",
+        "db.influx.12xlarge",
+        "db.influx.16xlarge"
+      ],
+      "description": "The compute instance of the InfluxDB instance."
+    },
+    "VpcSubnetIds": {
+      "type": "array",
+      "insertionOrder": false,
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "maxItems": 3,
+      "description": "A list of EC2 subnet IDs for this InfluxDB instance."
+    },
+    "VpcSecurityGroupIds": {
+      "type": "array",
+      "insertionOrder": false,
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "maxItems": 5,
+      "description": "A list of Amazon EC2 VPC security groups to associate with this InfluxDB instance."
+    },
+    "PubliclyAccessible": {
+      "type": "boolean",
+      "description": "Attach a public IP to the customer ENI.",
+      "default": false
+    },
+    "DbStorageType": {
+      "type": "string",
+      "enum": [
+        "InfluxIOIncludedT1",
+        "InfluxIOIncludedT2",
+        "InfluxIOIncludedT3"
+      ],
+      "description": "The storage type of the InfluxDB instance."
+    },
+    "AllocatedStorage": {
+      "type": "integer",
+      "minimum": 20,
+      "maximum": 16384,
+      "description": "The allocated storage for the InfluxDB instance."
+    },
+    "DbParameterGroupIdentifier": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 64,
+      "pattern": "^[a-zA-Z0-9]+$",
+      "description": "The name of an existing InfluxDB parameter group."
+    },
+    "LogDeliveryConfiguration": {
+      "type": "object",
+      "description": "Configuration for sending logs to customer account from the InfluxDB instance.",
+      "properties": {
+        "S3Configuration": {
+          "description": "S3 configuration for sending logs to customer account from the InfluxDB instance.",
+          "type": "object",
+          "properties": {
+            "BucketName": {
+              "description": "The bucket name for logs to be sent from the InfluxDB instance",
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 63,
+              "pattern": "^[0-9a-z]+[0-9a-z\\.\\-]*[0-9a-z]+$"
+            },
+            "Enabled": {
+              "description": "Specifies whether logging to customer specified bucket is enabled.",
+              "type": "boolean"
+            }
+          },
+          "required": ["Enabled", "BucketName"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["S3Configuration"],
+      "additionalProperties": false
+    },
+    "Status": {
+      "type": "string",
+      "description": "Status of the InfluxDB Instance.",
+      "enum": [
+        "CREATING",
+        "AVAILABLE",
+        "DELETING",
+        "MODIFYING",
+        "UPDATING",
+        "DELETED",
+        "FAILED"
+      ]
+    },
+    "Arn": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1011,
+      "pattern": "^arn:aws[a-z\\-]*:timestream\\-influxdb:[a-z0-9\\-]+:[0-9]{12}:(db\\-instance)/[a-zA-Z0-9]{3,64}$",
+      "description": "The Amazon Resource Name (ARN) that is associated with the InfluxDB instance."
+    },
+    "Name": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 40,
+      "pattern": "^[a-zA-z][a-zA-Z0-9]*(-[a-zA-Z0-9]+)*$",
+      "description": "The unique name that is associated with the InfluxDB instance."
+    },
+    "AvailabilityZone": {
+      "type": "string",
+      "description": "The Availability Zone (AZ) where the InfluxDB instance is created."
+    },
+    "SecondaryAvailabilityZone": {
+      "type": "string",
+      "description": "The Secondary Availability Zone (AZ) where the InfluxDB instance is created, if DeploymentType is set as WITH_MULTIAZ_STANDBY."
+    },
+    "Endpoint": {
+      "type": "string",
+      "description": "The connection endpoint for the InfluxDB instance."
+    },
+    "InfluxAuthParametersSecretArn": {
+      "type": "string",
+      "pattern": "^arn:[a-z]*:secretsmanager:[a-z\\-0-9]*:[0-9]*:secret:[a-zA-Z0-9\\-]*",
+      "description": "The Auth parameters secret Amazon Resource name (ARN) that is associated with the InfluxDB instance."
+    },
+    "Id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9]+$",
+      "minLength": 3,
+      "maxLength": 64,
+      "description": "The service generated unique identifier for InfluxDB instance."
+    },
+    "DeploymentType": {
+      "type": "string",
+      "description": "Deployment type of the InfluxDB Instance.",
+      "enum": ["SINGLE_AZ", "WITH_MULTIAZ_STANDBY"]
+    },
+    "Tags": {
+      "type": "array",
+      "insertionOrder": false,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/definitions/Tag"
+      },
+      "minItems": 1,
+      "maxItems": 200,
+      "description": "An arbitrary set of tags (key-value pairs) for this DB instance."
+    }
+  },
+  "additionalProperties": false,
+  "primaryIdentifier": ["/properties/Id"],
+  "tagging": {
+    "taggable": true,
+    "tagOnCreate": true,
+    "tagUpdatable": true,
+    "cloudFormationSystemTags": true,
+    "tagProperty": "/properties/Tags"
+  },
+  "createOnlyProperties": [
+    "/properties/Name",
+    "/properties/Username",
+    "/properties/Password",
+    "/properties/Organization",
+    "/properties/Bucket",
+    "/properties/DbInstanceType",
+    "/properties/VpcSubnetIds",
+    "/properties/VpcSecurityGroupIds",
+    "/properties/PubliclyAccessible",
+    "/properties/DbStorageType",
+    "/properties/AllocatedStorage",
+    "/properties/DeploymentType"
+  ],
+  "writeOnlyProperties": [
+    "/properties/Username",
+    "/properties/Password",
+    "/properties/Organization",
+    "/properties/Bucket"
+  ],
+  "readOnlyProperties": [
+    "/properties/Status",
+    "/properties/Arn",
+    "/properties/Id",
+    "/properties/AvailabilityZone",
+    "/properties/Endpoint",
+    "/properties/SecondaryAvailabilityZone",
+    "/properties/InfluxAuthParametersSecretArn"
+  ],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "s3:ListBucket",
+        "s3:GetBucketPolicy",
+        "timestream-influxdb:GetDbInstance",
+        "timestream-influxdb:ListDbInstances",
+        "timestream-influxdb:CreateDbInstance",
+        "timestream-influxdb:TagResource",
+        "timestream-influxdb:ListTagsForResource",
+        "ec2:DescribeSubnets",
+        "ec2:DescribeVpcs",
+        "ec2:DescribeNetworkInterfaces",
+        "ec2:DescribeSecurityGroups",
+        "ec2:CreateNetworkInterface",
+        "iam:CreateServiceLinkedRole"
+      ],
+      "timeoutInMinutes": 2160
+    },
+    "read": {
+      "permissions": [
+        "timestream-influxdb:GetDbInstance",
+        "timestream-influxdb:ListTagsForResource"
+      ],
+      "timeoutInMinutes": 2160
+    },
+    "update": {
+      "permissions": [
+        "s3:ListBucket",
+        "s3:GetBucketPolicy",
+        "timestream-influxdb:GetDbInstance",
+        "timestream-influxdb:ListDbInstances",
+        "timestream-influxdb:UpdateDbInstance",
+        "timestream-influxdb:TagResource",
+        "timestream-influxdb:UntagResource",
+        "timestream-influxdb:ListTagsForResource"
+      ],
+      "timeoutInMinutes": 2160
+    },
+    "delete": {
+      "permissions": [
+        "timestream-influxdb:GetDbInstance",
+        "timestream-influxdb:ListDbInstances",
+        "timestream-influxdb:DeleteDbInstance"
+      ],
+      "timeoutInMinutes": 2160
+    },
+    "list": {
+      "permissions": ["timestream-influxdb:ListDbInstances"],
+      "timeoutInMinutes": 2160
+    }
+  }
+}

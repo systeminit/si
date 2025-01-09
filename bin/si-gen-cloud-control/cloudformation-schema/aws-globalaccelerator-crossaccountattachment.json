@@ -1,0 +1,117 @@
+{
+  "typeName": "AWS::GlobalAccelerator::CrossAccountAttachment",
+  "description": "Resource Type definition for AWS::GlobalAccelerator::CrossAccountAttachment",
+  "sourceUrl": "https://github.com/aws-cloudformation/aws-cloudformation-resource-providers-globalaccelerator",
+  "definitions": {
+    "Tag": {
+      "description": "Tag is a key-value pair associated with Cross Account Attachment.",
+      "type": "object",
+      "properties": {
+        "Key": {
+          "description": "Key of the tag. Value can be 1 to 127 characters.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 127
+        },
+        "Value": {
+          "description": "Value for the tag. Value can be 1 to 255 characters.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        }
+      },
+      "required": ["Value", "Key"],
+      "additionalProperties": false
+    },
+    "Resource": {
+      "description": "ARN of resource to share.",
+      "type": "object",
+      "properties": {
+        "EndpointId": {
+          "type": "string"
+        },
+        "Cidr": {
+          "type": "string"
+        },
+        "Region": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "Name": {
+      "description": "The Friendly identifier of the attachment.",
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]{0,64}$",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "AttachmentArn": {
+      "description": "The Amazon Resource Name (ARN) of the attachment.",
+      "type": "string"
+    },
+    "Principals": {
+      "description": "Principals to share the resources with.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "Resources": {
+      "description": "Resources shared using the attachment.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Resource"
+      }
+    },
+    "Tags": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Tag"
+      }
+    }
+  },
+  "tagging": {
+    "taggable": true,
+    "tagOnCreate": true,
+    "tagUpdatable": true,
+    "cloudFormationSystemTags": false,
+    "tagProperty": "/properties/Tags"
+  },
+  "required": ["Name"],
+  "writeOnlyProperties": ["/properties/Resources/*/Region"],
+  "readOnlyProperties": ["/properties/AttachmentArn"],
+  "primaryIdentifier": ["/properties/AttachmentArn"],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "globalaccelerator:DescribeCrossAccountAttachment",
+        "globalaccelerator:CreateCrossAccountAttachment",
+        "globalaccelerator:TagResource"
+      ]
+    },
+    "read": {
+      "permissions": ["globalaccelerator:DescribeCrossAccountAttachment"]
+    },
+    "update": {
+      "permissions": [
+        "globalaccelerator:UpdateCrossAccountAttachment",
+        "globalaccelerator:DescribeCrossAccountAttachment",
+        "globalaccelerator:TagResource",
+        "globalaccelerator:UntagResource"
+      ]
+    },
+    "delete": {
+      "permissions": [
+        "globalaccelerator:DescribeCrossAccountAttachment",
+        "globalaccelerator:DeleteCrossAccountAttachment"
+      ]
+    },
+    "list": {
+      "permissions": ["globalaccelerator:ListCrossAccountAttachments"]
+    }
+  },
+  "additionalProperties": false
+}

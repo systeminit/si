@@ -1,0 +1,66 @@
+{
+  "typeName": "AWS::NimbleStudio::Studio",
+  "description": "Resource Type definition for AWS::NimbleStudio::Studio",
+  "additionalProperties": false,
+  "properties": {
+    "UserRoleArn": {
+      "type": "string"
+    },
+    "HomeRegion": {
+      "type": "string"
+    },
+    "StudioUrl": {
+      "type": "string"
+    },
+    "DisplayName": {
+      "type": "string"
+    },
+    "StudioName": {
+      "type": "string"
+    },
+    "SsoClientId": {
+      "type": "string"
+    },
+    "AdminRoleArn": {
+      "type": "string"
+    },
+    "StudioId": {
+      "type": "string"
+    },
+    "StudioEncryptionConfiguration": {
+      "$ref": "#/definitions/StudioEncryptionConfiguration"
+    },
+    "Tags": {
+      "type": "object",
+      "patternProperties": {
+        "[a-zA-Z0-9]+": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "definitions": {
+    "StudioEncryptionConfiguration": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "KeyType": {
+          "type": "string"
+        },
+        "KeyArn": {
+          "type": "string"
+        }
+      },
+      "required": ["KeyType"]
+    }
+  },
+  "required": ["UserRoleArn", "DisplayName", "StudioName", "AdminRoleArn"],
+  "createOnlyProperties": ["/properties/StudioName", "/properties/Tags"],
+  "primaryIdentifier": ["/properties/StudioId"],
+  "readOnlyProperties": [
+    "/properties/StudioId",
+    "/properties/HomeRegion",
+    "/properties/SsoClientId",
+    "/properties/StudioUrl"
+  ]
+}

@@ -1,0 +1,100 @@
+{
+  "typeName": "AWS::Cassandra::Type",
+  "description": "Resource schema for AWS::Cassandra::Type",
+  "definitions": {
+    "Field": {
+      "type": "object",
+      "properties": {
+        "FieldName": {
+          "type": "string"
+        },
+        "FieldType": {
+          "type": "string"
+        }
+      },
+      "required": ["FieldName", "FieldType"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "KeyspaceName": {
+      "description": "Name of the Keyspace which contains the User-Defined Type.",
+      "type": "string"
+    },
+    "TypeName": {
+      "description": "Name of the User-Defined Type.",
+      "type": "string"
+    },
+    "Fields": {
+      "description": "Field definitions of the User-Defined Type",
+      "type": "array",
+      "uniqueItems": true,
+      "insertionOrder": false,
+      "items": {
+        "$ref": "#/definitions/Field"
+      }
+    },
+    "DirectReferringTables": {
+      "description": "List of Tables that directly reference the User-Defined Type in their columns.",
+      "type": "array",
+      "uniqueItems": true,
+      "insertionOrder": false,
+      "items": {
+        "type": "string"
+      }
+    },
+    "DirectParentTypes": {
+      "description": "List of parent User-Defined Types that directly reference the User-Defined Type in their fields.",
+      "type": "array",
+      "uniqueItems": true,
+      "insertionOrder": false,
+      "items": {
+        "type": "string"
+      }
+    },
+    "MaxNestingDepth": {
+      "description": "Maximum nesting depth of the User-Defined Type across the field types.",
+      "type": "integer"
+    },
+    "LastModifiedTimestamp": {
+      "description": "Timestamp of the last time the User-Defined Type's meta data was modified.",
+      "type": "number"
+    },
+    "KeyspaceArn": {
+      "description": "ARN of the Keyspace which contains the User-Defined Type.",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["KeyspaceName", "TypeName", "Fields"],
+  "createOnlyProperties": [
+    "/properties/KeyspaceName",
+    "/properties/TypeName",
+    "/properties/Fields"
+  ],
+  "readOnlyProperties": [
+    "/properties/DirectReferringTables",
+    "/properties/DirectParentTypes",
+    "/properties/MaxNestingDepth",
+    "/properties/LastModifiedTimestamp",
+    "/properties/KeyspaceArn"
+  ],
+  "primaryIdentifier": ["/properties/KeyspaceName", "/properties/TypeName"],
+  "tagging": {
+    "taggable": false
+  },
+  "handlers": {
+    "create": {
+      "permissions": ["cassandra:Create", "cassandra:Select"]
+    },
+    "read": {
+      "permissions": ["cassandra:Select"]
+    },
+    "delete": {
+      "permissions": ["cassandra:Drop", "cassandra:Select"]
+    },
+    "list": {
+      "permissions": ["cassandra:Select"]
+    }
+  }
+}
