@@ -9,11 +9,9 @@ use serde::{Deserialize, Serialize};
 use strum::IntoEnumIterator;
 use thiserror::Error;
 
-use crate::{
-    extract::{AccessBuilder, HandlerContext},
-    service::ApiError,
-    AppState,
-};
+use crate::{service::ApiError, AppState};
+
+use super::AdminUserContext;
 
 mod prompt;
 
@@ -56,10 +54,8 @@ pub struct PromptListEntry {
 }
 
 pub async fn list_prompts(
-    HandlerContext(builder): HandlerContext,
-    AccessBuilder(access_builder): AccessBuilder,
+    AdminUserContext(ctx): AdminUserContext,
 ) -> Result<Json<Vec<PromptListEntry>>> {
-    let ctx = builder.build_head(access_builder).await?;
     let overrides = PromptOverride::list(&ctx).await?;
     Ok(Json(
         AwsCliCommandPromptKind::iter()

@@ -16,7 +16,10 @@ use telemetry::tracing::warn;
 
 use super::{SessionError, SessionResult};
 use crate::{
-    extract::{HandlerContext, PosthogClient, RawAccessToken},
+    extract::{
+        request::{RawAccessToken, RequestUlidFromHeader},
+        HandlerContext, PosthogClient,
+    },
     service::session::AuthApiErrBody,
     track, AppState, WorkspacePermissions, WorkspacePermissionsMode,
 };
@@ -226,6 +229,7 @@ pub async fn auth_connect(
     Host(host_name): Host,
     PosthogClient(posthog_client): PosthogClient,
     HandlerContext(builder): HandlerContext,
+    RequestUlidFromHeader(request_ulid): RequestUlidFromHeader,
     State(state): State<AppState>,
     Json(request): Json<AuthConnectRequest>,
 ) -> SessionResult<Json<AuthConnectResponse>> {
@@ -248,7 +252,7 @@ pub async fn auth_connect(
 
     let res_body = res.json::<AuthApiConnectResponse>().await?;
 
-    let ctx = builder.build_default().await?;
+    let ctx = builder.build_default(request_ulid).await?;
 
     let (user, workspace) = find_or_create_user_and_workspace(
         ctx,
@@ -276,6 +280,7 @@ pub async fn auth_reconnect(
     Host(host_name): Host,
     PosthogClient(posthog_client): PosthogClient,
     HandlerContext(builder): HandlerContext,
+    RequestUlidFromHeader(request_ulid): RequestUlidFromHeader,
     RawAccessToken(raw_access_token): RawAccessToken,
     State(state): State<AppState>,
 ) -> SessionResult<Json<AuthReconnectResponse>> {
@@ -297,7 +302,7 @@ pub async fn auth_reconnect(
 
     let auth_response_body = auth_response.json::<AuthApiReconnectResponse>().await?;
 
-    let ctx = builder.build_default().await?;
+    let ctx = builder.build_default(request_ulid).await?;
 
     let (user, workspace) = find_or_create_user_and_workspace(
         ctx,

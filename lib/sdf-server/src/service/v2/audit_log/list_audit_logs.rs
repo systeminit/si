@@ -11,10 +11,7 @@ use si_events::{ChangeSetId, UserPk};
 use si_frontend_types as frontend_types;
 
 use super::{AuditLogError, AuditLogResult};
-use crate::{
-    extract::{AccessBuilder, HandlerContext},
-    AppState,
-};
+use crate::{extract::HandlerContext, service::v2::AccessBuilder, AppState};
 
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]

@@ -2,13 +2,13 @@ use axum::{
     extract::{Host, OriginalUri, Path},
     response::Json,
 };
-use dal::{Workspace, WorkspaceError, WorkspacePk};
+use dal::{Tenancy, Workspace, WorkspaceError, WorkspacePk};
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 
-use super::AdminAPIResult;
 use crate::{
-    extract::{AccessBuilder, HandlerContext, PosthogClient},
+    extract::PosthogClient,
+    service::v2::admin::{AdminAPIResult, AdminUserContext},
     track_no_ctx,
 };
 
@@ -29,19 +29,20 @@ pub struct SetComponentConcurrencyLimitResponse {
     level = "info",
     skip_all,
     fields(
-        si.workspace.id = %workspace_pk,
+        si.workspace.id = %workspace_id,
         si.workspace.concurrency_limit = Empty,
     ),
 )]
 pub async fn set_concurrency_limit(
-    HandlerContext(builder): HandlerContext,
-    AccessBuilder(access_builder): AccessBuilder,
+    AdminUserContext(mut ctx): AdminUserContext,
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
     Host(host_name): Host,
-    Path(workspace_pk): Path<WorkspacePk>,
+    Path(workspace_id): Path<WorkspacePk>,
     Json(request): Json<SetComponentConcurrencyLimitRequest>,
 ) -> AdminAPIResult<Json<SetComponentConcurrencyLimitResponse>> {
+    ctx.update_tenancy(Tenancy::new(workspace_id));
+
     let span = current_span_for_instrument_at!("info");
 
     span.record(
@@ -52,11 +53,9 @@ pub async fn set_concurrency_limit(
             .unwrap_or("default".to_string()),
     );
 
-    let ctx = builder.build_head(access_builder).await?;
-
-    let mut workspace = Workspace::get_by_pk(&ctx, &workspace_pk)
+    let mut workspace = Workspace::get_by_pk(&ctx, &workspace_id)
         .await?
-        .ok_or(WorkspaceError::WorkspaceNotFound(workspace_pk))?;
+        .ok_or(WorkspaceError::WorkspaceNotFound(workspace_id))?;
 
     workspace
         .set_component_concurrency_limit(&ctx, request.concurrency_limit)
@@ -69,7 +68,7 @@ pub async fn set_concurrency_limit(
         &original_uri,
         &host_name,
         ctx.history_actor().distinct_id(),
-        Some(workspace_pk.to_string()),
+        Some(workspace_id.to_string()),
         None,
         "admin.set_concurrency_limit",
         serde_json::json!({

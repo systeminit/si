@@ -4,7 +4,8 @@ use si_events::audit_log::AuditLogKind;
 
 use super::{Error, Result};
 use crate::{
-    extract::{AccessBuilder, HandlerContext, PosthogClient},
+    extract::{HandlerContext, PosthogClient},
+    service::v2::AccessBuilder,
     track,
 };
 

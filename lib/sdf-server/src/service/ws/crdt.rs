@@ -21,7 +21,11 @@ use y_sync::net::BroadcastGroup;
 
 use super::WsError;
 use crate::{
-    extract::{EndpointAuthorization, Nats, TokenFromQueryParam},
+    extract::{
+        request::TokenFromQueryParam,
+        workspace::{TargetWorkspaceIdFromToken, WorkspaceAuthorization},
+        Nats,
+    },
     nats_multiplexer::NatsMultiplexerClients,
 };
 
@@ -67,7 +71,8 @@ pub async fn crdt(
     wsu: WebSocketUpgrade,
     Nats(nats): Nats,
     _: TokenFromQueryParam, // This tells it to pull the token from the "token" param
-    auth: EndpointAuthorization,
+    _: TargetWorkspaceIdFromToken,
+    auth: WorkspaceAuthorization,
     Query(Id { id }): Query<Id>,
     State(shutdown_token): State<CancellationToken>,
     State(broadcast_groups): State<BroadcastGroups>,

@@ -2,16 +2,12 @@ use axum::{extract::Path, response::IntoResponse};
 use dal::func::runner::FuncRunner;
 use si_events::FuncRunId;
 
-use super::AdminAPIResult;
-use crate::extract::{AccessBuilder, HandlerContext};
+use crate::service::v2::admin::{AdminAPIResult, AdminUserContext};
 
 pub async fn kill_execution(
-    HandlerContext(builder): HandlerContext,
-    AccessBuilder(access_builder): AccessBuilder,
+    AdminUserContext(ctx): AdminUserContext,
     Path(func_run_id): Path<FuncRunId>,
 ) -> AdminAPIResult<impl IntoResponse> {
-    let ctx = builder.build_head(access_builder).await?;
-
     FuncRunner::kill_execution(&ctx, func_run_id).await?;
 
     // We commit without a rebase here because we need to commit our func run table changes.

@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use ulid::Ulid;
 
 use crate::{
-    extract::{AccessBuilder, HandlerContext, PosthogClient, RawAccessToken},
+    extract::{request::RawAccessToken, v1::AccessBuilder, HandlerContext, PosthogClient},
     service::module::{ModuleError, ModuleResult},
     track,
 };

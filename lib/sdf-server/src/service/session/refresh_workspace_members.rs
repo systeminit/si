@@ -11,7 +11,7 @@ use strum::{Display, EnumString};
 
 use super::{SessionError, SessionResult};
 use crate::{
-    extract::{AccessBuilder, HandlerContext, PosthogClient, RawAccessToken},
+    extract::{request::RawAccessToken, v1::AccessBuilder, HandlerContext, PosthogClient},
     service::session::AuthApiErrBody,
     track, AppState,
 };

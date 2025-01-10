@@ -12,7 +12,11 @@ use tokio_util::sync::CancellationToken;
 
 use super::WsError;
 use crate::{
-    extract::{EndpointAuthorization, Nats, TokenFromQueryParam},
+    extract::{
+        request::TokenFromQueryParam,
+        workspace::{TargetWorkspaceIdFromToken, WorkspaceAuthorization},
+        Nats,
+    },
     nats_multiplexer::NatsMultiplexerClients,
 };
 
@@ -21,7 +25,8 @@ pub async fn workspace_updates(
     wsu: WebSocketUpgrade,
     Nats(nats): Nats,
     _: TokenFromQueryParam, // This tells it to pull the token from the "token" param
-    auth: EndpointAuthorization,
+    _: TargetWorkspaceIdFromToken,
+    auth: WorkspaceAuthorization,
     State(shutdown_token): State<CancellationToken>,
     State(channel_multiplexer_clients): State<NatsMultiplexerClients>,
 ) -> Result<impl IntoResponse, WsError> {

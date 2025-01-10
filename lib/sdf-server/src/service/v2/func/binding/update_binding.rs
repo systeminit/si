@@ -16,7 +16,8 @@ use dal::{
 use si_frontend_types::{self as frontend_types, FuncBinding};
 
 use crate::{
-    extract::{AccessBuilder, HandlerContext, PosthogClient},
+    extract::{HandlerContext, PosthogClient},
+    service::v2::AccessBuilder,
     service::{
         force_change_set_response::ForceChangeSetResponse,
         v2::func::{FuncAPIError, FuncAPIResult},

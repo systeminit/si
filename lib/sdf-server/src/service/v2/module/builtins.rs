@@ -7,7 +7,8 @@ use module_index_client::ModuleIndexClient;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    extract::{AccessBuilder, HandlerContext, PosthogClient, RawAccessToken},
+    extract::{request::RawAccessToken, HandlerContext, PosthogClient},
+    service::v2::AccessBuilder,
     track,
 };
 

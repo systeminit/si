@@ -4,13 +4,15 @@ use axum::{
     extract::{Host, Multipart, OriginalUri, Path},
     response::Json,
 };
-use dal::{ChangeSet, ChangeSetId, WorkspacePk, WorkspaceSnapshotAddress, WorkspaceSnapshotGraph};
+use dal::{
+    ChangeSet, ChangeSetId, Tenancy, WorkspacePk, WorkspaceSnapshotAddress, WorkspaceSnapshotGraph,
+};
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 
-use super::{AdminAPIError, AdminAPIResult};
 use crate::{
-    extract::{AccessBuilder, HandlerContext, PosthogClient},
+    extract::PosthogClient,
+    service::v2::admin::{AdminAPIError, AdminAPIResult, AdminUserContext},
     track_no_ctx,
 };
 
@@ -26,22 +28,21 @@ pub struct SetSnapshotResponse {
     skip_all,
     fields(
         si.change_set.id = %change_set_id,
-        si.workspace.id = %workspace_pk,
+        si.workspace.id = %workspace_id,
         si.workspace_snapshot.address = Empty,
     ),
 )]
 pub async fn set_snapshot(
-    HandlerContext(builder): HandlerContext,
-    AccessBuilder(access_builder): AccessBuilder,
+    AdminUserContext(mut ctx): AdminUserContext,
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
     Host(host_name): Host,
-    Path((workspace_pk, change_set_id)): Path<(WorkspacePk, ChangeSetId)>,
+    Path((workspace_id, change_set_id)): Path<(WorkspacePk, ChangeSetId)>,
     mut multipart: Multipart,
 ) -> AdminAPIResult<Json<SetSnapshotResponse>> {
-    let span = current_span_for_instrument_at!("info");
+    ctx.update_tenancy(Tenancy::new(workspace_id));
 
-    let ctx = builder.build_head(access_builder).await?;
+    let span = current_span_for_instrument_at!("info");
 
     let mut change_set = ChangeSet::find(&ctx, change_set_id)
         .await?
@@ -94,7 +95,7 @@ pub async fn set_snapshot(
         &original_uri,
         &host_name,
         ctx.history_actor().distinct_id(),
-        Some(workspace_pk.to_string()),
+        Some(workspace_id.to_string()),
         Some(change_set_id.to_string()),
         "admin.set_snapshot",
         serde_json::json!({

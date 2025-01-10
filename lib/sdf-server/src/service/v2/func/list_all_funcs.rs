@@ -6,7 +6,10 @@ use dal::{ChangeSetId, Func, WorkspacePk};
 use telemetry::prelude::*;
 
 use super::FuncAPIResult;
-use crate::extract::{AccessBuilder, HandlerContext, PosthogClient};
+use crate::{
+    extract::{HandlerContext, PosthogClient},
+    service::v2::AccessBuilder,
+};
 
 pub async fn list_all_funcs(
     HandlerContext(builder): HandlerContext,

@@ -4,7 +4,12 @@ use serde::{Deserialize, Serialize};
 use si_jwt_public_key::SiJwt;
 
 use crate::{
-    extract::{AuthorizedForAutomationRole, EndpointAuthorization, ValidatedToken},
+    extract::{
+        request::ValidatedToken,
+        workspace::{
+            AuthorizedForAutomationRole, TargetWorkspaceIdFromToken, WorkspaceAuthorization,
+        },
+    },
     AppState,
 };
 
@@ -22,12 +27,14 @@ struct WhoamiResponse {
 }
 
 async fn whoami(
+    // TODO this isn't really necessary; we don't need to check you have a workspace ID.
+    _: TargetWorkspaceIdFromToken,
     // Just because this is the most permissive role we have right now
     _: AuthorizedForAutomationRole,
     ValidatedToken(token): ValidatedToken,
-    EndpointAuthorization {
+    WorkspaceAuthorization {
         workspace_id, user, ..
-    }: EndpointAuthorization,
+    }: WorkspaceAuthorization,
 ) -> impl IntoResponse {
     Json(WhoamiResponse {
         workspace_id,

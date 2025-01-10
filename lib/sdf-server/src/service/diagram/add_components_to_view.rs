@@ -1,4 +1,4 @@
-use crate::extract::{AccessBuilder, HandlerContext, PosthogClient};
+use crate::extract::{v1::AccessBuilder, HandlerContext, PosthogClient};
 use crate::service::diagram::DiagramResult;
 use crate::service::force_change_set_response::ForceChangeSetResponse;
 use crate::tracking::track;

@@ -3,7 +3,7 @@ use dal::{component::properties::ComponentProperties, Component, ComponentId, Vi
 use serde::{Deserialize, Serialize};
 
 use super::ComponentResult;
-use crate::extract::{AccessBuilder, HandlerContext};
+use crate::extract::{v1::AccessBuilder, HandlerContext};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]

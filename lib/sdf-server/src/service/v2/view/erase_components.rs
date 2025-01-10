@@ -9,8 +9,9 @@ use dal::diagram::geometry::Geometry;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    extract::{AccessBuilder, HandlerContext, PosthogClient},
+    extract::{HandlerContext, PosthogClient},
     service::force_change_set_response::ForceChangeSetResponse,
+    service::v2::AccessBuilder,
     track,
 };
 use dal::diagram::view::{View, ViewComponentsUpdateSingle, ViewId};

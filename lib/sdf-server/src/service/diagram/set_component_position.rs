@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use super::DiagramResult;
 use crate::{
-    extract::{AccessBuilder, HandlerContext},
+    extract::{v1::AccessBuilder, HandlerContext},
     service::force_change_set_response::ForceChangeSetResponse,
 };
 use axum::Json;

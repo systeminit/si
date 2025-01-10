@@ -11,8 +11,7 @@ use si_events::{
 use std::sync::Arc;
 
 use crate::{
-    extract::{AccessBuilder, HandlerContext},
-    service::v2::func::FuncAPIResult,
+    extract::HandlerContext, service::v2::func::FuncAPIResult, service::v2::AccessBuilder,
 };
 
 /// A one-to-one mapping of cyclone's "OutputStream" type.

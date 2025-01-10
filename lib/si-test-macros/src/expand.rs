@@ -500,7 +500,7 @@ pub(crate) trait FnSetupExpander {
         self.code_extend(quote! {
             let (#var_nw, #var_auth_token) = {
                 let ctx = #dal_context_builder
-                    .build_default()
+                    .build_default(None)
                     .await
                     .wrap_err("failed to build default dal ctx for workspace_signup")?;
                 let r = ::dal_test::expand_helpers::workspace_signup(&ctx).await?;
@@ -547,7 +547,7 @@ pub(crate) trait FnSetupExpander {
         self.code_extend(quote! {
             let #var = {
                 let mut ctx = #dal_context_builder
-                    .build_default()
+                    .build_default(None)
                     .await
                     .wrap_err("failed to build default dal ctx for dal_context_default")?;
                 ctx.update_tenancy(::dal::Tenancy::new(*#nw.workspace.pk()));
@@ -579,7 +579,7 @@ pub(crate) trait FnSetupExpander {
         self.code_extend(quote! {
             let mut #var = {
                 let mut ctx = #dal_context_builder
-                    .build_default()
+                    .build_default(None)
                     .await
                     .wrap_err("failed to build default dal ctx for dal_context_default_mut")?;
                 ctx.update_tenancy(::dal::Tenancy::new(*#nw.workspace.pk()));
@@ -611,7 +611,7 @@ pub(crate) trait FnSetupExpander {
         self.code_extend(quote! {
             let #var = {
                 let mut ctx = #dal_context_builder
-                    .build_default()
+                    .build_default(None)
                     .await
                     .wrap_err("failed to build default dal ctx for dal_context_head")?;
                 ctx.update_tenancy(::dal::Tenancy::new(*#nw.workspace.pk()));
@@ -638,7 +638,7 @@ pub(crate) trait FnSetupExpander {
         self.code_extend(quote! {
             let _dchr = {
                 let mut ctx = #dal_context_builder
-                    .build_default()
+                    .build_default(None)
                     .await
                     .wrap_err("failed to build default dal ctx for dal_context_head_ref")?;
                 ctx.update_tenancy(::dal::Tenancy::new(*#nw.workspace.pk()));
@@ -666,7 +666,7 @@ pub(crate) trait FnSetupExpander {
         self.code_extend(quote! {
             let mut _dchmr = {
                 let mut ctx = #dal_context_builder
-                    .build_default()
+                    .build_default(None)
                     .await
                     .wrap_err("failed to build default dal ctx for dal_context_head_mut_ref")?;
                 ctx.update_tenancy(::dal::Tenancy::new(*#nw.workspace.pk()));

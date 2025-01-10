@@ -2,7 +2,7 @@ use axum::Json;
 use dal::change_set::view::OpenChangeSetsView;
 
 use super::ChangeSetResult;
-use crate::extract::{AccessBuilder, HandlerContext};
+use crate::extract::{v1::AccessBuilder, HandlerContext};
 
 pub type ListOpenChangeSetsResponse = OpenChangeSetsView;
 

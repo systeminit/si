@@ -10,7 +10,8 @@ use si_events::{audit_log::AuditLogKind, FuncRunId};
 
 use super::FuncAPIResult;
 use crate::{
-    extract::{AccessBuilder, HandlerContext, PosthogClient},
+    extract::{HandlerContext, PosthogClient},
+    service::v2::AccessBuilder,
     track,
 };
 

@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 
-use crate::extract::{AccessBuilder, HandlerContext};
+use crate::extract::HandlerContext;
 use crate::service::v2::view::{ViewError, ViewResult};
+use crate::service::v2::AccessBuilder;
 use axum::extract::{Json, Path};
 use dal::diagram::geometry::{Geometry, GeometryRepresents};
 use dal::diagram::view::{View, ViewId, ViewView};

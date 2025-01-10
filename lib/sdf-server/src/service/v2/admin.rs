@@ -1,6 +1,8 @@
 use axum::{
-    extract::DefaultBodyLimit,
-    http::StatusCode,
+    async_trait,
+    extract::{DefaultBodyLimit, FromRequestParts},
+    http::{request::Parts, Request, StatusCode},
+    middleware::Next,
     response::{IntoResponse, Response},
     routing::{get, post, put},
     Router,
@@ -15,7 +17,15 @@ use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::{extract::AdminAccessBuilder, service::ApiError, AppState};
+use crate::{
+    extract::{
+        internal_error,
+        request::{RequestUlidFromHeader, ValidatedToken},
+        unauthorized_error, ErrorResponse, HandlerContext,
+    },
+    service::ApiError,
+    AppState,
+};
 
 mod get_snapshot;
 mod kill_execution;
@@ -169,29 +179,77 @@ pub fn v2_routes(state: AppState) -> Router<AppState> {
         )
         .route("/workspaces", get(search_workspaces::search_workspaces))
         .route(
-            "/workspaces/:workspace_pk/users",
+            "/workspaces/:workspace_id/users",
             get(list_workspace_users::list_workspace_users),
         )
         .route(
-            "/workspaces/:workspace_pk/set_concurrency_limit",
+            "/workspaces/:workspace_id/set_concurrency_limit",
             post(set_concurrency_limit::set_concurrency_limit),
         )
         .route(
-            "/workspaces/:workspace_pk/change_sets",
+            "/workspaces/:workspace_id/change_sets",
             get(list_change_sets::list_change_sets),
         )
         .route(
-            "/workspaces/:workspace_pk/change_sets/:change_set_id/get_snapshot",
+            "/workspaces/:workspace_id/change_sets/:change_set_id/get_snapshot",
             get(get_snapshot::get_snapshot),
         )
         .route(
-            "/workspaces/:workspace_pk/change_sets/:change_set_id/set_snapshot",
+            "/workspaces/:workspace_id/change_sets/:change_set_id/set_snapshot",
             post(set_snapshot::set_snapshot),
         )
         .nest("/prompts", prompts::routes())
         .layer(DefaultBodyLimit::max(MAX_UPLOAD_BYTES))
-        .route_layer(axum::middleware::from_extractor_with_state::<
-            AdminAccessBuilder,
-            AppState,
-        >(state))
+        .route_layer(axum::middleware::from_fn_with_state(
+            state,
+            require_systeminit_user,
+        ))
+}
+
+/// An admin-only DAL context. Only constructed if the user's email
+/// is @systeminit.com during construction.
+#[derive(Clone, derive_more::Deref, derive_more::Into)]
+pub struct AdminUserContext(pub dal::DalContext);
+
+async fn require_systeminit_user<B>(
+    builder: HandlerContext,
+    RequestUlidFromHeader(request_ulid): RequestUlidFromHeader,
+    token: ValidatedToken,
+    mut request: Request<B>,
+    next: Next<B>,
+) -> Result<Response, ErrorResponse> {
+    let ctx = builder
+        .build_without_workspace(token.history_actor(), request_ulid)
+        .await
+        .map_err(internal_error)?;
+
+    // Check if the user is @systeminit.com
+    let is_system_init = ctx
+        .history_actor()
+        .email_is_systeminit(&ctx)
+        .await
+        .map_err(internal_error)?;
+    if !is_system_init {
+        return Err(unauthorized_error("not admin user"));
+    }
+
+    // Stash the context in extensions
+    request.extensions_mut().insert(AdminUserContext(ctx));
+    Ok(next.run(request).await)
+}
+
+#[async_trait]
+impl FromRequestParts<AppState> for AdminUserContext {
+    type Rejection = ErrorResponse;
+
+    async fn from_request_parts(
+        parts: &mut Parts,
+        _state: &AppState,
+    ) -> Result<Self, Self::Rejection> {
+        Ok(parts
+            .extensions
+            .get::<AdminUserContext>()
+            .ok_or_else(|| internal_error("must use AdminUserContext in an admin endpoint"))?
+            .clone())
+    }
 }

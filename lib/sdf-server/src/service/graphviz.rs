@@ -19,7 +19,7 @@ use thiserror::Error;
 
 use super::impl_default_error_into_response;
 use crate::{
-    extract::{AccessBuilder, HandlerContext},
+    extract::{v1::AccessBuilder, HandlerContext},
     AppState,
 };
 

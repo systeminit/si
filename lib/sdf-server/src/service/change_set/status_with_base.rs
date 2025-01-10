@@ -3,7 +3,7 @@ use dal::Visibility;
 use serde::{Deserialize, Serialize};
 
 use super::ChangeSetResult;
-use crate::extract::{AccessBuilder, HandlerContext};
+use crate::extract::{v1::AccessBuilder, HandlerContext};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]

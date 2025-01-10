@@ -11,7 +11,7 @@ use permissions::{Permission, PermissionBuilder};
 use tower::{Layer, Service};
 
 use crate::{
-    extract::{self, EndpointAuthorization},
+    extract::{unauthorized_error, workspace::WorkspaceAuthorization},
     AppState,
 };
 
@@ -65,7 +65,7 @@ where
         Box::pin(async move {
             let (mut parts, body) = req.into_parts();
 
-            let auth = match EndpointAuthorization::from_request_parts(&mut parts, &me.state).await
+            let auth = match WorkspaceAuthorization::from_request_parts(&mut parts, &me.state).await
             {
                 Ok(auth) => auth,
                 Err(err) => return Ok(err.into_response()),
@@ -80,12 +80,10 @@ where
                     .await
                 {
                     Ok(is_allowed) => is_allowed,
-                    Err(e) => return Ok(extract::unauthorized_error(e).into_response()),
+                    Err(e) => return Ok(unauthorized_error(e).into_response()),
                 };
                 if !is_allowed {
-                    return Ok(
-                        extract::unauthorized_error("not authorized for web role").into_response()
-                    );
+                    return Ok(unauthorized_error("not authorized for web role").into_response());
                 }
             }
 

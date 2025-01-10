@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use si_events::audit_log::AuditLogKind;
 
 use super::ActionResult;
-use crate::extract::{AccessBuilder, HandlerContext};
+use crate::extract::{v1::AccessBuilder, HandlerContext};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]

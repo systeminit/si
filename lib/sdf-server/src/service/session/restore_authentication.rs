@@ -3,7 +3,7 @@ use dal::{User, Workspace};
 use serde::{Deserialize, Serialize};
 
 use super::{SessionError, SessionResult};
-use crate::extract::{AccessBuilder, EndpointAuthorization, HandlerContext};
+use crate::extract::{v1::AccessBuilder, workspace::WorkspaceAuthorization, HandlerContext};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -15,9 +15,9 @@ pub struct RestoreAuthenticationResponse {
 pub async fn restore_authentication(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(access_builder): AccessBuilder,
-    EndpointAuthorization {
+    WorkspaceAuthorization {
         user, workspace_id, ..
-    }: EndpointAuthorization,
+    }: WorkspaceAuthorization,
 ) -> SessionResult<Json<RestoreAuthenticationResponse>> {
     let ctx = builder.build_head(access_builder).await?;
 

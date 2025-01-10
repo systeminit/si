@@ -9,7 +9,8 @@ use std::collections::HashMap;
 use telemetry::prelude::*;
 
 use super::FuncAPIResult;
-use crate::extract::{AccessBuilder, HandlerContext, PosthogClient};
+use crate::extract::{HandlerContext, PosthogClient};
+use crate::service::v2::AccessBuilder;
 
 pub async fn list_funcs(
     HandlerContext(builder): HandlerContext,

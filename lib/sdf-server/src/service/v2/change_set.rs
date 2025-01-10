@@ -121,44 +121,43 @@ pub async fn post_to_webhook(
     Ok(())
 }
 
-pub fn v2_routes(state: AppState) -> Router<AppState> {
+pub fn change_sets_routes() -> Router<AppState> {
+    Router::new().route("/", get(list::list_actionable))
+}
+
+pub fn change_set_routes(state: AppState) -> Router<AppState> {
     Router::new()
-        .nest(
-            "/:change_set_id",
-            Router::new()
-                .route("/apply", post(apply::apply))
-                .route(
-                    "/request_approval",
-                    post(request_approval::request_approval),
-                )
-                .route(
-                    "/approve",
-                    post(approve::approve).layer(WorkspacePermissionLayer::new(
-                        state.clone(),
-                        permissions::Permission::Approve,
-                    )),
-                )
-                .route(
-                    "/reject",
-                    post(reject::reject).layer(WorkspacePermissionLayer::new(
-                        state.clone(),
-                        permissions::Permission::Approve,
-                    )),
-                )
-                .route(
-                    "/cancel_approval_request",
-                    post(cancel_approval_request::cancel_approval_request),
-                )
-                // Consider how we make it editable again after it's been rejected
-                .route("/reopen", post(reopen::reopen))
-                .route(
-                    "/force_apply",
-                    post(force_apply::force_apply).layer(WorkspacePermissionLayer::new(
-                        state.clone(),
-                        permissions::Permission::Approve,
-                    )),
-                )
-                .route("/rename", post(rename::rename)),
+        .route("/apply", post(apply::apply))
+        .route(
+            "/request_approval",
+            post(request_approval::request_approval),
         )
-        .route("/", get(list::list_actionable))
+        .route(
+            "/approve",
+            post(approve::approve).layer(WorkspacePermissionLayer::new(
+                state.clone(),
+                permissions::Permission::Approve,
+            )),
+        )
+        .route(
+            "/reject",
+            post(reject::reject).layer(WorkspacePermissionLayer::new(
+                state.clone(),
+                permissions::Permission::Approve,
+            )),
+        )
+        .route(
+            "/cancel_approval_request",
+            post(cancel_approval_request::cancel_approval_request),
+        )
+        // Consider how we make it editable again after it's been rejected
+        .route("/reopen", post(reopen::reopen))
+        .route(
+            "/force_apply",
+            post(force_apply::force_apply).layer(WorkspacePermissionLayer::new(
+                state.clone(),
+                permissions::Permission::Approve,
+            )),
+        )
+        .route("/rename", post(rename::rename))
 }

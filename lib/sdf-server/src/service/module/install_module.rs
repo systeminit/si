@@ -13,7 +13,7 @@ use si_pkg::SiPkg;
 use ulid::Ulid;
 
 use crate::{
-    extract::{AccessBuilder, HandlerContext, PosthogClient, RawAccessToken},
+    extract::{request::RawAccessToken, v1::AccessBuilder, HandlerContext, PosthogClient},
     service::{force_change_set_response::ForceChangeSetResponse, module::ModuleError},
     track,
 };

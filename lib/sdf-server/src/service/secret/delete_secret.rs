@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use si_events::audit_log::AuditLogKind;
 
 use super::{SecretError, SecretResult};
-use crate::extract::{AccessBuilder, HandlerContext};
+use crate::extract::{v1::AccessBuilder, HandlerContext};
 use crate::service::force_change_set_response::ForceChangeSetResponse;
 
 #[derive(Deserialize, Serialize, Debug)]

@@ -6,7 +6,7 @@ use dal::{HistoryActor, User, WsEvent};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    extract::{AccessBuilder, HandlerContext, PosthogClient},
+    extract::{v1::AccessBuilder, HandlerContext, PosthogClient},
     service::module::{ModuleError, ModuleResult},
     track,
 };

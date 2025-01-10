@@ -7,11 +7,8 @@ use axum::{
 };
 use dal::cached_module::CachedModule;
 
-use super::AdminAPIResult;
-use crate::{
-    extract::{AccessBuilder, HandlerContext, PosthogClient},
-    track,
-};
+use super::{AdminAPIResult, AdminUserContext};
+use crate::{extract::PosthogClient, track};
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -21,14 +18,11 @@ pub struct UpdateModuleCacheResponse {
 
 #[instrument(name = "admin.update_module_cache", skip_all)]
 pub async fn update_module_cache(
-    HandlerContext(builder): HandlerContext,
-    AccessBuilder(access_builder): AccessBuilder,
+    AdminUserContext(ctx): AdminUserContext,
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
     Host(host_name): Host,
 ) -> AdminAPIResult<Json<UpdateModuleCacheResponse>> {
-    let ctx = builder.build_head(access_builder).await?;
-
     let new_modules = CachedModule::update_cached_modules(&ctx).await?;
 
     track(

@@ -1,6 +1,6 @@
 use crate::service::component::ComponentResult;
 use crate::{
-    extract::{AccessBuilder, HandlerContext, PosthogClient},
+    extract::{v1::AccessBuilder, HandlerContext, PosthogClient},
     track,
 };
 use axum::{

@@ -9,7 +9,8 @@ use si_pkg::SiPkg;
 use ulid::Ulid;
 
 use crate::{
-    extract::{AccessBuilder, HandlerContext, PosthogClient, RawAccessToken},
+    extract::{request::RawAccessToken, HandlerContext, PosthogClient},
+    service::v2::AccessBuilder,
     track,
 };
 

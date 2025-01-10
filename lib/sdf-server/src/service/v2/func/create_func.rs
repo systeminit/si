@@ -20,8 +20,9 @@ use si_frontend_types::{self as frontend_types, FuncBinding, FuncCode, FuncSumma
 
 use super::{get_code_response, FuncAPIError, FuncAPIResult};
 use crate::{
-    extract::{AccessBuilder, HandlerContext, PosthogClient},
+    extract::{HandlerContext, PosthogClient},
     service::force_change_set_response::ForceChangeSetResponse,
+    service::v2::AccessBuilder,
     track,
 };
 

@@ -8,7 +8,7 @@ use telemetry::prelude::*;
 
 use super::ComponentResult;
 use crate::{
-    extract::{AccessBuilder, HandlerContext, PosthogClient},
+    extract::{v1::AccessBuilder, HandlerContext, PosthogClient},
     track,
 };
 

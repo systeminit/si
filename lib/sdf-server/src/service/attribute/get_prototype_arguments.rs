@@ -8,7 +8,7 @@ use serde_json::Value;
 
 use super::AttributeResult;
 use crate::{
-    extract::{AccessBuilder, HandlerContext, PosthogClient},
+    extract::{v1::AccessBuilder, HandlerContext, PosthogClient},
     service::attribute::AttributeError,
     track,
 };

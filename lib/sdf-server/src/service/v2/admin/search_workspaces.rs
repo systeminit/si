@@ -3,8 +3,7 @@ use dal::Workspace;
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 
-use super::{AdminAPIResult, AdminWorkspace};
-use crate::extract::{AccessBuilder, HandlerContext};
+use crate::service::v2::admin::{AdminAPIResult, AdminUserContext, AdminWorkspace};
 
 const SEARCH_LIMIT: usize = 50;
 
@@ -20,12 +19,9 @@ pub struct SearchWorkspacesResponse {
 
 #[instrument(name = "admin.search_workspaces", skip_all)]
 pub async fn search_workspaces(
-    HandlerContext(builder): HandlerContext,
-    AccessBuilder(access_builder): AccessBuilder,
+    AdminUserContext(ctx): AdminUserContext,
     Query(request): Query<SearchWorkspacesRequest>,
 ) -> AdminAPIResult<Json<SearchWorkspacesResponse>> {
-    let ctx = builder.build_head(access_builder).await?;
-
     let workspaces = Workspace::search(&ctx, request.query.as_deref(), SEARCH_LIMIT)
         .await?
         .into_iter()

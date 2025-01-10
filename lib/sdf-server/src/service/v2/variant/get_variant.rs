@@ -6,8 +6,9 @@ use dal::{ChangeSetId, SchemaVariant, SchemaVariantId, WorkspacePk};
 use si_frontend_types as frontend_types;
 
 use crate::{
-    extract::{AccessBuilder, HandlerContext, PosthogClient},
+    extract::{HandlerContext, PosthogClient},
     service::v2::variant::SchemaVariantsAPIError,
+    service::v2::AccessBuilder,
     track,
 };
 

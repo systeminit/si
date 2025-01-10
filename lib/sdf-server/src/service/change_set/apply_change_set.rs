@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use si_events::audit_log::AuditLogKind;
 
 use crate::{
-    extract::{AccessBuilder, HandlerContext, PosthogClient},
+    extract::{v1::AccessBuilder, HandlerContext, PosthogClient},
     track,
 };
 
