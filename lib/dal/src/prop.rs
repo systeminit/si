@@ -404,6 +404,7 @@ impl Prop {
             None,
             None,
             None,
+            None,
             parent_prop_id,
         )
         .await
@@ -420,6 +421,7 @@ impl Prop {
         kind: PropKind,
         hidden: bool,
         doc_link: Option<String>,
+        documentation: Option<String>,
         widget_kind_and_options: Option<(WidgetKind, Option<Value>)>,
         validation_format: Option<String>,
         parent_prop_id: PropId,
@@ -430,6 +432,7 @@ impl Prop {
             kind,
             hidden,
             doc_link,
+            documentation,
             widget_kind_and_options,
             validation_format,
         )
@@ -449,6 +452,7 @@ impl Prop {
         kind: PropKind,
         hidden: bool,
         doc_link: Option<String>,
+        documentation: Option<String>,
         widget_kind_and_options: Option<(WidgetKind, Option<Value>)>,
         validation_format: Option<String>,
         schema_variant_id: SchemaVariantId,
@@ -459,6 +463,7 @@ impl Prop {
             kind,
             hidden,
             doc_link,
+            documentation,
             widget_kind_and_options,
             validation_format,
         )
@@ -481,12 +486,14 @@ impl Prop {
     ///
     /// A corresponding [`AttributePrototype`] and [`AttributeValue`] will be created when the
     /// provided [`SchemaVariant`] is [`finalized`](SchemaVariant::finalize).
+    #[allow(clippy::too_many_arguments)]
     async fn new_inner(
         ctx: &DalContext,
         name: impl Into<String>,
         kind: PropKind,
         hidden: bool,
         doc_link: Option<String>,
+        documentation: Option<String>,
         widget_kind_and_options: Option<(WidgetKind, Option<Value>)>,
         validation_format: Option<String>,
     ) -> PropResult<Self> {
@@ -513,7 +520,7 @@ impl Prop {
             widget_kind,
             widget_options,
             doc_link,
-            documentation: None,
+            documentation,
             hidden,
             refers_to_prop_id: None,
             diff_func_id: None,

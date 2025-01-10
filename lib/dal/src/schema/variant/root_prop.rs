@@ -123,6 +123,7 @@ impl RootProp {
             None,
             None,
             None,
+            None,
             schema_variant_id,
         )
         .await?;
@@ -151,6 +152,7 @@ impl RootProp {
             "deleted_at",
             PropKind::String,
             true,
+            None,
             None,
             None,
             None,
@@ -191,6 +193,7 @@ impl RootProp {
             None,
             None,
             None,
+            None,
             root_prop_id,
         )
         .await?;
@@ -200,6 +203,7 @@ impl RootProp {
             leaf_item_prop_name,
             PropKind::Object,
             true,
+            None,
             None,
             None,
             None,
@@ -230,6 +234,7 @@ impl RootProp {
             "type",
             PropKind::String,
             false,
+            None,
             None,
             Some((
                 WidgetKind::Select,
@@ -264,6 +269,7 @@ impl RootProp {
             PropKind::String,
             false,
             None,
+            None,
             Some((WidgetKind::Color, None)),
             None,
             si_prop.id(),
@@ -287,6 +293,7 @@ impl RootProp {
             None,
             None,
             None,
+            None,
             root_prop_id,
         )
         .await?;
@@ -297,6 +304,7 @@ impl RootProp {
             "status",
             PropKind::String,
             true,
+            None,
             None,
             None,
             None,
@@ -313,6 +321,7 @@ impl RootProp {
             None,
             None,
             None,
+            None,
             resource_prop.id(),
         )
         .await?;
@@ -326,6 +335,7 @@ impl RootProp {
             None,
             None,
             None,
+            None,
             resource_prop.id(),
         )
         .await?;
@@ -336,6 +346,7 @@ impl RootProp {
             "last_synced",
             PropKind::String,
             true,
+            None,
             None,
             None,
             None,
@@ -358,6 +369,7 @@ impl RootProp {
             None,
             None,
             None,
+            None,
             root_prop_id,
         )
         .await?;
@@ -377,6 +389,7 @@ impl RootProp {
             None,
             None,
             None,
+            None,
             code_map_item_prop_id,
         )
         .await?;
@@ -386,6 +399,7 @@ impl RootProp {
             "format",
             PropKind::String,
             true,
+            None,
             None,
             None,
             None,
@@ -411,6 +425,7 @@ impl RootProp {
             None,
             None,
             None,
+            None,
             qualification_map_item_prop_id,
         )
         .await?;
@@ -420,6 +435,7 @@ impl RootProp {
             "message",
             PropKind::String,
             true,
+            None,
             None,
             None,
             None,
