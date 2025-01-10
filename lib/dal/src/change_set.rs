@@ -6,6 +6,7 @@ use std::time::Duration;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use si_data_pg::{PgError, PgRow};
+use si_events::audit_log::AuditLogKind;
 use si_events::{ulid::Ulid, WorkspaceSnapshotAddress};
 use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
@@ -786,13 +787,15 @@ impl ChangeSet {
     }
 
     /// Returns a new [`ChangeSetId`](ChangeSet) if a new [`ChangeSet`] was created.
+    /// Also writes an audit log event to head (so we don't have to handle this in every route handler)
     pub async fn force_new(ctx: &mut DalContext) -> ChangeSetResult<Option<ChangeSetId>> {
         let maybe_fake_pk =
             if ctx.change_set_id() == ctx.get_workspace_default_change_set_id().await? {
                 let change_set = Self::fork_head(ctx, Self::generate_name()).await?;
                 ctx.update_visibility_and_snapshot_to_visibility(change_set.id)
                     .await?;
-
+                ctx.write_audit_log_to_head(AuditLogKind::CreateChangeSet, change_set.name)
+                    .await?;
                 WsEvent::change_set_created(ctx, change_set.id)
                     .await?
                     .publish_on_commit(ctx)
