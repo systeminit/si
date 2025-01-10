@@ -19,3 +19,15 @@ pub struct ChangeSet {
     pub reviewed_by_user: Option<String>,
     pub reviewed_at: Option<DateTime<Utc>>,
 }
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateChangeSetRequest {
+    pub change_set_name: String,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateChangeSetResponse {
+    pub change_set: ChangeSet,
+}

@@ -1,0 +1,18 @@
+load("@prelude-si//:macros.bzl", "rust_library")
+
+rust_library(
+    name = "si-filesystem",
+    deps = [
+        "//lib/si-id:si-id",
+        "//lib/si-frontend-types-rs:si-frontend-types",
+
+        "//third-party/rust:fuser",
+        "//third-party/rust:nix",
+        "//third-party/rust:reqwest",
+        "//third-party/rust:thiserror",
+        "//third-party/rust:tokio",
+    ],
+    srcs = glob([
+        "src/**/*.rs",
+    ]),
+)

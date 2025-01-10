@@ -1,0 +1,19 @@
+[package]
+name = "si-filesystem"
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+si-id = { path = "../si-id" }
+si-frontend-types = { path = "../si-frontend-types-rs" }
+
+fuser = { workspace = true }
+nix = { workspace = true }
+reqwest = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }

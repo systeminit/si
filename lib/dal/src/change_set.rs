@@ -155,7 +155,6 @@ pub struct ChangeSet {
     pub id: ChangeSetId,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
-
     pub name: String,
     pub status: ChangeSetStatus,
     pub base_change_set_id: Option<ChangeSetId>,

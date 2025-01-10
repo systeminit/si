@@ -2,26 +2,14 @@ use axum::extract::{Host, OriginalUri};
 use axum::Json;
 use dal::change_set::ChangeSet;
 use dal::WsEvent;
-use serde::{Deserialize, Serialize};
 use si_events::audit_log::AuditLogKind;
+use si_frontend_types::{CreateChangeSetRequest, CreateChangeSetResponse};
 
 use super::ChangeSetResult;
 use crate::{
     extract::{v1::AccessBuilder, HandlerContext, PosthogClient},
     track,
 };
-
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct CreateChangeSetRequest {
-    pub change_set_name: String,
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct CreateChangeSetResponse {
-    pub change_set: ChangeSet,
-}
 
 pub async fn create_change_set(
     HandlerContext(builder): HandlerContext,
@@ -58,6 +46,7 @@ pub async fn create_change_set(
         .publish_on_commit(&ctx)
         .await?;
 
+    let change_set = change_set.into_frontend_type(&ctx).await?;
     ctx.commit_no_rebase().await?;
 
     Ok(Json(CreateChangeSetResponse { change_set }))

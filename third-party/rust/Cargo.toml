@@ -61,10 +61,11 @@ directories = "5.0.1"
 dyn-clone = "1.0.17"
 fastrace = "0.7.4"
 flate2 = "1.0.35"
-futures = "0.3.31"
-futures-lite = "2.5.0"
 foyer = { version = "0.13.1", features = ["tracing", "opentelemetry_0_26"] }
 fs4 = "0.12.0"
+fuser = { version = "0.15.1", default-features = false }
+futures = "0.3.31"
+futures-lite = "2.5.0"
 glob = "0.3.1"
 hex = "0.4.3"
 http = "0.2.12" # todo: upgrade this alongside hyper/axum/tokio-tungstenite/tower-http
@@ -89,9 +90,12 @@ lazy_static = "1.5.0"
 manyhow = { version = "0.11.4", features = ["darling"] }
 mime_guess = { version = "=2.0.4" } # TODO(fnichol): 2.0.5 sets an env var in build.rs which needs to be tracked, required by reqwest
 miniz_oxide = { version = "0.8.0", features = ["simd"] }
+monostate = "0.1.13"
 names = { version = "0.14.0", default-features = false }
-nix = { version = "0.26.0", features = [
+nix = { version = "0.29.0", features = [
+    "poll",
     "fs",
+    "ioctl",
     "mount",
     "process",
     "signal",

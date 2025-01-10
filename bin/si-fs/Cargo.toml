@@ -1,0 +1,16 @@
+[package]
+name = "si-fs"
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+clap = { workspace = true }
+color-eyre = { workspace = true }
+si-filesystem = { path = "../../lib/si-filesystem" }
+tokio = { workspace = true }
+nix = { workspace = true }
