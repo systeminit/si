@@ -155,7 +155,7 @@ type Geometry = {{
 type Output = {{
   status: 'ok' | 'error';
   ops?: {{
-    views?: {{ create: string[]; }},
+    views?: {{ create?: string[]; remove?: string[] }},
     create?: {{ [key: string]: {component_create_type} }},
     update?: {{ [key: string]: {{ 
         properties?: {{ [key: string]: unknown }}, 
@@ -168,6 +168,7 @@ type Output = {{
     }} }},
     delete?: string[],
     erase?: string[],
+    remove?: {{ [key: string]: string[] }},
     actions?: {{ [key: string]: {{
       add?: ("create" | "update" | "refresh" | "delete" | string)[];
       remove?: ("create" | "update" | "refresh" | "delete" | string)[];

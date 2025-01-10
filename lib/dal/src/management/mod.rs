@@ -11,7 +11,7 @@ use crate::component::delete::{delete_components, ComponentDeletionStatus};
 use crate::component::frame::{Frame, FrameError};
 use crate::dependency_graph::DependencyGraph;
 use crate::diagram::geometry::Geometry;
-use crate::diagram::view::{View, ViewId, ViewView};
+use crate::diagram::view::{View, ViewComponentsUpdateSingle, ViewId, ViewView};
 use crate::diagram::{DiagramError, SummaryDiagramInferredEdge, SummaryDiagramManagementEdge};
 use crate::{
     action::{
@@ -229,6 +229,33 @@ pub struct ActionIdentifier {
     pub manual_func_name: Option<String>,
 }
 
+impl From<&str> for ActionIdentifier {
+    fn from(action_str: &str) -> Self {
+        match action_str.to_lowercase().as_str() {
+            "create" => ActionIdentifier {
+                kind: ActionKind::Create,
+                manual_func_name: None,
+            },
+            "destroy" => ActionIdentifier {
+                kind: ActionKind::Destroy,
+                manual_func_name: None,
+            },
+            "refresh" => ActionIdentifier {
+                kind: ActionKind::Refresh,
+                manual_func_name: None,
+            },
+            "update" => ActionIdentifier {
+                kind: ActionKind::Update,
+                manual_func_name: None,
+            },
+            _ => ActionIdentifier {
+                kind: ActionKind::Manual,
+                manual_func_name: Some(action_str.to_string()),
+            },
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ManagementActionOperation {
     add: Option<Vec<String>>,
@@ -256,6 +283,9 @@ pub struct ManagementOperations {
     // delete the component even if it has a resource, do not automatically
     // enqueue an action
     erase: Option<Vec<String>>,
+    // remove components from views. Keyed by view, then array of component
+    // placeholders
+    remove: Option<HashMap<String, Vec<String>>>,
     actions: Option<ManagementActionOperations>,
     views: Option<ManagementViewOperations>,
 }
@@ -1253,6 +1283,87 @@ impl<'a> ManagementOperator<'a> {
         Ok(())
     }
 
+    async fn remove_views(&mut self) -> ManagementResult<()> {
+        let Some(remove_views) = self
+            .operations
+            .views
+            .as_ref()
+            .and_then(|view_ops| view_ops.remove.to_owned())
+        else {
+            return Ok(());
+        };
+
+        for view_to_remove in remove_views {
+            let Some(&view_id) = self.view_placeholders.get(&view_to_remove) else {
+                continue;
+            };
+
+            if View::remove(self.ctx, view_id).await.is_ok() {
+                WsEvent::view_deleted(self.ctx, view_id)
+                    .await?
+                    .publish_on_commit(self.ctx)
+                    .await?;
+
+                self.ctx
+                    .write_audit_log(
+                        AuditLogKind::DeleteView { view_id },
+                        view_to_remove.to_owned(),
+                    )
+                    .await?;
+
+                self.view_placeholders.remove(&view_to_remove);
+            }
+        }
+
+        Ok(())
+    }
+
+    async fn remove_from_views(&mut self) -> ManagementResult<()> {
+        let Some(removes) = self.operations.remove.take() else {
+            return Ok(());
+        };
+
+        let mut removed_components: HashMap<ViewId, ViewComponentsUpdateSingle> = HashMap::new();
+
+        for (view_placeholder, component_placeholders) in removes {
+            let Some(view_id) = self.view_placeholders.get(&view_placeholder).copied() else {
+                continue;
+            };
+
+            for component_placeholder in component_placeholders {
+                let component_id = self.get_real_component_id(&component_placeholder)?;
+                if let Some(geometry) =
+                    Geometry::try_get_by_component_and_view(self.ctx, component_id, view_id).await?
+                {
+                    let removed_from_view = match Geometry::remove(self.ctx, geometry.id()).await {
+                        Ok(_) => true,
+                        Err(DiagramError::DeletingLastGeometryForComponent(_, _)) => false,
+                        Err(err) => {
+                            return Err(err)?;
+                        }
+                    };
+
+                    if removed_from_view {
+                        removed_components
+                            .entry(view_id)
+                            .or_default()
+                            .removed
+                            .insert(component_id);
+                    }
+                }
+            }
+        }
+
+        if !removed_components.is_empty() {
+            WsEvent::view_components_update(self.ctx, removed_components)
+                .await?
+                .publish_on_commit(self.ctx)
+                .await?;
+        }
+
+        Ok(())
+    }
+
     async fn deletes(&mut self, force_erase: bool) -> ManagementResult<()> {
         let Some(deletes) = (if force_erase {
             self.operations.erase.take()
@@ -1347,34 +1458,11 @@ impl<'a> ManagementOperator<'a> {
             }
         }
 
+        self.remove_from_views().await?;
+        self.remove_views().await?;
         self.actions().await?;
 
         Ok(created_component_ids)
-    }
-}
-
-fn identify_action(action_str: &str) -> ActionIdentifier {
-    match action_str {
-        "create" => ActionIdentifier {
-            kind: ActionKind::Create,
-            manual_func_name: None,
-        },
-        "destroy" => ActionIdentifier {
-            kind: ActionKind::Destroy,
-            manual_func_name: None,
-        },
-        "refresh" => ActionIdentifier {
-            kind: ActionKind::Refresh,
-            manual_func_name: None,
-        },
-        "update" => ActionIdentifier {
-            kind: ActionKind::Update,
-            manual_func_name: None,
-        },
-        _ => ActionIdentifier {
-            kind: ActionKind::Manual,
-            manual_func_name: Some(action_str.to_string()),
-        },
     }
 }
 
@@ -1386,7 +1474,7 @@ async fn operate_actions(
     if let Some(remove_actions) = &operation.remove {
         for to_remove in remove_actions
             .iter()
-            .map(|action| identify_action(action.as_str()))
+            .map(|action| ActionIdentifier::from(action.as_str()))
         {
             remove_action(ctx, component_id, to_remove).await?;
         }
@@ -1396,7 +1484,7 @@ async fn operate_actions(
         let available_actions = ActionPrototype::for_variant(ctx, sv_id).await?;
         for action in add_actions
             .iter()
-            .map(|action| identify_action(action.as_str()))
+            .map(|action| ActionIdentifier::from(action.as_str()))
         {
             add_action(ctx, component_id, action, &available_actions).await?;
         }
