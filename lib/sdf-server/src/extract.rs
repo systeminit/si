@@ -1,4 +1,5 @@
 use std::fmt;
+use ulid::Ulid;
 
 use axum::{
     async_trait,
@@ -33,10 +34,16 @@ impl FromRequestParts<AppState> for AccessBuilder {
     ) -> Result<Self, Self::Rejection> {
         // Ensure the endpoint is authorized
         let auth = EndpointAuthorization::from_request_parts(parts, state).await?;
+        let request_ulid = parts
+            .headers
+            .get("X-SI-REQUEST-ULID")
+            .and_then(|u| u.to_str().ok())
+            .and_then(|u| Ulid::from_string(u).ok());
 
         Ok(Self(context::AccessBuilder::new(
             dal::Tenancy::new(auth.workspace_id),
             dal::HistoryActor::from(auth.user.pk()),
+            request_ulid,
         )))
     }
 }

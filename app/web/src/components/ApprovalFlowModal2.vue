@@ -48,7 +48,6 @@ import { ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { useAuthStore } from "@/store/auth.store";
 import ApprovalFlowCancelled from "@/components/toasts/ApprovalFlowCancelled.vue";
-import { useViewsStore } from "@/store/views.store";
 import ActionsList from "./Actions/ActionsList.vue";
 
 const changeSetsStore = useChangeSetsStore();
@@ -74,11 +73,6 @@ function closeModalHandler() {
 function applyButtonHandler() {
   if (userIsApprover.value) {
     if (authStore.user) {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      const viewsStore = useViewsStore(changeSetsStore.headChangeSetId!);
-      // need to clear selections prior to applying, having them is causing bugs (BUG-725)
-      viewsStore.clearSelections();
-      viewsStore.syncSelectionIntoUrl();
       changeSetsStore.FORCE_APPLY_CHANGE_SET(authStore.user.name);
       closeModalHandler();
     }

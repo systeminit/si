@@ -20,7 +20,11 @@
           </template>
           <div class="flex flex-row gap-xs items-center">
             <Icon
-              v-if="fetchComponentsReq.isPending || actionsAreRunning"
+              v-if="
+                initialFetch.isPending ||
+                actionsAreRunning ||
+                viewFetch.isPending
+              "
               tone="action"
               name="loader"
               size="md"
@@ -38,44 +42,39 @@
         />
       </template>
 
-      <template v-if="fetchComponentsReq.isError">
-        <ErrorMessage :requestStatus="fetchComponentsReq" />
+      <!-- filtered / search mode -->
+      <template v-if="filterModeActive">
+        <DiagramOutlineNode
+          v-for="component in filteredComponents"
+          :key="component.def.id"
+          :component="component"
+        />
       </template>
+
+      <!-- tree mode -->
       <template v-else>
-        <!-- filtered / search mode -->
-        <template v-if="filterModeActive">
+        <div v-if="!rootComponents.length" class="flex flex-col items-center">
+          <div class="w-52">
+            <EmptyStateIcon name="no-components" />
+          </div>
+          <div class="text-xl text-neutral-400 dark:text-neutral-300 mt-2">
+            Drag & Drop
+          </div>
+          <div class="text-sm px-xs pt-3 text-neutral-400 text-center italic">
+            Drag & Drop assets on to the canvas and start modeling your
+            infrastructure
+          </div>
+          <div class="text-sm px-xs pt-3 text-neutral-400 text-center italic">
+            Assets are reusable infrastructure components such as key pairs,
+            docker images EC2 instances etc.
+          </div>
+        </div>
+        <template v-else>
           <DiagramOutlineNode
-            v-for="component in filteredComponents"
+            v-for="component in rootComponents"
             :key="component.def.id"
             :component="component"
           />
-        </template>
-
-        <!-- tree mode -->
-        <template v-else>
-          <div v-if="!rootComponents.length" class="flex flex-col items-center">
-            <div class="w-52">
-              <EmptyStateIcon name="no-components" />
-            </div>
-            <div class="text-xl text-neutral-400 dark:text-neutral-300 mt-2">
-              Drag & Drop
-            </div>
-            <div class="text-sm px-xs pt-3 text-neutral-400 text-center italic">
-              Drag & Drop assets on to the canvas and start modeling your
-              infrastructure
-            </div>
-            <div class="text-sm px-xs pt-3 text-neutral-400 text-center italic">
-              Assets are reusable infrastructure components such as key pairs,
-              docker images EC2 instances etc.
-            </div>
-          </div>
-          <template v-else>
-            <DiagramOutlineNode
-              v-for="component in rootComponents"
-              :key="component.def.id"
-              :component="component"
-            />
-          </template>
         </template>
       </template>
     </ScrollArea>
@@ -120,7 +119,6 @@ import {
 } from "vue";
 import * as _ from "lodash-es";
 import {
-  ErrorMessage,
   Icon,
   PillCounter,
   ScrollArea,
@@ -164,11 +162,12 @@ const componentsStore = useComponentsStore();
 const viewStore = useViewsStore();
 const qualificationsStore = useQualificationsStore();
 
-const fetchComponentsReq = viewStore.getRequestStatus("FETCH_VIEW");
-
 const viewId = computed(
   () => viewStore.outlinerViewId || viewStore.selectedViewId,
 );
+
+const initialFetch = viewStore.getRequestStatus("FETCH_VIEW");
+const viewFetch = viewStore.getRequestStatus("FETCH_VIEW_GEOMETRY", viewId);
 
 const viewComponentIds = computed<ComponentId[] | null>(() => {
   if (viewId.value) {

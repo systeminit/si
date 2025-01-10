@@ -121,7 +121,6 @@ import { useRoute, useRouter } from "vue-router";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { useAuthStore } from "@/store/auth.store";
 import { ChangeSetStatus } from "@/api/sdf/dal/change_set";
-import { useViewsStore } from "@/store/views.store";
 import ActionsList from "./Actions/ActionsList.vue";
 
 export type InsetApprovalModalMode =
@@ -249,11 +248,6 @@ const confirmHandler = () => {
   } else if (mode.value === "approved") {
     if (authStore.user) {
       applyingChangeSet.value = true;
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      const viewsStore = useViewsStore(changeSetsStore.headChangeSetId!);
-      // need to clear selections prior to applying, having them is causing bugs (BUG-725)
-      viewsStore.clearSelections();
-      viewsStore.syncSelectionIntoUrl();
       changeSetsStore.APPLY_CHANGE_SET(authStore.user.name);
     }
   } else if (mode.value === "rejected") {

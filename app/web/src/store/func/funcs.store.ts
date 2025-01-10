@@ -42,6 +42,7 @@ import { useRealtimeStore } from "../realtime/realtime.store";
 
 import { FuncRunId } from "../func_runs.store";
 import { useViewsStore } from "../views.store";
+import { useAuthStore } from "../auth.store";
 
 type FuncExecutionState =
   | "Create"
@@ -129,6 +130,9 @@ export const useFuncStore = () => {
 
   const workspacesStore = useWorkspacesStore();
   const workspaceId = workspacesStore.selectedWorkspacePk;
+  const authStore = useAuthStore();
+
+  const realtimeStore = useRealtimeStore();
 
   let funcSaveDebouncer: ReturnType<typeof keyedDebouncer> | undefined;
 
@@ -207,9 +211,9 @@ export const useFuncStore = () => {
         /** Whether the "generate AWS function" panel is toggled open */
         generateAwsFunctionPanelToggled: false,
         executingPrompt: false,
+        managementOperationExecution: {} as MgmtPrototypeResult,
         // So we can ignore websocket update originated by this client
         clientUlid: ulid(),
-        pendingManagementRunRequestUlid: undefined as string | undefined,
       }),
       getters: {
         selectedFuncSummary(state): FuncSummary | undefined {
@@ -321,9 +325,6 @@ export const useFuncStore = () => {
               { componentId },
               { viewId },
             ]),
-            optimistic: (requestUlid) => {
-              this.pendingManagementRunRequestUlid = requestUlid;
-            },
           });
         },
 
@@ -787,12 +788,15 @@ export const useFuncStore = () => {
             },
           });
         },
+
+        registerRequestsBegin(requestUlid: string, actionName: string) {
+          realtimeStore.inflightRequests.set(requestUlid, actionName);
+        },
+        registerRequestsEnd(requestUlid: string) {
+          realtimeStore.inflightRequests.delete(requestUlid);
+        },
       },
-      onActivated() {
-        this.FETCH_FUNC_LIST();
-
-        const realtimeStore = useRealtimeStore();
-
+      async onActivated() {
         realtimeStore.subscribe(this.$id, `changeset/${selectedChangeSetId}`, [
           // we need func list on new schema variants, b/c the updated bindings
           // don't come back in the schema variant WsEvent payload
@@ -835,7 +839,7 @@ export const useFuncStore = () => {
           },
           {
             eventType: "FuncCreated",
-            callback: (data) => {
+            callback: (data, metadata) => {
               if (data.changeSetId !== selectedChangeSetId) return;
               this.funcsById[data.funcSummary.funcId] = data.funcSummary;
               const bindings = processBindings(data.funcSummary);
@@ -851,11 +855,20 @@ export const useFuncStore = () => {
                 bindings.codegenBindings;
               this.managementBindings[data.funcSummary.funcId] =
                 bindings.managementBindings;
+
+              if (
+                metadata.actor !== "System" &&
+                metadata.actor.User === authStore.userPk
+              ) {
+                const assetStore = useAssetStore(selectedChangeSetId);
+                // NOTE: `SchemaVariantCreated` will fire the selection for it
+                assetStore.setFuncSelection(data.funcSummary.funcId);
+              }
             },
           },
           {
             eventType: "FuncUpdated",
-            callback: (data) => {
+            callback: (data, metadata) => {
               if (data.changeSetId !== selectedChangeSetId) return;
               // Requests that send client ID are assumed to update the state directly
               // So we skip updating them from the websocket event
@@ -877,6 +890,14 @@ export const useFuncStore = () => {
                 bindings.codegenBindings;
               this.managementBindings[data.funcSummary.funcId] =
                 bindings.managementBindings;
+
+              if (
+                metadata.actor !== "System" &&
+                metadata.actor.User === authStore.userPk
+              ) {
+                const assetStore = useAssetStore(selectedChangeSetId);
+                assetStore.setFuncSelection(data.funcSummary.funcId);
+              }
             },
           },
           {
@@ -949,16 +970,21 @@ export const useFuncStore = () => {
           {
             eventType: "ManagementOperationsComplete",
             callback: (
-              { requestUlid, status, message, createdComponentIds, funcName },
+              { status, message, createdComponentIds, funcName },
               _metadata,
             ) => {
-              if (
-                requestUlid &&
-                requestUlid === this.pendingManagementRunRequestUlid &&
-                createdComponentIds?.length
-              ) {
-                viewStore.setSelectedComponentId(createdComponentIds);
-                this.pendingManagementRunRequestUlid = undefined;
+              const didIFireThisRequest = realtimeStore.inflightRequests.get(
+                _metadata.requestUlid,
+              );
+              if (didIFireThisRequest) {
+                if (createdComponentIds?.length) {
+                  viewStore.setSelectedComponentId(createdComponentIds);
+                }
+                this.managementOperationExecution = {
+                  status,
+                  message,
+                  createdComponentIds,
+                };
               }
 
               const toast = useToast();

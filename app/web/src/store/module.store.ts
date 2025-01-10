@@ -3,7 +3,6 @@ import * as _ from "lodash-es";
 import { addStoreHooks, ApiRequest, URLPattern } from "@si/vue-lib/pinia";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
-import router from "@/router";
 import { SchemaVariantId } from "@/api/sdf/dal/schema";
 import { Visibility } from "@/api/sdf/dal/visibility";
 import {
@@ -125,6 +124,8 @@ export const useModuleStore = () => {
 
   const workspacesStore = useWorkspacesStore();
   const workspaceId = workspacesStore.selectedWorkspacePk;
+  const routerStore = useRouterStore();
+  const realtimeStore = useRealtimeStore();
 
   const API_PREFIX = [
     "v2",
@@ -299,67 +300,6 @@ export const useModuleStore = () => {
             });
           },
 
-          async INSTALL_REMOTE_MODULE(moduleIds: ModuleId[]) {
-            if (changeSetsStore.creatingChangeSet)
-              throw new Error("race, wait until the change set is created");
-            if (changeSetId === changeSetsStore.headChangeSetId)
-              changeSetsStore.creatingChangeSet = true;
-
-            return new ApiRequest<{ id: string }>({
-              method: "post",
-              url: "/module/install_module",
-              keyRequestStatusBy: moduleIds,
-              params: {
-                ids: moduleIds,
-                ...getVisibilityParams(),
-              },
-              onFail: () => {
-                changeSetsStore.creatingChangeSet = false;
-              },
-              onSuccess: () => {
-                // reset installed list
-                this.SYNC();
-              },
-            });
-          },
-
-          async REJECT_REMOTE_MODULE(moduleId: ModuleId) {
-            return new ApiRequest<{ success: true }>({
-              method: "post",
-              url: API_PREFIX.concat([{ moduleId }, "builtins", "reject"]),
-              params: { id: moduleId, ...getVisibilityParams() },
-              optimistic: () => {
-                // remove selection from URL
-                router.replace({
-                  name: "workspace-lab-packages",
-                });
-              },
-              onSuccess: (_response) => {
-                // response is just success, so we have to reload the remote modules
-                this.LOAD_LOCAL_MODULES();
-                this.GET_REMOTE_MODULES_LIST({ su: true });
-              },
-            });
-          },
-
-          async PROMOTE_TO_BUILTIN(moduleId: ModuleId) {
-            return new ApiRequest<{ success: true }>({
-              method: "post",
-              url: API_PREFIX.concat([{ moduleId }, "builtins", "promote"]),
-              optimistic: () => {
-                // remove selection from URL
-                router.replace({
-                  name: "workspace-lab-packages",
-                });
-              },
-              onSuccess: (_response) => {
-                // response is just success, so we have to reload the remote modules
-                this.LOAD_LOCAL_MODULES();
-                this.GET_REMOTE_MODULES_LIST({ su: true });
-              },
-            });
-          },
-
           // Module Index API
           async LIST_WORKSPACE_EXPORTS() {
             return new ModuleIndexApiRequest<{
@@ -435,7 +375,67 @@ export const useModuleStore = () => {
             });
           },
 
-          // Workspace API V2
+          async INSTALL_REMOTE_MODULE(moduleIds: ModuleId[]) {
+            if (changeSetsStore.creatingChangeSet)
+              throw new Error("race, wait until the change set is created");
+            if (changeSetId === changeSetsStore.headChangeSetId)
+              changeSetsStore.creatingChangeSet = true;
+
+            return new ApiRequest<{ id: string }>({
+              method: "post",
+              url: "/module/install_module",
+              keyRequestStatusBy: moduleIds,
+              params: {
+                ids: moduleIds,
+                ...getVisibilityParams(),
+              },
+              onFail: () => {
+                changeSetsStore.creatingChangeSet = false;
+              },
+              onSuccess: () => {
+                // reset installed list
+                this.SYNC();
+              },
+            });
+          },
+
+          async REJECT_REMOTE_MODULE(moduleId: ModuleId) {
+            return new ApiRequest<{ success: true }>({
+              method: "post",
+              url: API_PREFIX.concat([{ moduleId }, "builtins", "reject"]),
+              params: { id: moduleId, ...getVisibilityParams() },
+              optimistic: () => {
+                // remove selection from URL
+                routerStore.replace(changeSetId, {
+                  name: "workspace-lab-packages",
+                });
+              },
+              onSuccess: (_response) => {
+                // response is just success, so we have to reload the remote modules
+                this.LOAD_LOCAL_MODULES();
+                this.GET_REMOTE_MODULES_LIST({ su: true });
+              },
+            });
+          },
+
+          async PROMOTE_TO_BUILTIN(moduleId: ModuleId) {
+            return new ApiRequest<{ success: true }>({
+              method: "post",
+              url: API_PREFIX.concat([{ moduleId }, "builtins", "promote"]),
+              optimistic: () => {
+                // remove selection from URL
+                routerStore.replace(changeSetId, {
+                  name: "workspace-lab-packages",
+                });
+              },
+              onSuccess: (_response) => {
+                // response is just success, so we have to reload the remote modules
+                this.LOAD_LOCAL_MODULES();
+                this.GET_REMOTE_MODULES_LIST({ su: true });
+              },
+            });
+          },
+
           async EXPORT_WORKSPACE() {
             this.exportingWorkspaceOperationId = null;
             this.exportingWorkspaceOperationError = undefined;
@@ -458,8 +458,15 @@ export const useModuleStore = () => {
             this.exportingWorkspaceOperationId = null;
             this.exportingWorkspaceOperationError = undefined;
           },
+
+          registerRequestsBegin(requestUlid: string, actionName: string) {
+            realtimeStore.inflightRequests.set(requestUlid, actionName);
+          },
+          registerRequestsEnd(requestUlid: string) {
+            realtimeStore.inflightRequests.delete(requestUlid);
+          },
         },
-        onActivated() {
+        async onActivated() {
           // This store is activated very early, and we might not have a change
           // set yet. This guards against an errant 500 in that case.
           const visibilityParams = getVisibilityParams();
@@ -467,11 +474,10 @@ export const useModuleStore = () => {
             visibilityParams.workspaceId &&
             visibilityParams.visibility_change_set_pk
           ) {
-            this.LOAD_LOCAL_MODULES();
+            await this.LOAD_LOCAL_MODULES();
           }
-          this.LIST_BUILTINS();
+          await this.LIST_BUILTINS();
 
-          const realtimeStore = useRealtimeStore();
           realtimeStore.subscribe(this.$id, `workspace/${workspaceId}`, [
             {
               eventType: "AsyncFinish",

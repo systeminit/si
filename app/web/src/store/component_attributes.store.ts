@@ -81,6 +81,7 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
   };
   const workspacesStore = useWorkspacesStore();
   const workspaceId = workspacesStore.selectedWorkspacePk;
+  const realtimeStore = useRealtimeStore();
 
   return addStoreHooks(
     workspaceId,
@@ -415,11 +416,17 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
               },
             });
           },
+          registerRequestsBegin(requestUlid: string, actionName: string) {
+            realtimeStore.inflightRequests.set(requestUlid, actionName);
+          },
+          registerRequestsEnd(requestUlid: string) {
+            realtimeStore.inflightRequests.delete(requestUlid);
+          },
         },
         onActivated() {
+          // PSA: special case, this data loading can stay here
           this.reloadPropertyEditorData();
 
-          const realtimeStore = useRealtimeStore();
           realtimeStore.subscribe(this.$id, `changeset/${changeSetId}`, [
             {
               eventType: "ComponentUpdated",

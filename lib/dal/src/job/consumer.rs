@@ -27,6 +27,7 @@ use crate::{
 
 #[remain::sorted]
 #[derive(Error, Debug)]
+#[allow(clippy::large_enum_variant)]
 pub enum JobConsumerError {
     #[error("action error: {0}")]
     Action(#[from] ActionError),

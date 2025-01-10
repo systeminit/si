@@ -53,6 +53,8 @@ const LOCAL_STORAGE_LAST_WORKSPACE_PK = "si-last-workspace-pk";
 // should use a visibility. If one seems like it should, then it belongs
 // in a different store.
 export const useWorkspacesStore = () => {
+  const realtimeStore = useRealtimeStore();
+
   return addStoreHooks(
     undefined,
     undefined,
@@ -211,6 +213,13 @@ export const useWorkspacesStore = () => {
             },
           });
         },
+
+        registerRequestsBegin(requestUlid: string, actionName: string) {
+          realtimeStore.inflightRequests.set(requestUlid, actionName);
+        },
+        registerRequestsEnd(requestUlid: string) {
+          realtimeStore.inflightRequests.delete(requestUlid);
+        },
       },
 
       onActivated() {
@@ -224,8 +233,6 @@ export const useWorkspacesStore = () => {
           },
           { immediate: true },
         );
-
-        const realtimeStore = useRealtimeStore();
 
         // Since there is only one workspace store instance,
         // we need to resubscribe when the workspace pk changes
@@ -290,10 +297,9 @@ export const useWorkspacesStore = () => {
                       router.push({
                         name: "workspace-compose",
                         params: {
-                          ...route.params,
+                          workspacePk: route.params.workspacePk,
                           changeSetId: "head",
                         },
-                        query: route.query,
                       });
                     }
                   },

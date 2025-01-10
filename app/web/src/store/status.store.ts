@@ -95,6 +95,7 @@ export const useStatusStore = (forceChangeSetId?: ChangeSetId) => {
     changeSetId = changeSetsStore.selectedChangeSetId;
   }
 
+  const realtimeStore = useRealtimeStore();
   const workspacesStore = useWorkspacesStore();
   const workspaceId = workspacesStore.selectedWorkspacePk;
   const toast = useToast();
@@ -165,11 +166,16 @@ export const useStatusStore = (forceChangeSetId?: ChangeSetId) => {
               },
             });
           },
+
+          registerRequestsBegin(requestUlid: string, actionName: string) {
+            realtimeStore.inflightRequests.set(requestUlid, actionName);
+          },
+          registerRequestsEnd(requestUlid: string) {
+            realtimeStore.inflightRequests.delete(requestUlid);
+          },
         },
         onActivated() {
           if (!changeSetId) return;
-
-          const realtimeStore = useRealtimeStore();
 
           const debouncedFetchDvuRoots = _.debounce(this.FETCH_DVU_ROOTS, 1000);
 

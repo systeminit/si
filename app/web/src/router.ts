@@ -220,21 +220,8 @@ router.beforeEach((to, _from) => {
 // which is useful so we can set the currently selected workspace/change set from it
 router.beforeResolve((to) => {
   const routerStore = useRouterStore();
+  // setting the route we intend to navigate to
   routerStore.currentRoute = to;
-
-  // whenever we navigate across changesets we need to stay
-  // up to date with the status against base
-  /* if ("changeSetId" in to.params) {
-    const changeSetStore = useChangeSetsStore();
-    const changeSetId = to.params.changeSetId;
-    if (
-      changeSetId &&
-      changeSetId !== "head" &&
-      changeSetId !== "auto" &&
-      !Array.isArray(changeSetId)
-    )
-      changeSetStore.FETCH_STATUS_WITH_BASE(changeSetId);
-  } */
 });
 
 router.afterEach((to) => {

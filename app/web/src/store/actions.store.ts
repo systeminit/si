@@ -106,6 +106,7 @@ export const useActionsStore = () => {
 
   const changeSetsStore = useChangeSetsStore();
   const changeSetId = changeSetsStore.selectedChangeSetId;
+  const realtimeStore = useRealtimeStore();
 
   return addStoreHooks(
     workspaceId,
@@ -359,14 +360,15 @@ export const useActionsStore = () => {
               },
             });
           },
+
+          registerRequestsBegin(requestUlid: string, actionName: string) {
+            realtimeStore.inflightRequests.set(requestUlid, actionName);
+          },
+          registerRequestsEnd(requestUlid: string) {
+            realtimeStore.inflightRequests.delete(requestUlid);
+          },
         },
         onActivated() {
-          if (!changeSetId) return;
-
-          this.LOAD_ACTIONS();
-          this.LOAD_ACTION_HISTORY();
-
-          const realtimeStore = useRealtimeStore();
           realtimeStore.subscribe(this.$id, `changeset/${changeSetId}`, [
             {
               eventType: "ActionsListUpdated",

@@ -208,17 +208,8 @@ export type ApiRequestDescription<
   keyRequestStatusBy?: RawRequestStatusKeyArg | RawRequestStatusKeyArg[];
   /** function to call if request is successfull (2xx) - usually contains changes to the store */
   onSuccess?(response: Response): Promise<void> | void;
-  /**
-   * function to call that will run after a new changeset is created as a result of this function
-   * Note that in this scenario both funcs are being called on the "original" store,
-   * not the new store that will be constructed once you are routed to the new change set
-   */
-  onNewChangeSet?(
-    newChangeSetId: string,
-    response: Response,
-  ): Promise<void> | void;
   /** function to call if request fails (>=400) - not common */
-  onFail?(response: any): any | void;
+  onFail?(response: any, requestUlid: RequestUlid): any | void;
   /** additional headers to pass with request */
   headers?: Record<string, any>;
   /** additional axios options */
@@ -346,7 +337,6 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
         options,
         formData,
         onSuccess,
-        onNewChangeSet,
         onFail,
       } = requestSpec;
       let { headers } = requestSpec;
@@ -386,6 +376,7 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
         });
         try {
           if (!headers) headers = {};
+          headers["X-SI-REQUEST-ULID"] = requestUlid;
           opentelemetry.propagation.inject(
             opentelemetry.context.active(),
             headers,
@@ -443,14 +434,6 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
             }
           }
 
-          if (request.headers.force_change_set_id)
-            if (typeof onNewChangeSet === "function")
-              await onNewChangeSet.call(
-                store,
-                request.headers.force_change_set_id,
-                request.data,
-              );
-
           // request was successful if reaching here
           // because axios throws an error if http status >= 400, timeout, etc
 
@@ -494,7 +477,7 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
 
           // call explicit failure handler if one is defined (usually rare)
           if (typeof onFail === "function") {
-            const convertedData = onFail(err);
+            const convertedData = onFail(err, requestUlid);
 
             if (convertedData) {
               err.response = {
@@ -568,9 +551,21 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
       // NOTE - have to be careful here to deal with non-async actions properly
       return async function wrappedActionFn(...args: any[]) {
         const requestUlid = ulid();
+        if ("registerRequestsBegin" in store) {
+          store.registerRequestsBegin(requestUlid, actionName);
+        } else {
+          // eslint-disable-next-line no-console
+          console.error("registerRequestsBegin not found in", store);
+        }
         const actionResult: any = await originalActionFn(...args);
         if (actionResult instanceof ApiRequest) {
           await fireActionResult(actionName, actionResult, requestUlid);
+        }
+        if ("registerRequestsEnd" in store) {
+          store.registerRequestsEnd(requestUlid);
+        } else {
+          // eslint-disable-next-line no-console
+          console.error("registerRequestsEnd not found in", store);
         }
         return actionResult;
       };

@@ -288,6 +288,12 @@ export type WsEventPayloadMap = {
     secretId: SecretId;
     changeSetId: ChangeSetId;
   };
+  TemplateGenerated: {
+    schemaVariantId: SchemaVariantId;
+    schemaId: SchemaId;
+    assetName: string;
+    funcId: FuncId;
+  };
   SchemaVariantDeleted: {
     schemaVariantId: SchemaVariantId;
     schemaId: SchemaId;

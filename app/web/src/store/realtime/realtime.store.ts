@@ -2,9 +2,10 @@ import { defineStore } from "pinia";
 import * as _ from "lodash-es";
 import ReconnectingWebSocket from "reconnecting-websocket";
 import { computed, reactive, ref, watch } from "vue";
+import { ulid } from "ulid";
 import { API_WS_URL } from "@/store/apis";
-import { ActorView } from "@/api/sdf/dal/history_actor";
 import { omit } from "@/utils/omit";
+import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { useAuthStore } from "../auth.store";
 import { WebsocketRequest, WsEventPayloadMap } from "./realtime_events";
 
@@ -34,16 +35,35 @@ type TrackedSubscription = EventTypeAndCallback & {
   subscriberId: SubscriberId;
 };
 
+type Actor = "System" | { User: string };
+
 // shape of the extra data that comes through the websocket along with the payload
 type RealtimeEventMetadata = {
   version: number;
   workspace_pk: string;
-  actor: ActorView;
+  actor: Actor;
   change_set_id: string;
+  requestUlid: string; // the HTTP endpoint requestUlid that resulted in this event being fired
+};
+
+type EventKind = keyof WsEventPayloadMap;
+type BufferedEvent = {
+  ulid: string;
+  eventKind: EventKind;
+  payload: WsEventPayloadMap[EventKind];
+  metadata: RealtimeEventMetadata;
+  ttl: number;
 };
 
 export const useRealtimeStore = defineStore("realtime", () => {
   const authStore = useAuthStore();
+
+  const bufferWatchList = reactive<ChangeSetId[]>([]);
+  const wsEventBuffer = ref<Record<string, BufferedEvent>>({});
+  const eventsRun = reactive<Map<string, string[]>>(new Map());
+
+  // PSA: using map with reactive, because a record/{} that is reactive doesn't behave well with index-based operations
+  const inflightRequests = reactive<Map<string, string>>(new Map()); // <requestUlid, API_NAME>
 
   // TODO: need to think about how websockets multiple workspaces
 
@@ -215,13 +235,58 @@ export const useRealtimeStore = defineStore("realtime", () => {
   function subscribe(
     subscriberId: SubscriberId,
     topic: SubscriptionTopic,
-    subscriptions: EventTypeAndCallback | EventTypeAndCallback[],
+    _subscriptions: EventTypeAndCallback | EventTypeAndCallback[],
   ) {
     _.forEach(
-      _.isArray(subscriptions) ? subscriptions : [subscriptions],
+      _.isArray(_subscriptions) ? _subscriptions : [_subscriptions],
       (sub) => setupSingleSubscription(subscriberId, topic, sub),
     );
+
+    // keys are IDs which are sortable, oldest first
+    for (const evtId of Object.keys(wsEventBuffer.value).sort()) {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      const bufferedEvent = wsEventBuffer.value[evtId]!;
+      if (bufferedEvent.ttl <= Date.now()) {
+        // even though its not run, we're using this to clear out the data
+        const topicsRun = eventsRun.get(bufferedEvent.ulid) || [];
+        eventsRun.set(bufferedEvent.ulid, topicsRun);
+        continue;
+      }
+
+      const topics = [
+        `workspace/${bufferedEvent.metadata.workspace_pk}`,
+        `changeset/${bufferedEvent.metadata.change_set_id}`,
+      ];
+
+      // support sending the same event to multiple subscribers
+      Object.values(subscriptions).forEach((sub) => {
+        const topicsRun = eventsRun.get(bufferedEvent.ulid) || [];
+        if (
+          sub.eventType === bufferedEvent.eventKind &&
+          topics.includes(sub.topic) &&
+          !topicsRun.includes(sub.topic) // don't run events twice for a given topic & subscribe call
+        ) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          sub.callback(bufferedEvent.payload as any, bufferedEvent.metadata);
+          topicsRun.push(sub.topic);
+          eventsRun.set(bufferedEvent.ulid, topicsRun);
+        }
+      });
+    }
   }
+
+  function clearEventsRun() {
+    let id;
+    const keys = [...eventsRun.keys()];
+    do {
+      id = keys.shift();
+      if (id) delete wsEventBuffer.value[id];
+    } while (id);
+    eventsRun.clear();
+  }
+
+  // clear out buffer data every 5 minutes
+  setInterval(clearEventsRun, 1000 * 60 * 5);
 
   function destroySingleSubscription(id: SubscriptionId) {
     const sub = subscriptions[id];
@@ -265,6 +330,15 @@ export const useRealtimeStore = defineStore("realtime", () => {
     if (eventMetadata.change_set_id) {
       topics.push(`changeset/${eventMetadata.change_set_id}`);
     }
+    // guaranteed to happen before data mutations in this changeset
+    if (eventKind === "ChangeSetCreated") {
+      if (
+        eventMetadata.actor !== "System" &&
+        eventMetadata.actor.User === authStore.userPk
+      ) {
+        bufferWatchList.push(eventData);
+      }
+    }
     if (eventKind === "ChangeSetApplied") {
       // applying a change set, we also want to notify people sitting on change sets
       // toRebaseChangeSetId is HEAD / where merges are going into
@@ -275,11 +349,30 @@ export const useRealtimeStore = defineStore("realtime", () => {
       }
     }
 
+    let dispatched = false;
     _.each(subscriptions, (sub) => {
       if (sub?.eventType === eventKind && topics.includes(sub.topic)) {
         sub.callback(eventData, eventMetadata);
+        dispatched = true;
       }
     });
+    if (!dispatched && eventKind !== "Cursor" && eventKind !== "Online") {
+      if (
+        // should we buffer an incoming event because we just created a changeset and the stores aren't set up yet?
+        bufferWatchList.some(
+          (changeSetId) => eventMetadata.change_set_id === changeSetId,
+        )
+      ) {
+        const id = ulid();
+        wsEventBuffer.value[id] = {
+          ulid: id,
+          eventKind: eventKind as keyof WsEventPayloadMap,
+          payload: eventData,
+          metadata: eventMetadata,
+          ttl: Date.now() + 1 * 60 * 1000, // one minute from now
+        };
+      }
+    }
   }
 
   const sendMessage = (req: WebsocketRequest) => {
@@ -309,5 +402,6 @@ export const useRealtimeStore = defineStore("realtime", () => {
     // subscriptions, // can expose here to show in devtools
     subscribe,
     unsubscribe,
+    inflightRequests,
   };
 });
