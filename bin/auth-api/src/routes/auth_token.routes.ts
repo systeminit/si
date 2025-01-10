@@ -20,6 +20,7 @@ import { authorizeWorkspaceRoute } from "./workspace.routes";
 import { ApiError } from "../lib/api-error";
 import { router } from ".";
 
+// get all authTokens for the given workspace
 router.get("/workspaces/:workspaceId/authTokens", async (ctx) => {
   const { workspaceId } = await authorizeWorkspaceRoute(ctx, undefined);
 
@@ -28,19 +29,29 @@ router.get("/workspaces/:workspaceId/authTokens", async (ctx) => {
   ctx.body = { authTokens };
 });
 
+// create a new authToken for the given workspace
 router.post("/workspaces/:workspaceId/authTokens", async (ctx) => {
   const {
     userId,
     workspaceId,
   } = await authorizeWorkspaceRoute(ctx, RoleType.OWNER);
 
+  // TODO - this should also get an expiration instead of just defaulting to 1d!
   // Get params from body
-  const { name } = validate(
+  const { name, expiration } = validate(
     ctx.request.body,
     z.object({
       name: z.optional(z.string()),
+      expiration: z.optional(z.string()),
     }),
   );
+
+  let expiresIn;
+  if (expiration && expiration.trim().toLocaleLowerCase() !== 'never' && expiration.trim().toLocaleLowerCase() !== "0") {
+    expiresIn = expiration;
+  } else {
+    expiresIn = "30d";
+  }
 
   // Create the token
   const token = createSdfAuthToken({
@@ -48,7 +59,7 @@ router.post("/workspaces/:workspaceId/authTokens", async (ctx) => {
     workspaceId,
     role: "automation",
   }, {
-    expiresIn: "1d",
+    expiresIn,
     jwtid: ulid(),
   });
 
@@ -58,11 +69,13 @@ router.post("/workspaces/:workspaceId/authTokens", async (ctx) => {
   ctx.body = { authToken, token };
 });
 
+// get the given authToken for the given workspace
 router.get("/workspaces/:workspaceId/authTokens/:authTokenId", async (ctx) => {
   const { authToken } = await authorizeAuthTokenRoute(ctx, undefined);
   ctx.body = { authToken };
 });
 
+// rename the given authToken for the given workspace
 router.put("/workspaces/:workspaceId/authTokens/:authTokenId", async (ctx) => {
   const { authToken } = await authorizeAuthTokenRoute(ctx, RoleType.OWNER);
 
@@ -79,6 +92,8 @@ router.put("/workspaces/:workspaceId/authTokens/:authTokenId", async (ctx) => {
   ctx.body = { authToken };
 });
 
+// delete the given authToken for the given workspace
+// TODO - This does not currently fully revoke the token, just removes it from prisma!
 router.delete("/workspaces/:workspaceId/authTokens/:authTokenId", async (ctx) => {
   const { authTokenId } = await authorizeAuthTokenRoute(ctx, RoleType.OWNER);
 

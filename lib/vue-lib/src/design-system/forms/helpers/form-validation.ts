@@ -28,6 +28,7 @@ import {
   reactive,
 } from "vue";
 import * as _ from "lodash-es";
+import { toMs } from "ms-typescript";
 
 type ValidatedInputGroupRegistrar = {
   register(component: ComponentInternalInstance, isGroup: boolean): void;
@@ -252,6 +253,12 @@ export const validators = {
     req(typeof value === "string" ? value.trim() : value),
   url: (value: any) => !req(value) || URL_REGEX.test(value),
   email: (value: any) => !req(value) || EMAIL_REGEX.test(value),
+  timeString: (value: any) =>
+    value &&
+    value.length > 0 &&
+    Number.isNaN(Number(value)) &&
+    !Number.isNaN(toMs(value)) &&
+    toMs(value) !== 0,
   equals: (mustEqual: any) => (value: any) => value === mustEqual,
   regex: (regexRaw: RegExp | string) => {
     const regex = _.isString(regexRaw) ? new RegExp(regexRaw) : regexRaw;
