@@ -2,6 +2,7 @@ import { defineStore } from "pinia";
 import * as _ from "lodash-es";
 import { addStoreHooks } from "@si/vue-lib/pinia";
 import { posthog } from "@/utils/posthog";
+import { useWorkspacesStore } from "./workspaces.store";
 
 // translation from store key to posthog feature flag name
 const FLAG_MAPPING = {
@@ -15,29 +16,65 @@ const FLAG_MAPPING = {
   TEMPLATE_MGMT_FUNC_GENERATION: "template-mgmt-func-generation",
 };
 
-type FeatureFlags = keyof typeof FLAG_MAPPING;
+const WORKSPACE_FLAG_MAPPING = {
+  WORKSPACE_FGAC: "workspace-fine-grained-access-control",
+};
+
+type KeysOfUnion<T> = T extends T ? keyof T : never;
+type FeatureFlags = KeysOfUnion<
+  typeof FLAG_MAPPING | typeof WORKSPACE_FLAG_MAPPING
+>;
 const PH_TO_STORE_FLAG_LOOKUP = _.invert(FLAG_MAPPING) as Record<
   string,
   FeatureFlags
 >;
 
 export function useFeatureFlagsStore() {
+  const workspacesStore = useWorkspacesStore();
+  const workspacePk = workspacesStore.selectedWorkspacePk;
+
   return addStoreHooks(
     undefined,
     undefined,
     defineStore("feature-flags", {
       // all flags default to false
-      state: () => _.mapValues(FLAG_MAPPING, () => false),
-      onActivated() {
+      state: () =>
+        _.mapValues(
+          { ...FLAG_MAPPING, ...WORKSPACE_FLAG_MAPPING },
+          () => false,
+        ),
+      async onActivated() {
         posthog.onFeatureFlags((phFlags) => {
           // reset local flags from posthog data
           _.each(phFlags, (phFlag) => {
             const storeFlagKey = PH_TO_STORE_FLAG_LOOKUP[phFlag];
             if (storeFlagKey) {
-              this[storeFlagKey as FeatureFlags] = true;
+              this[storeFlagKey] = true;
             }
           });
         });
+
+        // NOTE: this will return all the OTHER flags too... so only look for workspace specific ones
+        const resp = await fetch(
+          `${import.meta.env.VITE_POSTHOG_API_HOST}/decide/?v=3`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              api_key: import.meta.env.VITE_POSTHOG_PUBLIC_KEY,
+              distinct_id: workspacePk,
+            }),
+          },
+        );
+        const result = await resp.json();
+        Object.entries(WORKSPACE_FLAG_MAPPING).forEach(
+          ([storeFlagKey, phFlag]) => {
+            this[storeFlagKey] = result.featureFlags[phFlag] ?? false;
+          },
+        );
+
         // You can override feature flags while working on a feature by setting them to true/false here
         // for example:
         // this.MANAGEMENT_EDGES = false;
