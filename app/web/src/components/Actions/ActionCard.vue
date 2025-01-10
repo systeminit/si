@@ -179,6 +179,14 @@
       </ol>
       <p v-else class="ml-xs">None</p>
     </DropdownMenu>
+    <DetailsPanelMenuIcon
+      v-if="!props.noInteraction"
+      @click="
+        (e) => {
+          contextMenuRef?.open(e, false);
+        }
+      "
+    />
     <FuncRunTabDropdown
       v-if="!props.noInteraction && actionHistory"
       :funcRunId="actionHistory.funcRunId"
@@ -214,6 +222,7 @@ import {
   DiagramGroupData,
   DiagramNodeData,
 } from "../ModelingDiagram/diagram_types";
+import DetailsPanelMenuIcon from "../DetailsPanelMenuIcon.vue";
 
 const componentsStore = useComponentsStore();
 const actionStore = useActionsStore();
