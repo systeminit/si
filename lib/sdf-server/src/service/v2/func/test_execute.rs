@@ -3,7 +3,8 @@ use axum::{
     Json,
 };
 use dal::{
-    func::authoring::FuncAuthoringClient, ChangeSetId, ComponentId, Func, FuncId, WorkspacePk,
+    func::authoring::FuncAuthoringClient, ChangeSet, ChangeSetId, ComponentId, Func, FuncId,
+    WorkspacePk,
 };
 use serde::{Deserialize, Serialize};
 use si_events::{audit_log::AuditLogKind, FuncRunId};
@@ -11,6 +12,7 @@ use si_events::{audit_log::AuditLogKind, FuncRunId};
 use super::FuncAPIResult;
 use crate::{
     extract::{AccessBuilder, HandlerContext, PosthogClient},
+    service::force_change_set_response::ForceChangeSetResponse,
     track,
 };
 
@@ -36,10 +38,11 @@ pub async fn test_execute(
     Host(host_name): Host,
     Path((_workspace_pk, change_set_id, func_id)): Path<(WorkspacePk, ChangeSetId, FuncId)>,
     Json(request): Json<TestExecuteFuncRequest>,
-) -> FuncAPIResult<Json<TestExecuteFuncResponse>> {
-    let ctx = builder
+) -> FuncAPIResult<ForceChangeSetResponse<TestExecuteFuncResponse>> {
+    let mut ctx = builder
         .build(access_builder.build(change_set_id.into()))
         .await?;
+    let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
 
     let func = Func::get_by_id_or_error(&ctx, func_id).await?;
     let func_run_id = FuncAuthoringClient::test_execute_func(
@@ -75,5 +78,8 @@ pub async fn test_execute(
     .await?;
     ctx.commit().await?;
 
-    Ok(Json(TestExecuteFuncResponse { func_run_id }))
+    Ok(ForceChangeSetResponse::new(
+        force_change_set_id,
+        TestExecuteFuncResponse { func_run_id },
+    ))
 }
