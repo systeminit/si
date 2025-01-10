@@ -139,6 +139,7 @@ def build_apk(
     asset_directories = (
         native_library_info.root_module_native_lib_assets +
         native_library_info.non_root_module_native_lib_assets +
+        dex_files_info.root_module_bootstrap_dex_dirs +
         dex_files_info.root_module_secondary_dex_dirs +
         dex_files_info.non_root_module_secondary_dex_dirs +
         resources_info.module_manifests
@@ -229,7 +230,6 @@ def get_install_config(apex_mode: bool) -> dict[str, typing.Any]:
     install_config = {
         "adb_restart_on_failure": read_root_config("adb", "adb_restart_on_failure", "true"),
         "agent_port_base": read_root_config("adb", "agent_port_base", "2828"),
-        "always_use_java_agent": read_root_config("adb", "always_use_java_agent", "false"),
         "apex_mode": apex_mode,
         "is_zstd_compression_enabled": read_root_config("adb", "is_zstd_compression_enabled", "false"),
         "max_retries": read_root_config("adb", "retries", "5"),

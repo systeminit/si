@@ -18,6 +18,15 @@ load(
     "cxx_is_gnu",
 )
 load(
+    "@prelude//linking:link_info.bzl",
+    "DepMetadata",
+    "LinkArgs",
+    "LinkInfosTSet",
+    "dedupe_dep_metadata",
+    "get_link_info",
+    "truncate_dep_metadata",
+)
+load(
     "@prelude//linking:shared_libraries.bzl",
     "SharedLibrary",  # @unused Used as a type
     "gen_shared_libs_action",
@@ -52,6 +61,12 @@ PexProviders = record(
     hidden_resources = list[ArgLike],
     sub_targets = dict[str, list[Provider]],
     run_cmd = cmd_args,
+    dbg_source_db = field(Artifact | None, None),
+)
+
+ManifestModule = record(
+    manifest = ArgLike,
+    artifacts = list[ArgLike],
 )
 
 def make_py_package_providers(
@@ -129,8 +144,8 @@ def make_py_package(
         pex_modules: PexModules,
         shared_libraries: list[(str, SharedLibrary, bool)],
         main: EntryPoint,
-        hidden_resources: list[ArgLike] | None,
         allow_cache_upload: bool,
+        link_args: list[LinkArgs] = [],
         debuginfo_files: list[(str | (str, SharedLibrary, str), Artifact)] = []) -> PexProviders:
     """
     Passes a standardized set of flags to a `make_py_package` binary to create a python
@@ -146,7 +161,6 @@ def make_py_package(
           artifact and whether they should be preloaded.
         - main: the name of the entry point to execute when running the
           resulting binary.
-        - hidden_resources: extra resources the binary depends on.
     """
     srcs = []
     srcs.extend(pex_modules.manifests.src_manifests())
@@ -162,8 +176,12 @@ def make_py_package(
             if preload
         ],
     )
-    startup_function = generate_startup_function_loader(ctx)
-    manifest_module = generate_manifest_module(ctx, python_toolchain, srcs)
+
+    # Add link metadata to manifest_module_entries if requested.
+    manifest_module_entries = _maybe_add_dep_metadata_to_manifest_module(ctx, map(lambda s: s[1], shared_libraries), link_args)
+
+    startup_function = generate_startup_function_loader(ctx, manifest_module_entries)
+    manifest_module = generate_manifest_module(ctx, manifest_module_entries, python_toolchain, srcs)
     common_modules_args, dep_artifacts, debug_artifacts = _pex_modules_common_args(
         ctx,
         pex_modules,
@@ -184,7 +202,6 @@ def make_py_package(
         dep_artifacts,
         debug_artifacts,
         main,
-        hidden_resources,
         manifest_module,
         pex_modules,
         output_suffix = "",
@@ -228,7 +245,6 @@ def make_py_package(
                 repl_dep_artifacts,
                 repl_debug_artifacts,
                 (EntryPointKind("function"), ctx.attrs.repl_main),
-                hidden_resources,
                 manifest_module,
                 pex_modules,
                 output_suffix = "-repl",
@@ -249,7 +265,6 @@ def make_py_package(
             dep_artifacts,
             debug_artifacts,
             main,
-            hidden_resources,
             manifest_module,
             pex_modules,
             output_suffix = "-{}".format(style),
@@ -274,8 +289,7 @@ def _make_py_package_impl(
         dep_artifacts: list[ArgLike],
         debug_artifacts: list[(str | (str, SharedLibrary, str), ArgLike)],
         main: EntryPoint,
-        hidden_resources: list[ArgLike] | None,
-        manifest_module: ArgLike | None,
+        manifest_module: ManifestModule | None,
         pex_modules: PexModules,
         output_suffix: str,
         allow_cache_upload: bool) -> PexProviders:
@@ -284,11 +298,15 @@ def _make_py_package_impl(
 
     runtime_files = []
     sub_targets = {}
-    if standalone and hidden_resources != None:
-        # constructing this error message is expensive, only do it when we abort analysis
-        error_msg = "standalone builds don't support hidden resources" if output_suffix else _hidden_resources_error_message(ctx.label, hidden_resources)
+    hidden_resources = []
+    if pex_modules.manifests.has_hidden_resources(standalone):
+        if standalone:
+            # constructing this error message is expensive, only do it when we abort analysis
+            error_msg = "standalone builds don't support hidden resources" if output_suffix else _hidden_resources_error_message(ctx.label, pex_modules.manifests.hidden_resources(standalone))
 
-        return _fail(ctx, python_toolchain, output_suffix, error_msg)
+            return _fail(ctx, python_toolchain, output_suffix, error_msg)
+        else:
+            hidden_resources = pex_modules.manifests.hidden_resources(standalone)
 
     if not (standalone or
             package_style == PackageStyle("inplace") or
@@ -308,11 +326,24 @@ def _make_py_package_impl(
     else:
         symlink_tree_path = ctx.actions.declare_output("{}#link-tree".format(name), dir = True)
 
+    pyc_mode = PycInvalidationMode("unchecked_hash") if symlink_tree_path == None else PycInvalidationMode("checked_hash")
+
+    # Accumulate all of the artifacts required by the build
+    runtime_artifacts = []
+    runtime_artifacts.extend(dep_artifacts)
+    runtime_artifacts.extend([a[0] for a in pex_modules.manifests.resource_artifacts_with_paths(standalone)])
+    if pex_modules.compile:
+        runtime_artifacts.extend([a[0] for a in pex_modules.manifests.bytecode_artifacts_with_paths(pyc_mode)])
+    if manifest_module:
+        runtime_artifacts.extend(manifest_module.artifacts)
+
     modules_args = _pex_modules_args(
         ctx,
         common_modules_args,
-        dep_artifacts,
+        runtime_artifacts,
         debug_artifacts,
+        standalone,
+        pyc_mode,
         symlink_tree_path,
         manifest_module,
         pex_modules,
@@ -336,9 +367,7 @@ def _make_py_package_impl(
         bootstrap_args.add(ctx.attrs.standalone_build_args)
     else:
         bootstrap_args.add(ctx.attrs.inplace_build_args)
-
-        # For inplace builds add local artifacts to outputs so they get properly materialized
-        runtime_files.extend(dep_artifacts)
+        runtime_files.extend(runtime_artifacts)
         runtime_files.append(symlink_tree_path)
 
     # For standalone builds, or builds setting make_py_package we generate args for calling make_par.py
@@ -384,9 +413,6 @@ def _make_py_package_impl(
     if ctx.attrs._exec_os_type[OsLookup].platform == "windows":
         run_args.append(ctx.attrs._python_toolchain[PythonToolchainInfo].interpreter)
     run_args.append(output)
-
-    if hidden_resources == None:
-        hidden_resources = []
 
     if symlink_tree_path != None:
         sub_targets["link-tree"] = [DefaultInfo(
@@ -516,18 +542,11 @@ def _pex_modules_common_args(
         srcs.extend(extra_manifests)
 
     deps.extend([a[0] for a in src_artifacts])
-    resources = pex_modules.manifests.resource_manifests()
-    deps.extend([a[0] for a in pex_modules.manifests.resource_artifacts_with_paths()])
 
     src_manifests_path = ctx.actions.write(
         "__src_manifests{}.txt".format(suffix),
         _srcs(srcs, format = "--module-manifest={}"),
     )
-    resource_manifests_path = ctx.actions.write(
-        "__resource_manifests{}.txt".format(suffix),
-        _srcs(resources, format = "--resource-manifest={}"),
-    )
-
     native_libraries = gen_shared_libs_action(
         actions = ctx.actions,
         out = "__native_libraries{}__.txt".format(suffix),
@@ -548,11 +567,9 @@ def _pex_modules_common_args(
     )
 
     src_manifest_args = cmd_args(src_manifests_path, hidden = srcs)
-    resource_manifest_args = cmd_args(resource_manifests_path, hidden = resources)
 
     cmd = cmd_args()
     cmd.add(cmd_args(src_manifest_args, format = "@{}"))
-    cmd.add(cmd_args(resource_manifest_args, format = "@{}"))
     cmd.add(cmd_args(native_libraries, format = "@{}"))
 
     if debuginfo_files:
@@ -626,14 +643,15 @@ def _pex_modules_args(
         common_args: cmd_args,
         dep_artifacts: list[ArgLike],
         debug_artifacts: list[(str | (str, SharedLibrary, str), ArgLike)],
+        is_standalone: bool,
+        pyc_mode: PycInvalidationMode,
         symlink_tree_path: Artifact | None,
-        manifest_module: ArgLike | None,
+        manifest_module: ManifestModule | None,
         pex_modules: PexModules,
         output_suffix: str) -> cmd_args:
     """
     Produces args to deal with a PEX's modules. Returns args to pass to the
-    modules builder, and artifacts the resulting modules would require at
-    runtime (this might be empty for e.g. a standalone pex).
+    modules builder.
     """
 
     cmd = []
@@ -642,12 +660,10 @@ def _pex_modules_args(
     cmd.append(common_args)
 
     if manifest_module != None:
-        cmd.append(cmd_args(manifest_module, format = "--module-manifest={}"))
+        cmd.append(cmd_args(manifest_module.manifest, format = "--module-manifest={}"))
 
     if pex_modules.compile:
-        pyc_mode = PycInvalidationMode("UNCHECKED_HASH") if symlink_tree_path == None else PycInvalidationMode("CHECKED_HASH")
         bytecode_manifests = pex_modules.manifests.bytecode_manifests(pyc_mode)
-        dep_artifacts.extend([a[0] for a in pex_modules.manifests.bytecode_artifacts_with_paths(pyc_mode)])
 
         bytecode_manifests_path = ctx.actions.write(
             "__bytecode_manifests{}.txt".format(output_suffix),
@@ -667,6 +683,15 @@ def _pex_modules_args(
         hidden.append(dep_artifacts)
 
     hidden.extend([s for _, s in debug_artifacts])
+
+    resources = pex_modules.manifests.resource_manifests(is_standalone)
+    if resources:
+        resource_manifests_path = ctx.actions.write(
+            "__resource_manifests{}.txt".format(output_suffix),
+            _srcs(resources, format = "--resource-manifest={}"),
+        )
+        resource_manifest_args = cmd_args(resource_manifests_path, hidden = resources)
+        cmd.append(cmd_args(resource_manifest_args, format = "@{}"))
 
     return cmd_args(cmd, hidden = hidden)
 
@@ -704,7 +729,69 @@ def _hidden_resources_error_message(current_target: Label, hidden_resources: lis
             msg += "  {}\n".format(resource)
     return msg
 
-def generate_startup_function_loader(ctx: AnalysisContext) -> ArgLike:
+def _get_shared_library_dep_metadata(
+        ctx: AnalysisContext,
+        shared_libraries: list[SharedLibrary],
+        link_args: list[LinkArgs]) -> list[DepMetadata]:
+    """
+    Dedupes the linker metadata for each shared library into a single string.
+
+    Note: this can be expensive because we're traversing a tset rather than
+    projecting the value. This is unfortunate but we need to be able to truncate
+    how much metadata we put into the manifest module.
+    """
+    link_infos_tsets = []
+    link_infos = []
+
+    def add_inner_infos(args: LinkArgs) -> None:
+        if args.tset != None:
+            tset = args.tset
+            link_infos_tsets.append(tset.infos)
+        elif args.infos != None:
+            link_infos.extend(args.infos)
+
+    for args in link_args:
+        add_inner_infos(args)
+
+    for lib in shared_libraries:
+        # Note: refer to SharedLibrary.LinkedObject.link_args here. SharedLibrary.link_args isn't
+        # always populated.
+        for args in lib.lib.link_args or []:
+            if args:
+                add_inner_infos(args)
+
+    tset = ctx.actions.tset(LinkInfosTSet, children = link_infos_tsets)
+    metadatas = []
+    for info in tset.traverse():
+        metadatas.extend(get_link_info(info).metadata)
+    for info in link_infos:
+        metadatas.extend(info.metadata)
+
+    return dedupe_dep_metadata(metadatas)
+
+def _maybe_add_dep_metadata_to_manifest_module(
+        ctx: AnalysisContext,
+        shared_libraries: list[SharedLibrary],
+        link_args: list[LinkArgs]) -> dict[str, typing.Any] | None:
+    """
+    Possibly updates manifest_module_entries with link metadata if requested.
+    """
+    manifest_module_entries = ctx.attrs.manifest_module_entries
+    if manifest_module_entries == None:
+        return None
+
+    metadatas = _get_shared_library_dep_metadata(ctx, shared_libraries, link_args)
+    if metadatas:
+        manifest_module_entries["library_versions"] = [
+            metadata.version
+            for metadata in truncate_dep_metadata(metadatas)
+        ]
+
+    return manifest_module_entries
+
+def generate_startup_function_loader(
+        ctx: AnalysisContext,
+        manifest_module_entries: dict[str, typing.Any] | None) -> ArgLike:
     """
     Generate `__startup_function_loader__.py` used for early bootstrap of a par.
     Things that go here are also enumerated in `__manifest__['startup_functions']`
@@ -714,13 +801,13 @@ def generate_startup_function_loader(ctx: AnalysisContext) -> ArgLike:
      * cinderx init
     """
 
-    if ctx.attrs.manifest_module_entries == None:
+    if manifest_module_entries == None:
         startup_functions_list = ""
     else:
         startup_functions_list = "\n".join(
             [
                 "'''" + startup_function + "''',"
-                for _, startup_function in sorted(ctx.attrs.manifest_module_entries.get("startup_functions", {}).items())
+                for _, startup_function in sorted(manifest_module_entries.get("startup_functions", {}).items())
             ],
         )
 
@@ -771,8 +858,9 @@ def load_startup_functions():
 
 def generate_manifest_module(
         ctx: AnalysisContext,
+        manifest_module_entries: dict[str, typing.Any] | None,
         python_toolchain: PythonToolchainInfo,
-        src_manifests: list[ArgLike]) -> ArgLike | None:
+        src_manifests: list[ArgLike]) -> ManifestModule | None:
     """
     Generates a __manifest__.py module, and an extra entry to add to source manifests.
 
@@ -780,10 +868,10 @@ def generate_manifest_module(
     attribute is None, this function does nothing.
     """
 
-    if ctx.attrs.manifest_module_entries == None:
+    if manifest_module_entries == None:
         return None
     module = ctx.actions.declare_output("manifest/__manifest__.py")
-    entries_json = ctx.actions.write_json("manifest/entries.json", ctx.attrs.manifest_module_entries)
+    entries_json = ctx.actions.write_json("manifest/entries.json", manifest_module_entries)
     src_manifests_path = ctx.actions.write(
         "__module_manifests.txt",
         _srcs(src_manifests, format = "--module-manifest={}"),
@@ -809,4 +897,4 @@ def generate_manifest_module(
         with_inputs = True,
     )
 
-    return src_manifest
+    return ManifestModule(manifest = src_manifest, artifacts = [json_entries_output, module])

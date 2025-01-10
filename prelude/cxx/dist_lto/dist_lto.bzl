@@ -367,7 +367,7 @@ def cxx_gnu_dist_link(
             index_file_out = ctx.actions.declare_output(make_id(index_cat) + "/index")
             index_out_dir = cmd_args(index_file_out.as_output(), parent = 1)
 
-            index_cmd_parts = cxx_link_cmd_parts(cxx_toolchain)
+            index_cmd_parts = cxx_link_cmd_parts(cxx_toolchain, executable_link)
 
             index_cmd = index_cmd_parts.link_cmd
             index_cmd.add(cmd_args(index_argfile, format = "@{}"))
@@ -411,7 +411,7 @@ def cxx_gnu_dist_link(
     dynamic_plan(link_plan = link_plan_out, index_argsfile_out = index_argsfile_out, final_link_index = final_link_index)
 
     def prepare_opt_flags(link_infos: list[LinkInfo]) -> cmd_args:
-        opt_cmd_parts = cxx_link_cmd_parts(cxx_toolchain)
+        opt_cmd_parts = cxx_link_cmd_parts(cxx_toolchain, executable_link)
         opt_args = opt_cmd_parts.link_cmd
 
         # buildifier: disable=uninitialized
@@ -463,6 +463,8 @@ def cxx_gnu_dist_link(
                 opt_cmd.add("--split-dwarf=none")
             elif cxx_toolchain.split_debug_mode == SplitDebugMode("single"):
                 opt_cmd.add("--split-dwarf=single")
+            elif cxx_toolchain.split_debug_mode == SplitDebugMode("split"):
+                opt_cmd.add("--split-dwarf=split")
 
             opt_cmd.add(cmd_args(hidden = opt_common_flags))
             opt_cmd.add("--args", opt_argsfile)
@@ -517,6 +519,8 @@ def cxx_gnu_dist_link(
                     opt_cmd.add("--split-dwarf=none")
                 elif cxx_toolchain.split_debug_mode == SplitDebugMode("single"):
                     opt_cmd.add("--split-dwarf=single")
+                elif cxx_toolchain.split_debug_mode == SplitDebugMode("split"):
+                    opt_cmd.add("--split-dwarf=split")
 
                 opt_cmd.add(cmd_args(hidden = opt_common_flags))
                 opt_cmd.add("--args", opt_argsfile)
@@ -579,7 +583,7 @@ def cxx_gnu_dist_link(
                     current_index += 1
             link_args.add(link.post_flags)
 
-        link_cmd_parts = cxx_link_cmd_parts(cxx_toolchain)
+        link_cmd_parts = cxx_link_cmd_parts(cxx_toolchain, executable_link)
         link_cmd = link_cmd_parts.link_cmd
         link_cmd_hidden = []
 

@@ -10,7 +10,7 @@
 # the generated docs, and so those should be verified to be accurate and
 # well-formatted (and then delete this TODO)
 
-load("@prelude//http_archive/exec_deps.bzl", "HttpArchiveExecDeps")
+load("@prelude//http_archive:exec_deps.bzl", "HttpArchiveExecDeps")
 load(":common.bzl", "OnDuplicateEntry", "buck", "prelude_rule", "validate_uri")
 load(":genrule_common.bzl", "genrule_common")
 load(":remote_common.bzl", "remote_common")
@@ -659,6 +659,10 @@ genrule = prelude_rule(
                 default_outs = [ "output_one", "output_two", ]
                 ```
                 is not.
+            """),
+            "executable_outs": attrs.option(attrs.set(attrs.string(), sorted = False), default = None, doc = """
+                Only valid if the `outs` arg is present. Dictates which of those named outputs are marked as
+                executable. 
             """),
         } |
         genrule_common.env_arg() |
@@ -1480,6 +1484,10 @@ zip_file = prelude_rule(
                 List of regex expressions that describe entries that should not be included in the output zip file.
 
                  The regexes must be defined using `java.util.regex.Pattern` syntax.
+            """),
+            "hardcode_permissions_for_deterministic_output": attrs.option(attrs.bool(), default = None, doc = """
+                If set to true, Buck hardcodes the permissions in order to ensures that all files have the same 
+                permissions regardless of the platform on which the zip was generated. 
             """),
             "on_duplicate_entry": attrs.enum(OnDuplicateEntry, default = "overwrite", doc = """
                 Action performed when Buck detects that zip\\_file input contains multiple entries with the same

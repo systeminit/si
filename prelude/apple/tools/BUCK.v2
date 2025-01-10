@@ -1,4 +1,6 @@
+# @noautodeps
 load("@prelude//utils:source_listing.bzl", "source_listing")
+load(":defs.bzl", "apple_oso_scrubber_target")
 
 oncall("build_infra")
 
@@ -15,8 +17,10 @@ apple_tools(
     ipa_package_maker = ":ipa_package_maker",
     make_modulemap = ":make_modulemap",
     make_vfsoverlay = ":make_vfsoverlay",
-    selective_debugging_scrubber = "prelude//apple/tools/selective_debugging:tool",
+    selective_debugging_scrubber = apple_oso_scrubber_target(),
     split_arch_combine_dsym_bundles_tool = ":split_arch_combine_dsym_bundles_tool",
+    spm_packager = ":spm_packager",
+    static_archive_linker = ":static_archive_linker",
     visibility = ["PUBLIC"],
     xcframework_maker = ":xcframework_maker",
 )
@@ -87,5 +91,17 @@ python_binary(
 python_bootstrap_binary(
     name = "swift_exec",
     main = "swift_exec.py",
+    visibility = ["PUBLIC"],
+)
+
+python_binary(
+    name = "static_archive_linker",
+    main = "static_archive_linker.py",
+    visibility = ["PUBLIC"],
+)
+
+python_binary(
+    name = "spm_packager",
+    main = "spm_packager.py",
     visibility = ["PUBLIC"],
 )

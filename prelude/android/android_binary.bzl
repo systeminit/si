@@ -51,8 +51,6 @@ def get_binary_info(ctx: AnalysisContext, use_proto_format: bool) -> AndroidBina
     sub_targets = {}
     materialized_artifacts = []
 
-    _verify_params(ctx)
-
     deps_by_platform = get_deps_by_platform(ctx)
     primary_platform = CPU_FILTER_FOR_PRIMARY_PLATFORM if CPU_FILTER_FOR_PRIMARY_PLATFORM in deps_by_platform else CPU_FILTER_FOR_DEFAULT_PLATFORM
     deps = deps_by_platform[primary_platform]
@@ -130,6 +128,7 @@ def get_binary_info(ctx: AnalysisContext, use_proto_format: bool) -> AndroidBina
                 pre_dexed_libs,
                 get_split_dex_merge_config(ctx, android_toolchain),
                 target_to_module_mapping_file,
+                enable_bootstrap_dexes = ctx.attrs.enable_bootstrap_dexes,
             )
         else:
             dex_files_info = merge_to_single_dex(ctx, android_toolchain, pre_dexed_libs)
@@ -173,6 +172,7 @@ def get_binary_info(ctx: AnalysisContext, use_proto_format: bool) -> AndroidBina
                 proguard_output.proguard_mapping_output_file if proguard_output else None,
                 is_optimized = has_proguard_config,
                 apk_module_graph_file = target_to_module_mapping_file,
+                enable_bootstrap_dexes = ctx.attrs.enable_bootstrap_dexes,
             )
         else:
             dex_files_info = get_single_primary_dex(
@@ -245,7 +245,3 @@ def get_build_config_java_libraries(
         )[1])
 
     return java_libraries
-
-def _verify_params(ctx: AnalysisContext):
-    expect(ctx.attrs.aapt_mode == "aapt2", "aapt1 is deprecated!")
-    expect(ctx.attrs.dex_tool == "d8", "dx is deprecated!")

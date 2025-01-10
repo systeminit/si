@@ -150,21 +150,23 @@ def prebuilt_apple_framework_impl(ctx: AnalysisContext) -> [list[Provider], Prom
             bundle_type = AppleBundleTypeDefault,
             skip_copying_swift_stdlib = True,
             contains_watchapp = None,
+            extra_codesign_paths = ctx.attrs.extra_codesign_paths,
         ))
 
-        pcm_provider = _create_uncompiled_pcm_module_info(ctx, framework_directory_artifact, framework_name)
-        providers.append(pcm_provider)
+        if ctx.attrs.modular:
+            pcm_provider = _create_uncompiled_pcm_module_info(ctx, framework_directory_artifact, framework_name)
+            providers.append(pcm_provider)
 
-        # Since not all frameworks expose a swiftinterface, we use the `contains_swift` attribute to determine if one is available.
-        if ctx.attrs.contains_swift:
-            swift_dependency_info = _compile_swiftinterface(
-                ctx,
-                framework_name,
-                pcm_provider,
-                deps_providers,
-                framework_directory_artifact,
-            )
-            providers.append(swift_dependency_info)
+            # Since not all frameworks expose a swiftinterface, we use the `contains_swift` attribute to determine if one is available.
+            if ctx.attrs.contains_swift:
+                swift_dependency_info = _compile_swiftinterface(
+                    ctx,
+                    framework_name,
+                    pcm_provider,
+                    deps_providers,
+                    framework_directory_artifact,
+                )
+                providers.append(swift_dependency_info)
 
         implicit_search_path_tset = get_implicit_framework_search_path_providers(
             ctx,
@@ -245,7 +247,7 @@ def _compile_swiftinterface(
 
     debug_info_tset = make_artifact_tset(
         actions = ctx.actions,
-        artifacts = [swift_compiled_module.output_artifact],
+        artifacts = [swift_compiled_module.output_artifact, compiled_underlying_pcm.output_artifact],
         children = get_external_debug_info_tsets(ctx.attrs.deps),
         label = ctx.label,
         tags = [ArtifactInfoTag("swiftmodule")],
@@ -286,5 +288,6 @@ def _sanitize_framework_for_app_distribution(ctx: AnalysisContext, framework_dir
         bundle_type = AppleBundleTypeDefault,
         skip_copying_swift_stdlib = True,
         contains_watchapp = None,
+        extra_codesign_paths = ctx.attrs.extra_codesign_paths,
     ))
     return providers

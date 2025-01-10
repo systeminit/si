@@ -15,6 +15,7 @@ load(
     "LinkerType",
     "PicBehavior",
 )
+load("@prelude//cxx:debug.bzl", "get_debug_info_identity")
 load(
     "@prelude//cxx:linker.bzl",
     "get_link_whole_args",
@@ -23,6 +24,14 @@ load(
 )
 load("@prelude//linking:types.bzl", "Linkage")
 load("@prelude//utils:arglike.bzl", "ArgLike")
+
+ExtraLinkerOutputs = record(
+    # The unbound extra outputs produced by a link action
+    # stored by key for lookup in the flag factory.
+    artifacts = field(dict[str, Artifact], {}),
+    # The output providers for the extra linker output.
+    providers = field(dict[str, list[DefaultInfo]], {}),
+)
 
 # Represents an archive (.a file)
 Archive = record(
@@ -150,6 +159,12 @@ LinkerFlags = record(
     exported_post_flags = field(list[typing.Any], []),
 )
 
+DepMetadata = record(
+    # The version of a particular library linked into a binary. This is reported by
+    # attributes on the library target itself.
+    version = field(str),
+)
+
 # Contains the information required to add an item (often corresponding to a single library) to a link command line.
 LinkInfo = record(
     # An informative name for this LinkInfo. This may be used in user messages
@@ -165,6 +180,9 @@ LinkInfo = record(
     # link info.  For example, this may include `.dwo` files, or the original
     # `.o` files if they contain debug info that doesn't follow the link.
     external_debug_info = field(ArtifactTSet, ArtifactTSet()),
+    # Metadata attached to this LinkInfo. This metadata is propagated up the graph to
+    # root nodes (like binaries).
+    metadata = field(list[DepMetadata], []),
 )
 
 # The ordering to use when traversing linker libs transitive sets.
@@ -188,6 +206,7 @@ def set_link_info_link_whole(info: LinkInfo) -> LinkInfo:
         post_flags = info.post_flags,
         linkables = linkables,
         external_debug_info = info.external_debug_info,
+        metadata = info.metadata,
     )
 
 def set_linkable_link_whole(
@@ -220,6 +239,7 @@ def wrap_link_info(
         post_flags = post_flags,
         linkables = inner.linkables,
         external_debug_info = inner.external_debug_info,
+        metadata = inner.metadata,
     )
 
 # Returns true if the command line argument representation of this linkable,
@@ -286,25 +306,23 @@ LinkInfoArgumentFilter = enum(
 )
 
 def link_info_to_args(value: LinkInfo, argument_type_filter: LinkInfoArgumentFilter = LinkInfoArgumentFilter("all")) -> cmd_args:
-    pre_flags = cmd_args()
-    post_flags = cmd_args()
-    if argument_type_filter == LinkInfoArgumentFilter("all") or argument_type_filter == LinkInfoArgumentFilter("excluding_filelist"):
-        pre_flags.add(value.pre_flags)
-        post_flags.add(value.post_flags)
-
-    flags = cmd_args()
-    for linkable in value.linkables:
-        if argument_type_filter == LinkInfoArgumentFilter("all"):
-            append_linkable_args(flags, linkable)
-        elif argument_type_filter == LinkInfoArgumentFilter("filelist_only") and _is_linkable_included_in_filelist(linkable):
-            append_linkable_args(flags, linkable)
-        elif argument_type_filter == LinkInfoArgumentFilter("excluding_filelist") and not _is_linkable_included_in_filelist(linkable):
-            append_linkable_args(flags, linkable)
-
     result = cmd_args()
-    result.add(pre_flags)
-    result.add(flags)
-    result.add(post_flags)
+
+    do_pre_post_flags = argument_type_filter == LinkInfoArgumentFilter("all") or argument_type_filter == LinkInfoArgumentFilter("excluding_filelist")
+    if do_pre_post_flags:
+        result.add(value.pre_flags)
+
+    for linkable in value.linkables:
+        if (argument_type_filter == LinkInfoArgumentFilter("all")) or (
+            argument_type_filter == LinkInfoArgumentFilter("filelist_only") and _is_linkable_included_in_filelist(linkable)
+        ) or (
+            argument_type_filter == LinkInfoArgumentFilter("excluding_filelist") and not _is_linkable_included_in_filelist(linkable)
+        ):
+            append_linkable_args(result, linkable)
+
+    if do_pre_post_flags:
+        result.add(value.post_flags)
+
     return result
 
 # Encapsulate all `LinkInfo`s provided by a given rule's link style.
@@ -345,6 +363,13 @@ def _link_info_stripped_excluding_filelist_args(infos: LinkInfos):
     info = infos.stripped or infos.default
     return link_info_to_args(info, argument_type_filter = LinkInfoArgumentFilter("excluding_filelist"))
 
+def link_info_to_metadata_args(info: LinkInfo) -> ArgLike:
+    return cmd_args(["version:" + meta.version for meta in info.metadata])
+
+def _link_info_metadata_args(infos: LinkInfos):
+    info = infos.stripped or infos.default
+    return link_info_to_metadata_args(info)
+
 def _link_info_has_default_filelist(children: list[bool], infos: [LinkInfos, None]) -> bool:
     if infos:
         info = infos.default
@@ -365,6 +390,7 @@ LinkInfosTSet = transitive_set(
         "default": _link_info_default_args,
         "default_excluding_filelist": _link_info_default_excluding_filelist_args,
         "default_filelist": _link_info_default_filelist,
+        "metadata": _link_info_metadata_args,
         "stripped": _link_info_stripped_link_args,
         "stripped_excluding_filelist": _link_info_stripped_excluding_filelist_args,
         "stripped_filelist": _link_info_stripped_filelist,
@@ -645,20 +671,59 @@ def get_link_info(
 
     return infos.default
 
-def unpack_link_args(args: LinkArgs, link_ordering: [LinkOrdering, None] = None) -> ArgLike:
+def unpack_link_args_metadata(args: LinkArgs) -> ArgLike:
+    if args.tset != None:
+        return args.tset.infos.project_as_args("metadata")
+    if args.infos != None:
+        return cmd_args([link_info_to_metadata_args(info) for info in args.infos])
+    return cmd_args()
+
+def dedupe_dep_metadata(metadatas: list[DepMetadata]) -> list[DepMetadata]:
+    versions = set([m.version for m in metadatas])
+    return [DepMetadata(version = v) for v in versions]
+
+def truncate_dep_metadata(metadatas: list[DepMetadata]) -> list[DepMetadata]:
+    """
+    It's entirely possible we have way too much link metadata to put into buildinfo;
+    let's truncate based on the first 512 bytes (counting strings).
+    """
+    max_size = 512
+    size = 0
+    for i, metadata in enumerate(metadatas):
+        if size > max_size:
+            return metadatas[:i]
+        size += len(metadata.version)
+
+    return metadatas
+
+def link_args_metadata_with_flag(args: LinkArgs, link_metadata_flag: str | None = None) -> cmd_args:
+    cmd = cmd_args()
+    if link_metadata_flag:
+        cmd.add(cmd_args(unpack_link_args_metadata(args), prepend = link_metadata_flag))
+    return cmd
+
+def unpack_link_args(
+        args: LinkArgs,
+        link_ordering: [LinkOrdering, None] = None,
+        link_metadata_flag: str | None = None) -> ArgLike:
+    cmd = link_args_metadata_with_flag(args, link_metadata_flag)
     if args.tset != None:
         ordering = link_ordering.value if link_ordering else "preorder"
 
         tset = args.tset.infos
         if args.tset.prefer_stripped:
-            return tset.project_as_args("stripped", ordering = ordering)
-        return tset.project_as_args("default", ordering = ordering)
+            cmd.add(tset.project_as_args("stripped", ordering = ordering))
+        else:
+            cmd.add(tset.project_as_args("default", ordering = ordering))
+        return cmd
 
     if args.infos != None:
-        return cmd_args([link_info_to_args(info) for info in args.infos])
+        cmd.add([link_info_to_args(info) for info in args.infos])
+        return cmd
 
     if args.flags != None:
-        return args.flags
+        cmd.add(args.flags)
+        return cmd
 
     fail("Unpacked invalid empty link args")
 
@@ -685,20 +750,28 @@ def unpack_link_args_filelist(args: LinkArgs) -> [ArgLike, None]:
 
     fail("Unpacked invalid empty link args")
 
-def unpack_link_args_excluding_filelist(args: LinkArgs, link_ordering: [LinkOrdering, None] = None) -> ArgLike:
+def unpack_link_args_excluding_filelist(
+        args: LinkArgs,
+        link_ordering: [LinkOrdering, None] = None,
+        link_metadata_flag: str | None = None) -> ArgLike:
+    cmd = link_args_metadata_with_flag(args, link_metadata_flag)
     if args.tset != None:
         ordering = link_ordering.value if link_ordering else "preorder"
 
         tset = args.tset.infos
         if args.tset.prefer_stripped:
-            return tset.project_as_args("stripped_excluding_filelist", ordering = ordering)
-        return tset.project_as_args("default_excluding_filelist", ordering = ordering)
+            cmd.add(tset.project_as_args("stripped_excluding_filelist", ordering = ordering))
+        else:
+            cmd.add(tset.project_as_args("default_excluding_filelist", ordering = ordering))
+        return cmd
 
     if args.infos != None:
-        return cmd_args([link_info_to_args(info, LinkInfoArgumentFilter("excluding_filelist")) for info in args.infos])
+        cmd.add([link_info_to_args(info, LinkInfoArgumentFilter("excluding_filelist")) for info in args.infos])
+        return cmd
 
     if args.flags != None:
-        return args.flags
+        cmd.add(args.flags)
+        return cmd
 
     fail("Unpacked invalid empty link args")
 
@@ -765,6 +838,7 @@ def get_link_args_for_strategy(
     external_debug_info = make_artifact_tset(
         actions = ctx.actions,
         label = ctx.label,
+        identity = get_debug_info_identity(ctx),
         children = filter(
             None,
             [x._external_debug_info.get(link_strategy) for x in deps_merged_link_infos] + ([additional_link_info.external_debug_info] if additional_link_info else []),

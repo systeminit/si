@@ -10,7 +10,7 @@
 # the generated docs, and so those should be verified to be accurate and
 # well-formatted (and then delete this TODO)
 
-load(":common.bzl", "CxxSourceType", "IncludeType")
+load(":common.bzl", "CxxSourceType", "IncludeType", "RawHeadersAsHeadersMode", "RuntimeDependencyHandling")
 
 def _srcs_arg():
     return {
@@ -398,6 +398,16 @@ def _raw_headers_arg():
 """),
     }
 
+def _raw_headers_as_headers_mode_arg():
+    return {
+        "raw_headers_as_headers_mode": attrs.option(attrs.enum(RawHeadersAsHeadersMode), default = None, doc = """
+    Controls whether raw_headers and *include_directories attributes should be automatically
+    converted to headers and symlink trees and/or header maps via headers. Only has an effect if
+    the cxx_toolchain has explicitly opted into supporting this behavior via a non-default value,
+    even if the value is disabled.
+"""),
+    }
+
 def _include_directories_arg():
     return {
         "include_directories": attrs.set(attrs.string(), sorted = True, default = [], doc = """
@@ -421,6 +431,23 @@ def _public_system_include_directories_arg():
     A list of include directories (with `raw_headers`) to be added to the compile command for compiling this target
      and every target that depends on it (via `-isystem` if the compiler supports it of via `-I` otherwise).
      An include directory is relative to the current package.
+"""),
+    }
+
+def _version_arg():
+    return {
+        "version": attrs.option(attrs.string(), default = None, doc = """
+    A string denoting a meaningful version of this rule that is optionally passed to the linker as extra
+     metadata.
+"""),
+    }
+
+def _runtime_dependency_handling_arg():
+    return {
+        "runtime_dependency_handling": attrs.option(attrs.enum(RuntimeDependencyHandling), default = None, doc = """
+    When this is set to `symlink`, shared library dependencies are included in a symlink tree
+    alongside the resulting executable, even if the link style is not shared. Can be `none` or
+    `symlink`.
 """),
     }
 
@@ -462,7 +489,10 @@ cxx_common = struct(
     exported_platform_deps_arg = _exported_platform_deps_arg,
     supports_merged_linking = _supports_merged_linking,
     raw_headers_arg = _raw_headers_arg,
+    raw_headers_as_headers_mode_arg = _raw_headers_as_headers_mode_arg,
     include_directories_arg = _include_directories_arg,
     public_include_directories_arg = _public_include_directories_arg,
     public_system_include_directories_arg = _public_system_include_directories_arg,
+    version_arg = _version_arg,
+    runtime_dependency_handling_arg = _runtime_dependency_handling_arg,
 )

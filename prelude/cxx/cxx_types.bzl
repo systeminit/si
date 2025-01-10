@@ -11,6 +11,10 @@ load(
     "LinkGroupInfo",  # @unused Used as a type
 )
 load(
+    "@prelude//cxx:runtime_dependency_handling.bzl",
+    "RuntimeDependencyHandling",  # @unused Used as a type
+)
+load(
     "@prelude//linking:link_info.bzl",
     "LinkArgs",
     "SwiftmoduleLinkable",
@@ -207,8 +211,13 @@ CxxRuleConstructorParams = record(
     # Whether link groups liking should make `preferred_linkage = "static"` libs
     # "follow" their dependents across link group boundaries.
     link_groups_force_static_follows_dependents = field(bool, True),
-    # The intended return type is: (list[ArgLike], dict[str, list[DefaultInfo]]).
-    extra_linker_outputs_factory = field(typing.Callable, lambda _context: ([], {})),
+    # A factory function to produce extra artifacts and output providers for a rule
+    # with signature: f(ctx) -> ExtraLinkerOutputs
+    extra_linker_outputs_factory = field(typing.Callable | None, None),
+    # A factory function to produce linker flags for the extra linker outputs
+    # returned from the extra_linker_outputs_factory. It should have the signature
+    # f(ctx, dict[str, Artifact]) -> list[ArgLike]
+    extra_linker_outputs_flags_factory = field(typing.Callable | None, None),
     # Whether to allow cache uploads for locally-linked executables.
     exe_allow_cache_upload = field(bool, False),
     # Extra shared library interfaces to propagate, eg from mixed Swift libraries.
@@ -237,4 +246,6 @@ CxxRuleConstructorParams = record(
     export_header_unit = field([str, None], None),
     # Filter what headers to include in header units.
     export_header_unit_filter = field(list[str], []),
+    # Additional behavior for how to handle runtime dependencies
+    runtime_dependency_handling = field([RuntimeDependencyHandling, None], None),
 )

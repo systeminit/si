@@ -9,7 +9,8 @@ load("@prelude//utils:expect.bzl", "expect")
 
 def pre_order_traversal(
         graph: dict[typing.Any, list[typing.Any]],
-        node_formatter: typing.Callable[[typing.Any], str] = str) -> list[typing.Any]:
+        node_formatter: typing.Callable[[typing.Any], str] = str,
+        edge_explainer: typing.Callable[[typing.Any, typing.Any], list[str]] = lambda _src, _dest: ["Unknown"]) -> list[typing.Any]:
     """
     Perform a pre-order (topologically sorted) traversal of `graph` and return the ordered nodes
     """
@@ -29,7 +30,7 @@ def pre_order_traversal(
 
     for _ in range(len(in_degrees)):
         if len(queue) == 0:
-            fail_cycle(graph, node_formatter)
+            fail_cycle(graph, node_formatter, edge_explainer)
 
         node = queue.pop()
         ordered.append(node)
@@ -46,7 +47,8 @@ def pre_order_traversal(
 
 def post_order_traversal(
         graph: dict[typing.Any, list[typing.Any]],
-        node_formatter: typing.Callable[[typing.Any], str] = str) -> list[typing.Any]:
+        node_formatter: typing.Callable[[typing.Any], str] = str,
+        edge_explainer: typing.Callable[[typing.Any, typing.Any], list[str]] = lambda _src, _dest: ["Unknown"]) -> list[typing.Any]:
     """
     Performs a post-order traversal of `graph`.
     """
@@ -65,7 +67,7 @@ def post_order_traversal(
 
     for _ in range(len(out_degrees)):
         if len(queue) == 0:
-            fail_cycle(graph, node_formatter)
+            fail_cycle(graph, node_formatter, edge_explainer)
 
         node = queue.pop()
         ordered.append(node)
@@ -82,15 +84,20 @@ def post_order_traversal(
 
 def fail_cycle(
         graph: dict[typing.Any, list[typing.Any]],
-        node_formatter: typing.Callable[[typing.Any], str]) -> typing.Never:
+        node_formatter: typing.Callable[[typing.Any], str],
+        edge_explainer: typing.Callable[[typing.Any, typing.Any], list[str]]) -> typing.Never:
     cycle = find_cycle(graph)
     if cycle:
+        errors = []
+        for i, c in enumerate(cycle):
+            indented_number = "\n\n" + (" -> " if i > 0 else "    ") + "" * (3 - len(str(i))) + str(i + 1) + ": "
+            edge_explanation = ""
+            if i > 0:
+                edge_explanation = "\n" + " " * 9 + "Reason for edge:"
+                edge_explanation += "".join(["\n" + " " * 11 + e for e in edge_explainer(cycle[i - 1], c)])
+            errors.append(indented_number + node_formatter(c) + edge_explanation)
         fail(
-            "cycle in graph detected: {}".format(
-                " -> ".join(
-                    [node_formatter(c) for c in cycle],
-                ),
-            ),
+            "cycle in graph detected:{}\n".format("".join(errors)),
         )
     fail("expected cycle, but found none")
 
@@ -238,3 +245,40 @@ def depth_first_traversal_by(
     expect(not stack, "Expected to be done with graph traversal stack.")
 
     return visited.keys()
+
+# To support migration from a tset-based link strategy, we are trying to match buck's internal tset
+# traversal logic here.  Look for implementation of TopologicalTransitiveSetIteratorGen
+def rust_matching_topological_traversal(
+        graph_nodes: [dict[typing.Any, typing.Any], None],
+        roots: list[typing.Any],
+        get_nodes_to_traverse_func: typing.Callable) -> list[typing.Any]:
+    counts = {}
+
+    for label in depth_first_traversal_by(graph_nodes, roots, get_nodes_to_traverse_func, GraphTraversal("preorder-right-to-left")):
+        for dep in get_nodes_to_traverse_func(label):
+            if dep in counts:
+                counts[dep] += 1
+            else:
+                counts[dep] = 1
+
+    # some of the targets in roots might be transitive deps of others, we only put those that are true roots
+    # in the stack at this point
+    stack = [root_target for root_target in roots if not root_target in counts]
+    true_roots = len(stack)
+
+    result = []
+    for _ in range(2000000000):
+        if not stack:
+            break
+        next = stack.pop()
+        result.append(next)
+        deps = get_nodes_to_traverse_func(next)
+        for child in deps[::-1]:  # reverse order ensures we put things on the stack in the same order as rust's tset traversal
+            counts[child] -= 1
+            if counts[child] == 0:
+                stack.append(child)
+
+    if len(result) != true_roots + len(counts):
+        fail()  # fail_cycle
+
+    return result

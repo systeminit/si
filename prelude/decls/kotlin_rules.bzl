@@ -10,6 +10,7 @@
 # the generated docs, and so those should be verified to be accurate and
 # well-formatted (and then delete this TODO)
 
+load("@prelude//decls:test_common.bzl", "test_common")
 load(":common.bzl", "AbiGenerationMode", "AnnotationProcessingTool", "LogLevel", "SourceAbiVerificationMode", "TestType", "UnusedDependenciesAction", "buck", "prelude_rule")
 load(":jvm_common.bzl", "jvm_common")
 load(":re_test_common.bzl", "re_test_common")
@@ -113,7 +114,9 @@ kotlin_library = prelude_rule(
         jvm_common.kotlin_compiler_plugins() |
         jvm_common.incremental() |
         jvm_common.plugins() |
-        jvm_common.javac() | buck.labels_arg() |
+        jvm_common.javac() |
+        jvm_common.enable_used_classes() |
+        buck.labels_arg() |
         {
             "abi_generation_mode": attrs.option(attrs.enum(AbiGenerationMode), default = None),
             "annotation_processor_deps": attrs.list(attrs.dep(), default = []),
@@ -204,6 +207,7 @@ kotlin_test = prelude_rule(
         jvm_common.incremental() |
         jvm_common.test_env() |
         jvm_common.javac() |
+        jvm_common.enable_used_classes() |
         {
             "abi_generation_mode": attrs.option(attrs.enum(AbiGenerationMode), default = None),
             "annotation_processing_tool": attrs.option(attrs.enum(AnnotationProcessingTool), default = None),
@@ -243,7 +247,8 @@ kotlin_test = prelude_rule(
             "use_cxx_libraries": attrs.option(attrs.bool(), default = None),
             "use_dependency_order_classpath": attrs.option(attrs.bool(), default = None),
             "use_jvm_abi_gen": attrs.option(attrs.bool(), default = None),
-        }
+        } |
+        test_common.attributes()
     ),
 )
 

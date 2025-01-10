@@ -14,6 +14,7 @@ load("@prelude//apple/user:apple_macos_bundle.bzl", _apple_macos_bundle_spec = "
 load("@prelude//apple/user:apple_resource_bundle.bzl", _apple_resource_bundle_spec = "registration_spec")
 load("@prelude//apple/user:apple_selective_debugging.bzl", _apple_selective_debugging_spec = "registration_spec")
 load("@prelude//apple/user:apple_simulators.bzl", _apple_simulators_spec = "registration_spec")
+load("@prelude//apple/user:apple_spm_package.bzl", _apple_spm_package_spec = "registration_spec")
 load("@prelude//apple/user:apple_toolchain_override.bzl", _apple_toolchain_override_spec = "registration_spec")
 load("@prelude//apple/user:apple_tools.bzl", _apple_tools_spec = "registration_spec")
 load("@prelude//apple/user:apple_watchos_bundle.bzl", _apple_watchos_bundle_spec = "registration_spec")
@@ -21,6 +22,7 @@ load("@prelude//apple/user:apple_xcframework.bzl", _apple_xcframework_spec = "re
 load("@prelude//apple/user:resource_group_map.bzl", _resource_group_map_spec = "registration_spec")
 load("@prelude//cxx/user:cxx_toolchain_override.bzl", _cxx_toolchain_override_spec = "cxx_toolchain_override_registration_spec")
 load("@prelude//cxx/user:link_group_map.bzl", _link_group_map_spec = "registration_spec")
+load("@prelude//ide_integrations/xcode:scheme_settings.bzl", _xcode_scheme_settings_spec = "registration_spec")
 load(":cxx_headers_bundle.bzl", _cxx_headers_bundle_spec = "registration_spec")
 load(":extract_archive.bzl", _extract_archive_spec = "registration_spec")
 load(":write_file.bzl", _write_file_spec = "registration_spec")
@@ -34,6 +36,7 @@ _all_specs = [
     _apple_resource_bundle_spec,
     _apple_resource_dedupe_alias_spec,
     _apple_xcframework_spec,
+    _apple_spm_package_spec,
     _apple_ipa_package_spec,
     _link_group_map_spec,
     _resource_group_map_spec,
@@ -45,6 +48,7 @@ _all_specs = [
     _apple_simulators_spec,
     _write_file_spec,
     _mockingbird_mock_spec,
+    _xcode_scheme_settings_spec,
 ]
 
 rules = {

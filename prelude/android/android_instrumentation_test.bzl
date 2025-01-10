@@ -18,16 +18,16 @@ load(
     "merge_shared_libraries",
     "traverse_shared_library_info",
 )
+load("@prelude//test:inject_test_run_info.bzl", "inject_test_run_info")
 load("@prelude//utils:argfile.bzl", "at_argfile")
 load("@prelude//utils:expect.bzl", "expect")
-load("@prelude//test/inject_test_run_info.bzl", "inject_test_run_info")
 
 ANDROID_EMULATOR_ABI_LABEL_PREFIX = "tpx-re-config::"
 DEFAULT_ANDROID_SUBPLATFORM = "android-30"
 DEFAULT_ANDROID_PLATFORM = "android-emulator"
 DEFAULT_ANDROID_INSTRUMENTATION_TESTS_USE_CASE = "instrumentation-tests"
 RIOT_USE_CASE = "riot"
-SUPPORTED_POOLS = ["EUREKA_POOL", "HOLLYWOOD_POOL", "STAGE_DELPHI_POOL"]
+SUPPORTED_POOLS = ["EUREKA_POOL", "HOLLYWOOD_POOL", "STAGE_DELPHI_POOL", "PANTHER_POOL", "SEACLIFF_POOL"]
 SUPPORTED_PLATFORMS = ["riot", "android-emulator"]
 SUPPORTED_USE_CASES = [RIOT_USE_CASE, DEFAULT_ANDROID_INSTRUMENTATION_TESTS_USE_CASE]
 

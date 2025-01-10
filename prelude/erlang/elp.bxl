@@ -11,14 +11,21 @@ load("@prelude//:paths.bzl", "paths")
 
 # ------------------ IMPL ------------------
 
+def _add_includes_to_map(includes_map, includes):
+    for inc in includes:
+        includes_map[inc["value"]] = inc["type"]
+    return includes_map
+
 def _clean_up_includes(includes):
     # - Strip to just dir, not file name
     # - Remove duplicates
     # Note: Sometimes the buck rule generating the includes has an excludes glob for a directory.
     #       This flattening will potentially expose excluded files in the directory.
     #       But we do it, because otherwise the performance in erlang_service parsing is too poor.
-    include_paths = [_as_path(paths.dirname(p["value"])) for p in includes if p["type"] == "path"]
+    include_paths = [paths.dirname(p["value"]) for p in includes if p["type"] == "path"]
+    include_paths = [_as_path(p) for p in _list_dedupe(include_paths)]
     targets = [t for t in includes if t["type"] == "target"]
+
     return include_paths + targets
 
 def _get_includes(ctx, includes_target):
@@ -37,6 +44,46 @@ def _dep_includes(ctx, dep, target_universe):
     else:
         return _get_includes(ctx, includes)
 
+def _cached_includes(ctx, cache, dep, target_universe):
+    if dep in cache:
+        dep_includes = cache[dep]
+    else:
+        dep_includes = _dep_includes(ctx, dep, target_universe)
+        cache[dep] = dep_includes
+    return (cache, dep_includes)
+
+def _recursive_includes(ctx, cells, cache, seen, app, target_universe):
+    """
+    Recursive includes are used for resolving include_lib only (AZ:I hope).
+    So all we need to do is built out the recursive tree of apps, and for each
+    put in the parent directory
+    """
+    ct = app.configured_target()
+    lookup_val = "{}:{}".format(ct.path, ct.name)
+    app_target = target_universe.lookup(lookup_val)
+    if app_target and len(app_target) > 0:
+        app_target = app_target[0]
+        if app_target.label in seen:
+            return (cache, seen, [])
+        else:
+            (cache, res) = _cached_includes(ctx, cache, ct, target_universe)
+
+            res.append(_as_path(str(_file_node_to_path(cells, app.path))))
+            seen[app_target.label] = True
+
+            # Run through dependent apps. Should we do deps too?
+            app_apps = app_target.attrs_lazy().get("applications")
+            if app_apps:
+                for sub_app in app_apps.value():
+                    res.append(_as_path(str(_file_node_to_path(cells, sub_app.path))))
+
+                    (cache, seen, sub_res) = _recursive_includes(ctx, cells, cache, seen, sub_app, target_universe)
+
+                    res += sub_res
+            return (cache, seen, res)
+    else:
+        return (cache, seen, [])
+
 def _get_absolute_path(ctx, src) -> dict[str, str]:
     """
     Get the absolute path of the thing passed in, which is either an artifact or a target label.
@@ -47,44 +94,39 @@ def _get_absolute_path(ctx, src) -> dict[str, str]:
         return _as_path(get_path_without_materialization(src, ctx, abs = True))
 
 def _elp_config(ctx):
-    cells = {
-        cell: cell_path
-        for cell, cell_path in ctx.audit().cell(aliases = True).items()
-    }
-
     included_targets = ctx.cli_args.included_targets
-    target_universe = ctx.target_universe(included_targets)
 
-    all = ctx.cquery().kind("^(erlang_app|erlang_test)$", ctx.configured_targets(included_targets))
-    if ctx.cli_args.deps_target:
-        all += ctx.cquery().kind("^erlang_app$", ctx.configured_targets(ctx.cli_args.deps_target))
+    all = [("app", tgt) for tgt in ctx.cquery().kind("^(erlang_app|erlang_test)$", ctx.configured_targets(included_targets))]
+    if ctx.cli_args.deps_targets:
+        all += [("dep", tgt) for tgt in ctx.cquery().kind("^erlang_app$", ctx.configured_targets(ctx.cli_args.deps_targets))]
+    all += [("prelude", tgt) for tgt in ctx.cquery().kind("^erlang_app$", ctx.configured_targets("prelude//erlang/..."))]
     result = {}
-    dep_includes_cache = {}  # Cache of includes per dependency
-    for target in all:
+    for (typ, target) in all:
         label = target.label
         label_name = label.raw_target()
-        deps = target.attrs_lazy().get("deps")
 
+        includes_map = {}
         includes = target.attrs_lazy().get("includes")
         if not includes:
             includes = []
         else:
             includes = _get_includes(ctx, includes)
+        includes_map = _add_includes_to_map(includes_map, includes)
 
-        if ctx.cli_args.deps_includes:
-            if deps:
-                for dep in deps.value():
-                    if dep in dep_includes_cache:
-                        dep_includes = dep_includes_cache[dep]
-                    else:
-                        dep_includes = _dep_includes(ctx, dep, target_universe)
-                        dep_includes_cache[dep] = dep_includes
-                    includes = includes + dep_includes
-            apps = target.attrs_lazy().get("applications")
+        deps_list = []
+        apps_list = []
+        included_apps_list = []
+        deps = target.attrs_lazy().get("deps")
+        if deps:
+            deps_list = [tgt.raw_target() for tgt in deps.value()]
 
-            if apps:
-                for app in apps.value():
-                    includes.append(_as_path(str(_file_node_to_path(cells, app.path))))
+        apps = target.attrs_lazy().get("applications")
+        if apps:
+            apps_list = [tgt.raw_target() for tgt in apps.value()]
+
+        included_apps = target.attrs_lazy().get("included_applications")
+        if included_apps:
+            included_apps_list = [tgt.raw_target() for tgt in included_apps.value()]
 
         srcs = target.attrs_lazy().get("srcs")
         if not srcs:
@@ -104,7 +146,7 @@ def _elp_config(ctx):
             else:
                 suite = None
 
-        includes = _build_output(includes)
+        includes = [t for t in includes_map.keys() if includes_map[t] == "path"]
         srcs = _build_output(srcs)
         result[label_name] = dict(
             name = target.attrs_lazy().get("name"),
@@ -112,6 +154,10 @@ def _elp_config(ctx):
             srcs = srcs,
             includes = includes,
             labels = target.attrs_lazy().get("labels"),
+            deps = deps_list,
+            apps = apps_list,
+            included_apps = included_apps_list,
+            origin = typ,
         )
     ctx.output.print_json(result)
 
@@ -124,7 +170,7 @@ def _build_output(items: list[dict[str, str]]) -> list[str]:
     paths = _list_dedupe([p["value"] for p in items if p["type"] == "path"])
     return paths
 
-def _list_dedupe(xs: list[str]) -> list[str]:
+def _list_dedupe(xs):
     return {x: True for x in xs}.keys()
 
 def _as_path(src):
@@ -138,8 +184,7 @@ def _as_target(src):
 elp_config = bxl_main(
     impl = _elp_config,
     cli_args = {
-        "deps_includes": cli_args.bool(False, doc = "Use include paths from the dependencies too."),
-        "deps_target": cli_args.option(cli_args.string(), doc = "Target to include deps from, if specified. See corresponding field in .elp.toml"),
+        "deps_targets": cli_args.option(cli_args.list(cli_args.string()), doc = "Target to include deps from, if specified. See corresponding field in .elp.toml"),
         "included_targets": cli_args.list(cli_args.string(), doc = "Targets to include in the query. See corresponding field in .elp.toml"),
     },
 )
@@ -147,4 +192,3 @@ elp_config = bxl_main(
 # Run with `buck2 bxl prelude//erlang/elp.bxl:elp_config`
 # e.g.
 # buck2 bxl prelude//erlang/elp.bxl:elp_config -- --included_targets cell//...
-# buck2 bxl prelude//erlang/elp.bxl:elp_config -- --included_targets cell//... --deps_includes true

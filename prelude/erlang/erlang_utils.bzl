@@ -145,16 +145,13 @@ def _file_mapping_impl(ctx: AnalysisContext) -> list[Provider]:
         for file in files:
             target_path = paths.normalize(target_path)
             out_path = paths.normalize(paths.join(target_path, file.basename))
-            out = ctx.actions.copy_file(
+            out = ctx.actions.symlink_file(
                 out_path,
                 file,
             )
             outputs.append(out)
 
     return [DefaultInfo(default_outputs = outputs)]
-
-def list_dedupe(xs: list[str]) -> list[str]:
-    return {x: True for x in xs}.keys()
 
 file_mapping = rule(
     impl = _file_mapping_impl,

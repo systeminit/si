@@ -141,7 +141,6 @@ load(
     "PythonLibraryInfo",
 )
 load("@prelude//utils:argfile.bzl", "at_argfile")
-load("@prelude//utils:set.bzl", "set")
 load("@prelude//utils:utils.bzl", "filter_and_map_idx", "flatten")
 
 HaskellIndexingTSet = transitive_set()
@@ -388,8 +387,9 @@ set -eu
 GHC_PKG=$1
 DB=$2
 PKGCONF=$3
+ALWAYS_USE_CACHE=$4
 "$GHC_PKG" init "$DB"
-"$GHC_PKG" register --package-conf "$DB" --no-expand-pkgroot "$PKGCONF"
+"$GHC_PKG" register --package-conf "$DB" --no-expand-pkgroot $ALWAYS_USE_CACHE "$PKGCONF"
 """
 
 # Create a package
@@ -470,6 +470,17 @@ def _make_package(
     )
 
     haskell_toolchain = ctx.attrs._haskell_toolchain[HaskellToolchainInfo]
+
+    # --always-use-cache is a custom option to ghc-pkg that tells it to ignore the
+    # modification time on the package cache and use it anyway. This is useful in
+    # RE where file modification times can't be relied upon; without this option
+    # ghc-pkg will fall back to reading all the package configs which is much
+    # slower.
+    if haskell_toolchain.support_always_use_cache:
+        use_cache_arg = "--always-use-cache"
+    else:
+        use_cache_arg = ""
+
     ctx.actions.run(
         cmd_args(
             [
@@ -480,6 +491,7 @@ def _make_package(
                 haskell_toolchain.packager,
                 db.as_output(),
                 pkg_conf,
+                use_cache_arg,
             ],
             # needs hi, because ghc-pkg checks that the .hi files exist
             hidden = hi.values() + lib.values(),
@@ -985,6 +997,7 @@ def haskell_binary_impl(ctx: AnalysisContext) -> list[Provider]:
             linked_link_groups = create_link_groups(
                 ctx = ctx,
                 link_strategy = link_strategy,
+                executable_label = ctx.label,
                 link_group_mappings = link_group_info.mappings,
                 link_group_preferred_linkage = link_group_preferred_linkage,
                 executable_deps = executable_deps,
@@ -1024,14 +1037,15 @@ def haskell_binary_impl(ctx: AnalysisContext) -> list[Provider]:
                 for name, lib in link_group_libs.items()
             },
             link_strategy = link_strategy,
-            roots = (
+            roots = set(
                 [
                     d.linkable_graph.nodes.value.label
                     for d in link_deps
                     if d.linkable_graph != None
                 ] +
-                link_group_relevant_roots
+                link_group_relevant_roots,
             ),
+            executable_label = ctx.label,
             is_executable_link = True,
             force_static_follows_dependents = True,
             pic_behavior = PicBehavior("supported"),

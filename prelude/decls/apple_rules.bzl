@@ -13,14 +13,15 @@
 load("@prelude//apple:apple_common.bzl", "apple_common")
 load("@prelude//apple:apple_rules_impl_utility.bzl", "apple_dsymutil_attrs", "apple_test_extra_attrs", "get_apple_toolchain_attr")
 load("@prelude//apple:apple_test_host_app_transition.bzl", "apple_test_host_app_transition")
-load("@prelude//apple:apple_toolchain_types.bzl", "AppleToolsInfo")
 load("@prelude//apple:apple_universal_executable.bzl", "apple_universal_executable_impl")
 load("@prelude//apple:cxx_universal_executable.bzl", "cxx_universal_executable_impl")
 load("@prelude//apple:resource_groups.bzl", "RESOURCE_GROUP_MAP_ATTR")
+load("@prelude//apple/swift:swift_types.bzl", "SwiftVersion")
 load("@prelude//apple/user:cpu_split_transition.bzl", "cpu_split_transition")
 load("@prelude//cxx:link_groups_types.bzl", "LINK_GROUP_MAP_ATTR")
+load("@prelude//decls:test_common.bzl", "test_common")
+load("@prelude//decls:toolchains_common.bzl", "toolchains_common")
 load("@prelude//linking:types.bzl", "Linkage")
-load("@prelude//decls/toolchains_common.bzl", "toolchains_common")
 load(":common.bzl", "CxxRuntimeType", "CxxSourceType", "HeadersAsRawHeadersMode", "IncludeType", "LinkableDepType", "buck", "prelude_rule")
 load(":cxx_common.bzl", "cxx_common")
 load(":native_common.bzl", "native_common")
@@ -36,6 +37,11 @@ LaunchStyle = ["auto", "wait"]
 SchemeActionType = ["build", "launch", "test", "profile", "analyze", "archive"]
 
 WatchInterface = ["main", "complication", "dynamic_notification", "static_notification"]
+
+_swift_version_feature_map = {
+    "5": [],
+    "6": [],
+}
 
 apple_asset_catalog = prelude_rule(
     name = "apple_asset_catalog",
@@ -164,6 +170,7 @@ apple_binary = prelude_rule(
         apple_common.extra_xcode_files() |
         apple_common.serialize_debugging_options_arg() |
         apple_common.uses_explicit_modules_arg() |
+        apple_common.apple_sanitizer_compatibility_arg() |
         {
             "bridging_header": attrs.option(attrs.source(), default = None),
             "can_be_asset": attrs.option(attrs.bool(), default = None),
@@ -177,7 +184,6 @@ apple_binary = prelude_rule(
             "diagnostics": attrs.dict(key = attrs.string(), value = attrs.source(), sorted = False, default = {}),
             "enable_cxx_interop": attrs.bool(default = False),
             "executable_name": attrs.option(attrs.string(), default = None),
-            "exported_deps": attrs.list(attrs.dep(), default = []),
             "exported_header_style": attrs.enum(IncludeType, default = "local"),
             "exported_lang_platform_preprocessor_flags": attrs.dict(key = attrs.enum(CxxSourceType), value = attrs.list(attrs.tuple(attrs.regex(), attrs.list(attrs.arg()))), sorted = False, default = {}),
             "exported_lang_preprocessor_flags": attrs.dict(key = attrs.enum(CxxSourceType), value = attrs.list(attrs.arg()), sorted = False, default = {}),
@@ -192,7 +198,6 @@ apple_binary = prelude_rule(
             "force_static": attrs.option(attrs.bool(), default = None),
             "header_namespace": attrs.option(attrs.string(), default = None),
             "headers_as_raw_headers_mode": attrs.option(attrs.enum(HeadersAsRawHeadersMode), default = None),
-            "import_obj_c_forward_declarations": attrs.bool(default = True),
             "include_directories": attrs.set(attrs.string(), sorted = True, default = []),
             "info_plist": attrs.option(attrs.source(), default = None),
             "info_plist_substitutions": attrs.dict(key = attrs.string(), value = attrs.string(), sorted = False, default = {}),
@@ -227,8 +232,9 @@ apple_binary = prelude_rule(
             "supported_platforms_regex": attrs.option(attrs.regex(), default = None),
             "supports_merged_linking": attrs.option(attrs.bool(), default = None),
             "swift_compiler_flags": attrs.list(attrs.arg(), default = []),
+            "swift_interface_compilation_enabled": attrs.bool(default = False),
             "swift_module_skip_function_bodies": attrs.bool(default = True),
-            "swift_version": attrs.option(attrs.string(), default = None),
+            "swift_version": attrs.option(attrs.enum(SwiftVersion), default = None),
             "thin_lto": attrs.bool(default = False),
             "use_submodules": attrs.bool(default = True),
             "uses_cxx_explicit_modules": attrs.bool(default = False),
@@ -352,6 +358,7 @@ apple_bundle = prelude_rule(
         apple_common.info_plist_arg() |
         apple_common.info_plist_substitutions_arg() |
         apple_common.privacy_manifest_arg() |
+        apple_common.product_name_from_module_name_arg() |
         {
             "asset_catalogs_compilation_options": attrs.dict(key = attrs.string(), value = attrs.any(), default = {}, doc = """
                 A dict holding parameters for asset catalogs compiler (actool). Its options include:
@@ -454,11 +461,17 @@ apple_library = prelude_rule(
         native_common.link_whole(link_whole_type = attrs.option(attrs.bool(), default = None)) |
         cxx_common.reexport_all_header_dependencies_arg() |
         cxx_common.exported_deps_arg() |
+        cxx_common.raw_headers_arg() |
+        cxx_common.include_directories_arg() |
+        cxx_common.public_include_directories_arg() |
+        cxx_common.public_system_include_directories_arg() |
+        cxx_common.raw_headers_as_headers_mode_arg() |
         apple_common.extra_xcode_sources() |
         apple_common.extra_xcode_files() |
         apple_common.serialize_debugging_options_arg() |
         apple_common.uses_explicit_modules_arg() |
         apple_common.meta_apple_library_validation_enabled_arg() |
+        apple_common.enable_private_swift_module_arg() |
         {
             "bridging_header": attrs.option(attrs.source(), default = None),
             "can_be_asset": attrs.option(attrs.bool(), default = None),
@@ -484,8 +497,6 @@ apple_library = prelude_rule(
             "focused_list_target": attrs.option(attrs.dep(), default = None),
             "force_static": attrs.option(attrs.bool(), default = None),
             "headers_as_raw_headers_mode": attrs.option(attrs.enum(HeadersAsRawHeadersMode), default = None),
-            "import_obj_c_forward_declarations": attrs.bool(default = True),
-            "include_directories": attrs.set(attrs.string(), sorted = True, default = []),
             "info_plist": attrs.option(attrs.source(), default = None),
             "info_plist_substitutions": attrs.dict(key = attrs.string(), value = attrs.string(), sorted = False, default = {}),
             "labels": attrs.list(attrs.string(), default = []),
@@ -509,17 +520,15 @@ apple_library = prelude_rule(
             "precompiled_header": attrs.option(attrs.source(), default = None),
             "prefix_header": attrs.option(attrs.source(), default = None),
             "public_framework_headers": attrs.named_set(attrs.source(), sorted = True, default = []),
-            "public_include_directories": attrs.set(attrs.string(), sorted = True, default = []),
-            "public_system_include_directories": attrs.set(attrs.string(), sorted = True, default = []),
-            "raw_headers": attrs.set(attrs.source(), sorted = True, default = []),
             "sdk_modules": attrs.list(attrs.string(), default = []),
             "soname": attrs.option(attrs.string(), default = None),
             "static_library_basename": attrs.option(attrs.string(), default = None),
             "supported_platforms_regex": attrs.option(attrs.regex(), default = None),
             "supports_merged_linking": attrs.option(attrs.bool(), default = None),
             "swift_compiler_flags": attrs.list(attrs.arg(), default = []),
+            "swift_interface_compilation_enabled": attrs.bool(default = True),
             "swift_module_skip_function_bodies": attrs.bool(default = True),
-            "swift_version": attrs.option(attrs.string(), default = None),
+            "swift_version": attrs.option(attrs.enum(SwiftVersion), default = None),
             "thin_lto": attrs.bool(default = False),
             "use_submodules": attrs.bool(default = True),
             "uses_cxx_explicit_modules": attrs.bool(default = False),
@@ -706,6 +715,8 @@ apple_test = prelude_rule(
         apple_common.extra_xcode_files() |
         apple_common.serialize_debugging_options_arg() |
         apple_common.uses_explicit_modules_arg() |
+        apple_common.apple_sanitizer_compatibility_arg() |
+        apple_common.enable_private_swift_module_arg() |
         {
             "asset_catalogs_compilation_options": attrs.dict(key = attrs.string(), value = attrs.any(), default = {}),
             "bridging_header": attrs.option(attrs.source(), default = None),
@@ -725,8 +736,9 @@ apple_test = prelude_rule(
             "entitlements_file": attrs.option(attrs.source(), default = None),
             "env": attrs.option(attrs.dict(key = attrs.string(), value = attrs.arg(), sorted = False), default = None),
             "executable_name": attrs.option(attrs.string(), default = None),
-            "exported_deps": attrs.list(attrs.dep(), default = []),
             "exported_header_style": attrs.enum(IncludeType, default = "local"),
+            # Need to keep both `exported_headers` and `headers` for Swift mixed modules
+            # to hide C++ code importing.
             "exported_headers": attrs.named_set(attrs.source(), sorted = True, default = []),
             "exported_lang_platform_preprocessor_flags": attrs.dict(key = attrs.enum(CxxSourceType), value = attrs.list(attrs.tuple(attrs.regex(), attrs.list(attrs.arg()))), sorted = False, default = {}),
             "exported_lang_preprocessor_flags": attrs.dict(key = attrs.enum(CxxSourceType), value = attrs.list(attrs.arg()), sorted = False, default = {}),
@@ -743,7 +755,6 @@ apple_test = prelude_rule(
             "force_static": attrs.option(attrs.bool(), default = None),
             "header_namespace": attrs.option(attrs.string(), default = None),
             "headers_as_raw_headers_mode": attrs.option(attrs.enum(HeadersAsRawHeadersMode), default = None),
-            "import_obj_c_forward_declarations": attrs.bool(default = True),
             "include_directories": attrs.set(attrs.string(), sorted = True, default = []),
             "incremental_bundling_enabled": attrs.option(attrs.bool(), default = None),
             "is_ui_test": attrs.bool(default = False),
@@ -786,8 +797,9 @@ apple_test = prelude_rule(
             "supported_platforms_regex": attrs.option(attrs.regex(), default = None),
             "supports_merged_linking": attrs.option(attrs.bool(), default = None),
             "swift_compiler_flags": attrs.list(attrs.arg(), default = []),
+            "swift_interface_compilation_enabled": attrs.bool(default = False),
             "swift_module_skip_function_bodies": attrs.bool(default = True),
-            "swift_version": attrs.option(attrs.string(), default = None),
+            "swift_version": attrs.option(attrs.enum(SwiftVersion), default = None),
             "test_rule_timeout_ms": attrs.option(attrs.int(), default = None),
             "thin_lto": attrs.bool(default = False),
             "try_skip_code_signing": attrs.option(attrs.bool(), default = None),
@@ -799,7 +811,8 @@ apple_test = prelude_rule(
         } |
         buck.allow_cache_upload_arg() |
         buck.inject_test_env_arg() |
-        apple_test_extra_attrs()
+        apple_test_extra_attrs() |
+        test_common.attributes()
     ),
 )
 
@@ -939,6 +952,9 @@ prebuilt_apple_framework = prelude_rule(
             "libraries": attrs.list(attrs.string(), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
             "supported_platforms_regex": attrs.option(attrs.regex(), default = None),
+            "extra_codesign_paths": attrs.list(attrs.string(), default = [], doc = """
+                A list of extra paths, relative to the framework root, that will be codesigned.
+                """),
         }
     ),
 )
@@ -976,7 +992,6 @@ swift_library = prelude_rule(
             "deps": attrs.list(attrs.dep(), default = []),
             "enable_cxx_interop": attrs.bool(default = False),
             "frameworks": attrs.list(attrs.string(), default = []),
-            "import_obj_c_forward_declarations": attrs.bool(default = True),
             "labels": attrs.list(attrs.string(), default = []),
             "libraries": attrs.list(attrs.string(), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
@@ -1001,10 +1016,8 @@ swift_toolchain = prelude_rule(
     attrs = (
         # @unsorted-dict-items
         {
-            "can_toolchain_emit_obj_c_header_textually": attrs.bool(default = False),
             "contacts": attrs.list(attrs.string(), default = []),
             "default_host_platform": attrs.option(attrs.configuration_label(), default = None),
-            "explicit_modules_uses_gmodules": attrs.bool(default = False),
             "labels": attrs.list(attrs.string(), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
             "platform_path": attrs.source(),
@@ -1016,13 +1029,16 @@ swift_toolchain = prelude_rule(
             "sdk_path": attrs.source(),
             "static_runtime_paths": attrs.list(attrs.string(), default = []),
             "supports_relative_resource_dir": attrs.bool(default = False),
-            "supports_swift_cxx_interoperability_mode": attrs.bool(default = False),
-            "supports_swift_importing_obj_c_forward_declarations": attrs.bool(default = False),
-            "supports_cxx_interop_requirement_at_import": attrs.bool(default = False),
             "swift_stdlib_tool": attrs.option(attrs.source(), default = None),
             "swift_stdlib_tool_flags": attrs.list(attrs.arg(), default = []),
             "swiftc": attrs.source(),
             "swiftc_flags": attrs.list(attrs.arg(), default = []),
+            "swift_experimental_features": attrs.dict(key = attrs.enum(SwiftVersion), value = attrs.list(attrs.string()), sorted = False, default = _swift_version_feature_map),
+            "swift_upcoming_features": attrs.dict(key = attrs.enum(SwiftVersion), value = attrs.list(attrs.string()), sorted = False, default = _swift_version_feature_map),
+            "_library_interface_uses_swiftinterface": attrs.bool(default = select({
+                "DEFAULT": False,
+                "config//features/apple:swift_library_interface_uses_swiftinterface_enabled": True,
+            })),
         }
     ),
 )
@@ -1055,8 +1071,8 @@ def _apple_universal_executable_attrs():
                 for more information on resolution.
             """),
         "_apple_toolchain": _APPLE_TOOLCHAIN_ATTR,
-        "_apple_tools": attrs.exec_dep(default = "prelude//apple/tools:apple-tools", providers = [AppleToolsInfo]),
     }
+    attribs.update(apple_common.apple_tools_arg())
     attribs.update(apple_dsymutil_attrs())
     return attribs
 

@@ -16,6 +16,7 @@ load(
     "@prelude//cxx:link_types.bzl",
     "link_options",
 )
+load("@prelude//decls:toolchains_common.bzl", "toolchains_common")
 load("@prelude//linking:execution_preference.bzl", "LinkExecutionPreference")
 load(
     "@prelude//linking:link_info.bzl",
@@ -36,13 +37,12 @@ load(
 load("@prelude//python:manifest.bzl", "create_manifest_for_entries")
 load("@prelude//python:python.bzl", "PythonLibraryInfo")
 load("@prelude//python:toolchain.bzl", "PythonToolchainInfo")
+load("@prelude//transitions:constraint_overrides.bzl", "constraint_overrides")
 load("@prelude//utils:expect.bzl", "expect")
 load(
     "@prelude//utils:graph_utils.bzl",
     "depth_first_traversal_by",
 )
-load("@prelude//decls/toolchains_common.bzl", "toolchains_common")
-load("@prelude//transitions/constraint_overrides.bzl", "constraint_overrides_transition")
 
 def _link_deps(
         link_infos: dict[Label, LinkableNode],
@@ -109,9 +109,9 @@ def _impl(ctx: AnalysisContext) -> list[Provider]:
         manifests = dep[PythonLibraryInfo].manifests.value
         if manifests.srcs != None:
             srcs.append(manifests.srcs)
-        if manifests.resources != None:
-            expect(not manifests.resources[1])
-            srcs.append(manifests.resources[0])
+        if manifests.default_resources != None:
+            expect(not manifests.default_resources[1])
+            srcs.append(manifests.default_resources[0])
         if manifests.extensions != None:
             python_toolchain = ctx.attrs._python_toolchain[PythonToolchainInfo]
             toolchain_info = get_cxx_toolchain_info(ctx)
@@ -186,7 +186,7 @@ def _impl(ctx: AnalysisContext) -> list[Provider]:
 
 python_wheel = rule(
     impl = _impl,
-    cfg = constraint_overrides_transition,
+    cfg = constraint_overrides.transition,
     attrs = dict(
         dist = attrs.option(attrs.string(), default = None),
         version = attrs.string(default = "1.0.0"),
@@ -221,7 +221,6 @@ python_wheel = rule(
                 "ovr_config//os:linux-x86_64": "linux_x86_64",
             }),
         ),
-        constraint_overrides = attrs.list(attrs.string(), default = []),
         libraries = attrs.list(attrs.dep(providers = [PythonLibraryInfo]), default = []),
         scripts = attrs.dict(key = attrs.string(), value = attrs.source(), default = {}),
         libraries_query = attrs.option(attrs.query(), default = None),
@@ -229,5 +228,5 @@ python_wheel = rule(
         _wheel = attrs.default_only(attrs.exec_dep(default = "prelude//python/tools:wheel")),
         _cxx_toolchain = toolchains_common.cxx(),
         _python_toolchain = toolchains_common.python(),
-    ),
+    ) | constraint_overrides.attributes,
 )

@@ -244,8 +244,8 @@ def create_linkable_graph(
             if graph:
                 graph_deps.append(graph)
 
-    deps_labels = {x.label: True for x in graph_deps}
     if node and node.linkable:
+        deps_labels = set([x.label for x in graph_deps])
         for l in [node.linkable.deps, node.linkable.exported_deps]:  # buildifier: disable=confusing-name
             for d in l:
                 if not d in deps_labels:
@@ -333,16 +333,12 @@ def get_deps_for_link(
     style.
     """
 
-    # Avoid making a copy of the list until we know have to modify it.
-    deps = node.exported_deps
-
     # If we're linking statically, include non-exported deps.
     output_style = get_lib_output_style(strategy, node.preferred_linkage, pic_behavior)
-    if output_style != LibOutputStyle("shared_lib") and node.deps:
-        # Important that we don't mutate deps, but create a new list
-        deps = deps + node.deps
-
-    return deps
+    if output_style != LibOutputStyle("shared_lib"):
+        return node.all_deps
+    else:
+        return node.exported_deps
 
 def get_transitive_deps(
         link_infos: dict[Label, LinkableNode],
@@ -354,6 +350,4 @@ def get_transitive_deps(
     def find_transitive_deps(node: Label):
         return link_infos[node].all_deps
 
-    all_deps = depth_first_traversal_by(link_infos, roots, find_transitive_deps)
-
-    return all_deps
+    return depth_first_traversal_by(link_infos, roots, find_transitive_deps)
