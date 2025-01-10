@@ -183,7 +183,7 @@
             @enterPressed="inviteButtonHandler"
           />
           <VButton
-            :disabled="!isWorkspaceOwner"
+            :disabled="!canInviteMember"
             :requestStatus="inviteUserReqStatus"
             class="flex-none"
             tone="action"
@@ -304,6 +304,15 @@ const isWorkspaceOwner = computed(
     props.workspaceId === "new" ||
     workspacesStore.workspacesById[props.workspaceId]?.role === "OWNER",
 );
+
+const canInviteMember = computed(() => {
+  if (props.workspaceId === "new") {
+    return true;
+  }
+
+  const workspace = workspacesStore.workspacesById[props.workspaceId];
+  return workspace?.role === "OWNER" || workspace?.role === "APPROVER";
+});
 
 const isDefaultWorkspace = computed(
   () =>
