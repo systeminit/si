@@ -5,7 +5,7 @@ outline:
 
 # Road map
 
-Updated December 20, 2024.
+Updated January 10, 2025.
 
 Want to influence the road map?
 [Learn more about how to work on System Initiative](../explanation/working-on-si.md).
@@ -29,6 +29,10 @@ and delete components; and enqueue actions. In their first iteration, they’ll 
 used for three big use cases: importing existing cloud resources, modular
 templating, and management of existing components.
 
+Read our
+[announcement blog post](https://www.systeminit.com/blog/announcing-management-functions)
+to learn more about management functions.
+
 ### Import (Generally Available)
 
 This will let you connect any component to an existing resource.
@@ -44,19 +48,21 @@ cloud environment
 
 ### Visual Templates (In development)
 
+<iframe width="560" height="315" src="https://www.youtube.com/embed/HSqf1w-PJco?si=hHMfnNx9VzEuFIf6" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
 Visual templates will allow you to model your infrastructure and then extract
 that to a management function. The management function will keep all the
 geometry and connections between the components as well as the properties of the
 components. The management function will get added to a newly created asset
 which you can reuse on the diagram.
 
+[Read the blog post to learn more.](https://www.systeminit.com/blog/opportunity-visual-templates)
+
 ## Enterprise Features
 
 Custom authentication, ubiquitous access control, history, etc.
 
 ### Approval Workflows via ReBAC (Generally Available)
-
-<iframe width="560" height="315" src="https://www.youtube.com/embed/QlWaeJH74Bo?si=uBXbQ5kyeynFSzjQ" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
 
 We are laying the foundation of a relationship based access control (ReBAC)
 system using SpiceDB. This first iteration of work allows a workspace to have a
@@ -73,29 +79,42 @@ We are providing the functionality that allows users of a workspace to see every
 change that has happened, who made them and when. The first iteration of this
 work will allow users to be able to have basic sorting and filtering of events.
 
+Read our
+[announcement blog post](https://www.systeminit.com/blog/announcing-audit-trail)
+to learn more about audit history.
+
 ### Fine Grained Access Control (In development)
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/bELJ7qjZHqM?si=reuQ_xO0v77XSn0p" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
 
 We are providing the ability to attach approvers to specific sets of components,
 via views. This means core parts of the infrastructure can have approvers
 attached to them ensuring safer changes to the infrastructure.
 
-## Views (Generally Available)
+[Read the blog post to learn more.](https://www.systeminit.com/blog/opportunity-fine-grained-access-control)
 
-<iframe width="560" height="315" src="https://www.youtube.com/embed/qpNxaAojuzI?si=XLnnJy7uWF4ruEVY" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+## Views (Generally Available)
 
 Views allow the creation of custom views within the workspace. Views are a
 semantic representation of a group of components and components can exist in
 multiple views. Components in a view can connect to components in another view.
 This enables teams to create diagrams that are specific to their application or
 area of specialization.
-[Read the blog post to learn more.](https://www.systeminit.com/blog/opportunity-views)
+
+Read our
+[announcement blog post](https://www.systeminit.com/blog/announcing-views) to
+learn more about views.
 
 ## GitHub Actions to drive SI (In development)
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/UCZzTjBWSpg?si=co2wa47XcG4sqwfu" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
 
 We are building the ability for a user to embed System Initiative in their CI/CD
 pipeline. We are building the capability to create an access token for a
 workspace, pass data to a component and trigger a management function and check
 the status of the resulting action.
+
+[Read the blog post to learn more.](https://www.systeminit.com/blog/opportunity-github-actions-to-trigger-system-initiative)
 
 ## Growing coverage of cloud platforms
 
