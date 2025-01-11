@@ -24,11 +24,15 @@ export const useAuthTokensApi = defineStore("authTokens", {
       });
     },
 
-    async CREATE_AUTH_TOKEN(workspaceId: WorkspaceId, name?: string) {
+    async CREATE_AUTH_TOKEN(
+      workspaceId: WorkspaceId,
+      name?: string,
+      expiration?: string,
+    ) {
       return new ApiRequest<{ authToken: AuthToken; token: string }>({
         method: "post",
         url: ["workspaces", { workspaceId }, "authTokens"],
-        params: { name },
+        params: { name, expiration },
         keyRequestStatusBy: workspaceId,
       });
     },

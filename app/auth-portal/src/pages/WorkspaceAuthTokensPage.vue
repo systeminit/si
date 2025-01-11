@@ -25,27 +25,39 @@
 
         <Stack>
           <ErrorMessage :asyncState="createAuthToken" />
-          <div
+          <form
             v-if="workspace.role === 'OWNER'"
-            class="flex flex-row flex-wrap items-end gap-md"
+            class="flex flex-row flex-wrap items-center justify-center gap-md"
           >
             <VormInput
               v-model="createAuthTokenName"
               inlineLabel
-              label="Token Name*"
-              @keydown.enter.prevent="createAuthToken.execute()"
+              label="Token Name"
+              required
+              placeholder="A name for your token."
+              @keydown.enter.prevent="onFormSubmit"
+            />
+            <VormInput
+              v-model="createAuthTokenExpiration"
+              inlineLabel
+              label="Expiration"
+              required
+              placeholder="48h, 1d, 1m, 1y, etc."
+              type="time-string"
+              :maxLength="99"
+              @keydown.enter.prevent="onFormSubmit"
             />
             <VButton
-              :disabled="!(createAuthTokenName?.length > 0)"
+              :disabled="validationState.isError"
               :loading="createAuthToken.isLoading.value"
               loadingText="Creating ..."
               tone="action"
               variant="solid"
-              @click="createAuthToken.execute()"
+              @click="onFormSubmit"
             >
               Generate API Token
             </VButton>
-          </div>
+          </form>
           <ErrorMessage :asyncState="authTokens" />
           <div v-if="authTokens.state.value" class="relative">
             <Stack>
@@ -131,6 +143,7 @@ import {
   ErrorMessage,
   Modal,
   IconButton,
+  useValidatedInputGroup,
 } from "@si/vue-lib/design-system";
 import { useAsyncState } from "@vueuse/core";
 import { apiData } from "@si/vue-lib/pinia";
@@ -177,7 +190,11 @@ const createAuthToken = useAsyncState(
     if (_.isEmpty(createAuthTokenName.value)) return;
 
     const { authToken, token } = await apiData(
-      api.CREATE_AUTH_TOKEN(props.workspaceId, createAuthTokenName.value),
+      api.CREATE_AUTH_TOKEN(
+        props.workspaceId,
+        createAuthTokenName.value,
+        createAuthTokenExpiration.value,
+      ),
     );
     if (authTokens.state.value) {
       authTokens.state.value[authToken.id] = authToken;
@@ -185,6 +202,8 @@ const createAuthToken = useAsyncState(
 
     tokenCopied.value = false;
     createAuthTokenName.value = "";
+    createAuthTokenExpiration.value = "";
+    validationMethods.resetAll();
     tokenDisplayModalRef.value?.open();
 
     return token;
@@ -195,6 +214,8 @@ const createAuthToken = useAsyncState(
 
 /** Name of token to create */
 const createAuthTokenName = ref("");
+/** Expiration time of token to create */
+const createAuthTokenExpiration = ref("");
 
 /** Token modal */
 const tokenDisplayModalRef = ref<InstanceType<typeof Modal> | null>(null);
@@ -206,4 +227,12 @@ async function copyToken() {
   }
   tokenCopied.value = true;
 }
+
+const { validationState, validationMethods } = useValidatedInputGroup();
+
+const onFormSubmit = async () => {
+  if (validationMethods.hasError()) return;
+
+  await createAuthToken.execute();
+};
 </script>

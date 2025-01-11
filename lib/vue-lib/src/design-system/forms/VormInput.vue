@@ -341,6 +341,7 @@ type InputTypes =
   | "tel"
   | "text"
   | "textarea"
+  | "time-string"
   | "url";
 
 // object of the shape { option1Value: 'Label 1',  }
@@ -483,6 +484,8 @@ const validationRules = computed(() => {
     rules.push({ fn: validators.url, message: "Invalid URL" });
   if (props.type === "email")
     rules.push({ fn: validators.email, message: "Invalid email" });
+  if (props.type === "time-string")
+    rules.push({ fn: validators.timeString, message: "Invalid time string" });
 
   if (props.regex) {
     rules.push({
