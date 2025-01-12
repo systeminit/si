@@ -219,7 +219,8 @@ def build_tar_archive(
             "local",
             "bin",
         )
-        os.makedirs(bin_dir, exist_ok=True)
+        lib_dir = os.path.join(tempdir, "lib")
+        lib64_dir = os.path.join(tempdir, "lib64")
         metadata_dir = os.path.join(
             tempdir,
             "etc",
@@ -227,11 +228,31 @@ def build_tar_archive(
             pkg_metadata.get("name", "UNKNOWN-NAME"),
             pkg_metadata.get("version", "UNKNOWN-VERSION"),
         )
+
+        os.makedirs(bin_dir, exist_ok=True)
         os.makedirs(metadata_dir, exist_ok=True)
 
         binaries = glob.glob(os.path.join(nix_store_pkg_path, "bin", "*"))
         for binary in binaries:
             os.symlink(binary, os.path.join(bin_dir, os.path.basename(binary)))
+
+        # This ensures that if the omnibus pkg bubbles up lib64, it gets
+        # included assuming it is needed in environments that require
+        # specifiying a dynamic linker
+        if os.path.exists(os.path.join(nix_store_pkg_path, "lib")):
+            os.makedirs(lib_dir, exist_ok=True)
+            for root, _, files in os.walk(os.path.join(nix_store_pkg_path, "lib"), followlinks=True):
+                for file in files:
+                    source = os.path.join(root, file)
+                    # If it's a symlink, get the real target
+                    if os.path.islink(source):
+                        target = os.readlink(source)
+                    else:
+                        target = source
+                    os.symlink(target, os.path.join(lib_dir, file))
+
+            # Create lib64 -> lib symlink
+            os.symlink("lib", lib64_dir)
 
         write_json(os.path.join(metadata_dir, "metadata.json"), pkg_metadata)
 
@@ -244,6 +265,9 @@ def build_tar_archive(
             "usr",
             "etc",
         ]
+        if os.path.exists(os.path.join(tempdir, "lib")):
+            tar_append_cmd.extend(["lib", "lib64"])
+
         subprocess.run(tar_append_cmd, cwd=tempdir).check_returncode()
 
     # Remember that by default `gzip` creates a *new* file and appends the

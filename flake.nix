@@ -221,19 +221,26 @@
           cyclone = binDerivation {pkgName = "cyclone";};
 
           # autoPatchingElf and stripping will break deno compile'd binaries.
-          # They also have some very specific requirements about which glibc
-          # version to use and this conflicts what cyclone needs. These
-          # dependencies are added to the firecracker rootfs in rootfs_build.sh
-          # as it requires linking inside of the rootfs directly. Note that
-          # LD_LIBRAY_PATH is unset when using siExec to ensure the binaries our
-          # binaries run don't inherit it.
+          # We need to make sure we know where glibc and friends exist and since
+          # we can't patchelf, we need to ensure we drop the dynmic linker in a
+          # known place. Note that LD_LIBRAY_PATH is unset when using siExec to
+          # ensure the binaries our binaries run don't inherit it.
           lang-js = binDerivation {
             pkgName = "lang-js";
             dontAutoPatchELF = true;
             dontStrip = true;
             extraInstallPhase = ''
+              # since we can't patchelf, we need to ensure the dynamic linker
+              # is where we expect it. This gets droppped into the rootfs as
+              # /lib64/ld-linux-x86-64.so.2 -> /nix/store/*/ld-linux-x86-64.20.2
+              mkdir -p $out/lib64
+              ln -sf ${pkgs.glibc}/lib/ld-linux-x86-64.so.2 $out/lib64/ld-linux-x86-64.so.2
+
               wrapProgram $out/bin/lang-js \
-                --set LD_LIBRARY_PATH "/usr/local/lib" \
+                --set LD_LIBRARY_PATH "${pkgs.lib.makeLibraryPath [
+                  pkgs.glibc
+                  pkgs.gcc-unwrapped.lib
+                ]}" \
                 --set SI_LANG_JS_LOG "debug" \
                 --prefix PATH : ${pkgs.lib.makeBinPath langJsExtraPkgs} \
                 --run 'cd "$(dirname "$0")"'

@@ -7,32 +7,6 @@ export function Debug(namespace: string): Debugger {
   return (msg: unknown) => {
     if (debugActive) {
       try {
-        const safeStringify = (obj: unknown): string => {
-          const seen = new WeakSet();
-          return JSON.stringify(obj, (_, value) => {
-            if (typeof value === "function") {
-              return value.toString();
-            }
-
-            if (typeof value === "object" && value !== null) {
-              if (seen.has(value)) {
-                return "[Circular]";
-              }
-              seen.add(value);
-            }
-
-            if (value instanceof Error) {
-              return {
-                name: value.name,
-                message: value.message,
-                stack: value.stack,
-              };
-            }
-
-            return value;
-          }, 2);
-        };
-
         const pretty_json = safeStringify(msg);
         for (const line of pretty_json.split("\n")) {
           process.stderr.write(`${namespace} ${line}\n`);
@@ -44,4 +18,30 @@ export function Debug(namespace: string): Debugger {
       }
     }
   };
+}
+
+function safeStringify(obj: unknown): string {
+  const seen = new WeakSet();
+  return JSON.stringify(obj, (_, value) => {
+    if (typeof value === "function") {
+      return value.toString();
+    }
+
+    if (typeof value === "object" && value !== null) {
+      if (seen.has(value)) {
+        return "[Circular]";
+      }
+      seen.add(value);
+    }
+
+    if (value instanceof Error) {
+      return {
+        name: value.name,
+        message: value.message,
+        stack: value.stack,
+      };
+    }
+
+    return value;
+  }, 2);
 }
