@@ -44,15 +44,7 @@ export interface ManagementCreate {
 }
 
 export interface ManagementOperations {
-  create?: {
-    [key: string]: {
-      kind: string;
-      properties?: object;
-      geometry?: Geometry;
-      parent?: string;
-      connect?: ManagmentConnect[];
-    };
-  };
+  create?: ManagementCreate,
   update?: {
     [key: string]: {
       properties?: object;
