@@ -220,7 +220,27 @@
 
           cyclone = binDerivation {pkgName = "cyclone";};
 
-          lang-js = binDerivation {pkgName = "lang-js";};
+          # autoPatchingElf and stripping will break deno compile'd binaries.
+          # They also have some very specific requirements about which glibc
+          # version to use and this conflicts what cyclone needs. These
+          # dependencies are added to the firecracker rootfs in rootfs_build.sh
+          # as it requires linking inside of the rootfs directly. Note that
+          # LD_LIBRAY_PATH is unset when using siExec to ensure the binaries our
+          # binaries run don't inherit it.
+          lang-js = binDerivation {
+            pkgName = "lang-js";
+            dontAutoPatchELF = true;
+            dontStrip = true;
+            extraInstallPhase = ''
+              wrapProgram $out/bin/lang-js \
+                --set LD_LIBRARY_PATH "/usr/local/lib" \
+                --set SI_LANG_JS_LOG "debug" \
+                --prefix PATH : ${pkgs.lib.makeBinPath langJsExtraPkgs} \
+                --run 'cd "$(dirname "$0")"'
+                # ^ deno falls over trying to resolve libraries if you don't set
+                # the working path
+            '';
+          };
 
           forklift = binDerivation {pkgName = "forklift";};
 

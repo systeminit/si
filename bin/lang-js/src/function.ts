@@ -236,9 +236,9 @@ export async function runCode(
     },
   });
 
-  debug({"function kind": func_kind});
-  debug({"arg": with_arg});
-  debug({"code": code});
+  debug({ "function kind": func_kind });
+  debug({ "arg": with_arg });
+  debug({ "code": code });
   return new Promise((resolve, reject) => {
     worker.postMessage({
       bundledCode: code,
@@ -266,7 +266,7 @@ export async function runCode(
 }
 
 async function bundleCode(code: string): Promise<string> {
-  debug({"code before bundle": code});
+  debug({ "code before bundle": code });
   const tempDir = await Deno.makeTempDir();
   const tempFile = `${tempDir}/script.ts`;
 
@@ -278,10 +278,10 @@ async function bundleCode(code: string): Promise<string> {
 
     const bundled = result.get(fileUrl.href) as string;
     if (!bundled) {
-      throw new Error('Transpilation resulted in empty output');
+      throw new Error("Transpilation resulted in empty output");
     }
 
-    debug({"code after bundle": code});
+    debug({ "code after bundle": code });
     return bundled;
   } catch (error) {
     throw error;

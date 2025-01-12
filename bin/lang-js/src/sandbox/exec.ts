@@ -34,10 +34,14 @@ const defaultOptions: Options = {
  * Merges default options with user-provided options and sets stdin to 'pipe' if input is provided.
  */
 function mergedOptions(userOptions?: Options): Options {
+  // we do some LD_LIBRARY_PATH tomfoolery to ensure a deno compile'd bin works
+  // in alpine, but this breaks sub-processes, so we need to unset it here.
+  // See flake.nix and rootfs_build.sh for more details.
   return {
     ...defaultOptions,
     ...userOptions,
     stdin: userOptions?.input ? "pipe" : "ignore",
+    env: { LD_LIBRARY_PATH: "" },
   };
 }
 

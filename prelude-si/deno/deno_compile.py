@@ -51,6 +51,7 @@ def parse_unstable_flags(flags: List[str]) -> List[str]:
 def run_compile(input_path: str, output_path: str, permissions: List[str],
                 flags: List[str]) -> None:
     """Run deno compile with the specified arguments."""
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
     cmd = ["deno", "compile", "--output", output_path]
 
     if permissions:
