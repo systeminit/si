@@ -13,11 +13,6 @@ load(
     "GitInfo",
     _git_info = "git_info",
 )
-load(
-    "//git.bzl",
-    "GitInfo",
-    _git_info = "git_info",
-)
 
 RootfsInfo = provider(fields = {
     "tar_archive": provider_field(typing.Any, default = None),  # [Artifact]

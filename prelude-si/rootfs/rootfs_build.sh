@@ -48,6 +48,7 @@ ROOTFS="$PACKAGEDIR/cyclone-rootfs.ext4"
 ROOTFSMOUNT="$PACKAGEDIR/rootfs"
 ROOTFS_TAR="rootfs.tar.gz"
 INITSCRIPT="$PACKAGEDIR/init.sh"
+TEMP_CONTAINER="distroless-copy-${USER}-$(date +%s)"
 ALPINE_VERSION=3.18
 
 # Vendored from https://github.com/fnichol/libsh/blob/main/lib/setup_traps.sh
@@ -70,7 +71,7 @@ cleanup() {
 
   # cleanup the PACKAGEDIR
   sudo umount -fv "$ROOTFSMOUNT"
-
+  docker rm -f "$TEMP_CONTAINER" 2>/dev/null || true
   rm -rfv "$ROOTFSMOUNT" "$INITSCRIPT" "$ROOTFS_TAR"
 }
 
@@ -115,6 +116,11 @@ adduser -D app
 for dir in / run etc usr/local/etc home/app/.config; do
     mkdir -pv "/\$dir/$BIN"
 done
+
+# for glibc, added later
+mkdir -p /usr/local/lib
+mkdir -p /lib64
+ln -sf /usr/local/lib/ld-linux-x86-64.so.2 /lib64/
 
 # create /dev/null
 mknod /dev/null c 1 3
@@ -177,6 +183,13 @@ EOZ
 
 EOL
 # LEAVE CHROOT
+
+# See https://github.com/denoland/deno_docker/blob/main/alpine.dockerfile for
+# the inspiration here. We get the glibc bits directly from distroless/cc
+DISTROLESS_TAG="sha256:f913198471738d9eedcd00c0ca812bf663e8959eebff3a3cbadb027ed9da0c38"
+docker pull gcr.io/distroless/cc@$DISTROLESS_TAG
+docker create --name "$TEMP_CONTAINER" gcr.io/distroless/cc@$DISTROLESS_TAG true
+sudo docker cp "$TEMP_CONTAINER:/lib/x86_64-linux-gnu/." "$ROOTFSMOUNT/usr/local/lib/"
 
 # For each tar.gz, copy the contents into the rootfs into the rootfs partition
 # we created above. This will cumulatively stack the content of each.

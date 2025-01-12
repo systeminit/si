@@ -252,6 +252,7 @@ def build_tar_archive(
     gzip_cmd = [
         "gzip",
         "-9",
+        "-f",
         temp_file,
     ]
     subprocess.run(gzip_cmd).check_returncode()
