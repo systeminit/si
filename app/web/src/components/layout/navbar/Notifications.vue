@@ -1,6 +1,6 @@
 <template>
   <button
-    v-if="featureFlagsStore.REBAC && userIsApprover"
+    v-if="userIsApprover"
     v-tooltip="{
       content: tooltipText,
       theme: 'notifications',
@@ -42,12 +42,10 @@
 import clsx from "clsx";
 import { computed, ref, onMounted, onBeforeUnmount } from "vue";
 import { Icon, PillCounter } from "@si/vue-lib/design-system";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import ApprovalPendingModal from "../../ApprovalPendingModal.vue";
 
 const changeSetsStore = useChangeSetsStore();
-const featureFlagsStore = useFeatureFlagsStore();
 
 const pendingApprovalModalRef = ref<InstanceType<
   typeof ApprovalPendingModal
