@@ -1938,8 +1938,6 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                     componentType: ComponentType.View,
                   });
                   if (view) view.viewNodes[payload.viewObjectId] = node;
-                  if (payload.viewId === this.selectedViewId)
-                    this.viewNodes[payload.viewObjectId] = node;
                 }
               },
             },
@@ -1949,8 +1947,6 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                 if (metadata.change_set_id !== changeSetId) return;
                 const view = this.viewsById[payload.viewId];
                 if (view) delete view.viewNodes[payload.viewObjectId];
-                if (payload.viewId === this.selectedViewId)
-                  delete this.viewNodes[payload.viewObjectId];
               },
             },
 
@@ -1972,7 +1968,6 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                           size: geo.height * geo.width,
                           zIndex: 0,
                         };
-                        this.setGroupZIndex();
                       } else view.components[componentId] = geo;
                       if (geo) {
                         for (const [key, loc] of Object.entries(
@@ -1988,6 +1983,8 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                     });
                   },
                 );
+
+                this.setGroupZIndex();
               },
             },
           ],
