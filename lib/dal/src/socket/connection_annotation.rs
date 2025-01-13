@@ -38,10 +38,10 @@ impl TryFrom<String> for ConnectionAnnotation {
         // and < and > are those literal characters
         let mut tokens = vec![];
 
+        let re = Regex::new(r"^(?<token>[\w ]+)(?:<(?<tail>.+)>)?$")?;
+
         let mut this_value = value;
         loop {
-            let re = Regex::new(r"^(?<token>[\w ]+)(?:<(?<tail>.+)>)?$")?;
-
             let captures = re
                 .captures(&this_value)
                 .ok_or(Self::Error::BadFormat(this_value.clone()))?;
