@@ -1,8 +1,8 @@
+use super::{AttrFuncInputSpec, SpecError};
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
 use strum::{AsRefStr, Display, EnumIter, EnumString};
-
-use super::{AttrFuncInputSpec, SpecError};
+use ts_rs::TS;
 
 #[remain::sorted]
 #[derive(
@@ -17,8 +17,10 @@ use super::{AttrFuncInputSpec, SpecError};
     EnumIter,
     EnumString,
     Copy,
+    TS,
 )]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub enum SocketSpecKind {
     Input,
     Output,
@@ -38,17 +40,20 @@ pub enum SocketSpecKind {
     Serialize,
     Copy,
     Default,
+    TS,
 )]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub enum SocketSpecArity {
     #[default]
     Many,
     One,
 }
 
-#[derive(Builder, Clone, Debug, Deserialize, Serialize)]
+#[derive(Builder, Clone, Debug, Deserialize, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[builder(build_fn(error = "SpecError"))]
+#[ts(export)]
 pub struct SocketSpecData {
     #[builder(setter(into, strip_option), default)]
     pub func_unique_id: Option<String>,
@@ -75,9 +80,10 @@ impl SocketSpecData {
     }
 }
 
-#[derive(Builder, Clone, Debug, Deserialize, Serialize)]
+#[derive(Builder, Clone, Debug, Deserialize, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[builder(build_fn(error = "SpecError"))]
+#[ts(export)]
 pub struct SocketSpec {
     #[builder(setter(into))]
     pub name: String,

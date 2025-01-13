@@ -10,6 +10,7 @@ use petgraph::prelude::*;
 use serde::{Deserialize, Serialize};
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 use thiserror::Error;
+use ts_rs::TS;
 
 mod action_func;
 mod attr_func_input;
@@ -335,6 +336,7 @@ impl fmt::Debug for Source<'_> {
 
 #[remain::sorted]
 #[derive(
+    TS,
     Debug,
     Serialize,
     Deserialize,
@@ -347,6 +349,7 @@ impl fmt::Debug for Source<'_> {
     EnumString,
     Copy,
 )]
+#[ts(export)]
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "camelCase")]
 pub enum SiPkgKind {

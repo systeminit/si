@@ -1,8 +1,8 @@
+use super::SpecError;
 use derive_builder::UninitializedFieldError;
 use serde::{Deserialize, Serialize};
 use strum::{AsRefStr, Display, EnumIter, EnumString};
-
-use super::SpecError;
+use ts_rs::TS;
 
 #[remain::sorted]
 #[derive(
@@ -26,8 +26,9 @@ pub enum AttrFuncInputSpecKind {
 }
 
 #[remain::sorted]
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq, TS)]
 #[serde(tag = "kind", rename_all = "camelCase")]
+#[ts(export)]
 pub enum AttrFuncInputSpec {
     InputSocket {
         name: String,

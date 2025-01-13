@@ -6739,6 +6739,7 @@ dependencies = [
  "strum",
  "thiserror 2.0.11",
  "tokio",
+ "ts-rs",
  "ulid",
  "url",
 ]
@@ -8093,6 +8094,32 @@ dependencies = [
  "futures",
  "pin-project-lite",
  "tokio",
+]
+
+[[package]]
+name = "ts-rs"
+version = "10.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e640d9b0964e9d39df633548591090ab92f7a4567bc31d3891af23471a3365c6"
+dependencies = [
+ "chrono",
+ "lazy_static",
+ "serde_json",
+ "thiserror 2.0.6",
+ "ts-rs-macros",
+ "url",
+]
+
+[[package]]
+name = "ts-rs-macros"
+version = "10.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0e9d8656589772eeec2cf7a8264d9cda40fb28b9bc53118ceb9e8c07f8f38730"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.90",
+ "termcolor",
 ]
 
 [[package]]

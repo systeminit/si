@@ -3,6 +3,7 @@ use derive_builder::Builder;
 use object_tree::Hash;
 use serde::{Deserialize, Serialize};
 use strum::{AsRefStr, Display, EnumIter, EnumString};
+use ts_rs::TS;
 use url::Url;
 
 use super::SpecError;
@@ -20,8 +21,10 @@ use super::SpecError;
     Copy,
     PartialEq,
     Eq,
+    TS,
 )]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub enum FuncArgumentKind {
     Any,
     Array,
@@ -33,9 +36,10 @@ pub enum FuncArgumentKind {
     String,
 }
 
-#[derive(Builder, Clone, Debug, Deserialize, Serialize)]
+#[derive(Builder, Clone, Debug, Deserialize, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[builder(build_fn(error = "SpecError"))]
+#[ts(export)]
 pub struct FuncArgumentSpec {
     #[builder(setter(into))]
     pub name: String,
@@ -58,8 +62,11 @@ impl FuncArgumentSpec {
 }
 
 #[remain::sorted]
-#[derive(Clone, Copy, Debug, Deserialize, Serialize, AsRefStr, Display, EnumIter, EnumString)]
+#[derive(
+    Clone, Copy, Debug, Deserialize, Serialize, AsRefStr, Display, EnumIter, EnumString, TS,
+)]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub enum FuncSpecBackendKind {
     Array,
     Boolean,
@@ -84,8 +91,11 @@ pub enum FuncSpecBackendKind {
 }
 
 #[remain::sorted]
-#[derive(Clone, Copy, Debug, Deserialize, Serialize, AsRefStr, Display, EnumIter, EnumString)]
+#[derive(
+    Clone, Copy, Debug, Deserialize, Serialize, AsRefStr, Display, EnumIter, EnumString, TS,
+)]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub enum FuncSpecBackendResponseType {
     Action,
     Array,
@@ -108,9 +118,10 @@ pub enum FuncSpecBackendResponseType {
     Void,
 }
 
-#[derive(Builder, Clone, Debug, Deserialize, Serialize)]
+#[derive(Builder, Clone, Debug, Deserialize, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[builder(build_fn(error = "SpecError"))]
+#[ts(export)]
 pub struct FuncSpecData {
     #[builder(setter(into))]
     pub name: String,
@@ -155,9 +166,10 @@ impl FuncSpecDataBuilder {
     }
 }
 
-#[derive(Builder, Clone, Debug, Deserialize, Serialize)]
+#[derive(Builder, Clone, Debug, Deserialize, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[builder(build_fn(error = "SpecError"))]
+#[ts(export)]
 pub struct FuncSpec {
     #[builder(setter(into))]
     pub name: String,

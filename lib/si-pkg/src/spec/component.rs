@@ -1,11 +1,12 @@
-use derive_builder::Builder;
-use serde::{Deserialize, Serialize};
-
 use super::SpecError;
 use super::{attribute_value::AttributeValueSpec, position::PositionSpec};
+use derive_builder::Builder;
+use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub enum ComponentSpecVariant {
     BuiltinVariant {
         schema_name: String,
@@ -22,9 +23,10 @@ pub enum ComponentSpecVariant {
     },
 }
 
-#[derive(Builder, Clone, Debug, Deserialize, Serialize)]
+#[derive(Builder, Clone, Debug, Deserialize, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[builder(build_fn(error = "SpecError"))]
+#[ts(export)]
 pub struct ComponentSpec {
     #[builder(setter(into))]
     pub name: String,

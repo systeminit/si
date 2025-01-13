@@ -1,10 +1,11 @@
+use super::SpecError;
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
 use strum::{AsRefStr, Display, EnumIter, EnumString};
-
-use super::SpecError;
+use ts_rs::TS;
 
 #[derive(
+    TS,
     Debug,
     Serialize,
     Deserialize,
@@ -18,6 +19,7 @@ use super::SpecError;
     Copy,
 )]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub enum ActionFuncSpecKind {
     Create,
     Refresh,
@@ -26,9 +28,10 @@ pub enum ActionFuncSpecKind {
     Update,
 }
 
-#[derive(Builder, Clone, Debug, Deserialize, Serialize)]
+#[derive(TS, Builder, Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 #[builder(build_fn(error = "SpecError"))]
+#[ts(export)]
 pub struct ActionFuncSpec {
     #[builder(setter(into))]
     pub func_unique_id: String,

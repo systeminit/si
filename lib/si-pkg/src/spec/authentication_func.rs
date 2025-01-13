@@ -1,11 +1,12 @@
+use super::SpecError;
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 
-use super::SpecError;
-
-#[derive(Builder, Clone, Debug, Deserialize, Serialize)]
+#[derive(TS, Builder, Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 #[builder(build_fn(error = "SpecError"))]
+#[ts(export)]
 pub struct AuthenticationFuncSpec {
     #[builder(setter(into))]
     pub func_unique_id: String,

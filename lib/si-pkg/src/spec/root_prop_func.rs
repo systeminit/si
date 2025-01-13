@@ -1,14 +1,15 @@
+use crate::SchemaVariantSpecPropRoot;
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
-
-use crate::SchemaVariantSpecPropRoot;
+use ts_rs::TS;
 
 use super::{AttrFuncInputSpec, SpecError};
 
 /// RootPropFuncs track custom functions for for props that are immediate children of the root.
-#[derive(Builder, Clone, Debug, Deserialize, Serialize)]
+#[derive(Builder, Clone, Debug, Deserialize, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[builder(build_fn(error = "SpecError"))]
+#[ts(export)]
 pub struct RootPropFuncSpec {
     #[builder(setter(into))]
     pub prop: SchemaVariantSpecPropRoot,

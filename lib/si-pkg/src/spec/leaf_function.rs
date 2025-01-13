@@ -1,8 +1,8 @@
+use super::SpecError;
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
 use strum::{AsRefStr, Display, EnumIter, EnumString};
-
-use super::SpecError;
+use ts_rs::TS;
 
 #[remain::sorted]
 #[derive(
@@ -17,8 +17,10 @@ use super::SpecError;
     EnumIter,
     EnumString,
     Copy,
+    TS,
 )]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub enum LeafKind {
     CodeGeneration,
     Qualification,
@@ -37,8 +39,10 @@ pub enum LeafKind {
     EnumIter,
     EnumString,
     Copy,
+    TS,
 )]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub enum LeafInputLocation {
     Code,
     DeletedAt,
@@ -47,9 +51,10 @@ pub enum LeafInputLocation {
     Secrets,
 }
 
-#[derive(Builder, Clone, Debug, Deserialize, Serialize)]
+#[derive(Builder, Clone, Debug, Deserialize, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[builder(build_fn(error = "SpecError"))]
+#[ts(export)]
 pub struct LeafFunctionSpec {
     #[builder(setter(into))]
     pub func_unique_id: String,

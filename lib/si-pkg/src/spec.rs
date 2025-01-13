@@ -2,6 +2,7 @@ use chrono::{DateTime, Utc};
 use derive_builder::{Builder, UninitializedFieldError};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
+use ts_rs::TS;
 
 mod action_func;
 mod attr_func_input;
@@ -30,7 +31,8 @@ pub use {
 
 use super::SiPkgKind;
 
-#[derive(Builder, Clone, Debug, Deserialize, Serialize)]
+#[derive(TS, Builder, Clone, Debug, Deserialize, Serialize)]
+#[ts(export)]
 #[serde(rename_all = "camelCase")]
 #[builder(build_fn(error = "SpecError"))]
 pub struct PkgSpec {

@@ -1,16 +1,17 @@
 use core::fmt;
 use std::hash::Hash;
 
-use derive_builder::Builder;
-use serde::{Deserialize, Serialize};
-
 use super::{
     func::{FuncSpecBackendKind, FuncSpecBackendResponseType},
     AttrFuncInputSpec, SpecError,
 };
+use derive_builder::Builder;
+use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub enum AttributeValuePath {
     Prop {
         path: String,
@@ -20,8 +21,9 @@ pub enum AttributeValuePath {
     OutputSocket(String),
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq, Hash)]
+#[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq, Hash, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub enum KeyOrIndex {
     Key(String),
     Index(i64),
@@ -82,9 +84,10 @@ impl AttributeValuePath {
     }
 }
 
-#[derive(Builder, Clone, Debug, Deserialize, Serialize)]
+#[derive(Builder, Clone, Debug, Deserialize, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[builder(build_fn(error = "SpecError"))]
+#[ts(export)]
 pub struct AttributeValueSpec {
     #[builder(setter(into, strip_option), default)]
     pub parent_path: Option<AttributeValuePath>,
