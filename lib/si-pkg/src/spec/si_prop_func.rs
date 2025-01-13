@@ -1,8 +1,8 @@
+use super::{AttrFuncInputSpec, SpecError};
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
 use strum::{AsRefStr, Display, EnumIter, EnumString};
-
-use super::{AttrFuncInputSpec, SpecError};
+use ts_rs::TS;
 
 /// SiPropFuncs track custom functions for for props created for all schema variants and not part
 /// of the domain tree (which varies for each variant). Currently these are the props under the
@@ -21,8 +21,10 @@ use super::{AttrFuncInputSpec, SpecError};
     EnumIter,
     EnumString,
     Copy,
+    TS,
 )]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub enum SiPropFuncSpecKind {
     Color,
     Name,
@@ -39,9 +41,10 @@ impl SiPropFuncSpecKind {
     }
 }
 
-#[derive(Builder, Clone, Debug, Deserialize, Serialize)]
+#[derive(Builder, Clone, Debug, Deserialize, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[builder(build_fn(error = "SpecError"))]
+#[ts(export)]
 pub struct SiPropFuncSpec {
     #[builder(setter(into))]
     pub kind: SiPropFuncSpecKind,

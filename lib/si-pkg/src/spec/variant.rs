@@ -3,6 +3,7 @@ use std::collections::HashSet;
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
 use strum::{AsRefStr, Display, EnumIter, EnumString, IntoEnumIterator};
+use ts_rs::TS;
 use url::Url;
 
 use crate::{
@@ -17,6 +18,7 @@ use super::{
 
 #[remain::sorted]
 #[derive(
+    TS,
     Debug,
     Serialize,
     Deserialize,
@@ -31,6 +33,7 @@ use super::{
     Default,
 )]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub enum SchemaVariantSpecComponentType {
     #[serde(alias = "AggregationFrame")]
     #[strum(serialize = "AggregationFrame", serialize = "aggregationFrame")]
@@ -64,7 +67,9 @@ pub enum SchemaVariantSpecComponentType {
     EnumIter,
     EnumString,
     Copy,
+    TS,
 )]
+#[ts(export)]
 pub enum SchemaVariantSpecPropRoot {
     Code,
     Domain,
@@ -102,9 +107,10 @@ impl SchemaVariantSpecPropRoot {
     }
 }
 
-#[derive(Builder, Clone, Debug, Deserialize, Serialize)]
+#[derive(TS, Builder, Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 #[builder(build_fn(error = "SpecError"))]
+#[ts(export)]
 pub struct SchemaVariantSpecData {
     #[builder(setter(into))]
     pub version: String,
@@ -139,9 +145,10 @@ impl SchemaVariantSpecDataBuilder {
     }
 }
 
-#[derive(Builder, Clone, Debug, Deserialize, Serialize)]
+#[derive(TS, Builder, Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 #[builder(build_fn(error = "SpecError"))]
+#[ts(export)]
 pub struct SchemaVariantSpec {
     #[builder(setter(into))]
     pub version: String,

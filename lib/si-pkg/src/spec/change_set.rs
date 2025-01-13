@@ -2,9 +2,11 @@ use super::{ComponentSpec, EdgeSpec, FuncSpec, SchemaSpec, SpecError};
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumString};
+use ts_rs::TS;
 
 #[remain::sorted]
-#[derive(Deserialize, Serialize, Debug, Display, EnumString, PartialEq, Eq, Clone, Copy)]
+#[derive(Deserialize, Serialize, Debug, Display, EnumString, PartialEq, Eq, Clone, Copy, TS)]
+#[ts(export)]
 pub enum ChangeSetSpecStatus {
     Abandoned,
     Applied,
@@ -13,9 +15,10 @@ pub enum ChangeSetSpecStatus {
     Open,
 }
 
-#[derive(Builder, Clone, Debug, Deserialize, Serialize)]
+#[derive(Builder, Clone, Debug, Deserialize, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[builder(build_fn(error = "SpecError"))]
+#[ts(export)]
 pub struct ChangeSetSpec {
     #[builder(setter(into))]
     pub name: String,

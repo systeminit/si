@@ -1,11 +1,12 @@
+use super::{SchemaVariantSpec, SpecError};
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 
-use super::{SchemaVariantSpec, SpecError};
-
-#[derive(Builder, Clone, Debug, Deserialize, Serialize)]
+#[derive(TS, Builder, Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 #[builder(build_fn(error = "SpecError"))]
+#[ts(export)]
 pub struct SchemaSpecData {
     #[builder(setter(into))]
     pub name: String,
@@ -26,9 +27,10 @@ impl SchemaSpecData {
     }
 }
 
-#[derive(Builder, Clone, Debug, Deserialize, Serialize)]
+#[derive(TS, Builder, Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 #[builder(build_fn(error = "SpecError"))]
+#[ts(export)]
 pub struct SchemaSpec {
     #[builder(setter(into))]
     pub name: String,

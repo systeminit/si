@@ -1,12 +1,13 @@
+use super::{AttrFuncInputSpec, SpecError};
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
-
-use super::{AttrFuncInputSpec, SpecError};
+use ts_rs::TS;
 
 /// MapKeyFuncSpecs track custom functions set on keys to a map
-#[derive(Builder, Clone, Debug, Deserialize, Serialize)]
+#[derive(Builder, Clone, Debug, Deserialize, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[builder(build_fn(error = "SpecError"))]
+#[ts(export)]
 pub struct MapKeyFuncSpec {
     #[builder(setter(into))]
     pub key: String,

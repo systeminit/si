@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use super::SpecError;
 
 use strum::{AsRefStr, Display, EnumIter, EnumString};
+use ts_rs::TS;
 
 #[remain::sorted]
 #[derive(
@@ -18,15 +19,18 @@ use strum::{AsRefStr, Display, EnumIter, EnumString};
     Copy,
     PartialEq,
     Eq,
+    TS,
 )]
+#[ts(export)]
 pub enum EdgeSpecKind {
     Configuration,
     Symbolic,
 }
 
-#[derive(Builder, Clone, Debug, Deserialize, Serialize)]
+#[derive(TS, Builder, Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 #[builder(build_fn(error = "SpecError"))]
+#[ts(export)]
 pub struct EdgeSpec {
     #[builder(setter(into))]
     pub edge_kind: EdgeSpecKind,

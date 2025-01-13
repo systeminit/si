@@ -4,6 +4,7 @@ use derive_builder::UninitializedFieldError;
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use strum::{AsRefStr, Display, EnumIter, EnumString};
+use ts_rs::TS;
 use url::Url;
 
 use super::{AttrFuncInputSpec, MapKeyFuncSpec, SpecError};
@@ -22,7 +23,9 @@ use super::{AttrFuncInputSpec, MapKeyFuncSpec, SpecError};
     EnumString,
     Copy,
     Default,
+    TS,
 )]
+#[ts(export)]
 pub enum PropSpecWidgetKind {
     Array,
     Checkbox,
@@ -51,8 +54,9 @@ impl From<&PropSpec> for PropSpecWidgetKind {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(TS, Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub struct PropSpecData {
     pub name: String,
     pub validation_format: Option<String>,
@@ -67,8 +71,9 @@ pub struct PropSpecData {
 }
 
 #[remain::sorted]
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(TS, Clone, Debug, Deserialize, Serialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
+#[ts(export)]
 pub enum PropSpec {
     #[serde(rename_all = "camelCase")]
     Array {
