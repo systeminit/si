@@ -104,7 +104,8 @@
     }
   },
   "remote": {
-    "https://deno.land/x/json_schema_typed@v8.0.0/draft_07.ts": "1d8a7c80be7b9dd80c583e471fdfec5be526a9b039d1753a9c0f9aa2e8da8be5"
+    "https://deno.land/x/json_schema_typed@v8.0.0/draft_07.ts": "1d8a7c80be7b9dd80c583e471fdfec5be526a9b039d1753a9c0f9aa2e8da8be5",
+    "https://deno.land/x/ulid@v0.3.0/mod.ts": "f7ff065b66abd485051fc68af23becef6ccc7e81f7774d7fcfd894a4b2da1984"
   },
   "workspace": {
     "dependencies": [
