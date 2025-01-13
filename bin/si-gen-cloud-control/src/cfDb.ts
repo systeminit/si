@@ -6,7 +6,20 @@ const logger = _logger.ns("cfDb").seal();
 
 type JSONPointer = string;
 
-interface CfSchema extends JSONSchema.Interface {
+interface CfPropertyStatic {
+  description?: string;
+}
+
+type CfProperty =
+  & ({
+    "type": "integer" | "boolean" | "string";
+  } | {
+    "type": "array";
+    "items": CfProperty;
+  })
+  & CfPropertyStatic;
+
+export interface CfSchema extends JSONSchema.Interface {
   typeName: string;
   description: string;
   primaryIdentifier: JSONPointer[];
@@ -36,6 +49,7 @@ interface CfSchema extends JSONSchema.Interface {
       definitions: JSONSchema.Interface["definitions"];
     }
   >;
+  properties: Record<string, CfProperty>;
   readOnlyProperties?: JSONPointer[];
   writeOnlyProperties?: JSONPointer[];
   conditionalCreateOnlyProperties?: JSONPointer[];
@@ -56,7 +70,7 @@ type CfDb = Record<string, CfSchema>;
 const DB: CfDb = {};
 await loadDatabase();
 
-export async function loadDatabase() {
+export async function loadDatabase(): Promise<CfDb> {
   if (Object.keys(DB).length === 0) {
     const fullPath = Deno.realPathSync("./cloudformation-schema");
     logger.debug("Loading database from Cloudformation schema", { fullPath });
@@ -67,25 +81,31 @@ export async function loadDatabase() {
       const data = rawData.default as CfSchema;
 
       logger.verbose("Loading schema", { name: dirEntry.name, data });
-      if (data.typeName) {
-        const typeName: string = data.typeName;
-        logger.debug(`Loaded ${typeName}`);
-        try {
-          const expandedSchema = await $RefParser.dereference(data);
-          DB[typeName] = expandedSchema as CfSchema;
-        } catch (e) {
-          logger.error(`failed to expand ${typeName}`, e);
-          DB[typeName] = data;
-        }
+
+      const typeName: string = data.typeName;
+
+      if (typeName !== "AWS::EC2::VPC") continue;
+
+      logger.debug(`Loaded ${typeName}`);
+      try {
+        const expandedSchema = await $RefParser.dereference(data);
+        DB[typeName] = expandedSchema as CfSchema;
+      } catch (e) {
+        logger.error(`failed to expand ${typeName}`, e);
+        DB[typeName] = data;
       }
     }
   }
+
+  return DB;
 }
 
 export class ServiceMissing extends Error {
   constructor(serviceName: string) {
-    super(`Attempt to find schema for service ${serviceName}, but it does not exist`);
-    this.name = "SchemaMissing"
+    super(
+      `Attempt to find schema for service ${serviceName}, but it does not exist`,
+    );
+    this.name = "SchemaMissing";
   }
 }
 
@@ -98,7 +118,9 @@ export function getServiceByName(serviceName: string): CfSchema {
   }
 }
 
-export function getPropertiesForService(serviceName: string): CfSchema["properties"] {
+export function getPropertiesForService(
+  serviceName: string,
+): CfSchema["properties"] {
   const service = getServiceByName(serviceName);
   return service.properties;
 }
