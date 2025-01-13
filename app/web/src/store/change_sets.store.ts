@@ -16,7 +16,6 @@ import IncomingChangesMerging from "@/components/toasts/IncomingChangesMerging.v
 import MovedToHead from "@/components/toasts/MovedToHead.vue";
 import RebaseOnBase from "@/components/toasts/RebaseOnBase.vue";
 import ChangeSetStatusChanged from "@/components/toasts/ChangeSetStatusChanged.vue";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { useWorkspacesStore } from "./workspaces.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import { useRouterStore } from "./router.store";
@@ -41,7 +40,6 @@ export interface OpenChangeSetsView {
 export function useChangeSetsStore() {
   const workspacesStore = useWorkspacesStore();
   const workspacePk = workspacesStore.selectedWorkspacePk;
-  const featureFlagsStore = useFeatureFlagsStore();
   const authStore = useAuthStore();
   const realtimeStore = useRealtimeStore();
   const BASE_API = [
@@ -150,25 +148,15 @@ export function useChangeSetsStore() {
         },
 
         async FETCH_CHANGE_SETS() {
-          if (featureFlagsStore.REBAC) {
-            return new ApiRequest<WorkspaceMetadata>({
-              method: "get",
-              url: BASE_API,
-              onSuccess: (response) => {
-                this.headChangeSetId = response.defaultChangeSetId;
-                this.changeSetsById = _.keyBy(response.changeSets, "id");
-                this.approvers = response.approvers;
-              },
-            });
-          } else {
-            return new ApiRequest<OpenChangeSetsView>({
-              url: "change_set/list_open_change_sets",
-              onSuccess: (response) => {
-                this.headChangeSetId = response.headChangeSetId;
-                this.changeSetsById = _.keyBy(response.changeSets, "id");
-              },
-            });
-          }
+          return new ApiRequest<WorkspaceMetadata>({
+            method: "get",
+            url: BASE_API,
+            onSuccess: (response) => {
+              this.headChangeSetId = response.defaultChangeSetId;
+              this.changeSetsById = _.keyBy(response.changeSets, "id");
+              this.approvers = response.approvers;
+            },
+          });
         },
         async CREATE_CHANGE_SET(name: string) {
           return new ApiRequest<{ changeSet: ChangeSet }>({
