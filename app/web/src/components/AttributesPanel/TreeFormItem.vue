@@ -401,7 +401,10 @@
           name="nested-arrow-right"
           size="none"
         />
+        <!-- todo: Brit/Wendy: Need to truncate if it's too long, add an ability to pop a modal,
+         and ensure this works if the prop is a header and has documentation  -->
         <div
+          v-tooltip="propDocumentation"
           :title="`${propLabelParts[0]}${propLabelParts[1]}`"
           class="cursor-default shrink truncate py-2xs px-0 [&_i]:opacity-50"
         >
@@ -944,6 +947,7 @@ export type TreeFormProp = {
   widgetKind: PropertyEditorPropWidgetKind;
   isHidden: boolean;
   isReadonly: boolean;
+  documentation?: string;
 };
 
 export type TreeFormData = {
@@ -1058,6 +1062,7 @@ const widgetOptions = computed(
   () => (fullPropDef.value.widgetKind as any).options,
 );
 const propName = computed(() => fullPropDef.value.name);
+const propDocumentation = computed(() => fullPropDef.value.documentation);
 const propLabelParts = computed(() => {
   if (isChildOfArray.value)
     return [`${propName.value}[${props.treeDef.arrayIndex}]`];
