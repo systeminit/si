@@ -164,7 +164,7 @@ impl Migrator {
     async fn migrate_snapshots(&self) -> MigratorResult<()> {
         let dal_context = self.services_context.clone().into_builder(true);
         let ctx = dal_context
-            .build_default()
+            .build_default(None)
             .await
             .map_err(MigratorError::migrate_snapshots)?;
 
@@ -183,7 +183,7 @@ impl Migrator {
     async fn migrate_module_cache(&self) -> MigratorResult<()> {
         let dal_context = self.services_context.clone().into_builder(true);
         let ctx = dal_context
-            .build_default()
+            .build_default(None)
             .await
             .map_err(MigratorError::migrate_cached_modules)?;
 

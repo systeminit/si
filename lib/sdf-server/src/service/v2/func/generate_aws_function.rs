@@ -11,8 +11,9 @@ use serde::{Deserialize, Serialize};
 use si_frontend_types::FuncCode;
 
 use crate::{
-    extract::{AccessBuilder, AssetSprayer, HandlerContext, PosthogClient},
+    extract::{AssetSprayer, HandlerContext, PosthogClient},
     service::force_change_set_response::ForceChangeSetResponse,
+    service::v2::AccessBuilder,
     track,
 };
 

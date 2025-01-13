@@ -11,7 +11,7 @@ use si_events::audit_log::AuditLogKind;
 
 use super::ChangeSetResult;
 use crate::{
-    extract::{AccessBuilder, HandlerContext, PosthogClient},
+    extract::{v1::AccessBuilder, HandlerContext, PosthogClient},
     service::force_change_set_response::ForceChangeSetResponse,
     track,
 };

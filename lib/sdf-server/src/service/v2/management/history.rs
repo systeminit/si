@@ -6,7 +6,7 @@ use si_events::{
     ActionResultState, ChangeSetId, ComponentId, FuncId, FuncRun, FuncRunId, ManagementPrototypeId,
 };
 
-use crate::extract::{AccessBuilder, HandlerContext};
+use crate::{extract::HandlerContext, service::v2::AccessBuilder};
 
 use super::{ManagementApiError, ManagementApiResult};
 

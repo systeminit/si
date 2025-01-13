@@ -8,7 +8,7 @@ use si_events::audit_log::AuditLogKind;
 
 use super::ChangeSetResult;
 use crate::{
-    extract::{AccessBuilder, HandlerContext, PosthogClient},
+    extract::{v1::AccessBuilder, HandlerContext, PosthogClient},
     service::change_set::ChangeSetError,
     track,
 };

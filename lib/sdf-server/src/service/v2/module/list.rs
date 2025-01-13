@@ -6,7 +6,8 @@ use dal::{module::Module, ChangeSetId, WorkspacePk};
 use si_frontend_types::ModuleSummary;
 
 use super::ModuleAPIResult;
-use crate::extract::{AccessBuilder, HandlerContext, PosthogClient, RawAccessToken};
+use crate::extract::{request::RawAccessToken, HandlerContext, PosthogClient};
+use crate::service::v2::AccessBuilder;
 
 pub async fn list(
     HandlerContext(builder): HandlerContext,

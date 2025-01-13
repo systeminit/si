@@ -12,8 +12,9 @@ use si_frontend_types::{FuncCode, FuncSummary};
 
 use super::{get_code_response, FuncAPIError, FuncAPIResult};
 use crate::{
-    extract::{AccessBuilder, HandlerContext, PosthogClient},
+    extract::{HandlerContext, PosthogClient},
     service::force_change_set_response::ForceChangeSetResponse,
+    service::v2::AccessBuilder,
     track,
 };
 

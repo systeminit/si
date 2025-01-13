@@ -11,7 +11,8 @@ use dal::{
 use serde::{Deserialize, Serialize};
 use si_events::audit_log::AuditLogKind;
 
-use crate::extract::{AccessBuilder, HandlerContext, PosthogClient};
+use crate::extract::{HandlerContext, PosthogClient};
+use crate::service::v2::AccessBuilder;
 
 use super::{track, ManagementApiError, ManagementApiResult};
 

@@ -4,8 +4,9 @@ use si_events::audit_log::AuditLogKind;
 
 use super::{SchemaVariantsAPIError, SchemaVariantsAPIResult};
 use crate::{
-    extract::{AccessBuilder, HandlerContext, PosthogClient},
+    extract::{HandlerContext, PosthogClient},
     service::force_change_set_response::ForceChangeSetResponse,
+    service::v2::AccessBuilder,
     track,
 };
 

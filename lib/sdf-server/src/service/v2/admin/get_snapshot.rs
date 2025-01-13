@@ -3,25 +3,23 @@ use axum::{
     response::Response,
 };
 use base64::prelude::*;
-use dal::{ChangeSet, ChangeSetId, WorkspacePk};
+use dal::{ChangeSet, ChangeSetId, Tenancy, WorkspacePk};
 use hyper::{header, Body};
 
 use crate::{
-    extract::{AccessBuilder, HandlerContext, PosthogClient},
+    extract::PosthogClient,
+    service::v2::admin::{AdminAPIError, AdminAPIResult, AdminUserContext},
     track_no_ctx,
 };
 
-use super::{AdminAPIError, AdminAPIResult};
-
 pub async fn get_snapshot(
-    HandlerContext(builder): HandlerContext,
-    AccessBuilder(access_builder): AccessBuilder,
+    AdminUserContext(mut ctx): AdminUserContext,
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
     Host(host_name): Host,
-    Path((workspace_pk, change_set_id)): Path<(WorkspacePk, ChangeSetId)>,
+    Path((workspace_id, change_set_id)): Path<(WorkspacePk, ChangeSetId)>,
 ) -> AdminAPIResult<Response<Body>> {
-    let ctx = builder.build_head(access_builder).await?;
+    ctx.update_tenancy(Tenancy::new(workspace_id));
 
     let change_set = ChangeSet::find(&ctx, change_set_id)
         .await?
@@ -52,7 +50,7 @@ pub async fn get_snapshot(
         &original_uri,
         &host_name,
         ctx.history_actor().distinct_id(),
-        Some(workspace_pk.to_string()),
+        Some(workspace_id.to_string()),
         Some(change_set_id.to_string()),
         "admin.get_snapshot",
         serde_json::json!({

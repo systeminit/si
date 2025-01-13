@@ -7,7 +7,8 @@ use serde::Deserialize;
 
 use super::{Error, Result};
 use crate::{
-    extract::{AccessBuilder, HandlerContext, PosthogClient},
+    extract::{HandlerContext, PosthogClient},
+    service::v2::AccessBuilder,
     track,
 };
 

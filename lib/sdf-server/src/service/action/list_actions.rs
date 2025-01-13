@@ -10,7 +10,7 @@ use si_events::FuncRunId;
 use telemetry::prelude::*;
 
 use super::ActionResult;
-use crate::extract::{AccessBuilder, HandlerContext};
+use crate::extract::{v1::AccessBuilder, HandlerContext};
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

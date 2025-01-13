@@ -59,6 +59,12 @@ impl Tenancy {
     }
 }
 
+impl From<WorkspacePk> for Tenancy {
+    fn from(workspace_pk: WorkspacePk) -> Self {
+        Self::new(workspace_pk)
+    }
+}
+
 impl postgres_types::ToSql for Tenancy {
     fn to_sql(
         &self,

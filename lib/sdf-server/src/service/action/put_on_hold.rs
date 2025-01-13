@@ -8,7 +8,7 @@ use si_events::audit_log::AuditLogKind;
 
 use super::ActionResult;
 use crate::{
-    extract::{AccessBuilder, HandlerContext},
+    extract::{v1::AccessBuilder, HandlerContext},
     service::action::ActionError,
 };
 

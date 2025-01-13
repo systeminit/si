@@ -6,7 +6,7 @@ use dal::{ChangeSet, Component, ComponentId, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    extract::{AccessBuilder, HandlerContext, PosthogClient},
+    extract::{v1::AccessBuilder, HandlerContext, PosthogClient},
     service::force_change_set_response::ForceChangeSetResponse,
     track,
 };

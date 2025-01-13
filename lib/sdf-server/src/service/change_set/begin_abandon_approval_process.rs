@@ -6,7 +6,7 @@ use dal::{ChangeSet, Visibility};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    extract::{AccessBuilder, HandlerContext, PosthogClient},
+    extract::{v1::AccessBuilder, HandlerContext, PosthogClient},
     service::change_set::{ChangeSetError, ChangeSetResult},
     track,
 };

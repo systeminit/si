@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 
 use super::ChangeSetResult;
 use crate::{
-    extract::{AccessBuilder, HandlerContext, PosthogClient},
+    extract::{v1::AccessBuilder, HandlerContext, PosthogClient},
     track,
 };
 

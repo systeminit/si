@@ -14,7 +14,8 @@ use si_events::audit_log::AuditLogKind;
 use si_frontend_types as frontend_types;
 
 use crate::{
-    extract::{AccessBuilder, HandlerContext, PosthogClient},
+    extract::{HandlerContext, PosthogClient},
+    service::v2::AccessBuilder,
     service::{
         force_change_set_response::ForceChangeSetResponse,
         v2::func::{FuncAPIError, FuncAPIResult},

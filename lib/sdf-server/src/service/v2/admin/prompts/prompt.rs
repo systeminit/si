@@ -7,12 +7,8 @@ use axum::{
 use dal::prompt_override::PromptOverride;
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    extract::{AccessBuilder, AssetSprayer, HandlerContext},
-    AppState,
-};
-
 use super::Result;
+use crate::{extract::AssetSprayer, service::v2::admin::AdminUserContext, AppState};
 
 pub fn routes() -> Router<AppState> {
     Router::new()
@@ -29,12 +25,10 @@ pub struct PromptValue {
 }
 
 pub async fn get_prompt(
-    HandlerContext(builder): HandlerContext,
-    AccessBuilder(access_builder): AccessBuilder,
-    AssetSprayer(asset_sprayer): AssetSprayer,
+    AdminUserContext(ctx): AdminUserContext,
+    asset_sprayer: AssetSprayer,
     Path(kind): Path<AwsCliCommandPromptKind>,
 ) -> Result<Json<PromptValue>> {
-    let ctx = builder.build_head(access_builder).await?;
     let prompt_override = PromptOverride::get_opt(&ctx, kind.as_ref()).await?;
     let overridden = prompt_override.is_some();
     let prompt_yaml = match prompt_override {
@@ -54,23 +48,19 @@ pub struct SetPromptRequest {
 }
 
 pub async fn set_prompt(
-    HandlerContext(builder): HandlerContext,
-    AccessBuilder(access_builder): AccessBuilder,
+    AdminUserContext(ctx): AdminUserContext,
     Path(kind): Path<AwsCliCommandPromptKind>,
     Json(request): Json<SetPromptRequest>,
 ) -> Result<()> {
-    let ctx = builder.build_head(access_builder).await?;
     PromptOverride::set(&ctx, kind.as_ref(), &request.prompt_yaml).await?;
     ctx.commit_no_rebase().await?;
     Ok(())
 }
 
 pub async fn reset_prompt(
-    HandlerContext(builder): HandlerContext,
-    AccessBuilder(access_builder): AccessBuilder,
+    AdminUserContext(ctx): AdminUserContext,
     Path(kind): Path<AwsCliCommandPromptKind>,
 ) -> Result<()> {
-    let ctx = builder.build_head(access_builder).await?;
     PromptOverride::reset(&ctx, kind.as_ref()).await?;
     ctx.commit_no_rebase().await?;
     Ok(())

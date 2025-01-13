@@ -8,7 +8,7 @@ use si_events::{
 };
 
 use super::{ActionError, ActionResult};
-use crate::extract::{AccessBuilder, HandlerContext};
+use crate::extract::{v1::AccessBuilder, HandlerContext};
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

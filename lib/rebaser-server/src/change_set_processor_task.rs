@@ -369,7 +369,7 @@ mod handlers {
             server_tracker,
         } = state;
         let mut ctx = ctx_builder
-            .build_for_change_set_as_system(workspace_id, change_set_id)
+            .build_for_change_set_as_system(workspace_id, change_set_id, None)
             .await?;
 
         let span = Span::current();

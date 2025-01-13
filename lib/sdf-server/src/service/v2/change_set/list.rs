@@ -6,7 +6,8 @@ use dal::{ChangeSet, ChangeSetId, WorkspacePk};
 
 use super::{AppState, Error, Result};
 use crate::{
-    extract::{AccessBuilder, HandlerContext, PosthogClient},
+    extract::{HandlerContext, PosthogClient},
+    service::v2::AccessBuilder,
     track,
 };
 

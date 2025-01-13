@@ -10,7 +10,8 @@ use si_frontend_types as frontend_types;
 
 use super::ModulesAPIError;
 use crate::{
-    extract::{AccessBuilder, HandlerContext, PosthogClient, RawAccessToken},
+    extract::{request::RawAccessToken, HandlerContext, PosthogClient},
+    service::v2::AccessBuilder,
     track,
 };
 

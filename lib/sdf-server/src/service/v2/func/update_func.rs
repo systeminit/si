@@ -1,7 +1,8 @@
 use super::FuncAPIResult;
 use crate::{
-    extract::{AccessBuilder, HandlerContext, PosthogClient},
+    extract::{HandlerContext, PosthogClient},
     service::force_change_set_response::ForceChangeSetResponse,
+    service::v2::AccessBuilder,
     track,
 };
 use axum::{

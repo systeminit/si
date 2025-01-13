@@ -9,7 +9,8 @@ use dal::{
 };
 
 use crate::{
-    extract::{AccessBuilder, HandlerContext, PosthogClient},
+    extract::{HandlerContext, PosthogClient},
+    service::v2::AccessBuilder,
     service::{
         force_change_set_response::ForceChangeSetResponse,
         variant::{SchemaVariantError, SchemaVariantResult},

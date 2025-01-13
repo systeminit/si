@@ -1149,7 +1149,10 @@ impl fmt::Debug for DalContextBuilder {
 
 impl DalContextBuilder {
     /// Constructs and returns a new [`DalContext`] using a default [`RequestContext`].
-    pub async fn build_default(&self) -> TransactionsResult<DalContext> {
+    pub async fn build_default(
+        &self,
+        request_ulid: Option<ulid::Ulid>,
+    ) -> TransactionsResult<DalContext> {
         let conns = self.services_context.connections().await?;
 
         Ok(DalContext {
@@ -1159,7 +1162,31 @@ impl DalContextBuilder {
             tenancy: Tenancy::new_empty(),
             visibility: Visibility::new_head_fake(),
             history_actor: HistoryActor::SystemInit,
-            request_ulid: None,
+            request_ulid,
+            no_dependent_values: self.no_dependent_values,
+            workspace_snapshot: None,
+            change_set: None,
+            event_session_id: EventSessionId::new(),
+        })
+    }
+
+    /// Constructs and returns a new [`DalContext`] with no home workspace or change set.
+    /// For admin-ish requests that are workspace-independent.
+    pub async fn build_without_workspace(
+        &self,
+        history_actor: HistoryActor,
+        request_ulid: Option<ulid::Ulid>,
+    ) -> TransactionsResult<DalContext> {
+        let conns = self.services_context.connections().await?;
+
+        Ok(DalContext {
+            services_context: self.services_context.clone(),
+            blocking: self.blocking,
+            conns_state: Arc::new(Mutex::new(ConnectionState::new_from_conns(conns))),
+            tenancy: Tenancy::new_empty(),
+            visibility: Visibility::new_head_fake(),
+            history_actor,
+            request_ulid,
             no_dependent_values: self.no_dependent_values,
             workspace_snapshot: None,
             change_set: None,
@@ -1173,6 +1200,7 @@ impl DalContextBuilder {
         &self,
         workspace_pk: WorkspacePk,
         change_set_id: ChangeSetId,
+        request_ulid: Option<ulid::Ulid>,
     ) -> TransactionsResult<DalContext> {
         let conns = self.services_context.connections().await?;
 
@@ -1183,7 +1211,7 @@ impl DalContextBuilder {
             tenancy: Tenancy::new(workspace_pk),
             visibility: Visibility::new(change_set_id),
             history_actor: HistoryActor::SystemInit,
-            request_ulid: None,
+            request_ulid,
             no_dependent_values: self.no_dependent_values,
             workspace_snapshot: None,
             change_set: None,

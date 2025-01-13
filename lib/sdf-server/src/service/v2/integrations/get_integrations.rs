@@ -1,4 +1,5 @@
-use crate::extract::{AccessBuilder, HandlerContext, PosthogClient};
+use crate::extract::{HandlerContext, PosthogClient};
+use crate::service::v2::AccessBuilder;
 use axum::extract::{Host, OriginalUri};
 use axum::Json;
 use dal::workspace_integrations::WorkspaceIntegration;

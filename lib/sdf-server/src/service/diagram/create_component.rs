@@ -15,7 +15,7 @@ use si_events::audit_log::AuditLogKind;
 use si_frontend_types::SchemaVariant as FrontendVariant;
 
 use crate::{
-    extract::{AccessBuilder, HandlerContext, PosthogClient},
+    extract::{v1::AccessBuilder, HandlerContext, PosthogClient},
     service::{diagram::DiagramResult, force_change_set_response::ForceChangeSetResponse},
     track,
 };

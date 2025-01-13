@@ -7,7 +7,10 @@ use dal::{ChangeSetId, FuncId, WorkspacePk};
 use serde::{Deserialize, Serialize};
 use si_frontend_types::FuncCode;
 
-use crate::extract::{AccessBuilder, HandlerContext, PosthogClient};
+use crate::{
+    extract::{HandlerContext, PosthogClient},
+    service::v2::AccessBuilder,
+};
 
 use super::{get_code_response, FuncAPIResult};
 

@@ -7,7 +7,8 @@ use dal::{module::Module, ChangeSetId, WorkspacePk};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    extract::{AccessBuilder, HandlerContext, PosthogClient},
+    extract::{HandlerContext, PosthogClient},
+    service::v2::AccessBuilder,
     track,
 };
 

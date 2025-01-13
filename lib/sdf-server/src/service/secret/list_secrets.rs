@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use super::SecretResult;
 use crate::{
-    extract::{AccessBuilder, HandlerContext},
+    extract::{v1::AccessBuilder, HandlerContext},
     service::secret::SecretError,
 };
 

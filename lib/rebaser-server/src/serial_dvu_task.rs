@@ -102,7 +102,7 @@ impl SerialDvuTask {
     async fn run_dvu(&self) -> Result<()> {
         let builder = self.ctx_builder.clone();
         let ctx = builder
-            .build_for_change_set_as_system(self.workspace_id, self.change_set_id)
+            .build_for_change_set_as_system(self.workspace_id, self.change_set_id, None)
             .await?;
 
         ctx.enqueue_dependent_values_update().await?;

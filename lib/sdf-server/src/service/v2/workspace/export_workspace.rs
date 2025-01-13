@@ -11,8 +11,9 @@ use telemetry::prelude::info;
 use ulid::Ulid;
 
 use crate::{
-    extract::{AccessBuilder, HandlerContext, PosthogClient, RawAccessToken},
+    extract::{request::RawAccessToken, HandlerContext, PosthogClient},
     service::async_route::handle_error,
+    service::v2::AccessBuilder,
     track,
 };
 
