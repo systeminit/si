@@ -81,7 +81,7 @@
     >
       <ActionCard
         :action="action"
-        :noInteraction="props.noInteraction || props.kind === 'history'"
+        :noInteraction="props.noInteraction"
         :selected="isSelected(action)"
         :slim="props.slim"
         @click="props.clickAction && props.clickAction(action, $event)"

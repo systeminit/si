@@ -146,6 +146,11 @@ export const useActionsStore = () => {
               (av) => av.originatingChangeSetId === changeSetId,
             );
           },
+          headActions(state): ActionProposedView[] {
+            return Object.values(state.actions).filter(
+              (av) => av.originatingChangeSetId !== changeSetId,
+            );
+          },
           historyActions(): ActionHistoryView[] {
             return this.actionHistory;
           },

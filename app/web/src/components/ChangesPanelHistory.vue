@@ -25,6 +25,7 @@
             :changeSet="getChangeSet(detail)"
             :clickAction="clickActionOrMgmtRun"
             :selectedFuncRunIds="selectedFuncRunId ? [selectedFuncRunId] : []"
+            noInteraction
             kind="history"
             @history="openHistory"
           />
