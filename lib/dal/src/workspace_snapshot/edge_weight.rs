@@ -69,6 +69,8 @@ pub enum EdgeWeightKind {
     Manages,
     /// From a view node to a diagram object node, to which geometries can be connected.
     DiagramObject,
+    /// Indicates if the node has a corresponding approval requirement.
+    HasApprovalRequirement,
 }
 
 impl EdgeWeightKind {

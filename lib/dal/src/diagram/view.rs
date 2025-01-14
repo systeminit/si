@@ -1,4 +1,5 @@
 use crate::{
+    approval_requirement::{ApprovalRequirement, ApprovalRequirementApprover},
     diagram::{
         diagram_object::DiagramObject,
         geometry::{Geometry, GeometryId},
@@ -21,6 +22,7 @@ use petgraph::Outgoing;
 use serde::{Deserialize, Serialize};
 use si_events::{ulid::Ulid, ComponentId, ContentHash};
 use si_frontend_types::RawGeometry;
+use si_id::ApprovalRequirementDefinitionId;
 use std::{
     collections::{HashMap, HashSet},
     sync::Arc,
@@ -390,6 +392,18 @@ impl View {
             .view_remove(view_id)
             .await
             .map_err(Into::into)
+    }
+
+    pub async fn add_approval_requirement(
+        ctx: &DalContext,
+        view_id: ViewId,
+        minimum_approvers_count: usize,
+        approvers: Vec<ApprovalRequirementApprover>,
+    ) -> DiagramResult<ApprovalRequirementDefinitionId> {
+        Ok(
+            ApprovalRequirement::new_definition(ctx, view_id, minimum_approvers_count, approvers)
+                .await?,
+        )
     }
 }
 

@@ -58,11 +58,12 @@ pub struct ChangeSetApprovalRequirement {
     // Which approvals are for this requirement?
     pub applicable_approval_ids: Vec<ChangeSetApprovalId>,
     // What groups can approve this?
-    // NOTE(nick,jacob): this is almost certainly not the right place to send up the users as well.
-    pub approving_groups: HashMap<String, Vec<String>>,
+    pub approver_groups: HashMap<String, Vec<UserPk>>,
+    // What individuals can approve this?
+    pub approver_individuals: Vec<UserPk>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct ChangeSetApproval {
     // What approval is this?

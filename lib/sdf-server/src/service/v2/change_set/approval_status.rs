@@ -28,9 +28,7 @@ pub async fn approval_status(
     let calculator = ChangeSetApprovalCalculator::new(&ctx, spicedb_client).await?;
 
     Ok(Json(si_frontend_types::ChangeSetApprovals {
-        requirements: calculator
-            .frontend_requirements(&ctx, spicedb_client)
-            .await?,
+        requirements: calculator.frontend_requirements(spicedb_client).await?,
         latest_approvals: calculator.frontend_latest_approvals(),
     }))
 }

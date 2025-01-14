@@ -21,6 +21,9 @@ impl EntityKindExt for WorkspaceSnapshotGraphV4 {
         Ok(match node_weight.into() {
             NodeWeightDiscriminants::Action => EntityKind::Action,
             NodeWeightDiscriminants::ActionPrototype => EntityKind::ActionPrototype,
+            NodeWeightDiscriminants::ApprovalRequirementDefinition => {
+                EntityKind::ApprovalRequirementDefinition
+            }
             NodeWeightDiscriminants::AttributePrototypeArgument => {
                 EntityKind::AttributePrototypeArgument
             }
