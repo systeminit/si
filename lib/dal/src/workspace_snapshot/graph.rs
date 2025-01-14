@@ -20,7 +20,6 @@ use crate::{
     ComponentError, EdgeWeightKindDiscriminants, SchemaVariantError,
 };
 
-pub mod approval;
 pub mod correct_transforms;
 pub mod deprecated;
 pub mod detector;

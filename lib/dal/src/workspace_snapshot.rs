@@ -754,11 +754,12 @@ impl WorkspaceSnapshot {
         level = "debug",
         skip_all
     )]
-    pub async fn approval_requirements_for_changes(
+    pub(crate) async fn approval_requirements_for_changes(
         &self,
-        workspace_id: WorkspacePk,
+        ctx: &DalContext,
         changes: &[Change],
     ) -> WorkspaceSnapshotResult<Vec<ApprovalRequirement>> {
+        let workspace_id = ctx.workspace_pk()?;
         Ok(self
             .working_copy()
             .await
