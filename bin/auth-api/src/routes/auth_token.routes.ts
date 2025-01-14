@@ -22,7 +22,7 @@ import { router } from ".";
 
 // get all authTokens for the given workspace
 router.get("/workspaces/:workspaceId/authTokens", async (ctx) => {
-  const { workspaceId } = await authorizeWorkspaceRoute(ctx, undefined);
+  const { workspaceId } = await authorizeWorkspaceRoute(ctx, []);
 
   const authTokens = await getAuthTokens(workspaceId);
 
@@ -34,7 +34,7 @@ router.post("/workspaces/:workspaceId/authTokens", async (ctx) => {
   const {
     userId,
     workspaceId,
-  } = await authorizeWorkspaceRoute(ctx, RoleType.OWNER);
+  } = await authorizeWorkspaceRoute(ctx, [RoleType.OWNER]);
 
   // TODO - this should also get an expiration instead of just defaulting to 1d!
   // Get params from body
@@ -71,13 +71,13 @@ router.post("/workspaces/:workspaceId/authTokens", async (ctx) => {
 
 // get the given authToken for the given workspace
 router.get("/workspaces/:workspaceId/authTokens/:authTokenId", async (ctx) => {
-  const { authToken } = await authorizeAuthTokenRoute(ctx, undefined);
+  const { authToken } = await authorizeAuthTokenRoute(ctx, []);
   ctx.body = { authToken };
 });
 
 // rename the given authToken for the given workspace
 router.put("/workspaces/:workspaceId/authTokens/:authTokenId", async (ctx) => {
-  const { authToken } = await authorizeAuthTokenRoute(ctx, RoleType.OWNER);
+  const { authToken } = await authorizeAuthTokenRoute(ctx, [RoleType.OWNER]);
 
   // Get params from body
   const { name } = validate(
@@ -95,7 +95,7 @@ router.put("/workspaces/:workspaceId/authTokens/:authTokenId", async (ctx) => {
 // delete the given authToken for the given workspace
 // TODO - This does not currently fully revoke the token, just removes it from prisma!
 router.delete("/workspaces/:workspaceId/authTokens/:authTokenId", async (ctx) => {
-  const { authTokenId } = await authorizeAuthTokenRoute(ctx, RoleType.OWNER);
+  const { authTokenId } = await authorizeAuthTokenRoute(ctx, [RoleType.OWNER]);
 
   const removed = await deleteAuthToken(authTokenId);
 
@@ -104,12 +104,12 @@ router.delete("/workspaces/:workspaceId/authTokens/:authTokenId", async (ctx) =>
 
 // Authorize /workspaces/:workspaceId/authTokens/:authTokenId
 // FIXME: APPROVER and EDITOR cannot be explicitly set since it would disallow OWNER
-async function authorizeAuthTokenRoute(ctx: CustomRouteContext, role: "OWNER" | undefined) {
+async function authorizeAuthTokenRoute(ctx: CustomRouteContext, roles: RoleType[] = []) {
   if (!ctx.params.authTokenId) {
     throw new Error(`No :authTokenId param on route: ${ctx.params}`);
   }
 
-  const route = await authorizeWorkspaceRoute(ctx, role);
+  const route = await authorizeWorkspaceRoute(ctx, roles);
   const authToken = await getAuthToken(ctx.params.authTokenId);
   if (!authToken) {
     throw new ApiError("NotFound", "AuthToken not found");

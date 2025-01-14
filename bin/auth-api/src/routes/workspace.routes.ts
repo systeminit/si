@@ -59,23 +59,25 @@ export async function extractWorkspaceIdParamWithoutAuthorizing(ctx: CustomRoute
 }
 
 // TODO this means that admin do not get automatic access to endpoints that call this
-export async function authorizeWorkspaceRoute(ctx: CustomRouteContext, role: RoleType | undefined) {
+export async function authorizeWorkspaceRoute(
+  ctx: CustomRouteContext,
+  roles: RoleType[] = [],
+) {
   const workspace = await extractWorkspaceIdParamWithoutAuthorizing(ctx);
   const authUser = extractAuthUser(ctx);
 
   const memberRole = await userRoleForWorkspace(authUser.id, workspace.id);
 
   if (!memberRole) {
-    throw new ApiError(
-      "Forbidden",
-      "You are not member of this workspace",
-    );
+    throw new ApiError("Forbidden", "You are not member of this workspace");
   }
 
-  if (role && memberRole !== role) {
+  if (roles.length > 0 && !roles.includes(memberRole)) {
     throw new ApiError(
       "Forbidden",
-      `You must be ${role} to interact with this workspace`,
+      `You must be one of the following roles to interact with this workspace: ${roles.join(
+        ", ",
+      )}`,
     );
   }
 
@@ -89,16 +91,12 @@ export async function authorizeWorkspaceRoute(ctx: CustomRouteContext, role: Rol
 }
 
 router.get("/workspaces/:workspaceId", async (ctx) => {
-  const { workspace } = await authorizeWorkspaceRoute(ctx, undefined);
+  const { workspace } = await authorizeWorkspaceRoute(ctx);
   ctx.body = workspace;
 });
 
 router.delete("/workspaces/:workspaceId", async (ctx) => {
-  // TODO RoleType.OWNER? Seems like not just anybody should be able to do this ...
-  const {
-    authUser,
-    workspaceId,
-  } = await authorizeWorkspaceRoute(ctx, undefined);
+  const { authUser, workspaceId } = await authorizeWorkspaceRoute(ctx, [RoleType.OWNER]);
 
   await deleteWorkspace(workspaceId);
 
@@ -149,10 +147,9 @@ router.post("/workspaces/new", async (ctx) => {
 });
 
 router.patch("/workspaces/:workspaceId", async (ctx) => {
-  const {
-    authUser,
-    workspace,
-  } = await authorizeWorkspaceRoute(ctx, RoleType.OWNER);
+  const { authUser, workspace } = await authorizeWorkspaceRoute(ctx, [
+    RoleType.OWNER,
+  ]);
 
   const reqBody = validate(
     ctx.request.body,
@@ -208,10 +205,9 @@ router.get("/workspace/:workspaceId/members", async (ctx) => {
 });
 
 router.post("/workspace/:workspaceId/membership", async (ctx) => {
-  const {
-    authUser,
-    workspace,
-  } = await authorizeWorkspaceRoute(ctx, RoleType.OWNER);
+  const { authUser, workspace } = await authorizeWorkspaceRoute(ctx, [
+    RoleType.OWNER,
+  ]);
 
   const reqBody = validate(
     ctx.request.body,
@@ -246,10 +242,10 @@ router.post("/workspace/:workspaceId/membership", async (ctx) => {
 });
 
 router.post("/workspace/:workspaceId/members", async (ctx) => {
-  const {
-    authUser,
-    workspace,
-  } = await authorizeWorkspaceRoute(ctx, RoleType.OWNER);
+  const { authUser, workspace } = await authorizeWorkspaceRoute(ctx, [
+    RoleType.OWNER,
+    RoleType.APPROVER,
+  ]);
 
   const reqBody = validate(
     ctx.request.body,
@@ -277,10 +273,10 @@ router.post("/workspace/:workspaceId/members", async (ctx) => {
 });
 
 router.delete("/workspace/:workspaceId/members", async (ctx) => {
-  const {
-    authUser,
-    workspace,
-  } = await authorizeWorkspaceRoute(ctx, RoleType.OWNER);
+  const { authUser, workspace } = await authorizeWorkspaceRoute(ctx, [
+    RoleType.OWNER,
+    RoleType.APPROVER,
+  ]);
 
   const reqBody = validate(
     ctx.request.body,
@@ -313,7 +309,7 @@ router.delete("/workspace/:workspaceId/members", async (ctx) => {
 });
 
 router.patch("/workspaces/:workspaceId/setDefault", async (ctx) => {
-  const { authUser, workspace } = await authorizeWorkspaceRoute(ctx, undefined);
+  const { authUser, workspace } = await authorizeWorkspaceRoute(ctx);
 
   tracker.trackEvent(authUser, "set_default_workspace", {
     defaultWorkspaceSetBy: authUser.email,
@@ -328,7 +324,7 @@ router.patch("/workspaces/:workspaceId/setDefault", async (ctx) => {
 });
 
 router.patch("/workspaces/:workspaceId/favourite", async (ctx) => {
-  const { authUser, workspace } = await authorizeWorkspaceRoute(ctx, undefined);
+  const { authUser, workspace } = await authorizeWorkspaceRoute(ctx);
 
   const reqBody = validate(
     ctx.request.body,
@@ -365,7 +361,7 @@ router.patch("/workspaces/:workspaceId/favourite", async (ctx) => {
 });
 
 router.get("/workspaces/:workspaceId/go", async (ctx) => {
-  const { authUser, workspace } = await authorizeWorkspaceRoute(ctx, undefined);
+  const { authUser, workspace } = await authorizeWorkspaceRoute(ctx);
 
   // we require the user to have verified their email before they can log into a workspace
   if (!authUser.emailVerified) {

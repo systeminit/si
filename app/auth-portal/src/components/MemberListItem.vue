@@ -27,7 +27,7 @@
     <td class="normal-case">
       <ErrorMessage :requestStatus="deleteUserHandlerReq" />
       <div
-        v-if="memUser.role !== 'OWNER' && isWorkspaceOwner"
+        v-if="canInviteMember"
         class="cursor-pointer hover:text-destructive-500"
         @click="deleteUserHandler(memUser.email)"
       >
@@ -114,6 +114,15 @@ const changeWorkspaceRoleTypeDropdownOptions = computed(() => {
       { label: "Collaborator", value: "EDITOR" },
     ];
   }
+});
+
+const canInviteMember = computed(() => {
+  if (props.workspaceId === "new") {
+    return true;
+  }
+
+  const workspace = workspacesStore.workspacesById[props.workspaceId];
+  return workspace?.role === "OWNER" || workspace?.role === "APPROVER";
 });
 
 watch(changeWorkspaceRoleType, (newRole) => changeMembership(newRole));
