@@ -9,4 +9,21 @@ import type { SchemaVariantSpecData } from "./SchemaVariantSpecData";
 import type { SiPropFuncSpec } from "./SiPropFuncSpec";
 import type { SocketSpec } from "./SocketSpec";
 
-export type SchemaVariantSpec = { version: string, data: SchemaVariantSpecData | null, uniqueId: string | null, deleted: boolean, isBuiltin: boolean, actionFuncs: Array<ActionFuncSpec>, authFuncs: Array<AuthenticationFuncSpec>, leafFunctions: Array<LeafFunctionSpec>, sockets: Array<SocketSpec>, siPropFuncs: Array<SiPropFuncSpec>, managementFuncs: Array<ManagementFuncSpec>, domain: PropSpec, secrets: PropSpec, secretDefinition: PropSpec | null, resourceValue: PropSpec, rootPropFuncs: Array<RootPropFuncSpec>, };
+export type SchemaVariantSpec = {
+  version: string;
+  data: SchemaVariantSpecData | null;
+  uniqueId: string | null;
+  deleted: boolean;
+  isBuiltin: boolean;
+  actionFuncs: Array<ActionFuncSpec>;
+  authFuncs: Array<AuthenticationFuncSpec>;
+  leafFunctions: Array<LeafFunctionSpec>;
+  sockets: Array<SocketSpec>;
+  siPropFuncs: Array<SiPropFuncSpec>;
+  managementFuncs: Array<ManagementFuncSpec>;
+  domain: PropSpec;
+  secrets: PropSpec;
+  secretDefinition: PropSpec | null;
+  resourceValue: PropSpec;
+  rootPropFuncs: Array<RootPropFuncSpec>;
+};

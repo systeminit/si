@@ -1,6 +1,6 @@
 # Useful Link
 
-* [Cloudformation resource type schema](https://docs.aws.amazon.com/cloudformation-cli/latest/userguide/resource-type-schema.html)
+- [Cloudformation resource type schema](https://docs.aws.amazon.com/cloudformation-cli/latest/userguide/resource-type-schema.html)
 
 # Running tests
 

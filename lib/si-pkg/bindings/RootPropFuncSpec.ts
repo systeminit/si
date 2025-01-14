@@ -5,4 +5,10 @@ import type { SchemaVariantSpecPropRoot } from "./SchemaVariantSpecPropRoot";
 /**
  * RootPropFuncs track custom functions for for props that are immediate children of the root.
  */
-export type RootPropFuncSpec = { prop: SchemaVariantSpecPropRoot, funcUniqueId: string, uniqueId: string | null, deleted: boolean, inputs: Array<AttrFuncInputSpec>, };
+export type RootPropFuncSpec = {
+  prop: SchemaVariantSpecPropRoot;
+  funcUniqueId: string;
+  uniqueId: string | null;
+  deleted: boolean;
+  inputs: Array<AttrFuncInputSpec>;
+};

@@ -5,4 +5,21 @@ import type { FuncSpecBackendKind } from "./FuncSpecBackendKind";
 import type { FuncSpecBackendResponseType } from "./FuncSpecBackendResponseType";
 import type { JsonValue } from "./serde_json/JsonValue";
 
-export type AttributeValueSpec = { parentPath: AttributeValuePath | null, path: AttributeValuePath, funcUniqueId: string, funcBindingArgs: JsonValue, handler: string | null, backendKind: FuncSpecBackendKind, responseType: FuncSpecBackendResponseType, codeBase64: string | null, unprocessedValue: JsonValue | null, value: JsonValue | null, outputStream: JsonValue | null, isProxy: boolean, sealedProxy: boolean, componentSpecific: boolean, inputs: Array<AttrFuncInputSpec>, implicitValue: JsonValue | null, };
+export type AttributeValueSpec = {
+  parentPath: AttributeValuePath | null;
+  path: AttributeValuePath;
+  funcUniqueId: string;
+  funcBindingArgs: JsonValue;
+  handler: string | null;
+  backendKind: FuncSpecBackendKind;
+  responseType: FuncSpecBackendResponseType;
+  codeBase64: string | null;
+  unprocessedValue: JsonValue | null;
+  value: JsonValue | null;
+  outputStream: JsonValue | null;
+  isProxy: boolean;
+  sealedProxy: boolean;
+  componentSpecific: boolean;
+  inputs: Array<AttrFuncInputSpec>;
+  implicitValue: JsonValue | null;
+};

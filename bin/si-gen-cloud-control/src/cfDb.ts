@@ -8,19 +8,82 @@ type JSONPointer = string;
 
 interface CfPropertyStatic {
   description?: string;
+  title?: string;
 }
+
+type StringPair =
+  | ["string", "object"]
+  | ["string", "boolean"]
+  | ["string", "number"]
+  | ["string", "integer"]
+  | ["object", "string"]
+  | ["boolean", "string"]
+  | ["number", "string"]
+  | ["integer", "string"];
 
 export type CfProperty =
   & ({
-    "type": "integer" | "boolean" | "string" ;
+    "type":
+      | "integer"
+      | "number"
+      | "boolean"
+      | StringPair;
+  } | {
+    "type": "string";
+    "enum"?: string[];
   } | {
     "type": "array";
     "items": CfProperty;
   } | {
     "type": "object";
-    "properties": Record<string, CfProperty>;
+    "properties"?: Record<string, CfProperty>;
+    "patternProperties"?: Record<string, CfProperty>;
+  } | {
+    "type": undefined;
+    "oneOf": CfProperty[]; // TODO: this should be a quialification
   })
   & CfPropertyStatic;
+
+export function normalizePropertyType(prop: CfProperty): CfProperty {
+  if (!Array.isArray(prop.type)) {
+    return prop;
+  }
+  const nonStringType = prop.type.find((t) => t !== "string");
+
+  switch (nonStringType) {
+    case "boolean":
+      return { ...prop, type: "boolean" };
+    case "integer":
+    case "number":
+      return { ...prop, type: "integer" };
+    case "object":
+      return { ...prop, type: "string" };
+    default:
+      console.log(prop);
+      throw new Error("unhandled array type");
+  }
+}
+
+export function normalizeAnyOfAndOneOfTypes(prop: CfProperty): CfProperty {
+  if (prop.type || !prop.oneOf) {
+    return prop;
+  }
+
+  const newProp: CfProperty = {
+    description: prop.description,
+    properties: {} as Record<string, CfProperty>,
+    type: "object",
+  };
+
+  for (const oneOf of prop.oneOf) {
+    if (!oneOf.title || !newProp.properties) {
+      throw new Error("SHIT");
+    }
+    newProp.properties[oneOf.title] = oneOf;
+  }
+
+  return newProp;
+}
 
 export interface CfSchema extends JSONSchema.Interface {
   typeName: string;
@@ -78,7 +141,13 @@ export async function loadDatabase(): Promise<CfDb> {
     const fullPath = Deno.realPathSync("./cloudformation-schema");
     logger.debug("Loading database from Cloudformation schema", { fullPath });
     for (const dirEntry of Deno.readDirSync(fullPath)) {
-      const rawData = await import(`${fullPath}/${dirEntry.name}`, {
+      const filename = `${fullPath}/${dirEntry.name}`;
+
+      if (dirEntry.name.indexOf("definition.schema") !== -1) {
+        continue;
+      }
+
+      const rawData = await import(filename, {
         with: { type: "json" },
       });
       const data = rawData.default as CfSchema;
@@ -87,12 +156,12 @@ export async function loadDatabase(): Promise<CfDb> {
 
       const typeName: string = data.typeName;
 
-      if (typeName !== "AWS::IAM::Role") continue;
+      // if (typeName !== "AWS::Bedrock::PromptVersion") continue;
 
       logger.debug(`Loaded ${typeName}`);
       try {
-        const expandedSchema = await $RefParser.dereference(data);
-        DB[typeName] = expandedSchema as CfSchema;
+        const expandedSchema = await $RefParser.dereference(data) as CfSchema;
+        DB[typeName] = expandedSchema;
       } catch (e) {
         logger.error(`failed to expand ${typeName}`, e);
         DB[typeName] = data;

@@ -2,4 +2,14 @@
 import type { FuncSpecBackendKind } from "./FuncSpecBackendKind";
 import type { FuncSpecBackendResponseType } from "./FuncSpecBackendResponseType";
 
-export type FuncSpecData = { name: string, displayName: string | null, description: string | null, handler: string, codeBase64: string, backendKind: FuncSpecBackendKind, responseType: FuncSpecBackendResponseType, hidden: boolean, link: string | null, };
+export type FuncSpecData = {
+  name: string;
+  displayName: string | null;
+  description: string | null;
+  handler: string;
+  codeBase64: string;
+  backendKind: FuncSpecBackendKind;
+  responseType: FuncSpecBackendResponseType;
+  hidden: boolean;
+  link: string | null;
+};

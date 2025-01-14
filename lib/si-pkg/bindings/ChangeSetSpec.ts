@@ -5,4 +5,12 @@ import type { EdgeSpec } from "./EdgeSpec";
 import type { FuncSpec } from "./FuncSpec";
 import type { SchemaSpec } from "./SchemaSpec";
 
-export type ChangeSetSpec = { name: string, basedOnChangeSet: string | null, status: ChangeSetSpecStatus, components: Array<ComponentSpec>, schemas: Array<SchemaSpec>, funcs: Array<FuncSpec>, edges: Array<EdgeSpec>, };
+export type ChangeSetSpec = {
+  name: string;
+  basedOnChangeSet: string | null;
+  status: ChangeSetSpecStatus;
+  components: Array<ComponentSpec>;
+  schemas: Array<SchemaSpec>;
+  funcs: Array<FuncSpec>;
+  edges: Array<EdgeSpec>;
+};

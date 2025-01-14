@@ -1,4 +1,10 @@
-import { CfProperty, CfSchema, loadDatabase } from "../cfDb.ts";
+import {
+  CfProperty,
+  CfSchema,
+  loadDatabase,
+  normalizeAnyOfAndOneOfTypes,
+  normalizePropertyType,
+} from "../cfDb.ts";
 import { PkgSpec } from "../bindings/PkgSpec.ts";
 import { SchemaSpec } from "../bindings/SchemaSpec.ts";
 import { SchemaVariantSpec } from "../bindings/SchemaVariantSpec.ts";
@@ -86,88 +92,109 @@ export async function setupDatabase() {
   const db = await loadDatabase();
 
   for (const cfSchema of Object.values(db)) {
+    console.log(`Building: ${cfSchema.typeName}`);
     const pkg = pkgSpecFromCf(cfSchema);
-    console.log(JSON.stringify(pkg, null, 2));
+    // console.log(JSON.stringify(pkg, null, 2));
+    console.log(`Built: ${cfSchema.typeName}`);
   }
 }
 
-function createProp(name:string, cfData: CfProperty): PropSpec {
-    const propUniqueId = ulid();
-    const data: PropSpecData = {
-      name,
-      validationFormat: null,
-      defaultValue: undefined,
-      funcUniqueId: null,
-      inputs: null,
-      widgetKind: undefined,
-      widgetOptions: undefined,
-      hidden: null,
-      docLink: null,
-      documentation: null,
-    };
+function createProp(name: string, cfData: CfProperty): PropSpec {
+  const propUniqueId = ulid();
+  const data: PropSpecData = {
+    name,
+    validationFormat: null,
+    defaultValue: undefined,
+    funcUniqueId: null,
+    inputs: null,
+    widgetKind: undefined,
+    widgetOptions: undefined,
+    hidden: null,
+    docLink: null,
+    documentation: null,
+  };
 
-    let kind;
-    let typeProp;
-    const entries: PropSpec[] = [];
+  let kind;
+  let typeProp;
+  const entries: PropSpec[] = [];
+  let normalizedCfData = normalizePropertyType(cfData);
+  normalizedCfData = normalizeAnyOfAndOneOfTypes(normalizedCfData);
 
-    switch (cfData.type) {
-      case "integer":
-        kind = "number";
-        break;
-      case "boolean":
-      case "string":
-        kind = cfData.type;
-       break;
-      case "array":
-        kind = cfData.type;
-        typeProp = createProp(`${name}Item`, cfData.items)
-       break;
-      case "object":
-        // console.log(cfData)
-        kind = cfData.type;
-        Object.entries(cfData.properties).forEach(([objName, objProp]) => {
-          entries.push(createProp(objName, objProp))
-        })
+  switch (normalizedCfData.type) {
+    case "integer":
+    case "number":
+      kind = "number";
       break;
-      default:
-        console.log(cfData)
-        throw new Error("no matching kind")
-    }
+    case "boolean":
+    case "string":
+      kind = normalizedCfData.type;
+      break;
+    case "array":
+      kind = normalizedCfData.type;
+      typeProp = createProp(`${name}Item`, normalizedCfData.items);
+      break;
+    case "object":
+      if (normalizedCfData.patternProperties) {
+        kind = "map";
+        const patternProps = Object.entries(normalizedCfData.patternProperties);
 
-    return {
-      // deno-lint-ignore no-explicit-any
-      kind: kind as any,
-      data,
-      entries,
-      name,
-      typeProp,
-      uniqueId: propUniqueId,
-    };
+        const [_, patternProp] = patternProps[0];
+
+        if (patternProps.length !== 1 || !patternProp) {
+          console.log(patternProps);
+          throw new Error("too many pattern props you fool");
+        }
+
+        typeProp = createProp(`${name}Item`, patternProp);
+      } else if (normalizedCfData.properties) {
+        kind = normalizedCfData.type;
+        Object.entries(normalizedCfData.properties).forEach(
+          ([objName, objProp]) => {
+            entries.push(createProp(objName, objProp));
+          },
+        );
+      }
+      break;
+    default:
+      console.log(normalizedCfData);
+      console.log("no matching kind");
+  }
+
+  return {
+    // deno-lint-ignore no-explicit-any
+    kind: kind as any,
+    data,
+    entries,
+    name,
+    typeProp,
+    uniqueId: propUniqueId,
+  };
 }
 
 type DefaultPropType = "domain" | "secrets" | "resource";
 
-function createDefaultProp(type: DefaultPropType): Extract<PropSpec, { kind: "object" }> {
-    const data: PropSpecData = {
-      name: type,
-      validationFormat: null,
-      defaultValue: undefined,
-      funcUniqueId: null,
-      inputs: null,
-      widgetKind: undefined,
-      widgetOptions: undefined,
-      hidden: null,
-      docLink: null,
-      documentation: null,
-    };
+function createDefaultProp(
+  type: DefaultPropType,
+): Extract<PropSpec, { kind: "object" }> {
+  const data: PropSpecData = {
+    name: type,
+    validationFormat: null,
+    defaultValue: undefined,
+    funcUniqueId: null,
+    inputs: null,
+    widgetKind: undefined,
+    widgetOptions: undefined,
+    hidden: null,
+    docLink: null,
+    documentation: null,
+  };
 
-    return {
-      // deno-lint-ignore no-explicit-any
-      kind: "object",
-      data,
-      name: type,
-      entries: [],
-      uniqueId: ulid(),
-    };
+  return {
+    // deno-lint-ignore no-explicit-any
+    kind: "object",
+    data,
+    name: type,
+    entries: [],
+    uniqueId: ulid(),
+  };
 }
-

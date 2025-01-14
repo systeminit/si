@@ -1,6 +1,6 @@
 import { CommandFailed } from "../errors.ts";
 import _logger from "../logger.ts";
-const logger = _logger.ns('fetchSchema').seal();
+const logger = _logger.ns("fetchSchema").seal();
 
 export async function fetchSchema() {
   const td = new TextDecoder();
