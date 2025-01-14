@@ -10,12 +10,15 @@ interface CfPropertyStatic {
   description?: string;
 }
 
-type CfProperty =
+export type CfProperty =
   & ({
-    "type": "integer" | "boolean" | "string";
+    "type": "integer" | "boolean" | "string" ;
   } | {
     "type": "array";
     "items": CfProperty;
+  } | {
+    "type": "object";
+    "properties": Record<string, CfProperty>;
   })
   & CfPropertyStatic;
 
@@ -84,7 +87,7 @@ export async function loadDatabase(): Promise<CfDb> {
 
       const typeName: string = data.typeName;
 
-      if (typeName !== "AWS::EC2::VPC") continue;
+      if (typeName !== "AWS::IAM::Role") continue;
 
       logger.debug(`Loaded ${typeName}`);
       try {
