@@ -59,36 +59,23 @@
             </VButton>
           </form>
           <ErrorMessage :asyncState="authTokens" />
-          <div v-if="authTokens.state.value" class="relative">
-            <Stack>
-              <table class="w-full">
-                <thead>
-                  <tr
-                    class="children:py-xs children:px-sm children:font-bold text-left text-xs uppercase bg-black"
-                  >
-                    <th scope="col">Name</th>
-                    <th scope="col">Created</th>
-                    <th scope="col">Expires</th>
-                    <!--th class="text-center" scope="col">Revoke</th-->
-                  </tr>
-                </thead>
-                <tbody
-                  class="divide-y divide-neutral-300 dark:divide-neutral-700"
-                >
-                  <AuthTokenListItem
-                    v-for="authToken of listedTokens"
-                    :key="authToken.id"
-                    :authToken="authToken"
-                    :workspace="workspace"
-                    @renamed="(newName) => (authToken.name = newName)"
-                    @revoked="delete authTokens.state.value[authToken.id]"
-                  />
-                </tbody>
-              </table>
-            </Stack>
-          </div>
+
+          <AuthTokenList
+            :workspace="workspace"
+            :authTokens="activeTokens"
+            active
+            @renamed="renameToken"
+            @revoked="revokeToken"
+          />
+          <AuthTokenList
+            :workspace="workspace"
+            :authTokens="inactiveTokens"
+            @renamed="renameToken"
+            @revoked="revokeToken"
+          />
         </Stack>
       </div>
+
       <Modal ref="tokenDisplayModalRef" size="lg" title="Token Generated">
         <ErrorMessage
           v-if="tokenCopied"
@@ -111,7 +98,7 @@
           We are only showing you the value of this token once. Store it
           somewhere secure, please.
         </ErrorMessage>
-        <div class="flex mt-sm gap-xs">
+        <div class="flex flex-row items-center mt-sm gap-xs">
           <VormInput
             :modelValue="createAuthToken.state.value"
             class="flex-grow text-sm"
@@ -120,7 +107,7 @@
             type="text"
           />
           <IconButton
-            class="flex-shrink-0"
+            class="flex-none"
             icon="clipboard-copy"
             tooltip="Copy token to clipboard"
             tooltipPlacement="right"
@@ -134,7 +121,7 @@
 
 <script lang="ts" setup>
 import * as _ from "lodash-es";
-import { computed, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref } from "vue";
 import {
   VormInput,
   Stack,
@@ -150,8 +137,8 @@ import { apiData } from "@si/vue-lib/pinia";
 import { useHead } from "@vueuse/head";
 import { useWorkspacesStore, WorkspaceId } from "@/store/workspaces.store";
 import WorkspacePageHeader from "@/components/WorkspacePageHeader.vue";
-import { useAuthTokensApi } from "@/store/authTokens.store";
-import AuthTokenListItem from "@/components/AuthTokenListItem.vue";
+import { AuthToken, useAuthTokensApi } from "@/store/authTokens.store";
+import AuthTokenList from "@/components/AuthTokenList.vue";
 
 useHead({ title: "API Tokens" });
 
@@ -180,9 +167,50 @@ const authTokens = useAsyncState(
   { shallow: false },
 );
 
-const listedTokens = computed(() =>
-  _.reverse(_.sortBy(_.values(authTokens.state.value), "createdAt")),
-);
+// This pokes the computed values to check if any tokens have expired every 5 seconds
+const EXPIRATION_CHECK_INTERVAL = 5000;
+const checkExpiration = ref();
+const checkExpirationRecomputer = ref(0);
+
+onMounted(() => {
+  checkExpiration.value = setInterval(() => {
+    checkExpirationRecomputer.value++;
+    if (checkExpirationRecomputer.value > 100) {
+      checkExpirationRecomputer.value = 0;
+    }
+  }, EXPIRATION_CHECK_INTERVAL);
+});
+
+onUnmounted(() => {
+  clearInterval(checkExpiration.value);
+});
+
+// The list of all of the tokens to display
+const listedTokens = computed(() => {
+  return _.reverse(
+    _.sortBy(_.values(authTokens.state.value), "createdAt"),
+  ) as Array<AuthToken>;
+});
+
+// The list of all active tokens
+const activeTokens = computed(() => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+  checkExpirationRecomputer.value;
+  return listedTokens.value.filter((token) => {
+    if (token.expiresAt === null || token.revokedAt) return false;
+    const d = new Date(token.expiresAt as unknown as string);
+    return d.getTime() > Date.now();
+  });
+});
+
+// The list of all inactive tokens (expired or revoked)
+const inactiveTokens = computed(() => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+  checkExpirationRecomputer.value;
+  return listedTokens.value.filter(
+    (token) => activeTokens.value.indexOf(token) === -1,
+  );
+});
 
 /** Action to create auth token. Sets .state when done. */
 const createAuthToken = useAsyncState(
@@ -234,5 +262,19 @@ const onFormSubmit = async () => {
   if (validationMethods.hasError()) return;
 
   await createAuthToken.execute();
+};
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const renameToken = (id: string, newName: string) => {
+  // TODO(Wendy) - renaming tokens!
+  // @renamed="(newName) => (authToken.name = newName)"
+};
+
+const revokeToken = (id: string) => {
+  // TODO(Wendy) - revoking tokens!
+  if (authTokens.state.value) {
+    authTokens.state.value[id].revokedAt = new Date();
+  }
+  // @revoked="delete authTokens.state.value[authToken.id]"
 };
 </script>

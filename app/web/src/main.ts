@@ -13,6 +13,7 @@ import { createHead } from "@vueuse/head";
 import VueSafeTeleport from "vue-safe-teleport";
 import Toast, { PluginOptions, POSITION } from "vue-toastification";
 import "vue-toastification/dist/index.css";
+import { FLOATING_VUE_THEMES } from "@si/vue-lib/design-system";
 
 import "@si/vue-lib/tailwind/main.css";
 import "@si/vue-lib/tailwind/tailwind.css";
@@ -94,30 +95,7 @@ FloatingVue.options.themes.tooltip.delay = { show: 10, hide: 100 };
 // we attach to the #app-layout div (in AppLayout.vue) to stay within an overflow hidden div and not mess with page scrollbars
 app.use(FloatingVue, {
   container: "#app-layout",
-  themes: {
-    html: {
-      $extend: "tooltip",
-      html: true,
-    },
-    "instant-show": {
-      $extend: "tooltip",
-      instantMove: true,
-      delay: { show: 0, hide: 100 },
-    },
-    "user-info": {
-      $extend: "instant-show",
-      html: true,
-    },
-    "w-380": {
-      $extend: "tooltip",
-    },
-    "attribute-source-icon": {
-      $extend: "tooltip",
-    },
-    notifications: {
-      $extend: "instant-show",
-    },
-  },
+  themes: FLOATING_VUE_THEMES,
 });
 
 /* function asyncGetContainer(): Promise<HTMLElement> {

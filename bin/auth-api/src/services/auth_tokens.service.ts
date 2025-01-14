@@ -62,7 +62,7 @@ export async function registerAuthToken(
   }
 }
 
-export async function updateAuthToken(id: AuthTokenId, data: Pick<AuthToken, "name">) {
+export async function updateAuthToken(id: AuthTokenId, data: Pick<Partial<AuthToken>, "name" | "revokedAt">) {
   return await prisma.authToken.update({
     where: { id },
     data,
