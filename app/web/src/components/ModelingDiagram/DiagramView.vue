@@ -26,7 +26,7 @@
         fontSize: fontSize,
         fontFamily: DIAGRAM_FONT_FAMILY,
         listening: false,
-        wrap: 'char',
+        wrap: 'word',
       }"
     />
 
@@ -109,16 +109,15 @@ const radius = computed(() => {
 
 // step up & down the font size
 const fontSize = computed(() => {
-  switch (true) {
-    case props.view.width >= 500:
-      return 81;
-    case props.view.width >= 300:
-      return 64;
-    case props.view.width >= 200:
-      return 32;
-    default:
-      return 20;
+  const parts = props.view.name.split(" ");
+  const totalLen = props.view.name.length;
+  const maxLen = Math.max(...parts.map((t) => t.length));
+  const ratio = props.view.width / maxLen;
+  // explicit catch for "many small words"
+  if (ratio > 40 && totalLen > 20) {
+    return 28;
   }
+  return Math.max(14, Math.min(ratio, 40));
 });
 
 const colors = computed(() => {
