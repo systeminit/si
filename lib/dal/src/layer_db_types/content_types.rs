@@ -9,6 +9,7 @@ use thiserror::Error;
 
 use crate::action::prototype::ActionKind;
 use crate::validation::ValidationStatus;
+use crate::workspace_snapshot::graph::approval::ApprovalRequirementApprover;
 use crate::{
     action::ActionCompletionStatus, func::argument::FuncArgumentKind, prop::WidgetOptions,
     property_editor::schema::WidgetKind, socket::connection_annotation::ConnectionAnnotation,
@@ -60,6 +61,7 @@ pub enum ContentTypes {
     ManagementPrototype(ManagementPrototypeContent),
     Geometry(GeometryContent),
     View(ViewContent),
+    ApprovalRequirement(ApprovalRequirementContent),
 }
 
 macro_rules! impl_into_content_types {
@@ -117,6 +119,7 @@ impl_into_content_types!(Validation);
 impl_into_content_types!(ManagementPrototype);
 impl_into_content_types!(Geometry);
 impl_into_content_types!(View);
+impl_into_content_types!(ApprovalRequirement);
 
 // Here we've broken the Foo, FooContent convention so we need to implement
 // these traits manually
@@ -682,4 +685,15 @@ pub struct ManagementPrototypeContentV1 {
     pub name: String,
     pub managed_schemas: Option<HashSet<SchemaId>>,
     pub description: Option<String>,
+}
+
+#[derive(Debug, Clone, EnumDiscriminants, Serialize, Deserialize, PartialEq)]
+pub enum ApprovalRequirementContent {
+    V1(ApprovalRequirementContentV1),
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+pub struct ApprovalRequirementContentV1 {
+    pub minimum: usize,
+    pub approvers: Vec<ApprovalRequirementApprover>,
 }

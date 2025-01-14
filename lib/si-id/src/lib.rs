@@ -35,6 +35,7 @@ pub use ::ulid as ulid_upstream;
 // Please keep these alphabetically sorted!
 id!(ActionPrototypeId);
 id!(ActivityId);
+id!(ApprovalRequirementId);
 id!(AttributePrototypeArgumentId);
 id!(AttributePrototypeId);
 id!(AuthenticationPrototypeId);

@@ -35,7 +35,9 @@ use crate::{
 };
 
 use super::{
-    approval::{ApprovalRequirement, ApprovalRequirementLookupGroup},
+    approval::{
+        ApprovalRequirement, ApprovalRequirementApprover, ApprovalRequirementPermissionLookup,
+    },
     detector::Change,
     traits::entity_kind::EntityKindExt,
 };
@@ -719,11 +721,13 @@ impl WorkspaceSnapshotGraphV4 {
                     // TODO(nick,jacob): remove hardcoded number requirement.
                     number: 1,
                     // TODO(nick,jacob): replace hardcoded relations.
-                    lookup_groups: vec![ApprovalRequirementLookupGroup {
-                        object_type: "workspace".to_string(),
-                        object_id: workspace_id.to_string(),
-                        permission: "approve".to_string(),
-                    }],
+                    lookup_groups: vec![ApprovalRequirementApprover::PermissionLookup(
+                        ApprovalRequirementPermissionLookup {
+                            object_type: "workspace".to_string(),
+                            object_id: workspace_id.to_string(),
+                            permission: "approve".to_string(),
+                        },
+                    )],
                 });
             }
         }
@@ -941,27 +945,28 @@ impl WorkspaceSnapshotGraphV4 {
                             // Some of these should never happen as they have their own top-level
                             // NodeWeight variant.
                             ContentAddressDiscriminants::ActionPrototype => "green",
+                            ContentAddressDiscriminants::ApprovalRequirement => "black",
                             ContentAddressDiscriminants::AttributePrototype => "green",
                             ContentAddressDiscriminants::Component => "black",
                             ContentAddressDiscriminants::DeprecatedAction => "green",
                             ContentAddressDiscriminants::DeprecatedActionBatch => "green",
                             ContentAddressDiscriminants::DeprecatedActionRunner => "green",
-                            ContentAddressDiscriminants::OutputSocket => "red",
                             ContentAddressDiscriminants::Func => "black",
                             ContentAddressDiscriminants::FuncArg => "black",
                             ContentAddressDiscriminants::Geometry => "black",
                             ContentAddressDiscriminants::InputSocket => "red",
                             ContentAddressDiscriminants::JsonValue => "fuchsia",
+                            ContentAddressDiscriminants::ManagementPrototype => "black",
                             ContentAddressDiscriminants::Module => "yellow",
+                            ContentAddressDiscriminants::OutputSocket => "red",
                             ContentAddressDiscriminants::Prop => "orange",
                             ContentAddressDiscriminants::Root => "black",
                             ContentAddressDiscriminants::Schema => "black",
                             ContentAddressDiscriminants::SchemaVariant => "black",
                             ContentAddressDiscriminants::Secret => "black",
                             ContentAddressDiscriminants::StaticArgumentValue => "green",
-                            ContentAddressDiscriminants::ValidationPrototype => "black",
                             ContentAddressDiscriminants::ValidationOutput => "darkcyan",
-                            ContentAddressDiscriminants::ManagementPrototype => "black",
+                            ContentAddressDiscriminants::ValidationPrototype => "black",
                             ContentAddressDiscriminants::View => "black",
                         };
                         (discrim.to_string(), color)
@@ -1041,6 +1046,9 @@ impl WorkspaceSnapshotGraphV4 {
                         ("ManagementPrototype".to_string(), "black")
                     }
                     NodeWeight::DiagramObject(_) => ("DiagramObject".to_string(), "black"),
+                    NodeWeight::ApprovalRequirement(_) => {
+                        ("ApprovalRequirement".to_string(), "black")
+                    }
                 };
                 let color = color.to_string();
                 let id = node_weight.id();

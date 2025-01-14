@@ -1678,6 +1678,7 @@ impl WorkspaceSnapshot {
                 }
 
                 ContentAddressDiscriminants::ActionPrototype
+                | ContentAddressDiscriminants::ApprovalRequirement
                 | ContentAddressDiscriminants::Component
                 | ContentAddressDiscriminants::DeprecatedAction
                 | ContentAddressDiscriminants::DeprecatedActionBatch
@@ -1687,6 +1688,7 @@ impl WorkspaceSnapshot {
                 | ContentAddressDiscriminants::Geometry
                 | ContentAddressDiscriminants::InputSocket
                 | ContentAddressDiscriminants::JsonValue
+                | ContentAddressDiscriminants::ManagementPrototype
                 | ContentAddressDiscriminants::Module
                 | ContentAddressDiscriminants::OutputSocket
                 | ContentAddressDiscriminants::Prop
@@ -1695,12 +1697,12 @@ impl WorkspaceSnapshot {
                 | ContentAddressDiscriminants::SchemaVariant
                 | ContentAddressDiscriminants::Secret
                 | ContentAddressDiscriminants::ValidationPrototype
-                | ContentAddressDiscriminants::View
-                | ContentAddressDiscriminants::ManagementPrototype => None,
+                | ContentAddressDiscriminants::View => None,
             },
 
             NodeWeight::Action(_)
             | NodeWeight::ActionPrototype(_)
+            | NodeWeight::ApprovalRequirement(_)
             | NodeWeight::Category(_)
             | NodeWeight::Component(_)
             | NodeWeight::DependentValueRoot(_)
@@ -1709,12 +1711,12 @@ impl WorkspaceSnapshot {
             | NodeWeight::Func(_)
             | NodeWeight::FuncArgument(_)
             | NodeWeight::Geometry(_)
-            | NodeWeight::View(_)
             | NodeWeight::InputSocket(_)
+            | NodeWeight::ManagementPrototype(_)
             | NodeWeight::Prop(_)
             | NodeWeight::SchemaVariant(_)
-            | NodeWeight::ManagementPrototype(_)
-            | NodeWeight::Secret(_) => None,
+            | NodeWeight::Secret(_)
+            | NodeWeight::View(_) => None,
         } {
             let next_node_idxs = self
                 .incoming_sources_for_edge_weight_kind(this_node_weight.id(), edge_kind)

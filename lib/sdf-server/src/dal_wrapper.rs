@@ -33,7 +33,10 @@ use std::collections::HashMap;
 
 use dal::{
     change_set::approval::ChangeSetApproval,
-    workspace_snapshot::{graph::approval::ApprovalRequirement, EntityKindExt},
+    workspace_snapshot::{
+        graph::approval::{ApprovalRequirement, ApprovalRequirementApprover},
+        EntityKindExt,
+    },
     DalContext, HistoryActor, WorkspacePk,
 };
 use permissions::{Permission, PermissionBuilder};
@@ -186,6 +189,12 @@ impl ChangeSetApprovalCalculator {
             // can fulfill those requirements as well as who belongs to them.
             let mut approving_groups = HashMap::new();
             for lookup_group in &requirement.lookup_groups {
+                let lookup_group = match lookup_group {
+                    ApprovalRequirementApprover::User(_user_pk) => todo!("nick will handle this"),
+                    ApprovalRequirementApprover::PermissionLookup(permission_lookup) => {
+                        permission_lookup
+                    }
+                };
                 let lookup_group_key = format!(
                     "{}#{}#{}",
                     lookup_group.object_type, lookup_group.object_id, lookup_group.permission

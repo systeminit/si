@@ -140,12 +140,17 @@ fn make_me_one_with_everything(graph: &mut WorkspaceSnapshotGraphVCurrent) {
             NodeWeightDiscriminants::View => NodeWeight::new_view(
                 Ulid::new(),
                 Ulid::new(),
-                ContentHash::new("geometry".as_bytes()),
+                ContentHash::new("view".as_bytes()),
             ),
             NodeWeightDiscriminants::DiagramObject => NodeWeight::new_diagram_object(
                 Ulid::new(),
                 Ulid::new(),
                 DiagramObjectKind::View(Ulid::new().into()),
+            ),
+            NodeWeightDiscriminants::ApprovalRequirement => NodeWeight::new_approval_requirement(
+                Ulid::new(),
+                Ulid::new(),
+                ContentHash::new("stellaris hurts my brain".as_bytes()),
             ),
         };
 
@@ -290,6 +295,7 @@ async fn graph_can_be_deserialized(_ctx: &DalContext) {
             NodeWeight::Geometry(_) => {}
             NodeWeight::View(_) => {}
             NodeWeight::DiagramObject(_) => {}
+            NodeWeight::ApprovalRequirement(_) => {}
         }
     }
 }

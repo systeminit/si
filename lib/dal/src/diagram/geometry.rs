@@ -220,7 +220,8 @@ impl Geometry {
             | NodeWeight::SchemaVariant(_)
             | NodeWeight::ManagementPrototype(_)
             | NodeWeight::Geometry(_)
-            | NodeWeight::View(_) => {
+            | NodeWeight::View(_)
+            | NodeWeight::ApprovalRequirement(_) => {
                 return Err(DiagramError::GeometryCannotRepresentNodeWeight(
                     node_weight.into(),
                 ))
