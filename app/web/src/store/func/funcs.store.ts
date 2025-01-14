@@ -868,7 +868,7 @@ export const useFuncStore = () => {
           },
           {
             eventType: "FuncUpdated",
-            callback: (data, metadata) => {
+            callback: (data) => {
               if (data.changeSetId !== selectedChangeSetId) return;
               // Requests that send client ID are assumed to update the state directly
               // So we skip updating them from the websocket event
@@ -890,14 +890,6 @@ export const useFuncStore = () => {
                 bindings.codegenBindings;
               this.managementBindings[data.funcSummary.funcId] =
                 bindings.managementBindings;
-
-              if (
-                metadata.actor !== "System" &&
-                metadata.actor.User === authStore.userPk
-              ) {
-                const assetStore = useAssetStore(selectedChangeSetId);
-                assetStore.setFuncSelection(data.funcSummary.funcId);
-              }
             },
           },
           {

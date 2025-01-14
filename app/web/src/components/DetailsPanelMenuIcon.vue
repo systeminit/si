@@ -3,6 +3,7 @@
     icon="dots-vertical"
     iconIdleTone="neutral"
     :selected="selected"
+    :disabled="disabled"
   />
 </template>
 
@@ -12,5 +13,6 @@ import { IconButton } from "@si/vue-lib/design-system";
 
 defineProps({
   selected: { type: Boolean },
+  disabled: { type: Boolean, default: false },
 });
 </script>
