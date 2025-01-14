@@ -43,6 +43,7 @@
         />
       </DropdownMenu>
       <DetailsPanelMenuIcon
+        :disabled="isLocked"
         :selected="contextMenuRef?.isOpen"
         @click="
           (e) => {
