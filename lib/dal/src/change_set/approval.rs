@@ -28,6 +28,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use si_data_pg::{PgError, PgRow};
+use si_events::merkle_tree_hash::MerkleTreeHash;
 use si_id::{ChangeSetApprovalId, ChangeSetId, EntityId, UserPk};
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -88,11 +89,11 @@ impl ChangeSetApproval {
     pub async fn new(
         ctx: &DalContext,
         status: ChangeSetApprovalStatus,
-        ids: Vec<EntityId>,
+        ids_with_hashes: Vec<(EntityId, MerkleTreeHash)>,
     ) -> Result<Self> {
         let checksum = ctx
             .workspace_snapshot()?
-            .calculate_checksum(ctx, ids)
+            .calculate_checksum(ctx, ids_with_hashes)
             .await?;
 
         let change_set_id = ctx.change_set_id();

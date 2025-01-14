@@ -1235,7 +1235,8 @@ impl WorkspaceSnapshotGraphV2 {
                     | EdgeWeightKind::ManagementPrototype
                     | EdgeWeightKind::ValidationOutput
                     | EdgeWeightKind::Manages
-                    | EdgeWeightKind::DiagramObject => {}
+                    | EdgeWeightKind::DiagramObject
+                    | EdgeWeightKind::HasApprovalRequirement => {}
                 }
             }
         }

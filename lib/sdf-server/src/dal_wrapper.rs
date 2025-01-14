@@ -29,15 +29,15 @@
     while_true
 )]
 
-use std::collections::HashMap;
+use std::{collections::HashMap, str::FromStr};
 
 use dal::{
+    approval_requirement::{ApprovalRequirement, ApprovalRequirementApprover},
     change_set::approval::ChangeSetApproval,
-    workspace_snapshot::{graph::approval::ApprovalRequirement, EntityKindExt},
-    DalContext, HistoryActor, WorkspacePk,
+    DalContext, HistoryActor, UserPk, WorkspacePk,
 };
 use permissions::{Permission, PermissionBuilder};
-use si_events::ChangeSetApprovalStatus;
+use si_events::{merkle_tree_hash::MerkleTreeHash, ChangeSetApprovalStatus};
 use si_id::{ChangeSetApprovalId, EntityId};
 use thiserror::Error;
 
@@ -45,6 +45,8 @@ use thiserror::Error;
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum DalWrapperError {
+    #[error("approval requirement error: {0}")]
+    ApprovalRequirement(#[from] dal::approval_requirement::ApprovalRequirementError),
     #[error("change set approval error")]
     ChangeSetApproval(#[from] dal::change_set::approval::ChangeSetApprovalError),
     #[error("invalid user found")]
@@ -57,6 +59,8 @@ pub enum DalWrapperError {
     SpiceDBLookupSubjects(#[source] si_data_spicedb::Error),
     #[error("transactions error: {0}")]
     Transactions(#[from] dal::TransactionsError),
+    #[error("ulid decode error: {0}")]
+    UlidDecode(#[from] ulid::DecodeError),
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] dal::WorkspaceSnapshotError),
 }
@@ -83,10 +87,16 @@ impl ChangeSetApprovalCalculator {
             .workspace_snapshot()?
             .detect_changes_from_head(ctx)
             .await?;
-        let requirements = ctx
-            .workspace_snapshot()?
-            .approval_requirements_for_changes(workspace_id, &changes)
-            .await?;
+        let (requirements, ids_with_hashes_for_deleted_nodes) =
+            ApprovalRequirement::list(ctx, &changes).await?;
+        let approving_requirement_ids_with_hashes = determine_approving_ids_with_hashes_inner(
+            ctx,
+            spicedb_client,
+            workspace_id,
+            &requirements,
+            &ids_with_hashes_for_deleted_nodes,
+        )
+        .await?;
         let latest_approvals = ChangeSetApproval::list_latest(ctx).await?;
 
         // Initialize what we will eventual use to construct ourself.
@@ -96,12 +106,9 @@ impl ChangeSetApprovalCalculator {
 
         // Go through each approval, determine its validity, and populate the cache.
         for approval in latest_approvals {
-            let approved_requirement_ids =
-                determine_approving_ids_inner(ctx, spicedb_client, workspace_id, &requirements)
-                    .await?;
-            for approved_requirement_id in &approved_requirement_ids {
+            for (approving_requirement_id, _) in &approving_requirement_ids_with_hashes {
                 requirements_to_approvals_cache
-                    .entry(*approved_requirement_id)
+                    .entry(*approving_requirement_id)
                     .and_modify(|a| a.push(approval.id()))
                     .or_insert_with(|| vec![approval.id()]);
             }
@@ -109,7 +116,7 @@ impl ChangeSetApprovalCalculator {
             // Based on the approving IDs, get the checksum.
             let checksum = ctx
                 .workspace_snapshot()?
-                .calculate_checksum(ctx, approved_requirement_ids)
+                .calculate_checksum(ctx, approving_requirement_ids_with_hashes.to_owned())
                 .await?
                 .to_string();
 
@@ -140,25 +147,28 @@ impl ChangeSetApprovalCalculator {
     /// Returns the requirments for frontend use, which includes whether or not they are satisfied.
     pub async fn frontend_requirements(
         &self,
-        ctx: &DalContext,
         spicedb_client: &mut si_data_spicedb::Client,
     ) -> Result<Vec<si_frontend_types::ChangeSetApprovalRequirement>> {
         let mut frontend_requirements = Vec::with_capacity(self.requirements.len());
-        let mut global_approving_groups_cache: HashMap<String, Vec<String>> = HashMap::new();
+        let mut global_approving_groups_cache: HashMap<String, Vec<UserPk>> = HashMap::new();
 
         // For each requirement, check if it has been satisfied, what approvals are applicable for
         // it, and what groups and users can approve it.
         for requirement in &self.requirements {
+            let rule = match requirement {
+                ApprovalRequirement::Explicit(inner) => &inner.rule,
+                ApprovalRequirement::Virtual(inner) => inner,
+            };
+
             // First, reset the satisfication and helper variables.
-            let required_count = requirement.number;
+            let required_count = rule.minimum;
             let mut satisfying_approval_count = 0;
             let mut is_satisfied = false;
 
             // If we have applicable approvals, then any that are valid and "approved" will
             // contribute to the count. If we hit the count, break and rejoice.
-            let applicable_approval_ids = if let Some(applicable_approval_ids) = self
-                .requirements_to_approvals_cache
-                .get(&requirement.entity_id)
+            let applicable_approval_ids = if let Some(applicable_approval_ids) =
+                self.requirements_to_approvals_cache.get(&rule.entity_id)
             {
                 for applicable_approval_id in applicable_approval_ids {
                     let applicable_approval = self
@@ -183,50 +193,65 @@ impl ChangeSetApprovalCalculator {
             };
 
             // We know what requirements have been satisfied, but we need to determine what groups
-            // can fulfill those requirements as well as who belongs to them.
-            let mut approving_groups = HashMap::new();
-            for lookup_group in &requirement.lookup_groups {
-                let lookup_group_key = format!(
+            // and/or individuals can fulfill those requirements.
+            let mut approver_groups = HashMap::new();
+            let mut approver_individuals = Vec::new();
+            for approver in &rule.approvers {
+                let permission_lookup = match approver {
+                    ApprovalRequirementApprover::User(user_id) => {
+                        approver_individuals.push(*user_id);
+                        continue;
+                    }
+                    ApprovalRequirementApprover::PermissionLookup(permission_lookup) => {
+                        permission_lookup
+                    }
+                };
+
+                let permisssion_lookup_key = format!(
                     "{}#{}#{}",
-                    lookup_group.object_type, lookup_group.object_id, lookup_group.permission
+                    permission_lookup.object_type,
+                    permission_lookup.object_id,
+                    permission_lookup.permission
                 );
 
                 // Check the global cache to reduce calls to SpiceDB.
-                let member_ids: Vec<String> =
-                    match global_approving_groups_cache.get(&lookup_group_key) {
+                let member_ids: Vec<UserPk> =
+                    match global_approving_groups_cache.get(&permisssion_lookup_key) {
                         Some(member_ids) => member_ids.to_owned(),
                         None => {
                             // TODO(nick): uh... do what Brit said in her original comment to this.
-                            let member_ids = spicedb_client
+                            let raw_member_ids = spicedb_client
                                 .lookup_subjects(
-                                    lookup_group.object_type.to_owned(),
-                                    lookup_group.object_id.to_owned(),
-                                    lookup_group.permission.to_owned(),
+                                    permission_lookup.object_type.to_owned(),
+                                    permission_lookup.object_id.to_owned(),
+                                    permission_lookup.permission.to_owned(),
                                     "user".to_owned(),
                                 )
                                 .await
                                 .map_err(DalWrapperError::SpiceDBLookupSubjects)?;
+                            let mut member_ids = Vec::with_capacity(raw_member_ids.len());
+                            for raw_member_id in raw_member_ids {
+                                member_ids.push(UserPk::from_str(raw_member_id.as_str())?);
+                            }
                             global_approving_groups_cache
-                                .insert(lookup_group_key.to_owned(), member_ids.to_owned());
+                                .insert(permisssion_lookup_key.to_owned(), member_ids.to_owned());
                             member_ids
                         }
                     };
 
-                approving_groups.insert(lookup_group_key, member_ids);
+                approver_groups.insert(permisssion_lookup_key, member_ids);
             }
 
-            // With both the satisfaction and approving groups information in hand, we can assemble
-            // the frontend requirement.
+            // With both the satisfaction and approvers information in hand, we can assemble the
+            // frontend requirement.
             frontend_requirements.push(si_frontend_types::ChangeSetApprovalRequirement {
-                entity_id: requirement.entity_id,
-                entity_kind: ctx
-                    .workspace_snapshot()?
-                    .get_entity_kind_for_id(requirement.entity_id)
-                    .await?,
+                entity_id: rule.entity_id,
+                entity_kind: rule.entity_kind,
                 required_count,
                 is_satisfied,
                 applicable_approval_ids,
-                approving_groups,
+                approver_groups,
+                approver_individuals,
             })
         }
 
@@ -234,55 +259,101 @@ impl ChangeSetApprovalCalculator {
     }
 }
 
-/// Determines which IDs corresponding to nodes on the graph that the user can approve changes for.
-pub async fn determine_approving_ids(
+/// Determines which IDs (with hashes) correspond to nodes on the graph that the user can approve
+/// changes for.
+pub async fn determine_approving_ids_with_hashes(
     ctx: &DalContext,
     spicedb_client: &mut si_data_spicedb::Client,
-) -> Result<Vec<EntityId>> {
+) -> Result<Vec<(EntityId, MerkleTreeHash)>> {
     let workspace_id = ctx.workspace_pk()?;
     let changes = ctx
         .workspace_snapshot()?
         .detect_changes_from_head(ctx)
         .await?;
-    let requirements = ctx
-        .workspace_snapshot()?
-        .approval_requirements_for_changes(workspace_id, &changes)
-        .await?;
-    determine_approving_ids_inner(ctx, spicedb_client, workspace_id, &requirements).await
+    let (requirements, ids_with_hashes_for_deleted_nodes) =
+        ApprovalRequirement::list(ctx, &changes).await?;
+    determine_approving_ids_with_hashes_inner(
+        ctx,
+        spicedb_client,
+        workspace_id,
+        &requirements,
+        &ids_with_hashes_for_deleted_nodes,
+    )
+    .await
 }
 
-async fn determine_approving_ids_inner(
+async fn determine_approving_ids_with_hashes_inner(
     ctx: &DalContext,
     spicedb_client: &mut si_data_spicedb::Client,
     workspace_id: WorkspacePk,
     requirements: &[ApprovalRequirement],
-) -> Result<Vec<EntityId>> {
-    let mut approving_ids = Vec::new();
+    ids_with_hashes_for_deleted_nodes: &HashMap<EntityId, MerkleTreeHash>,
+) -> Result<Vec<(EntityId, MerkleTreeHash)>> {
+    let user_id = match ctx.history_actor() {
+        HistoryActor::SystemInit => return Err(DalWrapperError::InvalidUser),
+        HistoryActor::User(user_id) => *user_id,
+    };
+
+    let mut approving_ids_with_hashes = Vec::new();
     let mut cache = HashMap::new();
 
     for requirement in requirements {
+        let rule = match requirement {
+            ApprovalRequirement::Explicit(inner) => &inner.rule,
+            ApprovalRequirement::Virtual(inner) => inner,
+        };
+
         // For each requirement, we need to see if we have permission to fulfill it.
-        for lookup_group in &requirement.lookup_groups {
-            let has_permission_for_requirement =
-                if let Some(has_permission) = cache.get(&lookup_group) {
-                    *has_permission
-                } else {
-                    // TODO(nick,jacob): use the actual lookup group rather than this hardcoded check.
-                    let has_permission = PermissionBuilder::new()
-                        .workspace_object(workspace_id)
-                        .permission(Permission::Approve)
-                        .user_subject(match ctx.history_actor() {
-                            HistoryActor::SystemInit => return Err(DalWrapperError::InvalidUser),
-                            HistoryActor::User(user_id) => *user_id,
-                        })
-                        .has_permission(spicedb_client)
-                        .await?;
-                    cache.insert(lookup_group, has_permission);
-                    has_permission
-                };
+        for approver in &rule.approvers {
+            let has_permission_for_requirement = if let Some(has_permission) = cache.get(&approver)
+            {
+                *has_permission
+            } else {
+                // If the permission is not in our cache, we need to find it and cache it for later.
+                match approver {
+                    ApprovalRequirementApprover::User(approver_user_id) => {
+                        let has_permission = *approver_user_id == user_id;
+                        cache.insert(approver, has_permission);
+                        has_permission
+                    }
+                    ApprovalRequirementApprover::PermissionLookup(_) => {
+                        // TODO(nick): use the actual lookup group rather than this hardcoded check.
+                        let has_permission = PermissionBuilder::new()
+                            .workspace_object(workspace_id)
+                            .permission(Permission::Approve)
+                            .user_subject(match ctx.history_actor() {
+                                HistoryActor::SystemInit => {
+                                    return Err(DalWrapperError::InvalidUser)
+                                }
+                                HistoryActor::User(user_id) => *user_id,
+                            })
+                            .has_permission(spicedb_client)
+                            .await?;
+                        cache.insert(approver, has_permission);
+                        has_permission
+                    }
+                }
+            };
 
             if has_permission_for_requirement {
-                approving_ids.push(requirement.entity_id);
+                // NOTE(nick): okay, this is where things get weird. What if a virtual requirement
+                // was generated for a deleted node? Well then ya can't get the merkle tree hash
+                // ya know? Therefore, we must first consult the map pertaining to deleted nodes
+                // to see if our hash is in there first. This algorithm assumes that the map is
+                // assembled correctly, so it's best to be sure it's correct or you will perish.
+                let merkle_tree_hash = if let Some(merkle_tree_hash_for_deleted_node) =
+                    ids_with_hashes_for_deleted_nodes.get(&rule.entity_id)
+                {
+                    *merkle_tree_hash_for_deleted_node
+                } else {
+                    ctx.workspace_snapshot()?
+                        .get_node_weight_by_id(rule.entity_id)
+                        .await?
+                        .merkle_tree_hash()
+                };
+
+                // Now that we have the hash, we can push!
+                approving_ids_with_hashes.push((rule.entity_id, merkle_tree_hash));
 
                 // If we found that we have permission for the requirement, we do not need to continue
                 // going through lookup groups for permissions.
@@ -291,5 +362,5 @@ async fn determine_approving_ids_inner(
         }
     }
 
-    Ok(approving_ids)
+    Ok(approving_ids_with_hashes)
 }

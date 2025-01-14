@@ -7,7 +7,6 @@ use std::collections::{HashMap, HashSet};
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 
-use graph::approval::ApprovalRequirement;
 use graph::correct_transforms::correct_transforms;
 use graph::detector::{Change, Update};
 use graph::{RebaseBatch, WorkspaceSnapshotGraph};
@@ -15,9 +14,10 @@ use node_weight::traits::CorrectTransformsError;
 use petgraph::prelude::*;
 use serde::{Deserialize, Serialize};
 use si_data_pg::PgError;
+use si_events::merkle_tree_hash::MerkleTreeHash;
 use si_events::workspace_snapshot::Checksum;
 use si_events::{ulid::Ulid, ContentHash, WorkspaceSnapshotAddress};
-use si_id::{EntityId, WorkspacePk};
+use si_id::{ApprovalRequirementDefinitionId, EntityId};
 use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -112,6 +112,10 @@ pub enum WorkspaceSnapshotError {
     Join(#[from] JoinError),
     #[error("layer db error: {0}")]
     LayerDb(#[from] si_layer_cache::LayerDbError),
+    #[error(
+        "missing content from content map for hash ({0}) and approval requirement definition ({1})"
+    )]
+    MissingContentFromContentMap(ContentHash, ApprovalRequirementDefinitionId),
     #[error("missing content from store for id: {0}")]
     MissingContentFromStore(Ulid),
     #[error("could not find a max vector clock for change set id {0}")]
@@ -727,7 +731,7 @@ impl WorkspaceSnapshot {
                 .await
                 .detect_changes(&*onto_clone.working_copy().await)
         })?
-        .await?)
+        .await??)
     }
 
     /// A wrapper around [`Self::detect_changes`](Self::detect_changes) where the "onto" snapshot is derived from the
@@ -748,24 +752,7 @@ impl WorkspaceSnapshot {
             .await
     }
 
-    /// Collects all the [`ApprovalRequirements`](ApprovalRequirement) based on the changes passed in.
-    #[instrument(
-        name = "workspace_snapshot.approval_requirements_for_changes",
-        level = "debug",
-        skip_all
-    )]
-    pub async fn approval_requirements_for_changes(
-        &self,
-        workspace_id: WorkspacePk,
-        changes: &[Change],
-    ) -> WorkspaceSnapshotResult<Vec<ApprovalRequirement>> {
-        Ok(self
-            .working_copy()
-            .await
-            .approval_requirements_for_changes(workspace_id, changes)?)
-    }
-
-    /// Calculates the checksum based on a list of IDs passed in.
+    /// Calculates the checksum based on a list of IDs with hashes passed in.
     #[instrument(
         name = "workspace_snapshot.calculate_checksum",
         level = "debug",
@@ -774,35 +761,32 @@ impl WorkspaceSnapshot {
     pub async fn calculate_checksum(
         &self,
         ctx: &DalContext,
-        mut ids: Vec<EntityId>,
+        mut ids_with_hashes: Vec<(EntityId, MerkleTreeHash)>,
     ) -> WorkspaceSnapshotResult<Checksum> {
-        // If an empty list of IDs were passed in, then we use the root node's ID as our sole ID so
-        // that algorithms using the checksum can "invalidate" as needed.
-        if ids.is_empty() {
+        // If an empty list of IDs with hashes wass passed in, then we use the root node's ID and
+        // merkle tree hash as our sole ID and hash so that algorithms using the checksum can
+        // "invalidate" as needed.
+        if ids_with_hashes.is_empty() {
             let root_node_index = ctx.workspace_snapshot()?.root().await?;
-            ids.push(
-                ctx.workspace_snapshot()?
-                    .get_node_weight(root_node_index)
-                    .await?
-                    .id()
-                    .into(),
-            );
+            let root_node_weight = ctx
+                .workspace_snapshot()?
+                .get_node_weight(root_node_index)
+                .await?;
+            ids_with_hashes.push((
+                root_node_weight.id().into(),
+                root_node_weight.merkle_tree_hash(),
+            ));
         }
 
-        // We MUST sort IDs before creating the checksum.
-        ids.sort();
+        // We MUST sort IDs (not hashes) before creating the checksum. This is so that we have
+        // stable checksum calculation.
+        ids_with_hashes.sort_by_key(|(id, _)| *id);
 
-        // Now that we have strictly ordered IDs and there's at least one present, we can create
-        // the checksum.
-        let snapshot = self.working_copy().await;
+        // Now that we have strictly ordered IDs with hasesh and there's at least one group
+        // present, we can create the checksum.
         let mut hasher = Checksum::hasher();
-        for id in ids {
-            hasher.update(
-                snapshot
-                    .get_node_weight_by_id(id)?
-                    .merkle_tree_hash()
-                    .as_bytes(),
-            );
+        for (_, hash) in ids_with_hashes {
+            hasher.update(hash.as_bytes());
         }
         Ok(hasher.finalize())
     }
@@ -1678,6 +1662,7 @@ impl WorkspaceSnapshot {
                 }
 
                 ContentAddressDiscriminants::ActionPrototype
+                | ContentAddressDiscriminants::ApprovalRequirementDefinition
                 | ContentAddressDiscriminants::Component
                 | ContentAddressDiscriminants::DeprecatedAction
                 | ContentAddressDiscriminants::DeprecatedActionBatch
@@ -1687,6 +1672,7 @@ impl WorkspaceSnapshot {
                 | ContentAddressDiscriminants::Geometry
                 | ContentAddressDiscriminants::InputSocket
                 | ContentAddressDiscriminants::JsonValue
+                | ContentAddressDiscriminants::ManagementPrototype
                 | ContentAddressDiscriminants::Module
                 | ContentAddressDiscriminants::OutputSocket
                 | ContentAddressDiscriminants::Prop
@@ -1695,12 +1681,12 @@ impl WorkspaceSnapshot {
                 | ContentAddressDiscriminants::SchemaVariant
                 | ContentAddressDiscriminants::Secret
                 | ContentAddressDiscriminants::ValidationPrototype
-                | ContentAddressDiscriminants::View
-                | ContentAddressDiscriminants::ManagementPrototype => None,
+                | ContentAddressDiscriminants::View => None,
             },
 
             NodeWeight::Action(_)
             | NodeWeight::ActionPrototype(_)
+            | NodeWeight::ApprovalRequirementDefinition(_)
             | NodeWeight::Category(_)
             | NodeWeight::Component(_)
             | NodeWeight::DependentValueRoot(_)
@@ -1709,12 +1695,12 @@ impl WorkspaceSnapshot {
             | NodeWeight::Func(_)
             | NodeWeight::FuncArgument(_)
             | NodeWeight::Geometry(_)
-            | NodeWeight::View(_)
             | NodeWeight::InputSocket(_)
+            | NodeWeight::ManagementPrototype(_)
             | NodeWeight::Prop(_)
             | NodeWeight::SchemaVariant(_)
-            | NodeWeight::ManagementPrototype(_)
-            | NodeWeight::Secret(_) => None,
+            | NodeWeight::Secret(_)
+            | NodeWeight::View(_) => None,
         } {
             let next_node_idxs = self
                 .incoming_sources_for_edge_weight_kind(this_node_weight.id(), edge_kind)

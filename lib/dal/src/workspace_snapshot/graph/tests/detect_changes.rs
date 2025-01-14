@@ -10,7 +10,9 @@ mod test {
         assert!(base_graph.is_acyclic_directed());
         assert!(updated_graph.is_acyclic_directed());
 
-        let changes = base_graph.detect_changes(&updated_graph);
+        let changes = base_graph
+            .detect_changes(&updated_graph)
+            .expect("could not detect changes");
         assert!(changes.is_empty());
     }
 }

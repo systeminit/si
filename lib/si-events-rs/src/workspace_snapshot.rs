@@ -10,6 +10,7 @@ create_xxhash_type!(Checksum);
 pub enum EntityKind {
     Action,
     ActionPrototype,
+    ApprovalRequirementDefinition,
     AttributePrototype,
     AttributePrototypeArgument,
     AttributeValue,

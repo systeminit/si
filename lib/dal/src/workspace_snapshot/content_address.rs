@@ -38,6 +38,7 @@ pub enum ContentAddress {
     ManagementPrototype(ContentHash),
     Geometry(ContentHash),
     View(ContentHash),
+    ApprovalRequirementDefinition(ContentHash),
 }
 
 impl ContentAddress {
@@ -65,7 +66,8 @@ impl ContentAddress {
             | ContentAddress::ValidationPrototype(id)
             | ContentAddress::ValidationOutput(id)
             | ContentAddress::View(id)
-            | ContentAddress::ManagementPrototype(id) => Some(*id),
+            | ContentAddress::ManagementPrototype(id)
+            | ContentAddress::ApprovalRequirementDefinition(id) => Some(*id),
         }
         .unwrap_or_default()
     }
