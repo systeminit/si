@@ -11,6 +11,7 @@ use dal_test::helpers::create_schema;
 use dal_test::prelude::ChangeSetTestHelpers;
 use dal_test::sdf_test;
 use dal_test::Result;
+use indoc::indoc;
 use permissions::ObjectType;
 use permissions::Relation;
 use permissions::RelationBuilder;
@@ -22,6 +23,23 @@ use si_events::workspace_snapshot::EntityKind;
 use si_events::ChangeSetApprovalStatus;
 use si_id::ChangeSetApprovalId;
 
+// FIXME(nick,jacob): this must happen in the "sdf_test"'s equivalent to global setup, but not in
+// dal tests. This also should _really_ reflect the "schema.zed" file that production uses.
+async fn write_schema(client: &mut SpiceDbClient) -> Result<()> {
+    let schema = indoc! {"
+        definition user {}
+
+        definition workspace {
+          relation approver: user
+          relation owner: user
+          permission approve = approver+owner
+          permission manage = owner
+        }
+    "};
+    client.write_schema(schema).await?;
+    Ok(())
+}
+
 // NOTE(nick): this is an integration test and not a service test, but given that "sdf_test" is in
 // a weird, unused place at the time of writing, this test will live here.
 #[sdf_test]
@@ -30,6 +48,10 @@ async fn single_user_relation_existence_and_checksum_validility_permutations(
     spicedb_client: SpiceDbClient,
 ) -> Result<()> {
     let mut spicedb_client = spicedb_client;
+
+    // FIXME(nick,jacob): see the comment attached to this function.
+    write_schema(&mut spicedb_client).await?;
+
     let workspace_id = ctx.workspace_pk()?;
     let user_id = match ctx.history_actor() {
         HistoryActor::SystemInit => return Err(eyre!("invalid user")),
@@ -81,6 +103,7 @@ async fn single_user_relation_existence_and_checksum_validility_permutations(
         let approving_ids = dal_wrapper::determine_approving_ids(ctx, &mut spicedb_client).await?;
         let first_approval =
             ChangeSetApproval::new(ctx, ChangeSetApprovalStatus::Approved, approving_ids).await?;
+        ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
         create_component_for_default_schema_name_in_default_view(
             ctx,
@@ -93,6 +116,7 @@ async fn single_user_relation_existence_and_checksum_validility_permutations(
         let approving_ids = dal_wrapper::determine_approving_ids(ctx, &mut spicedb_client).await?;
         let second_approval =
             ChangeSetApproval::new(ctx, ChangeSetApprovalStatus::Approved, approving_ids).await?;
+        ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
         let calculator = ChangeSetApprovalCalculator::new(ctx, &mut spicedb_client).await?;
 
@@ -188,6 +212,7 @@ async fn single_user_relation_existence_and_checksum_validility_permutations(
         let approving_ids = dal_wrapper::determine_approving_ids(ctx, &mut spicedb_client).await?;
         let third_approval =
             ChangeSetApproval::new(ctx, ChangeSetApprovalStatus::Approved, approving_ids).await?;
+        ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
         let calculator = ChangeSetApprovalCalculator::new(ctx, &mut spicedb_client).await?;
 

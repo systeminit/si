@@ -463,7 +463,7 @@ impl SdfTestFnSetupExpander {
         let var = Ident::new("spicedb_client", Span::call_site());
         self.code_extend(quote! {
             let #var = {
-               ::si_data_spicedb::SpiceDbClient::new_sync(&::si_data_spicedb::SpiceDbConfig::default())?
+               ::si_data_spicedb::SpiceDbClient::new_sync(&::sdf_test::spicedb_config())?
             };
         });
         self.spicedb_client = Some(Rc::new(var));
