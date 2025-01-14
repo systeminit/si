@@ -4,6 +4,13 @@ use si_events::{
 };
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 
+#[derive(Debug, Deserialize, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ListVariantsResponse {
+    pub installed: Vec<SchemaVariant>,
+    pub uninstalled: Vec<UninstalledVariant>,
+}
+
 #[derive(Clone, Debug, Deserialize, Eq, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct SchemaVariant {

@@ -8,7 +8,7 @@ mod schema_variant;
 mod workspace;
 
 pub use crate::audit_log::AuditLog;
-pub use crate::change_set::ChangeSet;
+pub use crate::change_set::{ChangeSet, CreateChangeSetRequest, CreateChangeSetResponse};
 pub use crate::component::{
     ChangeStatus, ConnectionAnnotation, DiagramComponentView, DiagramSocket,
     DiagramSocketDirection, DiagramSocketNodeSide, GeometryAndView, GridPoint, RawGeometry, Size2D,
@@ -24,6 +24,7 @@ pub use crate::module::{
     SyncedModules,
 };
 pub use crate::schema_variant::{
-    ComponentType, InputSocket, OutputSocket, Prop, PropKind, SchemaVariant, UninstalledVariant,
+    ComponentType, InputSocket, ListVariantsResponse, OutputSocket, Prop, PropKind, SchemaVariant,
+    UninstalledVariant,
 };
 pub use crate::workspace::WorkspaceMetadata;

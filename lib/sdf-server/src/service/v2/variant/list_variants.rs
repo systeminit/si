@@ -4,10 +4,9 @@ use axum::{
     extract::{Host, OriginalUri, Path},
     Json,
 };
+
 use dal::{cached_module::CachedModule, ChangeSetId, SchemaVariant, WorkspacePk};
-use frontend_types::{SchemaVariant as FrontendVariant, UninstalledVariant};
-use serde::{Deserialize, Serialize};
-use si_frontend_types as frontend_types;
+use si_frontend_types::ListVariantsResponse;
 
 use crate::{
     extract::{HandlerContext, PosthogClient},
@@ -15,13 +14,6 @@ use crate::{
     service::v2::AccessBuilder,
     track,
 };
-
-#[derive(Debug, Deserialize, Serialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct ListVariantsResponse {
-    installed: Vec<FrontendVariant>,
-    uninstalled: Vec<UninstalledVariant>,
-}
 
 pub async fn list_variants(
     HandlerContext(builder): HandlerContext,

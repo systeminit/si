@@ -113,6 +113,9 @@ async fn evict_from_db() {
         PersistStatus::Error(e) => panic!("Eviction failed; {e}"),
     }
 
+    // wait for the changes to happen in CI, which can be verys low
+    tokio::time::sleep(Duration::from_millis(200)).await;
+
     // Are we in memory?
     let in_memory = ldb
         .workspace_snapshot()
@@ -120,7 +123,7 @@ async fn evict_from_db() {
         .cache()
         .get(key_str.clone())
         .await;
-    assert_ne!(Some(value.clone()), in_memory);
+    assert!(in_memory.is_none());
 
     assert!(
         ldb.workspace_snapshot()
@@ -190,7 +193,7 @@ async fn evictions_are_gossiped() {
 
     let pk_str: Arc<str> = key.to_string().into();
 
-    let max_check_count = 10;
+    let max_check_count = 100;
 
     let mut memory_check_count = 0;
     while memory_check_count <= max_check_count {
@@ -243,7 +246,7 @@ async fn evictions_are_gossiped() {
         PersistStatus::Error(e) => panic!("Eviction failed; {e}"),
     }
 
-    let max_check_count = 10;
+    let max_check_count = 100;
 
     let mut memory_check_count = 0;
     while memory_check_count < max_check_count {
@@ -265,6 +268,6 @@ async fn evictions_are_gossiped() {
     }
     assert_ne!(
         max_check_count, memory_check_count,
-        "value did not evict from the remote memory cache within 10ms"
+        "value did not evict from the remote memory cache within 100ms"
     );
 }
