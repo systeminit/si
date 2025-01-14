@@ -184,7 +184,9 @@ pub async fn create_component(
 
     let mut maybe_inferred_edges = None;
     if let Some(frame_id) = request.parent_id {
-        maybe_inferred_edges = Frame::upsert_parent(&ctx, component.id(), frame_id).await?;
+        maybe_inferred_edges = Frame::upsert_parent(&ctx, component.id(), frame_id)
+            .await?
+            .map(|edges| edges.upserted_edges);
 
         track(
             &posthog_client,
