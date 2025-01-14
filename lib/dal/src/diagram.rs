@@ -486,11 +486,11 @@ impl Diagram {
     async fn assemble_removed_components(
         ctx: &DalContext,
         base_snapshot: Arc<WorkspaceSnapshot>,
-        components: &ComponentInfoCache,
         maybe_view_id: Option<ViewId>,
         diagram_sockets: &mut HashMap<SchemaVariantId, Vec<DiagramSocket>>,
     ) -> DiagramResult<Vec<DiagramComponentView>> {
         let mut removed_component_summaries = vec![];
+        let components = Component::list_ids(ctx).await?;
 
         let base_change_set_ctx = ctx.clone_with_base().await?;
         let base_change_set_ctx = &base_change_set_ctx;
@@ -506,7 +506,7 @@ impl Diagram {
                 .map(|weight| weight.id())
             {
                 let component_id: ComponentId = component_id.into();
-                if !components.contains_key(&component_id) {
+                if !components.contains(&component_id) {
                     let deleted_component =
                         Component::get_by_id(base_change_set_ctx, component_id).await?;
 
@@ -719,7 +719,6 @@ impl Diagram {
             let removed_component_summaries = Self::assemble_removed_components(
                 ctx,
                 base_snapshot.clone(),
-                &component_info_cache,
                 maybe_view_id,
                 &mut diagram_sockets,
             )
