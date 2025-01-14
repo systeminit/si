@@ -17,28 +17,17 @@ export const ROUTES = {
     path: () => "/change_set/abandon_change_set",
     method: "POST",
   },
-  abandon_vote: {
-    path: () => "/change_set/abandon_vote",
-    method: "POST",
-  },
   add_action: {
-    path: () => "/change_set/add_action", 
+    path: () => "/change_set/add_action",
     method: "POST",
   },
-  apply_change_set: {
-    path: () => "/change_set/apply_change_set",
-    method: "POST",
-  },
-  begin_abandon_approval_process: {
-    path: () => "/change_set/begin_abandon_approval_process",
+  force_apply: {
+    path: (vars: ROUTE_VARS) =>
+      `/v2/workspaces/${vars.workspaceId}/change-sets/${vars.changeSetId}/force_apply`,
     method: "POST",
   },
   begin_approval_process: {
     path: () => "/change_set/begin_approval_process",
-    method: "POST",
-  },
-  cancel_abandon_approval_process: {
-    path: () => "/change_set/cancel_abandon_approval_process",
     method: "POST",
   },
   cancel_approval_process: {
@@ -50,20 +39,9 @@ export const ROUTES = {
     method: "POST",
   },
   list_open_change_sets: {
-    path: () => "/change_set/list_open_change_sets",
+    path: (vars: ROUTE_VARS) =>
+      `/v2/workspaces/${vars.workspaceId}/change-sets`,
     method: "GET",
-  },
-  merge_vote: {
-    path: () => "/change_set/merge_vote",
-    method: "POST",
-  },
-  rebase_on_base: {
-    path: () => "/change_set/rebase_on_base",
-    method: "POST",
-  },
-  status_with_base: {
-    path: () => "/change_set/status_with_base",
-    method: "POST",
   },
 
   // V2/Workspaces  ---------------------------------------------------------
@@ -79,7 +57,7 @@ export const ROUTES = {
     path: () => "/diagram/add_components_to_view",
     method: "POST",
   },
-  delete_connection:{
+  delete_connection: {
     path: () => "/diagram/delete_connection",
     method: "POST",
   },
@@ -99,7 +77,7 @@ export const ROUTES = {
   },
   list_schemas: {
     path: () => "/diagram/list_schemas",
-    method: "GET"
+    method: "GET",
   },
   remove_delete_intent: {
     path: () => "/diagram/remove_delete_intent",
@@ -113,7 +91,6 @@ export const ROUTES = {
     path: () => "/component/set_type",
     method: "POST",
   },
-
 
   // Component Management -------------------------------------------------------
   delete_components: {
@@ -349,7 +326,10 @@ export class SdfApiClient {
     console.log(`Waiting on DVUs for ${this.workspaceId}...`);
     const dvuPromise = new Promise<void>((resolve) => {
       const interval = setInterval(async () => {
-        const remainingRoots = await this.call({ route: "dvu_roots", routeVars: { changeSetId } });
+        const remainingRoots = await this.call({
+          route: "dvu_roots",
+          routeVars: { changeSetId },
+        });
         if (remainingRoots?.count === 0) {
           console.log(`All DVUs for ${this.workspaceId} finished!`);
           clearInterval(interval);
