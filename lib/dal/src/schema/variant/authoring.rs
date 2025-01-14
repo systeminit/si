@@ -649,6 +649,8 @@ impl VariantAuthoringClient {
         )
         .await?;
 
+        dbg!(&existing_variant_spec);
+
         let unlocked_asset_spec = build_asset_func_spec(&unlocked_variant_asset_func)?;
         let metadata = SchemaVariantMetadataJson {
             schema_name: schema.name.clone(),

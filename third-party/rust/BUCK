@@ -17179,6 +17179,7 @@ cargo.rust_binary(
         ":tracing-tunnel-0.1.0",
         ":trybuild-1.0.101",
         ":tryhard-0.5.1",
+        ":ts-rs-10.1.0",
         ":ulid-1.1.4",
         ":url-2.5.4",
         ":uuid-1.11.1",
@@ -18785,6 +18786,75 @@ cargo.rust_library(
         ":futures-0.3.31",
         ":pin-project-lite-0.2.16",
         ":tokio-1.43.0",
+    ],
+)
+
+alias(
+    name = "ts-rs",
+    actual = ":ts-rs-10.1.0",
+    visibility = ["PUBLIC"],
+)
+
+http_archive(
+    name = "ts-rs-10.1.0.crate",
+    sha256 = "e640d9b0964e9d39df633548591090ab92f7a4567bc31d3891af23471a3365c6",
+    strip_prefix = "ts-rs-10.1.0",
+    urls = ["https://static.crates.io/crates/ts-rs/10.1.0/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "ts-rs-10.1.0",
+    srcs = [":ts-rs-10.1.0.crate"],
+    crate = "ts_rs",
+    crate_root = "ts-rs-10.1.0.crate/src/lib.rs",
+    edition = "2021",
+    features = [
+        "chrono",
+        "chrono-impl",
+        "default",
+        "serde-compat",
+        "serde-json-impl",
+        "serde_json",
+        "url",
+        "url-impl",
+    ],
+    visibility = [],
+    deps = [
+        ":chrono-0.4.39",
+        ":lazy_static-1.5.0",
+        ":serde_json-1.0.133",
+        ":thiserror-2.0.6",
+        ":ts-rs-macros-10.1.0",
+        ":url-2.5.4",
+    ],
+)
+
+http_archive(
+    name = "ts-rs-macros-10.1.0.crate",
+    sha256 = "0e9d8656589772eeec2cf7a8264d9cda40fb28b9bc53118ceb9e8c07f8f38730",
+    strip_prefix = "ts-rs-macros-10.1.0",
+    urls = ["https://static.crates.io/crates/ts-rs-macros/10.1.0/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "ts-rs-macros-10.1.0",
+    srcs = [":ts-rs-macros-10.1.0.crate"],
+    crate = "ts_rs_macros",
+    crate_root = "ts-rs-macros-10.1.0.crate/src/lib.rs",
+    edition = "2021",
+    features = [
+        "serde-compat",
+        "termcolor",
+    ],
+    proc_macro = True,
+    visibility = [],
+    deps = [
+        ":proc-macro2-1.0.92",
+        ":quote-1.0.37",
+        ":syn-2.0.90",
+        ":termcolor-1.4.1",
     ],
 )
 
