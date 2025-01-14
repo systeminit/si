@@ -4,4 +4,8 @@ import type { AttrFuncInputSpec } from "./AttrFuncInputSpec";
 /**
  * MapKeyFuncSpecs track custom functions set on keys to a map
  */
-export type MapKeyFuncSpec = { key: string, funcUniqueId: string, inputs: Array<AttrFuncInputSpec>, };
+export type MapKeyFuncSpec = {
+  key: string;
+  funcUniqueId: string;
+  inputs: Array<AttrFuncInputSpec>;
+};

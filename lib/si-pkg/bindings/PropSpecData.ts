@@ -3,4 +3,15 @@ import type { AttrFuncInputSpec } from "./AttrFuncInputSpec";
 import type { JsonValue } from "./serde_json/JsonValue";
 import type { PropSpecWidgetKind } from "./PropSpecWidgetKind";
 
-export type PropSpecData = { name: string, validationFormat: string | null, defaultValue: JsonValue | null, funcUniqueId: string | null, inputs: Array<AttrFuncInputSpec> | null, widgetKind: PropSpecWidgetKind | null, widgetOptions: JsonValue | null, hidden: boolean | null, docLink: string | null, documentation: string | null, };
+export type PropSpecData = {
+  name: string;
+  validationFormat: string | null;
+  defaultValue: JsonValue | null;
+  funcUniqueId: string | null;
+  inputs: Array<AttrFuncInputSpec> | null;
+  widgetKind: PropSpecWidgetKind | null;
+  widgetOptions: JsonValue | null;
+  hidden: boolean | null;
+  docLink: string | null;
+  documentation: string | null;
+};

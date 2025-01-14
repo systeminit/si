@@ -2,4 +2,9 @@
 import type { AttrFuncInputSpec } from "./AttrFuncInputSpec";
 import type { SocketSpecData } from "./SocketSpecData";
 
-export type SocketSpec = { name: string, data: SocketSpecData | null, inputs: Array<AttrFuncInputSpec>, uniqueId: string | null, };
+export type SocketSpec = {
+  name: string;
+  data: SocketSpecData | null;
+  inputs: Array<AttrFuncInputSpec>;
+  uniqueId: string | null;
+};

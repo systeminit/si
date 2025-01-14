@@ -2,4 +2,10 @@
 import type { LeafInputLocation } from "./LeafInputLocation";
 import type { LeafKind } from "./LeafKind";
 
-export type LeafFunctionSpec = { funcUniqueId: string, leafKind: LeafKind, uniqueId: string | null, deleted: boolean, inputs: Array<LeafInputLocation>, };
+export type LeafFunctionSpec = {
+  funcUniqueId: string;
+  leafKind: LeafKind;
+  uniqueId: string | null;
+  deleted: boolean;
+  inputs: Array<LeafInputLocation>;
+};

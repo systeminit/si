@@ -16,14 +16,14 @@ Deno.test(function propertiesExpandRefs() {
   assertObjectMatch(
     properties["DefaultAction"] as Record<PropertyKey, string>,
     {
-      "type" : "object",
-      "additionalProperties" : false,
-      "properties" : {
-        "Type" : {
-          "type" : "string"
-        }
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "Type": {
+          "type": "string",
+        },
       },
-      "required" : [ "Type" ]
-    }
+      "required": ["Type"],
+    },
   );
 });

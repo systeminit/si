@@ -2,4 +2,11 @@
 import type { FuncArgumentSpec } from "./FuncArgumentSpec";
 import type { FuncSpecData } from "./FuncSpecData";
 
-export type FuncSpec = { name: string, uniqueId: string, data: FuncSpecData | null, deleted: boolean, isFromBuiltin: boolean | null, arguments: Array<FuncArgumentSpec>, };
+export type FuncSpec = {
+  name: string;
+  uniqueId: string;
+  data: FuncSpecData | null;
+  deleted: boolean;
+  isFromBuiltin: boolean | null;
+  arguments: Array<FuncArgumentSpec>;
+};

@@ -3,4 +3,15 @@ import type { AttributeValueSpec } from "./AttributeValueSpec";
 import type { ComponentSpecVariant } from "./ComponentSpecVariant";
 import type { PositionSpec } from "./PositionSpec";
 
-export type ComponentSpec = { name: string, position: PositionSpec, variant: ComponentSpecVariant, needsDestroy: boolean, deletionUserPk: string | null, uniqueId: string, deleted: boolean, attributes: Array<AttributeValueSpec>, inputSockets: Array<AttributeValueSpec>, outputSockets: Array<AttributeValueSpec>, };
+export type ComponentSpec = {
+  name: string;
+  position: PositionSpec;
+  variant: ComponentSpecVariant;
+  needsDestroy: boolean;
+  deletionUserPk: string | null;
+  uniqueId: string;
+  deleted: boolean;
+  attributes: Array<AttributeValueSpec>;
+  inputSockets: Array<AttributeValueSpec>;
+  outputSockets: Array<AttributeValueSpec>;
+};

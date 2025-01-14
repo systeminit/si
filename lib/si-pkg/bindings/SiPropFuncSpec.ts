@@ -2,4 +2,10 @@
 import type { AttrFuncInputSpec } from "./AttrFuncInputSpec";
 import type { SiPropFuncSpecKind } from "./SiPropFuncSpecKind";
 
-export type SiPropFuncSpec = { kind: SiPropFuncSpecKind, funcUniqueId: string, uniqueId: string | null, deleted: boolean, inputs: Array<AttrFuncInputSpec>, };
+export type SiPropFuncSpec = {
+  kind: SiPropFuncSpecKind;
+  funcUniqueId: string;
+  uniqueId: string | null;
+  deleted: boolean;
+  inputs: Array<AttrFuncInputSpec>;
+};

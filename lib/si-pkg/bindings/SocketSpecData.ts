@@ -2,4 +2,11 @@
 import type { SocketSpecArity } from "./SocketSpecArity";
 import type { SocketSpecKind } from "./SocketSpecKind";
 
-export type SocketSpecData = { funcUniqueId: string | null, kind: SocketSpecKind, name: string, connectionAnnotations: string, arity: SocketSpecArity, uiHidden: boolean, };
+export type SocketSpecData = {
+  funcUniqueId: string | null;
+  kind: SocketSpecKind;
+  name: string;
+  connectionAnnotations: string;
+  arity: SocketSpecArity;
+  uiHidden: boolean;
+};

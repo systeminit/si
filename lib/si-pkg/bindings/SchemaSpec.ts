@@ -2,4 +2,11 @@
 import type { SchemaSpecData } from "./SchemaSpecData";
 import type { SchemaVariantSpec } from "./SchemaVariantSpec";
 
-export type SchemaSpec = { name: string, data: SchemaSpecData | null, uniqueId: string | null, deleted: boolean, isBuiltin: boolean, variants: Array<SchemaVariantSpec>, };
+export type SchemaSpec = {
+  name: string;
+  data: SchemaSpecData | null;
+  uniqueId: string | null;
+  deleted: boolean;
+  isBuiltin: boolean;
+  variants: Array<SchemaVariantSpec>;
+};

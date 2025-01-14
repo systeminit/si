@@ -2,4 +2,43 @@
 import type { MapKeyFuncSpec } from "./MapKeyFuncSpec";
 import type { PropSpecData } from "./PropSpecData";
 
-export type PropSpec = { "kind": "array", name: string, data: PropSpecData | null, uniqueId: string | null, typeProp: PropSpec, } | { "kind": "boolean", name: string, data: PropSpecData | null, uniqueId: string | null, } | { "kind": "json", name: string, data: PropSpecData | null, uniqueId: string | null, } | { "kind": "map", name: string, data: PropSpecData | null, uniqueId: string | null, typeProp: PropSpec, mapKeyFuncs: Array<MapKeyFuncSpec> | null, } | { "kind": "number", name: string, data: PropSpecData | null, uniqueId: string | null, } | { "kind": "object", name: string, data: PropSpecData | null, uniqueId: string | null, entries: Array<PropSpec>, } | { "kind": "string", name: string, data: PropSpecData | null, uniqueId: string | null, };
+export type PropSpec = {
+  "kind": "array";
+  name: string;
+  data: PropSpecData | null;
+  uniqueId: string | null;
+  typeProp: PropSpec;
+} | {
+  "kind": "boolean";
+  name: string;
+  data: PropSpecData | null;
+  uniqueId: string | null;
+} | {
+  "kind": "json";
+  name: string;
+  data: PropSpecData | null;
+  uniqueId: string | null;
+} | {
+  "kind": "map";
+  name: string;
+  data: PropSpecData | null;
+  uniqueId: string | null;
+  typeProp: PropSpec;
+  mapKeyFuncs: Array<MapKeyFuncSpec> | null;
+} | {
+  "kind": "number";
+  name: string;
+  data: PropSpecData | null;
+  uniqueId: string | null;
+} | {
+  "kind": "object";
+  name: string;
+  data: PropSpecData | null;
+  uniqueId: string | null;
+  entries: Array<PropSpec>;
+} | {
+  "kind": "string";
+  name: string;
+  data: PropSpecData | null;
+  uniqueId: string | null;
+};
