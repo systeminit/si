@@ -74,6 +74,8 @@ y-sync = { workspace = true }
 
 [dev-dependencies]
 dal-test = { path = "../../lib/dal-test" }
+sdf-test = { path = "../../lib/sdf-test" }
 
+indoc = { workspace = true }
 pretty_assertions_sorted = { workspace = true }
 yrs = { workspace = true }

@@ -47,6 +47,7 @@ members = [
     "lib/rebaser-core",
     "lib/rebaser-server",
     "lib/sdf-server",
+    "lib/sdf-test",
     "lib/shuttle-core",
     "lib/shuttle-server",
     "lib/si-crypto",
