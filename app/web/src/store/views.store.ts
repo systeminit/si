@@ -220,6 +220,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
         // these are components, groups, or viewNodes
         selectedComponentIds: [] as ComponentId[],
         selectedEdgeId: null as EdgeId | null,
+        selectedViewDetailsId: null as ViewId | null, // right panel
         selectedComponentDetailsTab: null as string | null,
         hoveredComponentId: null as ComponentId | null,
         hoveredEdgeId: null as EdgeId | null,
@@ -483,16 +484,27 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
 
           this.syncSelectionIntoUrl();
         },
+
+        setSelectedViewDetails(id: ViewId) {
+          this.selectedViewDetailsId = id;
+          this.selectedComponentIds = [];
+          this.selectedEdgeId = null;
+        },
+
         syncSelectionIntoUrl() {
           let selectedIds: string[] = [];
+          let viewId;
           if (this.selectedEdgeId) {
             selectedIds = [`e_${this.selectedEdgeId}`];
           } else if (this.selectedComponentIds.length) {
             selectedIds = _.map(this.selectedComponentIds, (id) => `c_${id}`);
+          } else if (this.selectedViewDetailsId) {
+            viewId = this.selectedViewDetailsId;
           }
 
           const newQueryObj = {
             ...(selectedIds.length && { s: selectedIds.join("|") }),
+            ...(viewId && { v: viewId }),
             ...(this.selectedComponentDetailsTab && {
               t: this.selectedComponentDetailsTab,
             }),
@@ -526,6 +538,12 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
             this.selectedComponentDetailsTab = tabSlug;
           } else {
             this.selectedComponentDetailsTab = null;
+          }
+
+          const viewId = router.currentRoute.value.query?.v as string;
+          if (viewId) {
+            if (this.viewList.find((v) => v.id === viewId))
+              this.selectedViewDetailsId = viewId;
           }
         },
 

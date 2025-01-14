@@ -85,6 +85,11 @@
           :menuSelected="contextMenuRef?.isOpen ?? false"
           @openMenu="onThreeDotMenuClick"
         />
+        <ViewDetailsPanel
+          v-else-if="selectedViewDetailsId && selectedView"
+          :viewId="selectedViewDetailsId"
+          :view="selectedView"
+        />
         <NoSelectionDetailsPanel v-else />
       </div>
     </component>
@@ -133,6 +138,7 @@ import {
 } from "../ModelingDiagram/diagram_types";
 import DiagramOutline from "../DiagramOutline/DiagramOutline.vue";
 import EdgeDetailsPanel from "../EdgeDetailsPanel.vue";
+import ViewDetailsPanel from "../ViewDetailsPanel.vue";
 import MultiSelectDetailsPanel from "../MultiSelectDetailsPanel.vue";
 import NoSelectionDetailsPanel from "../NoSelectionDetailsPanel.vue";
 import ModelingRightClickMenu from "../ModelingView/ModelingRightClickMenu.vue";
@@ -259,6 +265,11 @@ const selectedComponent = computed<
   viewStore.selectedComponent?.def.componentType !== ComponentType.View
     ? (viewStore.selectedComponent as DiagramGroupData | DiagramNodeData)
     : undefined,
+);
+const selectedViewDetailsId = computed(() => viewStore.selectedViewDetailsId);
+
+const selectedView = computed(() =>
+  viewStore.viewList.find((v) => v.id === selectedViewDetailsId.value),
 );
 
 function onRightClickElement(rightClickEventInfo: RightClickElementEvent) {

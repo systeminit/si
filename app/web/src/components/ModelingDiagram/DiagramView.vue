@@ -8,6 +8,7 @@
     }"
     @mouseover="onMouseOver"
     @mouseout="onMouseOut"
+    @click="select"
     @dblclick="goto"
   >
     <v-shape :config="config" />
@@ -257,5 +258,9 @@ function onMouseOut() {
 
 const goto = () => {
   viewsStore.selectView(props.view.id);
+};
+
+const select = () => {
+  viewsStore.setSelectedViewDetails(props.view.id);
 };
 </script>
