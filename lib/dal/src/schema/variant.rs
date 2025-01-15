@@ -18,6 +18,7 @@ use si_pkg::SpecError;
 use telemetry::prelude::*;
 
 use crate::action::prototype::{ActionKind, ActionPrototype};
+use crate::approval_requirement::{ApprovalRequirement, ApprovalRequirementError};
 use crate::attribute::prototype::argument::{
     AttributePrototypeArgument, AttributePrototypeArgumentError,
 };
@@ -83,6 +84,8 @@ pub const DEFAULT_SCHEMA_VARIANT_COLOR: &str = "#00b0bc";
 pub enum SchemaVariantError {
     #[error("action prototype error: {0}")]
     ActionPrototype(String),
+    #[error("approval requirement error: {0}")]
+    ApprovalRequirement(#[from] ApprovalRequirementError),
     #[error("asset func not found for schema variant: {0}")]
     AssetFuncNotFound(SchemaVariantId),
     #[error("attribute prototype error: {0}")]
@@ -549,6 +552,9 @@ impl SchemaVariant {
         let schema_variant_id: SchemaVariantId = id.into();
         let root_prop = RootProp::new(ctx, schema_variant_id).await?;
         let _func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Identity).await?;
+
+        // TODO(nick): remove hard-coded requirements for schema variants.
+        ApprovalRequirement::new(ctx, id).await?;
 
         let schema_variant =
             Self::assemble(ctx, id.into(), is_locked, SchemaVariantContent::V3(content)).await?;
