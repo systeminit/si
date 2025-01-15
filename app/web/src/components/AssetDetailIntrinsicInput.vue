@@ -102,7 +102,11 @@ const label = computed<string>(() => {
 watch(
   () => props.data,
   () => {
-    display.value = toRaw(props.data);
+    // we need to make a shallow copy of props.data
+    // in order to prevent the parent AssetDetailsPanel from
+    // recomputing outputSocketIntrinsics which causes this component
+    // to be unmounted/mounted which resets the selectedFilter :(
+    display.value = { ...toRaw(props.data) };
   },
   { immediate: true },
 );
@@ -150,10 +154,12 @@ const selectFilter = (item: DropdownFilter) => {
 
   selectedFilter.value = item;
 
+  const c = { ...display.value };
+
   if (item === "unset") {
-    emit("changeToUnset", display.value);
+    emit("changeToUnset", c);
   } else {
-    emit("changeToIdentity", display.value, null);
+    emit("changeToIdentity", c, null);
   }
 };
 

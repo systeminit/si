@@ -541,7 +541,6 @@ const updateOutputSocketIntrinsics = async (data: IntrinsicDisplay) => {
 
 const changeToUnset = (config: PropDisplay | IntrinsicDisplay | undefined) => {
   if (!config) return;
-
   config.attributePrototypeId = undefined;
   config.funcId = unsetFuncId.value;
   config.value = undefined;
@@ -565,7 +564,9 @@ const changeToIdentity = (
   // dont fire a save if there isnt a value
   if ("backendKind" in config) {
     config.backendKind = FuncBackendKind.Identity;
-    if (config.value) updateOutputSocketIntrinsics(config);
+    if (config.value) {
+      updateOutputSocketIntrinsics(config);
+    }
   } else if (config.value) {
     updatePropIntrinsics(config);
   }
