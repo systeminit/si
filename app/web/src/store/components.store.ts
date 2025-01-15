@@ -1196,13 +1196,13 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               optimistic: (requestUlid) => {
                 toast(
                   {
-                    id: requestUlid,
                     component: CreatingTemplate,
                     props: {
                       updating: true,
                     },
                   },
                   {
+                    id: requestUlid,
                     timeout: false,
                     closeOnClick: false,
                     position: POSITION.TOP_CENTER,
@@ -1385,10 +1385,10 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                   if (metadata.change_set_id !== changeSetId) return;
 
                   const didIFireThisRequest =
-                    realtimeStore.inflightRequests.get(metadata.requestUlid);
+                    realtimeStore.inflightRequests.get(metadata.request_ulid);
                   if (!didIFireThisRequest) return;
 
-                  toast.update(metadata.requestUlid, {
+                  toast.update(metadata.request_ulid, {
                     content: {
                       props: {
                         updating: false,

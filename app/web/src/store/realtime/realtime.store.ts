@@ -43,7 +43,7 @@ type RealtimeEventMetadata = {
   workspace_pk: string;
   actor: Actor;
   change_set_id: string;
-  requestUlid: string; // the HTTP endpoint requestUlid that resulted in this event being fired
+  request_ulid: string; // the HTTP endpoint requestUlid that resulted in this event being fired
 };
 
 type EventKind = keyof WsEventPayloadMap;

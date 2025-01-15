@@ -966,7 +966,7 @@ export const useFuncStore = () => {
               _metadata,
             ) => {
               const didIFireThisRequest = realtimeStore.inflightRequests.get(
-                _metadata.requestUlid,
+                _metadata.request_ulid,
               );
               if (didIFireThisRequest) {
                 if (createdComponentIds?.length) {

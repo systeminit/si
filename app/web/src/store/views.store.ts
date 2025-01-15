@@ -1912,7 +1912,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                 this.SORT_LIST_VIEWS();
                 await this.FETCH_VIEW_GEOMETRY(view.id);
                 const actionWhichCreatedView =
-                  realtimeStore.inflightRequests.get(metadata.requestUlid);
+                  realtimeStore.inflightRequests.get(metadata.request_ulid);
                 if (
                   metadata.actor !== "System" &&
                   metadata.actor.User === authStore.userPk &&
