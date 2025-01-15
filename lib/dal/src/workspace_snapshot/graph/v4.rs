@@ -12,8 +12,7 @@ use petgraph::{
     visit::DfsEvent,
 };
 use serde::{Deserialize, Serialize};
-use si_events::{ulid::Ulid, workspace_snapshot::EntityKind, ContentHash};
-use si_id::{EntityId, WorkspacePk};
+use si_events::{ulid::Ulid, ContentHash};
 use si_layer_cache::db::serialize;
 use strum::IntoEnumIterator;
 use telemetry::prelude::*;
@@ -34,13 +33,7 @@ use crate::{
     Timestamp,
 };
 
-use super::{
-    approval::{
-        ApprovalRequirement, ApprovalRequirementApprover, ApprovalRequirementPermissionLookup,
-    },
-    detector::Change,
-    traits::entity_kind::EntityKindExt,
-};
+use super::detector::Change;
 
 pub mod component;
 pub mod diagram;
@@ -703,37 +696,6 @@ impl WorkspaceSnapshotGraphV4 {
         Detector::new(self, updated_graph).detect_changes()
     }
 
-    pub fn approval_requirements_for_changes(
-        &self,
-        workspace_id: WorkspacePk,
-        changes: &[Change],
-    ) -> WorkspaceSnapshotGraphResult<Vec<ApprovalRequirement>> {
-        let mut requirements = Vec::new();
-        for change in changes {
-            let entity_id: EntityId = change.id.into();
-
-            // TODO(nick,jacob): handle more than schema variants.
-            if let EntityKind::SchemaVariant = self.get_entity_kind_for_id(entity_id)? {
-                requirements.push(ApprovalRequirement {
-                    // TODO(nick,jacob): handle more than schema variants.
-                    entity_kind: EntityKind::SchemaVariant,
-                    entity_id,
-                    // TODO(nick,jacob): remove hardcoded number requirement.
-                    number: 1,
-                    // TODO(nick,jacob): replace hardcoded relations.
-                    lookup_groups: vec![ApprovalRequirementApprover::PermissionLookup(
-                        ApprovalRequirementPermissionLookup {
-                            object_type: "workspace".to_string(),
-                            object_id: workspace_id.to_string(),
-                            permission: "approve".to_string(),
-                        },
-                    )],
-                });
-            }
-        }
-        Ok(requirements)
-    }
-
     #[allow(dead_code)]
     pub fn dot(&self) {
         // NOTE(nick): copy the output and execute this on macOS. It will create a file in the
@@ -903,23 +865,24 @@ impl WorkspaceSnapshotGraphV4 {
                     EdgeWeightKindDiscriminants::ActionPrototype => "black",
                     EdgeWeightKindDiscriminants::AuthenticationPrototype => "black",
                     EdgeWeightKindDiscriminants::Contain => "blue",
+                    EdgeWeightKindDiscriminants::DiagramObject => "black",
                     EdgeWeightKindDiscriminants::FrameContains => "black",
-                    EdgeWeightKindDiscriminants::Represents => "black",
+                    EdgeWeightKindDiscriminants::ManagementPrototype => "pink",
+                    EdgeWeightKindDiscriminants::Manages => "pink",
                     EdgeWeightKindDiscriminants::Ordering => "gray",
                     EdgeWeightKindDiscriminants::Ordinal => "gray",
                     EdgeWeightKindDiscriminants::Prop => "orange",
                     EdgeWeightKindDiscriminants::Prototype => "green",
                     EdgeWeightKindDiscriminants::PrototypeArgument => "green",
                     EdgeWeightKindDiscriminants::PrototypeArgumentValue => "green",
+                    EdgeWeightKindDiscriminants::Proxy => "gray",
+                    EdgeWeightKindDiscriminants::Represents => "black",
+                    EdgeWeightKindDiscriminants::Require => "black",
+                    EdgeWeightKindDiscriminants::Root => "black",
                     EdgeWeightKindDiscriminants::Socket => "red",
                     EdgeWeightKindDiscriminants::SocketValue => "purple",
-                    EdgeWeightKindDiscriminants::Proxy => "gray",
-                    EdgeWeightKindDiscriminants::Root => "black",
                     EdgeWeightKindDiscriminants::Use => "black",
                     EdgeWeightKindDiscriminants::ValidationOutput => "darkcyan",
-                    EdgeWeightKindDiscriminants::ManagementPrototype => "pink",
-                    EdgeWeightKindDiscriminants::Manages => "pink",
-                    EdgeWeightKindDiscriminants::DiagramObject => "black",
                 };
 
                 match edgeref.weight().kind() {
@@ -1609,7 +1572,8 @@ impl WorkspaceSnapshotGraphV4 {
                     | EdgeWeightKind::ValidationOutput
                     | EdgeWeightKind::ManagementPrototype
                     | EdgeWeightKind::Manages
-                    | EdgeWeightKind::DiagramObject => {}
+                    | EdgeWeightKind::DiagramObject
+                    | EdgeWeightKind::Require => {}
                 }
             }
         }

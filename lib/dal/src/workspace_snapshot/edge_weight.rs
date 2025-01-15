@@ -43,6 +43,8 @@ pub enum EdgeWeightKind {
     /// source for the value for this argument
     PrototypeArgumentValue,
     Proxy,
+    /// Indicates if the node has a corresponding approval requirement.
+    Require,
     /// Indicates the "root" [`AttributeValue`](crate::AttributeValue) for a [`Component`](crate::Component).
     ///
     /// TODO(nick): in the future, this should be used for the "root" [`Prop`](crate::Prop) for a

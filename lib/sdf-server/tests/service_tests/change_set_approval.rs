@@ -114,7 +114,7 @@ async fn single_user_relation_existence_and_checksum_validility_permutations(
         );
 
         let frontend_requirements = calculator
-            .frontend_requirements(ctx, &mut spicedb_client)
+            .frontend_requirements(&mut spicedb_client)
             .await?;
         let expected_requirements = vec![si_frontend_types::ChangeSetApprovalRequirement {
             entity_id,
@@ -161,7 +161,7 @@ async fn single_user_relation_existence_and_checksum_validility_permutations(
         );
 
         let mut frontend_requirements = calculator
-            .frontend_requirements(ctx, &mut spicedb_client)
+            .frontend_requirements(&mut spicedb_client)
             .await?;
         frontend_requirements
             .iter_mut()
@@ -210,7 +210,7 @@ async fn single_user_relation_existence_and_checksum_validility_permutations(
         );
 
         let mut frontend_requirements = calculator
-            .frontend_requirements(ctx, &mut spicedb_client)
+            .frontend_requirements(&mut spicedb_client)
             .await?;
         frontend_requirements
             .iter_mut()
@@ -262,7 +262,7 @@ async fn single_user_relation_existence_and_checksum_validility_permutations(
         );
 
         let frontend_requirements = calculator
-            .frontend_requirements(ctx, &mut spicedb_client)
+            .frontend_requirements(&mut spicedb_client)
             .await?;
         let expected_requirements = vec![si_frontend_types::ChangeSetApprovalRequirement {
             entity_id,
@@ -304,7 +304,7 @@ async fn single_user_relation_existence_and_checksum_validility_permutations(
         );
 
         let mut frontend_requirements = calculator
-            .frontend_requirements(ctx, &mut spicedb_client)
+            .frontend_requirements(&mut spicedb_client)
             .await?;
         frontend_requirements
             .iter_mut()

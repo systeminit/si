@@ -193,6 +193,7 @@ fn make_me_one_with_everything(graph: &mut WorkspaceSnapshotGraphVCurrent) {
                 EdgeWeightKind::PrototypeArgumentValue
             }
             EdgeWeightKindDiscriminants::Proxy => EdgeWeightKind::Proxy,
+            EdgeWeightKindDiscriminants::Require => EdgeWeightKind::Require,
             EdgeWeightKindDiscriminants::Root => EdgeWeightKind::Root,
             EdgeWeightKindDiscriminants::Socket => EdgeWeightKind::Socket,
             EdgeWeightKindDiscriminants::SocketValue => EdgeWeightKind::SocketValue,

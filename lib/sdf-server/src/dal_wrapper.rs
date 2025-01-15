@@ -32,11 +32,8 @@
 use std::collections::HashMap;
 
 use dal::{
+    approval_requirement::{ApprovalRequirement, ApprovalRequirementApprover},
     change_set::approval::ChangeSetApproval,
-    workspace_snapshot::{
-        graph::approval::{ApprovalRequirement, ApprovalRequirementApprover},
-        EntityKindExt,
-    },
     DalContext, HistoryActor, WorkspacePk,
 };
 use permissions::{Permission, PermissionBuilder};
@@ -48,6 +45,8 @@ use thiserror::Error;
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum DalWrapperError {
+    #[error("approval requirement error: {0}")]
+    ApprovalRequirement(#[from] dal::approval_requirement::ApprovalRequirementError),
     #[error("change set approval error")]
     ChangeSetApproval(#[from] dal::change_set::approval::ChangeSetApprovalError),
     #[error("invalid user found")]
@@ -86,10 +85,7 @@ impl ChangeSetApprovalCalculator {
             .workspace_snapshot()?
             .detect_changes_from_head(ctx)
             .await?;
-        let requirements = ctx
-            .workspace_snapshot()?
-            .approval_requirements_for_changes(workspace_id, &changes)
-            .await?;
+        let requirements = ApprovalRequirement::list(ctx, &changes).await?;
         let latest_approvals = ChangeSetApproval::list_latest(ctx).await?;
 
         // Initialize what we will eventual use to construct ourself.
@@ -143,7 +139,6 @@ impl ChangeSetApprovalCalculator {
     /// Returns the requirments for frontend use, which includes whether or not they are satisfied.
     pub async fn frontend_requirements(
         &self,
-        ctx: &DalContext,
         spicedb_client: &mut si_data_spicedb::Client,
     ) -> Result<Vec<si_frontend_types::ChangeSetApprovalRequirement>> {
         let mut frontend_requirements = Vec::with_capacity(self.requirements.len());
@@ -153,7 +148,7 @@ impl ChangeSetApprovalCalculator {
         // it, and what groups and users can approve it.
         for requirement in &self.requirements {
             // First, reset the satisfication and helper variables.
-            let required_count = requirement.number;
+            let required_count = requirement.minimum();
             let mut satisfying_approval_count = 0;
             let mut is_satisfied = false;
 
@@ -161,7 +156,7 @@ impl ChangeSetApprovalCalculator {
             // contribute to the count. If we hit the count, break and rejoice.
             let applicable_approval_ids = if let Some(applicable_approval_ids) = self
                 .requirements_to_approvals_cache
-                .get(&requirement.entity_id)
+                .get(&requirement.entity_id())
             {
                 for applicable_approval_id in applicable_approval_ids {
                     let applicable_approval = self
@@ -188,9 +183,10 @@ impl ChangeSetApprovalCalculator {
             // We know what requirements have been satisfied, but we need to determine what groups
             // can fulfill those requirements as well as who belongs to them.
             let mut approving_groups = HashMap::new();
-            for lookup_group in &requirement.lookup_groups {
-                let lookup_group = match lookup_group {
-                    ApprovalRequirementApprover::User(_user_pk) => todo!("nick will handle this"),
+            for approver in requirement.approvers() {
+                let lookup_group = match approver {
+                    // FIXME(nick): we must handle user requirements.
+                    ApprovalRequirementApprover::User(_user_pk) => unreachable!("this should be impossible to hit as approvers that are individual users are not yet possible to add"),
                     ApprovalRequirementApprover::PermissionLookup(permission_lookup) => {
                         permission_lookup
                     }
@@ -227,11 +223,8 @@ impl ChangeSetApprovalCalculator {
             // With both the satisfaction and approving groups information in hand, we can assemble
             // the frontend requirement.
             frontend_requirements.push(si_frontend_types::ChangeSetApprovalRequirement {
-                entity_id: requirement.entity_id,
-                entity_kind: ctx
-                    .workspace_snapshot()?
-                    .get_entity_kind_for_id(requirement.entity_id)
-                    .await?,
+                entity_id: requirement.entity_id(),
+                entity_kind: requirement.entity_kind(),
                 required_count,
                 is_satisfied,
                 applicable_approval_ids,
@@ -253,10 +246,7 @@ pub async fn determine_approving_ids(
         .workspace_snapshot()?
         .detect_changes_from_head(ctx)
         .await?;
-    let requirements = ctx
-        .workspace_snapshot()?
-        .approval_requirements_for_changes(workspace_id, &changes)
-        .await?;
+    let requirements = ApprovalRequirement::list(ctx, &changes).await?;
     determine_approving_ids_inner(ctx, spicedb_client, workspace_id, &requirements).await
 }
 
@@ -271,7 +261,7 @@ async fn determine_approving_ids_inner(
 
     for requirement in requirements {
         // For each requirement, we need to see if we have permission to fulfill it.
-        for lookup_group in &requirement.lookup_groups {
+        for lookup_group in requirement.approvers() {
             let has_permission_for_requirement =
                 if let Some(has_permission) = cache.get(&lookup_group) {
                     *has_permission
@@ -291,7 +281,7 @@ async fn determine_approving_ids_inner(
                 };
 
             if has_permission_for_requirement {
-                approving_ids.push(requirement.entity_id);
+                approving_ids.push(requirement.entity_id());
 
                 // If we found that we have permission for the requirement, we do not need to continue
                 // going through lookup groups for permissions.

@@ -8,6 +8,7 @@ pub mod v1;
 
 pub use v1::ApprovalRequirementNodeWeightV1;
 
+// TODO(nick): use this or delete it.
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum ApprovalRequirementNodeWeightError {
@@ -23,6 +24,8 @@ pub enum ApprovalRequirementNodeWeightError {
     // WorkspaceSnapshotGraph(#[from] Box<WorkspaceSnapshotGraphError>),
 }
 
+// TODO(nick): use this or delete it.
+#[allow(dead_code)]
 type Result<T> = std::result::Result<T, ApprovalRequirementNodeWeightError>;
 
 #[derive(

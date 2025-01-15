@@ -7,7 +7,6 @@ use std::collections::{HashMap, HashSet};
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 
-use graph::approval::ApprovalRequirement;
 use graph::correct_transforms::correct_transforms;
 use graph::detector::{Change, Update};
 use graph::{RebaseBatch, WorkspaceSnapshotGraph};
@@ -17,7 +16,7 @@ use serde::{Deserialize, Serialize};
 use si_data_pg::PgError;
 use si_events::workspace_snapshot::Checksum;
 use si_events::{ulid::Ulid, ContentHash, WorkspaceSnapshotAddress};
-use si_id::{EntityId, WorkspacePk};
+use si_id::EntityId;
 use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -746,24 +745,6 @@ impl WorkspaceSnapshot {
         head_snapshot
             .detect_changes(&ctx.workspace_snapshot()?.clone())
             .await
-    }
-
-    /// Collects all the [`ApprovalRequirements`](ApprovalRequirement) based on the changes passed in.
-    #[instrument(
-        name = "workspace_snapshot.approval_requirements_for_changes",
-        level = "debug",
-        skip_all
-    )]
-    pub(crate) async fn approval_requirements_for_changes(
-        &self,
-        ctx: &DalContext,
-        changes: &[Change],
-    ) -> WorkspaceSnapshotResult<Vec<ApprovalRequirement>> {
-        let workspace_id = ctx.workspace_pk()?;
-        Ok(self
-            .working_copy()
-            .await
-            .approval_requirements_for_changes(workspace_id, changes)?)
     }
 
     /// Calculates the checksum based on a list of IDs passed in.

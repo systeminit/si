@@ -8,8 +8,8 @@ use strum::EnumDiscriminants;
 use thiserror::Error;
 
 use crate::action::prototype::ActionKind;
+use crate::approval_requirement::ApprovalRequirementApprover;
 use crate::validation::ValidationStatus;
-use crate::workspace_snapshot::graph::approval::ApprovalRequirementApprover;
 use crate::{
     action::ActionCompletionStatus, func::argument::FuncArgumentKind, prop::WidgetOptions,
     property_editor::schema::WidgetKind, socket::connection_annotation::ConnectionAnnotation,
