@@ -8,11 +8,13 @@ use axum::{
 };
 use dal::{
     cached_module::CachedModule, workspace::WorkspaceId, ChangeSet, ChangeSetId, DalContext,
-    SchemaId, SchemaVariant, WsEvent, WsEventError,
+    FuncId, SchemaId, SchemaVariant, WsEvent, WsEventError,
 };
 use hyper::StatusCode;
 use si_events::audit_log::AuditLogKind;
-use si_frontend_types::fs::{ChangeSet as FsChangeSet, ListVariantsResponse, Schema as FsSchema};
+use si_frontend_types::fs::{
+    ChangeSet as FsChangeSet, Func as FsFunc, ListVariantsResponse, Schema as FsSchema,
+};
 use thiserror::Error;
 
 use crate::{
@@ -31,6 +33,10 @@ pub enum FsError {
     ChangeSet(#[from] dal::ChangeSetError),
     #[error("ChangeSet {0}:{1} is inactive")]
     ChangeSetInactive(String, ChangeSetId),
+    #[error("func error: {0}")]
+    Func(#[from] dal::FuncError),
+    #[error("resource not found")]
+    ResourceNotFound,
     #[error("schema error: {0}")]
     Schema(#[from] dal::SchemaError),
     #[error("schema variant error: {0}")]
@@ -47,9 +53,12 @@ pub type FsResult<T> = Result<T, FsError>;
 
 impl IntoResponse for FsError {
     fn into_response(self) -> Response {
-        let (status_code, error_message) = (StatusCode::INTERNAL_SERVER_ERROR, self.to_string());
+        let status_code = match self {
+            FsError::ChangeSetInactive(_, _) | FsError::ResourceNotFound => StatusCode::NOT_FOUND,
+            _ => StatusCode::INTERNAL_SERVER_ERROR,
+        };
 
-        ApiError::new(status_code, error_message).into_response()
+        ApiError::new(status_code, self.to_string()).into_response()
     }
 }
 
@@ -208,6 +217,66 @@ pub async fn list_variants(
     }))
 }
 
+async fn list_change_set_funcs(
+    HandlerContext(builder): HandlerContext,
+    AccessBuilder(request_ctx): AccessBuilder,
+    PosthogClient(_posthog_client): PosthogClient,
+    OriginalUri(_original_uri): OriginalUri,
+    Host(_host_name): Host,
+    Path((_workspace_id, change_set_id, kind)): Path<(WorkspaceId, ChangeSetId, String)>,
+) -> FsResult<Json<Vec<FsFunc>>> {
+    let ctx = builder
+        .build(request_ctx.build(change_set_id.into()))
+        .await?;
+
+    check_change_set(&ctx)?;
+
+    let Some(kind) = si_frontend_types::fs::kind_from_string(&kind) else {
+        return Ok(Json(vec![]));
+    };
+
+    Ok(Json(
+        dal::Func::list_all(&ctx)
+            .await?
+            .into_iter()
+            .filter(|f| kind == f.kind.into())
+            .map(|f| FsFunc {
+                id: f.id,
+                kind: f.kind.into(),
+                is_locked: f.is_locked,
+                code_size: f
+                    .code_plaintext()
+                    .ok()
+                    .flatten()
+                    .map(|code| code.len())
+                    .unwrap_or(0) as u64,
+                name: f.name,
+            })
+            .collect(),
+    ))
+}
+
+async fn get_func_code(
+    HandlerContext(builder): HandlerContext,
+    AccessBuilder(request_ctx): AccessBuilder,
+    PosthogClient(_posthog_client): PosthogClient,
+    OriginalUri(_original_uri): OriginalUri,
+    Host(_host_name): Host,
+    Path((_workspace_id, change_set_id, func_id)): Path<(WorkspaceId, ChangeSetId, FuncId)>,
+) -> FsResult<String> {
+    let ctx = builder
+        .build(request_ctx.build(change_set_id.into()))
+        .await?;
+
+    check_change_set(&ctx)?;
+
+    let func = dal::Func::get_by_id(&ctx, func_id)
+        .await?
+        .ok_or(FsError::ResourceNotFound)?;
+
+    Ok(func.code_plaintext()?.unwrap_or_default())
+}
+
 pub fn fs_routes() -> Router<AppState> {
     Router::new()
         .route("/change-sets", get(list_change_sets))
@@ -215,6 +284,8 @@ pub fn fs_routes() -> Router<AppState> {
         .nest(
             "/change-sets/:change_set_id",
             Router::new()
+                .route("/funcs/:kind", get(list_change_set_funcs))
+                .route("/func-code/:func_id", get(get_func_code))
                 .route("/schemas", get(list_schemas))
                 .route("/schemas/:schema_id/variants", get(list_variants)),
         )

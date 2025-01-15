@@ -1,10 +1,12 @@
 use serde::{Deserialize, Serialize};
+use strum::{AsRefStr, Display, EnumIter, EnumString};
+
+pub use si_events::FuncKind;
 use si_events::{
     ActionKind, ActionPrototypeId, AttributePrototypeArgumentId, AttributePrototypeId, ComponentId,
-    FuncArgumentId, FuncBackendKind, FuncId, FuncKind, InputSocketId, ManagementPrototypeId,
-    OutputSocketId, PropId, SchemaId, SchemaVariantId, Timestamp,
+    FuncArgumentId, FuncBackendKind, FuncId, InputSocketId, ManagementPrototypeId, OutputSocketId,
+    PropId, SchemaId, SchemaVariantId, Timestamp,
 };
-use strum::{AsRefStr, Display, EnumIter, EnumString};
 
 #[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]

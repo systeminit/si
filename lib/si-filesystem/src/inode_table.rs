@@ -8,7 +8,8 @@ use fuser::{FileAttr, FileType};
 use nix::unistd::{Gid, Uid};
 use thiserror::Error;
 
-use si_id::{ChangeSetId, SchemaId, SchemaVariantId, WorkspaceId};
+use si_frontend_types::FuncKind;
+use si_id::{ChangeSetId, FuncId, SchemaId, SchemaVariantId, WorkspaceId};
 
 #[derive(Error, Debug)]
 pub enum InodeTableError {
@@ -38,13 +39,27 @@ impl InodeEntry {
 
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
+#[remain::sorted]
 pub enum InodeEntryData {
-    WorkspaceRoot {
-        workspace_id: WorkspaceId,
-    },
     ChangeSet {
         id: ChangeSetId,
         name: String,
+    },
+    ChangeSetFunc {
+        id: FuncId,
+        change_set_id: ChangeSetId,
+        size: u64,
+    },
+    ChangeSetFuncKind {
+        kind: FuncKind,
+        change_set_id: ChangeSetId,
+    },
+    ChangeSetFuncs {
+        change_set_id: ChangeSetId,
+    },
+    FuncCode {
+        change_set_id: ChangeSetId,
+        id: FuncId,
     },
     Schema {
         id: SchemaId,
@@ -57,6 +72,9 @@ pub enum InodeEntryData {
         schema_id: SchemaId,
         change_set_id: ChangeSetId,
         locked: bool,
+    },
+    WorkspaceRoot {
+        workspace_id: WorkspaceId,
     },
 }
 
@@ -78,7 +96,7 @@ impl InodeTable {
             gid,
         };
 
-        table.upsert("/".into(), root_entry, FileType::Directory);
+        table.upsert("/".into(), root_entry, FileType::Directory, true, None);
 
         table
     }
@@ -120,16 +138,18 @@ impl InodeTable {
         file_name: impl AsRef<Path>,
         entry_data: InodeEntryData,
         kind: FileType,
+        write: bool,
+        size: Option<u64>,
     ) -> InodeTableResult<u64> {
         let path = self.make_path(Some(parent_ino), file_name)?;
 
-        Ok(self.upsert(path, entry_data, kind))
+        Ok(self.upsert(path, entry_data, kind, write, size))
     }
 
-    pub fn make_attrs(&self, ino: u64, kind: FileType, perm: u16) -> FileAttr {
+    pub fn make_attrs(&self, ino: u64, kind: FileType, perm: u16, size: u64) -> FileAttr {
         FileAttr {
             ino,
-            size: 512,
+            size,
             blocks: 1,
             atime: UNIX_EPOCH,
             mtime: UNIX_EPOCH,
@@ -146,7 +166,15 @@ impl InodeTable {
         }
     }
 
-    pub fn upsert(&mut self, path: PathBuf, entry_data: InodeEntryData, kind: FileType) -> u64 {
+    pub fn upsert(
+        &mut self,
+        path: PathBuf,
+        entry_data: InodeEntryData,
+        kind: FileType,
+        write: bool,
+        size: Option<u64>,
+    ) -> u64 {
+        let size = size.unwrap_or(512);
         let parent = path
             .parent()
             .and_then(|path| self.entries_by_path.get(&path.to_path_buf()))
@@ -155,12 +183,12 @@ impl InodeTable {
         let next_ino = self.next_ino();
 
         let perm: u16 = match kind {
-            FileType::Directory => 0o755,
-            FileType::RegularFile => 0o644,
+            FileType::Directory => if write { 0o755 } else { 0o555 }
+            FileType::RegularFile => if write { 0o644 } else  { 0o444 }
             _ => unimplemented!("I don't know why this kind of file was upserted, Only directories and regular files supported"),
         };
 
-        let attrs = self.make_attrs(next_ino, kind, perm);
+        let attrs = self.make_attrs(next_ino, kind, perm, size);
 
         let entry = self
             .entries_by_path

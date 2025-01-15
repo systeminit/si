@@ -18,7 +18,7 @@ pub use crate::component::{
 pub use crate::conflict::ConflictWithHead;
 pub use crate::func::{
     AttributeArgumentBinding, FuncArgument, FuncArgumentKind, FuncBinding, FuncBindings, FuncCode,
-    FuncSummary, LeafInputLocation,
+    FuncKind, FuncSummary, LeafInputLocation,
 };
 pub use crate::module::{
     BuiltinModules, LatestModule, ModuleContributeRequest, ModuleDetails, ModuleSummary,

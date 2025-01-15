@@ -1,8 +1,11 @@
-use si_frontend_types::fs::{
-    ChangeSet, CreateChangeSetRequest, CreateChangeSetResponse, ListChangeSetsResponse,
-    ListVariantsResponse, Schema,
+use si_frontend_types::{
+    fs::{
+        ChangeSet, CreateChangeSetRequest, CreateChangeSetResponse, Func, ListChangeSetsResponse,
+        ListVariantsResponse, Schema,
+    },
+    FuncKind,
 };
-use si_id::{ChangeSetId, SchemaId, WorkspaceId};
+use si_id::{ChangeSetId, FuncId, SchemaId, WorkspaceId};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -82,13 +85,13 @@ impl SiFsClient {
     }
 
     pub async fn schemas(&self, change_set_id: ChangeSetId) -> SiFsClientResult<Vec<Schema>> {
-        let response = self
+        let response = dbg!(self
             .client
             .get(self.fs_api_change_sets("schemas", change_set_id))
             .bearer_auth(&self.token)
             .send()
             .await?
-            .error_for_status()?;
+            .error_for_status())?;
 
         Ok(response.json().await?)
     }
@@ -107,5 +110,39 @@ impl SiFsClient {
             .error_for_status()?;
 
         Ok(response.json().await?)
+    }
+
+    pub async fn change_set_funcs_of_kind(
+        &self,
+        change_set_id: ChangeSetId,
+        func_kind: FuncKind,
+    ) -> SiFsClientResult<Vec<Func>> {
+        let kind_string = si_frontend_types::fs::kind_to_string(func_kind);
+
+        Ok(self
+            .client
+            .get(self.fs_api_change_sets(&format!("funcs/{kind_string}"), change_set_id))
+            .bearer_auth(&self.token)
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+            .await?)
+    }
+
+    pub async fn func_code(
+        &self,
+        change_set_id: ChangeSetId,
+        func_id: FuncId,
+    ) -> SiFsClientResult<String> {
+        Ok(self
+            .client
+            .get(self.fs_api_change_sets(&format!("func-code/{func_id}"), change_set_id))
+            .bearer_auth(&self.token)
+            .send()
+            .await?
+            .error_for_status()?
+            .text()
+            .await?)
     }
 }
