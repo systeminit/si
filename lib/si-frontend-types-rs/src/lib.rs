@@ -2,6 +2,7 @@ mod audit_log;
 mod change_set;
 mod component;
 mod conflict;
+pub mod fs;
 mod func;
 mod module;
 mod schema_variant;

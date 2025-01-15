@@ -7,12 +7,14 @@ use si_filesystem::{mount, WorkspaceId};
 use tokio::runtime::Runtime;
 
 #[derive(Parser, Debug)]
+#[command(name = "si-fs", version = "0.1")]
+#[command(about = "Mounts a fuse filesystem that represents a System Initiative workspace")]
 struct Args {
     #[arg(long, short = 'w')]
     workspace_id: String,
     #[arg(long, short = 'e')]
     endpoint: String,
-    #[arg(long, short = 't', env = "SI_BEARER_TOKEN")]
+    #[arg(long, short = 't', env = "SI_BEARER_TOKEN", hide_env_values(true))]
     token: String,
     #[arg(long, short = 'f')]
     foreground: bool,

@@ -8,7 +8,7 @@ use fuser::{FileAttr, FileType};
 use nix::unistd::{Gid, Uid};
 use thiserror::Error;
 
-use si_id::{ChangeSetId, SchemaId, WorkspaceId};
+use si_id::{ChangeSetId, SchemaId, SchemaVariantId, WorkspaceId};
 
 #[derive(Error, Debug)]
 pub enum InodeTableError {
@@ -39,9 +39,25 @@ impl InodeEntry {
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
 pub enum InodeEntryData {
-    WorkspaceRoot { workspace_id: WorkspaceId },
-    ChangeSet { id: ChangeSetId, name: String },
-    Schema { id: SchemaId, name: String },
+    WorkspaceRoot {
+        workspace_id: WorkspaceId,
+    },
+    ChangeSet {
+        id: ChangeSetId,
+        name: String,
+    },
+    Schema {
+        id: SchemaId,
+        change_set_id: ChangeSetId,
+        name: String,
+        installed: bool,
+    },
+    SchemaVariant {
+        id: SchemaVariantId,
+        schema_id: SchemaId,
+        change_set_id: ChangeSetId,
+        locked: bool,
+    },
 }
 
 #[derive(Clone, Debug)]

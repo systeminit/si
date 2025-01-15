@@ -186,6 +186,9 @@ impl SiFileSystem {
             InodeEntryData::Schema { .. } => {
                 reply.error(ENOSYS);
             }
+            InodeEntryData::SchemaVariant { .. } => {
+                reply.error(ENOSYS);
+            }
         }
 
         Ok(())
@@ -235,9 +238,9 @@ impl SiFileSystem {
 
         match entry.data() {
             InodeEntryData::WorkspaceRoot { .. } => {
-                let workspace_metadata = self.client.workspace_metadata().await?;
+                let change_sets = self.client.list_change_sets().await?;
 
-                for change_set in workspace_metadata.change_sets.iter() {
+                for change_set in change_sets {
                     let mut inode_table = self.inode_table.write().await;
 
                     let file_name = &change_set.name;
@@ -259,30 +262,75 @@ impl SiFileSystem {
                 reply.ok();
             }
             InodeEntryData::ChangeSet { id, .. } => {
-                let variants = self
+                let schemas = self
                     .client
-                    .variants(*id)
+                    .schemas(*id)
                     .await
                     .expect("failed to fetch variants");
 
-                for uninstalled in variants.uninstalled {
+                for schema in schemas {
                     let mut inode_table = self.inode_table.write().await;
                     let ino = inode_table.upsert_with_parent_ino(
                         entry.ino,
-                        &uninstalled.schema_name,
+                        &schema.name,
                         InodeEntryData::Schema {
-                            id: uninstalled.schema_id,
-                            name: uninstalled.schema_name.to_owned(),
+                            id: schema.id,
+                            name: schema.name.clone(),
+                            installed: schema.installed,
+                            change_set_id: *id,
                         },
                         FileType::Directory,
                     )?;
-                    dirs.add(ino, uninstalled.schema_name.to_owned(), FileType::Directory);
+                    dirs.add(ino, schema.name.clone(), FileType::Directory);
                 }
 
                 dirs.send_reply(&mut reply, offset);
                 reply.ok();
             }
-            InodeEntryData::Schema { .. } => reply.error(ENOSYS),
+            InodeEntryData::Schema {
+                id, change_set_id, ..
+            } => {
+                let variants = self.client.variants(*change_set_id, *id).await?;
+                if let Some(unlocked_variant_id) = variants.unlocked {
+                    let mut inode_table = self.inode_table.write().await;
+
+                    let ino = inode_table.upsert_with_parent_ino(
+                        entry.ino,
+                        "unlocked",
+                        InodeEntryData::SchemaVariant {
+                            id: unlocked_variant_id,
+                            schema_id: *id,
+                            change_set_id: *change_set_id,
+                            locked: false,
+                        },
+                        FileType::Directory,
+                    )?;
+                    dirs.add(ino, "unlocked".into(), FileType::Directory);
+                }
+
+                if let Some(unlocked_variant_id) = variants.locked {
+                    let mut inode_table = self.inode_table.write().await;
+
+                    let ino = inode_table.upsert_with_parent_ino(
+                        entry.ino,
+                        "locked",
+                        InodeEntryData::SchemaVariant {
+                            id: unlocked_variant_id,
+                            schema_id: *id,
+                            change_set_id: *change_set_id,
+                            locked: false,
+                        },
+                        FileType::Directory,
+                    )?;
+                    dirs.add(ino, "locked".into(), FileType::Directory);
+                }
+
+                dirs.send_reply(&mut reply, offset);
+                reply.ok();
+            }
+            InodeEntryData::SchemaVariant { .. } => {
+                reply.error(ENOSYS);
+            }
         }
 
         Ok(())
