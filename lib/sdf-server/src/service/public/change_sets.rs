@@ -1,5 +1,6 @@
 use axum::{
     http::StatusCode,
+    middleware,
     response::{IntoResponse, Response},
     routing::post,
     Json, Router,
@@ -10,7 +11,9 @@ use serde_json::json;
 use si_events::audit_log::AuditLogKind;
 use thiserror::Error;
 
-use crate::extract::{workspace::WorkspaceDalContext, PosthogEventTracker};
+use crate::extract::{
+    change_set::TargetChangeSetIdFromPath, workspace::WorkspaceDalContext, PosthogEventTracker,
+};
 use crate::AppState;
 
 #[remain::sorted]
@@ -34,9 +37,13 @@ impl IntoResponse for ChangeSetsError {
 
 // /api/public/workspaces/:workspace_id/change-sets
 pub fn routes() -> Router<AppState> {
-    Router::new()
-        .route("/", post(create_change_set))
-        .nest("/:change_set_id", Router::new())
+    Router::new().route("/", post(create_change_set)).nest(
+        "/:change_set_id",
+        Router::new()
+            .nest("/components", super::components::routes())
+            .nest("/management", super::management::routes())
+            .route_layer(middleware::from_extractor::<TargetChangeSetIdFromPath>()),
+    )
 }
 
 async fn create_change_set(
