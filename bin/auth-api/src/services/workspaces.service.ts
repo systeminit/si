@@ -1,6 +1,6 @@
 import _ from "lodash";
 import {
-  InstanceEnvType, PrismaClient, User, RoleType,
+  InstanceEnvType, PrismaClient, User, RoleType, Workspace,
 } from "@prisma/client";
 import { ulid } from "ulidx";
 import { tracker } from "../lib/tracker";
@@ -178,37 +178,57 @@ const roleTypeMap: { [key: string]: RoleType } = {
 export async function inviteMember(
   authUser: User,
   email: string,
-  id: WorkspaceId,
+  workspace: Workspace,
 ) {
   let user = await getUserByEmail(email);
   if (!user) {
     user = await createInvitedUser(email);
     tracker.trackEvent(authUser, "new_user_created_from_invite", {
-      workspaceId: id,
+      workspaceId: workspace.id,
       newUserEmail: email,
       triggeredBy: authUser.email,
       triggeredAt: new Date(),
     });
 
+    // TODO: Paul
+    // This will be cleaned up when we have deployed the new transactional emails
     tracker.trackEvent(authUser, "workspace_new_user_invited", {
-      workspaceId: id,
+      workspaceId: workspace.id,
       memberAdded: email,
       memberAddedAt: new Date(),
       invitedBy: authUser.email,
     });
+    tracker.trackEvent(authUser, "workspace_new_user_invited_v2", {
+      workspaceId: workspace.id,
+      workspaceName: workspace.displayName,
+      memberUserName: email,
+      memberChangedAt: new Date(),
+      initiatedBy: authUser.email,
+      newPermissionLevel: "Collaborator",
+    });
   } else {
+    // TODO: Paul
+    // This will be cleaned up when we have deployed the new transactional emails
     tracker.trackEvent(authUser, "workspace_existing_user_invited", {
-      workspaceId: id,
+      workspaceId: workspace.id,
       memberAdded: email,
       memberAddedAt: new Date(),
       invitedBy: authUser.email,
+    });
+    tracker.trackEvent(authUser, "workspace_existing_user_invited_v2", {
+      workspaceId: workspace.id,
+      workspaceName: workspace.displayName,
+      memberUserName: email,
+      memberChangedAt: new Date(),
+      initiatedBy: authUser.email,
+      newPermissionLevel: "Collaborator",
     });
   }
 
   return await prisma.workspaceMembers.create({
     data: {
       id: ulid(),
-      workspaceId: id,
+      workspaceId: workspace.id,
       userId: user.id,
       roleType: RoleType.EDITOR,
       invitedAt: new Date(),
