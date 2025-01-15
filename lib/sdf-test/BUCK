@@ -1,0 +1,12 @@
+load("@prelude-si//:macros.bzl", "rust_library")
+
+rust_library(
+    name = "sdf-test",
+    deps = [
+        "//lib/si-data-spicedb:si-data-spicedb",
+        "//third-party/rust:rand",
+    ],
+    srcs = glob([
+        "src/**/*.rs",
+    ]),
+)

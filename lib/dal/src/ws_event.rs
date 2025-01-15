@@ -86,6 +86,7 @@ pub enum WsPayload {
     ChangeSetAbandoned(ChangeSetActorPayload),
     ChangeSetAbandonVote(ChangeSetMergeVotePayload),
     ChangeSetApplied(ChangeSetAppliedPayload),
+    ChangeSetApprovalStatusChanged(ChangeSetId),
     ChangeSetBeginAbandonProcess(ChangeSetActorPayload),
     ChangeSetBeginApprovalProcess(ChangeSetActorPayload),
     ChangeSetCancelAbandonProcess(ChangeSetActorPayload),

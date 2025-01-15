@@ -110,6 +110,11 @@ fn fn_setup<'a>(params: impl Iterator<Item = &'a FnArg>) -> SdfTestFnSetup {
                                 let var = var.as_ref();
                                 expander.push_arg(parse_quote! {#var});
                             }
+                            "SpiceDbClient" => {
+                                let var = expander.setup_spicedb_client();
+                                let var = var.as_ref();
+                                expander.push_arg(parse_quote! {#var});
+                            }
                             _ => panic!("unexpected argument type: {type_path:?}"),
                         };
                     }
@@ -163,6 +168,11 @@ fn fn_setup<'a>(params: impl Iterator<Item = &'a FnArg>) -> SdfTestFnSetup {
                                 }
                                 "AuditDatabaseContext" => {
                                     let var = expander.setup_audit_database_context();
+                                    let var = var.as_ref();
+                                    expander.push_arg(parse_quote! {#var});
+                                }
+                                "SpiceDbClient" => {
+                                    let var = expander.setup_spicedb_client();
                                     let var = var.as_ref();
                                     expander.push_arg(parse_quote! {#var});
                                 }
@@ -453,7 +463,7 @@ impl SdfTestFnSetupExpander {
         let var = Ident::new("spicedb_client", Span::call_site());
         self.code_extend(quote! {
             let #var = {
-               ::si_data_spicedb::SpiceDbClient::new_sync(&::si_data_spicedb::SpiceDbConfig::default())?
+               ::si_data_spicedb::SpiceDbClient::new_sync(&::sdf_test::spicedb_config())?
             };
         });
         self.spicedb_client = Some(Rc::new(var));

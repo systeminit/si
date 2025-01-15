@@ -2,7 +2,7 @@
 
 use std::{path::PathBuf, time::Duration};
 
-use sdf_server::{util, Config, Migrator, Server};
+use sdf_server::{key_generation, Config, Migrator, Server};
 use si_service::{
     color_eyre,
     prelude::*,
@@ -210,7 +210,7 @@ async fn generate_veritech_key_pair(
         "generating veritech key pair",
     );
 
-    let handle = main_tracker.spawn(util::generate_veritech_key_pair(
+    let handle = main_tracker.spawn(key_generation::generate_veritech_key_pair(
         secret_key_path,
         public_key_path,
     ));
@@ -236,7 +236,7 @@ async fn generate_symmetric_key(
 ) -> Result<()> {
     info!(path = %symmetric_key_path.display(), "enerating symmetric key");
 
-    let handle = main_tracker.spawn(util::generate_symmetric_key(symmetric_key_path));
+    let handle = main_tracker.spawn(key_generation::generate_symmetric_key(symmetric_key_path));
 
     shutdown::graceful_with_handle(handle)
         .group(main_tracker, main_token)
