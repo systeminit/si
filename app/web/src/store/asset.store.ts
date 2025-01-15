@@ -557,7 +557,7 @@ export const useAssetStore = (forceChangeSetId?: ChangeSetId) => {
               else this.variantList.splice(savedAssetIdx, 1, variant);
 
               const actionWhichCreatedView = realtimeStore.inflightRequests.get(
-                metadata.requestUlid,
+                metadata.request_ulid,
               );
               if (
                 metadata.actor !== "System" &&
