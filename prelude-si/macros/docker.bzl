@@ -15,6 +15,7 @@ def docker_image(
         visibility = ["PUBLIC"],
         release_target = "release",
         promote_target = "promote",
+        promote_multi_arches = [],
         **kwargs):
     _docker_image(
         name = name,
@@ -36,5 +37,6 @@ def docker_image(
     _docker_image_promote(
         name = promote_target,
         image_name = "{}/{}".format(organization, kwargs.get("image_name", name)),
+        multi_arches = promote_multi_arches,
         visibility = visibility,
     )

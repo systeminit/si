@@ -156,5 +156,9 @@ docker_image(
     flake_lock = "//:flake.lock",
     build_deps = [
         "//bin/auth-api:auth-api",
-    ]
+    ],
+    # TODO(fnichol): revisit post 2025-02-01
+    promote_multi_arches = [
+        "amd64",
+    ],
 )
