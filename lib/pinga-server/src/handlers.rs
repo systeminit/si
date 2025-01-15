@@ -152,7 +152,7 @@ async fn execute_job(
         }
         Err(err) => {
             error!(
-                error = ?err,
+                si.error.message = ?err,
                 job.invocation_id = %id,
                 job.instance = metadata.instance_id(),
                 "job execution failed"

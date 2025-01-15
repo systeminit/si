@@ -30,7 +30,7 @@ impl MaintainProgressTask {
         trace!(task = Self::NAME, "running task");
         debug!(task = Self::NAME, "first ack message");
         if let Err(err) = self.acker.ack_with(jetstream::AckKind::Progress).await {
-            warn!(error = ?err, "failed initial ack");
+            warn!(si.error.message = ?err, "failed initial ack");
         }
 
         loop {
@@ -42,7 +42,7 @@ impl MaintainProgressTask {
                 _ = self.interval.tick() => {
                     debug!(task = Self::NAME, "acking message with progress");
                     if let Err(err) = self.acker.ack_with(jetstream::AckKind::Progress).await {
-                        warn!(error = ?err, "failed to ack with progress");
+                        warn!(si.error.message = ?err, "failed to ack with progress");
                     }
                 }
             }
