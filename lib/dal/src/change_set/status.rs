@@ -28,6 +28,19 @@ pub enum ChangeSetStatus {
     Rejected,
 }
 
+impl ChangeSetStatus {
+    pub fn is_active(&self) -> bool {
+        matches!(
+            self,
+            ChangeSetStatus::Open
+                | ChangeSetStatus::NeedsApproval
+                | ChangeSetStatus::NeedsAbandonApproval
+                | ChangeSetStatus::Approved
+                | ChangeSetStatus::Rejected
+        )
+    }
+}
+
 impl From<si_events::ChangeSetStatus> for ChangeSetStatus {
     fn from(value: si_events::ChangeSetStatus) -> Self {
         match value {

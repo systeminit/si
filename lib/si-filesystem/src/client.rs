@@ -1,8 +1,8 @@
-use si_frontend_types::{
-    ChangeSet, CreateChangeSetRequest, CreateChangeSetResponse, ListVariantsResponse,
-    WorkspaceMetadata,
+use si_frontend_types::fs::{
+    ChangeSet, CreateChangeSetRequest, CreateChangeSetResponse, ListChangeSetsResponse,
+    ListVariantsResponse, Schema,
 };
-use si_id::{ChangeSetId, WorkspaceId};
+use si_id::{ChangeSetId, SchemaId, WorkspaceId};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -37,14 +37,25 @@ impl SiFsClient {
         })
     }
 
+    fn fs_api_url(&self, suffix: &str) -> String {
+        format!(
+            "{}/api/v2/workspaces/{}/fs/{suffix}",
+            self.endpoint, self.workspace_id
+        )
+    }
+
+    fn fs_api_change_sets(&self, suffix: &str, change_set_id: ChangeSetId) -> String {
+        format!(
+            "{}/api/v2/workspaces/{}/fs/change-sets/{change_set_id}/{suffix}",
+            self.endpoint, self.workspace_id
+        )
+    }
+
     /// Fetches metadata about the workspace, including the active change sets
-    pub async fn workspace_metadata(&self) -> SiFsClientResult<WorkspaceMetadata> {
+    pub async fn list_change_sets(&self) -> SiFsClientResult<ListChangeSetsResponse> {
         let response = self
             .client
-            .get(format!(
-                "{}/api/v2/workspaces/{}/change-sets",
-                self.endpoint, self.workspace_id
-            ))
+            .get(self.fs_api_url("change-sets"))
             .bearer_auth(&self.token)
             .send()
             .await?
@@ -53,15 +64,12 @@ impl SiFsClient {
         Ok(response.json().await?)
     }
 
-    pub async fn create_change_set(&self, change_set_name: String) -> SiFsClientResult<ChangeSet> {
-        let create_change_set_request = CreateChangeSetRequest { change_set_name };
+    pub async fn create_change_set(&self, name: String) -> SiFsClientResult<ChangeSet> {
+        let create_change_set_request = CreateChangeSetRequest { name };
 
         let response = self
             .client
-            .post(format!(
-                "{}/api/change_set/create_change_set",
-                self.endpoint
-            ))
+            .post(self.fs_api_url("change-sets/create"))
             .bearer_auth(&self.token)
             .json(&create_change_set_request)
             .send()
@@ -70,19 +78,29 @@ impl SiFsClient {
 
         let response: CreateChangeSetResponse = response.json().await?;
 
-        Ok(response.change_set)
+        Ok(response)
+    }
+
+    pub async fn schemas(&self, change_set_id: ChangeSetId) -> SiFsClientResult<Vec<Schema>> {
+        let response = self
+            .client
+            .get(self.fs_api_change_sets("schemas", change_set_id))
+            .bearer_auth(&self.token)
+            .send()
+            .await?
+            .error_for_status()?;
+
+        Ok(response.json().await?)
     }
 
     pub async fn variants(
         &self,
         change_set_id: ChangeSetId,
+        schema_id: SchemaId,
     ) -> SiFsClientResult<ListVariantsResponse> {
         let response = self
             .client
-            .get(format!(
-                "{}/api/v2/workspaces/{}/change-sets/{change_set_id}/schema-variants",
-                self.endpoint, self.workspace_id
-            ))
+            .get(self.fs_api_change_sets(&format!("schemas/{schema_id}/variants"), change_set_id))
             .bearer_auth(&self.token)
             .send()
             .await?
