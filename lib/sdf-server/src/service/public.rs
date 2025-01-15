@@ -2,8 +2,10 @@ use axum::Router;
 
 use crate::AppState;
 
-pub mod change_sets;
-pub mod workspaces;
+mod change_sets;
+mod components;
+mod management;
+mod workspaces;
 
 pub fn routes(state: AppState) -> Router<AppState> {
     Router::new().nest(
