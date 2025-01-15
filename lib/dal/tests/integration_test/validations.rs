@@ -30,7 +30,7 @@ async fn validation_format_errors(ctx: &mut DalContext) {
             "value": null,
             "validation": {
                 "status": "Error",
-                "message": "UserCodeException: Unexpected token ' in JSON at position 0",
+                "message": "UserCodeException: Invalid JSON format",
             }
         }),
         extract_value_and_validation(prop_view).expect("could not extract")

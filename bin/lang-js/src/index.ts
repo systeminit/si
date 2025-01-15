@@ -1,22 +1,21 @@
 #!/usr/bin/env node
 
-import fs from "fs";
-import { Command } from "commander";
-import { makeConsole } from "./sandbox/console";
-import { Request } from "./request";
+import process from "node:process";
+import { Command } from "jsr:@cliffy/command@^1.0.0-rc.7";
+import { makeConsole } from "./sandbox/console.ts";
+import { Request } from "./request.ts";
 import {
   executeFunction,
   failureExecution,
   FunctionKind,
   functionKinds,
-} from "./function";
-import { Debug } from "./debug";
+} from "./function.ts";
+import { Debug } from "./debug.ts";
 
 // This is the default timeout for a function, in seconds.
 const defaultTimeout = 1800;
 
 const debug = Debug("langJs");
-const STDIN_FD = 0;
 
 function onError(
   errorFn: (...args: unknown[]) => void,
@@ -32,35 +31,33 @@ function onError(
 async function main() {
   let kind: FunctionKind | undefined;
 
-  const program = new Command();
-  program
+  const { options } = await new Command()
+    .name("lang-js")
     .version("0.0.1")
     .option(
-      "--timeout <seconds>",
+      "--timeout <seconds:number>",
       `timeout for a function execution in seconds (default: ${defaultTimeout})`,
+      { default: defaultTimeout },
     )
-    .argument(
-      "<kind>",
-      `kind of function to be executed [values: ${functionKinds().join(", ")}]`,
-    )
-    .action((kind_arg) => {
+    .arguments("<kind:string>")
+    .action((_options, kind_arg: string) => {
       if (functionKinds().includes(kind_arg)) {
-        kind = kind_arg;
+        kind = kind_arg as FunctionKind;
       } else {
         console.error(`Unsupported function kind: '${kind_arg}'`);
-        process.exit(1);
+        Deno.exit(1);
       }
     })
-    .parse(process.argv);
+    .parse(Deno.args);
 
-  const options = program.opts();
-
-  let timeout = defaultTimeout;
+  let timeout: number = defaultTimeout;
   if (options.timeout) {
-    timeout = parseInt(options.timeout);
+    timeout = options.timeout;
     if (Number.isNaN(timeout) || !Number.isFinite(timeout)) {
-      console.error(`Unsupported value for timeout (expected 'number'): ${options.timeout}`);
-      process.exit(1);
+      console.error(
+        `Unsupported value for timeout (expected 'number'): ${options.timeout}`,
+      );
+      Deno.exit(1);
     }
   }
 
@@ -69,7 +66,11 @@ async function main() {
   let errorFn = makeConsole(executionId).error;
 
   try {
-    const requestJson = fs.readFileSync(STDIN_FD, "utf8");
+    const decoder = new TextDecoder();
+    let requestJson = "";
+    for await (const chunk of Deno.stdin.readable) {
+      requestJson += decoder.decode(chunk);
+    }
     debug({ request: requestJson });
     const request: Request = JSON.parse(requestJson);
     if (request.executionId) {
@@ -110,7 +111,7 @@ async function main() {
   // when errors occur. I thought my timeout code was working... when it was only half working. You need to kill the
   // Promises on success too. Anyway, I'll stop yapping, but yeah. Just think REALLY hard if you want to remove or
   // change this line of code.
-  process.exit(0);
+  Deno.exit(0);
 }
 
 // interface Errorable {

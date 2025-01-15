@@ -1,6 +1,6 @@
-import { setTimeout } from "timers/promises";
+import { setTimeout } from "node:timers/promises";
 import execa, { ExecaReturnValue, Options } from "execa";
-import { Debug } from "../debug";
+import { Debug } from "../debug.ts";
 
 export interface WatchArgs {
   cmd: string;
@@ -27,17 +27,21 @@ const defaultOptions: Options = {
   all: true,
   buffer: true,
   reject: false,
-  stdin: 'ignore',
+  stdin: "ignore",
 };
 
 /**
  * Merges default options with user-provided options and sets stdin to 'pipe' if input is provided.
  */
 function mergedOptions(userOptions?: Options): Options {
+  // we do some LD_LIBRARY_PATH tomfoolery to ensure a deno compile'd bin works
+  // in alpine, but this breaks sub-processes, so we need to unset it here.
+  // See flake.nix and rootfs_build.sh for more details.
   return {
     ...defaultOptions,
     ...userOptions,
-    stdin: userOptions?.input ? 'pipe' : 'ignore',
+    stdin: userOptions?.input ? "pipe" : "ignore",
+    env: { LD_LIBRARY_PATH: "" },
   };
 }
 
@@ -53,16 +57,18 @@ export const makeExec = (executionId: string) => {
    *   "ec2",
    *   "describe-hosts"
    * ]);
-    */
+   */
   async function waitUntilEnd(
     execaFile: string,
     execaArgs?: readonly string[],
     execaOptions?: Options<string>,
   ): Promise<SiExecResult> {
     debug(
-      `running command; executionId="${executionId}"; cmd="${execaFile} ${execaArgs
-        ?.map((a) => `'${a}'`)
-        ?.join(" ")}"`,
+      `running command; executionId="${executionId}"; cmd="${execaFile} ${
+        execaArgs
+          ?.map((a) => `'${a}'`)
+          ?.join(" ")
+      }"`,
     );
     console.log(
       JSON.stringify({
@@ -71,9 +77,11 @@ export const makeExec = (executionId: string) => {
         stream: "stderr",
         level: "debug",
         group: "log",
-        message: `Running CLI command: "${execaFile} ${execaArgs
-          ?.map((a) => `'${a}'`)
-          ?.join(" ")}"`,
+        message: `Running CLI command: "${execaFile} ${
+          execaArgs
+            ?.map((a) => `'${a}'`)
+            ?.join(" ")
+        }"`,
       }),
     );
 

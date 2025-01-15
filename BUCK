@@ -73,6 +73,10 @@ export_file(
     name = "package.json",
 )
 
+export_file(
+    name = "deno.json",
+)
+
 pnpm_workspace(
     name = "pnpm-workspace.yaml",
     packages = [

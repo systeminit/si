@@ -1,18 +1,20 @@
-import * as fs from "fs/promises";
-import Joi from "joi";
 import {
-  describe, expect, test, vi, fail,
-} from "vitest";
-import { executeFunction, FunctionKind } from "../src/function";
-import { AnyFunction, RequestCtx } from "../src/request";
+  assertObjectMatch,
+  assertRejects,
+} from "https://deno.land/std@0.224.0/assert/mod.ts";
+import { join } from "https://deno.land/std@0.224.0/path/mod.ts";
+import { describe, it } from "https://deno.land/std@0.224.0/testing/bdd.ts";
+import Joi from "npm:joi";
+import { executeFunction, FunctionKind } from "../src/function.ts";
+import { AnyFunction, RequestCtx } from "../src/request.ts";
 
 let lastLog = "";
-const consoleSpy = vi.spyOn(console, "log").mockImplementation((msg) => {
+console.log = (msg: string) => {
   console.dir(msg);
   lastLog = msg;
-});
+};
 
-const FUNCS_FOLDER = "./tests/functions/";
+const FUNCS_FOLDER = "./bin/lang-js/tests/functions/";
 
 type FuncOrFuncLocation = string | (() => unknown);
 
@@ -22,11 +24,11 @@ interface FuncScenario {
   funcSpec: AnyFunction;
   func?: FuncOrFuncLocation;
   before?: {
+    arg: Record<string, unknown>;
+    codeBase64: string;
     handler: string;
-    func: FuncOrFuncLocation;
-    arg: Record<string, any>
   }[];
-  result?: any;
+  result?: unknown;
   timeout?: number;
 }
 
@@ -36,8 +38,8 @@ const scenarios: FuncScenario[] = [
     kind: FunctionKind.SchemaVariantDefinition,
     funcSpec: {
       value: {},
+      codeBase64: "",
       handler: "main",
-      codeBase64: "", // We rewrite this later
     },
     func: "schema-socket.ts",
   },
@@ -46,8 +48,8 @@ const scenarios: FuncScenario[] = [
     kind: FunctionKind.SchemaVariantDefinition,
     funcSpec: {
       value: {},
-      handler: "main",
       codeBase64: "", // We rewrite this later
+      handler: "main",
     },
     func: "schema-validation.ts",
   },
@@ -56,8 +58,8 @@ const scenarios: FuncScenario[] = [
     kind: FunctionKind.ActionRun,
     funcSpec: {
       value: {},
-      handler: "workit",
       codeBase64: "", // We rewrite this later
+      handler: "main",
     },
     func: "actionRun.ts",
   },
@@ -66,20 +68,34 @@ const scenarios: FuncScenario[] = [
     kind: FunctionKind.ActionRun,
     funcSpec: {
       value: {},
-      handler: "main",
       codeBase64: "", // We rewrite this later
+      handler: "main",
     },
     func: "beforeFuncs.ts",
     before: [
       {
-        handler: "before1",
-        func: "beforeFuncs.ts",
         arg: { username: "name" },
+        codeBase64: btoa(`
+        function main(arg) {
+          console.log("Running Before 1");
+          console.log(\`My arg is \${JSON.stringify(arg)}\`);
+          requestStorage.setEnv("b1", true);
+          requestStorage.setEnv("b2", true);
+        }
+      `),
+        handler: "main",
       },
       {
-        handler: "before2",
-        func: "beforeFuncs.ts",
         arg: {},
+        codeBase64: btoa(`
+        function main(arg) {
+          console.log("Running Before 2");
+          console.log(\`My arg is \${JSON.stringify(arg)}\`);
+          requestStorage.deleteEnv("b2");
+          requestStorage.setEnv("b3", "I'm a string");
+        }
+      `),
+        handler: "main",
       },
     ],
   },
@@ -89,8 +105,8 @@ const scenarios: FuncScenario[] = [
     funcSpec: {
       value: 1,
       validationFormat: JSON.stringify(Joi.number().describe()),
-      handler: "",
       codeBase64: "",
+      handler: "main",
     },
   },
   {
@@ -99,13 +115,13 @@ const scenarios: FuncScenario[] = [
     funcSpec: {
       value: "foobar",
       validationFormat: JSON.stringify(Joi.number().describe()),
-      handler: "",
       codeBase64: "",
+      handler: "main",
     },
     result: {
       protocol: "result",
       status: "success",
-      error: "\"value\" must be a number",
+      error: '"value" must be a number',
     },
   },
   {
@@ -114,8 +130,8 @@ const scenarios: FuncScenario[] = [
     funcSpec: {
       value: "foobar",
       validationFormat: JSON.stringify(Joi.string().describe()),
-      handler: "",
       codeBase64: "",
+      handler: "main",
     },
   },
   {
@@ -124,13 +140,13 @@ const scenarios: FuncScenario[] = [
     funcSpec: {
       value: 1,
       validationFormat: JSON.stringify(Joi.string().describe()),
-      handler: "",
       codeBase64: "",
+      handler: "main",
     },
     result: {
       protocol: "result",
       status: "success",
-      error: "\"value\" must be a string",
+      error: '"value" must be a string',
     },
   },
   {
@@ -139,8 +155,8 @@ const scenarios: FuncScenario[] = [
     funcSpec: {
       value: 1,
       validationFormat: "''",
-      handler: "",
       codeBase64: "",
+      handler: "main",
     },
     result: {
       protocol: "result",
@@ -158,8 +174,8 @@ const scenarios: FuncScenario[] = [
     funcSpec: {
       value: 1,
       validationFormat: JSON.stringify("test"),
-      handler: "",
       codeBase64: "",
+      handler: "main",
     },
     result: {
       protocol: "result",
@@ -177,8 +193,8 @@ const scenarios: FuncScenario[] = [
     kind: FunctionKind.ActionRun,
     funcSpec: {
       value: {},
-      handler: "main",
       codeBase64: "", // We rewrite this later
+      handler: "main",
     },
     func: "willTimeout.ts",
     timeout: 1,
@@ -188,36 +204,28 @@ const scenarios: FuncScenario[] = [
 // This is the test suite timeout in seconds.
 const testSuiteTimeout = 30;
 
+async function base64FromFile(path: string) {
+  const buffer = await Deno.readFile(join(Deno.cwd(), path));
+  return btoa(new TextDecoder().decode(buffer));
+}
+
 describe("executeFunction", () => {
-  test("Name", () => {
-    const format = Joi.number().integer().min(0).max(2)
-      .required();
+  it("Name", () => {
+    const format = Joi.number().integer().min(0).max(2).required();
     const string = JSON.stringify(format.describe());
     console.log(string);
   });
 
-  test.each(scenarios)(
-    "$name",
-    async (scenario) => {
-      consoleSpy.mockClear();
+  for (const scenario of scenarios) {
+    it(scenario.name, async () => {
       lastLog = "";
       let codeBase64: string;
 
       if (scenario.func) {
         if (typeof scenario.func === "function") {
-          // If we get a function from the scenario object we need to get its
-          // string representation and make it a valid function definition
-          // function.toString() is a wild thing :)
           const rawCode = scenario.func.toString();
-
-          let code: string;
-          if (rawCode.startsWith("func()")) {
-            code = `function ${rawCode}`;
-          } else {
-            code = `const ${scenario.funcSpec.handler} = ${rawCode}`;
-          }
-
-          codeBase64 = Buffer.from(code).toString("base64");
+          const code = `function ${rawCode}`;
+          codeBase64 = btoa(code);
         } else {
           codeBase64 = await base64FromFile(FUNCS_FOLDER + scenario.func);
         }
@@ -234,44 +242,34 @@ describe("executeFunction", () => {
         codeBase64,
       };
 
-      const before = [];
-
-      for (const { func, handler, arg } of scenario.before ?? []) {
-        before.push({
-          handler,
-          codeBase64: await base64FromFile(FUNCS_FOLDER + func),
-          arg,
-        });
-      }
-
       if (scenario.timeout) {
-        try {
-          await executeFunction(scenario.kind, {
-            ...ctx,
-            ...funcObj,
-            before,
-          }, scenario.timeout);
-          fail("expected function to hit timeout, but no error was thrown");
-        } catch (error) {
-          expect(error.message).toBe(`function timed out after ${scenario.timeout} seconds`);
-        }
+        assertRejects(
+          async () => {
+            await executeFunction(scenario.kind, {
+              ...funcObj,
+              ...ctx,
+              before: scenario.before,
+            }, scenario.timeout!);
+          },
+          Error,
+          `function timed out after ${scenario.timeout} seconds`,
+        );
       } else {
         await executeFunction(scenario.kind, {
           ...ctx,
           ...funcObj,
-          before,
+          before: scenario.before,
         }, testSuiteTimeout * 1000);
-        const parsedLog = JSON.parse(lastLog);
-        expect(parsedLog).toMatchObject(scenario.result ?? {
-          protocol: "result",
-          status: "success",
-        });
-      }
-    },
-  );
-}, testSuiteTimeout * 1000);
 
-async function base64FromFile(path: string) {
-  const buffer = await fs.readFile(path);
-  return (buffer).toString("base64");
-}
+        const parsedLog = JSON.parse(lastLog);
+        assertObjectMatch(
+          parsedLog,
+          (scenario.result ?? {
+            protocol: "result",
+            status: "success",
+          }) as Record<PropertyKey, unknown>,
+        );
+      }
+    });
+  }
+});
