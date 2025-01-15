@@ -37,9 +37,7 @@ pub async fn approve(
         return Err(Error::DvuRootsNotEmpty(ctx.change_set_id()));
     }
 
-    let mut change_set = ChangeSet::find(&ctx, ctx.visibility().change_set_id)
-        .await?
-        .ok_or(Error::ChangeSetNotFound(ctx.change_set_id()))?;
+    let mut change_set = ChangeSet::get_by_id(&ctx, ctx.visibility().change_set_id).await?;
     let old_status = change_set.status;
     change_set.approve_change_set_for_apply(&ctx).await?;
 
@@ -53,9 +51,8 @@ pub async fn approve(
             "merged_change_set": change_set_id,
         }),
     );
-    let change_set_view = ChangeSet::find(&ctx, ctx.visibility().change_set_id)
+    let change_set_view = ChangeSet::get_by_id(&ctx, ctx.visibility().change_set_id)
         .await?
-        .ok_or(Error::ChangeSetNotFound(ctx.change_set_id()))?
         .into_frontend_type(&ctx)
         .await?;
     ctx.write_audit_log(

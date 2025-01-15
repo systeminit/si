@@ -2,7 +2,7 @@ use axum::extract::{Host, OriginalUri, Path};
 use dal::{ChangeSet, ChangeSetId, WorkspacePk};
 use si_events::audit_log::AuditLogKind;
 
-use super::{Error, Result};
+use super::Result;
 use crate::{
     extract::{HandlerContext, PosthogClient},
     service::v2::AccessBuilder,
@@ -20,9 +20,7 @@ pub async fn force_apply(
     let mut ctx = builder
         .build(request_ctx.build(change_set_id.into()))
         .await?;
-    let change_set = ChangeSet::find(&ctx, change_set_id)
-        .await?
-        .ok_or(Error::ChangeSetNotFound(ctx.change_set_id()))?;
+    let change_set = ChangeSet::get_by_id(&ctx, change_set_id).await?;
     let old_status = change_set.status;
     ChangeSet::prepare_for_force_apply(&ctx).await?;
     ctx.write_audit_log(
@@ -48,9 +46,7 @@ pub async fn force_apply(
         }),
     );
 
-    let change_set = ChangeSet::find(&ctx, ctx.visibility().change_set_id)
-        .await?
-        .ok_or(Error::ChangeSetNotFound(ctx.change_set_id()))?;
+    let change_set = ChangeSet::get_by_id(&ctx, ctx.visibility().change_set_id).await?;
 
     ctx.write_audit_log(AuditLogKind::ApplyChangeSet, change_set.name)
         .await?;

@@ -36,8 +36,6 @@ pub enum Error {
     ChangeSetApply(#[from] dal::ChangeSetApplyError),
     #[error("change set not approved for apply. Current state: {0}")]
     ChangeSetNotApprovedForApply(ChangeSetStatus),
-    #[error("change set not found: {0}")]
-    ChangeSetNotFound(ChangeSetId),
     #[error("dvu roots are not empty for change set: {0}")]
     DvuRootsNotEmpty(ChangeSetId),
     #[error("func error: {0}")]

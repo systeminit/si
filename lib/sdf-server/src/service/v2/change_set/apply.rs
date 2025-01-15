@@ -2,7 +2,7 @@ use axum::extract::{Host, OriginalUri, Path};
 use dal::{ChangeSet, ChangeSetId, WorkspacePk};
 use si_events::audit_log::AuditLogKind;
 
-use super::{post_to_webhook, Error, Result};
+use super::{post_to_webhook, Result};
 use crate::{
     extract::{HandlerContext, PosthogClient},
     service::v2::AccessBuilder,
@@ -20,9 +20,7 @@ pub async fn apply(
     let mut ctx = builder
         .build(request_ctx.build(change_set_id.into()))
         .await?;
-    let change_set = ChangeSet::find(&ctx, change_set_id)
-        .await?
-        .ok_or(Error::ChangeSetNotFound(ctx.change_set_id()))?;
+    let change_set = ChangeSet::get_by_id(&ctx, change_set_id).await?;
     ChangeSet::prepare_for_apply(&ctx).await?;
 
     // We need to run a commit before apply so changes get saved
@@ -30,9 +28,8 @@ pub async fn apply(
 
     ChangeSet::apply_to_base_change_set(&mut ctx).await?;
 
-    let change_set_view = ChangeSet::find(&ctx, ctx.visibility().change_set_id)
+    let change_set_view = ChangeSet::get_by_id(&ctx, ctx.visibility().change_set_id)
         .await?
-        .ok_or(Error::ChangeSetNotFound(ctx.change_set_id()))?
         .into_frontend_type(&ctx)
         .await?;
 

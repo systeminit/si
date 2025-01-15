@@ -49,8 +49,6 @@ pub enum AdminAPIError {
     CachedModule(#[from] CachedModuleError),
     #[error("change set error: {0}")]
     ChangeSet(#[from] dal::ChangeSetError),
-    #[error("change set {0} not found")]
-    ChangeSetNotFound(ChangeSetId),
     #[error("func runner error: {0}")]
     FuncRunner(#[from] FuncRunnerError),
     #[error("layer db error: {0}")]

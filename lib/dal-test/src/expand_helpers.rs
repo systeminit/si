@@ -33,10 +33,9 @@ pub async fn create_change_set_and_update_ctx(
     ctx: &mut DalContext,
     base_change_set_id: ChangeSetId,
 ) {
-    let base_change_set = ChangeSet::find(ctx, base_change_set_id)
+    let base_change_set = ChangeSet::get_by_id(ctx, base_change_set_id)
         .await
-        .expect("could not perform find change set")
-        .expect("no change set found");
+        .expect("could not find change set");
     let workspace_snapshot_address = base_change_set.workspace_snapshot_address;
     let change_set = ChangeSet::new(
         ctx,

@@ -38,9 +38,7 @@ pub async fn begin_abandon_approval_process(
     if maybe_head_changeset == request.visibility.change_set_id {
         return Err(ChangeSetError::CannotAbandonHead);
     }
-    let mut change_set = ChangeSet::find(&ctx, ctx.visibility().change_set_id)
-        .await?
-        .ok_or(ChangeSetError::ChangeSetNotFound)?;
+    let mut change_set = ChangeSet::get_by_id(&ctx, ctx.visibility().change_set_id).await?;
 
     change_set.begin_abandon_approval_flow(&ctx).await?;
 
@@ -69,9 +67,7 @@ pub async fn cancel_abandon_approval_process(
 ) -> ChangeSetResult<Json<()>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let mut change_set = ChangeSet::find(&ctx, ctx.change_set_id())
-        .await?
-        .ok_or(ChangeSetError::ChangeSetNotFound)?;
+    let mut change_set = ChangeSet::get_by_id(&ctx, ctx.change_set_id()).await?;
     change_set.cancel_abandon_approval_flow(&ctx).await?;
 
     track(

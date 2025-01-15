@@ -21,9 +21,7 @@ pub async fn get_snapshot(
 ) -> AdminAPIResult<Response<Body>> {
     ctx.update_tenancy(Tenancy::new(workspace_id));
 
-    let change_set = ChangeSet::find(&ctx, change_set_id)
-        .await?
-        .ok_or(AdminAPIError::ChangeSetNotFound(change_set_id))?;
+    let change_set = ChangeSet::get_by_id(&ctx, change_set_id).await?;
 
     let snap_addr = change_set.workspace_snapshot_address;
 

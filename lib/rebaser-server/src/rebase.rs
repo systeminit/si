@@ -26,8 +26,6 @@ pub(crate) enum RebaseError {
     ChangeSet(#[from] ChangeSetError),
     #[error("layerdb error: {0}")]
     LayerDb(#[from] LayerDbError),
-    #[error("missing change set")]
-    MissingChangeSet(ChangeSetId),
     #[error("missing rebase batch {0}")]
     MissingRebaseBatch(RebaseBatchAddress),
     #[error("pending events error: {0}")]
@@ -74,9 +72,7 @@ pub async fn perform_rebase(
     let updating_head = request.change_set_id == workspace.default_change_set_id();
 
     // Gather everything we need to detect conflicts and updates from the inbound message.
-    let mut to_rebase_change_set = ChangeSet::find(ctx, request.change_set_id)
-        .await?
-        .ok_or(RebaseError::MissingChangeSet(request.change_set_id))?;
+    let mut to_rebase_change_set = ChangeSet::get_by_id(ctx, request.change_set_id).await?;
     let to_rebase_workspace_snapshot_address = to_rebase_change_set.workspace_snapshot_address;
     debug!("before snapshot fetch and parse: {:?}", start.elapsed());
     let to_rebase_workspace_snapshot =
