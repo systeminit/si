@@ -5502,6 +5502,7 @@ dependencies = [
  "si-std",
  "telemetry",
  "telemetry-nats",
+ "telemetry-utils",
  "thiserror 2.0.11",
  "tokio",
  "tokio-stream",
