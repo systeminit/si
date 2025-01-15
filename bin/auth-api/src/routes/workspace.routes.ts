@@ -254,7 +254,7 @@ router.post("/workspace/:workspaceId/members", async (ctx) => {
     }),
   );
 
-  await inviteMember(authUser, reqBody.email, workspace.id);
+  await inviteMember(authUser, reqBody.email, workspace);
 
   const members: Member[] = [];
   const workspaceMembers = await getWorkspaceMembers(workspace.id);
@@ -299,10 +299,21 @@ router.delete("/workspace/:workspaceId/members", async (ctx) => {
     });
   });
 
+  // TODO: Paul
+  // This will be cleaned up when we have deployed the new transactional emails
   tracker.trackEvent(authUser, "workspace_user_removed", {
     workspaceId: workspace.id,
     memberRemoved: reqBody.email,
     memberRemovedAt: new Date(),
+  });
+
+  tracker.trackEvent(authUser, "workspace_user_removed_v2", {
+    workspaceId: workspace.id,
+    workspaceName: workspace.displayName,
+    initiatedBy: authUser.email,
+    memberUserName: reqBody.email,
+    memberChangedAt: new Date(),
+    newPermissionLevel: "None",
   });
 
   ctx.body = members;
