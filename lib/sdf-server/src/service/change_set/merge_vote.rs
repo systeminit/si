@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     extract::{v1::AccessBuilder, HandlerContext, PosthogClient},
-    service::change_set::{ChangeSetError, ChangeSetResult},
+    service::change_set::ChangeSetResult,
     track,
 };
 
@@ -29,9 +29,7 @@ pub async fn merge_vote(
 ) -> ChangeSetResult<Json<()>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let mut change_set = ChangeSet::find(&ctx, ctx.visibility().change_set_id)
-        .await?
-        .ok_or(ChangeSetError::ChangeSetNotFound)?;
+    let mut change_set = ChangeSet::get_by_id(&ctx, ctx.visibility().change_set_id).await?;
     change_set.merge_vote(&ctx, request.vote.clone()).await?;
 
     track(

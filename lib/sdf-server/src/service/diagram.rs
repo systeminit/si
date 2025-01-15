@@ -53,8 +53,6 @@ pub enum DiagramError {
     CachedModule(#[from] CachedModuleError),
     #[error("changeset error: {0}")]
     ChangeSet(#[from] ChangeSetError),
-    #[error("change set not found")]
-    ChangeSetNotFound,
     #[error("component error: {0}")]
     Component(#[from] ComponentError),
     #[error("component not found")]
@@ -135,7 +133,6 @@ impl IntoResponse for DiagramError {
 
         let status_code = match self {
             DiagramError::SchemaNotFound
-            | DiagramError::ChangeSetNotFound
             | DiagramError::ComponentNotFound
             | DiagramError::FrameSocketNotFound(_)
             | DiagramError::EdgeNotFound

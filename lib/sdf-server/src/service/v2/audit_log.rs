@@ -3,7 +3,7 @@ use axum::{
     routing::get,
     Router,
 };
-use si_events::{ChangeSetId, UserPk};
+use si_events::UserPk;
 use thiserror::Error;
 
 use crate::{service::ApiError, AppState};
@@ -13,8 +13,6 @@ mod list_audit_logs;
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum AuditLogError {
-    #[error("change set not found for id: {0}")]
-    ChangeSetNotFound(ChangeSetId),
     #[error("dal audit logging error: {0}")]
     DalAuditLogging(#[from] dal::audit_logging::AuditLoggingError),
     #[error("dal change set error: {0}")]

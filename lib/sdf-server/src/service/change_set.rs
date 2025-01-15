@@ -42,8 +42,6 @@ pub enum ChangeSetError {
     ActionPrototype(#[from] ActionPrototypeError),
     #[error("cannot abandon head change set")]
     CannotAbandonHead,
-    #[error("change set not found")]
-    ChangeSetNotFound,
     #[error("component error: {0}")]
     Component(#[from] ComponentError),
     #[error("dal change set error: {0}")]
@@ -80,7 +78,9 @@ impl IntoResponse for ChangeSetError {
             ChangeSetError::ActionAlreadyEnqueued(_) => {
                 (StatusCode::NOT_MODIFIED, self.to_string())
             }
-            ChangeSetError::ChangeSetNotFound => (StatusCode::NOT_FOUND, self.to_string()),
+            ChangeSetError::DalChangeSet(DalChangeSetError::ChangeSetNotFound(..)) => {
+                (StatusCode::NOT_FOUND, self.to_string())
+            }
             ChangeSetError::DalChangeSetApply(_) => (StatusCode::CONFLICT, self.to_string()),
             ChangeSetError::DvuRootsNotEmpty(_) => (
                 StatusCode::PRECONDITION_REQUIRED,

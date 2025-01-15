@@ -404,9 +404,8 @@ mod handlers {
 
             if let Some(workspace) = Workspace::get_by_pk(&ctx, &workspace_id).await? {
                 if workspace.default_change_set_id() == ctx.visibility().change_set_id {
-                    let mut change_set = ChangeSet::find(&ctx, ctx.visibility().change_set_id)
-                        .await?
-                        .ok_or(RebaseError::MissingChangeSet(change_set_id))?;
+                    let mut change_set =
+                        ChangeSet::get_by_id(&ctx, ctx.visibility().change_set_id).await?;
                     if WorkspaceSnapshot::dispatch_actions(&ctx).await? {
                         // Write out the snapshot to get the new address/id.
                         let new_snapshot_id = ctx

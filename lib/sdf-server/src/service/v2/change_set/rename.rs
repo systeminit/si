@@ -5,7 +5,7 @@ use axum::{
 use dal::{ChangeSet, ChangeSetId, WorkspacePk};
 use serde::Deserialize;
 
-use super::{Error, Result};
+use super::Result;
 use crate::{
     extract::{HandlerContext, PosthogClient},
     service::v2::AccessBuilder,
@@ -31,9 +31,7 @@ pub async fn rename(
         .build(request_ctx.build(change_set_id.into()))
         .await?;
 
-    ChangeSet::find(&ctx, ctx.visibility().change_set_id)
-        .await?
-        .ok_or(Error::ChangeSetNotFound(ctx.change_set_id()))?;
+    ChangeSet::get_by_id(&ctx, ctx.visibility().change_set_id).await?;
 
     ChangeSet::rename_change_set(&ctx, change_set_id, &request.new_name).await?;
 

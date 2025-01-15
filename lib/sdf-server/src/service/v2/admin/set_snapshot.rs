@@ -44,9 +44,7 @@ pub async fn set_snapshot(
 
     let span = current_span_for_instrument_at!("info");
 
-    let mut change_set = ChangeSet::find(&ctx, change_set_id)
-        .await?
-        .ok_or(AdminAPIError::ChangeSetNotFound(change_set_id))?;
+    let mut change_set = ChangeSet::get_by_id(&ctx, change_set_id).await?;
 
     let snapshot_data = Arc::new(
         multipart

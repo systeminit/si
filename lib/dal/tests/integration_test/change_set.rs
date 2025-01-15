@@ -319,12 +319,9 @@ async fn cannot_find_change_set_across_workspaces(
     assert!(user_2_change_set_unfound.is_none());
 
     // But if we search for the change set across all workspaces, we find it
-    let user_2_change_set_found_harshly =
-        ChangeSet::find_across_workspaces(&user_1_dal_context, user_2_change_set.id)
-            .await
-            .expect("could not find change set");
-
-    assert!(user_2_change_set_found_harshly.is_some());
+    ChangeSet::get_by_id_across_workspaces(&user_1_dal_context, user_2_change_set.id)
+        .await
+        .expect("could not find change set");
 }
 
 #[test]
@@ -402,10 +399,9 @@ async fn change_set_approval_flow(ctx: &mut DalContext) {
         .await
         .expect("could not commit and update");
     // request approval
-    let mut change_set = ChangeSet::find(ctx, new_change_set.id)
+    let mut change_set = ChangeSet::get_by_id(ctx, new_change_set.id)
         .await
-        .expect("could not find change set")
-        .expect("change set is some");
+        .expect("could not find change set");
 
     change_set
         .request_change_set_approval(ctx)
@@ -415,10 +411,9 @@ async fn change_set_approval_flow(ctx: &mut DalContext) {
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update");
-    let mut change_set = ChangeSet::find(ctx, new_change_set.id)
+    let mut change_set = ChangeSet::get_by_id(ctx, new_change_set.id)
         .await
-        .expect("could not find change set")
-        .expect("change set is some");
+        .expect("could not find change set");
 
     // make sure everything looks right
     assert_eq!(change_set.status, ChangeSetStatus::NeedsApproval);
@@ -435,10 +430,9 @@ async fn change_set_approval_flow(ctx: &mut DalContext) {
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update");
-    let mut change_set = ChangeSet::find(ctx, new_change_set.id)
+    let mut change_set = ChangeSet::get_by_id(ctx, new_change_set.id)
         .await
-        .expect("could not find change set")
-        .expect("change set is some");
+        .expect("could not find change set");
     assert_eq!(change_set.status, ChangeSetStatus::Rejected);
     assert!(change_set.merge_requested_at.is_some());
     assert_eq!(change_set.merge_requested_by_user_id, current_user);
@@ -457,10 +451,9 @@ async fn change_set_approval_flow(ctx: &mut DalContext) {
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update");
-    let mut change_set = ChangeSet::find(ctx, new_change_set.id)
+    let mut change_set = ChangeSet::get_by_id(ctx, new_change_set.id)
         .await
-        .expect("could not find change set")
-        .expect("change set is some");
+        .expect("could not find change set");
     assert_eq!(change_set.status, ChangeSetStatus::Open);
     assert_eq!(change_set.merge_requested_at, None);
     assert_eq!(change_set.merge_requested_by_user_id, None);
@@ -476,10 +469,9 @@ async fn change_set_approval_flow(ctx: &mut DalContext) {
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update");
-    let mut change_set = ChangeSet::find(ctx, new_change_set.id)
+    let mut change_set = ChangeSet::get_by_id(ctx, new_change_set.id)
         .await
-        .expect("could not find change set")
-        .expect("change set is some");
+        .expect("could not find change set");
 
     // make sure everything looks right
     assert_eq!(change_set.status, ChangeSetStatus::NeedsApproval);
@@ -497,10 +489,9 @@ async fn change_set_approval_flow(ctx: &mut DalContext) {
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update");
-    let change_set = ChangeSet::find(ctx, new_change_set.id)
+    let change_set = ChangeSet::get_by_id(ctx, new_change_set.id)
         .await
-        .expect("could not find change set")
-        .expect("change set is some");
+        .expect("could not find change set");
 
     // make sure everything looks right
     assert_eq!(change_set.status, ChangeSetStatus::Approved);

@@ -36,15 +36,9 @@ pub async fn rebase_on_base(
 ) -> ChangeSetResult<Json<RebaseOnBaseResponse>> {
     let ctx: dal::DalContext = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let change_set = ChangeSet::find(&ctx, request.visibility.change_set_id)
-        .await?
-        .ok_or(dal::ChangeSetError::ChangeSetNotFound(
-            request.visibility.change_set_id,
-        ))?;
+    let change_set = ChangeSet::get_by_id(&ctx, request.visibility.change_set_id).await?;
     let base_change_set = if let Some(base_change_set_id) = change_set.base_change_set_id {
-        ChangeSet::find(&ctx, base_change_set_id)
-            .await?
-            .ok_or(dal::ChangeSetError::ChangeSetNotFound(base_change_set_id))?
+        ChangeSet::get_by_id(&ctx, base_change_set_id).await?
     } else {
         return Err(dal::ChangeSetError::NoBaseChangeSet(ctx.change_set_id()).into());
     };

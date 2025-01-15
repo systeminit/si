@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     extract::{v1::AccessBuilder, HandlerContext, PosthogClient},
-    service::change_set::{ChangeSetError, ChangeSetResult},
+    service::change_set::ChangeSetResult,
     track,
 };
 
@@ -35,9 +35,7 @@ pub async fn begin_approval_process(
 ) -> ChangeSetResult<Json<()>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let mut change_set = ChangeSet::find(&ctx, ctx.visibility().change_set_id)
-        .await?
-        .ok_or(ChangeSetError::ChangeSetNotFound)?;
+    let mut change_set = ChangeSet::get_by_id(&ctx, ctx.visibility().change_set_id).await?;
     change_set.begin_approval_flow(&ctx).await?;
 
     track(
@@ -67,9 +65,7 @@ pub async fn cancel_approval_process(
 ) -> ChangeSetResult<Json<()>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let mut change_set = ChangeSet::find(&ctx, ctx.visibility().change_set_id)
-        .await?
-        .ok_or(ChangeSetError::ChangeSetNotFound)?;
+    let mut change_set = ChangeSet::get_by_id(&ctx, ctx.visibility().change_set_id).await?;
     change_set.cancel_approval_flow(&ctx).await?;
 
     track(

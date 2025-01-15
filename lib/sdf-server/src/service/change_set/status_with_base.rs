@@ -27,11 +27,7 @@ pub async fn status_with_base(
 ) -> ChangeSetResult<Json<StatusWithBaseResponse>> {
     let _ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    // let change_set = ChangeSet::find(&ctx, request.visibility.change_set_id)
-    //     .await?
-    //     .ok_or(dal::ChangeSetError::ChangeSetNotFound(
-    //         request.visibility.change_set_id,
-    //     ))?;
+    // let change_set = ChangeSet::get_by_id(&ctx, request.visibility.change_set_id).await?;
     // let cs_workspace_snapshot = WorkspaceSnapshot::find_for_change_set(&ctx, change_set.id).await?;
     // let cs_vector_clock_id = cs_workspace_snapshot
     //     .max_recently_seen_clock_id(Some(change_set.id))
@@ -40,9 +36,7 @@ pub async fn status_with_base(
     //         change_set.id,
     //     ))?;
     // let base_change_set = if let Some(base_change_set_id) = change_set.base_change_set_id {
-    //     ChangeSet::find(&ctx, base_change_set_id)
-    //         .await?
-    //         .ok_or(dal::ChangeSetError::ChangeSetNotFound(base_change_set_id))?
+    //     ChangeSet::get_by_id(&ctx, base_change_set_id).await?
     // } else {
     //     return Err(dal::ChangeSetError::NoBaseChangeSet(request.visibility.change_set_id).into());
     // };

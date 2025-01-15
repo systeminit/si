@@ -8,8 +8,8 @@ use axum::{
 };
 use convert_case::{Case, Casing};
 use dal::{
-    pkg::PkgError as DalPkgError, ChangeSetError, ChangeSetId, DalContextBuilder, FuncError,
-    SchemaError, SchemaId, SchemaVariantError, SchemaVariantId, StandardModelError, TenancyError,
+    pkg::PkgError as DalPkgError, ChangeSetError, DalContextBuilder, FuncError, SchemaError,
+    SchemaId, SchemaVariantError, SchemaVariantId, StandardModelError, TenancyError,
     TransactionsError, UserError, UserPk, WorkspaceError, WorkspacePk, WorkspaceSnapshotError,
     WsEventError,
 };
@@ -41,8 +41,6 @@ pub enum ModuleError {
     Canonicalize(#[from] CanonicalFileError),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
-    #[error("Changeset not found: {0}")]
-    ChangeSetNotFound(ChangeSetId),
     #[error("dal pkg error: {0}")]
     DalPkg(#[from] DalPkgError),
     #[error("Trying to export from/import into root tenancy")]
@@ -134,8 +132,7 @@ pub type ModuleResult<T> = Result<T, ModuleError>;
 impl IntoResponse for ModuleError {
     fn into_response(self) -> Response {
         let (status_code, error_message) = match self {
-            ModuleError::ChangeSetNotFound(_)
-            | ModuleError::ModuleHashNotFound(_)
+            ModuleError::ModuleHashNotFound(_)
             | ModuleError::PackageNotFound(_)
             | ModuleError::SchemaNotFoundForVariant(_)
             | ModuleError::SchemaVariantNotFound(_)

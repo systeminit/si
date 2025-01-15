@@ -42,8 +42,6 @@ pub enum ChangeSetError {
     ChangeSetNotApprovedForApply(ChangeSetStatus),
     #[error("change set with id {0} not found")]
     ChangeSetNotFound(ChangeSetId),
-    #[error("could not find default change set: {0}")]
-    DefaultChangeSetNotFound(ChangeSetId),
     #[error("default change set {0} has no workspace snapshot pointer")]
     DefaultChangeSetNoWorkspaceSnapshotPointer(ChangeSetId),
     #[error("dvu roots are not empty for change set: {0}")]
@@ -96,8 +94,6 @@ pub enum ChangeSetError {
     User(#[from] UserError),
     #[error("workspace error: {0}")]
     Workspace(#[from] Box<WorkspaceError>),
-    #[error("workspace not found: {0}")]
-    WorkspaceNotFound(WorkspacePk),
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] Box<WorkspaceSnapshotError>),
     #[error("ws event error: {0}")]
@@ -129,8 +125,6 @@ pub enum ChangeSetApplyError {
     ActionPrototypeNotFound(ActionId),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
-    #[error("change set not found by id: {0}")]
-    ChangeSetNotFound(ChangeSetId),
     #[error("component error: {0}")]
     Component(#[from] ComponentError),
     #[error("invalid user: {0}")]
@@ -232,28 +226,14 @@ impl ChangeSet {
     }
 
     pub async fn fork_head(ctx: &DalContext, name: impl AsRef<str>) -> ChangeSetResult<Self> {
-        let workspace_pk = ctx
-            .tenancy()
-            .workspace_pk_opt()
-            .ok_or(ChangeSetError::NoTenancySet)?;
+        let workspace_pk = ctx.workspace_pk()?;
 
-        let workspace = Workspace::get_by_pk(ctx, &workspace_pk)
-            .await?
-            .ok_or(ChangeSetError::WorkspaceNotFound(workspace_pk))?;
+        let workspace = Workspace::get_by_pk_or_error(ctx, workspace_pk).await?;
 
-        let base_change_set = ChangeSet::find(ctx, workspace.default_change_set_id())
-            .await?
-            .ok_or(ChangeSetError::DefaultChangeSetNotFound(
-                workspace.default_change_set_id(),
-            ))?;
+        let head = workspace.default_change_set(ctx).await?;
 
-        let change_set = ChangeSet::new(
-            ctx,
-            name,
-            Some(workspace.default_change_set_id()),
-            base_change_set.workspace_snapshot_address,
-        )
-        .await?;
+        let change_set =
+            ChangeSet::new(ctx, name, Some(head.id), head.workspace_snapshot_address).await?;
 
         Ok(change_set)
     }
@@ -426,9 +406,7 @@ impl ChangeSet {
     /// lock every [`SchemaVariant`] and [`Func`] that is currently unlocked
     pub async fn prepare_for_force_apply(ctx: &DalContext) -> ChangeSetResult<()> {
         // first change the status to approved and who did it
-        let mut change_set = ChangeSet::find(ctx, ctx.change_set_id())
-            .await?
-            .ok_or(TransactionsError::ChangeSetNotFound(ctx.change_set_id()))?;
+        let mut change_set = ChangeSet::get_by_id(ctx, ctx.change_set_id()).await?;
 
         change_set.request_change_set_approval(ctx).await?;
         // then approve it
@@ -441,9 +419,7 @@ impl ChangeSet {
     /// [`ChangeSetStatus::Approved`]. Finally,
     /// lock every [`SchemaVariant`] and [`Func`] that is currently unlocked
     pub async fn prepare_for_apply(ctx: &DalContext) -> ChangeSetResult<()> {
-        let change_set = ChangeSet::find(ctx, ctx.change_set_id())
-            .await?
-            .ok_or(TransactionsError::ChangeSetNotFound(ctx.change_set_id()))?;
+        let change_set = ChangeSet::get_by_id(ctx, ctx.change_set_id()).await?;
 
         // Ensure that DVU roots are empty before continuing.
         if !ctx
@@ -557,6 +533,17 @@ impl ChangeSet {
 
     /// Finds a [`ChangeSet`] across all workspaces, ignoring the provided [`WorkspacePk`] on the
     /// current [`DalContext`]
+    pub async fn get_by_id_across_workspaces(
+        ctx: &DalContext,
+        change_set_id: ChangeSetId,
+    ) -> ChangeSetResult<Self> {
+        Self::find_across_workspaces(ctx, change_set_id)
+            .await?
+            .ok_or_else(|| ChangeSetError::ChangeSetNotFound(change_set_id))
+    }
+
+    /// Finds a [`ChangeSet`] across all workspaces, ignoring the provided [`WorkspacePk`] on the
+    /// current [`DalContext`]
     #[instrument(
         name = "change_set.find_across_workspaces",
         level = "debug",
@@ -593,6 +580,13 @@ impl ChangeSet {
             }
             None => Ok(None),
         }
+    }
+
+    /// Get a change set within the [`WorkspacePk`] set for the current [`DalContext`]
+    pub async fn get_by_id(ctx: &DalContext, change_set_id: ChangeSetId) -> ChangeSetResult<Self> {
+        Self::find(ctx, change_set_id)
+            .await?
+            .ok_or_else(|| ChangeSetError::ChangeSetNotFound(change_set_id))
     }
 
     /// Find a change set within the [`WorkspacePk`] set for the current [`DalContext`]
@@ -745,9 +739,7 @@ impl ChangeSet {
     #[instrument(level = "info", skip_all)]
     pub async fn apply_to_base_change_set(ctx: &mut DalContext) -> ChangeSetApplyResult<ChangeSet> {
         // Apply to the base change with the current change set (non-editing) and commit.
-        let mut change_set_to_be_applied = Self::find(ctx, ctx.change_set_id())
-            .await?
-            .ok_or(ChangeSetApplyError::ChangeSetNotFound(ctx.change_set_id()))?;
+        let mut change_set_to_be_applied = Self::get_by_id(ctx, ctx.change_set_id()).await?;
         ctx.update_visibility_and_snapshot_to_visibility(ctx.change_set_id())
             .await?;
         change_set_to_be_applied
