@@ -18,6 +18,7 @@ import {
 } from "../services/auth_tokens.service";
 import { authorizeWorkspaceRoute } from "./workspace.routes";
 import { ApiError } from "../lib/api-error";
+import { tracker } from "../lib/tracker";
 import { router } from ".";
 
 // get all authTokens for the given workspace
@@ -32,8 +33,9 @@ router.get("/workspaces/:workspaceId/authTokens", async (ctx) => {
 // create a new authToken for the given workspace
 router.post("/workspaces/:workspaceId/authTokens", async (ctx) => {
   const {
+    authUser,
     userId,
-    workspaceId,
+    workspace,
   } = await authorizeWorkspaceRoute(ctx, [RoleType.OWNER]);
 
   // TODO - this should also get an expiration instead of just defaulting to 1d!
@@ -56,7 +58,7 @@ router.post("/workspaces/:workspaceId/authTokens", async (ctx) => {
   // Create the token
   const token = createSdfAuthToken({
     userId,
-    workspaceId,
+    workspaceId: workspace.id,
     role: "automation",
   }, {
     expiresIn,
@@ -65,6 +67,15 @@ router.post("/workspaces/:workspaceId/authTokens", async (ctx) => {
 
   // And decode it to get the generated values (such as expiration)
   const authToken = await registerAuthToken(name, await decodeSdfAuthToken(token));
+
+  tracker.trackEvent(authUser, "workspace_api_token_created", {
+    workspaceId: workspace.id,
+    workspaceName: workspace.displayName,
+    tokenName: name,
+    tokenCreated: authToken.createdAt,
+    tokenExpires: authToken.expiresAt,
+    initiatedAt: authUser.email,
+  });
 
   ctx.body = { authToken, token };
 });
@@ -75,37 +86,40 @@ router.get("/workspaces/:workspaceId/authTokens/:authTokenId", async (ctx) => {
   ctx.body = { authToken };
 });
 
-// rename the given authToken for the given workspace
-router.put("/workspaces/:workspaceId/authTokens/:authTokenId", async (ctx) => {
-  const { authToken } = await authorizeAuthTokenRoute(ctx, [RoleType.OWNER]);
-
-  // Get params from body
-  const { name } = validate(
-    ctx.request.body,
-    z.object({
-      name: z.nullable(z.string()),
-    }),
-  );
-
-  await updateAuthToken(authToken.id, { name });
-
-  ctx.body = { authToken };
-});
-
 // revoke the given authToken for the given workspace
 router.post("/workspaces/:workspaceId/authTokens/:authTokenId/revoke", async (ctx) => {
-  const { authToken } = await authorizeAuthTokenRoute(ctx, [RoleType.OWNER]);
+  const { authToken, authUser, workspace } = await authorizeAuthTokenRoute(ctx, [RoleType.OWNER]);
 
   await updateAuthToken(authToken.id, { revokedAt: new Date() });
+
+  tracker.trackEvent(authUser, "workspace_api_token_revoked", {
+    workspaceId: workspace.id,
+    workspaceName: workspace.displayName,
+    tokenName: authToken.name,
+    tokenCreated: authToken.createdAt,
+    tokenRevoked: new Date(),
+    initiatedAt: authUser.email,
+  });
 
   ctx.body = { authToken };
 });
 
 // delete the given authToken for the given workspace
 router.delete("/workspaces/:workspaceId/authTokens/:authTokenId", async (ctx) => {
-  const { authTokenId } = await authorizeAuthTokenRoute(ctx, [RoleType.OWNER]);
+  const {
+    authTokenId, authToken, authUser, workspace,
+  } = await authorizeAuthTokenRoute(ctx, [RoleType.OWNER]);
 
   const removed = await deleteAuthToken(authTokenId);
+
+  tracker.trackEvent(authUser, "workspace_api_token_deleted", {
+    workspaceId: workspace.id,
+    workspaceName: workspace.displayName,
+    tokenName: authToken.name,
+    tokenCreated: authToken.createdAt,
+    tokenDeleted: new Date(),
+    initiatedAt: authUser.email,
+  });
 
   ctx.body = { removed };
 });
