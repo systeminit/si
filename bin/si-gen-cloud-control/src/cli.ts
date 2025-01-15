@@ -1,6 +1,6 @@
 import { Command } from "@cliffy/command";
 import { fetchSchema } from "./commands/fetchSchema.ts";
-import { setupDatabase } from "./commands/setupDatabase.ts";
+import { generateSiSpecDatabase } from "./commands/generateSiSpecDatabase.ts";
 
 export async function run() {
   const command = new Command()
@@ -20,11 +20,11 @@ export async function run() {
       await fetchSchema();
     })
     .command(
-      "setup-database",
-      "setup the cloudformation database",
+      "generate-spec-database",
+      "generate the si spec database from the cf database",
     )
     .action(async () => {
-      await setupDatabase();
+      await generateSiSpecDatabase();
     });
 
   await command.parse(Deno.args);

@@ -77,7 +77,7 @@ export function normalizeAnyOfAndOneOfTypes(prop: CfProperty): CfProperty {
 
   for (const oneOf of prop.oneOf) {
     if (!oneOf.title || !newProp.properties) {
-      throw new Error("SHIT");
+      throw new Error("unexpected oneOf");
     }
     newProp.properties[oneOf.title] = oneOf;
   }
@@ -134,9 +134,9 @@ export interface CfSchema extends JSONSchema.Interface {
 
 type CfDb = Record<string, CfSchema>;
 const DB: CfDb = {};
-await loadDatabase();
+await loadCfDatabase();
 
-export async function loadDatabase(): Promise<CfDb> {
+export async function loadCfDatabase(): Promise<CfDb> {
   if (Object.keys(DB).length === 0) {
     const fullPath = Deno.realPathSync("./cloudformation-schema");
     logger.debug("Loading database from Cloudformation schema", { fullPath });
@@ -156,7 +156,8 @@ export async function loadDatabase(): Promise<CfDb> {
 
       const typeName: string = data.typeName;
 
-      // if (typeName !== "AWS::Bedrock::PromptVersion") continue;
+      if (typeName !== "AWS::EC2::VPC") continue;
+      // if (typeName !== "AWS::EMR::Cluster") continue;
 
       logger.debug(`Loaded ${typeName}`);
       try {
