@@ -3,11 +3,12 @@ use std::{result, sync::Arc};
 use dal::DalContextBuilder;
 use si_events::{ChangeSetId, WorkspacePk};
 use telemetry::prelude::*;
+use telemetry_utils::metric;
 use thiserror::Error;
 use tokio::sync::Notify;
 use tokio_util::sync::CancellationToken;
 
-use crate::ServerMetadata;
+use crate::{ServerMetadata, Shutdown};
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -15,6 +16,8 @@ pub(crate) enum SerialDvuTaskError {
     /// Error when using a DAL context
     #[error("dal context transaction error: {0}")]
     DalContext(#[from] dal::TransactionsError),
+    #[error("workspace snapshot error: {0}")]
+    WorkspaceSnapshot(#[from] dal::WorkspaceSnapshotError),
 }
 
 type Result<T> = result::Result<T, SerialDvuTaskError>;
@@ -25,18 +28,23 @@ pub(crate) struct SerialDvuTask {
     change_set_id: ChangeSetId,
     ctx_builder: DalContextBuilder,
     run_notify: Arc<Notify>,
+    quiesced_notify: Arc<Notify>,
+    quiesced_token: CancellationToken,
     token: CancellationToken,
 }
 
 impl SerialDvuTask {
     const NAME: &'static str = "rebaser_server::serial_dvu_task";
 
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn create(
         metadata: Arc<ServerMetadata>,
         workspace_id: WorkspacePk,
         change_set_id: ChangeSetId,
         ctx_builder: DalContextBuilder,
         run_notify: Arc<Notify>,
+        quiesced_notify: Arc<Notify>,
+        quiesced_token: CancellationToken,
         token: CancellationToken,
     ) -> Self {
         Self {
@@ -45,18 +53,26 @@ impl SerialDvuTask {
             change_set_id,
             ctx_builder,
             run_notify,
+            quiesced_notify,
+            quiesced_token,
             token,
         }
     }
 
-    pub(crate) async fn try_run(self) -> Result<()> {
-        loop {
+    pub(crate) async fn try_run(self) -> Result<(Shutdown)> {
+        metric!(counter.serial_dvu_task.change_set_task = 1);
+
+        // Attempt to run an initial dvu in case there are processed requests that haven't yet been
+        // finished with a dvu run
+        self.maybe_run_initial_dvu().await?;
+
+        let shutdown_cause = loop {
             tokio::select! {
                 biased;
 
                 // Signal to run a DVU has fired
                 _ = self.run_notify.notified() => {
-                    debug!(
+                    info!(
                         task = Self::NAME,
                         service.instance.id = self.metadata.instance_id(),
                         si.workspace.id = %self.workspace_id,
@@ -65,28 +81,51 @@ impl SerialDvuTask {
                     );
                     self.run_dvu().await?;
                 }
-                // Cancellation token has fired, time to shut down
-                _ = self.token.cancelled() => {
-                    debug!(
+                // Signal to shutdown from a quiet period has fired
+                _ = self.quiesced_notify.notified() => {
+                    info!(
                         task = Self::NAME,
                         service.instance.id = self.metadata.instance_id(),
                         si.workspace.id = %self.workspace_id,
                         si.change_set.id = %self.change_set_id,
-                        "received cancellation",
+                        "quiesced notified, starting to shut down",
                     );
-                    break;
+                    metric!(
+                        counter
+                            .serial_dvu_task
+                            .quiescent_trigger = 1
+                    );
+                    // Fire the quiesced_token so that the processing task immediately stops
+                    // processing additional requests
+                    self.quiesced_token.cancel();
+
+                    break Shutdown::Quiesced;
+                }
+                // Cancellation token has fired, time to shut down
+                _ = self.token.cancelled() => {
+                    info!(
+                        task = Self::NAME,
+                        service.instance.id = self.metadata.instance_id(),
+                        si.workspace.id = %self.workspace_id,
+                        si.change_set.id = %self.change_set_id,
+                        "received cancellation, shutting down",
+                    );
+                    break Shutdown::Graceful;
                 }
             }
-        }
+        };
 
-        debug!(
+        info!(
             task = Self::NAME,
+            cause = ?shutdown_cause,
             service.instance.id = self.metadata.instance_id(),
             si.workspace.id = %self.workspace_id,
             si.change_set.id = %self.change_set_id,
             "shutdown complete",
         );
-        Ok(())
+        metric!(counter.serial_dvu_task.change_set_task = -1);
+
+        Ok(shutdown_cause)
     }
 
     #[instrument(
@@ -100,6 +139,8 @@ impl SerialDvuTask {
         ),
     )]
     async fn run_dvu(&self) -> Result<()> {
+        metric!(counter.serial_dvu_task.dvu_running = 1);
+
         let builder = self.ctx_builder.clone();
         let ctx = builder
             .build_for_change_set_as_system(self.workspace_id, self.change_set_id, None)
@@ -107,6 +148,35 @@ impl SerialDvuTask {
 
         ctx.enqueue_dependent_values_update().await?;
         ctx.blocking_commit_no_rebase().await?;
+        metric!(counter.serial_dvu_task.dvu_running = -1);
+
+        Ok(())
+    }
+
+    async fn maybe_run_initial_dvu(&self) -> Result<()> {
+        let builder = self.ctx_builder.clone();
+        let ctx = builder
+            .build_for_change_set_as_system(self.workspace_id, self.change_set_id, None)
+            .await?;
+
+        if ctx
+            .workspace_snapshot()?
+            .has_dependent_value_roots()
+            .await?
+        {
+            metric!(counter.serial_dvu_task.initial_dvu_running = 1);
+
+            info!(
+                task = Self::NAME,
+                service.instance.id = self.metadata.instance_id(),
+                si.workspace.id = %self.workspace_id,
+                si.change_set.id = %self.change_set_id,
+                "enqueuing *initial* dependent_values_update",
+            );
+            ctx.enqueue_dependent_values_update().await?;
+            ctx.blocking_commit_no_rebase().await?;
+            metric!(counter.serial_dvu_task.initial_dvu_running = -1);
+        }
 
         Ok(())
     }

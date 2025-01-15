@@ -56,7 +56,7 @@ async fn run_workspace_updates_proto(
         Err(err) => {
             // This is likely due to nats failing to subscribe to the required topic, which is
             // suspicious
-            warn!(error = ?err, "protocol failed to start");
+            warn!(si.error.message = ?err, "protocol failed to start");
             return;
         }
     };
@@ -71,7 +71,7 @@ async fn run_workspace_updates_proto(
     };
     if let Err(err) = proto.finish(socket).await {
         // We'd like finish to complete cleanly
-        warn!(error = ?err, "failed to finish protocol");
+        warn!(si.error.message = ?err, "failed to finish protocol");
     }
 }
 

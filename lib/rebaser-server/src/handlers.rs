@@ -21,8 +21,9 @@ use ulid::Ulid;
 
 use crate::{
     app_state::AppState,
-    change_set_processor_task::{ChangeSetProcessorTask, ChangeSetProcessorTaskError, Shutdown},
+    change_set_processor_task::{ChangeSetProcessorTask, ChangeSetProcessorTaskError},
     serial_dvu_task::{SerialDvuTask, SerialDvuTaskError},
+    Shutdown,
 };
 
 const CONSUMER_NAME_PREFIX: &str = "rebaser-requests";
@@ -106,6 +107,8 @@ pub(crate) async fn default(State(state): State<AppState>, subject: Subject) -> 
     let tasks_token = CancellationToken::new();
 
     let run_notify = Arc::new(Notify::new());
+    let quiesced_token = CancellationToken::new();
+    let quiesced_notify = Arc::new(Notify::new());
 
     let incoming = requests_stream
         .create_consumer(rebaser_requests_per_change_set_consumer_config(
@@ -127,6 +130,8 @@ pub(crate) async fn default(State(state): State<AppState>, subject: Subject) -> 
         change_set.id,
         ctx_builder.clone(),
         run_notify.clone(),
+        quiesced_notify.clone(),
+        quiesced_token.clone(),
         tasks_token.clone(),
     );
 
@@ -140,6 +145,8 @@ pub(crate) async fn default(State(state): State<AppState>, subject: Subject) -> 
         ctx_builder,
         run_notify,
         quiescent_period,
+        quiesced_notify,
+        quiesced_token,
         tasks_token.clone(),
         server_tracker,
     );
@@ -166,11 +173,9 @@ pub(crate) async fn default(State(state): State<AppState>, subject: Subject) -> 
         // Processor task completed
         processor_task_result_result = processor_task_result => {
             match processor_task_result_result {
-                // A quiet period was found in the stream; reply `Ok` to ack and remove this task
-                Ok(Ok(Shutdown::Quiesced)) => Ok(()),
                 // Processor exited cleanly, but unexpectedly; reply `Err` to nack for task to
                 // persist and retry
-                Ok(Ok(Shutdown::Graceful)) => Err(Error::ChangeSetProcessorCompleted),
+                Ok(Ok(())) => Err(Error::ChangeSetProcessorCompleted),
                 // Processor exited with error; reply `Err` to nack for task to persist and retry
                 Ok(Err(err)) => Err(Error::ChangeSetProcessor(err)),
                 // Tokio join error on processor exit; reply `Err` to nack for task to persist and
@@ -181,9 +186,11 @@ pub(crate) async fn default(State(state): State<AppState>, subject: Subject) -> 
         // Serial dvu task completed
         dvu_task_result_result = dvu_task_result => {
             match dvu_task_result_result {
+                // A quiet period was found in the stream; reply Ok to ack and remove this task
+                Ok(Ok(Shutdown::Quiesced)) => Ok(()),
                 // Serial dvu exited cleanly, but unexpectedly; reply `Err` to nack for task to
                 // persist and retry
-                Ok(Ok(())) => Err(Error::SerialDvuCompleted),
+                Ok(Ok(Shutdown::Graceful)) => Err(Error::SerialDvuCompleted),
                 // Serial dvu exited with error; reply `Err` to nack for task to persist and retry
                 Ok(Err(err)) => Err(Error::SerialDvu(err)),
                 // Tokio join error on serial dvu exit; reply `Err` to nack for task to persist and

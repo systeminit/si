@@ -32,7 +32,7 @@ use tokio_util::codec::{Decoder, FramedRead, FramedWrite};
 use crate::WebSocketMessage;
 
 const TX_TIMEOUT_SECS: Duration = Duration::from_secs(5);
-const DEFAULT_LANG_SERVER_PROCESS_TIMEOUT: Duration = Duration::from_secs(32 * 60);
+const DEFAULT_LANG_SERVER_PROCESS_TIMEOUT: Duration = Duration::from_secs(5 * 60);
 
 pub fn new<Request, LangServerSuccess, Success>(
     lang_server_path: impl Into<PathBuf>,
@@ -390,22 +390,22 @@ where
             // 2/3 steps errored so warn about the lower priority error and return the highest
             // priority
             (Ok(_), Err(err), Err(shutdown)) => {
-                warn!(error = ?shutdown, "failed to shutdown child cleanly");
+                warn!(si.error.message = ?shutdown, "failed to shutdown child cleanly");
                 Err(err)
             }
             (Err(err), Ok(_), Err(shutdown)) => {
-                warn!(error = ?shutdown, "failed to shutdown child cleanly");
+                warn!(si.error.message = ?shutdown, "failed to shutdown child cleanly");
                 Err(err)
             }
             (Err(err), Err(closed), Ok(_)) => {
-                warn!(error = ?closed, "failed to cleanly close websocket");
+                warn!(si.error.message = ?closed, "failed to cleanly close websocket");
                 Err(err)
             }
 
             // All steps failed so warn about the lower priorities and return the highest priority
             (Err(err), Err(closed), Err(shutdown)) => {
-                warn!(error = ?shutdown, "failed to shutdown child cleanly");
-                warn!(error = ?closed, "failed to cleanly close websocket");
+                warn!(si.error.message = ?shutdown, "failed to shutdown child cleanly");
+                warn!(si.error.message = ?closed, "failed to cleanly close websocket");
                 Err(err)
             }
         }

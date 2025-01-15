@@ -164,7 +164,7 @@ pub async fn crdt_handle<W, R>(
                             }
                         }
                         Some(Err(err)) => {
-                            warn!(error = ?err, "error while processing message from nats");
+                            warn!(si.error.message = ?err, "error while processing message from nats");
                         }
                         None => break,
                     }
@@ -200,7 +200,7 @@ pub async fn crdt_handle<W, R>(
                             }
                         }
                         Some(Err(err)) => {
-                            warn!(error = ?err, "error while processing message from client");
+                            warn!(si.error.message = ?err, "error while processing message from client");
                         }
                         None => break,
                     }
