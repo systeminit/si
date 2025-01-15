@@ -555,8 +555,10 @@ impl ChangeSet {
         Ok(())
     }
 
+    /// Finds a [`ChangeSet`] across all workspaces, ignoring the provided [`WorkspacePk`] on the
+    /// current [`DalContext`]
     #[instrument(
-        name = "change_set.find",
+        name = "change_set.find_across_workspaces",
         level = "debug",
         skip_all,
         fields(
@@ -564,7 +566,7 @@ impl ChangeSet {
             si.workspace.id = Empty,
         ),
     )]
-    pub async fn find(
+    pub async fn find_across_workspaces(
         ctx: &DalContext,
         change_set_id: ChangeSetId,
     ) -> ChangeSetResult<Option<Self>> {
@@ -590,6 +592,52 @@ impl ChangeSet {
                 Ok(Some(change_set))
             }
             None => Ok(None),
+        }
+    }
+
+    /// Find a change set within the [`WorkspacePk`] set for the current [`DalContext`]
+    #[instrument(
+        name = "change_set.find",
+        level = "debug",
+        skip_all,
+        fields(
+            si.change_set.id = %change_set_id,
+            si.workspace.id = Empty,
+        ),
+    )]
+    pub async fn find(
+        ctx: &DalContext,
+        change_set_id: ChangeSetId,
+    ) -> ChangeSetResult<Option<Self>> {
+        let span = current_span_for_instrument_at!("debug");
+        let workspace_id = ctx.workspace_pk()?;
+        let row = ctx
+            .txns()
+            .await?
+            .pg()
+            .query_opt(
+                "SELECT * FROM change_set_pointers WHERE id = $1 AND workspace_id = $2",
+                &[&change_set_id, &workspace_id],
+            )
+            .await?;
+
+        match row {
+            Some(row) => {
+                let change_set = Self::try_from(row)?;
+
+                if let Some(workspace_id) = change_set.workspace_id {
+                    span.record("si.workspace.id", workspace_id.to_string());
+                }
+                Ok(Some(change_set))
+            }
+            None => {
+                // warn here so we can see if something is requesting change sets cross workspace
+                warn!(
+                    si.workspace.id = %workspace_id,
+                    "Change Set Id: {change_set_id} not found for Workspace: {workspace_id}",
+                );
+                Ok(None)
+            }
         }
     }
 
