@@ -6,48 +6,82 @@
           'odd:bg-neutral-200 even:bg-neutral-100',
           'odd:bg-neutral-700 even:bg-neutral-800',
         ),
+        'children:p-xs children:truncate text-sm',
+        active
+          ? themeClasses('text-shade-100', 'text-shade-0')
+          : themeClasses('text-neutral-700', 'text-neutral-300'),
       )
     "
-    class="children:px-sm children:py-xs children:truncate text-sm font-medium text-gray-800 dark:text-gray-200"
   >
     <td>
-      <div
-        class="xl:max-w-[800px] lg:max-w-[60vw] md:max-w-[50vw] sm:max-w-[40vw] max-w-[150px] truncate"
-      >
-        {{ authToken.name }}
-      </div>
+      <TruncateWithTooltip>{{ token.name }}</TruncateWithTooltip>
     </td>
     <!-- TODO show user of token if it's not current user--right now only owner can create -->
-    <td>{{ createdAt }}</td>
-    <td>{{ expiresAt }}</td>
-    <!--td class="text-center">
-      <ErrorMessage :asyncState="revoke" />
-      <VButton
-        v-if="workspace.role === 'OWNER'"
-        :loading="revoke.isLoading.value"
-        class="cursor-pointer"
-        icon="trash"
-        loadingText=""
-        size="2xs"
-        variant="transparent"
-        @click="revoke.execute()"
+    <td><Timestamp size="long" :date="createdAt" enableDetailTooltip /></td>
+    <td :class="clsx(!active && expired && 'text-destructive-500 font-bold')">
+      <Timestamp
+        v-if="expiresAt"
+        size="long"
+        :date="expiresAt"
+        enableDetailTooltip
       />
-    </td-->
+      <template v-else>Never</template>
+    </td>
+    <td v-if="workspace.role === 'OWNER'" class="text-center">
+      <template v-if="active">
+        <IconButton
+          v-if="revoke.error.value"
+          icon="alert-triangle"
+          iconTone="destructive"
+          class="w-min mx-auto"
+          tooltip="Error. Token not revoked!"
+          tooltipPlacement="top"
+          @click="revoke.execute()"
+        />
+        <IconButton
+          v-else
+          :loading="revoke.isLoading.value"
+          icon="trash"
+          iconTone="destructive"
+          iconIdleTone="shade"
+          class="w-min mx-auto"
+          tooltip="Revoke Token"
+          tooltipPlacement="top"
+          @click="revoke.execute()"
+        />
+      </template>
+      <span
+        v-else-if="revokedAt"
+        v-tooltip="revokedTooltip"
+        class="text-destructive-500 font-bold cursor-pointer w-full text-center hover:underline"
+      >
+        Yes
+      </span>
+    </td>
   </tr>
 </template>
 
 <script lang="ts" setup>
 import clsx from "clsx";
-import { themeClasses } from "@si/vue-lib/design-system";
+import {
+  themeClasses,
+  IconButton,
+  TruncateWithTooltip,
+  Timestamp,
+} from "@si/vue-lib/design-system";
 import { computed } from "vue";
+import { useAsyncState } from "@vueuse/core";
+import { apiData } from "@si/vue-lib/pinia";
 import { Workspace } from "@/store/workspaces.store";
-import { AuthToken } from "@/store/authTokens.store";
+import { useAuthTokensApi } from "@/store/authTokens.store";
+import { AuthTokenWithRealtimeData } from "./AuthTokenList.vue";
 
-// const api = useAuthTokensApi();
+const api = useAuthTokensApi();
 
 const props = defineProps<{
-  authToken: AuthToken;
+  authToken: AuthTokenWithRealtimeData;
   workspace: Readonly<Workspace>;
+  active: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -56,25 +90,39 @@ const emit = defineEmits<{
 }>();
 
 /** Action to revoke token */
-// const revoke = useAsyncState(
-//   async () => {
-//     const { workspace, authToken } = props;
-//     await apiData(api.REVOKE_AUTH_TOKEN(workspace.id, authToken.id));
-//     emit("revoked");
-//   },
-//   undefined,
-//   { immediate: false },
-// );
-
-const createdAt = computed(() =>
-  new Date(props.authToken.createdAt).toLocaleString(),
+const revoke = useAsyncState(
+  async () => {
+    const { workspace, authToken } = props;
+    await apiData(api.REVOKE_AUTH_TOKEN(workspace.id, authToken.token.id));
+    emit("revoked");
+  },
+  undefined,
+  { immediate: false },
 );
+
+const token = computed(() => props.authToken.token);
+
+const createdAt = computed(() => new Date(token.value.createdAt));
 
 const expiresAt = computed(() =>
-  props.authToken.expiresAt
-    ? new Date(props.authToken.expiresAt).toLocaleString()
-    : undefined,
+  token.value.expiresAt ? new Date(token.value.expiresAt) : undefined,
 );
+
+const expired = computed(() => props.authToken.isExpired);
+
+const revokedAt = computed(() =>
+  token.value.revokedAt ? new Date(token.value.revokedAt) : undefined,
+);
+
+const revokedTooltip = computed(() => {
+  if (revokedAt.value) {
+    return {
+      content: revokedAt.value,
+      theme: "instant-show",
+    };
+  }
+  return null;
+});
 
 // /** Action to rename token */
 // const rename = useAsyncState(

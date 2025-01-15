@@ -120,7 +120,7 @@
                 <tr
                   v-for="quarantinedUser in quarantinedUsers"
                   :key="quarantinedUser.userId"
-                  class="children:px-md children:py-sm children:truncate text-sm font-medium text-gray-800 dark:text-gray-200"
+                  class="children:px-md children:py-sm children:truncate text-sm font-medium text-neutral-800 dark:text-neutral-200"
                 >
                   <td class="">
                     <div
@@ -247,7 +247,7 @@
                 <tr
                   v-for="suspendedUser in suspendedUsers"
                   :key="suspendedUser.userId"
-                  class="children:px-md children:py-sm children:truncate text-sm font-medium text-gray-800 dark:text-gray-200"
+                  class="children:px-md children:py-sm children:truncate text-sm font-medium text-neutral-800 dark:text-neutral-200"
                 >
                   <td class="">
                     <div
@@ -320,7 +320,7 @@
                 class="divide-y divide-neutral-300 dark:divide-neutral-700"
               >
                 <tr
-                  class="children:px-md children:py-sm children:truncate text-sm font-medium text-gray-800 dark:text-gray-200"
+                  class="children:px-md children:py-sm children:truncate text-sm font-medium text-neutral-800 dark:text-neutral-200"
                 >
                   <td class="">
                     <div
@@ -408,7 +408,7 @@
                 <tr
                   v-for="user in userSignups"
                   :key="user.email"
-                  class="children:px-md children:py-sm children:truncate text-sm font-medium text-gray-800 dark:text-gray-200"
+                  class="children:px-md children:py-sm children:truncate text-sm font-medium text-neutral-800 dark:text-neutral-200"
                 >
                   <td class="">
                     <div

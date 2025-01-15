@@ -17,7 +17,12 @@
     />
     <div
       v-else-if="moduleStore.installableModules.length > 0"
-      class="flex flex-col dark:text-white text-black dark:bg-neutral-800 py-[1px]"
+      :class="
+        clsx(
+          themeClasses('text-shade-100', 'text-shade-0 bg-neutral-800'),
+          'flex flex-col py-[1px]',
+        )
+      "
     >
       <div
         v-for="module in filteredModules"

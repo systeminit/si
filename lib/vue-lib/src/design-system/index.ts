@@ -65,3 +65,4 @@ export * from "./utils/color_utils";
 export * from "./utils/size_utils";
 export * from "./utils/theme_tools";
 export * from "./utils/timestamp";
+export * from "./utils/floating_vue_utils";

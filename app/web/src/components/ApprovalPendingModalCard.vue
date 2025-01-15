@@ -5,8 +5,8 @@
         'group/pendingcard',
         'border rounded flex flex-row gap-xs items-center p-2xs cursor-pointer',
         themeClasses(
-          'border-neutral-200 hover:border-action-500 hover:text-action-500 text-black',
-          'border-neutral-700 hover:border-action-300 hover:text-action-300 text-white',
+          'border-neutral-200 hover:border-action-500 hover:text-action-500 text-shade-100',
+          'border-neutral-700 hover:border-action-300 hover:text-action-300 text-shade-0',
         ),
       )
     "
