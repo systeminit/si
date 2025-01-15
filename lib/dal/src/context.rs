@@ -403,9 +403,11 @@ impl DalContext {
         Ok(workspace)
     }
 
-    /// Update the context to use the most recent snapshot pointed to by the current `ChangeSetId`.
+    /// Update the context to use the most recent snapshot pointed to by the current [`ChangeSetId`].
+    /// Note: This does not guarantee that the [`ChangeSetId`] is contained within the [`WorkspacePk`]
+    /// for the current [`DalContext`]
     pub async fn update_snapshot_to_visibility(&mut self) -> TransactionsResult<()> {
-        let change_set = ChangeSet::find(self, self.change_set_id())
+        let change_set = ChangeSet::find_across_workspaces(self, self.change_set_id())
             .await
             .map_err(|err| TransactionsError::ChangeSet(err.to_string()))?
             .ok_or(TransactionsError::ChangeSetNotFound(self.change_set_id()))?;
