@@ -18,6 +18,7 @@ pub mod force_change_set_response;
 pub mod graphviz;
 pub mod module;
 pub mod node_debug;
+pub mod public;
 pub mod qualification;
 pub mod secret;
 pub mod session;

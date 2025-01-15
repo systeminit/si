@@ -1,18 +1,11 @@
 use axum::{
-    async_trait,
-    extract::{FromRequestParts, Path},
-    http::{request::Parts, Request},
-    middleware::Next,
-    response::Response,
+    async_trait, extract::FromRequestParts, http::request::Parts, middleware, RequestPartsExt,
     Router,
 };
-use dal::WorkspacePk;
-use serde::Deserialize;
 
 use crate::{
     extract::{
-        bad_request,
-        workspace::{TargetWorkspaceId, TargetWorkspaceIdFromHeader, WorkspaceAuthorization},
+        workspace::{TargetWorkspaceIdFromPath, WorkspaceAuthorization},
         ErrorResponse,
     },
     AppState,
@@ -50,10 +43,7 @@ fn workspace_routes(state: AppState) -> Router<AppState> {
                 .nest("/views", view::v2_routes()),
         )
         .nest("/integrations", integrations::v2_routes())
-        .route_layer(axum::middleware::from_fn_with_state(
-            state,
-            target_workspace_id_from_path,
-        ))
+        .route_layer(middleware::from_extractor::<TargetWorkspaceIdFromPath>())
 }
 
 /// An authorized user + workspace
@@ -69,32 +59,7 @@ impl FromRequestParts<AppState> for AccessBuilder {
         state: &AppState,
     ) -> Result<Self, Self::Rejection> {
         // Ensure the endpoint is authorized
-        let auth = WorkspaceAuthorization::from_request_parts(parts, state).await?;
-
-        Ok(Self(auth.into()))
+        let WorkspaceAuthorization { ctx, .. } = parts.extract_with_state(state).await?;
+        Ok(Self(ctx.access_builder()))
     }
-}
-
-// Stash the TargetWorkspaceId so that authorization has it
-async fn target_workspace_id_from_path<B>(
-    Path(WorkspaceIdFromPath { workspace_id }): Path<WorkspaceIdFromPath>,
-    mut request: Request<B>,
-    next: Next<B>,
-) -> Result<Response, ErrorResponse> {
-    // Check against header if it exists
-    if TargetWorkspaceIdFromHeader::extract(request.headers())?
-        .is_some_and(|header_workspace_id| header_workspace_id != workspace_id)
-    {
-        return Err(bad_request("Workspace ID in path does not match header"));
-    }
-
-    request
-        .extensions_mut()
-        .insert(TargetWorkspaceId(workspace_id));
-    Ok(next.run(request).await)
-}
-
-#[derive(Deserialize)]
-struct WorkspaceIdFromPath {
-    workspace_id: WorkspacePk,
 }

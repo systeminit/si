@@ -2,9 +2,9 @@ use std::task::{Context, Poll};
 
 use axum::{
     body::Body,
-    extract::FromRequestParts,
     http::Request,
     response::{IntoResponse, Response},
+    RequestPartsExt as _,
 };
 use futures::future::BoxFuture;
 use permissions::{Permission, PermissionBuilder};
@@ -65,17 +65,18 @@ where
         Box::pin(async move {
             let (mut parts, body) = req.into_parts();
 
-            let auth = match WorkspaceAuthorization::from_request_parts(&mut parts, &me.state).await
-            {
-                Ok(auth) => auth,
+            let (user_id, workspace_id) = match parts.extract_with_state(&me.state).await {
+                Ok(WorkspaceAuthorization {
+                    user, workspace_id, ..
+                }) => (user.pk(), workspace_id),
                 Err(err) => return Ok(err.into_response()),
             };
 
             if let Some(client) = me.state.spicedb_client() {
                 let is_allowed = match PermissionBuilder::new()
-                    .workspace_object(auth.workspace_id)
+                    .workspace_object(workspace_id)
                     .permission(me.permission)
-                    .user_subject(auth.user.pk())
+                    .user_subject(user_id)
                     .has_permission(client)
                     .await
                 {

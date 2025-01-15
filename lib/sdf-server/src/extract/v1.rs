@@ -1,4 +1,4 @@
-use axum::{async_trait, extract::FromRequestParts, http::request::Parts};
+use axum::{async_trait, extract::FromRequestParts, http::request::Parts, RequestPartsExt as _};
 use derive_more::{Deref, Into};
 
 use crate::app_state::AppState;
@@ -20,8 +20,8 @@ impl FromRequestParts<AppState> for AccessBuilder {
         state: &AppState,
     ) -> Result<Self, Self::Rejection> {
         // Ensure we get the workspace ID from the token
-        TargetWorkspaceIdFromToken::from_request_parts(parts, state).await?;
-        let auth = WorkspaceAuthorization::from_request_parts(parts, state).await?;
-        Ok(Self(auth.into()))
+        let _: TargetWorkspaceIdFromToken = parts.extract_with_state(state).await?;
+        let WorkspaceAuthorization { ctx, .. } = parts.extract_with_state(state).await?;
+        Ok(Self(ctx.access_builder()))
     }
 }

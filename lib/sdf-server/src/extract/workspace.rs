@@ -1,14 +1,14 @@
 use axum::{
     async_trait,
-    extract::FromRequestParts,
+    extract::{FromRequestParts, Path},
     http::{header::HeaderMap, request::Parts},
     RequestPartsExt as _,
 };
-use dal::{User, UserPk, WorkspacePk};
+use dal::{DalContext, User, UserPk, WorkspacePk};
 use derive_more::{Deref, Into};
+use serde::Deserialize;
 use si_jwt_public_key::SiJwtClaimRole;
 use std::str::FromStr;
-use ulid::Ulid;
 
 use crate::app_state::AppState;
 
@@ -20,6 +20,29 @@ use super::{
 };
 
 ///
+/// Gets a DalContext pointed at the TargetChangeSet.
+///
+/// This ensures the user is authorized to access the workspace, has the correct role, and
+/// that the change set is in fact a part of the workspace.
+///
+#[derive(Clone, derive_more::Deref, derive_more::Into)]
+pub struct WorkspaceDalContext(pub DalContext);
+
+#[async_trait]
+impl FromRequestParts<AppState> for WorkspaceDalContext {
+    type Rejection = ErrorResponse;
+
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &AppState,
+    ) -> Result<Self, Self::Rejection> {
+        // Get the workspace we are accessing (and authorized for)
+        let WorkspaceAuthorization { ctx, .. } = parts.extract_with_state(state).await?;
+        Ok(Self(ctx))
+    }
+}
+
+///
 /// Handles the whole endpoint authorization (checking if the user has access to the target
 /// workspace with the desired role, *and* that the user is a member of the workspace).
 ///
@@ -29,28 +52,13 @@ use super::{
 /// Unless you have already used the `AuthorizeForAutomationRole` extractor to check that the
 /// token has the automation role, this will check for maximal permissions (the web role).
 ///
-#[derive(Clone, Debug)]
+#[derive(Clone, derive_more::Deref)]
 pub struct WorkspaceAuthorization {
+    #[deref]
+    pub ctx: DalContext,
     pub user: User,
     pub workspace_id: WorkspacePk,
     pub authorized_role: SiJwtClaimRole,
-    pub request_ulid: Option<Ulid>,
-}
-
-impl WorkspaceAuthorization {
-    pub fn access_builder(&self) -> dal::AccessBuilder {
-        self.clone().into()
-    }
-}
-
-impl From<WorkspaceAuthorization> for dal::AccessBuilder {
-    fn from(auth: WorkspaceAuthorization) -> dal::AccessBuilder {
-        dal::AccessBuilder::new(
-            dal::Tenancy::new(auth.workspace_id),
-            dal::HistoryActor::from(auth.user.pk()),
-            auth.request_ulid,
-        )
-    }
 }
 
 #[async_trait]
@@ -73,9 +81,11 @@ impl FromRequestParts<AppState> for WorkspaceAuthorization {
 
         // Get a context associated with the workspace but not the user
         let HandlerContext(builder) = parts.extract_with_state(state).await?;
-        let RequestUlidFromHeader(request_ulid) = parts.extract_with_state(state).await?;
+        let RequestUlidFromHeader(request_ulid) = parts.extract().await?;
         let access_builder =
             dal::AccessBuilder::new(workspace_id.into(), user_id.into(), request_ulid);
+        // TODO consider that this is loading the WorkspaceSnapshot, which may not be used by
+        // the caller
         let ctx = builder
             .build_head(access_builder)
             .await
@@ -91,9 +101,9 @@ impl FromRequestParts<AppState> for WorkspaceAuthorization {
             .ok_or_else(|| unauthorized_error("User not a member of the workspace"))?;
 
         Ok(Self {
+            ctx,
             user,
             workspace_id,
-            request_ulid,
             authorized_role,
         })
     }
@@ -211,11 +221,14 @@ impl FromRequestParts<AppState> for AuthorizedForAutomationRole {
 
 /// The target workspace id from the path or header.
 ///
-/// *Not* validated against the token's workspace_id. AuthorizedForRole does that.
+/// *Not* validated in any way (for example, not checked against the token's workspace ID--
+/// AuthorizedForRole will do that).
 ///
-/// Defaults to getting the workspace id from the path (/workspaces/:workspace_id). Use the
-/// `TargetWorkspaceIdFromHeader` extractor to get the workspace id from the header.
+/// Use the TargetWorkspaceIdFromPath extractor to get this from the path.
 ///
+/// Use the TargetWorkspaceIdFromToken extractor for v1 routes that get it from the token.
+/// DO NOT add new endpoints that rely on the token; always use the path or query.
+/// TargetWorkspaceIdFromToken will eventually be replaced.
 #[derive(Clone, Debug, Deref, Copy, Into)]
 pub struct TargetWorkspaceId(pub WorkspacePk);
 
@@ -232,17 +245,38 @@ impl TargetWorkspaceId {
 }
 
 #[async_trait]
-impl FromRequestParts<AppState> for TargetWorkspaceId {
+impl<S> FromRequestParts<S> for TargetWorkspaceId {
     type Rejection = ErrorResponse;
 
-    async fn from_request_parts(
-        parts: &mut Parts,
-        _state: &AppState,
-    ) -> Result<Self, Self::Rejection> {
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
         Ok(*parts
             .extensions
             .get::<TargetWorkspaceId>()
-            .ok_or_else(|| internal_error("No workspace ID. Endpoints must call an extractor like TargetWorkspaceIdFromPath TargetWorkspaceFromToken to get the workspace ID."))?)
+            .ok_or_else(|| internal_error("No workspace ID. Endpoints must call an extractor like TargetWorkspaceIdFromPath or TargetWorkspaceFromToken to get the workspace ID."))?)
+    }
+}
+
+#[derive(Deserialize, Clone, Debug, Deref, Copy, Into)]
+pub struct TargetWorkspaceIdFromPath {
+    workspace_id: WorkspacePk,
+}
+
+#[async_trait]
+impl<S> FromRequestParts<S> for TargetWorkspaceIdFromPath {
+    type Rejection = ErrorResponse;
+
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+        let Path(TargetWorkspaceIdFromPath { workspace_id }) =
+            parts.extract().await.map_err(bad_request)?;
+        // Check against header if it exists
+        if TargetWorkspaceIdFromHeader::extract(&parts.headers)?
+            .is_some_and(|header_workspace_id| header_workspace_id != workspace_id)
+        {
+            return Err(bad_request("Workspace ID in path does not match header"));
+        }
+
+        parts.extensions.insert(TargetWorkspaceId(workspace_id));
+        Ok(TargetWorkspaceIdFromPath { workspace_id })
     }
 }
 
@@ -265,13 +299,10 @@ impl TargetWorkspaceIdFromHeader {
 }
 
 #[async_trait]
-impl FromRequestParts<AppState> for TargetWorkspaceIdFromHeader {
+impl<S> FromRequestParts<S> for TargetWorkspaceIdFromHeader {
     type Rejection = ErrorResponse;
 
-    async fn from_request_parts(
-        parts: &mut Parts,
-        _state: &AppState,
-    ) -> Result<Self, Self::Rejection> {
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
         let workspace_id = TargetWorkspaceIdFromHeader::extract(&parts.headers)?
             .ok_or_else(|| unauthorized_error("no Authorization header"))?;
 
