@@ -94,7 +94,7 @@ router.put("/workspaces/:workspaceId/authTokens/:authTokenId", async (ctx) => {
 
 // revoke the given authToken for the given workspace
 router.post("/workspaces/:workspaceId/authTokens/:authTokenId/revoke", async (ctx) => {
-  const { authToken } = await authorizeAuthTokenRoute(ctx, RoleType.OWNER);
+  const { authToken } = await authorizeAuthTokenRoute(ctx, [RoleType.OWNER]);
 
   await updateAuthToken(authToken.id, { revokedAt: new Date() });
 

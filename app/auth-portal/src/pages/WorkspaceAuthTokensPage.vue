@@ -121,7 +121,7 @@
 
 <script lang="ts" setup>
 import * as _ from "lodash-es";
-import { computed, onMounted, onUnmounted, ref } from "vue";
+import { computed, ref } from "vue";
 import {
   VormInput,
   Stack,
@@ -132,7 +132,7 @@ import {
   IconButton,
   useValidatedInputGroup,
 } from "@si/vue-lib/design-system";
-import { useAsyncState } from "@vueuse/core";
+import { useAsyncState, useIntervalFn } from "@vueuse/core";
 import { apiData } from "@si/vue-lib/pinia";
 import { useHead } from "@vueuse/head";
 import { useWorkspacesStore, WorkspaceId } from "@/store/workspaces.store";
@@ -169,47 +169,33 @@ const authTokens = useAsyncState(
 
 // This pokes the computed values to check if any tokens have expired every 5 seconds
 const EXPIRATION_CHECK_INTERVAL = 5000;
-const checkExpiration = ref();
-const checkExpirationRecomputer = ref(0);
+const now = ref(Date.now());
+useIntervalFn(() => {
+  now.value = Date.now();
+}, EXPIRATION_CHECK_INTERVAL);
 
-onMounted(() => {
-  checkExpiration.value = setInterval(() => {
-    checkExpirationRecomputer.value++;
-    if (checkExpirationRecomputer.value > 100) {
-      checkExpirationRecomputer.value = 0;
-    }
-  }, EXPIRATION_CHECK_INTERVAL);
-});
-
-onUnmounted(() => {
-  clearInterval(checkExpiration.value);
-});
-
-// The list of all of the tokens to display
+// The list of all of the tokens to display, along with whether or not they are expired
 const listedTokens = computed(() => {
-  return _.reverse(
-    _.sortBy(_.values(authTokens.state.value), "createdAt"),
-  ) as Array<AuthToken>;
+  return (
+    _.reverse(
+      _.sortBy(_.values(authTokens.state.value), "createdAt"),
+    ) as Array<AuthToken>
+  ).map((token) => {
+    const d = new Date(token.expiresAt as unknown as string);
+    const isExpired = d.getTime() < now.value;
+    const isActive = !isExpired && !token.revokedAt;
+    return { token, isExpired, isActive };
+  });
 });
 
 // The list of all active tokens
 const activeTokens = computed(() => {
-  // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-  checkExpirationRecomputer.value;
-  return listedTokens.value.filter((token) => {
-    if (token.expiresAt === null || token.revokedAt) return false;
-    const d = new Date(token.expiresAt as unknown as string);
-    return d.getTime() > Date.now();
-  });
+  return listedTokens.value.filter((o) => o.isActive);
 });
 
 // The list of all inactive tokens (expired or revoked)
 const inactiveTokens = computed(() => {
-  // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-  checkExpirationRecomputer.value;
-  return listedTokens.value.filter(
-    (token) => activeTokens.value.indexOf(token) === -1,
-  );
+  return listedTokens.value.filter((o) => activeTokens.value.indexOf(o) === -1);
 });
 
 /** Action to create auth token. Sets .state when done. */
@@ -275,6 +261,5 @@ const revokeToken = (id: string) => {
   if (authTokens.state.value) {
     authTokens.state.value[id].revokedAt = new Date();
   }
-  // @revoked="delete authTokens.state.value[authToken.id]"
 };
 </script>

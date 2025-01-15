@@ -32,12 +32,12 @@
       <tbody>
         <AuthTokenListItem
           v-for="authToken of authTokens"
-          :key="authToken.id"
+          :key="authToken.token.id"
           :authToken="authToken"
           :workspace="workspace"
           :active="active"
-          @revoked="emit('revoked', authToken.id)"
-          @renamed="(newName) => emit('renamed', authToken.id, newName)"
+          @revoked="emit('revoked', authToken.token.id)"
+          @renamed="(newName) => emit('renamed', authToken.token.id, newName)"
         />
       </tbody>
     </table>
@@ -52,9 +52,15 @@ import { Workspace } from "@/store/workspaces.store";
 import AuthTokenListItem from "@/components/AuthTokenListItem.vue";
 import { AuthToken } from "@/store/authTokens.store";
 
+export interface AuthTokenWithRealtimeData {
+  token: AuthToken;
+  isExpired: boolean;
+  isActive: boolean;
+}
+
 const props = defineProps({
   workspace: { type: Object as PropType<Workspace>, required: true },
-  authTokens: { type: Array<AuthToken>, default: [] },
+  authTokens: { type: Array<AuthTokenWithRealtimeData>, default: [] },
   active: { type: Boolean },
 });
 

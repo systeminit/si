@@ -14,7 +14,7 @@
     "
   >
     <td>
-      <TruncateWithTooltip>{{ authToken.name }}</TruncateWithTooltip>
+      <TruncateWithTooltip>{{ token.name }}</TruncateWithTooltip>
     </td>
     <!-- TODO show user of token if it's not current user--right now only owner can create -->
     <td><Timestamp size="long" :date="createdAt" enableDetailTooltip /></td>
@@ -69,16 +69,17 @@ import {
   TruncateWithTooltip,
   Timestamp,
 } from "@si/vue-lib/design-system";
-import { computed, onMounted, onUnmounted, ref } from "vue";
+import { computed } from "vue";
 import { useAsyncState } from "@vueuse/core";
 import { apiData } from "@si/vue-lib/pinia";
 import { Workspace } from "@/store/workspaces.store";
-import { AuthToken, useAuthTokensApi } from "@/store/authTokens.store";
+import { useAuthTokensApi } from "@/store/authTokens.store";
+import { AuthTokenWithRealtimeData } from "./AuthTokenList.vue";
 
 const api = useAuthTokensApi();
 
 const props = defineProps<{
-  authToken: AuthToken;
+  authToken: AuthTokenWithRealtimeData;
   workspace: Readonly<Workspace>;
   active: boolean;
 }>();
@@ -92,28 +93,25 @@ const emit = defineEmits<{
 const revoke = useAsyncState(
   async () => {
     const { workspace, authToken } = props;
-    await apiData(api.REVOKE_AUTH_TOKEN(workspace.id, authToken.id));
+    await apiData(api.REVOKE_AUTH_TOKEN(workspace.id, authToken.token.id));
     emit("revoked");
   },
   undefined,
   { immediate: false },
 );
 
-const createdAt = computed(() => new Date(props.authToken.createdAt));
+const token = computed(() => props.authToken.token);
+
+const createdAt = computed(() => new Date(token.value.createdAt));
 
 const expiresAt = computed(() =>
-  props.authToken.expiresAt ? new Date(props.authToken.expiresAt) : undefined,
+  token.value.expiresAt ? new Date(token.value.expiresAt) : undefined,
 );
 
-const expired = computed(() => {
-  // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-  checkExpirationRecomputer.value;
-  if (!expiresAt.value) return false;
-  return expiresAt.value.getTime() <= Date.now();
-});
+const expired = computed(() => props.authToken.isExpired);
 
 const revokedAt = computed(() =>
-  props.authToken.revokedAt ? new Date(props.authToken.revokedAt) : undefined,
+  token.value.revokedAt ? new Date(token.value.revokedAt) : undefined,
 );
 
 const revokedTooltip = computed(() => {
@@ -142,22 +140,4 @@ const revokedTooltip = computed(() => {
 // }
 // /** Name of token to create */
 // const name = ref(authToken.name);
-
-// This pokes the computed values to check if any tokens have expired every 5 seconds
-const EXPIRATION_CHECK_INTERVAL = 5000;
-const checkExpiration = ref();
-const checkExpirationRecomputer = ref(0);
-
-onMounted(() => {
-  checkExpiration.value = setInterval(() => {
-    checkExpirationRecomputer.value++;
-    if (checkExpirationRecomputer.value > 100) {
-      checkExpirationRecomputer.value = 0;
-    }
-  }, EXPIRATION_CHECK_INTERVAL);
-});
-
-onUnmounted(() => {
-  clearInterval(checkExpiration.value);
-});
 </script>
