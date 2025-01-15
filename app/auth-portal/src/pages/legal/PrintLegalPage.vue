@@ -1,5 +1,5 @@
 <template>
-  <div class="p-lg bg-white text-black">
+  <div class="p-lg bg-shade-0 text-shade-100">
     <RichText>
       <Component :is="thisDoc.component" />
     </RichText>

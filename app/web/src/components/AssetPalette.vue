@@ -65,7 +65,8 @@
             :color="schemaVariant.variant.color"
             :classes="
               clsx(
-                'dark:text-white text-black dark:bg-neutral-800 py-[1px]',
+                themeClasses('text-shade-100', 'text-shade-0 bg-neutral-800'),
+                'py-[1px]',
                 'hover:dark:outline-action-300 hover:outline-action-500 hover:outline hover:z-10 hover:-outline-offset-1 hover:outline-1',
               )
             "
@@ -129,6 +130,7 @@ import {
   SiSearch,
   Filter,
   TruncateWithTooltip,
+  themeClasses,
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { windowListenerManager } from "@si/vue-lib";

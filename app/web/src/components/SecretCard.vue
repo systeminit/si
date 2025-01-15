@@ -7,8 +7,8 @@
           ? [
               'flex-row border-transparent',
               themeClasses(
-                'hover:border-action-500 hover:text-action-500 text-black',
-                'hover:border-action-300 hover:text-action-300 text-white',
+                'hover:border-action-500 hover:text-action-500 text-shade-100',
+                'hover:border-action-300 hover:text-action-300 text-shade-0',
               ),
             ]
           : [
@@ -16,12 +16,12 @@
               themeClasses('border-neutral-400', 'border-neutral-400'),
               isUsable
                 ? themeClasses(
-                    'hover:border-action-500 hover:text-action-500 text-black',
-                    'hover:border-action-300 hover:text-action-300 text-white',
+                    'hover:border-action-500 hover:text-action-500 text-shade-100',
+                    'hover:border-action-300 hover:text-action-300 text-shade-0',
                   )
                 : themeClasses(
-                    'hover:border-destructive-600 text-black hover:text-destructive-600 bg-caution-lines-light',
-                    'hover:border-destructive-500 text-white hover:text-destructive-500 bg-caution-lines-dark',
+                    'hover:border-destructive-600 text-shade-100 hover:text-destructive-600 bg-caution-lines-light',
+                    'hover:border-destructive-500 text-shade-0 hover:text-destructive-500 bg-caution-lines-dark',
                   ),
             ],
         selected &&

@@ -1,5 +1,5 @@
 <template>
-  <div class="text-black dark:text-white">
+  <div :class="clsx(themeClasses('text-shade-100', 'text-shade-0'))">
     <DeployNotification />
 
     <template v-if="BROWSER_IS_MOBILE">
@@ -244,6 +244,7 @@ import {
   DropdownMenuItem,
   ErrorMessage,
   Inline,
+  themeClasses,
 } from "@si/vue-lib/design-system";
 import "floating-vue/dist/style.css";
 
@@ -272,7 +273,7 @@ useHead(
     bodyAttrs: {
       // add some base classes we need these type classes set for capsize plugin to work throughout
       // and add dark mode style/class
-      class: tw`font-sans text-base leading-none text-black dark:text-white`,
+      class: tw`font-sans text-base leading-none text-shade-100 dark:text-shade-0`,
     },
     htmlAttrs: {
       style: () => `color-scheme: ${rootTheme.value};`,

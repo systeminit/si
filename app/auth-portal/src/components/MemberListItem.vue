@@ -1,6 +1,6 @@
 <template>
   <tr
-    class="children:px-md children:py-sm children:truncate text-sm font-medium text-gray-800 dark:text-gray-200"
+    class="children:px-md children:py-sm children:truncate text-sm font-medium text-neutral-800 dark:text-neutral-200"
   >
     <td class="">
       <div

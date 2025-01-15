@@ -1,6 +1,6 @@
 <template>
   <AppLayout>
-    <div class="text-white">
+    <div class="text-shade-0">
       <div
         v-if="workspacesReqStatus.isPending"
         class="w-full flex flex-col items-center gap-4 p-xl"

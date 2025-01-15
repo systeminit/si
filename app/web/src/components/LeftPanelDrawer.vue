@@ -3,8 +3,11 @@
     :class="
       clsx(
         'relative', // needed for <ScrollArea> absolute inset-0
-        'w-[230px] bg-white dark:bg-neutral-800 z-[25] border-r-[3px]',
-        'border-neutral-300 border-color: dark:border-neutral-600',
+        themeClasses(
+          'bg-shade-0 border-neutral-300',
+          'bg-neutral-800 border-neutral-600',
+        ),
+        'w-[230px] z-[25] border-r-[3px]',
       )
     "
   >
@@ -77,6 +80,7 @@ import {
   Modal,
   VormInput,
   ScrollArea,
+  themeClasses,
 } from "@si/vue-lib/design-system";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
 import { useViewsStore } from "@/store/views.store";

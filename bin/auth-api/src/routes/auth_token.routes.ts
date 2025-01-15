@@ -92,8 +92,16 @@ router.put("/workspaces/:workspaceId/authTokens/:authTokenId", async (ctx) => {
   ctx.body = { authToken };
 });
 
+// revoke the given authToken for the given workspace
+router.post("/workspaces/:workspaceId/authTokens/:authTokenId/revoke", async (ctx) => {
+  const { authToken } = await authorizeAuthTokenRoute(ctx, RoleType.OWNER);
+
+  await updateAuthToken(authToken.id, { revokedAt: new Date() });
+
+  ctx.body = { authToken };
+});
+
 // delete the given authToken for the given workspace
-// TODO - This does not currently fully revoke the token, just removes it from prisma!
 router.delete("/workspaces/:workspaceId/authTokens/:authTokenId", async (ctx) => {
   const { authTokenId } = await authorizeAuthTokenRoute(ctx, [RoleType.OWNER]);
 

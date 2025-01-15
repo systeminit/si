@@ -10,6 +10,7 @@ export interface AuthToken {
   workspaceId: string;
   createdAt: Date;
   expiresAt: Date | null;
+  revokedAt: Date | null;
   claims: unknown;
   lastUsedAt: Date | null;
   lastUsedIp: string | null;
@@ -59,8 +60,14 @@ export const useAuthTokensApi = defineStore("authTokens", {
 
     async REVOKE_AUTH_TOKEN(workspaceId: WorkspaceId, tokenId: AuthTokenId) {
       return new ApiRequest<void>({
-        method: "delete",
-        url: ["workspaces", { workspaceId }, "authTokens", { tokenId }],
+        method: "post",
+        url: [
+          "workspaces",
+          { workspaceId },
+          "authTokens",
+          { tokenId },
+          "revoke",
+        ],
         keyRequestStatusBy: [workspaceId, tokenId],
       });
     },

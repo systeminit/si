@@ -62,8 +62,10 @@ const dateStr = computed(() => {
 const tooltip = computed(() => {
   if (!props.enableDetailTooltip) return null;
 
+  const content = String(props.date);
+
   return {
-    content: props.date,
+    content,
     theme: "instant-show",
   };
 });

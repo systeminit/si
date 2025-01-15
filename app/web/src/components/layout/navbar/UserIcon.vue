@@ -16,7 +16,7 @@
       <!-- TODO(Wendy) - This should check for and pull the image of the user in question, not the current user's image! -->
       <img
         v-if="user.pictureUrl"
-        class="rounded-full bg-white"
+        class="rounded-full bg-shade-0"
         :src="user.pictureUrl"
         referrerpolicy="no-referrer"
       />
