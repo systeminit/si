@@ -60,15 +60,16 @@ use tokio::{fs::File, io::AsyncReadExt, sync::Mutex};
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use uuid::Uuid;
 
-/// This module contains helpers for macro expansion. We allow panics and "expects" here because we
-/// want to bail during macro expansion. We still do not allow "unwrap" because "expect" should be
-/// used instead.
-#[allow(clippy::expect_used, clippy::panic)]
 pub mod expand_helpers;
-
 pub mod expected;
 pub mod helpers;
-
+pub mod prelude {
+    //! This module provides a standard set of tools for authoring DAL integration tests.
+    pub use crate::helpers::ChangeSetTestHelpers;
+    pub use crate::WorkspaceSignup;
+    pub use color_eyre::eyre::OptionExt;
+    pub use color_eyre::Result;
+}
 mod signup;
 mod test_exclusive_schemas;
 

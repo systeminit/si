@@ -4,7 +4,7 @@ use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
 
 use crate::{
     workspace_snapshot::{
-        graph::{detect_updates::Update, LineageId},
+        graph::{detector::Update, LineageId},
         node_weight::{
             diagram_object_node_weight::DiagramObjectKind,
             traits::{

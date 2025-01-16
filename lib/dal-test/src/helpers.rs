@@ -291,6 +291,7 @@ pub async fn get_component_output_socket_value(
         AttributeValue::get_by_id(ctx, component_output_socket.attribute_value_id).await?;
     Ok(output_socket_av.view(ctx).await?)
 }
+
 /// Update the [`Value`] for a specific [`AttributeValue`] for the given [`Component`](ComponentId) by the [`PropPath`]
 pub async fn update_attribute_value_for_component(
     ctx: &DalContext,

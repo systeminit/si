@@ -3,6 +3,8 @@
 //! _Caution:_ functions in this module may appear to be unused, but they are likely used during
 //! macro expansion.
 
+#![allow(clippy::expect_used, clippy::panic)]
+
 use dal::{ChangeSet, ChangeSetId, DalContext};
 use jwt_simple::algorithms::RSAKeyPairLike;
 use jwt_simple::claims::Claims;

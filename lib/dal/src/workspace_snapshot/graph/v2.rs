@@ -16,7 +16,7 @@ use crate::{
     workspace_snapshot::{
         content_address::ContentAddress,
         graph::{
-            detect_updates::Update, MerkleTreeHash, WorkspaceSnapshotGraphError,
+            detector::Update, MerkleTreeHash, WorkspaceSnapshotGraphError,
             WorkspaceSnapshotGraphResult,
         },
         node_weight::{CategoryNodeWeight, NodeWeight},

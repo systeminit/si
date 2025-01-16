@@ -4,7 +4,6 @@ use std::{
     io::Write,
     sync::{Arc, Mutex},
 };
-use strum::IntoEnumIterator;
 
 use petgraph::{
     algo,
@@ -13,8 +12,10 @@ use petgraph::{
     visit::DfsEvent,
 };
 use serde::{Deserialize, Serialize};
-use si_events::{ulid::Ulid, ContentHash};
+use si_events::{ulid::Ulid, workspace_snapshot::EntityKind, ContentHash};
+use si_id::{EntityId, WorkspacePk};
 use si_layer_cache::db::serialize;
+use strum::IntoEnumIterator;
 use telemetry::prelude::*;
 use ulid::Generator;
 
@@ -23,7 +24,7 @@ use crate::{
     workspace_snapshot::{
         content_address::ContentAddress,
         graph::{
-            detect_updates::{Detector, Update},
+            detector::{Detector, Update},
             MerkleTreeHash, WorkspaceSnapshotGraphError, WorkspaceSnapshotGraphResult,
         },
         node_weight::{CategoryNodeWeight, NodeWeight},
@@ -33,8 +34,15 @@ use crate::{
     Timestamp,
 };
 
+use super::{
+    approval::{ApprovalRequirement, ApprovalRequirementLookupGroup},
+    detector::Change,
+    traits::entity_kind::EntityKindExt,
+};
+
 pub mod component;
 pub mod diagram;
+pub mod entity_kind;
 pub mod schema;
 pub mod socket;
 
@@ -615,18 +623,18 @@ impl WorkspaceSnapshotGraphV4 {
         // remove all nodes (that are not the `self.root_index` node) that do not have any
         // incoming edges, and we keep doing this until the only one left is the `self.root_index`
         // node, then all remaining nodes are reachable from `self.root_index`.
-        let mut old_root_ids: HashSet<NodeIndex>;
+        let mut old_root_indexes: HashSet<NodeIndex>;
         loop {
-            old_root_ids = self
+            old_root_indexes = self
                 .graph
                 .externals(Incoming)
                 .filter(|node_id| *node_id != self.root_index)
                 .collect();
-            if old_root_ids.is_empty() {
+            if old_root_indexes.is_empty() {
                 break;
             }
 
-            for stale_node_index in &old_root_ids {
+            for stale_node_index in &old_root_indexes {
                 self.graph.remove_node(*stale_node_index);
             }
         }
@@ -687,6 +695,39 @@ impl WorkspaceSnapshotGraphV4 {
 
     pub fn detect_updates(&self, updated_graph: &Self) -> Vec<Update> {
         Detector::new(self, updated_graph).detect_updates()
+    }
+
+    pub fn detect_changes(&self, updated_graph: &Self) -> Vec<Change> {
+        Detector::new(self, updated_graph).detect_changes()
+    }
+
+    pub fn approval_requirements_for_changes(
+        &self,
+        workspace_id: WorkspacePk,
+        changes: &[Change],
+    ) -> WorkspaceSnapshotGraphResult<Vec<ApprovalRequirement>> {
+        let mut requirements = Vec::new();
+        for change in changes {
+            let entity_id: EntityId = change.id.into();
+
+            // TODO(nick,jacob): handle more than schema variants.
+            if let EntityKind::SchemaVariant = self.get_entity_kind_for_id(entity_id)? {
+                requirements.push(ApprovalRequirement {
+                    // TODO(nick,jacob): handle more than schema variants.
+                    entity_kind: EntityKind::SchemaVariant,
+                    entity_id,
+                    // TODO(nick,jacob): remove hardcoded number requirement.
+                    number: 1,
+                    // TODO(nick,jacob): replace hardcoded relations.
+                    lookup_groups: vec![ApprovalRequirementLookupGroup {
+                        object_type: "workspace".to_string(),
+                        object_id: workspace_id.to_string(),
+                        permission: "approve".to_string(),
+                    }],
+                });
+            }
+        }
+        Ok(requirements)
     }
 
     #[allow(dead_code)]
@@ -1065,7 +1106,7 @@ impl WorkspaceSnapshotGraphV4 {
             .ok_or(WorkspaceSnapshotGraphError::NodeWeightNotFound)
     }
 
-    fn get_node_weight_by_id(
+    pub fn get_node_weight_by_id(
         &self,
         id: impl Into<Ulid>,
     ) -> WorkspaceSnapshotGraphResult<&NodeWeight> {

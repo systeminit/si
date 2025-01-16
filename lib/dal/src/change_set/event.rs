@@ -17,6 +17,17 @@ impl WsEvent {
         WsEvent::new(ctx, WsPayload::ChangeSetCreated(change_set_id)).await
     }
 
+    pub async fn change_set_approval_status_changed(
+        ctx: &DalContext,
+        change_set_id: ChangeSetId,
+    ) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::ChangeSetApprovalStatusChanged(change_set_id),
+        )
+        .await
+    }
+
     pub async fn change_set_status_changed(
         ctx: &DalContext,
         from_status: ChangeSetStatus,

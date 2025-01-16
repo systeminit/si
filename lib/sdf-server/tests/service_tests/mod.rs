@@ -6,6 +6,7 @@ use axum::{
 use serde::{de::DeserializeOwned, Serialize};
 use tower::ServiceExt;
 
+mod change_set_approval;
 mod crdt;
 mod session;
 

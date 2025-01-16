@@ -12,7 +12,7 @@ use crate::{
     layer_db_types::{SchemaVariantContent, SchemaVariantContentV3},
     workspace_snapshot::{
         content_address::ContentAddress,
-        graph::{detect_updates::Update, LineageId, WorkspaceSnapshotGraphError},
+        graph::{detector::Update, LineageId, WorkspaceSnapshotGraphError},
         node_weight::{
             self,
             traits::{CorrectExclusiveOutgoingEdge, CorrectTransforms, SiNodeWeight},
@@ -192,10 +192,10 @@ impl CorrectTransforms for SchemaVariantNodeWeightV1 {
     fn correct_transforms(
         &self,
         workspace_snapshot_graph: &WorkspaceSnapshotGraphVCurrent,
-        mut updates: Vec<crate::workspace_snapshot::graph::detect_updates::Update>,
+        mut updates: Vec<crate::workspace_snapshot::graph::detector::Update>,
         _from_different_change_set: bool,
     ) -> crate::workspace_snapshot::node_weight::traits::CorrectTransformsResult<
-        Vec<crate::workspace_snapshot::graph::detect_updates::Update>,
+        Vec<crate::workspace_snapshot::graph::detector::Update>,
     > {
         use crate::workspace_snapshot::graph::SchemaVariantExt;
 

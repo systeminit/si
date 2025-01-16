@@ -12,6 +12,8 @@ use itertools::Itertools;
 use pretty_assertions_sorted::assert_eq;
 use std::collections::HashSet;
 
+mod approval;
+
 #[test]
 async fn open_change_sets(ctx: &mut DalContext) {
     let view = OpenChangeSetsView::assemble(ctx)

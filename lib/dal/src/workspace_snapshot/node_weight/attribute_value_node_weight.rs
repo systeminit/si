@@ -8,8 +8,7 @@ use crate::{
         content_address::ContentAddress,
         graph::{
             correct_transforms::add_dependent_value_root_updates,
-            deprecated::v1::DeprecatedAttributeValueNodeWeightV1, detect_updates::Update,
-            LineageId,
+            deprecated::v1::DeprecatedAttributeValueNodeWeightV1, detector::Update, LineageId,
         },
         node_weight::traits::CorrectTransforms,
         NodeId,

@@ -9,7 +9,7 @@ use crate::workspace_snapshot::node_weight::NodeWeight;
 use crate::workspace_snapshot::NodeInformation;
 use crate::{EdgeWeight, EdgeWeightKind, NodeWeightDiscriminants};
 
-use super::{detect_updates::Update, WorkspaceSnapshotGraphVCurrent};
+use super::{detector::Update, WorkspaceSnapshotGraphVCurrent};
 
 pub fn correct_transforms(
     graph: &WorkspaceSnapshotGraphVCurrent,

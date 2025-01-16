@@ -62,7 +62,7 @@ const userIsApprover = ref(false);
 async function openModalHandler() {
   if (changeSet?.value?.name === "HEAD") return;
 
-  userIsApprover.value = changeSetsStore.currentUserIsApprover;
+  userIsApprover.value = changeSetsStore.currentUserIsDefaultApprover;
   modalRef.value?.open();
 }
 

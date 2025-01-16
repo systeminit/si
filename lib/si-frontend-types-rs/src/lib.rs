@@ -10,6 +10,7 @@ mod workspace;
 
 pub use crate::audit_log::AuditLog;
 pub use crate::change_set::{ChangeSet, CreateChangeSetRequest, CreateChangeSetResponse};
+pub use crate::change_set::{ChangeSetApproval, ChangeSetApprovalRequirement, ChangeSetApprovals};
 pub use crate::component::{
     ChangeStatus, ConnectionAnnotation, DiagramComponentView, DiagramSocket,
     DiagramSocketDirection, DiagramSocketNodeSide, GeometryAndView, GridPoint, RawGeometry, Size2D,
