@@ -28,6 +28,12 @@
         />
       </div>
     </div>
+    <FuncRunTabGroup
+      :close="deselectAction"
+      :funcRun="funcRun"
+      :open="!!singleSelectedAction"
+      :selectedTab="selectedTab"
+    />
     <div v-if="changeSetStore.headSelected">
       <ActionsList
         v-if="actionsStore.proposedActions.length > 0"
@@ -55,12 +61,6 @@
         primaryIconClasses=""
         label="Proposed Actions In This Change Set"
       >
-        <FuncRunTabGroup
-          :close="deselectAction"
-          :funcRun="funcRun"
-          :open="!!singleSelectedAction"
-          :selectedTab="selectedTab"
-        />
         <ActionsList
           v-if="actionsStore.proposedActions.length > 0"
           class="mt-sm"
@@ -188,6 +188,7 @@ const clickAction = async (action_view: ActionView, e: MouseEvent) => {
     const { funcRunId } = action;
 
     if (!funcRunId) {
+      funcRun.value = undefined;
       return;
     }
 
