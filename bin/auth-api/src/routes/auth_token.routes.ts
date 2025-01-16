@@ -19,6 +19,7 @@ import {
 import { authorizeWorkspaceRoute } from "./workspace.routes";
 import { ApiError } from "../lib/api-error";
 import { tracker } from "../lib/tracker";
+import { getUserById } from "../services/users.service";
 import { router } from ".";
 
 // get all authTokens for the given workspace
@@ -68,13 +69,17 @@ router.post("/workspaces/:workspaceId/authTokens", async (ctx) => {
   // And decode it to get the generated values (such as expiration)
   const authToken = await registerAuthToken(name, await decodeSdfAuthToken(token));
 
+  const workspaceOwner = await getUserById(workspace.creatorUserId)!;
+
   tracker.trackEvent(authUser, "workspace_api_token_created", {
     workspaceId: workspace.id,
     workspaceName: workspace.displayName,
+    workspaceOwner: workspaceOwner?.email,
     tokenName: name,
     tokenCreated: authToken.createdAt,
     tokenExpires: authToken.expiresAt,
-    initiatedAt: authUser.email,
+    initiatedBy: authUser.email,
+    tokenAction: "created",
   });
 
   ctx.body = { authToken, token };
@@ -92,13 +97,17 @@ router.post("/workspaces/:workspaceId/authTokens/:authTokenId/revoke", async (ct
 
   await updateAuthToken(authToken.id, { revokedAt: new Date() });
 
+  const workspaceOwner = await getUserById(workspace.creatorUserId)!;
+
   tracker.trackEvent(authUser, "workspace_api_token_revoked", {
     workspaceId: workspace.id,
     workspaceName: workspace.displayName,
+    workspaceOwner: workspaceOwner?.email,
     tokenName: authToken.name,
     tokenCreated: authToken.createdAt,
     tokenRevoked: new Date(),
-    initiatedAt: authUser.email,
+    initiatedBy: authUser.email,
+    tokenAction: "revoked",
   });
 
   ctx.body = { authToken };
