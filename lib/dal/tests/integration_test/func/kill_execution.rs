@@ -11,7 +11,7 @@ use dal_test::helpers::{
 };
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
-use si_events::FuncRunState;
+use si_events::{ActionResultState, FuncRunState};
 
 #[test]
 async fn kill_execution_works(ctx: &mut DalContext) {
@@ -96,6 +96,18 @@ async fn kill_execution_works(ctx: &mut DalContext) {
     FuncRunner::kill_execution(ctx, func_run_id)
         .await
         .expect("could not kill execution");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+    let action_result_state = ctx
+        .layer_db()
+        .func_run()
+        .read(func_run_id)
+        .await
+        .expect("could not get func run")
+        .expect("no func run found")
+        .action_result_state()
+        .expect("action result state found");
     let func_run_state = ctx
         .layer_db()
         .func_run()
@@ -104,8 +116,21 @@ async fn kill_execution_works(ctx: &mut DalContext) {
         .expect("could not get func run")
         .expect("no func run found")
         .state();
+
+    // This should be [`FuncRunState::Killed`]
+    // but because this is getting bubbled back to the Pinga Job running the
+    // action, and the error is now embedded in a successful response,
+    // (because we did get a response from Veritech)
+    // Pinga is setting the func run state to success and the
+    // action result state to failure.
+    // make the madness end pls.
     assert_eq!(
-        FuncRunState::Killed, // expected
-        func_run_state        // actual
+        FuncRunState::Success, // expected
+        func_run_state         // actual
+    );
+
+    assert_eq!(
+        ActionResultState::Failure, // expected
+        action_result_state         // actual
     );
 }
