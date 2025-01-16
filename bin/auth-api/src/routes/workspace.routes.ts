@@ -228,7 +228,7 @@ router.post("/workspace/:workspaceId/membership", async (ctx) => {
   });
 
   tracker.trackEvent(authUser, "workspace_membership_roles_changed_v2", {
-    newPermissionLevel: reqBody.role,
+    newPermissionLevel: reqBody.role === "EDITOR" ? "Collaborator" : "Approver",
     memberUserName: user?.email || "",
     workspaceId: workspace.id,
     workspaceName: workspace.displayName,
@@ -326,7 +326,7 @@ router.delete("/workspace/:workspaceId/members", async (ctx) => {
     initiatedBy: authUser.email,
     memberUserName: reqBody.email,
     memberChangedAt: new Date(),
-    newPermissionLevel: "None",
+    newPermissionLevel: "No Access",
   });
 
   ctx.body = members;
