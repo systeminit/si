@@ -68,6 +68,12 @@
           @click="modelingEventBus.emit('restoreSelection')"
         />
       </Stack>
+      <Stack v-else class="p-sm">
+        <ErrorMessage icon="alert-triangle" tone="warning">
+          This component will be removed from your model once the delete action
+          has completed.
+        </ErrorMessage>
+      </Stack>
     </template>
 
     <template v-else>
