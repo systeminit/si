@@ -134,7 +134,7 @@ jobs:
   api-test:
     needs:
       - upgrade-web
-      - upgrade-and-migrate-sdf
+      - sleep-between
     uses: ./.github/workflows/run-api-test.yml
     with:
       environment: ${{ inputs.environment }}
