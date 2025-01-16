@@ -29,7 +29,9 @@ pub enum FuncRunState {
 }
 
 /// Describes the kind of [`Func`](crate::Func).
-#[derive(AsRefStr, Deserialize, Display, Serialize, Debug, Eq, PartialEq, Clone, Copy, Hash)]
+#[derive(
+    AsRefStr, Deserialize, Display, Serialize, Debug, Eq, PartialEq, Clone, Copy, Hash, EnumIter,
+)]
 pub enum FuncKind {
     Action,
     Attribute,
