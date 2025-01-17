@@ -4,7 +4,6 @@ packages:
   - app/web
   - app/docs
   - bin/auth-api
-  - bin/lang-js
   - lib/eslint-config
   - lib/ts-lib
   - lib/tsconfig

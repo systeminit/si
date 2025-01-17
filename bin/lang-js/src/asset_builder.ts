@@ -1,4 +1,4 @@
-import { parseConnectionAnnotation } from "@si/ts-lib";
+import { parseConnectionAnnotation } from "@scope/ts-lib-deno";
 import Joi from "joi";
 
 export type ValueFromKind = "inputSocket" | "outputSocket" | "prop";
@@ -29,10 +29,10 @@ export interface IValueFromBuilder {
  *  .build()
  */
 export class ValueFromBuilder implements IValueFromBuilder {
-  valueFrom = <ValueFrom>{};
+  valueFrom = <ValueFrom> {};
 
   constructor() {
-    this.valueFrom = <ValueFrom>{};
+    this.valueFrom = <ValueFrom> {};
   }
 
   /**
@@ -62,7 +62,8 @@ export class ValueFromBuilder implements IValueFromBuilder {
    */
   setSocketName(name: string): this {
     if (
-      this.valueFrom.kind !== "inputSocket" && this.valueFrom.kind !== "outputSocket"
+      this.valueFrom.kind !== "inputSocket" &&
+      this.valueFrom.kind !== "outputSocket"
     ) {
       return this;
     }
@@ -135,11 +136,11 @@ export interface ISocketDefinitionBuilder {
  *  .build();
  */
 export class SocketDefinitionBuilder implements ISocketDefinitionBuilder {
-  socket = <SocketDefinition>{};
+  socket = <SocketDefinition> {};
   connectionAnnotations: string[] = [];
 
   constructor() {
-    this.socket = <SocketDefinition>{};
+    this.socket = <SocketDefinition> {};
   }
 
   /**
@@ -306,11 +307,12 @@ export interface IPropWidgetDefinitionBuilder {
  *  .setKind("text")
  *  .build()
  */
-export class PropWidgetDefinitionBuilder implements IPropWidgetDefinitionBuilder {
-  propWidget = <PropWidgetDefinition>{};
+export class PropWidgetDefinitionBuilder
+  implements IPropWidgetDefinitionBuilder {
+  propWidget = <PropWidgetDefinition> {};
 
   constructor() {
-    this.propWidget = <PropWidgetDefinition>{};
+    this.propWidget = <PropWidgetDefinition> {};
   }
 
   /**
@@ -345,10 +347,12 @@ export class PropWidgetDefinitionBuilder implements IPropWidgetDefinitionBuilder
       this.propWidget.options = [];
     }
 
-    this.propWidget.options.push(<Option>{
-      label: key,
-      value,
-    });
+    this.propWidget.options.push(
+      <Option> {
+        label: key,
+        value,
+      },
+    );
     return this;
   }
 
@@ -385,10 +389,10 @@ export interface IMapKeyFuncBuilder {
  *    .build()
  */
 export class MapKeyFuncBuilder implements IMapKeyFuncBuilder {
-  mapKeyFunc = <MapKeyFunc>{};
+  mapKeyFunc = <MapKeyFunc> {};
 
   constructor() {
-    this.mapKeyFunc = <MapKeyFunc>{};
+    this.mapKeyFunc = <MapKeyFunc> {};
   }
 
   /**
@@ -460,11 +464,12 @@ export interface ISiPropValueFromDefinitionBuilder {
   build(): SiPropValueFromDefinition;
 }
 
-export class SiPropValueFromDefinitionBuilder implements ISiPropValueFromDefinitionBuilder {
-  definition = <SiPropValueFromDefinition>{};
+export class SiPropValueFromDefinitionBuilder
+  implements ISiPropValueFromDefinitionBuilder {
+  definition = <SiPropValueFromDefinition> {};
 
   constructor() {
-    this.definition = <SiPropValueFromDefinition>{};
+    this.definition = <SiPropValueFromDefinition> {};
   }
 
   /**
@@ -556,7 +561,7 @@ export interface IPropBuilder {
  *  .build();
  */
 export class PropBuilder implements IPropBuilder {
-  prop = <PropDefinition>{};
+  prop = <PropDefinition> {};
 
   /**
    * Adds a child to an object type prop
@@ -835,10 +840,10 @@ export interface ISecretPropBuilder {
  *  .build();
  */
 export class SecretPropBuilder implements ISecretPropBuilder {
-  prop = <SecretPropDefinition>{};
+  prop = <SecretPropDefinition> {};
 
   constructor() {
-    this.prop = <SecretPropDefinition>{};
+    this.prop = <SecretPropDefinition> {};
     this.prop.kind = "string";
     this.prop.widget = {
       kind: "secret",
@@ -864,7 +869,6 @@ export class SecretPropBuilder implements ISecretPropBuilder {
 
   /**
    * The type of the secret - relates to the Secret Definition Name
-   *
    *
    * @returns this
    *
@@ -956,7 +960,7 @@ export class SecretDefinitionBuilder implements ISecretDefinitionBuilder {
   definition: SecretDefinition;
 
   constructor() {
-    this.definition = <SecretDefinition>{};
+    this.definition = <SecretDefinition> {};
     this.definition.name = "";
     this.definition.props = [];
     this.definition.connectionAnnotations = "";
@@ -1069,10 +1073,10 @@ export interface IAssetBuilder {
  * return asset.build();
  */
 export class AssetBuilder implements IAssetBuilder {
-  asset = <Asset>{};
+  asset = <Asset> {};
 
   constructor() {
-    this.asset = <Asset>{};
+    this.asset = <Asset> {};
   }
 
   /**
@@ -1154,7 +1158,8 @@ export class AssetBuilder implements IAssetBuilder {
       );
 
     if (
-      definition.connectionAnnotations && definition.connectionAnnotations !== ""
+      definition.connectionAnnotations &&
+      definition.connectionAnnotations !== ""
     ) {
       outputSocketBuilder.setConnectionAnnotation(
         definition.connectionAnnotations,

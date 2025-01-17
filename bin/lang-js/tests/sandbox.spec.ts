@@ -1,11 +1,12 @@
-import { describe, expect, test } from "vitest";
-import { FunctionKind } from "../src/function";
-import { createSandbox } from "../src/sandbox";
+import { assertObjectMatch } from "https://deno.land/std@0.224.0/assert/mod.ts";
+import { FunctionKind } from "../src/function.ts";
+import { createSandbox } from "../src/sandbox.ts";
 
-describe("createSandbox", () => {
-  test("creates a new sandbox environment for execution", () => {
-    const sandbox = createSandbox(FunctionKind.ResolverFunction, "poop");
-    expect(sandbox).toHaveProperty("console");
-    expect(sandbox).toHaveProperty("_");
+Deno.test("createSandbox", () => {
+  const sandbox = createSandbox(FunctionKind.ResolverFunction, "poop");
+
+  assertObjectMatch(sandbox, {
+    console: sandbox.console,
+    _: sandbox._,
   });
 });

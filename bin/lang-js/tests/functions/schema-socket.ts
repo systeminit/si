@@ -1,3 +1,4 @@
+// deno-lint-ignore-file
 // @ts-nocheck
 
 function main() {
