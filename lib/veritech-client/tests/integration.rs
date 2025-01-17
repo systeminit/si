@@ -88,7 +88,7 @@ fn base64_encode(input: impl AsRef<[u8]>) -> String {
 }
 
 #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
-#[test(tokio::test)]
+#[test(tokio::test(flavor = "multi_thread", worker_threads = 1))]
 async fn executes_simple_management_function() {
     let prefix = nats_prefix();
     run_veritech_server_for_uds_cyclone(prefix.clone()).await;
@@ -113,8 +113,8 @@ async fn executes_simple_management_function() {
         },
         components: HashMap::new(),
         code_base64: base64_encode(
-            "function numberOfInputs({ thisComponent }) { 
-                const number = Object.keys(thisComponent.properties)?.length; 
+            "function numberOfInputs({ thisComponent }) {
+                const number = Object.keys(thisComponent.properties)?.length;
                 return { status: 'ok', message: `${number}` }
              }",
         ),
@@ -131,13 +131,14 @@ async fn executes_simple_management_function() {
             assert_eq!(Some("3"), success.message.as_deref())
         }
         FunctionResult::Failure(failure) => {
+            dbg!("Request details: {:?}", request);
             panic!("function did not succeed and should have: {failure:?}")
         }
     }
 }
 
 #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
-#[test(tokio::test)]
+#[test(tokio::test(flavor = "multi_thread", worker_threads = 1))]
 async fn executes_simple_action_run() {
     let prefix = nats_prefix();
     run_veritech_server_for_uds_cyclone(prefix.clone()).await;
@@ -172,13 +173,14 @@ async fn executes_simple_action_run() {
             assert_eq!(success.status, ResourceStatus::Ok);
         }
         FunctionResult::Failure(failure) => {
+            dbg!("Request details: {:?}", request);
             panic!("function did not succeed and should have: {failure:?}")
         }
     }
 }
 
 #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
-#[test(tokio::test)]
+#[test(tokio::test(flavor = "multi_thread", worker_threads = 1))]
 async fn executes_simple_resolver_function() {
     let prefix = nats_prefix();
     run_veritech_server_for_uds_cyclone(prefix.clone()).await;
@@ -221,13 +223,14 @@ async fn executes_simple_resolver_function() {
             assert!(!success.unset);
         }
         FunctionResult::Failure(failure) => {
+            dbg!("Request details: {:?}", request);
             panic!("function did not succeed and should have: {failure:?}")
         }
     }
 }
 
 #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
-#[test(tokio::test)]
+#[test(tokio::test(flavor = "multi_thread", worker_threads = 1))]
 async fn type_checks_resolve_function() {
     let prefix = nats_prefix();
     run_veritech_server_for_uds_cyclone(prefix.clone()).await;
@@ -290,10 +293,12 @@ async fn type_checks_resolve_function() {
                     let value = inner.get("value").expect("value should exist").clone();
                     assert_eq!(value, success.data);
                 } else {
+                    dbg!("Request details: {:?}", request);
                     panic!("no value in return data :(")
                 }
             }
             FunctionResult::Failure(_) => {
+                dbg!("Request details: {:?}", request);
                 panic!("should have failed :(");
             }
         }
@@ -363,7 +368,7 @@ async fn type_checks_resolve_function() {
 }
 
 #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
-#[test(tokio::test)]
+#[test(tokio::test(flavor = "multi_thread", worker_threads = 1))]
 async fn executes_simple_validation() {
     let prefix = nats_prefix();
     run_veritech_server_for_uds_cyclone(prefix.clone()).await;
@@ -397,13 +402,14 @@ async fn executes_simple_validation() {
             assert!(success.error.is_none());
         }
         FunctionResult::Failure(failure) => {
+            dbg!("Request details: {:?}", request);
             panic!("function did not succeed and should have: {failure:?}")
         }
     }
 }
 
 #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
-#[test(tokio::test)]
+#[test(tokio::test(flavor = "multi_thread", worker_threads = 1))]
 async fn executes_simple_schema_variant_definition() {
     let prefix = nats_prefix();
     run_veritech_server_for_uds_cyclone(prefix.clone()).await;
@@ -451,6 +457,7 @@ async fn executes_simple_schema_variant_definition() {
             );
         }
         FunctionResult::Failure(failure) => {
+            dbg!("Request details: {:?}", request);
             panic!("function did not succeed and should have: {failure:?}")
         }
     }

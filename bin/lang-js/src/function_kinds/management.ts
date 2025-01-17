@@ -44,7 +44,7 @@ export interface ManagementCreate {
 }
 
 export interface ManagementOperations {
-  create?: ManagementCreate,
+  create?: ManagementCreate;
   update?: {
     [key: string]: {
       properties?: object;
