@@ -1,21 +1,19 @@
+import { CfSchema, getServiceByName, loadCfDatabase } from "../cfDb.ts";
 import {
-  CfProperty,
-  CfSchema,
-  getServiceByName,
-  loadCfDatabase,
-  normalizeAnyOfAndOneOfTypes,
-  normalizePropertyType,
-} from "../cfDb.ts";
+  createDefaultProp,
+  createProp,
+  isExpandedPropSpec,
+  OnlyProperties,
+} from "../spec/props.ts";
 import { PkgSpec } from "../bindings/PkgSpec.ts";
 import { SchemaSpec } from "../bindings/SchemaSpec.ts";
 import { SchemaVariantSpec } from "../bindings/SchemaVariantSpec.ts";
 import { ulid } from "https://deno.land/x/ulid@v0.3.0/mod.ts";
 import { PropSpec } from "../bindings/PropSpec.ts";
-import { PropSpecData } from "../bindings/PropSpecData.ts";
 import { FuncSpec } from "../bindings/FuncSpec.ts";
-import type {
-  FuncSpecData,
-} from "../../../../lib/si-pkg/bindings/FuncSpecData.ts";
+import type { FuncSpecData } from "../bindings/FuncSpecData.ts";
+import { SocketSpec } from "../bindings/SocketSpec.ts";
+import { createSocketFromProp } from "../spec/sockets.ts";
 
 function pkgSpecFromCf(src: CfSchema): PkgSpec {
   const [aws, category, name] = src.typeName.split("::");
@@ -30,16 +28,8 @@ function pkgSpecFromCf(src: CfSchema): PkgSpec {
   const assetFuncUniqueKey = ulid();
   const schemaUniqueKey = ulid();
 
-  const domain: PropSpec = createDefaultProp("domain");
-  // console.log("Creating Props");
-  // console.log(`Creating ${name}`);
-  Object.entries(src.properties).forEach(([name, cfData]) => {
-    try {
-      domain.entries.push(createProp(name, cfData));
-    } catch (e) {
-      console.log(`Err ${e}`);
-    }
-  });
+  const domain: PropSpec = createDomainFromSrc(src);
+  const sockets = createSocketsFromDomain(domain);
 
   const variant: SchemaVariantSpec = {
     version: "",
@@ -58,7 +48,7 @@ function pkgSpecFromCf(src: CfSchema): PkgSpec {
     actionFuncs: [],
     authFuncs: [],
     leafFunctions: [],
-    sockets: [],
+    sockets,
     siPropFuncs: [],
     managementFuncs: [],
     domain,
@@ -153,178 +143,51 @@ export async function generateSiSpecDatabase() {
   // console.log(`built ${imported} out of ${cfSchemas.length}`);
 }
 
-type CreatePropQueue = {
-  addTo: null | ((data: PropSpec) => undefined);
-  name: string;
-  cfProp: CfProperty;
-}[];
-
-function createProp(name: string, cfProp: CfProperty) {
-  const queue: CreatePropQueue = [
-    {
-      name,
-      cfProp,
-      addTo: null,
-    },
-  ];
-
-  let rootProp = undefined;
-
-  while (queue.length > 0) {
-    const data = queue.shift();
-    if (!data) break;
-
-    const prop = createPropInner(data.name, data.cfProp, queue);
-
-    if (!data.addTo) {
-      rootProp = prop;
-    } else {
-      data.addTo(prop);
-    }
-  }
-
-  if (!rootProp) {
-    throw new Error(`createProp for ${name} did not generate a prop`);
-  }
-
-  return rootProp;
-}
-
-function createPropInner(
-  name: string,
-  cfProp: CfProperty,
-  queue: CreatePropQueue,
+function createDomainFromSrc(
+  src: CfSchema,
 ): PropSpec {
-  const propUniqueId = ulid();
-  const data: PropSpecData = {
-    name,
-    validationFormat: null,
-    defaultValue: null,
-    funcUniqueId: null,
-    inputs: null,
-    widgetKind: null,
-    widgetOptions: null,
-    hidden: false,
-    docLink: null,
-    documentation: null,
+  const onlyProperties: OnlyProperties = {
+    "createOnly": normalizeOnlyProperties(src.createOnlyProperties),
+    "readOnly": normalizeOnlyProperties(src.readOnlyProperties),
+    "writeOnly": normalizeOnlyProperties(src.writeOnlyProperties),
   };
 
-  const partialProp: unknown = {
-    name,
-    data,
-    uniqueId: propUniqueId,
-  };
-
-  let normalizedCfData = normalizePropertyType(cfProp);
-  normalizedCfData = normalizeAnyOfAndOneOfTypes(normalizedCfData);
-
-  if (
-    normalizedCfData.type === "integer" || normalizedCfData.type === "number"
-  ) {
-    const prop = partialProp as Extract<PropSpec, { kind: "number" }>;
-    prop.kind = "number";
-    prop.data!.widgetKind = "Text";
-    return prop;
-  } else if (normalizedCfData.type === "boolean") {
-    const prop = partialProp as Extract<PropSpec, { kind: "boolean" }>;
-    prop.kind = "boolean";
-    prop.data!.widgetKind = "Checkbox";
-
-    return prop;
-  } else if (normalizedCfData.type === "string") {
-    const prop = partialProp as Extract<PropSpec, { kind: "string" }>;
-    prop.kind = "string";
-    prop.data!.widgetKind = "Text";
-
-    return prop;
-  } else if (normalizedCfData.type === "array") {
-    const prop = partialProp as Extract<PropSpec, { kind: "array" }>;
-    prop.kind = "array";
-    prop.data!.widgetKind = "Array";
-
-    queue.push({
-      addTo: (data: PropSpec) => {
-        prop.typeProp = data;
-      },
-      name: `${name}Item`,
-      cfProp: normalizedCfData.items,
-    });
-
-    return prop;
-  } else if (normalizedCfData.type === "object") {
-    if (normalizedCfData.patternProperties) {
-      const prop = partialProp as Extract<PropSpec, { kind: "map" }>;
-      prop.kind = "map";
-      prop.data!.widgetKind = "Map";
-
-      const patternProps = Object.entries(normalizedCfData.patternProperties);
-
-      const [_, patternProp] = patternProps[0];
-
-      if (patternProps.length !== 1 || !patternProp) {
-        console.log(patternProps);
-        throw new Error("too many pattern props you fool");
-      }
-
-      queue.push({
-        addTo: (data: PropSpec) => {
-          prop.typeProp = data;
-        },
-        name: `${name}Item`,
-        cfProp: patternProp,
-      });
-
-      return prop;
-    } else if (normalizedCfData.properties) {
-      const prop = partialProp as Extract<PropSpec, { kind: "object" }>;
-      prop.kind = "object";
-      prop.data!.widgetKind = "Header";
-      prop.entries = [];
-
-      Object.entries(normalizedCfData.properties).forEach(
-        ([objName, objProp]) => {
-          queue.push({
-            addTo: (data: PropSpec) => {
-              prop.entries.push(data);
-            },
-            name: objName,
-            cfProp: objProp,
-          });
-        },
-      );
-      return prop;
+  const domain: PropSpec = createDefaultProp("domain");
+  Object.entries(src.properties).forEach(([name, cfData]) => {
+    try {
+      domain.entries.push(createProp(name, cfData, onlyProperties));
+    } catch (e) {
+      console.log(`Err ${e}`);
     }
-  }
+  });
 
-  console.log(cfProp);
-  console.log(normalizedCfData);
-
-  throw new Error("no matching kind");
+  return domain;
 }
 
-type DefaultPropType = "domain" | "secrets" | "resource";
+function normalizeOnlyProperties(props: string[] | undefined): string[] {
+  const newProps: string[] = [];
+  for (const prop of props ?? []) {
+    const newProp = prop.split("/").pop();
+    if (newProp) {
+      newProps.push(newProp);
+    }
+  }
+  return newProps;
+}
 
-function createDefaultProp(
-  type: DefaultPropType,
-): Extract<PropSpec, { kind: "object" }> {
-  const data: PropSpecData = {
-    name: type,
-    validationFormat: null,
-    defaultValue: null,
-    funcUniqueId: null,
-    inputs: null,
-    widgetKind: "Header",
-    widgetOptions: null,
-    hidden: null,
-    docLink: null,
-    documentation: null,
-  };
-
-  return {
-    kind: "object",
-    data,
-    name: type,
-    entries: [],
-    uniqueId: ulid(),
-  };
+function createSocketsFromDomain(domain: PropSpec): SocketSpec[] {
+  const sockets: SocketSpec[] = [];
+  if (domain.kind == "object") {
+    for (const prop of domain.entries) {
+      if (
+        !["array", "object"].includes(prop.kind) && isExpandedPropSpec(prop)
+      ) {
+        const socket = createSocketFromProp(prop);
+        if (socket) {
+          sockets.push(socket);
+        }
+      }
+    }
+  }
+  return sockets;
 }

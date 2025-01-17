@@ -1,6 +1,7 @@
 import { type JSONSchema } from "https://deno.land/x/json_schema_typed@v8.0.0/draft_07.ts";
 import $RefParser from "npm:@apidevtools/json-schema-ref-parser";
 import _logger from "./logger.ts";
+import { ServiceMissing } from "./errors.ts";
 
 const logger = _logger.ns("cfDb").seal();
 
@@ -171,15 +172,6 @@ export async function loadCfDatabase(): Promise<CfDb> {
   }
 
   return DB;
-}
-
-export class ServiceMissing extends Error {
-  constructor(serviceName: string) {
-    super(
-      `Attempt to find schema for service ${serviceName}, but it does not exist`,
-    );
-    this.name = "SchemaMissing";
-  }
 }
 
 export function getServiceByName(serviceName: string): CfSchema {

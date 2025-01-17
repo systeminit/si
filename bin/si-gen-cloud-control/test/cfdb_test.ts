@@ -1,5 +1,9 @@
 import { assertEquals, assertExists, assertThrows } from "@std/assert";
-import { getPropertiesForService, getServiceByName } from "../src/cfDb.ts";
+import {
+  CfProperty,
+  getPropertiesForService,
+  getServiceByName,
+} from "../src/cfDb.ts";
 import { assertObjectMatch } from "@std/assert/object-match";
 
 Deno.test(function getByServiceNameReturnsSchema() {
@@ -14,7 +18,7 @@ Deno.test(function propertiesExpandRefs() {
   const properties = getPropertiesForService("AWS::WAF::WebACL");
   assertExists(properties, "properties not found");
   assertObjectMatch(
-    properties["DefaultAction"] as Record<PropertyKey, string>,
+    properties["DefaultAction"] as CfProperty,
     {
       "type": "object",
       "additionalProperties": false,
