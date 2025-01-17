@@ -7,7 +7,6 @@ use std::collections::{HashMap, HashSet};
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 
-use graph::approval::ApprovalRequirement;
 use graph::correct_transforms::correct_transforms;
 use graph::detector::{Change, Update};
 use graph::{RebaseBatch, WorkspaceSnapshotGraph};
@@ -17,7 +16,7 @@ use serde::{Deserialize, Serialize};
 use si_data_pg::PgError;
 use si_events::workspace_snapshot::Checksum;
 use si_events::{ulid::Ulid, ContentHash, WorkspaceSnapshotAddress};
-use si_id::{EntityId, WorkspacePk};
+use si_id::{ApprovalRequirementDefinitionId, EntityId};
 use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -112,6 +111,10 @@ pub enum WorkspaceSnapshotError {
     Join(#[from] JoinError),
     #[error("layer db error: {0}")]
     LayerDb(#[from] si_layer_cache::LayerDbError),
+    #[error(
+        "missing content from content map for hash ({0}) and approval requirement definition ({1})"
+    )]
+    MissingContentFromContentMap(ContentHash, ApprovalRequirementDefinitionId),
     #[error("missing content from store for id: {0}")]
     MissingContentFromStore(Ulid),
     #[error("could not find a max vector clock for change set id {0}")]
@@ -746,23 +749,6 @@ impl WorkspaceSnapshot {
         head_snapshot
             .detect_changes(&ctx.workspace_snapshot()?.clone())
             .await
-    }
-
-    /// Collects all the [`ApprovalRequirements`](ApprovalRequirement) based on the changes passed in.
-    #[instrument(
-        name = "workspace_snapshot.approval_requirements_for_changes",
-        level = "debug",
-        skip_all
-    )]
-    pub async fn approval_requirements_for_changes(
-        &self,
-        workspace_id: WorkspacePk,
-        changes: &[Change],
-    ) -> WorkspaceSnapshotResult<Vec<ApprovalRequirement>> {
-        Ok(self
-            .working_copy()
-            .await
-            .approval_requirements_for_changes(workspace_id, changes)?)
     }
 
     /// Calculates the checksum based on a list of IDs passed in.
@@ -1678,6 +1664,7 @@ impl WorkspaceSnapshot {
                 }
 
                 ContentAddressDiscriminants::ActionPrototype
+                | ContentAddressDiscriminants::ApprovalRequirementDefinition
                 | ContentAddressDiscriminants::Component
                 | ContentAddressDiscriminants::DeprecatedAction
                 | ContentAddressDiscriminants::DeprecatedActionBatch
@@ -1687,6 +1674,7 @@ impl WorkspaceSnapshot {
                 | ContentAddressDiscriminants::Geometry
                 | ContentAddressDiscriminants::InputSocket
                 | ContentAddressDiscriminants::JsonValue
+                | ContentAddressDiscriminants::ManagementPrototype
                 | ContentAddressDiscriminants::Module
                 | ContentAddressDiscriminants::OutputSocket
                 | ContentAddressDiscriminants::Prop
@@ -1695,12 +1683,12 @@ impl WorkspaceSnapshot {
                 | ContentAddressDiscriminants::SchemaVariant
                 | ContentAddressDiscriminants::Secret
                 | ContentAddressDiscriminants::ValidationPrototype
-                | ContentAddressDiscriminants::View
-                | ContentAddressDiscriminants::ManagementPrototype => None,
+                | ContentAddressDiscriminants::View => None,
             },
 
             NodeWeight::Action(_)
             | NodeWeight::ActionPrototype(_)
+            | NodeWeight::ApprovalRequirementDefinition(_)
             | NodeWeight::Category(_)
             | NodeWeight::Component(_)
             | NodeWeight::DependentValueRoot(_)
@@ -1709,12 +1697,12 @@ impl WorkspaceSnapshot {
             | NodeWeight::Func(_)
             | NodeWeight::FuncArgument(_)
             | NodeWeight::Geometry(_)
-            | NodeWeight::View(_)
             | NodeWeight::InputSocket(_)
+            | NodeWeight::ManagementPrototype(_)
             | NodeWeight::Prop(_)
             | NodeWeight::SchemaVariant(_)
-            | NodeWeight::ManagementPrototype(_)
-            | NodeWeight::Secret(_) => None,
+            | NodeWeight::Secret(_)
+            | NodeWeight::View(_) => None,
         } {
             let next_node_idxs = self
                 .incoming_sources_for_edge_weight_kind(this_node_weight.id(), edge_kind)

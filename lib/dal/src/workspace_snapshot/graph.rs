@@ -20,7 +20,6 @@ use crate::{
     ComponentError, EdgeWeightKindDiscriminants, SchemaVariantError,
 };
 
-pub mod approval;
 pub mod correct_transforms;
 pub mod deprecated;
 pub mod detector;
@@ -30,7 +29,10 @@ pub mod v2;
 pub mod v3;
 pub mod v4;
 
-pub use traits::{schema::variant::SchemaVariantExt, socket::input::InputSocketExt};
+pub use traits::{
+    approval_requirement::ApprovalRequirementExt, schema::variant::SchemaVariantExt,
+    socket::input::InputSocketExt,
+};
 pub use v2::WorkspaceSnapshotGraphV2;
 pub use v3::WorkspaceSnapshotGraphV3;
 pub use v4::WorkspaceSnapshotGraphV4;

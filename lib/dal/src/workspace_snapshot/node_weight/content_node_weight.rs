@@ -96,6 +96,12 @@ impl ContentNodeWeight {
                 ContentAddress::DeprecatedActionRunner(content_hash)
             }
             ContentAddress::ActionPrototype(_) => ContentAddress::ActionPrototype(content_hash),
+            ContentAddress::ApprovalRequirementDefinition(_) => {
+                return Err(NodeWeightError::InvalidContentAddressForWeightKind(
+                    "ApprovalRequirement".to_string(),
+                    "Content".to_string(),
+                ));
+            }
             ContentAddress::AttributePrototype(_) => {
                 ContentAddress::AttributePrototype(content_hash)
             }

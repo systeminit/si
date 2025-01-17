@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 
+use dal::approval_requirement::ApprovalRequirementApprover;
 use dal::change_set::approval::ChangeSetApproval;
+use dal::diagram::view::View;
 use dal::ComponentType;
 use dal::DalContext;
 use dal::HistoryActor;
@@ -61,11 +63,11 @@ async fn single_user_relation_existence_and_checksum_validility_permutations(
     // Cache hardcoded values. This should eventually become dynamic as the feature evolves.
     let entity_kind = EntityKind::SchemaVariant;
     let required_count = 1;
-    let lookup_group_key = format!("workspace#{workspace_id}#approve");
-    let approving_groups_without_relation =
-        HashMap::from_iter(vec![(lookup_group_key.to_owned(), Vec::new())]);
-    let approving_groups_with_relation =
-        HashMap::from_iter(vec![(lookup_group_key, vec![user_id.to_string()])]);
+    let permission_lookup_key = format!("workspace#{workspace_id}#approve");
+    let approvers_groups_without_relation =
+        HashMap::from_iter(vec![(permission_lookup_key.to_owned(), Vec::new())]);
+    let approvers_groups_with_relation =
+        HashMap::from_iter(vec![(permission_lookup_key, vec![user_id])]);
 
     // Scenario 1: we start without any relations in SpiceDB. First, create a component, create a
     // schema variant and then approve. Second, create a second component and then approve. Both of
@@ -138,15 +140,16 @@ async fn single_user_relation_existence_and_checksum_validility_permutations(
         );
 
         let frontend_requirements = calculator
-            .frontend_requirements(ctx, &mut spicedb_client)
+            .frontend_requirements(&mut spicedb_client)
             .await?;
         let expected_requirements = vec![si_frontend_types::ChangeSetApprovalRequirement {
             entity_id,
             entity_kind,
             required_count,
             is_satisfied: false,
-            applicable_approval_ids: vec![],
-            approving_groups: approving_groups_without_relation.to_owned(),
+            applicable_approval_ids: Vec::new(),
+            approver_groups: approvers_groups_without_relation.to_owned(),
+            approver_individuals: Vec::new(),
         }];
         assert_eq!(
             expected_requirements, // expected
@@ -185,7 +188,7 @@ async fn single_user_relation_existence_and_checksum_validility_permutations(
         );
 
         let mut frontend_requirements = calculator
-            .frontend_requirements(ctx, &mut spicedb_client)
+            .frontend_requirements(&mut spicedb_client)
             .await?;
         frontend_requirements
             .iter_mut()
@@ -196,7 +199,8 @@ async fn single_user_relation_existence_and_checksum_validility_permutations(
             required_count,
             is_satisfied: false,
             applicable_approval_ids: vec![first_approval_id, second_approval_id],
-            approving_groups: approving_groups_with_relation.to_owned(),
+            approver_groups: approvers_groups_with_relation.to_owned(),
+            approver_individuals: Vec::new(),
         }];
         assert_eq!(
             expected_requirements, // expected
@@ -235,7 +239,7 @@ async fn single_user_relation_existence_and_checksum_validility_permutations(
         );
 
         let mut frontend_requirements = calculator
-            .frontend_requirements(ctx, &mut spicedb_client)
+            .frontend_requirements(&mut spicedb_client)
             .await?;
         frontend_requirements
             .iter_mut()
@@ -250,7 +254,8 @@ async fn single_user_relation_existence_and_checksum_validility_permutations(
                 second_approval_id,
                 third_approval.id(),
             ],
-            approving_groups: approving_groups_with_relation.to_owned(),
+            approver_groups: approvers_groups_with_relation.to_owned(),
+            approver_individuals: Vec::new(),
         }];
         assert_eq!(
             expected_requirements, // expected
@@ -287,15 +292,16 @@ async fn single_user_relation_existence_and_checksum_validility_permutations(
         );
 
         let frontend_requirements = calculator
-            .frontend_requirements(ctx, &mut spicedb_client)
+            .frontend_requirements(&mut spicedb_client)
             .await?;
         let expected_requirements = vec![si_frontend_types::ChangeSetApprovalRequirement {
             entity_id,
             entity_kind,
             required_count,
             is_satisfied: false,
-            applicable_approval_ids: vec![],
-            approving_groups: approving_groups_without_relation.to_owned(),
+            applicable_approval_ids: Vec::new(),
+            approver_groups: approvers_groups_without_relation.to_owned(),
+            approver_individuals: Vec::new(),
         }];
         assert_eq!(
             expected_requirements, // expected
@@ -329,7 +335,7 @@ async fn single_user_relation_existence_and_checksum_validility_permutations(
         );
 
         let mut frontend_requirements = calculator
-            .frontend_requirements(ctx, &mut spicedb_client)
+            .frontend_requirements(&mut spicedb_client)
             .await?;
         frontend_requirements
             .iter_mut()
@@ -340,11 +346,275 @@ async fn single_user_relation_existence_and_checksum_validility_permutations(
             required_count,
             is_satisfied: true,
             applicable_approval_ids: vec![first_approval_id, second_approval_id, third_approval_id],
-            approving_groups: approving_groups_with_relation,
+            approver_groups: approvers_groups_with_relation,
+            approver_individuals: Vec::new(),
         }];
         assert_eq!(
             expected_requirements, // expected
             frontend_requirements  // actual
+        );
+    }
+
+    Ok(())
+}
+
+// NOTE(nick): this is an integration test and not a service test, but given that "sdf_test" is in
+// a weird, unused place at the time of writing, this test will live here.
+#[sdf_test]
+async fn individual_approver_for_view(
+    ctx: &mut DalContext,
+    spicedb_client: SpiceDbClient,
+) -> Result<()> {
+    let mut spicedb_client = spicedb_client;
+
+    // FIXME(nick,jacob): see the comment attached to this function.
+    write_schema(&mut spicedb_client).await?;
+
+    // Cache the IDs we need.
+    let workspace_id = ctx.workspace_pk()?;
+    let user_id = match ctx.history_actor() {
+        HistoryActor::SystemInit => return Err(eyre!("invalid user")),
+        HistoryActor::User(user_id) => *user_id,
+    };
+
+    // Cache the approver groups we need.
+    let permission_lookup_key = format!("workspace#{workspace_id}#approve");
+    let approver_groups_without_relation =
+        HashMap::from_iter(vec![(permission_lookup_key.to_owned(), Vec::new())]);
+    let approver_groups_with_relation =
+        HashMap::from_iter(vec![(permission_lookup_key, vec![user_id])]);
+
+    // Scenario 1: see all approvals and requirements with an "empty" workspace.
+    {
+        let calculator = ChangeSetApprovalCalculator::new(ctx, &mut spicedb_client).await?;
+        let frontend_latest_approvals = calculator.frontend_latest_approvals();
+        let frontend_requirements = calculator
+            .frontend_requirements(&mut spicedb_client)
+            .await?;
+
+        assert!(frontend_latest_approvals.is_empty());
+        assert!(frontend_requirements.is_empty());
+    }
+
+    // Scenario 2: add the approval requirement to the default view with ourself as the individual approver.
+    let (view_entity_id, approval_requirement_definition_entity_id) = {
+        let view_id = View::get_id_for_default(ctx).await?;
+        let approval_requirement_definition_id = View::add_approval_requirement(
+            ctx,
+            view_id,
+            1,
+            vec![ApprovalRequirementApprover::User(user_id)],
+        )
+        .await?;
+        let (view_entity_id, approval_requirement_definition_entity_id) = (
+            view_id.into_inner().into(),
+            approval_requirement_definition_id.into_inner().into(),
+        );
+        ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+        let calculator = ChangeSetApprovalCalculator::new(ctx, &mut spicedb_client).await?;
+        let frontend_latest_approvals = calculator.frontend_latest_approvals();
+        let mut frontend_requirements = calculator
+            .frontend_requirements(&mut spicedb_client)
+            .await?;
+        frontend_requirements.sort_by_key(|r| r.entity_id);
+
+        assert!(frontend_latest_approvals.is_empty());
+        assert_eq!(
+            vec![
+                si_frontend_types::ChangeSetApprovalRequirement {
+                    entity_id: view_entity_id,
+                    entity_kind: EntityKind::View,
+                    required_count: 1,
+                    is_satisfied: false,
+                    applicable_approval_ids: Vec::new(),
+                    approver_groups: HashMap::new(),
+                    approver_individuals: vec![user_id]
+                },
+                si_frontend_types::ChangeSetApprovalRequirement {
+                    entity_id: approval_requirement_definition_entity_id,
+                    entity_kind: EntityKind::ApprovalRequirementDefinition,
+                    required_count: 1,
+                    is_satisfied: false,
+                    applicable_approval_ids: Vec::new(),
+                    approver_groups: approver_groups_without_relation.to_owned(),
+                    approver_individuals: Vec::new(),
+                }
+            ], // expected
+            frontend_requirements // actual
+        );
+
+        (view_entity_id, approval_requirement_definition_entity_id)
+    };
+
+    // Scenario 3: create an approval that will satisfy the view requirement, but not the
+    // definition requirement.
+    let first_approval_id = {
+        let first_approval_id = {
+            let approving_ids =
+                dal_wrapper::determine_approving_ids(ctx, &mut spicedb_client).await?;
+            let first_approval =
+                ChangeSetApproval::new(ctx, ChangeSetApprovalStatus::Approved, approving_ids)
+                    .await?;
+            first_approval.id()
+        };
+        ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+        let calculator = ChangeSetApprovalCalculator::new(ctx, &mut spicedb_client).await?;
+        let frontend_latest_approvals = calculator.frontend_latest_approvals();
+        let mut frontend_requirements = calculator
+            .frontend_requirements(&mut spicedb_client)
+            .await?;
+        frontend_requirements.sort_by_key(|r| r.entity_id);
+
+        assert_eq!(
+            vec![si_frontend_types::ChangeSetApproval {
+                id: first_approval_id,
+                user_id,
+                status: ChangeSetApprovalStatus::Approved,
+                is_valid: true,
+            }], // expected
+            frontend_latest_approvals // actual
+        );
+        assert_eq!(
+            vec![
+                si_frontend_types::ChangeSetApprovalRequirement {
+                    entity_id: view_entity_id,
+                    entity_kind: EntityKind::View,
+                    required_count: 1,
+                    is_satisfied: true,
+                    applicable_approval_ids: vec![first_approval_id],
+                    approver_groups: HashMap::new(),
+                    approver_individuals: vec![user_id]
+                },
+                si_frontend_types::ChangeSetApprovalRequirement {
+                    entity_id: approval_requirement_definition_entity_id,
+                    entity_kind: EntityKind::ApprovalRequirementDefinition,
+                    required_count: 1,
+                    is_satisfied: false,
+                    applicable_approval_ids: Vec::new(),
+                    approver_groups: approver_groups_without_relation,
+                    approver_individuals: Vec::new(),
+                }
+            ], // expected
+            frontend_requirements // actual
+        );
+
+        first_approval_id
+    };
+
+    // Scenario 4: add ourself as a workspace approver. The original approval should still satisfy
+    // the view requirement, but not the definition requirement.
+    {
+        let relation = RelationBuilder::new()
+            .object(ObjectType::Workspace, workspace_id)
+            .relation(Relation::Approver)
+            .subject(ObjectType::User, user_id);
+        relation.create(&mut spicedb_client).await?;
+
+        let calculator = ChangeSetApprovalCalculator::new(ctx, &mut spicedb_client).await?;
+        let frontend_latest_approvals = calculator.frontend_latest_approvals();
+        let mut frontend_requirements = calculator
+            .frontend_requirements(&mut spicedb_client)
+            .await?;
+        frontend_requirements.sort_by_key(|r| r.entity_id);
+
+        assert_eq!(
+            vec![si_frontend_types::ChangeSetApproval {
+                id: first_approval_id,
+                user_id,
+                status: ChangeSetApprovalStatus::Approved,
+                is_valid: false,
+            }], // expected
+            frontend_latest_approvals // actual
+        );
+        assert_eq!(
+            vec![
+                si_frontend_types::ChangeSetApprovalRequirement {
+                    entity_id: view_entity_id,
+                    entity_kind: EntityKind::View,
+                    required_count: 1,
+                    is_satisfied: false,
+                    applicable_approval_ids: vec![first_approval_id],
+                    approver_groups: HashMap::new(),
+                    approver_individuals: vec![user_id]
+                },
+                si_frontend_types::ChangeSetApprovalRequirement {
+                    entity_id: approval_requirement_definition_entity_id,
+                    entity_kind: EntityKind::ApprovalRequirementDefinition,
+                    required_count: 1,
+                    is_satisfied: false,
+                    applicable_approval_ids: vec![first_approval_id],
+                    approver_groups: approver_groups_with_relation.to_owned(),
+                    approver_individuals: Vec::new(),
+                }
+            ], // expected
+            frontend_requirements // actual
+        );
+    }
+
+    // Scenario 5: create an approval that will satisfy the definition requirement.
+    {
+        let second_approval_id = {
+            let approving_ids =
+                dal_wrapper::determine_approving_ids(ctx, &mut spicedb_client).await?;
+            let second_approval =
+                ChangeSetApproval::new(ctx, ChangeSetApprovalStatus::Approved, approving_ids)
+                    .await?;
+            second_approval.id()
+        };
+        ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+        let calculator = ChangeSetApprovalCalculator::new(ctx, &mut spicedb_client).await?;
+        let mut frontend_latest_approvals = calculator.frontend_latest_approvals();
+        let mut frontend_requirements = calculator
+            .frontend_requirements(&mut spicedb_client)
+            .await?;
+        frontend_latest_approvals.sort_by_key(|a| a.id);
+        frontend_requirements.sort_by_key(|r| r.entity_id);
+        frontend_requirements
+            .iter_mut()
+            .for_each(|r| r.applicable_approval_ids.sort());
+
+        assert_eq!(
+            vec![
+                si_frontend_types::ChangeSetApproval {
+                    id: first_approval_id,
+                    user_id,
+                    status: ChangeSetApprovalStatus::Approved,
+                    is_valid: false,
+                },
+                si_frontend_types::ChangeSetApproval {
+                    id: second_approval_id,
+                    user_id,
+                    status: ChangeSetApprovalStatus::Approved,
+                    is_valid: true,
+                }
+            ], // expected
+            frontend_latest_approvals // actual
+        );
+        assert_eq!(
+            vec![
+                si_frontend_types::ChangeSetApprovalRequirement {
+                    entity_id: view_entity_id,
+                    entity_kind: EntityKind::View,
+                    required_count: 1,
+                    is_satisfied: true,
+                    applicable_approval_ids: vec![first_approval_id, second_approval_id],
+                    approver_groups: HashMap::new(),
+                    approver_individuals: vec![user_id]
+                },
+                si_frontend_types::ChangeSetApprovalRequirement {
+                    entity_id: approval_requirement_definition_entity_id,
+                    entity_kind: EntityKind::ApprovalRequirementDefinition,
+                    required_count: 1,
+                    is_satisfied: true,
+                    applicable_approval_ids: vec![first_approval_id, second_approval_id],
+                    approver_groups: approver_groups_with_relation,
+                    approver_individuals: Vec::new(),
+                }
+            ], // expected
+            frontend_requirements // actual
         );
     }
 
