@@ -1,7 +1,7 @@
 use si_frontend_types::{
     fs::{
         ChangeSet, CreateChangeSetRequest, CreateChangeSetResponse, Func, ListChangeSetsResponse,
-        ListVariantsResponse, Schema,
+        ListVariantsResponse, Schema, VariantQuery,
     },
     FuncKind,
 };
@@ -85,13 +85,13 @@ impl SiFsClient {
     }
 
     pub async fn schemas(&self, change_set_id: ChangeSetId) -> SiFsClientResult<Vec<Schema>> {
-        let response = dbg!(self
+        let response = self
             .client
             .get(self.fs_api_change_sets("schemas", change_set_id))
             .bearer_auth(&self.token)
             .send()
             .await?
-            .error_for_status())?;
+            .error_for_status()?;
 
         Ok(response.json().await?)
     }
@@ -128,6 +128,24 @@ impl SiFsClient {
             .error_for_status()?
             .json()
             .await?)
+    }
+
+    pub async fn asset_func_for_variant(
+        &self,
+        change_set_id: ChangeSetId,
+        schema_id: SchemaId,
+        unlocked: bool,
+    ) -> SiFsClientResult<Func> {
+        let response = self
+            .client
+            .get(self.fs_api_change_sets(&format!("schemas/{schema_id}/asset_func"), change_set_id))
+            .query(&VariantQuery { unlocked })
+            .bearer_auth(&self.token)
+            .send()
+            .await?
+            .error_for_status()?;
+
+        Ok(response.json().await?)
     }
 
     pub async fn func_code(

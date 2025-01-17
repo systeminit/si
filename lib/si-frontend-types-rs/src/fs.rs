@@ -71,3 +71,8 @@ pub fn kind_from_string(s: &str) -> Option<FuncKind> {
         _ => return None,
     })
 }
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct VariantQuery {
+    pub unlocked: bool,
+}

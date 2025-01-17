@@ -41,6 +41,11 @@ impl InodeEntry {
 #[allow(dead_code)]
 #[remain::sorted]
 pub enum InodeEntryData {
+    AssetFunc {
+        id: FuncId,
+        change_set_id: ChangeSetId,
+        unlocked: bool,
+    },
     ChangeSet {
         id: ChangeSetId,
         name: String,
@@ -71,7 +76,7 @@ pub enum InodeEntryData {
         id: SchemaVariantId,
         schema_id: SchemaId,
         change_set_id: ChangeSetId,
-        locked: bool,
+        unlocked: bool,
     },
     WorkspaceRoot {
         workspace_id: WorkspaceId,
@@ -114,6 +119,12 @@ impl InodeTable {
             .and_then(|path| self.entries_by_path.get(path))
     }
 
+    pub fn get_mut(&mut self, ino: u64) -> Option<&mut InodeEntry> {
+        self.path(ino)
+            .cloned()
+            .and_then(|path| self.entries_by_path.get_mut(&path))
+    }
+
     pub fn next_ino(&self) -> u64 {
         self.path_table.len().saturating_add(1) as u64
     }
@@ -146,7 +157,14 @@ impl InodeTable {
         Ok(self.upsert(path, entry_data, kind, write, size))
     }
 
-    pub fn make_attrs(&self, ino: u64, kind: FileType, perm: u16, size: u64) -> FileAttr {
+    pub fn make_attrs(&self, ino: u64, kind: FileType, write: bool, size: Option<u64>) -> FileAttr {
+        let perm: u16 = match kind {
+            FileType::Directory => if write { 0o755 } else { 0o555 }
+            FileType::RegularFile => if write { 0o644 } else  { 0o444 }
+            _ => unimplemented!("I don't know why this kind of file was upserted, Only directories and regular files supported"),
+        };
+        let size = size.unwrap_or(512);
+
         FileAttr {
             ino,
             size,
@@ -166,6 +184,12 @@ impl InodeTable {
         }
     }
 
+    pub fn set_size(&mut self, ino: u64, size: u64) {
+        if let Some(entry) = self.get_mut(ino) {
+            entry.attrs.size = size;
+        }
+    }
+
     pub fn upsert(
         &mut self,
         path: PathBuf,
@@ -174,7 +198,6 @@ impl InodeTable {
         write: bool,
         size: Option<u64>,
     ) -> u64 {
-        let size = size.unwrap_or(512);
         let parent = path
             .parent()
             .and_then(|path| self.entries_by_path.get(&path.to_path_buf()))
@@ -182,13 +205,7 @@ impl InodeTable {
 
         let next_ino = self.next_ino();
 
-        let perm: u16 = match kind {
-            FileType::Directory => if write { 0o755 } else { 0o555 }
-            FileType::RegularFile => if write { 0o644 } else  { 0o444 }
-            _ => unimplemented!("I don't know why this kind of file was upserted, Only directories and regular files supported"),
-        };
-
-        let attrs = self.make_attrs(next_ino, kind, perm, size);
+        let attrs = self.make_attrs(next_ino, kind, write, size);
 
         let entry = self
             .entries_by_path

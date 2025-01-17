@@ -33,6 +33,8 @@ pub use command::FilesystemCommand;
 const FILE_HANDLE_READ_BIT: u64 = 1 << 63;
 // const FILE_HANDLE_WRITE_BIT: u64 = 1 << 62;
 
+const TYPESCRIPT_INDEX: &str = "index.ts";
+
 #[derive(Error, Debug)]
 pub enum SiFileSystemError {
     #[error("inode entry that should exist was not found: {0}")]
@@ -43,6 +45,8 @@ pub enum SiFileSystemError {
     InodeTable(#[from] InodeTableError),
     #[error("si-fs client error: {0}")]
     SiFsClient(#[from] SiFsClientError),
+    #[error("std io error: {0}")]
+    StdIo(#[from] std::io::Error),
 }
 
 pub type SiFileSystemResult<T> = Result<T, SiFileSystemError>;
@@ -175,6 +179,7 @@ impl SiFileSystem {
         };
 
         match parent_entry.data() {
+            InodeEntryData::AssetFunc { .. } => reply.error(EINVAL),
             InodeEntryData::WorkspaceRoot { .. } => {
                 let change_set = self.client.create_change_set(name.to_owned()).await?;
 
@@ -191,7 +196,7 @@ impl SiFileSystem {
                         true,
                         None,
                     )?;
-                    inode_table.make_attrs(ino, FileType::Directory, 0o755, 512)
+                    inode_table.make_attrs(ino, FileType::Directory, true, Some(512))
                 };
 
                 reply.entry(&TTL, &attrs, 1);
@@ -277,9 +282,17 @@ impl SiFileSystem {
         };
 
         match entry.data() {
-            InodeEntryData::FuncCode { change_set_id, id } => {
+            InodeEntryData::FuncCode { change_set_id, id }
+            | InodeEntryData::AssetFunc {
+                id, change_set_id, ..
+            } => {
                 let code = self.client.func_code(*change_set_id, *id).await?;
                 let bytes = code.as_bytes();
+                self.inode_table
+                    .write()
+                    .await
+                    .set_size(ino, bytes.len() as u64);
+
                 let read_len =
                     std::cmp::min(size, bytes.len().saturating_sub(offset as usize) as u32)
                         as usize;
@@ -382,10 +395,10 @@ impl SiFileSystem {
                             id: unlocked_variant_id,
                             schema_id: *id,
                             change_set_id: *change_set_id,
-                            locked: false,
+                            unlocked: true,
                         },
                         FileType::Directory,
-                        true,
+                        false,
                         None,
                     )?;
                     dirs.add(ino, "unlocked".into(), FileType::Directory);
@@ -401,7 +414,7 @@ impl SiFileSystem {
                             id: unlocked_variant_id,
                             schema_id: *id,
                             change_set_id: *change_set_id,
-                            locked: false,
+                            unlocked: false,
                         },
                         FileType::Directory,
                         true,
@@ -436,7 +449,30 @@ impl SiFileSystem {
                     dirs.add(ino, kind_string, FileType::Directory);
                 }
             }
-            InodeEntryData::SchemaVariant { .. } => {}
+            InodeEntryData::SchemaVariant {
+                schema_id,
+                change_set_id,
+                unlocked,
+                ..
+            } => {
+                let asset_func = self
+                    .client
+                    .asset_func_for_variant(*change_set_id, *schema_id, *unlocked)
+                    .await?;
+                let ino = self.inode_table.write().await.upsert_with_parent_ino(
+                    entry.ino,
+                    TYPESCRIPT_INDEX,
+                    InodeEntryData::AssetFunc {
+                        id: asset_func.id,
+                        change_set_id: *change_set_id,
+                        unlocked: *unlocked,
+                    },
+                    FileType::RegularFile,
+                    *unlocked,
+                    Some(asset_func.code_size),
+                )?;
+                dirs.add(ino, TYPESCRIPT_INDEX.into(), FileType::RegularFile);
+            }
             InodeEntryData::ChangeSetFuncKind {
                 kind,
                 change_set_id,
@@ -472,7 +508,7 @@ impl SiFileSystem {
 
                 let ino = inode_table.upsert_with_parent_ino(
                     entry.ino,
-                    "index.ts",
+                    TYPESCRIPT_INDEX,
                     InodeEntryData::FuncCode {
                         id: *id,
                         change_set_id: *change_set_id,
@@ -481,9 +517,9 @@ impl SiFileSystem {
                     false,
                     Some(*size),
                 )?;
-                dirs.add(ino, "index.ts".into(), FileType::RegularFile);
+                dirs.add(ino, TYPESCRIPT_INDEX.into(), FileType::RegularFile);
             }
-            InodeEntryData::FuncCode { .. } => {
+            InodeEntryData::FuncCode { .. } | InodeEntryData::AssetFunc { .. } => {
                 // a file is not a directory!
                 return Err(SiFileSystemError::InodeNotDirectory(ino));
             }
@@ -597,7 +633,7 @@ pub fn mount(
     mount_point: impl AsRef<Path>,
     runtime_handle: runtime::Handle,
     options: Option<Vec<MountOption>>,
-) {
+) -> SiFileSystemResult<()> {
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
     let async_fuse_wrapper = AsyncFuseWrapper::new(tx);
 
@@ -621,5 +657,7 @@ pub fn mount(
 
     options.extend_from_slice(&default_options);
 
-    fuser::mount2(async_fuse_wrapper, mount_point, &options).expect("mount fuse fs");
+    fuser::mount2(async_fuse_wrapper, mount_point, &options)?;
+
+    Ok(())
 }
