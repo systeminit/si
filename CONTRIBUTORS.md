@@ -38,3 +38,4 @@ We contributors to System Initiative:
 * Croxx (@MrCroxx)
 * Arne Keller (@FliegendeWurst)
 * Henry Hermes (@sandalwing)
+* Mr Lizard (@Mr-Lizard)
