@@ -2,7 +2,11 @@ name: Production Crons
 
 on:
   schedule:
-    - cron: "*/15 * * * *" # Runs every 15 minutes
+      # Weekends: Every 15 minutes except 7:45 PM and 8:00 PM UTC
+      - cron: "0-44/15 0-19 * * 6,0"  # Every 15 minutes from 12:00 AM to 7:44 PM UTC (Saturday to Sunday)
+      - cron: "15-59/15 20-23 * *  6,0" # Every 15 minutes from 8:15 PM to 11:59 PM UTC (Saturday to Sunday)
+      # Weekdays: Every 15 minutes 
+      - cron: "*/15 * * * 1-5" # Every 15 minutes on Monday to Friday
 
 # We will wait until these tests finish before starting a deploy
 # We will also wait for a deploy to finish before starting to run tests

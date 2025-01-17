@@ -2,7 +2,7 @@ name: Production Service Restart Cron
 
 on:
   schedule:
-    - cron: "0 20 * * 1-5" # Deploys every weekday at 8pm UTC
+    - cron: "0 20 * * 6,0" # Deploys every weekend at 8pm UTC
 
 concurrency:
   group: restart-production
