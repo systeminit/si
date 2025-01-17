@@ -19,6 +19,7 @@ use dal::{
 use thiserror::Error;
 use tokio::task::JoinError;
 
+mod add_individual_approver;
 pub mod create_component;
 pub mod create_view;
 pub mod create_view_and_move;
@@ -28,6 +29,7 @@ mod erase_view_object;
 pub mod get_diagram;
 pub mod list_views;
 mod paste_component;
+mod remove_individual_approver;
 mod remove_view;
 mod set_component_parent;
 mod set_geometry;
@@ -160,4 +162,12 @@ pub fn v2_routes() -> Router<AppState> {
             "/:view_id/view_object/set_geometry",
             put(set_geometry::set_view_object_geometry),
         )
+    // .route(
+    //     "/:view_id/add_individual_approver",
+    //     put(add_individual_approver::add_individual_approver),
+    // )
+    // .route(
+    //     "/:view_id/remove_individual_approver",
+    //     put(remove_individual_approver::remove_individual_approver),
+    // )
 }

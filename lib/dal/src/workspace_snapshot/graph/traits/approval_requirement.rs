@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use serde::{Deserialize, Serialize};
 use si_events::workspace_snapshot::EntityKind;
 use si_id::{ApprovalRequirementDefinitionId, EntityId, UserPk, WorkspacePk};
@@ -22,7 +24,7 @@ pub struct ApprovalRequirementRule {
     pub entity_id: EntityId,
     pub entity_kind: EntityKind,
     pub minimum: usize,
-    pub approvers: Vec<ApprovalRequirementApprover>,
+    pub approvers: HashSet<ApprovalRequirementApprover>,
 }
 
 #[derive(Debug)]

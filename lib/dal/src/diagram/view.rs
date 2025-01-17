@@ -22,7 +22,7 @@ use petgraph::Outgoing;
 use serde::{Deserialize, Serialize};
 use si_events::{ulid::Ulid, ComponentId, ContentHash};
 use si_frontend_types::RawGeometry;
-use si_id::ApprovalRequirementDefinitionId;
+use si_id::{ApprovalRequirementDefinitionId, UserPk};
 use std::{
     collections::{HashMap, HashSet},
     sync::Arc,
@@ -398,11 +398,46 @@ impl View {
         ctx: &DalContext,
         view_id: ViewId,
         minimum_approvers_count: usize,
-        approvers: Vec<ApprovalRequirementApprover>,
+        approvers: HashSet<ApprovalRequirementApprover>,
     ) -> DiagramResult<ApprovalRequirementDefinitionId> {
         Ok(
             ApprovalRequirement::new_definition(ctx, view_id, minimum_approvers_count, approvers)
                 .await?,
+        )
+    }
+
+    pub async fn remove_approval_requirement(
+        ctx: &DalContext,
+        approval_requirement_definition_id: ApprovalRequirementDefinitionId,
+    ) -> DiagramResult<()> {
+        Ok(ApprovalRequirement::remove_definition(ctx, approval_requirement_definition_id).await?)
+    }
+
+    pub async fn add_individual_approver_for_approval_requirement(
+        ctx: &DalContext,
+        approval_requirement_definition_id: ApprovalRequirementDefinitionId,
+        user_id: UserPk,
+    ) -> DiagramResult<()> {
+        Ok(ApprovalRequirement::add_individual_approver_for_definition(
+            ctx,
+            approval_requirement_definition_id,
+            user_id,
+        )
+        .await?)
+    }
+
+    pub async fn remove_individual_approver_for_approval_requirement(
+        ctx: &DalContext,
+        approval_requirement_definition_id: ApprovalRequirementDefinitionId,
+        user_id: UserPk,
+    ) -> DiagramResult<()> {
+        Ok(
+            ApprovalRequirement::remove_individual_approver_for_definition(
+                ctx,
+                approval_requirement_definition_id,
+                user_id,
+            )
+            .await?,
         )
     }
 }

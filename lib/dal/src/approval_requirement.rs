@@ -26,7 +26,9 @@
     while_true
 )]
 
-use si_id::{ulid::Ulid, ApprovalRequirementDefinitionId};
+use std::collections::HashSet;
+
+use si_id::{ulid::Ulid, ApprovalRequirementDefinitionId, UserPk};
 use telemetry::prelude::*;
 use thiserror::Error;
 
@@ -72,15 +74,57 @@ impl ApprovalRequirement {
         ctx: &DalContext,
         entity_id: impl Into<Ulid>,
         minimum_approvers_count: usize,
-        approvers: Vec<ApprovalRequirementApprover>,
+        approvers: HashSet<ApprovalRequirementApprover>,
     ) -> Result<ApprovalRequirementDefinitionId> {
         ctx.workspace_snapshot()?
-            .new_approval_requirement_definition(
-                ctx,
-                entity_id.into(),
-                minimum_approvers_count,
-                approvers,
-            )
+            .new_definition(ctx, entity_id.into(), minimum_approvers_count, approvers)
+            .await
+            .map_err(Into::into)
+    }
+
+    #[instrument(
+        name = "approval_requirement.remove_definition",
+        level = "debug",
+        skip_all
+    )]
+    pub async fn remove_definition(
+        ctx: &DalContext,
+        id: ApprovalRequirementDefinitionId,
+    ) -> Result<()> {
+        ctx.workspace_snapshot()?
+            .remove_definition(id)
+            .await
+            .map_err(Into::into)
+    }
+
+    #[instrument(
+        name = "approval_requirement.add_individual_approver_for_definition",
+        level = "debug",
+        skip_all
+    )]
+    pub async fn add_individual_approver_for_definition(
+        ctx: &DalContext,
+        id: ApprovalRequirementDefinitionId,
+        user_id: UserPk,
+    ) -> Result<()> {
+        ctx.workspace_snapshot()?
+            .add_individual_approver_for_definition(ctx, id, user_id)
+            .await
+            .map_err(Into::into)
+    }
+
+    #[instrument(
+        name = "approval_requirement.remove_individual_approver_for_definition",
+        level = "debug",
+        skip_all
+    )]
+    pub async fn remove_individual_approver_for_definition(
+        ctx: &DalContext,
+        id: ApprovalRequirementDefinitionId,
+        user_id: UserPk,
+    ) -> Result<()> {
+        ctx.workspace_snapshot()?
+            .remove_individual_approver_for_definition(ctx, id, user_id)
             .await
             .map_err(Into::into)
     }

@@ -1,11 +1,14 @@
-use std::collections::{HashMap, HashSet};
+use std::{
+    any::Any,
+    collections::{HashMap, HashSet},
+};
 
 use petgraph::{
     prelude::*,
     visit::{Control, DfsEvent},
 };
 use serde::{Deserialize, Serialize};
-use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid};
+use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, workspace_snapshot::EntityKind};
 use strum::EnumDiscriminants;
 use telemetry::prelude::*;
 
@@ -39,7 +42,7 @@ pub enum Update {
 #[derive(Debug)]
 pub struct Change {
     pub id: Ulid,
-    pub merkle_tree_hash: MerkleTreeHash,
+    pub entity_kind: EntityKind,
 }
 
 #[derive(Clone, Debug)]
@@ -90,6 +93,18 @@ impl<'a, 'b> Detector<'a, 'b> {
     /// on both graphs before creating the [`Detector`].
     pub fn detect_changes(&self) -> Vec<Change> {
         let mut changes = Vec::new();
+
+        // TODO(nick,jacob): continue this pseudo-code.
+        // let updated_graph_ids = self.updated_graph.all_ids();
+        // let base_graph_ids = self.base_graph.all_ids();
+        // let difference = HashSet::difference(set1, set2);
+        // for diff_individual in difference {
+        //     changes.push(Change {
+        //         id: diff_individual,
+        //         entity_kind: // get from base graph,
+        //         merkle_tree_hash // get from base graph:
+        //     })
+        // }
 
         petgraph::visit::depth_first_search(
             self.updated_graph.graph(),
@@ -370,6 +385,13 @@ impl<'a, 'b> Detector<'a, 'b> {
             _ => Control::Continue,
         }
     }
+
+    // Changes : Root --> Category --> View
+    //
+    // Look at base graph
+    // For the ViewId, did it have any children in the base graph?
+    // For those children, check if they are ApprovalRequirementDefinitions
+    // Since they were removed, add a virtual requirement
 
     fn calculate_changes_dfs_event(
         &self,

@@ -1,8 +1,11 @@
 use std::collections::HashMap;
+use std::collections::HashSet;
 
+use dal::approval_requirement::ApprovalRequirement;
 use dal::approval_requirement::ApprovalRequirementApprover;
 use dal::change_set::approval::ChangeSetApproval;
 use dal::diagram::view::View;
+use dal::workspace_snapshot::EntityKindExt;
 use dal::ComponentType;
 use dal::DalContext;
 use dal::HistoryActor;
@@ -376,13 +379,7 @@ async fn individual_approver_for_view(
         HistoryActor::SystemInit => return Err(eyre!("invalid user")),
         HistoryActor::User(user_id) => *user_id,
     };
-
-    // Cache the approver groups we need.
-    let permission_lookup_key = format!("workspace#{workspace_id}#approve");
-    let approver_groups_without_relation =
-        HashMap::from_iter(vec![(permission_lookup_key.to_owned(), Vec::new())]);
-    let approver_groups_with_relation =
-        HashMap::from_iter(vec![(permission_lookup_key, vec![user_id])]);
+    let view_id = View::get_id_for_default(ctx).await?;
 
     // Scenario 1: see all approvals and requirements with an "empty" workspace.
     {
@@ -397,13 +394,16 @@ async fn individual_approver_for_view(
     }
 
     // Scenario 2: add the approval requirement to the default view with ourself as the individual approver.
-    let (view_entity_id, approval_requirement_definition_entity_id) = {
-        let view_id = View::get_id_for_default(ctx).await?;
+    let (
+        view_entity_id,
+        approval_requirement_definition_entity_id,
+        approval_requirement_definition_id,
+    ) = {
         let approval_requirement_definition_id = View::add_approval_requirement(
             ctx,
             view_id,
             1,
-            vec![ApprovalRequirementApprover::User(user_id)],
+            HashSet::from([ApprovalRequirementApprover::User(user_id)]),
         )
         .await?;
         let (view_entity_id, approval_requirement_definition_entity_id) = (
@@ -437,14 +437,21 @@ async fn individual_approver_for_view(
                     required_count: 1,
                     is_satisfied: false,
                     applicable_approval_ids: Vec::new(),
-                    approver_groups: approver_groups_without_relation.to_owned(),
+                    approver_groups: HashMap::from_iter(vec![(
+                        format!("workspace#{workspace_id}#approve"),
+                        Vec::new()
+                    )]),
                     approver_individuals: Vec::new(),
                 }
             ], // expected
             frontend_requirements // actual
         );
 
-        (view_entity_id, approval_requirement_definition_entity_id)
+        (
+            view_entity_id,
+            approval_requirement_definition_entity_id,
+            approval_requirement_definition_id,
+        )
     };
 
     // Scenario 3: create an approval that will satisfy the view requirement, but not the
@@ -493,7 +500,10 @@ async fn individual_approver_for_view(
                     required_count: 1,
                     is_satisfied: false,
                     applicable_approval_ids: Vec::new(),
-                    approver_groups: approver_groups_without_relation,
+                    approver_groups: HashMap::from_iter(vec![(
+                        format!("workspace#{workspace_id}#approve"),
+                        Vec::new()
+                    )]),
                     approver_individuals: Vec::new(),
                 }
             ], // expected
@@ -503,9 +513,10 @@ async fn individual_approver_for_view(
         first_approval_id
     };
 
-    // Scenario 4: add ourself as a workspace approver. The original approval should still satisfy
-    // the view requirement, but not the definition requirement.
-    {
+    // Scenario 4: add ourself as a workspace approver. The original approval should no longer
+    // satisfy the view requirement because the IDs we are approving has changed. It would also
+    // not satisfy the definition requirement for the same reason.
+    let relation = {
         let relation = RelationBuilder::new()
             .object(ObjectType::Workspace, workspace_id)
             .relation(Relation::Approver)
@@ -545,15 +556,20 @@ async fn individual_approver_for_view(
                     required_count: 1,
                     is_satisfied: false,
                     applicable_approval_ids: vec![first_approval_id],
-                    approver_groups: approver_groups_with_relation.to_owned(),
+                    approver_groups: HashMap::from_iter(vec![(
+                        format!("workspace#{workspace_id}#approve"),
+                        vec![user_id],
+                    )]),
                     approver_individuals: Vec::new(),
                 }
             ], // expected
             frontend_requirements // actual
         );
-    }
 
-    // Scenario 5: create an approval that will satisfy the definition requirement.
+        relation
+    };
+
+    // Scenario 5: create an approval that will satisfy both requirements.
     {
         let second_approval_id = {
             let approving_ids =
@@ -610,10 +626,72 @@ async fn individual_approver_for_view(
                     required_count: 1,
                     is_satisfied: true,
                     applicable_approval_ids: vec![first_approval_id, second_approval_id],
-                    approver_groups: approver_groups_with_relation,
+                    approver_groups: HashMap::from_iter(vec![(
+                        format!("workspace#{workspace_id}#approve"),
+                        vec![user_id],
+                    )]),
                     approver_individuals: Vec::new(),
                 }
             ], // expected
+            frontend_requirements // actual
+        );
+    }
+
+    // Scenario 6: apply the change set, create a new change set and observe that no approvals nor requirements exist.
+    {
+        ChangeSetTestHelpers::apply_change_set_to_base(ctx).await?;
+        ChangeSetTestHelpers::fork_from_head_change_set(ctx).await?;
+
+        let calculator = ChangeSetApprovalCalculator::new(ctx, &mut spicedb_client).await?;
+        let frontend_latest_approvals = calculator.frontend_latest_approvals();
+        let frontend_requirements = calculator
+            .frontend_requirements(&mut spicedb_client)
+            .await?;
+
+        assert!(frontend_latest_approvals.is_empty());
+        assert!(frontend_requirements.is_empty());
+    }
+
+    // Scenario 7: remove the definiton from the view.
+    {
+        View::remove_approval_requirement(ctx, approval_requirement_definition_id).await?;
+        ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+        // ================================
+        // TODO(nick,jacob): remove this block.
+        let changes = ctx
+            .workspace_snapshot()?
+            .detect_changes_from_head(ctx)
+            .await?;
+        for change in &changes {
+            let nw = ctx
+                .workspace_snapshot()?
+                .get_node_weight_by_id(change.id)
+                .await?;
+            dbg!(&nw);
+        }
+        // ================================
+
+        let calculator = ChangeSetApprovalCalculator::new(ctx, &mut spicedb_client).await?;
+        let frontend_latest_approvals = calculator.frontend_latest_approvals();
+        let frontend_requirements = calculator
+            .frontend_requirements(&mut spicedb_client)
+            .await?;
+
+        assert!(frontend_latest_approvals.is_empty());
+        assert_eq!(
+            vec![si_frontend_types::ChangeSetApprovalRequirement {
+                entity_id: approval_requirement_definition_entity_id,
+                entity_kind: EntityKind::ApprovalRequirementDefinition,
+                required_count: 1,
+                is_satisfied: false,
+                applicable_approval_ids: Vec::new(),
+                approver_groups: HashMap::from_iter(vec![(
+                    format!("workspace#{workspace_id}#approve"),
+                    vec![user_id],
+                )]),
+                approver_individuals: Vec::new(),
+            }], // expected
             frontend_requirements // actual
         );
     }

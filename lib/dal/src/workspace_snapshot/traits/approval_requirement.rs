@@ -1,8 +1,11 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
 
 use async_trait::async_trait;
 use si_events::ContentHash;
-use si_id::{ulid::Ulid, ApprovalRequirementDefinitionId};
+use si_id::{ulid::Ulid, ApprovalRequirementDefinitionId, UserPk};
 
 use crate::{
     approval_requirement::{ApprovalRequirement, ApprovalRequirementExplicit},
@@ -26,13 +29,32 @@ pub use crate::workspace_snapshot::graph::traits::approval_requirement::{
 
 #[async_trait]
 pub trait ApprovalRequirementExt {
-    async fn new_approval_requirement_definition(
+    async fn new_definition(
         &self,
         ctx: &DalContext,
         entity_id: Ulid,
         minimum_approvers_count: usize,
-        approvers: Vec<ApprovalRequirementApprover>,
+        approvers: HashSet<ApprovalRequirementApprover>,
     ) -> WorkspaceSnapshotResult<ApprovalRequirementDefinitionId>;
+
+    async fn remove_definition(
+        &self,
+        approval_requirement_definition_id: ApprovalRequirementDefinitionId,
+    ) -> WorkspaceSnapshotResult<()>;
+
+    async fn add_individual_approver_for_definition(
+        &self,
+        ctx: &DalContext,
+        id: ApprovalRequirementDefinitionId,
+        user_id: UserPk,
+    ) -> WorkspaceSnapshotResult<()>;
+
+    async fn remove_individual_approver_for_definition(
+        &self,
+        ctx: &DalContext,
+        id: ApprovalRequirementDefinitionId,
+        user_id: UserPk,
+    ) -> WorkspaceSnapshotResult<()>;
 
     async fn approval_requirements_for_changes(
         &self,
@@ -43,12 +65,12 @@ pub trait ApprovalRequirementExt {
 
 #[async_trait]
 impl ApprovalRequirementExt for WorkspaceSnapshot {
-    async fn new_approval_requirement_definition(
+    async fn new_definition(
         &self,
         ctx: &DalContext,
         entity_id: Ulid,
         minimum_approvers_count: usize,
-        approvers: Vec<ApprovalRequirementApprover>,
+        approvers: HashSet<ApprovalRequirementApprover>,
     ) -> WorkspaceSnapshotResult<ApprovalRequirementDefinitionId> {
         let content = ApprovalRequirementDefinitionContentV1 {
             minimum: minimum_approvers_count,
@@ -75,6 +97,88 @@ impl ApprovalRequirementExt for WorkspaceSnapshot {
         .await?;
 
         Ok(id.into())
+    }
+
+    async fn remove_definition(
+        &self,
+        approval_requirement_definition_id: ApprovalRequirementDefinitionId,
+    ) -> WorkspaceSnapshotResult<()> {
+        self.remove_node_by_id(approval_requirement_definition_id)
+            .await
+    }
+
+    async fn add_individual_approver_for_definition(
+        &self,
+        ctx: &DalContext,
+        id: ApprovalRequirementDefinitionId,
+        user_id: UserPk,
+    ) -> WorkspaceSnapshotResult<()> {
+        let node_weight = self.get_node_weight_by_id(id).await?;
+        let content: ApprovalRequirementDefinitionContent = ctx
+            .layer_db()
+            .cas()
+            .try_read_as(&node_weight.content_hash())
+            .await?
+            .ok_or(WorkspaceSnapshotError::MissingContentFromStore(id.into()))?;
+
+        // This should always expect the newest version since we migrate the world when we perform graph migrations.
+        let ApprovalRequirementDefinitionContent::V1(mut inner) = content;
+
+        // Only update the content store and node if the approver wasn't already in the set.
+        if inner
+            .approvers
+            .insert(ApprovalRequirementApprover::User(user_id))
+        {
+            let (hash, _) = ctx.layer_db().cas().write(
+                Arc::new(ApprovalRequirementDefinitionContent::V1(inner).into()),
+                None,
+                ctx.events_tenancy(),
+                ctx.events_actor(),
+            )?;
+
+            ctx.workspace_snapshot()?
+                .update_content(id.into(), hash)
+                .await?;
+        }
+
+        Ok(())
+    }
+
+    async fn remove_individual_approver_for_definition(
+        &self,
+        ctx: &DalContext,
+        id: ApprovalRequirementDefinitionId,
+        user_id: UserPk,
+    ) -> WorkspaceSnapshotResult<()> {
+        let node_weight = self.get_node_weight_by_id(id).await?;
+        let content: ApprovalRequirementDefinitionContent = ctx
+            .layer_db()
+            .cas()
+            .try_read_as(&node_weight.content_hash())
+            .await?
+            .ok_or(WorkspaceSnapshotError::MissingContentFromStore(id.into()))?;
+
+        // This should always expect the newest version since we migrate the world when we perform graph migrations.
+        let ApprovalRequirementDefinitionContent::V1(mut inner) = content;
+
+        // Only update the content store and node if the approver already existed in the set.
+        if inner
+            .approvers
+            .remove(&ApprovalRequirementApprover::User(user_id))
+        {
+            let (hash, _) = ctx.layer_db().cas().write(
+                Arc::new(ApprovalRequirementDefinitionContent::V1(inner).into()),
+                None,
+                ctx.events_tenancy(),
+                ctx.events_actor(),
+            )?;
+
+            ctx.workspace_snapshot()?
+                .update_content(id.into(), hash)
+                .await?;
+        }
+
+        Ok(())
     }
 
     async fn approval_requirements_for_changes(

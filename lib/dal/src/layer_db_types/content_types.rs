@@ -695,5 +695,5 @@ pub enum ApprovalRequirementDefinitionContent {
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct ApprovalRequirementDefinitionContentV1 {
     pub minimum: usize,
-    pub approvers: Vec<ApprovalRequirementApprover>,
+    pub approvers: HashSet<ApprovalRequirementApprover>,
 }
