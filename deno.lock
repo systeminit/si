@@ -35,6 +35,7 @@
     "npm:lodash-es@*": "4.17.21",
     "npm:lodash-es@^4.17.21": "4.17.21",
     "npm:node-fetch@2": "2.7.0",
+    "npm:proper-lockfile@^4.1.2": "4.1.2",
     "npm:toml@3": "3.0.0",
     "npm:tsup@^8.0.1": "8.3.5_typescript@4.9.5_esbuild@0.24.0",
     "npm:typedoc-plugin-markdown@^4.2.0": "4.3.1_typedoc@0.27.2__typescript@5.7.2",
@@ -1100,6 +1101,9 @@
         "type-fest"
       ]
     },
+    "graceful-fs@4.2.11": {
+      "integrity": "sha512-RbJ5/jmFcNNCcDV5o9eTnBLJ/HszWV0P73bc+Ff4nS/rJj+YaS6IGyiOL0VoBYX+l1Wrl3k63h/KrH+nhJ0XvQ=="
+    },
     "graphemer@1.4.0": {
       "integrity": "sha512-EtKwoO6kxCL9WO5xipiHTZlSzBm7WLT627TqC/uVRd0HKmq8NXyebnNYxDoBi7wt8eTWrUrKXCOVaFq9x1kgag=="
     },
@@ -1582,6 +1586,14 @@
         "react-is@18.3.1"
       ]
     },
+    "proper-lockfile@4.1.2": {
+      "integrity": "sha512-TjNPblN4BwAWMXU8s9AEz4JmQxnD1NNL7bNOY/AKUzyamc379FWASUhc/K1pL2noVb+XmZKLL68cjzLsiOAMaA==",
+      "dependencies": [
+        "graceful-fs",
+        "retry",
+        "signal-exit@3.0.7"
+      ]
+    },
     "property-information@6.5.0": {
       "integrity": "sha512-PgTgs/BlvHxOu8QuEN7wi5A0OmXaBcHpmCSTehcs6Uuu9IkDIEo13Hy7n898RHfrQ49vKCoGeWZSaAK01nwVig=="
     },
@@ -1623,6 +1635,9 @@
     },
     "resolve-from@5.0.0": {
       "integrity": "sha512-qYg9KP24dD5qka9J47d0aVky0N+b4fTU89LN9iDnjB5waksiC49rvMB0PrUJQGoTmH50XPiqOvAjDfaijGxYZw=="
+    },
+    "retry@0.12.0": {
+      "integrity": "sha512-9LkiTwjUh6rT555DtE9rTX+BKByPfrMzEAtnlEtdEwr3Nkffwiihqe2bWADg+OQRjt9gl6ICdmB/ZFDCGAtSow=="
     },
     "reusify@1.0.4": {
       "integrity": "sha512-U9nH88a3fc/ekCF1l0/UP1IosiuIjyTh7hBvXVMHYgVcfGvt897Xguj2UOLDeI5BG2m7/uwyaLVT6fbtCwTyzw=="
@@ -2226,6 +2241,7 @@
             "npm:joi@^17.11.0",
             "npm:js-yaml@^4.1.0",
             "npm:node-fetch@2",
+            "npm:proper-lockfile@^4.1.2",
             "npm:toml@3",
             "npm:tsup@^8.0.1",
             "npm:typedoc-plugin-markdown@^4.2.0",

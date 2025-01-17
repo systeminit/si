@@ -19,6 +19,7 @@ import { Debugger } from "./debug.ts";
 import { transpile } from "jsr:@deno/emit";
 import { Debug } from "./debug.ts";
 import * as _worker from "./worker.js";
+import { bundleCode } from "./transpile.ts";
 
 const debug = Debug("langJs:function");
 
@@ -263,29 +264,4 @@ export async function runCode(
       worker.terminate();
     };
   });
-}
-
-async function bundleCode(code: string): Promise<string> {
-  debug({ "code before bundle": code });
-  const tempDir = await Deno.makeTempDir();
-  const tempFile = `${tempDir}/script.ts`;
-
-  await Deno.writeTextFile(tempFile, code);
-  const fileUrl = new URL(tempFile, import.meta.url);
-
-  try {
-    const result = await transpile(fileUrl);
-
-    const bundled = result.get(fileUrl.href) as string;
-    if (!bundled) {
-      throw new Error("Transpilation resulted in empty output");
-    }
-
-    debug({ "code after bundle": code });
-    return bundled;
-  } catch (error) {
-    throw error;
-  } finally {
-    await Deno.remove(tempDir, { recursive: true });
-  }
 }

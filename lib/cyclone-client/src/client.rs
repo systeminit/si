@@ -732,7 +732,7 @@ mod tests {
     }
 
     #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
-    #[test(tokio::test)]
+    #[test(tokio::test(flavor = "multi_thread", worker_threads = 1))]
     async fn http_execute_resolver() {
         let mut builder = Config::builder();
         let mut client = http_client_for_running_server(builder.enable_resolver(true)).await;
@@ -770,7 +770,7 @@ mod tests {
 
         // Start the protocol
         let mut progress = client
-            .prepare_execution(CycloneRequest::from_parts(req, Default::default()))
+            .prepare_execution(CycloneRequest::from_parts(req.clone(), Default::default()))
             .await
             .expect("failed to establish websocket stream")
             .start()
@@ -784,7 +784,10 @@ mod tests {
             }
             Some(Ok(unexpected)) => panic!("unexpected msg kind: {unexpected:?}"),
             Some(Err(err)) => panic!("failed to receive 'i like' output: err={err:?}"),
-            None => panic!("output stream ended early"),
+            None => {
+                dbg!(req);
+                panic!("output stream ended early")
+            }
         };
         match progress.next().await {
             Some(Ok(ProgressMessage::OutputStream(output))) => {
@@ -792,7 +795,10 @@ mod tests {
             }
             Some(Ok(unexpected)) => panic!("unexpected msg kind: {unexpected:?}"),
             Some(Err(err)) => panic!("failed to receive 'i like' output: err={err:?}"),
-            None => panic!("output stream ended early"),
+            None => {
+                dbg!(req);
+                panic!("output stream ended early")
+            }
         };
         loop {
             match progress.next().await {
@@ -802,7 +808,10 @@ mod tests {
                 }
                 Some(Ok(ProgressMessage::Heartbeat)) => continue,
                 Some(Err(err)) => panic!("failed to receive 'second' output: err={err:?}"),
-                None => panic!("output stream ended early"),
+                None => {
+                    dbg!(req);
+                    panic!("output stream ended early")
+                }
             };
         }
         // TODO(fnichol): until we've determined how to handle processing the result server side,
@@ -831,7 +840,7 @@ mod tests {
     }
 
     #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
-    #[test(tokio::test)]
+    #[test(tokio::test(flavor = "multi_thread", worker_threads = 1))]
     async fn uds_execute_resolver() {
         let tmp_socket = rand_uds();
         let mut builder = Config::builder();
@@ -871,7 +880,7 @@ mod tests {
 
         // Start the protocol
         let mut progress = client
-            .prepare_execution(CycloneRequest::from_parts(req, Default::default()))
+            .prepare_execution(CycloneRequest::from_parts(req.clone(), Default::default()))
             .await
             .expect("failed to establish websocket stream")
             .start()
@@ -885,7 +894,10 @@ mod tests {
             }
             Some(Ok(unexpected)) => panic!("unexpected msg kind: {unexpected:?}"),
             Some(Err(err)) => panic!("failed to receive 'i like' output: err={err:?}"),
-            None => panic!("output stream ended early"),
+            None => {
+                dbg!(req);
+                panic!("output stream ended early")
+            }
         };
         match progress.next().await {
             Some(Ok(ProgressMessage::OutputStream(output))) => {
@@ -893,7 +905,10 @@ mod tests {
             }
             Some(Ok(unexpected)) => panic!("unexpected msg kind: {unexpected:?}"),
             Some(Err(err)) => panic!("failed to receive 'i like' output: err={err:?}"),
-            None => panic!("output stream ended early"),
+            None => {
+                dbg!(req);
+                panic!("output stream ended early")
+            }
         };
         loop {
             match progress.next().await {
@@ -903,7 +918,10 @@ mod tests {
                 }
                 Some(Ok(ProgressMessage::Heartbeat)) => continue,
                 Some(Err(err)) => panic!("failed to receive 'second' output: err={err:?}"),
-                None => panic!("output stream ended early"),
+                None => {
+                    dbg!(req);
+                    panic!("output stream ended early")
+                }
             };
         }
         loop {
@@ -972,7 +990,7 @@ mod tests {
     }
 
     #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
-    #[test(tokio::test)]
+    #[test(tokio::test(flavor = "multi_thread", worker_threads = 1))]
     async fn http_execute_validation() {
         let mut builder = Config::builder();
         let client = http_client_for_running_server(builder.enable_validation(true)).await;
@@ -981,7 +999,7 @@ mod tests {
     }
 
     #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
-    #[test(tokio::test)]
+    #[test(tokio::test(flavor = "multi_thread", worker_threads = 1))]
     async fn uds_execute_validation() {
         let tmp_socket = rand_uds();
         let mut builder = Config::builder();
@@ -992,7 +1010,7 @@ mod tests {
     }
 
     #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
-    #[test(tokio::test)]
+    #[test(tokio::test(flavor = "multi_thread", worker_threads = 1))]
     async fn http_execute_action_run() {
         let mut builder = Config::builder();
         let mut client = http_client_for_running_server(builder.enable_action_run(true)).await;
@@ -1013,7 +1031,7 @@ mod tests {
 
         // Start the protocol
         let mut progress = client
-            .prepare_execution(CycloneRequest::from_parts(req, Default::default()))
+            .prepare_execution(CycloneRequest::from_parts(req.clone(), Default::default()))
             .await
             .expect("failed to establish websocket stream")
             .start()
@@ -1029,7 +1047,10 @@ mod tests {
                 }
                 Some(Ok(ProgressMessage::Heartbeat)) => continue,
                 Some(Err(err)) => panic!("failed to receive 'first' output: err={err:?}"),
-                None => panic!("output stream ended early"),
+                None => {
+                    dbg!(req);
+                    panic!("output stream ended early")
+                }
             };
         }
         loop {
@@ -1040,7 +1061,10 @@ mod tests {
                 }
                 Some(Ok(ProgressMessage::Heartbeat)) => continue,
                 Some(Err(err)) => panic!("failed to receive 'second' output: err={err:?}"),
-                None => panic!("output stream ended early"),
+                None => {
+                    dbg!(req);
+                    panic!("output stream ended early")
+                }
             }
         }
         loop {
@@ -1051,7 +1075,10 @@ mod tests {
                 }
                 Some(Ok(ProgressMessage::Heartbeat)) => continue,
                 Some(Err(err)) => panic!("failed to receive Output: err={err:?}"),
-                None => panic!("output stream ended early"),
+                None => {
+                    dbg!(req);
+                    panic!("output stream ended early")
+                }
             };
         }
         loop {
@@ -1076,7 +1103,7 @@ mod tests {
     }
 
     #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
-    #[test(tokio::test)]
+    #[test(tokio::test(flavor = "multi_thread", worker_threads = 1))]
     async fn uds_execute_action_run() {
         let tmp_socket = rand_uds();
         let mut builder = Config::builder();
@@ -1099,7 +1126,7 @@ mod tests {
 
         // Start the protocol
         let mut progress = client
-            .prepare_execution(CycloneRequest::from_parts(req, Default::default()))
+            .prepare_execution(CycloneRequest::from_parts(req.clone(), Default::default()))
             .await
             .expect("failed to establish websocket stream")
             .start()
@@ -1115,7 +1142,10 @@ mod tests {
                 }
                 Some(Ok(ProgressMessage::Heartbeat)) => continue,
                 Some(Err(err)) => panic!("failed to receive 'first' output: err={err:?}"),
-                None => panic!("output stream ended early"),
+                None => {
+                    dbg!(req);
+                    panic!("output stream ended early")
+                }
             };
         }
         loop {
@@ -1126,7 +1156,10 @@ mod tests {
                 }
                 Some(Ok(ProgressMessage::Heartbeat)) => continue,
                 Some(Err(err)) => panic!("failed to receive 'second' output: err={err:?}"),
-                None => panic!("output stream ended early"),
+                None => {
+                    dbg!(req);
+                    panic!("output stream ended early")
+                }
             };
         }
         loop {
@@ -1137,7 +1170,10 @@ mod tests {
                 }
                 Some(Ok(ProgressMessage::Heartbeat)) => continue,
                 Some(Err(err)) => panic!("failed to receive 'second' output: err={err:?}"),
-                None => panic!("output stream ended early"),
+                None => {
+                    dbg!(req);
+                    panic!("output stream ended early")
+                }
             };
         }
         loop {
@@ -1163,7 +1199,7 @@ mod tests {
     }
 
     #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
-    #[test(tokio::test)]
+    #[test(tokio::test(flavor = "multi_thread", worker_threads = 1))]
     async fn http_execute_schema_variant_definition() {
         let tmp_socket = rand_uds();
         let mut builder = Config::builder();
@@ -1187,7 +1223,7 @@ mod tests {
 
         // Start the protocol
         let mut progress = client
-            .prepare_execution(CycloneRequest::from_parts(req, Default::default()))
+            .prepare_execution(CycloneRequest::from_parts(req.clone(), Default::default()))
             .await
             .expect("failed to establish websocket stream")
             .start()
@@ -1203,7 +1239,10 @@ mod tests {
                 }
                 Some(Ok(ProgressMessage::Heartbeat)) => continue,
                 Some(Err(err)) => panic!("failed to receive 'first' output: err={err:?}"),
-                None => panic!("output stream ended early"),
+                None => {
+                    dbg!(req);
+                    panic!("output stream ended early")
+                }
             };
         }
         loop {
@@ -1214,7 +1253,10 @@ mod tests {
                 }
                 Some(Ok(ProgressMessage::Heartbeat)) => continue,
                 Some(Err(err)) => panic!("failed to receive 'second' output: err={err:?}"),
-                None => panic!("output stream ended early"),
+                None => {
+                    dbg!(req);
+                    panic!("output stream ended early")
+                }
             };
         }
         loop {
@@ -1240,7 +1282,7 @@ mod tests {
     }
 
     #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
-    #[test(tokio::test)]
+    #[test(tokio::test(flavor = "multi_thread", worker_threads = 1))]
     async fn uds_execute_schema_variant_definition() {
         let tmp_socket = rand_uds();
         let mut builder = Config::builder();
@@ -1264,7 +1306,7 @@ mod tests {
 
         // Start the protocol
         let mut progress = client
-            .prepare_execution(CycloneRequest::from_parts(req, Default::default()))
+            .prepare_execution(CycloneRequest::from_parts(req.clone(), Default::default()))
             .await
             .expect("failed to establish websocket stream")
             .start()
@@ -1280,7 +1322,10 @@ mod tests {
                 }
                 Some(Ok(ProgressMessage::Heartbeat)) => continue,
                 Some(Err(err)) => panic!("failed to receive 'first' output: err={err:?}"),
-                None => panic!("output stream ended early"),
+                None => {
+                    dbg!(req);
+                    panic!("output stream ended early")
+                }
             };
         }
         loop {
@@ -1291,7 +1336,10 @@ mod tests {
                 }
                 Some(Ok(ProgressMessage::Heartbeat)) => continue,
                 Some(Err(err)) => panic!("failed to receive 'second' output: err={err:?}"),
-                None => panic!("output stream ended early"),
+                None => {
+                    dbg!(req);
+                    panic!("output stream ended early")
+                }
             };
         }
         loop {
@@ -1317,7 +1365,7 @@ mod tests {
     }
 
     #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
-    #[test(tokio::test)]
+    #[test(tokio::test(flavor = "multi_thread", worker_threads = 1))]
     async fn http_execute_management_func() {
         let tmp_socket = rand_uds();
         let mut builder = Config::builder();
@@ -1349,7 +1397,7 @@ mod tests {
 
         // Start the protocol
         let mut progress = client
-            .prepare_execution(CycloneRequest::from_parts(req, Default::default()))
+            .prepare_execution(CycloneRequest::from_parts(req.clone(), Default::default()))
             .await
             .expect("failed to establish websocket stream")
             .start()
@@ -1365,7 +1413,10 @@ mod tests {
                 }
                 Some(Ok(ProgressMessage::Heartbeat)) => continue,
                 Some(Err(err)) => panic!("failed to receive 'first' output: err={err:?}"),
-                None => panic!("output stream ended early"),
+                None => {
+                    dbg!(req);
+                    panic!("output stream ended early")
+                }
             };
         }
         loop {
@@ -1376,7 +1427,10 @@ mod tests {
                 }
                 Some(Ok(ProgressMessage::Heartbeat)) => continue,
                 Some(Err(err)) => panic!("failed to receive 'second' output: err={err:?}"),
-                None => panic!("output stream ended early"),
+                None => {
+                    dbg!(req);
+                    panic!("output stream ended early")
+                }
             };
         }
         loop {
@@ -1402,7 +1456,7 @@ mod tests {
     }
 
     #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
-    #[test(tokio::test)]
+    #[test(tokio::test(flavor = "multi_thread", worker_threads = 1))]
     async fn uds_execute_management_func() {
         let tmp_socket = rand_uds();
         let mut builder = Config::builder();
@@ -1434,7 +1488,7 @@ mod tests {
 
         // Start the protocol
         let mut progress = client
-            .prepare_execution(CycloneRequest::from_parts(req, Default::default()))
+            .prepare_execution(CycloneRequest::from_parts(req.clone(), Default::default()))
             .await
             .expect("failed to establish websocket stream")
             .start()
@@ -1450,7 +1504,10 @@ mod tests {
                 }
                 Some(Ok(ProgressMessage::Heartbeat)) => continue,
                 Some(Err(err)) => panic!("failed to receive 'first' output: err={err:?}"),
-                None => panic!("output stream ended early"),
+                None => {
+                    dbg!(req);
+                    panic!("output stream ended early")
+                }
             };
         }
         loop {
@@ -1461,7 +1518,10 @@ mod tests {
                 }
                 Some(Ok(ProgressMessage::Heartbeat)) => continue,
                 Some(Err(err)) => panic!("failed to receive 'second' output: err={err:?}"),
-                None => panic!("output stream ended early"),
+                None => {
+                    dbg!(req);
+                    panic!("output stream ended early")
+                }
             };
         }
         loop {
