@@ -472,13 +472,14 @@ const attachNewFunc = async () => {
         attributePrototypeId: null,
       } as Attribute;
     }
-    await funcStore.CREATE_FUNC({
+    const resp = await funcStore.CREATE_FUNC({
       name: name.value,
       displayName: name.value,
       description: "",
       binding,
       kind: funcKind.value.value,
     });
+    if (resp.result.success) close();
   }
 };
 
