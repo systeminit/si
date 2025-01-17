@@ -235,6 +235,7 @@
               # /lib64/ld-linux-x86-64.so.2 -> /nix/store/*/ld-linux-x86-64.20.2
               mkdir -p $out/lib64
               ln -sf ${pkgs.glibc}/lib/ld-linux-x86-64.so.2 $out/lib64/ld-linux-x86-64.so.2
+              ln -sf ${pkgs.glibc}/lib/ld-linux-aarch64.so.1 $out/lib64/ld-linux-aarch64.so.1
 
               wrapProgram $out/bin/lang-js \
                 --set LD_LIBRARY_PATH "${pkgs.lib.makeLibraryPath [
