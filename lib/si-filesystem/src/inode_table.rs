@@ -11,18 +11,20 @@ use thiserror::Error;
 use si_frontend_types::FuncKind;
 use si_id::{ChangeSetId, FuncId, SchemaId, SchemaVariantId, WorkspaceId};
 
+use crate::Inode;
+
 #[derive(Error, Debug)]
 pub enum InodeTableError {
     #[error("Parent ino {0} not found")]
-    ParentInodeNotFound(u64),
+    ParentInodeNotFound(Inode),
 }
 
 pub type InodeTableResult<T> = Result<T, InodeTableError>;
 
 #[derive(Clone, Debug)]
 pub struct InodeEntry {
-    pub ino: u64,
-    pub parent: Option<u64>,
+    pub ino: Inode,
+    pub parent: Option<Inode>,
     data: InodeEntryData,
     attrs: FileAttr,
 }
@@ -41,12 +43,17 @@ impl InodeEntry {
 #[allow(dead_code)]
 #[remain::sorted]
 pub enum InodeEntryData {
+    AssetFunc {
+        func_id: FuncId,
+        change_set_id: ChangeSetId,
+        unlocked: bool,
+    },
     ChangeSet {
-        id: ChangeSetId,
+        change_set_id: ChangeSetId,
         name: String,
     },
     ChangeSetFunc {
-        id: FuncId,
+        func_id: FuncId,
         change_set_id: ChangeSetId,
         size: u64,
     },
@@ -57,21 +64,49 @@ pub enum InodeEntryData {
     ChangeSetFuncs {
         change_set_id: ChangeSetId,
     },
+    ChangeSets,
     FuncCode {
         change_set_id: ChangeSetId,
-        id: FuncId,
+        func_id: FuncId,
     },
     Schema {
-        id: SchemaId,
+        schema_id: SchemaId,
         change_set_id: ChangeSetId,
         name: String,
         installed: bool,
     },
+    Schemas {
+        change_set_id: ChangeSetId,
+    },
     SchemaVariant {
-        id: SchemaVariantId,
+        schema_variant_id: SchemaVariantId,
         schema_id: SchemaId,
         change_set_id: ChangeSetId,
-        locked: bool,
+        unlocked: bool,
+    },
+    SchemaVariantDefinition {
+        schema_variant_id: SchemaVariantId,
+        schema_id: SchemaId,
+        change_set_id: ChangeSetId,
+        unlocked: bool,
+    },
+    SchemaVariantFunc {
+        func_id: FuncId,
+        change_set_id: ChangeSetId,
+        size: u64,
+    },
+    SchemaVariantFuncKind {
+        kind: FuncKind,
+        schema_variant_id: SchemaVariantId,
+        schema_id: SchemaId,
+        change_set_id: ChangeSetId,
+        unlocked: bool,
+    },
+    SchemaVariantFuncs {
+        schema_variant_id: SchemaVariantId,
+        schema_id: SchemaId,
+        change_set_id: ChangeSetId,
+        unlocked: bool,
     },
     WorkspaceRoot {
         workspace_id: WorkspaceId,
@@ -101,32 +136,45 @@ impl InodeTable {
         table
     }
 
-    pub fn path(&self, ino: u64) -> Option<&PathBuf> {
-        self.path_table.get(ino.saturating_sub(1) as usize)
+    pub fn path_for_ino(&self, ino: Inode) -> Option<&Path> {
+        self.path_table
+            .get(ino.as_raw().saturating_sub(1) as usize)
+            .map(|p| p.as_path())
     }
 
-    pub fn ino_for_path(&self, path: &PathBuf) -> Option<u64> {
+    pub fn path_buf_for_ino(&self, ino: Inode) -> Option<PathBuf> {
+        self.path_table
+            .get(ino.as_raw().saturating_sub(1) as usize)
+            .cloned()
+    }
+
+    pub fn ino_for_path(&self, path: &Path) -> Option<Inode> {
         self.entries_by_path.get(path).map(|entry| entry.ino)
     }
 
-    pub fn get(&self, ino: u64) -> Option<&InodeEntry> {
-        self.path(ino)
+    pub fn entry_for_ino(&self, ino: Inode) -> Option<&InodeEntry> {
+        self.path_for_ino(ino)
             .and_then(|path| self.entries_by_path.get(path))
     }
 
-    pub fn next_ino(&self) -> u64 {
-        self.path_table.len().saturating_add(1) as u64
+    pub fn entry_mut_for_ino(&mut self, ino: Inode) -> Option<&mut InodeEntry> {
+        self.path_buf_for_ino(ino)
+            .and_then(|path_buf| self.entries_by_path.get_mut(path_buf.as_path()))
+    }
+
+    pub fn next_ino(&self) -> Inode {
+        Inode::new(self.path_table.len().saturating_add(1) as u64)
     }
 
     pub fn make_path(
         &self,
-        parent: Option<u64>,
+        parent: Option<Inode>,
         file_name: impl AsRef<Path>,
     ) -> InodeTableResult<PathBuf> {
         Ok(match parent {
             None => "/".into(),
             Some(parent_ino) => self
-                .path(parent_ino)
+                .path_for_ino(parent_ino)
                 .map(|parent_path| parent_path.join(file_name))
                 .ok_or(InodeTableError::ParentInodeNotFound(parent_ino))?,
         })
@@ -134,21 +182,34 @@ impl InodeTable {
 
     pub fn upsert_with_parent_ino(
         &mut self,
-        parent_ino: u64,
+        parent_ino: Inode,
         file_name: impl AsRef<Path>,
         entry_data: InodeEntryData,
         kind: FileType,
         write: bool,
         size: Option<u64>,
-    ) -> InodeTableResult<u64> {
+    ) -> InodeTableResult<Inode> {
         let path = self.make_path(Some(parent_ino), file_name)?;
 
         Ok(self.upsert(path, entry_data, kind, write, size))
     }
 
-    pub fn make_attrs(&self, ino: u64, kind: FileType, perm: u16, size: u64) -> FileAttr {
+    pub fn make_attrs(
+        &self,
+        ino: Inode,
+        kind: FileType,
+        write: bool,
+        size: Option<u64>,
+    ) -> FileAttr {
+        let perm: u16 = match kind {
+            FileType::Directory => if write { 0o755 } else { 0o555 }
+            FileType::RegularFile => if write { 0o644 } else  { 0o444 }
+            _ => unimplemented!("I don't know why this kind of file was upserted, Only directories and regular files supported"),
+        };
+        let size = size.unwrap_or(512);
+
         FileAttr {
-            ino,
+            ino: ino.as_raw(),
             size,
             blocks: 1,
             atime: UNIX_EPOCH,
@@ -166,6 +227,13 @@ impl InodeTable {
         }
     }
 
+    pub fn set_size(&mut self, ino: Inode, size: u64) -> Option<FileAttr> {
+        self.entry_mut_for_ino(ino).map(|entry| {
+            entry.attrs.size = size;
+            entry.attrs
+        })
+    }
+
     pub fn upsert(
         &mut self,
         path: PathBuf,
@@ -173,8 +241,7 @@ impl InodeTable {
         kind: FileType,
         write: bool,
         size: Option<u64>,
-    ) -> u64 {
-        let size = size.unwrap_or(512);
+    ) -> Inode {
         let parent = path
             .parent()
             .and_then(|path| self.entries_by_path.get(&path.to_path_buf()))
@@ -182,13 +249,7 @@ impl InodeTable {
 
         let next_ino = self.next_ino();
 
-        let perm: u16 = match kind {
-            FileType::Directory => if write { 0o755 } else { 0o555 }
-            FileType::RegularFile => if write { 0o644 } else  { 0o444 }
-            _ => unimplemented!("I don't know why this kind of file was upserted, Only directories and regular files supported"),
-        };
-
-        let attrs = self.make_attrs(next_ino, kind, perm, size);
+        let attrs = self.make_attrs(next_ino, kind, write, size);
 
         let entry = self
             .entries_by_path
@@ -196,7 +257,7 @@ impl InodeTable {
             .and_modify(|entry| {
                 let ino = entry.ino;
                 let mut attrs = attrs;
-                attrs.ino = ino;
+                attrs.ino = ino.as_raw();
                 *entry = InodeEntry {
                     ino,
                     parent,

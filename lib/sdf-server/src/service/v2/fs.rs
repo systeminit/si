@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use axum::{
-    extract::{Host, OriginalUri, Path},
+    extract::{Host, OriginalUri, Path, Query},
     response::{IntoResponse, Response},
     routing::{get, post},
     Json, Router,
@@ -14,6 +14,7 @@ use hyper::StatusCode;
 use si_events::audit_log::AuditLogKind;
 use si_frontend_types::fs::{
     ChangeSet as FsChangeSet, Func as FsFunc, ListVariantsResponse, Schema as FsSchema,
+    VariantQuery,
 };
 use thiserror::Error;
 
@@ -190,17 +191,28 @@ pub async fn list_variants(
         .get_node_index_by_id_opt(schema_id)
         .await
         .is_none()
-        && CachedModule::latest_by_schema_id(&ctx, schema_id)
+    {
+        if CachedModule::latest_by_schema_id(&ctx, schema_id)
             .await?
             .is_some()
-    {
-        return Ok(Json(ListVariantsResponse {
-            locked: None,
-            unlocked: None,
-        }));
+        {
+            return Ok(Json(ListVariantsResponse {
+                locked: None,
+                unlocked: None,
+            }));
+        } else {
+            return Err(FsError::ResourceNotFound);
+        }
     }
 
-    let default_variant = SchemaVariant::get_default_for_schema(&ctx, schema_id).await?;
+    let default_variant = match SchemaVariant::get_default_for_schema(&ctx, schema_id).await {
+        Ok(variant) => variant,
+        Err(err) => match err {
+            dal::SchemaVariantError::DefaultVariantNotFound(_)
+            | dal::SchemaVariantError::SchemaNotFound(_) => return Err(FsError::ResourceNotFound),
+            err => Err(err)?,
+        },
+    };
 
     Ok(Json(if !default_variant.is_locked() {
         ListVariantsResponse {
@@ -240,20 +252,114 @@ async fn list_change_set_funcs(
             .await?
             .into_iter()
             .filter(|f| kind == f.kind.into())
-            .map(|f| FsFunc {
-                id: f.id,
-                kind: f.kind.into(),
-                is_locked: f.is_locked,
-                code_size: f
-                    .code_plaintext()
-                    .ok()
-                    .flatten()
-                    .map(|code| code.len())
-                    .unwrap_or(0) as u64,
-                name: f.name,
-            })
+            .map(dal_func_to_fs_func)
             .collect(),
     ))
+}
+
+async fn list_variant_funcs(
+    HandlerContext(builder): HandlerContext,
+    AccessBuilder(request_ctx): AccessBuilder,
+    PosthogClient(_posthog_client): PosthogClient,
+    OriginalUri(_original_uri): OriginalUri,
+    Host(_host_name): Host,
+    Query(request): Query<VariantQuery>,
+    Path((_workspace_id, change_set_id, schema_id, kind)): Path<(
+        WorkspaceId,
+        ChangeSetId,
+        SchemaId,
+        String,
+    )>,
+) -> FsResult<Json<Vec<FsFunc>>> {
+    let ctx = builder
+        .build(request_ctx.build(change_set_id.into()))
+        .await?;
+
+    check_change_set(&ctx)?;
+
+    let Some(kind) = si_frontend_types::fs::kind_from_string(&kind) else {
+        return Ok(Json(vec![]));
+    };
+
+    let schema_variant = lookup_variant_for_schema(&ctx, schema_id, request.unlocked)
+        .await?
+        .ok_or(FsError::ResourceNotFound)?;
+
+    Ok(Json(
+        dal::SchemaVariant::all_funcs_without_intrinsics(&ctx, schema_variant.id())
+            .await?
+            .into_iter()
+            .filter(|f| kind == f.kind.into())
+            .map(dal_func_to_fs_func)
+            .collect(),
+    ))
+}
+
+async fn lookup_variant_for_schema(
+    ctx: &DalContext,
+    schema_id: SchemaId,
+    unlocked: bool,
+) -> FsResult<Option<SchemaVariant>> {
+    if ctx
+        .workspace_snapshot()?
+        .get_node_index_by_id_opt(schema_id)
+        .await
+        .is_none()
+    {
+        if CachedModule::latest_by_schema_id(ctx, schema_id)
+            .await?
+            .is_some()
+        {
+            return Ok(None);
+        } else {
+            return Err(FsError::ResourceNotFound);
+        }
+    }
+
+    Ok(if unlocked {
+        SchemaVariant::get_unlocked_for_schema(ctx, schema_id).await?
+    } else {
+        Some(SchemaVariant::get_default_for_schema(ctx, schema_id).await?)
+    })
+}
+
+pub async fn get_asset_func(
+    HandlerContext(builder): HandlerContext,
+    AccessBuilder(request_ctx): AccessBuilder,
+    PosthogClient(_posthog_client): PosthogClient,
+    OriginalUri(_original_uri): OriginalUri,
+    Host(_host_name): Host,
+    Query(request): Query<VariantQuery>,
+    Path((_workspace_id, change_set_id, schema_id)): Path<(WorkspaceId, ChangeSetId, SchemaId)>,
+) -> FsResult<Json<FsFunc>> {
+    let ctx = builder
+        .build(request_ctx.build(change_set_id.into()))
+        .await?;
+
+    check_change_set(&ctx)?;
+
+    let schema_variant = lookup_variant_for_schema(&ctx, schema_id, request.unlocked)
+        .await?
+        .ok_or(FsError::ResourceNotFound)?;
+
+    let asset_func = schema_variant.get_asset_func(&ctx).await?;
+
+    Ok(Json(dal_func_to_fs_func(asset_func)))
+}
+
+fn dal_func_to_fs_func(func: dal::Func) -> FsFunc {
+    FsFunc {
+        id: func.id,
+        kind: func.kind.into(),
+        is_locked: func.is_locked,
+        code_size: func
+            .code_plaintext()
+            .ok()
+            .flatten()
+            .map(|code| code.as_bytes().len())
+            .unwrap_or(0) as u64,
+        name: func.name,
+    }
 }
 
 async fn get_func_code(
@@ -287,6 +393,8 @@ pub fn fs_routes() -> Router<AppState> {
                 .route("/funcs/:kind", get(list_change_set_funcs))
                 .route("/func-code/:func_id", get(get_func_code))
                 .route("/schemas", get(list_schemas))
-                .route("/schemas/:schema_id/variants", get(list_variants)),
+                .route("/schemas/:schema_id/variants", get(list_variants))
+                .route("/schemas/:schema_id/asset_func", get(get_asset_func))
+                .route("/schemas/:schema_id/funcs/:kind", get(list_variant_funcs)),
         )
 }

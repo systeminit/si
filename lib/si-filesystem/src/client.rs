@@ -1,7 +1,7 @@
 use si_frontend_types::{
     fs::{
         ChangeSet, CreateChangeSetRequest, CreateChangeSetResponse, Func, ListChangeSetsResponse,
-        ListVariantsResponse, Schema,
+        ListVariantsResponse, Schema, VariantQuery,
     },
     FuncKind,
 };
@@ -85,13 +85,13 @@ impl SiFsClient {
     }
 
     pub async fn schemas(&self, change_set_id: ChangeSetId) -> SiFsClientResult<Vec<Schema>> {
-        let response = dbg!(self
+        let response = self
             .client
             .get(self.fs_api_change_sets("schemas", change_set_id))
             .bearer_auth(&self.token)
             .send()
             .await?
-            .error_for_status())?;
+            .error_for_status()?;
 
         Ok(response.json().await?)
     }
@@ -122,6 +122,48 @@ impl SiFsClient {
         Ok(self
             .client
             .get(self.fs_api_change_sets(&format!("funcs/{kind_string}"), change_set_id))
+            .bearer_auth(&self.token)
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+            .await?)
+    }
+
+    pub async fn asset_func_for_variant(
+        &self,
+        change_set_id: ChangeSetId,
+        schema_id: SchemaId,
+        unlocked: bool,
+    ) -> SiFsClientResult<Func> {
+        let response = self
+            .client
+            .get(self.fs_api_change_sets(&format!("schemas/{schema_id}/asset_func"), change_set_id))
+            .query(&VariantQuery { unlocked })
+            .bearer_auth(&self.token)
+            .send()
+            .await?
+            .error_for_status()?;
+
+        Ok(response.json().await?)
+    }
+
+    pub async fn variant_funcs_of_kind(
+        &self,
+        change_set_id: ChangeSetId,
+        schema_id: SchemaId,
+        func_kind: FuncKind,
+        unlocked: bool,
+    ) -> SiFsClientResult<Vec<Func>> {
+        let kind_string = si_frontend_types::fs::kind_to_string(func_kind);
+
+        Ok(self
+            .client
+            .get(self.fs_api_change_sets(
+                &format!("schemas/{schema_id}/funcs/{kind_string}"),
+                change_set_id,
+            ))
+            .query(&VariantQuery { unlocked })
             .bearer_auth(&self.token)
             .send()
             .await?

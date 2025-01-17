@@ -74,7 +74,7 @@ fn main() -> Result<()> {
         &args.mount_point,
         rt.handle().clone(),
         None,
-    );
+    )?;
 
     Ok(())
 }
