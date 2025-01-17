@@ -113,8 +113,9 @@ async fn evict_from_db() {
         PersistStatus::Error(e) => panic!("Eviction failed; {e}"),
     }
 
-    // wait for the changes to happen in CI, which can be verys low
-    tokio::time::sleep(Duration::from_millis(200)).await;
+    // wait for the changes to happen in CI, which can be very slow
+    // like, slower than you think even
+    tokio::time::sleep(Duration::from_millis(2000)).await;
 
     // Are we in memory?
     let in_memory = ldb
