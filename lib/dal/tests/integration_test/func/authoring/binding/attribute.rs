@@ -231,7 +231,150 @@ async fn create_attribute_prototype_with_attribute_prototype_argument(ctx: &mut 
     assert_eq!(FuncArgumentKind::Array, argument.kind);
     assert_eq!(Some(FuncArgumentKind::Object), argument.element_kind);
 }
+#[test]
+async fn output_socket_with_no_connections_updates_on_binding_change(ctx: &mut DalContext) {
+    // Let's create a new asset
+    let asset_name = "paulsTestAsset".to_string();
+    let description = None;
+    let link = None;
+    let category = "Integration Tests".to_string();
+    let color = "#00b0b0".to_string();
+    let first_variant = VariantAuthoringClient::create_schema_and_variant(
+        ctx,
+        asset_name.clone(),
+        description.clone(),
+        link.clone(),
+        category.clone(),
+        color.clone(),
+    )
+    .await
+    .expect("Unable to create new asset");
 
+    let schema = first_variant
+        .schema(ctx)
+        .await
+        .expect("Unable to get the schema for the variant");
+
+    let default_schema_variant = schema
+        .get_default_schema_variant_id(ctx)
+        .await
+        .expect("unable to get the default schema variant id");
+    assert!(default_schema_variant.is_some());
+    assert_eq!(default_schema_variant, Some(first_variant.id()));
+
+    // Now let's update the asset and create two props, an input socket, and an output socket
+    let new_code = "function main() {\n const myProp = new PropBuilder().setName(\"testProp\").setKind(\"string\").build();\n const inputSocket = new SocketDefinitionBuilder()
+    .setName(\"one\")
+    .setArity(\"many\")
+    .build();\n const outputSocket = new SocketDefinitionBuilder()
+    .setName(\"output\")
+    .setArity(\"many\")
+    .build();\n  return new AssetBuilder().addProp(myProp).addInputSocket(inputSocket).addOutputSocket(outputSocket).build()\n}".to_string();
+
+    VariantAuthoringClient::save_variant_content(
+        ctx,
+        first_variant.id(),
+        &schema.name,
+        first_variant.display_name(),
+        first_variant.category(),
+        first_variant.description(),
+        first_variant.link(),
+        first_variant
+            .get_color(ctx)
+            .await
+            .expect("get color from schema variant"),
+        first_variant.component_type(),
+        Some(new_code),
+    )
+    .await
+    .expect("save variant contents");
+
+    let updated_sv_id = VariantAuthoringClient::regenerate_variant(ctx, first_variant.id())
+        .await
+        .expect("regenerate asset");
+
+    let test_prop = Prop::find_prop_id_by_path(
+        ctx,
+        updated_sv_id,
+        &PropPath::new(["root", "domain", "testProp"]),
+    )
+    .await
+    .expect("able to find anotherProp prop");
+
+    // Create the component before changing bindings so we can ensure it updates appropriately
+    let component = create_component_for_default_schema_name_in_default_view(
+        ctx,
+        schema.name.clone(),
+        "demo component 2",
+    )
+    .await
+    .expect("could not create component");
+    let test_prop_path = &["root", "domain", "testProp"];
+    // update the attribute value for the component before we change anything else
+
+    let _value = update_attribute_value_for_component(
+        ctx,
+        component.id(),
+        test_prop_path,
+        serde_json::Value::String("test".to_string()),
+    )
+    .await
+    .expect("couldn't set av");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not update");
+
+    let output_socket = OutputSocket::find_with_name_or_error(ctx, "output", updated_sv_id)
+        .await
+        .expect("could not find output socket");
+
+    // let's set output socket to identity of test prop
+    let output_location = AttributeFuncDestination::OutputSocket(output_socket.id());
+    let input_location = AttributeFuncArgumentSource::Prop(test_prop);
+    // find the func for si:identity
+    let identity_func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Identity)
+        .await
+        .expect("could not find identity func");
+    let intrinsic_arg = FuncArgument::list_for_func(ctx, identity_func_id)
+        .await
+        .expect("could not get args");
+    assert_eq!(intrinsic_arg.len(), 1);
+    let func_arg_id = intrinsic_arg.first().expect("is some");
+    let arguments: Vec<AttributeArgumentBinding> = vec![
+        (AttributeArgumentBinding {
+            func_argument_id: func_arg_id.id,
+            attribute_func_input_location: input_location,
+            attribute_prototype_argument_id: None,
+        }),
+    ];
+
+    AttributeBinding::upsert_attribute_binding(
+        ctx,
+        identity_func_id,
+        Some(EventualParent::SchemaVariant(updated_sv_id)),
+        output_location,
+        arguments,
+    )
+    .await
+    .expect("could not upsert identity func");
+
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not update");
+
+    // make sure the output socket is updated as it's binding has changed
+
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not update");
+    // check output socket
+    let value = get_component_output_socket_value(ctx, component.id(), "output")
+        .await
+        .expect("could not get attribute value")
+        .expect("value is empty");
+
+    assert_eq!(serde_json::Value::String("test".to_string()), value);
+}
 #[test]
 async fn create_intrinsic_binding_then_unset(ctx: &mut DalContext) {
     // Let's create a new asset
