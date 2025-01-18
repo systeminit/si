@@ -26,7 +26,7 @@ export function bundleCode(code: string): Promise<string> {
     try {
       release = await lock("/tmp/lang-js-transpile", {
         stale: 30000,
-        updateInterval: 1000,
+        updateInterval: 100,
         retries: {
           retries: 60,
           minTimeout: 100,
