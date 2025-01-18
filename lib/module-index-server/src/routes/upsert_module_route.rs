@@ -160,7 +160,9 @@ pub async fn upsert_module_route(
         info!("module gets schema id: {}", schema_id.as_raw_id());
     }
 
-    let schemas: Vec<String> = loaded_module
+    let schemas = loaded_module.schemas()?;
+
+    let schemas_names: Vec<String> = loaded_module
         .schemas()?
         .iter()
         .map(|s| s.name().to_owned())
@@ -174,6 +176,14 @@ pub async fn upsert_module_route(
             description: f.description().map(|d| d.to_owned()),
         })
         .collect();
+
+    if module_schema_variant_id.is_none() && schemas.len() == 1 {
+        if let Some(schema) = schemas.get(0) {
+            if let Some(schema_data) = schema.data() {
+                module_schema_variant_id = schema_data.default_schema_variant.clone()
+            }
+        };
+    }
 
     let schema_variant_id = match module_kind {
         ModuleKind::WorkspaceBackup => None,
@@ -198,7 +208,7 @@ pub async fn upsert_module_route(
         )),
         metadata: Set(serde_json::to_value(ExtraMetadata {
             version,
-            schemas,
+            schemas: schemas_names,
             funcs,
         })?),
         kind: Set(module_kind),
