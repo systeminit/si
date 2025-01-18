@@ -4,6 +4,7 @@ import {
   createProp,
   isExpandedPropSpec,
   OnlyProperties,
+  propPathFromParts,
 } from "../spec/props.ts";
 import { PkgSpec } from "../bindings/PkgSpec.ts";
 import { SchemaSpec } from "../bindings/SchemaSpec.ts";
@@ -14,6 +15,7 @@ import { FuncSpec } from "../bindings/FuncSpec.ts";
 import type { FuncSpecData } from "../bindings/FuncSpecData.ts";
 import { SocketSpec } from "../bindings/SocketSpec.ts";
 import { createSocketFromProp } from "../spec/sockets.ts";
+import { SiPropFuncSpec } from "../bindings/SiPropFuncSpec.ts";
 
 function pkgSpecFromCf(src: CfSchema): PkgSpec {
   const [aws, category, name] = src.typeName.split("::");
@@ -29,7 +31,7 @@ function pkgSpecFromCf(src: CfSchema): PkgSpec {
   const schemaUniqueKey = ulid();
 
   const domain: PropSpec = createDomainFromSrc(src);
-  const sockets = createSocketsFromDomain(domain);
+  const { sockets, siPropFuncs } = createSocketsFromDomain(domain);
 
   const variant: SchemaVariantSpec = {
     version: "",
@@ -49,7 +51,7 @@ function pkgSpecFromCf(src: CfSchema): PkgSpec {
     authFuncs: [],
     leafFunctions: [],
     sockets,
-    siPropFuncs: [],
+    siPropFuncs,
     managementFuncs: [],
     domain,
     secrets: createDefaultProp("secrets"),
@@ -132,7 +134,12 @@ export async function generateSiSpecDatabase() {
     // console.log(`Building: ${cfSchema.typeName}`);
     try {
       const pkg = pkgSpecFromCf(cfSchema);
-      console.log(JSON.stringify(pkg, null, 2));
+      const pkgJson = JSON.stringify(pkg, null, 2);
+
+      await Deno.writeTextFile(
+        `si-spec-initial/${cfSchema.typeName}.json`,
+        pkgJson,
+      );
     } catch (e) {
       console.log(`Error Building: ${cfSchema.typeName}: ${e}`);
       continue;
@@ -140,22 +147,76 @@ export async function generateSiSpecDatabase() {
     imported += 1;
     // console.log(`Built: ${cfSchema.typeName}`);
   }
-  // console.log(`built ${imported} out of ${cfSchemas.length}`);
+  console.log(`built ${imported} out of ${cfSchemas.length}`);
 }
 
-function createDomainFromSrc(
-  src: CfSchema,
+type CreatePropQueue = {
+  addTo: null | ((data: PropSpec) => undefined);
+  name: string;
+  cfProp: CfProperty;
+}[];
+
+function createProp(name: string, cfProp: CfProperty) {
+  const queue: CreatePropQueue = [
+    {
+      name,
+      cfProp,
+      addTo: null,
+    },
+  ];
+
+  let rootProp = undefined;
+
+  while (queue.length > 0) {
+    const data = queue.shift();
+    if (!data) break;
+
+    const prop = createPropInner(data.name, data.cfProp, queue);
+
+    if (!data.addTo) {
+      rootProp = prop;
+    } else {
+      data.addTo(prop);
+    }
+  }
+
+  if (!rootProp) {
+    throw new Error(`createProp for ${name} did not generate a prop`);
+  }
+
+  return rootProp;
+}
+
+function createPropInner(
+  name: string,
+  cfProp: CfProperty,
+  queue: CreatePropQueue,
 ): PropSpec {
-  const onlyProperties: OnlyProperties = {
-    "createOnly": normalizeOnlyProperties(src.createOnlyProperties),
-    "readOnly": normalizeOnlyProperties(src.readOnlyProperties),
-    "writeOnly": normalizeOnlyProperties(src.writeOnlyProperties),
+  const propUniqueId = ulid();
+  const data: PropSpecData = {
+    name,
+    validationFormat: null,
+    defaultValue: null,
+    funcUniqueId: null,
+    inputs: null,
+    widgetKind: null,
+    widgetOptions: null,
+    hidden: false,
+    docLink: null,
+    documentation: null,
+  };
+
+  const partialProp: unknown = {
+    name,
+    data,
+    uniqueId: propUniqueId,
   };
 
   const domain: PropSpec = createDefaultProp("domain");
+  const domainPath = propPathFromParts(["root", "domain"]);
   Object.entries(src.properties).forEach(([name, cfData]) => {
     try {
-      domain.entries.push(createProp(name, cfData, onlyProperties));
+      domain.entries.push(createProp(name, domainPath, cfData, onlyProperties));
     } catch (e) {
       console.log(`Err ${e}`);
     }
@@ -175,19 +236,27 @@ function normalizeOnlyProperties(props: string[] | undefined): string[] {
   return newProps;
 }
 
-function createSocketsFromDomain(domain: PropSpec): SocketSpec[] {
+function createSocketsFromDomain(
+  domain: PropSpec,
+): { sockets: SocketSpec[]; siPropFuncs: SiPropFuncSpec[] } {
   const sockets: SocketSpec[] = [];
+  const siPropFuncs: SiPropFuncSpec[] = [];
   if (domain.kind == "object") {
     for (const prop of domain.entries) {
       if (
         !["array", "object"].includes(prop.kind) && isExpandedPropSpec(prop)
       ) {
-        const socket = createSocketFromProp(prop);
-        if (socket) {
-          sockets.push(socket);
-        }
+        const socketData = createSocketFromProp(prop);
+        if (!socketData) continue;
+
+        const [socket, propFunc] = socketData;
+        sockets.push(socket);
+        siPropFuncs.push(propFunc);
       }
     }
   }
-  return sockets;
+  return {
+    sockets,
+    siPropFuncs,
+  };
 }

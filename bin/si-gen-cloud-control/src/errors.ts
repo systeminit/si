@@ -13,3 +13,12 @@ export class ServiceMissing extends Error {
     this.name = "SchemaMissing";
   }
 }
+
+export class ServiceMissing extends Error {
+  constructor(serviceName: string) {
+    super(
+      `Attempt to find schema for service ${serviceName}, but it does not exist`,
+    );
+    this.name = "SchemaMissing";
+  }
+}

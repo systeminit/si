@@ -7,6 +7,11 @@ import { ulid } from "https://deno.land/x/ulid@v0.3.0/mod.ts";
 import { PropSpec } from "../bindings/PropSpec.ts";
 import { PropSpecData } from "../bindings/PropSpecData.ts";
 
+const PROP_PATH_SEPARATOR = "\x0B";
+
+export const propPathFromParts = (parts: string[]) =>
+  parts.join(PROP_PATH_SEPARATOR);
+
 export type OnlyProperties = {
   "createOnly": string[];
   "readOnly": string[];
@@ -27,18 +32,21 @@ export type ExpandedPropSpec =
       "createOnly": boolean;
       "readOnly": boolean;
       "writeOnly": boolean;
+      "path": string;
     };
   })
   & PropSpec;
 
 type CreatePropQueue = {
-  addTo: null | ((data: ExpandedPropSpec) => undefined);
   name: string;
   cfProp: CfProperty;
+  addTo: null | ((data: ExpandedPropSpec) => undefined);
+  parentPath: string;
 }[];
 
 export function createProp(
   name: string,
+  parentPath: string,
   cfProp: CfProperty,
   onlyProperties: OnlyProperties,
 ) {
@@ -47,6 +55,7 @@ export function createProp(
       name,
       cfProp,
       addTo: null,
+      parentPath,
     },
   ];
 
@@ -56,7 +65,13 @@ export function createProp(
     const data = queue.shift();
     if (!data) break;
 
-    const prop = createPropInner(data.name, data.cfProp, onlyProperties, queue);
+    const prop = createPropInner(
+      data.name,
+      data.parentPath,
+      data.cfProp,
+      onlyProperties,
+      queue,
+    );
 
     if (!data.addTo) {
       rootProp = prop;
@@ -74,11 +89,13 @@ export function createProp(
 
 function createPropInner(
   name: string,
+  parentPath: string,
   cfProp: CfProperty,
   onlyProperties: OnlyProperties,
   queue: CreatePropQueue,
 ): ExpandedPropSpec {
   const propUniqueId = ulid();
+  const path = propPathFromParts([parentPath, name]);
   const data: PropSpecData = {
     name,
     validationFormat: null,
@@ -97,9 +114,10 @@ function createPropInner(
     data,
     uniqueId: propUniqueId,
     metadata: {
-      "createOnly": onlyProperties.createOnly.includes(name),
-      "readOnly": onlyProperties.readOnly.includes(name),
-      "writeOnly": onlyProperties.writeOnly.includes(name),
+      createOnly: onlyProperties.createOnly.includes(name),
+      readOnly: onlyProperties.readOnly.includes(name),
+      writeOnly: onlyProperties.writeOnly.includes(name),
+      path,
     },
   };
 
@@ -136,6 +154,7 @@ function createPropInner(
       },
       name: `${name}Item`,
       cfProp: normalizedCfData.items,
+      parentPath: path,
     });
 
     return prop;
@@ -160,6 +179,7 @@ function createPropInner(
         },
         name: `${name}Item`,
         cfProp: patternProp,
+        parentPath: path,
       });
 
       return prop;
@@ -177,6 +197,7 @@ function createPropInner(
             },
             name: objName,
             cfProp: objProp,
+            parentPath: path,
           });
         },
       );

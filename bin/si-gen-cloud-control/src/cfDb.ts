@@ -142,11 +142,14 @@ export async function loadCfDatabase(): Promise<CfDb> {
     const fullPath = Deno.realPathSync("./cloudformation-schema");
     logger.debug("Loading database from Cloudformation schema", { fullPath });
     for (const dirEntry of Deno.readDirSync(fullPath)) {
-      const filename = `${fullPath}/${dirEntry.name}`;
-
-      if (dirEntry.name.indexOf("definition.schema") !== -1) {
+      if (
+        dirEntry.name.startsWith(".") ||
+        dirEntry.name.indexOf("definition.schema") !== -1
+      ) {
         continue;
       }
+
+      const filename = `${fullPath}/${dirEntry.name}`;
 
       const rawData = await import(filename, {
         with: { type: "json" },
@@ -157,8 +160,12 @@ export async function loadCfDatabase(): Promise<CfDb> {
 
       const typeName: string = data.typeName;
 
-      if (typeName !== "AWS::EC2::VPC") continue;
-      // if (typeName !== "AWS::EMR::Cluster") continue;
+      if (
+        ![
+          "AWS::EC2::Subnet",
+          "AWS::EC2::VPC",
+        ].includes(typeName)
+      ) continue;
 
       logger.debug(`Loaded ${typeName}`);
       try {
