@@ -309,7 +309,7 @@ impl AttributeBinding {
         eventual_parent: Option<EventualParent>,
         output_location: AttributeFuncDestination,
         prototype_arguments: Vec<AttributeArgumentBinding>,
-    ) -> FuncBindingResult<AttributePrototype> {
+    ) -> FuncBindingResult<(AttributePrototype, Option<FuncId>)> {
         let func = Func::get_by_id_or_error(ctx, func_id).await?;
 
         let needs_validate_intrinsic_input = match func.kind {
@@ -344,6 +344,8 @@ impl AttributeBinding {
         // cache attribute values that need to be updated from their prototype func after
         // we update the prototype
         let mut attribute_values_to_update = vec![];
+        // need to track if the func bound has changed so we can fire the necessary events for the front end to handle the switch
+        let mut maybe_existing_func_id: Option<FuncId> = None;
         match output_location {
             AttributeFuncDestination::Prop(prop_id) => {
                 match eventual_parent {
@@ -351,6 +353,10 @@ impl AttributeBinding {
                         if let Some(existing_prototype_id) =
                             AttributePrototype::find_for_prop(ctx, prop_id, &None).await?
                         {
+                            // let's see what the existing func is
+                            let existing_func_id =
+                                AttributePrototype::func_id(ctx, existing_prototype_id).await?;
+                            maybe_existing_func_id = Some(existing_func_id);
                             // if we're setting this to unset, need to also clear any existing attribute values
                             if func.backend_kind == FuncBackendKind::Unset {
                                 let attribute_value_ids = AttributePrototype::attribute_value_ids(
@@ -404,6 +410,9 @@ impl AttributeBinding {
                             AttributePrototype::find_for_output_socket(ctx, output_socket_id)
                                 .await?
                         {
+                            let existing_func_id =
+                                AttributePrototype::func_id(ctx, existing_prototype_id).await?;
+                            maybe_existing_func_id = Some(existing_func_id);
                             // if we're setting this to unset, need to also clear any existing attribute values
                             if func.backend_kind == FuncBackendKind::Unset {
                                 let attribute_value_ids = AttributePrototype::attribute_value_ids(
@@ -525,7 +534,7 @@ impl AttributeBinding {
         }
         // enqueue dvu for impacted attribute values
         Self::enqueue_dvu_for_impacted_values(ctx, attribute_prototype_id).await?;
-        Ok(attribute_prototype)
+        Ok((attribute_prototype, maybe_existing_func_id))
     }
 
     #[instrument(

@@ -154,12 +154,10 @@ const selectFilter = (item: DropdownFilter) => {
 
   selectedFilter.value = item;
 
-  const c = { ...display.value };
-
   if (item === "unset") {
-    emit("changeToUnset", c);
+    emit("changeToUnset", display.value);
   } else {
-    emit("changeToIdentity", c, null);
+    emit("changeToIdentity", display.value, null);
   }
 };
 

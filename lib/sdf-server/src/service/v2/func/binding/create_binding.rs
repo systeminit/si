@@ -85,14 +85,31 @@ pub async fn create_binding(
                                 });
                             }
 
-                            AttributeBinding::upsert_attribute_binding(
-                                &ctx,
-                                func_id.into_raw_id().into(),
-                                eventual_parent,
-                                attribute_output_location,
-                                arguments,
-                            )
-                            .await?;
+                            let (_new_binding, old_func) =
+                                AttributeBinding::upsert_attribute_binding(
+                                    &ctx,
+                                    func_id.into_raw_id().into(),
+                                    eventual_parent,
+                                    attribute_output_location,
+                                    arguments,
+                                )
+                                .await?;
+                            // Fire WS Event if the func has changed
+                            if let Some(old_func_id) = old_func {
+                                if old_func_id != func_id {
+                                    let old_func_summary =
+                                        Func::get_by_id_or_error(&ctx, old_func_id)
+                                            .await?
+                                            .into_frontend_type(&ctx)
+                                            .await?;
+
+                                    WsEvent::func_updated(&ctx, old_func_summary, None)
+                                        .await?
+                                        .publish_on_commit(&ctx)
+                                        .await?;
+                                }
+                            }
+
                             let (subject_name, component_id, schema_variant_id): (
                                 String,
                                 Option<si_events::ComponentId>,
