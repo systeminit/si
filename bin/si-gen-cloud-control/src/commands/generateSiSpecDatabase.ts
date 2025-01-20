@@ -1,7 +1,13 @@
-import { CfSchema, getServiceByName, loadCfDatabase } from "../cfDb.ts";
+import {
+  CfProperty,
+  CfSchema,
+  getServiceByName,
+  loadCfDatabase,
+} from "../cfDb.ts";
 import {
   createDefaultProp,
   createProp,
+  ExpandedPropSpec,
   isExpandedPropSpec,
   OnlyProperties,
 } from "../spec/props.ts";
@@ -13,7 +19,13 @@ import { PropSpec } from "../bindings/PropSpec.ts";
 import { FuncSpec } from "../bindings/FuncSpec.ts";
 import type { FuncSpecData } from "../bindings/FuncSpecData.ts";
 import { SocketSpec } from "../bindings/SocketSpec.ts";
-import { createSocketFromProp } from "../spec/sockets.ts";
+import {
+  attrFuncInputSpecFromProp,
+  createSocketFromProp,
+} from "../spec/sockets.ts";
+import { createSiFunc, getSiFuncId } from "../spec/siFuncs.ts";
+import { DefaultPropType } from "../spec/props.ts";
+import { FuncArgumentSpec } from "../bindings/FuncArgumentSpec.ts";
 
 function pkgSpecFromCf(src: CfSchema): PkgSpec {
   const [aws, category, name] = src.typeName.split("::");
@@ -27,20 +39,32 @@ function pkgSpecFromCf(src: CfSchema): PkgSpec {
   const variantUniqueKey = ulid();
   const assetFuncUniqueKey = ulid();
   const schemaUniqueKey = ulid();
+  const version = versionFromDate();
 
-  const domain: PropSpec = createDomainFromSrc(src);
+  const onlyProperties: OnlyProperties = {
+    createOnly: normalizeOnlyProperties(src.createOnlyProperties),
+    readOnly: normalizeOnlyProperties(src.readOnlyProperties),
+    writeOnly: normalizeOnlyProperties(src.writeOnlyProperties),
+  };
+
+  const domain: PropSpec = createDomainFromSrc(src, onlyProperties);
+  const resourceValue: PropSpec = createResourceValueFromSrc(
+    src,
+    onlyProperties,
+  );
+  createInputsInDomainFromResource(domain, resourceValue);
   const sockets = createSocketsFromDomain(domain);
 
   const variant: SchemaVariantSpec = {
-    version: "",
+    version,
     data: {
-      version: "",
+      version,
       link: null,
       color: "#b64017",
       displayName: name,
       componentType: "component",
       funcUniqueId: assetFuncUniqueKey,
-      description: null,
+      description: src.description,
     },
     uniqueId: variantUniqueKey,
     deleted: false,
@@ -54,7 +78,7 @@ function pkgSpecFromCf(src: CfSchema): PkgSpec {
     domain,
     secrets: createDefaultProp("secrets"),
     secretDefinition: null,
-    resourceValue: createDefaultProp("resource"),
+    resourceValue,
     rootPropFuncs: [],
   };
   // TODO do an autopsy of a spec from module index to fill these prop specs
@@ -64,7 +88,7 @@ function pkgSpecFromCf(src: CfSchema): PkgSpec {
     data: {
       name: src.typeName,
       category: `AWS ${category}`,
-      categoryName: name,
+      categoryName: null,
       uiHidden: false,
       defaultSchemaVariant: variantUniqueKey,
     },
@@ -82,11 +106,8 @@ function pkgSpecFromCf(src: CfSchema): PkgSpec {
     description: null,
     handler: "main",
     codeBase64: btoa(
-      "function main() {\n" +
-        "  const asset = new AssetBuilder();\n" +
-        "  return asset.build();\n" +
-        "}",
-    ),
+      "function main() { const asset = new AssetBuilder();return asset.build();}",
+    ).replace(/=/g, ""),
     backendKind: "jsSchemaVariantDefinition",
     responseType: "schemaVariantDefinition",
     hidden: false,
@@ -105,7 +126,7 @@ function pkgSpecFromCf(src: CfSchema): PkgSpec {
   return {
     kind: "module",
     name: src.typeName,
-    version: "",
+    version,
     description: src.description,
     createdAt: new Date().toISOString(),
     createdBy: "Cagador", // TODO Figure out a better name
@@ -113,9 +134,15 @@ function pkgSpecFromCf(src: CfSchema): PkgSpec {
     workspacePk: null,
     workspaceName: null,
     schemas: [schema],
-    funcs: [assetFunc],
+    funcs: [assetFunc].concat(createSiFuncs()).concat(
+      createResourcePayloadToValue(),
+    ),
     changeSets: [], // always empty
   };
+}
+
+function versionFromDate(): string {
+  return new Date().toISOString().replace(/[-:T.Z]/g, "").slice(0, 14);
 }
 
 export function generateSiSpecForService(serviceName: string) {
@@ -145,23 +172,54 @@ export async function generateSiSpecDatabase() {
 
 function createDomainFromSrc(
   src: CfSchema,
+  onlyProperties: OnlyProperties,
 ): PropSpec {
-  const onlyProperties: OnlyProperties = {
-    "createOnly": normalizeOnlyProperties(src.createOnlyProperties),
-    "readOnly": normalizeOnlyProperties(src.readOnlyProperties),
-    "writeOnly": normalizeOnlyProperties(src.writeOnlyProperties),
-  };
+  return createRootFromProperties("domain", src.properties, onlyProperties);
+}
 
-  const domain: PropSpec = createDefaultProp("domain");
-  Object.entries(src.properties).forEach(([name, cfData]) => {
+function createResourceValueFromSrc(
+  src: CfSchema,
+  onlyProperties: OnlyProperties,
+): PropSpec {
+  return createRootFromProperties(
+    "resource_value",
+    pruneResourceValues(src.properties, onlyProperties),
+    onlyProperties,
+  );
+}
+
+function createRootFromProperties(
+  root_name: DefaultPropType,
+  properties: Record<string, CfProperty>,
+  onlyProperties: OnlyProperties,
+): PropSpec {
+  const root: ExpandedPropSpec = createDefaultProp(root_name);
+  Object.entries(properties).forEach(([name, cfData]) => {
     try {
-      domain.entries.push(createProp(name, cfData, onlyProperties));
+      root.entries.push(
+        createProp(name, cfData, onlyProperties, [...root.metadata.propPath]),
+      );
     } catch (e) {
       console.log(`Err ${e}`);
     }
   });
 
-  return domain;
+  return root;
+}
+
+function pruneResourceValues(
+  properties: Record<string, CfProperty>,
+  onlyProperties: OnlyProperties,
+): Record<string, CfProperty> {
+  if (!properties || !onlyProperties?.readOnly) {
+    return {};
+  }
+
+  const readOnlySet = new Set(onlyProperties.readOnly);
+  return Object.fromEntries(
+    Object.entries(properties)
+      .filter(([name]) => readOnlySet.has(name)),
+  );
 }
 
 function normalizeOnlyProperties(props: string[] | undefined): string[] {
@@ -173,6 +231,25 @@ function normalizeOnlyProperties(props: string[] | undefined): string[] {
     }
   }
   return newProps;
+}
+
+function createInputsInDomainFromResource(
+  domain: PropSpec,
+  resource: PropSpec,
+) {
+  if (resource.kind === "object" && domain.kind === "object") {
+    resource.entries.forEach((resource: PropSpec) => {
+      const domainProp = domain.entries.find((d: PropSpec) =>
+        d.name === resource.name
+      );
+      if (domainProp?.data?.inputs) {
+        domainProp.data.funcUniqueId = getSiFuncId("si:identity");
+        domainProp.data.inputs.push(
+          attrFuncInputSpecFromProp(resource as ExpandedPropSpec),
+        );
+      }
+    });
+  }
 }
 
 function createSocketsFromDomain(domain: PropSpec): SocketSpec[] {
@@ -190,4 +267,61 @@ function createSocketsFromDomain(domain: PropSpec): SocketSpec[] {
     }
   }
   return sockets;
+}
+
+function createResourcePayloadToValue(): FuncSpec[] {
+  const name = "si:resourcePayloadToValue";
+  const data: FuncSpecData = {
+    name,
+    displayName: name,
+    description: null,
+    handler: "main",
+    codeBase64:
+      "YXN5bmMgZnVuY3Rpb24gbWFpbihhcmc6IElucHV0KTogUHJvbWlzZSA8IE91dHB1dCA+IHsKICAgIHJldHVybiBhcmcucGF5bG9hZCA/PyB7fTsKfQ",
+    backendKind: "jsAttribute",
+    responseType: "object",
+    hidden: false,
+    link: null,
+  };
+
+  const args: FuncArgumentSpec = {
+    name: "payload",
+    kind: "object",
+    elementKind: null,
+    uniqueId: ulid(),
+    deleted: false,
+  };
+
+  const func: FuncSpec = {
+    name,
+    uniqueId: ulid(),
+    data,
+    deleted: false,
+    isFromBuiltin: null,
+    arguments: [args],
+  };
+
+  return [func];
+}
+
+function createSiFuncs(): FuncSpec[] {
+  const ret: FuncSpec[] = [];
+  const siFuncs = [
+    "si:identity",
+    "si:setArray",
+    "si:setBoolean",
+    "si:setInteger",
+    "si:setJson",
+    "si:setMap",
+    "si:setObject",
+    "si:setString",
+    "si:unset",
+    "si:validation",
+  ];
+
+  for (const func of siFuncs) {
+    ret.push(createSiFunc(func));
+  }
+
+  return ret;
 }

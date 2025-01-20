@@ -8,9 +8,9 @@ import { PropSpec } from "../bindings/PropSpec.ts";
 import { PropSpecData } from "../bindings/PropSpecData.ts";
 
 export type OnlyProperties = {
-  "createOnly": string[];
-  "readOnly": string[];
-  "writeOnly": string[];
+  createOnly: string[];
+  readOnly: string[];
+  writeOnly: string[];
 };
 
 export function isExpandedPropSpec(prop: PropSpec): prop is ExpandedPropSpec {
@@ -23,10 +23,11 @@ export function isExpandedPropSpec(prop: PropSpec): prop is ExpandedPropSpec {
 
 export type ExpandedPropSpec =
   & ({
-    "metadata": {
-      "createOnly": boolean;
-      "readOnly": boolean;
-      "writeOnly": boolean;
+    metadata: {
+      createOnly?: boolean;
+      readOnly?: boolean;
+      writeOnly?: boolean;
+      propPath: string[];
     };
   })
   & PropSpec;
@@ -41,6 +42,7 @@ export function createProp(
   name: string,
   cfProp: CfProperty,
   onlyProperties: OnlyProperties,
+  propPath: string[],
 ) {
   const queue: CreatePropQueue = [
     {
@@ -56,7 +58,13 @@ export function createProp(
     const data = queue.shift();
     if (!data) break;
 
-    const prop = createPropInner(data.name, data.cfProp, onlyProperties, queue);
+    const prop = createPropInner(
+      data.name,
+      data.cfProp,
+      onlyProperties,
+      propPath,
+      queue,
+    );
 
     if (!data.addTo) {
       rootProp = prop;
@@ -76,6 +84,7 @@ function createPropInner(
   name: string,
   cfProp: CfProperty,
   onlyProperties: OnlyProperties,
+  propPath: string[],
   queue: CreatePropQueue,
 ): ExpandedPropSpec {
   const propUniqueId = ulid();
@@ -84,7 +93,7 @@ function createPropInner(
     validationFormat: null,
     defaultValue: null,
     funcUniqueId: null,
-    inputs: null,
+    inputs: [],
     widgetKind: null,
     widgetOptions: null,
     hidden: false,
@@ -92,14 +101,16 @@ function createPropInner(
     documentation: null,
   };
 
+  propPath.push(name);
   const partialProp: unknown = {
     name,
     data,
     uniqueId: propUniqueId,
     metadata: {
-      "createOnly": onlyProperties.createOnly.includes(name),
-      "readOnly": onlyProperties.readOnly.includes(name),
-      "writeOnly": onlyProperties.writeOnly.includes(name),
+      createOnly: onlyProperties.createOnly.includes(name),
+      readOnly: onlyProperties.readOnly.includes(name),
+      writeOnly: onlyProperties.writeOnly.includes(name),
+      propPath,
     },
   };
 
@@ -112,6 +123,7 @@ function createPropInner(
     const prop = partialProp as Extract<ExpandedPropSpec, { kind: "number" }>;
     prop.kind = "number";
     prop.data!.widgetKind = "Text";
+
     return prop;
   } else if (normalizedCfData.type === "boolean") {
     const prop = partialProp as Extract<ExpandedPropSpec, { kind: "boolean" }>;
@@ -190,11 +202,11 @@ function createPropInner(
   throw new Error("no matching kind");
 }
 
-type DefaultPropType = "domain" | "secrets" | "resource";
+export type DefaultPropType = "domain" | "secrets" | "resource_value";
 
 export function createDefaultProp(
   type: DefaultPropType,
-): Extract<PropSpec, { kind: "object" }> {
+): Extract<ExpandedPropSpec, { kind: "object" }> {
   const data: PropSpecData = {
     name: type,
     validationFormat: null,
@@ -208,11 +220,16 @@ export function createDefaultProp(
     documentation: null,
   };
 
-  return {
+  const prop: ExpandedPropSpec = {
     kind: "object",
     data,
     name: type,
     entries: [],
     uniqueId: ulid(),
+    metadata: {
+      propPath: ["root", type],
+    },
   };
+
+  return prop;
 }
