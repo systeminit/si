@@ -26,6 +26,7 @@ si-settings = { path = "../../lib/si-settings" }
 si-std = { path = "../../lib/si-std" }
 telemetry = { path = "../../lib/telemetry-rs" }
 telemetry-nats = { path = "../../lib/telemetry-nats-rs" }
+telemetry-utils = { path = "../../lib/telemetry-utils-rs" }
 veritech-client = { path = "../../lib/veritech-client" }
 
 derive_builder = { workspace = true }
