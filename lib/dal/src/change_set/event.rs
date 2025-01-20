@@ -75,13 +75,6 @@ impl WsEvent {
         .await
     }
 
-    pub async fn change_set_canceled(
-        ctx: &DalContext,
-        change_set_id: ChangeSetId,
-    ) -> WsEventResult<Self> {
-        WsEvent::new(ctx, WsPayload::ChangeSetCanceled(change_set_id)).await
-    }
-
     pub async fn change_set_merge_vote(
         ctx: &DalContext,
         change_set_id: ChangeSetId,
@@ -129,51 +122,11 @@ impl WsEvent {
         .await
     }
 
-    pub async fn change_set_abandon_vote(
+    pub async fn change_set_canceled(
         ctx: &DalContext,
         change_set_id: ChangeSetId,
-        user_pk: Option<UserPk>,
-        vote: String,
     ) -> WsEventResult<Self> {
-        WsEvent::new(
-            ctx,
-            WsPayload::ChangeSetAbandonVote(ChangeSetMergeVotePayload {
-                change_set_id,
-                user_pk,
-                vote,
-            }),
-        )
-        .await
-    }
-
-    pub async fn change_set_begin_abandon_approval_process(
-        ctx: &DalContext,
-        change_set_id: ChangeSetId,
-        user_pk: Option<UserPk>,
-    ) -> WsEventResult<Self> {
-        WsEvent::new(
-            ctx,
-            WsPayload::ChangeSetBeginAbandonProcess(ChangeSetActorPayload {
-                change_set_id,
-                user_pk,
-            }),
-        )
-        .await
-    }
-
-    pub async fn change_set_cancel_abandon_approval_process(
-        ctx: &DalContext,
-        change_set_id: ChangeSetId,
-        user_pk: Option<UserPk>,
-    ) -> WsEventResult<Self> {
-        WsEvent::new(
-            ctx,
-            WsPayload::ChangeSetCancelAbandonProcess(ChangeSetActorPayload {
-                change_set_id,
-                user_pk,
-            }),
-        )
-        .await
+        WsEvent::new(ctx, WsPayload::ChangeSetCanceled(change_set_id)).await
     }
 
     pub async fn rename_change_set(
