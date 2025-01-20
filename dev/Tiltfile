@@ -65,7 +65,13 @@ RUST_RESOURCE_ARGS = {
     "trigger_mode": TRIGGER_MODE_MANUAL,
 }
 
-def si_buck2_resource(target, *, name=None, buck2_serve_args=None, tee=True, **kwargs):
+def si_buck2_resource(
+        target,
+        *,
+        name = None,
+        buck2_serve_args = None,
+        tee = True,
+        **kwargs):
     # Figure name from build command: //app/web:dev -> web
     if name == None:
         name = target.split("/")[-1].split(":")[0]
@@ -76,11 +82,11 @@ def si_buck2_resource(target, *, name=None, buck2_serve_args=None, tee=True, **k
     # call (i.e. it thinks "--foo bar" is one argument rather than having
     # argument "--foo" be passed value "bar"). Thus, we use two booleans to
     # get around this. If we get both, greedily choose the standard mode.
-    if cfg.get('standard-rustc-build-mode', False):
+    if cfg.get("standard-rustc-build-mode", False):
         mode_and_target = target
-    elif cfg.get('debug-rustc-build-mode', False):
+    elif cfg.get("debug-rustc-build-mode", False):
         mode_and_target = "@//mode/debug {}".format(target)
-    elif cfg.get('debug-no-rebaser-rustc-build-mode', False) and target != '//bin/rebaser:rebaser':
+    elif cfg.get("debug-no-rebaser-rustc-build-mode", False) and target != "//bin/rebaser:rebaser":
         mode_and_target = "@//mode/debug {}".format(target)
     else:
         mode_and_target = "@//mode/release {}".format(target)
@@ -93,8 +99,8 @@ def si_buck2_resource(target, *, name=None, buck2_serve_args=None, tee=True, **k
     if buck2_serve_args != None:
         serve_cmd += " -- {}".format(buck2_serve_args)
     if tee and mode_and_target != target:
-        # TODO different resources currently tee differently depending on mode. Seems like
-        # copypasta error but ask around to see if it's intended.
+        # TODO different resources currently tee differently depending on mode. Seems like copypasta
+        # error but ask around to see if it's intended.
         serve_cmd += " | tee /tmp/si-logs/{}".format(name)
 
     # Bring in deps
@@ -109,7 +115,7 @@ def si_buck2_resource(target, *, name=None, buck2_serve_args=None, tee=True, **k
         cmd = cmd,
         serve_cmd = serve_cmd,
         deps = str(local(deps_cmd)).splitlines(),
-        **kwargs,
+        **kwargs
     )
 
 # From the Tilt docs:
@@ -133,7 +139,21 @@ def find_group(name, groups):
 
 # Use Docker Compose to provide the platform services
 docker_compose("./docker-compose.platform.yml")
-compose_services = ["jaeger", "nats", "otelcol", "postgres", "postgres-test", "db", "db-test", "loki",  "grafana", "localstack", "promtail", "prometheus", "spicedb"]
+compose_services = [
+    "db",
+    "db-test",
+    "grafana",
+    "jaeger",
+    "localstack",
+    "loki",
+    "nats",
+    "otelcol",
+    "postgres",
+    "postgres-test",
+    "prometheus",
+    "promtail",
+    "spicedb",
+]
 for service in compose_services:
     if service == "jaeger":
         links = [
@@ -160,7 +180,7 @@ si_buck2_resource(
         "otelcol",
         "postgres",
     ],
-    **RUST_RESOURCE_ARGS,
+    **RUST_RESOURCE_ARGS
 )
 
 # Locally build and run `forklift`
@@ -170,7 +190,7 @@ si_buck2_resource(
         "nats",
         "otelcol",
     ],
-    **RUST_RESOURCE_ARGS,
+    **RUST_RESOURCE_ARGS
 )
 
 # Locally build and run `pinga`
@@ -181,20 +201,22 @@ si_buck2_resource(
         "otelcol",
         "veritech",
     ],
-    **RUST_RESOURCE_ARGS,
+    **RUST_RESOURCE_ARGS
 )
 
 # Locally build and run `veritech`
 si_buck2_resource(
     "//bin/veritech:veritech",
     # buck2_serve_args = "--cyclone-local-firecracker --cyclone-pool-size 10",
-    # This ^ is the serve command you might need if you want to execute on firecracker for 10 function executions.
+    # This ^ is the serve command you might need if you want to execute on firecracker for 10
+    # function executions.
+    #
     # NB: BUCK2 MUST RUN AS ROOT OR THIS WILL NOT WORK
     resource_deps = [
         "nats",
         "otelcol",
     ],
-    **RUST_RESOURCE_ARGS,
+    **RUST_RESOURCE_ARGS
 )
 
 # Locally build and run `sdf`
@@ -220,7 +242,7 @@ si_buck2_resource(
     links = [
         "localhost:5156",
     ],
-    **RUST_RESOURCE_ARGS,
+    **RUST_RESOURCE_ARGS
 )
 
 # Locally build and run `web` in dev mode
@@ -276,7 +298,7 @@ si_buck2_resource(
     links = [
         "localhost:5157",
     ],
-    **RUST_RESOURCE_ARGS,
+    **RUST_RESOURCE_ARGS
 )
 
 # Locally build and run `auth-api`
@@ -317,4 +339,3 @@ si_buck2_resource(
         link("http://127.0.0.1:9000", "web"),
     ],
 )
-
