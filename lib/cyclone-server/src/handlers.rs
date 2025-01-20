@@ -289,7 +289,7 @@ async fn handle_socket<Request, LangServerSuccess, Success>(
         match execution.start(&mut socket).await {
             Ok(started) => started,
             Err(err) => {
-                warn!(error = ?err, "failed to start protocol");
+                warn!(si.error.message = ?err, "failed to start protocol");
                 request_span.record_err(&err);
                 if let Err(err) =
                     fail_to_process(socket, "failed to start protocol", success_marker).await
@@ -307,7 +307,7 @@ async fn handle_socket<Request, LangServerSuccess, Success>(
     let proto = match proto.process(&mut socket).await {
         Ok(processed) => processed,
         Err(err) => {
-            warn!(error = ?err, "failed to process protocol");
+            warn!(si.error.message = ?err, "failed to process protocol");
             request_span.record_err(&err);
             if let Err(err) = fail_to_process(
                 socket,
@@ -327,7 +327,7 @@ async fn handle_socket<Request, LangServerSuccess, Success>(
     };
     if let Err(err) = proto.finish(socket).await {
         request_span.record_err(&err);
-        warn!(error = ?err, "failed to finish protocol");
+        warn!(si.error.message = ?err, "failed to finish protocol");
         return;
     }
 

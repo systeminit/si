@@ -423,7 +423,7 @@ async fn watch_task<Strm>(
             _ = Pin::new(&mut shutdown_rx) => {
                 trace!("watch task received shutdown");
                 if let Err(err) = watch_progress.stop().await {
-                    warn!(error = ?err, "failed to cleanly close the watch session");
+                    warn!(si.error.message = ?err, "failed to cleanly close the watch session");
                 }
                 break;
             }
@@ -435,9 +435,9 @@ async fn watch_task<Strm>(
                     // An error occurred on the stream. We are going to treat this as catastrophic
                     // and end the watch.
                     Some(Err(err)) => {
-                        warn!(error = ?err, "error on watch stream");
+                        warn!(si.error.message = ?err, "error on watch stream");
                         if let Err(err) = watch_progress.stop().await {
-                            warn!(error = ?err, "failed to cleanly close the watch session");
+                            warn!(si.error.message = ?err, "failed to cleanly close the watch session");
                         }
                         break
                     }

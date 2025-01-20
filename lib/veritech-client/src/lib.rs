@@ -359,11 +359,11 @@ async fn forward_output_task(
                     Ok(output) => {
                         output.process_span.follows_from(&request_span);
                         if let Err(err) = output_tx.send(output.payload).await {
-                            warn!(error = ?err, "output forwarder failed to send message on channel");
+                            warn!(si.error.message = ?err, "output forwarder failed to send message on channel");
                         }
                     }
                     Err(err) => {
-                        warn!(error = ?err, "output forwarder received an error on its subscriber")
+                        warn!(si.error.message = ?err, "output forwarder received an error on its subscriber")
                     }
                 }
             }
@@ -372,6 +372,6 @@ async fn forward_output_task(
         }
     }
     if let Err(err) = output_subscriber.unsubscribe_after(0).await {
-        warn!(error = ?err, "error when unsubscribing from output subscriber");
+        warn!(si.error.message = ?err, "error when unsubscribing from output subscriber");
     }
 }
