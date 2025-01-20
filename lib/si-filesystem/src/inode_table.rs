@@ -184,9 +184,12 @@ impl InodeTable {
         }
     }
 
-    pub fn set_size(&mut self, ino: u64, size: u64) {
+    pub fn set_size(&mut self, ino: u64, size: u64) -> Option<FileAttr> {
         if let Some(entry) = self.get_mut(ino) {
             entry.attrs.size = size;
+            Some(entry.attrs.clone())
+        } else {
+            None
         }
     }
 

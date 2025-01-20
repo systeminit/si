@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::ffi::OsString;
 use std::path::Path;
 use std::sync::atomic::AtomicU64;
@@ -5,9 +6,12 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use client::{SiFsClient, SiFsClientError};
-use fuser::{FileType, MountOption, ReplyAttr, ReplyData, ReplyDirectory, ReplyEntry, ReplyOpen};
+use fuser::{
+    FileType, MountOption, ReplyAttr, ReplyData, ReplyDirectory, ReplyEmpty, ReplyEntry, ReplyOpen,
+};
 use inode_table::{InodeEntryData, InodeTable, InodeTableError};
-use nix::libc::{EACCES, EINVAL, ENOTDIR};
+use nix::fcntl::OFlag;
+use nix::libc::{EACCES, EINVAL, ENOTDIR, O_ACCMODE, O_APPEND, O_RDWR, O_TRUNC, O_WRONLY};
 use nix::unistd::{Gid, Uid};
 use nix::{
     libc::{ENODATA, ENOENT, ENOSYS},
@@ -31,7 +35,7 @@ pub use async_wrapper::AsyncFuseWrapper;
 pub use command::FilesystemCommand;
 
 const FILE_HANDLE_READ_BIT: u64 = 1 << 63;
-// const FILE_HANDLE_WRITE_BIT: u64 = 1 << 62;
+const FILE_HANDLE_WRITE_BIT: u64 = 1 << 62;
 
 const TYPESCRIPT_INDEX: &str = "index.ts";
 
@@ -52,11 +56,22 @@ pub enum SiFileSystemError {
 pub type SiFileSystemResult<T> = Result<T, SiFileSystemError>;
 
 #[derive(Clone, Debug)]
+struct OpenFile {
+    ino: u64,
+    fh: u64,
+    read_buf: Option<Vec<u8>>,
+    write_buf: Option<Vec<u8>>,
+    append: bool,
+    write: bool,
+}
+
+#[derive(Clone, Debug)]
 #[allow(dead_code)]
 struct SiFileSystem {
     client: Arc<SiFsClient>,
     workspace_id: WorkspaceId,
     inode_table: Arc<RwLock<InodeTable>>,
+    open_files: Arc<RwLock<HashMap<u64, OpenFile>>>,
     fh: Arc<AtomicU64>,
     uid: Uid,
     gid: Gid,
@@ -74,17 +89,20 @@ struct DirListing {
     entries: Vec<DirEntry>,
 }
 
+const THIS_DIR: &str = ".";
+const PARENT_DIR: &str = "..";
+
 impl DirListing {
     pub fn new(ino: u64, parent: Option<u64>) -> Self {
         let entries = vec![
             DirEntry {
                 ino,
-                name: ".".into(),
+                name: THIS_DIR.into(),
                 kind: FileType::Directory,
             },
             DirEntry {
                 ino: parent.unwrap_or(1),
-                name: "..".into(),
+                name: PARENT_DIR.into(),
                 kind: FileType::Directory,
             },
         ];
@@ -122,6 +140,7 @@ impl SiFileSystem {
             client: Arc::new(client),
             workspace_id,
             inode_table: Arc::new(RwLock::new(inode_table)),
+            open_files: Arc::new(RwLock::new(HashMap::new())),
             fh: Arc::new(AtomicU64::new(1)),
             uid,
             gid,
@@ -148,13 +167,88 @@ impl SiFileSystem {
         Ok(())
     }
 
-    async fn open(&self, _ino: u64, reply: ReplyOpen, _flags: i32) -> SiFileSystemResult<()> {
-        reply.opened(self.get_file_handle() | FILE_HANDLE_READ_BIT, 0);
+    async fn setattr(
+        &self,
+        ino: u64,
+        _mode: Option<u32>,
+        _uid: Option<u32>,
+        _gid: Option<u32>,
+        size: Option<u64>,
+        _fh: Option<u64>,
+        _flags: Option<u32>,
+        reply: ReplyAttr,
+    ) -> SiFileSystemResult<()> {
+        // look in the write files table for this file handle, if there is one and set attr is zero
+        // say "truncate = true"
+        if let Some(size) = size {
+            // support truncation. ignore other set size requests for now
+            if size == 0 {
+                if let Some(attrs) = self.inode_table.write().await.set_size(ino, size) {
+                    reply.attr(&TTL, &attrs);
+                } else {
+                    reply.error(ENOENT);
+                }
+            }
+        } else if let Some(entry) = self.inode_table.read().await.get(ino) {
+            reply.attr(&TTL, entry.attrs());
+        } else {
+            reply.error(ENOENT);
+        }
+
+        Ok(())
+    }
+
+    async fn open(&self, ino: u64, reply: ReplyOpen, flags: i32) -> SiFileSystemResult<()> {
+        let append = flags & O_APPEND != 0;
+        let write = match flags & O_ACCMODE {
+            O_RDWR => true,
+            O_WRONLY => true,
+            _ => false,
+        };
+        // cannot detect O_TRUNC here. Instead we get SetAttr with size = 0;
+        let mut fh = self.get_file_handle() | FILE_HANDLE_READ_BIT;
+        if write {
+            fh |= FILE_HANDLE_WRITE_BIT;
+        }
+
+        self.open_files.write().await.insert(
+            fh,
+            OpenFile {
+                ino,
+                fh,
+                read_buf: None,
+                write_buf: None,
+                append,
+                write,
+            },
+        );
+
+        reply.opened(fh, 0);
+
         Ok(())
     }
 
     async fn opendir(&self, _ino: u64, reply: ReplyOpen, _flags: i32) -> SiFileSystemResult<()> {
         reply.opened(self.get_file_handle() | FILE_HANDLE_READ_BIT, 0);
+        Ok(())
+    }
+
+    async fn release(
+        &self,
+        _ino: u64,
+        fh: u64,
+        _flags: i32,
+        _lock_owner: Option<u64>,
+        _flush: bool,
+        reply: ReplyEmpty,
+    ) -> SiFileSystemResult<()> {
+        reply.ok();
+        if let Some(open_file) = self.open_files.write().await.remove(&fh) {
+            if open_file.write && open_file.write_buf.is_some() {
+                dbg!("should flush?");
+            }
+        }
+
         Ok(())
     }
 
@@ -269,7 +363,7 @@ impl SiFileSystem {
     async fn read(
         &self,
         ino: u64,
-        _fh: u64,
+        fh: u64,
         offset: i64,
         size: u32,
         _flags: i32,
@@ -282,24 +376,39 @@ impl SiFileSystem {
         };
 
         match entry.data() {
-            InodeEntryData::FuncCode { change_set_id, id }
+            InodeEntryData::FuncCode {
+                change_set_id, id, ..
+            }
             | InodeEntryData::AssetFunc {
                 id, change_set_id, ..
             } => {
-                let code = self.client.func_code(*change_set_id, *id).await?;
-                let bytes = code.as_bytes();
-                self.inode_table
-                    .write()
-                    .await
-                    .set_size(ino, bytes.len() as u64);
+                let open_files_read = self.open_files.read().await;
 
-                let read_len =
-                    std::cmp::min(size, bytes.len().saturating_sub(offset as usize) as u32)
-                        as usize;
+                if let Some(bytes) = open_files_read
+                    .get(&fh)
+                    .and_then(|of| of.read_buf.as_deref())
+                {
+                    dbg!("sending in read scope");
+                    reply.data(&get_read_slice(bytes, offset as usize, size as usize).to_vec());
+                } else {
+                    drop(open_files_read);
 
-                match bytes.get((offset as usize)..read_len) {
-                    Some(range) => reply.data(range),
-                    None => reply.data(bytes),
+                    let code = self.client.func_code(*change_set_id, *id).await?;
+                    dbg!("fetched code");
+                    self.inode_table
+                        .write()
+                        .await
+                        .set_size(ino, code.as_bytes().len() as u64);
+
+                    if let Some(open_file) = self.open_files.write().await.get_mut(&fh) {
+                        open_file.read_buf = Some(code.as_bytes().to_vec());
+                        if let Some(bytes) = open_file.read_buf.as_deref() {
+                            dbg!("sending reply in write lock scope");
+                            reply.data(
+                                &get_read_slice(bytes, offset as usize, size as usize).to_vec(),
+                            );
+                        }
+                    }
                 }
             }
             _ => reply.error(EINVAL),
@@ -398,26 +507,26 @@ impl SiFileSystem {
                             unlocked: true,
                         },
                         FileType::Directory,
-                        false,
+                        true,
                         None,
                     )?;
                     dirs.add(ino, "unlocked".into(), FileType::Directory);
                 }
 
-                if let Some(unlocked_variant_id) = variants.locked {
+                if let Some(locked_variant_id) = variants.locked {
                     let mut inode_table = self.inode_table.write().await;
 
                     let ino = inode_table.upsert_with_parent_ino(
                         entry.ino,
                         "locked",
                         InodeEntryData::SchemaVariant {
-                            id: unlocked_variant_id,
+                            id: locked_variant_id,
                             schema_id: *id,
                             change_set_id: *change_set_id,
                             unlocked: false,
                         },
                         FileType::Directory,
-                        true,
+                        false,
                         None,
                     )?;
                     dirs.add(ino, "locked".into(), FileType::Directory);
@@ -592,13 +701,45 @@ impl SiFileSystem {
                         name,
                         reply,
                     } => self_clone.lookup(parent, name, reply).await,
-                    FilesystemCommand::Release { reply, .. } => {
+                    FilesystemCommand::Release {
+                        ino,
+                        fh,
+                        flags,
+                        lock_owner,
+                        flush,
+                        reply,
+                    } => {
+                        self_clone
+                            .release(ino, fh, flags, lock_owner, flush, reply)
+                            .await
+                    }
+                    FilesystemCommand::FSync {
+                        ino,
+                        fh,
+                        datasync,
+                        reply,
+                    } => {
+                        dbg!("fsync!");
                         reply.ok();
                         Ok(())
                     }
                     FilesystemCommand::GetXattr { reply, .. } => {
                         reply.error(ENODATA);
                         Ok(())
+                    }
+                    FilesystemCommand::SetAttr {
+                        ino,
+                        mode,
+                        uid,
+                        gid,
+                        size,
+                        fh,
+                        flags,
+                        reply,
+                    } => {
+                        self_clone
+                            .setattr(ino, mode, uid, gid, size, fh, flags, reply)
+                            .await
                     }
                     FilesystemCommand::ReleaseDir { reply, .. } => {
                         reply.ok();
@@ -611,6 +752,26 @@ impl SiFileSystem {
                         umask,
                         reply,
                     } => self_clone.mkdir(parent, name, mode, umask, reply).await,
+                    FilesystemCommand::Write {
+                        offset,
+                        data,
+                        reply,
+                        fh,
+                        ..
+                    } => {
+                        reply.error(ENOSYS);
+                        Ok(())
+                    }
+                    FilesystemCommand::Lseek {
+                        ino,
+                        fh,
+                        offset,
+                        whence,
+                        reply,
+                    } => {
+                        reply.error(ENOSYS);
+                        Ok(())
+                    }
                     command => {
                         dbg!(&command);
                         command.error(ENOSYS);
@@ -660,4 +821,9 @@ pub fn mount(
     fuser::mount2(async_fuse_wrapper, mount_point, &options)?;
 
     Ok(())
+}
+
+fn get_read_slice(buf: &[u8], offset: usize, size: usize) -> &[u8] {
+    let read_len = std::cmp::min(size, buf.len().saturating_sub(offset));
+    buf.get(offset..read_len).unwrap_or(buf)
 }
