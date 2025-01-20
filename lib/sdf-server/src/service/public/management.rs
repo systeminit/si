@@ -32,7 +32,7 @@ pub fn routes() -> Router<AppState> {
 }
 
 async fn run_prototype(
-    ChangeSetDalContext(ctx): ChangeSetDalContext,
+    ChangeSetDalContext(ref ctx): ChangeSetDalContext,
     tracker: PosthogEventTracker,
     Path(RunPrototypePath {
         management_prototype_id: prototype_id,
@@ -43,11 +43,10 @@ async fn run_prototype(
 ) -> Result<Json<RunPrototypeResponse>> {
     // TODO check that this is a valid prototypeId
     let mut execution_result =
-        ManagementPrototype::execute_by_id(&ctx, prototype_id, component_id, view_id.into())
-            .await?;
+        ManagementPrototype::execute_by_id(ctx, prototype_id, component_id, view_id.into()).await?;
 
     tracker.track(
-        &ctx,
+        ctx,
         "run_prototype",
         serde_json::json!({
             "how": "/public/management/run_prototype",
@@ -68,7 +67,7 @@ async fn run_prototype(
         if status == ManagementFuncStatus::Ok {
             if let Some(operations) = operations {
                 created_component_ids = ManagementOperator::new(
-                    &ctx,
+                    ctx,
                     component_id,
                     operations,
                     execution_result,
@@ -80,11 +79,11 @@ async fn run_prototype(
             }
         }
 
-        let func_id = ManagementPrototype::func_id(&ctx, prototype_id).await?;
-        let func = Func::get_by_id_or_error(&ctx, func_id).await?;
+        let func_id = ManagementPrototype::func_id(ctx, prototype_id).await?;
+        let func = Func::get_by_id_or_error(ctx, func_id).await?;
 
         WsEvent::management_operations_complete(
-            &ctx,
+            ctx,
             request.request_ulid,
             func.name.clone(),
             message.clone(),
@@ -92,7 +91,7 @@ async fn run_prototype(
             created_component_ids,
         )
         .await?
-        .publish_on_commit(&ctx)
+        .publish_on_commit(ctx)
         .await?;
 
         ctx.write_audit_log(

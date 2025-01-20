@@ -22,8 +22,8 @@ use crate::{
     workspace_snapshot::node_weight::{
         category_node_weight::CategoryNodeKind, ActionNodeWeight, NodeWeight, NodeWeightError,
     },
-    AttributeValue, ChangeSetError, ChangeSetId, ComponentError, ComponentId, DalContext,
-    EdgeWeightKind, EdgeWeightKindDiscriminants, HelperError, TransactionsError,
+    AttributeValue, ChangeSetError, ChangeSetId, Component, ComponentError, ComponentId,
+    DalContext, EdgeWeightKind, EdgeWeightKindDiscriminants, HelperError, TransactionsError,
     WorkspaceSnapshotError, WsEvent, WsEventError, WsEventResult, WsPayload,
 };
 
@@ -451,6 +451,11 @@ impl Action {
         Err(ActionError::PrototypeNotFoundForAction(action_id))
     }
 
+    pub async fn prototype(ctx: &DalContext, action_id: ActionId) -> ActionResult<ActionPrototype> {
+        let prototype_id = Self::prototype_id(ctx, action_id).await?;
+        Ok(ActionPrototype::get_by_id(ctx, prototype_id).await?)
+    }
+
     pub async fn component_id(
         ctx: &DalContext,
         action_id: ActionId,
@@ -474,6 +479,16 @@ impl Action {
         }
 
         Ok(None)
+    }
+
+    pub async fn component(
+        ctx: &DalContext,
+        action_id: ActionId,
+    ) -> ActionResult<Option<Component>> {
+        match Self::component_id(ctx, action_id).await? {
+            Some(component_id) => Ok(Some(Component::get_by_id(ctx, component_id).await?)),
+            None => Ok(None),
+        }
     }
 
     pub async fn all_ids(ctx: &DalContext) -> ActionResult<Vec<ActionId>> {

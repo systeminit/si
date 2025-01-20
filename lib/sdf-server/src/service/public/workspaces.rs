@@ -9,7 +9,7 @@ pub fn routes(state: AppState) -> Router<AppState> {
     Router::new().nest(
         "/:workspace_id",
         Router::new()
-            .nest("/change-sets", super::change_sets::routes())
+            .nest("/change-sets", super::change_sets::routes(state.clone()))
             .route_layer(middleware::from_extractor_with_state::<
                 AuthorizedForAutomationRole,
                 AppState,
