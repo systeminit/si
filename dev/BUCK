@@ -29,16 +29,16 @@ tilt_up(
 tilt_up(
     name = "up-standard",
     args = [
-        "--standard-rustc-build-mode"
-    ]
+        "--standard-rustc-build-mode",
+    ],
 )
 
 # Bring up the full set of services for development with debug build optimizations
 tilt_up(
     name = "up-debug-all",
     args = [
-        "--debug-rustc-build-mode"
-    ]
+        "--debug-rustc-build-mode",
+    ],
 )
 
 # Bring up the full set of services for development with debug build optimizations, except for
@@ -46,8 +46,8 @@ tilt_up(
 tilt_up(
     name = "up-debug",
     args = [
-        "--debug-no-rebaser-rustc-build-mode"
-    ]
+        "--debug-no-rebaser-rustc-build-mode",
+    ],
 )
 
 # Bring up only platform services such as PostgreSQL, NATS, etc.
@@ -55,7 +55,7 @@ tilt_up(
     name = "platform",
     args = [
         "platform",
-        "testing"
+        "testing",
     ],
 )
 
