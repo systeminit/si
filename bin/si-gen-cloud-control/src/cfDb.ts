@@ -135,11 +135,12 @@ export interface CfSchema extends JSONSchema.Interface {
 
 type CfDb = Record<string, CfSchema>;
 const DB: CfDb = {};
-await loadCfDatabase();
 
-export async function loadCfDatabase(): Promise<CfDb> {
+export async function loadCfDatabase(
+  path: string = "./cloudformation-schema",
+): Promise<CfDb> {
   if (Object.keys(DB).length === 0) {
-    const fullPath = Deno.realPathSync("./cloudformation-schema");
+    const fullPath = Deno.realPathSync(path);
     logger.debug("Loading database from Cloudformation schema", { fullPath });
     for (const dirEntry of Deno.readDirSync(fullPath)) {
       const filename = `${fullPath}/${dirEntry.name}`;
@@ -157,7 +158,7 @@ export async function loadCfDatabase(): Promise<CfDb> {
 
       const typeName: string = data.typeName;
 
-      if (typeName !== "AWS::EC2::VPC") continue;
+      if (!["AWS::EC2::VPC", "AWS::WAF::WebACL"].includes(typeName)) continue;
       // if (typeName !== "AWS::EMR::Cluster") continue;
 
       logger.debug(`Loaded ${typeName}`);

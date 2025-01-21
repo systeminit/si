@@ -24,6 +24,8 @@ alias(
     actual = ":bin"
 )
 
+# we include si-gen-cloud-control here because the deno workspace
+# requires resolution of all members even if we don't use it
 deno_compile(
     name = "bin",
     main = "src/index.ts",
@@ -32,7 +34,10 @@ deno_compile(
         "src/**/*.ts",
         "src/**/*.js",
     ]) +
-    ["//lib/ts-lib-deno:ts-lib-deno"],
+    [
+        "//lib/ts-lib-deno:ts-lib-deno",
+        "//bin/si-gen-cloud-control:si-gen-cloud-control",
+    ],
     permissions = [
         "allow-all",
     ],
