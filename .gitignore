@@ -49,3 +49,6 @@ bin/lang-js/docs/
 
 # toolbox
 component/toolbox/results/
+
+# fuse filesystem
+/mnt/

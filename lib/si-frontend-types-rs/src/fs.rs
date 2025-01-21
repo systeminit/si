@@ -47,12 +47,27 @@ pub fn kind_to_string(kind: FuncKind) -> String {
         FuncKind::Action => "action",
         FuncKind::Attribute => "attribute",
         FuncKind::Authentication => "authentication",
-        FuncKind::CodeGeneration => "code_generation",
+        FuncKind::CodeGeneration => "code-generation",
         FuncKind::Intrinsic => "intrinsic",
         FuncKind::Qualification => "qualification",
-        FuncKind::SchemaVariantDefinition => "asset_def",
+        FuncKind::SchemaVariantDefinition => "asset-definition",
         FuncKind::Unknown => "unknown",
         FuncKind::Management => "management",
+    }
+    .into()
+}
+
+pub fn kind_pluralized_to_string(kind: FuncKind) -> String {
+    match kind {
+        FuncKind::Action => "actions",
+        FuncKind::Attribute => "attributes",
+        FuncKind::Authentication => "authentications",
+        FuncKind::CodeGeneration => "code-generations",
+        FuncKind::Intrinsic => "intrinsics",
+        FuncKind::Qualification => "qualifications",
+        FuncKind::SchemaVariantDefinition => "asset-definitions",
+        FuncKind::Unknown => "unknowns",
+        FuncKind::Management => "managements",
     }
     .into()
 }
@@ -62,12 +77,17 @@ pub fn kind_from_string(s: &str) -> Option<FuncKind> {
         "action" => FuncKind::Action,
         "attribute" => FuncKind::Attribute,
         "authentication" => FuncKind::Authentication,
-        "code_generation" => FuncKind::CodeGeneration,
+        "code-generation" => FuncKind::CodeGeneration,
         "intrinsic" => FuncKind::Intrinsic,
         "qualification" => FuncKind::Qualification,
-        "asset_def" => FuncKind::SchemaVariantDefinition,
+        "asset-definition" => FuncKind::SchemaVariantDefinition,
         "unknown" => FuncKind::Unknown,
         "management" => FuncKind::Management,
         _ => return None,
     })
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct VariantQuery {
+    pub unlocked: bool,
 }
