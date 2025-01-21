@@ -182,7 +182,8 @@ type Input = {{
         properties: {this_component_iface},
         geometry: {{ [key: string]: Geometry }},
     }},
-    components: {{ [key: string]: {component_input_type} }}
+    components: {{ [key: string]: {component_input_type} }},
+    variantSocketMap: Record<string, number>,
 }};"#
         ))
     }

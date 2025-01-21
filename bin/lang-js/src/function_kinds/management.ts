@@ -19,6 +19,7 @@ export interface ManagementFunc extends Func {
   components: {
     [key: string]: ComponentWithGeometry;
   };
+  variantSocketMap: Record<string, number>;
 }
 
 export type ManagementFuncResult =
@@ -73,7 +74,9 @@ export interface ManagementFuncResultFailure extends ResultFailure {}
 
 async function execute(
   { executionId }: RequestCtx,
-  { thisComponent, components, currentView }: ManagementFunc,
+  {
+    thisComponent, components, currentView, variantSocketMap,
+  }: ManagementFunc,
   code: string,
   timeout: number,
 ): Promise<ManagementFuncResult> {
@@ -84,7 +87,9 @@ async function execute(
       FunctionKind.Management,
       executionId,
       timeout,
-      { thisComponent, components, currentView },
+      {
+        thisComponent, components, currentView, variantSocketMap,
+      },
     );
   } catch (err) {
     return failureExecution(err as Error, executionId);

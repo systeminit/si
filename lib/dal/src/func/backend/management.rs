@@ -16,6 +16,7 @@ pub struct FuncBackendManagementArgs {
     this_component: ComponentViewWithGeometry,
     components: HashMap<String, ComponentViewWithGeometry>,
     current_view: String,
+    variant_socket_map: HashMap<String, usize>,
 }
 
 #[derive(Debug)]
@@ -43,6 +44,7 @@ impl FuncDispatch for FuncBackendManagement {
             this_component: args.this_component,
             components: args.components,
             current_view: args.current_view,
+            variant_socket_map: args.variant_socket_map,
             before,
         };
 

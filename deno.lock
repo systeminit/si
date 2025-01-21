@@ -2279,7 +2279,8 @@
       "bin/lang-js": {
         "dependencies": [
           "jsr:@cliffy/command@^1.0.0-rc.7",
-          "jsr:@deno/emit@0.46"
+          "jsr:@deno/emit@0.46",
+          "jsr:@std/assert@1"
         ],
         "packageJson": {
           "dependencies": [
