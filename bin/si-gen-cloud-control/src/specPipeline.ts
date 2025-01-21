@@ -99,7 +99,7 @@ export function pkgSpecFromCf(src: CfSchema): PkgSpec {
     version,
     description: src.description,
     createdAt: new Date().toISOString(),
-    createdBy: "Cagador", // TODO Figure out a better name
+    createdBy: "Clover", // TODO this is still subject to change
     defaultChangeSet: null,
     workspacePk: null,
     workspaceName: null,

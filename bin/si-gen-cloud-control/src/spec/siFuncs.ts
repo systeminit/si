@@ -103,3 +103,10 @@ export function createSiFunc(name: string): FuncSpec {
 export function getSiFuncId(kind: string): string {
   return funcSpecs[kind].id;
 }
+
+// Si uses a version of base64 that removes the padding at the end for some reason
+export function strippedBase64(code: string) {
+  return btoa(
+    code,
+  ).replace(/=/g, "");
+}
