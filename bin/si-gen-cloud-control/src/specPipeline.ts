@@ -1,33 +1,30 @@
-import {
-  CfProperty,
-  CfSchema,
-  getServiceByName,
-  loadCfDatabase,
-} from "../cfDb.ts";
+import { CfProperty, CfSchema } from "./cfDb.ts";
+import { PkgSpec } from "../../../lib/si-pkg/bindings/PkgSpec.ts";
+import { ulid } from "https://deno.land/x/ulid@v0.3.0/mod.ts";
 import {
   createDefaultProp,
   createProp,
+  DefaultPropType,
   ExpandedPropSpec,
   isExpandedPropSpec,
   OnlyProperties,
-} from "../spec/props.ts";
-import { PkgSpec } from "../bindings/PkgSpec.ts";
-import { SchemaSpec } from "../bindings/SchemaSpec.ts";
-import { SchemaVariantSpec } from "../bindings/SchemaVariantSpec.ts";
-import { ulid } from "https://deno.land/x/ulid@v0.3.0/mod.ts";
-import { PropSpec } from "../bindings/PropSpec.ts";
-import { FuncSpec } from "../bindings/FuncSpec.ts";
-import type { FuncSpecData } from "../bindings/FuncSpecData.ts";
-import { SocketSpec } from "../bindings/SocketSpec.ts";
+} from "./spec/props.ts";
+import { PropSpec } from "../../../lib/si-pkg/bindings/PropSpec.ts";
 import {
-  attrFuncInputSpecFromProp,
-  createSocketFromProp,
-} from "../spec/sockets.ts";
-import { createSiFunc, getSiFuncId } from "../spec/siFuncs.ts";
-import { DefaultPropType } from "../spec/props.ts";
-import { FuncArgumentSpec } from "../bindings/FuncArgumentSpec.ts";
+  SchemaVariantSpec,
+} from "../../../lib/si-pkg/bindings/SchemaVariantSpec.ts";
+import { SchemaSpec } from "../../../lib/si-pkg/bindings/SchemaSpec.ts";
+import type {
+  FuncSpecData,
+} from "../../../lib/si-pkg/bindings/FuncSpecData.ts";
+import { FuncSpec } from "../../../lib/si-pkg/bindings/FuncSpec.ts";
+import { createSiFunc, getSiFuncId } from "./spec/siFuncs.ts";
+import { attrFuncInputSpecFromProp } from "./spec/sockets.ts";
+import {
+  FuncArgumentSpec,
+} from "../../../lib/si-pkg/bindings/FuncArgumentSpec.ts";
 
-function pkgSpecFromCf(src: CfSchema): PkgSpec {
+export function pkgSpecFromCf(src: CfSchema): PkgSpec {
   const [aws, category, name] = src.typeName.split("::");
 
   if (aws !== "AWS" || !category || !name) {
@@ -53,7 +50,6 @@ function pkgSpecFromCf(src: CfSchema): PkgSpec {
     onlyProperties,
   );
   createInputsInDomainFromResource(domain, resourceValue);
-  const sockets = createSocketsFromDomain(domain);
 
   const variant: SchemaVariantSpec = {
     version,
@@ -72,7 +68,7 @@ function pkgSpecFromCf(src: CfSchema): PkgSpec {
     actionFuncs: [],
     authFuncs: [],
     leafFunctions: [],
-    sockets,
+    sockets: [],
     siPropFuncs: [],
     managementFuncs: [],
     domain,
@@ -81,7 +77,6 @@ function pkgSpecFromCf(src: CfSchema): PkgSpec {
     resourceValue,
     rootPropFuncs: [],
   };
-  // TODO do an autopsy of a spec from module index to fill these prop specs
 
   const schema: SchemaSpec = {
     name: src.typeName,
@@ -98,31 +93,6 @@ function pkgSpecFromCf(src: CfSchema): PkgSpec {
     variants: [variant],
   };
 
-  const assetFuncName = `${src.typeName}_AssetFunc`;
-
-  const assetFuncData: FuncSpecData = {
-    name: assetFuncName,
-    displayName: null,
-    description: null,
-    handler: "main",
-    codeBase64: btoa(
-      "function main() { const asset = new AssetBuilder();return asset.build();}",
-    ).replace(/=/g, ""),
-    backendKind: "jsSchemaVariantDefinition",
-    responseType: "schemaVariantDefinition",
-    hidden: false,
-    link: null,
-  };
-
-  const assetFunc: FuncSpec = {
-    name: assetFuncName,
-    uniqueId: assetFuncUniqueKey,
-    data: assetFuncData,
-    deleted: false,
-    isFromBuiltin: true,
-    arguments: [],
-  };
-
   return {
     kind: "module",
     name: src.typeName,
@@ -134,7 +104,7 @@ function pkgSpecFromCf(src: CfSchema): PkgSpec {
     workspacePk: null,
     workspaceName: null,
     schemas: [schema],
-    funcs: [assetFunc].concat(createSiFuncs()).concat(
+    funcs: createSiFuncs().concat(
       createResourcePayloadToValue(),
     ),
     changeSets: [], // always empty
@@ -143,31 +113,6 @@ function pkgSpecFromCf(src: CfSchema): PkgSpec {
 
 function versionFromDate(): string {
   return new Date().toISOString().replace(/[-:T.Z]/g, "").slice(0, 14);
-}
-
-export function generateSiSpecForService(serviceName: string) {
-  const cf = getServiceByName(serviceName);
-  return pkgSpecFromCf(cf);
-}
-
-export async function generateSiSpecDatabase() {
-  const db = await loadCfDatabase();
-
-  let imported = 0;
-  const cfSchemas = Object.values(db);
-  for (const cfSchema of cfSchemas) {
-    // console.log(`Building: ${cfSchema.typeName}`);
-    try {
-      const pkg = pkgSpecFromCf(cfSchema);
-      console.log(JSON.stringify(pkg, null, 2));
-    } catch (e) {
-      console.log(`Error Building: ${cfSchema.typeName}: ${e}`);
-      continue;
-    }
-    imported += 1;
-    // console.log(`Built: ${cfSchema.typeName}`);
-  }
-  // console.log(`built ${imported} out of ${cfSchemas.length}`);
 }
 
 function createDomainFromSrc(
@@ -250,23 +195,6 @@ function createInputsInDomainFromResource(
       }
     });
   }
-}
-
-function createSocketsFromDomain(domain: PropSpec): SocketSpec[] {
-  const sockets: SocketSpec[] = [];
-  if (domain.kind == "object") {
-    for (const prop of domain.entries) {
-      if (
-        !["array", "object"].includes(prop.kind) && isExpandedPropSpec(prop)
-      ) {
-        const socket = createSocketFromProp(prop);
-        if (socket) {
-          sockets.push(socket);
-        }
-      }
-    }
-  }
-  return sockets;
 }
 
 function createResourcePayloadToValue(): FuncSpec[] {

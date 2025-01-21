@@ -21,8 +21,8 @@ export function createSocketFromProp(
   } else if (prop.metadata.writeOnly || prop.metadata.createOnly) {
     const socket = createSocket(prop.name, "input");
     if (socket.data) {
-      prop?.data?.inputs?.push(attrFuncInputSpecFromSocket(socket));
-      socket.data.funcUniqueId = getSiFuncId("si:identity");
+      prop.data.inputs?.push(attrFuncInputSpecFromSocket(socket));
+      prop.data.funcUniqueId = getSiFuncId("si:identity");
     }
     return socket;
   }

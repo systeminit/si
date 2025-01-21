@@ -16,6 +16,7 @@ export type OnlyProperties = {
 export function isExpandedPropSpec(prop: PropSpec): prop is ExpandedPropSpec {
   const metadata = (prop as ExpandedPropSpec).metadata;
   return metadata &&
+    Array.isArray(metadata.propPath) &&
     typeof metadata.readOnly === "boolean" &&
     typeof metadata.writeOnly === "boolean" &&
     typeof metadata.createOnly === "boolean";

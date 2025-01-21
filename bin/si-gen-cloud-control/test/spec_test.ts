@@ -5,9 +5,7 @@ import {
   assertInstanceOf,
   assertThrows,
 } from "@std/assert";
-import {
-  generateSiSpecForService,
-} from "../src/commands/generateSiSpecDatabase.ts";
+import { generateSiSpecForService } from "../src/commands/generateSiSpecs.ts";
 import { ExpandedPropSpec } from "../src/spec/props.ts";
 import { loadCfDatabase } from "../src/cfDb.ts";
 

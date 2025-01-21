@@ -1,8 +1,8 @@
 {
   "workspace": [
     "./bin/lang-js",
-    "./bin/si-gen-cloud-control",
-    "./lib/ts-lib-deno"
+    "./lib/ts-lib-deno",
+    "./bin/si-gen-cloud-control"
   ],
   "imports": {
     "@cliffy/command": "jsr:@cliffy/command@^1.0.0-rc.7",
