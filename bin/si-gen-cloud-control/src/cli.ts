@@ -1,6 +1,7 @@
 import { Command } from "@cliffy/command";
 import { fetchSchema } from "./commands/fetchSchema.ts";
-import { generateSiSpecDatabase } from "./commands/generateSiSpecDatabase.ts";
+import { generateSiSpecs } from "./commands/generateSiSpecs.ts";
+import { generateTarFromSpec } from "./commands/generateTarFromSpec.ts";
 
 export async function run() {
   const command = new Command()
@@ -20,11 +21,18 @@ export async function run() {
       await fetchSchema();
     })
     .command(
-      "generate-spec-database",
+      "generate-specs",
       "generate the si spec database from the cf database",
     )
     .action(async () => {
-      await generateSiSpecDatabase();
+      await generateSiSpecs();
+    })
+    .command(
+      "generate-tars",
+      "generate tar packages from the spec files in si-specs",
+    )
+    .action(async () => {
+      await generateTarFromSpec();
     });
 
   await command.parse(Deno.args);
