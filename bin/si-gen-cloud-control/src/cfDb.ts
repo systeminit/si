@@ -165,6 +165,7 @@ export async function loadCfDatabase(
         ![
           "AWS::EC2::Subnet",
           "AWS::EC2::VPC",
+          "AWS::WAF::WebACL"
         ].includes(typeName)
       ) continue;
 

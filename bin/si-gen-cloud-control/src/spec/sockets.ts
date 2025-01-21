@@ -20,7 +20,7 @@ export function createSocketFromProp(
     return socket;
   } else if (prop.metadata.writeOnly || prop.metadata.createOnly) {
     const socket = createSocket(prop.name, "input");
-    if (socket.data) {
+    if (prop.data) {
       prop.data.inputs?.push(attrFuncInputSpecFromSocket(socket));
       prop.data.funcUniqueId = getSiFuncId("si:identity");
     }

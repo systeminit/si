@@ -6,7 +6,7 @@ import { FuncSpec } from "../../../../lib/si-pkg/bindings/FuncSpec.ts";
 import { SchemaVariantSpec } from "../bindings/SchemaVariantSpec.ts";
 import _ from "lodash";
 import { PropSpec } from "../bindings/PropSpec.ts";
-import { strippedBase64 } from "../spec/siFuncs.ts";
+import { strippedBase64 } from "../spec/funcs.ts";
 
 export function generateAssetFuncs(specs: PkgSpec[]): PkgSpec[] {
   const newSpecs = [] as PkgSpec[];
@@ -14,7 +14,7 @@ export function generateAssetFuncs(specs: PkgSpec[]): PkgSpec[] {
   for (const spec of specs) {
     const schemaVariant = spec.schemas[0]?.variants[0];
 
-    if (!schemaVariant) {
+    if (!schemaVariant || !schemaVariant.data) {
       console.log(
         `Could not generate assetFunc for ${spec.name}: missing schema or variant`,
       );
