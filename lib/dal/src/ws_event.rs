@@ -213,7 +213,7 @@ impl WsEvent {
         let workspace_pk = match ctx.tenancy().workspace_pk_opt() {
             Some(pk) => pk,
             None => {
-                return Err(WsEventError::NoWorkspaceInTenancy);
+                return Err(WsEventError::NoWorkspaceInTenancy.into());
             }
         };
         Self::new_raw(

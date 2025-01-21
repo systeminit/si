@@ -1,7 +1,9 @@
 //! This module contains [`SchemaVariant`](SchemaVariant), which is the "class" of a [`Component`](crate::Component).
 
-use std::collections::{HashMap, HashSet, VecDeque};
-use std::sync::Arc;
+use std::{
+    collections::{HashMap, HashSet, VecDeque},
+    sync::Arc,
+};
 
 use anyhow::Result;
 use chrono::Utc;
@@ -18,58 +20,59 @@ use si_layer_cache::LayerDbError;
 use si_pkg::SpecError;
 use telemetry::prelude::*;
 
-use crate::action::prototype::{ActionKind, ActionPrototype};
-use crate::attribute::prototype::argument::{
-    AttributePrototypeArgument, AttributePrototypeArgumentError,
-};
-use crate::attribute::prototype::AttributePrototypeError;
-use crate::attribute::value::{AttributeValueError, ValueIsFor};
-use crate::change_set::ChangeSetError;
-use crate::diagram::SummaryDiagramManagementEdge;
-use crate::func::argument::{FuncArgument, FuncArgumentError};
-use crate::func::intrinsics::IntrinsicFunc;
-use crate::func::{FuncError, FuncKind};
-use crate::layer_db_types::{
-    ContentTypeError, InputSocketContent, OutputSocketContent, SchemaVariantContent,
-    SchemaVariantContentV3,
-};
-use crate::management::prototype::{
-    ManagementPrototype, ManagementPrototypeError, ManagementPrototypeId,
-};
-use crate::module::Module;
-use crate::prop::{PropError, PropPath};
-use crate::schema::variant::root_prop::RootProp;
-use crate::socket::input::InputSocketError;
-use crate::socket::output::OutputSocketError;
-use crate::workspace_snapshot::{
-    content_address::{ContentAddress, ContentAddressDiscriminants},
-    edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants},
-    graph::NodeIndex,
-    node_weight::{
-        input_socket_node_weight::InputSocketNodeWeightError, traits::SiNodeWeight, NodeWeight,
-        NodeWeightDiscriminants, NodeWeightError, PropNodeWeight, SchemaVariantNodeWeight,
-    },
-    SchemaVariantExt, WorkspaceSnapshotError,
-};
 use crate::{
+    action::prototype::{ActionKind, ActionPrototype},
+    attribute::{
+        prototype::{
+            argument::{AttributePrototypeArgument, AttributePrototypeArgumentError},
+            AttributePrototypeError,
+        },
+        value::{AttributeValueError, ValueIsFor},
+    },
+    change_set::ChangeSetError,
+    diagram::SummaryDiagramManagementEdge,
+    func::{
+        argument::{FuncArgument, FuncArgumentError},
+        intrinsics::IntrinsicFunc,
+        FuncError, FuncKind,
+    },
     implement_add_edge_to,
-    schema::variant::leaves::{LeafInput, LeafInputLocation, LeafKind},
-    ActionPrototypeId, AttributePrototype, AttributePrototypeId, ChangeSetId, ComponentId,
-    ComponentType, DalContext, Func, FuncId, HelperError, InputSocket, OutputSocket,
+    layer_db_types::{
+        ContentTypeError, InputSocketContent, OutputSocketContent, SchemaVariantContent,
+        SchemaVariantContentV3,
+    },
+    management::prototype::{ManagementPrototype, ManagementPrototypeError, ManagementPrototypeId},
+    module::Module,
+    prop::{PropError, PropPath},
+    schema::variant::{
+        leaves::{LeafInput, LeafInputLocation, LeafKind},
+        root_prop::RootProp,
+    },
+    socket::{input::InputSocketError, output::OutputSocketError},
+    workspace_snapshot::{
+        content_address::{ContentAddress, ContentAddressDiscriminants},
+        edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants},
+        graph::NodeIndex,
+        node_weight::{
+            input_socket_node_weight::InputSocketNodeWeightError, traits::SiNodeWeight, NodeWeight,
+            NodeWeightDiscriminants, NodeWeightError, PropNodeWeight, SchemaVariantNodeWeight,
+        },
+        SchemaVariantExt, WorkspaceSnapshotError,
+    },
+    ActionPrototypeId, AttributePrototype, AttributePrototypeId, AttributeValue, ChangeSetId,
+    Component, ComponentError, ComponentId, ComponentType, DalContext, Func, FuncBackendKind,
+    FuncBackendResponseType, FuncId, HelperError, InputSocket, InputSocketId, OutputSocket,
     OutputSocketId, Prop, PropId, PropKind, Schema, SchemaError, SchemaId, Timestamp,
     TransactionsError, WsEvent, WsEventResult, WsPayload,
-};
-use crate::{
-    AttributeValue, Component, ComponentError, FuncBackendKind, FuncBackendResponseType,
-    InputSocketId,
 };
 
 use self::root_prop::RootPropChild;
 
-pub use json::SchemaVariantJson;
-pub use json::SchemaVariantMetadataJson;
-pub use metadata_view::SchemaVariantMetadataView;
-pub use value_from::ValueFrom;
+pub use self::{
+    json::{SchemaVariantJson, SchemaVariantMetadataJson},
+    metadata_view::SchemaVariantMetadataView,
+    value_from::ValueFrom,
+};
 
 pub mod authoring;
 mod json;
@@ -617,7 +620,7 @@ impl SchemaVariant {
         let variant = Self::get_by_id_or_error(ctx, schema_variant_id).await?;
 
         if variant.is_locked() {
-            return Err(SchemaVariantError::SchemaVariantLocked(schema_variant_id));
+            return Err(SchemaVariantError::SchemaVariantLocked(schema_variant_id).into());
         }
 
         Self::cleanup_variant(ctx, variant).await
@@ -696,7 +699,7 @@ impl SchemaVariant {
                         }
                     }
                 }
-                _ => return Err(SchemaVariantError::PropIdNotAProp(prop_id)),
+                _ => return Err(SchemaVariantError::PropIdNotAProp(prop_id).into()),
             }
 
             // Once processed, push onto the list that will be returned.
@@ -722,7 +725,7 @@ impl SchemaVariant {
     ) -> SchemaVariantResult<Self> {
         Self::get_by_id(ctx, id)
             .await?
-            .ok_or_else(|| SchemaVariantError::NotFound(id))
+            .ok_or_else(|| SchemaVariantError::NotFound(id).into())
     }
 
     pub async fn get_by_id(

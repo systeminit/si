@@ -985,7 +985,8 @@ impl WorkspaceSnapshot {
                 LayerDbError::Postcard(_) => {
                     return Err(WorkspaceSnapshotError::WorkspaceSnapshotNotMigrated(
                         workspace_snapshot_addr,
-                    ));
+                    )
+                    .into());
                 }
                 err => Err(err)?,
             },
@@ -1031,15 +1032,20 @@ impl WorkspaceSnapshot {
 
             match Self::find(ctx, address).await {
                 Ok(snapshot) => return Ok(snapshot),
-                Err(WorkspaceSnapshotError::WorkspaceSnapshotGraphMissing(_)) => {
-                    warn!(
+                Err(error) => match error.downcast_ref::<WorkspaceSnapshotError>() {
+                    Some(err) => match err {
+                        WorkspaceSnapshotError::WorkspaceSnapshotGraphMissing(_) => {
+                            warn!(
                         "Unable to retrieve snapshot {:?} for change set {:?}. Retries remaining: {}",
                         address, change_set_id, retries
                     );
-                    tokio::time::sleep(tokio::time::Duration::from_millis(5)).await;
-                    continue;
-                }
-                Err(e) => return Err(e),
+                            tokio::time::sleep(tokio::time::Duration::from_millis(5)).await;
+                            continue;
+                        }
+                        _ => return Err(error),
+                    },
+                    None => return Err(error),
+                },
             }
         }
 
@@ -1047,7 +1053,7 @@ impl WorkspaceSnapshot {
             "Retries exceeded trying to fetch workspace snapshot for change set {:?}",
             change_set_id
         );
-        Err(WorkspaceSnapshotError::WorkspaceSnapshotNotFetched)
+        Err(WorkspaceSnapshotError::WorkspaceSnapshotNotFetched.into())
     }
 
     pub async fn get_category_node_or_err(
@@ -1437,9 +1443,7 @@ impl WorkspaceSnapshot {
         // Even though the default change set for a workspace can have a base change set, we don't
         // want to consider anything as new/modified/removed when looking at the default change
         // set.
-        let workspace = Workspace::get_by_pk_or_error(ctx, ctx.tenancy().workspace_pk()?)
-            .await
-            .map_err(Box::new)?;
+        let workspace = Workspace::get_by_pk_or_error(ctx, ctx.tenancy().workspace_pk()?).await?;
         if workspace.default_change_set_id() == ctx.change_set_id() {
             return Ok(Vec::new());
         }
@@ -1447,9 +1451,7 @@ impl WorkspaceSnapshot {
         let base_change_set_ctx = ctx.clone_with_base().await?;
         let base_change_set_ctx = &base_change_set_ctx;
 
-        let base_components = Component::list(base_change_set_ctx)
-            .await
-            .map_err(Box::new)?;
+        let base_components = Component::list(base_change_set_ctx).await?;
         #[derive(Hash, Clone, PartialEq, Eq)]
         struct UniqueEdge {
             to_component_id: ComponentId,
@@ -1462,8 +1464,7 @@ impl WorkspaceSnapshot {
         for base_component in base_components {
             let incoming_edges = base_component
                 .incoming_connections(base_change_set_ctx)
-                .await
-                .map_err(Box::new)?;
+                .await?;
 
             for conn in incoming_edges {
                 let hash = UniqueEdge {
@@ -1477,13 +1478,12 @@ impl WorkspaceSnapshot {
             }
         }
 
-        let current_components = Component::list(ctx).await.map_err(Box::new)?;
+        let current_components = Component::list(ctx).await?;
         let mut current_incoming_edges = HashSet::new();
         for current_component in current_components {
             let incoming_edges: Vec<UniqueEdge> = current_component
                 .incoming_connections(ctx)
-                .await
-                .map_err(Box::new)?
+                .await?
                 .into_iter()
                 .map(|conn| UniqueEdge {
                     to_component_id: conn.to_component_id,
@@ -1508,10 +1508,8 @@ impl WorkspaceSnapshot {
     /// Returns whether or not any Actions were dispatched.
     pub async fn dispatch_actions(ctx: &DalContext) -> WorkspaceSnapshotResult<bool> {
         let mut did_dispatch = false;
-        for dispatchable_ation_id in Action::eligible_to_dispatch(ctx).await.map_err(Box::new)? {
-            Action::dispatch_action(ctx, dispatchable_ation_id)
-                .await
-                .map_err(Box::new)?;
+        for dispatchable_ation_id in Action::eligible_to_dispatch(ctx).await? {
+            Action::dispatch_action(ctx, dispatchable_ation_id).await?;
             did_dispatch = true;
         }
 
@@ -1734,7 +1732,8 @@ impl WorkspaceSnapshot {
                         edge_kind,
                         NodeWeightDiscriminants::from(&this_node_weight),
                         this_node_weight.id(),
-                    ))
+                    )
+                    .into());
                 }
             };
         }

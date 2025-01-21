@@ -545,7 +545,7 @@ impl DalContext {
     #[instrument(name = "context.write_current_rebase_batch", level = "info", skip_all)]
     async fn write_current_rebase_batch(&self) -> Result<Option<RebaseBatchAddress>> {
         Ok(if let Some(snapshot) = &self.workspace_snapshot {
-            if let Some(rebase_batch) = snapshot.current_rebase_batch().await.map_err(Box::new)? {
+            if let Some(rebase_batch) = snapshot.current_rebase_batch().await? {
                 Some(self.write_rebase_batch(rebase_batch).await?)
             } else {
                 None
@@ -615,7 +615,7 @@ impl DalContext {
     pub fn change_set(&self) -> TransactionsResult<&ChangeSet> {
         match self.change_set.as_ref() {
             Some(csp_ref) => Ok(csp_ref),
-            None => Err(TransactionsError::ChangeSetNotSet),
+            None => Err(TransactionsError::ChangeSetNotSet.into()),
         }
     }
 
@@ -650,7 +650,7 @@ impl DalContext {
     pub fn workspace_snapshot(&self) -> Result<Arc<WorkspaceSnapshot>> {
         match &self.workspace_snapshot {
             Some(workspace_snapshot) => Ok(workspace_snapshot.clone()),
-            None => Err(WorkspaceSnapshotError::WorkspaceSnapshotNotFetched),
+            None => Err(WorkspaceSnapshotError::WorkspaceSnapshotNotFetched.into()),
         }
     }
 
@@ -1701,10 +1701,11 @@ async fn rebase_with_reply(
     match &reply.status {
         RebaseStatus::Success { .. } => Ok(()),
         // Return a specific error if the Rebaser reports that it failed to process the request
-        RebaseStatus::Error { message } => Err(TransactionsError::RebaseFailed(
-            updates_address,
-            change_set_id,
-            message.clone(),
-        )),
+        RebaseStatus::Error { message } => {
+            Err(
+                TransactionsError::RebaseFailed(updates_address, change_set_id, message.clone())
+                    .into(),
+            )
+        }
     }
 }

@@ -272,8 +272,7 @@ impl ValidationOutput {
 
         let result_channel =
             FuncRunner::run_validation_format(ctx, attribute_value_id, value, validation_format)
-                .await
-                .map_err(Box::new)?;
+                .await?;
 
         let mut validation_output = None;
 
@@ -282,14 +281,16 @@ impl ValidationOutput {
             .map_err(|_| ValidationError::FuncRunGone)?
         {
             Ok(func_run_result) => func_run_result,
-            Err(FuncRunnerError::ResultFailure { kind, message, .. }) => {
-                let _ = validation_output.insert(ValidationOutput {
-                    status: ValidationStatus::Error,
-                    message: Some(format!("{kind}: {message}")),
-                });
-                return Ok(validation_output);
-            }
-            Err(e) => return Err(Box::new(e).into()),
+            Err(error) => match error.downcast_ref::<FuncRunnerError>() {
+                Some(FuncRunnerError::ResultFailure { kind, message, .. }) => {
+                    let _ = validation_output.insert(ValidationOutput {
+                        status: ValidationStatus::Error,
+                        message: Some(format!("{kind}: {message}")),
+                    });
+                    return Ok(validation_output);
+                }
+                _ => return Err(error),
+            },
         };
 
         let message = match func_result_value.value() {

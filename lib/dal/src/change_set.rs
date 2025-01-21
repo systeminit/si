@@ -1,31 +1,24 @@
-use std::collections::HashSet;
-use std::str::FromStr;
-use std::sync::Arc;
-use std::time::Duration;
+use std::{collections::HashSet, str::FromStr, sync::Arc, time::Duration};
 
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use si_data_pg::{PgError, PgRow};
-use si_events::audit_log::AuditLogKind;
-use si_events::{ulid::Ulid, WorkspaceSnapshotAddress};
+use si_events::{audit_log::AuditLogKind, ulid::Ulid, WorkspaceSnapshotAddress};
 use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::time;
 
-use crate::billing_publish::BillingPublishError;
-use crate::slow_rt::SlowRuntimeError;
-use crate::workspace_snapshot::graph::RebaseBatch;
 use crate::{
     action::{ActionError, ActionId},
-    ChangeSetStatus, ComponentError, DalContext, HistoryActor, HistoryEvent, HistoryEventError,
-    TransactionsError, User, UserError, UserPk, Workspace, WorkspacePk, WorkspaceSnapshot,
+    billing_publish::{self, BillingPublishError},
+    slow_rt::SlowRuntimeError,
+    workspace_snapshot::graph::RebaseBatch,
+    ChangeSetStatus, ComponentError, DalContext, Func, FuncError, HistoryActor, HistoryEvent,
+    HistoryEventError, Schema, SchemaError, SchemaVariant, SchemaVariantError, TransactionsError,
+    User, UserError, UserPk, Workspace, WorkspaceError, WorkspacePk, WorkspaceSnapshot,
     WorkspaceSnapshotError, WsEvent, WsEventError,
-};
-use crate::{
-    billing_publish, Func, FuncError, Schema, SchemaError, SchemaVariant, SchemaVariantError,
-    WorkspaceError,
 };
 
 pub mod approval;
@@ -540,7 +533,7 @@ impl ChangeSet {
     ) -> ChangeSetResult<Self> {
         Self::find_across_workspaces(ctx, change_set_id)
             .await?
-            .ok_or_else(|| ChangeSetError::ChangeSetNotFound(change_set_id))
+            .ok_or_else(|| ChangeSetError::ChangeSetNotFound(change_set_id).into())
     }
 
     /// Finds a [`ChangeSet`] across all workspaces, ignoring the provided [`WorkspacePk`] on the
@@ -587,7 +580,7 @@ impl ChangeSet {
     pub async fn get_by_id(ctx: &DalContext, change_set_id: ChangeSetId) -> ChangeSetResult<Self> {
         Self::find(ctx, change_set_id)
             .await?
-            .ok_or_else(|| ChangeSetError::ChangeSetNotFound(change_set_id))
+            .ok_or_else(|| ChangeSetError::ChangeSetNotFound(change_set_id).into())
     }
 
     /// Find a change set within the [`WorkspacePk`] set for the current [`DalContext`]

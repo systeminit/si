@@ -331,7 +331,7 @@ impl WorkspaceSnapshotGraphV4 {
             //     }
             // }
 
-            Err(WorkspaceSnapshotGraphError::CreateGraphCycle)
+            Err(WorkspaceSnapshotGraphError::CreateGraphCycle.into())
         } else {
             Ok(())
         }
@@ -687,8 +687,10 @@ impl WorkspaceSnapshotGraphV4 {
                     None
                 }
             }
-            Err(WorkspaceSnapshotGraphError::NodeWithIdNotFound(_)) => None,
-            Err(e) => return Err(e),
+            Err(error) => match error.downcast_ref::<WorkspaceSnapshotGraphError>() {
+                Some(WorkspaceSnapshotGraphError::NodeWithIdNotFound(_)) => None,
+                _ => return Err(error),
+            },
         };
         Ok(maybe_equivalent_node)
     }
@@ -1050,7 +1052,7 @@ impl WorkspaceSnapshotGraphV4 {
         self.node_index_by_id
             .get(&id)
             .copied()
-            .ok_or(WorkspaceSnapshotGraphError::NodeWithIdNotFound(id))
+            .ok_or(WorkspaceSnapshotGraphError::NodeWithIdNotFound(id).into())
     }
 
     #[inline(always)]
@@ -1082,7 +1084,7 @@ impl WorkspaceSnapshotGraphV4 {
         node_index: NodeIndex,
     ) -> WorkspaceSnapshotGraphResult<&NodeWeight> {
         self.get_node_weight_opt(node_index)
-            .ok_or(WorkspaceSnapshotGraphError::NodeWeightNotFound)
+            .ok_or(WorkspaceSnapshotGraphError::NodeWeightNotFound.into())
     }
 
     pub fn get_node_weight_by_id(
@@ -1108,7 +1110,7 @@ impl WorkspaceSnapshotGraphV4 {
     ) -> WorkspaceSnapshotGraphResult<&mut NodeWeight> {
         self.graph
             .node_weight_mut(node_index)
-            .ok_or(WorkspaceSnapshotGraphError::NodeWeightNotFound)
+            .ok_or(WorkspaceSnapshotGraphError::NodeWeightNotFound.into())
     }
 
     pub fn get_edge_weight_opt(
@@ -1337,9 +1339,9 @@ impl WorkspaceSnapshotGraphV4 {
                 "Too many ordering nodes found for container NodeIndex {:?}",
                 container_node_index
             );
-            return Err(WorkspaceSnapshotGraphError::TooManyOrderingForNode(
-                container_node_index,
-            ));
+            return Err(
+                WorkspaceSnapshotGraphError::TooManyOrderingForNode(container_node_index).into(),
+            );
         }
         Ok(onto_ordering_node_indexes.first().copied())
     }
@@ -1351,7 +1353,7 @@ impl WorkspaceSnapshotGraphV4 {
         let prop_node_indexes = prop_node_indexes_for_node_index(self, node_index);
         if prop_node_indexes.len() > 1 {
             error!("Too many prop nodes found for NodeIndex {:?}", node_index);
-            return Err(WorkspaceSnapshotGraphError::TooManyPropForNode(node_index));
+            return Err(WorkspaceSnapshotGraphError::TooManyPropForNode(node_index).into());
         }
         Ok(prop_node_indexes.first().copied())
     }
@@ -1724,6 +1726,7 @@ impl WorkspaceSnapshotGraphV4 {
         self.get_edge_weight_kind_target_idx_opt(source_node_idx, edge_direction, edge_weight_kind)?
             .ok_or_else(|| {
                 WorkspaceSnapshotGraphError::NoEdgesOfKindFound(source_node_idx, edge_weight_kind)
+                    .into()
             })
     }
 
@@ -1742,7 +1745,8 @@ impl WorkspaceSnapshotGraphV4 {
             return Err(WorkspaceSnapshotGraphError::TooManyEdgesOfKind(
                 source_node_idx,
                 edge_weight_kind,
-            ));
+            )
+            .into());
         }
         let Some((_edge_weight, source_node_idx, target_node_idx)) = edges_of_kind.first() else {
             return Ok(None);

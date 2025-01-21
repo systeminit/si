@@ -149,7 +149,7 @@ impl CorrectTransforms for DiagramObjectNodeWeightV1 {
                         // Update::NewEdge, then something has gone horribly wrong, as we got the
                         // idx by iterating over the updates, and looking at what kind of thing was
                         // there.
-                        _ => return Err(CorrectTransformsError::InvalidUpdates("Updates list is no longer what is expected. Expected Update::NewEdge at index, but element is either missing, or not the expected variant".to_string())),
+                        _ => return Err(CorrectTransformsError::InvalidUpdates("Updates list is no longer what is expected. Expected Update::NewEdge at index, but element is either missing, or not the expected variant".to_string()).into()),
                     }
 
                     // Now that the new Geometry is associated with the already existing
