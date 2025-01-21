@@ -78,7 +78,8 @@ impl ViewExt for WorkspaceSnapshotGraphV4 {
         if !would_be_orphaned_component_ids.is_empty() {
             return Err(WorkspaceSnapshotGraphError::ViewRemovalWouldOrphanItems(
                 would_be_orphaned_component_ids,
-            ));
+            )
+            .into());
         }
 
         // We need to explicitly remove the DiagramObject for the View as it will have more

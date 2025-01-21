@@ -64,7 +64,8 @@ impl<'a> SiPkgComponent<'a> {
                 return Err(SiPkgError::UnexpectedPkgNodeType(
                     PkgNode::COMPONENT_KIND_STR,
                     unexpected.node_kind_str(),
-                ))
+                )
+                .into())
             }
         };
 
@@ -135,7 +136,7 @@ impl<'a> SiPkgComponent<'a> {
 }
 
 impl<'a> TryFrom<SiPkgComponent<'a>> for ComponentSpec {
-    type Error = SiPkgError;
+    type Error = anyhow::Error;
 
     fn try_from(value: SiPkgComponent<'a>) -> Result<Self, Self::Error> {
         let mut builder = ComponentSpec::builder();

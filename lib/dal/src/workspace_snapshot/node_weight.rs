@@ -711,7 +711,8 @@ impl NodeWeight {
             other => Err(NodeWeightError::UnexpectedNodeWeightVariant(
                 NodeWeightDiscriminants::Content,
                 other.into(),
-            )),
+            )
+            .into()),
         }
     }
 

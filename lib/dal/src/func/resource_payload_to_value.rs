@@ -1,11 +1,14 @@
-use crate::{pkg::import_pkg_from_pkg, DalContext};
 use chrono::DateTime;
 use si_pkg::{
     FuncArgumentKind, FuncArgumentSpec, FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType,
     FuncSpecData, PkgSpec, SiPkg,
 };
 
-use crate::func::{FuncError, FuncResult};
+use crate::{
+    func::{FuncError, FuncResult},
+    pkg::import_pkg_from_pkg,
+    DalContext,
+};
 
 use super::Func;
 
@@ -43,9 +46,7 @@ pub fn build_resource_payload_to_value_pkg() -> FuncResult<PkgSpec> {
     builder.created_by("System Initiative");
     builder.func(payload_to_val);
 
-    builder
-        .build()
-        .map_err(|e| FuncError::IntrinsicSpecCreation(e.to_string()))
+    builder.build().map_err(FuncError::IntrinsicSpecCreation)
 }
 
 pub async fn install_resource_payload_to_value_if_missing(ctx: &DalContext) -> FuncResult<()> {
@@ -54,9 +55,7 @@ pub async fn install_resource_payload_to_value_if_missing(ctx: &DalContext) -> F
         .is_none()
     {
         let spec = build_resource_payload_to_value_pkg()?;
-        import_pkg_from_pkg(ctx, &SiPkg::load_from_spec(spec)?, None)
-            .await
-            .map_err(Box::new)?;
+        import_pkg_from_pkg(ctx, &SiPkg::load_from_spec(spec)?, None).await?;
     }
     Ok(())
 }

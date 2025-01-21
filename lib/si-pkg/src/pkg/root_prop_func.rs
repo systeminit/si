@@ -29,7 +29,8 @@ impl<'a> SiPkgRootPropFunc<'a> {
                 return Err(SiPkgError::UnexpectedPkgNodeType(
                     PkgNode::ROOT_PROP_FUNC_KIND_STR,
                     unexpected.node_kind_str(),
-                ))
+                )
+                .into())
             }
         };
 
@@ -84,7 +85,7 @@ impl<'a> SiPkgRootPropFunc<'a> {
 }
 
 impl<'a> TryFrom<SiPkgRootPropFunc<'a>> for RootPropFuncSpec {
-    type Error = SiPkgError;
+    type Error = anyhow::Error;
 
     fn try_from(value: SiPkgRootPropFunc<'a>) -> Result<Self, Self::Error> {
         let mut builder = RootPropFuncSpec::builder();

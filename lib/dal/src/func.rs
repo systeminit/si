@@ -72,7 +72,7 @@ pub enum FuncError {
     #[error("cannot find intrinsic func {0}")]
     IntrinsicFuncNotFound(String),
     #[error("intrinsic spec creation error {0}")]
-    IntrinsicSpecCreation(String),
+    IntrinsicSpecCreation(#[source] anyhow::Error),
     #[error("layer db error: {0}")]
     LayerDb(#[from] si_layer_cache::LayerDbError),
     #[error("node weight error: {0}")]

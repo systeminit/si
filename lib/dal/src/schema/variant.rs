@@ -1653,9 +1653,7 @@ impl SchemaVariant {
             SchemaVariant::schema_id_for_schema_variant_id(ctx, schema_variant_id).await?;
         let managed_schemas = Self::all_managed_schemas(ctx, schema_variant_id).await?;
         let has_mgmt_protos =
-            ManagementPrototype::variant_has_management_prototype(ctx, schema_variant_id)
-                .await
-                .map_err(Box::new)?;
+            ManagementPrototype::variant_has_management_prototype(ctx, schema_variant_id).await?;
 
         let management_input_socket = DiagramSocket {
             id: SummaryDiagramManagementEdge::input_socket_id(schema_id),
@@ -2000,8 +1998,7 @@ impl SchemaVariant {
             if let NodeWeight::ManagementPrototype(mgmt_prototype_node_weight) = node_weight {
                 let func_id =
                     ManagementPrototype::func_id(ctx, mgmt_prototype_node_weight.id().into())
-                        .await
-                        .map_err(Box::new)?;
+                        .await?;
 
                 all_func_ids.insert(func_id);
             }
@@ -2409,10 +2406,7 @@ impl SchemaVariant {
     ) -> SchemaVariantResult<HashSet<SchemaId>> {
         let mut result = HashSet::new();
 
-        for prototype in ManagementPrototype::list_for_variant_id(ctx, schema_variant_id)
-            .await
-            .map_err(Box::new)?
-        {
+        for prototype in ManagementPrototype::list_for_variant_id(ctx, schema_variant_id).await? {
             if let Some(managed_schemas) = prototype.managed_schemas() {
                 result.extend(managed_schemas);
             }

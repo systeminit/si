@@ -109,7 +109,8 @@ impl<'a> SiPkgSchemaVariant<'a> {
                 return Err(SiPkgError::UnexpectedPkgNodeType(
                     PkgNode::SCHEMA_VARIANT_KIND_STR,
                     unexpected.node_kind_str(),
-                ));
+                )
+                .into());
             }
         };
 
@@ -283,21 +284,20 @@ impl<'a> SiPkgSchemaVariant<'a> {
                 _ => "resource",
             };
 
-            Err(SiPkgError::SchemaVariantChildNotFound(maybe_kind))
+            Err(SiPkgError::SchemaVariantChildNotFound(maybe_kind).into())
         }
     }
 
-    pub async fn visit_prop_tree<F, Fut, I, C, E>(
+    pub async fn visit_prop_tree<F, Fut, I, C>(
         &'a self,
         prop_root: SchemaVariantSpecPropRoot,
         process_prop_fn: F,
         parent_info: Option<I>,
         context: &'a C,
-    ) -> Result<(), E>
+    ) -> Result<(), anyhow::Error>
     where
         F: Fn(SiPkgProp<'a>, Option<I>, &'a C) -> Fut,
-        Fut: Future<Output = Result<Option<I>, E>>,
-        E: std::convert::From<SiPkgError>,
+        Fut: Future<Output = Result<Option<I>, anyhow::Error>>,
         I: ToOwned + Clone,
     {
         if let Some(prop_root_idx) = self.get_prop_root_idx(prop_root).await? {
@@ -369,7 +369,8 @@ impl<'a> SiPkgSchemaVariant<'a> {
                         if children.len() > 1 {
                             return Err(SiPkgError::prop_tree_invalid(
                                 "Array or map has more than one direct child",
-                            ));
+                            )
+                            .into());
                         }
                         let type_prop = children.first().ok_or(SiPkgError::prop_tree_invalid(
                             "Array or map prop missing type prop",
@@ -382,7 +383,8 @@ impl<'a> SiPkgSchemaVariant<'a> {
                     _ => {
                         return Err(SiPkgError::prop_tree_invalid(
                             "Leaf prop (String, Number, Boolean) cannot have children",
-                        ));
+                        )
+                        .into());
                     }
                 }
             }
@@ -576,9 +578,7 @@ async fn create_prop_stack(
     if let Some(parent_path) = parent_path {
         match ctx.prop_parents.lock().await.entry(path.to_owned()) {
             Entry::Occupied(_) => {
-                return Err(SiPkgError::prop_tree_invalid(
-                    "Prop has more than one parent",
-                ));
+                return Err(SiPkgError::prop_tree_invalid("Prop has more than one parent").into());
             }
             Entry::Vacant(entry) => {
                 entry.insert(parent_path);

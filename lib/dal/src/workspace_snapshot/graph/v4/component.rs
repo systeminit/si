@@ -8,7 +8,7 @@ use crate::{
         graph::{WorkspaceSnapshotGraphResult, WorkspaceSnapshotGraphV4},
         node_weight::NodeWeightDiscriminants,
     },
-    ComponentError, ComponentId, SchemaVariantId, WorkspaceSnapshotError,
+    ComponentError, ComponentId, SchemaVariantId,
 };
 
 impl WorkspaceSnapshotGraphV4 {
@@ -28,9 +28,7 @@ impl WorkspaceSnapshotGraphV4 {
                 EdgeWeightKindDiscriminants::FrameContains,
             )
         {
-            let node_weight = self
-                .get_node_weight(destination_node_index)
-                .map_err(WorkspaceSnapshotError::from)?;
+            let node_weight = self.get_node_weight(destination_node_index)?;
             if NodeWeightDiscriminants::from(node_weight) == NodeWeightDiscriminants::Component {
                 results.push(node_weight.id().into());
             }
@@ -54,16 +52,14 @@ impl WorkspaceSnapshotGraphV4 {
                 EdgeWeightKindDiscriminants::Use,
             )
         {
-            let node_weight = self
-                .get_node_weight(destination_node_index)
-                .map_err(WorkspaceSnapshotError::from)?;
+            let node_weight = self.get_node_weight(destination_node_index)?;
             if NodeWeightDiscriminants::from(node_weight) == NodeWeightDiscriminants::SchemaVariant
             {
                 return Ok(node_weight.id().into());
             }
         }
 
-        Err(ComponentError::SchemaVariantNotFound(component_id))
+        Err(ComponentError::SchemaVariantNotFound(component_id).into())
     }
 
     pub fn component_contained_in_views(

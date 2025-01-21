@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use anyhow::Result;
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use rand::Rng;
@@ -11,18 +12,20 @@ use si_layer_cache::LayerDbError;
 use thiserror::Error;
 use tokio::task::JoinError;
 
-use crate::billing_publish::BillingPublishError;
-use crate::diagram::DiagramError;
-use crate::prop::PropError;
-use crate::validation::ValidationError;
-use crate::FuncError;
 use crate::{
-    action::prototype::ActionPrototypeError, action::ActionError,
+    action::{prototype::ActionPrototypeError, ActionError},
     attribute::value::AttributeValueError,
-    job::definition::dependent_values_update::DependentValueUpdateError,
-    job::producer::BlockingJobError, job::producer::JobProducerError, AccessBuilder,
-    ActionPrototypeId, ComponentError, ComponentId, DalContext, DalContextBuilder,
-    StandardModelError, TransactionsError, Visibility, WorkspaceSnapshotError, WsEventError,
+    billing_publish::BillingPublishError,
+    diagram::DiagramError,
+    job::{
+        definition::dependent_values_update::DependentValueUpdateError,
+        producer::{BlockingJobError, JobProducerError},
+    },
+    prop::PropError,
+    validation::ValidationError,
+    AccessBuilder, ActionPrototypeId, ComponentError, ComponentId, DalContext, DalContextBuilder,
+    FuncError, StandardModelError, TransactionsError, Visibility, WorkspaceSnapshotError,
+    WsEventError,
 };
 
 #[remain::sorted]
@@ -95,7 +98,7 @@ impl From<JobConsumerError> for std::io::Error {
     }
 }
 
-pub type JobConsumerResult<T> = Result<T, JobConsumerError>;
+pub type JobConsumerResult<T> = Result<T>;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct JobInfo {
@@ -147,7 +150,9 @@ pub trait JobConsumer: std::fmt::Debug + Sync + JobConsumerMetadata {
             match self.run(&mut ctx).await? {
                 JobCompletionState::Retry { limit, backoff } => {
                     if retries >= limit {
-                        return Err(JobConsumerError::RetriesFailed(self.type_name(), retries));
+                        return Err(
+                            JobConsumerError::RetriesFailed(self.type_name(), retries).into()
+                        );
                     }
 
                     if let RetryBackoff::Exponential = backoff {
