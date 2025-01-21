@@ -5,6 +5,8 @@ import { FuncSpecBackendResponseType } from "../bindings/FuncSpecBackendResponse
 import { FuncArgumentSpec } from "../bindings/FuncArgumentSpec.ts";
 import { ActionFuncSpec } from "../bindings/ActionFuncSpec.ts";
 import { ActionFuncSpecKind } from "../bindings/ActionFuncSpecKind.ts";
+import { LeafFunctionSpec } from "../bindings/LeafFunctionSpec.ts";
+import { LeafKind } from "../bindings/LeafKind.ts";
 
 interface FuncSpecInfo {
   id: string;
@@ -15,6 +17,7 @@ interface FuncSpecInfo {
 }
 
 const funcSpecs: Record<string, FuncSpecInfo> = {
+  // Actions
   "create": {
     id: "bc58dae4f4e1361840ec8f081350d7ec6b177ee8dc5a6a55155767c92efe1850",
     backendKind: "jsAction",
@@ -42,6 +45,21 @@ const funcSpecs: Record<string, FuncSpecInfo> = {
     responseType: "action",
     displayName: "Update a Cloud Control Asset",
     path: "./src/cloud-control-funcs/actions/awsCloudControlUpdate.ts",
+  },
+  // Code Generation
+  "codeGenCreate": {
+    id: "c48518d82a2db7064e7851c36636c665dce775610d08958a8a4f0c5c85cd808e",
+    backendKind: "jsAttribute",
+    responseType: "codeGeneration",
+    displayName: "Code Gen for creating a Cloud Control Asset",
+    path: "./src/cloud-control-funcs/code-gen/awsCloudControlCodeGenCreate.ts",
+  },
+  "codeGenUpdate": {
+    id: "f170263ef3fbb0e8017b47221c5d70ae412b2eaa33e75e1a98525c9a070d60f6",
+    backendKind: "jsAttribute",
+    responseType: "codeGeneration",
+    displayName: "Code Gen for updating a Cloud Control Asset",
+    path: "./src/cloud-control-funcs/code-gen/awsCloudControlCodeGenUpdate.ts",
   },
 };
 
@@ -75,12 +93,11 @@ export function createFunc(
   };
 }
 
-function createDefaultFuncSpecs(name: string): FuncSpec {
+function createDefaultFuncSpec(name: string, args: FuncArgumentSpec[]): FuncSpec {
   const spec = funcSpecs[name];
   const code = Deno.readTextFileSync(spec.path);
   const codeBase64: string = strippedBase64(code);
 
-  const args: FuncArgumentSpec[] = [];
   return createFunc(
     name,
     spec.backendKind,
@@ -101,7 +118,33 @@ export function createDefaultActionFuncs(): FuncSpec[] {
   ];
 
   for (const func of actionFuncs) {
-    ret.push(createDefaultFuncSpecs(func));
+    ret.push(createDefaultFuncSpec(func, []));
+  }
+
+  return ret;
+}
+
+export function createDefaultCodeGenFuncs(domain_id: string): FuncSpec[] {
+  if (!domain_id) {
+    throw new Error("no domain id provided for codegen func!")
+  }
+
+  const ret: FuncSpec[] = [];
+  const codeGenFuncs = [
+    "codeGenCreate",
+    "codeGenUpdate",
+  ];
+
+  const args: FuncArgumentSpec[] = [{
+    name: "domain",
+    kind: "object",
+    elementKind: null,
+    uniqueId: domain_id,
+    deleted: false
+  }]
+
+  for (const func of codeGenFuncs) {
+    ret.push(createDefaultFuncSpec(func, args));
   }
 
   return ret;
@@ -116,6 +159,19 @@ export function createActionFuncSpec(
     funcUniqueId: id,
     kind,
     deleted: false,
+    uniqueId: null,
+  };
+}
+
+export function createLeafFuncSpec(
+  leafKind: LeafKind,
+  id: string,
+): LeafFunctionSpec {
+  return {
+    funcUniqueId: id,
+    deleted: false,
+    inputs: [ "domain" ],
+    leafKind,
     uniqueId: null,
   };
 }
