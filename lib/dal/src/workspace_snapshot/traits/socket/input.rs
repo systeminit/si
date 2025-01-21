@@ -140,8 +140,7 @@ impl InputSocketExt for WorkspaceSnapshot {
         let input_socket = input_socket_from_node_weight_and_content(
             &input_socket_node_weight,
             InputSocketContent::V2(content),
-        )
-        .map_err(Box::new)?;
+        )?;
 
         Ok(input_socket)
     }
@@ -153,10 +152,7 @@ impl InputSocketExt for WorkspaceSnapshot {
     ) -> WorkspaceSnapshotResult<InputSocket> {
         let input_socket_node_weight = self.working_copy().await.get_input_socket(id)?;
 
-        input_socket_from_node_weight(ctx, &input_socket_node_weight)
-            .await
-            .map_err(Box::new)
-            .map_err(Into::into)
+        input_socket_from_node_weight(ctx, &input_socket_node_weight).await
     }
 
     async fn get_input_socket_by_name_opt(
@@ -197,10 +193,8 @@ impl InputSocketExt for WorkspaceSnapshot {
             .await
             .list_input_sockets_for_schema_variant(schema_variant_id)?
         {
-            let input_socket = input_socket_from_node_weight(ctx, &input_socket_node_weight)
-                .await
-                .map_err(Box::new)
-                .map_err(WorkspaceSnapshotError::from)?;
+            let input_socket =
+                input_socket_from_node_weight(ctx, &input_socket_node_weight).await?;
             result.push(input_socket);
         }
 

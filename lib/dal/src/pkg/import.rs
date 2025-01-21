@@ -6,33 +6,34 @@ use si_pkg::{
     SiPkgLeafFunction, SiPkgManagementFunc, SiPkgMetadata, SiPkgProp, SiPkgPropData, SiPkgSchema,
     SiPkgSchemaData, SiPkgSchemaVariant, SiPkgSocket, SiPkgSocketData, SocketSpecKind,
 };
-use std::collections::HashSet;
-use std::fmt::Debug;
-use std::str::FromStr;
-use std::{collections::HashMap, path::Path};
+use std::{
+    collections::{HashMap, HashSet},
+    fmt::Debug,
+    path::Path,
+    str::FromStr,
+};
 use telemetry::prelude::*;
 use tokio::sync::Mutex;
 
-use crate::attribute::prototype::argument::{
-    value_source::ValueSource, AttributePrototypeArgument, AttributePrototypeArgumentId,
-};
-use crate::authentication_prototype::{AuthenticationPrototype, AuthenticationPrototypeId};
-use crate::func::intrinsics::IntrinsicFunc;
-use crate::func::FuncKind;
-use crate::management::prototype::ManagementPrototype;
-use crate::module::{Module, ModuleId};
-use crate::schema::variant::SchemaVariantJson;
-use crate::socket::connection_annotation::ConnectionAnnotation;
-use crate::SocketKind;
 use crate::{
     action::prototype::ActionPrototype,
-    func::argument::FuncArgument,
+    attribute::prototype::argument::{
+        value_source::ValueSource, AttributePrototypeArgument, AttributePrototypeArgumentId,
+    },
+    authentication_prototype::{AuthenticationPrototype, AuthenticationPrototypeId},
+    func::{self, argument::FuncArgument, intrinsics::IntrinsicFunc, FuncKind},
+    management::prototype::ManagementPrototype,
+    module::{Module, ModuleId},
     prop::PropPath,
-    schema::variant::leaves::{LeafInputLocation, LeafKind},
-    DalContext, EdgeWeightKind, Func, FuncId, InputSocket, OutputSocket, OutputSocketId, Prop,
-    PropId, PropKind, Schema, SchemaVariant, SchemaVariantId,
+    schema::variant::{
+        leaves::{LeafInputLocation, LeafKind},
+        SchemaVariantJson,
+    },
+    socket::connection_annotation::ConnectionAnnotation,
+    AttributePrototype, AttributePrototypeId, DalContext, EdgeWeightKind, Func, FuncId,
+    InputSocket, OutputSocket, OutputSocketId, Prop, PropId, PropKind, Schema, SchemaVariant,
+    SchemaVariantId, SocketKind,
 };
-use crate::{AttributePrototype, AttributePrototypeId};
 
 use super::{PkgError, PkgResult};
 

@@ -5,30 +5,31 @@ use base64::{engine::general_purpose, Engine};
 use binding::{FuncBinding, FuncBindingError};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
-use si_events::CasValue;
-use si_events::{ulid::Ulid, ContentHash};
+use si_events::{ulid::Ulid, CasValue, ContentHash};
 use si_frontend_types::FuncSummary;
 use si_pkg::SpecError;
-use std::collections::HashMap;
-use std::string::FromUtf8Error;
-use std::sync::Arc;
+use std::{collections::HashMap, string::FromUtf8Error, sync::Arc};
 use strum::IntoEnumIterator;
 use telemetry::prelude::*;
 use thiserror::Error;
 use ulid::Ulid as CoreUlid;
 
-use crate::change_set::ChangeSetError;
-use crate::func::argument::FuncArgumentId;
-use crate::func::intrinsics::IntrinsicFunc;
-use crate::layer_db_types::{FuncContent, FuncContentV2};
-use crate::workspace_snapshot::edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants};
-use crate::workspace_snapshot::graph::WorkspaceSnapshotGraphError;
-use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
-use crate::workspace_snapshot::node_weight::{FuncNodeWeight, NodeWeight, NodeWeightError};
-use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    implement_add_edge_to, pkg, ChangeSetId, DalContext, HelperError, Timestamp, TransactionsError,
-    WsEvent, WsEventResult, WsPayload,
+    change_set::ChangeSetError,
+    func::{argument::FuncArgumentId, intrinsics::IntrinsicFunc},
+    implement_add_edge_to,
+    layer_db_types::{FuncContent, FuncContentV2},
+    pkg,
+    workspace_snapshot::{
+        edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants},
+        graph::WorkspaceSnapshotGraphError,
+        node_weight::{
+            category_node_weight::CategoryNodeKind, FuncNodeWeight, NodeWeight, NodeWeightError,
+        },
+        WorkspaceSnapshotError,
+    },
+    ChangeSetId, DalContext, HelperError, Timestamp, TransactionsError, WsEvent, WsEventResult,
+    WsPayload,
 };
 
 use self::backend::{FuncBackendKind, FuncBackendResponseType};

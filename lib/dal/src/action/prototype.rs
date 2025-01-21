@@ -235,7 +235,7 @@ impl ActionPrototype {
             }
         }
 
-        Err(ActionPrototypeError::FuncNotFoundForPrototype(id))
+        Err(ActionPrototypeError::FuncNotFoundForPrototype(id).into())
     }
 
     /// Lists all [`ActionPrototypes`](ActionPrototype) for a given
@@ -290,7 +290,7 @@ impl ActionPrototype {
                 }
             }
         }
-        Err(ActionPrototypeError::SchemaVariantNotFoundForPrototype(id))
+        Err(ActionPrototypeError::SchemaVariantNotFoundForPrototype(id).into())
     }
 
     pub async fn run(

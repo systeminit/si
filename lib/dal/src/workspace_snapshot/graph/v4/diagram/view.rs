@@ -79,7 +79,8 @@ impl ViewExt for WorkspaceSnapshotGraphV4 {
         if !would_be_orphaned_component_ids.is_empty() {
             return Err(WorkspaceSnapshotGraphError::ViewRemovalWouldOrphanItems(
                 would_be_orphaned_component_ids,
-            ));
+            )
+            .into());
         }
 
         let mut edge_idxs_to_remove = Vec::new();

@@ -74,7 +74,7 @@ pub enum PropertyEditorError {
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
 
-pub type PropertyEditorResult<T> = Result<T, PropertyEditorError>;
+pub type PropertyEditorResult<T> = Result<T>;
 
 // Property editor ids used across submodules.
 pub use si_id::PropertyEditorPropId;

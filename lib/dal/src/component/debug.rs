@@ -1,29 +1,34 @@
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::attribute::value::AttributeValueError;
-
-use crate::attribute::value::debug::{AttributeDebugView, AttributeDebugViewError};
-use crate::diagram::geometry::Geometry;
-use crate::diagram::view::{View, ViewId};
-use crate::diagram::DiagramError;
-use crate::prop::PropError;
-use crate::socket::debug::{SocketDebugView, SocketDebugViewError};
-use crate::socket::input::InputSocketError;
-use crate::socket::output::OutputSocketError;
-use crate::workspace_snapshot::node_weight::NodeWeightError;
-use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    AttributeValue, AttributeValueId, Component, ComponentId, DalContext, PropId, SchemaVariantId,
-    SecretError, SecretId,
+    attribute::value::{
+        debug::{AttributeDebugView, AttributeDebugViewError},
+        AttributeValueError,
+    },
+    diagram::{
+        geometry::Geometry,
+        view::{View, ViewId},
+        DiagramError,
+    },
+    prop::PropError,
+    socket::{
+        debug::{SocketDebugView, SocketDebugViewError},
+        input::InputSocketError,
+        output::OutputSocketError,
+    },
+    workspace_snapshot::{node_weight::NodeWeightError, WorkspaceSnapshotError},
+    AttributeValue, AttributeValueId, Component, ComponentError, ComponentId, DalContext,
+    FuncError, InputSocket, OutputSocket, PropId, SchemaVariantError, SchemaVariantId, SecretError,
+    SecretId,
 };
-use crate::{ComponentError, FuncError, InputSocket, OutputSocket, SchemaVariantError};
 
 use super::socket::{ComponentInputSocket, ComponentOutputSocket};
 
-type ComponentDebugViewResult<T> = Result<T, ComponentDebugViewError>;
+type ComponentDebugViewResult<T> = Result<T>;
 
 /// A generated view for an [`Component`](crate::Component) that contains metadata about each of
 /// the components attributes. Used for constructing a debug view of the component and also for
