@@ -7,7 +7,6 @@ config.define_bool("debug-no-rebaser-rustc-build-mode")
 cfg = config.parse()
 
 # Define groups of services
-
 groups = {
     "platform": [
         "db",
@@ -17,17 +16,18 @@ groups = {
         "spicedb",
     ],
     "backend": [
-        "pinga",
-        "veritech",
-        "sdf",
-        "rebaser",
-        "forklift",
         "auth-api",
+        "forklift",
         "module-index",
+        "pinga",
+        "rebaser",
+        "sdf",
+        "veritech",
     ],
     "frontend": [
-        "web",
         "auth-portal",
+        "docs",
+        "web",
     ],
     "testing": [
         "db-test",
@@ -42,6 +42,15 @@ groups = {
         "promtail",
     ],
 }
+
+core_backend_targets = [
+    "//app/web:dev",
+    "//bin/forklift:forklift",
+    "//bin/pinga:pinga",
+    "//bin/rebaser:rebaser",
+    "//bin/sdf:sdf",
+    "//bin/veritech:veritech",
+]
 
 # Add "all" group as a sorted set of all services
 _all = {}
@@ -61,55 +70,83 @@ config.set_enabled_resources(enabled_resources)
 
 RUST_RESOURCE_ARGS = {
     "serve_env": {"SI_FORCE_COLOR": "true"},
-    "allow_parallel": True,
     "trigger_mode": TRIGGER_MODE_MANUAL,
 }
 
-def si_buck2_resource(target, *, name=None, buck2_serve_args=None, tee=True, **kwargs):
+# Get build mode for Buck2 commands
+#
+# TODO(nick): The Tiltfile logic for writing arguments out does not know how to group string
+# ("config.define_string") arguments with the argument call (i.e. it thinks "--foo bar" is one
+# argument rather than having argument "--foo" be passed value "bar"). Thus, we use two booleans to
+# get around this. If we get both, greedily choose the standard mode.
+def mode_and_targets(cfg, targets):
+    targets_str = " ".join(targets)
+
+    if cfg.get("standard-rustc-build-mode", False):
+        return targets_str
+    if cfg.get("debug-rustc-build-mode", False):
+        return "@//mode/debug {}".format(targets_str)
+    if cfg.get("debug-no-rebaser-rustc-build-mode", False) and "//bin/rebaser:rebaser" not in targets:
+        return "@//mode/debug {}".format(targets_str)
+
+    return "@//mode/release {}".format(targets_str)
+
+def si_buck2_resource(
+        target,
+        *,
+        name = None,
+        allow_parallel = True,
+        buck2_serve_args = None,
+        tee = True,
+        **kwargs):
     # Figure name from build command: //app/web:dev -> web
     if name == None:
         name = target.split("/")[-1].split(":")[0]
 
-    # Get build mode for buck2 commands
-    # TODO(nick): the bzl logic for writing arguments out does not know how
-    # to group string ("config.define_string") arguments with the argument
-    # call (i.e. it thinks "--foo bar" is one argument rather than having
-    # argument "--foo" be passed value "bar"). Thus, we use two booleans to
-    # get around this. If we get both, greedily choose the standard mode.
-    if cfg.get('standard-rustc-build-mode', False):
-        mode_and_target = target
-    elif cfg.get('debug-rustc-build-mode', False):
-        mode_and_target = "@//mode/debug {}".format(target)
-    elif cfg.get('debug-no-rebaser-rustc-build-mode', False) and target != '//bin/rebaser:rebaser':
-        mode_and_target = "@//mode/debug {}".format(target)
+    if target in core_backend_targets:
+        build_targets = core_backend_targets
     else:
-        mode_and_target = "@//mode/release {}".format(target)
+        build_targets = [target]
 
-    # Get buck2 build command
-    cmd = "buck2 build {}".format(mode_and_target)
+    # Get Buck2 build command
+    cmd = "buck2 build {}".format(mode_and_targets(cfg, build_targets))
 
-    # Get buck2 run command
+    # Get Buck2 run command
+    mode_and_target = mode_and_targets(cfg, [target])
     serve_cmd = "buck2 run {}".format(mode_and_target)
     if buck2_serve_args != None:
         serve_cmd += " -- {}".format(buck2_serve_args)
     if tee and mode_and_target != target:
-        # TODO different resources currently tee differently depending on mode. Seems like
-        # copypasta error but ask around to see if it's intended.
+        # TODO different resources currently tee differently depending on mode. Seems like copypasta
+        # error but ask around to see if it's intended.
         serve_cmd += " | tee /tmp/si-logs/{}".format(name)
 
-    # Bring in deps
-    deps_cmd = "buck2 uquery \"inputs(deps('{}'))\"".format(target)
+    # Compute Buck2 source inputs to populate Tilt local_resource/deps
+    deps = str(
+        local(
+            "buck2 uquery \"inputs(deps('{}'))\"".format(target),
+            quiet = True,
+        ),
+    ).splitlines()
 
     # Lookup group and add to labels
     group_names = [group for group in groups if group != "all" and name in groups[group]]
 
+    print("local_resource(")
+    print("    name       = \"{}\"".format(name))
+    print("    cmd        = \"{}\"".format(cmd))
+    print("    serve_cmd  = \"{}\"".format(serve_cmd))
+    print(")")
+    print("")
+
     local_resource(
         name,
+        allow_parallel = allow_parallel,
         labels = group_names,
         cmd = cmd,
         serve_cmd = serve_cmd,
-        deps = str(local(deps_cmd)).splitlines(),
-        **kwargs,
+        deps = deps,
+        **kwargs
     )
 
 # From the Tilt docs:
@@ -133,15 +170,29 @@ def find_group(name, groups):
 
 # Use Docker Compose to provide the platform services
 docker_compose("./docker-compose.platform.yml")
-compose_services = ["jaeger", "nats", "otelcol", "postgres", "postgres-test", "db", "db-test", "loki",  "grafana", "localstack", "promtail", "prometheus", "spicedb"]
+compose_services = [
+    "db",
+    "db-test",
+    "grafana",
+    "jaeger",
+    "localstack",
+    "loki",
+    "nats",
+    "otelcol",
+    "postgres",
+    "postgres-test",
+    "prometheus",
+    "promtail",
+    "spicedb",
+]
 for service in compose_services:
     if service == "jaeger":
         links = [
-            link("http://localhost:16686", "ui"),
+            link("http://localhost:16686", "jaeger-ui"),
         ]
     elif service == "grafana":
         links = [
-            link("http://localhost:3000", "ui"),
+            link("http://localhost:3000", "grafana-ui"),
         ]
     elif service == "localstack":
         links = [
@@ -160,7 +211,7 @@ si_buck2_resource(
         "otelcol",
         "postgres",
     ],
-    **RUST_RESOURCE_ARGS,
+    **RUST_RESOURCE_ARGS
 )
 
 # Locally build and run `forklift`
@@ -170,7 +221,7 @@ si_buck2_resource(
         "nats",
         "otelcol",
     ],
-    **RUST_RESOURCE_ARGS,
+    **RUST_RESOURCE_ARGS
 )
 
 # Locally build and run `pinga`
@@ -181,20 +232,22 @@ si_buck2_resource(
         "otelcol",
         "veritech",
     ],
-    **RUST_RESOURCE_ARGS,
+    **RUST_RESOURCE_ARGS
 )
 
 # Locally build and run `veritech`
 si_buck2_resource(
     "//bin/veritech:veritech",
     # buck2_serve_args = "--cyclone-local-firecracker --cyclone-pool-size 10",
-    # This ^ is the serve command you might need if you want to execute on firecracker for 10 function executions.
+    # This ^ is the serve command you might need if you want to execute on firecracker for 10
+    # function executions.
+    #
     # NB: BUCK2 MUST RUN AS ROOT OR THIS WILL NOT WORK
     resource_deps = [
         "nats",
         "otelcol",
     ],
-    **RUST_RESOURCE_ARGS,
+    **RUST_RESOURCE_ARGS
 )
 
 # Locally build and run `sdf`
@@ -217,16 +270,12 @@ si_buck2_resource(
             path = "/api/",
         ),
     ),
-    links = [
-        "localhost:5156",
-    ],
-    **RUST_RESOURCE_ARGS,
+    **RUST_RESOURCE_ARGS
 )
 
 # Locally build and run `web` in dev mode
 si_buck2_resource(
     "//app/web:dev",
-    allow_parallel = True,
     resource_deps = [
         "sdf",
     ],
@@ -238,13 +287,13 @@ si_buck2_resource(
     ),
     links = [
         link("http://127.0.0.1:8080", "web"),
-        link("https://auth.systeminit.com", "auth"),
+        link("https://auth.systeminit.com", "auth-prod"),
     ],
 )
 
 si_buck2_resource(
     "//app/docs:dev",
-    allow_parallel = True,
+    auto_init = False,
     resource_deps = [],
     readiness_probe = probe(
         period_secs = 5,
@@ -252,9 +301,6 @@ si_buck2_resource(
             port = 5173,
         ),
     ),
-    links = [
-        link("http://localhost:5173", "docs"),
-    ],
 )
 
 # Locally build and run `module-index`
@@ -273,10 +319,7 @@ si_buck2_resource(
             path = "/",
         ),
     ),
-    links = [
-        "localhost:5157",
-    ],
-    **RUST_RESOURCE_ARGS,
+    **RUST_RESOURCE_ARGS
 )
 
 # Locally build and run `auth-api`
@@ -293,9 +336,6 @@ si_buck2_resource(
             path = "/",
         ),
     ),
-    links = [
-        "localhost:9001",
-    ],
     trigger_mode = TRIGGER_MODE_MANUAL,
 )
 
@@ -303,7 +343,6 @@ si_buck2_resource(
 si_buck2_resource(
     "//app/auth-portal:dev",
     auto_init = False,
-    allow_parallel = True,
     resource_deps = [
         "auth-api",
     ],
@@ -314,7 +353,6 @@ si_buck2_resource(
         ),
     ),
     links = [
-        link("http://127.0.0.1:9000", "web"),
+        link("http://127.0.0.1:9000", "auth"),
     ],
 )
-
