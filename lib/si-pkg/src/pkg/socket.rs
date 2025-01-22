@@ -62,7 +62,8 @@ impl<'a> SiPkgSocket<'a> {
                 return Err(SiPkgError::UnexpectedPkgNodeType(
                     PkgNode::SOCKET_KIND_STR,
                     unexpected.node_kind_str(),
-                ))
+                )
+                .into())
             }
         };
 
@@ -119,7 +120,7 @@ impl<'a> SiPkgSocket<'a> {
 }
 
 impl<'a> TryFrom<SiPkgSocket<'a>> for SocketSpec {
-    type Error = SiPkgError;
+    type Error = anyhow::Error;
 
     fn try_from(value: SiPkgSocket<'a>) -> Result<Self, Self::Error> {
         let mut builder = SocketSpec::builder();

@@ -1,26 +1,26 @@
 use super::ValueIsFor;
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::attribute::prototype::debug::{
-    AttributePrototypeDebugView, AttributePrototypeDebugViewError, FuncArgDebugView,
-};
-use crate::attribute::prototype::{
-    argument::{value_source::ValueSourceError, AttributePrototypeArgumentError},
-    AttributePrototypeError,
-};
-use crate::attribute::value::AttributeValueError;
-use crate::prop::PropError;
-use crate::socket::input::InputSocketError;
-use crate::socket::output::OutputSocketError;
-use crate::workspace_snapshot::node_weight::NodeWeightError;
-use crate::workspace_snapshot::WorkspaceSnapshotError;
-use crate::ComponentError;
 use crate::{
-    AttributePrototypeId, AttributeValue, AttributeValueId, DalContext, FuncError, FuncId, Prop,
-    PropKind,
+    attribute::{
+        prototype::{
+            argument::{value_source::ValueSourceError, AttributePrototypeArgumentError},
+            debug::{
+                AttributePrototypeDebugView, AttributePrototypeDebugViewError, FuncArgDebugView,
+            },
+            AttributePrototypeError,
+        },
+        value::AttributeValueError,
+    },
+    prop::PropError,
+    socket::{input::InputSocketError, output::OutputSocketError},
+    workspace_snapshot::{node_weight::NodeWeightError, WorkspaceSnapshotError},
+    AttributePrototypeId, AttributeValue, AttributeValueId, ComponentError, DalContext, FuncError,
+    FuncId, Prop, PropKind,
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -42,7 +42,7 @@ pub struct AttributeDebugView {
     pub view: Option<serde_json::Value>,
 }
 
-type AttributeDebugViewResult<T> = Result<T, AttributeDebugViewError>;
+type AttributeDebugViewResult<T> = Result<T>;
 
 #[remain::sorted]
 #[derive(Error, Debug)]

@@ -28,7 +28,8 @@ impl<'a> SiPkgPosition<'a> {
                 return Err(SiPkgError::UnexpectedPkgNodeType(
                     PkgNode::POSTITION_KIND_STR,
                     unexpected.node_kind_str(),
-                ))
+                )
+                .into())
             }
         };
 

@@ -4,7 +4,7 @@ use tokio::fs;
 use si_pkg::{PkgSpec, SchemaVariantSpecPropRoot, SiPkg, SiPkgError, SiPkgProp};
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> Result<(), anyhow::Error> {
     let mut args = args();
     let input = args.nth(1).expect("usage: program <JSON_FILE> <DEST_DIR>");
     let dst = args.next().expect("usage: program <JSON_FILE> <DEST_DIR>");

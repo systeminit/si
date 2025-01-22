@@ -3,6 +3,7 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::Arc;
 
+use anyhow::Result;
 use chrono::Utc;
 use petgraph::{Direction, Outgoing};
 use serde::{Deserialize, Serialize};
@@ -17,55 +18,59 @@ use si_layer_cache::LayerDbError;
 use si_pkg::SpecError;
 use telemetry::prelude::*;
 
-use crate::action::prototype::{ActionKind, ActionPrototype};
-use crate::attribute::prototype::argument::{
-    AttributePrototypeArgument, AttributePrototypeArgumentError,
-};
-use crate::attribute::prototype::AttributePrototypeError;
-use crate::attribute::value::{AttributeValueError, ValueIsFor};
-use crate::change_set::ChangeSetError;
-use crate::diagram::SummaryDiagramManagementEdge;
-use crate::func::argument::{FuncArgument, FuncArgumentError};
-use crate::func::intrinsics::IntrinsicFunc;
-use crate::func::{FuncError, FuncKind};
-use crate::layer_db_types::{
-    ContentTypeError, InputSocketContent, OutputSocketContent, SchemaVariantContent,
-    SchemaVariantContentV3,
-};
-use crate::management::prototype::{
-    ManagementPrototype, ManagementPrototypeError, ManagementPrototypeId,
-};
-use crate::module::Module;
-use crate::prop::{PropError, PropPath};
-use crate::schema::variant::root_prop::RootProp;
-use crate::socket::input::InputSocketError;
-use crate::socket::output::OutputSocketError;
-use crate::workspace_snapshot::{
-    content_address::{ContentAddress, ContentAddressDiscriminants},
-    edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants},
-    graph::NodeIndex,
-    node_weight::{
-        input_socket_node_weight::InputSocketNodeWeightError, traits::SiNodeWeight, NodeWeight,
-        NodeWeightDiscriminants, NodeWeightError, PropNodeWeight, SchemaVariantNodeWeight,
-    },
-    SchemaVariantExt, WorkspaceSnapshotError,
-};
 use crate::{
+    action::prototype::{ActionKind, ActionPrototype},
+    attribute::{
+        prototype::{
+            argument::{AttributePrototypeArgument, AttributePrototypeArgumentError},
+            AttributePrototypeError,
+        },
+        value::{AttributeValueError, ValueIsFor},
+    },
+    change_set::ChangeSetError,
+    diagram::SummaryDiagramManagementEdge,
+    func::{
+        argument::{FuncArgument, FuncArgumentError},
+        intrinsics::IntrinsicFunc,
+        FuncError, FuncKind,
+    },
     implement_add_edge_to,
-    schema::variant::leaves::{LeafInput, LeafInputLocation, LeafKind},
-    ActionPrototypeId, AttributePrototype, AttributePrototypeId, ChangeSetId, ComponentId,
-    ComponentType, DalContext, Func, FuncId, HelperError, InputSocket, OutputSocket,
+    layer_db_types::{
+        ContentTypeError, InputSocketContent, OutputSocketContent, SchemaVariantContent,
+        SchemaVariantContentV3,
+    },
+    management::prototype::{ManagementPrototype, ManagementPrototypeError, ManagementPrototypeId},
+    module::Module,
+    prop::{PropError, PropPath},
+    schema::variant::{
+        leaves::{LeafInput, LeafInputLocation, LeafKind},
+        root_prop::RootProp,
+    },
+    socket::{input::InputSocketError, output::OutputSocketError},
+    workspace_snapshot::{
+        content_address::{ContentAddress, ContentAddressDiscriminants},
+        edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants},
+        graph::NodeIndex,
+        node_weight::{
+            input_socket_node_weight::InputSocketNodeWeightError, traits::SiNodeWeight, NodeWeight,
+            NodeWeightDiscriminants, NodeWeightError, PropNodeWeight, SchemaVariantNodeWeight,
+        },
+        SchemaVariantExt, WorkspaceSnapshotError,
+    },
+    ActionPrototypeId, AttributePrototype, AttributePrototypeId, AttributeValue, ChangeSetId,
+    Component, ComponentError, ComponentId, ComponentType, DalContext, Func,
+    FuncBackendResponseType, FuncId, HelperError, InputSocket, InputSocketId, OutputSocket,
     OutputSocketId, Prop, PropId, PropKind, Schema, SchemaError, SchemaId, Timestamp,
     TransactionsError, WsEvent, WsEventResult, WsPayload,
 };
-use crate::{AttributeValue, Component, ComponentError, FuncBackendResponseType, InputSocketId};
 
 use self::root_prop::RootPropChild;
 
-pub use json::SchemaVariantJson;
-pub use json::SchemaVariantMetadataJson;
-pub use metadata_view::SchemaVariantMetadataView;
-pub use value_from::ValueFrom;
+pub use self::{
+    json::{SchemaVariantJson, SchemaVariantMetadataJson},
+    metadata_view::SchemaVariantMetadataView,
+    value_from::ValueFrom,
+};
 
 pub mod authoring;
 mod json;
@@ -179,7 +184,7 @@ pub enum SchemaVariantError {
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
 
-pub type SchemaVariantResult<T> = Result<T, SchemaVariantError>;
+pub type SchemaVariantResult<T> = Result<T>;
 
 pub use si_id::SchemaVariantId;
 
@@ -613,7 +618,7 @@ impl SchemaVariant {
         let variant = Self::get_by_id_or_error(ctx, schema_variant_id).await?;
 
         if variant.is_locked() {
-            return Err(SchemaVariantError::SchemaVariantLocked(schema_variant_id));
+            return Err(SchemaVariantError::SchemaVariantLocked(schema_variant_id).into());
         }
 
         Self::cleanup_variant(ctx, variant).await
@@ -692,7 +697,7 @@ impl SchemaVariant {
                         }
                     }
                 }
-                _ => return Err(SchemaVariantError::PropIdNotAProp(prop_id)),
+                _ => return Err(SchemaVariantError::PropIdNotAProp(prop_id).into()),
             }
 
             // Once processed, push onto the list that will be returned.
@@ -718,7 +723,7 @@ impl SchemaVariant {
     ) -> SchemaVariantResult<Self> {
         Self::get_by_id(ctx, id)
             .await?
-            .ok_or_else(|| SchemaVariantError::NotFound(id))
+            .ok_or_else(|| SchemaVariantError::NotFound(id).into())
     }
 
     pub async fn get_by_id(
@@ -731,13 +736,10 @@ impl SchemaVariant {
 
         let node_index = match maybe_node_result {
             Ok(node_index) => node_index,
-            Err(e) => {
-                return if e.is_node_with_id_not_found() {
-                    Ok(None)
-                } else {
-                    Err(SchemaVariantError::from(e))
-                }
-            }
+            Err(error) => match error.downcast_ref::<WorkspaceSnapshotError>() {
+                Some(e) if e.is_node_with_id_not_found() => return Ok(None),
+                _ => return Err(error),
+            },
         };
 
         let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
@@ -920,7 +922,7 @@ impl SchemaVariant {
 
     pub async fn error_if_locked(ctx: &DalContext, id: SchemaVariantId) -> SchemaVariantResult<()> {
         match Self::is_locked_by_id(ctx, id).await? {
-            true => Err(SchemaVariantError::SchemaVariantLocked(id)),
+            true => Err(SchemaVariantError::SchemaVariantLocked(id).into()),
             false => Ok(()),
         }
     }
@@ -1062,7 +1064,7 @@ impl SchemaVariant {
 
     pub fn asset_func_id_or_error(&self) -> SchemaVariantResult<FuncId> {
         self.asset_func_id
-            .ok_or(SchemaVariantError::MissingAssetFuncId(self.id))
+            .ok_or(SchemaVariantError::MissingAssetFuncId(self.id).into())
     }
 
     pub fn is_builtin(&self) -> bool {
@@ -1138,7 +1140,7 @@ impl SchemaVariant {
             }
         }
 
-        Err(SchemaVariantError::RootNodeMissing(schema_variant_id))
+        Err(SchemaVariantError::RootNodeMissing(schema_variant_id).into())
     }
 
     pub async fn create_default_prototypes(
@@ -1562,8 +1564,7 @@ impl SchemaVariant {
                                 component_id,
                                 leaf_kind,
                             )
-                            .await
-                            .map_err(Box::new)?;
+                            .await?;
 
                         let new_attribute_value = AttributeValue::new(
                             ctx,
@@ -1572,8 +1573,7 @@ impl SchemaVariant {
                             Some(parent_attribute_value_id),
                             key.clone(),
                         )
-                        .await
-                        .map_err(Box::new)?;
+                        .await?;
                         new_attribute_value_ids.push(new_attribute_value.id);
                     }
                     if !new_attribute_value_ids.is_empty() {
@@ -1653,9 +1653,7 @@ impl SchemaVariant {
             SchemaVariant::schema_id_for_schema_variant_id(ctx, schema_variant_id).await?;
         let managed_schemas = Self::all_managed_schemas(ctx, schema_variant_id).await?;
         let has_mgmt_protos =
-            ManagementPrototype::variant_has_management_prototype(ctx, schema_variant_id)
-                .await
-                .map_err(Box::new)?;
+            ManagementPrototype::variant_has_management_prototype(ctx, schema_variant_id).await?;
 
         let management_input_socket = DiagramSocket {
             id: SummaryDiagramManagementEdge::input_socket_id(schema_id),
@@ -2000,8 +1998,7 @@ impl SchemaVariant {
             if let NodeWeight::ManagementPrototype(mgmt_prototype_node_weight) = node_weight {
                 let func_id =
                     ManagementPrototype::func_id(ctx, mgmt_prototype_node_weight.id().into())
-                        .await
-                        .map_err(Box::new)?;
+                        .await?;
 
                 all_func_ids.insert(func_id);
             }
@@ -2085,7 +2082,7 @@ impl SchemaVariant {
         }
 
         // This should be impossible to hit.
-        Err(SchemaVariantError::NotFoundForProp(prop_id))
+        Err(SchemaVariantError::NotFoundForProp(prop_id).into())
     }
 
     async fn find_for_root_prop_id(
@@ -2109,7 +2106,7 @@ impl SchemaVariant {
             }
         }
 
-        Err(SchemaVariantError::NotFoundForRootProp(root_prop_id))
+        Err(SchemaVariantError::NotFoundForRootProp(root_prop_id).into())
     }
 
     /// Find the [`SchemaVariantId`](SchemaVariant) for the given [`InputSocketId`](InputSocket).
@@ -2137,7 +2134,7 @@ impl SchemaVariant {
             }
         }
 
-        Err(SchemaVariantError::NotFoundForInputSocket(input_socket_id))
+        Err(SchemaVariantError::NotFoundForInputSocket(input_socket_id).into())
     }
 
     /// Find the [`SchemaVariantId`](SchemaVariant) for the given [`OutputSocketId`](OutputSocket).
@@ -2165,9 +2162,7 @@ impl SchemaVariant {
             }
         }
 
-        Err(SchemaVariantError::NotFoundForOutputSocket(
-            output_socket_id,
-        ))
+        Err(SchemaVariantError::NotFoundForOutputSocket(output_socket_id).into())
     }
 
     /// List all [`SchemaVariantIds`](SchemaVariant) for the provided
@@ -2342,7 +2337,8 @@ impl SchemaVariant {
                 SchemaVariantError::SecretDefiningSchemaVariantTooManyOutputSockets(
                     output_socket_ids,
                     secret_defining_id,
-                ),
+                )
+                .into(),
             );
         }
         let secret_output_socket = output_sockets.first().ok_or(
@@ -2410,10 +2406,7 @@ impl SchemaVariant {
     ) -> SchemaVariantResult<HashSet<SchemaId>> {
         let mut result = HashSet::new();
 
-        for prototype in ManagementPrototype::list_for_variant_id(ctx, schema_variant_id)
-            .await
-            .map_err(Box::new)?
-        {
+        for prototype in ManagementPrototype::list_for_variant_id(ctx, schema_variant_id).await? {
             if let Some(managed_schemas) = prototype.managed_schemas() {
                 result.extend(managed_schemas);
             }

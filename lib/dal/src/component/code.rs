@@ -1,6 +1,6 @@
-use crate::workspace_snapshot::edge_weight::EdgeWeightKindDiscriminants;
 use crate::{
-    code_view::CodeView, schema::variant::root_prop::RootPropChild, AttributeValueId, Component,
+    code_view::CodeView, schema::variant::root_prop::RootPropChild,
+    workspace_snapshot::edge_weight::EdgeWeightKindDiscriminants, AttributeValueId, Component,
     ComponentId, DalContext,
 };
 
@@ -72,7 +72,7 @@ impl Component {
         .first()
         {
             Some(qualification_map_attribute_value_id) => Ok(*qualification_map_attribute_value_id),
-            None => Err(ComponentError::MissingCodeValue(component_id)),
+            None => Err(ComponentError::MissingCodeValue(component_id).into()),
         }
     }
 }

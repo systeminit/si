@@ -1819,6 +1819,7 @@ dependencies = [
 name = "dal"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "async-recursion",
  "async-trait",
  "audit-database",
@@ -6733,6 +6734,7 @@ dependencies = [
 name = "si-pkg"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "base64 0.22.1",
  "chrono",
  "derive_builder",

@@ -5,6 +5,7 @@
 
 #![warn(missing_docs, clippy::missing_errors_doc, clippy::missing_panics_doc)]
 
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
 use crate::{DalContext, HistoryActor, StandardModelError, User, UserPk};
@@ -42,15 +43,12 @@ impl ActorView {
     ///
     /// Returns [`Err`] if a user cannot be determined given a user pk or if there is a aconnection
     /// issue with the database.
-    pub async fn from_history_actor(
-        ctx: &DalContext,
-        history_actor: HistoryActor,
-    ) -> Result<Self, StandardModelError> {
+    pub async fn from_history_actor(ctx: &DalContext, history_actor: HistoryActor) -> Result<Self> {
         match history_actor {
             HistoryActor::User(user_pk) => {
                 let user = User::get_by_pk(ctx, user_pk)
                     .await?
-                    .ok_or(StandardModelError::UserNotFound(user_pk))?;
+                    .ok_or_else(|| StandardModelError::UserNotFound(user_pk))?;
                 Ok(Self::User {
                     pk: user.pk(),
                     label: user.name().to_string(),
@@ -69,7 +67,7 @@ impl postgres_types::ToSql for ActorView {
         &self,
         ty: &postgres_types::Type,
         out: &mut postgres_types::private::BytesMut,
-    ) -> Result<postgres_types::IsNull, Box<dyn std::error::Error + Sync + Send>>
+    ) -> std::result::Result<postgres_types::IsNull, Box<dyn std::error::Error + Sync + Send>>
     where
         Self: Sized,
     {
@@ -88,7 +86,7 @@ impl postgres_types::ToSql for ActorView {
         &self,
         ty: &postgres_types::Type,
         out: &mut postgres_types::private::BytesMut,
-    ) -> Result<postgres_types::IsNull, Box<dyn std::error::Error + Sync + Send>> {
+    ) -> std::result::Result<postgres_types::IsNull, Box<dyn std::error::Error + Sync + Send>> {
         let json = serde_json::to_value(self)?;
         postgres_types::ToSql::to_sql(&json, ty, out)
     }

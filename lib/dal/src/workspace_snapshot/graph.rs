@@ -1,3 +1,4 @@
+use anyhow::Result;
 use std::{fs::File, io::Write};
 
 use deprecated::DeprecatedWorkspaceSnapshotGraphV1;
@@ -100,7 +101,7 @@ pub enum WorkspaceSnapshotGraphError {
     WorkspacesConflict,
 }
 
-pub type WorkspaceSnapshotGraphResult<T> = Result<T, WorkspaceSnapshotGraphError>;
+pub type WorkspaceSnapshotGraphResult<T> = Result<T>;
 
 #[derive(Debug, Deserialize, Serialize, Clone, EnumDiscriminants)]
 #[strum_discriminants(derive(strum::Display, Serialize, Deserialize, EnumString, EnumIter))]
