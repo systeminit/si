@@ -253,7 +253,6 @@ export function createScalarProp(
     case "number":
     case "string":
       widgetKind = "Text";
-      widgetKind = "Text";
       break;
     case "boolean":
       widgetKind = "Checkbox";

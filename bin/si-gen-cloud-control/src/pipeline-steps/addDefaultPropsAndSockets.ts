@@ -1,6 +1,10 @@
 import { PkgSpec } from "../bindings/PkgSpec.ts";
 import _ from "lodash";
-import { createObjectProp, createScalarProp } from "../spec/props.ts";
+import {
+  createObjectProp,
+  createScalarProp,
+  isExpandedPropSpec,
+} from "../spec/props.ts";
 import { getSiFuncId } from "../spec/siFuncs.ts";
 import { attrFuncInputSpecFromSocket, createSocket } from "../spec/sockets.ts";
 
@@ -18,6 +22,12 @@ export function addDefaultPropsAndSockets(specs: PkgSpec[]): PkgSpec[] {
     }
 
     const domain = schemaVariant.domain;
+    if (!isExpandedPropSpec(domain)) {
+      console.log(
+        `Could not generate extra props for ${spec.name}: domain has no metadata`,
+      );
+      continue;
+    }
     if (domain.kind !== "object") {
       console.log(
         `Could not generate extra props for ${spec.name}: domain is not object`,
@@ -29,7 +39,7 @@ export function addDefaultPropsAndSockets(specs: PkgSpec[]): PkgSpec[] {
     const regionSocket = createSocket("Region", "input", "one");
     schemaVariant.sockets.push(regionSocket);
 
-    const extraProp = createObjectProp("extra", ["root", "domain"]);
+    const extraProp = createObjectProp("extra", domain.metadata.propPath);
 
     const regionProp = createScalarProp(
       "Region",
