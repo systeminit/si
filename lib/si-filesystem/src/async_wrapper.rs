@@ -537,7 +537,7 @@ impl Filesystem for AsyncFuseWrapper {
     ) {
         self.tx
             .send(FilesystemCommand::Create {
-                parent,
+                parent: Inode::new(parent),
                 name: name.to_os_string(),
                 mode,
                 umask,

@@ -187,7 +187,7 @@ pub(crate) enum FilesystemCommand {
         reply: ReplyEmpty,
     },
     Create {
-        parent: u64,
+        parent: Inode,
         name: OsString,
         mode: u32,
         umask: u32,

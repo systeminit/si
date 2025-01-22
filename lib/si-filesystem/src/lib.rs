@@ -11,8 +11,8 @@ use std::{
 
 use client::{SiFsClient, SiFsClientError};
 use fuser::{
-    FileType, MountOption, ReplyAttr, ReplyData, ReplyDirectory, ReplyEmpty, ReplyEntry, ReplyOpen,
-    ReplyWrite,
+    FileType, MountOption, ReplyAttr, ReplyCreate, ReplyData, ReplyDirectory, ReplyEmpty,
+    ReplyEntry, ReplyOpen, ReplyWrite,
 };
 use inode_table::{InodeEntryData, InodeTable, InodeTableError};
 use nix::{
@@ -42,6 +42,7 @@ const FILE_HANDLE_READ_BIT: FileHandle = FileHandle::new(1 << 63);
 const FILE_HANDLE_WRITE_BIT: FileHandle = FileHandle::new(1 << 62);
 
 const FILE_STR_TS_INDEX: &str = "index.ts";
+const FILE_STR_INSTALLED: &str = "INSTALLED";
 
 const TTL: Duration = Duration::from_secs(0);
 
@@ -369,6 +370,90 @@ impl SiFileSystem {
         Ok(())
     }
 
+    async fn create(
+        &self,
+        parent: Inode,
+        name: OsString,
+        _mode: u32,
+        _umask: u32,
+        _flags: i32,
+        reply: ReplyCreate,
+    ) -> SiFileSystemResult<()> {
+        let mut parent_entry = {
+            let inode_table = self.inode_table.read().await;
+            let Some(parent_entry) = inode_table.entry_for_ino(parent) else {
+                reply.error(ENOENT);
+                return Ok(());
+            };
+
+            parent_entry.to_owned()
+        };
+
+        let mut did_install = false;
+        match parent_entry.data() {
+            InodeEntryData::Schema {
+                schema_id,
+                change_set_id,
+                installed,
+                ..
+            } if name == FILE_STR_INSTALLED && !(*installed) => {
+                self.client
+                    .install_schema(*change_set_id, *schema_id)
+                    .await?;
+
+                did_install = true;
+
+                let ino = self.inode_table.write().await.upsert_with_parent_ino(
+                    parent,
+                    FILE_STR_INSTALLED,
+                    InodeEntryData::InstalledSchemaMarker,
+                    FileType::RegularFile,
+                    false,
+                    Some(0),
+                )?;
+
+                let fh = self.next_file_handle() | FILE_HANDLE_READ_BIT;
+                self.open_files.write().await.insert(
+                    fh,
+                    OpenFile {
+                        ino,
+                        fh,
+                        buf: Cursor::new(vec![]),
+                        append: false,
+                        write: false,
+                        dirty: false,
+                    },
+                );
+            }
+            _ => reply.error(EACCES),
+        }
+
+        if did_install {
+            let new_data = match parent_entry.data.clone() {
+                InodeEntryData::Schema {
+                    schema_id,
+                    change_set_id,
+                    name,
+                    ..
+                } => InodeEntryData::Schema {
+                    schema_id,
+                    change_set_id,
+                    name,
+                    installed: true,
+                },
+                other => other,
+            };
+            parent_entry.data = new_data;
+
+            self.inode_table
+                .write()
+                .await
+                .upsert_for_ino(parent, parent_entry)?;
+        }
+
+        Ok(())
+    }
+
     async fn release(
         &self,
         ino: Inode,
@@ -515,6 +600,9 @@ impl SiFileSystem {
             }
             InodeEntryData::SchemaFunc { .. } => {
                 reply.error(EINVAL);
+            }
+            InodeEntryData::InstalledSchemaMarker => {
+                reply.error(ENOTDIR);
             }
         }
 
@@ -870,6 +958,24 @@ impl SiFileSystem {
                     )?;
 
                     dirs.add(schema_def_info, DIR_STR_DEFINITION.into(), FileType::Directory);
+
+                    let installed_path = inode_table.make_path(Some(entry.ino), FILE_STR_INSTALLED)?;
+                    let installed_ino = match inode_table.ino_for_path(&installed_path) {
+                        Some(ino) => ino,
+                        None => {
+                            inode_table.upsert_with_parent_ino(
+                                entry.ino,
+                                FILE_STR_INSTALLED,
+                                InodeEntryData::InstalledSchemaMarker ,
+                                FileType::RegularFile,
+                                false,
+                                Some(0),
+                            )?
+                        }
+                    };
+
+                    // "installed"  marker
+                    dirs.add(installed_ino, FILE_STR_INSTALLED.into(), FileType::RegularFile);
                 }
             }
             // `/change-sets/$change_set_name/schemas/$schema_name/asset-definition/`
@@ -1055,6 +1161,7 @@ impl SiFileSystem {
                 dirs.add(ino, FILE_STR_TS_INDEX.into(), FileType::RegularFile);
             }
             // `/change-sets/$change_set_name/functions/$func_kind/$func_name/index.ts`
+            InodeEntryData::InstalledSchemaMarker |
             InodeEntryData::FuncCode { .. } |
             // `/change-sets/$change_set_name/schemas/$schema_name/$locked/asset-definition/index.ts`
             InodeEntryData::AssetFuncCode { .. } => {
@@ -1204,6 +1311,18 @@ impl SiFileSystem {
                     } => {
                         reply.error(ENOSYS);
                         Ok(())
+                    }
+                    FilesystemCommand::Create {
+                        parent,
+                        name,
+                        mode,
+                        umask,
+                        flags,
+                        reply,
+                    } => {
+                        self_clone
+                            .create(parent, name, mode, umask, flags, reply)
+                            .await
                     }
                     command => {
                         dbg!(&command);

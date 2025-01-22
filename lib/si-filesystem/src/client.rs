@@ -224,4 +224,19 @@ impl SiFsClient {
 
         Ok(())
     }
+
+    pub async fn install_schema(
+        &self,
+        change_set_id: ChangeSetId,
+        schema_id: SchemaId,
+    ) -> SiFsClientResult<()> {
+        self.client
+            .post(self.fs_api_change_sets(&format!("schemas/{schema_id}/install"), change_set_id))
+            .bearer_auth(&self.token)
+            .send()
+            .await?
+            .error_for_status()?;
+
+        Ok(())
+    }
 }
