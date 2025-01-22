@@ -1,7 +1,9 @@
+use std::collections::HashMap;
+
 use si_frontend_types::{
     fs::{
-        ChangeSet, CreateChangeSetRequest, CreateChangeSetResponse, Func, ListChangeSetsResponse,
-        ListVariantsResponse, Schema, VariantQuery,
+        AssetFuncs, ChangeSet, CreateChangeSetRequest, CreateChangeSetResponse, Func,
+        ListChangeSetsResponse, Schema, SetFuncCodeRequest,
     },
     FuncKind,
 };
@@ -25,6 +27,12 @@ pub struct SiFsClient {
 }
 
 const USER_AGENT: &str = "si-fs/0.0";
+
+#[derive(Debug, Clone)]
+pub struct SchemaFunc {
+    pub locked: Option<Func>,
+    pub unlocked: Option<Func>,
+}
 
 impl SiFsClient {
     pub fn new(
@@ -96,22 +104,6 @@ impl SiFsClient {
         Ok(response.json().await?)
     }
 
-    pub async fn variants(
-        &self,
-        change_set_id: ChangeSetId,
-        schema_id: SchemaId,
-    ) -> SiFsClientResult<ListVariantsResponse> {
-        let response = self
-            .client
-            .get(self.fs_api_change_sets(&format!("schemas/{schema_id}/variants"), change_set_id))
-            .bearer_auth(&self.token)
-            .send()
-            .await?
-            .error_for_status()?;
-
-        Ok(response.json().await?)
-    }
-
     pub async fn change_set_funcs_of_kind(
         &self,
         change_set_id: ChangeSetId,
@@ -130,16 +122,16 @@ impl SiFsClient {
             .await?)
     }
 
-    pub async fn asset_func_for_variant(
+    pub async fn asset_funcs_for_variant(
         &self,
         change_set_id: ChangeSetId,
         schema_id: SchemaId,
-        unlocked: bool,
-    ) -> SiFsClientResult<Func> {
+    ) -> SiFsClientResult<AssetFuncs> {
         let response = self
             .client
-            .get(self.fs_api_change_sets(&format!("schemas/{schema_id}/asset_func"), change_set_id))
-            .query(&VariantQuery { unlocked })
+            .get(
+                self.fs_api_change_sets(&format!("schemas/{schema_id}/asset_funcs"), change_set_id),
+            )
             .bearer_auth(&self.token)
             .send()
             .await?
@@ -153,26 +145,53 @@ impl SiFsClient {
         change_set_id: ChangeSetId,
         schema_id: SchemaId,
         func_kind: FuncKind,
-        unlocked: bool,
-    ) -> SiFsClientResult<Vec<Func>> {
+    ) -> SiFsClientResult<HashMap<String, SchemaFunc>> {
         let kind_string = si_frontend_types::fs::kind_to_string(func_kind);
 
-        Ok(self
+        let funcs: Vec<Func> = self
             .client
             .get(self.fs_api_change_sets(
                 &format!("schemas/{schema_id}/funcs/{kind_string}"),
                 change_set_id,
             ))
-            .query(&VariantQuery { unlocked })
             .bearer_auth(&self.token)
             .send()
             .await?
             .error_for_status()?
             .json()
-            .await?)
+            .await?;
+
+        let mut schema_funcs: HashMap<String, SchemaFunc> = HashMap::new();
+
+        for func in funcs {
+            schema_funcs
+                .entry(func.name.clone())
+                .and_modify(|f| {
+                    if func.is_locked {
+                        f.locked = Some(func.clone());
+                    } else {
+                        f.unlocked = Some(func.clone());
+                    }
+                })
+                .or_insert_with(|| {
+                    if func.is_locked {
+                        SchemaFunc {
+                            locked: Some(func),
+                            unlocked: None,
+                        }
+                    } else {
+                        SchemaFunc {
+                            locked: None,
+                            unlocked: Some(func),
+                        }
+                    }
+                });
+        }
+
+        Ok(schema_funcs)
     }
 
-    pub async fn func_code(
+    pub async fn get_func_code(
         &self,
         change_set_id: ChangeSetId,
         func_id: FuncId,
@@ -186,5 +205,23 @@ impl SiFsClient {
             .error_for_status()?
             .text()
             .await?)
+    }
+
+    pub async fn set_func_code(
+        &self,
+        change_set_id: ChangeSetId,
+        func_id: FuncId,
+        code: String,
+    ) -> SiFsClientResult<()> {
+        dbg!("calling set code with", &code);
+        self.client
+            .post(self.fs_api_change_sets(&format!("func-code/{func_id}"), change_set_id))
+            .json(&SetFuncCodeRequest { code })
+            .bearer_auth(&self.token)
+            .send()
+            .await?
+            .error_for_status()?;
+
+        Ok(())
     }
 }

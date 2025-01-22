@@ -9,7 +9,7 @@ use nix::unistd::{Gid, Uid};
 use thiserror::Error;
 
 use si_frontend_types::FuncKind;
-use si_id::{ChangeSetId, FuncId, SchemaId, SchemaVariantId, WorkspaceId};
+use si_id::{ChangeSetId, FuncId, SchemaId, WorkspaceId};
 
 use crate::Inode;
 
@@ -46,7 +46,12 @@ pub enum InodeEntryData {
     AssetFunc {
         func_id: FuncId,
         change_set_id: ChangeSetId,
+        size: u64,
         unlocked: bool,
+    },
+    AssetFuncCode {
+        func_id: FuncId,
+        change_set_id: ChangeSetId,
     },
     ChangeSet {
         change_set_id: ChangeSetId,
@@ -75,38 +80,34 @@ pub enum InodeEntryData {
         name: String,
         installed: bool,
     },
+    SchemaDefinitions {
+        schema_id: SchemaId,
+        change_set_id: ChangeSetId,
+    },
+    SchemaFunc {
+        change_set_id: ChangeSetId,
+        func_id: FuncId,
+        size: u64,
+        unlocked: bool,
+    },
+    SchemaFuncKind {
+        kind: FuncKind,
+        schema_id: SchemaId,
+        change_set_id: ChangeSetId,
+    },
+    SchemaFuncs {
+        schema_id: SchemaId,
+        change_set_id: ChangeSetId,
+    },
+    SchemaFuncVariants {
+        locked_id: Option<FuncId>,
+        unlocked_id: Option<FuncId>,
+        change_set_id: ChangeSetId,
+        locked_size: u64,
+        unlocked_size: u64,
+    },
     Schemas {
         change_set_id: ChangeSetId,
-    },
-    SchemaVariant {
-        schema_variant_id: SchemaVariantId,
-        schema_id: SchemaId,
-        change_set_id: ChangeSetId,
-        unlocked: bool,
-    },
-    SchemaVariantDefinition {
-        schema_variant_id: SchemaVariantId,
-        schema_id: SchemaId,
-        change_set_id: ChangeSetId,
-        unlocked: bool,
-    },
-    SchemaVariantFunc {
-        func_id: FuncId,
-        change_set_id: ChangeSetId,
-        size: u64,
-    },
-    SchemaVariantFuncKind {
-        kind: FuncKind,
-        schema_variant_id: SchemaVariantId,
-        schema_id: SchemaId,
-        change_set_id: ChangeSetId,
-        unlocked: bool,
-    },
-    SchemaVariantFuncs {
-        schema_variant_id: SchemaVariantId,
-        schema_id: SchemaId,
-        change_set_id: ChangeSetId,
-        unlocked: bool,
     },
     WorkspaceRoot {
         workspace_id: WorkspaceId,
