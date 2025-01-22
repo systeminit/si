@@ -22,6 +22,7 @@ impl PropertyEditorSchema {
     pub async fn assemble(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
+        has_resource: bool,
     ) -> PropertyEditorResult<Self> {
         let mut props = HashMap::new();
         let mut child_props = HashMap::new();
@@ -32,7 +33,7 @@ impl PropertyEditorSchema {
         let root_prop_id =
             Prop::find_prop_id_by_path(ctx, schema_variant_id, &PropPath::new(["root"])).await?;
         let root_prop = Prop::get_by_id(ctx, root_prop_id).await?;
-        let root_property_editor_prop = builder.build(ctx, root_prop).await?;
+        let root_property_editor_prop = builder.build(ctx, root_prop, has_resource).await?;
         let root_property_editor_prop_id = root_property_editor_prop.id;
         props.insert(root_property_editor_prop_id, root_property_editor_prop);
 
@@ -59,7 +60,8 @@ impl PropertyEditorSchema {
             let mut child_property_editor_prop_ids = Vec::new();
             for child_prop in cache {
                 let child_prop_id = child_prop.id;
-                let child_property_editor_prop = builder.build(ctx, child_prop).await?;
+                let child_property_editor_prop =
+                    builder.build(ctx, child_prop, has_resource).await?;
 
                 // Load the work queue with the child prop.
                 work_queue.push_back((child_prop_id, child_property_editor_prop.id));
@@ -126,8 +128,24 @@ impl PropertyEditorPropBuilder {
         &self,
         ctx: &DalContext,
         prop: Prop,
+        has_resource: bool,
     ) -> PropertyEditorResult<PropertyEditorProp> {
         let default_can_be_set_by_socket = !prop.input_socket_sources(ctx).await?.is_empty();
+
+        let mut is_create_only = false;
+        let filtered_widget_options = prop.widget_options.map(|options| {
+            options
+                .into_iter()
+                .filter(|option| {
+                    if option.label() == "si_create_only_prop" {
+                        is_create_only = true;
+                        false
+                    } else {
+                        true
+                    }
+                })
+                .collect::<WidgetOptions>()
+        });
 
         Ok(PropertyEditorProp {
             id: prop.id.into(),
@@ -135,7 +153,7 @@ impl PropertyEditorPropBuilder {
             kind: prop.kind.into(),
             widget_kind: PropertyEditorPropWidgetKind::new(
                 prop.widget_kind,
-                prop.widget_options.map(|v| v.to_owned()),
+                filtered_widget_options,
             ),
             doc_link: prop.doc_link.map(Into::into),
             documentation: prop.documentation.map(Into::into),
@@ -145,6 +163,7 @@ impl PropertyEditorPropBuilder {
                 Some(prop_id) => prop_id == prop.id,
                 None => false,
             },
+            create_only: is_create_only && has_resource,
         })
     }
 }
@@ -161,6 +180,7 @@ pub struct PropertyEditorProp {
     pub validation_format: Option<String>,
     pub default_can_be_set_by_socket: bool,
     pub is_origin_secret: bool,
+    pub create_only: bool,
 }
 
 #[remain::sorted]
