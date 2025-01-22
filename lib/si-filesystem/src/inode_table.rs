@@ -17,6 +17,8 @@ use crate::Inode;
 pub enum InodeTableError {
     #[error("Parent ino {0} not found")]
     ParentInodeNotFound(Inode),
+    #[error("ino {0} not found")]
+    InodeNotFound(Inode),
 }
 
 pub type InodeTableResult<T> = Result<T, InodeTableError>;
@@ -25,8 +27,10 @@ pub type InodeTableResult<T> = Result<T, InodeTableError>;
 pub struct InodeEntry {
     pub ino: Inode,
     pub parent: Option<Inode>,
-    data: InodeEntryData,
+    kind: FileType,
+    pub data: InodeEntryData,
     attrs: FileAttr,
+    write: bool,
 }
 
 impl InodeEntry {
@@ -74,6 +78,7 @@ pub enum InodeEntryData {
         change_set_id: ChangeSetId,
         func_id: FuncId,
     },
+    InstalledSchemaMarker,
     Schema {
         schema_id: SchemaId,
         change_set_id: ChangeSetId,
@@ -235,6 +240,21 @@ impl InodeTable {
         })
     }
 
+    pub fn upsert_for_ino(&mut self, ino: Inode, entry: InodeEntry) -> InodeTableResult<()> {
+        let ino_path = self
+            .path_buf_for_ino(ino)
+            .ok_or(InodeTableError::InodeNotFound(ino))?;
+
+        let size = entry.attrs().size;
+        let kind = entry.kind;
+        let write = entry.write;
+        let entry_data = entry.data;
+
+        self.upsert(ino_path, entry_data, kind, write, Some(size));
+
+        Ok(())
+    }
+
     pub fn upsert(
         &mut self,
         path: PathBuf,
@@ -264,6 +284,8 @@ impl InodeTable {
                     parent,
                     data: entry_data.to_owned(),
                     attrs,
+                    write,
+                    kind,
                 }
             })
             .or_insert_with(|| {
@@ -273,6 +295,8 @@ impl InodeTable {
                     parent,
                     data: entry_data,
                     attrs,
+                    write,
+                    kind,
                 }
             });
 

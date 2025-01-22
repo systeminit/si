@@ -9,8 +9,10 @@ use axum::{
 use dal::{
     cached_module::CachedModule,
     func::authoring::{FuncAuthoringClient, FuncAuthoringError},
+    pkg::{import_pkg_from_pkg, ImportOptions, PkgError},
     workspace::WorkspaceId,
-    ChangeSet, ChangeSetId, DalContext, FuncId, SchemaId, SchemaVariant, WsEvent, WsEventError,
+    ChangeSet, ChangeSetId, DalContext, FuncId, Schema, SchemaId, SchemaVariant, WsEvent,
+    WsEventError,
 };
 use hyper::StatusCode;
 use si_events::audit_log::AuditLogKind;
@@ -46,6 +48,8 @@ pub enum FsError {
     FuncApi(#[from] FuncAPIError),
     #[error("func authoring error: {0}")]
     FuncAuthoring(#[from] FuncAuthoringError),
+    #[error("pkg error: {0}")]
+    Pkg(#[from] PkgError),
     #[error("resource not found")]
     ResourceNotFound,
     #[error("schema error: {0}")]
@@ -410,6 +414,54 @@ async fn set_func_code(
     Ok(())
 }
 
+async fn install_schema(
+    HandlerContext(builder): HandlerContext,
+    AccessBuilder(request_ctx): AccessBuilder,
+    PosthogClient(_posthog_client): PosthogClient,
+    OriginalUri(_original_uri): OriginalUri,
+    Host(_host_name): Host,
+    Path((_workspace_id, change_set_id, schema_id)): Path<(WorkspaceId, ChangeSetId, SchemaId)>,
+) -> FsResult<()> {
+    let ctx = builder
+        .build(request_ctx.build(change_set_id.into()))
+        .await?;
+
+    check_change_set_and_not_head(&ctx).await?;
+
+    if Schema::get_by_id(&ctx, schema_id).await?.is_none() {
+        let mut uninstalled_module = CachedModule::latest_by_schema_id(&ctx, schema_id)
+            .await?
+            .ok_or(FsError::ResourceNotFound)?;
+
+        let si_pkg = uninstalled_module.si_pkg(&ctx).await?;
+        import_pkg_from_pkg(
+            &ctx,
+            &si_pkg,
+            Some(ImportOptions {
+                schema_id: Some(schema_id.into()),
+                ..Default::default()
+            }),
+        )
+        .await?;
+
+        if let Some(default_variant_id) =
+            Schema::get_default_schema_variant_by_id(&ctx, schema_id).await?
+        {
+            let variant = SchemaVariant::get_by_id_or_error(&ctx, default_variant_id).await?;
+
+            let front_end_variant = variant.clone().into_frontend_type(&ctx, schema_id).await?;
+            WsEvent::module_imported(&ctx, vec![front_end_variant.clone()])
+                .await?
+                .publish_on_commit(&ctx)
+                .await?;
+        }
+    }
+
+    ctx.commit().await?;
+
+    Ok(())
+}
+
 pub fn fs_routes() -> Router<AppState> {
     Router::new()
         .route("/change-sets", get(list_change_sets))
@@ -422,6 +474,7 @@ pub fn fs_routes() -> Router<AppState> {
                 .route("/func-code/:func_id", post(set_func_code))
                 .route("/schemas", get(list_schemas))
                 .route("/schemas/:schema_id/asset_funcs", get(get_asset_funcs))
-                .route("/schemas/:schema_id/funcs/:kind", get(list_variant_funcs)),
+                .route("/schemas/:schema_id/funcs/:kind", get(list_variant_funcs))
+                .route("/schemas/:schema_id/install", post(install_schema)),
         )
 }
