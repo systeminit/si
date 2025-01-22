@@ -2,6 +2,7 @@ import { getServiceByName, loadCfDatabase } from "../cfDb.ts";
 import { pkgSpecFromCf } from "../specPipeline.ts";
 import { PkgSpec } from "../bindings/PkgSpec.ts";
 import { generateAssetFuncs } from "../pipeline-steps/generateAssetFuncs.ts";
+import { generateDefaultActionFuncs } from "../pipeline-steps/generateActionFuncs.ts";
 import {
   generateSocketsFromDomainProps,
 } from "../pipeline-steps/generateSocketsFromDomainProps.ts";
@@ -32,6 +33,7 @@ export async function generateSiSpecs() {
   // EXECUTE PIPELINE STEPS
   specs = generateSocketsFromDomainProps(specs);
   specs = generateAssetFuncs(specs);
+  specs = generateDefaultActionFuncs(specs);
 
   // WRITE OUTS SPECS
   for (const spec of specs) {

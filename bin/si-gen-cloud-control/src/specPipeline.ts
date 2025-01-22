@@ -6,7 +6,6 @@ import {
   createProp,
   DefaultPropType,
   ExpandedPropSpec,
-  isExpandedPropSpec,
   OnlyProperties,
 } from "./spec/props.ts";
 import { PropSpec } from "../../../lib/si-pkg/bindings/PropSpec.ts";
@@ -14,15 +13,12 @@ import {
   SchemaVariantSpec,
 } from "../../../lib/si-pkg/bindings/SchemaVariantSpec.ts";
 import { SchemaSpec } from "../../../lib/si-pkg/bindings/SchemaSpec.ts";
-import type {
-  FuncSpecData,
-} from "../../../lib/si-pkg/bindings/FuncSpecData.ts";
-import { FuncSpec } from "../../../lib/si-pkg/bindings/FuncSpec.ts";
-import { createSiFunc, getSiFuncId } from "./spec/siFuncs.ts";
-import { attrFuncInputSpecFromProp } from "./spec/sockets.ts";
 import {
-  FuncArgumentSpec,
-} from "../../../lib/si-pkg/bindings/FuncArgumentSpec.ts";
+  createResourcePayloadToValue,
+  createSiFuncs,
+  getSiFuncId,
+} from "./spec/siFuncs.ts";
+import { attrFuncInputSpecFromProp } from "./spec/sockets.ts";
 
 export function pkgSpecFromCf(src: CfSchema): PkgSpec {
   const [aws, category, name] = src.typeName.split("::");
@@ -195,61 +191,4 @@ function createInputsInDomainFromResource(
       }
     });
   }
-}
-
-function createResourcePayloadToValue(): FuncSpec[] {
-  const name = "si:resourcePayloadToValue";
-  const data: FuncSpecData = {
-    name,
-    displayName: name,
-    description: null,
-    handler: "main",
-    codeBase64:
-      "YXN5bmMgZnVuY3Rpb24gbWFpbihhcmc6IElucHV0KTogUHJvbWlzZSA8IE91dHB1dCA+IHsKICAgIHJldHVybiBhcmcucGF5bG9hZCA/PyB7fTsKfQ",
-    backendKind: "jsAttribute",
-    responseType: "object",
-    hidden: false,
-    link: null,
-  };
-
-  const args: FuncArgumentSpec = {
-    name: "payload",
-    kind: "object",
-    elementKind: null,
-    uniqueId: ulid(),
-    deleted: false,
-  };
-
-  const func: FuncSpec = {
-    name,
-    uniqueId: ulid(),
-    data,
-    deleted: false,
-    isFromBuiltin: null,
-    arguments: [args],
-  };
-
-  return [func];
-}
-
-function createSiFuncs(): FuncSpec[] {
-  const ret: FuncSpec[] = [];
-  const siFuncs = [
-    "si:identity",
-    "si:setArray",
-    "si:setBoolean",
-    "si:setInteger",
-    "si:setJson",
-    "si:setMap",
-    "si:setObject",
-    "si:setString",
-    "si:unset",
-    "si:validation",
-  ];
-
-  for (const func of siFuncs) {
-    ret.push(createSiFunc(func));
-  }
-
-  return ret;
 }

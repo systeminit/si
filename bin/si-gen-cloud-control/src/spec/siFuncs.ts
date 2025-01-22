@@ -1,9 +1,10 @@
+import { ulid } from "https://deno.land/x/ulid@v0.3.0/mod.ts";
 import { FuncSpec } from "../bindings/FuncSpec.ts";
-import { FuncSpecData } from "../bindings/FuncSpecData.ts";
-import { FuncSpecBackendKind } from "../bindings/FuncSpecBackendKind.ts";
-import { FuncSpecBackendResponseType } from "../bindings/FuncSpecBackendResponseType.ts";
 import { FuncArgumentSpec } from "../bindings/FuncArgumentSpec.ts";
 import { FuncArgumentKind } from "../bindings/FuncArgumentKind.ts";
+import { createFunc } from "./funcs.ts";
+import { FuncSpecBackendKind } from "../bindings/FuncSpecBackendKind.ts";
+import { FuncSpecBackendResponseType } from "../bindings/FuncSpecBackendResponseType.ts";
 
 interface FuncSpecInfo {
   id: string;
@@ -51,6 +52,10 @@ const funcSpecs: Record<string, FuncSpecInfo> = {
     id: "039ff70bc7922338978ab52a39156992b7d8e3390f0ef7e99d5b6ffd43141d8a",
     kind: "validation",
   },
+  "si:resourcePayloadToValue": {
+    id: "bc58dae4f4e1361840ec8f081350d7ec6b177ee8dc5a6a55155767c92efe1850",
+    kind: "object",
+  },
 };
 
 function createArgument(funcName: string, kind: string): FuncArgumentSpec[] {
@@ -78,35 +83,58 @@ export function createSiFunc(name: string): FuncSpec {
     throw new Error(`Unknown function: ${name}`);
   }
 
-  const data: FuncSpecData = {
+  return createFunc(
     name,
-    displayName: null,
-    description: null,
-    handler: "",
-    codeBase64: "",
-    backendKind: func.kind as FuncSpecBackendKind,
-    responseType: func.kind as FuncSpecBackendResponseType,
-    hidden: false,
-    link: null,
-  };
-
-  return {
-    name,
-    uniqueId: func.id,
-    data,
-    deleted: false,
-    isFromBuiltin: null,
-    arguments: createArgument(name, func.kind),
-  };
+    func.kind as FuncSpecBackendKind,
+    func.kind as FuncSpecBackendResponseType,
+    "",
+    func.id,
+    createArgument(name, func.kind),
+  );
 }
 
 export function getSiFuncId(kind: string): string {
   return funcSpecs[kind].id;
 }
 
-// Si uses a version of base64 that removes the padding at the end for some reason
-export function strippedBase64(code: string) {
-  return btoa(
-    code,
-  ).replace(/=/g, "");
+export function createSiFuncs(): FuncSpec[] {
+  const ret: FuncSpec[] = [];
+  const siFuncs = [
+    "si:identity",
+    "si:setArray",
+    "si:setBoolean",
+    "si:setInteger",
+    "si:setJson",
+    "si:setMap",
+    "si:setObject",
+    "si:setString",
+    "si:unset",
+    "si:validation",
+  ];
+
+  for (const func of siFuncs) {
+    ret.push(createSiFunc(func));
+  }
+
+  return ret;
+}
+
+export function createResourcePayloadToValue(): FuncSpec[] {
+  const name = "si:resourcePayloadToValue";
+  const codeBase64 =
+    "YXN5bmMgZnVuY3Rpb24gbWFpbihhcmc6IElucHV0KTogUHJvbWlzZSA8IE91dHB1dCA+IHsKICAgIHJldHVybiBhcmcucGF5bG9hZCA/PyB7fTsKfQ";
+
+  const args: FuncArgumentSpec = {
+    name: "payload",
+    kind: "object",
+    elementKind: null,
+    uniqueId: ulid(),
+    deleted: false,
+  };
+
+  return [
+    createFunc(name, "jsAttribute", "object", codeBase64, getSiFuncId(name), [
+      args,
+    ]),
+  ];
 }
