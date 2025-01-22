@@ -7,6 +7,7 @@ import {
   generateSocketsFromDomainProps,
 } from "../pipeline-steps/generateSocketsFromDomainProps.ts";
 import { generateDefaultLeafFuncs } from "../pipeline-steps/generateLeafFuncs.ts";
+import { generateDefaultManagementFuncs } from "../pipeline-steps/generateManagementFuncs.ts";
 
 export function generateSiSpecForService(serviceName: string) {
   const cf = getServiceByName(serviceName);
@@ -36,6 +37,7 @@ export async function generateSiSpecs() {
   specs = generateAssetFuncs(specs);
   specs = generateDefaultActionFuncs(specs);
   specs = generateDefaultLeafFuncs(specs);
+  specs = generateDefaultManagementFuncs(specs);
 
   // WRITE OUTS SPECS
   for (const spec of specs) {
