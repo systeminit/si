@@ -56,6 +56,9 @@ export function generateAssetFuncs(specs: PkgSpec[]): PkgSpec[] {
 
 function generateAssetCodeFromVariantSpec(variant: SchemaVariantSpec): string {
   if (variant.domain.kind !== "object") throw "Domain prop is not object";
+  if (variant.resourceValue.kind !== "object") {
+    throw "ResourceValue prop is not object";
+  }
 
   let declarations = "";
   let adds = "";
@@ -78,6 +81,23 @@ function generateAssetCodeFromVariantSpec(variant: SchemaVariantSpec): string {
   }
 
   declarations += "\n";
+
+  // Code for Resource Value
+  {
+    let propDeclarations = `${indent(1)}// Resource\n`;
+    let propAdds = "";
+
+    for (const prop of variant.resourceValue.entries) {
+      const varName = `${prop.name}Resource`;
+      propDeclarations += `${indent(1)}const ${varName} = ${
+        generatePropBuilderString(prop, 2)
+      };\n\n`;
+      propAdds += `${indent(2)}.addResourceProp(${varName})\n`;
+    }
+
+    declarations += propDeclarations;
+    adds += propAdds;
+  }
 
   // Code for Sockets
   {
