@@ -7,6 +7,8 @@ import { ulid } from "https://deno.land/x/ulid@v0.3.0/mod.ts";
 import { PropSpec } from "../bindings/PropSpec.ts";
 import { PropSpecData } from "../bindings/PropSpecData.ts";
 
+const CREATE_ONLY_PROP_LABEL = "si_create_only_prop";
+
 export type OnlyProperties = {
   createOnly: string[];
   readOnly: string[];
@@ -103,7 +105,7 @@ function createPropInner(
   };
 
   propPath.push(name);
-  const partialProp: unknown = {
+  const partialProp: Partial<ExpandedPropSpec> = {
     name,
     data,
     uniqueId: propUniqueId,
@@ -114,6 +116,10 @@ function createPropInner(
       propPath,
     },
   };
+
+  if (partialProp.metadata?.createOnly) {
+    setCreateOnlyProp(data);
+  }
 
   let normalizedCfData = normalizePropertyType(cfProp);
   normalizedCfData = normalizeAnyOfAndOneOfTypes(normalizedCfData);
@@ -201,6 +207,13 @@ function createPropInner(
   console.log(normalizedCfData);
 
   throw new Error("no matching kind");
+}
+
+function setCreateOnlyProp(data: PropSpecData) {
+    data.widgetOptions = [{
+      label: CREATE_ONLY_PROP_LABEL,
+      value: "true",
+    }]
 }
 
 export type DefaultPropType = "domain" | "secrets" | "resource_value";
