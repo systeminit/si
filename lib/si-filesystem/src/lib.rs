@@ -5,6 +5,7 @@ use std::{
     io::{Cursor, Seek, Write},
     ops::{BitOr, BitOrAssign},
     path::Path,
+    str::Utf8Error,
     sync::{atomic::AtomicU64, Arc},
     time::Duration,
 };
@@ -76,6 +77,8 @@ pub enum SiFileSystemError {
     SiFsClient(#[from] SiFsClientError),
     #[error("std io error: {0}")]
     StdIo(#[from] std::io::Error),
+    #[error("utf-8 error: {0}")]
+    Utf8(#[from] Utf8Error),
 }
 
 pub type SiFileSystemResult<T> = Result<T, SiFileSystemError>;
@@ -338,6 +341,7 @@ impl SiFileSystem {
             InodeEntryData::AssetFuncCode {
                 func_id,
                 change_set_id,
+                ..
             }
             | InodeEntryData::FuncCode {
                 change_set_id,
@@ -494,23 +498,31 @@ impl SiFileSystem {
                     .entry_for_ino(ino)
                     .map(|entry| entry.data())
                 {
-                    Some(
-                        InodeEntryData::AssetFuncCode {
-                            change_set_id,
-                            func_id,
-                            ..
-                        }
-                        | InodeEntryData::FuncCode {
-                            change_set_id,
-                            func_id,
-                        },
-                    ) => {
+                    Some(InodeEntryData::FuncCode {
+                        change_set_id,
+                        func_id,
+                    }) => {
                         self.client
                             .set_func_code(
                                 *change_set_id,
                                 *func_id,
-                                std::str::from_utf8(open_file.buf.get_ref().as_slice())
-                                    .expect("invalid utf8")
+                                std::str::from_utf8(open_file.buf.get_ref().as_slice())?
+                                    .to_string(),
+                            )
+                            .await?;
+                        Some(open_file.buf.get_ref().len())
+                    }
+                    Some(InodeEntryData::AssetFuncCode {
+                        func_id,
+                        change_set_id,
+                        schema_id,
+                    }) => {
+                        self.client
+                            .set_asset_func_code(
+                                *change_set_id,
+                                *func_id,
+                                *schema_id,
+                                std::str::from_utf8(open_file.buf.get_ref().as_slice())?
                                     .to_string(),
                             )
                             .await?;
@@ -1198,6 +1210,7 @@ impl SiFileSystem {
                     InodeEntryData::AssetFuncCode {
                         func_id: *func_id,
                         change_set_id: *change_set_id,
+                        schema_id: *schema_id,
                     },
                     FileType::RegularFile,
                     *unlocked,

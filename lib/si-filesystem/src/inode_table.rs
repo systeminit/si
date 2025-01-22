@@ -58,6 +58,7 @@ pub enum InodeEntryData {
     AssetFuncCode {
         func_id: FuncId,
         change_set_id: ChangeSetId,
+        schema_id: SchemaId,
     },
     ChangeSet {
         change_set_id: ChangeSetId,
