@@ -57,23 +57,72 @@ export function generateAssetFuncs(specs: PkgSpec[]): PkgSpec[] {
 function generateAssetCodeFromVariantSpec(variant: SchemaVariantSpec): string {
   if (variant.domain.kind !== "object") throw "Domain prop is not object";
 
-  // Code for Props
-  let propDeclarations = `${indent(1)}// Props\n`;
-  let propAdds = "";
+  let declarations = "";
+  let adds = "";
 
-  for (const prop of variant.domain.entries) {
-    const varName = `${prop.name}Prop`;
-    propDeclarations += `${indent(1)}const ${varName} = ${
-      generatePropBuilderString(prop, 2)
-    };\n`;
-    propAdds += `${indent(2)}.addProp(${varName})\n`;
+  // Code for Props
+  {
+    let propDeclarations = `${indent(1)}// Props\n`;
+    let propAdds = "";
+
+    for (const prop of variant.domain.entries) {
+      const varName = `${prop.name}Prop`;
+      propDeclarations += `${indent(1)}const ${varName} = ${
+        generatePropBuilderString(prop, 2)
+      };\n\n`;
+      propAdds += `${indent(2)}.addProp(${varName})\n`;
+    }
+
+    declarations += propDeclarations;
+    adds += propAdds;
   }
 
-  // TODO add code for sockets
+  declarations += "\n";
 
-  return `function main() {\n${propDeclarations}
-    return new AssetBuilder()\n${propAdds}${indent(2)}.build();
-}`;
+  // Code for Sockets
+  {
+    let socketDeclarations = `${indent(1)}// Sockets\n`;
+    let socketAdds = "";
+
+    // Make input sockets come before output sockets
+    variant.sockets.sort((s1, s2) => {
+      const comp1 = s1.data?.kind === "input" ? -1 : 1;
+      const comp2 = s2.data?.kind === "input" ? -1 : 1;
+
+      return comp1 - comp2;
+    });
+
+    for (const socket of variant.sockets) {
+      const data = socket.data;
+      if (!data) continue;
+
+      const varName = `${socket.name}Socket`;
+
+      socketDeclarations +=
+        `${indent(1)}const ${varName} = new SocketDefinitionBuilder()\n` +
+        `${indent(2)}.setName("${socket.name}")\n` +
+        `${indent(2)}.setArity("${data.arity}")\n` +
+        `${indent(2)}.build();\n\n`;
+
+      switch (data.kind) {
+        case "input":
+          socketAdds += `${indent(2)}.addInputSocket(${varName})\n`;
+          break;
+        case "output":
+          socketAdds += `${indent(2)}.addOutputSocket(${varName})\n`;
+          break;
+      }
+    }
+
+    declarations += socketDeclarations;
+    adds += socketAdds;
+  }
+
+  return `function main() {\n${declarations}` +
+    `${indent(1)}return new AssetBuilder()\n` +
+    `${adds}` +
+    `${indent(2)}.build();\n` +
+    `}`;
 }
 
 function generatePropBuilderString(
