@@ -30,7 +30,11 @@ export function createSocketFromProp(
   return null;
 }
 
-function createSocket(name: string, kind: SocketSpecKind): SocketSpec {
+export function createSocket(
+  name: string,
+  kind: SocketSpecKind,
+  arity: SocketSpecArity = "many",
+): SocketSpec {
   const socketId = ulid();
 
   const data = {
@@ -38,7 +42,7 @@ function createSocket(name: string, kind: SocketSpecKind): SocketSpec {
     kind,
     name,
     connectionAnnotations: JSON.stringify([{ "tokens": [name] }]),
-    arity: "many" as SocketSpecArity,
+    arity,
     uiHidden: false,
   };
 

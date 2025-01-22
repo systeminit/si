@@ -6,6 +6,7 @@ import {
 import { ulid } from "https://deno.land/x/ulid@v0.3.0/mod.ts";
 import { PropSpec } from "../bindings/PropSpec.ts";
 import { PropSpecData } from "../bindings/PropSpecData.ts";
+import { PropSpecWidgetKind } from "../bindings/PropSpecWidgetKind.ts";
 
 export type OnlyProperties = {
   createOnly: string[];
@@ -39,7 +40,7 @@ type CreatePropQueue = {
   cfProp: CfProperty;
 }[];
 
-export function createProp(
+export function createPropFromCf(
   name: string,
   cfProp: CfProperty,
   onlyProperties: OnlyProperties,
@@ -59,7 +60,7 @@ export function createProp(
     const data = queue.shift();
     if (!data) break;
 
-    const prop = createPropInner(
+    const prop = createPropFromCfInner(
       data.name,
       data.cfProp,
       onlyProperties,
@@ -81,7 +82,7 @@ export function createProp(
   return rootProp;
 }
 
-function createPropInner(
+function createPropFromCfInner(
   name: string,
   cfProp: CfProperty,
   onlyProperties: OnlyProperties,
@@ -208,8 +209,15 @@ export type DefaultPropType = "domain" | "secrets" | "resource_value";
 export function createDefaultProp(
   type: DefaultPropType,
 ): Extract<ExpandedPropSpec, { kind: "object" }> {
+  return createObjectProp(type, ["root"]);
+}
+
+export function createObjectProp(
+  name: string,
+  parentPath: string[],
+): Extract<ExpandedPropSpec, { kind: "object" }> {
   const data: PropSpecData = {
-    name: type,
+    name,
     validationFormat: null,
     defaultValue: null,
     funcUniqueId: null,
@@ -224,11 +232,55 @@ export function createDefaultProp(
   const prop: ExpandedPropSpec = {
     kind: "object",
     data,
-    name: type,
+    name,
     entries: [],
     uniqueId: ulid(),
     metadata: {
-      propPath: ["root", type],
+      propPath: [...parentPath, name],
+    },
+  };
+
+  return prop;
+}
+
+export function createScalarProp(
+  name: string,
+  kind: "number" | "string" | "boolean",
+  parentPath: string[],
+): ExpandedPropSpec {
+  let widgetKind: PropSpecWidgetKind;
+  switch (kind) {
+    case "number":
+    case "string":
+      widgetKind = "Text";
+      widgetKind = "Text";
+      break;
+    case "boolean":
+      widgetKind = "Checkbox";
+      break;
+  }
+
+  const data: PropSpecData = {
+    name,
+    validationFormat: null,
+    defaultValue: null,
+    funcUniqueId: null,
+    inputs: null,
+    widgetKind,
+    widgetOptions: null,
+    hidden: null,
+    docLink: null,
+    documentation: null,
+  };
+
+  const prop: ExpandedPropSpec = {
+    kind,
+    data,
+    name,
+    entries: [],
+    uniqueId: ulid(),
+    metadata: {
+      propPath: [...parentPath, name],
     },
   };
 

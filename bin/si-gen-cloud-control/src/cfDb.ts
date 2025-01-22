@@ -41,7 +41,7 @@ export type CfProperty =
     "patternProperties"?: Record<string, CfProperty>;
   } | {
     "type": undefined;
-    "oneOf": CfProperty[]; // TODO: this should be a quialification
+    "oneOf": CfProperty[]; // TODO: this should be a qualification
   })
   & CfPropertyStatic;
 

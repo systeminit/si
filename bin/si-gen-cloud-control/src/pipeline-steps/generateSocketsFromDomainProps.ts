@@ -18,7 +18,10 @@ export function generateSocketsFromDomainProps(specs: PkgSpec[]): PkgSpec[] {
       continue;
     }
 
-    schemaVariant.sockets = createSocketsFromDomain(schemaVariant);
+    schemaVariant.sockets = [
+      ...schemaVariant.sockets,
+      ...createSocketsFromDomain(schemaVariant),
+    ];
 
     newSpecs.push(spec);
   }
