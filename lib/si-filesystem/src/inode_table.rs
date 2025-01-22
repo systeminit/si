@@ -47,10 +47,12 @@ impl InodeEntry {
 #[allow(dead_code)]
 #[remain::sorted]
 pub enum InodeEntryData {
-    AssetFunc {
+    AssetDefinitionDir {
         func_id: FuncId,
         change_set_id: ChangeSetId,
+        schema_id: SchemaId,
         size: u64,
+        attrs_size: u64,
         unlocked: bool,
     },
     AssetFuncCode {
@@ -84,6 +86,11 @@ pub enum InodeEntryData {
         change_set_id: ChangeSetId,
         name: String,
         installed: bool,
+    },
+    SchemaAttrsJson {
+        schema_id: SchemaId,
+        change_set_id: ChangeSetId,
+        unlocked: bool,
     },
     SchemaDefinitions {
         schema_id: SchemaId,
@@ -128,6 +135,12 @@ pub struct InodeTable {
     gid: Gid,
 }
 
+pub enum Size {
+    Directory,
+    UseExisting(u64),
+    Force(u64),
+}
+
 impl InodeTable {
     pub fn new(root_entry: InodeEntryData, uid: Uid, gid: Gid) -> Self {
         let mut table = Self {
@@ -137,7 +150,13 @@ impl InodeTable {
             gid,
         };
 
-        table.upsert("/".into(), root_entry, FileType::Directory, true, None);
+        table.upsert(
+            "/".into(),
+            root_entry,
+            FileType::Directory,
+            true,
+            Size::Directory,
+        );
 
         table
     }
@@ -153,6 +172,15 @@ impl InodeTable {
             .get(ino.as_raw().saturating_sub(1) as usize)
             .cloned()
     }
+
+    // pub fn ino_for_path_with_parent(
+    //     &self,
+    //     parent_ino: Inode,
+    //     file_name: impl AsRef<Path>,
+    // ) -> InodeTableResult<Option<Inode>> {
+    //     let path = self.make_path(Some(parent_ino), file_name)?;
+    //     Ok(self.ino_for_path(&path))
+    // }
 
     pub fn ino_for_path(&self, path: &Path) -> Option<Inode> {
         self.entries_by_path.get(path).map(|entry| entry.ino)
@@ -193,26 +221,28 @@ impl InodeTable {
         entry_data: InodeEntryData,
         kind: FileType,
         write: bool,
-        size: Option<u64>,
+        size: Size,
     ) -> InodeTableResult<Inode> {
         let path = self.make_path(Some(parent_ino), file_name)?;
 
         Ok(self.upsert(path, entry_data, kind, write, size))
     }
 
-    pub fn make_attrs(
-        &self,
-        ino: Inode,
-        kind: FileType,
-        write: bool,
-        size: Option<u64>,
-    ) -> FileAttr {
+    pub fn make_attrs(&self, ino: Inode, kind: FileType, write: bool, size: Size) -> FileAttr {
         let perm: u16 = match kind {
             FileType::Directory => if write { 0o755 } else { 0o555 }
             FileType::RegularFile => if write { 0o644 } else  { 0o444 }
             _ => unimplemented!("I don't know why this kind of file was upserted, Only directories and regular files supported"),
         };
-        let size = size.unwrap_or(512);
+
+        let size = match size {
+            Size::Directory => 512,
+            Size::UseExisting(fallback) => self
+                .entry_for_ino(ino)
+                .map(|entry| entry.attrs.size)
+                .unwrap_or(fallback),
+            Size::Force(forced_size) => forced_size,
+        };
 
         FileAttr {
             ino: ino.as_raw(),
@@ -250,7 +280,7 @@ impl InodeTable {
         let write = entry.write;
         let entry_data = entry.data;
 
-        self.upsert(ino_path, entry_data, kind, write, Some(size));
+        self.upsert(ino_path, entry_data, kind, write, Size::Force(size));
 
         Ok(())
     }
@@ -261,16 +291,20 @@ impl InodeTable {
         entry_data: InodeEntryData,
         kind: FileType,
         write: bool,
-        size: Option<u64>,
+        size: Size,
     ) -> Inode {
         let parent = path
             .parent()
             .and_then(|path| self.entries_by_path.get(&path.to_path_buf()))
             .map(|entry| entry.ino);
 
-        let next_ino = self.next_ino();
-
-        let attrs = self.make_attrs(next_ino, kind, write, size);
+        let (attrs, ino) = match self.entries_by_path.get(&path) {
+            Some(entry) => (self.make_attrs(entry.ino, kind, write, size), entry.ino),
+            None => {
+                let next_ino = self.next_ino();
+                (self.make_attrs(next_ino, kind, write, size), next_ino)
+            }
+        };
 
         let entry = self
             .entries_by_path
@@ -291,7 +325,7 @@ impl InodeTable {
             .or_insert_with(|| {
                 self.path_table.push(path);
                 InodeEntry {
-                    ino: next_ino,
+                    ino,
                     parent,
                     data: entry_data,
                     attrs,
