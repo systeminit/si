@@ -5,7 +5,9 @@ use axum::{
 use dal::{ChangeSetId, WorkspacePk};
 
 use crate::{
-    dal_wrapper::ChangeSetApprovalCalculator, extract::HandlerContext, service::v2::AccessBuilder,
+    dal_wrapper::{self},
+    extract::HandlerContext,
+    service::v2::AccessBuilder,
     AppState,
 };
 
@@ -25,10 +27,11 @@ pub async fn approval_status(
         .spicedb_client()
         .ok_or(ChangeSetAPIError::SpiceDBClientNotFound)?;
 
-    let calculator = ChangeSetApprovalCalculator::new(&ctx, spicedb_client).await?;
+    let (latest_approvals, requirements) =
+        dal_wrapper::change_set_approval::status(&ctx, spicedb_client).await?;
 
     Ok(Json(si_frontend_types::ChangeSetApprovals {
-        requirements: calculator.frontend_requirements(spicedb_client).await?,
-        latest_approvals: calculator.frontend_latest_approvals(),
+        latest_approvals,
+        requirements,
     }))
 }

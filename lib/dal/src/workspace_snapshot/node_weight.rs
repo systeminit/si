@@ -625,6 +625,16 @@ impl NodeWeight {
         }
     }
 
+    pub fn get_category_node_weight(&self) -> NodeWeightResult<CategoryNodeWeight> {
+        match self {
+            NodeWeight::Category(inner) => Ok(inner.to_owned()),
+            other => Err(NodeWeightError::UnexpectedNodeWeightVariant(
+                NodeWeightDiscriminants::Category,
+                other.into(),
+            )),
+        }
+    }
+
     pub fn get_component_node_weight(&self) -> NodeWeightResult<ComponentNodeWeight> {
         match self {
             NodeWeight::Component(inner) => Ok(inner.to_owned()),
