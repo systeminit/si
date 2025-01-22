@@ -38,6 +38,8 @@ pub mod update_view;
 pub enum ViewError {
     #[error("cached module error: {0}")]
     CachedModule(#[from] CachedModuleError),
+    #[error("workspace must have at least one view")]
+    CantDeleteOnlyView(),
     #[error("changeset error: {0}")]
     ChangeSet(#[from] ChangeSetError),
     #[error("component error: {0}")]
@@ -88,6 +90,7 @@ impl IntoResponse for ViewError {
     fn into_response(self) -> Response {
         let (status_code, error_message) = match self {
             ViewError::NameAlreadyInUse(_) => (StatusCode::CONFLICT, self.to_string()),
+            ViewError::CantDeleteOnlyView() => (StatusCode::PRECONDITION_FAILED, self.to_string()),
             ViewError::DalDiagram(
                 dal::diagram::DiagramError::DeletingLastGeometryForComponent(_, _),
             )
@@ -111,7 +114,6 @@ impl IntoResponse for ViewError {
 
 pub fn v2_routes() -> Router<AppState> {
     Router::new()
-        // Func Stuff
         .route("/", get(list_views::list_views))
         .route("/", post(create_view::create_view))
         .route(

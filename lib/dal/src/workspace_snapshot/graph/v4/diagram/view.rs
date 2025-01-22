@@ -81,23 +81,27 @@ impl ViewExt for WorkspaceSnapshotGraphV4 {
             ));
         }
 
+        let mut edge_idxs_to_remove = Vec::new();
+        let mut view_geometry_idxs = Vec::new();
         // We need to explicitly remove the DiagramObject for the View as it will have more
         // incoming edges than just the one from the View.
-        let diagram_object_idx = self.get_edge_weight_kind_target_idx(
+        if let Some(diagram_object_idx) = self.get_edge_weight_kind_target_idx_opt(
             view_node_idx,
             Direction::Outgoing,
             EdgeWeightKindDiscriminants::DiagramObject,
-        )?;
-        let mut edge_idxs_to_remove = Vec::new();
-        let mut view_geometry_idxs = Vec::new();
-        for diagram_object_edgeref in self.edges_directed(diagram_object_idx, Direction::Incoming) {
-            edge_idxs_to_remove.push(diagram_object_edgeref.id());
-            if EdgeWeightKindDiscriminants::Represents
-                == diagram_object_edgeref.weight().kind().into()
+        )? {
+            for diagram_object_edgeref in
+                self.edges_directed(diagram_object_idx, Direction::Incoming)
             {
-                view_geometry_idxs.push(diagram_object_edgeref.source());
+                edge_idxs_to_remove.push(diagram_object_edgeref.id());
+                if EdgeWeightKindDiscriminants::Represents
+                    == diagram_object_edgeref.weight().kind().into()
+                {
+                    view_geometry_idxs.push(diagram_object_edgeref.source());
+                }
             }
         }
+
         for view_edgeref in self.edges_directed(view_node_idx, Direction::Incoming) {
             edge_idxs_to_remove.push(view_edgeref.id());
         }
