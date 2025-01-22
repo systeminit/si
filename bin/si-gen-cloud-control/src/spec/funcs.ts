@@ -7,6 +7,7 @@ import { ActionFuncSpec } from "../bindings/ActionFuncSpec.ts";
 import { ActionFuncSpecKind } from "../bindings/ActionFuncSpecKind.ts";
 import { LeafFunctionSpec } from "../bindings/LeafFunctionSpec.ts";
 import { LeafKind } from "../bindings/LeafKind.ts";
+import { ManagementFuncSpec } from "../bindings/ManagementFuncSpec.ts";
 
 interface FuncSpecInfo {
   id: string;
@@ -61,6 +62,21 @@ const funcSpecs: Record<string, FuncSpecInfo> = {
     displayName: "Code Gen for updating a Cloud Control Asset",
     path: "./src/cloud-control-funcs/code-gen/awsCloudControlCodeGenUpdate.ts",
   },
+  // Management
+  "discover": {
+    id: "dba1f6e327c1e82363fa3ceaf0d3e908d367ed7c6bfa25da0a06127fb81ff1b6",
+    backendKind: "management",
+    responseType: "management",
+    displayName: "Discover all of a certain Cloud Control Asset",
+    path: "./src/cloud-control-funcs/management/awsCloudControlDiscover.ts",
+  },
+  "import": {
+    id: "7a8dfabe771e66d13ccd02376eee84979fbc2f2974f86b60f8710c6db24122c6",
+    backendKind: "management",
+    responseType: "management",
+    displayName: "Import a Cloud Control Asset",
+    path: "./src/cloud-control-funcs/management/awsCloudControlImport.ts",
+  },
 };
 
 export function createFunc(
@@ -93,7 +109,10 @@ export function createFunc(
   };
 }
 
-function createDefaultFuncSpec(name: string, args: FuncArgumentSpec[]): FuncSpec {
+function createDefaultFuncSpec(
+  name: string,
+  args: FuncArgumentSpec[],
+): FuncSpec {
   const spec = funcSpecs[name];
   const code = Deno.readTextFileSync(spec.path);
   const codeBase64: string = strippedBase64(code);
@@ -126,7 +145,7 @@ export function createDefaultActionFuncs(): FuncSpec[] {
 
 export function createDefaultCodeGenFuncs(domain_id: string): FuncSpec[] {
   if (!domain_id) {
-    throw new Error("no domain id provided for codegen func!")
+    throw new Error("no domain id provided for codegen func!");
   }
 
   const ret: FuncSpec[] = [];
@@ -140,11 +159,25 @@ export function createDefaultCodeGenFuncs(domain_id: string): FuncSpec[] {
     kind: "object",
     elementKind: null,
     uniqueId: domain_id,
-    deleted: false
-  }]
+    deleted: false,
+  }];
 
   for (const func of codeGenFuncs) {
     ret.push(createDefaultFuncSpec(func, args));
+  }
+
+  return ret;
+}
+
+export function createDefaultManagementFuncs(): FuncSpec[] {
+  const ret: FuncSpec[] = [];
+  const actionFuncs = [
+    "discover",
+    "import",
+  ];
+
+  for (const func of actionFuncs) {
+    ret.push(createDefaultFuncSpec(func, []));
   }
 
   return ret;
@@ -170,9 +203,21 @@ export function createLeafFuncSpec(
   return {
     funcUniqueId: id,
     deleted: false,
-    inputs: [ "domain" ],
+    inputs: ["domain"],
     leafKind,
     uniqueId: null,
+  };
+}
+
+export function createManagementFuncSpec(
+  name: string,
+  id: string,
+): ManagementFuncSpec {
+  return {
+    name,
+    description: null,
+    funcUniqueId: id,
+    managedSchemas: null,
   };
 }
 
