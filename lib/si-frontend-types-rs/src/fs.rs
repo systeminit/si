@@ -42,6 +42,12 @@ pub struct Func {
     pub code_size: u64,
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct AssetFuncs {
+    pub locked: Option<Func>,
+    pub unlocked: Option<Func>,
+}
+
 pub fn kind_to_string(kind: FuncKind) -> String {
     match kind {
         FuncKind::Action => "action",
@@ -90,4 +96,9 @@ pub fn kind_from_string(s: &str) -> Option<FuncKind> {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct VariantQuery {
     pub unlocked: bool,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct SetFuncCodeRequest {
+    pub code: String,
 }

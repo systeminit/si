@@ -1,20 +1,21 @@
 use std::collections::HashSet;
 
 use axum::{
-    extract::{Host, OriginalUri, Path, Query},
+    extract::{Host, OriginalUri, Path},
     response::{IntoResponse, Response},
     routing::{get, post},
     Json, Router,
 };
 use dal::{
-    cached_module::CachedModule, workspace::WorkspaceId, ChangeSet, ChangeSetId, DalContext,
-    FuncId, SchemaId, SchemaVariant, WsEvent, WsEventError,
+    cached_module::CachedModule,
+    func::authoring::{FuncAuthoringClient, FuncAuthoringError},
+    workspace::WorkspaceId,
+    ChangeSet, ChangeSetId, DalContext, FuncId, SchemaId, SchemaVariant, WsEvent, WsEventError,
 };
 use hyper::StatusCode;
 use si_events::audit_log::AuditLogKind;
 use si_frontend_types::fs::{
-    ChangeSet as FsChangeSet, Func as FsFunc, ListVariantsResponse, Schema as FsSchema,
-    VariantQuery,
+    AssetFuncs, ChangeSet as FsChangeSet, Func as FsFunc, Schema as FsSchema, SetFuncCodeRequest,
 };
 use thiserror::Error;
 
@@ -23,19 +24,28 @@ use crate::{
     service::ApiError,
 };
 
-use super::{AccessBuilder, AppState};
+use super::{
+    func::{get_code_response, FuncAPIError},
+    AccessBuilder, AppState,
+};
 
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum FsError {
     #[error("cached module error: {0}")]
     CachedModule(#[from] dal::cached_module::CachedModuleError),
+    #[error("cannot write to HEAD")]
+    CannotWriteToHead,
     #[error("change set error: {0}")]
     ChangeSet(#[from] dal::ChangeSetError),
     #[error("ChangeSet {0}:{1} is inactive")]
     ChangeSetInactive(String, ChangeSetId),
     #[error("func error: {0}")]
     Func(#[from] dal::FuncError),
+    #[error("func api error: {0}")]
+    FuncApi(#[from] FuncAPIError),
+    #[error("func authoring error: {0}")]
+    FuncAuthoring(#[from] FuncAuthoringError),
     #[error("resource not found")]
     ResourceNotFound,
     #[error("schema error: {0}")]
@@ -114,6 +124,22 @@ pub async fn list_change_sets(
     ))
 }
 
+async fn check_change_set_and_not_head(ctx: &DalContext) -> FsResult<()> {
+    let change_set = ctx.change_set()?;
+    if change_set.id == ctx.get_workspace_default_change_set_id().await? {
+        return Err(FsError::CannotWriteToHead);
+    }
+
+    if change_set.status.is_active() {
+        Ok(())
+    } else {
+        Err(FsError::ChangeSetInactive(
+            change_set.name.clone(),
+            change_set.id,
+        ))
+    }
+}
+
 fn check_change_set(ctx: &DalContext) -> FsResult<()> {
     let change_set = ctx.change_set()?;
     if change_set.status.is_active() {
@@ -172,63 +198,6 @@ pub async fn list_schemas(
     Ok(Json(result))
 }
 
-pub async fn list_variants(
-    HandlerContext(builder): HandlerContext,
-    AccessBuilder(request_ctx): AccessBuilder,
-    PosthogClient(_posthog_client): PosthogClient,
-    OriginalUri(_original_uri): OriginalUri,
-    Host(_host_name): Host,
-    Path((_workspace_id, change_set_id, schema_id)): Path<(WorkspaceId, ChangeSetId, SchemaId)>,
-) -> FsResult<Json<ListVariantsResponse>> {
-    let ctx = builder
-        .build(request_ctx.build(change_set_id.into()))
-        .await?;
-
-    check_change_set(&ctx)?;
-
-    if ctx
-        .workspace_snapshot()?
-        .get_node_index_by_id_opt(schema_id)
-        .await
-        .is_none()
-    {
-        if CachedModule::latest_by_schema_id(&ctx, schema_id)
-            .await?
-            .is_some()
-        {
-            return Ok(Json(ListVariantsResponse {
-                locked: None,
-                unlocked: None,
-            }));
-        } else {
-            return Err(FsError::ResourceNotFound);
-        }
-    }
-
-    let default_variant = match SchemaVariant::get_default_for_schema(&ctx, schema_id).await {
-        Ok(variant) => variant,
-        Err(err) => match err {
-            dal::SchemaVariantError::DefaultVariantNotFound(_)
-            | dal::SchemaVariantError::SchemaNotFound(_) => return Err(FsError::ResourceNotFound),
-            err => Err(err)?,
-        },
-    };
-
-    Ok(Json(if !default_variant.is_locked() {
-        ListVariantsResponse {
-            locked: None,
-            unlocked: Some(default_variant.id()),
-        }
-    } else {
-        ListVariantsResponse {
-            locked: Some(default_variant.id()),
-            unlocked: SchemaVariant::get_unlocked_for_schema(&ctx, schema_id)
-                .await?
-                .map(|var| var.id()),
-        }
-    }))
-}
-
 async fn list_change_set_funcs(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
@@ -263,7 +232,6 @@ async fn list_variant_funcs(
     PosthogClient(_posthog_client): PosthogClient,
     OriginalUri(_original_uri): OriginalUri,
     Host(_host_name): Host,
-    Query(request): Query<VariantQuery>,
     Path((_workspace_id, change_set_id, schema_id, kind)): Path<(
         WorkspaceId,
         ChangeSetId,
@@ -281,18 +249,29 @@ async fn list_variant_funcs(
         return Ok(Json(vec![]));
     };
 
-    let schema_variant = lookup_variant_for_schema(&ctx, schema_id, request.unlocked)
-        .await?
-        .ok_or(FsError::ResourceNotFound)?;
+    let mut funcs = vec![];
 
-    Ok(Json(
-        dal::SchemaVariant::all_funcs_without_intrinsics(&ctx, schema_variant.id())
-            .await?
-            .into_iter()
-            .filter(|f| kind == f.kind.into())
-            .map(dal_func_to_fs_func)
-            .collect(),
-    ))
+    if let Some(locked_variant) = lookup_variant_for_schema(&ctx, schema_id, false).await? {
+        funcs.extend(
+            dal::SchemaVariant::all_funcs_without_intrinsics(&ctx, locked_variant.id())
+                .await?
+                .into_iter()
+                .filter(|f| kind == f.kind.into())
+                .map(dal_func_to_fs_func),
+        );
+    }
+
+    if let Some(unlocked_variant) = lookup_variant_for_schema(&ctx, schema_id, true).await? {
+        funcs.extend(
+            dal::SchemaVariant::all_funcs_without_intrinsics(&ctx, unlocked_variant.id())
+                .await?
+                .into_iter()
+                .filter(|f| kind == f.kind.into())
+                .map(dal_func_to_fs_func),
+        );
+    }
+
+    Ok(Json(funcs))
 }
 
 async fn lookup_variant_for_schema(
@@ -323,28 +302,48 @@ async fn lookup_variant_for_schema(
     })
 }
 
-pub async fn get_asset_func(
+pub async fn get_asset_funcs(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     PosthogClient(_posthog_client): PosthogClient,
     OriginalUri(_original_uri): OriginalUri,
     Host(_host_name): Host,
-    Query(request): Query<VariantQuery>,
     Path((_workspace_id, change_set_id, schema_id)): Path<(WorkspaceId, ChangeSetId, SchemaId)>,
-) -> FsResult<Json<FsFunc>> {
+) -> FsResult<Json<AssetFuncs>> {
     let ctx = builder
         .build(request_ctx.build(change_set_id.into()))
         .await?;
 
     check_change_set(&ctx)?;
 
-    let schema_variant = lookup_variant_for_schema(&ctx, schema_id, request.unlocked)
-        .await?
-        .ok_or(FsError::ResourceNotFound)?;
+    let mut result = AssetFuncs {
+        locked: None,
+        unlocked: None,
+    };
 
-    let asset_func = schema_variant.get_asset_func(&ctx).await?;
+    result.locked = match lookup_variant_for_schema(&ctx, schema_id, false).await? {
+        Some(variant) => {
+            let asset_func = variant.get_asset_func(&ctx).await?;
 
-    Ok(Json(dal_func_to_fs_func(asset_func)))
+            Some(dal_func_to_fs_func(asset_func))
+        }
+        None => None,
+    };
+
+    result.unlocked = match lookup_variant_for_schema(&ctx, schema_id, true).await? {
+        Some(variant) => {
+            let asset_func = variant.get_asset_func(&ctx).await?;
+
+            Some(dal_func_to_fs_func(asset_func))
+        }
+        None => None,
+    };
+
+    if result.locked.is_none() && result.unlocked.is_none() {
+        Err(FsError::ResourceNotFound)
+    } else {
+        Ok(Json(result))
+    }
 }
 
 fn dal_func_to_fs_func(func: dal::Func) -> FsFunc {
@@ -383,6 +382,34 @@ async fn get_func_code(
     Ok(func.code_plaintext()?.unwrap_or_default())
 }
 
+async fn set_func_code(
+    HandlerContext(builder): HandlerContext,
+    AccessBuilder(request_ctx): AccessBuilder,
+    PosthogClient(_posthog_client): PosthogClient,
+    OriginalUri(_original_uri): OriginalUri,
+    Host(_host_name): Host,
+    Path((_workspace_id, change_set_id, func_id)): Path<(WorkspaceId, ChangeSetId, FuncId)>,
+    Json(request): Json<SetFuncCodeRequest>,
+) -> FsResult<()> {
+    let ctx = builder
+        .build(request_ctx.build(change_set_id.into()))
+        .await?;
+
+    check_change_set_and_not_head(&ctx).await?;
+
+    FuncAuthoringClient::save_code(&ctx, func_id, request.code).await?;
+    let func_code = get_code_response(&ctx, func_id).await?;
+
+    WsEvent::func_code_saved(&ctx, func_code, false)
+        .await?
+        .publish_on_commit(&ctx)
+        .await?;
+
+    ctx.commit().await?;
+
+    Ok(())
+}
+
 pub fn fs_routes() -> Router<AppState> {
     Router::new()
         .route("/change-sets", get(list_change_sets))
@@ -392,9 +419,9 @@ pub fn fs_routes() -> Router<AppState> {
             Router::new()
                 .route("/funcs/:kind", get(list_change_set_funcs))
                 .route("/func-code/:func_id", get(get_func_code))
+                .route("/func-code/:func_id", post(set_func_code))
                 .route("/schemas", get(list_schemas))
-                .route("/schemas/:schema_id/variants", get(list_variants))
-                .route("/schemas/:schema_id/asset_func", get(get_asset_func))
+                .route("/schemas/:schema_id/asset_funcs", get(get_asset_funcs))
                 .route("/schemas/:schema_id/funcs/:kind", get(list_variant_funcs)),
         )
 }
