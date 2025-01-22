@@ -91,7 +91,7 @@ impl ApprovalRequirementExt for WorkspaceSnapshot {
 
         self.add_edge(
             entity_id,
-            EdgeWeight::new(EdgeWeightKind::HasApprovalRequirement),
+            EdgeWeight::new(EdgeWeightKind::ApprovalRequirementDefinition),
             id,
         )
         .await?;

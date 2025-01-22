@@ -44,7 +44,7 @@ impl ApprovalRequirementExt for WorkspaceSnapshotGraphV4 {
                 for (_, _, requirement_node_index) in self.edges_directed_for_edge_weight_kind(
                     entity_node_index,
                     Direction::Outgoing,
-                    EdgeWeightKindDiscriminants::HasApprovalRequirement,
+                    EdgeWeightKindDiscriminants::ApprovalRequirementDefinition,
                 ) {
                     let requirement_node_weight = self
                         .get_node_weight(requirement_node_index)?

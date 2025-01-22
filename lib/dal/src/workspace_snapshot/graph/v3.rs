@@ -732,11 +732,11 @@ impl WorkspaceSnapshotGraphV3 {
                 let color = match discrim {
                     EdgeWeightKindDiscriminants::Action => "black",
                     EdgeWeightKindDiscriminants::ActionPrototype => "black",
+                    EdgeWeightKindDiscriminants::ApprovalRequirementDefinition => "black",
                     EdgeWeightKindDiscriminants::AuthenticationPrototype => "black",
                     EdgeWeightKindDiscriminants::Contain => "blue",
                     EdgeWeightKindDiscriminants::DiagramObject => "black",
                     EdgeWeightKindDiscriminants::FrameContains => "black",
-                    EdgeWeightKindDiscriminants::HasApprovalRequirement => "black",
                     EdgeWeightKindDiscriminants::ManagementPrototype => "pink",
                     EdgeWeightKindDiscriminants::Manages => "pink",
                     EdgeWeightKindDiscriminants::Ordering => "gray",
@@ -879,7 +879,7 @@ impl WorkspaceSnapshotGraphV3 {
                     }
                     NodeWeight::DiagramObject(_) => ("DiagramObject".to_string(), "black"),
                     NodeWeight::ApprovalRequirementDefinition(_) => {
-                        ("ApprovalRequirement".to_string(), "black")
+                        ("ApprovalRequirementDefinition".to_string(), "black")
                     }
                 };
                 let color = color.to_string();
@@ -1420,7 +1420,7 @@ impl WorkspaceSnapshotGraphV3 {
                     | EdgeWeightKind::ManagementPrototype
                     | EdgeWeightKind::Manages
                     | EdgeWeightKind::DiagramObject
-                    | EdgeWeightKind::HasApprovalRequirement => {}
+                    | EdgeWeightKind::ApprovalRequirementDefinition => {}
                 }
             }
         }

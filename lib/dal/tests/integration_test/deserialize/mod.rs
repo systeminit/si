@@ -204,8 +204,8 @@ fn make_me_one_with_everything(graph: &mut WorkspaceSnapshotGraphVCurrent) {
             EdgeWeightKindDiscriminants::Represents => EdgeWeightKind::Represents,
             EdgeWeightKindDiscriminants::Manages => EdgeWeightKind::Manages,
             EdgeWeightKindDiscriminants::DiagramObject => EdgeWeightKind::DiagramObject,
-            EdgeWeightKindDiscriminants::HasApprovalRequirement => {
-                EdgeWeightKind::HasApprovalRequirement
+            EdgeWeightKindDiscriminants::ApprovalRequirementDefinition => {
+                EdgeWeightKind::ApprovalRequirementDefinition
             }
         };
 

@@ -13,10 +13,11 @@ pub struct ApprovalRequirementPermissionLookup {
     pub permission: String,
 }
 
+// NOTE(nick,jacob): this cannot remain alphabetical due to postcard (de)serialization.
 #[derive(Debug, Clone, Hash, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ApprovalRequirementApprover {
-    User(UserPk),
     PermissionLookup(ApprovalRequirementPermissionLookup),
+    User(UserPk),
 }
 
 #[derive(Debug, Clone)]
