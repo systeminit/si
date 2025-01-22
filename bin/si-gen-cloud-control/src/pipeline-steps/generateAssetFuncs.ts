@@ -7,6 +7,7 @@ import { SchemaVariantSpec } from "../bindings/SchemaVariantSpec.ts";
 import _ from "lodash";
 import { PropSpec } from "../bindings/PropSpec.ts";
 import { strippedBase64 } from "../spec/funcs.ts";
+import { isExpandedPropSpec } from "../spec/props.ts";
 
 export function generateAssetFuncs(specs: PkgSpec[]): PkgSpec[] {
   const newSpecs = [] as PkgSpec[];
@@ -149,6 +150,9 @@ function generatePropBuilderString(
   prop: PropSpec,
   indent_level: number,
 ): string {
+  const is_create_only =
+    (isExpandedPropSpec(prop) && prop.metadata.createOnly) ?? false;
+
   switch (prop.kind) {
     case "array":
     case "map": {
@@ -161,6 +165,13 @@ function generatePropBuilderString(
       return `new PropBuilder()\n` +
         `${indent(indent_level)}.setKind("${prop.kind}")\n` +
         `${indent(indent_level)}.setName("${prop.name}")\n` +
+        `${
+          generateWidgetString(
+            prop.data?.widgetKind,
+            is_create_only,
+            indent_level,
+          )
+        }` +
         `${entryBlock}` +
         `${indent(indent_level)}.build()`;
     }
@@ -180,16 +191,65 @@ function generatePropBuilderString(
       return `new PropBuilder()\n` +
         `${indent(indent_level)}.setKind("object")\n` +
         `${indent(indent_level)}.setName("${prop.name}")\n` +
+        `${
+          generateWidgetString(
+            prop.data?.widgetKind,
+            is_create_only,
+            indent_level,
+          )
+        }` +
         `${addChildBlock}` +
         `${indent(indent_level)}.build()`;
     }
     case "number":
-      return `new PropBuilder().setName("${prop.name}").setKind("integer").build()`;
+      return `new PropBuilder()\n` +
+        `${indent(indent_level)}.setName("${prop.name}")\n` +
+        `${indent(indent_level)}.setKind("integer")\n` +
+        `${
+          generateWidgetString(
+            prop.data?.widgetKind,
+            is_create_only,
+            indent_level,
+          )
+        }` +
+        `${indent(indent_level)}.build()`;
     case "boolean":
     case "json":
     case "string":
-      return `new PropBuilder().setName("${prop.name}").setKind("${prop.kind}").build()`;
+      return `new PropBuilder()\n` +
+        `${indent(indent_level)}.setName("${prop.name}")\n` +
+        `${indent(indent_level)}.setKind("${prop.kind}")\n` +
+        `${
+          generateWidgetString(
+            prop.data?.widgetKind,
+            is_create_only,
+            indent_level,
+          )
+        }` +
+        `${indent(indent_level)}.build()`;
   }
+}
+
+function generateWidgetString(
+  widgetKind: string | undefined | null,
+  create_only: boolean,
+  indentLevel: number,
+): string {
+  if (!widgetKind) {
+    console.log("Unable to generate widget for prop!");
+    return "";
+  }
+  let widgetStr =
+    `${indent(indentLevel)}.setWidget(new PropWidgetDefinitionBuilder()\n` +
+    `${indent(indentLevel + 1)}.setKind("${widgetKind.toLowerCase()}")`;
+
+  if (create_only) {
+    widgetStr += `\n${indent(indentLevel + 1)}.setCreateOnly()`;
+  }
+
+  widgetStr += `\n${indent(indentLevel + 1)}.build())\n`;
+
+  return widgetStr;
 }
 
 function indent(count: number) {

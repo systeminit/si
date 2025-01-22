@@ -210,10 +210,10 @@ function createPropInner(
 }
 
 function setCreateOnlyProp(data: PropSpecData) {
-    data.widgetOptions = [{
-      label: CREATE_ONLY_PROP_LABEL,
-      value: "true",
-    }]
+  data.widgetOptions = [{
+    label: CREATE_ONLY_PROP_LABEL,
+    value: "true",
+  }];
 }
 
 export type DefaultPropType = "domain" | "secrets" | "resource_value";
