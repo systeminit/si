@@ -239,7 +239,7 @@ async fn prop_documentation(ctx: &mut DalContext) {
         .expect("could not commit");
 
     // Assemble property editor schema and ensure Prop Documentation is there.
-    let property_editor_schema = PropertyEditorSchema::assemble(ctx, schema_variant_id)
+    let property_editor_schema = PropertyEditorSchema::assemble(ctx, schema_variant_id, false)
         .await
         .expect("could not assemble property editor schema");
 
@@ -317,7 +317,7 @@ async fn prop_documentation(ctx: &mut DalContext) {
         .expect("could not commit");
 
     // Assemble property editor schema and ensure both Prop Documentation is there.
-    let property_editor_schema = PropertyEditorSchema::assemble(ctx, schema_variant_id)
+    let property_editor_schema = PropertyEditorSchema::assemble(ctx, schema_variant_id, false)
         .await
         .expect("could not assemble property editor schema");
 

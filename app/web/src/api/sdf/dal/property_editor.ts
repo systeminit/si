@@ -104,6 +104,7 @@ export interface PropertyEditorProp {
   validationFormat?: string;
   defaultCanBeSetBySocket: boolean;
   isOriginSecret: boolean;
+  createOnly: boolean;
 }
 
 export interface PropertyEditorSchema {

@@ -57,7 +57,8 @@ impl PropEditorTestView {
             child_values,
         } = PropertyEditorValues::assemble(ctx, component_id).await?;
 
-        let PropertyEditorSchema { props, .. } = PropertyEditorSchema::assemble(ctx, sv_id).await?;
+        let PropertyEditorSchema { props, .. } =
+            PropertyEditorSchema::assemble(ctx, sv_id, false).await?;
 
         let root_view = {
             let value = values

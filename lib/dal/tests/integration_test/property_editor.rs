@@ -31,7 +31,7 @@ async fn assemble(ctx: &DalContext) {
         .expect("could not create component");
 
     // Assemble both property editor blobs.
-    let _property_editor_schema = PropertyEditorSchema::assemble(ctx, schema_variant_id)
+    let _property_editor_schema = PropertyEditorSchema::assemble(ctx, schema_variant_id, false)
         .await
         .expect("could not assemble property editor schema");
     let _property_editor_values = PropertyEditorValues::assemble(ctx, component.id())

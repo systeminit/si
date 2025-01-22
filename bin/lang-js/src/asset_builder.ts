@@ -296,6 +296,8 @@ export interface IPropWidgetDefinitionBuilder {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   addOption(key: string, value: string): this;
 
+  setCreateOnly(): this;
+
   build(): PropWidgetDefinition;
 }
 
@@ -327,6 +329,24 @@ export class PropWidgetDefinitionBuilder
    */
   setKind(kind: PropWidgetDefinitionKind): this {
     this.propWidget.kind = kind;
+    return this;
+  }
+
+  /**
+   * Set this prop as create only prop. This means that when
+   * the component has a resource attached, it will be marked
+   * as uneditable in the Attributes panel
+   */
+  setCreateOnly(): this {
+    if (!this.propWidget.options) {
+      this.propWidget.options = [];
+    }
+
+    this.propWidget.options.push(<Option>{
+      label: "si_create_only_prop",
+      value: "true",
+    });
+
     return this;
   }
 

@@ -99,6 +99,12 @@ pub struct WidgetOption {
     label: String,
     pub value: String,
 }
+
+impl WidgetOption {
+    pub fn label(&self) -> &str {
+        &self.label
+    }
+}
 pub type WidgetOptions = Vec<WidgetOption>;
 
 /// An individual "field" within the tree of a [`SchemaVariant`](crate::SchemaVariant).
