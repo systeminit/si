@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use axum::{
-    extract::{Host, OriginalUri, Path},
+    extract::{Host, OriginalUri, Path, Query},
     response::{IntoResponse, Response},
     routing::{get, post},
     Json, Router,
@@ -10,6 +10,7 @@ use dal::{
     cached_module::CachedModule,
     func::authoring::{FuncAuthoringClient, FuncAuthoringError},
     pkg::{import_pkg_from_pkg, ImportOptions, PkgError},
+    schema::variant::authoring::{VariantAuthoringClient, VariantAuthoringError},
     workspace::WorkspaceId,
     ChangeSet, ChangeSetId, DalContext, FuncId, Schema, SchemaId, SchemaVariant, WsEvent,
     WsEventError,
@@ -17,7 +18,8 @@ use dal::{
 use hyper::StatusCode;
 use si_events::audit_log::AuditLogKind;
 use si_frontend_types::fs::{
-    AssetFuncs, ChangeSet as FsChangeSet, Func as FsFunc, Schema as FsSchema, SetFuncCodeRequest,
+    AssetFuncs, ChangeSet as FsChangeSet, Func as FsFunc, Schema as FsSchema, SchemaAttributes,
+    SetFuncCodeRequest, VariantQuery,
 };
 use thiserror::Error;
 
@@ -58,6 +60,8 @@ pub enum FsError {
     SchemaVariant(#[from] dal::SchemaVariantError),
     #[error("transactions error: {0}")]
     Transactions(#[from] dal::TransactionsError),
+    #[error("variant authoring error: {0}")]
+    VariantAuthoring(#[from] VariantAuthoringError),
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] dal::WorkspaceSnapshotError),
     #[error("ws event error: {0}")]
@@ -323,11 +327,16 @@ pub async fn get_asset_funcs(
     let mut result = AssetFuncs {
         locked: None,
         unlocked: None,
+        unlocked_attrs_size: 0,
+        locked_attrs_size: 0,
     };
 
     result.locked = match lookup_variant_for_schema(&ctx, schema_id, false).await? {
         Some(variant) => {
             let asset_func = variant.get_asset_func(&ctx).await?;
+
+            let attrs = make_schema_attrs(&variant);
+            result.locked_attrs_size = attrs.byte_size();
 
             Some(dal_func_to_fs_func(asset_func))
         }
@@ -337,6 +346,9 @@ pub async fn get_asset_funcs(
     result.unlocked = match lookup_variant_for_schema(&ctx, schema_id, true).await? {
         Some(variant) => {
             let asset_func = variant.get_asset_func(&ctx).await?;
+
+            let attrs = make_schema_attrs(&variant);
+            result.unlocked_attrs_size = attrs.byte_size();
 
             Some(dal_func_to_fs_func(asset_func))
         }
@@ -462,6 +474,96 @@ async fn install_schema(
     Ok(())
 }
 
+fn make_schema_attrs(variant: &SchemaVariant) -> SchemaAttributes {
+    SchemaAttributes {
+        category: variant.category().to_owned(),
+        description: variant.description(),
+        display_name: variant.display_name().to_owned(),
+        link: variant.link(),
+        color: variant.color().to_owned(),
+        component_type: variant.component_type().into(),
+    }
+}
+
+async fn get_schema_attrs(
+    HandlerContext(builder): HandlerContext,
+    AccessBuilder(request_ctx): AccessBuilder,
+    PosthogClient(_posthog_client): PosthogClient,
+    OriginalUri(_original_uri): OriginalUri,
+    Host(_host_name): Host,
+    Path((_workspace_id, change_set_id, schema_id)): Path<(WorkspaceId, ChangeSetId, SchemaId)>,
+    Query(request): Query<VariantQuery>,
+) -> FsResult<Json<SchemaAttributes>> {
+    let ctx = builder
+        .build(request_ctx.build(change_set_id.into()))
+        .await?;
+
+    check_change_set(&ctx)?;
+
+    let variant = lookup_variant_for_schema(&ctx, schema_id, request.unlocked)
+        .await?
+        .ok_or(FsError::ResourceNotFound)?;
+
+    Ok(Json(make_schema_attrs(&variant)))
+}
+
+async fn set_schema_attrs(
+    HandlerContext(builder): HandlerContext,
+    AccessBuilder(request_ctx): AccessBuilder,
+    PosthogClient(_posthog_client): PosthogClient,
+    OriginalUri(_original_uri): OriginalUri,
+    Host(_host_name): Host,
+    Path((_workspace_id, change_set_id, schema_id)): Path<(WorkspaceId, ChangeSetId, SchemaId)>,
+    Json(attrs): Json<SchemaAttributes>,
+) -> FsResult<()> {
+    let ctx = builder
+        .build(request_ctx.build(change_set_id.into()))
+        .await?;
+
+    check_change_set_and_not_head(&ctx).await?;
+
+    let variant = lookup_variant_for_schema(&ctx, schema_id, true)
+        .await?
+        .ok_or(FsError::ResourceNotFound)?;
+
+    let schema = variant.schema(&ctx).await?;
+    let schema_name = schema.name();
+
+    VariantAuthoringClient::save_variant_content(
+        &ctx,
+        variant.id,
+        schema_name,
+        &attrs.display_name,
+        &attrs.category,
+        attrs.description.clone(),
+        attrs.link.clone(),
+        &attrs.color,
+        attrs.component_type.into(),
+        None::<String>,
+    )
+    .await?;
+
+    WsEvent::schema_variant_saved(
+        &ctx,
+        schema.id(),
+        variant.id(),
+        schema_name.to_string(),
+        attrs.category,
+        attrs.color,
+        attrs.component_type.into(),
+        attrs.link,
+        attrs.description,
+        attrs.display_name,
+    )
+    .await?
+    .publish_on_commit(&ctx)
+    .await?;
+
+    ctx.commit().await?;
+
+    Ok(())
+}
+
 pub fn fs_routes() -> Router<AppState> {
     Router::new()
         .route("/change-sets", get(list_change_sets))
@@ -474,6 +576,8 @@ pub fn fs_routes() -> Router<AppState> {
                 .route("/func-code/:func_id", post(set_func_code))
                 .route("/schemas", get(list_schemas))
                 .route("/schemas/:schema_id/asset_funcs", get(get_asset_funcs))
+                .route("/schemas/:schema_id/attrs", get(get_schema_attrs))
+                .route("/schemas/:schema_id/attrs", post(set_schema_attrs))
                 .route("/schemas/:schema_id/funcs/:kind", get(list_variant_funcs))
                 .route("/schemas/:schema_id/install", post(install_schema)),
         )

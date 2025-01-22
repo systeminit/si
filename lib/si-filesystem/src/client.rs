@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use si_frontend_types::{
     fs::{
         AssetFuncs, ChangeSet, CreateChangeSetRequest, CreateChangeSetResponse, Func,
-        ListChangeSetsResponse, Schema, SetFuncCodeRequest,
+        ListChangeSetsResponse, Schema, SchemaAttributes, SetFuncCodeRequest, VariantQuery,
     },
     FuncKind,
 };
@@ -233,6 +233,41 @@ impl SiFsClient {
         self.client
             .post(self.fs_api_change_sets(&format!("schemas/{schema_id}/install"), change_set_id))
             .bearer_auth(&self.token)
+            .send()
+            .await?
+            .error_for_status()?;
+
+        Ok(())
+    }
+
+    pub async fn get_schema_attrs(
+        &self,
+        change_set_id: ChangeSetId,
+        schema_id: SchemaId,
+        unlocked: bool,
+    ) -> SiFsClientResult<SchemaAttributes> {
+        Ok(self
+            .client
+            .get(self.fs_api_change_sets(&format!("schemas/{schema_id}/attrs"), change_set_id))
+            .bearer_auth(&self.token)
+            .query(&VariantQuery { unlocked })
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+            .await?)
+    }
+
+    pub async fn set_schema_attrs(
+        &self,
+        change_set_id: ChangeSetId,
+        schema_id: SchemaId,
+        attributes: SchemaAttributes,
+    ) -> SiFsClientResult<()> {
+        self.client
+            .post(self.fs_api_change_sets(&format!("schemas/{schema_id}/attrs"), change_set_id))
+            .bearer_auth(&self.token)
+            .json(&attributes)
             .send()
             .await?
             .error_for_status()?;
