@@ -2,7 +2,6 @@ import { User, Workspace } from "@prisma/client";
 import { JwtPayload, SignOptions } from "jsonwebtoken";
 import * as Koa from "koa";
 import { nanoid } from "nanoid";
-import _ from "lodash";
 import { CustomAppContext, CustomAppState } from "../custom-state";
 import { ApiError } from "../lib/api-error";
 import { setCache } from "../lib/cache";
@@ -11,6 +10,7 @@ import { tryCatch } from "../lib/try-catch";
 import { getUserById, UserId } from "./users.service";
 import { getWorkspaceById, WorkspaceId } from "./workspaces.service";
 import { posthog } from "../lib/posthog";
+import { getAuthToken } from "./auth_tokens.service";
 
 export const SI_COOKIE_NAME = "si-auth";
 
@@ -19,37 +19,61 @@ export type AuthProviders = "google" | "github" | "password";
 // TODO: figure out the shape of the JWT and what data we want
 
 // Auth tokens used for communication between the user's browser and this auth api
-type AuthTokenData = {
+export interface AuthTokenData {
   userId: string;
   workspaceId?: string;
-};
+  role: SdfAuthTokenRole;
+  tokenId?: string;
+}
+
+interface AuthApiTokenPayload {
+  userId: string;
+}
 
 // will figure out what we want to pass in here...
 export function createAuthToken(userId: string) {
-  const payload: AuthTokenData = {
+  const payload: AuthApiTokenPayload = {
     userId,
   };
   return createJWT(payload);
 }
 
-export async function decodeAuthToken(token: string) {
+export function decodeAuthToken(token: string): AuthTokenData {
   const verified = verifyJWT(token);
-  // if token was an sdf token, it will be scoped to a workspace and use its terminology (pk)
-  if (typeof verified !== "string" && "user_pk" in verified) {
-    return {
-      userId: verified.user_pk,
-      workspaceId: verified.workspace_pk,
-      ..._.omit(verified, ["user_pk", "workspace_pk"]),
-    } as AuthTokenData & JwtPayload;
-  } else {
-    return verified as AuthTokenData & JwtPayload;
+  if (typeof verified === "string") {
+    throw new Error(`Unexpected decoded token (should not be string): ${verified}`);
   }
+
+  // Normalize the token (get userId, workspaceId and role)
+
+  // V2 SDF token
+  if ("version" in verified && verified.version === "2") {
+    const { userId, workspaceId, role } = verified as SdfAuthTokenPayloadV2;
+    return {
+      userId, workspaceId, role, tokenId: verified.jti,
+    };
+  }
+
+  // V1 SDF token
+  if ("user_pk" in verified && "workspace_pk" in verified) {
+    const { user_pk, workspace_pk } = verified as SdfAuthTokenPayloadV1;
+    return { userId: user_pk, workspaceId: workspace_pk, role: "web" };
+  }
+
+  // Auth API token
+  if ("userId" in verified) {
+    const { userId } = verified as AuthApiTokenPayload;
+    return { userId, workspaceId: undefined, role: "web" };
+  }
+
+  throw new Error(`Unsupported auth token format: ${JSON.stringify(verified)}`);
 }
 
 // Auth tokens used for communication between the user's browser and SDF
 // and between that SDF instance and this auth api if necessary
 export type SdfAuthTokenPayload = SdfAuthTokenPayloadV1 | SdfAuthTokenPayloadV2;
-export type SdfAuthTokenRole = "web" | "automation";
+export const SdfAuthTokenRoles = ["web", "automation"] as const;
+export type SdfAuthTokenRole = typeof SdfAuthTokenRoles[number];
 
 interface SdfAuthTokenPayloadV2 {
   version: "2";
@@ -126,7 +150,8 @@ export const loadAuthMiddleware: Koa.Middleware<CustomAppState, CustomAppContext
   if (!authToken) {
     // special auth handling only used in tests
     if (process.env.NODE_ENV === "test" && ctx.headers["spoof-auth"]) {
-      const user = await getUserById(ctx.headers["spoof-auth"] as string);
+      ctx.state.token = { userId: ctx.headers["spoof-auth"] as string, role: "web" };
+      const user = await getUserById(ctx.state.token.userId);
       if (!user) throw new Error("spoof auth user does not exist");
       ctx.state.authUser = user;
     }
@@ -134,7 +159,7 @@ export const loadAuthMiddleware: Koa.Middleware<CustomAppState, CustomAppContext
     return next();
   }
 
-  const decoded = await tryCatch(() => {
+  ctx.state.token = await tryCatch(() => {
     return decodeAuthToken(authToken!);
   }, (_err) => {
     // TODO: check the type of error before handling this way
@@ -147,13 +172,23 @@ export const loadAuthMiddleware: Koa.Middleware<CustomAppState, CustomAppContext
   // console.log(decoded);
 
   // make sure cookie is valid - not sure if this can happen...
-  if (!decoded) {
+  if (!ctx.state.token) {
     wipeAuthCookie(ctx);
     throw new ApiError("Unauthorized", "AuthTokenCorrupt", "Invalid auth token");
   }
   // TODO: deal with various other errors, logout on all devices, etc...
 
-  const user = await getUserById(decoded.userId);
+  // Check if the token is revoked
+  if (ctx.state.token.tokenId) {
+    const authToken = await getAuthToken(ctx.state.token.tokenId);
+    if (!authToken || authToken.revokedAt) {
+      wipeAuthCookie(ctx);
+      throw new ApiError("Unauthorized", "AuthTokenRevoked", "Auth token has been revoked");
+    }
+    ctx.state.authToken = authToken;
+  }
+
+  const user = await getUserById(ctx.state.token.userId);
 
   if (!user) {
     wipeAuthCookie(ctx);
@@ -162,13 +197,23 @@ export const loadAuthMiddleware: Koa.Middleware<CustomAppState, CustomAppContext
 
   ctx.state.authUser = user;
 
-  if (decoded.workspaceId) {
-    const workspace = await getWorkspaceById(decoded.workspaceId);
+  // Make sure the workspace exists
+  if (ctx.state.token.workspaceId) {
+    const workspace = await getWorkspaceById(ctx.state.token.workspaceId);
     if (!workspace) {
       wipeAuthCookie(ctx);
       throw new ApiError("Unauthorized", "AuthWorkspaceMissing", "Cannot find workspace data");
     }
     ctx.state.authWorkspace = workspace;
+  }
+
+  return next();
+};
+
+export const requireWebTokenMiddleware: Koa.Middleware<CustomAppState, CustomAppContext> = async (ctx, next) => {
+  if (ctx.state.token && ctx.state.token.role !== "web") {
+    wipeAuthCookie(ctx);
+    throw new ApiError("Unauthorized", "AutomationToken", "Automation tokens may not access the auth api");
   }
 
   return next();

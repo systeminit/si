@@ -30,9 +30,11 @@ import {
   updateCustomerDetails,
 } from "../lib/lago";
 import { checkCustomerPaymentMethodSet } from "../lib/stripe";
-import { extractAdminAuthUser, extractAuthUser, router } from ".";
+import {
+  automationApiRouter, extractAdminAuthUser, extractAuthUser, router,
+} from ".";
 
-router.get("/whoami", async (ctx) => {
+automationApiRouter.get("/whoami", async (ctx) => {
   // user must be logged in
   if (!ctx.state.authUser) {
     throw new ApiError("Unauthorized", "You are not logged in");
@@ -40,6 +42,7 @@ router.get("/whoami", async (ctx) => {
 
   ctx.body = {
     user: ctx.state.authUser,
+    authToken: ctx.state.authToken,
   };
 });
 

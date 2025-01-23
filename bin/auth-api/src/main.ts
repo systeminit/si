@@ -9,10 +9,10 @@ import chalk from 'chalk';
 import cors from '@koa/cors';
 
 import { PrismaClient } from "@prisma/client";
-import { router, routesLoaded } from "./routes";
+import { router, automationApiRouter, routesLoaded } from "./routes";
 import { ApiError, errorHandlingMiddleware } from "./lib/api-error";
 import { httpRequestLoggingMiddleware } from "./lib/request-logger";
-import { loadAuthMiddleware } from "./services/auth.service";
+import { loadAuthMiddleware, requireWebTokenMiddleware } from "./services/auth.service";
 import { detectClientIp } from "./lib/client-ip";
 import { CustomAppContext, CustomAppState } from "./custom-state";
 
@@ -31,9 +31,9 @@ app.use(httpRequestLoggingMiddleware);
 app.use(errorHandlingMiddleware);
 app.use(bodyParser());
 app.use(loadAuthMiddleware);
-
 // routes - must be last after all middlewares
-app.use(router.routes());
+app.use(automationApiRouter.routes());
+app.use(router.use(requireWebTokenMiddleware).routes());
 
 // catch-all middelware after routes handles no route match (404)
 app.use((_ctx, _next) => {
