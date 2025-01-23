@@ -426,6 +426,74 @@ async fn set_func_code(
     Ok(())
 }
 
+async fn set_asset_func_code(
+    HandlerContext(builder): HandlerContext,
+    AccessBuilder(request_ctx): AccessBuilder,
+    PosthogClient(_posthog_client): PosthogClient,
+    OriginalUri(_original_uri): OriginalUri,
+    Host(_host_name): Host,
+    Path((_workspace_id, change_set_id, schema_id, func_id)): Path<(
+        WorkspaceId,
+        ChangeSetId,
+        SchemaId,
+        FuncId,
+    )>,
+    Json(request): Json<SetFuncCodeRequest>,
+) -> FsResult<()> {
+    let ctx = builder
+        .build(request_ctx.build(change_set_id.into()))
+        .await?;
+
+    check_change_set_and_not_head(&ctx).await?;
+
+    let unlocked_variant = lookup_variant_for_schema(&ctx, schema_id, true)
+        .await?
+        .ok_or(FsError::ResourceNotFound)?;
+
+    let current_asset_func = unlocked_variant.get_asset_func(&ctx).await?;
+    if current_asset_func.id != func_id {
+        // different error?
+        return Err(FsError::ResourceNotFound);
+    }
+
+    FuncAuthoringClient::save_code(&ctx, func_id, request.code).await?;
+    let func_code = get_code_response(&ctx, func_id).await?;
+
+    WsEvent::func_code_saved(&ctx, func_code, false)
+        .await?
+        .publish_on_commit(&ctx)
+        .await?;
+
+    let schema_variant_id = unlocked_variant.id;
+
+    let updated_variant_id =
+        VariantAuthoringClient::regenerate_variant(&ctx, unlocked_variant.id).await?;
+
+    ctx.write_audit_log(
+        AuditLogKind::RegenerateSchemaVariant { schema_variant_id },
+        unlocked_variant.display_name().to_string(),
+    )
+    .await?;
+
+    let updated_variant = SchemaVariant::get_by_id_or_error(&ctx, updated_variant_id).await?;
+
+    if schema_variant_id == updated_variant_id {
+        WsEvent::schema_variant_updated(&ctx, schema_id, updated_variant)
+            .await?
+            .publish_on_commit(&ctx)
+            .await?;
+    } else {
+        WsEvent::schema_variant_replaced(&ctx, schema_id, schema_variant_id, updated_variant)
+            .await?
+            .publish_on_commit(&ctx)
+            .await?;
+    }
+
+    ctx.commit().await?;
+
+    Ok(())
+}
+
 async fn install_schema(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
@@ -576,6 +644,10 @@ pub fn fs_routes() -> Router<AppState> {
                 .route("/func-code/:func_id", post(set_func_code))
                 .route("/schemas", get(list_schemas))
                 .route("/schemas/:schema_id/asset_funcs", get(get_asset_funcs))
+                .route(
+                    "/schemas/:schema_id/asset_func/:func_id",
+                    post(set_asset_func_code),
+                )
                 .route("/schemas/:schema_id/attrs", get(get_schema_attrs))
                 .route("/schemas/:schema_id/attrs", post(set_schema_attrs))
                 .route("/schemas/:schema_id/funcs/:kind", get(list_variant_funcs))

@@ -213,9 +213,29 @@ impl SiFsClient {
         func_id: FuncId,
         code: String,
     ) -> SiFsClientResult<()> {
-        dbg!("calling set code with", &code);
         self.client
             .post(self.fs_api_change_sets(&format!("func-code/{func_id}"), change_set_id))
+            .json(&SetFuncCodeRequest { code })
+            .bearer_auth(&self.token)
+            .send()
+            .await?
+            .error_for_status()?;
+
+        Ok(())
+    }
+
+    pub async fn set_asset_func_code(
+        &self,
+        change_set_id: ChangeSetId,
+        func_id: FuncId,
+        schema_id: SchemaId,
+        code: String,
+    ) -> SiFsClientResult<()> {
+        self.client
+            .post(self.fs_api_change_sets(
+                &format!("schemas/{schema_id}/asset_func/{func_id}"),
+                change_set_id,
+            ))
             .json(&SetFuncCodeRequest { code })
             .bearer_auth(&self.token)
             .send()
