@@ -1,5 +1,5 @@
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, HashSet},
     ffi::OsString,
     fmt, fs,
     io::{Cursor, Seek, Write},
@@ -373,6 +373,12 @@ impl SiFileSystem {
             // todo: prefetch directory listings?
             _ => vec![],
         });
+
+        // Ensure the size is up to date for the next getattr call
+        self.inode_table
+            .write()
+            .await
+            .set_size(ino, buf.get_ref().len() as u64);
 
         self.open_files.write().await.insert(
             fh,
@@ -914,12 +920,19 @@ impl SiFileSystem {
                     .client
                     .change_set_funcs_of_kind(*change_set_id, *kind)
                     .await?;
+                let mut names = HashSet::new();
                 for func in funcs_of_kind {
+                    let func_name = if names.contains(&func.name) { 
+                        format!("{}:{}", func.name, func.id)
+                    } else { 
+                        names.insert(func.name.clone());
+                        func.name
+                    };
                     let mut inode_table = self.inode_table.write().await;
 
                     let ino = inode_table.upsert_with_parent_ino(
                         entry.ino,
-                        &func.name,
+                        &func_name,
                         InodeEntryData::ChangeSetFunc {
                             func_id: func.id,
                             change_set_id: *change_set_id,
@@ -929,7 +942,7 @@ impl SiFileSystem {
                         false,
                         Size::Directory,
                     )?;
-                    dirs.add(ino, func.name, FileType::Directory);
+                    dirs.add(ino, func_name, FileType::Directory);
                 }
             }
             // `/change-sets/$change_set_name/functions/$func_kind/$func_name/`
