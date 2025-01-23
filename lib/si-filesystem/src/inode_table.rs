@@ -93,7 +93,7 @@ pub enum InodeEntryData {
         change_set_id: ChangeSetId,
         unlocked: bool,
     },
-    SchemaDefinitions {
+    SchemaDefinitionsDir {
         schema_id: SchemaId,
         change_set_id: ChangeSetId,
     },
@@ -112,10 +112,11 @@ pub enum InodeEntryData {
         schema_id: SchemaId,
         change_set_id: ChangeSetId,
     },
-    SchemaFuncVariants {
+    SchemaFuncVariantsDir {
         locked_id: Option<FuncId>,
         unlocked_id: Option<FuncId>,
         change_set_id: ChangeSetId,
+        schema_id: SchemaId,
         locked_size: u64,
         unlocked_size: u64,
     },

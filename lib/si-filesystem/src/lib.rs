@@ -1,5 +1,5 @@
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, HashSet},
     ffi::OsString,
     fmt, fs,
     io::{Cursor, Seek, Write},
@@ -374,6 +374,12 @@ impl SiFileSystem {
             _ => vec![],
         });
 
+        // Ensure the size is up to date for the next getattr call
+        self.inode_table
+            .write()
+            .await
+            .set_size(ino, buf.get_ref().len() as u64);
+
         self.open_files.write().await.insert(
             fh,
             OpenFile {
@@ -634,14 +640,85 @@ impl SiFileSystem {
             InodeEntryData::FuncCode { .. } => {
                 reply.error(EINVAL);
             }
-            InodeEntryData::SchemaDefinitions { .. } => {
-                reply.error(EINVAL);
+            InodeEntryData::SchemaDefinitionsDir {
+                schema_id,
+                change_set_id,
+            } => {
+                if name == DIR_STR_UNLOCKED {
+                    let asset_funcs = self
+                        .client
+                        .unlock_schema(*change_set_id, *schema_id)
+                        .await?;
+                    if let Some(unlocked_asset_func) = asset_funcs.unlocked {
+                        let mut inode_table = self.inode_table.write().await;
+                        let ino = inode_table.upsert_with_parent_ino(
+                            parent,
+                            DIR_STR_UNLOCKED,
+                            InodeEntryData::AssetDefinitionDir {
+                                schema_id: *schema_id,
+                                func_id: unlocked_asset_func.id,
+                                change_set_id: *change_set_id,
+                                size: unlocked_asset_func.code_size,
+                                attrs_size: asset_funcs.unlocked_attrs_size,
+                                unlocked: true,
+                            },
+                            FileType::Directory,
+                            false,
+                            Size::Directory,
+                        )?;
+
+                        let attrs =
+                            inode_table.make_attrs(ino, FileType::Directory, true, Size::Directory);
+
+                        reply.entry(&TTL, &attrs, 1);
+                    } else {
+                        reply.error(EINVAL);
+                    }
+                } else {
+                    reply.error(EACCES);
+                }
             }
             InodeEntryData::SchemaFuncs { .. } => {
                 reply.error(EINVAL);
             }
-            InodeEntryData::SchemaFuncVariants { .. } => {
-                reply.error(EINVAL);
+            InodeEntryData::SchemaFuncVariantsDir {
+                locked_id,
+                change_set_id,
+                schema_id,
+                ..
+            } => {
+                if name == DIR_STR_UNLOCKED {
+                    if let Some(locked_id) = locked_id {
+                        let unlocked_func = self
+                            .client
+                            .unlock_func(*change_set_id, *schema_id, *locked_id)
+                            .await?;
+
+                        let mut inode_table = self.inode_table.write().await;
+                        let ino = inode_table.upsert_with_parent_ino(
+                            parent,
+                            DIR_STR_UNLOCKED,
+                            InodeEntryData::SchemaFunc {
+                                change_set_id: *change_set_id,
+                                func_id: unlocked_func.id,
+                                size: unlocked_func.code_size,
+                                unlocked: true,
+                            },
+                            FileType::Directory,
+                            false,
+                            Size::Directory,
+                        )?;
+
+                        let attrs =
+                            inode_table.make_attrs(ino, FileType::Directory, true, Size::Directory);
+
+                        reply.entry(&TTL, &attrs, 1);
+                    } else {
+                        reply.error(EINVAL);
+                    }
+                } else {
+                    reply.error(EACCES);
+                }
             }
             InodeEntryData::SchemaFuncKind { .. } => {
                 reply.error(EINVAL);
@@ -914,12 +991,19 @@ impl SiFileSystem {
                     .client
                     .change_set_funcs_of_kind(*change_set_id, *kind)
                     .await?;
+                let mut names = HashSet::new();
                 for func in funcs_of_kind {
+                    let func_name = if names.contains(&func.name) {
+                        format!("{}:{}", func.name, func.id)
+                    } else {
+                        names.insert(func.name.clone());
+                        func.name
+                    };
                     let mut inode_table = self.inode_table.write().await;
 
                     let ino = inode_table.upsert_with_parent_ino(
                         entry.ino,
-                        &func.name,
+                        &func_name,
                         InodeEntryData::ChangeSetFunc {
                             func_id: func.id,
                             change_set_id: *change_set_id,
@@ -929,7 +1013,7 @@ impl SiFileSystem {
                         false,
                         Size::Directory,
                     )?;
-                    dirs.add(ino, func.name, FileType::Directory);
+                    dirs.add(ino, func_name, FileType::Directory);
                 }
             }
             // `/change-sets/$change_set_name/functions/$func_kind/$func_name/`
@@ -1002,11 +1086,11 @@ impl SiFileSystem {
                     let schema_def_info = inode_table.upsert_with_parent_ino(
                         entry.ino,
                         DIR_STR_DEFINITION,
-                        InodeEntryData::SchemaDefinitions {
+                        InodeEntryData::SchemaDefinitionsDir {
                             schema_id: *schema_id,
                             change_set_id: *change_set_id
                         }, FileType::Directory,
-                        false,
+                        true,
                         Size::Directory,
                     )?;
 
@@ -1032,7 +1116,7 @@ impl SiFileSystem {
                 }
             }
             // `/change-sets/$change_set_name/schemas/$schema_name/asset-definition/`
-            InodeEntryData::SchemaDefinitions { schema_id, change_set_id } => {
+            InodeEntryData::SchemaDefinitionsDir { schema_id, change_set_id } => {
                 let asset_funcs = self
                     .client
                     .asset_funcs_for_variant(*change_set_id, *schema_id)
@@ -1125,12 +1209,13 @@ impl SiFileSystem {
                     let ino = inode_table.upsert_with_parent_ino(
                         entry.ino,
                         &func_name,
-                        InodeEntryData::SchemaFuncVariants {
+                        InodeEntryData::SchemaFuncVariantsDir {
                             locked_id: funcs.locked.as_ref().map(|f| f.id),
                             unlocked_id: funcs.unlocked.as_ref().map(|f| f.id),
                             change_set_id: *change_set_id,
                             locked_size: funcs.locked.as_ref().map(|f| f.code_size).unwrap_or(0),
                             unlocked_size: funcs.unlocked.as_ref().map(|f| f.code_size).unwrap_or(0),
+                            schema_id: *schema_id,
                         },
                         FileType::Directory,
                         true,
@@ -1140,12 +1225,13 @@ impl SiFileSystem {
                 }
             }
             // `/change-sets/$change_set_name/schemas/$schema_name/functions/$func_kind/$func_name`
-            InodeEntryData::SchemaFuncVariants {
+            InodeEntryData::SchemaFuncVariantsDir {
                 locked_id,
                 unlocked_id,
                 change_set_id,
                 locked_size,
                 unlocked_size,
+                schema_id: _,
             } => {
                 let mut inode_table = self.inode_table.write().await;
 
