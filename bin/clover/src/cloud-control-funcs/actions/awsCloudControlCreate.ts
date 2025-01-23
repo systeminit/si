@@ -8,6 +8,14 @@ async function main(component: Input): Promise<Output> {
   }
 
   const codeString = component.properties.code?.["awsCloudControlCreate"]?.code;
+
+  if (!codeString) {
+    return {
+      status: "error",
+      message: `Could not find awsCloudControlCreate for resource`,
+    };
+  }
+
   console.log("code", codeString);
   const domain = component.properties?.domain;
   const code = JSON.parse(codeString);

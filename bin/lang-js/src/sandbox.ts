@@ -5,7 +5,7 @@ import path from "node:path";
 import zlib from "node:zlib";
 import fetch from "node-fetch";
 import toml from "toml";
-import * as jsonpatch from "npm:fast-json-patch";
+import jsonpatch from "npm:fast-json-patch";
 
 import * as _ from "npm:lodash-es";
 import * as yaml from "npm:js-yaml";
@@ -22,6 +22,7 @@ import {
   makeMainRequestStorage,
 } from "./sandbox/requestStorage.ts";
 import { makePackage } from "./sandbox/package.ts";
+
 export type Sandbox = Record<string, unknown>;
 
 function commonSandbox(executionId: string): Sandbox {

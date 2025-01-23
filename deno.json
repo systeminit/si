@@ -2,7 +2,7 @@
   "workspace": [
     "./bin/lang-js",
     "./lib/ts-lib-deno",
-    "./bin/si-gen-cloud-control"
+    "./bin/clover"
   ],
   "imports": {
     "@cliffy/command": "jsr:@cliffy/command@^1.0.0-rc.7",

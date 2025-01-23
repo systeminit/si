@@ -24,6 +24,8 @@ alias(
     actual = ":bin"
 )
 
+# we include clover here because the deno workspace
+# requires resolution of all members even if we don't use it
 deno_compile(
     name = "bin",
     main = "src/index.ts",

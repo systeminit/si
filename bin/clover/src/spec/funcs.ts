@@ -48,14 +48,14 @@ const funcSpecs: Record<string, FuncSpecInfo> = {
     path: "./src/cloud-control-funcs/actions/awsCloudControlUpdate.ts",
   },
   // Code Generation
-  "codeGenCreate": {
+  "awsCloudControlCreate": {
     id: "c48518d82a2db7064e7851c36636c665dce775610d08958a8a4f0c5c85cd808e",
     backendKind: "jsAttribute",
     responseType: "codeGeneration",
     displayName: "Code Gen for creating a Cloud Control Asset",
     path: "./src/cloud-control-funcs/code-gen/awsCloudControlCodeGenCreate.ts",
   },
-  "codeGenUpdate": {
+  "awsCloudControlUpdate": {
     id: "f170263ef3fbb0e8017b47221c5d70ae412b2eaa33e75e1a98525c9a070d60f6",
     backendKind: "jsAttribute",
     responseType: "codeGeneration",
@@ -150,8 +150,8 @@ export function createDefaultCodeGenFuncs(domain_id: string): FuncSpec[] {
 
   const ret: FuncSpec[] = [];
   const codeGenFuncs = [
-    "codeGenCreate",
-    "codeGenUpdate",
+    "awsCloudControlCreate",
+    "awsCloudControlUpdate",
   ];
 
   const args: FuncArgumentSpec[] = [{

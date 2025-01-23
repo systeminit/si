@@ -70,7 +70,7 @@ function generateAssetCodeFromVariantSpec(variant: SchemaVariantSpec): string {
     let propAdds = "";
 
     for (const prop of variant.domain.entries) {
-      const varName = `${prop.name}Prop`;
+      const varName = `${prop.name}Prop`.replace(" ", "");
       propDeclarations += `${indent(1)}const ${varName} = ${
         generatePropBuilderString(prop, 2)
       };\n\n`;
@@ -89,7 +89,7 @@ function generateAssetCodeFromVariantSpec(variant: SchemaVariantSpec): string {
     let propAdds = "";
 
     for (const prop of variant.resourceValue.entries) {
-      const varName = `${prop.name}Resource`;
+      const varName = `${prop.name}Resource`.replace(" ", "");
       propDeclarations += `${indent(1)}const ${varName} = ${
         generatePropBuilderString(prop, 2)
       };\n\n`;
@@ -117,7 +117,7 @@ function generateAssetCodeFromVariantSpec(variant: SchemaVariantSpec): string {
       const data = socket.data;
       if (!data) continue;
 
-      const varName = `${socket.name}Socket`;
+      const varName = `${socket.name}Socket`.replace(" ", "");
 
       socketDeclarations +=
         `${indent(1)}const ${varName} = new SocketDefinitionBuilder()\n` +
@@ -165,6 +165,7 @@ function generatePropBuilderString(
       return `new PropBuilder()\n` +
         `${indent(indent_level)}.setKind("${prop.kind}")\n` +
         `${indent(indent_level)}.setName("${prop.name}")\n` +
+        `${indent(indent_level)}.setHidden(${prop.data.hidden ?? false})\n` +
         `${
           generateWidgetString(
             prop.data?.widgetKind,
@@ -191,6 +192,7 @@ function generatePropBuilderString(
       return `new PropBuilder()\n` +
         `${indent(indent_level)}.setKind("object")\n` +
         `${indent(indent_level)}.setName("${prop.name}")\n` +
+        `${indent(indent_level)}.setHidden(${prop.data.hidden ?? false})\n` +
         `${
           generateWidgetString(
             prop.data?.widgetKind,
@@ -205,6 +207,7 @@ function generatePropBuilderString(
       return `new PropBuilder()\n` +
         `${indent(indent_level)}.setName("${prop.name}")\n` +
         `${indent(indent_level)}.setKind("integer")\n` +
+        `${indent(indent_level)}.setHidden(${prop.data.hidden ?? false})\n` +
         `${
           generateWidgetString(
             prop.data?.widgetKind,
@@ -219,6 +222,7 @@ function generatePropBuilderString(
       return `new PropBuilder()\n` +
         `${indent(indent_level)}.setName("${prop.name}")\n` +
         `${indent(indent_level)}.setKind("${prop.kind}")\n` +
+        `${indent(indent_level)}.setHidden(${prop.data.hidden ?? false})\n` +
         `${
           generateWidgetString(
             prop.data?.widgetKind,

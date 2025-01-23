@@ -1,5 +1,5 @@
 async function main(component: Input): Promise<Output> {
-  let resourceId = component.properties?.si?.resourceId;
+  const resourceId = component.properties?.si?.resourceId;
   if (!component.properties.resource?.payload) {
     return {
       status: "error",

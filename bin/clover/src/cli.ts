@@ -5,7 +5,7 @@ import { generateTarFromSpec } from "./commands/generateTarFromSpec.ts";
 
 export async function run() {
   const command = new Command()
-    .name("si-gen-cloud-control")
+    .name("clover")
     .version("0.1.0")
     .description("Asset Pipeline for AWS Cloud Control")
     .env("LOG_LEVEL=<value:string>", "Set the log level; defaults to info")

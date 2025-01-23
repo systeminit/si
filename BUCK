@@ -96,8 +96,8 @@ deno_workspace(
     name = "deno_workspace",
     root_config = ":deno.json",
     packages = [
+        "//bin/clover:deno.json",
         "//bin/lang-js:deno.json",
-        "//bin/si-gen-cloud-control:deno.json",
         "//lib/ts-lib-deno:deno.json",
     ],
     visibility = ["PUBLIC"],

@@ -249,6 +249,9 @@ export function createObjectProp(
     entries: [],
     uniqueId: ulid(),
     metadata: {
+      createOnly: false,
+      readOnly: false,
+      writeOnly: false,
       propPath: [...parentPath, name],
       createOnly: false,
       readOnly: false,
@@ -263,7 +266,7 @@ export function createScalarProp(
   name: string,
   kind: "number" | "string" | "boolean",
   parentPath: string[],
-): ExpandedPropSpec {
+): ExpandedPropSpec & { data: PropSpecData } {
   let widgetKind: PropSpecWidgetKind;
   switch (kind) {
     case "number":
@@ -294,6 +297,9 @@ export function createScalarProp(
     name,
     uniqueId: ulid(),
     metadata: {
+      createOnly: false,
+      readOnly: false,
+      writeOnly: false,
       propPath: [...parentPath, name],
     },
   };
