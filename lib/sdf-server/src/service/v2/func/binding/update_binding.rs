@@ -25,7 +25,7 @@ use crate::{
     track,
 };
 
-async fn update_attribute_func_bindings(
+pub async fn update_attribute_func_bindings(
     ctx: &DalContext,
     bindings: Vec<FuncBinding>,
 ) -> FuncAPIResult<()> {
@@ -67,7 +67,7 @@ async fn update_attribute_func_bindings(
     Ok(())
 }
 
-async fn update_action_func_bindings(
+pub async fn update_action_func_bindings(
     ctx: &DalContext,
     bindings: Vec<FuncBinding>,
 ) -> FuncAPIResult<()> {
@@ -96,7 +96,7 @@ async fn update_action_func_bindings(
     Ok(())
 }
 
-async fn update_leaf_func_bindings(
+pub async fn update_leaf_func_bindings(
     ctx: &DalContext,
     bindings: Vec<FuncBinding>,
 ) -> FuncAPIResult<()> {
@@ -131,7 +131,7 @@ async fn update_leaf_func_bindings(
     Ok(())
 }
 
-async fn update_mangement_func_bindings(
+pub async fn update_mangement_func_bindings(
     ctx: &DalContext,
     bindings: Vec<FuncBinding>,
 ) -> FuncAPIResult<()> {

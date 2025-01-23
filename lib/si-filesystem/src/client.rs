@@ -1,22 +1,39 @@
-use std::collections::HashMap;
+use std::{
+    collections::{BTreeMap, HashMap},
+    sync::Arc,
+    time::Duration,
+};
 
+use serde::{de::DeserializeOwned, Serialize};
 use si_frontend_types::{
     fs::{
-        AssetFuncs, ChangeSet, CreateChangeSetRequest, CreateChangeSetResponse, Func,
-        ListChangeSetsResponse, Schema, SchemaAttributes, SetFuncCodeRequest, VariantQuery,
+        AssetFuncs, Binding, Bindings, ChangeSet, CreateChangeSetRequest, CreateChangeSetResponse,
+        CreateFuncRequest, Func, ListChangeSetsResponse, Schema, SchemaAttributes,
+        SetFuncCodeRequest, VariantQuery,
     },
     FuncKind,
 };
 use si_id::{ChangeSetId, FuncId, SchemaId, WorkspaceId};
 use thiserror::Error;
+use tokio::{sync::Mutex, time::Instant};
 
 #[derive(Error, Debug)]
 pub enum SiFsClientError {
     #[error("reqwest error: {0}")]
     Reqwest(#[from] reqwest::Error),
+    #[error("serde json: {0}")]
+    SerdeJson(#[from] serde_json::Error),
 }
 
 pub type SiFsClientResult<T> = Result<T, SiFsClientError>;
+
+const CACHE_TTL: Duration = Duration::from_secs(5);
+
+#[derive(Debug, Clone)]
+struct CacheEntry {
+    value: String,
+    created_at: Instant,
+}
 
 #[derive(Debug, Clone)]
 pub struct SiFsClient {
@@ -24,6 +41,7 @@ pub struct SiFsClient {
     workspace_id: WorkspaceId,
     endpoint: String,
     client: reqwest::Client,
+    cache: Arc<Mutex<BTreeMap<ChangeSetId, HashMap<String, CacheEntry>>>>,
 }
 
 const USER_AGENT: &str = "si-fs/0.0";
@@ -45,7 +63,229 @@ impl SiFsClient {
             workspace_id,
             endpoint,
             client: reqwest::Client::builder().user_agent(USER_AGENT).build()?,
+            cache: Arc::new(Mutex::new(BTreeMap::new())),
         })
+    }
+
+    fn make_cache_key<Q>(url: &str, query: Option<&Q>) -> String
+    where
+        Q: Serialize,
+    {
+        match query.as_ref() {
+            Some(query) => {
+                format!(
+                    "{url}-{}",
+                    serde_json::to_string(query)
+                        .ok()
+                        .unwrap_or("should never happen".into())
+                )
+            }
+            None => url.to_owned(),
+        }
+    }
+
+    async fn get_cache_entry<Q, R>(
+        &self,
+        change_set_id: ChangeSetId,
+        url: String,
+        query: Option<Q>,
+    ) -> Option<R>
+    where
+        Q: Serialize,
+        R: Serialize + DeserializeOwned + Clone,
+    {
+        let cache_key = Self::make_cache_key(&url, query.as_ref());
+
+        let cache = self.cache.lock().await;
+        cache.get(&change_set_id).and_then(|change_set_map| {
+            change_set_map.get(&cache_key).and_then(|value| {
+                if value.created_at.elapsed() >= CACHE_TTL {
+                    None
+                } else {
+                    serde_json::from_str(&value.value).ok()
+                }
+            })
+        })
+    }
+
+    async fn invalidate_change_set_id(&self, change_set_id: ChangeSetId) {
+        self.cache.lock().await.remove(&change_set_id);
+    }
+
+    async fn set_cache_entry<Q, R>(
+        &self,
+        change_set_id: ChangeSetId,
+        url: String,
+        query: Option<Q>,
+        value: &R,
+    ) -> SiFsClientResult<()>
+    where
+        Q: Serialize,
+        R: Serialize + DeserializeOwned + Clone,
+    {
+        let cache_key = Self::make_cache_key(&url, query.as_ref());
+        let mut cache = self.cache.lock().await;
+        let value_string = serde_json::to_string(value)?;
+
+        let cache_entry = CacheEntry {
+            value: value_string,
+            created_at: Instant::now(),
+        };
+
+        cache
+            .entry(change_set_id)
+            .and_modify(|change_set_map| {
+                change_set_map.insert(cache_key.clone(), cache_entry.clone());
+            })
+            .or_insert_with(|| {
+                let mut change_set_map = HashMap::new();
+                change_set_map.insert(cache_key, cache_entry);
+                change_set_map
+            });
+
+        Ok(())
+    }
+
+    async fn get_text<Q>(
+        &self,
+        change_set_id: ChangeSetId,
+        url: String,
+        query: Option<Q>,
+    ) -> SiFsClientResult<String>
+    where
+        Q: Serialize + Clone,
+    {
+        if let Some(cached_value) = self
+            .get_cache_entry(change_set_id, url.clone(), query.clone())
+            .await
+        {
+            return Ok(cached_value);
+        }
+
+        let mut request_builder = self.client.get(url.clone()).bearer_auth(&self.token);
+        request_builder = if let Some(query) = query.clone() {
+            request_builder.query(&query)
+        } else {
+            request_builder
+        };
+
+        let value = request_builder
+            .send()
+            .await?
+            .error_for_status()?
+            .text()
+            .await?;
+
+        self.set_cache_entry(change_set_id, url, query, &value)
+            .await?;
+
+        Ok(value)
+    }
+
+    async fn get_json<Q, R>(
+        &self,
+        change_set_id: ChangeSetId,
+        url: String,
+        query: Option<Q>,
+    ) -> SiFsClientResult<R>
+    where
+        Q: Serialize + Clone,
+        R: Serialize + DeserializeOwned + Clone,
+    {
+        if let Some(cached_value) = self
+            .get_cache_entry(change_set_id, url.clone(), query.clone())
+            .await
+        {
+            return Ok(cached_value);
+        }
+
+        let mut request_builder = self.client.get(url.clone()).bearer_auth(&self.token);
+        request_builder = if let Some(query) = query.clone() {
+            request_builder.query(&query)
+        } else {
+            request_builder
+        };
+
+        let value: R = request_builder
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+            .await?;
+
+        self.set_cache_entry(change_set_id, url, query, &value)
+            .await?;
+
+        Ok(value)
+    }
+
+    async fn post_empty_response<Q, V>(
+        &self,
+        change_set_id: ChangeSetId,
+        url: String,
+        query: Option<Q>,
+        json: Option<V>,
+    ) -> SiFsClientResult<()>
+    where
+        Q: Serialize + Clone,
+        V: Serialize + DeserializeOwned + Clone,
+    {
+        let request_builder = self.client.post(url).bearer_auth(&self.token);
+
+        let request_builder = if let Some(query) = query {
+            request_builder.query(&query)
+        } else {
+            request_builder
+        };
+
+        let request_builder = if let Some(json) = json {
+            request_builder.json(&json)
+        } else {
+            request_builder
+        };
+
+        request_builder.send().await?.error_for_status()?;
+
+        self.invalidate_change_set_id(change_set_id).await;
+
+        Ok(())
+    }
+    async fn post<Q, V, R>(
+        &self,
+        change_set_id: ChangeSetId,
+        url: String,
+        query: Option<Q>,
+        json: Option<V>,
+    ) -> SiFsClientResult<R>
+    where
+        Q: Serialize + Clone,
+        V: Serialize + DeserializeOwned + Clone,
+        R: Serialize + DeserializeOwned + Clone,
+    {
+        let request_builder = self.client.post(url).bearer_auth(&self.token);
+
+        let request_builder = if let Some(query) = query {
+            request_builder.query(&query)
+        } else {
+            request_builder
+        };
+
+        let request_builder = if let Some(json) = json {
+            request_builder.json(&json)
+        } else {
+            request_builder
+        };
+
+        let result = request_builder
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+            .await?;
+
+        self.invalidate_change_set_id(change_set_id).await;
+
+        Ok(result)
     }
 
     fn fs_api_url(&self, suffix: &str) -> String {
@@ -93,15 +333,8 @@ impl SiFsClient {
     }
 
     pub async fn schemas(&self, change_set_id: ChangeSetId) -> SiFsClientResult<Vec<Schema>> {
-        let response = self
-            .client
-            .get(self.fs_api_change_sets("schemas", change_set_id))
-            .bearer_auth(&self.token)
-            .send()
-            .await?
-            .error_for_status()?;
-
-        Ok(response.json().await?)
+        let url = self.fs_api_change_sets("schemas", change_set_id);
+        self.get_json(change_set_id, url, None::<()>).await
     }
 
     pub async fn change_set_funcs_of_kind(
@@ -110,16 +343,8 @@ impl SiFsClient {
         func_kind: FuncKind,
     ) -> SiFsClientResult<Vec<Func>> {
         let kind_string = si_frontend_types::fs::kind_to_string(func_kind);
-
-        Ok(self
-            .client
-            .get(self.fs_api_change_sets(&format!("funcs/{kind_string}"), change_set_id))
-            .bearer_auth(&self.token)
-            .send()
-            .await?
-            .error_for_status()?
-            .json()
-            .await?)
+        let url = self.fs_api_change_sets(&format!("funcs/{kind_string}"), change_set_id);
+        self.get_json(change_set_id, url, None::<()>).await
     }
 
     pub async fn asset_funcs_for_variant(
@@ -127,17 +352,12 @@ impl SiFsClient {
         change_set_id: ChangeSetId,
         schema_id: SchemaId,
     ) -> SiFsClientResult<AssetFuncs> {
-        let response = self
-            .client
-            .get(
-                self.fs_api_change_sets(&format!("schemas/{schema_id}/asset_funcs"), change_set_id),
-            )
-            .bearer_auth(&self.token)
-            .send()
-            .await?
-            .error_for_status()?;
-
-        Ok(response.json().await?)
+        self.get_json(
+            change_set_id,
+            self.fs_api_change_sets(&format!("schemas/{schema_id}/asset_funcs"), change_set_id),
+            None::<()>,
+        )
+        .await
     }
 
     pub async fn variant_funcs_of_kind(
@@ -149,16 +369,14 @@ impl SiFsClient {
         let kind_string = si_frontend_types::fs::kind_to_string(func_kind);
 
         let funcs: Vec<Func> = self
-            .client
-            .get(self.fs_api_change_sets(
-                &format!("schemas/{schema_id}/funcs/{kind_string}"),
+            .get_json(
                 change_set_id,
-            ))
-            .bearer_auth(&self.token)
-            .send()
-            .await?
-            .error_for_status()?
-            .json()
+                self.fs_api_change_sets(
+                    &format!("schemas/{schema_id}/funcs/{kind_string}"),
+                    change_set_id,
+                ),
+                None::<()>,
+            )
             .await?;
 
         let mut schema_funcs: HashMap<String, SchemaFunc> = HashMap::new();
@@ -196,15 +414,12 @@ impl SiFsClient {
         change_set_id: ChangeSetId,
         func_id: FuncId,
     ) -> SiFsClientResult<String> {
-        Ok(self
-            .client
-            .get(self.fs_api_change_sets(&format!("func-code/{func_id}"), change_set_id))
-            .bearer_auth(&self.token)
-            .send()
-            .await?
-            .error_for_status()?
-            .text()
-            .await?)
+        self.get_text(
+            change_set_id,
+            self.fs_api_change_sets(&format!("funcs/{func_id}/code"), change_set_id),
+            None::<()>,
+        )
+        .await
     }
 
     pub async fn set_func_code(
@@ -213,15 +428,13 @@ impl SiFsClient {
         func_id: FuncId,
         code: String,
     ) -> SiFsClientResult<()> {
-        self.client
-            .post(self.fs_api_change_sets(&format!("func-code/{func_id}"), change_set_id))
-            .json(&SetFuncCodeRequest { code })
-            .bearer_auth(&self.token)
-            .send()
-            .await?
-            .error_for_status()?;
-
-        Ok(())
+        self.post_empty_response(
+            change_set_id,
+            self.fs_api_change_sets(&format!("funcs/{func_id}/code"), change_set_id),
+            None::<()>,
+            Some(SetFuncCodeRequest { code }),
+        )
+        .await
     }
 
     pub async fn set_asset_func_code(
@@ -231,18 +444,16 @@ impl SiFsClient {
         schema_id: SchemaId,
         code: String,
     ) -> SiFsClientResult<()> {
-        self.client
-            .post(self.fs_api_change_sets(
+        self.post_empty_response(
+            change_set_id,
+            self.fs_api_change_sets(
                 &format!("schemas/{schema_id}/asset_func/{func_id}"),
                 change_set_id,
-            ))
-            .json(&SetFuncCodeRequest { code })
-            .bearer_auth(&self.token)
-            .send()
-            .await?
-            .error_for_status()?;
-
-        Ok(())
+            ),
+            None::<()>,
+            Some(SetFuncCodeRequest { code }),
+        )
+        .await
     }
 
     pub async fn install_schema(
@@ -250,14 +461,13 @@ impl SiFsClient {
         change_set_id: ChangeSetId,
         schema_id: SchemaId,
     ) -> SiFsClientResult<()> {
-        self.client
-            .post(self.fs_api_change_sets(&format!("schemas/{schema_id}/install"), change_set_id))
-            .bearer_auth(&self.token)
-            .send()
-            .await?
-            .error_for_status()?;
-
-        Ok(())
+        self.post_empty_response(
+            change_set_id,
+            self.fs_api_change_sets(&format!("schemas/{schema_id}/install"), change_set_id),
+            None::<()>,
+            None::<()>,
+        )
+        .await
     }
 
     pub async fn get_schema_attrs(
@@ -266,16 +476,12 @@ impl SiFsClient {
         schema_id: SchemaId,
         unlocked: bool,
     ) -> SiFsClientResult<SchemaAttributes> {
-        Ok(self
-            .client
-            .get(self.fs_api_change_sets(&format!("schemas/{schema_id}/attrs"), change_set_id))
-            .bearer_auth(&self.token)
-            .query(&VariantQuery { unlocked })
-            .send()
-            .await?
-            .error_for_status()?
-            .json()
-            .await?)
+        self.get_json(
+            change_set_id,
+            self.fs_api_change_sets(&format!("schemas/{schema_id}/attrs"), change_set_id),
+            Some(VariantQuery { unlocked }),
+        )
+        .await
     }
 
     pub async fn set_schema_attrs(
@@ -284,15 +490,13 @@ impl SiFsClient {
         schema_id: SchemaId,
         attributes: SchemaAttributes,
     ) -> SiFsClientResult<()> {
-        self.client
-            .post(self.fs_api_change_sets(&format!("schemas/{schema_id}/attrs"), change_set_id))
-            .bearer_auth(&self.token)
-            .json(&attributes)
-            .send()
-            .await?
-            .error_for_status()?;
-
-        Ok(())
+        self.post_empty_response(
+            change_set_id,
+            self.fs_api_change_sets(&format!("schemas/{schema_id}/attrs"), change_set_id),
+            None::<()>,
+            Some(attributes),
+        )
+        .await
     }
 
     /// NOTE: the return here will always have None for the locked variant
@@ -301,15 +505,13 @@ impl SiFsClient {
         change_set_id: ChangeSetId,
         schema_id: SchemaId,
     ) -> SiFsClientResult<AssetFuncs> {
-        Ok(self
-            .client
-            .post(self.fs_api_change_sets(&format!("schemas/{schema_id}/unlock"), change_set_id))
-            .bearer_auth(&self.token)
-            .send()
-            .await?
-            .error_for_status()?
-            .json()
-            .await?)
+        self.post(
+            change_set_id,
+            self.fs_api_change_sets(&format!("schemas/{schema_id}/unlock"), change_set_id),
+            None::<()>,
+            None::<()>,
+        )
+        .await
     }
 
     pub async fn unlock_func(
@@ -318,17 +520,80 @@ impl SiFsClient {
         schema_id: SchemaId,
         func_id: FuncId,
     ) -> SiFsClientResult<Func> {
-        Ok(self
-            .client
-            .post(self.fs_api_change_sets(
+        self.post(
+            change_set_id,
+            self.fs_api_change_sets(
                 &format!("schemas/{schema_id}/funcs/{func_id}/unlock"),
                 change_set_id,
-            ))
-            .bearer_auth(&self.token)
-            .send()
-            .await?
-            .error_for_status()?
-            .json()
-            .await?)
+            ),
+            None::<()>,
+            None::<()>,
+        )
+        .await
+    }
+
+    pub async fn get_func_bindings(
+        &self,
+        change_set_id: ChangeSetId,
+        func_id: FuncId,
+        schema_id: SchemaId,
+        unlocked: bool,
+    ) -> SiFsClientResult<Bindings> {
+        let bindings = self
+            .get_json(
+                change_set_id,
+                self.fs_api_change_sets(
+                    &format!("schemas/{schema_id}/funcs/{func_id}/bindings"),
+                    change_set_id,
+                ),
+                Some(VariantQuery { unlocked }),
+            )
+            .await?;
+
+        Ok(bindings)
+    }
+
+    pub async fn set_func_bindings(
+        &self,
+        change_set_id: ChangeSetId,
+        func_id: FuncId,
+        schema_id: SchemaId,
+        bindings: Bindings,
+    ) -> SiFsClientResult<()> {
+        self.post_empty_response(
+            change_set_id,
+            self.fs_api_change_sets(
+                &format!("schemas/{schema_id}/funcs/{func_id}/bindings"),
+                change_set_id,
+            ),
+            None::<()>,
+            Some(bindings),
+        )
+        .await?;
+
+        Ok(())
+    }
+
+    pub async fn create_func(
+        &self,
+        change_set_id: ChangeSetId,
+        schema_id: SchemaId,
+        func_kind: FuncKind,
+        name: String,
+        binding: Binding,
+    ) -> SiFsClientResult<Func> {
+        let kind_string = si_frontend_types::fs::kind_to_string(func_kind);
+
+        let request = CreateFuncRequest { name, binding };
+        self.post(
+            change_set_id,
+            self.fs_api_change_sets(
+                &format!("schemas/{schema_id}/funcs/{kind_string}/create"),
+                change_set_id,
+            ),
+            None::<()>,
+            Some(request),
+        )
+        .await
     }
 }

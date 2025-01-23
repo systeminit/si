@@ -6613,6 +6613,8 @@ dependencies = [
  "nix 0.29.0",
  "remain",
  "reqwest",
+ "serde",
+ "serde_json",
  "si-frontend-types",
  "si-id",
  "thiserror 2.0.11",

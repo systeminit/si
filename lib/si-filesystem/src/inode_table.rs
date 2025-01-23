@@ -100,6 +100,17 @@ pub enum InodeEntryData {
     SchemaFunc {
         change_set_id: ChangeSetId,
         func_id: FuncId,
+        kind: FuncKind,
+        schema_id: SchemaId,
+        size: u64,
+        bindings_size: u64,
+        unlocked: bool,
+    },
+    SchemaFuncBindings {
+        change_set_id: ChangeSetId,
+        func_id: FuncId,
+        kind: FuncKind,
+        schema_id: SchemaId,
         size: u64,
         unlocked: bool,
     },
@@ -108,17 +119,21 @@ pub enum InodeEntryData {
         schema_id: SchemaId,
         change_set_id: ChangeSetId,
     },
-    SchemaFuncs {
+    SchemaFuncsDir {
         schema_id: SchemaId,
         change_set_id: ChangeSetId,
     },
     SchemaFuncVariantsDir {
-        locked_id: Option<FuncId>,
-        unlocked_id: Option<FuncId>,
+        kind: FuncKind,
         change_set_id: ChangeSetId,
         schema_id: SchemaId,
+        locked_id: Option<FuncId>,
+        unlocked_id: Option<FuncId>,
         locked_size: u64,
+        locked_bindings_size: u64,
         unlocked_size: u64,
+        unlocked_bindings_size: u64,
+        pending: bool,
     },
     Schemas {
         change_set_id: ChangeSetId,

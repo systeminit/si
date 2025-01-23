@@ -13,7 +13,7 @@ pub struct AuthBinding {
 }
 
 impl AuthBinding {
-    pub(crate) async fn assemble_auth_bindings(
+    pub async fn assemble_auth_bindings(
         ctx: &DalContext,
         func_id: FuncId,
     ) -> FuncBindingResult<Vec<FuncBinding>> {

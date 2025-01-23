@@ -2,10 +2,12 @@
 //! types are deliberately not re-exported in the root, so that they don't get
 //! mixed up with non si-fs types.
 
-use serde::{Deserialize, Serialize};
-use si_events::{ChangeSetId, FuncId, FuncKind, SchemaId, SchemaVariantId};
+use std::collections::BTreeMap;
 
-use crate::ComponentType;
+use serde::{Deserialize, Serialize};
+use si_events::{ActionKind, ChangeSetId, FuncId, FuncKind, SchemaId, SchemaVariantId};
+
+use crate::{ComponentType, LeafInputLocation};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ChangeSet {
@@ -42,6 +44,7 @@ pub struct Func {
     pub name: String,
     pub is_locked: bool,
     pub code_size: u64,
+    pub bindings_size: u64,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -108,6 +111,12 @@ pub struct SetFuncCodeRequest {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct CreateFuncRequest {
+    pub name: String,
+    pub binding: Binding,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SchemaAttributes {
     pub category: String,
     pub display_name: String,
@@ -135,4 +144,79 @@ impl SchemaAttributes {
 pub struct SchemaAttributesResponse {
     pub locked: Option<SchemaAttributes>,
     pub unlocked: Option<SchemaAttributes>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum AttributeOutputTo {
+    OutputSocket(String),
+    Prop(String),
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum AttributeInputFrom {
+    InputSocket(String),
+    Prop(String),
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum Binding {
+    Action {
+        kind: ActionKind,
+    },
+    Attribute {
+        output_to: AttributeOutputTo,
+        // BTreeMap to preserve order
+        inputs: BTreeMap<String, AttributeInputFrom>,
+    },
+    Authentication,
+    CodeGeneration {
+        inputs: Vec<LeafInputLocation>,
+    },
+    Management {
+        managed_schemas: Option<Vec<String>>,
+    },
+    Qualification {
+        inputs: Vec<LeafInputLocation>,
+    },
+}
+
+impl Binding {
+    pub fn kind_matches(&self, func_kind: FuncKind) -> bool {
+        match self {
+            Binding::Action { .. } => func_kind == FuncKind::Action,
+            Binding::Attribute { .. } => func_kind == FuncKind::Attribute,
+            Binding::Authentication => func_kind == FuncKind::Authentication,
+            Binding::CodeGeneration { .. } => func_kind == FuncKind::CodeGeneration,
+            Binding::Management { .. } => func_kind == FuncKind::Management,
+            Binding::Qualification { .. } => func_kind == FuncKind::Qualification,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Bindings {
+    pub bindings: Vec<Binding>,
+}
+
+impl Bindings {
+    pub fn kind_matches(&self, func_kind: FuncKind) -> bool {
+        !self
+            .bindings
+            .iter()
+            .any(|binding| !binding.kind_matches(func_kind))
+    }
+
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self, serde_json::Error> {
+        Ok(Self {
+            bindings: serde_json::from_slice(bytes)?,
+        })
+    }
+
+    pub fn byte_size(&self) -> u64 {
+        self.to_vec_pretty().ok().map(|vec| vec.len()).unwrap_or(0) as u64
+    }
+
+    pub fn to_vec_pretty(&self) -> Result<Vec<u8>, serde_json::Error> {
+        serde_json::to_vec_pretty(&self.bindings)
+    }
 }
