@@ -3,7 +3,7 @@ import { PkgSpec } from "../../../lib/si-pkg/bindings/PkgSpec.ts";
 import { ulid } from "https://deno.land/x/ulid@v0.3.0/mod.ts";
 import {
   createDefaultProp,
-  createProp,
+  createPropFromCf,
   DefaultPropType,
   ExpandedPropSpec,
   OnlyProperties,
@@ -138,7 +138,9 @@ function createRootFromProperties(
   Object.entries(properties).forEach(([name, cfData]) => {
     try {
       root.entries.push(
-        createProp(name, cfData, onlyProperties, [...root.metadata.propPath]),
+        createPropFromCf(name, cfData, onlyProperties, [
+          ...root.metadata.propPath,
+        ]),
       );
     } catch (e) {
       console.log(`Err ${e}`);

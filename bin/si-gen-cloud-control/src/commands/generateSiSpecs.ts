@@ -8,6 +8,7 @@ import {
 } from "../pipeline-steps/generateSocketsFromDomainProps.ts";
 import { generateDefaultLeafFuncs } from "../pipeline-steps/generateLeafFuncs.ts";
 import { generateDefaultManagementFuncs } from "../pipeline-steps/generateManagementFuncs.ts";
+import { addDefaultPropsAndSockets } from "../pipeline-steps/addDefaultPropsAndSockets.ts";
 
 export function generateSiSpecForService(serviceName: string) {
   const cf = getServiceByName(serviceName);
@@ -34,6 +35,7 @@ export async function generateSiSpecs() {
 
   // EXECUTE PIPELINE STEPS
   specs = generateSocketsFromDomainProps(specs);
+  specs = addDefaultPropsAndSockets(specs);
   specs = generateAssetFuncs(specs);
   specs = generateDefaultActionFuncs(specs);
   specs = generateDefaultLeafFuncs(specs);
