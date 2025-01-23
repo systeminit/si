@@ -5,7 +5,7 @@ outline:
 
 # Road map
 
-Updated January 10, 2025.
+Updated January 22, 2025.
 
 Want to influence the road map?
 [Learn more about how to work on System Initiative](../explanation/working-on-si.md).
