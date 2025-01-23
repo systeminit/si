@@ -39,6 +39,7 @@ id!(ApprovalRequirementDefinitionId);
 id!(AttributePrototypeArgumentId);
 id!(AttributePrototypeId);
 id!(AuthenticationPrototypeId);
+id!(AuthTokenId);
 id!(DeprecatedVectorClockId);
 id!(EventSessionId);
 id!(EntityId);

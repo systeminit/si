@@ -3,6 +3,8 @@ load("@prelude-si//:macros.bzl", "rust_library")
 rust_library(
     name = "auth-api-client",
     deps = [
+        "//lib/si-id:si-id",
+
         "//third-party/rust:remain",
         "//third-party/rust:reqwest",
         "//third-party/rust:serde",

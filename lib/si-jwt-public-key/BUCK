@@ -7,7 +7,7 @@ load(
 rust_library(
     name = "si-jwt-public-key",
     deps = [
-        "//lib/si-events-rs:si-events",
+        "//lib/si-id:si-id",
         "//lib/si-std:si-std",
         "//lib/telemetry-rs:telemetry",
         "//third-party/rust:base64",

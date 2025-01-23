@@ -26,7 +26,7 @@ pub async fn get_email_for_auth_token(
     match token_map.get(token) {
         Some(email) => Ok(email.into()),
         None => {
-            let auth_api_client = AuthApiClient::new(auth_api_url.try_into()?, token);
+            let auth_api_client = AuthApiClient::from_bearer_token(auth_api_url, token)?;
 
             let whoami = auth_api_client.whoami().await?;
 

@@ -1,5 +1,5 @@
 use core::str;
-use si_events::{UserPk, WorkspacePk};
+use si_id::{AuthTokenId, UserPk, WorkspacePk};
 use si_std::CanonicalFile;
 use std::sync::Arc;
 
@@ -26,6 +26,8 @@ pub enum JwtPublicSigningKeyError {
     Jwt(#[from] jwt_simple::Error),
     #[error("{0}")]
     TaskJoin(#[from] JoinError),
+    #[error("failed to decode ulid: {0}")]
+    UlidDecode(#[from] si_id::ulid::DecodeError),
     #[error("Unsupported JWT signing algorithm: {0}")]
     UnsupportedAlgo(String),
     #[error("failed to build string from utf8: {0}")]
@@ -124,6 +126,13 @@ pub struct SiJwtClaimsV1 {
 }
 
 impl SiJwtClaims {
+    pub fn token_id(token: &SiJwt) -> JwtKeyResult<Option<AuthTokenId>> {
+        match token.jwt_id {
+            Some(ref jwt_id) => Ok(Some(jwt_id.parse()?)),
+            None => Ok(None),
+        }
+    }
+
     pub fn user_id(&self) -> UserPk {
         match self {
             Self::V2(SiJwtClaimsV2 { user_id, .. }) => *user_id,

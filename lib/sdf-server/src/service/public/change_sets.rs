@@ -39,7 +39,7 @@ pub fn routes(state: AppState) -> Router<AppState> {
             .route("/request_approval", post(request_approval))
             .route(
                 "/force_apply",
-                post(force_apply).layer(WorkspacePermissionLayer::new(
+                post(force_apply).route_layer(WorkspacePermissionLayer::new(
                     state,
                     permissions::Permission::Approve,
                 )),
