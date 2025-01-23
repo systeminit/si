@@ -17,6 +17,10 @@ export_file(
     name = "deno_test.py",
 )
 
+export_file(
+    name = "deno_workspace.py",
+)
+
 yapf_check(
     name = "check-format-python",
     srcs = glob(["**/*.py"]),

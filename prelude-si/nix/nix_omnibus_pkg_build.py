@@ -165,7 +165,14 @@ def build_nix_package(name: str, build_context_dir: str) -> str:
             symlinks=True,
         )
 
+        # If we find a workspace dir, let's get the contents into the root
+        workspace = os.path.join(root_dir, "workspace")
+        if os.path.isdir(workspace):
+            print("--- Found a workspace dir, moving contents into root")
+            move_contents_up(workspace)
+
         print("--- Build nix package with: '{}'".format(" ".join(cmd)))
+        # Create parent directories
         subprocess.run(cmd, cwd=root_dir).check_returncode()
 
         nix_store_pkg_path = os.readlink(os.path.join(root_dir, "result"))
@@ -406,6 +413,10 @@ def compute_build_metadata(
 
     return metadata
 
+def move_contents_up(directory):
+    parent_dir = os.path.dirname(directory)
+    shutil.copytree(directory, parent_dir, dirs_exist_ok=True)
+    shutil.rmtree(directory)
 
 if __name__ == "__main__":
     sys.exit(main())
