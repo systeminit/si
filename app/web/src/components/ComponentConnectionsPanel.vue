@@ -230,21 +230,19 @@ const sockets = computed(() => {
 
   const peersFunction = componentsStore.possibleAndExistingPeerSocketsFn;
   const sockets =
-    selectedComponent.def.sockets
-      .filter((s) => !s.isManagement)
-      .map((s) => {
-        const { existingPeers, possiblePeers } = peersFunction(
-          s,
-          selectedComponent.def.id,
-        );
+    selectedComponent.def.sockets.map((s) => {
+      const { existingPeers, possiblePeers } = peersFunction(
+        s,
+        selectedComponent.def.id,
+      );
 
-        return treeFormItemFromSocket(
-          s,
-          selectedComponent.def,
-          existingPeers,
-          possiblePeers,
-        );
-      }) ?? [];
+      return treeFormItemFromSocket(
+        s,
+        selectedComponent.def,
+        existingPeers,
+        possiblePeers,
+      );
+    }) ?? [];
 
   const [input, output] = _.partition(
     sockets,
@@ -303,6 +301,7 @@ const resetHandler = (item: TreeFormData, value?: string) => {
   }
 
   if (!value) return;
+
   const [thisComponentId, thisSocketId] = item.propId.split("-");
   const [otherComponentId, otherSocketId] = value.split("-");
   if (
@@ -344,7 +343,7 @@ const resetHandler = (item: TreeFormData, value?: string) => {
     to.socketId,
   );
 
-  useComponentsStore().DELETE_EDGE(
+  componentsStore.DELETE_EDGE(
     edgeId,
     to.socketId,
     from.socketId,
@@ -359,6 +358,7 @@ const setValueHandler = (item: TreeFormData, value: string) => {
     return;
   }
 
+  const isMgmt = !!value.includes("mgmt");
   const [thisComponentId, thisSocketId] = item.propId.split("-");
   const [otherComponentId, otherSocketId] = value.split("-");
   if (
@@ -393,6 +393,7 @@ const setValueHandler = (item: TreeFormData, value: string) => {
           },
         ];
 
-  componentsStore.CREATE_COMPONENT_CONNECTION(from, to);
+  if (isMgmt) componentsStore.MANAGE_COMPONENT(from, to);
+  else componentsStore.CREATE_COMPONENT_CONNECTION(from, to);
 };
 </script>

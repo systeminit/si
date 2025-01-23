@@ -274,11 +274,11 @@ impl SummaryDiagramManagementEdge {
     }
 
     pub fn output_socket_id(schema_id: SchemaId) -> String {
-        format!("mgmt-output-{schema_id}")
+        format!("mgmt_output_{schema_id}")
     }
 
     pub fn input_socket_id(schema_id: SchemaId) -> String {
-        format!("mgmt-input-{schema_id}")
+        format!("mgmt_input_{schema_id}")
     }
 }
 
