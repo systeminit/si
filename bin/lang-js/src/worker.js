@@ -40,14 +40,9 @@ self.onmessage = async (event) => {
         try {
           return await run(with_arg);
         } catch (e) {
-          return {
-            err: {
-              name: e.name,
-              message: e.message
-            }
-          };
+          throw e
         }
-      })()
+       })()
     `,
   );
 
@@ -67,6 +62,12 @@ self.onmessage = async (event) => {
   } catch (e) {
     debug({ "error": e });
     clearTimeout(timeoutId);
-    throw e;
+    self.postMessage({
+      error: {
+        name: e.name ?? e,
+        message: e.message ?? e,
+      },
+      storage: rawStorage(),
+    });
   }
 };
