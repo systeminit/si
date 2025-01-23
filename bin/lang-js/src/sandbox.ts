@@ -14,13 +14,14 @@ import Joi from "npm:joi";
 import { FunctionKind } from "./function.ts";
 import { makeConsole } from "./sandbox/console.ts";
 import { makeExec } from "./sandbox/exec.ts";
+import layout from "./sandbox/layout.ts";
+import template from "./sandbox/template.ts";
 import * as assetBuilder from "./asset_builder.ts";
 import {
   makeBeforeRequestStorage,
   makeMainRequestStorage,
 } from "./sandbox/requestStorage.ts";
 import { makePackage } from "./sandbox/package.ts";
-
 export type Sandbox = Record<string, unknown>;
 
 function commonSandbox(executionId: string): Sandbox {
@@ -39,6 +40,8 @@ function commonSandbox(executionId: string): Sandbox {
     Joi,
     toml,
     jsonpatch,
+    layout,
+    template,
     pkg: makePackage(executionId),
   };
 }

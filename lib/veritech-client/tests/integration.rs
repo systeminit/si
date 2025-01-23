@@ -112,6 +112,7 @@ async fn executes_simple_management_function() {
             geometry: serde_json::json!({"x": "1", "y": "1"}),
         },
         components: HashMap::new(),
+        variant_socket_map: HashMap::new(),
         code_base64: base64_encode(
             "function numberOfInputs({ thisComponent }) {
                 const number = Object.keys(thisComponent.properties)?.length;

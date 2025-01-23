@@ -1382,6 +1382,7 @@ mod tests {
                 geometry: serde_json::json!({"x": "1", "y": "2"}),
             },
             components: HashMap::new(),
+            variant_socket_map: HashMap::new(),
             code_base64: base64_encode(
                 r#"function manage(input) {
                     console.log('first');
@@ -1473,6 +1474,7 @@ mod tests {
                 geometry: serde_json::json!({"x": "1", "y": "2"}),
             },
             components: HashMap::new(),
+            variant_socket_map: HashMap::new(),
             code_base64: base64_encode(
                 r#"function manage({ thisComponent }) {
                     console.log('first');

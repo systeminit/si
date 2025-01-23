@@ -165,6 +165,7 @@ export class DiagramNodeData extends DiagramNodeHasSockets {
   }
 
   get bodyHeight() {
+    // PSA: This is duplicated in lang-js management func layout code. Change in both places!
     return (
       NODE_SUBTITLE_TEXT_HEIGHT +
       SOCKET_MARGIN_TOP +
