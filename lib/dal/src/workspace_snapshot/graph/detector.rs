@@ -5,16 +5,20 @@ use petgraph::{
     visit::{Control, DfsEvent},
 };
 use serde::{Deserialize, Serialize};
-use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid};
+use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, workspace_snapshot::EntityKind};
+use si_id::EntityId;
 use strum::EnumDiscriminants;
-use telemetry::prelude::*;
 
 use crate::{
     workspace_snapshot::{node_weight::NodeWeight, NodeInformation},
     EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants,
 };
 
-use super::WorkspaceSnapshotGraphVCurrent;
+use super::{
+    traits::entity_kind::EntityKindExt, WorkspaceSnapshotGraphError, WorkspaceSnapshotGraphVCurrent,
+};
+
+type Result<T> = std::result::Result<T, WorkspaceSnapshotGraphError>;
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, EnumDiscriminants)]
 pub enum Update {
@@ -38,7 +42,8 @@ pub enum Update {
 
 #[derive(Debug)]
 pub struct Change {
-    pub id: Ulid,
+    pub entity_id: EntityId,
+    pub entity_kind: EntityKind,
     pub merkle_tree_hash: MerkleTreeHash,
 }
 
@@ -88,16 +93,34 @@ impl<'a, 'b> Detector<'a, 'b> {
     ///
     /// This assumes that all graphs involved to not have any "garbage" laying around. If in doubt, perform "cleanup"
     /// on both graphs before creating the [`Detector`].
-    pub fn detect_changes(&self) -> Vec<Change> {
+    pub fn detect_changes(&self) -> Result<Vec<Change>> {
         let mut changes = Vec::new();
 
         petgraph::visit::depth_first_search(
             self.updated_graph.graph(),
             Some(self.updated_graph.root()),
             |event| self.calculate_changes_dfs_event(event, &mut changes),
-        );
+        )?;
 
-        changes
+        // Add changes for IDs that only exist in the base graph because our DFS walk of the
+        // updated graph will not include them.
+        for base_graph_id in self
+            .base_graph
+            .all_node_ids()
+            .difference(&self.updated_graph.all_node_ids())
+        {
+            let entity_id = base_graph_id.inner().into();
+            changes.push(Change {
+                entity_id,
+                entity_kind: self.base_graph.get_entity_kind_for_id(entity_id)?,
+                merkle_tree_hash: self
+                    .base_graph
+                    .get_node_weight_by_id(entity_id)?
+                    .merkle_tree_hash(),
+            })
+        }
+
+        Ok(changes)
     }
 
     fn node_diff_from_base_graph(
@@ -375,26 +398,29 @@ impl<'a, 'b> Detector<'a, 'b> {
         &self,
         event: DfsEvent<NodeIndex>,
         changes: &mut Vec<Change>,
-    ) -> Control<()> {
+    ) -> Result<Control<()>> {
         if let DfsEvent::Discover(updated_graph_index, _) = event {
-            match self.updated_graph.get_node_weight(updated_graph_index) {
-                Ok(updated_node_weight) => {
-                    if let Some(original_node_weight) = self.base_graph.get_node_weight_by_id_opt(updated_node_weight.id()) {
-                        if original_node_weight.merkle_tree_hash() == updated_node_weight.merkle_tree_hash() {
-                            return Control::Prune;
-                        }
-                    }
+            let updated_node_weight = self.updated_graph.get_node_weight(updated_graph_index)?;
 
-                    // If either the original node weight was not found or it was found the merkle tree hashes differ,
-                    // then we have information that needs to be collected!
-                    changes.push(Change {
-                        id: updated_node_weight.id(),
-                        merkle_tree_hash: updated_node_weight.merkle_tree_hash(),
-                    });
+            if let Some(original_node_weight) = self
+                .base_graph
+                .get_node_weight_by_id_opt(updated_node_weight.id())
+            {
+                if original_node_weight.merkle_tree_hash() == updated_node_weight.merkle_tree_hash()
+                {
+                    return Ok(Control::Prune);
                 }
-                Err(err) => error!(?err, "heat death of the universe error: updated node weight not found by updated node index from the same graph"),
             }
+
+            // If either the original node weight was not found or it was found the merkle tree hashes differ,
+            // then we have information that needs to be collected!
+            let entity_id = updated_node_weight.id().into();
+            changes.push(Change {
+                entity_id,
+                entity_kind: self.updated_graph.get_entity_kind_for_id(entity_id)?,
+                merkle_tree_hash: updated_node_weight.merkle_tree_hash(),
+            });
         }
-        Control::Continue
+        Ok(Control::Continue)
     }
 }

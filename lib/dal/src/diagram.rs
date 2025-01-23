@@ -13,6 +13,7 @@ use std::{
 use telemetry::prelude::*;
 use thiserror::Error;
 
+use crate::approval_requirement::ApprovalRequirementError;
 use crate::workspace_snapshot::node_weight::NodeWeight;
 use crate::{
     attribute::{
@@ -46,6 +47,8 @@ use si_layer_cache::LayerDbError;
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum DiagramError {
+    #[error("approval requirement error: {0}")]
+    ApprovalRequirement(#[from] ApprovalRequirementError),
     #[error("attribute prototype argument error: {0}")]
     AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
     #[error("attribute prototype not found")]

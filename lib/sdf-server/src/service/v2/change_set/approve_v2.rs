@@ -59,7 +59,8 @@ pub async fn approve(
     let spicedb_client = state
         .spicedb_client()
         .ok_or(ChangeSetAPIError::SpiceDBClientNotFound)?;
-    let approving_ids = dal_wrapper::determine_approving_ids(&ctx, spicedb_client).await?;
+    let approving_ids =
+        dal_wrapper::determine_approving_ids_with_hashes(&ctx, spicedb_client).await?;
     ChangeSetApproval::new(&ctx, request.status, approving_ids).await?;
 
     WsEvent::change_set_approval_status_changed(&ctx, ctx.change_set_id())

@@ -12,6 +12,7 @@ use crate::{
 };
 
 pub mod admin;
+pub mod approval_requirement_definition;
 pub mod audit_log;
 pub mod change_set;
 pub mod fs;
@@ -41,7 +42,11 @@ fn workspace_routes(state: AppState) -> Router<AppState> {
                 .nest("/modules", module::v2_routes())
                 .nest("/schema-variants", variant::v2_routes())
                 .nest("/management", management::v2_routes())
-                .nest("/views", view::v2_routes()),
+                .nest("/views", view::v2_routes())
+                .nest(
+                    "/approval-requirement-definitions",
+                    approval_requirement_definition::v2_routes(),
+                ),
         )
         .nest("/integrations", integrations::v2_routes())
         .nest("/fs", fs::fs_routes())

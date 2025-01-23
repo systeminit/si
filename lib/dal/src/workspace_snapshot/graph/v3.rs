@@ -732,25 +732,26 @@ impl WorkspaceSnapshotGraphV3 {
                 let color = match discrim {
                     EdgeWeightKindDiscriminants::Action => "black",
                     EdgeWeightKindDiscriminants::ActionPrototype => "black",
+                    EdgeWeightKindDiscriminants::ApprovalRequirementDefinition => "black",
                     EdgeWeightKindDiscriminants::AuthenticationPrototype => "black",
                     EdgeWeightKindDiscriminants::Contain => "blue",
+                    EdgeWeightKindDiscriminants::DiagramObject => "black",
                     EdgeWeightKindDiscriminants::FrameContains => "black",
-                    EdgeWeightKindDiscriminants::Represents => "black",
+                    EdgeWeightKindDiscriminants::ManagementPrototype => "pink",
+                    EdgeWeightKindDiscriminants::Manages => "pink",
                     EdgeWeightKindDiscriminants::Ordering => "gray",
                     EdgeWeightKindDiscriminants::Ordinal => "gray",
                     EdgeWeightKindDiscriminants::Prop => "orange",
                     EdgeWeightKindDiscriminants::Prototype => "green",
                     EdgeWeightKindDiscriminants::PrototypeArgument => "green",
                     EdgeWeightKindDiscriminants::PrototypeArgumentValue => "green",
+                    EdgeWeightKindDiscriminants::Proxy => "gray",
+                    EdgeWeightKindDiscriminants::Represents => "black",
+                    EdgeWeightKindDiscriminants::Root => "black",
                     EdgeWeightKindDiscriminants::Socket => "red",
                     EdgeWeightKindDiscriminants::SocketValue => "purple",
-                    EdgeWeightKindDiscriminants::Proxy => "gray",
-                    EdgeWeightKindDiscriminants::Root => "black",
                     EdgeWeightKindDiscriminants::Use => "black",
                     EdgeWeightKindDiscriminants::ValidationOutput => "darkcyan",
-                    EdgeWeightKindDiscriminants::ManagementPrototype => "pink",
-                    EdgeWeightKindDiscriminants::Manages => "pink",
-                    EdgeWeightKindDiscriminants::DiagramObject => "black",
                 };
 
                 match edgeref.weight().kind() {
@@ -776,27 +777,28 @@ impl WorkspaceSnapshotGraphV3 {
                             // Some of these should never happen as they have their own top-level
                             // NodeWeight variant.
                             ContentAddressDiscriminants::ActionPrototype => "green",
+                            ContentAddressDiscriminants::ApprovalRequirementDefinition => "black",
                             ContentAddressDiscriminants::AttributePrototype => "green",
                             ContentAddressDiscriminants::Component => "black",
                             ContentAddressDiscriminants::DeprecatedAction => "green",
                             ContentAddressDiscriminants::DeprecatedActionBatch => "green",
                             ContentAddressDiscriminants::DeprecatedActionRunner => "green",
-                            ContentAddressDiscriminants::OutputSocket => "red",
                             ContentAddressDiscriminants::Func => "black",
                             ContentAddressDiscriminants::FuncArg => "black",
                             ContentAddressDiscriminants::Geometry => "black",
                             ContentAddressDiscriminants::InputSocket => "red",
                             ContentAddressDiscriminants::JsonValue => "fuchsia",
+                            ContentAddressDiscriminants::ManagementPrototype => "black",
                             ContentAddressDiscriminants::Module => "yellow",
+                            ContentAddressDiscriminants::OutputSocket => "red",
                             ContentAddressDiscriminants::Prop => "orange",
                             ContentAddressDiscriminants::Root => "black",
                             ContentAddressDiscriminants::Schema => "black",
                             ContentAddressDiscriminants::SchemaVariant => "black",
                             ContentAddressDiscriminants::Secret => "black",
                             ContentAddressDiscriminants::StaticArgumentValue => "green",
-                            ContentAddressDiscriminants::ValidationPrototype => "black",
                             ContentAddressDiscriminants::ValidationOutput => "darkcyan",
-                            ContentAddressDiscriminants::ManagementPrototype => "black",
+                            ContentAddressDiscriminants::ValidationPrototype => "black",
                             ContentAddressDiscriminants::View => "black",
                         };
                         (discrim.to_string(), color)
@@ -876,6 +878,9 @@ impl WorkspaceSnapshotGraphV3 {
                         ("ManagementPrototype".to_string(), "black")
                     }
                     NodeWeight::DiagramObject(_) => ("DiagramObject".to_string(), "black"),
+                    NodeWeight::ApprovalRequirementDefinition(_) => {
+                        ("ApprovalRequirementDefinition".to_string(), "black")
+                    }
                 };
                 let color = color.to_string();
                 let id = node_weight.id();
@@ -1414,7 +1419,8 @@ impl WorkspaceSnapshotGraphV3 {
                     | EdgeWeightKind::ValidationOutput
                     | EdgeWeightKind::ManagementPrototype
                     | EdgeWeightKind::Manages
-                    | EdgeWeightKind::DiagramObject => {}
+                    | EdgeWeightKind::DiagramObject
+                    | EdgeWeightKind::ApprovalRequirementDefinition => {}
                 }
             }
         }
