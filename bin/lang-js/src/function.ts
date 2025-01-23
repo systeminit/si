@@ -251,11 +251,15 @@ export async function runCode(
     });
 
     worker.onmessage = (event) => {
-      const { result, storage } = event.data;
+      const { result, error, storage } = event.data;
       if (storage) {
         Object.assign(rawStorage(), storage);
       }
-      resolve(result);
+      if (error) {
+        reject(error);
+      } else {
+        resolve(result);
+      }
       worker.terminate();
     };
 
