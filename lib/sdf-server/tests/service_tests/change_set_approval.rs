@@ -569,14 +569,17 @@ async fn individual_approver_for_view(
         );
     };
 
-    // Scenario 5: create an approval that will satisfy both requirements.
+    // Scenario 5: create a rejection.
     {
         let second_approval_id = {
-            let approving_ids =
+            let approving_ids_with_hashes =
                 dal_wrapper::determine_approving_ids_with_hashes(ctx, &mut spicedb_client).await?;
-            let second_approval =
-                ChangeSetApproval::new(ctx, ChangeSetApprovalStatus::Approved, approving_ids)
-                    .await?;
+            let second_approval = ChangeSetApproval::new(
+                ctx,
+                ChangeSetApprovalStatus::Rejected,
+                approving_ids_with_hashes,
+            )
+            .await?;
             second_approval.id()
         };
         ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
@@ -603,6 +606,74 @@ async fn individual_approver_for_view(
                 si_frontend_types::ChangeSetApproval {
                     id: second_approval_id,
                     user_id,
+                    status: ChangeSetApprovalStatus::Rejected,
+                    is_valid: true,
+                }
+            ], // expected
+            frontend_latest_approvals // actual
+        );
+        assert_eq!(
+            vec![
+                si_frontend_types::ChangeSetApprovalRequirement {
+                    entity_id: view_entity_id,
+                    entity_kind: EntityKind::View,
+                    required_count: 1,
+                    is_satisfied: false,
+                    applicable_approval_ids: vec![first_approval_id, second_approval_id],
+                    approver_groups: HashMap::new(),
+                    approver_individuals: vec![user_id]
+                },
+                si_frontend_types::ChangeSetApprovalRequirement {
+                    entity_id: approval_requirement_definition_entity_id,
+                    entity_kind: EntityKind::ApprovalRequirementDefinition,
+                    required_count: 1,
+                    is_satisfied: false,
+                    applicable_approval_ids: vec![first_approval_id, second_approval_id],
+                    approver_groups: HashMap::from_iter(vec![(
+                        format!("workspace#{workspace_id}#approve"),
+                        vec![user_id],
+                    )]),
+                    approver_individuals: Vec::new(),
+                }
+            ], // expected
+            frontend_requirements // actual
+        );
+    }
+
+    // Scenario 6: create an approval that will satisfy both requirements.
+    {
+        let third_approval_id = {
+            let approving_ids =
+                dal_wrapper::determine_approving_ids_with_hashes(ctx, &mut spicedb_client).await?;
+            let third_approval =
+                ChangeSetApproval::new(ctx, ChangeSetApprovalStatus::Approved, approving_ids)
+                    .await?;
+            third_approval.id()
+        };
+        ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+        let calculator = ChangeSetApprovalCalculator::new(ctx, &mut spicedb_client).await?;
+        let mut frontend_latest_approvals = calculator.frontend_latest_approvals();
+        let mut frontend_requirements = calculator
+            .frontend_requirements(&mut spicedb_client)
+            .await?;
+        frontend_latest_approvals.sort_by_key(|a| a.id);
+        frontend_requirements.sort_by_key(|r| r.entity_id);
+        frontend_requirements
+            .iter_mut()
+            .for_each(|r| r.applicable_approval_ids.sort());
+
+        assert_eq!(
+            vec![
+                si_frontend_types::ChangeSetApproval {
+                    id: first_approval_id,
+                    user_id,
+                    status: ChangeSetApprovalStatus::Approved,
+                    is_valid: false,
+                },
+                si_frontend_types::ChangeSetApproval {
+                    id: third_approval_id,
+                    user_id,
                     status: ChangeSetApprovalStatus::Approved,
                     is_valid: true,
                 }
@@ -616,7 +687,7 @@ async fn individual_approver_for_view(
                     entity_kind: EntityKind::View,
                     required_count: 1,
                     is_satisfied: true,
-                    applicable_approval_ids: vec![first_approval_id, second_approval_id],
+                    applicable_approval_ids: vec![first_approval_id, third_approval_id],
                     approver_groups: HashMap::new(),
                     approver_individuals: vec![user_id]
                 },
@@ -625,7 +696,7 @@ async fn individual_approver_for_view(
                     entity_kind: EntityKind::ApprovalRequirementDefinition,
                     required_count: 1,
                     is_satisfied: true,
-                    applicable_approval_ids: vec![first_approval_id, second_approval_id],
+                    applicable_approval_ids: vec![first_approval_id, third_approval_id],
                     approver_groups: HashMap::from_iter(vec![(
                         format!("workspace#{workspace_id}#approve"),
                         vec![user_id],
@@ -637,7 +708,7 @@ async fn individual_approver_for_view(
         );
     }
 
-    // Scenario 6: apply the change set, create a new change set and observe that no approvals nor requirements exist.
+    // Scenario 7: apply the change set, create a new change set and observe that no approvals nor requirements exist.
     {
         ChangeSetTestHelpers::apply_change_set_to_base(ctx).await?;
         ChangeSetTestHelpers::fork_from_head_change_set(ctx).await?;
@@ -652,7 +723,7 @@ async fn individual_approver_for_view(
         assert!(frontend_requirements.is_empty());
     }
 
-    // Scenario 7: remove the definiton from the view.
+    // Scenario 8: remove the definiton from the view.
     {
         ApprovalRequirement::remove_definition(ctx, approval_requirement_definition_id).await?;
         ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
@@ -681,15 +752,15 @@ async fn individual_approver_for_view(
         );
     }
 
-    // Scenario 8: approve the removal.
+    // Scenario 9: reject the removal.
     {
-        let third_approval_id = {
+        let fourth_approval_id = {
             let approving_ids =
                 dal_wrapper::determine_approving_ids_with_hashes(ctx, &mut spicedb_client).await?;
-            let third_approval =
-                ChangeSetApproval::new(ctx, ChangeSetApprovalStatus::Approved, approving_ids)
+            let fourth_approval =
+                ChangeSetApproval::new(ctx, ChangeSetApprovalStatus::Rejected, approving_ids)
                     .await?;
-            third_approval.id()
+            fourth_approval.id()
         };
         ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
@@ -701,7 +772,51 @@ async fn individual_approver_for_view(
 
         assert_eq!(
             vec![si_frontend_types::ChangeSetApproval {
-                id: third_approval_id,
+                id: fourth_approval_id,
+                user_id,
+                status: ChangeSetApprovalStatus::Rejected,
+                is_valid: true,
+            },], // expected
+            frontend_latest_approvals // actual
+        );
+        assert_eq!(
+            vec![si_frontend_types::ChangeSetApprovalRequirement {
+                entity_id: approval_requirement_definition_entity_id,
+                entity_kind: EntityKind::ApprovalRequirementDefinition,
+                required_count: 1,
+                is_satisfied: false,
+                applicable_approval_ids: vec![fourth_approval_id],
+                approver_groups: HashMap::from_iter(vec![(
+                    format!("workspace#{workspace_id}#approve"),
+                    vec![user_id],
+                )]),
+                approver_individuals: Vec::new(),
+            }], // expected
+            frontend_requirements // actual
+        );
+    }
+
+    // Scenario 10: approve the removal.
+    {
+        let fifth_approval_id = {
+            let approving_ids =
+                dal_wrapper::determine_approving_ids_with_hashes(ctx, &mut spicedb_client).await?;
+            let fifth_approval =
+                ChangeSetApproval::new(ctx, ChangeSetApprovalStatus::Approved, approving_ids)
+                    .await?;
+            fifth_approval.id()
+        };
+        ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+        let calculator = ChangeSetApprovalCalculator::new(ctx, &mut spicedb_client).await?;
+        let frontend_latest_approvals = calculator.frontend_latest_approvals();
+        let frontend_requirements = calculator
+            .frontend_requirements(&mut spicedb_client)
+            .await?;
+
+        assert_eq!(
+            vec![si_frontend_types::ChangeSetApproval {
+                id: fifth_approval_id,
                 user_id,
                 status: ChangeSetApprovalStatus::Approved,
                 is_valid: true,
@@ -714,7 +829,7 @@ async fn individual_approver_for_view(
                 entity_kind: EntityKind::ApprovalRequirementDefinition,
                 required_count: 1,
                 is_satisfied: true,
-                applicable_approval_ids: vec![third_approval_id],
+                applicable_approval_ids: vec![fifth_approval_id],
                 approver_groups: HashMap::from_iter(vec![(
                     format!("workspace#{workspace_id}#approve"),
                     vec![user_id],

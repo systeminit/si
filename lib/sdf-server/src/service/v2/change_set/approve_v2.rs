@@ -59,34 +59,59 @@ pub async fn approve(
     let spicedb_client = state
         .spicedb_client()
         .ok_or(ChangeSetAPIError::SpiceDBClientNotFound)?;
-    let approving_ids =
+    let approving_ids_with_hashes =
         dal_wrapper::determine_approving_ids_with_hashes(&ctx, spicedb_client).await?;
-    ChangeSetApproval::new(&ctx, request.status, approving_ids).await?;
+    ChangeSetApproval::new(&ctx, request.status, approving_ids_with_hashes).await?;
 
     WsEvent::change_set_approval_status_changed(&ctx, ctx.change_set_id())
         .await?
         .publish_on_commit(&ctx)
         .await?;
 
-    // Tracking, auditing, etc.
+    // Tracking, audit logging, etc.
     {
-        track(
-            &posthog_client,
-            &ctx,
-            &original_uri,
-            &host_name,
-            "approve_change_set_apply",
-            serde_json::json!({
-                "merged_change_set": change_set.id,
-            }),
-        );
-        ctx.write_audit_log(
-            AuditLogKind::ApproveChangeSetApply {
-                from_status: old_status.into(),
-            },
-            change_set.name,
-        )
-        .await?;
+        match request.status {
+            // NOTE(nick): this matches what was in the original approve route.
+            ChangeSetApprovalStatus::Approved => {
+                track(
+                    &posthog_client,
+                    &ctx,
+                    &original_uri,
+                    &host_name,
+                    "approve_change_set_apply",
+                    serde_json::json!({
+                        "merged_change_set": change_set.id,
+                    }),
+                );
+                ctx.write_audit_log(
+                    AuditLogKind::ApproveChangeSetApply {
+                        from_status: old_status.into(),
+                    },
+                    change_set.name,
+                )
+                .await?;
+            }
+            ChangeSetApprovalStatus::Rejected => {
+                // NOTE(nick): this matches what was in the original reject route.
+                track(
+                    &posthog_client,
+                    &ctx,
+                    &original_uri,
+                    &host_name,
+                    "reject_change_set_apply",
+                    serde_json::json!({
+                        "change_set": change_set.id,
+                    }),
+                );
+                ctx.write_audit_log(
+                    AuditLogKind::RejectChangeSetApply {
+                        from_status: old_status.into(),
+                    },
+                    change_set.name,
+                )
+                .await?;
+            }
+        }
     }
 
     ctx.commit().await?;
