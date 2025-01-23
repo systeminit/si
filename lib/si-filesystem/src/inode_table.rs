@@ -93,7 +93,7 @@ pub enum InodeEntryData {
         change_set_id: ChangeSetId,
         unlocked: bool,
     },
-    SchemaDefinitions {
+    SchemaDefinitionsDir {
         schema_id: SchemaId,
         change_set_id: ChangeSetId,
     },

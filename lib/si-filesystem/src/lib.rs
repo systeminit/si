@@ -640,8 +640,43 @@ impl SiFileSystem {
             InodeEntryData::FuncCode { .. } => {
                 reply.error(EINVAL);
             }
-            InodeEntryData::SchemaDefinitions { .. } => {
-                reply.error(EINVAL);
+            InodeEntryData::SchemaDefinitionsDir {
+                schema_id,
+                change_set_id,
+            } => {
+                if name == DIR_STR_UNLOCKED {
+                    let asset_funcs = self
+                        .client
+                        .unlock_schema(*change_set_id, *schema_id)
+                        .await?;
+                    if let Some(unlocked_asset_func) = asset_funcs.unlocked {
+                        let mut inode_table = self.inode_table.write().await;
+                        let ino = inode_table.upsert_with_parent_ino(
+                            parent,
+                            DIR_STR_UNLOCKED,
+                            InodeEntryData::AssetDefinitionDir {
+                                schema_id: *schema_id,
+                                func_id: unlocked_asset_func.id,
+                                change_set_id: *change_set_id,
+                                size: unlocked_asset_func.code_size,
+                                attrs_size: asset_funcs.unlocked_attrs_size,
+                                unlocked: true,
+                            },
+                            FileType::Directory,
+                            false,
+                            Size::Directory,
+                        )?;
+
+                        let attrs =
+                            inode_table.make_attrs(ino, FileType::Directory, true, Size::Directory);
+
+                        reply.entry(&TTL, &attrs, 1);
+                    } else {
+                        reply.error(EINVAL);
+                    }
+                } else {
+                    reply.error(EACCES);
+                }
             }
             InodeEntryData::SchemaFuncs { .. } => {
                 reply.error(EINVAL);
@@ -922,9 +957,9 @@ impl SiFileSystem {
                     .await?;
                 let mut names = HashSet::new();
                 for func in funcs_of_kind {
-                    let func_name = if names.contains(&func.name) { 
+                    let func_name = if names.contains(&func.name) {
                         format!("{}:{}", func.name, func.id)
-                    } else { 
+                    } else {
                         names.insert(func.name.clone());
                         func.name
                     };
@@ -1015,11 +1050,11 @@ impl SiFileSystem {
                     let schema_def_info = inode_table.upsert_with_parent_ino(
                         entry.ino,
                         DIR_STR_DEFINITION,
-                        InodeEntryData::SchemaDefinitions {
+                        InodeEntryData::SchemaDefinitionsDir {
                             schema_id: *schema_id,
                             change_set_id: *change_set_id
                         }, FileType::Directory,
-                        false,
+                        true,
                         Size::Directory,
                     )?;
 
@@ -1045,7 +1080,7 @@ impl SiFileSystem {
                 }
             }
             // `/change-sets/$change_set_name/schemas/$schema_name/asset-definition/`
-            InodeEntryData::SchemaDefinitions { schema_id, change_set_id } => {
+            InodeEntryData::SchemaDefinitionsDir { schema_id, change_set_id } => {
                 let asset_funcs = self
                     .client
                     .asset_funcs_for_variant(*change_set_id, *schema_id)

@@ -56,6 +56,8 @@ pub enum FsError {
     ResourceNotFound,
     #[error("schema error: {0}")]
     Schema(#[from] dal::SchemaError),
+    #[error("cannot unlock schema {0}")]
+    SchemaCannotUnlock(SchemaId),
     #[error("schema variant error: {0}")]
     SchemaVariant(#[from] dal::SchemaVariantError),
     #[error("transactions error: {0}")]
@@ -632,6 +634,64 @@ async fn set_schema_attrs(
     Ok(())
 }
 
+async fn unlock_schema(
+    HandlerContext(builder): HandlerContext,
+    AccessBuilder(request_ctx): AccessBuilder,
+    PosthogClient(_posthog_client): PosthogClient,
+    OriginalUri(_original_uri): OriginalUri,
+    Host(_host_name): Host,
+    Path((_workspace_id, change_set_id, schema_id)): Path<(WorkspaceId, ChangeSetId, SchemaId)>,
+) -> FsResult<Json<AssetFuncs>> {
+    let ctx = builder
+        .build(request_ctx.build(change_set_id.into()))
+        .await?;
+
+    check_change_set_and_not_head(&ctx).await?;
+
+    let locked_variant = lookup_variant_for_schema(&ctx, schema_id, false)
+        .await?
+        // make a more specific error here?
+        .ok_or(FsError::SchemaCannotUnlock(schema_id))?;
+
+    if !locked_variant.is_locked() {
+        return Err(FsError::SchemaCannotUnlock(schema_id));
+    }
+
+    let unlocked_variant =
+        VariantAuthoringClient::create_unlocked_variant_copy(&ctx, locked_variant.id()).await?;
+
+    ctx.write_audit_log(
+        AuditLogKind::UnlockSchemaVariant {
+            schema_variant_id: unlocked_variant.id(),
+            schema_variant_display_name: unlocked_variant.display_name().to_owned(),
+        },
+        locked_variant.schema(&ctx).await?.name().to_owned(),
+    )
+    .await?;
+
+    WsEvent::schema_variant_created(&ctx, schema_id, unlocked_variant.clone())
+        .await?
+        .publish_on_commit(&ctx)
+        .await?;
+
+    let mut result = AssetFuncs {
+        locked: None,
+        unlocked: None,
+        unlocked_attrs_size: 0,
+        locked_attrs_size: 0,
+    };
+
+    let asset_func = unlocked_variant.get_asset_func(&ctx).await?;
+
+    let attrs = make_schema_attrs(&unlocked_variant);
+    result.unlocked_attrs_size = attrs.byte_size();
+    result.unlocked = Some(dal_func_to_fs_func(asset_func));
+
+    ctx.commit().await?;
+
+    Ok(Json(result))
+}
+
 pub fn fs_routes() -> Router<AppState> {
     Router::new()
         .route("/change-sets", get(list_change_sets))
@@ -649,6 +709,7 @@ pub fn fs_routes() -> Router<AppState> {
                     post(set_asset_func_code),
                 )
                 .route("/schemas/:schema_id/attrs", get(get_schema_attrs))
+                .route("/schemas/:schema_id/unlock", post(unlock_schema))
                 .route("/schemas/:schema_id/attrs", post(set_schema_attrs))
                 .route("/schemas/:schema_id/funcs/:kind", get(list_variant_funcs))
                 .route("/schemas/:schema_id/install", post(install_schema)),

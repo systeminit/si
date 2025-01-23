@@ -294,4 +294,21 @@ impl SiFsClient {
 
         Ok(())
     }
+
+    /// NOTE: the return here will always have None for the locked variant
+    pub async fn unlock_schema(
+        &self,
+        change_set_id: ChangeSetId,
+        schema_id: SchemaId,
+    ) -> SiFsClientResult<AssetFuncs> {
+        Ok(self
+            .client
+            .post(self.fs_api_change_sets(&format!("schemas/{schema_id}/unlock"), change_set_id))
+            .bearer_auth(&self.token)
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+            .await?)
+    }
 }
