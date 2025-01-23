@@ -213,3 +213,55 @@ deno_test = rule(
         ),
     },
 )
+
+def _deno_workspace_impl(ctx: AnalysisContext) -> list[Provider]:
+    deno_toolchain = ctx.attrs._deno_toolchain[DenoToolchainInfo]
+    out = ctx.actions.declare_output(paths.basename(ctx.attrs.out), dir = True)
+
+    cmd = cmd_args(
+        ctx.attrs._python_toolchain[PythonToolchainInfo].interpreter,
+        deno_toolchain.deno_workspace[DefaultInfo].default_outputs[0],
+    )
+    root_config = ctx.attrs.root_config[DefaultInfo].default_outputs[0]
+
+    cmd.add("--root_config", root_config)
+    cmd.add("--workspace_dir", out.as_output())
+
+    for pkg in ctx.attrs.packages:
+        for output in pkg[DefaultInfo].default_outputs:
+            cmd.add("--package", output)
+
+    ctx.actions.run(
+        cmd,
+        category = "deno_workspace",
+    )
+
+    return [
+        DefaultInfo(default_output = out),
+    ]
+
+deno_workspace = rule(
+    impl = _deno_workspace_impl,
+    attrs = {
+        "root_config": attrs.dep(
+            doc = "Root deno.json configuration file",
+        ),
+        "packages": attrs.list(
+            attrs.dep(),
+            default = [],
+            doc = "List of package targets that include their deno.json and source files",
+        ),
+        "out": attrs.string(
+            default = "workspace",
+            doc = "The name of the output directory",
+        ),
+        "_python_toolchain": attrs.toolchain_dep(
+            default = "toolchains//:python",
+            providers = [PythonToolchainInfo],
+        ),
+        "_deno_toolchain": attrs.toolchain_dep(
+            default = "toolchains//:deno",
+            providers = [DenoToolchainInfo],
+        ),
+    },
+)

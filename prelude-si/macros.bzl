@@ -13,6 +13,11 @@ sh_binary = _sh_binary
 test_suite = _test_suite
 
 load(
+    "@prelude-si//:deno.bzl",
+    _deno_workspace = "deno_workspace",
+)
+
+load(
     "@prelude-si//macros:docker.bzl",
     _docker_image = "docker_image",
 )
@@ -55,6 +60,8 @@ load(
     _vite_app = "vite_app",
     _workspace_node_modules = "workspace_node_modules",
 )
+
+deno_workspace = _deno_workspace
 eslint = _eslint
 ts_test = _ts_test
 node_pkg_bin = _node_pkg_bin
