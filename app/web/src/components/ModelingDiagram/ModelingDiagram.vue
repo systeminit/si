@@ -2617,7 +2617,12 @@ async function triggerPasteElements() {
     throw new Error("Copy cursor must be in grid to paste element");
 
   const selectionEnclosure = currentSelectionEnclosure.value;
-  if (!selectionEnclosure) throw new Error("Couldn't get selection enclosure");
+  if (!selectionEnclosure) {
+    // Fix for BUG-710, reset when pasting across views
+    componentsStore.copyingFrom = null;
+    viewsStore.selectedComponentIds = [];
+    return;
+  }
 
   const selectionCenter = {
     x: selectionEnclosure.x + selectionEnclosure.width / 2,
