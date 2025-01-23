@@ -46,6 +46,8 @@ pub enum FsError {
     ChangeSetInactive(String, ChangeSetId),
     #[error("func error: {0}")]
     Func(#[from] dal::FuncError),
+    #[error("func already unlocked: {0}")]
+    FuncAlreadyUnlocked(FuncId),
     #[error("func api error: {0}")]
     FuncApi(#[from] FuncAPIError),
     #[error("func authoring error: {0}")]
@@ -692,6 +694,63 @@ async fn unlock_schema(
     Ok(Json(result))
 }
 
+async fn unlock_func(
+    HandlerContext(builder): HandlerContext,
+    AccessBuilder(request_ctx): AccessBuilder,
+    PosthogClient(_posthog_client): PosthogClient,
+    OriginalUri(_original_uri): OriginalUri,
+    Host(_host_name): Host,
+    Path((_workspace_id, change_set_id, schema_id, func_id)): Path<(
+        WorkspaceId,
+        ChangeSetId,
+        SchemaId,
+        FuncId,
+    )>,
+) -> FsResult<Json<FsFunc>> {
+    let ctx = builder
+        .build(request_ctx.build(change_set_id.into()))
+        .await?;
+
+    check_change_set_and_not_head(&ctx).await?;
+    let existing_func = dal::Func::get_by_id(&ctx, func_id)
+        .await?
+        .ok_or(FsError::ResourceNotFound)?;
+    if !existing_func.is_locked {
+        return Err(FsError::FuncAlreadyUnlocked(func_id));
+    }
+
+    let variant = match lookup_variant_for_schema(&ctx, schema_id, true).await? {
+        Some(variant) => variant,
+        None => SchemaVariant::get_default_for_schema(&ctx, schema_id).await?,
+    };
+
+    let new_func =
+        FuncAuthoringClient::create_unlocked_func_copy(&ctx, func_id, Some(variant.id())).await?;
+
+    let summary = new_func.into_frontend_type(&ctx).await?;
+    WsEvent::func_created(&ctx, summary.clone())
+        .await?
+        .publish_on_commit(&ctx)
+        .await?;
+
+    ctx.write_audit_log(
+        AuditLogKind::UnlockFunc {
+            func_id,
+            func_display_name: new_func.display_name.clone(),
+            schema_variant_id: Some(variant.id()),
+            component_id: None,
+            // XXX: should this be the *schema* name?
+            subject_name: Some(variant.display_name().to_owned()),
+        },
+        new_func.name.clone(),
+    )
+    .await?;
+
+    ctx.commit().await?;
+
+    Ok(Json(dal_func_to_fs_func(new_func)))
+}
+
 pub fn fs_routes() -> Router<AppState> {
     Router::new()
         .route("/change-sets", get(list_change_sets))
@@ -699,9 +758,10 @@ pub fn fs_routes() -> Router<AppState> {
         .nest(
             "/change-sets/:change_set_id",
             Router::new()
-                .route("/funcs/:kind", get(list_change_set_funcs))
                 .route("/func-code/:func_id", get(get_func_code))
                 .route("/func-code/:func_id", post(set_func_code))
+                .route("/funcs/:func_id/unlock", post(unlock_func))
+                .route("/funcs/:kind", get(list_change_set_funcs))
                 .route("/schemas", get(list_schemas))
                 .route("/schemas/:schema_id/asset_funcs", get(get_asset_funcs))
                 .route(
@@ -711,6 +771,10 @@ pub fn fs_routes() -> Router<AppState> {
                 .route("/schemas/:schema_id/attrs", get(get_schema_attrs))
                 .route("/schemas/:schema_id/unlock", post(unlock_schema))
                 .route("/schemas/:schema_id/attrs", post(set_schema_attrs))
+                .route(
+                    "/schemas/:schema_id/funcs/:func_id/unlock",
+                    post(unlock_func),
+                )
                 .route("/schemas/:schema_id/funcs/:kind", get(list_variant_funcs))
                 .route("/schemas/:schema_id/install", post(install_schema)),
         )

@@ -681,8 +681,44 @@ impl SiFileSystem {
             InodeEntryData::SchemaFuncs { .. } => {
                 reply.error(EINVAL);
             }
-            InodeEntryData::SchemaFuncVariants { .. } => {
-                reply.error(EINVAL);
+            InodeEntryData::SchemaFuncVariantsDir {
+                locked_id,
+                change_set_id,
+                schema_id,
+                ..
+            } => {
+                if name == DIR_STR_UNLOCKED {
+                    if let Some(locked_id) = locked_id {
+                        let unlocked_func = self
+                            .client
+                            .unlock_func(*change_set_id, *schema_id, *locked_id)
+                            .await?;
+
+                        let mut inode_table = self.inode_table.write().await;
+                        let ino = inode_table.upsert_with_parent_ino(
+                            parent,
+                            DIR_STR_UNLOCKED,
+                            InodeEntryData::SchemaFunc {
+                                change_set_id: *change_set_id,
+                                func_id: unlocked_func.id,
+                                size: unlocked_func.code_size,
+                                unlocked: true,
+                            },
+                            FileType::Directory,
+                            false,
+                            Size::Directory,
+                        )?;
+
+                        let attrs =
+                            inode_table.make_attrs(ino, FileType::Directory, true, Size::Directory);
+
+                        reply.entry(&TTL, &attrs, 1);
+                    } else {
+                        reply.error(EINVAL);
+                    }
+                } else {
+                    reply.error(EACCES);
+                }
             }
             InodeEntryData::SchemaFuncKind { .. } => {
                 reply.error(EINVAL);
@@ -1173,12 +1209,13 @@ impl SiFileSystem {
                     let ino = inode_table.upsert_with_parent_ino(
                         entry.ino,
                         &func_name,
-                        InodeEntryData::SchemaFuncVariants {
+                        InodeEntryData::SchemaFuncVariantsDir {
                             locked_id: funcs.locked.as_ref().map(|f| f.id),
                             unlocked_id: funcs.unlocked.as_ref().map(|f| f.id),
                             change_set_id: *change_set_id,
                             locked_size: funcs.locked.as_ref().map(|f| f.code_size).unwrap_or(0),
                             unlocked_size: funcs.unlocked.as_ref().map(|f| f.code_size).unwrap_or(0),
+                            schema_id: *schema_id,
                         },
                         FileType::Directory,
                         true,
@@ -1188,12 +1225,13 @@ impl SiFileSystem {
                 }
             }
             // `/change-sets/$change_set_name/schemas/$schema_name/functions/$func_kind/$func_name`
-            InodeEntryData::SchemaFuncVariants {
+            InodeEntryData::SchemaFuncVariantsDir {
                 locked_id,
                 unlocked_id,
                 change_set_id,
                 locked_size,
                 unlocked_size,
+                schema_id: _,
             } => {
                 let mut inode_table = self.inode_table.write().await;
 
