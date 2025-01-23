@@ -57,7 +57,8 @@ impl ComponentOutputSocket {
                 return Err(ComponentError::WrongAttributeValueType(
                     attribute_value_id,
                     value_is_for,
-                ))
+                )
+                .into())
             }
             ValueIsFor::OutputSocket(sock) => sock,
         };
@@ -117,7 +118,8 @@ impl ComponentOutputSocket {
             None => Err(ComponentError::OutputSocketNotFoundForComponentId(
                 output_socket_id,
                 component_id,
-            )),
+            )
+            .into()),
         }
     }
 
@@ -170,7 +172,8 @@ impl ComponentOutputSocket {
                     hash_map::Entry::Occupied(_) => {
                         return Err(ComponentError::OutputSocketTooManyAttributeValues(
                             output_socket_id,
-                        ));
+                        )
+                        .into());
                     }
                 }
             }
@@ -311,7 +314,8 @@ impl ComponentInputSocket {
             None => Err(ComponentError::InputSocketNotFoundForComponentId(
                 input_socket_id,
                 component_id,
-            )),
+            )
+            .into()),
         }
     }
 
@@ -340,7 +344,8 @@ impl ComponentInputSocket {
                     hash_map::Entry::Occupied(_) => {
                         return Err(ComponentError::InputSocketTooManyAttributeValues(
                             input_socket_id,
-                        ));
+                        )
+                        .into());
                     }
                 }
             }
@@ -377,7 +382,8 @@ impl ComponentInputSocket {
                     filtered_explicit_connection_sources,
                     component_input_socket.component_id,
                     component_input_socket.input_socket_id,
-                ));
+                )
+                .into());
             }
             filtered_explicit_connection_sources.first().copied()
         };
@@ -389,17 +395,20 @@ impl ComponentInputSocket {
             .await
             {
                 Ok(inferred_connections) => inferred_connections,
-                Err(ComponentError::ComponentMissingTypeValueMaterializedView(_)) => {
-                    debug!(?component_input_socket, "component type not yet set when finding available inferred connections to input socket");
-                    Vec::new()
-                }
-                Err(other_err) => Err(other_err)?,
+                Err(error) => match error.downcast_ref::<ComponentError>() {
+                    Some(ComponentError::ComponentMissingTypeValueMaterializedView(_)) => {
+                        debug!(?component_input_socket, "component type not yet set when finding available inferred connections to input socket");
+                        Vec::new()
+                    }
+                    _ => return Err(error),
+                },
             };
             if inferred_connections.len() > 1 {
                 return Err(ComponentError::TooManyInferredConnections(
                     inferred_connections,
                     component_input_socket,
-                ));
+                )
+                .into());
             }
             inferred_connections.first().map(|c| c.component_id)
         };
@@ -413,7 +422,8 @@ impl ComponentInputSocket {
                     explicit_source,
                     inferred_source,
                     component_input_socket,
-                ))
+                )
+                .into())
             }
             (Some(explicit_source), None) => Ok(Some(explicit_source)),
             (None, Some(inferred_source)) => Ok(Some(inferred_source)),

@@ -209,9 +209,11 @@ impl Frame {
                         .await?,
                 ))
             }
-            ComponentType::Component => Err(FrameError::ParentIsNotAFrame(child_id, new_parent_id)),
+            ComponentType::Component => {
+                Err(FrameError::ParentIsNotAFrame(child_id, new_parent_id).into())
+            }
             ComponentType::AggregationFrame => {
-                Err(FrameError::AggregateFramesUnsupported(new_parent_id))
+                Err(FrameError::AggregateFramesUnsupported(new_parent_id).into())
             }
         }
     }

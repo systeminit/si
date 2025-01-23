@@ -85,7 +85,7 @@ impl DiagramObject {
             .await?;
 
         if diagram_object_idxs.len() > 1 {
-            return Err(DiagramError::DiagramObjectMoreThanOneForView(view_id));
+            return Err(DiagramError::DiagramObjectMoreThanOneForView(view_id).into());
         }
 
         // If we don't find one for a view, we create it
