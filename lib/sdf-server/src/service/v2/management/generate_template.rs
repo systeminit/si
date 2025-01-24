@@ -16,6 +16,8 @@ use crate::service::v2::AccessBuilder;
 
 use super::{track, ManagementApiError, ManagementApiResult};
 
+use convert_case::{Case, Casing};
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GenerateTemplateRequest {
@@ -48,13 +50,74 @@ pub async fn generate_template(
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
 
-    let new_variant = VariantAuthoringClient::create_schema_and_variant(
+    // The default schema code
+    let schema_variant_code = r#"function main() {
+    const asset = new AssetBuilder();
+
+    // Add your template variables to this object with the .addChild function.
+    const templateProps = new PropBuilder()
+        .setName("Values")
+        .setKind("object")
+        .build();
+
+    // Auto-generated below here
+    const environments = new PropBuilder()
+        .setName("Views")
+        .setKind("array")
+        .setEntry(
+            new PropBuilder()
+            .setName("View")
+            .setKind("object")
+            .addChild(
+                new PropBuilder()
+                .setName("Name")
+                .setKind("string")
+                .build()
+            )
+            .addChild(
+                new PropBuilder()
+                .setName("Sync")
+                .setKind("boolean")
+                .build()
+            )
+            .build()
+        )
+        .build();
+    asset.addProp(environments);
+
+    const template = new PropBuilder()
+        .setName("Template")
+        .setKind("object")
+        .addChild(
+            new PropBuilder()
+            .setName("Default")
+            .setKind("object")
+            .addChild(templateProps)
+            .build()
+        )
+        .addChild(
+            new PropBuilder()
+            .setName("Override")
+            .setKind("object")
+            .addChild(templateProps)
+            .build()
+        )
+        .build();
+    asset.addProp(template);
+
+    return asset.build();
+}
+"#
+    .to_string();
+
+    let new_variant = VariantAuthoringClient::create_schema_and_variant_from_code(
         &ctx,
         request.asset_name.to_owned(),
         None,
         None,
         request.category,
         request.color,
+        schema_variant_code,
     )
     .await?;
 
@@ -64,6 +127,13 @@ pub async fn generate_template(
         &ctx,
         Some(request.func_name.clone()),
         new_variant.id(),
+    )
+    .await?;
+    FuncAuthoringClient::update_func(
+        &ctx,
+        func.id,
+        Some("Component Sync".to_string()),
+        Some("Sync the components specified in the template with the diagram".to_string()),
     )
     .await?;
 
@@ -76,29 +146,68 @@ pub async fn generate_template(
         dal::management::generator::generate_template(&ctx, view_id, &request.component_ids)
             .await?;
 
-    let return_value = serde_json::json!({
-        "status": "ok",
-        "message": format!("created {}", &request.asset_name),
-        "ops": {
-            "create": create_operations,
-        }
-    });
-
-    let return_value_string = serde_json::to_string_pretty(&return_value)?;
-    let formatted = format_code(&return_value_string, 4, 1);
-
-    let code = format!(
-        r#"async function main({{
+    let mut component_sync_code = r#"async function main({
+    currentView,
     thisComponent,
     components
-}}: Input): Promise < Output > {{
-    return {};
-}}
+}: Input): Promise < Output > {
+    const templateName = _.get(
+        thisComponent,
+        ["properties", "si", "name"],
+        "unknown",
+    );
+    const vars = template.variables(thisComponent);
+    const specs: Output["ops"]["create"][string][] = [];
+"#
+    .to_string();
+    for (name, component_def) in create_operations {
+        let mut variable_name: String = name.to_case(Case::Camel);
+        variable_name.push_str("Spec");
+        let spec_body = serde_json::to_string_pretty(&component_def)?;
+        let component_code = format!(
+            r#"
+    const {variable_name}: Output["ops"]["create"][string] = {spec_body};
+    specs.push({variable_name});
 "#,
-        formatted
+            variable_name = variable_name,
+            spec_body = spec_body
+        );
+        component_sync_code.push_str(&component_code);
+    }
+    component_sync_code.push_str(
+        r#"
+    return template.converge(currentView, thisComponent, components, specs);
+}
+"#,
     );
 
-    FuncAuthoringClient::save_code(&ctx, func.id, code).await?;
+    FuncAuthoringClient::save_code(&ctx, func.id, component_sync_code).await?;
+
+    let mut vars_func_name = request.func_name.clone();
+    vars_func_name.push_str("Sync");
+
+    let vars_func = FuncAuthoringClient::create_new_management_func(
+        &ctx,
+        Some(vars_func_name),
+        new_variant.id(),
+    )
+    .await?;
+    FuncAuthoringClient::update_func(
+        &ctx,
+        vars_func.id,
+        Some("Push Variables to Views".to_string()),
+        Some("Creates a view for every specified view, places an identical management component inside it, and pushes the current set of templat values to the default values for the view component".to_string()),
+    )
+    .await?;
+    let vars_func_code = format!(
+        r#"async function main(input: Input): Promise < Output > {{
+    const result = template.updateVarsInViews("{mgmtComponentName}", input.currentView, input.thisComponent, input.components);
+    return result;
+}}
+"#,
+        mgmtComponentName = request.asset_name,
+    );
+    FuncAuthoringClient::save_code(&ctx, vars_func.id, vars_func_code).await?;
 
     let prototype = ManagementPrototype::get_by_id(&ctx, prototype_id)
         .await?
@@ -159,38 +268,4 @@ pub async fn generate_template(
             func_id: func.id,
         },
     ))
-}
-
-const MAX_DEPTH: usize = 2048;
-fn format_code(input: &str, tab_size: usize, initial_depth: usize) -> String {
-    let (formatted, _) = input.lines().fold(
-        (String::new(), initial_depth),
-        |(formatted, mut depth), next_line| {
-            if formatted.is_empty() {
-                (next_line.to_string(), depth)
-            } else {
-                if formatted.ends_with("{") {
-                    depth = depth.saturating_add(1);
-                } else if !formatted.ends_with(",") {
-                    depth = depth.saturating_sub(1);
-                }
-
-                // prevent panics from massive repeat allocations
-                if depth > MAX_DEPTH {
-                    depth = MAX_DEPTH;
-                }
-
-                (
-                    format!(
-                        "{formatted}\n{}{}",
-                        " ".repeat(depth.saturating_mul(tab_size)),
-                        next_line.trim()
-                    ),
-                    depth,
-                )
-            }
-        },
-    );
-
-    formatted
 }
