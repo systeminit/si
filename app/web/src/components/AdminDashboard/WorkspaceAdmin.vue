@@ -149,11 +149,11 @@ import {
   LoadingMessage,
   useModal,
 } from "@si/vue-lib/design-system";
+import { WorkspaceUser } from "@/store/auth.store";
 import {
   AdminWorkspace,
   AdminChangeSet,
   useAdminStore,
-  AdminUser,
 } from "@/store/admin.store";
 
 const adminStore = useAdminStore();
@@ -167,7 +167,7 @@ const setConcurrencyLimitReqStatus = adminStore.getRequestStatus(
 const workspacesFilter = ref<string | null>(null);
 const filteredWorkspaces = ref<AdminWorkspace[]>([]);
 const selectedWorkspaceId = ref<string | null>(null);
-const workspaceUsers = ref<AdminUser[]>([]);
+const workspaceUsers = ref<WorkspaceUser[]>([]);
 const workspaceChangeSets = ref<{ [key: string]: AdminChangeSet }>({});
 const editingConcurrencyLimit = ref<string | null>(null);
 

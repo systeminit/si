@@ -41,7 +41,7 @@ pub async fn install_workspace(
         let workspace_pk = ctx
             .tenancy()
             .workspace_pk_opt()
-            .ok_or(WorkspaceAPIError::ExportingImportingWithRootTenancy)?;
+            .ok_or(WorkspaceAPIError::RootTenancyInstallAttempt)?;
         Workspace::get_by_pk(&ctx, &workspace_pk)
             .await?
             .ok_or(WorkspaceAPIError::WorkspaceNotFound(workspace_pk))?
@@ -92,7 +92,7 @@ async fn install_workspace_inner(
     let workspace_data = {
         let module_index_url = match ctx.module_index_url() {
             Some(url) => url,
-            None => return Err(WorkspaceAPIError::ModuleIndexNotConfigured),
+            None => return Err(WorkspaceAPIError::ModuleIndexUrlNotSet),
         };
         let module_index_client =
             ModuleIndexClient::new(module_index_url.try_into()?, &raw_access_token);

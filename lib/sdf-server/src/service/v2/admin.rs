@@ -11,7 +11,7 @@ use chrono::{DateTime, Utc};
 use dal::{
     cached_module::CachedModuleError, func::runner::FuncRunnerError,
     workspace_snapshot::graph::WorkspaceSnapshotGraphDiscriminants, ChangeSet, ChangeSetId,
-    ChangeSetStatus, User, UserPk, Workspace, WorkspacePk, WorkspaceSnapshotAddress,
+    ChangeSetStatus, UserPk, Workspace, WorkspacePk, WorkspaceSnapshotAddress,
 };
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
@@ -30,7 +30,6 @@ use crate::{
 mod get_snapshot;
 mod kill_execution;
 mod list_change_sets;
-mod list_workspace_users;
 mod prompts;
 mod search_workspaces;
 mod set_concurrency_limit;
@@ -61,12 +60,8 @@ pub enum AdminAPIError {
     TokioJoin(#[from] tokio::task::JoinError),
     #[error("transactions error: {0}")]
     Transactions(#[from] dal::TransactionsError),
-    #[error("user error: {0}")]
-    User(#[from] dal::UserError),
     #[error("workspaces error: {0}")]
     Workspace(#[from] dal::WorkspaceError),
-    #[error("workspace snapshot error: {0}")]
-    WorkspaceSnapshot(#[from] dal::WorkspaceSnapshotError),
     #[error("change set {0} does not have a workspace snapshot address")]
     WorkspaceSnapshotAddressNotFound(ChangeSetId),
     #[error("workspace snapshot {0} for change set {1} could not be found in durable storage")]
@@ -129,24 +124,6 @@ impl From<ChangeSet> for AdminChangeSet {
     }
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct AdminUser {
-    pub id: UserPk,
-    pub name: String,
-    pub email: String,
-}
-
-impl From<User> for AdminUser {
-    fn from(value: User) -> Self {
-        Self {
-            id: value.pk(),
-            name: value.name().to_owned(),
-            email: value.email().to_owned(),
-        }
-    }
-}
-
 impl IntoResponse for AdminAPIError {
     fn into_response(self) -> Response {
         let status_code = match &self {
@@ -176,10 +153,6 @@ pub fn v2_routes(state: AppState) -> Router<AppState> {
             put(kill_execution::kill_execution),
         )
         .route("/workspaces", get(search_workspaces::search_workspaces))
-        .route(
-            "/workspaces/:workspace_id/users",
-            get(list_workspace_users::list_workspace_users),
-        )
         .route(
             "/workspaces/:workspace_id/set_concurrency_limit",
             post(set_concurrency_limit::set_concurrency_limit),

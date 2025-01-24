@@ -40,7 +40,10 @@ export interface WorkspaceUser {
 }
 
 export const useAuthStore = () => {
+  const WORKSPACE_API_PREFIX = ["v2", "workspaces"];
+
   const realtimeStore = useRealtimeStore();
+
   return defineStore("auth", {
     state: () => ({
       tokens: {} as Record<string, string>,
@@ -68,12 +71,11 @@ export const useAuthStore = () => {
       },
     },
     actions: {
-      // stolen from admin store for a second
+      // NOTE(nick): this probably needs a new home for users eventually.
       async LIST_WORKSPACE_USERS(workspaceId: string) {
         return new ApiRequest<{ users: WorkspaceUser[] }>({
           method: "get",
-          // TODO(nick): move workspace users list out of the admin routes in sdf.
-          url: `v2/admin/workspaces/${workspaceId}/users`,
+          url: WORKSPACE_API_PREFIX.concat([workspaceId, "users"]),
           onSuccess: (response) => {
             this.workspaceUsers = {};
             response.users.forEach((u) => {

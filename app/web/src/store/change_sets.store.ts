@@ -674,7 +674,9 @@ export function useChangeSetsStore() {
           {
             eventType: "ChangeSetApprovalStatusChanged",
             callback: (changeSetId) => {
-              this.FETCH_APPROVAL_STATUS(changeSetId);
+              if (this.selectedChangeSet?.id === changeSetId) {
+                this.FETCH_APPROVAL_STATUS(changeSetId);
+              }
             },
           },
           {

@@ -2,6 +2,7 @@ import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 import { defineStore } from "pinia";
 import * as _ from "lodash-es";
 import { FuncRunId } from "@/store/func_runs.store";
+import { WorkspaceUser } from "./auth.store";
 
 export interface AdminWorkspace {
   id: string;
@@ -21,14 +22,9 @@ export interface AdminChangeSet {
   mergeRequestedByUserId?: string;
 }
 
-export interface AdminUser {
-  id: string;
-  name: string;
-  email: string;
-}
-
 export const useAdminStore = () => {
   const API_PREFIX = `v2/admin`;
+  const WORKSPACE_API_PREFIX = ["v2", "workspaces"];
 
   return addStoreHooks(
     null,
@@ -56,10 +52,11 @@ export const useAdminStore = () => {
             url: `${API_PREFIX}/workspaces/${workspaceId}/change_sets`,
           });
         },
+        // TODO(nick): remove in favor of the auth store call.
         async LIST_WORKSPACE_USERS(workspaceId: string) {
-          return new ApiRequest<{ users: AdminUser[] }>({
+          return new ApiRequest<{ users: WorkspaceUser[] }>({
             method: "get",
-            url: `${API_PREFIX}/workspaces/${workspaceId}/users`,
+            url: WORKSPACE_API_PREFIX.concat([workspaceId, "users"]),
           });
         },
         async GET_SNAPSHOT(workspaceId: string, changeSetId: string) {

@@ -40,7 +40,7 @@ pub async fn export_workspace(
         let workspace_pk = ctx
             .tenancy()
             .workspace_pk_opt()
-            .ok_or(WorkspaceAPIError::ExportingImportingWithRootTenancy)?;
+            .ok_or(WorkspaceAPIError::RootTenancyExportAttempt)?;
         Workspace::get_by_pk(&ctx, &workspace_pk)
             .await?
             .ok_or(WorkspaceAPIError::WorkspaceNotFound(workspace_pk))?
@@ -91,7 +91,7 @@ pub async fn export_workspace_inner(
     let index_client = {
         let module_index_url = match ctx.module_index_url() {
             Some(url) => url,
-            None => return Err(WorkspaceAPIError::ModuleIndexNotConfigured),
+            None => return Err(WorkspaceAPIError::ModuleIndexUrlNotSet),
         };
 
         module_index_client::ModuleIndexClient::new(module_index_url.try_into()?, &raw_access_token)
@@ -125,7 +125,7 @@ pub async fn export_workspace_inner(
         let created_by = if let HistoryActor::User(user_pk) = ctx.history_actor() {
             let user = User::get_by_pk(ctx, *user_pk)
                 .await?
-                .ok_or(WorkspaceAPIError::InvalidUser(*user_pk))?;
+                .ok_or(WorkspaceAPIError::UserNotFound(*user_pk))?;
 
             user.email().clone()
         } else {

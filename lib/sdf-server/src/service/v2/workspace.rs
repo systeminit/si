@@ -1,36 +1,40 @@
-use crate::{app_state::AppState, service::ApiError};
 use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
-    routing::post,
+    routing::{get, post},
     Router,
 };
-use dal::{TransactionsError, UserError, UserPk, WorkspaceError, WorkspacePk};
+use dal::{UserPk, WorkspacePk};
 use thiserror::Error;
+
+use crate::{app_state::AppState, service::ApiError};
 
 mod export_workspace;
 mod install_workspace;
+mod list_workspace_users;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum WorkspaceAPIError {
-    #[error("Trying to export from/import into root tenancy")]
-    ExportingImportingWithRootTenancy,
-    #[error("invalid user: {0}")]
-    InvalidUser(UserPk),
-    #[error("Module index: {0}")]
-    ModuleIndex(#[from] module_index_client::ModuleIndexClientError),
-    #[error("Module index not configured")]
-    ModuleIndexNotConfigured,
+    #[error("module index client error: {0}")]
+    ModuleIndexClient(#[from] module_index_client::ModuleIndexClientError),
+    #[error("module index url not set")]
+    ModuleIndexUrlNotSet,
+    #[error("cannot export workspace using root tenancy")]
+    RootTenancyExportAttempt,
+    #[error("cannot install workspace using root tenancy")]
+    RootTenancyInstallAttempt,
     #[error("transactions error: {0}")]
-    Transactions(#[from] TransactionsError),
-    #[error("Unable to parse URL: {0}")]
+    Transactions(#[from] dal::TransactionsError),
+    #[error("unable to parse url: {0}")]
     Url(#[from] url::ParseError),
     #[error("user error: {0}")]
-    User(#[from] UserError),
+    User(#[from] dal::UserError),
+    #[error("user not found: {0}")]
+    UserNotFound(UserPk),
     #[error("workspace error: {0}")]
-    Workspace(#[from] WorkspaceError),
-    #[error("Could not find current workspace {0}")]
+    Workspace(#[from] dal::WorkspaceError),
+    #[error("workspace not found: {0}")]
     WorkspaceNotFound(WorkspacePk),
 }
 
@@ -51,4 +55,5 @@ pub fn v2_routes() -> Router<AppState> {
     Router::new()
         .route("/install", post(install_workspace::install_workspace))
         .route("/export", post(export_workspace::export_workspace))
+        .route("/users", get(list_workspace_users::list_workspace_users))
 }
