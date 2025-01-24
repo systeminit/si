@@ -243,16 +243,27 @@ export class SdfApiClient {
 
   public async call({ route, routeVars, params, body }: API_CALL) {
     const { path, method, headers } = ROUTES[route] as API_DESCRIPTION;
-    if (!routeVars) routeVars = {};
-    routeVars.workspaceId = this.workspaceId;
+  
+    // Ensure routeVars is always defined and contains workspaceId
+    routeVars = { ...routeVars, workspaceId: this.workspaceId };
+  
     const url = path(routeVars);
-
-    const response = await this.fetch(url, {
+  
+    // Merge headers with default headers
+    const optionsWithDefaultHeaders = {
+      headers: {
+        Authorization: `Bearer ${this.token}`,
+        "Content-Type": "application/json",
+        "Cache-Control": "no-cache",
+        "User-Agent": "si.git/api-tests (support@systeminit.com)",
+        ...(headers || {}),
+      },
       method,
-      headers,
       body,
-    });
-
+    };
+  
+    const response = await this.fetch(url, optionsWithDefaultHeaders);
+  
     // Some endpoints return a body, others return nothing on success
     try {
       return await response.json();
@@ -270,7 +281,15 @@ export class SdfApiClient {
       method?: "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
     },
   ) {
-    const resp = await this.fetch_no_throw(path, options);
+    const optionsWithDefaultHeaders = {
+      ...options,
+      headers: {
+        "User-Agent": "si.git/api-tests (support@systeminit.com)",
+        ...(options?.headers || {}),
+      },
+    };
+
+    const resp = await this.fetch_no_throw(path, optionsWithDefaultHeaders); // Fix: Pass the correct optionsWithDefaultHeaders
     if (!resp.ok) {
       throw new Error(`Error ${resp.status}: ${await resp.text()}`);
     }
@@ -292,9 +311,9 @@ export class SdfApiClient {
     console.log(`calling ${method} ${url}`);
 
     const headers = {
-      "Content-Type": "application/json",
       Authorization: `Bearer ${this.token}`,
       "Cache-Control": "no-cache",
+      "User-Agent": "si.git/api-tests (support@systeminit.com)",
       ...(options?.headers || {}),
     };
 
@@ -427,6 +446,7 @@ async function getSdfJWTFromAuth0(
     headers: {
       Accept: "application/json",
       "Content-Type": "application/json",
+      "User-Agent": "si.git/api-tests (support@systeminit.com)",
     },
     body: JSON.stringify({
       email,
