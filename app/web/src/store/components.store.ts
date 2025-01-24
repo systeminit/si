@@ -221,16 +221,12 @@ const edgeFromRawEdge =
   }) =>
   (e: RawEdge): Edge => {
     const edge = structuredClone(toRaw(e)) as Edge;
-    if (isManagement) {
-      edge.id = `mgmt-${edge.toComponentId}_${edge.fromComponentId}`;
-    } else {
-      edge.id = generateEdgeId(
-        edge.fromComponentId,
-        edge.toComponentId,
-        edge.fromSocketId,
-        edge.toSocketId,
-      );
-    }
+    edge.id = generateEdgeId(
+      edge.fromComponentId,
+      edge.toComponentId,
+      edge.fromSocketId,
+      edge.toSocketId,
+    );
     edge.isInferred = isInferred ?? false;
     edge.isManagement = isManagement ?? false;
     return edge;
@@ -331,21 +327,29 @@ export function getPossibleAndExistingPeerSockets(
           ?.filter((peerSocket) => {
             // Management inputs can only be connected to management outputs
             // if the output schema manages the input
-            const isManagedSchema =
-              peerSocket.schemaId &&
-              targetSocket.managedSchemas &&
-              targetSocket.managedSchemas.includes(peerSocket.schemaId);
+            let isManagedSchema;
+            if (targetSocket.direction === "output") {
+              isManagedSchema =
+                peerSocket.schemaId &&
+                targetSocket.managedSchemas &&
+                targetSocket.managedSchemas.includes(peerSocket.schemaId);
+            } else {
+              isManagedSchema =
+                targetSocket.schemaId &&
+                peerSocket.managedSchemas &&
+                peerSocket.managedSchemas.includes(targetSocket.schemaId);
+            }
 
             const isSameSchema = targetSocket.schemaId === peerSocket.schemaId;
+
+            // Get only input sockets for output sockets and vice versa
+            if (peerSocket.direction === targetSocket.direction) return false;
 
             if (peerSocket.isManagement && targetSocket.isManagement) {
               return !!(isSameSchema || isManagedSchema);
             } else if (peerSocket.isManagement || targetSocket.isManagement) {
               return false;
             }
-
-            // Get only input sockets for output sockets and vice versa
-            if (peerSocket.direction === targetSocket.direction) return false;
 
             const [outputCAs, inputCAs] =
               targetSocket.direction === "output"
@@ -825,13 +829,11 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               },
               onFail: () => {
                 delete this.rawEdgesById[newEdge.id];
+                delete this.diagramEdgesById[newEdge.id];
               },
               optimistic: () => {
                 this.rawEdgesById[newEdge.id] = newEdge;
                 this.processRawEdge(newEdge.id);
-                return () => {
-                  delete this.rawEdgesById[newEdge.id];
-                };
               },
             });
           },
