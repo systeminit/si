@@ -59,6 +59,10 @@ pub(crate) struct Args {
     )]
     pub(crate) log_json: bool,
 
+    /// Override for the auth api url
+    #[arg(long, env = "SI_AUTH_API_URL")]
+    pub(crate) auth_api_url: Option<String>,
+
     /// PostgreSQL connection pool dbname [example: myapp]
     #[arg(long, env)]
     pub(crate) pg_dbname: Option<String>,
@@ -136,6 +140,9 @@ impl TryFrom<Args> for Config {
 
     fn try_from(args: Args) -> Result<Self, Self::Error> {
         ConfigFile::layered_load(NAME, |config_map| {
+            if let Some(auth_api_url) = args.auth_api_url {
+                config_map.set("auth_api_url", auth_api_url);
+            }
             if let Some(dbname) = args.pg_dbname {
                 config_map.set("pg.dbname", dbname);
             }

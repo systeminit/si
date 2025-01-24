@@ -115,6 +115,7 @@ impl Server<(), ()> {
 
         let (service, shutdown_rx, shutdown_broadcast_rx) = build_service(
             pg_pool,
+            config.auth_api_url().to_owned(),
             jwt_public_signing_key,
             posthog_client,
             aws_creds,
@@ -257,6 +258,7 @@ where
 
 pub fn build_service(
     pg_pool: DatabaseConnection,
+    auth_api_url: String,
     jwt_public_signing_key_chain: JwtPublicSigningKeyChain,
     posthog_client: PosthogClient,
     aws_creds: AwsCredentials,
@@ -267,6 +269,7 @@ pub fn build_service(
 
     let state = AppState::new(
         pg_pool,
+        auth_api_url,
         jwt_public_signing_key_chain,
         posthog_client,
         aws_creds,

@@ -59,7 +59,7 @@ pub async fn promote_builtin_route(
     State(state): State<AppState>,
     mut multipart: Multipart,
 ) -> Result<Json<Option<ModuleDetailsResponse>>, PromoteModuleError> {
-    if !is_systeminit_auth_token(&auth_token, state.token_emails()).await? {
+    if !is_systeminit_auth_token(state.auth_api_url(), &auth_token, state.token_emails()).await? {
         return Ok(Json(None));
     }
 

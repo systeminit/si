@@ -19,6 +19,7 @@ pub enum ShutdownSource {}
 pub struct AppState {
     /// A PostgreSQL connection pool.
     pg_pool: DatabaseConnection,
+    auth_api_url: String,
     jwt_public_signing_key_chain: JwtPublicSigningKeyChain,
     posthog_client: PosthogClient,
     aws_creds: AwsCredentials,
@@ -35,6 +36,7 @@ impl AppState {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         pg_pool: DatabaseConnection,
+        auth_api_url: String,
         jwt_public_signing_key_chain: JwtPublicSigningKeyChain,
         posthog_client: PosthogClient,
         aws_creds: AwsCredentials,
@@ -43,6 +45,7 @@ impl AppState {
     ) -> Self {
         Self {
             pg_pool,
+            auth_api_url,
             jwt_public_signing_key_chain,
             posthog_client,
             aws_creds,
@@ -55,6 +58,11 @@ impl AppState {
     /// Gets a reference to the Postgres pool.
     pub fn pg_pool(&self) -> &DatabaseConnection {
         &self.pg_pool
+    }
+
+    /// Gets the URL to the auth api
+    pub fn auth_api_url(&self) -> &str {
+        &self.auth_api_url
     }
 
     /// Gets a reference to the public key used to sign the JWT
