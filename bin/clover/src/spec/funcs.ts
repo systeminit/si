@@ -14,36 +14,41 @@ interface FuncSpecInfo {
   backendKind: FuncSpecBackendKind;
   responseType: FuncSpecBackendResponseType;
   displayName: string;
+  actionKind?: "create" | "update" | "refresh" | "other" | "delete";
   path: string;
 }
 
 const funcSpecs: Record<string, FuncSpecInfo> = {
   // Actions
-  "create": {
+  "Create Asset": {
     id: "bc58dae4f4e1361840ec8f081350d7ec6b177ee8dc5a6a55155767c92efe1850",
     backendKind: "jsAction",
     responseType: "action",
+    actionKind: "create",
     displayName: "Create a Cloud Control Asset",
     path: "./src/cloud-control-funcs/actions/awsCloudControlCreate.ts",
   },
-  "delete": {
+  "Delete Asset": {
     id: "8987ae62887646ccb55303cf82d69364dadd07a817580b57cb292988a64867d1",
     backendKind: "jsAction",
     responseType: "action",
+    actionKind: "delete",
     displayName: "Delete a Cloud Control Asset",
     path: "./src/cloud-control-funcs/actions/awsCloudControlDelete.ts",
   },
-  "refresh": {
+  "Refresh Asset": {
     id: "b161c855b802f5da7d96fb8cbda0195170d4769da9953cc5b5fb352fd441628c",
     backendKind: "jsAction",
     responseType: "action",
+    actionKind: "refresh",
     displayName: "Refresh a Cloud Control Asset",
     path: "./src/cloud-control-funcs/actions/awsCloudControlRefresh.ts",
   },
-  "update": {
+  "Update Asset": {
     id: "125cf080759938d293470dfe97268e1600375bb3e22fc162d1a3b5bb0f18a67b",
     backendKind: "jsAction",
     responseType: "action",
+    actionKind: "update",
     displayName: "Update a Cloud Control Asset",
     path: "./src/cloud-control-funcs/actions/awsCloudControlUpdate.ts",
   },
@@ -63,14 +68,14 @@ const funcSpecs: Record<string, FuncSpecInfo> = {
     path: "./src/cloud-control-funcs/code-gen/awsCloudControlCodeGenUpdate.ts",
   },
   // Management
-  "discover": {
+  "Discover on AWS": {
     id: "dba1f6e327c1e82363fa3ceaf0d3e908d367ed7c6bfa25da0a06127fb81ff1b6",
     backendKind: "management",
     responseType: "management",
     displayName: "Discover all of a certain Cloud Control Asset",
     path: "./src/cloud-control-funcs/management/awsCloudControlDiscover.ts",
   },
-  "import": {
+  "Import from AWS": {
     id: "7a8dfabe771e66d13ccd02376eee84979fbc2f2974f86b60f8710c6db24122c6",
     backendKind: "management",
     responseType: "management",
@@ -111,9 +116,9 @@ export function createFunc(
 
 function createDefaultFuncSpec(
   name: string,
+  spec: FuncSpecInfo,
   args: FuncArgumentSpec[],
 ): FuncSpec {
-  const spec = funcSpecs[name];
   const code = Deno.readTextFileSync(spec.path);
   const codeBase64: string = strippedBase64(code);
 
@@ -127,17 +132,28 @@ function createDefaultFuncSpec(
   );
 }
 
-export function createDefaultActionFuncs(): FuncSpec[] {
-  const ret: FuncSpec[] = [];
+export function createDefaultActionFuncs(): {
+  spec: FuncSpec;
+  kind: string;
+}[] {
+  const ret = [];
   const actionFuncs = [
-    "create",
-    "delete",
-    "refresh",
-    "update",
+    "Create Asset",
+    "Delete Asset",
+    "Refresh Asset",
+    "Update Asset",
   ];
 
   for (const func of actionFuncs) {
-    ret.push(createDefaultFuncSpec(func, []));
+    const spec = funcSpecs[func];
+    if (!spec.actionKind) {
+      throw new Error(`${func} spec does not have an action type`);
+    }
+
+    ret.push({
+      spec: createDefaultFuncSpec(func, spec, []),
+      kind: spec.actionKind,
+    });
   }
 
   return ret;
@@ -163,7 +179,8 @@ export function createDefaultCodeGenFuncs(domain_id: string): FuncSpec[] {
   }];
 
   for (const func of codeGenFuncs) {
-    ret.push(createDefaultFuncSpec(func, args));
+    const spec = funcSpecs[func];
+    ret.push(createDefaultFuncSpec(func, spec, args));
   }
 
   return ret;
@@ -172,12 +189,13 @@ export function createDefaultCodeGenFuncs(domain_id: string): FuncSpec[] {
 export function createDefaultManagementFuncs(): FuncSpec[] {
   const ret: FuncSpec[] = [];
   const actionFuncs = [
-    "discover",
-    "import",
+    "Discover on AWS",
+    "Import from AWS",
   ];
 
   for (const func of actionFuncs) {
-    ret.push(createDefaultFuncSpec(func, []));
+    const spec = funcSpecs[func];
+    ret.push(createDefaultFuncSpec(func, spec, []));
   }
 
   return ret;

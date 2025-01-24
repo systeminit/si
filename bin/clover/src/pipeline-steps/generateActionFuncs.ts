@@ -22,11 +22,11 @@ export function generateDefaultActionFuncs(specs: PkgSpec[]): PkgSpec[] {
       continue;
     }
 
-    for (const actionFunc of defaultActionFuncs) {
+    for (const { spec: actionFunc, kind } of defaultActionFuncs) {
       funcs.push(actionFunc);
       actionFuncs.push(
         createActionFuncSpec(
-          actionFunc.name as ActionFuncSpecKind,
+          kind as ActionFuncSpecKind,
           actionFunc.uniqueId,
         ),
       );
