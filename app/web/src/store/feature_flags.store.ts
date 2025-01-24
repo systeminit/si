@@ -31,7 +31,7 @@ const PH_TO_STORE_FLAG_LOOKUP = _.invert(FLAG_MAPPING) as Record<
 
 export function useFeatureFlagsStore() {
   const workspacesStore = useWorkspacesStore();
-  const workspacePk = workspacesStore.selectedWorkspacePk;
+  const workspacePk = workspacesStore.urlSelectedWorkspaceId;
 
   return addStoreHooks(
     undefined,
