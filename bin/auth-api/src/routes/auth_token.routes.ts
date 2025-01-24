@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { RoleType } from "@prisma/client";
+import ms, { StringValue } from "ms";
 import { ulid } from "ulidx";
 import { validate } from "../lib/validation-helpers";
 
@@ -49,12 +50,16 @@ router.post("/workspaces/:workspaceId/authTokens", async (ctx) => {
     }),
   );
 
-  let expiresIn;
-  if (expiration && expiration.trim().toLocaleLowerCase() !== 'never' && expiration.trim().toLocaleLowerCase() !== "0") {
-    expiresIn = expiration;
-  } else {
-    expiresIn = "30d";
+  // Validate expiration
+  // (You can pass any string to JWT.sign, but it will treat badly formatter values as "never
+  // expire," which is not what we want)
+  let expirationStr = expiration?.trim() as StringValue;
+  if (!expiration || expiration?.toLocaleLowerCase() === "never" || expiration?.toLocaleLowerCase() === "0") {
+    expirationStr = "30d";
   }
+  const expiresIn = ms(expirationStr) / 1000;
+  if (expiresIn <= 0) throw new ApiError("BadRequest", "zero and negative values not allowed for expiration");
+  if (!expiresIn) throw new ApiError("BadRequest", "Invalid expiration format");
 
   // Create the token
   const token = createSdfAuthToken({
