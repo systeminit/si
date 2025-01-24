@@ -17,6 +17,7 @@ pub enum WhoamiError {
 type WhoamiResult<T> = Result<T, WhoamiError>;
 
 pub async fn get_email_for_auth_token(
+    auth_api_url: &str,
     token: &str,
     token_map: Arc<Mutex<HashMap<String, String>>>,
 ) -> WhoamiResult<String> {
@@ -25,8 +26,7 @@ pub async fn get_email_for_auth_token(
     match token_map.get(token) {
         Some(email) => Ok(email.into()),
         None => {
-            let auth_api_client =
-                AuthApiClient::new(auth_api_client::PROD_AUTH_API_ENDPOINT.try_into()?, token);
+            let auth_api_client = AuthApiClient::new(auth_api_url.try_into()?, token);
 
             let whoami = auth_api_client.whoami().await?;
 
@@ -42,10 +42,11 @@ pub fn is_systeminit_email(email: &str) -> bool {
 }
 
 pub async fn is_systeminit_auth_token(
+    auth_api_url: &str,
     token: &str,
     token_map: Arc<Mutex<HashMap<String, String>>>,
 ) -> WhoamiResult<bool> {
     Ok(is_systeminit_email(
-        &get_email_for_auth_token(token, token_map).await?,
+        &get_email_for_auth_token(auth_api_url, token, token_map).await?,
     ))
 }

@@ -40,6 +40,10 @@ fn get_default_socket_addr() -> SocketAddr {
     SocketAddr::from(([0, 0, 0, 0], 5157))
 }
 
+fn default_auth_api_url() -> String {
+    auth_api_client::PROD_AUTH_API_ENDPOINT.to_string()
+}
+
 #[derive(Debug, Builder)]
 pub struct Config {
     #[builder(default = "get_default_socket_addr()")]
@@ -50,6 +54,9 @@ pub struct Config {
 
     #[builder(default = "random_instance_id()")]
     instance_id: String,
+
+    #[builder(default = "default_auth_api_url()")]
+    auth_api_url: String,
 
     jwt_signing_public_key_path: CanonicalFile,
     jwt_signing_public_key_algo: JwtAlgo,
@@ -84,6 +91,11 @@ impl Config {
     /// Gets the config's instance ID.
     pub fn instance_id(&self) -> &str {
         self.instance_id.as_ref()
+    }
+
+    /// Gets the auth API URL.
+    pub fn auth_api_url(&self) -> &str {
+        &self.auth_api_url
     }
 
     /// Gets a reference to the config's jwt signing public key path.
@@ -130,6 +142,8 @@ pub struct ConfigFile {
     socket_addr: SocketAddr,
     #[serde(default = "random_instance_id")]
     instance_id: String,
+    #[serde(default)]
+    auth_api_url: String,
     #[serde(default = "default_jwt_signing_public_key_path")]
     pub jwt_signing_public_key_path: String,
     #[serde(default = "default_jwt_signing_public_key_algo")]
@@ -156,6 +170,7 @@ impl Default for ConfigFile {
             },
             socket_addr: get_default_socket_addr(),
             instance_id: random_instance_id(),
+            auth_api_url: default_auth_api_url(),
             jwt_signing_public_key_path: default_jwt_signing_public_key_path(),
             jwt_signing_public_key_algo: default_jwt_signing_public_key_algo(),
             jwt_secondary_signing_public_key_path: None,
@@ -180,6 +195,7 @@ impl TryFrom<ConfigFile> for Config {
         config.pg_pool(value.pg);
         config.socket_addr(value.socket_addr);
         config.instance_id(value.instance_id);
+        config.auth_api_url(value.auth_api_url);
         config.jwt_signing_public_key_path(value.jwt_signing_public_key_path.try_into()?);
         config.jwt_signing_public_key_algo(value.jwt_signing_public_key_algo);
         config.posthog(value.posthog);

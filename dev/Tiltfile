@@ -329,13 +329,13 @@ si_buck2_resource(
     resource_deps = [
         "postgres",
     ],
-    readiness_probe = probe(
-        period_secs = 5,
-        http_get = http_get_action(
-            port = 9001,
-            path = "/",
-        ),
-    ),
+    # readiness_probe = probe(
+    #     period_secs = 5,
+    #     http_get = http_get_action(
+    #         port = 9001,
+    #         path = "/",
+    #     ),
+    # ),
     trigger_mode = TRIGGER_MODE_MANUAL,
 )
 

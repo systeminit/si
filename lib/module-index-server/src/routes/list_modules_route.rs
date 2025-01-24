@@ -58,7 +58,8 @@ pub async fn list_module_route(
     let query = si_module::Entity::find();
 
     let su = request.su.unwrap_or(false)
-        && is_systeminit_auth_token(&auth_token, state.token_emails()).await?;
+        && is_systeminit_auth_token(state.auth_api_url(), &auth_token, state.token_emails())
+            .await?;
 
     let kind = request.kind.unwrap_or(si_module::ModuleKind::Module);
 
