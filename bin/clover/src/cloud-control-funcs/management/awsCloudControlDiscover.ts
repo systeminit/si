@@ -87,22 +87,11 @@ async function main({
       si: {
         resourceId,
       },
+      domain: {
+        ...resourceProperties,
+      },
     };
-    for (const rprop of Object.keys(resourceProperties)) {
-      const category = _.get(component, [
-        "domain",
-        "extra",
-        "AwsFieldMap",
-        rprop,
-      ]);
-      if (category) {
-        _.set(
-          properties,
-          ["domain", category, rprop],
-          _.get(resourceProperties, rprop),
-        );
-      }
-    }
+
     console.log(properties);
     create[resourceId] = {
       properties,
