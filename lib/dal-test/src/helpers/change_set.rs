@@ -163,9 +163,7 @@ impl ChangeSetTestHelpers {
 
     /// Abandons the current [`ChangeSet`].
     pub async fn abandon_change_set(ctx: &mut DalContext) -> Result<()> {
-        let mut abandonment_change_set = ChangeSet::find(ctx, ctx.change_set_id())
-            .await?
-            .ok_or(eyre!("change set not found by id: {}", ctx.change_set_id()))?;
+        let mut abandonment_change_set = ChangeSet::get_by_id(ctx, ctx.change_set_id()).await?;
         abandonment_change_set.abandon(ctx).await?;
         Ok(())
     }

@@ -36,7 +36,7 @@ use crate::layer_db_types::ContentTypes;
 use crate::slow_rt::SlowRuntimeError;
 use crate::workspace_snapshot::graph::{RebaseBatch, WorkspaceSnapshotGraph};
 use crate::workspace_snapshot::DependentValueRoot;
-use crate::{audit_logging, slow_rt, EncryptedSecret, Workspace, WorkspaceError};
+use crate::{audit_logging, slow_rt, ChangeSetError, EncryptedSecret, Workspace, WorkspaceError};
 use crate::{
     change_set::{ChangeSet, ChangeSetId},
     job::{
@@ -403,12 +403,11 @@ impl DalContext {
         Ok(workspace)
     }
 
-    /// Update the context to use the most recent snapshot pointed to by the current `ChangeSetId`.
+    /// Update the context to use the most recent snapshot pointed to by the current [`ChangeSetId`].
+    /// Note: This does not guarantee that the [`ChangeSetId`] is contained within the [`WorkspacePk`]
+    /// for the current [`DalContext`]
     pub async fn update_snapshot_to_visibility(&mut self) -> TransactionsResult<()> {
-        let change_set = ChangeSet::find(self, self.change_set_id())
-            .await
-            .map_err(|err| TransactionsError::ChangeSet(err.to_string()))?
-            .ok_or(TransactionsError::ChangeSetNotFound(self.change_set_id()))?;
+        let change_set = ChangeSet::get_by_id_across_workspaces(self, self.change_set_id()).await?;
 
         let workspace_snapshot = WorkspaceSnapshot::find_for_change_set(self, change_set.id)
             .await
@@ -1351,9 +1350,7 @@ pub enum TransactionsError {
     #[error("Bad Workspace & Change Set")]
     BadWorkspaceAndChangeSet,
     #[error("change set error: {0}")]
-    ChangeSet(String),
-    #[error("change set not found for change set id: {0}")]
-    ChangeSetNotFound(ChangeSetId),
+    ChangeSet(#[from] Box<ChangeSetError>),
     #[error("change set not set on DalContext")]
     ChangeSetNotSet,
     #[error("job queue processor error: {0}")]
@@ -1404,7 +1401,13 @@ pub type TransactionsResult<T> = Result<T, TransactionsError>;
 
 impl From<WorkspaceError> for TransactionsError {
     fn from(err: WorkspaceError) -> Self {
-        TransactionsError::Workspace(Box::new(err))
+        Box::new(err).into()
+    }
+}
+
+impl From<ChangeSetError> for TransactionsError {
+    fn from(err: ChangeSetError) -> Self {
+        Box::new(err).into()
     }
 }
 

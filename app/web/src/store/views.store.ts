@@ -1726,8 +1726,10 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                   const groupGeo = view.groups[data.component.id];
                   const componentGeo = view.components[data.component.id];
                   const thisGeo = groupGeo ?? componentGeo;
-                  // I don't exist in this view, and I am not being added to this view
-                  if (!thisGeo && !viewId) return;
+                  // I don't exist in this view, and I am not being added to this view, return
+                  if (viewId && viewId !== view.id) {
+                    return;
+                  }
                   const finalGeo = geometry ?? thisGeo;
                   if (!finalGeo) return;
 

@@ -268,6 +268,28 @@ pub async fn get_component_input_socket_value(
         AttributeValue::get_by_id(ctx, component_input_socket.attribute_value_id).await?;
     Ok(input_socket_av.view(ctx).await?)
 }
+/// Gets the [`Value`] for a specific [`Component`]'s [`InputSocket`] by the [`InputSocket`] name
+pub async fn get_component_input_socket_attribute_value(
+    ctx: &DalContext,
+    component_id: ComponentId,
+    input_socket_name: impl AsRef<str>,
+) -> Result<AttributeValue> {
+    let schema_variant_id = Component::schema_variant_id(ctx, component_id).await?;
+    let component_input_sockets =
+        ComponentInputSocket::list_for_component_id(ctx, component_id).await?;
+    let input_socket = InputSocket::find_with_name(ctx, input_socket_name, schema_variant_id)
+        .await?
+        .ok_or(eyre!("no input socket found"))?;
+    let component_input_socket = component_input_sockets
+        .into_iter()
+        .filter(|socket| socket.input_socket_id == input_socket.id())
+        .collect_vec()
+        .pop()
+        .ok_or(eyre!("no input socket match found"))?;
+    let input_socket_av =
+        AttributeValue::get_by_id(ctx, component_input_socket.attribute_value_id).await?;
+    Ok(input_socket_av)
+}
 
 /// Gets the [`Value`] for a specific [`Component`]'s [`OutputSocket`] by the [`OutputSocket`] name
 pub async fn get_component_output_socket_value(
@@ -291,6 +313,7 @@ pub async fn get_component_output_socket_value(
         AttributeValue::get_by_id(ctx, component_output_socket.attribute_value_id).await?;
     Ok(output_socket_av.view(ctx).await?)
 }
+
 /// Update the [`Value`] for a specific [`AttributeValue`] for the given [`Component`](ComponentId) by the [`PropPath`]
 pub async fn update_attribute_value_for_component(
     ctx: &DalContext,

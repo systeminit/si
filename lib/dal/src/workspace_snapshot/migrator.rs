@@ -87,9 +87,7 @@ impl SnapshotGraphMigrator {
         info!("Migrating {} snapshot(s)", open_change_sets.len(),);
 
         for change_set in open_change_sets {
-            let mut change_set = ChangeSet::find(ctx, change_set.id)
-                .await?
-                .ok_or(ChangeSetError::ChangeSetNotFound(change_set.id))?;
+            let mut change_set = ChangeSet::get_by_id_across_workspaces(ctx, change_set.id).await?;
             if change_set.workspace_id.is_none() || change_set.status == ChangeSetStatus::Failed {
                 // These are broken/garbage change sets generated during migrations of the
                 // "universal" workspace/change set. They're not actually accessible via normal

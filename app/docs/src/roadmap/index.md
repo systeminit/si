@@ -5,7 +5,7 @@ outline:
 
 # Road map
 
-Updated January 10, 2025.
+Updated January 22, 2025.
 
 Want to influence the road map?
 [Learn more about how to work on System Initiative](../explanation/working-on-si.md).
@@ -115,6 +115,15 @@ workspace, pass data to a component and trigger a management function and check
 the status of the resulting action.
 
 [Read the blog post to learn more.](https://www.systeminit.com/blog/opportunity-github-actions-to-trigger-system-initiative)
+
+## Editor Integration (In development)
+
+We are building a FUSE-based file system to allow for a user to mount a
+workspace and get access to all of the schemas and functions within their
+workspace. This means a user can use their local IDE to be able to author in
+System Initiative.
+
+[Read the blog post to learn more.](https://www.systeminit.com/blog/opportunity-editor-integration-with-system-initiative)
 
 ## Growing coverage of cloud platforms
 

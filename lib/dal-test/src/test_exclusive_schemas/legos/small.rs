@@ -72,9 +72,9 @@ pub(crate) async fn migrate_test_exclusive_schema_small_odd_lego(
                     self: {
                         properties: {
                             domain: {
-                                ...thisProperties.domain
+                                ...thisProperties.domain,
                                 two: 'step',
-                            }
+                            },
                             ...thisProperties
                         }
                     }
@@ -115,7 +115,7 @@ pub(crate) async fn migrate_test_exclusive_schema_small_odd_lego(
 
         return {
             status: "ok",
-            ops: { create };
+            ops: { create }
         }
     }
     "#;
@@ -145,7 +145,7 @@ pub(crate) async fn migrate_test_exclusive_schema_small_odd_lego(
 
         return {
             status: "ok",
-            ops: { update };
+            ops: { update }
         }
     }
     "#;
@@ -218,7 +218,7 @@ pub(crate) async fn migrate_test_exclusive_schema_small_odd_lego(
                     self: {
                         connect: {
                             add: names.map(name => ({ from: "two", to: { component: name, socket: "two" }}))
-                        } 
+                        }
                     }
                 }
             },
@@ -319,7 +319,7 @@ pub(crate) async fn migrate_test_exclusive_schema_small_odd_lego(
             create[name] = {
                 kind: "small odd lego",
                 properties: { si: { name, type: "configurationFrameDown" }, },
-                parent: prevName, 
+                parent: prevName,
             };
             prevName =  name;
         }
@@ -346,7 +346,7 @@ pub(crate) async fn migrate_test_exclusive_schema_small_odd_lego(
             status: "ok",
             ops: {
                 create: {
-                    [name]: { 
+                    [name]: {
                         geometry: {
                             [currentView]: { x: 100, y: 100 },
                             [thisView]: { x: 15, y: 15 }
@@ -376,7 +376,7 @@ pub(crate) async fn migrate_test_exclusive_schema_small_odd_lego(
                     create: [thisView],
                 },
                 create: {
-                    [componentName]: { 
+                    [componentName]: {
                         geometry: {
                             [thisView]: { x: 315, y: 315 }
                         }

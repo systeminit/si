@@ -3,52 +3,21 @@
 //! having code outside of the specific graph version implementation that requires having knowledge
 //! of how the internals of that specific version of the graph work.
 
-// #![warn(
-//     missing_debug_implementations,
-//     missing_docs,
-//     unreachable_pub,
-//     bad_style,
-//     dead_code,
-//     improper_ctypes,
-//     non_shorthand_field_patterns,
-//     no_mangle_generic_items,
-//     overflowing_literals,
-//     path_statements,
-//     patterns_in_fns_without_body,
-//     unconditional_recursion,
-//     unused,
-//     unused_allocation,
-//     unused_comparisons,
-//     unused_parens,
-//     while_true,
-//     clippy::missing_panics_doc
-// )]
-
-pub mod content_address;
-pub mod edge_weight;
-pub mod graph;
-pub mod lamport_clock;
-pub mod migrator;
-pub mod node_weight;
-pub mod traits;
-pub mod update;
-pub mod vector_clock;
-
-pub use traits::{schema::variant::SchemaVariantExt, socket::input::InputSocketExt};
-
-use graph::correct_transforms::correct_transforms;
-use graph::detect_updates::Update;
-use graph::{RebaseBatch, WorkspaceSnapshotGraph};
-use node_weight::traits::CorrectTransformsError;
 use std::collections::{HashMap, HashSet};
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 
+use graph::correct_transforms::correct_transforms;
+use graph::detector::{Change, Update};
+use graph::{RebaseBatch, WorkspaceSnapshotGraph};
+use node_weight::traits::CorrectTransformsError;
 use petgraph::prelude::*;
-pub use petgraph::Direction;
 use serde::{Deserialize, Serialize};
 use si_data_pg::PgError;
+use si_events::merkle_tree_hash::MerkleTreeHash;
+use si_events::workspace_snapshot::Checksum;
 use si_events::{ulid::Ulid, ContentHash, WorkspaceSnapshotAddress};
+use si_id::{ApprovalRequirementDefinitionId, EntityId};
 use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -83,7 +52,21 @@ use crate::{
 
 use self::node_weight::{NodeWeightDiscriminants, OrderingNodeWeight};
 
+pub mod content_address;
+pub mod edge_weight;
+pub mod graph;
+pub mod lamport_clock;
+pub mod migrator;
+pub mod node_weight;
+pub mod traits;
+pub mod update;
+pub mod vector_clock;
+
+pub use petgraph::Direction;
 pub use si_id::WorkspaceSnapshotNodeId as NodeId;
+pub use traits::{
+    entity_kind::EntityKindExt, schema::variant::SchemaVariantExt, socket::input::InputSocketExt,
+};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct NodeInformation {
@@ -129,6 +112,10 @@ pub enum WorkspaceSnapshotError {
     Join(#[from] JoinError),
     #[error("layer db error: {0}")]
     LayerDb(#[from] si_layer_cache::LayerDbError),
+    #[error(
+        "missing content from content map for hash ({0}) and approval requirement definition ({1})"
+    )]
+    MissingContentFromContentMap(ContentHash, ApprovalRequirementDefinitionId),
     #[error("missing content from store for id: {0}")]
     MissingContentFromStore(Ulid),
     #[error("could not find a max vector clock for change set id {0}")]
@@ -713,12 +700,7 @@ impl WorkspaceSnapshot {
         Ok(())
     }
 
-    #[instrument(
-        name = "workspace_snapshot.detect_updates",
-        level = "debug",
-        skip_all,
-        fields()
-    )]
+    #[instrument(name = "workspace_snapshot.detect_updates", level = "debug", skip_all)]
     pub async fn detect_updates(
         &self,
         onto_workspace_snapshot: &WorkspaceSnapshot,
@@ -733,6 +715,80 @@ impl WorkspaceSnapshot {
                 .detect_updates(&*onto_clone.working_copy().await)
         })?
         .await?)
+    }
+
+    #[instrument(name = "workspace_snapshot.detect_changes", level = "debug", skip_all)]
+    pub async fn detect_changes(
+        &self,
+        onto_workspace_snapshot: &WorkspaceSnapshot,
+    ) -> WorkspaceSnapshotResult<Vec<Change>> {
+        let self_clone = self.clone();
+        let onto_clone = onto_workspace_snapshot.clone();
+
+        Ok(slow_rt::spawn(async move {
+            self_clone
+                .working_copy()
+                .await
+                .detect_changes(&*onto_clone.working_copy().await)
+        })?
+        .await??)
+    }
+
+    /// A wrapper around [`Self::detect_changes`](Self::detect_changes) where the "onto" snapshot is derived from the
+    /// workspace's default [`ChangeSet`](crate::ChangeSet).
+    #[instrument(
+        name = "workspace_snapshot.detect_changes_from_head",
+        level = "debug",
+        skip_all
+    )]
+    pub async fn detect_changes_from_head(
+        &self,
+        ctx: &DalContext,
+    ) -> WorkspaceSnapshotResult<Vec<Change>> {
+        let head_change_set_id = ctx.get_workspace_default_change_set_id().await?;
+        let head_snapshot = Self::find_for_change_set(ctx, head_change_set_id).await?;
+        head_snapshot
+            .detect_changes(&ctx.workspace_snapshot()?.clone())
+            .await
+    }
+
+    /// Calculates the checksum based on a list of IDs with hashes passed in.
+    #[instrument(
+        name = "workspace_snapshot.calculate_checksum",
+        level = "debug",
+        skip_all
+    )]
+    pub async fn calculate_checksum(
+        &self,
+        ctx: &DalContext,
+        mut ids_with_hashes: Vec<(EntityId, MerkleTreeHash)>,
+    ) -> WorkspaceSnapshotResult<Checksum> {
+        // If an empty list of IDs with hashes wass passed in, then we use the root node's ID and
+        // merkle tree hash as our sole ID and hash so that algorithms using the checksum can
+        // "invalidate" as needed.
+        if ids_with_hashes.is_empty() {
+            let root_node_index = ctx.workspace_snapshot()?.root().await?;
+            let root_node_weight = ctx
+                .workspace_snapshot()?
+                .get_node_weight(root_node_index)
+                .await?;
+            ids_with_hashes.push((
+                root_node_weight.id().into(),
+                root_node_weight.merkle_tree_hash(),
+            ));
+        }
+
+        // We MUST sort IDs (not hashes) before creating the checksum. This is so that we have
+        // stable checksum calculation.
+        ids_with_hashes.sort_by_key(|(id, _)| *id);
+
+        // Now that we have strictly ordered IDs with hasesh and there's at least one group
+        // present, we can create the checksum.
+        let mut hasher = Checksum::hasher();
+        for (_, hash) in ids_with_hashes {
+            hasher.update(hash.as_bytes());
+        }
+        Ok(hasher.finalize())
     }
 
     /// Gives the exact node index endpoints of an edge.
@@ -1606,6 +1662,7 @@ impl WorkspaceSnapshot {
                 }
 
                 ContentAddressDiscriminants::ActionPrototype
+                | ContentAddressDiscriminants::ApprovalRequirementDefinition
                 | ContentAddressDiscriminants::Component
                 | ContentAddressDiscriminants::DeprecatedAction
                 | ContentAddressDiscriminants::DeprecatedActionBatch
@@ -1615,6 +1672,7 @@ impl WorkspaceSnapshot {
                 | ContentAddressDiscriminants::Geometry
                 | ContentAddressDiscriminants::InputSocket
                 | ContentAddressDiscriminants::JsonValue
+                | ContentAddressDiscriminants::ManagementPrototype
                 | ContentAddressDiscriminants::Module
                 | ContentAddressDiscriminants::OutputSocket
                 | ContentAddressDiscriminants::Prop
@@ -1623,12 +1681,12 @@ impl WorkspaceSnapshot {
                 | ContentAddressDiscriminants::SchemaVariant
                 | ContentAddressDiscriminants::Secret
                 | ContentAddressDiscriminants::ValidationPrototype
-                | ContentAddressDiscriminants::View
-                | ContentAddressDiscriminants::ManagementPrototype => None,
+                | ContentAddressDiscriminants::View => None,
             },
 
             NodeWeight::Action(_)
             | NodeWeight::ActionPrototype(_)
+            | NodeWeight::ApprovalRequirementDefinition(_)
             | NodeWeight::Category(_)
             | NodeWeight::Component(_)
             | NodeWeight::DependentValueRoot(_)
@@ -1637,12 +1695,12 @@ impl WorkspaceSnapshot {
             | NodeWeight::Func(_)
             | NodeWeight::FuncArgument(_)
             | NodeWeight::Geometry(_)
-            | NodeWeight::View(_)
             | NodeWeight::InputSocket(_)
+            | NodeWeight::ManagementPrototype(_)
             | NodeWeight::Prop(_)
             | NodeWeight::SchemaVariant(_)
-            | NodeWeight::ManagementPrototype(_)
-            | NodeWeight::Secret(_) => None,
+            | NodeWeight::Secret(_)
+            | NodeWeight::View(_) => None,
         } {
             let next_node_idxs = self
                 .incoming_sources_for_edge_weight_kind(this_node_weight.id(), edge_kind)

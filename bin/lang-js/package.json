@@ -12,10 +12,7 @@
     "scripts": "dist/**/*.js",
     "assets": [
       "node_modules/typescript/**/*.ts",
-      "node_modules/commander/**/*.js",
-      "node_modules/debug/**/*.js",
-      "node_modules/vm2/**/*",
-      "node_modules/lodash/**/*.js"
+      "node_modules/debug/**/*.js"
     ]
   },
   "scripts": {
@@ -50,25 +47,22 @@
     "@types/lodash-es": "^4.17.12",
     "@types/node": "^18.19.59",
     "@types/node-fetch": "^2.6.1",
-    "eslint": "^8.57.1",
     "tsup": "^8.0.1",
     "typedoc": "^0.26.0",
     "typedoc-plugin-markdown": "^4.2.0",
     "vitest": "^1.0.4"
   },
   "dependencies": {
-    "@si/ts-lib": "workspace:*",
+    "@si/ts-lib-deno": "workspace:*",
     "@typescript/vfs": "^1.4.0",
-    "commander": "^9.2.0",
     "execa": "^5.1.1",
     "fast-json-patch": "^3.1.1",
     "joi": "^17.11.0",
     "js-yaml": "^4.1.0",
-    "lodash-es": "^4.17.21",
     "node-fetch": "^2",
+    "proper-lockfile": "^4.1.2",
     "toml": "^3.0.0",
-    "typescript": "^4.9.5",
-    "vm2": "^3.9.19"
+    "typescript": "^4.9.5"
   },
   "tsup": {
     "entry": [
@@ -78,7 +72,7 @@
     "sourcemap": true,
     "clean": true,
     "noExternal": [
-      "@si/ts-lib",
+      "@si/ts-lib-deno",
       "lodash-es"
     ]
   }

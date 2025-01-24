@@ -2,6 +2,8 @@
 
 ## New to System Initiative?
 
+System Initiative is an Intuitive, Powerful, and Collaborative replacement for Infrastructure as Code.
+
 Follow the [Getting Started](./tutorials/getting-started.md) guide.
 
 ## Getting help

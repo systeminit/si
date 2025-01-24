@@ -24,8 +24,10 @@ pub async fn get_property_editor_schema(
 
     let schema_variant =
         Component::schema_variant_for_component_id(&ctx, request.component_id).await?;
+    let maybe_resource = Component::resource_by_id(&ctx, request.component_id).await?;
 
-    let prop_edit_schema = PropertyEditorSchema::assemble(&ctx, schema_variant.id()).await?;
+    let prop_edit_schema =
+        PropertyEditorSchema::assemble(&ctx, schema_variant.id(), maybe_resource.is_some()).await?;
 
     Ok(Json(prop_edit_schema))
 }

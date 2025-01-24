@@ -508,9 +508,7 @@ const commonBindingConstruction = (
 const updatePropIntrinsics = async (data: PropDisplay) => {
   const binding = commonBindingConstruction(data);
   if (binding) {
-    const resp = await funcStore.CREATE_BINDING(identityFuncId.value, [
-      binding,
-    ]);
+    const resp = await funcStore.CREATE_BINDING(data.funcId, [binding]);
     if (!resp.result.success) {
       if (resp.result.statusCode === 422) {
         toast(
@@ -525,9 +523,7 @@ const updatePropIntrinsics = async (data: PropDisplay) => {
 const updateOutputSocketIntrinsics = async (data: IntrinsicDisplay) => {
   const binding = commonBindingConstruction(data);
   if (binding) {
-    const resp = await funcStore.CREATE_BINDING(identityFuncId.value, [
-      binding,
-    ]);
+    const resp = await funcStore.CREATE_BINDING(data.funcId, [binding]);
     if (!resp.result.success) {
       if (resp.result.statusCode === 422) {
         toast(
@@ -541,7 +537,6 @@ const updateOutputSocketIntrinsics = async (data: IntrinsicDisplay) => {
 
 const changeToUnset = (config: PropDisplay | IntrinsicDisplay | undefined) => {
   if (!config) return;
-
   config.attributePrototypeId = undefined;
   config.funcId = unsetFuncId.value;
   config.value = undefined;
@@ -565,7 +560,9 @@ const changeToIdentity = (
   // dont fire a save if there isnt a value
   if ("backendKind" in config) {
     config.backendKind = FuncBackendKind.Identity;
-    if (config.value) updateOutputSocketIntrinsics(config);
+    if (config.value) {
+      updateOutputSocketIntrinsics(config);
+    }
   } else if (config.value) {
     updatePropIntrinsics(config);
   }

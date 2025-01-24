@@ -1,34 +1,35 @@
 import {
-  beforeAll, describe, expect, test,
-} from "vitest";
-import { makeBeforeRequestStorage } from "../src/sandbox/requestStorage";
+  assertEquals,
+  assertExists,
+} from "https://deno.land/std@0.224.0/assert/mod.ts";
+import { makeBeforeRequestStorage } from "../src/sandbox/requestStorage.ts";
 
-describe("requestStorage", () => {
-  const KEY = "a";
-  const VALUE = "this is a test value";
-  const EXEC_ID = "execId";
+const KEY = "a";
+const VALUE = "this is a test value";
+const EXEC_ID = "execId";
 
-  beforeAll(() => {
-    makeBeforeRequestStorage(EXEC_ID).setItem(KEY, VALUE);
-  });
+function setupStorage() {
+  makeBeforeRequestStorage(EXEC_ID).setItem(KEY, VALUE);
+}
 
-  test("Retrieve a value", () => {
+Deno.test("requestStorage", async (t) => {
+  await t.step("Retrieve a value", () => {
+    setupStorage();
     const value = makeBeforeRequestStorage(EXEC_ID).getItem(KEY);
-
-    expect(value).toBe(VALUE);
+    assertEquals(value, VALUE);
   });
 
-  test("Retrieve keys", () => {
+  await t.step("Retrieve keys", () => {
+    setupStorage();
     const keys = makeBeforeRequestStorage(EXEC_ID).getKeys();
-
-    expect(keys).toHaveLength(1);
-    expect(keys).toContain(KEY);
+    assertEquals(keys.length, 1);
+    assertEquals(keys.includes(KEY), true);
   });
 
-  test("Delete a value by key", () => {
+  await t.step("Delete a value by key", () => {
+    setupStorage();
     makeBeforeRequestStorage(EXEC_ID).deleteItem(KEY);
-
     const value = makeBeforeRequestStorage(EXEC_ID).getItem(KEY);
-    expect(value).toBeUndefined();
+    assertExists(!value);
   });
 });

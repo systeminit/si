@@ -7,12 +7,13 @@ use axum::{
     Router,
 };
 use dal::{
-    workspace_integrations::WorkspaceIntegration, ChangeSetId, ChangeSetStatus, DalContext,
-    HistoryEventError, WorkspacePk, WsEventError,
+    workspace_integrations::WorkspaceIntegration, ChangeSetId, DalContext, HistoryEventError,
+    WorkspacePk, WsEventError,
 };
 use reqwest::Client;
 use serde::Serialize;
 use si_data_spicedb::SpiceDbError;
+use si_events::ChangeSetStatus;
 use thiserror::Error;
 
 use crate::{middleware::WorkspacePermissionLayer, service::ApiError, AppState};
@@ -27,6 +28,10 @@ mod rename;
 mod reopen;
 mod request_approval;
 
+// NOTE(nick): move these to the above group and remove old modules once the feature flag has been removed;
+mod approval_status;
+mod approve_v2;
+
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum Error {
@@ -34,28 +39,22 @@ pub enum Error {
     ChangeSet(#[from] dal::ChangeSetError),
     #[error("change set apply error: {0}")]
     ChangeSetApply(#[from] dal::ChangeSetApplyError),
+    #[error("change set approval error: {0}")]
+    ChangeSetApproval(#[from] dal::change_set::approval::ChangeSetApprovalError),
     #[error("change set not approved for apply. Current state: {0}")]
     ChangeSetNotApprovedForApply(ChangeSetStatus),
-    #[error("change set not found: {0}")]
-    ChangeSetNotFound(ChangeSetId),
+    #[error("dal wrapper error: {0}")]
+    DalWrapper(#[from] crate::dal_wrapper::DalWrapperError),
     #[error("dvu roots are not empty for change set: {0}")]
     DvuRootsNotEmpty(ChangeSetId),
-    #[error("func error: {0}")]
-    Func(#[from] dal::FuncError),
     #[error("history event: {0}")]
     HistoryEvent(#[from] HistoryEventError),
-    #[error("permissions error: {0}")]
-    Permissions(#[from] permissions::Error),
     #[error("http error: {0}")]
     Request(#[from] reqwest::Error),
-    #[error("schema error: {0}")]
-    Schema(#[from] dal::SchemaError),
-    #[error("schema variant error: {0}")]
-    SchemaVariant(#[from] dal::SchemaVariantError),
     #[error("spice db error: {0}")]
     SpiceDB(#[from] SpiceDbError),
-    #[error("spicedb not found")]
-    SpiceDBNotFound,
+    #[error("spicedb client not found")]
+    SpiceDBClientNotFound,
     #[error("transactions error: {0}")]
     Transactions(#[from] dal::TransactionsError),
     #[error("found an unexpected number of open change sets matching default change set (should be one, found {0:?})")]
@@ -160,4 +159,6 @@ pub fn change_set_routes(state: AppState) -> Router<AppState> {
             )),
         )
         .route("/rename", post(rename::rename))
+        .route("/approval_status", get(approval_status::approval_status))
+        .route("/approve_v2", post(approve_v2::approve))
 }

@@ -1,17 +1,19 @@
 use std::{fs::File, io::Write};
 
 use deprecated::DeprecatedWorkspaceSnapshotGraphV1;
-use detect_updates::Update;
+use detector::Update;
 use petgraph::prelude::*;
-/// Ensure [`NodeIndex`], and [`Direction`] are usable externally.
-pub use petgraph::{graph::NodeIndex, Direction};
 use serde::{Deserialize, Serialize};
 use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid};
+use si_id::EntityId;
 use si_layer_cache::db::serialize;
 use si_layer_cache::LayerDbError;
 use strum::{EnumDiscriminants, EnumIter, EnumString, IntoEnumIterator};
 use telemetry::prelude::*;
 use thiserror::Error;
+
+/// Ensure [`NodeIndex`], and [`Direction`] are usable externally.
+pub use petgraph::{graph::NodeIndex, Direction};
 
 use crate::{
     socket::input::InputSocketError,
@@ -21,14 +23,17 @@ use crate::{
 
 pub mod correct_transforms;
 pub mod deprecated;
-pub mod detect_updates;
+pub mod detector;
 mod tests;
 pub mod traits;
 pub mod v2;
 pub mod v3;
 pub mod v4;
 
-pub use traits::{schema::variant::SchemaVariantExt, socket::input::InputSocketExt};
+pub use traits::{
+    approval_requirement::ApprovalRequirementExt, schema::variant::SchemaVariantExt,
+    socket::input::InputSocketExt,
+};
 pub use v2::WorkspaceSnapshotGraphV2;
 pub use v3::WorkspaceSnapshotGraphV3;
 pub use v4::WorkspaceSnapshotGraphV4;
@@ -44,8 +49,6 @@ pub enum WorkspaceSnapshotGraphError {
     CannotCompareOrderedAndUnorderedContainers(NodeIndex, NodeIndex),
     #[error("could not find category node of kind: {0:?}")]
     CategoryNodeNotFound(CategoryNodeKind),
-    // #[error("ChangeSet error: {0}")]
-    // ChangeSet(#[from] ChangeSetError),
     #[error("Component error: {0}")]
     Component(#[from] Box<ComponentError>),
     #[error("Unable to retrieve content for ContentHash")]
@@ -70,6 +73,8 @@ pub enum WorkspaceSnapshotGraphError {
     LayerDb(#[from] LayerDbError),
     #[error("monotonic error: {0}")]
     Monotonic(#[from] ulid::MonotonicError),
+    #[error("multiple merkle tree hashes found for entity {0} (at least two found, including {1} and {2})")]
+    MultipleMerkleTreeHashesForEntity(EntityId, MerkleTreeHash, MerkleTreeHash),
     #[error("mutex poisoning: {0}")]
     MutexPoison(String),
     #[error("NodeWeight error: {0}")]

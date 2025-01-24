@@ -1,6 +1,7 @@
 load(
     "@prelude-si//:macros.bzl",
     "alias",
+    "deno_workspace",
     "export_file",
     "nix_flake_lock",
     "pnpm_lock",
@@ -73,6 +74,10 @@ export_file(
     name = "package.json",
 )
 
+export_file(
+    name = "deno.json",
+)
+
 pnpm_workspace(
     name = "pnpm-workspace.yaml",
     packages = [
@@ -85,6 +90,17 @@ pnpm_workspace(
         "//lib/tsconfig:package.json",
         "//lib/vue-lib:package.json",
     ],
+)
+
+deno_workspace(
+    name = "deno_workspace",
+    root_config = ":deno.json",
+    packages = [
+        "//bin/lang-js:deno.json",
+        "//bin/si-gen-cloud-control:deno.json",
+        "//lib/ts-lib-deno:deno.json",
+    ],
+    visibility = ["PUBLIC"],
 )
 
 pnpm_lock(

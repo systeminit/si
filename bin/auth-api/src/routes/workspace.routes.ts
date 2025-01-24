@@ -217,10 +217,23 @@ router.post("/workspace/:workspaceId/membership", async (ctx) => {
     }),
   );
 
+  const user = await getUserById(reqBody.userId);
+
+  // TODO: Paul
+  // Cleanup when transactional emails are deployed
   tracker.trackEvent(authUser, "workspace_membership_roles_changed", {
     role: reqBody.role,
     userId: reqBody.userId,
     workspaceId: workspace.id,
+  });
+
+  tracker.trackEvent(authUser, "workspace_membership_roles_changed_v2", {
+    newPermissionLevel: reqBody.role === "EDITOR" ? "Collaborator" : "Approver",
+    memberUserName: user?.email || "",
+    workspaceId: workspace.id,
+    workspaceName: workspace.displayName,
+    initiatedBy: authUser.email,
+    memberChangedAt: new Date(),
   });
 
   await changeWorkspaceMembership(workspace.id, reqBody.userId, reqBody.role);
@@ -313,7 +326,7 @@ router.delete("/workspace/:workspaceId/members", async (ctx) => {
     initiatedBy: authUser.email,
     memberUserName: reqBody.email,
     memberChangedAt: new Date(),
-    newPermissionLevel: "None",
+    newPermissionLevel: "No Access",
   });
 
   ctx.body = members;

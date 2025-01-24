@@ -8,7 +8,7 @@ use si_events::{ulid::Ulid, ContentHash};
 use crate::{
     workspace_snapshot::{
         content_address::{ContentAddress, ContentAddressDiscriminants},
-        graph::{deprecated::v1::DeprecatedContentNodeWeightV1, detect_updates::Update, LineageId},
+        graph::{deprecated::v1::DeprecatedContentNodeWeightV1, detector::Update, LineageId},
         node_weight::{traits::CorrectTransforms, NodeWeightError, NodeWeightResult},
         NodeInformation,
     },
@@ -96,6 +96,12 @@ impl ContentNodeWeight {
                 ContentAddress::DeprecatedActionRunner(content_hash)
             }
             ContentAddress::ActionPrototype(_) => ContentAddress::ActionPrototype(content_hash),
+            ContentAddress::ApprovalRequirementDefinition(_) => {
+                return Err(NodeWeightError::InvalidContentAddressForWeightKind(
+                    "ApprovalRequirement".to_string(),
+                    "Content".to_string(),
+                ));
+            }
             ContentAddress::AttributePrototype(_) => {
                 ContentAddress::AttributePrototype(content_hash)
             }

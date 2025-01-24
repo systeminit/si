@@ -1,7 +1,7 @@
 use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
-    routing::{get, post},
+    routing::post,
     Router,
 };
 use dal::{
@@ -20,16 +20,9 @@ use crate::AppState;
 use super::ApiError;
 
 pub mod abandon_change_set;
-mod abandon_vote;
 pub mod add_action;
-pub mod apply_change_set;
-mod begin_abandon_approval_process;
 mod begin_approval_process;
 pub mod create_change_set;
-pub mod list_open_change_sets;
-mod merge_vote;
-mod rebase_on_base;
-mod status_with_base;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -42,8 +35,6 @@ pub enum ChangeSetError {
     ActionPrototype(#[from] ActionPrototypeError),
     #[error("cannot abandon head change set")]
     CannotAbandonHead,
-    #[error("change set not found")]
-    ChangeSetNotFound,
     #[error("component error: {0}")]
     Component(#[from] ComponentError),
     #[error("dal change set error: {0}")]
@@ -80,7 +71,9 @@ impl IntoResponse for ChangeSetError {
             ChangeSetError::ActionAlreadyEnqueued(_) => {
                 (StatusCode::NOT_MODIFIED, self.to_string())
             }
-            ChangeSetError::ChangeSetNotFound => (StatusCode::NOT_FOUND, self.to_string()),
+            ChangeSetError::DalChangeSet(DalChangeSetError::ChangeSetNotFound(..)) => {
+                (StatusCode::NOT_FOUND, self.to_string())
+            }
             ChangeSetError::DalChangeSetApply(_) => (StatusCode::CONFLICT, self.to_string()),
             ChangeSetError::DvuRootsNotEmpty(_) => (
                 StatusCode::PRECONDITION_REQUIRED,
@@ -96,18 +89,10 @@ impl IntoResponse for ChangeSetError {
 
 pub fn routes() -> Router<AppState> {
     Router::new()
-        .route(
-            "/list_open_change_sets",
-            get(list_open_change_sets::list_open_change_sets),
-        )
         .route("/add_action", post(add_action::add_action))
         .route(
             "/create_change_set",
             post(create_change_set::create_change_set),
-        )
-        .route(
-            "/apply_change_set",
-            post(apply_change_set::apply_change_set),
         )
         .route(
             "/abandon_change_set",
@@ -120,20 +105,5 @@ pub fn routes() -> Router<AppState> {
         .route(
             "/cancel_approval_process",
             post(begin_approval_process::cancel_approval_process),
-        )
-        .route("/merge_vote", post(merge_vote::merge_vote))
-        .route(
-            "/begin_abandon_approval_process",
-            post(begin_abandon_approval_process::begin_abandon_approval_process),
-        )
-        .route(
-            "/cancel_abandon_approval_process",
-            post(begin_abandon_approval_process::cancel_abandon_approval_process),
-        )
-        .route("/abandon_vote", post(abandon_vote::abandon_vote))
-        .route("/rebase_on_base", post(rebase_on_base::rebase_on_base))
-        .route(
-            "/status_with_base",
-            post(status_with_base::status_with_base),
         )
 }

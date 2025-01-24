@@ -15,6 +15,7 @@ pub struct ManagementRequest {
     pub current_view: String,
     pub this_component: ComponentViewWithGeometry,
     pub components: HashMap<String, ComponentViewWithGeometry>,
+    pub variant_socket_map: HashMap<String, usize>,
     pub before: Vec<BeforeFunction>,
 }
 

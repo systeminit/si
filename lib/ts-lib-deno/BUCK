@@ -1,0 +1,33 @@
+load(
+    "@prelude-si//:macros.bzl",
+    "export_file",
+    "filegroup",
+    "package_node_modules",
+)
+
+export_file(
+    name = "package.json",
+)
+
+export_file(
+    name = "deno.json",
+)
+
+package_node_modules(
+    name = "node_modules",
+    package_name = "@si/ts-lib-deno",
+)
+
+filegroup(
+    name = "ts-lib-deno",
+    srcs = glob([
+        "**/*",
+        "tsconfig.json"
+    ]),
+)
+
+prod_deps_srcs = {}
+
+dev_deps_srcs = {
+    "lib/tsconfig": "//lib/tsconfig:src",
+}

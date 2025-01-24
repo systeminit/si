@@ -1,11 +1,14 @@
-import { NodeVM } from "vm2";
-import { Debug } from "../debug";
+import { Debug } from "../debug.ts";
 
 import {
   failureExecution,
-  Func, ResultFailure, ResultSuccess,
-} from "../function";
-import { RequestCtx } from "../request";
+  Func,
+  FunctionKind,
+  ResultFailure,
+  ResultSuccess,
+  runCode,
+} from "../function.ts";
+import { RequestCtx } from "../request.ts";
 
 const debug = Debug("langJs:joi_validation");
 
@@ -19,7 +22,7 @@ export type JoiValidationResultSuccess = ResultSuccess;
 export type JoiValidationResultFailure = ResultFailure;
 
 export type JoiValidationResult =
-  JoiValidationResultSuccess
+  | JoiValidationResultSuccess
   | JoiValidationResultFailure;
 
 export interface JoiExecutionResult {
@@ -27,14 +30,12 @@ export interface JoiExecutionResult {
 }
 
 async function execute(
-  vm: NodeVM,
   { executionId }: RequestCtx,
   args: JoiValidationFunc,
   code: string,
+  timeout: number,
 ): Promise<JoiValidationResult> {
   try {
-    const runner = vm.run(code);
-
     // NOTE(victor): Joi treats null as a value, so even if .required()
     // isn't set it fails validations for typed props
     const parsedArgs = {
@@ -42,45 +43,65 @@ async function execute(
       value: args.value === null ? undefined : args.value,
     };
 
-    const resolution: JoiExecutionResult = await new Promise((resolve) => {
-      runner(parsedArgs, (resolution: JoiExecutionResult) => resolve(resolution));
-    });
-    debug({ result: resolution });
+    const result = await runCode(
+      code,
+      FunctionKind.Validation,
+      executionId,
+      timeout,
+      parsedArgs,
+    );
 
+    if (
+      result.err && typeof result.err === "object" && "name" in result.err &&
+      "message" in result.err
+    ) {
+      return {
+        protocol: "result",
+        status: "failure",
+        executionId,
+        error: {
+          kind: {
+            UserCodeException: result.err.name as string,
+          },
+          message: result.err.message as string,
+        },
+      };
+    }
+    debug({ result });
     return {
       protocol: "result",
       status: "success",
       executionId,
-      error: resolution.err,
+      error: result.err as string,
     };
   } catch (err) {
     return failureExecution(err as Error, executionId);
   }
 }
 
-const wrapCode = (_: string, __: string) => `
-module.exports = function({ value, validationFormat }, callback) {
+const wrapCode = (_code: string, _handler: string) => `
+async function run({ value, validationFormat }) {
   let definition;
   try {
     definition = JSON.parse(validationFormat);
   } catch (e) {
-    e.name = "JoiValidationJsonParsingError";
-    throw e;
+    const error = new Error('Invalid JSON format');
+    error.name = 'JoiValidationJsonParsingError';
+    throw error;
   }
 
   let schema;
   try {
     schema = Joi.build(definition);
   } catch (e) {
-    e.name = "JoiValidationFormatError";
-    e.message = e.message.replace("\\"value\\"", "validationFormat")
-    throw e;
+    const error = new Error('validationFormat must be of type object');
+    error.name = 'JoiValidationFormatError';
+    throw error;
   }
 
   const { error } = schema.validate(value);
-  const err = error?.message;
-  callback({ err });
-};`;
+  return { err: error ? error.message : undefined };
+}`;
 
 export default {
   debug,

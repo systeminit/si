@@ -347,9 +347,9 @@ impl WsEvent {
     pub async fn schema_variant_updated(
         ctx: &DalContext,
         schema_id: SchemaId,
-        schema_variant_id: SchemaVariant,
+        schema_variant: SchemaVariant,
     ) -> WsEventResult<Self> {
-        let payload = schema_variant_id.into_frontend_type(ctx, schema_id).await?;
+        let payload = schema_variant.into_frontend_type(ctx, schema_id).await?;
         WsEvent::new(ctx, WsPayload::SchemaVariantUpdated(payload)).await
     }
     pub async fn schema_variant_deleted(
@@ -2296,7 +2296,8 @@ impl SchemaVariant {
                 | EdgeWeightKindDiscriminants::SocketValue
                 | EdgeWeightKindDiscriminants::ValidationOutput
                 | EdgeWeightKindDiscriminants::Manages
-                | EdgeWeightKindDiscriminants::DiagramObject => {}
+                | EdgeWeightKindDiscriminants::DiagramObject
+                | EdgeWeightKindDiscriminants::ApprovalRequirementDefinition => {}
             }
         }
 

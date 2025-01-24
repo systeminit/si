@@ -140,13 +140,20 @@ fn make_me_one_with_everything(graph: &mut WorkspaceSnapshotGraphVCurrent) {
             NodeWeightDiscriminants::View => NodeWeight::new_view(
                 Ulid::new(),
                 Ulid::new(),
-                ContentHash::new("geometry".as_bytes()),
+                ContentHash::new("view".as_bytes()),
             ),
             NodeWeightDiscriminants::DiagramObject => NodeWeight::new_diagram_object(
                 Ulid::new(),
                 Ulid::new(),
                 DiagramObjectKind::View(Ulid::new().into()),
             ),
+            NodeWeightDiscriminants::ApprovalRequirementDefinition => {
+                NodeWeight::new_approval_requirement_definition(
+                    Ulid::new(),
+                    Ulid::new(),
+                    ContentHash::new("stellaris hurts my brain".as_bytes()),
+                )
+            }
         };
 
         let idx = graph.add_or_replace_node(weight).expect("add node");
@@ -197,6 +204,9 @@ fn make_me_one_with_everything(graph: &mut WorkspaceSnapshotGraphVCurrent) {
             EdgeWeightKindDiscriminants::Represents => EdgeWeightKind::Represents,
             EdgeWeightKindDiscriminants::Manages => EdgeWeightKind::Manages,
             EdgeWeightKindDiscriminants::DiagramObject => EdgeWeightKind::DiagramObject,
+            EdgeWeightKindDiscriminants::ApprovalRequirementDefinition => {
+                EdgeWeightKind::ApprovalRequirementDefinition
+            }
         };
 
         let edge_weight = EdgeWeight::new(edge_weight_kind);
@@ -290,6 +300,7 @@ async fn graph_can_be_deserialized(_ctx: &DalContext) {
             NodeWeight::Geometry(_) => {}
             NodeWeight::View(_) => {}
             NodeWeight::DiagramObject(_) => {}
+            NodeWeight::ApprovalRequirementDefinition(_) => {}
         }
     }
 }

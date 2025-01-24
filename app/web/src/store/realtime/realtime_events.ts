@@ -94,6 +94,8 @@ export type WsEventPayloadMap = {
     positions: ({ componentId: ComponentId } & IRect)[];
   };
 
+  ChangeSetApprovalStatusChanged: ChangeSetId;
+
   ChangeSetApplied: {
     changeSetId: ChangeSetId;
     toRebaseChangeSetId: ChangeSetId;

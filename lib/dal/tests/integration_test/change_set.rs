@@ -3,7 +3,7 @@ use dal::{
     context::TransactionsErrorDiscriminants, DalContext, DalContextBuilder, HistoryActor,
     RequestContext, Workspace, WorkspacePk,
 };
-use dal::{ChangeSet, ChangeSetStatus, Component};
+use dal::{AccessBuilder, ChangeSet, ChangeSetStatus, Component};
 use dal_test::helpers::{
     create_component_for_default_schema_name_in_default_view, create_user, ChangeSetTestHelpers,
 };
@@ -11,6 +11,8 @@ use dal_test::test;
 use itertools::Itertools;
 use pretty_assertions_sorted::assert_eq;
 use std::collections::HashSet;
+
+mod approval;
 
 #[test]
 async fn open_change_sets(ctx: &mut DalContext) {
@@ -256,6 +258,75 @@ async fn build_from_request_context_limits_to_change_sets_of_current_workspace(
 }
 
 #[test]
+async fn cannot_find_change_set_across_workspaces(
+    ctx: &mut DalContext,
+    ctx_builder: DalContextBuilder,
+) {
+    let user_1 = create_user(ctx).await.expect("Unable to create user");
+    let user_2 = create_user(ctx).await.expect("Unable to create user");
+    let user_1_workspace =
+        Workspace::new_from_builtin(ctx, WorkspacePk::generate(), "user_1 workspace", "token")
+            .await
+            .expect("Unable to create workspace");
+    let user_2_workspace =
+        Workspace::new_from_builtin(ctx, WorkspacePk::generate(), "user_2 workspace", "token")
+            .await
+            .expect("Unable to create workspace");
+    user_1
+        .associate_workspace(ctx, *user_1_workspace.pk())
+        .await
+        .expect("Unable to associate user with workspace");
+    user_2
+        .associate_workspace(ctx, *user_2_workspace.pk())
+        .await
+        .expect("Unable to associate user with workspace");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("Unable to set up test data");
+
+    let request_context = RequestContext {
+        tenancy: dal::Tenancy::new(*user_2_workspace.pk()),
+        visibility: dal::Visibility {
+            change_set_id: user_2_workspace.default_change_set_id(),
+        },
+        history_actor: HistoryActor::User(user_2.pk()),
+        request_ulid: None,
+    };
+
+    let mut user_2_dal_ctx = ctx_builder
+        .build(request_context)
+        .await
+        .expect("built dal ctx for user 2");
+
+    //create a new change set for user 2
+    let user_2_change_set = ChangeSet::fork_head(&user_2_dal_ctx, "user 2")
+        .await
+        .expect("could not create change set");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(&mut user_2_dal_ctx)
+        .await
+        .expect("Unable to set up test data");
+
+    let user_1_tenancy = dal::Tenancy::new(*user_1_workspace.pk());
+    let access_builder = AccessBuilder::new(user_1_tenancy, HistoryActor::User(user_1.pk()), None);
+
+    let user_1_dal_context = ctx_builder
+        .build_head(access_builder)
+        .await
+        .expect("could not build dal context");
+
+    //first, let's ensure we can't find it when using the user 1 dal ctx
+    let user_2_change_set_unfound = ChangeSet::find(&user_1_dal_context, user_2_change_set.id)
+        .await
+        .expect("could not find change set");
+    assert!(user_2_change_set_unfound.is_none());
+
+    // But if we search for the change set across all workspaces, we find it
+    ChangeSet::get_by_id_across_workspaces(&user_1_dal_context, user_2_change_set.id)
+        .await
+        .expect("could not find change set");
+}
+
+#[test]
 async fn build_from_request_context_allows_change_set_from_workspace_with_access(
     ctx: &mut DalContext,
     ctx_builder: DalContextBuilder,
@@ -330,10 +401,9 @@ async fn change_set_approval_flow(ctx: &mut DalContext) {
         .await
         .expect("could not commit and update");
     // request approval
-    let mut change_set = ChangeSet::find(ctx, new_change_set.id)
+    let mut change_set = ChangeSet::get_by_id(ctx, new_change_set.id)
         .await
-        .expect("could not find change set")
-        .expect("change set is some");
+        .expect("could not find change set");
 
     change_set
         .request_change_set_approval(ctx)
@@ -343,10 +413,9 @@ async fn change_set_approval_flow(ctx: &mut DalContext) {
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update");
-    let mut change_set = ChangeSet::find(ctx, new_change_set.id)
+    let mut change_set = ChangeSet::get_by_id(ctx, new_change_set.id)
         .await
-        .expect("could not find change set")
-        .expect("change set is some");
+        .expect("could not find change set");
 
     // make sure everything looks right
     assert_eq!(change_set.status, ChangeSetStatus::NeedsApproval);
@@ -363,10 +432,9 @@ async fn change_set_approval_flow(ctx: &mut DalContext) {
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update");
-    let mut change_set = ChangeSet::find(ctx, new_change_set.id)
+    let mut change_set = ChangeSet::get_by_id(ctx, new_change_set.id)
         .await
-        .expect("could not find change set")
-        .expect("change set is some");
+        .expect("could not find change set");
     assert_eq!(change_set.status, ChangeSetStatus::Rejected);
     assert!(change_set.merge_requested_at.is_some());
     assert_eq!(change_set.merge_requested_by_user_id, current_user);
@@ -385,10 +453,9 @@ async fn change_set_approval_flow(ctx: &mut DalContext) {
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update");
-    let mut change_set = ChangeSet::find(ctx, new_change_set.id)
+    let mut change_set = ChangeSet::get_by_id(ctx, new_change_set.id)
         .await
-        .expect("could not find change set")
-        .expect("change set is some");
+        .expect("could not find change set");
     assert_eq!(change_set.status, ChangeSetStatus::Open);
     assert_eq!(change_set.merge_requested_at, None);
     assert_eq!(change_set.merge_requested_by_user_id, None);
@@ -404,10 +471,9 @@ async fn change_set_approval_flow(ctx: &mut DalContext) {
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update");
-    let mut change_set = ChangeSet::find(ctx, new_change_set.id)
+    let mut change_set = ChangeSet::get_by_id(ctx, new_change_set.id)
         .await
-        .expect("could not find change set")
-        .expect("change set is some");
+        .expect("could not find change set");
 
     // make sure everything looks right
     assert_eq!(change_set.status, ChangeSetStatus::NeedsApproval);
@@ -425,10 +491,9 @@ async fn change_set_approval_flow(ctx: &mut DalContext) {
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update");
-    let change_set = ChangeSet::find(ctx, new_change_set.id)
+    let change_set = ChangeSet::get_by_id(ctx, new_change_set.id)
         .await
-        .expect("could not find change set")
-        .expect("change set is some");
+        .expect("could not find change set");
 
     // make sure everything looks right
     assert_eq!(change_set.status, ChangeSetStatus::Approved);

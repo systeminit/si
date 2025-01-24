@@ -165,7 +165,14 @@ def build_nix_package(name: str, build_context_dir: str) -> str:
             symlinks=True,
         )
 
+        # If we find a workspace dir, let's get the contents into the root
+        workspace = os.path.join(root_dir, "workspace")
+        if os.path.isdir(workspace):
+            print("--- Found a workspace dir, moving contents into root")
+            move_contents_up(workspace)
+
         print("--- Build nix package with: '{}'".format(" ".join(cmd)))
+        # Create parent directories
         subprocess.run(cmd, cwd=root_dir).check_returncode()
 
         nix_store_pkg_path = os.readlink(os.path.join(root_dir, "result"))
@@ -219,7 +226,8 @@ def build_tar_archive(
             "local",
             "bin",
         )
-        os.makedirs(bin_dir, exist_ok=True)
+        lib_dir = os.path.join(tempdir, "lib")
+        lib64_dir = os.path.join(tempdir, "lib64")
         metadata_dir = os.path.join(
             tempdir,
             "etc",
@@ -227,11 +235,31 @@ def build_tar_archive(
             pkg_metadata.get("name", "UNKNOWN-NAME"),
             pkg_metadata.get("version", "UNKNOWN-VERSION"),
         )
+
+        os.makedirs(bin_dir, exist_ok=True)
         os.makedirs(metadata_dir, exist_ok=True)
 
         binaries = glob.glob(os.path.join(nix_store_pkg_path, "bin", "*"))
         for binary in binaries:
             os.symlink(binary, os.path.join(bin_dir, os.path.basename(binary)))
+
+        # This ensures that if the omnibus pkg bubbles up lib64, it gets
+        # included assuming it is needed in environments that require
+        # specifiying a dynamic linker
+        if os.path.exists(os.path.join(nix_store_pkg_path, "lib")):
+            os.makedirs(lib_dir, exist_ok=True)
+            for root, _, files in os.walk(os.path.join(nix_store_pkg_path, "lib"), followlinks=True):
+                for file in files:
+                    source = os.path.join(root, file)
+                    # If it's a symlink, get the real target
+                    if os.path.islink(source):
+                        target = os.readlink(source)
+                    else:
+                        target = source
+                    os.symlink(target, os.path.join(lib_dir, file))
+
+            # Create lib64 -> lib symlink
+            os.symlink("lib", lib64_dir)
 
         write_json(os.path.join(metadata_dir, "metadata.json"), pkg_metadata)
 
@@ -244,6 +272,9 @@ def build_tar_archive(
             "usr",
             "etc",
         ]
+        if os.path.exists(os.path.join(tempdir, "lib")):
+            tar_append_cmd.extend(["lib", "lib64"])
+
         subprocess.run(tar_append_cmd, cwd=tempdir).check_returncode()
 
     # Remember that by default `gzip` creates a *new* file and appends the
@@ -252,6 +283,7 @@ def build_tar_archive(
     gzip_cmd = [
         "gzip",
         "-9",
+        "-f",
         temp_file,
     ]
     subprocess.run(gzip_cmd).check_returncode()
@@ -381,6 +413,10 @@ def compute_build_metadata(
 
     return metadata
 
+def move_contents_up(directory):
+    parent_dir = os.path.dirname(directory)
+    shutil.copytree(directory, parent_dir, dirs_exist_ok=True)
+    shutil.rmtree(directory)
 
 if __name__ == "__main__":
     sys.exit(main())

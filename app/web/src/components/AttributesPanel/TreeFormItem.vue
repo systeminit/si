@@ -723,7 +723,7 @@
               themeClasses('bg-caution-lines-light', 'bg-caution-lines-dark'),
             )
           "
-          @click="openConfirmEditModal"
+          @click="openNonEditableModal"
         />
       </div>
     </div>
@@ -1268,7 +1268,7 @@ const sourceIcon = computed(() => {
 const sourceOverridden = computed(() => props.treeDef.value?.overridden);
 
 const propIsEditable = computed(() => {
-  if (isImmutableSecretProp.value) {
+  if (isImmutableSecretProp.value || isCreateOnly.value) {
     return false;
   }
   return (
@@ -1283,6 +1283,9 @@ const propControlledByParent = computed(
 );
 
 const sourceTooltip = computed(() => {
+  if (isCreateOnly.value) {
+    return `${propName.value} can only be set before resource creation`;
+  }
   if (sourceOverridden.value) {
     if (propPopulatedBySocket.value) {
       return `${propName.value} has been overriden to be set via a populated socket`;
@@ -1503,6 +1506,12 @@ const isImmutableSecretProp = computed(
     !(fullPropDef.value as PropertyEditorProp).isOriginSecret &&
     widgetKind.value === "secret",
 );
+
+const isCreateOnly = computed(
+  () =>
+    props.attributesPanel &&
+    (fullPropDef.value as PropertyEditorProp).createOnly,
+);
 const secretDefinitionIdForProp = computed(() => {
   if (props.treeDef.propDef.widgetKind.kind !== "secret") return;
   const widgetOptions = props.treeDef.propDef.widgetKind.options;
@@ -1535,6 +1544,12 @@ const confirmEditModalTitle = computed(() => {
 
   return "Are You Sure?";
 });
+
+const openNonEditableModal = () => {
+  if (!isCreateOnly.value) {
+    openConfirmEditModal();
+  }
+};
 
 const openConfirmEditModal = () => {
   if (confirmEditModalRef.value) {

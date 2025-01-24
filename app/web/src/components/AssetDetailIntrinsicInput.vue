@@ -102,7 +102,11 @@ const label = computed<string>(() => {
 watch(
   () => props.data,
   () => {
-    display.value = toRaw(props.data);
+    // we need to make a shallow copy of props.data
+    // in order to prevent the parent AssetDetailsPanel from
+    // recomputing outputSocketIntrinsics which causes this component
+    // to be unmounted/mounted which resets the selectedFilter :(
+    display.value = { ...toRaw(props.data) };
   },
   { immediate: true },
 );

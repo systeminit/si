@@ -15,7 +15,7 @@ use crate::{
         content_address::{ContentAddress, ContentAddressDiscriminants},
         graph::{
             correct_transforms::add_dependent_value_root_updates,
-            deprecated::v1::DeprecatedComponentNodeWeightV1, detect_updates::Update, LineageId,
+            deprecated::v1::DeprecatedComponentNodeWeightV1, detector::Update, LineageId,
         },
         node_weight::traits::CorrectTransforms,
         NodeInformation,
@@ -26,6 +26,7 @@ use crate::{
 use petgraph::{prelude::*, visit::EdgeRef, Direction::Incoming};
 use serde::{Deserialize, Serialize};
 use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
+use si_id::{AttributeValueId, ComponentId};
 use std::collections::HashSet;
 use std::sync::Arc;
 
@@ -291,7 +292,7 @@ fn remove_hanging_socket_connections(
             })
             .map(|edge_ref| edge_ref.target())
         {
-            for (apa_idx, apa_weight) in graph
+            for (apa_idx, apa_weight, destination_component_id) in graph
                 .edges_directed(output_socket_index, Incoming)
                 .filter(|edge_ref| {
                     EdgeWeightKindDiscriminants::PrototypeArgumentValue
@@ -304,7 +305,11 @@ fn remove_hanging_socket_connections(
                             NodeWeight::AttributePrototypeArgument(inner) => {
                                 inner.targets().and_then(|targets| {
                                     if targets.source_component_id == component_id.into() {
-                                        Some((edge_ref.source(), node_weight))
+                                        Some((
+                                            edge_ref.source(),
+                                            node_weight,
+                                            targets.destination_component_id,
+                                        ))
                                     } else {
                                         None
                                     }
@@ -336,7 +341,15 @@ fn remove_hanging_socket_connections(
                                             _ => None,
                                         })
                                     {
-                                        affected_attribute_values.insert(id);
+                                        // check to make sure this attribute value belongs to the destination component in question
+                                        // as this will find all attribute values for the socket in question but not all need to be updated
+                                        if socket_attribute_value_belongs_to_component(
+                                            graph,
+                                            destination_component_id,
+                                            id.into(),
+                                        ) {
+                                            affected_attribute_values.insert(id);
+                                        }
                                     }
                                 },
                             );
@@ -353,6 +366,31 @@ fn remove_hanging_socket_connections(
     )?);
 
     Ok(new_updates)
+}
+
+/// Given an attribute value for an output socket, and checks that it is the attribute value
+/// for the given [`ComponentId`]
+fn socket_attribute_value_belongs_to_component(
+    graph: &WorkspaceSnapshotGraphVCurrent,
+    destination_component_id: ComponentId,
+    starting_attribute_value: AttributeValueId,
+) -> bool {
+    let Some(av_index) = graph.get_node_index_by_id_opt(starting_attribute_value) else {
+        return false;
+    };
+    if let Some(component_index) = graph
+        .edges_directed(av_index, Incoming)
+        .find(|edge_ref| {
+            EdgeWeightKindDiscriminants::SocketValue == edge_ref.weight().kind().into()
+        })
+        .map(|edge| edge.source())
+    {
+        // make sure the component id matches what we're expecting
+        if let Some(component_id) = graph.node_index_to_id(component_index) {
+            return component_id == destination_component_id.into();
+        }
+    }
+    false
 }
 
 impl CorrectTransforms for ComponentNodeWeight {

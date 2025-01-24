@@ -73,20 +73,18 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install Deno
-        uses: denoland/setup-deno@v1
-        with:
-          deno-version: v1.x
+        uses: denoland/setup-deno@v2
 
       - name: Run the deno exec with retry
         run: |
           cd bin/si-api-test
-          
+
           echo "Running test ${{ matrix.tests.name }} with index: ${{ matrix.tests.index }}"
 
           # Split the workspace IDs into an array
           workspace_ids="${{ vars.API_TEST_WORKSPACE_IDS }}"
           IFS=',' read -r -a workspace_array <<< "$workspace_ids"
-          
+
           # Pick the correct workspace ID based on the index
           workspace_id="${workspace_array[${{ matrix.tests.index }}]}"
 
@@ -96,18 +94,21 @@ jobs:
           n=0
           max_retries=5
           exit_code=0
-          
+
           until [ $n -ge $max_retries ]
           do
             unset exit_code || echo "exit_code not set"
 
             # Run the deno task and store exit code in a variable
-            deno task run \
+            deno run \
+            --allow-all \
+            --no-config \
+            main.ts \
             --workspaceId "$workspace_id" \
             --userId ${{ secrets.API_TEST_EMAIL }} \
             --password ${{ secrets.API_TEST_PASSWORD }} \
             --tests ${{ matrix.tests.name }} || exit_code=$?
-            
+
             # Check the exit code
             if [ -z "$exit_code" ]; then
               echo "Deno task succeeded [ or the orchestration failed for a totally non-valid reason ]!"
@@ -152,7 +153,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: artifacts
-      - run: |     
+      - run: |
           has_artifacts=false
           # Check for marker files
           for marker in artifacts/*/failure-marker; do
@@ -179,7 +180,7 @@ jobs:
                 \"tags\": [
                   \"service:github\"
                 ]
-              }" 
+              }"
           fi
       - run: |
           # Always send the Internal Slack Notification if failure detected, regardless of error source

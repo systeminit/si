@@ -38,9 +38,7 @@ pub async fn abandon_change_set(
     if maybe_head_changeset == request.change_set_id {
         return Err(ChangeSetError::CannotAbandonHead);
     }
-    let mut change_set = ChangeSet::find(&ctx, request.change_set_id)
-        .await?
-        .ok_or(ChangeSetError::ChangeSetNotFound)?;
+    let mut change_set = ChangeSet::get_by_id(&ctx, request.change_set_id).await?;
     let old_status = change_set.status;
     ctx.update_visibility_and_snapshot_to_visibility(change_set.id)
         .await?;

@@ -7,6 +7,7 @@ use crate::{
     EdgeWeight, EdgeWeightKind, PropKind,
 };
 
+mod detect_changes;
 mod detect_updates;
 mod exclusive_outgoing_edges;
 mod rebase;
@@ -91,7 +92,7 @@ mod test {
     use crate::workspace_snapshot::{
         content_address::ContentAddress,
         edge_weight::{EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants},
-        graph::{detect_updates::Update, WorkspaceSnapshotGraphVCurrent},
+        graph::{detector::Update, WorkspaceSnapshotGraphVCurrent},
         node_weight::NodeWeight,
     };
     use crate::{ComponentId, FuncId, PropId, SchemaId, SchemaVariantId};

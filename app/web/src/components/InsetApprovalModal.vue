@@ -75,6 +75,20 @@
         <ActionsList slim kind="proposed" noInteraction />
       </div>
     </div>
+    <template v-if="featureFlagStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL">
+      <div class="text-sm">
+        Approvers who can satisfy the requirements:
+        <ul>
+          <li v-for="u in requiredApproverUsers" :key="u.id">{{ u.name }}</li>
+        </ul>
+      </div>
+      <div v-if="approvalsSubmittedUsers.length > 0" class="text-sm">
+        Users who approved:
+        <ul>
+          <li v-for="u in approvalsSubmittedUsers" :key="u.id">{{ u.name }}</li>
+        </ul>
+      </div>
+    </template>
     <div
       v-if="requesterIsYou || mode === 'rejected' || userIsApprover"
       class="flex flex-row gap-sm"
@@ -115,12 +129,13 @@ import {
   themeClasses,
   TruncateWithTooltip,
 } from "@si/vue-lib/design-system";
-import { computed, ref } from "vue";
+import { computed, ref, onBeforeMount } from "vue";
 import clsx from "clsx";
 import { useRoute, useRouter } from "vue-router";
 import { useChangeSetsStore } from "@/store/change_sets.store";
-import { useAuthStore } from "@/store/auth.store";
+import { useAuthStore, WorkspaceUser } from "@/store/auth.store";
 import { ChangeSetStatus } from "@/api/sdf/dal/change_set";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import ActionsList from "./Actions/ActionsList.vue";
 
 export type InsetApprovalModalMode =
@@ -129,12 +144,15 @@ export type InsetApprovalModalMode =
   | "rejected"
   | "error";
 
-const changeSetsStore = useChangeSetsStore();
-const changeSetName = computed(() => changeSetsStore.selectedChangeSet?.name);
-const authStore = useAuthStore();
-const applyingChangeSet = ref(false);
 const route = useRoute();
 const router = useRouter();
+
+const authStore = useAuthStore();
+const changeSetsStore = useChangeSetsStore();
+const featureFlagStore = useFeatureFlagsStore();
+
+const applyingChangeSet = ref(false);
+const changeSetName = computed(() => changeSetsStore.selectedChangeSet?.name);
 
 /*
 This is breaking on the happy path of applying a change set :)
@@ -159,6 +177,61 @@ onMounted(() => {
   }
 });
 */
+
+onBeforeMount(async () => {
+  if (featureFlagStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL)
+    await Promise.all([
+      changeSetsStore.FETCH_APPROVAL_STATUS(
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        changeSetsStore.selectedChangeSetId!,
+      ),
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      authStore.LIST_WORKSPACE_USERS(changeSetsStore.selectedWorkspacePk!),
+    ]);
+});
+const approvalsSubmittedUserIds = computed(() => {
+  const approvalData =
+    changeSetsStore.changeSetsApprovalData[
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      changeSetsStore.selectedChangeSetId!
+    ];
+  return approvalData?.latestApprovals.map((a) => a.userPk);
+});
+const requiredApproverIds = computed(() => {
+  const ids = new Set<string>();
+  const approvalData =
+    changeSetsStore.changeSetsApprovalData[
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      changeSetsStore.selectedChangeSetId!
+    ];
+  // everyone required
+  approvalData?.requirements.forEach((r) => {
+    return Object.values(r.approvingGroups).forEach((id) => {
+      ids.add(id);
+    });
+  });
+  // remove people who have voted
+  approvalsSubmittedUserIds.value?.forEach((id) => {
+    ids.delete(id);
+  });
+  return [...ids];
+});
+const approvalsSubmittedUsers = computed(() => {
+  const users: WorkspaceUser[] = [];
+  approvalsSubmittedUserIds.value?.forEach((id) => {
+    const u = authStore.workspaceUsers[id];
+    if (u) users.push(u);
+  });
+  return users;
+});
+const requiredApproverUsers = computed(() => {
+  const users: WorkspaceUser[] = [];
+  requiredApproverIds.value.forEach((id) => {
+    const u = authStore.workspaceUsers[id];
+    if (u) users.push(u);
+  });
+  return users;
+});
 
 const mode = computed(() => {
   if (
@@ -193,7 +266,9 @@ const approverEmail = computed(
 const approveDate = computed(
   () => changeSetsStore.selectedChangeSet?.reviewedAt as IsoDateString,
 );
-const userIsApprover = computed(() => changeSetsStore.currentUserIsApprover);
+const userIsApprover = computed(
+  () => changeSetsStore.currentUserIsDefaultApprover,
+);
 
 const modalData = computed(() => {
   if (mode.value === "requested") {

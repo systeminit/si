@@ -4,7 +4,6 @@ use std::{
     io::Write,
     sync::{Arc, Mutex},
 };
-use strum::IntoEnumIterator;
 
 use petgraph::{
     algo,
@@ -15,6 +14,7 @@ use petgraph::{
 use serde::{Deserialize, Serialize};
 use si_events::{ulid::Ulid, ContentHash};
 use si_layer_cache::db::serialize;
+use strum::IntoEnumIterator;
 use telemetry::prelude::*;
 use ulid::Generator;
 
@@ -23,7 +23,7 @@ use crate::{
     workspace_snapshot::{
         content_address::ContentAddress,
         graph::{
-            detect_updates::{Detector, Update},
+            detector::{Detector, Update},
             MerkleTreeHash, WorkspaceSnapshotGraphError, WorkspaceSnapshotGraphResult,
         },
         node_weight::{CategoryNodeWeight, NodeWeight},
@@ -33,8 +33,12 @@ use crate::{
     Timestamp,
 };
 
+use super::detector::Change;
+
+pub mod approval_requirement;
 pub mod component;
 pub mod diagram;
+pub mod entity_kind;
 pub mod schema;
 pub mod socket;
 
@@ -218,6 +222,10 @@ impl WorkspaceSnapshotGraphV4 {
             .map_err(|e| WorkspaceSnapshotGraphError::MutexPoison(e.to_string()))?
             .generate()?
             .into())
+    }
+
+    pub fn all_node_ids(&self) -> HashSet<Ulid> {
+        HashSet::from_iter(self.node_index_by_id.keys().copied())
     }
 
     pub fn update_node_id(
@@ -615,18 +623,18 @@ impl WorkspaceSnapshotGraphV4 {
         // remove all nodes (that are not the `self.root_index` node) that do not have any
         // incoming edges, and we keep doing this until the only one left is the `self.root_index`
         // node, then all remaining nodes are reachable from `self.root_index`.
-        let mut old_root_ids: HashSet<NodeIndex>;
+        let mut old_root_indexes: HashSet<NodeIndex>;
         loop {
-            old_root_ids = self
+            old_root_indexes = self
                 .graph
                 .externals(Incoming)
                 .filter(|node_id| *node_id != self.root_index)
                 .collect();
-            if old_root_ids.is_empty() {
+            if old_root_indexes.is_empty() {
                 break;
             }
 
-            for stale_node_index in &old_root_ids {
+            for stale_node_index in &old_root_indexes {
                 self.graph.remove_node(*stale_node_index);
             }
         }
@@ -687,6 +695,13 @@ impl WorkspaceSnapshotGraphV4 {
 
     pub fn detect_updates(&self, updated_graph: &Self) -> Vec<Update> {
         Detector::new(self, updated_graph).detect_updates()
+    }
+
+    pub fn detect_changes(
+        &self,
+        updated_graph: &Self,
+    ) -> WorkspaceSnapshotGraphResult<Vec<Change>> {
+        Detector::new(self, updated_graph).detect_changes()
     }
 
     #[allow(dead_code)]
@@ -856,25 +871,26 @@ impl WorkspaceSnapshotGraphV4 {
                 let color = match discrim {
                     EdgeWeightKindDiscriminants::Action => "black",
                     EdgeWeightKindDiscriminants::ActionPrototype => "black",
+                    EdgeWeightKindDiscriminants::ApprovalRequirementDefinition => "black",
                     EdgeWeightKindDiscriminants::AuthenticationPrototype => "black",
                     EdgeWeightKindDiscriminants::Contain => "blue",
+                    EdgeWeightKindDiscriminants::DiagramObject => "black",
                     EdgeWeightKindDiscriminants::FrameContains => "black",
-                    EdgeWeightKindDiscriminants::Represents => "black",
+                    EdgeWeightKindDiscriminants::ManagementPrototype => "pink",
+                    EdgeWeightKindDiscriminants::Manages => "pink",
                     EdgeWeightKindDiscriminants::Ordering => "gray",
                     EdgeWeightKindDiscriminants::Ordinal => "gray",
                     EdgeWeightKindDiscriminants::Prop => "orange",
                     EdgeWeightKindDiscriminants::Prototype => "green",
                     EdgeWeightKindDiscriminants::PrototypeArgument => "green",
                     EdgeWeightKindDiscriminants::PrototypeArgumentValue => "green",
+                    EdgeWeightKindDiscriminants::Proxy => "gray",
+                    EdgeWeightKindDiscriminants::Represents => "black",
+                    EdgeWeightKindDiscriminants::Root => "black",
                     EdgeWeightKindDiscriminants::Socket => "red",
                     EdgeWeightKindDiscriminants::SocketValue => "purple",
-                    EdgeWeightKindDiscriminants::Proxy => "gray",
-                    EdgeWeightKindDiscriminants::Root => "black",
                     EdgeWeightKindDiscriminants::Use => "black",
                     EdgeWeightKindDiscriminants::ValidationOutput => "darkcyan",
-                    EdgeWeightKindDiscriminants::ManagementPrototype => "pink",
-                    EdgeWeightKindDiscriminants::Manages => "pink",
-                    EdgeWeightKindDiscriminants::DiagramObject => "black",
                 };
 
                 match edgeref.weight().kind() {
@@ -900,27 +916,28 @@ impl WorkspaceSnapshotGraphV4 {
                             // Some of these should never happen as they have their own top-level
                             // NodeWeight variant.
                             ContentAddressDiscriminants::ActionPrototype => "green",
+                            ContentAddressDiscriminants::ApprovalRequirementDefinition => "black",
                             ContentAddressDiscriminants::AttributePrototype => "green",
                             ContentAddressDiscriminants::Component => "black",
                             ContentAddressDiscriminants::DeprecatedAction => "green",
                             ContentAddressDiscriminants::DeprecatedActionBatch => "green",
                             ContentAddressDiscriminants::DeprecatedActionRunner => "green",
-                            ContentAddressDiscriminants::OutputSocket => "red",
                             ContentAddressDiscriminants::Func => "black",
                             ContentAddressDiscriminants::FuncArg => "black",
                             ContentAddressDiscriminants::Geometry => "black",
                             ContentAddressDiscriminants::InputSocket => "red",
                             ContentAddressDiscriminants::JsonValue => "fuchsia",
+                            ContentAddressDiscriminants::ManagementPrototype => "black",
                             ContentAddressDiscriminants::Module => "yellow",
+                            ContentAddressDiscriminants::OutputSocket => "red",
                             ContentAddressDiscriminants::Prop => "orange",
                             ContentAddressDiscriminants::Root => "black",
                             ContentAddressDiscriminants::Schema => "black",
                             ContentAddressDiscriminants::SchemaVariant => "black",
                             ContentAddressDiscriminants::Secret => "black",
                             ContentAddressDiscriminants::StaticArgumentValue => "green",
-                            ContentAddressDiscriminants::ValidationPrototype => "black",
                             ContentAddressDiscriminants::ValidationOutput => "darkcyan",
-                            ContentAddressDiscriminants::ManagementPrototype => "black",
+                            ContentAddressDiscriminants::ValidationPrototype => "black",
                             ContentAddressDiscriminants::View => "black",
                         };
                         (discrim.to_string(), color)
@@ -1000,6 +1017,9 @@ impl WorkspaceSnapshotGraphV4 {
                         ("ManagementPrototype".to_string(), "black")
                     }
                     NodeWeight::DiagramObject(_) => ("DiagramObject".to_string(), "black"),
+                    NodeWeight::ApprovalRequirementDefinition(_) => {
+                        ("ApprovalRequirementDefinition".to_string(), "black")
+                    }
                 };
                 let color = color.to_string();
                 let id = node_weight.id();
@@ -1065,7 +1085,7 @@ impl WorkspaceSnapshotGraphV4 {
             .ok_or(WorkspaceSnapshotGraphError::NodeWeightNotFound)
     }
 
-    fn get_node_weight_by_id(
+    pub fn get_node_weight_by_id(
         &self,
         id: impl Into<Ulid>,
     ) -> WorkspaceSnapshotGraphResult<&NodeWeight> {
@@ -1560,7 +1580,8 @@ impl WorkspaceSnapshotGraphV4 {
                     | EdgeWeightKind::ValidationOutput
                     | EdgeWeightKind::ManagementPrototype
                     | EdgeWeightKind::Manages
-                    | EdgeWeightKind::DiagramObject => {}
+                    | EdgeWeightKind::DiagramObject
+                    | EdgeWeightKind::ApprovalRequirementDefinition => {}
                 }
             }
         }

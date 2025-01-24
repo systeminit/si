@@ -23,8 +23,6 @@ pub async fn create_change_set(
 
     let change_set_name = &request.change_set_name;
 
-    // TODO(nick): this should not always fork "head". It should fork from the base change set id or
-    // "head".
     let change_set = ChangeSet::fork_head(&ctx, change_set_name).await?;
 
     track(

@@ -220,40 +220,33 @@
 
           cyclone = binDerivation {pkgName = "cyclone";};
 
-          # This one's awful: we don't have a stanalone binary here, we have a
-          # directory of stuff with a `bin/$name` entrypoint shell script to
-          # invoke this beast. Additionally there are `node_modules` symlinks
-          # everywhere and Buck2's normal `buck2 build ... --out ...` option
-          # dies on some symlinks referring to directories and not files.
-          # Instead we'll have to parse a build report JSON to get the output
-          # path and copy it ourselves.
-          lang-js = buck2Derivation {
-            pathPrefix = "bin";
+          # autoPatchingElf and stripping will break deno compile'd binaries.
+          # We need to make sure we know where glibc and friends exist and since
+          # we can't patchelf, we need to ensure we drop the dynmic linker in a
+          # known place. Note that LD_LIBRAY_PATH is unset when using siExec to
+          # ensure the binaries our binaries run don't inherit it.
+          lang-js = binDerivation {
             pkgName = "lang-js";
-            extraBuildInputs = [pkgs.jq];
-            stdBuildPhase = ''
-              buck2 build "$buck2_target" --verbose 8 --build-report report.log
-              dist_dir="$(jq -r \
-                '.results | to_entries | map(.value)[0].outputs.DEFAULT[0]' \
-                <report.log
-              )"
-              cp -rpv "$dist_dir" "build/$name-$system"
-            '';
-            installPhase = ''
-              mkdir -pv "$out"
-              cp -rpv "build/$name-$system"/* "$out"/
-              mv -v "$out/bin/lang-js" "$out/bin/.lang-js"
-              # Need to escape this shell variable which should not be
-              # iterpreted in Nix as a variable nor a shell variable when run
-              # but rather a literal string which happens to be a shell
-              # variable. Nuclear arms race of quoting and escaping special
-              # characters to make this work...
-              substituteInPlace "$out/bin/.lang-js" \
-                --replace "#!${pkgs.coreutils}/bin/env sh" "#!${pkgs.bash}/bin/sh" \
-                --replace "\''${0%/*}/../lib/" "$out/lib/" \
-                --replace "exec node" "exec ${pkgs.nodejs}/bin/node"
-              makeWrapper "$out/bin/.lang-js" "$out/bin/lang-js" \
-                --prefix PATH : ${pkgs.lib.makeBinPath langJsExtraPkgs}
+            dontAutoPatchELF = true;
+            dontStrip = true;
+            extraInstallPhase = ''
+              # since we can't patchelf, we need to ensure the dynamic linker
+              # is where we expect it. This gets droppped into the rootfs as
+              # /lib64/ld-linux-x86-64.so.2 -> /nix/store/*/ld-linux-x86-64.20.2
+              mkdir -p $out/lib64
+              ln -sf ${pkgs.glibc}/lib/ld-linux-x86-64.so.2 $out/lib64/ld-linux-x86-64.so.2
+              ln -sf ${pkgs.glibc}/lib/ld-linux-aarch64.so.1 $out/lib64/ld-linux-aarch64.so.1
+
+              wrapProgram $out/bin/lang-js \
+                --set LD_LIBRARY_PATH "${pkgs.lib.makeLibraryPath [
+                  pkgs.glibc
+                  pkgs.gcc-unwrapped.lib
+                ]}" \
+                --set SI_LANG_JS_LOG "debug" \
+                --prefix PATH : ${pkgs.lib.makeBinPath langJsExtraPkgs} \
+                --run 'cd "$(dirname "$0")"'
+                # ^ deno falls over trying to resolve libraries if you don't set
+                # the working path
             '';
           };
 

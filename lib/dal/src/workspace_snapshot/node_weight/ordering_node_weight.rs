@@ -7,7 +7,7 @@ use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
 use super::traits::CorrectTransformsError;
 use super::{NodeWeight, NodeWeightDiscriminants, NodeWeightError};
 use crate::workspace_snapshot::graph::deprecated::v1::DeprecatedOrderingNodeWeightV1;
-use crate::workspace_snapshot::graph::detect_updates::Update;
+use crate::workspace_snapshot::graph::detector::Update;
 use crate::workspace_snapshot::node_weight::traits::{CorrectTransforms, CorrectTransformsResult};
 use crate::workspace_snapshot::node_weight::NodeWeightResult;
 use crate::workspace_snapshot::NodeInformation;

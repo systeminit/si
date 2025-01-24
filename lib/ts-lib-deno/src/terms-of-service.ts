@@ -1,0 +1,1 @@
+../../ts-lib/src/terms-of-service.ts

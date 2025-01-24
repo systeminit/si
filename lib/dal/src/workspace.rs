@@ -55,8 +55,8 @@ pub enum WorkspaceError {
     BuiltinWorkspaceNotFound,
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
-    #[error("change set not found by id: {0}")]
-    ChangeSetNotFound(ChangeSetId),
+    #[error("could not find default change set {1} for workspace {0}")]
+    DefaultChangeSetNotFound(WorkspacePk, ChangeSetId),
     #[error("Trying to export from system actor. This can only be done by a user actor")]
     ExportingFromSystemActor,
     #[error(transparent)]
@@ -589,9 +589,7 @@ impl Workspace {
         let base_changeset_for_default = {
             let changeset_id = self.default_change_set_id();
 
-            let changeset = ChangeSet::find(ctx, changeset_id)
-                .await?
-                .ok_or(WorkspaceError::ChangeSetNotFound(changeset_id))?;
+            let changeset = ChangeSet::get_by_id(ctx, changeset_id).await?;
 
             changeset.base_change_set_id
         };
@@ -677,6 +675,14 @@ impl Workspace {
         let has_change_set: bool = row.try_get("has_change_set")?;
 
         Ok(has_change_set)
+    }
+
+    pub async fn default_change_set(&self, ctx: &DalContext) -> WorkspaceResult<ChangeSet> {
+        ChangeSet::find(ctx, self.default_change_set_id)
+            .await?
+            .ok_or_else(|| {
+                WorkspaceError::DefaultChangeSetNotFound(self.pk, self.default_change_set_id)
+            })
     }
 
     /// Mark all workspaces in the database with a given snapshot version. Use

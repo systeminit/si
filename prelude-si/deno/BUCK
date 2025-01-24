@@ -1,0 +1,34 @@
+load(
+    "@prelude-si//:macros.bzl",
+    "export_file",
+    "test_suite",
+    "yapf_check",
+)
+
+export_file(
+    name = "deno_compile.py",
+)
+
+export_file(
+    name = "deno_format.py",
+)
+
+export_file(
+    name = "deno_test.py",
+)
+
+export_file(
+    name = "deno_workspace.py",
+)
+
+yapf_check(
+    name = "check-format-python",
+    srcs = glob(["**/*.py"]),
+)
+
+test_suite(
+    name = "check-format",
+    tests = [
+        ":check-format-python",
+    ],
+)

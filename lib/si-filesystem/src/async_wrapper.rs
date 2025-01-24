@@ -6,7 +6,7 @@ use fuser::{
 };
 use tokio::sync::mpsc::UnboundedSender;
 
-use crate::FilesystemCommand;
+use crate::{FileHandle, FilesystemCommand, Inode};
 
 pub struct AsyncFuseWrapper {
     tx: UnboundedSender<FilesystemCommand>,
@@ -21,7 +21,11 @@ impl AsyncFuseWrapper {
 impl Filesystem for AsyncFuseWrapper {
     fn getattr(&mut self, _req: &fuser::Request<'_>, ino: u64, fh: Option<u64>, reply: ReplyAttr) {
         self.tx
-            .send(FilesystemCommand::GetAttr { ino, fh, reply })
+            .send(FilesystemCommand::GetAttr {
+                ino: Inode::new(ino),
+                fh: fh.map(FileHandle::new),
+                reply,
+            })
             .unwrap();
     }
 
@@ -35,8 +39,8 @@ impl Filesystem for AsyncFuseWrapper {
     ) {
         self.tx
             .send(FilesystemCommand::ReadDir {
-                ino,
-                fh,
+                ino: Inode::new(ino),
+                fh: FileHandle::new(fh),
                 offset,
                 reply,
             })
@@ -62,7 +66,7 @@ impl Filesystem for AsyncFuseWrapper {
     ) {
         self.tx
             .send(FilesystemCommand::Lookup {
-                parent,
+                parent: Inode::new(parent),
                 name: name.to_os_string(),
                 reply,
             })
@@ -71,7 +75,10 @@ impl Filesystem for AsyncFuseWrapper {
 
     fn forget(&mut self, _req: &fuser::Request<'_>, ino: u64, nlookup: u64) {
         self.tx
-            .send(FilesystemCommand::Forget { ino, nlookup })
+            .send(FilesystemCommand::Forget {
+                ino: Inode::new(ino),
+                nlookup,
+            })
             .unwrap();
     }
 
@@ -95,12 +102,12 @@ impl Filesystem for AsyncFuseWrapper {
     ) {
         self.tx
             .send(FilesystemCommand::SetAttr {
-                ino,
+                ino: Inode::new(ino),
                 mode,
                 uid,
                 gid,
                 size,
-                fh,
+                fh: fh.map(FileHandle::new),
                 flags,
                 reply,
             })
@@ -109,7 +116,10 @@ impl Filesystem for AsyncFuseWrapper {
 
     fn readlink(&mut self, _req: &fuser::Request<'_>, ino: u64, reply: ReplyData) {
         self.tx
-            .send(FilesystemCommand::ReadLink { ino, reply })
+            .send(FilesystemCommand::ReadLink {
+                ino: Inode::new(ino),
+                reply,
+            })
             .unwrap();
     }
 
@@ -125,7 +135,7 @@ impl Filesystem for AsyncFuseWrapper {
     ) {
         self.tx
             .send(FilesystemCommand::MkNod {
-                parent,
+                parent: Inode::new(parent),
                 name: name.to_os_string(),
                 mode,
                 umask,
@@ -146,7 +156,7 @@ impl Filesystem for AsyncFuseWrapper {
     ) {
         self.tx
             .send(FilesystemCommand::MkDir {
-                parent,
+                parent: Inode::new(parent),
                 name: name.to_os_string(),
                 mode,
                 umask,
@@ -164,7 +174,7 @@ impl Filesystem for AsyncFuseWrapper {
     ) {
         self.tx
             .send(FilesystemCommand::Unlink {
-                parent,
+                parent: Inode::new(parent),
                 name: name.to_os_string(),
                 reply,
             })
@@ -180,7 +190,7 @@ impl Filesystem for AsyncFuseWrapper {
     ) {
         self.tx
             .send(FilesystemCommand::RmDir {
-                parent,
+                parent: Inode::new(parent),
                 name: name.to_os_string(),
                 reply,
             })
@@ -197,7 +207,7 @@ impl Filesystem for AsyncFuseWrapper {
     ) {
         self.tx
             .send(FilesystemCommand::SymLink {
-                parent,
+                parent: Inode::new(parent),
                 link_name: link_name.to_os_string(),
                 target: target.to_path_buf(),
                 reply,
@@ -217,9 +227,9 @@ impl Filesystem for AsyncFuseWrapper {
     ) {
         self.tx
             .send(FilesystemCommand::Rename {
-                parent,
+                parent: Inode::new(parent),
                 name: name.to_os_string(),
-                newparent,
+                newparent: Inode::new(newparent),
                 newname: newname.to_os_string(),
                 flags,
                 reply,
@@ -237,8 +247,8 @@ impl Filesystem for AsyncFuseWrapper {
     ) {
         self.tx
             .send(FilesystemCommand::Link {
-                ino,
-                newparent,
+                ino: Inode::new(ino),
+                newparent: Inode::new(newparent),
                 newname: newname.to_os_string(),
                 reply,
             })
@@ -247,7 +257,11 @@ impl Filesystem for AsyncFuseWrapper {
 
     fn open(&mut self, _req: &fuser::Request<'_>, ino: u64, flags: i32, reply: fuser::ReplyOpen) {
         self.tx
-            .send(FilesystemCommand::Open { ino, flags, reply })
+            .send(FilesystemCommand::Open {
+                ino: Inode::new(ino),
+                flags,
+                reply,
+            })
             .unwrap();
         // reply.opened(0, 0);
     }
@@ -265,8 +279,8 @@ impl Filesystem for AsyncFuseWrapper {
     ) {
         self.tx
             .send(FilesystemCommand::Read {
-                ino,
-                fh,
+                ino: Inode::new(ino),
+                fh: FileHandle::new(fh),
                 offset,
                 size,
                 flags,
@@ -290,8 +304,8 @@ impl Filesystem for AsyncFuseWrapper {
     ) {
         self.tx
             .send(FilesystemCommand::Write {
-                ino,
-                fh,
+                ino: Inode::new(ino),
+                fh: FileHandle::new(fh),
                 offset,
                 data: data.to_vec(),
                 write_flags,
@@ -312,8 +326,8 @@ impl Filesystem for AsyncFuseWrapper {
     ) {
         self.tx
             .send(FilesystemCommand::Flush {
-                ino,
-                fh,
+                ino: Inode::new(ino),
+                fh: FileHandle::new(fh),
                 lock_owner,
                 reply,
             })
@@ -332,8 +346,8 @@ impl Filesystem for AsyncFuseWrapper {
     ) {
         self.tx
             .send(FilesystemCommand::Release {
-                ino,
-                fh,
+                ino: Inode::new(ino),
+                fh: FileHandle::new(fh),
                 flags,
                 lock_owner,
                 flush,
@@ -352,8 +366,8 @@ impl Filesystem for AsyncFuseWrapper {
     ) {
         self.tx
             .send(FilesystemCommand::FSync {
-                ino,
-                fh,
+                ino: Inode::new(ino),
+                fh: FileHandle::new(fh),
                 datasync,
                 reply,
             })
@@ -368,7 +382,11 @@ impl Filesystem for AsyncFuseWrapper {
         reply: fuser::ReplyOpen,
     ) {
         self.tx
-            .send(FilesystemCommand::OpenDir { ino, flags, reply })
+            .send(FilesystemCommand::OpenDir {
+                ino: Inode::new(ino),
+                flags,
+                reply,
+            })
             .unwrap();
     }
 
@@ -382,8 +400,8 @@ impl Filesystem for AsyncFuseWrapper {
     ) {
         self.tx
             .send(FilesystemCommand::ReadDirPlus {
-                ino,
-                fh,
+                ino: Inode::new(ino),
+                fh: FileHandle::new(fh),
                 offset,
                 reply,
             })
@@ -400,8 +418,8 @@ impl Filesystem for AsyncFuseWrapper {
     ) {
         self.tx
             .send(FilesystemCommand::ReleaseDir {
-                ino,
-                fh,
+                ino: Inode::new(ino),
+                fh: FileHandle::new(fh),
                 flags,
                 reply,
             })
@@ -419,8 +437,8 @@ impl Filesystem for AsyncFuseWrapper {
     ) {
         self.tx
             .send(FilesystemCommand::FSyncDir {
-                ino,
-                fh,
+                ino: Inode::new(ino),
+                fh: FileHandle::new(fh),
                 datasync,
                 reply,
             })
@@ -443,7 +461,7 @@ impl Filesystem for AsyncFuseWrapper {
     ) {
         self.tx
             .send(FilesystemCommand::SetXattr {
-                ino,
+                ino: Inode::new(ino),
                 name: name.to_os_string(),
                 value: value.to_vec(),
                 flags,
@@ -463,7 +481,7 @@ impl Filesystem for AsyncFuseWrapper {
     ) {
         self.tx
             .send(FilesystemCommand::GetXattr {
-                ino,
+                ino: Inode::new(ino),
                 name: name.to_os_string(),
                 size,
                 reply,
@@ -473,7 +491,11 @@ impl Filesystem for AsyncFuseWrapper {
 
     fn listxattr(&mut self, _req: &fuser::Request<'_>, ino: u64, size: u32, reply: ReplyXattr) {
         self.tx
-            .send(FilesystemCommand::ListXattr { ino, size, reply })
+            .send(FilesystemCommand::ListXattr {
+                ino: Inode::new(ino),
+                size,
+                reply,
+            })
             .unwrap();
     }
 
@@ -486,7 +508,7 @@ impl Filesystem for AsyncFuseWrapper {
     ) {
         self.tx
             .send(FilesystemCommand::RemoveXattr {
-                ino,
+                ino: Inode::new(ino),
                 name: name.to_os_string(),
                 reply,
             })
@@ -495,7 +517,11 @@ impl Filesystem for AsyncFuseWrapper {
 
     fn access(&mut self, _req: &fuser::Request<'_>, ino: u64, mask: i32, reply: ReplyEmpty) {
         self.tx
-            .send(FilesystemCommand::Access { ino, mask, reply })
+            .send(FilesystemCommand::Access {
+                ino: Inode::new(ino),
+                mask,
+                reply,
+            })
             .unwrap();
     }
 
@@ -511,7 +537,7 @@ impl Filesystem for AsyncFuseWrapper {
     ) {
         self.tx
             .send(FilesystemCommand::Create {
-                parent,
+                parent: Inode::new(parent),
                 name: name.to_os_string(),
                 mode,
                 umask,
@@ -535,8 +561,8 @@ impl Filesystem for AsyncFuseWrapper {
     ) {
         self.tx
             .send(FilesystemCommand::GetLk {
-                ino,
-                fh,
+                ino: Inode::new(ino),
+                fh: FileHandle::new(fh),
                 lock_owner,
                 start,
                 end,
@@ -562,8 +588,8 @@ impl Filesystem for AsyncFuseWrapper {
     ) {
         self.tx
             .send(FilesystemCommand::SetLk {
-                ino,
-                fh,
+                ino: Inode::new(ino),
+                fh: FileHandle::new(fh),
                 lock_owner,
                 start,
                 end,
@@ -585,7 +611,7 @@ impl Filesystem for AsyncFuseWrapper {
     ) {
         self.tx
             .send(FilesystemCommand::Bmap {
-                ino,
+                ino: Inode::new(ino),
                 blocksize,
                 idx,
                 reply,
@@ -606,8 +632,8 @@ impl Filesystem for AsyncFuseWrapper {
     ) {
         self.tx
             .send(FilesystemCommand::IoCtl {
-                ino,
-                fh,
+                ino: Inode::new(ino),
+                fh: FileHandle::new(fh),
                 flags,
                 cmd,
                 in_data: in_data.to_vec(),
@@ -629,8 +655,8 @@ impl Filesystem for AsyncFuseWrapper {
     ) {
         self.tx
             .send(FilesystemCommand::Fallocate {
-                ino,
-                fh,
+                ino: Inode::new(ino),
+                fh: FileHandle::new(fh),
                 offset,
                 length,
                 mode,
@@ -650,8 +676,8 @@ impl Filesystem for AsyncFuseWrapper {
     ) {
         self.tx
             .send(FilesystemCommand::Lseek {
-                ino,
-                fh,
+                ino: Inode::new(ino),
+                fh: FileHandle::new(fh),
                 offset,
                 whence,
                 reply,
@@ -674,11 +700,11 @@ impl Filesystem for AsyncFuseWrapper {
     ) {
         self.tx
             .send(FilesystemCommand::CopyFileRange {
-                ino_in,
-                fh_in,
+                ino_in: Inode::new(ino_in),
+                fh_in: FileHandle::new(fh_in),
                 offset_in,
-                ino_out,
-                fh_out,
+                ino_out: Inode::new(ino_out),
+                fh_out: FileHandle::new(fh_out),
                 offset_out,
                 len,
                 flags,
