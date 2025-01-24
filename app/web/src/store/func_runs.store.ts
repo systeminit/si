@@ -19,11 +19,12 @@ export type FuncRunLogId = string;
 export type ContentHash = string;
 
 export enum FuncRunState {
-  Created = "created",
-  Dispatched = "dispatched",
-  Running = "running",
-  PostProcessing = "postprocessing",
-  Failure = "failure",
+  Created = "Created",
+  Dispatched = "Dispatched",
+  Running = "Running",
+  PostProcessing = "Postprocessing",
+  Failure = "Failure",
+  Success = "Success",
 }
 
 export enum FuncKind {

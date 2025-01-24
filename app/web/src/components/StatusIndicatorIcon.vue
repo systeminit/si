@@ -66,8 +66,7 @@ const CONFIG = {
   },
   management: {
     ok: { iconName: "check-circle", tone: "success" },
-    error: { iconName: "alert-circle", tone: "destructive" },
-    unknown: { iconName: "question-circle", tone: "warning" },
+    error: { iconName: "x-circle", tone: "destructive" },
   },
 };
 
