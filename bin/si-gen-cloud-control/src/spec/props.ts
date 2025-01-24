@@ -250,6 +250,9 @@ export function createObjectProp(
     uniqueId: ulid(),
     metadata: {
       propPath: [...parentPath, name],
+      createOnly: false,
+      readOnly: false,
+      writeOnly: false,
     },
   };
 
@@ -289,7 +292,6 @@ export function createScalarProp(
     kind,
     data,
     name,
-    entries: [],
     uniqueId: ulid(),
     metadata: {
       propPath: [...parentPath, name],

@@ -13,12 +13,7 @@ import {
   SchemaVariantSpec,
 } from "../../../lib/si-pkg/bindings/SchemaVariantSpec.ts";
 import { SchemaSpec } from "../../../lib/si-pkg/bindings/SchemaSpec.ts";
-import {
-  createResourcePayloadToValue,
-  createSiFuncs,
-  getSiFuncId,
-} from "./spec/siFuncs.ts";
-import { attrFuncInputSpecFromProp } from "./spec/sockets.ts";
+import { createResourcePayloadToValue, createSiFuncs } from "./spec/siFuncs.ts";
 
 export function pkgSpecFromCf(src: CfSchema): PkgSpec {
   const [aws, category, name] = src.typeName.split("::");
@@ -45,7 +40,6 @@ export function pkgSpecFromCf(src: CfSchema): PkgSpec {
     src,
     onlyProperties,
   );
-  createInputsInDomainFromResource(domain, resourceValue);
 
   const variant: SchemaVariantSpec = {
     version,
@@ -115,7 +109,11 @@ function createDomainFromSrc(
   src: CfSchema,
   onlyProperties: OnlyProperties,
 ): PropSpec {
-  return createRootFromProperties("domain", src.properties, onlyProperties);
+  return createRootFromProperties(
+    "domain",
+    pruneDomainValues(src.properties, onlyProperties),
+    onlyProperties,
+  );
 }
 
 function createResourceValueFromSrc(
@@ -150,6 +148,21 @@ function createRootFromProperties(
   return root;
 }
 
+function pruneDomainValues(
+  properties: Record<string, CfProperty>,
+  onlyProperties: OnlyProperties,
+): Record<string, CfProperty> {
+  if (!properties || !onlyProperties?.readOnly) {
+    return {};
+  }
+
+  const readOnlySet = new Set(onlyProperties.readOnly);
+  return Object.fromEntries(
+    Object.entries(properties)
+      .filter(([name]) => !readOnlySet.has(name)),
+  );
+}
+
 function pruneResourceValues(
   properties: Record<string, CfProperty>,
   onlyProperties: OnlyProperties,
@@ -174,23 +187,4 @@ function normalizeOnlyProperties(props: string[] | undefined): string[] {
     }
   }
   return newProps;
-}
-
-function createInputsInDomainFromResource(
-  domain: PropSpec,
-  resource: PropSpec,
-) {
-  if (resource.kind === "object" && domain.kind === "object") {
-    resource.entries.forEach((resource: PropSpec) => {
-      const domainProp = domain.entries.find((d: PropSpec) =>
-        d.name === resource.name
-      );
-      if (domainProp?.data?.inputs) {
-        domainProp.data.funcUniqueId = getSiFuncId("si:identity");
-        domainProp.data.inputs.push(
-          attrFuncInputSpecFromProp(resource as ExpandedPropSpec),
-        );
-      }
-    });
-  }
 }

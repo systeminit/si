@@ -46,10 +46,12 @@ export function addDefaultPropsAndSockets(specs: PkgSpec[]): PkgSpec[] {
       "string",
       extraProp.metadata.propPath,
     );
-    regionProp.data.inputs = [
-      attrFuncInputSpecFromSocket(regionSocket),
-    ];
-    regionProp.data.funcUniqueId = getSiFuncId("si:identity");
+    if (regionProp.data) {
+      regionProp.data.inputs = [
+        attrFuncInputSpecFromSocket(regionSocket),
+      ];
+      regionProp.data.funcUniqueId = getSiFuncId("si:identity");
+    }
     extraProp.entries.push(regionProp);
     domain.entries.push(extraProp);
 
