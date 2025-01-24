@@ -1,9 +1,5 @@
 <template>
-  <div
-    v-if="viewStore.selectedComponent"
-    class="flex flex-col h-full w-full"
-    @click="hideFuncRun"
-  >
+  <div v-if="viewStore.selectedComponent" class="flex flex-col h-full w-full">
     <div
       v-if="!props.component.def.resourceId"
       class="text-xs text-neutral-700 dark:text-neutral-300 p-xs italic border-b dark:border-neutral-600"
@@ -37,11 +33,22 @@
           :component="props.component"
           @showLatestRunTab="showLatestRunTab"
           @runUpdated="updateFuncRunTab"
+          @click="hideFuncRun"
         />
       </template>
     </ul>
+
+    <span class="uppercase font-bold p-xs mt-md">RUN HISTORY</span>
+    <template v-for="item in componentManagementHistory" :key="item.funcRunId">
+      <ManagementHistoryCard
+        :item="item"
+        :selected="item.funcRunId === selectedFuncRunId"
+        @clickItem="clickItem"
+      />
+    </template>
+
     <FuncRunTabGroup
-      :close="deselectMgmtRun"
+      :close="hideFuncRun"
       :funcRun="funcRun"
       :open="openFuncRunTab"
       :selectedTab="selectedTab"
@@ -50,13 +57,18 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 import { VormInput } from "@si/vue-lib/design-system";
 import { useFuncStore } from "@/store/func/funcs.store";
 import { useComponentsStore } from "@/store/components.store";
+import {
+  ManagementHistoryItem,
+  useManagementRunsStore,
+} from "@/store/management_runs.store";
 import { FuncRun, FuncRunId, useFuncRunsStore } from "@/store/func_runs.store";
 import { useViewsStore } from "@/store/views.store";
 import ManagementRunPrototype from "./ManagementRunPrototype.vue";
+import ManagementHistoryCard from "./Management/ManagementHistoryCard.vue";
 import {
   DiagramGroupData,
   DiagramNodeData,
@@ -67,6 +79,7 @@ const funcStore = useFuncStore();
 const funcRunStore = useFuncRunsStore();
 const componentsStore = useComponentsStore();
 const viewStore = useViewsStore();
+const mgmtStore = useManagementRunsStore();
 
 const resourceId = ref("");
 
@@ -74,10 +87,6 @@ const selectedFuncRunId = ref<FuncRunId | undefined>();
 const selectedTab = ref<string | undefined>();
 const funcRun = ref<FuncRun | undefined>();
 const openFuncRunTab = ref(false);
-
-const deselectMgmtRun = () => {
-  selectedFuncRunId.value = undefined;
-};
 
 const getFuncRun = async (id: FuncRunId) => {
   if (funcRunStore.funcRuns[id]) {
@@ -96,8 +105,13 @@ const showLatestRunTab = async (id: FuncRunId, slug: string) => {
 };
 
 const updateFuncRunTab = async (id: FuncRunId) => {
-  selectedFuncRunId.value = id;
   await getFuncRun(id);
+};
+
+const clickItem = async (item: ManagementHistoryItem, _e: MouseEvent) => {
+  openFuncRunTab.value = true;
+  selectedFuncRunId.value = item.funcRunId;
+  await getFuncRun(item.funcRunId);
 };
 
 const hideFuncRun = () => {
@@ -121,4 +135,10 @@ const saveResource = () => {
   if (viewStore.selectedComponent && resourceId.value)
     componentsStore.SET_RESOURCE_ID(props.component.def.id, resourceId.value);
 };
+
+const componentManagementHistory = computed(() =>
+  mgmtStore.managementRunHistory.filter(
+    (r) => r.componentId === props.component.def.id,
+  ),
+);
 </script>

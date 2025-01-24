@@ -18,6 +18,7 @@ export interface ManagementHistoryItem {
   codeExecuted?: string;
   logs?: string;
   arguments?: string;
+  componentId: string;
   componentName: string;
   schemaName: string;
   status: ActionResultState;

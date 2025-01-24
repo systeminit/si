@@ -1,7 +1,10 @@
 <template>
   <li
     :class="
-      clsx('border-b', themeClasses('border-neutral-200', 'border-neutral-600'))
+      clsx(
+        'border-b list-none',
+        themeClasses('border-neutral-200', 'border-neutral-600'),
+      )
     "
   >
     <div

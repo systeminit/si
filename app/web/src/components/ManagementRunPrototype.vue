@@ -23,9 +23,9 @@
       `Run ${props.prototype.label}`
     }}</TruncateWithTooltip>
     <StatusIndicatorIcon
-      v-if="lastExecution"
+      v-if="lastExecutionState"
       type="management"
-      :status="lastExecution.status"
+      :status="lastExecutionState"
     />
 
     <FuncRunTabDropdown
@@ -49,7 +49,12 @@ import {
 } from "@si/vue-lib/design-system";
 import { useRouter } from "vue-router";
 import { useFuncStore, MgmtPrototype } from "@/store/func/funcs.store";
-import { FuncRunId } from "@/store/func_runs.store";
+import {
+  FuncRun,
+  FuncRunId,
+  FuncRunState,
+  useFuncRunsStore,
+} from "@/store/func_runs.store";
 import { useManagementRunsStore } from "@/store/management_runs.store";
 import { useViewsStore } from "@/store/views.store";
 import { ViewId } from "@/api/sdf/dal/views";
@@ -66,6 +71,7 @@ const viewStore = useViewsStore();
 const router = useRouter();
 const managementRunsStore = useManagementRunsStore();
 const viewsStore = useViewsStore();
+const funcRunStore = useFuncRunsStore();
 
 const viewSelectorMenuRef = ref<InstanceType<typeof DropdownMenu>>();
 
@@ -85,11 +91,17 @@ const request = funcStore.getRequestStatus(
   props.component.def.id,
 );
 
-onMounted(() => {
-  managementRunsStore.GET_LATEST_FOR_MGMT_PROTO_AND_COMPONENT(
-    props.prototype.managementPrototypeId,
-    props.component.def.id,
-  );
+const historicalFuncRun = ref<FuncRun | null>(null);
+
+onMounted(async () => {
+  const resp =
+    await managementRunsStore.GET_LATEST_FOR_MGMT_PROTO_AND_COMPONENT(
+      props.prototype.managementPrototypeId,
+      props.component.def.id,
+    );
+  if (resp.result.success) {
+    historicalFuncRun.value = resp.result.data;
+  }
 });
 
 const latestRunId = computed(() =>
@@ -113,7 +125,26 @@ watch(latestRunId, (latest) => {
   }
 });
 
-const lastExecution = computed(() => funcStore.managementOperationExecution);
+const lastExecution = computed<FuncRun | null>(() => {
+  if (latestRunId.value) {
+    const r = funcRunStore.funcRuns[latestRunId.value];
+    if (!r) return null;
+    return r;
+  } else {
+    return historicalFuncRun.value;
+  }
+});
+
+const lastExecutionState = computed<"ok" | "error" | null>(() => {
+  switch (lastExecution.value?.state) {
+    case FuncRunState.Success:
+      return "ok";
+    case FuncRunState.Failure:
+      return "error";
+    default:
+      return null;
+  }
+});
 
 const runPrototype = async (viewId: ViewId) => {
   funcStore.RUN_MGMT_PROTOTYPE(
