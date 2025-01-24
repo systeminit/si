@@ -296,10 +296,20 @@ export function useChangeSetsStore() {
 
           if (!changeSetId) throw new Error("Select a change set");
 
-          return new ApiRequest({
-            method: "post",
-            url: BASE_API.concat([{ changeSetId }, "reject"]),
-          });
+          if (featureFlagsStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL) {
+            return new ApiRequest({
+              method: "post",
+              url: BASE_API.concat([{ changeSetId }, "approve_v2"]),
+              params: {
+                status: "Rejected",
+              },
+            });
+          } else {
+            return new ApiRequest({
+              method: "post",
+              url: BASE_API.concat([{ changeSetId }, "reject"]),
+            });
+          }
         },
         async CANCEL_APPROVAL_REQUEST() {
           if (!this.selectedChangeSet) throw new Error("Select a change set");
@@ -335,9 +345,6 @@ export function useChangeSetsStore() {
               });
             },
             _delay: 2000,
-            onSuccess: (response) => {
-              this.changeSetsById[response.changeSet.id] = response.changeSet;
-            },
             onFail: () => {
               // todo: show something!
             },

@@ -8,4 +8,5 @@ use strum::{AsRefStr, Display, EnumString};
 )]
 pub enum ChangeSetApprovalStatus {
     Approved,
+    Rejected,
 }
