@@ -9,7 +9,7 @@ use derive_more::{Deref, Into};
 
 use crate::app_state::AppState;
 
-use super::{internal_error, not_found_error, ErrorResponse};
+use super::{internal_error, not_found_error, request::RawAccessToken, ErrorResponse};
 
 #[derive(Clone, Debug, Deref, Into)]
 pub struct HandlerContext(pub dal::DalContextBuilder);
@@ -128,5 +128,27 @@ impl FromRequestParts<AppState> for PosthogEventTracker {
             original_uri,
             host,
         })
+    }
+}
+
+/// An Auth API client using the same token we got from the request.
+#[derive(Clone, Debug, Deref, Into)]
+pub struct AuthApiClient(pub auth_api_client::client::AuthApiClient);
+
+#[async_trait]
+impl FromRequestParts<AppState> for AuthApiClient {
+    type Rejection = ErrorResponse;
+
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &AppState,
+    ) -> Result<Self, Self::Rejection> {
+        let RawAccessToken(raw_access_token) = parts.extract().await?;
+        let client = auth_api_client::client::AuthApiClient::from_raw_token(
+            state.auth_api_url(),
+            raw_access_token,
+        )
+        .map_err(internal_error)?;
+        Ok(Self(client))
     }
 }

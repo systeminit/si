@@ -9,6 +9,8 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
+si-id = { path = "../../lib/si-id" }
+
 remain = { workspace = true }
 reqwest = { workspace = true }
 serde = { workspace = true }

@@ -5,6 +5,7 @@ rust_library(
     deps = [
         "//lib/asset-sprayer:asset-sprayer",
         "//lib/audit-database:audit-database",
+        "//lib/auth-api-client:auth-api-client",
         "//lib/buck2-resources:buck2-resources",
         "//lib/dal:dal",
         "//lib/module-index-client:module-index-client",

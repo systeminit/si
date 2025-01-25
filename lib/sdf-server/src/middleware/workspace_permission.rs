@@ -84,7 +84,11 @@ where
                     Err(e) => return Ok(unauthorized_error(e).into_response()),
                 };
                 if !is_allowed {
-                    return Ok(unauthorized_error("not authorized for web role").into_response());
+                    return Ok(unauthorized_error(format!(
+                        "not authorized to {} workspace",
+                        me.permission
+                    ))
+                    .into_response());
                 }
             }
 

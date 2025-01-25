@@ -7,10 +7,10 @@ use axum::{
 };
 use derive_more::{Deref, Into};
 use serde::Deserialize;
-use si_jwt_public_key::{validate_raw_token, SiJwt};
+use si_jwt_public_key::{validate_raw_token, SiJwt, SiJwtClaimRole};
 use ulid::Ulid;
 
-use super::{internal_error, unauthorized_error, ErrorResponse};
+use super::{internal_error, unauthorized_error, AuthApiClient, ErrorResponse};
 
 #[derive(Clone, Debug, Deref, Into)]
 pub struct RequestUlidFromHeader(pub Option<Ulid>);
@@ -59,12 +59,21 @@ impl FromRequestParts<AppState> for ValidatedToken {
             return Ok(Self(claims.clone()));
         }
 
-        let RawAccessToken(raw_token) = parts.extract_with_state(state).await?;
+        let RawAccessToken(raw_token) = parts.extract().await?;
 
         let jwt_public_signing_key = state.jwt_public_signing_key_chain().clone();
         let token = validate_raw_token(jwt_public_signing_key, raw_token)
             .await
             .map_err(unauthorized_error)?;
+
+        // If it has role: Automation, check with auth API if the token has been revoked
+        // (web tokens are not revocable, so we don't check them.)
+        if token.custom.role() != SiJwtClaimRole::Web {
+            let AuthApiClient(client) = parts.extract_with_state(state).await?;
+            // status will throw 401 if the token is revoked
+            client.status().await.map_err(unauthorized_error)?;
+        }
+
         parts.extensions.insert(Self(token.clone()));
         Ok(Self(token))
     }
@@ -108,20 +117,15 @@ impl FromRequestParts<AppState> for HistoryActor {
 pub struct RawAccessToken(pub String);
 
 #[async_trait]
-impl FromRequestParts<AppState> for RawAccessToken {
+impl<S> FromRequestParts<S> for RawAccessToken {
     type Rejection = ErrorResponse;
 
-    async fn from_request_parts(
-        parts: &mut Parts,
-        state: &AppState,
-    ) -> Result<Self, Self::Rejection> {
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
         if let Some(RawAccessToken(token)) = parts.extensions.get::<RawAccessToken>() {
             return Ok(Self(token.clone()));
         }
 
-        let token = TokenFromAuthorizationHeader::from_request_parts(parts, state)
-            .await?
-            .0;
+        let TokenFromAuthorizationHeader(token) = parts.extract().await?;
         Ok(Self(token))
     }
 }
