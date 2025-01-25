@@ -1,6 +1,6 @@
 import { PkgSpec } from "../bindings/PkgSpec.ts";
 import { SchemaVariantSpec } from "../bindings/SchemaVariantSpec.ts";
-import _ from "lodash";
+import _ from "npm:lodash";
 import { SocketSpec } from "../bindings/SocketSpec.ts";
 import { isExpandedPropSpec } from "../spec/props.ts";
 import { createSocketFromProp } from "../spec/sockets.ts";

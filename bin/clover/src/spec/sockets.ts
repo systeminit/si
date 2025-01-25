@@ -73,10 +73,11 @@ export function attrFuncInputSpecFromProp(
 
 export function attrFuncInputSpecFromSocket(
   socket: SocketSpec,
+  name = "identity",
 ): AttrFuncInputSpec {
   const attr: AttrFuncInputSpec = {
     kind: "inputSocket",
-    name: "identity",
+    name,
     socket_name: socket.name,
     unique_id: ulid(),
     deleted: false,

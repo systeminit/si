@@ -165,7 +165,7 @@ function generatePropBuilderString(
       return `new PropBuilder()\n` +
         `${indent(indent_level)}.setKind("${prop.kind}")\n` +
         `${indent(indent_level)}.setName("${prop.name}")\n` +
-        `${indent(indent_level)}.setHidden(${prop.data.hidden ?? false})\n` +
+        `${indent(indent_level)}.setHidden(${prop.data?.hidden ?? false})\n` +
         `${
           generateWidgetString(
             prop.data?.widgetKind,
@@ -192,7 +192,7 @@ function generatePropBuilderString(
       return `new PropBuilder()\n` +
         `${indent(indent_level)}.setKind("object")\n` +
         `${indent(indent_level)}.setName("${prop.name}")\n` +
-        `${indent(indent_level)}.setHidden(${prop.data.hidden ?? false})\n` +
+        `${indent(indent_level)}.setHidden(${prop.data?.hidden ?? false})\n` +
         `${
           generateWidgetString(
             prop.data?.widgetKind,
@@ -207,7 +207,7 @@ function generatePropBuilderString(
       return `new PropBuilder()\n` +
         `${indent(indent_level)}.setName("${prop.name}")\n` +
         `${indent(indent_level)}.setKind("integer")\n` +
-        `${indent(indent_level)}.setHidden(${prop.data.hidden ?? false})\n` +
+        `${indent(indent_level)}.setHidden(${prop.data?.hidden ?? false})\n` +
         `${
           generateWidgetString(
             prop.data?.widgetKind,
@@ -222,7 +222,7 @@ function generatePropBuilderString(
       return `new PropBuilder()\n` +
         `${indent(indent_level)}.setName("${prop.name}")\n` +
         `${indent(indent_level)}.setKind("${prop.kind}")\n` +
-        `${indent(indent_level)}.setHidden(${prop.data.hidden ?? false})\n` +
+        `${indent(indent_level)}.setHidden(${prop.data?.hidden ?? false})\n` +
         `${
           generateWidgetString(
             prop.data?.widgetKind,

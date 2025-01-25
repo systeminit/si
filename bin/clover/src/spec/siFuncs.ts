@@ -52,6 +52,10 @@ const funcSpecs: Record<string, FuncSpecInfo> = {
     id: "039ff70bc7922338978ab52a39156992b7d8e3390f0ef7e99d5b6ffd43141d8a",
     kind: "validation",
   },
+  "si:normalizeToArray": {
+    id: "750b9044cd250a5f0e952dabe4150fa61450992e04e688be47096d50a4759d4f",
+    kind: "object",
+  },
   "si:resourcePayloadToValue": {
     id: "bc58dae4f4e1361840ec8f081350d7ec6b177ee8dc5a6a55155767c92efe1850",
     kind: "object",
@@ -119,7 +123,31 @@ export function createSiFuncs(): FuncSpec[] {
   return ret;
 }
 
-export function createResourcePayloadToValue(): FuncSpec[] {
+export function createNormalizeToArray(): FuncSpec {
+  const name = "si:normalizeToArray";
+  const codeBase64 =
+    "YXN5bmMgZnVuY3Rpb24gbWFpbihpbnB1dDogSW5wdXQpOiBQcm9taXNlIDwgT3V0cHV0ID4gewogICAgaWYgKGlucHV0LnZhbHVlID09PSB1bmRlZmluZWQgfHwgaW5wdXQudmFsdWUgPT09IG51bGwpIHJldHVybiBbXTsKICAgIHJldHVybiAhQXJyYXkuaXNBcnJheShpbnB1dC52YWx1ZSkgPyBbaW5wdXQudmFsdWVdIDogaW5wdXQudmFsdWU7Cn0";
+
+  const args: FuncArgumentSpec = {
+    name: "value",
+    kind: "array",
+    elementKind: null,
+    uniqueId: ulid(),
+    deleted: false,
+  };
+
+  return createFunc(
+    name,
+    "jsAttribute",
+    "array",
+    codeBase64,
+    getSiFuncId(name),
+    [
+      args,
+    ],
+  );
+}
+export function createResourcePayloadToValue(): FuncSpec {
   const name = "si:resourcePayloadToValue";
   const codeBase64 =
     "YXN5bmMgZnVuY3Rpb24gbWFpbihhcmc6IElucHV0KTogUHJvbWlzZSA8IE91dHB1dCA+IHsKICAgIHJldHVybiBhcmcucGF5bG9hZCA/PyB7fTsKfQ";
@@ -132,9 +160,14 @@ export function createResourcePayloadToValue(): FuncSpec[] {
     deleted: false,
   };
 
-  return [
-    createFunc(name, "jsAttribute", "object", codeBase64, getSiFuncId(name), [
+  return createFunc(
+    name,
+    "jsAttribute",
+    "object",
+    codeBase64,
+    getSiFuncId(name),
+    [
       args,
-    ]),
-  ];
+    ],
+  );
 }
