@@ -221,6 +221,7 @@ pub(crate) async fn write(
                 kind,
                 entity_name,
                 destination_change_set_id,
+                ctx.authentication_method(),
             ),
             destination_change_set_id,
         )

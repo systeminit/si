@@ -1,4 +1,5 @@
 pub mod audit_log;
+pub mod authentication_method;
 pub mod content_hash;
 pub mod encrypted_secret;
 pub mod merkle_tree_hash;
@@ -31,6 +32,7 @@ mod web_event;
 pub use crate::{
     actor::Actor,
     actor::UserPk,
+    authentication_method::{AuthenticationMethod, AuthenticationMethodRole},
     cas::CasValue,
     change_set_approval::ChangeSetApprovalStatus,
     change_set_status::ChangeSetStatus,

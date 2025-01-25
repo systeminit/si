@@ -34,6 +34,15 @@ interface AuditLogCommon {
   timestamp: string;
   changeSetId?: ChangeSetId;
   metadata: Record<string, unknown>;
+  authenticationMethod:
+    | {
+        method: "System";
+      }
+    | {
+        method: "Jwt";
+        role: "Web" | "Automation";
+        tokenId?: string;
+      };
 }
 
 export interface AuditLog extends AuditLogCommon {
@@ -121,16 +130,8 @@ export const useLogsStore = (forceChangeSetId?: ChangeSetId) => {
                 this.logs = response.logs.map(
                   (log) =>
                     ({
-                      title: log.title,
+                      ...log,
                       userName: log.userName ?? "System",
-                      userId: log.userId,
-                      userEmail: log.userEmail,
-                      kind: log.kind,
-                      entityType: log.entityType,
-                      entityName: log.entityName,
-                      metadata: log.metadata,
-                      timestamp: log.timestamp,
-                      changeSetId: log.changeSetId,
                       changeSetName: log.changeSetName ?? "- none -",
                     } as AuditLogDisplay),
                 );

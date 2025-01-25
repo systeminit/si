@@ -1,4 +1,5 @@
 use core::str;
+use si_events::AuthenticationMethodRole;
 use si_id::{AuthTokenId, UserPk, WorkspacePk};
 use si_std::CanonicalFile;
 use std::sync::Arc;
@@ -98,6 +99,15 @@ impl SiJwtClaimRole {
     }
 }
 
+impl From<SiJwtClaimRole> for AuthenticationMethodRole {
+    fn from(role: SiJwtClaimRole) -> Self {
+        match role {
+            SiJwtClaimRole::Web => AuthenticationMethodRole::Web,
+            SiJwtClaimRole::Automation => AuthenticationMethodRole::Automation,
+        }
+    }
+}
+
 #[derive(Deserialize, Serialize, Debug, Clone, Eq, PartialEq)]
 #[serde(untagged)]
 pub enum SiJwtClaims {
@@ -112,17 +122,17 @@ pub type SiJwt = JWTClaims<SiJwtClaims>;
 #[derive(Deserialize, Serialize, Debug, Clone, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct SiJwtClaimsV2 {
-    version: MustBe!("2"),
-    user_id: UserPk,
-    workspace_id: WorkspacePk,
-    role: SiJwtClaimRole,
+    pub version: MustBe!("2"),
+    pub user_id: UserPk,
+    pub workspace_id: WorkspacePk,
+    pub role: SiJwtClaimRole,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, Eq, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub struct SiJwtClaimsV1 {
-    user_pk: UserPk,
-    workspace_pk: WorkspacePk,
+    pub user_pk: UserPk,
+    pub workspace_pk: WorkspacePk,
 }
 
 impl SiJwtClaims {

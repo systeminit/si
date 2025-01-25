@@ -19,7 +19,7 @@ use thiserror::Error;
 
 use crate::{
     extract::{
-        internal_error,
+        bad_request, internal_error,
         request::{RequestUlidFromHeader, ValidatedToken},
         unauthorized_error, ErrorResponse, HandlerContext,
     },
@@ -190,7 +190,11 @@ async fn require_systeminit_user<B>(
     next: Next<B>,
 ) -> Result<Response, ErrorResponse> {
     let ctx = builder
-        .build_without_workspace(token.history_actor(), request_ulid)
+        .build_without_workspace(
+            token.history_actor(),
+            request_ulid,
+            token.authentication_method().map_err(bad_request)?,
+        )
         .await
         .map_err(internal_error)?;
 

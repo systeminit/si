@@ -4,9 +4,9 @@ use strum::{Display, EnumDiscriminants};
 
 use crate::{
     func_run::FuncArgumentKind, ActionKind, ActionPrototypeId, Actor, AttributeValueId,
-    ChangeSetId, ChangeSetStatus, ComponentId, FuncArgumentId, FuncId, FuncKind, FuncRunId,
-    InputSocketId, OutputSocketId, PropId, SchemaId, SchemaVariantId, SecretId, ViewId,
-    WorkspacePk,
+    AuthenticationMethod, ChangeSetId, ChangeSetStatus, ComponentId, FuncArgumentId, FuncId,
+    FuncKind, FuncRunId, InputSocketId, OutputSocketId, PropId, SchemaId, SchemaVariantId,
+    SecretId, ViewId, WorkspacePk,
 };
 
 type MetadataDiscrim = AuditLogMetadataV1Discriminants;
@@ -20,6 +20,7 @@ pub struct AuditLogV1 {
     pub entity_name: String,
     pub timestamp: String,
     pub change_set_id: Option<ChangeSetId>,
+    pub authentication_method: AuthenticationMethod,
 }
 
 #[remain::sorted]

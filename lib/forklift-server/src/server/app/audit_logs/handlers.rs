@@ -54,6 +54,7 @@ pub(crate) async fn default(
                 inner.change_set_id,
                 inner.actor,
                 Some(inner.entity_name),
+                inner.authentication_method,
             )
             .await?;
         }

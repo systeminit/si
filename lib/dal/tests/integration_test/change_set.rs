@@ -10,6 +10,8 @@ use dal_test::helpers::{
 use dal_test::test;
 use itertools::Itertools;
 use pretty_assertions_sorted::assert_eq;
+use si_events::authentication_method::AuthenticationMethodV1;
+use si_events::{AuthenticationMethod, AuthenticationMethodRole};
 use std::collections::HashSet;
 
 mod approval;
@@ -112,6 +114,11 @@ async fn open_change_sets(ctx: &mut DalContext) {
     );
 }
 
+pub const TEST_JWT_AUTHENTICATION_METHOD: AuthenticationMethod = AuthenticationMethodV1::Jwt {
+    role: AuthenticationMethodRole::Web,
+    token_id: None,
+};
+
 #[test]
 async fn abandon_change_set_and_check_open_change_sets(ctx: &mut DalContext) {
     let change_set_name = "for abandonment".to_string();
@@ -183,6 +190,7 @@ async fn build_from_request_context_limits_to_workspaces_user_has_access_to(
         },
         history_actor: HistoryActor::User(user_1.pk()),
         request_ulid: None,
+        authentication_method: TEST_JWT_AUTHENTICATION_METHOD,
     };
 
     let builder_result = ctx_builder.build(request_context).await;
@@ -196,6 +204,7 @@ async fn build_from_request_context_limits_to_workspaces_user_has_access_to(
         },
         history_actor: HistoryActor::User(user_2.pk()),
         request_ulid: None,
+        authentication_method: TEST_JWT_AUTHENTICATION_METHOD,
     };
 
     let builder_result = ctx_builder.build(request_context).await;
@@ -237,6 +246,7 @@ async fn build_from_request_context_limits_to_change_sets_of_current_workspace(
         },
         history_actor: HistoryActor::User(user_1.pk()),
         request_ulid: None,
+        authentication_method: TEST_JWT_AUTHENTICATION_METHOD,
     };
 
     let builder_result = ctx_builder.build(request_context).await;
@@ -250,6 +260,7 @@ async fn build_from_request_context_limits_to_change_sets_of_current_workspace(
         },
         history_actor: HistoryActor::User(user_2.pk()),
         request_ulid: None,
+        authentication_method: TEST_JWT_AUTHENTICATION_METHOD,
     };
 
     let builder_result = ctx_builder.build(request_context).await;
@@ -291,6 +302,7 @@ async fn cannot_find_change_set_across_workspaces(
         },
         history_actor: HistoryActor::User(user_2.pk()),
         request_ulid: None,
+        authentication_method: TEST_JWT_AUTHENTICATION_METHOD,
     };
 
     let mut user_2_dal_ctx = ctx_builder
@@ -307,7 +319,12 @@ async fn cannot_find_change_set_across_workspaces(
         .expect("Unable to set up test data");
 
     let user_1_tenancy = dal::Tenancy::new(*user_1_workspace.pk());
-    let access_builder = AccessBuilder::new(user_1_tenancy, HistoryActor::User(user_1.pk()), None);
+    let access_builder = AccessBuilder::new(
+        user_1_tenancy,
+        HistoryActor::User(user_1.pk()),
+        None,
+        TEST_JWT_AUTHENTICATION_METHOD,
+    );
 
     let user_1_dal_context = ctx_builder
         .build_head(access_builder)
@@ -360,6 +377,7 @@ async fn build_from_request_context_allows_change_set_from_workspace_with_access
         },
         history_actor: HistoryActor::User(user_1.pk()),
         request_ulid: None,
+        authentication_method: TEST_JWT_AUTHENTICATION_METHOD,
     };
 
     let builder_result = ctx_builder.build(request_context).await;
@@ -375,6 +393,7 @@ async fn build_from_request_context_allows_change_set_from_workspace_with_access
         },
         history_actor: HistoryActor::User(user_2.pk()),
         request_ulid: None,
+        authentication_method: TEST_JWT_AUTHENTICATION_METHOD,
     };
 
     let builder_result = ctx_builder.build(request_context).await;

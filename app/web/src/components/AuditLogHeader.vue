@@ -88,7 +88,7 @@ import {
 import { FlexRender, Header } from "@tanstack/vue-table";
 import clsx from "clsx";
 import { computed, onMounted, onUnmounted, ref } from "vue";
-import { useLogsStore } from "@/store/logs.store";
+import { AuditLogDisplay, useLogsStore } from "@/store/logs.store";
 
 const thRef = ref();
 const iconButtonRef = ref<InstanceType<typeof IconButton>>();
@@ -96,22 +96,7 @@ const dropdownMenuRef = ref<InstanceType<typeof DropdownMenu>>();
 
 const props = defineProps<{
   anyRowsOpen: boolean;
-  header: Header<
-    {
-      title: string;
-      userName: string;
-      userId?: string;
-      userEmail?: string;
-      kind: string;
-      entityType: string;
-      entityName: string;
-      timestamp: string;
-      changeSetId?: string;
-      changeSetName: string;
-      metadata: Record<string, unknown>;
-    },
-    unknown
-  >;
+  header: Header<AuditLogDisplay, unknown>;
 }>();
 
 const logsStore = useLogsStore();

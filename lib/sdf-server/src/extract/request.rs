@@ -7,7 +7,8 @@ use axum::{
 };
 use derive_more::{Deref, Into};
 use serde::Deserialize;
-use si_jwt_public_key::{validate_raw_token, SiJwt, SiJwtClaimRole};
+use si_events::{authentication_method::AuthenticationMethodV1, AuthenticationMethod};
+use si_jwt_public_key::{validate_raw_token, JwtKeyResult, SiJwt, SiJwtClaimRole, SiJwtClaims};
 use ulid::Ulid;
 
 use super::{internal_error, unauthorized_error, AuthApiClient, ErrorResponse};
@@ -44,6 +45,11 @@ pub struct ValidatedToken(pub SiJwt);
 impl ValidatedToken {
     pub fn history_actor(&self) -> dal::HistoryActor {
         dal::HistoryActor::from(self.0.custom.user_id())
+    }
+    pub fn authentication_method(&self) -> JwtKeyResult<AuthenticationMethod> {
+        let role = self.0.custom.role().into();
+        let token_id = SiJwtClaims::token_id(&self.0)?;
+        Ok(AuthenticationMethodV1::Jwt { role, token_id })
     }
 }
 

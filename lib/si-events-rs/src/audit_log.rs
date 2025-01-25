@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use v1::{AuditLogKindV1, AuditLogMetadataV1, AuditLogV1};
 
-use crate::{Actor, ChangeSetId};
+use crate::{Actor, AuthenticationMethod, ChangeSetId};
 
 mod v1;
 
@@ -26,6 +26,7 @@ impl AuditLog {
         kind: AuditLogKind,
         entity_name: String,
         change_set_id: ChangeSetId,
+        authentication_method: AuthenticationMethod,
     ) -> Self {
         Self::V1(Box::new(AuditLogV1 {
             actor,
@@ -33,6 +34,7 @@ impl AuditLog {
             entity_name,
             timestamp: Utc::now().to_rfc3339(),
             change_set_id: Some(change_set_id),
+            authentication_method,
         }))
     }
 }

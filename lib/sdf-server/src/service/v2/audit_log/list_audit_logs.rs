@@ -100,6 +100,7 @@ impl Assembler {
             change_set_name,
             // TODO(nick): allow this to be optional in the frontend.
             metadata: audit_log.metadata.unwrap_or(serde_json::Value::Null),
+            authentication_method: audit_log.authentication_method,
         })
     }
 
