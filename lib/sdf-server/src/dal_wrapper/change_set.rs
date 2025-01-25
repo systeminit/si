@@ -5,7 +5,7 @@ use std::{collections::HashMap, str::FromStr};
 use dal::{
     approval_requirement::{ApprovalRequirement, ApprovalRequirementApprover},
     change_set::approval::ChangeSetApproval,
-    DalContext, HistoryActor, UserPk, WorkspacePk,
+    ChangeSet, DalContext, HistoryActor, UserPk, WorkspacePk,
 };
 use permissions::{Permission, PermissionBuilder};
 use si_events::{merkle_tree_hash::MerkleTreeHash, ChangeSetApprovalStatus};
@@ -14,6 +14,49 @@ use si_id::{ChangeSetApprovalId, EntityId};
 use super::DalWrapperError;
 
 type Result<T> = std::result::Result<T, DalWrapperError>;
+
+/// Returns all unsatisfied approval requirements (minimal information) for the current change set.
+pub async fn approval_requirements_are_satisfied_or_error(
+    ctx: &DalContext,
+    spicedb_client: &mut si_data_spicedb::Client,
+) -> Result<()> {
+    let (_, requirements) = super::change_set::status(ctx, spicedb_client).await?;
+
+    let mut unsatisfied_requirements = Vec::new();
+    for requirement in requirements {
+        if !requirement.is_satisfied {
+            unsatisfied_requirements.push((requirement.entity_id, requirement.entity_kind));
+        }
+    }
+
+    if !unsatisfied_requirements.is_empty() {
+        return Err(DalWrapperError::ApplyWithUnsatisfiedRequirements(
+            unsatisfied_requirements,
+        ));
+    }
+    Ok(())
+}
+
+/// Applies the current change set to the base change set, but with protections in place, such as
+/// ensuring that the requirements are met and that we have committed preparations.
+pub async fn protected_apply_to_base_change_set(
+    ctx: &mut DalContext,
+    spicedb_client: &mut si_data_spicedb::Client,
+) -> Result<()> {
+    // First, check if all requirements have been satisfied.
+    approval_requirements_are_satisfied_or_error(ctx, spicedb_client).await?;
+
+    // With no unsatisfied requirements, we can prepare to apply.
+    ChangeSet::prepare_for_apply_without_status_check(ctx).await?;
+
+    // We need to commit our preparations before performing the apply.
+    ctx.commit().await?;
+
+    // With the requirement check and preparations committed, we can finally perform the apply.
+    ChangeSet::apply_to_base_change_set(ctx).await?;
+
+    Ok(())
+}
 
 /// Gets the current change set approval status, which is a combination of approvals and
 /// requirements with relevant metadata.

@@ -59,19 +59,28 @@ impl ChangeSetTestHelpers {
     /// Apply Changeset To base Approvals
     pub async fn apply_change_set_to_base_approvals(ctx: &mut DalContext) -> Result<()> {
         ChangeSet::prepare_for_apply(ctx).await?;
-
-        Self::commit_and_update_snapshot_to_visibility(ctx).await?;
-
-        Self::apply_change_set_to_base_inner(ctx).await?;
+        Self::apply_change_set_to_base_approvals_without_prepare_step(ctx).await?;
         Ok(())
     }
 
     /// Force Apply Changeset To base Approvals
     pub async fn force_apply_change_set_to_base_approvals(ctx: &mut DalContext) -> Result<()> {
         ChangeSet::prepare_for_force_apply(ctx).await?;
+        Self::apply_change_set_to_base_approvals_without_prepare_step(ctx).await?;
+        Ok(())
+    }
 
+    /// Apply the change set to base for the approvals flow, but without performing the "prepare"
+    /// step.
+    ///
+    /// _Warning:_ if you do not know what to choose, use [Self::force_apply_change_set_to_base_approvals]
+    /// or [Self::apply_change_set_to_base_approvals] instead of this function. This function
+    /// should only be used if you have an alternative "prepare" workflow (e.g. testing fine grained
+    /// access control in sdf tests).
+    pub async fn apply_change_set_to_base_approvals_without_prepare_step(
+        ctx: &mut DalContext,
+    ) -> Result<()> {
         Self::commit_and_update_snapshot_to_visibility(ctx).await?;
-
         Self::apply_change_set_to_base_inner(ctx).await?;
         Ok(())
     }

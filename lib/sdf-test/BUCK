@@ -3,6 +3,9 @@ load("@prelude-si//:macros.bzl", "rust_library")
 rust_library(
     name = "sdf-test",
     deps = [
+        "//lib/dal:dal",
+        "//lib/dal-test:dal-test",
+        "//lib/sdf-server:sdf-server",
         "//lib/si-data-spicedb:si-data-spicedb",
         "//third-party/rust:rand",
     ],

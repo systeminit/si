@@ -6141,7 +6141,10 @@ dependencies = [
 name = "sdf-test"
 version = "0.1.0"
 dependencies = [
+ "dal",
+ "dal-test",
  "rand 0.8.5",
+ "sdf-server",
  "si-data-spicedb",
 ]
 

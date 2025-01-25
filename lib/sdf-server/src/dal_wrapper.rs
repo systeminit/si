@@ -29,19 +29,27 @@
     while_true
 )]
 
-pub mod change_set_approval;
+pub mod change_set;
 
 #[allow(missing_docs)]
 #[remain::sorted]
 #[derive(Debug, thiserror::Error)]
 pub enum DalWrapperError {
+    #[error("cannot apply with unsatisfied requirements for the following entities: {0:?}")]
+    ApplyWithUnsatisfiedRequirements(
+        Vec<(si_id::EntityId, si_events::workspace_snapshot::EntityKind)>,
+    ),
     #[error("approval requirement error: {0}")]
     ApprovalRequirement(#[from] dal::approval_requirement::ApprovalRequirementError),
-    #[error("change set approval error")]
+    #[error("change set error: {0}")]
+    ChangeSet(#[from] dal::ChangeSetError),
+    #[error("change set apply error: {0}")]
+    ChangeSetApply(#[from] dal::ChangeSetApplyError),
+    #[error("change set approval error: {0}")]
     ChangeSetApproval(#[from] dal::change_set::approval::ChangeSetApprovalError),
     #[error("invalid user found")]
     InvalidUser,
-    #[error("missing applicable approval id")]
+    #[error("missing applicable approval id: {0}")]
     MissingApplicableApproval(si_id::ChangeSetApprovalId),
     #[error("permissions error: {0}")]
     Permissions(#[from] permissions::Error),

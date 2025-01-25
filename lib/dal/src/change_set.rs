@@ -420,8 +420,22 @@ impl ChangeSet {
     /// [`ChangeSetStatus::Approved`]. Finally,
     /// lock every [`SchemaVariant`] and [`Func`] that is currently unlocked
     pub async fn prepare_for_apply(ctx: &DalContext) -> ChangeSetResult<()> {
-        let change_set = ChangeSet::get_by_id(ctx, ctx.change_set_id()).await?;
+        Self::prepare_for_apply_inner(ctx, false).await
+    }
 
+    /// This is a copy of [Self::prepare_for_apply], but skips the status check. This is because
+    /// sdf now handles the approvals flow as part of the fine grained access control work (i.e.
+    /// SpiceDB is intentionally not accessible in the DAL).
+    pub async fn prepare_for_apply_without_status_check(ctx: &DalContext) -> ChangeSetResult<()> {
+        Self::prepare_for_apply_inner(ctx, true).await
+    }
+
+    // TODO(nick): when the fine grained access control feature flag dies, get rid of the separate
+    // functions (and this inner one) and collapse them into one again.
+    async fn prepare_for_apply_inner(
+        ctx: &DalContext,
+        dangerous_skip_status_check: bool,
+    ) -> ChangeSetResult<()> {
         // Ensure that DVU roots are empty before continuing.
         if !ctx
             .workspace_snapshot()
@@ -439,12 +453,16 @@ impl ChangeSet {
             return Err(ChangeSetError::DvuRootsNotEmpty(ctx.change_set_id()));
         }
 
-        // if the change set status isn't approved, we shouldn't go
-        // locking stuff
-        if change_set.status != ChangeSetStatus::Approved {
-            return Err(ChangeSetError::ChangeSetNotApprovedForApply(
-                change_set.status,
-            ));
+        // WARNING(nick): we should only skip this status check if using sdf's protected apply logic.
+        if !dangerous_skip_status_check {
+            // if the change set status isn't approved, we shouldn't go
+            // locking stuff
+            let change_set = ChangeSet::get_by_id(ctx, ctx.change_set_id()).await?;
+            if change_set.status != ChangeSetStatus::Approved {
+                return Err(ChangeSetError::ChangeSetNotApprovedForApply(
+                    change_set.status,
+                ));
+            }
         }
 
         // Lock all unlocked variants

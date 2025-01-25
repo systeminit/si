@@ -13,7 +13,6 @@ use dal::{
 use reqwest::Client;
 use serde::Serialize;
 use si_data_spicedb::SpiceDbError;
-use si_events::ChangeSetStatus;
 use thiserror::Error;
 
 use crate::{middleware::WorkspacePermissionLayer, service::ApiError, AppState};
@@ -29,6 +28,7 @@ mod reopen;
 mod request_approval;
 
 // NOTE(nick): move these to the above group and remove old modules once the feature flag has been removed;
+mod apply_v2;
 mod approval_status;
 mod approve_v2;
 
@@ -41,8 +41,6 @@ pub enum Error {
     ChangeSetApply(#[from] dal::ChangeSetApplyError),
     #[error("change set approval error: {0}")]
     ChangeSetApproval(#[from] dal::change_set::approval::ChangeSetApprovalError),
-    #[error("change set not approved for apply. Current state: {0}")]
-    ChangeSetNotApprovedForApply(ChangeSetStatus),
     #[error("dal wrapper error: {0}")]
     DalWrapper(#[from] crate::dal_wrapper::DalWrapperError),
     #[error("dvu roots are not empty for change set: {0}")]
@@ -161,4 +159,5 @@ pub fn change_set_routes(state: AppState) -> Router<AppState> {
         .route("/rename", post(rename::rename))
         .route("/approval_status", get(approval_status::approval_status))
         .route("/approve_v2", post(approve_v2::approve))
+        .route("/apply_v2", post(apply_v2::apply))
 }
