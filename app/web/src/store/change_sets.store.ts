@@ -334,9 +334,15 @@ export function useChangeSetsStore() {
         async APPLY_CHANGE_SET(username: string) {
           if (!this.selectedChangeSet) throw new Error("Select a change set");
           const selectedChangeSetId = this.selectedChangeSetId;
+
+          let url = BASE_API.concat([{ selectedChangeSetId }, "apply"]);
+          if (featureFlagsStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL) {
+            url = BASE_API.concat([{ selectedChangeSetId }, "apply_v2"]);
+          }
+
           return new ApiRequest({
             method: "post",
-            url: BASE_API.concat([{ selectedChangeSetId }, "apply"]),
+            url,
             optimistic: () => {
               toast({
                 component: IncomingChangesMerging,

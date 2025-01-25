@@ -28,7 +28,7 @@ pub async fn approval_status(
         .ok_or(ChangeSetAPIError::SpiceDBClientNotFound)?;
 
     let (latest_approvals, requirements) =
-        dal_wrapper::change_set_approval::status(&ctx, spicedb_client).await?;
+        dal_wrapper::change_set::status(&ctx, spicedb_client).await?;
 
     Ok(Json(si_frontend_types::ChangeSetApprovals {
         latest_approvals,

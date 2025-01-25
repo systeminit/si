@@ -32,6 +32,8 @@ use si_data_spicedb::SpiceDbConfig;
 
 const ENV_VAR_SPICEDB_URL: &str = "SI_TEST_SPICEDB_URL";
 
+pub mod helpers;
+
 /// Provides a [`SpiceDbConfig`] for SDF tests.
 ///
 /// # Panics

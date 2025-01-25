@@ -89,11 +89,8 @@ async fn single_user_relation_existence_and_checksum_validility_permutations(
             .into();
 
         let approving_ids_with_hashes =
-            dal_wrapper::change_set_approval::determine_approving_ids_with_hashes(
-                ctx,
-                &mut spicedb_client,
-            )
-            .await?;
+            dal_wrapper::change_set::determine_approving_ids_with_hashes(ctx, &mut spicedb_client)
+                .await?;
         let first_approval = ChangeSetApproval::new(
             ctx,
             ChangeSetApprovalStatus::Approved,
@@ -103,7 +100,7 @@ async fn single_user_relation_existence_and_checksum_validility_permutations(
         ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
         let (frontend_latest_approvals, frontend_requirements) =
-            dal_wrapper::change_set_approval::status(ctx, &mut spicedb_client).await?;
+            dal_wrapper::change_set::status(ctx, &mut spicedb_client).await?;
 
         assert_eq!(
             vec![si_frontend_types::ChangeSetApproval {
@@ -143,7 +140,7 @@ async fn single_user_relation_existence_and_checksum_validility_permutations(
         relation.create(&mut spicedb_client).await?;
 
         let (frontend_latest_approvals, frontend_requirements) =
-            dal_wrapper::change_set_approval::status(ctx, &mut spicedb_client).await?;
+            dal_wrapper::change_set::status(ctx, &mut spicedb_client).await?;
 
         assert_eq!(
             vec![si_frontend_types::ChangeSetApproval {
@@ -177,11 +174,8 @@ async fn single_user_relation_existence_and_checksum_validility_permutations(
     // requirement.
     let second_approval_id = {
         let approving_ids_with_hashes =
-            dal_wrapper::change_set_approval::determine_approving_ids_with_hashes(
-                ctx,
-                &mut spicedb_client,
-            )
-            .await?;
+            dal_wrapper::change_set::determine_approving_ids_with_hashes(ctx, &mut spicedb_client)
+                .await?;
         let second_approval = ChangeSetApproval::new(
             ctx,
             ChangeSetApprovalStatus::Approved,
@@ -191,7 +185,7 @@ async fn single_user_relation_existence_and_checksum_validility_permutations(
         ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
         let (mut frontend_latest_approvals, mut frontend_requirements) =
-            dal_wrapper::change_set_approval::status(ctx, &mut spicedb_client).await?;
+            dal_wrapper::change_set::status(ctx, &mut spicedb_client).await?;
         frontend_latest_approvals.sort_by_key(|a| a.id);
         frontend_requirements
             .iter_mut()
@@ -240,7 +234,7 @@ async fn single_user_relation_existence_and_checksum_validility_permutations(
         relation.delete(&mut spicedb_client).await?;
 
         let (mut frontend_latest_approvals, frontend_requirements) =
-            dal_wrapper::change_set_approval::status(ctx, &mut spicedb_client).await?;
+            dal_wrapper::change_set::status(ctx, &mut spicedb_client).await?;
         frontend_latest_approvals.sort_by_key(|a| a.id);
 
         assert_eq!(
@@ -283,7 +277,7 @@ async fn single_user_relation_existence_and_checksum_validility_permutations(
         relation.create(&mut spicedb_client).await?;
 
         let (mut frontend_latest_approvals, mut frontend_requirements) =
-            dal_wrapper::change_set_approval::status(ctx, &mut spicedb_client).await?;
+            dal_wrapper::change_set::status(ctx, &mut spicedb_client).await?;
         frontend_latest_approvals.sort_by_key(|a| a.id);
         frontend_requirements
             .iter_mut()
@@ -349,7 +343,7 @@ async fn individual_approver_for_view(
     // Scenario 1: see all approvals and requirements with an "empty" workspace.
     {
         let (frontend_latest_approvals, frontend_requirements) =
-            dal_wrapper::change_set_approval::status(ctx, &mut spicedb_client).await?;
+            dal_wrapper::change_set::status(ctx, &mut spicedb_client).await?;
 
         assert!(frontend_latest_approvals.is_empty());
         assert!(frontend_requirements.is_empty());
@@ -375,7 +369,7 @@ async fn individual_approver_for_view(
         ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
         let (frontend_latest_approvals, mut frontend_requirements) =
-            dal_wrapper::change_set_approval::status(ctx, &mut spicedb_client).await?;
+            dal_wrapper::change_set::status(ctx, &mut spicedb_client).await?;
         frontend_requirements.sort_by_key(|r| r.entity_id);
 
         assert!(frontend_latest_approvals.is_empty());
@@ -418,7 +412,7 @@ async fn individual_approver_for_view(
     let first_approval_id = {
         let first_approval_id = {
             let approving_ids_with_hashes =
-                dal_wrapper::change_set_approval::determine_approving_ids_with_hashes(
+                dal_wrapper::change_set::determine_approving_ids_with_hashes(
                     ctx,
                     &mut spicedb_client,
                 )
@@ -434,7 +428,7 @@ async fn individual_approver_for_view(
         ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
         let (frontend_latest_approvals, mut frontend_requirements) =
-            dal_wrapper::change_set_approval::status(ctx, &mut spicedb_client).await?;
+            dal_wrapper::change_set::status(ctx, &mut spicedb_client).await?;
         frontend_requirements.sort_by_key(|r| r.entity_id);
 
         assert_eq!(
@@ -487,7 +481,7 @@ async fn individual_approver_for_view(
         relation.create(&mut spicedb_client).await?;
 
         let (frontend_latest_approvals, mut frontend_requirements) =
-            dal_wrapper::change_set_approval::status(ctx, &mut spicedb_client).await?;
+            dal_wrapper::change_set::status(ctx, &mut spicedb_client).await?;
         frontend_requirements.sort_by_key(|r| r.entity_id);
 
         assert_eq!(
@@ -531,7 +525,7 @@ async fn individual_approver_for_view(
     {
         let second_approval_id = {
             let approving_ids_with_hashes =
-                dal_wrapper::change_set_approval::determine_approving_ids_with_hashes(
+                dal_wrapper::change_set::determine_approving_ids_with_hashes(
                     ctx,
                     &mut spicedb_client,
                 )
@@ -547,7 +541,7 @@ async fn individual_approver_for_view(
         ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
         let (mut frontend_latest_approvals, mut frontend_requirements) =
-            dal_wrapper::change_set_approval::status(ctx, &mut spicedb_client).await?;
+            dal_wrapper::change_set::status(ctx, &mut spicedb_client).await?;
         frontend_latest_approvals.sort_by_key(|a| a.id);
         frontend_requirements.sort_by_key(|r| r.entity_id);
         frontend_requirements
@@ -603,7 +597,7 @@ async fn individual_approver_for_view(
     {
         let third_approval_id = {
             let approving_ids_with_hashes =
-                dal_wrapper::change_set_approval::determine_approving_ids_with_hashes(
+                dal_wrapper::change_set::determine_approving_ids_with_hashes(
                     ctx,
                     &mut spicedb_client,
                 )
@@ -619,7 +613,7 @@ async fn individual_approver_for_view(
         ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
         let (mut frontend_latest_approvals, mut frontend_requirements) =
-            dal_wrapper::change_set_approval::status(ctx, &mut spicedb_client).await?;
+            dal_wrapper::change_set::status(ctx, &mut spicedb_client).await?;
         frontend_latest_approvals.sort_by_key(|a| a.id);
         frontend_requirements.sort_by_key(|r| r.entity_id);
         frontend_requirements
@@ -677,7 +671,7 @@ async fn individual_approver_for_view(
         ChangeSetTestHelpers::fork_from_head_change_set(ctx).await?;
 
         let (frontend_latest_approvals, frontend_requirements) =
-            dal_wrapper::change_set_approval::status(ctx, &mut spicedb_client).await?;
+            dal_wrapper::change_set::status(ctx, &mut spicedb_client).await?;
 
         assert!(frontend_latest_approvals.is_empty());
         assert!(frontend_requirements.is_empty());
@@ -689,7 +683,7 @@ async fn individual_approver_for_view(
         ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
         let (frontend_latest_approvals, mut frontend_requirements) =
-            dal_wrapper::change_set_approval::status(ctx, &mut spicedb_client).await?;
+            dal_wrapper::change_set::status(ctx, &mut spicedb_client).await?;
         frontend_requirements.sort_by_key(|r| r.entity_id);
 
         assert!(frontend_latest_approvals.is_empty());
@@ -728,7 +722,7 @@ async fn individual_approver_for_view(
     {
         let fourth_approval_id = {
             let approving_ids_with_hashes =
-                dal_wrapper::change_set_approval::determine_approving_ids_with_hashes(
+                dal_wrapper::change_set::determine_approving_ids_with_hashes(
                     ctx,
                     &mut spicedb_client,
                 )
@@ -744,7 +738,7 @@ async fn individual_approver_for_view(
         ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
         let (frontend_latest_approvals, mut frontend_requirements) =
-            dal_wrapper::change_set_approval::status(ctx, &mut spicedb_client).await?;
+            dal_wrapper::change_set::status(ctx, &mut spicedb_client).await?;
         frontend_requirements.sort_by_key(|r| r.entity_id);
 
         assert_eq!(
@@ -791,7 +785,7 @@ async fn individual_approver_for_view(
     {
         let fifth_approval_id = {
             let approving_ids_with_hashes =
-                dal_wrapper::change_set_approval::determine_approving_ids_with_hashes(
+                dal_wrapper::change_set::determine_approving_ids_with_hashes(
                     ctx,
                     &mut spicedb_client,
                 )
@@ -807,7 +801,7 @@ async fn individual_approver_for_view(
         ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
         let (frontend_latest_approvals, mut frontend_requirements) =
-            dal_wrapper::change_set_approval::status(ctx, &mut spicedb_client).await?;
+            dal_wrapper::change_set::status(ctx, &mut spicedb_client).await?;
         frontend_requirements.sort_by_key(|r| r.entity_id);
 
         assert_eq!(
@@ -895,7 +889,7 @@ async fn one_component_in_two_views(
         ChangeSetTestHelpers::fork_from_head_change_set(ctx).await?;
 
         let (frontend_latest_approvals, frontend_requirements) =
-            dal_wrapper::change_set_approval::status(ctx, &mut spicedb_client).await?;
+            dal_wrapper::change_set::status(ctx, &mut spicedb_client).await?;
 
         assert!(frontend_latest_approvals.is_empty());
         assert!(frontend_requirements.is_empty());
@@ -914,7 +908,7 @@ async fn one_component_in_two_views(
         ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
         let (frontend_latest_approvals, mut frontend_requirements) =
-            dal_wrapper::change_set_approval::status(ctx, &mut spicedb_client).await?;
+            dal_wrapper::change_set::status(ctx, &mut spicedb_client).await?;
         frontend_requirements.sort_by_key(|r| r.entity_id);
 
         assert!(frontend_latest_approvals.is_empty());
@@ -954,7 +948,7 @@ async fn one_component_in_two_views(
         ChangeSetTestHelpers::fork_from_head_change_set(ctx).await?;
 
         let (frontend_latest_approvals, frontend_requirements) =
-            dal_wrapper::change_set_approval::status(ctx, &mut spicedb_client).await?;
+            dal_wrapper::change_set::status(ctx, &mut spicedb_client).await?;
 
         assert!(frontend_latest_approvals.is_empty());
         assert!(frontend_requirements.is_empty());
@@ -966,7 +960,7 @@ async fn one_component_in_two_views(
         ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
         let (frontend_latest_approvals, mut frontend_requirements) =
-            dal_wrapper::change_set_approval::status(ctx, &mut spicedb_client).await?;
+            dal_wrapper::change_set::status(ctx, &mut spicedb_client).await?;
         frontend_requirements.sort_by_key(|r| r.entity_id);
 
         assert!(frontend_latest_approvals.is_empty());
@@ -1004,7 +998,7 @@ async fn one_component_in_two_views(
         ChangeSetTestHelpers::fork_from_head_change_set(ctx).await?;
 
         let (frontend_latest_approvals, frontend_requirements) =
-            dal_wrapper::change_set_approval::status(ctx, &mut spicedb_client).await?;
+            dal_wrapper::change_set::status(ctx, &mut spicedb_client).await?;
 
         assert!(frontend_latest_approvals.is_empty());
         assert!(frontend_requirements.is_empty());
@@ -1016,7 +1010,7 @@ async fn one_component_in_two_views(
         ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
         let (frontend_latest_approvals, mut frontend_requirements) =
-            dal_wrapper::change_set_approval::status(ctx, &mut spicedb_client).await?;
+            dal_wrapper::change_set::status(ctx, &mut spicedb_client).await?;
         frontend_requirements.sort_by_key(|r| r.entity_id);
 
         assert!(frontend_latest_approvals.is_empty());
@@ -1054,7 +1048,7 @@ async fn one_component_in_two_views(
         ChangeSetTestHelpers::fork_from_head_change_set(ctx).await?;
 
         let (frontend_latest_approvals, frontend_requirements) =
-            dal_wrapper::change_set_approval::status(ctx, &mut spicedb_client).await?;
+            dal_wrapper::change_set::status(ctx, &mut spicedb_client).await?;
 
         assert!(frontend_latest_approvals.is_empty());
         assert!(frontend_requirements.is_empty());

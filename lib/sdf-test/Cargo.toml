@@ -9,6 +9,9 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
+dal = { path = "../../lib/dal" }
+dal-test = { path = "../../lib/dal-test" }
+sdf-server = { path = "../../lib/sdf-server" }
 si-data-spicedb = { path = "../../lib/si-data-spicedb" }
 
 rand = { workspace = true }
