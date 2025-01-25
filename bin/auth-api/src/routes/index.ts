@@ -45,10 +45,11 @@ export function extractAdminAuthUser(ctx: CustomRouteContext) {
 
 // we initialize and export the router immediately
 // but we'll add routes to it here and in each routes file
-export const router = new Router<CustomAppState, CustomAppContext>();
 export type CustomRouter = Router<CustomAppState, CustomAppContext>;
+export const router = new Router<CustomAppState, CustomAppContext>();
+export const automationApiRouter = new Router<CustomAppState, CustomAppContext>();
 
-router.get("/", async (ctx) => {
+automationApiRouter.get("/", async (ctx) => {
   // TODO: add something which checks redis and postgres connections are working
   ctx.body = { systemStatus: "ok" };
 });
