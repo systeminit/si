@@ -46,13 +46,14 @@ export interface ChangeSetApprovalRequirement {
   requiredCount: number;
   isSatisfied: boolean;
   applicableApprovalIds: ChangeSetApprovalId[];
-  approvingGroups: string[];
+  approverGroups: Record<string, string[]>;
 }
 
+export type ApprovalStatus = "Approved" | "Rejected";
 export interface ChangeSetApproval {
   id: ChangeSetApprovalId;
   userPk: UserId;
-  status: "Approved";
+  status: ApprovalStatus;
   isValid: boolean; // is this approval "out of date" based on the checksum
 }
 
