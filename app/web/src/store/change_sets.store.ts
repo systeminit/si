@@ -52,7 +52,7 @@ export interface ChangeSetApprovalRequirement {
 export type ApprovalStatus = "Approved" | "Rejected";
 export interface ChangeSetApproval {
   id: ChangeSetApprovalId;
-  userPk: UserId;
+  userId: UserId;
   status: ApprovalStatus;
   isValid: boolean; // is this approval "out of date" based on the checksum
 }
@@ -61,6 +61,14 @@ export interface ApprovalData {
   requirements: ChangeSetApprovalRequirement[];
   latestApprovals: ChangeSetApproval[];
 }
+
+export const approverForChangeSet = (
+  userId: UserId,
+  approvalData: ApprovalData,
+) =>
+  approvalData.requirements.some((r) =>
+    Object.values(r.approverGroups).flat().includes(userId),
+  );
 
 export function useChangeSetsStore() {
   const workspacesStore = useWorkspacesStore();
@@ -186,6 +194,7 @@ export function useChangeSetsStore() {
               },
             });
           }
+          return Promise.resolve();
         },
 
         async FETCH_CHANGE_SETS() {
@@ -483,20 +492,10 @@ export function useChangeSetsStore() {
                     },
                   });
                 }
-              }
-              // if I'm an approver, and a change set now needs approval - toast
-              else if (
-                this.currentUserIsDefaultApprover &&
+              } else if (
                 data.changeSet.status === ChangeSetStatus.NeedsApproval
               ) {
-                toast({
-                  component: ChangeSetStatusChanged,
-                  props: {
-                    user: data.changeSet.mergeRequestedByUser,
-                    command: "requested to apply",
-                    changeSetName: data.changeSet.name,
-                  },
-                });
+                this.FETCH_APPROVAL_STATUS(data.changeSet.id);
               }
               await this.FETCH_CHANGE_SETS();
             },

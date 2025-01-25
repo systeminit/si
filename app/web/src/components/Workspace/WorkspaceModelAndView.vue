@@ -45,7 +45,15 @@
       )
     "
   >
-    <InsetApprovalModal />
+    <InsetApprovalModal
+      v-if="
+        changeSetsStore.selectedChangeSet &&
+        (approvalData ||
+          featureFlagsStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL === false)
+      "
+      :approvalData="approvalData"
+      :changeSet="changeSetsStore.selectedChangeSet"
+    />
   </div>
   <ModelingDiagram
     v-else
@@ -122,6 +130,7 @@ import { ComponentType } from "@/api/sdf/dal/schema";
 import { useRouterStore } from "@/store/router.store";
 import { useAssetStore } from "@/store/asset.store";
 import { useFuncStore } from "@/store/func/funcs.store";
+import { useAuthStore } from "@/store/auth.store";
 import LeftPanelDrawer from "../LeftPanelDrawer.vue";
 import ModelingDiagram from "../ModelingDiagram/ModelingDiagram.vue";
 import AssetPalette from "../AssetPalette.vue";
@@ -151,6 +160,7 @@ const _secretsStore = useSecretsStore(); // adding this so we fetch once
 const statusStore = useStatusStore();
 const funcStore = useFuncStore();
 const featureFlagsStore = useFeatureFlagsStore();
+const authStore = useAuthStore();
 
 const actionsAreRunning = computed(
   () =>
@@ -206,6 +216,13 @@ const onKeyDown = async (e: KeyboardEvent) => {
 };
 
 const routeStore = useRouterStore();
+const approvalData = computed(
+  () =>
+    changeSetsStore.changeSetsApprovalData[
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      changeSetsStore.selectedChangeSetId!
+    ],
+);
 
 onBeforeMount(async () => {
   // get to first paint ASAP
@@ -238,6 +255,17 @@ onBeforeMount(async () => {
     actionsStore.LOAD_ACTION_HISTORY(),
     statusStore.FETCH_DVU_ROOTS(),
   ]);
+
+  if (featureFlagsStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL) {
+    await Promise.all([
+      changeSetsStore.FETCH_APPROVAL_STATUS(
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        changeSetsStore.selectedChangeSetId!,
+      ),
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      authStore.LIST_WORKSPACE_USERS(changeSetsStore.selectedWorkspacePk!),
+    ]);
+  }
 });
 
 onMounted(async () => {

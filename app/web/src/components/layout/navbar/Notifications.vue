@@ -1,6 +1,9 @@
 <template>
   <button
-    v-if="userIsApprover"
+    v-if="
+      userIsApprover ||
+      (ffStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL && numberICanApprove > 0)
+    "
     v-tooltip="{
       content: tooltipText,
       theme: 'notifications',
@@ -8,8 +11,8 @@
     :class="
       clsx(
         'relative h-full flex flex-row gap-2xs items-center children:pointer-events-none font-bold',
-        pendingApprovalCount > 0 ? 'bg-destructive-900' : 'hover:bg-black',
-        pendingApprovalCount > 0 && !compact ? 'p-xs' : 'p-sm',
+        numberICanApprove > 0 ? 'bg-destructive-900' : 'hover:bg-black',
+        numberICanApprove > 0 && !compact ? 'p-xs' : 'p-sm',
       )
     "
     @click="openPendingApprovalsModal"
@@ -17,22 +20,20 @@
     <Icon
       name="bell"
       :class="
-        clsx(pendingApprovalCount > 0 ? 'text-destructive-500' : 'text-shade-0')
+        clsx(numberICanApprove > 0 ? 'text-destructive-500' : 'text-shade-0')
       "
     />
-    <template v-if="pendingApprovalCount > 0 && !compact">
+    <template v-if="numberICanApprove > 0 && !compact">
       <PillCounter
-        :count="pendingApprovalCount"
+        :count="numberICanApprove"
         noColorStyles
         hideIfZero
         class="bg-destructive-500 py-2xs"
       />
-      <div class="text-xs">
-        Approval{{ pendingApprovalCount > 1 ? "s" : "" }}
-      </div>
+      <div class="text-xs">Approval{{ numberICanApprove > 1 ? "s" : "" }}</div>
     </template>
     <ApprovalPendingModal
-      v-if="pendingApprovalCount > 0"
+      v-if="numberICanApprove > 0"
       ref="pendingApprovalModalRef"
     />
   </button>
@@ -42,27 +43,45 @@
 import clsx from "clsx";
 import { computed, ref, onMounted, onBeforeUnmount } from "vue";
 import { Icon, PillCounter } from "@si/vue-lib/design-system";
-import { useChangeSetsStore } from "@/store/change_sets.store";
+import {
+  approverForChangeSet,
+  useChangeSetsStore,
+} from "@/store/change_sets.store";
+import { useAuthStore } from "@/store/auth.store";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import ApprovalPendingModal from "../../ApprovalPendingModal.vue";
 
 const changeSetsStore = useChangeSetsStore();
+const authStore = useAuthStore();
+const ffStore = useFeatureFlagsStore();
 
 const pendingApprovalModalRef = ref<InstanceType<
   typeof ApprovalPendingModal
 > | null>(null);
 
-const userIsApprover = computed(
-  () => changeSetsStore.currentUserIsDefaultApprover,
-);
-const pendingApprovalCount = computed(
-  () => changeSetsStore.changeSetsNeedingApproval.length,
-);
+const userIsApprover = computed(() => {
+  if (ffStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL) return false;
+  return changeSetsStore.currentUserIsDefaultApprover;
+});
+
+const numberICanApprove = computed(() => {
+  if (!ffStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL) {
+    return changeSetsStore.changeSetsNeedingApproval.length;
+  }
+  let approvable = 0;
+  changeSetsStore.changeSetsNeedingApproval.forEach((changeSet) => {
+    const approvalData = changeSetsStore.changeSetsApprovalData[changeSet.id];
+    if (!approvalData || !authStore.user) return;
+    if (approverForChangeSet(authStore.user.pk, approvalData)) approvable++;
+  });
+  return approvable;
+});
 
 const tooltipText = computed(() => {
-  if (pendingApprovalCount.value === 1) {
+  if (numberICanApprove.value === 1) {
     return "You have a Change Set to approve.";
-  } else if (pendingApprovalCount.value > 1) {
-    return `You have ${pendingApprovalCount.value} Change Sets to approve.`;
+  } else if (numberICanApprove.value > 1) {
+    return `You have ${numberICanApprove.value} Change Sets to approve.`;
   } else {
     return "No Notifications";
   }
@@ -85,7 +104,7 @@ onBeforeUnmount(() => {
 const compact = computed(() => windowWidth.value < 850);
 
 const openPendingApprovalsModal = () => {
-  if (pendingApprovalCount.value > 0) {
+  if (numberICanApprove.value > 0) {
     pendingApprovalModalRef.value?.open();
   }
 };
