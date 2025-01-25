@@ -13,7 +13,6 @@ import {
   SchemaVariantSpec,
 } from "../../../lib/si-pkg/bindings/SchemaVariantSpec.ts";
 import { SchemaSpec } from "../../../lib/si-pkg/bindings/SchemaSpec.ts";
-import { createResourcePayloadToValue, createSiFuncs } from "./spec/siFuncs.ts";
 
 export function pkgSpecFromCf(src: CfSchema): PkgSpec {
   const [aws, category, name] = src.typeName.split("::");
@@ -94,9 +93,7 @@ export function pkgSpecFromCf(src: CfSchema): PkgSpec {
     workspacePk: null,
     workspaceName: null,
     schemas: [schema],
-    funcs: createSiFuncs().concat(
-      createResourcePayloadToValue(),
-    ),
+    funcs: [],
     changeSets: [], // always empty
   };
 }

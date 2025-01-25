@@ -10,6 +10,8 @@ import { generateDefaultLeafFuncs } from "../pipeline-steps/generateLeafFuncs.ts
 import { generateDefaultManagementFuncs } from "../pipeline-steps/generateManagementFuncs.ts";
 import { addDefaultPropsAndSockets } from "../pipeline-steps/addDefaultPropsAndSockets.ts";
 import { generateSocketsFromResourceProps } from "../pipeline-steps/generateSocketsFromResourceProps.ts";
+import { generateSubAssets } from "../pipeline-steps/generateSubAssets.ts";
+import { generateIntrinsicFuncs } from "../pipeline-steps/generateIntrinsicFuncs.ts";
 
 export function generateSiSpecForService(serviceName: string) {
   const cf = getServiceByName(serviceName);
@@ -38,10 +40,14 @@ export async function generateSiSpecs() {
   specs = generateSocketsFromDomainProps(specs);
   specs = generateSocketsFromResourceProps(specs);
   specs = addDefaultPropsAndSockets(specs);
-  specs = generateAssetFuncs(specs);
   specs = generateDefaultActionFuncs(specs);
   specs = generateDefaultLeafFuncs(specs);
   specs = generateDefaultManagementFuncs(specs);
+  // subAssets should not have any of the above, but need an asset func and
+  // intrinsics
+  specs = generateSubAssets(specs);
+  specs = generateIntrinsicFuncs(specs);
+  specs = generateAssetFuncs(specs);
 
   // WRITE OUTS SPECS
   for (const spec of specs) {

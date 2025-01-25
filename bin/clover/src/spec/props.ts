@@ -27,6 +27,7 @@ export function isExpandedPropSpec(prop: PropSpec): prop is ExpandedPropSpec {
 
 export type ExpandedPropSpec =
   & ({
+    data: PropSpecData;
     metadata: {
       createOnly?: boolean;
       readOnly?: boolean;
@@ -253,9 +254,6 @@ export function createObjectProp(
       readOnly: false,
       writeOnly: false,
       propPath: [...parentPath, name],
-      createOnly: false,
-      readOnly: false,
-      writeOnly: false,
     },
   };
 
@@ -266,7 +264,7 @@ export function createScalarProp(
   name: string,
   kind: "number" | "string" | "boolean",
   parentPath: string[],
-): ExpandedPropSpec & { data: PropSpecData } {
+): ExpandedPropSpec {
   let widgetKind: PropSpecWidgetKind;
   switch (kind) {
     case "number":
