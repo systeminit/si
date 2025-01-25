@@ -78,6 +78,7 @@ export function useFeatureFlagsStore() {
         // You can override feature flags while working on a feature by setting them to true/false here
         // for example:
         // this.MANAGEMENT_EDGES = false;
+        this.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL = true;
       },
     }),
   )();

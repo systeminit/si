@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 use std::collections::HashSet;
 
+use dal::action::prototype::ActionPrototype;
+use dal::action::Action;
 use dal::approval_requirement::ApprovalRequirement;
 use dal::approval_requirement::ApprovalRequirementApprover;
 use dal::change_set::approval::ChangeSetApproval;
@@ -8,12 +10,14 @@ use dal::diagram::view::View;
 use dal::Component;
 use dal::ComponentType;
 use dal::DalContext;
+use dal::Func;
 use dal::HistoryActor;
 use dal::SchemaVariant;
 use dal_test::eyre;
 use dal_test::helpers::create_component_for_default_schema_name;
 use dal_test::helpers::create_schema;
 use dal_test::prelude::ChangeSetTestHelpers;
+use dal_test::prelude::OptionExt;
 use dal_test::sdf_test;
 use dal_test::Result;
 use indoc::indoc;
@@ -1055,6 +1059,166 @@ async fn one_component_in_two_views(
 
         assert!(frontend_latest_approvals.is_empty());
         assert!(frontend_requirements.is_empty());
+    }
+
+    Ok(())
+}
+
+// NOTE(nick): this is an integration test and not a service test, but given that "sdf_test" is in
+// a weird, unused place at the time of writing, this test will live here.
+#[sdf_test]
+async fn one_component_in_two_views_with_actions(
+    ctx: &mut DalContext,
+    spicedb_client: SpiceDbClient,
+) -> Result<()> {
+    let mut spicedb_client = spicedb_client;
+
+    // FIXME(nick,jacob): see the comment attached to this function.
+    write_schema(&mut spicedb_client).await?;
+
+    // Cache the IDs we need.
+    let workspace_id = ctx.workspace_pk()?;
+    let user_id = match ctx.history_actor() {
+        HistoryActor::SystemInit => return Err(eyre!("invalid user")),
+        HistoryActor::User(user_id) => *user_id,
+    };
+
+    // Create a view with a requirement and then commit.
+    let todd_view = View::new(ctx, "toddhoward").await?;
+    let todd_view_id = todd_view.id();
+    ApprovalRequirement::new_definition(
+        ctx,
+        todd_view_id,
+        1,
+        HashSet::from([ApprovalRequirementApprover::User(user_id)]),
+    )
+    .await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+    // Create a second view with another requirement and then commit.
+    let sven_view = View::new(ctx, "svenvincke").await?;
+    let sven_view_id = sven_view.id();
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+    // Scenario 1: apply to HEAD and create a new change set.
+    {
+        ChangeSetTestHelpers::apply_change_set_to_base(ctx).await?;
+        ChangeSetTestHelpers::fork_from_head_change_set(ctx).await?;
+
+        let (frontend_latest_approvals, frontend_requirements) =
+            dal_wrapper::change_set_approval::status(ctx, &mut spicedb_client).await?;
+
+        assert!(frontend_latest_approvals.is_empty());
+        assert!(frontend_requirements.is_empty());
+    }
+
+    // Scenario 2: create a component in our new views.
+    let component = {
+        dbg!("CREATE COMPONENT");
+        let component = create_component_for_default_schema_name(
+            ctx,
+            "starfield",
+            "shattered space",
+            todd_view_id,
+        )
+        .await?;
+        Component::add_to_view(ctx, component.id(), sven_view_id, RawGeometry::default()).await?;
+        ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+        let (frontend_latest_approvals, mut frontend_requirements) =
+            dal_wrapper::change_set_approval::status(ctx, &mut spicedb_client).await?;
+        frontend_requirements.sort_by_key(|r| r.entity_id);
+
+        assert!(frontend_latest_approvals.is_empty());
+        assert_eq!(
+            vec![
+                si_frontend_types::ChangeSetApprovalRequirement {
+                    entity_id: todd_view_id.into_inner().into(),
+                    entity_kind: EntityKind::View,
+                    required_count: 1,
+                    is_satisfied: false,
+                    applicable_approval_ids: Vec::new(),
+                    approver_groups: HashMap::new(),
+                    approver_individuals: vec![user_id],
+                },
+                si_frontend_types::ChangeSetApprovalRequirement {
+                    entity_id: sven_view_id.into_inner().into(),
+                    entity_kind: EntityKind::View,
+                    required_count: 1,
+                    is_satisfied: false,
+                    applicable_approval_ids: Vec::new(),
+                    approver_groups: HashMap::from_iter(vec![(
+                        format!("workspace#{workspace_id}#approve"),
+                        Vec::new()
+                    )]),
+                    approver_individuals: Vec::new(),
+                }
+            ], // expected
+            frontend_requirements // actual
+        );
+
+        component
+    };
+
+    // Scenario 3: apply to HEAD and create a new change set (skip approvals).
+    {
+        ChangeSetTestHelpers::apply_change_set_to_base(ctx).await?;
+        ChangeSetTestHelpers::fork_from_head_change_set(ctx).await?;
+
+        let (frontend_latest_approvals, frontend_requirements) =
+            dal_wrapper::change_set_approval::status(ctx, &mut spicedb_client).await?;
+
+        assert!(frontend_latest_approvals.is_empty());
+        assert!(frontend_requirements.is_empty());
+    }
+
+    // Scenario 4: add an action with an existing prototype.
+    {
+        dbg!("ADDING ACTION");
+        let func_id = Func::find_id_by_name(ctx, "test:createActionStarfield")
+            .await?
+            .ok_or_eyre("func id not found by name")?;
+        let mut action_prototype_ids = ActionPrototype::list_for_func_id(ctx, func_id).await?;
+        let action_prototype_id = action_prototype_ids
+            .pop()
+            .ok_or_eyre("no action prototype ids found")?;
+        assert!(action_prototype_ids.is_empty());
+        Action::new(ctx, action_prototype_id, Some(component.id())).await?;
+        ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+        let (frontend_latest_approvals, mut frontend_requirements) =
+            dal_wrapper::change_set_approval::status(ctx, &mut spicedb_client).await?;
+        frontend_requirements.sort_by_key(|r| r.entity_id);
+
+        dbg!(frontend_latest_approvals, frontend_requirements);
+        assert!(false);
+        // assert!(frontend_latest_approvals.is_empty());
+        // assert_eq!(
+        //     vec![
+        //         si_frontend_types::ChangeSetApprovalRequirement {
+        //             entity_id: todd_view_id.into_inner().into(),
+        //             entity_kind: EntityKind::View,
+        //             required_count: 1,
+        //             is_satisfied: false,
+        //             applicable_approval_ids: Vec::new(),
+        //             approver_groups: HashMap::new(),
+        //             approver_individuals: vec![user_id],
+        //         },
+        //         si_frontend_types::ChangeSetApprovalRequirement {
+        //             entity_id: sven_view_id.into_inner().into(),
+        //             entity_kind: EntityKind::View,
+        //             required_count: 1,
+        //             is_satisfied: false,
+        //             applicable_approval_ids: Vec::new(),
+        //             approver_groups: HashMap::from_iter(vec![(
+        //                 format!("workspace#{workspace_id}#approve"),
+        //                 Vec::new()
+        //             )]),
+        //             approver_individuals: Vec::new(),
+        //         }
+        //     ], // expected
+        //     frontend_requirements // actual
+        // );
     }
 
     Ok(())

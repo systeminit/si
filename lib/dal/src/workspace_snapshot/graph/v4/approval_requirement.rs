@@ -131,11 +131,17 @@ fn new_virtual_requirement_rule(
                 },
             )]),
         })),
+        EntityKind::Action => {
+            dbg!("ACTION");
+            Ok(None)
+        }
         EntityKind::Category => {
             let category_node_weight = graph
                 .get_node_weight_by_id(change.entity_id)?
                 .get_category_node_weight()?;
             if CategoryNodeKind::Action == category_node_weight.kind() {
+                for 
+                dbg!("ACTION CATEGORY");
                 // TODO(nick,jacob): start the actions CRUD work here! As a reminder, we need to
                 // know the actions deleted (only on HEAD), the actions added (only in our graph),
                 // the actions modified (in both), etc.
