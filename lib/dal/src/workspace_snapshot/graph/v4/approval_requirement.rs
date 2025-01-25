@@ -15,7 +15,7 @@ use crate::{
             },
             WorkspaceSnapshotGraphError, WorkspaceSnapshotGraphResult,
         },
-        node_weight::{category_node_weight::CategoryNodeKind, traits::SiNodeWeight},
+        node_weight::traits::SiNodeWeight,
     },
     EdgeWeightKindDiscriminants,
 };
@@ -56,8 +56,7 @@ impl ApprovalRequirementExt for WorkspaceSnapshotGraphV4 {
                 // If we did not find any explicit requirements, check if we need to create virtual
                 // requirements.
                 if explicit_approval_requirement_definition_ids.is_empty() {
-                    if let Some(virtual_rule) =
-                        new_virtual_requirement_rule(self, workspace_id, change)?
+                    if let Some(virtual_rule) = new_virtual_requirement_rule(workspace_id, change)?
                     {
                         virtual_approval_requirement_rules.push(virtual_rule);
                     }
@@ -112,14 +111,13 @@ impl ApprovalRequirementExt for WorkspaceSnapshotGraphV4 {
 }
 
 fn new_virtual_requirement_rule(
-    graph: &WorkspaceSnapshotGraphV4,
     workspace_id: WorkspacePk,
     change: &Change,
 ) -> WorkspaceSnapshotGraphResult<Option<ApprovalRequirementRule>> {
     match change.entity_kind {
-        // FIXME(nick,jacob): remove these hard-coded virtual requirements when we have
-        // proper fallback.
-        EntityKind::View | EntityKind::SchemaVariant => Ok(Some(ApprovalRequirementRule {
+        // For any changes to explicit approval requirements, we need approvals from
+        // workspace approvers.
+        EntityKind::ApprovalRequirementDefinition => Ok(Some(ApprovalRequirementRule {
             entity_id: change.entity_id,
             entity_kind: change.entity_kind,
             minimum: 1,
@@ -131,22 +129,25 @@ fn new_virtual_requirement_rule(
                 },
             )]),
         })),
-        EntityKind::Category => {
-            let category_node_weight = graph
-                .get_node_weight_by_id(change.entity_id)?
-                .get_category_node_weight()?;
-            if CategoryNodeKind::Action == category_node_weight.kind() {
-                // TODO(nick,jacob): start the actions CRUD work here! As a reminder, we need to
-                // know the actions deleted (only on HEAD), the actions added (only in our graph),
-                // the actions modified (in both), etc.
-                Ok(None)
-            } else {
-                Ok(None)
-            }
+        EntityKind::CategoryAction => {
+            // TODO(nick,jacob): start the actions CRUD work here! As a reminder, we need to
+            // know the actions deleted (only on HEAD), the actions added (only in our graph),
+            // the actions modified (in both), etc.
+            Ok(None)
         }
-        // For any changes to explicit approval requirements, we need approvals from
-        // workspace approvers.
-        EntityKind::ApprovalRequirementDefinition => Ok(Some(ApprovalRequirementRule {
+        EntityKind::CategorySchema => Ok(Some(ApprovalRequirementRule {
+            entity_id: change.entity_id,
+            entity_kind: change.entity_kind,
+            minimum: 1,
+            approvers: HashSet::from([ApprovalRequirementApprover::PermissionLookup(
+                ApprovalRequirementPermissionLookup {
+                    object_type: "workspace".to_string(),
+                    object_id: workspace_id.to_string(),
+                    permission: "approve".to_string(),
+                },
+            )]),
+        })),
+        EntityKind::View => Ok(Some(ApprovalRequirementRule {
             entity_id: change.entity_id,
             entity_kind: change.entity_kind,
             minimum: 1,

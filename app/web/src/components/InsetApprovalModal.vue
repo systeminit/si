@@ -206,9 +206,11 @@ const requiredApproverIds = computed(() => {
     ];
   // everyone required
   approvalData?.requirements.forEach((r) => {
-    return Object.values(r.approvingGroups).forEach((id) => {
-      ids.add(id);
-    });
+    return Object.values(r.approverGroups)
+      .flat()
+      .forEach((id) => {
+        ids.add(id);
+      });
   });
   // remove people who have voted
   approvalsSubmittedUserIds.value?.forEach((id) => {

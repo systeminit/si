@@ -5,6 +5,7 @@ use dal::approval_requirement::ApprovalRequirement;
 use dal::approval_requirement::ApprovalRequirementApprover;
 use dal::change_set::approval::ChangeSetApproval;
 use dal::diagram::view::View;
+use dal::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use dal::Component;
 use dal::ComponentType;
 use dal::DalContext;
@@ -65,7 +66,7 @@ async fn single_user_relation_existence_and_checksum_validility_permutations(
     // Scenario 1: create the variant without the relation.
     let (entity_id, first_approval_id) = {
         let schema = create_schema(ctx).await?;
-        let (variant, _) = SchemaVariant::new(
+        SchemaVariant::new(
             ctx,
             schema.id(),
             "ringo starr",
@@ -79,11 +80,13 @@ async fn single_user_relation_existence_and_checksum_validility_permutations(
             false,
         )
         .await?;
-        let entity_id: si_id::EntityId = {
-            let raw_id: si_id::ulid::Ulid = variant.id().into();
-            raw_id.into()
-        };
         ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+        let entity_id = ctx
+            .workspace_snapshot()?
+            .get_category_node_or_err(None, CategoryNodeKind::Schema)
+            .await?
+            .into();
 
         let approving_ids_with_hashes =
             dal_wrapper::change_set_approval::determine_approving_ids_with_hashes(
@@ -114,7 +117,7 @@ async fn single_user_relation_existence_and_checksum_validility_permutations(
         assert_eq!(
             vec![si_frontend_types::ChangeSetApprovalRequirement {
                 entity_id,
-                entity_kind: EntityKind::SchemaVariant,
+                entity_kind: EntityKind::CategorySchema,
                 required_count: 1,
                 is_satisfied: false,
                 applicable_approval_ids: Vec::new(),
@@ -154,7 +157,7 @@ async fn single_user_relation_existence_and_checksum_validility_permutations(
         assert_eq!(
             vec![si_frontend_types::ChangeSetApprovalRequirement {
                 entity_id,
-                entity_kind: EntityKind::SchemaVariant,
+                entity_kind: EntityKind::CategorySchema,
                 required_count: 1,
                 is_satisfied: false,
                 applicable_approval_ids: vec![first_approval_id],
@@ -214,7 +217,7 @@ async fn single_user_relation_existence_and_checksum_validility_permutations(
         assert_eq!(
             vec![si_frontend_types::ChangeSetApprovalRequirement {
                 entity_id,
-                entity_kind: EntityKind::SchemaVariant,
+                entity_kind: EntityKind::CategorySchema,
                 required_count: 1,
                 is_satisfied: true,
                 applicable_approval_ids: vec![first_approval_id, second_approval.id()],
@@ -260,7 +263,7 @@ async fn single_user_relation_existence_and_checksum_validility_permutations(
         assert_eq!(
             vec![si_frontend_types::ChangeSetApprovalRequirement {
                 entity_id,
-                entity_kind: EntityKind::SchemaVariant,
+                entity_kind: EntityKind::CategorySchema,
                 required_count: 1,
                 is_satisfied: false,
                 applicable_approval_ids: Vec::new(),
@@ -306,7 +309,7 @@ async fn single_user_relation_existence_and_checksum_validility_permutations(
         assert_eq!(
             vec![si_frontend_types::ChangeSetApprovalRequirement {
                 entity_id,
-                entity_kind: EntityKind::SchemaVariant,
+                entity_kind: EntityKind::CategorySchema,
                 required_count: 1,
                 is_satisfied: true,
                 applicable_approval_ids: vec![first_approval_id, second_approval_id],

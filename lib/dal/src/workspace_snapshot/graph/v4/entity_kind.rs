@@ -8,7 +8,7 @@ use crate::{
             traits::entity_kind::EntityKindExt, WorkspaceSnapshotGraphError,
             WorkspaceSnapshotGraphResult,
         },
-        node_weight::NodeWeightError,
+        node_weight::{category_node_weight::CategoryNodeKind, NodeWeightError},
     },
     NodeWeightDiscriminants,
 };
@@ -28,7 +28,24 @@ impl EntityKindExt for WorkspaceSnapshotGraphV4 {
                 EntityKind::AttributePrototypeArgument
             }
             NodeWeightDiscriminants::AttributeValue => EntityKind::AttributeValue,
-            NodeWeightDiscriminants::Category => EntityKind::Category,
+            NodeWeightDiscriminants::Category => {
+                match node_weight.get_category_node_weight()?.kind() {
+                    CategoryNodeKind::Action => EntityKind::CategoryAction,
+                    CategoryNodeKind::Component => EntityKind::CategoryComponent,
+                    CategoryNodeKind::DeprecatedActionBatch => {
+                        EntityKind::CategoryDeprecatedActionBatch
+                    }
+                    CategoryNodeKind::Func => EntityKind::CategoryFunc,
+                    CategoryNodeKind::Module => EntityKind::CategoryModule,
+                    CategoryNodeKind::Schema => EntityKind::CategorySchema,
+                    CategoryNodeKind::Secret => EntityKind::CategorySecret,
+                    CategoryNodeKind::DependentValueRoots => {
+                        EntityKind::CategoryDependentValueRoots
+                    }
+                    CategoryNodeKind::View => EntityKind::CategoryView,
+                    CategoryNodeKind::DiagramObject => EntityKind::CategoryDiagramObject,
+                }
+            }
             NodeWeightDiscriminants::Component => EntityKind::Component,
             NodeWeightDiscriminants::Content => match node_weight
                 .get_content_node_weight()?
