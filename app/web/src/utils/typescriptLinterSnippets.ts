@@ -6,7 +6,6 @@ export const snippets = [
     `new PropBuilder()
       .setName("\${name}")
       .setKind("\${string}")
-      .setWidget(new PropWidgetDefinitionBuilder().setKind("\${text}").build())
       .build();`,
     {
       label: "New Prop Snippet",
@@ -106,7 +105,6 @@ export const snippets = [
     `const regionProp = new PropBuilder()
         .setKind("string")
         .setName("region")
-        .setWidget(new PropWidgetDefinitionBuilder().setKind("text").build())
         .setValueFrom(new ValueFromBuilder().setKind("inputSocket").setSocketName("Region").build())
         .build();
 
