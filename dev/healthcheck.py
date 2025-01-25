@@ -7,7 +7,18 @@ import subprocess
 import shutil
 import sys
 
-MIN_OPENFILES_VALUE = 1024
+# Why so many??
+#
+# Currently there are a few reasons:
+# - Our in-memory/on-disk caching solution (foyer) drives the number of open
+#   files handles up, and we run 3 copies in the dev stack
+# - Database connection pools are numerous (3x per process and they default to a
+#   number based on core count)
+#
+# If and when the math changes, this value can be *dramatically* decreased, but
+# until then, it's a high value ;)
+MIN_OPENFILES_VALUE = 16384
+
 MIN_IONOTIFY_WATCHES = 65536 * 2
 
 
