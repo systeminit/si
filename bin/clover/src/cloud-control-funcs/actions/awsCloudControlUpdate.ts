@@ -44,15 +44,21 @@ async function main(component: Input): Promise<Output> {
     resourceResponse["ResourceDescription"]["Properties"],
   );
 
-  const desiredProps: Array<Record<string, any>> = _.get(component, [
-    "properties",
-    "domain",
-    "Updateable",
-  ]);
+  const desiredProps = JSON.parse(
+    component.properties.code?.["awsCloudControlUpdate"]?.code,
+  )?.DesiredState;
 
   const desiredState = _.cloneDeep(currentState);
   _.merge(desiredState, desiredProps);
-  const patch = jsonpatch.compare(currentState, desiredState, true);
+  let patch;
+  try {
+    patch = jsonpatch.compare(currentState, desiredState, true);
+  } catch (e) {
+    return {
+      status: "error",
+      message: `jsonpatch error\n\nMessage: ${e}`,
+    };
+  }
   console.log("Computed patch", patch);
 
   const child = await siExec.waitUntilEnd("aws", [

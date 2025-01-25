@@ -2306,7 +2306,7 @@
           ]
         }
       },
-      "bin/si-gen-cloud-control": {
+      "bin/clover": {
         "dependencies": [
           "jsr:@cliffy/command@^1.0.0-rc.7",
           "jsr:@std/assert@1",

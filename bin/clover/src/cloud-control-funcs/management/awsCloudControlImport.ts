@@ -55,23 +55,14 @@ async function main({
   );
   console.log(resourceProperties);
 
-  let properties = {};
-  for (const rprop of Object.keys(resourceProperties)) {
-    const category = _.get(component, [
-      "domain",
-      "extra",
-      "AwsFieldMap",
-      rprop,
-    ]);
-    if (category) {
-      _.set(
-        properties,
-        ["domain", category, rprop],
-        _.get(resourceProperties, rprop),
-      );
-    }
-  }
-  console.log(properties);
+  const properties = {
+    ...component,
+    domain: {
+      ...component.domain,
+      ...resourceProperties,
+    },
+  };
+
   return {
     status: "ok",
     message: "Imported Resource",

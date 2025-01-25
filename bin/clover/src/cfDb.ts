@@ -163,9 +163,14 @@ export async function loadCfDatabase(
 
       if (
         ![
-          "AWS::EC2::Subnet",
+          "AWS::WAF::WebACL", // Not needed for demo
           "AWS::EC2::VPC",
-          "AWS::WAF::WebACL",
+          "AWS::EC2::Subnet",
+          "AWS::EC2::RouteTable",
+          "AWS::EC2::InternetGateway",
+          "AWS::EC2::Route",
+          "AWS::EC2::EIP",
+          "AWS::EC2::NatGateway",
         ].includes(typeName)
       ) continue;
 
