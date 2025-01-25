@@ -13,6 +13,7 @@ import { attrFuncInputSpecFromProp } from "../spec/sockets.ts";
 import { getSiFuncId } from "../spec/siFuncs.ts";
 
 export function generateSubAssets(specs: PkgSpec[]): PkgSpec[] {
+  const newSpecs = [] as PkgSpec[];
   for (const spec of specs) {
     const schema = spec.schemas[0];
     if (!schema) {
@@ -52,6 +53,7 @@ export function generateSubAssets(specs: PkgSpec[]): PkgSpec[] {
         const variantId = ulid();
 
         const newDomain = _.cloneDeep(domain);
+        newDomain.entries = prop.typeProp.entries;
 
         // recreate ["root", "domain", etc.]
         fixPropPath(newDomain.entries, newDomain.metadata.propPath);
@@ -93,6 +95,7 @@ export function generateSubAssets(specs: PkgSpec[]): PkgSpec[] {
         };
 
         const schemaData = _.cloneDeep(schema.data);
+
         const newSpec: PkgSpec = {
           ...spec,
           name,
@@ -111,11 +114,14 @@ export function generateSubAssets(specs: PkgSpec[]): PkgSpec[] {
           }],
         };
 
-        specs.push(newSpec);
+        newSpecs.push(newSpec);
       }
     }
+
+    newSpecs.push(spec);
   }
-  return specs;
+
+  return newSpecs;
 }
 
 function fixPropPath(props: ExpandedPropSpec[], parentPath: string[]) {
