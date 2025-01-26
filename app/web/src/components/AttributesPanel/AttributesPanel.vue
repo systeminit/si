@@ -58,6 +58,14 @@
         isRootProp
         :context="useAttributesPanelContext"
       />
+      <TreeFormItem
+        v-if="resourceValueTree && resourceValueTree.children.length"
+        attributesPanel
+        :treeDef="resourceValueTree"
+        isRootProp
+        startClosed
+        :context="useAttributesPanelContext"
+      />
     </div>
 
     <div v-if="SHOW_DEBUG_TREE" class="mt-xl">
@@ -124,6 +132,7 @@ const loadSchemaReqStatus = attributesStore.getRequestStatus(
 
 const domainTree = computed(() => attributesStore.domainTree);
 const secretsTree = computed(() => attributesStore.secretsTree);
+const resourceValueTree = computed(() => attributesStore.resourceValueTree);
 
 const showSectionToggles = ref(false);
 function onMouseMove(e: PointerEvent) {
