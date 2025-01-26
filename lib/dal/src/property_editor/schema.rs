@@ -46,9 +46,9 @@ impl PropertyEditorSchema {
 
                 for child_prop in child_props {
                     // Skip anything at and under "/root/secret_definition",
-                    // also skip hidden props
-                    if (prop_id == root_prop_id && child_prop.name == "secret_definition")
-                        || child_prop.hidden
+                    // also skip hidden props EXCEPT /root/resource_value
+                    if prop_id == root_prop_id && child_prop.name == "secret_definition"
+                        || (child_prop.hidden && child_prop.name != "resource_value")
                     {
                         continue;
                     }

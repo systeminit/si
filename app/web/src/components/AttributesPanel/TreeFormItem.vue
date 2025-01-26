@@ -971,6 +971,7 @@ const props = defineProps({
   level: { type: Number, default: 0 },
   isRootProp: { type: Boolean, default: false },
   context: { type: Function, required: true },
+  startClosed: { type: Boolean },
 
   // Only set this boolean to true if this TreeFormItem is part of AttributesPanel
   attributesPanel: { type: Boolean },
@@ -989,7 +990,7 @@ const headerMainLabelTooltip = computed(() => {
   } else return {};
 });
 
-const isOpen = ref(true); // ref(props.attributeDef.children.length > 0);
+const isOpen = ref(!props.startClosed); // ref(props.attributeDef.children.length > 0);
 const showValidationDetails = ref(false);
 
 const shouldBeHidden = (item: AttributeTreeItem | TreeFormData) => {

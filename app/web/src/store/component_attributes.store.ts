@@ -173,6 +173,13 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
               (c) => c.propDef.name === "secrets",
             );
           },
+          resourceValueTree(): AttributeTreeItem | undefined {
+            if (!this.attributesTree) return undefined;
+            return _.find(
+              this.attributesTree.children,
+              (c) => c.propDef.name === "resource_value",
+            );
+          },
           siTreeByPropName(): Record<string, AttributeTreeItem> | undefined {
             if (!this.attributesTree) return undefined;
             const siTree = _.find(
