@@ -1,0 +1,23 @@
+load(
+    "@prelude-si//:macros.bzl",
+    "rust_binary",
+)
+
+rust_binary(
+    name = "hoist",
+    deps = [
+        "//lib/module-index-client:module-index-client",
+        "//lib/si-pkg:si-pkg",
+        "//third-party/rust:clap",
+        "//third-party/rust:color-eyre",
+        "//third-party/rust:nix",
+        "//third-party/rust:remain",
+        "//third-party/rust:serde_json",
+        "//third-party/rust:tokio",
+        "//third-party/rust:ulid",
+        "//third-party/rust:url",
+    ],
+    srcs = glob(["src/**/*.rs"]),
+    env = {"CARGO_BIN_NAME": "hoist"},
+)
+
