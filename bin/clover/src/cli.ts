@@ -24,6 +24,11 @@ export async function run() {
       "generate-specs",
       "generate the si spec database from the cf database",
     )
+    .env(
+      "SI_BEARER_TOKEN=<value:string>",
+      "Auth token for interacting with the module index",
+      { required: true },
+    )
     .action(async () => {
       await generateSiSpecs();
     })

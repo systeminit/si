@@ -64,6 +64,11 @@ export function createPropFromCf(
   let rootProp = undefined;
 
   while (queue.length > 0) {
+    if (propPath.length > 10) {
+      throw new Error(
+        `Prop tree loop detected: Tried creating prop more than 10 levels deep in the prop tree`,
+      );
+    }
     const data = queue.shift();
     if (!data) break;
 
@@ -211,7 +216,6 @@ function createPropFromCfInner(
 
   console.log(cfProp);
   console.log(normalizedCfData);
-
   throw new Error("no matching kind");
 }
 
