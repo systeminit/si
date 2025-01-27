@@ -662,8 +662,27 @@ impl SiFileSystem {
             InodeEntryData::ChangeSet { .. } => {
                 reply.error(EINVAL);
             }
-            InodeEntryData::Schemas { .. } => {
-                reply.error(EINVAL);
+            InodeEntryData::Schemas { change_set_id } => {
+                let created_schema = self.client.create_schema(*change_set_id, name).await?;
+                let attrs = {
+                    let mut inode_table = self.inode_table.write().await;
+                    let ino = inode_table.upsert_with_parent_ino(
+                        parent,
+                        &created_schema.name,
+                        InodeEntryData::Schema {
+                            schema_id: created_schema.schema_id,
+                            change_set_id: *change_set_id,
+                            name: created_schema.name.to_string(),
+                            installed: true,
+                        },
+                        FileType::Directory,
+                        true,
+                        Size::Directory,
+                    )?;
+                    inode_table.make_attrs(ino, FileType::Directory, true, Size::Directory)
+                };
+
+                reply.entry(&TTL, &attrs, 1);
             }
             InodeEntryData::AssetDefinitionDir { .. } => reply.error(EINVAL),
             InodeEntryData::Schema { .. } => {

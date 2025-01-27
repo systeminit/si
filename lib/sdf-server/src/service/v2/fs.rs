@@ -34,7 +34,8 @@ use si_events::{audit_log::AuditLogKind, ActionKind};
 use si_frontend_types::{
     fs::{
         self, AssetFuncs, AttributeInputFrom, AttributeOutputTo, Binding, ChangeSet as FsChangeSet,
-        Func as FsFunc, Schema as FsSchema, SchemaAttributes, SetFuncCodeRequest, VariantQuery,
+        CreateSchemaResponse, Func as FsFunc, Schema as FsSchema, SchemaAttributes,
+        SetFuncCodeRequest, VariantQuery,
     },
     AttributeArgumentBinding, FuncBinding,
 };
@@ -516,13 +517,17 @@ pub async fn get_asset_funcs(
 
     result.locked = match lookup_variant_for_schema(&ctx, schema_id, false).await? {
         Some(variant) => {
-            let asset_func = variant.get_asset_func(&ctx).await?;
+            if !variant.is_locked() {
+                None
+            } else {
+                let asset_func = variant.get_asset_func(&ctx).await?;
 
-            let attrs = make_schema_attrs(&variant);
-            result.locked_attrs_size = attrs.byte_size();
+                let attrs = make_schema_attrs(&variant);
+                result.locked_attrs_size = attrs.byte_size();
 
-            // Asset funcs do not have bindings (yet)
-            Some(dal_func_to_fs_func(asset_func, 0))
+                // Asset funcs do not have bindings (yet)
+                Some(dal_func_to_fs_func(asset_func, 0))
+            }
         }
         None => None,
     };
@@ -1065,6 +1070,55 @@ async fn get_or_unlock_schema(ctx: &DalContext, schema_id: SchemaId) -> FsResult
     )
 }
 
+async fn create_schema(
+    HandlerContext(builder): HandlerContext,
+    AccessBuilder(request_ctx): AccessBuilder,
+    PosthogClient(_posthog_client): PosthogClient,
+    OriginalUri(_original_uri): OriginalUri,
+    Host(_host_name): Host,
+    Path((_workspace_id, change_set_id)): Path<(WorkspaceId, ChangeSetId)>,
+    Json(request): Json<fs::CreateSchemaRequest>,
+) -> FsResult<Json<CreateSchemaResponse>> {
+    let ctx = builder
+        .build(request_ctx.build(change_set_id.into()))
+        .await?;
+
+    check_change_set_and_not_head(&ctx).await?;
+
+    let created_schema_variant = VariantAuthoringClient::create_schema_and_variant(
+        &ctx,
+        request.name.clone(),
+        None::<String>,
+        None::<String>,
+        "".to_string(),
+        "#00AAFF".to_string(),
+    )
+    .await?;
+
+    let schema = created_schema_variant.schema(&ctx).await?;
+
+    WsEvent::schema_variant_created(&ctx, schema.id(), created_schema_variant.clone())
+        .await?
+        .publish_on_commit(&ctx)
+        .await?;
+
+    ctx.write_audit_log(
+        AuditLogKind::CreateSchemaVariant {
+            schema_id: schema.id(),
+            schema_variant_id: created_schema_variant.id(),
+        },
+        created_schema_variant.display_name().to_string(),
+    )
+    .await?;
+
+    ctx.commit().await?;
+
+    Ok(Json(CreateSchemaResponse {
+        schema_id: schema.id(),
+        name: schema.name().to_string(),
+    }))
+}
+
 async fn unlock_schema(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
@@ -1521,6 +1575,7 @@ pub fn fs_routes() -> Router<AppState> {
                 .route("/funcs/:func_id/unlock", post(unlock_func))
                 .route("/funcs/:kind", get(list_change_set_funcs))
                 .route("/schemas", get(list_schemas))
+                .route("/schemas/create", post(create_schema))
                 .route("/schemas/:schema_id/asset_funcs", get(get_asset_funcs))
                 .route(
                     "/schemas/:schema_id/asset_func/:func_id",

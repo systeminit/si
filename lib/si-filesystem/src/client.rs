@@ -8,8 +8,8 @@ use serde::{de::DeserializeOwned, Serialize};
 use si_frontend_types::{
     fs::{
         AssetFuncs, Binding, Bindings, ChangeSet, CreateChangeSetRequest, CreateChangeSetResponse,
-        CreateFuncRequest, Func, ListChangeSetsResponse, Schema, SchemaAttributes,
-        SetFuncCodeRequest, VariantQuery,
+        CreateFuncRequest, CreateSchemaRequest, CreateSchemaResponse, Func, ListChangeSetsResponse,
+        Schema, SchemaAttributes, SetFuncCodeRequest, VariantQuery,
     },
     FuncKind,
 };
@@ -452,6 +452,20 @@ impl SiFsClient {
             ),
             None::<()>,
             Some(SetFuncCodeRequest { code }),
+        )
+        .await
+    }
+
+    pub async fn create_schema(
+        &self,
+        change_set_id: ChangeSetId,
+        name: String,
+    ) -> SiFsClientResult<CreateSchemaResponse> {
+        self.post(
+            change_set_id,
+            self.fs_api_change_sets("schemas/create", change_set_id),
+            None::<()>,
+            Some(CreateSchemaRequest { name }),
         )
         .await
     }
