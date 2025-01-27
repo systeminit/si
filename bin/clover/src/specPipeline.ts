@@ -76,7 +76,7 @@ export function pkgSpecFromCf(src: CfSchema): PkgSpec {
       uiHidden: false,
       defaultSchemaVariant: variantUniqueKey,
     },
-    uniqueId: schemaUniqueKey, // TODO deal with this for existing schemas
+    uniqueId: schemaUniqueKey,
     deleted: false,
     isBuiltin,
     variants: [variant],
@@ -88,7 +88,7 @@ export function pkgSpecFromCf(src: CfSchema): PkgSpec {
     version,
     description: src.description,
     createdAt: new Date().toISOString(),
-    createdBy: "Clover", // TODO this is still subject to change
+    createdBy: "Clover",
     defaultChangeSet: null,
     workspacePk: null,
     workspaceName: null,
@@ -131,15 +131,11 @@ function createRootFromProperties(
 ): PropSpec {
   const root: ExpandedPropSpec = createDefaultProp(root_name);
   Object.entries(properties).forEach(([name, cfData]) => {
-    try {
-      root.entries.push(
-        createPropFromCf(name, cfData, onlyProperties, [
-          ...root.metadata.propPath,
-        ]),
-      );
-    } catch (e) {
-      console.log(`Err ${e}`);
-    }
+    root.entries.push(
+      createPropFromCf(name, cfData, onlyProperties, [
+        ...root.metadata.propPath,
+      ]),
+    );
   });
 
   return root;

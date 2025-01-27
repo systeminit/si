@@ -2280,11 +2280,6 @@
       "jsr:@cliffy/command@^1.0.0-rc.7",
       "jsr:@deno/emit@0.46"
     ],
-    "packageJson": {
-      "dependencies": [
-        "npm:@types/lodash-es@^4.17.12"
-      ]
-    },
     "members": {
       "bin/clover": {
         "dependencies": [

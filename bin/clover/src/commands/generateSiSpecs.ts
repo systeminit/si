@@ -12,6 +12,8 @@ import { addDefaultPropsAndSockets } from "../pipeline-steps/addDefaultPropsAndS
 import { generateSocketsFromResourceProps } from "../pipeline-steps/generateSocketsFromResourceProps.ts";
 import { generateSubAssets } from "../pipeline-steps/generateSubAssets.ts";
 import { generateIntrinsicFuncs } from "../pipeline-steps/generateIntrinsicFuncs.ts";
+import { updateSchemaIdsForExistingSpecs } from "../pipeline-steps/updateSchemaIdsForExistingSpecs.ts";
+import { getExistingSpecs } from "../specUpdates.ts";
 
 export function generateSiSpecForService(serviceName: string) {
   const cf = getServiceByName(serviceName);
@@ -20,6 +22,7 @@ export function generateSiSpecForService(serviceName: string) {
 
 export async function generateSiSpecs() {
   const db = await loadCfDatabase();
+  const existing_specs = await getExistingSpecs();
 
   let imported = 0;
   const cfSchemas = Object.values(db);
@@ -48,6 +51,7 @@ export async function generateSiSpecs() {
   specs = generateSubAssets(specs);
   specs = generateIntrinsicFuncs(specs);
   specs = generateAssetFuncs(specs);
+  specs = updateSchemaIdsForExistingSpecs(existing_specs, specs);
 
   // WRITE OUTS SPECS
   for (const spec of specs) {
