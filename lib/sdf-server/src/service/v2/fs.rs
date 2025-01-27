@@ -740,7 +740,7 @@ async fn create_func(
         Binding::Attribute {
             output_to: _,
             inputs: _,
-        } => todo!(),
+        } => return Err(FsError::ResourceNotFound),
         Binding::Authentication => {
             let func = FuncAuthoringClient::create_new_auth_func(
                 &ctx,
