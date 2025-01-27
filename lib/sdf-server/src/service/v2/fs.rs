@@ -375,7 +375,7 @@ fn dal_func_to_fs_func(func: dal::Func) -> FsFunc {
             .code_plaintext()
             .ok()
             .flatten()
-            .map(|code| code.as_bytes().len())
+            .map(|code| code.len())
             .unwrap_or(0) as u64,
         name: func.name,
     }

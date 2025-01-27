@@ -25,9 +25,10 @@ error[E0277]: the trait bound `TestingNodeWeight: SiVersionedNodeWeight` is not 
   --> tests/ui/08-node_weight-bad-node_hash-custom-code-fail.rs:20:6
    |
 20 | impl CorrectExclusiveOutgoingEdge for TestingNodeWeight {
-   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `SiVersionedNodeWeight` is not implemented for `TestingNodeWeight`, which is required by `for<'a> NodeInformation: From<&'a TestingNodeWeight>`
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `SiVersionedNodeWeight` is not implemented for `TestingNodeWeight`
    |
    = help: the following other types implement trait `SiVersionedNodeWeight`:
+             ApprovalRequirementDefinitionNodeWeight
              DiagramObjectNodeWeight
              GeometryNodeWeight
              ManagementPrototypeNodeWeight
