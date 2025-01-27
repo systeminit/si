@@ -3216,6 +3216,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "hoist"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "color-eyre",
+ "module-index-client",
+ "nix 0.29.0",
+ "remain",
+ "serde_json",
+ "si-pkg",
+ "tokio",
+ "ulid",
+ "url",
+]
+
+[[package]]
 name = "home"
 version = "0.5.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
