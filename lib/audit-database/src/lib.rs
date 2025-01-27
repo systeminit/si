@@ -38,6 +38,7 @@ use si_events::audit_log::AuditLogKind;
 use si_events::audit_log::AuditLogMetadata;
 use si_events::ulid;
 use si_events::Actor;
+use si_events::AuthenticationMethod;
 use si_events::ChangeSetId;
 use si_events::UserPk;
 use si_events::WorkspacePk;
@@ -96,6 +97,8 @@ pub struct AuditLogRow {
     /// Serialized version of [`AuditLogMetadata`](si_events::audit_log::AuditLogMetadata), which is an
     /// untagged version of the specific [`AuditLogKind`](si_events::audit_log::AuditLogKind).
     pub metadata: Option<serde_json::Value>,
+    /// Serialized version of Actor Metadata as string
+    pub authentication_method: AuthenticationMethod,
 }
 
 impl AuditLogRow {
@@ -117,16 +120,17 @@ impl AuditLogRow {
         change_set_id: Option<ChangeSetId>,
         actor: Actor,
         entity_name: Option<String>,
+        authentication_method: AuthenticationMethod,
     ) -> Result<()> {
         let kind_as_string = kind.to_string();
         let user_id = match actor {
             Actor::System => None,
             Actor::User(user_id) => Some(user_id),
         };
-
         let metadata = AuditLogMetadata::from(kind);
         let (title, entity_type) = metadata.title_and_entity_type();
         let serialized_metadata = serde_json::to_value(metadata)?;
+        let serialized_authentication_method = serde_json::to_value(authentication_method)?;
         let timestamp: DateTime<Utc> = timestamp.parse()?;
 
         context
@@ -143,7 +147,8 @@ impl AuditLogRow {
                     user_id,
                     entity_name,
                     entity_type,
-                    metadata
+                    metadata,
+                    authentication_method
                 ) VALUES (
                     $1,
                     $2,
@@ -153,7 +158,8 @@ impl AuditLogRow {
                     $6,
                     $7,
                     $8,
-                    $9
+                    $9,
+                    $10
                 ) RETURNING *",
                 &[
                     &workspace_id.to_string(),
@@ -165,6 +171,7 @@ impl AuditLogRow {
                     &entity_name,
                     &entity_type,
                     &serialized_metadata,
+                    &serialized_authentication_method,
                 ],
             )
             .await?;
@@ -240,6 +247,10 @@ impl TryFrom<PgRow> for AuditLogRow {
                 None => None,
             }
         };
+        let authentication_method = {
+            let inner: serde_json::Value = value.try_get("authentication_method")?;
+            serde_json::from_value::<AuthenticationMethod>(inner)?
+        };
 
         Ok(Self {
             workspace_id,
@@ -251,6 +262,7 @@ impl TryFrom<PgRow> for AuditLogRow {
             entity_name: value.try_get("entity_name")?,
             entity_type: value.try_get("entity_type")?,
             metadata: value.try_get("metadata")?,
+            authentication_method,
         })
     }
 }

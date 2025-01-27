@@ -36,29 +36,13 @@ import { IconButton, themeClasses } from "@si/vue-lib/design-system";
 import { FlexRender, Cell } from "@tanstack/vue-table";
 import clsx from "clsx";
 import { computed, PropType } from "vue";
+import { AuditLogDisplay } from "@/store/logs.store";
 
 const MAX_STRING_LENGTH = 100;
 
 const props = defineProps({
   cell: {
-    type: Object as PropType<
-      Cell<
-        {
-          title: string;
-          userName: string;
-          userId?: string;
-          userEmail?: string;
-          kind: string;
-          timestamp: string;
-          entityType: string;
-          entityName: string;
-          changeSetId?: string;
-          changeSetName: string;
-          metadata: Record<string, unknown>;
-        },
-        unknown
-      >
-    >,
+    type: Object as PropType<Cell<AuditLogDisplay, unknown>>,
     required: true,
   },
   rowExpanded: { type: Boolean },

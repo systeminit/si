@@ -9,6 +9,7 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
+si-events = { path = "../../lib/si-events-rs" }
 si-id = { path = "../../lib/si-id" }
 si-std = { path = "../../lib/si-std" }
 telemetry = { path = "../../lib/telemetry-rs" }

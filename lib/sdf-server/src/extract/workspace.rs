@@ -7,6 +7,7 @@ use axum::{
 use dal::{DalContext, User, UserPk, WorkspacePk};
 use derive_more::{Deref, Into};
 use serde::Deserialize;
+use si_events::AuthenticationMethod;
 use si_jwt_public_key::SiJwtClaimRole;
 use std::str::FromStr;
 
@@ -77,13 +78,18 @@ impl FromRequestParts<AppState> for WorkspaceAuthorization {
             user_id,
             workspace_id,
             authorized_role,
+            authentication_method,
         } = parts.extract_with_state(state).await?;
 
         // Get a context associated with the workspace but not the user
         let HandlerContext(builder) = parts.extract_with_state(state).await?;
         let RequestUlidFromHeader(request_ulid) = parts.extract().await?;
-        let access_builder =
-            dal::AccessBuilder::new(workspace_id.into(), user_id.into(), request_ulid);
+        let access_builder = dal::AccessBuilder::new(
+            workspace_id.into(),
+            user_id.into(),
+            request_ulid,
+            authentication_method,
+        );
         // TODO consider that this is loading the WorkspaceSnapshot, which may not be used by
         // the caller
         let ctx = builder
@@ -121,6 +127,7 @@ impl FromRequestParts<AppState> for WorkspaceAuthorization {
 #[derive(Clone, Copy, Debug)]
 struct AuthorizedForRole {
     user_id: UserPk,
+    authentication_method: AuthenticationMethod,
     workspace_id: WorkspacePk,
     authorized_role: SiJwtClaimRole,
 }
@@ -138,7 +145,7 @@ impl AuthorizedForRole {
             ));
         }
 
-        let token = ValidatedToken::from_request_parts(parts, state).await?.0;
+        let token: ValidatedToken = parts.extract_with_state(state).await?;
 
         // Validate the workspace_id is the same as the target workspace
         let workspace_id = TargetWorkspaceId::from_request_parts(parts, state).await?.0;
@@ -151,9 +158,12 @@ impl AuthorizedForRole {
             return Err(unauthorized_error("Not authorized for role"));
         }
 
+        let authentication_method = token.authentication_method().map_err(bad_request)?;
+
         // Stash the authorization
         let result = AuthorizedForRole {
             user_id: token.custom.user_id(),
+            authentication_method,
             workspace_id,
             authorized_role: role,
         };

@@ -1,5 +1,5 @@
 use serde::Serialize;
-use si_events::{ChangeSetId, UserPk};
+use si_events::{AuthenticationMethod, ChangeSetId, UserPk};
 
 #[derive(Debug, Serialize, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -15,4 +15,5 @@ pub struct AuditLog {
     pub change_set_id: Option<ChangeSetId>,
     pub change_set_name: Option<String>,
     pub metadata: serde_json::Value,
+    pub authentication_method: AuthenticationMethod,
 }
