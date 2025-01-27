@@ -44,7 +44,6 @@ groups = {
 }
 
 core_backend_targets = [
-    "//app/web:dev",
     "//bin/forklift:forklift",
     "//bin/pinga:pinga",
     "//bin/rebaser:rebaser",
