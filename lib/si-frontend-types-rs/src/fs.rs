@@ -220,3 +220,14 @@ impl Bindings {
         serde_json::to_vec_pretty(&self.bindings)
     }
 }
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct CreateSchemaRequest {
+    pub name: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct CreateSchemaResponse {
+    pub schema_id: SchemaId,
+    pub name: String,
+}
