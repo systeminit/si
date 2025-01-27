@@ -4,12 +4,13 @@ use std::{
     time::Duration,
 };
 
+use reqwest::StatusCode;
 use serde::{de::DeserializeOwned, Serialize};
 use si_frontend_types::{
     fs::{
         AssetFuncs, Binding, Bindings, ChangeSet, CreateChangeSetRequest, CreateChangeSetResponse,
-        CreateFuncRequest, CreateSchemaRequest, CreateSchemaResponse, Func, ListChangeSetsResponse,
-        Schema, SchemaAttributes, SetFuncCodeRequest, VariantQuery,
+        CreateFuncRequest, CreateSchemaRequest, CreateSchemaResponse, FsApiError, Func,
+        ListChangeSetsResponse, Schema, SchemaAttributes, SetFuncCodeRequest, VariantQuery,
     },
     FuncKind,
 };
@@ -19,6 +20,8 @@ use tokio::{sync::Mutex, time::Instant};
 
 #[derive(Error, Debug)]
 pub enum SiFsClientError {
+    #[error("backend error: {0}")]
+    BackendError(FsApiError),
     #[error("reqwest error: {0}")]
     Reqwest(#[from] reqwest::Error),
     #[error("serde json: {0}")]
@@ -206,17 +209,18 @@ impl SiFsClient {
             request_builder
         };
 
-        let value: R = request_builder
-            .send()
-            .await?
-            .error_for_status()?
-            .json()
-            .await?;
+        let response = request_builder.send().await?;
+        if response.status() == StatusCode::OK {
+            let value: R = response.json().await?;
+            self.set_cache_entry(change_set_id, url, query, &value)
+                .await?;
 
-        self.set_cache_entry(change_set_id, url, query, &value)
-            .await?;
+            Ok(value)
+        } else {
+            let error: FsApiError = response.json().await?;
 
-        Ok(value)
+            Err(SiFsClientError::BackendError(error))
+        }
     }
 
     async fn post_empty_response<Q, V>(
