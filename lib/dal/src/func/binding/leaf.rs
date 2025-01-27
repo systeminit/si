@@ -26,7 +26,7 @@ pub struct LeafBinding {
 }
 
 impl LeafBinding {
-    pub(crate) async fn assemble_leaf_func_bindings(
+    pub async fn assemble_leaf_func_bindings(
         ctx: &DalContext,
         func_id: FuncId,
         leaf_kind: LeafKind,

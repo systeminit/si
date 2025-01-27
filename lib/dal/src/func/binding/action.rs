@@ -22,7 +22,7 @@ pub struct ActionBinding {
 }
 
 impl ActionBinding {
-    pub(crate) async fn assemble_action_bindings(
+    pub async fn assemble_action_bindings(
         ctx: &DalContext,
         func_id: FuncId,
     ) -> FuncBindingResult<Vec<FuncBinding>> {
