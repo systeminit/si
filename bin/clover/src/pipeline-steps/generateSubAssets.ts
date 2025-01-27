@@ -1,8 +1,10 @@
 import { PkgSpec } from "../bindings/PkgSpec.ts";
 import _ from "npm:lodash";
 import {
+  copyPropWithNewIds,
   createDefaultProp,
   ExpandedPropSpec,
+  generatePropHash,
   isExpandedPropSpec,
 } from "../spec/props.ts";
 import { ulid } from "https://deno.land/x/ulid@v0.3.0/mod.ts";
@@ -12,9 +14,14 @@ import { createSocket } from "../spec/sockets.ts";
 import { attrFuncInputSpecFromProp } from "../spec/sockets.ts";
 import { getSiFuncId } from "../spec/siFuncs.ts";
 
-export function generateSubAssets(specs: PkgSpec[]): PkgSpec[] {
-  const newSpecs = [] as PkgSpec[];
-  for (const spec of specs) {
+export function generateSubAssets(incomingSpecs: PkgSpec[]): PkgSpec[] {
+  const outgoingSpecs = [] as PkgSpec[];
+  const newSpecsByHash = {} as Record<
+    string,
+    { spec: PkgSpec; names: string[] }
+  >;
+
+  for (const spec of incomingSpecs) {
     const schema = spec.schemas[0];
     if (!schema) {
       console.log(
@@ -52,11 +59,24 @@ export function generateSubAssets(specs: PkgSpec[]): PkgSpec[] {
         const name = `${spec.name}::${objName}`;
         const variantId = ulid();
 
-        const newDomain = _.cloneDeep(domain);
-        newDomain.entries = prop.typeProp.entries;
+        const newDomainWithOldIds = _.cloneDeep(domain);
+        newDomainWithOldIds.entries = prop.typeProp.entries;
 
         // recreate ["root", "domain", etc.]
-        fixPropPath(newDomain.entries, newDomain.metadata.propPath);
+        fixPropPath(
+          newDomainWithOldIds.entries,
+          newDomainWithOldIds.metadata.propPath,
+        );
+
+        const newDomain = copyPropWithNewIds(newDomainWithOldIds);
+
+        const hash = generatePropHash(newDomain);
+
+        const maybeExistingSubAsset = newSpecsByHash[hash];
+        if (maybeExistingSubAsset) {
+          maybeExistingSubAsset.names.push(name);
+          continue;
+        }
 
         // set the parent prop to have an input socket for this new asset
         const propInputSocket = createSocket(objName, "input", "many");
@@ -114,14 +134,89 @@ export function generateSubAssets(specs: PkgSpec[]): PkgSpec[] {
           }],
         };
 
-        newSpecs.push(newSpec);
+        // Push the generated asset into the original array so we can extract subAssets from it too
+        incomingSpecs.push(newSpec);
+        newSpecsByHash[hash] = {
+          spec: newSpec,
+          names: [name],
+        };
       }
     }
 
-    newSpecs.push(spec);
+    outgoingSpecs.push(spec);
   }
 
-  return newSpecs;
+  // Select best name and category for each subAsset
+  for (
+    const { spec, names } of _.values(newSpecsByHash) as {
+      spec: PkgSpec;
+      names: string[];
+    }[]
+  ) {
+    let finalObjName: string | null | undefined = undefined;
+    let finalAwsCategory: string | null | undefined = undefined;
+    let finalParent: string | null | undefined = undefined;
+
+    for (const name of names) {
+      const nameTokens = name.split("::");
+      if (nameTokens.length !== 4) {
+        throw new Error(`Could not parse subAsset name: ${name}`);
+      }
+
+      const [_aws, awsCategory, parent, objName] = nameTokens;
+      finalObjName = objName;
+
+      // For categories and parents, set to null if not all of them are the same
+      if (finalAwsCategory === undefined) {
+        finalAwsCategory = awsCategory;
+      } else if (
+        finalAwsCategory !== null && finalAwsCategory !== awsCategory
+      ) {
+        finalAwsCategory = null;
+        // Category being null also short circuits the parent to null
+        finalParent = null;
+        break;
+      }
+
+      if (finalParent === undefined) {
+        finalParent = parent;
+      } else if (finalParent !== null && parent !== finalParent) {
+        finalParent = null;
+      }
+    }
+
+    let finalName: string;
+    let finalSiCategory: string | undefined;
+
+    if (finalParent) {
+      finalName = `${finalParent} ${finalObjName}`;
+    } else if (finalAwsCategory) {
+      finalName = `${finalAwsCategory} ${finalObjName}`;
+    } else {
+      finalName = `AWS ${finalObjName}`;
+      finalSiCategory = "AWS Structural Assets";
+    }
+
+    const schema = spec.schemas[0];
+    if (!schema || !schema.data) {
+      throw new Error(`Could not parse schema for subAsset: ${name}`);
+    }
+    const schemaVariant = schema.variants[0];
+
+    if (!schemaVariant || !schemaVariant.data) {
+      throw new Error(`Could not get variant for subAsset: ${name}`);
+    }
+
+    spec.name = finalName;
+    schema.name = finalName;
+    schema.data.name = finalName;
+    if (finalSiCategory) {
+      schema.data.category = finalSiCategory;
+    }
+    schemaVariant.data.displayName = finalName;
+  }
+
+  return outgoingSpecs;
 }
 
 function fixPropPath(props: ExpandedPropSpec[], parentPath: string[]) {

@@ -7,6 +7,10 @@ import { ulid } from "https://deno.land/x/ulid@v0.3.0/mod.ts";
 import { PropSpec } from "../bindings/PropSpec.ts";
 import { PropSpecData } from "../bindings/PropSpecData.ts";
 import { PropSpecWidgetKind } from "../bindings/PropSpecWidgetKind.ts";
+import _ from "npm:lodash";
+const {
+  createHash,
+} = await import("node:crypto");
 
 const CREATE_ONLY_PROP_LABEL = "si_create_only_prop";
 
@@ -303,4 +307,59 @@ export function createScalarProp(
   };
 
   return prop;
+}
+
+function bfsPropTree(prop: PropSpec, callback: (prop: PropSpec) => unknown) {
+  const queue = [prop];
+
+  while (queue.length > 0) {
+    const thisProp = queue.pop();
+    if (!thisProp) break;
+
+    callback(thisProp);
+
+    switch (thisProp.kind) {
+      case "string":
+      case "boolean":
+      case "json":
+      case "number":
+        break;
+      case "array":
+      case "map":
+        queue.push(thisProp.typeProp);
+        break;
+      case "object": {
+        const entries: PropSpec[] = _.sortBy(thisProp.entries, [
+          "name",
+          "kind",
+        ]);
+        entries.forEach((e) => {
+          queue.push(e);
+        });
+        break;
+      }
+    }
+  }
+}
+
+export function copyPropWithNewIds(
+  sourceProp: ExpandedPropSpec,
+): ExpandedPropSpec {
+  const newProp = _.cloneDeep(sourceProp);
+
+  bfsPropTree(newProp, (prop) => {
+    prop.uniqueId = ulid();
+  });
+
+  return newProp;
+}
+
+export function generatePropHash(prop: PropSpec): string {
+  const hasher = createHash("sha256");
+  bfsPropTree(prop, (p) => {
+    hasher.update(p.name);
+    hasher.update(p.kind);
+  });
+
+  return hasher.digest("hex");
 }
