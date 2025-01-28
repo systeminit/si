@@ -10,8 +10,11 @@ use si_events::audit_log::AuditLogKind;
 use thiserror::Error;
 use veritech_client::ManagementFuncStatus;
 
-use crate::extract::{change_set::ChangeSetDalContext, PosthogEventTracker};
 use crate::AppState;
+use crate::{
+    extract::{change_set::ChangeSetDalContext, PosthogEventTracker},
+    service::ApiError,
+};
 
 use dal::{
     diagram::view::ViewId,
@@ -178,6 +181,12 @@ type Result<T> = std::result::Result<T, ManagementApiError>;
 
 impl IntoResponse for ManagementApiError {
     fn into_response(self) -> Response {
-        (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()).into_response()
+        let (status_code, error_message) = match self {
+            ManagementApiError::ManagementPrototype(
+                dal::management::prototype::ManagementPrototypeError::FuncExecutionFailure(message),
+            ) => (StatusCode::BAD_REQUEST, message),
+            _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
+        };
+        ApiError::new(status_code, error_message).into_response()
     }
 }

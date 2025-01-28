@@ -76,7 +76,13 @@ pub enum ManagementApiError {
 
 impl IntoResponse for ManagementApiError {
     fn into_response(self) -> Response {
-        ApiError::new(StatusCode::INTERNAL_SERVER_ERROR, self.to_string()).into_response()
+        let (status_code, error_message) = match self {
+            ManagementApiError::ManagementPrototype(
+                dal::management::prototype::ManagementPrototypeError::FuncExecutionFailure(message),
+            ) => (StatusCode::BAD_REQUEST, message),
+            _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
+        };
+        ApiError::new(status_code, error_message).into_response()
     }
 }
 

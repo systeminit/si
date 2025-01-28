@@ -38,6 +38,10 @@ pub enum ManagementPrototypeError {
     Component(#[from] ComponentError),
     #[error("diagram error: {0}")]
     Diagram(#[from] DiagramError),
+    #[error("empty value within func run value (FuncId {0} and FuncRunId {1})")]
+    EmptyValueWithinFuncRunValue(FuncId, FuncRunId),
+    #[error("func execution failure error: {0}")]
+    FuncExecutionFailure(String),
     #[error("func runner error: {0}")]
     FuncRunner(#[from] FuncRunnerError),
     #[error("func runner recv error")]
@@ -460,9 +464,14 @@ impl ManagementPrototype {
             FuncRunner::run_management(ctx, id, manager_component_id, management_func_id, args)
                 .await?;
 
-        let run_value = result_channel
-            .await
-            .map_err(|_| ManagementPrototypeError::FuncRunnerRecvError)??;
+        let run_value = match result_channel.await {
+            Ok(Err(FuncRunnerError::ResultFailure {
+                kind: _,
+                message,
+                backend: _,
+            })) => return Err(ManagementPrototypeError::FuncExecutionFailure(message)),
+            other => other.map_err(|_| ManagementPrototypeError::FuncRunnerRecvError)??,
+        };
 
         let func_run_id = run_value.func_run_id();
         let maybe_value: Option<si_events::CasValue> =
