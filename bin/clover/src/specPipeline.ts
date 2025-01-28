@@ -17,7 +17,7 @@ import { SchemaSpec } from "../../../lib/si-pkg/bindings/SchemaSpec.ts";
 export function pkgSpecFromCf(src: CfSchema): PkgSpec {
   const [aws, category, name] = src.typeName.split("::");
 
-  if (aws !== "AWS" || !category || !name) {
+  if (!["AWS", "Alexa"].includes(aws) || !category || !name) {
     throw `Bad typeName: ${src.typeName}`;
   }
 
@@ -131,11 +131,13 @@ function createRootFromProperties(
 ): PropSpec {
   const root: ExpandedPropSpec = createDefaultProp(root_name);
   Object.entries(properties).forEach(([name, cfData]) => {
-    root.entries.push(
-      createPropFromCf(name, cfData, onlyProperties, [
-        ...root.metadata.propPath,
-      ]),
-    );
+    const newProp = createPropFromCf(name, cfData, onlyProperties, [
+      ...root.metadata.propPath,
+    ]);
+
+    if (!newProp) return;
+
+    root.entries.push(newProp);
   });
 
   return root;

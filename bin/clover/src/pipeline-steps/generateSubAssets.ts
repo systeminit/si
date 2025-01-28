@@ -168,9 +168,10 @@ export function generateSubAssets(incomingSpecs: PkgSpec[]): PkgSpec[] {
 
     for (const name of names) {
       const nameTokens = name.split("::");
-      if (nameTokens.length !== 4) {
-        throw new Error(`Could not parse subAsset name: ${name}`);
-      }
+      // TODO check naming for sub sub assets
+      // if (nameTokens.length !== 4) {
+      //   throw new Error(`Could not parse subAsset name: ${name}`);
+      // }
 
       const [_aws, awsCategory, parent, objName] = nameTokens;
       finalObjName = objName;

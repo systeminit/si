@@ -29,6 +29,7 @@ export async function generateSiSpecs() {
   const existing_specs = await getExistingSpecs();
 
   let imported = 0;
+  let importSubAssets = 0;
   const cfSchemas = Object.values(db);
 
   let specs = [] as PkgSpec[];
@@ -74,8 +75,14 @@ export async function generateSiSpecs() {
       continue;
     }
 
-    imported += 1;
+    if (name.includes("::")) {
+      imported += 1;
+    } else {
+      importSubAssets += 1;
+    }
   }
 
-  console.log(`built ${imported} out of ${cfSchemas.length}`);
+  console.log(
+    `built ${imported} out of ${cfSchemas.length}, including ${importSubAssets} sub-assets`,
+  );
 }
