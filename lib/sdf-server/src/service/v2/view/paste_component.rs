@@ -109,8 +109,9 @@ pub async fn paste_component(
         // re-fetch component with possible parentage
         let pasted_component = Component::get_by_id(&ctx, pasted_component.id()).await?;
         let mut diagram_sockets = HashMap::new();
+        let geo = pasted_component.geometry(&ctx, view_id).await?;
         let payload = pasted_component
-            .into_frontend_type_for_default_view(&ctx, ChangeStatus::Added, &mut diagram_sockets)
+            .into_frontend_type(&ctx, Some(&geo), ChangeStatus::Added, &mut diagram_sockets)
             .await?;
         WsEvent::component_created(&ctx, payload)
             .await?
