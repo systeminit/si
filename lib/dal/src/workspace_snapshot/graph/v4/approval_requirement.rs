@@ -147,7 +147,7 @@ fn new_virtual_requirement_rule(
                 },
             )]),
         })),
-        EntityKind::View => Ok(Some(ApprovalRequirementRule {
+        EntityKind::View | EntityKind::SchemaVariant => Ok(Some(ApprovalRequirementRule {
             entity_id: change.entity_id,
             entity_kind: change.entity_kind,
             minimum: 1,
