@@ -131,6 +131,7 @@ export const useFuncStore = () => {
   const workspacesStore = useWorkspacesStore();
   const workspaceId = workspacesStore.selectedWorkspacePk;
   const authStore = useAuthStore();
+  const toast = useToast();
 
   const realtimeStore = useRealtimeStore();
 
@@ -325,6 +326,13 @@ export const useFuncStore = () => {
               { componentId },
               { viewId },
             ]),
+            onFail: (err) => {
+              if (err.response.status === 400) {
+                toast(
+                  `Error executing management function: ${err.response.data.error.message}`,
+                );
+              }
+            },
           });
         },
 
@@ -979,7 +987,6 @@ export const useFuncStore = () => {
                 };
               }
 
-              const toast = useToast();
               const toastOptions = {
                 timeout: 5000,
               };
