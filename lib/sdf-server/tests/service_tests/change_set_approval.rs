@@ -1,32 +1,25 @@
-use std::collections::HashMap;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
-use dal::approval_requirement::ApprovalRequirement;
-use dal::approval_requirement::ApprovalRequirementApprover;
-use dal::change_set::approval::ChangeSetApproval;
-use dal::diagram::view::View;
-use dal::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
-use dal::Component;
-use dal::ComponentType;
-use dal::DalContext;
-use dal::HistoryActor;
-use dal::SchemaVariant;
-use dal_test::eyre;
-use dal_test::helpers::create_component_for_default_schema_name;
-use dal_test::helpers::create_schema;
-use dal_test::prelude::ChangeSetTestHelpers;
-use dal_test::sdf_test;
-use dal_test::Result;
+use dal::{
+    approval_requirement::{ApprovalRequirement, ApprovalRequirementApprover},
+    change_set::approval::ChangeSetApproval,
+    diagram::view::View,
+    Component, ComponentType, DalContext, HistoryActor, SchemaVariant, Ulid,
+};
+use dal_test::{
+    eyre,
+    helpers::{create_component_for_default_schema_name, create_schema},
+    prelude::ChangeSetTestHelpers,
+    sdf_test, Result,
+};
 use indoc::indoc;
-use permissions::ObjectType;
-use permissions::Relation;
-use permissions::RelationBuilder;
+use permissions::{ObjectType, Relation, RelationBuilder};
 use pretty_assertions_sorted::assert_eq;
 use sdf_server::dal_wrapper;
 use si_data_spicedb::SpiceDbClient;
-use si_events::workspace_snapshot::EntityKind;
-use si_events::ChangeSetApprovalStatus;
+use si_events::{workspace_snapshot::EntityKind, ChangeSetApprovalStatus};
 use si_frontend_types::RawGeometry;
+use si_id::EntityId;
 
 // FIXME(nick,jacob): this must happen in the "sdf_test"'s equivalent to global setup, but not in
 // dal tests. This also should _really_ reflect the "schema.zed" file that production uses.
@@ -64,9 +57,9 @@ async fn single_user_relation_existence_and_checksum_validility_permutations(
     };
 
     // Scenario 1: create the variant without the relation.
-    let (entity_id, first_approval_id) = {
+    let (schema_variant_entity_id, schema_entity_id, first_approval_id) = {
         let schema = create_schema(ctx).await?;
-        SchemaVariant::new(
+        let (schema_variant, _) = SchemaVariant::new(
             ctx,
             schema.id(),
             "ringo starr",
@@ -80,13 +73,9 @@ async fn single_user_relation_existence_and_checksum_validility_permutations(
             false,
         )
         .await?;
+        let schema_variant_entity_id: EntityId = Ulid::from(schema_variant.id()).into();
+        let schema_entity_id: EntityId = Ulid::from(schema.id()).into();
         ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
-
-        let entity_id = ctx
-            .workspace_snapshot()?
-            .get_category_node_or_err(None, CategoryNodeKind::Schema)
-            .await?
-            .into();
 
         let approving_ids_with_hashes =
             dal_wrapper::change_set::determine_approving_ids_with_hashes(ctx, &mut spicedb_client)
@@ -99,8 +88,12 @@ async fn single_user_relation_existence_and_checksum_validility_permutations(
         .await?;
         ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
-        let (frontend_latest_approvals, frontend_requirements) =
+        let (frontend_latest_approvals, mut frontend_requirements) =
             dal_wrapper::change_set::status(ctx, &mut spicedb_client).await?;
+        frontend_requirements
+            .iter_mut()
+            .for_each(|r| r.applicable_approval_ids.sort());
+        frontend_requirements.sort_by_key(|req| req.entity_id);
 
         assert_eq!(
             vec![si_frontend_types::ChangeSetApproval {
@@ -112,22 +105,40 @@ async fn single_user_relation_existence_and_checksum_validility_permutations(
             frontend_latest_approvals // actual
         );
         assert_eq!(
-            vec![si_frontend_types::ChangeSetApprovalRequirement {
-                entity_id,
-                entity_kind: EntityKind::CategorySchema,
-                required_count: 1,
-                is_satisfied: false,
-                applicable_approval_ids: Vec::new(),
-                approver_groups: HashMap::from_iter(vec![(
-                    format!("workspace#{workspace_id}#approve"),
-                    Vec::new(),
-                )]),
-                approver_individuals: Vec::new(),
-            }], // expected
+            vec![
+                si_frontend_types::ChangeSetApprovalRequirement {
+                    entity_id: schema_entity_id,
+                    entity_kind: EntityKind::Schema,
+                    required_count: 1,
+                    is_satisfied: false,
+                    applicable_approval_ids: Vec::new(),
+                    approver_groups: HashMap::from_iter(vec![(
+                        format!("workspace#{workspace_id}#approve"),
+                        Vec::new(),
+                    )]),
+                    approver_individuals: Vec::new(),
+                },
+                si_frontend_types::ChangeSetApprovalRequirement {
+                    entity_id: schema_variant_entity_id,
+                    entity_kind: EntityKind::SchemaVariant,
+                    required_count: 1,
+                    is_satisfied: false,
+                    applicable_approval_ids: Vec::new(),
+                    approver_groups: HashMap::from_iter(vec![(
+                        format!("workspace#{workspace_id}#approve"),
+                        Vec::new(),
+                    )]),
+                    approver_individuals: Vec::new(),
+                }
+            ], // expected
             frontend_requirements // actual
         );
 
-        (entity_id, first_approval.id())
+        (
+            schema_variant_entity_id,
+            schema_entity_id,
+            first_approval.id(),
+        )
     };
 
     // Scenario 2: create the relation and do not create another approval. The approval should be
@@ -139,8 +150,12 @@ async fn single_user_relation_existence_and_checksum_validility_permutations(
             .subject(ObjectType::User, user_id);
         relation.create(&mut spicedb_client).await?;
 
-        let (frontend_latest_approvals, frontend_requirements) =
+        let (frontend_latest_approvals, mut frontend_requirements) =
             dal_wrapper::change_set::status(ctx, &mut spicedb_client).await?;
+        frontend_requirements
+            .iter_mut()
+            .for_each(|r| r.applicable_approval_ids.sort());
+        frontend_requirements.sort_by_key(|req| req.entity_id);
 
         assert_eq!(
             vec![si_frontend_types::ChangeSetApproval {
@@ -152,18 +167,32 @@ async fn single_user_relation_existence_and_checksum_validility_permutations(
             frontend_latest_approvals // actual
         );
         assert_eq!(
-            vec![si_frontend_types::ChangeSetApprovalRequirement {
-                entity_id,
-                entity_kind: EntityKind::CategorySchema,
-                required_count: 1,
-                is_satisfied: false,
-                applicable_approval_ids: vec![first_approval_id],
-                approver_groups: HashMap::from_iter(vec![(
-                    format!("workspace#{workspace_id}#approve"),
-                    vec![user_id],
-                )]),
-                approver_individuals: Vec::new(),
-            }], // expected
+            vec![
+                si_frontend_types::ChangeSetApprovalRequirement {
+                    entity_id: schema_entity_id,
+                    entity_kind: EntityKind::Schema,
+                    required_count: 1,
+                    is_satisfied: false,
+                    applicable_approval_ids: vec![first_approval_id],
+                    approver_groups: HashMap::from_iter(vec![(
+                        format!("workspace#{workspace_id}#approve"),
+                        vec![user_id],
+                    )]),
+                    approver_individuals: Vec::new(),
+                },
+                si_frontend_types::ChangeSetApprovalRequirement {
+                    entity_id: schema_variant_entity_id,
+                    entity_kind: EntityKind::SchemaVariant,
+                    required_count: 1,
+                    is_satisfied: false,
+                    applicable_approval_ids: vec![first_approval_id],
+                    approver_groups: HashMap::from_iter(vec![(
+                        format!("workspace#{workspace_id}#approve"),
+                        vec![user_id],
+                    )]),
+                    approver_individuals: Vec::new(),
+                }
+            ], // expected
             frontend_requirements // actual
         );
 
@@ -190,6 +219,7 @@ async fn single_user_relation_existence_and_checksum_validility_permutations(
         frontend_requirements
             .iter_mut()
             .for_each(|r| r.applicable_approval_ids.sort());
+        frontend_requirements.sort_by_key(|req| req.entity_id);
 
         assert_eq!(
             vec![
@@ -209,18 +239,32 @@ async fn single_user_relation_existence_and_checksum_validility_permutations(
             frontend_latest_approvals // actual
         );
         assert_eq!(
-            vec![si_frontend_types::ChangeSetApprovalRequirement {
-                entity_id,
-                entity_kind: EntityKind::CategorySchema,
-                required_count: 1,
-                is_satisfied: true,
-                applicable_approval_ids: vec![first_approval_id, second_approval.id()],
-                approver_groups: HashMap::from_iter(vec![(
-                    format!("workspace#{workspace_id}#approve"),
-                    vec![user_id]
-                )]),
-                approver_individuals: Vec::new(),
-            }], // expected
+            vec![
+                si_frontend_types::ChangeSetApprovalRequirement {
+                    entity_id: schema_entity_id,
+                    entity_kind: EntityKind::Schema,
+                    required_count: 1,
+                    is_satisfied: true,
+                    applicable_approval_ids: vec![first_approval_id, second_approval.id()],
+                    approver_groups: HashMap::from_iter(vec![(
+                        format!("workspace#{workspace_id}#approve"),
+                        vec![user_id]
+                    )]),
+                    approver_individuals: Vec::new(),
+                },
+                si_frontend_types::ChangeSetApprovalRequirement {
+                    entity_id: schema_variant_entity_id,
+                    entity_kind: EntityKind::SchemaVariant,
+                    required_count: 1,
+                    is_satisfied: true,
+                    applicable_approval_ids: vec![first_approval_id, second_approval.id()],
+                    approver_groups: HashMap::from_iter(vec![(
+                        format!("workspace#{workspace_id}#approve"),
+                        vec![user_id],
+                    )]),
+                    approver_individuals: Vec::new(),
+                }
+            ], // expected
             frontend_requirements // actual
         );
 
@@ -233,9 +277,13 @@ async fn single_user_relation_existence_and_checksum_validility_permutations(
     {
         relation.delete(&mut spicedb_client).await?;
 
-        let (mut frontend_latest_approvals, frontend_requirements) =
+        let (mut frontend_latest_approvals, mut frontend_requirements) =
             dal_wrapper::change_set::status(ctx, &mut spicedb_client).await?;
         frontend_latest_approvals.sort_by_key(|a| a.id);
+        frontend_requirements
+            .iter_mut()
+            .for_each(|r| r.applicable_approval_ids.sort());
+        frontend_requirements.sort_by_key(|req| req.entity_id);
 
         assert_eq!(
             vec![
@@ -255,18 +303,32 @@ async fn single_user_relation_existence_and_checksum_validility_permutations(
             frontend_latest_approvals // actual
         );
         assert_eq!(
-            vec![si_frontend_types::ChangeSetApprovalRequirement {
-                entity_id,
-                entity_kind: EntityKind::CategorySchema,
-                required_count: 1,
-                is_satisfied: false,
-                applicable_approval_ids: Vec::new(),
-                approver_groups: HashMap::from_iter(vec![(
-                    format!("workspace#{workspace_id}#approve"),
-                    Vec::new()
-                )]),
-                approver_individuals: Vec::new(),
-            }], // expected
+            vec![
+                si_frontend_types::ChangeSetApprovalRequirement {
+                    entity_id: schema_entity_id,
+                    entity_kind: EntityKind::Schema,
+                    required_count: 1,
+                    is_satisfied: false,
+                    applicable_approval_ids: Vec::new(),
+                    approver_groups: HashMap::from_iter(vec![(
+                        format!("workspace#{workspace_id}#approve"),
+                        Vec::new()
+                    )]),
+                    approver_individuals: Vec::new(),
+                },
+                si_frontend_types::ChangeSetApprovalRequirement {
+                    entity_id: schema_variant_entity_id,
+                    entity_kind: EntityKind::SchemaVariant,
+                    required_count: 1,
+                    is_satisfied: false,
+                    applicable_approval_ids: Vec::new(),
+                    approver_groups: HashMap::from_iter(vec![(
+                        format!("workspace#{workspace_id}#approve"),
+                        Vec::new(),
+                    )]),
+                    approver_individuals: Vec::new(),
+                }
+            ], // expected
             frontend_requirements // actual
         );
     }
@@ -282,6 +344,7 @@ async fn single_user_relation_existence_and_checksum_validility_permutations(
         frontend_requirements
             .iter_mut()
             .for_each(|r| r.applicable_approval_ids.sort());
+        frontend_requirements.sort_by_key(|req| req.entity_id);
 
         assert_eq!(
             vec![
@@ -301,18 +364,32 @@ async fn single_user_relation_existence_and_checksum_validility_permutations(
             frontend_latest_approvals // actual
         );
         assert_eq!(
-            vec![si_frontend_types::ChangeSetApprovalRequirement {
-                entity_id,
-                entity_kind: EntityKind::CategorySchema,
-                required_count: 1,
-                is_satisfied: true,
-                applicable_approval_ids: vec![first_approval_id, second_approval_id],
-                approver_groups: HashMap::from_iter(vec![(
-                    format!("workspace#{workspace_id}#approve"),
-                    vec![user_id]
-                )]),
-                approver_individuals: Vec::new(),
-            }], // expected
+            vec![
+                si_frontend_types::ChangeSetApprovalRequirement {
+                    entity_id: schema_entity_id,
+                    entity_kind: EntityKind::Schema,
+                    required_count: 1,
+                    is_satisfied: true,
+                    applicable_approval_ids: vec![first_approval_id, second_approval_id],
+                    approver_groups: HashMap::from_iter(vec![(
+                        format!("workspace#{workspace_id}#approve"),
+                        vec![user_id]
+                    )]),
+                    approver_individuals: Vec::new(),
+                },
+                si_frontend_types::ChangeSetApprovalRequirement {
+                    entity_id: schema_variant_entity_id,
+                    entity_kind: EntityKind::SchemaVariant,
+                    required_count: 1,
+                    is_satisfied: true,
+                    applicable_approval_ids: vec![first_approval_id, second_approval_id],
+                    approver_groups: HashMap::from_iter(vec![(
+                        format!("workspace#{workspace_id}#approve"),
+                        vec![user_id],
+                    )]),
+                    approver_individuals: Vec::new(),
+                }
+            ], // expected
             frontend_requirements // actual
         );
     }
