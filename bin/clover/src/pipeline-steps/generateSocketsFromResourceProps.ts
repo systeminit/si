@@ -3,9 +3,11 @@ import { SchemaVariantSpec } from "../bindings/SchemaVariantSpec.ts";
 import _ from "lodash";
 import { SocketSpec } from "../bindings/SocketSpec.ts";
 import { isExpandedPropSpec } from "../spec/props.ts";
-import { createSocketFromProp } from "../spec/sockets.ts";
+import { createOutputSocketFromProp } from "../spec/sockets.ts";
 
-export function generateSocketsFromResourceProps(specs: PkgSpec[]): PkgSpec[] {
+export function generateOutputSocketsFromResourceProps(
+  specs: PkgSpec[],
+): PkgSpec[] {
   const newSpecs = [] as PkgSpec[];
 
   for (const spec of specs) {
@@ -35,16 +37,11 @@ function createSocketsFromResource(variant: SchemaVariantSpec): SocketSpec[] {
   if (resource.kind !== "object") throw "Resource prop is not object";
 
   const sockets: SocketSpec[] = [];
-  if (resource.kind == "object") {
-    for (const prop of resource.entries) {
-      if (
-        !["array", "object"].includes(prop.kind) && isExpandedPropSpec(prop)
-      ) {
-        const socket = createSocketFromProp(prop);
-        if (socket) {
-          sockets.push(socket);
-        }
-      }
+  for (const prop of resource.entries) {
+    if (
+      !["array", "object"].includes(prop.kind) && isExpandedPropSpec(prop)
+    ) {
+      sockets.push(createOutputSocketFromProp(prop));
     }
   }
   return sockets;

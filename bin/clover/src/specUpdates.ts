@@ -1,11 +1,14 @@
 import _logger from "./logger.ts";
 import _ from "npm:lodash";
 import { PkgSpec } from "./bindings/PkgSpec.ts";
+import { emptyDirectory } from "./util.ts";
 
 const logger = _logger.ns("packageGen").seal();
 export const EXISTING_PACKAGES = "existing-packages";
 
 export async function getExistingSpecs(): Promise<Record<string, PkgSpec>> {
+  await emptyDirectory(EXISTING_PACKAGES);
+  logger.debug("Getting existing specs...");
   const td = new TextDecoder();
   const child = await new Deno.Command(
     "buck2",

@@ -3,17 +3,21 @@ import { pkgSpecFromCf } from "../specPipeline.ts";
 import { PkgSpec } from "../bindings/PkgSpec.ts";
 import { generateAssetFuncs } from "../pipeline-steps/generateAssetFuncs.ts";
 import { generateDefaultActionFuncs } from "../pipeline-steps/generateActionFuncs.ts";
-import {
-  generateSocketsFromDomainProps,
-} from "../pipeline-steps/generateSocketsFromDomainProps.ts";
 import { generateDefaultLeafFuncs } from "../pipeline-steps/generateLeafFuncs.ts";
 import { generateDefaultManagementFuncs } from "../pipeline-steps/generateManagementFuncs.ts";
 import { addDefaultPropsAndSockets } from "../pipeline-steps/addDefaultPropsAndSockets.ts";
-import { generateSocketsFromResourceProps } from "../pipeline-steps/generateSocketsFromResourceProps.ts";
+import { generateOutputSocketsFromResourceProps } from "../pipeline-steps/generateSocketsFromResourceProps.ts";
 import { generateSubAssets } from "../pipeline-steps/generateSubAssets.ts";
 import { generateIntrinsicFuncs } from "../pipeline-steps/generateIntrinsicFuncs.ts";
+import { createInputSocketsBasedOnOutputSockets } from "../pipeline-steps/createInputSocketsAcrossAssets.ts";
+import { emptyDirectory } from "../util.ts";
 import { updateSchemaIdsForExistingSpecs } from "../pipeline-steps/updateSchemaIdsForExistingSpecs.ts";
 import { getExistingSpecs } from "../specUpdates.ts";
+
+import _logger from "../logger.ts";
+
+const logger = _logger.ns("siSpecs").seal();
+const SI_SPEC_DIR = "si-specs";
 
 export function generateSiSpecForService(serviceName: string) {
   const cf = getServiceByName(serviceName);
@@ -40,8 +44,7 @@ export async function generateSiSpecs() {
   }
 
   // EXECUTE PIPELINE STEPS
-  specs = generateSocketsFromDomainProps(specs);
-  specs = generateSocketsFromResourceProps(specs);
+  specs = generateOutputSocketsFromResourceProps(specs);
   specs = addDefaultPropsAndSockets(specs);
   specs = generateDefaultActionFuncs(specs);
   specs = generateDefaultLeafFuncs(specs);
@@ -50,17 +53,20 @@ export async function generateSiSpecs() {
   // intrinsics
   specs = generateSubAssets(specs);
   specs = generateIntrinsicFuncs(specs);
+  specs = createInputSocketsBasedOnOutputSockets(specs);
   specs = generateAssetFuncs(specs);
   specs = updateSchemaIdsForExistingSpecs(existing_specs, specs);
 
   // WRITE OUTS SPECS
+  await emptyDirectory(SI_SPEC_DIR);
   for (const spec of specs) {
     const specJson = JSON.stringify(spec, null, 2);
     const name = spec.name;
 
     try {
+      logger.debug(`Writing ${name}.json`);
       await Deno.writeTextFile(
-        `si-specs/${name}.json`,
+        `${SI_SPEC_DIR}/${name}.json`,
         specJson,
       );
     } catch (e) {
