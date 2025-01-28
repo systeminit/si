@@ -2,12 +2,14 @@
 //! types are deliberately not re-exported in the root, so that they don't get
 //! mixed up with non si-fs types.
 
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, fmt};
 
 use serde::{Deserialize, Serialize};
-use si_events::{ActionKind, ChangeSetId, FuncId, FuncKind, SchemaId, SchemaVariantId};
+use si_events::{ChangeSetId, FuncId, FuncKind, SchemaId, SchemaVariantId};
 
-use crate::{ComponentType, LeafInputLocation};
+pub use si_events::ActionKind;
+
+use crate::{ComponentType, FuncArgumentKind, LeafInputLocation};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ChangeSet {
@@ -153,6 +155,13 @@ pub enum AttributeOutputTo {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct AttributeFuncInput {
+    pub kind: FuncArgumentKind,
+    pub element_kind: Option<FuncArgumentKind>,
+    pub input: Option<AttributeInputFrom>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum AttributeInputFrom {
     InputSocket(String),
     Prop(String),
@@ -166,7 +175,7 @@ pub enum Binding {
     Attribute {
         output_to: AttributeOutputTo,
         // BTreeMap to preserve order
-        inputs: BTreeMap<String, AttributeInputFrom>,
+        inputs: BTreeMap<String, AttributeFuncInput>,
     },
     Authentication,
     CodeGeneration {
@@ -230,4 +239,23 @@ pub struct CreateSchemaRequest {
 pub struct CreateSchemaResponse {
     pub schema_id: SchemaId,
     pub name: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum FsApiError {
+    ChangeSetInactive(ChangeSetId),
+    ResourceNotFound,
+    InternalServerError(String),
+}
+
+impl fmt::Display for FsApiError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            FsApiError::ChangeSetInactive(change_set_id) => {
+                write!(f, "ChangeSetInactive({change_set_id})")
+            }
+            FsApiError::ResourceNotFound => write!(f, "ResourceNotFound"),
+            FsApiError::InternalServerError(error) => write!(f, "InternalServerError: {error}"),
+        }
+    }
 }

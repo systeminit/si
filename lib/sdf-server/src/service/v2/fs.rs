@@ -14,7 +14,8 @@ use dal::{
         authoring::{FuncAuthoringClient, FuncAuthoringError},
         binding::{
             action::ActionBinding, attribute::AttributeBinding, authentication::AuthBinding,
-            leaf::LeafBinding, management::ManagementBinding, EventualParent, FuncBindingError,
+            leaf::LeafBinding, management::ManagementBinding, AttributeFuncDestination,
+            EventualParent, FuncBindingError,
         },
         FuncKind,
     },
@@ -33,18 +34,16 @@ use hyper::StatusCode;
 use si_events::{audit_log::AuditLogKind, ActionKind};
 use si_frontend_types::{
     fs::{
-        self, AssetFuncs, AttributeInputFrom, AttributeOutputTo, Binding, ChangeSet as FsChangeSet,
-        CreateSchemaResponse, Func as FsFunc, Schema as FsSchema, SchemaAttributes,
-        SetFuncCodeRequest, VariantQuery,
+        self, AssetFuncs, AttributeFuncInput, AttributeInputFrom, AttributeOutputTo, Binding,
+        ChangeSet as FsChangeSet, CreateSchemaResponse, FsApiError, Func as FsFunc,
+        Schema as FsSchema, SchemaAttributes, SetFuncCodeRequest, VariantQuery,
     },
     AttributeArgumentBinding, FuncBinding,
 };
+use si_id::FuncArgumentId;
 use thiserror::Error;
 
-use crate::{
-    extract::{HandlerContext, PosthogClient},
-    service::ApiError,
-};
+use crate::extract::{HandlerContext, PosthogClient};
 
 use super::{
     func::{
@@ -66,6 +65,8 @@ pub enum FsError {
     AttributeInputNotBound,
     #[error("attribute prototype argument error: {0}")]
     AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
+    #[error("no attribute protototype argument found for func argument {0}")]
+    AttributePrototypeArgumentMissingForFuncArg(FuncArgumentId),
     #[error("cached module error: {0}")]
     CachedModule(#[from] dal::cached_module::CachedModuleError),
     #[error("cannot write to HEAD")]
@@ -132,12 +133,19 @@ pub type FsResult<T> = Result<T, FsError>;
 
 impl IntoResponse for FsError {
     fn into_response(self) -> Response {
-        let status_code = match self {
-            FsError::ChangeSetInactive(_, _) | FsError::ResourceNotFound => StatusCode::NOT_FOUND,
-            _ => StatusCode::INTERNAL_SERVER_ERROR,
+        let (status_code, error) = match self {
+            FsError::ChangeSetInactive(_, change_set_id) => (
+                StatusCode::NOT_FOUND,
+                FsApiError::ChangeSetInactive(change_set_id),
+            ),
+            FsError::ResourceNotFound => (StatusCode::NOT_FOUND, FsApiError::ResourceNotFound),
+            _ => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                FsApiError::InternalServerError(self.to_string()),
+            ),
         };
 
-        ApiError::new(status_code, self.to_string()).into_response()
+        (status_code, Json(error)).into_response()
     }
 }
 
@@ -348,7 +356,7 @@ async fn get_bindings(
 
     let mut display_bindings = vec![];
     for binding in bindings {
-        display_bindings.push(func_binding_to_fs_binding(ctx, binding).await?);
+        display_bindings.push(func_binding_to_fs_binding(ctx, func_id, binding).await?);
     }
 
     Ok(fs::Bindings {
@@ -358,6 +366,7 @@ async fn get_bindings(
 
 async fn func_binding_to_fs_binding(
     ctx: &DalContext,
+    func_id: FuncId,
     binding: FuncBinding,
 ) -> FsResult<fs::Binding> {
     Ok(match binding {
@@ -372,6 +381,7 @@ async fn func_binding_to_fs_binding(
         } => {
             attribute_binding_to_fs_attribute_binding(
                 ctx,
+                func_id,
                 prop_id,
                 output_socket_id,
                 argument_bindings,
@@ -418,6 +428,7 @@ async fn management_binding_to_fs_management_binding(
 
 async fn attribute_binding_to_fs_attribute_binding(
     ctx: &DalContext,
+    func_id: FuncId,
     prop_id: Option<dal::PropId>,
     output_socket_id: Option<dal::OutputSocketId>,
     argument_bindings: Vec<si_frontend_types::AttributeArgumentBinding>,
@@ -440,28 +451,42 @@ async fn attribute_binding_to_fs_attribute_binding(
         return Err(FsError::AttributeFuncNotBound);
     };
     let mut inputs = BTreeMap::new();
-    for arg_binding in argument_bindings {
-        let func_arg_name = FuncArgument::get_by_id_or_error(ctx, arg_binding.func_argument_id)
-            .await?
-            .name;
-        let input_from = if let Some(input_prop_id) = arg_binding.prop_id {
-            let path = Prop::get_by_id(ctx, input_prop_id)
-                .await?
-                .path(ctx)
-                .await?
-                .to_string();
-            AttributeInputFrom::Prop(path)
-        } else if let Some(input_socket_id) = arg_binding.input_socket_id {
-            let name = InputSocket::get_by_id(ctx, input_socket_id)
-                .await?
-                .name()
-                .to_string();
-            AttributeInputFrom::InputSocket(name)
-        } else {
-            return Err(FsError::AttributeInputNotBound);
+    for func_arg in FuncArgument::list_for_func(ctx, func_id).await? {
+        let func_arg_kind = func_arg.kind;
+        let func_arg_name = func_arg.name;
+        let func_arg_element_kind = func_arg.element_kind;
+
+        let input_from = match argument_bindings
+            .iter()
+            .find(|binding| binding.func_argument_id == func_arg.id)
+        {
+            Some(arg_binding) => Some(if let Some(input_prop_id) = arg_binding.prop_id {
+                let path = Prop::get_by_id(ctx, input_prop_id)
+                    .await?
+                    .path(ctx)
+                    .await?
+                    .to_string();
+                AttributeInputFrom::Prop(path)
+            } else if let Some(input_socket_id) = arg_binding.input_socket_id {
+                let name = InputSocket::get_by_id(ctx, input_socket_id)
+                    .await?
+                    .name()
+                    .to_string();
+                AttributeInputFrom::InputSocket(name)
+            } else {
+                return Err(FsError::AttributeInputNotBound);
+            }),
+            None => None,
         };
 
-        inputs.insert(func_arg_name, input_from);
+        inputs.insert(
+            func_arg_name,
+            AttributeFuncInput {
+                kind: func_arg_kind.into(),
+                element_kind: func_arg_element_kind.map(Into::into),
+                input: input_from,
+            },
+        );
     }
     Ok(Binding::Attribute { output_to, inputs })
 }
@@ -737,10 +762,42 @@ async fn create_func(
                 func,
             )
         }
-        Binding::Attribute {
-            output_to: _,
-            inputs: _,
-        } => return Err(FsError::ResourceNotFound),
+        Binding::Attribute { output_to, .. } => {
+            let output_location =
+                output_to_into_func_destination(&ctx, &output_to, unlocked_variant.id()).await?;
+            let argument_bindings = vec![];
+
+            let func = FuncAuthoringClient::create_new_attribute_func(
+                &ctx,
+                Some(request.name),
+                Some(EventualParent::SchemaVariant(unlocked_variant.id())),
+                output_location,
+                argument_bindings,
+            )
+            .await?;
+
+            (
+                AuditLogKind::AttachAttributeFunc {
+                    func_id: func.id,
+                    func_display_name: func.display_name.clone(),
+                    schema_variant_id: Some(unlocked_variant.id()),
+                    component_id: None,
+                    subject_name: unlocked_variant.display_name().to_string(),
+                    prop_id: match output_location {
+                        AttributeFuncDestination::Prop(prop_id) => Some(prop_id),
+                        _ => None,
+                    },
+                    output_socket_id: match output_location {
+                        AttributeFuncDestination::OutputSocket(output_socket_id) => {
+                            Some(output_socket_id)
+                        }
+                        _ => None,
+                    },
+                    destination_name: output_location.get_name_of_destination(&ctx).await?,
+                },
+                func,
+            )
+        }
         Binding::Authentication => {
             let func = FuncAuthoringClient::create_new_auth_func(
                 &ctx,
@@ -1320,7 +1377,7 @@ async fn set_func_bindings(
         _ => return Err(FsError::FuncBindingKindMismatch),
     }
 
-    // delete bindings that were not in the payload, create net new bindings
+    // todo: delete bindings that were not in the payload, create net new bindings
 
     let func_summary = Func::get_by_id_or_error(&ctx, func_id)
         .await?
@@ -1443,12 +1500,36 @@ fn parse_code_gen_bindings(
     Ok(())
 }
 
+async fn output_to_into_func_destination(
+    ctx: &DalContext,
+    output_to: &AttributeOutputTo,
+    schema_variant_id: SchemaVariantId,
+) -> FsResult<AttributeFuncDestination> {
+    Ok(match output_to {
+        AttributeOutputTo::OutputSocket(name) => {
+            let socket = OutputSocket::find_with_name(ctx, name, schema_variant_id)
+                .await?
+                .ok_or(FsError::OutputSocketNotFound(name.to_owned()))?;
+
+            AttributeFuncDestination::OutputSocket(socket.id())
+        }
+        AttributeOutputTo::Prop(prop_path_string) => {
+            let prop_path = PropPath::new(prop_path_string.split("/"));
+            let prop_id = Prop::find_prop_id_by_path_opt(ctx, schema_variant_id, &prop_path)
+                .await?
+                .ok_or(FsError::PropNotFound(prop_path_string.to_owned()))?;
+
+            AttributeFuncDestination::Prop(prop_id)
+        }
+    })
+}
+
 async fn parse_attr_bindings(
     ctx: &DalContext,
     final_bindings: &mut Vec<FuncBinding>,
     func_binding: FuncBinding,
     output_to: &AttributeOutputTo,
-    inputs: &BTreeMap<String, AttributeInputFrom>,
+    inputs: &BTreeMap<String, AttributeFuncInput>,
 ) -> FsResult<()> {
     let FuncBinding::Attribute {
         func_id,
@@ -1465,65 +1546,20 @@ async fn parse_attr_bindings(
     let func_id = func_id.ok_or(FsError::FuncBindingKindMismatch)?;
     let proto_id = attribute_prototype_id.ok_or(FsError::FuncBindingKindMismatch)?;
 
-    let (prop_id, output_socket_id) = match output_to {
-        AttributeOutputTo::OutputSocket(name) => {
-            let socket = OutputSocket::find_with_name(ctx, name, schema_variant_id)
-                .await?
-                .ok_or(FsError::OutputSocketNotFound(name.to_owned()))?;
-
-            (None, Some(socket.id()))
-        }
-        AttributeOutputTo::Prop(prop_path_string) => {
-            let prop_path = PropPath::new(prop_path_string.split("/"));
-            let prop_id = Prop::find_prop_id_by_path_opt(ctx, schema_variant_id, &prop_path)
-                .await?
-                .ok_or(FsError::PropNotFound(prop_path_string.to_owned()))?;
-
-            (Some(prop_id), None)
-        }
-    };
-
-    let mut argument_bindings = vec![];
-    for (arg_name, input_from) in inputs {
-        let func_arg = FuncArgument::find_by_name_for_func(ctx, arg_name, func_id)
-            .await?
-            .ok_or(FsError::FuncArgumentNotFound(arg_name.to_owned()))?;
-
-        let apa_id =
-            AttributePrototypeArgument::find_by_func_argument_id_and_attribute_prototype_id(
-                ctx,
-                func_arg.id,
-                proto_id,
-            )
-            .await?
-            .ok_or(FsError::FuncBindingKindMismatch)?;
-
-        let (prop_id, input_socket_id) = match input_from {
-            AttributeInputFrom::InputSocket(input_socket_name) => {
-                let socket = InputSocket::find_with_name(ctx, input_socket_name, schema_variant_id)
-                    .await?
-                    .ok_or(FsError::InputSocketNotFound(input_socket_name.to_owned()))?;
-
-                (None, Some(socket.id()))
+    let (prop_id, output_socket_id) =
+        match output_to_into_func_destination(ctx, output_to, schema_variant_id).await? {
+            AttributeFuncDestination::Prop(prop_id) => (Some(prop_id), None),
+            AttributeFuncDestination::OutputSocket(output_socket_id) => {
+                (None, Some(output_socket_id))
             }
-            AttributeInputFrom::Prop(prop_path_string) => {
-                let prop_path = PropPath::new(prop_path_string.split("/"));
-                let prop_id = Prop::find_prop_id_by_path_opt(ctx, schema_variant_id, &prop_path)
-                    .await?
-                    .ok_or(FsError::PropNotFound(prop_path_string.to_owned()))?;
-
-                (Some(prop_id), None)
-            }
+            AttributeFuncDestination::InputSocket(_) => unreachable!(
+                "this enum variant will never be produced by output_to_into_func_destination"
+            ),
         };
 
-        argument_bindings.push(AttributeArgumentBinding {
-            func_argument_id: func_arg.id,
-            attribute_prototype_argument_id: Some(apa_id),
-            prop_id,
-            input_socket_id,
-            static_value: None,
-        });
-    }
+    let argument_bindings =
+        inputs_into_attribute_argument_bindings(inputs, ctx, func_id, proto_id, schema_variant_id)
+            .await?;
 
     final_bindings.push(FuncBinding::Attribute {
         func_id: Some(func_id),
@@ -1536,6 +1572,85 @@ async fn parse_attr_bindings(
     });
 
     Ok(())
+}
+
+/// Note: this will also create new func args as necessary, and delete func args no longer in the "binding"
+async fn inputs_into_attribute_argument_bindings(
+    inputs: &BTreeMap<String, AttributeFuncInput>,
+    ctx: &DalContext,
+    func_id: FuncId,
+    proto_id: dal::AttributePrototypeId,
+    schema_variant_id: SchemaVariantId,
+) -> FsResult<Vec<AttributeArgumentBinding>> {
+    let mut argument_bindings = vec![];
+
+    let mut current_arg_names = HashSet::new();
+    for (arg_name, input) in inputs {
+        let (func_arg, apa_id) =
+            match FuncArgument::find_by_name_for_func(ctx, arg_name, func_id).await? {
+                Some(func_arg) => {
+                    let func_arg_id = func_arg.id;
+                    (func_arg,
+                    AttributePrototypeArgument::find_by_func_argument_id_and_attribute_prototype_id(
+                        ctx,
+                        func_arg_id,
+                        proto_id).await?)
+                }
+                None => {
+                    let func_arg = FuncArgument::new(
+                        ctx,
+                        arg_name,
+                        input.kind.into(),
+                        input.element_kind.map(Into::into),
+                        func_id,
+                    )
+                    .await?;
+
+                    let apa = AttributePrototypeArgument::new(ctx, proto_id, func_arg.id).await?;
+
+                    (func_arg, Some(apa.id()))
+                }
+            };
+
+        current_arg_names.insert(func_arg.name.clone());
+
+        let (prop_id, input_socket_id) = match input.input.as_ref() {
+            Some(AttributeInputFrom::InputSocket(input_socket_name)) => {
+                let socket = InputSocket::find_with_name(ctx, input_socket_name, schema_variant_id)
+                    .await?
+                    .ok_or(FsError::InputSocketNotFound(input_socket_name.to_owned()))?;
+
+                (None, Some(socket.id()))
+            }
+            Some(AttributeInputFrom::Prop(prop_path_string)) => {
+                let prop_path = PropPath::new(prop_path_string.split("/"));
+                let prop_id = Prop::find_prop_id_by_path_opt(ctx, schema_variant_id, &prop_path)
+                    .await?
+                    .ok_or(FsError::PropNotFound(prop_path_string.to_owned()))?;
+
+                (Some(prop_id), None)
+            }
+            None => (None, None),
+        };
+
+        if prop_id.is_some() || input_socket_id.is_some() {
+            argument_bindings.push(AttributeArgumentBinding {
+                func_argument_id: func_arg.id,
+                attribute_prototype_argument_id: apa_id,
+                prop_id,
+                input_socket_id,
+                static_value: None,
+            });
+        }
+    }
+
+    for arg in FuncArgument::list_for_func(ctx, func_id).await? {
+        if !current_arg_names.contains(&arg.name) {
+            FuncArgument::remove(ctx, arg.id).await?;
+        }
+    }
+
+    Ok(argument_bindings)
 }
 
 fn parse_action_bindings(
