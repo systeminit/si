@@ -123,8 +123,11 @@ async fn protected_apply(ctx: &mut DalContext, spicedb_client: SpiceDbClient) ->
     // Scenario 4: approve the changes.
     {
         let approving_ids_with_hashes =
-            dal_wrapper::change_set::determine_approving_ids_with_hashes(ctx, &mut spicedb_client)
-                .await?;
+            dal_wrapper::change_set::new_approval_approving_ids_with_hashes(
+                ctx,
+                &mut spicedb_client,
+            )
+            .await?;
         let approval = ChangeSetApproval::new(
             ctx,
             ChangeSetApprovalStatus::Approved,

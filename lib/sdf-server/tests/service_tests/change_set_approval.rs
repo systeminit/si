@@ -89,8 +89,11 @@ async fn single_user_relation_existence_and_checksum_validility_permutations(
             .into();
 
         let approving_ids_with_hashes =
-            dal_wrapper::change_set::determine_approving_ids_with_hashes(ctx, &mut spicedb_client)
-                .await?;
+            dal_wrapper::change_set::new_approval_approving_ids_with_hashes(
+                ctx,
+                &mut spicedb_client,
+            )
+            .await?;
         let first_approval = ChangeSetApproval::new(
             ctx,
             ChangeSetApprovalStatus::Approved,
@@ -174,8 +177,11 @@ async fn single_user_relation_existence_and_checksum_validility_permutations(
     // requirement.
     let second_approval_id = {
         let approving_ids_with_hashes =
-            dal_wrapper::change_set::determine_approving_ids_with_hashes(ctx, &mut spicedb_client)
-                .await?;
+            dal_wrapper::change_set::new_approval_approving_ids_with_hashes(
+                ctx,
+                &mut spicedb_client,
+            )
+            .await?;
         let second_approval = ChangeSetApproval::new(
             ctx,
             ChangeSetApprovalStatus::Approved,
@@ -412,7 +418,7 @@ async fn individual_approver_for_view(
     let first_approval_id = {
         let first_approval_id = {
             let approving_ids_with_hashes =
-                dal_wrapper::change_set::determine_approving_ids_with_hashes(
+                dal_wrapper::change_set::new_approval_approving_ids_with_hashes(
                     ctx,
                     &mut spicedb_client,
                 )
@@ -525,7 +531,7 @@ async fn individual_approver_for_view(
     {
         let second_approval_id = {
             let approving_ids_with_hashes =
-                dal_wrapper::change_set::determine_approving_ids_with_hashes(
+                dal_wrapper::change_set::new_approval_approving_ids_with_hashes(
                     ctx,
                     &mut spicedb_client,
                 )
@@ -597,7 +603,7 @@ async fn individual_approver_for_view(
     {
         let third_approval_id = {
             let approving_ids_with_hashes =
-                dal_wrapper::change_set::determine_approving_ids_with_hashes(
+                dal_wrapper::change_set::new_approval_approving_ids_with_hashes(
                     ctx,
                     &mut spicedb_client,
                 )
@@ -722,7 +728,7 @@ async fn individual_approver_for_view(
     {
         let fourth_approval_id = {
             let approving_ids_with_hashes =
-                dal_wrapper::change_set::determine_approving_ids_with_hashes(
+                dal_wrapper::change_set::new_approval_approving_ids_with_hashes(
                     ctx,
                     &mut spicedb_client,
                 )
@@ -785,7 +791,7 @@ async fn individual_approver_for_view(
     {
         let fifth_approval_id = {
             let approving_ids_with_hashes =
-                dal_wrapper::change_set::determine_approving_ids_with_hashes(
+                dal_wrapper::change_set::new_approval_approving_ids_with_hashes(
                     ctx,
                     &mut spicedb_client,
                 )

@@ -49,6 +49,8 @@ pub enum DalWrapperError {
     ChangeSetApproval(#[from] dal::change_set::approval::ChangeSetApprovalError),
     #[error("invalid user found")]
     InvalidUser,
+    #[error("invalid workspace for permission lookup: {0} versus current {1}")]
+    InvalidWorkspaceForPermissionLookup(dal::WorkspacePk, dal::WorkspacePk),
     #[error("missing applicable approval id: {0}")]
     MissingApplicableApproval(si_id::ChangeSetApprovalId),
     #[error("permissions error: {0}")]
@@ -59,6 +61,8 @@ pub enum DalWrapperError {
     Transactions(#[from] dal::TransactionsError),
     #[error("ulid decode error: {0}")]
     UlidDecode(#[from] ulid::DecodeError),
+    #[error("unsupported permission lookup: {0}")]
+    UnsupportedPermissionLookup(String, String, String),
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] dal::WorkspaceSnapshotError),
 }

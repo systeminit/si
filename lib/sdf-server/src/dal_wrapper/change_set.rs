@@ -95,9 +95,8 @@ pub async fn status(
     Ok((frontend_latest_approvals, frontend_requirements))
 }
 
-/// Determines which IDs (with hashes) correspond to nodes on the graph that the user can approve
-/// changes for.
-pub async fn determine_approving_ids_with_hashes(
+/// Provides the approving IDs (with hashes) for new change set approval creation.
+pub async fn new_approval_approving_ids_with_hashes(
     ctx: &DalContext,
     spicedb_client: &mut si_data_spicedb::Client,
 ) -> Result<Vec<(EntityId, MerkleTreeHash)>> {
@@ -111,6 +110,7 @@ pub async fn determine_approving_ids_with_hashes(
     inner_determine_approving_ids_with_hashes(
         ctx,
         spicedb_client,
+        None,
         workspace_id,
         &requirements,
         &ids_with_hashes_for_deleted_nodes,
@@ -130,14 +130,6 @@ async fn inner_determine_latest_approvals_and_populate_caches(
     let workspace_id = ctx.workspace_pk()?;
 
     // Gather everything we need upfront.
-    let approving_requirement_ids_with_hashes = inner_determine_approving_ids_with_hashes(
-        ctx,
-        spicedb_client,
-        workspace_id,
-        requirements,
-        ids_with_hashes_for_deleted_nodes,
-    )
-    .await?;
     let latest_approvals = ChangeSetApproval::list_latest(ctx).await?;
 
     // Initialize what we will eventual use to construct ourself.
@@ -147,6 +139,16 @@ async fn inner_determine_latest_approvals_and_populate_caches(
 
     // Go through each approval, determine its validity, and populate the cache.
     for approval in latest_approvals {
+        let approving_requirement_ids_with_hashes = inner_determine_approving_ids_with_hashes(
+            ctx,
+            spicedb_client,
+            Some(approval.user_id()),
+            workspace_id,
+            requirements,
+            ids_with_hashes_for_deleted_nodes,
+        )
+        .await?;
+
         for (approving_requirement_id, _) in &approving_requirement_ids_with_hashes {
             requirements_to_approvals_cache
                 .entry(*approving_requirement_id)
@@ -298,13 +300,17 @@ async fn inner_determine_frontend_requirements(
 async fn inner_determine_approving_ids_with_hashes(
     ctx: &DalContext,
     spicedb_client: &mut si_data_spicedb::Client,
+    user_id: Option<UserPk>,
     workspace_id: WorkspacePk,
     requirements: &[ApprovalRequirement],
     ids_with_hashes_for_deleted_nodes: &HashMap<EntityId, MerkleTreeHash>,
 ) -> Result<Vec<(EntityId, MerkleTreeHash)>> {
-    let user_id = match ctx.history_actor() {
-        HistoryActor::SystemInit => return Err(DalWrapperError::InvalidUser),
-        HistoryActor::User(user_id) => *user_id,
+    let user_id = match user_id {
+        Some(user_id) => user_id,
+        None => match ctx.history_actor() {
+            HistoryActor::SystemInit => return Err(DalWrapperError::InvalidUser),
+            HistoryActor::User(user_id) => *user_id,
+        },
     };
 
     let mut approving_ids_with_hashes = Vec::new();
@@ -329,21 +335,39 @@ async fn inner_determine_approving_ids_with_hashes(
                         cache.insert(approver, has_permission);
                         has_permission
                     }
-                    ApprovalRequirementApprover::PermissionLookup(_) => {
-                        // TODO(nick): use the actual lookup group rather than this hardcoded check.
-                        let has_permission = PermissionBuilder::new()
-                            .workspace_object(workspace_id)
-                            .permission(Permission::Approve)
-                            .user_subject(match ctx.history_actor() {
-                                HistoryActor::SystemInit => {
-                                    return Err(DalWrapperError::InvalidUser)
+                    ApprovalRequirementApprover::PermissionLookup(permission_lookup) => {
+                        match (
+                            permission_lookup.object_type.as_str(),
+                            permission_lookup.object_id.as_str(),
+                            permission_lookup.permission.as_str(),
+                        ) {
+                            ("workspace", object_id, "approve") => {
+                                let object_workspace_id = WorkspacePk::from_str(object_id)?;
+                                if object_workspace_id != workspace_id {
+                                    return Err(
+                                        DalWrapperError::InvalidWorkspaceForPermissionLookup(
+                                            object_workspace_id,
+                                            workspace_id,
+                                        ),
+                                    );
                                 }
-                                HistoryActor::User(user_id) => *user_id,
-                            })
-                            .has_permission(spicedb_client)
-                            .await?;
-                        cache.insert(approver, has_permission);
-                        has_permission
+                                let has_permission = PermissionBuilder::new()
+                                    .workspace_object(workspace_id)
+                                    .permission(Permission::Approve)
+                                    .user_subject(user_id)
+                                    .has_permission(spicedb_client)
+                                    .await?;
+                                cache.insert(approver, has_permission);
+                                has_permission
+                            }
+                            (object_type, object_id, permission) => {
+                                return Err(DalWrapperError::UnsupportedPermissionLookup(
+                                    object_type.into(),
+                                    object_id.into(),
+                                    permission.into(),
+                                ))
+                            }
+                        }
                     }
                 }
             };
