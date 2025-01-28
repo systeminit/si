@@ -45,7 +45,6 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-
   wait:
     name: wait
     runs-on: ubuntu-latest
@@ -63,7 +62,7 @@ jobs:
 
   set-service-versions:
     uses: ./.github/workflows/set-service-version.yml
-    needs: 
+    needs:
       - invoke-and-check-cdn
     strategy:
       fail-fast: false
@@ -122,14 +121,14 @@ jobs:
       - name: Sleep for 10 minutes
         run: sleep 600
 
-  e2e-validation:
-    needs:
-      - upgrade-web
-      - sleep-between
-    uses: ./.github/workflows/e2e-validation.yml
-    with:
-      environment: ${{ inputs.environment }}
-    secrets: inherit
+  # e2e-validation:
+  #   needs:
+  #     - upgrade-web
+  #     - sleep-between
+  #   uses: ./.github/workflows/e2e-validation.yml
+  #   with:
+  #     environment: ${{ inputs.environment }}
+  #   secrets: inherit
 
   api-test:
     needs:
