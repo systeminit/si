@@ -210,7 +210,14 @@ impl View {
         }
 
         let Some(default_view) = maybe_default_view else {
-            return Err(DiagramError::DefaultViewNotFound);
+            let mut current_views = Self::list(ctx).await?;
+            current_views.sort_by_key(|f| f.id);
+            // We should get the view with the lowest ID and return that!
+            if let Some(view) = current_views.first() {
+                return Ok(view.id);
+            } else {
+                return Err(DiagramError::DefaultViewNotFound);
+            }
         };
 
         Ok(default_view.into())
