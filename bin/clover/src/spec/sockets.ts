@@ -8,26 +8,28 @@ import { getSiFuncId } from "./siFuncs.ts";
 
 export const SI_SEPARATOR = "\u{b}";
 
-export function createSocketFromProp(
+export function createOutputSocketFromProp(
   prop: ExpandedPropSpec,
-): SocketSpec | null {
-  if (prop.metadata.readOnly) {
-    const socket = createSocket(prop.name, "output");
-    if (socket.data) {
-      socket.data.funcUniqueId = getSiFuncId("si:identity");
-      socket.inputs.push(attrFuncInputSpecFromProp(prop));
-    }
-    return socket;
-  } else if (prop.metadata.writeOnly || prop.metadata.createOnly) {
-    const socket = createSocket(prop.name, "input");
-    if (prop.data) {
-      prop.data.inputs?.push(attrFuncInputSpecFromSocket(socket));
-      prop.data.funcUniqueId = getSiFuncId("si:identity");
-    }
-    return socket;
+  arity: SocketSpecArity = "many",
+): SocketSpec {
+  const socket = createSocket(prop.name, "output", arity);
+  if (socket.data) {
+    socket.data.funcUniqueId = getSiFuncId("si:identity");
+    socket.inputs.push(attrFuncInputSpecFromProp(prop));
   }
+  return socket;
+}
 
-  return null;
+export function createInputSocketFromProp(
+  prop: ExpandedPropSpec,
+  arity: SocketSpecArity = "many",
+): SocketSpec {
+  const socket = createSocket(prop.name, "input", arity);
+  if (socket.data) {
+    prop.data.inputs?.push(attrFuncInputSpecFromSocket(socket));
+    prop.data.funcUniqueId = getSiFuncId("si:identity");
+  }
+  return socket;
 }
 
 export function createSocket(

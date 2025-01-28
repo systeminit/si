@@ -13,6 +13,9 @@ import { attrFuncInputSpecFromSocket } from "../spec/sockets.ts";
 import { createSocket } from "../spec/sockets.ts";
 import { attrFuncInputSpecFromProp } from "../spec/sockets.ts";
 import { getSiFuncId } from "../spec/siFuncs.ts";
+import _logger from "../logger.ts";
+
+const logger = _logger.ns("subAssets").seal();
 
 export function generateSubAssets(incomingSpecs: PkgSpec[]): PkgSpec[] {
   const outgoingSpecs = [] as PkgSpec[];
@@ -56,6 +59,9 @@ export function generateSubAssets(incomingSpecs: PkgSpec[]): PkgSpec[] {
         const objName = prop.name.endsWith("s")
           ? prop.name.slice(0, -1)
           : prop.name;
+
+        logger.debug(`Generating subasset ${objName} for ${spec.name}`);
+
         const name = `${spec.name}::${objName}`;
         const variantId = ulid();
 
@@ -72,12 +78,6 @@ export function generateSubAssets(incomingSpecs: PkgSpec[]): PkgSpec[] {
 
         const hash = generatePropHash(newDomain);
 
-        const maybeExistingSubAsset = newSpecsByHash[hash];
-        if (maybeExistingSubAsset) {
-          maybeExistingSubAsset.names.push(name);
-          continue;
-        }
-
         // set the parent prop to have an input socket for this new asset
         const propInputSocket = createSocket(objName, "input", "many");
         if (prop.data) {
@@ -86,6 +86,15 @@ export function generateSubAssets(incomingSpecs: PkgSpec[]): PkgSpec[] {
           ];
           prop.data.funcUniqueId = getSiFuncId("si:normalizeToArray");
           schemaVariant.sockets.push(propInputSocket);
+        }
+
+        // reuse existing assets so we don't recreate the same asset over and
+        // over again
+        const maybeExistingSubAsset = newSpecsByHash[hash];
+        if (maybeExistingSubAsset) {
+          logger.debug(`Existing subasset found: ${name}`);
+          maybeExistingSubAsset.names.push(name);
+          continue;
         }
 
         // output the domain of this new spec

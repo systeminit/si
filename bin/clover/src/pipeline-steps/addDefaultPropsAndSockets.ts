@@ -5,8 +5,7 @@ import {
   createScalarProp,
   isExpandedPropSpec,
 } from "../spec/props.ts";
-import { getSiFuncId } from "../spec/siFuncs.ts";
-import { attrFuncInputSpecFromSocket, createSocket } from "../spec/sockets.ts";
+import { createInputSocketFromProp } from "../spec/sockets.ts";
 
 export function addDefaultPropsAndSockets(specs: PkgSpec[]): PkgSpec[] {
   const newSpecs = [] as PkgSpec[];
@@ -82,18 +81,13 @@ export function addDefaultPropsAndSockets(specs: PkgSpec[]): PkgSpec[] {
 
     // Create Region prop and socket
     {
-      const regionSocket = createSocket("Region", "input", "one");
-      schemaVariant.sockets.push(regionSocket);
-
       const regionProp = createScalarProp(
         "Region",
         "string",
         extraProp.metadata.propPath,
       );
-      regionProp.data.inputs = [
-        attrFuncInputSpecFromSocket(regionSocket),
-      ];
-      regionProp.data.funcUniqueId = getSiFuncId("si:identity");
+
+      schemaVariant.sockets.push(createInputSocketFromProp(regionProp, "one"));
       extraProp.entries.push(regionProp);
     }
 
@@ -113,9 +107,6 @@ export function addDefaultPropsAndSockets(specs: PkgSpec[]): PkgSpec[] {
 
     // Create Credential prop and socket under root/secrets
     {
-      const credSocket = createSocket("AWS Credential", "input", "one");
-      schemaVariant.sockets.push(credSocket);
-
       const credProp = createScalarProp(
         "AWS Credential",
         "string",
@@ -126,10 +117,9 @@ export function addDefaultPropsAndSockets(specs: PkgSpec[]): PkgSpec[] {
         "label": "secretKind",
         "value": "AWS Credential",
       }];
-      credProp.data.inputs = [
-        attrFuncInputSpecFromSocket(credSocket),
-      ];
-      credProp.data.funcUniqueId = getSiFuncId("si:identity");
+
+      schemaVariant.sockets.push(createInputSocketFromProp(credProp, "one"));
+
       if (schemaVariant.secrets.kind !== "object") {
         console.log(
           `Could not generate default props and sockets for ${spec.name}: secrets is not object`,
