@@ -135,7 +135,7 @@ fn new_virtual_requirement_rule(
             // the actions modified (in both), etc.
             Ok(None)
         }
-        EntityKind::CategorySchema => Ok(Some(ApprovalRequirementRule {
+        EntityKind::Schema => Ok(Some(ApprovalRequirementRule {
             entity_id: change.entity_id,
             entity_kind: change.entity_kind,
             minimum: 1,

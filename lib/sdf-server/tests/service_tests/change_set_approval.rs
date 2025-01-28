@@ -57,7 +57,7 @@ async fn single_user_relation_existence_and_checksum_validility_permutations(
     };
 
     // Scenario 1: create the variant without the relation.
-    let (schema_variant_entity_id, schema_category_entity_id, first_approval_id) = {
+    let (schema_variant_entity_id, schema_entity_id, first_approval_id) = {
         let schema = create_schema(ctx).await?;
         let (schema_variant, _) = SchemaVariant::new(
             ctx,
@@ -74,13 +74,8 @@ async fn single_user_relation_existence_and_checksum_validility_permutations(
         )
         .await?;
         let schema_variant_entity_id: EntityId = Ulid::from(schema_variant.id()).into();
+        let schema_entity_id: EntityId = Ulid::from(schema.id()).into();
         ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
-
-        let schema_category_entity_id = ctx
-            .workspace_snapshot()?
-            .get_category_node_or_err(None, CategoryNodeKind::Schema)
-            .await?
-            .into();
 
         let approving_ids_with_hashes =
             dal_wrapper::change_set::determine_approving_ids_with_hashes(ctx, &mut spicedb_client)
@@ -112,8 +107,8 @@ async fn single_user_relation_existence_and_checksum_validility_permutations(
         assert_eq!(
             vec![
                 si_frontend_types::ChangeSetApprovalRequirement {
-                    entity_id: schema_category_entity_id,
-                    entity_kind: EntityKind::CategorySchema,
+                    entity_id: schema_entity_id,
+                    entity_kind: EntityKind::Schema,
                     required_count: 1,
                     is_satisfied: false,
                     applicable_approval_ids: Vec::new(),
@@ -141,7 +136,7 @@ async fn single_user_relation_existence_and_checksum_validility_permutations(
 
         (
             schema_variant_entity_id,
-            schema_category_entity_id,
+            schema_entity_id,
             first_approval.id(),
         )
     };
@@ -174,8 +169,8 @@ async fn single_user_relation_existence_and_checksum_validility_permutations(
         assert_eq!(
             vec![
                 si_frontend_types::ChangeSetApprovalRequirement {
-                    entity_id: schema_category_entity_id,
-                    entity_kind: EntityKind::CategorySchema,
+                    entity_id: schema_entity_id,
+                    entity_kind: EntityKind::Schema,
                     required_count: 1,
                     is_satisfied: false,
                     applicable_approval_ids: vec![first_approval_id],
@@ -246,8 +241,8 @@ async fn single_user_relation_existence_and_checksum_validility_permutations(
         assert_eq!(
             vec![
                 si_frontend_types::ChangeSetApprovalRequirement {
-                    entity_id: schema_category_entity_id,
-                    entity_kind: EntityKind::CategorySchema,
+                    entity_id: schema_entity_id,
+                    entity_kind: EntityKind::Schema,
                     required_count: 1,
                     is_satisfied: true,
                     applicable_approval_ids: vec![first_approval_id, second_approval.id()],
@@ -310,8 +305,8 @@ async fn single_user_relation_existence_and_checksum_validility_permutations(
         assert_eq!(
             vec![
                 si_frontend_types::ChangeSetApprovalRequirement {
-                    entity_id: schema_category_entity_id,
-                    entity_kind: EntityKind::CategorySchema,
+                    entity_id: schema_entity_id,
+                    entity_kind: EntityKind::Schema,
                     required_count: 1,
                     is_satisfied: false,
                     applicable_approval_ids: Vec::new(),
@@ -371,8 +366,8 @@ async fn single_user_relation_existence_and_checksum_validility_permutations(
         assert_eq!(
             vec![
                 si_frontend_types::ChangeSetApprovalRequirement {
-                    entity_id: schema_category_entity_id,
-                    entity_kind: EntityKind::CategorySchema,
+                    entity_id: schema_entity_id,
+                    entity_kind: EntityKind::Schema,
                     required_count: 1,
                     is_satisfied: true,
                     applicable_approval_ids: vec![first_approval_id, second_approval_id],
