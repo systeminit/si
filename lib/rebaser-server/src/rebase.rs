@@ -2,8 +2,8 @@ use audit_logs_stream::AuditLogsStreamError;
 use dal::{
     change_set::{ChangeSet, ChangeSetError, ChangeSetId},
     workspace_snapshot::WorkspaceSnapshotError,
-    DalContext, TransactionsError, Workspace, WorkspaceError, WorkspacePk, WorkspaceSnapshot,
-    WsEvent, WsEventError,
+    ChangeSetStatus, DalContext, TransactionsError, Workspace, WorkspaceError, WorkspacePk,
+    WorkspaceSnapshot, WsEvent, WsEventError,
 };
 use pending_events::PendingEventsError;
 use rebaser_core::api_types::{
@@ -73,6 +73,15 @@ pub async fn perform_rebase(
 
     // Gather everything we need to detect conflicts and updates from the inbound message.
     let mut to_rebase_change_set = ChangeSet::get_by_id(ctx, request.change_set_id).await?;
+
+    // if the change set has been abandoned, do not do this work
+    if to_rebase_change_set.status == ChangeSetStatus::Abandoned {
+        warn!("Attempted to rebase for abandoned change set. Early returning");
+        return Ok(RebaseStatus::Error {
+            message: "Attempted to rebase for an abandoned change set.".to_string(),
+        });
+    }
+
     let to_rebase_workspace_snapshot_address = to_rebase_change_set.workspace_snapshot_address;
     debug!("before snapshot fetch and parse: {:?}", start.elapsed());
     let to_rebase_workspace_snapshot =

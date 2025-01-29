@@ -29,8 +29,9 @@ use crate::{
     prop::PropError,
     status::{StatusMessageState, StatusUpdate, StatusUpdateError},
     workspace_snapshot::DependentValueRoot,
-    AccessBuilder, AttributeValue, AttributeValueId, ComponentError, ComponentId, DalContext, Func,
-    TransactionsError, Visibility, WorkspacePk, WorkspaceSnapshotError, WsEvent, WsEventError,
+    AccessBuilder, AttributeValue, AttributeValueId, ChangeSet, ChangeSetError, ChangeSetStatus,
+    ComponentError, ComponentId, DalContext, Func, TransactionsError, Visibility, WorkspacePk,
+    WorkspaceSnapshotError, WsEvent, WsEventError,
 };
 
 #[remain::sorted]
@@ -38,6 +39,8 @@ use crate::{
 pub enum DependentValueUpdateError {
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] AttributeValueError),
+    #[error("change set error: {0}")]
+    ChangeSet(#[from] ChangeSetError),
     #[error("component error: {0}")]
     Component(#[from] ComponentError),
     #[error("dependent values update audit log error: {0}")]
@@ -131,6 +134,13 @@ impl JobConsumer for DependentValuesUpdate {
                 .unwrap_or(WorkspacePk::NONE)
                 .to_string(),
         );
+
+        let change_set = ChangeSet::get_by_id(ctx, ctx.change_set_id()).await?;
+
+        if change_set.status == ChangeSetStatus::Abandoned {
+            info!("DVU enqueued for abandoned change set. Returning early");
+            return Ok(JobCompletionState::Done);
+        }
 
         Ok(self.inner_run(ctx).await?)
     }

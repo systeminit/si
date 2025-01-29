@@ -15,7 +15,6 @@ use crate::billing_publish::BillingPublishError;
 use crate::diagram::DiagramError;
 use crate::prop::PropError;
 use crate::validation::ValidationError;
-use crate::FuncError;
 use crate::{
     action::prototype::ActionPrototypeError, action::ActionError,
     attribute::value::AttributeValueError,
@@ -24,6 +23,7 @@ use crate::{
     ActionPrototypeId, ComponentError, ComponentId, DalContext, DalContextBuilder,
     StandardModelError, TransactionsError, Visibility, WorkspaceSnapshotError, WsEventError,
 };
+use crate::{ChangeSetError, FuncError};
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -43,6 +43,8 @@ pub enum JobConsumerError {
     BillingPublish(#[from] BillingPublishError),
     #[error("Error blocking on job: {0}")]
     BlockingJob(#[from] BlockingJobError),
+    #[error("change set error: {0}")]
+    ChangeSet(#[from] ChangeSetError),
     #[error("component error: {0}")]
     Component(#[from] ComponentError),
     #[error("component {0} is destroyed")]
