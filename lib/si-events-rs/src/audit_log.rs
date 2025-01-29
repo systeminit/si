@@ -34,7 +34,7 @@ impl AuditLog {
             entity_name,
             timestamp: Utc::now().to_rfc3339(),
             change_set_id: Some(change_set_id),
-            authentication_method,
+            authentication_method: Some(authentication_method),
         }))
     }
 }

@@ -20,7 +20,7 @@ pub struct AuditLogV1 {
     pub entity_name: String,
     pub timestamp: String,
     pub change_set_id: Option<ChangeSetId>,
-    pub authentication_method: AuthenticationMethod,
+    pub authentication_method: Option<AuthenticationMethod>,
 }
 
 #[remain::sorted]

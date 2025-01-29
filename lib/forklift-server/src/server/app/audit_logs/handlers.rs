@@ -7,7 +7,11 @@ use naxum::{
     Json,
 };
 use si_data_nats::Subject;
-use si_events::{audit_log::AuditLog, WorkspacePk};
+use si_events::{
+    audit_log::AuditLog,
+    authentication_method::{AuthenticationMethodRoleV1, AuthenticationMethodV1},
+    WorkspacePk,
+};
 use telemetry::prelude::*;
 use thiserror::Error;
 
@@ -54,7 +58,13 @@ pub(crate) async fn default(
                 inner.change_set_id,
                 inner.actor,
                 Some(inner.entity_name),
-                inner.authentication_method,
+                inner.authentication_method.unwrap_or(match inner.actor {
+                    si_events::Actor::System => AuthenticationMethodV1::System,
+                    si_events::Actor::User(_) => AuthenticationMethodV1::Jwt {
+                        role: AuthenticationMethodRoleV1::Web,
+                        token_id: None,
+                    },
+                }),
             )
             .await?;
         }
