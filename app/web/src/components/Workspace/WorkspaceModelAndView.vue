@@ -214,8 +214,8 @@ onBeforeMount(async () => {
     assetStore.LOAD_SCHEMA_VARIANT_LIST(),
   ]);
   let viewId;
-  if (routeStore.currentRoute?.params.viewId)
-    viewId = routeStore.currentRoute?.params.viewId as string;
+  if (routeStore.currentRoute?.params?.viewId)
+    viewId = routeStore.currentRoute.params.viewId as string;
 
   await Promise.all([
     viewStore.FETCH_VIEW(viewId), // draws the minimal diagram, later gets all geometry and component

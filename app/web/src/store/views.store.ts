@@ -798,7 +798,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                 route?.name === "workspace-compose-view"
               ) {
                 const params = { ...route.params };
-                delete params.viewId;
+                if ("viewId" in params) delete params.viewId;
                 routerStore.push(changeSetId, {
                   name: "workspace-compose",
                   params,
