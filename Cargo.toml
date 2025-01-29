@@ -144,6 +144,7 @@ hyperlocal = { version = "0.8.0", default-features = false, features = [
 ] } # todo: using the very latest of hyper client 1.x, we _may_ be able to phase this crate
 iftree = "1.0.5"
 indexmap = { version = "2.7.0", features = ["serde", "std"] }
+indicatif = "0.17.11"
 indoc = "2.0.5"
 itertools = "0.13.0"
 jwt-simple = { version = "0.12.11", default-features = false, features = [

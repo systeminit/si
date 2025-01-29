@@ -10,6 +10,7 @@ rust_binary(
         "//lib/si-pkg:si-pkg",
         "//third-party/rust:clap",
         "//third-party/rust:color-eyre",
+        "//third-party/rust:indicatif",
         "//third-party/rust:nix",
         "//third-party/rust:remain",
         "//third-party/rust:serde_json",

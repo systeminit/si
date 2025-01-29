@@ -1,6 +1,9 @@
 use clap::CommandFactory;
+use indicatif::{ProgressBar, ProgressStyle};
+use std::fs;
 use std::path::{Path, PathBuf};
-use tokio::fs;
+use std::time::Duration;
+use tokio::time::sleep;
 use ulid::Ulid;
 
 use clap::{Parser, Subcommand};
@@ -75,7 +78,14 @@ async fn main() -> Result<()> {
         Some(Commands::UploadAllSpecs(args)) => {
             upload_all_pkg_specs(client, args.target_dir).await?
         }
-        Some(Commands::UploadSpec(args)) => upload_pkg_spec(client, args.target).await?,
+        Some(Commands::UploadSpec(args)) => {
+            upload_pkg_spec(
+                client.clone(),
+                args.target,
+                &list_specs(client.clone()).await?,
+            )
+            .await?
+        }
         Some(Commands::WriteAllSpecs(args)) => {
             write_all_specs(client, args.out.to_path_buf()).await?
         }
@@ -102,16 +112,26 @@ async fn write_spec(client: ModuleIndexClient, spec_name: String, out: PathBuf) 
         .cloned()
         .unwrap_or_else(|| panic!("Unable to find spec with name: {}", spec_name));
 
-    download_and_write_spec(client.clone(), module.id, out.clone()).await?;
+    let pb = ProgressBar::new(1);
+    setup_progress_bar(&pb);
+
+    download_and_write_spec(client.clone(), module.id, out.clone(), &pb).await?;
+    pb.finish_with_message("Download complete");
 
     Ok(())
 }
 
 async fn write_all_specs(client: ModuleIndexClient, out: PathBuf) -> Result<()> {
-    for module in list_specs(client.clone()).await? {
-        download_and_write_spec(client.clone(), module.id, out.clone()).await?;
+    let specs = list_specs(client.clone()).await?;
+
+    let pb = ProgressBar::new(specs.len() as u64);
+    setup_progress_bar(&pb);
+
+    for module in specs {
+        download_and_write_spec(client.clone(), module.id, out.clone(), &pb).await?;
     }
 
+    pb.finish_with_message("✨ All downloads complete!");
     Ok(())
 }
 
@@ -133,6 +153,7 @@ async fn download_and_write_spec(
     client: ModuleIndexClient,
     module_id: String,
     out: PathBuf,
+    pb: &ProgressBar,
 ) -> Result<()> {
     let pkg = SiPkg::load_from_bytes(
         &client
@@ -141,52 +162,108 @@ async fn download_and_write_spec(
     )?;
     let spec = pkg.to_spec().await?;
     let spec_name = format!("{}.json", spec.name);
-    fs::create_dir_all(&out).await?;
-    println!("Writing {spec_name} to disk");
+    fs::create_dir_all(&out)?;
+    pb.set_message(format!("Downloading: {}", spec_name));
     fs::write(
         Path::new(&out).join(spec_name),
         serde_json::to_string_pretty(&spec)?,
-    )
-    .await?;
+    )?;
+    pb.inc(1);
     Ok(())
 }
 
-async fn upload_pkg_spec(client: ModuleIndexClient, spec: PathBuf) -> Result<()> {
-    read_json_and_upload(client, spec).await?;
+async fn upload_pkg_spec(
+    client: ModuleIndexClient,
+    spec: PathBuf,
+    existing_modules: &Vec<LatestModuleResponse>,
+) -> Result<()> {
+    let pkg = json_to_pkg(spec)?;
+    let schema = pkg.schemas()?[0].clone();
+    let pkg_schema_id = schema.unique_id().unwrap();
+
+    // reject existing modules with this schema id
+    for module in existing_modules {
+        if let Some(schema_id) = &module.schema_id {
+            if schema_id == pkg_schema_id {
+                client
+                    .reject_module(
+                        Ulid::from_string(&module.id)?,
+                        CLOVER_DEFAULT_CREATOR.to_string(),
+                    )
+                    .await?;
+            }
+        }
+    }
+
+    // upload the module
+    let module_id = upload_module(client.clone(), pkg).await?;
+
+    // promote the newly update module as a built-in
+    client
+        .promote_to_builtin(module_id, CLOVER_DEFAULT_CREATOR.to_string())
+        .await?;
 
     Ok(())
 }
 
 async fn upload_all_pkg_specs(client: ModuleIndexClient, target_dir: PathBuf) -> Result<()> {
-    let mut specs = fs::read_dir(&target_dir).await?;
-    while let Some(spec) = specs.next_entry().await? {
-        let path = spec.path();
-        if path.is_file() && path.extension().is_some_and(|ext| ext == "json") {
-            read_json_and_upload(client.clone(), path).await?;
+    let specs: Vec<_> = fs::read_dir(&target_dir)?
+        .filter_map(|entry| entry.ok())
+        .filter(|entry| {
+            entry.path().is_file() && entry.path().extension().is_some_and(|ext| ext == "json")
+        })
+        .collect();
+
+    let pb = ProgressBar::new(specs.len() as u64);
+    setup_progress_bar(&pb);
+
+    let existing_modules = list_specs(client.clone()).await?;
+    for (index, spec) in specs.iter().enumerate() {
+        pb.set_message(format!("Uploading: {}", spec.file_name().to_string_lossy()));
+        upload_pkg_spec(client.clone(), spec.path(), &existing_modules).await?;
+
+        pb.inc(1);
+        // Every 100th file, pause for S3 throttling
+        if (index + 1) % 100 == 0 && index + 1 < specs.len() {
+            pb.set_message("⏳ Rate limit cooling down...".to_string());
+            sleep(Duration::from_secs(5)).await;
         }
     }
 
+    pb.finish_with_message("✨ All uploads complete!");
     Ok(())
 }
 
-async fn read_json_and_upload(client: ModuleIndexClient, spec: PathBuf) -> Result<()> {
-    let buf = fs::read_to_string(&spec).await?;
+fn json_to_pkg(spec: PathBuf) -> Result<SiPkg> {
+    let buf = fs::read_to_string(&spec)?;
     let spec: PkgSpec = serde_json::from_str(&buf)?;
-    let pkg = SiPkg::load_from_spec(spec)?;
+    Ok(SiPkg::load_from_spec(spec)?)
+}
+
+async fn upload_module(client: ModuleIndexClient, pkg: SiPkg) -> Result<Ulid> {
+    let schema = pkg.schemas()?[0].clone();
     let metadata = pkg.metadata()?;
 
-    println!("Uploading {}", metadata.name());
-    client
+    let module = client
         .upload_module(
             metadata.name(),
             metadata.version(),
             Some(metadata.hash().to_string()),
-            None,
+            schema.unique_id().map(String::from),
             pkg.write_to_bytes()?,
-            None,
+            schema.variants()?[0].unique_id().map(String::from),
             Some(metadata.version().to_string()),
         )
         .await?;
 
-    Ok(())
+    Ok(Ulid::from_string(&module.id)?)
+}
+
+fn setup_progress_bar(pb: &ProgressBar) {
+    pb.set_style(
+        ProgressStyle::default_bar()
+            .template("{spinner:.green} [{bar:40.cyan/blue}] {pos}/{len} ({eta})\n{msg}")
+            .expect("could not build progress bar")
+            .progress_chars("▸▹▹"),
+    );
 }
