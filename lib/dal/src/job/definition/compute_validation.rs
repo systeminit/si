@@ -14,6 +14,7 @@ use crate::{
     job::producer::{JobProducer, JobProducerResult},
     AccessBuilder, AttributeValue, AttributeValueId, DalContext, Visibility,
 };
+use crate::{ChangeSet, ChangeSetStatus};
 
 #[derive(Debug, Deserialize, Serialize)]
 struct ComputeValidationArgs {
@@ -84,6 +85,13 @@ impl JobConsumer for ComputeValidation {
         )
     )]
     async fn run(&self, ctx: &mut DalContext) -> JobConsumerResult<JobCompletionState> {
+        let change_set = ChangeSet::get_by_id(ctx, ctx.change_set_id()).await?;
+
+        if change_set.status == ChangeSetStatus::Abandoned {
+            info!("Validation enqueued for abandoned change set. Returning early");
+            return Ok(JobCompletionState::Done);
+        }
+
         let workspace_snapshot = ctx.workspace_snapshot()?;
         metric!(counter.compute_validation_concurrency_count = 1);
         for &av_id in &self.attribute_values {

@@ -1,6 +1,6 @@
 use std::{result, sync::Arc};
 
-use dal::DalContextBuilder;
+use dal::{ChangeSet, ChangeSetError, ChangeSetStatus, DalContextBuilder};
 use si_events::{ChangeSetId, WorkspacePk};
 use telemetry::prelude::*;
 use telemetry_utils::metric;
@@ -13,6 +13,8 @@ use crate::{ServerMetadata, Shutdown};
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub(crate) enum SerialDvuTaskError {
+    #[error("change set error: {0}")]
+    ChangeSet(#[from] ChangeSetError),
     /// Error when using a DAL context
     #[error("dal context transaction error: {0}")]
     DalContext(#[from] dal::TransactionsError),
@@ -142,6 +144,11 @@ impl SerialDvuTask {
         let ctx = builder
             .build_for_change_set_as_system(self.workspace_id, self.change_set_id, None)
             .await?;
+        let change_set = ChangeSet::get_by_id(&ctx, ctx.change_set_id()).await?;
+        if change_set.status == ChangeSetStatus::Abandoned {
+            warn!("Trying to enqueue DVU for abandoned change set. Returning early.");
+            return Ok(());
+        }
 
         ctx.enqueue_dependent_values_update().await?;
         ctx.blocking_commit_no_rebase().await?;
@@ -155,6 +162,12 @@ impl SerialDvuTask {
         let ctx = builder
             .build_for_change_set_as_system(self.workspace_id, self.change_set_id, None)
             .await?;
+        let change_set = ChangeSet::get_by_id(&ctx, ctx.change_set_id()).await?;
+
+        if change_set.status == ChangeSetStatus::Abandoned {
+            warn!("Trying to enqueue DVU for abandoned change set. Returning early.");
+            return Ok(());
+        }
 
         if ctx
             .workspace_snapshot()?
