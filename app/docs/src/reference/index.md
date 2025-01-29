@@ -9,6 +9,8 @@ of System Initiative.
   happened in your workspace
 - [Authorization Roles](./authorization-roles.md) - a guide to the roles
   available for users in a workspace
+- [GitHub Action Reference](./github-action.md) - the reference documentation
+  for the System Initiative GitHub Action
 - [Vocabulary](./vocabulary.md) - a comprehensive guide to the terminology we
   use.
 - [TypeScript Functions API](./typescript/asset_builder/README.md) - the
