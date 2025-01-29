@@ -74,16 +74,16 @@ pub enum InodeEntryData {
         change_set_id: ChangeSetId,
         name: String,
     },
-    ChangeSetFunc {
+    ChangeSetFuncDir {
         func_id: FuncId,
         change_set_id: ChangeSetId,
         size: u64,
     },
-    ChangeSetFuncKind {
+    ChangeSetFuncKindDir {
         kind: FuncKind,
         change_set_id: ChangeSetId,
     },
-    ChangeSetFuncs {
+    ChangeSetFuncsDir {
         change_set_id: ChangeSetId,
     },
     ChangeSets,
@@ -92,12 +92,6 @@ pub enum InodeEntryData {
         func_id: FuncId,
     },
     InstalledSchemaMarker,
-    Schema {
-        schema_id: SchemaId,
-        change_set_id: ChangeSetId,
-        name: String,
-        installed: bool,
-    },
     SchemaAttrsJson {
         schema_id: SchemaId,
         change_set_id: ChangeSetId,
@@ -107,14 +101,11 @@ pub enum InodeEntryData {
         schema_id: SchemaId,
         change_set_id: ChangeSetId,
     },
-    SchemaFunc {
-        change_set_id: ChangeSetId,
-        func_id: FuncId,
-        kind: FuncKind,
+    SchemaDir {
         schema_id: SchemaId,
-        size: u64,
-        bindings_size: u64,
-        unlocked: bool,
+        change_set_id: ChangeSetId,
+        name: String,
+        installed: bool,
     },
     SchemaFuncBindings {
         change_set_id: ChangeSetId,
@@ -130,7 +121,16 @@ pub enum InodeEntryData {
         kind: FuncKind,
         buf: Arc<Cursor<Vec<u8>>>,
     },
-    SchemaFuncKind {
+    SchemaFuncDir {
+        change_set_id: ChangeSetId,
+        func_id: FuncId,
+        kind: FuncKind,
+        schema_id: SchemaId,
+        size: u64,
+        bindings_size: u64,
+        unlocked: bool,
+    },
+    SchemaFuncKindDir {
         kind: FuncKind,
         schema_id: SchemaId,
         change_set_id: ChangeSetId,
@@ -151,7 +151,7 @@ pub enum InodeEntryData {
         unlocked_bindings_size: u64,
         pending: bool,
     },
-    Schemas {
+    SchemasDir {
         change_set_id: ChangeSetId,
     },
     WorkspaceRoot {
