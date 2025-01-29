@@ -3411,6 +3411,46 @@ cargo.rust_library(
 )
 
 http_archive(
+    name = "console-0.15.10.crate",
+    sha256 = "ea3c6ecd8059b57859df5c69830340ed3c41d30e3da0c1cbed90a96ac853041b",
+    strip_prefix = "console-0.15.10",
+    urls = ["https://static.crates.io/crates/console/0.15.10/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "console-0.15.10",
+    srcs = [":console-0.15.10.crate"],
+    crate = "console",
+    crate_root = "console-0.15.10.crate/src/lib.rs",
+    edition = "2018",
+    features = [
+        "ansi-parsing",
+        "unicode-width",
+    ],
+    platform = {
+        "windows-gnu": dict(
+            deps = [
+                ":encode_unicode-1.0.0",
+                ":windows-sys-0.59.0",
+            ],
+        ),
+        "windows-msvc": dict(
+            deps = [
+                ":encode_unicode-1.0.0",
+                ":windows-sys-0.59.0",
+            ],
+        ),
+    },
+    visibility = [],
+    deps = [
+        ":libc-0.2.169",
+        ":once_cell-1.20.2",
+        ":unicode-width-0.2.0",
+    ],
+)
+
+http_archive(
     name = "const-oid-0.9.6.crate",
     sha256 = "c2459377285ad874054d797f3ccebf984978aa39129f6eafde5cdc8315b612f8",
     strip_prefix = "const-oid-0.9.6",
@@ -5143,6 +5183,27 @@ cargo.rust_library(
     crate_root = "embedded-io-0.6.1.crate/src/lib.rs",
     edition = "2021",
     features = ["alloc"],
+    visibility = [],
+)
+
+http_archive(
+    name = "encode_unicode-1.0.0.crate",
+    sha256 = "34aa73646ffb006b8f5147f3dc182bd4bcb190227ce861fc4a4844bf8e3cb2c0",
+    strip_prefix = "encode_unicode-1.0.0",
+    urls = ["https://static.crates.io/crates/encode_unicode/1.0.0/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "encode_unicode-1.0.0",
+    srcs = [":encode_unicode-1.0.0.crate"],
+    crate = "encode_unicode",
+    crate_root = "encode_unicode-1.0.0.crate/src/lib.rs",
+    edition = "2021",
+    features = [
+        "default",
+        "std",
+    ],
     visibility = [],
 )
 
@@ -8103,6 +8164,39 @@ cargo.rust_library(
 )
 
 alias(
+    name = "indicatif",
+    actual = ":indicatif-0.17.11",
+    visibility = ["PUBLIC"],
+)
+
+http_archive(
+    name = "indicatif-0.17.11.crate",
+    sha256 = "183b3088984b400f4cfac3620d5e076c84da5364016b4f49473de574b2586235",
+    strip_prefix = "indicatif-0.17.11",
+    urls = ["https://static.crates.io/crates/indicatif/0.17.11/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "indicatif-0.17.11",
+    srcs = [":indicatif-0.17.11.crate"],
+    crate = "indicatif",
+    crate_root = "indicatif-0.17.11.crate/src/lib.rs",
+    edition = "2021",
+    features = [
+        "default",
+        "unicode-width",
+    ],
+    visibility = [],
+    deps = [
+        ":console-0.15.10",
+        ":number_prefix-0.4.0",
+        ":portable-atomic-1.10.0",
+        ":unicode-width-0.2.0",
+    ],
+)
+
+alias(
     name = "indoc",
     actual = ":indoc-2.0.5",
     visibility = ["PUBLIC"],
@@ -10546,6 +10640,27 @@ cargo.rust_library(
             deps = [":libc-0.2.169"],
         ),
     },
+    visibility = [],
+)
+
+http_archive(
+    name = "number_prefix-0.4.0.crate",
+    sha256 = "830b246a0e5f20af87141b25c173cd1b609bd7779a4617d6ec582abaf90870f3",
+    strip_prefix = "number_prefix-0.4.0",
+    urls = ["https://static.crates.io/crates/number_prefix/0.4.0/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "number_prefix-0.4.0",
+    srcs = [":number_prefix-0.4.0.crate"],
+    crate = "number_prefix",
+    crate_root = "number_prefix-0.4.0.crate/src/lib.rs",
+    edition = "2015",
+    features = [
+        "default",
+        "std",
+    ],
     visibility = [],
 )
 
@@ -17102,6 +17217,7 @@ cargo.rust_binary(
         ":hyperlocal-0.8.0",
         ":iftree-1.0.6",
         ":indexmap-2.7.0",
+        ":indicatif-0.17.11",
         ":indoc-2.0.5",
         ":itertools-0.13.0",
         ":jwt-simple-0.12.11",
@@ -19044,6 +19160,27 @@ cargo.rust_library(
 )
 
 http_archive(
+    name = "unicode-width-0.2.0.crate",
+    sha256 = "1fc81956842c57dac11422a97c3b8195a1ff727f06e85c84ed2e8aa277c9a0fd",
+    strip_prefix = "unicode-width-0.2.0",
+    urls = ["https://static.crates.io/crates/unicode-width/0.2.0/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "unicode-width-0.2.0",
+    srcs = [":unicode-width-0.2.0.crate"],
+    crate = "unicode_width",
+    crate_root = "unicode-width-0.2.0.crate/src/lib.rs",
+    edition = "2021",
+    features = [
+        "cjk",
+        "default",
+    ],
+    visibility = [],
+)
+
+http_archive(
     name = "unicode-xid-0.2.6.crate",
     sha256 = "ebc1c04c71510c7f702b52b7c350734c9ff1295c464a03335b00bb84fc54f853",
     strip_prefix = "unicode-xid-0.2.6",
@@ -19993,6 +20130,8 @@ cargo.rust_library(
         "Win32_System_SystemInformation",
         "Win32_System_Threading",
         "Win32_UI",
+        "Win32_UI_Input",
+        "Win32_UI_Input_KeyboardAndMouse",
         "Win32_UI_Shell",
         "default",
     ],

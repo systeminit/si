@@ -79,6 +79,7 @@ hyperlocal = { version = "0.8.0", default-features = false, features = [
     "client",
 ] } # todo: using the very latest of hyper client 1.x, we _may_ be able to phase this crate
 iftree = "1.0.5"
+indicatif = "0.17.11"
 indexmap = { version = "2.7.0", features = ["serde", "std"] }
 indoc = "2.0.5"
 itertools = "0.13.0"
