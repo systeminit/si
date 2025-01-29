@@ -748,6 +748,17 @@ async fn override_values_set_by_sockets(ctx: &DalContext) {
         .expect("could not get attribute value");
     let view = domain.view(ctx).await.expect("could not get view");
     assert!(view.is_some());
+
+    let one_av_id = component
+        .attribute_value_for_prop(ctx, &["root", "domain", "one"])
+        .await
+        .expect("get av for prop");
+
+    assert!(
+        !AttributeValue::is_set_by_dependent_function(ctx, one_av_id)
+            .await
+            .expect("check if dependent func")
+    );
 }
 
 #[test]
