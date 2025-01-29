@@ -11,11 +11,11 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # e2e-validation:
-  #   uses: ./.github/workflows/e2e-validation.yml
-  #   with:
-  #     environment: tools
-  #   secrets: inherit
+  e2e-validation:
+    uses: ./.github/workflows/e2e-validation.yml
+    with:
+      environment: tools
+    secrets: inherit
   api-test:
     uses: ./.github/workflows/run-api-test.yml
     with:

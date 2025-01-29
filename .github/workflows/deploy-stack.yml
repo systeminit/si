@@ -114,6 +114,7 @@ jobs:
     secrets: inherit
 
   sleep-between:
+    if: ${{ inputs.environment != 'tools' }}
     name: Wait for 10 minutes
     needs: upgrade-and-migrate-sdf
     runs-on: ubuntu-latest
@@ -121,16 +122,18 @@ jobs:
       - name: Sleep for 10 minutes
         run: sleep 600
 
-  # e2e-validation:
-  #   needs:
-  #     - upgrade-web
-  #     - sleep-between
-  #   uses: ./.github/workflows/e2e-validation.yml
-  #   with:
-  #     environment: ${{ inputs.environment }}
-  #   secrets: inherit
+  e2e-validation:
+    if: ${{ inputs.environment != 'tools' }}
+    needs:
+      - upgrade-web
+      - sleep-between
+    uses: ./.github/workflows/e2e-validation.yml
+    with:
+      environment: ${{ inputs.environment }}
+    secrets: inherit
 
   api-test:
+    if: ${{ inputs.environment != 'tools' }}
     needs:
       - upgrade-web
       - sleep-between
