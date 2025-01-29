@@ -153,7 +153,7 @@ impl GetNatsSubjectFor for ValidationRequest {
 pub enum VeritechRequest {
     ActionRun(ActionRunRequest),
     KillExecution(KillExecutionRequest),
-    Management(ManagementRequest),
+    Management(Box<ManagementRequest>),
     Resolver(ResolverFunctionRequest), // Resolvers are JsAttribute functions
     SchemaVariantDefinition(SchemaVariantDefinitionRequest),
     Validation(ValidationRequest),
@@ -180,7 +180,7 @@ impl VeritechRequest {
                 Self::KillExecution(serde_json::from_slice(payload)?)
             }
             NATS_MANAGEMENT_DEFAULT_SUBJECT_SUFFIX => {
-                Self::Management(serde_json::from_slice(payload)?)
+                Self::Management(Box::new(serde_json::from_slice(payload)?))
             }
             NATS_RESOLVER_FUNCTION_DEFAULT_SUBJECT_SUFFIX => {
                 Self::Resolver(serde_json::from_slice(payload)?)

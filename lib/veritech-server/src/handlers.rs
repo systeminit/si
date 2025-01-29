@@ -138,7 +138,7 @@ pub async fn process_request(
             dispatch_request(state, request, reply_subject).await?
         }
         VeritechRequest::Management(request) => {
-            dispatch_request(state, request, reply_subject).await?
+            dispatch_request(state, *request, reply_subject).await?
         }
         VeritechRequest::Resolver(request) => {
             dispatch_request(state, request, reply_subject).await?

@@ -4,8 +4,8 @@ use si_frontend_types::RawGeometry;
 use si_id::{ComponentId, SchemaId, ViewId};
 
 use crate::management::{
-    ConnectionIdentifier, ManagementConnection, ManagementCreateGeometry,
-    ManagementCreateOperation, ManagementGeometry, IGNORE_PATHS,
+    ManagementConnection, ManagementCreateGeometry, ManagementCreateOperation, ManagementGeometry,
+    SocketRef, IGNORE_PATHS,
 };
 use crate::prop::PropPath;
 use crate::{AttributeValue, Component, DalContext, InputSocket, OutputSocket, Prop, PropKind};
@@ -146,9 +146,9 @@ pub async fn generate_template(
                 if let Some(to_placeholder) =
                     placeholders_by_component_id.get(&conn.to_component_id)
                 {
-                    connections.push(ManagementConnection {
+                    connections.push(ManagementConnection::Output {
                         from: conn.from_socket_name,
-                        to: ConnectionIdentifier {
+                        to: SocketRef {
                             component: to_placeholder.to_owned(),
                             socket: conn.to_socket_name,
                         },

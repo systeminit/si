@@ -32,7 +32,7 @@ pub use si_crypto::SensitiveStrings;
 pub use action_run::{ActionRunRequest, ActionRunResultSuccess, ResourceStatus};
 pub use before::BeforeFunction;
 pub use canonical_command::{CanonicalCommand, CanonicalCommandError};
-pub use component_view::{ComponentKind, ComponentView, ComponentViewWithGeometry};
+pub use component_view::{ComponentKind, ComponentView, ComponentViewWithGeometry, ThisComponent};
 pub use kill_execution::KillExecutionRequest;
 pub use liveness::{LivenessStatus, LivenessStatusParseError};
 pub use management::{ManagementFuncStatus, ManagementRequest, ManagementResultSuccess};

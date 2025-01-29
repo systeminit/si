@@ -5,7 +5,11 @@ use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 
 use crate::{
-    attribute::{prototype::argument::AttributePrototypeArgument, value::ValueIsFor},
+    attribute::{
+        prototype::argument::{value_source::ValueSource, AttributePrototypeArgument},
+        value::ValueIsFor,
+    },
+    workspace_snapshot::node_weight::ArgumentTargets,
     AttributePrototype, AttributeValue, AttributeValueId, Component, ComponentId, DalContext,
     InputSocketId, OutputSocket, OutputSocketId,
 };
@@ -223,6 +227,38 @@ impl ComponentInputSocket {
         connections.sort_by_key(|output| output.component_id);
 
         Ok(connections)
+    }
+
+    pub async fn connections(
+        &self,
+        ctx: &DalContext,
+    ) -> ComponentResult<Vec<(ComponentId, OutputSocketId, AttributePrototypeArgument)>> {
+        let mut result = vec![];
+
+        let prototype_id = AttributeValue::prototype_id(ctx, self.attribute_value_id).await?;
+        for apa_id in AttributePrototypeArgument::list_ids_for_prototype_and_destination(
+            ctx,
+            prototype_id,
+            self.component_id,
+        )
+        .await?
+        {
+            let apa = AttributePrototypeArgument::get_by_id(ctx, apa_id).await?;
+
+            if let Some(ArgumentTargets {
+                source_component_id,
+                ..
+            }) = apa.targets()
+            {
+                if let Some(ValueSource::OutputSocket(from_output_socket_id)) =
+                    apa.value_source(ctx).await?
+                {
+                    result.push((source_component_id, from_output_socket_id, apa));
+                }
+            }
+        }
+
+        Ok(result)
     }
 
     /// List all [`ComponentInputSocket`]s for a given [`ComponentId`]

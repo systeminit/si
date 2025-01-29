@@ -1121,21 +1121,12 @@ impl Component {
         ctx: &DalContext,
         id: ComponentId,
     ) -> ComponentResult<Vec<IncomingConnection>> {
-        let mut incoming_edges = vec![];
+        let mut incoming_connections = vec![];
 
         for component_input_socket in ComponentInputSocket::list_for_component_id(ctx, id).await? {
-            let prototype_id =
-                AttributeValue::prototype_id(ctx, component_input_socket.attribute_value_id)
-                    .await?;
-            for apa_id in AttributePrototypeArgument::list_ids_for_prototype_and_destination(
-                ctx,
-                prototype_id,
-                id,
-            )
-            .await?
+            for (from_component_id, from_output_socket_id, apa) in
+                component_input_socket.connections(ctx).await?
             {
-                let apa = AttributePrototypeArgument::get_by_id(ctx, apa_id).await?;
-
                 let created_info = {
                     let history_actor = ctx.history_actor();
                     let actor = ActorView::from_history_actor(ctx, *history_actor).await?;
@@ -1144,30 +1135,19 @@ impl Component {
                         timestamp: apa.timestamp().created_at,
                     }
                 };
-
-                if let Some(ArgumentTargets {
-                    source_component_id,
-                    destination_component_id,
-                }) = apa.targets()
-                {
-                    if let Some(ValueSource::OutputSocket(from_output_socket_id)) =
-                        apa.value_source(ctx).await?
-                    {
-                        incoming_edges.push(IncomingConnection {
-                            attribute_prototype_argument_id: apa_id,
-                            to_component_id: destination_component_id,
-                            from_component_id: source_component_id,
-                            to_input_socket_id: component_input_socket.input_socket_id,
-                            from_output_socket_id,
-                            created_info,
-                            deleted_info: None,
-                        });
-                    }
-                }
+                incoming_connections.push(IncomingConnection {
+                    attribute_prototype_argument_id: apa.id(),
+                    to_component_id: id,
+                    from_component_id,
+                    to_input_socket_id: component_input_socket.input_socket_id,
+                    from_output_socket_id,
+                    created_info,
+                    deleted_info: None,
+                });
             }
         }
 
-        Ok(incoming_edges)
+        Ok(incoming_connections)
     }
 
     #[instrument(
@@ -1894,7 +1874,7 @@ impl Component {
             .await
     }
 
-    async fn attribute_values_for_all_sockets(
+    pub async fn attribute_values_for_all_sockets(
         ctx: &DalContext,
         component_id: ComponentId,
     ) -> ComponentResult<Vec<AttributeValueId>> {
