@@ -15,6 +15,7 @@ import { updateSchemaIdsForExistingSpecs } from "../pipeline-steps/updateSchemaI
 import { getExistingSpecs } from "../specUpdates.ts";
 
 import _logger from "../logger.ts";
+import { assetSpecificOverrides } from "../pipeline-steps/assetSpecificOverrides.ts";
 
 const logger = _logger.ns("siSpecs").seal();
 const SI_SPEC_DIR = "si-specs";
@@ -50,10 +51,12 @@ export async function generateSiSpecs() {
   specs = generateDefaultActionFuncs(specs);
   specs = generateDefaultLeafFuncs(specs);
   specs = generateDefaultManagementFuncs(specs);
+  specs = assetSpecificOverrides(specs);
   // subAssets should not have any of the above, but need an asset func and
   // intrinsics
   specs = generateSubAssets(specs);
   specs = generateIntrinsicFuncs(specs);
+  // don't generate input sockets until we have all of the output sockets
   specs = createInputSocketsBasedOnOutputSockets(specs);
   specs = generateAssetFuncs(specs);
   specs = updateSchemaIdsForExistingSpecs(existing_specs, specs);

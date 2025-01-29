@@ -119,10 +119,22 @@ function generateAssetCodeFromVariantSpec(variant: SchemaVariantSpec): string {
 
       const varName = `${socket.name}Socket`.replace(" ", "");
 
+      type AnnotationItem = {
+        tokens: string[];
+      };
+      const annotations = JSON.parse(
+        data.connectionAnnotations,
+      ) as AnnotationItem[];
+
       socketDeclarations +=
         `${indent(1)}const ${varName} = new SocketDefinitionBuilder()\n` +
         `${indent(2)}.setName("${socket.name}")\n` +
         `${indent(2)}.setArity("${data.arity}")\n` +
+        annotations.map((item: AnnotationItem) =>
+          `${indent(2)}.setConnectionAnnotation("${item.tokens.join("<")}${
+            ">".repeat(item.tokens.length - 1)
+          }")`
+        ).join("\n") + "\n" +
         `${indent(2)}.build();\n\n`;
 
       switch (data.kind) {
