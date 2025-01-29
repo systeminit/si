@@ -62,7 +62,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: define-test-matrix
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
         tests: ${{ fromJSON(needs.define-test-matrix.outputs.tests) }}
     env:

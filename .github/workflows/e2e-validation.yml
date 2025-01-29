@@ -44,7 +44,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: define-test-matrix
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
         tests: ${{ fromJSON(needs.define-test-matrix.outputs.tests) }}
     steps:
@@ -59,11 +59,11 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
 
-      - name: Install Cypress
+      - name: Install Deps
         working-directory: app/web
         run: |
           pnpm i
-          pnpm install cypress
+          npx cypress install
 
       - name: install uuid
         run: |
