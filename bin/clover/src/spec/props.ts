@@ -45,6 +45,7 @@ type CreatePropQueue = {
   addTo: null | ((data: ExpandedPropSpec) => undefined);
   name: string;
   cfProp: CfProperty;
+  propPath: string[];
 }[];
 
 export function createPropFromCf(
@@ -52,12 +53,17 @@ export function createPropFromCf(
   cfProp: CfProperty,
   onlyProperties: OnlyProperties,
   propPath: string[],
-) {
+): ExpandedPropSpec | undefined {
+  if (!cfProp.type) {
+    return undefined;
+  }
+
   const queue: CreatePropQueue = [
     {
       name,
       cfProp,
       addTo: null,
+      propPath,
     },
   ];
 
@@ -66,7 +72,7 @@ export function createPropFromCf(
   while (queue.length > 0) {
     if (propPath.length > 10) {
       throw new Error(
-        `Prop tree loop detected: Tried creating prop more than 10 levels deep in the prop tree`,
+        `Prop tree loop detected: Tried creating prop more than 10 levels deep in the prop tree: ${propPath}`,
       );
     }
     const data = queue.shift();
@@ -76,9 +82,11 @@ export function createPropFromCf(
       data.name,
       data.cfProp,
       onlyProperties,
-      propPath,
+      data.propPath,
       queue,
     );
+
+    if (!prop) continue;
 
     if (!data.addTo) {
       rootProp = prop;
@@ -88,6 +96,7 @@ export function createPropFromCf(
   }
 
   if (!rootProp) {
+    console.log(cfProp);
     throw new Error(`createProp for ${name} did not generate a prop`);
   }
 
@@ -100,7 +109,7 @@ function createPropFromCfInner(
   onlyProperties: OnlyProperties,
   propPath: string[],
   queue: CreatePropQueue,
-): ExpandedPropSpec {
+): ExpandedPropSpec | undefined {
   const propUniqueId = ulid();
   const data: PropSpecData = {
     name,
@@ -132,8 +141,16 @@ function createPropFromCfInner(
     setCreateOnlyProp(data);
   }
 
+  if (!cfProp.title) {
+    cfProp.title = name;
+  }
+
   let normalizedCfData = normalizePropertyType(cfProp);
   normalizedCfData = normalizeAnyOfAndOneOfTypes(normalizedCfData);
+
+  if (!normalizedCfData.type && normalizedCfData.$ref) {
+    normalizedCfData = { ...normalizedCfData, type: "string" };
+  }
 
   if (
     normalizedCfData.type === "integer" || normalizedCfData.type === "number"
@@ -166,6 +183,7 @@ function createPropFromCfInner(
       },
       name: `${name}Item`,
       cfProp: normalizedCfData.items,
+      propPath: _.clone(propPath),
     });
 
     return prop;
@@ -177,11 +195,22 @@ function createPropFromCfInner(
 
       const patternProps = Object.entries(normalizedCfData.patternProperties);
 
-      const [_, patternProp] = patternProps[0];
-
-      if (patternProps.length !== 1 || !patternProp) {
+      let cfProp;
+      if (patternProps.length === 1) {
+        const [_thing, patternProp] = patternProps[0];
+        cfProp = patternProp;
+      } else if (patternProps.length === 2) {
+        // If there is 2 pattern props, that means we have a validation for the key and another one for the value of the map.
+        // We take the second one as the type of the value, since it's the thing we can store right now
+        const [_thing, patternProp] = patternProps[1];
+        cfProp = patternProp;
+      } else {
         console.log(patternProps);
         throw new Error("too many pattern props you fool");
+      }
+
+      if (!cfProp) {
+        throw new Error("could not extract type from pattern prop");
       }
 
       queue.push({
@@ -189,7 +218,8 @@ function createPropFromCfInner(
           prop.typeProp = data;
         },
         name: `${name}Item`,
-        cfProp: patternProp,
+        cfProp,
+        propPath: _.clone(propPath),
       });
 
       return prop;
@@ -207,16 +237,33 @@ function createPropFromCfInner(
             },
             name: objName,
             cfProp: objProp,
+            propPath: _.clone(propPath),
           });
         },
       );
       return prop;
+    } else {
+      const prop = partialProp as Extract<ExpandedPropSpec, { kind: "string" }>;
+      prop.kind = "string";
+      prop.data!.widgetKind = "Text";
+
+      return prop;
     }
   }
 
-  console.log(cfProp);
+  if (!normalizedCfData.type && normalizedCfData.description == "") {
+    return undefined;
+  }
+
+  if (!normalizedCfData.type && normalizedCfData.title) {
+    return undefined;
+  }
+
+  // console.log(cfProp);
   console.log(normalizedCfData);
-  throw new Error("no matching kind");
+  throw new Error(
+    `no matching kind in prop with path: ${propPath}`,
+  );
 }
 
 function setCreateOnlyProp(data: PropSpecData) {

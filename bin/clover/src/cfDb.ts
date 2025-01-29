@@ -1,7 +1,11 @@
-import { type JSONSchema } from "https://deno.land/x/json_schema_typed@v8.0.0/draft_07.ts";
+import {
+  type JSONSchema,
+} from "https://deno.land/x/json_schema_typed@v8.0.0/draft_07.ts";
 import $RefParser from "npm:@apidevtools/json-schema-ref-parser";
 import _logger from "./logger.ts";
 import { ServiceMissing } from "./errors.ts";
+import { JSONSchemaObject } from "@apidevtools/json-schema-ref-parser";
+import _ from "npm:lodash";
 
 const logger = _logger.ns("cfDb").seal();
 
@@ -20,6 +24,7 @@ type StringPair =
   | ["object", "string"]
   | ["boolean", "string"]
   | ["number", "string"]
+  | ["string", "array"]
   | ["integer", "string"];
 
 export type CfProperty =
@@ -41,12 +46,20 @@ export type CfProperty =
     "patternProperties"?: Record<string, CfProperty>;
   } | {
     "type": undefined;
-    "oneOf": CfProperty[]; // TODO: this should be a qualification
+    "oneOf"?: CfProperty[]; // TODO: this should be a qualification
+    "anyOf"?: CfProperty[]; // TODO: this should be a qualification
+    "properties"?: Record<string, CfProperty>;
+    "patternProperties"?: Record<string, CfProperty>;
+    "$ref"?: string;
   })
   & CfPropertyStatic;
 
 export function normalizePropertyType(prop: CfProperty): CfProperty {
-  if (!Array.isArray(prop.type)) {
+  if (!prop.type && (prop.properties || prop.patternProperties)) {
+    return { ...prop, type: "object" };
+  }
+
+  if (!prop.type || !Array.isArray(prop.type)) {
     return prop;
   }
   const nonStringType = prop.type.find((t) => t !== "string");
@@ -58,7 +71,19 @@ export function normalizePropertyType(prop: CfProperty): CfProperty {
     case "number":
       return { ...prop, type: "integer" };
     case "object":
+      // If it's an object we make it a string so the user can pass JSON to it
       return { ...prop, type: "string" };
+    case "array": {
+      // When we get something that is string/array, the items object should already there
+      const finalProp = { ...prop, type: "array" } as Extract<CfProperty, {
+        type: "array";
+      }>;
+      if (!finalProp.items) {
+        throw new Error("array typed prop includes array but has no items");
+      }
+
+      return finalProp;
+    }
     default:
       console.log(prop);
       throw new Error("unhandled array type");
@@ -66,24 +91,109 @@ export function normalizePropertyType(prop: CfProperty): CfProperty {
 }
 
 export function normalizeAnyOfAndOneOfTypes(prop: CfProperty): CfProperty {
-  if (prop.type || !prop.oneOf) {
+  if (prop.type) {
     return prop;
   }
 
-  const newProp: CfProperty = {
-    description: prop.description,
-    properties: {} as Record<string, CfProperty>,
-    type: "object",
-  };
+  if (prop.oneOf) {
+    const newProp: Extract<CfProperty, { type: "object" }> = {
+      description: prop.description,
+      type: "object",
+      properties: {},
+    };
 
-  for (const oneOf of prop.oneOf) {
-    if (!oneOf.title || !newProp.properties) {
-      throw new Error("unexpected oneOf");
+    for (const ofMember of prop.oneOf) {
+      if (!newProp.properties) {
+        throw new Error("unexpected oneOf");
+      }
+
+      if (
+        (ofMember.type === undefined || ofMember.type === "object") &&
+        ofMember.properties
+      ) {
+        for (const title of _.keys(ofMember.properties)) {
+          newProp.properties[title] = ofMember.properties[title];
+        }
+      } else if (ofMember.type === "array" && ofMember.items) {
+        const title = ofMember.title ??
+          `${prop.title}${_.capitalize(ofMember.type)}`;
+        if (!title) {
+          console.log(prop);
+          throw new Error(
+            `oneOf array without title`,
+          );
+        }
+
+        newProp.properties[title] = ofMember;
+      } else if (ofMember.type === "object") {
+        // If its of type object with no properties, we treat it as a string
+        const title = ofMember.title ??
+          `${prop.title}JSON`;
+
+        newProp.properties[title] = {
+          title,
+          description: ofMember.description,
+          type: "string",
+        };
+      } else {
+        console.log(ofMember);
+        throw new Error(
+          `attempted to process oneOf as not an object or array: ${ofMember}`,
+        );
+      }
     }
-    newProp.properties[oneOf.title] = oneOf;
+
+    return newProp;
   }
 
-  return newProp;
+  if (prop.anyOf) {
+    let isObject;
+    const properties = {} as Record<string, CfProperty>;
+
+    for (const ofMember of prop.anyOf) {
+      if (!ofMember.type && ofMember.properties) {
+        isObject = true;
+
+        if (!ofMember.title) {
+          console.log(prop);
+          throw new Error("anyOf of objects without title");
+        }
+
+        properties[ofMember.title] = {
+          ...ofMember.properties[ofMember.title],
+        };
+      } else if (
+        ofMember.type === "object" && ofMember.patternProperties
+      ) {
+        isObject = true;
+
+        if (!ofMember.title) {
+          console.log(prop);
+          throw new Error("anyOf of objects without title");
+        }
+
+        properties[ofMember.title] = ofMember;
+      } else {
+        isObject = false;
+        break;
+      }
+    }
+
+    if (isObject) {
+      return {
+        description: prop.description,
+        type: "object",
+        properties,
+      };
+    } else {
+      return {
+        description: prop.description,
+        type: "string",
+      };
+    }
+  }
+
+  return prop;
 }
 
 export interface CfSchema extends JSONSchema.Interface {
@@ -162,21 +272,23 @@ export async function loadCfDatabase(
       const typeName: string = data.typeName;
 
       if (
+        false &&
         ![
-          "AWS::WAF::WebACL", // Not needed for demo
-          "AWS::EC2::VPC",
-          "AWS::EC2::Subnet",
-          "AWS::EC2::RouteTable",
-          "AWS::EC2::InternetGateway",
-          "AWS::EC2::Route",
-          "AWS::EC2::EIP",
-          "AWS::EC2::NatGateway",
+          "AWS::QBusiness::DataSource",
         ].includes(typeName)
       ) continue;
 
       logger.debug(`Loaded ${typeName}`);
       try {
-        const expandedSchema = await $RefParser.dereference(data) as CfSchema;
+        const expandedSchema = await $RefParser.dereference(data, {
+          dereference: {
+            circular: "ignore",
+            onDereference: (path: string, ref: JSONSchemaObject) => {
+              const name = path.split("/").pop();
+              ref.title = ref.title ?? name;
+            },
+          },
+        }) as CfSchema;
         DB[typeName] = expandedSchema;
       } catch (e) {
         logger.error(`failed to expand ${typeName}`, e);
