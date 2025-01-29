@@ -858,7 +858,9 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
               }
             },
             onSuccess: (response) => {
-              componentsStore.SET_COMPONENTS_FROM_VIEW(response.diagram);
+              componentsStore.SET_COMPONENTS_FROM_VIEW(response.diagram, {
+                representsAllComponents: false,
+              });
 
               // remove invalid component IDs from the selection
               const validComponentIds = _.intersection(

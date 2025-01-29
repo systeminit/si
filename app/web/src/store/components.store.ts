@@ -719,25 +719,47 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 ...visibilityParams,
               },
               onSuccess: (payload) => {
-                this.SET_COMPONENTS_FROM_VIEW(payload);
+                this.SET_COMPONENTS_FROM_VIEW(payload, {
+                  representsAllComponents: true,
+                });
               },
             });
           },
 
-          SET_COMPONENTS_FROM_VIEW(response: {
-            components: RawComponent[];
-            edges: RawEdge[];
-            inferredEdges: RawEdge[];
-            managementEdges: RawEdge[];
-          }) {
-            // I want to avoid strict assignments here, so I can re-use
+          SET_COMPONENTS_FROM_VIEW(
+            response: {
+              components: RawComponent[];
+              edges: RawEdge[];
+              inferredEdges: RawEdge[];
+              managementEdges: RawEdge[];
+            },
+            options: { representsAllComponents: boolean } = {
+              representsAllComponents: false,
+            },
+          ) {
+            // I need to avoid strict assignments here with the incoming data, only additive and subtractive
+            // e.g. operations like this are potentially bad
             // this.rawComponentsById = _.keyBy(response.components, "id");
+            // this.allComponentsById = {};
+
+            if (options.representsAllComponents) {
+              const existingIds = Object.keys(this.rawComponentsById);
+              const allIds = Object.keys(response.components);
+              const idsToDelete = existingIds.filter(
+                (id) => !allIds.includes(id),
+              );
+              idsToDelete.forEach((id) => {
+                delete this.rawComponentsById[id];
+                delete this.allComponentsById[id];
+                delete this.nodesById[id];
+                delete this.groupsById[id];
+              });
+            }
+
             for (const component of response.components) {
               this.rawComponentsById[component.id] = component;
             }
-            // this.allComponentsById = {};
-            // this.nodesById = {};
-            // this.groupsById = {};
+
             response.components.forEach((component) => {
               this.processAndStoreRawComponent(component.id, {
                 processAncestors: false,
