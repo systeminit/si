@@ -709,6 +709,48 @@ async fn deeply_nested_children(ctx: &DalContext) {
 }
 
 #[test]
+async fn override_values_set_by_sockets(ctx: &DalContext) {
+    let small_odd_lego = create_component_for_default_schema_name_in_default_view(
+        ctx,
+        "small odd lego",
+        "small odd lego",
+    )
+    .await
+    .expect("could not create component");
+
+    let (execution_result, result) =
+        exec_mgmt_func(ctx, small_odd_lego.id(), "Override Props", None).await;
+    assert_eq!(result.status, ManagementFuncStatus::Ok);
+
+    let operations = result.operations.expect("should have operations");
+
+    ManagementOperator::new(ctx, small_odd_lego.id(), operations, execution_result, None)
+        .await
+        .expect("should create operator")
+        .operate()
+        .await
+        .expect("should operate");
+
+    let current = small_odd_lego.id();
+    let children = Component::get_children_for_id(ctx, current)
+        .await
+        .expect("get children");
+    assert_eq!(children.len(), 1);
+    let child_id = children[0];
+    let component = Component::get_by_id(ctx, child_id).await.expect("get comp");
+
+    let props = component
+        .domain_prop_attribute_value(ctx)
+        .await
+        .expect("could not get domain");
+    let domain = AttributeValue::get_by_id(ctx, props)
+        .await
+        .expect("could not get attribute value");
+    let view = domain.view(ctx).await.expect("could not get view");
+    assert!(view.is_some());
+}
+
+#[test]
 async fn create_in_views(ctx: &DalContext) {
     let mut small_odd_lego = create_component_for_default_schema_name_in_default_view(
         ctx,
