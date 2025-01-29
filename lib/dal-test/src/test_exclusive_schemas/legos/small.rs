@@ -438,6 +438,35 @@ pub(crate) async fn migrate_test_exclusive_schema_small_odd_lego(
         "test:removeAllCompsFromViewAndRemoveView",
     )?;
 
+    let override_values_set_by_sockets_code = r#"
+         async function main({ thisComponent, components }: Input): Promise<Output> {
+        const thisName = thisComponent.properties?.si?.name ?? "unknown";
+        const componentName = `bluey`;
+
+        return {
+            status: "ok",
+            ops: {
+                update: { self: { properties: { si: { type: "configurationFrameDown" } } } },
+                create: {
+                    [componentName]: {
+                        kind: "small odd lego",
+                properties: { 
+                    si: { name },
+                    domain: {
+                        one: `bingo`
+                        } 
+                    },
+                parent: "self"
+                    }
+                }
+            }
+        }
+    }
+    "#;
+    let override_values_set_by_sockets = build_management_func(
+        override_values_set_by_sockets_code,
+        "test:overrideValuesSetBySocket",
+    )?;
     let fn_name = "test:deleteActionSmallLego";
     let delete_action_func = build_action_func(delete_action_code, fn_name)?;
 
@@ -595,6 +624,12 @@ pub(crate) async fn migrate_test_exclusive_schema_small_odd_lego(
                         .func_unique_id(&remove_all_components_from_a_view_and_the_view.unique_id)
                         .build()?,
                 )
+                .management_func(
+                    ManagementFuncSpec::builder()
+                        .name("Override Props")
+                        .func_unique_id(&override_values_set_by_sockets.unique_id)
+                        .build()?,
+                )
                 .build()?,
         )
         .build()?;
@@ -619,6 +654,7 @@ pub(crate) async fn migrate_test_exclusive_schema_small_odd_lego(
         .func(create_view_and_component_in_view)
         .func(delete_and_erase_components)
         .func(remove_all_components_from_a_view_and_the_view)
+        .func(override_values_set_by_sockets)
         .schema(small_lego_schema)
         .build()?;
 

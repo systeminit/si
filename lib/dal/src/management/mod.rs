@@ -3,12 +3,15 @@ use std::collections::{hash_map, HashMap, HashSet, VecDeque};
 use prototype::ManagementPrototypeExecution;
 use serde::{Deserialize, Serialize};
 use si_events::audit_log::AuditLogKind;
+use si_id::AttributeValueId;
+use telemetry::prelude::*;
 use thiserror::Error;
 
 use veritech_client::{ManagementFuncStatus, ManagementResultSuccess};
 
 use crate::component::delete::{delete_components, ComponentDeletionStatus};
 use crate::component::frame::{Frame, FrameError, InferredEdgeChanges};
+use crate::component::ControllingFuncData;
 use crate::dependency_graph::DependencyGraph;
 use crate::diagram::geometry::Geometry;
 use crate::diagram::view::{View, ViewComponentsUpdateSingle, ViewId, ViewView};
@@ -928,6 +931,9 @@ impl<'a> ManagementOperator<'a> {
 
                 let component_id = component.id();
 
+                let controlling_funcs =
+                    Component::list_av_controlling_func_ids_for_id(self.ctx, component_id).await?;
+
                 self.created_components
                     .insert(component_id, geometry.keys().copied().collect());
 
@@ -940,6 +946,7 @@ impl<'a> ManagementOperator<'a> {
                         component_id,
                         properties,
                         &[&["root", "si", "name"]],
+                        controlling_funcs,
                     )
                     .await?;
                 }
@@ -1087,9 +1094,10 @@ impl<'a> ManagementOperator<'a> {
                     .set_raw_geometry(self.ctx, view_geometry.into(), view_id)
                     .await?;
             }
-
+            let controlling_avs =
+                Component::list_av_controlling_func_ids_for_id(self.ctx, component_id).await?;
             if let Some(properties) = &operation.properties {
-                update_component(self.ctx, component_id, properties, &[]).await?;
+                update_component(self.ctx, component_id, properties, &[], controlling_avs).await?;
             }
 
             if let Some(update_conns) = &operation.connect {
@@ -1638,12 +1646,14 @@ async fn update_component(
     component_id: ComponentId,
     properties: &serde_json::Value,
     extra_ignore_paths: &[&[&str]],
+    controlling_avs: HashMap<AttributeValueId, ControllingFuncData>,
 ) -> ManagementResult<()> {
     let variant_id = Component::schema_variant_id(ctx, component_id).await?;
 
     // walk the properties serde_json::Value object without recursion
     let mut work_queue = VecDeque::new();
     work_queue.push_back((vec!["root".to_string()], properties));
+    info!("props to update: {:?}", &properties);
 
     while let Some((path, current_val)) = work_queue.pop_front() {
         let path_as_refs: Vec<_> = path.iter().map(|part| part.as_str()).collect();
@@ -1663,7 +1673,14 @@ async fn update_component(
         let path_attribute_value_id =
             Component::attribute_value_for_prop_id(ctx, component_id, prop_id).await?;
 
-        if AttributeValue::is_set_by_dependent_function(ctx, path_attribute_value_id).await? {
+        if AttributeValue::is_set_by_dependent_function(ctx, path_attribute_value_id).await?
+            && controlling_avs
+                .get_key_value(&path_attribute_value_id)
+                .map(|(_, value)| value.av_id)
+                .unwrap_or(path_attribute_value_id)
+                != path_attribute_value_id
+        {
+            info!("can't set prop: {:?} with value {:?}", path, current_val);
             continue;
         }
 
