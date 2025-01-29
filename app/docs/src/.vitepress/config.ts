@@ -156,6 +156,10 @@ export default defineConfig({
             link: "/reference/authorization-roles",
           },
           {
+            text: "GitHub Action",
+            link: "/reference/github-action",
+          },
+          {
             text: "TypeScript Function API",
             link: "/reference/typescript/README",
           },

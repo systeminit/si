@@ -81,7 +81,7 @@ allows a user to be able to do the following:
 ```yaml
 - uses: systeminit/actions@v0
   with:
-    changeSetName: CI
+    changeSet: CI
     componentId: 01JH3DZW0QTMH69ZA45299GSWY
     domain: |
       region: us-east-1
@@ -95,7 +95,7 @@ allows a user to be able to do the following:
 ```yaml
 - uses: systeminit/actions@v0
   with:
-    changeSetName: CI
+    changeSet: CI
     componentId: 01JH3DZW0QTMH69ZA45299GSWY
     domain: |
       region: us-east-1
