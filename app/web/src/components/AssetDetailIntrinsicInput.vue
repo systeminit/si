@@ -3,6 +3,7 @@
     v-if="display"
     :id="id"
     v-model="display.value"
+    :labelTooltip="tooltipValue"
     :label="label"
     :options="optionsForIntrinsicDisplay"
     compact
@@ -95,8 +96,13 @@ const id = computed<string>(() => {
 
 const label = computed<string>(() => {
   if ("socketName" in props.data) return props.data.socketName;
-  if ("name" in props.data) return props.data.name;
+  if ("name" in props.data) return props.data.path.replace("/root", "");
   return "N/A";
+});
+
+const tooltipValue = computed<string>(() => {
+  if ("name" in props.data) return props.data.path;
+  return "";
 });
 
 watch(

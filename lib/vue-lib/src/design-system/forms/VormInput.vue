@@ -24,6 +24,15 @@ you can pass in options as props too */
   >
     <label
       v-if="!noLabel"
+      v-tooltip="
+        compact
+          ? {
+              content: labelTooltip,
+              theme: 'instant-show',
+              placement: 'left',
+            }
+          : null
+      "
       :class="clsx('vorm-input__label', !inlineLabel && 'pb-xs block')"
       :for="formInputId"
     >
@@ -382,6 +391,7 @@ const props = defineProps({
   inlineLabel: { type: Boolean },
   instructions: String,
   placeholder: String,
+  labelTooltip: String, // Only works for compact!
 
   iconRight: { type: String as PropType<IconNames>, required: false },
   iconRightRotate: {
