@@ -172,7 +172,6 @@ export const useWorkspacesStore = () => {
             },
           });
         },
-
         async GET_INTEGRATIONS() {
           if (
             this.selectedWorkspacePk === null ||
@@ -192,7 +191,6 @@ export const useWorkspacesStore = () => {
             },
           });
         },
-
         async UPDATE_INTEGRATION(
           workspaceIntegrationId: WorkspaceIntegrationId,
           webhookUrl: string,

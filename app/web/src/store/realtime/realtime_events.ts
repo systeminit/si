@@ -16,7 +16,12 @@ import {
   SchemaVariantId,
 } from "@/api/sdf/dal/schema";
 import { ActionId } from "@/api/sdf/dal/action";
-import { ViewDescription, ViewId } from "@/api/sdf/dal/views";
+import {
+  ApprovalRequirementDefinitionId,
+  EntityId,
+  ViewDescription,
+  ViewId,
+} from "@/api/sdf/dal/views";
 import { WorkspacePk } from "../workspaces.store";
 import { StatusUpdate } from "../status.store";
 import { CursorContainerKind } from "../presence.store";
@@ -395,4 +400,21 @@ export type WsEventPayloadMap = {
   };
 
   PromptUpdated: { kind: string; overridden: boolean };
+
+  // realtime events for approval requirements
+  ApprovalRequirementAddIndividualApprover: {
+    approvalRequirementDefinitionId: ApprovalRequirementDefinitionId;
+    userId: UserId;
+  };
+  ApprovalRequirementDefinitionCreated: {
+    entityId: EntityId;
+    approvers?: UserId[];
+  };
+  ApprovalRequirementDefinitionRemoved: {
+    approvalRequirementDefinitionId: ApprovalRequirementDefinitionId;
+  };
+  ApprovalRequirementRemoveIndividualApprover: {
+    approvalRequirementDefinitionId: ApprovalRequirementDefinitionId;
+    userId: UserId;
+  };
 };

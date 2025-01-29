@@ -1,5 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
+use dal::approval_requirement::ApprovalRequirementDefinition;
 use dal::{
     approval_requirement::{ApprovalRequirement, ApprovalRequirementApprover},
     change_set::approval::ChangeSetApproval,
@@ -1136,6 +1137,57 @@ async fn one_component_in_two_views(
         assert!(frontend_latest_approvals.is_empty());
         assert!(frontend_requirements.is_empty());
     }
+
+    Ok(())
+}
+
+#[sdf_test]
+async fn list_approval_requirement_definitions_for_entity(
+    ctx: &mut DalContext,
+    spicedb_client: SpiceDbClient,
+) -> Result<()> {
+    let mut spicedb_client = spicedb_client;
+
+    // FIXME(nick,jacob): see the comment attached to this function.
+    write_schema(&mut spicedb_client).await?;
+
+    let user_id = match ctx.history_actor() {
+        HistoryActor::SystemInit => return Err(eyre!("invalid user")),
+        HistoryActor::User(user_id) => *user_id,
+    };
+
+    let second_view = View::new(ctx, "Second view").await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+    let initial_definitions =
+        ApprovalRequirementDefinition::list_for_entity_id(ctx, second_view.id()).await?;
+    assert!(initial_definitions.is_empty());
+
+    let requirement_definition_id = ApprovalRequirement::new_definition(
+        ctx,
+        second_view.id(),
+        1,
+        [ApprovalRequirementApprover::User(user_id)]
+            .iter()
+            .cloned()
+            .collect(),
+    )
+    .await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+    let explicit_definitions =
+        ApprovalRequirementDefinition::list_for_entity_id(ctx, second_view.id()).await?;
+    assert_eq!(
+        vec![ApprovalRequirementDefinition {
+            id: requirement_definition_id,
+            required_count: 1,
+            approvers: [ApprovalRequirementApprover::User(user_id)]
+                .iter()
+                .cloned()
+                .collect()
+        }],
+        explicit_definitions,
+    );
 
     Ok(())
 }

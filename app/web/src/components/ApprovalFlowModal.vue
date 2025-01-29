@@ -53,7 +53,7 @@ import ActionsList from "./Actions/ActionsList.vue";
 
 const changeSetsStore = useChangeSetsStore();
 const authStore = useAuthStore();
-const ffStore = useFeatureFlagsStore();
+const featureFlagsStore = useFeatureFlagsStore();
 const toast = useToast();
 
 const modalRef = ref<InstanceType<typeof Modal> | null>(null);
@@ -65,7 +65,7 @@ async function openModalHandler() {
   if (changeSet?.value?.name === "HEAD") return;
 
   userIsApprover.value = changeSetsStore.currentUserIsDefaultApprover;
-  if (ffStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL)
+  if (featureFlagsStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL)
     userIsApprover.value = false;
 
   modalRef.value?.open();

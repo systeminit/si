@@ -129,11 +129,28 @@
                 )
               "
             >
-              <template v-if="treeDef.children.length === 0">(empty)</template>
-              <template v-else-if="treeDef.children.length === 1"
-                >(1 item)</template
-              >
-              <template v-else>({{ treeDef.children.length }} items)</template>
+              <template v-if="widgetKind === 'users'">
+                <template v-if="treeDef.children.length === 0"
+                  >(empty)</template
+                >
+                <template v-else-if="treeDef.children.length === 1"
+                  >(1 user)</template
+                >
+                <template v-else
+                  >({{ treeDef.children.length }} users)</template
+                >
+              </template>
+              <template v-else>
+                <template v-if="treeDef.children.length === 0"
+                  >(empty)</template
+                >
+                <template v-else-if="treeDef.children.length === 1"
+                  >(1 item)</template
+                >
+                <template v-else
+                  >({{ treeDef.children.length }} items)</template
+                >
+              </template>
             </div>
           </div>
           <SourceIconWithTooltip
@@ -205,6 +222,21 @@
         v-show="isOpen && headerHasContent"
         class="attributes-panel-item__children"
       >
+        <div
+          v-if="widgetKind === 'users' && isArray && propManual"
+          :style="{ marginLeft: indentPx }"
+          class="flex flex-col grow gap-xs relative pt-2xs px-xs"
+        >
+          <div class="text-xs">Add an approver user for this requirement -</div>
+          <UserSelectMenu
+            ref="userSelectMenuRef"
+            class="flex-none"
+            noUsersLabel="All users are approvers!"
+            :usersToFilterOut="usersToFilterOut"
+            @select="addUser"
+          />
+        </div>
+
         <TreeFormItem
           v-for="childProp in treeDef.children"
           :key="`${propName}/${childProp.propDef?.name}`"
@@ -229,8 +261,27 @@
           </div>
         </div>
 
-        <template v-if="(isArray || isMap) && propManual">
+        <template
+          v-if="
+            (isArray || isMap || widgetKind === 'requirement') && propManual
+          "
+        >
           <div
+            v-if="widgetKind === 'requirement'"
+            :style="{ marginLeft: indentPx }"
+            class="flex flex-row grow relative overflow-hidden items-center justify-center pt-xs"
+          >
+            <VButton
+              label="Delete Requirement"
+              tone="destructive"
+              variant="ghost"
+              icon="trash"
+              size="sm"
+              @click="deleteRequirement"
+            />
+          </div>
+          <div
+            v-else-if="widgetKind !== 'users'"
             :style="{ marginLeft: indentPx }"
             class="h-[34px] flex flex-row grow gap-xs relative overflow-hidden items-center pt-2xs"
           >
@@ -455,6 +506,7 @@
       </div>
       <!-- Actual input, to the right -->
       <div
+        v-if="widgetKind !== 'users'"
         :class="
           clsx(
             'attributes-panel-item__input-wrap group/input',
@@ -726,6 +778,21 @@
           @click="openNonEditableModal"
         />
       </div>
+      <!-- users widget is just a delete button -->
+      <IconButton
+        v-else
+        icon="trash"
+        iconTone="destructive"
+        iconIdleTone="shade"
+        :tooltip="
+          treeDef.propDef.isReadonly
+            ? 'Can\'t Remove Only Approver!'
+            : 'Remove Approver'
+        "
+        size="xs"
+        :disabled="treeDef.propDef.isReadonly"
+        @click="() => removeUser(treeDef.propId)"
+      />
     </div>
 
     <!-- VALIDATION DETAILS -->
@@ -938,6 +1005,7 @@ import SecretsModal from "../SecretsModal.vue";
 import SourceIconWithTooltip from "./SourceIconWithTooltip.vue";
 import CodeViewer from "../CodeViewer.vue";
 import { TreeFormContext } from "./TreeForm.vue";
+import UserSelectMenu from "../UserSelectMenu.vue";
 
 export type TreeFormProp = {
   id: string;
@@ -1052,7 +1120,13 @@ const viewsStore = useViewsStore();
 const componentId = viewsStore.selectedComponentId!;
 
 const changeSetsStore = useChangeSetsStore();
-const attributesStore = useComponentAttributesStore(componentId);
+const attributesStore = computed(() => {
+  if (props.attributesPanel) {
+    return useComponentAttributesStore(componentId);
+  } else {
+    return undefined;
+  }
+});
 const secretsStore = useSecretsStore();
 
 const fullPropDef = computed(() => props.treeDef.propDef);
@@ -1239,10 +1313,12 @@ const propSource = computed<AttributeValueSource>(() => {
 });
 
 const setSource = (source: AttributeValueSource) => {
+  if (!attributesStore.value) return;
+
   if (source === AttributeValueSource.Manual) {
     const value = props.treeDef.value?.value ?? null;
 
-    attributesStore.UPDATE_PROPERTY_VALUE({
+    attributesStore.value.UPDATE_PROPERTY_VALUE({
       update: {
         attributeValueId: props.treeDef.valueId,
         parentAttributeValueId: props.treeDef.parentValueId,
@@ -1253,7 +1329,7 @@ const setSource = (source: AttributeValueSource) => {
       },
     });
   } else {
-    attributesStore.RESET_PROPERTY_VALUE({
+    attributesStore.value.RESET_PROPERTY_VALUE({
       attributeValueId: props.treeDef.valueId,
     });
   }
@@ -1334,8 +1410,8 @@ const newMapChildKeyIsValid = computed(() => {
 
 function removeChildHandler() {
   if (!isChildOfArray.value && !isChildOfMap.value) return;
-  if (props.attributesPanel) {
-    attributesStore.REMOVE_PROPERTY_VALUE({
+  if (props.attributesPanel && attributesStore.value) {
+    attributesStore.value.REMOVE_PROPERTY_VALUE({
       attributeValueId: props.treeDef.valueId,
       propId: props.treeDef.propId,
       componentId,
@@ -1371,8 +1447,8 @@ function addChildHandler() {
     return;
   }
 
-  if (props.attributesPanel) {
-    attributesStore.UPDATE_PROPERTY_VALUE({
+  if (props.attributesPanel && attributesStore.value) {
+    attributesStore.value.UPDATE_PROPERTY_VALUE({
       insert: {
         parentAttributeValueId: props.treeDef.valueId,
         propId: props.treeDef.propId,
@@ -1391,8 +1467,8 @@ function unsetHandler(value?: string) {
   newValueBoolean.value = false;
   newValueString.value = "";
 
-  if (props.attributesPanel) {
-    attributesStore.RESET_PROPERTY_VALUE({
+  if (props.attributesPanel && attributesStore.value) {
+    attributesStore.value.RESET_PROPERTY_VALUE({
       attributeValueId: props.treeDef.valueId,
     });
   } else {
@@ -1445,8 +1521,8 @@ function updateValue(maybeNewVal?: unknown) {
     isForSecret = true;
   }
 
-  if (props.attributesPanel) {
-    attributesStore.UPDATE_PROPERTY_VALUE({
+  if (props.attributesPanel && attributesStore.value) {
+    attributesStore.value.UPDATE_PROPERTY_VALUE({
       update: {
         attributeValueId: props.treeDef.valueId,
         parentAttributeValueId: props.treeDef.parentValueId,
@@ -1703,6 +1779,35 @@ const socketSearchFilters = computed(() => {
 
   return filters;
 });
+
+// APPROVAL REQUIREMENTS STUFF
+const usersToFilterOut = computed(() => {
+  if (props.treeDef.propDef.widgetKind.kind === "users") {
+    const users = props.treeDef.children.map((user) => user.propId);
+    return users;
+  } else return undefined;
+});
+
+const userSelectMenuRef = ref<InstanceType<typeof UserSelectMenu>>();
+
+const addUser = async (userId: string) => {
+  const requirementId = props.treeDef.parentValueId;
+  await viewsStore.ADD_INDIVIDUAL_APPROVER_TO_REQUIREMENT(
+    requirementId,
+    userId,
+  );
+  userSelectMenuRef.value?.clearSelection();
+};
+
+const removeUser = (userId: string) => {
+  const requirementId = props.treeDef.parentValueId;
+  viewsStore.REMOVE_INDIVIDUAL_APPROVER_FROM_REQUIREMENT(requirementId, userId);
+};
+
+const deleteRequirement = () => {
+  const requirementId = props.treeDef.propId;
+  viewsStore.REMOVE_VIEW_APPROVAL_REQUIREMENT(requirementId);
+};
 </script>
 
 <style lang="less">

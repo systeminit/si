@@ -29,6 +29,7 @@
 
 use std::collections::{HashMap, HashSet};
 
+use serde::{Deserialize, Serialize};
 use si_events::merkle_tree_hash::MerkleTreeHash;
 use si_id::{ulid::Ulid, ApprovalRequirementDefinitionId, EntityId, UserPk};
 use telemetry::prelude::*;
@@ -38,7 +39,7 @@ use crate::{
     workspace_snapshot::{
         graph::detector::Change, traits::approval_requirement::ApprovalRequirementExt,
     },
-    DalContext, WorkspaceSnapshotError,
+    DalContext, WorkspaceSnapshotError, WsEvent, WsEventResult, WsPayload,
 };
 
 pub use crate::workspace_snapshot::traits::approval_requirement::{
@@ -48,6 +49,8 @@ pub use crate::workspace_snapshot::traits::approval_requirement::{
 #[allow(missing_docs)]
 #[derive(Debug, Error)]
 pub enum ApprovalRequirementError {
+    #[error("Entity not found: {0}")]
+    EntityNotFound(EntityId),
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
@@ -140,5 +143,120 @@ impl ApprovalRequirement {
             .approval_requirements_for_changes(ctx, changes)
             .await
             .map_err(Into::into)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ApprovalRequirementDefinition {
+    pub id: ApprovalRequirementDefinitionId,
+    pub required_count: usize,
+    pub approvers: HashSet<ApprovalRequirementApprover>,
+}
+
+impl ApprovalRequirementDefinition {
+    #[instrument(
+        name = "approval_requirement_definition.list_for_entity_id",
+        level = "debug",
+        skip_all,
+        fields(entity_id)
+    )]
+    pub async fn list_for_entity_id(
+        ctx: &DalContext,
+        entity_id: impl Into<Ulid>,
+    ) -> Result<Vec<Self>> {
+        let entity_id: EntityId = entity_id.into().into();
+        if let Some(approval_requirement_definitions) = ctx
+            .workspace_snapshot()?
+            .approval_requirement_definitions_for_entity_id_opt(ctx, entity_id)
+            .await?
+        {
+            return Ok(approval_requirement_definitions);
+        }
+
+        Err(ApprovalRequirementError::EntityNotFound(entity_id))
+    }
+}
+
+#[derive(Debug, Deserialize, Eq, PartialEq, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ApprovalRequirementDefinitionCreatedPayload {
+    entity_id: EntityId,
+    approvers: Option<Vec<UserPk>>,
+}
+
+#[derive(Debug, Deserialize, Eq, PartialEq, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ApprovalRequirementDefinitionRemovedPayload {
+    approval_requirement_definition_id: ApprovalRequirementDefinitionId,
+}
+
+#[derive(Debug, Deserialize, Eq, PartialEq, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct IndividualApproverPayload {
+    approval_requirement_definition_id: ApprovalRequirementDefinitionId,
+    user_id: UserPk,
+}
+
+impl WsEvent {
+    pub async fn requirement_created(
+        ctx: &DalContext,
+        entity_id: EntityId,
+        approvers: Option<Vec<UserPk>>,
+    ) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::ApprovalRequirementDefinitionCreated(
+                ApprovalRequirementDefinitionCreatedPayload {
+                    entity_id,
+                    approvers,
+                },
+            ),
+        )
+        .await
+    }
+
+    pub async fn requirement_removed(
+        ctx: &DalContext,
+        approval_requirement_definition_id: ApprovalRequirementDefinitionId,
+    ) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::ApprovalRequirementDefinitionRemoved(
+                ApprovalRequirementDefinitionRemovedPayload {
+                    approval_requirement_definition_id,
+                },
+            ),
+        )
+        .await
+    }
+
+    pub async fn add_individual_approver_to_requirement(
+        ctx: &DalContext,
+        approval_requirement_definition_id: ApprovalRequirementDefinitionId,
+        user_id: UserPk,
+    ) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::ApprovalRequirementAddIndividualApprover(IndividualApproverPayload {
+                approval_requirement_definition_id,
+                user_id,
+            }),
+        )
+        .await
+    }
+
+    pub async fn remove_individual_approver_from_requirement(
+        ctx: &DalContext,
+        approval_requirement_definition_id: ApprovalRequirementDefinitionId,
+        user_id: UserPk,
+    ) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::ApprovalRequirementRemoveIndividualApprover(IndividualApproverPayload {
+                approval_requirement_definition_id,
+                user_id,
+            }),
+        )
+        .await
     }
 }

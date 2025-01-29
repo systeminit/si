@@ -1,7 +1,7 @@
 <template>
   <ScrollArea>
     <template #top>
-      <ComponentCard :component="props.component" titleCard>
+      <ComponentCard :component="props.component" titleCard class="mb-xs">
         <DetailsPanelMenuIcon
           :selected="props.menuSelected"
           @click="

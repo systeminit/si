@@ -55,8 +55,8 @@
       ref="dropdownMenuRef"
       :anchorTo="{ $el: buttonRef }"
       overlapAnchorOnAnchorTo
-      :matchWidthToAnchor="variant === 'standard'"
-      :minWidthToAnchor="variant === 'navbar'"
+      :matchWidthToAnchor="variant === 'standard' && !minWidthToAnchor"
+      :minWidthToAnchor="variant === 'navbar' || minWidthToAnchor"
       :overlapAnchorOffset="4"
       :search="search"
       :searchFilters="searchFilters"
@@ -111,6 +111,7 @@ const props = defineProps({
     type: String as PropType<DropdownMenuButtonVariant>,
     default: "standard",
   },
+  minWidthToAnchor: { type: Boolean },
 });
 
 const arrayOptionsFromProps = computed((): OptionsAsArray => {

@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use petgraph::Direction;
 use si_events::{merkle_tree_hash::MerkleTreeHash, workspace_snapshot::EntityKind};
-use si_id::{EntityId, WorkspacePk};
+use si_id::{ApprovalRequirementDefinitionId, EntityId, WorkspacePk};
 
 use crate::{
     workspace_snapshot::{
@@ -107,6 +107,30 @@ impl ApprovalRequirementExt for WorkspaceSnapshotGraphV4 {
         }
 
         Ok((requirements, ids_with_hashes_for_deleted_nodes))
+    }
+
+    fn approval_requirement_definitions_for_entity_id_opt(
+        &self,
+        entity_id: EntityId,
+    ) -> WorkspaceSnapshotGraphResult<Option<Vec<ApprovalRequirementDefinitionId>>> {
+        let mut explicit_approval_requirement_definition_ids = Vec::new();
+        if let Some(entity_node_index) = self.get_node_index_by_id_opt(entity_id) {
+            for (_, _, requirement_node_index) in self.edges_directed_for_edge_weight_kind(
+                entity_node_index,
+                Direction::Outgoing,
+                EdgeWeightKindDiscriminants::ApprovalRequirementDefinition,
+            ) {
+                let requirement_node_weight = self
+                    .get_node_weight(requirement_node_index)?
+                    .get_approval_requirement_definition_node_weight()?;
+                explicit_approval_requirement_definition_ids
+                    .push(requirement_node_weight.id().into());
+            }
+        } else {
+            return Ok(None);
+        }
+
+        Ok(Some(explicit_approval_requirement_definition_ids))
     }
 }
 

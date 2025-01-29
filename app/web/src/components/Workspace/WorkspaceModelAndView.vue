@@ -93,6 +93,16 @@
           :menuSelected="contextMenuRef?.isOpen ?? false"
           @openMenu="onThreeDotMenuClick"
         />
+        <ViewDetailsPanel
+          v-else-if="
+            featureFlagsStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL &&
+            (selectedComponentIds.length === 1 || selectedViewDetails) &&
+            selectedView &&
+            selectedViewComponent
+          "
+          :selectedView="selectedView"
+          :selectedViewComponent="selectedViewComponent"
+        />
         <NoSelectionDetailsPanel v-else />
       </div>
     </component>
@@ -125,7 +135,7 @@ import EraseSelectionModal from "@/components/ModelingView/EraseSelectionModal.v
 import { useStatusStore } from "@/store/status.store";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { ChangeSetStatus } from "@/api/sdf/dal/change_set";
-import { useViewsStore } from "@/store/views.store";
+import { useViewsStore, VIEW_DEFAULTS } from "@/store/views.store";
 import { ComponentType } from "@/api/sdf/dal/schema";
 import { useRouterStore } from "@/store/router.store";
 import { useAssetStore } from "@/store/asset.store";
@@ -138,6 +148,7 @@ import {
   DiagramElementData,
   DiagramGroupData,
   DiagramNodeData,
+  DiagramViewData,
   RightClickElementEvent,
 } from "../ModelingDiagram/diagram_types";
 import DiagramOutline from "../DiagramOutline/DiagramOutline.vue";
@@ -150,9 +161,10 @@ import RestoreSelectionModal from "../ModelingView/RestoreSelectionModal.vue";
 import TemplateSelectionModal from "../ModelingView/TemplateSelectionModal.vue";
 import CommandModal from "./CommandModal.vue";
 import InsetApprovalModal from "../InsetApprovalModal.vue";
+import ViewDetailsPanel from "../ViewDetailsPanel.vue";
 
 const changeSetsStore = useChangeSetsStore();
-const viewStore = useViewsStore();
+const viewsStore = useViewsStore();
 const actionsStore = useActionsStore();
 const presenceStore = usePresenceStore();
 const assetStore = useAssetStore();
@@ -227,7 +239,7 @@ const approvalData = computed(
 onBeforeMount(async () => {
   // get to first paint ASAP
   await Promise.all([
-    viewStore.LIST_VIEWS(),
+    viewsStore.LIST_VIEWS(),
     assetStore.LOAD_SCHEMA_VARIANT_LIST(),
   ]);
   let viewId;
@@ -235,7 +247,7 @@ onBeforeMount(async () => {
     viewId = routeStore.currentRoute.params.viewId as string;
 
   await Promise.all([
-    viewStore.FETCH_VIEW(viewId), // draws the minimal diagram, later gets all geometry and component
+    viewsStore.FETCH_VIEW(viewId), // draws the minimal diagram, later gets all geometry and component
     funcStore.FETCH_FUNC_LIST(), // required for actions of a selected component to work
   ]);
 
@@ -244,9 +256,9 @@ onBeforeMount(async () => {
   window.localStorage.removeItem(key);
   if (
     lastId &&
-    Object.values(viewStore.selectedComponentIds).filter(Boolean).length === 0
+    Object.values(viewsStore.selectedComponentIds).filter(Boolean).length === 0
   ) {
-    viewStore.setSelectedComponentId(lastId);
+    viewsStore.setSelectedComponentId(lastId);
   }
 
   // filling out the rest of the needed data
@@ -278,14 +290,14 @@ onBeforeUnmount(() => {
 
 const contextMenuRef = ref<InstanceType<typeof ModelingRightClickMenu>>();
 
-const selectedComponentIds = computed(() => viewStore.selectedComponentIds);
+const selectedComponentIds = computed(() => viewsStore.selectedComponentIds);
 
-const selectedEdge = computed(() => viewStore.selectedEdge);
+const selectedEdge = computed(() => viewsStore.selectedEdge);
 const selectedComponent = computed<
   DiagramGroupData | DiagramNodeData | undefined
 >(() =>
-  viewStore.selectedComponent?.def.componentType !== ComponentType.View
-    ? (viewStore.selectedComponent as DiagramGroupData | DiagramNodeData)
+  viewsStore.selectedComponent?.def.componentType !== ComponentType.View
+    ? (viewsStore.selectedComponent as DiagramGroupData | DiagramNodeData)
     : undefined,
 );
 
@@ -301,7 +313,7 @@ function onRightClickElement(rightClickEventInfo: RightClickElementEvent) {
 
   if (component) {
     position = structuredClone(
-      component.def.isGroup ? viewStore.components[id] : viewStore.groups[id],
+      component.def.isGroup ? viewsStore.components[id] : viewsStore.groups[id],
     );
   }
   if (position) position.y += position.height / 2;
@@ -320,8 +332,8 @@ function onOutlineRightClick(ev: {
   let position: IRect | undefined;
   if (component) {
     position = component.def.isGroup
-      ? viewStore.components[id]
-      : viewStore.groups[id];
+      ? viewsStore.components[id]
+      : viewsStore.groups[id];
   }
   contextMenuRef.value?.open(ev.mouse, true, position);
 }
@@ -333,4 +345,47 @@ function onThreeDotMenuClick(mouse: MouseEvent) {
 function closeRightClickMenu() {
   contextMenuRef.value?.close();
 }
+
+const viewSelected = computed(
+  () =>
+    !!(
+      selectedComponentIds.value &&
+      selectedComponentIds.value.length === 1 &&
+      selectedComponentIds.value[0] &&
+      viewsStore.viewsById[selectedComponentIds.value[0]]
+    ),
+);
+
+const selectedViewDetails = computed(() => {
+  if (viewsStore.selectedViewDetailsId)
+    return viewsStore.viewsById[viewsStore.selectedViewDetailsId];
+  else return undefined;
+});
+
+const selectedView = computed(() => {
+  if (viewSelected.value) {
+    const id = selectedComponentIds.value[0];
+    return viewsStore.viewList.find((v) => v.id === id);
+  } else if (viewsStore.selectedViewDetailsId) {
+    return viewsStore.viewList.find(
+      (v) => v.id === viewsStore.selectedViewDetailsId,
+    );
+  } else return null;
+});
+
+const selectedViewComponent = computed(() => {
+  if (viewSelected.value && viewsStore.selectedComponent) {
+    return viewsStore.selectedComponent as DiagramViewData;
+  } else if (viewsStore.selectedViewDetailsId && selectedView.value) {
+    // TODO(Wendy) - this is kinda hacky and should be made cleaner in the future
+    const v = selectedView.value;
+    const fakeGeo = { x: 0, y: 0, width: 0, height: 0 };
+    return new DiagramViewData({
+      ...VIEW_DEFAULTS,
+      ...fakeGeo,
+      ...v,
+      componentType: ComponentType.View,
+    });
+  } else return null;
+});
 </script>

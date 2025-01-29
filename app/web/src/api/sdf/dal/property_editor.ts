@@ -23,6 +23,14 @@ export interface PropertyEditorPropWidgetKindArray {
   kind: "array";
 }
 
+export interface PropertyEditorpropWidgetKindRequirement {
+  kind: "requirement";
+}
+
+export interface PropertyEditorPropWidgetKindUsers {
+  kind: "users";
+}
+
 export interface PropertyEditorPropWidgetKindCheckBox {
   kind: "checkbox";
 }
@@ -85,6 +93,8 @@ export type PropertyEditorPropWidgetKind =
   | PropertyEditorPropWidgetKindInteger
   | PropertyEditorPropWidgetKindHeader
   | PropertyEditorPropWidgetKindArray
+  | PropertyEditorpropWidgetKindRequirement
+  | PropertyEditorPropWidgetKindUsers
   | PropertyEditorPropWidgetKindCodeEditor
   | PropertyEditorPropWidgetKindComboBox
   | PropertyEditorPropWidgetKindSelect

@@ -47,6 +47,7 @@ export interface ChangeSetApprovalRequirement {
   isSatisfied: boolean;
   applicableApprovalIds: ChangeSetApprovalId[];
   approverGroups: Record<string, string[]>;
+  approverIndividuals: string[];
 }
 
 export type ApprovalStatus = "Approved" | "Rejected";
@@ -67,7 +68,10 @@ export const approverForChangeSet = (
   approvalData: ApprovalData,
 ) =>
   approvalData.requirements.some((r) =>
-    Object.values(r.approverGroups).flat().includes(userId),
+    Object.values(r.approverGroups)
+      .flat()
+      .concat(r.approverIndividuals)
+      .includes(userId),
   );
 
 export function useChangeSetsStore() {

@@ -4,7 +4,7 @@
   >
     <span class="flex flex-row mt-10 font-bold text-3xl">Admin Dashboard</span>
     <div class="flex flex-row w-full">
-      <Stack spacing="lg" class="p-10">
+      <Stack spacing="md" class="p-10">
         <Stack class="max-w-xl">
           <h2 class="font-bold text-lg">UPDATE MODULE CACHE</h2>
           <div class="flex flex-row-reverse gap-sm">
@@ -39,6 +39,31 @@
           </div>
         </Stack>
         <WorkspaceAdmin />
+        <Stack class="text-xs font-bold" spacing="none">
+          <div class="text-lg pb-2xs">Feature Flags:</div>
+          <div
+            v-for="flag in featureFlags"
+            :key="flag.name"
+            :class="
+              clsx(
+                'flex flex-row p-2xs',
+                themeClasses('', 'odd:bg-neutral-600'),
+              )
+            "
+          >
+            <div class="flex-1">{{ flag.name }}:</div>
+            <div
+              :class="
+                clsx(
+                  flag.value ? 'text-success-500' : 'text-destructive-500',
+                  'uppercase flex-none',
+                )
+              "
+            >
+              {{ flag.value }}
+            </div>
+          </div>
+        </Stack>
       </Stack>
       <PromptEditor />
     </div>
@@ -47,20 +72,26 @@
 
 <script lang="ts" setup>
 import * as _ from "lodash-es";
-import { onBeforeMount, ref } from "vue";
-import { Stack, VormInput, VButton } from "@si/vue-lib/design-system";
+import { computed, onBeforeMount, ref } from "vue";
+import {
+  Stack,
+  VormInput,
+  VButton,
+  themeClasses,
+} from "@si/vue-lib/design-system";
 import { useRouter } from "vue-router";
+import clsx from "clsx";
 import { useAdminStore } from "@/store/admin.store";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import WorkspaceAdmin from "@/components/AdminDashboard/WorkspaceAdmin.vue";
 import PromptEditor from "@/components/AdminDashboard/PromptAdmin.vue";
 
 const adminStore = useAdminStore();
-const featureFlagStore = useFeatureFlagsStore();
+const featureFlagsStore = useFeatureFlagsStore();
 
 const router = useRouter();
 onBeforeMount(async () => {
-  if (!featureFlagStore.ADMIN_PANEL_ACCESS) {
+  if (!featureFlagsStore.ADMIN_PANEL_ACCESS) {
     await router.push({ name: "workspace-single" });
   }
 });
@@ -82,4 +113,8 @@ const killExecution = () => {
 };
 
 const funcRunId = ref<string | null>(null);
+
+const featureFlags = computed(() => {
+  return featureFlagsStore.allFeatureFlags;
+});
 </script>

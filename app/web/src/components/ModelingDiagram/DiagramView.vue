@@ -255,7 +255,10 @@ function onMouseOut() {
   viewsStore.setHoveredComponentId(null);
 }
 
-const goto = () => {
-  viewsStore.selectView(props.view.id);
+const goto = (e: KonvaEventObject<MouseEvent>) => {
+  // only allow double click with left mouse button!
+  if (e.evt.button === 0) {
+    viewsStore.selectView(props.view.id);
+  }
 };
 </script>

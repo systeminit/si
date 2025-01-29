@@ -1,18 +1,24 @@
 <template>
-  <div
+  <component
+    :is="displayAsComponentCard ? ComponentCard : 'div'"
     :class="
       clsx(
-        'flex flex-row items-center text-sm relative p-2xs pl-xs min-w-0 w-full border border-transparent cursor-pointer',
-        selected
-          ? 'dark:bg-action-900 bg-action-100 border-action-500 dark:border-action-300'
-          : 'dark:border-neutral-700',
-        outlined
-          ? ' border-action-500 dark:border-action-300'
-          : 'dark:border-neutral-700',
+        !displayAsComponentCard && [
+          'flex flex-row items-center text-sm relative p-2xs pl-xs min-w-0 w-full border border-transparent cursor-pointer',
+          selected
+            ? 'dark:bg-action-900 bg-action-100 border-action-500 dark:border-action-300'
+            : 'dark:border-neutral-700',
+          outlined
+            ? ' border-action-500 dark:border-action-300'
+            : 'dark:border-neutral-700',
+        ],
       )
     "
+    titleCard
+    :component="displayAsComponentCard"
   >
     <div
+      v-if="!displayAsComponentCard"
       class="flex-grow min-w-0"
       @click="() => viewsStore.selectView(view.id)"
     >
@@ -57,6 +63,7 @@
         icon="cursor"
       />
       <DropdownMenuItem
+        v-if="!displayAsComponentCard"
         :disabled="
           viewsStore.selectedViewId === view.id &&
           !viewsStore.viewNodes[view.id]
@@ -85,6 +92,18 @@
             viewsStore.setOutlinerView(view.id);
           }
         "
+      />
+      <DropdownMenuItem
+        v-if="displayAsComponentCard && !selectedViaViewDetails"
+        label="Remove from this View"
+        icon="x-circle"
+        :onSelect="() => removeFromView()"
+      />
+      <DropdownMenuItem
+        v-else-if="featureFlagsStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL"
+        label="Approval Requirements"
+        icon="bullet-list"
+        :onSelect="() => displayApprovalRequirements()"
       />
       <DropdownMenuItem
         label="Delete View"
@@ -119,7 +138,7 @@
       />
     </Modal>
 
-    <template v-if="addingView">
+    <template v-if="addingView && !displayAsComponentCard">
       <Teleport to="body">
         <div
           ref="mouseNode"
@@ -129,7 +148,7 @@
         </div>
       </Teleport>
     </template>
-  </div>
+  </component>
 </template>
 
 <script lang="ts" setup>
@@ -156,14 +175,19 @@ import { useToast } from "vue-toastification";
 import { ViewDescription } from "@/api/sdf/dal/views";
 import { useViewsStore } from "@/store/views.store";
 import NodeSkeleton from "@/components/NodeSkeleton.vue";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import DetailsPanelMenuIcon from "./DetailsPanelMenuIcon.vue";
+import ComponentCard from "./ComponentCard.vue";
+import { DiagramViewData } from "./ModelingDiagram/diagram_types";
 
 const toast = useToast();
 const viewsStore = useViewsStore();
+const featureFlagsStore = useFeatureFlagsStore();
 
 const props = defineProps<{
   selected?: boolean;
   outlined?: boolean;
+  displayAsComponentCard?: DiagramViewData;
   view: ViewDescription;
 }>();
 
@@ -264,5 +288,17 @@ watch(
     viewName.value = props.view.name;
   },
   { immediate: true },
+);
+
+const removeFromView = () => {
+  viewsStore.removeSelectedViewComponentFromCurrentView();
+};
+
+const displayApprovalRequirements = () => {
+  viewsStore.setSelectedViewDetails(props.view.id);
+};
+
+const selectedViaViewDetails = computed(
+  () => !!viewsStore.selectedViewDetailsId,
 );
 </script>

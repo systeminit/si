@@ -5,9 +5,11 @@ import {
   DiagramViewData,
   SocketLocationInfo,
 } from "@/components/ModelingDiagram/diagram_types";
+import { UserId } from "@/store/auth.store";
 import { ComponentType } from "./schema";
 
 export type ViewId = string;
+export type EntityId = string; // TODO - "entity" can refer to most things in the system, currently we use this mostly just for views
 
 export type Components = Record<ComponentId, IRect>;
 export type Groups = Record<
@@ -38,4 +40,14 @@ export interface StringGeometry {
   y: string;
   width: string;
   height: string;
+}
+
+// Approval Requirement Definition types
+export type ApprovalRequirementDefinitionId = string;
+export interface ViewApprovalRequirementDefinition {
+  id: ApprovalRequirementDefinitionId;
+  entityId: ViewId;
+  requiredCount: number;
+  approverGroups: Record<string, UserId[]>;
+  approverIndividuals: UserId[];
 }

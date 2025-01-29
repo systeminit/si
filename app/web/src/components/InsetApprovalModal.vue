@@ -4,11 +4,11 @@
     :class="
       clsx(
         'w-1/2 flex flex-col gap-sm p-sm shadow-2xl',
-        themeClasses('bg-neutral-000 border', 'bg-neutral-900'),
+        themeClasses('bg-shade-0 border', 'bg-neutral-900'),
       )
     "
   >
-    <div class="flex flex-row gap-md mb-sm">
+    <div class="flex flex-row gap-md mb-sm items-center">
       <div class="flex flex-col gap-2xs">
         <TruncateWithTooltip class="font-bold italic pb-2xs">
           {{ changeSetName }}
@@ -31,7 +31,7 @@
         </template>
         <template
           v-else-if="
-            !featureFlagStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL &&
+            !featureFlagsStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL &&
             (mode === 'approved' || mode === 'rejected')
           "
         >
@@ -56,7 +56,7 @@
         </template>
         <template
           v-else-if="
-            featureFlagStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL &&
+            featureFlagsStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL &&
             mode === 'approved'
           "
         >
@@ -76,13 +76,13 @@
       :class="
         clsx(
           'flex flex-row',
-          featureFlagStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL
+          featureFlagsStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL
             ? 'place-content-evenly'
             : 'justify-center',
         )
       "
     >
-      <template v-if="featureFlagStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL">
+      <template v-if="featureFlagsStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL">
         <div class="flex flex-col text-sm gap-sm">
           <div
             v-for="group in requirementGroups"
@@ -129,7 +129,7 @@
       </template>
       <div class="flex flex-col gap-xs">
         <div
-          v-if="!featureFlagStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL"
+          v-if="!featureFlagsStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL"
           class="text-sm"
         >
           These actions will be applied to the real world:
@@ -144,15 +144,16 @@
     <div class="flex flex-row gap-sm justify-center mt-sm">
       <VButton
         label="Withdraw Request"
-        tone="info"
-        variant="solid"
+        tone="warning"
+        variant="ghost"
+        icon="x"
         @click="withdraw"
       />
       <template
         v-if="
-          (featureFlagStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL &&
+          (featureFlagsStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL &&
             userIsApprover) ||
-          (!featureFlagStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL &&
+          (!featureFlagsStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL &&
             changeSetsStore.currentUserIsDefaultApprover)
         "
       >
@@ -160,12 +161,14 @@
           :disabled="mode !== 'requested' || iRejected"
           label="Reject Request"
           tone="destructive"
+          icon="thumbs-down"
           @click="rejectHandler"
         />
         <VButton
           :disabled="mode !== 'requested' || iApproved"
           label="Approve Request"
           tone="success"
+          icon="thumbs-up"
           @click="approve"
         />
       </template>
@@ -218,7 +221,7 @@ export type InsetApprovalModalMode =
 
 const authStore = useAuthStore();
 const changeSetsStore = useChangeSetsStore();
-const featureFlagStore = useFeatureFlagsStore();
+const featureFlagsStore = useFeatureFlagsStore();
 const viewStore = useViewsStore();
 
 const applyingChangeSet = ref(false);
@@ -248,7 +251,9 @@ const requirementGroups = computed(() => {
   props.approvalData?.requirements.forEach((r) => {
     if (!["CategorySchema", "View"].includes(r.entityKind)) return;
 
-    const userIds = Object.values(r.approverGroups).flat();
+    const userIds = Object.values(r.approverGroups)
+      .flat()
+      .concat(r.approverIndividuals);
     const votes: Vote[] = [];
     userIds.forEach((id) => {
       const user = authStore.workspaceUsers[id];
@@ -282,7 +287,7 @@ const requirementGroups = computed(() => {
 
 const satisfied = computed(
   () =>
-    featureFlagStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL &&
+    featureFlagsStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL &&
     !props.approvalData?.requirements.some((r) => r.isSatisfied === false),
 );
 
