@@ -169,25 +169,23 @@ const viewId = computed(
 const initialFetch = viewStore.getRequestStatus("FETCH_VIEW");
 const viewFetch = viewStore.getRequestStatus("FETCH_VIEW_GEOMETRY", viewId);
 
-const viewComponentIds = computed<ComponentId[] | null>(() => {
+const viewComponentIds = computed<ComponentId[]>(() => {
   if (viewId.value) {
     return Object.keys(
       viewStore.viewsById[viewId.value]?.components || [],
     ).concat(Object.keys(viewStore.viewsById[viewId.value]?.groups || []));
-  } else return null;
+  } else return [];
 });
 
 const rootComponents = computed(() => {
   return Object.values(componentsStore.allComponentsById).filter((c) => {
-    if (viewComponentIds.value !== null) {
-      const ancestorsInView = c.def.ancestorIds?.some((a) =>
-        viewComponentIds.value?.includes(a),
-      );
-      return (
-        viewComponentIds.value.includes(c.def.id) &&
-        (!c.def.parentId || !ancestorsInView)
-      );
-    } else return !c.def.parentId;
+    const ancestorsInView = c.def.ancestorIds?.some((a) =>
+      viewComponentIds.value.includes(a),
+    );
+    return (
+      viewComponentIds.value.includes(c.def.id) &&
+      (!c.def.parentId || !ancestorsInView)
+    );
   });
 });
 
