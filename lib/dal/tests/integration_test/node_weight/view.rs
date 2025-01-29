@@ -5,7 +5,8 @@ use dal::{
 use dal_test::{
     expected::{self, generate_fake_name, ExpectView},
     helpers::create_component_for_default_schema_name,
-    test,
+    prelude::OptionExt,
+    test, Result,
 };
 use pretty_assertions_sorted::assert_eq;
 use si_frontend_types::RawGeometry;
@@ -308,4 +309,70 @@ async fn correct_transforms_remove_view_with_component_in_another_view(ctx: &mut
             .expect("Unable to get Geometries for Component")
             .len()
     );
+}
+
+#[test]
+async fn correct_transforms_remove_view_components_moved_to_another_view(
+    ctx: &mut DalContext,
+) -> Result<()> {
+    let default_view_id = ExpectView::get_id_for_default(ctx).await;
+    let new_view = ExpectView::create(ctx).await;
+    let component = create_component_for_default_schema_name(
+        ctx,
+        "swifty",
+        generate_fake_name(),
+        new_view.id(),
+    )
+    .await
+    .expect("Unable to create Component in new View");
+    expected::apply_change_set_to_base(ctx).await;
+    expected::fork_from_head_change_set(ctx).await;
+
+    assert_eq!(
+        2,
+        View::list(ctx).await.expect("Unable to list Views").len(),
+    );
+    assert_eq!(
+        1,
+        Geometry::list_ids_by_component(ctx, component.id())
+            .await?
+            .len(),
+    );
+
+    // Move the Component to a different View, and remove the View it was originally in.
+    let new_view_geometry_id = *Geometry::list_ids_by_component(ctx, component.id())
+        .await?
+        .first()
+        .ok_or_eyre("Unable to retrieve first element of a single element Vec")?;
+    Component::add_to_view(ctx, component.id(), default_view_id, RawGeometry::default()).await?;
+    Geometry::remove(ctx, new_view_geometry_id).await?;
+    View::remove(ctx, new_view.id()).await?;
+
+    assert_eq!(
+        1,
+        View::list(ctx).await.expect("Unable to list Views").len(),
+    );
+    assert_eq!(
+        1,
+        Geometry::list_ids_by_component(ctx, component.id())
+            .await?
+            .len(),
+    );
+    expected::apply_change_set_to_base(ctx).await;
+
+    // Applying the set of transforms should see that even though the View being removed
+    // was the only one the Component was in, it is also being added to a different View
+    // in the same set of updates to apply, so it is not being orphaned.
+    assert_eq!(
+        1,
+        View::list(ctx).await.expect("Unable to list Views").len(),
+    );
+    assert_eq!(
+        1,
+        Geometry::list_ids_by_component(ctx, component.id())
+            .await?
+            .len(),
+    );
+
+    Ok(())
 }

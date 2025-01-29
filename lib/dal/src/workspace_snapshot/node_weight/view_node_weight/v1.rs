@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use crate::{
     workspace_snapshot::{
@@ -58,6 +58,8 @@ impl CorrectTransforms for ViewNodeWeightV1 {
         let mut maybe_view_removal_update_idx = None;
         let mut removed_geometries = HashSet::new();
         let mut removed_components = HashSet::new();
+        let mut components_with_new_geometry: HashMap<Ulid, HashSet<Ulid>> = HashMap::new();
+        let mut new_geometry_for_other_views: HashSet<Ulid> = HashSet::new();
 
         for (update_idx, update) in updates.iter().enumerate() {
             match update {
@@ -93,6 +95,32 @@ impl CorrectTransforms for ViewNodeWeightV1 {
                 {
                     // A Component is being removed from the Workspace.
                     removed_components.insert(destination.id);
+                }
+                Update::NewEdge {
+                    source,
+                    destination,
+                    edge_weight,
+                } if source.node_weight_kind == NodeWeightDiscriminants::Geometry
+                    && EdgeWeightKindDiscriminants::Represents == edge_weight.kind().into() =>
+                {
+                    components_with_new_geometry
+                        .entry(destination.id.into_inner().into())
+                        .and_modify(|entry| {
+                            entry.insert(source.id.into_inner().into());
+                        })
+                        .or_insert_with(|| HashSet::from([source.id.into_inner().into()]));
+                }
+                Update::NewEdge {
+                    source,
+                    destination,
+                    edge_weight,
+                } if source.node_weight_kind == NodeWeightDiscriminants::View
+                    && source.id.into_inner() != self.id.inner()
+                    && EdgeWeightKindDiscriminants::Use == edge_weight.kind().into()
+                    && destination.node_weight_kind == NodeWeightDiscriminants::Geometry =>
+                {
+                    // There is a new Geometry for a View other than this one.
+                    new_geometry_for_other_views.insert(destination.id.into_inner().into());
                 }
                 _ => {}
             }
@@ -146,8 +174,24 @@ impl CorrectTransforms for ViewNodeWeightV1 {
                             let my_id: ViewId = self.id().into();
                             appears_in_views.retain(|&view_id| my_id != view_id);
 
+                            // If the Component is either in other views, or is being added to (at least)
+                            // another View in the same set of Transforms, then removing this view is fine
+                            // since it won't orphan any Components.
                             if !appears_in_views.is_empty() {
                                 continue;
+                            }
+                            // The Component needs to both be getting new Geometry from the set of Update,
+                            // _and_ at least one of those Geometry need to be for a View other than the
+                            // one being removed.
+                            dbg!(&components_with_new_geometry, &new_geometry_for_other_views);
+                            if let Some(component_new_geometry_ids) =
+                                components_with_new_geometry.get(&component.id())
+                            {
+                                if component_new_geometry_ids.iter().any(|new_geometry_id| {
+                                    new_geometry_for_other_views.contains(new_geometry_id)
+                                }) {
+                                    continue;
+                                }
                             }
                         }
 
