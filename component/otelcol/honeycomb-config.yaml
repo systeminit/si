@@ -137,6 +137,10 @@ processors:
   filter:
     error_mode: ignore
     traces:
+      span: 
+        # temporarily ignore these
+         - name == "pinga.jobs.:workspace_id.:change_set_id.DependentValuesUpdate receive"
+         - name == "pinga.jobs.:workspace_id.:change_set_id.ComputeValidation receive"
       spanevent:
         # js-browser document-load
         - name == "connectEnd" and instrumentation_scope.name ==
