@@ -1881,6 +1881,11 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                   else {
                     const v = this.viewList[0];
                     if (v) this.selectView(v.id);
+                    else
+                      router.push({
+                        name: "workspace-single",
+                        params: { workspacePk: workspaceId },
+                      });
                   }
                 }
               },
