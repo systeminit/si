@@ -64,9 +64,15 @@ export function createInputSocketsBasedOnOutputSockets(
 
     for (const prop of domain.entries) {
       if (foundOutputSockets.has(prop.name)) {
-        schemaVariant.sockets.push(
-          createInputSocketFromProp(prop as ExpandedPropSpec),
-        );
+        let found = false;
+        for (const socket of schemaVariant.sockets) {
+          if (socket.name == prop.name) found = true;
+        }
+        if (!found) {
+          schemaVariant.sockets.push(
+            createInputSocketFromProp(prop as ExpandedPropSpec),
+          );
+        }
       }
     }
 

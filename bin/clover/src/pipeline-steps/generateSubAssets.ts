@@ -56,9 +56,7 @@ export function generateSubAssets(incomingSpecs: PkgSpec[]): PkgSpec[] {
 
     for (const prop of domain.entries) {
       if (prop.kind === "array" && prop.typeProp.kind === "object") {
-        const objName = prop.name.endsWith("s")
-          ? prop.name.slice(0, -1)
-          : prop.name;
+        const objName = prop.name;
 
         logger.debug(`Generating subasset ${objName} for ${spec.name}`);
 
@@ -169,12 +167,13 @@ export function generateSubAssets(incomingSpecs: PkgSpec[]): PkgSpec[] {
     for (const name of names) {
       const nameTokens = name.split("::");
       // TODO check naming for sub sub assets
-      // if (nameTokens.length !== 4) {
-      //   throw new Error(`Could not parse subAsset name: ${name}`);
-      // }
+      if (nameTokens.length < 4) {
+        throw new Error(`Could not parse subAsset name: ${name}`);
+      }
 
-      const [_aws, awsCategory, parent, objName] = nameTokens;
-      finalObjName = objName;
+      const awsCategory = nameTokens[1];
+      const parent = nameTokens[nameTokens.length - 2];
+      finalObjName = nameTokens[nameTokens.length - 1];
 
       // For categories and parents, set to null if not all of them are the same
       if (finalAwsCategory === undefined) {

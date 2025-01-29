@@ -272,9 +272,9 @@ export async function loadCfDatabase(
       const typeName: string = data.typeName;
 
       if (
-        false &&
+        // false &&
         ![
-          "AWS::QBusiness::DataSource",
+          "AWS::ECS::TaskDefinition",
         ].includes(typeName)
       ) continue;
 

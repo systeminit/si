@@ -15,7 +15,7 @@ export function createOutputSocketFromProp(
   const socket = createSocket(prop.name, "output", arity);
   if (socket.data) {
     socket.data.funcUniqueId = getSiFuncId("si:identity");
-    socket.inputs.push(attrFuncInputSpecFromProp(prop));
+    socket.inputs = [attrFuncInputSpecFromProp(prop)];
   }
   return socket;
 }
@@ -26,7 +26,7 @@ export function createInputSocketFromProp(
 ): SocketSpec {
   const socket = createSocket(prop.name, "input", arity);
   if (socket.data) {
-    prop.data.inputs?.push(attrFuncInputSpecFromSocket(socket));
+    prop.data.inputs = [attrFuncInputSpecFromSocket(socket)];
     prop.data.funcUniqueId = getSiFuncId("si:identity");
   }
   return socket;
