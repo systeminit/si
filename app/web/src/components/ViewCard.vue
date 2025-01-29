@@ -88,7 +88,6 @@
       />
       <DropdownMenuItem
         label="Delete View"
-        :disabled="viewsStore.viewListCount === 1"
         icon="trash"
         :onSelect="() => deleteView(view)"
       />

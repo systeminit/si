@@ -12,7 +12,7 @@ use crate::{
     track,
 };
 
-use super::{ViewError, ViewResult};
+use super::ViewResult;
 
 pub async fn remove_view(
     HandlerContext(builder): HandlerContext,
@@ -27,11 +27,6 @@ pub async fn remove_view(
         .await?;
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
-
-    let current_view_list = View::list(&ctx).await?;
-    if current_view_list.len() == 1 {
-        return Err(ViewError::CantDeleteOnlyView());
-    }
 
     let view = View::get_by_id(&ctx, view_id).await?;
     View::remove(&ctx, view_id).await?;

@@ -260,9 +260,6 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
             ? state.selectedComponentIds[0]
             : null;
         },
-        viewListCount: (state) => {
-          return state.viewList.length;
-        },
         selectedComponent():
           | DiagramNodeData
           | DiagramGroupData
