@@ -2,7 +2,8 @@
   <button
     v-if="
       userIsApprover ||
-      (ffStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL && numberICanApprove > 0)
+      (featureFlagsStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL &&
+        numberICanApprove > 0)
     "
     v-tooltip="{
       content: tooltipText,
@@ -53,19 +54,19 @@ import ApprovalPendingModal from "../../ApprovalPendingModal.vue";
 
 const changeSetsStore = useChangeSetsStore();
 const authStore = useAuthStore();
-const ffStore = useFeatureFlagsStore();
+const featureFlagsStore = useFeatureFlagsStore();
 
 const pendingApprovalModalRef = ref<InstanceType<
   typeof ApprovalPendingModal
 > | null>(null);
 
 const userIsApprover = computed(() => {
-  if (ffStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL) return false;
+  if (featureFlagsStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL) return false;
   return changeSetsStore.currentUserIsDefaultApprover;
 });
 
 const numberICanApprove = computed(() => {
-  if (!ffStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL) {
+  if (!featureFlagsStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL) {
     return changeSetsStore.changeSetsNeedingApproval.length;
   }
   let approvable = 0;

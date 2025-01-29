@@ -1,5 +1,7 @@
 use axum::extract::Path;
-use dal::{approval_requirement::ApprovalRequirement, ChangeSet, ChangeSetId, WorkspacePk};
+use dal::{
+    approval_requirement::ApprovalRequirement, ChangeSet, ChangeSetId, WorkspacePk, WsEvent,
+};
 use si_id::ApprovalRequirementDefinitionId;
 
 use crate::{
@@ -25,6 +27,11 @@ pub async fn remove(
 
     // TODO(nick): add audit logs, posthog tracking and WsEvent(s).
     ApprovalRequirement::remove_definition(&ctx, approval_requirement_definition_id).await?;
+
+    WsEvent::requirement_removed(&ctx, approval_requirement_definition_id)
+        .await?
+        .publish_on_commit(&ctx)
+        .await?;
 
     ctx.commit().await?;
 

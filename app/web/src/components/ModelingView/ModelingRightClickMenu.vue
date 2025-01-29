@@ -71,7 +71,7 @@ const changeSetsStore = useChangeSetsStore();
 const componentsStore = useComponentsStore();
 const funcStore = useFuncStore();
 const actionsStore = useActionsStore();
-const viewStore = useViewsStore();
+const viewsStore = useViewsStore();
 const featureFlagsStore = useFeatureFlagsStore();
 
 const {
@@ -84,7 +84,7 @@ const {
   restorableSelectedComponents,
   erasableSelectedComponents,
   selectedEdge,
-} = storeToRefs(viewStore);
+} = storeToRefs(viewsStore);
 
 const attributesStore = computed(() =>
   selectedComponentId.value
@@ -137,24 +137,13 @@ const getActionToggleState = (id: string) => {
 };
 
 const removeFromView = () => {
-  if (viewStore.selectedViewId) {
-    const componentIds = viewStore.selectedComponents
-      .filter((c) => c.def.componentType !== ComponentType.View)
-      .map((c) => c.def.id);
-    if (componentIds.length > 0)
-      viewStore.REMOVE_FROM(viewStore.selectedViewId, componentIds);
-    const viewIds = viewStore.selectedComponents
-      .filter((c) => c.def.componentType === ComponentType.View)
-      .map((c) => c.def.id);
-    if (viewIds.length > 0)
-      viewStore.REMOVE_VIEW_FROM(viewStore.selectedViewId, viewIds);
-  }
+  viewsStore.removeSelectedViewComponentFromCurrentView();
 };
 
 const viewsSubitems = (add: (viewId: ViewId) => void) => {
   // dont show the view you're in b/c you cannot copy or move things to it
-  return viewStore.viewList
-    .filter((v) => v.id !== viewStore.selectedViewId)
+  return viewsStore.viewList
+    .filter((v) => v.id !== viewsStore.selectedViewId)
     .map((v) => {
       return {
         label: v.name,
@@ -173,13 +162,13 @@ const viewAdd = (remove: boolean) => {
       )
       .forEach((c) => {
         const geo = c.def.isGroup
-          ? viewStore.groups[c.def.id]
-          : viewStore.components[c.def.id];
+          ? viewsStore.groups[c.def.id]
+          : viewsStore.components[c.def.id];
         if (geo) components[c.def.id] = geo;
       });
 
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    viewStore.ADD_TO(viewStore.selectedViewId!, components, viewId, remove);
+    viewsStore.ADD_TO(viewsStore.selectedViewId!, components, viewId, remove);
   };
 };
 
@@ -223,7 +212,7 @@ const newView = () => {
 };
 
 const create = async () => {
-  if (!viewStore.selectedViewId) return;
+  if (!viewsStore.selectedViewId) return;
   if (!viewName.value) {
     labelRef.value?.setError("Name is required");
   } else {
@@ -231,13 +220,13 @@ const create = async () => {
     selectedComponents.value.forEach((component) => {
       const geo =
         component.def.componentType === ComponentType.Component
-          ? viewStore.components[component.def.id]
-          : viewStore.groups[component.def.id];
+          ? viewsStore.components[component.def.id]
+          : viewsStore.groups[component.def.id];
       if (geo) components[component.def.id] = geo;
     });
-    const resp = await viewStore.CREATE_VIEW_AND_MOVE(
+    const resp = await viewsStore.CREATE_VIEW_AND_MOVE(
       viewName.value,
-      viewStore.selectedViewId,
+      viewsStore.selectedViewId,
       components,
     );
     if (resp.result.success) {
@@ -510,12 +499,12 @@ const rightClickMenuItems = computed(() => {
 
 const runManagementFunc = async (prototype: MgmtPrototype) => {
   if (!selectedComponent.value) return;
-  if (!viewStore.selectedViewId) return;
+  if (!viewsStore.selectedViewId) return;
 
   await funcStore.RUN_MGMT_PROTOTYPE(
     prototype.managementPrototypeId,
     selectedComponent.value.def.id,
-    viewStore.selectedViewId,
+    viewsStore.selectedViewId,
   );
 };
 

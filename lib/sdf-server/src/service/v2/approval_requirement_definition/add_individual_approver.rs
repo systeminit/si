@@ -1,5 +1,7 @@
 use axum::extract::Path;
-use dal::{approval_requirement::ApprovalRequirement, ChangeSet, ChangeSetId, UserPk, WorkspacePk};
+use dal::{
+    approval_requirement::ApprovalRequirement, ChangeSet, ChangeSetId, UserPk, WorkspacePk, WsEvent,
+};
 use si_id::ApprovalRequirementDefinitionId;
 
 use crate::{
@@ -30,6 +32,15 @@ pub async fn add_individual_approver(
         approval_requirement_definition_id,
         user_id,
     )
+    .await?;
+
+    WsEvent::add_individual_approver_to_requirement(
+        &ctx,
+        approval_requirement_definition_id,
+        user_id,
+    )
+    .await?
+    .publish_on_commit(&ctx)
     .await?;
 
     ctx.commit().await?;

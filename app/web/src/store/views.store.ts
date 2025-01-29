@@ -14,6 +14,8 @@ import {
   ViewDescription,
   StringGeometry,
   ViewNodes,
+  ApprovalRequirementDefinitionId,
+  ViewApprovalRequirementDefinition,
 } from "@/api/sdf/dal/views";
 import {
   DiagramGroupData,
@@ -52,7 +54,7 @@ import { useRealtimeStore } from "./realtime/realtime.store";
 import { useWorkspacesStore } from "./workspaces.store";
 import { useRouterStore } from "./router.store";
 import { useQualificationsStore } from "./qualifications.store";
-import { useAuthStore } from "./auth.store";
+import { useAuthStore, UserId } from "./auth.store";
 
 const MAX_RETRIES = 5;
 
@@ -133,7 +135,7 @@ const setSockets = (
   return sockets;
 };
 
-const VIEW_DEFAULTS = {
+export const VIEW_DEFAULTS = {
   icon: "create" as IconNames,
   color: "#9d00ff",
   schemaName: "View",
@@ -181,6 +183,15 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
     "views",
   ] as URLPattern;
 
+  const APPROVAL_REQUIREMENTS_API_PREFIX = [
+    "v2",
+    "workspaces",
+    { workspaceId },
+    "change-sets",
+    { changeSetId },
+    "approval-requirement-definitions",
+  ] as URLPattern;
+
   return addStoreHooks(
     workspaceId,
     changeSetId,
@@ -194,6 +205,10 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
         // every views data goes here
         viewsById: {} as Record<ViewId, View>,
         viewList: [] as ViewDescription[],
+        requirementDefinitionsById: {} as Record<
+          ApprovalRequirementDefinitionId,
+          ViewApprovalRequirementDefinition
+        >,
 
         /* *
          * these hold the data for everything on the diagram in the SELECTED view
@@ -221,6 +236,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
         selectedComponentIds: [] as ComponentId[],
         selectedEdgeId: null as EdgeId | null,
         selectedComponentDetailsTab: null as string | null,
+        selectedViewDetailsId: null as ViewId | null,
         hoveredComponentId: null as ComponentId | null,
         hoveredEdgeId: null as EdgeId | null,
         hoveredComponentMeta: null as ElementHoverMeta | null,
@@ -445,6 +461,19 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
 
           return boxDictionary;
         },
+
+        requirementDefintionsByViewId: (state) => {
+          const out = {} as Record<ViewId, ViewApprovalRequirementDefinition[]>;
+          for (const requirement of Object.values(
+            state.requirementDefinitionsById,
+          )) {
+            if (!out[requirement.entityId]) {
+              out[requirement.entityId] = [];
+            }
+            out[requirement.entityId]?.push(requirement);
+          }
+          return out;
+        },
       },
       actions: {
         geoFrom(
@@ -515,12 +544,15 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
           if (!ids.length) {
             this.selectedComponentIds = [];
             this.selectedEdgeId = null;
+            this.selectedViewDetailsId = null;
           } else if (ids.length === 1 && ids[0]?.startsWith("e_")) {
             this.selectedComponentIds = [];
             this.selectedEdgeId = ids[0].substring(2);
+            this.selectedViewDetailsId = null;
           } else {
             this.selectedComponentIds = ids.map((id) => id.substring(2));
             this.selectedEdgeId = null;
+            this.selectedViewDetailsId = null;
           }
 
           const tabSlug =
@@ -531,9 +563,14 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
             this.selectedComponentDetailsTab = null;
           }
         },
-
+        setSelectedViewDetails(id: ViewId) {
+          this.selectedViewDetailsId = id;
+          this.selectedComponentIds = [];
+          this.selectedEdgeId = null;
+        },
         setSelectedEdgeId(selection: EdgeId | null) {
           // clear component selection
+          this.selectedViewDetailsId = null;
           this.selectedComponentIds = [];
           this.selectedEdgeId = selection;
           this.selectedComponentDetailsTab = null;
@@ -544,6 +581,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
           opts?: { toggle?: boolean; detailsTab?: string },
         ) {
           const key = `${changeSetId}_selected_component`;
+          this.selectedViewDetailsId = null;
           this.selectedEdgeId = null;
           if (!selection || !selection.length) {
             this.selectedComponentIds = [];
@@ -756,6 +794,20 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
         },
         cancelAdd() {
           this.addComponentId = null;
+        },
+        removeSelectedViewComponentFromCurrentView() {
+          if (this.selectedViewId) {
+            const componentIds = this.selectedComponents
+              .filter((c) => c.def.componentType !== ComponentType.View)
+              .map((c) => c.def.id);
+            if (componentIds.length > 0)
+              this.REMOVE_FROM(this.selectedViewId, componentIds);
+            const viewIds = this.selectedComponents
+              .filter((c) => c.def.componentType === ComponentType.View)
+              .map((c) => c.def.id);
+            if (viewIds.length > 0)
+              this.REMOVE_VIEW_FROM(this.selectedViewId, viewIds);
+          }
         },
         async CREATE_VIEW(name: string) {
           return new ApiRequest<ViewDescription>({
@@ -1575,6 +1627,67 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
           });
         },
 
+        // view approval requirement endpoints
+        async CREATE_VIEW_APPROVAL_REQUIREMENT(viewId: ViewId, userId: UserId) {
+          return new ApiRequest({
+            method: "put",
+            url: APPROVAL_REQUIREMENTS_API_PREFIX,
+            params: {
+              entityId: viewId,
+              users: [userId],
+            },
+          });
+        },
+        async REMOVE_VIEW_APPROVAL_REQUIREMENT(
+          definitionId: ApprovalRequirementDefinitionId,
+        ) {
+          return new ApiRequest({
+            method: "delete",
+            url: APPROVAL_REQUIREMENTS_API_PREFIX.concat([definitionId]),
+          });
+        },
+        async LIST_VIEW_APPROVAL_REQUIREMENTS(viewId: ViewId) {
+          return new ApiRequest({
+            method: "get",
+            url: APPROVAL_REQUIREMENTS_API_PREFIX.concat(["entity", viewId]),
+            onSuccess: (response: ViewApprovalRequirementDefinition[]) => {
+              this.requirementDefinitionsById = {} as Record<
+                ApprovalRequirementDefinitionId,
+                ViewApprovalRequirementDefinition
+              >;
+              for (const def of response) {
+                this.requirementDefinitionsById[def.id] = def;
+              }
+            },
+          });
+        },
+        async ADD_INDIVIDUAL_APPROVER_TO_REQUIREMENT(
+          definitionId: ApprovalRequirementDefinitionId,
+          userId: UserId,
+        ) {
+          return new ApiRequest({
+            method: "put",
+            url: APPROVAL_REQUIREMENTS_API_PREFIX.concat([
+              definitionId,
+              "individual-approver",
+              userId,
+            ]),
+          });
+        },
+        async REMOVE_INDIVIDUAL_APPROVER_FROM_REQUIREMENT(
+          definitionId: ApprovalRequirementDefinitionId,
+          userId: UserId,
+        ) {
+          return new ApiRequest({
+            method: "delete",
+            url: APPROVAL_REQUIREMENTS_API_PREFIX.concat([
+              definitionId,
+              "individual-approver",
+              userId,
+            ]),
+          });
+        },
+
         setGroupZIndex() {
           const groupSizes: {
             id: string;
@@ -1997,6 +2110,51 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                 this.setGroupZIndex();
               },
             },
+
+            // events for approval requirements
+            {
+              eventType: "ApprovalRequirementAddIndividualApprover",
+              callback: (payload) => {
+                const viewId =
+                  this.requirementDefinitionsById[
+                    payload.approvalRequirementDefinitionId
+                  ]?.entityId;
+                if (viewId) {
+                  this.LIST_VIEW_APPROVAL_REQUIREMENTS(viewId);
+                }
+              },
+            },
+            {
+              eventType: "ApprovalRequirementDefinitionCreated",
+              callback: (payload) => {
+                const viewId = payload.entityId;
+                this.LIST_VIEW_APPROVAL_REQUIREMENTS(viewId);
+              },
+            },
+            {
+              eventType: "ApprovalRequirementDefinitionRemoved",
+              callback: (payload) => {
+                const viewId =
+                  this.requirementDefinitionsById[
+                    payload.approvalRequirementDefinitionId
+                  ]?.entityId;
+                if (viewId) {
+                  this.LIST_VIEW_APPROVAL_REQUIREMENTS(viewId);
+                }
+              },
+            },
+            {
+              eventType: "ApprovalRequirementRemoveIndividualApprover",
+              callback: (payload) => {
+                const viewId =
+                  this.requirementDefinitionsById[
+                    payload.approvalRequirementDefinitionId
+                  ]?.entityId;
+                if (viewId) {
+                  this.LIST_VIEW_APPROVAL_REQUIREMENTS(viewId);
+                }
+              },
+            },
           ],
         );
 
@@ -2022,6 +2180,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
         return () => {
           // clear selection without triggering url stuff
           this.selectedComponentIds = [];
+          this.selectedViewDetailsId = null;
           this.selectedEdgeId = null;
           actionUnsub();
           realtimeStore.unsubscribe(`${this.$id}-changeset`);

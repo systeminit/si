@@ -3,7 +3,7 @@
     :class="
       clsx(
         'p-xs border-l-4 border relative',
-        titleCard ? 'mb-xs' : 'rounded-md',
+        !titleCard && 'rounded-md',
         'toDelete' in component.def && component.def.toDelete && 'opacity-70',
         'fromBaseChangeSet' in component.def &&
           component.def.fromBaseChangeSet &&

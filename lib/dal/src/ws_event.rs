@@ -8,6 +8,10 @@ use si_frontend_types as frontend_types;
 use thiserror::Error;
 use ulid::Ulid;
 
+use crate::approval_requirement::{
+    ApprovalRequirementDefinitionCreatedPayload, ApprovalRequirementDefinitionRemovedPayload,
+    IndividualApproverPayload,
+};
 use crate::audit_logging::AuditLogsPublishedPayload;
 use crate::change_set::event::{
     ChangeSetActorPayload, ChangeSetAppliedPayload, ChangeSetMergeVotePayload,
@@ -80,6 +84,10 @@ pub type WsEventResult<T> = Result<T, WsEventError>;
 #[allow(clippy::large_enum_variant)]
 pub enum WsPayload {
     ActionsListUpdated(ChangeSetId),
+    ApprovalRequirementAddIndividualApprover(IndividualApproverPayload),
+    ApprovalRequirementDefinitionCreated(ApprovalRequirementDefinitionCreatedPayload),
+    ApprovalRequirementDefinitionRemoved(ApprovalRequirementDefinitionRemovedPayload),
+    ApprovalRequirementRemoveIndividualApprover(IndividualApproverPayload),
     AsyncError(ErrorPayload),
     AsyncFinish(FinishPayload),
     AuditLogsPublished(AuditLogsPublishedPayload),

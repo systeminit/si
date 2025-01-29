@@ -8,7 +8,9 @@ use si_events::{merkle_tree_hash::MerkleTreeHash, ContentHash};
 use si_id::{ulid::Ulid, ApprovalRequirementDefinitionId, EntityId, UserPk};
 
 use crate::{
-    approval_requirement::{ApprovalRequirement, ApprovalRequirementExplicit},
+    approval_requirement::{
+        ApprovalRequirement, ApprovalRequirementDefinition, ApprovalRequirementExplicit,
+    },
     layer_db_types::{
         ApprovalRequirementDefinitionContent, ApprovalRequirementDefinitionContentV1,
     },
@@ -61,6 +63,12 @@ pub trait ApprovalRequirementExt {
         ctx: &DalContext,
         changes: &[Change],
     ) -> WorkspaceSnapshotResult<(Vec<ApprovalRequirement>, HashMap<EntityId, MerkleTreeHash>)>;
+
+    async fn approval_requirement_definitions_for_entity_id_opt(
+        &self,
+        ctx: &DalContext,
+        entity_id: EntityId,
+    ) -> WorkspaceSnapshotResult<Option<Vec<ApprovalRequirementDefinition>>>;
 }
 
 #[async_trait]
@@ -256,5 +264,46 @@ impl ApprovalRequirementExt for WorkspaceSnapshot {
         }
 
         Ok((results, ids_with_hashes_for_deleted_nodes))
+    }
+
+    async fn approval_requirement_definitions_for_entity_id_opt(
+        &self,
+        ctx: &DalContext,
+        entity_id: EntityId,
+    ) -> WorkspaceSnapshotResult<Option<Vec<ApprovalRequirementDefinition>>> {
+        let Some(approval_requirement_definition_ids) = self
+            .working_copy()
+            .await
+            .approval_requirement_definitions_for_entity_id_opt(entity_id)?
+        else {
+            return Ok(None);
+        };
+
+        let mut results = Vec::new();
+        for approval_requirement_definition_id in approval_requirement_definition_ids {
+            let definition_node_weight = self
+                .working_copy()
+                .await
+                .get_node_weight_by_id(approval_requirement_definition_id)?
+                .get_approval_requirement_definition_node_weight()?;
+            let Some(ApprovalRequirementDefinitionContent::V1(definition_content)) = ctx
+                .layer_db()
+                .cas()
+                .try_read_as(&definition_node_weight.content_hash())
+                .await?
+            else {
+                return Err(WorkspaceSnapshotError::MissingContentFromStore(
+                    definition_node_weight.id(),
+                ));
+            };
+
+            results.push(ApprovalRequirementDefinition {
+                id: definition_node_weight.id().into(),
+                required_count: definition_content.minimum,
+                approvers: definition_content.approvers,
+            });
+        }
+
+        Ok(Some(results))
     }
 }

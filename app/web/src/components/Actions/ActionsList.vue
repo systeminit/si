@@ -33,7 +33,7 @@
             </div>
           </div>
           <div class="flex-none font-bold">
-            {{ displayActions.length }} Actions
+            {{ displayActions.length }} Action(s)
           </div>
           <!-- TODO(Wendy) - maybe a PillCounter makes more sense here? -->
           <!-- <PillCounter

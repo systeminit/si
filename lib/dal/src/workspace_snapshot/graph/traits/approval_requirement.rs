@@ -45,4 +45,9 @@ pub trait ApprovalRequirementExt {
         Vec<ApprovalRequirementsBag>,
         HashMap<EntityId, MerkleTreeHash>,
     )>;
+
+    fn approval_requirement_definitions_for_entity_id_opt(
+        &self,
+        entity_id: EntityId,
+    ) -> WorkspaceSnapshotGraphResult<Option<Vec<ApprovalRequirementDefinitionId>>>;
 }

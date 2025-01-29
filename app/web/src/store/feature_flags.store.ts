@@ -20,6 +20,11 @@ const WORKSPACE_FLAG_MAPPING = {
     "workspace-fine-grained-access-control",
 };
 
+const ALL_FLAG_MAPPING: Record<FeatureFlags, string> = {
+  ...FLAG_MAPPING,
+  ...WORKSPACE_FLAG_MAPPING,
+};
+
 type KeysOfUnion<T> = T extends T ? keyof T : never;
 type FeatureFlags = KeysOfUnion<
   typeof FLAG_MAPPING | typeof WORKSPACE_FLAG_MAPPING
@@ -38,11 +43,16 @@ export function useFeatureFlagsStore() {
     undefined,
     defineStore("feature-flags", {
       // all flags default to false
-      state: () =>
-        _.mapValues(
-          { ...FLAG_MAPPING, ...WORKSPACE_FLAG_MAPPING },
-          () => false,
-        ),
+      state: () => _.mapValues({ ...ALL_FLAG_MAPPING }, () => false),
+      getters: {
+        allFeatureFlags(state) {
+          const flags = [] as Array<{ name: string; value: boolean }>;
+          for (const key of Object.keys(ALL_FLAG_MAPPING)) {
+            flags.push({ name: key, value: state[key as FeatureFlags] });
+          }
+          return flags;
+        },
+      },
       async onActivated() {
         posthog.onFeatureFlags((phFlags) => {
           // reset local flags from posthog data
@@ -77,7 +87,7 @@ export function useFeatureFlagsStore() {
 
         // You can override feature flags while working on a feature by setting them to true/false here
         // for example:
-        // this.MANAGEMENT_EDGES = false;
+        // this.FEATURE_FLAG_NAME = false;
       },
     }),
   )();

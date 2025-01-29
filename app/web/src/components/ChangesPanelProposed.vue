@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="h-full flex flex-col overflow-hidden">
     <ConfirmHoldModal ref="confirmRef" :ok="finishHold" />
     <div v-if="actionsStore.proposedActions.length > 0">
       <!-- TODO(Wendy)- SEARCH BAR SHOULD GO HERE -->
@@ -34,7 +34,7 @@
       :open="!!singleSelectedAction"
       :selectedTab="selectedTab"
     />
-    <div v-if="changeSetStore.headSelected">
+    <template v-if="changeSetStore.headSelected">
       <ActionsList
         v-if="actionsStore.proposedActions.length > 0"
         :clickAction="clickAction"
@@ -47,8 +47,8 @@
         primaryText="All Actions on HEAD have been run"
         secondaryText="You can see those actions in the history tab."
       />
-    </div>
-    <div v-else>
+    </template>
+    <template v-else>
       <TreeNode
         enableDefaultHoverClasses
         enableGroupToggle
@@ -57,7 +57,7 @@
         leftBorderSize="none"
         defaultOpen
         internalScrolling
-        class="min-h-[50vh]"
+        class="min-h-[32px]"
         primaryIconClasses=""
         label="Proposed Actions In This Change Set"
       >
@@ -99,11 +99,11 @@
         <EmptyStateCard
           v-else
           iconName="actions"
-          primaryText="All Actions on HEAD have been run"
-          secondaryText="You can see those actions in the history tab."
+          primaryText="All Actions on HEAD have run"
+          secondaryText="See past actions in the history tab."
         />
       </TreeNode>
-    </div>
+    </template>
   </div>
 </template>
 

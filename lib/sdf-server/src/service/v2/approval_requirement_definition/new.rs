@@ -1,7 +1,15 @@
 use std::collections::HashSet;
 
 use axum::{extract::Path, Json};
-use dal::{approval_requirement::ApprovalRequirement, ChangeSet, ChangeSetId, WorkspacePk};
+use dal::{
+    approval_requirement::{ApprovalRequirement, ApprovalRequirementApprover},
+    // workspace_snapshot::graph::traits::approval_requirement::ApprovalRequirementPermissionLookup,
+    ChangeSet,
+    ChangeSetId,
+    UserPk,
+    WorkspacePk,
+    WsEvent,
+};
 use serde::Deserialize;
 use si_id::EntityId;
 
@@ -16,6 +24,8 @@ use super::ApprovalRequirementDefinitionError;
 #[serde(rename_all = "camelCase")]
 pub struct Request {
     entity_id: EntityId,
+    // permission_lookups: Option<Vec<ApprovalRequirementPermissionLookup>>, // TODO(wendy) - this is not being used yet
+    users: Option<Vec<UserPk>>,
 }
 
 pub async fn new(
@@ -29,14 +39,25 @@ pub async fn new(
         .await?;
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
 
+    let mut approvers = HashSet::new();
+
+    if let Some(users) = request.users.to_owned() {
+        approvers.extend(users.into_iter().map(ApprovalRequirementApprover::User));
+    }
+
     // TODO(nick): add audit logs, posthog tracking and WsEvent(s).
     ApprovalRequirement::new_definition(
         &ctx,
         request.entity_id,
-        1,              // TODO(nick): allow users to change the minimum approvers count
-        HashSet::new(), // TODO(nick): allow users to send in an initial set of approvers
+        1, // TODO(nick): allow users to change the minimum approvers count
+        approvers,
     )
     .await?;
+
+    WsEvent::requirement_created(&ctx, request.entity_id, request.users)
+        .await?
+        .publish_on_commit(&ctx)
+        .await?;
 
     ctx.commit().await?;
 
