@@ -306,14 +306,32 @@ const inView = computed(() =>
   viewComponentIds.value.includes(props.component.def.id),
 );
 
+const allChildren = (component: DiagramGroupData): ComponentId[] => {
+  const ids: ComponentId[] = [];
+  component.def.childIds?.forEach((id) => {
+    ids.push(id);
+    const c = componentsStore.allComponentsById[id];
+    if (c) ids.push(...allChildren(c));
+  });
+  return ids;
+};
+
 // show child frames not in view, but not components
 const childComponents = computed(() => {
   const children =
     componentsStore.componentsByParentId[props.component.def.id] || [];
   return children.filter((c) => {
-    if (!c.def.isGroup && !viewComponentIds.value.includes(c.def.id))
-      return false;
-    return true;
+    if (viewComponentIds.value.includes(c.def.id)) {
+      return true;
+    } else {
+      if (!c.def.isGroup) return false;
+      else {
+        const childIds = allChildren(c);
+        if (childIds.some((id) => viewComponentIds.value.includes(id)))
+          return true;
+        return false;
+      }
+    }
   });
 });
 
