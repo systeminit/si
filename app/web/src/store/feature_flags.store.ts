@@ -13,6 +13,7 @@ const FLAG_MAPPING = {
   AI_GENERATOR: "ai-generator",
   SLACK_WEBHOOK: "slack_webhook",
   TEMPLATE_MGMT_FUNC_GENERATION: "template-mgmt-func-generation",
+  CLOVER_ASSETS: "clover-assets",
 };
 
 const WORKSPACE_FLAG_MAPPING = {
