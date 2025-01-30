@@ -40,7 +40,7 @@ pub enum Update {
     },
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct Change {
     pub entity_id: EntityId,
     pub entity_kind: EntityKind,

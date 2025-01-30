@@ -1,15 +1,20 @@
 use std::collections::{HashMap, HashSet};
 
-use dal::approval_requirement::ApprovalRequirementDefinition;
 use dal::{
-    approval_requirement::{ApprovalRequirement, ApprovalRequirementApprover},
+    action::Action,
+    approval_requirement::{
+        ApprovalRequirement, ApprovalRequirementApprover, ApprovalRequirementDefinition,
+    },
     change_set::approval::ChangeSetApproval,
     diagram::view::View,
     Component, ComponentType, DalContext, HistoryActor, SchemaVariant, Ulid,
 };
 use dal_test::{
     eyre,
-    helpers::{create_component_for_default_schema_name, create_schema},
+    helpers::{
+        create_component_for_default_schema_name,
+        create_component_for_default_schema_name_in_default_view, create_schema,
+    },
     prelude::ChangeSetTestHelpers,
     sdf_test, Result,
 };
@@ -989,6 +994,11 @@ async fn one_component_in_two_views(
         )
         .await?;
         Component::add_to_view(ctx, component.id(), sven_view_id, RawGeometry::default()).await?;
+        let mut queued_actions = Action::find_for_component_id(ctx, component.id()).await?;
+        assert_eq!(1, queued_actions.len());
+        let _action_id = queued_actions
+            .pop()
+            .expect("Unable to get first element of a single element Vec");
         ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
         let (frontend_latest_approvals, mut frontend_requirements) =
@@ -1018,7 +1028,7 @@ async fn one_component_in_two_views(
                         Vec::new()
                     )]),
                     approver_individuals: Vec::new(),
-                }
+                },
             ], // expected
             frontend_requirements // actual
         );
@@ -1070,7 +1080,7 @@ async fn one_component_in_two_views(
                         Vec::new()
                     )]),
                     approver_individuals: Vec::new(),
-                }
+                },
             ], // expected
             frontend_requirements // actual
         );
@@ -1187,6 +1197,61 @@ async fn list_approval_requirement_definitions_for_entity(
                 .collect()
         }],
         explicit_definitions,
+    );
+
+    Ok(())
+}
+
+#[sdf_test]
+async fn approval_requirement_created_on_action_enqueue(
+    ctx: &mut DalContext,
+    spicedb_client: SpiceDbClient,
+) -> Result<()> {
+    let mut spicedb_client = spicedb_client;
+
+    write_schema(&mut spicedb_client).await?;
+
+    // Cache the IDs we need.
+    let workspace_id = ctx.workspace_pk()?;
+    let view_id = View::get_id_for_default(ctx).await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+    // Check that there are no approval requirements initially
+    let (initial_approvals, initial_requirements) =
+        dal_wrapper::change_set::status(ctx, &mut spicedb_client).await?;
+    assert!(initial_approvals.is_empty());
+    assert!(initial_requirements.is_empty());
+
+    // Create a component and add it to the view (this should enqueue an action)
+    let component = create_component_for_default_schema_name_in_default_view(
+        ctx,
+        "starfield",
+        "shattered space",
+    )
+    .await?;
+    let queued_actions = Action::find_for_component_id(ctx, component.id()).await?;
+    assert_eq!(1, queued_actions.len());
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+    // Check that an approval requirement has been created
+    let (_, mut updated_requirements) =
+        dal_wrapper::change_set::status(ctx, &mut spicedb_client).await?;
+    updated_requirements.sort_by_key(|r| r.entity_id);
+
+    assert_eq!(
+        vec![si_frontend_types::ChangeSetApprovalRequirement {
+            entity_id: view_id.into_inner().into(),
+            entity_kind: EntityKind::View,
+            required_count: 1,
+            is_satisfied: false,
+            applicable_approval_ids: Vec::new(),
+            approver_groups: HashMap::from_iter(vec![(
+                format!("workspace#{workspace_id}#approve"),
+                Vec::new()
+            )]),
+            approver_individuals: Vec::new(),
+        },],
+        updated_requirements
     );
 
     Ok(())

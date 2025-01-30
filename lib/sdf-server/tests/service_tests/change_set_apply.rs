@@ -1,12 +1,12 @@
 use std::collections::HashMap;
 use std::collections::HashSet;
 
-use dal::approval_requirement::ApprovalRequirement;
 use dal::approval_requirement::ApprovalRequirementApprover;
 use dal::change_set::approval::ChangeSetApproval;
 use dal::diagram::view::View;
 use dal::DalContext;
 use dal::HistoryActor;
+use dal::{action::Action, approval_requirement::ApprovalRequirement};
 use dal_test::eyre;
 use dal_test::helpers::create_component_for_default_schema_name;
 use dal_test::prelude::ChangeSetTestHelpers;
@@ -80,9 +80,16 @@ async fn protected_apply(ctx: &mut DalContext, spicedb_client: SpiceDbClient) ->
 
     // Scenario 2: create a component in our new view.
     {
-        create_component_for_default_schema_name(ctx, "starfield", "shattered space", todd_view_id)
-            .await?;
+        let new_component = create_component_for_default_schema_name(
+            ctx,
+            "starfield",
+            "shattered space",
+            todd_view_id,
+        )
+        .await?;
         ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+        let queued_actions = Action::find_for_component_id(ctx, new_component.id()).await?;
+        assert_eq!(1, queued_actions.len());
 
         let (frontend_latest_approvals, mut frontend_requirements) =
             dal_wrapper::change_set::status(ctx, &mut spicedb_client).await?;
