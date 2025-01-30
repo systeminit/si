@@ -450,7 +450,7 @@ mod tests {
     use cyclone_core::{
         ActionRunRequest, ComponentKind, ComponentView, ComponentViewWithGeometry, FunctionResult,
         ManagementRequest, ProgressMessage, ResolverFunctionComponent, ResolverFunctionRequest,
-        SchemaVariantDefinitionRequest, ValidationRequest,
+        SchemaVariantDefinitionRequest, ThisComponent, ValidationRequest,
     };
     use cyclone_server::{Config, ConfigBuilder, Runnable as _, Server};
     use futures::StreamExt;
@@ -1376,10 +1376,13 @@ mod tests {
             execution_id: "1234".to_string(),
             handler: "manage".to_string(),
             current_view: "DEFAULT".to_string(),
-            this_component: ComponentViewWithGeometry {
-                kind: None,
-                properties: serde_json::json!({"it": "is", "a": "principle", "of": "music", "to": "repeat the theme"}),
-                geometry: serde_json::json!({"x": "1", "y": "2"}),
+            this_component: ThisComponent {
+                component: ComponentViewWithGeometry {
+                    kind: None,
+                    properties: serde_json::json!({"it": "is", "a": "principle", "of": "music", "to": "repeat the theme"}),
+                    geometry: serde_json::json!({"x": "1", "y": "2"}),
+                },
+                incoming_connections: serde_json::json!({}),
             },
             components: HashMap::new(),
             variant_socket_map: HashMap::new(),
@@ -1468,10 +1471,13 @@ mod tests {
             execution_id: "1234".to_string(),
             handler: "manage".to_string(),
             current_view: "DEFAULT".to_string(),
-            this_component: ComponentViewWithGeometry {
-                kind: None,
-                properties: serde_json::json!({"it": "is", "a": "principle", "of": "music", "to": "repeat the theme"}),
-                geometry: serde_json::json!({"x": "1", "y": "2"}),
+            this_component: ThisComponent {
+                component: ComponentViewWithGeometry {
+                    kind: None,
+                    properties: serde_json::json!({"it": "is", "a": "principle", "of": "music", "to": "repeat the theme"}),
+                    geometry: serde_json::json!({"x": "1", "y": "2"}),
+                },
+                incoming_connections: serde_json::json!({}),
             },
             components: HashMap::new(),
             variant_socket_map: HashMap::new(),

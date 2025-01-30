@@ -4,7 +4,10 @@ use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 use telemetry_utils::metric;
 
-use crate::{component_view::ComponentViewWithGeometry, BeforeFunction, CycloneRequestable};
+use crate::{
+    component_view::{ComponentViewWithGeometry, ThisComponent},
+    BeforeFunction, CycloneRequestable,
+};
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -13,7 +16,7 @@ pub struct ManagementRequest {
     pub handler: String,
     pub code_base64: String,
     pub current_view: String,
-    pub this_component: ComponentViewWithGeometry,
+    pub this_component: ThisComponent,
     pub components: HashMap<String, ComponentViewWithGeometry>,
     pub variant_socket_map: HashMap<String, usize>,
     pub before: Vec<BeforeFunction>,

@@ -5,7 +5,7 @@ use cyclone_core::{
     ActionRunRequest, ComponentKind, ComponentView, ComponentViewWithGeometry, FunctionResult,
     FunctionResultFailureErrorKind, ManagementRequest, ResolverFunctionComponent,
     ResolverFunctionRequest, ResolverFunctionResponseType, ResourceStatus,
-    SchemaVariantDefinitionRequest, ValidationRequest,
+    SchemaVariantDefinitionRequest, ThisComponent, ValidationRequest,
 };
 use si_data_nats::{NatsClient, NatsConfig};
 use test_log::test;
@@ -106,10 +106,13 @@ async fn executes_simple_management_function() {
         execution_id: "1234".to_string(),
         handler: "numberOfInputs".to_string(),
         current_view: "DEFAULT".to_string(),
-        this_component: ComponentViewWithGeometry {
-            kind: None,
-            properties: serde_json::json!({ "foo": "bar", "baz": "quux", "bar": "foo" }),
-            geometry: serde_json::json!({"x": "1", "y": "1"}),
+        this_component: ThisComponent {
+            component: ComponentViewWithGeometry {
+                kind: None,
+                properties: serde_json::json!({ "foo": "bar", "baz": "quux", "bar": "foo" }),
+                geometry: serde_json::json!({"x": "1", "y": "1"}),
+            },
+            incoming_connections: serde_json::json!({}),
         },
         components: HashMap::new(),
         variant_socket_map: HashMap::new(),

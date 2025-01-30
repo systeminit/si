@@ -7,11 +7,13 @@ use std::{
 
 use serde::{Deserialize, Serialize};
 use si_events::FuncRunId;
+use telemetry::prelude::*;
 use thiserror::Error;
 use veritech_client::{ManagementFuncStatus, ManagementResultSuccess};
 
 use crate::{
     cached_module::{CachedModule, CachedModuleError},
+    component::socket::ComponentInputSocket,
     diagram::{
         geometry::Geometry,
         view::{View, ViewId},
@@ -21,17 +23,20 @@ use crate::{
     implement_add_edge_to,
     layer_db_types::{ManagementPrototypeContent, ManagementPrototypeContentV1},
     workspace_snapshot::node_weight::{traits::SiVersionedNodeWeight, NodeWeight},
-    Component, ComponentError, ComponentId, DalContext, EdgeWeightKind,
-    EdgeWeightKindDiscriminants, FuncId, HelperError, NodeWeightDiscriminants, Schema, SchemaError,
-    SchemaId, SchemaVariant, SchemaVariantError, SchemaVariantId, TransactionsError,
-    WorkspaceSnapshotError, WsEvent, WsEventError, WsEventResult, WsPayload,
+    AttributeValue, Component, ComponentError, ComponentId, DalContext, EdgeWeightKind,
+    EdgeWeightKindDiscriminants, FuncId, HelperError, InputSocket, NodeWeightDiscriminants,
+    OutputSocket, Schema, SchemaError, SchemaId, SchemaVariant, SchemaVariantError,
+    SchemaVariantId, SocketArity, TransactionsError, WorkspaceSnapshotError, WsEvent, WsEventError,
+    WsEventResult, WsPayload,
 };
 
-use super::ManagementGeometry;
+use super::{ManagementGeometry, SocketRef};
 
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ManagementPrototypeError {
+    #[error("attribute value error: {0}")]
+    AttributeValue(#[from] crate::attribute::value::AttributeValueError),
     #[error("cached module error: {0}")]
     CachedModule(#[from] CachedModuleError),
     #[error("component error: {0}")]
@@ -48,12 +53,18 @@ pub enum ManagementPrototypeError {
     FuncRunnerRecvError,
     #[error("helper error: {0}")]
     Helper(#[from] HelperError),
+    #[error("input socket error: {0}")]
+    InputSocket(#[from] crate::socket::input::InputSocketError),
     #[error("layer db error: {0}")]
     LayerDbError(#[from] si_layer_cache::LayerDbError),
     #[error("management prototype {0} has no use edge to a function")]
     MissingFunction(ManagementPrototypeId),
+    #[error("More than one connection to input socket with arity one: {0}")]
+    MoreThanOneInputConnection(String),
     #[error("management prototype {0} not found")]
     NotFound(ManagementPrototypeId),
+    #[error("output socket error: {0}")]
+    OutputSocket(#[from] crate::socket::output::OutputSocketError),
     #[error("schema error: {0}")]
     Schema(#[from] SchemaError),
     #[error("schema variant error: {0}")]
@@ -112,6 +123,31 @@ pub struct ManagedComponent {
     geometry: HashMap<String, ManagementGeometry>,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ManagerComponent {
+    #[serde(flatten)]
+    component: ManagedComponent,
+    incoming_connections: HashMap<String, SocketRefsAndValues>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum SocketRefsAndValues {
+    // If arity is one, we never serialize to a JS array
+    One(Option<SocketRefAndValue>),
+    // If arity is many, we *always* serialize to a JS array
+    Many(Vec<SocketRefAndValue>),
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SocketRefAndValue {
+    #[serde(flatten)]
+    socket_ref: SocketRef,
+    pub value: Option<serde_json::Value>,
+}
+
 async fn build_management_geometry_map(
     ctx: &DalContext,
     component_id: ComponentId,
@@ -131,6 +167,51 @@ async fn build_management_geometry_map(
     Ok(geometry_map)
 }
 
+async fn build_incoming_connections(
+    ctx: &DalContext,
+    component_id: ComponentId,
+) -> ManagementPrototypeResult<HashMap<String, SocketRefsAndValues>> {
+    let mut connections = HashMap::new();
+    for input_socket in ComponentInputSocket::list_for_component_id(ctx, component_id).await? {
+        let mut connection_values = Vec::new();
+        for (from_component_id, from_socket_id, _) in input_socket.connections(ctx).await? {
+            let component = from_component_id.to_string();
+            let socket = OutputSocket::get_by_id(ctx, from_socket_id)
+                .await?
+                .name()
+                .to_owned();
+            let av_id = OutputSocket::component_attribute_value_for_output_socket_id(
+                ctx,
+                from_socket_id,
+                from_component_id,
+            )
+            .await?;
+            let value = AttributeValue::get_by_id(ctx, av_id)
+                .await?
+                .view(ctx)
+                .await?;
+            connection_values.push(SocketRefAndValue {
+                socket_ref: SocketRef { component, socket },
+                value,
+            });
+        }
+
+        // If there are multiple sockets, this will only keep the last one.
+        // This situation is supposed to be prevented elsewhere.
+        let input_socket = InputSocket::get_by_id(ctx, input_socket.input_socket_id).await?;
+        let name = input_socket.name().to_owned();
+        let connection_values = match input_socket.arity() {
+            SocketArity::One if connection_values.len() > 1 => {
+                return Err(ManagementPrototypeError::MoreThanOneInputConnection(name))
+            }
+            SocketArity::One => SocketRefsAndValues::One(connection_values.pop()),
+            SocketArity::Many => SocketRefsAndValues::Many(connection_values),
+        };
+        connections.insert(name, connection_values);
+    }
+    Ok(connections)
+}
+
 impl ManagedComponent {
     pub async fn new(
         ctx: &DalContext,
@@ -146,6 +227,20 @@ impl ManagedComponent {
             kind: kind.to_owned(),
             properties,
             geometry,
+        })
+    }
+}
+
+impl ManagerComponent {
+    pub async fn new(
+        ctx: &DalContext,
+        component_id: ComponentId,
+        kind: &str,
+        views: &HashMap<ViewId, String>,
+    ) -> ManagementPrototypeResult<ManagerComponent> {
+        Ok(ManagerComponent {
+            component: ManagedComponent::new(ctx, component_id, kind, views).await?,
+            incoming_connections: build_incoming_connections(ctx, component_id).await?,
         })
     }
 }
@@ -430,8 +525,8 @@ impl ManagementPrototype {
             .to_string();
 
         let manager_component =
-            ManagedComponent::new(ctx, manager_component_id, &this_schema, &views).await?;
-        let manager_component_geometry = manager_component.geometry.to_owned();
+            ManagerComponent::new(ctx, manager_component_id, &this_schema, &views).await?;
+        let manager_component_geometry = manager_component.component.geometry.to_owned();
 
         let mut variant_socket_map = HashMap::new();
         let schemas = Schema::list(ctx).await?;

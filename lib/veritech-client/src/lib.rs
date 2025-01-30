@@ -20,7 +20,7 @@ pub use cyclone_core::{
     ManagementResultSuccess, OutputStream, ResolverFunctionComponent, ResolverFunctionRequest,
     ResolverFunctionResponseType, ResolverFunctionResultSuccess, ResourceStatus,
     SchemaVariantDefinitionRequest, SchemaVariantDefinitionResultSuccess, SensitiveContainer,
-    ValidationRequest, ValidationResultSuccess,
+    ThisComponent, ValidationRequest, ValidationResultSuccess,
 };
 pub use veritech_core::{encrypt_value_tree, VeritechValueEncryptError};
 

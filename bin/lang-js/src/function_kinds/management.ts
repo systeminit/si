@@ -15,50 +15,94 @@ const debug = Debug("langJs:management");
 
 export interface ManagementFunc extends Func {
   currentView: string;
-  thisComponent: ComponentWithGeometry;
+  thisComponent: ThisComponent;
   components: {
     [key: string]: ComponentWithGeometry;
   };
-  variantSocketMap: Record<string, number>;
+  variantSocketMap: Record<SchemaName, number>;
+}
+
+export interface ThisComponent extends ComponentWithGeometry {
+  incomingConnections: {
+    [key: SocketName]: SocketRefAndValue[] | SocketRefAndValue | undefined;
+  }
+  // TODO outgoingConnections so we can automatically connect *output* from created components
+  // to existing components
 }
 
 export type ManagementFuncResult =
   | ManagementFuncResultSuccess
   | ManagementFuncResultFailure;
 
-export interface ManagmentConnect {
-  from: string;
-  to: {
-    component: string;
-    socket: string;
-  };
+// These types help us know what various strings actually reference, even though they are just strings.
+
+/// Name of a schema.
+export type SchemaName = string;
+
+/// A ULID component ID referencing a component that already exists.
+export type ComponentId = string;
+
+/// A name referencing a new component being created (returned by ManagementFunc.ops.create),
+/// or an existing component under management (sent to ManagementFunc.components).
+///
+/// If a new component has the same name as an existing component, the new component takes priority.
+export type ManagedComponentRef = string;
+
+/// A name referencing a managed component (or one that is being created) or a ULID component ID.
+///
+/// If a new or managed component's name is the same as a component's ULID, the new or managed
+/// component takes priority.
+export type ComponentRef = ManagedComponentRef | ComponentId;
+
+/// A name referencing a socket on a component.
+export type SocketName = string;
+
+/// A reference to a socket on a component.
+export interface SocketRef {
+  component: ComponentRef;
+  socket: SocketName;
 }
+
+/// A reference to a socket on an existing component on the graph. Always a component ID.
+export interface SocketRefAndValue extends SocketRef {
+  component: ComponentId;
+  socket: SocketName;
+  value: any;
+}
+
+/// A connection to or from a component.
+///
+/// If the to field is a SocketName (string), it's an outgoing connection.
+/// If the from field is a SocketName (string), it's an incoming connection.
+export type ManagementConnect =
+  | { from: SocketRef; to: SocketName; }
+  | { from: SocketName; to: SocketRef; }
 
 export interface ManagementCreate {
   [key: string]: {
-    kind: string;
+    kind: SchemaName;
     properties?: object;
     geometry?: Geometry | { [key: string]: Geometry };
-    parent?: string;
-    connect?: ManagmentConnect[];
+    parent?: ComponentRef;
+    connect?: ManagementConnect[];
   };
 }
 
 export interface ManagementOperations {
   create?: ManagementCreate;
   update?: {
-    [key: string]: {
+    [key: ManagedComponentRef]: {
       properties?: object;
       geometry?: { [key: string]: Geometry };
-      parent?: string;
+      parent?: ManagedComponentRef; // TODO allow external parent?
       connect: {
-        add?: ManagmentConnect[];
-        remove?: ManagmentConnect[];
+        add?: ManagementConnect[];
+        remove?: ManagementConnect[];
       };
     };
   };
   actions?: {
-    [key: string]: {
+    [key: ManagedComponentRef]: {
       add?: string[];
       remove?: string[];
     };

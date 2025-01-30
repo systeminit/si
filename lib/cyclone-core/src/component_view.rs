@@ -49,3 +49,21 @@ impl Default for ComponentViewWithGeometry {
         }
     }
 }
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
+pub struct ThisComponent {
+    #[serde(flatten)]
+    pub component: ComponentViewWithGeometry,
+    pub incoming_connections: Value,
+}
+
+impl Default for ThisComponent {
+    fn default() -> Self {
+        Self {
+            component: Default::default(),
+            incoming_connections: serde_json::json!({}),
+        }
+    }
+}

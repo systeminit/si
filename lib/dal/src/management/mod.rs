@@ -74,14 +74,14 @@ pub enum ManagementError {
     Func(#[from] FuncError),
     #[error("input socket error: {0}")]
     InputSocket(#[from] InputSocketError),
-    #[error("Cannot connect component {0} to component {1} because component {1} does not have an input socket with name {2}")]
-    InputSocketDoesNotExist(ComponentId, ComponentId, String),
+    #[error("Component {0} does not have an input socket with name {1}")]
+    InputSocketDoesNotExist(ComponentId, String),
     #[error("No existing or created view could be found named: {0}")]
     NoSuchView(String),
     #[error("output socket error: {0}")]
     OutputSocket(#[from] OutputSocketError),
-    #[error("Cannot connect component {0} to component {1} because component {0} does not have an output socket with name {2}")]
-    OutputSocketDoesNotExist(ComponentId, ComponentId, String),
+    #[error("Component {0} does not have an output socket with name {1}")]
+    OutputSocketDoesNotExist(ComponentId, String),
     #[error("prop error: {0}")]
     Prop(#[from] PropError),
     #[error("schema error: {0}")]
@@ -92,6 +92,8 @@ pub enum ManagementError {
     StandardModel(#[from] StandardModelError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
+    #[error("ulid decode error: {0}")]
+    UlidDecodeError(#[from] ulid::DecodeError),
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
     #[error("ws event error: {0}")]
@@ -179,16 +181,17 @@ impl From<RawGeometry> for ManagementGeometry {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ConnectionIdentifier {
+pub struct SocketRef {
     pub component: String,
     pub socket: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
 #[serde(rename_all = "camelCase")]
-pub struct ManagementConnection {
-    from: String,
-    to: ConnectionIdentifier,
+pub enum ManagementConnection {
+    Input { from: SocketRef, to: String },
+    Output { from: String, to: SocketRef },
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -464,7 +467,7 @@ pub struct ManagementOperator<'a> {
 
 #[derive(Clone, Debug)]
 struct PendingConnect {
-    from_component_id: ComponentId,
+    component_id: ComponentId,
     connection: ManagementConnection,
 }
 
@@ -724,61 +727,78 @@ impl<'a> ManagementOperator<'a> {
         })
     }
 
-    async fn prepare_for_connection(
+    async fn input_socket_id(
         &mut self,
-        source_component_id: ComponentId,
-        connection: &ManagementConnection,
-    ) -> ManagementResult<(ComponentId, OutputSocketId, ComponentId, InputSocketId)> {
-        let from_variant_id = self
+        component_id: ComponentId,
+        socket: &str,
+    ) -> ManagementResult<InputSocketId> {
+        let variant_id = self
             .component_schema_map
-            .variant_for_component_id(self.ctx, source_component_id)
+            .variant_for_component_id(self.ctx, component_id)
             .await?;
-
         // if the map was already constructed this does nothing
         self.socket_map
-            .add_sockets_for_variant(self.ctx, from_variant_id)
+            .add_sockets_for_variant(self.ctx, variant_id)
             .await?;
+        let socket_id = self.socket_map.input_socket_id(variant_id, socket).ok_or(
+            ManagementError::InputSocketDoesNotExist(component_id, socket.to_owned()),
+        )?;
+        Ok(socket_id)
+    }
 
-        let destination_component_id = self.get_real_component_id(&connection.to.component)?;
-
-        let to_variant_id = self
+    async fn output_socket_id(
+        &mut self,
+        component_id: ComponentId,
+        socket: &str,
+    ) -> ManagementResult<OutputSocketId> {
+        let variant_id = self
             .component_schema_map
-            .variant_for_component_id(self.ctx, destination_component_id)
+            .variant_for_component_id(self.ctx, component_id)
             .await?;
-
+        // if the map was already constructed this does nothing
         self.socket_map
-            .add_sockets_for_variant(self.ctx, to_variant_id)
+            .add_sockets_for_variant(self.ctx, variant_id)
             .await?;
+        let socket_id = self.socket_map.output_socket_id(variant_id, socket).ok_or(
+            ManagementError::OutputSocketDoesNotExist(component_id, socket.to_owned()),
+        )?;
+        Ok(socket_id)
+    }
 
-        let source_output_socket_id = self
-            .socket_map
-            .output_socket_id(from_variant_id, &connection.from)
-            .ok_or(ManagementError::OutputSocketDoesNotExist(
-                source_component_id,
-                destination_component_id,
-                connection.from.to_owned(),
-            ))?;
+    async fn prepare_for_connection(
+        &mut self,
+        component_id: ComponentId,
+        connection: &ManagementConnection,
+    ) -> ManagementResult<(ComponentId, OutputSocketId, ComponentId, InputSocketId)> {
+        // Figure out socket direction
+        let (from_component_id, from_socket, to_component_id, to_socket) = match connection {
+            ManagementConnection::Input { from, to } => (
+                self.get_managed_or_external_component_id(&from.component)?,
+                &from.socket,
+                component_id,
+                to,
+            ),
+            ManagementConnection::Output { from, to } => (
+                component_id,
+                from,
+                self.get_managed_or_external_component_id(&to.component)?,
+                &to.socket,
+            ),
+        };
 
-        let destination_input_socket_id = self
-            .socket_map
-            .input_socket_id(to_variant_id, &connection.to.socket)
-            .ok_or(ManagementError::OutputSocketDoesNotExist(
-                source_component_id,
-                destination_component_id,
-                connection.to.socket.to_owned(),
-            ))?;
-
+        // Look up the sockets and return
         Ok((
-            source_component_id,
-            source_output_socket_id,
-            destination_component_id,
-            destination_input_socket_id,
+            from_component_id,
+            self.output_socket_id(from_component_id, from_socket)
+                .await?,
+            to_component_id,
+            self.input_socket_id(to_component_id, to_socket).await?,
         ))
     }
 
     async fn create_connection(
         &mut self,
-        source_component_id: ComponentId,
+        component_id: ComponentId,
         connection: &ManagementConnection,
     ) -> ManagementResult<()> {
         let (
@@ -787,7 +807,7 @@ impl<'a> ManagementOperator<'a> {
             destination_component_id,
             destination_input_socket_id,
         ) = self
-            .prepare_for_connection(source_component_id, connection)
+            .prepare_for_connection(component_id, connection)
             .await?;
 
         if let Some(connection_apa_id) = Component::connect(
@@ -866,9 +886,9 @@ impl<'a> ManagementOperator<'a> {
     async fn set_parent(
         &self,
         child_id: ComponentId,
-        parent_placeholder: &String,
+        parent_placeholder: &str,
     ) -> ManagementResult<(ComponentId, Option<InferredEdgeChanges>)> {
-        let new_parent_id = self.get_real_component_id(parent_placeholder)?;
+        let new_parent_id = self.get_managed_component_id(parent_placeholder)?;
         let inferred_edges =
             Frame::upsert_parent_no_events(self.ctx, child_id, new_parent_id).await?;
 
@@ -954,7 +974,7 @@ impl<'a> ManagementOperator<'a> {
                 if let Some(connections) = &operation.connect {
                     for create in connections {
                         pending_operations.push(PendingOperation::Connect(PendingConnect {
-                            from_component_id: component_id,
+                            component_id,
                             connection: create.to_owned(),
                         }));
                     }
@@ -978,19 +998,30 @@ impl<'a> ManagementOperator<'a> {
         Ok(pending_operations)
     }
 
-    fn get_real_component_id(&self, placeholder: &String) -> ManagementResult<ComponentId> {
-        // Created component placeholders take priority over managed component
-        // placeholders (if you create a component with the same name as a
-        // managed component, references in updates, connections and actions
-        // will be to the created component, not the pre-existing managed
-        // component)
+    fn get_managed_component_id_opt(&self, placeholder: &str) -> Option<ComponentId> {
         self.component_id_placeholders
             .get(placeholder)
             .or_else(|| self.managed_component_id_placeholders.get(placeholder))
             .copied()
-            .ok_or(ManagementError::ComponentWithPlaceholderNotFound(
-                placeholder.to_owned(),
-            ))
+    }
+
+    fn get_managed_component_id(&self, placeholder: &str) -> ManagementResult<ComponentId> {
+        self.get_managed_component_id_opt(placeholder).ok_or(
+            ManagementError::ComponentWithPlaceholderNotFound(placeholder.to_owned()),
+        )
+    }
+
+    fn get_managed_or_external_component_id(
+        &self,
+        placeholder_or_id: &str,
+    ) -> ManagementResult<ComponentId> {
+        match self.get_managed_component_id_opt(placeholder_or_id) {
+            Some(component_id) => Ok(component_id),
+            // If we don't find the component by name, see if it's a component id and use that!
+            None => placeholder_or_id.parse().map_err(|_| {
+                ManagementError::ComponentWithPlaceholderNotFound(placeholder_or_id.to_owned())
+            }),
+        }
     }
 
     async fn updates(&mut self) -> ManagementResult<Vec<PendingOperation>> {
@@ -1002,7 +1033,7 @@ impl<'a> ManagementOperator<'a> {
         };
 
         for (placeholder, operation) in updates {
-            let component_id = self.get_real_component_id(placeholder)?;
+            let component_id = self.get_managed_component_id(placeholder)?;
             let mut component = Component::get_by_id(self.ctx, component_id).await?;
             let mut view_ids = HashSet::new();
 
@@ -1104,7 +1135,7 @@ impl<'a> ManagementOperator<'a> {
                 if let Some(remove_conns) = &update_conns.remove {
                     for to_remove in remove_conns {
                         pending.push(PendingOperation::RemoveConnection(PendingConnect {
-                            from_component_id: component_id,
+                            component_id,
                             connection: to_remove.to_owned(),
                         }));
                     }
@@ -1113,7 +1144,7 @@ impl<'a> ManagementOperator<'a> {
                 if let Some(add_conns) = &update_conns.add {
                     for to_add in add_conns {
                         pending.push(PendingOperation::Connect(PendingConnect {
-                            from_component_id: component_id,
+                            component_id,
                             connection: to_add.to_owned(),
                         }));
                     }
@@ -1137,7 +1168,7 @@ impl<'a> ManagementOperator<'a> {
     async fn actions(&self) -> ManagementResult<()> {
         if let Some(actions) = &self.operations.actions {
             for (placeholder, operations) in actions {
-                let component_id = self.get_real_component_id(placeholder)?;
+                let component_id = self.get_managed_component_id(placeholder)?;
 
                 operate_actions(self.ctx, component_id, operations).await?;
             }
@@ -1342,7 +1373,7 @@ impl<'a> ManagementOperator<'a> {
             };
 
             for component_placeholder in component_placeholders {
-                let component_id = self.get_real_component_id(&component_placeholder)?;
+                let component_id = self.get_managed_component_id(&component_placeholder)?;
                 if let Some(geometry) =
                     Geometry::try_get_by_component_and_view(self.ctx, component_id, view_id).await?
                 {
@@ -1386,14 +1417,14 @@ impl<'a> ManagementOperator<'a> {
 
         let mut component_ids_to_delete = vec![];
         for placeholder in &deletes {
-            component_ids_to_delete.push(self.get_real_component_id(placeholder)?);
+            component_ids_to_delete.push(self.get_managed_component_id(placeholder)?);
         }
 
         let deletion_statuses =
             delete_components(self.ctx, &component_ids_to_delete, force_erase).await?;
 
         for placeholder in &deletes {
-            let component_id = self.get_real_component_id(placeholder)?;
+            let component_id = self.get_managed_component_id(placeholder)?;
             if let Some(
                 ComponentDeletionStatus::Deleted | ComponentDeletionStatus::StillExistsOnHead,
             ) = deletion_statuses.get(&component_id)
@@ -1468,13 +1499,13 @@ impl<'a> ManagementOperator<'a> {
             match pending_op {
                 PendingOperation::Connect(pending_connect) => {
                     self.create_connection(
-                        pending_connect.from_component_id,
+                        pending_connect.component_id,
                         &pending_connect.connection,
                     )
                     .await?;
                 }
                 PendingOperation::RemoveConnection(remove) => {
-                    self.remove_connection(remove.from_component_id, &remove.connection)
+                    self.remove_connection(remove.component_id, &remove.connection)
                         .await?;
                 }
                 PendingOperation::Manage(PendingManage {
