@@ -3,12 +3,12 @@
     v-if="mode !== 'error'"
     :class="
       clsx(
-        'w-1/2 flex flex-col gap-sm p-sm shadow-2xl',
+        'lg:w-1/2 flex flex-col gap-sm p-sm shadow-2xl max-h-full overflow-hidden',
         themeClasses('bg-shade-0 border', 'bg-neutral-900'),
       )
     "
   >
-    <div class="flex flex-row gap-md mb-sm items-center">
+    <div class="flex flex-row flex-none gap-md mb-sm items-center">
       <div class="flex flex-col gap-2xs">
         <TruncateWithTooltip class="font-bold italic pb-2xs">
           {{ changeSetName }}
@@ -75,7 +75,7 @@
     <div
       :class="
         clsx(
-          'flex flex-row',
+          'flex flex-row flex-1 overflow-hidden',
           featureFlagsStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL
             ? 'place-content-evenly'
             : 'justify-center',
@@ -83,7 +83,7 @@
       "
     >
       <template v-if="featureFlagsStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL">
-        <div class="flex flex-col text-sm gap-sm">
+        <div class="flex flex-col text-sm gap-sm overflow-y-auto">
           <div
             v-for="group in requirementGroups"
             :key="group.key"
@@ -99,12 +99,12 @@
                 :key="vote.user.id"
                 class="flex flex-row gap-xs place-content-between"
               >
-                <span>{{ vote.user.name }}</span>
-                <span class="italic">
-                  <template v-if="!vote.status">waiting...</template>
-                  <template v-else>{{ vote.status }}...</template>
-                </span>
+                <span>{{ vote.user.name }} ({{ vote.user.email }})</span>
                 <span class="flex flex-row">
+                  <span class="italic pr-xs">
+                    <template v-if="!vote.status">Waiting...</template>
+                    <template v-else>{{ vote.status }}...</template>
+                  </span>
                   <Icon
                     size="md"
                     name="thumbs-up"
@@ -127,7 +127,7 @@
           </div>
         </div>
       </template>
-      <div class="flex flex-col gap-xs">
+      <div class="flex flex-col gap-xs overflow-hidden">
         <div
           v-if="!featureFlagsStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL"
           class="text-sm"
@@ -141,7 +141,7 @@
         </div>
       </div>
     </div>
-    <div class="flex flex-row gap-sm justify-center mt-sm">
+    <div class="flex flex-row flex-none gap-sm justify-center mt-sm">
       <VButton
         label="Withdraw Request"
         tone="warning"
@@ -158,7 +158,11 @@
         "
       >
         <VButton
-          :disabled="mode !== 'requested' || iRejected"
+          :disabled="
+            (!featureFlagsStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL &&
+              mode !== 'rejected') ||
+            iRejected
+          "
           label="Reject Request"
           tone="destructive"
           icon="thumbs-down"
@@ -211,6 +215,7 @@ import { useAuthStore, WorkspaceUser } from "@/store/auth.store";
 import { ChangeSetStatus, ChangeSet } from "@/api/sdf/dal/change_set";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { useViewsStore } from "@/store/views.store";
+import { useAssetStore } from "@/store/asset.store";
 import ActionsList from "./Actions/ActionsList.vue";
 
 export type InsetApprovalModalMode =
@@ -219,6 +224,7 @@ export type InsetApprovalModalMode =
   | "rejected"
   | "error";
 
+const assetStore = useAssetStore();
 const authStore = useAuthStore();
 const changeSetsStore = useChangeSetsStore();
 const featureFlagsStore = useFeatureFlagsStore();
@@ -232,10 +238,8 @@ const props = defineProps<{
   changeSet: ChangeSet;
 }>();
 
-type ReqType = "SchemaVariant" | "View";
 interface Requirement {
   key: string;
-  type: ReqType;
   label: string;
   votes: Vote[];
   satisfied: boolean;
@@ -249,8 +253,6 @@ interface Vote {
 const requirementGroups = computed(() => {
   const groups: Requirement[] = [];
   props.approvalData?.requirements.forEach((r) => {
-    if (!["CategorySchema", "View"].includes(r.entityKind)) return;
-
     const userIds = Object.values(r.approverGroups)
       .flat()
       .concat(r.approverIndividuals);
@@ -268,14 +270,30 @@ const requirementGroups = computed(() => {
       if (submitted) vote.status = submitted.status;
       votes.push(vote);
     });
-    const label =
-      r.entityKind === "CategorySchema"
-        ? "Asset Changes"
-        : viewStore.viewsById[r.entityId]?.name ?? "a View";
-    const key = r.entityKind === "CategorySchema" ? r.entityKind : r.entityId;
+
+    let label = r.entityKind;
+    if (r.entityKind === "ApprovalRequirementDefinition") {
+      label = "Approval Requirement change";
+    } else if (r.entityKind === "Schema") {
+      const variantForSchema = assetStore.schemaVariants.find(
+        (thing) => thing.schemaId === r.entityId,
+      );
+      label = variantForSchema?.schemaName
+        ? `Asset named ${variantForSchema?.schemaName}`
+        : "an Asset";
+    } else if (r.entityKind === "SchemaVariant") {
+      let name = assetStore.variantFromListById[r.entityId]?.displayName;
+      if (!name) {
+        name = assetStore.variantFromListById[r.entityId]?.schemaName;
+      }
+      label = name ? `Asset named ${name}` : "Asset (name not found)";
+    } else if (r.entityKind === "View") {
+      const name = viewStore.viewsById[r.entityId]?.name;
+      label = name ? `View named ${name}` : "View (name not found)";
+    }
+
     groups.push({
-      key,
-      type: r.entityId as ReqType,
+      key: r.entityId,
       label,
       votes,
       satisfied: r.isSatisfied,
