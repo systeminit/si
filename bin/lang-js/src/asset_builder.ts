@@ -342,10 +342,12 @@ export class PropWidgetDefinitionBuilder
       this.propWidget.options = [];
     }
 
-    this.propWidget.options.push(<Option>{
-      label: "si_create_only_prop",
-      value: "true",
-    });
+    this.propWidget.options.push(
+      <Option> {
+        label: "si_create_only_prop",
+        value: "true",
+      },
+    );
 
     return this;
   }

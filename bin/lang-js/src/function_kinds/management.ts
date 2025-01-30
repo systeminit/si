@@ -75,7 +75,10 @@ export interface ManagementFuncResultFailure extends ResultFailure {}
 async function execute(
   { executionId }: RequestCtx,
   {
-    thisComponent, components, currentView, variantSocketMap,
+    thisComponent,
+    components,
+    currentView,
+    variantSocketMap,
   }: ManagementFunc,
   code: string,
   timeout: number,
@@ -88,7 +91,10 @@ async function execute(
       executionId,
       timeout,
       {
-        thisComponent, components, currentView, variantSocketMap,
+        thisComponent,
+        components,
+        currentView,
+        variantSocketMap,
       },
     );
   } catch (err) {
