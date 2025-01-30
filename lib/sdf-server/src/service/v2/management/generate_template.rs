@@ -176,6 +176,17 @@ pub async fn generate_template(
     }
     component_sync_code.push_str(
         r#"
+
+    // Check for duplicate si names in the abscene of component idempotency keys
+    const seenNames = new Set<string>();
+    for (const spec of specs) {
+        const name = _.get(spec, ["properties", "si", "name"]);
+        if (seenNames.has(name)) {
+            throw new Error(`Duplicate properties.si.name found: "${name}", please regenerate the template after fixing the duplicate names or modify the id references in the management function`);
+        }
+        seenNames.add(name);
+    }
+
     return template.converge(currentView, thisComponent, components, specs);
 }
 "#,
