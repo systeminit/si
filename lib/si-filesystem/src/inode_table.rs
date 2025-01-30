@@ -74,30 +74,26 @@ pub enum InodeEntryData {
         change_set_id: ChangeSetId,
         name: String,
     },
-    ChangeSetFunc {
+    ChangeSetFuncDir {
         func_id: FuncId,
         change_set_id: ChangeSetId,
+        kind: FuncKind,
         size: u64,
     },
-    ChangeSetFuncKind {
+    ChangeSetFuncKindDir {
         kind: FuncKind,
         change_set_id: ChangeSetId,
     },
-    ChangeSetFuncs {
+    ChangeSetFuncsDir {
         change_set_id: ChangeSetId,
     },
     ChangeSets,
     FuncCode {
         change_set_id: ChangeSetId,
         func_id: FuncId,
+        kind: FuncKind,
     },
     InstalledSchemaMarker,
-    Schema {
-        schema_id: SchemaId,
-        change_set_id: ChangeSetId,
-        name: String,
-        installed: bool,
-    },
     SchemaAttrsJson {
         schema_id: SchemaId,
         change_set_id: ChangeSetId,
@@ -107,14 +103,11 @@ pub enum InodeEntryData {
         schema_id: SchemaId,
         change_set_id: ChangeSetId,
     },
-    SchemaFunc {
-        change_set_id: ChangeSetId,
-        func_id: FuncId,
-        kind: FuncKind,
+    SchemaDir {
         schema_id: SchemaId,
-        size: u64,
-        bindings_size: u64,
-        unlocked: bool,
+        change_set_id: ChangeSetId,
+        name: String,
+        installed: bool,
     },
     SchemaFuncBindings {
         change_set_id: ChangeSetId,
@@ -129,8 +122,18 @@ pub enum InodeEntryData {
         schema_id: SchemaId,
         kind: FuncKind,
         buf: Arc<Cursor<Vec<u8>>>,
+        pending_func_id: Option<FuncId>,
     },
-    SchemaFuncKind {
+    SchemaFuncDir {
+        change_set_id: ChangeSetId,
+        func_id: FuncId,
+        kind: FuncKind,
+        schema_id: SchemaId,
+        size: u64,
+        bindings_size: u64,
+        unlocked: bool,
+    },
+    SchemaFuncKindDir {
         kind: FuncKind,
         schema_id: SchemaId,
         change_set_id: ChangeSetId,
@@ -150,8 +153,9 @@ pub enum InodeEntryData {
         unlocked_size: u64,
         unlocked_bindings_size: u64,
         pending: bool,
+        pending_func_id: Option<FuncId>,
     },
-    Schemas {
+    SchemasDir {
         change_set_id: ChangeSetId,
     },
     WorkspaceRoot {
@@ -175,7 +179,13 @@ pub enum Size {
 }
 
 impl InodeTable {
-    pub fn new(root_entry: InodeEntryData, uid: Uid, gid: Gid) -> Self {
+    pub fn new(
+        root_path: impl AsRef<Path>,
+        root_entry: InodeEntryData,
+        uid: Uid,
+        gid: Gid,
+    ) -> Self {
+        let root_path = root_path.as_ref().to_path_buf();
         let mut table = Self {
             path_table: Vec::with_capacity(4096),
             entries_by_path: BTreeMap::new(),
@@ -184,7 +194,7 @@ impl InodeTable {
         };
 
         table.upsert(
-            "/".into(),
+            root_path,
             root_entry,
             FileType::Directory,
             true,
@@ -239,6 +249,7 @@ impl InodeTable {
     //     let path = self.make_path(Some(parent_ino), file_name)?;
     //     Ok(self.ino_for_path(&path))
     // }
+    //
 
     pub fn ino_for_path(&self, path: &Path) -> Option<Inode> {
         self.entries_by_path.get(path).map(|entry| entry.ino)
