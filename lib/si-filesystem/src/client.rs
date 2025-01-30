@@ -10,7 +10,7 @@ use si_frontend_types::{
     fs::{
         AssetFuncs, Binding, Bindings, ChangeSet, CreateChangeSetRequest, CreateChangeSetResponse,
         CreateFuncRequest, CreateSchemaRequest, CreateSchemaResponse, FsApiError, Func,
-        ListChangeSetsResponse, Schema, SchemaAttributes, SetFuncBindingsRequest,
+        IdentityBindings, ListChangeSetsResponse, Schema, SchemaAttributes, SetFuncBindingsRequest,
         SetFuncCodeRequest, VariantQuery,
     },
     FuncKind,
@@ -314,7 +314,7 @@ impl SiFsClient {
         )
     }
 
-    /// Fetches metadata about the workspace, including the active change sets
+    /// Fetches including the active change sets
     pub async fn list_change_sets(&self) -> SiFsClientResult<ListChangeSetsResponse> {
         let response = self
             .client
@@ -597,6 +597,35 @@ impl SiFsClient {
                 bindings,
                 is_attaching_existing,
             }),
+        )
+        .await
+    }
+
+    pub async fn get_identity_bindings(
+        &self,
+        change_set_id: ChangeSetId,
+        schema_id: SchemaId,
+        unlocked: bool,
+    ) -> SiFsClientResult<IdentityBindings> {
+        self.get_json(
+            change_set_id,
+            self.fs_api_change_sets(&format!("schemas/{schema_id}/bindings"), change_set_id),
+            Some(VariantQuery { unlocked }),
+        )
+        .await
+    }
+
+    pub async fn set_identity_bindings(
+        &self,
+        change_set_id: ChangeSetId,
+        schema_id: SchemaId,
+        bindings: IdentityBindings,
+    ) -> SiFsClientResult<()> {
+        self.post_empty_response(
+            change_set_id,
+            self.fs_api_change_sets(&format!("schemas/{schema_id}/bindings"), change_set_id),
+            None::<()>,
+            Some(bindings),
         )
         .await
     }

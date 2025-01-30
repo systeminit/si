@@ -63,6 +63,7 @@ pub enum InodeEntryData {
         schema_id: SchemaId,
         size: u64,
         attrs_size: u64,
+        bindings_size: u64,
         unlocked: bool,
     },
     AssetFuncCode {
@@ -95,6 +96,11 @@ pub enum InodeEntryData {
     },
     InstalledSchemaMarker,
     SchemaAttrsJson {
+        schema_id: SchemaId,
+        change_set_id: ChangeSetId,
+        unlocked: bool,
+    },
+    SchemaBindingsJson {
         schema_id: SchemaId,
         change_set_id: ChangeSetId,
         unlocked: bool,

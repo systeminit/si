@@ -44,7 +44,8 @@ use super::{
 pub mod bindings;
 
 use bindings::{
-    get_bindings, get_func_bindings, output_to_into_func_destination, set_func_bindings,
+    get_bindings, get_func_bindings, get_identity_bindings, get_identity_bindings_for_variant,
+    output_to_into_func_destination, set_func_bindings, set_identity_bindings,
 };
 
 #[remain::sorted]
@@ -381,7 +382,9 @@ pub async fn get_asset_funcs(
         locked: None,
         unlocked: None,
         unlocked_attrs_size: 0,
+        unlocked_bindings_size: 0,
         locked_attrs_size: 0,
+        locked_bindings_size: 0,
     };
 
     result.locked = match lookup_variant_for_schema(&ctx, schema_id, false).await? {
@@ -393,6 +396,9 @@ pub async fn get_asset_funcs(
 
                 let attrs = make_schema_attrs(&variant);
                 result.locked_attrs_size = attrs.byte_size();
+
+                let bindings = get_identity_bindings_for_variant(&ctx, variant.id()).await?;
+                result.locked_bindings_size = bindings.byte_size();
 
                 // Asset funcs do not have bindings (yet)
                 Some(dal_func_to_fs_func(asset_func, 0))
@@ -407,6 +413,8 @@ pub async fn get_asset_funcs(
 
             let attrs = make_schema_attrs(&variant);
             result.unlocked_attrs_size = attrs.byte_size();
+            let bindings = get_identity_bindings_for_variant(&ctx, variant.id()).await?;
+            result.unlocked_bindings_size = bindings.byte_size();
 
             Some(dal_func_to_fs_func(asset_func, 0))
         }
@@ -975,12 +983,17 @@ async fn unlock_schema(
         unlocked: None,
         unlocked_attrs_size: 0,
         locked_attrs_size: 0,
+        unlocked_bindings_size: 0,
+        locked_bindings_size: 0,
     };
 
     let asset_func = unlocked_variant.get_asset_func(&ctx).await?;
 
     let attrs = make_schema_attrs(&unlocked_variant);
     result.unlocked_attrs_size = attrs.byte_size();
+    result.unlocked_bindings_size = get_identity_bindings_for_variant(&ctx, unlocked_variant.id())
+        .await?
+        .byte_size();
     result.unlocked = Some(dal_func_to_fs_func(asset_func, 0));
 
     ctx.commit().await?;
@@ -1115,6 +1128,8 @@ pub fn fs_routes() -> Router<AppState> {
                 .route("/schemas/:schema_id/attrs", get(get_schema_attrs))
                 .route("/schemas/:schema_id/unlock", post(unlock_schema))
                 .route("/schemas/:schema_id/attrs", post(set_schema_attrs))
+                .route("/schemas/:schema_id/bindings", get(get_identity_bindings))
+                .route("/schemas/:schema_id/bindings", post(set_identity_bindings))
                 .route(
                     "/schemas/:schema_id/funcs/:func_id/unlock",
                     post(unlock_func),
