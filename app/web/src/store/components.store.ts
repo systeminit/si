@@ -794,13 +794,20 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                   )
                 : [];
 
-            this.rawEdgesById = _.keyBy(
-              [...edges, ...inferred, ...management],
-              "id",
-            );
-
-            Object.keys(this.rawEdgesById).forEach((edgeId) => {
-              this.processRawEdge(edgeId);
+            const edgesToSet = [...edges, ...inferred, ...management];
+            if (options.representsAllComponents) {
+              const existingIds = Object.keys(this.rawEdgesById);
+              const allIds = Object.keys(edgesToSet);
+              const idsToDelete = existingIds.filter(
+                (id) => !allIds.includes(id),
+              );
+              idsToDelete.forEach((id) => {
+                delete this.rawEdgesById[id];
+              });
+            }
+            edgesToSet.forEach((edge) => {
+              this.rawEdgesById[edge.id] = edge;
+              this.processRawEdge(edge.id);
             });
           },
 
