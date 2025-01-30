@@ -1,10 +1,14 @@
+use axum::response::{IntoResponse, Response};
 use std::{io, net::SocketAddr, time::Duration};
 
 use super::routes;
 
-use axum::routing::IntoMakeService;
 use axum::Router;
-use hyper::server::{accept::Accept, conn::AddrIncoming};
+use axum::{error_handling::HandleErrorLayer, routing::IntoMakeService};
+use hyper::{
+    server::{accept::Accept, conn::AddrIncoming},
+    StatusCode,
+};
 use s3::creds::{error::CredentialsError, Credentials as AwsCredentials};
 use sea_orm::{ConnectOptions, Database, DatabaseConnection, DbErr};
 use si_data_pg::{PgPool, PgPoolConfig, PgPoolError};
@@ -18,10 +22,12 @@ use tokio::{
     sync::{broadcast, mpsc, oneshot},
 };
 use tokio_util::sync::CancellationToken;
+use tower::{buffer::BufferLayer, limit::RateLimitLayer, BoxError, ServiceBuilder};
 use tower_http::trace::{DefaultMakeSpan, TraceLayer};
 
 use crate::{
     app_state::{AppState, ShutdownSource},
+    config::RateLimitConfig,
     s3::S3Config,
     Config,
 };
@@ -119,6 +125,7 @@ impl Server<(), ()> {
             jwt_public_signing_key,
             posthog_client,
             aws_creds,
+            config.rate_limit().clone(),
             config.s3().clone(),
         )?;
 
@@ -262,6 +269,7 @@ pub fn build_service(
     jwt_public_signing_key_chain: JwtPublicSigningKeyChain,
     posthog_client: PosthogClient,
     aws_creds: AwsCredentials,
+    rate_limit_config: RateLimitConfig,
     s3_config: S3Config,
 ) -> ServerResult<(Router, oneshot::Receiver<()>, broadcast::Receiver<()>)> {
     let (shutdown_tx, shutdown_rx) = mpsc::channel(1);
@@ -278,8 +286,19 @@ pub fn build_service(
     );
 
     let routes = routes::routes(state)
-        // TODO(fnichol): customize http tracing further, using:
-        // https://docs.rs/tower-http/0.1.1/tower_http/trace/index.html
+        .layer(
+            ServiceBuilder::new()
+                .layer(HandleErrorLayer::new(|err: BoxError| async move {
+                    tracing::error!(error = %err, "Unexpected error in request processing");
+                    Response::builder()
+                        .status(StatusCode::INTERNAL_SERVER_ERROR)
+                        .body(format!("Internal server error: {}", err))
+                        .expect("Unable to build error response body")
+                        .into_response()
+                }))
+                .layer(BufferLayer::new(128))
+                .layer(Into::<RateLimitLayer>::into(rate_limit_config)),
+        )
         .layer(
             TraceLayer::new_for_http()
                 .make_span_with(DefaultMakeSpan::default().include_headers(true)),

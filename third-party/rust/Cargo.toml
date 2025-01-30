@@ -134,6 +134,7 @@ reqwest = { version = "0.12.9", default-features = false, features = [
 ring = "=0.17.5" # Upgrading this is possible, but a pain, so we don't want to pick up every new minor version (see: https://github.com/facebook/buck2/commit/91af40b66960d003067c3d241595fb53d1e636c8)
 rust-s3 = { version = "0.34.0-rc4", default-features = false, features = [
     "tokio-rustls-tls",
+    "fail-on-err"
 ] }
 rustls = { version = "0.23.19", default-features = false } # NOTE(nick,fletcher): rustls switched to "aws-lc-rs" as its default crypto provider, but we want ring (i.e. we disable the default feature for "aws-lc-rs")
 rustls-native-certs = "0.8.1"
