@@ -139,9 +139,11 @@ fn new_virtual_requirement_rule(
     change: &Change,
 ) -> WorkspaceSnapshotGraphResult<Option<ApprovalRequirementRule>> {
     match change.entity_kind {
-        // Default approval requirement rule for, schemas, schema variants,
+        // Default approval requirement rule for actions, funcs, schemas, schema variants,
         // and views until we get proper fallback logic for who should be approving what.
-        EntityKind::Schema
+        EntityKind::Action
+        | EntityKind::Func
+        | EntityKind::Schema
         | EntityKind::SchemaVariant
         | EntityKind::View => Ok(Some(ApprovalRequirementRule {
             entity_id: change.entity_id,
