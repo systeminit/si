@@ -459,8 +459,9 @@ const processRawEdge = (
   const toComponent = allComponentsById[edge.toComponentId];
   if (!allComponentsById[edge.fromComponentId]) return null;
   if (!toComponent) return null;
-  else if (!toComponent.def.sockets?.find((s) => s.id === edge.toSocketId))
+  else if (!toComponent.def.sockets?.find((s) => s.id === edge.toSocketId)) {
     return null;
+  }
   return new DiagramEdgeData(edge);
 };
 
@@ -592,6 +593,13 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                   displayName: category,
                   schemaVariants,
                 };
+              })
+              .filter(({ displayName }) => {
+                if (featureFlagsStore.CLOVER_ASSETS) {
+                  return true;
+                }
+
+                return !displayName.startsWith("Clover:");
               })
               .filter(nonNullable)
               .sort((a, b) => a.displayName.localeCompare(b.displayName));
@@ -821,10 +829,12 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             from: { componentId: ComponentNodeId; socketId: SocketId },
             to: { componentId: ComponentNodeId; socketId: SocketId },
           ) {
-            if (changeSetsStore.creatingChangeSet)
+            if (changeSetsStore.creatingChangeSet) {
               throw new Error("race, wait until the change set is created");
-            if (changeSetId === changeSetsStore.headChangeSetId)
+            }
+            if (changeSetId === changeSetsStore.headChangeSetId) {
               changeSetsStore.creatingChangeSet = true;
+            }
 
             const timestamp = new Date().toISOString();
 
@@ -864,10 +874,12 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             from: { componentId: ComponentNodeId; socketId: SocketId },
             to: { componentId: ComponentNodeId; socketId: SocketId },
           ) {
-            if (changeSetsStore.creatingChangeSet)
+            if (changeSetsStore.creatingChangeSet) {
               throw new Error("race, wait until the change set is created");
-            if (changeSetId === changeSetsStore.headChangeSetId)
+            }
+            if (changeSetId === changeSetsStore.headChangeSetId) {
               changeSetsStore.creatingChangeSet = true;
+            }
 
             const timestamp = new Date().toISOString();
 
@@ -1016,10 +1028,12 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             toComponentId: ComponentId,
             fromComponentId: ComponentId,
           ) {
-            if (changeSetsStore.creatingChangeSet)
+            if (changeSetsStore.creatingChangeSet) {
               throw new Error("race, wait until the change set is created");
-            if (changeSetId === changeSetsStore.headChangeSetId)
+            }
+            if (changeSetId === changeSetsStore.headChangeSetId) {
               changeSetsStore.creatingChangeSet = true;
+            }
 
             const edge = this.rawEdgesById[edgeId];
             const params = edge?.isManagement
@@ -1086,10 +1100,12 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             componentIds: ComponentId[],
             forceErase = false,
           ) {
-            if (changeSetsStore.creatingChangeSet)
+            if (changeSetsStore.creatingChangeSet) {
               throw new Error("race, wait until the change set is created");
-            if (changeSetId === changeSetsStore.headChangeSetId)
+            }
+            if (changeSetId === changeSetsStore.headChangeSetId) {
               changeSetsStore.creatingChangeSet = true;
+            }
 
             return new ApiRequest<Record<ComponentId, boolean>>({
               method: "post",
@@ -1141,10 +1157,12 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           },
 
           async RESTORE_COMPONENTS(...components: ComponentId[]) {
-            if (changeSetsStore.creatingChangeSet)
+            if (changeSetsStore.creatingChangeSet) {
               throw new Error("race, wait until the change set is created");
-            if (changeSetId === changeSetsStore.headChangeSetId)
+            }
+            if (changeSetId === changeSetsStore.headChangeSetId) {
               changeSetsStore.creatingChangeSet = true;
+            }
 
             return new ApiRequest({
               method: "post",
@@ -1360,8 +1378,9 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
                   this.rawComponentsById[componentId] = data.component;
                   this.processAndStoreRawComponent(componentId, {});
-                  if (oldParent && !data.component.parentId)
+                  if (oldParent && !data.component.parentId) {
                     this.processAndStoreRawComponent(oldParent, {});
+                  }
                 },
               },
               {

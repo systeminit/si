@@ -13,6 +13,7 @@ import {
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRouterStore } from "./router.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
+import { useFeatureFlagsStore } from "./feature_flags.store";
 import { ModuleIndexApiRequest } from ".";
 
 export type ModuleName = string;
@@ -163,8 +164,15 @@ export const useModuleStore = () => {
           exportingWorkspaceOperationRunning: false as boolean,
         }),
         getters: {
-          installableModules: (state) =>
-            Object.values(state.installableModulesById),
+          installableModules: (state) => {
+            return Object.values(state.installableModulesById).filter((mod) => {
+              if (useFeatureFlagsStore().CLOVER_ASSETS) {
+                return true;
+              }
+
+              return mod.ownerDisplayName !== "Clover";
+            });
+          },
           urlSelectedModuleSlug: () => {
             const route = useRouterStore().currentRoute;
             return route?.params?.moduleSlug as ModuleSlug | undefined;
@@ -376,10 +384,12 @@ export const useModuleStore = () => {
           },
 
           async INSTALL_REMOTE_MODULE(moduleIds: ModuleId[]) {
-            if (changeSetsStore.creatingChangeSet)
+            if (changeSetsStore.creatingChangeSet) {
               throw new Error("race, wait until the change set is created");
-            if (changeSetId === changeSetsStore.headChangeSetId)
+            }
+            if (changeSetId === changeSetsStore.headChangeSetId) {
               changeSetsStore.creatingChangeSet = true;
+            }
 
             return new ApiRequest<{ id: string }>({
               method: "post",

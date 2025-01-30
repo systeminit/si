@@ -16,6 +16,9 @@ import { getExistingSpecs } from "../specUpdates.ts";
 
 import _logger from "../logger.ts";
 import { assetSpecificOverrides } from "../pipeline-steps/assetSpecificOverrides.ts";
+import {
+  addSignatureToCategoryName,
+} from "../pipeline-steps/addSignatureToCategoryName.ts";
 
 const logger = _logger.ns("siSpecs").seal();
 const SI_SPEC_DIR = "si-specs";
@@ -60,6 +63,7 @@ export async function generateSiSpecs() {
   specs = createInputSocketsBasedOnOutputSockets(specs);
   specs = generateAssetFuncs(specs);
   specs = updateSchemaIdsForExistingSpecs(existing_specs, specs);
+  specs = addSignatureToCategoryName(existing_specs, specs);
 
   // WRITE OUTS SPECS
   await emptyDirectory(SI_SPEC_DIR);

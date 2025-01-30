@@ -35,12 +35,12 @@
           />
           <IconButton
             v-if="canUpdate"
+            :loading="updateModulesReqStatus.isPending"
             icon="code-deployed"
+            loadingIcon="loader"
             size="sm"
             tooltip="Update All"
             tooltipPlacement="top"
-            :loading="updateModulesReqStatus.isPending"
-            loadingIcon="loader"
             @click="updateAllAssets"
           />
         </div>
@@ -132,12 +132,14 @@ import { useAssetStore } from "@/store/asset.store";
 import { SchemaVariant } from "@/api/sdf/dal/schema";
 import { getAssetIcon } from "@/store/components.store";
 import { useModuleStore } from "@/store/module.store";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import AssetNameModal from "./AssetNameModal.vue";
 import AssetListItem from "./AssetListItem.vue";
 import SidebarSubpanelTitle from "./SidebarSubpanelTitle.vue";
 
 const assetStore = useAssetStore();
 const moduleStore = useModuleStore();
+const featureFlagsStore = useFeatureFlagsStore();
 
 const { variantList: assetList } = storeToRefs(assetStore);
 
@@ -167,6 +169,13 @@ const canUpdate = computed(
 const categorizedAssets = computed(() =>
   assetList.value
     .filter((asset) => {
+      if (
+        !featureFlagsStore.CLOVER_ASSETS &&
+        asset.category.startsWith("Clover:")
+      ) {
+        return false;
+      }
+
       let include = true;
 
       if (
