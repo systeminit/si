@@ -878,6 +878,8 @@ impl<'a> ManagementOperator<'a> {
             source_output_socket_id,
             destination_input_socket_id,
         )
+        .await?
+        .publish_on_commit(self.ctx)
         .await?;
 
         Ok(())
