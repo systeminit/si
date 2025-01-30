@@ -108,6 +108,7 @@
         linode-cli
         flyctl
         azure-cli
+        govc
       ];
 
       buck2Derivation = {
