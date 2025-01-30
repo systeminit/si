@@ -1408,10 +1408,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 callback: (data, metadata) => {
                   if (metadata.change_set_id !== changeSetId) return;
 
-                  const didIFireThisRequest =
-                    realtimeStore.inflightRequests.get(metadata.request_ulid);
-                  if (!didIFireThisRequest) return;
-
+                  // PSA: if the toast doesn't exist one will not be created
                   toast.update(metadata.request_ulid, {
                     content: {
                       props: {
@@ -1428,7 +1425,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                       },
                       component: CreatingTemplate,
                     },
-                    options: { timeout: 3 * 1000, closeOnClick: true },
+                    options: { timeout: false, closeOnClick: true },
                   });
                 },
               },
