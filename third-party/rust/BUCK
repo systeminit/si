@@ -14284,6 +14284,7 @@ cargo.rust_library(
     crate_root = "rust-s3-61c54947c717d042/s3/src/lib.rs",
     edition = "2018",
     features = [
+        "fail-on-err",
         "futures",
         "hyper",
         "hyper-rustls",

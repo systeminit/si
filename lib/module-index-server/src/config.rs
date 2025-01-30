@@ -1,4 +1,4 @@
-use std::{env, net::SocketAddr, path::Path};
+use std::{env, net::SocketAddr, path::Path, time::Duration};
 
 use buck2_resources::Buck2Resources;
 use derive_builder::Builder;
@@ -11,6 +11,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 pub use si_settings::{StandardConfig, StandardConfigFile};
+use tower::limit::RateLimitLayer;
 use ulid::Ulid;
 
 use crate::s3::S3Config;
@@ -68,6 +69,9 @@ pub struct Config {
 
     #[builder(default = "PosthogConfig::default()")]
     posthog: PosthogConfig,
+
+    #[builder(default)]
+    rate_limit: RateLimitConfig,
 
     s3: S3Config,
 }
@@ -127,6 +131,12 @@ impl Config {
         &self.posthog
     }
 
+    /// Gets a reference to the config's rate limit layer.
+    #[must_use]
+    pub fn rate_limit(&self) -> &RateLimitConfig {
+        &self.rate_limit
+    }
+
     /// Gets a config's s3 details
     #[must_use]
     pub fn s3(&self) -> &S3Config {
@@ -155,6 +165,8 @@ pub struct ConfigFile {
     #[serde(default)]
     pub posthog: PosthogConfig,
     #[serde(default)]
+    pub rate_limit: RateLimitConfig,
+    #[serde(default)]
     pub s3: S3Config,
 }
 
@@ -176,6 +188,7 @@ impl Default for ConfigFile {
             jwt_secondary_signing_public_key_path: None,
             jwt_secondary_signing_public_key_algo: None,
             posthog: Default::default(),
+            rate_limit: Default::default(),
             s3: Default::default(),
         }
     }
@@ -213,6 +226,27 @@ fn default_jwt_signing_public_key_path() -> String {
 
 fn default_jwt_signing_public_key_algo() -> JwtAlgo {
     JwtAlgo::RS256
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct RateLimitConfig {
+    requests: u64,
+    per_second: Duration,
+}
+
+impl Default for RateLimitConfig {
+    fn default() -> Self {
+        Self {
+            requests: 128,
+            per_second: Duration::from_secs(1),
+        }
+    }
+}
+
+impl From<RateLimitConfig> for RateLimitLayer {
+    fn from(val: RateLimitConfig) -> Self {
+        RateLimitLayer::new(val.requests, val.per_second)
+    }
 }
 
 #[allow(clippy::disallowed_methods)] // Used to determine if running in development
