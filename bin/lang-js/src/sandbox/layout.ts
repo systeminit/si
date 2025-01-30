@@ -1,11 +1,13 @@
-import { makeConsole } from "./console.ts";
+//import { makeConsole } from "./console.ts";
 import {
-  MIN_NODE_DIMENSION, GROUP_HEADER_BOTTOM_MARGIN, NODE_HEADER_HEIGHT,
-  NODE_SUBTITLE_TEXT_HEIGHT,
-  SOCKET_MARGIN_TOP,
-  SOCKET_GAP,
-  SOCKET_SIZE,
+  GROUP_HEADER_BOTTOM_MARGIN,
+  MIN_NODE_DIMENSION,
+  NODE_HEADER_HEIGHT,
   NODE_PADDING_BOTTOM,
+  NODE_SUBTITLE_TEXT_HEIGHT,
+  SOCKET_GAP,
+  SOCKET_MARGIN_TOP,
+  SOCKET_SIZE,
 } from "./diagram_constants.ts";
 // Simple row layout
 // Takes in Components, who have a fixed height and width
@@ -88,22 +90,25 @@ export function createFrame(frameId: string): Frame {
 function componentHeight(numSockets: number) {
   // PSA: This is duplicated in app web layout code. Change in both places!
   return (
-    NODE_SUBTITLE_TEXT_HEIGHT
-    + SOCKET_MARGIN_TOP
-    + SOCKET_GAP
-      * (numSockets
-        - 1)
-    + SOCKET_SIZE / 2
+    NODE_SUBTITLE_TEXT_HEIGHT +
+    SOCKET_MARGIN_TOP +
+    SOCKET_GAP *
+      (numSockets -
+        1) +
+    SOCKET_SIZE / 2 +
     // TODO: this isn't right yet!
-    + NODE_PADDING_BOTTOM
+    NODE_PADDING_BOTTOM +
     // (statusIcons?.value.length ? 30 : 0)
-    + 30 // keeping this there as a constant for the moment
-    + NODE_HEADER_HEIGHT
+    30 + // keeping this there as a constant for the moment
+    NODE_HEADER_HEIGHT
   );
 }
 
 // Create a new component
-export function createComponent(componentId: string, numSockets: number): Component {
+export function createComponent(
+  componentId: string,
+  numSockets: number,
+): Component {
   return {
     kind: LayoutKind.Component,
     id: componentId,
@@ -149,7 +154,7 @@ export function addToRow(frame: Frame, rowId: string, item: Item) {
 }
 
 export function calculateSizeAndPosition(fromFrame: Frame): Frame {
-  const console = makeConsole("poop");
+  // const console = makeConsole("poop");
   const framesToCheck = [fromFrame];
   const nextFrames = [fromFrame];
   // Control against infinite loop
@@ -200,7 +205,8 @@ export function calculateSizeAndPosition(fromFrame: Frame): Frame {
         frame.width = row.width;
       }
       if (hasSubFrame) {
-        frame.height = frame.height + row.height + HEIGHT_MARGIN + FRAME_LABEL_HEIGHT;
+        frame.height = frame.height + row.height + HEIGHT_MARGIN +
+          FRAME_LABEL_HEIGHT;
       } else {
         frame.height = frame.height + row.height + HEIGHT_MARGIN;
       }
@@ -218,7 +224,6 @@ export function calculateSizeAndPosition(fromFrame: Frame): Frame {
   // makes the layout wrong
   framesToCheck.reverse();
   for (const frame of framesToCheck) {
-    console.log("FRAME Y", frame.id, frame.y);
     const computedRowY = frame.y;
     const computedRowX = (frame.x - (frame.width / 2)) + componentPadding;
 
@@ -247,7 +252,7 @@ export function calculateSizeAndPosition(fromFrame: Frame): Frame {
 }
 
 export function setGeometryForSpecs(fromFrame: Frame, specs: any[]) {
-  const console = makeConsole("poop");
+  //const console = makeConsole("poop");
   const components: Item[] = [fromFrame];
   const nextCheck: Item[] = [fromFrame];
   // Control against infinite loop
@@ -286,7 +291,6 @@ export function setGeometryForSpecs(fromFrame: Frame, specs: any[]) {
         width: component.width,
         height: component.height,
       };
-      console.log("C GEO", spec.properties.si.name, geo);
       spec.geometry = geo;
     }
   }

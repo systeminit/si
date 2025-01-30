@@ -43,7 +43,11 @@ export function updateVarsInViews(
     views.create.push(viewName);
     let exists = false;
     // foo
-    for (const [componentId, componentObject] of Object.entries(components as object)) {
+    for (
+      const [componentId, componentObject] of Object.entries(
+        components as object,
+      )
+    ) {
       if (componentObject.properties.si.name.startsWith(viewName)) {
         exists = true;
         update[componentId] = {
@@ -101,7 +105,7 @@ export function updateVarsInViews(
 }
 
 export function converge(
-  currentView: string,
+  _currentView: string,
   thisComponent: unknown,
   components: Record<string, unknown>,
   specs: {
@@ -109,6 +113,7 @@ export function converge(
     connect: Record<string, any>;
     geometry: Record<string, any>;
   }[],
+  updateFuncName?: string,
 ): any {
   const console = makeConsole("poop");
   const templateObjectName = _.get(
@@ -123,6 +128,7 @@ export function converge(
   const update: Record<string, unknown> = {};
   const create: Record<string, unknown> = {};
   const deletes: Array<unknown> = [];
+  const actions: Record<string, { add: string[] }> = {};
 
   // that gets created, or deleted, by a management function. It needs
   // to be stored as metadata that then gets sent in to the
@@ -134,7 +140,7 @@ export function converge(
   // Iterate over all the connected components, and check for any that
   // are no longer in our specification, or that represent environment
   // objects, and schedule them for deletion.
-  for (const [componentId, component] of Object.entries(components)) {
+  for (const component of Object.values(components)) {
     const idempotencyKey = _.get(component, "properties.si.name");
     const hasSpec = _.find(specs, {
       properties: {
@@ -150,7 +156,7 @@ export function converge(
       for (
         const environment of _.get(
           thisComponent,
-          "properties.domain.Environments",
+          "properties.domain.Views",
           [],
         )
       ) {
@@ -163,7 +169,7 @@ export function converge(
         continue;
       }
     }
-    deletes.push(componentId);
+    deletes.push(idempotencyKey);
   }
 
   // Itereate over all desired specs, and check to see if we need to create them
@@ -180,9 +186,6 @@ export function converge(
           },
         },
       });
-      console.log("update or not", {
-        idempotencyKey, id, ob, match,
-      });
       if (match) {
         currentId = id;
         current = ob as object;
@@ -192,7 +195,7 @@ export function converge(
       const updateOp: Record<string, any> = {};
       // Compute the update operation
       const currentProperties = _.get(current, "properties", {});
-      if (!_.isEqual(currentProperties, desired.properties)) {
+      if (!_.isMatch(currentProperties, desired.properties)) {
         updateOp.properties = desired.properties;
       }
       // All connections will be overriden
@@ -203,15 +206,34 @@ export function converge(
         if (toAdd.length) _.set(updateOp, ["connect", "add"], toAdd);
         if (toRemove.length) _.set(updateOp, ["connect", "remove"], toRemove);
       }
-      // Update the geometry
-      _.set(updateOp, ["geometry", currentView], _.get(desired.geometry));
-      update[currentId] = updateOp;
+      // Never update Geometry - right now, we switch from absolute on create
+      // to "relative" on update. For now, you have to manually position
+      // updates.
+      //const currentGeometry = _.get(current, "geometry", {});
+      //if (!_.isMatch(currentGeometry, desired.geometry)) {
+      //  if (currentView === "DEFAULT") {
+      //    _.set(updateOp, ["geometry"], desired.geometry);
+      //  } else {
+      //    _.set(updateOp, ["geometry", currentView], desired.geometry);
+      //  }
+      //}
+      if (Object.keys(updateOp).length !== 0) {
+        update[currentId] = updateOp;
+        if (updateFuncName) {
+          if (_.get(actions, [idempotencyKey, "add"], []).length === 0) {
+            _.set(actions, [idempotencyKey, "add"], [updateFuncName]);
+          } else {
+            actions[idempotencyKey]["add"].push(updateFuncName);
+          }
+        }
+      }
     } else {
       // Create the component from the desired spec
       const name = _.get(desired, "properties.si.name");
       create[name] = desired;
     }
   }
+
   if (Object.keys(create).length) {
     ops.create = create;
   }
@@ -221,6 +243,9 @@ export function converge(
   if (Object.keys(deletes).length) {
     ops.delete = deletes;
   }
+  if (Object.keys(actions).length) {
+    ops.actions = actions;
+  }
 
   return {
     status,
@@ -229,7 +254,9 @@ export function converge(
   };
 }
 
-export function variables(thisComponent: Record<string, any>): Record<string, any> {
+export function variables(
+  thisComponent: Record<string, any>,
+): Record<string, any> {
   const something = _.merge(
     {},
     _.get(thisComponent, [

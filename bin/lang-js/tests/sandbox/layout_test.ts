@@ -29,16 +29,16 @@ Deno.test(function createInitialFrameHasPosition() {
 });
 
 Deno.test(function createComponentReturnsComponent() {
-  const component = layout.createComponent("soulless");
+  const component = layout.createComponent("soulless", 2);
   assertObjectMatch(
     component,
     {
-      kind: "component",
+      kind: "COMPONENT",
       id: "soulless",
       x: 0,
       y: 0,
-      width: 220,
-      height: 250,
+      width: 240,
+      height: 132.5,
     },
   );
 });
@@ -50,7 +50,7 @@ Deno.test(function createRowReturnsRow() {
     {
       items: [],
       id: "compromised",
-      kind: "row",
+      kind: "ROW",
       x: 0,
       y: 0,
       width: 0,
@@ -62,7 +62,7 @@ Deno.test(function createRowReturnsRow() {
 Deno.test(function addToRowAddsItemIdempotently() {
   const rootFrame = layout.initialFrame("a");
   const aFrame = layout.createFrame("aFrame");
-  const aComponent = layout.createComponent("aComponent");
+  const aComponent = layout.createComponent("aComponent", 3);
 
   layout.addToRow(rootFrame, "row1", aFrame);
   assertEquals(rootFrame.rows.length, 1, "should have row");
@@ -99,7 +99,7 @@ Deno.test(function addToRowAddsItemIdempotently() {
 
 Deno.test(function calculateSizeAndPositionSingleComponent() {
   const rootFrame = layout.initialFrame("rootFrame");
-  const component = layout.createComponent("component");
+  const component = layout.createComponent("component", 2);
   layout.addToRow(rootFrame, "row 1", component);
   layout.calculateSizeAndPosition(rootFrame);
   // Wrong right now, commented out
@@ -135,11 +135,11 @@ Deno.test(function calculateSizeAndPositionSingleComponent() {
 
 Deno.test(function calculateSizeAndPositionOneRowFourComponents() {
   const rootFrame = layout.initialFrame("rootFrame");
-  const component1 = layout.createComponent("component 1");
-  const component2 = layout.createComponent("component 2");
-  const component3 = layout.createComponent("component 3");
-  const component4 = layout.createComponent("component 4");
-  const component5 = layout.createComponent("component 5");
+  const component1 = layout.createComponent("component 1", 2);
+  const component2 = layout.createComponent("component 2", 2);
+  const component3 = layout.createComponent("component 3", 2);
+  const component4 = layout.createComponent("component 4", 2);
+  const component5 = layout.createComponent("component 5", 2);
   layout.addToRow(rootFrame, "row 1", component1);
   layout.addToRow(rootFrame, "row 1", component2);
   layout.addToRow(rootFrame, "row 1", component3);
@@ -211,28 +211,26 @@ Deno.test(function calculateSizeAndPositionOneRowFourComponents() {
 
 Deno.test(function calculateSizeAndPositionOneRowSubFrame() {
   const rootFrame = layout.initialFrame("rootFrame");
-  const component1 = layout.createComponent("component 1");
+  const component1 = layout.createComponent("component 1", 2);
   layout.addToRow(rootFrame, "row 1", component1);
-  const component2 = layout.createComponent("component 2");
+  const component2 = layout.createComponent("component 2", 2);
   layout.addToRow(rootFrame, "row 1", component2);
   const subFrame1 = layout.createFrame("subFrame 1");
-  const component3 = layout.createComponent("component 3");
-  const component4 = layout.createComponent("component 4");
+  const component3 = layout.createComponent("component 3", 2);
+  const component4 = layout.createComponent("component 4", 2);
   layout.addToRow(subFrame1, "row 1", component3);
   layout.addToRow(subFrame1, "row 1", component4);
   layout.addToRow(rootFrame, "row 1", subFrame1);
-  const component5 = layout.createComponent("component 5");
+  const component5 = layout.createComponent("component 5", 2);
   layout.addToRow(rootFrame, "row 1", component5);
   layout.calculateSizeAndPosition(rootFrame);
 });
 
-
 Deno.test(function calculateSizeAndPositionOneSubFrame() {
   const rootFrame = layout.initialFrame("rootFrame");
   const subFrame1 = layout.createFrame("subFrame 1");
-  const component1 = layout.createComponent("component 1");
+  const component1 = layout.createComponent("component 1", 2);
   layout.addToRow(subFrame1, "row 1", component1);
   layout.addToRow(rootFrame, "row 1", subFrame1);
   layout.calculateSizeAndPosition(rootFrame);
-  console.log(JSON.stringify(rootFrame, null, 2));
 });
