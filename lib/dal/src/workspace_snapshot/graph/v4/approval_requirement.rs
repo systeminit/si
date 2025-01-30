@@ -139,39 +139,25 @@ fn new_virtual_requirement_rule(
     change: &Change,
 ) -> WorkspaceSnapshotGraphResult<Option<ApprovalRequirementRule>> {
     match change.entity_kind {
+        // Default approval requirement rule for, schemas, schema variants,
+        // and views until we get proper fallback logic for who should be approving what.
+        EntityKind::Schema
+        | EntityKind::SchemaVariant
+        | EntityKind::View => Ok(Some(ApprovalRequirementRule {
+            entity_id: change.entity_id,
+            entity_kind: change.entity_kind,
+            minimum: 1,
+            approvers: HashSet::from([ApprovalRequirementApprover::PermissionLookup(
+                ApprovalRequirementPermissionLookup {
+                    object_type: "workspace".to_string(),
+                    object_id: workspace_id.to_string(),
+                    permission: "approve".to_string(),
+                },
+            )]),
+        })),
         // For any changes to explicit approval requirements, we need approvals from
         // workspace approvers.
         EntityKind::ApprovalRequirementDefinition => Ok(Some(ApprovalRequirementRule {
-            entity_id: change.entity_id,
-            entity_kind: change.entity_kind,
-            minimum: 1,
-            approvers: HashSet::from([ApprovalRequirementApprover::PermissionLookup(
-                ApprovalRequirementPermissionLookup {
-                    object_type: "workspace".to_string(),
-                    object_id: workspace_id.to_string(),
-                    permission: "approve".to_string(),
-                },
-            )]),
-        })),
-        EntityKind::CategoryAction => {
-            // TODO(nick,jacob): start the actions CRUD work here! As a reminder, we need to
-            // know the actions deleted (only on HEAD), the actions added (only in our graph),
-            // the actions modified (in both), etc.
-            Ok(None)
-        }
-        EntityKind::Schema => Ok(Some(ApprovalRequirementRule {
-            entity_id: change.entity_id,
-            entity_kind: change.entity_kind,
-            minimum: 1,
-            approvers: HashSet::from([ApprovalRequirementApprover::PermissionLookup(
-                ApprovalRequirementPermissionLookup {
-                    object_type: "workspace".to_string(),
-                    object_id: workspace_id.to_string(),
-                    permission: "approve".to_string(),
-                },
-            )]),
-        })),
-        EntityKind::View | EntityKind::SchemaVariant => Ok(Some(ApprovalRequirementRule {
             entity_id: change.entity_id,
             entity_kind: change.entity_kind,
             minimum: 1,
