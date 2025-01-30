@@ -259,3 +259,9 @@ impl fmt::Display for FsApiError {
         }
     }
 }
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct SetFuncBindingsRequest {
+    pub bindings: Bindings,
+    pub is_attaching_existing: bool,
+}

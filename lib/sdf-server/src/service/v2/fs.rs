@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{HashMap, HashSet};
 
 use axum::{
     extract::{Host, OriginalUri, Path, Query},
@@ -7,38 +7,29 @@ use axum::{
     Json, Router,
 };
 use dal::{
-    attribute::prototype::argument::{AttributePrototypeArgument, AttributePrototypeArgumentError},
+    attribute::prototype::argument::AttributePrototypeArgumentError,
     cached_module::CachedModule,
     func::{
-        argument::{FuncArgument, FuncArgumentError},
+        argument::FuncArgumentError,
         authoring::{FuncAuthoringClient, FuncAuthoringError},
-        binding::{
-            action::ActionBinding, attribute::AttributeBinding, authentication::AuthBinding,
-            leaf::LeafBinding, management::ManagementBinding, AttributeFuncDestination,
-            EventualParent, FuncBindingError,
-        },
-        FuncKind,
+        binding::{AttributeFuncDestination, EventualParent, FuncBindingError},
     },
     pkg::PkgError,
-    prop::{PropError, PropPath},
+    prop::PropError,
     schema::variant::{
         authoring::{VariantAuthoringClient, VariantAuthoringError},
         leaves::{LeafInputLocation, LeafKind},
     },
     socket::{input::InputSocketError, output::OutputSocketError},
     workspace::WorkspaceId,
-    ChangeSet, ChangeSetId, DalContext, Func, FuncId, InputSocket, OutputSocket, Prop, Schema,
-    SchemaId, SchemaVariant, SchemaVariantId, WsEvent, WsEventError,
+    ChangeSet, ChangeSetId, DalContext, FuncId, Schema, SchemaId, SchemaVariant, WsEvent,
+    WsEventError,
 };
 use hyper::StatusCode;
-use si_events::{audit_log::AuditLogKind, ActionKind};
-use si_frontend_types::{
-    fs::{
-        self, AssetFuncs, AttributeFuncInput, AttributeInputFrom, AttributeOutputTo, Binding,
-        ChangeSet as FsChangeSet, CreateSchemaResponse, FsApiError, Func as FsFunc,
-        Schema as FsSchema, SchemaAttributes, SetFuncCodeRequest, VariantQuery,
-    },
-    AttributeArgumentBinding, FuncBinding,
+use si_events::audit_log::AuditLogKind;
+use si_frontend_types::fs::{
+    self, AssetFuncs, Binding, ChangeSet as FsChangeSet, CreateSchemaResponse, FsApiError,
+    Func as FsFunc, Schema as FsSchema, SchemaAttributes, SetFuncCodeRequest, VariantQuery,
 };
 use si_id::FuncArgumentId;
 use thiserror::Error;
@@ -46,14 +37,14 @@ use thiserror::Error;
 use crate::extract::{HandlerContext, PosthogClient};
 
 use super::{
-    func::{
-        binding::update_binding::{
-            update_action_func_bindings, update_attribute_func_bindings, update_leaf_func_bindings,
-            update_mangement_func_bindings,
-        },
-        get_code_response, FuncAPIError,
-    },
+    func::{get_code_response, FuncAPIError},
     AccessBuilder, AppState,
+};
+
+pub mod bindings;
+
+use bindings::{
+    get_bindings, get_func_bindings, output_to_into_func_destination, set_func_bindings,
 };
 
 #[remain::sorted]
@@ -335,160 +326,13 @@ async fn list_variant_funcs(
                 .into_iter()
                 .filter(|f| kind == f.kind.into())
             {
-                let bindings = get_bindings(&ctx, func.id, variant.id).await?;
-                let bindings_size = serde_json::to_vec_pretty(&bindings)?.len() as u64;
-
+                let bindings_size = get_bindings(&ctx, func.id, schema_id).await?.0.byte_size();
                 funcs.push(dal_func_to_fs_func(func, bindings_size))
             }
         }
     }
 
     Ok(Json(funcs))
-}
-
-async fn get_bindings(
-    ctx: &DalContext,
-    func_id: FuncId,
-    schema_variant_id: SchemaVariantId,
-) -> FsResult<fs::Bindings> {
-    let bindings =
-        get_bindings_for_func_and_schema_variant(ctx, func_id, schema_variant_id).await?;
-
-    let mut display_bindings = vec![];
-    for binding in bindings {
-        display_bindings.push(func_binding_to_fs_binding(ctx, func_id, binding).await?);
-    }
-
-    Ok(fs::Bindings {
-        bindings: display_bindings,
-    })
-}
-
-async fn func_binding_to_fs_binding(
-    ctx: &DalContext,
-    func_id: FuncId,
-    binding: FuncBinding,
-) -> FsResult<fs::Binding> {
-    Ok(match binding {
-        FuncBinding::Action { kind, .. } => Binding::Action {
-            kind: kind.unwrap_or(ActionKind::Manual),
-        },
-        FuncBinding::Attribute {
-            prop_id,
-            output_socket_id,
-            argument_bindings,
-            ..
-        } => {
-            attribute_binding_to_fs_attribute_binding(
-                ctx,
-                func_id,
-                prop_id,
-                output_socket_id,
-                argument_bindings,
-            )
-            .await?
-        }
-        FuncBinding::Authentication { .. } => Binding::Authentication,
-        FuncBinding::CodeGeneration { inputs, .. } => Binding::CodeGeneration { inputs },
-        FuncBinding::Management {
-            managed_schemas, ..
-        } => management_binding_to_fs_management_binding(ctx, managed_schemas).await?,
-        FuncBinding::Qualification { inputs, .. } => Binding::Qualification { inputs },
-    })
-}
-
-async fn management_binding_to_fs_management_binding(
-    ctx: &DalContext,
-    managed_schemas: Option<Vec<SchemaId>>,
-) -> FsResult<Binding> {
-    Ok(if let Some(schemas) = managed_schemas {
-        let mut managed_names = vec![];
-        for managed_schema_id in schemas {
-            let schema_name =
-                match CachedModule::latest_by_schema_id(ctx, managed_schema_id).await? {
-                    Some(cached_module) => cached_module.schema_name,
-                    None => {
-                        Schema::get_by_id_or_error(ctx, managed_schema_id)
-                            .await?
-                            .name
-                    }
-                };
-            managed_names.push(schema_name);
-        }
-
-        Binding::Management {
-            managed_schemas: Some(managed_names),
-        }
-    } else {
-        Binding::Management {
-            managed_schemas: None,
-        }
-    })
-}
-
-async fn attribute_binding_to_fs_attribute_binding(
-    ctx: &DalContext,
-    func_id: FuncId,
-    prop_id: Option<dal::PropId>,
-    output_socket_id: Option<dal::OutputSocketId>,
-    argument_bindings: Vec<si_frontend_types::AttributeArgumentBinding>,
-) -> FsResult<Binding> {
-    let output_to = if let Some(prop_id) = prop_id {
-        let path = Prop::get_by_id(ctx, prop_id)
-            .await?
-            .path(ctx)
-            .await?
-            .with_replaced_sep("/");
-
-        AttributeOutputTo::Prop(path)
-    } else if let Some(output_socket_id) = output_socket_id {
-        let name = OutputSocket::get_by_id(ctx, output_socket_id)
-            .await?
-            .name()
-            .to_string();
-        AttributeOutputTo::OutputSocket(name)
-    } else {
-        return Err(FsError::AttributeFuncNotBound);
-    };
-    let mut inputs = BTreeMap::new();
-    for func_arg in FuncArgument::list_for_func(ctx, func_id).await? {
-        let func_arg_kind = func_arg.kind;
-        let func_arg_name = func_arg.name;
-        let func_arg_element_kind = func_arg.element_kind;
-
-        let input_from = match argument_bindings
-            .iter()
-            .find(|binding| binding.func_argument_id == func_arg.id)
-        {
-            Some(arg_binding) => Some(if let Some(input_prop_id) = arg_binding.prop_id {
-                let path = Prop::get_by_id(ctx, input_prop_id)
-                    .await?
-                    .path(ctx)
-                    .await?
-                    .to_string();
-                AttributeInputFrom::Prop(path)
-            } else if let Some(input_socket_id) = arg_binding.input_socket_id {
-                let name = InputSocket::get_by_id(ctx, input_socket_id)
-                    .await?
-                    .name()
-                    .to_string();
-                AttributeInputFrom::InputSocket(name)
-            } else {
-                return Err(FsError::AttributeInputNotBound);
-            }),
-            None => None,
-        };
-
-        inputs.insert(
-            func_arg_name,
-            AttributeFuncInput {
-                kind: func_arg_kind.into(),
-                element_kind: func_arg_element_kind.map(Into::into),
-                input: input_from,
-            },
-        );
-    }
-    Ok(Binding::Attribute { output_to, inputs })
 }
 
 async fn lookup_variant_for_schema(
@@ -576,42 +420,6 @@ pub async fn get_asset_funcs(
     }
 }
 
-async fn get_bindings_for_func_and_schema_variant(
-    ctx: &DalContext,
-    func_id: FuncId,
-    schema_variant_id: SchemaVariantId,
-) -> FsResult<Vec<FuncBinding>> {
-    let func = dal::Func::get_by_id_or_error(ctx, func_id).await?;
-
-    Ok(match func.kind {
-        dal::func::FuncKind::Action => {
-            ActionBinding::assemble_action_bindings(ctx, func_id).await?
-        }
-        dal::func::FuncKind::Attribute => {
-            AttributeBinding::assemble_attribute_bindings(ctx, func_id).await?
-        }
-        dal::func::FuncKind::Authentication => {
-            AuthBinding::assemble_auth_bindings(ctx, func_id).await?
-        }
-        dal::func::FuncKind::CodeGeneration => {
-            LeafBinding::assemble_leaf_func_bindings(ctx, func_id, LeafKind::CodeGeneration).await?
-        }
-        dal::func::FuncKind::Management => {
-            ManagementBinding::assemble_management_bindings(ctx, func_id).await?
-        }
-        dal::func::FuncKind::Qualification => {
-            LeafBinding::assemble_leaf_func_bindings(ctx, func_id, LeafKind::Qualification).await?
-        }
-        dal::func::FuncKind::Unknown
-        | dal::func::FuncKind::Intrinsic
-        | dal::func::FuncKind::SchemaVariantDefinition => vec![],
-    }
-    .into_iter()
-    .filter(|binding| binding.get_schema_variant() == Some(schema_variant_id))
-    .map(Into::into)
-    .collect())
-}
-
 fn dal_func_to_fs_func(func: dal::Func, bindings_size: u64) -> FsFunc {
     FsFunc {
         id: func.id,
@@ -626,35 +434,6 @@ fn dal_func_to_fs_func(func: dal::Func, bindings_size: u64) -> FsFunc {
         name: func.name,
         bindings_size,
     }
-}
-
-async fn get_func_bindings(
-    HandlerContext(builder): HandlerContext,
-    AccessBuilder(request_ctx): AccessBuilder,
-    PosthogClient(_posthog_client): PosthogClient,
-    OriginalUri(_original_uri): OriginalUri,
-    Host(_host_name): Host,
-    Path((_workspace_id, change_set_id, schema_id, func_id)): Path<(
-        WorkspaceId,
-        ChangeSetId,
-        SchemaId,
-        FuncId,
-    )>,
-    Query(variant_query): Query<VariantQuery>,
-) -> FsResult<Json<fs::Bindings>> {
-    let ctx = builder
-        .build(request_ctx.build(change_set_id.into()))
-        .await?;
-
-    check_change_set(&ctx)?;
-
-    let variant = lookup_variant_for_schema(&ctx, schema_id, variant_query.unlocked)
-        .await?
-        .ok_or(FsError::ResourceNotFound)?;
-
-    let display_bindings = get_bindings(&ctx, func_id, variant.id()).await?;
-
-    Ok(Json(display_bindings))
 }
 
 async fn get_func_code(
@@ -893,8 +672,7 @@ async fn create_func(
         .publish_on_commit(&ctx)
         .await?;
 
-    let bindings = get_bindings(&ctx, func.id, unlocked_variant.id).await?;
-    let bindings_size = serde_json::to_vec_pretty(&bindings)?.len() as u64;
+    let bindings_size = get_bindings(&ctx, func.id, schema_id).await?.0.byte_size();
 
     ctx.commit().await?;
 
@@ -1271,8 +1049,9 @@ async fn unlock_func(
     )
     .await?;
 
-    let bindings_size = get_bindings(&ctx, new_func.id, unlocked_variant.id())
+    let bindings_size = get_bindings(&ctx, new_func.id, schema_id)
         .await?
+        .0
         .byte_size();
 
     ctx.commit().await?;
@@ -1281,169 +1060,19 @@ async fn unlock_func(
     Ok(Json(dal_func_to_fs_func(new_func, bindings_size)))
 }
 
-async fn set_func_bindings(
-    HandlerContext(builder): HandlerContext,
-    AccessBuilder(request_ctx): AccessBuilder,
-    PosthogClient(_posthog_client): PosthogClient,
-    OriginalUri(_original_uri): OriginalUri,
-    Host(_host_name): Host,
-    Path((_workspace_id, change_set_id, schema_id, func_id)): Path<(
-        WorkspaceId,
-        ChangeSetId,
-        SchemaId,
-        FuncId,
-    )>,
-    Json(request): Json<fs::Bindings>,
-) -> FsResult<()> {
-    let ctx = builder
-        .build(request_ctx.build(change_set_id.into()))
-        .await?;
-
-    check_change_set_and_not_head(&ctx).await?;
-
-    let variant = lookup_variant_for_schema(&ctx, schema_id, true)
-        .await?
-        .ok_or(FsError::ResourceNotFound)?;
-
-    let func = Func::get_by_id(&ctx, func_id)
-        .await?
-        .ok_or(FsError::ResourceNotFound)?;
-
-    if matches!(
-        func.kind,
-        FuncKind::Authentication | FuncKind::Intrinsic | FuncKind::Unknown
-    ) {
-        return Err(FsError::FuncBindingKindMismatch);
-    }
-
-    let current_bindings =
-        get_bindings_for_func_and_schema_variant(&ctx, func_id, variant.id()).await?;
-
-    let updated_bindings = request.bindings;
-
-    let mut delete_bindings = vec![];
-    let mut final_bindings = vec![];
-    for (idx, func_binding) in current_bindings.into_iter().enumerate() {
-        match updated_bindings.get(idx) {
-            Some(binding_update) => match binding_update {
-                Binding::Action { kind: update_kind } => {
-                    parse_action_bindings(&mut final_bindings, &func_binding, *update_kind)?;
-                }
-                Binding::Attribute { output_to, inputs } => {
-                    parse_attr_bindings(&ctx, &mut final_bindings, func_binding, output_to, inputs)
-                        .await?;
-                }
-                Binding::Authentication => {}
-                Binding::CodeGeneration {
-                    inputs: update_inputs,
-                } => {
-                    parse_code_gen_bindings(&mut final_bindings, func_binding, update_inputs)?;
-                }
-                Binding::Management {
-                    managed_schemas: updated_schemas,
-                } => {
-                    parse_mgmt_bindings(&ctx, &mut final_bindings, func_binding, updated_schemas)
-                        .await?;
-                }
-                Binding::Qualification {
-                    inputs: update_inputs,
-                } => {
-                    parse_qualification_bindings(&mut final_bindings, func_binding, update_inputs)?;
-                }
-            },
-            None => {
-                delete_bindings.push(func_binding);
-            }
-        }
-    }
-
-    match func.kind {
-        FuncKind::Attribute => {
-            let cycle_check_guard = ctx.workspace_snapshot()?.enable_cycle_check().await;
-            update_attribute_func_bindings(&ctx, final_bindings).await?;
-            drop(cycle_check_guard);
-        }
-        FuncKind::Action => {
-            update_action_func_bindings(&ctx, final_bindings).await?;
-        }
-        FuncKind::CodeGeneration | FuncKind::Qualification => {
-            let cycle_check_guard = ctx.workspace_snapshot()?.enable_cycle_check().await;
-            update_leaf_func_bindings(&ctx, final_bindings).await?;
-            drop(cycle_check_guard);
-        }
-        FuncKind::Management => {
-            update_mangement_func_bindings(&ctx, final_bindings).await?;
-        }
-        _ => return Err(FsError::FuncBindingKindMismatch),
-    }
-
-    // todo: delete bindings that were not in the payload, create net new bindings
-
-    let func_summary = Func::get_by_id_or_error(&ctx, func_id)
-        .await?
-        .into_frontend_type(&ctx)
-        .await?;
-    WsEvent::func_updated(&ctx, func_summary.clone(), None)
-        .await?
-        .publish_on_commit(&ctx)
-        .await?;
-
-    ctx.commit().await?;
-
-    Ok(())
-}
-
-fn parse_qualification_bindings(
-    final_bindings: &mut Vec<FuncBinding>,
-    func_binding: FuncBinding,
-    update_inputs: &[si_frontend_types::LeafInputLocation],
-) -> FsResult<()> {
-    let FuncBinding::Qualification {
-        schema_variant_id,
-        component_id,
-        func_id,
-        attribute_prototype_id,
-        ..
-    } = func_binding
-    else {
-        return Err(FsError::FuncBindingKindMismatch);
-    };
-
-    final_bindings.push(FuncBinding::Qualification {
-        schema_variant_id,
-        component_id,
-        func_id,
-        attribute_prototype_id,
-        inputs: update_inputs.to_owned(),
-    });
-
-    Ok(())
-}
-
-async fn parse_mgmt_bindings(
+async fn process_managed_schemas(
     ctx: &DalContext,
-    final_bindings: &mut Vec<FuncBinding>,
-    func_binding: FuncBinding,
-    updated_schemas: &Option<Vec<String>>,
-) -> FsResult<()> {
-    let FuncBinding::Management {
-        schema_variant_id,
-        management_prototype_id,
-        func_id,
-        ..
-    } = func_binding
-    else {
-        return Err(FsError::FuncBindingKindMismatch);
-    };
-
+    string_schemas: &Option<Vec<String>>,
+) -> FsResult<Option<Vec<SchemaId>>> {
     let latest_modules: HashMap<String, _> = CachedModule::latest_modules(ctx)
         .await?
         .into_iter()
         .map(|module| (module.schema_name, module.schema_id))
         .collect();
+
     let mut managed_schemas = vec![];
-    if let Some(updated_schemas) = updated_schemas {
-        for updated_schema in updated_schemas {
+    if let Some(string_schemas) = string_schemas {
+        for updated_schema in string_schemas {
             let schema_id = match latest_modules.get(updated_schema) {
                 Some(schema_id) => *schema_id,
                 None => {
@@ -1458,224 +1087,11 @@ async fn parse_mgmt_bindings(
             managed_schemas.push(schema_id);
         }
     }
-
-    final_bindings.push(FuncBinding::Management {
-        schema_variant_id,
-        management_prototype_id,
-        func_id,
-        managed_schemas: if managed_schemas.is_empty() {
-            None
-        } else {
-            Some(managed_schemas)
-        },
-    });
-
-    Ok(())
-}
-
-fn parse_code_gen_bindings(
-    final_bindings: &mut Vec<FuncBinding>,
-    func_binding: FuncBinding,
-    update_inputs: &[si_frontend_types::LeafInputLocation],
-) -> FsResult<()> {
-    let FuncBinding::CodeGeneration {
-        schema_variant_id,
-        component_id,
-        func_id,
-        attribute_prototype_id,
-        ..
-    } = func_binding
-    else {
-        return Err(FsError::FuncBindingKindMismatch);
-    };
-
-    final_bindings.push(FuncBinding::CodeGeneration {
-        schema_variant_id,
-        component_id,
-        func_id,
-        attribute_prototype_id,
-        inputs: update_inputs.to_owned(),
-    });
-
-    Ok(())
-}
-
-async fn output_to_into_func_destination(
-    ctx: &DalContext,
-    output_to: &AttributeOutputTo,
-    schema_variant_id: SchemaVariantId,
-) -> FsResult<AttributeFuncDestination> {
-    Ok(match output_to {
-        AttributeOutputTo::OutputSocket(name) => {
-            let socket = OutputSocket::find_with_name(ctx, name, schema_variant_id)
-                .await?
-                .ok_or(FsError::OutputSocketNotFound(name.to_owned()))?;
-
-            AttributeFuncDestination::OutputSocket(socket.id())
-        }
-        AttributeOutputTo::Prop(prop_path_string) => {
-            let prop_path = PropPath::new(prop_path_string.split("/"));
-            let prop_id = Prop::find_prop_id_by_path_opt(ctx, schema_variant_id, &prop_path)
-                .await?
-                .ok_or(FsError::PropNotFound(prop_path_string.to_owned()))?;
-
-            AttributeFuncDestination::Prop(prop_id)
-        }
+    Ok(if managed_schemas.is_empty() {
+        None
+    } else {
+        Some(managed_schemas)
     })
-}
-
-async fn parse_attr_bindings(
-    ctx: &DalContext,
-    final_bindings: &mut Vec<FuncBinding>,
-    func_binding: FuncBinding,
-    output_to: &AttributeOutputTo,
-    inputs: &BTreeMap<String, AttributeFuncInput>,
-) -> FsResult<()> {
-    let FuncBinding::Attribute {
-        func_id,
-        attribute_prototype_id,
-        schema_variant_id,
-        ..
-    } = func_binding
-    else {
-        return Err(FsError::FuncBindingKindMismatch);
-    };
-
-    // todo: make special errors for all 3
-    let schema_variant_id = schema_variant_id.ok_or(FsError::FuncBindingKindMismatch)?;
-    let func_id = func_id.ok_or(FsError::FuncBindingKindMismatch)?;
-    let proto_id = attribute_prototype_id.ok_or(FsError::FuncBindingKindMismatch)?;
-
-    let (prop_id, output_socket_id) =
-        match output_to_into_func_destination(ctx, output_to, schema_variant_id).await? {
-            AttributeFuncDestination::Prop(prop_id) => (Some(prop_id), None),
-            AttributeFuncDestination::OutputSocket(output_socket_id) => {
-                (None, Some(output_socket_id))
-            }
-            AttributeFuncDestination::InputSocket(_) => unreachable!(
-                "this enum variant will never be produced by output_to_into_func_destination"
-            ),
-        };
-
-    let argument_bindings =
-        inputs_into_attribute_argument_bindings(inputs, ctx, func_id, proto_id, schema_variant_id)
-            .await?;
-
-    final_bindings.push(FuncBinding::Attribute {
-        func_id: Some(func_id),
-        attribute_prototype_id: Some(proto_id),
-        component_id: None,
-        schema_variant_id: Some(schema_variant_id),
-        prop_id,
-        output_socket_id,
-        argument_bindings,
-    });
-
-    Ok(())
-}
-
-/// Note: this will also create new func args as necessary, and delete func args no longer in the "binding"
-async fn inputs_into_attribute_argument_bindings(
-    inputs: &BTreeMap<String, AttributeFuncInput>,
-    ctx: &DalContext,
-    func_id: FuncId,
-    proto_id: dal::AttributePrototypeId,
-    schema_variant_id: SchemaVariantId,
-) -> FsResult<Vec<AttributeArgumentBinding>> {
-    let mut argument_bindings = vec![];
-
-    let mut current_arg_names = HashSet::new();
-    for (arg_name, input) in inputs {
-        let (func_arg, apa_id) =
-            match FuncArgument::find_by_name_for_func(ctx, arg_name, func_id).await? {
-                Some(func_arg) => {
-                    let func_arg_id = func_arg.id;
-                    (func_arg,
-                    AttributePrototypeArgument::find_by_func_argument_id_and_attribute_prototype_id(
-                        ctx,
-                        func_arg_id,
-                        proto_id).await?)
-                }
-                None => {
-                    let func_arg = FuncArgument::new(
-                        ctx,
-                        arg_name,
-                        input.kind.into(),
-                        input.element_kind.map(Into::into),
-                        func_id,
-                    )
-                    .await?;
-
-                    let apa = AttributePrototypeArgument::new(ctx, proto_id, func_arg.id).await?;
-
-                    (func_arg, Some(apa.id()))
-                }
-            };
-
-        current_arg_names.insert(func_arg.name.clone());
-
-        let (prop_id, input_socket_id) = match input.input.as_ref() {
-            Some(AttributeInputFrom::InputSocket(input_socket_name)) => {
-                let socket = InputSocket::find_with_name(ctx, input_socket_name, schema_variant_id)
-                    .await?
-                    .ok_or(FsError::InputSocketNotFound(input_socket_name.to_owned()))?;
-
-                (None, Some(socket.id()))
-            }
-            Some(AttributeInputFrom::Prop(prop_path_string)) => {
-                let prop_path = PropPath::new(prop_path_string.split("/"));
-                let prop_id = Prop::find_prop_id_by_path_opt(ctx, schema_variant_id, &prop_path)
-                    .await?
-                    .ok_or(FsError::PropNotFound(prop_path_string.to_owned()))?;
-
-                (Some(prop_id), None)
-            }
-            None => (None, None),
-        };
-
-        if prop_id.is_some() || input_socket_id.is_some() {
-            argument_bindings.push(AttributeArgumentBinding {
-                func_argument_id: func_arg.id,
-                attribute_prototype_argument_id: apa_id,
-                prop_id,
-                input_socket_id,
-                static_value: None,
-            });
-        }
-    }
-
-    for arg in FuncArgument::list_for_func(ctx, func_id).await? {
-        if !current_arg_names.contains(&arg.name) {
-            FuncArgument::remove(ctx, arg.id).await?;
-        }
-    }
-
-    Ok(argument_bindings)
-}
-
-fn parse_action_bindings(
-    final_bindings: &mut Vec<FuncBinding>,
-    func_binding: &FuncBinding,
-    update_kind: ActionKind,
-) -> FsResult<()> {
-    let FuncBinding::Action {
-        schema_variant_id,
-        action_prototype_id,
-        func_id,
-        ..
-    } = *func_binding
-    else {
-        return Err(FsError::FuncBindingKindMismatch);
-    };
-
-    final_bindings.push(FuncBinding::Action {
-        schema_variant_id,
-        action_prototype_id,
-        func_id,
-        kind: Some(update_kind),
-    });
-
-    Ok(())
 }
 
 pub fn fs_routes() -> Router<AppState> {

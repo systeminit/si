@@ -10,7 +10,8 @@ use si_frontend_types::{
     fs::{
         AssetFuncs, Binding, Bindings, ChangeSet, CreateChangeSetRequest, CreateChangeSetResponse,
         CreateFuncRequest, CreateSchemaRequest, CreateSchemaResponse, FsApiError, Func,
-        ListChangeSetsResponse, Schema, SchemaAttributes, SetFuncCodeRequest, VariantQuery,
+        ListChangeSetsResponse, Schema, SchemaAttributes, SetFuncBindingsRequest,
+        SetFuncCodeRequest, VariantQuery,
     },
     FuncKind,
 };
@@ -218,6 +219,7 @@ impl SiFsClient {
             Ok(value)
         } else {
             let error: FsApiError = response.json().await?;
+            dbg!(&error);
 
             Err(SiFsClientError::BackendError(error))
         }
@@ -248,12 +250,18 @@ impl SiFsClient {
             request_builder
         };
 
-        request_builder.send().await?.error_for_status()?;
+        let response = request_builder.send().await?;
+        if response.status() == StatusCode::OK {
+            self.invalidate_change_set_id(change_set_id).await;
+            Ok(())
+        } else {
+            let error: FsApiError = response.json().await?;
+            dbg!(&error);
 
-        self.invalidate_change_set_id(change_set_id).await;
-
-        Ok(())
+            Err(SiFsClientError::BackendError(error))
+        }
     }
+
     async fn post<Q, V, R>(
         &self,
         change_set_id: ChangeSetId,
@@ -280,16 +288,16 @@ impl SiFsClient {
             request_builder
         };
 
-        let result = request_builder
-            .send()
-            .await?
-            .error_for_status()?
-            .json()
-            .await?;
+        let response = request_builder.send().await?;
+        if response.status() == StatusCode::OK {
+            self.invalidate_change_set_id(change_set_id).await;
+            Ok(response.json().await?)
+        } else {
+            let error: FsApiError = response.json().await?;
+            dbg!(&error);
 
-        self.invalidate_change_set_id(change_set_id).await;
-
-        Ok(result)
+            Err(SiFsClientError::BackendError(error))
+        }
     }
 
     fn fs_api_url(&self, suffix: &str) -> String {
@@ -555,7 +563,6 @@ impl SiFsClient {
         change_set_id: ChangeSetId,
         func_id: FuncId,
         schema_id: SchemaId,
-        unlocked: bool,
     ) -> SiFsClientResult<Bindings> {
         let bindings = self
             .get_json(
@@ -564,7 +571,7 @@ impl SiFsClient {
                     &format!("schemas/{schema_id}/funcs/{func_id}/bindings"),
                     change_set_id,
                 ),
-                Some(VariantQuery { unlocked }),
+                None::<()>,
             )
             .await?;
 
@@ -577,19 +584,21 @@ impl SiFsClient {
         func_id: FuncId,
         schema_id: SchemaId,
         bindings: Bindings,
-    ) -> SiFsClientResult<()> {
-        self.post_empty_response(
+        is_attaching_existing: bool,
+    ) -> SiFsClientResult<Option<Func>> {
+        self.post(
             change_set_id,
             self.fs_api_change_sets(
                 &format!("schemas/{schema_id}/funcs/{func_id}/bindings"),
                 change_set_id,
             ),
             None::<()>,
-            Some(bindings),
+            Some(SetFuncBindingsRequest {
+                bindings,
+                is_attaching_existing,
+            }),
         )
-        .await?;
-
-        Ok(())
+        .await
     }
 
     pub async fn create_func(
