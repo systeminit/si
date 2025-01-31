@@ -1,4 +1,4 @@
-use std::{collections::HashMap, str::FromStr, sync::Arc};
+use std::{collections::HashMap, str::FromStr};
 
 use chrono::{DateTime, Utc};
 use itertools::Itertools;
@@ -6,8 +6,6 @@ use postgres_types::ToSql;
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 use thiserror::Error;
-use tokio::task::JoinSet;
-use ulid::Ulid;
 
 use crate::{
     slow_rt::{self, SlowRuntimeError},
@@ -24,12 +22,16 @@ pub use si_id::CachedModuleId;
 pub enum CachedModuleError {
     #[error("join error: {0}")]
     Join(#[from] tokio::task::JoinError),
+    #[error("missing schema data for: {0}")]
+    MissingSchemaData(String),
     #[error("module index client error: {0}")]
     ModuleIndexClient(#[from] ModuleIndexClientError),
     #[error("No module index url set on the services context")]
     ModuleIndexUrlNotSet,
     #[error("package data None")]
     NoPackageData,
+    #[error("schema name None")]
+    NoSchemaName,
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
     #[error("si-pkg error: {0}")]
@@ -51,29 +53,29 @@ pub type CachedModuleResult<T> = Result<T, CachedModuleError>;
 pub struct CachedModule {
     pub id: CachedModuleId,
     pub schema_id: SchemaId,
-    pub schema_name: String,
+    schema_name: Option<String>,
     pub display_name: Option<String>,
     pub category: Option<String>,
     pub link: Option<String>,
     pub color: Option<String>,
     pub description: Option<String>,
-    pub component_type: ComponentType,
+    component_type: Option<ComponentType>,
     pub latest_hash: String,
     pub created_at: DateTime<Utc>,
-    pub package_data: Option<Vec<u8>>,
+    package_data: Option<Vec<u8>>,
 }
 
 impl From<CachedModule> for si_frontend_types::UninstalledVariant {
     fn from(value: CachedModule) -> Self {
         Self {
             schema_id: value.schema_id,
-            schema_name: value.schema_name,
+            schema_name: value.schema_name.unwrap_or_default(),
             display_name: value.display_name,
             category: value.category,
             link: value.link,
             color: value.color,
             description: value.description,
-            component_type: value.component_type.into(),
+            component_type: value.component_type.unwrap_or_default().into(),
         }
     }
 }
@@ -83,7 +85,7 @@ impl TryFrom<PgRow> for CachedModule {
 
     fn try_from(row: PgRow) -> Result<Self, Self::Error> {
         let component_type_string: String = row.try_get("component_type")?;
-        let component_type = ComponentType::from_str(&component_type_string)?;
+        let component_type = Some(ComponentType::from_str(&component_type_string)?);
 
         Ok(Self {
             id: row.try_get("id")?,
@@ -118,11 +120,25 @@ impl CachedModule {
             self.package_data = bytes;
         }
 
+        if self.package_data.is_none() {
+            self.update_missing_pkg_data(ctx).await?;
+        };
+
         let Some(package_data) = &self.package_data else {
             return Err(CachedModuleError::NoPackageData);
         };
 
         Ok(package_data.as_slice())
+    }
+
+    pub async fn schema_name(&mut self, ctx: &DalContext) -> CachedModuleResult<String> {
+        if self.schema_name.is_none() {
+            self.update_missing_pkg_data(ctx).await?;
+        };
+        let Some(schema_name) = &self.schema_name else {
+            return Err(CachedModuleError::NoSchemaName);
+        };
+        Ok(schema_name.to_string())
     }
 
     pub async fn find_missing_entries(
@@ -184,31 +200,13 @@ impl CachedModule {
 
         let hashes: Vec<_> = modules.keys().map(ToOwned::to_owned).collect();
         let uncached_hashes = CachedModule::find_missing_entries(ctx, hashes).await?;
+        let mut new_modules = vec![];
 
-        let mut join_set = JoinSet::new();
         for uncached_hash in &uncached_hashes {
             let Some(module) = modules.get(uncached_hash).cloned() else {
                 continue;
             };
-
-            let client = module_index_client.clone();
-            join_set.spawn(async move {
-                let module_id = module.id.to_owned();
-                Ok::<(ModuleDetailsResponse, Arc<Vec<u8>>), CachedModuleError>((
-                    module,
-                    Arc::new(
-                        client
-                            .get_builtin(Ulid::from_string(&module_id).unwrap_or_default())
-                            .await?,
-                    ),
-                ))
-            });
-        }
-
-        let mut new_modules = vec![];
-        for res in join_set.join_all().await {
-            let (module, module_bytes) = res?;
-            if let Some(new_cached_module) = Self::insert(ctx, &module, module_bytes).await? {
+            if let Some(new_cached_module) = Self::insert(ctx, &module).await? {
                 new_modules.push(new_cached_module);
             }
         }
@@ -289,40 +287,19 @@ impl CachedModule {
     pub async fn insert(
         ctx: &DalContext,
         module_details: &ModuleDetailsResponse,
-        pkg_bytes: Arc<Vec<u8>>,
     ) -> CachedModuleResult<Option<Self>> {
-        let bytes_clone = pkg_bytes.clone();
-        let pkg = slow_rt::spawn(async move { SiPkg::load_from_bytes(&bytes_clone) })?.await??;
-
         let query = "
             INSERT INTO cached_modules (
                 schema_id,
-                schema_name,
-                display_name,
-                category,
-                link,
-                color,
-                description,
-                component_type,
                 latest_hash,
                 created_at,
-                package_data
             ) VALUES (
-                $1, $2, $3, $4, $5, $6,
-                $7, $8, $9, $10, $11
+                $1, $2, $3
             ) RETURNING
                 id,
                 schema_id,
-                schema_name,
-                display_name,
-                category,
-                link,
-                color,
-                description,
-                component_type,
                 latest_hash,
                 created_at,
-                NULL::bytea AS package_data
         ";
 
         let Some(schema_id) = module_details.schema_id() else {
@@ -331,23 +308,52 @@ impl CachedModule {
         };
         let schema_id: SchemaId = schema_id.into();
 
-        let Some(pkg_schema) = pkg.schemas()?.first().cloned() else {
-            warn!("builtin module {} has no schema", module_details.id);
-            return Ok(None);
-        };
+        info!(
+            "Updating sdf module cache for {} - {schema_id})",
+            module_details.name
+        );
 
-        let Some(pkg_variant) = pkg_schema.variants()?.first().cloned() else {
-            warn!(
-                "builtin module {} has a schema with no variant",
-                module_details.id
-            );
-            return Ok(None);
-        };
+        let row = ctx
+            .txns()
+            .await?
+            .pg()
+            .query_one(
+                query,
+                &[
+                    &schema_id,
+                    &module_details.latest_hash,
+                    &module_details.created_at,
+                ],
+            )
+            .await?;
 
-        let schema_name = pkg_schema
-            .data()
-            .map(|data| data.name())
-            .unwrap_or(module_details.name.as_str());
+        Ok(Some(row.try_into()?))
+    }
+
+    async fn update_missing_pkg_data(&mut self, ctx: &DalContext) -> CachedModuleResult<()> {
+        let services_context = ctx.services_context();
+        let module_index_url = services_context
+            .module_index_url()
+            .ok_or(CachedModuleError::ModuleIndexUrlNotSet)?;
+        let client = ModuleIndexClient::unauthenticated_client(module_index_url.try_into()?);
+        let bytes = client.get_module_by_hash(&self.latest_hash).await?;
+
+        let bytes_clone = bytes.clone();
+        let pkg = slow_rt::spawn(async move { SiPkg::load_from_bytes(&bytes_clone) })?.await??;
+
+        let pkg_schema = pkg
+            .schemas()?
+            .first()
+            .cloned()
+            .ok_or_else(|| CachedModuleError::MissingSchemaData(self.schema_id.to_string()))?;
+
+        let pkg_variant = pkg_schema
+            .variants()?
+            .first()
+            .cloned()
+            .ok_or_else(|| CachedModuleError::MissingSchemaData(self.schema_id.to_string()))?;
+
+        let schema_name = pkg_schema.data().map(|data| data.name()).unwrap_or("");
         let display_name = pkg_schema.data().and_then(|data| data.category_name());
         let category = pkg_schema.data().map(|data| data.category()).unwrap_or("");
         let link = pkg_variant
@@ -359,21 +365,34 @@ impl CachedModule {
             .data()
             .map(|data| data.component_type().into())
             .unwrap_or_default();
+        let query = "
+                 UPDATE cached_modules (
+                    schema_name,
+                    display_name,
+                    category,
+                    link,
+                    color,
+                    description,
+                    component_type.
+                    NULL::bytea AS package_data
+                ) VALUES (
+                    $1, $2, $3, $4
+                    $5, $6, $7, $8
+                ) WHERE
+                    id = $9
+            ";
 
         info!(
-            "Updating sdf module cache for {} - {schema_name} ({category:?})",
-            module_details.name
+            "Updating sdf module cache for {:?} - {:?} ({:?})",
+            self.display_name, self.schema_name, self.category
         );
 
-        let bytes_ref = pkg_bytes.as_slice();
-        let row = ctx
-            .txns()
+        ctx.txns()
             .await?
             .pg()
             .query_one(
                 query,
                 &[
-                    &schema_id,
                     &schema_name,
                     &display_name,
                     &category,
@@ -381,13 +400,19 @@ impl CachedModule {
                     &color,
                     &description,
                     &component_type.to_string(),
-                    &module_details.latest_hash,
-                    &module_details.created_at,
-                    &bytes_ref,
+                    &bytes.as_slice(),
+                    &self.id,
                 ],
             )
             .await?;
 
-        Ok(Some(row.try_into()?))
+        self.schema_name = Some(schema_name.to_string());
+        self.display_name = display_name.map(ToString::to_string);
+        self.category = Some(category.to_string());
+        self.link = link;
+        self.color = description.map(ToString::to_string);
+        self.component_type = Some(component_type);
+
+        Ok(())
     }
 }

@@ -312,13 +312,13 @@ impl ManagementPrototype {
             let schema_name = match Schema::get_by_id(ctx, schema_id).await? {
                 Some(schema) => schema.name().to_owned(),
                 None => {
-                    let Some(cached_module) =
+                    let Some(mut cached_module) =
                         CachedModule::latest_by_schema_id(ctx, schema_id).await?
                     else {
                         continue;
                     };
 
-                    cached_module.schema_name
+                    cached_module.schema_name(ctx).await?
                 }
             };
 

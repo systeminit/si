@@ -45,12 +45,13 @@ pub async fn list_variants(
     // We want to hide uninstalled modules that would create duplicate assets in
     // the AssetPanel in old workspace. We do this just by name + category
     // matching. (We also hide if the schema is installed)
-    for module in cached_modules {
-        let category = module.category.as_deref().unwrap_or("");
+    for mut module in cached_modules {
+        let schema_name = module.schema_name(&ctx).await?;
+        let category = module.category.clone();
 
-        let schema_name = module.schema_name.as_str();
         if !installed_schema_ids.contains(&module.schema_id)
-            && !installed_cat_and_name.contains(&(category, schema_name))
+            && !installed_cat_and_name
+                .contains(&(category.as_deref().unwrap_or(""), schema_name.as_str()))
         {
             uninstalled.push(module.into());
         }

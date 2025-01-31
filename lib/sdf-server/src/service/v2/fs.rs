@@ -249,15 +249,16 @@ pub async fn list_schemas(
         });
     }
 
-    for module in CachedModule::latest_modules(&ctx)
+    for mut module in CachedModule::latest_modules(&ctx)
         .await?
         .into_iter()
         .filter(|module| !installed_set.contains(&module.schema_id))
     {
+        let name = module.schema_name(&ctx).await?;
         result.push(FsSchema {
             installed: false,
             category: module.category.unwrap_or_default(),
-            name: module.schema_name,
+            name,
             id: module.schema_id,
         });
     }
@@ -1064,11 +1065,13 @@ async fn process_managed_schemas(
     ctx: &DalContext,
     string_schemas: &Option<Vec<String>>,
 ) -> FsResult<Option<Vec<SchemaId>>> {
-    let latest_modules: HashMap<String, _> = CachedModule::latest_modules(ctx)
-        .await?
-        .into_iter()
-        .map(|module| (module.schema_name, module.schema_id))
-        .collect();
+    let modules = CachedModule::latest_modules(ctx).await?;
+
+    let mut latest_modules = HashMap::new();
+    for mut module in modules {
+        let schema_name = module.schema_name(ctx).await?;
+        latest_modules.insert(schema_name, module.schema_id);
+    }
 
     let mut managed_schemas = vec![];
     if let Some(string_schemas) = string_schemas {

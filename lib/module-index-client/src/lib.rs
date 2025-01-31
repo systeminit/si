@@ -244,6 +244,32 @@ impl ModuleIndexClient {
         Ok(bytes.to_vec())
     }
 
+    pub async fn get_module_by_hash(&self, hash: &String) -> ModuleIndexClientResult<Vec<u8>> {
+        let download_url = self
+            .base_url
+            .join("modules-by-hash/")?
+            .join(&format!("{}/", hash))?
+            .join("download")?;
+
+        let mut response = reqwest::Client::new().get(download_url).send().await?;
+
+        if response.status() == StatusCode::NOT_FOUND
+            && self.base_url.clone().as_str().contains("http://localhost")
+        {
+            // We want to fall back to the production module index to pull builtins from there instead
+            let url = Url::parse("https://module-index.systeminit.com")?
+                .join("modules-by-hash/")?
+                .join(&format!("{}/", hash))?
+                .join("download")?;
+
+            response = reqwest::Client::new().get(url).send().await?;
+        };
+
+        let bytes = response.error_for_status()?.bytes().await?;
+
+        Ok(bytes.to_vec())
+    }
+
     pub async fn upload_workspace(
         &self,
         workspace_name: &str,

@@ -13,6 +13,7 @@ use tower_http::compression::CompressionLayer;
 use tower_http::cors::CorsLayer;
 
 mod download_builtin_route;
+mod download_module_by_hash_route;
 mod download_module_route;
 mod download_workspace_route;
 mod get_module_details_route;
@@ -60,6 +61,10 @@ pub fn routes(state: AppState) -> Router {
         .route(
             "/modules/:module_id/download",
             get(download_module_route::download_module_route),
+        )
+        .route(
+            "/modules-by-hash/:hash/download",
+            get(download_module_by_hash_route::download_module_by_hash_route),
         )
         .route(
             "/modules/:module_id/download_builtin",
