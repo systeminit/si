@@ -5,7 +5,7 @@ use detector::Update;
 use petgraph::prelude::*;
 use serde::{Deserialize, Serialize};
 use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid};
-use si_id::EntityId;
+use si_id::{ApprovalRequirementDefinitionId, EntityId};
 use si_layer_cache::db::serialize;
 use si_layer_cache::LayerDbError;
 use strum::{EnumDiscriminants, EnumIter, EnumString, IntoEnumIterator};
@@ -61,6 +61,8 @@ pub enum WorkspaceSnapshotGraphError {
     EdgeDoesNotExist(EdgeIndex),
     #[error("EdgeWeight not found")]
     EdgeWeightNotFound,
+    #[error("Entity not found for Approval Requirement Definition Id: {0}")]
+    EntityNotFoundForApprovalRequirementDefinition(ApprovalRequirementDefinitionId),
     #[error("Problem during graph traversal: {0:?}")]
     GraphTraversal(petgraph::visit::DfsEvent<NodeIndex>),
     #[error("Incompatible node types")]

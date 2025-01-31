@@ -3,7 +3,7 @@ use axum::{
     routing::{delete, get, put},
     Router,
 };
-use dal::{WorkspaceSnapshotError, WsEventError};
+use dal::{entity_kind::EntityKindError, WorkspaceSnapshotError, WsEventError};
 use thiserror::Error;
 
 use crate::{service::ApiError, AppState};
@@ -23,6 +23,8 @@ pub enum ApprovalRequirementDefinitionError {
     DalChangeSet(#[from] dal::ChangeSetError),
     #[error("dal transactions error: {0}")]
     DalTransactions(#[from] dal::TransactionsError),
+    #[error("entity kind error: {0}")]
+    EntityKind(#[from] EntityKindError),
     #[error("SpiceDb Error: {0}")]
     SpiceDb(#[from] si_data_spicedb::Error),
     #[error("SpiceDb client not found")]

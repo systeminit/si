@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use si_id::ManagementPrototypeId;
+use si_id::{ApprovalRequirementDefinitionId, EntityId, ManagementPrototypeId, UserPk};
 use strum::{Display, EnumDiscriminants};
 
 use crate::{
@@ -35,6 +35,13 @@ pub enum AuditLogKindV1 {
         func_id: FuncId,
         func_display_name: Option<String>,
         func_name: String,
+    },
+    AddApprover {
+        approval_requirement_definition_id: ApprovalRequirementDefinitionId,
+        entity_name: Option<String>,
+        entity_kind: String,
+        entity_id: EntityId,
+        user_id: UserPk,
     },
     ApplyChangeSet,
     ApproveChangeSetApply {
@@ -96,6 +103,13 @@ pub enum AuditLogKindV1 {
         schema_variant_id: Option<SchemaVariantId>,
         schema_variant_version: Option<String>,
     },
+    CreateApprovalRequirementDefinition {
+        individual_approvers: Vec<UserPk>,
+        approval_requirement_definition_id: ApprovalRequirementDefinitionId,
+        entity_name: Option<String>,
+        entity_kind: String,
+        entity_id: EntityId,
+    },
     CreateChangeSet,
     CreateComponent {
         name: String,
@@ -134,6 +148,14 @@ pub enum AuditLogKindV1 {
     },
     CreateView {
         view_id: ViewId,
+    },
+    DeleteApprovalRequirementDefinition {
+        approval_requirement_definition_id: ApprovalRequirementDefinitionId,
+        entity_name: Option<String>,
+        entity_kind: String,
+        entity_id: EntityId,
+        individual_approvers: Vec<UserPk>,
+        // later add approver_groups once implemented for users
     },
     DeleteComponent {
         name: String,
@@ -233,7 +255,13 @@ pub enum AuditLogKindV1 {
     RejectChangeSetApply {
         from_status: ChangeSetStatus,
     },
-
+    RemoveApprover {
+        approval_requirement_definition_id: ApprovalRequirementDefinitionId,
+        entity_name: Option<String>,
+        entity_kind: String,
+        entity_id: EntityId,
+        user_id: UserPk,
+    },
     ReopenChangeSet {
         from_status: ChangeSetStatus,
     },
@@ -412,6 +440,14 @@ pub enum AuditLogMetadataV1 {
         func_name: String,
     },
     #[serde(rename_all = "camelCase")]
+    AddApprover {
+        approval_requirement_definition_id: ApprovalRequirementDefinitionId,
+        entity_name: Option<String>,
+        entity_kind: String,
+        entity_id: EntityId,
+        user_id: UserPk,
+    },
+    #[serde(rename_all = "camelCase")]
     ApplyChangeSet,
     #[serde(rename_all = "camelCase")]
     ApproveChangeSetApply { from_status: ChangeSetStatus },
@@ -480,6 +516,14 @@ pub enum AuditLogMetadataV1 {
         schema_variant_version: Option<String>,
     },
     #[serde(rename_all = "camelCase")]
+    CreateApprovalRequirementDefinition {
+        individual_approvers: Vec<UserPk>,
+        approval_requirement_definition_id: ApprovalRequirementDefinitionId,
+        entity_name: Option<String>,
+        entity_kind: String,
+        entity_id: EntityId,
+    },
+    #[serde(rename_all = "camelCase")]
     CreateChangeSet,
     #[serde(rename_all = "camelCase")]
     CreateComponent {
@@ -521,6 +565,14 @@ pub enum AuditLogMetadataV1 {
     CreateSecret { name: String, secret_id: SecretId },
     #[serde(rename_all = "camelCase")]
     CreateView { view_id: ViewId },
+    #[serde(rename_all = "camelCase")]
+    DeleteApprovalRequirementDefinition {
+        individual_approvers: Vec<UserPk>,
+        approval_requirement_definition_id: ApprovalRequirementDefinitionId,
+        entity_name: Option<String>,
+        entity_kind: String,
+        entity_id: EntityId,
+    },
     #[serde(rename_all = "camelCase")]
     DeleteComponent {
         name: String,
@@ -628,6 +680,14 @@ pub enum AuditLogMetadataV1 {
     RegenerateSchemaVariant { schema_variant_id: SchemaVariantId },
     #[serde(rename_all = "camelCase")]
     RejectChangeSetApply { from_status: ChangeSetStatus },
+    #[serde(rename_all = "camelCase")]
+    RemoveApprover {
+        approval_requirement_definition_id: ApprovalRequirementDefinitionId,
+        entity_name: Option<String>,
+        entity_kind: String,
+        entity_id: EntityId,
+        user_id: UserPk,
+    },
     #[serde(rename_all = "camelCase")]
     ReopenChangeSet { from_status: ChangeSetStatus },
     #[serde(rename_all = "camelCase")]
@@ -799,6 +859,7 @@ impl AuditLogMetadataV1 {
         match self.into() {
             MetadataDiscrim::AbandonChangeSet => ("Abandoned", Some("Change Set")),
             MetadataDiscrim::AddAction => ("Enqueued", Some("Action")),
+            MetadataDiscrim::AddApprover => ("User Added", Some("Approval Requirement Definition")),
             MetadataDiscrim::ApplyChangeSet => ("Applied", Some("Change Set")),
             MetadataDiscrim::ApproveChangeSetApply => {
                 ("Approved Request to Apply", Some("Change Set"))
@@ -813,6 +874,9 @@ impl AuditLogMetadataV1 {
             }
             MetadataDiscrim::CancelAction => ("Removed", Some("Action")),
             MetadataDiscrim::ContributeModule => ("Contributed", Some("Module")),
+            MetadataDiscrim::CreateApprovalRequirementDefinition => {
+                ("Created", Some("Approval Requirement Definition"))
+            }
             MetadataDiscrim::CreateChangeSet => ("Created", Some("Change Set")),
             MetadataDiscrim::CreateComponent => ("Created", Some("Component")),
             MetadataDiscrim::CreateConnection => ("Created", Some("Connection")),
@@ -821,6 +885,9 @@ impl AuditLogMetadataV1 {
             MetadataDiscrim::CreateSchemaVariant => ("Created", Some("Schema Variant")),
             MetadataDiscrim::CreateSecret => ("Created", Some("Secret")),
             MetadataDiscrim::CreateView => ("Created", Some("View")),
+            MetadataDiscrim::DeleteApprovalRequirementDefinition => {
+                ("Deleted", Some("Approval Requirement Definition"))
+            }
             MetadataDiscrim::DeleteComponent => ("Deleted", Some("Component")),
             MetadataDiscrim::DeleteConnection => ("Deleted", Some("Connection")),
             MetadataDiscrim::DeleteFunc => ("Deleted", Some("Function")),
@@ -842,6 +909,9 @@ impl AuditLogMetadataV1 {
             MetadataDiscrim::RegenerateSchemaVariant => ("Regenerated", Some("Schema Variant")),
             MetadataDiscrim::RejectChangeSetApply => {
                 ("Rejected Request to Apply", Some("Change Set"))
+            }
+            MetadataDiscrim::RemoveApprover => {
+                ("User removed", Some("Approval Requirement Definition"))
             }
             MetadataDiscrim::ReopenChangeSet => ("Reopened", Some("Change Set")),
             MetadataDiscrim::RequestChangeSetApproval => ("Requested to Apply", Some("Change Set")),
@@ -890,6 +960,19 @@ impl From<Kind> for Metadata {
                 func_id,
                 func_display_name,
                 func_name,
+            },
+            Kind::AddApprover {
+                approval_requirement_definition_id,
+                entity_name,
+                user_id,
+                entity_kind,
+                entity_id,
+            } => Self::AddApprover {
+                approval_requirement_definition_id,
+                entity_name,
+                user_id,
+                entity_kind,
+                entity_id,
             },
             Kind::ApplyChangeSet => Self::ApplyChangeSet,
             Kind::ApproveChangeSetApply { from_status } => {
@@ -999,6 +1082,19 @@ impl From<Kind> for Metadata {
                 schema_variant_id,
                 schema_variant_version,
             },
+            Kind::CreateApprovalRequirementDefinition {
+                individual_approvers: approvers,
+                approval_requirement_definition_id,
+                entity_name,
+                entity_kind,
+                entity_id,
+            } => Self::CreateApprovalRequirementDefinition {
+                individual_approvers: approvers,
+                approval_requirement_definition_id,
+                entity_name,
+                entity_kind,
+                entity_id,
+            },
             Kind::CreateChangeSet => Self::CreateChangeSet,
             Kind::CreateComponent {
                 name,
@@ -1059,6 +1155,19 @@ impl From<Kind> for Metadata {
             },
             Kind::CreateSecret { name, secret_id } => Self::CreateSecret { name, secret_id },
             Kind::CreateView { view_id } => Self::CreateView { view_id },
+            Kind::DeleteApprovalRequirementDefinition {
+                individual_approvers,
+                approval_requirement_definition_id,
+                entity_name,
+                entity_kind,
+                entity_id,
+            } => Self::DeleteApprovalRequirementDefinition {
+                approval_requirement_definition_id,
+                individual_approvers,
+                entity_name,
+                entity_kind,
+                entity_id,
+            },
             Kind::DeleteComponent {
                 name,
                 component_id,
@@ -1201,6 +1310,19 @@ impl From<Kind> for Metadata {
             Kind::RejectChangeSetApply { from_status } => {
                 Self::RejectChangeSetApply { from_status }
             }
+            Kind::RemoveApprover {
+                approval_requirement_definition_id,
+                entity_name,
+                entity_kind,
+                entity_id,
+                user_id,
+            } => Self::RemoveApprover {
+                approval_requirement_definition_id,
+                entity_name,
+                entity_kind,
+                entity_id,
+                user_id,
+            },
             Kind::ReopenChangeSet { from_status } => Self::ReopenChangeSet { from_status },
             Kind::RequestChangeSetApproval { from_status } => {
                 Self::RequestChangeSetApproval { from_status }

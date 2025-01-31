@@ -3,19 +3,16 @@ use std::collections::HashSet;
 use axum::{extract::Path, Json};
 use dal::{
     approval_requirement::{ApprovalRequirement, ApprovalRequirementApprover},
-    // workspace_snapshot::graph::traits::approval_requirement::ApprovalRequirementPermissionLookup,
-    ChangeSet,
-    ChangeSetId,
-    UserPk,
-    WorkspacePk,
-    WsEvent,
+    entity_kind::EntityKind,
+    ChangeSet, ChangeSetId, UserPk, WorkspacePk, WsEvent,
 };
 use serde::Deserialize;
+use si_events::audit_log::AuditLogKind;
 use si_id::EntityId;
 
 use crate::{
-    extract::HandlerContext, service::force_change_set_response::ForceChangeSetResponse,
-    service::v2::AccessBuilder,
+    extract::{HandlerContext, PosthogEventTracker},
+    service::{force_change_set_response::ForceChangeSetResponse, v2::AccessBuilder},
 };
 
 use super::ApprovalRequirementDefinitionError;
@@ -31,6 +28,7 @@ pub struct Request {
 pub async fn new(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(access_builder): AccessBuilder,
+    tracker: PosthogEventTracker,
     Path((_workspace_pk, change_set_id)): Path<(WorkspacePk, ChangeSetId)>,
     Json(request): Json<Request>,
 ) -> Result<ForceChangeSetResponse<()>, ApprovalRequirementDefinitionError> {
@@ -46,13 +44,43 @@ pub async fn new(
     }
 
     // TODO(nick): add audit logs, posthog tracking and WsEvent(s).
-    ApprovalRequirement::new_definition(
+    let approval_requirement_definition_id = ApprovalRequirement::new_definition(
         &ctx,
         request.entity_id,
         1, // TODO(nick): allow users to change the minimum approvers count
         approvers,
     )
     .await?;
+
+    let entity_kind = EntityKind::get_entity_kind_for_id(&ctx, request.entity_id).await?;
+    let entity_name = EntityKind::get_entity_name_for_id(&ctx, request.entity_id).await?;
+    let title = format!(
+        "{entity_kind} - {}",
+        entity_name
+            .to_owned()
+            .unwrap_or_else(|| request.entity_id.to_string())
+    );
+
+    ctx.write_audit_log(
+        AuditLogKind::CreateApprovalRequirementDefinition {
+            individual_approvers: request.users.to_owned().unwrap_or(Vec::new()),
+            approval_requirement_definition_id,
+            entity_name: entity_name.to_owned(),
+            entity_kind: entity_kind.to_string(),
+            entity_id: request.entity_id,
+        },
+        title.to_owned(),
+    )
+    .await?;
+
+    tracker.track(
+        &ctx,
+        "create_approval_requirement",
+        serde_json::json!({
+            "entity_kind": entity_kind.to_string(),
+            "entity_name": title,
+        }),
+    );
 
     WsEvent::requirement_created(&ctx, request.entity_id, request.users)
         .await?

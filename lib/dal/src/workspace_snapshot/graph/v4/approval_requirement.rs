@@ -196,6 +196,30 @@ impl ApprovalRequirementExt for WorkspaceSnapshotGraphV4 {
 
         Ok(Some(explicit_approval_requirement_definition_ids))
     }
+
+    fn entity_id_for_approval_requirement(
+        &self,
+        approval_requirement_definition_id: ApprovalRequirementDefinitionId,
+    ) -> WorkspaceSnapshotGraphResult<EntityId> {
+        if let Some(approval_requirement_index) =
+            self.get_node_index_by_id_opt(approval_requirement_definition_id)
+        {
+            for (_, source_index, _) in self.edges_directed_for_edge_weight_kind(
+                approval_requirement_index,
+                Direction::Incoming,
+                EdgeWeightKindDiscriminants::ApprovalRequirementDefinition,
+            ) {
+                if let Some(entity_id) = self.node_index_to_id(source_index) {
+                    return Ok(entity_id.into());
+                }
+            }
+        }
+        Err(
+            WorkspaceSnapshotGraphError::EntityNotFoundForApprovalRequirementDefinition(
+                approval_requirement_definition_id,
+            ),
+        )
+    }
 }
 
 fn new_virtual_requirement_rule(

@@ -35,6 +35,7 @@ pub mod component;
 pub mod context;
 pub mod dependency_graph;
 pub mod diagram;
+pub mod entity_kind;
 pub mod feature_flags;
 pub mod func;
 pub mod history_event;
