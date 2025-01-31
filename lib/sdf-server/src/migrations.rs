@@ -189,13 +189,17 @@ impl Migrator {
 
         info!("Updating local module cache");
 
-        let new_modules = CachedModule::update_cached_modules(&ctx)
-            .await
-            .map_err(MigratorError::migrate_cached_modules)?;
-        info!(
-            "{} new builtin assets found in module index",
-            new_modules.len()
-        );
+        let ctx = ctx.clone();
+        tokio::spawn(async move {
+            let new_modules = CachedModule::update_cached_modules(&ctx)
+                .await
+                .map_err(MigratorError::migrate_cached_modules)?;
+            info!(
+                "{} new builtin assets found in module index",
+                new_modules.len()
+            );
+            Ok::<(), MigratorError>(())
+        });
 
         Ok(())
     }

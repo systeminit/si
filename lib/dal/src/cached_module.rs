@@ -185,36 +185,42 @@ impl CachedModule {
         let hashes: Vec<_> = modules.keys().map(ToOwned::to_owned).collect();
         let uncached_hashes = CachedModule::find_missing_entries(ctx, hashes).await?;
 
-        let mut join_set = JoinSet::new();
-        for uncached_hash in &uncached_hashes {
-            let Some(module) = modules.get(uncached_hash).cloned() else {
-                continue;
-            };
-
-            let client = module_index_client.clone();
-            join_set.spawn(async move {
-                let module_id = module.id.to_owned();
-                Ok::<(ModuleDetailsResponse, Arc<Vec<u8>>), CachedModuleError>((
-                    module,
-                    Arc::new(
-                        client
-                            .get_builtin(Ulid::from_string(&module_id).unwrap_or_default())
-                            .await?,
-                    ),
-                ))
-            });
-        }
-
+        let batch_size = 10;
         let mut new_modules = vec![];
-        for res in join_set.join_all().await {
-            let (module, module_bytes) = res?;
-            if let Some(new_cached_module) = Self::insert(ctx, &module, module_bytes).await? {
-                new_modules.push(new_cached_module);
-            }
-        }
+        for hash_chunk in uncached_hashes.chunks(batch_size) {
+            let ctx = ctx.clone();
+            let mut join_set = JoinSet::new();
 
-        if !uncached_hashes.is_empty() {
-            ctx.commit_no_rebase().await?;
+            for uncached_hash in hash_chunk {
+                let Some(module) = modules.get(uncached_hash).cloned() else {
+                    continue;
+                };
+
+                let client = module_index_client.clone();
+                join_set.spawn(async move {
+                    let module_id = module.id.to_owned();
+                    Ok::<(ModuleDetailsResponse, Arc<Vec<u8>>), CachedModuleError>((
+                        module,
+                        Arc::new(
+                            client
+                                .get_builtin(Ulid::from_string(&module_id).unwrap_or_default())
+                                .await?,
+                        ),
+                    ))
+                });
+            }
+
+            while let Some(res) = join_set.join_next().await {
+                let (module, module_bytes) = res??;
+                if let Some(new_cached_module) = Self::insert(&ctx, &module, module_bytes).await? {
+                    new_modules.push(new_cached_module);
+                }
+            }
+
+            if !uncached_hashes.is_empty() {
+                ctx.commit_no_rebase().await?;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
         }
 
         Ok(new_modules)
