@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use petgraph::Direction;
+use petgraph::{prelude::*, Direction};
 use si_events::{merkle_tree_hash::MerkleTreeHash, workspace_snapshot::EntityKind};
 use si_id::{ApprovalRequirementDefinitionId, EntityId, WorkspacePk};
 
@@ -17,7 +17,7 @@ use crate::{
         },
         node_weight::traits::SiNodeWeight,
     },
-    EdgeWeightKindDiscriminants,
+    EdgeWeightKindDiscriminants, NodeWeightDiscriminants,
 };
 
 use super::WorkspaceSnapshotGraphV4;
@@ -34,7 +34,71 @@ impl ApprovalRequirementExt for WorkspaceSnapshotGraphV4 {
         let mut requirements = Vec::new();
         let mut ids_with_hashes_for_deleted_nodes = HashMap::new();
 
-        for change in changes {
+        // Some changes should be treated as though they are a Change for something else, until we
+        // re-work how this is all being generated to be able to "generate" explicit requirements
+        // for an EntityId that does not directly have the ApprovalRequirementDefinition it is using
+        // to generate the approval requirement.
+        let mut changes_to_add = Vec::new();
+        let mut change_idxs_to_remove = Vec::new();
+        let mut modified_view_ids = HashSet::new();
+        for (change_idx, change) in changes.iter().enumerate() {
+            match change.entity_kind {
+                // Keep track of which Views already have Changes so we don't add duplicate ones
+                // when we add Changes for the Views containing the Component for the Action.
+                EntityKind::View => {
+                    modified_view_ids.insert(change.entity_id);
+                    continue;
+                }
+                // If there is a change involving an Action, and we can determine the Component for the Action,
+                // We want to treat the Views that Component is in as changed to have them generate approval
+                // requirements.
+                EntityKind::Action => {
+                    let Some(action_node_idx) = self.get_node_index_by_id_opt(change.entity_id)
+                    else {
+                        // The Action has been removed, and we no longer have access to the base graph where it did exist
+                        // at this point, so let the default virtual requirement handling take care of this Action.
+                        continue;
+                    };
+                    let mut maybe_component_node_idx = None;
+                    for edge_ref in self.edges_directed(action_node_idx, Direction::Outgoing) {
+                        let target_node_weight = self.get_node_weight(edge_ref.target())?;
+                        if NodeWeightDiscriminants::Component == target_node_weight.into() {
+                            maybe_component_node_idx = Some(edge_ref.target());
+                            break;
+                        }
+                    }
+
+                    if let Some(component_node_idx) = maybe_component_node_idx {
+                        let component_id = self.get_node_weight(component_node_idx)?.id();
+                        let view_ids = crate::workspace_snapshot::graph::traits::diagram::view::ViewExt::list_for_component_id(
+                            self,
+                            component_id.into(),
+                        )?;
+                        for view_id in view_ids {
+                            changes_to_add.push(Change {
+                                entity_id: view_id.into_inner().into(),
+                                entity_kind: EntityKind::View,
+                                merkle_tree_hash: self
+                                    .get_node_weight_by_id(view_id)?
+                                    .merkle_tree_hash(),
+                            });
+                        }
+                        change_idxs_to_remove.push(change_idx);
+                    }
+                }
+                _ => {}
+            }
+        }
+        change_idxs_to_remove.sort();
+        change_idxs_to_remove.reverse();
+        let mut local_changes = changes.to_vec();
+        for change_idx_to_remove in change_idxs_to_remove {
+            local_changes.remove(change_idx_to_remove);
+        }
+        changes_to_add.retain(|change| !modified_view_ids.contains(&change.entity_id));
+        local_changes.extend(changes_to_add);
+
+        for change in &local_changes {
             let mut explicit_approval_requirement_definition_ids = Vec::new();
             let mut virtual_approval_requirement_rules = Vec::new();
 
@@ -139,39 +203,27 @@ fn new_virtual_requirement_rule(
     change: &Change,
 ) -> WorkspaceSnapshotGraphResult<Option<ApprovalRequirementRule>> {
     match change.entity_kind {
+        // Default approval requirement rule for actions, funcs, schemas, schema variants,
+        // and views until we get proper fallback logic for who should be approving what.
+        EntityKind::Action
+        | EntityKind::Func
+        | EntityKind::Schema
+        | EntityKind::SchemaVariant
+        | EntityKind::View => Ok(Some(ApprovalRequirementRule {
+            entity_id: change.entity_id,
+            entity_kind: change.entity_kind,
+            minimum: 1,
+            approvers: HashSet::from([ApprovalRequirementApprover::PermissionLookup(
+                ApprovalRequirementPermissionLookup {
+                    object_type: "workspace".to_string(),
+                    object_id: workspace_id.to_string(),
+                    permission: "approve".to_string(),
+                },
+            )]),
+        })),
         // For any changes to explicit approval requirements, we need approvals from
         // workspace approvers.
         EntityKind::ApprovalRequirementDefinition => Ok(Some(ApprovalRequirementRule {
-            entity_id: change.entity_id,
-            entity_kind: change.entity_kind,
-            minimum: 1,
-            approvers: HashSet::from([ApprovalRequirementApprover::PermissionLookup(
-                ApprovalRequirementPermissionLookup {
-                    object_type: "workspace".to_string(),
-                    object_id: workspace_id.to_string(),
-                    permission: "approve".to_string(),
-                },
-            )]),
-        })),
-        EntityKind::CategoryAction => {
-            // TODO(nick,jacob): start the actions CRUD work here! As a reminder, we need to
-            // know the actions deleted (only on HEAD), the actions added (only in our graph),
-            // the actions modified (in both), etc.
-            Ok(None)
-        }
-        EntityKind::Schema => Ok(Some(ApprovalRequirementRule {
-            entity_id: change.entity_id,
-            entity_kind: change.entity_kind,
-            minimum: 1,
-            approvers: HashSet::from([ApprovalRequirementApprover::PermissionLookup(
-                ApprovalRequirementPermissionLookup {
-                    object_type: "workspace".to_string(),
-                    object_id: workspace_id.to_string(),
-                    permission: "approve".to_string(),
-                },
-            )]),
-        })),
-        EntityKind::View | EntityKind::SchemaVariant => Ok(Some(ApprovalRequirementRule {
             entity_id: change.entity_id,
             entity_kind: change.entity_kind,
             minimum: 1,

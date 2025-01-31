@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 
 use petgraph::prelude::*;
+use si_id::ComponentId;
 
 use crate::{
     diagram::view::ViewId,
@@ -113,5 +114,32 @@ impl ViewExt for WorkspaceSnapshotGraphV4 {
         }
 
         Ok(())
+    }
+
+    fn list_for_component_id(
+        &self,
+        component_id: ComponentId,
+    ) -> WorkspaceSnapshotGraphResult<Vec<ViewId>> {
+        let mut view_ids_set: HashSet<ViewId> = HashSet::new();
+
+        if let Some(component_idx) = self.get_node_index_by_id_opt(component_id.into_inner()) {
+            for (_edge_weight, geometry_node_idx, _component_node_idx) in self
+                .edges_directed_for_edge_weight_kind(
+                    component_idx,
+                    Direction::Incoming,
+                    EdgeWeightKindDiscriminants::Represents,
+                )
+            {
+                let view_idx = self.get_edge_weight_kind_target_idx(
+                    geometry_node_idx,
+                    Direction::Incoming,
+                    EdgeWeightKindDiscriminants::Use,
+                )?;
+                let view_node_weight = self.get_node_weight(view_idx)?;
+                view_ids_set.insert(view_node_weight.id().into());
+            }
+        }
+
+        Ok(view_ids_set.into_iter().collect())
     }
 }
