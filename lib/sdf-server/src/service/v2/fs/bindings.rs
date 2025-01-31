@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, HashSet};
 
 use axum::{
-    extract::{Host, OriginalUri, Path},
+    extract::{Host, OriginalUri, Path, Query},
     Json,
 };
 use dal::{
@@ -11,9 +11,10 @@ use dal::{
         argument::FuncArgument,
         binding::{
             action::ActionBinding, attribute::AttributeBinding, authentication::AuthBinding,
-            leaf::LeafBinding, management::ManagementBinding, AttributeFuncDestination,
-            EventualParent,
+            leaf::LeafBinding, management::ManagementBinding, AttributeArgumentBinding,
+            AttributeFuncArgumentSource, AttributeFuncDestination, EventualParent,
         },
+        intrinsics::IntrinsicFunc,
         FuncKind,
     },
     prop::PropPath,
@@ -24,8 +25,8 @@ use dal::{
 use si_events::{audit_log::AuditLogKind, ActionKind};
 use si_frontend_types::{
     fs::{
-        self, AttributeFuncInput, AttributeInputFrom, AttributeOutputTo, Binding,
-        SetFuncBindingsRequest,
+        self, AttributeFuncInput, AttributeInputFrom, AttributeOutputTo, Binding, IdentityBindings,
+        PropIdentityBinding, SetFuncBindingsRequest, SocketIdentityBinding, VariantQuery,
     },
     FuncBinding,
 };
@@ -58,7 +59,7 @@ pub async fn get_bindings_for_func_and_schema_variant(
         dal::func::FuncKind::Action => {
             ActionBinding::assemble_action_bindings(ctx, func_id).await?
         }
-        dal::func::FuncKind::Attribute => {
+        dal::func::FuncKind::Intrinsic | dal::func::FuncKind::Attribute => {
             AttributeBinding::assemble_attribute_bindings(ctx, func_id).await?
         }
         dal::func::FuncKind::Authentication => {
@@ -73,9 +74,7 @@ pub async fn get_bindings_for_func_and_schema_variant(
         dal::func::FuncKind::Qualification => {
             LeafBinding::assemble_leaf_func_bindings(ctx, func_id, LeafKind::Qualification).await?
         }
-        dal::func::FuncKind::Unknown
-        | dal::func::FuncKind::Intrinsic
-        | dal::func::FuncKind::SchemaVariantDefinition => vec![],
+        dal::func::FuncKind::Unknown | dal::func::FuncKind::SchemaVariantDefinition => vec![],
     }
     .into_iter()
     .filter(|binding| binding.get_schema_variant() == Some(schema_variant_id))
@@ -775,7 +774,7 @@ async fn create_attribute_binding(
     output_socket_id: Option<dal::OutputSocketId>,
     argument_bindings: Vec<si_frontend_types::AttributeArgumentBinding>,
     func_id: FuncId,
-) -> Result<(), FsError> {
+) -> FsResult<()> {
     let eventual_parent = EventualParent::SchemaVariant(schema_variant_id);
     let output_location =
         AttributeBinding::assemble_attribute_output_location(prop_id, output_socket_id)?;
@@ -1023,6 +1022,115 @@ async fn delete_binding(
     Ok(())
 }
 
+pub async fn get_identity_bindings_for_variant(
+    ctx: &DalContext,
+    variant_id: SchemaVariantId,
+) -> FsResult<IdentityBindings> {
+    let identity_func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Identity).await?;
+    let unset_func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Unset).await?;
+
+    let identity_bindings =
+        get_bindings_for_func_and_schema_variant(ctx, identity_func_id, variant_id).await?;
+    let identity_func_arg = FuncArgument::find_by_name_for_func(ctx, "identity", identity_func_id)
+        .await?
+        .ok_or(FsError::ResourceNotFound)?;
+    let unset_bindings =
+        get_bindings_for_func_and_schema_variant(ctx, unset_func_id, variant_id).await?;
+    let mut result = IdentityBindings {
+        props: BTreeMap::new(),
+        output_sockets: BTreeMap::new(),
+    };
+
+    for binding in identity_bindings
+        .into_iter()
+        .chain(unset_bindings.into_iter())
+    {
+        let FuncBinding::Attribute {
+            func_id: Some(func_id),
+            component_id: None,
+            schema_variant_id: Some(schema_variant_id),
+            prop_id,
+            output_socket_id,
+            argument_bindings,
+            ..
+        } = binding
+        else {
+            continue;
+        };
+
+        if schema_variant_id != variant_id {
+            continue;
+        }
+
+        if ![identity_func_id, unset_func_id].contains(&func_id) {
+            continue;
+        }
+
+        let is_identity = func_id == identity_func_id;
+
+        let identity_arg = argument_bindings
+            .into_iter()
+            .find(|binding| binding.func_argument_id == identity_func_arg.id);
+
+        match (prop_id, output_socket_id) {
+            (None, Some(output_socket_id)) => {
+                let input = if is_identity {
+                    let Some(input_prop_id) = identity_arg.and_then(|arg| arg.prop_id) else {
+                        continue;
+                    };
+
+                    let prop_path = Prop::path_by_id(ctx, input_prop_id)
+                        .await?
+                        .with_replaced_sep("/");
+
+                    SocketIdentityBinding::Prop(prop_path)
+                } else {
+                    SocketIdentityBinding::Unset
+                };
+
+                let output_socket = OutputSocket::get_by_id(ctx, output_socket_id).await?;
+
+                result
+                    .output_sockets
+                    .insert(output_socket.name().to_owned(), input);
+            }
+            (Some(prop_id), None) => {
+                let prop = Prop::get_by_id(ctx, prop_id).await?;
+                let output_prop_path = Prop::path_by_id(ctx, prop_id).await?.with_replaced_sep("/");
+
+                let frontend_prop = prop.clone().into_frontend_type(ctx).await?;
+                if !frontend_prop.eligible_to_receive_data {
+                    continue;
+                }
+
+                let input = if is_identity {
+                    match identity_arg.map(|arg| (arg.prop_id, arg.input_socket_id)) {
+                        Some((Some(input_prop_id), None)) => {
+                            let prop_path = Prop::path_by_id(ctx, input_prop_id)
+                                .await?
+                                .with_replaced_sep("/");
+                            PropIdentityBinding::Prop(prop_path)
+                        }
+                        Some((None, Some(input_socket_id))) => {
+                            let input_socket = InputSocket::get_by_id(ctx, input_socket_id).await?;
+
+                            PropIdentityBinding::InputSocket(input_socket.name().to_owned())
+                        }
+                        _ => continue,
+                    }
+                } else {
+                    PropIdentityBinding::Unset
+                };
+
+                result.props.insert(output_prop_path, input);
+            }
+            _ => continue,
+        }
+    }
+
+    Ok(result)
+}
+
 pub async fn set_func_bindings(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
@@ -1188,4 +1296,163 @@ pub async fn get_func_bindings(
     let (fs_bindings, _) = get_bindings(&ctx, func_id, schema_id).await?;
 
     Ok(Json(fs_bindings))
+}
+
+pub async fn get_identity_bindings(
+    HandlerContext(builder): HandlerContext,
+    AccessBuilder(request_ctx): AccessBuilder,
+    PosthogClient(_posthog_client): PosthogClient,
+    OriginalUri(_original_uri): OriginalUri,
+    Host(_host_name): Host,
+    Path((_workspace_id, change_set_id, schema_id)): Path<(WorkspaceId, ChangeSetId, SchemaId)>,
+    Query(variant_query): Query<VariantQuery>,
+) -> FsResult<Json<IdentityBindings>> {
+    let ctx = builder
+        .build(request_ctx.build(change_set_id.into()))
+        .await?;
+
+    check_change_set(&ctx)?;
+
+    let variant = lookup_variant_for_schema(&ctx, schema_id, variant_query.unlocked)
+        .await?
+        .ok_or(FsError::ResourceNotFound)?;
+
+    let result = get_identity_bindings_for_variant(&ctx, variant.id()).await?;
+
+    Ok(Json(result))
+}
+
+pub async fn set_identity_bindings(
+    HandlerContext(builder): HandlerContext,
+    AccessBuilder(request_ctx): AccessBuilder,
+    PosthogClient(_posthog_client): PosthogClient,
+    OriginalUri(_original_uri): OriginalUri,
+    Host(_host_name): Host,
+    Path((_workspace_id, change_set_id, schema_id)): Path<(WorkspaceId, ChangeSetId, SchemaId)>,
+    Json(bindings): Json<IdentityBindings>,
+) -> FsResult<()> {
+    let ctx = builder
+        .build(request_ctx.build(change_set_id.into()))
+        .await?;
+
+    check_change_set_and_not_head(&ctx).await?;
+
+    let unlocked_variant = get_or_unlock_schema(&ctx, schema_id).await?;
+    let schema_variant_id = unlocked_variant.id();
+    let identity_func_id = Func::find_intrinsic(&ctx, IntrinsicFunc::Identity).await?;
+    let unset_func_id = Func::find_intrinsic(&ctx, IntrinsicFunc::Unset).await?;
+    let identity_func_arg = FuncArgument::find_by_name_for_func(&ctx, "identity", identity_func_id)
+        .await?
+        .ok_or(FsError::ResourceNotFound)?;
+
+    for (output_socket_name, output_socket_binding) in bindings.output_sockets {
+        let (func_id, prototype_arguments) = match output_socket_binding {
+            SocketIdentityBinding::Prop(prop_path) => {
+                let prop_id = Prop::find_prop_id_by_path_opt(
+                    &ctx,
+                    schema_variant_id,
+                    &PropPath::new(prop_path.split("/")),
+                )
+                .await?
+                .ok_or(FsError::PropNotFound(prop_path))?;
+
+                let arguments = vec![AttributeArgumentBinding {
+                    func_argument_id: identity_func_arg.id,
+                    attribute_prototype_argument_id: None,
+                    attribute_func_input_location:
+                        dal::func::binding::AttributeFuncArgumentSource::Prop(prop_id),
+                }];
+                (identity_func_id, arguments)
+            }
+            SocketIdentityBinding::Unset => (unset_func_id, vec![]),
+        };
+
+        let output_socket =
+            OutputSocket::find_with_name_or_error(&ctx, output_socket_name, schema_variant_id)
+                .await?;
+
+        let output_location = AttributeFuncDestination::OutputSocket(output_socket.id());
+
+        AttributeBinding::upsert_attribute_binding(
+            &ctx,
+            func_id,
+            Some(EventualParent::SchemaVariant(schema_variant_id)),
+            output_location,
+            prototype_arguments,
+        )
+        .await?;
+    }
+
+    for (prop_path, prop_binding) in bindings.props {
+        let prop_id = Prop::find_prop_id_by_path_opt(
+            &ctx,
+            schema_variant_id,
+            &PropPath::new(prop_path.split("/")),
+        )
+        .await?
+        .ok_or(FsError::PropNotFound(prop_path.clone()))?;
+
+        let output_location = AttributeFuncDestination::Prop(prop_id);
+
+        let (func_id, prototype_arguments) = match prop_binding {
+            PropIdentityBinding::Prop(input_prop_path) => {
+                let input_prop_id = Prop::find_prop_id_by_path_opt(
+                    &ctx,
+                    schema_variant_id,
+                    &PropPath::new(input_prop_path.split("/")),
+                )
+                .await?
+                .ok_or(FsError::PropNotFound(input_prop_path))?;
+
+                let arguments = vec![AttributeArgumentBinding {
+                    func_argument_id: identity_func_arg.id,
+                    attribute_prototype_argument_id: None,
+                    attribute_func_input_location: AttributeFuncArgumentSource::Prop(input_prop_id),
+                }];
+                (identity_func_id, arguments)
+            }
+            PropIdentityBinding::InputSocket(input_socket_name) => {
+                let input_socket = InputSocket::find_with_name_or_error(
+                    &ctx,
+                    input_socket_name,
+                    schema_variant_id,
+                )
+                .await?;
+
+                let arguments = vec![AttributeArgumentBinding {
+                    func_argument_id: identity_func_arg.id,
+                    attribute_prototype_argument_id: None,
+                    attribute_func_input_location: AttributeFuncArgumentSource::InputSocket(
+                        input_socket.id(),
+                    ),
+                }];
+                (identity_func_id, arguments)
+            }
+            PropIdentityBinding::Unset => (unset_func_id, vec![]),
+        };
+
+        AttributeBinding::upsert_attribute_binding(
+            &ctx,
+            func_id,
+            Some(EventualParent::SchemaVariant(schema_variant_id)),
+            output_location,
+            prototype_arguments,
+        )
+        .await?;
+    }
+
+    for func_id in [identity_func_id, unset_func_id] {
+        let func_summary = Func::get_by_id_or_error(&ctx, func_id)
+            .await?
+            .into_frontend_type(&ctx)
+            .await?;
+        WsEvent::func_updated(&ctx, func_summary.clone(), None)
+            .await?
+            .publish_on_commit(&ctx)
+            .await?;
+    }
+
+    ctx.commit().await?;
+
+    Ok(())
 }

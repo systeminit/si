@@ -54,7 +54,9 @@ pub struct AssetFuncs {
     pub locked: Option<Func>,
     pub unlocked: Option<Func>,
     pub locked_attrs_size: u64,
+    pub locked_bindings_size: u64,
     pub unlocked_attrs_size: u64,
+    pub unlocked_bindings_size: u64,
 }
 
 pub fn kind_to_string(kind: FuncKind) -> String {
@@ -264,4 +266,37 @@ impl fmt::Display for FsApiError {
 pub struct SetFuncBindingsRequest {
     pub bindings: Bindings,
     pub is_attaching_existing: bool,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum PropIdentityBinding {
+    InputSocket(String),
+    Prop(String),
+    Unset,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum SocketIdentityBinding {
+    Prop(String),
+    Unset,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct IdentityBindings {
+    pub props: BTreeMap<String, PropIdentityBinding>,
+    pub output_sockets: BTreeMap<String, SocketIdentityBinding>,
+}
+
+impl IdentityBindings {
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self, serde_json::Error> {
+        serde_json::from_slice(bytes)
+    }
+
+    pub fn byte_size(&self) -> u64 {
+        self.to_vec_pretty().ok().map(|vec| vec.len()).unwrap_or(0) as u64
+    }
+
+    pub fn to_vec_pretty(&self) -> Result<Vec<u8>, serde_json::Error> {
+        serde_json::to_vec_pretty(&self)
+    }
 }
