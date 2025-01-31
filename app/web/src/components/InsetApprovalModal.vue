@@ -3,11 +3,14 @@
     v-if="mode !== 'error'"
     :class="
       clsx(
-        'lg:w-1/2 flex flex-col gap-sm p-sm shadow-2xl max-h-full overflow-hidden',
+        'flex flex-col gap-sm p-sm',
+        'xl:max-w-[50vw] xl:min-w-[680px] max-h-full',
+        'rounded shadow-2xl overflow-hidden',
         themeClasses('bg-shade-0 border', 'bg-neutral-900'),
       )
     "
   >
+    <!-- HEADER -->
     <div class="flex flex-row flex-none gap-md mb-sm items-center">
       <div class="flex flex-col gap-2xs">
         <TruncateWithTooltip class="font-bold italic pb-2xs">
@@ -31,7 +34,7 @@
         </template>
         <template
           v-else-if="
-            !featureFlagsStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL &&
+            !fineGrainedAccessControl &&
             (mode === 'approved' || mode === 'rejected')
           "
         >
@@ -54,12 +57,7 @@
             top of the screen.
           </div>
         </template>
-        <template
-          v-else-if="
-            featureFlagsStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL &&
-            mode === 'approved'
-          "
-        >
+        <template v-else-if="fineGrainedAccessControl && mode === 'approved'">
           <p>
             {{ requesterIsYou ? "Your" : "The" }} request to
             <span class="font-bold">Apply</span> change set
@@ -72,66 +70,97 @@
         </template>
       </ErrorMessage>
     </div>
+
+    <!-- MAIN SECTION -->
     <div
       :class="
         clsx(
-          'flex flex-row flex-1 overflow-hidden',
-          featureFlagsStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL
-            ? 'place-content-evenly'
-            : 'justify-center',
+          'flex flex-row gap-xs flex-1 overflow-hidden',
+          fineGrainedAccessControl ? 'place-content-evenly' : 'justify-center',
         )
       "
     >
-      <template v-if="featureFlagsStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL">
-        <div class="flex flex-col text-sm gap-sm overflow-y-auto">
-          <div
-            v-for="group in requirementGroups"
-            :key="group.key"
-            class="border-neutral-100 dark:border-neutral-700 border"
-          >
-            <p class="bg-neutral-100 dark:bg-neutral-700 p-xs">
-              {{ group.requiredCount }} of the following users for
-              {{ group.label }}
-            </p>
-            <ul class="p-xs">
-              <li
-                v-for="vote in group.votes"
-                :key="vote.user.id"
-                class="flex flex-row gap-xs place-content-between"
-              >
-                <span>{{ vote.user.name }} ({{ vote.user.email }})</span>
-                <span class="flex flex-row">
-                  <span class="italic pr-xs">
-                    <template v-if="!vote.status">Waiting...</template>
-                    <template v-else>{{ vote.status }}...</template>
-                  </span>
-                  <Icon
-                    size="md"
-                    name="thumbs-up"
-                    tone="success"
-                    :class="
-                      clsx(vote.status !== 'Approved' ? 'opacity-20' : '')
-                    "
-                  />
-                  <Icon
-                    size="md"
-                    name="thumbs-down"
-                    tone="error"
-                    :class="
-                      clsx(vote.status !== 'Rejected' ? 'opacity-20' : '')
-                    "
-                  />
-                </span>
-              </li>
-            </ul>
-          </div>
-        </div>
-      </template>
-      <div class="flex flex-col gap-xs overflow-hidden">
+      <div
+        v-if="fineGrainedAccessControl"
+        class="flex flex-col basis-1/2 text-sm gap-xs overflow-y-auto"
+      >
         <div
-          v-if="!featureFlagsStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL"
-          class="text-sm"
+          v-for="group in requirementGroups"
+          :key="group.key"
+          class="border-neutral-200 dark:border-neutral-700 border"
         >
+          <div class="bg-neutral-200 dark:bg-neutral-700 p-xs">
+            {{ group.requiredCount }} of the following users for{{
+              group.labels.length > 1
+                ? ` ${group.labels.length} requirements:`
+                : ""
+            }}
+            <span v-if="group.labels.length === 1" class="italic">{{
+              group.labels[0]
+            }}</span>
+            <TruncateWithTooltip
+              v-else
+              expandOnClick
+              :expandableStringArray="group.labels"
+              class="italic"
+            />
+          </div>
+          <ul>
+            <li
+              v-for="vote in group.votes"
+              :key="vote.user.id"
+              :class="
+                clsx(
+                  'flex flex-row items-center gap-xs px-xs py-2xs',
+                  themeClasses('even:bg-neutral-100', 'even:bg-neutral-800'),
+                )
+              "
+            >
+              <TruncateWithTooltip class="flex-grow"
+                >{{ vote.user.name }} ({{
+                  vote.user.email
+                }})</TruncateWithTooltip
+              >
+              <div
+                :class="
+                  clsx(
+                    'flex flex-col items-center flex-none w-[60px]',
+                    vote.status ? 'font-bold' : 'italic',
+                    vote.status === 'Rejected' && 'text-destructive-500',
+                    vote.status === 'Approved' && 'text-success-500',
+                  )
+                "
+              >
+                <div v-if="!vote.status">Waiting...</div>
+                <div v-else>{{ vote.status }}</div>
+              </div>
+              <span class="flex flex-row items-center flex-none">
+                <Icon
+                  size="md"
+                  name="thumbs-up"
+                  tone="success"
+                  :class="clsx(vote.status !== 'Approved' ? 'opacity-20' : '')"
+                />
+                <Icon
+                  size="md"
+                  name="thumbs-down"
+                  tone="error"
+                  :class="clsx(vote.status !== 'Rejected' ? 'opacity-20' : '')"
+                />
+              </span>
+            </li>
+          </ul>
+        </div>
+      </div>
+      <div
+        :class="
+          clsx(
+            'flex flex-col gap-xs overflow-hidden',
+            fineGrainedAccessControl && 'basis-1/2',
+          )
+        "
+      >
+        <div v-if="!fineGrainedAccessControl" class="text-sm">
           These actions will be applied to the real world:
         </div>
         <div
@@ -141,6 +170,8 @@
         </div>
       </div>
     </div>
+
+    <!-- BUTTONS -->
     <div class="flex flex-row flex-none gap-sm justify-center mt-sm">
       <VButton
         label="Withdraw Request"
@@ -151,29 +182,20 @@
       />
       <template
         v-if="
-          (featureFlagsStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL &&
-            userIsApprover) ||
-          (!featureFlagsStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL &&
-            changeSetsStore.currentUserIsDefaultApprover)
+          fineGrainedAccessControl
+            ? userIsApprover
+            : changeSetsStore.currentUserIsDefaultApprover
         "
       >
         <VButton
-          :disabled="
-            featureFlagsStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL
-              ? iRejected
-              : mode === 'rejected'
-          "
+          :disabled="fineGrainedAccessControl ? iRejected : mode === 'rejected'"
           label="Reject Request"
           tone="destructive"
           icon="thumbs-down"
           @click="rejectHandler"
         />
         <VButton
-          :disabled="
-            featureFlagsStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL
-              ? iApproved
-              : mode === 'approved'
-          "
+          :disabled="fineGrainedAccessControl ? iApproved : mode === 'approved'"
           label="Approve Request"
           tone="success"
           icon="thumbs-up"
@@ -197,6 +219,7 @@
 </template>
 
 <script lang="ts" setup>
+import * as _ from "lodash-es";
 import {
   VButton,
   Timestamp,
@@ -219,7 +242,6 @@ import { useAuthStore, WorkspaceUser } from "@/store/auth.store";
 import { ChangeSetStatus, ChangeSet } from "@/api/sdf/dal/change_set";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { useViewsStore } from "@/store/views.store";
-import { useAssetStore } from "@/store/asset.store";
 import ActionsList from "./Actions/ActionsList.vue";
 
 export type InsetApprovalModalMode =
@@ -228,7 +250,6 @@ export type InsetApprovalModalMode =
   | "rejected"
   | "error";
 
-const assetStore = useAssetStore();
 const authStore = useAuthStore();
 const changeSetsStore = useChangeSetsStore();
 const featureFlagsStore = useFeatureFlagsStore();
@@ -237,14 +258,18 @@ const viewStore = useViewsStore();
 const applyingChangeSet = ref(false);
 const changeSetName = computed(() => changeSetsStore.selectedChangeSet?.name);
 
+const fineGrainedAccessControl = computed(
+  () => featureFlagsStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL,
+);
+
 const props = defineProps<{
   approvalData: ApprovalData | undefined;
   changeSet: ChangeSet;
 }>();
 
-interface Requirement {
+interface RequirementGroup {
   key: string;
-  label: string;
+  labels: string[];
   votes: Vote[];
   satisfied: boolean;
   requiredCount: number;
@@ -255,7 +280,7 @@ interface Vote {
 }
 
 const requirementGroups = computed(() => {
-  const groups: Requirement[] = [];
+  const groups: Map<Set<string>, RequirementGroup> = new Map();
   props.approvalData?.requirements.forEach((r) => {
     const userIds = Object.values(r.approverGroups)
       .flat()
@@ -275,41 +300,62 @@ const requirementGroups = computed(() => {
       votes.push(vote);
     });
 
-    let label = r.entityKind;
+    let label;
     if (r.entityKind === "ApprovalRequirementDefinition") {
-      label = "Approval Requirement change";
-    } else if (r.entityKind === "Schema") {
-      const variantForSchema = assetStore.schemaVariants.find(
-        (thing) => thing.schemaId === r.entityId,
-      );
-      label = variantForSchema?.schemaName
-        ? `Asset named ${variantForSchema?.schemaName}`
-        : "an Asset";
-    } else if (r.entityKind === "SchemaVariant") {
-      let name = assetStore.variantFromListById[r.entityId]?.displayName;
-      if (!name) {
-        name = assetStore.variantFromListById[r.entityId]?.schemaName;
-      }
-      label = name ? `Asset named ${name}` : "Asset (name not found)";
-    } else if (r.entityKind === "View") {
+      label = ["Approval Requirement change"];
+    }
+    // else if (r.entityKind === "Schema") {
+    //   const variantForSchema = assetStore.schemaVariants.find(
+    //     (thing) => thing.schemaId === r.entityId,
+    //   );
+    //   label = variantForSchema?.schemaName
+    //     ? `Asset named ${variantForSchema?.schemaName}`
+    //     : "an Asset";
+    // } else if (r.entityKind === "SchemaVariant") {
+    //   let name = assetStore.variantFromListById[r.entityId]?.displayName;
+    //   if (!name) {
+    //     name = assetStore.variantFromListById[r.entityId]?.schemaName;
+    //   }
+    //   label = name ? `Asset named ${name}` : "Asset (name not found)";
+    // }
+    else if (r.entityKind === "View") {
       const name = viewStore.viewsById[r.entityId]?.name;
-      label = name ? `View named ${name}` : "View (name not found)";
+      label = [name ? `View named ${name}` : "View (name not found)"];
+    } else {
+      label = ["Workspace change"];
     }
 
-    groups.push({
+    const group: RequirementGroup = {
       key: r.entityId,
-      label,
+      labels: label,
       votes,
       satisfied: r.isSatisfied,
       requiredCount: r.requiredCount,
-    });
+    };
+
+    // Check if this RequirementGroup has the same votes and/or label as an existing one and group/filter accordingly
+    const key = new Set(group.votes.map((vote) => vote.user.id));
+    const check = [...groups.entries()].find(
+      ([k, _]) => k.size === key.size && [...k].every((i) => key.has(i)),
+    );
+    if (check) {
+      const [_, set] = check;
+      const label = group.labels[0];
+      if (label && !set.labels.includes(label)) {
+        // different label and same votes - group together
+        set.labels.push(label);
+      }
+      // same label and same votes - don't push in
+    } else {
+      groups.set(key, group);
+    }
   });
-  return groups;
+  return [...groups.values()];
 });
 
 const satisfied = computed(
   () =>
-    featureFlagsStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL &&
+    fineGrainedAccessControl.value &&
     !props.approvalData?.requirements.some((r) => r.isSatisfied === false),
 );
 

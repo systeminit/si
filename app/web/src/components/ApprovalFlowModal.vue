@@ -50,7 +50,9 @@ import { useAuthStore } from "@/store/auth.store";
 import ApprovalFlowCancelled from "@/components/toasts/ApprovalFlowCancelled.vue";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import ActionsList from "./Actions/ActionsList.vue";
+import { usePresenceStore } from "@/store/presence.store";
 
+const presenceStore = usePresenceStore();
 const changeSetsStore = useChangeSetsStore();
 const authStore = useAuthStore();
 const featureFlagsStore = useFeatureFlagsStore();
@@ -92,6 +94,7 @@ function applyButtonHandler() {
       changeSetsStore.FETCH_APPROVAL_STATUS(changeSet.value.id);
     }
 
+    presenceStore.leftDrawerOpen = false; // close the left draw for the InsetModal
     closeModalHandler();
   }
 }

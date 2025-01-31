@@ -1,6 +1,6 @@
 <template>
   <VButton
-    v-if="!changeSetsStore.headSelected"
+    v-if="!changeSetsStore.headSelected && !disableApplyButton"
     ref="applyButtonRef"
     size="md"
     tone="success"
@@ -51,6 +51,7 @@ import { useChangeSetsStore } from "@/store/change_sets.store";
 import { useStatusStore } from "@/store/status.store";
 import { useActionsStore } from "@/store/actions.store";
 import ApprovalFlowModal from "./ApprovalFlowModal.vue";
+import { ChangeSetStatus } from "@/api/sdf/dal/change_set";
 
 const actionsStore = useActionsStore();
 const changeSetsStore = useChangeSetsStore();
@@ -68,6 +69,8 @@ const approvalFlowModalRef = ref<InstanceType<typeof ApprovalFlowModal> | null>(
 const openApprovalFlowModal = () => {
   approvalFlowModalRef.value?.open();
 };
+
+const disableApplyButton = computed(() => changeSetsStore.selectedChangeSet?.status !== ChangeSetStatus.Open);
 
 const statusStoreUpdating = computed(() => {
   if (statusStore.globalStatus) {
