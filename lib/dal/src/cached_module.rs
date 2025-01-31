@@ -1,4 +1,8 @@
-use std::{collections::HashMap, str::FromStr, sync::Arc};
+use std::{
+    collections::{HashMap, HashSet},
+    str::FromStr,
+    sync::Arc,
+};
 
 use chrono::{DateTime, Utc};
 use itertools::Itertools;
@@ -181,6 +185,28 @@ impl CachedModule {
             .iter()
             .map(|builtin| (builtin.latest_hash.to_owned(), builtin.to_owned()))
             .collect();
+
+        // We need to remove any schemas that are in the cache but no longer in the builtin list
+        let builtin_schema_ids: HashSet<SchemaId> = modules
+            .values()
+            .filter_map(|module| {
+                module
+                    .schema_id
+                    .as_ref()
+                    .and_then(|id_string| Ulid::from_string(id_string.as_str()).ok())
+            })
+            .map(Into::into)
+            .collect();
+
+        let current_modules = CachedModule::latest_modules(ctx).await?;
+        for cached in current_modules {
+            if !builtin_schema_ids.contains(&cached.schema_id) {
+                CachedModule::remove_by_schema_id(ctx, cached.schema_id).await?;
+            }
+        }
+
+        let ctx_clone = ctx.clone();
+        ctx_clone.commit_no_rebase().await?;
 
         let hashes: Vec<_> = modules.keys().map(ToOwned::to_owned).collect();
         let uncached_hashes = CachedModule::find_missing_entries(ctx, hashes).await?;
@@ -395,5 +421,18 @@ impl CachedModule {
             .await?;
 
         Ok(Some(row.try_into()?))
+    }
+
+    pub async fn remove_by_schema_id(
+        ctx: &DalContext,
+        schema_id: SchemaId,
+    ) -> CachedModuleResult<()> {
+        let query = r#"
+            DELETE FROM cached_modules WHERE schema_id = $1
+            "#;
+
+        ctx.txns().await?.pg().query(query, &[&schema_id]).await?;
+
+        Ok(())
     }
 }
