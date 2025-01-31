@@ -54,7 +54,7 @@ const FILE_STR_TS_INDEX: &str = "index.ts";
 const FILE_STR_ATTRS_JSON: &str = "attrs.json";
 const FILE_STR_BINDINGS_JSON: &str = "bindings.json";
 const FILE_STR_INSTALLED: &str = "INSTALLED";
-const FILE_STR_PENDING_JSON: &str = "PENDING_ATTRIBUTES_EDIT_ME.json";
+const FILE_STR_PENDING_JSON: &str = "PENDING_BINDINGS_EDIT_ME.json";
 
 const TTL: Duration = Duration::from_secs(0);
 
