@@ -159,9 +159,9 @@
       >
         <VButton
           :disabled="
-            (!featureFlagsStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL &&
-              mode !== 'rejected') ||
-            iRejected
+            featureFlagsStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL
+              ? iRejected
+              : mode === 'rejected'
           "
           label="Reject Request"
           tone="destructive"
@@ -169,7 +169,11 @@
           @click="rejectHandler"
         />
         <VButton
-          :disabled="mode !== 'requested' || iApproved"
+          :disabled="
+            featureFlagsStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL
+              ? iApproved
+              : mode === 'approved'
+          "
           label="Approve Request"
           tone="success"
           icon="thumbs-up"
