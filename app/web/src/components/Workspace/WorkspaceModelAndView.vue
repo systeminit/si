@@ -37,10 +37,10 @@
 
   <!-- Middle Area - ModelingDiagram or InsetApprovalModal -->
   <div
-    v-if="changeSetsStore.selectedChangeSet?.status !== ChangeSetStatus.Open"
+    v-if="showInsetModal"
     :class="
       clsx(
-        'grow flex flew-row items-center justify-center',
+        'grow flex flew-row items-center justify-center p-xs',
         themeClasses('bg-shade-0', 'bg-neutral-800'),
       )
     "
@@ -162,6 +162,7 @@ import TemplateSelectionModal from "../ModelingView/TemplateSelectionModal.vue";
 import CommandModal from "./CommandModal.vue";
 import InsetApprovalModal from "../InsetApprovalModal.vue";
 import ViewDetailsPanel from "../ViewDetailsPanel.vue";
+import { watch } from "fs";
 
 const changeSetsStore = useChangeSetsStore();
 const viewsStore = useViewsStore();
@@ -173,6 +174,8 @@ const statusStore = useStatusStore();
 const funcStore = useFuncStore();
 const featureFlagsStore = useFeatureFlagsStore();
 const authStore = useAuthStore();
+
+const showInsetModal = computed(() => changeSetsStore.selectedChangeSet?.status !== ChangeSetStatus.Open);
 
 const actionsAreRunning = computed(
   () =>
