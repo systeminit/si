@@ -2,10 +2,11 @@ use std::collections::HashSet;
 
 use dal::action::prototype::ActionKind;
 use dal::pkg::{import_pkg_from_pkg, ImportOptions};
-use dal::{BuiltinsResult, DalContext};
+use dal::{BuiltinsResult, DalContext, PropKind};
 use dal::{ComponentType, SchemaId};
 use si_pkg::{
-    ActionFuncSpec, PkgSpec, SchemaSpec, SchemaVariantSpec, SchemaVariantSpecData, SiPkg,
+    ActionFuncSpec, PkgSpec, PropSpec, SchemaSpec, SchemaVariantSpec, SchemaVariantSpecData, SiPkg,
+    SocketSpec, SocketSpecArity, SocketSpecData, SocketSpecKind,
 };
 use si_pkg::{ManagementFuncSpec, SchemaSpecData};
 
@@ -272,6 +273,115 @@ pub(crate) async fn migrate_test_exclusive_schema_small_odd_lego(
         create_and_connect_to_self_name,
     )?;
 
+    // This will create a small even lego component and connect its inputs to everything
+    // conneted to the management component's "one" or "arity_one" sockets.
+    let create_and_connect_to_inputs_func = build_management_func(
+        r#"
+    async function main({ thisComponent, components }: Input): Promise<Output> {
+        const allConnections = []
+        allConnections.push(...thisComponent.incomingConnections.one);
+        if (thisComponent.incomingConnections.arity_one) {
+            allConnections.push(thisComponent.incomingConnections.arity_one);
+        }
+
+        return {
+            status: "ok",
+            ops: {
+                create: {
+                    lego: {
+                        kind: "small even lego",
+                        connect: allConnections.map((from) => ({ from, to: "two" })),
+                    },
+                }
+            }
+        }
+    }
+        "#,
+        "test:createAndConnectToInputs",
+    )?;
+
+    // This will connect the "lego" component's inputs to everything connected to the
+    // management component's "one" or "arity_one" sockets.
+    let connect_to_inputs_func = build_management_func(
+        r#"
+    async function main({ thisComponent, components }: Input): Promise<Output> {
+        const allConnections = []
+        allConnections.push(...thisComponent.incomingConnections.one)
+        if (thisComponent.incomingConnections.arity_one) {
+            allConnections.push(thisComponent.incomingConnections.arity_one)
+        }
+
+        return {
+            status: "ok",
+            ops: {
+                update: {
+                    lego: {
+                        connect: {
+                            add: allConnections.map((from) => ({ from, to: "two" }))
+                        }
+                    }
+                }
+            }
+        }
+    }
+        "#,
+        "test:connectToInputs",
+    )?;
+
+    // This will disconnect the "lego" component's inputs from everything connected to the
+    // management component's "one" or "arity_one" sockets.
+    let disconnect_from_inputs_func = build_management_func(
+        r#"
+    async function main({ thisComponent, components }: Input): Promise<Output> {
+        const allConnections = []
+        allConnections.push(...thisComponent.incomingConnections.one);
+        if (thisComponent.incomingConnections.arity_one) {
+            allConnections.push(thisComponent.incomingConnections.arity_one);
+        }
+
+        return {
+            status: "ok",
+            ops: {
+                update: {
+                    lego: {
+                        connect: {
+                            remove: allConnections.map((from) => ({ from, to: "two" }))
+                        }
+                    }
+                }
+            }
+        }
+    }
+        "#,
+        "test:disconnectFromInputs",
+    )?;
+
+    // This will grab the manager component's input socket values and put them in test_result.
+    let get_input_values_func = build_management_func(
+        r#"
+    async function main({ thisComponent, components }: Input): Promise<Output> {
+        return {
+            status: "ok",
+            ops: {
+                update: {
+                    self: {
+                        properties: {
+                            domain: {
+                                test_result: {
+                                    arity_one: thisComponent.incomingConnections.arity_one?.value,
+                                    one: thisComponent.incomingConnections.one.map((c) => c.value).sort(),
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        };
+    }
+        "#,
+        "test:getInputValues",
+    )?;
+
     let create_and_connect_to_self_as_children_code = r#"
     async function main({ thisComponent, components }: Input): Promise<Output> {
         const thisName = thisComponent.properties?.si?.name ?? "unknown";
@@ -439,7 +549,7 @@ pub(crate) async fn migrate_test_exclusive_schema_small_odd_lego(
     )?;
 
     let override_values_set_by_sockets_code = r#"
-         async function main({ thisComponent, components }: Input): Promise<Output> {
+    async function main({ thisComponent, components }: Input): Promise<Output> {
         const thisName = thisComponent.properties?.si?.name ?? "unknown";
         const componentName = `bluey`;
 
@@ -450,13 +560,13 @@ pub(crate) async fn migrate_test_exclusive_schema_small_odd_lego(
                 create: {
                     [componentName]: {
                         kind: "small odd lego",
-                properties: { 
-                    si: { name },
-                    domain: {
-                        one: `bingo`
-                        } 
-                    },
-                parent: "self"
+                        properties: { 
+                            si: { name },
+                            domain: {
+                                one: `bingo`
+                            } 
+                        },
+                        parent: "self"
                     }
                 }
             }
@@ -503,10 +613,29 @@ pub(crate) async fn migrate_test_exclusive_schema_small_odd_lego(
                 .domain_prop(bricks.domain_name_prop)
                 .domain_prop(bricks.domain_one_prop)
                 .domain_prop(bricks.domain_two_prop)
+                .domain_prop(
+                    PropSpec::builder()
+                        .name("test_result")
+                        .kind(PropKind::Json)
+                        .build()?,
+                )
                 // Input socket "one"
                 .socket(bricks.socket_one)
                 // Output socket "two"
                 .socket(bricks.socket_two)
+                .socket(
+                    SocketSpec::builder()
+                        .name("arity_one")
+                        .data(
+                            SocketSpecData::builder()
+                                .name("arity_one")
+                                .connection_annotations(serde_json::to_string(&vec!["arity_one"])?)
+                                .arity(SocketSpecArity::One)
+                                .kind(SocketSpecKind::Input)
+                                .build()?,
+                        )
+                        .build()?,
+                )
                 .action_func(
                     ActionFuncSpec::builder()
                         .kind(ActionKind::Create)
@@ -540,63 +669,77 @@ pub(crate) async fn migrate_test_exclusive_schema_small_odd_lego(
                 .management_func(
                     ManagementFuncSpec::builder()
                         .name("Clone")
-                        .managed_schemas(Some(HashSet::from([
-                            SCHEMA_ID_SMALL_EVEN_LEGO.to_string()
-                        ])))
+                        .managed_schemas(HashSet::from([SCHEMA_ID_SMALL_EVEN_LEGO.to_string()]))
                         .func_unique_id(&clone_me_mgmt_func.unique_id)
                         .build()?,
                 )
                 .management_func(
                     ManagementFuncSpec::builder()
                         .name("Update")
-                        .managed_schemas(Some(HashSet::from([
-                            SCHEMA_ID_SMALL_EVEN_LEGO.to_string()
-                        ])))
+                        .managed_schemas(HashSet::from([SCHEMA_ID_SMALL_EVEN_LEGO.to_string()]))
                         .func_unique_id(&update_mgmt_func.unique_id)
                         .build()?,
                 )
                 .management_func(
                     ManagementFuncSpec::builder()
                         .name("Update in View")
-                        .managed_schemas(Some(HashSet::from([
-                            SCHEMA_ID_SMALL_EVEN_LEGO.to_string()
-                        ])))
+                        .managed_schemas(HashSet::from([SCHEMA_ID_SMALL_EVEN_LEGO.to_string()]))
                         .func_unique_id(&update_in_view_mgmt_func.unique_id)
                         .build()?,
                 )
                 .management_func(
                     ManagementFuncSpec::builder()
                         .name("Create and Connect From Self")
-                        .managed_schemas(Some(HashSet::from([
-                            SCHEMA_ID_SMALL_EVEN_LEGO.to_string()
-                        ])))
+                        .managed_schemas(HashSet::from([SCHEMA_ID_SMALL_EVEN_LEGO.to_string()]))
                         .func_unique_id(&create_and_connect_from_self_func.unique_id)
                         .build()?,
                 )
                 .management_func(
                     ManagementFuncSpec::builder()
                         .name("Create and Connect to Self")
-                        .managed_schemas(Some(HashSet::from([
-                            SCHEMA_ID_SMALL_EVEN_LEGO.to_string()
-                        ])))
+                        .managed_schemas(HashSet::from([SCHEMA_ID_SMALL_EVEN_LEGO.to_string()]))
                         .func_unique_id(&create_and_connect_to_self_func.unique_id)
                         .build()?,
                 )
                 .management_func(
                     ManagementFuncSpec::builder()
+                        .name("Create and Connect to Inputs")
+                        .managed_schemas(HashSet::from([SCHEMA_ID_SMALL_EVEN_LEGO.to_string()]))
+                        .func_unique_id(&create_and_connect_to_inputs_func.unique_id)
+                        .build()?,
+                )
+                .management_func(
+                    ManagementFuncSpec::builder()
+                        .name("Connect to Inputs")
+                        .managed_schemas(HashSet::from([SCHEMA_ID_SMALL_EVEN_LEGO.to_string()]))
+                        .func_unique_id(&connect_to_inputs_func.unique_id)
+                        .build()?,
+                )
+                .management_func(
+                    ManagementFuncSpec::builder()
+                        .name("Disconnect from Inputs")
+                        .managed_schemas(HashSet::from([SCHEMA_ID_SMALL_EVEN_LEGO.to_string()]))
+                        .func_unique_id(&disconnect_from_inputs_func.unique_id)
+                        .build()?,
+                )
+                .management_func(
+                    ManagementFuncSpec::builder()
+                        .name("Get Input Values")
+                        .managed_schemas(HashSet::from([SCHEMA_ID_SMALL_EVEN_LEGO.to_string()]))
+                        .func_unique_id(&get_input_values_func.unique_id)
+                        .build()?,
+                )
+                .management_func(
+                    ManagementFuncSpec::builder()
                         .name("Deeply Nested Children")
-                        .managed_schemas(Some(HashSet::from([
-                            SCHEMA_ID_SMALL_EVEN_LEGO.to_string()
-                        ])))
+                        .managed_schemas(HashSet::from([SCHEMA_ID_SMALL_EVEN_LEGO.to_string()]))
                         .func_unique_id(&deeply_nested_children.unique_id)
                         .build()?,
                 )
                 .management_func(
                     ManagementFuncSpec::builder()
                         .name("Create and Connect to Self as Children")
-                        .managed_schemas(Some(HashSet::from([
-                            SCHEMA_ID_SMALL_EVEN_LEGO.to_string()
-                        ])))
+                        .managed_schemas(HashSet::from([SCHEMA_ID_SMALL_EVEN_LEGO.to_string()]))
                         .func_unique_id(&create_and_connect_to_self_as_children_func.unique_id)
                         .build()?,
                 )
@@ -649,6 +792,10 @@ pub(crate) async fn migrate_test_exclusive_schema_small_odd_lego(
         .func(create_and_connect_from_self_func)
         .func(create_and_connect_to_self_func)
         .func(create_and_connect_to_self_as_children_func)
+        .func(create_and_connect_to_inputs_func)
+        .func(connect_to_inputs_func)
+        .func(disconnect_from_inputs_func)
+        .func(get_input_values_func)
         .func(deeply_nested_children)
         .func(create_component_in_other_views)
         .func(create_view_and_component_in_view)

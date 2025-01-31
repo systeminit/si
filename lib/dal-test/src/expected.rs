@@ -3,6 +3,7 @@
 #![allow(clippy::expect_used)]
 
 use crate::helpers::ChangeSetTestHelpers;
+use dal::component::socket::ComponentInputSocket;
 use dal::diagram::geometry::RawGeometry;
 use dal::diagram::view::{View, ViewId};
 use dal::{
@@ -377,6 +378,30 @@ impl ExpectComponent {
             .await
     }
 
+    pub async fn list(ctx: &mut DalContext) -> Vec<ExpectComponent> {
+        Component::list_ids(ctx)
+            .await
+            .expect("list components")
+            .into_iter()
+            .map(Into::into)
+            .collect()
+    }
+
+    pub async fn find_opt(ctx: &mut DalContext, name: impl AsRef<str>) -> Option<ExpectComponent> {
+        for component in ExpectComponent::list(ctx).await {
+            if name.as_ref() == component.name(ctx).await {
+                return Some(component);
+            }
+        }
+        None
+    }
+
+    pub async fn find(ctx: &mut DalContext, name: impl AsRef<str>) -> ExpectComponent {
+        Self::find_opt(ctx, name)
+            .await
+            .expect("component not found")
+    }
+
     pub fn id(self) -> ComponentId {
         self.0
     }
@@ -385,6 +410,12 @@ impl ExpectComponent {
         Component::get_by_id(ctx, self.0)
             .await
             .expect("get component by id")
+    }
+
+    pub async fn name(&self, ctx: &mut DalContext) -> String {
+        Component::name_by_id(ctx, self.0)
+            .await
+            .expect("get component name")
     }
 
     pub async fn geometry_for_default(self, ctx: &DalContext) -> RawGeometry {
@@ -456,6 +487,17 @@ impl ExpectComponent {
         ExpectComponentInputSocket(self.0, input_socket_id)
     }
 
+    pub async fn input_connections(
+        self,
+        ctx: &DalContext,
+        input_socket_id: impl InputSocketKey,
+    ) -> Vec<ExpectComponentOutputSocket> {
+        self.input_socket(ctx, input_socket_id)
+            .await
+            .connections(ctx)
+            .await
+    }
+
     pub async fn output_socket(
         self,
         ctx: &DalContext,
@@ -475,7 +517,7 @@ impl ExpectComponent {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct ExpectComponentProp(ComponentId, PropId);
 
 impl ExpectComponentProp {
@@ -555,15 +597,36 @@ impl ExpectComponentProp {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct ExpectComponentInputSocket(ComponentId, InputSocketId);
 
 impl ExpectComponentInputSocket {
     pub fn component(self) -> ExpectComponent {
         ExpectComponent(self.0)
     }
-    pub fn prop(self) -> ExpectInputSocket {
+    pub fn input_socket(self) -> ExpectInputSocket {
         ExpectInputSocket(self.1)
+    }
+
+    pub async fn connect(self, ctx: &DalContext, dest: ExpectComponentOutputSocket) {
+        dest.connect(ctx, self).await
+    }
+
+    pub async fn connections(self, ctx: &DalContext) -> Vec<ExpectComponentOutputSocket> {
+        let component_input_socket = ComponentInputSocket {
+            component_id: self.0,
+            input_socket_id: self.1,
+            attribute_value_id: self.attribute_value(ctx).await.id(),
+        };
+        component_input_socket
+            .connections(ctx)
+            .await
+            .expect("get connections")
+            .into_iter()
+            .map(|(component_id, output_socket_id, _)| {
+                ExpectComponentOutputSocket(component_id, output_socket_id)
+            })
+            .collect()
     }
 
     pub async fn attribute_value(self, ctx: &DalContext) -> ExpectAttributeValue {
@@ -616,14 +679,14 @@ impl ExpectComponentInputSocket {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct ExpectComponentOutputSocket(ComponentId, OutputSocketId);
 
 impl ExpectComponentOutputSocket {
     pub fn component(self) -> ExpectComponent {
         ExpectComponent(self.0)
     }
-    pub fn prop(self) -> ExpectOutputSocket {
+    pub fn output_socket(self) -> ExpectOutputSocket {
         ExpectOutputSocket(self.1)
     }
 
