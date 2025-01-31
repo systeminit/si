@@ -850,7 +850,7 @@ impl<'a> ManagementOperator<'a> {
 
     async fn remove_connection(
         &mut self,
-        source_component_id: ComponentId,
+        component_id: ComponentId,
         connection: &ManagementConnection,
     ) -> ManagementResult<()> {
         let (
@@ -859,7 +859,7 @@ impl<'a> ManagementOperator<'a> {
             destination_component_id,
             destination_input_socket_id,
         ) = self
-            .prepare_for_connection(source_component_id, connection)
+            .prepare_for_connection(component_id, connection)
             .await?;
 
         Component::remove_connection(

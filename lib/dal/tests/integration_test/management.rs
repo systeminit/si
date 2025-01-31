@@ -4,19 +4,22 @@ use dal::{
     component::resource::ResourceData,
     diagram::{geometry::Geometry, view::View},
     management::{
-        prototype::{ManagementPrototype, ManagementPrototypeExecution},
+        prototype::{ManagementPrototype, ManagementPrototypeError, ManagementPrototypeExecution},
         ManagementFuncReturn, ManagementGeometry, ManagementOperator,
     },
     AttributeValue, Component, ComponentId, DalContext, SchemaId,
 };
 use dal_test::{
-    expected::{apply_change_set_to_base, ExpectView},
+    expected::{
+        self, apply_change_set_to_base, ExpectComponent, ExpectComponentInputSocket, ExpectView,
+    },
     helpers::ChangeSetTestHelpers,
 };
 use dal_test::{
     helpers::create_component_for_default_schema_name_in_default_view, test,
     SCHEMA_ID_SMALL_EVEN_LEGO,
 };
+use serde_json::json;
 use si_frontend_types::RawGeometry;
 use si_id::ViewId;
 use veritech_client::{ManagementFuncStatus, ResourceStatus};
@@ -43,6 +46,12 @@ async fn exec_mgmt_func(
     let mut execution_result = management_prototype
         .execute(ctx, component_id, view_id)
         .await
+        .map_err(|err| {
+            if let ManagementPrototypeError::FuncExecutionFailure(ref err) = err {
+                println!("Error: {}", err);
+            }
+            err
+        })
         .expect("should execute management prototype func");
 
     let result: ManagementFuncReturn = execution_result
@@ -53,6 +62,27 @@ async fn exec_mgmt_func(
         .expect("should be a valid management func return");
 
     (execution_result, result)
+}
+
+async fn exec_mgmt_func_and_operate(
+    ctx: &DalContext,
+    component_id: ComponentId,
+    prototype_name: &str,
+    view_id: Option<ViewId>,
+) {
+    let (execution_result, result) =
+        exec_mgmt_func(ctx, component_id, prototype_name, view_id).await;
+
+    assert_eq!(ManagementFuncStatus::Ok, result.status);
+
+    let operations = result.operations.expect("should have operations");
+
+    ManagementOperator::new(ctx, component_id, operations, execution_result, None)
+        .await
+        .expect("should create operator")
+        .operate()
+        .await
+        .expect("should operate");
 }
 
 #[test]
@@ -1189,4 +1219,207 @@ async fn remove_view_and_component_from_view(ctx: &DalContext) {
             .expect("get geometries by view for component");
         assert!(!geometries.is_empty());
     }
+}
+
+struct SmallOddLego {
+    component: ExpectComponent,
+    arity_one: ExpectComponentInputSocket,
+    one: ExpectComponentInputSocket,
+}
+
+impl SmallOddLego {
+    async fn create(ctx: &mut DalContext) -> Self {
+        let component = ExpectComponent::create(ctx, "small odd lego").await;
+        Self {
+            component,
+            arity_one: component.input_socket(ctx, "arity_one").await,
+            one: component.input_socket(ctx, "one").await,
+        }
+    }
+    async fn create_and_connect_to_inputs(
+        &self,
+        ctx: &mut DalContext,
+    ) -> ExpectComponentInputSocket {
+        exec_mgmt_func_and_operate(
+            ctx,
+            self.component.id(),
+            "Create and Connect to Inputs",
+            None,
+        )
+        .await;
+        ExpectComponent::find(ctx, "lego")
+            .await
+            .input_socket(ctx, "two")
+            .await
+    }
+
+    async fn connect_to_inputs(&self, ctx: &mut DalContext) {
+        exec_mgmt_func_and_operate(ctx, self.component.id(), "Connect to Inputs", None).await
+    }
+
+    async fn disconnect_from_inputs(&self, ctx: &mut DalContext) {
+        exec_mgmt_func_and_operate(ctx, self.component.id(), "Disconnect from Inputs", None).await
+    }
+
+    async fn get_input_values(&self, ctx: &mut DalContext) -> serde_json::Value {
+        exec_mgmt_func_and_operate(ctx, self.component.id(), "Get Input Values", None).await;
+        self.component
+            .prop(ctx, ["root", "domain", "test_result"])
+            .await
+            .view(ctx)
+            .await
+            .expect("No test_result value")
+    }
+}
+
+#[test]
+async fn create_connect_input_sockets(ctx: &mut DalContext) {
+    // Manager component
+    let manager = SmallOddLego::create(ctx).await;
+
+    // External component to connect to the manager
+    let external = ExpectComponent::create_named(ctx, "large even lego", "external").await;
+    let one = external.output_socket(ctx, "one").await;
+    let three = external.output_socket(ctx, "three").await;
+    let five = external.output_socket(ctx, "five").await;
+
+    // Create lego from inputs arity_one=one, two=[three,five]
+    one.connect(ctx, manager.arity_one).await;
+    three.connect(ctx, manager.one).await;
+    five.connect(ctx, manager.one).await;
+    let lego = manager.create_and_connect_to_inputs(ctx).await;
+    assert_eq!(lego.connections(ctx).await, vec![one, three, five]);
+}
+
+#[test]
+async fn update_connect_add_input_sockets(ctx: &mut DalContext) {
+    // Manager component
+    let manager = SmallOddLego::create(ctx).await;
+
+    // External component to connect to the manager
+    let external = ExpectComponent::create_named(ctx, "large even lego", "external").await;
+    let one = external.output_socket(ctx, "one").await;
+    let three = external.output_socket(ctx, "three").await;
+    let five = external.output_socket(ctx, "five").await;
+
+    // Create empty lego
+    let lego = manager.create_and_connect_to_inputs(ctx).await;
+    assert_eq!(lego.connections(ctx).await, vec![]);
+
+    // Connect lego to inputs arity_one=one, two=[three,five]
+    one.connect(ctx, manager.arity_one).await;
+    three.connect(ctx, manager.one).await;
+    five.connect(ctx, manager.one).await;
+    manager.connect_to_inputs(ctx).await;
+    assert_eq!(lego.connections(ctx).await, vec![one, three, five]);
+}
+
+#[test]
+async fn update_connect_remove_input_sockets(ctx: &mut DalContext) {
+    // Manager component
+    let manager = SmallOddLego::create(ctx).await;
+
+    // External component to connect to the manager
+    let external = ExpectComponent::create_named(ctx, "large even lego", "external").await;
+    let one = external.output_socket(ctx, "one").await;
+    let three = external.output_socket(ctx, "three").await;
+    let five = external.output_socket(ctx, "five").await;
+
+    // Create lego from inputs arity_one=one, two=[three,five]
+    one.connect(ctx, manager.arity_one).await;
+    three.connect(ctx, manager.one).await;
+    five.connect(ctx, manager.one).await;
+    let lego = manager.create_and_connect_to_inputs(ctx).await;
+    assert_eq!(lego.connections(ctx).await, vec![one, three, five]);
+
+    // Disconnect from all inputs
+    manager.disconnect_from_inputs(ctx).await;
+    assert_eq!(lego.connections(ctx).await, vec![]);
+}
+
+#[test]
+async fn connect_input_sockets_redundant(ctx: &mut DalContext) {
+    // Manager component
+    let manager = SmallOddLego::create(ctx).await;
+
+    // External component to connect to the manager
+    let external = ExpectComponent::create_named(ctx, "large even lego", "external").await;
+    let one = external.output_socket(ctx, "one").await;
+    let three = external.output_socket(ctx, "three").await;
+    let five = external.output_socket(ctx, "five").await;
+
+    // Create empty lego
+    let lego = manager.create_and_connect_to_inputs(ctx).await;
+    assert_eq!(lego.connections(ctx).await, vec![]);
+
+    // Connect all inputs to all sockets (including arity_one and one, which means we'll pass
+    // the same input twice and it should only connect once)
+    one.connect(ctx, manager.arity_one).await;
+    one.connect(ctx, manager.one).await;
+    three.connect(ctx, manager.one).await;
+    five.connect(ctx, manager.one).await;
+
+    // Disconnect from all inputs even though there are no inputs to disconnect from
+    manager.disconnect_from_inputs(ctx).await;
+    assert_eq!(lego.connections(ctx).await, vec![]);
+
+    // Connect to all inputs
+    manager.connect_to_inputs(ctx).await;
+    assert_eq!(lego.connections(ctx).await, vec![one, three, five]);
+
+    // Connect to all inputs again even though we've already connected to them all
+    manager.connect_to_inputs(ctx).await;
+    assert_eq!(lego.connections(ctx).await, vec![one, three, five]);
+}
+
+#[test]
+async fn get_input_socket_values(ctx: &mut DalContext) {
+    // Manager component
+    let manager = SmallOddLego::create(ctx).await;
+
+    // External component to connect to the manager
+    let external = ExpectComponent::create_named(ctx, "large even lego", "external").await;
+    let one = external.output_socket(ctx, "one").await;
+    let three = external.output_socket(ctx, "three").await;
+    let five = external.output_socket(ctx, "five").await;
+    external
+        .prop(ctx, ["root", "domain", "one"])
+        .await
+        .set(ctx, json!("one"))
+        .await;
+    external
+        .prop(ctx, ["root", "domain", "three"])
+        .await
+        .set(ctx, "three")
+        .await;
+    external
+        .prop(ctx, ["root", "domain", "five"])
+        .await
+        .set(ctx, "five")
+        .await;
+
+    // Create empty lego
+    manager.create_and_connect_to_inputs(ctx).await;
+    expected::commit_and_update_snapshot_to_visibility(ctx).await; // wait for dvu
+    assert_eq!(manager.get_input_values(ctx).await, json!({ "one": [] }));
+
+    // Connect all sockets
+    one.connect(ctx, manager.arity_one).await;
+    three.connect(ctx, manager.one).await;
+    five.connect(ctx, manager.one).await;
+    manager.connect_to_inputs(ctx).await;
+    expected::commit_and_update_snapshot_to_visibility(ctx).await; // wait for dvu
+    assert_eq!(
+        manager.get_input_values(ctx).await,
+        json!({ "arity_one": "one", "one": ["five", "three"] })
+    );
+
+    // Connect one socket redundantly
+    one.connect(ctx, manager.one).await;
+    manager.connect_to_inputs(ctx).await;
+    expected::commit_and_update_snapshot_to_visibility(ctx).await; // wait for dvu
+    assert_eq!(
+        manager.get_input_values(ctx).await,
+        json!({ "arity_one": "one", "one": ["five", "one", "three"] })
+    );
 }
