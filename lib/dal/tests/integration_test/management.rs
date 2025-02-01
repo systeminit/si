@@ -11,7 +11,8 @@ use dal::{
 };
 use dal_test::{
     expected::{
-        self, apply_change_set_to_base, ExpectComponent, ExpectComponentInputSocket, ExpectView,
+        self, apply_change_set_to_base, ExpectComponent, ExpectComponentInputSocket,
+        ExpectSchemaVariant, ExpectView,
     },
     helpers::ChangeSetTestHelpers,
 };
@@ -1421,5 +1422,76 @@ async fn get_input_socket_values(ctx: &mut DalContext) {
     assert_eq!(
         manager.get_input_values(ctx).await,
         json!({ "arity_one": "one", "one": ["five", "one", "three"] })
+    );
+}
+
+#[test]
+async fn upgrade_manager_variant(ctx: &mut DalContext) {
+    // Set up management schema
+    let original_variant = ExpectSchemaVariant::create_named(
+        ctx,
+        "createme",
+        r#"
+        function main() {
+            return new AssetBuilder().build();
+        }
+    "#,
+    )
+    .await;
+    expected::commit_and_update_snapshot_to_visibility(ctx).await;
+    let runme = original_variant
+        .create_management_func(
+            ctx,
+            &[original_variant.schema(ctx).await.id()],
+            r#"
+            function main(input) {
+                return {
+                    status: "ok",
+                    ops: {
+                        create: {
+                            created: { kind: "createme" }
+                        }
+                    }
+                }
+            }
+        "#,
+        )
+        .await;
+    expected::commit_and_update_snapshot_to_visibility(ctx).await;
+
+    // Create manager component and run management function to create managed component
+    let manager = original_variant.create_component_on_default_view(ctx).await;
+    manager.execute_management_func(ctx, runme).await;
+    let created = ExpectComponent::find(ctx, "created").await;
+    assert_eq!(created.schema_variant(ctx).await, original_variant);
+
+    // Check that the managed component is in the list
+    assert_eq!(
+        manager
+            .component(ctx)
+            .await
+            .get_managed(ctx)
+            .await
+            .expect("get_managed"),
+        vec![created.id()]
+    );
+
+    // Regenerate the schema variant and ensure both components got upgraded
+    expected::commit_and_update_snapshot_to_visibility(ctx).await;
+    let new_variant = original_variant.regenerate(ctx).await;
+    assert_ne!(new_variant, original_variant);
+    expected::commit_and_update_snapshot_to_visibility(ctx).await;
+    assert_eq!(manager.schema_variant(ctx).await, new_variant);
+    assert_eq!(created.schema_variant(ctx).await, new_variant);
+
+    // Check that the managed component is still in the list
+    assert_eq!(
+        manager
+            .component(ctx)
+            .await
+            .get_managed(ctx)
+            .await
+            .expect("get_managed"),
+        vec![created.id()]
     );
 }
