@@ -18,6 +18,7 @@ export type OnlyProperties = {
   createOnly: string[];
   readOnly: string[];
   writeOnly: string[];
+  primaryIdentifier: string[];
 };
 
 export function isExpandedPropSpec(prop: PropSpec): prop is ExpandedPropSpec {
@@ -37,6 +38,7 @@ export type ExpandedPropSpec =
       createOnly?: boolean;
       readOnly?: boolean;
       writeOnly?: boolean;
+      primaryIdentifier?: boolean;
       propPath: string[];
     };
   })
@@ -134,6 +136,7 @@ function createPropFromCfInner(
       createOnly: onlyProperties.createOnly.includes(name),
       readOnly: onlyProperties.readOnly.includes(name),
       writeOnly: onlyProperties.writeOnly.includes(name),
+      primaryIdentifier: onlyProperties.primaryIdentifier.includes(name),
       propPath,
     },
   };
@@ -329,6 +332,7 @@ export function createObjectProp(
       createOnly: false,
       readOnly: false,
       writeOnly: false,
+      primaryIdentifier: false,
       propPath: [...parentPath, name],
     },
   };
@@ -374,6 +378,7 @@ export function createScalarProp(
       createOnly: false,
       readOnly: false,
       writeOnly: false,
+      primaryIdentifier: false,
       propPath: [...parentPath, name],
     },
   };
@@ -381,14 +386,22 @@ export function createScalarProp(
   return prop;
 }
 
-function bfsPropTree(prop: PropSpec, callback: (prop: PropSpec) => unknown) {
-  const queue = [prop];
+export function bfsPropTree(
+  prop: PropSpec,
+  callback: (prop: PropSpec, parents: PropSpec[]) => unknown,
+  options?: { skipTypeProps: boolean },
+) {
+  const queue = [{ prop, parents: [] }];
 
   while (queue.length > 0) {
-    const thisProp = queue.pop();
-    if (!thisProp) break;
+    const queueItem = queue.pop();
+    if (!queueItem) break;
 
-    callback(thisProp);
+    callback(queueItem.prop, queueItem.parents);
+
+    const thisProp = queueItem.prop;
+    const parents = _.clone(queueItem.parents);
+    parents.unshift(thisProp);
 
     switch (thisProp.kind) {
       case "string":
@@ -398,15 +411,17 @@ function bfsPropTree(prop: PropSpec, callback: (prop: PropSpec) => unknown) {
         break;
       case "array":
       case "map":
-        queue.push(thisProp.typeProp);
+        if (options?.skipTypeProps !== true) {
+          queue.push({ prop: thisProp.typeProp, parents });
+        }
         break;
       case "object": {
         const entries: PropSpec[] = _.sortBy(thisProp.entries, [
           "name",
           "kind",
         ]);
-        entries.forEach((e) => {
-          queue.push(e);
+        entries.forEach((prop) => {
+          queue.push({ prop, parents });
         });
         break;
       }

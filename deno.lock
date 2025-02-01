@@ -47,6 +47,7 @@
     "npm:lodash@*": "4.17.21",
     "npm:lodash@^4.17.21": "4.17.21",
     "npm:node-fetch@2": "2.7.0",
+    "npm:pluralize@*": "8.0.0",
     "npm:proper-lockfile@*": "4.1.2",
     "npm:proper-lockfile@^4.1.2": "4.1.2",
     "npm:toml@3": "3.0.0",
@@ -1611,6 +1612,9 @@
         "mlly",
         "pathe"
       ]
+    },
+    "pluralize@8.0.0": {
+      "integrity": "sha512-Nc3IT5yHzflTfbjgqWcCPpo7DaKy4FnpB0l/zCAW0Tc7jxAiuqSxHasntB3D7887LSrA93kDJ9IXovxJYxyLCA=="
     },
     "postcss-load-config@6.0.1": {
       "integrity": "sha512-oPtTM4oerL+UXmx+93ytZVN82RrlY/wPUV8IeDxFrzIjXOLF1pN+EmKPLbubvKHT2HC20xXsCAH2Z+CKV6Oz/g==",
