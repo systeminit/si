@@ -50,4 +50,9 @@ pub trait ApprovalRequirementExt {
         &self,
         entity_id: EntityId,
     ) -> WorkspaceSnapshotGraphResult<Option<Vec<ApprovalRequirementDefinitionId>>>;
+
+    fn entity_id_for_approval_requirement(
+        &self,
+        approval_requirement_definition_id: ApprovalRequirementDefinitionId,
+    ) -> WorkspaceSnapshotGraphResult<EntityId>;
 }

@@ -36,6 +36,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{
+    layer_db_types::ApprovalRequirementDefinitionContentV1,
     workspace_snapshot::{
         graph::detector::Change, traits::approval_requirement::ApprovalRequirementExt,
     },
@@ -174,6 +175,36 @@ impl ApprovalRequirementDefinition {
         }
 
         Err(ApprovalRequirementError::EntityNotFound(entity_id))
+    }
+
+    pub fn assemble(
+        id: ApprovalRequirementDefinitionId,
+        content: ApprovalRequirementDefinitionContentV1,
+    ) -> Self {
+        Self {
+            id,
+            required_count: content.minimum,
+            approvers: content.approvers,
+        }
+    }
+    pub async fn get_by_id_or_error(
+        ctx: &DalContext,
+        id: ApprovalRequirementDefinitionId,
+    ) -> Result<Self> {
+        ctx.workspace_snapshot()?
+            .get_by_id_or_error(ctx, id)
+            .await
+            .map_err(Into::into)
+    }
+
+    pub async fn entity_id_for_approval_requirement_definition_id(
+        ctx: &DalContext,
+        id: ApprovalRequirementDefinitionId,
+    ) -> Result<EntityId> {
+        ctx.workspace_snapshot()?
+            .entity_id_for_approval_requirement_definition_id(id)
+            .await
+            .map_err(Into::into)
     }
 }
 

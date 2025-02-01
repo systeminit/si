@@ -69,10 +69,41 @@ pub trait ApprovalRequirementExt {
         ctx: &DalContext,
         entity_id: EntityId,
     ) -> WorkspaceSnapshotResult<Option<Vec<ApprovalRequirementDefinition>>>;
+
+    async fn entity_id_for_approval_requirement_definition_id(
+        &self,
+        id: ApprovalRequirementDefinitionId,
+    ) -> WorkspaceSnapshotResult<EntityId>;
+
+    async fn get_by_id_or_error(
+        &self,
+        ctx: &DalContext,
+        id: ApprovalRequirementDefinitionId,
+    ) -> WorkspaceSnapshotResult<ApprovalRequirementDefinition>;
 }
 
 #[async_trait]
 impl ApprovalRequirementExt for WorkspaceSnapshot {
+    async fn get_by_id_or_error(
+        &self,
+        ctx: &DalContext,
+        id: ApprovalRequirementDefinitionId,
+    ) -> WorkspaceSnapshotResult<ApprovalRequirementDefinition> {
+        let node_weight = self
+            .get_node_weight_by_id(id)
+            .await?
+            .get_approval_requirement_definition_node_weight()?;
+        let content: ApprovalRequirementDefinitionContent = ctx
+            .layer_db()
+            .cas()
+            .try_read_as(&node_weight.content_hash())
+            .await?
+            .ok_or(WorkspaceSnapshotError::MissingContentFromStore(id.into()))?;
+
+        // This should always expect the newest version since we migrate the world when we perform graph migrations.
+        let ApprovalRequirementDefinitionContent::V1(inner) = content;
+        Ok(ApprovalRequirementDefinition::assemble(id, inner))
+    }
     async fn new_definition(
         &self,
         ctx: &DalContext,
@@ -296,14 +327,22 @@ impl ApprovalRequirementExt for WorkspaceSnapshot {
                     definition_node_weight.id(),
                 ));
             };
-
-            results.push(ApprovalRequirementDefinition {
-                id: definition_node_weight.id().into(),
-                required_count: definition_content.minimum,
-                approvers: definition_content.approvers,
-            });
+            results.push(ApprovalRequirementDefinition::assemble(
+                approval_requirement_definition_id,
+                definition_content,
+            ));
         }
 
         Ok(Some(results))
+    }
+
+    async fn entity_id_for_approval_requirement_definition_id(
+        &self,
+        id: ApprovalRequirementDefinitionId,
+    ) -> WorkspaceSnapshotResult<EntityId> {
+        Ok(self
+            .working_copy()
+            .await
+            .entity_id_for_approval_requirement(id)?)
     }
 }
