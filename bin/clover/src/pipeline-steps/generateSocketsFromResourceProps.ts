@@ -3,7 +3,10 @@ import { SchemaVariantSpec } from "../bindings/SchemaVariantSpec.ts";
 import _ from "lodash";
 import { SocketSpec } from "../bindings/SocketSpec.ts";
 import { isExpandedPropSpec } from "../spec/props.ts";
-import { createOutputSocketFromProp } from "../spec/sockets.ts";
+import {
+  createOutputSocketFromProp,
+  setAnnotationOnSocket,
+} from "../spec/sockets.ts";
 
 export function generateOutputSocketsFromResourceProps(
   specs: PkgSpec[],
@@ -41,7 +44,16 @@ function createSocketsFromResource(variant: SchemaVariantSpec): SocketSpec[] {
     if (
       !["array", "object"].includes(prop.kind) && isExpandedPropSpec(prop)
     ) {
-      sockets.push(createOutputSocketFromProp(prop));
+      const socket = createOutputSocketFromProp(prop);
+      // if this socket is an arn, we want to make sure that all input sockets
+      // that might also be arns can take this value
+      if (socket.name.toLowerCase().endsWith("arn")) {
+        const token = prop.name.slice(0, -3);
+        if (token !== "") {
+          setAnnotationOnSocket(socket, { tokens: [token] });
+        }
+      }
+      sockets.push(socket);
     }
   }
   return sockets;

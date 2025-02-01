@@ -284,6 +284,16 @@ export async function loadCfDatabase(
           "AWS::EC2::SecurityGroupVpcAssociation",
           "AWS::EC2::Instance",
           "AWS::EC2::KeyPair",
+          "AWS::EC2::VPC",
+          "AWS::EC2::Subnet",
+          "AWS::EC2::Route",
+          "AWS::EC2::RouteTable",
+          "AWS::EC2::SubnetRouteTableAssociation",
+          "AWS::EC2::NatGateway",
+          "AWS::EC2::InternetGateway",
+          "AWS::EC2::EIP",
+          "AWS::EC2::EIPAssociation",
+          "AWS::EC2::VPCGatewayAttachment",
           "AWS::ElasticLoadBalancingV2::Listener",
           "AWS::ElasticLoadBalancingV2::ListenerRule",
           "AWS::ElasticLoadBalancingV2::TargetGroup",
@@ -295,6 +305,7 @@ export async function loadCfDatabase(
           "AWS::IAM::Role",
           "AWS::IAM::InstanceProfile",
           "AWS::IAM::RolePolicy",
+          "AWS::IAM::ManagedPolicy",
         ].includes(typeName)
       ) continue;
 

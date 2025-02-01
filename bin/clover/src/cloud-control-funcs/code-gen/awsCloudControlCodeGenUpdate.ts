@@ -54,13 +54,50 @@ async function main(component: Input): Promise<Output> {
     }
   }
 
+  const cleaned = removeEmpty(payload);
+
   const cloudControlPayload: CloudControlPayload = {
     TypeName: cloudControlType,
-    DesiredState: payload,
+    DesiredState: cleaned,
   };
 
   return {
     format: "json",
     code: JSON.stringify(cloudControlPayload, null, 2),
   };
+}
+
+function removeEmpty(obj: any): any {
+  if (Array.isArray(obj)) {
+    return obj
+      .filter((item) => {
+        if (item === null || item === undefined || item === "") return false;
+        if (Array.isArray(item) && item.length === 0) return false;
+        if (typeof item === "object" && Object.keys(item).length === 0) {
+          return false;
+        }
+        return true;
+      })
+      .map((item) =>
+        typeof item === "object" && item !== null ? removeEmpty(item) : item
+      );
+  }
+
+  return Object.fromEntries(
+    Object.entries(obj)
+      .filter(([_, value]) => {
+        if (value === null || value === undefined || value === "") return false;
+        if (Array.isArray(value) && value.length === 0) return false;
+        if (typeof value === "object" && Object.keys(value).length === 0) {
+          return false;
+        }
+        return true;
+      })
+      .map(([key, value]) => [
+        key,
+        typeof value === "object" && value !== null
+          ? removeEmpty(value)
+          : value,
+      ]),
+  );
 }
