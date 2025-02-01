@@ -12,7 +12,7 @@ const {
   createHash,
 } = await import("node:crypto");
 
-const CREATE_ONLY_PROP_LABEL = "si_create_only_prop";
+export const CREATE_ONLY_PROP_LABEL = "si_create_only_prop";
 
 export type OnlyProperties = {
   createOnly: string[];
@@ -32,6 +32,7 @@ export function isExpandedPropSpec(prop: PropSpec): prop is ExpandedPropSpec {
 export type ExpandedPropSpec =
   & ({
     data: PropSpecData;
+    enum?: string[] | number[];
     metadata: {
       createOnly?: boolean;
       readOnly?: boolean;
@@ -118,10 +119,10 @@ function createPropFromCfInner(
     funcUniqueId: null,
     inputs: [],
     widgetKind: null,
-    widgetOptions: null,
+    widgetOptions: [],
     hidden: false,
     docLink: null,
-    documentation: null,
+    documentation: cfProp.description ?? null,
   };
 
   propPath.push(name);
@@ -157,7 +158,17 @@ function createPropFromCfInner(
   ) {
     const prop = partialProp as Extract<ExpandedPropSpec, { kind: "number" }>;
     prop.kind = "number";
-    prop.data!.widgetKind = "Text";
+    if (normalizedCfData.enum) {
+      prop.data!.widgetKind = "ComboBox";
+      for (const val of normalizedCfData.enum) {
+        prop.data!.widgetOptions.push({
+          label: val,
+          value: val,
+        });
+      }
+    } else {
+      prop.data!.widgetKind = "Text";
+    }
 
     return prop;
   } else if (normalizedCfData.type === "boolean") {
@@ -169,7 +180,17 @@ function createPropFromCfInner(
   } else if (normalizedCfData.type === "string") {
     const prop = partialProp as Extract<ExpandedPropSpec, { kind: "string" }>;
     prop.kind = "string";
-    prop.data!.widgetKind = "Text";
+    if (normalizedCfData.enum) {
+      prop.data!.widgetKind = "ComboBox";
+      for (const val of normalizedCfData.enum) {
+        prop.data!.widgetOptions.push({
+          label: val,
+          value: val,
+        });
+      }
+    } else {
+      prop.data!.widgetKind = "Text";
+    }
 
     return prop;
   } else if (normalizedCfData.type === "array") {
@@ -267,10 +288,10 @@ function createPropFromCfInner(
 }
 
 function setCreateOnlyProp(data: PropSpecData) {
-  data.widgetOptions = [{
+  data.widgetOptions.push({
     label: CREATE_ONLY_PROP_LABEL,
     value: "true",
-  }];
+  });
 }
 
 export type DefaultPropType = "domain" | "secrets" | "resource_value";
@@ -292,7 +313,7 @@ export function createObjectProp(
     funcUniqueId: null,
     inputs: [],
     widgetKind: "Header",
-    widgetOptions: null,
+    widgetOptions: [],
     hidden: null,
     docLink: null,
     documentation: null,

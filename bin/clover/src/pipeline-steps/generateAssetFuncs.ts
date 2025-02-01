@@ -7,7 +7,7 @@ import { SchemaVariantSpec } from "../bindings/SchemaVariantSpec.ts";
 import _ from "lodash";
 import { PropSpec } from "../bindings/PropSpec.ts";
 import { strippedBase64 } from "../spec/funcs.ts";
-import { isExpandedPropSpec } from "../spec/props.ts";
+import { CREATE_ONLY_PROP_LABEL, isExpandedPropSpec } from "../spec/props.ts";
 
 export function generateAssetFuncs(specs: PkgSpec[]): PkgSpec[] {
   const newSpecs = [] as PkgSpec[];
@@ -240,6 +240,7 @@ function generatePropBuilderString(
             prop.data?.widgetKind,
             is_create_only,
             indent_level,
+            prop.data?.widgetOptions,
           )
         }` +
         `${indent(indent_level)}.build()`;
@@ -250,17 +251,32 @@ function generateWidgetString(
   widgetKind: string | undefined | null,
   create_only: boolean,
   indentLevel: number,
+  options?: { label: string; value: string }[],
 ): string {
   if (!widgetKind) {
     console.log("Unable to generate widget for prop!");
     return "";
   }
+
+  const kind = widgetKind === "ComboBox"
+    ? "comboBox"
+    : widgetKind.toLowerCase();
+
   let widgetStr =
     `${indent(indentLevel)}.setWidget(new PropWidgetDefinitionBuilder()\n` +
-    `${indent(indentLevel + 1)}.setKind("${widgetKind.toLowerCase()}")`;
+    `${indent(indentLevel + 1)}.setKind("${kind}")`;
 
   if (create_only) {
     widgetStr += `\n${indent(indentLevel + 1)}.setCreateOnly()`;
+  }
+
+  if (options) {
+    for (const option of options) {
+      if (option.label === CREATE_ONLY_PROP_LABEL) continue;
+      widgetStr += `\n${
+        indent(indentLevel + 1)
+      }.addOption("${option.label}", "${option.value}")`;
+    }
   }
 
   widgetStr += `\n${indent(indentLevel + 1)}.build())\n`;

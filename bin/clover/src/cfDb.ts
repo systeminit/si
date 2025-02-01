@@ -30,13 +30,14 @@ type StringPair =
 export type CfProperty =
   & ({
     "type":
-      | "integer"
-      | "number"
       | "boolean"
       | StringPair;
   } | {
     "type": "string";
     "enum"?: string[];
+  } | {
+    "type": "number" | "integer";
+    "enum"?: number[];
   } | {
     "type": "array";
     "items": CfProperty;
