@@ -4,8 +4,13 @@
 
 use crate::helpers::ChangeSetTestHelpers;
 use dal::component::socket::ComponentInputSocket;
-use dal::diagram::geometry::RawGeometry;
+use dal::diagram::geometry::{Geometry, RawGeometry};
 use dal::diagram::view::{View, ViewId};
+use dal::func::authoring::FuncAuthoringClient;
+use dal::func::binding::management::ManagementBinding;
+use dal::management::prototype::{ManagementPrototype, ManagementPrototypeError};
+use dal::management::{ManagementFuncReturn, ManagementOperator};
+use dal::FuncId;
 use dal::{
     self,
     prop::{Prop, PropPath},
@@ -17,6 +22,8 @@ use dal::{
 };
 use derive_more::{AsMut, AsRef, Deref, From, Into};
 use serde_json::Value;
+use si_id::ManagementPrototypeId;
+use veritech_client::ManagementFuncStatus;
 
 ///
 /// Things that you can pass as prop paths / ids
@@ -259,6 +266,43 @@ impl ExpectSchema {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Deref, AsRef, From, Into)]
+pub struct ExpectFunc(pub FuncId);
+
+impl From<dal::Func> for ExpectFunc {
+    fn from(func: dal::Func) -> Self {
+        ExpectFunc(func.id)
+    }
+}
+
+impl ExpectFunc {
+    pub fn id(self) -> FuncId {
+        self.0
+    }
+
+    pub async fn update_code(self, ctx: &DalContext, code: impl Into<String>) {
+        FuncAuthoringClient::save_code(ctx, self.id(), code.into())
+            .await
+            .expect("update code")
+    }
+
+    async fn management_prototype_id(self, ctx: &DalContext) -> ManagementPrototypeId {
+        let mut prototype_ids = ManagementPrototype::list_ids_for_func_id(ctx, self.id())
+            .await
+            .expect("list management prototypes");
+        let prototype_id = prototype_ids.pop().expect("management prototype exists");
+        assert!(prototype_ids.is_empty());
+        prototype_id
+    }
+
+    pub async fn update_managed_schemas(self, ctx: &DalContext, schemas: impl Into<Vec<SchemaId>>) {
+        let prototype_id = self.management_prototype_id(ctx).await;
+        ManagementBinding::update_management_binding(ctx, prototype_id, Some(schemas.into()))
+            .await
+            .expect("update management binding");
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Deref, AsRef, From, Into)]
 pub struct ExpectSchemaVariant(pub SchemaVariantId);
 
 impl From<SchemaVariant> for ExpectSchemaVariant {
@@ -270,6 +314,76 @@ impl From<SchemaVariant> for ExpectSchemaVariant {
 impl ExpectSchemaVariant {
     pub fn id(self) -> SchemaVariantId {
         self.0
+    }
+
+    pub async fn create(ctx: &DalContext, asset_func: impl Into<String>) -> ExpectSchemaVariant {
+        Self::create_named(ctx, generate_fake_name(), asset_func).await
+    }
+
+    pub async fn create_named(
+        ctx: &DalContext,
+        name: impl Into<String>,
+        asset_func: impl Into<String>,
+    ) -> ExpectSchemaVariant {
+        // Create an asset with a corresponding asset func. After that, commit.
+        let variant: ExpectSchemaVariant = VariantAuthoringClient::create_schema_and_variant(
+            ctx, name, None, None, "test", "FFFFFF",
+        )
+        .await
+        .expect("unable to create schema and variant")
+        .id
+        .into();
+        variant.update_asset_func(ctx, asset_func).await;
+        variant
+    }
+
+    pub async fn create_management_func(
+        self,
+        ctx: &DalContext,
+        schemas: impl Into<Vec<SchemaId>>,
+        code: impl Into<String>,
+    ) -> ExpectFunc {
+        let func: ExpectFunc =
+            FuncAuthoringClient::create_new_management_func(ctx, None, self.id())
+                .await
+                .expect("create management func")
+                .into();
+        func.update_code(ctx, code).await;
+        func.update_managed_schemas(ctx, schemas).await;
+        func
+    }
+
+    pub async fn update_asset_func(self, ctx: &DalContext, asset_func: impl Into<String>) {
+        let schema = self.schema(ctx).await.schema(ctx).await;
+        let variant = self.schema_variant(ctx).await;
+        VariantAuthoringClient::save_variant_content(
+            ctx,
+            self.id(),
+            schema.name,
+            variant.display_name(),
+            variant.category(),
+            variant.description(),
+            variant.link(),
+            variant.color(),
+            variant.component_type(),
+            Some(asset_func.into()),
+        )
+        .await
+        .expect("update asset func")
+    }
+
+    pub async fn regenerate(self, ctx: &DalContext) -> ExpectSchemaVariant {
+        VariantAuthoringClient::regenerate_variant(ctx, self.0)
+            .await
+            .expect("regenerate variant")
+            .into()
+    }
+
+    pub async fn schema(self, ctx: &DalContext) -> ExpectSchema {
+        SchemaVariant::schema_id_for_schema_variant_id(ctx, self.0)
+            .await
+            .expect("get schema by id")
+            .into()
     }
 
     pub async fn schema_variant(self, ctx: &DalContext) -> SchemaVariant {
@@ -514,6 +628,52 @@ impl ExpectComponent {
         dal::component::frame::Frame::upsert_parent(ctx, self.0, parent_id.into())
             .await
             .expect("could not upsert parent");
+    }
+
+    async fn view_id(self, ctx: &DalContext) -> ViewId {
+        let mut geometry_ids = Geometry::list_ids_by_component(ctx, self.id())
+            .await
+            .expect("list_ids_by_component");
+        let geometry_id = geometry_ids.pop().expect("at least one view for component");
+        assert!(geometry_ids.is_empty());
+        Geometry::get_view_id_by_id(ctx, geometry_id)
+            .await
+            .expect("get view id")
+    }
+
+    pub async fn execute_management_func(self, ctx: &DalContext, func: ExpectFunc) {
+        let prototype_id = func.management_prototype_id(ctx).await;
+        let management_prototype = ManagementPrototype::get_by_id(ctx, prototype_id)
+            .await
+            .expect("get management prototype by func id")
+            .expect("management prototype exists");
+        let mut execution_result = management_prototype
+            .execute(ctx, self.id(), Some(self.view_id(ctx).await))
+            .await
+            .map_err(|err| {
+                if let ManagementPrototypeError::FuncExecutionFailure(ref err) = err {
+                    println!("Error: {}", err);
+                }
+                err
+            })
+            .expect("should execute management prototype func");
+        let result: ManagementFuncReturn = execution_result
+            .result
+            .take()
+            .expect("should have a result success")
+            .try_into()
+            .expect("should be a valid management func return");
+
+        assert_eq!(ManagementFuncStatus::Ok, result.status);
+
+        let operations = result.operations.expect("should have operations");
+
+        ManagementOperator::new(ctx, self.id(), operations, execution_result, None)
+            .await
+            .expect("should create operator")
+            .operate()
+            .await
+            .expect("should operate");
     }
 }
 

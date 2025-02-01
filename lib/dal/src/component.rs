@@ -2965,6 +2965,8 @@ impl Component {
         let original_component_id = self.id();
         let original_component_lineage_id = original_component_node_weight.lineage_id();
 
+        let original_managed = original_component.get_managed(ctx).await?;
+        let original_managers = original_component.managers(ctx).await?;
         let original_incoming_connections = original_component.incoming_connections(ctx).await?;
         let original_outgoing_connections = original_component.outgoing_connections(ctx).await?;
 
@@ -3026,6 +3028,13 @@ impl Component {
         }
 
         // Remove old component connections
+        for &original_managed_id in &original_managed {
+            Component::unmanage_component(ctx, original_component_id, original_managed_id).await?;
+        }
+        for &original_manager_id in &original_managers {
+            Component::unmanage_component(ctx, original_manager_id, original_component_id).await?;
+        }
+
         for incoming in &original_incoming_connections {
             Component::remove_connection(
                 ctx,
@@ -3131,6 +3140,14 @@ impl Component {
         }
 
         // Restore connections on new component
+        for original_managed_id in original_managed {
+            Component::manage_component(ctx, finalized_new_component.id(), original_managed_id)
+                .await?;
+        }
+        for original_manager_id in original_managers {
+            Component::manage_component(ctx, original_manager_id, finalized_new_component.id())
+                .await?;
+        }
         for incoming in &original_incoming_connections {
             let socket = InputSocket::get_by_id(ctx, incoming.to_input_socket_id).await?;
             if let Some(socket) =
