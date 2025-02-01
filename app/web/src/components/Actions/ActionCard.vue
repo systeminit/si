@@ -4,7 +4,7 @@
       clsx(
         'flex flex-row items-center text-sm relative p-2xs min-w-0 w-full border border-transparent',
         !props.noInteraction
-          ? 'cursor-pointer hover:border-action-500 dark:hover:border-action-300'
+          ? 'cursor-pointer hover:border-action-500 dark:hover:border-action-300 group/actioncard'
           : '',
         selected
           ? 'dark:bg-action-900 bg-action-100 border-action-500 dark:border-action-300'
@@ -78,8 +78,12 @@
         <span
           :class="
             clsx(
-              'text-neutral-500 dark:text-neutral-400',
-              'dark:text-action-300 text-action-500',
+              themeClasses('text-neutral-700', 'text-neutral-200'),
+              !noInteraction &&
+                themeClasses(
+                  'group-hover/actioncard:text-action-500',
+                  'group-hover/actioncard:text-action-300',
+                ),
             )
           "
         >
