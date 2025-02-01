@@ -1,6 +1,7 @@
 import { PkgSpec } from "../bindings/PkgSpec.ts";
 import _ from "npm:lodash";
 import {
+  ConnectionAnnotation,
   createInputSocketFromProp,
   propHasSocket,
   propPathToString,
@@ -43,6 +44,18 @@ export function createInputSocketsBasedOnOutputSockets(
     for (const socket of schemaVariant.sockets) {
       if (socket.data?.kind === "output") {
         foundOutputSockets.add(socket.name);
+
+        // add annotations as we may generate relavant output socket annotations
+        // that match props
+        const existingAnnotations = JSON.parse(
+          socket.data?.connectionAnnotations,
+        ) as ConnectionAnnotation[];
+
+        for (const annotations of existingAnnotations) {
+          for (const annotation of annotations.tokens) {
+            foundOutputSockets.add(annotation);
+          }
+        }
       }
     }
 
@@ -106,7 +119,24 @@ export function createInputSocketsBasedOnOutputSockets(
       }
     }
 
-    // create input sockets for all arrays of strings whose props name matches
+    // Create sockets for all Arns
+    // TODO: we can be smarter about this, but this covers off on every case of
+    // wanting to connecting something like "TaskArn" or "Arn" -> "TaskRoleArn"
+    for (const prop of domain.entries) {
+      if (prop.name.toLowerCase().endsWith("arn")) {
+        let found = false;
+        for (const socket of schemaVariant.sockets) {
+          if (socket.name == prop.name) found = true;
+        }
+        if (!found) {
+          const socket = createInputSocketFromProp(prop as ExpandedPropSpec);
+          setAnnotationOnSocket(socket, { tokens: ["Arn"] });
+          schemaVariant.sockets.push(socket);
+        }
+      }
+    }
+
+    // create input sockets for all strings and arrays of strings whose props name matches
     // the name of a component that exists
     bfsPropTree(domain, (prop) => {
       if (

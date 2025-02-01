@@ -35,10 +35,14 @@ export function createInputSocketFromProp(
     arity,
     extraConnectionAnnotations,
   );
-  if (socket.data) {
+  if (prop.kind === "array" && socket.data) {
+    prop.data.inputs = [attrFuncInputSpecFromSocket(socket, "value")];
+    prop.data.funcUniqueId = getSiFuncId("si:normalizeToArray");
+  } else {
     prop.data.inputs = [attrFuncInputSpecFromSocket(socket)];
     prop.data.funcUniqueId = getSiFuncId("si:identity");
   }
+
   return socket;
 }
 
@@ -104,11 +108,12 @@ export function propPathToString(array: string[]): string {
 
 export function attrFuncInputSpecFromProp(
   prop: ExpandedPropSpec,
+  name: string = "identity",
 ): AttrFuncInputSpec {
   const prop_path = propPathToString(prop.metadata.propPath);
   const attr: AttrFuncInputSpec = {
     kind: "prop",
-    name: "identity",
+    name,
     prop_path,
     unique_id: ulid(),
     deleted: false,
@@ -119,7 +124,7 @@ export function attrFuncInputSpecFromProp(
 
 export function attrFuncInputSpecFromSocket(
   socket: SocketSpec,
-  name = "identity",
+  name: string = "identity",
 ): AttrFuncInputSpec {
   const attr: AttrFuncInputSpec = {
     kind: "inputSocket",

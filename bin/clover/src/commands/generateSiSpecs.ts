@@ -63,7 +63,7 @@ export async function generateSiSpecs() {
   specs = createInputSocketsBasedOnOutputSockets(specs);
   specs = generateAssetFuncs(specs);
   specs = updateSchemaIdsForExistingSpecs(existing_specs, specs);
-  specs = addSignatureToCategoryName(existing_specs, specs);
+  specs = addSignatureToCategoryName(specs);
 
   // WRITE OUTS SPECS
   await emptyDirectory(SI_SPEC_DIR);
