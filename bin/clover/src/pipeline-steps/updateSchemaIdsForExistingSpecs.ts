@@ -1,6 +1,7 @@
 import _logger from "../logger.ts";
 import { PkgSpec } from "../bindings/PkgSpec.ts";
 import _ from "npm:lodash";
+const logger = _logger.ns("updateExisting").seal();
 
 export function updateSchemaIdsForExistingSpecs(
   existing_specs: Record<string, string>,
@@ -20,6 +21,7 @@ export function updateSchemaIdsForExistingSpecs(
 
     const schema_id = existing_specs[spec.name];
     if (schema_id) {
+      logger.debug(`Found existing spec ${spec.name}, updating schema id`);
       spec.schemas[0].uniqueId = schema_id;
     }
     newSpecs.push(spec);
