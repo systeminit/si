@@ -37,10 +37,10 @@
 
   <!-- Middle Area - ModelingDiagram or InsetApprovalModal -->
   <div
-    v-if="changeSetsStore.selectedChangeSet?.status !== ChangeSetStatus.Open"
+    v-if="showInsetModal"
     :class="
       clsx(
-        'grow flex flew-row items-center justify-center',
+        'grow flex flew-row items-center justify-center p-xs',
         themeClasses('bg-shade-0', 'bg-neutral-800'),
       )
     "
@@ -173,6 +173,10 @@ const statusStore = useStatusStore();
 const funcStore = useFuncStore();
 const featureFlagsStore = useFeatureFlagsStore();
 const authStore = useAuthStore();
+
+const showInsetModal = computed(
+  () => changeSetsStore.selectedChangeSet?.status !== ChangeSetStatus.Open,
+);
 
 const actionsAreRunning = computed(
   () =>

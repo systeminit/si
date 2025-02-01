@@ -49,8 +49,10 @@ import { useChangeSetsStore } from "@/store/change_sets.store";
 import { useAuthStore } from "@/store/auth.store";
 import ApprovalFlowCancelled from "@/components/toasts/ApprovalFlowCancelled.vue";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
+import { usePresenceStore } from "@/store/presence.store";
 import ActionsList from "./Actions/ActionsList.vue";
 
+const presenceStore = usePresenceStore();
 const changeSetsStore = useChangeSetsStore();
 const authStore = useAuthStore();
 const featureFlagsStore = useFeatureFlagsStore();
@@ -83,6 +85,16 @@ function applyButtonHandler() {
     }
   } else {
     changeSetsStore.REQUEST_CHANGE_SET_APPROVAL();
+
+    // TODO(nick): we should remove this in favor of only the WsEvent fetching. It appears that
+    // requesting the approval itself is insufficient for getting the latest approval status at
+    // the time of writing and the reason appears to be that the change set is "open" by the
+    // time the inset modal opens. Fortunately, this will work since we are the requester.
+    if (changeSet.value) {
+      changeSetsStore.FETCH_APPROVAL_STATUS(changeSet.value.id);
+    }
+
+    presenceStore.leftDrawerOpen = false; // close the left draw for the InsetModal
     closeModalHandler();
   }
 }

@@ -49,8 +49,8 @@ export const useAuthStore = () => {
       tokens: {} as Record<string, string>,
       userPk: null as string | null,
 
-      // TODO: these maybe should live in another module related to the user/org/groups/etc
       user: null as User | null,
+      // TODO - Users will not be in this list if they have NEVER logged into the workspace
       workspaceUsers: {} as Record<string, WorkspaceUser>,
     }),
     getters: {

@@ -1,17 +1,37 @@
 <template>
-  <div ref="divRef" v-tooltip="tooltip" class="truncate">
-    <slot />
+  <div
+    ref="divRef"
+    v-tooltip="tooltip"
+    :class="
+      clsx(
+        !expanded && 'truncate',
+        expandOnClick && tooltip.content && 'cursor-pointer',
+      )
+    "
+    @click="toggleExpand"
+  >
+    <template v-if="expandableStringArray">
+      <template v-if="expanded">
+        <div v-for="s in expandableStringArray" :key="s">{{ s }}</div>
+      </template>
+      <template v-else>{{ expandableStringArray.join(", ") }}</template>
+    </template>
+    <slot v-else />
   </div>
 </template>
 
 <script lang="ts" setup>
+import clsx from "clsx";
 import { ref, computed } from "vue";
 
 const props = defineProps({
   hasParentTruncateWithTooltip: { type: Boolean },
   showTooltip: { type: Boolean },
+  expandOnClick: { type: Boolean },
+  expandableStringArray: { type: Array<string> },
 });
 
+const expanded = ref(false);
 const divRef = ref<HTMLElement>();
 
 const tooltipActive = computed(() => {
@@ -27,6 +47,11 @@ const tooltip = computed(() => {
     (props.showTooltip || divRef.value.clientWidth < divRef.value.scrollWidth)
   ) {
     if (!props.hasParentTruncateWithTooltip) {
+      if (props.expandableStringArray) {
+        return {
+          content: expanded.value ? "Click to collapse" : "Click to expand",
+        };
+      }
       return {
         content: divRef.value.innerText,
       };
@@ -34,6 +59,11 @@ const tooltip = computed(() => {
   }
   return {};
 });
+
+const toggleExpand = () => {
+  if (!props.expandOnClick || !tooltip.value.content) return;
+  else expanded.value = !expanded.value;
+};
 
 defineExpose({ tooltipActive });
 </script>
