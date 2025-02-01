@@ -1,5 +1,6 @@
 use clap::CommandFactory;
 use indicatif::{ProgressBar, ProgressStyle};
+use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -7,7 +8,7 @@ use ulid::Ulid;
 
 use clap::{Parser, Subcommand};
 use color_eyre::Result;
-use module_index_client::{LatestModuleResponse, ModuleIndexClient};
+use module_index_client::{ModuleDetailsResponse, ModuleIndexClient};
 use si_pkg::{PkgSpec, SiPkg};
 use url::Url;
 
@@ -32,6 +33,7 @@ enum Commands {
     UploadAllSpecs(UploadAllSpecsArgs),
     UploadSpec(UploadSpecArgs),
     WriteAllSpecs(WriteAllSpecsArgs),
+    WriteExistingModulesSpec(WriteExistingModulesSpecArgs),
     WriteSpec(WriteSpecArgs),
 }
 
@@ -46,6 +48,13 @@ struct UploadAllSpecsArgs {
 struct UploadSpecArgs {
     #[arg(long, short = 't', required = true)]
     target: PathBuf,
+}
+
+#[derive(clap::Args, Debug)]
+#[command(about = "Get all built-ins an write out a hashmap with their name and schema id")]
+struct WriteExistingModulesSpecArgs {
+    #[arg(long, short = 'o', required = true)]
+    out: PathBuf,
 }
 
 #[derive(clap::Args, Debug)]
@@ -85,6 +94,9 @@ async fn main() -> Result<()> {
             )
             .await?
         }
+        Some(Commands::WriteExistingModulesSpec(args)) => {
+            write_existing_modules_spec(client, args.out).await?
+        }
         Some(Commands::WriteAllSpecs(args)) => {
             write_all_specs(client, args.out.to_path_buf()).await?
         }
@@ -100,6 +112,26 @@ async fn main() -> Result<()> {
         }
     }
 
+    Ok(())
+}
+
+async fn write_existing_modules_spec(client: ModuleIndexClient, out: PathBuf) -> Result<()> {
+    let modules = list_specs(client.clone()).await?;
+    let mut entries: HashMap<String, String> = HashMap::new();
+
+    for module in modules {
+        if let Some(schema_id) = module.schema_id() {
+            entries.insert(module.name, schema_id.to_string());
+        }
+    }
+    let json_string = serde_json::to_string_pretty(&entries)?;
+    fs::write(Path::new(&out), json_string)?;
+    println!(
+        "Wrote existing modules spec to {}",
+        out.file_name()
+            .expect("unable to get filename of file we just wrote")
+            .to_string_lossy()
+    );
     Ok(())
 }
 
@@ -162,7 +194,7 @@ async fn write_spec(client: ModuleIndexClient, module_id: String, out: PathBuf) 
 async fn upload_pkg_spec(
     client: ModuleIndexClient,
     spec: PathBuf,
-    existing_modules: Vec<LatestModuleResponse>,
+    existing_modules: Vec<ModuleDetailsResponse>,
 ) -> Result<()> {
     let pkg = json_to_pkg(spec)?;
     let schema = pkg.schemas()?[0].clone();
@@ -258,9 +290,9 @@ async fn upload_module(client: ModuleIndexClient, pkg: SiPkg) -> Result<Ulid> {
     Ok(Ulid::from_string(&module.id)?)
 }
 
-async fn list_specs(client: ModuleIndexClient) -> Result<Vec<LatestModuleResponse>> {
+async fn list_specs(client: ModuleIndexClient) -> Result<Vec<ModuleDetailsResponse>> {
     Ok(client
-        .list_latest_modules()
+        .list_builtins()
         .await?
         .modules
         .into_iter()
@@ -269,7 +301,7 @@ async fn list_specs(client: ModuleIndexClient) -> Result<Vec<LatestModuleRespons
                 .as_ref()
                 .is_some_and(|n| n == CLOVER_DEFAULT_CREATOR)
         })
-        .collect::<Vec<LatestModuleResponse>>())
+        .collect::<Vec<ModuleDetailsResponse>>())
 }
 
 fn setup_progress_bar(length: u64) -> Arc<ProgressBar> {
