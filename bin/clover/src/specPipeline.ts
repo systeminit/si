@@ -32,6 +32,7 @@ export function pkgSpecFromCf(src: CfSchema): PkgSpec {
     createOnly: normalizeOnlyProperties(src.createOnlyProperties),
     readOnly: normalizeOnlyProperties(src.readOnlyProperties),
     writeOnly: normalizeOnlyProperties(src.writeOnlyProperties),
+    primaryIdentifier: normalizeOnlyProperties(src.primaryIdentifier),
   };
 
   const domain: PropSpec = createDomainFromSrc(src, onlyProperties);

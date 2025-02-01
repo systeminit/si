@@ -5,6 +5,8 @@ import { SocketSpecArity } from "../bindings/SocketSpecArity.ts";
 import { SocketSpecKind } from "../bindings/SocketSpecKind.ts";
 import { ExpandedPropSpec } from "./props.ts";
 import { getSiFuncId } from "./siFuncs.ts";
+import { PropSpec } from "../bindings/PropSpec.ts";
+import _ from "npm:lodash";
 
 export const SI_SEPARATOR = "\u{b}";
 
@@ -20,11 +22,19 @@ export function createOutputSocketFromProp(
   return socket;
 }
 
+export type ConnectionAnnotation = { tokens: string[] };
+
 export function createInputSocketFromProp(
   prop: ExpandedPropSpec,
   arity: SocketSpecArity = "many",
+  extraConnectionAnnotations?: ConnectionAnnotation[],
 ): SocketSpec {
-  const socket = createSocket(prop.name, "input", arity);
+  const socket = createSocket(
+    prop.name,
+    "input",
+    arity,
+    extraConnectionAnnotations,
+  );
   if (socket.data) {
     prop.data.inputs = [attrFuncInputSpecFromSocket(socket)];
     prop.data.funcUniqueId = getSiFuncId("si:identity");
@@ -32,10 +42,37 @@ export function createInputSocketFromProp(
   return socket;
 }
 
+export function setAnnotationOnSocket(
+  socket: SocketSpec,
+  annotation: ConnectionAnnotation,
+) {
+  const existingAnnotations = JSON.parse(
+    socket.data?.connectionAnnotations,
+  ) as ConnectionAnnotation[];
+  if (!existingAnnotations?.length) {
+    throw new Error(`Bad connection annotations on ${socket.name}`);
+  }
+
+  let exists = false;
+  for (const a of existingAnnotations) {
+    if (_.isEqual(a, annotation)) {
+      exists = true;
+      break;
+    }
+  }
+
+  if (!exists) {
+    existingAnnotations.push(annotation);
+
+    socket.data.connectionAnnotations = JSON.stringify(existingAnnotations);
+  }
+}
+
 export function createSocket(
   name: string,
   kind: SocketSpecKind,
   arity: SocketSpecArity = "many",
+  extraConnectionAnnotations: ConnectionAnnotation[] = [],
 ): SocketSpec {
   const socketId = ulid();
 
@@ -43,7 +80,10 @@ export function createSocket(
     funcUniqueId: null,
     kind,
     name,
-    connectionAnnotations: JSON.stringify([{ "tokens": [name] }]),
+    connectionAnnotations: JSON.stringify([
+      { "tokens": [name] },
+      ...extraConnectionAnnotations,
+    ]),
     arity,
     uiHidden: false,
   };
@@ -58,10 +98,14 @@ export function createSocket(
   return socket;
 }
 
+export function propPathToString(array: string[]): string {
+  return array.join(SI_SEPARATOR);
+}
+
 export function attrFuncInputSpecFromProp(
   prop: ExpandedPropSpec,
 ): AttrFuncInputSpec {
-  const prop_path = prop.metadata.propPath.join(SI_SEPARATOR);
+  const prop_path = propPathToString(prop.metadata.propPath);
   const attr: AttrFuncInputSpec = {
     kind: "prop",
     name: "identity",
@@ -86,4 +130,10 @@ export function attrFuncInputSpecFromSocket(
   };
 
   return attr;
+}
+
+export function propHasSocket(prop: PropSpec): boolean {
+  return prop.data.inputs.find((i: AttrFuncInputSpec) =>
+    i.kind === "inputSocket"
+  ) !== undefined;
 }

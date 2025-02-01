@@ -203,7 +203,7 @@ export function generateSubAssets(incomingSpecs: PkgSpec[]): PkgSpec[] {
       finalName = `${finalAwsCategory} ${finalObjName}`;
     } else {
       finalName = `AWS ${finalObjName}`;
-      finalSiCategory = "AWS Structural Assets";
+      finalSiCategory = "AWS";
     }
 
     const schema = spec.schemas[0];
