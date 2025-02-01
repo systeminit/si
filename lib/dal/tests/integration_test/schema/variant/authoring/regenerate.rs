@@ -7,10 +7,12 @@ use dal::func::intrinsics::IntrinsicFunc;
 use dal::prop::PropPath;
 use dal::schema::variant::authoring::VariantAuthoringClient;
 use dal::{
-    ComponentType, DalContext, Func, FuncId, OutputSocket, OutputSocketId, Prop, PropId, Schema,
-    SchemaVariant, SchemaVariantId,
+    Component, ComponentType, DalContext, Func, FuncId, InputSocket, OutputSocket, OutputSocketId,
+    Prop, PropId, Schema, SchemaVariant, SchemaVariantId, SocketArity,
 };
-use dal_test::helpers::ChangeSetTestHelpers;
+use dal_test::helpers::{
+    create_component_for_default_schema_name_in_default_view, ChangeSetTestHelpers,
+};
 use dal_test::test;
 
 #[test]
@@ -87,6 +89,145 @@ async fn regenerate_variant(ctx: &mut DalContext) {
         .expect("could not list funcs for schema variant");
     // ensure the func is attached
     assert!(funcs_for_default.into_iter().any(|func| func.id == func_id));
+}
+
+#[test]
+async fn update_socket_data_on_regenerate(ctx: &mut DalContext) {
+    let name = "Bandit";
+    let description = None;
+    let link = None;
+    let category = "Blue Heelers";
+    let color = "#00A19B";
+
+    // Create an asset with a corresponding asset func. After that, commit.
+    let schema_variant_id = {
+        let schema_variant = VariantAuthoringClient::create_schema_and_variant(
+            ctx,
+            name,
+            description.clone(),
+            link.clone(),
+            category,
+            color,
+        )
+        .await
+        .expect("unable to create schema and variant");
+        schema_variant.id()
+    };
+    let asset_func = "function main() {
+        const asset = new AssetBuilder();
+        const beta_destination_output_socket = new SocketDefinitionBuilder()
+            .setName(\"input_socket\")
+            .setArity(\"one\")
+            .build();
+        asset.addInputSocket(beta_destination_output_socket);
+
+        return asset.build();
+    }";
+    VariantAuthoringClient::save_variant_content(
+        ctx,
+        schema_variant_id,
+        name,
+        name,
+        category,
+        description.clone(),
+        link.clone(),
+        color,
+        ComponentType::Component,
+        Some(asset_func),
+    )
+    .await
+    .expect("could not save content");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit");
+
+    // Once it's all ready, regenerate and commit.
+    VariantAuthoringClient::regenerate_variant(ctx, schema_variant_id)
+        .await
+        .expect("could not regenerate variant");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit");
+
+    // create a component
+    let component =
+        create_component_for_default_schema_name_in_default_view(ctx, "Bandit", "Bluey")
+            .await
+            .expect("could not create component");
+    let component_id = component.id();
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit");
+
+    // check the input socket arity
+    let mut input_socket_avs = component
+        .input_socket_attribute_values(ctx)
+        .await
+        .expect("could not get input sockets");
+    assert!(input_socket_avs.len() == 1);
+    let input_socket_av = input_socket_avs.pop().expect("has one just checked");
+    let input_socket_id = InputSocket::find_for_attribute_value_id(ctx, input_socket_av)
+        .await
+        .expect("couldn't find input socket")
+        .expect("has one for the av");
+    let input_socket = InputSocket::get_by_id(ctx, input_socket_id)
+        .await
+        .expect("couldn't find input socket");
+    assert_eq!(input_socket.arity(), SocketArity::One);
+
+    let asset_func = "function main() {
+        const asset = new AssetBuilder();
+        const beta_destination_output_socket = new SocketDefinitionBuilder()
+            .setName(\"input_socket\")
+            .setArity(\"many\")
+            .build();
+        asset.addInputSocket(beta_destination_output_socket);
+
+        return asset.build();
+    }";
+    VariantAuthoringClient::save_variant_content(
+        ctx,
+        schema_variant_id,
+        name,
+        name,
+        category,
+        description,
+        link,
+        color,
+        ComponentType::Component,
+        Some(asset_func),
+    )
+    .await
+    .expect("could not save content");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit");
+
+    // Once it's all ready, regenerate and commit.
+    VariantAuthoringClient::regenerate_variant(ctx, schema_variant_id)
+        .await
+        .expect("could not regenerate variant");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit");
+
+    let upgraded_component = Component::get_by_id(ctx, component_id)
+        .await
+        .expect("could not get component");
+    let mut input_socket_avs = upgraded_component
+        .input_socket_attribute_values(ctx)
+        .await
+        .expect("could not get input sockets");
+    assert!(input_socket_avs.len() == 1);
+    let input_socket_av = input_socket_avs.pop().expect("has one just checked");
+    let input_socket_id = InputSocket::find_for_attribute_value_id(ctx, input_socket_av)
+        .await
+        .expect("couldn't find input socket")
+        .expect("has one for the av");
+    let input_socket = InputSocket::get_by_id(ctx, input_socket_id)
+        .await
+        .expect("couldn't find input socket");
+    assert_eq!(input_socket.arity(), SocketArity::Many);
 }
 
 #[test]

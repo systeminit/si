@@ -12,7 +12,7 @@ use crate::{
 
 use super::{
     ActionFuncSpec, LeafFunctionSpec, ManagementFuncSpec, PropSpec, PropSpecData,
-    PropSpecWidgetKind, RootPropFuncSpec, SiPropFuncSpec, SocketSpec, SpecError,
+    PropSpecWidgetKind, RootPropFuncSpec, SiPropFuncSpec, SocketSpec, SocketSpecData, SpecError,
 };
 
 #[remain::sorted]
@@ -377,9 +377,24 @@ impl SchemaVariantSpec {
                     input_sockets,
                     output_sockets,
                 );
-
+                // If there is nothing to skip, we still need to include the data from the newer this_socket
+                // and copy it to the other_socket so we don't lose any changes here
                 if new_merge_skips.is_empty() {
-                    merged_sockets.push(other_socket.to_owned());
+                    if let (Some(this_socket_data), Some(other_socket_data)) =
+                        (this_socket.data.as_ref(), other_socket.data.as_ref())
+                    {
+                        // keep other_socket's func_unique_id, but everything else from the newer this_socket
+                        let new_data = Some(SocketSpecData {
+                            func_unique_id: other_socket_data.func_unique_id.clone(),
+                            ..this_socket_data.clone()
+                        });
+                        merged_sockets.push(SocketSpec {
+                            data: new_data,
+                            ..this_socket.clone()
+                        });
+                    } else {
+                        merged_sockets.push(other_socket.to_owned());
+                    }
                 } else {
                     merge_skips.extend(new_merge_skips.into_iter());
                     merged_sockets.push(this_socket.to_owned());
