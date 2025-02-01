@@ -3,7 +3,7 @@ import { PkgSpec } from "../bindings/PkgSpec.ts";
 import _ from "npm:lodash";
 
 export function updateSchemaIdsForExistingSpecs(
-  existing_specs: Record<string, PkgSpec>,
+  existing_specs: Record<string, string>,
   specs: PkgSpec[],
 ): PkgSpec[] {
   const newSpecs = [] as PkgSpec[];
@@ -18,9 +18,9 @@ export function updateSchemaIdsForExistingSpecs(
       continue;
     }
 
-    const existing_spec = existing_specs[spec.name];
-    if (existing_spec) {
-      spec.schemas[0].uniqueId = existing_spec.schemas[0].uniqueId;
+    const schema_id = existing_specs[spec.name];
+    if (schema_id) {
+      spec.schemas[0].uniqueId = schema_id;
     }
     newSpecs.push(spec);
   }
