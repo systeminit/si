@@ -71,9 +71,8 @@ function generateAssetCodeFromVariantSpec(variant: SchemaVariantSpec): string {
 
     for (const prop of variant.domain.entries) {
       const varName = `${prop.name}Prop`.replace(" ", "");
-      propDeclarations += `${indent(1)}const ${varName} = ${
-        generatePropBuilderString(prop, 2)
-      };\n\n`;
+      propDeclarations += `${indent(1)}const ${varName} = ${generatePropBuilderString(prop, 2)
+        };\n\n`;
       propAdds += `${indent(2)}.addProp(${varName})\n`;
     }
 
@@ -90,9 +89,8 @@ function generateAssetCodeFromVariantSpec(variant: SchemaVariantSpec): string {
 
     for (const prop of variant.resourceValue.entries) {
       const varName = `${prop.name}Resource`.replace(" ", "");
-      propDeclarations += `${indent(1)}const ${varName} = ${
-        generatePropBuilderString(prop, 2)
-      };\n\n`;
+      propDeclarations += `${indent(1)}const ${varName} = ${generatePropBuilderString(prop, 2)
+        };\n\n`;
       propAdds += `${indent(2)}.addResourceProp(${varName})\n`;
     }
 
@@ -131,8 +129,7 @@ function generateAssetCodeFromVariantSpec(variant: SchemaVariantSpec): string {
         `${indent(2)}.setName("${socket.name}")\n` +
         `${indent(2)}.setArity("${data.arity}")\n` +
         annotations.map((item: AnnotationItem) =>
-          `${indent(2)}.setConnectionAnnotation("${item.tokens.join("<")}${
-            ">".repeat(item.tokens.length - 1)
+          `${indent(2)}.setConnectionAnnotation("${item.tokens.join("<")}${">".repeat(item.tokens.length - 1)
           }")`
         ).join("\n") + "\n" +
         `${indent(2)}.build();\n\n`;
@@ -169,8 +166,7 @@ function generatePropBuilderString(
     case "array":
     case "map": {
       const entryBlock = `${indent(indent_level)}.setEntry(\n` +
-        `${indent(indent_level + 1)}${
-          generatePropBuilderString(prop.typeProp, indent_level + 1)
+        `${indent(indent_level + 1)}${generatePropBuilderString(prop.typeProp, indent_level + 1)
         }\n` +
         `${indent(indent_level)})\n`;
 
@@ -178,13 +174,13 @@ function generatePropBuilderString(
         `${indent(indent_level)}.setKind("${prop.kind}")\n` +
         `${indent(indent_level)}.setName("${prop.name}")\n` +
         `${indent(indent_level)}.setHidden(${prop.data?.hidden ?? false})\n` +
-        `${
-          generateWidgetString(
-            prop.data?.widgetKind,
-            is_create_only,
-            indent_level,
-          )
+        `${generateWidgetString(
+          prop.data?.widgetKind,
+          is_create_only,
+          indent_level,
+        )
         }` +
+        `${prop.data?.defaultValue ? `${indent(indent_level)}.setDefaultValue(${JSON.stringify(prop.data.defaultValue)})\n` : ''}` +
         `${entryBlock}` +
         `${indent(indent_level)}.build()`;
     }
@@ -205,13 +201,13 @@ function generatePropBuilderString(
         `${indent(indent_level)}.setKind("object")\n` +
         `${indent(indent_level)}.setName("${prop.name}")\n` +
         `${indent(indent_level)}.setHidden(${prop.data?.hidden ?? false})\n` +
-        `${
-          generateWidgetString(
-            prop.data?.widgetKind,
-            is_create_only,
-            indent_level,
-          )
+        `${generateWidgetString(
+          prop.data?.widgetKind,
+          is_create_only,
+          indent_level,
+        )
         }` +
+        `${prop.data?.defaultValue ? `${indent(indent_level)}.setDefaultValue(${JSON.stringify(prop.data.defaultValue)})\n` : ''}` +
         `${addChildBlock}` +
         `${indent(indent_level)}.build()`;
     }
@@ -220,13 +216,13 @@ function generatePropBuilderString(
         `${indent(indent_level)}.setName("${prop.name}")\n` +
         `${indent(indent_level)}.setKind("integer")\n` +
         `${indent(indent_level)}.setHidden(${prop.data?.hidden ?? false})\n` +
-        `${
-          generateWidgetString(
-            prop.data?.widgetKind,
-            is_create_only,
-            indent_level,
-          )
+        `${generateWidgetString(
+          prop.data?.widgetKind,
+          is_create_only,
+          indent_level,
+        )
         }` +
+        `${prop.data?.defaultValue ? `${indent(indent_level)}.setDefaultValue(${JSON.stringify(prop.data.defaultValue)})\n` : ''}` +
         `${indent(indent_level)}.build()`;
     case "boolean":
     case "json":
@@ -235,14 +231,14 @@ function generatePropBuilderString(
         `${indent(indent_level)}.setName("${prop.name}")\n` +
         `${indent(indent_level)}.setKind("${prop.kind}")\n` +
         `${indent(indent_level)}.setHidden(${prop.data?.hidden ?? false})\n` +
-        `${
-          generateWidgetString(
-            prop.data?.widgetKind,
-            is_create_only,
-            indent_level,
-            prop.data?.widgetOptions,
-          )
+        `${generateWidgetString(
+          prop.data?.widgetKind,
+          is_create_only,
+          indent_level,
+          prop.data?.widgetOptions,
+        )
         }` +
+        `${prop.data?.defaultValue ? `${indent(indent_level)}.setDefaultValue(${JSON.stringify(prop.data.defaultValue)})\n` : ''}` +
         `${indent(indent_level)}.build()`;
   }
 }
@@ -273,9 +269,8 @@ function generateWidgetString(
   if (options) {
     for (const option of options) {
       if (option.label === CREATE_ONLY_PROP_LABEL) continue;
-      widgetStr += `\n${
-        indent(indentLevel + 1)
-      }.addOption("${option.label}", "${option.value}")`;
+      widgetStr += `\n${indent(indentLevel + 1)
+        }.addOption("${option.label}", "${option.value}")`;
     }
   }
 
