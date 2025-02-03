@@ -15,6 +15,8 @@ import {
 import pluralize from "npm:pluralize";
 import { SchemaVariantSpec } from "../bindings/SchemaVariantSpec.ts";
 import { SocketSpec } from "../bindings/SocketSpec.ts";
+import { PropSpec } from "../bindings/PropSpec.ts";
+import { SocketSpecKind } from "../bindings/SocketSpecKind.ts";
 
 export function createInputSocketsBasedOnOutputSockets(
   specs: PkgSpec[],
@@ -46,7 +48,7 @@ export function createInputSocketsBasedOnOutputSockets(
       if (socket.data?.kind === "output") {
         foundOutputSockets.add(socket.name);
 
-        // add annotations as we may generate relavant output socket annotations
+        // add annotations as we may generate relevant output socket annotations
         // that match props
         const existingAnnotations = JSON.parse(
           socket.data?.connectionAnnotations,
@@ -134,13 +136,15 @@ export function createInputSocketsBasedOnOutputSockets(
     bfsPropTree(domain, (prop) => {
       if (
         isExpandedPropSpec(prop) && !propHasSocket(prop) &&
-        prop.kind === "array" && prop.typeProp.kind === "string"
+          (prop.kind === "array" && prop.typeProp.kind === "string") ||
+        prop.kind === "string"
       ) {
-        const possiblePeers = specsByName[prop.name];
+        const possiblePeers = specsByName[prop.name] ??
+          specsByName[pluralize(prop.name)];
         if (!possiblePeers) return;
 
         for (const peer of possiblePeers) {
-          bfsPropTree(peer.resourceValue, (peerProp) => {
+          const addSocketIfPeerExists = (peerProp: PropSpec) => {
             if (!isExpandedPropSpec(peerProp)) return;
 
             if (peerProp.metadata.primaryIdentifier) {
@@ -157,6 +161,7 @@ export function createInputSocketsBasedOnOutputSockets(
                     !socketExistsInSockets(
                       schemaVariant.sockets,
                       prop.name,
+                      "input",
                     )
                   ) {
                     schemaVariant.sockets.push(
@@ -168,7 +173,14 @@ export function createInputSocketsBasedOnOutputSockets(
                 }
               }
             }
-          }, { skipTypeProps: true });
+          };
+
+          bfsPropTree(peer.resourceValue, addSocketIfPeerExists, {
+            skipTypeProps: true,
+          });
+          bfsPropTree(peer.domain, addSocketIfPeerExists, {
+            skipTypeProps: true,
+          });
         }
       }
     }, { skipTypeProps: true });
@@ -182,8 +194,12 @@ export function createInputSocketsBasedOnOutputSockets(
 function socketExistsInSockets(
   sockets: SocketSpec[],
   name: string,
+  direction?: SocketSpecKind,
 ): boolean {
   for (const socket of sockets) {
+    if (direction) {
+      if (direction !== socket.data.kind) continue;
+    }
     if (socket.name === name) return true;
   }
   return false;

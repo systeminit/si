@@ -2,13 +2,13 @@ import { PkgSpec } from "../bindings/PkgSpec.ts";
 import { SchemaVariantSpec } from "../bindings/SchemaVariantSpec.ts";
 import _ from "lodash";
 import { SocketSpec } from "../bindings/SocketSpec.ts";
-import { isExpandedPropSpec } from "../spec/props.ts";
+import { bfsPropTree, isExpandedPropSpec } from "../spec/props.ts";
 import {
   createOutputSocketFromProp,
   setAnnotationOnSocket,
 } from "../spec/sockets.ts";
 
-export function generateOutputSocketsFromResourceProps(
+export function generateOutputSocketsFromProps(
   specs: PkgSpec[],
 ): PkgSpec[] {
   const newSpecs = [] as PkgSpec[];
@@ -26,6 +26,7 @@ export function generateOutputSocketsFromResourceProps(
     schemaVariant.sockets = [
       ...schemaVariant.sockets,
       ...createSocketsFromResource(schemaVariant),
+      ...createSocketsFromPrimaryIdentifier(schemaVariant),
     ];
 
     newSpecs.push(spec);
@@ -56,5 +57,29 @@ function createSocketsFromResource(variant: SchemaVariantSpec): SocketSpec[] {
       sockets.push(socket);
     }
   }
+  return sockets;
+}
+
+function createSocketsFromPrimaryIdentifier(
+  variant: SchemaVariantSpec,
+): SocketSpec[] {
+  const domain = variant.domain;
+
+  if (domain.kind !== "object") throw "Domain prop is not object";
+
+  const sockets: SocketSpec[] = [];
+
+  bfsPropTree(domain, (prop) => {
+    if (!isExpandedPropSpec(prop)) return;
+
+    // We don't check if the socket already exists before adding, since on the other func
+    // we only look at resourceValue props
+    if (prop.metadata.primaryIdentifier) {
+      sockets.push(createOutputSocketFromProp(prop));
+    }
+  }, {
+    skipTypeProps: true,
+  });
+
   return sockets;
 }

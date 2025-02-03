@@ -273,12 +273,10 @@ export async function loadCfDatabase(
       const typeName: string = data.typeName;
 
       if (
-        // false &&
+        false &&
         ![
           "AWS::EC2::Subnet",
           "AWS::EC2::SecurityGroup",
-          "AWS::ElasticLoadBalancingV2::LoadBalancer",
-          "AWS::ECS::Service",
           "AWS::EC2::SecurityGroupIngress",
           "AWS::EC2::SecurityGroupEgress",
           "AWS::EC2::SecurityGroupVpcAssociation",
@@ -294,11 +292,13 @@ export async function loadCfDatabase(
           "AWS::EC2::EIP",
           "AWS::EC2::EIPAssociation",
           "AWS::EC2::VPCGatewayAttachment",
+          "AWS::ElasticLoadBalancingV2::LoadBalancer",
           "AWS::ElasticLoadBalancingV2::Listener",
           "AWS::ElasticLoadBalancingV2::ListenerRule",
           "AWS::ElasticLoadBalancingV2::TargetGroup",
           "AWS::ECS::CapacityProvider",
           "AWS::ECS::Cluster",
+          "AWS::ECS::Service",
           "AWS::ECS::ClusterCapacityProviderAssociations",
           "AWS::ECS::TaskDefinition",
           "AWS::IAM::Policy",
