@@ -6,7 +6,6 @@ import { generateDefaultActionFuncs } from "../pipeline-steps/generateActionFunc
 import { generateDefaultLeafFuncs } from "../pipeline-steps/generateLeafFuncs.ts";
 import { generateDefaultManagementFuncs } from "../pipeline-steps/generateManagementFuncs.ts";
 import { addDefaultPropsAndSockets } from "../pipeline-steps/addDefaultPropsAndSockets.ts";
-import { generateOutputSocketsFromResourceProps } from "../pipeline-steps/generateSocketsFromResourceProps.ts";
 import { generateSubAssets } from "../pipeline-steps/generateSubAssets.ts";
 import { generateIntrinsicFuncs } from "../pipeline-steps/generateIntrinsicFuncs.ts";
 import { createInputSocketsBasedOnOutputSockets } from "../pipeline-steps/createInputSocketsAcrossAssets.ts";
@@ -19,6 +18,9 @@ import { assetSpecificOverrides } from "../pipeline-steps/assetSpecificOverrides
 import {
   addSignatureToCategoryName,
 } from "../pipeline-steps/addSignatureToCategoryName.ts";
+import {
+  generateOutputSocketsFromProps,
+} from "../pipeline-steps/generateOutputSocketsFromProps.ts";
 
 const logger = _logger.ns("siSpecs").seal();
 const SI_SPEC_DIR = "si-specs";
@@ -49,7 +51,7 @@ export async function generateSiSpecs() {
   }
 
   // EXECUTE PIPELINE STEPS
-  specs = generateOutputSocketsFromResourceProps(specs);
+  specs = generateOutputSocketsFromProps(specs);
   specs = addDefaultPropsAndSockets(specs);
   specs = generateDefaultActionFuncs(specs);
   specs = generateDefaultLeafFuncs(specs);
