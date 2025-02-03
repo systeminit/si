@@ -49,7 +49,7 @@ fn workspace_routes(state: AppState) -> Router<AppState> {
                 ),
         )
         .nest("/integrations", integrations::v2_routes())
-        .nest("/fs", fs::fs_routes())
+        .nest("/fs", fs::fs_routes(state))
         .route_layer(middleware::from_extractor::<TargetWorkspaceIdFromPath>())
 }
 

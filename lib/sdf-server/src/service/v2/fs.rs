@@ -2,6 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use axum::{
     extract::{Host, OriginalUri, Path, Query},
+    middleware,
     response::{IntoResponse, Response},
     routing::{get, post},
     Json, Router,
@@ -34,7 +35,11 @@ use si_frontend_types::fs::{
 use si_id::FuncArgumentId;
 use thiserror::Error;
 
-use crate::extract::{HandlerContext, PosthogClient};
+use crate::extract::{
+    change_set::TargetChangeSetIdFromPath,
+    workspace::{AuthorizedForAutomationRole, TargetWorkspaceIdFromPath, WorkspaceDalContext},
+    HandlerContext, PosthogClient,
+};
 
 use super::{
     func::{get_code_response, FuncAPIError},
@@ -142,24 +147,17 @@ impl IntoResponse for FsError {
 }
 
 pub async fn create_change_set(
-    HandlerContext(builder): HandlerContext,
-    AccessBuilder(access_builder): AccessBuilder,
-    PosthogClient(_posthog_client): PosthogClient,
-    OriginalUri(_original_uri): OriginalUri,
-    Host(_host_name): Host,
-    Path(_workspace_id): Path<WorkspaceId>,
+    WorkspaceDalContext(ref ctx): WorkspaceDalContext,
     Json(request): Json<fs::CreateChangeSetRequest>,
 ) -> FsResult<Json<fs::CreateChangeSetResponse>> {
-    let ctx = builder.build_head(access_builder).await?;
-
-    let change_set = ChangeSet::fork_head(&ctx, request.name).await?;
+    let change_set = ChangeSet::fork_head(ctx, request.name).await?;
 
     ctx.write_audit_log(AuditLogKind::CreateChangeSet, change_set.name.clone())
         .await?;
 
-    WsEvent::change_set_created(&ctx, change_set.id)
+    WsEvent::change_set_created(ctx, change_set.id)
         .await?
-        .publish_on_commit(&ctx)
+        .publish_on_commit(ctx)
         .await?;
 
     ctx.commit_no_rebase().await?;
@@ -171,15 +169,9 @@ pub async fn create_change_set(
 }
 
 pub async fn list_change_sets(
-    HandlerContext(builder): HandlerContext,
-    AccessBuilder(request_ctx): AccessBuilder,
-    PosthogClient(_posthog_client): PosthogClient,
-    OriginalUri(_original_uri): OriginalUri,
-    Host(_host_name): Host,
-    Path(_workspace_id): Path<WorkspaceId>,
+    WorkspaceDalContext(ref ctx): WorkspaceDalContext,
 ) -> FsResult<Json<fs::ListChangeSetsResponse>> {
-    let ctx = builder.build_head(request_ctx).await?;
-    let open_change_sets = ChangeSet::list_active(&ctx).await?;
+    let open_change_sets = ChangeSet::list_active(ctx).await?;
 
     Ok(Json(
         open_change_sets
@@ -1107,7 +1099,7 @@ async fn process_managed_schemas(
     })
 }
 
-pub fn fs_routes() -> Router<AppState> {
+pub fn fs_routes(state: AppState) -> Router<AppState> {
     Router::new()
         .route("/change-sets", get(list_change_sets))
         .route("/change-sets/create", post(create_change_set))
@@ -1144,6 +1136,12 @@ pub fn fs_routes() -> Router<AppState> {
                 )
                 .route("/schemas/:schema_id/funcs/:kind", get(list_variant_funcs))
                 .route("/schemas/:schema_id/funcs/:kind/create", post(create_func))
-                .route("/schemas/:schema_id/install", post(install_schema)),
+                .route("/schemas/:schema_id/install", post(install_schema))
+                .route_layer(middleware::from_extractor::<TargetChangeSetIdFromPath>()),
         )
+        .route_layer(middleware::from_extractor_with_state::<
+            AuthorizedForAutomationRole,
+            AppState,
+        >(state))
+        .route_layer(middleware::from_extractor::<TargetWorkspaceIdFromPath>())
 }
