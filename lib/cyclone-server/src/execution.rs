@@ -390,22 +390,22 @@ where
             // 2/3 steps errored so warn about the lower priority error and return the highest
             // priority
             (Ok(_), Err(err), Err(shutdown)) => {
-                warn!(error = ?shutdown, "failed to shutdown child cleanly");
+                warn!(si.error.message = ?shutdown, "failed to shutdown child cleanly");
                 Err(err)
             }
             (Err(err), Ok(_), Err(shutdown)) => {
-                warn!(error = ?shutdown, "failed to shutdown child cleanly");
+                warn!(si.error.message = ?shutdown, "failed to shutdown child cleanly");
                 Err(err)
             }
             (Err(err), Err(closed), Ok(_)) => {
-                warn!(error = ?closed, "failed to cleanly close websocket");
+                warn!(si.error.message = ?closed, "failed to cleanly close websocket");
                 Err(err)
             }
 
             // All steps failed so warn about the lower priorities and return the highest priority
             (Err(err), Err(closed), Err(shutdown)) => {
-                warn!(error = ?shutdown, "failed to shutdown child cleanly");
-                warn!(error = ?closed, "failed to cleanly close websocket");
+                warn!(si.error.message = ?shutdown, "failed to shutdown child cleanly");
+                warn!(si.error.message = ?closed, "failed to cleanly close websocket");
                 Err(err)
             }
         }

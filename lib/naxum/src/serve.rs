@@ -183,7 +183,7 @@ where
                             Some(Err(err)) => {
                                 // TODO(fnichol): this level might need to be `trace!()`, just
                                 // unclear at the moment
-                                warn!(error = ?err, "failed to read next message from stream");
+                                warn!(si.error.message = ?err, "failed to read next message from stream");
                                 failed_count += 1;
                                 continue;
                             },
