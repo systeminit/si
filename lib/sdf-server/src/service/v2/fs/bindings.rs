@@ -59,7 +59,10 @@ pub async fn get_bindings_for_func_and_schema_variant(
         dal::func::FuncKind::Action => {
             ActionBinding::assemble_action_bindings(ctx, func_id).await?
         }
-        dal::func::FuncKind::Intrinsic | dal::func::FuncKind::Attribute => {
+        dal::func::FuncKind::Intrinsic => {
+            AttributeBinding::assemble_intrinsic_bindings(ctx, func_id).await?
+        }
+        dal::func::FuncKind::Attribute => {
             AttributeBinding::assemble_attribute_bindings(ctx, func_id).await?
         }
         dal::func::FuncKind::Authentication => {

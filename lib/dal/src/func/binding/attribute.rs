@@ -208,7 +208,7 @@ impl AttributeBinding {
     /// This filters out Component specific bindings and bindings for input sockets
     /// as we don't want users to be able to set prototypes for input sockets and we're
     /// not supported component specific bindings just yet
-    pub(crate) async fn assemble_intrinsic_bindings(
+    pub async fn assemble_intrinsic_bindings(
         ctx: &DalContext,
         func_id: FuncId,
     ) -> FuncBindingResult<Vec<FuncBinding>> {
