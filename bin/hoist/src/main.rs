@@ -1,7 +1,7 @@
 use clap::CommandFactory;
 use indicatif::{ProgressBar, ProgressStyle};
 use std::collections::HashMap;
-use std::fs;
+use std::fs::{self};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use ulid::Ulid;
@@ -10,6 +10,7 @@ use clap::{Parser, Subcommand};
 use color_eyre::Result;
 use module_index_client::{ModuleDetailsResponse, ModuleIndexClient};
 use si_pkg::{PkgSpec, SiPkg};
+use tokio::task::JoinSet;
 use url::Url;
 
 const CLOVER_DEFAULT_CREATOR: &str = "Clover";
@@ -83,17 +84,8 @@ async fn main() -> Result<()> {
     let client = ModuleIndexClient::new(Url::parse(endpoint)?, token);
 
     match args.command {
-        Some(Commands::UploadAllSpecs(args)) => {
-            upload_all_pkg_specs(client, args.target_dir).await?
-        }
-        Some(Commands::UploadSpec(args)) => {
-            upload_pkg_spec(
-                client.clone(),
-                args.target,
-                list_specs(client.clone()).await?,
-            )
-            .await?
-        }
+        Some(Commands::UploadAllSpecs(args)) => upload_pkg_specs(client, args.target_dir).await?,
+        Some(Commands::UploadSpec(args)) => upload_pkg_specs(client.clone(), args.target).await?,
         Some(Commands::WriteExistingModulesSpec(args)) => {
             write_existing_modules_spec(client, args.out).await?
         }
@@ -115,6 +107,11 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
+enum ModuleState {
+    HashesMatch,
+    NeedsUpdated(String),
+    New,
+}
 async fn write_existing_modules_spec(client: ModuleIndexClient, out: PathBuf) -> Result<()> {
     let modules = list_specs(client.clone()).await?;
     let mut entries: HashMap<String, String> = HashMap::new();
@@ -193,35 +190,19 @@ async fn write_spec(client: ModuleIndexClient, module_id: String, out: PathBuf) 
 
 async fn upload_pkg_spec(
     client: ModuleIndexClient,
-    spec: PathBuf,
-    existing_modules: Vec<ModuleDetailsResponse>,
+    pkg: SiPkg,
+    existing_module_id: Option<String>,
 ) -> Result<()> {
-    let pkg = json_to_pkg(spec)?;
-    let schema = pkg.schemas()?[0].clone();
-    let pkg_schema_id = schema.unique_id().unwrap();
-
-    // reject existing modules with this schema id
-    for module in existing_modules {
-        if let Some(schema_id) = &module.schema_id {
-            if schema_id == pkg_schema_id {
-                // no need to do an upload if the hashes match
-                if module.latest_hash == pkg.hash()?.to_string() {
-                    return Ok(());
-                }
-                client
-                    .reject_module(
-                        Ulid::from_string(&module.id)?,
-                        CLOVER_DEFAULT_CREATOR.to_string(),
-                    )
-                    .await?;
-            }
-        }
+    if let Some(module_id) = existing_module_id {
+        client
+            .reject_module(
+                Ulid::from_string(&module_id)?,
+                CLOVER_DEFAULT_CREATOR.to_string(),
+            )
+            .await?;
     }
 
-    // upload the module
     let module_id = upload_module(client.clone(), pkg).await?;
-
-    // promote the newly update module as a built-in
     client
         .promote_to_builtin(module_id, CLOVER_DEFAULT_CREATOR.to_string())
         .await?;
@@ -229,32 +210,93 @@ async fn upload_pkg_spec(
     Ok(())
 }
 
-async fn upload_all_pkg_specs(client: ModuleIndexClient, target_dir: PathBuf) -> Result<()> {
-    let specs: Vec<_> = fs::read_dir(&target_dir)?
-        .filter_map(|entry| entry.ok())
-        .filter(|entry| {
-            entry.path().is_file() && entry.path().extension().is_some_and(|ext| ext == "json")
-        })
-        .collect();
+async fn upload_pkg_specs(client: ModuleIndexClient, target_dir: PathBuf) -> Result<()> {
+    let specs: Vec<_> = if target_dir.is_file() {
+        if let Some(parent) = target_dir.parent() {
+            fs::read_dir(parent)?
+                .filter_map(|entry| entry.ok())
+                .filter(|entry| entry.path() == target_dir)
+                .collect()
+        } else {
+            vec![]
+        }
+    } else {
+        fs::read_dir(&target_dir)?
+            .filter_map(|entry| entry.ok())
+            .filter(|entry| {
+                entry.path().is_file() && entry.path().extension().is_some_and(|ext| ext == "json")
+            })
+            .collect()
+    };
+
+    let mut joinset = JoinSet::new();
+
+    let mut no_action_needed = 0;
+    let mut new_modules = 0;
+    let mut modules_with_updates = 0;
+
+    let mut categorized_modules: Vec<(SiPkg, Option<String>)> = Vec::new();
+
+    println!("Building modules list...");
+    let existing_specs = &list_specs(client.clone()).await?;
+    for spec in &specs {
+        let pkg = json_to_pkg(spec.path())?;
+        let schema = pkg.schemas()?[0].clone();
+        let pkg_schema_id = schema.unique_id().unwrap();
+
+        match remote_module_state(
+            pkg_schema_id.to_string(),
+            pkg.hash()?.to_string(),
+            existing_specs,
+        )
+        .await?
+        {
+            ModuleState::HashesMatch => no_action_needed += 1,
+            ModuleState::NeedsUpdated(module_id) => {
+                modules_with_updates += 1;
+                categorized_modules.push((pkg, Some(module_id)));
+            }
+            ModuleState::New => {
+                new_modules += 1;
+                categorized_modules.push((pkg, None));
+            }
+        }
+    }
+
+    println!(
+        "🟰 {} modules have matching hashes and will be skipped",
+        no_action_needed
+    );
+    println!(
+        "🔼 {} modules exist and will be updated",
+        modules_with_updates
+    );
+    println!("➕ {} new modules will be uploaded", new_modules);
+
+    if categorized_modules.is_empty() {
+        println!("No new modules or update, nothing to do!");
+        std::process::exit(0);
+    }
+
+    println!("Would you like to continue? (y/n)");
+    let mut input = String::new();
+    std::io::stdin().read_line(&mut input)?;
+    if input.trim().to_lowercase() != "y" {
+        return Ok(());
+    }
 
     let pb = setup_progress_bar(specs.len() as u64);
-    let mut joinset = tokio::task::JoinSet::new();
 
-    let existing_modules = list_specs(client.clone()).await?;
-    for spec in specs.into_iter() {
+    for (pkg, existing_module_id) in categorized_modules {
         let client = client.clone();
-        let existing_modules = existing_modules.clone();
         let pb = pb.clone();
 
+        let metadata = pkg.metadata()?;
         joinset.spawn(async move {
-            if let Err(e) = upload_pkg_spec(client, spec.path(), existing_modules).await {
-                println!(
-                    "Failed to upload {} due to {}",
-                    spec.file_name().to_string_lossy(),
-                    e
-                );
+            if let Err(e) = upload_pkg_spec(client, pkg, existing_module_id).await {
+                println!("Failed to upload {} due to {}", metadata.name(), e);
             }
-            pb.set_message(format!("Uploading: {}", spec.file_name().to_string_lossy()));
+            pb.set_message(format!("Uploading: {}", metadata.name()));
             pb.inc(1);
         });
     }
@@ -302,6 +344,25 @@ async fn list_specs(client: ModuleIndexClient) -> Result<Vec<ModuleDetailsRespon
                 .is_some_and(|n| n == CLOVER_DEFAULT_CREATOR)
         })
         .collect::<Vec<ModuleDetailsResponse>>())
+}
+
+async fn remote_module_state(
+    schema_id: String,
+    hash: String,
+    modules: &Vec<ModuleDetailsResponse>,
+) -> Result<ModuleState> {
+    for module in modules {
+        if let Some(module_schema_id) = &module.schema_id {
+            if *module_schema_id == schema_id {
+                if module.latest_hash == hash {
+                    return Ok(ModuleState::HashesMatch);
+                } else {
+                    return Ok(ModuleState::NeedsUpdated(module.id.clone()));
+                }
+            }
+        }
+    }
+    Ok(ModuleState::New)
 }
 
 fn setup_progress_bar(length: u64) -> Arc<ProgressBar> {
