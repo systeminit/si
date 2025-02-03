@@ -14,6 +14,7 @@ import {
 } from "../spec/props.ts";
 import pluralize from "npm:pluralize";
 import { SchemaVariantSpec } from "../bindings/SchemaVariantSpec.ts";
+import { SocketSpec } from "../bindings/SocketSpec.ts";
 
 export function createInputSocketsBasedOnOutputSockets(
   specs: PkgSpec[],
@@ -107,11 +108,7 @@ export function createInputSocketsBasedOnOutputSockets(
     // Create sockets that props match exactly
     for (const prop of domain.entries) {
       if (foundOutputSockets.has(prop.name)) {
-        let found = false;
-        for (const socket of schemaVariant.sockets) {
-          if (socket.name == prop.name) found = true;
-        }
-        if (!found) {
+        if (!socketExistsInSockets(schemaVariant.sockets, prop.name)) {
           schemaVariant.sockets.push(
             createInputSocketFromProp(prop as ExpandedPropSpec),
           );
@@ -124,11 +121,7 @@ export function createInputSocketsBasedOnOutputSockets(
     // wanting to connecting something like "TaskArn" or "Arn" -> "TaskRoleArn"
     for (const prop of domain.entries) {
       if (prop.name.toLowerCase().endsWith("arn")) {
-        let found = false;
-        for (const socket of schemaVariant.sockets) {
-          if (socket.name == prop.name) found = true;
-        }
-        if (!found) {
+        if (!socketExistsInSockets(schemaVariant.sockets, prop.name)) {
           const socket = createInputSocketFromProp(prop as ExpandedPropSpec);
           setAnnotationOnSocket(socket, { tokens: ["Arn"] });
           schemaVariant.sockets.push(socket);
@@ -160,11 +153,18 @@ export function createInputSocketsBasedOnOutputSockets(
                     propPathToString(peerProp.metadata.propPath)
                 ) {
                   setAnnotationOnSocket(socket, { tokens: [prop.name] });
-                  schemaVariant.sockets.push(
-                    createInputSocketFromProp(
-                      prop as ExpandedPropSpec,
-                    ),
-                  );
+                  if (
+                    !socketExistsInSockets(
+                      schemaVariant.sockets,
+                      prop.name,
+                    )
+                  ) {
+                    schemaVariant.sockets.push(
+                      createInputSocketFromProp(
+                        prop as ExpandedPropSpec,
+                      ),
+                    );
+                  }
                 }
               }
             }
@@ -177,4 +177,14 @@ export function createInputSocketsBasedOnOutputSockets(
   }
 
   return newSpecs;
+}
+
+function socketExistsInSockets(
+  sockets: SocketSpec[],
+  name: string,
+): boolean {
+  for (const socket of sockets) {
+    if (socket.name === name) return true;
+  }
+  return false;
 }
