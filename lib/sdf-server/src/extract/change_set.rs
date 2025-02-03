@@ -81,7 +81,7 @@ impl<S> FromRequestParts<S> for TargetChangeSetId {
         Ok(*parts
             .extensions
             .get::<TargetChangeSetId>()
-            .ok_or_else(|| internal_error("No workspace ID. Endpoints must call an extractor like TargetChangeSetIdFromPath or TargetWorkspaceFromToken to get the workspace ID."))?)
+            .ok_or_else(|| internal_error("No changeset ID. Endpoints must call an extractor like TargetChangeSetIdFromPath to get the change set ID."))?)
     }
 }
 

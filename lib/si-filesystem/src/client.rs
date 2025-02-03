@@ -173,17 +173,19 @@ impl SiFsClient {
             request_builder
         };
 
-        let value = request_builder
-            .send()
-            .await?
-            .error_for_status()?
-            .text()
-            .await?;
+        let response = request_builder.send().await?;
+        if response.status() == StatusCode::OK {
+            let value = response.text().await?;
+            self.set_cache_entry(change_set_id, url, query, &value)
+                .await?;
 
-        self.set_cache_entry(change_set_id, url, query, &value)
-            .await?;
+            Ok(value)
+        } else {
+            let error: FsApiError = response.json().await?;
+            dbg!(&error);
 
-        Ok(value)
+            Err(SiFsClientError::BackendError(error))
+        }
     }
 
     async fn get_json<Q, R>(

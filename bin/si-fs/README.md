@@ -3,11 +3,10 @@
 A FUSE filesystem for editing System Initiative assets in your favorite editor.
 
 1. Get your System Initiative bearer token:
-   - Open your browser's dev tools (F12)
-   - Go to the Network tab
-   - Find a request to app.systeminit.com
-   - Copy the "Authorization" header value (starts with "Bearer").
-   - Remove the "Bearer" from the token.
+   - Head to https://auth.systeminit.com/workspaces
+   - Pick the workspace you want to mount as a fuse filesystem.
+   - Click the settings "gear" icon and choose the API Tokens option.
+   - Generate an API token for use with the fuse filesystem.
    - Add the token to your env with `export SI_BEARER_TOKEN='<the token here>'` (the single quotes will ensure the base64 parses on your command line).
 
 2. Mount the filesystem:
