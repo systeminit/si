@@ -81,6 +81,29 @@ function generateAssetCodeFromVariantSpec(variant: SchemaVariantSpec): string {
     adds += propAdds;
   }
 
+  // Code for Secret Props
+
+
+  {
+    if (variant.secrets.kind !== "object") {
+      console.log(
+        `Could not generate default props and sockets for ${variant.data?.displayName}: secrets is not object`,
+      );
+      throw "root/Secrets prop is not object";
+    }
+    let propDeclarations = `${indent(1)}// Secrets\n`;
+    let propAdds = "";
+
+    for (const prop of variant.secrets.entries) {
+      const varName = `${prop.name}SecretProp`.replace(" ", "");
+      propDeclarations += `${indent(1)}const ${varName} = ${generateSecretPropBuilderString(prop, 2)
+        };\n\n`;
+      propAdds += `${indent(2)}.addSecretProp(${varName})\n`;
+    }
+    declarations += propDeclarations;
+    adds += propAdds;
+  }
+
   declarations += "\n";
 
   // Code for Resource Value
@@ -112,10 +135,12 @@ function generateAssetCodeFromVariantSpec(variant: SchemaVariantSpec): string {
 
       return comp1 - comp2;
     });
-
     for (const socket of variant.sockets) {
       const data = socket.data;
       if (!data) continue;
+      // if this socket in the spec is for a secret, don't add the input socket, we'll get
+      // it for free by using the SecretPropBuilder above.
+      if (variant.secrets.entries.map(entry => entry.name).includes(socket.name)) continue;
 
       const varName = `${socket.name}Socket`.replace(" ", "");
 
@@ -156,6 +181,16 @@ function generateAssetCodeFromVariantSpec(variant: SchemaVariantSpec): string {
     `${adds}` +
     `${indent(2)}.build();\n` +
     `}`;
+}
+
+function generateSecretPropBuilderString(
+  prop: PropSpec,
+  indent_level: number,
+): string {
+  return `new SecretPropBuilder()\n` +
+    `${indent(indent_level)}.setName("${prop.name}")\n` +
+    `${indent(indent_level)}.setSecretKind("${prop.name}")\n` +
+    `${indent(indent_level)}.build()`;
 }
 
 function generatePropBuilderString(
