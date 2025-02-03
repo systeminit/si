@@ -1,11 +1,21 @@
 <template>
   <div class="p-xs flex flex-col gap-xs w-full">
     <DropdownMenuButton
+      ref="dropdownMenuRef"
       placeholder="Pick an asset to manage"
       :disabled="props.disabled"
-      :options="schemaOptions"
+      :options="schemaOptionsSearchFilteredResults"
+      search
+      checkable
+      variant="navbar"
       @select="addSchema"
-    />
+    >
+      <DropdownMenuItem
+        v-if="schemaOptionsSearchFilteredResults.length === 0"
+        label="No Variants Match Your Search"
+        header
+      />
+    </DropdownMenuButton>
     <ul v-if="binding?.managedSchemas && binding.managedSchemas.length > 0">
       <li
         v-for="schemaId in binding.managedSchemas"
@@ -35,6 +45,7 @@ import { ref, watch, computed, toRaw } from "vue";
 import { storeToRefs } from "pinia";
 import {
   DropdownMenuButton,
+  DropdownMenuItem,
   IconButton,
   TruncateWithTooltip,
 } from "@si/vue-lib/design-system";
@@ -49,6 +60,8 @@ import { nonNullable } from "@/utils/typescriptLinter";
 const funcStore = useFuncStore();
 const assetStore = useAssetStore();
 const { schemaVariantOptions } = storeToRefs(assetStore);
+
+const dropdownMenuRef = ref<InstanceType<typeof DropdownMenuButton>>();
 
 const props = defineProps<{
   funcId: FuncId;
@@ -105,6 +118,18 @@ const schemaOptions = computed(() => {
   filteredOptions.sort((a, b) => a.label.localeCompare(b.label));
 
   return filteredOptions;
+});
+
+const schemaOptionsSearchFilteredResults = computed(() => {
+  const searchString = dropdownMenuRef.value?.searchString;
+
+  if (!searchString || searchString === "") {
+    return schemaOptions.value;
+  }
+
+  return schemaOptions.value.filter((o) =>
+    o.label.toLocaleLowerCase().includes(searchString),
+  );
 });
 
 const addSchema = async (selectedManagedSchemaId: string) => {
