@@ -57,6 +57,18 @@ pub struct AssetFuncs {
     pub locked_bindings_size: u64,
     pub unlocked_attrs_size: u64,
     pub unlocked_bindings_size: u64,
+    pub types_size: u64,
+}
+
+impl AssetFuncs {
+    pub fn extend_code_sizes(&mut self, by: u64) {
+        if let Some(func) = self.locked.as_mut() {
+            func.code_size += by;
+        }
+        if let Some(func) = self.unlocked.as_mut() {
+            func.code_size += by;
+        }
+    }
 }
 
 pub fn kind_to_string(kind: FuncKind) -> String {

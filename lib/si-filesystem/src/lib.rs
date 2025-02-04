@@ -51,6 +51,7 @@ const FILE_HANDLE_READ_BIT: FileHandle = FileHandle::new(1 << 63);
 const FILE_HANDLE_WRITE_BIT: FileHandle = FileHandle::new(1 << 62);
 
 const FILE_STR_TS_INDEX: &str = "index.ts";
+const FILE_STR_TS_INDEX_D_TS: &str = "index.d.ts";
 const FILE_STR_ATTRS_JSON: &str = "attrs.json";
 const FILE_STR_BINDINGS_JSON: &str = "bindings.json";
 const FILE_STR_INSTALLED: &str = "INSTALLED";
@@ -367,6 +368,17 @@ impl SiFileSystem {
                 let code = self
                     .client
                     .get_asset_func_code(*change_set_id, *schema_id, *unlocked)
+                    .await?;
+                code.as_bytes().to_vec()
+            }
+            InodeEntryData::AssetFuncTypes {
+                change_set_id,
+                schema_id,
+                ..
+            } => {
+                let code = self
+                    .client
+                    .get_asset_func_types(*change_set_id, *schema_id)
                     .await?;
                 code.as_bytes().to_vec()
             }
@@ -883,6 +895,9 @@ impl SiFileSystem {
             InodeEntryData::FuncCode { .. } => {
                 reply.error(EINVAL);
             }
+            InodeEntryData::AssetFuncTypes { .. } => {
+                reply.error(EINVAL);
+            }
             InodeEntryData::SchemaDefinitionsDir {
                 schema_id,
                 change_set_id,
@@ -903,6 +918,7 @@ impl SiFileSystem {
                                 size: unlocked_asset_func.code_size,
                                 attrs_size: asset_funcs.unlocked_attrs_size,
                                 bindings_size: asset_funcs.unlocked_bindings_size,
+                                types_size: asset_funcs.types_size,
                                 unlocked: true,
                             },
                             FileType::Directory,
@@ -1194,6 +1210,7 @@ impl SiFileSystem {
         match entry.data() {
             InodeEntryData::FuncCode { .. }
             | InodeEntryData::AssetFuncCode { .. }
+            | InodeEntryData::AssetFuncTypes { .. }
             | InodeEntryData::SchemaAttrsJson { .. }
             | InodeEntryData::SchemaBindingsJson { .. }
             | InodeEntryData::SchemaFuncBindings { .. }
@@ -1573,7 +1590,8 @@ impl SiFileSystem {
                 unlocked,
                 size,
                 attrs_size,
-                bindings_size
+                bindings_size,
+                types_size,
             } => {
                 self.upsert_asset_def_dir(
                     &entry,
@@ -1584,6 +1602,7 @@ impl SiFileSystem {
                     &mut dirs,
                     *attrs_size,
                     *bindings_size,
+                    *types_size,
                 ).await?;
             }
             // `/change-sets/$change_set_name/schemas/$schema_name/INSTALLED`
@@ -1599,7 +1618,9 @@ impl SiFileSystem {
             // `/change-sets/$change_set_name/schemas/$schema_name/definition/{locked|unlocked}/bindings.json`
             | InodeEntryData::SchemaBindingsJson { .. }
             // `/change-sets/$change_set_name/schemas/$schema_name/definition/{locked|unlocked}/index.ts`
-            | InodeEntryData::AssetFuncCode { .. } => {
+            | InodeEntryData::AssetFuncCode { .. }
+            // `/change-sets/$change_set_name/schemas/$schema_name/definition/{locked|unlocked}/index.d.ts`
+            | InodeEntryData::AssetFuncTypes { .. } => {
                 // a file is not a directory!
                 return Err(SiFileSystemError::InodeNotDirectory(ino));
             }
@@ -1620,6 +1641,7 @@ impl SiFileSystem {
         dirs: &mut DirListing,
         attrs_size: u64,
         bindings_size: u64,
+        types_size: u64,
     ) -> SiFileSystemResult<()> {
         let mut inode_table = self.inode_table.write().await;
 
@@ -1636,6 +1658,20 @@ impl SiFileSystem {
             Size::UseExisting(size),
         )?;
         dirs.add(ino, FILE_STR_TS_INDEX.into(), FileType::RegularFile);
+
+        let ino = inode_table.upsert_with_parent_ino(
+            entry.ino,
+            FILE_STR_TS_INDEX_D_TS,
+            InodeEntryData::AssetFuncTypes {
+                change_set_id,
+                schema_id,
+                unlocked,
+            },
+            FileType::RegularFile,
+            false,
+            Size::UseExisting(types_size),
+        )?;
+        dirs.add(ino, FILE_STR_TS_INDEX_D_TS.into(), FileType::RegularFile);
 
         let ino = inode_table.upsert_with_parent_ino(
             entry.ino,
@@ -1938,6 +1974,7 @@ impl SiFileSystem {
                     size: unlocked_asset_func.code_size,
                     attrs_size: asset_funcs.unlocked_attrs_size,
                     bindings_size: asset_funcs.unlocked_bindings_size,
+                    types_size: asset_funcs.types_size,
                     unlocked: true,
                 },
                 FileType::Directory,
@@ -1956,6 +1993,7 @@ impl SiFileSystem {
                     size: locked_asset_func.code_size,
                     attrs_size: asset_funcs.locked_attrs_size,
                     bindings_size: asset_funcs.unlocked_bindings_size,
+                    types_size: asset_funcs.types_size,
                     unlocked: false,
                 },
                 FileType::Directory,

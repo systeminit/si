@@ -63,9 +63,15 @@ pub enum InodeEntryData {
         size: u64,
         attrs_size: u64,
         bindings_size: u64,
+        types_size: u64,
         unlocked: bool,
     },
     AssetFuncCode {
+        change_set_id: ChangeSetId,
+        schema_id: SchemaId,
+        unlocked: bool,
+    },
+    AssetFuncTypes {
         change_set_id: ChangeSetId,
         schema_id: SchemaId,
         unlocked: bool,
