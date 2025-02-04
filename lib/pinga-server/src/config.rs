@@ -55,6 +55,9 @@ pub struct Config {
     #[builder(default = "default_concurrency_limit()")]
     concurrency_limit: usize,
 
+    #[builder(default = "default_max_deliver()")]
+    max_deliver: i64,
+
     #[builder(default = "random_instance_id()")]
     instance_id: String,
 
@@ -102,6 +105,11 @@ impl Config {
         self.concurrency_limit
     }
 
+    /// Gets the config's max delivery setting for NATS JetStream consumer(s).
+    pub fn max_deliver(&self) -> i64 {
+        self.max_deliver
+    }
+
     /// Gets the config's instance ID.
     pub fn instance_id(&self) -> &str {
         self.instance_id.as_ref()
@@ -123,6 +131,8 @@ pub struct ConfigFile {
     crypto: VeritechCryptoConfig,
     #[serde(default = "default_concurrency_limit")]
     concurrency_limit: usize,
+    #[serde(default = "default_max_deliver")]
+    max_deliver: i64,
     #[serde(default = "random_instance_id")]
     instance_id: String,
     #[serde(default = "default_layer_db_config")]
@@ -137,6 +147,7 @@ impl Default for ConfigFile {
             pg: Default::default(),
             nats: Default::default(),
             concurrency_limit: default_concurrency_limit(),
+            max_deliver: default_max_deliver(),
             crypto: Default::default(),
             instance_id: random_instance_id(),
             layer_db_config: default_layer_db_config(),
@@ -160,6 +171,7 @@ impl TryFrom<ConfigFile> for Config {
         config.nats(value.nats);
         config.crypto(value.crypto);
         config.concurrency_limit(value.concurrency_limit);
+        config.max_deliver(value.max_deliver);
         config.instance_id(value.instance_id);
         config.symmetric_crypto_service(value.symmetric_crypto_service.try_into()?);
         config.layer_db_config(value.layer_db_config);
@@ -181,6 +193,10 @@ fn default_symmetric_crypto_config() -> SymmetricCryptoServiceConfigFile {
 
 fn default_concurrency_limit() -> usize {
     DEFAULT_CONCURRENCY_LIMIT
+}
+
+fn default_max_deliver() -> i64 {
+    1
 }
 
 fn default_layer_db_config() -> LayerDbConfig {
