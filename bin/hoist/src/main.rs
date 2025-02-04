@@ -285,7 +285,7 @@ async fn upload_pkg_specs(client: ModuleIndexClient, target_dir: PathBuf) -> Res
         return Ok(());
     }
 
-    let pb = setup_progress_bar(specs.len() as u64);
+    let pb = setup_progress_bar(categorized_modules.len() as u64);
 
     for (pkg, existing_module_id) in categorized_modules {
         let client = client.clone();
