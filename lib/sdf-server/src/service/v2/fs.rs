@@ -719,27 +719,28 @@ async fn set_asset_func_code(
 
     let schema_variant_id = unlocked_variant.id;
 
-    let updated_variant_id =
-        VariantAuthoringClient::regenerate_variant(&ctx, unlocked_variant.id).await?;
+    if let Ok(updated_variant_id) =
+        VariantAuthoringClient::regenerate_variant(&ctx, unlocked_variant.id).await
+    {
+        ctx.write_audit_log(
+            AuditLogKind::RegenerateSchemaVariant { schema_variant_id },
+            unlocked_variant.display_name().to_string(),
+        )
+        .await?;
 
-    ctx.write_audit_log(
-        AuditLogKind::RegenerateSchemaVariant { schema_variant_id },
-        unlocked_variant.display_name().to_string(),
-    )
-    .await?;
+        let updated_variant = SchemaVariant::get_by_id_or_error(&ctx, updated_variant_id).await?;
 
-    let updated_variant = SchemaVariant::get_by_id_or_error(&ctx, updated_variant_id).await?;
-
-    if schema_variant_id == updated_variant_id {
-        WsEvent::schema_variant_updated(&ctx, schema_id, updated_variant)
-            .await?
-            .publish_on_commit(&ctx)
-            .await?;
-    } else {
-        WsEvent::schema_variant_replaced(&ctx, schema_id, schema_variant_id, updated_variant)
-            .await?
-            .publish_on_commit(&ctx)
-            .await?;
+        if schema_variant_id == updated_variant_id {
+            WsEvent::schema_variant_updated(&ctx, schema_id, updated_variant)
+                .await?
+                .publish_on_commit(&ctx)
+                .await?;
+        } else {
+            WsEvent::schema_variant_replaced(&ctx, schema_id, schema_variant_id, updated_variant)
+                .await?
+                .publish_on_commit(&ctx)
+                .await?;
+        }
     }
 
     ctx.commit().await?;
