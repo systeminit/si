@@ -9,6 +9,7 @@
       checkable
       placeholder="Select user..."
       minWidthToAnchor
+      alignRightOnAnchor
       @select="setUser"
     />
     <div

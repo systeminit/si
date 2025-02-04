@@ -418,15 +418,24 @@ const computedStyle: Object = computed(() => ({
       width: `${anchorEl.value.getBoundingClientRect().width}px`,
     }),
   ...(props.minWidthToAnchor &&
-    anchorEl.value && {
-      minWidth: `${anchorEl.value.getBoundingClientRect().width}px`,
-      maxWidth: `${Math.min(
-        getWindowWidth() -
-          anchorEl.value.getBoundingClientRect().left -
-          MENU_EDGE_BUFFER,
-        getWindowWidth() / 2,
-      )}px`, // the maximum width of a dropdown menu with this setting is half of the browser window width
-    }),
+    anchorEl.value &&
+    (props.forceAlignRight
+      ? {
+          minWidth: `${anchorEl.value.getBoundingClientRect().width}px`,
+          maxWidth: `${Math.min(
+            anchorEl.value.getBoundingClientRect().right - MENU_EDGE_BUFFER,
+            getWindowWidth() / 2,
+          )}px`, // the maximum width of a dropdown menu with this setting is half of the browser window width
+        }
+      : {
+          minWidth: `${anchorEl.value.getBoundingClientRect().width}px`,
+          maxWidth: `${Math.min(
+            getWindowWidth() -
+              anchorEl.value.getBoundingClientRect().left -
+              MENU_EDGE_BUFFER,
+            getWindowWidth() / 2,
+          )}px`, // the maximum width of a dropdown menu with this setting is half of the browser window width
+        })),
   ...(!props.matchWidthToAnchor &&
     !props.minWidthToAnchor &&
     anchorEl.value && { maxWidth: `${props.maxWidth}px` }),

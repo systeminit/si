@@ -452,12 +452,16 @@
           name="nested-arrow-right"
           size="none"
         />
-        <!-- todo: Brit/Wendy: Need to truncate if it's too long, add an ability to pop a modal,
-         and ensure this works if the prop is a header and has documentation  -->
         <div
-          v-tooltip="propDocumentation"
+          v-tooltip="propDocumentationTooltip"
           :title="`${propLabelParts[0]}${propLabelParts[1]}`"
-          class="cursor-default shrink truncate py-2xs px-0 [&_i]:opacity-50"
+          :class="
+            clsx(
+              'shrink truncate py-2xs px-0 [&_i]:opacity-50',
+              propDocumentation ? 'cursor-pointer' : 'cursor-default',
+            )
+          "
+          @click="openPropDocModal"
         >
           <template v-if="isChildOfMap">{{ propLabelParts[1] }}</template>
           <template v-else-if="isChildOfArray">
@@ -510,8 +514,9 @@
         :class="
           clsx(
             'attributes-panel-item__input-wrap group/input',
-            'w-[45%] min-h-[30px] shrink-0',
+            'min-h-[30px] shrink-0',
             'relative border font-mono text-[13px] leading-[18px]',
+            widerInput ? 'w-[70%]' : 'w-[45%]',
             isFocus
               ? [themeClasses('bg-shade-0', 'bg-shade-100'), 'z-[101]']
               : themeClasses('bg-neutral-100', 'bg-neutral-900'),
@@ -699,37 +704,34 @@
         <template
           v-else-if="widgetKind === 'comboBox' || widgetKind === 'select'"
         >
-          <!-- TODO(Wendy) - known bug with this code where the selection doesn't display correctly for the Connections lineage parent TreeFormItem -->
-          <select
-            v-model="newValueString"
-            :class="
-              clsx(
-                `attributes-panel-item__hidden-input ${propLabelParts[0]}${propLabelParts[1]}`,
-                'absolute left-0 right-0 top-0 p-0 h-full opacity-0 z-[1] block cursor-pointer',
-              )
-            "
-            :disabled="!propIsEditable"
+          <DropdownMenuButton
+            ref="comboBoxSelectRef"
+            :placeholder="currentLabelForDropdown"
+            :search="widgetOptions.length > DEFAULT_DROPDOWN_SEARCH_THRESHOLD"
+            :disabled="!widgetOptions || widgetOptions.length < 1"
+            :class="clsx(`w-full ${propLabelParts[0]}${propLabelParts[1]}`)"
+            noBorder
+            minWidthToAnchor
+            alignRightOnAnchor
+            :checkable="!!currentValue"
             @blur="onBlur"
-            @change="updateValue"
-            @focus="onFocus"
+            @focus="widgetOptions.length > 0 ? onFocus() : null"
           >
-            <option
-              v-for="o in widgetOptions"
-              :key="o.value"
-              :value="o.value"
-              class="bg-shade-0 text-shade-100"
+            <DropdownMenuItem
+              v-if="filteredWidgetOptions.length === 0"
+              header
+              label="No options match your search."
+            />
+            <DropdownMenuItem
+              v-for="option in filteredWidgetOptions"
+              :key="option.value"
+              :label="option.label"
+              :checkable="!!currentValue"
+              :checked="currentValue === option.value"
+              @select="updateValueString(option.value)"
             >
-              {{ o.label }}
-            </option>
-          </select>
-          <div class="block truncate py-[5px] pr-6 pl-xs">
-            {{ currentLabelForDropdown }}
-          </div>
-          <Icon
-            class="absolute right-1 top-1 text-neutral-400 dark:text-neutral-600"
-            name="input-type-select"
-            size="sm"
-          />
+            </DropdownMenuItem>
+          </DropdownMenuButton>
         </template>
         <template v-else-if="widgetKind === 'secret'">
           <div class="p-2xs" @click="secretModalRef?.open()">
@@ -960,6 +962,18 @@
         </VButton>
       </div>
     </Modal>
+
+    <!-- MODAL FOR DISPLAYING PROP DOCUMENTATION -->
+    <Modal
+      v-if="attributesPanel && propDocumentationModalEnabled"
+      ref="propDocModalRef"
+      :title="propDocTitle"
+      size="xl"
+    >
+      <div class="font-mono max-h-[70vh] overflow-y-auto">
+        {{ propDocumentation }}
+      </div>
+    </Modal>
   </div>
 </template>
 
@@ -979,6 +993,7 @@ import {
   Filter,
   TruncateWithTooltip,
   DropdownMenuButton,
+  DEFAULT_DROPDOWN_SEARCH_THRESHOLD,
 } from "@si/vue-lib/design-system";
 import {
   AttributeTreeItem,
@@ -1007,6 +1022,9 @@ import CodeViewer from "../CodeViewer.vue";
 import { TreeFormContext } from "./TreeForm.vue";
 import UserSelectMenu from "../UserSelectMenu.vue";
 
+const MIN_DOCS_TOOLTIP_MODAL_LENGTH = 200;
+const MAX_DOCS_TOOLTIP_LENGTH = 400;
+
 export type TreeFormProp = {
   id: string;
   name: string;
@@ -1016,6 +1034,7 @@ export type TreeFormProp = {
   isHidden: boolean;
   isReadonly: boolean;
   documentation?: string;
+  widerInput?: boolean;
 };
 
 export type TreeFormData = {
@@ -1044,6 +1063,11 @@ const props = defineProps({
   // Only set this boolean to true if this TreeFormItem is part of AttributesPanel
   attributesPanel: { type: Boolean },
 });
+
+const propDocModalRef = ref<InstanceType<typeof Modal>>();
+const viewModalRef = ref<InstanceType<typeof Modal>>();
+const editModalRef = ref<InstanceType<typeof Modal>>();
+const secretModalRef = ref<InstanceType<typeof SecretsModal>>();
 
 const headerMainLabelRef = ref();
 const headerMainLabelTooltip = computed(() => {
@@ -1138,6 +1162,36 @@ const widgetOptions = computed(
 );
 const propName = computed(() => fullPropDef.value.name);
 const propDocumentation = computed(() => fullPropDef.value.documentation);
+const propDocTitle = computed(() => `Documentation for ${propLabel.value}`);
+const propDocumentationModalEnabled = computed(
+  () =>
+    propDocumentation.value &&
+    propDocumentation.value.length > MIN_DOCS_TOOLTIP_MODAL_LENGTH,
+);
+const propDocumentationTooltip = computed(() => {
+  if (propDocumentation.value) {
+    const docs =
+      propDocumentation.value.length > MAX_DOCS_TOOLTIP_LENGTH
+        ? `${propDocumentation.value.substring(0, MAX_DOCS_TOOLTIP_LENGTH)}...`
+        : propDocumentation.value;
+    const modalText = `<div class="text-xs italic text-neutral-500">Click the prop label to view the full documentation in a modal.</div>`;
+    const content = `<div class='text-md font-bold'>${
+      propDocTitle.value
+    }:</div><div class="text-sm">${docs}</div>${
+      propDocumentationModalEnabled.value ? modalText : ""
+    }`;
+    return {
+      content,
+      theme: "attribute-docs",
+    };
+  }
+  return null;
+});
+const openPropDocModal = () => {
+  if (propDocumentationModalEnabled.value) {
+    propDocModalRef.value?.open();
+  }
+};
 const propLabelParts = computed(() => {
   if (isChildOfArray.value)
     return [`${propName.value}[${props.treeDef.arrayIndex}]`];
@@ -1210,16 +1264,17 @@ const newMapChildKey = ref("");
 
 const currentValue = computed(() => props.treeDef.value?.value);
 const currentLabelForDropdown = computed(() => {
-  if (!widgetOptions.value) return currentValue.value;
+  if (!widgetOptions.value || widgetOptions.value.length === 0)
+    return (currentValue.value || "No options available.") as string;
 
   const options = widgetOptions.value as LabelList<string>;
   const labelOption = options.find(
     (option) => option.value === currentValue.value,
   );
 
-  if (labelOption) return labelOption.label;
+  if (labelOption) return labelOption.label as string;
 
-  return currentValue.value;
+  return currentValue.value as string;
 });
 const clipIcon = ref<IconNames>("clipboard-copy");
 const copyToClipboard = () => {
@@ -1477,6 +1532,11 @@ function unsetHandler(value?: string) {
   }
 }
 
+function updateValueString(setNewValueString: string) {
+  newValueString.value = setNewValueString;
+  updateValue();
+}
+
 function updateValue(maybeNewVal?: unknown) {
   let newVal;
   let skipUpdate = false;
@@ -1569,10 +1629,6 @@ function onSectionHoverEnd() {
 const isSectionHover = computed(
   () => rootCtx.hoverSectionValueId.value === props.treeDef.valueId,
 );
-
-const viewModalRef = ref<InstanceType<typeof Modal>>();
-const editModalRef = ref<InstanceType<typeof Modal>>();
-const secretModalRef = ref<InstanceType<typeof SecretsModal>>();
 
 const secret = computed(
   () => secretsStore.secretsById[newValueString.value?.toString() || ""],
@@ -1715,7 +1771,6 @@ const openSocketWidgetDropdownMenu = () => {
 const socketSearchString = computed(
   () => socketConnectionDropdownButtonRef.value?.searchString || "",
 );
-
 const filteredSocketOptions = computed(() => {
   const filteringActive =
     socketConnectionDropdownButtonRef.value?.searchFilteringActive;
@@ -1767,7 +1822,6 @@ const filteredSocketOptions = computed(() => {
 
   return filteredOptionsArray;
 });
-
 const socketSearchFilters = computed(() => {
   const filters = [] as Array<Filter>;
 
@@ -1778,6 +1832,18 @@ const socketSearchFilters = computed(() => {
   });
 
   return filters;
+});
+
+// COMBOBOX AND SELECT WIDGET SEARCH
+const comboBoxSelectRef = ref<InstanceType<typeof DropdownMenuButton>>();
+const comboBoxSelectSearchString = computed(
+  () => comboBoxSelectRef.value?.searchString || "",
+);
+const filteredWidgetOptions = computed(() => {
+  if (comboBoxSelectSearchString.value === "") return widgetOptions.value;
+  return widgetOptions.value.filter((option: { label: string }) =>
+    option.label.includes(comboBoxSelectSearchString.value),
+  );
 });
 
 // APPROVAL REQUIREMENTS STUFF
@@ -1808,6 +1874,11 @@ const deleteRequirement = () => {
   const requirementId = props.treeDef.propId;
   viewsStore.REMOVE_VIEW_APPROVAL_REQUIREMENT(requirementId);
 };
+
+const widerInput = computed(() => {
+  if (props.attributesPanel) return false;
+  else return !!(props.treeDef as TreeFormData).propDef.widerInput;
+});
 </script>
 
 <style lang="less">

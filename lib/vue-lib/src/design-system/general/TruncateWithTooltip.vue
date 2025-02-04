@@ -12,7 +12,9 @@
   >
     <template v-if="expandableStringArray">
       <template v-if="expanded">
-        <div v-for="s in expandableStringArray" :key="s">{{ s }}</div>
+        <TruncateWithTooltip v-for="s in expandableStringArray" :key="s">{{
+          s
+        }}</TruncateWithTooltip>
       </template>
       <template v-else>{{ expandableStringArray.join(", ") }}</template>
     </template>
@@ -22,7 +24,8 @@
 
 <script lang="ts" setup>
 import clsx from "clsx";
-import { ref, computed } from "vue";
+import { ref, computed, onMounted } from "vue";
+import TruncateWithTooltip from "./TruncateWithTooltip.vue"; // eslint-disable-line import/no-self-import
 
 const props = defineProps({
   hasParentTruncateWithTooltip: { type: Boolean },
@@ -34,6 +37,15 @@ const props = defineProps({
 const expanded = ref(false);
 const divRef = ref<HTMLElement>();
 
+const neededTooltipOnLoad = ref(false);
+
+onMounted(() => {
+  if (divRef.value) {
+    neededTooltipOnLoad.value =
+      divRef.value.clientWidth < divRef.value.scrollWidth;
+  }
+});
+
 const tooltipActive = computed(() => {
   if (divRef.value && divRef.value.clientWidth < divRef.value.scrollWidth) {
     return true;
@@ -42,16 +54,15 @@ const tooltipActive = computed(() => {
 });
 
 const tooltip = computed(() => {
-  if (
+  if (neededTooltipOnLoad.value && props.expandableStringArray) {
+    return {
+      content: expanded.value ? "Click to collapse" : "Click to expand",
+    };
+  } else if (
     divRef.value &&
     (props.showTooltip || divRef.value.clientWidth < divRef.value.scrollWidth)
   ) {
     if (!props.hasParentTruncateWithTooltip) {
-      if (props.expandableStringArray) {
-        return {
-          content: expanded.value ? "Click to collapse" : "Click to expand",
-        };
-      }
       return {
         content: divRef.value.innerText,
       };

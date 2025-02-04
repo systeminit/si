@@ -15,6 +15,11 @@ export const FLOATING_VUE_THEMES = {
   "w-380": {
     $extend: "tooltip",
   },
+  "attribute-docs": {
+    $extend: "instant-show",
+    html: true,
+    placement: "left-start",
+  },
   "attribute-source-icon": {
     $extend: "tooltip",
   },

@@ -4,7 +4,8 @@
     :class="
       clsx(
         'flex flex-row items-center p-2xs mb-[-1px] h-7',
-        'font-mono text-[13px] text-left truncate relative border',
+        'font-mono text-[13px] text-left truncate relative',
+        !noBorder && 'border',
         variant === 'navbar' && 'flex-1 font-bold min-w-[80px] max-w-fit',
         disabled
           ? [
@@ -55,6 +56,7 @@
       ref="dropdownMenuRef"
       :anchorTo="{ $el: buttonRef }"
       overlapAnchorOnAnchorTo
+      :forceAlignRight="alignRightOnAnchor"
       :matchWidthToAnchor="variant === 'standard' && !minWidthToAnchor"
       :minWidthToAnchor="variant === 'navbar' || minWidthToAnchor"
       :overlapAnchorOffset="4"
@@ -112,6 +114,8 @@ const props = defineProps({
     default: "standard",
   },
   minWidthToAnchor: { type: Boolean },
+  noBorder: { type: Boolean },
+  alignRightOnAnchor: { type: Boolean },
 });
 
 const arrayOptionsFromProps = computed((): OptionsAsArray => {

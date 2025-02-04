@@ -12,11 +12,13 @@
   >
     <!-- HEADER -->
     <div class="flex flex-row flex-none gap-md mb-sm items-center">
-      <div class="flex flex-col gap-2xs">
+      <div class="flex flex-col max-w-[66%] min-w-[50%]">
         <TruncateWithTooltip class="font-bold italic pb-2xs">
           {{ changeSetName }}
         </TruncateWithTooltip>
-        <div class="font-bold">{{ modalData.title }}</div>
+        <TruncateWithTooltip class="font-bold pb-2xs">{{
+          modalData.title
+        }}</TruncateWithTooltip>
         <div v-if="modalData.date" class="text-sm italic">
           <Timestamp :date="modalData.date" showTimeIfToday size="extended" />
         </div>
@@ -102,7 +104,7 @@
               v-else
               expandOnClick
               :expandableStringArray="group.labels"
-              class="italic"
+              class="italic break-all"
             />
           </div>
           <ul>

@@ -3,7 +3,7 @@
     :class="
       clsx(
         size === 'sm' ? 'w-6 h-4' : 'w-9 h-6',
-        'cursor-pointer flex items-center  rounded-full p-1 duration-300 ease-in-out',
+        'cursor-pointer flex-none flex items-center  rounded-full p-1 duration-300 ease-in-out',
         props.selected
           ? themeClasses('bg-action-300', 'bg-action-500')
           : themeClasses('bg-neutral-400', 'bg-neutral-500'),
