@@ -4,7 +4,6 @@ import {
 import $RefParser from "npm:@apidevtools/json-schema-ref-parser";
 import _logger from "./logger.ts";
 import { ServiceMissing } from "./errors.ts";
-import { JSONSchemaObject } from "@apidevtools/json-schema-ref-parser";
 import _ from "npm:lodash";
 
 const logger = _logger.ns("cfDb").seal();
@@ -60,7 +59,7 @@ export function normalizePropertyType(prop: CfProperty): CfProperty {
     return { ...prop, type: "object" };
   }
 
-  if (!prop.type || !Array.isArray(prop.type)) {
+  if (!prop.type || !Array.isArray(prop.type) || typeof prop.type === "string") {
     return prop;
   }
   const nonStringType = prop.type.find((t) => t !== "string");
@@ -284,7 +283,7 @@ export async function loadCfDatabase(
         const expandedSchema = await $RefParser.dereference(data, {
           dereference: {
             circular: "ignore",
-            onDereference: (path: string, ref: JSONSchemaObject) => {
+            onDereference: (path: string, ref: JSONSchema.Object) => {
               const name = path.split("/").pop();
               ref.title = ref.title ?? name;
             },
