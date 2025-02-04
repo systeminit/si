@@ -58,7 +58,6 @@ impl InodeEntry {
 #[remain::sorted]
 pub enum InodeEntryData {
     AssetDefinitionDir {
-        func_id: FuncId,
         change_set_id: ChangeSetId,
         schema_id: SchemaId,
         size: u64,
@@ -67,9 +66,9 @@ pub enum InodeEntryData {
         unlocked: bool,
     },
     AssetFuncCode {
-        func_id: FuncId,
         change_set_id: ChangeSetId,
         schema_id: SchemaId,
+        unlocked: bool,
     },
     ChangeSet {
         change_set_id: ChangeSetId,

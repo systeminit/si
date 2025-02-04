@@ -360,11 +360,17 @@ impl SiFileSystem {
             InodeEntryData::SchemaFuncBindingsPending { buf, .. } => buf.get_ref().clone(),
             InodeEntryData::InstalledSchemaMarker => "INSTALLED".as_bytes().to_vec(),
             InodeEntryData::AssetFuncCode {
-                func_id,
                 change_set_id,
-                ..
+                schema_id,
+                unlocked,
+            } => {
+                let code = self
+                    .client
+                    .get_asset_func_code(*change_set_id, *schema_id, *unlocked)
+                    .await?;
+                code.as_bytes().to_vec()
             }
-            | InodeEntryData::FuncCode {
+            InodeEntryData::FuncCode {
                 change_set_id,
                 func_id,
                 ..
@@ -626,14 +632,13 @@ impl SiFileSystem {
                         Some(bytes.len())
                     }
                     Some(InodeEntryData::AssetFuncCode {
-                        func_id,
                         change_set_id,
                         schema_id,
-                    }) => {
+                        unlocked,
+                    }) if unlocked => {
                         self.client
                             .set_asset_func_code(
                                 change_set_id,
-                                func_id,
                                 schema_id,
                                 std::str::from_utf8(bytes)?.to_string(),
                             )
@@ -894,7 +899,6 @@ impl SiFileSystem {
                             DIR_STR_UNLOCKED,
                             InodeEntryData::AssetDefinitionDir {
                                 schema_id: *schema_id,
-                                func_id: unlocked_asset_func.id,
                                 change_set_id: *change_set_id,
                                 size: unlocked_asset_func.code_size,
                                 attrs_size: asset_funcs.unlocked_attrs_size,
@@ -1564,7 +1568,6 @@ impl SiFileSystem {
             }
             // `/change-sets/$change_set_name/schemas/$schema_name/definition//{locked | unlocked}/`
             InodeEntryData::AssetDefinitionDir {
-                func_id,
                 change_set_id,
                 schema_id,
                 unlocked,
@@ -1574,7 +1577,6 @@ impl SiFileSystem {
             } => {
                 self.upsert_asset_def_dir(
                     &entry,
-                    *func_id,
                     *change_set_id,
                     *schema_id,
                     *unlocked,
@@ -1611,7 +1613,6 @@ impl SiFileSystem {
     async fn upsert_asset_def_dir(
         &self,
         entry: &InodeEntry,
-        func_id: si_id::FuncId,
         change_set_id: ChangeSetId,
         schema_id: SchemaId,
         unlocked: bool,
@@ -1626,9 +1627,9 @@ impl SiFileSystem {
             entry.ino,
             FILE_STR_TS_INDEX,
             InodeEntryData::AssetFuncCode {
-                func_id,
                 change_set_id,
                 schema_id,
+                unlocked,
             },
             FileType::RegularFile,
             unlocked,
@@ -1933,7 +1934,6 @@ impl SiFileSystem {
                 DIR_STR_UNLOCKED,
                 InodeEntryData::AssetDefinitionDir {
                     schema_id: *schema_id,
-                    func_id: unlocked_asset_func.id,
                     change_set_id: *change_set_id,
                     size: unlocked_asset_func.code_size,
                     attrs_size: asset_funcs.unlocked_attrs_size,
@@ -1952,7 +1952,6 @@ impl SiFileSystem {
                 DIR_STR_LOCKED,
                 InodeEntryData::AssetDefinitionDir {
                     schema_id: *schema_id,
-                    func_id: locked_asset_func.id,
                     change_set_id: *change_set_id,
                     size: locked_asset_func.code_size,
                     attrs_size: asset_funcs.locked_attrs_size,

@@ -679,18 +679,37 @@ async fn create_func(
     Ok(Json(dal_func_to_fs_func(func, bindings_size)))
 }
 
+async fn get_asset_func_code(
+    HandlerContext(builder): HandlerContext,
+    AccessBuilder(request_ctx): AccessBuilder,
+    PosthogClient(_posthog_client): PosthogClient,
+    OriginalUri(_original_uri): OriginalUri,
+    Host(_host_name): Host,
+    Path((_workspace_id, change_set_id, schema_id)): Path<(WorkspaceId, ChangeSetId, SchemaId)>,
+    Query(variant_query): Query<VariantQuery>,
+) -> FsResult<String> {
+    let ctx = builder
+        .build(request_ctx.build(change_set_id.into()))
+        .await?;
+
+    check_change_set(&ctx)?;
+
+    let variant = lookup_variant_for_schema(&ctx, schema_id, variant_query.unlocked)
+        .await?
+        .ok_or(FsError::ResourceNotFound)?;
+
+    let func = variant.get_asset_func(&ctx).await?;
+
+    Ok(func.code_plaintext()?.unwrap_or_default())
+}
+
 async fn set_asset_func_code(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     PosthogClient(_posthog_client): PosthogClient,
     OriginalUri(_original_uri): OriginalUri,
     Host(_host_name): Host,
-    Path((_workspace_id, change_set_id, schema_id, func_id)): Path<(
-        WorkspaceId,
-        ChangeSetId,
-        SchemaId,
-        FuncId,
-    )>,
+    Path((_workspace_id, change_set_id, schema_id)): Path<(WorkspaceId, ChangeSetId, SchemaId)>,
     Json(request): Json<SetFuncCodeRequest>,
 ) -> FsResult<()> {
     let ctx = builder
@@ -704,10 +723,7 @@ async fn set_asset_func_code(
         .ok_or(FsError::ResourceNotFound)?;
 
     let current_asset_func = unlocked_variant.get_asset_func(&ctx).await?;
-    if current_asset_func.id != func_id {
-        // different error?
-        return Err(FsError::ResourceNotFound);
-    }
+    let func_id = current_asset_func.id;
 
     FuncAuthoringClient::save_code(&ctx, func_id, request.code).await?;
     let func_code = get_code_response(&ctx, func_id).await?;
@@ -719,31 +735,38 @@ async fn set_asset_func_code(
 
     let schema_variant_id = unlocked_variant.id;
 
-    if let Ok(updated_variant_id) =
-        VariantAuthoringClient::regenerate_variant(&ctx, unlocked_variant.id).await
-    {
-        ctx.write_audit_log(
+    let ctx_clone = ctx.clone();
+    let unlocked_variant_display_name = unlocked_variant.display_name().to_owned();
+
+    // Commit code changes
+    ctx.commit().await?;
+
+    // Now regen the variant in a separate transaction/rebase
+    let updated_variant_id =
+        VariantAuthoringClient::regenerate_variant(&ctx_clone, schema_variant_id).await?;
+
+    ctx_clone
+        .write_audit_log(
             AuditLogKind::RegenerateSchemaVariant { schema_variant_id },
-            unlocked_variant.display_name().to_string(),
+            unlocked_variant_display_name,
         )
         .await?;
 
-        let updated_variant = SchemaVariant::get_by_id_or_error(&ctx, updated_variant_id).await?;
+    let updated_variant = SchemaVariant::get_by_id_or_error(&ctx_clone, updated_variant_id).await?;
 
-        if schema_variant_id == updated_variant_id {
-            WsEvent::schema_variant_updated(&ctx, schema_id, updated_variant)
-                .await?
-                .publish_on_commit(&ctx)
-                .await?;
-        } else {
-            WsEvent::schema_variant_replaced(&ctx, schema_id, schema_variant_id, updated_variant)
-                .await?
-                .publish_on_commit(&ctx)
-                .await?;
-        }
+    if schema_variant_id == updated_variant_id {
+        WsEvent::schema_variant_updated(&ctx_clone, schema_id, updated_variant)
+            .await?
+            .publish_on_commit(&ctx_clone)
+            .await?;
+    } else {
+        WsEvent::schema_variant_replaced(&ctx_clone, schema_id, schema_variant_id, updated_variant)
+            .await?
+            .publish_on_commit(&ctx_clone)
+            .await?;
     }
 
-    ctx.commit().await?;
+    ctx_clone.commit().await?;
 
     Ok(())
 }
@@ -1114,10 +1137,8 @@ pub fn fs_routes(state: AppState) -> Router<AppState> {
                 .route("/schemas", get(list_schemas))
                 .route("/schemas/create", post(create_schema))
                 .route("/schemas/:schema_id/asset_funcs", get(get_asset_funcs))
-                .route(
-                    "/schemas/:schema_id/asset_func/:func_id",
-                    post(set_asset_func_code),
-                )
+                .route("/schemas/:schema_id/asset_func", post(set_asset_func_code))
+                .route("/schemas/:schema_id/asset_func", get(get_asset_func_code))
                 .route("/schemas/:schema_id/attrs", get(get_schema_attrs))
                 .route("/schemas/:schema_id/unlock", post(unlock_schema))
                 .route("/schemas/:schema_id/attrs", post(set_schema_attrs))

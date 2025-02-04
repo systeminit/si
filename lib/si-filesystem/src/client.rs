@@ -451,19 +451,28 @@ impl SiFsClient {
         .await
     }
 
+    pub async fn get_asset_func_code(
+        &self,
+        change_set_id: ChangeSetId,
+        schema_id: SchemaId,
+        unlocked: bool,
+    ) -> SiFsClientResult<String> {
+        self.get_text(
+            change_set_id,
+            self.fs_api_change_sets(&format!("schemas/{schema_id}/asset_func"), change_set_id),
+            Some(VariantQuery { unlocked }),
+        )
+        .await
+    }
     pub async fn set_asset_func_code(
         &self,
         change_set_id: ChangeSetId,
-        func_id: FuncId,
         schema_id: SchemaId,
         code: String,
     ) -> SiFsClientResult<()> {
         self.post_empty_response(
             change_set_id,
-            self.fs_api_change_sets(
-                &format!("schemas/{schema_id}/asset_func/{func_id}"),
-                change_set_id,
-            ),
+            self.fs_api_change_sets(&format!("schemas/{schema_id}/asset_func"), change_set_id),
             None::<()>,
             Some(SetFuncCodeRequest { code }),
         )
