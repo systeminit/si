@@ -74,16 +74,6 @@
 
       <div v-else class="flex flex-row items-center px-xs w-full gap-1">
         <Icon
-          :name="component.def.icon"
-          size="sm"
-          :class="
-            clsx(
-              'flex-none',
-              enableGroupToggle && 'group-hover:scale-0 transition-all',
-            )
-          "
-        />
-        <Icon
           :name="COMPONENT_TYPE_ICONS[component.def.componentType]"
           size="sm"
           :class="

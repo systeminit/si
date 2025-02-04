@@ -42,7 +42,6 @@
           ref="collapsibleRefs"
           :key="category.displayName"
           :label="category.displayName"
-          :primaryIcon="getAssetIcon(category.displayName)"
           :color="category.schemaVariants[0]?.variant.color || '#000'"
           enableDefaultHoverClasses
           enableGroupToggle

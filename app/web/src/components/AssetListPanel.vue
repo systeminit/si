@@ -72,7 +72,6 @@
         :key="category"
         :color="categoryColor(category)"
         :label="category"
-        :primaryIcon="getAssetIcon(category)"
         alwaysShowArrow
         clickLabelToToggle
         enableDefaultHoverClasses

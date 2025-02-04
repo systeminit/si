@@ -16,18 +16,6 @@
     }"
   >
     <div class="flex gap-2xs items-center">
-      <Icon
-        v-if="component.def.componentType !== ComponentType.View"
-        :name="component.def.icon"
-        size="lg"
-        class="shrink-0"
-      />
-      <Icon v-else name="logo-si" size="lg" class="shrink-0" />
-      <Icon
-        :name="COMPONENT_TYPE_ICONS[component.def.componentType]"
-        size="lg"
-        class="shrink-0"
-      />
       <Stack spacing="xs" class="min-w-0">
         <div
           ref="componentNameRef"

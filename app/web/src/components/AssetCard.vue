@@ -11,7 +11,6 @@
       }"
     >
       <div class="flex gap-xs items-center">
-        <Icon :name="getAssetIcon(asset.category)" class="shrink-0" size="lg" />
         <Stack class="" spacing="xs">
           <div
             ref="componentNameRef"
@@ -134,7 +133,6 @@ import {
 import { format as dateFormat } from "date-fns";
 import { useAssetStore } from "@/store/asset.store";
 import { SchemaVariantId, SchemaVariant } from "@/api/sdf/dal/schema";
-import { getAssetIcon } from "@/store/components.store";
 import { useModuleStore } from "@/store/module.store";
 import { ModuleContributeRequest } from "@/api/sdf/dal/module";
 import EditingPill from "./EditingPill.vue";
