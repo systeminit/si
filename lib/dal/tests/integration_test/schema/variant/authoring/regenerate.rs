@@ -7,10 +7,13 @@ use dal::func::intrinsics::IntrinsicFunc;
 use dal::prop::PropPath;
 use dal::schema::variant::authoring::VariantAuthoringClient;
 use dal::{
-    ComponentType, DalContext, Func, FuncId, OutputSocket, OutputSocketId, Prop, PropId, Schema,
-    SchemaVariant, SchemaVariantId,
+    Component, ComponentType, DalContext, Func, FuncId, InputSocket, OutputSocket, OutputSocketId,
+    Prop, PropId, Schema, SchemaVariant, SchemaVariantId, SocketArity,
 };
-use dal_test::helpers::ChangeSetTestHelpers;
+use dal_test::helpers::{
+    connect_components_with_socket_names, create_component_for_default_schema_name_in_default_view,
+    ChangeSetTestHelpers,
+};
 use dal_test::test;
 
 #[test]
@@ -87,6 +90,291 @@ async fn regenerate_variant(ctx: &mut DalContext) {
         .expect("could not list funcs for schema variant");
     // ensure the func is attached
     assert!(funcs_for_default.into_iter().any(|func| func.id == func_id));
+}
+
+#[test]
+async fn update_socket_data_on_regenerate(ctx: &mut DalContext) {
+    let name = "Bandit";
+    let description = None;
+    let link = None;
+    let category = "Blue Heelers";
+    let color = "#00A19B";
+
+    // Create an asset with a corresponding asset func. After that, commit.
+    let schema_variant_id = {
+        let schema_variant = VariantAuthoringClient::create_schema_and_variant(
+            ctx,
+            name,
+            description.clone(),
+            link.clone(),
+            category,
+            color,
+        )
+        .await
+        .expect("unable to create schema and variant");
+        schema_variant.id()
+    };
+    let asset_func = "function main() {
+        const asset = new AssetBuilder();
+        const beta_destination_input_socket = new SocketDefinitionBuilder()
+            .setName(\"input_socket\")
+            .setArity(\"one\")
+            .setConnectionAnnotation(\"two\")
+            .build();
+        asset.addInputSocket(beta_destination_input_socket);
+        const beta_destination_output_socket = new SocketDefinitionBuilder()
+            .setName(\"output_socket\")
+            .setArity(\"one\")
+            .setConnectionAnnotation(\"two\")
+            .build();
+        asset.addOutputSocket(beta_destination_output_socket);
+
+        return asset.build();
+    }";
+    VariantAuthoringClient::save_variant_content(
+        ctx,
+        schema_variant_id,
+        name,
+        name,
+        category,
+        description.clone(),
+        link.clone(),
+        color,
+        ComponentType::Component,
+        Some(asset_func),
+    )
+    .await
+    .expect("could not save content");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit");
+
+    // Once it's all ready, regenerate and commit.
+    let schema_variant_id = VariantAuthoringClient::regenerate_variant(ctx, schema_variant_id)
+        .await
+        .expect("could not regenerate variant");
+
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit");
+
+    // create a component
+    let component =
+        create_component_for_default_schema_name_in_default_view(ctx, "Bandit", "Bluey")
+            .await
+            .expect("could not create component");
+    let component_id = component.id();
+
+    // create 2 more to connect it to things
+    let input_comp = create_component_for_default_schema_name_in_default_view(
+        ctx,
+        "small odd lego",
+        "small odd",
+    )
+    .await
+    .expect("could not create component");
+
+    let output_comp =
+        create_component_for_default_schema_name_in_default_view(ctx, "small even lego", "even")
+            .await
+            .expect("could not create component");
+    // let mut input_output_socket_avs = input_comp
+    //     .output_socket_attribute_values(ctx)
+    //     .await
+    //     .expect("could not find output socket");
+    // let input_output_socket_id = OutputSocket::find_for_attribute_value_id(
+    //     ctx,
+    //     input_output_socket_avs.pop().expect("couldn't get id"),
+    // )
+    // .await
+    // .expect("could not get output socket id")
+    // .expect("socket not found");
+    // let input_output_socket = OutputSocket::get_by_id(ctx, input_output_socket_id)
+    //     .await
+    //     .expect("couldn't get output socket");
+
+    connect_components_with_socket_names(ctx, input_comp.id(), "two", component_id, "input_socket")
+        .await
+        .expect("could not connect components");
+    // let mut output_input_socket_avs = output_comp
+    //     .input_socket_attribute_values(ctx)
+    //     .await
+    //     .expect("could not find output socket");
+    // let output_input_socket_id = InputSocket::find_for_attribute_value_id(
+    //     ctx,
+    //     output_input_socket_avs.pop().expect("couldn't get id"),
+    // )
+    // .await
+    // .expect("could not get output socket id")
+    // .expect("socket not found");
+    // let output_input_socket = InputSocket::get_by_id(ctx, output_input_socket_id)
+    //     .await
+    //     .expect("couldn't get output socket");
+
+    connect_components_with_socket_names(
+        ctx,
+        component_id,
+        "output_socket",
+        output_comp.id(),
+        "two",
+    )
+    .await
+    .expect("could not connect components");
+
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit");
+
+    let component = Component::get_by_id(ctx, component_id)
+        .await
+        .expect("could not get component");
+    // check the input socket data
+    let mut input_socket_avs = component
+        .input_socket_attribute_values(ctx)
+        .await
+        .expect("could not get input sockets");
+    assert!(input_socket_avs.len() == 1);
+    let input_socket_av = input_socket_avs.pop().expect("has one just checked");
+    let input_socket_id = InputSocket::find_for_attribute_value_id(ctx, input_socket_av)
+        .await
+        .expect("couldn't find input socket")
+        .expect("has one for the av");
+    let input_socket = InputSocket::get_by_id(ctx, input_socket_id)
+        .await
+        .expect("couldn't find input socket");
+    assert_eq!(input_socket.arity(), SocketArity::One);
+    assert_eq!(format!("{:?}", input_socket.connection_annotations()), "[ConnectionAnnotation { tokens: [\"two\"] }, ConnectionAnnotation { tokens: [\"input_socket\"] }]");
+
+    // check output socket data
+    let mut output_socket_avs = component
+        .output_socket_attribute_values(ctx)
+        .await
+        .expect("could not get input sockets");
+    assert!(output_socket_avs.len() == 1);
+    let output_socket_av = output_socket_avs.pop().expect("has one just checked");
+    let output_socket_id = OutputSocket::find_for_attribute_value_id(ctx, output_socket_av)
+        .await
+        .expect("couldn't find input socket")
+        .expect("has one for the av");
+    let output_socket = OutputSocket::get_by_id(ctx, output_socket_id)
+        .await
+        .expect("couldn't find input socket");
+    assert_eq!(output_socket.arity(), SocketArity::One);
+    assert_eq!(format!("{:?}", output_socket.connection_annotations()), "[ConnectionAnnotation { tokens: [\"two\"] }, ConnectionAnnotation { tokens: [\"output_socket\"] }]");
+
+    // check connections on the component
+    let mut incoming_connections = component
+        .incoming_connections(ctx)
+        .await
+        .expect("found incoming connections");
+    assert_eq!(incoming_connections.len(), 1);
+    let incoming_connection = incoming_connections.pop().expect("has one connection");
+    assert_eq!(incoming_connection.from_component_id, input_comp.id());
+    let mut outgoing_connections = component
+        .outgoing_connections(ctx)
+        .await
+        .expect("has outgoing connections");
+    assert_eq!(outgoing_connections.len(), 1);
+    let outgoing_connection = outgoing_connections.pop().expect("has a connection");
+    assert_eq!(outgoing_connection.to_component_id, output_comp.id());
+
+    // Modify the sockets, changing their arity and adding a connection annotation
+    let asset_func = "function main() {
+        const asset = new AssetBuilder();
+       const beta_destination_input_socket = new SocketDefinitionBuilder()
+            .setName(\"input_socket\")
+            .setArity(\"many\")
+            .setConnectionAnnotation(\"two\")
+            .setConnectionAnnotation(\"dog\")
+            .build();
+        asset.addInputSocket(beta_destination_input_socket);
+        const beta_destination_output_socket = new SocketDefinitionBuilder()
+            .setName(\"output_socket\")
+            .setArity(\"many\")
+            .setConnectionAnnotation(\"one\")
+            .setConnectionAnnotation(\"dog\")
+            .build();
+        asset.addOutputSocket(beta_destination_output_socket);
+
+        return asset.build();
+    }";
+    VariantAuthoringClient::save_variant_content(
+        ctx,
+        schema_variant_id,
+        name,
+        name,
+        category,
+        description,
+        link,
+        color,
+        ComponentType::Component,
+        Some(asset_func),
+    )
+    .await
+    .expect("could not save content");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit");
+
+    // Once it's all ready, regenerate and commit.
+    // Note that regenerate should auto-update the component
+    // so this also ensures the component upgrade is successful
+    VariantAuthoringClient::regenerate_variant(ctx, schema_variant_id)
+        .await
+        .expect("could not regenerate variant");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit");
+
+    // check the input socket data
+    let mut input_socket_avs = component
+        .input_socket_attribute_values(ctx)
+        .await
+        .expect("could not get input sockets");
+    assert!(input_socket_avs.len() == 1);
+    let input_socket_av = input_socket_avs.pop().expect("has one just checked");
+    let input_socket_id = InputSocket::find_for_attribute_value_id(ctx, input_socket_av)
+        .await
+        .expect("couldn't find input socket")
+        .expect("has one for the av");
+    let input_socket = InputSocket::get_by_id(ctx, input_socket_id)
+        .await
+        .expect("couldn't find input socket");
+    assert_eq!(input_socket.arity(), SocketArity::Many);
+    assert_eq!(format!("{:?}", input_socket.connection_annotations()), "[ConnectionAnnotation { tokens: [\"two\"] }, ConnectionAnnotation { tokens: [\"dog\"] }, ConnectionAnnotation { tokens: [\"input_socket\"] }]");
+
+    // check output socket data
+    let mut output_socket_avs = component
+        .output_socket_attribute_values(ctx)
+        .await
+        .expect("could not get input sockets");
+    assert!(output_socket_avs.len() == 1);
+    let output_socket_av = output_socket_avs.pop().expect("has one just checked");
+    let output_socket_id = OutputSocket::find_for_attribute_value_id(ctx, output_socket_av)
+        .await
+        .expect("couldn't find input socket")
+        .expect("has one for the av");
+    let output_socket = OutputSocket::get_by_id(ctx, output_socket_id)
+        .await
+        .expect("couldn't find input socket");
+    assert_eq!(output_socket.arity(), SocketArity::Many);
+    assert_eq!(format!("{:?}", output_socket.connection_annotations()), "[ConnectionAnnotation { tokens: [\"one\"] }, ConnectionAnnotation { tokens: [\"dog\"] }, ConnectionAnnotation { tokens: [\"output_socket\"] }]");
+
+    // check connections on the component
+    let mut incoming_connections = component
+        .incoming_connections(ctx)
+        .await
+        .expect("found incoming connections");
+    assert_eq!(incoming_connections.len(), 1);
+    let incoming_connection = incoming_connections.pop().expect("has one connection");
+    assert_eq!(incoming_connection.from_component_id, input_comp.id());
+    let mut outgoing_connections = component
+        .outgoing_connections(ctx)
+        .await
+        .expect("has outgoing connections");
+    assert_eq!(outgoing_connections.len(), 1);
+    let outgoing_connection = outgoing_connections.pop().expect("has a connection");
+    assert_eq!(outgoing_connection.to_component_id, output_comp.id());
 }
 
 #[test]
