@@ -246,10 +246,15 @@ export interface CfSchema extends JSONSchema.Interface {
 
 type CfDb = Record<string, CfSchema>;
 const DB: CfDb = {};
+const DEFAULT_PATH = "./cloudformation-schema";
 
 export async function loadCfDatabase(
-  path: string = "./cloudformation-schema",
+  { path, services }: {
+    path?: string,
+    services?: string[],
+  }
 ): Promise<CfDb> {
+  path ??= DEFAULT_PATH;
   if (Object.keys(DB).length === 0) {
     const fullPath = Deno.realPathSync(path);
     logger.debug("Loading database from Cloudformation schema", { fullPath });
@@ -272,42 +277,7 @@ export async function loadCfDatabase(
 
       const typeName: string = data.typeName;
 
-      if (
-        false &&
-        ![
-          "AWS::EC2::Subnet",
-          "AWS::EC2::SecurityGroup",
-          "AWS::EC2::SecurityGroupIngress",
-          "AWS::EC2::SecurityGroupEgress",
-          "AWS::EC2::SecurityGroupVpcAssociation",
-          "AWS::EC2::Instance",
-          "AWS::EC2::KeyPair",
-          "AWS::EC2::VPC",
-          "AWS::EC2::Subnet",
-          "AWS::EC2::Route",
-          "AWS::EC2::RouteTable",
-          "AWS::EC2::SubnetRouteTableAssociation",
-          "AWS::EC2::NatGateway",
-          "AWS::EC2::InternetGateway",
-          "AWS::EC2::EIP",
-          "AWS::EC2::EIPAssociation",
-          "AWS::EC2::VPCGatewayAttachment",
-          "AWS::ElasticLoadBalancingV2::LoadBalancer",
-          "AWS::ElasticLoadBalancingV2::Listener",
-          "AWS::ElasticLoadBalancingV2::ListenerRule",
-          "AWS::ElasticLoadBalancingV2::TargetGroup",
-          "AWS::ECS::CapacityProvider",
-          "AWS::ECS::Cluster",
-          "AWS::ECS::Service",
-          "AWS::ECS::ClusterCapacityProviderAssociations",
-          "AWS::ECS::TaskDefinition",
-          "AWS::IAM::Policy",
-          "AWS::IAM::Role",
-          "AWS::IAM::InstanceProfile",
-          "AWS::IAM::RolePolicy",
-          "AWS::IAM::ManagedPolicy",
-        ].includes(typeName)
-      ) continue;
+      if (services && !services.some((service) => typeName.match(service))) continue;
 
       logger.debug(`Loaded ${typeName}`);
       try {

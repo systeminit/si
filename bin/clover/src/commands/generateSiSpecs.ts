@@ -30,9 +30,10 @@ export function generateSiSpecForService(serviceName: string) {
   return pkgSpecFromCf(cf);
 }
 
-export async function generateSiSpecs() {
-  const db = await loadCfDatabase();
-  const existing_specs = await getExistingSpecs();
+export async function generateSiSpecs(moduleIndexUrl: string, services?: string[]) {
+  if (services?.length == 0) services = undefined;
+  const db = await loadCfDatabase({ services });
+  const existing_specs = await getExistingSpecs(moduleIndexUrl);
 
   let imported = 0;
   let importSubAssets = 0;
