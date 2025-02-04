@@ -19,7 +19,7 @@
       :config="{
         x: 10,
         y: 10,
-        text: cursor.name,
+        text: displayName,
         fill: cursor.color || colorPrefix,
         fontStyle: 'bold',
       }"
@@ -34,6 +34,8 @@ import { useTheme } from "@si/vue-lib/design-system";
 import { DiagramCursorDef } from "@/store/presence.store";
 import DiagramIcon from "./DiagramIcon.vue";
 
+const NAME_LENGTH_LIMIT = 50;
+
 const props = defineProps<{
   cursor: DiagramCursorDef;
 }>();
@@ -42,5 +44,11 @@ const { theme } = useTheme();
 const colorPrefix = computed(() => {
   if (theme.value === "dark") return "white";
   return "black";
+});
+
+const displayName = computed(() => {
+  const name = props.cursor.name;
+  if (name.length < NAME_LENGTH_LIMIT) return name;
+  else return `${name.substring(0, NAME_LENGTH_LIMIT)}...`;
 });
 </script>

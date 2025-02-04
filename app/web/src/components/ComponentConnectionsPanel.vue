@@ -72,9 +72,7 @@ const currentParentNamePropValue = computed(() => {
   return {
     id: currentParent.value?.id,
     propId: currentParent.value?.id,
-    value: currentParent.value
-      ? `${currentParent.value.displayName} (${currentParent.value.schemaName})`
-      : null,
+    value: currentParent.value ? currentParent.value.id : null,
     canBeSetBySocket: false,
     isFromExternalSource: false,
     isControlledByDynamicFunc: false,
@@ -106,6 +104,7 @@ const lineageTree = computed(
             widgetKind: { kind: "select", options: parentOptionsList.value },
             isHidden: false,
             isReadonly: false,
+            widerInput: true,
           } as TreeFormProp,
           children: [],
           value: currentParentNamePropValue.value,
