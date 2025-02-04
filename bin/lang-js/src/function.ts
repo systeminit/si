@@ -16,10 +16,9 @@ import action_run, { ActionRunFunc } from "./function_kinds/action_run.ts";
 import before from "./function_kinds/before.ts";
 import { rawStorage } from "./sandbox/requestStorage.ts";
 import { Debugger } from "./debug.ts";
-import { transpile } from "jsr:@deno/emit";
 import { Debug } from "./debug.ts";
-import * as _worker from "./worker.js";
 import { bundleCode } from "./transpile.ts";
+import { createSandbox } from "./sandbox.ts";
 
 const debug = Debug("langJs:function");
 
@@ -41,6 +40,13 @@ export type Parameters = Record<string, unknown>;
 export interface Func {
   codeBase64: string;
   handler: string;
+}
+
+class TimeoutError extends Error {
+  constructor(seconds: number) {
+    super(`function timed out after ${seconds} seconds`);
+    this.name = "TimeoutError";
+  }
 }
 
 export interface Result {
@@ -220,52 +226,43 @@ export async function runCode(
   with_arg?: Record<string, unknown>,
 ): Promise<Record<string, unknown>> {
   code = await bundleCode(code);
-  const currentStorage = rawStorage();
 
-  const worker = new Worker(new URL("./worker.js", import.meta.url), {
-    type: "module",
-    deno: {
-      permissions: {
-        import: true,
-        env: true,
-        net: true,
-        read: true,
-        run: true,
-        sys: true,
-        write: true,
-      },
-    },
-  });
+  const sandbox = createSandbox(func_kind, execution_id);
+  const keys = Object.keys(sandbox);
+  const values = Object.values(sandbox);
 
-  debug({ "function kind": func_kind });
-  debug({ "arg": with_arg });
-  debug({ "code": code });
-  return new Promise((resolve, reject) => {
-    worker.postMessage({
-      bundledCode: code,
-      func_kind,
-      execution_id,
-      with_arg,
-      storage: currentStorage ?? {},
-      timeout,
-    });
+  for (const [key, value] of Object.entries(rawStorage().env || {})) {
+    Deno.env.set(key, value);
+  }
 
-    worker.onmessage = (event) => {
-      const { result, error, storage } = event.data;
-      if (storage) {
-        Object.assign(rawStorage(), storage);
-      }
-      if (error) {
-        reject(error);
-      } else {
-        resolve(result);
-      }
-      worker.terminate();
-    };
+  const func = new Function(
+    ...keys,
+    "with_arg",
+    `
+      return (async () => {
+        ${code}
+        try {
+          return await run(with_arg);
+        } catch (e) {
+          throw e
+        }
+       })()
+    `,
+  );
 
-    worker.onerror = (error) => {
-      reject(error);
-      worker.terminate();
-    };
-  });
+  const timeoutId = setTimeout(() => {
+    throw new TimeoutError(timeout);
+  }, timeout * 1000);
+
+  try {
+    const result = await func(...values, with_arg);
+    debug({ result });
+    clearTimeout(timeoutId);
+    return result;
+  } catch (e: unknown) {
+    debug({ error: e });
+    clearTimeout(timeoutId);
+
+    throw e instanceof Error ? e : new Error(String(e));
+  }
 }
