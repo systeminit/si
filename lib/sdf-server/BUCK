@@ -8,6 +8,7 @@ rust_library(
         "//lib/auth-api-client:auth-api-client",
         "//lib/buck2-resources:buck2-resources",
         "//lib/dal:dal",
+        "//lib/frigg:frigg",
         "//lib/module-index-client:module-index-client",
         "//lib/nats-multiplexer-client:nats-multiplexer-client",
         "//lib/nats-multiplexer:nats-multiplexer",

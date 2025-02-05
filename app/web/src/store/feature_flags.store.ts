@@ -22,6 +22,7 @@ const FLAG_MAPPING = {
 const WORKSPACE_FLAG_MAPPING = {
   WORKSPACE_FINE_GRAINED_ACCESS_CONTROL:
     "workspace-fine-grained-access-control",
+  FRONTEND_ARCH_VIEWS: "workspace-frontend-arch-views",
 };
 
 const ALL_FLAG_MAPPING: Record<FeatureFlags, string> = {
@@ -82,12 +83,14 @@ export function useFeatureFlagsStore() {
             }),
           },
         );
-        const result = await resp.json();
-        Object.entries(WORKSPACE_FLAG_MAPPING).forEach(
-          ([storeFlagKey, phFlag]) => {
-            this[storeFlagKey] = result.featureFlags[phFlag] ?? false;
-          },
-        );
+        if (resp.ok) {
+          const result = await resp.json();
+          Object.entries(WORKSPACE_FLAG_MAPPING).forEach(
+            ([storeFlagKey, phFlag]) => {
+              this[storeFlagKey] = result.featureFlags[phFlag] ?? false;
+            },
+          );
+        }
 
         // You can override feature flags while working on a feature by setting them to true/false here
         // for example:

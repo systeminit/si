@@ -15,6 +15,7 @@
 use std::io;
 
 use audit_database::AuditDatabaseContextError;
+use frigg::FriggError;
 use si_data_spicedb::SpiceDbError;
 use thiserror::Error;
 
@@ -66,6 +67,8 @@ pub enum ServerError {
     Axum(#[source] hyper::Error),
     #[error("error while initializing: {0}")]
     Init(#[from] init::InitError),
+    #[error("kv store error: {0}")]
+    KvStore(#[from] FriggError),
     #[error("nats multipler error: {0}")]
     NatsMultiplexer(#[from] ::nats_multiplexer::MultiplexerError),
     #[error("Failed to set up signal handler")]

@@ -488,5 +488,7 @@ macro_rules! do_not_use_directly_id_inner {
                 Ok(Self(::ulid::Ulid::from_string(s)?))
             }
         }
+
+        // impl si_id::SiId for $name {}
     };
 }

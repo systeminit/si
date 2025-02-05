@@ -84,6 +84,7 @@ pub(crate) async fn default(State(state): State<AppState>, subject: Subject) -> 
     let AppState {
         metadata,
         nats,
+        frigg,
         requests_stream,
         ctx_builder,
         quiescent_period,
@@ -140,6 +141,7 @@ pub(crate) async fn default(State(state): State<AppState>, subject: Subject) -> 
         nats,
         requests_stream.clone(),
         incoming,
+        frigg,
         workspace.id,
         change_set.id,
         ctx_builder,

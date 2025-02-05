@@ -27,6 +27,7 @@ import {
 import { ulid } from "ulid";
 import opentelemetry, { Span } from "@opentelemetry/api";
 import { UseAsyncStateReturn } from "@vueuse/core";
+import { describePattern, URLPattern } from "../utils/api_utils";
 
 const tracer = opentelemetry.trace.getTracer("si-vue");
 
@@ -168,33 +169,6 @@ type ApiRequestDescriptionGenerator = (payload: any) => ApiRequestDescription;
 type OptimisticReturn = (() => void) | void;
 type OptimisticFn = (requestUlid: RequestUlid) => OptimisticReturn;
 
-// accepting null | undefined just to allow other parts of the codebase flexibility
-// throwing if we ever hit that :(
-export type URLPattern = Array<
-  string | Record<string, string | undefined | null>
->;
-const describePattern = (pattern: URLPattern): [string, string] => {
-  const _url: string[] = [];
-  const _urlName: string[] = [];
-  pattern.forEach((p) => {
-    if (typeof p === "string") {
-      _url.push(p);
-      _urlName.push(p);
-    } else {
-      const vals = Object.values(p);
-      if (!vals[0])
-        throw Error(
-          `Bad URLPattern ${JSON.stringify(pattern)} with: ${JSON.stringify(p)}
-        `,
-        );
-      else _url.push(vals[0]); // url gets the value
-      const keys = Object.keys(p);
-      if (keys.length > 0) _urlName.push(`:${keys[0]}`); // name gets the str
-    }
-  });
-  return [_url.join("/"), _urlName.join("/")];
-};
-
 export type ApiRequestDescription<
   Response = any,
   RequestParams = Record<string, unknown>,
@@ -257,6 +231,7 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
     store,
     options: storeOptions,
   }: PiniaPluginContext) => {
+    if (store.$id === "heimdall") return;
     /* eslint-disable no-param-reassign */
 
     // bail if plugin already called - not sure if necessary but previous pinia version needed it
@@ -453,14 +428,18 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
 
           // call success handler if one was defined - this will usually be what updates the store
           // we may want to bundle this change together with onSuccess somehow? maybe doesnt matter?
-          if (typeof onSuccess === "function") {
-            await onSuccess.call(store, request.data);
-          }
+          if (request) {
+            if (typeof onSuccess === "function") {
+              await onSuccess.call(store, request.data);
+            }
 
-          completed.resolve({
-            data: request.data,
-          });
-          span.setAttributes({ "http.status_code": request.status });
+            completed.resolve({
+              data: request.data,
+            });
+            span.setAttributes({ "http.status_code": request.status });
+          } else {
+            completed.resolve({});
+          }
           span.end();
           return await completed.promise;
 

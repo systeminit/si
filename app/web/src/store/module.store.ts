@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
 import * as _ from "lodash-es";
-import { addStoreHooks, ApiRequest, URLPattern } from "@si/vue-lib/pinia";
+import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
+import { URLPattern } from "@si/vue-lib";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { SchemaId, SchemaVariantId } from "@/api/sdf/dal/schema";
