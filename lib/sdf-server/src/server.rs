@@ -4,9 +4,11 @@ use asset_sprayer::AssetSprayer;
 use audit_database::AuditDatabaseContext;
 use axum::{async_trait, routing::IntoMakeService, Router};
 use dal::ServicesContext;
+use frigg::{frigg_kv, FriggStore};
 use hyper::server::accept::Accept;
 use nats_multiplexer::Multiplexer;
 use nats_multiplexer_client::MultiplexerClient;
+use si_data_nats::jetstream;
 use si_data_spicedb::SpiceDbClient;
 use si_jwt_public_key::JwtPublicSigningKeyChain;
 use si_posthog::PosthogClient;
@@ -20,7 +22,9 @@ use tokio_util::{sync::CancellationToken, task::TaskTracker};
 
 use crate::{
     init,
-    nats_multiplexer::{CRDT_MULTIPLEXER_SUBJECT, WS_MULTIPLEXER_SUBJECT},
+    nats_multiplexer::{
+        CRDT_MULTIPLEXER_SUBJECT, DATA_CACHE_MULTIPLEXER_SUBJECT, WS_MULTIPLEXER_SUBJECT,
+    },
     runnable::Runnable,
     uds::UdsIncomingStream,
     ApplicationRuntimeMode, AxumApp, Config, IncomingStream, Migrator, ServerError, ServerResult,
@@ -101,7 +105,13 @@ impl Server {
         let (crdt_multiplexer, crdt_multiplexer_client) = Multiplexer::new(
             services_context.nats_conn(),
             CRDT_MULTIPLEXER_SUBJECT,
-            helping_tasks_token,
+            helping_tasks_token.clone(),
+        )
+        .await?;
+        let (data_cache_multiplexer, data_cache_multiplexer_client) = Multiplexer::new(
+            services_context.nats_conn(),
+            DATA_CACHE_MULTIPLEXER_SUBJECT,
+            helping_tasks_token.clone(),
         )
         .await?;
 
@@ -123,6 +133,16 @@ impl Server {
             spicedb_client = Some(SpiceDbClient::new(config.spicedb()).await?);
         }
 
+        let frigg = {
+            let nats = services_context.nats_conn().clone();
+            let context = jetstream::new(nats.clone());
+
+            FriggStore::new(
+                nats,
+                frigg_kv(&context, context.metadata().subject_prefix()).await?,
+            )
+        };
+
         prepare_maintenance_mode_watcher(application_runtime_mode.clone(), token.clone())?;
 
         // Spawn helping tasks and track them for graceful shutdown
@@ -130,6 +150,7 @@ impl Server {
         helping_tasks_tracker.spawn(posthog_sender.run());
         helping_tasks_tracker.spawn(ws_multiplexer.run());
         helping_tasks_tracker.spawn(crdt_multiplexer.run());
+        helping_tasks_tracker.spawn(data_cache_multiplexer.run());
 
         let audit_database_context = AuditDatabaseContext::from_config(config.audit()).await?;
 
@@ -143,11 +164,13 @@ impl Server {
             asset_sprayer,
             ws_multiplexer_client,
             crdt_multiplexer_client,
+            data_cache_multiplexer_client,
             *config.create_workspace_permissions(),
             config.create_workspace_allowlist().clone(),
             application_runtime_mode,
             token,
             spicedb_client,
+            frigg,
             audit_database_context,
         )
         .await
@@ -165,11 +188,13 @@ impl Server {
         asset_sprayer: Option<AssetSprayer>,
         ws_multiplexer_client: MultiplexerClient,
         crdt_multiplexer_client: MultiplexerClient,
+        data_cache_multiplexer_client: MultiplexerClient,
         create_workspace_permissions: WorkspacePermissionsMode,
         create_workspace_allowlist: Vec<WorkspacePermissions>,
         application_runtime_mode: Arc<RwLock<ApplicationRuntimeMode>>,
         token: CancellationToken,
         spicedb_client: Option<SpiceDbClient>,
+        frigg: FriggStore,
         audit_database_context: AuditDatabaseContext,
     ) -> ServerResult<Self> {
         let app = AxumApp::from_services(
@@ -180,11 +205,13 @@ impl Server {
             asset_sprayer,
             ws_multiplexer_client,
             crdt_multiplexer_client,
+            data_cache_multiplexer_client,
             create_workspace_permissions,
             create_workspace_allowlist,
             application_runtime_mode,
             token.clone(),
             spicedb_client,
+            frigg,
             // TODO(nick): split the migrator context and the reader-only context (should be read-only pg pool).
             audit_database_context.clone(),
         )

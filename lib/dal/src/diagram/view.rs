@@ -1,3 +1,15 @@
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
+
+use chrono::Utc;
+use petgraph::Outgoing;
+use serde::{Deserialize, Serialize};
+use si_events::{ulid::Ulid, ComponentId, ContentHash};
+use si_frontend_types::{RawGeometry, View as FrontendView, ViewList as FrontendViewList};
+pub use si_id::ViewId;
+
 use crate::{
     diagram::{
         diagram_object::DiagramObject,
@@ -16,17 +28,6 @@ use crate::{
     ChangeSetId, DalContext, EdgeWeightKind, EdgeWeightKindDiscriminants, Timestamp,
     WorkspaceSnapshotError, WsEvent, WsEventResult, WsPayload,
 };
-use chrono::Utc;
-use petgraph::Outgoing;
-use serde::{Deserialize, Serialize};
-use si_events::{ulid::Ulid, ComponentId, ContentHash};
-use si_frontend_types::RawGeometry;
-use std::{
-    collections::{HashMap, HashSet},
-    sync::Arc,
-};
-
-pub use si_id::ViewId;
 
 /// Represents spatial data for something to be shown on a view
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
@@ -80,6 +81,40 @@ impl View {
             timestamp: content.timestamp,
             name: content.name,
         }
+    }
+
+    pub async fn as_frontend_type(
+        ctx: &DalContext,
+        view_id: ViewId,
+    ) -> DiagramResult<FrontendView> {
+        let view = Self::get_by_id(ctx, view_id).await?;
+        let is_default = view.is_default(ctx).await?;
+
+        Ok(FrontendView {
+            id: view.id,
+            name: view.name,
+            is_default,
+            timestamp: view.timestamp.into(),
+        })
+    }
+
+    pub async fn as_frontend_list_type(ctx: &DalContext) -> DiagramResult<FrontendViewList> {
+        let mut view_ids: Vec<_> = Self::list_node_weights(ctx)
+            .await?
+            .into_iter()
+            .map(|w| ViewId::from(w.id()))
+            .collect();
+        view_ids.sort();
+
+        let mut views = Vec::with_capacity(view_ids.len());
+        for view_id in view_ids {
+            views.push(Self::as_frontend_type(ctx, view_id).await?);
+        }
+
+        Ok(FrontendViewList {
+            id: ctx.change_set_id(),
+            views: views.iter().map(Into::into).collect(),
+        })
     }
 
     pub async fn new(ctx: &DalContext, name: impl AsRef<str>) -> DiagramResult<Self> {

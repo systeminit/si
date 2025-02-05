@@ -1,9 +1,10 @@
 import { defineStore } from "pinia";
 import * as _ from "lodash-es";
 import { watch } from "vue";
-import { ApiRequest, addStoreHooks, URLPattern } from "@si/vue-lib/pinia";
+import { ApiRequest, addStoreHooks } from "@si/vue-lib/pinia";
 import { useToast } from "vue-toastification";
 import { ulid } from "ulid";
+import { URLPattern } from "@si/vue-lib";
 import {
   ChangeSet,
   ChangeSetId,
@@ -21,6 +22,7 @@ import { useRealtimeStore } from "./realtime/realtime.store";
 import { useRouterStore } from "./router.store";
 import handleStoreError from "./errors";
 import { useStatusStore } from "./status.store";
+import * as heimdall from "./realtime/heimdall";
 
 const toast = useToast();
 
@@ -435,6 +437,16 @@ export function useChangeSetsStore() {
           {
             eventType: "ChangeSetStatusChanged",
             callback: async (data) => {
+              if (
+                [
+                  ChangeSetStatus.Abandoned,
+                  ChangeSetStatus.Applied,
+                  ChangeSetStatus.Closed,
+                ].includes(data.changeSet.status) &&
+                data.changeSet.id !== this.headChangeSetId
+              ) {
+                heimdall.prune(workspacePk, data.changeSet.id);
+              }
               // If I'm the one who requested this change set - toast that it's been approved/rejected/etc.
               if (
                 data.changeSet.mergeRequestedByUserId === authStore.user?.pk
@@ -469,6 +481,10 @@ export function useChangeSetsStore() {
           {
             eventType: "ChangeSetAbandoned",
             callback: async (data) => {
+              if (data.changeSetId !== this.headChangeSetId) {
+                heimdall.prune(workspacePk, data.changeSetId);
+              }
+
               const changeSetName = this.selectedChangeSet?.name;
               if (data.changeSetId === this.selectedChangeSetId) {
                 if (this.headChangeSetId) {
@@ -512,9 +528,11 @@ export function useChangeSetsStore() {
               const { changeSetId, userPk, toRebaseChangeSetId } = data;
               const changeSet = this.changeSetsById[changeSetId];
               if (changeSet) {
-                if (changeSet.id !== this.headChangeSetId)
+                if (changeSet.id !== this.headChangeSetId) {
                   // never set HEAD to Applied
                   changeSet.status = ChangeSetStatus.Applied;
+                  heimdall.prune(workspacePk, changeSet.id);
+                }
                 if (this.selectedChangeSet?.id === changeSetId) {
                   this.postApplyActor = userPk;
                 }

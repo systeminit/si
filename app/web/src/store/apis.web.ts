@@ -11,12 +11,12 @@ import { trackEvent } from "@/utils/tracking";
 import FiveHundredError from "@/components/toasts/FiveHundredError.vue";
 import MaintenanceMode from "@/components/toasts/MaintenanceMode.vue";
 import UnscheduledDowntime from "@/components/toasts/UnscheduledDowntime.vue";
+import { niflheim } from "@/store/realtime/heimdall";
 
 // api base url - can use a proxy or set a full url
 let apiUrl: string;
 if (import.meta.env.VITE_API_PROXY_PATH)
   apiUrl = `${window.location.origin}${import.meta.env.VITE_API_PROXY_PATH}`;
-else if (import.meta.env.VITE_API_URL) apiUrl = import.meta.env.VITE_API_URL;
 else throw new Error("Invalid API env var config");
 export const API_HTTP_URL = apiUrl;
 
@@ -30,8 +30,7 @@ export const sdfApiInstance = Axios.create({
   baseURL: API_HTTP_URL,
 });
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-if (typeof window !== "undefined") (window as any).sdf = sdfApiInstance;
-function injectBearerTokenAuth(config: InternalAxiosRequestConfig) {
+export function injectBearerTokenAuth(config: InternalAxiosRequestConfig) {
   // inject auth token from the store as a custom header
   const authStore = useAuthStore();
   config.headers = config.headers || {};
@@ -45,9 +44,20 @@ function injectBearerTokenAuth(config: InternalAxiosRequestConfig) {
 
 sdfApiInstance.interceptors.request.use(injectBearerTokenAuth);
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+if (typeof window !== "undefined") (window as any).sdf = sdfApiInstance;
+
 async function handleForcedChangesetRedirection(response: AxiosResponse) {
   if (response.headers.force_change_set_id) {
     const changeSetsStore = useChangeSetsStore();
+
+    niflheim(
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      changeSetsStore.selectedWorkspacePk!,
+      response.headers.force_change_set_id,
+      true,
+    );
+
     await changeSetsStore.setActiveChangeset(
       response.headers.force_change_set_id,
       true,

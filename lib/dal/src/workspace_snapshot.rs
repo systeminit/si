@@ -1731,4 +1731,22 @@ impl WorkspaceSnapshot {
         let mut inferred_connection_write_guard = self.inferred_connection_graph.write().await;
         *inferred_connection_write_guard = None;
     }
+
+    pub async fn map_all_nodes_to_change_objects(&self) -> WorkspaceSnapshotResult<Vec<Change>> {
+        use crate::workspace_snapshot::graph::traits::entity_kind::EntityKindExt as _;
+
+        let mut changes = Vec::new();
+        for node_weight in self.nodes().await? {
+            changes.push(Change {
+                entity_id: node_weight.id().into(),
+                entity_kind: self
+                    .working_copy()
+                    .await
+                    .get_entity_kind_for_id(node_weight.id().into())?,
+                merkle_tree_hash: node_weight.merkle_tree_hash(),
+            });
+        }
+
+        Ok(changes)
+    }
 }

@@ -4,6 +4,7 @@ use asset_sprayer::AssetSprayer;
 use audit_database::AuditDatabaseContext;
 use axum::Router;
 use dal::ServicesContext;
+use frigg::FriggStore;
 use nats_multiplexer_client::MultiplexerClient;
 use si_data_spicedb::SpiceDbClient;
 use si_jwt_public_key::JwtPublicSigningKeyChain;
@@ -32,11 +33,13 @@ impl AxumApp {
         asset_sprayer: Option<AssetSprayer>,
         ws_multiplexer_client: MultiplexerClient,
         crdt_multiplexer_client: MultiplexerClient,
+        data_cache_multiplexer_client: MultiplexerClient,
         create_workspace_permissions: WorkspacePermissionsMode,
         create_workspace_allowlist: Vec<WorkspacePermissions>,
         application_runtime_mode: Arc<RwLock<ApplicationRuntimeMode>>,
         shutdown_token: CancellationToken,
         spicedb_client: Option<SpiceDbClient>,
+        frigg: FriggStore,
         audit_database_context: AuditDatabaseContext,
     ) -> Self {
         Self::inner_from_services(
@@ -48,11 +51,13 @@ impl AxumApp {
             false,
             ws_multiplexer_client,
             crdt_multiplexer_client,
+            data_cache_multiplexer_client,
             create_workspace_permissions,
             create_workspace_allowlist,
             application_runtime_mode,
             shutdown_token,
             spicedb_client,
+            frigg,
             audit_database_context,
         )
     }
@@ -72,11 +77,13 @@ impl AxumApp {
         asset_sprayer: Option<AssetSprayer>,
         ws_multiplexer_client: MultiplexerClient,
         crdt_multiplexer_client: MultiplexerClient,
+        data_cache_multiplexer_client: MultiplexerClient,
         create_workspace_permissions: WorkspacePermissionsMode,
         create_workspace_allowlist: Vec<WorkspacePermissions>,
         application_runtime_mode: Arc<RwLock<ApplicationRuntimeMode>>,
         shutdown_token: CancellationToken,
         spicedb_client: SpiceDbClient,
+        frigg: FriggStore,
         audit_database_context: AuditDatabaseContext,
     ) -> Self {
         Self::inner_from_services(
@@ -88,11 +95,13 @@ impl AxumApp {
             true,
             ws_multiplexer_client,
             crdt_multiplexer_client,
+            data_cache_multiplexer_client,
             create_workspace_permissions,
             create_workspace_allowlist,
             application_runtime_mode,
             shutdown_token,
             Some(spicedb_client),
+            frigg,
             audit_database_context,
         )
     }
@@ -111,11 +120,13 @@ impl AxumApp {
         for_tests: bool,
         ws_multiplexer_client: MultiplexerClient,
         crdt_multiplexer_client: MultiplexerClient,
+        data_cache_multiplexer_client: MultiplexerClient,
         create_workspace_permissions: WorkspacePermissionsMode,
         create_workspace_allowlist: Vec<WorkspacePermissions>,
         application_runtime_mode: Arc<RwLock<ApplicationRuntimeMode>>,
         shutdown_token: CancellationToken,
         spicedb_client: Option<SpiceDbClient>,
+        frigg: FriggStore,
         audit_database_context: AuditDatabaseContext,
     ) -> Self {
         let state = AppState::new(
@@ -127,11 +138,13 @@ impl AxumApp {
             for_tests,
             ws_multiplexer_client,
             crdt_multiplexer_client,
+            data_cache_multiplexer_client,
             create_workspace_permissions,
             create_workspace_allowlist,
             application_runtime_mode,
             shutdown_token,
             spicedb_client,
+            frigg,
             audit_database_context,
         );
 

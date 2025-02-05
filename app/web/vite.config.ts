@@ -55,15 +55,15 @@ export default (opts: { mode: string }) => {
       IconsPlugin({ compiler: "raw" }),
 
       process.env.NODE_ENV !== "production" &&
-        checkerPlugin({
-          vueTsc: true,
-          eslint: {
-            lintCommand: packageJson.scripts.lint,
-            // I _think_ we only want to pop up an error on the screen for proper errors
-            // otherwise we can get a lot of unused var errors when you comment something out temporarily
-            dev: { logLevel: ["error"] },
-          },
-        }),
+      checkerPlugin({
+        vueTsc: true,
+        eslint: {
+          lintCommand: packageJson.scripts.lint,
+          // I _think_ we only want to pop up an error on the screen for proper errors
+          // otherwise we can get a lot of unused var errors when you comment something out temporarily
+          dev: { logLevel: ["error"] },
+        },
+      }),
 
       ViteGitRevisionPlugin({}),
     ],
@@ -86,6 +86,13 @@ export default (opts: { mode: string }) => {
           ws: true,
         },
       },
+      headers: {
+        'Cross-Origin-Opener-Policy': 'same-origin',
+        'Cross-Origin-Embedder-Policy': 'require-corp',
+      },
+    },
+    optimizeDeps: {
+      exclude: ['@sqlite.org/sqlite-wasm'],
     },
     preview: {
       proxy: {
@@ -107,7 +114,17 @@ export default (opts: { mode: string }) => {
     build: {
       manifest: true,
       rollupOptions: {
+        input: {
+          main: path.resolve(__dirname, "index.html"),
+          worker: path.resolve(__dirname, "src/workers/webworker.ts"), // Add worker as an entry point
+        },
         output: {
+          entryFileNames: (chunk) => {
+            if (chunk.name === "worker") {
+              return "assets/webworker.js"; // Specify output path for web worker
+            }
+            return "assets/[name].js";
+          },
           sourcemap: "inline",
           format: "es",
           globals: {

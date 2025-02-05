@@ -3,7 +3,7 @@ import * as _ from "lodash-es";
 import ReconnectingWebSocket from "reconnecting-websocket";
 import { computed, reactive, ref, watch } from "vue";
 import { ulid } from "ulid";
-import { API_WS_URL } from "@/store/apis";
+import { API_WS_URL } from "@/store/apis.web";
 import { omit } from "@/utils/omit";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { useAuthStore } from "../auth.store";

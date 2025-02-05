@@ -45,6 +45,7 @@ export const piniaHooksPlugin: PiniaPlugin = ({
   store,
   options: storeOptions,
 }: PiniaPluginContext) => {
+  if (store.$id === "heimdall") return;
   /* eslint-disable no-param-reassign */
 
   // might not need this check, but not sure this plugin code is guaranteed to only be called once
