@@ -17,6 +17,7 @@ use pinga_core::REPLY_INBOX_HEADER_NAME;
 use si_data_nats::Subject;
 use telemetry::prelude::*;
 use telemetry_nats::propagation;
+use telemetry_utils::metric;
 use thiserror::Error;
 
 use crate::{app_state::AppState, server::ServerMetadata};
@@ -144,7 +145,8 @@ async fn execute_job(
     span.record("messaging.destination", subject.as_str());
     span.record("otel.name", otel_name.as_str());
     span.record("si.workspace.id", workspace_id_str);
-
+    let job_kind = job_info.kind.clone();
+    metric!(counter.pinga_job_in_progress = 1, label = job_kind);
     let reply_message = match execute_job_inner(ctx_builder.clone(), job_info).await {
         Ok(_) => {
             span.record_ok();
@@ -180,6 +182,7 @@ async fn execute_job(
             };
         }
     }
+    metric!(counter.pinga_job_in_progress = -1, label = job_kind);
 }
 
 async fn execute_job_inner(mut ctx_builder: DalContextBuilder, job_info: JobInfo) -> Result<()> {
