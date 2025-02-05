@@ -3,7 +3,10 @@
     <div v-if="$slots.top" class="shrink-0">
       <slot name="top" />
     </div>
-    <div class="overflow-auto flex-grow relative scroll-slot">
+    <div
+      ref="scrollDivRef"
+      class="overflow-auto flex-grow relative scroll-slot"
+    >
       <slot />
     </div>
     <div v-if="$slots.bottom" class="shrink-0">
@@ -11,3 +14,10 @@
     </div>
   </div>
 </template>
+
+<script lang="ts" setup>
+import { ref } from "vue";
+
+const scrollDivRef = ref<HTMLElement | null>(null);
+defineExpose({ scrollElement: scrollDivRef });
+</script>
