@@ -1,6 +1,6 @@
 <template>
   <div class="grow relative">
-    <ScrollArea v-if="editingAsset && schemaVariantId">
+    <ScrollArea v-if="editingAsset && schemaVariantId" ref="scrollAreaRef">
       <template #top>
         <div
           class="flex flex-row items-center justify-around gap-xs p-xs border-b dark:border-neutral-600"
@@ -35,7 +35,6 @@
           title="Asset Name"
           @submit="cloneAsset"
         />
-
         <ErrorMessage
           v-for="(warning, index) in assetStore.detachmentWarnings"
           :key="warning.message"
@@ -54,13 +53,11 @@
             @click.stop="assetStore.detachmentWarnings.splice(index, 1)"
           />
         </ErrorMessage>
-
         <AssetFuncAttachModal
           ref="attachModalRef"
           :schemaVariantId="props.schemaVariantId"
         />
       </template>
-
       <Stack class="p-xs" spacing="none">
         <div>
           <ErrorMessage :requestStatus="updateAssetReqStatus" variant="block" />
@@ -76,7 +73,6 @@
           @blur="updateAsset"
           @focus="focus"
         />
-
         <VormInput
           id="displayName"
           v-model="editingAsset.displayName"
@@ -130,10 +126,11 @@
           <ColorPicker
             id="color"
             v-model="editingAsset.color"
+            :parentElement="scrollAreaRef?.scrollElement || undefined"
+            :disabled="editingAsset.isLocked"
             @change="updateAsset"
           />
         </VormInput>
-
         <VormInput
           id="link"
           v-model="editingAsset.link"
@@ -279,6 +276,8 @@ const assetStore = useAssetStore();
 const funcStore = useFuncStore();
 const executeAssetModalRef = ref();
 const cloneAssetModalRef = ref<InstanceType<typeof AssetNameModal>>();
+
+const scrollAreaRef = ref<InstanceType<typeof ScrollArea>>();
 
 // if func list is loading, its because we dont have the right data
 // and we dont want to display incorrect intrinsic data

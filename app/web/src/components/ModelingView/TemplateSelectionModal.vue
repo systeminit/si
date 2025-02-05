@@ -51,12 +51,7 @@
           label="Asset Color"
           type="container"
         >
-          <ColorPicker
-            id="asset-color"
-            v-model="assetColor"
-            insideModal
-            @change="null"
-          />
+          <ColorPicker id="asset-color" v-model="assetColor" @change="null" />
         </VormInput>
       </div>
 
