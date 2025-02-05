@@ -210,6 +210,9 @@ importers:
       '@si/vue-lib':
         specifier: workspace:*
         version: link:../../lib/vue-lib
+      '@sqlite.org/sqlite-wasm':
+        specifier: 3.48.0-build4
+        version: 3.48.0-build4
       '@tanstack/vue-table':
         specifier: ^8.20.5
         version: 8.20.5(vue@3.5.12(typescript@4.9.5))
@@ -2678,6 +2681,10 @@ packages:
 
   '@sphinxxxx/color-conversion@2.2.2':
     resolution: {integrity: sha512-XExJS3cLqgrmNBIP3bBw6+1oQ1ksGjFh0+oClDKFYpCCqx/hlqwWO5KO/S63fzUo67SxI9dMrF0y5T/Ey7h8Zw==}
+
+  '@sqlite.org/sqlite-wasm@3.48.0-build4':
+    resolution: {integrity: sha512-hI6twvUkzOmyGZhQMza1gpfqErZxXRw6JEsiVjUbo7tFanVD+8Oil0Ih3l2nGzHdxPI41zFmfUQG7GHqhciKZQ==}
+    hasBin: true
 
   '@swc/core-darwin-arm64@1.3.36':
     resolution: {integrity: sha512-lsP+C8p9cC/Vd9uAbtxpEnM8GoJI/MMnVuXak7OlxOtDH9/oTwmAcAQTfNGNaH19d2FAIRwf+5RbXCPnxa2Zjw==}
@@ -13023,6 +13030,8 @@ snapshots:
       '@sinonjs/commons': 1.8.5
 
   '@sphinxxxx/color-conversion@2.2.2': {}
+
+  '@sqlite.org/sqlite-wasm@3.48.0-build4': {}
 
   '@swc/core-darwin-arm64@1.3.36':
     optional: true
