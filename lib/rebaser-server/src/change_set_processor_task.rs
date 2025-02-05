@@ -6,6 +6,7 @@ use std::{
 };
 
 use dal::DalContextBuilder;
+use frigg::FriggStore;
 use futures::{future::BoxFuture, TryStreamExt};
 use naxum::{
     extract::MatchedSubject,
@@ -61,6 +62,7 @@ impl ChangeSetProcessorTask {
         nats: NatsClient,
         stream: jetstream::stream::Stream,
         incoming: push::Ordered,
+        frigg: FriggStore,
         workspace_id: WorkspacePk,
         change_set_id: ChangeSetId,
         ctx_builder: DalContextBuilder,
@@ -79,6 +81,7 @@ impl ChangeSetProcessorTask {
             workspace_id,
             change_set_id,
             nats,
+            frigg,
             ctx_builder,
             run_dvu_notify,
             server_tracker,
@@ -346,6 +349,7 @@ mod handlers {
             workspace_id,
             change_set_id,
             nats,
+            frigg,
             ctx_builder,
             run_notify,
             server_tracker,
@@ -358,7 +362,7 @@ mod handlers {
         span.record("si.workspace.id", workspace_id.to_string());
         span.record("si.change_set.id", change_set_id.to_string());
 
-        let rebase_status = perform_rebase(&mut ctx, &request, &server_tracker)
+        let rebase_status = perform_rebase(&mut ctx, &frigg, &request, &server_tracker)
             .await
             .unwrap_or_else(|err| {
                 error!(
@@ -449,6 +453,7 @@ mod app_state {
     use std::sync::Arc;
 
     use dal::DalContextBuilder;
+    use frigg::FriggStore;
     use si_data_nats::NatsClient;
     use si_events::{ChangeSetId, WorkspacePk};
     use tokio::sync::Notify;
@@ -461,8 +466,10 @@ mod app_state {
         pub(crate) workspace_id: WorkspacePk,
         /// Change set ID for the task
         pub(crate) change_set_id: ChangeSetId,
-        /// NATS Jetstream context
+        /// NATS client
         pub(crate) nats: NatsClient,
+        /// Frigg store
+        pub(crate) frigg: FriggStore,
         /// DAL context builder for each processing request
         pub(crate) ctx_builder: DalContextBuilder,
         /// Signal to run a DVU job
@@ -478,6 +485,7 @@ mod app_state {
             workspace_id: WorkspacePk,
             change_set_id: ChangeSetId,
             nats: NatsClient,
+            frigg: FriggStore,
             ctx_builder: DalContextBuilder,
             run_notify: Arc<Notify>,
             server_tracker: TaskTracker,
@@ -486,6 +494,7 @@ mod app_state {
                 workspace_id,
                 change_set_id,
                 nats,
+                frigg,
                 ctx_builder,
                 run_notify,
                 server_tracker,

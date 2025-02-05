@@ -11,10 +11,14 @@ pub const CRDT_MULTIPLEXER_SUBJECT: &str = "crdt.>";
 /// The subject that the "ws" multiplexer will be subscribing to.
 pub const WS_MULTIPLEXER_SUBJECT: &str = "si.>";
 
+/// The subject that the "data_cache" multiplexer will be subscribing to.
+pub const DATA_CACHE_MULTIPLEXER_SUBJECT: &str = "data_cache.>";
+
 /// A grouping of multiplexer clients needed to appease the "FromRef" implementation for
 /// "AppState". Yes, really.
 #[derive(Debug, Clone)]
 pub struct NatsMultiplexerClients {
     pub ws: Arc<Mutex<MultiplexerClient>>,
     pub crdt: Arc<Mutex<MultiplexerClient>>,
+    pub data_cache: Arc<Mutex<MultiplexerClient>>,
 }

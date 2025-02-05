@@ -124,6 +124,7 @@ import { computed, onBeforeMount, onBeforeUnmount, onMounted, ref } from "vue";
 import { ResizablePanel, themeClasses } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { IRect } from "konva/lib/types";
+import { useQueryClient } from "@tanstack/vue-query";
 import ComponentDetails from "@/components/ComponentDetails.vue";
 import { useActionsStore } from "@/store/actions.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
@@ -141,6 +142,7 @@ import { useAssetStore } from "@/store/asset.store";
 import { useFuncStore } from "@/store/func/funcs.store";
 import { useAuthStore } from "@/store/auth.store";
 import FloatingConnectionMenu from "@/components/ModelingView/FloatingConnectionMenu.vue";
+import * as heimdall from "@/store/realtime/heimdall";
 import LeftPanelDrawer from "../LeftPanelDrawer.vue";
 import ModelingDiagram from "../ModelingDiagram/ModelingDiagram.vue";
 import AssetPalette from "../AssetPalette.vue";
@@ -240,12 +242,28 @@ const approvalData = computed(
     ],
 );
 
+const queryClient = useQueryClient();
 onBeforeMount(async () => {
   let viewId;
   if (routeStore.currentRoute?.params?.viewId)
     viewId = routeStore.currentRoute.params.viewId as string;
 
   // get to first paint ASAP
+  if (
+    changeSetsStore.selectedWorkspacePk &&
+    changeSetsStore.selectedChangeSetId &&
+    authStore.selectedOrDefaultAuthToken
+  ) {
+    await heimdall.init(authStore.selectedOrDefaultAuthToken, queryClient);
+    heimdall.niflheim(
+      changeSetsStore.selectedWorkspacePk,
+      changeSetsStore.selectedChangeSetId,
+      true,
+    );
+    // await heimdall.fullDiagnosticTest();
+  } else {
+    throw new Error("bifrost is down");
+  }
   await Promise.all([
     viewsStore.LIST_VIEWS(),
     assetStore.LOAD_SCHEMA_VARIANT_LIST(),

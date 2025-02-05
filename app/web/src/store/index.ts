@@ -9,7 +9,7 @@ import {
   sdfApiInstance,
   authApiInstance,
   moduleIndexApiInstance,
-} from "./apis";
+} from "./apis.web";
 
 // initialize root pinia store/instance
 const pinia = createPinia();

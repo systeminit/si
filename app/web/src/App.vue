@@ -1,28 +1,40 @@
 <!-- eslint-disable vue/no-multiple-template-root -->
 <template>
-  <div class="font-sans">
-    <template v-if="route.name === 'auth-connect'">
-      <RouterView />
+  <Suspense>
+    <template #default>
+      <div class="font-sans">
+        <template v-if="route.name === 'auth-connect'">
+          <RouterView />
+        </template>
+        <template
+          v-else-if="
+            !authStore.userIsLoggedInAndInitialized &&
+            (!restoreAuthReqStatus.isRequested ||
+              restoreAuthReqStatus.isPending ||
+              reconnectAuthReqStatus.isPending)
+          "
+        >
+          <p>restoring auth...</p>
+        </template>
+        <template v-else>
+          <CachedAppNotification />
+          <RouterView :key="selectedWorkspace?.pk" />
+        </template>
+      </div>
     </template>
-    <template
-      v-else-if="
-        !authStore.userIsLoggedInAndInitialized &&
-        (!restoreAuthReqStatus.isRequested ||
-          restoreAuthReqStatus.isPending ||
-          reconnectAuthReqStatus.isPending)
-      "
-    >
-      <p>restoring auth...</p>
-    </template>
-    <template v-else>
-      <CachedAppNotification />
-      <RouterView :key="selectedWorkspace?.pk" />
-    </template>
-  </div>
+    <template #fallback>Loading...</template>
+  </Suspense>
+  <div v-if="suspenseError">Suspense Error {{ suspenseError }}</div>
 </template>
 
 <script lang="ts" setup>
-import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import {
+  computed,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+  onErrorCaptured,
+} from "vue";
 import "floating-vue/dist/style.css";
 
 import { tw } from "@si/vue-lib";
@@ -37,6 +49,11 @@ import { useWorkspacesStore } from "./store/workspaces.store";
 import { useRealtimeStore } from "./store/realtime/realtime.store";
 import CachedAppNotification from "./components/CachedAppNotification.vue";
 import { APP_MINIMUM_WIDTH } from "./main";
+
+const suspenseError = ref();
+onErrorCaptured((err) => {
+  suspenseError.value = err;
+});
 
 // this TS magic means that when you call Object.entries
 // the "key" will retain its type and will not just be defaulted to "string"
@@ -101,11 +118,12 @@ useHead(
 // this token will be automatically injected into API requests
 const authStore = useAuthStore();
 const route = useRoute();
+
 if (route.name === "auth-connect") {
   // we are just clearing any local login state since we are in the process of logging in again
   authStore.localLogout(false);
 } else {
-  authStore.initFromStorage().then();
+  authStore.initFromStorage();
 }
 
 const restoreAuthReqStatus = authStore.getRequestStatus("RESTORE_AUTH");
@@ -115,8 +133,7 @@ const workspacesStore = useWorkspacesStore();
 const selectedWorkspace = computed(() => workspacesStore.selectedWorkspace);
 
 // initialize the realtime store - which will watch for auth and open/close websocket
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const realtimeStore = useRealtimeStore();
+const _realtimeStore = useRealtimeStore();
 </script>
 
 <style lang="less">

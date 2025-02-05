@@ -50,4 +50,8 @@ pub fn routes() -> Router<AppState> {
             get(workspace_updates::workspace_updates),
         )
         .route("/crdt", get(crdt::crdt))
+        .route(
+            "/bifrost",
+            get(crate::service::v2::ws::bifrost::bifrost_handler),
+        )
 }

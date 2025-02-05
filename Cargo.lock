@@ -1929,12 +1929,14 @@ dependencies = [
  "derive_more",
  "diff",
  "dyn-clone",
+ "frigg",
  "futures",
  "hex",
  "iftree",
  "indexmap 2.8.0",
  "itertools 0.13.0",
  "joi-validator",
+ "json-patch",
  "jwt-simple",
  "lazy_static",
  "module-index-client",
@@ -1962,6 +1964,7 @@ dependencies = [
  "si-data-pg",
  "si-events",
  "si-frontend-types",
+ "si-frontend-types-macros",
  "si-hash",
  "si-id",
  "si-layer-cache",
@@ -2925,6 +2928,22 @@ dependencies = [
  "tracing",
  "twox-hash",
  "zstd",
+]
+
+[[package]]
+name = "frigg"
+version = "0.1.0"
+dependencies = [
+ "bytes",
+ "futures",
+ "remain",
+ "serde_json",
+ "si-data-nats",
+ "si-events",
+ "si-frontend-types",
+ "si-id",
+ "telemetry",
+ "thiserror 2.0.12",
 ]
 
 [[package]]
@@ -5791,21 +5810,27 @@ dependencies = [
  "buck2-resources",
  "dal",
  "derive_builder",
+ "frigg",
  "futures",
+ "json-patch",
  "naxum",
  "pending-events",
  "rebaser-client",
  "rebaser-core",
  "remain",
  "serde",
+ "serde_json",
  "shuttle-server",
  "si-crypto",
  "si-data-nats",
  "si-data-pg",
  "si-events",
+ "si-frontend-types",
+ "si-frontend-types-macros",
  "si-layer-cache",
  "si-settings",
  "si-std",
+ "strum",
  "telemetry",
  "telemetry-nats",
  "telemetry-utils",
@@ -6412,6 +6437,7 @@ dependencies = [
  "dal-test",
  "derive_builder",
  "derive_more",
+ "frigg",
  "futures",
  "futures-lite",
  "hyper 0.14.32",
@@ -6987,13 +7013,26 @@ name = "si-frontend-types"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "json-patch",
  "module-index-types",
  "remain",
  "serde",
  "serde_json",
  "si-events",
+ "si-frontend-types-macros",
  "si-id",
  "strum",
+]
+
+[[package]]
+name = "si-frontend-types-macros"
+version = "0.1.0"
+dependencies = [
+ "darling 0.20.10",
+ "manyhow",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.100",
 ]
 
 [[package]]

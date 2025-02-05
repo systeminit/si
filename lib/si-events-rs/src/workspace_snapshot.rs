@@ -7,7 +7,7 @@ use crate::create_xxhash_type;
 create_xxhash_type!(Checksum);
 
 #[remain::sorted]
-#[derive(Debug, Copy, Clone, Deserialize, Serialize, PartialEq, Eq, Display)]
+#[derive(Debug, Copy, Clone, Deserialize, Serialize, PartialEq, Eq, Display, Hash)]
 pub enum EntityKind {
     Action,
     ActionPrototype,
