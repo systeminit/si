@@ -96,10 +96,12 @@ impl ManagementBinding {
 
                         let sv_type = root_prop.ts_type(ctx).await?;
 
+                        let json_name = serde_json::to_string(&name)?;
+
                         let component_update_type = format!(
                             r#"
                                 {{
-                                    kind: "{name}",
+                                    kind: {json_name},
                                     properties?: {sv_type},
                                     geometry?: {{ [key: string]: Geometry }},
                                     connect?: {{
@@ -117,7 +119,7 @@ impl ManagementBinding {
                         let component_create_type = format!(
                             r#"
                                 {{
-                                    kind?: "{name}",
+                                    kind?: {json_name},
                                     properties?: {sv_type},
                                     geometry?: Geometry | {{ [key: string]: Geometry }},
                                     connect?: Connection[],
@@ -135,13 +137,13 @@ impl ManagementBinding {
                     let mut this_incoming_connections = "    {\n".to_string();
                     let this_component_iface = root_prop.ts_type(ctx).await?;
                     for input_socket in SchemaVariant::list_all_sockets(ctx, variant_id).await?.1 {
-                        let name = input_socket.name();
+                        let json_input_socket_name = serde_json::to_string(input_socket.name())?;
                         let type_qualifier = match input_socket.arity() {
                             SocketArity::One => " | undefined",
                             SocketArity::Many => "[]",
                         };
                         this_incoming_connections.push_str(&format!(
-                            "      {name}: {INCOMING_CONNECTION_TYPE}{type_qualifier},\n"
+                            "      {json_input_socket_name}: {INCOMING_CONNECTION_TYPE}{type_qualifier},\n"
                         ));
                     }
                     this_incoming_connections.push_str("    }\n");
@@ -186,9 +188,9 @@ type Output = {{
   ops?: {{
     views?: {{ create?: string[]; remove?: string[] }},
     create?: {{ [key: string]: {component_create_type} }},
-    update?: {{ [key: string]: {{ 
-        properties?: {{ [key: string]: unknown }}, 
-        geometry?: {{ [key: string]: Geometry }}, 
+    update?: {{ [key: string]: {{
+        properties?: {{ [key: string]: unknown }},
+        geometry?: {{ [key: string]: Geometry }},
         connect?: {{
             add?: Connection[],
             remove?: Connection[],
@@ -206,7 +208,7 @@ type Output = {{
   message?: string | null;
 }};
 type Input = {{
-  currentView: string, 
+  currentView: string,
   thisComponent: {{
     properties: {this_component_iface},
     geometry: {{ [key: string]: Geometry }},
