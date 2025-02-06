@@ -6,6 +6,7 @@ mod conflict;
 pub mod fs;
 mod func;
 mod module;
+pub mod reference;
 mod schema_variant;
 mod workspace;
 
