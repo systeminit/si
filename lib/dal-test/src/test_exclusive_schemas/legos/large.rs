@@ -9,8 +9,7 @@ use si_pkg::{
 
 use crate::test_exclusive_schemas::legos::bricks::LegoBricks;
 use crate::test_exclusive_schemas::{
-    build_action_func, build_asset_func, build_resource_payload_to_value_func,
-    create_identity_func, PKG_CREATED_BY, PKG_VERSION,
+    build_action_func, build_asset_func, create_identity_func, PKG_CREATED_BY, PKG_VERSION,
 };
 
 pub(crate) async fn migrate_test_exclusive_schema_large_odd_lego(
@@ -62,9 +61,6 @@ pub(crate) async fn migrate_test_exclusive_schema_large_odd_lego(
     // Create Scaffold Func
     let fn_name = "test:scaffoldLargeLegoAsset";
     let large_lego_authoring_schema_func = build_asset_func(fn_name)?;
-
-    // Author Resource Payload Func
-    let resource_payload_to_value_func = build_resource_payload_to_value_func()?;
 
     let bricks = LegoBricks::new_for_odd()?;
 
@@ -137,7 +133,6 @@ pub(crate) async fn migrate_test_exclusive_schema_large_odd_lego(
         .func(update_action_func)
         .func(delete_action_func)
         .func(large_lego_authoring_schema_func)
-        .func(resource_payload_to_value_func)
         .schema(large_lego_schema)
         .build()?;
 
@@ -203,9 +198,6 @@ pub(crate) async fn migrate_test_exclusive_schema_large_even_lego(
     // Create Scaffold Func
     let fn_name = "test:scaffoldLargeLegoAsset";
     let large_lego_authoring_schema_func = build_asset_func(fn_name)?;
-
-    // Author Resource Payload Func
-    let resource_payload_to_value_func = build_resource_payload_to_value_func()?;
 
     let bricks = LegoBricks::new_for_even()?;
 
@@ -278,7 +270,6 @@ pub(crate) async fn migrate_test_exclusive_schema_large_even_lego(
         .func(update_action_func)
         .func(delete_action_func)
         .func(large_lego_authoring_schema_func)
-        .func(resource_payload_to_value_func)
         .schema(large_lego_schema)
         .build()?;
 

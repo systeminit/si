@@ -964,7 +964,7 @@ async fn migrate_local_builtins(
     Workspace::setup_builtin(&mut ctx).await?;
 
     info!("migrating intrinsic functions");
-    func::migrate_intrinsics(&ctx).await?;
+    func::migrate_intrinsics_for_tests(&ctx).await?;
 
     info!("migrating test exclusive schemas");
     test_exclusive_schemas::migrate(&ctx).await?;

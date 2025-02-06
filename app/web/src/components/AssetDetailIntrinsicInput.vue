@@ -7,9 +7,7 @@
     :label="label"
     :options="optionsForIntrinsicDisplay"
     compact
-    :iconRight="
-      display.funcId === identityFuncId ? 'input-socket' : 'circle-slash'
-    "
+    :iconRight="icon"
     :disabled="isLocked || display.funcId === unsetFuncId"
     :showCautionLines="display.funcId === unsetFuncId"
     iconRightRotate="down"
@@ -30,17 +28,38 @@
           :checked="selectedFilter === 'unset'"
           @select="selectFilter('unset')"
         />
+        <span class="pl-xs text-neutral-500">Identity</span>
         <DropdownMenuItem
           label="Bind to Input Socket"
           checkable
-          :checked="selectedFilter === 'inputSocket'"
-          @select="selectFilter('inputSocket')"
+          :checked="selectedFilter === 'inputSocketForIdentity'"
+          @select="selectFilter('inputSocketForIdentity')"
         />
         <DropdownMenuItem
           label="Bind to Prop"
           checkable
-          :checked="selectedFilter === 'prop'"
-          @select="selectFilter('prop')"
+          :checked="selectedFilter === 'propForIdentity'"
+          @select="selectFilter('propForIdentity')"
+        />
+        <span v-if="normalizeToArrayFuncId" class="flex pl-xs text-neutral-500"
+          >Normalize to Array</span
+        >
+        <span v-else class="flex pl-xs text-neutral-500"
+          >Normalize to Array (Regenerate to Install)</span
+        >
+        <DropdownMenuItem
+          label="Bind to Input Socket"
+          checkable
+          :disabled="!normalizeToArrayFuncId"
+          :checked="selectedFilter === 'inputSocketForNormalizeToArray'"
+          @select="selectFilter('inputSocketForNormalizeToArray')"
+        />
+        <DropdownMenuItem
+          label="Bind to Prop"
+          checkable
+          :disabled="!normalizeToArrayFuncId"
+          :checked="selectedFilter === 'propForNormalizeToArray'"
+          @select="selectFilter('propForNormalizeToArray')"
         />
       </DropdownMenu>
       <DetailsPanelMenuIcon
@@ -84,7 +103,12 @@ const props = defineProps<{
   isLocked: boolean;
 }>();
 
-type DropdownFilter = "unset" | "prop" | "inputSocket";
+type DropdownFilter =
+  | "unset"
+  | "propForIdentity"
+  | "inputSocketForIdentity"
+  | "propForNormalizeToArray"
+  | "inputSocketForNormalizeToArray";
 
 const display = ref<PropDisplay | IntrinsicDisplay | undefined>();
 
@@ -117,7 +141,7 @@ watch(
   { immediate: true },
 );
 
-const emit = defineEmits(["change", "changeToUnset", "changeToIdentity"]);
+const emit = defineEmits(["change", "changeIntrinsicFunc"]);
 
 const funcStore = useFuncStore();
 const assetStore = useAssetStore();
@@ -129,6 +153,14 @@ const identityFuncId = computed(() => {
   return func?.funcId as FuncId;
 });
 
+const normalizeToArrayFuncId = computed(() => {
+  const func = funcStore.funcList.find(
+    (func) =>
+      func.kind === FuncKind.Intrinsic && func.name === "si:normalizeToArray",
+  );
+  return func?.funcId as FuncId;
+});
+
 const unsetFuncId = computed(() => {
   const func = funcStore.funcList.find(
     (func) => func.kind === FuncKind.Intrinsic && func.name === "si:unset",
@@ -136,24 +168,36 @@ const unsetFuncId = computed(() => {
   return func?.funcId as FuncId;
 });
 
+const icon = computed(() => {
+  if (display.value?.funcId === identityFuncId.value) return "input-socket";
+  else if (display.value?.funcId === normalizeToArrayFuncId.value)
+    return "brackets-square";
+  return "circle-slash";
+});
+
 const initialFilter = (): DropdownFilter | null => {
   if (display.value?.value?.startsWith("s_")) {
-    return "inputSocket";
+    if (display.value?.funcId === normalizeToArrayFuncId.value)
+      return "inputSocketForNormalizeToArray";
+    return "inputSocketForIdentity";
   } else if (display.value?.value?.startsWith("p_")) {
-    return "prop";
+    if (display.value?.funcId === normalizeToArrayFuncId.value)
+      return "propForNormalizeToArray";
+    return "propForIdentity";
   } else if (display.value?.funcId === unsetFuncId.value) {
     return "unset";
   } else if ("socketName" in props.data) {
     // NOTE(nick): fallback to the input data if the display is empty. We need this in case a "emit" blows the
     // component away. This could be cleaner to avoid having multiple branches.
-    return "inputSocket";
+    return "inputSocketForIdentity";
   } else if ("path" in props.data) {
     // NOTE(nick): fallback to the input data if the display is empty. We need this in case a "emit" blows the
     // component away. This could be cleaner to avoid having multiple branches.
-    return "prop";
+    return "propForIdentity";
   }
   return null;
 };
+
 const selectedFilter = ref<DropdownFilter | null>(initialFilter());
 const selectFilter = (item: DropdownFilter) => {
   if (props.isLocked) return;
@@ -161,9 +205,14 @@ const selectFilter = (item: DropdownFilter) => {
   selectedFilter.value = item;
 
   if (item === "unset") {
-    emit("changeToUnset", display.value);
+    emit("changeIntrinsicFunc", "unset", display.value);
+  } else if (
+    item === "propForNormalizeToArray" ||
+    item === "inputSocketForNormalizeToArray"
+  ) {
+    emit("changeIntrinsicFunc", "normalizeToArray", display.value);
   } else {
-    emit("changeToIdentity", display.value, null);
+    emit("changeIntrinsicFunc", "identity", display.value);
   }
 };
 
@@ -172,9 +221,15 @@ const optionsForIntrinsicDisplay = computed(() => {
   const variant = assetStore.variantFromListById[props.schemaVariantId];
   if (!variant) return {};
 
-  if (selectedFilter.value === "prop") {
+  if (
+    selectedFilter.value === "propForIdentity" ||
+    selectedFilter.value === "propForNormalizeToArray"
+  ) {
     return groupedPropsFor(variant);
-  } else if (selectedFilter.value === "inputSocket") {
+  } else if (
+    selectedFilter.value === "inputSocketForIdentity" ||
+    selectedFilter.value === "inputSocketForNormalizeToArray"
+  ) {
     return inputSocketsFor(variant);
   }
   return {};
