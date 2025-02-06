@@ -13,10 +13,17 @@
           : [
               selectedOrActive
                 ? [
-                    'text-shade-0',
-                    iconBgActiveTone
-                      ? getToneBgColorClass(iconBgActiveTone)
-                      : getToneBgColorClass(iconTone),
+                    iconTone === 'shade'
+                      ? themeClasses(
+                          'text-shade-0 bg-shade-100',
+                          'text-shade-100 bg-shade-0',
+                        )
+                      : [
+                          'text-shade-0',
+                          iconBgActiveTone
+                            ? getToneBgColorClass(iconBgActiveTone)
+                            : getToneBgColorClass(iconTone),
+                        ],
                   ]
                 : [
                     hover || hovered
@@ -63,6 +70,7 @@ import {
 } from "../utils/color_utils";
 import { SpacingSizes } from "../utils/size_utils";
 import { ApiRequestStatus } from "../../pinia";
+import { themeClasses } from "../utils/theme_tools";
 
 const props = defineProps({
   size: { type: String as PropType<SpacingSizes>, default: "md" },

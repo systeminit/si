@@ -1,8 +1,9 @@
 <template>
   <div
+    ref="mainDivRef"
     :class="
       clsx(
-        'flex flex-col w-full overflow-hidden',
+        'flex flex-col w-full overflow-hidden relative',
         !disableScroll && 'max-h-full',
       )
     "
@@ -17,36 +18,38 @@
       </slot>
 
       <div class="flex">
-        <SiButtonIcon
+        <IconButton
           v-if="allowCopy"
-          tooltipText="Copy code to clipboard"
-          ignoreTextColor
+          :tooltip="copyTooltip"
           icon="clipboard-copy"
+          iconTone="shade"
+          tooltipPlacement="top"
           @click="copyCodeToClipboard"
         />
-
         <slot name="actionButtons"></slot>
       </div>
     </div>
-    <SiButtonIcon
+    <IconButton
       v-if="!showTitle && allowCopy"
-      tooltipText="Copy code to clipboard"
-      ignoreTextColor
+      :tooltip="copyTooltip"
       icon="clipboard-copy"
+      iconTone="shade"
+      tooltipPlacement="top"
       :class="
         clsx(
           'absolute z-100 right-xs',
-          numberOfLinesInCode > 1 ? 'top-xs' : 'top-3xs',
+          mainDivTallEnoughForCopyIconPadding ? 'top-xs' : 'top-0',
         )
       "
       @click="copyCodeToClipboard"
     />
     <div
+      v-if="numberOfLinesInCode > 1"
       :class="
         clsx(
           'w-full h-full overflow-auto',
           border && 'border',
-          themeClasses('border-neutral-300', 'dark:border-neutral-600'),
+          themeClasses('border-neutral-300', 'border-neutral-600'),
         )
       "
     >
@@ -56,6 +59,22 @@
         @keyup.stop
         @keydown.stop
       ></div>
+    </div>
+    <div
+      v-else
+      :class="
+        clsx(
+          'w-full h-full',
+          border && 'border',
+          'flex font-mono break-all text-wrap overflow-hidden p-2xs rounded',
+          themeClasses(
+            'bg-neutral-100 border-neutral-300',
+            'bg-neutral-800 border-neutral-600',
+          ),
+        )
+      "
+    >
+      <div class="overflow-auto">{{ code }}</div>
     </div>
   </div>
 </template>
@@ -81,11 +100,9 @@ import { properties as JsonModeParser } from "@codemirror/legacy-modes/mode/prop
 import { yaml as YamlModeParser } from "@codemirror/legacy-modes/mode/yaml";
 import { diff as DiffModeParser } from "@codemirror/legacy-modes/mode/diff";
 import clsx from "clsx";
-import { themeClasses, useTheme } from "@si/vue-lib/design-system";
+import { IconButton, themeClasses, useTheme } from "@si/vue-lib/design-system";
 import { javascript as CodemirrorJsLang } from "@codemirror/lang-javascript";
 import { CodeLanguage } from "@/api/sdf/dal/code_view";
-
-import SiButtonIcon from "@/components/SiButtonIcon.vue";
 
 const props = defineProps({
   code: { type: String },
@@ -102,11 +119,19 @@ const props = defineProps({
   titleClasses: { type: String, default: "h-10" },
   border: { type: Boolean, default: false },
   disableScroll: { type: Boolean },
+  copyTooltip: { type: String, default: "Copy code to clipboard" },
 });
 
 const numberOfLinesInCode = computed(() => {
   return (String(props.code).match(/\n/g) || "").length + 1;
 });
+
+const mainDivRef = ref<HTMLElement>();
+
+const mainDivTallEnoughForCopyIconPadding = computed(
+  () =>
+    mainDivRef.value && mainDivRef.value?.getBoundingClientRect().height > 32,
+);
 
 const { theme } = useTheme();
 
@@ -163,6 +188,8 @@ const editorExtensionList = computed<Extension[]>(() => {
 });
 
 function initCodeMirrorEditor() {
+  if (numberOfLinesInCode.value < 2) return;
+
   editorView = new EditorView({
     state: EditorState.create({
       doc: props.code,
@@ -206,6 +233,10 @@ watch(
 // This doesn't work on IE, do we care? (is it polyfilled by our build system?)
 // RE ^^: https://www.youtube.com/watch?v=Ram7AKbtkGE
 function copyCodeToClipboard() {
+  if (numberOfLinesInCode.value < 2) {
+    navigator.clipboard.writeText(props.code as string);
+    return;
+  }
   if (!editorView) return;
   const code = editorView.state.doc.toString().trim();
   navigator.clipboard.writeText(code);

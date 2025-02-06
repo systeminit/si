@@ -3,25 +3,17 @@
     :class="
       clsx(
         'attributes-panel__si-settings',
-        'flex flex-row items-center h-8 ml-md mr-xs my-xs',
+        'flex flex-row gap-2xs items-center h-8 m-xs',
       )
     "
   >
-    <div
-      :id="`color-picker-${componentId}`"
-      ref="colorPickerMountRef"
-      :style="{ backgroundColor: siValues.color }"
-      :title="siValues.color"
-      :class="
-        clsx(
-          'attributes-panel__color-swatch',
-          'w-8 h-8 mr-xs shrink-0 cursor-pointer relative rounded border border-neutral-600',
-          pickerOpen
-            ? 'outline outline-2 outline-action-400 dark:outline-action-300'
-            : 'hover:outline hover:outline-2 hover:outline-action-400 dark:hover:outline-action-300',
-        )
-      "
-      @click="openColorPicker"
+    <ColorPicker
+      id="attributes-panel-component-color-picker"
+      v-model="siValues.color"
+      required
+      variant="box"
+      class="flex-none"
+      @change="updateColor"
     />
     <input
       v-model="siValues.name"
@@ -41,7 +33,7 @@
       @keyup.enter="updateSiProp('name')"
     />
     <IconButton
-      class="flex-none ml-2xs"
+      class="flex-none"
       iconTone="action"
       :icon="COMPONENT_TYPE_ICONS[siValues.type]"
       :tooltip="
@@ -89,13 +81,13 @@
 import clsx from "clsx";
 import { computed, reactive, ref, watch } from "vue";
 import * as _ from "lodash-es";
-import Picker from "vanilla-picker";
 import {
   COMPONENT_TYPE_ICONS,
   DropdownMenu,
   DropdownMenuItem,
   IconButton,
   themeClasses,
+  ColorPicker,
 } from "@si/vue-lib/design-system";
 import { useComponentsStore } from "@/store/components.store";
 import { useComponentAttributesStore } from "@/store/component_attributes.store";
@@ -183,28 +175,8 @@ const openTypeMenu = (e: MouseEvent) => {
   typeMenuRef.value?.open(e);
 };
 
-// color picker
-const colorPickerMountRef = ref<HTMLElement>();
-const pickerOpen = ref(false);
-let picker: Picker | undefined;
-function openColorPicker() {
-  if (!picker) {
-    picker = new Picker({
-      parent: colorPickerMountRef.value,
-      alpha: false,
-      color: siValues.color,
-      onDone(color: { hex: string }) {
-        siValues.color = color.hex.substring(0, color.hex.length - 2);
-        updateSiProp("color");
-        picker?.destroy();
-        picker = undefined;
-      },
-    });
-    picker.onClose = () => {
-      pickerOpen.value = false;
-    };
-  }
-  picker.show();
-  pickerOpen.value = true;
-}
+const updateColor = (hexColor: string) => {
+  siValues.color = hexColor;
+  updateSiProp("color");
+};
 </script>

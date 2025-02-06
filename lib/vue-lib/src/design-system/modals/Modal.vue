@@ -114,7 +114,7 @@
                   as="p"
                   :class="
                     clsx(
-                      'capsize font-medium line-clamp-5 pb-[1px]',
+                      'font-medium line-clamp-5 pb-[1px]',
                       capitalizeTitle && 'capitalize',
                     )
                   "
