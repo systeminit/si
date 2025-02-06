@@ -3,7 +3,6 @@ use std::convert::TryFrom;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
-use telemetry_utils::metric;
 
 use crate::job::consumer::JobCompletionState;
 use crate::validation::{ValidationOutput, ValidationOutputNode};
@@ -93,7 +92,6 @@ impl JobConsumer for ComputeValidation {
         }
 
         let workspace_snapshot = ctx.workspace_snapshot()?;
-        metric!(counter.compute_validation_concurrency_count = 1);
         for &av_id in &self.attribute_values {
             // It's possible that one or more of the initial AttributeValueIds provided by the enqueued ComputeValidation
             // may have been removed from the snapshot between when the CV job was created and when we're processing
@@ -127,7 +125,6 @@ impl JobConsumer for ComputeValidation {
         }
 
         ctx.commit().await?;
-        metric!(counter.compute_validation_concurrency_count = -1);
         Ok(JobCompletionState::Done)
     }
 }

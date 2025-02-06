@@ -243,8 +243,6 @@ impl DependentValuesUpdate {
     ) -> DependentValueUpdateResult<JobCompletionState> {
         let start = tokio::time::Instant::now();
         let span = Span::current();
-        metric!(counter.dvu_concurrency_count = 1);
-
         let roots = ctx.workspace_snapshot()?.take_dependent_values().await?;
 
         let mut unfinished_values: HashSet<Ulid> = HashSet::new();
@@ -285,7 +283,6 @@ impl DependentValuesUpdate {
             }
         }
         let all_value_ids = dependency_graph.all_value_ids();
-        metric!(counter.dvu.values_to_run = all_value_ids.len());
 
         let mut tracker = StatusUpdateTracker::new_for_values(ctx, all_value_ids).await?;
 
@@ -334,6 +331,7 @@ impl DependentValuesUpdate {
                             .await?
                             .value(ctx)
                             .await?;
+                        metric!(counter.dvu.function_execution = 1);
 
                         update_join_set.spawn(values_from_prototype_function_execution(
                             id,
@@ -354,7 +352,6 @@ impl DependentValuesUpdate {
             if let Some(join_result) = update_join_set.join_next().await {
                 let (task_id, execution_result, before_value) = join_result?;
 
-                metric!(counter.dvu.values_to_run = -1);
                 metric!(counter.dvu.function_execution = -1);
 
                 if let Some(finished_value_id) = task_id_to_av_id.remove(&task_id) {
@@ -478,7 +475,6 @@ impl DependentValuesUpdate {
         debug!("DependentValuesUpdate took: {:?}", start.elapsed());
 
         ctx.commit().await?;
-        metric!(counter.dvu_concurrency_count = -1);
         Ok(JobCompletionState::Done)
     }
 }
@@ -541,8 +537,6 @@ async fn values_from_prototype_function_execution(
     set_value_lock: Arc<RwLock<()>>,
     status_update: Option<StatusUpdate>,
 ) -> PrototypeFunctionExecutionResult {
-    metric!(counter.dvu.function_execution = 1);
-
     if let Some(status_update) = status_update {
         if let Err(err) = send_status_update(&ctx, status_update).await {
             return (task_id, Err(err), before_value.clone());
