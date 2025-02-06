@@ -7,10 +7,17 @@ pub enum ReferenceKind {
     ChangeSetList,
     ChangeSetRecord,
 }
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct ReferenceId<T>(pub T)
+where
+    T: Eq + PartialEq + Clone + std::fmt::Debug + Serialize;
 
-#[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
-pub struct Reference {
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct Reference<T>
+where
+    T: Serialize + Eq + PartialEq + Clone + std::fmt::Debug,
+{
     pub kind: ReferenceKind,
-    pub id: String,
+    pub id: ReferenceId<T>,
     pub checksum: String,
 }
