@@ -89,35 +89,32 @@
             "
           >
             <div
-              ref="headerMainLabelRef"
-              v-tooltip="headerMainLabelTooltip"
               :class="
                 clsx(
                   'attributes-panel-item__section-header-label-main',
-                  'leading-loose flex grow truncate basis-0',
+                  'flex flex-row grow basis-0 min-w-0',
                 )
               "
             >
-              <template v-if="isChildOfArray">
-                {{ propName }}[{{ treeDef.arrayIndex }}]
-              </template>
-              <template v-else-if="isChildOfMap">
-                {{ treeDef.mapKey }}
-              </template>
-              <template v-else>
-                {{ fullPropDef.name }}
-              </template>
-              <template
+              <TruncateWithTooltip class="flex-1 block leading-loose max-w-fit">
+                <template v-if="isChildOfArray">
+                  {{ propName }}[{{ treeDef.arrayIndex }}]
+                </template>
+                <template v-else-if="isChildOfMap">
+                  {{ treeDef.mapKey }}
+                </template>
+                <template v-else>
+                  {{ fullPropDef.name }}
+                </template>
+              </TruncateWithTooltip>
+              <button
                 v-if="propIsEditable && (isChildOfArray || isChildOfMap)"
+                v-tooltip="'Delete'"
+                class="hover:scale-125 hover:text-destructive-500 items-center pl-2xs z-30 flex-none"
+                @click="removeChildHandler"
               >
-                <button
-                  v-tooltip="'Delete'"
-                  class="hover:scale-125 hover:text-destructive-500 items-center pl-2xs z-30 flex-none"
-                  @click="removeChildHandler"
-                >
-                  <Icon name="trash" size="xs" />
-                </button>
-              </template>
+                <Icon name="trash" size="xs" />
+              </button>
             </div>
 
             <div
@@ -159,7 +156,7 @@
             "
             :icon="sourceIcon"
             :overridden="sourceOverridden"
-            :tooltipText="sourceTooltip"
+            :tooltipText="sourceTooltipText"
             header
           />
           <!-- DROPDOWN MENU FOR SELECT SOURCE -->
@@ -485,7 +482,7 @@
             v-if="!(widgetKind === 'secret') && attributesPanel"
             :icon="sourceIcon"
             :overridden="sourceOverridden"
-            :tooltipText="sourceTooltip"
+            :tooltipText="sourceTooltipText"
           />
 
           <a
@@ -531,7 +528,7 @@
             '[&_input]:py-[5px] [&_input]:px-xs [&_input]:bg-transparent [&_input]:font-mono',
             '[&_input]:text-[13px] [&_input]:leading-[18px] [&_input]:w-full',
             '[&_input]:border-none [&_input]:block [&_input]:overflow-hidden [&_input]:text-ellipsis',
-            (isFocus || isHover) && !noValue && '[&_input]:pr-7',
+            indentAdjust,
             // These styles apply to all of the nested <textarea> elements
             '[&_textarea]:py-[5px] [&_textarea]:px-xs [&_textarea]:bg-transparent [&_textarea]:font-mono',
             '[&_textarea]:text-[13px] [&_textarea]:leading-[18px] [&_textarea]:w-full',
@@ -558,14 +555,13 @@
           size="none"
         />
         <Icon
-          v-if="unsetButtonShow"
+          v-if="unsetButtonEnabled"
+          v-tooltip="'Unset'"
           :class="
             clsx(
               'absolute top-0 w-[28px] h-[28px] p-[3px] opacity-50 hover:opacity-100 cursor-pointer z-[2]',
-              !canHaveChildren && (isHover || isFocus) ? 'block' : 'hidden',
-              widgetKind === 'select' || widgetKind === 'comboBox'
-                ? 'right-5'
-                : 'right-0',
+              unsetButtonShow ? 'block' : 'hidden',
+              validationIconShow ? 'right-5' : 'right-0',
               `widget-${widgetKind}`,
             )
           "
@@ -573,16 +569,8 @@
           @click="unsetHandler()"
         />
         <Icon
-          v-if="validation"
-          :class="
-            clsx(
-              'absolute top-3xs',
-              unsetButtonShow ? 'group-hover/input:right-6 ' : '',
-              ['comboBox', 'select'].includes(widgetKind)
-                ? 'right-6'
-                : 'right-0',
-            )
-          "
+          v-if="validationIconShow"
+          class="absolute top-3xs right-0"
           :name="validation?.status === 'Success' ? 'check' : 'x'"
           :tone="validation?.status === 'Success' ? 'success' : 'error'"
         />
@@ -709,7 +697,12 @@
             :placeholder="currentLabelForDropdown"
             :search="widgetOptions.length > DEFAULT_DROPDOWN_SEARCH_THRESHOLD"
             :disabled="!widgetOptions || widgetOptions.length < 1"
-            :class="clsx(`w-full ${propLabelParts[0]}${propLabelParts[1]}`)"
+            :class="
+              clsx(
+                `w-full ${propLabelParts[0]}${propLabelParts[1]}`,
+                unsetButtonShow && 'pr-6',
+              )
+            "
             noBorder
             minWidthToAnchor
             alignRightOnAnchor
@@ -767,9 +760,9 @@
         <template v-else>
           <div class="py-[4px] px-[8px] text-sm">{{ widgetKind }}</div>
         </template>
-        <div
+        <!-- <div
           v-if="!propIsEditable && attributesPanel"
-          v-tooltip="sourceTooltip"
+          v-tooltip="sourceTooltipText"
           :class="
             clsx(
               'attributes-panel-item__blocked-overlay',
@@ -778,7 +771,25 @@
             )
           "
           @click="openNonEditableModal"
-        />
+        /> -->
+
+        <SourceTooltip
+          v-if="!propIsEditable && attributesPanel"
+          :icon="sourceIcon"
+          :overridden="sourceOverridden"
+          :tooltipText="disabledOverlayTooltipText"
+          justMessage
+          :class="
+            clsx(
+              'attributes-panel-item__blocked-overlay',
+              'absolute top-0 w-full h-full z-50 text-center flex flex-row items-center justify-center cursor-pointer opacity-50',
+              themeClasses('bg-caution-lines-light', 'bg-caution-lines-dark'),
+            )
+          "
+          @click="openNonEditableModal"
+        >
+          <div class="w-full h-full" />
+        </SourceTooltip>
       </div>
       <!-- users widget is just a delete button -->
       <IconButton
@@ -909,57 +920,57 @@
     </Modal>
 
     <!-- MODAL FOR WHEN YOU CLICK A PROP WHICH IS CONTROLLED BY A PARENT OR SOCKET -->
-    <Modal ref="confirmEditModalRef" :title="confirmEditModalTitle">
-      <div class="pb-sm">
-        <template v-if="propControlledByParent">
-          You cannot edit prop "{{ propName }}" because it is populated by a
-          function from an ancestor prop.
-        </template>
-        <template v-else-if="isImmutableSecretProp">
-          You cannot edit a non-origin secret prop. You can only edit a secret
-          prop on the component that it originates from (i.e. the component
-          whose asset defines it). For example, an "AWS Credential" secret must
-          be set on an "AWS Credential" component.
-        </template>
-        <template v-else>
-          Editing the prop "{{ propName }}" directly will override the value
-          that is set by a dynamic function:
-          <div class="flex flex-row items-end justify-center">
-            <Icon
-              :name="clipIcon"
-              class="cursor-pointer"
-              size="xs"
-              @click="copyToClipboard"
-            />
-            <pre
-              class="text-center mt-xs cursor-pointer overflow-y-auto break-all text-wrap max-h-[50vh]"
-              @click="copyToClipboard"
-              >{{ currentValue }}</pre
-            >
-          </div>
-        </template>
-      </div>
-      <div class="flex gap-sm">
-        <VButton
-          :class="
-            propControlledByParent || isImmutableSecretProp ? 'flex-grow' : ''
-          "
-          icon="x"
-          tone="shade"
-          variant="ghost"
-          @click="closeConfirmEditModal"
-        >
-          Cancel
-        </VButton>
-        <VButton
-          v-if="!propControlledByParent && !isImmutableSecretProp"
-          class="flex-grow"
-          icon="edit"
-          tone="action"
-          @click="confirmEdit"
-        >
-          Confirm
-        </VButton>
+    <Modal ref="confirmEditModalRef" :title="confirmEditModalTitle" size="lg">
+      <div class="flex flex-col gap-xs max-h-[80vh] overflow-hidden">
+        <div>
+          <template v-if="propControlledByParent">
+            You cannot edit prop "{{ propName }}" because it is populated by a
+            function from an ancestor prop.
+          </template>
+          <template v-else-if="isImmutableSecretProp">
+            You cannot edit or view a non-origin secret prop. You can only edit
+            a secret prop on the component that it originates from (i.e. the
+            component whose asset defines it). For example, an "AWS Credential"
+            secret must be set on an "AWS Credential" component.
+          </template>
+          <template v-else>
+            Editing the prop "{{ propName }}" directly will override the current
+            value that is set by a dynamic function.
+          </template>
+        </div>
+        <CodeViewer
+          v-if="currentValue && widgetKind !== 'secret'"
+          :code="String(currentValue)"
+          border
+          showTitle
+          :title="`Current Value for &quot;${propName}&quot;`"
+          copyTooltip="Copy prop value to clipboard"
+        />
+        <div v-else-if="widgetKind !== 'secret'" class="italic">
+          "{{ propName }}" does not currently have a value.
+        </div>
+        <div class="flex flex-row gap-sm">
+          <VButton
+            :class="
+              propControlledByParent || isImmutableSecretProp ? 'flex-grow' : ''
+            "
+            icon="x"
+            tone="shade"
+            variant="ghost"
+            @click="closeConfirmEditModal"
+          >
+            Cancel
+          </VButton>
+          <VButton
+            v-if="!propControlledByParent && !isImmutableSecretProp"
+            class="flex-grow"
+            icon="edit"
+            tone="action"
+            @click="confirmEdit"
+          >
+            Confirm
+          </VButton>
+        </div>
       </div>
     </Modal>
 
@@ -979,6 +990,7 @@
 
 <script lang="ts" setup>
 import * as _ from "lodash-es";
+import { tw } from "@si/vue-lib";
 import { computed, PropType, ref, watch } from "vue";
 import clsx from "clsx";
 import {
@@ -1021,6 +1033,7 @@ import SourceIconWithTooltip from "./SourceIconWithTooltip.vue";
 import CodeViewer from "../CodeViewer.vue";
 import { TreeFormContext } from "./TreeForm.vue";
 import UserSelectMenu from "../UserSelectMenu.vue";
+import SourceTooltip from "./SourceTooltip.vue";
 
 const MIN_DOCS_TOOLTIP_MODAL_LENGTH = 200;
 const MAX_DOCS_TOOLTIP_LENGTH = 400;
@@ -1069,19 +1082,6 @@ const viewModalRef = ref<InstanceType<typeof Modal>>();
 const editModalRef = ref<InstanceType<typeof Modal>>();
 const secretModalRef = ref<InstanceType<typeof SecretsModal>>();
 
-const headerMainLabelRef = ref();
-const headerMainLabelTooltip = computed(() => {
-  if (!headerMainLabelRef.value) return;
-
-  if (
-    headerMainLabelRef.value.clientWidth < headerMainLabelRef.value.scrollWidth
-  ) {
-    return {
-      content: headerMainLabelRef.value.textContent,
-    };
-  } else return {};
-});
-
 const isOpen = ref(!props.startClosed); // ref(props.attributeDef.children.length > 0);
 const showValidationDetails = ref(false);
 
@@ -1112,14 +1112,6 @@ const shouldBeHidden = (item: AttributeTreeItem | TreeFormData) => {
 };
 
 const isHidden = computed(() => shouldBeHidden(props.treeDef));
-
-const unsetButtonShow = computed(
-  () =>
-    sourceOverridden.value &&
-    currentValue.value !== null &&
-    !propPopulatedBySocket.value &&
-    !propControlledByParent.value,
-);
 
 const numberOfHiddenChildren = computed(() => {
   let count = 0;
@@ -1276,14 +1268,6 @@ const currentLabelForDropdown = computed(() => {
 
   return currentValue.value as string;
 });
-const clipIcon = ref<IconNames>("clipboard-copy");
-const copyToClipboard = () => {
-  navigator.clipboard.writeText(currentValue.value as string);
-  clipIcon.value = "check2" as IconNames;
-  setTimeout(() => {
-    clipIcon.value = "clipboard-copy" as IconNames;
-  }, 2000);
-};
 
 const newValueBoolean = ref<boolean>();
 const newValueString = ref<string>("");
@@ -1414,7 +1398,7 @@ const propControlledByParent = computed(
   () => props.treeDef.value?.isControlledByAncestor,
 );
 
-const sourceTooltip = computed(() => {
+const sourceTooltipText = computed(() => {
   if (isCreateOnly.value) {
     return `${propName.value} can only be set before resource creation`;
   }
@@ -1552,6 +1536,9 @@ function updateValue(maybeNewVal?: unknown) {
     } else {
       newVal = newValueNumber.value;
     }
+    if (newVal === undefined && currentValue.value === null) {
+      skipUpdate = true;
+    }
   } else if (widgetKind.value === "socketConnection") {
     if (maybeNewVal && typeof maybeNewVal === "string") {
       newVal = maybeNewVal;
@@ -1666,16 +1653,19 @@ const confirmEditModalRef = ref<InstanceType<typeof Modal>>();
 const confirmEditModalTitle = computed(() => {
   if (propControlledByParent.value) {
     if (propName.value) {
-      return `You Cannot Edit Prop '${propName.value}'`;
+      return `You Cannot Edit Prop "${propName.value}"`;
     }
-    return "You Cannot Edit Prop";
+    return "You Cannot Edit This Prop";
   }
 
   if (isImmutableSecretProp.value) {
     return "You Cannot Edit Non-Origin Secret Prop";
   }
 
-  return "Are You Sure?";
+  if (propName.value) {
+    return `Do You Want To Override Prop "${propName.value}"?`;
+  }
+  return "Do You Want To Override This Prop?";
 });
 
 const openNonEditableModal = () => {
@@ -1700,6 +1690,20 @@ const confirmEdit = () => {
   editOverride.value = true;
   closeConfirmEditModal();
 };
+
+const unsetButtonEnabled = computed(
+  () =>
+    sourceOverridden.value &&
+    !propPopulatedBySocket.value &&
+    !propControlledByParent.value,
+);
+
+const unsetButtonShow = computed(
+  () =>
+    unsetButtonEnabled.value &&
+    !canHaveChildren.value &&
+    (isHover.value || isFocus.value),
+);
 
 const editOverride = ref(false);
 
@@ -1878,6 +1882,32 @@ const deleteRequirement = () => {
 const widerInput = computed(() => {
   if (props.attributesPanel) return false;
   else return !!(props.treeDef as TreeFormData).propDef.widerInput;
+});
+
+const indentAdjust = computed(() => {
+  const indents = ["", tw`[&_input]:pr-7`, tw`[&_input]:pr-12`, "fuck"];
+
+  let i = 0;
+  if (unsetButtonShow.value) i++;
+  if (propKind.value === "integer" && validation.value) i++;
+
+  return indents[i];
+});
+
+const validationIconShow = computed(
+  () => validation.value && !["comboBox", "select"].includes(widgetKind.value),
+);
+
+const disabledOverlayTooltipText = computed(() => {
+  if (isCreateOnly.value) {
+    return sourceTooltipText.value;
+  } else if (widgetKind.value === "secret") {
+    return "You cannot edit a non-origin secret prop.";
+  } else if (propControlledByParent.value) {
+    return "Click to view value.";
+  } else {
+    return "Click to view or override value.";
+  }
 });
 </script>
 

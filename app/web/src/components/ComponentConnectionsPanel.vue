@@ -1,27 +1,32 @@
 <template>
-  <div class="flex flex-col min-h-full">
-    <AttributesPanelCustomInputs />
-    <div
-      :class="
-        clsx(
-          'relative grow pb-md',
-          `before:absolute before:w-6 before:left-0 before:top-0 before:bottom-0 before:content-['']`,
-          themeClasses('before:bg-neutral-100', 'before:bg-neutral-900'),
-        )
-      "
-    >
-      <TreeForm
-        :trees="trees"
-        @setValue="setValueHandler"
-        @unsetValue="resetHandler"
-      />
-    </div>
+  <div class="flex flex-col min-h-full overflow-hidden">
+    <ScrollArea :class="themeClasses('bg-neutral-100', 'bg-neutral-900')">
+      <template #top>
+        <!-- custom inputs for SI props (name, color, etc) -->
+        <AttributesPanelCustomInputs />
+      </template>
+      <div
+        :class="
+          clsx(
+            'relative grow pb-md',
+            `before:absolute before:w-6 before:left-0 before:top-0 before:bottom-0 before:content-['']`,
+            themeClasses('before:bg-neutral-100', 'before:bg-neutral-900'),
+          )
+        "
+      >
+        <TreeForm
+          :trees="trees"
+          @setValue="setValueHandler"
+          @unsetValue="resetHandler"
+        />
+      </div>
+    </ScrollArea>
   </div>
 </template>
 
 <script lang="ts" setup>
 import clsx from "clsx";
-import { themeClasses } from "@si/vue-lib/design-system";
+import { themeClasses, ScrollArea } from "@si/vue-lib/design-system";
 import { computed } from "vue";
 import * as _ from "lodash-es";
 import { PropertyEditorPropKind } from "@/api/sdf/dal/property_editor";

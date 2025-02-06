@@ -1,5 +1,8 @@
 <template>
-  <span ref="pickerAnchorElement" class="h-7 block">
+  <span
+    ref="pickerAnchorElement"
+    :class="clsx('block', variant === 'box' ? 'h-8' : 'h-7')"
+  >
     <Teleport to="body">
       <span
         :id="id ?? 'color-picker'"
@@ -7,7 +10,8 @@
         :aria-required="required ?? false"
         :class="
           clsx(
-            'z-100 absolute h-7 block',
+            'z-100 absolute block',
+            variant === 'box' ? 'h-8' : 'h-7',
             !disabled && pickerInView
               ? 'cursor-pointer'
               : 'pointer-events-none',
@@ -19,6 +23,19 @@
       </span>
     </Teleport>
     <div
+      v-if="variant === 'box'"
+      :style="{ backgroundColor: modelValue }"
+      :title="modelValue"
+      :class="
+        clsx(
+          'w-8 h-8 rounded border border-neutral-600',
+          hoverOrOpen &&
+            'outline outline-2 outline-action-400 dark:outline-action-300',
+        )
+      "
+    />
+    <div
+      v-else
       :class="
         clsx(
           'w-full h-full flex flex-row gap-xs px-2xs items-center select-none',
@@ -45,32 +62,31 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, onMounted, onBeforeUnmount, computed } from "vue";
+import { ref, onMounted, onBeforeUnmount, computed, PropType } from "vue";
 import Picker from "vanilla-picker";
 import clsx from "clsx";
 import { themeClasses } from "../utils/theme_tools";
 
-const props = defineProps<{
-  id?: string;
-  required?: boolean;
-  modelValue: string;
-  disabled?: boolean;
+type ColorPickerVariant = "standard" | "box";
 
-  // you must pass in the scrollable container element for this to work!
-  scrollingParentElement?: HTMLElement;
-}>();
+const props = defineProps({
+  modelValue: { type: String, required: true },
+  id: { type: String },
+  required: { type: Boolean },
+  disabled: { type: Boolean },
+  scrollingParentElement: { type: HTMLElement },
+  variant: {
+    type: String as PropType<ColorPickerVariant>,
+    default: "standard",
+  },
+});
 
 const emit = defineEmits<{
   (e: "update:modelValue", v: string): void;
   (e: "change", v: string): void;
 }>();
 
-const colorChanged = (color: { hex: string }) => {
-  const colorHex = color.hex.substring(0, color.hex.length - 2);
-  emit("update:modelValue", colorHex);
-  emit("change", colorHex);
-};
-
+const newColor = ref(props.modelValue);
 const pickerOpen = ref(false);
 const hover = ref(false);
 
@@ -121,9 +137,7 @@ const checkPickerInView = () => {
 
 onMounted(() => {
   const p = new Picker(pickerClickHitbox.value as HTMLElement);
-  p.onDone = colorChanged;
   picker.value = p;
-  p.setColor(props.modelValue, true);
   p.setOptions({
     alpha: false,
     popup: "left",
@@ -160,6 +174,16 @@ onMounted(() => {
       pickerOpen.value = false;
       p.setColor(props.modelValue, true);
     },
+    onChange: (color: { hex: string }) => {
+      const colorHex = color.hex.substring(0, color.hex.length - 2);
+      newColor.value = colorHex;
+    },
+    onDone: () => {
+      emit("update:modelValue", newColor.value);
+      emit("change", newColor.value);
+      p.setColor(newColor.value, true);
+    },
+    color: props.modelValue,
   });
   positionPickerClickHitbox();
   positionPickerInterval.value = setInterval(positionPickerClickHitbox, 10);
