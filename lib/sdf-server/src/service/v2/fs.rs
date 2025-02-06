@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 use axum::{
-    extract::{Host, OriginalUri, Path, Query},
+    extract::{Path, Query},
     middleware,
     response::{IntoResponse, Response},
     routing::{get, post},
@@ -38,7 +38,7 @@ use thiserror::Error;
 use crate::extract::{
     change_set::TargetChangeSetIdFromPath,
     workspace::{AuthorizedForAutomationRole, TargetWorkspaceIdFromPath, WorkspaceDalContext},
-    HandlerContext, PosthogClient,
+    HandlerContext, PosthogEventTracker,
 };
 
 use super::{
@@ -172,8 +172,11 @@ pub async fn create_change_set(
 
 pub async fn list_change_sets(
     WorkspaceDalContext(ref ctx): WorkspaceDalContext,
+    tracker: PosthogEventTracker,
 ) -> FsResult<Json<fs::ListChangeSetsResponse>> {
     let open_change_sets = ChangeSet::list_active(ctx).await?;
+
+    tracker.track(ctx, "fs/list_change_sets", serde_json::json!({}));
 
     Ok(Json(
         open_change_sets
@@ -217,17 +220,16 @@ fn check_change_set(ctx: &DalContext) -> FsResult<()> {
 pub async fn list_schemas(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
-    PosthogClient(_posthog_client): PosthogClient,
-    OriginalUri(_original_uri): OriginalUri,
-    Host(_host_name): Host,
+    tracker: PosthogEventTracker,
     Path((_workspace_id, change_set_id)): Path<(WorkspaceId, ChangeSetId)>,
 ) -> FsResult<Json<Vec<FsSchema>>> {
     let ctx = builder
         .build(request_ctx.build(change_set_id.into()))
         .await?;
 
-    // TODO: make this middleware
     check_change_set(&ctx)?;
+
+    tracker.track(&ctx, "fs/list_schemas", serde_json::json!({}));
 
     let mut result = vec![];
 
@@ -263,9 +265,7 @@ pub async fn list_schemas(
 async fn list_change_set_funcs(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
-    PosthogClient(_posthog_client): PosthogClient,
-    OriginalUri(_original_uri): OriginalUri,
-    Host(_host_name): Host,
+    tracker: PosthogEventTracker,
     Path((_workspace_id, change_set_id, kind)): Path<(WorkspaceId, ChangeSetId, String)>,
 ) -> FsResult<Json<Vec<FsFunc>>> {
     let ctx = builder
@@ -277,6 +277,12 @@ async fn list_change_set_funcs(
     let Some(kind) = fs::kind_from_string(&kind) else {
         return Ok(Json(vec![]));
     };
+
+    tracker.track(
+        &ctx,
+        "fs/list_change_set_funcs",
+        serde_json::json!({ "func_kind": kind }),
+    );
 
     let funcs = dal::Func::list_all(&ctx).await?;
     let mut result = Vec::new();
@@ -297,9 +303,7 @@ async fn list_change_set_funcs(
 async fn list_variant_funcs(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
-    PosthogClient(_posthog_client): PosthogClient,
-    OriginalUri(_original_uri): OriginalUri,
-    Host(_host_name): Host,
+    tracker: PosthogEventTracker,
     Path((_workspace_id, change_set_id, schema_id, kind)): Path<(
         WorkspaceId,
         ChangeSetId,
@@ -316,6 +320,15 @@ async fn list_variant_funcs(
     let Some(kind) = fs::kind_from_string(&kind) else {
         return Ok(Json(vec![]));
     };
+
+    tracker.track(
+        &ctx,
+        "fs/list_variant_funcs",
+        serde_json::json!({
+            "schema_id": schema_id,
+            "func_kind": kind,
+        }),
+    );
 
     let mut funcs = vec![];
 
@@ -367,9 +380,7 @@ async fn lookup_variant_for_schema(
 pub async fn get_asset_funcs(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
-    PosthogClient(_posthog_client): PosthogClient,
-    OriginalUri(_original_uri): OriginalUri,
-    Host(_host_name): Host,
+    tracker: PosthogEventTracker,
     Path((_workspace_id, change_set_id, schema_id)): Path<(WorkspaceId, ChangeSetId, SchemaId)>,
 ) -> FsResult<Json<AssetFuncs>> {
     let ctx = builder
@@ -377,6 +388,14 @@ pub async fn get_asset_funcs(
         .await?;
 
     check_change_set(&ctx)?;
+
+    tracker.track(
+        &ctx,
+        "fs/get_asset_funcs",
+        serde_json::json!({
+            "schema_id": schema_id
+        }),
+    );
 
     let mut result = AssetFuncs {
         locked: None,
@@ -448,9 +467,7 @@ fn dal_func_to_fs_func(func: dal::Func, bindings_size: u64, types_size: u64) -> 
 async fn get_func_code(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
-    PosthogClient(_posthog_client): PosthogClient,
-    OriginalUri(_original_uri): OriginalUri,
-    Host(_host_name): Host,
+    tracker: PosthogEventTracker,
     Path((_workspace_id, change_set_id, func_id)): Path<(WorkspaceId, ChangeSetId, FuncId)>,
 ) -> FsResult<String> {
     let ctx = builder
@@ -458,6 +475,12 @@ async fn get_func_code(
         .await?;
 
     check_change_set(&ctx)?;
+
+    tracker.track(
+        &ctx,
+        "fs/get_func_code",
+        serde_json::json!({ "func_id": func_id }),
+    );
 
     let func = dal::Func::get_by_id(&ctx, func_id)
         .await?
@@ -469,9 +492,7 @@ async fn get_func_code(
 async fn set_func_code(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
-    PosthogClient(_posthog_client): PosthogClient,
-    OriginalUri(_original_uri): OriginalUri,
-    Host(_host_name): Host,
+    tracker: PosthogEventTracker,
     Path((_workspace_id, change_set_id, func_id)): Path<(WorkspaceId, ChangeSetId, FuncId)>,
     Json(request): Json<SetFuncCodeRequest>,
 ) -> FsResult<()> {
@@ -480,6 +501,12 @@ async fn set_func_code(
         .await?;
 
     check_change_set_and_not_head(&ctx).await?;
+
+    tracker.track(
+        &ctx,
+        "fs/set_func_code",
+        serde_json::json!({ "func_id": func_id }),
+    );
 
     FuncAuthoringClient::save_code(&ctx, func_id, request.code).await?;
     let func_code = get_code_response(&ctx, func_id).await?;
@@ -502,9 +529,7 @@ async fn func_types_size(ctx: &DalContext, func_id: FuncId) -> FsResult<u64> {
 async fn get_func_types(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
-    PosthogClient(_posthog_client): PosthogClient,
-    OriginalUri(_original_uri): OriginalUri,
-    Host(_host_name): Host,
+    tracker: PosthogEventTracker,
     Path((_workspace_id, change_set_id, func_id)): Path<(WorkspaceId, ChangeSetId, FuncId)>,
 ) -> FsResult<String> {
     let ctx = builder
@@ -512,6 +537,12 @@ async fn get_func_types(
         .await?;
 
     check_change_set(&ctx)?;
+
+    tracker.track(
+        &ctx,
+        "fs/get_func_types",
+        serde_json::json!({"func_id": func_id}),
+    );
 
     let func = dal::Func::get_by_id(&ctx, func_id)
         .await?
@@ -525,9 +556,7 @@ async fn get_func_types(
 async fn create_func(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
-    PosthogClient(_posthog_client): PosthogClient,
-    OriginalUri(_original_uri): OriginalUri,
-    Host(_host_name): Host,
+    tracker: PosthogEventTracker,
     Path((_workspace_id, change_set_id, schema_id, kind_string)): Path<(
         WorkspaceId,
         ChangeSetId,
@@ -547,6 +576,16 @@ async fn create_func(
     if !request.binding.kind_matches(kind) {
         return Err(FsError::FuncBindingKindMismatch);
     }
+
+    tracker.track(
+        &ctx,
+        "fs/create_func",
+        serde_json::json!({
+            "schema_id": schema_id,
+            "func_kind": kind,
+            "payload": &request
+        }),
+    );
 
     let name = request.name.as_str();
 
@@ -720,9 +759,7 @@ async fn create_func(
 async fn get_asset_func_code(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
-    PosthogClient(_posthog_client): PosthogClient,
-    OriginalUri(_original_uri): OriginalUri,
-    Host(_host_name): Host,
+    tracker: PosthogEventTracker,
     Path((_workspace_id, change_set_id, schema_id)): Path<(WorkspaceId, ChangeSetId, SchemaId)>,
     Query(variant_query): Query<VariantQuery>,
 ) -> FsResult<String> {
@@ -731,6 +768,14 @@ async fn get_asset_func_code(
         .await?;
 
     check_change_set(&ctx)?;
+
+    tracker.track(
+        &ctx,
+        "fs/get_asset_func_code",
+        serde_json::json!({
+            "schema_id": schema_id
+        }),
+    );
 
     let variant = lookup_variant_for_schema(&ctx, schema_id, variant_query.unlocked)
         .await?
@@ -744,9 +789,7 @@ async fn get_asset_func_code(
 async fn set_asset_func_code(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
-    PosthogClient(_posthog_client): PosthogClient,
-    OriginalUri(_original_uri): OriginalUri,
-    Host(_host_name): Host,
+    tracker: PosthogEventTracker,
     Path((_workspace_id, change_set_id, schema_id)): Path<(WorkspaceId, ChangeSetId, SchemaId)>,
     Json(request): Json<SetFuncCodeRequest>,
 ) -> FsResult<()> {
@@ -775,6 +818,14 @@ async fn set_asset_func_code(
 
     let ctx_clone = ctx.clone();
     let unlocked_variant_display_name = unlocked_variant.display_name().to_owned();
+
+    tracker.track(
+        &ctx,
+        "fs/set_asset_func_code",
+        serde_json::json!({
+            "schema_id": schema_id
+        }),
+    );
 
     // Commit code changes
     ctx.commit().await?;
@@ -812,9 +863,7 @@ async fn set_asset_func_code(
 async fn install_schema(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
-    PosthogClient(_posthog_client): PosthogClient,
-    OriginalUri(_original_uri): OriginalUri,
-    Host(_host_name): Host,
+    tracker: PosthogEventTracker,
     Path((_workspace_id, change_set_id, schema_id)): Path<(WorkspaceId, ChangeSetId, SchemaId)>,
 ) -> FsResult<()> {
     let ctx = builder
@@ -833,6 +882,14 @@ async fn install_schema(
             .publish_on_commit(&ctx)
             .await?;
     }
+
+    tracker.track(
+        &ctx,
+        "fs/install_schema",
+        serde_json::json!({
+            "schema_id": schema_id
+        }),
+    );
 
     ctx.commit().await?;
 
@@ -853,9 +910,7 @@ fn make_schema_attrs(variant: &SchemaVariant) -> SchemaAttributes {
 async fn get_schema_attrs(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
-    PosthogClient(_posthog_client): PosthogClient,
-    OriginalUri(_original_uri): OriginalUri,
-    Host(_host_name): Host,
+    tracker: PosthogEventTracker,
     Path((_workspace_id, change_set_id, schema_id)): Path<(WorkspaceId, ChangeSetId, SchemaId)>,
     Query(request): Query<VariantQuery>,
 ) -> FsResult<Json<SchemaAttributes>> {
@@ -864,6 +919,14 @@ async fn get_schema_attrs(
         .await?;
 
     check_change_set(&ctx)?;
+
+    tracker.track(
+        &ctx,
+        "fs/get_schema_attrs",
+        serde_json::json!({
+            "schema_id": schema_id
+        }),
+    );
 
     let variant = lookup_variant_for_schema(&ctx, schema_id, request.unlocked)
         .await?
@@ -875,9 +938,7 @@ async fn get_schema_attrs(
 async fn set_schema_attrs(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
-    PosthogClient(_posthog_client): PosthogClient,
-    OriginalUri(_original_uri): OriginalUri,
-    Host(_host_name): Host,
+    tracker: PosthogEventTracker,
     Path((_workspace_id, change_set_id, schema_id)): Path<(WorkspaceId, ChangeSetId, SchemaId)>,
     Json(attrs): Json<SchemaAttributes>,
 ) -> FsResult<()> {
@@ -886,6 +947,14 @@ async fn set_schema_attrs(
         .await?;
 
     check_change_set_and_not_head(&ctx).await?;
+
+    tracker.track(
+        &ctx,
+        "fs/set_schema_attrs",
+        serde_json::json!({
+            "schema_id": schema_id, "payload": &attrs
+        }),
+    );
 
     let variant = lookup_variant_for_schema(&ctx, schema_id, true)
         .await?
@@ -930,13 +999,25 @@ async fn set_schema_attrs(
 }
 
 async fn get_asset_func_types(
-    HandlerContext(_builder): HandlerContext,
-    AccessBuilder(_request_ctx): AccessBuilder,
-    PosthogClient(_posthog_client): PosthogClient,
-    OriginalUri(_original_uri): OriginalUri,
-    Host(_host_name): Host,
-    Path((_workspace_id, _change_set_id, _schema_id)): Path<(WorkspaceId, ChangeSetId, SchemaId)>,
+    HandlerContext(builder): HandlerContext,
+    AccessBuilder(request_ctx): AccessBuilder,
+    tracker: PosthogEventTracker,
+    Path((_workspace_id, change_set_id, schema_id)): Path<(WorkspaceId, ChangeSetId, SchemaId)>,
 ) -> FsResult<String> {
+    let ctx = builder
+        .build(request_ctx.build(change_set_id.into()))
+        .await?;
+
+    check_change_set(&ctx)?;
+
+    tracker.track(
+        &ctx,
+        "fs/get_asset_func_types",
+        serde_json::json!({
+            "schema_id": schema_id
+        }),
+    );
+
     Ok(ASSET_EDITOR_TYPES.into())
 }
 
@@ -981,9 +1062,7 @@ async fn get_or_unlock_schema(ctx: &DalContext, schema_id: SchemaId) -> FsResult
 async fn create_schema(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
-    PosthogClient(_posthog_client): PosthogClient,
-    OriginalUri(_original_uri): OriginalUri,
-    Host(_host_name): Host,
+    tracker: PosthogEventTracker,
     Path((_workspace_id, change_set_id)): Path<(WorkspaceId, ChangeSetId)>,
     Json(request): Json<fs::CreateSchemaRequest>,
 ) -> FsResult<Json<CreateSchemaResponse>> {
@@ -1004,6 +1083,15 @@ async fn create_schema(
     .await?;
 
     let schema = created_schema_variant.schema(&ctx).await?;
+
+    tracker.track(
+        &ctx,
+        "fs/create_schema",
+        serde_json::json!({
+            "schema_id": schema.id(),
+            "schema_name": schema.name().to_owned(),
+        }),
+    );
 
     WsEvent::schema_variant_created(&ctx, schema.id(), created_schema_variant.clone())
         .await?
@@ -1030,9 +1118,7 @@ async fn create_schema(
 async fn unlock_schema(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
-    PosthogClient(_posthog_client): PosthogClient,
-    OriginalUri(_original_uri): OriginalUri,
-    Host(_host_name): Host,
+    tracker: PosthogEventTracker,
     Path((_workspace_id, change_set_id, schema_id)): Path<(WorkspaceId, ChangeSetId, SchemaId)>,
 ) -> FsResult<Json<AssetFuncs>> {
     let ctx = builder
@@ -1040,6 +1126,14 @@ async fn unlock_schema(
         .await?;
 
     check_change_set_and_not_head(&ctx).await?;
+
+    tracker.track(
+        &ctx,
+        "fs/unlock_schema",
+        serde_json::json!({
+            "schema_id": schema_id
+        }),
+    );
 
     let unlocked_variant = get_or_unlock_schema(&ctx, schema_id).await?;
 
@@ -1070,9 +1164,7 @@ async fn unlock_schema(
 async fn unlock_func(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
-    PosthogClient(_posthog_client): PosthogClient,
-    OriginalUri(_original_uri): OriginalUri,
-    Host(_host_name): Host,
+    tracker: PosthogEventTracker,
     Path((_workspace_id, change_set_id, schema_id, func_id)): Path<(
         WorkspaceId,
         ChangeSetId,
@@ -1085,12 +1177,22 @@ async fn unlock_func(
         .await?;
 
     check_change_set_and_not_head(&ctx).await?;
+
     let existing_func = dal::Func::get_by_id(&ctx, func_id)
         .await?
         .ok_or(FsError::ResourceNotFound)?;
     if !existing_func.is_locked {
         return Err(FsError::FuncAlreadyUnlocked(func_id));
     }
+
+    tracker.track(
+        &ctx,
+        "fs/unlock_func",
+        serde_json::json!({
+            "func_id": func_id,
+            "schema_id": schema_id,
+        }),
+    );
 
     let variant = match lookup_variant_for_schema(&ctx, schema_id, true).await? {
         Some(variant) => variant,
