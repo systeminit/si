@@ -6,6 +6,7 @@ rust_library(
         "//lib/si-id:si-id",
         "//lib/si-frontend-types-rs:si-frontend-types",
 
+        "//third-party/rust:dashmap",
         "//third-party/rust:fuser",
         "//third-party/rust:nix",
         "//third-party/rust:remain",

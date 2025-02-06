@@ -12,6 +12,7 @@ publish.workspace = true
 si-id = { path = "../si-id" }
 si-frontend-types = { path = "../si-frontend-types-rs" }
 
+dashmap = { workspace = true }
 fuser = { workspace = true }
 nix = { workspace = true }
 remain = { workspace = true }

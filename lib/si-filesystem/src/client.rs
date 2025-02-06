@@ -1,11 +1,11 @@
-use std::{
-    collections::{BTreeMap, HashMap},
-    sync::Arc,
-    time::Duration,
-};
+use std::{collections::HashMap, sync::Arc, time::Duration};
 
+use dashmap::DashMap;
 use reqwest::StatusCode;
 use serde::{de::DeserializeOwned, Serialize};
+use thiserror::Error;
+use tokio::time::Instant;
+
 use si_frontend_types::{
     fs::{
         AssetFuncs, Binding, Bindings, ChangeSet, CreateChangeSetRequest, CreateChangeSetResponse,
@@ -16,8 +16,6 @@ use si_frontend_types::{
     FuncKind,
 };
 use si_id::{ChangeSetId, FuncId, SchemaId, WorkspaceId};
-use thiserror::Error;
-use tokio::{sync::RwLock, time::Instant};
 
 #[derive(Error, Debug)]
 pub enum SiFsClientError {
@@ -56,7 +54,7 @@ pub struct SiFsClient {
     workspace_id: WorkspaceId,
     endpoint: String,
     client: reqwest::Client,
-    cache: Arc<RwLock<BTreeMap<ChangeSetId, HashMap<String, CacheEntry>>>>,
+    cache: Arc<DashMap<ChangeSetId, HashMap<String, CacheEntry>>>,
 }
 
 const USER_AGENT: &str = "si-fs/0.0";
@@ -78,7 +76,7 @@ impl SiFsClient {
             workspace_id,
             endpoint,
             client: reqwest::Client::builder().user_agent(USER_AGENT).build()?,
-            cache: Arc::new(RwLock::new(BTreeMap::new())),
+            cache: Arc::new(DashMap::new()),
         })
     }
 
@@ -123,8 +121,7 @@ impl SiFsClient {
     where
         R: Serialize + DeserializeOwned + Clone,
     {
-        let cache = self.cache.read().await;
-        cache.get(&change_set_id).and_then(|change_set_map| {
+        self.cache.get(&change_set_id).and_then(|change_set_map| {
             change_set_map.get(&cache_key).and_then(|value| {
                 if value.created_at.elapsed() >= value.duration {
                     None
@@ -136,7 +133,7 @@ impl SiFsClient {
     }
 
     async fn invalidate_change_set_id(&self, change_set_id: ChangeSetId) {
-        self.cache.write().await.remove(&change_set_id);
+        self.cache.remove(&change_set_id);
     }
 
     async fn set_cache_entry_custom<R>(
@@ -152,8 +149,7 @@ impl SiFsClient {
         let value_string = serde_json::to_string(value)?;
         let cache_entry = CacheEntry::new(value_string, duration);
 
-        let mut cache = self.cache.write().await;
-        cache
+        self.cache
             .entry(change_set_id)
             .and_modify(|change_set_map| {
                 change_set_map.insert(cache_key.clone(), cache_entry.clone());
