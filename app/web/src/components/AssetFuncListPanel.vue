@@ -17,7 +17,7 @@
 
       <FuncList
         v-if="assetStore.selectedVariantId"
-        :funcsByKind="funcsByKind"
+        :funcsByKind="funcsByKindWithDeprecationFiltering"
         context="workspace-lab-assets"
         defaultOpen
       />
@@ -50,7 +50,7 @@ import groupBy from "lodash-es/groupBy";
 import { ScrollArea } from "@si/vue-lib/design-system";
 import { useAssetStore } from "@/store/asset.store";
 import { useFuncStore } from "@/store/func/funcs.store";
-import { FuncSummary } from "@/api/sdf/dal/func";
+import { FuncKind, FuncSummary } from "@/api/sdf/dal/func";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
 import { SchemaVariantId, SchemaVariant } from "@/api/sdf/dal/schema";
 import AssetFuncAttachModal from "./AssetFuncAttachModal.vue";
@@ -87,10 +87,20 @@ const variantSummaries = computed(() => {
   return variant;
 });
 
-const funcsByKind = computed(() => {
+const funcsByKindWithDeprecationFiltering = computed(() => {
   const r = variantSummaries.value
     ? groupBy(variantSummaries.value.funcSummaries ?? [], (f) => f.kind)
     : {};
+
+  // NOTE(nick): filter out deprecated attribute funcs that have become intrinsic funcs.
+  if (r[FuncKind.Attribute]) {
+    r[FuncKind.Attribute] = r[FuncKind.Attribute].filter((f) => {
+      if (f.name === "si:resourcePayloadToValue") return false;
+      else if (f.name === "si:normalizeToArray") return false;
+      return true;
+    });
+  }
+
   return r;
 });
 

@@ -94,6 +94,8 @@ pub enum FuncBackendKind {
     Unset,
     Validation,
     Management,
+    ResourcePayloadToValue,
+    NormalizeToArray,
 }
 
 // NOTE(nick,zack): do not add "remain::sorted" for postcard de/ser. We need the order to be

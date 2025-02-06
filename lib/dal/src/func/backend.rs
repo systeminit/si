@@ -27,7 +27,9 @@ pub mod js_schema_variant_definition;
 pub mod json;
 pub mod management;
 pub mod map;
+pub mod normalize_to_array;
 pub mod object;
+pub mod resource_payload_to_value;
 pub mod string;
 pub mod validation;
 
@@ -99,6 +101,8 @@ pub enum FuncBackendKind {
     Unset,
     Validation,
     Management,
+    ResourcePayloadToValue,
+    NormalizeToArray,
 }
 
 impl From<FuncBackendKind> for si_events::FuncBackendKind {
@@ -124,6 +128,10 @@ impl From<FuncBackendKind> for si_events::FuncBackendKind {
             FuncBackendKind::Unset => si_events::FuncBackendKind::Unset,
             FuncBackendKind::Validation => si_events::FuncBackendKind::Validation,
             FuncBackendKind::Management => si_events::FuncBackendKind::Management,
+            FuncBackendKind::ResourcePayloadToValue => {
+                si_events::FuncBackendKind::ResourcePayloadToValue
+            }
+            FuncBackendKind::NormalizeToArray => si_events::FuncBackendKind::NormalizeToArray,
         }
     }
 }
@@ -151,6 +159,10 @@ impl From<si_events::FuncBackendKind> for FuncBackendKind {
             si_events::FuncBackendKind::Unset => FuncBackendKind::Unset,
             si_events::FuncBackendKind::Validation => FuncBackendKind::Validation,
             si_events::FuncBackendKind::Management => FuncBackendKind::Management,
+            si_events::FuncBackendKind::ResourcePayloadToValue => {
+                FuncBackendKind::ResourcePayloadToValue
+            }
+            si_events::FuncBackendKind::NormalizeToArray => FuncBackendKind::NormalizeToArray,
         }
     }
 }

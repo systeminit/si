@@ -31,7 +31,6 @@ pub mod delete_func;
 pub mod execute_func;
 pub mod get_code;
 pub mod get_func_run;
-pub mod list_all_funcs;
 pub mod list_funcs;
 pub mod save_code;
 pub mod test_execute;
@@ -190,7 +189,6 @@ pub fn v2_routes() -> Router<AppState> {
     Router::new()
         // Func Stuff
         .route("/", get(list_funcs::list_funcs))
-        .route("/including_pruned", get(list_all_funcs::list_all_funcs))
         .route("/code", get(get_code::get_code)) // accepts a list of func_ids
         .route("/runs/:func_run_id", get(get_func_run::get_func_run)) // accepts a list of func_ids
         .route("/", post(create_func::create_func))
