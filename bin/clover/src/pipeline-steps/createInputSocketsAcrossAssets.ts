@@ -4,11 +4,9 @@ import {
   ConnectionAnnotation,
   propHasSocket,
   propPathToString,
+  setAnnotationOnSocket,
 } from "../spec/sockets.ts";
-import {
-  bfsExpandedPropTree,
-  ExpandedPropSpec,
-} from "../spec/props.ts";
+import { bfsExpandedPropTree, ExpandedPropSpec } from "../spec/props.ts";
 import pluralize from "npm:pluralize";
 import { SchemaVariantSpec } from "../bindings/SchemaVariantSpec.ts";
 import { getOrCreateInputSocketFromProp } from "../spec/sockets.ts";
@@ -59,7 +57,7 @@ export function createInputSocketsBasedOnOutputSockets(
       }
     }
 
-    // Get Name
+    // Catalog assets by name
     let name;
     const tokens = spec.name.split("::");
     if (tokens.length > 1) {
@@ -110,7 +108,10 @@ export function createInputSocketsBasedOnOutputSockets(
       if (!fromVariants) continue;
       // We don't create input sockets *just* to link to the same output socket/component.
       // There has to be another reason.
-      if (fromVariants.length === 1 && fromVariants[0].uniqueId === schemaVariant.uniqueId) continue;
+      if (
+        fromVariants.length === 1 &&
+        fromVariants[0].uniqueId === schemaVariant.uniqueId
+      ) continue;
       getOrCreateInputSocketFromProp(schemaVariant, prop, "many");
     }
 
@@ -119,15 +120,22 @@ export function createInputSocketsBasedOnOutputSockets(
     // wanting to connecting something like "TaskArn" or "Arn" -> "TaskRoleArn"
     for (const prop of domain.entries as ExpandedPropSpec[]) {
       if (!prop.name.toLowerCase().endsWith("arn")) continue;
-      getOrCreateInputSocketFromProp(schemaVariant, prop, "many", ["Arn"]);
+      const socket = getOrCreateInputSocketFromProp(
+        schemaVariant,
+        prop,
+        "many",
+      );
+      setAnnotationOnSocket(socket, { tokens: ["Arn"] });
     }
 
     // create input sockets for all strings and arrays of strings whose props name matches
     // the name of a component that exists
     bfsExpandedPropTree(domain, (prop) => {
       if (
-          (!propHasSocket(prop) && (prop.kind === "array" && prop.typeProp.kind === "string"))
-        || prop.kind === "string"
+        (
+          prop.kind === "array" && prop.typeProp.kind === "string"
+        ) ||
+        prop.kind === "string"
       ) {
         const possiblePeers = specsByName[prop.name] ??
           specsByName[pluralize(prop.name)];
@@ -141,21 +149,21 @@ export function createInputSocketsBasedOnOutputSockets(
             if (prop.metadata.primaryIdentifier) {
               primaryIdentifierCount++;
             }
-          })
+          });
           if (primaryIdentifierCount > 1) continue;
-
           bfsExpandedPropTree([peer.resourceValue, peer.domain], (peerProp) => {
-            if (peerProp.metadata.primaryIdentifier) {
-              for (const socket of peer.sockets) {
-                const bind = socket.inputs[0];
-                if (!bind) continue;
-                if (
-                  bind.kind === "prop" &&
-                  bind.prop_path ===
-                    propPathToString(peerProp.metadata.propPath)
-                ) {
-                  getOrCreateInputSocketFromProp(schemaVariant, prop, "many", [prop.name]);
-                }
+            if (!peerProp.metadata.primaryIdentifier) return;
+
+            for (const socket of peer.sockets) {
+              const bind = socket.inputs[0];
+              if (!bind) continue;
+              if (
+                bind.kind === "prop" &&
+                bind.prop_path ===
+                  propPathToString(peerProp.metadata.propPath)
+              ) {
+                getOrCreateInputSocketFromProp(schemaVariant, prop, "many");
+                setAnnotationOnSocket(socket, { tokens: [prop.name] });
               }
             }
           }, {
