@@ -6,7 +6,7 @@ use dal::{
         definition::{compute_validation::ComputeValidation, ActionJob, DependentValuesUpdate},
         producer::BlockingJobError,
     },
-    DalContextBuilder,
+    DalContextBuilder, TenancyError, WorkspacePk,
 };
 use naxum::{
     extract::{message_parts::Headers, State},
@@ -27,10 +27,12 @@ use crate::{app_state::AppState, server::ServerMetadata};
 pub enum HandlerError {
     #[error("job consumer error: {0}")]
     JobConsumer(#[from] JobConsumerError),
-    #[error("unknown job kind {0}")]
+    #[error("missing workspace: {0}")]
+    MissingWorkspace(#[source] TenancyError),
+    #[error("unknown job kind: {0}")]
     UnknownJobKind(String),
     #[error("utf8 error when creating subject")]
-    Utf8(#[from] Utf8Error),
+    Utf8(#[source] Utf8Error),
 }
 
 type Result<T> = result::Result<T, HandlerError>;
@@ -48,22 +50,21 @@ pub async fn process_request(
     Headers(maybe_headers): Headers,
     Json(job_info): Json<JobInfo>,
 ) -> Result<()> {
-    let workspace_id_str = job_info
+    let workspace_id = job_info
         .access_builder
         .tenancy()
-        .workspace_pk_opt()
-        .map(|id| id.to_string())
-        .unwrap_or_default();
+        .workspace_pk()
+        .map_err(HandlerError::MissingWorkspace)?;
     let change_set_id = job_info.visibility.change_set_id;
 
     let span = Span::current();
-    span.record("si.workspace.id", workspace_id_str);
+    span.record("si.workspace.id", workspace_id.to_string());
     span.record("si.change_set.id", change_set_id.to_string());
 
     let reply_subject = match maybe_headers
         .and_then(|headers| headers.get(REPLY_INBOX_HEADER_NAME).map(|v| v.to_string()))
     {
-        Some(header_value) => Some(Subject::from_utf8(header_value)?),
+        Some(header_value) => Some(Subject::from_utf8(header_value).map_err(HandlerError::Utf8)?),
         None => None,
     };
 
@@ -71,6 +72,7 @@ pub async fn process_request(
         state.metadata,
         state.concurrency_limit,
         state.ctx_builder,
+        workspace_id,
         subject,
         reply_subject,
         job_info,
@@ -110,6 +112,7 @@ async fn execute_job(
     metadata: Arc<ServerMetadata>,
     concurrency_limit: usize,
     ctx_builder: DalContextBuilder,
+    workspace_id: WorkspacePk,
     subject: Subject,
     maybe_reply_subject: Option<Subject>,
     job_info: JobInfo,
@@ -119,12 +122,6 @@ async fn execute_job(
 
     let arg_str = serde_json::to_string(&job_info.arg)
         .unwrap_or_else(|_| "arg failed to serialize".to_string());
-    let workspace_id_str = job_info
-        .access_builder
-        .tenancy()
-        .workspace_pk_opt()
-        .map(|id| id.to_string())
-        .unwrap_or_default();
     let otel_name = {
         let mut parts = subject.as_str().split('.');
         match (
@@ -144,7 +141,7 @@ async fn execute_job(
     span.record("job.invoked_arg", arg_str);
     span.record("messaging.destination", subject.as_str());
     span.record("otel.name", otel_name.as_str());
-    span.record("si.workspace.id", workspace_id_str);
+    span.record("si.workspace.id", workspace_id.to_string());
     let job_kind = job_info.kind.clone();
     metric!(counter.pinga_job_in_progress = 1, label = job_kind);
     let reply_message = match execute_job_inner(ctx_builder.clone(), job_info).await {

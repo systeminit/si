@@ -65,10 +65,6 @@ impl SerialDvuTask {
     pub(crate) async fn try_run(self) -> Result<Shutdown> {
         metric!(counter.serial_dvu_task.change_set_in_progress = 1);
 
-        // Attempt to run an initial dvu in case there are processed requests that haven't yet been
-        // finished with a dvu run
-        self.maybe_run_initial_dvu().await?;
-
         let shutdown_cause = loop {
             tokio::select! {
                 biased;
@@ -153,40 +149,6 @@ impl SerialDvuTask {
         ctx.enqueue_dependent_values_update().await?;
         ctx.blocking_commit_no_rebase().await?;
         metric!(counter.serial_dvu_task.dvu_running = -1);
-
-        Ok(())
-    }
-
-    async fn maybe_run_initial_dvu(&self) -> Result<()> {
-        let builder = self.ctx_builder.clone();
-        let ctx = builder
-            .build_for_change_set_as_system(self.workspace_id, self.change_set_id, None)
-            .await?;
-        let change_set = ChangeSet::get_by_id(&ctx, ctx.change_set_id()).await?;
-
-        if change_set.status == ChangeSetStatus::Abandoned {
-            warn!("Trying to enqueue DVU for abandoned change set. Returning early.");
-            return Ok(());
-        }
-
-        if ctx
-            .workspace_snapshot()?
-            .has_dependent_value_roots()
-            .await?
-        {
-            metric!(counter.serial_dvu_task.initial_dvu_running = 1);
-
-            info!(
-                task = Self::NAME,
-                service.instance.id = self.metadata.instance_id(),
-                si.workspace.id = %self.workspace_id,
-                si.change_set.id = %self.change_set_id,
-                "enqueuing *initial* dependent_values_update",
-            );
-            ctx.enqueue_dependent_values_update().await?;
-            ctx.blocking_commit_no_rebase().await?;
-            metric!(counter.serial_dvu_task.initial_dvu_running = -1);
-        }
 
         Ok(())
     }

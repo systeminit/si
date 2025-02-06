@@ -685,6 +685,7 @@ pub async fn pinga_server(
     let server = pinga_server::Server::from_services(
         config.instance_id(),
         config.concurrency_limit(),
+        config.max_deliver(),
         services_context,
         shutdown_token,
     )

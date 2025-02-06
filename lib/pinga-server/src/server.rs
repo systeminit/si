@@ -120,6 +120,7 @@ impl Server {
         Self::from_services(
             config.instance_id().to_string(),
             config.concurrency_limit(),
+            config.max_deliver(),
             services_context,
             token,
         )
@@ -130,6 +131,7 @@ impl Server {
     pub async fn from_services(
         instance_id: impl Into<String>,
         concurrency_limit: usize,
+        max_deliver: i64,
         services_context: ServicesContext,
         shutdown_token: CancellationToken,
     ) -> ServerResult<Self> {
@@ -151,7 +153,10 @@ impl Server {
 
         let incoming = pinga_work_queue(&context, prefix.as_deref())
             .await?
-            .create_consumer(Self::incoming_consumer_config(prefix.as_deref()))
+            .create_consumer(Self::incoming_consumer_config(
+                prefix.as_deref(),
+                max_deliver,
+            ))
             .await?
             .messages()
             .await?;
@@ -264,10 +269,13 @@ impl Server {
     #[inline]
     fn incoming_consumer_config(
         subject_prefix: Option<&str>,
+        max_deliver: i64,
     ) -> async_nats::jetstream::consumer::pull::Config {
         async_nats::jetstream::consumer::pull::Config {
             durable_name: Some(CONSUMER_NAME.to_owned()),
             filter_subject: subject::incoming(subject_prefix).to_string(),
+            // TODO(nick,fletcher): this should eventually be "1" and not be configurable.
+            max_deliver,
             ..Default::default()
         }
     }

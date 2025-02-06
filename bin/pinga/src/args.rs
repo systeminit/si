@@ -119,6 +119,10 @@ pub(crate) struct Args {
     #[arg(long)]
     pub(crate) concurrency: Option<u32>,
 
+    /// Configures the max delivery number NATS JetStream consumer(s)
+    #[arg(long)]
+    pub(crate) max_deliver: Option<i64>,
+
     /// The path at which the layer db cache is created/used on disk [e.g. /banana/]
     #[arg(long)]
     pub(crate) layer_db_disk_path: Option<String>,
@@ -217,6 +221,9 @@ impl TryFrom<Args> for Config {
             }
             if let Some(concurrency) = args.concurrency {
                 config_map.set("concurrency_limit", i64::from(concurrency));
+            }
+            if let Some(max_deliver) = args.max_deliver {
+                config_map.set("max_deliver", max_deliver);
             }
             if let Some(layer_cache_disk_path) = args.layer_db_disk_path {
                 config_map.set("layer_db_config.disk_path", layer_cache_disk_path);
