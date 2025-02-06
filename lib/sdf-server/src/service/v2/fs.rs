@@ -278,15 +278,20 @@ async fn list_change_set_funcs(
         return Ok(Json(vec![]));
     };
 
-    Ok(Json(
-        dal::Func::list_all(&ctx)
-            .await?
-            .into_iter()
-            .filter(|f| kind == f.kind.into())
-            // We do not render bindings for the "change-set/functions" folder yet
-            .map(|f| dal_func_to_fs_func(f, 0))
-            .collect(),
-    ))
+    let funcs = dal::Func::list_all(&ctx).await?;
+    let mut result = Vec::new();
+    for func in funcs {
+        if kind == func.kind.into() {
+            let func_id = func.id;
+            result.push(dal_func_to_fs_func(
+                func,
+                0,
+                func_types_size(&ctx, func_id).await?,
+            ));
+        }
+    }
+
+    Ok(Json(result))
 }
 
 async fn list_variant_funcs(
@@ -322,7 +327,8 @@ async fn list_variant_funcs(
                 .filter(|f| kind == f.kind.into())
             {
                 let bindings_size = get_bindings(&ctx, func.id, schema_id).await?.0.byte_size();
-                funcs.push(dal_func_to_fs_func(func, bindings_size))
+                let types_size = func_types_size(&ctx, func.id).await?;
+                funcs.push(dal_func_to_fs_func(func, bindings_size, types_size))
             }
         }
     }
@@ -395,8 +401,7 @@ pub async fn get_asset_funcs(
                 let bindings = get_identity_bindings_for_variant(&ctx, variant.id()).await?;
                 result.locked_bindings_size = bindings.byte_size();
 
-                // Asset funcs do not have bindings (yet)
-                Some(dal_func_to_fs_func(asset_func, 0))
+                Some(dal_func_to_fs_func(asset_func, 0, 0))
             }
         }
         None => None,
@@ -411,7 +416,7 @@ pub async fn get_asset_funcs(
             let bindings = get_identity_bindings_for_variant(&ctx, variant.id()).await?;
             result.unlocked_bindings_size = bindings.byte_size();
 
-            Some(dal_func_to_fs_func(asset_func, 0))
+            Some(dal_func_to_fs_func(asset_func, 0, 0))
         }
         None => None,
     };
@@ -423,7 +428,7 @@ pub async fn get_asset_funcs(
     }
 }
 
-fn dal_func_to_fs_func(func: dal::Func, bindings_size: u64) -> FsFunc {
+fn dal_func_to_fs_func(func: dal::Func, bindings_size: u64, types_size: u64) -> FsFunc {
     FsFunc {
         id: func.id,
         kind: func.kind.into(),
@@ -436,6 +441,7 @@ fn dal_func_to_fs_func(func: dal::Func, bindings_size: u64) -> FsFunc {
             .unwrap_or(0) as u64,
         name: func.name,
         bindings_size,
+        types_size,
     }
 }
 
@@ -486,6 +492,34 @@ async fn set_func_code(
     ctx.commit().await?;
 
     Ok(())
+}
+
+async fn func_types_size(ctx: &DalContext, func_id: FuncId) -> FsResult<u64> {
+    let func = dal::Func::get_by_id_or_error(ctx, func_id).await?;
+    Ok(func.get_types(ctx).await?.len() as u64)
+}
+
+async fn get_func_types(
+    HandlerContext(builder): HandlerContext,
+    AccessBuilder(request_ctx): AccessBuilder,
+    PosthogClient(_posthog_client): PosthogClient,
+    OriginalUri(_original_uri): OriginalUri,
+    Host(_host_name): Host,
+    Path((_workspace_id, change_set_id, func_id)): Path<(WorkspaceId, ChangeSetId, FuncId)>,
+) -> FsResult<String> {
+    let ctx = builder
+        .build(request_ctx.build(change_set_id.into()))
+        .await?;
+
+    check_change_set(&ctx)?;
+
+    let func = dal::Func::get_by_id(&ctx, func_id)
+        .await?
+        .ok_or(FsError::ResourceNotFound)?;
+
+    let types = func.get_types(&ctx).await?;
+
+    Ok(types)
 }
 
 async fn create_func(
@@ -676,10 +710,11 @@ async fn create_func(
         .await?;
 
     let bindings_size = get_bindings(&ctx, func.id, schema_id).await?.0.byte_size();
+    let types_size = func_types_size(&ctx, func.id).await?;
 
     ctx.commit().await?;
 
-    Ok(Json(dal_func_to_fs_func(func, bindings_size)))
+    Ok(Json(dal_func_to_fs_func(func, bindings_size, types_size)))
 }
 
 async fn get_asset_func_code(
@@ -1025,7 +1060,7 @@ async fn unlock_schema(
     result.unlocked_bindings_size = get_identity_bindings_for_variant(&ctx, unlocked_variant.id())
         .await?
         .byte_size();
-    result.unlocked = Some(dal_func_to_fs_func(asset_func, 0));
+    result.unlocked = Some(dal_func_to_fs_func(asset_func, 0, 0));
 
     ctx.commit().await?;
 
@@ -1097,11 +1132,16 @@ async fn unlock_func(
         .await?
         .0
         .byte_size();
+    let types_size = func_types_size(&ctx, new_func.id).await?;
 
     ctx.commit().await?;
 
     // put in real attrs size of serialized bindings
-    Ok(Json(dal_func_to_fs_func(new_func, bindings_size)))
+    Ok(Json(dal_func_to_fs_func(
+        new_func,
+        bindings_size,
+        types_size,
+    )))
 }
 
 async fn process_managed_schemas(
@@ -1147,6 +1187,7 @@ pub fn fs_routes(state: AppState) -> Router<AppState> {
             Router::new()
                 .route("/funcs/:func_id/code", get(get_func_code))
                 .route("/funcs/:func_id/code", post(set_func_code))
+                .route("/funcs/:func_id/types", get(get_func_types))
                 .route("/funcs/:func_id/unlock", post(unlock_func))
                 .route("/funcs/:kind", get(list_change_set_funcs))
                 .route("/schemas", get(list_schemas))

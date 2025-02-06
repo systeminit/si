@@ -44,8 +44,8 @@ use crate::{
 };
 
 use super::{
-    check_change_set, check_change_set_and_not_head, dal_func_to_fs_func, get_or_unlock_schema,
-    lookup_variant_for_schema, process_managed_schemas, FsError, FsResult,
+    check_change_set, check_change_set_and_not_head, dal_func_to_fs_func, func_types_size,
+    get_or_unlock_schema, lookup_variant_for_schema, process_managed_schemas, FsError, FsResult,
 };
 
 pub async fn get_bindings_for_func_and_schema_variant(
@@ -1176,9 +1176,11 @@ pub async fn set_func_bindings(
     let (fs_bindings, current_bindings) = get_bindings(&ctx, func_id, schema_id).await?;
 
     if !current_bindings.is_empty() && request.is_attaching_existing {
+        let types_size = func_types_size(&ctx, func.id).await?;
         return Ok(Json(Some(dal_func_to_fs_func(
             func,
             fs_bindings.byte_size(),
+            types_size,
         ))));
     }
 
@@ -1268,12 +1270,14 @@ pub async fn set_func_bindings(
         .await?;
 
     let (fs_bindings, _) = get_bindings(&ctx, func_id, schema_id).await?;
+    let types_size = func_types_size(&ctx, func.id).await?;
 
     ctx.commit().await?;
 
     Ok(Json(Some(dal_func_to_fs_func(
         func,
         fs_bindings.byte_size(),
+        types_size,
     ))))
 }
 

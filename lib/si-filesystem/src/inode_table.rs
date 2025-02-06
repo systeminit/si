@@ -85,6 +85,7 @@ pub enum InodeEntryData {
         change_set_id: ChangeSetId,
         kind: FuncKind,
         size: u64,
+        types_size: u64,
     },
     ChangeSetFuncKindDir {
         kind: FuncKind,
@@ -99,6 +100,11 @@ pub enum InodeEntryData {
         func_id: FuncId,
         kind: FuncKind,
     },
+    FuncTypes {
+        change_set_id: ChangeSetId,
+        func_id: FuncId,
+    },
+    FuncTypesTsConfig,
     InstalledSchemaMarker,
     SchemaAttrsJson {
         schema_id: SchemaId,
@@ -142,6 +148,7 @@ pub enum InodeEntryData {
         schema_id: SchemaId,
         size: u64,
         bindings_size: u64,
+        types_size: u64,
         unlocked: bool,
     },
     SchemaFuncKindDir {
@@ -161,8 +168,10 @@ pub enum InodeEntryData {
         unlocked_id: Option<FuncId>,
         locked_size: u64,
         locked_bindings_size: u64,
+        locked_types_size: u64,
         unlocked_size: u64,
         unlocked_bindings_size: u64,
+        unlocked_types_size: u64,
         pending: bool,
         pending_func_id: Option<FuncId>,
     },
@@ -172,6 +181,24 @@ pub enum InodeEntryData {
     WorkspaceRoot {
         workspace_id: WorkspaceId,
     },
+}
+
+impl InodeEntryData {
+    pub fn openable(&self) -> bool {
+        matches!(
+            self,
+            InodeEntryData::FuncCode { .. }
+                | InodeEntryData::FuncTypes { .. }
+                | InodeEntryData::FuncTypesTsConfig { .. }
+                | InodeEntryData::AssetFuncCode { .. }
+                | InodeEntryData::AssetFuncTypes { .. }
+                | InodeEntryData::SchemaAttrsJson { .. }
+                | InodeEntryData::SchemaBindingsJson { .. }
+                | InodeEntryData::SchemaFuncBindings { .. }
+                | InodeEntryData::SchemaFuncBindingsPending { .. }
+                | InodeEntryData::InstalledSchemaMarker
+        )
+    }
 }
 
 #[derive(Clone, Debug)]

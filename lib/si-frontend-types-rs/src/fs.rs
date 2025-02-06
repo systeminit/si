@@ -47,6 +47,7 @@ pub struct Func {
     pub is_locked: bool,
     pub code_size: u64,
     pub bindings_size: u64,
+    pub types_size: u64,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
