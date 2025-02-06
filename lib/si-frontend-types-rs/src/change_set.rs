@@ -3,9 +3,12 @@ use std::collections::HashMap;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use si_events::{
-    workspace_snapshot::EntityKind, ChangeSetApprovalStatus, ChangeSetId, ChangeSetStatus, UserPk,
+    workspace_snapshot::{ChecksumHasher, EntityKind},
+    ChangeSetApprovalStatus, ChangeSetId, ChangeSetStatus, UserPk,
 };
-use si_id::{ChangeSetApprovalId, EntityId};
+use si_id::{ChangeSetApprovalId, EntityId, WorkspaceId};
+
+use crate::reference::{Reference, ReferenceId, ReferenceKind};
 
 #[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -74,4 +77,73 @@ pub struct ChangeSetApproval {
     pub status: ChangeSetApprovalStatus,
     // Is this still valid?
     pub is_valid: bool,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ChangeSetRecord {
+    pub name: String,
+    pub id: ChangeSetId,
+    pub status: ChangeSetStatus,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+    pub base_change_set_id: Option<ChangeSetId>,
+    pub workspace_id: WorkspaceId,
+    pub merge_requested_by_user_id: Option<String>,
+    pub merge_requested_by_user: Option<String>,
+    pub merge_requested_at: Option<DateTime<Utc>>,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+pub struct ChangeSetList {
+    pub name: String,
+    pub id: WorkspaceId,
+    pub default_change_set_id: ChangeSetId,
+    pub change_sets: Vec<Reference<ChangeSetId>>,
+}
+
+// XXX: Should probably be `impl From<ComponentNodeWeight> for Reference<ComponentId> {...}`
+//      whenever possible, since we can use the merkle tree hash as the checksum.
+impl From<ChangeSetRecord> for Reference<ChangeSetId> {
+    fn from(value: ChangeSetRecord) -> Self {
+        let mut hasher = ChecksumHasher::new();
+        hasher.update(value.name.as_bytes());
+        hasher.update(value.id.to_string().as_bytes());
+        hasher.update(value.status.to_string().as_bytes());
+        hasher.update(value.created_at.to_rfc3339().as_bytes());
+        hasher.update(value.updated_at.to_rfc3339().as_bytes());
+        hasher.update(
+            &value
+                .base_change_set_id
+                .map(|id| id.to_string().as_bytes().to_owned())
+                .unwrap_or_else(|| vec![0]),
+        );
+        hasher.update(value.workspace_id.to_string().as_bytes());
+        hasher.update(
+            &value
+                .merge_requested_by_user_id
+                .map(|id| id.as_bytes().to_owned())
+                .unwrap_or_else(|| vec![0]),
+        );
+        hasher.update(
+            &value
+                .merge_requested_by_user
+                .map(|u| u.as_bytes().to_owned())
+                .unwrap_or_else(|| vec![0]),
+        );
+        hasher.update(
+            &value
+                .merge_requested_at
+                .map(|dt| dt.to_rfc3339().as_bytes().to_owned())
+                .unwrap_or_else(|| vec![0]),
+        );
+
+        let checksum = hasher.finalize().to_string();
+
+        Reference {
+            kind: ReferenceKind::ChangeSetRecord,
+            id: ReferenceId(value.id),
+            checksum,
+        }
+    }
 }
