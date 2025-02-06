@@ -7,6 +7,7 @@ import { ExpandedPropSpec } from "./props.ts";
 import { getSiFuncId } from "./siFuncs.ts";
 import { PropSpec } from "../bindings/PropSpec.ts";
 import _ from "npm:lodash";
+import { SchemaVariantSpec } from "../bindings/SchemaVariantSpec.ts";
 
 export const SI_SEPARATOR = "\u{b}";
 
@@ -45,6 +46,23 @@ export function createInputSocketFromProp(
 
   return socket;
 }
+
+export function getOrCreateInputSocketFromProp(
+  schemaVariant: SchemaVariantSpec,
+  prop: ExpandedPropSpec,
+  arity: SocketSpecArity = "many",
+  connectionAnnotations: string[] = [],
+) {
+  let socket = schemaVariant.sockets.find((s) => s.data.kind === "input" && s.name === prop.name);
+  if (!socket) {
+    socket ??= createInputSocketFromProp(prop as ExpandedPropSpec, arity);
+    schemaVariant.sockets.push(socket);
+  }
+  for (const connectionAnnotation of connectionAnnotations) {
+    setAnnotationOnSocket(socket, { tokens: [connectionAnnotation] });
+  }
+  return socket;
+} 
 
 export function setAnnotationOnSocket(
   socket: SocketSpec,

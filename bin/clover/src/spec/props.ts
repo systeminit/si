@@ -164,9 +164,10 @@ function createPropFromCfInner(
     if (normalizedCfData.enum) {
       prop.data!.widgetKind = "ComboBox";
       for (const val of normalizedCfData.enum) {
+        const valString = val.toString();
         prop.data!.widgetOptions.push({
-          label: val,
-          value: val,
+          label: valString,
+          value: valString,
         });
       }
     } else {
@@ -426,6 +427,23 @@ export function bfsPropTree(
         break;
       }
     }
+  }
+}
+
+export function bfsExpandedPropTree(
+  props: PropSpec | PropSpec[],
+  callback: (prop: ExpandedPropSpec, parents: PropSpec[]) => unknown,
+  options?: { skipTypeProps: boolean },
+) {
+  if (!Array.isArray(props)) props = [props];
+  for (const prop of props) {
+    bfsPropTree(
+      prop,
+      (prop, parents) => {
+        if (isExpandedPropSpec(prop)) callback(prop, parents);
+      },
+      options,
+    );
   }
 }
 
