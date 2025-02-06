@@ -2,27 +2,22 @@ import { PkgSpec } from "../bindings/PkgSpec.ts";
 import _ from "npm:lodash";
 import {
   ConnectionAnnotation,
-  createInputSocketFromProp,
   propHasSocket,
   propPathToString,
-  setAnnotationOnSocket,
 } from "../spec/sockets.ts";
 import {
-  bfsPropTree,
+  bfsExpandedPropTree,
   ExpandedPropSpec,
-  isExpandedPropSpec,
 } from "../spec/props.ts";
 import pluralize from "npm:pluralize";
 import { SchemaVariantSpec } from "../bindings/SchemaVariantSpec.ts";
-import { SocketSpec } from "../bindings/SocketSpec.ts";
-import { PropSpec } from "../bindings/PropSpec.ts";
-import { SocketSpecKind } from "../bindings/SocketSpecKind.ts";
+import { getOrCreateInputSocketFromProp } from "../spec/sockets.ts";
 
 export function createInputSocketsBasedOnOutputSockets(
   specs: PkgSpec[],
 ): PkgSpec[] {
   const newSpecs = [] as PkgSpec[];
-  const foundOutputSockets = new Set<string>();
+  const foundOutputSockets = {} as Record<string, SchemaVariantSpec[]>;
   const specsByName = {} as Record<string, SchemaVariantSpec[]>;
 
   // Get all output sockets
@@ -46,7 +41,8 @@ export function createInputSocketsBasedOnOutputSockets(
 
     for (const socket of schemaVariant.sockets) {
       if (socket.data?.kind === "output") {
-        foundOutputSockets.add(socket.name);
+        foundOutputSockets[socket.name] ??= [];
+        foundOutputSockets[socket.name].push(schemaVariant);
 
         // add annotations as we may generate relevant output socket annotations
         // that match props
@@ -56,7 +52,8 @@ export function createInputSocketsBasedOnOutputSockets(
 
         for (const annotations of existingAnnotations) {
           for (const annotation of annotations.tokens) {
-            foundOutputSockets.add(annotation);
+            foundOutputSockets[annotation] ??= [];
+            foundOutputSockets[annotation].push(schemaVariant);
           }
         }
       }
@@ -108,45 +105,46 @@ export function createInputSocketsBasedOnOutputSockets(
     }
 
     // Create sockets that props match exactly
-    for (const prop of domain.entries) {
-      if (foundOutputSockets.has(prop.name)) {
-        if (!socketExistsInSockets(schemaVariant.sockets, prop.name)) {
-          schemaVariant.sockets.push(
-            createInputSocketFromProp(prop as ExpandedPropSpec),
-          );
-        }
-      }
+    for (const prop of domain.entries as ExpandedPropSpec[]) {
+      const fromVariants = foundOutputSockets[prop.name];
+      if (!fromVariants) continue;
+      // We don't create input sockets *just* to link to the same output socket/component.
+      // There has to be another reason.
+      if (fromVariants.length === 1 && fromVariants[0].uniqueId === schemaVariant.uniqueId) continue;
+      getOrCreateInputSocketFromProp(schemaVariant, prop, "many");
     }
 
     // Create sockets for all Arns
     // TODO: we can be smarter about this, but this covers off on every case of
     // wanting to connecting something like "TaskArn" or "Arn" -> "TaskRoleArn"
-    for (const prop of domain.entries) {
-      if (prop.name.toLowerCase().endsWith("arn")) {
-        if (!socketExistsInSockets(schemaVariant.sockets, prop.name)) {
-          const socket = createInputSocketFromProp(prop as ExpandedPropSpec);
-          setAnnotationOnSocket(socket, { tokens: ["Arn"] });
-          schemaVariant.sockets.push(socket);
-        }
-      }
+    for (const prop of domain.entries as ExpandedPropSpec[]) {
+      if (!prop.name.toLowerCase().endsWith("arn")) continue;
+      getOrCreateInputSocketFromProp(schemaVariant, prop, "many", ["Arn"]);
     }
 
     // create input sockets for all strings and arrays of strings whose props name matches
     // the name of a component that exists
-    bfsPropTree(domain, (prop) => {
+    bfsExpandedPropTree(domain, (prop) => {
       if (
-        isExpandedPropSpec(prop) && !propHasSocket(prop) &&
-          (prop.kind === "array" && prop.typeProp.kind === "string") ||
-        prop.kind === "string"
+          (!propHasSocket(prop) && (prop.kind === "array" && prop.typeProp.kind === "string"))
+        || prop.kind === "string"
       ) {
         const possiblePeers = specsByName[prop.name] ??
           specsByName[pluralize(prop.name)];
         if (!possiblePeers) return;
 
         for (const peer of possiblePeers) {
-          const addSocketIfPeerExists = (peerProp: PropSpec) => {
-            if (!isExpandedPropSpec(peerProp)) return;
+          // If the peer has more than one primary identifier, we can't connect a single
+          // output socket to it, so don't!
+          let primaryIdentifierCount = 0;
+          bfsExpandedPropTree([peer.domain, peer.resourceValue], (prop) => {
+            if (prop.metadata.primaryIdentifier) {
+              primaryIdentifierCount++;
+            }
+          })
+          if (primaryIdentifierCount > 1) continue;
 
+          bfsExpandedPropTree([peer.resourceValue, peer.domain], (peerProp) => {
             if (peerProp.metadata.primaryIdentifier) {
               for (const socket of peer.sockets) {
                 const bind = socket.inputs[0];
@@ -156,29 +154,11 @@ export function createInputSocketsBasedOnOutputSockets(
                   bind.prop_path ===
                     propPathToString(peerProp.metadata.propPath)
                 ) {
-                  setAnnotationOnSocket(socket, { tokens: [prop.name] });
-                  if (
-                    !socketExistsInSockets(
-                      schemaVariant.sockets,
-                      prop.name,
-                      "input",
-                    )
-                  ) {
-                    schemaVariant.sockets.push(
-                      createInputSocketFromProp(
-                        prop as ExpandedPropSpec,
-                      ),
-                    );
-                  }
+                  getOrCreateInputSocketFromProp(schemaVariant, prop, "many", [prop.name]);
                 }
               }
             }
-          };
-
-          bfsPropTree(peer.resourceValue, addSocketIfPeerExists, {
-            skipTypeProps: true,
-          });
-          bfsPropTree(peer.domain, addSocketIfPeerExists, {
+          }, {
             skipTypeProps: true,
           });
         }
@@ -189,18 +169,4 @@ export function createInputSocketsBasedOnOutputSockets(
   }
 
   return newSpecs;
-}
-
-function socketExistsInSockets(
-  sockets: SocketSpec[],
-  name: string,
-  direction?: SocketSpecKind,
-): boolean {
-  for (const socket of sockets) {
-    if (direction) {
-      if (direction !== socket.data.kind) continue;
-    }
-    if (socket.name === name) return true;
-  }
-  return false;
 }
