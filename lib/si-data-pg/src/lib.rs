@@ -390,7 +390,7 @@ impl PgPool {
     )]
     pub async fn test_connection(&self) -> PgPoolResult<()> {
         let conn = self.pool.get().await.si_inspect_err(
-            |err| warn!(error = %err, "failed to get test database connection from pool"),
+            |err| warn!(si.error.message = %err, "failed to get test database connection from pool"),
         )?;
         debug!("connected to database");
         let row = conn
