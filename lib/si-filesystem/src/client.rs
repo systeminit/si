@@ -31,12 +31,26 @@ pub enum SiFsClientError {
 
 pub type SiFsClientResult<T> = Result<T, SiFsClientError>;
 
-const CACHE_TTL: Duration = Duration::from_secs(5);
+const DEFAULT_CACHE_TTL: Duration = Duration::from_secs(5);
+
+const TYPE_REF_COMMENT: &str = r#"/// <reference path="./index.d.ts" />"#;
+const TYPE_REF_PREFIX: &str = r#"/// <refer"#;
 
 #[derive(Debug, Clone)]
 struct CacheEntry {
     value: String,
     created_at: Instant,
+    duration: Duration,
+}
+
+impl CacheEntry {
+    pub fn new(value: String, duration: Option<Duration>) -> Self {
+        Self {
+            value,
+            created_at: Instant::now(),
+            duration: duration.unwrap_or(DEFAULT_CACHE_TTL),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -100,10 +114,22 @@ impl SiFsClient {
     {
         let cache_key = Self::make_cache_key(&url, query.as_ref());
 
+        self.get_cache_entry_custom_key(change_set_id, cache_key)
+            .await
+    }
+
+    async fn get_cache_entry_custom_key<R>(
+        &self,
+        change_set_id: ChangeSetId,
+        cache_key: String,
+    ) -> Option<R>
+    where
+        R: Serialize + DeserializeOwned + Clone,
+    {
         let cache = self.cache.lock().await;
         cache.get(&change_set_id).and_then(|change_set_map| {
             change_set_map.get(&cache_key).and_then(|value| {
-                if value.created_at.elapsed() >= CACHE_TTL {
+                if value.created_at.elapsed() >= value.duration {
                     None
                 } else {
                     serde_json::from_str(&value.value).ok()
@@ -116,25 +142,20 @@ impl SiFsClient {
         self.cache.lock().await.remove(&change_set_id);
     }
 
-    async fn set_cache_entry<Q, R>(
+    async fn set_cache_entry_custom<R>(
         &self,
         change_set_id: ChangeSetId,
-        url: String,
-        query: Option<Q>,
+        cache_key: String,
+        duration: Option<Duration>,
         value: &R,
     ) -> SiFsClientResult<()>
     where
-        Q: Serialize,
         R: Serialize + DeserializeOwned + Clone,
     {
-        let cache_key = Self::make_cache_key(&url, query.as_ref());
         let mut cache = self.cache.lock().await;
         let value_string = serde_json::to_string(value)?;
 
-        let cache_entry = CacheEntry {
-            value: value_string,
-            created_at: Instant::now(),
-        };
+        let cache_entry = CacheEntry::new(value_string, duration);
 
         cache
             .entry(change_set_id)
@@ -150,18 +171,38 @@ impl SiFsClient {
         Ok(())
     }
 
+    async fn set_cache_entry<Q, R>(
+        &self,
+        change_set_id: ChangeSetId,
+        url: String,
+        query: Option<Q>,
+        value: &R,
+    ) -> SiFsClientResult<()>
+    where
+        Q: Serialize,
+        R: Serialize + DeserializeOwned + Clone,
+    {
+        let cache_key = Self::make_cache_key(&url, query.as_ref());
+        self.set_cache_entry_custom(change_set_id, cache_key, None, value)
+            .await
+    }
+
     async fn get_text<Q>(
         &self,
         change_set_id: ChangeSetId,
         url: String,
         query: Option<Q>,
+        cache: bool,
     ) -> SiFsClientResult<String>
     where
         Q: Serialize + Clone,
     {
-        if let Some(cached_value) = self
-            .get_cache_entry(change_set_id, url.clone(), query.clone())
-            .await
+        if let Some(cached_value) = cache
+            .then_some(
+                self.get_cache_entry(change_set_id, url.clone(), query.clone())
+                    .await,
+            )
+            .flatten()
         {
             return Ok(cached_value);
         }
@@ -176,8 +217,10 @@ impl SiFsClient {
         let response = request_builder.send().await?;
         if response.status() == StatusCode::OK {
             let value = response.text().await?;
-            self.set_cache_entry(change_set_id, url, query, &value)
-                .await?;
+            if cache {
+                self.set_cache_entry(change_set_id, url, query, &value)
+                    .await?;
+            }
 
             Ok(value)
         } else {
@@ -366,12 +409,17 @@ impl SiFsClient {
         change_set_id: ChangeSetId,
         schema_id: SchemaId,
     ) -> SiFsClientResult<AssetFuncs> {
-        self.get_json(
-            change_set_id,
-            self.fs_api_change_sets(&format!("schemas/{schema_id}/asset_funcs"), change_set_id),
-            None::<()>,
-        )
-        .await
+        let mut asset_funcs: AssetFuncs = self
+            .get_json(
+                change_set_id,
+                self.fs_api_change_sets(&format!("schemas/{schema_id}/asset_funcs"), change_set_id),
+                None::<()>,
+            )
+            .await?;
+
+        asset_funcs.extend_code_sizes((TYPE_REF_COMMENT.len() as u64) + 1);
+
+        Ok(asset_funcs)
     }
 
     pub async fn variant_funcs_of_kind(
@@ -432,6 +480,7 @@ impl SiFsClient {
             change_set_id,
             self.fs_api_change_sets(&format!("funcs/{func_id}/code"), change_set_id),
             None::<()>,
+            true,
         )
         .await
     }
@@ -457,19 +506,69 @@ impl SiFsClient {
         schema_id: SchemaId,
         unlocked: bool,
     ) -> SiFsClientResult<String> {
-        self.get_text(
-            change_set_id,
-            self.fs_api_change_sets(&format!("schemas/{schema_id}/asset_func"), change_set_id),
-            Some(VariantQuery { unlocked }),
-        )
-        .await
+        let code = self
+            .get_text(
+                change_set_id,
+                self.fs_api_change_sets(&format!("schemas/{schema_id}/asset_func"), change_set_id),
+                Some(VariantQuery { unlocked }),
+                true,
+            )
+            .await?;
+
+        let code = format!("{TYPE_REF_COMMENT}\n{code}");
+
+        Ok(code)
     }
+
+    pub async fn get_asset_func_types(
+        &self,
+        change_set_id: ChangeSetId,
+        schema_id: SchemaId,
+    ) -> SiFsClientResult<String> {
+        if let Some(cached_types) = self
+            .get_cache_entry_custom_key(change_set_id, "ASSET_TYPES".into())
+            .await
+        {
+            return Ok(cached_types);
+        }
+
+        let types: String = self
+            .get_text(
+                change_set_id,
+                self.fs_api_change_sets(
+                    &format!("schemas/{schema_id}/asset_func/types"),
+                    change_set_id,
+                ),
+                None::<()>,
+                false,
+            )
+            .await?;
+
+        // Asset types are static, but could change on deploy. This will cache
+        // the types for 8 hours
+        self.set_cache_entry_custom(
+            change_set_id,
+            "ASSET_TYPES".into(),
+            Some(Duration::from_secs(60 * 60 * 8)),
+            &types,
+        )
+        .await?;
+
+        Ok(types)
+    }
+
     pub async fn set_asset_func_code(
         &self,
         change_set_id: ChangeSetId,
         schema_id: SchemaId,
         code: String,
     ) -> SiFsClientResult<()> {
+        let code: String = code
+            .lines()
+            .filter(|line| !line.trim().starts_with(TYPE_REF_PREFIX))
+            .collect::<Vec<&str>>()
+            .join("\n");
+
         self.post_empty_response(
             change_set_id,
             self.fs_api_change_sets(&format!("schemas/{schema_id}/asset_func"), change_set_id),
@@ -542,13 +641,18 @@ impl SiFsClient {
         change_set_id: ChangeSetId,
         schema_id: SchemaId,
     ) -> SiFsClientResult<AssetFuncs> {
-        self.post(
-            change_set_id,
-            self.fs_api_change_sets(&format!("schemas/{schema_id}/unlock"), change_set_id),
-            None::<()>,
-            None::<()>,
-        )
-        .await
+        let mut asset_funcs: AssetFuncs = self
+            .post(
+                change_set_id,
+                self.fs_api_change_sets(&format!("schemas/{schema_id}/unlock"), change_set_id),
+                None::<()>,
+                None::<()>,
+            )
+            .await?;
+
+        asset_funcs.extend_code_sizes((TYPE_REF_COMMENT.len() as u64) + 1);
+
+        Ok(asset_funcs)
     }
 
     pub async fn unlock_func(

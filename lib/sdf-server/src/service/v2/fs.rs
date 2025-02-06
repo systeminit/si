@@ -128,6 +128,8 @@ pub enum FsError {
 
 pub type FsResult<T> = Result<T, FsError>;
 
+const ASSET_EDITOR_TYPES: &str = include_str!("./fs/editor_typescript.txt");
+
 impl IntoResponse for FsError {
     fn into_response(self) -> Response {
         let (status_code, error) = match self {
@@ -377,6 +379,7 @@ pub async fn get_asset_funcs(
         unlocked_bindings_size: 0,
         locked_attrs_size: 0,
         locked_bindings_size: 0,
+        types_size: ASSET_EDITOR_TYPES.len() as u64,
     };
 
     result.locked = match lookup_variant_for_schema(&ctx, schema_id, false).await? {
@@ -891,6 +894,17 @@ async fn set_schema_attrs(
     Ok(())
 }
 
+async fn get_asset_func_types(
+    HandlerContext(_builder): HandlerContext,
+    AccessBuilder(_request_ctx): AccessBuilder,
+    PosthogClient(_posthog_client): PosthogClient,
+    OriginalUri(_original_uri): OriginalUri,
+    Host(_host_name): Host,
+    Path((_workspace_id, _change_set_id, _schema_id)): Path<(WorkspaceId, ChangeSetId, SchemaId)>,
+) -> FsResult<String> {
+    Ok(ASSET_EDITOR_TYPES.into())
+}
+
 async fn get_or_unlock_schema(ctx: &DalContext, schema_id: SchemaId) -> FsResult<SchemaVariant> {
     Ok(
         match lookup_variant_for_schema(ctx, schema_id, true).await? {
@@ -1001,6 +1015,7 @@ async fn unlock_schema(
         locked_attrs_size: 0,
         unlocked_bindings_size: 0,
         locked_bindings_size: 0,
+        types_size: ASSET_EDITOR_TYPES.len() as u64,
     };
 
     let asset_func = unlocked_variant.get_asset_func(&ctx).await?;
@@ -1139,6 +1154,10 @@ pub fn fs_routes(state: AppState) -> Router<AppState> {
                 .route("/schemas/:schema_id/asset_funcs", get(get_asset_funcs))
                 .route("/schemas/:schema_id/asset_func", post(set_asset_func_code))
                 .route("/schemas/:schema_id/asset_func", get(get_asset_func_code))
+                .route(
+                    "/schemas/:schema_id/asset_func/types",
+                    get(get_asset_func_types),
+                )
                 .route("/schemas/:schema_id/attrs", get(get_schema_attrs))
                 .route("/schemas/:schema_id/unlock", post(unlock_schema))
                 .route("/schemas/:schema_id/attrs", post(set_schema_attrs))
