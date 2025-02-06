@@ -111,7 +111,11 @@ export function actionBindingsForVariant(
   return bindings;
 }
 
-const INTRINSICS_DISPLAYED = [FuncBackendKind.Identity, FuncBackendKind.Unset];
+export const INTRINSICS_DISPLAYED = [
+  FuncBackendKind.Unset,
+  FuncBackendKind.Identity,
+  FuncBackendKind.NormalizeToArray,
+];
 
 export const useFuncStore = () => {
   const viewStore = useViewsStore();

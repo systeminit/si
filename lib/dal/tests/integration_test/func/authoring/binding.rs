@@ -9,6 +9,7 @@ use dal::{
             leaf::LeafBinding, AttributeArgumentBinding, AttributeFuncArgumentSource,
             AttributeFuncDestination, EventualParent, FuncBinding, FuncBindingError,
         },
+        intrinsics::IntrinsicFunc,
     },
     prop::PropPath,
     property_editor::values::PropertyEditorValues,
@@ -476,6 +477,7 @@ async fn for_attribute_with_input_socket_input(ctx: &mut DalContext) {
     assert_eq!(FuncArgumentKind::Array, func_argument.kind);
     assert_eq!(Some(FuncArgumentKind::Object), func_argument.element_kind);
 }
+
 #[test]
 async fn for_intrinsics(ctx: &mut DalContext) {
     let schema = Schema::find_by_name(ctx, "starfield")
@@ -670,7 +672,11 @@ async fn for_intrinsics(ctx: &mut DalContext) {
                     }
                 }
             }
-            dal::FuncBackendKind::JsAttribute | dal::FuncBackendKind::JsAction => {} // not testing these right now
+            // NOTE(nick): it would be ideal to address resourcePayloadToValue and normalizeToArray.
+            dal::FuncBackendKind::ResourcePayloadToValue
+            | dal::FuncBackendKind::NormalizeToArray
+            | dal::FuncBackendKind::JsAttribute
+            | dal::FuncBackendKind::JsAction => {} // not testing these right now
             _ => {
                 panic!("there should not be any other funcs returned for this variant");
             }
@@ -854,7 +860,9 @@ async fn return_the_right_bindings(ctx: &mut DalContext, nw: &WorkspaceSignup) {
                             // if the output location is a prop and the func is intrinsic, there are special things
                             if let Some(intrinsic) = maybe_intrinsic {
                                 match intrinsic {
-                                    dal::func::intrinsics::IntrinsicFunc::Identity => {
+                                    IntrinsicFunc::Identity
+                                    | IntrinsicFunc::NormalizeToArray
+                                    | IntrinsicFunc::ResourcePayloadToValue => {
                                         // Props only take inputs from input sockets or other props
                                         let mut maybe_invalid_args =
                                             attribute_binding.argument_bindings.clone();
@@ -892,17 +900,17 @@ async fn return_the_right_bindings(ctx: &mut DalContext, nw: &WorkspaceSignup) {
                                         // should only be one input right now
                                         assert_eq!(maybe_valid_args.len(), 1);
                                     }
-                                    dal::func::intrinsics::IntrinsicFunc::Unset => {
+                                    IntrinsicFunc::Unset => {
                                         assert!(attribute_binding.argument_bindings.is_empty());
                                     }
-                                    dal::func::intrinsics::IntrinsicFunc::SetArray
-                                    | dal::func::intrinsics::IntrinsicFunc::SetBoolean
-                                    | dal::func::intrinsics::IntrinsicFunc::SetInteger
-                                    | dal::func::intrinsics::IntrinsicFunc::SetJson
-                                    | dal::func::intrinsics::IntrinsicFunc::SetMap
-                                    | dal::func::intrinsics::IntrinsicFunc::SetObject
-                                    | dal::func::intrinsics::IntrinsicFunc::SetString
-                                    | dal::func::intrinsics::IntrinsicFunc::Validation => {
+                                    IntrinsicFunc::SetArray
+                                    | IntrinsicFunc::SetBoolean
+                                    | IntrinsicFunc::SetInteger
+                                    | IntrinsicFunc::SetJson
+                                    | IntrinsicFunc::SetMap
+                                    | IntrinsicFunc::SetObject
+                                    | IntrinsicFunc::SetString
+                                    | IntrinsicFunc::Validation => {
                                         assert_eq!(attribute_binding.argument_bindings.len(), 1);
                                     }
                                 }
@@ -911,7 +919,9 @@ async fn return_the_right_bindings(ctx: &mut DalContext, nw: &WorkspaceSignup) {
                         AttributeFuncDestination::OutputSocket(_) => {
                             if let Some(intrinsic) = maybe_intrinsic {
                                 match intrinsic {
-                                    dal::func::intrinsics::IntrinsicFunc::Identity => {
+                                    IntrinsicFunc::Identity
+                                    | IntrinsicFunc::NormalizeToArray
+                                    | IntrinsicFunc::ResourcePayloadToValue => {
                                         // Output Sockets only take inputs from input sockets or props
                                         let mut maybe_invalid_args =
                                             attribute_binding.argument_bindings.clone();
@@ -950,18 +960,18 @@ async fn return_the_right_bindings(ctx: &mut DalContext, nw: &WorkspaceSignup) {
                                         assert!(maybe_valid_args.len() < 2);
                                     }
                                     // unset has no args
-                                    dal::func::intrinsics::IntrinsicFunc::Unset => {
+                                    IntrinsicFunc::Unset => {
                                         assert!(attribute_binding.argument_bindings.is_empty());
                                     }
                                     // these intrinsics only have one arg
-                                    dal::func::intrinsics::IntrinsicFunc::SetArray
-                                    | dal::func::intrinsics::IntrinsicFunc::SetBoolean
-                                    | dal::func::intrinsics::IntrinsicFunc::SetInteger
-                                    | dal::func::intrinsics::IntrinsicFunc::SetJson
-                                    | dal::func::intrinsics::IntrinsicFunc::SetMap
-                                    | dal::func::intrinsics::IntrinsicFunc::SetObject
-                                    | dal::func::intrinsics::IntrinsicFunc::SetString
-                                    | dal::func::intrinsics::IntrinsicFunc::Validation => {
+                                    IntrinsicFunc::SetArray
+                                    | IntrinsicFunc::SetBoolean
+                                    | IntrinsicFunc::SetInteger
+                                    | IntrinsicFunc::SetJson
+                                    | IntrinsicFunc::SetMap
+                                    | IntrinsicFunc::SetObject
+                                    | IntrinsicFunc::SetString
+                                    | IntrinsicFunc::Validation => {
                                         assert_eq!(attribute_binding.argument_bindings.len(), 1);
                                     }
                                 }
