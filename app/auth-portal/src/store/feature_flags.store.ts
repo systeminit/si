@@ -11,13 +11,11 @@ export const useFeatureFlagsStore = () => {
       state: () => ({
         ADMIN_PAGE: false,
         ON_DEMAND_ASSETS: false,
-        AUTOMATION_API: false,
       }),
       onActivated() {
         posthog.onFeatureFlags((flags) => {
           this.ADMIN_PAGE = flags.includes("auth_portal_admin_page");
           this.ON_DEMAND_ASSETS = flags.includes("on_demand_assets");
-          this.AUTOMATION_API = flags.includes("automation_api");
         });
       },
     }),

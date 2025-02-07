@@ -28,7 +28,7 @@
           </div>
         </template>
         <IconButton
-          v-if="!createMode && featureFlagsStore.AUTOMATION_API"
+          v-if="!createMode"
           class="flex-none"
           icon="key-tilted"
           iconIdleTone="shade"
@@ -248,10 +248,8 @@ import { tracker } from "@/lib/posthog";
 import { API_HTTP_URL } from "@/store/api";
 import MemberListItem from "@/components/MemberListItem.vue";
 import WorkspacePageHeader from "@/components/WorkspacePageHeader.vue";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 
 const workspacesStore = useWorkspacesStore();
-const featureFlagsStore = useFeatureFlagsStore();
 const router = useRouter();
 
 const props = defineProps({
