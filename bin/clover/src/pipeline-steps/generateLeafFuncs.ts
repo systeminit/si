@@ -1,12 +1,14 @@
-import { PkgSpec } from "../bindings/PkgSpec.ts";
 import _ from "lodash";
 import {
   createDefaultCodeGenFuncs,
   createLeafFuncSpec,
 } from "../spec/funcs.ts";
+import { ExpandedPkgSpec } from "../spec/pkgs.ts";
 
-export function generateDefaultLeafFuncs(specs: PkgSpec[]): PkgSpec[] {
-  const newSpecs = [] as PkgSpec[];
+export function generateDefaultLeafFuncs(
+  specs: ExpandedPkgSpec[],
+): ExpandedPkgSpec[] {
+  const newSpecs = [] as ExpandedPkgSpec[];
 
   for (const spec of specs) {
     const schemaVariant = spec.schemas[0]?.variants[0];

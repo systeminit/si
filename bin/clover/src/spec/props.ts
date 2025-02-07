@@ -8,9 +8,7 @@ import { PropSpec } from "../bindings/PropSpec.ts";
 import { PropSpecData } from "../bindings/PropSpecData.ts";
 import { PropSpecWidgetKind } from "../bindings/PropSpecWidgetKind.ts";
 import _ from "npm:lodash";
-const {
-  createHash,
-} = await import("node:crypto");
+const { createHash } = await import("node:crypto");
 
 export const CREATE_ONLY_PROP_LABEL = "si_create_only_prop";
 
@@ -21,18 +19,24 @@ export type OnlyProperties = {
   primaryIdentifier: string[];
 };
 
-export function isExpandedPropSpec(prop: PropSpec): prop is ExpandedPropSpec {
-  const metadata = (prop as ExpandedPropSpec).metadata;
-  return metadata &&
-    Array.isArray(metadata.propPath) &&
-    typeof metadata.readOnly === "boolean" &&
-    typeof metadata.writeOnly === "boolean" &&
-    typeof metadata.createOnly === "boolean";
-}
-
 export type ExpandedPropSpec =
-  & ({
-    data: PropSpecData;
+  & (
+    | Omit<Extract<PropSpec, { "kind": "boolean" }>, "data">
+    | Omit<Extract<PropSpec, { "kind": "json" }>, "data">
+    | Omit<Extract<PropSpec, { "kind": "number" }>, "data">
+    | Omit<Extract<PropSpec, { "kind": "string" }>, "data">
+    | (Omit<Extract<PropSpec, { "kind": "array" }>, "data" | "typeProp"> & {
+      typeProp: ExpandedPropSpec;
+    })
+    | (Omit<Extract<PropSpec, { "kind": "map" }>, "data" | "typeProp"> & {
+      typeProp: ExpandedPropSpec;
+    })
+    | (Omit<Extract<PropSpec, { "kind": "object" }>, "data" | "entries"> & {
+      entries: ExpandedPropSpec[];
+    })
+  )
+  & {
+    data: ExpandedPropSpecData;
     enum?: string[] | number[];
     metadata: {
       createOnly?: boolean;
@@ -41,8 +45,11 @@ export type ExpandedPropSpec =
       primaryIdentifier?: boolean;
       propPath: string[];
     };
-  })
-  & PropSpec;
+  };
+
+export interface ExpandedPropSpecData extends PropSpecData {
+  widgetOptions: { label: string; value: string }[] | null;
+}
 
 type CreatePropQueue = {
   addTo: null | ((data: ExpandedPropSpec) => undefined);
@@ -114,7 +121,7 @@ function createPropFromCfInner(
   queue: CreatePropQueue,
 ): ExpandedPropSpec | undefined {
   const propUniqueId = ulid();
-  const data: PropSpecData = {
+  const data: ExpandedPropSpecData = {
     name,
     validationFormat: null,
     defaultValue: null,
@@ -157,50 +164,51 @@ function createPropFromCfInner(
   }
 
   if (
-    normalizedCfData.type === "integer" || normalizedCfData.type === "number"
+    normalizedCfData.type === "integer" ||
+    normalizedCfData.type === "number"
   ) {
     const prop = partialProp as Extract<ExpandedPropSpec, { kind: "number" }>;
     prop.kind = "number";
     if (normalizedCfData.enum) {
-      prop.data!.widgetKind = "ComboBox";
+      prop.data.widgetKind = "ComboBox";
       for (const val of normalizedCfData.enum) {
         const valString = val.toString();
-        prop.data!.widgetOptions.push({
+        prop.data.widgetOptions!.push({
           label: valString,
           value: valString,
         });
       }
     } else {
-      prop.data!.widgetKind = "Text";
+      prop.data.widgetKind = "Text";
     }
 
     return prop;
   } else if (normalizedCfData.type === "boolean") {
     const prop = partialProp as Extract<ExpandedPropSpec, { kind: "boolean" }>;
     prop.kind = "boolean";
-    prop.data!.widgetKind = "Checkbox";
+    prop.data.widgetKind = "Checkbox";
 
     return prop;
   } else if (normalizedCfData.type === "string") {
     const prop = partialProp as Extract<ExpandedPropSpec, { kind: "string" }>;
     prop.kind = "string";
     if (normalizedCfData.enum) {
-      prop.data!.widgetKind = "ComboBox";
+      prop.data.widgetKind = "ComboBox";
       for (const val of normalizedCfData.enum) {
-        prop.data!.widgetOptions.push({
+        prop.data.widgetOptions!.push({
           label: val,
           value: val,
         });
       }
     } else {
-      prop.data!.widgetKind = "Text";
+      prop.data.widgetKind = "Text";
     }
 
     return prop;
   } else if (normalizedCfData.type === "array") {
     const prop = partialProp as Extract<ExpandedPropSpec, { kind: "array" }>;
     prop.kind = "array";
-    prop.data!.widgetKind = "Array";
+    prop.data.widgetKind = "Array";
 
     queue.push({
       addTo: (data: ExpandedPropSpec) => {
@@ -216,7 +224,7 @@ function createPropFromCfInner(
     if (normalizedCfData.patternProperties) {
       const prop = partialProp as Extract<ExpandedPropSpec, { kind: "map" }>;
       prop.kind = "map";
-      prop.data!.widgetKind = "Map";
+      prop.data.widgetKind = "Map";
 
       const patternProps = Object.entries(normalizedCfData.patternProperties);
 
@@ -251,7 +259,7 @@ function createPropFromCfInner(
     } else if (normalizedCfData.properties) {
       const prop = partialProp as Extract<ExpandedPropSpec, { kind: "object" }>;
       prop.kind = "object";
-      prop.data!.widgetKind = "Header";
+      prop.data.widgetKind = "Header";
       prop.entries = [];
 
       Object.entries(normalizedCfData.properties).forEach(
@@ -270,7 +278,7 @@ function createPropFromCfInner(
     } else {
       const prop = partialProp as Extract<ExpandedPropSpec, { kind: "string" }>;
       prop.kind = "string";
-      prop.data!.widgetKind = "Text";
+      prop.data.widgetKind = "Text";
 
       return prop;
     }
@@ -286,12 +294,11 @@ function createPropFromCfInner(
 
   // console.log(cfProp);
   console.log(normalizedCfData);
-  throw new Error(
-    `no matching kind in prop with path: ${propPath}`,
-  );
+  throw new Error(`no matching kind in prop with path: ${propPath}`);
 }
 
-function setCreateOnlyProp(data: PropSpecData) {
+function setCreateOnlyProp(data: ExpandedPropSpecData) {
+  data.widgetOptions ??= [];
   data.widgetOptions.push({
     label: CREATE_ONLY_PROP_LABEL,
     value: "true",
@@ -310,7 +317,7 @@ export function createObjectProp(
   name: string,
   parentPath: string[],
 ): Extract<ExpandedPropSpec, { kind: "object" }> {
-  const data: PropSpecData = {
+  const data: ExpandedPropSpecData = {
     name,
     validationFormat: null,
     defaultValue: null,
@@ -357,7 +364,7 @@ export function createScalarProp(
       break;
   }
 
-  const data: PropSpecData = {
+  const data: ExpandedPropSpecData = {
     name,
     validationFormat: null,
     defaultValue: null,
@@ -388,10 +395,17 @@ export function createScalarProp(
 }
 
 export function bfsPropTree(
-  prop: PropSpec,
-  callback: (prop: PropSpec, parents: PropSpec[]) => unknown,
+  prop: ExpandedPropSpec | ExpandedPropSpec[],
+  callback: (prop: ExpandedPropSpec, parents: ExpandedPropSpec[]) => unknown,
   options?: { skipTypeProps: boolean },
 ) {
+  if (Array.isArray(prop)) {
+    for (const p of prop) {
+      bfsPropTree(p, callback, options);
+    }
+    return;
+  }
+
   const queue = [{ prop, parents: [] }];
 
   while (queue.length > 0) {
@@ -417,7 +431,7 @@ export function bfsPropTree(
         }
         break;
       case "object": {
-        const entries: PropSpec[] = _.sortBy(thisProp.entries, [
+        const entries: typeof thisProp.entries = _.sortBy(thisProp.entries, [
           "name",
           "kind",
         ]);
@@ -427,23 +441,6 @@ export function bfsPropTree(
         break;
       }
     }
-  }
-}
-
-export function bfsExpandedPropTree(
-  props: PropSpec | PropSpec[],
-  callback: (prop: ExpandedPropSpec, parents: PropSpec[]) => unknown,
-  options?: { skipTypeProps: boolean },
-) {
-  if (!Array.isArray(props)) props = [props];
-  for (const prop of props) {
-    bfsPropTree(
-      prop,
-      (prop, parents) => {
-        if (isExpandedPropSpec(prop)) callback(prop, parents);
-      },
-      options,
-    );
   }
 }
 
@@ -459,7 +456,7 @@ export function copyPropWithNewIds(
   return newProp;
 }
 
-export function generatePropHash(prop: PropSpec): string {
+export function generatePropHash(prop: ExpandedPropSpec): string {
   const hasher = createHash("sha256");
   bfsPropTree(prop, (p) => {
     hasher.update(p.name);

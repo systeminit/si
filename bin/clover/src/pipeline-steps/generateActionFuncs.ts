@@ -1,13 +1,15 @@
-import { PkgSpec } from "../bindings/PkgSpec.ts";
 import _ from "lodash";
 import {
   createActionFuncSpec,
   createDefaultActionFuncs,
 } from "../spec/funcs.ts";
 import { ActionFuncSpecKind } from "../bindings/ActionFuncSpecKind.ts";
+import { ExpandedPkgSpec } from "../spec/pkgs.ts";
 
-export function generateDefaultActionFuncs(specs: PkgSpec[]): PkgSpec[] {
-  const newSpecs = [] as PkgSpec[];
+export function generateDefaultActionFuncs(
+  specs: ExpandedPkgSpec[],
+): ExpandedPkgSpec[] {
+  const newSpecs = [] as ExpandedPkgSpec[];
   const defaultActionFuncs = createDefaultActionFuncs();
 
   for (const spec of specs) {

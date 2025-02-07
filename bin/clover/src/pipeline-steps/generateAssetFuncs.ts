@@ -1,16 +1,16 @@
-import { PkgSpec } from "../bindings/PkgSpec.ts";
 import type {
   FuncSpecData,
 } from "../../../../lib/si-pkg/bindings/FuncSpecData.ts";
 import { FuncSpec } from "../../../../lib/si-pkg/bindings/FuncSpec.ts";
-import { SchemaVariantSpec } from "../bindings/SchemaVariantSpec.ts";
 import _ from "lodash";
-import { PropSpec } from "../bindings/PropSpec.ts";
 import { strippedBase64 } from "../spec/funcs.ts";
-import { CREATE_ONLY_PROP_LABEL, isExpandedPropSpec } from "../spec/props.ts";
+import { CREATE_ONLY_PROP_LABEL, ExpandedPropSpec } from "../spec/props.ts";
+import { ExpandedPkgSpec, ExpandedSchemaVariantSpec } from "../spec/pkgs.ts";
 
-export function generateAssetFuncs(specs: PkgSpec[]): PkgSpec[] {
-  const newSpecs = [] as PkgSpec[];
+export function generateAssetFuncs(
+  specs: ExpandedPkgSpec[],
+): ExpandedPkgSpec[] {
+  const newSpecs = [] as ExpandedPkgSpec[];
 
   for (const spec of specs) {
     const schemaVariant = spec.schemas[0]?.variants[0];
@@ -55,7 +55,9 @@ export function generateAssetFuncs(specs: PkgSpec[]): PkgSpec[] {
   return newSpecs;
 }
 
-function generateAssetCodeFromVariantSpec(variant: SchemaVariantSpec): string {
+function generateAssetCodeFromVariantSpec(
+  variant: ExpandedSchemaVariantSpec,
+): string {
   if (variant.domain.kind !== "object") throw "Domain prop is not object";
   if (variant.resourceValue.kind !== "object") {
     throw "ResourceValue prop is not object";
@@ -186,7 +188,7 @@ function generateAssetCodeFromVariantSpec(variant: SchemaVariantSpec): string {
 }
 
 function generateSecretPropBuilderString(
-  prop: PropSpec,
+  prop: ExpandedPropSpec,
   indent_level: number,
 ): string {
   return `new SecretPropBuilder()\n` +
@@ -196,11 +198,10 @@ function generateSecretPropBuilderString(
 }
 
 function generatePropBuilderString(
-  prop: PropSpec,
+  prop: ExpandedPropSpec,
   indent_level: number,
 ): string {
-  const is_create_only =
-    (isExpandedPropSpec(prop) && prop.metadata.createOnly) ?? false;
+  const is_create_only = prop.metadata.createOnly ?? false;
 
   switch (prop.kind) {
     case "array":
@@ -316,7 +317,7 @@ function generateWidgetString(
   widgetKind: string | undefined | null,
   create_only: boolean,
   indentLevel: number,
-  options?: { label: string; value: string }[],
+  options?: { label: string; value: string }[] | null,
 ): string {
   if (!widgetKind) {
     console.log("Unable to generate widget for prop!");

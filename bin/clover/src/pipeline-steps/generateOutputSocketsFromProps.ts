@@ -1,17 +1,16 @@
-import { PkgSpec } from "../bindings/PkgSpec.ts";
-import { SchemaVariantSpec } from "../bindings/SchemaVariantSpec.ts";
 import _ from "lodash";
-import { SocketSpec } from "../bindings/SocketSpec.ts";
-import { bfsPropTree, isExpandedPropSpec } from "../spec/props.ts";
+import { bfsPropTree } from "../spec/props.ts";
 import {
   createOutputSocketFromProp,
+  ExpandedSocketSpec,
   setAnnotationOnSocket,
 } from "../spec/sockets.ts";
+import { ExpandedPkgSpec, ExpandedSchemaVariantSpec } from "../spec/pkgs.ts";
 
 export function generateOutputSocketsFromProps(
-  specs: PkgSpec[],
-): PkgSpec[] {
-  const newSpecs = [] as PkgSpec[];
+  specs: ExpandedPkgSpec[],
+): ExpandedPkgSpec[] {
+  const newSpecs = [] as ExpandedPkgSpec[];
 
   for (const spec of specs) {
     const schemaVariant = spec.schemas[0]?.variants[0];
@@ -35,16 +34,16 @@ export function generateOutputSocketsFromProps(
   return newSpecs;
 }
 
-function createSocketsFromResource(variant: SchemaVariantSpec): SocketSpec[] {
+function createSocketsFromResource(
+  variant: ExpandedSchemaVariantSpec,
+): ExpandedSocketSpec[] {
   const resource = variant.resourceValue;
 
   if (resource.kind !== "object") throw "Resource prop is not object";
 
-  const sockets: SocketSpec[] = [];
+  const sockets: ExpandedSocketSpec[] = [];
   for (const prop of resource.entries) {
-    if (
-      !["array", "object"].includes(prop.kind) && isExpandedPropSpec(prop)
-    ) {
+    if (!["array", "object"].includes(prop.kind)) {
       const socket = createOutputSocketFromProp(prop);
       // if this socket is an arn, we want to make sure that all input sockets
       // that might also be arns can take this value
@@ -61,17 +60,15 @@ function createSocketsFromResource(variant: SchemaVariantSpec): SocketSpec[] {
 }
 
 function createSocketsFromPrimaryIdentifier(
-  variant: SchemaVariantSpec,
-): SocketSpec[] {
+  variant: ExpandedSchemaVariantSpec,
+): ExpandedSocketSpec[] {
   const domain = variant.domain;
 
   if (domain.kind !== "object") throw "Domain prop is not object";
 
-  const sockets: SocketSpec[] = [];
+  const sockets: ExpandedSocketSpec[] = [];
 
   bfsPropTree(domain, (prop) => {
-    if (!isExpandedPropSpec(prop)) return;
-
     // We don't check if the socket already exists before adding, since on the other func
     // we only look at resourceValue props
     if (prop.metadata.primaryIdentifier) {

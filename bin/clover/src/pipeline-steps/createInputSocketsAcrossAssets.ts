@@ -1,22 +1,20 @@
-import { PkgSpec } from "../bindings/PkgSpec.ts";
 import _ from "npm:lodash";
 import {
   ConnectionAnnotation,
-  propHasSocket,
   propPathToString,
   setAnnotationOnSocket,
 } from "../spec/sockets.ts";
-import { bfsExpandedPropTree, ExpandedPropSpec } from "../spec/props.ts";
+import { bfsPropTree } from "../spec/props.ts";
 import pluralize from "npm:pluralize";
-import { SchemaVariantSpec } from "../bindings/SchemaVariantSpec.ts";
 import { getOrCreateInputSocketFromProp } from "../spec/sockets.ts";
+import { ExpandedPkgSpec, ExpandedSchemaVariantSpec } from "../spec/pkgs.ts";
 
 export function createInputSocketsBasedOnOutputSockets(
-  specs: PkgSpec[],
-): PkgSpec[] {
-  const newSpecs = [] as PkgSpec[];
-  const foundOutputSockets = {} as Record<string, SchemaVariantSpec[]>;
-  const specsByName = {} as Record<string, SchemaVariantSpec[]>;
+  specs: ExpandedPkgSpec[],
+): ExpandedPkgSpec[] {
+  const newSpecs = [] as ExpandedPkgSpec[];
+  const foundOutputSockets = {} as Record<string, ExpandedSchemaVariantSpec[]>;
+  const specsByName = {} as Record<string, ExpandedSchemaVariantSpec[]>;
 
   // Get all output sockets
   for (const spec of specs) {
@@ -103,7 +101,7 @@ export function createInputSocketsBasedOnOutputSockets(
     }
 
     // Create sockets that props match exactly
-    for (const prop of domain.entries as ExpandedPropSpec[]) {
+    for (const prop of domain.entries) {
       const fromVariants = foundOutputSockets[prop.name];
       if (!fromVariants) continue;
       // We don't create input sockets *just* to link to the same output socket/component.
@@ -118,7 +116,7 @@ export function createInputSocketsBasedOnOutputSockets(
     // Create sockets for all Arns
     // TODO: we can be smarter about this, but this covers off on every case of
     // wanting to connecting something like "TaskArn" or "Arn" -> "TaskRoleArn"
-    for (const prop of domain.entries as ExpandedPropSpec[]) {
+    for (const prop of domain.entries) {
       if (!prop.name.toLowerCase().endsWith("arn")) continue;
       const socket = getOrCreateInputSocketFromProp(
         schemaVariant,
@@ -130,7 +128,7 @@ export function createInputSocketsBasedOnOutputSockets(
 
     // create input sockets for all strings and arrays of strings whose props name matches
     // the name of a component that exists
-    bfsExpandedPropTree(domain, (prop) => {
+    bfsPropTree(domain, (prop) => {
       if (
         (
           prop.kind === "array" && prop.typeProp.kind === "string"
@@ -145,13 +143,13 @@ export function createInputSocketsBasedOnOutputSockets(
           // If the peer has more than one primary identifier, we can't connect a single
           // output socket to it, so don't!
           let primaryIdentifierCount = 0;
-          bfsExpandedPropTree([peer.domain, peer.resourceValue], (prop) => {
+          bfsPropTree([peer.domain, peer.resourceValue], (prop) => {
             if (prop.metadata.primaryIdentifier) {
               primaryIdentifierCount++;
             }
           });
           if (primaryIdentifierCount > 1) continue;
-          bfsExpandedPropTree([peer.resourceValue, peer.domain], (peerProp) => {
+          bfsPropTree([peer.resourceValue, peer.domain], (peerProp) => {
             if (!peerProp.metadata.primaryIdentifier) return;
 
             for (const socket of peer.sockets) {

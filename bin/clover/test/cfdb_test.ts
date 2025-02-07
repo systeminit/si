@@ -7,7 +7,7 @@ import {
 } from "../src/cfDb.ts";
 import { assertObjectMatch } from "@std/assert/object-match";
 
-await loadCfDatabase("./test/test-files");
+await loadCfDatabase({ path: "./test/test-files" });
 
 Deno.test(function getByServiceNameReturnsSchema() {
   // Throws if the service does not exist
