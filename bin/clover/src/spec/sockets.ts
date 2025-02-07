@@ -51,18 +51,16 @@ export function getOrCreateInputSocketFromProp(
   schemaVariant: SchemaVariantSpec,
   prop: ExpandedPropSpec,
   arity: SocketSpecArity = "many",
-  connectionAnnotations: string[] = [],
 ) {
-  let socket = schemaVariant.sockets.find((s) => s.data.kind === "input" && s.name === prop.name);
+  let socket = schemaVariant.sockets.find((s) =>
+    s.data.kind === "input" && s.name === prop.name
+  );
   if (!socket) {
     socket ??= createInputSocketFromProp(prop as ExpandedPropSpec, arity);
     schemaVariant.sockets.push(socket);
   }
-  for (const connectionAnnotation of connectionAnnotations) {
-    setAnnotationOnSocket(socket, { tokens: [connectionAnnotation] });
-  }
   return socket;
-} 
+}
 
 export function setAnnotationOnSocket(
   socket: SocketSpec,
