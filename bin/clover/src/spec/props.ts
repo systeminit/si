@@ -8,6 +8,7 @@ import { PropSpec } from "../bindings/PropSpec.ts";
 import { PropSpecData } from "../bindings/PropSpecData.ts";
 import { PropSpecWidgetKind } from "../bindings/PropSpecWidgetKind.ts";
 import _ from "npm:lodash";
+import { Extend } from "../extend.ts";
 const { createHash } = await import("node:crypto");
 
 export const CREATE_ONLY_PROP_LABEL = "si_create_only_prop";
@@ -19,36 +20,50 @@ export type OnlyProperties = {
   primaryIdentifier: string[];
 };
 
-export type ExpandedPropSpec =
-  & (
-    | Omit<Extract<PropSpec, { "kind": "boolean" }>, "data">
-    | Omit<Extract<PropSpec, { "kind": "json" }>, "data">
-    | Omit<Extract<PropSpec, { "kind": "number" }>, "data">
-    | Omit<Extract<PropSpec, { "kind": "string" }>, "data">
-    | (Omit<Extract<PropSpec, { "kind": "array" }>, "data" | "typeProp"> & {
-      typeProp: ExpandedPropSpec;
-    })
-    | (Omit<Extract<PropSpec, { "kind": "map" }>, "data" | "typeProp"> & {
-      typeProp: ExpandedPropSpec;
-    })
-    | (Omit<Extract<PropSpec, { "kind": "object" }>, "data" | "entries"> & {
-      entries: ExpandedPropSpec[];
-    })
-  )
-  & {
-    data: ExpandedPropSpecData;
-    enum?: string[] | number[];
-    metadata: {
-      createOnly?: boolean;
-      readOnly?: boolean;
-      writeOnly?: boolean;
-      primaryIdentifier?: boolean;
-      propPath: string[];
-    };
-  };
+// PropSpecFor["object"], etc.
+export type PropSpecFor = {
+  boolean: Extract<PropSpec, { kind: "boolean" }>;
+  json: Extract<PropSpec, { kind: "json" }>;
+  number: Extract<PropSpec, { kind: "number" }>;
+  string: Extract<PropSpec, { kind: "string" }>;
+  array: Extract<PropSpec, { kind: "array" }>;
+  map: Extract<PropSpec, { kind: "map" }>;
+  object: Extract<PropSpec, { kind: "object" }>;
+};
+export type ExpandedPropSpecFor = {
+  boolean: Extend<PropSpecFor["boolean"], PropSpecOverrides>;
+  json: Extend<PropSpecFor["json"], PropSpecOverrides>;
+  number: Extend<PropSpecFor["number"], PropSpecOverrides>;
+  string: Extend<PropSpecFor["string"], PropSpecOverrides>;
+  array: Extend<
+    PropSpecFor["array"],
+    PropSpecOverrides & { typeProp: ExpandedPropSpec }
+  >;
+  map: Extend<
+    PropSpecFor["map"],
+    PropSpecOverrides & { typeProp: ExpandedPropSpec }
+  >;
+  object: Extend<
+    PropSpecFor["object"],
+    PropSpecOverrides & { entries: ExpandedPropSpec[] }
+  >;
+};
 
-export interface ExpandedPropSpecData extends PropSpecData {
-  widgetOptions: { label: string; value: string }[] | null;
+export type ExpandedPropSpec = ExpandedPropSpecFor[keyof ExpandedPropSpecFor];
+
+interface PropSpecOverrides {
+  data: Extend<
+    PropSpecData,
+    { widgetOptions: { label: string; value: string }[] | null }
+  >;
+  enum?: string[] | number[];
+  metadata: {
+    createOnly?: boolean;
+    readOnly?: boolean;
+    writeOnly?: boolean;
+    primaryIdentifier?: boolean;
+    propPath: string[];
+  };
 }
 
 type CreatePropQueue = {
@@ -121,7 +136,7 @@ function createPropFromCfInner(
   queue: CreatePropQueue,
 ): ExpandedPropSpec | undefined {
   const propUniqueId = ulid();
-  const data: ExpandedPropSpecData = {
+  const data: ExpandedPropSpec["data"] = {
     name,
     validationFormat: null,
     defaultValue: null,
@@ -167,7 +182,7 @@ function createPropFromCfInner(
     normalizedCfData.type === "integer" ||
     normalizedCfData.type === "number"
   ) {
-    const prop = partialProp as Extract<ExpandedPropSpec, { kind: "number" }>;
+    const prop = partialProp as ExpandedPropSpecFor["number"];
     prop.kind = "number";
     if (normalizedCfData.enum) {
       prop.data.widgetKind = "ComboBox";
@@ -297,7 +312,7 @@ function createPropFromCfInner(
   throw new Error(`no matching kind in prop with path: ${propPath}`);
 }
 
-function setCreateOnlyProp(data: ExpandedPropSpecData) {
+function setCreateOnlyProp(data: ExpandedPropSpec["data"]) {
   data.widgetOptions ??= [];
   data.widgetOptions.push({
     label: CREATE_ONLY_PROP_LABEL,
@@ -317,7 +332,7 @@ export function createObjectProp(
   name: string,
   parentPath: string[],
 ): Extract<ExpandedPropSpec, { kind: "object" }> {
-  const data: ExpandedPropSpecData = {
+  const data: ExpandedPropSpec["data"] = {
     name,
     validationFormat: null,
     defaultValue: null,
@@ -364,7 +379,7 @@ export function createScalarProp(
       break;
   }
 
-  const data: ExpandedPropSpecData = {
+  const data: ExpandedPropSpec["data"] = {
     name,
     validationFormat: null,
     defaultValue: null,
@@ -444,10 +459,10 @@ export function bfsPropTree(
   }
 }
 
-export function copyPropWithNewIds(
-  sourceProp: ExpandedPropSpec,
-): ExpandedPropSpec {
-  const newProp = _.cloneDeep(sourceProp);
+export function copyPropWithNewIds<T extends ExpandedPropSpec>(
+  sourceProp: T,
+): T {
+  const newProp: T = _.cloneDeep(sourceProp);
 
   bfsPropTree(newProp, (prop) => {
     prop.uniqueId = ulid();

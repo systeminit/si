@@ -39,14 +39,14 @@ After that, you can diff the anonymized specs to see what your heuristic affecte
    `si-specs-old/anonymized`:
 
    ```sh
-   $ deno task run -A main.ts generate-specs && ./anonymize-specs.sh
+   $ deno task run generate-specs && ./anonymize-specs.sh
    $ cp -R si-specs si-specs-old
    ```
 
 2. **Regenerate**: Regenerate and anonymize the specs to `si-specs/anonymized`:
 
    ```sh
-   $ deno task run -A main.ts generate-specs && ./anonymize-specs.sh
+   $ deno task run generate-specs && ./anonymize-specs.sh
    ```
 
 3. **Diff**: Diff the results:

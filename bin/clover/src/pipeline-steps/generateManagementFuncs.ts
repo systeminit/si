@@ -12,16 +12,10 @@ export function generateDefaultManagementFuncs(
   const defaultMgmtFuncs = createDefaultManagementFuncs();
 
   for (const spec of specs) {
-    const schemaVariant = spec.schemas[0]?.variants[0];
+    const [schema] = spec.schemas;
+    const [schemaVariant] = schema.variants;
     const funcs = spec.funcs;
     const mgmtFuncs = schemaVariant.managementFuncs;
-
-    if (!schemaVariant) {
-      console.log(
-        `Could not generate action funcs for ${spec.name}: missing schema or variant!`,
-      );
-      continue;
-    }
 
     for (const mgmtFunc of defaultMgmtFuncs) {
       funcs.push(mgmtFunc);

@@ -13,16 +13,10 @@ export function generateDefaultActionFuncs(
   const defaultActionFuncs = createDefaultActionFuncs();
 
   for (const spec of specs) {
-    const schemaVariant = spec.schemas[0]?.variants[0];
-    const funcs = spec.funcs;
-    const actionFuncs = schemaVariant.actionFuncs;
-
-    if (!schemaVariant) {
-      console.log(
-        `Could not generate action funcs for ${spec.name}: missing schema or variant!`,
-      );
-      continue;
-    }
+    const [schema] = spec.schemas;
+    const [schemaVariant] = schema.variants;
+    const { funcs } = spec;
+    const { actionFuncs } = schemaVariant;
 
     for (const { spec: actionFunc, kind } of defaultActionFuncs) {
       funcs.push(actionFunc);

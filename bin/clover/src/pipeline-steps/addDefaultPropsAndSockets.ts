@@ -13,30 +13,9 @@ export function addDefaultPropsAndSockets(
   const newSpecs = [] as ExpandedPkgSpec[];
 
   for (const spec of specs) {
-    const schema = spec.schemas[0];
-
-    if (!schema) {
-      console.log(
-        `Could not generate default props and sockets for ${spec.name}: missing schema`,
-      );
-      continue;
-    }
-    const schemaVariant = schema.variants[0];
-
-    if (!schemaVariant) {
-      console.log(
-        `Could not generate default props and sockets for ${spec.name}: missing variant`,
-      );
-      continue;
-    }
-
-    const domain = schemaVariant.domain;
-    if (domain.kind !== "object") {
-      console.log(
-        `Could not generate default props and sockets for ${spec.name}: domain is not object`,
-      );
-      continue;
-    }
+    const [schema] = spec.schemas;
+    const [schemaVariant] = schema.variants;
+    const { domain } = schemaVariant;
 
     // Extra prop
     const extraProp = createObjectProp("extra", domain.metadata.propPath);

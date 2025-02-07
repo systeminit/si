@@ -13,14 +13,8 @@ export function generateOutputSocketsFromProps(
   const newSpecs = [] as ExpandedPkgSpec[];
 
   for (const spec of specs) {
-    const schemaVariant = spec.schemas[0]?.variants[0];
-
-    if (!schemaVariant) {
-      console.log(
-        `Could not generate sockets for ${spec.name}: missing schema or variant`,
-      );
-      continue;
-    }
+    const [schema] = spec.schemas;
+    const [schemaVariant] = schema.variants;
 
     schemaVariant.sockets = [
       ...schemaVariant.sockets,
