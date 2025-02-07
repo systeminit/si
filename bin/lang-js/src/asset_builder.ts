@@ -1,5 +1,5 @@
 import { parseConnectionAnnotation } from "@scope/ts-lib-deno";
-import Joi from "joi";
+import Joi from "npm:joi";
 
 export type ValueFromKind = "inputSocket" | "outputSocket" | "prop";
 

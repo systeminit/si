@@ -112,6 +112,7 @@
         (pkgs.python3.withPackages (p: with p; [
           cfn-lint
         ]))
+        deno
       ];
 
       buck2Derivation = {
@@ -200,6 +201,7 @@
 
       binDerivation = {
         pkgName,
+        extraBuildPhase ? "",
         extraInstallPhase ? "",
         dontStrip ? false,
         dontPatchELF ? false,
@@ -207,6 +209,7 @@
       }: (buck2Derivation {
         pathPrefix = "bin";
         inherit pkgName;
+        inherit extraBuildPhase;
         installPhase =
           ''
             mkdir -pv "$out/bin"
@@ -233,7 +236,24 @@
             pkgName = "lang-js";
             dontAutoPatchELF = true;
             dontStrip = true;
+            extraBuildPhase = ''
+              export DENO_DIR="$TMPDIR/deno-cache"
+              mkdir -p "$DENO_DIR"
+
+              # Cache the dependencies
+              ${pkgs.deno}/bin/deno cache \
+                --node-modules-dir \
+                --reload \
+                bin/lang-js/src/sandbox.ts \
+
+            '';
             extraInstallPhase = ''
+              # build a cache of our deps so we don't need to donwload them in
+              # the firecracker jail each time
+              mkdir -p $out/cache
+              cp -rL "$TMPDIR/deno-cache"/* $out/cache/
+              chmod -R 755 $out/cache
+
               # since we can't patchelf, we need to ensure the dynamic linker
               # is where we expect it. This gets droppped into the rootfs as
               # /lib64/ld-linux-x86-64.so.2 -> /nix/store/*/ld-linux-x86-64.20.2
@@ -246,7 +266,7 @@
                   pkgs.glibc
                   pkgs.gcc-unwrapped.lib
                 ]}" \
-                --set SI_LANG_JS_LOG "debug" \
+                --set DENO_DIR "$out/cache" \
                 --prefix PATH : ${pkgs.lib.makeBinPath langJsExtraPkgs} \
                 --run 'cd "$(dirname "$0")"'
                 # ^ deno falls over trying to resolve libraries if you don't set

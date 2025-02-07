@@ -1,0 +1,189 @@
+import { SANDBOX_BUNDLE } from "./bundle.ts";
+import { FunctionKind } from "./function.ts";
+import { rawStorage, toJSON } from "./sandbox/requestStorage.ts";
+import { Debug } from "./debug.ts";
+import { join } from "https://deno.land/std/path/mod.ts";
+import { makeConsole } from "./sandbox/console.ts";
+import * as _ from "https://deno.land/x/lodash_es@v0.0.2/mod.ts";
+
+const debug = Debug("langJs:execute");
+
+const tempDirCache = new Map<string, string>();
+const sandboxBundleCache = new Map<string, string>();
+const textDecoder = new TextDecoder();
+
+class TimeoutError extends Error {
+  constructor(seconds: number) {
+    super(`function timed out after ${seconds} seconds`);
+    this.name = "TimeoutError";
+  }
+}
+
+const executionCodeTemplate = (
+  func_kind: FunctionKind,
+  execution_id: string,
+  code: string,
+  handler: string,
+  withArg: string,
+  storedState: string,
+) => `
+const sandbox = await import("./sandbox.bundle.js");
+const sandboxContext = sandbox.createSandbox("${func_kind}", "${execution_id}");
+Object.assign(globalThis, sandboxContext);
+
+const storage = requestStorage.rawStorage();
+const storedState = JSON.parse('${storedState}');
+if (storedState.env) {
+  Object.assign(storage.env, storedState.env);
+}
+if (storedState.data) {
+  Object.assign(storage.data, storedState.data);
+}
+
+${code}
+
+try {
+  const result = await ${handler}(${withArg});
+
+  const finalState = {
+    env: { ...storage.env },
+    data: { ...storage.data }
+  };
+
+  console.log("__STATE_MARKER__" + JSON.stringify(finalState));
+  console.log("__RESULT_MARKER__" + JSON.stringify(result));
+} catch (error) {
+  console.error(error.message)
+}`;
+
+export async function runCode(
+  code: string,
+  handler: string,
+  func_kind: FunctionKind,
+  execution_id: string,
+  timeout: number,
+  with_arg?: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+  const console = makeConsole("");
+
+  let tempDir = tempDirCache.get(execution_id);
+
+  if (!tempDir) {
+    tempDir = await Deno.makeTempDir({
+      prefix: `lang-js-execution-${execution_id}-`,
+    });
+    tempDirCache.set(execution_id, tempDir);
+  }
+
+  // Reuse sandbox bundle if already written
+  let bundlePath = sandboxBundleCache.get(execution_id);
+  if (!bundlePath) {
+    bundlePath = join(tempDir, "sandbox.bundle.js");
+    await Deno.writeTextFile(bundlePath, SANDBOX_BUNDLE);
+    sandboxBundleCache.set(execution_id, bundlePath);
+  }
+
+  const mainFile = join(tempDir, "main.ts");
+
+  const executionCode = executionCodeTemplate(
+    func_kind,
+    execution_id,
+    code,
+    handler,
+    JSON.stringify(with_arg),
+    toJSON(),
+  );
+
+  debug({ executionCode });
+
+  await Deno.writeTextFile(mainFile, executionCode);
+
+  // Ensure existing env vars are available in the run
+  for (const [key, value] of Object.entries(rawStorage().env || {})) {
+    Deno.env.set(key, value);
+  }
+
+  const command = new Deno.Command("deno", {
+    args: [
+      "run",
+      "--quiet",
+      "--allow-all",
+      "--unstable-node-globals",
+      mainFile,
+    ],
+    stdout: "piped",
+    stderr: "piped",
+    cwd: tempDir,
+    env: {
+      ...Deno.env.toObject(),
+      "NO_COLOR": "1",
+    },
+  });
+
+  const process = command.spawn();
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    setTimeout(() => {
+      process.kill();
+      reject(
+        new TimeoutError(timeout),
+      );
+    }, timeout * 1000);
+  });
+
+  const { stdout, stderr } = await Promise.race([
+    process.output(),
+    timeoutPromise,
+  ]);
+
+  const stderrText = textDecoder.decode(stderr);
+  const stdoutText = textDecoder.decode(stdout);
+
+  debug({ stderrText });
+  debug({ stdoutText });
+
+  if (stderrText.trim()) {
+    throw new Error(stderrText.trim());
+  }
+
+  if (stderrText.trim()) {
+    throw new Error(stderrText.trim());
+  }
+
+  const resultMarkerIndex = stdoutText.indexOf("__RESULT_MARKER__");
+  const stateMarkerIndex = stdoutText.indexOf("__STATE_MARKER__");
+
+  if (resultMarkerIndex === -1) {
+    throw new Error("No output received from function run");
+  }
+
+  // Process console output (everything before the first marker)
+  const consoleOutput = stdoutText.slice(
+    0,
+    stateMarkerIndex !== -1 ? stateMarkerIndex : resultMarkerIndex,
+  );
+
+  // Update parent process storage if state was returned
+  if (stateMarkerIndex !== -1) {
+    const stateJson = stdoutText.slice(
+      stateMarkerIndex + "__STATE_MARKER__".length,
+      resultMarkerIndex,
+    );
+    const finalState = JSON.parse(stateJson);
+    Object.assign(rawStorage().env, finalState.env);
+    Object.assign(rawStorage().data, finalState.data);
+  }
+
+  // Log out each line logged during function execution so Cyclone can bubble
+  // them up
+  if (consoleOutput) {
+    consoleOutput.split("\n")
+      .filter((line) => line.trim())
+      .forEach((line) => {
+        console.log(line);
+      });
+  }
+
+  return JSON.parse(
+    stdoutText.slice(resultMarkerIndex + "__RESULT_MARKER__".length),
+  );
+}

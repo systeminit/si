@@ -6,8 +6,8 @@ import {
   FunctionKind,
   ResultFailure,
   ResultSuccess,
-  runCode,
 } from "../function.ts";
+import { runCode } from "../execution.ts";
 import { RequestCtx } from "../request.ts";
 
 const debug = Debug("langJs:joi_validation");
@@ -45,6 +45,7 @@ async function execute(
 
     const result = await runCode(
       code,
+      "main",
       FunctionKind.Validation,
       executionId,
       timeout,
@@ -80,7 +81,7 @@ async function execute(
 }
 
 const wrapCode = (_code: string, _handler: string) => `
-async function run({ value, validationFormat }) {
+async function main({ value, validationFormat }) {
   let definition;
   try {
     definition = JSON.parse(validationFormat);
@@ -101,7 +102,9 @@ async function run({ value, validationFormat }) {
 
   const { error } = schema.validate(value);
   return { err: error ? error.message : undefined };
-}`;
+}
+export { main };
+`;
 
 export default {
   debug,

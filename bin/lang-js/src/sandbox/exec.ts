@@ -1,22 +1,19 @@
 import { setTimeout } from "node:timers/promises";
-import execa, { ExecaReturnValue, Options } from "execa";
-import { Debug } from "../debug.ts";
+import { execa, type ExecaReturnValue, type Options } from "npm:execa";
 
 export interface WatchArgs {
   cmd: string;
   args?: readonly string[];
-  execaOptions?: Options<string>;
+  execaOptions?: Options;
   retryMs?: number;
   maxRetryCount?: number;
-  callback: (child: execa.ExecaReturnValue<string>) => Promise<boolean>;
+  callback: (child: ExecaReturnValue<string>) => Promise<boolean>;
 }
 
 export interface WatchResult {
   result: SiExecResult;
   failed?: "deadlineExceeded" | "commandFailed";
 }
-
-const debug = Debug("langJs:siExec");
 
 // import readline from "readline";
 // import WebSocket from "ws";
@@ -45,10 +42,7 @@ function mergedOptions(userOptions?: Options): Options {
   };
 }
 
-// Note(paulo): This is highly dangerous as it bypasses the sandbox
-// We also are bypassing the VM timeout by using async (NodeVM doesn't have timeout, but it seems we can't await without it)
-//
-export const makeExec = (executionId: string) => {
+export const makeExec = (_executionId: string) => {
   /**
    * Runs a command and waits until it finishes executing.
    *
@@ -61,28 +55,14 @@ export const makeExec = (executionId: string) => {
   async function waitUntilEnd(
     execaFile: string,
     execaArgs?: readonly string[],
-    execaOptions?: Options<string>,
+    execaOptions?: Options,
   ): Promise<SiExecResult> {
-    debug(
-      `running command; executionId="${executionId}"; cmd="${execaFile} ${
+    console.log(
+      `Running CLI command: "${execaFile} ${
         execaArgs
           ?.map((a) => `'${a}'`)
           ?.join(" ")
       }"`,
-    );
-    console.log(
-      JSON.stringify({
-        protocol: "output",
-        executionId,
-        stream: "stderr",
-        level: "debug",
-        group: "log",
-        message: `Running CLI command: "${execaFile} ${
-          execaArgs
-            ?.map((a) => `'${a}'`)
-            ?.join(" ")
-        }"`,
-      }),
     );
 
     const child = await execa(

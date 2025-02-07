@@ -5,8 +5,8 @@ import {
   Func,
   ResultFailure,
   ResultSuccess,
-  runCode,
 } from "../function.ts";
+import { runCode } from "../execution.ts";
 import { RequestCtx } from "../request.ts";
 import { FunctionKind } from "../function.ts";
 
@@ -24,13 +24,14 @@ export type BeforeResult = BeforeResultSuccess | BeforeResultFailure;
 
 async function execute(
   { executionId }: RequestCtx,
-  { arg }: BeforeFunc,
+  { arg, handler }: BeforeFunc,
   code: string,
   timeout: number,
 ): Promise<BeforeResult> {
   try {
     await runCode(
       code,
+      handler,
       FunctionKind.Before,
       executionId,
       timeout,
@@ -48,11 +49,9 @@ async function execute(
 }
 
 const wrapCode = (code: string, handler: string) => `
-async function run(arg) {
   ${code}
-  const returnValue = await ${handler}(arg);
-  return returnValue;
-}`;
+  export { ${handler} };
+`;
 
 export default {
   debug,
