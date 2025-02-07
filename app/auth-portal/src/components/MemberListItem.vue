@@ -14,11 +14,7 @@
       <VormInput
         v-model="changeWorkspaceRoleType"
         :options="changeWorkspaceRoleTypeDropdownOptions"
-        :disabled="
-          !featureFlagsStore.CHANGE_USER_ROLE ||
-          memUser.role === 'OWNER' ||
-          !isWorkspaceOwner
-        "
+        :disabled="memUser.role === 'OWNER' || !isWorkspaceOwner"
         noLabel
         placeholder="Choose a role for this user"
         type="dropdown"
@@ -40,14 +36,12 @@
 <script lang="ts" setup>
 import { computed, PropType, ref, watch } from "vue";
 import { Icon, VormInput, ErrorMessage } from "@si/vue-lib/design-system";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import {
   useWorkspacesStore,
   WorkspaceId,
   WorkspaceMember,
 } from "@/store/workspaces.store";
 
-const featureFlagsStore = useFeatureFlagsStore();
 const workspacesStore = useWorkspacesStore();
 
 const props = defineProps({
