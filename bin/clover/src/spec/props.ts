@@ -205,6 +205,12 @@ function createPropFromCfInner(
     }
 
     return prop;
+  } else if (normalizedCfData.type === "json") {
+    const prop = partialProp as Extract<ExpandedPropSpec, { kind: "string" }>;
+    prop.kind = "string";
+    prop.data.widgetKind = "TextArea";
+
+    return prop;
   } else if (normalizedCfData.type === "array") {
     const prop = partialProp as Extract<ExpandedPropSpec, { kind: "array" }>;
     prop.kind = "array";
