@@ -79,6 +79,7 @@ pub struct ChangeSetApproval {
     pub is_valid: bool,
 }
 
+// Data view for the frontend.
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct ChangeSetRecord {
@@ -94,6 +95,7 @@ pub struct ChangeSetRecord {
     pub merge_requested_at: Option<DateTime<Utc>>,
 }
 
+// Data view for the frontend.
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub struct ChangeSetList {
     pub name: String,
@@ -102,8 +104,8 @@ pub struct ChangeSetList {
     pub change_sets: Vec<Reference<ChangeSetId>>,
 }
 
-// XXX: Should probably be `impl From<ComponentNodeWeight> for Reference<ComponentId> {...}`
-//      whenever possible, since we can use the merkle tree hash as the checksum.
+// Convenience for doing things like:
+//  `let refs: Vec<Reference<ChangeSetId>> = change_set_records.iter().map(Into::into).collect();`
 impl From<ChangeSetRecord> for Reference<ChangeSetId> {
     fn from(value: ChangeSetRecord) -> Self {
         let checksum = FrontendChecksum::checksum(&value).to_string();
@@ -120,32 +122,30 @@ pub trait FrontendChecksum {
     fn checksum(&self) -> Checksum;
 }
 
+// Should be very derivable for any of the frontend data view structs.
 impl FrontendChecksum for ChangeSetList {
     fn checksum(&self) -> Checksum {
         let mut hasher = ChecksumHasher::new();
         hasher.update(FrontendChecksum::checksum(&self.name).as_bytes());
-        hasher.update(FrontendChecksum::checksum(&self.id.to_string()).as_bytes());
-        hasher
-            .update(FrontendChecksum::checksum(&self.default_change_set_id.to_string()).as_bytes());
+        hasher.update(FrontendChecksum::checksum(&self.id).as_bytes());
+        hasher.update(FrontendChecksum::checksum(&self.default_change_set_id).as_bytes());
         hasher.update(FrontendChecksum::checksum(&self.change_sets).as_bytes());
 
         hasher.finalize()
     }
 }
 
+// Should be very derivable for any of the frontend data view structs.
 impl FrontendChecksum for ChangeSetRecord {
     fn checksum(&self) -> Checksum {
         let mut hasher = ChecksumHasher::new();
         hasher.update(FrontendChecksum::checksum(&self.name).as_bytes());
-        hasher.update(FrontendChecksum::checksum(&self.id.to_string()).as_bytes());
-        hasher.update(FrontendChecksum::checksum(&self.status.to_string()).as_bytes());
+        hasher.update(FrontendChecksum::checksum(&self.id).as_bytes());
+        hasher.update(FrontendChecksum::checksum(&self.status).as_bytes());
         hasher.update(FrontendChecksum::checksum(&self.created_at).as_bytes());
         hasher.update(FrontendChecksum::checksum(&self.updated_at).as_bytes());
-        hasher.update(
-            FrontendChecksum::checksum(&self.base_change_set_id.map(|id| id.to_string()))
-                .as_bytes(),
-        );
-        hasher.update(FrontendChecksum::checksum(&self.workspace_id.to_string()).as_bytes());
+        hasher.update(FrontendChecksum::checksum(&self.base_change_set_id).as_bytes());
+        hasher.update(FrontendChecksum::checksum(&self.workspace_id).as_bytes());
         hasher.update(FrontendChecksum::checksum(&self.merge_requested_by_user_id).as_bytes());
         hasher.update(FrontendChecksum::checksum(&self.merge_requested_by_user).as_bytes());
         hasher.update(FrontendChecksum::checksum(&self.merge_requested_at).as_bytes());
@@ -154,6 +154,28 @@ impl FrontendChecksum for ChangeSetRecord {
     }
 }
 
+// Would be nice to do this automatically as part of the macros. As an impl for a trait
+// seems difficult to work around "conflicting implementations for trait" errors with
+// the other trait impls for the more basic types.
+impl FrontendChecksum for ChangeSetId {
+    fn checksum(&self) -> Checksum {
+        FrontendChecksum::checksum(&self.to_string())
+    }
+}
+
+impl FrontendChecksum for ChangeSetStatus {
+    fn checksum(&self) -> Checksum {
+        FrontendChecksum::checksum(&self.to_string())
+    }
+}
+
+impl FrontendChecksum for WorkspaceId {
+    fn checksum(&self) -> Checksum {
+        FrontendChecksum::checksum(&self.to_string())
+    }
+}
+
+// Generic impl for a basic type.
 impl FrontendChecksum for String {
     fn checksum(&self) -> Checksum {
         let mut hasher = ChecksumHasher::new();
@@ -194,6 +216,7 @@ impl FrontendChecksum for DateTime<Utc> {
     }
 }
 
+// Payload wrapper for sending data views to the frontend.
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub struct FrontendObject {
     pub kind: String,
@@ -202,6 +225,7 @@ pub struct FrontendObject {
     pub data: serde_json::Value,
 }
 
+// Very derivable for any of the frontend data view structs.
 impl TryFrom<ChangeSetRecord> for FrontendObject {
     type Error = serde_json::Error;
 
