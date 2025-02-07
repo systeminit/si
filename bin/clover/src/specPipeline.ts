@@ -8,7 +8,6 @@ import {
 } from "./spec/props.ts";
 import {
   ExpandedPkgSpec,
-  ExpandedSchemaSpec,
   ExpandedSchemaVariantSpec,
 } from "./spec/pkgs.ts";
 
@@ -34,6 +33,7 @@ export function pkgSpecFromCf(src: CfSchema): ExpandedPkgSpec {
   };
 
   const domain = createDomainFromSrc(src, onlyProperties);
+
   const resourceValue = createResourceValueFromSrc(
     src,
     onlyProperties,
@@ -142,11 +142,13 @@ function createRootFromProperties(
   return root;
 }
 
+// Remove all read only props from this list, since readonly props go on the
+// resource value tree
 function pruneDomainValues(
   properties: Record<string, CfProperty>,
   onlyProperties: OnlyProperties,
 ): Record<string, CfProperty> {
-  if (!properties || !onlyProperties?.readOnly) {
+  if (!properties || !onlyProperties.readOnly) {
     return {};
   }
 

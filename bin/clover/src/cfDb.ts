@@ -30,6 +30,7 @@ export type CfProperty =
   & ({
     "type":
       | "boolean"
+      | "json" // Cf does not really have this, but we can use it to differentiate between json and normal text
       | StringPair;
   } | {
     "type": "string";
@@ -55,13 +56,20 @@ export type CfProperty =
   & CfPropertyStatic;
 
 export function normalizePropertyType(prop: CfProperty): CfProperty {
+  // Some props have no type but we can duck type them to objects
   if (!prop.type && (prop.properties || prop.patternProperties)) {
     return { ...prop, type: "object" };
   }
 
-  if (!prop.type || !Array.isArray(prop.type) || typeof prop.type === "string") {
+  // If the type is not an array, the type is fine. The type === string here is redundant, but does type guarding for the rest of the function
+  if (
+    !prop.type || !Array.isArray(prop.type) || typeof prop.type === "string"
+  ) {
     return prop;
   }
+
+  // If the cf type is an array, it's always string+something, and we use that something
+  // to guess the best type we should use
   const nonStringType = prop.type.find((t) => t !== "string");
 
   switch (nonStringType) {
@@ -71,8 +79,8 @@ export function normalizePropertyType(prop: CfProperty): CfProperty {
     case "number":
       return { ...prop, type: "integer" };
     case "object":
-      // If it's an object we make it a string so the user can pass JSON to it
-      return { ...prop, type: "string" };
+      // If it's an object we make it a json type, which will become a string type + textArea widget
+      return { ...prop, type: "json" };
     case "array": {
       // When we get something that is string/array, the items object should already there
       const finalProp = { ...prop, type: "array" } as Extract<CfProperty, {
@@ -249,9 +257,9 @@ const DEFAULT_PATH = "./cloudformation-schema";
 
 export async function loadCfDatabase(
   { path, services }: {
-    path?: string,
-    services?: string[],
-  }
+    path?: string;
+    services?: string[];
+  },
 ): Promise<CfDb> {
   path ??= DEFAULT_PATH;
   if (Object.keys(DB).length === 0) {
@@ -276,7 +284,9 @@ export async function loadCfDatabase(
 
       const typeName: string = data.typeName;
 
-      if (services && !services.some((service) => typeName.match(service))) continue;
+      if (services && !services.some((service) => typeName.match(service))) {
+        continue;
+      }
 
       logger.debug(`Loaded ${typeName}`);
       try {
