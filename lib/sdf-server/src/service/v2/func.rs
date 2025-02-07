@@ -29,7 +29,6 @@ pub mod create_func;
 pub mod create_unlocked_copy;
 pub mod delete_func;
 pub mod execute_func;
-pub mod generate_aws_function;
 pub mod get_code;
 pub mod get_func_run;
 pub mod list_all_funcs;
@@ -234,10 +233,6 @@ pub fn v2_routes() -> Router<AppState> {
         .route(
             "/:func_id/arguments/:func_argument_id",
             delete(argument::delete_argument::delete_func_argument),
-        )
-        .route(
-            "/:func_id/generate_aws_function",
-            get(generate_aws_function::generate_aws_function),
         )
 }
 

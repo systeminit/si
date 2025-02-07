@@ -28,7 +28,6 @@ import { CursorContainerKind } from "../presence.store";
 import { UserId } from "../auth.store";
 import { SecretId } from "../secrets.store";
 import { FuncRunId } from "../actions.store";
-import { AwsCliCommand } from "../func/funcs.store";
 import { FuncRunLogId } from "../func_runs.store";
 
 export type WebsocketRequest =
@@ -354,10 +353,6 @@ export type WsEventPayloadMap = {
   FuncDeleted: {
     funcId: FuncId;
     changeSetId: ChangeSetId;
-  };
-  FuncGenerating: {
-    funcId: FuncId;
-    command: AwsCliCommand;
   };
   FuncCodeSaved: {
     funcCode: {
