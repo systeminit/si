@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use si_events::{
-    workspace_snapshot::{ChecksumHasher, EntityKind},
+    workspace_snapshot::{Checksum, ChecksumHasher, EntityKind},
     ChangeSetApprovalStatus, ChangeSetId, ChangeSetStatus, UserPk,
 };
 use si_id::{ChangeSetApprovalId, EntityId, WorkspaceId};
@@ -106,44 +106,90 @@ pub struct ChangeSetList {
 //      whenever possible, since we can use the merkle tree hash as the checksum.
 impl From<ChangeSetRecord> for Reference<ChangeSetId> {
     fn from(value: ChangeSetRecord) -> Self {
-        let mut hasher = ChecksumHasher::new();
-        hasher.update(value.name.as_bytes());
-        hasher.update(value.id.to_string().as_bytes());
-        hasher.update(value.status.to_string().as_bytes());
-        hasher.update(value.created_at.to_rfc3339().as_bytes());
-        hasher.update(value.updated_at.to_rfc3339().as_bytes());
-        hasher.update(
-            &value
-                .base_change_set_id
-                .map(|id| id.to_string().as_bytes().to_owned())
-                .unwrap_or_else(|| vec![0]),
-        );
-        hasher.update(value.workspace_id.to_string().as_bytes());
-        hasher.update(
-            &value
-                .merge_requested_by_user_id
-                .map(|id| id.as_bytes().to_owned())
-                .unwrap_or_else(|| vec![0]),
-        );
-        hasher.update(
-            &value
-                .merge_requested_by_user
-                .map(|u| u.as_bytes().to_owned())
-                .unwrap_or_else(|| vec![0]),
-        );
-        hasher.update(
-            &value
-                .merge_requested_at
-                .map(|dt| dt.to_rfc3339().as_bytes().to_owned())
-                .unwrap_or_else(|| vec![0]),
-        );
-
-        let checksum = hasher.finalize().to_string();
+        let checksum = FrontendChecksum::checksum(&value).to_string();
 
         Reference {
             kind: ReferenceKind::ChangeSetRecord,
             id: ReferenceId(value.id),
             checksum,
         }
+    }
+}
+
+pub trait FrontendChecksum {
+    fn checksum(&self) -> Checksum;
+}
+
+impl FrontendChecksum for ChangeSetList {
+    fn checksum(&self) -> Checksum {
+        let mut hasher = ChecksumHasher::new();
+        hasher.update(FrontendChecksum::checksum(&self.name).as_bytes());
+        hasher.update(FrontendChecksum::checksum(&self.id.to_string()).as_bytes());
+        hasher
+            .update(FrontendChecksum::checksum(&self.default_change_set_id.to_string()).as_bytes());
+        hasher.update(FrontendChecksum::checksum(&self.change_sets).as_bytes());
+
+        hasher.finalize()
+    }
+}
+
+impl FrontendChecksum for ChangeSetRecord {
+    fn checksum(&self) -> Checksum {
+        let mut hasher = ChecksumHasher::new();
+        hasher.update(FrontendChecksum::checksum(&self.name).as_bytes());
+        hasher.update(FrontendChecksum::checksum(&self.id.to_string()).as_bytes());
+        hasher.update(FrontendChecksum::checksum(&self.status.to_string()).as_bytes());
+        hasher.update(FrontendChecksum::checksum(&self.created_at).as_bytes());
+        hasher.update(FrontendChecksum::checksum(&self.updated_at).as_bytes());
+        hasher.update(
+            FrontendChecksum::checksum(&self.base_change_set_id.map(|id| id.to_string()))
+                .as_bytes(),
+        );
+        hasher.update(FrontendChecksum::checksum(&self.workspace_id.to_string()).as_bytes());
+        hasher.update(FrontendChecksum::checksum(&self.merge_requested_by_user_id).as_bytes());
+        hasher.update(FrontendChecksum::checksum(&self.merge_requested_by_user).as_bytes());
+        hasher.update(FrontendChecksum::checksum(&self.merge_requested_at).as_bytes());
+
+        hasher.finalize()
+    }
+}
+
+impl FrontendChecksum for String {
+    fn checksum(&self) -> Checksum {
+        let mut hasher = ChecksumHasher::new();
+        hasher.update(self.as_bytes());
+        hasher.finalize()
+    }
+}
+
+impl<T> FrontendChecksum for Option<T>
+where
+    T: FrontendChecksum,
+{
+    fn checksum(&self) -> Checksum {
+        if let Some(inner) = self {
+            inner.checksum()
+        } else {
+            Checksum::default()
+        }
+    }
+}
+
+impl<T> FrontendChecksum for Vec<T>
+where
+    T: FrontendChecksum,
+{
+    fn checksum(&self) -> Checksum {
+        let mut hasher = ChecksumHasher::new();
+        for item in self {
+            hasher.update(item.checksum().to_string().as_bytes());
+        }
+        hasher.finalize()
+    }
+}
+
+impl FrontendChecksum for DateTime<Utc> {
+    fn checksum(&self) -> Checksum {
+        FrontendChecksum::checksum(&self.to_rfc3339())
     }
 }

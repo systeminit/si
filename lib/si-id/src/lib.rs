@@ -88,3 +88,9 @@ id_with_none_and_pg_types!(AttributeValueId);
 id_with_none_and_pg_types!(KeyPairPk);
 id_with_none_and_pg_types!(WorkspacePk);
 id_with_none_and_pg_types!(WorkspaceId);
+
+/// A trait for System Initiative identifiers.
+///
+/// This trait's primary purpose is to serve as a marker for defining
+/// other trait implementations.
+pub trait SiId {}
