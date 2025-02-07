@@ -1,11 +1,11 @@
 use std::{
-    collections::BTreeMap,
     io::Cursor,
     path::{Path, PathBuf},
-    sync::Arc,
+    sync::{atomic::AtomicU64, Arc},
     time::UNIX_EPOCH,
 };
 
+use dashmap::DashMap;
 use fuser::{FileAttr, FileType};
 use nix::unistd::{Gid, Uid};
 use thiserror::Error;
@@ -203,9 +203,9 @@ impl InodeEntryData {
 
 #[derive(Clone, Debug)]
 pub struct InodeTable {
-    // This is a vec where the index to the vec is the inode number minus 1
-    path_table: Vec<Option<PathBuf>>,
-    entries_by_path: BTreeMap<PathBuf, InodeEntry>,
+    next_inode: Arc<AtomicU64>,
+    inode_table: Arc<DashMap<Inode, Option<PathBuf>>>,
+    entries_by_path: Arc<DashMap<PathBuf, InodeEntry>>,
     uid: Uid,
     gid: Gid,
 }
@@ -224,9 +224,10 @@ impl InodeTable {
         gid: Gid,
     ) -> Self {
         let root_path = root_path.as_ref().to_path_buf();
-        let mut table = Self {
-            path_table: Vec::with_capacity(4096),
-            entries_by_path: BTreeMap::new(),
+        let table = Self {
+            next_inode: Arc::new(AtomicU64::new(1)),
+            inode_table: Arc::new(DashMap::new()),
+            entries_by_path: Arc::new(DashMap::new()),
             uid,
             gid,
         };
@@ -242,15 +243,15 @@ impl InodeTable {
         table
     }
 
-    pub fn entries_by_path(&self) -> &BTreeMap<PathBuf, InodeEntry> {
+    pub fn entries_by_path(&self) -> &DashMap<PathBuf, InodeEntry> {
         &self.entries_by_path
     }
 
     pub fn direct_child_entries(&self, ino: Inode) -> InodeTableResult<Vec<InodeEntry>> {
         let mut result = vec![];
 
-        for (_, entry) in self.entries_by_path.iter() {
-            if entry.parent != Some(ino) {
+        for entry in self.entries_by_path() {
+            if entry.value().parent != Some(ino) {
                 continue;
             }
             result.push(entry.clone());
@@ -259,17 +260,14 @@ impl InodeTable {
         Ok(result)
     }
 
-    pub fn path_for_ino(&self, ino: Inode) -> Option<&Path> {
-        self.path_table
-            .get(ino.as_raw().saturating_sub(1) as usize)
-            .and_then(|maybe_p| maybe_p.as_ref().map(|p| p.as_path()))
+    pub fn path_for_ino(&self, ino: Inode) -> Option<PathBuf> {
+        self.inode_table
+            .get(&ino)
+            .and_then(|maybe_p| maybe_p.value().to_owned())
     }
 
     pub fn path_buf_for_ino(&self, ino: Inode) -> Option<PathBuf> {
-        self.path_table
-            .get(ino.as_raw().saturating_sub(1) as usize)
-            .cloned()
-            .flatten()
+        self.path_for_ino(ino)
     }
 
     pub fn parent_ino(&self, ino: Inode) -> Option<Inode> {
@@ -279,23 +277,18 @@ impl InodeTable {
             .map(|entry| entry.ino)
     }
 
-    // pub fn ino_for_path_with_parent(
-    //     &self,
-    //     parent_ino: Inode,
-    //     file_name: impl AsRef<Path>,
-    // ) -> InodeTableResult<Option<Inode>> {
-    //     let path = self.make_path(Some(parent_ino), file_name)?;
-    //     Ok(self.ino_for_path(&path))
-    // }
-    //
-
-    pub fn ino_for_path(&self, path: &Path) -> Option<Inode> {
-        self.entries_by_path.get(path).map(|entry| entry.ino)
+    pub fn ino_for_path(&self, path: impl AsRef<Path>) -> Option<Inode> {
+        self.entries_by_path
+            .get(path.as_ref())
+            .map(|entry| entry.ino)
     }
 
-    pub fn entry_for_ino(&self, ino: Inode) -> Option<&InodeEntry> {
-        self.path_for_ino(ino)
-            .and_then(|path| self.entries_by_path.get(path))
+    pub fn entry_for_ino(&self, ino: Inode) -> Option<InodeEntry> {
+        self.path_for_ino(ino).and_then(|path| {
+            self.entries_by_path
+                .get(&path)
+                .map(|entry| entry.value().to_owned())
+        })
     }
 
     pub fn pending_buf_for_file_with_parent(
@@ -310,18 +303,29 @@ impl InodeTable {
     }
 
     pub fn pending_buf_for_ino(&self, ino: Inode) -> Option<Arc<Cursor<Vec<u8>>>> {
-        self.path_for_ino(ino)
-            .and_then(|path| self.entries_by_path.get(path))
+        self.entry_for_ino(ino)
             .and_then(|entry| entry.pending_buf())
     }
 
-    pub fn entry_mut_for_ino(&mut self, ino: Inode) -> Option<&mut InodeEntry> {
-        self.path_buf_for_ino(ino)
-            .and_then(|path_buf| self.entries_by_path.get_mut(path_buf.as_path()))
+    pub fn modify_ino<L>(&self, ino: Inode, lambda: L)
+    where
+        L: FnOnce(&mut InodeEntry),
+    {
+        let Some(path_buf) = self.path_buf_for_ino(ino) else {
+            return;
+        };
+        let Some(mut entry) = self.entries_by_path().get_mut(&path_buf) else {
+            return;
+        };
+
+        lambda(entry.value_mut())
     }
 
-    pub fn next_ino(&self) -> Inode {
-        Inode::new(self.path_table.len().saturating_add(1) as u64)
+    fn next_ino(&self) -> Inode {
+        Inode::from(
+            self.next_inode
+                .fetch_add(1, std::sync::atomic::Ordering::SeqCst),
+        )
     }
 
     pub fn make_path(
@@ -339,7 +343,7 @@ impl InodeTable {
     }
 
     pub fn upsert_with_parent_ino(
-        &mut self,
+        &self,
         parent_ino: Inode,
         file_name: impl AsRef<Path>,
         entry_data: InodeEntryData,
@@ -387,14 +391,14 @@ impl InodeTable {
         }
     }
 
-    pub fn set_size(&mut self, ino: Inode, size: u64) -> Option<FileAttr> {
-        self.entry_mut_for_ino(ino).map(|entry| {
+    pub fn set_size(&self, ino: Inode, size: u64) -> Option<FileAttr> {
+        self.modify_ino(ino, |entry| {
             entry.attrs.size = size;
-            entry.attrs
-        })
+        });
+        self.entry_for_ino(ino).map(|entry| entry.attrs)
     }
 
-    pub fn upsert_for_ino(&mut self, ino: Inode, entry: InodeEntry) -> InodeTableResult<()> {
+    pub fn upsert_for_ino(&self, ino: Inode, entry: InodeEntry) -> InodeTableResult<()> {
         let ino_path = self
             .path_buf_for_ino(ino)
             .ok_or(InodeTableError::InodeNotFound(ino))?;
@@ -409,23 +413,20 @@ impl InodeTable {
         Ok(())
     }
 
-    pub fn invalidate_ino(&mut self, ino: Inode) -> Option<PathBuf> {
-        if let Some(parent_path) = match self
-            .path_table
-            .get_mut(ino.as_raw().saturating_sub(1) as usize)
-        {
-            Some(entry) => entry.take(),
+    pub fn invalidate_ino(&self, ino: Inode) -> Option<PathBuf> {
+        if let Some(parent_path) = match self.inode_table.get_mut(&ino) {
+            Some(mut entry) => entry.take(),
             None => None,
         } {
             self.entries_by_path.remove(&parent_path);
 
             // Invalidate all child entries of this inode
-            for entry in self
-                .path_table
+            for mut entry in self
+                .inode_table
                 .iter_mut()
                 .skip(ino.as_raw().saturating_sub(1) as usize)
             {
-                if let Some(path_buf) = entry {
+                if let Some(path_buf) = entry.value_mut() {
                     if path_buf.starts_with(&parent_path) {
                         self.entries_by_path.remove(&path_buf.clone());
                         entry.take();
@@ -440,7 +441,7 @@ impl InodeTable {
     }
 
     pub fn upsert(
-        &mut self,
+        &self,
         path: PathBuf,
         entry_data: InodeEntryData,
         kind: FileType,
@@ -483,7 +484,7 @@ impl InodeTable {
                 }
             })
             .or_insert_with(|| {
-                self.path_table.push(Some(path));
+                self.inode_table.insert(ino, Some(path));
                 InodeEntry {
                     ino,
                     parent,
