@@ -5,21 +5,21 @@ import { SocketSpecArity } from "../bindings/SocketSpecArity.ts";
 import { SocketSpecKind } from "../bindings/SocketSpecKind.ts";
 import { ExpandedPropSpec } from "./props.ts";
 import { getSiFuncId } from "./siFuncs.ts";
-import { PropSpec } from "../bindings/PropSpec.ts";
 import _ from "npm:lodash";
-import { SchemaVariantSpec } from "../bindings/SchemaVariantSpec.ts";
+import { ExpandedSchemaVariantSpec } from "./pkgs.ts";
 
 export const SI_SEPARATOR = "\u{b}";
 
+export type ExpandedSocketSpec = SocketSpec & {
+  data: NonNullable<SocketSpec["data"]>;
+};
 export function createOutputSocketFromProp(
   prop: ExpandedPropSpec,
   arity: SocketSpecArity = "many",
-): SocketSpec {
+): ExpandedSocketSpec {
   const socket = createSocket(prop.name, "output", arity);
-  if (socket.data) {
-    socket.data.funcUniqueId = getSiFuncId("si:identity");
-    socket.inputs = [attrFuncInputSpecFromProp(prop)];
-  }
+  socket.data.funcUniqueId = getSiFuncId("si:identity");
+  socket.inputs = [attrFuncInputSpecFromProp(prop)];
   return socket;
 }
 
@@ -29,7 +29,7 @@ export function createInputSocketFromProp(
   prop: ExpandedPropSpec,
   arity: SocketSpecArity = "many",
   extraConnectionAnnotations?: ConnectionAnnotation[],
-): SocketSpec {
+): ExpandedSocketSpec {
   const socket = createSocket(
     prop.name,
     "input",
@@ -48,7 +48,7 @@ export function createInputSocketFromProp(
 }
 
 export function getOrCreateInputSocketFromProp(
-  schemaVariant: SchemaVariantSpec,
+  schemaVariant: ExpandedSchemaVariantSpec,
   prop: ExpandedPropSpec,
   arity: SocketSpecArity = "many",
 ) {
@@ -56,18 +56,18 @@ export function getOrCreateInputSocketFromProp(
     s.data.kind === "input" && s.name === prop.name
   );
   if (!socket) {
-    socket ??= createInputSocketFromProp(prop as ExpandedPropSpec, arity);
+    socket ??= createInputSocketFromProp(prop, arity);
     schemaVariant.sockets.push(socket);
   }
   return socket;
 }
 
 export function setAnnotationOnSocket(
-  socket: SocketSpec,
+  socket: ExpandedSocketSpec,
   annotation: ConnectionAnnotation,
 ) {
   const existingAnnotations = JSON.parse(
-    socket.data?.connectionAnnotations,
+    socket.data.connectionAnnotations,
   ) as ConnectionAnnotation[];
   if (!existingAnnotations?.length) {
     throw new Error(`Bad connection annotations on ${socket.name}`);
@@ -93,7 +93,7 @@ export function createSocket(
   kind: SocketSpecKind,
   arity: SocketSpecArity = "many",
   extraConnectionAnnotations: ConnectionAnnotation[] = [],
-): SocketSpec {
+): ExpandedSocketSpec {
   const socketId = ulid();
 
   const data = {
@@ -153,8 +153,8 @@ export function attrFuncInputSpecFromSocket(
   return attr;
 }
 
-export function propHasSocket(prop: PropSpec): boolean {
-  return prop.data.inputs.find((i: AttrFuncInputSpec) =>
+export function propHasSocket(prop: ExpandedPropSpec): boolean {
+  return prop.data.inputs?.find((i: AttrFuncInputSpec) =>
     i.kind === "inputSocket"
   ) !== undefined;
 }

@@ -1,13 +1,13 @@
 import _logger from "../logger.ts";
-import { PkgSpec } from "../bindings/PkgSpec.ts";
 import _ from "npm:lodash";
+import { ExpandedPkgSpec } from "../spec/pkgs.ts";
 const logger = _logger.ns("updateExisting").seal();
 
 export function updateSchemaIdsForExistingSpecs(
   existing_specs: Record<string, string>,
-  specs: PkgSpec[],
-): PkgSpec[] {
-  const newSpecs = [] as PkgSpec[];
+  specs: ExpandedPkgSpec[],
+): ExpandedPkgSpec[] {
+  const newSpecs = [] as ExpandedPkgSpec[];
 
   for (const spec of specs) {
     const schema = spec.schemas[0];

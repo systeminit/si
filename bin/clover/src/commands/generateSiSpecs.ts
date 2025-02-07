@@ -1,6 +1,5 @@
 import { getServiceByName, loadCfDatabase } from "../cfDb.ts";
 import { pkgSpecFromCf } from "../specPipeline.ts";
-import { PkgSpec } from "../bindings/PkgSpec.ts";
 import { generateAssetFuncs } from "../pipeline-steps/generateAssetFuncs.ts";
 import { generateDefaultActionFuncs } from "../pipeline-steps/generateActionFuncs.ts";
 import { generateDefaultLeafFuncs } from "../pipeline-steps/generateLeafFuncs.ts";
@@ -21,6 +20,7 @@ import {
 import {
   generateOutputSocketsFromProps,
 } from "../pipeline-steps/generateOutputSocketsFromProps.ts";
+import { ExpandedPkgSpec } from "../spec/pkgs.ts";
 
 const logger = _logger.ns("siSpecs").seal();
 const SI_SPEC_DIR = "si-specs";
@@ -30,7 +30,10 @@ export function generateSiSpecForService(serviceName: string) {
   return pkgSpecFromCf(cf);
 }
 
-export async function generateSiSpecs(moduleIndexUrl: string, services?: string[]) {
+export async function generateSiSpecs(
+  moduleIndexUrl: string,
+  services?: string[],
+) {
   if (services?.length == 0) services = undefined;
   const db = await loadCfDatabase({ services });
   const existing_specs = await getExistingSpecs(moduleIndexUrl);
@@ -39,7 +42,7 @@ export async function generateSiSpecs(moduleIndexUrl: string, services?: string[
   let importSubAssets = 0;
   const cfSchemas = Object.values(db);
 
-  let specs = [] as PkgSpec[];
+  let specs = [] as ExpandedPkgSpec[];
 
   for (const cfSchema of cfSchemas) {
     try {

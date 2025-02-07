@@ -1,20 +1,18 @@
 import { CfProperty, CfSchema } from "./cfDb.ts";
-import { PkgSpec } from "../../../lib/si-pkg/bindings/PkgSpec.ts";
 import { ulid } from "https://deno.land/x/ulid@v0.3.0/mod.ts";
 import {
   createDefaultProp,
   createPropFromCf,
   DefaultPropType,
-  ExpandedPropSpec,
   OnlyProperties,
 } from "./spec/props.ts";
-import { PropSpec } from "../../../lib/si-pkg/bindings/PropSpec.ts";
 import {
-  SchemaVariantSpec,
-} from "../../../lib/si-pkg/bindings/SchemaVariantSpec.ts";
-import { SchemaSpec } from "../../../lib/si-pkg/bindings/SchemaSpec.ts";
+  ExpandedPkgSpec,
+  ExpandedSchemaSpec,
+  ExpandedSchemaVariantSpec,
+} from "./spec/pkgs.ts";
 
-export function pkgSpecFromCf(src: CfSchema): PkgSpec {
+export function pkgSpecFromCf(src: CfSchema): ExpandedPkgSpec {
   const [aws, category, name] = src.typeName.split("::");
 
   if (!["AWS", "Alexa"].includes(aws) || !category || !name) {
@@ -35,13 +33,13 @@ export function pkgSpecFromCf(src: CfSchema): PkgSpec {
     primaryIdentifier: normalizeOnlyProperties(src.primaryIdentifier),
   };
 
-  const domain: PropSpec = createDomainFromSrc(src, onlyProperties);
-  const resourceValue: PropSpec = createResourceValueFromSrc(
+  const domain = createDomainFromSrc(src, onlyProperties);
+  const resourceValue = createResourceValueFromSrc(
     src,
     onlyProperties,
   );
 
-  const variant: SchemaVariantSpec = {
+  const variant: ExpandedSchemaVariantSpec = {
     version,
     data: {
       version,
@@ -68,7 +66,7 @@ export function pkgSpecFromCf(src: CfSchema): PkgSpec {
     rootPropFuncs: [],
   };
 
-  const schema: SchemaSpec = {
+  const schema: ExpandedSchemaSpec = {
     name: src.typeName,
     data: {
       name: src.typeName,
@@ -106,7 +104,7 @@ function versionFromDate(): string {
 function createDomainFromSrc(
   src: CfSchema,
   onlyProperties: OnlyProperties,
-): PropSpec {
+) {
   return createRootFromProperties(
     "domain",
     pruneDomainValues(src.properties, onlyProperties),
@@ -117,7 +115,7 @@ function createDomainFromSrc(
 function createResourceValueFromSrc(
   src: CfSchema,
   onlyProperties: OnlyProperties,
-): PropSpec {
+) {
   return createRootFromProperties(
     "resource_value",
     pruneResourceValues(src.properties, onlyProperties),
@@ -129,8 +127,8 @@ function createRootFromProperties(
   root_name: DefaultPropType,
   properties: Record<string, CfProperty>,
   onlyProperties: OnlyProperties,
-): PropSpec {
-  const root: ExpandedPropSpec = createDefaultProp(root_name);
+) {
+  const root = createDefaultProp(root_name);
   Object.entries(properties).forEach(([name, cfData]) => {
     const newProp = createPropFromCf(name, cfData, onlyProperties, [
       ...root.metadata.propPath,

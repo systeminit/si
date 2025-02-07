@@ -1,27 +1,27 @@
-import { PkgSpec } from "../bindings/PkgSpec.ts";
 import _ from "npm:lodash";
 import {
   copyPropWithNewIds,
   createDefaultProp,
   ExpandedPropSpec,
   generatePropHash,
-  isExpandedPropSpec,
 } from "../spec/props.ts";
 import { ulid } from "https://deno.land/x/ulid@v0.3.0/mod.ts";
-import { SchemaVariantSpec } from "../bindings/SchemaVariantSpec.ts";
 import { attrFuncInputSpecFromSocket } from "../spec/sockets.ts";
 import { createSocket } from "../spec/sockets.ts";
 import { attrFuncInputSpecFromProp } from "../spec/sockets.ts";
 import { getSiFuncId } from "../spec/siFuncs.ts";
 import _logger from "../logger.ts";
+import { ExpandedPkgSpec, ExpandedSchemaVariantSpec } from "../spec/pkgs.ts";
 
 const logger = _logger.ns("subAssets").seal();
 
-export function generateSubAssets(incomingSpecs: PkgSpec[]): PkgSpec[] {
-  const outgoingSpecs = [] as PkgSpec[];
+export function generateSubAssets(
+  incomingSpecs: ExpandedPkgSpec[],
+): ExpandedPkgSpec[] {
+  const outgoingSpecs = [] as ExpandedPkgSpec[];
   const newSpecsByHash = {} as Record<
     string,
-    { spec: PkgSpec; names: string[] }
+    { spec: ExpandedPkgSpec; names: string[] }
   >;
 
   for (const spec of incomingSpecs) {
@@ -41,12 +41,6 @@ export function generateSubAssets(incomingSpecs: PkgSpec[]): PkgSpec[] {
     }
 
     const domain = schemaVariant.domain;
-    if (!isExpandedPropSpec(domain)) {
-      console.log(
-        `Could not generate default props and sockets for ${spec.name}: domain has no metadata`,
-      );
-      continue;
-    }
     if (domain.kind !== "object") {
       console.log(
         `Could not generate default props and sockets for ${spec.name}: domain is not object`,
@@ -103,7 +97,7 @@ export function generateSubAssets(incomingSpecs: PkgSpec[]): PkgSpec[] {
         }
 
         const variantData = _.cloneDeep(schemaVariant.data);
-        const variant: SchemaVariantSpec = {
+        const variant: ExpandedSchemaVariantSpec = {
           ...schemaVariant,
           data: {
             ...variantData,
@@ -123,7 +117,7 @@ export function generateSubAssets(incomingSpecs: PkgSpec[]): PkgSpec[] {
 
         const schemaData = _.cloneDeep(schema.data);
 
-        const newSpec: PkgSpec = {
+        const newSpec: ExpandedPkgSpec = {
           ...spec,
           name,
           description: prop.typeProp.data?.documentation ?? "",
@@ -156,7 +150,7 @@ export function generateSubAssets(incomingSpecs: PkgSpec[]): PkgSpec[] {
   // Select best name and category for each subAsset
   for (
     const { spec, names } of _.values(newSpecsByHash) as {
-      spec: PkgSpec;
+      spec: ExpandedPkgSpec;
       names: string[];
     }[]
   ) {
@@ -232,7 +226,7 @@ function fixPropPath(props: ExpandedPropSpec[], parentPath: string[]) {
   for (const prop of props) {
     prop.metadata.propPath = [...parentPath, prop.name];
     if (prop.kind === "object") {
-      fixPropPath(prop.entries as ExpandedPropSpec[], prop.metadata.propPath);
+      fixPropPath(prop.entries, prop.metadata.propPath);
     }
   }
 }

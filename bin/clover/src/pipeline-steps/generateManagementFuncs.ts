@@ -1,12 +1,14 @@
-import { PkgSpec } from "../bindings/PkgSpec.ts";
 import _ from "lodash";
 import {
   createDefaultManagementFuncs,
   createManagementFuncSpec,
 } from "../spec/funcs.ts";
+import { ExpandedPkgSpec } from "../spec/pkgs.ts";
 
-export function generateDefaultManagementFuncs(specs: PkgSpec[]): PkgSpec[] {
-  const newSpecs = [] as PkgSpec[];
+export function generateDefaultManagementFuncs(
+  specs: ExpandedPkgSpec[],
+): ExpandedPkgSpec[] {
+  const newSpecs = [] as ExpandedPkgSpec[];
   const defaultMgmtFuncs = createDefaultManagementFuncs();
 
   for (const spec of specs) {
