@@ -1,13 +1,5 @@
 <!-- eslint-disable vue/no-multiple-template-root -->
 <template>
-  <div
-    v-if="generatingPrompt"
-    class="text-center text-2xl z-100 absolute w-full h-full bg-black bg-opacity-50 flex flex-row justify-center items-center"
-  >
-    <div class="bg-black text-white w-1/5 rounded-lg">
-      <LoadingMessage>Executing Prompt...</LoadingMessage>
-    </div>
-  </div>
   <component
     :is="ResizablePanel"
     ref="leftResizablePanelRef"
@@ -153,7 +145,6 @@ import {
   Stack,
   DropdownMenu,
   DropdownMenuItemObjectDef,
-  LoadingMessage,
 } from "@si/vue-lib/design-system";
 import { useRoute } from "vue-router";
 import { useAssetStore } from "@/store/asset.store";
@@ -288,12 +279,4 @@ const tabContentSlug = computed<"assets" | "newassets">(() => {
       return "assets";
   }
 });
-
-const generatingPrompt = ref(false);
-watch(
-  () => funcStore.executingPrompt,
-  () => {
-    generatingPrompt.value = funcStore.executingPrompt;
-  },
-);
 </script>

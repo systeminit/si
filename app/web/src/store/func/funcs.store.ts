@@ -111,8 +111,6 @@ export function actionBindingsForVariant(
   return bindings;
 }
 
-export type AwsCliCommand = { command: string; subcommand: string };
-
 const INTRINSICS_DISPLAYED = [FuncBackendKind.Identity, FuncBackendKind.Unset];
 
 export const useFuncStore = () => {
@@ -208,10 +206,6 @@ export const useFuncStore = () => {
         // represents the last, or "focused" func clicked on/open by the editor
         selectedFuncId: undefined as FuncId | undefined,
         editingFuncLatestCode: {} as Record<FuncId, string>,
-        generatingFuncCode: {} as Record<FuncId, AwsCliCommand>,
-        /** Whether the "generate AWS function" panel is toggled open */
-        generateAwsFunctionPanelToggled: false,
-        executingPrompt: false,
         managementOperationExecution: {} as MgmtPrototypeResult,
         // So we can ignore websocket update originated by this client
         clientUlid: ulid(),
@@ -721,39 +715,7 @@ export const useFuncStore = () => {
           });
         },
 
-        async GENERATE_AWS_FUNCTION(
-          funcId: FuncId,
-          { command, subcommand }: AwsCliCommand,
-          schemaVariantId: SchemaVariantId,
-        ) {
-          if (changeSetsStore.creatingChangeSet)
-            throw new Error("race, wait until the change set is created");
-          if (changeSetsStore.headSelected)
-            changeSetsStore.creatingChangeSet = true;
-
-          this.executingPrompt = true;
-
-          return new ApiRequest<{
-            command: string;
-            subcommand: string;
-            schemaVariantId: SchemaVariantId;
-          }>({
-            url: API_PREFIX.concat([funcId, "generate_aws_function"]),
-            params: { command, subcommand, schemaVariantId },
-            keyRequestStatusBy: funcId,
-            onSuccess: (response) => {
-              this.executingPrompt = false;
-            },
-            onFail: () => {
-              this.executingPrompt = false;
-            },
-          });
-        },
-
         updateFuncCode(funcId: FuncId, code: string, debounce: boolean) {
-          // if code is being generated you cannot save
-          if (this.generatingFuncCode[funcId]) return;
-
           const func = _.cloneDeep(this.funcCodeById[funcId]);
           if (!func || func.code === code) return;
           func.code = code;
@@ -914,13 +876,6 @@ export const useFuncStore = () => {
             },
           },
           {
-            eventType: "FuncGenerating",
-            callback: (data, metadata) => {
-              if (metadata.change_set_id !== selectedChangeSetId) return;
-              this.generatingFuncCode[data.funcId] = data.command;
-            },
-          },
-          {
             eventType: "FuncCodeSaved",
             callback: ({ generated, funcCode: { funcId } }, metadata) => {
               if (metadata.change_set_id !== selectedChangeSetId) return;
@@ -932,11 +887,9 @@ export const useFuncStore = () => {
               // generation doesn't happen so often it's a giant problem right now.
               if (
                 (funcId === this.selectedFuncId || !this.selectedFuncId) &&
-                generated &&
-                this.generatingFuncCode[funcId]
+                generated
               ) {
                 this.FETCH_CODE(funcId);
-                delete this.generatingFuncCode[funcId];
               }
             },
           },
@@ -1008,29 +961,3 @@ export const useFuncStore = () => {
     }),
   )();
 };
-
-export type GenerateAwsFunctionKind =
-  (typeof GenerateAwsFunctionKinds)[keyof typeof GenerateAwsFunctionKinds];
-export const GenerateAwsFunctionKinds = {
-  AssetSchema: {
-    description: "AWS Asset Schema",
-    exampleCommand: {
-      service: "sqs",
-      command: "create-queue",
-    },
-  },
-  Action: {
-    description: "AWS Action Function",
-    exampleCommand: {
-      service: "sqs",
-      command: "describe-queue",
-    },
-  },
-  Management: {
-    description: "AWS Import Function",
-    exampleCommand: {
-      service: "sqs",
-      command: "describe-queue",
-    },
-  },
-} as const;

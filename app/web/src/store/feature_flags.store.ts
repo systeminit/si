@@ -10,7 +10,6 @@ const FLAG_MAPPING = {
   MODULES_TAB: "modules_tab",
   ADMIN_PANEL_ACCESS: "si_admin_panel_access",
   ON_DEMAND_ASSETS: "on_demand_assets",
-  AI_GENERATOR: "ai-generator",
   SLACK_WEBHOOK: "slack_webhook",
   TEMPLATE_MGMT_FUNC_GENERATION: "template-mgmt-func-generation",
   CLOVER_ASSETS: "clover-assets",
