@@ -193,3 +193,29 @@ impl FrontendChecksum for DateTime<Utc> {
         FrontendChecksum::checksum(&self.to_rfc3339())
     }
 }
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+pub struct FrontendObject {
+    pub kind: String,
+    pub id: String,
+    pub checksum: Checksum,
+    pub data: serde_json::Value,
+}
+
+impl TryFrom<ChangeSetRecord> for FrontendObject {
+    type Error = serde_json::Error;
+
+    fn try_from(value: ChangeSetRecord) -> Result<Self, Self::Error> {
+        let kind = "ChangeSetRecord".to_string();
+        let id = value.id.to_string();
+        let checksum = FrontendChecksum::checksum(&value);
+        let data = serde_json::to_value(value)?;
+
+        Ok(FrontendObject {
+            kind,
+            id,
+            checksum,
+            data,
+        })
+    }
+}
