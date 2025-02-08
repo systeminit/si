@@ -47,6 +47,14 @@ export function createInputSocketFromProp(
   return socket;
 }
 
+export function getSocketOnVariant(
+  variant: ExpandedSchemaVariantSpec,
+  name: string,
+  kind: SocketSpecKind,
+) {
+  return variant.sockets.find((s) => s.name === name && s.data.kind === kind);
+}
+
 export function getOrCreateInputSocketFromProp(
   schemaVariant: ExpandedSchemaVariantSpec,
   prop: ExpandedPropSpec,
