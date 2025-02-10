@@ -18,22 +18,8 @@ export function createInputSocketsBasedOnOutputSockets(
 
   // Get all output sockets
   for (const spec of specs) {
-    const schema = spec.schemas[0];
-
-    if (!schema) {
-      console.log(
-        `Could not generate input sockets for ${spec.name}: missing schema`,
-      );
-      continue;
-    }
-    const schemaVariant = schema.variants[0];
-
-    if (!schemaVariant) {
-      console.log(
-        `Could not generate input sockets for ${spec.name}: missing variant`,
-      );
-      continue;
-    }
+    const [schema] = spec.schemas;
+    const [schemaVariant] = schema.variants;
 
     for (const socket of schemaVariant.sockets) {
       if (socket.data?.kind === "output") {

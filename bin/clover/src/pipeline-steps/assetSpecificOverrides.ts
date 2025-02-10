@@ -30,13 +30,10 @@ const overrides = new Map<string, OverrideFn>([
 ]);
 
 function addGatewayIdSocketToEC2Route(spec: ExpandedPkgSpec) {
-  const schema = spec.schemas[0];
-  const variant = spec.schemas[0].variants[0];
-  const domain = variant.domain;
+  const [schema] = spec.schemas;
+  const [variant] = schema.variants;
+  const { domain } = variant;
 
-  if (!schema || !variant || !domain || domain.kind !== "object") {
-    throw new Error(`Unable to run override for ${spec.name}`);
-  }
   for (const prop of domain.entries) {
     if (prop.name === "GatewayId") {
       const socket = createInputSocketFromProp(prop, "one");

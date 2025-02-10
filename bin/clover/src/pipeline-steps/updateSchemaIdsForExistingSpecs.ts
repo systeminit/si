@@ -10,15 +10,6 @@ export function updateSchemaIdsForExistingSpecs(
   const newSpecs = [] as ExpandedPkgSpec[];
 
   for (const spec of specs) {
-    const schema = spec.schemas[0];
-
-    if (!schema) {
-      console.log(
-        `Could not generate default props and sockets for ${spec.name}: missing schema`,
-      );
-      continue;
-    }
-
     const schema_id = existing_specs[spec.name];
     if (schema_id) {
       logger.debug(`Found existing spec ${spec.name}, updating schema id`);

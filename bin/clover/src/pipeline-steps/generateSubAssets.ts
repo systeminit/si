@@ -25,28 +25,9 @@ export function generateSubAssets(
   >;
 
   for (const spec of incomingSpecs) {
-    const schema = spec.schemas[0];
-    if (!schema) {
-      console.log(
-        `Could not generate default props and sockets for ${spec.name}: missing schema`,
-      );
-    }
-    const schemaVariant = schema.variants[0];
-
-    if (!schemaVariant) {
-      console.log(
-        `Could not generate default props and sockets for ${spec.name}: missing variant`,
-      );
-      continue;
-    }
-
-    const domain = schemaVariant.domain;
-    if (domain.kind !== "object") {
-      console.log(
-        `Could not generate default props and sockets for ${spec.name}: domain is not object`,
-      );
-      continue;
-    }
+    const [schema] = spec.schemas;
+    const [schemaVariant] = schema.variants;
+    const { domain } = schemaVariant;
 
     for (const prop of domain.entries) {
       if (prop.kind === "array" && prop.typeProp.kind === "object") {
@@ -57,7 +38,7 @@ export function generateSubAssets(
         const name = `${spec.name}::${objName}`;
         const variantId = ulid();
 
-        const newDomainWithOldIds = _.cloneDeep(domain);
+        const newDomainWithOldIds: typeof domain = _.cloneDeep(domain);
         newDomainWithOldIds.entries = prop.typeProp.entries;
 
         // recreate ["root", "domain", etc.]

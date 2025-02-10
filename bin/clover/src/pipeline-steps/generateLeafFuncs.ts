@@ -11,14 +11,15 @@ export function generateDefaultLeafFuncs(
   const newSpecs = [] as ExpandedPkgSpec[];
 
   for (const spec of specs) {
-    const schemaVariant = spec.schemas[0]?.variants[0];
+    const [schema] = spec.schemas;
+    const [schemaVariant] = schema.variants;
     const funcs = spec.funcs;
     const leafFuncs = schemaVariant.leafFunctions;
     const domain_id = schemaVariant.domain.uniqueId;
 
-    if (!schemaVariant || !domain_id) {
+    if (!domain_id) {
       console.log(
-        `Could not generate action funcs for ${spec.name}: missing schema, variant, or domain id!`,
+        `Could not generate action funcs for ${spec.name}: missing domain id!`,
       );
       continue;
     }

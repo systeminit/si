@@ -10,14 +10,7 @@ export function addSignatureToCategoryName(
   const newSpecs = [] as ExpandedPkgSpec[];
 
   for (const spec of specs) {
-    const schema = spec.schemas[0];
-
-    if (!schema) {
-      console.log(
-        `Could not generate default props and sockets for ${spec.name}: missing schema`,
-      );
-      continue;
-    }
+    const [schema] = spec.schemas;
 
     const schemaData = schema.data;
     if (schemaData) {

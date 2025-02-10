@@ -13,14 +13,8 @@ export function generateAssetFuncs(
   const newSpecs = [] as ExpandedPkgSpec[];
 
   for (const spec of specs) {
-    const schemaVariant = spec.schemas[0]?.variants[0];
-
-    if (!schemaVariant || !schemaVariant.data) {
-      console.log(
-        `Could not generate assetFunc for ${spec.name}: missing schema or variant`,
-      );
-      continue;
-    }
+    const [schema] = spec.schemas;
+    const [schemaVariant] = schema.variants;
 
     const assetFuncUniqueKey = schemaVariant.data.funcUniqueId;
     const assetFuncName = spec.name;
