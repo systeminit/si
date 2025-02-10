@@ -1,18 +1,21 @@
 import { ulid } from "https://deno.land/x/ulid@v0.3.0/mod.ts";
 import { AttrFuncInputSpec } from "../bindings/AttrFuncInputSpec.ts";
 import { SocketSpec } from "../bindings/SocketSpec.ts";
+import { SocketSpecData } from "../bindings/SocketSpecData.ts";
 import { SocketSpecArity } from "../bindings/SocketSpecArity.ts";
 import { SocketSpecKind } from "../bindings/SocketSpecKind.ts";
 import { ExpandedPropSpec } from "./props.ts";
 import { getSiFuncId } from "./siFuncs.ts";
 import _ from "npm:lodash";
 import { ExpandedSchemaVariantSpec } from "./pkgs.ts";
+import { Extend } from "../extend.ts";
 
 export const SI_SEPARATOR = "\u{b}";
 
-export type ExpandedSocketSpec = SocketSpec & {
-  data: NonNullable<SocketSpec["data"]>;
-};
+export type ExpandedSocketSpec = Extend<SocketSpec, {
+  data: NonNullable<SocketSpecData>;
+}>;
+
 export function createOutputSocketFromProp(
   prop: ExpandedPropSpec,
   arity: SocketSpecArity = "many",
@@ -72,8 +75,11 @@ export function getOrCreateInputSocketFromProp(
 
 export function setAnnotationOnSocket(
   socket: ExpandedSocketSpec,
-  annotation: ConnectionAnnotation,
+  annotation: string | ConnectionAnnotation,
 ) {
+  if (typeof annotation === "string") {
+    annotation = { tokens: [annotation] };
+  }
   const existingAnnotations = JSON.parse(
     socket.data.connectionAnnotations,
   ) as ConnectionAnnotation[];

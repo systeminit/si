@@ -276,9 +276,7 @@ function generateWidgetString(
     return "";
   }
 
-  const kind = widgetKind === "ComboBox"
-    ? "comboBox"
-    : widgetKind.toLowerCase();
+  const kind = `${widgetKind[0].toLowerCase()}${widgetKind.slice(1)}`;
 
   let widgetStr =
     `${indent(indentLevel)}.setWidget(new PropWidgetDefinitionBuilder()\n` +
