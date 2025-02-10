@@ -6703,8 +6703,20 @@ dependencies = [
  "serde",
  "serde_json",
  "si-events",
+ "si-frontend-types-macros",
  "si-id",
  "strum",
+]
+
+[[package]]
+name = "si-frontend-types-macros"
+version = "0.1.0"
+dependencies = [
+ "darling 0.20.10",
+ "manyhow",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.96",
 ]
 
 [[package]]

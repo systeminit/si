@@ -1,0 +1,143 @@
+use manyhow::{bail, emit, manyhow};
+use proc_macro2::TokenStream;
+use quote::quote;
+use syn::{Data, DeriveInput};
+
+#[manyhow]
+#[proc_macro_derive(FrontendChecksum, attributes(frontend_checksum))]
+pub fn frontend_checksum_derive(
+    input: proc_macro::TokenStream,
+    errors: &mut manyhow::Emitter,
+) -> manyhow::Result<proc_macro::TokenStream> {
+    derive_frontend_checksum(input, errors)
+}
+
+fn derive_frontend_checksum(
+    input: proc_macro::TokenStream,
+    errors: &mut manyhow::Emitter,
+) -> manyhow::Result<proc_macro::TokenStream> {
+    let input = syn::parse::<DeriveInput>(input)?;
+    let DeriveInput {
+        ident,
+        data: type_data,
+        ..
+    } = input.clone();
+
+    match &type_data {
+        Data::Struct(struct_data) => derive_frontend_checksum_struct(ident, struct_data, errors),
+        Data::Enum(_) => derive_frontend_checksum_enum(ident),
+        _ => bail!("FrontendChecksum can only be derived for structs and enums"),
+    }
+}
+
+fn derive_frontend_checksum_struct(
+    ident: syn::Ident,
+    struct_data: &syn::DataStruct,
+    errors: &mut manyhow::Emitter,
+) -> manyhow::Result<proc_macro::TokenStream> {
+    let mut field_update_parts = Vec::new();
+    for field in &struct_data.fields {
+        let Some(field_ident) = &field.ident else {
+            emit!(
+                errors,
+                syn::Error::new_spanned(field, "struct field must have an identifier")
+            );
+            continue;
+        };
+        field_update_parts.push(
+            quote! { hasher.update(FrontendChecksum::checksum(&self.#field_ident).as_bytes()); },
+        )
+    }
+    errors.into_result()?;
+
+    let mut field_updates = TokenStream::new();
+    field_updates.extend(field_update_parts);
+
+    let checksum_fn = quote! {
+        fn checksum(&self) -> Checksum {
+            let mut hasher = ChecksumHasher::new();
+            #field_updates
+            hasher.finalize()
+        }
+    };
+
+    let output = quote! {
+        impl FrontendChecksum for #ident {
+            #checksum_fn
+        }
+    };
+
+    Ok(output.into())
+}
+
+fn derive_frontend_checksum_enum(ident: syn::Ident) -> manyhow::Result<proc_macro::TokenStream> {
+    let checksum_fn = quote! {
+        fn checksum(&self) -> Checksum {
+            let mut hasher = ChecksumHasher::new();
+            hasher.update(self.to_string().as_bytes());
+            hasher.finalize()
+        }
+    };
+
+    let output = quote! {
+        impl FrontendChecksum for #ident {
+            #checksum_fn
+        }
+    };
+
+    Ok(output.into())
+}
+
+#[manyhow]
+#[proc_macro_derive(FrontendObject, attributes(frontend_object))]
+pub fn frontend_object_derive(
+    input: proc_macro::TokenStream,
+    errors: &mut manyhow::Emitter,
+) -> manyhow::Result<proc_macro::TokenStream> {
+    derive_frontend_object(input, errors)
+}
+
+fn derive_frontend_object(
+    input: proc_macro::TokenStream,
+    errors: &mut manyhow::Emitter,
+) -> manyhow::Result<proc_macro::TokenStream> {
+    let input = syn::parse::<DeriveInput>(input)?;
+    let DeriveInput {
+        ident,
+        data: type_data,
+        ..
+    } = input.clone();
+
+    if !matches!(type_data, Data::Struct(_)) {
+        emit!(
+            errors,
+            input,
+            "FrontendObject can only be derived for structs"
+        );
+    }
+    errors.into_result()?;
+
+    let ident_string = ident.to_string();
+
+    let output = quote! {
+        impl ::std::convert::TryFrom<#ident> for FrontendObject {
+            type Error = ::serde_json::Error;
+
+            fn try_from(value: #ident) -> ::std::result::Result<Self, Self::Error> {
+                let kind = #ident_string.to_string();
+                let id = value.id.to_string();
+                let checksum = FrontendChecksum::checksum(&value);
+                let data = ::serde_json::to_value(value)?;
+
+                Ok(FrontendObject {
+                    kind,
+                    id,
+                    checksum,
+                    data,
+                })
+            }
+        }
+    };
+
+    Ok(output.into())
+}

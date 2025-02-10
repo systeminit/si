@@ -80,7 +80,16 @@ pub struct ChangeSetApproval {
 }
 
 // Data view for the frontend.
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(
+    Debug,
+    Clone,
+    Deserialize,
+    Serialize,
+    PartialEq,
+    Eq,
+    si_frontend_types_macros::FrontendChecksum,
+    si_frontend_types_macros::FrontendObject,
+)]
 #[serde(rename_all = "camelCase")]
 pub struct ChangeSetRecord {
     pub name: String,
@@ -96,7 +105,15 @@ pub struct ChangeSetRecord {
 }
 
 // Data view for the frontend.
-#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[derive(
+    Debug,
+    Clone,
+    Serialize,
+    PartialEq,
+    Eq,
+    si_frontend_types_macros::FrontendChecksum,
+    si_frontend_types_macros::FrontendObject,
+)]
 pub struct ChangeSetList {
     pub name: String,
     pub id: WorkspaceId,
@@ -120,38 +137,6 @@ impl From<ChangeSetRecord> for Reference<ChangeSetId> {
 
 pub trait FrontendChecksum {
     fn checksum(&self) -> Checksum;
-}
-
-// Should be very derivable for any of the frontend data view structs.
-impl FrontendChecksum for ChangeSetList {
-    fn checksum(&self) -> Checksum {
-        let mut hasher = ChecksumHasher::new();
-        hasher.update(FrontendChecksum::checksum(&self.name).as_bytes());
-        hasher.update(FrontendChecksum::checksum(&self.id).as_bytes());
-        hasher.update(FrontendChecksum::checksum(&self.default_change_set_id).as_bytes());
-        hasher.update(FrontendChecksum::checksum(&self.change_sets).as_bytes());
-
-        hasher.finalize()
-    }
-}
-
-// Should be very derivable for any of the frontend data view structs.
-impl FrontendChecksum for ChangeSetRecord {
-    fn checksum(&self) -> Checksum {
-        let mut hasher = ChecksumHasher::new();
-        hasher.update(FrontendChecksum::checksum(&self.name).as_bytes());
-        hasher.update(FrontendChecksum::checksum(&self.id).as_bytes());
-        hasher.update(FrontendChecksum::checksum(&self.status).as_bytes());
-        hasher.update(FrontendChecksum::checksum(&self.created_at).as_bytes());
-        hasher.update(FrontendChecksum::checksum(&self.updated_at).as_bytes());
-        hasher.update(FrontendChecksum::checksum(&self.base_change_set_id).as_bytes());
-        hasher.update(FrontendChecksum::checksum(&self.workspace_id).as_bytes());
-        hasher.update(FrontendChecksum::checksum(&self.merge_requested_by_user_id).as_bytes());
-        hasher.update(FrontendChecksum::checksum(&self.merge_requested_by_user).as_bytes());
-        hasher.update(FrontendChecksum::checksum(&self.merge_requested_at).as_bytes());
-
-        hasher.finalize()
-    }
 }
 
 // Would be nice to do this automatically as part of the macros. As an impl for a trait
@@ -204,7 +189,7 @@ where
     fn checksum(&self) -> Checksum {
         let mut hasher = ChecksumHasher::new();
         for item in self {
-            hasher.update(item.checksum().to_string().as_bytes());
+            hasher.update(item.checksum().as_bytes());
         }
         hasher.finalize()
     }
@@ -223,23 +208,4 @@ pub struct FrontendObject {
     pub id: String,
     pub checksum: Checksum,
     pub data: serde_json::Value,
-}
-
-// Very derivable for any of the frontend data view structs.
-impl TryFrom<ChangeSetRecord> for FrontendObject {
-    type Error = serde_json::Error;
-
-    fn try_from(value: ChangeSetRecord) -> Result<Self, Self::Error> {
-        let kind = "ChangeSetRecord".to_string();
-        let id = value.id.to_string();
-        let checksum = FrontendChecksum::checksum(&value);
-        let data = serde_json::to_value(value)?;
-
-        Ok(FrontendObject {
-            kind,
-            id,
-            checksum,
-            data,
-        })
-    }
 }
