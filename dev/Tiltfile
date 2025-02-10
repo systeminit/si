@@ -258,6 +258,9 @@ si_buck2_resource(
             path = "/api/",
         ),
     ),
+    links = [
+        link("http://127.0.0.1:5156", "api"),
+    ],
     **RUST_RESOURCE_ARGS
 )
 
