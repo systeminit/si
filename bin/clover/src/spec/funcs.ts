@@ -8,6 +8,7 @@ import { ActionFuncSpecKind } from "../bindings/ActionFuncSpecKind.ts";
 import { LeafFunctionSpec } from "../bindings/LeafFunctionSpec.ts";
 import { LeafKind } from "../bindings/LeafKind.ts";
 import { ManagementFuncSpec } from "../bindings/ManagementFuncSpec.ts";
+import { Buffer } from "node:buffer";
 
 interface FuncSpecInfo {
   id: string;
@@ -241,7 +242,7 @@ export function createManagementFuncSpec(
 
 // Si uses a version of base64 that removes the padding at the end for some reason
 export function strippedBase64(code: string) {
-  return btoa(
-    code,
-  ).replace(/=/g, "");
+  return Buffer.from(code).toString(
+    "base64",
+  ).replace(/=*$/, "");
 }

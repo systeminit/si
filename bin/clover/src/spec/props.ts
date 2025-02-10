@@ -58,10 +58,10 @@ interface PropSpecOverrides {
   >;
   enum?: string[] | number[];
   metadata: {
-    createOnly?: boolean;
-    readOnly?: boolean;
-    writeOnly?: boolean;
-    primaryIdentifier?: boolean;
+    createOnly: boolean;
+    readOnly: boolean;
+    writeOnly: boolean;
+    primaryIdentifier: boolean;
     propPath: string[];
   };
 }
@@ -77,6 +77,7 @@ export function createPropFromCf(
   name: string,
   cfProp: CfProperty,
   onlyProperties: OnlyProperties,
+  typeName: string,
   propPath: string[],
 ): ExpandedPropSpec | undefined {
   if (!cfProp.type) {
@@ -107,6 +108,7 @@ export function createPropFromCf(
       data.name,
       data.cfProp,
       onlyProperties,
+      typeName,
       data.propPath,
       queue,
     );
@@ -128,10 +130,16 @@ export function createPropFromCf(
   return rootProp;
 }
 
+function createDocLink(typeName: string, propName: string): string | null {
+  const typeNameSnake = typeName.split("::").slice(1).join("-").toLowerCase();
+  return `https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-${typeNameSnake}.html#cfn-${typeNameSnake}-${propName.toLowerCase()}`;
+}
+
 function createPropFromCfInner(
   name: string,
   cfProp: CfProperty,
   onlyProperties: OnlyProperties,
+  typeName: string,
   propPath: string[],
   queue: CreatePropQueue,
 ): ExpandedPropSpec | undefined {
@@ -145,16 +153,16 @@ function createPropFromCfInner(
     widgetKind: null,
     widgetOptions: [],
     hidden: false,
-    docLink: null,
+    docLink: createDocLink(typeName, name),
     documentation: cfProp.description ?? null,
   };
-
   propPath.push(name);
   const partialProp: Partial<ExpandedPropSpec> = {
     name,
     data,
     uniqueId: propUniqueId,
     metadata: {
+      // cfProp,
       createOnly: onlyProperties.createOnly.includes(name),
       readOnly: onlyProperties.readOnly.includes(name),
       writeOnly: onlyProperties.writeOnly.includes(name),
