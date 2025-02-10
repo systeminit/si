@@ -12,6 +12,7 @@ use std::{
 };
 
 use client::{SiFsClient, SiFsClientError};
+use dashmap::DashMap;
 use fuser::{
     FileAttr, FileType, MountOption, ReplyAttr, ReplyCreate, ReplyData, ReplyDirectory, ReplyEmpty,
     ReplyEntry, ReplyOpen, ReplyWrite,
@@ -35,7 +36,8 @@ use si_id::{ChangeSetId, FuncId, SchemaId};
 use thiserror::Error;
 use tokio::{
     runtime::{self},
-    sync::{mpsc::UnboundedReceiver, RwLock},
+    sync::mpsc::UnboundedReceiver,
+    time::Instant,
 };
 
 use crate::{async_wrapper::AsyncFuseWrapper, command::FilesystemCommand};
@@ -52,6 +54,7 @@ const FILE_HANDLE_WRITE_BIT: FileHandle = FileHandle::new(1 << 62);
 
 const FILE_STR_TS_INDEX: &str = "index.ts";
 const FILE_STR_TS_INDEX_D_TS: &str = "index.d.ts";
+const FILE_STR_TS_CONFIG: &str = "tsconfig.json";
 const FILE_STR_ATTRS_JSON: &str = "attrs.json";
 const FILE_STR_BINDINGS_JSON: &str = "bindings.json";
 const FILE_STR_INSTALLED: &str = "INSTALLED";
@@ -68,6 +71,19 @@ const DIR_STR_FUNCTIONS: &str = "functions";
 const DIR_STR_SCHEMAS: &str = "schemas";
 const DIR_STR_LOCKED: &str = "locked";
 const DIR_STR_UNLOCKED: &str = "unlocked";
+
+const TS_CONFIG: &str = r#"{
+    "compilerOptions": {
+        "lib": [
+            "es2015",
+            "dom"
+        ]
+    },
+    "files": [
+        "./index.ts",
+        "./index.d.ts"
+    ]
+}"#;
 
 #[derive(Error, Debug)]
 pub enum SiFileSystemError {
@@ -199,11 +215,12 @@ struct OpenFile {
 struct SiFileSystem {
     client: Arc<SiFsClient>,
     workspace_id: WorkspaceId,
-    inode_table: Arc<RwLock<InodeTable>>,
-    open_files: Arc<RwLock<BTreeMap<FileHandle, OpenFile>>>,
+    inode_table: Arc<InodeTable>,
+    open_files: Arc<DashMap<FileHandle, OpenFile>>,
     fh_sequence: Arc<AtomicU64>,
     uid: Uid,
     gid: Gid,
+    debug: bool,
 }
 
 struct DirEntry {
@@ -262,6 +279,7 @@ impl SiFileSystem {
         workspace_id: WorkspaceId,
         uid: Uid,
         gid: Gid,
+        debug: bool,
     ) -> Self {
         let inode_table = InodeTable::new(
             mount_point,
@@ -275,11 +293,12 @@ impl SiFileSystem {
         Self {
             client: Arc::new(client),
             workspace_id,
-            inode_table: Arc::new(RwLock::new(inode_table)),
-            open_files: Arc::new(RwLock::new(BTreeMap::new())),
+            inode_table: Arc::new(inode_table),
+            open_files: Arc::new(DashMap::new()),
             fh_sequence: Arc::new(AtomicU64::new(1)),
             uid,
             gid,
+            debug,
         }
     }
 
@@ -296,7 +315,7 @@ impl SiFileSystem {
         _fh: Option<FileHandle>,
         reply: ReplyAttr,
     ) -> SiFileSystemResult<()> {
-        let Some(entry) = self.inode_table.read().await.entry_for_ino(ino).cloned() else {
+        let Some(entry) = self.inode_table.entry_for_ino(ino) else {
             reply.error(ENOENT);
             return Ok(());
         };
@@ -323,13 +342,13 @@ impl SiFileSystem {
         if let Some(size) = size {
             // support truncation. ignore other set size requests for now
             if size == 0 {
-                if let Some(attrs) = self.inode_table.write().await.set_size(ino, size) {
+                if let Some(attrs) = self.inode_table.set_size(ino, size) {
                     reply.attr(&TTL, &attrs);
                 } else {
                     reply.error(ENOENT);
                 }
             }
-        } else if let Some(entry) = self.inode_table.read().await.entry_for_ino(ino) {
+        } else if let Some(entry) = self.inode_table.entry_for_ino(ino) {
             reply.attr(&TTL, entry.attrs());
         } else {
             reply.error(ENOENT);
@@ -339,12 +358,10 @@ impl SiFileSystem {
     }
 
     async fn open(&self, ino: Inode, reply: ReplyOpen, flags: i32) -> SiFileSystemResult<()> {
-        let read_table = self.inode_table.read().await;
-        let Some(entry) = read_table.entry_for_ino(ino).cloned() else {
+        let Some(entry) = self.inode_table.entry_for_ino(ino) else {
             reply.error(ENOENT);
             return Ok(());
         };
-        drop(read_table);
 
         // Todo: handle append only
         let append = flags & O_APPEND != 0;
@@ -390,6 +407,16 @@ impl SiFileSystem {
                 let code = self.client.get_func_code(*change_set_id, *func_id).await?;
                 code.as_bytes().to_vec()
             }
+            InodeEntryData::FuncTypes {
+                change_set_id,
+                func_id,
+            } => self
+                .client
+                .get_func_types(*change_set_id, *func_id)
+                .await?
+                .as_bytes()
+                .to_vec(),
+            InodeEntryData::FuncTypesTsConfig => TS_CONFIG.as_bytes().to_vec(),
             InodeEntryData::SchemaAttrsJson {
                 schema_id,
                 change_set_id,
@@ -438,12 +465,9 @@ impl SiFileSystem {
         });
 
         // Ensure the size is up to date for the next getattr call
-        self.inode_table
-            .write()
-            .await
-            .set_size(ino, buf.get_ref().len() as u64);
+        self.inode_table.set_size(ino, buf.get_ref().len() as u64);
 
-        self.open_files.write().await.insert(
+        self.open_files.insert(
             fh,
             OpenFile {
                 ino,
@@ -476,13 +500,7 @@ impl SiFileSystem {
         let mut cursor = Some(cwd);
 
         if target.is_absolute() {
-            if self
-                .inode_table
-                .read()
-                .await
-                .ino_for_path(target.as_path())
-                .is_some()
-            {
+            if self.inode_table.ino_for_path(target.as_path()).is_some() {
                 return Ok(Some(target));
             } else {
                 return Ok(None);
@@ -492,14 +510,11 @@ impl SiFileSystem {
         for component in target.components() {
             cursor = match cursor {
                 Some(cursor_ino) => match component {
-                    std::path::Component::ParentDir => {
-                        self.inode_table.read().await.parent_ino(cursor_ino)
-                    }
+                    std::path::Component::ParentDir => self.inode_table.parent_ino(cursor_ino),
                     std::path::Component::Normal(part) => {
                         self.upsert_dir_listing(cursor_ino).await?;
-                        let inode_table = self.inode_table.read().await;
-                        if let Some(cwd_path) = inode_table.path_buf_for_ino(cursor_ino) {
-                            inode_table.ino_for_path(cwd_path.join(part).as_path())
+                        if let Some(cwd_path) = self.inode_table.path_buf_for_ino(cursor_ino) {
+                            self.inode_table.ino_for_path(cwd_path.join(part))
                         } else {
                             None
                         }
@@ -511,11 +526,7 @@ impl SiFileSystem {
         }
 
         Ok(if let Some(cursor) = cursor {
-            self.inode_table
-                .read()
-                .await
-                .path_for_ino(cursor)
-                .map(ToOwned::to_owned)
+            self.inode_table.path_for_ino(cursor)
         } else {
             None
         })
@@ -531,8 +542,7 @@ impl SiFileSystem {
         reply: ReplyCreate,
     ) -> SiFileSystemResult<()> {
         let mut parent_entry = {
-            let inode_table = self.inode_table.read().await;
-            let Some(parent_entry) = inode_table.entry_for_ino(parent) else {
+            let Some(parent_entry) = self.inode_table.entry_for_ino(parent) else {
                 reply.error(ENOENT);
                 return Ok(());
             };
@@ -556,7 +566,7 @@ impl SiFileSystem {
 
                 let buf = Cursor::new("INSTALLED".as_bytes().to_vec());
 
-                let ino = self.inode_table.write().await.upsert_with_parent_ino(
+                let ino = self.inode_table.upsert_with_parent_ino(
                     parent,
                     FILE_STR_INSTALLED,
                     InodeEntryData::InstalledSchemaMarker,
@@ -564,7 +574,7 @@ impl SiFileSystem {
                     false,
                     Size::Force(buf.get_ref().len() as u64),
                 )?;
-                let attrs = self.inode_table.read().await.make_attrs(
+                let attrs = self.inode_table.make_attrs(
                     ino,
                     FileType::RegularFile,
                     false,
@@ -572,7 +582,7 @@ impl SiFileSystem {
                 );
 
                 let fh = self.next_file_handle() | FILE_HANDLE_READ_BIT;
-                self.open_files.write().await.insert(
+                self.open_files.insert(
                     fh,
                     OpenFile {
                         ino,
@@ -605,10 +615,7 @@ impl SiFileSystem {
             };
             parent_entry.data = new_data;
 
-            self.inode_table
-                .write()
-                .await
-                .upsert_for_ino(parent, parent_entry)?;
+            self.inode_table.upsert_for_ino(parent, parent_entry)?;
         }
 
         Ok(())
@@ -623,11 +630,11 @@ impl SiFileSystem {
         _flush: bool,
         reply: ReplyEmpty,
     ) -> SiFileSystemResult<()> {
-        if let Some(open_file) = self.open_files.write().await.remove(&fh) {
+        if let Some((_, open_file)) = self.open_files.remove(&fh) {
             let new_bytes = if open_file.write && open_file.dirty {
                 let bytes = open_file.buf.get_ref().as_slice();
 
-                let entry = self.inode_table.read().await.entry_for_ino(ino).cloned();
+                let entry = self.inode_table.entry_for_ino(ino);
                 match entry.as_ref().map(|entry| entry.data().clone()) {
                     Some(InodeEntryData::FuncCode {
                         change_set_id,
@@ -740,10 +747,7 @@ impl SiFileSystem {
             };
 
             if let Some(new_bytes) = new_bytes {
-                self.inode_table
-                    .write()
-                    .await
-                    .set_size(ino, new_bytes as u64);
+                self.inode_table.set_size(ino, new_bytes as u64);
             }
         }
 
@@ -773,13 +777,11 @@ impl SiFileSystem {
         let outcome = match Bindings::from_bytes(open_file_bytes) {
             Ok(bindings) => {
                 if !bindings.bindings.is_empty() {
-                    let parent_ino = self.inode_table.read().await.parent_ino(ino);
+                    let parent_ino = self.inode_table.parent_ino(ino);
 
                     if let Some(parent_ino) = parent_ino {
                         let func_name = self
                             .inode_table
-                            .read()
-                            .await
                             .entry_for_ino(parent_ino)
                             .map(|entry| entry.name.to_owned())
                             .unwrap_or("unknown".into());
@@ -797,7 +799,7 @@ impl SiFileSystem {
                             .await
                         {
                             Ok(_) => {
-                                self.inode_table.write().await.invalidate_ino(ino);
+                                self.inode_table.invalidate_ino(ino);
                                 WriteOutcome::Success
                             }
                             Err(err) => WriteOutcome::CreateFuncFailed(err),
@@ -815,21 +817,25 @@ impl SiFileSystem {
         if let WriteOutcome::Success = outcome {
             Ok(true)
         } else {
-            if let Some(entry_mut) = self.inode_table.write().await.entry_mut_for_ino(ino) {
-                if let InodeEntryData::SchemaFuncBindingsPending { buf, .. } = &mut entry_mut.data {
+            self.inode_table.modify_ino(ino, |entry| {
+                if let InodeEntryData::SchemaFuncBindingsPending { buf, .. } = &mut entry.data {
                     *buf = Arc::new(Cursor::new(open_file_bytes.to_vec()))
                 }
-            }
+            });
 
             match outcome {
                 WriteOutcome::SerializationError(err) => Err(SiFileSystemError::Serialization(err)),
                 WriteOutcome::BindingsEmpty => {
-                    println!("bindings were empty, cannot create func without bindings");
+                    if self.debug {
+                        println!("bindings were empty, cannot create func without bindings");
+                    }
                     Ok(false)
                 }
                 WriteOutcome::CreateFuncFailed(si_file_system_error) => Err(si_file_system_error),
                 WriteOutcome::ParentInoNotFound => {
-                    println!("could not find parent for func. This shouldn't happen");
+                    if self.debug {
+                        println!("could not find parent for func. This shouldn't happen");
+                    }
                     Ok(false)
                 }
                 WriteOutcome::Success => Ok(false),
@@ -850,8 +856,7 @@ impl SiFileSystem {
             .map_err(|_| SiFileSystemError::InvalidOsString)?;
 
         let parent_entry = {
-            let inode_table = self.inode_table.read().await;
-            let Some(parent_entry) = inode_table.entry_for_ino(parent) else {
+            let Some(parent_entry) = self.inode_table.entry_for_ino(parent) else {
                 reply.error(ENOENT);
                 return Ok(());
             };
@@ -908,8 +913,7 @@ impl SiFileSystem {
                         .unlock_schema(*change_set_id, *schema_id)
                         .await?;
                     if let Some(unlocked_asset_func) = asset_funcs.unlocked {
-                        let mut inode_table = self.inode_table.write().await;
-                        let ino = inode_table.upsert_with_parent_ino(
+                        let ino = self.inode_table.upsert_with_parent_ino(
                             parent,
                             DIR_STR_UNLOCKED,
                             InodeEntryData::AssetDefinitionDir {
@@ -926,8 +930,12 @@ impl SiFileSystem {
                             Size::Directory,
                         )?;
 
-                        let attrs =
-                            inode_table.make_attrs(ino, FileType::Directory, true, Size::Directory);
+                        let attrs = self.inode_table.make_attrs(
+                            ino,
+                            FileType::Directory,
+                            true,
+                            Size::Directory,
+                        );
 
                         reply.entry(&TTL, &attrs, 1);
                     } else {
@@ -988,8 +996,7 @@ impl SiFileSystem {
                             .unlock_func(*change_set_id, *schema_id, *locked_id)
                             .await?;
 
-                        let mut inode_table = self.inode_table.write().await;
-                        let ino = inode_table.upsert_with_parent_ino(
+                        let ino = self.inode_table.upsert_with_parent_ino(
                             parent,
                             DIR_STR_UNLOCKED,
                             InodeEntryData::SchemaFuncDir {
@@ -997,6 +1004,7 @@ impl SiFileSystem {
                                 change_set_id: *change_set_id,
                                 func_id: unlocked_func.id,
                                 size: unlocked_func.code_size,
+                                types_size: unlocked_func.types_size,
                                 unlocked: true,
                                 schema_id: *schema_id,
                                 bindings_size: 0,
@@ -1006,8 +1014,12 @@ impl SiFileSystem {
                             Size::Directory,
                         )?;
 
-                        let attrs =
-                            inode_table.make_attrs(ino, FileType::Directory, true, Size::Directory);
+                        let attrs = self.inode_table.make_attrs(
+                            ino,
+                            FileType::Directory,
+                            true,
+                            Size::Directory,
+                        );
 
                         reply.entry(&TTL, &attrs, 1);
                     } else {
@@ -1027,6 +1039,8 @@ impl SiFileSystem {
                 reply.error(EINVAL);
             }
             InodeEntryData::SchemaAttrsJson { .. }
+            | InodeEntryData::FuncTypes { .. }
+            | InodeEntryData::FuncTypesTsConfig
             | InodeEntryData::SchemaBindingsJson { .. }
             | InodeEntryData::InstalledSchemaMarker
             | InodeEntryData::SchemaFuncBindings { .. } => {
@@ -1045,8 +1059,7 @@ impl SiFileSystem {
     ) -> SiFileSystemResult<FileAttr> {
         let created_schema = self.client.create_schema(*change_set_id, name).await?;
         let attrs = {
-            let mut inode_table = self.inode_table.write().await;
-            let ino = inode_table.upsert_with_parent_ino(
+            let ino = self.inode_table.upsert_with_parent_ino(
                 parent,
                 &created_schema.name,
                 InodeEntryData::SchemaDir {
@@ -1059,7 +1072,8 @@ impl SiFileSystem {
                 true,
                 Size::Directory,
             )?;
-            inode_table.make_attrs(ino, FileType::Directory, true, Size::Directory)
+            self.inode_table
+                .make_attrs(ino, FileType::Directory, true, Size::Directory)
         };
         Ok(attrs)
     }
@@ -1067,8 +1081,7 @@ impl SiFileSystem {
     async fn create_change_set(&self, name: String, parent: Inode) -> SiFileSystemResult<FileAttr> {
         let change_set = self.client.create_change_set(name.to_owned()).await?;
         let attrs = {
-            let mut inode_table = self.inode_table.write().await;
-            let ino = inode_table.upsert_with_parent_ino(
+            let ino = self.inode_table.upsert_with_parent_ino(
                 parent,
                 &name,
                 InodeEntryData::ChangeSet {
@@ -1079,7 +1092,8 @@ impl SiFileSystem {
                 true,
                 Size::Directory,
             )?;
-            inode_table.make_attrs(ino, FileType::Directory, true, Size::Directory)
+            self.inode_table
+                .make_attrs(ino, FileType::Directory, true, Size::Directory)
         };
         Ok(attrs)
     }
@@ -1117,9 +1131,7 @@ impl SiFileSystem {
             _ => None,
         };
 
-        let mut inode_table = self.inode_table.write().await;
-
-        let ino = inode_table.upsert_with_parent_ino(
+        let ino = self.inode_table.upsert_with_parent_ino(
             parent,
             &name,
             InodeEntryData::SchemaFuncVariantsDir {
@@ -1133,6 +1145,11 @@ impl SiFileSystem {
                     .unwrap_or(0),
                 schema_id,
                 locked_bindings_size: 0,
+                locked_types_size: 0,
+                unlocked_types_size: maybe_created_func
+                    .as_ref()
+                    .map(|f| f.types_size)
+                    .unwrap_or(0),
                 unlocked_bindings_size: maybe_created_func
                     .as_ref()
                     .map(|f| f.bindings_size)
@@ -1150,7 +1167,9 @@ impl SiFileSystem {
             Size::Directory,
         )?;
 
-        Ok(inode_table.make_attrs(ino, FileType::Directory, true, Size::Directory))
+        Ok(self
+            .inode_table
+            .make_attrs(ino, FileType::Directory, true, Size::Directory))
     }
 
     async fn lookup(
@@ -1159,14 +1178,14 @@ impl SiFileSystem {
         name: impl AsRef<Path>,
         reply: ReplyEntry,
     ) -> SiFileSystemResult<()> {
-        let Some(parent_path) = self.inode_table.read().await.path_buf_for_ino(parent) else {
+        let Some(parent_path) = self.inode_table.path_buf_for_ino(parent) else {
             reply.error(ENOENT);
             return Ok(());
         };
 
         let name = name.as_ref();
         let full_path = parent_path.join(name);
-        let maybe_ino = self.inode_table.read().await.ino_for_path(&full_path);
+        let maybe_ino = self.inode_table.ino_for_path(&full_path);
         let entry_ino = match maybe_ino {
             Some(ino) => ino,
             None => {
@@ -1182,7 +1201,7 @@ impl SiFileSystem {
             }
         };
 
-        if let Some(entry) = self.inode_table.read().await.entry_for_ino(entry_ino) {
+        if let Some(entry) = self.inode_table.entry_for_ino(entry_ino) {
             reply.entry(&TTL, entry.attrs(), 0);
         } else {
             reply.error(ENOENT);
@@ -1202,37 +1221,28 @@ impl SiFileSystem {
         _lock_owner: Option<u64>,
         reply: ReplyData,
     ) -> SiFileSystemResult<()> {
-        let Some(entry) = self.inode_table.read().await.entry_for_ino(ino).cloned() else {
+        let Some(entry) = self.inode_table.entry_for_ino(ino) else {
             reply.error(ENOENT);
             return Ok(());
         };
 
-        match entry.data() {
-            InodeEntryData::FuncCode { .. }
-            | InodeEntryData::AssetFuncCode { .. }
-            | InodeEntryData::AssetFuncTypes { .. }
-            | InodeEntryData::SchemaAttrsJson { .. }
-            | InodeEntryData::SchemaBindingsJson { .. }
-            | InodeEntryData::SchemaFuncBindings { .. }
-            | InodeEntryData::SchemaFuncBindingsPending { .. }
-            | InodeEntryData::InstalledSchemaMarker => {
-                let open_files_read = self.open_files.read().await;
-
-                match open_files_read
-                    .get(&fh)
-                    .map(|of| of.buf.get_ref().as_slice())
-                {
-                    // File handle contents is being tracked
-                    Some(bytes) => {
-                        reply.data(get_read_slice(bytes, offset as usize, size as usize));
-                    }
-                    // File was somehow not opened yet?
-                    None => {
-                        reply.error(ENODATA);
-                    }
+        if entry.data().openable() {
+            match self.open_files.get(&fh) {
+                // File handle contents is being tracked
+                Some(of) => {
+                    reply.data(get_read_slice(
+                        of.value().buf.get_ref(),
+                        offset as usize,
+                        size as usize,
+                    ));
+                }
+                // File was somehow not opened yet?
+                None => {
+                    reply.error(ENODATA);
                 }
             }
-            _ => reply.error(EINVAL),
+        } else {
+            reply.error(EINVAL);
         }
 
         Ok(())
@@ -1256,15 +1266,12 @@ impl SiFileSystem {
         }
 
         let written = {
-            let mut open_file_table = self.open_files.write().await;
-            let mut inode_table = self.inode_table.write().await;
-
-            let Some(entry) = inode_table.entry_mut_for_ino(ino) else {
+            let Some(entry) = self.inode_table.entry_for_ino(ino) else {
                 reply.error(ENOENT);
                 return Ok(());
             };
 
-            let Some(open_file) = open_file_table.get_mut(&fh) else {
+            let Some(mut open_file) = self.open_files.get_mut(&fh) else {
                 reply.error(EBADFD);
                 return Ok(());
             };
@@ -1281,7 +1288,7 @@ impl SiFileSystem {
 
             let written = open_file.buf.write(data.as_slice())? as u32;
 
-            inode_table.set_size(ino, written as u64);
+            self.inode_table.set_size(ino, written as u64);
 
             written
         };
@@ -1301,23 +1308,23 @@ impl SiFileSystem {
         _flags: u32,
         reply: ReplyEmpty,
     ) -> SiFileSystemResult<()> {
-        let inode_table_read = self.inode_table.read().await;
-        let source_path = inode_table_read
+        let source_path = self
+            .inode_table
             .path_for_ino(parent)
             .ok_or(SiFileSystemError::ExpectedInodeNotFound(parent))?
             .join(name);
 
-        let Some(source_ino) = inode_table_read.ino_for_path(&source_path) else {
+        let Some(source_ino) = self.inode_table.ino_for_path(&source_path) else {
             reply.error(ENOENT);
             return Ok(());
         };
 
-        let Some(source_entry) = inode_table_read.entry_for_ino(source_ino).cloned() else {
+        let Some(source_entry) = self.inode_table.entry_for_ino(source_ino) else {
             reply.error(ENOENT);
             return Ok(());
         };
 
-        let Some(dest_parent_entry) = inode_table_read.entry_for_ino(newparent).cloned() else {
+        let Some(dest_parent_entry) = self.inode_table.entry_for_ino(newparent) else {
             reply.error(ENOENT);
             return Ok(());
         };
@@ -1385,8 +1392,6 @@ impl SiFileSystem {
             }
         };
 
-        drop(inode_table_read);
-
         match binding {
             Some(binding) => {
                 self.client
@@ -1405,10 +1410,8 @@ impl SiFileSystem {
                 // Create a pending attach
                 let name = self
                     .inode_table
-                    .read()
-                    .await
                     .entries_by_path()
-                    .values()
+                    .iter()
                     .find(|entry| match entry.data() {
                         InodeEntryData::ChangeSetFuncDir {
                             func_id: entry_func_id,
@@ -1448,10 +1451,7 @@ impl SiFileSystem {
     async fn upsert_dir_listing(&self, ino: Inode) -> SiFileSystemResult<DirListing> {
         let entry = self
             .inode_table
-            .read()
-            .await
             .entry_for_ino(ino)
-            .cloned()
             .ok_or(SiFileSystemError::ExpectedInodeNotFound(ino))?;
 
         // XXX(fnichol): remove--only for dev debugging
@@ -1496,9 +1496,10 @@ impl SiFileSystem {
                 func_id: id,
                 change_set_id,
                 size,
+                types_size,
                 kind,
             } => {
-                self.upsert_change_set_func_dir(&entry, id, change_set_id, size, &mut dirs, *kind).await?;
+                self.upsert_change_set_func_dir(&entry, *id, *change_set_id, *size, &mut dirs, *kind, *types_size).await?;
             }
             // `/change-sets/$change_set_name/schemas/`
             InodeEntryData::SchemasDir { change_set_id } => {
@@ -1537,27 +1538,31 @@ impl SiFileSystem {
                 schema_id,
                 change_set_id,
                 locked_size,
-                locked_bindings_size: locked_binding_size,
+                locked_bindings_size,
+                locked_types_size,
                 unlocked_size,
                 unlocked_bindings_size,
+                unlocked_types_size,
                 kind,
                 pending,
                 pending_func_id,
             } => {
                 self.upsert_schema_func_variants_dir(
-                    pending,
-                    kind,
+                    *pending,
+                    *kind,
                     ino,
                     &entry,
-                    change_set_id,
-                    schema_id,
+                    *change_set_id,
+                    *schema_id,
                     &mut dirs,
-                    locked_id,
-                    locked_size,
-                    locked_binding_size,
-                    unlocked_id,
-                    unlocked_size,
-                    unlocked_bindings_size,
+                    *locked_id,
+                    *locked_size,
+                    *locked_bindings_size,
+                    *locked_types_size,
+                    *unlocked_id,
+                    *unlocked_size,
+                    *unlocked_bindings_size,
+                    *unlocked_types_size,
                     pending_func_id.to_owned(),
                 ).await?;
             }
@@ -1569,18 +1574,21 @@ impl SiFileSystem {
                 func_id,
                 schema_id,
                 size,
-                bindings_size,unlocked
+                types_size,
+                bindings_size,
+                unlocked
              } => {
                 self.upsert_schema_func_dir(
                     &entry,
-                    func_id,
-                    change_set_id,
-                    unlocked,
-                    size,
+                    *func_id,
+                    *change_set_id,
+                    *unlocked,
+                    *size,
                     &mut dirs,
-                    kind,
-                    schema_id,
-                    bindings_size
+                    *kind,
+                    *schema_id,
+                    *bindings_size,
+                    *types_size,
                 ).await?;
             }
             // `/change-sets/$change_set_name/schemas/$schema_name/definition//{locked | unlocked}/`
@@ -1609,6 +1617,10 @@ impl SiFileSystem {
             InodeEntryData::InstalledSchemaMarker
             // `/change-sets/$change_set_name/functions/$func_kind/$func_name/{locked|unlocked}/index.ts`
             | InodeEntryData::FuncCode { .. }
+            // `/change-sets/$change_set_name/functions/$func_kind/$func_name/{locked|unlocked}/index.d.ts`
+            | InodeEntryData::FuncTypes { .. }
+            // `/change-sets/$change_set_name/functions/$func_kind/$func_name/{locked|unlocked}/tsconfig.json`
+            | InodeEntryData::FuncTypesTsConfig
             // `/change-sets/$change_set_name/functions/$func_kind/$func_name/(locked|unlocked}/attrs.json`
             | InodeEntryData::SchemaFuncBindings { .. }
             // `/change-sets/$change_set_name/schemas/$schema_name/$func_name/PENDING_BINDINGS_EDIT_ME.json`
@@ -1643,7 +1655,7 @@ impl SiFileSystem {
         bindings_size: u64,
         types_size: u64,
     ) -> SiFileSystemResult<()> {
-        let mut inode_table = self.inode_table.write().await;
+        let inode_table = &self.inode_table;
 
         let ino = inode_table.upsert_with_parent_ino(
             entry.ino,
@@ -1672,6 +1684,16 @@ impl SiFileSystem {
             Size::UseExisting(types_size),
         )?;
         dirs.add(ino, FILE_STR_TS_INDEX_D_TS.into(), FileType::RegularFile);
+
+        let ino = inode_table.upsert_with_parent_ino(
+            entry.ino,
+            FILE_STR_TS_CONFIG,
+            InodeEntryData::FuncTypesTsConfig,
+            FileType::RegularFile,
+            false,
+            Size::UseExisting(TS_CONFIG.len() as u64),
+        )?;
+        dirs.add(ino, FILE_STR_TS_CONFIG.into(), FileType::RegularFile);
 
         let ino = inode_table.upsert_with_parent_ino(
             entry.ino,
@@ -1709,43 +1731,68 @@ impl SiFileSystem {
     async fn upsert_schema_func_dir(
         &self,
         entry: &InodeEntry,
-        func_id: &si_id::FuncId,
-        change_set_id: &ChangeSetId,
-        unlocked: &bool,
-        size: &u64,
+        func_id: si_id::FuncId,
+        change_set_id: ChangeSetId,
+        unlocked: bool,
+        size: u64,
         dirs: &mut DirListing,
-        kind: &FuncKind,
-        schema_id: &SchemaId,
-        bindings_size: &u64,
+        kind: FuncKind,
+        schema_id: SchemaId,
+        bindings_size: u64,
+        types_size: u64,
     ) -> SiFileSystemResult<()> {
-        let mut inode_table = self.inode_table.write().await;
+        let inode_table = &self.inode_table;
         let ino = inode_table.upsert_with_parent_ino(
             entry.ino,
             FILE_STR_TS_INDEX,
             InodeEntryData::FuncCode {
-                func_id: *func_id,
-                change_set_id: *change_set_id,
-                kind: *kind,
+                func_id,
+                change_set_id,
+                kind,
             },
             FileType::RegularFile,
-            *unlocked,
-            Size::UseExisting(*size),
+            unlocked,
+            Size::UseExisting(size),
         )?;
         dirs.add(ino, FILE_STR_TS_INDEX.into(), FileType::RegularFile);
+
+        let ino = inode_table.upsert_with_parent_ino(
+            entry.ino,
+            FILE_STR_TS_INDEX_D_TS,
+            InodeEntryData::FuncTypes {
+                func_id,
+                change_set_id,
+            },
+            FileType::RegularFile,
+            false,
+            Size::UseExisting(types_size),
+        )?;
+        dirs.add(ino, FILE_STR_TS_INDEX_D_TS.into(), FileType::RegularFile);
+
+        let ino = inode_table.upsert_with_parent_ino(
+            entry.ino,
+            FILE_STR_TS_CONFIG,
+            InodeEntryData::FuncTypesTsConfig,
+            FileType::RegularFile,
+            false,
+            Size::UseExisting(TS_CONFIG.len() as u64),
+        )?;
+        dirs.add(ino, FILE_STR_TS_CONFIG.into(), FileType::RegularFile);
+
         let ino = inode_table.upsert_with_parent_ino(
             entry.ino,
             FILE_STR_BINDINGS_JSON,
             InodeEntryData::SchemaFuncBindings {
-                kind: *kind,
-                change_set_id: *change_set_id,
-                func_id: *func_id,
-                schema_id: *schema_id,
-                size: *bindings_size,
-                unlocked: *unlocked,
+                kind,
+                change_set_id,
+                func_id,
+                schema_id,
+                size: bindings_size,
+                unlocked,
             },
             FileType::RegularFile,
-            *unlocked,
-            Size::UseExisting(*bindings_size),
+            unlocked,
+            Size::UseExisting(bindings_size),
         )?;
         dirs.add(ino, FILE_STR_BINDINGS_JSON.into(), FileType::RegularFile);
         Ok(())
@@ -1754,23 +1801,25 @@ impl SiFileSystem {
     #[allow(clippy::too_many_arguments)]
     async fn upsert_schema_func_variants_dir(
         &self,
-        pending: &bool,
-        kind: &FuncKind,
+        pending: bool,
+        kind: FuncKind,
         ino: Inode,
         entry: &InodeEntry,
-        change_set_id: &ChangeSetId,
-        schema_id: &SchemaId,
+        change_set_id: ChangeSetId,
+        schema_id: SchemaId,
         dirs: &mut DirListing,
-        locked_id: &Option<si_id::FuncId>,
-        locked_size: &u64,
-        locked_binding_size: &u64,
-        unlocked_id: &Option<si_id::FuncId>,
-        unlocked_size: &u64,
-        unlocked_bindings_size: &u64,
+        locked_id: Option<si_id::FuncId>,
+        locked_size: u64,
+        locked_binding_size: u64,
+        locked_types_size: u64,
+        unlocked_id: Option<si_id::FuncId>,
+        unlocked_size: u64,
+        unlocked_bindings_size: u64,
+        unlocked_types_size: u64,
         pending_func_id: Option<FuncId>,
     ) -> SiFileSystemResult<()> {
-        let mut inode_table = self.inode_table.write().await;
-        if *pending {
+        let inode_table = &self.inode_table;
+        if pending {
             let default_bindings = match kind {
                 FuncKind::Action => Bindings {
                     bindings: vec![default_action_bindings()],
@@ -1797,9 +1846,9 @@ impl SiFileSystem {
                 entry.ino,
                 FILE_STR_PENDING_JSON,
                 InodeEntryData::SchemaFuncBindingsPending {
-                    change_set_id: *change_set_id,
-                    schema_id: *schema_id,
-                    kind: *kind,
+                    change_set_id,
+                    schema_id,
+                    kind,
                     buf: buf.clone(),
                     pending_func_id,
                 },
@@ -1815,12 +1864,13 @@ impl SiFileSystem {
                     entry.ino,
                     DIR_STR_LOCKED,
                     InodeEntryData::SchemaFuncDir {
-                        kind: *kind,
-                        func_id: *locked_id,
-                        change_set_id: *change_set_id,
-                        schema_id: *schema_id,
-                        size: *locked_size,
-                        bindings_size: *locked_binding_size,
+                        kind,
+                        func_id: locked_id,
+                        change_set_id,
+                        schema_id,
+                        size: locked_size,
+                        bindings_size: locked_binding_size,
+                        types_size: locked_types_size,
                         unlocked: false,
                     },
                     FileType::Directory,
@@ -1835,12 +1885,13 @@ impl SiFileSystem {
                     entry.ino,
                     DIR_STR_UNLOCKED,
                     InodeEntryData::SchemaFuncDir {
-                        kind: *kind,
-                        func_id: *unlocked_id,
-                        change_set_id: *change_set_id,
-                        schema_id: *schema_id,
-                        size: *unlocked_size,
-                        bindings_size: *unlocked_bindings_size,
+                        kind,
+                        func_id: unlocked_id,
+                        change_set_id,
+                        schema_id,
+                        size: unlocked_size,
+                        bindings_size: unlocked_bindings_size,
+                        types_size: unlocked_types_size,
                         unlocked: true,
                     },
                     FileType::Directory,
@@ -1868,14 +1919,12 @@ impl SiFileSystem {
             .await?;
         let mut existing_entries: HashMap<Inode, InodeEntry> = self
             .inode_table
-            .read()
-            .await
             .direct_child_entries(entry.ino)?
             .iter()
             .map(|entry| (entry.ino, entry.clone()))
             .collect();
         for (func_name, funcs) in funcs_of_kind {
-            let mut inode_table = self.inode_table.write().await;
+            let inode_table = &self.inode_table;
 
             let ino = inode_table.upsert_with_parent_ino(
                 entry.ino,
@@ -1886,6 +1935,7 @@ impl SiFileSystem {
                     unlocked_id: funcs.unlocked.as_ref().map(|f| f.id),
                     locked_size: funcs.locked.as_ref().map(|f| f.code_size).unwrap_or(0),
                     unlocked_size: funcs.unlocked.as_ref().map(|f| f.code_size).unwrap_or(0),
+                    locked_types_size: funcs.locked.as_ref().map(|f| f.types_size).unwrap_or(0),
                     schema_id: *schema_id,
                     locked_bindings_size: funcs
                         .locked
@@ -1897,6 +1947,7 @@ impl SiFileSystem {
                         .as_ref()
                         .map(|f| f.bindings_size)
                         .unwrap_or(0),
+                    unlocked_types_size: funcs.unlocked.as_ref().map(|f| f.types_size).unwrap_or(0),
                     change_set_id: *change_set_id,
                     pending: false,
                     pending_func_id: None,
@@ -1934,9 +1985,7 @@ impl SiFileSystem {
             FuncKind::Qualification,
         ] {
             let kind_pluralize_str = kind_pluralized_to_string(kind);
-            let mut inode_table = self.inode_table.write().await;
-
-            let ino = inode_table.upsert_with_parent_ino(
+            let ino = self.inode_table.upsert_with_parent_ino(
                 entry.ino,
                 &kind_pluralize_str,
                 InodeEntryData::SchemaFuncKindDir {
@@ -1962,10 +2011,10 @@ impl SiFileSystem {
     ) -> SiFileSystemResult<()> {
         let asset_funcs = self
             .client
-            .asset_funcs_for_variant(*change_set_id, *schema_id)
+            .asset_funcs_for_schema(*change_set_id, *schema_id)
             .await?;
         if let Some(unlocked_asset_func) = asset_funcs.unlocked {
-            let ino = self.inode_table.write().await.upsert_with_parent_ino(
+            let ino = self.inode_table.upsert_with_parent_ino(
                 entry.ino,
                 DIR_STR_UNLOCKED,
                 InodeEntryData::AssetDefinitionDir {
@@ -1984,7 +2033,7 @@ impl SiFileSystem {
             dirs.add(ino, DIR_STR_UNLOCKED.into(), FileType::Directory);
         }
         if let Some(locked_asset_func) = asset_funcs.locked {
-            let ino = self.inode_table.write().await.upsert_with_parent_ino(
+            let ino = self.inode_table.upsert_with_parent_ino(
                 entry.ino,
                 DIR_STR_LOCKED,
                 InodeEntryData::AssetDefinitionDir {
@@ -2014,7 +2063,7 @@ impl SiFileSystem {
         dirs: &mut DirListing,
     ) -> SiFileSystemResult<()> {
         if *installed {
-            let mut inode_table = self.inode_table.write().await;
+            let inode_table = &self.inode_table;
             let functions_ino = inode_table.upsert_with_parent_ino(
                 entry.ino,
                 DIR_STR_FUNCTIONS,
@@ -2078,8 +2127,7 @@ impl SiFileSystem {
     ) -> SiFileSystemResult<()> {
         let schemas = self.client.schemas(*change_set_id).await?;
         for schema in schemas {
-            let mut inode_table = self.inode_table.write().await;
-            let ino = inode_table.upsert_with_parent_ino(
+            let ino = self.inode_table.upsert_with_parent_ino(
                 entry.ino,
                 &schema.name,
                 InodeEntryData::SchemaDir {
@@ -2097,29 +2145,55 @@ impl SiFileSystem {
         Ok(())
     }
 
+    #[allow(clippy::too_many_arguments)]
     async fn upsert_change_set_func_dir(
         &self,
         entry: &InodeEntry,
-        id: &si_id::FuncId,
-        change_set_id: &ChangeSetId,
-        size: &u64,
+        func_id: si_id::FuncId,
+        change_set_id: ChangeSetId,
+        size: u64,
         dirs: &mut DirListing,
         kind: FuncKind,
+        types_size: u64,
     ) -> SiFileSystemResult<()> {
-        let mut inode_table = self.inode_table.write().await;
+        let inode_table = &self.inode_table;
         let ino = inode_table.upsert_with_parent_ino(
             entry.ino,
             FILE_STR_TS_INDEX,
             InodeEntryData::FuncCode {
-                func_id: *id,
-                change_set_id: *change_set_id,
+                func_id,
+                change_set_id,
                 kind,
             },
             FileType::RegularFile,
             false,
-            Size::UseExisting(*size),
+            Size::UseExisting(size),
         )?;
         dirs.add(ino, FILE_STR_TS_INDEX.into(), FileType::RegularFile);
+
+        let ino = inode_table.upsert_with_parent_ino(
+            entry.ino,
+            FILE_STR_TS_INDEX_D_TS,
+            InodeEntryData::FuncTypes {
+                func_id,
+                change_set_id,
+            },
+            FileType::RegularFile,
+            false,
+            Size::UseExisting(types_size),
+        )?;
+        dirs.add(ino, FILE_STR_TS_INDEX_D_TS.into(), FileType::RegularFile);
+
+        let ino = inode_table.upsert_with_parent_ino(
+            entry.ino,
+            FILE_STR_TS_CONFIG,
+            InodeEntryData::FuncTypesTsConfig,
+            FileType::RegularFile,
+            false,
+            Size::UseExisting(TS_CONFIG.len() as u64),
+        )?;
+        dirs.add(ino, FILE_STR_TS_CONFIG.into(), FileType::RegularFile);
+
         Ok(())
     }
 
@@ -2140,17 +2214,17 @@ impl SiFileSystem {
                 format!("{}:{}", func.name, func.id)
             } else {
                 names.insert(func.name.clone());
-                func.name
+                func.name.clone()
             };
-            let mut inode_table = self.inode_table.write().await;
 
-            let ino = inode_table.upsert_with_parent_ino(
+            let ino = self.inode_table.upsert_with_parent_ino(
                 entry.ino,
                 &func_name,
                 InodeEntryData::ChangeSetFuncDir {
                     func_id: func.id,
                     change_set_id: *change_set_id,
                     size: func.code_size,
+                    types_size: func.types_size,
                     kind: *kind,
                 },
                 FileType::Directory,
@@ -2177,9 +2251,8 @@ impl SiFileSystem {
             FuncKind::Qualification,
         ] {
             let kind_pluralize_str = kind_pluralized_to_string(kind);
-            let mut inode_table = self.inode_table.write().await;
 
-            let ino = inode_table.upsert_with_parent_ino(
+            let ino = self.inode_table.upsert_with_parent_ino(
                 entry.ino,
                 &kind_pluralize_str,
                 InodeEntryData::ChangeSetFuncKindDir {
@@ -2201,7 +2274,8 @@ impl SiFileSystem {
         change_set_id: &ChangeSetId,
         dirs: &mut DirListing,
     ) -> SiFileSystemResult<()> {
-        let mut inode_table = self.inode_table.write().await;
+        let inode_table = &self.inode_table;
+
         let functions_ino = inode_table.upsert_with_parent_ino(
             entry.ino,
             DIR_STR_FUNCTIONS,
@@ -2232,8 +2306,7 @@ impl SiFileSystem {
         entry: &InodeEntry,
         dirs: &mut DirListing,
     ) -> SiFileSystemResult<()> {
-        let mut inode_table = self.inode_table.write().await;
-        let ino = inode_table.upsert_with_parent_ino(
+        let ino = self.inode_table.upsert_with_parent_ino(
             entry.ino,
             DIR_STR_CHANGE_SETS,
             InodeEntryData::ChangeSets,
@@ -2252,10 +2325,8 @@ impl SiFileSystem {
     ) -> SiFileSystemResult<()> {
         let change_sets = self.client.list_change_sets().await?;
         for change_set in change_sets {
-            let mut inode_table = self.inode_table.write().await;
-
             let file_name = &change_set.name;
-            let ino = inode_table.upsert_with_parent_ino(
+            let ino = self.inode_table.upsert_with_parent_ino(
                 ino,
                 file_name,
                 InodeEntryData::ChangeSet {
@@ -2279,7 +2350,7 @@ impl SiFileSystem {
         offset: i64,
         mut reply: ReplyDirectory,
     ) -> SiFileSystemResult<()> {
-        if self.inode_table.read().await.entry_for_ino(ino).is_none() {
+        if self.inode_table.entry_for_ino(ino).is_none() {
             reply.error(ENOENT);
             return Ok(());
         };
@@ -2299,21 +2370,21 @@ impl SiFileSystem {
     }
 
     async fn invalidate_change_set(&self, inactive_change_set_id: ChangeSetId) {
-        let mut inode_table = self.inode_table.write().await;
-        let ino = inode_table
+        let ino = self
+            .inode_table
             .entries_by_path()
             .iter()
-            .find(|(_, entry)| {
-                if let InodeEntryData::ChangeSet { change_set_id, .. } = entry.data() {
+            .find(|entry_ref| {
+                if let InodeEntryData::ChangeSet { change_set_id, .. } = entry_ref.data() {
                     *change_set_id == inactive_change_set_id
                 } else {
                     false
                 }
             })
-            .map(|(_, entry)| entry.ino);
+            .map(|entry_ref| entry_ref.ino);
 
         if let Some(ino) = ino {
-            inode_table.invalidate_ino(ino);
+            self.inode_table.invalidate_ino(ino);
         }
     }
 
@@ -2321,6 +2392,11 @@ impl SiFileSystem {
         while let Some(command) = rx.recv().await {
             let self_clone = self.clone();
             tokio::task::spawn(async move {
+                let cmd_name = command.name();
+                let start = Instant::now();
+                if self_clone.debug {
+                    println!("recv: {cmd_name}");
+                }
                 let res = match command {
                     FilesystemCommand::GetAttr { ino, fh, reply } => {
                         self_clone.getattr(ino, fh, reply).await
@@ -2464,15 +2540,21 @@ impl SiFileSystem {
                     }
                 };
 
+                if self_clone.debug {
+                    println!("performed: {cmd_name} in {:?}", start.elapsed());
+                }
+
                 if let Err(err) = res {
                     if let SiFileSystemError::SiFsClient(SiFsClientError::BackendError(
                         FsApiError::ChangeSetInactive(change_set_id),
                     )) = err
                     {
-                        println!("invaliding changeset {change_set_id}");
+                        if self_clone.debug {
+                            println!("invaliding changeset {change_set_id}");
+                        }
                         self_clone.invalidate_change_set(change_set_id).await;
                     } else {
-                        dbg!(err);
+                        println!("{:?}", err);
                     }
                 }
             });
@@ -2487,6 +2569,7 @@ pub fn mount(
     mount_point: impl AsRef<Path>,
     runtime_handle: runtime::Handle,
     options: Option<Vec<MountOption>>,
+    debug: bool,
 ) -> SiFileSystemResult<()> {
     let (cmd_tx, cmd_rx) = tokio::sync::mpsc::unbounded_channel();
     let async_fuse_wrapper = AsyncFuseWrapper::new(cmd_tx);
@@ -2498,9 +2581,17 @@ pub fn mount(
     let mount_point_clone = mount_point.to_path_buf();
 
     runtime_handle.spawn(async move {
-        SiFileSystem::new(mount_point_clone, token, endpoint, workspace_id, uid, gid)
-            .command_handler_loop(cmd_rx)
-            .await
+        SiFileSystem::new(
+            mount_point_clone,
+            token,
+            endpoint,
+            workspace_id,
+            uid,
+            gid,
+            debug,
+        )
+        .command_handler_loop(cmd_rx)
+        .await
     });
 
     let default_options = vec![

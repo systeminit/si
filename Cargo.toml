@@ -109,12 +109,18 @@ bollard = "0.18.1"
 bytes = "1.9.0"
 chrono = { version = "0.4.39", features = ["serde"] }
 ciborium = "0.2.2"
-clap = { version = "4.5.23", features = ["derive", "color", "env", "wrap_help"] }
+clap = { version = "4.5.23", features = [
+    "derive",
+    "color",
+    "env",
+    "wrap_help",
+] }
 color-eyre = "0.6.3"
 config = { version = "0.14.1", default-features = false, features = ["toml"] }
 convert_case = "0.6.0"
 crossbeam-queue = { version = "0.3.11" }
 darling = "0.20.10"
+dashmap = "6.1.0"
 deadpool = { version = "0.12.1", features = ["rt_tokio_1"] }
 deadpool-postgres = "0.14.0"
 derive_builder = "0.20.2"
@@ -198,7 +204,7 @@ reqwest = { version = "0.12.9", default-features = false, features = [
 ring = "=0.17.5" # Upgrading this is possible, but a pain, so we don't want to pick up every new minor version (see: https://github.com/facebook/buck2/commit/91af40b66960d003067c3d241595fb53d1e636c8)
 rust-s3 = { version = "0.34.0-rc4", default-features = false, features = [
     "tokio-rustls-tls",
-    "fail-on-err"
+    "fail-on-err",
 ] }
 rustls = { version = "0.23.19", default-features = false } # NOTE(nick,fletcher): rustls switched to "aws-lc-rs" as its default crypto provider, but we want ring (i.e. we disable the default feature for "aws-lc-rs")
 rustls-native-certs = "0.8.1"

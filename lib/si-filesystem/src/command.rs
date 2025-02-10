@@ -259,6 +259,47 @@ pub(crate) enum FilesystemCommand {
 }
 
 impl FilesystemCommand {
+    pub fn name(&self) -> &'static str {
+        match self {
+            FilesystemCommand::GetAttr { .. } => "getattr",
+            FilesystemCommand::ReadDir { .. } => "readdir",
+            FilesystemCommand::Lookup { .. } => "lookup",
+            FilesystemCommand::Forget { .. } => "forget",
+            FilesystemCommand::SetAttr { .. } => "setattr",
+            FilesystemCommand::ReadLink { .. } => "readlink",
+            FilesystemCommand::MkNod { .. } => "mknod",
+            FilesystemCommand::MkDir { .. } => "mkdir",
+            FilesystemCommand::Unlink { .. } => "unlink",
+            FilesystemCommand::RmDir { .. } => "rmdir",
+            FilesystemCommand::SymLink { .. } => "symlink",
+            FilesystemCommand::Rename { .. } => "rename",
+            FilesystemCommand::Link { .. } => "link",
+            FilesystemCommand::Open { .. } => "open",
+            FilesystemCommand::Read { .. } => "read",
+            FilesystemCommand::Write { .. } => "write",
+            FilesystemCommand::Flush { .. } => "flush",
+            FilesystemCommand::Release { .. } => "release",
+            FilesystemCommand::FSync { .. } => "fsync",
+            FilesystemCommand::OpenDir { .. } => "opendir",
+            FilesystemCommand::ReadDirPlus { .. } => "readdirplus",
+            FilesystemCommand::ReleaseDir { .. } => "releasedir",
+            FilesystemCommand::FSyncDir { .. } => "fsyncdir",
+            FilesystemCommand::SetXattr { .. } => "setxattr",
+            FilesystemCommand::GetXattr { .. } => "getxattr",
+            FilesystemCommand::ListXattr { .. } => "listxattr",
+            FilesystemCommand::RemoveXattr { .. } => "removexattr",
+            FilesystemCommand::Access { .. } => "access",
+            FilesystemCommand::Create { .. } => "create",
+            FilesystemCommand::GetLk { .. } => "getlk",
+            FilesystemCommand::SetLk { .. } => "setlk",
+            FilesystemCommand::Bmap { .. } => "bmap",
+            FilesystemCommand::IoCtl { .. } => "ioctl",
+            FilesystemCommand::Fallocate { .. } => "fallocate",
+            FilesystemCommand::Lseek { .. } => "lseek",
+            FilesystemCommand::CopyFileRange { .. } => "copy_file_range",
+        }
+    }
+
     pub fn error(self, errno: c_int) {
         match self {
             FilesystemCommand::GetAttr { reply, .. } => reply.error(errno),

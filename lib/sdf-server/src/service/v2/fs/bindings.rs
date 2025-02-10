@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, HashSet};
 
 use axum::{
-    extract::{Host, OriginalUri, Path, Query},
+    extract::{Path, Query},
     Json,
 };
 use dal::{
@@ -33,7 +33,7 @@ use si_frontend_types::{
 use si_id::WorkspaceId;
 
 use crate::{
-    extract::{HandlerContext, PosthogClient},
+    extract::{HandlerContext, PosthogEventTracker},
     service::v2::{
         func::binding::update_binding::{
             update_action_func_bindings, update_attribute_func_bindings, update_leaf_func_bindings,
@@ -44,8 +44,8 @@ use crate::{
 };
 
 use super::{
-    check_change_set, check_change_set_and_not_head, dal_func_to_fs_func, get_or_unlock_schema,
-    lookup_variant_for_schema, process_managed_schemas, FsError, FsResult,
+    check_change_set, check_change_set_and_not_head, dal_func_to_fs_func, func_types_size,
+    get_or_unlock_schema, lookup_variant_for_schema, process_managed_schemas, FsError, FsResult,
 };
 
 pub async fn get_bindings_for_func_and_schema_variant(
@@ -1137,9 +1137,7 @@ pub async fn get_identity_bindings_for_variant(
 pub async fn set_func_bindings(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
-    PosthogClient(_posthog_client): PosthogClient,
-    OriginalUri(_original_uri): OriginalUri,
-    Host(_host_name): Host,
+    tracker: PosthogEventTracker,
     Path((_workspace_id, change_set_id, schema_id, func_id)): Path<(
         WorkspaceId,
         ChangeSetId,
@@ -1153,6 +1151,16 @@ pub async fn set_func_bindings(
         .await?;
 
     check_change_set_and_not_head(&ctx).await?;
+
+    tracker.track(
+        &ctx,
+        "fs/set_func_bindings",
+        serde_json::json!({
+            "schema_id": schema_id,
+            "func_id": func_id,
+            "payload": &request
+        }),
+    );
 
     let func = Func::get_by_id(&ctx, func_id)
         .await?
@@ -1176,9 +1184,11 @@ pub async fn set_func_bindings(
     let (fs_bindings, current_bindings) = get_bindings(&ctx, func_id, schema_id).await?;
 
     if !current_bindings.is_empty() && request.is_attaching_existing {
+        let types_size = func_types_size(&ctx, func.id).await?;
         return Ok(Json(Some(dal_func_to_fs_func(
             func,
             fs_bindings.byte_size(),
+            types_size,
         ))));
     }
 
@@ -1268,21 +1278,21 @@ pub async fn set_func_bindings(
         .await?;
 
     let (fs_bindings, _) = get_bindings(&ctx, func_id, schema_id).await?;
+    let types_size = func_types_size(&ctx, func.id).await?;
 
     ctx.commit().await?;
 
     Ok(Json(Some(dal_func_to_fs_func(
         func,
         fs_bindings.byte_size(),
+        types_size,
     ))))
 }
 
 pub async fn get_func_bindings(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
-    PosthogClient(_posthog_client): PosthogClient,
-    OriginalUri(_original_uri): OriginalUri,
-    Host(_host_name): Host,
+    tracker: PosthogEventTracker,
     Path((_workspace_id, change_set_id, schema_id, func_id)): Path<(
         WorkspaceId,
         ChangeSetId,
@@ -1296,6 +1306,15 @@ pub async fn get_func_bindings(
 
     check_change_set(&ctx)?;
 
+    tracker.track(
+        &ctx,
+        "fs/get_func_bindings",
+        serde_json::json!({
+            "schema_id": schema_id,
+            "func_id": func_id,
+        }),
+    );
+
     let (fs_bindings, _) = get_bindings(&ctx, func_id, schema_id).await?;
 
     Ok(Json(fs_bindings))
@@ -1304,9 +1323,7 @@ pub async fn get_func_bindings(
 pub async fn get_identity_bindings(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
-    PosthogClient(_posthog_client): PosthogClient,
-    OriginalUri(_original_uri): OriginalUri,
-    Host(_host_name): Host,
+    tracker: PosthogEventTracker,
     Path((_workspace_id, change_set_id, schema_id)): Path<(WorkspaceId, ChangeSetId, SchemaId)>,
     Query(variant_query): Query<VariantQuery>,
 ) -> FsResult<Json<IdentityBindings>> {
@@ -1315,6 +1332,15 @@ pub async fn get_identity_bindings(
         .await?;
 
     check_change_set(&ctx)?;
+
+    tracker.track(
+        &ctx,
+        "fs/get_identity_bindings",
+        serde_json::json!({
+            "schema_id": schema_id,
+            "unlocked": variant_query.unlocked,
+        }),
+    );
 
     let variant = lookup_variant_for_schema(&ctx, schema_id, variant_query.unlocked)
         .await?
@@ -1328,17 +1354,24 @@ pub async fn get_identity_bindings(
 pub async fn set_identity_bindings(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
-    PosthogClient(_posthog_client): PosthogClient,
-    OriginalUri(_original_uri): OriginalUri,
-    Host(_host_name): Host,
+    tracker: PosthogEventTracker,
     Path((_workspace_id, change_set_id, schema_id)): Path<(WorkspaceId, ChangeSetId, SchemaId)>,
-    Json(bindings): Json<IdentityBindings>,
+    Json(request): Json<IdentityBindings>,
 ) -> FsResult<()> {
     let ctx = builder
         .build(request_ctx.build(change_set_id.into()))
         .await?;
 
     check_change_set_and_not_head(&ctx).await?;
+
+    tracker.track(
+        &ctx,
+        "fs/set_identity_bindings",
+        serde_json::json!({
+            "schema_id": schema_id,
+            "payload": &request,
+        }),
+    );
 
     let unlocked_variant = get_or_unlock_schema(&ctx, schema_id).await?;
     let schema_variant_id = unlocked_variant.id();
@@ -1348,7 +1381,7 @@ pub async fn set_identity_bindings(
         .await?
         .ok_or(FsError::ResourceNotFound)?;
 
-    for (output_socket_name, output_socket_binding) in bindings.output_sockets {
+    for (output_socket_name, output_socket_binding) in request.output_sockets {
         let (func_id, prototype_arguments) = match output_socket_binding {
             SocketIdentityBinding::Prop(prop_path) => {
                 let prop_id = Prop::find_prop_id_by_path_opt(
@@ -1386,7 +1419,7 @@ pub async fn set_identity_bindings(
         .await?;
     }
 
-    for (prop_path, prop_binding) in bindings.props {
+    for (prop_path, prop_binding) in request.props {
         let prop_id = Prop::find_prop_id_by_path_opt(
             &ctx,
             schema_variant_id,

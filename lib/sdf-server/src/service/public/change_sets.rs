@@ -56,7 +56,7 @@ async fn create_change_set(
 ) -> Result<Json<CreateChangeSetResponse>> {
     let change_set = ChangeSet::fork_head(ctx, &payload.change_set_name).await?;
 
-    tracker.track(ctx, "create_change_set", json!(payload));
+    tracker.track(ctx, "fs_create_change_set", json!(payload));
 
     ctx.write_audit_log(AuditLogKind::CreateChangeSet, payload.change_set_name)
         .await?;
