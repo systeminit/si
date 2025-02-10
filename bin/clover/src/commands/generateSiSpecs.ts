@@ -21,6 +21,7 @@ import {
   generateOutputSocketsFromProps,
 } from "../pipeline-steps/generateOutputSocketsFromProps.ts";
 import { ExpandedPkgSpec } from "../spec/pkgs.ts";
+import { createPolicyDocumentInputSockets } from "../pipeline-steps/createPolicyDocumentInputSockets.ts";
 
 const logger = _logger.ns("siSpecs").seal();
 const SI_SPEC_DIR = "si-specs";
@@ -65,6 +66,7 @@ export async function generateSiSpecs(
   // intrinsics
   specs = generateSubAssets(specs);
   specs = generateIntrinsicFuncs(specs);
+  specs = createPolicyDocumentInputSockets(specs);
   // don't generate input sockets until we have all of the output sockets
   specs = createInputSocketsBasedOnOutputSockets(specs);
   specs = generateAssetFuncs(specs);
