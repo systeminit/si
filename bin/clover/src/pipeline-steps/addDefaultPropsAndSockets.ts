@@ -62,7 +62,7 @@ export function addDefaultPropsAndSockets(
         extraProp.metadata.propPath,
       );
 
-      schemaVariant.sockets.push(createInputSocketFromProp(regionProp, "one"));
+      schemaVariant.sockets.push(createInputSocketFromProp(regionProp));
       extraProp.entries.push(regionProp);
     }
 
@@ -93,7 +93,7 @@ export function addDefaultPropsAndSockets(
         "value": "AWS Credential",
       }];
 
-      schemaVariant.sockets.push(createInputSocketFromProp(credProp, "one"));
+      schemaVariant.sockets.push(createInputSocketFromProp(credProp));
 
       if (schemaVariant.secrets.kind !== "object") {
         console.log(
