@@ -11,10 +11,6 @@
       </div>
     </div>
 
-    <!-- SEARCH -->
-    <!-- TODO(Wendy) - add variant for SiSearch for the auth portal to match Mark's Figma design -->
-    <!-- <SiSearch placeholder="Search workspaces..." disableFilters /> -->
-
     <!-- HELP BANNER-->
     <div
       :class="
@@ -83,8 +79,14 @@
       </InfoCard>
     </div>
 
-    <!-- WORKSPACES LIST -->
+    <!-- SEARCH -->
+    <SiSearch
+      placeholder="Search workspaces..."
+      disableFilters
+      @search="onSearch"
+    />
 
+    <!-- WORKSPACES LIST -->
     <LoadStatus
       :requestStatus="loadWorkspacesReqStatus"
       loadingMessage="Loading Workspaces..."
@@ -130,7 +132,7 @@
               </div>
             </div>
             <WorkspaceLinkWidget
-              v-for="workspace in sortedWorkspaces(workspaces)"
+              v-for="workspace in filteredWorkspaces"
               :key="workspace.id"
               :workspaceId="workspace.id"
             />
@@ -148,13 +150,15 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, watch } from "vue";
+import { computed, watch, ref } from "vue";
 import {
   Icon,
   Timestamp,
   themeClasses,
   LoadStatus,
+  SiSearch,
 } from "@si/vue-lib/design-system";
+import * as _ from "lodash-es";
 import clsx from "clsx";
 import { useRouter } from "vue-router";
 import { useHead } from "@vueuse/head";
@@ -168,6 +172,7 @@ const workspacesStore = useWorkspacesStore();
 const router = useRouter();
 
 const workspaces = computed(() => workspacesStore.workspaces);
+
 function sortedWorkspaces(workspaces: Workspace[]): Workspace[] {
   return workspaces.sort((a, b) => {
     // 1. Sort by isDefault (true comes first)
@@ -240,4 +245,22 @@ const getSubscriptionTier = computed(() => {
 
   return "FREE SUBSCRIPTION";
 });
+
+const searchString = ref("");
+const onSearch = (search: string) => {
+  searchString.value = search.trim().toLocaleLowerCase();
+};
+
+const filteredWorkspaces = computed(() => {
+  return sortedWorkspaces(filterWorkspacesBySearchString(workspaces.value));
+});
+
+const filterWorkspacesBySearchString = (workspaces: Workspace[]) => {
+  return _.filter(workspaces, (w) => {
+    if (w.displayName.toLowerCase().includes(searchString.value)) {
+      return true;
+    }
+    return false;
+  });
+};
 </script>
