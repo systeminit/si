@@ -96,7 +96,7 @@ export function createInputSocketsBasedOnOutputSockets(
         fromVariants.length === 1 &&
         fromVariants[0].uniqueId === schemaVariant.uniqueId
       ) continue;
-      getOrCreateInputSocketFromProp(schemaVariant, prop, "many");
+      getOrCreateInputSocketFromProp(schemaVariant, prop);
     }
 
     // Create sockets for all Arns
@@ -104,11 +104,7 @@ export function createInputSocketsBasedOnOutputSockets(
     // wanting to connecting something like "TaskArn" or "Arn" -> "TaskRoleArn"
     for (const prop of domain.entries) {
       if (!prop.name.toLowerCase().endsWith("arn")) continue;
-      const socket = getOrCreateInputSocketFromProp(
-        schemaVariant,
-        prop,
-        "many",
-      );
+      const socket = getOrCreateInputSocketFromProp(schemaVariant, prop);
       setAnnotationOnSocket(socket, { tokens: ["Arn"] });
     }
 
@@ -146,7 +142,7 @@ export function createInputSocketsBasedOnOutputSockets(
                 bind.prop_path ===
                   propPathToString(peerProp.metadata.propPath)
               ) {
-                getOrCreateInputSocketFromProp(schemaVariant, prop, "many");
+                getOrCreateInputSocketFromProp(schemaVariant, prop);
                 setAnnotationOnSocket(socket, { tokens: [prop.name] });
               }
             }

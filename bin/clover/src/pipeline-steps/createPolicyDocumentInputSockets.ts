@@ -34,7 +34,7 @@ function createPolicyDocumentInputSocketsFromProp(
     ["string", "json"].includes(prop.kind) && name.endsWith("policydocument")
   ) {
     // Create a socket connecting to policydocument
-    const socket = getOrCreateInputSocketFromProp(variant, prop, "one");
+    const socket = getOrCreateInputSocketFromProp(variant, prop);
     setAnnotationOnSocket(socket, "policydocument");
     // Make certain it's a textarea, even if it was not json in the first place
     prop.data.widgetKind = "TextArea";

@@ -36,7 +36,7 @@ function addGatewayIdSocketToEC2Route(spec: ExpandedPkgSpec) {
 
   for (const prop of domain.entries) {
     if (prop.name === "GatewayId") {
-      const socket = createInputSocketFromProp(prop, "one");
+      const socket = createInputSocketFromProp(prop);
 
       const data = socket.data;
       if (data) {
