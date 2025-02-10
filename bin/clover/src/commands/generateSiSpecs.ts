@@ -60,13 +60,17 @@ export async function generateSiSpecs(
   specs = generateDefaultActionFuncs(specs);
   specs = generateDefaultLeafFuncs(specs);
   specs = generateDefaultManagementFuncs(specs);
-  specs = assetSpecificOverrides(specs);
   // subAssets should not have any of the above, but need an asset func and
   // intrinsics
   specs = generateSubAssets(specs);
   specs = generateIntrinsicFuncs(specs);
   // don't generate input sockets until we have all of the output sockets
   specs = createInputSocketsBasedOnOutputSockets(specs);
+
+  // Our overrides right now only run after the prop tree and the sockets are generated
+  specs = assetSpecificOverrides(specs);
+
+  // These need everything to be complete
   specs = generateAssetFuncs(specs);
   specs = updateSchemaIdsForExistingSpecs(existing_specs, specs);
   specs = addSignatureToCategoryName(specs);

@@ -32,11 +32,22 @@ export function createInputSocketsBasedOnOutputSockets(
           socket.data?.connectionAnnotations,
         ) as ConnectionAnnotation[];
 
-        for (const annotations of existingAnnotations) {
-          for (const annotation of annotations.tokens) {
-            foundOutputSockets[annotation] ??= [];
-            foundOutputSockets[annotation].push(schemaVariant);
+        for (const { tokens } of existingAnnotations) {
+          if (tokens.length !== 1) {
+            throw new Error(
+              `Unexpected number of tokens on annotation for ${socket.name} on ${spec.name}`,
+            );
           }
+
+          const annotationToken = tokens[0];
+
+          // One of the annotations is always the socket name. We'll skip that one
+          if (annotationToken === socket.name) {
+            continue;
+          }
+
+          foundOutputSockets[annotationToken] ??= [];
+          foundOutputSockets[annotationToken].push(schemaVariant);
         }
       }
     }

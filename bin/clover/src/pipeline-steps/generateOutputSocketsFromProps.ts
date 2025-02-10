@@ -3,6 +3,7 @@ import { bfsPropTree } from "../spec/props.ts";
 import {
   createOutputSocketFromProp,
   ExpandedSocketSpec,
+  getSocketOnVariant,
   setAnnotationOnSocket,
 } from "../spec/sockets.ts";
 import { ExpandedPkgSpec, ExpandedSchemaVariantSpec } from "../spec/pkgs.ts";
@@ -20,6 +21,7 @@ export function generateOutputSocketsFromProps(
       ...schemaVariant.sockets,
       ...createSocketsFromResource(schemaVariant),
       ...createSocketsFromPrimaryIdentifier(schemaVariant),
+      ...createSocketsForCommonProps(schemaVariant),
     ];
 
     newSpecs.push(spec);
@@ -68,6 +70,33 @@ function createSocketsFromPrimaryIdentifier(
     if (prop.metadata.primaryIdentifier) {
       sockets.push(createOutputSocketFromProp(prop));
     }
+  }, {
+    skipTypeProps: true,
+  });
+
+  return sockets;
+}
+
+// VariantName, VariantId props should always have sockets
+function createSocketsForCommonProps(
+  variant: ExpandedSchemaVariantSpec,
+): ExpandedSocketSpec[] {
+  const { domain } = variant;
+  const variantName = variant.data.displayName;
+
+  const sockets: ExpandedSocketSpec[] = [];
+
+  bfsPropTree(domain, (prop) => {
+    if (
+      !["Name", "Id"].map((suffix) => `${variantName}${suffix}`).includes(
+        prop.name,
+      )
+    ) return;
+
+    // Don't duplicate sockets
+    if (getSocketOnVariant(variant, prop.name, "output")) return;
+
+    sockets.push(createOutputSocketFromProp(prop));
   }, {
     skipTypeProps: true,
   });

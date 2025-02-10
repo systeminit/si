@@ -1,7 +1,11 @@
 import _ from "npm:lodash";
 import _logger from "../logger.ts";
-import { createInputSocketFromProp } from "../spec/sockets.ts";
+import {
+  createInputSocketFromProp,
+  setAnnotationOnSocket,
+} from "../spec/sockets.ts";
 import { ExpandedPkgSpec } from "../spec/pkgs.ts";
+import { ExpandedPropSpec } from "../spec/props.ts";
 
 const logger = _logger.ns("assetOverrides").seal();
 
@@ -25,28 +29,51 @@ type OverrideFn = (spec: ExpandedPkgSpec) => void;
 
 const overrides = new Map<string, OverrideFn>([
   ["AWS::EC2::Route", (spec: ExpandedPkgSpec) => {
-    addGatewayIdSocketToEC2Route(spec);
+    // Add GatewayId Socket
+    const variant = spec.schemas[0].variants[0];
+
+    const prop = variant.domain.entries.find((p: ExpandedPropSpec) =>
+      p.name === "GatewayId"
+    );
+
+    if (!prop) return;
+    const socket = createInputSocketFromProp(prop, "one");
+
+    setAnnotationOnSocket(socket, { tokens: ["InternetGatewayId"] });
+    setAnnotationOnSocket(socket, { tokens: ["VPNGatewayId"] });
+
+    variant.sockets.push(socket);
+  }],
+  ["AWS::CloudTrail::Trail", (spec: ExpandedPkgSpec) => {
+    const variant = spec.schemas[0].variants[0];
+
+    for (const prop of variant.domain.entries) {
+      switch (prop.name) {
+        case "S3BucketName": {
+          const socket = createInputSocketFromProp(prop, "one", [{
+            tokens: ["BucketName"],
+          }]);
+
+          variant.sockets.push(socket);
+          break;
+        }
+        case "SnsTopicName": {
+          const socket = createInputSocketFromProp(prop, "one", [{
+            tokens: ["TopicName"],
+          }]);
+
+          variant.sockets.push(socket);
+          break;
+        }
+        case "KMSKeyId": {
+          const socket = createInputSocketFromProp(prop, "one", [{
+            tokens: ["KeyId"],
+          }]);
+
+          variant.sockets.push(socket);
+          break;
+        }
+      }
+    }
   }],
 ]);
-
-function addGatewayIdSocketToEC2Route(spec: ExpandedPkgSpec) {
-  const [schema] = spec.schemas;
-  const [variant] = schema.variants;
-  const { domain } = variant;
-
-  for (const prop of domain.entries) {
-    if (prop.name === "GatewayId") {
-      const socket = createInputSocketFromProp(prop, "one");
-
-      const data = socket.data;
-      if (data) {
-        const annotation = JSON.parse(data.connectionAnnotations);
-        annotation.push({ tokens: ["InternetGatewayId"] });
-        annotation.push({ tokens: ["VPNGatewayId"] });
-        data.connectionAnnotations = JSON.stringify(annotation);
-      }
-
-      variant.sockets.push(socket);
-    }
-  }
-}
