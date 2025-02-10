@@ -156,6 +156,29 @@ impl FuncBinding {
             _ => None,
         }
     }
+
+    pub fn schema_variant_id(&self) -> Option<SchemaVariantId> {
+        match self {
+            FuncBinding::Action {
+                schema_variant_id, ..
+            } => *schema_variant_id,
+            FuncBinding::Attribute {
+                schema_variant_id, ..
+            } => *schema_variant_id,
+            FuncBinding::Authentication {
+                schema_variant_id, ..
+            } => Some(*schema_variant_id),
+            FuncBinding::CodeGeneration {
+                schema_variant_id, ..
+            } => *schema_variant_id,
+            FuncBinding::Management {
+                schema_variant_id, ..
+            } => *schema_variant_id,
+            FuncBinding::Qualification {
+                schema_variant_id, ..
+            } => *schema_variant_id,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, Serialize, PartialEq, Hash)]

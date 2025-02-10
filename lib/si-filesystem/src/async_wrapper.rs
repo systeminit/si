@@ -52,6 +52,7 @@ impl Filesystem for AsyncFuseWrapper {
         _req: &fuser::Request<'_>,
         _config: &mut fuser::KernelConfig,
     ) -> Result<(), nix::libc::c_int> {
+        self.tx.send(FilesystemCommand::HydrateChangeSets).unwrap();
         Ok(())
     }
 
