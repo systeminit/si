@@ -54,19 +54,26 @@ const funcSpecs: Record<string, FuncSpecInfo> = {
     path: "./src/cloud-control-funcs/actions/awsCloudControlUpdate.ts",
   },
   // Code Generation
-  "awsCloudControlCreate": {
+  awsCloudControlCreate: {
     id: "c48518d82a2db7064e7851c36636c665dce775610d08958a8a4f0c5c85cd808e",
     backendKind: "jsAttribute",
     responseType: "codeGeneration",
     displayName: "Code Gen for creating a Cloud Control Asset",
     path: "./src/cloud-control-funcs/code-gen/awsCloudControlCodeGenCreate.ts",
   },
-  "awsCloudControlUpdate": {
+  awsCloudControlUpdate: {
     id: "f170263ef3fbb0e8017b47221c5d70ae412b2eaa33e75e1a98525c9a070d60f6",
     backendKind: "jsAttribute",
     responseType: "codeGeneration",
     displayName: "Code Gen for updating a Cloud Control Asset",
     path: "./src/cloud-control-funcs/code-gen/awsCloudControlCodeGenUpdate.ts",
+  },
+  awsCloudFormationLint: {
+    id: "fdef639540613ce1639df4153f9bb5a8929e9815477eb57beb3616af48a74335",
+    backendKind: "jsAttribute",
+    responseType: "codeGeneration",
+    displayName: "Code Gen for use in validating a Cloudformation document",
+    path: "./src/cloud-control-funcs/code-gen/awsCloudFormationLint.ts",
   },
   // Management
   "Discover on AWS": {
@@ -82,6 +89,14 @@ const funcSpecs: Record<string, FuncSpecInfo> = {
     responseType: "management",
     displayName: "Import a Cloud Control Asset",
     path: "./src/cloud-control-funcs/management/awsCloudControlImport.ts",
+  },
+  // Qualification
+  awsCloudFormationLintQualification: {
+    id: "a8586fc5b4886497626fd3274c13de3f778f71b8169b3b7f20ee6db7d29b1069",
+    backendKind: "jsAttribute",
+    responseType: "qualification",
+    displayName: "Qualification for validating Cloudformation document",
+    path: "./src/cloud-control-funcs/qualifications/awsCloudFormationLint.ts",
   },
 };
 
@@ -169,15 +184,18 @@ export function createDefaultCodeGenFuncs(domain_id: string): FuncSpec[] {
   const codeGenFuncs = [
     "awsCloudControlCreate",
     "awsCloudControlUpdate",
+    "awsCloudFormationLint",
   ];
 
-  const args: FuncArgumentSpec[] = [{
-    name: "domain",
-    kind: "object",
-    elementKind: null,
-    uniqueId: domain_id,
-    deleted: false,
-  }];
+  const args: FuncArgumentSpec[] = [
+    {
+      name: "domain",
+      kind: "object",
+      elementKind: null,
+      uniqueId: domain_id,
+      deleted: false,
+    },
+  ];
 
   for (const func of codeGenFuncs) {
     const spec = funcSpecs[func];
@@ -187,12 +205,35 @@ export function createDefaultCodeGenFuncs(domain_id: string): FuncSpec[] {
   return ret;
 }
 
+export function createDefaultQualificationFuncs(domain_id: string): FuncSpec[] {
+  if (!domain_id) {
+    throw new Error("no domain id provided for qualification func!");
+  }
+
+  const ret: FuncSpec[] = [];
+  const qualificationFuncs = ["awsCloudFormationLintQualification"];
+
+  const args: FuncArgumentSpec[] = [
+    {
+      name: "domain",
+      kind: "object",
+      elementKind: null,
+      uniqueId: domain_id,
+      deleted: false,
+    },
+  ];
+
+  for (const func of qualificationFuncs) {
+    const spec = funcSpecs[func];
+    ret.push(createDefaultFuncSpec(func, spec, args));
+  }
+
+  return ret;
+}
+
 export function createDefaultManagementFuncs(): FuncSpec[] {
   const ret: FuncSpec[] = [];
-  const actionFuncs = [
-    "Discover on AWS",
-    "Import from AWS",
-  ];
+  const actionFuncs = ["Discover on AWS", "Import from AWS"];
 
   for (const func of actionFuncs) {
     const spec = funcSpecs[func];
@@ -242,7 +283,5 @@ export function createManagementFuncSpec(
 
 // Si uses a version of base64 that removes the padding at the end for some reason
 export function strippedBase64(code: string) {
-  return Buffer.from(code).toString(
-    "base64",
-  ).replace(/=*$/, "");
+  return Buffer.from(code).toString("base64").replace(/=*$/, "");
 }

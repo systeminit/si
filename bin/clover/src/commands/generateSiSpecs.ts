@@ -3,6 +3,7 @@ import { pkgSpecFromCf } from "../specPipeline.ts";
 import { generateAssetFuncs } from "../pipeline-steps/generateAssetFuncs.ts";
 import { generateDefaultActionFuncs } from "../pipeline-steps/generateActionFuncs.ts";
 import { generateDefaultLeafFuncs } from "../pipeline-steps/generateLeafFuncs.ts";
+import { generateDefaultQualificationFuncs } from "../pipeline-steps/generateQualificationFuncs.ts";
 import { generateDefaultManagementFuncs } from "../pipeline-steps/generateManagementFuncs.ts";
 import { addDefaultPropsAndSockets } from "../pipeline-steps/addDefaultPropsAndSockets.ts";
 import { generateSubAssets } from "../pipeline-steps/generateSubAssets.ts";
@@ -14,12 +15,8 @@ import { getExistingSpecs } from "../specUpdates.ts";
 
 import _logger from "../logger.ts";
 import { assetSpecificOverrides } from "../pipeline-steps/assetSpecificOverrides.ts";
-import {
-  addSignatureToCategoryName,
-} from "../pipeline-steps/addSignatureToCategoryName.ts";
-import {
-  generateOutputSocketsFromProps,
-} from "../pipeline-steps/generateOutputSocketsFromProps.ts";
+import { addSignatureToCategoryName } from "../pipeline-steps/addSignatureToCategoryName.ts";
+import { generateOutputSocketsFromProps } from "../pipeline-steps/generateOutputSocketsFromProps.ts";
 import { ExpandedPkgSpec } from "../spec/pkgs.ts";
 import { createPolicyDocumentInputSockets } from "../pipeline-steps/createPolicyDocumentInputSockets.ts";
 
@@ -61,6 +58,7 @@ export async function generateSiSpecs(
   specs = generateDefaultActionFuncs(specs);
   specs = generateDefaultLeafFuncs(specs);
   specs = generateDefaultManagementFuncs(specs);
+  specs = generateDefaultQualificationFuncs(specs);
   // subAssets should not have any of the above, but need an asset func and
   // intrinsics
   specs = generateSubAssets(specs);
@@ -85,10 +83,7 @@ export async function generateSiSpecs(
 
     try {
       logger.debug(`Writing ${name}.json`);
-      await Deno.writeTextFile(
-        `${SI_SPEC_DIR}/${name}.json`,
-        specJson,
-      );
+      await Deno.writeTextFile(`${SI_SPEC_DIR}/${name}.json`, specJson);
     } catch (e) {
       console.log(`Error writing to file: ${name}: ${e}`);
       continue;
