@@ -1,11 +1,11 @@
 import _ from "lodash";
 import {
-  createDefaultCodeGenFuncs,
+  createDefaultQualificationFuncs,
   createLeafFuncSpec,
 } from "../spec/funcs.ts";
 import { ExpandedPkgSpec } from "../spec/pkgs.ts";
 
-export function generateDefaultLeafFuncs(
+export function generateDefaultQualificationFuncs(
   specs: ExpandedPkgSpec[],
 ): ExpandedPkgSpec[] {
   const newSpecs = [] as ExpandedPkgSpec[];
@@ -19,18 +19,16 @@ export function generateDefaultLeafFuncs(
 
     if (!domain_id) {
       console.log(
-        `Could not generate codegen funcs for ${spec.name}: missing domain id!`,
+        `Could not generate qualification funcs for ${spec.name}: missing domain id!`,
       );
       continue;
     }
 
-    const defaultCodeGenFuncs = createDefaultCodeGenFuncs(domain_id);
+    const defaultCodeGenFuncs = createDefaultQualificationFuncs(domain_id);
 
     for (const codeGenFunc of defaultCodeGenFuncs) {
       funcs.push(codeGenFunc);
-      leafFuncs.push(
-        createLeafFuncSpec("codeGeneration", codeGenFunc.uniqueId),
-      );
+      leafFuncs.push(createLeafFuncSpec("qualification", codeGenFunc.uniqueId));
     }
 
     newSpecs.push(spec);
