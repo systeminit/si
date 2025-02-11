@@ -43,6 +43,7 @@ use crate::schema::variant::root_prop::component_type::ComponentType;
 use crate::schema::variant::SchemaVariantError;
 use crate::socket::input::InputSocketError;
 use crate::socket::output::OutputSocketError;
+use crate::validation::{ValidationError, ValidationOutput};
 use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
 use crate::workspace_snapshot::edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants};
 use crate::workspace_snapshot::node_weight::attribute_prototype_argument_node_weight::ArgumentTargets;
@@ -212,6 +213,8 @@ pub enum ComponentError {
     TryLock(#[from] TryLockError),
     #[error("unexpected explicit source ({0}) and inferred source ({1}) for input socket match ({2:?}) with an arity of one")]
     UnexpectedExplicitAndInferredSources(ComponentId, ComponentId, ComponentInputSocket),
+    #[error("validation error: {0}")]
+    Validation(#[from] ValidationError),
     #[error("value source for known prop attribute value {0} is not a prop id")]
     ValueSourceForPropValueNotPropId(AttributeValueId),
     #[error("workspace error: {0}")]
@@ -510,8 +513,13 @@ impl Component {
             .await?;
 
             dvu_roots.push(DependentValueRoot::Unfinished(attribute_value.id().into()));
-            ctx.enqueue_compute_validations(attribute_value.id())
-                .await?;
+            if ValidationOutput::get_format_for_attribute_value_id(ctx, attribute_value.id())
+                .await?
+                .is_some()
+            {
+                ctx.enqueue_compute_validations(attribute_value.id())
+                    .await?;
+            }
 
             if should_descend {
                 match prop_kind {
