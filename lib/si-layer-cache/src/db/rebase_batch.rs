@@ -37,6 +37,7 @@ where
         }
     }
 
+    #[instrument(name = "rebase_batch.write", level = "info", skip_all)]
     pub fn write(
         &self,
         value: Arc<V>,
@@ -69,7 +70,7 @@ where
 
     #[instrument(
         name = "rebase_batch.read",
-        level = "debug",
+        level = "info",
         skip_all,
         fields(
             si.rebase_batch.address = %key,
@@ -81,7 +82,7 @@ where
 
     #[instrument(
         name = "rebase_batch.read_wait_for_memory",
-        level = "debug",
+        level = "info",
         skip_all,
         fields(
             si.layer_cache.memory_cache.hit = Empty,
@@ -153,7 +154,7 @@ where
 
     #[instrument(
         name = "rebase_batch.read_bytes_from_durable_storage",
-        level = "debug",
+        level = "info",
         skip_all,
         fields(
             si.rebase_batch.address = %key,

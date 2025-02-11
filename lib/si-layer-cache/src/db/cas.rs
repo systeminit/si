@@ -1,6 +1,8 @@
 use std::sync::Arc;
 use std::{collections::HashMap, fmt::Display};
 
+use telemetry::prelude::*;
+
 use serde::{de::DeserializeOwned, Serialize};
 use si_events::{Actor, ContentHash, Tenancy, WebEvent};
 
@@ -38,6 +40,7 @@ where
         }
     }
 
+    #[instrument(name = "cas.write", level = "info", skip_all)]
     pub fn write(
         &self,
         value: Arc<V>,
@@ -90,7 +93,7 @@ where
             ),
         })
     }
-
+    #[instrument(name = "cas.read_many", level = "info", skip_all)]
     pub async fn read_many(
         &self,
         keys: &[ContentHash],
@@ -98,6 +101,7 @@ where
         self.cache.get_bulk(keys).await
     }
 
+    #[instrument(name = "cas.try_read_many_as", level = "info", skip_all)]
     pub async fn try_read_many_as<T>(
         &self,
         keys: &[ContentHash],
