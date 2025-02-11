@@ -1,0 +1,19 @@
+load(
+    "@prelude-si//:macros.bzl",
+    "docker_image",
+)
+
+docker_image(
+    name = "pgbouncer-prom-exporter",
+    build_args = {
+        "BASE_VERSION": "v0.9.0",
+    },
+    srcs = {
+        "docker-entrypoint.sh": ".",
+        "pgbouncer-conn-string-exporter.sh": ".",
+    },
+    run_docker_args = [
+        "--publish",
+        "9127:9127",
+    ],
+)

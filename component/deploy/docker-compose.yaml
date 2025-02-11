@@ -82,5 +82,16 @@ services:
     depends_on:
       - otelcol
 
+  pgbouncer-prom-exporter:
+    container_name: pgbouncer-prom-exporter
+    image: systeminit/pgbouncer-prom-exporter:${INIT_VERSION:-stable}
+    profiles: [forklift, rebaser, pinga, sdf]
+    environment:
+      - BOUNCER_ADMIN_PASSWORD=${SI_BOUNCER_ADMIN_PASSWORD}
+    ports:
+      - 9127:9127
+    depends_on:
+      - pgbouncer
+
 volumes:
   config:
