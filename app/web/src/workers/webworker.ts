@@ -1,6 +1,6 @@
 import * as Comlink from "comlink";
 
-import sqlite3InitModule, { Sqlite3Static } from '@sqlite.org/sqlite-wasm';
+import sqlite3InitModule, { Database, Sqlite3Static, SqlValue } from '@sqlite.org/sqlite-wasm';
 import ReconnectingWebSocket from "reconnecting-websocket";
 import { UpsertPayload, PatchPayload, PayloadDelete, DBInterface } from "./types/dbinterface";
 
@@ -95,9 +95,11 @@ const interface = new DBInterface(url);
 
 */
 
+let db: Database;
+
 const start = (sqlite3: Sqlite3Static) => {
   log('Running SQLite3 version', sqlite3.version.libVersion);
-  const db =
+  db =
     'opfs' in sqlite3
       ? new sqlite3.oo1.OpfsDb('/si.sqlite3')
       : new sqlite3.oo1.DB('/si.sqlite3', 'ct');
@@ -123,8 +125,36 @@ const initializeSQLite = async () => {
   }
 };
 
+// INTEGER is 8 bytes, not large enough to store ULIDs
+// we'll go with string, though reading that putting the bytes as BLOBs would save space
+const ensureTables = async () => {
+  const sql = `
+  CREATE TABLE IF NOT EXISTS changesets (
+    change_set_id TEXT PRIMARY KEY,
+    workspace_id TEXT
+  ) WITHOUT ROWID;
 
-const db: DBInterface = {
+  CREATE TABLE IF NOT EXISTS snapshots (
+    change_set_id TEXT,
+    checksum TEXT,
+    PRIMARY KEY (change_set_id, checksum)
+  );
+
+  CREATE TABLE IF NOT EXISTS datablobs (
+    snapshot_rowid INTEGER,
+    kind TEXT,
+    args TEXT,
+    checksum TEXT,
+    data BLOB,
+    PRIMARY KEY (snapshot_rowid, kind, args, checksum)
+  ) WITHOUT ROWID;
+  `;
+
+  return db.exec({sql});
+}
+
+
+const dbInterface: DBInterface = {
   hello()  {
     log("Hello world?");
     return "From inner";
@@ -132,6 +162,18 @@ const db: DBInterface = {
 
   async init() {
     return initializeSQLite();
+  },
+
+  async migrate() {
+    return ensureTables();
+  },
+
+  async smokeTest() {
+    console.log("called")
+    await db.exec({sql: "delete from snapshots; insert into snapshots (change_set_id, checksum) values ('foo', 'bar'), ('apple', 'orange');"});
+    const columns: string[] = [];
+    const rows = await db.exec({sql: "select rowid, change_set_id, checksum from snapshots;", returnValue: "resultRows", columnNames: columns});
+    return {rows, columns};
   }
 }
-Comlink.expose(db);
+Comlink.expose(dbInterface);

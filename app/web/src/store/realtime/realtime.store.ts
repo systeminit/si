@@ -9,13 +9,16 @@ import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { useAuthStore } from "../auth.store";
 import { WebsocketRequest, WsEventPayloadMap } from "./realtime_events";
 import * as Comlink from "comlink";
-import { DBInterface } from "@/workers/types/dbinterface";
+import { DBInterface, interpolate } from "@/workers/types/dbinterface";
 
 const worker = new Worker(new URL("../../workers/webworker.ts", import.meta.url), { type: 'module' });
 const dbInterface: Comlink.Remote<unknown> = Comlink.wrap(worker)
 const db = dbInterface as Comlink.Remote<DBInterface>;
-await db.hello();
 await db.init();
+await db.migrate();
+const { rows, columns } = await db.smokeTest();
+console.log("SMOKE RESULTS", interpolate(columns, rows));
+
 
 type RawConnectionStatus = "open" | "closed";
 
