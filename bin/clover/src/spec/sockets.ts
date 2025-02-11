@@ -62,11 +62,23 @@ export function getOrCreateInputSocketFromProp(
   schemaVariant: ExpandedSchemaVariantSpec,
   prop: ExpandedPropSpec,
 ) {
-  let socket = schemaVariant.sockets.find((s) =>
-    s.data.kind === "input" && s.name === prop.name
-  );
+  let socket = getSocketOnVariant(schemaVariant, prop.name, "input");
+
   if (!socket) {
-    socket ??= createInputSocketFromProp(prop);
+    socket = createInputSocketFromProp(prop);
+    schemaVariant.sockets.push(socket);
+  }
+  return socket;
+}
+
+export function getOrCreateOutputSocketFromProp(
+  schemaVariant: ExpandedSchemaVariantSpec,
+  prop: ExpandedPropSpec,
+) {
+  let socket = getSocketOnVariant(schemaVariant, prop.name, "output");
+
+  if (!socket) {
+    socket = createOutputSocketFromProp(prop);
     schemaVariant.sockets.push(socket);
   }
   return socket;
