@@ -37,7 +37,7 @@ const overrides = new Map<string, OverrideFn>([
     );
 
     if (!prop) return;
-    const socket = createInputSocketFromProp(prop, "one");
+    const socket = createInputSocketFromProp(prop);
 
     setAnnotationOnSocket(socket, { tokens: ["InternetGatewayId"] });
     setAnnotationOnSocket(socket, { tokens: ["VPNGatewayId"] });
@@ -50,7 +50,7 @@ const overrides = new Map<string, OverrideFn>([
     for (const prop of variant.domain.entries) {
       switch (prop.name) {
         case "S3BucketName": {
-          const socket = createInputSocketFromProp(prop, "one", [{
+          const socket = createInputSocketFromProp(prop, [{
             tokens: ["BucketName"],
           }]);
 
@@ -58,7 +58,7 @@ const overrides = new Map<string, OverrideFn>([
           break;
         }
         case "SnsTopicName": {
-          const socket = createInputSocketFromProp(prop, "one", [{
+          const socket = createInputSocketFromProp(prop, [{
             tokens: ["TopicName"],
           }]);
 
@@ -66,7 +66,7 @@ const overrides = new Map<string, OverrideFn>([
           break;
         }
         case "KMSKeyId": {
-          const socket = createInputSocketFromProp(prop, "one", [{
+          const socket = createInputSocketFromProp(prop, [{
             tokens: ["KeyId"],
           }]);
 

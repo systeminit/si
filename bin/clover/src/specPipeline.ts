@@ -8,6 +8,7 @@ import {
 } from "./spec/props.ts";
 import {
   ExpandedPkgSpec,
+  ExpandedSchemaSpec,
   ExpandedSchemaVariantSpec,
 } from "./spec/pkgs.ts";
 
@@ -109,6 +110,7 @@ function createDomainFromSrc(
     "domain",
     pruneDomainValues(src.properties, onlyProperties),
     onlyProperties,
+    src.typeName,
   );
 }
 
@@ -120,6 +122,7 @@ function createResourceValueFromSrc(
     "resource_value",
     pruneResourceValues(src.properties, onlyProperties),
     onlyProperties,
+    src.typeName,
   );
 }
 
@@ -127,10 +130,11 @@ function createRootFromProperties(
   root_name: DefaultPropType,
   properties: Record<string, CfProperty>,
   onlyProperties: OnlyProperties,
+  typeName: string,
 ) {
   const root = createDefaultProp(root_name);
   Object.entries(properties).forEach(([name, cfData]) => {
-    const newProp = createPropFromCf(name, cfData, onlyProperties, [
+    const newProp = createPropFromCf(name, cfData, onlyProperties, typeName, [
       ...root.metadata.propPath,
     ]);
 

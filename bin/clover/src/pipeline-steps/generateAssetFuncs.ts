@@ -52,11 +52,6 @@ export function generateAssetFuncs(
 function generateAssetCodeFromVariantSpec(
   variant: ExpandedSchemaVariantSpec,
 ): string {
-  if (variant.domain.kind !== "object") throw "Domain prop is not object";
-  if (variant.resourceValue.kind !== "object") {
-    throw "ResourceValue prop is not object";
-  }
-
   let declarations = "";
   let adds = "";
 
@@ -195,8 +190,6 @@ function generatePropBuilderString(
   prop: ExpandedPropSpec,
   indent_level: number,
 ): string {
-  const is_create_only = prop.metadata.createOnly ?? false;
-
   switch (prop.kind) {
     case "array":
     case "map": {
@@ -205,27 +198,7 @@ function generatePropBuilderString(
           generatePropBuilderString(prop.typeProp, indent_level + 1)
         }\n` +
         `${indent(indent_level)})\n`;
-
-      return `new PropBuilder()\n` +
-        `${indent(indent_level)}.setKind("${prop.kind}")\n` +
-        `${indent(indent_level)}.setName("${prop.name}")\n` +
-        `${indent(indent_level)}.setHidden(${prop.data?.hidden ?? false})\n` +
-        `${
-          generateWidgetString(
-            prop.data?.widgetKind,
-            is_create_only,
-            indent_level,
-          )
-        }` +
-        `${
-          prop.data?.defaultValue
-            ? `${indent(indent_level)}.setDefaultValue(${
-              JSON.stringify(prop.data.defaultValue)
-            })\n`
-            : ""
-        }` +
-        `${entryBlock}` +
-        `${indent(indent_level)}.build()`;
+      return generatePropBuilderStringInner(prop.kind, entryBlock);
     }
     case "object": {
       const children = prop.entries.map((p) =>
@@ -240,70 +213,55 @@ function generatePropBuilderString(
           `${indent(indent_level)})\n`;
       }
 
-      return `new PropBuilder()\n` +
-        `${indent(indent_level)}.setKind("object")\n` +
-        `${indent(indent_level)}.setName("${prop.name}")\n` +
-        `${indent(indent_level)}.setHidden(${prop.data?.hidden ?? false})\n` +
-        `${
-          generateWidgetString(
-            prop.data?.widgetKind,
-            is_create_only,
-            indent_level,
-          )
-        }` +
-        `${
-          prop.data?.defaultValue
-            ? `${indent(indent_level)}.setDefaultValue(${
-              JSON.stringify(prop.data.defaultValue)
-            })\n`
-            : ""
-        }` +
-        `${addChildBlock}` +
-        `${indent(indent_level)}.build()`;
+      return generatePropBuilderStringInner("object", addChildBlock);
     }
     case "number":
-      return `new PropBuilder()\n` +
-        `${indent(indent_level)}.setName("${prop.name}")\n` +
-        `${indent(indent_level)}.setKind("integer")\n` +
-        `${indent(indent_level)}.setHidden(${prop.data?.hidden ?? false})\n` +
-        `${
-          generateWidgetString(
-            prop.data?.widgetKind,
-            is_create_only,
-            indent_level,
-          )
-        }` +
-        `${
-          prop.data?.defaultValue
-            ? `${indent(indent_level)}.setDefaultValue(${
-              JSON.stringify(prop.data.defaultValue)
-            })\n`
-            : ""
-        }` +
-        `${indent(indent_level)}.build()`;
+      return generatePropBuilderStringInner("integer");
     case "boolean":
     case "json":
     case "string":
-      return `new PropBuilder()\n` +
-        `${indent(indent_level)}.setName("${prop.name}")\n` +
-        `${indent(indent_level)}.setKind("${prop.kind}")\n` +
-        `${indent(indent_level)}.setHidden(${prop.data?.hidden ?? false})\n` +
-        `${
-          generateWidgetString(
-            prop.data?.widgetKind,
-            is_create_only,
-            indent_level,
-            prop.data?.widgetOptions,
-          )
-        }` +
-        `${
-          prop.data?.defaultValue
-            ? `${indent(indent_level)}.setDefaultValue(${
-              JSON.stringify(prop.data.defaultValue)
-            })\n`
-            : ""
-        }` +
-        `${indent(indent_level)}.build()`;
+      return generatePropBuilderStringInner(prop.kind);
+  }
+
+  function generatePropBuilderStringInner(
+    kind: string,
+    inner: string = "",
+  ) {
+    const is_create_only = prop.metadata.createOnly ?? false;
+
+    return `new PropBuilder()\n` +
+      `${indent(indent_level)}.setName("${prop.name}")\n` +
+      `${indent(indent_level)}.setKind("${kind}")\n` +
+      `${indent(indent_level)}.setHidden(${prop.data?.hidden ?? false})\n` +
+      generateWidgetString(
+        prop.data?.widgetKind,
+        is_create_only,
+        indent_level,
+        prop.data?.widgetOptions,
+      ) +
+      (
+        prop.data?.defaultValue
+          ? `${indent(indent_level)}.setDefaultValue(${
+            JSON.stringify(prop.data.defaultValue)
+          })\n`
+          : ""
+      ) +
+      (
+        prop.data?.docLink
+          ? `${indent(indent_level)}.setDocLink(${
+            JSON.stringify(prop.data.docLink)
+          })\n`
+          : ""
+      ) +
+      (
+        prop.data?.documentation
+          ? `${indent(indent_level)}.setDocumentation(${
+            JSON.stringify(prop.data.documentation)
+          })\n`
+          : ""
+      ) +
+      inner +
+      `${indent(indent_level)}.build()`;
   }
 }
 
@@ -318,9 +276,7 @@ function generateWidgetString(
     return "";
   }
 
-  const kind = widgetKind === "ComboBox"
-    ? "comboBox"
-    : widgetKind.toLowerCase();
+  const kind = `${widgetKind[0].toLowerCase()}${widgetKind.slice(1)}`;
 
   let widgetStr =
     `${indent(indentLevel)}.setWidget(new PropWidgetDefinitionBuilder()\n` +

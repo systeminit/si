@@ -20,5 +20,5 @@ export type ExpandedSchemaVariantSpec = Extend<SchemaVariantSpec, {
   domain: ExpandedPropSpecFor["object"];
   secrets: ExpandedPropSpec;
   secretDefinition: ExpandedPropSpec | null;
-  resourceValue: ExpandedPropSpec;
+  resourceValue: ExpandedPropSpecFor["object"];
 }>;
