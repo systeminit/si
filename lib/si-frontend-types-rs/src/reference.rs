@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use si_events::workspace_snapshot::{Checksum, ChecksumHasher};
 
-use crate::change_set::FrontendChecksum;
+use crate::checksum::FrontendChecksum;
 
 #[remain::sorted]
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Deserialize, Serialize, strum::Display)]
@@ -9,6 +9,7 @@ use crate::change_set::FrontendChecksum;
 pub enum ReferenceKind {
     ChangeSetList,
     ChangeSetRecord,
+    View,
 }
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct ReferenceId<T>(pub T)

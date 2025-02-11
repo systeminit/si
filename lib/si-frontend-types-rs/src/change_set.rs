@@ -8,7 +8,11 @@ use si_events::{
 };
 use si_id::{ChangeSetApprovalId, EntityId, WorkspaceId};
 
-use crate::reference::{Refer, Reference, ReferenceId, ReferenceKind};
+use crate::{
+    checksum::FrontendChecksum,
+    object::FrontendObject,
+    reference::{Refer, Reference, ReferenceId, ReferenceKind},
+};
 
 #[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -163,79 +167,4 @@ fn example() -> Result<FrontendObject, serde_json::Error> {
     };
 
     change_set_list.try_into()
-}
-
-pub trait FrontendChecksum {
-    fn checksum(&self) -> Checksum;
-}
-
-// Would be nice to do this automatically as part of the macros. As an impl for a trait
-// seems difficult to work around "conflicting implementations for trait" errors with
-// the other trait impls for the more basic types.
-impl FrontendChecksum for ChangeSetId {
-    fn checksum(&self) -> Checksum {
-        FrontendChecksum::checksum(&self.to_string())
-    }
-}
-
-impl FrontendChecksum for ChangeSetStatus {
-    fn checksum(&self) -> Checksum {
-        FrontendChecksum::checksum(&self.to_string())
-    }
-}
-
-impl FrontendChecksum for WorkspaceId {
-    fn checksum(&self) -> Checksum {
-        FrontendChecksum::checksum(&self.to_string())
-    }
-}
-
-// Generic impl for a basic type.
-impl FrontendChecksum for String {
-    fn checksum(&self) -> Checksum {
-        let mut hasher = ChecksumHasher::new();
-        hasher.update(self.as_bytes());
-        hasher.finalize()
-    }
-}
-
-impl<T> FrontendChecksum for Option<T>
-where
-    T: FrontendChecksum,
-{
-    fn checksum(&self) -> Checksum {
-        if let Some(inner) = self {
-            inner.checksum()
-        } else {
-            Checksum::default()
-        }
-    }
-}
-
-impl<T> FrontendChecksum for Vec<T>
-where
-    T: FrontendChecksum,
-{
-    fn checksum(&self) -> Checksum {
-        let mut hasher = ChecksumHasher::new();
-        for item in self {
-            hasher.update(item.checksum().as_bytes());
-        }
-        hasher.finalize()
-    }
-}
-
-impl FrontendChecksum for DateTime<Utc> {
-    fn checksum(&self) -> Checksum {
-        FrontendChecksum::checksum(&self.to_rfc3339())
-    }
-}
-
-// Payload wrapper for sending data views to the frontend.
-#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
-pub struct FrontendObject {
-    pub kind: String,
-    pub id: String,
-    pub checksum: Checksum,
-    pub data: serde_json::Value,
 }
