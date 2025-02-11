@@ -81,7 +81,7 @@ where
 
     #[instrument(
         name = "workspace_snapshot.read_wait_for_memory",
-        level = "debug",
+        level = "info",
         skip_all,
         fields(
             si.layer_cache.memory_cache.hit = Empty,
@@ -155,7 +155,7 @@ where
     /// snapshot, useful when converting an out of date snapshot into a new one
     #[instrument(
         name = "workspace_snapshot.read_bytes_from_durable_storage",
-        level = "debug",
+        level = "info",
         skip_all,
         fields(
             si.workspace_snapshot.address = %key,
@@ -169,7 +169,14 @@ where
             .get_bytes_from_durable_storage(key.to_string().into())
             .await
     }
-
+    #[instrument(
+        name = "workspace_snapshot.write_bytes_to_durable_storage",
+        level = "info",
+        skip_all,
+        fields(
+            si.workspace_snapshot.address = %key,
+        )
+    )]
     pub async fn write_bytes_to_durable_storage(
         &self,
         key: &WorkspaceSnapshotAddress,
