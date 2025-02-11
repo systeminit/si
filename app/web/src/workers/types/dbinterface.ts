@@ -1,4 +1,4 @@
-import { WorkspaceMetadata } from "../api/sdf/dal/workspace";
+import { WorkspaceMetadata } from "../../api/sdf/dal/workspace";
 import {
   ChangeSetId,
 } from "@/api/sdf/dal/change_set";
@@ -50,4 +50,9 @@ export interface PatchPayload extends PayloadMeta {
 
 export interface PayloadDelete extends PayloadMeta {
   method: "delete",
+}
+
+export interface DBInterface {
+  hello: () => string,
+  init: () => Promise<void>,
 }

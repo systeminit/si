@@ -61,6 +61,7 @@
     "cm6-theme-basic-light": "^0.2.0",
     "cm6-theme-gruvbox-dark": "^0.2.0",
     "codemirror": "^6.0.1",
+    "comlink": "^4.4.2",
     "date-fns": "^2.29.2",
     "floating-vue": "^2.0.0-beta.20",
     "fontfaceobserver": "^2.3.0",

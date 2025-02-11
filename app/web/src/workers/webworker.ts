@@ -1,18 +1,14 @@
-/*
-// In `main.js`.
-const worker = new Worker('worker.js', { type: 'module' });
-*/
+import * as Comlink from "comlink";
 
-// In `worker.js`.
-import sqlite3Worker1Promiser from '@sqlite.org/sqlite-wasm';
+import sqlite3InitModule, { Sqlite3Static } from '@sqlite.org/sqlite-wasm';
+import ReconnectingWebSocket from "reconnecting-websocket";
+import { UpsertPayload, PatchPayload, PayloadDelete, DBInterface } from "./types/dbinterface";
 
 const log = console.log;
 const error = console.error;
 
-import ReconnectingWebSocket from "reconnecting-websocket";
-import { UpsertPayload, PatchPayload, PayloadDelete } from "./types";
 
-
+/*
 class DBInterface extends EventTarget {
   #ws;
   #promiser;
@@ -97,6 +93,45 @@ class DBInterface extends EventTarget {
 const url = "" // from config
 const interface = new DBInterface(url);
 
-onmessage = (e: MessageEvent) => {
+*/
 
+const start = (sqlite3: Sqlite3Static) => {
+  log('Running SQLite3 version', sqlite3.version.libVersion);
+  const db =
+    'opfs' in sqlite3
+      ? new sqlite3.oo1.OpfsDb('/si.sqlite3')
+      : new sqlite3.oo1.DB('/si.sqlite3', 'ct');
+  log(
+    'opfs' in sqlite3
+      ? `OPFS is available, created persisted database at ${db.filename}`
+      : `OPFS is not available, created transient database ${db.filename}`,
+  );
+  // Your SQLite code here.
 };
+
+const initializeSQLite = async () => {
+  try {
+    log('Loading and initializing SQLite3 module...');
+    const sqlite3 = await sqlite3InitModule({ print: log, printErr: error });
+    log('Done initializing. Running demo...');
+    start(sqlite3);
+  } catch (err) {
+    if (err instanceof Error) 
+      error('Initialization error:', err.name, err.message);
+    else
+      error('Initialization error:', err);
+  }
+};
+
+
+const db: DBInterface = {
+  hello()  {
+    log("Hello world?");
+    return "From inner";
+  },
+
+  async init() {
+    return initializeSQLite();
+  }
+}
+Comlink.expose(db);
