@@ -8,7 +8,7 @@ use si_events::{
 };
 use si_id::{ChangeSetApprovalId, EntityId, WorkspaceId};
 
-use crate::reference::{Reference, ReferenceId, ReferenceKind};
+use crate::reference::{Refer, Reference, ReferenceId, ReferenceKind};
 
 #[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -89,6 +89,7 @@ pub struct ChangeSetApproval {
     Eq,
     si_frontend_types_macros::FrontendChecksum,
     si_frontend_types_macros::FrontendObject,
+    si_frontend_types_macros::Refer,
 )]
 #[serde(rename_all = "camelCase")]
 pub struct ChangeSetRecord {
@@ -121,18 +122,47 @@ pub struct ChangeSetList {
     pub change_sets: Vec<Reference<ChangeSetId>>,
 }
 
-// Convenience for doing things like:
-//  `let refs: Vec<Reference<ChangeSetId>> = change_set_records.iter().map(Into::into).collect();`
-impl From<ChangeSetRecord> for Reference<ChangeSetId> {
-    fn from(value: ChangeSetRecord) -> Self {
-        let checksum = FrontendChecksum::checksum(&value).to_string();
+#[allow(dead_code)]
+fn example() -> Result<FrontendObject, serde_json::Error> {
+    let ulid = si_id::ulid::Ulid::new();
 
-        Reference {
-            kind: ReferenceKind::ChangeSetRecord,
-            id: ReferenceId(value.id),
-            checksum,
-        }
-    }
+    // Pretend we retrieved the `ChangeSetRecord` materialized views
+    // for the Change Sets we're interested in.
+    let change_set_records = [
+        ChangeSetRecord {
+            name: "Base".to_string(),
+            id: ulid.into(),
+            status: ChangeSetStatus::Open,
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+            base_change_set_id: None,
+            workspace_id: ulid.into(),
+            merge_requested_by_user_id: None,
+            merge_requested_by_user: None,
+            merge_requested_at: None,
+        },
+        ChangeSetRecord {
+            name: "Feature 1".to_string(),
+            id: ulid.into(),
+            status: ChangeSetStatus::Open,
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+            base_change_set_id: Some(ulid.into()),
+            workspace_id: ulid.into(),
+            merge_requested_by_user_id: None,
+            merge_requested_by_user: None,
+            merge_requested_at: None,
+        },
+    ];
+
+    let change_set_list = ChangeSetList {
+        name: "Workspace Name".to_string(),
+        id: ulid.into(),
+        default_change_set_id: ulid.into(),
+        change_sets: change_set_records.iter().map(Into::into).collect(),
+    };
+
+    change_set_list.try_into()
 }
 
 pub trait FrontendChecksum {
