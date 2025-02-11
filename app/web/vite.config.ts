@@ -86,6 +86,13 @@ export default (opts: { mode: string }) => {
           ws: true,
         },
       },
+      headers: {
+        'Cross-Origin-Opener-Policy': 'same-origin',
+        'Cross-Origin-Embedder-Policy': 'require-corp',
+      },
+    },
+    optimizeDeps: {
+      exclude: ['@sqlite.org/sqlite-wasm'],
     },
     preview: {
       proxy: {

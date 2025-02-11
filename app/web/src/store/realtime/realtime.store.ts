@@ -8,6 +8,14 @@ import { omit } from "@/utils/omit";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { useAuthStore } from "../auth.store";
 import { WebsocketRequest, WsEventPayloadMap } from "./realtime_events";
+import * as Comlink from "comlink";
+import { DBInterface } from "@/workers/types/dbinterface";
+
+const worker = new Worker(new URL("../../workers/webworker.ts", import.meta.url), { type: 'module' });
+const dbInterface: Comlink.Remote<unknown> = Comlink.wrap(worker)
+const db = dbInterface as Comlink.Remote<DBInterface>;
+await db.hello();
+await db.init();
 
 type RawConnectionStatus = "open" | "closed";
 
