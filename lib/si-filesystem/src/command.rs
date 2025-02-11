@@ -259,6 +259,7 @@ pub(crate) enum FilesystemCommand {
 }
 
 impl FilesystemCommand {
+    #[allow(unused)]
     pub fn name(&self) -> &'static str {
         match self {
             FilesystemCommand::GetAttr { .. } => "getattr",

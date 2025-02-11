@@ -8,10 +8,10 @@ use tokio::time::Instant;
 
 use si_frontend_types::{
     fs::{
-        AssetFuncs, Binding, Bindings, ChangeSet, CreateChangeSetRequest, CreateChangeSetResponse,
-        CreateFuncRequest, CreateSchemaRequest, CreateSchemaResponse, FsApiError, Func,
-        IdentityBindings, ListChangeSetsResponse, Schema, SchemaAttributes, SetFuncBindingsRequest,
-        SetFuncCodeRequest, VariantQuery,
+        AssetFuncs, Binding, Bindings, CategoryFilter, ChangeSet, CreateChangeSetRequest,
+        CreateChangeSetResponse, CreateFuncRequest, CreateSchemaRequest, CreateSchemaResponse,
+        FsApiError, Func, IdentityBindings, ListChangeSetsResponse, Schema, SchemaAttributes,
+        SetFuncBindingsRequest, SetFuncCodeRequest, VariantQuery,
     },
     FuncKind,
 };
@@ -54,7 +54,8 @@ pub struct SiFsClient {
     workspace_id: WorkspaceId,
     endpoint: String,
     client: reqwest::Client,
-    cache: Arc<DashMap<ChangeSetId, HashMap<String, CacheEntry>>>,
+    cache: Arc<DashMap<ChangeSetId, DashMap<String, CacheEntry>>>,
+    change_set_cache: Arc<DashMap<String, CacheEntry>>,
 }
 
 const USER_AGENT: &str = "si-fs/0.0";
@@ -75,8 +76,12 @@ impl SiFsClient {
             token,
             workspace_id,
             endpoint,
-            client: reqwest::Client::builder().user_agent(USER_AGENT).build()?,
+            client: reqwest::Client::builder()
+                .connection_verbose(true)
+                .user_agent(USER_AGENT)
+                .build()?,
             cache: Arc::new(DashMap::new()),
+            change_set_cache: Arc::new(DashMap::new()),
         })
     }
 
@@ -155,7 +160,7 @@ impl SiFsClient {
                 change_set_map.insert(cache_key.clone(), cache_entry.clone());
             })
             .or_insert_with(|| {
-                let mut change_set_map = HashMap::new();
+                let change_set_map = DashMap::new();
                 change_set_map.insert(cache_key, cache_entry);
                 change_set_map
             });
@@ -217,7 +222,7 @@ impl SiFsClient {
             Ok(value)
         } else {
             let error: FsApiError = response.json().await?;
-            dbg!(&error);
+            log::error!("{error:?}");
 
             Err(SiFsClientError::BackendError(error))
         }
@@ -239,7 +244,9 @@ impl SiFsClient {
         {
             return Ok(cached_value);
         }
+        log::trace!("making request to {url}");
 
+        let start = Instant::now();
         let mut request_builder = self.client.get(url.clone()).bearer_auth(&self.token);
         request_builder = if let Some(query) = query.clone() {
             request_builder.query(&query)
@@ -247,10 +254,9 @@ impl SiFsClient {
             request_builder
         };
 
-        let start = Instant::now();
         let response = request_builder.send().await?;
         if response.status() == StatusCode::OK {
-            println!("{url} ({:?})", start.elapsed());
+            log::debug!("{url} ({:?})", start.elapsed());
             let value: R = response.json().await?;
             self.set_cache_entry(change_set_id, url, query, &value)
                 .await?;
@@ -258,7 +264,7 @@ impl SiFsClient {
             Ok(value)
         } else {
             let error: FsApiError = response.json().await?;
-            dbg!(&error);
+            log::error!("{error:?}");
 
             Err(SiFsClientError::BackendError(error))
         }
@@ -295,7 +301,7 @@ impl SiFsClient {
             Ok(())
         } else {
             let error: FsApiError = response.json().await?;
-            dbg!(&error);
+            log::error!("{error:?}");
 
             Err(SiFsClientError::BackendError(error))
         }
@@ -333,7 +339,7 @@ impl SiFsClient {
             Ok(response.json().await?)
         } else {
             let error: FsApiError = response.json().await?;
-            dbg!(&error);
+            log::error!("{error:?}");
 
             Err(SiFsClientError::BackendError(error))
         }
@@ -355,20 +361,38 @@ impl SiFsClient {
 
     /// Fetches including the active change sets
     pub async fn list_change_sets(&self) -> SiFsClientResult<ListChangeSetsResponse> {
-        let response = self
+        let url = self.fs_api_url("change-sets");
+        if let Some(cache_entry) = self.change_set_cache.get(&url) {
+            if cache_entry.created_at.elapsed() <= cache_entry.duration {
+                return Ok(serde_json::from_str(&cache_entry.value)?);
+            }
+        }
+
+        let response: ListChangeSetsResponse = self
             .client
-            .get(self.fs_api_url("change-sets"))
+            .get(&url)
             .bearer_auth(&self.token)
             .send()
             .await?
-            .error_for_status()?;
+            .error_for_status()?
+            .json()
+            .await?;
 
-        Ok(response.json().await?)
+        self.change_set_cache.insert(
+            url,
+            CacheEntry::new(
+                serde_json::to_string(&response)?,
+                Some(Duration::from_secs(10)),
+            ),
+        );
+
+        Ok(response)
     }
 
     pub async fn create_change_set(&self, name: String) -> SiFsClientResult<ChangeSet> {
         let create_change_set_request = CreateChangeSetRequest { name };
 
+        let read_url = self.fs_api_url("change-sets");
         let response = self
             .client
             .post(self.fs_api_url("change-sets/create"))
@@ -380,12 +404,33 @@ impl SiFsClient {
 
         let response: CreateChangeSetResponse = response.json().await?;
 
+        self.change_set_cache.remove(&read_url);
+
         Ok(response)
     }
 
-    pub async fn schemas(&self, change_set_id: ChangeSetId) -> SiFsClientResult<Vec<Schema>> {
-        let url = self.fs_api_change_sets("schemas", change_set_id);
+    pub async fn list_schema_categories(
+        &self,
+        change_set_id: ChangeSetId,
+    ) -> SiFsClientResult<Vec<String>> {
+        let url = self.fs_api_change_sets("schemas/categories", change_set_id);
         self.get_json(change_set_id, url, None::<()>).await
+    }
+
+    pub async fn list_schemas(
+        &self,
+        change_set_id: ChangeSetId,
+        category: Option<&str>,
+    ) -> SiFsClientResult<Vec<Schema>> {
+        let url = self.fs_api_change_sets("schemas", change_set_id);
+        self.get_json(
+            change_set_id,
+            url,
+            Some(CategoryFilter {
+                category: category.map(ToOwned::to_owned),
+            }),
+        )
+        .await
     }
 
     pub async fn change_set_funcs_of_kind(
@@ -574,12 +619,16 @@ impl SiFsClient {
         &self,
         change_set_id: ChangeSetId,
         name: String,
+        category: &str,
     ) -> SiFsClientResult<CreateSchemaResponse> {
         self.post(
             change_set_id,
             self.fs_api_change_sets("schemas/create", change_set_id),
             None::<()>,
-            Some(CreateSchemaRequest { name }),
+            Some(CreateSchemaRequest {
+                name,
+                category: Some(category.into()),
+            }),
         )
         .await
     }

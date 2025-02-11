@@ -11,10 +11,10 @@ rust_binary(
         "//lib/si-filesystem:si-filesystem",
         "//third-party/rust:clap",
         "//third-party/rust:color-eyre",
+        "//third-party/rust:env_logger",
         "//third-party/rust:nix",
         "//third-party/rust:tokio",
     ],
     srcs = glob(["src/**/*.rs"]),
     env = {"CARGO_BIN_NAME": "si-fs"},
 )
-
