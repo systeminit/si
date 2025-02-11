@@ -8,6 +8,8 @@ use dal::{
     management::prototype::ManagementPrototype, schema::variant::authoring::VariantAuthoringClient,
     ChangeSet, ChangeSetId, ComponentId, FuncId, SchemaVariantId, WorkspacePk, WsEvent,
 };
+use once_cell::sync::Lazy;
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use si_events::audit_log::AuditLogKind;
 
@@ -160,9 +162,11 @@ pub async fn generate_template(
     const specs: Output["ops"]["create"][string][] = [];
 "#
     .to_string();
+
     for (name, component_def) in create_operations {
         let mut variable_name: String = name.to_case(Case::Camel);
         variable_name.push_str("Spec");
+        variable_name = sanitize_js_variable(&variable_name);
         let spec_body = serde_json::to_string_pretty(&component_def)?;
         let component_code = format!(
             r#"
@@ -279,4 +283,18 @@ pub async fn generate_template(
             func_id: func.id,
         },
     ))
+}
+
+fn sanitize_js_variable(input: &str) -> String {
+    static RE: Lazy<Regex> =
+        Lazy::new(|| Regex::new(r"[^a-zA-Z0-9_$]").expect("Regex failed to compile; bug!"));
+    let mut sanitized = RE.replace_all(input, "").to_string();
+
+    if let Some(first_char) = sanitized.chars().next() {
+        if !first_char.is_ascii_alphabetic() && first_char != '_' && first_char != '$' {
+            sanitized.insert(0, '_');
+        }
+    }
+
+    sanitized
 }

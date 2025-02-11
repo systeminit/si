@@ -49,6 +49,7 @@ rust_library(
         "//third-party/rust:rand",
         "//third-party/rust:remain",
         "//third-party/rust:reqwest",
+        "//third-party/rust:regex",
         "//third-party/rust:serde",
         "//third-party/rust:serde_json",
         "//third-party/rust:serde_with",
