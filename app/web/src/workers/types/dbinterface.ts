@@ -1,3 +1,4 @@
+import { SqlValue } from "@sqlite.org/sqlite-wasm";
 import { WorkspaceMetadata } from "../../api/sdf/dal/workspace";
 import {
   ChangeSetId,
@@ -52,7 +53,28 @@ export interface PayloadDelete extends PayloadMeta {
   method: "delete",
 }
 
+type Column = string;
+type Columns = Column[];
+
 export interface DBInterface {
   hello: () => string,
   init: () => Promise<void>,
+  migrate: () => void,
+  smokeTest(): Promise<{columns: Columns, rows: SqlValue[][]}>,
+}
+
+type RowWithColumns = Record<Column, SqlValue>;
+type Records = RowWithColumns[];
+
+export const interpolate = (columns: Columns, rows: SqlValue[][]): Records => {
+  const results: Records = [];
+  rows.forEach((values) => {
+    const row: RowWithColumns = {};
+    columns.forEach((column, idx) => {
+      const val = values[idx];
+      if (val) row[column] = val;
+    })
+    results.push(row);
+  })
+  return results;
 }
