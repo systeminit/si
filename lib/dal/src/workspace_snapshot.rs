@@ -410,6 +410,11 @@ impl WorkspaceSnapshot {
     }
 
     /// Calculates the set of updates for the current snapshot against its working copy
+    #[instrument(
+        name = "workspace_snapshot.current_rebase_batch",
+        level = "info",
+        skip_all
+    )]
     pub async fn current_rebase_batch(&self) -> WorkspaceSnapshotResult<Option<RebaseBatch>> {
         let self_clone = self.clone();
         let updates = slow_rt::spawn(async move {
@@ -430,6 +435,11 @@ impl WorkspaceSnapshot {
     /// must have already seen all the changes made to `base_snapshot`, and both
     /// snapshots should have had their merkle tree hashes calculated with
     /// `Self::cleanup_and_merkle_tree_hash`.
+    #[instrument(
+        name = "workspace_snapshot.calculate_rebase_batch",
+        level = "info",
+        skip_all
+    )]
     pub async fn calculate_rebase_batch(
         base_snapshot: Arc<WorkspaceSnapshot>,
         updated_snapshot: Arc<WorkspaceSnapshot>,
@@ -469,7 +479,7 @@ impl WorkspaceSnapshot {
 
     #[instrument(
         name = "workspace_snapshot.write",
-        level = "debug",
+        level = "info",
         skip_all,
         fields(
             si.workspace_snapshot.address = Empty,
@@ -524,6 +534,11 @@ impl WorkspaceSnapshot {
 
     /// Write the read only graph to the layer db, unmodified. Useful for
     /// persisting a snapshot that has been deserialized via `Self::from_bytes`
+    #[instrument(
+        name = "workspace_snapshot.write_readonly_graph",
+        level = "info",
+        skip_all
+    )]
     pub async fn write_readonly_graph(
         &self,
         ctx: &DalContext,

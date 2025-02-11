@@ -522,6 +522,7 @@ impl DalContext {
         }
     }
 
+    #[instrument(name = "context.write_rebase_batch", level = "info", skip_all)]
     pub async fn write_rebase_batch(
         &self,
         rebase_batch: RebaseBatch,
@@ -545,6 +546,7 @@ impl DalContext {
         Ok(rebase_batch_address)
     }
 
+    #[instrument(name = "context.write_current_rebase_batch", level = "info", skip_all)]
     async fn write_current_rebase_batch(
         &self,
     ) -> Result<Option<RebaseBatchAddress>, TransactionsError> {
@@ -560,6 +562,7 @@ impl DalContext {
     }
 
     /// Consumes all inner transactions and committing all changes made within them.
+    #[instrument(name = "context.commit", level = "info", skip_all)]
     pub async fn commit(&self) -> TransactionsResult<()> {
         let maybe_rebase = match self.write_current_rebase_batch().await? {
             Some(updates_address) => DelayedRebaseWithReply::WithUpdates {
@@ -585,6 +588,7 @@ impl DalContext {
         }
     }
 
+    #[instrument(name = "context.commit_no_rebase", level = "info", skip_all)]
     pub async fn commit_no_rebase(&self) -> TransactionsResult<()> {
         // Since we are not rebasing, we need to write the final message and flush all
         // pending audit logs.
