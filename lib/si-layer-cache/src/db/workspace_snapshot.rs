@@ -37,6 +37,7 @@ where
         }
     }
 
+    #[instrument(level = "info", skip_all)]
     pub fn write(
         &self,
         value: Arc<V>,
@@ -44,8 +45,15 @@ where
         tenancy: Tenancy,
         actor: Actor,
     ) -> LayerDbResult<(WorkspaceSnapshotAddress, PersisterStatusReader)> {
+        let span = Span::current();
+        let write_wait = Instant::now();
         let value_clone = value.clone();
         let (postcard_value, size_hint) = serialize::to_vec(&value)?;
+
+        span.record(
+            "si.layer_cache.workspace_snapshot.write_serialize",
+            write_wait.elapsed().as_millis(),
+        );
 
         let key = WorkspaceSnapshotAddress::new(&postcard_value);
         let cache_key: Arc<str> = key.to_string().into();
@@ -63,13 +71,12 @@ where
             actor,
         );
         let reader = self.persister_client.write_event(event)?;
-
         Ok((key, reader))
     }
 
     #[instrument(
         name = "workspace_snapshot.read",
-        level = "debug",
+        level = "info",
         skip_all,
         fields(
             si.workspace_snapshot.address = %key,

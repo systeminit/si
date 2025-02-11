@@ -319,6 +319,7 @@ pub struct DiagramComponentViews {
 }
 
 impl Diagram {
+    #[instrument(level = "info", skip_all)]
     async fn assemble_component_views(
         ctx: &DalContext,
         base_snapshot: &Arc<WorkspaceSnapshot>,
@@ -415,6 +416,7 @@ impl Diagram {
         })
     }
 
+    #[instrument(level = "info", skip_all)]
     async fn assemble_inferred_connection_views(
         ctx: &DalContext,
         components: &ComponentInfoCache,
@@ -458,6 +460,7 @@ impl Diagram {
         Ok(diagram_inferred_edges)
     }
 
+    #[instrument(level = "info", skip_all)]
     async fn get_base_snapshot(ctx: &DalContext) -> DiagramResult<(Arc<WorkspaceSnapshot>, bool)> {
         let base_change_set_id = if let Some(change_set_id) = ctx.change_set()?.base_change_set_id {
             change_set_id
@@ -483,6 +486,7 @@ impl Diagram {
         ))
     }
 
+    #[instrument(level = "info", skip_all)]
     async fn assemble_removed_components(
         ctx: &DalContext,
         base_snapshot: Arc<WorkspaceSnapshot>,
@@ -546,6 +550,7 @@ impl Diagram {
         Ok(removed_component_summaries)
     }
 
+    #[instrument(level = "info", skip_all)]
     async fn assemble_removed_edges(ctx: &DalContext) -> DiagramResult<Vec<SummaryDiagramEdge>> {
         let removed_incoming_connections: Vec<IncomingConnection> = ctx
             .workspace_snapshot()?
@@ -574,6 +579,7 @@ impl Diagram {
     /// not in this changeset, we can ignore the deleted edge, since we won't
     /// render it. If the components are restored from the base, the edge will
     /// *magically* reappear as deleted.
+    #[instrument(level = "info", skip_all)]
     async fn assemble_removed_management_edges(
         ctx: &DalContext,
         base_snapshot: Arc<WorkspaceSnapshot>,
