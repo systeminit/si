@@ -141,3 +141,86 @@ fn derive_frontend_object(
 
     Ok(output.into())
 }
+
+#[manyhow]
+#[proc_macro_derive(Refer, attributes(refer))]
+pub fn refer_derive(
+    input: proc_macro::TokenStream,
+    errors: &mut manyhow::Emitter,
+) -> manyhow::Result<proc_macro::TokenStream> {
+    derive_refer(input, errors)
+}
+
+fn derive_refer(
+    input: proc_macro::TokenStream,
+    errors: &mut manyhow::Emitter,
+) -> manyhow::Result<proc_macro::TokenStream> {
+    let input = syn::parse::<DeriveInput>(input)?;
+    let DeriveInput {
+        ident,
+        data: type_data,
+        ..
+    } = input.clone();
+
+    let Data::Struct(struct_data) = type_data else {
+        bail!("Refer can only be derived for structs");
+    };
+
+    let mut id_type = None;
+    let mut id_field = None;
+    for field in &struct_data.fields {
+        let Some(field_ident) = &field.ident else {
+            continue;
+        };
+        let field_ty = &field.ty;
+
+        if field_ident == "id" {
+            id_type = Some(field_ty.clone());
+            id_field = Some(field_ident.clone());
+        }
+    }
+    errors.into_result()?;
+
+    let Some(id_field) = id_field else {
+        bail!(input, "'id' field must be present");
+    };
+    let Some(id_type) = id_type else {
+        bail!(input, "'id' field must have a type");
+    };
+
+    let refer_impl = quote! {
+        impl Refer<#id_type> for #ident {
+            fn reference_kind(&self) -> ReferenceKind {
+                ReferenceKind::#ident
+            }
+
+            fn reference_id(&self) -> ReferenceId<#id_type> {
+                ReferenceId(self.#id_field)
+            }
+        }
+    };
+
+    let from_for_reference_impl = quote! {
+        impl From<&#ident> for Reference<#id_type> {
+            fn from(value: &#ident) -> Self {
+                value.reference()
+            }
+        }
+    };
+
+    let from_for_reference_kind_impl = quote! {
+        impl From<&#ident> for ReferenceKind {
+            fn from(value: &#ident) -> Self {
+                ReferenceKind::#ident
+            }
+        }
+    };
+
+    let output = quote! {
+        #refer_impl
+        #from_for_reference_impl
+        #from_for_reference_kind_impl
+    };
+
+    Ok(output.into())
+}

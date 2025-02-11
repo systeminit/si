@@ -22,7 +22,7 @@ where
 {
     pub kind: ReferenceKind,
     pub id: ReferenceId<T>,
-    pub checksum: String,
+    pub checksum: Checksum,
 }
 
 impl<T> std::fmt::Display for ReferenceId<T>
@@ -43,16 +43,40 @@ where
     }
 }
 
+impl FrontendChecksum for ReferenceKind {
+    fn checksum(&self) -> Checksum {
+        let mut hasher = ChecksumHasher::new();
+        hasher.update(self.to_string().as_bytes());
+        hasher.finalize()
+    }
+}
+
 impl<T> FrontendChecksum for Reference<T>
 where
     T: Eq + PartialEq + Clone + std::fmt::Debug + Serialize + std::fmt::Display,
 {
     fn checksum(&self) -> Checksum {
         let mut hasher = ChecksumHasher::new();
-        hasher.update(FrontendChecksum::checksum(&self.kind.to_string()).as_bytes());
+        hasher.update(FrontendChecksum::checksum(&self.kind).as_bytes());
         hasher.update(FrontendChecksum::checksum(&self.id.to_string()).as_bytes());
-        hasher.update(FrontendChecksum::checksum(&self.checksum).as_bytes());
+        hasher.update(FrontendChecksum::checksum(&self.checksum.to_string()).as_bytes());
 
         hasher.finalize()
     }
+}
+
+pub trait Refer<T>: FrontendChecksum
+where
+    T: Eq + PartialEq + Clone + std::fmt::Debug + Serialize + std::fmt::Display + FrontendChecksum,
+{
+    fn reference(&self) -> Reference<T> {
+        Reference {
+            kind: self.reference_kind(),
+            id: self.reference_id(),
+            checksum: FrontendChecksum::checksum(self),
+        }
+    }
+
+    fn reference_kind(&self) -> ReferenceKind;
+    fn reference_id(&self) -> ReferenceId<T>;
 }
