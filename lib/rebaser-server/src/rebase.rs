@@ -132,7 +132,10 @@ pub async fn perform_rebase(
     }
     let updates_count = rebase_batch.updates().len();
     span.record("si.updates.count", updates_count.to_string());
-
+    span.record(
+        "si.corrected_updates.count",
+        corrected_updates.len().to_string(),
+    );
     info!("rebase performed: {:?}", start.elapsed());
 
     // Before replying to the requester, we must commit.
