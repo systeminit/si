@@ -109,6 +109,9 @@
         flyctl
         azure-cli
         govc
+        (pkgs.python3.withPackages (p: with p; [
+          cfn-lint
+        ]))
       ];
 
       buck2Derivation = {
