@@ -191,7 +191,7 @@ fn derive_refer(
     let refer_impl = quote! {
         impl Refer<#id_type> for #ident {
             fn reference_kind(&self) -> ReferenceKind {
-                ReferenceKind::#ident
+                self.into()
             }
 
             fn reference_id(&self) -> ReferenceId<#id_type> {
