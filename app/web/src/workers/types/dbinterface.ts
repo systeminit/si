@@ -55,12 +55,22 @@ export interface PayloadDelete extends PayloadMeta {
 
 type Column = string;
 type Columns = Column[];
+type BustCacheFn = (key: string) => void;
 
 export interface DBInterface {
-  hello: () => string,
-  init: () => Promise<void>,
+  initDB: () => Promise<void>,
   migrate: () => void,
-  smokeTest(): Promise<{columns: Columns, rows: SqlValue[][]}>,
+  testRainbowBridge(): Promise<{columns: Columns, rows: SqlValue[][]}>,
+  initSocket (url: string, bearerToken: string): void,
+  initBifrost(url: string, bearerToken: string): void,
+  bifrostClose(): void,
+  bifrostReconnect(): void,
+  newChangeSet?(changeSetId: ChangeSetId): void,
+  newSnapshot?(changeSetId: ChangeSetId, fromChecksum: string, toChecksum: string): void,
+  bifrost: {
+    pull (changeSetId: ChangeSetId, kind: string, args: Record<string, string>): SqlValue[][]
+  },
+  addListenerBustCache(fn: BustCacheFn): void,
 }
 
 type RowWithColumns = Record<Column, SqlValue>;

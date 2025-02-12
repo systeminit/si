@@ -3,97 +3,11 @@ import * as Comlink from "comlink";
 import sqlite3InitModule, { Database, Sqlite3Static, SqlValue } from '@sqlite.org/sqlite-wasm';
 import ReconnectingWebSocket from "reconnecting-websocket";
 import { UpsertPayload, PatchPayload, PayloadDelete, DBInterface } from "./types/dbinterface";
+import { ChangeSetId } from "@/api/sdf/dal/change_set";
+import { WorkspacePk } from "@/store/workspaces.store";
 
 const log = console.log;
 const error = console.error;
-
-
-/*
-class DBInterface extends EventTarget {
-  #ws;
-  #promiser;
-  #dbId;
-
-  constructor (url: string) {
-    super();
-    this.#ws = new ReconnectingWebSocket(url);
-    try {
-      log('Loading and initializing SQLite3 module...');
-
-      this.#promiser = await new Promise((resolve) => {
-        const _promiser = sqlite3Worker1Promiser({
-          onready: () => resolve(_promiser),
-        });
-      });
-
-      log('Done initializing. Running demo...');
-
-      const configResponse = await this.#promiser('config-get', {});
-      log('Running SQLite3 version', configResponse.result.version.libVersion);
-
-      const openResponse = await this.#promiser('open', {
-        filename: 'file:mydb.sqlite3?vfs=opfs',
-      });
-      const { dbId } = openResponse;
-      this.#dbId = dbId;
-
-      log(
-        'OPFS is available, created persisted database at',
-        openResponse.result.filename.replace(/^file:(.*?)\?vfs=opfs$/, '$1'),
-      );
-    
-    } catch (err: Error) {
-      error(err.name, err.message);
-    }
-
-  };
-
-  activate() {
-    this.#ws.addEventListener("message", (msg: any) => {
-      if ("data" in msg) return
-      const payload = JSON.parse(msg.data) as UpsertPayload | PatchPayload | PayloadDelete;
-
-      this.bustKey(payload)
-
-      this.savePayload(payload);
-    });
-  }
-
-  const bustKey = (payload: UpsertPayload | PatchPayload | PayloadDelete) => {
-    const mainQueryKey = [payload.kind, payload.changeSetId];
-    if (payload.args) mainQueryKey.push(...Object.values(payload.args));
-  }
-
-  const savePayload = (payload: UpsertPayload | PatchPayload | PayloadDelete) => {
-
-  }
-
-  const readKey = () => {
-
-  }
-
-  #read = async () => {
-    await this.#promiser('exec', {
-      dbId: this.#dbId,
-      sql: 'INSERT INTO t(a,b) VALUES (?,?)',
-      bind: [i, i * 2],
-    });
-  };
-
-  #write = async () => {
-    await this.#promiser('exec', {
-      dbId: this.#dbId,
-      sql: 'INSERT INTO t(a,b) VALUES (?,?)',
-      bind: [i, i * 2],
-    });
-  };
-
-}
-
-const url = "" // from config
-const interface = new DBInterface(url);
-
-*/
 
 let db: Database;
 
@@ -153,14 +67,32 @@ const ensureTables = async () => {
   return db.exec({sql});
 }
 
+// TODO
+const patchJSON = () => {
+
+}
+
+let bustCacheFn;
+
+// TODO
+const handleBlob = (payload: {
+  workspaceId: WorkspacePk,
+  changeSetId: ChangeSetId,
+  fromSnapshotChecksum: string,
+  toSnapshotChecksum: string,
+  kind: string,
+  args: Record<string, string>,
+  origChecksum: string,
+  newChecksum: string,
+  data: unknown, // TODO, giant enum
+}) => {
+  
+};
+
+let socket: ReconnectingWebSocket;
 
 const dbInterface: DBInterface = {
-  hello()  {
-    log("Hello world?");
-    return "From inner";
-  },
-
-  async init() {
+  async initDB() {
     return initializeSQLite();
   },
 
@@ -168,12 +100,58 @@ const dbInterface: DBInterface = {
     return ensureTables();
   },
 
-  async smokeTest() {
-    console.log("called")
+  async initSocket (url: string, bearerToken: string) {
+    socket = new ReconnectingWebSocket(
+      () =>
+        `${url}/bifrost?token=Bearer+${bearerToken}`,
+      [],
+      {
+        // see options https://www.npmjs.com/package/reconnecting-websocket#available-options
+        startClosed: true, // don't start connected - we'll watch auth to trigger
+        // TODO: tweak settings around reconnection behaviour
+      },
+    );
+
+    socket.addEventListener("message", (messageEvent) => {
+      const messageEventData = JSON.parse(messageEvent.data);
+    });
+    socket.addEventListener("error", (errorEvent) => {
+      /* eslint-disable-next-line no-console */
+      console.log("ws error", errorEvent.error, errorEvent.message);
+    });
+  },
+
+  async initBifrost(url: string, bearerToken: string) {
+    await Promise.all([this.initDB(), ]); // this.initSocket(url, bearerToken)]);
+    await this.migrate();
+  },
+
+  async bifrostClose () {
+    // socket.close();
+  },
+
+  async bifrostReconnect() {
+    // socket.reconnect();
+  },
+
+  async testRainbowBridge() {
     await db.exec({sql: "delete from snapshots; insert into snapshots (change_set_id, checksum) values ('foo', 'bar'), ('apple', 'orange');"});
     const columns: string[] = [];
     const rows = await db.exec({sql: "select rowid, change_set_id, checksum from snapshots;", returnValue: "resultRows", columnNames: columns});
     return {rows, columns};
+  },
+
+  async addListenerBustCache (cb: (key: string) => void) {
+    bustCacheFn = cb;
+    cb("proof");
+  },
+
+  bifrost: {
+    pull(changeSetId: ChangeSetId, kind: string, args: Record<string, string>): SqlValue[][] {
+      return [];
+    }
   }
-}
+};
+
+
 Comlink.expose(dbInterface);
