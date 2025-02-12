@@ -22,7 +22,7 @@ const start = (sqlite3: Sqlite3Static) => {
       ? `OPFS is available, created persisted database at ${db.filename}`
       : `OPFS is not available, created transient database ${db.filename}`,
   );
-  // Your SQLite code here.
+  db.exec({ sql: 'PRAGMA foreign_keys = ON;'});
 };
 
 const initializeSQLite = async () => {
@@ -55,7 +55,7 @@ const ensureTables = async () => {
     change_set_id TEXT NOT NULL,
     checksum TEXT NOT NULL,
     PRIMARY KEY (change_set_id, checksum),
-    FOREIGN KEY (change_set_id) REFERENCES changesets(change_set_id)
+    FOREIGN KEY (change_set_id) REFERENCES changesets(change_set_id) ON DELETE CASCADE
   );
 
   DROP TABLE IF EXISTS datablobs;
@@ -73,8 +73,8 @@ const ensureTables = async () => {
     snapshot_rowid INTEGER,
     atom_rowid INTEGER,
     PRIMARY KEY (snapshot_rowid, atom_rowid),
-    FOREIGN KEY (snapshot_rowid) REFERENCES snapshots(rowid)
-    FOREIGN KEY (atom_rowid) REFERENCES atoms(rowid)
+    FOREIGN KEY (snapshot_rowid) REFERENCES snapshots(rowid) ON DELETE CASCADE,
+    FOREIGN KEY (atom_rowid) REFERENCES atoms(rowid) ON DELETE CASCADE
   );
   `;
 
@@ -100,7 +100,8 @@ interface Atom {
 // CONSTRAINT: right now there are either zero args (e.g. just workspace & changeset) or 1 (i.e. "the thing", ComponentId, ViewId, et. al)
 const argsToString = (args: Record<string, string>): string => {
   const entries = Object.entries(args);
-  const entry = entries.pop()!;
+  const entry = entries.pop();
+  if (!entry) return "";
   return entry.join("|");
 }
 
@@ -115,7 +116,14 @@ const oneInOne = (rows: SqlValue[][]): SqlValue | typeof NOROW => {
 
 const findSnapshotRowId = async (checksum: Checksum, changeSetId: ChangeSetId): Promise<ROWID | typeof NOROW> => {
   const rows = await db.exec({
-    sql: "select rowid from snapshots where checksum='?' and change_set_id='?';",
+    sql: `select
+      rowid
+    from
+      snapshots
+    where
+      checksum='?' and
+      change_set_id='?'
+    ;`,
     bind: [checksum, changeSetId],
     returnValue: "resultRows",
   });
@@ -127,8 +135,17 @@ const findSnapshotRowId = async (checksum: Checksum, changeSetId: ChangeSetId): 
 const atomExists = async (atom: Atom, rowid: ROWID): Promise<boolean> => {
   const args = argsToString(atom.args)
   const rows = await db.exec({
-    sql: `select snapshot_rowid
-     from atoms where snapshot_rowid='?' and kind='?' and checksum='?' and args='?';`,
+    sql: `
+    select
+      snapshot_rowid
+    from atoms
+    inner join snapshots_mtm_atoms
+      ON atoms.rowid = snapshots_mtm_atoms.atom_rowid
+    where
+      snapshot_rowid='?' and
+      kind='?' and checksum='?' and
+      args='?'
+    ;`,
     bind: [rowid, atom.kind, atom.newChecksum, args],
     returnValue: "resultRows",
   });
@@ -139,17 +156,51 @@ const newSnapshot = (atom: Atom): ROWID => {
 
 };
 
-const newAtom = async (atom: Atom, rowid: ROWID) => {
+const removeAtom = async (atom: Atom) => {
+  const args = argsToString(atom.args);
+  await db.exec({
+    sql: `delete
+    from atoms
+    where
+      kind='?' and
+      checksum='?' and
+      args='?'
+    ;
+    `,
+    bind: [atom.kind, atom.origChecksum, args],
+  }); // CASCADES to the mtm table
+};
+
+const newAtom = async (atom: Atom, snapshot_rowid: ROWID) => {
   const args = argsToString(atom.args);
   const data = await new Blob([atom.data]).arrayBuffer();
-  await db.exec({
+  const rows = await db.exec({
     sql: `insert into atoms
-      (snapshot_rowid, kind, checksum, args, data)
+      (kind, checksum, args, data)
         VALUES
-      (?, ?, ?, ?, ?);
+      (?, ?, ?, ?)
+    returning rowid;
     `,
-    bind: [rowid, atom.kind, atom.newChecksum, args, data],
+    bind: [atom.kind, atom.newChecksum, args, data],
+    returnValue: "resultRows",
   });
+  const atom_rowid = oneInOne(rows);
+  if (atom_rowid === NOROW) throw new Error("NOROW when inserting");
+  else {
+    await db.exec({
+      sql: `insert into snapshots_mtm_atoms
+        (atom_rowid, snapshot_rowid)
+          VALUES
+        (?, ?);`,
+      bind: [atom_rowid, snapshot_rowid],
+      returnValue: "resultRows",
+    });
+  }
+};
+
+
+const partialKeyFromKindAndArgs = async (kind: string, args: Record<string, string>): Promise<string> => {
+  return `${kind}|${argsToString(args)}`;
 };
 
 const handleAtom = async (atom: Atom) => {
@@ -157,14 +208,54 @@ const handleAtom = async (atom: Atom) => {
   if (rowid === NOROW)
     rowid = await newSnapshot(atom);
 
-  if (!atomExists(atom, rowid))
-    await newAtom(atom, rowid);
-  else
-    await patchAtom(atom, rowid);
+  const exists = await atomExists(atom, rowid);
+  if (atom.fromSnapshotChecksum === "0") {
+    if (!exists)  // if i already have it, this is a NOOP
+      await newAtom(atom, rowid);
+  } else if (atom.toSnapshotChecksum === "0")
+    // if i've already removed it, this is a NOOP
+    if (exists) await removeAtom(atom);
+  else {
+    // patch it if I can
+    if (exists) await patchAtom(atom);
+    // otherwise, fire the small hammer to get the full object
+    else mjolnir(await partialKeyFromKindAndArgs(atom.kind, atom.args));
+  }
 };
 
-const patchAtom = (atom: Atom, rowid: number) => {
-  // TODO
+const patchAtom = async (atom: Atom) => {
+  // FUTURE: JSON Patch
+  const args = argsToString(atom.args);
+  const data = await new Blob([atom.data]).arrayBuffer();
+  await db.exec({
+    sql: `
+    update atoms set
+      data = '?',
+      checksum = '?'
+    where
+      kind = '?' AND
+      checksum = '?' AND
+      args = '?'
+    ;
+    `,
+    bind: [data, atom.newChecksum, atom.kind, atom.origChecksum, args],
+  });
+};
+
+const mjolnir = async (key: string) => {
+  // TODO: we're missing a key, fire a small hammer to get it
+};
+
+// FUTURE: when we have more than atom payloads over the wire
+const pruneAtomsForClosedChangeSet = async (workspaceId: WorkspacePk, changeSetId: ChangeSetId) => {
+  await db.exec({
+    sql: "delete from changesets where workspace_id='?' and change_set_id='?';",
+    bind: [workspaceId, changeSetId],
+  });  // CASCADE deletions to all snapshots from that changeset and all atoms
+};
+
+const ragnarok = () => {
+  // FUTURE: drop the DB, rebuild it, and enter keys from empty
 };
 
 let bustCacheFn;
@@ -229,16 +320,18 @@ const dbInterface: DBInterface = {
     bustCacheFn("foo", "bar2");
   },
 
-  async partialKeyFromKindAndArgs (kind: string, args: Record<string, string>): Promise<string> {
-    return `${kind}|${argsToString(args)}`;
+  async get(key: string): Promise<unknown> {
+    // TODO: parse json string data from the results
+    return {};
   },
 
-  bifrost: {
-    async get(key: string): Promise<unknown> {
-      // TODO: parse json string data from the results
-      return {};
-    }
-  }
+  partialKeyFromKindAndArgs,
+  mjolnir, 
+
+  async bootstrapChecksums(): Promise<Record<string, Checksum>> {
+    // TODO: read the full list of atom checksums by queryKey
+    return {};
+  },
 };
 
 

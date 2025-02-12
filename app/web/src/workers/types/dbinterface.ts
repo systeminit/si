@@ -65,11 +65,11 @@ export interface DBInterface {
   initBifrost(url: string, bearerToken: string): void,
   bifrostClose(): void,
   bifrostReconnect(): void,
-  bifrost: {
-    get(key: string): Promise<unknown>,
-  },
+  get(key: string): Promise<unknown>,
+  mjolnir(key: string): void,
   partialKeyFromKindAndArgs (kind: string, args: Record<string, string>): Promise<string>, 
   addListenerBustCache(fn: BustCacheFn): void,
+  bootstrapChecksums(): Promise<Record<string, string>>,
 }
 
 type RowWithColumns = Record<Column, SqlValue>;
