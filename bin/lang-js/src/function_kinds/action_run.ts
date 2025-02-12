@@ -1,12 +1,12 @@
-import * as _ from "npm:lodash-es";
+import * as _ from "https://deno.land/x/lodash_es@v0.0.2/mod.ts";
 import { Debug } from "../debug.ts";
 import {
   failureExecution,
   Func,
   ResultFailure,
   ResultSuccess,
-  runCode,
 } from "../function.ts";
+import { runCode } from "../execution.ts";
 import { RequestCtx } from "../request.ts";
 import { FunctionKind } from "../function.ts";
 
@@ -36,6 +36,7 @@ async function execute(
   try {
     const actionRunResult = await runCode(
       code,
+      "main",
       FunctionKind.ActionRun,
       executionId,
       timeout,
@@ -118,14 +119,15 @@ async function execute(
 }
 
 const wrapCode = (code: string, handler: string) => `
-async function run(arg) {
+async function main(arg) {
+  let payload = null;
+  let resourceId = null;
   try {
     ${code}
-    arg = Array.isArray(arg) ? arg : [arg];
-    const resourceId = arg[0]?.properties?.si?.resourceId;
-    const payload = arg[0]?.properties?.resource?.payload ?? null;
+    resourceId = arg?.properties?.si?.resourceId;
+    payload = arg?.properties?.resource?.payload ?? null;
 
-    const returnValue = await ${handler}(with_arg);
+    const returnValue = await ${handler}(arg);
     return returnValue;
   } catch (err) {
     return {
@@ -135,7 +137,9 @@ async function run(arg) {
               message: err.message,
            }
   }
-}`;
+}
+export { main };
+`;
 
 export default {
   debug,

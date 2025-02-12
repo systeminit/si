@@ -1,4 +1,3 @@
-import * as _ from "npm:lodash-es";
 import { base64Decode } from "./base64.ts";
 import { ctxFromRequest, Request, RequestCtx } from "./request.ts";
 import joi_validation, {
@@ -14,12 +13,9 @@ import schema_variant_definition, {
 import management_run, { ManagementFunc } from "./function_kinds/management.ts";
 import action_run, { ActionRunFunc } from "./function_kinds/action_run.ts";
 import before from "./function_kinds/before.ts";
-import { rawStorage } from "./sandbox/requestStorage.ts";
 import { Debugger } from "./debug.ts";
-import { transpile } from "jsr:@deno/emit";
 import { Debug } from "./debug.ts";
-import * as _worker from "./worker.js";
-import { bundleCode } from "./transpile.ts";
+import * as _ from "https://deno.land/x/lodash_es@v0.0.2/mod.ts";
 
 const debug = Debug("langJs:function");
 
@@ -128,7 +124,6 @@ export async function executeFunction(
           message: `Output: ${JSON.stringify(result, null, 2)}`,
         }),
       );
-
       break;
     case FunctionKind.ResolverFunction:
       result = await executor(
@@ -206,66 +201,9 @@ export async function executor<F extends Func, Result>(
 
   const code = wrapCode(originalCode, func.handler);
 
+  debug({ code });
+
   // Following section throws on timeout or execution error
   const result = await execute(ctx, func, code, timeout);
-  debug({ result });
   return result;
-}
-
-export async function runCode(
-  code: string,
-  func_kind: FunctionKind,
-  execution_id: string,
-  timeout: number,
-  with_arg?: Record<string, unknown>,
-): Promise<Record<string, unknown>> {
-  code = await bundleCode(code);
-  const currentStorage = rawStorage();
-
-  const worker = new Worker(new URL("./worker.js", import.meta.url), {
-    type: "module",
-    deno: {
-      permissions: {
-        import: true,
-        env: true,
-        net: true,
-        read: true,
-        run: true,
-        sys: true,
-        write: true,
-      },
-    },
-  });
-
-  debug({ "function kind": func_kind });
-  debug({ "arg": with_arg });
-  debug({ "code": code });
-  return new Promise((resolve, reject) => {
-    worker.postMessage({
-      bundledCode: code,
-      func_kind,
-      execution_id,
-      with_arg,
-      storage: currentStorage ?? {},
-      timeout,
-    });
-
-    worker.onmessage = (event) => {
-      const { result, error, storage } = event.data;
-      if (storage) {
-        Object.assign(rawStorage(), storage);
-      }
-      if (error) {
-        reject(error);
-      } else {
-        resolve(result);
-      }
-      worker.terminate();
-    };
-
-    worker.onerror = (error) => {
-      reject(error);
-      worker.terminate();
-    };
-  });
 }

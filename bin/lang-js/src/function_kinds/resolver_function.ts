@@ -1,4 +1,4 @@
-import * as _ from "npm:lodash-es";
+import * as _ from "https://deno.land/x/lodash_es@v0.0.2/mod.ts";
 import { Debug } from "../debug.ts";
 import {
   failureExecution,
@@ -6,8 +6,8 @@ import {
   FunctionKind,
   ResultFailure,
   ResultSuccess,
-  runCode,
 } from "../function.ts";
+import { runCode } from "../execution.ts";
 import { Component } from "../component.ts";
 import { RequestCtx } from "../request.ts";
 
@@ -191,7 +191,7 @@ const nullables: { [key in FuncBackendResponseType]?: boolean } = {
 
 async function execute(
   { executionId }: RequestCtx,
-  { component, responseType }: ResolverFunc,
+  { component, responseType, handler }: ResolverFunc,
   code: string,
   timeout: number,
 ): Promise<ResolverFunctionResult> {
@@ -199,6 +199,7 @@ async function execute(
   try {
     resolverFunctionResult = await runCode(
       code,
+      handler,
       FunctionKind.ResolverFunction,
       executionId,
       timeout,
@@ -267,11 +268,9 @@ async function execute(
 }
 
 const wrapCode = (code: string, handler: string) => `
-async function run(component) {
   ${code}
-  const returnValue = await ${handler}(component);
-  return returnValue;
-}`;
+  export { ${handler} };
+`;
 
 export default {
   debug,

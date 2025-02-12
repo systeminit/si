@@ -1,4 +1,4 @@
-import * as _ from "npm:lodash-es";
+import * as _ from "https://deno.land/x/lodash_es@v0.0.2/mod.ts";
 import { Debug } from "../debug.ts";
 import {
   failureExecution,
@@ -6,8 +6,8 @@ import {
   FunctionKind,
   ResultFailure,
   ResultSuccess,
-  runCode,
 } from "../function.ts";
+import { runCode } from "../execution.ts";
 import { ComponentWithGeometry, Geometry } from "../component.ts";
 import { RequestCtx } from "../request.ts";
 
@@ -25,7 +25,7 @@ export interface ManagementFunc extends Func {
 export interface ThisComponent extends ComponentWithGeometry {
   incomingConnections: {
     [key: SocketName]: SocketRefAndValue[] | SocketRefAndValue | undefined;
-  }
+  };
   // TODO outgoingConnections so we can automatically connect *output* from created components
   // to existing components
 }
@@ -75,8 +75,8 @@ export interface SocketRefAndValue extends SocketRef {
 /// If the to field is a SocketName (string), it's an outgoing connection.
 /// If the from field is a SocketName (string), it's an incoming connection.
 export type ManagementConnect =
-  | { from: SocketRef; to: SocketName; }
-  | { from: SocketName; to: SocketRef; }
+  | { from: SocketRef; to: SocketName }
+  | { from: SocketName; to: SocketRef };
 
 export interface ManagementCreate {
   [key: string]: {
@@ -123,6 +123,7 @@ async function execute(
     components,
     currentView,
     variantSocketMap,
+    handler,
   }: ManagementFunc,
   code: string,
   timeout: number,
@@ -131,6 +132,7 @@ async function execute(
   try {
     managementResult = await runCode(
       code,
+      handler,
       FunctionKind.Management,
       executionId,
       timeout,
@@ -183,11 +185,9 @@ async function execute(
 }
 
 const wrapCode = (code: string, handler: string) => `
-async function run(arg) {
   ${code}
-  const returnValue = await ${handler}(arg);
-  return returnValue;
-}`;
+  export { ${handler} };
+`;
 
 export default {
   debug,

@@ -4,8 +4,8 @@ import {
   FunctionKind,
   ResultFailure,
   ResultSuccess,
-  runCode,
 } from "../function.ts";
+import { runCode } from "../execution.ts";
 import { RequestCtx } from "../request.ts";
 import { Debug } from "../debug.ts";
 
@@ -25,7 +25,7 @@ export type SchemaVariantDefinitionResult =
 
 async function execute(
   { executionId }: RequestCtx,
-  _: SchemaVariantDefinitionFunc,
+  req: SchemaVariantDefinitionFunc,
   code: string,
   timeout: number,
 ): Promise<SchemaVariantDefinitionResult> {
@@ -33,6 +33,7 @@ async function execute(
   try {
     result = await runCode(
       code,
+      req.handler,
       FunctionKind.SchemaVariantDefinition,
       executionId,
       timeout,
@@ -52,11 +53,9 @@ async function execute(
 }
 
 const wrapCode = (code: string, handler: string) => `
-async function run(arg) {
   ${code}
-  const returnValue = await ${handler}(arg);
-  return returnValue;
-}`;
+  export { ${handler} };
+`;
 
 export default {
   debug,

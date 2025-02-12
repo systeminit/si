@@ -1,7 +1,6 @@
 // deno-lint-ignore-file no-explicit-any
 
 import _ from "npm:lodash";
-import { makeConsole } from "./console.ts";
 
 export default {
   variables,
@@ -15,7 +14,6 @@ export function updateVarsInViews(
   thisComponent: any,
   components: any,
 ): any {
-  const console = makeConsole("poop");
   const templateObjectName = thisComponent.properties.si.name;
 
   const synced: string[] = [];
@@ -115,7 +113,6 @@ export function converge(
   }[],
   updateFuncName?: string,
 ): any {
-  const console = makeConsole("poop");
   const templateObjectName = _.get(
     thisComponent,
     ["properties", "si", "name"],

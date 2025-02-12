@@ -91,18 +91,6 @@ pub(crate) fn compile_langjs_types() -> &'static str {
         function getKeys(): string[];
     }
 
-    declare namespace pkg {
-        type Result<T> = {
-          success: boolean;
-          value?: T;
-          error?: string;
-        };
-
-        export type ImportResult = Result<unknown>;
-
-        async function importPackage(pkg: string): Promise<ImportResult>;
-    }
-
     declare namespace siExec {
 
     interface WatchArgs {

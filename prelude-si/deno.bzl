@@ -129,6 +129,70 @@ deno_format = rule(
     },
 )
 
+def deno_run_impl(ctx: AnalysisContext) -> list[Provider]:
+    out = ctx.actions.declare_output(ctx.attrs.out)
+    deno_toolchain = ctx.attrs._deno_toolchain[DenoToolchainInfo]
+
+    cmd = cmd_args(
+        ctx.attrs._python_toolchain[PythonToolchainInfo].interpreter,
+        deno_toolchain.deno_run[DefaultInfo].default_outputs[0],
+        "--input",
+        ctx.attrs.main,
+        "--output",
+        out.as_output(),
+        hidden = ctx.attrs.srcs
+    )
+
+    if ctx.attrs.permissions:
+        cmd.add("--permissions")
+        cmd.add(ctx.attrs.permissions)
+
+    if ctx.attrs.unstable_flags:
+        cmd.add("--unstable-flags")
+        cmd.add(ctx.attrs.unstable_flags)
+
+
+    ctx.actions.run(cmd, category = "deno", identifier = "deno_run")
+
+    return [
+        DefaultInfo(default_output = out),
+    ]
+
+deno_run = rule(
+    impl = deno_run_impl,
+    attrs = {
+        "main": attrs.source(
+            doc = "The entry point TypeScript/JavaScript file",
+        ),
+        "srcs": attrs.list(
+            attrs.source(),
+            default = [],
+            doc = "All source files that are part of the compilation",
+        ),
+        "out": attrs.string(
+            doc = "The name of the output binary",
+        ),
+        "permissions": attrs.list(
+            attrs.string(),
+            default = [],
+            doc = "List of Deno permissions to grant (e.g., read, write, net)",
+        ),
+        "unstable_flags": attrs.list(
+            attrs.string(),
+            default = [],
+            doc = "List of unstable flags to enable",
+        ),
+        "_python_toolchain": attrs.toolchain_dep(
+            default = "toolchains//:python",
+            providers = [PythonToolchainInfo],
+        ),
+        "_deno_toolchain": attrs.toolchain_dep(
+            default = "toolchains//:deno",
+            providers = [DenoToolchainInfo],
+        ),
+    },
+)
+
 def deno_test_impl(ctx: AnalysisContext) -> list[Provider]:
     """Implementation of the deno_test rule."""
     deno_toolchain = ctx.attrs._deno_toolchain[DenoToolchainInfo]

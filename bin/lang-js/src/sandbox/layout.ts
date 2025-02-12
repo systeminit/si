@@ -1,4 +1,3 @@
-//import { makeConsole } from "./console.ts";
 import {
   GROUP_HEADER_BOTTOM_MARGIN,
   MIN_NODE_DIMENSION,
@@ -154,7 +153,6 @@ export function addToRow(frame: Frame, rowId: string, item: Item) {
 }
 
 export function calculateSizeAndPosition(fromFrame: Frame): Frame {
-  // const console = makeConsole("poop");
   const framesToCheck = [fromFrame];
   const nextFrames = [fromFrame];
   // Control against infinite loop
@@ -252,7 +250,6 @@ export function calculateSizeAndPosition(fromFrame: Frame): Frame {
 }
 
 export function setGeometryForSpecs(fromFrame: Frame, specs: any[]) {
-  //const console = makeConsole("poop");
   const components: Item[] = [fromFrame];
   const nextCheck: Item[] = [fromFrame];
   // Control against infinite loop

@@ -226,6 +226,7 @@ def build_tar_archive(
             "local",
             "bin",
         )
+        cache_dir = os.path.join(tempdir, "cache")
         lib_dir = os.path.join(tempdir, "lib")
         lib64_dir = os.path.join(tempdir, "lib64")
         metadata_dir = os.path.join(
@@ -243,12 +244,35 @@ def build_tar_archive(
         for binary in binaries:
             os.symlink(binary, os.path.join(bin_dir, os.path.basename(binary)))
 
+        if os.path.exists(os.path.join(nix_store_pkg_path, "cache")):
+            os.makedirs(cache_dir, exist_ok=True)
+            for root, _, files in os.walk(os.path.join(nix_store_pkg_path,
+                                                       "cache"),
+                                          followlinks=True):
+                relative_root = os.path.relpath(
+                    root, os.path.join(nix_store_pkg_path, "cache"))
+                destination_root = os.path.join(cache_dir, relative_root)
+                os.makedirs(destination_root, exist_ok=True)
+
+                for file in files:
+                    source = os.path.join(root, file)
+                    destination = os.path.join(destination_root, file)
+
+                    # If it's a symlink, get the real target
+                    if os.path.islink(source):
+                        target = os.readlink(source)
+                        os.symlink(target, destination)
+                    else:
+                        os.symlink(source, destination)
+
         # This ensures that if the omnibus pkg bubbles up lib64, it gets
         # included assuming it is needed in environments that require
         # specifiying a dynamic linker
         if os.path.exists(os.path.join(nix_store_pkg_path, "lib")):
             os.makedirs(lib_dir, exist_ok=True)
-            for root, _, files in os.walk(os.path.join(nix_store_pkg_path, "lib"), followlinks=True):
+            for root, _, files in os.walk(os.path.join(nix_store_pkg_path,
+                                                       "lib"),
+                                          followlinks=True):
                 for file in files:
                     source = os.path.join(root, file)
                     # If it's a symlink, get the real target
@@ -274,6 +298,9 @@ def build_tar_archive(
         ]
         if os.path.exists(os.path.join(tempdir, "lib")):
             tar_append_cmd.extend(["lib", "lib64"])
+
+        if os.path.exists(os.path.join(nix_store_pkg_path, "cache")):
+            tar_append_cmd.extend(["cache"])
 
         subprocess.run(tar_append_cmd, cwd=tempdir).check_returncode()
 
@@ -393,30 +420,24 @@ def compute_build_metadata(
     b3sum: str,
 ) -> Dict[str, str]:
     metadata = {
-        "family":
-        family,
-        "variant":
-        VARIANT,
-        "version":
-        git_info.get("canonical_version"),
-        "arch":
-        platform_arch.value,
-        "os":
-        platform_os.value,
-        "commit":
-        git_info.get("commit_hash"),
-        "branch":
-        git_info.get("branch"),
-        "b3sum":
-        b3sum,
+        "family": family,
+        "variant": VARIANT,
+        "version": git_info.get("canonical_version"),
+        "arch": platform_arch.value,
+        "os": platform_os.value,
+        "commit": git_info.get("commit_hash"),
+        "branch": git_info.get("branch"),
+        "b3sum": b3sum,
     }
 
     return metadata
+
 
 def move_contents_up(directory):
     parent_dir = os.path.dirname(directory)
     shutil.copytree(directory, parent_dir, dirs_exist_ok=True)
     shutil.rmtree(directory)
+
 
 if __name__ == "__main__":
     sys.exit(main())

@@ -1,5 +1,4 @@
-import * as _ from "npm:lodash-es";
-import { makeConsole } from "./console.ts";
+import * as _ from "https://deno.land/x/lodash_es@v0.0.2/mod.ts";
 
 // Since a lang-js process only lasts for a single function request, this
 // storage will only live for that time also, but every call to a
@@ -18,12 +17,14 @@ const requestStorage: RequestStorage = {
 export const rawStorage = (): RequestStorage => requestStorage;
 
 export const makeMainRequestStorage = () => {
+  const rawStorage = (): RequestStorage => requestStorage;
   const getEnv = (key: string) => requestStorage.env[key];
   const getItem = (key: string) => requestStorage.data[key];
   const getEnvKeys = () => _.keys(requestStorage.env);
   const getKeys = () => _.keys(requestStorage.data);
 
   return {
+    rawStorage,
     getEnv,
     getItem,
     getEnvKeys,
@@ -31,9 +32,7 @@ export const makeMainRequestStorage = () => {
   };
 };
 
-export const makeBeforeRequestStorage = (executionId: string) => {
-  const console = makeConsole(executionId);
-
+export const makeBeforeRequestStorage = (_executionId: string) => {
   const setEnv = (key: string, value: string) => {
     console.log(`Registering environment variable ${key}`);
     requestStorage.env[key] = value;
@@ -63,7 +62,4 @@ export const makeBeforeRequestStorage = (executionId: string) => {
   };
 };
 
-export const rawStorageRequest = () => {
-  const env = () => rawStorage().env;
-  return { env };
-};
+export const toJSON = () => JSON.stringify(rawStorage());

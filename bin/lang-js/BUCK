@@ -8,11 +8,8 @@ load(
     "@prelude-si//:deno.bzl",
     "deno_compile",
     "deno_format",
+    "deno_run",
     "deno_test",
-)
-
-export_file(
-    name = "package.json",
 )
 
 export_file(
@@ -24,8 +21,20 @@ alias(
     actual = ":bin"
 )
 
-# we include clover here because the deno workspace
-# requires resolution of all members even if we don't use it
+# this builds bundle.ts so it can be used at runtime by function execution
+deno_run(
+    name = "build",
+    main = "src/build.ts",
+    out = "src/bundle.ts",
+    srcs = glob([
+        "src/**/build.ts",
+    ]) + ["//:deno_workspace"],
+    permissions = [
+        "allow-all",
+    ],
+    visibility = ["PUBLIC"],
+)
+
 deno_compile(
     name = "bin",
     main = "src/index.ts",
@@ -33,12 +42,15 @@ deno_compile(
     srcs = glob([
         "src/**/*.ts",
         "src/**/*.js",
-    ]) + ["//:deno_workspace"],
+    ]) + [
+        ":build",
+        "//:deno_workspace"
+    ],
     permissions = [
         "allow-all",
     ],
     unstable_flags = [
-        "worker-options",
+        "node-globals"
     ],
     visibility = ["PUBLIC"],
 )
