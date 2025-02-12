@@ -1,6 +1,7 @@
 use std::str::FromStr;
 
 use axum::{
+    body::Bytes,
     extract::{multipart::MultipartError, Multipart},
     response::{IntoResponse, Response},
     Json,
@@ -79,6 +80,33 @@ pub async fn upsert_module_route(
     DbConnection(txn): DbConnection,
     mut multipart: Multipart,
 ) -> Result<Json<ModuleDetailsResponse>, UpsertModuleError> {
+    let multiparts = extract_multiparts(&mut multipart).await?;
+    let new_module = upsert_module(multiparts, &txn, user_claim, s3_bucket).await?;
+
+    let (module, linked_modules) = si_module::Entity::find_by_id(new_module.id)
+        .find_with_linked(si_module::SchemaIdReferenceLink)
+        .all(&txn)
+        .await?
+        .first()
+        .cloned()
+        .ok_or(UpsertModuleError::NotFoundAfterInsert(new_module.id))?;
+
+    txn.commit().await?;
+
+    Ok(Json(make_module_details_response(module, linked_modules)))
+}
+
+pub struct SiMultipartData {
+    pub schema_id: Option<String>,
+    pub schema_variant_id: Option<String>,
+    pub schema_variant_version: Option<String>,
+    pub module_based_on_hash: Option<String>,
+    pub module_data: Option<Bytes>,
+}
+
+pub async fn extract_multiparts(
+    multipart: &mut Multipart,
+) -> Result<SiMultipartData, UpsertModuleError> {
     let mut module_data = None;
     let mut module_based_on_hash = None;
     let mut module_schema_id = None;
@@ -105,36 +133,48 @@ pub async fn upsert_module_route(
         }
     }
 
-    let data = module_data.ok_or(UpsertModuleError::UploadRequiredError)?;
+    Ok(SiMultipartData {
+        schema_id: module_schema_id,
+        schema_variant_id: module_schema_variant_id,
+        schema_variant_version: module_schema_variant_version,
+        module_based_on_hash,
+        module_data,
+    })
+}
 
-    // SiPkg using old term "package" but we are dealing with a "module"
+pub async fn upsert_module(
+    multi_part_data: SiMultipartData,
+    txn: &sea_orm::DatabaseTransaction,
+    user_claim: si_jwt_public_key::SiJwtClaims,
+    s3_bucket: s3::Bucket,
+) -> Result<si_module::Model, UpsertModuleError> {
+    let data = multi_part_data
+        .module_data
+        .ok_or(UpsertModuleError::UploadRequiredError)?;
     let loaded_module = SiPkg::load_from_bytes(&data)?;
     let module_metadata = loaded_module.metadata()?;
-
     info!(
         "upserting module: {:?} based on hash: {:?} with provided schema id of {:?}",
-        &module_metadata, &module_based_on_hash, &module_schema_id
+        &module_metadata, &multi_part_data.module_based_on_hash, &multi_part_data.schema_id
     );
-
     let version = module_metadata.version().to_owned();
     let module_kind = match module_metadata.kind() {
         SiPkgKind::WorkspaceBackup => ModuleKind::WorkspaceBackup,
         SiPkgKind::Module => ModuleKind::Module,
     };
-
     let new_schema_id = Some(SchemaId::new());
     let schema_id = match module_kind {
         ModuleKind::WorkspaceBackup => None,
-        ModuleKind::Module => match module_schema_id {
+        ModuleKind::Module => match multi_part_data.schema_id {
             Some(schema_id_string) => Some(SchemaId::from_str(&schema_id_string)?),
-            None => match module_based_on_hash {
+            None => match multi_part_data.module_based_on_hash {
                 None => new_schema_id,
                 Some(based_on_hash) => {
                     match si_module::Entity::find()
                         .filter(si_module::Column::Kind.eq(ModuleKind::Module))
                         .filter(si_module::Column::LatestHash.eq(based_on_hash))
                         .limit(1)
-                        .all(&txn)
+                        .all(txn)
                         .await?
                         .first()
                     {
@@ -145,7 +185,7 @@ pub async fn upsert_module_route(
                                 // If we found matching past hash but it has no schema id, backfill it to match the one we're generating
                                 let mut active: si_module::ActiveModel = module.to_owned().into();
                                 active.schema_id = Set(new_schema_id);
-                                active.update(&txn).await?;
+                                active.update(txn).await?;
 
                                 new_schema_id
                             }
@@ -155,11 +195,9 @@ pub async fn upsert_module_route(
             },
         },
     };
-
     if let Some(schema_id) = schema_id {
         info!("module gets schema id: {}", schema_id.as_raw_id());
     }
-
     let schemas: Vec<String> = loaded_module
         .schemas()?
         .iter()
@@ -174,17 +212,15 @@ pub async fn upsert_module_route(
             description: f.description().map(|d| d.to_owned()),
         })
         .collect();
-
     let schema_variant_id = match module_kind {
         ModuleKind::WorkspaceBackup => None,
-        ModuleKind::Module => match module_schema_variant_id {
+        ModuleKind::Module => match multi_part_data.schema_variant_id {
             Some(schema_variant_id_string) => {
                 Some(SchemaVariantId::from_str(&schema_variant_id_string)?)
             }
             _ => None,
         },
     };
-
     let new_module = si_module::ActiveModel {
         name: Set(module_metadata.name().to_owned()),
         description: Set(Some(module_metadata.description().to_owned())),
@@ -204,26 +240,13 @@ pub async fn upsert_module_route(
         kind: Set(module_kind),
         schema_id: Set(schema_id),
         schema_variant_id: Set(schema_variant_id),
-        schema_variant_version: Set(module_schema_variant_version),
+        schema_variant_version: Set(multi_part_data.schema_variant_version),
         ..Default::default() // all other attributes are `NotSet`
     };
-
-    // TODO: put below
-    // upload to s3
     s3_bucket
         .put_object(format!("{}.sipkg", module_metadata.hash()), &data)
         .await?;
+    let new_module: si_module::Model = new_module.insert(txn).await?;
 
-    let new_module: si_module::Model = new_module.insert(&txn).await?;
-    let (module, linked_modules) = si_module::Entity::find_by_id(new_module.id)
-        .find_with_linked(si_module::SchemaIdReferenceLink)
-        .all(&txn)
-        .await?
-        .first()
-        .cloned()
-        .ok_or(UpsertModuleError::NotFoundAfterInsert(new_module.id))?;
-
-    txn.commit().await?;
-
-    Ok(Json(make_module_details_response(module, linked_modules)))
+    Ok(new_module)
 }

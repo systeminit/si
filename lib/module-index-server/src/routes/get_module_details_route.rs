@@ -5,7 +5,7 @@ use axum::{
 };
 use hyper::StatusCode;
 use module_index_types::ModuleDetailsResponse;
-use sea_orm::{ColumnTrait, DbErr, EntityTrait, QueryFilter};
+use sea_orm::{ColumnTrait, DatabaseTransaction, DbErr, EntityTrait, QueryFilter};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use thiserror::Error;
@@ -54,15 +54,23 @@ pub async fn get_module_details_route(
     DbConnection(txn): DbConnection,
     Query(_request): Query<GetModuleDetailsRequest>,
 ) -> Result<Json<Value>, GetModuleDetailsError> {
-    let query = si_module::Entity::find();
+    let module = get_module_by_id_opt(module_id, &txn)
+        .await?
+        .ok_or(GetModuleDetailsError::NotFound(module_id))?;
 
-    // filters
-    let query = query
+    Ok(Json(json!(module)))
+}
+
+pub async fn get_module_by_id_opt(
+    module_id: ModuleId,
+    txn: &DatabaseTransaction,
+) -> Result<Option<ModuleDetailsResponse>, GetModuleDetailsError> {
+    let query = si_module::Entity::find()
         .find_with_linked(SchemaIdReferenceLink)
         .filter(si_module::Column::Id.eq(module_id));
 
     let modules: Vec<ModuleDetailsResponse> = query
-        .all(&txn)
+        .all(txn)
         .await?
         .into_iter()
         .map(|(module, linked_modules)| make_module_details_response(module, linked_modules))
@@ -74,13 +82,7 @@ pub async fn get_module_details_route(
         ));
     }
 
-    if modules.is_empty() {
-        return Err(GetModuleDetailsError::NotFound(module_id));
-    }
+    let module = modules.first().cloned();
 
-    let module = modules
-        .first()
-        .expect("We have already checked a module exists here");
-
-    Ok(Json(json!(module)))
+    Ok(module)
 }
