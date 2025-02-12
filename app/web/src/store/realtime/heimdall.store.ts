@@ -1,13 +1,13 @@
 import { defineStore } from 'pinia'
 import * as Comlink from "comlink";
-import { DBInterface, interpolate } from "@/workers/types/dbinterface";
+import { Checksum, DBInterface, interpolate, QueryKey } from "@/workers/types/dbinterface";
 import { watch, computed, reactive, readonly } from 'vue';
 import { useAuthStore } from '../auth.store';
 
 export const useHeimdall = defineStore('heimdall', async () => {
   const authStore = useAuthStore();
 
-  const bustTanStackCache = (queryKey: string, latestChecksum: string) => {
+  const bustTanStackCache = (queryKey: QueryKey, latestChecksum: Checksum) => {
     console.log("BUST", queryKey)
     frigg[queryKey] = latestChecksum;
     // TODO bust tanstack once we have it
@@ -42,21 +42,23 @@ export const useHeimdall = defineStore('heimdall', async () => {
     { immediate: true },
   );
 
-  type AtomChecksumByKey = Record<string, string>;
+  type AtomChecksumByKey = Record<Checksum, QueryKey>;
   const frigg: AtomChecksumByKey = reactive({});
 
-  const bifrost = async (queryKey: string): Promise<unknown> => {
+  const bifrost = async (kind: string, args: Record<string, string>): Promise<unknown> => {
+    const queryKey = await db.partialKeyFromKindAndArgs(kind, args);
     const checksum = frigg[queryKey];
     if (!checksum) {
-      db.mjolnir(queryKey);
+      db.mjolnir(kind, args);
       return {};
     } else
-      return await db.get(`${queryKey}|${checksum}`);
+      return await db.get(kind, args, checksum);
   }
 
   return {
     bifrost,
     frigg: readonly(frigg),
+    connectionShouldBeEnabled,
   }
 
 });

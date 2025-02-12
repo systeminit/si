@@ -3,6 +3,7 @@ import { WorkspaceMetadata } from "../../api/sdf/dal/workspace";
 import {
   ChangeSetId,
 } from "@/api/sdf/dal/change_set";
+import { WorkspacePk } from "@/store/workspaces.store";
 
 export interface QueryMeta {
   kind: string,
@@ -11,7 +12,7 @@ export interface QueryMeta {
 };
 
 export interface Query extends QueryMeta {
-  args: Record<string, string>,
+  args: Args,
 };
 
 export type ENUM_TYPESCRIPT_BINDING = WorkspaceMetadata | null;
@@ -30,7 +31,7 @@ export interface PayloadMeta {
   workspaceId: string,
   changeSetId: ChangeSetId,
   kind: string,
-  args: Record<string, string>,
+  args: Args,
 }
 
 export interface UpsertPayload extends PayloadMeta {
@@ -65,11 +66,11 @@ export interface DBInterface {
   initBifrost(url: string, bearerToken: string): void,
   bifrostClose(): void,
   bifrostReconnect(): void,
-  get(key: string): Promise<unknown>,
-  mjolnir(key: string): void,
-  partialKeyFromKindAndArgs (kind: string, args: Record<string, string>): Promise<string>, 
+  get(kind: string, args: Args, checksum: Checksum): Promise<unknown>,
+  mjolnir(kind: string, args: Args): void,
+  partialKeyFromKindAndArgs (kind: string, args: Args): Promise<QueryKey>, 
   addListenerBustCache(fn: BustCacheFn): void,
-  bootstrapChecksums(): Promise<Record<string, string>>,
+  bootstrapChecksums(): Promise<Record<QueryKey, Checksum>>,
 }
 
 type RowWithColumns = Record<Column, SqlValue>;
@@ -86,4 +87,22 @@ export const interpolate = (columns: Columns, rows: SqlValue[][]): Records => {
     results.push(row);
   })
   return results;
-}
+};
+
+
+export type QueryKey = string;  // `kind|argsToString`
+export type Args = Record<string, string>;
+export type Checksum = string;  // QueryKey + Checksum is a HIT in sqlite
+export type ROWID = number;
+export const NOROW = Symbol("NOROW");
+export interface Atom {
+  workspaceId: WorkspacePk,
+  changeSetId: ChangeSetId,
+  fromSnapshotChecksum: Checksum,
+  toSnapshotChecksum: Checksum,
+  kind: string,
+  args: Args,
+  origChecksum: Checksum,
+  newChecksum: Checksum,
+  data: string, // this is a string of JSON we're not parsing
+};
