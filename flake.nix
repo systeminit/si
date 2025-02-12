@@ -109,9 +109,10 @@
         flyctl
         azure-cli
         govc
-        (pkgs.python3.withPackages (p: with p; [
-          cfn-lint
-        ]))
+        (pkgs.python3.withPackages (p:
+          with p; [
+            cfn-lint
+          ]))
         deno
       ];
 
@@ -263,9 +264,9 @@
 
               wrapProgram $out/bin/lang-js \
                 --set LD_LIBRARY_PATH "${pkgs.lib.makeLibraryPath [
-                  pkgs.glibc
-                  pkgs.gcc-unwrapped.lib
-                ]}" \
+                pkgs.glibc
+                pkgs.gcc-unwrapped.lib
+              ]}" \
                 --set DENO_DIR "$out/cache" \
                 --prefix PATH : ${pkgs.lib.makeBinPath langJsExtraPkgs} \
                 --run 'cd "$(dirname "$0")"'
