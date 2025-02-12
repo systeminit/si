@@ -1,5 +1,3 @@
-import _logger from "../logger.ts";
-import _ from "npm:lodash";
 import { ExpandedPkgSpec } from "../spec/pkgs.ts";
 import { setAnnotationOnSocket } from "../spec/sockets.ts";
 
@@ -25,7 +23,6 @@ export function prettifySocketNames(
     }
 
     newSpecs.push(spec);
-    break;
   }
 
   return newSpecs;
