@@ -1,8 +1,4 @@
-import {
-  CfProperty,
-  normalizeAnyOfAndOneOfTypes,
-  normalizePropertyType,
-} from "../cfDb.ts";
+import { CfProperty, normalizeProperty } from "../cfDb.ts";
 import { ulid } from "https://deno.land/x/ulid@v0.3.0/mod.ts";
 import { PropSpec } from "../bindings/PropSpec.ts";
 import { PropSpecData } from "../bindings/PropSpecData.ts";
@@ -179,12 +175,7 @@ function createPropFromCfInner(
     cfProp.title = name;
   }
 
-  let normalizedCfData = normalizePropertyType(cfProp);
-  normalizedCfData = normalizeAnyOfAndOneOfTypes(normalizedCfData);
-
-  if (!normalizedCfData.type && normalizedCfData.$ref) {
-    normalizedCfData = { ...normalizedCfData, type: "string" };
-  }
+  const normalizedCfData = normalizeProperty(cfProp);
 
   if (
     normalizedCfData.type === "integer" ||

@@ -56,6 +56,7 @@
     "npm:json-schema-typed@^8.0.1": "8.0.1",
     "npm:lodash-es@4.17.21": "4.17.21",
     "npm:lodash-es@^4.17.21": "4.17.21",
+    "npm:lodash@*": "4.17.21",
     "npm:lodash@4.17.21": "4.17.21",
     "npm:lodash@^4.17.21": "4.17.21",
     "npm:node-domexception@1.0.0": "1.0.0",
