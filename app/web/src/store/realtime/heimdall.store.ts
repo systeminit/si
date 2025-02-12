@@ -1,15 +1,17 @@
 import { defineStore } from 'pinia'
 import * as Comlink from "comlink";
 import { DBInterface, interpolate } from "@/workers/types/dbinterface";
-import { watch, computed } from 'vue';
+import { watch, computed, reactive, readonly } from 'vue';
 import { useAuthStore } from '../auth.store';
+import { ChangeSetId } from '@/api/sdf/dal/change_set';
 
 export const useHeimdall = defineStore('heimdall', async () => {
   const authStore = useAuthStore();
 
-  const bustTanStackCache = (key: string) => {
+  const bustTanStackCache = (queryKey: string, latestChecksum: string) => {
+    console.log("BUST", queryKey)
+    frigg[queryKey] = latestChecksum;
     // TODO
-    console.log("BUST", key)
   };
 
   const worker = new Worker(new URL("../../workers/webworker.ts", import.meta.url), { type: 'module' });
@@ -20,7 +22,8 @@ export const useHeimdall = defineStore('heimdall', async () => {
   await db.initBifrost("", "");
 
   const { rows, columns } = await db.testRainbowBridge();
-  console.log("SMOKE RESULTS", interpolate(columns, rows));
+  const data = interpolate(columns, rows);
+  console.log("SMOKE RESULTS", data, typeof data[0]?.rowid);
 
   const connectionShouldBeEnabled = computed(
     () =>
@@ -40,8 +43,19 @@ export const useHeimdall = defineStore('heimdall', async () => {
     { immediate: true },
   );
 
+  type AtomChecksumByKey = Record<string, string>;
+  const frigg: AtomChecksumByKey = reactive({});
+
+  const _bifrost = await db.bifrost;
+
+  const bifrost = async (queryKey: string): Promise<unknown> => {
+    const checksum = frigg[queryKey];
+    return await _bifrost.get(`${queryKey}|${checksum}`);
+  }
+
   return {
-    bifrost: db.bifrost,
+    bifrost,
+    frigg: readonly(frigg),
   }
 
 });

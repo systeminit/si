@@ -55,7 +55,7 @@ export interface PayloadDelete extends PayloadMeta {
 
 type Column = string;
 type Columns = Column[];
-type BustCacheFn = (key: string) => void;
+type BustCacheFn = (queryKey: string, latestChecksum: string) => void;
 
 export interface DBInterface {
   initDB: () => Promise<void>,
@@ -65,11 +65,10 @@ export interface DBInterface {
   initBifrost(url: string, bearerToken: string): void,
   bifrostClose(): void,
   bifrostReconnect(): void,
-  newChangeSet?(changeSetId: ChangeSetId): void,
-  newSnapshot?(changeSetId: ChangeSetId, fromChecksum: string, toChecksum: string): void,
   bifrost: {
-    pull (changeSetId: ChangeSetId, kind: string, args: Record<string, string>): SqlValue[][]
+    get(key: string): Promise<unknown>,
   },
+  partialKeyFromKindAndArgs (kind: string, args: Record<string, string>): Promise<string>, 
   addListenerBustCache(fn: BustCacheFn): void,
 }
 

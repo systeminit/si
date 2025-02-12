@@ -43,39 +43,49 @@ const initializeSQLite = async () => {
 // we'll go with string, though reading that putting the bytes as BLOBs would save space
 const ensureTables = async () => {
   const sql = `
+  DROP TABLE IF EXISTS changesets;
   CREATE TABLE IF NOT EXISTS changesets (
     change_set_id TEXT PRIMARY KEY,
-    workspace_id TEXT
+    workspace_id TEXT NOT NULL,
+    PRIMARY KEY (change_set_id, workspace_id)
   ) WITHOUT ROWID;
 
+  DROP TABLE IF EXISTS snapshots;
   CREATE TABLE IF NOT EXISTS snapshots (
-    change_set_id TEXT,
-    checksum TEXT,
-    PRIMARY KEY (change_set_id, checksum)
+    change_set_id TEXT NOT NULL,
+    checksum TEXT NOT NULL,
+    PRIMARY KEY (change_set_id, checksum),
+    FOREIGN KEY (change_set_id) REFERENCES changesets(change_set_id)
   );
 
-  CREATE TABLE IF NOT EXISTS datablobs (
-    snapshot_rowid INTEGER,
+  DROP TABLE IF EXISTS datablobs;
+  DROP TABLE IF EXISTS atoms;
+  CREATE TABLE IF NOT EXISTS atoms (
     kind TEXT,
     args TEXT,
     checksum TEXT,
     data BLOB,
-    PRIMARY KEY (snapshot_rowid, kind, args, checksum)
-  ) WITHOUT ROWID;
+    CONSTRAINT uniqueness UNIQUE (kind, args, checksum)
+  );
+
+  DROP TABLE IF EXISTS snapshots_mtm_atoms;
+  CREATE TABLE IF NOT EXISTS snapshots_mtm_atoms (
+    snapshot_rowid INTEGER,
+    atom_rowid INTEGER,
+    PRIMARY KEY (snapshot_rowid, atom_rowid),
+    FOREIGN KEY (snapshot_rowid) REFERENCES snapshots(rowid)
+    FOREIGN KEY (atom_rowid) REFERENCES atoms(rowid)
+  );
   `;
 
   return db.exec({sql});
 }
 
-// TODO
-const patchJSON = () => {
 
-}
-
-let bustCacheFn;
-
-// TODO
-const handleBlob = (payload: {
+type Checksum = string;
+type ROWID = number;
+const NOROW = Symbol("NOROW");
+interface Atom {
   workspaceId: WorkspacePk,
   changeSetId: ChangeSetId,
   fromSnapshotChecksum: string,
@@ -84,10 +94,80 @@ const handleBlob = (payload: {
   args: Record<string, string>,
   origChecksum: string,
   newChecksum: string,
-  data: unknown, // TODO, giant enum
-}) => {
-  
+  data: string, // this is a string of JSON we're not parsing
+}
+
+// CONSTRAINT: right now there are either zero args (e.g. just workspace & changeset) or 1 (i.e. "the thing", ComponentId, ViewId, et. al)
+const argsToString = (args: Record<string, string>): string => {
+  const entries = Object.entries(args);
+  const entry = entries.pop()!;
+  return entry.join("|");
+}
+
+const oneInOne = (rows: SqlValue[][]): SqlValue | typeof NOROW => {
+  const first = rows[0];
+  if (first) {
+    const id = first[0];
+    if (id) return id;
+  }
+  return NOROW;
+}
+
+const findSnapshotRowId = async (checksum: Checksum, changeSetId: ChangeSetId): Promise<ROWID | typeof NOROW> => {
+  const rows = await db.exec({
+    sql: "select rowid from snapshots where checksum='?' and change_set_id='?';",
+    bind: [checksum, changeSetId],
+    returnValue: "resultRows",
+  });
+  const maybeRowId = oneInOne(rows);
+  if (maybeRowId !== NOROW) return maybeRowId as ROWID;
+  else return maybeRowId; // NOROW
+}
+
+const atomExists = async (atom: Atom, rowid: ROWID): Promise<boolean> => {
+  const args = argsToString(atom.args)
+  const rows = await db.exec({
+    sql: `select snapshot_rowid
+     from atoms where snapshot_rowid='?' and kind='?' and checksum='?' and args='?';`,
+    bind: [rowid, atom.kind, atom.newChecksum, args],
+    returnValue: "resultRows",
+  });
+  return rows.length > 0;
 };
+
+const newSnapshot = (atom: Atom): ROWID => {
+
+};
+
+const newAtom = async (atom: Atom, rowid: ROWID) => {
+  const args = argsToString(atom.args);
+  const data = await new Blob([atom.data]).arrayBuffer();
+  await db.exec({
+    sql: `insert into atoms
+      (snapshot_rowid, kind, checksum, args, data)
+        VALUES
+      (?, ?, ?, ?, ?);
+    `,
+    bind: [rowid, atom.kind, atom.newChecksum, args, data],
+  });
+};
+
+const handleAtom = async (atom: Atom) => {
+  let rowid = await findSnapshotRowId(atom.toSnapshotChecksum, atom.changeSetId)
+  if (rowid === NOROW)
+    rowid = await newSnapshot(atom);
+
+  if (!atomExists(atom, rowid))
+    await newAtom(atom, rowid);
+  else
+    await patchAtom(atom, rowid);
+};
+
+const patchAtom = (atom: Atom, rowid: number) => {
+  // TODO
+};
+
+let bustCacheFn;
 
 let socket: ReconnectingWebSocket;
 
@@ -113,7 +193,9 @@ const dbInterface: DBInterface = {
     );
 
     socket.addEventListener("message", (messageEvent) => {
-      const messageEventData = JSON.parse(messageEvent.data);
+      const messageEventData = JSON.parse(messageEvent.data) as Atom;
+      // FUTURE: not only atoms
+      handleAtom(messageEventData);
     });
     socket.addEventListener("error", (errorEvent) => {
       /* eslint-disable-next-line no-console */
@@ -135,20 +217,26 @@ const dbInterface: DBInterface = {
   },
 
   async testRainbowBridge() {
+    // TODO test blob in the atoms table!
     await db.exec({sql: "delete from snapshots; insert into snapshots (change_set_id, checksum) values ('foo', 'bar'), ('apple', 'orange');"});
     const columns: string[] = [];
     const rows = await db.exec({sql: "select rowid, change_set_id, checksum from snapshots;", returnValue: "resultRows", columnNames: columns});
     return {rows, columns};
   },
 
-  async addListenerBustCache (cb: (key: string) => void) {
+  async addListenerBustCache (cb: (queryKey: string, latestChecksum: string) => void) {
     bustCacheFn = cb;
-    cb("proof");
+    bustCacheFn("foo", "bar2");
+  },
+
+  async partialKeyFromKindAndArgs (kind: string, args: Record<string, string>): Promise<string> {
+    return `${kind}|${argsToString(args)}`;
   },
 
   bifrost: {
-    pull(changeSetId: ChangeSetId, kind: string, args: Record<string, string>): SqlValue[][] {
-      return [];
+    async get(key: string): Promise<unknown> {
+      // TODO: parse json string data from the results
+      return {};
     }
   }
 };
