@@ -14,6 +14,7 @@ si-frontend-types = { path = "../si-frontend-types-rs" }
 
 dashmap = { workspace = true }
 fuser = { workspace = true }
+log = { workspace = true }
 nix = { workspace = true }
 remain = { workspace = true }
 reqwest = { workspace = true }

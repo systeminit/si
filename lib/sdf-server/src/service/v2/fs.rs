@@ -29,8 +29,9 @@ use dal::{
 use hyper::StatusCode;
 use si_events::audit_log::AuditLogKind;
 use si_frontend_types::fs::{
-    self, AssetFuncs, Binding, ChangeSet as FsChangeSet, CreateSchemaResponse, FsApiError,
-    Func as FsFunc, Schema as FsSchema, SchemaAttributes, SetFuncCodeRequest, VariantQuery,
+    self, AssetFuncs, Binding, CategoryFilter, ChangeSet as FsChangeSet, CreateSchemaResponse,
+    FsApiError, Func as FsFunc, Schema as FsSchema, SchemaAttributes, SetFuncCodeRequest,
+    VariantQuery,
 };
 use si_id::FuncArgumentId;
 use thiserror::Error;
@@ -217,11 +218,42 @@ fn check_change_set(ctx: &DalContext) -> FsResult<()> {
     }
 }
 
+pub async fn list_schema_categories(
+    HandlerContext(builder): HandlerContext,
+    AccessBuilder(request_ctx): AccessBuilder,
+    tracker: PosthogEventTracker,
+    Path((_workspace_id, change_set_id)): Path<(WorkspaceId, ChangeSetId)>,
+) -> FsResult<Json<Vec<String>>> {
+    let ctx = builder
+        .build(request_ctx.build(change_set_id.into()))
+        .await?;
+
+    check_change_set(&ctx)?;
+
+    tracker.track(&ctx, "fs/list_categories", serde_json::json!({}));
+
+    let mut categories = HashSet::new();
+
+    for schema in dal::Schema::list(&ctx).await? {
+        let default_variant = SchemaVariant::get_default_for_schema(&ctx, schema.id()).await?;
+        categories.insert(default_variant.category().to_string());
+    }
+
+    for module in CachedModule::latest_modules(&ctx).await? {
+        categories.insert(module.category.unwrap_or("".into()));
+    }
+
+    let cats = categories.into_iter().collect();
+
+    Ok(Json(cats))
+}
+
 pub async fn list_schemas(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     tracker: PosthogEventTracker,
     Path((_workspace_id, change_set_id)): Path<(WorkspaceId, ChangeSetId)>,
+    Query(cat_filter): Query<CategoryFilter>,
 ) -> FsResult<Json<Vec<FsSchema>>> {
     let ctx = builder
         .build(request_ctx.build(change_set_id.into()))
@@ -238,6 +270,11 @@ pub async fn list_schemas(
     for schema in dal::Schema::list(&ctx).await? {
         installed_set.insert(schema.id());
         let default_variant = SchemaVariant::get_default_for_schema(&ctx, schema.id()).await?;
+
+        if cat_filter.should_skip(default_variant.category()) {
+            continue;
+        }
+
         result.push(FsSchema {
             installed: true,
             category: default_variant.category().to_string(),
@@ -251,6 +288,10 @@ pub async fn list_schemas(
         .into_iter()
         .filter(|module| !installed_set.contains(&module.schema_id))
     {
+        if cat_filter.should_skip(module.category.as_deref().unwrap_or("")) {
+            continue;
+        }
+
         result.push(FsSchema {
             installed: false,
             category: module.category.unwrap_or_default(),
@@ -1077,7 +1118,7 @@ async fn create_schema(
         request.name.clone(),
         None::<String>,
         None::<String>,
-        "".to_string(),
+        request.category.unwrap_or("".into()),
         "#00AAFF".to_string(),
     )
     .await?;
@@ -1293,6 +1334,7 @@ pub fn fs_routes(state: AppState) -> Router<AppState> {
                 .route("/funcs/:func_id/unlock", post(unlock_func))
                 .route("/funcs/:kind", get(list_change_set_funcs))
                 .route("/schemas", get(list_schemas))
+                .route("/schemas/categories", get(list_schema_categories))
                 .route("/schemas/create", post(create_schema))
                 .route("/schemas/:schema_id/asset_funcs", get(get_asset_funcs))
                 .route("/schemas/:schema_id/asset_func", post(set_asset_func_code))

@@ -20,8 +20,6 @@ struct Args {
     foreground: bool,
     #[arg(value_name = "MOUNTPOINT")]
     mount_point: String,
-    #[arg(long, short = 'd')]
-    debug: bool,
 }
 
 fn redirect_to_dev_null() -> Result<()> {
@@ -69,6 +67,8 @@ fn main() -> Result<()> {
 
     let rt = Runtime::new()?;
 
+    env_logger::init();
+
     mount(
         args.token.clone(),
         args.endpoint.clone(),
@@ -76,7 +76,6 @@ fn main() -> Result<()> {
         &args.mount_point,
         rt.handle().clone(),
         None,
-        args.debug,
     )?;
 
     Ok(())

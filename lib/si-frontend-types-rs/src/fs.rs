@@ -248,6 +248,7 @@ impl Bindings {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct CreateSchemaRequest {
     pub name: String,
+    pub category: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -311,5 +312,19 @@ impl IdentityBindings {
 
     pub fn to_vec_pretty(&self) -> Result<Vec<u8>, serde_json::Error> {
         serde_json::to_vec_pretty(&self)
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct CategoryFilter {
+    pub category: Option<String>,
+}
+
+impl CategoryFilter {
+    pub fn should_skip(&self, category: &str) -> bool {
+        match self.category.as_deref() {
+            Some(category_filter) => category != category_filter,
+            None => false,
+        }
     }
 }

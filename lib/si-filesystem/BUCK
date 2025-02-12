@@ -8,6 +8,7 @@ rust_library(
 
         "//third-party/rust:dashmap",
         "//third-party/rust:fuser",
+        "//third-party/rust:log",
         "//third-party/rust:nix",
         "//third-party/rust:remain",
         "//third-party/rust:reqwest",
