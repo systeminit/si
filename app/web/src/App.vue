@@ -37,6 +37,7 @@ import { useWorkspacesStore } from "./store/workspaces.store";
 import { useRealtimeStore } from "./store/realtime/realtime.store";
 import CachedAppNotification from "./components/CachedAppNotification.vue";
 import { APP_MINIMUM_WIDTH } from "./main";
+import { useHeimdall } from "./store/realtime/heimdall.store";
 
 // this TS magic means that when you call Object.entries
 // the "key" will retain its type and will not just be defaulted to "string"
@@ -115,8 +116,8 @@ const workspacesStore = useWorkspacesStore();
 const selectedWorkspace = computed(() => workspacesStore.selectedWorkspace);
 
 // initialize the realtime store - which will watch for auth and open/close websocket
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const realtimeStore = useRealtimeStore();
+const _realtimeStore = useRealtimeStore();
+const _heimdall = useHeimdall();
 </script>
 
 <style lang="less">
