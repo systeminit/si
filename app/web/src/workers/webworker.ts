@@ -2,7 +2,7 @@ import * as Comlink from "comlink";
 
 import sqlite3InitModule, { Database, Sqlite3Static, SqlValue } from '@sqlite.org/sqlite-wasm';
 import ReconnectingWebSocket from "reconnecting-websocket";
-import { UpsertPayload, PatchPayload, PayloadDelete, DBInterface } from "./types/dbinterface";
+import { UpsertPayload, PatchPayload, PayloadDelete, DBInterface, NOROW, Checksum, ROWID, Atom, QueryKey, Args } from "./types/dbinterface";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { WorkspacePk } from "@/store/workspaces.store";
 
@@ -81,24 +81,8 @@ const ensureTables = async () => {
   return db.exec({sql});
 }
 
-
-type Checksum = string;
-type ROWID = number;
-const NOROW = Symbol("NOROW");
-interface Atom {
-  workspaceId: WorkspacePk,
-  changeSetId: ChangeSetId,
-  fromSnapshotChecksum: string,
-  toSnapshotChecksum: string,
-  kind: string,
-  args: Record<string, string>,
-  origChecksum: string,
-  newChecksum: string,
-  data: string, // this is a string of JSON we're not parsing
-}
-
 // CONSTRAINT: right now there are either zero args (e.g. just workspace & changeset) or 1 (i.e. "the thing", ComponentId, ViewId, et. al)
-const argsToString = (args: Record<string, string>): string => {
+const argsToString = (args: Args): string => {
   const entries = Object.entries(args);
   const entry = entries.pop();
   if (!entry) return "";
@@ -198,8 +182,7 @@ const newAtom = async (atom: Atom, snapshot_rowid: ROWID) => {
   }
 };
 
-
-const partialKeyFromKindAndArgs = async (kind: string, args: Record<string, string>): Promise<string> => {
+const partialKeyFromKindAndArgs = async (kind: string, args: Args): Promise<QueryKey> => {
   return `${kind}|${argsToString(args)}`;
 };
 
@@ -219,7 +202,7 @@ const handleAtom = async (atom: Atom) => {
     // patch it if I can
     if (exists) await patchAtom(atom);
     // otherwise, fire the small hammer to get the full object
-    else mjolnir(await partialKeyFromKindAndArgs(atom.kind, atom.args));
+    else mjolnir(atom.kind, atom.args);
   }
 };
 
@@ -242,7 +225,7 @@ const patchAtom = async (atom: Atom) => {
   });
 };
 
-const mjolnir = async (key: string) => {
+const mjolnir = async (kind: string, args: Args) => {
   // TODO: we're missing a key, fire a small hammer to get it
 };
 
@@ -258,10 +241,8 @@ const ragnarok = () => {
   // FUTURE: drop the DB, rebuild it, and enter keys from empty
 };
 
-let bustCacheFn;
-
 let socket: ReconnectingWebSocket;
-
+let bustCacheFn;
 const dbInterface: DBInterface = {
   async initDB() {
     return initializeSQLite();
@@ -289,8 +270,7 @@ const dbInterface: DBInterface = {
       handleAtom(messageEventData);
     });
     socket.addEventListener("error", (errorEvent) => {
-      /* eslint-disable-next-line no-console */
-      console.log("ws error", errorEvent.error, errorEvent.message);
+      log("ws error", errorEvent.error, errorEvent.message);
     });
   },
 
@@ -315,12 +295,12 @@ const dbInterface: DBInterface = {
     return {rows, columns};
   },
 
-  async addListenerBustCache (cb: (queryKey: string, latestChecksum: string) => void) {
+  async addListenerBustCache (cb: (queryKey: QueryKey, latestChecksum: Checksum) => void) {
     bustCacheFn = cb;
     bustCacheFn("foo", "bar2");
   },
 
-  async get(key: string): Promise<unknown> {
+  async get(kind: string, args: Args, checksum: Checksum): Promise<unknown> {
     // TODO: parse json string data from the results
     return {};
   },
@@ -328,7 +308,7 @@ const dbInterface: DBInterface = {
   partialKeyFromKindAndArgs,
   mjolnir, 
 
-  async bootstrapChecksums(): Promise<Record<string, Checksum>> {
+  async bootstrapChecksums(): Promise<Record<QueryKey, Checksum>> {
     // TODO: read the full list of atom checksums by queryKey
     return {};
   },
