@@ -37,7 +37,9 @@ where
         }
     }
 
-    #[instrument(level = "info", skip_all)]
+    #[instrument(level = "info", skip_all,fields(
+        si.layer_cache.workspace_snapshot.write_serialize = Empty,
+    ))]
     pub fn write(
         &self,
         value: Arc<V>,

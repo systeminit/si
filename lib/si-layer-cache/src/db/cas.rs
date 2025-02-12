@@ -40,7 +40,7 @@ where
         }
     }
 
-    #[instrument(name = "cas.write", level = "info", skip_all)]
+    #[instrument(name = "cas.write", level = "debug", skip_all)]
     pub fn write(
         &self,
         value: Arc<V>,
@@ -93,7 +93,7 @@ where
             ),
         })
     }
-    #[instrument(name = "cas.read_many", level = "info", skip_all)]
+    #[instrument(name = "cas.read_many", level = "debug", skip_all)]
     pub async fn read_many(
         &self,
         keys: &[ContentHash],
@@ -101,7 +101,7 @@ where
         self.cache.get_bulk(keys).await
     }
 
-    #[instrument(name = "cas.try_read_many_as", level = "info", skip_all)]
+    #[instrument(name = "cas.try_read_many_as", level = "debug", skip_all)]
     pub async fn try_read_many_as<T>(
         &self,
         keys: &[ContentHash],
