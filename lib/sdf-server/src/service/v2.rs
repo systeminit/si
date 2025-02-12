@@ -3,6 +3,7 @@ use axum::{
     Router,
 };
 
+use crate::extract::change_set::TargetChangeSetIdFromPath;
 use crate::{
     extract::{
         workspace::{TargetWorkspaceIdFromPath, WorkspaceAuthorization},
@@ -46,7 +47,8 @@ fn workspace_routes(state: AppState) -> Router<AppState> {
                 .nest(
                     "/approval-requirement-definitions",
                     approval_requirement_definition::v2_routes(),
-                ),
+                )
+                .route_layer(middleware::from_extractor::<TargetChangeSetIdFromPath>()),
         )
         .nest("/integrations", integrations::v2_routes())
         .nest("/fs", fs::fs_routes(state))
