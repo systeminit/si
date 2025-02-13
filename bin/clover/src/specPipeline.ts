@@ -1,11 +1,6 @@
 import { CfProperty, CfSchema } from "./cfDb.ts";
 import { ulid } from "https://deno.land/x/ulid@v0.3.0/mod.ts";
-import {
-  createDefaultProp,
-  createPropFromCf,
-  DefaultPropType,
-  OnlyProperties,
-} from "./spec/props.ts";
+import { createDefaultPropFromCf, OnlyProperties } from "./spec/props.ts";
 import {
   ExpandedPkgSpec,
   ExpandedSchemaSpec,
@@ -33,9 +28,16 @@ export function pkgSpecFromCf(src: CfSchema): ExpandedPkgSpec {
     primaryIdentifier: normalizeOnlyProperties(src.primaryIdentifier),
   };
 
-  const domain = createDomainFromSrc(src, onlyProperties);
+  const domain = createDefaultPropFromCf(
+    "domain",
+    pruneDomainValues(src.properties, onlyProperties),
+    src,
+    onlyProperties,
+  );
 
-  const resourceValue = createResourceValueFromSrc(
+  const resourceValue = createDefaultPropFromCf(
+    "resource_value",
+    pruneResourceValues(src.properties, onlyProperties),
     src,
     onlyProperties,
   );
@@ -61,7 +63,7 @@ export function pkgSpecFromCf(src: CfSchema): ExpandedPkgSpec {
     siPropFuncs: [],
     managementFuncs: [],
     domain,
-    secrets: createDefaultProp("secrets"),
+    secrets: createDefaultPropFromCf("secrets", {}, src, onlyProperties),
     secretDefinition: null,
     resourceValue,
     rootPropFuncs: [],
@@ -102,50 +104,6 @@ function versionFromDate(): string {
   return new Date().toISOString().replace(/[-:T.Z]/g, "").slice(0, 14);
 }
 
-function createDomainFromSrc(
-  src: CfSchema,
-  onlyProperties: OnlyProperties,
-) {
-  return createRootFromProperties(
-    "domain",
-    pruneDomainValues(src.properties, onlyProperties),
-    onlyProperties,
-    src.typeName,
-  );
-}
-
-function createResourceValueFromSrc(
-  src: CfSchema,
-  onlyProperties: OnlyProperties,
-) {
-  return createRootFromProperties(
-    "resource_value",
-    pruneResourceValues(src.properties, onlyProperties),
-    onlyProperties,
-    src.typeName,
-  );
-}
-
-function createRootFromProperties(
-  root_name: DefaultPropType,
-  properties: Record<string, CfProperty>,
-  onlyProperties: OnlyProperties,
-  typeName: string,
-) {
-  const root = createDefaultProp(root_name);
-  Object.entries(properties).forEach(([name, cfData]) => {
-    const newProp = createPropFromCf(name, cfData, onlyProperties, typeName, [
-      ...root.metadata.propPath,
-    ]);
-
-    if (!newProp) return;
-
-    root.entries.push(newProp);
-  });
-
-  return root;
-}
-
 // Remove all read only props from this list, since readonly props go on the
 // resource value tree
 function pruneDomainValues(
@@ -159,7 +117,8 @@ function pruneDomainValues(
   const readOnlySet = new Set(onlyProperties.readOnly);
   return Object.fromEntries(
     Object.entries(properties)
-      .filter(([name]) => !readOnlySet.has(name)),
+      // TODO we shouldn't be ignoring things just because "type" isn't set
+      .filter(([name, prop]) => prop.type && !readOnlySet.has(name)),
   );
 }
 
@@ -174,7 +133,7 @@ function pruneResourceValues(
   const readOnlySet = new Set(onlyProperties.readOnly);
   return Object.fromEntries(
     Object.entries(properties)
-      .filter(([name]) => readOnlySet.has(name)),
+      .filter(([name, prop]) => prop.type && readOnlySet.has(name)),
   );
 }
 

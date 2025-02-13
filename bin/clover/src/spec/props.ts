@@ -6,6 +6,7 @@ import { PropSpecWidgetKind } from "../bindings/PropSpecWidgetKind.ts";
 import _ from "npm:lodash";
 import ImportedJoi from "joi";
 import { Extend } from "../extend.ts";
+import { CfSchema } from "../cfDb.ts";
 const { createHash } = await import("node:crypto");
 
 export const CREATE_ONLY_PROP_LABEL = "si_create_only_prop";
@@ -64,68 +65,84 @@ interface PropSpecOverrides {
   joiValidation?: string;
 }
 
-type CreatePropQueue = {
-  addTo: null | ((data: ExpandedPropSpec) => undefined);
-  name: string;
-  cfProp: CfProperty;
+type CreatePropArgs = {
   propPath: string[];
-}[];
+  cfProp: CfProperty;
+  required?: boolean;
+  addTo?: (data: ExpandedPropSpec) => undefined;
+};
+export type CreatePropQueue = {
+  cfSchema: CfSchema;
+  onlyProperties: OnlyProperties;
+  queue: CreatePropArgs[];
+};
 
-export function createPropFromCf(
-  name: string,
-  cfProp: CfProperty,
+const MAX_PROP_DEPTH = 30;
+
+// Create top-level prop such as domain, resource_value, secrets, etc.
+export function createDefaultPropFromCf(
+  name: DefaultPropType,
+  properties: Record<string, CfProperty>,
+  cfSchema: CfSchema,
   onlyProperties: OnlyProperties,
-  typeName: string,
-  propPath: string[],
-): ExpandedPropSpec | undefined {
-  if (!cfProp.type) {
-    return undefined;
-  }
+): ExpandedPropSpecFor["object"] {
+  // Enqueue the root prop only, and then iterate over its children
+  let rootProp: ExpandedPropSpecFor["object"] | undefined;
+  const queue: CreatePropQueue = {
+    cfSchema,
+    onlyProperties,
+    queue: [{
+      propPath: ["root", name],
+      // Pretend the prop only has the specified properties (since we split it up)
+      cfProp: { ...cfSchema, properties },
+      required: true,
+      addTo: (prop: ExpandedPropSpec) => {
+        if (prop.kind !== "object") {
+          throw new Error(`${name} prop is not an object`);
+        }
+        // Set "rootProp" before returning it
+        rootProp = prop;
+      },
+    }],
+  };
 
-  const queue: CreatePropQueue = [
-    {
-      name,
-      cfProp,
-      addTo: null,
-      propPath,
-    },
-  ];
-
-  let rootProp = undefined;
-
-  while (queue.length > 0) {
-    if (propPath.length > 10) {
+  while (queue.queue.length > 0) {
+    const propArgs = queue.queue.shift()!;
+    if (propArgs.propPath.length > MAX_PROP_DEPTH) {
       throw new Error(
-        `Prop tree loop detected: Tried creating prop more than 10 levels deep in the prop tree: ${propPath}`,
+        `Prop tree loop detected: Tried creating prop more than 10 levels deep in the prop tree: ${propArgs.propPath}`,
       );
     }
-    const data = queue.shift();
-    if (!data) break;
 
-    const prop = createPropFromCfInner(
-      data.name,
-      data.cfProp,
-      onlyProperties,
-      typeName,
-      data.propPath,
-      queue,
-    );
-
+    const prop = createPropFromCf(propArgs, queue);
     if (!prop) continue;
-
-    if (!data.addTo) {
-      rootProp = prop;
-    } else {
-      data.addTo(prop);
-    }
+    if (propArgs.addTo) propArgs.addTo(prop);
   }
 
   if (!rootProp) {
-    console.log(cfProp);
-    throw new Error(`createProp for ${name} did not generate a prop`);
+    throw new Error(
+      `createProp for ${cfSchema.typeName} did not generate a ${name} prop`,
+    );
   }
 
+  // TEMP uncomment this to ensure diffs stay the same before checkin
+  {
+    const { kind, data, name, entries, uniqueId, metadata } = rootProp;
+    data.hidden = null;
+    rootProp = { kind, data, name, entries, uniqueId, metadata };
+  }
+
+  // Top level prop doesn't actually get the generated doc; we add that to the schema instead
+  rootProp.data.docLink = null;
+  rootProp.data.documentation = null;
+
   return rootProp;
+}
+
+export function createDefaultProp(
+  name: DefaultPropType,
+): ExpandedPropSpecFor["object"] {
+  return createObjectProp(name, ["root"]);
 }
 
 function createDocLink(typeName: string, propName: string): string | null {
@@ -133,14 +150,11 @@ function createDocLink(typeName: string, propName: string): string | null {
   return `https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-${typeNameSnake}.html#cfn-${typeNameSnake}-${propName.toLowerCase()}`;
 }
 
-function createPropFromCfInner(
-  name: string,
-  cfProp: CfProperty,
-  onlyProperties: OnlyProperties,
-  typeName: string,
-  propPath: string[],
+function createPropFromCf(
+  { propPath, cfProp, required }: CreatePropArgs,
   queue: CreatePropQueue,
 ): ExpandedPropSpec | undefined {
+  const name = propPath[propPath.length - 1];
   const propUniqueId = ulid();
   const data: ExpandedPropSpec["data"] = {
     name,
@@ -151,20 +165,19 @@ function createPropFromCfInner(
     widgetKind: null,
     widgetOptions: [],
     hidden: false,
-    docLink: createDocLink(typeName, name),
+    docLink: createDocLink(queue.cfSchema.typeName, name),
     documentation: cfProp.description ?? null,
   };
-  propPath.push(name);
   const partialProp: Partial<ExpandedPropSpec> = {
     name,
     data,
     uniqueId: propUniqueId,
     metadata: {
       // cfProp,
-      createOnly: onlyProperties.createOnly.includes(name),
-      readOnly: onlyProperties.readOnly.includes(name),
-      writeOnly: onlyProperties.writeOnly.includes(name),
-      primaryIdentifier: onlyProperties.primaryIdentifier.includes(name),
+      createOnly: queue.onlyProperties.createOnly.includes(name),
+      readOnly: queue.onlyProperties.readOnly.includes(name),
+      writeOnly: queue.onlyProperties.writeOnly.includes(name),
+      primaryIdentifier: queue.onlyProperties.primaryIdentifier.includes(name),
       propPath,
     },
   };
@@ -229,19 +242,31 @@ function createPropFromCfInner(
           `Unsupported number format: ${normalizedCfProp.format}`,
         );
     }
+    if (required) {
+      validation += ".required()";
+    }
     if (validation) {
       setJoiValidation(prop, `Joi.number()${validation}`);
     }
 
     return prop;
   } else if (normalizedCfProp.type === "boolean") {
-    const prop = partialProp as Extract<ExpandedPropSpec, { kind: "boolean" }>;
+    const prop = partialProp as ExpandedPropSpecFor["boolean"];
     prop.kind = "boolean";
     prop.data.widgetKind = "Checkbox";
 
+    // Add validation
+    let validation = "";
+    if (required) {
+      validation += ".required()";
+    }
+    if (validation) {
+      setJoiValidation(prop, `Joi.boolean()${validation}`);
+    }
+
     return prop;
   } else if (normalizedCfProp.type === "string") {
-    const prop = partialProp as Extract<ExpandedPropSpec, { kind: "string" }>;
+    const prop = partialProp as ExpandedPropSpecFor["string"];
     prop.kind = "string";
     if (normalizedCfProp.enum) {
       prop.data.widgetKind = "ComboBox";
@@ -300,12 +325,18 @@ function createPropFromCfInner(
       }
       if (normalizedCfProp.pattern !== undefined) {
         if (
-          !shouldIgnorePattern(typeName, normalizedCfProp.pattern)
+          !shouldIgnorePattern(
+            queue.cfSchema.typeName,
+            normalizedCfProp.pattern,
+          )
         ) {
           validation += `.pattern(new RegExp(${
             JSON.stringify(normalizedCfProp.pattern)
           }))`;
         }
+      }
+      if (required) {
+        validation += ".required()";
       }
       if (validation) {
         try {
@@ -314,7 +345,7 @@ function createPropFromCfInner(
           if (normalizedCfProp.pattern !== undefined) {
             console.log(
               `If this is a regex syntax error, add this to IGNORE_PATTERNS:
-                ${JSON.stringify(typeName)}: [ ${
+                ${JSON.stringify(queue.cfSchema.typeName)}: [ ${
                 JSON.stringify(normalizedCfProp.pattern)
               }, ],
               `,
@@ -327,29 +358,38 @@ function createPropFromCfInner(
     return prop;
   } else if (normalizedCfProp.type === "json") {
     // TODO if this is gonna be json we should really check that it's valid json ...
-    const prop = partialProp as Extract<ExpandedPropSpec, { kind: "string" }>;
+    const prop = partialProp as ExpandedPropSpecFor["string"];
     prop.kind = "string";
     prop.data.widgetKind = "TextArea";
 
+    // Add validation
+    let validation = "";
+    if (required) {
+      validation += ".required()";
+    }
+    if (validation) {
+      setJoiValidation(prop, `Joi.string()${validation}`);
+    }
+
     return prop;
   } else if (normalizedCfProp.type === "array") {
-    const prop = partialProp as Extract<ExpandedPropSpec, { kind: "array" }>;
+    const prop = partialProp as ExpandedPropSpecFor["array"];
     prop.kind = "array";
     prop.data.widgetKind = "Array";
 
-    queue.push({
+    queue.queue.push({
+      propPath: [...propPath, `${name}Item`],
+      cfProp: normalizedCfProp.items,
+      required: true, // If you *do* have an item which is an object, this enables validation for required fields
       addTo: (data: ExpandedPropSpec) => {
         prop.typeProp = data;
       },
-      name: `${name}Item`,
-      cfProp: normalizedCfProp.items,
-      propPath: _.clone(propPath),
     });
 
     return prop;
   } else if (normalizedCfProp.type === "object") {
     if (normalizedCfProp.patternProperties) {
-      const prop = partialProp as Extract<ExpandedPropSpec, { kind: "map" }>;
+      const prop = partialProp as ExpandedPropSpecFor["map"];
       prop.kind = "map";
       prop.data.widgetKind = "Map";
 
@@ -373,39 +413,48 @@ function createPropFromCfInner(
         throw new Error("could not extract type from pattern prop");
       }
 
-      queue.push({
+      queue.queue.push({
+        cfProp,
+        propPath: [...propPath, `${name}Item`],
+        required: true, // If you *do* have an item which is an object, this enables validation for required fields
         addTo: (data: ExpandedPropSpec) => {
           prop.typeProp = data;
         },
-        name: `${name}Item`,
-        cfProp,
-        propPath: _.clone(propPath),
       });
 
       return prop;
     } else if (normalizedCfProp.properties) {
-      const prop = partialProp as Extract<ExpandedPropSpec, { kind: "object" }>;
+      const prop = partialProp as ExpandedPropSpecFor["object"];
       prop.kind = "object";
       prop.data.widgetKind = "Header";
       prop.entries = [];
-
-      Object.entries(normalizedCfProp.properties).forEach(
-        ([objName, objProp]) => {
-          queue.push({
-            addTo: (data: ExpandedPropSpec) => {
-              prop.entries.push(data);
-            },
-            name: objName,
-            cfProp: objProp,
-            propPath: _.clone(propPath),
-          });
-        },
-      );
+      for (
+        const [name, childCfProp] of Object.entries(normalizedCfProp.properties)
+      ) {
+        queue.queue.push({
+          cfProp: childCfProp,
+          propPath: [...propPath, name],
+          // Object fields are only required if the object itself is required
+          required: required && normalizedCfProp.required?.includes(name),
+          addTo: (childProp: ExpandedPropSpec) => {
+            prop.entries.push(childProp);
+          },
+        });
+      }
       return prop;
     } else {
-      const prop = partialProp as Extract<ExpandedPropSpec, { kind: "string" }>;
+      const prop = partialProp as ExpandedPropSpecFor["string"];
       prop.kind = "string";
       prop.data.widgetKind = "Text";
+
+      // Add validation
+      let validation = "";
+      if (required) {
+        validation += ".required()";
+      }
+      if (validation) {
+        setJoiValidation(prop, `Joi.string()${validation}`);
+      }
 
       return prop;
     }
@@ -484,12 +533,6 @@ function setCreateOnlyProp(data: ExpandedPropSpec["data"]) {
 }
 
 export type DefaultPropType = "domain" | "secrets" | "resource_value";
-
-export function createDefaultProp(
-  type: DefaultPropType,
-): Extract<ExpandedPropSpec, { kind: "object" }> {
-  return createObjectProp(type, ["root"]);
-}
 
 export function createObjectProp(
   name: string,

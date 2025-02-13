@@ -39,19 +39,19 @@ export type CfProperty =
     ];
   }>;
 
-type CfBooleanProperty = JSONSchema.Boolean;
+export type CfBooleanProperty = JSONSchema.Boolean;
 
-type CfStringProperty = JSONSchema.String;
+export type CfStringProperty = JSONSchema.String;
 
-type CfNumberProperty = JSONSchema.Number & {
+export type CfNumberProperty = JSONSchema.Number & {
   format?: string;
 };
 
-type CfIntegerProperty = JSONSchema.Integer & {
+export type CfIntegerProperty = JSONSchema.Integer & {
   format?: string;
 };
 
-type CfArrayProperty = Extend<JSONSchema.Array, {
+export type CfArrayProperty = Extend<JSONSchema.Array, {
   // For properties of type array, defines the data structure of each array item.
   // Contains a single schema. A list of schemas is not allowed.
   items: CfProperty;
@@ -60,7 +60,7 @@ type CfArrayProperty = Extend<JSONSchema.Array, {
   insertionOrder?: boolean;
 }>;
 
-type CfObjectProperty = Extend<JSONSchema.Object, {
+export type CfObjectProperty = Extend<JSONSchema.Object, {
   properties?: Record<string, CfProperty>;
   // e.g. patternProperties: { "^[a-z]+": { type: "string" } }
   patternProperties?: Record<string, CfProperty>;
@@ -261,7 +261,7 @@ function isCfObjectProperty(prop: CfProperty): prop is CfObjectProperty {
     "patternProperties" in prop;
 }
 
-export interface CfSchema extends JSONSchema.Interface {
+export type CfSchema = Extend<CfObjectProperty, {
   typeName: string;
   description: string;
   primaryIdentifier: JSONPointer[];
@@ -307,7 +307,7 @@ export interface CfSchema extends JSONSchema.Interface {
     mappings: Record<string, JSONPointer>;
   };
   propertyTransform?: Record<string, string>;
-}
+}>;
 
 type CfDb = Record<string, CfSchema>;
 const DB: CfDb = {};
