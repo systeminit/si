@@ -61,7 +61,6 @@ type BustCacheFn = (queryKey: string, latestChecksum: string) => void;
 export interface DBInterface {
   initDB: () => Promise<void>,
   migrate: () => void,
-  testRainbowBridge(): Promise<{columns: Columns, rows: SqlValue[][]}>,
   initSocket (url: string, bearerToken: string): void,
   initBifrost(url: string, bearerToken: string): void,
   bifrostClose(): void,
@@ -70,7 +69,8 @@ export interface DBInterface {
   mjolnir(kind: string, args: Args): void,
   partialKeyFromKindAndArgs (kind: string, args: Args): Promise<QueryKey>, 
   addListenerBustCache(fn: BustCacheFn): void,
-  bootstrapChecksums(): Promise<Record<QueryKey, Checksum>>,
+  bootstrapChecksums(changeSetId: ChangeSetId): Promise<Record<QueryKey, Checksum>>,
+  fullDiagnosticTest(changeSetId: ChangeSetId): void,
 }
 
 type RowWithColumns = Record<Column, SqlValue>;
@@ -119,14 +119,21 @@ export type QueryKey = string;  // `kind|argsToString`
 export type Checksum = string;  // QueryKey + Checksum is a HIT in sqlite
 export type ROWID = number;
 export const NOROW = Symbol("NOROW");
-export interface Atom {
+
+interface AbstractAtom {
   workspaceId: WorkspacePk,
   changeSetId: ChangeSetId,
   fromSnapshotChecksum: Checksum,
   toSnapshotChecksum: Checksum,
   kind: string,
-  args: Args,
   origChecksum: Checksum,
   newChecksum: Checksum,
   data: string, // this is a string of JSON we're not parsing
+}
+export interface RawAtom extends AbstractAtom {
+  args: RawArgs,
+};
+
+export interface Atom extends AbstractAtom {
+  args: Args,
 };
