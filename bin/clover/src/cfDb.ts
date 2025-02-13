@@ -5,15 +5,79 @@ import $RefParser from "npm:@apidevtools/json-schema-ref-parser";
 import _logger from "./logger.ts";
 import { ServiceMissing } from "./errors.ts";
 import _ from "npm:lodash";
+import { Extend } from "./extend.ts";
 
 const logger = _logger.ns("cfDb").seal();
 
 type JSONPointer = string;
 
-interface CfPropertyStatic {
-  description?: string;
-  title?: string;
-}
+const CF_PROPERTY_TYPES = [
+  "boolean",
+  "string",
+  "number",
+  "integer",
+  "object",
+  "array",
+  "json",
+] as const;
+export type CfPropertyType = typeof CF_PROPERTY_TYPES[number];
+
+export type CfProperty =
+  | Extend<CfBooleanProperty, { type: "boolean" }>
+  | Extend<CfStringProperty, { type: "string" }>
+  | Extend<CfNumberProperty, { type: "number" }>
+  | Extend<CfIntegerProperty, { type: "integer" }>
+  | Extend<CfArrayProperty, { type: "array" }>
+  | CfObjectProperty // We may infer object-ness if type is undefined but other props are there
+  | Omit<JSONSchema.String, "type"> & { type: "json" }
+  | CfMultiTypeProperty
+  // Then we have this mess of array typed properties
+  | Extend<JSONSchema.Interface, {
+    type: ["string", CfPropertyType] | [
+      CfPropertyType,
+      "string",
+    ];
+  }>;
+
+type CfBooleanProperty = JSONSchema.Boolean;
+
+type CfStringProperty = JSONSchema.String;
+
+type CfNumberProperty = JSONSchema.Number & {
+  format?: string;
+};
+
+type CfIntegerProperty = JSONSchema.Integer & {
+  format?: string;
+};
+
+type CfArrayProperty = Extend<JSONSchema.Array, {
+  // For properties of type array, defines the data structure of each array item.
+  // Contains a single schema. A list of schemas is not allowed.
+  items: CfProperty;
+  // For properties of type array, set to true to specify that the order in which array items are specified must be honored, and that changing the order of the array will indicate a change in the property.
+  // The default is true.
+  insertionOrder?: boolean;
+}>;
+
+type CfObjectProperty = Extend<JSONSchema.Object, {
+  properties?: Record<string, CfProperty>;
+  // e.g. patternProperties: { "^[a-z]+": { type: "string" } }
+  patternProperties?: Record<string, CfProperty>;
+  // Any properties that are required if this property is specified.
+  dependencies?: Record<string, string[]>;
+  oneOf?: CfObjectProperty[];
+  anyOf?: CfObjectProperty[];
+  allOf?: CfObjectProperty[];
+}>;
+
+type CfMultiTypeProperty =
+  & Pick<JSONSchema.Interface, "$ref" | "$comment" | "title" | "description">
+  & {
+    type?: undefined;
+    oneOf?: CfProperty[];
+    anyOf?: CfProperty[];
+  };
 
 type StringPair =
   | ["string", "object"]
@@ -26,85 +90,74 @@ type StringPair =
   | ["string", "array"]
   | ["integer", "string"];
 
-export type CfProperty =
-  & ({
-    "type":
-      | "boolean"
-      | "json" // Cf does not really have this, but we can use it to differentiate between json and normal text
-      | StringPair;
-  } | {
-    "type": "string";
-    "enum"?: string[];
-  } | {
-    "type": "number" | "integer";
-    "enum"?: number[];
-  } | {
-    "type": "array";
-    "items": CfProperty;
-  } | {
-    "type": "object";
-    "properties"?: Record<string, CfProperty>;
-    "patternProperties"?: Record<string, CfProperty>;
-  } | {
-    "type": undefined;
-    "oneOf"?: CfProperty[]; // TODO: this should be a qualification
-    "anyOf"?: CfProperty[]; // TODO: this should be a qualification
-    "properties"?: Record<string, CfProperty>;
-    "patternProperties"?: Record<string, CfProperty>;
-    "$ref"?: string;
-  })
-  & CfPropertyStatic;
+export function normalizeProperty(
+  prop: CfProperty,
+): CfProperty {
+  const normalizedCfData = normalizePropertyType(prop);
+  return normalizeAnyOfAndOneOfTypes(normalizedCfData);
+}
 
-export function normalizePropertyType(prop: CfProperty): CfProperty {
-  // Some props have no type but we can duck type them to objects
-  if (!prop.type && (prop.properties || prop.patternProperties)) {
-    return { ...prop, type: "object" };
-  }
+function normalizePropertyType(
+  prop: CfProperty,
+): CfProperty {
+  // If it already has a single type, return the prop as-is
+  if (typeof prop.type === "string") return prop;
 
-  // If the type is not an array, the type is fine. The type === string here is redundant, but does type guarding for the rest of the function
-  if (
-    !prop.type || !Array.isArray(prop.type) || typeof prop.type === "string"
-  ) {
+  // Infer type when there is none.
+  if (prop.type === undefined) {
+    // Some props have no type but we can duck type them to objects
+    if (isCfObjectProperty(prop)) {
+      return { ...prop, type: "object" } as CfObjectProperty;
+    }
+
+    // TODO we really need to look inside the ref here rather than assuming string ...
+    if (prop.$ref) {
+      return { ...prop, type: "string" } as CfProperty;
+    }
+
+    // If it's a multi-type thing, return it--we don't really handle these yet.
     return prop;
   }
+
+  // The only remaining possible type is array.
 
   // If the cf type is an array, it's always string+something, and we use that something
   // to guess the best type we should use
   const nonStringType = prop.type.find((t) => t !== "string");
 
+  let type: CfPropertyType;
   switch (nonStringType) {
     case "boolean":
-      return { ...prop, type: "boolean" };
     case "integer":
     case "number":
-      return { ...prop, type: "integer" };
+      type = nonStringType;
+      break;
     case "object":
       // If it's an object we make it a json type, which will become a string type + textArea widget
-      return { ...prop, type: "json" };
+      type = "json";
+      break;
     case "array": {
       // When we get something that is string/array, the items object should already there
-      const finalProp = { ...prop, type: "array" } as Extract<CfProperty, {
-        type: "array";
-      }>;
-      if (!finalProp.items) {
+      if (!("items" in prop)) {
         throw new Error("array typed prop includes array but has no items");
       }
-
-      return finalProp;
+      type = "array";
+      break;
     }
     default:
       console.log(prop);
       throw new Error("unhandled array type");
   }
+  return { ...prop, type } as CfProperty;
 }
 
-export function normalizeAnyOfAndOneOfTypes(prop: CfProperty): CfProperty {
-  if (prop.type) {
-    return prop;
-  }
+function normalizeAnyOfAndOneOfTypes(
+  prop: CfProperty,
+): CfProperty {
+  if (prop.type) return prop;
 
   if (prop.oneOf) {
-    const newProp: Extract<CfProperty, { type: "object" }> = {
+    const newProp: CfObjectProperty = {
       description: prop.description,
       type: "object",
       properties: {},
@@ -115,10 +168,7 @@ export function normalizeAnyOfAndOneOfTypes(prop: CfProperty): CfProperty {
         throw new Error("unexpected oneOf");
       }
 
-      if (
-        (ofMember.type === undefined || ofMember.type === "object") &&
-        ofMember.properties
-      ) {
+      if (ofMember.type === "object" && ofMember.properties) {
         for (const title of _.keys(ofMember.properties)) {
           newProp.properties[title] = ofMember.properties[title];
         }
@@ -159,20 +209,24 @@ export function normalizeAnyOfAndOneOfTypes(prop: CfProperty): CfProperty {
     const properties = {} as Record<string, CfProperty>;
 
     for (const ofMember of prop.anyOf) {
-      if (!ofMember.type && ofMember.properties) {
-        isObject = true;
+      if (!isCfObjectProperty(ofMember)) {
+        isObject = false;
+        break;
+      }
+      isObject = true;
 
-        if (!ofMember.title) {
-          console.log(prop);
-          throw new Error("anyOf of objects without title");
-        }
+      if (!ofMember.title) {
+        console.log(prop);
+        throw new Error("anyOf of objects without title");
+      }
+
+      if (ofMember.properties) {
+        isObject = true;
 
         properties[ofMember.title] = {
           ...ofMember.properties[ofMember.title],
         };
-      } else if (
-        ofMember.type === "object" && ofMember.patternProperties
-      ) {
+      } else if (ofMember.patternProperties) {
         isObject = true;
 
         if (!ofMember.title) {
@@ -181,9 +235,6 @@ export function normalizeAnyOfAndOneOfTypes(prop: CfProperty): CfProperty {
         }
 
         properties[ofMember.title] = ofMember;
-      } else {
-        isObject = false;
-        break;
       }
     }
 
@@ -202,6 +253,12 @@ export function normalizeAnyOfAndOneOfTypes(prop: CfProperty): CfProperty {
   }
 
   return prop;
+}
+
+// Tells whether this can be treated like an object (even if it doesn't have type = object)
+function isCfObjectProperty(prop: CfProperty): prop is CfObjectProperty {
+  return prop.type === "object" || "properties" in prop ||
+    "patternProperties" in prop;
 }
 
 export interface CfSchema extends JSONSchema.Interface {
@@ -234,6 +291,7 @@ export interface CfSchema extends JSONSchema.Interface {
       definitions: JSONSchema.Interface["definitions"];
     }
   >;
+  definitions?: Record<string, CfProperty>;
   properties: Record<string, CfProperty>;
   readOnlyProperties?: JSONPointer[];
   writeOnlyProperties?: JSONPointer[];

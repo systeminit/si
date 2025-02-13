@@ -1,13 +1,10 @@
-import {
-  CfProperty,
-  normalizeAnyOfAndOneOfTypes,
-  normalizePropertyType,
-} from "../cfDb.ts";
+import { CfProperty, normalizeProperty } from "../cfDb.ts";
 import { ulid } from "https://deno.land/x/ulid@v0.3.0/mod.ts";
 import { PropSpec } from "../bindings/PropSpec.ts";
 import { PropSpecData } from "../bindings/PropSpecData.ts";
 import { PropSpecWidgetKind } from "../bindings/PropSpecWidgetKind.ts";
 import _ from "npm:lodash";
+import ImportedJoi from "joi";
 import { Extend } from "../extend.ts";
 const { createHash } = await import("node:crypto");
 
@@ -64,6 +61,7 @@ interface PropSpecOverrides {
     primaryIdentifier: boolean;
     propPath: string[];
   };
+  joiValidation?: string;
 }
 
 type CreatePropQueue = {
@@ -179,22 +177,16 @@ function createPropFromCfInner(
     cfProp.title = name;
   }
 
-  let normalizedCfData = normalizePropertyType(cfProp);
-  normalizedCfData = normalizeAnyOfAndOneOfTypes(normalizedCfData);
-
-  if (!normalizedCfData.type && normalizedCfData.$ref) {
-    normalizedCfData = { ...normalizedCfData, type: "string" };
-  }
+  const normalizedCfProp = normalizeProperty(cfProp);
 
   if (
-    normalizedCfData.type === "integer" ||
-    normalizedCfData.type === "number"
+    normalizedCfProp.type === "integer" || normalizedCfProp.type === "number"
   ) {
     const prop = partialProp as ExpandedPropSpecFor["number"];
     prop.kind = "number";
-    if (normalizedCfData.enum) {
+    if (normalizedCfProp.enum) {
       prop.data.widgetKind = "ComboBox";
-      for (const val of normalizedCfData.enum) {
+      for (const val of normalizedCfProp.enum) {
         const valString = val.toString();
         prop.data.widgetOptions!.push({
           label: valString,
@@ -205,19 +197,55 @@ function createPropFromCfInner(
       prop.data.widgetKind = "Text";
     }
 
+    // Add validation
+    let validation = "";
+    if (normalizedCfProp.type === "integer") {
+      validation += ".integer()";
+    }
+    if (normalizedCfProp.minimum !== undefined) {
+      validation += `.min(${normalizedCfProp.minimum})`;
+    }
+    if (normalizedCfProp.maximum !== undefined) {
+      validation += `.max(${normalizedCfProp.maximum})`;
+    }
+    if (normalizedCfProp.exclusiveMinimum !== undefined) {
+      validation += `.greater(${normalizedCfProp.exclusiveMinimum})`;
+    }
+    if (normalizedCfProp.exclusiveMaximum !== undefined) {
+      validation += `.less(${normalizedCfProp.exclusiveMaximum})`;
+    }
+    if (normalizedCfProp.multipleOf !== undefined) {
+      validation += `.multiple(${normalizedCfProp.multipleOf})`;
+    }
+    switch (normalizedCfProp.format) {
+      case "int64":
+      case "double":
+        // These formats are inherent to JS
+        break;
+      case undefined:
+        break;
+      default:
+        throw new Error(
+          `Unsupported number format: ${normalizedCfProp.format}`,
+        );
+    }
+    if (validation) {
+      setJoiValidation(prop, `Joi.number()${validation}`);
+    }
+
     return prop;
-  } else if (normalizedCfData.type === "boolean") {
+  } else if (normalizedCfProp.type === "boolean") {
     const prop = partialProp as Extract<ExpandedPropSpec, { kind: "boolean" }>;
     prop.kind = "boolean";
     prop.data.widgetKind = "Checkbox";
 
     return prop;
-  } else if (normalizedCfData.type === "string") {
+  } else if (normalizedCfProp.type === "string") {
     const prop = partialProp as Extract<ExpandedPropSpec, { kind: "string" }>;
     prop.kind = "string";
-    if (normalizedCfData.enum) {
+    if (normalizedCfProp.enum) {
       prop.data.widgetKind = "ComboBox";
-      for (const val of normalizedCfData.enum) {
+      for (const val of normalizedCfProp.enum) {
         prop.data.widgetOptions!.push({
           label: val,
           value: val,
@@ -227,14 +255,84 @@ function createPropFromCfInner(
       prop.data.widgetKind = "Text";
     }
 
+    // Add validation
+    if (
+      normalizedCfProp.format === "date-time" ||
+      normalizedCfProp.format === "timestamp"
+    ) {
+      prop.joiValidation = "Joi.date().iso()";
+    } else {
+      let validation = "";
+
+      // https://json-schema.org/understanding-json-schema/reference/type#built-in-formats
+      switch (normalizedCfProp.format) {
+        case "uri":
+          validation += ".uri()";
+          break;
+        case "json-pointer":
+          // https://tools.ietf.org/html/rfc6901
+          // We don't validate the whole thing there, but we at least check that it starts with slash!
+          validation += `.pattern(/^\\//)`;
+          break;
+        case "string":
+          // This seems meaningless (actually, the two fields that use it, QuickSight::DataSet::CreatedAt
+          // and QuickSight::DataSet::LastUpdatedAt, are both number types in the actual API, so
+          // it's not clear why these are strings in the first place)
+          break;
+        // This is a special case (and seems likely wrong), but may as well support it
+        case "(^arn:[a-z\\d-]+:rekognition:[a-z\\d-]+:\\d{12}:collection\\/([a-zA-Z0-9_.\\-]+){1,255})":
+          validation += `.pattern(new RegExp(${
+            JSON.stringify(normalizedCfProp.format)
+          }))`;
+          break;
+        case undefined:
+          break;
+        default:
+          throw new Error(
+            `Unsupported format: ${normalizedCfProp.format}`,
+          );
+      }
+      if (normalizedCfProp.minLength !== undefined) {
+        validation += `.min(${normalizedCfProp.minLength})`;
+      }
+      if (normalizedCfProp.maxLength !== undefined) {
+        validation += `.max(${normalizedCfProp.maxLength})`;
+      }
+      if (normalizedCfProp.pattern !== undefined) {
+        if (
+          !shouldIgnorePattern(typeName, normalizedCfProp.pattern)
+        ) {
+          validation += `.pattern(new RegExp(${
+            JSON.stringify(normalizedCfProp.pattern)
+          }))`;
+        }
+      }
+      if (validation) {
+        try {
+          setJoiValidation(prop, `Joi.string()${validation}`);
+        } catch (e) {
+          if (normalizedCfProp.pattern !== undefined) {
+            console.log(
+              `If this is a regex syntax error, add this to IGNORE_PATTERNS:
+                ${JSON.stringify(typeName)}: [ ${
+                JSON.stringify(normalizedCfProp.pattern)
+              }, ],
+              `,
+            );
+          }
+          throw e;
+        }
+      }
+    }
     return prop;
-  } else if (normalizedCfData.type === "json") {
+  } else if (normalizedCfProp.type === "json") {
+    // TODO if this is gonna be json we should really check that it's valid json ...
     const prop = partialProp as Extract<ExpandedPropSpec, { kind: "string" }>;
     prop.kind = "string";
     prop.data.widgetKind = "TextArea";
 
     return prop;
-  } else if (normalizedCfData.type === "array") {
+  } else if (normalizedCfProp.type === "array") {
     const prop = partialProp as Extract<ExpandedPropSpec, { kind: "array" }>;
     prop.kind = "array";
     prop.data.widgetKind = "Array";
@@ -244,18 +342,18 @@ function createPropFromCfInner(
         prop.typeProp = data;
       },
       name: `${name}Item`,
-      cfProp: normalizedCfData.items,
+      cfProp: normalizedCfProp.items,
       propPath: _.clone(propPath),
     });
 
     return prop;
-  } else if (normalizedCfData.type === "object") {
-    if (normalizedCfData.patternProperties) {
+  } else if (normalizedCfProp.type === "object") {
+    if (normalizedCfProp.patternProperties) {
       const prop = partialProp as Extract<ExpandedPropSpec, { kind: "map" }>;
       prop.kind = "map";
       prop.data.widgetKind = "Map";
 
-      const patternProps = Object.entries(normalizedCfData.patternProperties);
+      const patternProps = Object.entries(normalizedCfProp.patternProperties);
 
       let cfProp;
       if (patternProps.length === 1) {
@@ -285,13 +383,13 @@ function createPropFromCfInner(
       });
 
       return prop;
-    } else if (normalizedCfData.properties) {
+    } else if (normalizedCfProp.properties) {
       const prop = partialProp as Extract<ExpandedPropSpec, { kind: "object" }>;
       prop.kind = "object";
       prop.data.widgetKind = "Header";
       prop.entries = [];
 
-      Object.entries(normalizedCfData.properties).forEach(
+      Object.entries(normalizedCfProp.properties).forEach(
         ([objName, objProp]) => {
           queue.push({
             addTo: (data: ExpandedPropSpec) => {
@@ -313,17 +411,68 @@ function createPropFromCfInner(
     }
   }
 
-  if (!normalizedCfData.type && normalizedCfData.description == "") {
+  if (!normalizedCfProp.type && normalizedCfProp.description == "") {
     return undefined;
   }
 
-  if (!normalizedCfData.type && normalizedCfData.title) {
+  if (!normalizedCfProp.type && normalizedCfProp.title) {
     return undefined;
   }
 
   // console.log(cfProp);
-  console.log(normalizedCfData);
+  console.log(normalizedCfProp);
   throw new Error(`no matching kind in prop with path: ${propPath}`);
+}
+
+function setJoiValidation(prop: ExpandedPropSpec, joiValidation: string) {
+  prop.joiValidation = joiValidation;
+  // Used in the eval() below
+  // deno-lint-ignore no-unused-vars
+  const Joi = ImportedJoi;
+  try {
+    prop.data.validationFormat = JSON.stringify(eval(joiValidation).describe());
+  } catch (e) {
+    console.error(joiValidation);
+    throw e;
+  }
+}
+
+// Some patterns in cloudformation are broken and need to be ignored
+const IGNORE_PATTERNS = {
+  "AWS::Amplify::App": ["(?s).+", "(?s).*"],
+  "AWS::Amplify::Branch": ["(?s).+", "(?s).*"],
+  "AWS::Amplify::Domain": ["(?s).+", "(?s).*"],
+  "AWS::AppFlow::Flow": [
+    "[\\u0020-\\uD7FF\\uE000-\\uFFFD\\uD800\\uDC00-\\uDBFF\\uDFFF\\t]*",
+  ],
+  "AWS::CloudFormation::GuardHook": [
+    "^(?!(?i)aws)[A-Za-z0-9]{2,64}::[A-Za-z0-9]{2,64}::[A-Za-z0-9]{2,64}$",
+  ],
+  "AWS::CloudFormation::LambdaHook": [
+    "^(?!(?i)aws)[A-Za-z0-9]{2,64}::[A-Za-z0-9]{2,64}::[A-Za-z0-9]{2,64}$",
+  ],
+  "AWS::CloudTrail::Dashboard": ["(?s).*"],
+  "AWS::FinSpace::Environment": [
+    "^[a-zA-Z-0-9-:\\/]*{1,1000}$",
+    "^[a-zA-Z-0-9-:\\/.]*{1,1000}$",
+  ],
+  "AWS::GameLift::GameServerGroup": ["[ -퟿-�𐀀-􏿿\r\n\t]*"],
+  "AWS::Invoicing::InvoiceUnit": ["^(?! )[\\p{L}\\p{N}\\p{Z}-_]*(?<! )$"],
+  "AWS::OpsWorksCM::Server": [
+    "(?s)\\s*-----BEGIN CERTIFICATE-----.+-----END CERTIFICATE-----\\s*",
+    "(?ms)\\s*^-----BEGIN (?-s:.*)PRIVATE KEY-----$.*?^-----END (?-s:.*)PRIVATE KEY-----$\\s*",
+    "(?s).*",
+  ],
+  "AWS::SageMaker::FeatureGroup": [
+    "[\\u0020-\\uD7FF\\uE000-\\uFFFD\\uD800\\uDC00-\\uDBFF\\uDFFF\t]*",
+  ],
+} as Record<string, string[]>;
+
+function shouldIgnorePattern(
+  typeName: string,
+  pattern: string,
+): boolean {
+  return IGNORE_PATTERNS[typeName]?.indexOf(pattern) >= 0;
 }
 
 function setCreateOnlyProp(data: ExpandedPropSpec["data"]) {
