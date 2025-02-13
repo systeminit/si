@@ -28,7 +28,7 @@ export function generateDefaultQualificationFuncs(
 
     for (const codeGenFunc of defaultCodeGenFuncs) {
       funcs.push(codeGenFunc);
-      leafFuncs.push(createLeafFuncSpec("qualification", codeGenFunc.uniqueId));
+      leafFuncs.push(createLeafFuncSpec("qualification", codeGenFunc.uniqueId, ["domain", "code"]));
     }
 
     newSpecs.push(spec);
