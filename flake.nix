@@ -13,7 +13,6 @@
   };
 
   outputs = {
-    self,
     nixpkgs,
     flake-utils,
     rust-overlay,
@@ -121,7 +120,11 @@
         pkgName,
         extraBuildInputs ? [],
         stdBuildPhase ? ''
-          buck2 build @//mode/release "$buck2_target" --verbose 8 --out "build/$name-$system"
+          buck2 build \
+            @//mode/release \
+            "$buck2_target" \
+            --verbose 8 \
+            --out "build/$name-$system"
         '',
         extraBuildPhase ? "",
         installPhase,
@@ -130,7 +133,7 @@
         dontAutoPatchELF ? false,
         postFixup ? "",
       }:
-        pkgs.stdenv.mkDerivation rec {
+        pkgs.stdenv.mkDerivation {
           name = pkgName;
           buck2_target = "//${pathPrefix}/${pkgName}";
           __impure = true;
@@ -157,7 +160,8 @@
           '';
           configurePhase = ''
             export LIBCLANG_PATH="${pkgs.llvmPackages.libclang.lib}/lib"
-            export BINDGEN_EXTRA_CLANG_ARGS="$(< ${pkgs.stdenv.cc}/nix-support/libc-crt1-cflags) \
+            export BINDGEN_EXTRA_CLANG_ARGS="\
+              $(< ${pkgs.stdenv.cc}/nix-support/libc-crt1-cflags) \
               $(< ${pkgs.stdenv.cc}/nix-support/libc-cflags) \
               $(< ${pkgs.stdenv.cc}/nix-support/cc-cflags) \
               $(< ${pkgs.stdenv.cc}/nix-support/libcxx-cxxflags) \
@@ -259,8 +263,12 @@
               # is where we expect it. This gets droppped into the rootfs as
               # /lib64/ld-linux-x86-64.so.2 -> /nix/store/*/ld-linux-x86-64.20.2
               mkdir -p $out/lib64
-              ln -sf ${pkgs.glibc}/lib/ld-linux-x86-64.so.2 $out/lib64/ld-linux-x86-64.so.2
-              ln -sf ${pkgs.glibc}/lib/ld-linux-aarch64.so.1 $out/lib64/ld-linux-aarch64.so.1
+              ln -sf \
+                "${pkgs.glibc}/lib/ld-linux-x86-64.so.2" \
+                "$out/lib64/ld-linux-x86-64.so.2"
+              ln -sf \
+                "${pkgs.glibc}/lib/ld-linux-aarch64.so.1" \
+                "$out/lib64/ld-linux-aarch64.so.1"
 
               wrapProgram $out/bin/lang-js \
                 --set LD_LIBRARY_PATH "${pkgs.lib.makeLibraryPath [
@@ -313,7 +321,8 @@
           # Env Vars so bindgen can find libclang
           shellHook = ''
             export LIBCLANG_PATH="${pkgs.llvmPackages.libclang.lib}/lib"
-            export BINDGEN_EXTRA_CLANG_ARGS="$(< ${pkgs.stdenv.cc}/nix-support/libc-crt1-cflags) \
+            export BINDGEN_EXTRA_CLANG_ARGS="\
+              $(< ${pkgs.stdenv.cc}/nix-support/libc-crt1-cflags) \
               $(< ${pkgs.stdenv.cc}/nix-support/libc-cflags) \
               $(< ${pkgs.stdenv.cc}/nix-support/cc-cflags) \
               $(< ${pkgs.stdenv.cc}/nix-support/libcxx-cxxflags) \
