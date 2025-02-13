@@ -17,15 +17,10 @@ export const useHeimdall = defineStore('heimdall', async () => {
   };
 
   const worker = new Worker(new URL("../../workers/webworker.ts", import.meta.url), { type: 'module' });
-  const dbInterface: Comlink.Remote<unknown> = Comlink.wrap(worker)
-  const db = dbInterface as Comlink.Remote<DBInterface>;
+  const db: Comlink.Remote<DBInterface> = Comlink.wrap(worker)
 
   await db.addListenerBustCache(Comlink.proxy(bustTanStackCache));
   await db.initBifrost("", "");
-
-  const { rows, columns } = await db.testRainbowBridge();
-  const data = interpolate(columns, rows);
-  console.log("SMOKE RESULTS", data, typeof data[0]?.rowid);
 
   const connectionShouldBeEnabled = computed(
     () =>

@@ -2,7 +2,7 @@ import * as Comlink from "comlink";
 
 import sqlite3InitModule, { Database, Sqlite3Static, SqlValue } from '@sqlite.org/sqlite-wasm';
 import ReconnectingWebSocket from "reconnecting-websocket";
-import { UpsertPayload, PatchPayload, PayloadDelete, DBInterface, NOROW, Checksum, ROWID, Atom, QueryKey, Args, RawArgs } from "./types/dbinterface";
+import { UpsertPayload, PatchPayload, PayloadDelete, DBInterface, NOROW, Checksum, ROWID, Atom, QueryKey, Args, RawArgs, RawAtom } from "./types/dbinterface";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { WorkspacePk } from "@/store/workspaces.store";
 
@@ -163,8 +163,23 @@ const atomExists = async (atom: Atom, rowid: ROWID): Promise<boolean> => {
   return rows.length > 0;
 };
 
-const newSnapshot = (atom: Atom): ROWID => {
+// SEE PATCH WORKFLOW
+const newSnapshot = async (atom: Atom): Promise<ROWID> => {
+  const created = await db.exec({
+    sql: `INSERT INTO snapshots (change_set_id, checksum) VALUES (?, ?);`,
+    bind: [atom.changeSetId, atom.newChecksum],
+    returnValue: "resultRows",
+  });
+  const snapshot_id = oneInOne(created);
+  if (snapshot_id === NOROW) throw new Error("Insertion Failed");
+  return snapshot_id as number;
+};
 
+const newSnapshotEnd = async(changeSetId: ChangeSetId, fromSnapshotChecksum: Checksum) => {
+  await db.exec({
+    sql: "DELETE FROM snapshots WHERE change_set_id = '?' AND checksum = '?'",
+    bind: [changeSetId, fromSnapshotChecksum],
+  })
 };
 
 const removeAtom = async (atom: Atom) => {
@@ -181,7 +196,7 @@ const removeAtom = async (atom: Atom) => {
   }); // CASCADES to the mtm table
 };
 
-const newAtom = async (atom: Atom, snapshot_rowid: ROWID) => {
+const createAtom = async (atom: Atom, snapshot_rowid: ROWID): Promise<ROWID> => {
   const data = await new Blob([atom.data]).arrayBuffer();
   const rows = await db.exec({
     sql: `insert into atoms
@@ -195,58 +210,98 @@ const newAtom = async (atom: Atom, snapshot_rowid: ROWID) => {
   });
   const atom_rowid = oneInOne(rows);
   if (atom_rowid === NOROW) throw new Error("NOROW when inserting");
-  else {
-    await db.exec({
-      sql: `insert into snapshots_mtm_atoms
-        (atom_rowid, snapshot_rowid)
-          VALUES
-        (?, ?);`,
-      bind: [atom_rowid, snapshot_rowid],
-      returnValue: "resultRows",
-    });
-  }
+  return atom_rowid as ROWID;
 };
 
 const partialKeyFromKindAndArgs = async (kind: string, args: Args): Promise<QueryKey> => {
   return `${kind}|${args.toString()}`;
 };
 
-const handleAtom = async (atom: Atom) => {
-  let rowid = await findSnapshotRowId(atom.toSnapshotChecksum, atom.changeSetId)
-  if (rowid === NOROW)
-    rowid = await newSnapshot(atom);
+// FUTURE: maybe not only atoms come over the wire?
+const handleEvent = async (messageEvent: MessageEvent<any>) => {
+  const data = JSON.parse(messageEvent.data) as RawAtom[];
+  if (data.length === 0) return;
+  // Assumption: every patch is working on the same workspace and changeset
+  // (e.g. we're not bundling messages across workspaces somehow)
+  const changeSetId = data[0]?.changeSetId;
+  if (!changeSetId) throw new Error("Expected changeSetId")
 
+  const snapshots: Record<string, ROWID> = {};
+  const oldSnapshots: string[] = [];
+  const atoms = await Promise.all(data.map(async (rawAtom) => {
+    const atom: Atom = {
+      ...rawAtom,
+      args: new Args(rawAtom.args as RawArgs),
+    };
+
+    let rowid = await findSnapshotRowId(
+      atom.toSnapshotChecksum, atom.changeSetId
+    );
+    if (rowid === NOROW) {
+      rowid = await newSnapshot(atom);
+      oldSnapshots.push(atom.fromSnapshotChecksum);
+    } 
+    snapshots[atom.toSnapshotChecksum] = rowid;
+
+    return atom;
+  }));
+
+  atoms.forEach((atom) => {
+    const rowid = snapshots[atom.toSnapshotChecksum];
+    if (!rowid) throw new Error(`Expected ROWID for ${atom.toSnapshotChecksum}`);
+    handleAtom(atom, rowid);
+  });
+
+  oldSnapshots.forEach((checksum) => {
+    newSnapshotEnd(changeSetId, checksum)
+  })
+};
+
+const handleAtom = async (atom: Atom, rowid: ROWID) => {
   const exists = await atomExists(atom, rowid);
+  let atomid: ROWID | undefined;
   if (atom.fromSnapshotChecksum === "0") {
     if (!exists)  // if i already have it, this is a NOOP
-      await newAtom(atom, rowid);
+      atomid = await createAtom(atom, rowid);
   } else if (atom.toSnapshotChecksum === "0")
     // if i've already removed it, this is a NOOP
     if (exists) await removeAtom(atom);
   else {
     // patch it if I can
-    if (exists) await patchAtom(atom);
+    if (exists)
+        atomid = await patchAtom(atom);
     // otherwise, fire the small hammer to get the full object
     else mjolnir(atom.kind, atom.args);
   }
+
+  if (atomid)
+    await db.exec({
+      sql: `insert into snapshots_mtm_atoms
+        (atom_rowid, snapshot_rowid)
+          VALUES
+        (?, ?);`,
+      bind: [atomid, rowid],
+    });
 };
 
-const patchAtom = async (atom: Atom) => {
-  // FUTURE: JSON Patch
+const patchAtom = async (atom: Atom): Promise<ROWID> => {
+  // FUTURE: JSON Patch, where we select the old data, and patch it
+  // just inserting right now
   const data = await new Blob([atom.data]).arrayBuffer();
-  await db.exec({
+  const rows = await db.exec({
     sql: `
-    update atoms set
-      data = '?',
-      checksum = '?'
-    where
-      kind = '?' AND
-      checksum = '?' AND
-      args = '?'
+    insert into atoms
+      (kind, args, checksum, data)
+    values
+      ('?', '?', '?', '?')
     ;
     `,
-    bind: [data, atom.newChecksum, atom.kind, atom.origChecksum, atom.args.toString()],
+    bind: [atom.kind, atom.args.toString(), atom.newChecksum, data],
+    returnValue: "resultRows",
   });
+  const atom_rowid = oneInOne(rows);
+  if (atom_rowid === NOROW) throw new Error("NOROW when inserting");
+  return atom_rowid as ROWID;
 };
 
 const mjolnir = async (kind: string, args: Args) => {
@@ -287,12 +342,9 @@ const dbInterface: DBInterface = {
     );
 
     socket.addEventListener("message", (messageEvent) => {
-      const data = JSON.parse(messageEvent.data);
-      const atom = data as Atom
-      atom.args = new Args(data.args as RawArgs);
-      // FUTURE: not only atoms
-      handleAtom(atom);
+      handleEvent(messageEvent);
     });
+  
     socket.addEventListener("error", (errorEvent) => {
       log("ws error", errorEvent.error, errorEvent.message);
     });
@@ -311,21 +363,6 @@ const dbInterface: DBInterface = {
     // socket.reconnect();
   },
 
-  async testRainbowBridge() {
-    const deletion = await db.exec({
-      sql: `delete from changesets; delete from snapshots;`,
-      returnValue: "resultRows",
-    });
-
-    await db.exec({sql: `
-      insert into changesets (workspace_id, change_set_id) VALUES ('W', 'apple'), ('W', 'foo');
-      insert into snapshots (change_set_id, checksum) values ('foo', 'bar'), ('apple', 'orange');
-    `});
-    const columns: string[] = [];
-    const rows = await db.exec({sql: "select rowid, change_set_id, checksum from snapshots;", returnValue: "resultRows", columnNames: columns});
-    return {rows, columns};
-  },
-
   async addListenerBustCache (cb: (queryKey: QueryKey, latestChecksum: Checksum) => void) {
     bustCacheFn = cb;
     bustCacheFn("foo", "bar2");
@@ -339,10 +376,29 @@ const dbInterface: DBInterface = {
   partialKeyFromKindAndArgs,
   mjolnir, 
 
-  async bootstrapChecksums(): Promise<Record<QueryKey, Checksum>> {
-    // TODO: read the full list of atom checksums by queryKey
-    return {};
+  async bootstrapChecksums(changeSetId: ChangeSetId): Promise<Record<QueryKey, Checksum>> {
+    const mapping: Record<QueryKey, Checksum> = {};
+    const rows = await db.exec({sql: `
+      select atoms.kind, atoms.args, atoms.checksum
+      from atoms
+      inner join snapshots_mtm_atoms mtm ON atoms.id = mtm.atom_id
+      inner join snapshots ON mtm.snapshot_id = snapshots.id
+      where snapshots.change_set_id = '?'
+      ;
+      `, 
+      bind: [changeSetId],
+      returnValue: "resultRows"});
+    rows.forEach((row) => {
+      const key = `${row[0]}|${row[1]}` as QueryKey;
+      const checksum = row[3] as Checksum;
+      mapping[key] = checksum;
+    })
+    return mapping;
   },
+
+  async fullDiagnosticTest(changeSetId: ChangeSetId) {
+    // TODO
+  }
 };
 
 
