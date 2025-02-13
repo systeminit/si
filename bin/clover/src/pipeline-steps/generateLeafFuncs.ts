@@ -29,7 +29,7 @@ export function generateDefaultLeafFuncs(
     for (const codeGenFunc of defaultCodeGenFuncs) {
       funcs.push(codeGenFunc);
       leafFuncs.push(
-        createLeafFuncSpec("codeGeneration", codeGenFunc.uniqueId),
+        createLeafFuncSpec("codeGeneration", codeGenFunc.uniqueId, ["domain"]),
       );
     }
 

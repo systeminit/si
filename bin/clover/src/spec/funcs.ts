@@ -259,11 +259,12 @@ export function createActionFuncSpec(
 export function createLeafFuncSpec(
   leafKind: LeafKind,
   id: string,
+  inputs: ("domain" | "code")[],
 ): LeafFunctionSpec {
   return {
     funcUniqueId: id,
     deleted: false,
-    inputs: ["domain"],
+    inputs,
     leafKind,
     uniqueId: null,
   };
