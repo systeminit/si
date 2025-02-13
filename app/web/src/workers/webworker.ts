@@ -2,7 +2,7 @@ import * as Comlink from "comlink";
 
 import sqlite3InitModule, { Database, Sqlite3Static, SqlValue } from '@sqlite.org/sqlite-wasm';
 import ReconnectingWebSocket from "reconnecting-websocket";
-import { UpsertPayload, PatchPayload, PayloadDelete, DBInterface, NOROW, Checksum, ROWID, Atom, QueryKey, Args, RawArgs } from "./types/dbinterface";
+import { UpsertPayload, PatchPayload, PayloadDelete, DBInterface, NOROW, Checksum, ROWID, Atom, QueryKey, Args, RawArgs, RawAtom } from "./types/dbinterface";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { WorkspacePk } from "@/store/workspaces.store";
 
@@ -163,8 +163,23 @@ const atomExists = async (atom: Atom, rowid: ROWID): Promise<boolean> => {
   return rows.length > 0;
 };
 
-const newSnapshot = (atom: Atom): ROWID => {
+// SEE PATCH WORKFLOW
+const newSnapshot = async (atom: Atom): Promise<ROWID> => {
+  const created = await db.exec({
+    sql: `INSERT INTO snapshots (change_set_id, checksum) VALUES (?, ?);`,
+    bind: [atom.changeSetId, atom.newChecksum],
+    returnValue: "resultRows",
+  });
+  const snapshot_id = oneInOne(created);
+  if (snapshot_id === NOROW) throw new Error("Insertion Failed");
+  return snapshot_id as number;
+};
 
+const newSnapshotEnd = async(changeSetId: ChangeSetId, fromSnapshotChecksum: Checksum) => {
+  await db.exec({
+    sql: "DELETE FROM snapshots WHERE change_set_id = '?' AND checksum = '?'",
+    bind: [changeSetId, fromSnapshotChecksum],
+  })
 };
 
 const removeAtom = async (atom: Atom) => {
@@ -211,11 +226,47 @@ const partialKeyFromKindAndArgs = async (kind: string, args: Args): Promise<Quer
   return `${kind}|${args.toString()}`;
 };
 
-const handleAtom = async (atom: Atom) => {
-  let rowid = await findSnapshotRowId(atom.toSnapshotChecksum, atom.changeSetId)
-  if (rowid === NOROW)
-    rowid = await newSnapshot(atom);
+// FUTURE: maybe not only atoms come over the wire?
+const handleEvent = async (messageEvent: MessageEvent<any>) => {
+  const data = JSON.parse(messageEvent.data) as RawAtom[];
+  if (data.length === 0) return;
+  // Assumption: every patch is working on the same workspace and changeset
+  // (e.g. we're not bundling messages across workspaces somehow)
+  const changeSetId = data[0]?.changeSetId;
+  if (!changeSetId) throw new Error("Expected changeSetId")
 
+  const snapshots: Record<string, ROWID> = {};
+  const oldSnapshots: string[] = [];
+  const atoms = await Promise.all(data.map(async (rawAtom) => {
+    const atom: Atom = {
+      ...rawAtom,
+      args: new Args(rawAtom.args as RawArgs),
+    };
+
+    let rowid = await findSnapshotRowId(
+      atom.toSnapshotChecksum, atom.changeSetId
+    );
+    if (rowid === NOROW) {
+      rowid = await newSnapshot(atom);
+      oldSnapshots.push(atom.fromSnapshotChecksum);
+    } 
+    snapshots[atom.toSnapshotChecksum] = rowid;
+
+    return atom;
+  }));
+
+  atoms.forEach((atom) => {
+    const rowid = snapshots[atom.toSnapshotChecksum];
+    if (!rowid) throw new Error(`Expected ROWID for ${atom.toSnapshotChecksum}`);
+    handleAtom(atom, rowid);
+  });
+
+  oldSnapshots.forEach((checksum) => {
+    newSnapshotEnd(changeSetId, checksum)
+  })
+};
+
+const handleAtom = async (atom: Atom, rowid: ROWID) => {
   const exists = await atomExists(atom, rowid);
   if (atom.fromSnapshotChecksum === "0") {
     if (!exists)  // if i already have it, this is a NOOP
@@ -287,12 +338,9 @@ const dbInterface: DBInterface = {
     );
 
     socket.addEventListener("message", (messageEvent) => {
-      const data = JSON.parse(messageEvent.data);
-      const atom = data as Atom
-      atom.args = new Args(data.args as RawArgs);
-      // FUTURE: not only atoms
-      handleAtom(atom);
+      handleEvent(messageEvent);
     });
+  
     socket.addEventListener("error", (errorEvent) => {
       log("ws error", errorEvent.error, errorEvent.message);
     });
