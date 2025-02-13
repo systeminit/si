@@ -89,9 +89,33 @@ export const interpolate = (columns: Columns, rows: SqlValue[][]): Records => {
   return results;
 };
 
+export type RawArgs = Record<string, string>;
+// CONSTRAINT: right now there are either zero args (e.g. just workspace & changeset) or 1 (i.e. "the thing", ComponentId, ViewId, et. al)
+export class Args {
+  #key: string;
+  #value: string;
+  constructor(args: RawArgs) {
+    const entries = Object.entries(args);
+    const entry = entries.pop();
+    if (entry) {
+      this.#key = entry[0];
+      this.#value = entry[1];
+    } else {
+      this.#key = "";
+      this.#value = "";
+    }
+  }
+
+  length() {
+    return this.#key === "" ? 0 : 1
+  }
+
+  toString() {
+    return `${this.#key}|${this.#value}`
+  }
+};
 
 export type QueryKey = string;  // `kind|argsToString`
-export type Args = Record<string, string>;
 export type Checksum = string;  // QueryKey + Checksum is a HIT in sqlite
 export type ROWID = number;
 export const NOROW = Symbol("NOROW");

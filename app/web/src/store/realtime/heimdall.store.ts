@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import * as Comlink from "comlink";
-import { Checksum, DBInterface, interpolate, QueryKey } from "@/workers/types/dbinterface";
+import { Args, Checksum, DBInterface, interpolate, QueryKey, RawArgs } from "@/workers/types/dbinterface";
 import { watch, computed, reactive, readonly } from 'vue';
 import { useAuthStore } from '../auth.store';
 
@@ -45,7 +45,8 @@ export const useHeimdall = defineStore('heimdall', async () => {
   type AtomChecksumByKey = Record<Checksum, QueryKey>;
   const frigg: AtomChecksumByKey = reactive({});
 
-  const bifrost = async (kind: string, args: Record<string, string>): Promise<unknown> => {
+  const bifrost = async (kind: string, rawArgs: RawArgs): Promise<unknown> => {
+    const args = new Args(rawArgs);
     const queryKey = await db.partialKeyFromKindAndArgs(kind, args);
     const checksum = frigg[queryKey];
     if (!checksum) {

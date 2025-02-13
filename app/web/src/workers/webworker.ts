@@ -2,7 +2,7 @@ import * as Comlink from "comlink";
 
 import sqlite3InitModule, { Database, Sqlite3Static, SqlValue } from '@sqlite.org/sqlite-wasm';
 import ReconnectingWebSocket from "reconnecting-websocket";
-import { UpsertPayload, PatchPayload, PayloadDelete, DBInterface, NOROW, Checksum, ROWID, Atom, QueryKey, Args } from "./types/dbinterface";
+import { UpsertPayload, PatchPayload, PayloadDelete, DBInterface, NOROW, Checksum, ROWID, Atom, QueryKey, Args, RawArgs } from "./types/dbinterface";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { WorkspacePk } from "@/store/workspaces.store";
 
@@ -81,14 +81,6 @@ const ensureTables = async () => {
   return db.exec({sql});
 }
 
-// CONSTRAINT: right now there are either zero args (e.g. just workspace & changeset) or 1 (i.e. "the thing", ComponentId, ViewId, et. al)
-const argsToString = (args: Args): string => {
-  const entries = Object.entries(args);
-  const entry = entries.pop();
-  if (!entry) return "";
-  return entry.join("|");
-}
-
 const oneInOne = (rows: SqlValue[][]): SqlValue | typeof NOROW => {
   const first = rows[0];
   if (first) {
@@ -117,7 +109,6 @@ const findSnapshotRowId = async (checksum: Checksum, changeSetId: ChangeSetId): 
 }
 
 const atomExists = async (atom: Atom, rowid: ROWID): Promise<boolean> => {
-  const args = argsToString(atom.args)
   const rows = await db.exec({
     sql: `
     select
@@ -130,7 +121,7 @@ const atomExists = async (atom: Atom, rowid: ROWID): Promise<boolean> => {
       kind='?' and checksum='?' and
       args='?'
     ;`,
-    bind: [rowid, atom.kind, atom.newChecksum, args],
+    bind: [rowid, atom.kind, atom.newChecksum, atom.args.toString()],
     returnValue: "resultRows",
   });
   return rows.length > 0;
@@ -141,7 +132,6 @@ const newSnapshot = (atom: Atom): ROWID => {
 };
 
 const removeAtom = async (atom: Atom) => {
-  const args = argsToString(atom.args);
   await db.exec({
     sql: `delete
     from atoms
@@ -151,12 +141,11 @@ const removeAtom = async (atom: Atom) => {
       args='?'
     ;
     `,
-    bind: [atom.kind, atom.origChecksum, args],
+    bind: [atom.kind, atom.origChecksum, atom.args.toString()],
   }); // CASCADES to the mtm table
 };
 
 const newAtom = async (atom: Atom, snapshot_rowid: ROWID) => {
-  const args = argsToString(atom.args);
   const data = await new Blob([atom.data]).arrayBuffer();
   const rows = await db.exec({
     sql: `insert into atoms
@@ -165,7 +154,7 @@ const newAtom = async (atom: Atom, snapshot_rowid: ROWID) => {
       (?, ?, ?, ?)
     returning rowid;
     `,
-    bind: [atom.kind, atom.newChecksum, args, data],
+    bind: [atom.kind, atom.newChecksum, atom.args.toString(), data],
     returnValue: "resultRows",
   });
   const atom_rowid = oneInOne(rows);
@@ -183,7 +172,7 @@ const newAtom = async (atom: Atom, snapshot_rowid: ROWID) => {
 };
 
 const partialKeyFromKindAndArgs = async (kind: string, args: Args): Promise<QueryKey> => {
-  return `${kind}|${argsToString(args)}`;
+  return `${kind}|${args.toString()}`;
 };
 
 const handleAtom = async (atom: Atom) => {
@@ -208,7 +197,6 @@ const handleAtom = async (atom: Atom) => {
 
 const patchAtom = async (atom: Atom) => {
   // FUTURE: JSON Patch
-  const args = argsToString(atom.args);
   const data = await new Blob([atom.data]).arrayBuffer();
   await db.exec({
     sql: `
@@ -221,7 +209,7 @@ const patchAtom = async (atom: Atom) => {
       args = '?'
     ;
     `,
-    bind: [data, atom.newChecksum, atom.kind, atom.origChecksum, args],
+    bind: [data, atom.newChecksum, atom.kind, atom.origChecksum, atom.args.toString()],
   });
 };
 
@@ -265,9 +253,11 @@ const dbInterface: DBInterface = {
     );
 
     socket.addEventListener("message", (messageEvent) => {
-      const messageEventData = JSON.parse(messageEvent.data) as Atom;
+      const data = JSON.parse(messageEvent.data);
+      const atom = data as Atom
+      atom.args = new Args(data.args as RawArgs);
       // FUTURE: not only atoms
-      handleAtom(messageEventData);
+      handleAtom(atom);
     });
     socket.addEventListener("error", (errorEvent) => {
       log("ws error", errorEvent.error, errorEvent.message);
