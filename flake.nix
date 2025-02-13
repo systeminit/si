@@ -115,6 +115,43 @@
         deno
       ];
 
+      standaloneBinaryDerivation = {
+        pkgName,
+        fromPkg,
+        bin ? pkgs.lib.strings.removeSuffix "-standalone" pkgName,
+      }:
+        pkgs.stdenv.mkDerivation {
+          name = pkgName;
+          __impure = true;
+          src = ./.;
+          buildInputs = [fromPkg];
+          installPhase = ''
+            install -Dv "${fromPkg}/bin/${bin}" "$out/bin/${bin}"
+          '';
+          postFixup =
+            ""
+            + pkgs.lib.optionalString (pkgs.stdenv.isDarwin) ''
+              nix_lib="$(otool -L "$out/bin/$name" \
+                | grep libiconv.dylib \
+                | awk '{print $1}'
+              )"
+              install_name_tool \
+                -change \
+                "$nix_lib" \
+                /usr/lib/libiconv.2.dylib \
+                "$out/bin/$name" \
+                2>/dev/null
+            ''
+            + pkgs.lib.optionalString (pkgs.stdenv.isLinux) ''
+              patchelf \
+                --set-interpreter "${systemInterpreter}" \
+                --remove-rpath \
+                "$out/bin/${bin}"
+            '';
+          dontPatchELF = true;
+          dontAutoPatchELF = true;
+        };
+
       buck2Derivation = {
         pathPrefix,
         pkgName,
@@ -292,6 +329,13 @@
           rebaser = binDerivation {pkgName = "rebaser";};
 
           sdf = binDerivation {pkgName = "sdf";};
+
+          si-fs = binDerivation {pkgName = "si-fs";};
+
+          si-fs-standalone = standaloneBinaryDerivation {
+            pkgName = "si-fs-standalone";
+            fromPkg = packages.si-fs;
+          };
 
           veritech = binDerivation {pkgName = "veritech";};
 
