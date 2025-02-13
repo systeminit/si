@@ -1,19 +1,21 @@
+use crate::{service::ApiError, AppState};
+use axum::extract::multipart::MultipartError;
 use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
     routing::{get, post},
     Router,
 };
-use dal::UserError;
+use dal::pkg::PkgError;
+use dal::{ChangeSetError, FuncError, UserError, WsEventError};
 use si_frontend_types as frontend_types;
 use si_pkg::SiPkgError;
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::{service::ApiError, AppState};
-
 mod builtins;
 mod contribute;
+mod install_from_file;
 mod list;
 mod module_by_hash;
 mod module_by_id;
@@ -26,8 +28,12 @@ pub type ModuleAPIResult<T> = Result<T, ModulesAPIError>;
 pub enum ModulesAPIError {
     #[error("axum http error: {0}")]
     AxumHttp(#[from] axum::http::Error),
+    #[error("changeset error: {0:?}")]
+    Changeset(#[from] ChangeSetError),
     #[error("module not contributed: {0:?}")]
     ContributionFailure(frontend_types::ModuleContributeRequest),
+    #[error("func error: {0}")]
+    Func(#[from] FuncError),
     #[error("module error: {0}")]
     Module(#[from] dal::module::ModuleError),
     #[error("Module hash not be found: {0}")]
@@ -36,8 +42,16 @@ pub enum ModulesAPIError {
     ModuleIndexClient(#[from] module_index_client::ModuleIndexClientError),
     #[error("module index not configured")]
     ModuleIndexNotConfigured,
+    #[error("multipart error: {0}")]
+    Multipart(#[from] MultipartError),
+    #[error("pkg error: {0:?}")]
+    Pkg(#[from] PkgError),
+    #[error("pkg file error: {0}")]
+    PkgFileError(&'static str),
     #[error("schema error: {0}")]
     SchemaVariant(#[from] dal::SchemaVariantError),
+    #[error("changeset error: {0:?}")]
+    Serde(#[from] serde_json::Error),
     #[error("si pkg error: {0}")]
     SiPkg(#[from] SiPkgError),
     #[error("transactions error: {0}")]
@@ -46,6 +60,8 @@ pub enum ModulesAPIError {
     UrlParse(#[from] url::ParseError),
     #[error("user error: {0}")]
     User(#[from] UserError),
+    #[error("WsEvent error: {0}")]
+    WsEvent(#[from] WsEventError),
 }
 
 impl IntoResponse for ModulesAPIError {
@@ -77,4 +93,8 @@ pub fn v2_routes() -> Router<AppState> {
         .route("/:module_id/builtins/promote", post(builtins::promote))
         .route("/module_by_hash", get(module_by_hash::module_by_hash))
         .route("/module_by_id", get(module_by_id::remote_module_by_id))
+        .route(
+            "/install_from_file",
+            post(install_from_file::install_module_from_file),
+        )
 }

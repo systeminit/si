@@ -409,6 +409,34 @@ export const useModuleStore = () => {
             });
           },
 
+          async INSTALL_MODULE_FROM_FILE(file: File) {
+            if (changeSetsStore.creatingChangeSet) {
+              throw new Error("race, wait until the change set is created");
+            }
+            if (changeSetId === changeSetsStore.headChangeSetId) {
+              changeSetsStore.creatingChangeSet = true;
+            }
+
+            const formData = new FormData();
+            formData.append("pkg_spec", file);
+
+            return new ApiRequest<{ id: string }>({
+              method: "post",
+              url: API_PREFIX.concat(["install_from_file"]),
+              headers: {
+                "Content-Type": "multipart/form-data",
+              },
+              formData,
+              onFail: () => {
+                changeSetsStore.creatingChangeSet = false;
+              },
+              onSuccess: () => {
+                // reset installed list
+                this.SYNC();
+              },
+            });
+          },
+
           async REJECT_REMOTE_MODULE(moduleId: ModuleId) {
             return new ApiRequest<{ success: true }>({
               method: "post",
