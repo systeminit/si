@@ -41,21 +41,14 @@ export type CfProperty =
 
 type CfBooleanProperty = JSONSchema.Boolean;
 
-type CfStringProperty = Extend<JSONSchema.String, {
-  format?:
-    | "date-time"
-    | "json-pointer"
-    | "string"
-    | "timestamp"
-    | "uri";
-}>;
+type CfStringProperty = JSONSchema.String;
 
 type CfNumberProperty = JSONSchema.Number & {
-  format?: "double" | "int64";
+  format?: string;
 };
 
 type CfIntegerProperty = JSONSchema.Integer & {
-  format?: "double" | "int64";
+  format?: string;
 };
 
 type CfArrayProperty = Extend<JSONSchema.Array, {

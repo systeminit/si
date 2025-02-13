@@ -229,7 +229,7 @@ function generatePropBuilderString(
   ) {
     const is_create_only = prop.metadata.createOnly ?? false;
 
-    return `new PropBuilder()\n` +
+    const result = `new PropBuilder()\n` +
       `${indent(indent_level)}.setName("${prop.name}")\n` +
       `${indent(indent_level)}.setKind("${kind}")\n` +
       `${indent(indent_level)}.setHidden(${prop.data?.hidden ?? false})\n` +
@@ -244,6 +244,13 @@ function generatePropBuilderString(
           ? `${indent(indent_level)}.setDefaultValue(${
             JSON.stringify(prop.data.defaultValue)
           })\n`
+          : ""
+      ) +
+      (
+        prop.joiValidation
+          ? `${
+            indent(indent_level)
+          }.setValidationFormat(${prop.joiValidation})\n`
           : ""
       ) +
       (
@@ -262,6 +269,10 @@ function generatePropBuilderString(
       ) +
       inner +
       `${indent(indent_level)}.build()`;
+    // Now that we've emitted it, we don't need prop.joiValidation anymore. Don't bother
+    // putting it in the spec (we already have validationFormat).
+    delete prop.joiValidation;
+    return result;
   }
 }
 
