@@ -26,6 +26,7 @@ foyer = { workspace = true }
 fs4 = { workspace = true }
 futures = { workspace = true }
 miniz_oxide = { workspace = true }
+mixtrics = { workspace = true }
 postcard = { workspace = true }
 refinery = { workspace = true }
 remain = { workspace = true }

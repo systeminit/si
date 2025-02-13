@@ -1,8 +1,8 @@
-use foyer::opentelemetry_0_26::OpenTelemetryMetricsRegistry;
 use foyer::{
     DirectFsDeviceOptions, Engine, FifoPicker, HybridCache, HybridCacheBuilder, LargeEngineOptions,
     RateLimitPicker, RecoverMode, TokioRuntimeOptions,
 };
+use mixtrics::registry::opentelemetry_0_26::OpenTelemetryMetricsRegistry;
 use std::cmp::max;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, LazyLock};
@@ -106,7 +106,9 @@ where
 
         let cache: HybridCache<Arc<str>, MaybeDeserialized<V>> = HybridCacheBuilder::new()
             .with_name(cache_name)
-            .with_metrics_registry(OpenTelemetryMetricsRegistry::new(global::meter(cache_name)))
+            .with_metrics_registry(Box::new(OpenTelemetryMetricsRegistry::new(global::meter(
+                cache_name,
+            ))))
             .memory(memory_cache_capacity_bytes)
             .with_weighter(
                 |_key: &Arc<str>, value: &MaybeDeserialized<V>| match value {
