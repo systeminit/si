@@ -1,38 +1,59 @@
 use std::{
     ops::Deref,
     path::{Path, PathBuf},
+    process::Stdio,
     sync::Arc,
     time::Duration,
 };
 
 use axum::extract::FromRef;
-use tokio::sync::mpsc;
+use telemetry::tracing::debug;
+use tokio::{
+    process::{Child, Command},
+    sync::{mpsc, Mutex},
+};
+
+use crate::execution::ExecutionError;
+type Result<T> = std::result::Result<T, ExecutionError>;
 
 #[derive(Clone, FromRef)]
 pub struct AppState {
-    lang_server_path: LangServerPath,
-    telemetry_level: TelemetryLevel,
-    lang_server_function_timeout: LangServerFunctionTimeout,
+    child: LangServerChild,
     lang_server_process_timeout: LangServerProcessTimeout,
+    telemetry_level: TelemetryLevel,
 }
 
 impl AppState {
-    pub fn new(
-        lang_server_path: impl Into<PathBuf>,
+    pub async fn new(
+        lang_server_path: impl Into<PathBuf> + std::convert::AsRef<std::ffi::OsStr>,
         telemetry_level: Box<dyn telemetry::TelemetryLevel>,
         lang_server_function_timeout: Option<usize>,
         lang_server_process_timeout: Option<u64>,
-    ) -> Self {
-        Self {
-            lang_server_path: LangServerPath(Arc::new(lang_server_path.into())),
-            telemetry_level: TelemetryLevel(Arc::new(telemetry_level)),
-            lang_server_function_timeout: LangServerFunctionTimeout(Arc::new(
-                lang_server_function_timeout,
-            )),
+    ) -> Result<Self> {
+        let mut cmd = Command::new(&lang_server_path);
+        cmd.stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped());
+
+        if let Some(timeout) = lang_server_function_timeout {
+            cmd.arg("--timeout").arg(timeout.to_string());
+        }
+        if telemetry_level.is_debug_or_lower().await {
+            cmd.env("SI_LANG_JS_LOG", "*");
+        }
+
+        debug!(cmd = ?cmd, "spawning child process");
+        let child = cmd
+            .spawn()
+            .map_err(|err| ExecutionError::ChildSpawn(err, lang_server_path.into()))?;
+
+        Ok(Self {
+            child: LangServerChild(Arc::new(Mutex::new(child))),
             lang_server_process_timeout: LangServerProcessTimeout(Arc::new(
                 lang_server_process_timeout,
             )),
-        }
+            telemetry_level: TelemetryLevel(Arc::new(telemetry_level)),
+        })
     }
 }
 
@@ -62,6 +83,15 @@ pub struct LangServerFunctionTimeout(Arc<Option<usize>>);
 impl LangServerFunctionTimeout {
     pub fn inner(&self) -> Option<usize> {
         Arc::clone(&self.0).as_ref().to_owned()
+    }
+}
+
+#[derive(Clone, Debug, FromRef)]
+pub struct LangServerChild(Arc<Mutex<Child>>);
+
+impl LangServerChild {
+    pub fn inner(&self) -> Arc<Mutex<Child>> {
+        Arc::clone(&self.0)
     }
 }
 

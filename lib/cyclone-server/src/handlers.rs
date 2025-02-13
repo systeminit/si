@@ -1,7 +1,6 @@
 use std::{
     fmt,
     marker::{PhantomData, Unpin},
-    path::PathBuf,
     sync::Arc,
 };
 
@@ -30,10 +29,7 @@ use crate::{
         LangServerActionRunResultSuccess, LangServerResolverFunctionResultSuccess,
         LangServerValidationResultSuccess,
     },
-    state::{
-        LangServerFunctionTimeout, LangServerPath, LangServerProcessTimeout, TelemetryLevel,
-        WatchKeepalive,
-    },
+    state::{LangServerChild, LangServerProcessTimeout, WatchKeepalive},
     watch,
 };
 
@@ -100,155 +96,120 @@ pub async fn ws_execute_ping(
 
 pub async fn ws_execute_resolver(
     wsu: WebSocketUpgrade,
-    State(lang_server_path): State<LangServerPath>,
-    State(telemetry_level): State<TelemetryLevel>,
-    State(lang_server_function_timeout): State<LangServerFunctionTimeout>,
     State(lang_server_process_timeout): State<LangServerProcessTimeout>,
+    State(child): State<LangServerChild>,
     limit_request_guard: LimitRequestGuard,
     Extension(request_span): Extension<ParentSpan>,
 ) -> impl IntoResponse {
-    let lang_server_path = lang_server_path.as_path().to_path_buf();
-    let telemetry_level = telemetry_level.is_debug_or_lower().await;
     wsu.on_upgrade(move |socket| {
         let request: PhantomData<ResolverFunctionRequest> = PhantomData;
         let lang_server_success: PhantomData<LangServerResolverFunctionResultSuccess> = PhantomData;
         let success: PhantomData<ResolverFunctionResultSuccess> = PhantomData;
         handle_socket(
             socket,
-            lang_server_path,
-            telemetry_level,
-            lang_server_function_timeout.inner(),
             lang_server_process_timeout.inner(),
             limit_request_guard,
-            "resolverfunction".to_owned(),
             request,
             lang_server_success,
             success,
             request_span.into_inner(),
+            child,
         )
     })
 }
 
 pub async fn ws_execute_validation(
     wsu: WebSocketUpgrade,
-    State(lang_server_path): State<LangServerPath>,
-    State(telemetry_level): State<TelemetryLevel>,
-    State(lang_server_function_timeout): State<LangServerFunctionTimeout>,
     State(lang_server_process_timeout): State<LangServerProcessTimeout>,
+    State(child): State<LangServerChild>,
     limit_request_guard: LimitRequestGuard,
     Extension(request_span): Extension<ParentSpan>,
 ) -> impl IntoResponse {
-    let lang_server_path = lang_server_path.as_path().to_path_buf();
-    let telemetry_level = telemetry_level.is_debug_or_lower().await;
     wsu.on_upgrade(move |socket| {
         let request: PhantomData<ValidationRequest> = PhantomData;
         let lang_server_success: PhantomData<LangServerValidationResultSuccess> = PhantomData;
         let success: PhantomData<ValidationResultSuccess> = PhantomData;
         handle_socket(
             socket,
-            lang_server_path,
-            telemetry_level,
-            lang_server_function_timeout.inner(),
             lang_server_process_timeout.inner(),
             limit_request_guard,
-            "validation".to_owned(),
             request,
             lang_server_success,
             success,
             request_span.into_inner(),
+            child,
         )
     })
 }
 
 pub async fn ws_execute_action_run(
     wsu: WebSocketUpgrade,
-    State(lang_server_path): State<LangServerPath>,
-    State(telemetry_level): State<TelemetryLevel>,
-    State(lang_server_function_timeout): State<LangServerFunctionTimeout>,
     State(lang_server_process_timeout): State<LangServerProcessTimeout>,
+    State(child): State<LangServerChild>,
     limit_request_guard: LimitRequestGuard,
     Extension(request_span): Extension<ParentSpan>,
 ) -> impl IntoResponse {
-    let lang_server_path = lang_server_path.as_path().to_path_buf();
-    let telemetry_level = telemetry_level.is_debug_or_lower().await;
     wsu.on_upgrade(move |socket| {
         let request: PhantomData<ActionRunRequest> = PhantomData;
         let lang_server_success: PhantomData<LangServerActionRunResultSuccess> = PhantomData;
         let success: PhantomData<ActionRunResultSuccess> = PhantomData;
         handle_socket(
             socket,
-            lang_server_path,
-            telemetry_level,
-            lang_server_function_timeout.inner(),
             lang_server_process_timeout.inner(),
             limit_request_guard,
-            "actionRun".to_owned(),
             request,
             lang_server_success,
             success,
             request_span.into_inner(),
+            child,
         )
     })
 }
 
 pub async fn ws_execute_schema_variant_definition(
     wsu: WebSocketUpgrade,
-    State(lang_server_path): State<LangServerPath>,
-    State(telemetry_level): State<TelemetryLevel>,
-    State(lang_server_function_timeout): State<LangServerFunctionTimeout>,
     State(lang_server_process_timeout): State<LangServerProcessTimeout>,
+    State(child): State<LangServerChild>,
     limit_request_guard: LimitRequestGuard,
     Extension(request_span): Extension<ParentSpan>,
 ) -> impl IntoResponse {
-    let lang_server_path = lang_server_path.as_path().to_path_buf();
-    let telemetry_level = telemetry_level.is_debug_or_lower().await;
     wsu.on_upgrade(move |socket| {
         let request: PhantomData<SchemaVariantDefinitionRequest> = PhantomData;
         let lang_server_success: PhantomData<SchemaVariantDefinitionResultSuccess> = PhantomData;
         let success: PhantomData<SchemaVariantDefinitionResultSuccess> = PhantomData;
         handle_socket(
             socket,
-            lang_server_path,
-            telemetry_level,
-            lang_server_function_timeout.inner(),
             lang_server_process_timeout.inner(),
             limit_request_guard,
-            "schemaVariantDefinition".to_owned(),
             request,
             lang_server_success,
             success,
             request_span.into_inner(),
+            child,
         )
     })
 }
 
 pub async fn ws_execute_management(
     wsu: WebSocketUpgrade,
-    State(lang_server_path): State<LangServerPath>,
-    State(telemetry_level): State<TelemetryLevel>,
-    State(lang_server_function_timeout): State<LangServerFunctionTimeout>,
     State(lang_server_process_timeout): State<LangServerProcessTimeout>,
+    State(child): State<LangServerChild>,
     limit_request_guard: LimitRequestGuard,
     Extension(request_span): Extension<ParentSpan>,
 ) -> impl IntoResponse {
-    let lang_server_path = lang_server_path.as_path().to_path_buf();
-    let telemetry_level = telemetry_level.is_debug_or_lower().await;
     wsu.on_upgrade(move |socket| {
         let request: PhantomData<ManagementRequest> = PhantomData;
         let lang_server_success: PhantomData<ManagementResultSuccess> = PhantomData;
         let success: PhantomData<ManagementResultSuccess> = PhantomData;
         handle_socket(
             socket,
-            lang_server_path,
-            telemetry_level,
-            lang_server_function_timeout.inner(),
             lang_server_process_timeout.inner(),
             limit_request_guard,
-            "management".to_owned(),
             request,
             lang_server_success,
             success,
             request_span.into_inner(),
+            child,
         )
     })
 }
@@ -263,30 +224,22 @@ pub async fn ws_execute_management(
 #[allow(clippy::too_many_arguments)]
 async fn handle_socket<Request, LangServerSuccess, Success>(
     mut socket: WebSocket,
-    lang_server_path: PathBuf,
-    lang_server_debugging: bool,
-    lang_server_function_timeout: Option<usize>,
     lang_server_process_timeout: Option<u64>,
     _limit_request_guard: LimitRequestGuard,
-    sub_command: String,
     _request_marker: PhantomData<Request>,
     _lang_server_success_marker: PhantomData<LangServerSuccess>,
     success_marker: PhantomData<Success>,
     request_span: Span,
+    child: LangServerChild,
 ) where
     Request: Serialize + DeserializeOwned + Unpin + fmt::Debug + CycloneRequestable,
     Success: Serialize + Unpin + fmt::Debug,
     LangServerSuccess: Serialize + DeserializeOwned + Unpin + fmt::Debug + Into<Success>,
 {
     let proto = {
-        let execution: Execution<Request, LangServerSuccess, Success> = execution::new(
-            lang_server_path,
-            lang_server_debugging,
-            lang_server_function_timeout,
-            lang_server_process_timeout,
-            sub_command,
-        );
-        match execution.start(&mut socket).await {
+        let execution: Execution<Request, LangServerSuccess, Success> =
+            execution::new(lang_server_process_timeout);
+        match execution.start(child, &mut socket).await {
             Ok(started) => started,
             Err(err) => {
                 warn!(si.error.message = ?err, "failed to start protocol");

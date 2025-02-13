@@ -2,7 +2,6 @@ use std::{
     fmt, io,
     marker::{PhantomData, Unpin},
     path::PathBuf,
-    process::Stdio,
     string::FromUtf8Error,
     sync::Arc,
     time::Duration,
@@ -23,36 +22,28 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::time::timeout;
 use tokio::{
-    process::{Child, ChildStderr, ChildStdin, ChildStdout, Command},
+    process::{ChildStderr, ChildStdin, ChildStdout},
     time,
 };
 use tokio_serde::{formats::SymmetricalJson, Deserializer, Framed, SymmetricallyFramed};
 use tokio_util::codec::{Decoder, FramedRead, FramedWrite};
 
-use crate::WebSocketMessage;
+use crate::{state::LangServerChild, WebSocketMessage};
 
 const TX_TIMEOUT_SECS: Duration = Duration::from_secs(5);
 const DEFAULT_LANG_SERVER_PROCESS_TIMEOUT: Duration = Duration::from_secs(32 * 60);
 
 pub fn new<Request, LangServerSuccess, Success>(
-    lang_server_path: impl Into<PathBuf>,
-    lang_server_debugging: bool,
-    lang_server_function_timeout: Option<usize>,
     lang_server_process_timeout: Option<u64>,
-    command: String,
 ) -> Execution<Request, LangServerSuccess, Success>
 where
     Request: CycloneRequestable,
 {
     Execution {
-        lang_server_path: lang_server_path.into(),
-        lang_server_debugging,
-        lang_server_function_timeout,
         lang_server_process_timeout: match lang_server_process_timeout {
             Some(timeout) => Duration::from_secs(timeout),
             None => DEFAULT_LANG_SERVER_PROCESS_TIMEOUT,
         },
-        command,
         request_marker: PhantomData,
         lang_server_success_marker: PhantomData,
         success_marker: PhantomData,
@@ -101,11 +92,7 @@ pub struct Execution<Request, LangServerSuccess, Success>
 where
     Request: CycloneRequestable,
 {
-    lang_server_path: PathBuf,
-    lang_server_debugging: bool,
-    lang_server_function_timeout: Option<usize>,
     lang_server_process_timeout: Duration,
-    command: String,
     request_marker: PhantomData<Request>,
     lang_server_success_marker: PhantomData<LangServerSuccess>,
     success_marker: PhantomData<Success>,
@@ -119,6 +106,7 @@ where
 {
     pub async fn start(
         self,
+        child: LangServerChild,
         ws: &mut WebSocket,
     ) -> Result<ExecutionStarted<LangServerSuccess, Success>> {
         // Send start is the initial communication before we read the request.
@@ -126,32 +114,17 @@ where
         // Read the request message from the web socket
         let cyclone_request = Self::read_request(ws).await?;
         let (request, sensitive_strings) = cyclone_request.into_parts();
+        let inner = child.inner();
+        let mut child_lock = inner.lock().await;
 
-        // Spawn lang server as a child process with handles on all i/o descriptors
-        let mut command = Command::new(&self.lang_server_path);
-        command
-            .arg(&self.command)
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped());
-
-        if let Some(timeout) = self.lang_server_function_timeout {
-            command.arg("--timeout").arg(timeout.to_string());
-        }
-        if self.lang_server_debugging {
-            command.env("SI_LANG_JS_LOG", "*");
-        }
-
-        debug!(cmd = ?command, "spawning child process");
-        let mut child = command
-            .spawn()
-            .map_err(|err| ExecutionError::ChildSpawn(err, self.lang_server_path.clone()))?;
-
-        let stdin = child.stdin.take().ok_or(ExecutionError::ChildIO("stdin"))?;
+        let stdin = child_lock
+            .stdin
+            .take()
+            .ok_or(ExecutionError::ChildIO("stdin"))?;
         Self::child_send_function_request(stdin, request).await?;
 
         let stderr = {
-            let stderr = child
+            let stderr = child_lock
                 .stderr
                 .take()
                 .ok_or(ExecutionError::ChildIO("stderr"))?;
@@ -159,7 +132,7 @@ where
         };
 
         let stdout = {
-            let stdout = child
+            let stdout = child_lock
                 .stdout
                 .take()
                 .ok_or(ExecutionError::ChildIO("stdout"))?;
@@ -202,7 +175,14 @@ where
     }
 
     async fn child_send_function_request(stdin: ChildStdin, request: Request) -> Result<()> {
-        let value = serde_json::to_value(&request).map_err(ExecutionError::JSONSerialize)?;
+        let mut value = serde_json::to_value(&request).map_err(ExecutionError::JSONSerialize)?;
+
+        if let serde_json::Value::Object(ref mut map) = value {
+            map.insert(
+                "kind".to_string(),
+                serde_json::Value::String(request.kind().to_string()),
+            );
+        }
 
         let codec = FramedWrite::new(stdin, BytesLinesCodec::new());
         let mut stdin = SymmetricallyFramed::new(codec, SymmetricalJson::default());
@@ -227,7 +207,7 @@ type SiJsonError<S> = <SymmetricalJson<SiMessage<S>> as Deserializer<SiMessage<S
 
 #[derive(Debug)]
 pub struct ExecutionStarted<LangServerSuccess, Success> {
-    child: Child,
+    child: LangServerChild,
     stdout: SiFramed<SiMessage<LangServerSuccess>>,
     stderr: FramedRead<ChildStderr, BytesLinesCodec>,
     sensitive_strings: Arc<SensitiveStrings>,
@@ -265,7 +245,7 @@ where
     SymmetricalJson<SiMessage<LangServerSuccess>>: Deserializer<SiMessage<LangServerSuccess>>,
     SiDecoderError: From<SiJsonError<LangServerSuccess>>,
 {
-    pub async fn process(mut self, ws: &mut WebSocket) -> Result<ExecutionClosing<Success>> {
+    pub async fn process(self, ws: &mut WebSocket) -> Result<ExecutionClosing<Success>> {
         tokio::spawn(handle_stderr(self.stderr, self.sensitive_strings.clone()));
 
         let mut stream = self
@@ -302,11 +282,13 @@ where
             Result::<_>::Ok(())
         };
 
+        let inner = self.child.inner();
+        let mut child_lock = inner.lock().await;
         match timeout(self.lang_server_process_timeout, receive_loop).await {
             Ok(execution) => execution?,
             Err(err) => {
                 // Exceeded timeout, shutdown child process
-                process::child_shutdown(&mut self.child, Some(process::Signal::SIGTERM), None)
+                process::child_shutdown(&mut child_lock, Some(process::Signal::SIGTERM), None)
                     .await?;
                 drop(self.child);
 
@@ -361,7 +343,7 @@ where
 
 #[derive(Debug)]
 pub struct ExecutionClosing<Success> {
-    child: Child,
+    child: LangServerChild,
     success_marker: PhantomData<Success>,
 }
 
@@ -369,11 +351,13 @@ impl<Success> ExecutionClosing<Success>
 where
     Success: Serialize,
 {
-    pub async fn finish(mut self, mut ws: WebSocket) -> Result<()> {
+    pub async fn finish(self, mut ws: WebSocket) -> Result<()> {
+        let inner = self.child.inner();
+        let mut child_lock = inner.lock().await;
         let finished = Self::ws_send_finish(&mut ws).await;
         let closed = Self::ws_close(ws).await;
         let shutdown =
-            process::child_shutdown(&mut self.child, Some(process::Signal::SIGTERM), None)
+            process::child_shutdown(&mut child_lock, Some(process::Signal::SIGTERM), None)
                 .await
                 .map_err(Into::into);
         drop(self.child);

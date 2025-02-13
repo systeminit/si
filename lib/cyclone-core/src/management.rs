@@ -46,6 +46,10 @@ impl CycloneRequestable for ManagementRequest {
         &self.execution_id
     }
 
+    fn kind(&self) -> &str {
+        "management"
+    }
+
     fn websocket_path(&self) -> &str {
         "/execute/management"
     }

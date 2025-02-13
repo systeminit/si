@@ -62,6 +62,10 @@ impl CycloneRequestable for ResolverFunctionRequest {
         &self.execution_id
     }
 
+    fn kind(&self) -> &str {
+        "resolverfunction"
+    }
+
     fn websocket_path(&self) -> &str {
         "/execute/resolver"
     }
