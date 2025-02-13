@@ -7,6 +7,9 @@ import { useAuthStore } from '../auth.store';
 export const useHeimdall = defineStore('heimdall', async () => {
   const authStore = useAuthStore();
 
+  type AtomChecksumByKey = Record<Checksum, QueryKey>;
+  const frigg: AtomChecksumByKey = reactive({});
+
   const bustTanStackCache = (queryKey: QueryKey, latestChecksum: Checksum) => {
     console.log("BUST", queryKey)
     frigg[queryKey] = latestChecksum;
@@ -41,9 +44,6 @@ export const useHeimdall = defineStore('heimdall', async () => {
     },
     { immediate: true },
   );
-
-  type AtomChecksumByKey = Record<Checksum, QueryKey>;
-  const frigg: AtomChecksumByKey = reactive({});
 
   const bifrost = async (kind: string, rawArgs: RawArgs): Promise<unknown> => {
     const args = new Args(rawArgs);
