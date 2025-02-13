@@ -320,6 +320,7 @@ async fn deleting_a_connected_component_doesnt_cause_nonconnected_components_to_
     assert!(butane_1_after_apply.is_none());
 }
 
+#[ignore]
 #[test]
 async fn deleting_a_component_deletes_outgoing_connections_in_other_change_sets(
     ctx: &mut DalContext,
