@@ -19,6 +19,7 @@ import { addSignatureToCategoryName } from "../pipeline-steps/addSignatureToCate
 import { generateOutputSocketsFromProps } from "../pipeline-steps/generateOutputSocketsFromProps.ts";
 import { ExpandedPkgSpec } from "../spec/pkgs.ts";
 import { createPolicyDocumentInputSockets } from "../pipeline-steps/createPolicyDocumentInputSockets.ts";
+import { prettifySocketNames } from "../pipeline-steps/prettifySocketNames.ts";
 
 const logger = _logger.ns("siSpecs").seal();
 const SI_SPEC_DIR = "si-specs";
@@ -66,6 +67,7 @@ export async function generateSiSpecs(
   specs = createPolicyDocumentInputSockets(specs);
   // don't generate input sockets until we have all of the output sockets
   specs = createInputSocketsBasedOnOutputSockets(specs);
+  specs = prettifySocketNames(specs);
 
   // Our overrides right now only run after the prop tree and the sockets are generated
   specs = assetSpecificOverrides(specs);
