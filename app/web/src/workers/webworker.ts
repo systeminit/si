@@ -11,7 +11,7 @@ const error = console.error;
 
 let db: Database;
 
-const start = (sqlite3: Sqlite3Static) => {
+const start = async (sqlite3: Sqlite3Static) => {
   log('Running SQLite3 version', sqlite3.version.libVersion);
   db =
     'opfs' in sqlite3
@@ -22,7 +22,9 @@ const start = (sqlite3: Sqlite3Static) => {
       ? `OPFS is available, created persisted database at ${db.filename}`
       : `OPFS is not available, created transient database ${db.filename}`,
   );
-  db.exec({ sql: 'PRAGMA foreign_keys = ON;'});
+  await db.exec({ sql: 'PRAGMA foreign_keys = ON;'});
+  const result = db.exec({ sql: 'PRAGMA foreign_keys', returnValue: "resultRows" })
+  log("PRAGMA foreign_keys: ", oneInOne(result), "?");
 };
 
 const initializeSQLite = async () => {
@@ -30,7 +32,7 @@ const initializeSQLite = async () => {
     log('Loading and initializing SQLite3 module...');
     const sqlite3 = await sqlite3InitModule({ print: log, printErr: error });
     log('Done initializing. Running demo...');
-    start(sqlite3);
+    await start(sqlite3);
   } catch (err) {
     if (err instanceof Error) 
       error('Initialization error:', err.name, err.message);
@@ -50,25 +52,27 @@ const ensureTables = async () => {
    * SOLUTION Use snapshot checksums and FK snapshot_mtm relationships to delete
    */
   const sql = `
+  DROP TABLE IF EXISTS datablobs;
+  DROP TABLE IF EXISTS atoms;
+  DROP TABLE IF EXISTS snapshots_mtm_atoms;
+  DROP TABLE IF EXISTS snapshots;
   DROP TABLE IF EXISTS changesets;
+
   CREATE TABLE IF NOT EXISTS changesets (
     change_set_id TEXT PRIMARY KEY,
-    workspace_id TEXT NOT NULL,
-    snapshot_id TEXT NOT NULL,
-    PRIMARY KEY (change_set_id, workspace_id)
-    FOREIGN KEY (snapshot_id) REFERENCES snapshots(rowid) ON DELETE RESTRICT 
-  ) WITHOUT ROWID;
+    workspace_id TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS changeset_workspace_id ON changesets(workspace_id);
 
-  DROP TABLE IF EXISTS snapshots;
   CREATE TABLE IF NOT EXISTS snapshots (
-    checksum TEXT NOT NULL UNIQUE,
+    id INTEGER PRIMARY KEY,
+    checksum TEXT UNIQUE NOT NULL,
     change_set_id TEXT NOT NULL,
     FOREIGN KEY (change_set_id) REFERENCES changesets(change_set_id) ON DELETE CASCADE
   );
 
-  DROP TABLE IF EXISTS datablobs;
-  DROP TABLE IF EXISTS atoms;
   CREATE TABLE IF NOT EXISTS atoms (
+    id INTEGER PRIMARY KEY,
     kind TEXT,
     args TEXT,
     checksum TEXT,
@@ -76,18 +80,16 @@ const ensureTables = async () => {
     CONSTRAINT uniqueness UNIQUE (kind, args, checksum)
   );
 
-  DROP TABLE IF EXISTS snapshots_mtm_atoms;
   CREATE TABLE IF NOT EXISTS snapshots_mtm_atoms (
-    snapshot_rowid INTEGER,
-    atom_rowid INTEGER,
-    PRIMARY KEY (snapshot_rowid, atom_rowid),
-    FOREIGN KEY (snapshot_rowid) REFERENCES snapshots(rowid) ON DELETE CASCADE,
-    FOREIGN KEY (atom_rowid) REFERENCES atoms(rowid) ON DELETE CASCADE
-  );
+    snapshot_id INTEGER,
+    atom_id INTEGER,
+    FOREIGN KEY (snapshot_id) REFERENCES snapshots(id) ON DELETE CASCADE,
+    FOREIGN KEY (atom_id) REFERENCES atoms(id) ON DELETE CASCADE,
+    PRIMARY KEY (snapshot_id, atom_id)
+  ) WITHOUT ROWID;
   `;
   /**
    * RULES:
-   * RESTRICT = cannot delete a snapshot record that is a FK on a changeset record
    * When an Atom is deleted, delete its MTM entry (CASCADE should take care of this)
    * When a Snapshot is deleted, delete its MTM entry, bot not its atoms (CASCADE should take care of this)
    * 
@@ -267,7 +269,9 @@ const dbInterface: DBInterface = {
   },
 
   async migrate() {
-    return ensureTables();
+    const result = ensureTables();
+    log("Migration completed");
+    return result;
   },
 
   async initSocket (url: string, bearerToken: string) {
@@ -308,8 +312,15 @@ const dbInterface: DBInterface = {
   },
 
   async testRainbowBridge() {
-    // TODO test blob in the atoms table!
-    await db.exec({sql: "delete from snapshots; insert into snapshots (change_set_id, checksum) values ('foo', 'bar'), ('apple', 'orange');"});
+    const deletion = await db.exec({
+      sql: `delete from changesets; delete from snapshots;`,
+      returnValue: "resultRows",
+    });
+
+    await db.exec({sql: `
+      insert into changesets (workspace_id, change_set_id) VALUES ('W', 'apple'), ('W', 'foo');
+      insert into snapshots (change_set_id, checksum) values ('foo', 'bar'), ('apple', 'orange');
+    `});
     const columns: string[] = [];
     const rows = await db.exec({sql: "select rowid, change_set_id, checksum from snapshots;", returnValue: "resultRows", columnNames: columns});
     return {rows, columns};
