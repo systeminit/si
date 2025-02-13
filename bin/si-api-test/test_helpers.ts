@@ -161,6 +161,62 @@ export async function getPropertyEditor(
   };
 }
 
+export async function installModule(
+  sdf: SdfApiClient,
+  changeSetId: string,
+  moduleId: string,
+) {
+  const installModulePayload = {
+    visibility_change_set_pk: changeSetId,
+    ids: [moduleId]
+  };
+
+  await sdf.call({
+    route: "install_module",
+    body: installModulePayload,
+  });
+}
+export function extractSchemaVariant(
+  schemaVariants: any[],
+  schemaName: string,
+  category?: string,
+) {
+  const variant = schemaVariants.find(
+    (sv) =>
+      sv.schemaName === schemaName && (!category || sv.category === category),
+  );
+
+  const awsRegionVariantId = variant?.schemaVariantId;
+  assert(
+    awsRegionVariantId,
+    `Expected to find ${schemaName} schema and variant`,
+  );
+
+  return variant;
+}
+
+export async function getSchemaVariants(sdf: SdfApiClient, changeSetId: string) {
+  let schemaVariants = await sdf.call({
+    route: "schema_variants",
+    routeVars: {
+      workspaceId: sdf.workspaceId,
+      changeSetId,
+    },
+  });
+
+  const newCreateComponentApi = Array.isArray(schemaVariants?.installed);
+  if (newCreateComponentApi) {
+    schemaVariants = schemaVariants.installed;
+  }
+
+  assert(
+    Array.isArray(schemaVariants),
+    "List schema variants should return an array",
+  );
+
+  return { schemaVariants, newCreateComponentApi };
+}
+
 export async function setAttributeValue(
   sdf: SdfApiClient,
   changeSetId: string,

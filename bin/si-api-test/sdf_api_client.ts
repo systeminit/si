@@ -67,7 +67,8 @@ export const ROUTES = {
     method: "GET",
   },
   get_all_components_and_edges: {
-    path: () => "/diagram/get_all_components_and_edges",
+    path: (vars: ROUTE_VARS) =>
+      `/diagram/get_all_components_and_edges?visibility_change_set_pk=${vars.changeSetId}&workspaceId=${vars.workspaceId}`,
     method: "GET",
   },
   get_diagram: {
@@ -180,6 +181,13 @@ export const ROUTES = {
     path: (vars: ROUTE_VARS) =>
       `/v2/workspaces/${vars.workspaceId}/change-sets/${vars.changeSetId}/funcs/${vars.funcId}/code`,
     method: "PUT",
+  },
+
+  // Modules --------------------------------------
+
+  install_module: {
+    path: () => `/module/install_module`,
+    method: "POST",
   },
 
   // Websockets -----------------------------------------

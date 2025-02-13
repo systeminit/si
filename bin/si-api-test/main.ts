@@ -37,12 +37,24 @@ if (import.meta.main) {
     token,
   });
 
-  // Dynamically load test files from the ./tests directory
   const testFiles: { [key: string]: string } = {};
-  for await (const dirEntry of Deno.readDir("./tests")) {
-    if (dirEntry.isFile && dirEntry.name.endsWith(".ts")) {
-      const testName = dirEntry.name.replace(".ts", "");
-      testFiles[testName] = `./tests/${dirEntry.name}`;
+  // Only load the specified benchmark tests if that's what you want to do!
+  const benchmarkTests = testsToRun.filter((test) => test.startsWith("benchmark/"));
+  if (benchmarkTests.length > 0) {
+    for await (const dirEntry of Deno.readDir("./benchmark")) {
+      if (dirEntry.isFile && dirEntry.name.endsWith(".ts")) {
+        const testName = `benchmark/${dirEntry.name.replace(".ts", "")}`;
+        testFiles[testName] = `./benchmark/${dirEntry.name}`;
+      }
+    }
+  } else {
+    // Otherwise, business as usual
+    // Dynamically load test files from the ./tests directory
+    for await (const dirEntry of Deno.readDir("./tests")) {
+      if (dirEntry.isFile && dirEntry.name.endsWith(".ts")) {
+        const testName = dirEntry.name.replace(".ts", "");
+        testFiles[testName] = `./tests/${dirEntry.name}`;
+      }
     }
   }
 
@@ -132,9 +144,8 @@ async function executeTest(
     testEntry.test_result = "failure";
   } finally {
     testEntry.finish_time = new Date().toISOString();
-    testEntry.test_duration = `${
-      new Date().getTime() - new Date(testEntry.start_time).getTime()
-    }ms`;
+    testEntry.test_duration = `${new Date().getTime() - new Date(testEntry.start_time).getTime()
+      }ms`;
     testEntry.test_execution_sequence = sequence;
     testReport.push(testEntry);
   }
