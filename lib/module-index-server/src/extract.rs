@@ -1,4 +1,4 @@
-use std::fmt;
+use std::{fmt, ops::Deref};
 
 use axum::{async_trait, extract::FromRequestParts, http::request::Parts, Json};
 use hyper::StatusCode;
@@ -52,6 +52,14 @@ impl FromRequestParts<AppState> for ExtractedS3Bucket {
 }
 
 pub struct DbConnection(pub DatabaseTransaction);
+
+impl Deref for DbConnection {
+    type Target = DatabaseTransaction;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 #[async_trait]
 impl FromRequestParts<AppState> for DbConnection {

@@ -151,6 +151,63 @@ impl ModuleIndexClient {
         Ok(upload_response.json::<ModuleDetailsResponse>().await?)
     }
 
+    #[allow(clippy::too_many_arguments)]
+    pub async fn upsert_builtin(
+        &self,
+        module_name: &str,
+        module_version: &str,
+        module_based_on_hash: Option<String>,
+        module_schema_id: Option<String>,
+        module_bytes: Vec<u8>,
+        module_schema_variant_id: Option<String>,
+        module_schema_variant_version: Option<String>,
+    ) -> ModuleIndexClientResult<bool> {
+        let module_upload_part = reqwest::multipart::Part::bytes(module_bytes)
+            .file_name(format!("{module_name}_{module_version}.tar"));
+
+        let mut multipart_form =
+            reqwest::multipart::Form::new().part(MODULE_BUNDLE_FIELD_NAME, module_upload_part);
+
+        if let Some(module_based_on_hash) = module_based_on_hash {
+            multipart_form = multipart_form.part(
+                MODULE_BASED_ON_HASH_FIELD_NAME,
+                reqwest::multipart::Part::text(module_based_on_hash),
+            );
+        }
+
+        if let Some(schema_id) = module_schema_id {
+            multipart_form = multipart_form.part(
+                MODULE_SCHEMA_ID_FIELD_NAME,
+                reqwest::multipart::Part::text(schema_id),
+            );
+        }
+
+        if let Some(schema_variant_id) = module_schema_variant_id {
+            multipart_form = multipart_form.part(
+                MODULE_SCHEMA_VARIANT_ID_FIELD_NAME,
+                reqwest::multipart::Part::text(schema_variant_id),
+            );
+        }
+
+        if let Some(schema_variant_version) = module_schema_variant_version {
+            multipart_form = multipart_form.part(
+                MODULE_SCHEMA_VARIANT_VERSION_FIELD_NAME,
+                reqwest::multipart::Part::text(schema_variant_version),
+            );
+        }
+
+        let upsert_url = self.base_url.join("builtins/upsert")?;
+        let upsert_response = reqwest::Client::new()
+            .post(upsert_url)
+            .multipart(multipart_form)
+            .bearer_auth(&self.auth_token)
+            .send()
+            .await?
+            .error_for_status()?;
+
+        Ok(upsert_response.json::<bool>().await?)
+    }
+
     pub async fn download_module(&self, module_id: Ulid) -> ModuleIndexClientResult<Vec<u8>> {
         let download_url = self
             .base_url

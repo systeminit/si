@@ -188,23 +188,20 @@ async fn write_spec(client: ModuleIndexClient, module_id: String, out: PathBuf) 
     Ok(())
 }
 
-async fn upload_pkg_spec(
-    client: ModuleIndexClient,
-    pkg: SiPkg,
-    existing_module_id: Option<String>,
-) -> Result<()> {
-    if let Some(module_id) = existing_module_id {
-        client
-            .reject_module(
-                Ulid::from_string(&module_id)?,
-                CLOVER_DEFAULT_CREATOR.to_string(),
-            )
-            .await?;
-    }
+async fn upload_pkg_spec(client: ModuleIndexClient, pkg: SiPkg) -> Result<()> {
+    let schema = pkg.schemas()?[0].clone();
+    let metadata = pkg.metadata()?;
 
-    let module_id = upload_module(client.clone(), pkg).await?;
     client
-        .promote_to_builtin(module_id, CLOVER_DEFAULT_CREATOR.to_string())
+        .upsert_builtin(
+            metadata.name(),
+            metadata.version(),
+            Some(metadata.hash().to_string()),
+            schema.unique_id().map(String::from),
+            pkg.write_to_bytes()?,
+            schema.variants()?[0].unique_id().map(String::from),
+            Some(metadata.version().to_string()),
+        )
         .await?;
 
     Ok(())
@@ -287,13 +284,13 @@ async fn upload_pkg_specs(client: ModuleIndexClient, target_dir: PathBuf) -> Res
 
     let pb = setup_progress_bar(categorized_modules.len() as u64);
 
-    for (pkg, existing_module_id) in categorized_modules {
+    for (pkg, _existing_module_id) in categorized_modules {
         let client = client.clone();
         let pb = pb.clone();
 
         let metadata = pkg.metadata()?;
         joinset.spawn(async move {
-            if let Err(e) = upload_pkg_spec(client, pkg, existing_module_id).await {
+            if let Err(e) = upload_pkg_spec(client, pkg).await {
                 println!("Failed to upload {} due to {}", metadata.name(), e);
             }
             pb.set_message(format!("Uploading: {}", metadata.name()));
@@ -311,25 +308,6 @@ fn json_to_pkg(spec: PathBuf) -> Result<SiPkg> {
     let buf = fs::read_to_string(&spec)?;
     let spec: PkgSpec = serde_json::from_str(&buf)?;
     Ok(SiPkg::load_from_spec(spec)?)
-}
-
-async fn upload_module(client: ModuleIndexClient, pkg: SiPkg) -> Result<Ulid> {
-    let schema = pkg.schemas()?[0].clone();
-    let metadata = pkg.metadata()?;
-
-    let module = client
-        .upload_module(
-            metadata.name(),
-            metadata.version(),
-            Some(metadata.hash().to_string()),
-            schema.unique_id().map(String::from),
-            pkg.write_to_bytes()?,
-            schema.variants()?[0].unique_id().map(String::from),
-            Some(metadata.version().to_string()),
-        )
-        .await?;
-
-    Ok(Ulid::from_string(&module.id)?)
 }
 
 async fn list_specs(client: ModuleIndexClient) -> Result<Vec<ModuleDetailsResponse>> {

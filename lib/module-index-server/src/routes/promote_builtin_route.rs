@@ -72,15 +72,28 @@ pub async fn promote_builtin_route(
     let data = field.text().await?;
     info!("Got part data");
 
+    let (linked_modules, updated_module) = promote_module(module_id, &txn, data).await?;
+
+    txn.commit().await?;
+
+    let response = make_module_details_response(updated_module, linked_modules);
+
+    Ok(Json(Some(response)))
+}
+
+pub async fn promote_module(
+    module_id: ModuleId,
+    txn: &sea_orm::DatabaseTransaction,
+    data: String,
+) -> Result<(Vec<si_module::Model>, si_module::Model), PromoteModuleError> {
     let (module, linked_modules) = si_module::Entity::find_by_id(module_id)
         .limit(1)
         .find_with_linked(si_module::SchemaIdReferenceLink)
-        .all(&txn)
+        .all(txn)
         .await?
         .first()
         .cloned()
         .ok_or(PromoteModuleError::NotFound(module_id))?;
-
     let active_module = si_module::ActiveModel {
         id: Set(module.id),
         name: Set(module.name),
@@ -102,12 +115,6 @@ pub async fn promote_builtin_route(
         schema_id: Set(module.schema_id),
         ..Default::default() // all other attributes are `NotSet`
     };
-
-    let updated_module: si_module::Model = active_module.update(&txn).await?;
-
-    txn.commit().await?;
-
-    let response = make_module_details_response(updated_module, linked_modules);
-
-    Ok(Json(Some(response)))
+    let updated_module: si_module::Model = active_module.update(txn).await?;
+    Ok((linked_modules, updated_module))
 }

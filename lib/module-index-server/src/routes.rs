@@ -21,6 +21,7 @@ mod list_latest_modules_route;
 mod list_modules_route;
 pub(crate) mod promote_builtin_route;
 pub(crate) mod reject_module_route;
+pub(crate) mod upsert_builtin_route;
 pub(crate) mod upsert_module_route;
 mod upsert_workspace_route;
 
@@ -43,6 +44,10 @@ pub fn routes(state: AppState) -> Router {
         .route(
             "/builtins/:module_id/promote",
             post(promote_builtin_route::promote_builtin_route),
+        )
+        .route(
+            "/builtins/upsert",
+            post(upsert_builtin_route::upsert_builtin_route),
         )
         .route(
             "/workspace",
