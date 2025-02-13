@@ -857,15 +857,6 @@ impl AttributeValue {
             .is_dynamic())
     }
 
-    pub async fn is_set_by_intrinsic(
-        ctx: &DalContext,
-        attribute_value_id: AttributeValueId,
-    ) -> AttributeValueResult<bool> {
-        Ok(Self::prototype_func(ctx, attribute_value_id)
-            .await?
-            .is_intrinsic())
-    }
-
     pub async fn is_set_by_unset(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,

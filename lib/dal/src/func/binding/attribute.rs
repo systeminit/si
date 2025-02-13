@@ -845,7 +845,9 @@ async fn validate_intrinsic_inputs(
         ));
     }
     match intrinsic_kind {
-        IntrinsicFunc::Identity => {
+        IntrinsicFunc::Identity
+        | IntrinsicFunc::NormalizeToArray
+        | IntrinsicFunc::ResourcePayloadToValue => {
             // for now we only support configuring one input location at a time
             if prototype_arguments.len() > 1 {
                 return Err(FuncBindingError::InvalidIntrinsicBinding);
