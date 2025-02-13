@@ -28,6 +28,10 @@ impl CycloneRequestable for ValidationRequest {
         &self.execution_id
     }
 
+    fn kind(&self) -> &str {
+        "validation"
+    }
+
     fn websocket_path(&self) -> &str {
         "/execute/validation"
     }

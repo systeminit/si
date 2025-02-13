@@ -15,6 +15,10 @@ impl CycloneRequestable for KillExecutionRequest {
         &self.execution_id
     }
 
+    fn kind(&self) -> &str {
+        ""
+    }
+
     fn websocket_path(&self) -> &str {
         ""
     }

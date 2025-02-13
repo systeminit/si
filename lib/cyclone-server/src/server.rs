@@ -16,8 +16,8 @@ use tokio::{
 };
 
 use crate::{
-    routes::routes, state::AppState, Config, IncomingStream, UdsIncomingStream,
-    UdsIncomingStreamError,
+    execution::ExecutionError, routes::routes, state::AppState, Config, IncomingStream,
+    UdsIncomingStream, UdsIncomingStreamError,
 };
 
 #[cfg(target_os = "linux")]
@@ -26,6 +26,8 @@ use crate::{VsockIncomingStream, VsockIncomingStreamError};
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ServerError {
+    #[error("execution error")]
+    Execution(#[from] ExecutionError),
     #[error("hyper server error")]
     Hyper(#[from] hyper::Error),
     #[error("failed to setup signal handler")]
@@ -89,7 +91,7 @@ impl Server {
         config: Config,
         telemetry_level: Box<dyn TelemetryLevel>,
     ) -> Result<Self> {
-        let (service, shutdown_rx) = build_service(&config, telemetry_level)?;
+        let (service, shutdown_rx) = build_service(&config, telemetry_level).await?;
 
         match config.incoming_stream() {
             IncomingStream::HTTPSocket(socket_addr) => {
@@ -208,7 +210,7 @@ impl ServerSocket {
     }
 }
 
-fn build_service(
+async fn build_service(
     config: &Config,
     telemetry_level: Box<dyn TelemetryLevel>,
 ) -> Result<(IntoMakeService<Router>, oneshot::Receiver<()>)> {
@@ -219,7 +221,8 @@ fn build_service(
         telemetry_level,
         config.lang_server_function_timeout(),
         config.lang_server_process_timeout(),
-    );
+    )
+    .await?;
 
     let routes = routes(config, state, shutdown_tx);
 

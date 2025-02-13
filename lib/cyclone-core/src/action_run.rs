@@ -42,6 +42,10 @@ impl CycloneRequestable for ActionRunRequest {
         &self.execution_id
     }
 
+    fn kind(&self) -> &str {
+        "actionRun"
+    }
+
     fn websocket_path(&self) -> &str {
         "/execute/command"
     }

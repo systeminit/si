@@ -38,6 +38,7 @@ pub trait CycloneRequestable {
     type Response;
 
     fn execution_id(&self) -> &str;
+    fn kind(&self) -> &str;
     fn websocket_path(&self) -> &str;
     fn inc_run_metric(&self);
     fn dec_run_metric(&self);

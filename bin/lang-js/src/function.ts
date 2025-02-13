@@ -92,7 +92,6 @@ export interface OutputLine {
 }
 
 export async function executeFunction(
-  kind: FunctionKind,
   request: Request,
   timeout: number,
 ) {
@@ -105,7 +104,7 @@ export async function executeFunction(
 
   // TODO Create Func types instead of casting request objs
   let result;
-  switch (kind) {
+  switch (request.kind) {
     case FunctionKind.ActionRun:
       result = await executor(
         ctx,
@@ -169,7 +168,7 @@ export async function executeFunction(
       );
       break;
     default:
-      throw Error(`Unknown Kind variant: ${kind}`);
+      throw Error(`Unknown Kind variant: ${request.kind}`);
   }
 
   console.log(JSON.stringify(result));

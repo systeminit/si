@@ -29,6 +29,10 @@ impl CycloneRequestable for SchemaVariantDefinitionRequest {
         &self.execution_id
     }
 
+    fn kind(&self) -> &str {
+        "schemaVariantDefinition"
+    }
+
     fn websocket_path(&self) -> &str {
         "/execute/schema_variant_definition"
     }

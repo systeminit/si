@@ -29,8 +29,6 @@ function onError(
 }
 
 async function main() {
-  let kind: FunctionKind | undefined;
-
   const { options } = await new Command()
     .name("lang-js")
     .version("0.0.1")
@@ -39,15 +37,6 @@ async function main() {
       `timeout for a function execution in seconds (default: ${defaultTimeout})`,
       { default: defaultTimeout },
     )
-    .arguments("<kind:string>")
-    .action((_options, kind_arg: string) => {
-      if (functionKinds().includes(kind_arg)) {
-        kind = kind_arg as FunctionKind;
-      } else {
-        console.error(`Unsupported function kind: '${kind_arg}'`);
-        Deno.exit(1);
-      }
-    })
     .parse(Deno.args);
 
   let timeout: number = defaultTimeout;
@@ -73,11 +62,19 @@ async function main() {
     }
     debug({ request: requestJson });
     const request: Request = JSON.parse(requestJson);
+
     if (request.executionId) {
       executionId = request.executionId;
     } else {
       throw Error("Request must have executionId field");
     }
+
+    if (!request.kind) {
+      throw Error("Request must have a kind field");
+    }
+
+    debug({ request });
+
     // Now we have the executionId, so update our console.error() impl
     errorFn = makeConsole(executionId).error;
 
@@ -86,11 +83,7 @@ async function main() {
       onError(errorFn, err, executionId);
     });
 
-    if (kind === undefined) {
-      throw Error(`Kind is undefined`);
-    }
-
-    await executeFunction(kind, request, timeout);
+    await executeFunction(request, timeout);
   } catch (err) {
     onError(errorFn, err as Error, executionId);
   }
