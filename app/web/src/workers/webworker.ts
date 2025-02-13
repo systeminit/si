@@ -42,19 +42,27 @@ const initializeSQLite = async () => {
 // INTEGER is 8 bytes, not large enough to store ULIDs
 // we'll go with string, though reading that putting the bytes as BLOBs would save space
 const ensureTables = async () => {
+  /**
+   * GOAL: persist only data that is readable, once blob data is no longer viewable, get rid of it
+   * PROBLEM: Objects exist across multiple changesets, so we cannot ever UPDATE atom
+   * SOLUTION: We copy objects when we are given mutations
+   * PROBLEM: We don't want to read every single blob and check internal references
+   * SOLUTION Use snapshot checksums and FK snapshot_mtm relationships to delete
+   */
   const sql = `
   DROP TABLE IF EXISTS changesets;
   CREATE TABLE IF NOT EXISTS changesets (
     change_set_id TEXT PRIMARY KEY,
     workspace_id TEXT NOT NULL,
+    snapshot_id TEXT NOT NULL,
     PRIMARY KEY (change_set_id, workspace_id)
+    FOREIGN KEY (snapshot_id) REFERENCES snapshots(rowid) ON DELETE RESTRICT 
   ) WITHOUT ROWID;
 
   DROP TABLE IF EXISTS snapshots;
   CREATE TABLE IF NOT EXISTS snapshots (
+    checksum TEXT NOT NULL UNIQUE,
     change_set_id TEXT NOT NULL,
-    checksum TEXT NOT NULL,
-    PRIMARY KEY (change_set_id, checksum),
     FOREIGN KEY (change_set_id) REFERENCES changesets(change_set_id) ON DELETE CASCADE
   );
 
@@ -77,6 +85,32 @@ const ensureTables = async () => {
     FOREIGN KEY (atom_rowid) REFERENCES atoms(rowid) ON DELETE CASCADE
   );
   `;
+  /**
+   * RULES:
+   * RESTRICT = cannot delete a snapshot record that is a FK on a changeset record
+   * When an Atom is deleted, delete its MTM entry (CASCADE should take care of this)
+   * When a Snapshot is deleted, delete its MTM entry, bot not its atoms (CASCADE should take care of this)
+   * 
+   * When a Changeset is closed/deleted:
+   *  - delete atoms connected to its snapshot MTMs (We can not CASCADE atom deletion)
+   *  - delete its record, CASCADE should delete its snapshots and MTMs
+   * 
+   * PATCH WORKFLOW:
+   * When we are given a new snapshot along with patch data:
+   *  - rowid = INSERT INTO snapshots <new_checksum>, <this_changeSetId>
+   *  - INSERT INTO snapshots_mtm_atoms SELECT <rowid>, atom_rowid WHERE checksum="<old_checksum>" AND change_set_id=<this_changeSetId>
+   *  - UPDATE changesets SET snapshot_id = rowid
+   *  - For each patch data
+   *    - fromChecksum = 0, this is net new, insert atom
+   *    - toChecksum = 0, this is a deletion, remove atom
+   *    - nonzero checksums:
+   *      - select * from atoms where kind=<kind>, args=<args>, checksum=<old_checksum>
+   *        - if data doesn't exist throw mjolnir
+   *      - apply patch data
+   *      - atom_rowid = insert into atoms data=<blob>, kind=<kind>, args=<args>, checksum=<new_checksum>
+   *      - insert into snapshots_mtm_atoms atom_rowid = atom_rowid, snapshot_rowid = rowid
+   *  - DELETE FROM snapshots WHERE change_set_id=<this_changeSetId> AND checksum=<old_checksum>
+   */
 
   return db.exec({sql});
 }
@@ -217,12 +251,8 @@ const mjolnir = async (kind: string, args: Args) => {
   // TODO: we're missing a key, fire a small hammer to get it
 };
 
-// FUTURE: when we have more than atom payloads over the wire
+// FUTURE: when we have changeset data
 const pruneAtomsForClosedChangeSet = async (workspaceId: WorkspacePk, changeSetId: ChangeSetId) => {
-  await db.exec({
-    sql: "delete from changesets where workspace_id='?' and change_set_id='?';",
-    bind: [workspaceId, changeSetId],
-  });  // CASCADE deletions to all snapshots from that changeset and all atoms
 };
 
 const ragnarok = () => {
