@@ -454,6 +454,23 @@ cargo.rust_library(
 )
 
 http_archive(
+    name = "arc-swap-1.7.1.crate",
+    sha256 = "69f7f8c3906b62b754cd5326047894316021dcfe5a194c8ea52bdd94934a3457",
+    strip_prefix = "arc-swap-1.7.1",
+    urls = ["https://static.crates.io/crates/arc-swap/1.7.1/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "arc-swap-1.7.1",
+    srcs = [":arc-swap-1.7.1.crate"],
+    crate = "arc_swap",
+    crate_root = "arc-swap-1.7.1.crate/src/lib.rs",
+    edition = "2018",
+    visibility = [],
+)
+
+http_archive(
     name = "array-util-1.0.2.crate",
     sha256 = "7e509844de8f09b90a2c3444684a2b6695f4071360e13d2fda0af9f749cc2ed6",
     strip_prefix = "array-util-1.0.2",
@@ -5947,31 +5964,47 @@ cargo.rust_library(
 
 alias(
     name = "foyer",
-    actual = ":foyer-0.13.1",
+    actual = ":foyer-0.14.1",
     visibility = ["PUBLIC"],
 )
 
 http_archive(
-    name = "foyer-0.13.1.crate",
-    sha256 = "19c63beb108769d28b042829164139a5245359ccfdb4a8face928ac154e2c9ed",
-    strip_prefix = "foyer-0.13.1",
-    urls = ["https://static.crates.io/crates/foyer/0.13.1/download"],
+    name = "foyer-0.14.1.crate",
+    sha256 = "ddac72b94b174f342300f54f6dfda93c87a4a220e2def9ee2590e3ac474b5f6d",
+    strip_prefix = "foyer-0.14.1",
+    urls = ["https://static.crates.io/crates/foyer/0.14.1/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "foyer-0.13.1",
-    srcs = [":foyer-0.13.1.crate"],
+    name = "foyer-0.14.1",
+    srcs = [":foyer-0.14.1.crate"],
     crate = "foyer",
-    crate_root = "foyer-0.13.1.crate/src/lib.rs",
+    crate_root = "foyer-0.14.1.crate/src/lib.rs",
     edition = "2021",
     features = [
         "default",
-        "opentelemetry_0_26",
         "tracing",
     ],
-    named_deps = {
-        "tokio": ":madsim-tokio-0.2.30",
+    platform = {
+        "linux-arm64": dict(
+            deps = [":tokio-1.43.0"],
+        ),
+        "linux-x86_64": dict(
+            deps = [":tokio-1.43.0"],
+        ),
+        "macos-arm64": dict(
+            deps = [":tokio-1.43.0"],
+        ),
+        "macos-x86_64": dict(
+            deps = [":tokio-1.43.0"],
+        ),
+        "windows-gnu": dict(
+            deps = [":tokio-1.43.0"],
+        ),
+        "windows-msvc": dict(
+            deps = [":tokio-1.43.0"],
+        ),
     },
     visibility = [],
     deps = [
@@ -5979,36 +6012,48 @@ cargo.rust_library(
         ":anyhow-1.0.95",
         ":equivalent-1.0.1",
         ":fastrace-0.7.6",
-        ":foyer-common-0.13.1",
-        ":foyer-memory-0.13.1",
-        ":foyer-storage-0.13.1",
-        ":futures-0.3.31",
-        ":pin-project-1.1.9",
+        ":foyer-common-0.14.1",
+        ":foyer-memory-0.14.1",
+        ":foyer-storage-0.14.1",
+        ":mixtrics-0.0.3",
         ":tracing-0.1.41",
     ],
 )
 
 http_archive(
-    name = "foyer-common-0.13.1.crate",
-    sha256 = "68be583b3f51bcbc6b72f40a5aea6fa6aaff10692649c08b20458bb6703f79f0",
-    strip_prefix = "foyer-common-0.13.1",
-    urls = ["https://static.crates.io/crates/foyer-common/0.13.1/download"],
+    name = "foyer-common-0.14.1.crate",
+    sha256 = "3a2fec9e9293931608eb6bb4b032d05b8b45c8749ec6a0ace82bfe40ab5d68c4",
+    strip_prefix = "foyer-common-0.14.1",
+    urls = ["https://static.crates.io/crates/foyer-common/0.14.1/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "foyer-common-0.13.1",
-    srcs = [":foyer-common-0.13.1.crate"],
+    name = "foyer-common-0.14.1",
+    srcs = [":foyer-common-0.14.1.crate"],
     crate = "foyer_common",
-    crate_root = "foyer-common-0.13.1.crate/src/lib.rs",
+    crate_root = "foyer-common-0.14.1.crate/src/lib.rs",
     edition = "2021",
-    features = [
-        "opentelemetry_0_26",
-        "tracing",
-    ],
-    named_deps = {
-        "opentelemetry_0_26": ":opentelemetry-0.26.0",
-        "tokio": ":madsim-tokio-0.2.30",
+    features = ["tracing"],
+    platform = {
+        "linux-arm64": dict(
+            deps = [":tokio-1.43.0"],
+        ),
+        "linux-x86_64": dict(
+            deps = [":tokio-1.43.0"],
+        ),
+        "macos-arm64": dict(
+            deps = [":tokio-1.43.0"],
+        ),
+        "macos-x86_64": dict(
+            deps = [":tokio-1.43.0"],
+        ),
+        "windows-gnu": dict(
+            deps = [":tokio-1.43.0"],
+        ),
+        "windows-msvc": dict(
+            deps = [":tokio-1.43.0"],
+        ),
     },
     visibility = [],
     deps = [
@@ -6016,9 +6061,8 @@ cargo.rust_library(
         ":bytes-1.10.0",
         ":cfg-if-1.0.0",
         ":fastrace-0.7.6",
-        ":futures-0.3.31",
-        ":hashbrown-0.15.2",
-        ":itertools-0.13.0",
+        ":itertools-0.14.0",
+        ":mixtrics-0.0.3",
         ":parking_lot-0.12.3",
         ":pin-project-1.1.9",
         ":serde-1.0.217",
@@ -6048,37 +6092,56 @@ cargo.rust_library(
 )
 
 http_archive(
-    name = "foyer-memory-0.13.1.crate",
-    sha256 = "0a01e64de1452409977219fe014caa427874677aacd647bec9207d98d018bcd8",
-    strip_prefix = "foyer-memory-0.13.1",
-    urls = ["https://static.crates.io/crates/foyer-memory/0.13.1/download"],
+    name = "foyer-memory-0.14.1.crate",
+    sha256 = "5c5016e4ca89ead9045c56f10e7e4cca8068e0b114a57f9df32ad768f90f4c33",
+    strip_prefix = "foyer-memory-0.14.1",
+    urls = ["https://static.crates.io/crates/foyer-memory/0.14.1/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "foyer-memory-0.13.1",
-    srcs = [":foyer-memory-0.13.1.crate"],
+    name = "foyer-memory-0.14.1",
+    srcs = [":foyer-memory-0.14.1.crate"],
     crate = "foyer_memory",
-    crate_root = "foyer-memory-0.13.1.crate/src/lib.rs",
+    crate_root = "foyer-memory-0.14.1.crate/src/lib.rs",
     edition = "2021",
     features = ["tracing"],
     named_deps = {
         "intrusive_collections": ":foyer-intrusive-collections-0.10.0-dev",
-        "tokio": ":madsim-tokio-0.2.30",
+    },
+    platform = {
+        "linux-arm64": dict(
+            deps = [":tokio-1.43.0"],
+        ),
+        "linux-x86_64": dict(
+            deps = [":tokio-1.43.0"],
+        ),
+        "macos-arm64": dict(
+            deps = [":tokio-1.43.0"],
+        ),
+        "macos-x86_64": dict(
+            deps = [":tokio-1.43.0"],
+        ),
+        "windows-gnu": dict(
+            deps = [":tokio-1.43.0"],
+        ),
+        "windows-msvc": dict(
+            deps = [":tokio-1.43.0"],
+        ),
     },
     visibility = [],
     deps = [
         ":ahash-0.8.11",
+        ":arc-swap-1.7.1",
         ":bitflags-2.8.0",
         ":cmsketch-0.2.1",
         ":equivalent-1.0.1",
         ":fastrace-0.7.6",
-        ":foyer-common-0.13.1",
-        ":futures-0.3.31",
+        ":foyer-common-0.14.1",
         ":hashbrown-0.15.2",
-        ":itertools-0.13.0",
+        ":itertools-0.14.0",
+        ":mixtrics-0.0.3",
         ":parking_lot-0.12.3",
-        ":paste-1.0.15",
         ":pin-project-1.1.9",
         ":serde-1.0.217",
         ":thiserror-2.0.11",
@@ -6087,25 +6150,42 @@ cargo.rust_library(
 )
 
 http_archive(
-    name = "foyer-storage-0.13.1.crate",
-    sha256 = "9fb89bdcdf355e8cb2b29eaa0158839f4f7c6974c6cc86f6e54e4a48a2afa5b8",
-    strip_prefix = "foyer-storage-0.13.1",
-    urls = ["https://static.crates.io/crates/foyer-storage/0.13.1/download"],
+    name = "foyer-storage-0.14.1.crate",
+    sha256 = "f6ab33a86920fddf66dae2485e37dbcaf0e56f424875d752b639df62d3f4c056",
+    strip_prefix = "foyer-storage-0.14.1",
+    urls = ["https://static.crates.io/crates/foyer-storage/0.14.1/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "foyer-storage-0.13.1",
-    srcs = [":foyer-storage-0.13.1.crate"],
+    name = "foyer-storage-0.14.1",
+    srcs = [":foyer-storage-0.14.1.crate"],
     crate = "foyer_storage",
-    crate_root = "foyer-storage-0.13.1.crate/src/lib.rs",
+    crate_root = "foyer-storage-0.14.1.crate/src/lib.rs",
     edition = "2021",
     features = [
         "default",
         "tracing",
     ],
-    named_deps = {
-        "tokio": ":madsim-tokio-0.2.30",
+    platform = {
+        "linux-arm64": dict(
+            deps = [":tokio-1.43.0"],
+        ),
+        "linux-x86_64": dict(
+            deps = [":tokio-1.43.0"],
+        ),
+        "macos-arm64": dict(
+            deps = [":tokio-1.43.0"],
+        ),
+        "macos-x86_64": dict(
+            deps = [":tokio-1.43.0"],
+        ),
+        "windows-gnu": dict(
+            deps = [":tokio-1.43.0"],
+        ),
+        "windows-msvc": dict(
+            deps = [":tokio-1.43.0"],
+        ),
     },
     visibility = [],
     deps = [
@@ -6116,26 +6196,24 @@ cargo.rust_library(
         ":async-channel-2.3.1",
         ":auto_enums-0.8.7",
         ":bincode-1.3.3",
-        ":bitflags-2.8.0",
         ":bytes-1.10.0",
         ":clap-4.5.28",
-        ":either-1.13.0",
         ":equivalent-1.0.1",
         ":fastrace-0.7.6",
         ":flume-0.11.1",
-        ":foyer-common-0.13.1",
-        ":foyer-memory-0.13.1",
+        ":foyer-common-0.14.1",
+        ":foyer-memory-0.14.1",
         ":fs4-0.12.0",
-        ":futures-0.3.31",
-        ":hashbrown-0.15.2",
-        ":itertools-0.13.0",
+        ":futures-core-0.3.31",
+        ":futures-util-0.3.31",
+        ":itertools-0.14.0",
         ":libc-0.2.169",
         ":lz4-1.28.1",
         ":ordered_hash_map-0.4.0",
         ":parking_lot-0.12.3",
         ":paste-1.0.15",
         ":pin-project-1.1.9",
-        ":rand-0.8.5",
+        ":rand-0.9.0",
         ":serde-1.0.217",
         ":thiserror-2.0.11",
         ":tracing-0.1.41",
@@ -8541,6 +8619,29 @@ cargo.rust_library(
 )
 
 http_archive(
+    name = "itertools-0.14.0.crate",
+    sha256 = "2b192c782037fadd9cfa75548310488aabdbf3d2da73885b31bd0abd03351285",
+    strip_prefix = "itertools-0.14.0",
+    urls = ["https://static.crates.io/crates/itertools/0.14.0/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "itertools-0.14.0",
+    srcs = [":itertools-0.14.0.crate"],
+    crate = "itertools",
+    crate_root = "itertools-0.14.0.crate/src/lib.rs",
+    edition = "2018",
+    features = [
+        "default",
+        "use_alloc",
+        "use_std",
+    ],
+    visibility = [],
+    deps = [":either-1.13.0"],
+)
+
+http_archive(
     name = "itoa-1.0.14.crate",
     sha256 = "d75a2a4b1b190afb6f5425f10f6a8f959d2ea0b9c2b1d79553551850539e4674",
     strip_prefix = "itoa-1.0.14",
@@ -9564,33 +9665,6 @@ cxx_library(
     visibility = [],
 )
 
-http_archive(
-    name = "madsim-tokio-0.2.30.crate",
-    sha256 = "7d3eb2acc57c82d21d699119b859e2df70a91dbdb84734885a1e72be83bdecb5",
-    strip_prefix = "madsim-tokio-0.2.30",
-    urls = ["https://static.crates.io/crates/madsim-tokio/0.2.30/download"],
-    visibility = [],
-)
-
-cargo.rust_library(
-    name = "madsim-tokio-0.2.30",
-    srcs = [":madsim-tokio-0.2.30.crate"],
-    crate = "madsim_tokio",
-    crate_root = "madsim-tokio-0.2.30.crate/src/lib.rs",
-    edition = "2021",
-    features = [
-        "fs",
-        "macros",
-        "rt",
-        "rt-multi-thread",
-        "signal",
-        "sync",
-        "time",
-    ],
-    visibility = [],
-    deps = [":tokio-1.43.0"],
-)
-
 alias(
     name = "manyhow",
     actual = ":manyhow-0.11.4",
@@ -10003,6 +10077,40 @@ cargo.rust_library(
         ),
     },
     visibility = [],
+)
+
+alias(
+    name = "mixtrics",
+    actual = ":mixtrics-0.0.3",
+    visibility = ["PUBLIC"],
+)
+
+http_archive(
+    name = "mixtrics-0.0.3.crate",
+    sha256 = "ff4d2b55cea00ffba84e3df1e875d9190331e2f3bba2ee3bdd3abcc739639a71",
+    strip_prefix = "mixtrics-0.0.3",
+    urls = ["https://static.crates.io/crates/mixtrics/0.0.3/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "mixtrics-0.0.3",
+    srcs = [":mixtrics-0.0.3.crate"],
+    crate = "mixtrics",
+    crate_root = "mixtrics-0.0.3.crate/src/lib.rs",
+    edition = "2021",
+    features = [
+        "default",
+        "opentelemetry_0_26",
+    ],
+    named_deps = {
+        "opentelemetry_0_26": ":opentelemetry-0.26.0",
+    },
+    visibility = [],
+    deps = [
+        ":itertools-0.14.0",
+        ":parking_lot-0.12.3",
+    ],
 )
 
 alias(
@@ -17410,7 +17518,7 @@ cargo.rust_binary(
         ":env_logger-0.11.6",
         ":fastrace-0.7.6",
         ":flate2-1.0.35",
-        ":foyer-0.13.1",
+        ":foyer-0.14.1",
         ":fs4-0.12.0",
         ":fuser-0.15.1",
         ":futures-0.3.31",
@@ -17432,6 +17540,7 @@ cargo.rust_binary(
         ":manyhow-0.11.4",
         ":mime_guess-2.0.4",
         ":miniz_oxide-0.8.4",
+        ":mixtrics-0.0.3",
         ":monostate-0.1.13",
         ":names-0.14.0",
         ":nix-0.29.0",

@@ -155,6 +155,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "34ac096ce696dc2fcabef30516bb13c0a68a11d30131d3df6f04711467681b04"
 
 [[package]]
+name = "arc-swap"
+version = "1.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "69f7f8c3906b62b754cd5326047894316021dcfe5a194c8ea52bdd94934a3457"
+
+[[package]]
 name = "array-util"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2320,9 +2326,9 @@ dependencies = [
 
 [[package]]
 name = "foyer"
-version = "0.13.1"
+version = "0.14.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "19c63beb108769d28b042829164139a5245359ccfdb4a8face928ac154e2c9ed"
+checksum = "ddac72b94b174f342300f54f6dfda93c87a4a220e2def9ee2590e3ac474b5f6d"
 dependencies = [
  "ahash 0.8.11",
  "anyhow",
@@ -2331,30 +2337,29 @@ dependencies = [
  "foyer-common",
  "foyer-memory",
  "foyer-storage",
- "futures",
  "madsim-tokio",
- "pin-project",
+ "mixtrics",
+ "tokio",
  "tracing",
 ]
 
 [[package]]
 name = "foyer-common"
-version = "0.13.1"
+version = "0.14.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "68be583b3f51bcbc6b72f40a5aea6fa6aaff10692649c08b20458bb6703f79f0"
+checksum = "3a2fec9e9293931608eb6bb4b032d05b8b45c8749ec6a0ace82bfe40ab5d68c4"
 dependencies = [
  "ahash 0.8.11",
  "bytes",
  "cfg-if",
  "fastrace",
- "futures",
- "hashbrown 0.15.2",
- "itertools",
+ "itertools 0.14.0",
  "madsim-tokio",
- "opentelemetry",
+ "mixtrics",
  "parking_lot",
  "pin-project",
  "serde",
+ "tokio",
 ]
 
 [[package]]
@@ -2368,34 +2373,35 @@ dependencies = [
 
 [[package]]
 name = "foyer-memory"
-version = "0.13.1"
+version = "0.14.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0a01e64de1452409977219fe014caa427874677aacd647bec9207d98d018bcd8"
+checksum = "5c5016e4ca89ead9045c56f10e7e4cca8068e0b114a57f9df32ad768f90f4c33"
 dependencies = [
  "ahash 0.8.11",
+ "arc-swap",
  "bitflags 2.8.0",
  "cmsketch",
  "equivalent",
  "fastrace",
  "foyer-common",
  "foyer-intrusive-collections",
- "futures",
  "hashbrown 0.15.2",
- "itertools",
+ "itertools 0.14.0",
  "madsim-tokio",
+ "mixtrics",
  "parking_lot",
- "paste",
  "pin-project",
  "serde",
  "thiserror 2.0.11",
+ "tokio",
  "tracing",
 ]
 
 [[package]]
 name = "foyer-storage"
-version = "0.13.1"
+version = "0.14.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9fb89bdcdf355e8cb2b29eaa0158839f4f7c6974c6cc86f6e54e4a48a2afa5b8"
+checksum = "f6ab33a86920fddf66dae2485e37dbcaf0e56f424875d752b639df62d3f4c056"
 dependencies = [
  "ahash 0.8.11",
  "allocator-api2",
@@ -2404,19 +2410,17 @@ dependencies = [
  "async-channel",
  "auto_enums",
  "bincode",
- "bitflags 2.8.0",
  "bytes",
  "clap",
- "either",
  "equivalent",
  "fastrace",
  "flume",
  "foyer-common",
  "foyer-memory",
  "fs4",
- "futures",
- "hashbrown 0.15.2",
- "itertools",
+ "futures-core",
+ "futures-util",
+ "itertools 0.14.0",
  "libc",
  "lz4",
  "madsim-tokio",
@@ -2424,9 +2428,10 @@ dependencies = [
  "parking_lot",
  "paste",
  "pin-project",
- "rand 0.8.5",
+ "rand 0.9.0",
  "serde",
  "thiserror 2.0.11",
+ "tokio",
  "tracing",
  "twox-hash",
  "zstd",
@@ -3415,6 +3420,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "itertools"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2b192c782037fadd9cfa75548310488aabdbf3d2da73885b31bd0abd03351285"
+dependencies = [
+ "either",
+]
+
+[[package]]
 name = "itoa"
 version = "1.0.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3799,6 +3813,17 @@ dependencies = [
  "libc",
  "wasi 0.11.0+wasi-snapshot-preview1",
  "windows-sys 0.52.0",
+]
+
+[[package]]
+name = "mixtrics"
+version = "0.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ff4d2b55cea00ffba84e3df1e875d9190331e2f3bba2ee3bdd3abcc739639a71"
+dependencies = [
+ "itertools 0.14.0",
+ "opentelemetry",
+ "parking_lot",
 ]
 
 [[package]]
@@ -4624,7 +4649,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "157c5a9d7ea5c2ed2d9fb8f495b64759f7816c7eaea54ba3978f0d63000162e3"
 dependencies = [
  "anyhow",
- "itertools",
+ "itertools 0.13.0",
  "proc-macro2",
  "quote",
  "syn 2.0.98",
@@ -6378,7 +6403,7 @@ dependencies = [
  "indexmap 2.7.1",
  "indicatif",
  "indoc",
- "itertools",
+ "itertools 0.13.0",
  "jwt-simple",
  "krata-loopdev",
  "lazy_static",
@@ -6386,6 +6411,7 @@ dependencies = [
  "manyhow",
  "mime_guess",
  "miniz_oxide 0.8.4",
+ "mixtrics",
  "monostate",
  "names",
  "nix 0.29.0",
