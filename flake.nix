@@ -13,7 +13,6 @@
   };
 
   outputs = {
-    self,
     nixpkgs,
     flake-utils,
     rust-overlay,
@@ -109,18 +108,60 @@
         flyctl
         azure-cli
         govc
-        (pkgs.python3.withPackages (p: with p; [
-          cfn-lint
-        ]))
+        (pkgs.python3.withPackages (p:
+          with p; [
+            cfn-lint
+          ]))
         deno
       ];
+
+      standaloneBinaryDerivation = {
+        pkgName,
+        fromPkg,
+        bin ? pkgs.lib.strings.removeSuffix "-standalone" pkgName,
+      }:
+        pkgs.stdenv.mkDerivation {
+          name = pkgName;
+          __impure = true;
+          src = ./.;
+          buildInputs = [fromPkg];
+          installPhase = ''
+            install -Dv "${fromPkg}/bin/${bin}" "$out/bin/${bin}"
+          '';
+          postFixup =
+            ""
+            + pkgs.lib.optionalString (pkgs.stdenv.isDarwin) ''
+              nix_lib="$(otool -L "$out/bin/$name" \
+                | grep libiconv.dylib \
+                | awk '{print $1}'
+              )"
+              install_name_tool \
+                -change \
+                "$nix_lib" \
+                /usr/lib/libiconv.2.dylib \
+                "$out/bin/$name" \
+                2>/dev/null
+            ''
+            + pkgs.lib.optionalString (pkgs.stdenv.isLinux) ''
+              patchelf \
+                --set-interpreter "${systemInterpreter}" \
+                --remove-rpath \
+                "$out/bin/${bin}"
+            '';
+          dontPatchELF = true;
+          dontAutoPatchELF = true;
+        };
 
       buck2Derivation = {
         pathPrefix,
         pkgName,
         extraBuildInputs ? [],
         stdBuildPhase ? ''
-          buck2 build @//mode/release "$buck2_target" --verbose 8 --out "build/$name-$system"
+          buck2 build \
+            @//mode/release \
+            "$buck2_target" \
+            --verbose 8 \
+            --out "build/$name-$system"
         '',
         extraBuildPhase ? "",
         installPhase,
@@ -129,7 +170,7 @@
         dontAutoPatchELF ? false,
         postFixup ? "",
       }:
-        pkgs.stdenv.mkDerivation rec {
+        pkgs.stdenv.mkDerivation {
           name = pkgName;
           buck2_target = "//${pathPrefix}/${pkgName}";
           __impure = true;
@@ -156,7 +197,8 @@
           '';
           configurePhase = ''
             export LIBCLANG_PATH="${pkgs.llvmPackages.libclang.lib}/lib"
-            export BINDGEN_EXTRA_CLANG_ARGS="$(< ${pkgs.stdenv.cc}/nix-support/libc-crt1-cflags) \
+            export BINDGEN_EXTRA_CLANG_ARGS="\
+              $(< ${pkgs.stdenv.cc}/nix-support/libc-crt1-cflags) \
               $(< ${pkgs.stdenv.cc}/nix-support/libc-cflags) \
               $(< ${pkgs.stdenv.cc}/nix-support/cc-cflags) \
               $(< ${pkgs.stdenv.cc}/nix-support/libcxx-cxxflags) \
@@ -258,14 +300,18 @@
               # is where we expect it. This gets droppped into the rootfs as
               # /lib64/ld-linux-x86-64.so.2 -> /nix/store/*/ld-linux-x86-64.20.2
               mkdir -p $out/lib64
-              ln -sf ${pkgs.glibc}/lib/ld-linux-x86-64.so.2 $out/lib64/ld-linux-x86-64.so.2
-              ln -sf ${pkgs.glibc}/lib/ld-linux-aarch64.so.1 $out/lib64/ld-linux-aarch64.so.1
+              ln -sf \
+                "${pkgs.glibc}/lib/ld-linux-x86-64.so.2" \
+                "$out/lib64/ld-linux-x86-64.so.2"
+              ln -sf \
+                "${pkgs.glibc}/lib/ld-linux-aarch64.so.1" \
+                "$out/lib64/ld-linux-aarch64.so.1"
 
               wrapProgram $out/bin/lang-js \
                 --set LD_LIBRARY_PATH "${pkgs.lib.makeLibraryPath [
-                  pkgs.glibc
-                  pkgs.gcc-unwrapped.lib
-                ]}" \
+                pkgs.glibc
+                pkgs.gcc-unwrapped.lib
+              ]}" \
                 --set DENO_DIR "$out/cache" \
                 --prefix PATH : ${pkgs.lib.makeBinPath langJsExtraPkgs} \
                 --run 'cd "$(dirname "$0")"'
@@ -283,6 +329,13 @@
           rebaser = binDerivation {pkgName = "rebaser";};
 
           sdf = binDerivation {pkgName = "sdf";};
+
+          si-fs = binDerivation {pkgName = "si-fs";};
+
+          si-fs-standalone = standaloneBinaryDerivation {
+            pkgName = "si-fs-standalone";
+            fromPkg = packages.si-fs;
+          };
 
           veritech = binDerivation {pkgName = "veritech";};
 
@@ -312,7 +365,8 @@
           # Env Vars so bindgen can find libclang
           shellHook = ''
             export LIBCLANG_PATH="${pkgs.llvmPackages.libclang.lib}/lib"
-            export BINDGEN_EXTRA_CLANG_ARGS="$(< ${pkgs.stdenv.cc}/nix-support/libc-crt1-cflags) \
+            export BINDGEN_EXTRA_CLANG_ARGS="\
+              $(< ${pkgs.stdenv.cc}/nix-support/libc-crt1-cflags) \
               $(< ${pkgs.stdenv.cc}/nix-support/libc-cflags) \
               $(< ${pkgs.stdenv.cc}/nix-support/cc-cflags) \
               $(< ${pkgs.stdenv.cc}/nix-support/libcxx-cxxflags) \
