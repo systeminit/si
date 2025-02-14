@@ -3827,6 +3827,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "json-patch"
+version = "3.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "863726d7afb6bc2590eeff7135d923545e5e964f004c2ccf8716c25e70a86f08"
+dependencies = [
+ "jsonptr",
+ "serde",
+ "serde_json",
+ "thiserror 1.0.69",
+]
+
+[[package]]
+name = "jsonptr"
+version = "0.6.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5dea2b27dd239b2556ed7a25ba842fe47fd602e7fc7433c2a8d6106d4d9edd70"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "jwt-simple"
 version = "0.12.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5542,20 +5564,25 @@ dependencies = [
  "dal",
  "derive_builder",
  "futures",
+ "json-patch",
  "naxum",
  "pending-events",
  "rebaser-client",
  "rebaser-core",
  "remain",
  "serde",
+ "serde_json",
  "shuttle-server",
  "si-crypto",
  "si-data-nats",
  "si-data-pg",
  "si-events",
+ "si-frontend-types",
+ "si-frontend-types-macros",
  "si-layer-cache",
  "si-settings",
  "si-std",
+ "strum",
  "telemetry",
  "telemetry-nats",
  "telemetry-utils",
@@ -6698,6 +6725,7 @@ name = "si-frontend-types"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "json-patch",
  "module-index-types",
  "remain",
  "serde",

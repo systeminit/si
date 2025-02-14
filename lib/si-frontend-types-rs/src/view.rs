@@ -22,25 +22,19 @@ use crate::{
     si_frontend_types_macros::FrontendChecksum,
     si_frontend_types_macros::FrontendObject,
     si_frontend_types_macros::Refer,
+    si_frontend_types_macros::MV,
 )]
 #[serde(rename_all = "camelCase")]
+#[mv(
+    trigger_entity = EntityKind::View,
+    reference_kind = ReferenceKind::View,
+)]
 pub struct View {
     pub id: ViewId,
     pub name: String,
     pub is_default: bool,
     #[serde(flatten)]
     pub timestamp: Timestamp,
-}
-
-// TODO: we should be able to derive this impl in the future with a macro
-impl MaterializedView for View {
-    fn reference_dependencies() -> &'static [ReferenceKind] {
-        &[]
-    }
-
-    fn trigger_entity() -> EntityKind {
-        EntityKind::View
-    }
 }
 
 #[derive(
@@ -51,19 +45,15 @@ impl MaterializedView for View {
     Eq,
     si_frontend_types_macros::FrontendChecksum,
     si_frontend_types_macros::FrontendObject,
+    si_frontend_types_macros::Refer,
+    si_frontend_types_macros::MV,
+)]
+#[mv(
+    trigger_entity = EntityKind::CategoryView,
+    reference_kind = ReferenceKind::ViewList,
 )]
 pub struct ViewList {
     pub id: ChangeSetId,
+    #[mv(reference_kind = ReferenceKind::View)]
     pub views: Vec<Reference<ViewId>>,
-}
-
-// TODO: we should be able to derive this impl in the future with a macro
-impl MaterializedView for ViewList {
-    fn reference_dependencies() -> &'static [ReferenceKind] {
-        &[ReferenceKind::View]
-    }
-
-    fn trigger_entity() -> EntityKind {
-        EntityKind::CategoryView
-    }
 }

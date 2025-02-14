@@ -1,17 +1,17 @@
 mod approval_requirement;
 mod audit_log;
 mod change_set;
-mod checksum;
+pub mod checksum;
 mod component;
 mod conflict;
 pub mod fs;
 mod func;
-mod materialized_view;
+pub mod materialized_view;
 mod module;
-mod object;
+pub mod object;
 pub mod reference;
 mod schema_variant;
-mod view;
+pub mod view;
 mod workspace;
 
 pub use crate::{
