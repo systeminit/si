@@ -31,6 +31,8 @@ type AuthApiWorkspace = {
   instanceUrl: string;
   role: "OWNER" | "EDITOR";
   token: string;
+  isDefault: boolean;
+  isFavourite: boolean;
 };
 
 export type WorkspaceImportSummary = {
@@ -105,7 +107,11 @@ export const useWorkspacesStore = () => {
           return new AuthApiRequest<AuthApiWorkspace[]>({
             url: "/workspaces",
             onSuccess: (response) => {
-              const renameIdList = _.map(response, (w) => ({
+              const filteredWorkspaces = _.filter(
+                response,
+                (w) => w.isFavourite || w.isDefault,
+              );
+              const renameIdList = _.map(filteredWorkspaces, (w) => ({
                 ...w,
                 pk: w.id,
               }));
