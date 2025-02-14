@@ -62,3 +62,6 @@ export const SOCKET_MARGIN_TOP = 8; // less because there is also a subtitle wit
 export const NODE_PADDING_BOTTOM = 10; //
 // width/height of sockets
 export const SOCKET_SIZE = 15;
+
+export const detailsModeArray = ["show", "titles", "hide"] as const;
+export type DetailsMode = (typeof detailsModeArray)[number];

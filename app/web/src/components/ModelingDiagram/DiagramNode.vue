@@ -43,6 +43,7 @@
 
       <!-- rename hitbox -->
       <v-rect
+        v-if="hideDetails !== 'hide'"
         :config="{
           ...renameHitbox,
           ...(debug && { fill: 'red' }),
@@ -56,11 +57,11 @@
 
       <!-- component name -->
       <v-text
-        v-if="!renaming && !hideDetails"
+        v-if="!renaming && hideDetails !== 'hide'"
         ref="titleTextRef"
         :config="{
           x: -halfWidth + 10,
-          y: 4,
+          y: 10,
           verticalAlign: 'top',
           align: 'left',
           text: truncatedNodeTitle,
@@ -75,11 +76,11 @@
 
       <!-- component type -->
       <v-text
-        v-if="!hideDetails"
+        v-if="hideDetails !== 'hide'"
         ref="subtitleTextRef"
         :config="{
           x: -halfWidth + 10,
-          y: NODE_HEADER_TEXT_HEIGHT + 6,
+          y: NODE_HEADER_TEXT_HEIGHT + 12,
           verticalAlign: 'top',
           align: 'left',
           text: truncatedNodeSubtitle,
@@ -97,7 +98,7 @@
 
       <!-- parent frame attachment indicator -->
       <DiagramIcon
-        v-if="parentComponentId"
+        v-if="parentComponentId && hideDetails === 'show'"
         :color="colors.parentColor"
         :size="16"
         :x="-halfWidth + 12"
@@ -125,6 +126,7 @@
 
       <!-- status icons -->
       <v-group
+        v-if="hideDetails === 'show'"
         :config="{
           x: halfWidth - 2,
           y: nodeHeight - 2,
@@ -173,7 +175,7 @@
       </v-group>
 
       <DiagramIcon
-        v-if="node.def.canBeUpgraded"
+        v-if="node.def.canBeUpgraded && hideDetails === 'show'"
         :color="getToneColorHex('action')"
         :size="24 + (diffIconHover ? 4 : 0)"
         :x="halfWidth - 2 - 36"
@@ -184,7 +186,7 @@
 
       <!-- added/modified/deleted indicator -->
       <DiagramIcon
-        v-if="isAdded || isModified || isDeleted"
+        v-if="(isAdded || isModified || isDeleted) && hideDetails === 'show'"
         :color="topRightIconColor"
         :icon="topRightIcon"
         :size="24 + (diffIconHover ? 4 : 0)"
@@ -228,7 +230,10 @@
     />
 
     <!-- sockets -->
-    <v-group v-if="!hideDetails" :config="{ opacity: isDeleted ? 0.5 : 1 }">
+    <v-group
+      v-if="hideDetails === 'show'"
+      :config="{ opacity: isDeleted ? 0.5 : 1 }"
+    >
       <v-group
         :config="{
           x: leftSockets.x,
@@ -306,7 +311,6 @@ import {
   ElementHoverMeta,
 } from "./diagram_types";
 import DiagramNodeSocket from "./DiagramNodeSocket.vue";
-
 import {
   CORNER_RADIUS,
   DEFAULT_NODE_COLOR,
@@ -315,6 +319,7 @@ import {
   NODE_TITLE_HEADER_MARGIN_RIGHT as NODE_HEADER_MARGIN_RIGHT,
   NODE_HEADER_HEIGHT,
   NODE_HEADER_TEXT_HEIGHT,
+  DetailsMode,
 } from "./diagram_constants";
 import DiagramIcon from "./DiagramIcon.vue";
 
@@ -334,7 +339,7 @@ const props = defineProps({
     type: String as PropType<QualificationStatus>,
   },
   debug: Boolean,
-  hideDetails: Boolean,
+  hideDetails: { type: String as PropType<DetailsMode> },
 });
 
 const emit = defineEmits<{
@@ -515,7 +520,7 @@ const renameHitbox = computed(() => {
       renameHitboxSelfRect.value ||
       titleTextRef.value?.getNode()?.getSelfRect();
     if (raw) {
-      const box = { ...raw, x: -halfWidth.value + 10, y: 4 };
+      const box = { ...raw, x: -halfWidth.value + 10, y: 10 };
       box.width -= 3;
       box.height += 1;
       return box;

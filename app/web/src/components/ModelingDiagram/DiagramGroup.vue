@@ -175,7 +175,7 @@
 
     <!-- sockets -->
     <v-group
-      v-if="!hideDetails"
+      v-if="hideDetails === 'show'"
       :config="{
         x: leftSockets.x,
         y: leftSockets.y,
@@ -193,7 +193,7 @@
       />
     </v-group>
     <v-group
-      v-if="!hideDetails"
+      v-if="hideDetails === 'show'"
       :config="{
         x: rightSockets.x,
         y: rightSockets.y,
@@ -232,6 +232,7 @@
       />
 
       <DiagramIcon
+        v-if="hideDetails !== 'hide'"
         :icon="COMPONENT_TYPE_ICONS[group.def.componentType]"
         origin="top-left"
         :size="32"
@@ -244,6 +245,7 @@
 
       <!-- rename hitbox -->
       <v-rect
+        v-if="hideDetails !== 'hide'"
         :config="{
           ...renameHitbox,
           ...(debug && { fill: 'red' }),
@@ -260,7 +262,7 @@
 
       <!-- component name -->
       <v-text
-        v-if="!hideDetails"
+        v-if="hideDetails !== 'hide'"
         ref="titleTextRef"
         :config="{
           x: GROUP_HEADER_ICON_SIZE - 2,
@@ -282,7 +284,7 @@
 
       <!-- component type and child count -->
       <v-text
-        v-if="!hideDetails"
+        v-if="hideDetails !== 'hide'"
         ref="subtitleTextRef"
         :config="{
           x: GROUP_HEADER_ICON_SIZE - 2,
@@ -305,7 +307,7 @@
 
     <!-- parent frame attachment indicator -->
     <DiagramIcon
-      v-if="parentComponentId"
+      v-if="parentComponentId && hideDetails === 'show'"
       icon="frame"
       :size="16"
       :x="-halfWidth + 12"
@@ -317,7 +319,7 @@
 
     <!-- status icons -->
     <v-group
-      v-if="statusIcons?.length"
+      v-if="statusIcons?.length && hideDetails === 'show'"
       :config="{
         x: halfWidth - 2,
         y: 0,
@@ -367,7 +369,7 @@
 
     <!-- upgrade icon -->
     <DiagramIcon
-      v-if="group.def.canBeUpgraded"
+      v-if="group.def.canBeUpgraded && hideDetails === 'show'"
       :color="getToneColorHex('action')"
       :size="24 + (diffIconHover ? 4 : 0)"
       :x="halfWidth - GROUP_HEADER_ICON_SIZE - 36 / 2"
@@ -383,7 +385,7 @@
 
     <!-- added/modified indicator -->
     <DiagramIcon
-      v-if="isAdded || isModified || isDeleted"
+      v-if="(isAdded || isModified || isDeleted) && hideDetails === 'show'"
       :icon="topRightIcon"
       :color="topRightIconColor"
       shadeBg
@@ -445,6 +447,7 @@ import {
   NODE_SUBTITLE_TEXT_HEIGHT,
   SOCKET_MARGIN_TOP,
   NODE_PADDING_BOTTOM,
+  DetailsMode,
 } from "@/components/ModelingDiagram/diagram_constants";
 import {
   QualificationStatus,
@@ -483,7 +486,7 @@ const props = defineProps({
     required: false,
   },
   debug: Boolean,
-  hideDetails: Boolean,
+  hideDetails: { type: String as PropType<DetailsMode> },
 });
 
 const diagramContext = useDiagramContext();
@@ -571,7 +574,9 @@ const childCount = computed(() => {
 const nodeWidth = computed(() => irect.value.width);
 const halfWidth = computed(() => nodeWidth.value / 2);
 const headerWidth = computed(() =>
-  !props.group.def.changeStatus || props.group.def.changeStatus === "unmodified"
+  !props.group.def.changeStatus ||
+  props.group.def.changeStatus === "unmodified" ||
+  props.hideDetails !== "show"
     ? nodeWidth.value
     : nodeWidth.value - GROUP_HEADER_ICON_SIZE - 4,
 );

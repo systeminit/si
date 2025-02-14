@@ -354,6 +354,7 @@ import {
   NODE_TITLE_HEADER_MARGIN_RIGHT,
   GROUP_HEADER_ICON_SIZE,
   NODE_HEADER_HEIGHT,
+  detailsModeArray,
 } from "./diagram_constants";
 import {
   vectorDistance,
@@ -376,16 +377,18 @@ import DiagramIcon from "./DiagramIcon.vue";
 import DiagramEmptyState from "./DiagramEmptyState.vue";
 import DiagramView from "./DiagramView.vue";
 
+const toggleHideDetails = ref(0);
+const hideDiagramDetails = computed(() =>
+  featureFlagsStore.DIAGRAM_OPTIMIZATION
+    ? detailsModeArray[toggleHideDetails.value]
+    : "show",
+);
+
 const LEFT_PANEL_DRAWER_WIDTH = 230;
 
 // SET THIS BOOLEAN TO TRUE TO ENABLE DEBUG MODE!
 // VERY HELPFUL FOR DEBUGGING ISSUES ON THE DIAGRAM!
 const enableDebugMode = false;
-
-const toggleHideDetails = ref(false);
-const hideDiagramDetails = computed(
-  () => featureFlagsStore.DIAGRAM_OPTIMIZATION && toggleHideDetails.value,
-);
 
 const route = useRoute();
 const toast = useToast();
@@ -913,7 +916,10 @@ async function onKeyDown(e: KeyboardEvent) {
     e.key === "z"
   ) {
     e.preventDefault();
-    toggleHideDetails.value = !toggleHideDetails.value;
+    toggleHideDetails.value++;
+    if (toggleHideDetails.value > detailsModeArray.length - 1) {
+      toggleHideDetails.value = 0;
+    }
   }
 }
 
