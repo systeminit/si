@@ -77,6 +77,17 @@
           darwin.apple_sdk.frameworks.CoreFoundation
         ];
 
+      # The file name of the program interpreter/dynamic linker. We're primarily
+      # interested in the Linux system values.
+      interpreterName =
+        {
+          "x86_64-linux" = "ld-linux-x86-64.so.2";
+          "aarch64-linux" = "ld-linux-aarch64.so.1";
+          "x86_64-darwin" = "/dev/null";
+          "aarch64-darwin" = "/dev/null";
+        }
+        .${system};
+
       # This isn't an exact science, but confirmed the system interpreter by
       # running `ldd /bin/sh` in Docker containers running:
       # - debian:9-slim
@@ -301,11 +312,8 @@
               # /lib64/ld-linux-x86-64.so.2 -> /nix/store/*/ld-linux-x86-64.20.2
               mkdir -p $out/lib64
               ln -sf \
-                "${pkgs.glibc}/lib/ld-linux-x86-64.so.2" \
-                "$out/lib64/ld-linux-x86-64.so.2"
-              ln -sf \
-                "${pkgs.glibc}/lib/ld-linux-aarch64.so.1" \
-                "$out/lib64/ld-linux-aarch64.so.1"
+                "${pkgs.glibc}/lib/${interpreterName}" \
+                "$out/lib64/${interpreterName}"
 
               wrapProgram $out/bin/lang-js \
                 --set LD_LIBRARY_PATH "${pkgs.lib.makeLibraryPath [
