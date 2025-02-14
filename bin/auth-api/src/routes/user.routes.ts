@@ -14,6 +14,7 @@ import {
   getQuarantinedUsers,
   getSuspendedUsers,
   getUserById,
+  getUsersByEmail,
   getUserSignupReport,
   refreshUserAuth0Profile,
   saveUser,
@@ -200,6 +201,21 @@ router.get("/users/quarantined", async (ctx) => {
   });
 
   ctx.body = quarantined;
+});
+
+router.get("/users/by-email", async (ctx) => {
+  extractAdminAuthUser(ctx);
+
+  const reqBody = validate(
+    ctx.request.query,
+    z.object({
+      email: z.string(),
+    }),
+  );
+
+  const users = await getUsersByEmail(reqBody.email);
+
+  ctx.body = users;
 });
 
 export type SignupUsersReport = {

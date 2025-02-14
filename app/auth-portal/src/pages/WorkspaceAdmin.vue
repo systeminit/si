@@ -56,6 +56,84 @@
       </div>
       <divider class="my-4" />
       <div>
+        <h3 class="pb-md font-bold">User Accounts by Email</h3>
+        <Stack>
+          <VormInput
+            v-model="usersByEmail"
+            label="Email"
+            placeholder="The email record to lookup"
+            required
+          />
+          <VButton
+            :requestStatus="userRecordsByEmailReqStatus"
+            :disabled="_.isEmpty(usersByEmail)"
+            iconRight="chevron--right"
+            loadingText="Searching..."
+            tone="action"
+            variant="solid"
+            @click="getUserRecordsForEmail()"
+          >
+            Search for User Records
+          </VButton>
+        </Stack>
+        <template v-if="userRecordsByEmailReqStatus.isPending">
+          <Icon name="loader" />
+        </template>
+        <template v-else-if="userRecordsByEmailReqStatus.isError">
+          <ErrorMessage :requestStatus="userRecordsByEmailReqStatus" />
+        </template>
+        <template v-else-if="userRecordsByEmailReqStatus.isSuccess">
+          <div class="relative">
+            <div class="text-lg font-bold">Currently Quarantined Users:</div>
+            <table
+              class="w-full divide-y divide-neutral-400 dark:divide-neutral-600 border-b border-neutral-400 dark:border-neutral-600"
+            >
+              <thead>
+                <tr
+                  class="children:pb-xs children:px-md children:font-bold text-left text-xs uppercase"
+                >
+                  <th scope="col">User ID</th>
+                  <th scope="col">Auth0 ID</th>
+                  <th scope="col">Email</th>
+                  <th scope="col">Is Quarantined?</th>
+                  <th scope="col">Is Suspended?</th>
+                </tr>
+              </thead>
+              <tbody
+                class="divide-y divide-neutral-300 dark:divide-neutral-700"
+              >
+                <tr
+                  v-for="userRecord in userRecords"
+                  :key="userRecord.id"
+                  class="children:px-md children:py-sm children:truncate text-sm font-medium text-neutral-800 dark:text-neutral-200"
+                >
+                  <td class="">
+                    <div
+                      class="xl:max-w-[800px] lg:max-w-[60vw] md:max-w-[50vw] sm:max-w-[40vw] max-w-[150px] truncate"
+                    >
+                      {{ userRecord.id }}
+                    </div>
+                  </td>
+                  <td class="normal-case">
+                    {{ formatAuth0Signup(userRecord.auth0Id) }}
+                  </td>
+                  <td class="normal-case">
+                    {{ userRecord.email }}
+                  </td>
+                  <td class="normal-case">
+                    {{ hasDate(userRecord.quarantinedAt) }}
+                  </td>
+                  <td class="normal-case">
+                    {{ hasDate(userRecord.suspendedAt) }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </template>
+      </div>
+      <divider class="my-4" />
+      <div>
         <h3 class="pb-md font-bold">Manage Account Quarantine</h3>
 
         <Stack>
@@ -456,7 +534,7 @@ import {
   Divider,
 } from "@si/vue-lib/design-system";
 import { useRouter } from "vue-router";
-import { useAuthStore } from "@/store/auth.store";
+import { User, useAuthStore } from "@/store/auth.store";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 
@@ -576,6 +654,30 @@ async function getWorkspaceOwner() {
 const getWorkspaceOwnerReqStatus = workspacesStore.getRequestStatus(
   "GET_WORKSPACE_OWNER",
 );
+
+const usersByEmail = ref("");
+const userRecords = ref<User[]>([]);
+const userRecordsByEmailReqStatus = authStore.getRequestStatus(
+  "GET_USERS_FOR_EMAIL",
+  usersByEmail.value,
+);
+async function getUserRecordsForEmail() {
+  if (!usersByEmail.value) return;
+
+  const users = await authStore.GET_USERS_FOR_EMAIL(usersByEmail.value);
+  userRecords.value = users.result.data || [];
+}
+
+function formatAuth0Signup(signup: string) {
+  const signupMethod = signup.split("|", 1);
+  return signupMethod[0];
+}
+
+function hasDate(date: string | undefined) {
+  if (!date || date === "") return false;
+
+  return true;
+}
 
 onBeforeMount(async () => {
   // eslint-disable-next-line @typescript-eslint/no-floating-promises

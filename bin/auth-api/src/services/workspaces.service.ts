@@ -8,6 +8,7 @@ import {
   createInvitedUser,
   getUserByEmail,
   getUserById,
+  getUsersByEmail,
   UserId,
 } from "./users.service";
 
@@ -180,9 +181,14 @@ export async function inviteMember(
   email: string,
   workspace: Workspace,
 ) {
-  let user = await getUserByEmail(email);
-  if (!user) {
-    user = await createInvitedUser(email);
+  const users = await getUsersByEmail(email);
+  const activeUsers = _.filter(users, (u) => {
+    return u.quarantinedAt == null && u.suspendedAt == null;
+  });
+
+  let userToInvite;
+  if (users.length === 0) {
+    userToInvite = await createInvitedUser(email);
     tracker.trackEvent(authUser, "new_user_created_from_invite", {
       workspaceId: workspace.id,
       newUserEmail: email,
@@ -190,14 +196,6 @@ export async function inviteMember(
       triggeredAt: new Date(),
     });
 
-    // TODO: Paul
-    // This will be cleaned up when we have deployed the new transactional emails
-    tracker.trackEvent(authUser, "workspace_new_user_invited", {
-      workspaceId: workspace.id,
-      memberAdded: email,
-      memberAddedAt: new Date(),
-      invitedBy: authUser.email,
-    });
     tracker.trackEvent(authUser, "workspace_new_user_invited_v2", {
       workspaceId: workspace.id,
       workspaceName: workspace.displayName,
@@ -206,15 +204,13 @@ export async function inviteMember(
       initiatedBy: authUser.email,
       newPermissionLevel: "Collaborator",
     });
+  } else if (activeUsers.length > 1) {
+    throw new Error(
+      `Multiple users found for email: ${email} - contact support@systeminit.com to help resolve!`,
+    );
   } else {
-    // TODO: Paul
-    // This will be cleaned up when we have deployed the new transactional emails
-    tracker.trackEvent(authUser, "workspace_existing_user_invited", {
-      workspaceId: workspace.id,
-      memberAdded: email,
-      memberAddedAt: new Date(),
-      invitedBy: authUser.email,
-    });
+    userToInvite = activeUsers[0];
+
     tracker.trackEvent(authUser, "workspace_existing_user_invited_v2", {
       workspaceId: workspace.id,
       workspaceName: workspace.displayName,
@@ -229,7 +225,7 @@ export async function inviteMember(
     data: {
       id: ulid(),
       workspaceId: workspace.id,
-      userId: user.id,
+      userId: userToInvite.id,
       roleType: RoleType.EDITOR,
       invitedAt: new Date(),
     },
