@@ -84,6 +84,7 @@ export function generateSubAssets(
             ...variantData,
             displayName: name,
             funcUniqueId: ulid(),
+            link: prop.typeProp.data?.docLink,
             description: prop.typeProp.data?.documentation ?? "",
           },
           domain: newDomain,
