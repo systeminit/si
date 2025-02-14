@@ -121,69 +121,89 @@ export async function runCode(
   });
 
   const process = command.spawn();
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    setTimeout(() => {
-      process.kill();
-      reject(
-        new TimeoutError(timeout),
-      );
-    }, timeout * 1000);
-  });
 
-  const { stdout, stderr } = await Promise.race([
-    process.output(),
-    timeoutPromise,
+  const timeoutId = setTimeout(() => {
+    process.kill();
+    throw new TimeoutError(timeout);
+  }, timeout * 1000);
+
+  // Handle streams
+  const [stdout, stderr] = await Promise.all([
+    handleStream(process.stdout.getReader(), console, "stdout"),
+    handleStream(process.stderr.getReader(), console, "stderr"),
+    process.status,
   ]);
 
-  const stderrText = textDecoder.decode(stderr);
-  const stdoutText = textDecoder.decode(stdout);
+  clearTimeout(timeoutId);
 
-  debug({ stderrText });
-  debug({ stdoutText });
-
-  if (stderrText.trim()) {
-    throw new Error(stderrText.trim());
+  if (stderr.trim()) {
+    throw new Error(stderr.trim());
   }
 
-  if (stderrText.trim()) {
-    throw new Error(stderrText.trim());
+  return processExecutionOutput(stdout);
+}
+
+async function handleStream(
+  reader: ReadableStreamDefaultReader<Uint8Array>,
+  console: ReturnType<typeof makeConsole>,
+  type: "stdout" | "stderr",
+): Promise<string> {
+  let buffer = "";
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      const text = textDecoder.decode(value);
+      buffer += text;
+
+      const lines = text.split("\n");
+      for (const line of lines) {
+        if (line.trim()) {
+          // don't log the marker lines
+          if (
+            type === "stdout" &&
+            (line.includes("__STATE_MARKER__") ||
+              line.includes("__RESULT_MARKER__"))
+          ) {
+            continue;
+          }
+
+          type === "stdout" ? console.log(line) : console.error(line);
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock();
   }
 
-  const resultMarkerIndex = stdoutText.indexOf("__RESULT_MARKER__");
-  const stateMarkerIndex = stdoutText.indexOf("__STATE_MARKER__");
+  return buffer;
+}
+
+function processExecutionOutput(stdoutBuffer: string): Record<string, unknown> {
+  const resultMarkerIndex = stdoutBuffer.indexOf("__RESULT_MARKER__");
+  const stateMarkerIndex = stdoutBuffer.indexOf("__STATE_MARKER__");
 
   if (resultMarkerIndex === -1) {
     throw new Error("No output received from function run");
   }
 
-  // Process console output (everything before the first marker)
-  const consoleOutput = stdoutText.slice(
-    0,
-    stateMarkerIndex !== -1 ? stateMarkerIndex : resultMarkerIndex,
-  );
-
-  // Update parent process storage if state was returned
+  // Process state if it exists
   if (stateMarkerIndex !== -1) {
-    const stateJson = stdoutText.slice(
+    const stateJson = stdoutBuffer.slice(
       stateMarkerIndex + "__STATE_MARKER__".length,
       resultMarkerIndex,
     );
-    const finalState = JSON.parse(stateJson);
-    Object.assign(rawStorage().env, finalState.env);
-    Object.assign(rawStorage().data, finalState.data);
-  }
+    const state = JSON.parse(stateJson);
 
-  // Log out each line logged during function execution so Cyclone can bubble
-  // them up
-  if (consoleOutput) {
-    consoleOutput.split("\n")
-      .filter((line) => line.trim())
-      .forEach((line) => {
-        console.log(line);
-      });
+    if (state) {
+      Object.assign(rawStorage().env, state.env);
+      Object.assign(rawStorage().data, state.data);
+    }
   }
 
   return JSON.parse(
-    stdoutText.slice(resultMarkerIndex + "__RESULT_MARKER__".length),
+    stdoutBuffer.slice(resultMarkerIndex + "__RESULT_MARKER__".length),
   );
 }
