@@ -52,6 +52,10 @@ dependent_targets = bxl_main(
             default = False,
             doc = """Filter targets to runnable docker promotions.""",
         ),
+        "publish_binary": cli_args.bool(
+            default = False,
+            doc = """Filter targets to binary publish targets.""",
+        ),
         "publish_omnibus": cli_args.bool(
             default = False,
             doc = """Filter targets to omnibus publish targets.""",
@@ -59,10 +63,6 @@ dependent_targets = bxl_main(
         "publish_rootfs": cli_args.bool(
             default = False,
             doc = """Filter targets to rootfs publish targets.""",
-        ),
-        "releasable_binary": cli_args.bool(
-            default = False,
-            doc = """Filter targets to releasable binaries.""",
         ),
         "global_file": cli_args.list(
             cli_args.string(),
@@ -176,19 +176,15 @@ def _filter_targets(ctx: bxl.Context, targets: bxl.UnconfiguredTargetSet) -> bxl
     if ctx.cli_args.release_docker:
         has_filtered = True
         filtered = filtered + ctx.uquery().kind("docker_image_release", targets)
+    if ctx.cli_args.publish_binary:
+        has_filtered = True
+        filtered = filtered + ctx.uquery().attrregexfilter("name", "^publish-binary(-.+)?$", targets)
     if ctx.cli_args.publish_omnibus:
         has_filtered = True
         filtered = filtered + ctx.uquery().attrregexfilter("name", "^publish-omnibus(-.+)?$", targets)
     if ctx.cli_args.publish_rootfs:
         has_filtered = True
         filtered = filtered + ctx.uquery().attrregexfilter("name", "^publish-rootfs(-.+)?$", targets)
-    if ctx.cli_args.releasable_binary:
-        has_filtered = True
-        filtered = filtered + ctx.uquery().attrfilter(
-            "name",
-            "si",
-            ctx.uquery().kind("rust_binary", targets),
-        )
     if ctx.cli_args.promote_docker:
         has_filtered = True
         filtered = filtered + _filtered_promote_docker_targets(ctx, targets)

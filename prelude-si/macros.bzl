@@ -31,9 +31,11 @@ rootfs = _rootfs
 
 load(
     "@prelude-si//macros:nix.bzl",
+    _nix_binary = "nix_binary",
     _nix_flake_lock = "nix_flake_lock",
     _nix_omnibus_pkg = "nix_omnibus_pkg",
 )
+nix_binary = _nix_binary
 nix_flake_lock = _nix_flake_lock
 nix_omnibus_pkg = _nix_omnibus_pkg
 
