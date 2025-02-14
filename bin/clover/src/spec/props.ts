@@ -66,11 +66,21 @@ interface PropSpecOverrides {
 }
 
 type CreatePropArgs = {
+  // The path to this prop, e.g. ["root", "domain"]
   propPath: string[];
+  // The definition for this prop in the schema
   cfProp: CfProperty;
-  required?: boolean;
+  // Whether this prop is required.
+  required: boolean;
+  // The definition the CfProperty lives within, in the schema. e.g. #/definitions/MyDefinition.
+  // If this is undefined, it's in the main schema.
+  cfRef: string | undefined;
+  // Whether the parent CfProperty was an object (only fields get fragment doc refs)
+  cfParentIsObject: boolean;
+  // A handler to add the prop to its parent after it has been created
   addTo?: (data: ExpandedPropSpec) => undefined;
 };
+
 export type CreatePropQueue = {
   cfSchema: CfSchema;
   onlyProperties: OnlyProperties;
@@ -96,6 +106,8 @@ export function createDefaultPropFromCf(
       // Pretend the prop only has the specified properties (since we split it up)
       cfProp: { ...cfSchema, properties },
       required: true,
+      cfRef: undefined,
+      cfParentIsObject: false,
       addTo: (prop: ExpandedPropSpec) => {
         if (prop.kind !== "object") {
           throw new Error(`${name} prop is not an object`);
@@ -125,15 +137,8 @@ export function createDefaultPropFromCf(
     );
   }
 
-  // TEMP uncomment this to ensure diffs stay the same before checkin
-  {
-    const { kind, data, name, entries, uniqueId, metadata } = rootProp;
-    data.hidden = null;
-    rootProp = { kind, data, name, entries, uniqueId, metadata };
-  }
-
   // Top level prop doesn't actually get the generated doc; we add that to the schema instead
-  rootProp.data.docLink = null;
+  rootProp.data.hidden = null;
   rootProp.data.documentation = null;
 
   return rootProp;
@@ -145,15 +150,44 @@ export function createDefaultProp(
   return createObjectProp(name, ["root"]);
 }
 
-function createDocLink(typeName: string, propName: string): string | null {
-  const typeNameSnake = typeName.split("::").slice(1).join("-").toLowerCase();
-  return `https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-${typeNameSnake}.html#cfn-${typeNameSnake}-${propName.toLowerCase()}`;
+export function createDocLink(
+  { typeName }: CfSchema,
+  cfRef?: string,
+  propName?: string,
+): string {
+  // Figure out the snake case name of the resource to link to
+
+  // AWS::EC2::SecurityGroup -> ec2-securitygroup
+  const [topLevelRef, ...typeRefParts] = typeName.toLowerCase().split("::");
+  let snakeRef = typeRefParts.join("-");
+
+  // AWS::EC2::SecurityGroup #/definitions/Ingress -> ec2-securitygroup-ingress
+  if (cfRef) {
+    if (!cfRef.startsWith("#/definitions/")) {
+      throw new Error("$ref from property must start with #/definitions/");
+    }
+    snakeRef += "-";
+    snakeRef += cfRef.slice("#/definitions/".length).toLowerCase();
+  }
+
+  // Create the page link
+  let docLink =
+    `https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/${topLevelRef}-resource-${snakeRef}.html`;
+
+  // If a property name is provided, reference the property with a fragment
+  if (propName) {
+    docLink += `#cfn-${snakeRef}-${propName.toLowerCase()}`;
+  }
+  return docLink;
 }
 
 function createPropFromCf(
-  { propPath, cfProp, required }: CreatePropArgs,
-  queue: CreatePropQueue,
+  { propPath, cfProp, cfRef, cfParentIsObject, required }: CreatePropArgs,
+  { cfSchema, onlyProperties, queue }: CreatePropQueue,
 ): ExpandedPropSpec | undefined {
+  // If this prop is a reference to a definition, cache that info so we can link to the right page
+  if (cfProp.$ref) cfRef = cfProp.$ref;
+
   const name = propPath[propPath.length - 1];
   const propUniqueId = ulid();
   const data: ExpandedPropSpec["data"] = {
@@ -165,7 +199,7 @@ function createPropFromCf(
     widgetKind: null,
     widgetOptions: [],
     hidden: false,
-    docLink: createDocLink(queue.cfSchema.typeName, name),
+    docLink: cfParentIsObject ? createDocLink(cfSchema, cfRef, name) : null,
     documentation: cfProp.description ?? null,
   };
   const partialProp: Partial<ExpandedPropSpec> = {
@@ -173,11 +207,10 @@ function createPropFromCf(
     data,
     uniqueId: propUniqueId,
     metadata: {
-      // cfProp,
-      createOnly: queue.onlyProperties.createOnly.includes(name),
-      readOnly: queue.onlyProperties.readOnly.includes(name),
-      writeOnly: queue.onlyProperties.writeOnly.includes(name),
-      primaryIdentifier: queue.onlyProperties.primaryIdentifier.includes(name),
+      createOnly: onlyProperties.createOnly.includes(name),
+      readOnly: onlyProperties.readOnly.includes(name),
+      writeOnly: onlyProperties.writeOnly.includes(name),
+      primaryIdentifier: onlyProperties.primaryIdentifier.includes(name),
       propPath,
     },
   };
@@ -326,7 +359,7 @@ function createPropFromCf(
       if (normalizedCfProp.pattern !== undefined) {
         if (
           !shouldIgnorePattern(
-            queue.cfSchema.typeName,
+            cfSchema.typeName,
             normalizedCfProp.pattern,
           )
         ) {
@@ -345,7 +378,7 @@ function createPropFromCf(
           if (normalizedCfProp.pattern !== undefined) {
             console.log(
               `If this is a regex syntax error, add this to IGNORE_PATTERNS:
-                ${JSON.stringify(queue.cfSchema.typeName)}: [ ${
+                ${JSON.stringify(cfSchema.typeName)}: [ ${
                 JSON.stringify(normalizedCfProp.pattern)
               }, ],
               `,
@@ -377,10 +410,12 @@ function createPropFromCf(
     prop.kind = "array";
     prop.data.widgetKind = "Array";
 
-    queue.queue.push({
+    queue.push({
       propPath: [...propPath, `${name}Item`],
       cfProp: normalizedCfProp.items,
       required: true, // If you *do* have an item which is an object, this enables validation for required fields
+      cfRef,
+      cfParentIsObject: false,
       addTo: (data: ExpandedPropSpec) => {
         prop.typeProp = data;
       },
@@ -413,10 +448,12 @@ function createPropFromCf(
         throw new Error("could not extract type from pattern prop");
       }
 
-      queue.queue.push({
+      queue.push({
         cfProp,
         propPath: [...propPath, `${name}Item`],
         required: true, // If you *do* have an item which is an object, this enables validation for required fields
+        cfRef,
+        cfParentIsObject: false,
         addTo: (data: ExpandedPropSpec) => {
           prop.typeProp = data;
         },
@@ -431,11 +468,13 @@ function createPropFromCf(
       for (
         const [name, childCfProp] of Object.entries(normalizedCfProp.properties)
       ) {
-        queue.queue.push({
+        queue.push({
           cfProp: childCfProp,
           propPath: [...propPath, name],
           // Object fields are only required if the object itself is required
-          required: required && normalizedCfProp.required?.includes(name),
+          required: required && !!normalizedCfProp.required?.includes(name),
+          cfRef,
+          cfParentIsObject: true,
           addTo: (childProp: ExpandedPropSpec) => {
             prop.entries.push(childProp);
           },

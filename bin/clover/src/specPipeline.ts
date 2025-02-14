@@ -1,6 +1,6 @@
 import { CfProperty, CfSchema } from "./cfDb.ts";
 import { ulid } from "https://deno.land/x/ulid@v0.3.0/mod.ts";
-import { createDefaultPropFromCf, OnlyProperties } from "./spec/props.ts";
+import { createDefaultPropFromCf, createDocLink, OnlyProperties } from "./spec/props.ts";
 import {
   ExpandedPkgSpec,
   ExpandedSchemaSpec,
@@ -46,7 +46,7 @@ export function pkgSpecFromCf(src: CfSchema): ExpandedPkgSpec {
     version,
     data: {
       version,
-      link: null,
+      link: createDocLink(src),
       color: "#b64017",
       displayName: name,
       componentType: "component",
