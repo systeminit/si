@@ -4,12 +4,15 @@ use si_events::workspace_snapshot::{Checksum, ChecksumHasher};
 use crate::checksum::FrontendChecksum;
 
 #[remain::sorted]
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Deserialize, Serialize, strum::Display)]
+#[derive(
+    Clone, Copy, Debug, Eq, PartialEq, Deserialize, Serialize, strum::Display, strum::EnumIter,
+)]
 #[serde(rename_all = "camelCase")]
 pub enum ReferenceKind {
     ChangeSetList,
     ChangeSetRecord,
     View,
+    ViewList,
 }
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct ReferenceId<T>(pub T)
@@ -35,14 +38,14 @@ where
     }
 }
 
-impl<T> FrontendChecksum for ReferenceId<T>
-where
-    T: Eq + PartialEq + Clone + std::fmt::Debug + Serialize + std::fmt::Display,
-{
-    fn checksum(&self) -> Checksum {
-        todo!()
-    }
-}
+// impl<T> FrontendChecksum for ReferenceId<T>
+// where
+//     T: Eq + PartialEq + Clone + std::fmt::Debug + Serialize + std::fmt::Display,
+// {
+//     fn checksum(&self) -> Checksum {
+//         todo!()
+//     }
+// }
 
 impl FrontendChecksum for ReferenceKind {
     fn checksum(&self) -> Checksum {

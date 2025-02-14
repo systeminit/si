@@ -10,7 +10,10 @@ use rebaser_core::api_types::{
     enqueue_updates_request::EnqueueUpdatesRequest, enqueue_updates_response::v1::RebaseStatus,
 };
 use shuttle_server::ShuttleError;
-use si_events::{rebase_batch_address::RebaseBatchAddress, WorkspaceSnapshotAddress};
+use si_events::{
+    rebase_batch_address::RebaseBatchAddress, workspace_snapshot::Checksum,
+    WorkspaceSnapshotAddress,
+};
 use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -86,6 +89,7 @@ pub async fn perform_rebase(
     debug!("before snapshot fetch and parse: {:?}", start.elapsed());
     let to_rebase_workspace_snapshot =
         WorkspaceSnapshot::find(ctx, to_rebase_workspace_snapshot_address).await?;
+    let original_workspace_snapshot = to_rebase_workspace_snapshot.clone();
 
     let rebase_batch = ctx
         .layer_db()
@@ -118,8 +122,7 @@ pub async fn perform_rebase(
     debug!("updates complete: {:?}", start.elapsed());
 
     if !corrected_updates.is_empty() {
-        // Once all updates have been performed, we can write out, mark everything as recently seen
-        // and update the pointer.
+        // Once all updates have been performed, we can write out, and update the pointer.
         to_rebase_workspace_snapshot.write(ctx).await?;
         debug!("snapshot written: {:?}", start.elapsed());
         to_rebase_change_set
@@ -128,7 +131,53 @@ pub async fn perform_rebase(
 
         debug!("pointer updated: {:?}", start.elapsed());
 
+        info!("Rebuild affected materialized views");
+        let changes = original_workspace_snapshot
+            .detect_changes(&to_rebase_workspace_snapshot)
+            .await?;
+
         ctx.set_workspace_snapshot(to_rebase_workspace_snapshot);
+
+        let mut frontend_objects: Vec<si_frontend_types::object::FrontendObject> = Vec::new();
+        let mut patches = Vec::new();
+        // TODO: Only process changes for EntityKind where all of the MVs referenced have already been processed.
+        for change in &changes {
+            let (maybe_patch, maybe_object) = {
+                si_frontend_types_macros::build_mv!(
+                    ctx,
+                    change,
+                    si_frontend_types::view::ViewList,
+                    dal::diagram::view::View::as_frontend_list_type(ctx).await
+                )
+                .await?
+            };
+            if let Some(patch) = maybe_patch {
+                patches.push(patch);
+            }
+            if let Some(object) = maybe_object {
+                frontend_objects.push(object);
+            }
+
+            let (maybe_patch, maybe_object) = {
+                si_frontend_types_macros::build_mv!(
+                    ctx,
+                    change,
+                    si_frontend_types::view::View,
+                    dal::diagram::view::View::as_frontend_type(
+                        ctx,
+                        si_events::ulid::Ulid::from(change.entity_id).into()
+                    )
+                    .await
+                )
+                .await?
+            };
+            if let Some(patch) = maybe_patch {
+                patches.push(patch);
+            }
+            if let Some(object) = maybe_object {
+                frontend_objects.push(object);
+            }
+        }
     }
     let updates_count = rebase_batch.updates().len();
     span.record("si.updates.count", updates_count.to_string());
