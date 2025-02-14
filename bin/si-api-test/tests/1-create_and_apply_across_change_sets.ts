@@ -1,5 +1,6 @@
 import assert from "node:assert";
 import { SdfApiClient } from "../sdf_api_client.ts";
+import { extractSchemaVariant, getSchemaVariants } from "../test_helpers.ts";
 
 export default async function create_and_and_apply_across_change_sets(
   sdfApiClient: SdfApiClient,
@@ -141,40 +142,6 @@ async function getTestSchemaVariantId(
     schemaVariantId: testResourceActionsVariant.schemaVariantId,
     newCreateComponentApi,
   };
-}
-
-function extractSchemaVariant(
-  schemaVariants: any[],
-  schemaName: string,
-  category?: string,
-) {
-  const variant = schemaVariants.find(
-    (sv) =>
-      sv.schemaName === schemaName && (!category || sv.category === category),
-  );
-
-  return variant;
-}
-
-async function getSchemaVariants(sdf: SdfApiClient, changeSetId: string) {
-  let schemaVariants = await sdf.call({
-    route: "schema_variants",
-    routeVars: {
-      workspaceId: sdf.workspaceId,
-      changeSetId,
-    },
-  });
-  const newCreateComponentApi = Array.isArray(schemaVariants?.installed);
-  if (newCreateComponentApi) {
-    schemaVariants = schemaVariants.installed;
-  }
-
-  assert(
-    Array.isArray(schemaVariants),
-    "List schema variants should return an array",
-  );
-
-  return { schemaVariants, newCreateComponentApi };
 }
 
 async function getDiagram(

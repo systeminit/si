@@ -36,3 +36,7 @@ local development, but not how we'll do it in GitHub actions.
 
 Add a new file into ./tests/<something>.ts and then invoke it using the --tests
 param in the binary execution
+
+## Benchmarking
+
+To run a benchmark test, specify `--tests /benchmark/{testName}` when invoking Deno. We only allow you to run a single benchmark test at a time right now.
