@@ -72,6 +72,28 @@
         </div>
         <div>Press N to rename a component or frame.</div>
       </div>
+      <div
+        v-if="featureFlagsStore.TEMPLATE_MGMT_FUNC_GENERATION"
+        class="flex flex-row items-center gap-xs"
+      >
+        <div class="w-12 flex flex-row items-center justify-center">
+          <div class="text-xl font-bold leading-none flex-grow text-center">
+            T
+          </div>
+        </div>
+        <div>Press T to create a template from the selected components.</div>
+      </div>
+      <div
+        v-if="featureFlagsStore.DIAGRAM_OPTIMIZATION"
+        class="flex flex-row items-center gap-xs"
+      >
+        <div class="w-12 flex flex-row items-center justify-center">
+          <div class="text-xl font-bold leading-none flex-grow text-center">
+            Z
+          </div>
+        </div>
+        <div>Press Z to toggle diagram details.</div>
+      </div>
       <div class="flex flex-row items-center gap-xs">
         <div class="w-12 flex flex-row items-center justify-center">
           <Icon name="command" />
@@ -103,8 +125,11 @@
 <script lang="ts" setup>
 import { ref } from "vue";
 import { Modal, useModal, Icon } from "@si/vue-lib/design-system";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 
 const modalRef = ref<InstanceType<typeof Modal>>();
 const { open, close } = useModal(modalRef);
 defineExpose({ open, close });
+
+const featureFlagsStore = useFeatureFlagsStore();
 </script>

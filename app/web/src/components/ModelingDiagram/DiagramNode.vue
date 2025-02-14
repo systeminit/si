@@ -56,7 +56,7 @@
 
       <!-- component name -->
       <v-text
-        v-if="!renaming"
+        v-if="!renaming && !hideDetails"
         ref="titleTextRef"
         :config="{
           x: -halfWidth + 10,
@@ -75,6 +75,7 @@
 
       <!-- component type -->
       <v-text
+        v-if="!hideDetails"
         ref="subtitleTextRef"
         :config="{
           x: -halfWidth + 10,
@@ -227,7 +228,7 @@
     />
 
     <!-- sockets -->
-    <v-group :config="{ opacity: isDeleted ? 0.5 : 1 }">
+    <v-group v-if="!hideDetails" :config="{ opacity: isDeleted ? 0.5 : 1 }">
       <v-group
         :config="{
           x: leftSockets.x,
@@ -333,6 +334,7 @@ const props = defineProps({
     type: String as PropType<QualificationStatus>,
   },
   debug: Boolean,
+  hideDetails: Boolean,
 });
 
 const emit = defineEmits<{

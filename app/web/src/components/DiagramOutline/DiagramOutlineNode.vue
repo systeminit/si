@@ -94,13 +94,13 @@
           "
         />
 
-        <div class="flex flex-col select-none overflow-hidden py-xs">
+        <div class="flex flex-col select-none overflow-hidden pt-xs">
           <div
             class="capsize text-[13px] font-bold relative leading-loose pb-xs"
           >
             <div class="truncate w-full">{{ component.def.displayName }}</div>
           </div>
-          <div class="capsize text-[11px] italic relative">
+          <div class="capsize text-[11px] italic relative leading-loose pb-xs">
             <div class="truncate w-full">{{ component.def.schemaName }}</div>
           </div>
         </div>

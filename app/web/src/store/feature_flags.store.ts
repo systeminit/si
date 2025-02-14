@@ -13,6 +13,7 @@ const FLAG_MAPPING = {
   SLACK_WEBHOOK: "slack_webhook",
   TEMPLATE_MGMT_FUNC_GENERATION: "template-mgmt-func-generation",
   CLOVER_ASSETS: "clover-assets",
+  DIAGRAM_OPTIMIZATION: "diagram-optimization",
 };
 
 const WORKSPACE_FLAG_MAPPING = {

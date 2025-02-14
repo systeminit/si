@@ -175,6 +175,7 @@
 
     <!-- sockets -->
     <v-group
+      v-if="!hideDetails"
       :config="{
         x: leftSockets.x,
         y: leftSockets.y,
@@ -191,8 +192,8 @@
         @hover:end="onSocketHoverEnd(socket)"
       />
     </v-group>
-
     <v-group
+      v-if="!hideDetails"
       :config="{
         x: rightSockets.x,
         y: rightSockets.y,
@@ -259,6 +260,7 @@
 
       <!-- component name -->
       <v-text
+        v-if="!hideDetails"
         ref="titleTextRef"
         :config="{
           x: GROUP_HEADER_ICON_SIZE - 2,
@@ -280,6 +282,7 @@
 
       <!-- component type and child count -->
       <v-text
+        v-if="!hideDetails"
         ref="subtitleTextRef"
         :config="{
           x: GROUP_HEADER_ICON_SIZE - 2,
@@ -480,6 +483,7 @@ const props = defineProps({
     required: false,
   },
   debug: Boolean,
+  hideDetails: Boolean,
 });
 
 const diagramContext = useDiagramContext();
