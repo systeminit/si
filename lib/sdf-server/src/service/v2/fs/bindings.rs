@@ -51,7 +51,7 @@ use super::{
 pub async fn get_bindings_for_func_and_schema_variant(
     ctx: &DalContext,
     func_id: FuncId,
-    schema_variant_id: SchemaVariantId,
+    schema_variant_id: Option<SchemaVariantId>,
 ) -> FsResult<Vec<FuncBinding>> {
     let func = dal::Func::get_by_id_or_error(ctx, func_id).await?;
 
@@ -80,7 +80,13 @@ pub async fn get_bindings_for_func_and_schema_variant(
         dal::func::FuncKind::Unknown | dal::func::FuncKind::SchemaVariantDefinition => vec![],
     }
     .into_iter()
-    .filter(|binding| binding.get_schema_variant() == Some(schema_variant_id))
+    .filter(|binding| {
+        if let Some(schema_variant_id) = schema_variant_id {
+            binding.get_schema_variant() == Some(schema_variant_id)
+        } else {
+            true
+        }
+    })
     .map(Into::into)
     .collect())
 }
@@ -96,10 +102,11 @@ pub async fn get_bindings(
     let bindings = if func.is_locked {
         if let Some(locked) = lookup_variant_for_schema(ctx, schema_id, false).await? {
             let bindings =
-                get_bindings_for_func_and_schema_variant(ctx, func_id, locked.id()).await?;
+                get_bindings_for_func_and_schema_variant(ctx, func_id, Some(locked.id())).await?;
             if bindings.is_empty() {
                 if let Some(unlocked) = lookup_variant_for_schema(ctx, schema_id, true).await? {
-                    get_bindings_for_func_and_schema_variant(ctx, func_id, unlocked.id()).await?
+                    get_bindings_for_func_and_schema_variant(ctx, func_id, Some(unlocked.id()))
+                        .await?
                 } else {
                     vec![]
                 }
@@ -110,7 +117,7 @@ pub async fn get_bindings(
             vec![]
         }
     } else if let Some(unlocked) = lookup_variant_for_schema(ctx, schema_id, true).await? {
-        get_bindings_for_func_and_schema_variant(ctx, func_id, unlocked.id()).await?
+        get_bindings_for_func_and_schema_variant(ctx, func_id, Some(unlocked.id())).await?
     } else {
         vec![]
     };
@@ -128,7 +135,7 @@ pub async fn get_bindings(
     ))
 }
 
-async fn func_binding_to_fs_binding(
+pub async fn func_binding_to_fs_binding(
     ctx: &DalContext,
     func_id: FuncId,
     binding: FuncBinding,
@@ -1033,12 +1040,12 @@ pub async fn get_identity_bindings_for_variant(
     let unset_func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Unset).await?;
 
     let identity_bindings =
-        get_bindings_for_func_and_schema_variant(ctx, identity_func_id, variant_id).await?;
+        get_bindings_for_func_and_schema_variant(ctx, identity_func_id, Some(variant_id)).await?;
     let identity_func_arg = FuncArgument::find_by_name_for_func(ctx, "identity", identity_func_id)
         .await?
         .ok_or(FsError::ResourceNotFound)?;
     let unset_bindings =
-        get_bindings_for_func_and_schema_variant(ctx, unset_func_id, variant_id).await?;
+        get_bindings_for_func_and_schema_variant(ctx, unset_func_id, Some(variant_id)).await?;
     let mut result = IdentityBindings {
         props: BTreeMap::new(),
         output_sockets: BTreeMap::new(),
@@ -1186,7 +1193,7 @@ pub async fn set_func_bindings(
     if !current_bindings.is_empty() && request.is_attaching_existing {
         let types_size = func_types_size(&ctx, func.id).await?;
         return Ok(Json(Some(dal_func_to_fs_func(
-            func,
+            &func,
             fs_bindings.byte_size(),
             types_size,
         ))));
@@ -1283,7 +1290,7 @@ pub async fn set_func_bindings(
     ctx.commit().await?;
 
     Ok(Json(Some(dal_func_to_fs_func(
-        func,
+        &func,
         fs_bindings.byte_size(),
         types_size,
     ))))
