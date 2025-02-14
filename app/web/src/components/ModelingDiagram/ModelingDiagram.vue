@@ -98,6 +98,7 @@ overflow hidden */
             :qualificationStatus="
               qualificationStore.qualificationStatusForComponentId(group.def.id)
             "
+            :hideDetails="hideDiagramDetails"
             @rename="
               (f) => {
                 renameOnDiagram(group, f);
@@ -117,6 +118,7 @@ overflow hidden */
                   node.def.id,
                 )
               "
+              :hideDetails="hideDiagramDetails"
               @rename="
                 (f) => {
                   renameOnDiagram(node, f);
@@ -132,6 +134,7 @@ overflow hidden */
               :isHovered="elementIsHovered(view)"
               :isSelected="elementIsSelected(view)"
               :view="view.def"
+              :hideDetails="hideDiagramDetails"
             />
           </template>
           <DiagramCursor
@@ -378,6 +381,11 @@ const LEFT_PANEL_DRAWER_WIDTH = 230;
 // SET THIS BOOLEAN TO TRUE TO ENABLE DEBUG MODE!
 // VERY HELPFUL FOR DEBUGGING ISSUES ON THE DIAGRAM!
 const enableDebugMode = false;
+
+const toggleHideDetails = ref(false);
+const hideDiagramDetails = computed(
+  () => featureFlagsStore.DIAGRAM_OPTIMIZATION && toggleHideDetails.value,
+);
 
 const route = useRoute();
 const toast = useToast();
@@ -896,6 +904,16 @@ async function onKeyDown(e: KeyboardEvent) {
   ) {
     e.preventDefault();
     modelingEventBus.emit("templateFromSelection");
+  }
+
+  // TODO(wendy) - this toggle is for testing diagram performance
+  if (
+    !props.readOnly &&
+    featureFlagsStore.DIAGRAM_OPTIMIZATION &&
+    e.key === "z"
+  ) {
+    e.preventDefault();
+    toggleHideDetails.value = !toggleHideDetails.value;
   }
 }
 

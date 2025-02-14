@@ -13,6 +13,7 @@
     <v-shape :config="config" />
 
     <v-text
+      v-if="!hideDetails"
       :config="{
         x: -radius * 0.8,
         y: -radius,
@@ -43,6 +44,7 @@
         :key="`status-icon-${i}`"
       >
         <v-text
+          v-if="!hideDetails"
           :config="{
             x: i * -26 - 25,
             y: radius - 43,
@@ -98,6 +100,7 @@ const props = defineProps<{
   view: DiagramViewDef;
   isHovered: boolean;
   isSelected: boolean;
+  hideDetails?: boolean;
 }>();
 
 const radius = computed(() => {
