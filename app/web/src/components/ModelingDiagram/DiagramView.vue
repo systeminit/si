@@ -13,7 +13,7 @@
     <v-shape :config="config" />
 
     <v-text
-      v-if="!hideDetails"
+      v-if="hideDetails !== 'hide'"
       :config="{
         x: -radius * 0.8,
         y: -radius,
@@ -33,7 +33,7 @@
 
     <!-- status icons -->
     <v-group
-      v-if="statusIcons?.length"
+      v-if="statusIcons?.length && hideDetails === 'show'"
       :config="{
         x: (statusIcons.length * 26) / 2,
         y: -20,
@@ -44,7 +44,7 @@
         :key="`status-icon-${i}`"
       >
         <v-text
-          v-if="!hideDetails"
+          v-if="hideDetails === 'show'"
           :config="{
             x: i * -26 - 25,
             y: radius - 43,
@@ -87,6 +87,7 @@ import {
   DIAGRAM_FONT_FAMILY,
   SELECTION_COLOR,
   NODE_WIDTH,
+  DetailsMode,
 } from "@/components/ModelingDiagram/diagram_constants";
 import { useViewsStore } from "@/store/views.store";
 import { DiagramViewDef, ElementHoverMeta } from "./diagram_types";
@@ -100,7 +101,7 @@ const props = defineProps<{
   view: DiagramViewDef;
   isHovered: boolean;
   isSelected: boolean;
-  hideDetails?: boolean;
+  hideDetails?: DetailsMode;
 }>();
 
 const radius = computed(() => {
