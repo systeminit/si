@@ -12,8 +12,6 @@ use crate::PropKind;
 #[derive(AsRefStr, Display, EnumIter, EnumString, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum IntrinsicFunc {
     Identity,
-    NormalizeToArray,
-    ResourcePayloadToValue,
     SetArray,
     SetBoolean,
     SetInteger,
@@ -38,7 +36,9 @@ impl IntrinsicFunc {
             builder.func(intrinsic.to_spec()?);
         }
 
-        builder.build().map_err(FuncError::IntrinsicSpecCreation)
+        builder
+            .build()
+            .map_err(|e| FuncError::IntrinsicSpecCreation(e.to_string()))
     }
 
     pub fn to_spec(&self) -> FuncResult<FuncSpec> {
@@ -64,33 +64,7 @@ impl IntrinsicFunc {
                         .name("identity")
                         .kind(FuncArgumentKind::Any)
                         .build()
-                        .map_err(FuncError::IntrinsicSpecCreation)?,
-                );
-            }
-            Self::NormalizeToArray => {
-                builder
-                    .unique_id("750b9044cd250a5f0e952dabe4150fa61450992e04e688be47096d50a4759d4f");
-                data_builder.backend_kind(FuncSpecBackendKind::NormalizeToArray);
-                data_builder.response_type(FuncSpecBackendResponseType::Array);
-                builder.argument(
-                    FuncArgumentSpec::builder()
-                        .name("value")
-                        .kind(FuncArgumentKind::Any)
-                        .build()
-                        .map_err(FuncError::IntrinsicSpecCreation)?,
-                );
-            }
-            Self::ResourcePayloadToValue => {
-                builder
-                    .unique_id("bc58dae4f4e1361840ec8f081350d7ec6b177ee8dc5a6a55155767c92efe1850");
-                data_builder.backend_kind(FuncSpecBackendKind::ResourcePayloadToValue);
-                data_builder.response_type(FuncSpecBackendResponseType::Object);
-                builder.argument(
-                    FuncArgumentSpec::builder()
-                        .name("payload")
-                        .kind(FuncArgumentKind::Object)
-                        .build()
-                        .map_err(FuncError::IntrinsicSpecCreation)?,
+                        .map_err(|e| FuncError::IntrinsicSpecCreation(e.to_string()))?,
                 );
             }
             Self::SetArray => {
@@ -104,7 +78,7 @@ impl IntrinsicFunc {
                         .kind(FuncArgumentKind::Array)
                         .element_kind(FuncArgumentKind::Any)
                         .build()
-                        .map_err(FuncError::IntrinsicSpecCreation)?,
+                        .map_err(|e| FuncError::IntrinsicSpecCreation(e.to_string()))?,
                 );
             }
             Self::SetBoolean => {
@@ -117,7 +91,7 @@ impl IntrinsicFunc {
                         .name("value")
                         .kind(FuncArgumentKind::Boolean)
                         .build()
-                        .map_err(FuncError::IntrinsicSpecCreation)?,
+                        .map_err(|e| FuncError::IntrinsicSpecCreation(e.to_string()))?,
                 );
             }
             Self::SetInteger => {
@@ -130,7 +104,7 @@ impl IntrinsicFunc {
                         .name("value")
                         .kind(FuncArgumentKind::Integer)
                         .build()
-                        .map_err(FuncError::IntrinsicSpecCreation)?,
+                        .map_err(|e| FuncError::IntrinsicSpecCreation(e.to_string()))?,
                 );
             }
             Self::SetMap => {
@@ -144,7 +118,7 @@ impl IntrinsicFunc {
                         .kind(FuncArgumentKind::Map)
                         .element_kind(FuncArgumentKind::Any)
                         .build()
-                        .map_err(FuncError::IntrinsicSpecCreation)?,
+                        .map_err(|e| FuncError::IntrinsicSpecCreation(e.to_string()))?,
                 );
             }
             Self::SetJson => {
@@ -157,7 +131,7 @@ impl IntrinsicFunc {
                         .name("value")
                         .kind(FuncArgumentKind::Json)
                         .build()
-                        .map_err(FuncError::IntrinsicSpecCreation)?,
+                        .map_err(|e| FuncError::IntrinsicSpecCreation(e.to_string()))?,
                 );
             }
             Self::SetObject => {
@@ -170,7 +144,7 @@ impl IntrinsicFunc {
                         .name("value")
                         .kind(FuncArgumentKind::Object)
                         .build()
-                        .map_err(FuncError::IntrinsicSpecCreation)?,
+                        .map_err(|e| FuncError::IntrinsicSpecCreation(e.to_string()))?,
                 );
             }
             Self::SetString => {
@@ -183,7 +157,7 @@ impl IntrinsicFunc {
                         .name("value")
                         .kind(FuncArgumentKind::String)
                         .build()
-                        .map_err(FuncError::IntrinsicSpecCreation)?,
+                        .map_err(|e| FuncError::IntrinsicSpecCreation(e.to_string()))?,
                 );
             }
             Self::Unset => {
@@ -202,26 +176,24 @@ impl IntrinsicFunc {
                         .name("value")
                         .kind(FuncArgumentKind::Any)
                         .build()
-                        .map_err(FuncError::IntrinsicSpecCreation)?,
+                        .map_err(|e| FuncError::IntrinsicSpecCreation(e.to_string()))?,
                 );
             }
         };
 
         let data = data_builder
             .build()
-            .map_err(FuncError::IntrinsicSpecCreation)?;
+            .map_err(|e| FuncError::IntrinsicSpecCreation(e.to_string()))?;
 
         builder
             .data(data)
             .build()
-            .map_err(FuncError::IntrinsicSpecCreation)
+            .map_err(|e| FuncError::IntrinsicSpecCreation(e.to_string()))
     }
 
     pub fn name(&self) -> &str {
         match self {
             Self::Identity => "si:identity",
-            Self::NormalizeToArray => "si:normalizeToArray",
-            Self::ResourcePayloadToValue => "si:resourcePayloadToValue",
             Self::SetArray => "si:setArray",
             Self::SetBoolean => "si:setBoolean",
             Self::SetInteger => "si:setInteger",
@@ -237,8 +209,6 @@ impl IntrinsicFunc {
     pub fn maybe_from_str(s: impl AsRef<str>) -> Option<Self> {
         Some(match s.as_ref() {
             "si:identity" => Self::Identity,
-            "si:normalizeToArray" => Self::NormalizeToArray,
-            "si:resourcePayloadToValue" => Self::ResourcePayloadToValue,
             "si:setArray" => Self::SetArray,
             "si:setBoolean" => Self::SetBoolean,
             "si:setInteger" => Self::SetInteger,

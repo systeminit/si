@@ -70,7 +70,7 @@ async fn get_fallout_module(ctx: &DalContext) {
         assert_eq!("fallout", fallout_module.name());
         assert_eq!("System Initiative", fallout_module.created_by_email());
         assert_eq!("2019-06-03", fallout_module.version());
-        assert_eq!(3, associated_funcs.len());
+        assert_eq!(4, associated_funcs.len());
         assert_eq!(1, associated_schemas.len());
     }
 }
@@ -103,7 +103,7 @@ async fn module_export_simple(ctx: &mut DalContext) {
     assert_eq!(exported_pkg.name, name.clone());
     assert_eq!(exported_pkg.version, version.clone());
     assert_eq!(exported_pkg.created_by, user.clone());
-    assert_eq!(exported_pkg.funcs.len(), 15);
+    assert_eq!(exported_pkg.funcs.len(), 14);
 
     let pkg_schemas = exported_pkg.clone().schemas;
     assert_eq!(pkg_schemas.len(), 1);
@@ -149,7 +149,6 @@ async fn module_export_simple(ctx: &mut DalContext) {
 
     let expected_func_names = vec![
         "si:identity".to_string(),
-        "si:normalizeToArray".to_string(),
         "si:resourcePayloadToValue".to_string(),
         "si:setArray".to_string(),
         "si:setBoolean".to_string(),

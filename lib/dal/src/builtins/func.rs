@@ -28,7 +28,7 @@ static FUNC_BUILTIN_BY_PATH: once_cell::sync::Lazy<std::collections::HashMap<&st
             .collect()
     });
 
-pub async fn migrate_intrinsics_for_tests(ctx: &DalContext) -> BuiltinsResult<()> {
+pub async fn migrate_intrinsics(ctx: &DalContext) -> BuiltinsResult<()> {
     let intrinsics_pkg_spec = IntrinsicFunc::pkg_spec()?;
     let _name = intrinsics_pkg_spec.name.to_owned();
     let intrinsics_pkg = SiPkg::load_from_spec(intrinsics_pkg_spec)?;

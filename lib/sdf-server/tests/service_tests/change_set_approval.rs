@@ -1039,7 +1039,6 @@ async fn one_component_in_two_views(
     // Scenario 3: apply to HEAD and create a new change set (skip approvals).
     {
         ChangeSetTestHelpers::apply_change_set_to_base(ctx).await?;
-        ChangeSetTestHelpers::wait_for_actions_to_run(ctx).await?;
         ChangeSetTestHelpers::fork_from_head_change_set(ctx).await?;
 
         let (frontend_latest_approvals, frontend_requirements) =
@@ -1090,7 +1089,6 @@ async fn one_component_in_two_views(
     // Scenario 5: apply to HEAD and create a new change set (skip approvals).
     {
         ChangeSetTestHelpers::apply_change_set_to_base(ctx).await?;
-        ChangeSetTestHelpers::wait_for_actions_to_run(ctx).await?;
         ChangeSetTestHelpers::fork_from_head_change_set(ctx).await?;
 
         let (frontend_latest_approvals, frontend_requirements) =

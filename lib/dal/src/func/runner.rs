@@ -43,8 +43,6 @@ use crate::{
 use crate::{HistoryEventError, TransactionsError};
 
 use super::backend::management::FuncBackendManagement;
-use super::backend::normalize_to_array::FuncBackendNormalizeToArray;
-use super::backend::resource_payload_to_value::FuncBackendResourcePayloadToValue;
 use super::backend::{
     array::FuncBackendArray,
     boolean::FuncBackendBoolean,
@@ -61,7 +59,6 @@ use super::backend::{
     validation::FuncBackendValidation,
     FuncBackend, FuncDispatch, FuncDispatchContext, InvalidResolverFunctionTypeError,
 };
-use super::intrinsics::IntrinsicFunc;
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -1672,52 +1669,23 @@ impl FuncRunnerExecutionTask {
                 .await
             }
             FuncBackendKind::JsAttribute => {
-                // NOTE(nick): changing the behavior is not great because the spans will imply that
-                // a different form of execution ran vs. what actually happened. Why do this here
-                // then? This is the last possible moment before the function executes. Not only
-                // that, but import logic will migrate from the older func to the newer one, so this
-                // will hopefully not be exercised often... and eventually never.
-                match IntrinsicFunc::maybe_from_str(self.func.name.as_str()) {
-                    Some(IntrinsicFunc::ResourcePayloadToValue) => {
-                        info!(
-                            si.func_run.id = %self.func_run.id(),
-                            si.func_run.func.id = %self.func.id,
-                            si.func_run.func.name = %self.func.name,
-                            si.func_run.func.backend_kind = %self.func_run.backend_kind(),
-                            "ignoring JsAttribute func backend kind for ResourcePayloadToValue intrinsic"
-                        );
-                        FuncBackendResourcePayloadToValue::create_and_execute(&self.args).await
-                    }
-                    Some(IntrinsicFunc::NormalizeToArray) => {
-                        info!(
-                            si.func_run.id = %self.func_run.id(),
-                            si.func_run.func.id = %self.func.id,
-                            si.func_run.func.name = %self.func.name,
-                            si.func_run.func.backend_kind = %self.func_run.backend_kind(),
-                            "ignoring JsAttribute func backend kind for NormalizeToArray intrinsic"
-                        );
-                        FuncBackendNormalizeToArray::create_and_execute(&self.args).await
-                    }
-                    Some(_) | None => {
-                        let args = FuncBackendJsAttributeArgs {
-                            component: ResolverFunctionComponent {
-                                data: veritech_client::ComponentView {
-                                    properties: self.args.to_owned(),
-                                    ..Default::default()
-                                },
-                                parents: Vec::new(),
-                            },
-                            response_type: self.func.backend_response_type.try_into()?,
-                        };
-                        FuncBackendJsAttribute::create_and_execute(
-                            self.func_dispatch_context,
-                            &self.func,
-                            &serde_json::to_value(args)?,
-                            self.before,
-                        )
-                        .await
-                    }
-                }
+                let args = FuncBackendJsAttributeArgs {
+                    component: ResolverFunctionComponent {
+                        data: veritech_client::ComponentView {
+                            properties: self.args.to_owned(),
+                            ..Default::default()
+                        },
+                        parents: Vec::new(),
+                    },
+                    response_type: self.func.backend_response_type.try_into()?,
+                };
+                FuncBackendJsAttribute::create_and_execute(
+                    self.func_dispatch_context,
+                    &self.func,
+                    &serde_json::to_value(args)?,
+                    self.before,
+                )
+                .await
             }
             FuncBackendKind::JsSchemaVariantDefinition => {
                 FuncBackendJsSchemaVariantDefinition::create_and_execute(
@@ -1770,12 +1738,6 @@ impl FuncRunnerExecutionTask {
                     self.before,
                 )
                 .await
-            }
-            FuncBackendKind::ResourcePayloadToValue => {
-                FuncBackendResourcePayloadToValue::create_and_execute(&self.args).await
-            }
-            FuncBackendKind::NormalizeToArray => {
-                FuncBackendNormalizeToArray::create_and_execute(&self.args).await
             }
         };
 

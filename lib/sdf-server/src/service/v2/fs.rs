@@ -630,7 +630,9 @@ async fn create_func(
 
     let name = request.name.as_str();
 
-    if dal::func::is_intrinsic(name) {
+    if dal::func::is_intrinsic(name)
+        || ["si:resourcePayloadToValue", "si:normalizeToArray"].contains(&name)
+    {
         return Err(FsError::FuncNameReserved);
     }
 

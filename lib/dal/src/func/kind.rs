@@ -76,9 +76,7 @@ impl FuncKind {
             | FuncBackendKind::Identity
             | FuncBackendKind::Integer
             | FuncBackendKind::Map
-            | FuncBackendKind::NormalizeToArray
             | FuncBackendKind::Object
-            | FuncBackendKind::ResourcePayloadToValue
             | FuncBackendKind::String
             | FuncBackendKind::Unset
             | FuncBackendKind::Validation => FuncKind::Intrinsic,

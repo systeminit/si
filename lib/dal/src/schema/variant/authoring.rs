@@ -24,6 +24,7 @@ use crate::attribute::prototype::argument::AttributePrototypeArgumentError;
 use crate::attribute::prototype::AttributePrototypeError;
 use crate::func::authoring::FuncAuthoringError;
 use crate::func::intrinsics::IntrinsicFunc;
+use crate::func::resource_payload_to_value::install_resource_payload_to_value_if_missing;
 use crate::func::runner::{FuncRunner, FuncRunnerError};
 use crate::pkg::export::PkgExporter;
 use crate::pkg::import::import_only_new_funcs;
@@ -139,6 +140,8 @@ impl VariantAuthoringClient {
         if Schema::is_name_taken(ctx, &name).await? {
             return Err(VariantAuthoringError::DuplicatedSchemaName(name));
         };
+
+        install_resource_payload_to_value_if_missing(ctx).await?;
 
         let variant_version = SchemaVariant::generate_version_string();
 

@@ -7,7 +7,6 @@ use serde::{Deserialize, Serialize};
 use si_events::CasValue;
 use si_events::{ulid::Ulid, ContentHash};
 use si_frontend_types::FuncSummary;
-use si_pkg::SpecError;
 use std::collections::HashMap;
 use std::string::FromUtf8Error;
 use std::sync::Arc;
@@ -38,8 +37,8 @@ pub mod backend;
 pub mod binding;
 pub mod intrinsics;
 mod kind;
+pub mod resource_payload_to_value;
 pub mod runner;
-
 pub use kind::FuncKind;
 
 #[remain::sorted]
@@ -71,8 +70,8 @@ pub enum FuncError {
     Helper(#[from] HelperError),
     #[error("cannot find intrinsic func {0}")]
     IntrinsicFuncNotFound(String),
-    #[error("intrinsic spec creation error: {0}")]
-    IntrinsicSpecCreation(#[source] SpecError),
+    #[error("intrinsic spec creation error {0}")]
+    IntrinsicSpecCreation(String),
     #[error("layer db error: {0}")]
     LayerDb(#[from] si_layer_cache::LayerDbError),
     #[error("node weight error: {0}")]
@@ -346,9 +345,6 @@ impl Func {
         Ok(Self::assemble(func_node_weight, inner))
     }
 
-    /// Attempt to find the [`FuncId`](Func) by name.
-    ///
-    /// _Warning:_ [`Func`] names are intentionally not unique. This is a greedy algorithm!
     pub async fn find_id_by_name(
         ctx: &DalContext,
         name: impl AsRef<str>,
@@ -368,36 +364,6 @@ impl Func {
             let node_weight = workspace_snapshot.get_node_weight(func_index).await?;
             if let NodeWeight::Func(inner_weight) = node_weight {
                 if inner_weight.name() == name {
-                    return Ok(Some(inner_weight.id().into()));
-                }
-            }
-        }
-        Ok(None)
-    }
-
-    /// Attempt to find the [`FuncId`](Func) by name and [kind](FuncKind).
-    ///
-    /// _Warning:_ [`Func`] names are intentionally not unique. This is a greedy algorithm!
-    pub async fn find_id_by_name_and_kind(
-        ctx: &DalContext,
-        name: impl AsRef<str>,
-        kind: FuncKind,
-    ) -> FuncResult<Option<FuncId>> {
-        let workspace_snapshot = ctx.workspace_snapshot()?;
-        let func_category_id = workspace_snapshot
-            .get_category_node_or_err(None, CategoryNodeKind::Func)
-            .await?;
-        let func_indices = workspace_snapshot
-            .outgoing_targets_for_edge_weight_kind(
-                func_category_id,
-                EdgeWeightKind::new_use().into(),
-            )
-            .await?;
-        let name = name.as_ref();
-        for func_index in func_indices {
-            let node_weight = workspace_snapshot.get_node_weight(func_index).await?;
-            if let NodeWeight::Func(inner_weight) = node_weight {
-                if inner_weight.name() == name && inner_weight.func_kind() == kind {
                     return Ok(Some(inner_weight.id().into()));
                 }
             }
@@ -437,10 +403,7 @@ impl Func {
                 | IntrinsicFunc::SetObject
                 | IntrinsicFunc::SetString
                 | IntrinsicFunc::Unset => false,
-                IntrinsicFunc::Identity
-                | IntrinsicFunc::NormalizeToArray
-                | IntrinsicFunc::ResourcePayloadToValue
-                | IntrinsicFunc::Validation => true,
+                IntrinsicFunc::Identity | IntrinsicFunc::Validation => true,
             },
             None => true,
         }
@@ -584,7 +547,7 @@ impl Func {
 
     pub async fn find_intrinsic(ctx: &DalContext, intrinsic: IntrinsicFunc) -> FuncResult<FuncId> {
         let name = intrinsic.name();
-        Self::find_id_by_name_and_kind(ctx, name, FuncKind::Intrinsic)
+        Self::find_id_by_name(ctx, name)
             .await?
             .ok_or(FuncError::IntrinsicFuncNotFound(name.to_owned()))
     }

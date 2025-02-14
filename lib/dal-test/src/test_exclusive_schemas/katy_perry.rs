@@ -8,7 +8,8 @@ use si_pkg::{
 use si_pkg::{LeafFunctionSpec, SchemaSpecData};
 
 use crate::test_exclusive_schemas::{
-    build_asset_func, build_codegen_func, create_identity_func, PKG_CREATED_BY, PKG_VERSION,
+    build_asset_func, build_codegen_func, build_resource_payload_to_value_func,
+    create_identity_func, PKG_CREATED_BY, PKG_VERSION,
 };
 
 pub(crate) async fn migrate_test_exclusive_schema_katy_perry(
@@ -29,6 +30,9 @@ pub(crate) async fn migrate_test_exclusive_schema_katy_perry(
     // Create Scaffold Func
     let fn_name = "test:scaffoldKatyPerryAsset";
     let kp_authoring_schema_func = build_asset_func(fn_name)?;
+
+    // Author Resource Payload Func
+    let resource_payload_to_value_func = build_resource_payload_to_value_func()?;
 
     // Build YAML CodeGen Func
     let yaml_codegen_fn_name = "test:generateYamlCode";
@@ -106,6 +110,7 @@ pub(crate) async fn migrate_test_exclusive_schema_katy_perry(
 
     let kp_spec = kp_builder
         .func(identity_func_spec)
+        .func(resource_payload_to_value_func)
         .func(yaml_code_gen_func)
         .func(string_code_gen_func)
         .func(kp_authoring_schema_func)
