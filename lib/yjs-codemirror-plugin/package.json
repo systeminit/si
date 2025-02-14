@@ -54,7 +54,7 @@
     "http-server": "^14.1.0",
     "jsdom": "^16.7.0",
     "rollup": "^2.79.2",
-    "rollup-plugin-terser": "^7.0.2",
+    "@rollup/plugin-terser": "^0.4.4",
     "standard": "^14.3.4",
     "typescript": "^4.9.5",
     "y-webrtc": "^10.2.0",
