@@ -172,6 +172,7 @@ async fn protected_apply(ctx: &mut DalContext, spicedb_client: SpiceDbClient) ->
     // Scenario 5: apply the changes used the protected flow and observe that it works.
     {
         SdfTestHelpers::protected_apply_change_set_to_base(ctx, &mut spicedb_client).await?;
+        ChangeSetTestHelpers::wait_for_actions_to_run(ctx).await?;
         ChangeSetTestHelpers::fork_from_head_change_set(ctx).await?;
 
         let default_view_id = View::get_id_for_default(ctx).await?;
