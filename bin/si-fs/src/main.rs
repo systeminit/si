@@ -10,9 +10,15 @@ use tokio::runtime::Runtime;
 #[command(name = "si-fs", version = "0.1")]
 #[command(about = "Mounts a fuse filesystem that represents a System Initiative workspace")]
 struct Args {
-    #[arg(long, short = 'w')]
+    #[arg(long, short = 'w', env = "SI_WORKSPACE_ID", hide_env_values(true))]
     workspace_id: String,
-    #[arg(long, short = 'e')]
+    #[arg(
+        long,
+        short = 'e',
+        env = "SI_ENDPOINT",
+        default_value = "https://app.systeminit.com",
+        hide_env_values(true)
+    )]
     endpoint: String,
     #[arg(long, short = 't', env = "SI_BEARER_TOKEN", hide_env_values(true))]
     token: String,
