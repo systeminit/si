@@ -20,7 +20,18 @@ export function createOutputSocketFromProp(
   prop: ExpandedPropSpec,
 ): ExpandedSocketSpec {
   const arity = prop.kind === "array" ? "many" : "one";
-  const socket = createSocket(prop.name, "output", arity);
+  const socketName = socketNameFromProp(prop);
+  const extraConnectionAnnotations = [];
+  if (socketName !== prop.name) {
+    extraConnectionAnnotations.push({ tokens: [prop.name] });
+  }
+
+  const socket = createSocket(
+    socketName,
+    "output",
+    arity,
+    extraConnectionAnnotations,
+  );
   socket.data.funcUniqueId = getSiFuncId("si:identity");
   socket.inputs = [attrFuncInputSpecFromProp(prop)];
   return socket;
@@ -32,9 +43,16 @@ export function createInputSocketFromProp(
   prop: ExpandedPropSpec,
   extraConnectionAnnotations?: ConnectionAnnotation[],
 ): ExpandedSocketSpec {
+  extraConnectionAnnotations ??= [];
+  const socketName = socketNameFromProp(prop);
+  // If we get a prop inside an object on domain, let's name its socket a bit better
+  if (socketName !== prop.name) {
+    extraConnectionAnnotations.push({ tokens: [prop.name] });
+  }
+
   const arity = prop.kind === "array" ? "many" : "one";
   const socket = createSocket(
-    prop.name,
+    socketName,
     "input",
     arity,
     extraConnectionAnnotations,
@@ -50,6 +68,36 @@ export function createInputSocketFromProp(
   return socket;
 }
 
+function socketNameFromProp(prop: ExpandedPropSpec) {
+  const propPath = prop.metadata.propPath;
+  let socketName = prop.name;
+  // If we get a prop inside an object on domain, let's name its socket a bit better
+  if (
+    propPath.length > 3 && propPath[2] !== "extra"
+  ) {
+    // Remove any unnecessary identifiers so the socket name does not become enormous
+    // Regex says "remove this token if on end of string"
+    const propParentName = propPath.slice(2, -1).map((name) =>
+      name
+        .replace(/Configuration$/, "")
+        .replace(/Config$/, "")
+        .replace(/Specification$/, "")
+        .replace(/Options$/, "")
+        .replace(/Definition$/, "")
+        .replace(/Settings$/, "")
+        .replace(/Info$/, "")
+        .replace(/Parameters$/, "")
+        .replace(/Attributes$/, "")
+        .replace(/Preference$/, "")
+        .replace(/Details$/, "")
+    ).join("");
+
+    socketName = `${propParentName}${prop.name}`;
+  }
+
+  return socketName;
+}
+
 export function getSocketOnVariant(
   variant: ExpandedSchemaVariantSpec,
   name: string,
@@ -62,7 +110,8 @@ export function getOrCreateInputSocketFromProp(
   schemaVariant: ExpandedSchemaVariantSpec,
   prop: ExpandedPropSpec,
 ) {
-  let socket = getSocketOnVariant(schemaVariant, prop.name, "input");
+  const socketName = socketNameFromProp(prop);
+  let socket = getSocketOnVariant(schemaVariant, socketName, "input");
 
   if (!socket) {
     socket = createInputSocketFromProp(prop);
@@ -75,7 +124,8 @@ export function getOrCreateOutputSocketFromProp(
   schemaVariant: ExpandedSchemaVariantSpec,
   prop: ExpandedPropSpec,
 ) {
-  let socket = getSocketOnVariant(schemaVariant, prop.name, "output");
+  const socketName = socketNameFromProp(prop);
+  let socket = getSocketOnVariant(schemaVariant, socketName, "output");
 
   if (!socket) {
     socket = createOutputSocketFromProp(prop);
