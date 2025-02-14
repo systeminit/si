@@ -19,7 +19,7 @@ use crate::attribute::prototype::argument::{
     AttributePrototypeArgument, AttributePrototypeArgumentId,
 };
 
-use crate::func::FuncKind;
+use crate::func::is_intrinsic;
 use crate::management::prototype::ManagementPrototype;
 use crate::schema::variant::leaves::{LeafInputLocation, LeafKind};
 use crate::{
@@ -28,7 +28,7 @@ use crate::{
     AttributePrototype, DalContext, Func, FuncId, Prop, PropId, PropKind, Schema, SchemaId,
     SchemaVariant, SchemaVariantId, Workspace,
 };
-use crate::{AttributePrototypeId, FuncBackendKind, InputSocket, OutputSocket};
+use crate::{AttributePrototypeId, InputSocket, OutputSocket};
 
 use super::{PkgError, PkgResult};
 
@@ -51,7 +51,7 @@ impl PkgExporter {
     ///
     /// _Note:_ if you are unsure which constructor method to use, you likely want
     /// [`Self::new_for_module_contribution`].
-    fn new(
+    pub fn new(
         name: impl Into<String>,
         version: impl Into<String>,
         description: Option<impl Into<String>>,
@@ -810,18 +810,9 @@ impl PkgExporter {
             AttributePrototypeArgument::list_ids_for_prototype(ctx, prototype_id).await?;
 
         // If the prototype func is intrinsic and has no arguments, it's one that is created by default
-        // and we don't have to track it in the package. However, if it was formerly a special case
-        // func, then we will continue to treat it as such.
-        if apas.is_empty() {
-            match IntrinsicFunc::maybe_from_str(proto_func.name.as_str()) {
-                Some(IntrinsicFunc::ResourcePayloadToValue)
-                | Some(IntrinsicFunc::NormalizeToArray)
-                    if proto_func.backend_kind == FuncBackendKind::JsAttribute => {}
-                Some(_) => {
-                    return Ok(None);
-                }
-                None => {}
-            }
+        // and we don't have to track it in the package
+        if apas.is_empty() && is_intrinsic(proto_func.name.as_str()) {
+            return Ok(None);
         }
 
         let mut inputs = vec![];
@@ -948,13 +939,6 @@ impl PkgExporter {
         func: &Func,
     ) -> PkgResult<(FuncSpec, bool)> {
         let (spec, include) = match IntrinsicFunc::maybe_from_str(&func.name) {
-            // NOTE(nick): we need to retain the behavior of how we export the old, now intrinsic
-            // funcs unless we perform a graph migration.
-            Some(IntrinsicFunc::ResourcePayloadToValue) | Some(IntrinsicFunc::NormalizeToArray)
-                if func.backend_kind == FuncBackendKind::JsAttribute =>
-            {
-                self.export_func(ctx, func).await?
-            }
             Some(intrinsic) => {
                 let spec = intrinsic.to_spec()?;
 
@@ -995,42 +979,18 @@ impl PkgExporter {
         let ctx = &new_ctx;
 
         for intrinsic in IntrinsicFunc::iter() {
-            match intrinsic {
-                // NOTE(nick): we only want to export intrinsics that were not special case funcs. If
-                // we want that to change, we may need a graph migration.
-                IntrinsicFunc::ResourcePayloadToValue | IntrinsicFunc::NormalizeToArray => {
-                    let intrinsic_name = intrinsic.name();
+            let intrinsic_name = intrinsic.name();
+            // We need a unique id for intrinsic funcs to refer to them in custom bindings (for example
+            // mapping one prop to another via si:identity)
+            let intrinsic_func_id = Func::find_id_by_name(ctx, intrinsic_name)
+                .await?
+                .ok_or(PkgError::MissingIntrinsicFunc(intrinsic_name.to_string()))?;
 
-                    // Notice that we only want to find the func with the intrinsic kind (the new
-                    // version). If we cannot, we just skip it because it is not guaranteed to be
-                    // here without a graph migration.
-                    if let Some(intrinsic_func_id) =
-                        Func::find_id_by_name_and_kind(ctx, intrinsic_name, FuncKind::Intrinsic)
-                            .await?
-                    {
-                        let intrinsic_func =
-                            Func::get_by_id_or_error(ctx, intrinsic_func_id).await?;
+            let intrinsic_func = Func::get_by_id_or_error(ctx, intrinsic_func_id).await?;
 
-                        let (spec, _) = self.add_func_to_map(ctx, &intrinsic_func).await?;
+            let (spec, _) = self.add_func_to_map(ctx, &intrinsic_func).await?;
 
-                        func_specs.push(spec);
-                    }
-                }
-                _ => {
-                    let intrinsic_name = intrinsic.name();
-                    // We need a unique id for intrinsic funcs to refer to them in custom bindings (for example
-                    // mapping one prop to another via si:identity)
-                    let intrinsic_func_id = Func::find_id_by_name(ctx, intrinsic_name)
-                        .await?
-                        .ok_or(PkgError::MissingIntrinsicFunc(intrinsic_name.to_string()))?;
-
-                    let intrinsic_func = Func::get_by_id_or_error(ctx, intrinsic_func_id).await?;
-
-                    let (spec, _) = self.add_func_to_map(ctx, &intrinsic_func).await?;
-
-                    func_specs.push(spec);
-                }
-            }
+            func_specs.push(spec);
         }
 
         let mut schemas = vec![];
@@ -1102,33 +1062,14 @@ impl PkgExporter {
 
     async fn export_intrinsics(&mut self, ctx: &DalContext) -> PkgResult<Vec<FuncSpec>> {
         let mut funcs = vec![];
-        for intrinsic in IntrinsicFunc::iter() {
-            // NOTE(nick): we only want to export intrinsics that were not special case funcs. If
-            // we want that to change, we may need a graph migration.
-            match intrinsic {
-                IntrinsicFunc::ResourcePayloadToValue | IntrinsicFunc::NormalizeToArray => {
-                    // Notice that we only want to find the func with the intrinsic kind (the new
-                    // version). If we cannot, we just skip it because it is not guaranteed to be
-                    // here without a graph migration.
-                    if let Some(intrinsic_func_id) =
-                        Func::find_id_by_name_and_kind(ctx, intrinsic.name(), FuncKind::Intrinsic)
-                            .await?
-                    {
-                        let spec = intrinsic.to_spec()?;
-                        funcs.push(spec.clone());
-                        self.func_map.insert(intrinsic_func_id, spec.clone());
-                    }
-                }
-                _ => {
-                    let intrinsic_func_id = Func::find_id_by_name(ctx, intrinsic.name())
-                        .await?
-                        .ok_or(PkgError::MissingIntrinsicFunc(intrinsic.name().to_string()))?;
+        for instrinsic in IntrinsicFunc::iter() {
+            let intrinsic_func_id = Func::find_id_by_name(ctx, instrinsic.name()).await?.ok_or(
+                PkgError::MissingIntrinsicFunc(instrinsic.name().to_string()),
+            )?;
 
-                    let spec = intrinsic.to_spec()?;
-                    funcs.push(spec.clone());
-                    self.func_map.insert(intrinsic_func_id, spec.clone());
-                }
-            }
+            let spec = instrinsic.to_spec()?;
+            funcs.push(spec.clone());
+            self.func_map.insert(intrinsic_func_id, spec.clone());
         }
         Ok(funcs)
     }

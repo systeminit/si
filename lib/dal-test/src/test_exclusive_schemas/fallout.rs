@@ -10,7 +10,9 @@ use si_pkg::{
 };
 use si_pkg::{SchemaSpecData, SocketSpecArity};
 
-use crate::test_exclusive_schemas::{build_action_func, create_identity_func};
+use crate::test_exclusive_schemas::{
+    build_action_func, build_resource_payload_to_value_func, create_identity_func,
+};
 use crate::test_exclusive_schemas::{PKG_CREATED_BY, PKG_VERSION};
 
 pub(crate) async fn migrate_test_exclusive_schema_fallout(
@@ -47,6 +49,8 @@ pub(crate) async fn migrate_test_exclusive_schema_fallout(
                 .build()?,
         )
         .build()?;
+
+    let resource_payload_to_value_func = build_resource_payload_to_value_func()?;
 
     let (dummy_secret_input_scoket, dummy_secret_prop) =
         assemble_dummy_secret_socket_and_prop(&identity_func_spec)?;
@@ -169,6 +173,7 @@ pub(crate) async fn migrate_test_exclusive_schema_fallout(
         .func(fallout_create_action_func)
         .func(fallout_delete_action_func)
         .func(fallout_authoring_schema_func)
+        .func(resource_payload_to_value_func)
         .schema(fallout_schema)
         .build()?;
 

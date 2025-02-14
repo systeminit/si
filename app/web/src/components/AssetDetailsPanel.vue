@@ -144,11 +144,11 @@
         />
       </Stack>
       <Stack v-if="funcListRequest.isPending" class="p-xs" spacing="none">
-        <div class="flex items-center">
-          <span class="uppercase font-bold py-3"
-            >CONFIGURE DATA PROPAGATION</span
-          >
-          <Icon class="ml-xs" size="lg" name="loader" />
+        <span class="uppercase font-bold py-3">
+          CONFIGURE DATA PROPAGATION
+        </span>
+        <div class="flex justify-center">
+          <Icon size="lg" name="loader" />
         </div>
       </Stack>
       <div v-else>
@@ -156,37 +156,9 @@
           <span class="uppercase font-bold py-3"
             >CONFIGURE DATA PROPAGATION</span
           >
-          <div class="text-xs pb-xs">
-            <div class="flex items-center">
-              <p>Choose how output sockets and props get their values.</p>
-              <IconButton
-                class="ml-xs"
-                :icon="
-                  showIntrinsicFuncOptionsText
-                    ? 'chevron--down'
-                    : 'chevron--right'
-                "
-                iconIdleTone="neutral"
-                size="sm"
-                @click="toggleIntrinsicFuncOptionsText"
-              />
-            </div>
-            <ul
-              v-if="showIntrinsicFuncOptionsText"
-              class="list-disc pl-md py-xs"
-            >
-              <li><strong>Unset:</strong> the value is unset</li>
-              <li>
-                <strong>Identity:</strong> get the value from another prop or
-                input socket without modifying it
-              </li>
-              <li>
-                <strong>Normalize to Array:</strong> get the value from another
-                prop or input socket, but modify it if the input is empty
-                (becomes "[]") or not an array (wrapped with "[]")
-              </li>
-            </ul>
-          </div>
+          <p class="text-xs pb-4">
+            Choose how output sockets and props get their values.
+          </p>
           <span class="uppercase font-bold text-sm">Output Sockets</span>
           <ul v-if="outputSocketIntrinsics.length > 0">
             <li
@@ -198,7 +170,8 @@
                 :isLocked="editingAsset.isLocked"
                 :data="config"
                 @change="updateOutputSocketIntrinsics"
-                @changeIntrinsicFunc="changeIntrinsicFunc"
+                @changeToUnset="changeToUnset"
+                @changeToIdentity="changeToIdentity"
               />
             </li>
           </ul>
@@ -215,7 +188,8 @@
                 :isLocked="editingAsset.isLocked"
                 :data="prop"
                 @change="updatePropIntrinsics"
-                @changeIntrinsicFunc="changeIntrinsicFunc"
+                @changeToUnset="changeToUnset"
+                @changeToIdentity="changeToIdentity"
               />
             </li>
           </ul>
@@ -261,7 +235,6 @@ import {
   VButton,
   VormInput,
   Icon,
-  IconButton,
   ColorPicker,
 } from "@si/vue-lib/design-system";
 import * as _ from "lodash-es";
@@ -287,7 +260,7 @@ import {
   SchemaVariant,
   SchemaVariantId,
 } from "@/api/sdf/dal/schema";
-import { INTRINSICS_DISPLAYED, useFuncStore } from "@/store/func/funcs.store";
+import { useFuncStore } from "@/store/func/funcs.store";
 import { PropId } from "@/api/sdf/dal/prop";
 import AssetFuncAttachModal from "./AssetFuncAttachModal.vue";
 import AssetNameModal from "./AssetNameModal.vue";
@@ -303,12 +276,8 @@ const assetStore = useAssetStore();
 const funcStore = useFuncStore();
 const executeAssetModalRef = ref();
 const cloneAssetModalRef = ref<InstanceType<typeof AssetNameModal>>();
-const scrollAreaRef = ref<InstanceType<typeof ScrollArea>>();
 
-const showIntrinsicFuncOptionsText = ref(false);
-const toggleIntrinsicFuncOptionsText = () => {
-  showIntrinsicFuncOptionsText.value = !showIntrinsicFuncOptionsText.value;
-};
+const scrollAreaRef = ref<InstanceType<typeof ScrollArea>>();
 
 // if func list is loading, its because we dont have the right data
 // and we dont want to display incorrect intrinsic data
@@ -319,37 +288,25 @@ const focus = (evt: Event) => {
   focusedFormField.value = (evt.target as HTMLInputElement).id;
 };
 
-const unsetFuncId = computed(() => {
-  const func = funcStore.funcList.find(
-    (func) => func.kind === FuncKind.Intrinsic && func.name === "si:unset",
-  );
-  return func?.funcId as FuncId;
-});
 const identityFuncId = computed(() => {
   const func = funcStore.funcList.find(
     (func) => func.kind === FuncKind.Intrinsic && func.name === "si:identity",
   );
   return func?.funcId as FuncId;
 });
+
 const identityFuncArgumentId = computed(() => {
   const func = funcStore.funcList.find(
     (func) => func.kind === FuncKind.Intrinsic && func.name === "si:identity",
   );
   return func?.arguments[0]?.id as FuncArgumentId;
 });
-const normalizeToArrayFuncId = computed(() => {
+
+const unsetFuncId = computed(() => {
   const func = funcStore.funcList.find(
-    (func) =>
-      func.kind === FuncKind.Intrinsic && func.name === "si:normalizeToArray",
+    (func) => func.kind === FuncKind.Intrinsic && func.name === "si:unset",
   );
   return func?.funcId as FuncId;
-});
-const normalizeToArrayFuncArgumentId = computed(() => {
-  const func = funcStore.funcList.find(
-    (func) =>
-      func.kind === FuncKind.Intrinsic && func.name === "si:normalizeToArray",
-  );
-  return func?.arguments[0]?.id as FuncArgumentId;
 });
 
 const intrinsics = computed(() => {
@@ -371,7 +328,12 @@ const _configurableProps = computed(() => {
   variant?.funcIds.forEach((funcId) => {
     const summary = funcStore.funcsById[funcId];
     if (summary?.kind === FuncKind.Intrinsic)
-      if (INTRINSICS_DISPLAYED.includes(summary.backendKind)) return; // ignore set string, etc
+      if (
+        [FuncBackendKind.Identity, FuncBackendKind.Unset].includes(
+          summary.backendKind,
+        )
+      )
+        return; // don't ignore identity or unset, ignore set string, etc
     summary?.bindings.forEach((b) => {
       if (b.schemaVariantId === props.schemaVariantId) {
         if ("propId" in b && b.propId) ignoreProps.push(b.propId);
@@ -425,8 +387,6 @@ const _configurableProps = computed(() => {
 
     let funcId = unsetFuncId.value;
     if (backendKind === FuncBackendKind.Identity) funcId = identityFuncId.value;
-    else if (backendKind === FuncBackendKind.NormalizeToArray)
-      funcId = normalizeToArrayFuncId.value;
 
     const d: PropDisplay = {
       id,
@@ -438,7 +398,7 @@ const _configurableProps = computed(() => {
     };
     config.push(d);
   });
-  config.sort((a, b) => a.path.localeCompare(b.path));
+  config.sort((a, b) => a.name.localeCompare(b.name));
   return config;
 });
 
@@ -477,8 +437,6 @@ const _outputSocketIntrinsics = computed(() => {
       let funcId = unsetFuncId.value;
       if (binding.backendKind === FuncBackendKind.Identity)
         funcId = identityFuncId.value;
-      else if (binding.backendKind === FuncBackendKind.NormalizeToArray)
-        funcId = normalizeToArrayFuncId.value;
 
       const d: IntrinsicDisplay = {
         value,
@@ -512,18 +470,11 @@ const commonBindingConstruction = (
   // unset has no value
   if (!data.value && data.funcId !== unsetFuncId.value) return;
 
-  let funcArgumentId = identityFuncArgumentId.value;
-  if (data.funcId === normalizeToArrayFuncId.value)
-    funcArgumentId = normalizeToArrayFuncArgumentId.value;
-
   const argumentBindings: AttributeArgumentBinding[] = [];
 
-  if (
-    data.funcId === identityFuncId.value ||
-    data.funcId === normalizeToArrayFuncId.value
-  ) {
+  if (data.funcId === identityFuncId.value) {
     const arg: AttributeArgumentBinding = {
-      funcArgumentId,
+      funcArgumentId: identityFuncArgumentId.value,
       attributePrototypeArgumentId: null,
       inputSocketId: null,
       propId: null,
@@ -583,45 +534,36 @@ const updateOutputSocketIntrinsics = async (data: IntrinsicDisplay) => {
   }
 };
 
-const changeIntrinsicFunc = (
-  intrinsicFunc: "unset" | "identity" | "normalizeToArray",
+const changeToUnset = (config: PropDisplay | IntrinsicDisplay | undefined) => {
+  if (!config) return;
+  config.attributePrototypeId = undefined;
+  config.funcId = unsetFuncId.value;
+  config.value = undefined;
+  if ("backendKind" in config) {
+    config.backendKind = FuncBackendKind.Unset;
+    // its a socket
+    updateOutputSocketIntrinsics(config);
+  } else {
+    updatePropIntrinsics(config);
+  }
+};
+
+const changeToIdentity = (
   config: PropDisplay | IntrinsicDisplay | undefined,
+  value: string | null,
 ) => {
   if (!config) return;
   config.attributePrototypeId = undefined;
-  config.value = undefined;
-
-  // Set the func ID no matter what the rest of the config looks like.
-  if (intrinsicFunc === "unset") {
-    config.funcId = unsetFuncId.value;
-  } else if (intrinsicFunc === "normalizeToArray") {
-    config.funcId = normalizeToArrayFuncId.value;
-  } else {
-    config.funcId = identityFuncId.value;
-  }
-
-  // Handle updating based on the selected func and backend kind.
-  if (intrinsicFunc === "unset") {
-    if ("backendKind" in config) {
-      config.backendKind = FuncBackendKind.Unset;
+  config.funcId = identityFuncId.value;
+  config.value = value || undefined;
+  // dont fire a save if there isnt a value
+  if ("backendKind" in config) {
+    config.backendKind = FuncBackendKind.Identity;
+    if (config.value) {
       updateOutputSocketIntrinsics(config);
-    } else {
-      updatePropIntrinsics(config);
     }
-  } else {
-    if ("backendKind" in config) {
-      if (intrinsicFunc === "normalizeToArray") {
-        config.backendKind = FuncBackendKind.NormalizeToArray;
-      } else {
-        config.backendKind = FuncBackendKind.Identity;
-      }
-
-      if (config.value) {
-        updateOutputSocketIntrinsics(config);
-      }
-    } else if (config.value) {
-      updatePropIntrinsics(config);
-    }
+  } else if (config.value) {
+    updatePropIntrinsics(config);
   }
 };
 

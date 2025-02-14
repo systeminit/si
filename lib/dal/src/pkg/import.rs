@@ -17,8 +17,8 @@ use crate::attribute::prototype::argument::{
     value_source::ValueSource, AttributePrototypeArgument, AttributePrototypeArgumentId,
 };
 use crate::authentication_prototype::{AuthenticationPrototype, AuthenticationPrototypeId};
+use crate::func;
 use crate::func::intrinsics::IntrinsicFunc;
-use crate::func::FuncKind;
 use crate::management::prototype::ManagementPrototype;
 use crate::module::{Module, ModuleId};
 use crate::schema::variant::SchemaVariantJson;
@@ -75,6 +75,8 @@ pub struct ImportOptions {
     pub past_module_hashes: Option<Vec<String>>,
 }
 
+const SPECIAL_CASE_FUNCS: [&str; 2] = ["si:resourcePayloadToValue", "si:normalizeToArray"];
+
 #[allow(clippy::too_many_arguments)]
 async fn import_change_set(
     ctx: &DalContext,
@@ -92,55 +94,28 @@ async fn import_change_set(
     Vec<bool /*ImportEdgeSkip*/>,
 )> {
     // let default_change_set_id = ctx.get_workspace_default_change_set_id().await?;
-
-    // Cache the intrinsic funcs pkg in case we need it.
-    let unsafe_to_install_intrinsic_funcs_pkg = SiPkg::load_from_spec(IntrinsicFunc::pkg_spec()?)?;
-
     for func_spec in funcs {
-        if let Some(intrinsic) = IntrinsicFunc::maybe_from_str(func_spec.name()) {
-            let maybe_func_id = match intrinsic {
-                IntrinsicFunc::ResourcePayloadToValue | IntrinsicFunc::NormalizeToArray => {
-                    Func::find_id_by_name_and_kind(ctx, func_spec.name(), FuncKind::Intrinsic)
-                        .await?
-                }
-                _ => Func::find_id_by_name(ctx, func_spec.name()).await?,
-            };
+        let unique_id = func_spec.unique_id().to_string();
 
-            if let Some(func_id) = maybe_func_id {
+        // This is a hack because the hash of the intrinsics has changed from the version in the
+        // packages. We also apply this to si:resourcePayloadToValue since it should be an
+        // intrinsic but is only in our packages
+        if func::is_intrinsic(func_spec.name()) || SPECIAL_CASE_FUNCS.contains(&func_spec.name()) {
+            if let Some(func_id) = Func::find_id_by_name(ctx, func_spec.name()).await? {
                 let func = Func::get_by_id_or_error(ctx, func_id).await?;
 
-                thing_map.insert(
-                    func_spec.unique_id().to_owned(),
-                    Thing::Func(func.to_owned()),
-                );
+                thing_map.insert(unique_id.to_owned(), Thing::Func(func.to_owned()));
             } else {
-                let mut override_intrinsic_func_specs =
-                    unsafe_to_install_intrinsic_funcs_pkg.funcs_for_name(intrinsic.name())?;
-                let override_intrinsic_func_spec = override_intrinsic_func_specs.pop().ok_or(
-                    PkgError::IntrinsicFuncSpecsNoneForName(intrinsic.name().to_owned()),
-                )?;
-                if !override_intrinsic_func_specs.is_empty() {
-                    return Err(PkgError::IntrinsicFuncSpecsMultipleForName(
-                        intrinsic.name().to_owned(),
-                    ));
-                }
-
-                // We need to override the unique ID so that accessors grab the correct func.
-                thing_map.insert_override(
-                    override_intrinsic_func_spec.unique_id().into(),
-                    func_spec.unique_id().into(),
-                );
-
                 let func = import_func(
                     ctx,
-                    &override_intrinsic_func_spec,
+                    func_spec,
                     installed_module.clone(),
                     thing_map,
-                    false,
+                    options.create_unlocked,
                 )
                 .await?;
 
-                let args = override_intrinsic_func_spec.arguments()?;
+                let args = func_spec.arguments()?;
 
                 if !args.is_empty() {
                     import_func_arguments(ctx, func.id, &args, thing_map).await?;
@@ -150,7 +125,7 @@ async fn import_change_set(
             let func = if let Some(Some(func)) = options
                 .skip_import_funcs
                 .as_ref()
-                .map(|skip_funcs| skip_funcs.get(func_spec.unique_id()))
+                .map(|skip_funcs| skip_funcs.get(&unique_id))
             {
                 if let Some(module) = installed_module.clone() {
                     module.create_association(ctx, func.id.into()).await?;
@@ -177,10 +152,7 @@ async fn import_change_set(
             };
 
             if let Some(func) = func {
-                thing_map.insert(
-                    func_spec.unique_id().to_owned(),
-                    Thing::Func(func.to_owned()),
-                );
+                thing_map.insert(unique_id.to_owned(), Thing::Func(func.to_owned()));
 
                 if let Some(module) = installed_module.clone() {
                     module.create_association(ctx, func.id.into()).await?;
@@ -1061,28 +1033,15 @@ pub async fn import_only_new_funcs(
 ) -> PkgResult<ThingMap> {
     let mut thing_map = ThingMap::new();
 
-    // Cache the intrinsic funcs pkg in case we need it.
-    let unsafe_to_install_intrinsic_funcs_pkg = SiPkg::load_from_spec(IntrinsicFunc::pkg_spec()?)?;
-
-    // Iterate through all func specs. If the func is an intrinsic, we need to handle it
-    // separately. If it is any other kind of func, we find or create the func and find or create
-    // its arguments.
+    // Iterate through all func specs. If the func is an intrinsic or special case, we assume it must already exist. If
+    // it is any other kind of func, we find or create the func and find or create its arguments.
     for func_spec in funcs {
-        let func = if let Some(intrinsic) = IntrinsicFunc::maybe_from_str(func_spec.name()) {
-            let (func_id, maybe_override_func_spec_unique_id) =
-                import_only_new_funcs_handle_intrinsics(
-                    ctx,
-                    func_spec.name(),
-                    intrinsic,
-                    &unsafe_to_install_intrinsic_funcs_pkg,
-                )
-                .await?;
-
-            // We need to override the unique ID so that accessors grab the correct func.
-            if let Some(override_func_spec_unique_id) = maybe_override_func_spec_unique_id {
-                thing_map
-                    .insert_override(override_func_spec_unique_id, func_spec.unique_id().into());
-            }
+        let func = if func::is_intrinsic(func_spec.name())
+            || SPECIAL_CASE_FUNCS.contains(&func_spec.name())
+        {
+            let func_id = Func::find_id_by_name(ctx, &func_spec.name())
+                .await?
+                .ok_or(PkgError::MissingIntrinsicFunc(func_spec.name().to_owned()))?;
 
             Func::get_by_id_or_error(ctx, func_id).await?
         } else {
@@ -1107,63 +1066,9 @@ pub async fn import_only_new_funcs(
 
             func
         };
-
         thing_map.insert(func_spec.unique_id().into(), Thing::Func(func));
     }
-
     Ok(thing_map)
-}
-
-async fn import_only_new_funcs_handle_intrinsics(
-    ctx: &DalContext,
-    func_name: &str,
-    intrinsic: IntrinsicFunc,
-    unsafe_to_install_intrinsic_funcs_pkg: &SiPkg,
-) -> PkgResult<(FuncId, Option<String>)> {
-    match intrinsic {
-        IntrinsicFunc::NormalizeToArray | IntrinsicFunc::ResourcePayloadToValue => {
-            if let Some(func_id) =
-                Func::find_id_by_name_and_kind(ctx, func_name, FuncKind::Intrinsic).await?
-            {
-                Ok((func_id, None))
-            } else {
-                let mut override_intrinsic_func_specs =
-                    unsafe_to_install_intrinsic_funcs_pkg.funcs_for_name(intrinsic.name())?;
-                let override_intrinsic_func_spec = override_intrinsic_func_specs.pop().ok_or(
-                    PkgError::IntrinsicFuncSpecsNoneForName(intrinsic.name().to_owned()),
-                )?;
-                if !override_intrinsic_func_specs.is_empty() {
-                    return Err(PkgError::IntrinsicFuncSpecsMultipleForName(
-                        intrinsic.name().to_owned(),
-                    ));
-                }
-
-                let func = create_func(ctx, &override_intrinsic_func_spec, false).await?;
-
-                // Create all arguments for the new intrinsic func. It should be impossible to
-                // find existing arguments, but we should check to avoid duplicate arguments.
-                for argument in override_intrinsic_func_spec.arguments()? {
-                    if FuncArgument::find_by_name_for_func(ctx, argument.name(), func.id)
-                        .await?
-                        .is_none()
-                    {
-                        create_func_argument(ctx, func.id, &argument).await?;
-                    }
-                }
-
-                Ok((
-                    func.id,
-                    Some(override_intrinsic_func_spec.unique_id().to_string()),
-                ))
-            }
-        }
-        _ => {
-            let func_id = Func::find_id_by_name(ctx, func_name)
-                .await?
-                .ok_or(PkgError::MissingIntrinsicFunc(func_name.to_owned()))?;
-            Ok((func_id, None))
-        }
-    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -1856,10 +1761,11 @@ pub async fn attach_resource_payload_to_value(
     ctx: &DalContext,
     schema_variant_id: SchemaVariantId,
 ) -> PkgResult<()> {
-    let func_id =
-        Func::find_id_by_name_and_kind(ctx, "si:resourcePayloadToValue", FuncKind::Intrinsic)
-            .await?
-            .ok_or(PkgError::ResourcePayloadToValueIntrinsicFuncNotFound)?;
+    let func_id = Func::find_id_by_name(ctx, "si:resourcePayloadToValue")
+        .await?
+        .ok_or(PkgError::FuncNotFoundByName(
+            "si:resourcePayloadToValue".into(),
+        ))?;
 
     let func_argument_id = FuncArgument::find_by_name_for_func(ctx, "payload", func_id)
         .await?

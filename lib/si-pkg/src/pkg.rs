@@ -166,14 +166,6 @@ impl SiPkg {
         Ok(funcs)
     }
 
-    pub fn funcs_for_name(&self, name: &str) -> PkgResult<Vec<SiPkgFunc>> {
-        Ok(self
-            .funcs()?
-            .drain(..)
-            .filter(|func| func.name() == name)
-            .collect())
-    }
-
     pub fn schemas(&self) -> PkgResult<Vec<SiPkgSchema>> {
         let (graph, root_idx) = self.as_petgraph();
 
