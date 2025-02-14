@@ -1,7 +1,10 @@
+use std::collections::HashSet;
+
+use darling::FromAttributes;
 use manyhow::{bail, emit, manyhow};
 use proc_macro2::TokenStream;
-use quote::quote;
-use syn::{Data, DeriveInput};
+use quote::{format_ident, quote};
+use syn::{Data, DeriveInput, Path};
 
 #[manyhow]
 #[proc_macro_derive(FrontendChecksum, attributes(frontend_checksum))]
@@ -223,4 +226,212 @@ fn derive_refer(
     };
 
     Ok(output.into())
+}
+
+#[derive(Debug, Default, FromAttributes)]
+#[darling(attributes(mv))]
+struct MaterializedViewOptions {
+    trigger_entity: Option<Path>,
+    reference_kind: Option<Path>,
+}
+
+#[derive(Debug, Default, FromAttributes)]
+#[darling(attributes(mv))]
+struct MaterializedViewReferenceOptions {
+    reference_kind: Option<Path>,
+}
+
+#[manyhow]
+#[proc_macro_derive(MV, attributes(mv))]
+pub fn materialized_view_derive(
+    input: proc_macro::TokenStream,
+    errors: &mut manyhow::Emitter,
+) -> manyhow::Result<proc_macro::TokenStream> {
+    derive_materialized_view(input, errors)
+}
+
+fn derive_materialized_view(
+    input: proc_macro::TokenStream,
+    _errors: &mut manyhow::Emitter,
+) -> manyhow::Result<proc_macro::TokenStream> {
+    let input = syn::parse::<DeriveInput>(input)?;
+    let DeriveInput {
+        ident,
+        data: type_data,
+        attrs,
+        ..
+    } = input.clone();
+    let struct_options = MaterializedViewOptions::from_attributes(&attrs)?;
+
+    let Data::Struct(struct_data) = &type_data else {
+        bail!("MV can only be derived for structs");
+    };
+
+    let mut reference_kinds: HashSet<Path> = HashSet::new();
+    for field in &struct_data.fields {
+        let field_attrs = MaterializedViewReferenceOptions::from_attributes(&field.attrs)?;
+        if let Some(reference_kind) = &field_attrs.reference_kind {
+            reference_kinds.insert(reference_kind.clone());
+        }
+    }
+
+    let Some(trigger_entity) = struct_options.trigger_entity else {
+        bail!(input, "MV must have a trigger_entity attribute");
+    };
+    let Some(self_reference_kind) = struct_options.reference_kind else {
+        bail!(input, "MV must have a reference_kind attribute");
+    };
+
+    let mut sorted_reference_kinds: Vec<Path> = reference_kinds.into_iter().collect();
+
+    sorted_reference_kinds.sort_by_cached_key(path_to_string);
+
+    let output = quote! {
+        impl MaterializedView for #ident {
+            fn kind() -> ReferenceKind {
+                #self_reference_kind
+            }
+
+            fn reference_dependencies() -> &'static [ReferenceKind] {
+                &[#(#sorted_reference_kinds),*]
+            }
+
+            fn trigger_entity() -> EntityKind {
+                #trigger_entity
+            }
+        }
+    };
+
+    Ok(output.into())
+}
+
+fn path_to_string(path: &syn::Path) -> String {
+    path.segments
+        .iter()
+        .map(|segment| segment.ident.to_string())
+        .collect::<Vec<_>>()
+        .join("::")
+}
+
+struct BuildMv {
+    ctx: syn::Expr,
+    change: syn::Expr,
+    mv_name: syn::Path,
+    build_fn: syn::Expr,
+}
+
+impl syn::parse::Parse for BuildMv {
+    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+        let ctx = input.parse::<syn::Expr>()?;
+        input.parse::<syn::Token![,]>()?;
+        let change = input.parse::<syn::Expr>()?;
+        input.parse::<syn::Token![,]>()?;
+        let mv_name = input.parse::<syn::Path>()?;
+        input.parse::<syn::Token![,]>()?;
+        let build_fn = input.parse::<syn::Expr>()?;
+        input.parse::<Option<syn::Token![,]>>()?;
+
+        Ok(BuildMv {
+            ctx,
+            change,
+            mv_name,
+            build_fn,
+        })
+    }
+}
+
+#[manyhow]
+#[proc_macro]
+// You can also merge the two attributes: #[manyhow(proc_macro)]
+pub fn build_mv(input: proc_macro2::TokenStream) -> syn::Result<proc_macro2::TokenStream> {
+    let BuildMv {
+        ctx,
+        change,
+        mv_name,
+        build_fn,
+    } = syn::parse::<BuildMv>(input.into())?;
+
+    let build_mv_ident = format_ident!(
+        "build_mv_{}",
+        mv_name
+            .segments
+            .iter()
+            .map(|segment| segment.ident.to_string())
+            .collect::<Vec<_>>()
+            .join("_")
+    );
+
+    let output = quote! {
+        {
+            async fn #build_mv_ident(
+                ctx: &DalContext,
+                change: &dal::workspace_snapshot::graph::detector::Change,
+            ) -> RebaseResult<(
+                Option<si_frontend_types::object::patch::ObjectPatch>,
+                Option<si_frontend_types::object::FrontendObject>,
+            )> {
+                if <#mv_name as si_frontend_types::materialized_view::MaterializedView>::trigger_entity() == change.entity_kind {
+                    if ctx
+                        .workspace_snapshot()?
+                        .get_node_index_by_id_opt(change.entity_id)
+                        .await
+                        .is_none()
+                    {
+                        return Ok((
+                            Some(si_frontend_types::object::patch::ObjectPatch {
+                                kind: <#mv_name as si_frontend_types::materialized_view::MaterializedView>::kind(),
+                                id: change.entity_id,
+                                from_checksum: Checksum::default(),
+                                to_checksum: Checksum::default(),
+                                patch: json_patch::Patch(vec![json_patch::PatchOperation::Remove(
+                                    json_patch::RemoveOperation::default(),
+                                )]),
+                            }),
+                            None,
+                        ));
+                    }
+
+                    let mv = #build_fn.map_err(|_| {
+                        // XXX: This error is absolutely incorrect, but sorting out the tangle of nested error types is
+                        //      a task for the not-a-spike version of this.
+                        RebaseError::WorkspaceSnapshot(
+                            dal::workspace_snapshot::WorkspaceSnapshotError::WorkspaceMissing,
+                        )
+                    })?;
+                    let mv_json = serde_json::to_value(&mv).map_err(|_| {
+                        // XXX: This error is absolutely incorrect, but sorting out the tangle of nested error types is
+                        //      a task for the not-a-spike version of this.
+                        RebaseError::WorkspaceSnapshot(
+                            dal::workspace_snapshot::WorkspaceSnapshotError::WorkspaceMissing,
+                        )
+                    })?;
+                    let to_checksum = si_frontend_types::checksum::FrontendChecksum::checksum(&mv);
+                    let frontend_object: si_frontend_types::object::FrontendObject = mv.try_into().map_err(|_| {
+                        // XXX: This error is absolutely incorrect, but sorting out the tangle of nested error types is
+                        //      a task for the not-a-spike version of this.
+                        RebaseError::WorkspaceSnapshot(
+                            dal::workspace_snapshot::WorkspaceSnapshotError::WorkspaceMissing,
+                        )
+                    })?;
+
+                    Ok((
+                        Some(si_frontend_types::object::patch::ObjectPatch {
+                            kind: <#mv_name as si_frontend_types::materialized_view::MaterializedView>::kind(),
+                            id: change.entity_id,
+                            from_checksum: Checksum::default(),
+                            to_checksum,
+                            patch: json_patch::diff(&serde_json::Value::Null, &mv_json),
+                        }),
+                        Some(frontend_object),
+                    ))
+                } else {
+                    Ok((None, None))
+                }
+            }
+
+            #build_mv_ident(#ctx, #change)
+        }
+    };
+
+    Ok(output)
 }
