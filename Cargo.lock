@@ -3304,6 +3304,7 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "color-eyre",
+ "futures",
  "indicatif",
  "module-index-client",
  "nix 0.29.0",

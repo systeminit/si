@@ -1,8 +1,10 @@
 use clap::CommandFactory;
+use futures::stream::StreamExt;
 use indicatif::{ProgressBar, ProgressStyle};
 use std::collections::HashMap;
 use std::fs::{self};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use ulid::Ulid;
 
@@ -10,7 +12,6 @@ use clap::{Parser, Subcommand};
 use color_eyre::Result;
 use module_index_client::{ModuleDetailsResponse, ModuleIndexClient};
 use si_pkg::{PkgSpec, SiPkg};
-use tokio::task::JoinSet;
 use url::Url;
 
 const CLOVER_DEFAULT_CREATOR: &str = "Clover";
@@ -41,14 +42,38 @@ enum Commands {
 #[derive(clap::Args, Debug)]
 #[command(about = "Upload all specs in {target_dir} to the module index")]
 struct UploadAllSpecsArgs {
-    #[arg(long, short = 't', required = true)]
+    #[arg(
+        long,
+        short = 't',
+        required = true,
+        help = "Path to the directory containing specs to upload"
+    )]
     target_dir: PathBuf,
+
+    #[arg(
+        long,
+        default_value = "100",
+        help = "Maximum number of concurrent uploads."
+    )]
+    max_concurrent: usize,
 }
 #[derive(clap::Args, Debug)]
 #[command(about = "Upload the spec {target} to the module index")]
 struct UploadSpecArgs {
-    #[arg(long, short = 't', required = true)]
+    #[arg(
+        long,
+        short = 't',
+        required = true,
+        help = "Path to the spec to upload"
+    )]
     target: PathBuf,
+
+    #[arg(
+        long,
+        default_value = "100",
+        help = "Maximum number of concurrent uploads."
+    )]
+    max_concurrent: usize,
 }
 
 #[derive(clap::Args, Debug)]
@@ -84,8 +109,12 @@ async fn main() -> Result<()> {
     let client = ModuleIndexClient::new(Url::parse(endpoint)?, token);
 
     match args.command {
-        Some(Commands::UploadAllSpecs(args)) => upload_pkg_specs(client, args.target_dir).await?,
-        Some(Commands::UploadSpec(args)) => upload_pkg_specs(client.clone(), args.target).await?,
+        Some(Commands::UploadAllSpecs(args)) => {
+            upload_pkg_specs(&client, args.target_dir, args.max_concurrent).await?
+        }
+        Some(Commands::UploadSpec(args)) => {
+            upload_pkg_specs(&client, args.target, args.max_concurrent).await?
+        }
         Some(Commands::WriteExistingModulesSpec(args)) => {
             write_existing_modules_spec(client, args.out).await?
         }
@@ -109,7 +138,7 @@ async fn main() -> Result<()> {
 
 enum ModuleState {
     HashesMatch,
-    NeedsUpdated(String),
+    NeedsUpdate,
     New,
 }
 async fn write_existing_modules_spec(client: ModuleIndexClient, out: PathBuf) -> Result<()> {
@@ -188,7 +217,7 @@ async fn write_spec(client: ModuleIndexClient, module_id: String, out: PathBuf) 
     Ok(())
 }
 
-async fn upload_pkg_spec(client: ModuleIndexClient, pkg: SiPkg) -> Result<()> {
+async fn upload_pkg_spec(client: &ModuleIndexClient, pkg: &SiPkg) -> Result<()> {
     let schema = pkg.schemas()?[0].clone();
     let metadata = pkg.metadata()?;
 
@@ -207,7 +236,11 @@ async fn upload_pkg_spec(client: ModuleIndexClient, pkg: SiPkg) -> Result<()> {
     Ok(())
 }
 
-async fn upload_pkg_specs(client: ModuleIndexClient, target_dir: PathBuf) -> Result<()> {
+async fn upload_pkg_specs(
+    client: &ModuleIndexClient,
+    target_dir: PathBuf,
+    max_concurrent: usize,
+) -> Result<()> {
     let specs: Vec<_> = if target_dir.is_file() {
         if let Some(parent) = target_dir.parent() {
             fs::read_dir(parent)?
@@ -226,13 +259,11 @@ async fn upload_pkg_specs(client: ModuleIndexClient, target_dir: PathBuf) -> Res
             .collect()
     };
 
-    let mut joinset = JoinSet::new();
-
     let mut no_action_needed = 0;
     let mut new_modules = 0;
     let mut modules_with_updates = 0;
 
-    let mut categorized_modules: Vec<(SiPkg, Option<String>)> = Vec::new();
+    let mut categorized_modules = vec![];
 
     println!("Building modules list...");
     let existing_specs = &list_specs(client.clone()).await?;
@@ -240,6 +271,7 @@ async fn upload_pkg_specs(client: ModuleIndexClient, target_dir: PathBuf) -> Res
         let pkg = json_to_pkg(spec.path())?;
         let schema = pkg.schemas()?[0].clone();
         let pkg_schema_id = schema.unique_id().unwrap();
+        let metadata = pkg.metadata()?;
 
         match remote_module_state(
             pkg_schema_id.to_string(),
@@ -249,13 +281,13 @@ async fn upload_pkg_specs(client: ModuleIndexClient, target_dir: PathBuf) -> Res
         .await?
         {
             ModuleState::HashesMatch => no_action_needed += 1,
-            ModuleState::NeedsUpdated(module_id) => {
+            ModuleState::NeedsUpdate => {
                 modules_with_updates += 1;
-                categorized_modules.push((pkg, Some(module_id)));
+                categorized_modules.push((pkg, metadata));
             }
             ModuleState::New => {
                 new_modules += 1;
-                categorized_modules.push((pkg, None));
+                categorized_modules.push((pkg, metadata));
             }
         }
     }
@@ -282,25 +314,47 @@ async fn upload_pkg_specs(client: ModuleIndexClient, target_dir: PathBuf) -> Res
         return Ok(());
     }
 
-    let pb = setup_progress_bar(categorized_modules.len() as u64);
+    // Set up progress bar
+    let total = categorized_modules.len() as u64;
+    let pb = setup_progress_bar(total);
+    pb.set_message("⏰ Beginning uploads ...");
 
-    for (pkg, _existing_module_id) in categorized_modules {
-        let client = client.clone();
-        let pb = pb.clone();
+    // Generates the "X failed" message for various set_message() calls to use
+    let failed = AtomicU64::new(0);
+    let failed_message = || {
+        let failed = failed.load(Ordering::Relaxed);
+        if failed > 0 {
+            format!(" ❌ {} failed.  ", failed)
+        } else {
+            "".to_string()
+        }
+    };
 
-        let metadata = pkg.metadata()?;
-        joinset.spawn(async move {
-            if let Err(e) = upload_pkg_spec(client, pkg).await {
-                println!("Failed to upload {} due to {}", metadata.name(), e);
-            }
-            pb.set_message(format!("Uploading: {}", metadata.name()));
+    futures::stream::iter(categorized_modules)
+        .for_each_concurrent(max_concurrent, |(pkg, metadata)| {
+            let pb = pb.clone();
+            let failed = &failed;
+            pb.set_message(format!(
+                "{}⏰ Uploading: {}",
+                failed_message(),
+                metadata.name(),
+            ));
             pb.inc(1);
-        });
-    }
+            async move {
+                if let Err(e) = upload_pkg_spec(client, &pkg).await {
+                    println!("Failed to upload {} due to {}", metadata.name(), e);
+                    failed.fetch_add(1, Ordering::Relaxed);
+                    pb.set_message(failed_message());
+                }
+            }
+        })
+        .await;
 
-    pb.set_message("⏰ Waiting for all uploads to complete...");
-    joinset.join_all().await;
-    pb.finish_with_message("✨ All uploads complete!");
+    pb.finish_with_message(format!(
+        "✨ {} uploads complete!{}",
+        total - failed.load(Ordering::Relaxed),
+        failed_message(),
+    ));
     Ok(())
 }
 
@@ -335,7 +389,7 @@ async fn remote_module_state(
                 if module.latest_hash == hash {
                     return Ok(ModuleState::HashesMatch);
                 } else {
-                    return Ok(ModuleState::NeedsUpdated(module.id.clone()));
+                    return Ok(ModuleState::NeedsUpdate);
                 }
             }
         }
