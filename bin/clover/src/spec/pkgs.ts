@@ -18,7 +18,7 @@ export type ExpandedSchemaVariantSpec = Extend<SchemaVariantSpec, {
   data: NonNullable<SchemaVariantSpecData>;
   sockets: ExpandedSocketSpec[];
   domain: ExpandedPropSpecFor["object"];
-  secrets: ExpandedPropSpec;
+  secrets: ExpandedPropSpecFor["object"];
   secretDefinition: ExpandedPropSpec | null;
   resourceValue: ExpandedPropSpecFor["object"];
 }>;
