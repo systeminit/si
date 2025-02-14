@@ -61,7 +61,7 @@ function generateAssetCodeFromVariantSpec(
     let propAdds = "";
 
     for (const prop of variant.domain.entries) {
-      const varName = `${prop.name}Prop`.replace(" ", "");
+      const varName = `${prop.name}Prop`.replaceAll(" ", "");
       propDeclarations += `${indent(1)}const ${varName} = ${
         generatePropBuilderString(prop, 2)
       };\n\n`;
@@ -85,7 +85,7 @@ function generateAssetCodeFromVariantSpec(
     let propAdds = "";
 
     for (const prop of variant.secrets.entries) {
-      const varName = `${prop.name}SecretProp`.replace(" ", "");
+      const varName = `${prop.name}SecretProp`.replaceAll(" ", "");
       propDeclarations += `${indent(1)}const ${varName} = ${
         generateSecretPropBuilderString(prop, 2)
       };\n\n`;
@@ -103,7 +103,7 @@ function generateAssetCodeFromVariantSpec(
     let propAdds = "";
 
     for (const prop of variant.resourceValue.entries) {
-      const varName = `${prop.name}Resource`.replace(" ", "");
+      const varName = `${prop.name}Resource`.replaceAll(" ", "");
       propDeclarations += `${indent(1)}const ${varName} = ${
         generatePropBuilderString(prop, 2)
       };\n\n`;
@@ -128,14 +128,13 @@ function generateAssetCodeFromVariantSpec(
     });
     for (const socket of variant.sockets) {
       const data = socket.data;
-      if (!data) continue;
       // if this socket in the spec is for a secret, don't add the input socket, we'll get
       // it for free by using the SecretPropBuilder above.
       if (
         variant.secrets.entries.map((entry) => entry.name).includes(socket.name)
       ) continue;
 
-      const varName = `${socket.name}${data.kind}Socket`.replace(" ", "");
+      const varName = `${socket.name}${data.kind}Socket`.replaceAll(" ", "");
 
       type AnnotationItem = {
         tokens: string[];
