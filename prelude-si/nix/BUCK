@@ -4,5 +4,9 @@ load(
 )
 
 export_file(
+    name = "nix_binary_build.py",
+)
+
+export_file(
     name = "nix_omnibus_pkg_build.py",
 )
