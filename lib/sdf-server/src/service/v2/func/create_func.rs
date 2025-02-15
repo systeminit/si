@@ -55,9 +55,7 @@ pub async fn create_func(
         .build(access_builder.build(change_set_id.into()))
         .await?;
     if let Some(name) = request.name.as_deref() {
-        if dal::func::is_intrinsic(name)
-            || ["si:resourcePayloadToValue", "si:normalizeToArray"].contains(&name)
-        {
+        if dal::func::is_intrinsic(name) {
             return Err(FuncAPIError::FuncNameReserved(name.into()));
         }
     }

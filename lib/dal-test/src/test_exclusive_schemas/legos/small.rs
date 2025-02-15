@@ -12,9 +12,8 @@ use si_pkg::{ManagementFuncSpec, SchemaSpecData};
 
 use crate::test_exclusive_schemas::legos::bricks::LegoBricks;
 use crate::test_exclusive_schemas::{
-    build_action_func, build_asset_func, build_management_func,
-    build_resource_payload_to_value_func, create_identity_func, PKG_CREATED_BY, PKG_VERSION,
-    SCHEMA_ID_SMALL_EVEN_LEGO,
+    build_action_func, build_asset_func, build_management_func, create_identity_func,
+    PKG_CREATED_BY, PKG_VERSION, SCHEMA_ID_SMALL_EVEN_LEGO,
 };
 
 /// The "small odd lego" has a special importance for our tests. It is a
@@ -584,9 +583,6 @@ pub(crate) async fn migrate_test_exclusive_schema_small_odd_lego(
     let fn_name = "test:scaffoldSmallLegoAsset";
     let small_lego_authoring_schema_func = build_asset_func(fn_name)?;
 
-    // Author Resource Payload Func
-    let resource_payload_to_value_func = build_resource_payload_to_value_func()?;
-
     let bricks = LegoBricks::new_for_odd()?;
 
     let small_lego_schema = SchemaSpec::builder()
@@ -784,7 +780,6 @@ pub(crate) async fn migrate_test_exclusive_schema_small_odd_lego(
         .func(update_action_func)
         .func(delete_action_func)
         .func(small_lego_authoring_schema_func)
-        .func(resource_payload_to_value_func)
         .func(import_management_func)
         .func(clone_me_mgmt_func)
         .func(update_mgmt_func)
@@ -868,9 +863,6 @@ pub(crate) async fn migrate_test_exclusive_schema_small_even_lego(
     let fn_name = "test:scaffoldSmallLegoAsset";
     let small_lego_authoring_schema_func = build_asset_func(fn_name)?;
 
-    // Author Resource Payload Func
-    let resource_payload_to_value_func = build_resource_payload_to_value_func()?;
-
     let bricks = LegoBricks::new_for_even()?;
 
     let small_lego_schema = SchemaSpec::builder()
@@ -934,7 +926,6 @@ pub(crate) async fn migrate_test_exclusive_schema_small_even_lego(
         .func(update_action_func)
         .func(delete_action_func)
         .func(small_lego_authoring_schema_func)
-        .func(resource_payload_to_value_func)
         .schema(small_lego_schema)
         .build()?;
 
