@@ -146,6 +146,7 @@ pub struct DiagramComponentView {
     pub schema_variant_id: SchemaVariantId,
     pub schema_variant_name: String,
     pub schema_category: String,
+    pub schema_docs_link: Option<String>,
     pub sockets: Vec<DiagramSocket>,
     pub display_name: String,
     pub resource_id: String,

@@ -384,6 +384,7 @@ export type DiagramNodeDef = {
   schemaName: string;
   schemaVariantName: string;
   schemaVariantId: string;
+  schemaDocsLink?: string;
   displayName: string;
   createdInfo: ActorAndTimestamp;
   deletedInfo?: ActorAndTimestamp;
@@ -422,6 +423,7 @@ export type DiagramViewDef = ViewNode & {
   icon: IconNames;
   color: string;
   schemaName: string;
+  schemaDocsLink?: string;
 };
 
 export type DiagramEdgeDef = {
