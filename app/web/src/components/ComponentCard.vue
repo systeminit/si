@@ -80,6 +80,14 @@
       </div>
 
       <!-- Slot for additional icons/buttons -->
+      <IconButton
+        v-if="
+          component.def.schemaDocsLink && component.def.schemaDocsLink !== ''
+        "
+        icon="bookOpen"
+        class="shrink-0"
+        @click="navigateToSchemaDocs(component.def.schemaDocsLink)"
+      />
       <slot />
     </div>
   </div>
@@ -92,6 +100,7 @@ import clsx from "clsx";
 import {
   useTheme,
   Icon,
+  IconButton,
   Stack,
   TruncateWithTooltip,
   COMPONENT_TYPE_ICONS,
@@ -146,6 +155,10 @@ const displayName = computed(
     ("name" in props.component.def && props.component.def.name) ||
     "Asset",
 );
+
+function navigateToSchemaDocs(docsLink: string): void {
+  window.open(docsLink, "_blank");
+}
 
 const upgradeComponent = async () => {
   viewStore.setSelectedComponentId(null);

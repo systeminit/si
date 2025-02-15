@@ -6,6 +6,7 @@ import Loader from "~icons/gg/spinner";
 import Resize from "~icons/mdi/resize-bottom-right";
 import SlashForward from "~icons/mdi/slash-forward";
 
+import BookOpen from "~icons/heroicons/book-open-20-solid";
 import Check from "~icons/heroicons/check-20-solid";
 import CheckCircle from "~icons/heroicons/check-circle-20-solid";
 import CheckSquare from "./custom-icons/check-square.svg?raw";
@@ -213,6 +214,7 @@ export const ICONS = Object.freeze({
   beaker: Beaker,
   bell: MaterialSymbolsNotifications,
   bolt: Bolt,
+  bookOpen: BookOpen,
   "brackets-angle": BracketsAngle,
   "brackets-curly": BracketsCurly,
   "brackets-square": BracketsSquare,
