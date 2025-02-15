@@ -4,14 +4,16 @@ import _ from "npm:lodash";
 const logger = _logger.ns("packageGen").seal();
 export const EXISTING_PACKAGES = "existing-packages/spec.json";
 
-export async function getExistingSpecs(moduleIndexUrl: string): Promise<Record<string, string>> {
+export async function getExistingSpecs(
+  options: { moduleIndexUrl: string },
+): Promise<Record<string, string>> {
   logger.debug("Getting existing specs...");
   const args = [
     "run",
     "//bin/hoist:hoist",
     "--",
     "--endpoint",
-    moduleIndexUrl,
+    options.moduleIndexUrl,
     "write-existing-modules-spec",
     "--out",
     EXISTING_PACKAGES,

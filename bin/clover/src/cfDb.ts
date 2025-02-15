@@ -33,6 +33,7 @@ export type CfProperty =
   | CfMultiTypeProperty
   // Then we have this mess of array typed properties
   | Extend<JSONSchema.Interface, {
+    properties?: Record<string, CfProperty>;
     type: ["string", CfPropertyType] | [
       CfPropertyType,
       "string",
@@ -382,4 +383,32 @@ export function getPropertiesForService(
 ): CfSchema["properties"] {
   const service = getServiceByName(serviceName);
   return service.properties;
+}
+
+export function* allCfProps(root: CfProperty) {
+  const queue = [{ cfProp: root, cfPropPath: "" }];
+  while (queue.length > 0) {
+    const prop = queue.shift()!;
+    yield prop;
+    const { cfProp, cfPropPath } = prop;
+    if ("properties" in cfProp && cfProp.properties) {
+      queue.push(
+        ...Object.entries(cfProp.properties).map(([name, child]) => ({
+          cfProp: child,
+          cfPropPath: `${cfPropPath}/${name}`,
+        })),
+      );
+    }
+    if ("patternProperties" in cfProp && cfProp.patternProperties) {
+      queue.push(
+        ...Object.values(cfProp.patternProperties).map((child) => ({
+          cfProp: child,
+          cfPropPath,
+        })),
+      );
+    }
+    if ("typeProp" in cfProp && cfProp.typeProp) {
+      queue.push({ cfProp: cfProp.typeProp, cfPropPath });
+    }
+  }
 }
