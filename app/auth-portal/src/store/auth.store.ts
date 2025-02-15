@@ -98,6 +98,7 @@ export const useAuthStore = defineStore("auth", {
     hasBillingDetailsSet: false,
     suspendedUsersState: [] as SuspendedUser[] | null,
     quarantinedUsersState: [] as QuarantinedUser[] | null,
+    usersByEmailState: [] as User[] | null,
     userSignupsState: [] as SignupUsersReport[] | null,
   }),
   getters: {
@@ -126,6 +127,9 @@ export const useAuthStore = defineStore("auth", {
     },
     userSignups(state): SignupUsersReport[] {
       return _.values(state.userSignupsState);
+    },
+    usersByEmail(state): User[] {
+      return _.values(state.usersByEmailState);
     },
   },
   actions: {
@@ -261,6 +265,15 @@ export const useAuthStore = defineStore("auth", {
         url: `/users/quarantined`,
         onSuccess: (response) => {
           this.quarantinedUsersState = response;
+        },
+      });
+    },
+
+    async GET_USERS_FOR_EMAIL(email: string) {
+      return new ApiRequest<User[]>({
+        url: `/users/by-email`,
+        params: {
+          email,
         },
       });
     },

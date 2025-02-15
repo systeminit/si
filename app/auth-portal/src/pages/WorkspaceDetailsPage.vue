@@ -173,7 +173,10 @@
       </div>
       <div v-if="!createMode" class="pt-md">
         <Stack>
-          <ErrorMessage :requestStatus="inviteUserReqStatus" />
+          <ErrorMessage
+            :requestStatus="inviteUserReqStatus"
+            :message="inviteUserReqStatus.error?.data.error"
+          />
 
           <VormInput
             ref="newMemberEmailInput"

@@ -267,7 +267,13 @@ router.post("/workspace/:workspaceId/members", async (ctx) => {
     }),
   );
 
-  await inviteMember(authUser, reqBody.email, workspace);
+  try {
+    await inviteMember(authUser, reqBody.email, workspace);
+  } catch (error) {
+    ctx.status = 409;
+    ctx.body = { error: (error as Error).message };
+    return;
+  }
 
   const members: Member[] = [];
   const workspaceMembers = await getWorkspaceMembers(workspace.id);
