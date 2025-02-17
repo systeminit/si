@@ -2,6 +2,7 @@ import _ from "npm:lodash";
 import _logger from "../logger.ts";
 import {
   createInputSocketFromProp,
+  ExpandedSocketSpec,
   setAnnotationOnSocket,
 } from "../spec/sockets.ts";
 import { ExpandedPkgSpec } from "../spec/pkgs.ts";
@@ -76,4 +77,18 @@ const overrides = new Map<string, OverrideFn>([
       }
     }
   }],
+  [
+    "AWS::Route53::HostedZone",
+    (spec: ExpandedPkgSpec) => {
+      const variant = spec.schemas[0].variants[0];
+
+      // Add an annotation for the Id output socket to connect to HostedZoneId
+      const socket = variant.sockets.find(
+        (s: ExpandedSocketSpec) => s.name === "Id" && s.data.kind === "output",
+      );
+      if (!socket) return;
+
+      setAnnotationOnSocket(socket, { tokens: ["HostedZoneId"] });
+    },
+  ],
 ]);
