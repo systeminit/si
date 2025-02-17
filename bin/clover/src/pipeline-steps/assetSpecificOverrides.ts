@@ -91,4 +91,29 @@ const overrides = new Map<string, OverrideFn>([
       setAnnotationOnSocket(socket, { tokens: ["HostedZoneId"] });
     },
   ],
+  ["AWS::SecretsManager::Secret", (spec: ExpandedPkgSpec) => {
+    const variant = spec.schemas[0].variants[0];
+    
+    console.log("Finding the secretString")
+    const secretProp = variant.domain.entries.find((p: ExpandedPropSpec) => p.name === "SecretString");
+    if (!secretProp) return
+     
+    console.log("Finding all other props")
+    variant.domain.entries = variant.domain.entries.filter((p: ExpandedPropSpec) => p.name !== "SecretString");
+    
+    console.log("Changing the prop data")
+    secretProp.data.widgetKind = "Secret";
+    secretProp.data.widgetOptions = [{
+      "label": "secretKind",
+      "value": "Secret String",
+    }];
+    variant.secrets.entries.push(secretProp)
+    
+    console.log("Adding the input socket")
+    const secretStringProp = createInputSocketFromProp(secretProp);
+    variant.sockets.push(secretStringProp);
+    
+    console.log("Adding the annotation")
+    setAnnotationOnSocket(secretStringProp, { tokens: ["Secret String"] });
+  }]
 ]);
