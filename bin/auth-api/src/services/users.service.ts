@@ -64,6 +64,10 @@ export async function getUserByEmail(email: string) {
   return prisma.user.findFirst({ where: { email } });
 }
 
+export async function getUsersByEmail(email: string) {
+  return prisma.user.findMany({ where: { email } });
+}
+
 export async function createInvitedUser(email: string) {
   return await prisma.user.create({
     data: {
