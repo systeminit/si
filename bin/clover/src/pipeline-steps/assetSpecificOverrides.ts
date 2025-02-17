@@ -91,4 +91,18 @@ const overrides = new Map<string, OverrideFn>([
       setAnnotationOnSocket(socket, { tokens: ["HostedZoneId"] });
     },
   ],
+  ["ContainerDefinitions Secrets", (spec: ExpandedPkgSpec) => {
+    const variant = spec.schemas[0].variants[0];
+    
+    const prop = variant.domain.entries.find((p: ExpandedPropSpec) =>
+      p.name === "ValueFrom"
+    );
+
+    if (!prop) return;
+    const socket = createInputSocketFromProp(prop);
+
+    setAnnotationOnSocket(socket, { tokens: ["Id"] });
+
+    variant.sockets.push(socket);
+  }]
 ]);
