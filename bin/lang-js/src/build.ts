@@ -39,14 +39,7 @@ async function buildSandbox(outputPath?: string) {
       legalComments: "none",
       keepNames: false,
       absWorkingDir: baseDir,
-      pure: [
-        "console.log",
-        "console.info",
-        "console.warn",
-        "console.error",
-        "console.debug",
-      ],
-      drop: ["debugger", "console"],
+      drop: ["debugger"],
     });
 
     if (!result.outputFiles?.[0]) {
