@@ -17,11 +17,19 @@ import _logger from "../logger.ts";
 import { assetSpecificOverrides } from "../pipeline-steps/assetSpecificOverrides.ts";
 import { addSignatureToCategoryName } from "../pipeline-steps/addSignatureToCategoryName.ts";
 import { generateOutputSocketsFromProps } from "../pipeline-steps/generateOutputSocketsFromProps.ts";
-import { ExpandedPkgSpec } from "../spec/pkgs.ts";
+import {
+  ExpandedPkgSpec,
+  ExpandedSchemaSpec,
+  ExpandedSchemaVariantSpec,
+} from "../spec/pkgs.ts";
 import { createPolicyDocumentInputSockets } from "../pipeline-steps/createPolicyDocumentInputSockets.ts";
 import { prettifySocketNames } from "../pipeline-steps/prettifySocketNames.ts";
 import { loadInferred } from "../spec/inferred.ts";
 import { addInferredEnums } from "../pipeline-steps/addInferredEnums.ts";
+import { PkgSpec } from "../bindings/PkgSpec.ts";
+import { ignoreSpecsWithoutHandlers } from "../pipeline-steps/ignoreSpecsWithoutHandlers.ts";
+import { SchemaVariantSpec } from "../bindings/SchemaVariantSpec.ts";
+import { SchemaSpec } from "../bindings/SchemaSpec.ts";
 
 const logger = _logger.ns("siSpecs").seal();
 const SI_SPEC_DIR = "si-specs";
@@ -33,6 +41,7 @@ export function generateSiSpecForService(serviceName: string) {
 
 export async function generateSiSpecs(
   options: {
+    forceUpdateExistingPackages?: boolean;
     moduleIndexUrl: string;
     inferred: string;
     services?: string[];
@@ -59,6 +68,7 @@ export async function generateSiSpecs(
   }
 
   // EXECUTE PIPELINE STEPS
+  specs = ignoreSpecsWithoutHandlers(specs);
   specs = addInferredEnums(specs, inferred);
   specs = generateOutputSocketsFromProps(specs);
   specs = addDefaultPropsAndSockets(specs);
@@ -86,7 +96,7 @@ export async function generateSiSpecs(
   // WRITE OUTS SPECS
   await emptyDirectory(SI_SPEC_DIR);
   for (const spec of specs) {
-    const specJson = JSON.stringify(spec, null, 2);
+    const specJson = JSON.stringify(unexpandPackageSpec(spec), null, 2);
     const name = spec.name;
 
     try {
@@ -107,4 +117,27 @@ export async function generateSiSpecs(
   console.log(
     `built ${imported} out of ${cfSchemas.length}, including ${importSubAssets} sub-assets`,
   );
+}
+
+function unexpandPackageSpec(expandedSpec: ExpandedPkgSpec): PkgSpec {
+  // Take out cfSchema and other props we don't want in the final spec
+  return {
+    ...expandedSpec,
+    schemas: expandedSpec.schemas.map(unexpandSchema),
+  };
+}
+
+function unexpandSchema(
+  expanded: ExpandedSchemaSpec,
+): SchemaSpec {
+  return {
+    ...expanded,
+    variants: expanded.variants.map(unexpandVariant),
+  };
+}
+function unexpandVariant(
+  expanded: ExpandedSchemaVariantSpec,
+): SchemaVariantSpec {
+  const { cfSchema: _, ...variant } = expanded;
+  return variant;
 }

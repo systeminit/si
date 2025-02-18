@@ -1,17 +1,21 @@
 import { CfProperty, CfSchema } from "./cfDb.ts";
 import { ulid } from "https://deno.land/x/ulid@v0.3.0/mod.ts";
-import { createDefaultPropFromCf, createDocLink, OnlyProperties } from "./spec/props.ts";
+import {
+  createDefaultPropFromCf,
+  createDocLink,
+  OnlyProperties,
+} from "./spec/props.ts";
 import {
   ExpandedPkgSpec,
   ExpandedSchemaSpec,
   ExpandedSchemaVariantSpec,
 } from "./spec/pkgs.ts";
 
-export function pkgSpecFromCf(src: CfSchema): ExpandedPkgSpec {
-  const [aws, category, name] = src.typeName.split("::");
+export function pkgSpecFromCf(cfSchema: CfSchema): ExpandedPkgSpec {
+  const [aws, category, name] = cfSchema.typeName.split("::");
 
   if (!["AWS", "Alexa"].includes(aws) || !category || !name) {
-    throw `Bad typeName: ${src.typeName}`;
+    throw `Bad typeName: ${cfSchema.typeName}`;
   }
 
   const isBuiltin = true;
@@ -22,23 +26,23 @@ export function pkgSpecFromCf(src: CfSchema): ExpandedPkgSpec {
   const version = versionFromDate();
 
   const onlyProperties: OnlyProperties = {
-    createOnly: normalizeOnlyProperties(src.createOnlyProperties),
-    readOnly: normalizeOnlyProperties(src.readOnlyProperties),
-    writeOnly: normalizeOnlyProperties(src.writeOnlyProperties),
-    primaryIdentifier: normalizeOnlyProperties(src.primaryIdentifier),
+    createOnly: normalizeOnlyProperties(cfSchema.createOnlyProperties),
+    readOnly: normalizeOnlyProperties(cfSchema.readOnlyProperties),
+    writeOnly: normalizeOnlyProperties(cfSchema.writeOnlyProperties),
+    primaryIdentifier: normalizeOnlyProperties(cfSchema.primaryIdentifier),
   };
 
   const domain = createDefaultPropFromCf(
     "domain",
-    pruneDomainValues(src.properties, onlyProperties),
-    src,
+    pruneDomainValues(cfSchema.properties, onlyProperties),
+    cfSchema,
     onlyProperties,
   );
 
   const resourceValue = createDefaultPropFromCf(
     "resource_value",
-    pruneResourceValues(src.properties, onlyProperties),
-    src,
+    pruneResourceValues(cfSchema.properties, onlyProperties),
+    cfSchema,
     onlyProperties,
   );
 
@@ -46,12 +50,12 @@ export function pkgSpecFromCf(src: CfSchema): ExpandedPkgSpec {
     version,
     data: {
       version,
-      link: createDocLink(src),
+      link: createDocLink(cfSchema),
       color: "#b64017",
       displayName: name,
       componentType: "component",
       funcUniqueId: assetFuncUniqueKey,
-      description: src.description,
+      description: cfSchema.description,
     },
     uniqueId: variantUniqueKey,
     deleted: false,
@@ -63,16 +67,17 @@ export function pkgSpecFromCf(src: CfSchema): ExpandedPkgSpec {
     siPropFuncs: [],
     managementFuncs: [],
     domain,
-    secrets: createDefaultPropFromCf("secrets", {}, src, onlyProperties),
+    secrets: createDefaultPropFromCf("secrets", {}, cfSchema, onlyProperties),
     secretDefinition: null,
     resourceValue,
     rootPropFuncs: [],
+    cfSchema,
   };
 
   const schema: ExpandedSchemaSpec = {
-    name: src.typeName,
+    name: cfSchema.typeName,
     data: {
-      name: src.typeName,
+      name: cfSchema.typeName,
       category: `AWS ${category}`,
       categoryName: null,
       uiHidden: false,
@@ -86,9 +91,9 @@ export function pkgSpecFromCf(src: CfSchema): ExpandedPkgSpec {
 
   return {
     kind: "module",
-    name: src.typeName,
+    name: cfSchema.typeName,
     version,
-    description: src.description,
+    description: cfSchema.description,
     createdAt: new Date().toISOString(),
     createdBy: "Clover",
     defaultChangeSet: null,

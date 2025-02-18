@@ -44,6 +44,10 @@ To generate all specs containing "ECS" or "S3", you can pass some services as ar
     .option("--inferred <file:string>", "Inferred database location", {
       default: "inferred.json",
     })
+    .option(
+      "--force-update-existing-packages",
+      "Force the existing package list to be updated",
+    )
     .env(
       "SI_BEARER_TOKEN=<value:string>",
       "Auth token for interacting with the module index",
