@@ -178,6 +178,17 @@ impl DependentValueGraph {
                     &mut controlling_funcs_for_component,
                 )
                 .await?;
+            // if this attribute value is not being controlled, and has been enqueued,
+            // make sure it's added to the graph as it might not have dependencies but we know
+            // it needs to be re-ran
+
+            // For example, an output socket's AV that has no connections but is set by
+            // a dynamic function would otherwise not be executed
+
+            if current_attribute_value_controlling_value_id == current_attribute_value.id() {
+                self.inner
+                    .add_id(current_attribute_value_controlling_value_id);
+            }
 
             let value_is_for = AttributeValue::is_for(ctx, current_attribute_value.id()).await?;
 
