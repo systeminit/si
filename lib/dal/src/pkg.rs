@@ -106,8 +106,6 @@ pub enum PkgError {
     PropNotFoundByName(String),
     #[error("prop spec structure is invalid: {0}")]
     PropSpecChildrenInvalid(String),
-    #[error("resource payload to value intrinsic func not found")]
-    ResourcePayloadToValueIntrinsicFuncNotFound,
     #[error("schema error: {0}")]
     Schema(#[from] SchemaError),
     #[error("schema variant error: {0}")]
