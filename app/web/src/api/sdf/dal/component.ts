@@ -58,6 +58,7 @@ export interface RawComponent {
   schemaName: string;
   schemaVariantId: string;
   schemaVariantName: string;
+  schemaDocsLink?: string;
   sockets: DiagramSocketDef[];
   updatedInfo: ActorAndTimestamp;
   toDelete: boolean;

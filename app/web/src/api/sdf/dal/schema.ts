@@ -58,6 +58,7 @@ export interface UninstalledVariant {
 export interface SchemaVariant {
   schemaVariantId: string;
   schemaName: string;
+  schemaDocLinks?: string;
   displayName: string | null;
   category: string;
   color: string;

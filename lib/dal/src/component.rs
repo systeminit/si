@@ -3611,6 +3611,7 @@ impl Component {
             component_id: self.id(),
             schema_name: schema.name().to_owned(),
             schema_id,
+            schema_docs_link: schema_variant.link(),
             schema_variant_id: schema_variant.id(),
             schema_variant_name: schema_variant.version().to_owned(),
             schema_category: schema_variant.category().to_owned(),
