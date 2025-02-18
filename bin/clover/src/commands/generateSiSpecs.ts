@@ -20,6 +20,8 @@ import { generateOutputSocketsFromProps } from "../pipeline-steps/generateOutput
 import { ExpandedPkgSpec } from "../spec/pkgs.ts";
 import { createPolicyDocumentInputSockets } from "../pipeline-steps/createPolicyDocumentInputSockets.ts";
 import { prettifySocketNames } from "../pipeline-steps/prettifySocketNames.ts";
+import { loadInferred } from "../spec/inferred.ts";
+import { addInferredEnums } from "../pipeline-steps/addInferredEnums.ts";
 
 const logger = _logger.ns("siSpecs").seal();
 const SI_SPEC_DIR = "si-specs";
@@ -30,12 +32,15 @@ export function generateSiSpecForService(serviceName: string) {
 }
 
 export async function generateSiSpecs(
-  moduleIndexUrl: string,
-  services?: string[],
+  options: {
+    moduleIndexUrl: string;
+    inferred: string;
+    services?: string[];
+  },
 ) {
-  if (services?.length == 0) services = undefined;
-  const db = await loadCfDatabase({ services });
-  const existing_specs = await getExistingSpecs(moduleIndexUrl);
+  const db = await loadCfDatabase(options);
+  const existing_specs = await getExistingSpecs(options);
+  const inferred = await loadInferred(options.inferred);
 
   let imported = 0;
   let importSubAssets = 0;
@@ -54,6 +59,7 @@ export async function generateSiSpecs(
   }
 
   // EXECUTE PIPELINE STEPS
+  specs = addInferredEnums(specs, inferred);
   specs = generateOutputSocketsFromProps(specs);
   specs = addDefaultPropsAndSockets(specs);
   specs = generateDefaultActionFuncs(specs);

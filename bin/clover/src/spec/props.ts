@@ -54,7 +54,7 @@ interface PropSpecOverrides {
     PropSpecData,
     { widgetOptions: { label: string; value: string }[] | null }
   >;
-  enum?: string[] | number[];
+  enum?: string[];
   metadata: {
     createOnly: boolean;
     readOnly: boolean;
