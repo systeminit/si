@@ -5,6 +5,7 @@ use std::{
     sync::Arc,
 };
 
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use si_events::FuncRunId;
 use telemetry::prelude::*;
@@ -83,7 +84,7 @@ pub enum ManagementPrototypeError {
     WsEvent(#[from] WsEventError),
 }
 
-pub type ManagementPrototypeResult<T> = Result<T, ManagementPrototypeError>;
+pub type ManagementPrototypeResult<T> = Result<T>;
 
 pub use si_id::ManagementPrototypeId;
 
@@ -463,7 +464,7 @@ impl ManagementPrototype {
             }
         }
 
-        Err(ManagementPrototypeError::MissingFunction(id))
+        Err(ManagementPrototypeError::MissingFunction(id).into())
     }
 
     pub async fn execute(
@@ -644,14 +645,10 @@ impl ManagementPrototype {
             )
             .await?;
         if node_indexes.len() > 1 {
-            return Err(ManagementPrototypeError::TooManyVariants(
-                management_prototype_id,
-            ));
+            return Err(ManagementPrototypeError::TooManyVariants(management_prototype_id).into());
         }
         let Some(node_index) = node_indexes.first() else {
-            return Err(ManagementPrototypeError::TooFewVariants(
-                management_prototype_id,
-            ));
+            return Err(ManagementPrototypeError::TooFewVariants(management_prototype_id).into());
         };
         let node_weight = workspace_snapshot.get_node_weight(*node_index).await?;
         let schema_variant_id = node_weight.id();

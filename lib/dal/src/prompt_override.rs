@@ -1,4 +1,5 @@
 use crate::{DalContext, WsEvent, WsEventResult, WsPayload};
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use telemetry::prelude::*;
@@ -15,7 +16,7 @@ pub enum PromptOverrideError {
     WsEvent(#[from] crate::WsEventError),
 }
 
-pub type Result<T> = std::result::Result<T, PromptOverrideError>;
+// pub type Result<T> = std::result::Result<T, PromptOverrideError>;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Eq)]
 #[serde(rename_all = "camelCase")]

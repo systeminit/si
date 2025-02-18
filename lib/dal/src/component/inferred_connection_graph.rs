@@ -14,6 +14,7 @@
 
 use std::collections::{BTreeSet, HashMap, HashSet};
 
+use anyhow::Result;
 use petgraph::{
     prelude::*,
     visit::{Control, DfsEvent},
@@ -52,7 +53,7 @@ pub enum InferredConnectionGraphError {
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
 
-pub type InferredConnectionGraphResult<T> = Result<T, InferredConnectionGraphError>;
+pub type InferredConnectionGraphResult<T> = Result<T>;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct InferredConnectionGraph {
@@ -97,7 +98,7 @@ impl InferredConnectionGraph {
         let mut down_component_graph = StableDiGraph::new();
         let mut index_by_component_id = HashMap::new();
 
-        for component in Component::list(ctx).await.map_err(Box::new)? {
+        for component in Component::list(ctx).await? {
             let component_id = component.id();
             let component_type = match component.get_type(ctx).await {
                 Ok(comp_type) => comp_type,
@@ -112,8 +113,7 @@ impl InferredConnectionGraph {
             let schema_variant_id = ctx
                 .workspace_snapshot()?
                 .schema_variant_id_for_component_id(component_id)
-                .await
-                .map_err(Box::new)?;
+                .await?;
             let input_sockets = InputSocket::list(ctx, schema_variant_id).await?;
             let output_sockets = OutputSocket::list(ctx, schema_variant_id).await?;
 
@@ -133,8 +133,7 @@ impl InferredConnectionGraph {
             for target_component_id in ctx
                 .workspace_snapshot()?
                 .frame_contains_components(component_id)
-                .await
-                .map_err(Box::new)?
+                .await?
             {
                 let destination_node_index = *index_by_component_id
                     .get(&target_component_id)
@@ -166,7 +165,7 @@ impl InferredConnectionGraph {
         ctx: &DalContext,
     ) -> InferredConnectionGraphResult<Vec<InferredConnection>> {
         let mut results = Vec::new();
-        for component_id in Component::list_ids(ctx).await.map_err(Box::new)? {
+        for component_id in Component::list_ids(ctx).await? {
             results.extend(
                 self.inferred_incoming_connections_for_component(ctx, component_id)
                     .await?,
@@ -256,8 +255,7 @@ impl InferredConnectionGraph {
 
         let input_sockets_with_explicit_connections: HashSet<InputSocketId> =
             Component::input_sockets_with_connections(ctx, component_id)
-                .await
-                .map_err(Box::new)?
+                .await?
                 .iter()
                 .copied()
                 .collect();
@@ -515,10 +513,9 @@ impl InferredConnectionGraph {
             ],
             ComponentType::ConfigurationFrameUp => vec![ComponentType::ConfigurationFrameDown],
             t => {
-                return Err(InferredConnectionGraphError::UnsupportedComponentType(
-                    t,
-                    component_id,
-                ))
+                return Err(
+                    InferredConnectionGraphError::UnsupportedComponentType(t, component_id).into(),
+                )
             }
         };
         petgraph::visit::depth_first_search(
@@ -640,10 +637,9 @@ impl InferredConnectionGraph {
                 Ok(inferred_connections)
             }
             t => {
-                return Err(InferredConnectionGraphError::UnsupportedComponentType(
-                    t,
-                    component_id,
-                ))
+                return Err(
+                    InferredConnectionGraphError::UnsupportedComponentType(t, component_id).into(),
+                )
             }
         }
     }

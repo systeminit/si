@@ -3,54 +3,58 @@
 //! having code outside of the specific graph version implementation that requires having knowledge
 //! of how the internals of that specific version of the graph work.
 
-use std::collections::{HashMap, HashSet};
-use std::sync::atomic::AtomicBool;
-use std::sync::Arc;
+use std::{
+    collections::{HashMap, HashSet},
+    sync::{atomic::AtomicBool, Arc},
+};
 
-use graph::correct_transforms::correct_transforms;
-use graph::detector::{Change, Update};
-use graph::{RebaseBatch, WorkspaceSnapshotGraph};
+use anyhow::Result;
 use node_weight::traits::CorrectTransformsError;
 use petgraph::prelude::*;
 use serde::{Deserialize, Serialize};
 use si_data_pg::PgError;
-use si_events::merkle_tree_hash::MerkleTreeHash;
-use si_events::workspace_snapshot::Checksum;
-use si_events::{ulid::Ulid, ContentHash, WorkspaceSnapshotAddress};
+use si_events::{
+    merkle_tree_hash::MerkleTreeHash, ulid::Ulid, workspace_snapshot::Checksum, ContentHash,
+    WorkspaceSnapshotAddress,
+};
 use si_id::{ApprovalRequirementDefinitionId, EntityId};
 use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
 use thiserror::Error;
-use tokio::sync::{Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard};
-use tokio::task::JoinError;
-
-use crate::action::{Action, ActionError};
-use crate::attribute::prototype::argument::AttributePrototypeArgumentError;
-use crate::attribute::prototype::AttributePrototypeError;
-use crate::change_set::{ChangeSetError, ChangeSetId};
-use crate::component::inferred_connection_graph::{
-    InferredConnectionGraph, InferredConnectionGraphError,
-};
-use crate::component::{ComponentResult, IncomingConnection};
-use crate::slow_rt::{self, SlowRuntimeError};
-use crate::socket::connection_annotation::ConnectionAnnotationError;
-use crate::socket::input::InputSocketError;
-use crate::workspace_snapshot::{
-    content_address::ContentAddressDiscriminants,
-    edge_weight::{EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants},
-    graph::{LineageId, WorkspaceSnapshotGraphDiscriminants},
-    node_weight::{category_node_weight::CategoryNodeKind, NodeWeight},
-};
-use crate::{
-    workspace_snapshot::{graph::WorkspaceSnapshotGraphError, node_weight::NodeWeightError},
-    DalContext, TransactionsError, WorkspaceSnapshotGraphVCurrent,
-};
-use crate::{
-    AttributeValueId, Component, ComponentError, ComponentId, InputSocketId, OutputSocketId,
-    SchemaId, SchemaVariantId, TenancyError, Workspace, WorkspaceError,
+use tokio::{
+    sync::{Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard},
+    task::JoinError,
 };
 
-use self::node_weight::{NodeWeightDiscriminants, OrderingNodeWeight};
+use crate::{
+    action::{Action, ActionError},
+    attribute::prototype::{argument::AttributePrototypeArgumentError, AttributePrototypeError},
+    change_set::{ChangeSetError, ChangeSetId},
+    component::{
+        inferred_connection_graph::{InferredConnectionGraph, InferredConnectionGraphError},
+        ComponentResult, IncomingConnection,
+    },
+    slow_rt::{self, SlowRuntimeError},
+    socket::{connection_annotation::ConnectionAnnotationError, input::InputSocketError},
+    workspace_snapshot::{
+        content_address::ContentAddressDiscriminants,
+        edge_weight::{EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants},
+        graph::{LineageId, WorkspaceSnapshotGraphDiscriminants, WorkspaceSnapshotGraphError},
+        node_weight::{category_node_weight::CategoryNodeKind, NodeWeight, NodeWeightError},
+    },
+    AttributeValueId, Component, ComponentError, ComponentId, DalContext, InputSocketId,
+    OutputSocketId, SchemaId, SchemaVariantId, TenancyError, TransactionsError, Workspace,
+    WorkspaceError, WorkspaceSnapshotGraphVCurrent,
+};
+
+use self::{
+    graph::{
+        correct_transforms::correct_transforms,
+        detector::{Change, Update},
+        RebaseBatch, WorkspaceSnapshotGraph,
+    },
+    node_weight::{NodeWeightDiscriminants, OrderingNodeWeight},
+};
 
 pub mod content_address;
 pub mod edge_weight;
@@ -175,7 +179,7 @@ impl WorkspaceSnapshotError {
     }
 }
 
-pub type WorkspaceSnapshotResult<T> = Result<T, WorkspaceSnapshotError>;
+pub type WorkspaceSnapshotResult<T> = Result<T>;
 
 /// The workspace graph. The public interface for this is provided through the the various `Ext`
 /// traits that are implemented for [`WorkspaceSnapshot`].
@@ -981,7 +985,8 @@ impl WorkspaceSnapshot {
                 LayerDbError::Postcard(_) => {
                     return Err(WorkspaceSnapshotError::WorkspaceSnapshotNotMigrated(
                         workspace_snapshot_addr,
-                    ));
+                    )
+                    .into());
                 }
                 err => Err(err)?,
             },
@@ -1027,15 +1032,20 @@ impl WorkspaceSnapshot {
 
             match Self::find(ctx, address).await {
                 Ok(snapshot) => return Ok(snapshot),
-                Err(WorkspaceSnapshotError::WorkspaceSnapshotGraphMissing(_)) => {
-                    warn!(
+                Err(error) => match error.downcast_ref::<WorkspaceSnapshotError>() {
+                    Some(err) => match err {
+                        WorkspaceSnapshotError::WorkspaceSnapshotGraphMissing(_) => {
+                            warn!(
                         "Unable to retrieve snapshot {:?} for change set {:?}. Retries remaining: {}",
                         address, change_set_id, retries
                     );
-                    tokio::time::sleep(tokio::time::Duration::from_millis(5)).await;
-                    continue;
-                }
-                Err(e) => return Err(e),
+                            tokio::time::sleep(tokio::time::Duration::from_millis(5)).await;
+                            continue;
+                        }
+                        _ => return Err(error),
+                    },
+                    None => return Err(error),
+                },
             }
         }
 
@@ -1043,7 +1053,7 @@ impl WorkspaceSnapshot {
             "Retries exceeded trying to fetch workspace snapshot for change set {:?}",
             change_set_id
         );
-        Err(WorkspaceSnapshotError::WorkspaceSnapshotNotFetched)
+        Err(WorkspaceSnapshotError::WorkspaceSnapshotNotFetched.into())
     }
 
     pub async fn get_category_node_or_err(
@@ -1053,7 +1063,7 @@ impl WorkspaceSnapshot {
     ) -> WorkspaceSnapshotResult<Ulid> {
         self.get_category_node(source, kind)
             .await?
-            .ok_or(WorkspaceSnapshotError::CategoryNodeNotFound(kind))
+            .ok_or(WorkspaceSnapshotError::CategoryNodeNotFound(kind).into())
     }
 
     pub async fn get_category_node(
@@ -1433,9 +1443,7 @@ impl WorkspaceSnapshot {
         // Even though the default change set for a workspace can have a base change set, we don't
         // want to consider anything as new/modified/removed when looking at the default change
         // set.
-        let workspace = Workspace::get_by_pk_or_error(ctx, ctx.tenancy().workspace_pk()?)
-            .await
-            .map_err(Box::new)?;
+        let workspace = Workspace::get_by_pk_or_error(ctx, ctx.tenancy().workspace_pk()?).await?;
         if workspace.default_change_set_id() == ctx.change_set_id() {
             return Ok(Vec::new());
         }
@@ -1443,9 +1451,7 @@ impl WorkspaceSnapshot {
         let base_change_set_ctx = ctx.clone_with_base().await?;
         let base_change_set_ctx = &base_change_set_ctx;
 
-        let base_components = Component::list(base_change_set_ctx)
-            .await
-            .map_err(Box::new)?;
+        let base_components = Component::list(base_change_set_ctx).await?;
         #[derive(Hash, Clone, PartialEq, Eq)]
         struct UniqueEdge {
             to_component_id: ComponentId,
@@ -1458,8 +1464,7 @@ impl WorkspaceSnapshot {
         for base_component in base_components {
             let incoming_edges = base_component
                 .incoming_connections(base_change_set_ctx)
-                .await
-                .map_err(Box::new)?;
+                .await?;
 
             for conn in incoming_edges {
                 let hash = UniqueEdge {
@@ -1473,13 +1478,12 @@ impl WorkspaceSnapshot {
             }
         }
 
-        let current_components = Component::list(ctx).await.map_err(Box::new)?;
+        let current_components = Component::list(ctx).await?;
         let mut current_incoming_edges = HashSet::new();
         for current_component in current_components {
             let incoming_edges: Vec<UniqueEdge> = current_component
                 .incoming_connections(ctx)
-                .await
-                .map_err(Box::new)?
+                .await?
                 .into_iter()
                 .map(|conn| UniqueEdge {
                     to_component_id: conn.to_component_id,
@@ -1504,10 +1508,8 @@ impl WorkspaceSnapshot {
     /// Returns whether or not any Actions were dispatched.
     pub async fn dispatch_actions(ctx: &DalContext) -> WorkspaceSnapshotResult<bool> {
         let mut did_dispatch = false;
-        for dispatchable_ation_id in Action::eligible_to_dispatch(ctx).await.map_err(Box::new)? {
-            Action::dispatch_action(ctx, dispatchable_ation_id)
-                .await
-                .map_err(Box::new)?;
+        for dispatchable_ation_id in Action::eligible_to_dispatch(ctx).await? {
+            Action::dispatch_action(ctx, dispatchable_ation_id).await?;
             did_dispatch = true;
         }
 
@@ -1730,7 +1732,8 @@ impl WorkspaceSnapshot {
                         edge_kind,
                         NodeWeightDiscriminants::from(&this_node_weight),
                         this_node_weight.id(),
-                    ))
+                    )
+                    .into());
                 }
             };
         }
@@ -1763,8 +1766,7 @@ impl WorkspaceSnapshot {
     ) -> WorkspaceSnapshotResult<InferredConnectionsWriteGuard<'_>> {
         let mut inferred_connection_write_guard = self.inferred_connection_graph.write().await;
         if inferred_connection_write_guard.is_none() {
-            *inferred_connection_write_guard =
-                Some(InferredConnectionGraph::new(ctx).await.map_err(Box::new)?);
+            *inferred_connection_write_guard = Some(InferredConnectionGraph::new(ctx).await?);
         }
 
         Ok(InferredConnectionsWriteGuard {

@@ -1,3 +1,4 @@
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use thiserror::Error;
@@ -25,7 +26,7 @@ pub enum InputSourcesError {
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
 
-type InputSourcesResult<T> = Result<T, InputSourcesError>;
+type InputSourcesResult<T> = Result<T>;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]

@@ -4,10 +4,7 @@ use si_id::EntityId;
 use crate::{
     workspace_snapshot::{
         content_address::ContentAddressDiscriminants,
-        graph::{
-            traits::entity_kind::EntityKindExt, WorkspaceSnapshotGraphError,
-            WorkspaceSnapshotGraphResult,
-        },
+        graph::{traits::entity_kind::EntityKindExt, WorkspaceSnapshotGraphResult},
         node_weight::{category_node_weight::CategoryNodeKind, NodeWeightError},
     },
     NodeWeightDiscriminants,
@@ -73,12 +70,11 @@ impl EntityKindExt for WorkspaceSnapshotGraphV4 {
                 ContentAddressDiscriminants::ValidationPrototype => EntityKind::ValidationPrototype,
                 ContentAddressDiscriminants::View => EntityKind::View,
                 invalid => {
-                    return Err(WorkspaceSnapshotGraphError::NodeWeight(
-                        NodeWeightError::InvalidContentAddressForWeightKind(
-                            invalid.to_string(),
-                            "Content".to_string(),
-                        ),
-                    ))
+                    return Err(NodeWeightError::InvalidContentAddressForWeightKind(
+                        invalid.to_string(),
+                        "Content".to_string(),
+                    )
+                    .into())
                 }
             },
             NodeWeightDiscriminants::DependentValueRoot => EntityKind::DependentValueRoot,

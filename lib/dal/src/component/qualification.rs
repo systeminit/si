@@ -103,7 +103,7 @@ impl Component {
         .first()
         {
             Some(qualification_map_attribute_value_id) => Ok(*qualification_map_attribute_value_id),
-            None => Err(ComponentError::MissingQualificationsValue(component_id)),
+            None => Err(ComponentError::MissingQualificationsValue(component_id).into()),
         }
     }
 }

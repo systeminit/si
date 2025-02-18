@@ -1,3 +1,4 @@
+use anyhow::Result;
 use postgres_types::{FromSql, ToSql};
 use serde::{Deserialize, Serialize};
 use si_events::ContentHash;
@@ -61,7 +62,7 @@ pub enum FuncArgumentError {
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
 
-type FuncArgumentResult<T> = Result<T, FuncArgumentError>;
+type FuncArgumentResult<T> = Result<T>;
 
 #[remain::sorted]
 #[derive(

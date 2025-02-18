@@ -840,9 +840,7 @@ async fn validate_intrinsic_inputs(
 ) -> FuncBindingResult<()> {
     let intrinsic_kind = Func::get_intrinsic_kind_by_id_or_error(ctx, func_id).await?;
     if let EventualParent::Component(component_id) = eventual_parent {
-        return Err(FuncBindingError::CannotSetIntrinsicForComponent(
-            component_id,
-        ));
+        return Err(FuncBindingError::CannotSetIntrinsicForComponent(component_id).into());
     }
     match intrinsic_kind {
         IntrinsicFunc::Identity
@@ -850,7 +848,7 @@ async fn validate_intrinsic_inputs(
         | IntrinsicFunc::ResourcePayloadToValue => {
             // for now we only support configuring one input location at a time
             if prototype_arguments.len() > 1 {
-                return Err(FuncBindingError::InvalidIntrinsicBinding);
+                return Err(FuncBindingError::InvalidIntrinsicBinding.into());
             }
             match output_location {
                 // props can only take input from other props and input sockets
@@ -864,7 +862,7 @@ async fn validate_intrinsic_inputs(
                         AttributeFuncArgumentSource::Secret(_) => true,
                     });
                     if !maybe_invalid_inputs.is_empty() {
-                        return Err(FuncBindingError::InvalidIntrinsicBinding);
+                        return Err(FuncBindingError::InvalidIntrinsicBinding.into());
                     }
                 }
                 // output sockets can take input from props or input sockets
@@ -878,26 +876,27 @@ async fn validate_intrinsic_inputs(
                         AttributeFuncArgumentSource::Secret(_) => true,
                     });
                     if !maybe_invalid_inputs.is_empty() {
-                        return Err(FuncBindingError::InvalidIntrinsicBinding);
+                        return Err(FuncBindingError::InvalidIntrinsicBinding.into());
                     }
                 }
                 // input sockets can't take input from anything this way
                 AttributeFuncDestination::InputSocket(_) => {
                     return Err(FuncBindingError::InvalidAttributePrototypeDestination(
                         output_location,
-                    ))
+                    )
+                    .into())
                 }
             }
         }
         IntrinsicFunc::Unset => {
             // ensure no args are sent
             if !prototype_arguments.is_empty() {
-                return Err(FuncBindingError::InvalidIntrinsicBinding);
+                return Err(FuncBindingError::InvalidIntrinsicBinding.into());
             }
             match output_location {
                 AttributeFuncDestination::Prop(_) | AttributeFuncDestination::OutputSocket(_) => {}
                 AttributeFuncDestination::InputSocket(_) => {
-                    return Err(FuncBindingError::InvalidIntrinsicBinding)
+                    return Err(FuncBindingError::InvalidIntrinsicBinding.into())
                 }
             }
         }
@@ -910,10 +909,10 @@ async fn validate_intrinsic_inputs(
         | IntrinsicFunc::SetString => {
             // ensure there's only one value
             if prototype_arguments.len() > 1 {
-                return Err(FuncBindingError::InvalidIntrinsicBinding);
+                return Err(FuncBindingError::InvalidIntrinsicBinding.into());
             }
         }
-        IntrinsicFunc::Validation => return Err(FuncBindingError::InvalidIntrinsicBinding),
+        IntrinsicFunc::Validation => return Err(FuncBindingError::InvalidIntrinsicBinding.into()),
     };
     Ok(())
 }
