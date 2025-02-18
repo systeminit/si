@@ -1,4 +1,7 @@
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{BTreeMap, HashMap, HashSet},
+    sync::Arc,
+};
 
 use axum::{
     extract::{Path, Query},
@@ -21,17 +24,18 @@ use dal::{
         authoring::{VariantAuthoringClient, VariantAuthoringError},
         leaves::{LeafInputLocation, LeafKind},
     },
+    slow_rt::{self, SlowRuntimeError},
     socket::{input::InputSocketError, output::OutputSocketError},
     workspace::WorkspaceId,
-    ChangeSet, ChangeSetId, DalContext, FuncId, Schema, SchemaId, SchemaVariant, WsEvent,
-    WsEventError,
+    ChangeSet, ChangeSetId, DalContext, FuncId, Schema, SchemaId, SchemaVariant, Visibility,
+    WsEvent, WsEventError,
 };
 use hyper::StatusCode;
 use si_events::audit_log::AuditLogKind;
 use si_frontend_types::fs::{
     self, AssetFuncs, Binding, CategoryFilter, ChangeSet as FsChangeSet, CreateSchemaResponse,
-    FsApiError, Func as FsFunc, Schema as FsSchema, SchemaAttributes, SetFuncCodeRequest,
-    VariantQuery,
+    FsApiError, Func as FsFunc, HydratedChangeSet, HydratedSchema, Schema as FsSchema,
+    SchemaAttributes, SetFuncCodeRequest, VariantQuery,
 };
 use si_id::FuncArgumentId;
 use thiserror::Error;
@@ -95,6 +99,8 @@ pub enum FsError {
     InputSocket(#[from] InputSocketError),
     #[error("no input socket found named {0}")]
     InputSocketNotFound(String),
+    #[error("tokio join error: {0}")]
+    Join(#[from] tokio::task::JoinError),
     #[error("output socket error: {0}")]
     OutputSocket(#[from] OutputSocketError),
     #[error("no output socket found named {0}")]
@@ -117,6 +123,8 @@ pub enum FsError {
     SchemaVariant(#[from] dal::SchemaVariantError),
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
+    #[error("slow runtime error: {0}")]
+    SlowRuntime(#[from] SlowRuntimeError),
     #[error("transactions error: {0}")]
     Transactions(#[from] dal::TransactionsError),
     #[error("variant authoring error: {0}")]
@@ -169,6 +177,124 @@ pub async fn create_change_set(
         name: change_set.name,
         id: change_set.id,
     }))
+}
+
+/// Prefetches all functions for the entire workspace, so that the deno workspace json
+/// can be prefilled with each function as deno "workspace"
+pub async fn hydrate(
+    WorkspaceDalContext(ref ctx): WorkspaceDalContext,
+    tracker: PosthogEventTracker,
+) -> FsResult<Json<Vec<HydratedChangeSet>>> {
+    let open_change_sets = ChangeSet::list_active(ctx).await?;
+
+    tracker.track(ctx, "fs/hydrate", serde_json::json!({}));
+
+    let cached_modules = Arc::new(CachedModule::latest_modules(ctx).await?);
+
+    let mut hydrated_change_sets = vec![];
+    for change_set in open_change_sets {
+        let change_set_name = change_set.name.clone();
+        let change_set_ctx = ctx.clone_with_new_visibility(Visibility::new(change_set.id));
+
+        let ctx = change_set_ctx.clone();
+        let cached_modules_clone = cached_modules.clone();
+        let hydrated_change_set = slow_rt::spawn(async move {
+            let ctx = &ctx;
+            let all_funcs: BTreeMap<FuncId, dal::Func> = dal::Func::list_all(ctx)
+                .await?
+                .into_iter()
+                .map(|func| (func.id, func))
+                .collect();
+
+            let mut change_set_funcs = vec![];
+            // prefetch all bindings and types
+            for func in all_funcs.values() {
+                if !matches!(
+                    func.kind,
+                    dal::func::FuncKind::Action
+                        | dal::func::FuncKind::Attribute
+                        | dal::func::FuncKind::Authentication
+                        | dal::func::FuncKind::CodeGeneration
+                        | dal::func::FuncKind::Qualification
+                        | dal::func::FuncKind::Management
+                ) {
+                    continue;
+                }
+
+                change_set_funcs.push(dal_func_to_fs_func(func, 0, 0));
+            }
+
+            let mut hydrated_schemas = vec![];
+            let schemas = get_schema_list(
+                ctx,
+                CategoryFilter { category: None },
+                Some(cached_modules_clone.as_slice()),
+            )
+            .await?;
+            for schema in schemas {
+                let asset_funcs =
+                    asset_funcs_for_schema(ctx, schema.id, Some(&cached_modules_clone)).await?;
+                let mut schema_funcs = vec![];
+                let variants = match (asset_funcs.locked.is_some(), asset_funcs.unlocked.is_some())
+                {
+                    (true, true) => vec![true, false],
+                    (true, false) => vec![false],
+                    (false, true) => vec![true],
+                    (false, false) => {
+                        hydrated_schemas.push(HydratedSchema {
+                            schema,
+                            asset_funcs,
+                            funcs: None,
+                        });
+                        continue;
+                    }
+                };
+
+                for unlocked in variants {
+                    let Some(variant) = lookup_variant_for_schema_with_prefetched_modules(
+                        ctx,
+                        schema.id,
+                        unlocked,
+                        &Some(&cached_modules_clone),
+                    )
+                    .await?
+                    else {
+                        continue;
+                    };
+
+                    for func_id in SchemaVariant::all_func_ids(ctx, variant.id()).await? {
+                        let Some(func) = all_funcs.get(&func_id) else {
+                            continue;
+                        };
+
+                        if func.is_intrinsic() {
+                            continue;
+                        }
+
+                        schema_funcs.push(dal_func_to_fs_func(func, 0, 0))
+                    }
+                }
+
+                hydrated_schemas.push(HydratedSchema {
+                    schema,
+                    asset_funcs,
+                    funcs: Some(schema_funcs),
+                });
+            }
+
+            Ok::<HydratedChangeSet, FsError>(HydratedChangeSet {
+                name: change_set_name,
+                id: change_set.id,
+                funcs: change_set_funcs,
+                schemas: hydrated_schemas,
+            })
+        })?
+        .await??;
+
+        hydrated_change_sets.push(hydrated_change_set);
+    }
+
+    Ok(Json(hydrated_change_sets))
 }
 
 pub async fn list_change_sets(
@@ -263,13 +389,21 @@ pub async fn list_schemas(
 
     tracker.track(&ctx, "fs/list_schemas", serde_json::json!({}));
 
+    let result = get_schema_list(&ctx, cat_filter, None).await?;
+
+    Ok(Json(result))
+}
+
+async fn get_schema_list(
+    ctx: &DalContext,
+    cat_filter: CategoryFilter,
+    cached_modules: Option<&[CachedModule]>,
+) -> Result<Vec<FsSchema>, FsError> {
     let mut result = vec![];
-
     let mut installed_set = HashSet::new();
-
-    for schema in dal::Schema::list(&ctx).await? {
+    for schema in dal::Schema::list(ctx).await? {
         installed_set.insert(schema.id());
-        let default_variant = SchemaVariant::get_default_for_schema(&ctx, schema.id()).await?;
+        let default_variant = SchemaVariant::get_default_for_schema(ctx, schema.id()).await?;
 
         if cat_filter.should_skip(default_variant.category()) {
             continue;
@@ -283,10 +417,17 @@ pub async fn list_schemas(
         });
     }
 
-    for module in CachedModule::latest_modules(&ctx)
-        .await?
-        .into_iter()
-        .filter(|module| !installed_set.contains(&module.schema_id))
+    #[allow(unused)]
+    let mut cached_module_list = vec![];
+    for module in match cached_modules {
+        Some(cms) => cms,
+        None => {
+            cached_module_list = CachedModule::latest_modules(ctx).await?;
+            cached_module_list.as_slice()
+        }
+    }
+    .iter()
+    .filter(|module| !installed_set.contains(&module.schema_id))
     {
         if cat_filter.should_skip(module.category.as_deref().unwrap_or("")) {
             continue;
@@ -294,13 +435,12 @@ pub async fn list_schemas(
 
         result.push(FsSchema {
             installed: false,
-            category: module.category.unwrap_or_default(),
-            name: module.schema_name,
+            category: module.category.clone().unwrap_or_default(),
+            name: module.schema_name.clone(),
             id: module.schema_id,
         });
     }
-
-    Ok(Json(result))
+    Ok(result)
 }
 
 async fn list_change_set_funcs(
@@ -331,7 +471,7 @@ async fn list_change_set_funcs(
         if kind == func.kind.into() {
             let func_id = func.id;
             result.push(dal_func_to_fs_func(
-                func,
+                &func,
                 0,
                 func_types_size(&ctx, func_id).await?,
             ));
@@ -382,7 +522,7 @@ async fn list_variant_funcs(
             {
                 let bindings_size = get_bindings(&ctx, func.id, schema_id).await?.0.byte_size();
                 let types_size = func_types_size(&ctx, func.id).await?;
-                funcs.push(dal_func_to_fs_func(func, bindings_size, types_size))
+                funcs.push(dal_func_to_fs_func(&func, bindings_size, types_size))
             }
         }
     }
@@ -395,13 +535,28 @@ async fn lookup_variant_for_schema(
     schema_id: SchemaId,
     unlocked: bool,
 ) -> FsResult<Option<SchemaVariant>> {
+    lookup_variant_for_schema_with_prefetched_modules(ctx, schema_id, unlocked, &None).await
+}
+
+async fn lookup_variant_for_schema_with_prefetched_modules(
+    ctx: &DalContext,
+    schema_id: SchemaId,
+    unlocked: bool,
+    cached_modules: &Option<&[CachedModule]>,
+) -> FsResult<Option<SchemaVariant>> {
     if ctx
         .workspace_snapshot()?
         .get_node_index_by_id_opt(schema_id)
         .await
         .is_none()
     {
-        if CachedModule::latest_by_schema_id(ctx, schema_id)
+        if let Some(cached_modules) = cached_modules {
+            if cached_modules.iter().any(|m| m.schema_id == schema_id) {
+                return Ok(None);
+            } else {
+                return Err(FsError::ResourceNotFound);
+            }
+        } else if CachedModule::latest_by_schema_id(ctx, schema_id)
             .await?
             .is_some()
         {
@@ -438,6 +593,20 @@ pub async fn get_asset_funcs(
         }),
     );
 
+    let result = asset_funcs_for_schema(&ctx, schema_id, None).await?;
+
+    if result.locked.is_none() && result.unlocked.is_none() {
+        Err(FsError::ResourceNotFound)
+    } else {
+        Ok(Json(result))
+    }
+}
+
+async fn asset_funcs_for_schema(
+    ctx: &DalContext,
+    schema_id: SchemaId,
+    cached_modules: Option<&[CachedModule]>,
+) -> FsResult<AssetFuncs> {
     let mut result = AssetFuncs {
         locked: None,
         unlocked: None,
@@ -448,47 +617,57 @@ pub async fn get_asset_funcs(
         types_size: ASSET_EDITOR_TYPES.len() as u64,
     };
 
-    result.locked = match lookup_variant_for_schema(&ctx, schema_id, false).await? {
+    result.locked = match lookup_variant_for_schema_with_prefetched_modules(
+        ctx,
+        schema_id,
+        false,
+        &cached_modules,
+    )
+    .await?
+    {
         Some(variant) => {
             if !variant.is_locked() {
                 None
             } else {
-                let asset_func = variant.get_asset_func(&ctx).await?;
+                let asset_func = variant.get_asset_func(ctx).await?;
 
                 let attrs = make_schema_attrs(&variant);
                 result.locked_attrs_size = attrs.byte_size();
 
-                let bindings = get_identity_bindings_for_variant(&ctx, variant.id()).await?;
+                let bindings = get_identity_bindings_for_variant(ctx, variant.id()).await?;
                 result.locked_bindings_size = bindings.byte_size();
 
-                Some(dal_func_to_fs_func(asset_func, 0, 0))
+                Some(dal_func_to_fs_func(&asset_func, 0, 0))
             }
         }
         None => None,
     };
 
-    result.unlocked = match lookup_variant_for_schema(&ctx, schema_id, true).await? {
+    result.unlocked = match lookup_variant_for_schema_with_prefetched_modules(
+        ctx,
+        schema_id,
+        true,
+        &cached_modules,
+    )
+    .await?
+    {
         Some(variant) => {
-            let asset_func = variant.get_asset_func(&ctx).await?;
+            let asset_func = variant.get_asset_func(ctx).await?;
 
             let attrs = make_schema_attrs(&variant);
             result.unlocked_attrs_size = attrs.byte_size();
-            let bindings = get_identity_bindings_for_variant(&ctx, variant.id()).await?;
+            let bindings = get_identity_bindings_for_variant(ctx, variant.id()).await?;
             result.unlocked_bindings_size = bindings.byte_size();
 
-            Some(dal_func_to_fs_func(asset_func, 0, 0))
+            Some(dal_func_to_fs_func(&asset_func, 0, 0))
         }
         None => None,
     };
 
-    if result.locked.is_none() && result.unlocked.is_none() {
-        Err(FsError::ResourceNotFound)
-    } else {
-        Ok(Json(result))
-    }
+    Ok(result)
 }
 
-fn dal_func_to_fs_func(func: dal::Func, bindings_size: u64, types_size: u64) -> FsFunc {
+fn dal_func_to_fs_func(func: &dal::Func, bindings_size: u64, types_size: u64) -> FsFunc {
     FsFunc {
         id: func.id,
         kind: func.kind.into(),
@@ -499,7 +678,7 @@ fn dal_func_to_fs_func(func: dal::Func, bindings_size: u64, types_size: u64) -> 
             .flatten()
             .map(|code| code.len())
             .unwrap_or(0) as u64,
-        name: func.name,
+        name: func.name.to_string(),
         bindings_size,
         types_size,
     }
@@ -792,7 +971,7 @@ async fn create_func(
 
     ctx.commit().await?;
 
-    Ok(Json(dal_func_to_fs_func(func, bindings_size, types_size)))
+    Ok(Json(dal_func_to_fs_func(&func, bindings_size, types_size)))
 }
 
 async fn get_asset_func_code(
@@ -1193,7 +1372,7 @@ async fn unlock_schema(
     result.unlocked_bindings_size = get_identity_bindings_for_variant(&ctx, unlocked_variant.id())
         .await?
         .byte_size();
-    result.unlocked = Some(dal_func_to_fs_func(asset_func, 0, 0));
+    result.unlocked = Some(dal_func_to_fs_func(&asset_func, 0, 0));
 
     ctx.commit().await?;
 
@@ -1279,7 +1458,7 @@ async fn unlock_func(
 
     // put in real attrs size of serialized bindings
     Ok(Json(dal_func_to_fs_func(
-        new_func,
+        &new_func,
         bindings_size,
         types_size,
     )))
@@ -1321,6 +1500,7 @@ async fn process_managed_schemas(
 
 pub fn fs_routes(state: AppState) -> Router<AppState> {
     Router::new()
+        .route("/hydrate", get(hydrate))
         .route("/change-sets", get(list_change_sets))
         .route("/change-sets/create", post(create_change_set))
         .nest(

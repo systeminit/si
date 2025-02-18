@@ -10,8 +10,8 @@ use si_frontend_types::{
     fs::{
         AssetFuncs, Binding, Bindings, CategoryFilter, ChangeSet, CreateChangeSetRequest,
         CreateChangeSetResponse, CreateFuncRequest, CreateSchemaRequest, CreateSchemaResponse,
-        FsApiError, Func, IdentityBindings, ListChangeSetsResponse, Schema, SchemaAttributes,
-        SetFuncBindingsRequest, SetFuncCodeRequest, VariantQuery,
+        FsApiError, Func, HydratedChangeSet, IdentityBindings, ListChangeSetsResponse, Schema,
+        SchemaAttributes, SetFuncBindingsRequest, SetFuncCodeRequest, VariantQuery,
     },
     FuncKind,
 };
@@ -357,6 +357,18 @@ impl SiFsClient {
             "{}/api/v2/workspaces/{}/fs/change-sets/{change_set_id}/{suffix}",
             self.endpoint, self.workspace_id
         )
+    }
+
+    pub async fn hydrate_change_sets(&self) -> SiFsClientResult<Vec<HydratedChangeSet>> {
+        Ok(self
+            .client
+            .get(self.fs_api_url("hydrate"))
+            .bearer_auth(&self.token)
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+            .await?)
     }
 
     /// Fetches including the active change sets

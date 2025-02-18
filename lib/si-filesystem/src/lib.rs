@@ -28,7 +28,7 @@ use nix::{
 use si_frontend_types::{
     fs::{
         kind_pluralized_to_string, ActionKind, AttributeOutputTo, Binding, Bindings, FsApiError,
-        IdentityBindings, SchemaAttributes,
+        Func, HydratedChangeSet, HydratedSchema, IdentityBindings, SchemaAttributes,
     },
     FuncKind,
 };
@@ -37,6 +37,8 @@ use thiserror::Error;
 use tokio::{
     runtime::{self},
     sync::mpsc::UnboundedReceiver,
+    task::JoinSet,
+    time::Instant,
 };
 
 use crate::{async_wrapper::AsyncFuseWrapper, command::FilesystemCommand};
@@ -54,10 +56,12 @@ const FILE_HANDLE_WRITE_BIT: FileHandle = FileHandle::new(1 << 62);
 const FILE_STR_TS_INDEX: &str = "index.ts";
 const FILE_STR_TS_INDEX_D_TS: &str = "index.d.ts";
 const FILE_STR_TS_CONFIG: &str = "tsconfig.json";
+const FILE_STR_DENO_CONFIG: &str = "deno.json";
 const FILE_STR_ATTRS_JSON: &str = "attrs.json";
 const FILE_STR_BINDINGS_JSON: &str = "bindings.json";
 const FILE_STR_INSTALLED: &str = "INSTALLED";
 const FILE_STR_PENDING_JSON: &str = "PENDING_BINDINGS_EDIT_ME.json";
+const FILE_STR_SETTINGS_JSON: &str = "settings.json";
 
 const TTL: Duration = Duration::from_secs(0);
 
@@ -70,6 +74,18 @@ const DIR_STR_FUNCTIONS: &str = "functions";
 const DIR_STR_SCHEMAS: &str = "schemas";
 const DIR_STR_LOCKED: &str = "locked";
 const DIR_STR_UNLOCKED: &str = "unlocked";
+const DIR_STR_VSCODE: &str = ".vscode";
+
+const VSCODE_SETTINGS: &str = r#"{ "deno.enable": true }"#;
+
+const DENO_CONFIG: &str = r#"{
+    "compilerOptions": {
+        "lib": [
+            "esnext",
+            "dom"
+        ]
+    }
+}"#;
 const DIR_STR_BLANK_CATEGORY: &str = "__UNCATEGORIZED__";
 
 const TS_CONFIG: &str = r#"{
@@ -306,6 +322,310 @@ impl SiFileSystem {
         )
     }
 
+    async fn hydrate_change_set(
+        &self,
+        change_sets_ino: Inode,
+        change_set: HydratedChangeSet,
+    ) -> SiFileSystemResult<()> {
+        log::info!("Hydrating {} ({})", &change_set.name, change_set.id);
+        let change_set_id = change_set.id;
+        let change_set_ino = self.inode_table.upsert_with_parent_ino(
+            change_sets_ino,
+            &change_set.name,
+            InodeEntryData::ChangeSet {
+                change_set_id,
+                name: change_set.name.clone(),
+            },
+            FileType::Directory,
+            false,
+            Size::Directory,
+        )?;
+
+        let functions_ino = self.inode_table.upsert_with_parent_ino(
+            change_set_ino,
+            DIR_STR_FUNCTIONS,
+            InodeEntryData::ChangeSetFuncsDir { change_set_id },
+            FileType::Directory,
+            true,
+            Size::Directory,
+        )?;
+
+        let mut join_set = JoinSet::new();
+
+        for kind in [
+            FuncKind::Action,
+            FuncKind::Attribute,
+            FuncKind::Authentication,
+            FuncKind::CodeGeneration,
+            FuncKind::Management,
+            FuncKind::Qualification,
+        ] {
+            let kind_pluralize_str = kind_pluralized_to_string(kind);
+
+            let kind_ino = self.inode_table.upsert_with_parent_ino(
+                functions_ino,
+                &kind_pluralize_str,
+                InodeEntryData::ChangeSetFuncKindDir {
+                    kind,
+                    change_set_id,
+                },
+                FileType::Directory,
+                true,
+                Size::Directory,
+            )?;
+
+            for func in change_set.funcs.iter().filter(|f| f.kind == kind) {
+                let self_clone = self.clone();
+                let func = func.clone();
+                join_set
+                    .spawn(async move { self_clone.hydrate_func(kind_ino, change_set_id, &func) });
+            }
+        }
+
+        let schemas_ino = self.inode_table.upsert_with_parent_ino(
+            change_set_ino,
+            DIR_STR_SCHEMAS,
+            InodeEntryData::SchemasDir { change_set_id },
+            FileType::Directory,
+            true,
+            Size::Directory,
+        )?;
+
+        let mut categorized: BTreeMap<String, Vec<HydratedSchema>> = BTreeMap::new();
+        for schema in change_set.schemas {
+            categorized
+                .entry(schema.schema.category.clone())
+                .and_modify(|schemas| schemas.push(schema.clone()))
+                .or_insert(vec![schema]);
+        }
+
+        for (cat, schemas) in categorized {
+            let self_clone = self.clone();
+            join_set.spawn(async move {
+                self_clone
+                    .hydrate_schema_category(schemas_ino, change_set_id, cat, schemas)
+                    .await
+            });
+        }
+
+        join_set.join_all().await;
+
+        Ok(())
+    }
+
+    async fn hydrate_schema_category(
+        &self,
+        schemas_ino: Inode,
+        change_set_id: ChangeSetId,
+        category: String,
+        schemas: Vec<HydratedSchema>,
+    ) -> SiFileSystemResult<()> {
+        let cat_name = if category.trim().is_empty() {
+            DIR_STR_BLANK_CATEGORY
+        } else {
+            &category
+        };
+        let cat_ino = self.upsert_category_dir(&category, cat_name, schemas_ino, change_set_id)?;
+
+        let mut join_set = JoinSet::new();
+        for schema in schemas {
+            let self_clone = self.clone();
+            join_set
+                .spawn(async move { self_clone.hydrate_schema(cat_ino, change_set_id, schema) });
+        }
+
+        join_set.join_all().await;
+
+        Ok(())
+    }
+
+    fn hydrate_schema(
+        &self,
+        category_ino: Inode,
+        change_set_id: ChangeSetId,
+        schema: HydratedSchema,
+    ) -> SiFileSystemResult<()> {
+        let schema_id = schema.schema.id;
+        let schema_ino = self.inode_table.upsert_with_parent_ino(
+            category_ino,
+            &schema.schema.name,
+            InodeEntryData::SchemaDir {
+                schema_id,
+                change_set_id,
+                name: schema.schema.name.to_string(),
+                installed: schema.schema.installed,
+            },
+            FileType::Directory,
+            true,
+            Size::Directory,
+        )?;
+
+        if schema.schema.installed {
+            let functions_ino = self.inode_table.upsert_with_parent_ino(
+                schema_ino,
+                DIR_STR_FUNCTIONS,
+                InodeEntryData::SchemaFuncsDir {
+                    schema_id,
+                    change_set_id,
+                },
+                FileType::Directory,
+                true,
+                Size::Directory,
+            )?;
+
+            for kind in [
+                FuncKind::Action,
+                FuncKind::Attribute,
+                FuncKind::Authentication,
+                FuncKind::CodeGeneration,
+                FuncKind::Management,
+                FuncKind::Qualification,
+            ] {
+                let kind_pluralize_str = kind_pluralized_to_string(kind);
+
+                let kind_ino = self.inode_table.upsert_with_parent_ino(
+                    functions_ino,
+                    &kind_pluralize_str,
+                    InodeEntryData::ChangeSetFuncKindDir {
+                        kind,
+                        change_set_id,
+                    },
+                    FileType::Directory,
+                    true,
+                    Size::Directory,
+                )?;
+
+                for func in schema
+                    .funcs
+                    .as_deref()
+                    .unwrap_or(&[])
+                    .iter()
+                    .filter(|f| f.kind == kind)
+                {
+                    self.hydrate_func(kind_ino, change_set_id, func)?;
+                }
+            }
+
+            let schema_def_ino = self.inode_table.upsert_with_parent_ino(
+                schema_ino,
+                DIR_STR_DEFINITION,
+                InodeEntryData::SchemaDefinitionsDir {
+                    schema_id,
+                    change_set_id,
+                },
+                FileType::Directory,
+                true,
+                Size::Directory,
+            )?;
+
+            if let Some(unlocked_asset_func) = schema.asset_funcs.unlocked {
+                self.inode_table.upsert_with_parent_ino(
+                    schema_def_ino,
+                    DIR_STR_UNLOCKED,
+                    InodeEntryData::AssetDefinitionDir {
+                        schema_id,
+                        change_set_id,
+                        size: unlocked_asset_func.code_size,
+                        attrs_size: schema.asset_funcs.unlocked_attrs_size,
+                        bindings_size: schema.asset_funcs.unlocked_bindings_size,
+                        types_size: schema.asset_funcs.types_size,
+                        unlocked: true,
+                    },
+                    FileType::Directory,
+                    false,
+                    Size::Directory,
+                )?;
+            }
+
+            if let Some(locked_asset_func) = schema.asset_funcs.locked {
+                self.inode_table.upsert_with_parent_ino(
+                    schema_def_ino,
+                    DIR_STR_LOCKED,
+                    InodeEntryData::AssetDefinitionDir {
+                        schema_id,
+                        change_set_id,
+                        size: locked_asset_func.code_size,
+                        attrs_size: schema.asset_funcs.locked_attrs_size,
+                        bindings_size: schema.asset_funcs.unlocked_bindings_size,
+                        types_size: schema.asset_funcs.types_size,
+                        unlocked: false,
+                    },
+                    FileType::Directory,
+                    false,
+                    Size::Directory,
+                )?;
+            };
+
+            self.inode_table.upsert_with_parent_ino(
+                schema_ino,
+                FILE_STR_INSTALLED,
+                InodeEntryData::InstalledSchemaMarker,
+                FileType::RegularFile,
+                false,
+                Size::Force(0),
+            )?;
+        }
+
+        Ok(())
+    }
+
+    fn hydrate_func(
+        &self,
+        func_kind_ino: Inode,
+        change_set_id: ChangeSetId,
+        func: &Func,
+    ) -> SiFileSystemResult<()> {
+        self.inode_table.upsert_with_parent_ino(
+            func_kind_ino,
+            &func.name,
+            InodeEntryData::ChangeSetFuncDir {
+                func_id: func.id,
+                change_set_id,
+                size: func.code_size,
+                types_size: func.types_size,
+                kind: func.kind,
+            },
+            FileType::Directory,
+            true,
+            Size::Directory,
+        )?;
+        Ok(())
+    }
+
+    async fn hydrate(&self) -> SiFileSystemResult<()> {
+        log::info!(
+            "Hydrating all funcs and schemas for all change sets... this will take some time"
+        );
+
+        let change_sets_ino = self.inode_table.upsert_with_parent_ino(
+            Inode::new(1),
+            DIR_STR_CHANGE_SETS,
+            InodeEntryData::ChangeSets,
+            FileType::Directory,
+            true,
+            Size::Directory,
+        )?;
+
+        let start = Instant::now();
+        let hydration = self.client.hydrate_change_sets().await?;
+        log::info!("Fetched hydration data in {:?}", start.elapsed());
+        let mut join_set = JoinSet::new();
+        for change_set in hydration {
+            let self_clone = self.clone();
+            join_set.spawn(async move {
+                self_clone
+                    .hydrate_change_set(change_sets_ino, change_set)
+                    .await
+            });
+        }
+
+        join_set.join_all().await;
+
+        log::info!("Hydration took {:?}", start.elapsed());
+
+        Ok(())
+    }
+
     async fn getattr(
         &self,
         ino: Inode,
@@ -372,6 +692,33 @@ impl SiFileSystem {
 
         // Prefetch file data on open()
         let buf = Cursor::new(match entry.data() {
+            InodeEntryData::WorkspaceDenoJson => {
+                let root_path = self.inode_table.root_path();
+                let func_entries: Vec<String> = self
+                    .inode_table
+                    .filter_entries(|_, entry| {
+                        matches!(
+                            entry.data(),
+                            InodeEntryData::ChangeSetFuncDir { .. }
+                                | InodeEntryData::SchemaFuncDir { .. }
+                                | InodeEntryData::AssetDefinitionDir { .. }
+                        )
+                    })
+                    .into_iter()
+                    .filter_map(|(path, _)| {
+                        path.strip_prefix(root_path).ok().and_then(|path| {
+                            Path::new("./").join(path).to_str().map(|s| s.to_string())
+                        })
+                    })
+                    .collect();
+
+                let deno_json_value = serde_json::json!({ "workspace": func_entries });
+
+                serde_json::to_string_pretty(&deno_json_value)
+                    .map_err(|err| SiFileSystemError::Serialization(err.to_string()))?
+                    .as_bytes()
+                    .to_vec()
+            }
             InodeEntryData::SchemaFuncBindingsPending { buf, .. } => buf.get_ref().clone(),
             InodeEntryData::InstalledSchemaMarker => "INSTALLED".as_bytes().to_vec(),
             InodeEntryData::AssetFuncCode {
@@ -413,7 +760,9 @@ impl SiFileSystem {
                 .await?
                 .as_bytes()
                 .to_vec(),
+            InodeEntryData::FuncTypesDenoConfig => DENO_CONFIG.as_bytes().to_vec(),
             InodeEntryData::FuncTypesTsConfig => TS_CONFIG.as_bytes().to_vec(),
+            InodeEntryData::VsCodeSettingsJson => VSCODE_SETTINGS.as_bytes().to_vec(),
             InodeEntryData::SchemaAttrsJson {
                 schema_id,
                 change_set_id,
@@ -1020,6 +1369,8 @@ impl SiFileSystem {
                 }
             }
             InodeEntryData::WorkspaceRoot { .. }
+            | InodeEntryData::WorkspaceDenoJson
+            | InodeEntryData::VsCodeDir
             | InodeEntryData::ChangeSet { .. }
             | InodeEntryData::SchemaFuncBindingsPending { .. }
             | InodeEntryData::AssetFuncCode { .. }
@@ -1034,7 +1385,9 @@ impl SiFileSystem {
             | InodeEntryData::AssetFuncTypes { .. } => reply.error(EACCES),
 
             InodeEntryData::SchemaAttrsJson { .. }
+            | InodeEntryData::VsCodeSettingsJson
             | InodeEntryData::FuncTypes { .. }
+            | InodeEntryData::FuncTypesDenoConfig
             | InodeEntryData::FuncTypesTsConfig
             | InodeEntryData::SchemaBindingsJson { .. }
             | InodeEntryData::InstalledSchemaMarker
@@ -1465,6 +1818,13 @@ impl SiFileSystem {
             .entry_for_ino(ino)
             .ok_or(SiFileSystemError::ExpectedInodeNotFound(ino))?;
 
+        // if entry.updated_at().elapsed() < Duration::from_secs(8) {
+        //     for entry in self.inode_table.direct_child_entries(ino)? {
+        //         dirs.add(entry.ino, entry.name, entry.kind);
+        //     }
+        //     return Ok(dirs);
+        // }
+
         // XXX(fnichol): remove--only for dev debugging
         // {
         //     let ino_path = self
@@ -1632,12 +1992,19 @@ impl SiFileSystem {
                     &mut dirs
                 ).await?
             }
+            InodeEntryData::VsCodeDir => {
+                self.upsert_vscode_dir(entry.ino, &mut dirs)?;
+            }
             // `/change-sets/$change_set_name/schemas/$schema_name/INSTALLED`
             InodeEntryData::InstalledSchemaMarker
+            // `/.vscode/settings.json`
+            | InodeEntryData::VsCodeSettingsJson
             // `/change-sets/$change_set_name/functions/$func_kind/$func_name/{locked|unlocked}/index.ts`
             | InodeEntryData::FuncCode { .. }
             // `/change-sets/$change_set_name/functions/$func_kind/$func_name/{locked|unlocked}/index.d.ts`
             | InodeEntryData::FuncTypes { .. }
+            // `/change-sets/$change_set_name/functions/$func_kind/$func_name/{locked|unlocked}/deno.json`
+            | InodeEntryData::FuncTypesDenoConfig
             // `/change-sets/$change_set_name/functions/$func_kind/$func_name/{locked|unlocked}/tsconfig.json`
             | InodeEntryData::FuncTypesTsConfig
             // `/change-sets/$change_set_name/functions/$func_kind/$func_name/(locked|unlocked}/attrs.json`
@@ -1651,7 +2018,8 @@ impl SiFileSystem {
             // `/change-sets/$change_set_name/schemas/$schema_name/definition/{locked|unlocked}/index.ts`
             | InodeEntryData::AssetFuncCode { .. }
             // `/change-sets/$change_set_name/schemas/$schema_name/definition/{locked|unlocked}/index.d.ts`
-            | InodeEntryData::AssetFuncTypes { .. } => {
+            | InodeEntryData::AssetFuncTypes { .. }
+            | InodeEntryData::WorkspaceDenoJson => {
                 // a file is not a directory!
                 return Err(SiFileSystemError::InodeNotDirectory(ino));
             }
@@ -1659,6 +2027,21 @@ impl SiFileSystem {
         }
 
         Ok(dirs)
+    }
+
+    fn upsert_vscode_dir(&self, entry_ino: Inode, dirs: &mut DirListing) -> SiFileSystemResult<()> {
+        let ino = self.inode_table.upsert_with_parent_ino(
+            entry_ino,
+            FILE_STR_SETTINGS_JSON,
+            InodeEntryData::VsCodeSettingsJson,
+            FileType::RegularFile,
+            false,
+            Size::UseExisting(VSCODE_SETTINGS.len() as u64),
+        )?;
+
+        dirs.add(ino, FILE_STR_SETTINGS_JSON.into(), FileType::RegularFile);
+
+        Ok(())
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -1703,6 +2086,16 @@ impl SiFileSystem {
             Size::UseExisting(types_size),
         )?;
         dirs.add(ino, FILE_STR_TS_INDEX_D_TS.into(), FileType::RegularFile);
+
+        let ino = inode_table.upsert_with_parent_ino(
+            entry.ino,
+            FILE_STR_DENO_CONFIG,
+            InodeEntryData::FuncTypesTsConfig,
+            FileType::RegularFile,
+            false,
+            Size::UseExisting(DENO_CONFIG.len() as u64),
+        )?;
+        dirs.add(ino, FILE_STR_DENO_CONFIG.into(), FileType::RegularFile);
 
         let ino = inode_table.upsert_with_parent_ino(
             entry.ino,
@@ -1790,6 +2183,16 @@ impl SiFileSystem {
 
         let ino = inode_table.upsert_with_parent_ino(
             entry.ino,
+            FILE_STR_DENO_CONFIG,
+            InodeEntryData::FuncTypesTsConfig,
+            FileType::RegularFile,
+            false,
+            Size::UseExisting(DENO_CONFIG.len() as u64),
+        )?;
+        dirs.add(ino, FILE_STR_DENO_CONFIG.into(), FileType::RegularFile);
+
+        let ino = inode_table.upsert_with_parent_ino(
+            entry.ino,
             FILE_STR_TS_CONFIG,
             InodeEntryData::FuncTypesTsConfig,
             FileType::RegularFile,
@@ -1814,6 +2217,7 @@ impl SiFileSystem {
             Size::UseExisting(bindings_size),
         )?;
         dirs.add(ino, FILE_STR_BINDINGS_JSON.into(), FileType::RegularFile);
+
         Ok(())
     }
 
@@ -2203,20 +2607,9 @@ impl SiFileSystem {
                 &cat
             };
 
-            let cat_ino = self.inode_table.upsert_with_parent_ino(
-                entry.ino,
-                cat_name,
-                InodeEntryData::SchemaCategoryDir {
-                    change_set_id: *change_set_id,
-                    category: cat.clone(),
-                    pending: false,
-                },
-                FileType::Directory,
-                true,
-                Size::Directory,
-            )?;
-
+            let cat_ino = self.upsert_category_dir(&cat, cat_name, entry.ino, *change_set_id)?;
             dirs.add(cat_ino, cat_name.to_string(), FileType::Directory);
+
             pending.remove(&cat_ino);
         }
 
@@ -2225,6 +2618,29 @@ impl SiFileSystem {
         }
 
         Ok(())
+    }
+
+    fn upsert_category_dir(
+        &self,
+        category: &str,
+        cat_name: &str,
+        schemas_ino: Inode,
+        change_set_id: ChangeSetId,
+    ) -> Result<Inode, SiFileSystemError> {
+        let cat_ino = self.inode_table.upsert_with_parent_ino(
+            schemas_ino,
+            cat_name,
+            InodeEntryData::SchemaCategoryDir {
+                change_set_id,
+                category: category.to_string(),
+                pending: false,
+            },
+            FileType::Directory,
+            true,
+            Size::Directory,
+        )?;
+
+        Ok(cat_ino)
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -2265,6 +2681,16 @@ impl SiFileSystem {
             Size::UseExisting(types_size),
         )?;
         dirs.add(ino, FILE_STR_TS_INDEX_D_TS.into(), FileType::RegularFile);
+
+        let ino = inode_table.upsert_with_parent_ino(
+            entry.ino,
+            FILE_STR_DENO_CONFIG,
+            InodeEntryData::FuncTypesTsConfig,
+            FileType::RegularFile,
+            false,
+            Size::UseExisting(DENO_CONFIG.len() as u64),
+        )?;
+        dirs.add(ino, FILE_STR_DENO_CONFIG.into(), FileType::RegularFile);
 
         let ino = inode_table.upsert_with_parent_ino(
             entry.ino,
@@ -2397,6 +2823,27 @@ impl SiFileSystem {
             Size::Directory,
         )?;
         dirs.add(ino, DIR_STR_CHANGE_SETS.into(), FileType::Directory);
+
+        let ino = self.inode_table.upsert_with_parent_ino(
+            entry.ino,
+            DIR_STR_VSCODE,
+            InodeEntryData::VsCodeDir,
+            FileType::Directory,
+            false,
+            Size::Directory,
+        )?;
+        dirs.add(ino, DIR_STR_VSCODE.into(), FileType::Directory);
+
+        let ino = self.inode_table.upsert_with_parent_ino(
+            entry.ino,
+            FILE_STR_DENO_CONFIG,
+            InodeEntryData::WorkspaceDenoJson,
+            FileType::RegularFile,
+            false,
+            Size::UseExisting(0),
+        )?;
+        dirs.add(ino, FILE_STR_DENO_CONFIG.into(), FileType::RegularFile);
+
         Ok(())
     }
 
@@ -2473,8 +2920,22 @@ impl SiFileSystem {
     async fn command_handler_loop(&mut self, mut rx: UnboundedReceiver<FilesystemCommand>) {
         while let Some(command) = rx.recv().await {
             let self_clone = self.clone();
+
+            // Block here while we hydrate
+            if let FilesystemCommand::HydrateChangeSets = &command {
+                if let Err(err) = self.hydrate().await {
+                    log::error!("failed to hydrate: {err:?}");
+                }
+
+                continue;
+            }
+
             tokio::task::spawn(async move {
                 let res = match command {
+                    FilesystemCommand::HydrateChangeSets => {
+                        log::error!("Should be unreachable");
+                        Ok(())
+                    }
                     FilesystemCommand::GetAttr { ino, fh, reply } => {
                         self_clone.getattr(ino, fh, reply).await
                     }

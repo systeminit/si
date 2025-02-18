@@ -11,6 +11,7 @@ use crate::{FileHandle, Inode};
 #[allow(dead_code)]
 #[derive(Debug)]
 pub(crate) enum FilesystemCommand {
+    HydrateChangeSets,
     GetAttr {
         ino: Inode,
         fh: Option<FileHandle>,
@@ -262,6 +263,7 @@ impl FilesystemCommand {
     #[allow(unused)]
     pub fn name(&self) -> &'static str {
         match self {
+            FilesystemCommand::HydrateChangeSets => "hydrate_change_sets",
             FilesystemCommand::GetAttr { .. } => "getattr",
             FilesystemCommand::ReadDir { .. } => "readdir",
             FilesystemCommand::Lookup { .. } => "lookup",
@@ -303,6 +305,7 @@ impl FilesystemCommand {
 
     pub fn error(self, errno: c_int) {
         match self {
+            FilesystemCommand::HydrateChangeSets => {}
             FilesystemCommand::GetAttr { reply, .. } => reply.error(errno),
             FilesystemCommand::ReadDir { reply, .. } => reply.error(errno),
             FilesystemCommand::Lookup { reply, .. } => reply.error(errno),
