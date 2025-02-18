@@ -62,12 +62,14 @@ pub enum PkgError {
     FuncArgument(#[from] FuncArgumentError),
     #[error("func argument for {0} not found with name {1}")]
     FuncArgumentNotFoundByName(FuncId, String),
-    #[error("func {0} could not be found by name")]
-    FuncNotFoundByName(String),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
     #[error("input socket error: {0}")]
     InputSocket(#[from] InputSocketError),
+    #[error("found multiple intrinsic func specs for name: {0}")]
+    IntrinsicFuncSpecsMultipleForName(String),
+    #[error("found no intrinsic func specs for name: {0}")]
+    IntrinsicFuncSpecsNoneForName(String),
     #[error("management prototype error: {0}")]
     ManagementPrototype(#[from] ManagementPrototypeError),
     #[error("Missing Func {1} for AttributePrototype {0}")]
@@ -104,6 +106,8 @@ pub enum PkgError {
     PropNotFoundByName(String),
     #[error("prop spec structure is invalid: {0}")]
     PropSpecChildrenInvalid(String),
+    #[error("resource payload to value intrinsic func not found")]
+    ResourcePayloadToValueIntrinsicFuncNotFound,
     #[error("schema error: {0}")]
     Schema(#[from] SchemaError),
     #[error("schema variant error: {0}")]
@@ -153,6 +157,8 @@ impl From<FuncBackendKind> for FuncSpecBackendKind {
             FuncBackendKind::Validation => Self::Validation,
             FuncBackendKind::JsAuthentication => Self::JsAuthentication,
             FuncBackendKind::Management => Self::Management,
+            FuncBackendKind::ResourcePayloadToValue => Self::ResourcePayloadToValue,
+            FuncBackendKind::NormalizeToArray => Self::NormalizeToArray,
         }
     }
 }
@@ -178,6 +184,8 @@ impl From<FuncSpecBackendKind> for FuncBackendKind {
             FuncSpecBackendKind::Validation => Self::Validation,
             FuncSpecBackendKind::JsAuthentication => Self::JsAuthentication,
             FuncSpecBackendKind::Management => Self::Management,
+            FuncSpecBackendKind::ResourcePayloadToValue => Self::ResourcePayloadToValue,
+            FuncSpecBackendKind::NormalizeToArray => Self::NormalizeToArray,
         }
     }
 }
@@ -236,6 +244,7 @@ impl From<FuncSpecBackendResponseType> for FuncBackendResponseType {
 #[derive(Debug)]
 pub struct ChangeSetThingMap<Key, Thing> {
     inner: HashMap<Key, Thing>,
+    overrides: HashMap<Key, Key>,
 }
 
 impl<Key, Thing> Default for ChangeSetThingMap<Key, Thing>
@@ -252,19 +261,26 @@ where
     Key: Eq + PartialEq + std::hash::Hash,
 {
     pub fn new() -> Self {
-        let change_set_map = HashMap::new();
-
         Self {
-            inner: change_set_map,
+            inner: HashMap::new(),
+            overrides: HashMap::new(),
         }
     }
 
     pub fn get(&self, key: &Key) -> Option<&Thing> {
-        self.inner.get(key)
+        match self.overrides.get(key) {
+            Some(override_key) => self.inner.get(override_key),
+            None => self.inner.get(key),
+        }
     }
 
     pub fn insert(&mut self, key: Key, thing: Thing) -> Option<Thing> {
         self.inner.insert(key, thing)
+    }
+
+    pub fn insert_override(&mut self, to_override_unique_id: Key, override_unique_id: Key) {
+        self.overrides
+            .insert(to_override_unique_id, override_unique_id);
     }
 }
 

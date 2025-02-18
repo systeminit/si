@@ -18,7 +18,7 @@
         <div class="flex flex-row gap-xs">
           <EditingPill v-if="!editingFunc.isLocked" color="#666" />
           <IconButton
-            v-if="canBeEdited && editingFunc.isLocked"
+            v-if="editingFunc.isLocked"
             :loading="unlocking"
             icon="sliders-vertical"
             size="sm"
@@ -358,10 +358,6 @@ watch(
 );
 
 const editingFunc = ref(_.cloneDeep(funcStore.selectedFuncSummary));
-
-const canBeEdited = computed(
-  () => funcStore.selectedFuncSummary?.name !== "si:resourcePayloadToValue",
-);
 
 function resetEditingFunc() {
   const data = _.cloneDeep(funcStore.selectedFuncSummary);

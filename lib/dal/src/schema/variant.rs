@@ -58,7 +58,10 @@ use crate::{
     OutputSocketId, Prop, PropId, PropKind, Schema, SchemaError, SchemaId, Timestamp,
     TransactionsError, WsEvent, WsEventResult, WsPayload,
 };
-use crate::{AttributeValue, Component, ComponentError, FuncBackendResponseType, InputSocketId};
+use crate::{
+    AttributeValue, Component, ComponentError, FuncBackendKind, FuncBackendResponseType,
+    InputSocketId,
+};
 
 use self::root_prop::RootPropChild;
 
@@ -1867,8 +1870,6 @@ impl SchemaVariant {
             .map_err(Into::into)
     }
 
-    /// Returns all [`Funcs`](Func) for a given [`SchemaVariantId`](SchemaVariant) barring
-    /// [intrinsics](IntrinsicFunc) that are not [`IntrinsicFunc::Unset`] and [`IntrinsicFunc::Identity`].
     pub async fn all_funcs(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
@@ -1883,9 +1884,10 @@ impl SchemaVariant {
             match IntrinsicFunc::maybe_from_str(&func.name) {
                 None => filtered_funcs.push(func.to_owned()),
                 Some(intrinsic) => match intrinsic {
-                    IntrinsicFunc::Identity | IntrinsicFunc::Unset => {
-                        filtered_funcs.push(func.to_owned())
-                    }
+                    IntrinsicFunc::Identity
+                    | IntrinsicFunc::NormalizeToArray
+                    | IntrinsicFunc::ResourcePayloadToValue
+                    | IntrinsicFunc::Unset => filtered_funcs.push(func.to_owned()),
                     IntrinsicFunc::SetArray
                     | IntrinsicFunc::SetBoolean
                     | IntrinsicFunc::SetInteger
@@ -1910,11 +1912,18 @@ impl SchemaVariant {
         let func_ids = Vec::from_iter(func_id_set.into_iter());
         let funcs: Vec<Func> = Func::list_from_ids(ctx, func_ids.as_slice()).await?;
 
-        // Filter out intrinsic funcs.
+        // Filter out intrinsic funcs, but keep old special case funcs.
         let mut filtered_funcs = Vec::new();
         for func in &funcs {
-            if IntrinsicFunc::maybe_from_str(&func.name).is_none() {
-                filtered_funcs.push(func.to_owned());
+            match IntrinsicFunc::maybe_from_str(&func.name) {
+                Some(IntrinsicFunc::ResourcePayloadToValue)
+                | Some(IntrinsicFunc::NormalizeToArray)
+                    if func.backend_kind == FuncBackendKind::JsAttribute =>
+                {
+                    filtered_funcs.push(func.to_owned())
+                }
+                Some(_) => {}
+                None => filtered_funcs.push(func.to_owned()),
             }
         }
 

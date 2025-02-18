@@ -11,8 +11,8 @@ use si_pkg::{
 use si_pkg::{LeafFunctionSpec, SchemaSpecData};
 
 use crate::test_exclusive_schemas::{
-    build_action_func, build_asset_func, build_codegen_func, build_resource_payload_to_value_func,
-    create_identity_func, PKG_CREATED_BY, PKG_VERSION,
+    build_action_func, build_asset_func, build_codegen_func, create_identity_func, PKG_CREATED_BY,
+    PKG_VERSION,
 };
 
 pub(crate) async fn migrate_test_exclusive_schema_swifty(
@@ -64,9 +64,6 @@ pub(crate) async fn migrate_test_exclusive_schema_swifty(
     // Create Scaffold Func
     let fn_name = "test:scaffoldSwiftyAsset";
     let swifty_authoring_schema_func = build_asset_func(fn_name)?;
-
-    // Author Resource Payload Func
-    let resource_payload_to_value_func = build_resource_payload_to_value_func()?;
 
     // Build CodeGen Func
     let codegen_fn_name = "test:generateCode";
@@ -183,7 +180,6 @@ pub(crate) async fn migrate_test_exclusive_schema_swifty(
         .func(delete_action_func)
         .func(update_action_func)
         .func(swifty_authoring_schema_func)
-        .func(resource_payload_to_value_func)
         .func(code_gen_func)
         .func(qualification_func_spec)
         .schema(swifty_schema)

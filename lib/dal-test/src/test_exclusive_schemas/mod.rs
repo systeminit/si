@@ -1,16 +1,10 @@
-use base64::engine::general_purpose;
-use base64::Engine;
 use category_pirate::migrate_test_exclusive_schema_pet_shop;
 use category_pirate::migrate_test_exclusive_schema_pirate;
 use category_validated::migrate_test_exclusive_schema_bad_validations;
 use category_validated::migrate_test_exclusive_schema_validated_input;
 use category_validated::migrate_test_exclusive_schema_validated_output;
-use dal::func::argument::FuncArgument;
 use dal::func::argument::FuncArgumentKind;
 use dal::func::intrinsics::IntrinsicFunc;
-use dal::Func;
-use dal::FuncBackendKind;
-use dal::FuncBackendResponseType;
 use dal::{BuiltinsResult, DalContext};
 use dummy_secret::migrate_test_exclusive_schema_dummy_secret;
 use fake_butane::migrate_test_exclusive_schema_fake_butane;
@@ -93,7 +87,6 @@ pub const SCHEMA_ID_FAKE_BUTANE: &str = "01JARH2BTA5DK4J9Q4Q0XH46SR";
 // allow expect here for the Ulid conversion. These will never panic.
 #[allow(clippy::expect_used)]
 pub(crate) async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
-    migrate_test_exclusive_func_si_resource_payload_to_value(ctx).await?;
     migrate_test_exclusive_schema_starfield(
         ctx,
         ulid::Ulid::from_str(SCHEMA_ID_STARFIELD)
@@ -243,73 +236,9 @@ pub(crate) async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
     .await?;
     Ok(())
 }
-// TODO(nick): remove this if "si:resourcePayloadToValue" becomes an instrinsic func.
-async fn migrate_test_exclusive_func_si_resource_payload_to_value(
-    ctx: &DalContext,
-) -> BuiltinsResult<()> {
-    let func_name = "si:resourcePayloadToValue";
-
-    let func_id = match Func::find_id_by_name(ctx, func_name).await? {
-        Some(existing_func_id) => existing_func_id,
-        None => {
-            let new_func = Func::new(
-                ctx,
-                func_name,
-                None::<String>,
-                None::<String>,
-                None::<String>,
-                false,
-                true,
-                FuncBackendKind::JsAttribute,
-                FuncBackendResponseType::Json,
-                Some("main"),
-                Some(general_purpose::STANDARD_NO_PAD.encode("async function main(arg: Input): Promise<Output> { return arg.payload ?? {}; }")),
-            )
-            .await?;
-            new_func.id
-        }
-    };
-
-    if FuncArgument::find_by_name_for_func(ctx, "payload", func_id)
-        .await?
-        .is_none()
-    {
-        FuncArgument::new(ctx, "payload", FuncArgumentKind::Object, None, func_id).await?;
-    }
-
-    Ok(())
-}
 
 fn create_identity_func() -> BuiltinsResult<FuncSpec> {
     Ok(IntrinsicFunc::Identity.to_spec()?)
-}
-
-fn build_resource_payload_to_value_func() -> BuiltinsResult<FuncSpec> {
-    let resource_payload_to_value_func_code = "async function main(arg: Input): Promise<Output> {\
-            return arg.payload ?? {};
-        }";
-    let fn_name = "test:resourcePayloadToValue";
-    let resource_payload_to_value_func = FuncSpec::builder()
-        .name(fn_name)
-        .unique_id(fn_name)
-        .data(
-            FuncSpecData::builder()
-                .name(fn_name)
-                .code_plaintext(resource_payload_to_value_func_code)
-                .handler("main")
-                .backend_kind(FuncSpecBackendKind::JsAttribute)
-                .response_type(FuncSpecBackendResponseType::Json)
-                .build()?,
-        )
-        .argument(
-            FuncArgumentSpec::builder()
-                .name("payload")
-                .kind(FuncArgumentKind::Object)
-                .build()?,
-        )
-        .build()?;
-
-    Ok(resource_payload_to_value_func)
 }
 
 fn build_management_func(code: &str, fn_name: &str) -> BuiltinsResult<FuncSpec> {
