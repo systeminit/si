@@ -117,6 +117,7 @@ export function createInputSocketsBasedOnOutputSockets(
       if (!prop.name.toLowerCase().endsWith("arn")) continue;
       const socket = getOrCreateInputSocketFromProp(schemaVariant, prop);
       setAnnotationOnSocket(socket, { tokens: ["Arn"] });
+      setAnnotationOnSocket(socket, { tokens: ["arn<string>"] });
     }
 
     // create input sockets for all strings and arrays of strings whose props name matches
