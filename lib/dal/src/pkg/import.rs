@@ -1828,10 +1828,40 @@ pub async fn attach_resource_payload_to_value(
     ctx: &DalContext,
     schema_variant_id: SchemaVariantId,
 ) -> PkgResult<()> {
-    let func_id =
-        Func::find_id_by_name_and_kind(ctx, "si:resourcePayloadToValue", FuncKind::Intrinsic)
-            .await?
-            .ok_or(PkgError::ResourcePayloadToValueIntrinsicFuncNotFound)?;
+    let name = "si:resourcePayloadToValue";
+    let func_id = if let Some(func_id) =
+        Func::find_id_by_name_and_kind(ctx, name, FuncKind::Intrinsic).await?
+    {
+        func_id
+    } else {
+        trace!("installing the intrinsic version of 'si:resourcePayloadToValue' (neither found nor was specified in the package spec)");
+
+        // If we did not find it by this point, the package did not specify it.
+        let unsafe_to_install_intrinsic_funcs_pkg =
+            SiPkg::load_from_spec(IntrinsicFunc::pkg_spec()?)?;
+        let mut intrinsic_func_specs =
+            unsafe_to_install_intrinsic_funcs_pkg.funcs_for_name(name)?;
+        let intrinsic_func_spec = intrinsic_func_specs
+            .pop()
+            .ok_or(PkgError::IntrinsicFuncSpecsNoneForName(name.to_owned()))?;
+        if !intrinsic_func_specs.is_empty() {
+            return Err(PkgError::IntrinsicFuncSpecsMultipleForName(name.to_owned()));
+        }
+
+        // Create the func and arguments without interacting with the thing map and import flow. We
+        // do that because the package did not specify it.
+        let func = create_func(ctx, &intrinsic_func_spec, false).await?;
+        for argument in intrinsic_func_spec.arguments()? {
+            if FuncArgument::find_by_name_for_func(ctx, argument.name(), func.id)
+                .await?
+                .is_none()
+            {
+                create_func_argument(ctx, func.id, &argument).await?;
+            }
+        }
+
+        func.id
+    };
 
     let func_argument_id = FuncArgument::find_by_name_for_func(ctx, "payload", func_id)
         .await?
