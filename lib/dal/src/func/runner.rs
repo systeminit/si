@@ -42,6 +42,7 @@ use crate::{
 };
 use crate::{HistoryEventError, TransactionsError};
 
+use super::backend::float::FuncBackendFloat;
 use super::backend::management::FuncBackendManagement;
 use super::backend::normalize_to_array::FuncBackendNormalizeToArray;
 use super::backend::resource_payload_to_value::FuncBackendResourcePayloadToValue;
@@ -1733,6 +1734,7 @@ impl FuncRunnerExecutionTask {
             FuncBackendKind::Boolean => FuncBackendBoolean::create_and_execute(&self.args).await,
             FuncBackendKind::Identity => FuncBackendIdentity::create_and_execute(&self.args).await,
             FuncBackendKind::Diff => FuncBackendDiff::create_and_execute(&self.args).await,
+            FuncBackendKind::Float => FuncBackendFloat::create_and_execute(&self.args).await,
             FuncBackendKind::Integer => FuncBackendInteger::create_and_execute(&self.args).await,
             FuncBackendKind::Map => FuncBackendMap::create_and_execute(&self.args).await,
             FuncBackendKind::Object => FuncBackendObject::create_and_execute(&self.args).await,

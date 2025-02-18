@@ -60,6 +60,7 @@ impl FuncDispatch for FuncBackendJsAttribute {
                 | ResolverFunctionResponseType::Array
                 | ResolverFunctionResponseType::Boolean
                 | ResolverFunctionResponseType::Integer
+                | ResolverFunctionResponseType::Float
                 | ResolverFunctionResponseType::Identity
                 | ResolverFunctionResponseType::Map
                 | ResolverFunctionResponseType::Object

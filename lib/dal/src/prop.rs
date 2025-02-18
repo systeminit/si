@@ -272,6 +272,7 @@ pub enum PropKind {
     Map,
     Object,
     String,
+    Float,
 }
 
 impl From<PropKind> for si_frontend_types::PropKind {
@@ -279,6 +280,7 @@ impl From<PropKind> for si_frontend_types::PropKind {
         match value {
             PropKind::Array => si_frontend_types::PropKind::Array,
             PropKind::Boolean => si_frontend_types::PropKind::Boolean,
+            PropKind::Float => si_frontend_types::PropKind::Float,
             PropKind::Integer => si_frontend_types::PropKind::Integer,
             PropKind::Json => si_frontend_types::PropKind::Json,
             PropKind::Map => si_frontend_types::PropKind::Map,
@@ -308,7 +310,7 @@ impl PropKind {
     pub fn is_scalar(&self) -> bool {
         matches!(
             self,
-            PropKind::String | PropKind::Boolean | PropKind::Integer
+            PropKind::String | PropKind::Boolean | PropKind::Integer | PropKind::Float
         )
     }
 }
@@ -320,6 +322,7 @@ impl From<PropKind> for PropSpecKind {
             PropKind::Boolean => Self::Boolean,
             PropKind::String => Self::String,
             PropKind::Integer => Self::Number,
+            PropKind::Float => Self::Float,
             PropKind::Json => PropSpecKind::Json,
             PropKind::Object => Self::Object,
             PropKind::Map => Self::Map,
@@ -334,7 +337,7 @@ impl From<PropKind> for WidgetKind {
         match prop {
             PropKind::Array => Self::Array,
             PropKind::Boolean => Self::Checkbox,
-            PropKind::Json | PropKind::String | PropKind::Integer => Self::Text,
+            PropKind::Json | PropKind::String | PropKind::Integer | PropKind::Float => Self::Text,
             PropKind::Object => Self::Header,
             PropKind::Map => Self::Map,
         }
@@ -347,6 +350,7 @@ impl From<PropKind> for FuncBackendResponseType {
             PropKind::Array => Self::Array,
             PropKind::Boolean => Self::Boolean,
             PropKind::Integer => Self::Integer,
+            PropKind::Float => Self::Float,
             PropKind::Object => Self::Object,
             PropKind::Json => Self::Json,
             PropKind::Map => Self::Map,
@@ -1140,6 +1144,7 @@ impl Prop {
 
         Ok(match self.kind {
             PropKind::Boolean => "boolean".to_string(),
+            PropKind::Float => "float".to_string(),
             PropKind::Integer => "number".to_string(),
             PropKind::String => "string".to_string(),
             PropKind::Array => {
