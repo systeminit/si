@@ -13,3 +13,5 @@ export function validate<Z extends Zod.Schema>(obj: any, schema: Z) {
     throw new ApiError('BadRequest', 'ValidationError', `Invalid \`${pathStr}\` - ${firstError.message}`);
   }
 }
+
+export const ALLOWED_INPUT_REGEX = /^[a-zA-Z0-9-,_@/+ ]+$/;

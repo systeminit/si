@@ -65,6 +65,7 @@
           label="Display Name"
           placeholder="A display name for this workspace"
           required
+          :regex="ALLOWED_INPUT_REGEX"
         />
         <VormInput
           v-if="createMode"
@@ -93,6 +94,7 @@
           :required="false"
           label="Description"
           placeholder="A description for this workspace"
+          :regex="ALLOWED_INPUT_REGEX"
         />
 
         <div class="flex flex-row flex-wrap items-center w-full gap-xs">
@@ -251,6 +253,7 @@ import { tracker } from "@/lib/posthog";
 import { API_HTTP_URL } from "@/store/api";
 import MemberListItem from "@/components/MemberListItem.vue";
 import WorkspacePageHeader from "@/components/WorkspacePageHeader.vue";
+import { ALLOWED_INPUT_REGEX } from "@/lib/validations";
 
 const workspacesStore = useWorkspacesStore();
 const router = useRouter();

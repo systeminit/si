@@ -24,7 +24,7 @@ import {
   setUpdatedDefaultWorkspace,
   WorkspaceId,
 } from "../services/workspaces.service";
-import { validate } from "../lib/validation-helpers";
+import { validate, ALLOWED_INPUT_REGEX } from "../lib/validation-helpers";
 
 import { CustomRouteContext } from "../custom-state";
 import {
@@ -116,9 +116,9 @@ router.post("/workspaces/new", async (ctx) => {
     ctx.request.body,
     z.object({
       instanceUrl: z.string().url(),
-      displayName: z.string(),
+      displayName: z.string().regex(ALLOWED_INPUT_REGEX),
       isDefault: z.boolean(),
-      description: z.string(),
+      description: z.string().regex(ALLOWED_INPUT_REGEX),
     }),
   );
 
@@ -155,8 +155,8 @@ router.patch("/workspaces/:workspaceId", async (ctx) => {
     ctx.request.body,
     z.object({
       instanceUrl: z.string().url(),
-      displayName: z.string(),
-      description: z.string(),
+      displayName: z.string().regex(ALLOWED_INPUT_REGEX),
+      description: z.string().regex(ALLOWED_INPUT_REGEX),
     }),
   );
 
@@ -263,7 +263,7 @@ router.post("/workspace/:workspaceId/members", async (ctx) => {
   const reqBody = validate(
     ctx.request.body,
     z.object({
-      email: z.string(),
+      email: z.string().email(),
     }),
   );
 
@@ -300,7 +300,7 @@ router.delete("/workspace/:workspaceId/members", async (ctx) => {
   const reqBody = validate(
     ctx.request.body,
     z.object({
-      email: z.string(),
+      email: z.string().email(),
     }),
   );
 

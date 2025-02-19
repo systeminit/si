@@ -72,12 +72,14 @@
                 label="First Name"
                 autocomplete="given-name"
                 placeholder="Your first name"
+                :regex="ALLOWED_INPUT_REGEX"
               />
               <VormInput
                 v-model="draftUser.lastName"
                 label="Last Name"
                 autocomplete="last-name"
                 placeholder="Your last name"
+                :regex="ALLOWED_INPUT_REGEX"
               />
             </Tiles>
             <VormInput
@@ -86,6 +88,7 @@
               autocomplete="username"
               required
               placeholder="This name will be shown in the application"
+              :regex="ALLOWED_INPUT_REGEX"
             />
             <VormInput
               v-model="draftUser.email"
@@ -163,6 +166,7 @@ import { useAuthStore, User } from "@/store/auth.store";
 import { tracker } from "@/lib/posthog";
 import { API_HTTP_URL } from "@/store/api";
 import { useWorkspacesStore } from "@/store/workspaces.store";
+import { ALLOWED_INPUT_REGEX } from "@/lib/validations";
 
 const GITHUB_USERNAME_REGEX = /^[a-z\d](?:[a-z\d]|-(?=[a-z\d])){0,38}$/i;
 const DISCORD_TAG_REGEX =
