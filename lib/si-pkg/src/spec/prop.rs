@@ -44,7 +44,10 @@ impl From<&PropSpec> for PropSpecWidgetKind {
         match node {
             PropSpec::Array { .. } => Self::Array,
             PropSpec::Boolean { .. } => Self::Checkbox,
-            PropSpec::String { .. } | PropSpec::Number { .. } | PropSpec::Json { .. } => Self::Text,
+            PropSpec::String { .. }
+            | PropSpec::Number { .. }
+            | PropSpec::Float { .. }
+            | PropSpec::Json { .. } => Self::Text,
             PropSpec::Object { .. } => Self::Header,
             PropSpec::Map { .. } => Self::Map,
         }
@@ -79,6 +82,12 @@ pub enum PropSpec {
     },
     #[serde(rename_all = "camelCase")]
     Boolean {
+        name: String,
+        data: Option<PropSpecData>,
+        unique_id: Option<String>,
+    },
+    #[serde(rename_all = "camelCase")]
+    Float {
         name: String,
         data: Option<PropSpecData>,
         unique_id: Option<String>,
@@ -217,6 +226,7 @@ impl PropSpec {
             | Self::Map { name, .. }
             | Self::Json { name, .. }
             | Self::Number { name, .. }
+            | Self::Float { name, .. }
             | Self::Object { name, .. }
             | Self::String { name, .. } => name.as_str(),
         }
@@ -229,6 +239,7 @@ impl PropSpec {
             Self::Json { .. } => PropSpecKind::Json,
             Self::Map { .. } => PropSpecKind::Map,
             Self::Number { .. } => PropSpecKind::Number,
+            Self::Float { .. } => PropSpecKind::Float,
             Self::Object { .. } => PropSpecKind::Object,
             Self::String { .. } => PropSpecKind::String,
         }
@@ -240,6 +251,7 @@ impl PropSpec {
             | Self::Boolean { data, .. }
             | Self::Map { data, .. }
             | Self::Number { data, .. }
+            | Self::Float { data, .. }
             | Self::Object { data, .. }
             | Self::Json { data, .. }
             | Self::String { data, .. } => data.as_ref(),
@@ -260,6 +272,7 @@ impl PropSpec {
             Self::Json { .. }
             | Self::Boolean { .. }
             | Self::Number { .. }
+            | Self::Float { .. }
             | Self::String { .. } => vec![],
             Self::Object { entries, .. } => entries.iter().collect(),
             Self::Map { type_prop, .. } | Self::Array { type_prop, .. } => vec![type_prop.as_ref()],
@@ -475,6 +488,7 @@ impl PropSpec {
 pub enum PropSpecKind {
     Array,
     Boolean,
+    Float,
     Json,
     Map,
     Number,
@@ -692,6 +706,11 @@ impl PropSpecBuilder {
                     data: maybe_data,
                 },
                 PropSpecKind::Number => PropSpec::Number {
+                    name: name.to_owned(),
+                    unique_id: self.unique_id.to_owned(),
+                    data: maybe_data,
+                },
+                PropSpecKind::Float => PropSpec::Float {
                     name: name.to_owned(),
                     unique_id: self.unique_id.to_owned(),
                     data: maybe_data,
