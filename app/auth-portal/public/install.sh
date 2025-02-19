@@ -22,12 +22,12 @@ print_usage() {
 	    -d, --destination=<DEST>  Destination directory for installation
 	                              [default: $default_dest]
 	    -p, --platform=<PLATFORM> Platform type to install
-	                              [examples: x86_64-linux, aarch64-darwin]
+	                              [examples: linux-x86_64, darwin-aarch64]
 	                              [default: $default_platform]
-	    -r, --release=<RELEASE>   Release version
-	                              [examples: latest,
-	                              bin/$bin/binary/20230811.234714.0-sha.aac5c29be]
-	                              [default: latest]
+	    -V, --version=<VERSION>   Release version to install
+	                              [examples: stable,
+	                              20250218.210911.0-sha.bda1ce6ea]
+	                              [default: stable]
 
 	EXAMPLES:
 	    # Installs the latest release into \`\$HOME/bin\`
@@ -36,8 +36,8 @@ print_usage() {
 	    # Installs the latest release for all users under \`/usr/local/bin\`
 	    sudo $program
 
-	    # Installs the an old release into a temp directory
-	    $program -r bin/$bin/binary/20230811.234714.0-sha.aac5c29be -d /tmp
+	    # Installs an old release into a temp directory
+	    $program -V 20250214.193652.0-sha.0f9972a53 -d /tmp
 	EOF
 }
 
@@ -45,41 +45,28 @@ main() {
   if [ -n "${DEBUG:-}" ]; then set -v; fi
   if [ -n "${TRACE:-}" ]; then set -xv; fi
 
-  local program
+  local program bin
   program="install.sh"
-
-  local gh_repo bin
-  gh_repo="systeminit/si"
-  bin="si"
+  bin="si-fs"
 
   setup_cleanups
   setup_traps trap_exit
 
   parse_cli_args "$program" "$bin" "$@"
-  local dest platform release
+  local dest os_type cpu_type platform version
   dest="$DEST"
+  os_type="$OS_TYPE"
+  cpu_type="$CPU_TYPE"
   platform="$PLATFORM"
-  release="$RELEASE"
-  unset DEST PLATFORM RELEASE
+  version="$VERSION"
+  unset DEST OS_TYPE CPU_TYPE PLATFORM VERSION
 
-  local initial_dir
-  initial_dir="$PWD"
-
-  section "Downloading and installing '$bin'"
-
-  if [ "$release" = "latest" ]; then
-    info_start "Determining latest release for '$bin'"
-    release="$(latest_release "$gh_repo")" \
-      || die "Could not find latest release for '$bin' in repo '$gh_repo'"
-    info_end
-  fi
+  section "Downloading and installing '$bin' release '$version' on '$platform'"
 
   local asset_url
-  info_start \
-    "Determining asset URL for '$bin' release '$release' on '$platform'"
-  asset_url="$(asset_url "$gh_repo" "$bin" "$release" "$platform")" \
-    || die "Unsupported platform '$platform' for '$bin' release '$release'"
-  info_end
+  asset_url="$(
+    asset_url "$bin" "$version" "$os_type" "$cpu_type" "$platform"
+  )" || die "Unsupported platform '$platform' for '$bin' release '$version'"
 
   local tmpdir
   tmpdir="$(mktemp_directory)"
@@ -90,12 +77,9 @@ main() {
   download "$asset_url" "$tmpdir/$asset"
 
   section "Installing '$asset'"
-  cd "$tmpdir" || die "Failed to change directory with asset"
-  extract_asset "$asset" || die "Failed to extract asset"
-  cd "$initial_dir"
-  install_bin "$tmpdir/$bin" "$dest/$bin" "$bin"
+  install_bin "$tmpdir/$asset" "$dest/$bin" "$bin"
 
-  section "Installation of '$bin' release '$release' complete"
+  section "Installation of '$bin' release '$version' complete"
   indent "$dest/$bin" --version
 }
 
@@ -118,7 +102,7 @@ parse_cli_args() {
     amd64 | x64 | x86_64 | x86-64) cpu_type=x86_64 ;;
     aarch64 | arm64 | arm64v8) cpu_type=aarch64 ;;
   esac
-  plat="$cpu_type-$os_type"
+  plat="$os_type-$cpu_type"
 
   if [ "$(id -u)" -eq 0 ]; then
     dest="/usr/local/bin"
@@ -134,10 +118,10 @@ parse_cli_args() {
 
   DEST="$dest"
   PLATFORM="$plat"
-  RELEASE="latest"
+  VERSION="stable"
 
   OPTIND=1
-  while getopts "d:hp:r:-:" arg; do
+  while getopts "d:hp:V:-:" arg; do
     case "$arg" in
       d)
         DEST="$OPTARG"
@@ -149,8 +133,8 @@ parse_cli_args() {
       p)
         PLATFORM="$OPTARG"
         ;;
-      r)
-        RELEASE="$OPTARG"
+      V)
+        VERSION="$OPTARG"
         ;;
       -)
         long_optarg="${OPTARG#*=}"
@@ -173,10 +157,10 @@ parse_cli_args() {
             print_usage "$program" "$bin" "$dest" "$plat" >&2
             die "missing required argument for --$OPTARG option"
             ;;
-          release=?*)
-            RELEASE="$long_optarg"
+          version=?*)
+            VERSION="$long_optarg"
             ;;
-          release*)
+          version*)
             print_usage "$program" "$bin" "$dest" "$plat" >&2
             die "missing required argument for --$OPTARG option"
             ;;
@@ -199,53 +183,28 @@ parse_cli_args() {
   shift "$((OPTIND - 1))"
 
   case "$PLATFORM" in
-    x86_64-darwin | x86_64-linux | aarch64-darwin | aarch64-linux) ;;
+    linux-x86_64 | linux-aarch64) ;;
     *) die "Installation failed, unsupported platform: '$PLATFORM'" ;;
   esac
-}
 
-latest_release() {
-  local gh_repo
-  gh_repo="$1"
-
-  need_cmd awk
-
-  local tmpfile
-  tmpfile="$(mktemp_file)"
-  cleanup_file "$tmpfile"
-
-  download \
-    "https://auth-api.systeminit.com/github/releases/latest" \
-    "$tmpfile" \
-    >/dev/null
-  awk '
-    BEGIN { FS="\""; RS="," }
-    $2 == "version" { print $4 }
-  ' "$tmpfile"
+  OS_TYPE="${PLATFORM%%-*}"
+  CPU_TYPE="${PLATFORM#*-}"
 }
 
 asset_url() {
-  local repo bin release platform
-  repo="$1"
-  bin="$2"
-  release="$3"
-  platform="$4"
+  local bin version os_type cpu_type platform
+  bin="$1"
+  version="$2"
+  os_type="$3"
+  cpu_type="$4"
+  platform="$5"
 
-  local base_url asset_url
-  base_url="https://github.com/$repo/releases/download/$release"
-  asset_url="$base_url/$bin-$platform.tar.gz"
+  local type asset_url
+  type="binary"
+  asset_url="https://artifacts.systeminit.com/$bin/$version/$type"
+  asset_url="$asset_url/$os_type/$cpu_type/$bin-$version-$type-$platform"
 
   echo "$asset_url"
-}
-
-extract_asset() {
-  local asset
-  asset="$1"
-
-  need_cmd tar
-
-  info "Extracting $asset"
-  indent tar xvzf "$asset"
 }
 
 install_bin() {
@@ -279,22 +238,22 @@ symlink_to_system_path() {
   local prompt="[sudo required to link $bin under $system_path]"
   prompt="$prompt Password for %u: "
 
-  # TODO: eventually remove this, after a few weeks
-  if [ -f "$system_path/$bin" ]; then
-    info "Cleaning up old program installed to $system_path/$bin"
-    sudo -p "$prompt" rm -f "$system_path/$bin"
-  fi
-
   info "Symlinking '$dest' to $system_path/$bin"
   sudo -p "$prompt" ln -snf "$dest" "$system_path/$bin"
 }
 
 trap_exit() {
   if [ $? -ne 0 ]; then
-    local msg="We're sorry, but it looks like something might have gone wrong "
+    local msg
+    msg="We're sorry, but it looks like something might have gone wrong "
     msg="$msg during installation."
-    warn "$msg" >&2
-    warn "If you need help, please join us on our discord!"
+    {
+      echo
+      warn "$msg" >&2
+      warn "If you need help, please join us on our discord!"
+      warn ""
+      warn "    https://discord.gg/system-init"
+    } >&2
   fi
   trap_cleanups
 }
