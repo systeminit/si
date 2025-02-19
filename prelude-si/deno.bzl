@@ -11,6 +11,42 @@ load(
     "PythonToolchainInfo",
 )
 
+def deno_cache_impl(ctx: AnalysisContext) -> list[Provider]:
+    """Implementation of the deno_cache rule."""
+    deno_toolchain = ctx.attrs._deno_toolchain[DenoToolchainInfo]
+
+    cmd = cmd_args(
+        ctx.attrs._python_toolchain[PythonToolchainInfo].interpreter,
+        deno_toolchain.deno_cache[DefaultInfo].default_outputs[0],
+    )
+
+    for src in ctx.attrs.srcs:
+        cmd.add("--input", src)
+
+    return [
+        DefaultInfo(),
+        RunInfo(args = cmd),
+    ]
+
+deno_cache = rule(
+    impl = deno_cache_impl,
+    attrs = {
+        "srcs": attrs.list(
+            attrs.source(),
+            default = [],
+            doc = "The source files to cache",
+        ),
+        "_python_toolchain": attrs.toolchain_dep(
+            default = "toolchains//:python",
+            providers = [PythonToolchainInfo],
+        ),
+        "_deno_toolchain": attrs.toolchain_dep(
+            default = "toolchains//:deno",
+            providers = [DenoToolchainInfo],
+        ),
+    },
+)
+
 def deno_compile_impl(ctx: AnalysisContext) -> list[Provider]:
     out = ctx.actions.declare_output(paths.basename(ctx.attrs.out))
 
