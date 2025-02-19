@@ -1,10 +1,10 @@
 import { getServiceByName, loadCfDatabase } from "../cfDb.ts";
 import { pkgSpecFromCf } from "../specPipeline.ts";
 import { generateAssetFuncs } from "../pipeline-steps/generateAssetFuncs.ts";
-import { generateDefaultActionFuncs } from "../pipeline-steps/generateActionFuncs.ts";
-import { generateDefaultLeafFuncs } from "../pipeline-steps/generateLeafFuncs.ts";
+import { attachDefaultActionFuncs } from "../pipeline-steps/attachDefaultActionFuncs.ts";
+import { generateDefaultLeafFuncs } from "../pipeline-steps/generateDefaultLeafFuncs.ts";
 import { generateDefaultQualificationFuncs } from "../pipeline-steps/generateQualificationFuncs.ts";
-import { generateDefaultManagementFuncs } from "../pipeline-steps/generateManagementFuncs.ts";
+import { attachDefaultManagementFuncs } from "../pipeline-steps/attachDefaultManagementFuncs.ts";
 import { addDefaultPropsAndSockets } from "../pipeline-steps/addDefaultPropsAndSockets.ts";
 import { generateSubAssets } from "../pipeline-steps/generateSubAssets.ts";
 import { generateIntrinsicFuncs } from "../pipeline-steps/generateIntrinsicFuncs.ts";
@@ -72,9 +72,9 @@ export async function generateSiSpecs(
   specs = addInferredEnums(specs, inferred);
   specs = generateOutputSocketsFromProps(specs);
   specs = addDefaultPropsAndSockets(specs);
-  specs = generateDefaultActionFuncs(specs);
+  specs = attachDefaultActionFuncs(specs);
   specs = generateDefaultLeafFuncs(specs);
-  specs = generateDefaultManagementFuncs(specs);
+  specs = attachDefaultManagementFuncs(specs);
   specs = generateDefaultQualificationFuncs(specs);
   // subAssets should not have any of the above, but need an asset func and
   // intrinsics

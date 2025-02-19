@@ -9,17 +9,17 @@ import { LeafFunctionSpec } from "../bindings/LeafFunctionSpec.ts";
 import { LeafKind } from "../bindings/LeafKind.ts";
 import { ManagementFuncSpec } from "../bindings/ManagementFuncSpec.ts";
 import { Buffer } from "node:buffer";
+import { CfHandlerKind } from "../cfDb.ts";
 
 interface FuncSpecInfo {
   id: string;
   backendKind: FuncSpecBackendKind;
   responseType: FuncSpecBackendResponseType;
   displayName: string;
-  actionKind?: "create" | "update" | "refresh" | "other" | "delete";
   path: string;
 }
 
-const funcSpecs: Record<string, FuncSpecInfo> = {
+const ACTION_FUNC_SPECS = {
   // Actions
   "Create Asset": {
     id: "bc58dae4f4e1361840ec8f081350d7ec6b177ee8dc5a6a55155767c92efe1850",
@@ -53,6 +53,12 @@ const funcSpecs: Record<string, FuncSpecInfo> = {
     displayName: "Update a Cloud Control Asset",
     path: "./src/cloud-control-funcs/actions/awsCloudControlUpdate.ts",
   },
+} as const satisfies Record<
+  string,
+  FuncSpecInfo & { actionKind: ActionFuncSpecKind }
+>;
+
+const CODE_GENERATION_FUNC_SPECS = {
   // Code Generation
   awsCloudControlCreate: {
     id: "c48518d82a2db7064e7851c36636c665dce775610d08958a8a4f0c5c85cd808e",
@@ -75,6 +81,9 @@ const funcSpecs: Record<string, FuncSpecInfo> = {
     displayName: "Code Gen for use in validating a Cloudformation document",
     path: "./src/cloud-control-funcs/code-gen/awsCloudFormationLint.ts",
   },
+} as const satisfies Record<string, FuncSpecInfo>;
+
+const MANAGEMENT_FUNCS = {
   // Management
   "Discover on AWS": {
     id: "dba1f6e327c1e82363fa3ceaf0d3e908d367ed7c6bfa25da0a06127fb81ff1b6",
@@ -82,6 +91,7 @@ const funcSpecs: Record<string, FuncSpecInfo> = {
     responseType: "management",
     displayName: "Discover all of a certain Cloud Control Asset",
     path: "./src/cloud-control-funcs/management/awsCloudControlDiscover.ts",
+    handlers: ["list", "read"],
   },
   "Import from AWS": {
     id: "7a8dfabe771e66d13ccd02376eee84979fbc2f2974f86b60f8710c6db24122c6",
@@ -89,8 +99,14 @@ const funcSpecs: Record<string, FuncSpecInfo> = {
     responseType: "management",
     displayName: "Import a Cloud Control Asset",
     path: "./src/cloud-control-funcs/management/awsCloudControlImport.ts",
+    handlers: ["read"],
   },
-  // Qualification
+} as const satisfies Record<
+  string,
+  FuncSpecInfo & { handlers: CfHandlerKind[] }
+>;
+
+const QUALIFICATION_FUNC_SPECS = {
   awsCloudFormationLintQualification: {
     id: "a8586fc5b4886497626fd3274c13de3f778f71b8169b3b7f20ee6db7d29b1069",
     backendKind: "jsAttribute",
@@ -98,7 +114,7 @@ const funcSpecs: Record<string, FuncSpecInfo> = {
     displayName: "Qualification for validating Cloudformation document",
     path: "./src/cloud-control-funcs/qualifications/awsCloudFormationLint.ts",
   },
-};
+} as const satisfies Record<string, FuncSpecInfo>;
 
 export function createFunc(
   name: string,
@@ -148,31 +164,11 @@ function createDefaultFuncSpec(
   );
 }
 
-export function createDefaultActionFuncs(): {
-  spec: FuncSpec;
-  kind: string;
-}[] {
-  const ret = [];
-  const actionFuncs = [
-    "Create Asset",
-    "Delete Asset",
-    "Refresh Asset",
-    "Update Asset",
-  ];
-
-  for (const func of actionFuncs) {
-    const spec = funcSpecs[func];
-    if (!spec.actionKind) {
-      throw new Error(`${func} spec does not have an action type`);
-    }
-
-    ret.push({
-      spec: createDefaultFuncSpec(func, spec, []),
-      kind: spec.actionKind,
-    });
-  }
-
-  return ret;
+export function createDefaultActionFuncs() {
+  return Object.entries(ACTION_FUNC_SPECS).map(([func, spec]) => ({
+    spec: createDefaultFuncSpec(func, spec, []),
+    kind: spec.actionKind,
+  }));
 }
 
 export function createDefaultCodeGenFuncs(domain_id: string): FuncSpec[] {
@@ -180,29 +176,17 @@ export function createDefaultCodeGenFuncs(domain_id: string): FuncSpec[] {
     throw new Error("no domain id provided for codegen func!");
   }
 
-  const ret: FuncSpec[] = [];
-  const codeGenFuncs = [
-    "awsCloudControlCreate",
-    "awsCloudControlUpdate",
-    "awsCloudFormationLint",
-  ];
-
-  const args: FuncArgumentSpec[] = [
-    {
-      name: "domain",
-      kind: "object",
-      elementKind: null,
-      uniqueId: domain_id,
-      deleted: false,
-    },
-  ];
-
-  for (const func of codeGenFuncs) {
-    const spec = funcSpecs[func];
-    ret.push(createDefaultFuncSpec(func, spec, args));
-  }
-
-  return ret;
+  return Object.entries(CODE_GENERATION_FUNC_SPECS).map(([func, spec]) =>
+    createDefaultFuncSpec(func, spec, [
+      {
+        name: "domain",
+        kind: "object",
+        elementKind: null,
+        uniqueId: domain_id,
+        deleted: false,
+      },
+    ])
+  );
 }
 
 export function createDefaultQualificationFuncs(domain_id: string): FuncSpec[] {
@@ -210,46 +194,35 @@ export function createDefaultQualificationFuncs(domain_id: string): FuncSpec[] {
     throw new Error("no domain id provided for qualification func!");
   }
 
-  const ret: FuncSpec[] = [];
-  const qualificationFuncs = ["awsCloudFormationLintQualification"];
-
-  const args: FuncArgumentSpec[] = [
-    {
-      name: "domain",
-      kind: "object",
-      elementKind: null,
-      uniqueId: domain_id,
-      deleted: false,
-    },
-  ];
-
-  for (const func of qualificationFuncs) {
-    const spec = funcSpecs[func];
-    ret.push(createDefaultFuncSpec(func, spec, args));
-  }
-
-  return ret;
+  return Object.entries(QUALIFICATION_FUNC_SPECS).map(([func, spec]) =>
+    createDefaultFuncSpec(func, spec, [
+      {
+        name: "domain",
+        kind: "object",
+        elementKind: null,
+        uniqueId: domain_id,
+        deleted: false,
+      },
+    ])
+  );
 }
 
-export function createDefaultManagementFuncs(): FuncSpec[] {
-  const ret: FuncSpec[] = [];
-  const actionFuncs = ["Discover on AWS", "Import from AWS"];
-
-  for (const func of actionFuncs) {
-    const spec = funcSpecs[func];
-    ret.push(createDefaultFuncSpec(func, spec, []));
-  }
-
-  return ret;
+export function createDefaultManagementFuncs() {
+  return Object.entries(MANAGEMENT_FUNCS).map(
+    ([func, spec]) => ({
+      func: createDefaultFuncSpec(func, spec, []),
+      handlers: spec.handlers,
+    }),
+  );
 }
 
 export function createActionFuncSpec(
   kind: ActionFuncSpecKind,
-  id: string,
+  funcUniqueId: string,
 ): ActionFuncSpec {
   return {
     name: null,
-    funcUniqueId: id,
+    funcUniqueId,
     kind,
     deleted: false,
     uniqueId: null,
@@ -258,11 +231,11 @@ export function createActionFuncSpec(
 
 export function createLeafFuncSpec(
   leafKind: LeafKind,
-  id: string,
+  funcUniqueId: string,
   inputs: ("domain" | "code")[],
 ): LeafFunctionSpec {
   return {
-    funcUniqueId: id,
+    funcUniqueId,
     deleted: false,
     inputs,
     leafKind,
@@ -272,12 +245,12 @@ export function createLeafFuncSpec(
 
 export function createManagementFuncSpec(
   name: string,
-  id: string,
+  funcUniqueId: string,
 ): ManagementFuncSpec {
   return {
     name,
     description: null,
-    funcUniqueId: id,
+    funcUniqueId,
     managedSchemas: null,
   };
 }
