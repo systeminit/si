@@ -1676,6 +1676,7 @@ fn prop_kind_for_pkg_prop(pkg_prop: &SiPkgProp<'_>) -> PropKind {
         SiPkgProp::Json { .. } => PropKind::Json,
         SiPkgProp::Map { .. } => PropKind::Map,
         SiPkgProp::Number { .. } => PropKind::Integer,
+        SiPkgProp::Float { .. } => PropKind::Float,
         SiPkgProp::Object { .. } => PropKind::Object,
         SiPkgProp::String { .. } => PropKind::String,
     }

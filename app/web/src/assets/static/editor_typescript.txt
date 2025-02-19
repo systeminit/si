@@ -272,7 +272,7 @@ declare class PropWidgetDefinitionBuilder implements IPropWidgetDefinitionBuilde
    * .setOption("us-east-2 - US East (Ohio)", "us-east-2")
    */
   addOption(key: string, value: string): this;
-  
+
   /**
    * Set this prop as create only prop. This means that when
    * the component has a resource attached, it will be marked
@@ -394,6 +394,7 @@ declare class SiPropValueFromDefinitionBuilder implements ISiPropValueFromDefini
 type PropDefinitionKind =
   "array"
   | "boolean"
+  | "float"
   | "integer"
   | "map"
   | "object"
@@ -581,7 +582,7 @@ declare class PropBuilder implements IPropBuilder {
   /**
    * The type of the prop
    *
-   * @param {string} kind [array | boolean | integer | map | object | string]
+   * @param {string} kind [array | boolean | float | integer | map | object | string]
    *
    * @returns this
    *
@@ -648,7 +649,7 @@ interface ISecretPropBuilder {
   setName(name: string): this;
 
   setSecretKind(kind: string): this;
-  
+
   setConnectionAnnotation(annotation: string): this;
 
   setDocLinkRef(ref: string): this;
@@ -697,7 +698,7 @@ declare class SecretPropBuilder implements ISecretPropBuilder {
    * .setSecretKind("DigitalOcean Credential")
    */
   setSecretKind(kind: string): this;
-  
+
   setConnectionAnnotation(annotation: string): this;
 
   setDocLinkRef(ref: string): this;

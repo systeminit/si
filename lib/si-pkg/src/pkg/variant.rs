@@ -519,6 +519,12 @@ async fn create_prop_stack(
                 builder.default_value(dv);
             }
         }
+        SiPkgProp::Float { .. } => {
+            builder.kind(PropSpecKind::Float);
+            if let Some(dv) = default_value {
+                builder.default_value(dv);
+            }
+        }
         SiPkgProp::Object { .. } => {
             builder.kind(PropSpecKind::Object);
         }
@@ -539,6 +545,7 @@ async fn create_prop_stack(
         | SiPkgProp::Map { name, data, .. }
         | SiPkgProp::Array { name, data, .. }
         | SiPkgProp::Number { name, data, .. }
+        | SiPkgProp::Float { name, data, .. }
         | SiPkgProp::Object { name, data, .. }
         | SiPkgProp::Boolean { name, data, .. } => {
             builder.name(name);

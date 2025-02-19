@@ -55,6 +55,7 @@ pub enum FuncArgumentKind {
     Map,
     Object,
     String,
+    Float,
 }
 
 // NOTE(nick,zack): do not add "remain::sorted" for postcard de/ser. We need the order to be
@@ -96,6 +97,7 @@ pub enum FuncBackendKind {
     Management,
     ResourcePayloadToValue,
     NormalizeToArray,
+    Float,
 }
 
 // NOTE(nick,zack): do not add "remain::sorted" for postcard de/ser. We need the order to be
@@ -133,6 +135,7 @@ pub enum FuncBackendResponseType {
     Validation,
     Void,
     Management,
+    Float,
 }
 
 #[remain::sorted]
