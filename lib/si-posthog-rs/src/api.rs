@@ -100,6 +100,7 @@ impl PosthogApiClient {
                 "{api_endpoint}/decide?v=3",
                 api_endpoint = self.api_endpoint
             ))
+            .header("Content-Type", "application/json")
             .json(&serde_json::json!(payload))
             .send()
             .await?;

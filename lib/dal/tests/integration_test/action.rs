@@ -231,11 +231,8 @@ async fn auto_queue_creation(ctx: &mut DalContext) {
     assert!(action_ids.is_empty());
 }
 
-// TODO This test is a stub that should be fixed after actions v2 is done
-// Right now, the workspace for tests does not have the actions flag set so this won't yield any results
-// The tests cases are valid
 #[test]
-async fn auto_queue_update_and_destroy(ctx: &mut DalContext) {
+async fn auto_queue_update(ctx: &mut DalContext) {
     // ======================================================
     // Creating a component  should enqueue a create action
     // ======================================================
@@ -251,6 +248,11 @@ async fn auto_queue_update_and_destroy(ctx: &mut DalContext) {
     ChangeSetTestHelpers::apply_change_set_to_base(ctx)
         .await
         .expect("apply changeset to base");
+
+    // wait for actions to run
+    ChangeSetTestHelpers::wait_for_actions_to_run(ctx)
+        .await
+        .expect("deadline for actions to run exceeded");
 
     ChangeSetTestHelpers::fork_from_head_change_set(ctx)
         .await
@@ -271,6 +273,9 @@ async fn auto_queue_update_and_destroy(ctx: &mut DalContext) {
     AttributeValue::update(ctx, av_id, Some(serde_json::json!("whomever")))
         .await
         .expect("override domain/name attribute value");
+    Component::enqueue_relevant_update_actions(ctx, av_id)
+        .await
+        .expect("could enqueue update func");
 
     let action_ids = Action::list_topologically(ctx)
         .await
@@ -296,49 +301,7 @@ async fn auto_queue_update_and_destroy(ctx: &mut DalContext) {
             };
         }
     }
-
-    // TODO: fix this, update actions have been disabled for now so they wont be automatically enqueued
-    // As they were being enqueued in the wrong place in AttributeValue, causing actions to be enqueued and immediately run by DVU's running on headg
-    assert_eq!(update_action_count, 0);
-
-    // ======================================================
-    // Deleting a component with resource should queue the Destroy action
-    // ======================================================
-    component.delete(ctx).await.expect("delete component");
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("could not commit and update snapshot to visibility");
-
-    // TODO Fix the following section
-    // Since the creation action never actually runs on the test (or at least we can't wait for it)
-    // The resource never gets created. A Destroy action only gets queued
-    // (implicitly by component.delete above) if the component has a resource,
-    // So the check below is failing
-
-    // let action_ids = Action::list_topologically(ctx)
-    //     .await
-    //     .expect("find action ids");
-    //
-    // let mut deletion_action_count = 0;
-    // for action_id in action_ids {
-    //     let action = dbg!(Action::get_by_id(ctx, action_id)
-    //         .await
-    //         .expect("find action by id"));
-    //     if action.state() == ActionState::Queued {
-    //         let prototype_id = Action::prototype_id(ctx, action_id)
-    //             .await
-    //             .expect("get prototype id from action");
-    //         let prototype = ActionPrototype::get_by_id(ctx, prototype_id)
-    //             .await
-    //             .expect("get action prototype by id");
-    //
-    //         if prototype.kind == ActionKind::Destroy {
-    //             deletion_action_count += 1;
-    //         }
-    //     }
-    // }
-
-    // assert_eq!(deletion_action_count, 1);
+    assert_eq!(update_action_count, 1);
 }
 
 #[test]
