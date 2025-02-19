@@ -277,21 +277,8 @@ export type CfSchema = Extend<CfObjectProperty, {
     cloudFormationSystemTags?: boolean;
     tagProperty?: string;
   };
-  handlers?: {
-    create: string[];
-    read: string[];
-    update: string[];
-    delete: string[];
-    list: string[];
-  };
-  remote?: Record<
-    string,
-    {
-      "$comment": string;
-      properties: JSONSchema.Interface["properties"];
-      definitions: JSONSchema.Interface["definitions"];
-    }
-  >;
+  handlers?: Record<CfHandlerKind, CfHandler>;
+  remote?: unknown;
   definitions?: Record<string, CfProperty>;
   properties: Record<string, CfProperty>;
   readOnlyProperties?: JSONPointer[];
@@ -309,6 +296,12 @@ export type CfSchema = Extend<CfObjectProperty, {
   };
   propertyTransform?: Record<string, string>;
 }>;
+
+export type CfHandlerKind = "create" | "read" | "update" | "delete" | "list";
+export type CfHandler = {
+  permissions: string[];
+  timeoutInMinutes: number;
+};
 
 type CfDb = Record<string, CfSchema>;
 const DB: CfDb = {};

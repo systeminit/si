@@ -8,8 +8,6 @@ import { ExpandedPkgSpec } from "../spec/pkgs.ts";
 export function generateDefaultLeafFuncs(
   specs: ExpandedPkgSpec[],
 ): ExpandedPkgSpec[] {
-  const newSpecs = [] as ExpandedPkgSpec[];
-
   for (const spec of specs) {
     const [schema] = spec.schemas;
     const [schemaVariant] = schema.variants;
@@ -32,9 +30,7 @@ export function generateDefaultLeafFuncs(
         createLeafFuncSpec("codeGeneration", codeGenFunc.uniqueId, ["domain"]),
       );
     }
-
-    newSpecs.push(spec);
   }
 
-  return newSpecs;
+  return specs;
 }
