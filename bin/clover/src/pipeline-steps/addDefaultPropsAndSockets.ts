@@ -7,6 +7,15 @@ import {
 import { createInputSocketFromProp } from "../spec/sockets.ts";
 import { ExpandedPkgSpec } from "../spec/pkgs.ts";
 
+export interface PropUsageMap {
+  createOnly: string[];
+  updatable: string[];
+  secrets: {
+    secretKey: string;
+    propPath: string[];
+  }[];
+}
+
 export function addDefaultPropsAndSockets(
   specs: ExpandedPkgSpec[],
 ): ExpandedPkgSpec[] {
@@ -27,9 +36,10 @@ export function addDefaultPropsAndSockets(
         "string",
         extraProp.metadata.propPath,
       );
-      const propUsageMap = {
-        createOnly: [] as string[],
-        updatable: [] as string[],
+      const propUsageMap: PropUsageMap = {
+        createOnly: [],
+        updatable: [],
+        secrets: [],
       };
 
       const queue: ExpandedPropSpec[] = _.cloneDeep(domain.entries);

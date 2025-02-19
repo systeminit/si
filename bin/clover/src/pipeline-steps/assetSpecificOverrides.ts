@@ -7,6 +7,7 @@ import {
 } from "../spec/sockets.ts";
 import { ExpandedPkgSpec } from "../spec/pkgs.ts";
 import { ExpandedPropSpec } from "../spec/props.ts";
+import { PropUsageMap } from "./addDefaultPropsAndSockets.ts";
 
 const logger = _logger.ns("assetOverrides").seal();
 
@@ -104,5 +105,95 @@ const overrides = new Map<string, OverrideFn>([
     setAnnotationOnSocket(socket, { tokens: ["Id"] });
 
     variant.sockets.push(socket);
-  }]
+  }],
+  [
+    "AWS::SecretsManager::Secret",
+    addSecretProp("Secret String", "secretString", ["SecretString"]),
+  ],
 ]);
+
+function addSecretProp(
+  secretKind: string,
+  secretKey: string,
+  propPath: string[],
+) {
+  return (spec: ExpandedPkgSpec) => {
+    const variant = spec.schemas[0].variants[0];
+
+    const [secretName] = propPath.slice(-1);
+    if (!secretName) {
+      return;
+    }
+
+    // Find secret prop
+    let secretParent = variant.domain;
+    let secretProp: ExpandedPropSpec | undefined = variant.domain;
+
+    for (const propName of propPath) {
+      // If we haven't found the secret prop yet, and we're not with an object in hand, break
+      if (secretProp.kind !== "object") {
+        secretProp = undefined;
+        break;
+      }
+
+      secretParent = secretProp;
+      const thisProp = secretParent.entries.find((p) => p.name === propName);
+
+      // If we don't find the prop on the parent, break
+      if (!thisProp) {
+        secretProp = undefined;
+        break;
+      }
+
+      secretProp = thisProp;
+    }
+
+    if (!secretProp) {
+      console.log(`Could not add secret value for ${spec.name}`);
+      return;
+    }
+
+    // Find propUsageMap
+    const extraProp = variant.domain.entries.find((p) => p.name === "extra");
+    if (extraProp?.kind !== "object") {
+      return;
+    }
+    const propUsageMapProp = extraProp.entries.find((p) =>
+      p.name === "PropUsageMap"
+    );
+    const propUsageMap = JSON.parse(
+      propUsageMapProp?.data.defaultValue,
+    ) as PropUsageMap;
+
+    if (!propUsageMapProp || !Array.isArray(propUsageMap?.secrets)) {
+      return;
+    }
+
+    // Remove secret from the domain tree
+    secretParent.entries = secretParent.entries.filter((
+      p: ExpandedPropSpec,
+    ) => p.name !== secretName);
+
+    // Add prop to secrets tree
+    secretProp.data.widgetKind = "Secret";
+    secretProp.data.widgetOptions = [{
+      "label": "secretKind",
+      "value": secretKind,
+    }];
+    variant.secrets.entries.push(secretProp);
+    // Replace "domain" with "secrets" on propPath
+    secretProp.metadata.propPath[1] = "secrets";
+
+    // Add socket for secret prop
+    const secretStringProp = createInputSocketFromProp(secretProp);
+    variant.sockets.push(secretStringProp);
+    setAnnotationOnSocket(secretStringProp, { tokens: [secretKind] });
+
+    // add secret to the propUsageMap
+    propUsageMap.secrets.push({
+      secretKey,
+      propPath,
+    });
+    propUsageMapProp.data.defaultValue = JSON.stringify(propUsageMap);
+  };
+}

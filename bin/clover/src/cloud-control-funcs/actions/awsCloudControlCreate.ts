@@ -19,9 +19,50 @@ async function main(component: Input): Promise<Output> {
   console.log("code", codeString);
   const domain = component.properties?.domain;
   const code = JSON.parse(codeString);
+
+  const payload = code["DesiredState"];
+  const propUsageMap = JSON.parse(domain.extra.PropUsageMap);
+  if (
+    !Array.isArray(propUsageMap.secrets)
+  ) {
+    throw Error("malformed propUsageMap on asset");
+  }
+
+  for (
+    const {
+      secretKey,
+      propPath,
+    } of propUsageMap.secrets
+  ) {
+    const secret = requestStorage.getItem(secretKey);
+
+    if (!propPath?.length || propPath.length < 1) {
+      throw Error("malformed secret on propUsageMap: bad propPath");
+    }
+    if (secret) {
+      let secretParent = payload;
+      let propKey = propPath[0];
+      for (let i = 1; i < propPath.length; i++) {
+        const thisProp = secretParent[propKey];
+
+        if (!thisProp) {
+          break;
+        }
+
+        secretParent = secretParent[propKey];
+        propKey = propPath[i];
+      }
+
+      // Only add secret to payload if the codegen output has it
+      if (secretParent[propKey] === "[redacted]") {
+        secretParent[propKey] = secret;
+      }
+    }
+  }
+
   const inputObject = {
     TypeName: code["TypeName"],
-    DesiredState: JSON.stringify(code["DesiredState"]),
+    DesiredState: JSON.stringify(payload),
   };
   const inputJson = JSON.stringify(inputObject);
 

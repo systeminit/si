@@ -13,12 +13,39 @@ async function main(component: Input): Promise<Output> {
   const propUsageMap = JSON.parse(component.domain.extra.PropUsageMap);
   if (
     !Array.isArray(propUsageMap.createOnly) ||
-    !Array.isArray(propUsageMap.updatable)
+    !Array.isArray(propUsageMap.updatable) ||
+    !Array.isArray(propUsageMap.secrets)
   ) {
     throw Error("malformed propUsageMap on resource");
   }
 
   const payload = _.cloneDeep(component.domain);
+
+  // Push secrets to payload
+  for (
+    const {
+      secretKey,
+      propPath,
+    } of propUsageMap.secrets
+  ) {
+    const secret = requestStorage.getItem(secretKey);
+
+    if (!propPath?.length || propPath.length < 1) {
+      throw Error("malformed secret on propUsageMap: bad propPath");
+    }
+    if (secret) {
+      let secretParent = payload;
+      let propKey = propPath[0];
+      for (let i = 1; i < propPath.length; i++) {
+        // Ensure key exists on payload
+        secretParent[propKey] = secretParent[propKey] ?? {};
+        secretParent = secretParent[propKey];
+        propKey = propPath[i];
+      }
+
+      secretParent[propKey] = secret;
+    }
+  }
 
   const propsToVisit = _.keys(payload).map((k: string) => [k]);
 
