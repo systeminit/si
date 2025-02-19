@@ -189,6 +189,7 @@ pub struct PropertyEditorProp {
 pub enum PropertyEditorPropKind {
     Array,
     Boolean,
+    Float,
     Integer,
     Json,
     Map,
@@ -201,6 +202,7 @@ impl From<PropKind> for PropertyEditorPropKind {
         match prop_kind {
             PropKind::Array => Self::Array,
             PropKind::Boolean => Self::Boolean,
+            PropKind::Float => Self::Float,
             PropKind::Integer => Self::Integer,
             PropKind::Json => Self::Json,
             PropKind::Object => Self::Object,

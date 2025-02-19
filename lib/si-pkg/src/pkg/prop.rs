@@ -39,6 +39,13 @@ pub enum SiPkgProp<'a> {
         hash: Hash,
         source: Source<'a>,
     },
+    Float {
+        name: String,
+        data: Option<SiPkgPropData>,
+        unique_id: Option<String>,
+        hash: Hash,
+        source: Source<'a>,
+    },
     Json {
         name: String,
         data: Option<SiPkgPropData>,
@@ -85,6 +92,7 @@ macro_rules! impl_prop_child_from_graph {
                 | SiPkgProp::Json { source, .. }
                 | SiPkgProp::String { source, .. }
                 | SiPkgProp::Number { source, .. }
+                | SiPkgProp::Float { source, .. }
                 | SiPkgProp::Object { source, .. }
                 | SiPkgProp::Boolean { source, .. } => {
                     let mut entries = vec![];
@@ -158,6 +166,11 @@ impl<'a> SiPkgProp<'a> {
                 data,
                 unique_id,
             }
+            | PropNode::Float {
+                name,
+                data,
+                unique_id,
+            }
             | PropNode::Integer {
                 name,
                 data,
@@ -218,6 +231,14 @@ impl<'a> SiPkgProp<'a> {
                 hash,
                 source,
             },
+            PropNode::Float { .. } => Self::Float {
+                name,
+                data,
+                unique_id,
+
+                hash,
+                source,
+            },
             PropNode::Json { .. } => Self::Json {
                 name,
                 data,
@@ -268,6 +289,7 @@ impl<'a> SiPkgProp<'a> {
             | SiPkgProp::Json { data, .. }
             | SiPkgProp::Map { data, .. }
             | SiPkgProp::Number { data, .. }
+            | SiPkgProp::Float { data, .. }
             | SiPkgProp::Object { data, .. }
             | SiPkgProp::String { data, .. } => data.as_ref(),
         }
@@ -279,6 +301,7 @@ impl<'a> SiPkgProp<'a> {
             | SiPkgProp::Boolean { unique_id, .. }
             | SiPkgProp::Json { unique_id, .. }
             | SiPkgProp::Map { unique_id, .. }
+            | SiPkgProp::Float { unique_id, .. }
             | SiPkgProp::Number { unique_id, .. }
             | SiPkgProp::Object { unique_id, .. }
             | SiPkgProp::String { unique_id, .. } => unique_id.as_deref(),
@@ -289,6 +312,7 @@ impl<'a> SiPkgProp<'a> {
         match self {
             Self::String { name, .. }
             | Self::Number { name, .. }
+            | Self::Float { name, .. }
             | Self::Json { name, .. }
             | Self::Boolean { name, .. }
             | Self::Map { name, .. }
@@ -301,6 +325,7 @@ impl<'a> SiPkgProp<'a> {
         match self {
             Self::String { hash, .. }
             | Self::Number { hash, .. }
+            | Self::Float { hash, .. }
             | Self::Json { hash, .. }
             | Self::Boolean { hash, .. }
             | Self::Map { hash, .. }
@@ -314,6 +339,7 @@ impl<'a> SiPkgProp<'a> {
             Self::String { source, .. }
             | Self::Json { source, .. }
             | Self::Number { source, .. }
+            | Self::Float { source, .. }
             | Self::Boolean { source, .. }
             | Self::Map { source, .. }
             | Self::Array { source, .. }

@@ -108,6 +108,7 @@ pub enum PropKind {
     Any,
     Array,
     Boolean,
+    Float,
     Integer,
     Json,
     Map,
