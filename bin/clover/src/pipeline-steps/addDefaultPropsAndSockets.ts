@@ -18,7 +18,11 @@ export function addDefaultPropsAndSockets(
     const { domain } = schemaVariant;
 
     // Extra prop
-    const extraProp = createObjectProp("extra", domain.metadata.propPath);
+    const extraProp = createObjectProp(
+      "extra",
+      domain.metadata.propPath,
+      undefined,
+    );
 
     // Create PropUsageMap
     {

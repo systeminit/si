@@ -50,7 +50,7 @@ export function pkgSpecFromCf(cfSchema: CfSchema): ExpandedPkgSpec {
     version,
     data: {
       version,
-      link: createDocLink(cfSchema),
+      link: createDocLink(cfSchema, undefined),
       color: "#FF9900",
       displayName: name,
       componentType: "component",
