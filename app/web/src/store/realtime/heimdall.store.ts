@@ -49,7 +49,9 @@ export const useHeimdall = defineStore('heimdall', async () => {
       return {};
     } else
       return await db.get(kind, args, checksum);
-  }
+  };
+
+  await db.fullDiagnosticTest();
 
   return {
     bifrost,

@@ -4,6 +4,7 @@ import {
   ChangeSetId,
 } from "@/api/sdf/dal/change_set";
 import { WorkspacePk } from "@/store/workspaces.store";
+import { nonNullable } from "@/utils/typescriptLinter";
 
 export interface QueryMeta {
   kind: string,
@@ -54,8 +55,8 @@ export interface PayloadDelete extends PayloadMeta {
   method: "delete",
 }
 
-type Column = string;
-type Columns = Column[];
+export type Column = string;
+export type Columns = Column[];
 type BustCacheFn = (queryKey: string, latestChecksum: string) => void;
 
 export interface DBInterface {
@@ -70,11 +71,14 @@ export interface DBInterface {
   partialKeyFromKindAndArgs (kind: string, args: Args): Promise<QueryKey>, 
   addListenerBustCache(fn: BustCacheFn): void,
   bootstrapChecksums(changeSetId: ChangeSetId): Promise<Record<QueryKey, Checksum>>,
-  fullDiagnosticTest(changeSetId: ChangeSetId): void,
+  fullDiagnosticTest(): void,
 }
 
-type RowWithColumns = Record<Column, SqlValue>;
-type Records = RowWithColumns[];
+export type RealSqlValue = NonNullable<SqlValue>;
+export type RowWithColumns = Record<Column, SqlValue>;
+export type RowID = Record<"id", number>;
+export type RowWithColumnsAndId = RowID & RowWithColumns;
+export type Records = (RowWithColumns | RowWithColumnsAndId)[];
 
 export const interpolate = (columns: Columns, rows: SqlValue[][]): Records => {
   const results: Records = [];
@@ -84,7 +88,10 @@ export const interpolate = (columns: Columns, rows: SqlValue[][]): Records => {
       const val = values[idx];
       if (val) row[column] = val;
     })
-    results.push(row);
+    if ("id" in row)
+      results.push(row as RowWithColumnsAndId);
+    else
+      results.push(row as RowWithColumns);
   })
   return results;
 };
@@ -94,7 +101,9 @@ export type RawArgs = Record<string, string>;
 export class Args {
   #key: string;
   #value: string;
+  #raw: RawArgs;
   constructor(args: RawArgs) {
+    this.#raw = args;
     const entries = Object.entries(args);
     const entry = entries.pop();
     if (entry) {
@@ -104,6 +113,10 @@ export class Args {
       this.#key = "";
       this.#value = "";
     }
+  }
+
+  raw() {
+    return this.#raw;
   }
 
   length() {
