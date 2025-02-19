@@ -2,9 +2,10 @@ import * as Comlink from "comlink";
 
 import sqlite3InitModule, { Database, Sqlite3Static, SqlValue } from '@sqlite.org/sqlite-wasm';
 import ReconnectingWebSocket from "reconnecting-websocket";
-import { UpsertPayload, PatchPayload, PayloadDelete, DBInterface, NOROW, Checksum, ROWID, Atom, QueryKey, Args, RawArgs, RawAtom } from "./types/dbinterface";
+import { UpsertPayload, PatchPayload, PayloadDelete, DBInterface, NOROW, Checksum, ROWID, Atom, QueryKey, Args, RawArgs, RawAtom, interpolate, RowWithColumns, RowWithColumnsAndId } from "./types/dbinterface";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { WorkspacePk } from "@/store/workspaces.store";
+import assert from "assert";
 
 const log = console.log;
 const error = console.error;
@@ -12,7 +13,7 @@ const error = console.error;
 let db: Database;
 
 const start = async (sqlite3: Sqlite3Static) => {
-  log('Running SQLite3 version', sqlite3.version.libVersion);
+  // log('Running SQLite3 version', sqlite3.version.libVersion);
   db =
     'opfs' in sqlite3
       ? new sqlite3.oo1.OpfsDb('/si.sqlite3')
@@ -24,14 +25,14 @@ const start = async (sqlite3: Sqlite3Static) => {
   );
   await db.exec({ sql: 'PRAGMA foreign_keys = ON;'});
   const result = db.exec({ sql: 'PRAGMA foreign_keys', returnValue: "resultRows" })
-  log("PRAGMA foreign_keys: ", oneInOne(result), "?");
+  // log("PRAGMA foreign_keys: ", oneInOne(result), "?");
 };
 
 const initializeSQLite = async () => {
   try {
-    log('Loading and initializing SQLite3 module...');
+    // log('Loading and initializing SQLite3 module...');
     const sqlite3 = await sqlite3InitModule({ print: log, printErr: error });
-    log('Done initializing. Running demo...');
+    // log('Done initializing. Running demo...');
     await start(sqlite3);
   } catch (err) {
     if (err instanceof Error) 
@@ -100,7 +101,7 @@ const ensureTables = async () => {
    * PATCH WORKFLOW:
    * When we are given a new snapshot along with patch data:
    *  - rowid = INSERT INTO snapshots <new_checksum>, <this_changeSetId>
-   *  - INSERT INTO snapshots_mtm_atoms SELECT <rowid>, atom_rowid WHERE checksum="<old_checksum>" AND change_set_id=<this_changeSetId>
+   *  - INSERT INTO snapshots_mtm_atoms SELECT <rowid>, atom_id WHERE checksum="<old_checksum>" AND change_set_id=<this_changeSetId>
    *  - UPDATE changesets SET snapshot_id = rowid
    *  - For each patch data
    *    - fromChecksum = 0, this is net new, insert atom
@@ -109,8 +110,8 @@ const ensureTables = async () => {
    *      - select * from atoms where kind=<kind>, args=<args>, checksum=<old_checksum>
    *        - if data doesn't exist throw mjolnir
    *      - apply patch data
-   *      - atom_rowid = insert into atoms data=<blob>, kind=<kind>, args=<args>, checksum=<new_checksum>
-   *      - insert into snapshots_mtm_atoms atom_rowid = atom_rowid, snapshot_rowid = rowid
+   *      - atom_id = insert into atoms data=<blob>, kind=<kind>, args=<args>, checksum=<new_checksum>
+   *      - insert into snapshots_mtm_atoms atom_id = atom_id, snapshot_id = rowid
    *  - DELETE FROM snapshots WHERE change_set_id=<this_changeSetId> AND checksum=<old_checksum>
    */
 
@@ -126,58 +127,90 @@ const oneInOne = (rows: SqlValue[][]): SqlValue | typeof NOROW => {
   return NOROW;
 }
 
-const findSnapshotRowId = async (checksum: Checksum, changeSetId: ChangeSetId): Promise<ROWID | typeof NOROW> => {
-  const rows = await db.exec({
+const findSnapshotRowId = async (checksum: Checksum): Promise<RowWithColumnsAndId | typeof NOROW> => {
+  const columns: string[] = [];
+  const maybeRow = await db.exec({
     sql: `select
-      rowid
+      id, change_set_id
     from
       snapshots
     where
-      checksum='?' and
-      change_set_id='?'
+      checksum=?
     ;`,
-    bind: [checksum, changeSetId],
+    bind: [checksum],
     returnValue: "resultRows",
+    columnNames: columns,
   });
-  const maybeRowId = oneInOne(rows);
-  if (maybeRowId !== NOROW) return maybeRowId as ROWID;
-  else return maybeRowId; // NOROW
+  const rows = interpolate(columns, maybeRow);
+  if (rows.length === 0) return NOROW;
+  else {
+    const row = rows[0];
+    if (row && "id" in row && row.id)
+      return row as RowWithColumnsAndId; // shouldnt need the cast but its not picking it up
+    else return NOROW;
+  };
 }
 
-const atomExists = async (atom: Atom, rowid: ROWID): Promise<boolean> => {
+const atomExists = async (atom: Atom, rowid: ROWID, isNew: boolean): Promise<boolean> => {
   const rows = await db.exec({
     sql: `
     select
-      snapshot_rowid
+      snapshot_id
     from atoms
     inner join snapshots_mtm_atoms
-      ON atoms.rowid = snapshots_mtm_atoms.atom_rowid
+      ON atoms.id = snapshots_mtm_atoms.atom_id
     where
-      snapshot_rowid='?' and
-      kind='?' and checksum='?' and
-      args='?'
-    ;`,
-    bind: [rowid, atom.kind, atom.newChecksum, atom.args.toString()],
+      snapshot_id=? and
+      kind=? and
+      args=? and
+      checksum = ?
+    ;
+    `,
+    bind: [rowid, atom.kind, atom.args.toString(), isNew ? atom.newChecksum : atom.origChecksum],
     returnValue: "resultRows",
   });
   return rows.length > 0;
 };
 
 // SEE PATCH WORKFLOW
-const newSnapshot = async (atom: Atom): Promise<ROWID> => {
+const newSnapshot = async (atom: Atom, fromId: number): Promise<ROWID> => {
+  const changeSet = await db.exec({
+    sql: `SELECT change_set_id FROM snapshots WHERE change_set_id = ? LIMIT 1;`,
+    bind: [atom.changeSetId],
+    returnValue: "resultRows",
+  });
+  const changeSetId = oneInOne(changeSet);
+  if (changeSetId === NOROW) {
+    await db.exec({
+      sql: `INSERT INTO changesets (change_set_id, workspace_id) VALUES (?, ?);`,
+      bind: [atom.changeSetId, atom.workspaceId],
+    });
+  }
+
   const created = await db.exec({
-    sql: `INSERT INTO snapshots (change_set_id, checksum) VALUES (?, ?);`,
+    sql: `INSERT INTO snapshots (change_set_id, checksum) VALUES (?, ?) RETURNING id;`,
     bind: [atom.changeSetId, atom.newChecksum],
     returnValue: "resultRows",
   });
   const snapshot_id = oneInOne(created);
   if (snapshot_id === NOROW) throw new Error("Insertion Failed");
+
+  await db.exec({
+    sql: `INSERT INTO snapshots_mtm_atoms
+      SELECT 
+        ?, atom_id
+      FROM snapshots_mtm_atoms
+      WHERE
+        snapshot_id = ?
+      `,
+    bind: [snapshot_id, fromId]
+  });
   return snapshot_id as number;
 };
 
 const newSnapshotEnd = async(changeSetId: ChangeSetId, fromSnapshotChecksum: Checksum) => {
   await db.exec({
-    sql: "DELETE FROM snapshots WHERE change_set_id = '?' AND checksum = '?'",
+    sql: "DELETE FROM snapshots WHERE change_set_id = ? AND checksum = ?",
     bind: [changeSetId, fromSnapshotChecksum],
   })
 };
@@ -187,30 +220,30 @@ const removeAtom = async (atom: Atom) => {
     sql: `delete
     from atoms
     where
-      kind='?' and
-      checksum='?' and
-      args='?'
+      kind=? and
+      checksum=? and
+      args=?
     ;
     `,
     bind: [atom.kind, atom.origChecksum, atom.args.toString()],
   }); // CASCADES to the mtm table
 };
 
-const createAtom = async (atom: Atom, snapshot_rowid: ROWID): Promise<ROWID> => {
+const createAtom = async (atom: Atom): Promise<ROWID> => {
   const data = await new Blob([atom.data]).arrayBuffer();
   const rows = await db.exec({
     sql: `insert into atoms
       (kind, checksum, args, data)
         VALUES
       (?, ?, ?, ?)
-    returning rowid;
+    returning id;
     `,
     bind: [atom.kind, atom.newChecksum, atom.args.toString(), data],
     returnValue: "resultRows",
   });
-  const atom_rowid = oneInOne(rows);
-  if (atom_rowid === NOROW) throw new Error("NOROW when inserting");
-  return atom_rowid as ROWID;
+  const atom_id = oneInOne(rows);
+  if (atom_id === NOROW) throw new Error("NOROW when inserting");
+  return atom_id as ROWID;
 };
 
 const partialKeyFromKindAndArgs = async (kind: string, args: Args): Promise<QueryKey> => {
@@ -234,42 +267,58 @@ const handleEvent = async (messageEvent: MessageEvent<any>) => {
       args: new Args(rawAtom.args as RawArgs),
     };
 
-    let rowid = await findSnapshotRowId(
-      atom.toSnapshotChecksum, atom.changeSetId
-    );
-    if (rowid === NOROW) {
-      rowid = await newSnapshot(atom);
-      oldSnapshots.push(atom.fromSnapshotChecksum);
-    } 
-    snapshots[atom.toSnapshotChecksum] = rowid;
+    if (!snapshots[atom.fromSnapshotChecksum]) {
+      const fromSnapshot = await findSnapshotRowId(atom.fromSnapshotChecksum);
+      if (fromSnapshot === NOROW) throw new Error("RAGNAROK!") // TODO
+      snapshots[atom.fromSnapshotChecksum] = fromSnapshot.id;
+    }
+
+    if (!snapshots[atom.toSnapshotChecksum]) {
+      const toSnapshot = await findSnapshotRowId(atom.toSnapshotChecksum);
+      if (toSnapshot !== NOROW) {
+        snapshots[atom.toSnapshotChecksum] = toSnapshot.id;
+      } else {
+        const fromSnapshotId = snapshots[atom.fromSnapshotChecksum]
+        if (!fromSnapshotId) throw new Error("Missing fromSnapshotId");
+        const toSnapshotId = await newSnapshot(atom, fromSnapshotId);
+        oldSnapshots.push(atom.fromSnapshotChecksum);
+        snapshots[atom.toSnapshotChecksum] = toSnapshotId;
+      }
+    }
 
     return atom;
   }));
 
-  atoms.forEach((atom) => {
-    const rowid = snapshots[atom.toSnapshotChecksum];
-    if (!rowid) throw new Error(`Expected ROWID for ${atom.toSnapshotChecksum}`);
-    handleAtom(atom, rowid);
-  });
+  await Promise.all(atoms.map(async (atom) => {
+    const fromSnapshotId = snapshots[atom.fromSnapshotChecksum];
+    const toSnapshotId = snapshots[atom.toSnapshotChecksum];
+    if (!toSnapshotId || !fromSnapshotId) throw new Error(`Expected snapshot ROWIDs for ${atom}`);
+    await handleAtom(atom, fromSnapshotId, toSnapshotId);
+  }));
 
   oldSnapshots.forEach((checksum) => {
     newSnapshotEnd(changeSetId, checksum)
   })
 };
 
-const handleAtom = async (atom: Atom, rowid: ROWID) => {
-  const exists = await atomExists(atom, rowid);
+const handleAtom = async (atom: Atom, fromSnapshotId: ROWID, toSnapshotId: ROWID) => {
+  // if we have the change already don't do anything
+  const maybeNoop = await atomExists(atom, toSnapshotId, true);
+  if (maybeNoop) return;
+
+  // otherwise, find the old record
+  const exists = await atomExists(atom, fromSnapshotId, false);
   let atomid: ROWID | undefined;
   if (atom.fromSnapshotChecksum === "0") {
     if (!exists)  // if i already have it, this is a NOOP
-      atomid = await createAtom(atom, rowid);
-  } else if (atom.toSnapshotChecksum === "0")
+      atomid = await createAtom(atom);
+  } else if (atom.toSnapshotChecksum === "0") {
     // if i've already removed it, this is a NOOP
     if (exists) await removeAtom(atom);
-  else {
+  } else {
     // patch it if I can
     if (exists)
-        atomid = await patchAtom(atom);
+        atomid = await patchAtom(atom, toSnapshotId);
     // otherwise, fire the small hammer to get the full object
     else mjolnir(atom.kind, atom.args);
   }
@@ -277,14 +326,39 @@ const handleAtom = async (atom: Atom, rowid: ROWID) => {
   if (atomid)
     await db.exec({
       sql: `insert into snapshots_mtm_atoms
-        (atom_rowid, snapshot_rowid)
+        (atom_id, snapshot_id)
           VALUES
         (?, ?);`,
-      bind: [atomid, rowid],
+      bind: [atomid, toSnapshotId],
     });
 };
 
-const patchAtom = async (atom: Atom): Promise<ROWID> => {
+const patchAtom = async (atom: Atom, snapshotId: ROWID): Promise<ROWID> => {
+  const row = await db.exec({
+    sql: `SELECT id, kind, args, checksum, data
+      FROM atoms 
+      INNER JOIN snapshots_mtm_atoms ON atoms.id = snapshots_mtm_atoms.atom_id
+      WHERE
+        snapshots_mtm_atoms.snapshot_id = ? and
+        kind = ? and
+        args = ? and
+        checksum = ?
+      `,
+      bind: [snapshotId, atom.kind, atom.args.toString(), atom.origChecksum],
+      returnValue: "resultRows",
+  });
+  const atomId = oneInOne(row);
+  if (atomId === NOROW) throw new Error("Cannot find atom");
+  // delete the MTM row that exists for the current snapshot, it will get replaced
+  await db.exec({
+    sql: `
+    delete from snapshots_mtm_atoms
+    where atom_id = ? and snapshot_id = ?
+    ;`,
+    bind: [atomId, snapshotId],
+    returnValue: "resultRows",
+  });
+
   // FUTURE: JSON Patch, where we select the old data, and patch it
   // just inserting right now
   const data = await new Blob([atom.data]).arrayBuffer();
@@ -293,19 +367,20 @@ const patchAtom = async (atom: Atom): Promise<ROWID> => {
     insert into atoms
       (kind, args, checksum, data)
     values
-      ('?', '?', '?', '?')
-    ;
-    `,
+      (?, ?, ?, ?)
+    returning id;
+    ;`,
     bind: [atom.kind, atom.args.toString(), atom.newChecksum, data],
     returnValue: "resultRows",
   });
-  const atom_rowid = oneInOne(rows);
-  if (atom_rowid === NOROW) throw new Error("NOROW when inserting");
-  return atom_rowid as ROWID;
+  const atom_id = oneInOne(rows);
+  if (atom_id === NOROW) throw new Error("NOROW when inserting");
+  return atom_id as ROWID;
 };
 
 const mjolnir = async (kind: string, args: Args) => {
   // TODO: we're missing a key, fire a small hammer to get it
+  log("MJOLNIR!")
 };
 
 // FUTURE: when we have changeset data
@@ -313,7 +388,7 @@ const pruneAtomsForClosedChangeSet = async (workspaceId: WorkspacePk, changeSetI
 };
 
 const ragnarok = () => {
-  // FUTURE: drop the DB, rebuild it, and enter keys from empty
+  // FUTURE: drop the DB data, rebuild it, and enter keys from empty
 };
 
 let socket: ReconnectingWebSocket;
@@ -325,7 +400,7 @@ const dbInterface: DBInterface = {
 
   async migrate() {
     const result = ensureTables();
-    log("Migration completed");
+    // log("Migration completed");
     return result;
   },
 
@@ -346,7 +421,7 @@ const dbInterface: DBInterface = {
     });
   
     socket.addEventListener("error", (errorEvent) => {
-      log("ws error", errorEvent.error, errorEvent.message);
+      error("ws error", errorEvent.error, errorEvent.message);
     });
   },
 
@@ -383,7 +458,7 @@ const dbInterface: DBInterface = {
       from atoms
       inner join snapshots_mtm_atoms mtm ON atoms.id = mtm.atom_id
       inner join snapshots ON mtm.snapshot_id = snapshots.id
-      where snapshots.change_set_id = '?'
+      where snapshots.change_set_id = ?
       ;
       `, 
       bind: [changeSetId],
@@ -396,8 +471,128 @@ const dbInterface: DBInterface = {
     return mapping;
   },
 
-  async fullDiagnosticTest(changeSetId: ChangeSetId) {
-    // TODO
+  async fullDiagnosticTest() {
+    log("~~ DIAGNOSTIC STARTED ~~")
+    const head = "HEAD";
+    const workspace = "W";
+    await db.exec({sql: `
+        INSERT INTO changesets (change_set_id, workspace_id)
+        VALUES (?, ?);
+      `,
+      bind: [head, workspace],
+    });
+    const checksum = 'HEAD';
+    const snapshot = await db.exec({sql: `
+        INSERT INTO snapshots (change_set_id, checksum)
+        VALUES (?, ?) RETURNING id;
+      `,
+      bind: [head, checksum],
+      returnValue: "resultRows"
+    });
+    const snapshot_id = oneInOne(snapshot);
+    if (snapshot_id === NOROW) throw new Error(`Failed id`)
+
+    const testRecord = "testRecord";
+    const atom1 = await db.exec({sql: `
+        INSERT INTO atoms (kind, args, checksum, data)
+        VALUES (?, ?, ?, ?) RETURNING id;
+      `,
+      bind: [testRecord, new Args({}).toString(), "tr1", testRecord],
+      returnValue: "resultRows"
+    });
+    const atom1_id = oneInOne(atom1);
+    if (atom1_id === NOROW) throw new Error(`Failed id`)
+
+    await db.exec({sql: `
+        INSERT INTO snapshots_mtm_atoms (snapshot_id, atom_id)
+        VALUES (?, ?);
+      `,
+      bind: [snapshot_id, atom1_id],
+    });
+
+    const atom2 = await db.exec({sql: `
+        INSERT INTO atoms (kind, args, checksum, data)
+        VALUES (?, ?, ?, ?) RETURNING id;
+      `,
+      bind: [testRecord, new Args({}).toString(), "tr2", testRecord],
+      returnValue: "resultRows"
+    });
+    const atom2_id = oneInOne(atom2);
+    if (atom2_id === NOROW) throw new Error(`Failed id`)
+
+    await db.exec({sql: `
+        INSERT INTO snapshots_mtm_atoms (snapshot_id, atom_id)
+        VALUES (?, ?);
+      `,
+      bind: [snapshot_id, atom2_id],
+    });
+
+    const testList = "testList"
+    const atom3 = await db.exec({sql: `
+        INSERT INTO atoms (kind, args, checksum, data)
+        VALUES (?, ?, ?, ?) RETURNING id;
+      `,
+      bind: [testList, new Args({}).toString(), "tl1", testList],
+      returnValue: "resultRows"
+    });
+    const atom3_id = oneInOne(atom3);
+    if (atom3_id === NOROW) throw new Error(`Failed id`)
+
+    await db.exec({sql: `
+        INSERT INTO snapshots_mtm_atoms (snapshot_id, atom_id)
+        VALUES (?, ?);
+      `,
+      bind: [snapshot_id, atom3_id],
+    });
+    log("~~ FIXTURE COMPLETED ~~")
+
+    /**
+     * OK, the above code gives us 3 atoms that represent a list and two items within it
+     * all hooked up to the snapshot and changeset tables
+     * 
+     * Let's craft expected payloads over the web socket wire, and only call handle event
+     * and assert we have the rows we expect to have!
+     */
+    const payload1: RawAtom = {
+      workspaceId: "W",
+      changeSetId: "new_change_set",
+      fromSnapshotChecksum: "HEAD",
+      toSnapshotChecksum: "new_change_set",
+      kind: testRecord,
+      origChecksum: "tr1",
+      newChecksum: "tr1-new-name",
+      data: "new name",
+      args: {},
+    };
+    const event1 = { data: JSON.stringify([payload1]) } as MessageEvent;
+    await handleEvent(event1);
+
+    const confirm1 = await db.exec({
+      sql: `SELECT count(snapshot_id) FROM snapshots_mtm_atoms WHERE snapshot_id = ?;`,
+      bind: [snapshot_id],
+      returnValue: "resultRows",
+    });
+    const count_old_snapshot_atoms = oneInOne(confirm1);
+    // one for each original atom
+    console.assert(count_old_snapshot_atoms === 3, `old snapshots ${String(count_old_snapshot_atoms)} === 3`);
+
+    const confirm2 = await db.exec({
+      sql: `SELECT count(snapshot_id) FROM snapshots_mtm_atoms WHERE snapshot_id != ?;`,
+      bind: [snapshot_id],
+      returnValue: "resultRows",
+    });
+    const count_new_snapshot_atoms = oneInOne(confirm2);
+    // copied mtm & the patched atom
+    console.assert(count_new_snapshot_atoms === 3, `new snapshots ${String(count_new_snapshot_atoms)} === 1`);
+
+    const confirm3 = await db.exec({
+      sql: `SELECT count(rowid) FROM atoms;`,
+      returnValue: "resultRows",
+    });
+    const count_atoms = oneInOne(confirm3);
+    // three original atoms, plus the new patched atom
+    console.assert(count_atoms === 4, `atoms ${String(count_atoms)} === 4`);
+    log("~~ DIAGNOSTIC COMPLETED ~~")
   }
 };
 
