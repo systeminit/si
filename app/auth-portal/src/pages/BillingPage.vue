@@ -22,6 +22,7 @@
                   autocomplete="given-name"
                   placeholder="Your first name"
                   required
+                  :regex="ALLOWED_INPUT_REGEX"
                 />
                 <VormInput
                   v-model="draftBillingDetail.lastName"
@@ -29,6 +30,7 @@
                   autocomplete="last-name"
                   placeholder="Your last name"
                   required
+                  :regex="ALLOWED_INPUT_REGEX"
                 />
               </Tiles>
               <VormInput
@@ -48,12 +50,14 @@
                 label="Company Legal Name"
                 autocomplete="legal-name"
                 placeholder="Type a company legal name"
+                :regex="ALLOWED_INPUT_REGEX"
               />
               <VormInput
                 v-model="draftBillingDetail.companyInformation.legalNumber"
                 label="Company Legal Number"
                 autocomplete="legal-number"
                 placeholder="Type a company legal number"
+                :regex="ALLOWED_INPUT_REGEX"
               />
               <VormInput
                 v-model="
@@ -62,12 +66,14 @@
                 label="Tax Identification Number"
                 autocomplete="tax-identification-number"
                 placeholder="Type a tax identificatioon number"
+                :regex="ALLOWED_INPUT_REGEX"
               />
               <VormInput
                 v-model="draftBillingDetail.companyInformation.phoneNumber"
                 label="Phone Number"
                 autocomplete="phone-number"
                 placeholder="Type a phone number"
+                :regex="ALLOWED_INPUT_REGEX"
               />
             </div>
             <div class="text-xl font-bold py-xs">Billing Information</div>
@@ -78,12 +84,14 @@
                 required
                 autocomplete="address-line-1"
                 placeholder="Address Line 1"
+                :regex="ALLOWED_INPUT_REGEX"
               />
               <VormInput
                 v-model="draftBillingDetail.billingInformation.addressLine2"
                 label="Address Line 2"
                 autocomplete="address-line-2"
                 placeholder="Address Line 2"
+                :regex="ALLOWED_INPUT_REGEX"
               />
               <VormInput
                 v-model="draftBillingDetail.billingInformation.zipCode"
@@ -91,6 +99,7 @@
                 required
                 autocomplete="zip-code"
                 placeholder="Zip Code / Postcode"
+                :regex="ALLOWED_INPUT_REGEX"
               />
               <VormInput
                 v-model="draftBillingDetail.billingInformation.city"
@@ -98,12 +107,14 @@
                 required
                 autocomplete="city"
                 placeholder="City"
+                :regex="ALLOWED_INPUT_REGEX"
               />
               <VormInput
                 v-model="draftBillingDetail.billingInformation.state"
                 label="State"
                 autocomplete="state"
                 placeholder="State"
+                :regex="ALLOWED_INPUT_REGEX"
               />
               <VormInput
                 v-model="draftBillingDetail.billingInformation.country"
@@ -164,6 +175,7 @@ import {
 } from "@si/vue-lib/design-system";
 import { useHead } from "@vueuse/head";
 import { useAuthStore, BillingDetails } from "@/store/auth.store";
+import { ALLOWED_INPUT_REGEX } from "@/lib/validations";
 
 const { validationMethods } = useValidatedInputGroup();
 const authStore = useAuthStore();

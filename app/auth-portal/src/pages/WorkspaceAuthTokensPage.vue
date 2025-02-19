@@ -35,6 +35,7 @@
               label="Token Name"
               required
               placeholder="A name for your token."
+              :regex="ALLOWED_INPUT_REGEX"
               @keydown.enter.prevent="onFormSubmit"
             />
             <VormInput
@@ -139,6 +140,7 @@ import { useWorkspacesStore, WorkspaceId } from "@/store/workspaces.store";
 import WorkspacePageHeader from "@/components/WorkspacePageHeader.vue";
 import { AuthToken, useAuthTokensApi } from "@/store/authTokens.store";
 import AuthTokenList from "@/components/AuthTokenList.vue";
+import { ALLOWED_INPUT_REGEX } from "@/lib/validations";
 
 useHead({ title: "API Tokens" });
 

@@ -2,7 +2,7 @@ import { z } from "zod";
 import { RoleType } from "@prisma/client";
 import ms, { StringValue } from "ms";
 import { ulid } from "ulidx";
-import { validate } from "../lib/validation-helpers";
+import { validate, ALLOWED_INPUT_REGEX } from "../lib/validation-helpers";
 
 import { CustomRouteContext } from "../custom-state";
 import {
@@ -45,8 +45,8 @@ router.post("/workspaces/:workspaceId/authTokens", async (ctx) => {
   const { name, expiration } = validate(
     ctx.request.body,
     z.object({
-      name: z.optional(z.string()),
-      expiration: z.optional(z.string()),
+      name: z.optional(z.string().regex(ALLOWED_INPUT_REGEX)),
+      expiration: z.optional(z.string().regex(ALLOWED_INPUT_REGEX)),
     }),
   );
 

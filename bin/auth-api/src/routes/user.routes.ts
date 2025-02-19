@@ -2,7 +2,7 @@ import _ from "lodash";
 import { z } from "zod";
 import { TosVersion } from "@si/ts-lib/src/terms-of-service";
 import { ApiError } from "../lib/api-error";
-import { validate } from "../lib/validation-helpers";
+import { validate, ALLOWED_INPUT_REGEX } from "../lib/validation-helpers";
 import {
   findLatestTosForUser,
   saveTosAgreement,
@@ -275,9 +275,9 @@ router.patch("/users/:userId", async (ctx) => {
       .object({
         // TODO: add checks on usernames looking right
         // TODO: figure out way to avoid marking everything as nullable
-        firstName: z.string().nullable(),
-        lastName: z.string().nullable(),
-        nickname: z.string(),
+        firstName: z.string().regex(ALLOWED_INPUT_REGEX).nullable(),
+        lastName: z.string().regex(ALLOWED_INPUT_REGEX).nullable(),
+        nickname: z.string().regex(ALLOWED_INPUT_REGEX),
         email: z.string().email(),
         pictureUrl: z.string().url().nullable(),
         discordUsername: z.string().nullable(),
@@ -455,21 +455,21 @@ router.patch("/users/:userId/billingDetails", async (ctx) => {
     ctx.request.body,
     z
       .object({
-        firstName: z.string(),
-        lastName: z.string(),
+        firstName: z.string().regex(ALLOWED_INPUT_REGEX),
+        lastName: z.string().regex(ALLOWED_INPUT_REGEX),
         companyInformation: z.object({
-          legalName: z.string().nullable(),
-          legalNumber: z.string().nullable(),
-          taxIdentificationNumber: z.string().nullable(),
-          phoneNumber: z.string().nullable(),
+          legalName: z.string().regex(ALLOWED_INPUT_REGEX).nullable(),
+          legalNumber: z.string().regex(ALLOWED_INPUT_REGEX).nullable(),
+          taxIdentificationNumber: z.string().regex(ALLOWED_INPUT_REGEX).nullable(),
+          phoneNumber: z.string().regex(ALLOWED_INPUT_REGEX).nullable(),
         }),
         billingInformation: z.object({
-          addressLine1: z.string().nullable(),
-          addressLine2: z.string().nullable(),
-          zipCode: z.string().nullable(),
-          city: z.string().nullable(),
-          state: z.string().nullable(),
-          country: z.string().nullable(),
+          addressLine1: z.string().regex(ALLOWED_INPUT_REGEX).nullable(),
+          addressLine2: z.string().regex(ALLOWED_INPUT_REGEX).nullable(),
+          zipCode: z.string().regex(ALLOWED_INPUT_REGEX).nullable(),
+          city: z.string().regex(ALLOWED_INPUT_REGEX).nullable(),
+          state: z.string().regex(ALLOWED_INPUT_REGEX).nullable(),
+          country: z.string().regex(ALLOWED_INPUT_REGEX).nullable(),
         }),
       })
       .partial(),
