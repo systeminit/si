@@ -41,8 +41,13 @@ deno_format(
 
 deno_test(
     name = "test-unit",
-    srcs = glob(["**/test/*.ts"]),
-    ignore = ["node_modules"],
+    srcs = glob(
+        ["**/*.ts", "**/test/*.ts"],
+        exclude = ["src/cloud-control-funcs/**/*"]
+    ),
+    ignore = [
+        "node_modules",
+    ],
     permissions = [
         "allow-all",
     ],
