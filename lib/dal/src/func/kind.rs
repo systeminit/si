@@ -74,7 +74,6 @@ impl FuncKind {
             | FuncBackendKind::Boolean
             | FuncBackendKind::Diff
             | FuncBackendKind::Identity
-            | FuncBackendKind::Float
             | FuncBackendKind::Integer
             | FuncBackendKind::Map
             | FuncBackendKind::NormalizeToArray

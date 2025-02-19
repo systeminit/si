@@ -33,7 +33,6 @@ pub enum ResolverFunctionResponseType {
     Array,
     Boolean,
     CodeGeneration,
-    Float,
     Identity,
     Integer,
     Json,

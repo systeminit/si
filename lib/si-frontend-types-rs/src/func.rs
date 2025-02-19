@@ -227,7 +227,6 @@ pub enum FuncArgumentKind {
     Any,
     Array,
     Boolean,
-    Float,
     Integer,
     Json,
     Map,

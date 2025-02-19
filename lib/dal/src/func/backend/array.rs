@@ -42,8 +42,6 @@ impl FuncBackend for FuncBackendArray {
                 PropKind::Array
             } else if entry.is_i64() {
                 PropKind::Integer
-            } else if entry.is_f64() {
-                PropKind::Float
             } else if entry.is_object() {
                 PropKind::Object
             } else if entry.is_boolean() {

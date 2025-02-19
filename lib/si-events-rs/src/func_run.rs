@@ -55,7 +55,6 @@ pub enum FuncArgumentKind {
     Map,
     Object,
     String,
-    Float,
 }
 
 // NOTE(nick,zack): do not add "remain::sorted" for postcard de/ser. We need the order to be
@@ -79,7 +78,6 @@ pub enum FuncBackendKind {
     /// Comparison between two JSON values
     Diff,
     /// Mathematical identity of the [`Func`](crate::Func)'s arguments.
-    Float,
     Identity,
     Integer,
     JsAction,
@@ -121,7 +119,6 @@ pub enum FuncBackendResponseType {
     Boolean,
     CodeGeneration,
     /// Mathematical identity of the [`Func`](crate::Func)'s arguments.
-    Float,
     Identity,
     Integer,
     Json,

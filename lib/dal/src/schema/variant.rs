@@ -1891,7 +1891,6 @@ impl SchemaVariant {
                     IntrinsicFunc::SetArray
                     | IntrinsicFunc::SetBoolean
                     | IntrinsicFunc::SetInteger
-                    | IntrinsicFunc::SetFloat
                     | IntrinsicFunc::SetJson
                     | IntrinsicFunc::SetMap
                     | IntrinsicFunc::SetObject

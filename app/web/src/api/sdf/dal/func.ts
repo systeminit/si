@@ -90,7 +90,6 @@ export const isCustomizableFuncKind = (f: FuncKind) =>
 export enum FuncArgumentKind {
   Array = "array",
   Boolean = "boolean",
-  Float = "float",
   Integer = "integer",
   Json = "json",
   Object = "object",
@@ -113,7 +112,6 @@ export enum FuncBackendKind {
   Boolean = "Boolean",
   Diff = "Diff",
   Identity = "Identity",
-  Float = "Float",
   Integer = "Integer",
   JsAction = "JsAction",
   JsAttribute = "JsAction",

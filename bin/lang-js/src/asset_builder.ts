@@ -518,7 +518,6 @@ export class SiPropValueFromDefinitionBuilder
 export type PropDefinitionKind =
   | "array"
   | "boolean"
-  | "float"
   | "integer"
   | "map"
   | "object"
@@ -757,7 +756,7 @@ export class PropBuilder implements IPropBuilder {
   /**
    * The type of the prop
    *
-   * @param kind {PropDefinitionKind} [array | boolean | float | integer | map | object | string]
+   * @param kind {PropDefinitionKind} [array | boolean | integer | map | object | string]
    *
    * @returns this
    *

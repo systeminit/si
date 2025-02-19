@@ -646,7 +646,6 @@ impl PkgExporter {
                     PropKind::Array => PropSpecKind::Array,
                     PropKind::Boolean => PropSpecKind::Boolean,
                     PropKind::Integer => PropSpecKind::Number,
-                    PropKind::Float => PropSpecKind::Float,
                     PropKind::Object => PropSpecKind::Object,
                     PropKind::String => PropSpecKind::String,
                     PropKind::Map => PropSpecKind::Map,
@@ -722,7 +721,6 @@ impl PkgExporter {
                         PropSpecKind::Json
                         | PropSpecKind::String
                         | PropSpecKind::Number
-                        | PropSpecKind::Float
                         | PropSpecKind::Boolean => {
                             return Err(PkgError::PropSpecChildrenInvalid(format!(
                                 "primitve prop type should have no children for prop id {}",
