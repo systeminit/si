@@ -6,6 +6,7 @@ load(
 )
 load(
     "@prelude-si//:deno.bzl",
+    "deno_cache",
     "deno_compile",
     "deno_format",
     "deno_run",
@@ -21,6 +22,10 @@ alias(
     actual = ":bin"
 )
 
+deno_cache(
+  name = "cache"
+)
+
 # this builds bundle.ts so it can be used at runtime by function execution
 deno_run(
     name = "build",
@@ -28,7 +33,10 @@ deno_run(
     out = "src/bundle.ts",
     srcs = glob([
         "src/**/build.ts",
-    ]) + ["//:deno_workspace"],
+    ]) + [
+        ":cache",
+        "//:deno_workspace"
+    ],
     permissions = [
         "allow-all",
     ],

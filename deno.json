@@ -22,7 +22,7 @@
     "@sideway/address": "npm:@sideway/address@4.1.5",
     "@sideway/pinpoint": "npm:@sideway/pinpoint@2.0.0",
     "@hapi/hoek": "npm:@hapi/hoek@9.3.0",
-    "lodash": "npm:lodash@4.17.21"
+    "lodash": "npm:lodash@4.17.21",
   },
-  "nodeModulesDir": "auto"
+  "nodeModulesDir": "none",
 }
