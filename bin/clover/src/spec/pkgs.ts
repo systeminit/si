@@ -5,6 +5,7 @@ import { ExpandedPropSpec, ExpandedPropSpecFor } from "./props.ts";
 import { ExpandedSocketSpec } from "./sockets.ts";
 import { Extend } from "../extend.ts";
 import { SchemaVariantSpecData } from "../bindings/SchemaVariantSpecData.ts";
+import { CfSchema } from "../cfDb.ts";
 
 export type ExpandedPkgSpec = Extend<PkgSpec, {
   schemas: [ExpandedSchemaSpec]; // Array of exactly one schema
@@ -21,4 +22,5 @@ export type ExpandedSchemaVariantSpec = Extend<SchemaVariantSpec, {
   secrets: ExpandedPropSpecFor["object"];
   secretDefinition: ExpandedPropSpec | null;
   resourceValue: ExpandedPropSpecFor["object"];
+  cfSchema: CfSchema;
 }>;

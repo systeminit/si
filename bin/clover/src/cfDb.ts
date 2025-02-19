@@ -322,25 +322,7 @@ export async function loadCfDatabase(
 ): Promise<CfDb> {
   path ??= DEFAULT_PATH;
   if (Object.keys(DB).length === 0) {
-    const fullPath = Deno.realPathSync(path);
-    logger.debug("Loading database from Cloudformation schema", { fullPath });
-    for (const dirEntry of Deno.readDirSync(fullPath)) {
-      if (
-        dirEntry.name.startsWith(".") ||
-        dirEntry.name.indexOf("definition.schema") !== -1
-      ) {
-        continue;
-      }
-
-      const filename = `${fullPath}/${dirEntry.name}`;
-
-      const rawData = await import(filename, {
-        with: { type: "json" },
-      });
-      const data = rawData.default as CfSchema;
-
-      logger.verbose("Loading schema", { name: dirEntry.name, data });
-
+    for (const data of await readSpecs(path)) {
       const typeName: string = data.typeName;
 
       if (services && !services.some((service) => typeName.match(service))) {
@@ -348,6 +330,7 @@ export async function loadCfDatabase(
       }
 
       logger.debug(`Loaded ${typeName}`);
+
       try {
         const expandedSchema = await $RefParser.dereference(data, {
           dereference: {
@@ -367,6 +350,33 @@ export async function loadCfDatabase(
   }
 
   return DB;
+}
+
+async function readSpecs(path: string) {
+  const fullPath = await Deno.realPath(path);
+  logger.debug("Loading database from Cloudformation schema", { fullPath });
+  const result = [];
+  for (const dirEntry of Deno.readDirSync(fullPath)) {
+    if (
+      dirEntry.name.startsWith(".") ||
+      dirEntry.name.indexOf("definition.schema") !== -1
+    ) {
+      continue;
+    }
+
+    const filename = `${fullPath}/${dirEntry.name}`;
+    const rawData = await import(filename, {
+      with: { type: "json" },
+    });
+
+    logger.verbose("Loading schema", {
+      name: dirEntry.name,
+      data: rawData.default,
+    });
+
+    result.push(rawData.default as CfSchema);
+  }
+  return _.sortBy(result, "typeName");
 }
 
 export function getServiceByName(serviceName: string): CfSchema {
