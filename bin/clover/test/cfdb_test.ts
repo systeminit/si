@@ -6,8 +6,10 @@ import {
   loadCfDatabase,
 } from "../src/cfDb.ts";
 import { assertObjectMatch } from "@std/assert/object-match";
+import { dirname, fromFileUrl, join } from "@std/path";
 
-await loadCfDatabase({ path: "./test/test-files" });
+const TEST_FILES = join(dirname(fromFileUrl(import.meta.url)), "test-files");
+await loadCfDatabase({ path: TEST_FILES });
 
 Deno.test(function getByServiceNameReturnsSchema() {
   // Throws if the service does not exist

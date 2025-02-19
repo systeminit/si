@@ -23,7 +23,9 @@ export function prettifySocketNames(
     bfsPropTree([variant.domain, variant.resourceValue], (prop) => {
       if (prop.data.inputs) {
         for (const input of prop.data.inputs) {
-          input.socket_name = toSpaceCase(input.socket_name);
+          if (input.kind !== "prop") {
+            input.socket_name = toSpaceCase(input.socket_name);
+          }
         }
       }
     });

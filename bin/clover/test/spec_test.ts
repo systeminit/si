@@ -7,6 +7,7 @@ import {
 import { generateSiSpecForService } from "../src/commands/generateSiSpecs.ts";
 import { ExpandedPropSpec } from "../src/spec/props.ts";
 import { loadCfDatabase } from "../src/cfDb.ts";
+import { dirname, fromFileUrl, join } from "@std/path";
 
 // const SET_BOOLEAN =
 //   "577a7deea25cfad0d4b2dd1e1f3d96b86b8b1578605137b8c4128d644c86964b";
@@ -17,7 +18,8 @@ import { loadCfDatabase } from "../src/cfDb.ts";
 // const SET_OBJECT =
 //   "cb9bf94739799f3a8b84bcb88495f93b27b47c31a341f8005a60ca39308909fd";
 
-await loadCfDatabase({ path: "./test/test-files" });
+const TEST_FILES = join(dirname(fromFileUrl(import.meta.url)), "test-files");
+await loadCfDatabase({ path: TEST_FILES });
 
 Deno.test(function generateServiceByName() {
   // Throws if the service does not exist
