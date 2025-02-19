@@ -907,7 +907,6 @@ async fn return_the_right_bindings(ctx: &mut DalContext, nw: &WorkspaceSignup) {
                                     | IntrinsicFunc::SetBoolean
                                     | IntrinsicFunc::SetInteger
                                     | IntrinsicFunc::SetJson
-                                    | IntrinsicFunc::SetFloat
                                     | IntrinsicFunc::SetMap
                                     | IntrinsicFunc::SetObject
                                     | IntrinsicFunc::SetString
@@ -967,7 +966,6 @@ async fn return_the_right_bindings(ctx: &mut DalContext, nw: &WorkspaceSignup) {
                                     // these intrinsics only have one arg
                                     IntrinsicFunc::SetArray
                                     | IntrinsicFunc::SetBoolean
-                                    | IntrinsicFunc::SetFloat
                                     | IntrinsicFunc::SetInteger
                                     | IntrinsicFunc::SetJson
                                     | IntrinsicFunc::SetMap

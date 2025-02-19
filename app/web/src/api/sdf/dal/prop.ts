@@ -3,7 +3,6 @@ export type PropId = string;
 export enum PropKind {
   Array = "array",
   Boolean = "boolean",
-  Float = "float",
   Integer = "integer",
   Json = "json",
   Object = "object",

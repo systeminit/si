@@ -1738,11 +1738,7 @@ async fn update_component(
         let prop = Prop::get_by_id(ctx, prop_id).await?;
 
         match prop.kind {
-            PropKind::String
-            | PropKind::Boolean
-            | PropKind::Integer
-            | PropKind::Float
-            | PropKind::Json => {
+            PropKind::String | PropKind::Boolean | PropKind::Integer | PropKind::Json => {
                 // todo: type check!
                 let view = AttributeValue::get_by_id(ctx, path_attribute_value_id)
                     .await?

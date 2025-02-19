@@ -19,7 +19,6 @@ use crate::{Func, FuncId, PropKind};
 pub mod array;
 pub mod boolean;
 pub mod diff;
-pub mod float;
 pub mod identity;
 pub mod integer;
 pub mod js_action;
@@ -86,7 +85,6 @@ pub enum FuncBackendKind {
     /// Comparison between two JSON values
     Diff,
     /// Mathematical identity of the [`Func`](crate::Func)'s arguments.
-    Float,
     Identity,
     Integer,
     JsAction,
@@ -115,7 +113,6 @@ impl From<FuncBackendKind> for si_events::FuncBackendKind {
             FuncBackendKind::Diff => si_events::FuncBackendKind::Diff,
             FuncBackendKind::Identity => si_events::FuncBackendKind::Identity,
             FuncBackendKind::Integer => si_events::FuncBackendKind::Integer,
-            FuncBackendKind::Float => si_events::FuncBackendKind::Float,
             FuncBackendKind::JsAction => si_events::FuncBackendKind::JsAction,
             FuncBackendKind::JsAttribute => si_events::FuncBackendKind::JsAttribute,
             FuncBackendKind::JsAuthentication => si_events::FuncBackendKind::JsAuthentication,
@@ -145,7 +142,6 @@ impl From<si_events::FuncBackendKind> for FuncBackendKind {
             si_events::FuncBackendKind::Array => FuncBackendKind::Array,
             si_events::FuncBackendKind::Boolean => FuncBackendKind::Boolean,
             si_events::FuncBackendKind::Diff => FuncBackendKind::Diff,
-            si_events::FuncBackendKind::Float => FuncBackendKind::Float,
             si_events::FuncBackendKind::Identity => FuncBackendKind::Identity,
             si_events::FuncBackendKind::Integer => FuncBackendKind::Integer,
             si_events::FuncBackendKind::JsAction => FuncBackendKind::JsAction,
@@ -192,7 +188,6 @@ pub enum FuncBackendResponseType {
     Boolean,
     CodeGeneration,
     /// Mathematical identity of the [`Func`](crate::Func)'s arguments.
-    Float,
     Identity,
     Integer,
     Json,
@@ -218,7 +213,6 @@ impl From<FuncBackendResponseType> for si_events::FuncBackendResponseType {
             FuncBackendResponseType::CodeGeneration => {
                 si_events::FuncBackendResponseType::CodeGeneration
             }
-            FuncBackendResponseType::Float => si_events::FuncBackendResponseType::Float,
             FuncBackendResponseType::Identity => si_events::FuncBackendResponseType::Identity,
             FuncBackendResponseType::Integer => si_events::FuncBackendResponseType::Integer,
             FuncBackendResponseType::Json => si_events::FuncBackendResponseType::Json,
@@ -251,7 +245,6 @@ impl From<si_events::FuncBackendResponseType> for FuncBackendResponseType {
             si_events::FuncBackendResponseType::CodeGeneration => {
                 FuncBackendResponseType::CodeGeneration
             }
-            si_events::FuncBackendResponseType::Float => FuncBackendResponseType::Float,
             si_events::FuncBackendResponseType::Identity => FuncBackendResponseType::Identity,
             si_events::FuncBackendResponseType::Integer => FuncBackendResponseType::Integer,
             si_events::FuncBackendResponseType::Json => FuncBackendResponseType::Json,
@@ -281,7 +274,6 @@ impl From<ResolverFunctionResponseType> for FuncBackendResponseType {
             ResolverFunctionResponseType::Action => FuncBackendResponseType::Action,
             ResolverFunctionResponseType::Array => FuncBackendResponseType::Array,
             ResolverFunctionResponseType::Boolean => FuncBackendResponseType::Boolean,
-            ResolverFunctionResponseType::Float => FuncBackendResponseType::Float,
             ResolverFunctionResponseType::Identity => FuncBackendResponseType::Identity,
             ResolverFunctionResponseType::Integer => FuncBackendResponseType::Integer,
             ResolverFunctionResponseType::Map => FuncBackendResponseType::Map,
@@ -309,7 +301,6 @@ impl TryFrom<FuncBackendResponseType> for ResolverFunctionResponseType {
             FuncBackendResponseType::Action => ResolverFunctionResponseType::Action,
             FuncBackendResponseType::Array => ResolverFunctionResponseType::Array,
             FuncBackendResponseType::Boolean => ResolverFunctionResponseType::Boolean,
-            FuncBackendResponseType::Float => ResolverFunctionResponseType::Float,
             FuncBackendResponseType::Integer => ResolverFunctionResponseType::Integer,
             FuncBackendResponseType::Identity => ResolverFunctionResponseType::Identity,
             FuncBackendResponseType::Map => ResolverFunctionResponseType::Map,

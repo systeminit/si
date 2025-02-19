@@ -103,7 +103,7 @@ async fn module_export_simple(ctx: &mut DalContext) {
     assert_eq!(exported_pkg.name, name.clone());
     assert_eq!(exported_pkg.version, version.clone());
     assert_eq!(exported_pkg.created_by, user.clone());
-    assert_eq!(exported_pkg.funcs.len(), 16);
+    assert_eq!(exported_pkg.funcs.len(), 15);
 
     let pkg_schemas = exported_pkg.clone().schemas;
     assert_eq!(pkg_schemas.len(), 1);
@@ -153,7 +153,6 @@ async fn module_export_simple(ctx: &mut DalContext) {
         "si:resourcePayloadToValue".to_string(),
         "si:setArray".to_string(),
         "si:setBoolean".to_string(),
-        "si:setFloat".to_string(),
         "si:setInteger".to_string(),
         "si:setJson".to_string(),
         "si:setMap".to_string(),

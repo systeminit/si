@@ -904,7 +904,6 @@ async fn validate_intrinsic_inputs(
         IntrinsicFunc::SetArray
         | IntrinsicFunc::SetBoolean
         | IntrinsicFunc::SetInteger
-        | IntrinsicFunc::SetFloat
         | IntrinsicFunc::SetJson
         | IntrinsicFunc::SetMap
         | IntrinsicFunc::SetObject

@@ -2356,11 +2356,7 @@ impl AttributeValue {
     ) -> AttributeValueResult<Vec<AttributeValueId>> {
         let prop = Self::prop(ctx, id).await?;
         match prop.kind {
-            PropKind::Boolean
-            | PropKind::Integer
-            | PropKind::Float
-            | PropKind::Json
-            | PropKind::String => Ok(vec![]),
+            PropKind::Boolean | PropKind::Integer | PropKind::Json | PropKind::String => Ok(vec![]),
             PropKind::Array | PropKind::Map => {
                 Self::get_child_av_ids_from_ordering_node(ctx, id).await
             }
