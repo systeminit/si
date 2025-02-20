@@ -384,6 +384,22 @@ const mjolnir = async (kind: string, args: Args) => {
 
 // FUTURE: when we have changeset data
 const pruneAtomsForClosedChangeSet = async (workspaceId: WorkspacePk, changeSetId: ChangeSetId) => {
+  await db.exec({
+    sql: `
+      DELETE FROM snapshots WHERE change_set_id = ?;
+    `,
+    bind: [changeSetId],
+  });
+  await db.exec({
+    sql: `
+      DELETE FROM atoms
+      WHERE id IN (
+        SELECT id FROM atoms
+        LEFT JOIN snapshots_mtm_atoms ON snapshots_mtm_atoms.atom_id = atoms.id
+        WHERE snapshots_mtm_atoms.atom_id IS NULL
+      );
+    `
+  })
 };
 
 const ragnarok = () => {
@@ -639,6 +655,31 @@ const dbInterface: DBInterface = {
     // same number of atoms no change
     console.assert(count_atoms_no_change === 4, `atoms ${String(count_atoms_no_change)} === 4`);
 
+    log("~~ SECOND PAYLOAD SUCCESS ~~")
+
+    /**
+     * Third thing that happens, closing out that changeSet
+     * WE NEED AN EVENT TO TELL US THIS
+     */
+    await pruneAtomsForClosedChangeSet("W", "new_change_set");
+    const confirm7 = await db.exec({
+      sql: `SELECT count(snapshot_id) FROM snapshots_mtm_atoms WHERE snapshot_id != ?;`,
+      bind: [snapshot_id],
+      returnValue: "resultRows",
+    });
+    const count_snapshots_after_purge = oneInOne(confirm7);
+    // 3 for HEAD
+    console.assert(count_snapshots_after_purge === 3, `new snapshots ${String(count_snapshots_after_purge)} === 3`);
+
+    const confirm8 = await db.exec({
+      sql: `SELECT count(rowid) FROM atoms;`,
+      returnValue: "resultRows",
+    });
+    const count_atoms_after_purge = oneInOne(confirm8);
+    // back to 3 atoms, like original
+    console.assert(count_atoms_after_purge === 3, `atoms ${String(count_atoms_after_purge)} === 3`);
+
+    log("~~ PURGE SUCCESS ~~")
 
     log("~~ DIAGNOSTIC COMPLETED ~~")
   }
