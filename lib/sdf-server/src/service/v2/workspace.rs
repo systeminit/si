@@ -9,7 +9,6 @@ use thiserror::Error;
 
 use crate::{app_state::AppState, service::ApiError};
 
-mod export_workspace;
 mod install_workspace;
 mod list_workspace_users;
 
@@ -54,6 +53,5 @@ impl IntoResponse for WorkspaceAPIError {
 pub fn v2_routes() -> Router<AppState> {
     Router::new()
         .route("/install", post(install_workspace::install_workspace))
-        .route("/export", post(export_workspace::export_workspace))
         .route("/users", get(list_workspace_users::list_workspace_users))
 }
