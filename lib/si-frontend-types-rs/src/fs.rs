@@ -328,3 +328,18 @@ impl CategoryFilter {
         }
     }
 }
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct HydratedChangeSet {
+    pub name: String,
+    pub id: ChangeSetId,
+    pub funcs: Vec<Func>,
+    pub schemas: Vec<HydratedSchema>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct HydratedSchema {
+    pub schema: Schema,
+    pub asset_funcs: AssetFuncs,
+    pub funcs: Option<Vec<Func>>,
+}

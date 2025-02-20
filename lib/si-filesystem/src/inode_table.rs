@@ -104,6 +104,7 @@ pub enum InodeEntryData {
         change_set_id: ChangeSetId,
         func_id: FuncId,
     },
+    FuncTypesDenoConfig,
     FuncTypesTsConfig,
     InstalledSchemaMarker,
     SchemaAttrsJson {
@@ -183,6 +184,9 @@ pub enum InodeEntryData {
     SchemasDir {
         change_set_id: ChangeSetId,
     },
+    VsCodeDir,
+    VsCodeSettingsJson,
+    WorkspaceDenoJson,
     WorkspaceRoot {
         workspace_id: WorkspaceId,
     },
@@ -194,7 +198,8 @@ impl InodeEntryData {
             self,
             InodeEntryData::FuncCode { .. }
                 | InodeEntryData::FuncTypes { .. }
-                | InodeEntryData::FuncTypesTsConfig { .. }
+                | InodeEntryData::FuncTypesDenoConfig
+                | InodeEntryData::FuncTypesTsConfig
                 | InodeEntryData::AssetFuncCode { .. }
                 | InodeEntryData::AssetFuncTypes { .. }
                 | InodeEntryData::SchemaAttrsJson { .. }
@@ -202,6 +207,8 @@ impl InodeEntryData {
                 | InodeEntryData::SchemaFuncBindings { .. }
                 | InodeEntryData::SchemaFuncBindingsPending { .. }
                 | InodeEntryData::InstalledSchemaMarker
+                | InodeEntryData::VsCodeSettingsJson
+                | InodeEntryData::WorkspaceDenoJson
         )
     }
 }
@@ -213,6 +220,7 @@ pub struct InodeTable {
     entries_by_path: Arc<DashMap<PathBuf, InodeEntry>>,
     uid: Uid,
     gid: Gid,
+    root_path: PathBuf,
 }
 
 pub enum Size {
@@ -235,6 +243,7 @@ impl InodeTable {
             entries_by_path: Arc::new(DashMap::new()),
             uid,
             gid,
+            root_path: root_path.clone(),
         };
 
         table.upsert(
@@ -246,6 +255,10 @@ impl InodeTable {
         );
 
         table
+    }
+
+    pub fn root_path(&self) -> &Path {
+        self.root_path.as_path()
     }
 
     pub fn entries_by_path(&self) -> &DashMap<PathBuf, InodeEntry> {
@@ -312,6 +325,17 @@ impl InodeTable {
             .and_then(|entry| entry.pending_buf())
     }
 
+    pub fn filter_entries<L>(&self, lambda: L) -> Vec<(PathBuf, InodeEntry)>
+    where
+        L: Fn(&Path, &InodeEntry) -> bool,
+    {
+        self.entries_by_path
+            .iter()
+            .filter(|ref_multi| lambda(ref_multi.key().as_path(), ref_multi.value()))
+            .map(|ref_multi| (ref_multi.key().to_owned(), ref_multi.value().to_owned()))
+            .collect()
+    }
+
     pub fn modify_ino<L>(&self, ino: Inode, lambda: L)
     where
         L: FnOnce(&mut InodeEntry),
@@ -372,7 +396,13 @@ impl InodeTable {
             Size::Directory => 512,
             Size::UseExisting(fallback) => self
                 .entry_for_ino(ino)
-                .map(|entry| entry.attrs.size)
+                .map(|entry| {
+                    if entry.attrs.size > 0 {
+                        entry.attrs.size
+                    } else {
+                        fallback
+                    }
+                })
                 .unwrap_or(fallback),
             Size::Force(forced_size) => forced_size,
         };
