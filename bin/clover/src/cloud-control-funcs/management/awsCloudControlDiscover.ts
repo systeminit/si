@@ -15,6 +15,16 @@ async function main({
   const create = {};
   const actions = {};
 
+  const refinement = _.cloneDeep(thisComponent.properties.domain);
+  // Remove the 'extra' tree, as it obviously isn't 1:1
+  delete refinement["extra"];
+  // Remove any empty values, as they are never refinements
+  for (const [key, value] of Object.entries(refinement)) {
+    if (_.isEmpty(value)) {
+      delete refinement[key];
+    }
+  }
+
   while (!finished) {
     const listArgs = [
       "cloudcontrol",
@@ -24,6 +34,10 @@ async function main({
       "--type-name",
       awsResourceType,
     ];
+    if (!_.isEmpty(refinement)) {
+      listArgs.push("--resource-model");
+      listArgs.push(JSON.stringify(refinement));
+    }
     if (nextToken) {
       listArgs.push(nextToken);
     }
@@ -41,7 +55,6 @@ async function main({
       };
     }
     const listResponse = JSON.parse(listChild.stdout);
-    console.log(listResponse);
     if (listResponse["NextToken"]) {
       nextToken = listResponse["NextToken"];
     } else {
@@ -51,6 +64,7 @@ async function main({
   }
 
   let x = 100;
+  let importCount = 0;
   for (const resource of resourceList) {
     let resourceId = resource["Identifier"];
     console.log(`Importing ${resourceId}`);
@@ -67,23 +81,20 @@ async function main({
     ]);
 
     if (child.exitCode !== 0) {
-      console.log("Failed to import cloud control resource");
+      console.log(
+        "Failed to import cloud control resource; continuing, as this is often an AWS bug.",
+      );
       console.log(child.stdout);
-      console.error(child.stderr);
-      return {
-        status: "error",
-        message:
-          `Import error; exit code ${child.exitCode}.\n\nSTDOUT:\n\n${child.stdout}\n\nSTDERR:\n\n${child.stderr}`,
-      };
+      console.log(child.stderr);
+      continue;
     }
 
     const resourceResponse = JSON.parse(child.stdout);
     const resourceProperties = JSON.parse(
       resourceResponse["ResourceDescription"]["Properties"],
     );
-    console.log(resourceProperties);
 
-    let properties = {
+    const properties = {
       si: {
         resourceId,
       },
@@ -92,27 +103,58 @@ async function main({
       },
     };
 
-    console.log(properties);
-    create[resourceId] = {
-      properties,
-      geometry: {
-        x,
-        y: 500.0,
-      },
-    };
-    actions[resourceId] = {
-      add: ["refresh"],
-      remove: ["create"],
-    };
-    x = x + 250.0;
+    if (_.isEmpty(refinement) || _.isMatch(properties.domain, refinement)) {
+      const connect = [];
+      for (const key of Object.keys(thisComponent.incomingConnections)) {
+        if (
+          !_.isNull(thisComponent.incomingConnections[key]) &&
+          !_.isEmpty(thisComponent.incomingConnections[key])
+        ) {
+          if (_.isArray(thisComponent.incomingConnections[key])) {
+            for (const i of thisComponent.incomingConnections[key]) {
+              connect.push({
+                from: i,
+                to: key,
+              });
+            }
+          } else {
+            connect.push({
+              from: thisComponent.incomingConnections[key],
+              to: key,
+            });
+          }
+        }
+      }
+      create[resourceId] = {
+        properties,
+        geometry: {
+          x,
+          y: 500.0,
+        },
+      };
+      if (!_.isEmpty(connect)) {
+        create[resourceId]["connect"] = connect;
+      }
+      actions[resourceId] = {
+        add: ["refresh"],
+        remove: ["create"],
+      };
+      x = x + 250.0;
+      importCount += 1;
+    } else {
+      console.log(
+        `Skipping import of ${resourceId}; it did not match refinements`,
+      );
+    }
   }
 
   return {
     status: "ok",
-    message: `Discovered ${resourceList.length} Components`,
+    message: `Discovered ${importCount} Components`,
     ops: {
       create,
       actions,
     },
   };
 }
+
