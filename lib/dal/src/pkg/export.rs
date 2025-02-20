@@ -30,7 +30,7 @@ use crate::{
 };
 use crate::{AttributePrototypeId, FuncBackendKind, InputSocket, OutputSocket};
 
-use super::{PkgError, PkgResult};
+use super::{import_pkg_from_pkg, PkgError, PkgResult};
 
 pub type FuncSpecMap = super::ChangeSetThingMap<FuncId, FuncSpec>;
 type VariantSpecMap = super::ChangeSetThingMap<SchemaVariantId, SchemaVariantSpec>;
@@ -1116,6 +1116,32 @@ impl PkgExporter {
                         Func::find_id_by_name_and_kind(ctx, intrinsic.name(), FuncKind::Intrinsic)
                             .await?
                     {
+                        let spec = intrinsic.to_spec()?;
+                        funcs.push(spec.clone());
+                        self.func_map.insert(intrinsic_func_id, spec.clone());
+                    }
+                }
+                IntrinsicFunc::SetFloat => {
+                    // We need to check that an intrinsic function with the name "si:setFloat" exists.
+                    // If it does not exist, we import it from the intrinsic package.
+                    let maybe_intrinsic_func_id =
+                        Func::find_id_by_name(ctx, intrinsic.name()).await?;
+                    if let Some(intrinsic_func_id) = maybe_intrinsic_func_id {
+                        let spec = intrinsic.to_spec()?;
+                        funcs.push(spec.clone());
+                        self.func_map.insert(intrinsic_func_id, spec.clone());
+                    } else {
+                        import_pkg_from_pkg(
+                            ctx,
+                            &SiPkg::load_from_spec(IntrinsicFunc::float_pkg_spec()?)?,
+                            None,
+                        )
+                        .await?;
+
+                        let intrinsic_func_id = Func::find_id_by_name(ctx, "si:setFloat")
+                            .await?
+                            .ok_or(PkgError::MissingIntrinsicFunc("si:setFloat".to_string()))?;
+
                         let spec = intrinsic.to_spec()?;
                         funcs.push(spec.clone());
                         self.func_map.insert(intrinsic_func_id, spec.clone());
