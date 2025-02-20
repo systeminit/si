@@ -7,6 +7,7 @@ upgrade_check_script="si-check-node-upgrade"
 service_maintenance_script="si-service-maintenance"
 service_state_script="si-service-state"
 sdf_migrate_script="si-migrate-sdf"
+sdf_garbage_collection_script="si-garbage-collect"
 
 # Function to start SSM session
 start_and_track_ssm_session() {
