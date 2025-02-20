@@ -4,10 +4,11 @@ import { PropSpec } from "../bindings/PropSpec.ts";
 import { PropSpecData } from "../bindings/PropSpecData.ts";
 import { PropSpecWidgetKind } from "../bindings/PropSpecWidgetKind.ts";
 import _ from "npm:lodash";
-import ImportedJoi, { not } from "joi";
+import ImportedJoi from "joi";
 import { Extend } from "../extend.ts";
 import { CfSchema } from "../cfDb.ts";
 const { createHash } = await import("node:crypto");
+import { cfPcreToRegexp } from "../pcre.ts";
 
 export const CREATE_ONLY_PROP_LABEL = "si_create_only_prop";
 
@@ -288,12 +289,8 @@ function createPropFromCf(
           `Unsupported number format: ${normalizedCfProp.format}`,
         );
     }
-    if (required) {
-      validation += ".required()";
-    }
-    if (validation) {
-      setJoiValidation(prop, `Joi.number()${validation}`);
-    }
+    if (required) validation += ".required()";
+    if (validation) setJoiValidation(prop, `Joi.number()${validation}`);
 
     return prop;
   } else if (normalizedCfProp.type === "boolean") {
@@ -303,12 +300,8 @@ function createPropFromCf(
 
     // Add validation
     let validation = "";
-    if (required) {
-      validation += ".required()";
-    }
-    if (validation) {
-      setJoiValidation(prop, `Joi.boolean()${validation}`);
-    }
+    if (required) validation += ".required()";
+    if (validation) setJoiValidation(prop, `Joi.boolean()${validation}`);
 
     return prop;
   } else if (normalizedCfProp.type === "string") {
@@ -370,35 +363,15 @@ function createPropFromCf(
         validation += `.max(${normalizedCfProp.maxLength})`;
       }
       if (normalizedCfProp.pattern !== undefined) {
-        if (!shouldIgnorePattern(cfSchema.typeName, normalizedCfProp.pattern)) {
+        const toRegexp = cfPcreToRegexp(normalizedCfProp.pattern);
+        if (toRegexp) {
           validation += `.pattern(new RegExp(${
-            JSON.stringify(
-              normalizedCfProp.pattern,
-            )
-          }))`;
+            JSON.stringify(toRegexp.pattern)
+          }${toRegexp.flags ? `, ${JSON.stringify(toRegexp.flags)}` : ""}))`;
         }
       }
-      if (required) {
-        validation += ".required()";
-      }
-      if (validation) {
-        try {
-          setJoiValidation(prop, `Joi.string()${validation}`);
-        } catch (e) {
-          if (normalizedCfProp.pattern !== undefined) {
-            console.log(
-              `If this is a regex syntax error, add this to IGNORE_PATTERNS:
-                ${JSON.stringify(cfSchema.typeName)}: [ ${
-                JSON.stringify(
-                  normalizedCfProp.pattern,
-                )
-              }, ],
-              `,
-            );
-          }
-          throw e;
-        }
-      }
+      if (required) validation += ".required()";
+      if (validation) setJoiValidation(prop, `Joi.string()${validation}`);
     }
     return prop;
   } else if (normalizedCfProp.type === "json") {
@@ -409,12 +382,8 @@ function createPropFromCf(
 
     // Add validation
     let validation = "";
-    if (required) {
-      validation += ".required()";
-    }
-    if (validation) {
-      setJoiValidation(prop, `Joi.string()${validation}`);
-    }
+    if (required) validation += ".required()";
+    if (validation) setJoiValidation(prop, `Joi.string()${validation}`);
 
     return prop;
   } else if (normalizedCfProp.type === "array") {
@@ -499,12 +468,8 @@ function createPropFromCf(
 
       // Add validation
       let validation = "";
-      if (required) {
-        validation += ".required()";
-      }
-      if (validation) {
-        setJoiValidation(prop, `Joi.string()${validation}`);
-      }
+      if (required) validation += ".required()";
+      if (validation) setJoiValidation(prop, `Joi.string()${validation}`);
 
       return prop;
     }
@@ -534,41 +499,6 @@ function setJoiValidation(prop: ExpandedPropSpec, joiValidation: string) {
     console.error(joiValidation);
     throw e;
   }
-}
-
-// Some patterns in cloudformation are broken and need to be ignored
-const IGNORE_PATTERNS = {
-  "AWS::Amplify::App": ["(?s).+", "(?s).*"],
-  "AWS::Amplify::Branch": ["(?s).+", "(?s).*"],
-  "AWS::Amplify::Domain": ["(?s).+", "(?s).*"],
-  "AWS::AppFlow::Flow": [
-    "[\\u0020-\\uD7FF\\uE000-\\uFFFD\\uD800\\uDC00-\\uDBFF\\uDFFF\\t]*",
-  ],
-  "AWS::CloudFormation::GuardHook": [
-    "^(?!(?i)aws)[A-Za-z0-9]{2,64}::[A-Za-z0-9]{2,64}::[A-Za-z0-9]{2,64}$",
-  ],
-  "AWS::CloudFormation::LambdaHook": [
-    "^(?!(?i)aws)[A-Za-z0-9]{2,64}::[A-Za-z0-9]{2,64}::[A-Za-z0-9]{2,64}$",
-  ],
-  "AWS::CloudTrail::Dashboard": ["(?s).*"],
-  "AWS::FinSpace::Environment": [
-    "^[a-zA-Z-0-9-:\\/]*{1,1000}$",
-    "^[a-zA-Z-0-9-:\\/.]*{1,1000}$",
-  ],
-  "AWS::GameLift::GameServerGroup": ["[ -퟿-�𐀀-􏿿\r\n\t]*"],
-  "AWS::Invoicing::InvoiceUnit": ["^(?! )[\\p{L}\\p{N}\\p{Z}-_]*(?<! )$"],
-  "AWS::OpsWorksCM::Server": [
-    "(?s)\\s*-----BEGIN CERTIFICATE-----.+-----END CERTIFICATE-----\\s*",
-    "(?ms)\\s*^-----BEGIN (?-s:.*)PRIVATE KEY-----$.*?^-----END (?-s:.*)PRIVATE KEY-----$\\s*",
-    "(?s).*",
-  ],
-  "AWS::SageMaker::FeatureGroup": [
-    "[\\u0020-\\uD7FF\\uE000-\\uFFFD\\uD800\\uDC00-\\uDBFF\\uDFFF\t]*",
-  ],
-} as Record<string, string[]>;
-
-function shouldIgnorePattern(typeName: string, pattern: string): boolean {
-  return IGNORE_PATTERNS[typeName]?.indexOf(pattern) >= 0;
 }
 
 function setCreateOnlyProp(data: ExpandedPropSpec["data"]) {
