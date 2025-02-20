@@ -6,11 +6,6 @@
     @select="openManageWorkspacesHandler"
   />
   <DropdownMenuItem
-    icon="cloud-upload"
-    label="Export Workspace"
-    @select="emit('openExportModal')"
-  />
-  <DropdownMenuItem
     icon="cloud-download"
     label="Import Workspace"
     @select="emit('openImportModal')"
