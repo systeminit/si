@@ -268,9 +268,6 @@ function generatePropBuilderString(
       ) +
       inner +
       `${indent(indent_level)}.build()`;
-    // Now that we've emitted it, we don't need prop.joiValidation anymore. Don't bother
-    // putting it in the spec (we already have validationFormat).
-    delete prop.joiValidation;
     return result;
   }
 }

@@ -30,6 +30,8 @@ import { PkgSpec } from "../bindings/PkgSpec.ts";
 import { ignoreSpecsWithoutHandlers } from "../pipeline-steps/ignoreSpecsWithoutHandlers.ts";
 import { SchemaVariantSpec } from "../bindings/SchemaVariantSpec.ts";
 import { SchemaSpec } from "../bindings/SchemaSpec.ts";
+import { bfsPropTree, ExpandedPropSpec } from "../spec/props.ts";
+import { PropSpec } from "../bindings/PropSpec.ts";
 
 const logger = _logger.ns("siSpecs").seal();
 const SI_SPEC_DIR = "si-specs";
@@ -135,9 +137,24 @@ function unexpandSchema(
     variants: expanded.variants.map(unexpandVariant),
   };
 }
+
 function unexpandVariant(
   expanded: ExpandedSchemaVariantSpec,
 ): SchemaVariantSpec {
   const { cfSchema: _, ...variant } = expanded;
+  bfsPropTree([
+    variant.domain,
+    variant.resourceValue,
+    variant.secrets,
+    variant.secretDefinition,
+  ], unexpandProperty);
   return variant;
+}
+
+function unexpandProperty(expanded: ExpandedPropSpec): PropSpec {
+  const deleteable = expanded as Partial<ExpandedPropSpec>;
+  delete deleteable.metadata;
+  delete deleteable.joiValidation;
+  delete deleteable.cfProp;
+  return expanded;
 }

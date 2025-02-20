@@ -1,4 +1,4 @@
-import { CfProperty, normalizeProperty } from "../cfDb.ts";
+import { CfObjectProperty, CfProperty, normalizeProperty } from "../cfDb.ts";
 import { ulid } from "https://deno.land/x/ulid@v0.3.0/mod.ts";
 import { PropSpec } from "../bindings/PropSpec.ts";
 import { PropSpecData } from "../bindings/PropSpecData.ts";
@@ -29,6 +29,7 @@ export type PropSpecFor = {
   map: Extract<PropSpec, { kind: "map" }>;
   object: Extract<PropSpec, { kind: "object" }>;
 };
+
 export type ExpandedPropSpecFor = {
   boolean: Extend<PropSpecFor["boolean"], PropSpecOverrides>;
   json: Extend<PropSpecFor["json"], PropSpecOverrides>;
@@ -65,18 +66,21 @@ interface PropSpecOverrides {
     propPath: string[];
   };
   joiValidation?: string;
+  cfProp:
+    | CfProperty & {
+      // The name of the definition this property lives under
+      defName?: string;
+    }
+    | undefined;
 }
 
 type CreatePropArgs = {
   // The path to this prop, e.g. ["root", "domain"]
   propPath: string[];
   // The definition for this prop in the schema
-  cfProp: CfProperty;
+  cfProp: CfProperty & { defName?: string };
   // Whether this prop is required.
   required: boolean;
-  // The definition the CfProperty lives within, in the schema. e.g. #/definitions/MyDefinition.
-  // If this is undefined, it's in the main schema.
-  cfRef: string | undefined;
   // Whether the parent CfProperty was an object (only fields get fragment doc refs)
   cfParentIsObject: boolean;
   // A handler to add the prop to its parent after it has been created
@@ -109,7 +113,6 @@ export function createDefaultPropFromCf(
         // Pretend the prop only has the specified properties (since we split it up)
         cfProp: { ...cfSchema, properties },
         required: true,
-        cfRef: undefined,
         cfParentIsObject: false,
         addTo: (prop: ExpandedPropSpec) => {
           if (prop.kind !== "object") {
@@ -150,47 +153,45 @@ export function createDefaultPropFromCf(
 
 export function createDefaultProp(
   name: DefaultPropType,
+  cfProp: CfObjectProperty | undefined,
 ): ExpandedPropSpecFor["object"] {
-  return createObjectProp(name, ["root"]);
+  return createObjectProp(name, ["root"], cfProp);
 }
 
 export function createDocLink(
   { typeName }: CfSchema,
-  cfRef?: string,
+  defName: string | undefined,
   propName?: string,
 ): string {
   // Figure out the snake case name of the resource to link to
 
-  // AWS::EC2::SecurityGroup -> ec2-securitygroup
+  // AWS::EC2::SecurityGroup -> aws, ec2-securitygroup
   const [topLevelRef, ...typeRefParts] = typeName.toLowerCase().split("::");
-  let snakeRef = typeRefParts.join("-");
+  let kebabRef = typeRefParts.join("-");
 
-  // AWS::EC2::SecurityGroup #/definitions/Ingress -> ec2-securitygroup-ingress
-  if (cfRef) {
-    if (!cfRef.startsWith("#/definitions/")) {
-      throw new Error("$ref from property must start with #/definitions/");
-    }
-    snakeRef += "-";
-    snakeRef += cfRef.slice("#/definitions/".length).toLowerCase();
+  let docLink =
+    "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide";
+
+  // If the document refers to a definition, the link is a little different
+  if (defName) {
+    // AWS::EC2::SecurityGroup #/definitions/Ingress -> /aws-properties-ec2-securitygroup-ingress
+    kebabRef += `-${defName.toLowerCase()}`;
+    docLink += `/${topLevelRef}-properties-${kebabRef}.html`;
+  } else {
+    docLink += `/${topLevelRef}-resource-${kebabRef}.html`;
   }
-
-  // Create the page link
-  let docLink = `https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/${topLevelRef}-resource-${snakeRef}.html`;
 
   // If a property name is provided, reference the property with a fragment
   if (propName) {
-    docLink += `#cfn-${snakeRef}-${propName.toLowerCase()}`;
+    docLink += `#cfn-${kebabRef}-${propName.toLowerCase()}`;
   }
   return docLink;
 }
 
 function createPropFromCf(
-  { propPath, cfProp, cfRef, cfParentIsObject, required }: CreatePropArgs,
+  { propPath, cfProp, cfParentIsObject, required }: CreatePropArgs,
   { cfSchema, onlyProperties, queue }: CreatePropQueue,
 ): ExpandedPropSpec | undefined {
-  // If this prop is a reference to a definition, cache that info so we can link to the right page
-  if (cfProp.$ref) cfRef = cfProp.$ref;
-
   const name = propPath[propPath.length - 1];
   const propUniqueId = ulid();
   const data: ExpandedPropSpec["data"] = {
@@ -202,7 +203,9 @@ function createPropFromCf(
     widgetKind: null,
     widgetOptions: [],
     hidden: false,
-    docLink: cfParentIsObject ? createDocLink(cfSchema, cfRef, name) : null,
+    docLink: cfParentIsObject
+      ? createDocLink(cfSchema, cfProp.defName, name)
+      : null,
     documentation: cfProp.description ?? null,
   };
   const partialProp: Partial<ExpandedPropSpec> = {
@@ -216,6 +219,7 @@ function createPropFromCf(
       primaryIdentifier: onlyProperties.primaryIdentifier.includes(name),
       propPath,
     },
+    cfProp,
   };
 
   if (partialProp.metadata?.createOnly) {
@@ -234,10 +238,10 @@ function createPropFromCf(
     let prop;
     if (normalizedCfProp.type === "integer") {
       prop = partialProp as ExpandedPropSpecFor["number"];
-      prop.kind = "number"
+      prop.kind = "number";
     } else {
-      prop = partialProp as ExpandedPropSpecFor["float"]
-      prop.kind = "float"
+      prop = partialProp as ExpandedPropSpecFor["float"];
+      prop.kind = "float";
     }
     if (normalizedCfProp.enum) {
       prop.data.widgetKind = "ComboBox";
@@ -348,9 +352,11 @@ function createPropFromCf(
           break;
         // This is a special case (and seems likely wrong), but may as well support it
         case "(^arn:[a-z\\d-]+:rekognition:[a-z\\d-]+:\\d{12}:collection\\/([a-zA-Z0-9_.\\-]+){1,255})":
-          validation += `.pattern(new RegExp(${JSON.stringify(
-            normalizedCfProp.format,
-          )}))`;
+          validation += `.pattern(new RegExp(${
+            JSON.stringify(
+              normalizedCfProp.format,
+            )
+          }))`;
           break;
         case undefined:
           break;
@@ -365,9 +371,11 @@ function createPropFromCf(
       }
       if (normalizedCfProp.pattern !== undefined) {
         if (!shouldIgnorePattern(cfSchema.typeName, normalizedCfProp.pattern)) {
-          validation += `.pattern(new RegExp(${JSON.stringify(
-            normalizedCfProp.pattern,
-          )}))`;
+          validation += `.pattern(new RegExp(${
+            JSON.stringify(
+              normalizedCfProp.pattern,
+            )
+          }))`;
         }
       }
       if (required) {
@@ -380,9 +388,11 @@ function createPropFromCf(
           if (normalizedCfProp.pattern !== undefined) {
             console.log(
               `If this is a regex syntax error, add this to IGNORE_PATTERNS:
-                ${JSON.stringify(cfSchema.typeName)}: [ ${JSON.stringify(
+                ${JSON.stringify(cfSchema.typeName)}: [ ${
+                JSON.stringify(
                   normalizedCfProp.pattern,
-                )}, ],
+                )
+              }, ],
               `,
             );
           }
@@ -416,7 +426,6 @@ function createPropFromCf(
       propPath: [...propPath, `${name}Item`],
       cfProp: normalizedCfProp.items,
       required: true, // If you *do* have an item which is an object, this enables validation for required fields
-      cfRef,
       cfParentIsObject: false,
       addTo: (data: ExpandedPropSpec) => {
         prop.typeProp = data;
@@ -454,7 +463,6 @@ function createPropFromCf(
         cfProp,
         propPath: [...propPath, `${name}Item`],
         required: true, // If you *do* have an item which is an object, this enables validation for required fields
-        cfRef,
         cfParentIsObject: false,
         addTo: (data: ExpandedPropSpec) => {
           prop.typeProp = data;
@@ -467,15 +475,16 @@ function createPropFromCf(
       prop.kind = "object";
       prop.data.widgetKind = "Header";
       prop.entries = [];
-      for (const [name, childCfProp] of Object.entries(
-        normalizedCfProp.properties,
-      )) {
+      for (
+        const [name, childCfProp] of Object.entries(
+          normalizedCfProp.properties,
+        )
+      ) {
         queue.push({
           cfProp: childCfProp,
           propPath: [...propPath, name],
           // Object fields are only required if the object itself is required
           required: required && !!normalizedCfProp.required?.includes(name),
-          cfRef,
           cfParentIsObject: true,
           addTo: (childProp: ExpandedPropSpec) => {
             prop.entries.push(childProp);
@@ -575,6 +584,7 @@ export type DefaultPropType = "domain" | "secrets" | "resource_value";
 export function createObjectProp(
   name: string,
   parentPath: string[],
+  cfProp: CfObjectProperty | undefined,
 ): Extract<ExpandedPropSpec, { kind: "object" }> {
   const data: ExpandedPropSpec["data"] = {
     name,
@@ -602,6 +612,7 @@ export function createObjectProp(
       primaryIdentifier: false,
       propPath: [...parentPath, name],
     },
+    cfProp,
   };
 
   return prop;
@@ -611,6 +622,7 @@ export function createScalarProp(
   name: string,
   kind: "number" | "string" | "boolean",
   parentPath: string[],
+  cfProp?: CfProperty,
 ): ExpandedPropSpec {
   let widgetKind: PropSpecWidgetKind;
   switch (kind) {
@@ -648,19 +660,22 @@ export function createScalarProp(
       primaryIdentifier: false,
       propPath: [...parentPath, name],
     },
+    cfProp,
   };
 
   return prop;
 }
 
 export function bfsPropTree(
-  prop: ExpandedPropSpec | ExpandedPropSpec[],
+  prop: ExpandedPropSpec | (ExpandedPropSpec | null)[],
   callback: (prop: ExpandedPropSpec, parents: ExpandedPropSpec[]) => unknown,
   options?: { skipTypeProps: boolean },
 ) {
   if (Array.isArray(prop)) {
     for (const p of prop) {
-      bfsPropTree(p, callback, options);
+      if (p !== null) {
+        bfsPropTree(p, callback, options);
+      }
     }
     return;
   }

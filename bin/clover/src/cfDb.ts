@@ -77,6 +77,7 @@ type CfMultiTypeProperty =
   & {
     type?: undefined;
     oneOf?: CfProperty[];
+    allOf?: CfProperty[];
     anyOf?: CfProperty[];
   };
 
@@ -315,8 +316,8 @@ export async function loadCfDatabase(
 ): Promise<CfDb> {
   path ??= DEFAULT_PATH;
   if (Object.keys(DB).length === 0) {
-    for (const data of await readSpecs(path)) {
-      const typeName: string = data.typeName;
+    for (const cfSchema of await readSchemas(path)) {
+      const typeName: string = cfSchema.typeName;
 
       if (services && !services.some((service) => typeName.match(service))) {
         continue;
@@ -324,28 +325,51 @@ export async function loadCfDatabase(
 
       logger.debug(`Loaded ${typeName}`);
 
-      try {
-        const expandedSchema = await $RefParser.dereference(data, {
-          dereference: {
-            circular: "ignore",
-            onDereference: (path: string, ref: JSONSchema.Object) => {
-              const name = path.split("/").pop();
-              ref.title = ref.title ?? name;
-            },
-          },
-        }) as CfSchema;
-        DB[typeName] = expandedSchema;
-      } catch (e) {
-        logger.error(`failed to expand ${typeName}`, e);
-        DB[typeName] = data;
+      // Mark all definition props with their enclosing name for doc link generation
+      if (cfSchema.definitions) {
+        for (const [defName, defProp] of Object.entries(cfSchema.definitions)) {
+          for (const cfProp of nestedCfProps(defProp)) {
+            (cfProp as { defName?: string }).defName = defName;
+          }
+        }
       }
+
+      // Dereference the schema
+      const dereferencedSchema = await $RefParser.dereference(cfSchema, {
+        dereference: {
+          circular: "ignore",
+          onDereference: (path: string, ref: JSONSchema.Object) => {
+            const name = path.split("/").pop();
+            ref.title = ref.title ?? name;
+          },
+        },
+      }) as CfSchema;
+      DB[typeName] = dereferencedSchema;
     }
   }
 
   return DB;
 }
 
-async function readSpecs(path: string) {
+function* nestedCfProps(prop: CfProperty): Generator<CfProperty> {
+  yield prop;
+  for (const p of prop.anyOf ?? []) yield* nestedCfProps(p as CfProperty);
+  for (const p of prop.oneOf ?? []) yield* nestedCfProps(p as CfProperty);
+  for (const p of prop.allOf ?? []) yield* nestedCfProps(p as CfProperty);
+  if ("properties" in prop) {
+    for (const p of Object.values(prop.properties ?? {})) {
+      yield* nestedCfProps(p as CfProperty);
+    }
+  }
+  if ("patternProperties" in prop) {
+    for (const p of Object.values(prop.patternProperties ?? {})) {
+      yield* nestedCfProps(p as CfProperty);
+    }
+  }
+  if ("items" in prop) yield* nestedCfProps(prop.items as CfProperty);
+}
+
+async function readSchemas(path: string): Promise<CfSchema[]> {
   const fullPath = await Deno.realPath(path);
   logger.debug("Loading database from Cloudformation schema", { fullPath });
   const result = [];
