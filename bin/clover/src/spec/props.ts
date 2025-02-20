@@ -4,7 +4,7 @@ import { PropSpec } from "../bindings/PropSpec.ts";
 import { PropSpecData } from "../bindings/PropSpecData.ts";
 import { PropSpecWidgetKind } from "../bindings/PropSpecWidgetKind.ts";
 import _ from "npm:lodash";
-import ImportedJoi from "joi";
+import ImportedJoi, { not } from "joi";
 import { Extend } from "../extend.ts";
 import { CfSchema } from "../cfDb.ts";
 const { createHash } = await import("node:crypto");
@@ -23,6 +23,7 @@ export type PropSpecFor = {
   boolean: Extract<PropSpec, { kind: "boolean" }>;
   json: Extract<PropSpec, { kind: "json" }>;
   number: Extract<PropSpec, { kind: "number" }>;
+  float: Extract<PropSpec, { kind: "float" }>;
   string: Extract<PropSpec, { kind: "string" }>;
   array: Extract<PropSpec, { kind: "array" }>;
   map: Extract<PropSpec, { kind: "map" }>;
@@ -32,6 +33,7 @@ export type ExpandedPropSpecFor = {
   boolean: Extend<PropSpecFor["boolean"], PropSpecOverrides>;
   json: Extend<PropSpecFor["json"], PropSpecOverrides>;
   number: Extend<PropSpecFor["number"], PropSpecOverrides>;
+  float: Extend<PropSpecFor["float"], PropSpecOverrides>;
   string: Extend<PropSpecFor["string"], PropSpecOverrides>;
   array: Extend<
     PropSpecFor["array"],
@@ -101,21 +103,23 @@ export function createDefaultPropFromCf(
   const queue: CreatePropQueue = {
     cfSchema,
     onlyProperties,
-    queue: [{
-      propPath: ["root", name],
-      // Pretend the prop only has the specified properties (since we split it up)
-      cfProp: { ...cfSchema, properties },
-      required: true,
-      cfRef: undefined,
-      cfParentIsObject: false,
-      addTo: (prop: ExpandedPropSpec) => {
-        if (prop.kind !== "object") {
-          throw new Error(`${name} prop is not an object`);
-        }
-        // Set "rootProp" before returning it
-        rootProp = prop;
+    queue: [
+      {
+        propPath: ["root", name],
+        // Pretend the prop only has the specified properties (since we split it up)
+        cfProp: { ...cfSchema, properties },
+        required: true,
+        cfRef: undefined,
+        cfParentIsObject: false,
+        addTo: (prop: ExpandedPropSpec) => {
+          if (prop.kind !== "object") {
+            throw new Error(`${name} prop is not an object`);
+          }
+          // Set "rootProp" before returning it
+          rootProp = prop;
+        },
       },
-    }],
+    ],
   };
 
   while (queue.queue.length > 0) {
@@ -171,8 +175,7 @@ export function createDocLink(
   }
 
   // Create the page link
-  let docLink =
-    `https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/${topLevelRef}-resource-${snakeRef}.html`;
+  let docLink = `https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/${topLevelRef}-resource-${snakeRef}.html`;
 
   // If a property name is provided, reference the property with a fragment
   if (propName) {
@@ -228,8 +231,14 @@ function createPropFromCf(
   if (
     normalizedCfProp.type === "integer" || normalizedCfProp.type === "number"
   ) {
-    const prop = partialProp as ExpandedPropSpecFor["number"];
-    prop.kind = "number";
+    let prop;
+    if (normalizedCfProp.type === "integer") {
+      prop = partialProp as ExpandedPropSpecFor["number"];
+      prop.kind = "number"
+    } else {
+      prop = partialProp as ExpandedPropSpecFor["float"]
+      prop.kind = "float"
+    }
     if (normalizedCfProp.enum) {
       prop.data.widgetKind = "ComboBox";
       for (const val of normalizedCfProp.enum) {
@@ -339,16 +348,14 @@ function createPropFromCf(
           break;
         // This is a special case (and seems likely wrong), but may as well support it
         case "(^arn:[a-z\\d-]+:rekognition:[a-z\\d-]+:\\d{12}:collection\\/([a-zA-Z0-9_.\\-]+){1,255})":
-          validation += `.pattern(new RegExp(${
-            JSON.stringify(normalizedCfProp.format)
-          }))`;
+          validation += `.pattern(new RegExp(${JSON.stringify(
+            normalizedCfProp.format,
+          )}))`;
           break;
         case undefined:
           break;
         default:
-          throw new Error(
-            `Unsupported format: ${normalizedCfProp.format}`,
-          );
+          throw new Error(`Unsupported format: ${normalizedCfProp.format}`);
       }
       if (normalizedCfProp.minLength !== undefined) {
         validation += `.min(${normalizedCfProp.minLength})`;
@@ -357,15 +364,10 @@ function createPropFromCf(
         validation += `.max(${normalizedCfProp.maxLength})`;
       }
       if (normalizedCfProp.pattern !== undefined) {
-        if (
-          !shouldIgnorePattern(
-            cfSchema.typeName,
+        if (!shouldIgnorePattern(cfSchema.typeName, normalizedCfProp.pattern)) {
+          validation += `.pattern(new RegExp(${JSON.stringify(
             normalizedCfProp.pattern,
-          )
-        ) {
-          validation += `.pattern(new RegExp(${
-            JSON.stringify(normalizedCfProp.pattern)
-          }))`;
+          )}))`;
         }
       }
       if (required) {
@@ -378,9 +380,9 @@ function createPropFromCf(
           if (normalizedCfProp.pattern !== undefined) {
             console.log(
               `If this is a regex syntax error, add this to IGNORE_PATTERNS:
-                ${JSON.stringify(cfSchema.typeName)}: [ ${
-                JSON.stringify(normalizedCfProp.pattern)
-              }, ],
+                ${JSON.stringify(cfSchema.typeName)}: [ ${JSON.stringify(
+                  normalizedCfProp.pattern,
+                )}, ],
               `,
             );
           }
@@ -465,9 +467,9 @@ function createPropFromCf(
       prop.kind = "object";
       prop.data.widgetKind = "Header";
       prop.entries = [];
-      for (
-        const [name, childCfProp] of Object.entries(normalizedCfProp.properties)
-      ) {
+      for (const [name, childCfProp] of Object.entries(
+        normalizedCfProp.properties,
+      )) {
         queue.push({
           cfProp: childCfProp,
           propPath: [...propPath, name],
@@ -556,10 +558,7 @@ const IGNORE_PATTERNS = {
   ],
 } as Record<string, string[]>;
 
-function shouldIgnorePattern(
-  typeName: string,
-  pattern: string,
-): boolean {
+function shouldIgnorePattern(typeName: string, pattern: string): boolean {
   return IGNORE_PATTERNS[typeName]?.indexOf(pattern) >= 0;
 }
 

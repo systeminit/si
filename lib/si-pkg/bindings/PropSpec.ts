@@ -14,6 +14,11 @@ export type PropSpec = {
   data: PropSpecData | null;
   uniqueId: string | null;
 } | {
+  "kind": "float";
+  name: string;
+  data: PropSpecData | null;
+  uniqueId: string | null;
+} | {
   "kind": "json";
   name: string;
   data: PropSpecData | null;
