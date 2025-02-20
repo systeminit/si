@@ -58,7 +58,7 @@ const ACTION_FUNC_SPECS = {
   FuncSpecInfo & { actionKind: ActionFuncSpecKind }
 >;
 
-const CODE_GENERATION_FUNC_SPECS = {
+export const CODE_GENERATION_FUNC_SPECS = {
   // Code Generation
   awsCloudControlCreate: {
     id: "c48518d82a2db7064e7851c36636c665dce775610d08958a8a4f0c5c85cd808e",
