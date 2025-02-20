@@ -53,18 +53,19 @@ overflow hidden */
       <!-- DEBUG BAR-->
       <div
         v-if="enableDebugMode"
-        class="absolute bg-black text-white flex space-x-10 z-10 opacity-50"
+        class="absolute left-1/2 translate-x-[-50%] text-destructive-500 font-bold flex flex-row flex-wrap gap-xs items-center justify-center w-[70%] space-x-10 z-10"
       >
         <div>fonts loaded? {{ customFontsLoaded }}</div>
-        <div>origin = {{ gridOrigin.x }}, {{ gridOrigin.y }}</div>
+        <div>origin: {{ gridOrigin.x }}, {{ gridOrigin.y }}</div>
         <div>
-          pointer (raw) =
+          pointer (raw):
           {{ containerPointerPos?.x }}, {{ containerPointerPos?.y }}
         </div>
         <div>
-          pointer (grid) =
+          pointer (grid):
           {{ gridPointerPos?.x }}, {{ gridPointerPos?.y }}
         </div>
+        <div>occlusion rect: {{ occlusionRect }}</div>
       </div>
 
       <DiagramControls
@@ -99,6 +100,7 @@ overflow hidden */
               qualificationStore.qualificationStatusForComponentId(group.def.id)
             "
             :hideDetails="hideDiagramDetails"
+            :occlusionRect="occlusionRect"
             @rename="
               (f) => {
                 renameOnDiagram(group, f);
@@ -119,6 +121,7 @@ overflow hidden */
                 )
               "
               :hideDetails="hideDiagramDetails"
+              :occlusionRect="occlusionRect"
               @rename="
                 (f) => {
                   renameOnDiagram(node, f);
@@ -135,6 +138,8 @@ overflow hidden */
               :isSelected="elementIsSelected(view)"
               :view="view.def"
               :hideDetails="hideDiagramDetails"
+              :occlusionRect="occlusionRect"
+              :debug="enableDebugMode"
             />
           </template>
           <DiagramCursor
@@ -354,7 +359,6 @@ import {
   NODE_TITLE_HEADER_MARGIN_RIGHT,
   GROUP_HEADER_ICON_SIZE,
   NODE_HEADER_HEIGHT,
-  detailsModeArray,
 } from "./diagram_constants";
 import {
   vectorDistance,
@@ -377,12 +381,15 @@ import DiagramIcon from "./DiagramIcon.vue";
 import DiagramEmptyState from "./DiagramEmptyState.vue";
 import DiagramView from "./DiagramView.vue";
 
-const toggleHideDetails = ref(0);
-const hideDiagramDetails = computed(() =>
-  featureFlagsStore.DIAGRAM_OPTIMIZATION
-    ? detailsModeArray[toggleHideDetails.value]
-    : "show",
-);
+const hideDiagramDetails = computed(() => {
+  if (!featureFlagsStore.DIAGRAM_OPTIMIZATION || zoomLevel.value > 0.51) {
+    return "show";
+  } else if (zoomLevel.value > 0.31) {
+    return "titles";
+  } else {
+    return "hide";
+  }
+});
 
 const LEFT_PANEL_DRAWER_WIDTH = 230;
 
@@ -907,19 +914,6 @@ async function onKeyDown(e: KeyboardEvent) {
   ) {
     e.preventDefault();
     modelingEventBus.emit("templateFromSelection");
-  }
-
-  // TODO(wendy) - this toggle is for testing diagram performance
-  if (
-    !props.readOnly &&
-    featureFlagsStore.DIAGRAM_OPTIMIZATION &&
-    e.key === "z"
-  ) {
-    e.preventDefault();
-    toggleHideDetails.value++;
-    if (toggleHideDetails.value > detailsModeArray.length - 1) {
-      toggleHideDetails.value = 0;
-    }
   }
 }
 
@@ -3220,6 +3214,20 @@ function onRenameKeyDown(e: KeyboardEvent) {
 }
 
 const helpModalRef = ref();
+
+const occlusionRect = computed(() => {
+  // If the feature flag is off, disable occlusion
+  if (!featureFlagsStore.DIAGRAM_OPTIMIZATION) return undefined;
+
+  const OCCLUSION_EDGE = 100;
+
+  return {
+    x: gridOrigin.value.x - (gridWidth.value + OCCLUSION_EDGE) / 2,
+    y: gridOrigin.value.y - (gridHeight.value + OCCLUSION_EDGE) / 2,
+    width: gridWidth.value + OCCLUSION_EDGE,
+    height: gridHeight.value + OCCLUSION_EDGE,
+  } as IRect;
+});
 
 onMounted(() => {
   componentsStore.copyingFrom = null;

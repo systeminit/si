@@ -83,17 +83,6 @@
         </div>
         <div>Press T to create a template from the selected components.</div>
       </div>
-      <div
-        v-if="featureFlagsStore.DIAGRAM_OPTIMIZATION"
-        class="flex flex-row items-center gap-xs"
-      >
-        <div class="w-12 flex flex-row items-center justify-center">
-          <div class="text-xl font-bold leading-none flex-grow text-center">
-            Z
-          </div>
-        </div>
-        <div>Press Z to toggle diagram details.</div>
-      </div>
       <div class="flex flex-row items-center gap-xs">
         <div class="w-12 flex flex-row items-center justify-center">
           <Icon name="command" />

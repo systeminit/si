@@ -1,85 +1,98 @@
 <template>
-  <v-group
-    ref="groupRef"
-    :config="{
-      id: view.id,
-      x: view.x,
-      y: view.y,
-    }"
-    @mouseover="onMouseOver"
-    @mouseout="onMouseOut"
-    @dblclick="goto"
-  >
-    <v-shape :config="config" />
-
-    <v-text
-      v-if="hideDetails !== 'hide'"
+  <v-group v-if="!occlude">
+    <v-rect
+      v-if="debug"
       :config="{
-        x: -radius * 0.8,
-        y: -radius,
-        align: 'center',
-        verticalAlign: 'middle',
-        width: view.width * 0.8,
-        height: view.width,
-        text: view.name,
-        padding: 2,
-        fill: colors.headerText,
-        fontSize: fontSize,
-        fontFamily: DIAGRAM_FONT_FAMILY,
-        listening: false,
-        wrap: 'word',
+        width: renderRect.width,
+        height: renderRect.height,
+        x: renderRect.x,
+        y: renderRect.y,
+        fill: 'red',
+        opacity: 0.2,
       }"
     />
-
-    <!-- status icons -->
     <v-group
-      v-if="statusIcons?.length && hideDetails === 'show'"
+      ref="groupRef"
       :config="{
-        x: (statusIcons.length * 26) / 2,
-        y: -20,
+        id: view.id,
+        x: view.x,
+        y: view.y,
       }"
+      @mouseover="onMouseOver"
+      @mouseout="onMouseOut"
+      @dblclick="goto"
     >
-      <template
-        v-for="(statusIcon, i) in _.reverse(_.slice(statusIcons))"
-        :key="`status-icon-${i}`"
-      >
-        <v-text
-          v-if="hideDetails === 'show'"
-          :config="{
-            x: i * -26 - 25,
-            y: radius - 43,
-            align: 'center',
-            verticalAlign: 'top',
-            width: 25,
-            height: 30,
-            text: statusIcon.count,
-            padding: 2,
-            fill: colors.headerText,
-            fontSize: 11,
-            fontFamily: DIAGRAM_FONT_FAMILY,
-            listening: false,
-            wrap: 'char',
-          }"
-        />
-        <DiagramIcon
-          :icon="statusIcon.icon"
-          :color="getToneColorHex(statusIcon.tone)"
-          :size="24"
-          :x="i * -26"
-          :y="radius - 5"
-          origin="bottom-right"
-        />
-      </template>
-    </v-group>
+      <v-shape :config="config" />
 
-    <v-shape v-if="isHovered" :config="selectionConfig" />
+      <v-text
+        v-if="hideDetails !== 'hide'"
+        :config="{
+          x: -radius * 0.8,
+          y: -radius,
+          align: 'center',
+          verticalAlign: 'middle',
+          width: view.width * 0.8,
+          height: view.width,
+          text: view.name,
+          padding: 2,
+          fill: colors.headerText,
+          fontSize: fontSize,
+          fontFamily: DIAGRAM_FONT_FAMILY,
+          listening: false,
+          wrap: 'word',
+        }"
+      />
+
+      <!-- status icons -->
+      <v-group
+        v-if="statusIcons?.length && hideDetails === 'show'"
+        :config="{
+          x: (statusIcons.length * 26) / 2,
+          y: -20,
+        }"
+      >
+        <template
+          v-for="(statusIcon, i) in _.reverse(_.slice(statusIcons))"
+          :key="`status-icon-${i}`"
+        >
+          <v-text
+            v-if="hideDetails === 'show'"
+            :config="{
+              x: i * -26 - 25,
+              y: radius - 43,
+              align: 'center',
+              verticalAlign: 'top',
+              width: 25,
+              height: 30,
+              text: statusIcon.count,
+              padding: 2,
+              fill: colors.headerText,
+              fontSize: 11,
+              fontFamily: DIAGRAM_FONT_FAMILY,
+              listening: false,
+              wrap: 'char',
+            }"
+          />
+          <DiagramIcon
+            :icon="statusIcon.icon"
+            :color="getToneColorHex(statusIcon.tone)"
+            :size="24"
+            :x="i * -26"
+            :y="radius - 5"
+            origin="bottom-right"
+          />
+        </template>
+      </v-group>
+
+      <v-shape v-if="isHovered" :config="selectionConfig" />
+    </v-group>
   </v-group>
 </template>
 
 <script lang="ts" setup>
 import * as _ from "lodash-es";
 import { computed, reactive, watch } from "vue";
-import { Vector2d } from "konva/lib/types";
+import { Vector2d, IRect } from "konva/lib/types";
 import { KonvaEventObject } from "konva/lib/Node";
 import tinycolor from "tinycolor2";
 import { useTheme, getToneColorHex, Tones } from "@si/vue-lib/design-system";
@@ -92,6 +105,7 @@ import {
 import { useViewsStore } from "@/store/views.store";
 import { DiagramViewDef, ElementHoverMeta } from "./diagram_types";
 import DiagramIcon from "./DiagramIcon.vue";
+import { checkRectanglesOverlap } from "./utils/math";
 
 const { theme } = useTheme();
 
@@ -101,7 +115,9 @@ const props = defineProps<{
   view: DiagramViewDef;
   isHovered: boolean;
   isSelected: boolean;
+  debug?: boolean;
   hideDetails?: DetailsMode;
+  occlusionRect?: IRect;
 }>();
 
 const radius = computed(() => {
@@ -265,4 +281,25 @@ const goto = (e: KonvaEventObject<MouseEvent>) => {
     viewsStore.selectView(props.view.id);
   }
 };
+
+const RENDER_RECT_EDGE = 8;
+
+const renderRect = computed(() => {
+  const size = radius.value + RENDER_RECT_EDGE;
+  return {
+    x: props.view.x - size,
+    y: props.view.y - size,
+    width: size * 2,
+    height: size * 2,
+  };
+});
+
+const occlude = computed(() => {
+  if (!props.occlusionRect) {
+    return false;
+  } else {
+    const o = !checkRectanglesOverlap(renderRect.value, props.occlusionRect);
+    return o;
+  }
+});
 </script>
