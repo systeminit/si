@@ -15,7 +15,6 @@ import { getExistingSpecs } from "../specUpdates.ts";
 
 import _logger from "../logger.ts";
 import { assetSpecificOverrides } from "../pipeline-steps/assetSpecificOverrides.ts";
-import { addSignatureToCategoryName } from "../pipeline-steps/addSignatureToCategoryName.ts";
 import { generateOutputSocketsFromProps } from "../pipeline-steps/generateOutputSocketsFromProps.ts";
 import {
   ExpandedPkgSpec,
@@ -27,11 +26,12 @@ import { prettifySocketNames } from "../pipeline-steps/prettifySocketNames.ts";
 import { loadInferred } from "../spec/inferred.ts";
 import { addInferredEnums } from "../pipeline-steps/addInferredEnums.ts";
 import { PkgSpec } from "../bindings/PkgSpec.ts";
-import { ignoreSpecsWithoutHandlers } from "../pipeline-steps/ignoreSpecsWithoutHandlers.ts";
 import { SchemaVariantSpec } from "../bindings/SchemaVariantSpec.ts";
 import { SchemaSpec } from "../bindings/SchemaSpec.ts";
 import { bfsPropTree, ExpandedPropSpec } from "../spec/props.ts";
 import { PropSpec } from "../bindings/PropSpec.ts";
+import { pruneCfAssets } from "../pipeline-steps/pruneCfAssets.ts";
+import { removeUnneededAssets } from "../pipeline-steps/removeUnneededAssets.ts";
 
 const logger = _logger.ns("siSpecs").seal();
 const SI_SPEC_DIR = "si-specs";
@@ -70,7 +70,6 @@ export async function generateSiSpecs(
   }
 
   // EXECUTE PIPELINE STEPS
-  specs = ignoreSpecsWithoutHandlers(specs);
   specs = addInferredEnums(specs, inferred);
   specs = generateOutputSocketsFromProps(specs);
   specs = addDefaultPropsAndSockets(specs);
@@ -86,14 +85,20 @@ export async function generateSiSpecs(
   // don't generate input sockets until we have all of the output sockets
   specs = createInputSocketsBasedOnOutputSockets(specs);
   specs = prettifySocketNames(specs);
+  // remove these after socket generation so we can still connect to their
+  // alternatives
+  specs = removeUnneededAssets(specs);
 
   // Our overrides right now only run after the prop tree and the sockets are generated
   specs = assetSpecificOverrides(specs);
 
+  // prune assets that cannot be created by cloud control and must be create
+  // using cf
+  specs = pruneCfAssets(specs);
+
   // These need everything to be complete
   specs = generateAssetFuncs(specs);
   specs = updateSchemaIdsForExistingSpecs(existing_specs, specs);
-  specs = addSignatureToCategoryName(specs);
 
   // WRITE OUTS SPECS
   await emptyDirectory(SI_SPEC_DIR);
