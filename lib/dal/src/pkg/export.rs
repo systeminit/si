@@ -1018,6 +1018,34 @@ impl PkgExporter {
                         func_specs.push(spec);
                     }
                 }
+                IntrinsicFunc::SetFloat => {
+                    // We need to check that an intrinsic function with the name "si:setFloat" exists.
+                    // If it does not exist, we import it from the intrinsic package.
+                    let maybe_intrinsic_func_id =
+                        Func::find_id_by_name(ctx, intrinsic.name()).await?;
+                    if let Some(intrinsic_func_id) = maybe_intrinsic_func_id {
+                        let intrinsic_func =
+                            Func::get_by_id_or_error(ctx, intrinsic_func_id).await?;
+                        let (spec, _) = self.add_func_to_map(ctx, &intrinsic_func).await?;
+                        func_specs.push(spec);
+                    } else {
+                        import_pkg_from_pkg(
+                            ctx,
+                            &SiPkg::load_from_spec(IntrinsicFunc::float_pkg_spec()?)?,
+                            None,
+                        )
+                        .await?;
+
+                        let intrinsic_func_id = Func::find_id_by_name(ctx, "si:setFloat")
+                            .await?
+                            .ok_or(PkgError::MissingIntrinsicFunc("si:setFloat".to_string()))?;
+
+                        let intrinsic_func =
+                            Func::get_by_id_or_error(ctx, intrinsic_func_id).await?;
+                        let (spec, _) = self.add_func_to_map(ctx, &intrinsic_func).await?;
+                        func_specs.push(spec);
+                    }
+                }
                 _ => {
                     let intrinsic_name = intrinsic.name();
                     // We need a unique id for intrinsic funcs to refer to them in custom bindings (for example
