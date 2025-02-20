@@ -1,291 +1,311 @@
 <template>
-  <v-group
-    ref="groupRef"
-    :config="{
-      id: node.uniqueKey,
-      x: position.x,
-      y: position.y,
-    }"
-    @mouseover="onMouseOver"
-    @mouseout="onMouseOut"
-  >
-    <v-group :config="{ opacity: isDeleted ? 0.5 : 1 }">
-      <!-- drop shadow -->
-      <!-- <v-rect
-        :config="{
-          width: nodeWidth,
-          height: nodeHeight,
-          x: -halfWidth - 10,
-          y: 10,
-          cornerRadius: CORNER_RADIUS,
-          fill: colors.bodyBg,
-          fillAfterStrokeEnabled: true,
-        }"
-      /> -->
-
-      <!-- box background - also used by layout manager to figure out nodes location and size -->
-      <v-rect
-        :config="{
-          id: `${node.uniqueKey}--bg`,
-          width: nodeWidth,
-          height: nodeHeight,
-          x: -halfWidth,
-          y: 0,
-          cornerRadius: CORNER_RADIUS,
-          fill: colors.bodyBg,
-          stroke: colors.border,
-          strokeWidth: 2,
-          hitStrokeWidth: 0,
-        }"
-      />
-
-      <!-- header text -->
-
-      <!-- rename hitbox -->
-      <v-rect
-        v-if="hideDetails !== 'hide'"
-        :config="{
-          ...renameHitbox,
-          ...(debug && { fill: 'red' }),
-        }"
-        @mouseout="mouseOutRename"
-        @mousemove="mouseOverRename"
-        @mouseover="mouseOverRename"
-        @click="renameIfSelected"
-        @dblclick="rename"
-      />
-
-      <!-- component name -->
-      <v-text
-        v-if="!renaming && hideDetails !== 'hide'"
-        ref="titleTextRef"
-        :config="{
-          x: -halfWidth + 10,
-          y: 10,
-          verticalAlign: 'top',
-          align: 'left',
-          text: truncatedNodeTitle,
-          width: nodeWidth - NODE_HEADER_MARGIN_RIGHT,
-          padding: 0,
-          fill: renameHovered ? SELECTION_COLOR : colors.headerText,
-          fontStyle: renameHovered ? 'italic bold' : 'bold',
-          fontFamily: DIAGRAM_FONT_FAMILY,
-          listening: false,
-        }"
-      />
-
-      <!-- component type -->
-      <v-text
-        v-if="hideDetails !== 'hide'"
-        ref="subtitleTextRef"
-        :config="{
-          x: -halfWidth + 10,
-          y: NODE_HEADER_TEXT_HEIGHT + 12,
-          verticalAlign: 'top',
-          align: 'left',
-          text: truncatedNodeSubtitle,
-          width: nodeWidth - NODE_HEADER_MARGIN_RIGHT,
-          padding: 0,
-          fill: colors.bodyText,
-          fontFamily: DIAGRAM_FONT_FAMILY,
-          fontSize: 11,
-          fontStyle: 'italic',
-          listening: false,
-        }"
-      />
-
-      <!-- end header text -->
-
-      <!-- parent frame attachment indicator -->
-      <DiagramIcon
-        v-if="parentComponentId && hideDetails === 'show'"
-        :color="colors.parentColor"
-        :size="16"
-        :x="-halfWidth + 12"
-        :y="NODE_HEADER_HEIGHT + nodeBodyHeight - 12"
-        icon="frame"
-        @mouseout="onMouseOut"
-        @mouseover="(e) => onMouseOver(e, 'parent')"
-      />
-
-      <!-- header bottom border -->
-      <v-line
-        :config="{
-          points: [
-            -halfWidth,
-            NODE_HEADER_HEIGHT,
-            halfWidth,
-            NODE_HEADER_HEIGHT,
-          ],
-          stroke: colors.border,
-          strokeWidth: 1,
-          listening: false,
-          opacity: 1,
-        }"
-      />
-
-      <!-- status icons -->
-      <v-group
-        v-if="hideDetails === 'show'"
-        :config="{
-          x: halfWidth - 2,
-          y: nodeHeight - 2,
-        }"
-      >
-        <DiagramIcon
-          v-for="(statusIcon, i) in _.reverse(_.slice(statusIcons))"
-          :key="`status-icon-${i}`"
-          :color="
-            statusIcon.color || statusIcon.tone
-              ? getToneColorHex(statusIcon.tone!)
-              : getToneColorHex('neutral')
-          "
-          :icon="statusIcon.icon"
-          :size="24 + (statusIconHovers[i] ? 4 : 0)"
-          :x="i * -26 + (statusIconHovers[i] ? 2 : 0)"
-          :y="statusIconHovers[i] ? 2 : 0"
-          origin="bottom-right"
-          @click="statusIcon.tabSlug ? onClick(statusIcon.tabSlug) : _.noop"
-          @mouseout="statusIconHovers[i] = false"
-          @mouseover="statusIconHovers[i] = true"
-        />
-      </v-group>
-
-      <!--  spinner overlay  -->
-      <v-group
-        ref="overlay"
-        :config="{
-          x: -halfWidth,
-          y: NODE_HEADER_HEIGHT,
-          opacity: 0,
-          listening: false,
-        }"
-      >
-        <!--  transparent overlay  -->
-        <v-rect
-          :config="{
-            width: nodeWidth,
-            height: nodeBodyHeight,
-            x: 0,
-            y: 0,
-            cornerRadius: [0, 0, CORNER_RADIUS, CORNER_RADIUS],
-            fill: 'rgba(255,255,255,0.30)',
-          }"
-        />
-      </v-group>
-
-      <DiagramIcon
-        v-if="node.def.canBeUpgraded && hideDetails === 'show'"
-        :color="getToneColorHex('action')"
-        :size="24 + (diffIconHover ? 4 : 0)"
-        :x="halfWidth - 2 - 36"
-        :y="NODE_HEADER_HEIGHT / 2"
-        icon="bolt"
-        origin="center"
-      />
-
-      <!-- added/modified/deleted indicator -->
-      <DiagramIcon
-        v-if="(isAdded || isModified || isDeleted) && hideDetails === 'show'"
-        :color="topRightIconColor"
-        :icon="topRightIcon"
-        :size="24 + (diffIconHover ? 4 : 0)"
-        :x="halfWidth - 2 - 12"
-        :y="NODE_HEADER_HEIGHT / 2"
-        origin="center"
-        @click="onClick('diff')"
-        @mouseout="diffIconHover = false"
-        @mouseover="diffIconHover = true"
-      />
-
-      <!-- added/modified icon hover -->
-      <!-- <v-rect
-        v-if="diffIconHover && (isAdded || isModified)"
-        :config="{
-          width: 24,
-          height: 24,
-          x: halfWidth - 2 - 24,
-          y: nodeHeaderHeight / 2 - 12,
-          cornerRadius: CORNER_RADIUS + 3,
-          stroke: SELECTION_COLOR,
-          strokeWidth: 2,
-          listening: false,
-        }"
-      /> -->
-    </v-group>
-
-    <!-- selection box outline -->
+  <v-group v-if="!occlude">
     <v-rect
-      v-if="isHovered"
-      :config="{
-        width: nodeWidth + 8,
-        height: nodeHeight + 8,
-        x: -halfWidth - 4,
-        y: -4,
-        cornerRadius: CORNER_RADIUS + 3,
-        stroke: SELECTION_COLOR,
-        strokeWidth: 1,
-        listening: false,
-      }"
-    />
-
-    <!-- sockets -->
-    <v-group
-      v-if="hideDetails === 'show'"
-      :config="{ opacity: isDeleted ? 0.5 : 1 }"
-    >
-      <v-group
-        :config="{
-          x: leftSockets.x,
-          y: leftSockets.y,
-        }"
-      >
-        <DiagramNodeSocket
-          v-for="socket in leftSockets.sockets"
-          :key="socket.uniqueKey"
-          :connectedEdges="connectedEdgesBySocketKey[socket.uniqueKey]"
-          :nodeWidth="nodeWidth"
-          :socket="socket"
-          :position="socket.position"
-          @hover:start="onSocketHoverStart(socket)"
-          @hover:end="onSocketHoverEnd(socket)"
-        />
-      </v-group>
-
-      <v-group
-        :config="{
-          x: rightSockets.x,
-          y: rightSockets.y,
-        }"
-      >
-        <DiagramNodeSocket
-          v-for="socket in rightSockets.sockets"
-          :key="socket.uniqueKey"
-          :connectedEdges="connectedEdgesBySocketKey[socket.uniqueKey]"
-          :nodeWidth="nodeWidth"
-          :socket="socket"
-          :position="socket.position"
-          @hover:start="onSocketHoverStart(socket)"
-          @hover:end="onSocketHoverEnd(socket)"
-        />
-      </v-group>
-    </v-group>
-
-    <!-- debug text to show the node width and height -->
-    <v-text
       v-if="debug"
       :config="{
-        x: -nodeWidth / 2,
-        y: -22,
-        verticalAlign: 'top',
-        align: 'left',
-        text: `width: ${nodeWidth} height: ${nodeHeight}`,
+        width: renderRect.width,
+        height: renderRect.height,
+        x: renderRect.x,
+        y: renderRect.y,
         fill: 'red',
-        fontStyle: 'bold',
-        fontFamily: DIAGRAM_FONT_FAMILY,
-        listening: false,
+        opacity: 0.2,
       }"
     />
+    <v-group
+      ref="groupRef"
+      :config="{
+        id: node.uniqueKey,
+        x: position.x,
+        y: position.y,
+      }"
+      @mouseover="onMouseOver"
+      @mouseout="onMouseOut"
+    >
+      <v-group :config="{ opacity: isDeleted ? 0.5 : 1 }">
+        <!-- drop shadow -->
+        <!-- <v-rect
+          :config="{
+            width: nodeWidth,
+            height: nodeHeight,
+            x: -halfWidth - 10,
+            y: 10,
+            cornerRadius: CORNER_RADIUS,
+            fill: colors.bodyBg,
+            fillAfterStrokeEnabled: true,
+          }"
+        /> -->
+
+        <!-- box background - also used by layout manager to figure out nodes location and size -->
+        <v-rect
+          :config="{
+            id: `${node.uniqueKey}--bg`,
+            width: nodeWidth,
+            height: nodeHeight,
+            x: -halfWidth,
+            y: 0,
+            cornerRadius: CORNER_RADIUS,
+            fill: colors.bodyBg,
+            stroke: colors.border,
+            strokeWidth: 2,
+            hitStrokeWidth: 0,
+          }"
+        />
+
+        <!-- header text -->
+
+        <!-- rename hitbox -->
+        <v-rect
+          v-if="hideDetails !== 'hide'"
+          :config="{
+            ...renameHitbox,
+            ...(debug && { fill: 'red' }),
+          }"
+          @mouseout="mouseOutRename"
+          @mousemove="mouseOverRename"
+          @mouseover="mouseOverRename"
+          @click="renameIfSelected"
+          @dblclick="rename"
+        />
+
+        <!-- component name -->
+        <v-text
+          v-if="!renaming && hideDetails !== 'hide'"
+          ref="titleTextRef"
+          :config="{
+            x: -halfWidth + 10,
+            y: 10,
+            verticalAlign: 'top',
+            align: 'left',
+            text: truncatedNodeTitle,
+            width:
+              hideDetails === 'show'
+                ? nodeWidth - NODE_HEADER_MARGIN_RIGHT
+                : nodeWidth,
+            padding: 0,
+            fill: renameHovered ? SELECTION_COLOR : colors.headerText,
+            fontSize:
+              hideDetails === 'show'
+                ? NODE_TITLE_FONT_SIZE
+                : NODE_TITLE_FONT_SIZE_TINY,
+            fontStyle: renameHovered ? 'italic bold' : 'bold',
+            fontFamily: DIAGRAM_FONT_FAMILY,
+            listening: false,
+          }"
+        />
+
+        <!-- component type -->
+        <v-text
+          v-if="hideDetails === 'show'"
+          ref="subtitleTextRef"
+          :config="{
+            x: -halfWidth + 10,
+            y: NODE_HEADER_TEXT_HEIGHT + 12,
+            verticalAlign: 'top',
+            align: 'left',
+            text: truncatedNodeSubtitle,
+            width: nodeWidth - NODE_HEADER_MARGIN_RIGHT,
+            padding: 0,
+            fill: colors.bodyText,
+            fontFamily: DIAGRAM_FONT_FAMILY,
+            fontSize: 11,
+            fontStyle: 'italic',
+            listening: false,
+          }"
+        />
+
+        <!-- end header text -->
+
+        <!-- parent frame attachment indicator -->
+        <DiagramIcon
+          v-if="parentComponentId && hideDetails === 'show'"
+          :color="colors.parentColor"
+          :size="16"
+          :x="-halfWidth + 12"
+          :y="NODE_HEADER_HEIGHT + nodeBodyHeight - 12"
+          icon="frame"
+          @mouseout="onMouseOut"
+          @mouseover="(e) => onMouseOver(e, 'parent')"
+        />
+
+        <!-- header bottom border -->
+        <v-line
+          :config="{
+            points: [
+              -halfWidth,
+              NODE_HEADER_HEIGHT,
+              halfWidth,
+              NODE_HEADER_HEIGHT,
+            ],
+            stroke: colors.border,
+            strokeWidth: 1,
+            listening: false,
+            opacity: 1,
+          }"
+        />
+
+        <!-- status icons -->
+        <v-group
+          v-if="hideDetails === 'show'"
+          :config="{
+            x: halfWidth - 2,
+            y: nodeHeight - 2,
+          }"
+        >
+          <DiagramIcon
+            v-for="(statusIcon, i) in _.reverse(_.slice(statusIcons))"
+            :key="`status-icon-${i}`"
+            :color="
+              statusIcon.color || statusIcon.tone
+                ? getToneColorHex(statusIcon.tone!)
+                : getToneColorHex('neutral')
+            "
+            :icon="statusIcon.icon"
+            :size="24 + (statusIconHovers[i] ? 4 : 0)"
+            :x="i * -26 + (statusIconHovers[i] ? 2 : 0)"
+            :y="statusIconHovers[i] ? 2 : 0"
+            origin="bottom-right"
+            @click="statusIcon.tabSlug ? onClick(statusIcon.tabSlug) : _.noop"
+            @mouseout="statusIconHovers[i] = false"
+            @mouseover="statusIconHovers[i] = true"
+          />
+        </v-group>
+
+        <!--  spinner overlay  -->
+        <v-group
+          ref="overlay"
+          :config="{
+            x: -halfWidth,
+            y: NODE_HEADER_HEIGHT,
+            opacity: 0,
+            listening: false,
+          }"
+        >
+          <!--  transparent overlay  -->
+          <v-rect
+            :config="{
+              width: nodeWidth,
+              height: nodeBodyHeight,
+              x: 0,
+              y: 0,
+              cornerRadius: [0, 0, CORNER_RADIUS, CORNER_RADIUS],
+              fill: 'rgba(255,255,255,0.30)',
+            }"
+          />
+        </v-group>
+
+        <DiagramIcon
+          v-if="node.def.canBeUpgraded && hideDetails === 'show'"
+          :color="getToneColorHex('action')"
+          :size="24 + (diffIconHover ? 4 : 0)"
+          :x="halfWidth - 2 - 36"
+          :y="NODE_HEADER_HEIGHT / 2"
+          icon="bolt"
+          origin="center"
+        />
+
+        <!-- added/modified/deleted indicator -->
+        <DiagramIcon
+          v-if="(isAdded || isModified || isDeleted) && hideDetails === 'show'"
+          :color="topRightIconColor"
+          :icon="topRightIcon"
+          :size="24 + (diffIconHover ? 4 : 0)"
+          :x="halfWidth - 2 - 12"
+          :y="NODE_HEADER_HEIGHT / 2"
+          origin="center"
+          @click="onClick('diff')"
+          @mouseout="diffIconHover = false"
+          @mouseover="diffIconHover = true"
+        />
+
+        <!-- added/modified icon hover -->
+        <!-- <v-rect
+          v-if="diffIconHover && (isAdded || isModified)"
+          :config="{
+            width: 24,
+            height: 24,
+            x: halfWidth - 2 - 24,
+            y: nodeHeaderHeight / 2 - 12,
+            cornerRadius: CORNER_RADIUS + 3,
+            stroke: SELECTION_COLOR,
+            strokeWidth: 2,
+            listening: false,
+          }"
+        /> -->
+      </v-group>
+
+      <!-- selection box outline -->
+      <v-rect
+        v-if="isHovered"
+        :config="{
+          width: nodeWidth + 8,
+          height: nodeHeight + 8,
+          x: -halfWidth - 4,
+          y: -4,
+          cornerRadius: CORNER_RADIUS + 3,
+          stroke: SELECTION_COLOR,
+          strokeWidth: 1,
+          listening: false,
+        }"
+      />
+
+      <!-- sockets -->
+      <v-group
+        v-if="hideDetails === 'show'"
+        :config="{ opacity: isDeleted ? 0.5 : 1 }"
+      >
+        <v-group
+          :config="{
+            x: leftSockets.x,
+            y: leftSockets.y,
+          }"
+        >
+          <DiagramNodeSocket
+            v-for="socket in leftSockets.sockets"
+            :key="socket.uniqueKey"
+            :connectedEdges="connectedEdgesBySocketKey[socket.uniqueKey]"
+            :nodeWidth="nodeWidth"
+            :socket="socket"
+            :position="socket.position"
+            @hover:start="onSocketHoverStart(socket)"
+            @hover:end="onSocketHoverEnd(socket)"
+          />
+        </v-group>
+
+        <v-group
+          :config="{
+            x: rightSockets.x,
+            y: rightSockets.y,
+          }"
+        >
+          <DiagramNodeSocket
+            v-for="socket in rightSockets.sockets"
+            :key="socket.uniqueKey"
+            :connectedEdges="connectedEdgesBySocketKey[socket.uniqueKey]"
+            :nodeWidth="nodeWidth"
+            :socket="socket"
+            :position="socket.position"
+            @hover:start="onSocketHoverStart(socket)"
+            @hover:end="onSocketHoverEnd(socket)"
+          />
+        </v-group>
+      </v-group>
+
+      <!-- debug text to show the node width and height -->
+      <v-text
+        v-if="debug"
+        :config="{
+          x: -nodeWidth / 2,
+          y: -22,
+          verticalAlign: 'top',
+          align: 'left',
+          text: `width: ${nodeWidth} height: ${nodeHeight}`,
+          fill: 'red',
+          fontStyle: 'bold',
+          fontFamily: DIAGRAM_FONT_FAMILY,
+          listening: false,
+        }"
+      />
+    </v-group>
   </v-group>
 </template>
 
@@ -295,6 +315,7 @@ import * as _ from "lodash-es";
 import tinycolor from "tinycolor2";
 
 import { KonvaEventObject } from "konva/lib/Node";
+import { IRect } from "konva/lib/types";
 import { Tween } from "konva/lib/Tween";
 import { getToneColorHex, useTheme } from "@si/vue-lib/design-system";
 import { useComponentsStore } from "@/store/components.store";
@@ -319,9 +340,12 @@ import {
   NODE_TITLE_HEADER_MARGIN_RIGHT as NODE_HEADER_MARGIN_RIGHT,
   NODE_HEADER_HEIGHT,
   NODE_HEADER_TEXT_HEIGHT,
+  NODE_TITLE_FONT_SIZE,
+  NODE_TITLE_FONT_SIZE_TINY,
   DetailsMode,
 } from "./diagram_constants";
 import DiagramIcon from "./DiagramIcon.vue";
+import { checkRectanglesOverlap } from "./utils/math";
 
 const props = defineProps({
   node: {
@@ -340,6 +364,7 @@ const props = defineProps({
   },
   debug: Boolean,
   hideDetails: { type: String as PropType<DetailsMode> },
+  occlusionRect: { type: Object as PropType<IRect> },
 });
 
 const emit = defineEmits<{
@@ -410,10 +435,18 @@ const connectedEdgesBySocketKey = computed(() => {
 });
 
 const MAX_TITLE_LENGTH = 14;
+const MAX_TITLE_LENGTH_TINY = 8;
 const MAX_SUBTITLE_LENGTH = 30;
 
 const truncatedNodeTitle = computed(() => {
-  if (props.node.def.title.length > MAX_TITLE_LENGTH) {
+  if (
+    props.node.def.title.length > MAX_TITLE_LENGTH_TINY &&
+    props.hideDetails === "titles"
+  ) {
+    return `${props.node.def.title
+      .substring(0, MAX_TITLE_LENGTH_TINY)
+      .trim()}...`;
+  } else if (props.node.def.title.length > MAX_TITLE_LENGTH) {
     return `${props.node.def.title.substring(0, MAX_TITLE_LENGTH).trim()}...`;
   } else return props.node.def.title;
 });
@@ -600,4 +633,24 @@ function rename() {
     renaming.value = false;
   });
 }
+
+const RENDER_RECT_EDGE = 8;
+
+const renderRect = computed(() => {
+  return {
+    x: position.value.x - (nodeWidth.value / 2 + RENDER_RECT_EDGE),
+    y: position.value.y - RENDER_RECT_EDGE,
+    width: nodeWidth.value + RENDER_RECT_EDGE * 2,
+    height: nodeHeight.value + RENDER_RECT_EDGE * 2,
+  };
+});
+
+const occlude = computed(() => {
+  if (!props.occlusionRect) {
+    return false;
+  } else {
+    const o = !checkRectanglesOverlap(renderRect.value, props.occlusionRect);
+    return o;
+  }
+});
 </script>

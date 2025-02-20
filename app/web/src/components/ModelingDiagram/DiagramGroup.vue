@@ -1,423 +1,447 @@
 <template>
-  <v-group
-    ref="groupRef"
-    :config="{
-      id: group.uniqueKey,
-      x: irect.x,
-      y: irect.y,
-      ...(isDeleted && { opacity: 0.5 }),
-    }"
-    @mouseover="onMouseOver"
-    @mouseout="onMouseOut"
-  >
-    <!-- selection box outline -->
+  <v-group v-if="!occlude">
     <v-rect
-      v-if="isHovered || highlightParent || highlightAsNewParent"
-      :config="{
-        width: nodeWidth + 8,
-        height: nodeHeight + 8,
-        x: -halfWidth - 4,
-        y: -4 - NODE_HEADER_HEIGHT - GROUP_HEADER_BOTTOM_MARGIN,
-        cornerRadius: CORNER_RADIUS + 3,
-        stroke: SELECTION_COLOR,
-        strokeWidth: 1,
-        listening: false,
-      }"
-    />
-    <!-- box background - also used by layout manager to figure out nodes location and size -->
-    <!-- <v-rect
-      :config="{
-        id: `${group.uniqueKey}--bg`,
-        width: nodeWidth,
-        height: nodeHeight,
-        x: -halfWidth,
-        y: 0,
-      }"
-    /> -->
-
-    <v-rect
-      :config="{
-        id: `${group.uniqueKey}--bg`,
-        width: nodeWidth,
-        height: nodeBodyHeight,
-        x: -halfWidth,
-        y: 0,
-        cornerRadius: CORNER_RADIUS,
-        fill: colors.bodyBg,
-        fillAfterStrokeEnabled: true,
-        stroke: colors.headerBg,
-        strokeWidth: 3,
-        dash: [8, 8],
-      }"
-    />
-
-    <!--  Node Body  -->
-    <v-rect
-      :config="{
-        id: `${group.uniqueKey}--bg`,
-        width: nodeWidth,
-        height: nodeBodyHeight,
-        x: -halfWidth,
-        y: 0,
-        cornerRadius: CORNER_RADIUS,
-        fill: colors.bodyBg,
-        fillAfterStrokeEnabled: true,
-        stroke: colors.headerBg,
-        strokeWidth: 3,
-        dash: [8, 8],
-
-        shadowForStrokeEnabled: false,
-        hitStrokeWidth: 0,
-        shadowColor: 'black',
-        shadowBlur: 3,
-        shadowOffset: { x: 8, y: 8 },
-        shadowOpacity: 0.3,
-        shadowEnabled: !parentComponentId,
-      }"
-    />
-
-    <!-- resize handles -->
-    <!--  left side handle  -->
-    <v-line
-      :config="{
-        points: [
-          -nodeWidth / 2,
-          -(NODE_HEADER_HEIGHT + GROUP_HEADER_BOTTOM_MARGIN),
-          -nodeWidth / 2,
-          nodeBodyHeight,
-        ],
-        hitStrokeWidth: GROUP_RESIZE_HANDLE_SIZE,
-      }"
-      @mouseover="onResizeHover('left', $event)"
-      @mouseout="onMouseOut"
-    />
-    <!-- right side handle   -->
-    <v-line
-      :config="{
-        points: [
-          nodeWidth / 2,
-          -(NODE_HEADER_HEIGHT + GROUP_HEADER_BOTTOM_MARGIN),
-          nodeWidth / 2,
-          nodeBodyHeight,
-        ],
-        hitStrokeWidth: GROUP_RESIZE_HANDLE_SIZE,
-      }"
-      @mouseover="onResizeHover('right', $event)"
-      @mouseout="onMouseOut"
-    />
-    <!-- Bottom Handle -->
-    <v-line
-      :config="{
-        points: [-nodeWidth / 2, nodeBodyHeight, nodeWidth / 2, nodeBodyHeight],
-        hitStrokeWidth: GROUP_RESIZE_HANDLE_SIZE,
-      }"
-      @mouseover="onResizeHover('bottom', $event)"
-      @mouseout="onMouseOut"
-    />
-    <!-- Bottom Left Handle -->
-    <v-circle
-      :config="{
-        width: GROUP_RESIZE_HANDLE_SIZE,
-        height: GROUP_RESIZE_HANDLE_SIZE,
-        x: -nodeWidth / 2,
-        y: nodeBodyHeight,
-      }"
-      @mouseover="onResizeHover('bottom-left', $event)"
-      @mouseout="onMouseOut"
-    />
-    <!-- Bottom Right Handle -->
-    <v-circle
-      :config="{
-        width: GROUP_RESIZE_HANDLE_SIZE,
-        height: GROUP_RESIZE_HANDLE_SIZE,
-        x: nodeWidth / 2,
-        y: nodeBodyHeight,
-      }"
-      @mouseover="onResizeHover('bottom-right', $event)"
-      @mouseout="onMouseOut"
-    />
-    <!-- Top Handle -->
-    <v-line
-      :config="{
-        points: [
-          -nodeWidth / 2,
-          -(NODE_HEADER_HEIGHT + GROUP_HEADER_BOTTOM_MARGIN),
-          nodeWidth / 2,
-          -(NODE_HEADER_HEIGHT + GROUP_HEADER_BOTTOM_MARGIN),
-        ],
-        hitStrokeWidth: GROUP_RESIZE_HANDLE_SIZE,
-      }"
-      @mouseover="onResizeHover('top', $event)"
-      @mouseout="onMouseOut"
-    />
-    <!-- Top Left Handle -->
-    <v-circle
-      :config="{
-        width: GROUP_RESIZE_HANDLE_SIZE,
-        height: GROUP_RESIZE_HANDLE_SIZE,
-        x: -nodeWidth / 2,
-        y: -(NODE_HEADER_HEIGHT + GROUP_HEADER_BOTTOM_MARGIN),
-      }"
-      @mouseover="onResizeHover('top-left', $event)"
-      @mouseout="onMouseOut"
-    />
-    <!-- Top Right Handle -->
-    <v-circle
-      :config="{
-        width: GROUP_RESIZE_HANDLE_SIZE,
-        height: GROUP_RESIZE_HANDLE_SIZE,
-        x: nodeWidth / 2,
-        y: -(NODE_HEADER_HEIGHT + GROUP_HEADER_BOTTOM_MARGIN),
-      }"
-      @mouseover="onResizeHover('top-right', $event)"
-      @mouseout="onMouseOut"
-    />
-
-    <!-- sockets -->
-    <v-group
-      v-if="hideDetails === 'show'"
-      :config="{
-        x: leftSockets.x,
-        y: leftSockets.y,
-      }"
-    >
-      <DiagramNodeSocket
-        v-for="socket in leftSockets.sockets"
-        :key="socket.uniqueKey"
-        :socket="socket"
-        :position="socket.position"
-        :connectedEdges="connectedEdgesBySocketKey[socket.uniqueKey]"
-        :nodeWidth="nodeWidth"
-        @hover:start="onSocketHoverStart(socket)"
-        @hover:end="onSocketHoverEnd(socket)"
-      />
-    </v-group>
-    <v-group
-      v-if="hideDetails === 'show'"
-      :config="{
-        x: rightSockets.x,
-        y: rightSockets.y,
-      }"
-    >
-      <DiagramNodeSocket
-        v-for="socket in rightSockets.sockets"
-        :key="socket.uniqueKey"
-        :socket="socket"
-        :position="socket.position"
-        :connectedEdges="connectedEdgesBySocketKey[socket.uniqueKey]"
-        :nodeWidth="nodeWidth"
-        @hover:start="onSocketHoverStart(socket)"
-        @hover:end="onSocketHoverEnd(socket)"
-      />
-    </v-group>
-
-    <!-- header -->
-    <v-group
-      :config="{
-        x: -halfWidth,
-        y: -NODE_HEADER_HEIGHT - GROUP_HEADER_BOTTOM_MARGIN,
-      }"
-    >
-      <!-- header background -->
-      <!--  TODO check with mark what this width should be   -->
-      <v-rect
-        :config="{
-          cornerRadius: CORNER_RADIUS,
-          fill: colors.headerBg,
-          x: 0,
-          y: 0,
-          width: headerWidth,
-          height: NODE_HEADER_HEIGHT,
-        }"
-      />
-
-      <DiagramIcon
-        v-if="hideDetails !== 'hide'"
-        :icon="COMPONENT_TYPE_ICONS[group.def.componentType]"
-        origin="top-left"
-        :size="32"
-        :x="2"
-        :y="5"
-        :color="colors.headerText"
-      />
-
-      <!-- header text -->
-
-      <!-- rename hitbox -->
-      <v-rect
-        v-if="hideDetails !== 'hide'"
-        :config="{
-          ...renameHitbox,
-          ...(debug && { fill: 'red' }),
-          cornerRadius: 2,
-          strokeWidth: 2,
-          stroke: renameHovered ? SELECTION_COLOR : 'transparent',
-        }"
-        @mouseout="mouseOutRename"
-        @mousemove="mouseOverRename"
-        @mouseover="mouseOverRename"
-        @click="renameIfSelected"
-        @dblclick="rename"
-      />
-
-      <!-- component name -->
-      <v-text
-        v-if="hideDetails !== 'hide'"
-        ref="titleTextRef"
-        :config="{
-          x: GROUP_HEADER_ICON_SIZE - 2,
-          y: 2,
-          verticalAlign: 'top',
-          align: 'left',
-          width: headerWidth - GROUP_HEADER_ICON_SIZE * 2,
-          text: group.def.title,
-          padding: 6,
-          fill: colors.headerText,
-          fontSize: GROUP_TITLE_FONT_SIZE,
-          fontStyle: renameHovered ? 'italic bold' : 'bold',
-          fontFamily: DIAGRAM_FONT_FAMILY,
-          listening: false,
-          wrap: 'none',
-          ellipsis: true,
-        }"
-      />
-
-      <!-- component type and child count -->
-      <v-text
-        v-if="hideDetails !== 'hide'"
-        ref="subtitleTextRef"
-        :config="{
-          x: GROUP_HEADER_ICON_SIZE - 2,
-          y: 20,
-          verticalAlign: 'top',
-          align: 'left',
-          width: headerWidth - GROUP_HEADER_ICON_SIZE * 2,
-          text: `${group.def.subtitle}: ${childCount ?? 0}`,
-          padding: 6,
-          fill: colors.headerText,
-          fontSize: GROUP_TITLE_FONT_SIZE,
-          fontStyle: 'italic',
-          fontFamily: DIAGRAM_FONT_FAMILY,
-          listening: false,
-          wrap: 'none',
-          ellipsis: true,
-        }"
-      />
-    </v-group>
-
-    <!-- parent frame attachment indicator -->
-    <DiagramIcon
-      v-if="parentComponentId && hideDetails === 'show'"
-      icon="frame"
-      :size="16"
-      :x="-halfWidth + 12"
-      :y="nodeBodyHeight - 12"
-      :color="colors.parentColor"
-      @mouseover="(e) => onMouseOver(e, 'parent')"
-      @mouseout="onMouseOut"
-    />
-
-    <!-- status icons -->
-    <v-group
-      v-if="statusIcons?.length && hideDetails === 'show'"
-      :config="{
-        x: halfWidth - 2,
-        y: 0,
-      }"
-    >
-      <DiagramIcon
-        v-for="(statusIcon, i) in _.reverse(_.slice(statusIcons))"
-        :key="`status-icon-${i}`"
-        :icon="statusIcon.icon"
-        :color="
-          statusIcon.color || statusIcon.tone
-            ? getToneColorHex(statusIcon.tone!)
-            : getToneColorHex('neutral')
-        "
-        :size="24 + (statusIconHovers[i] ? 6 : 0)"
-        :x="i * -26 + (statusIconHovers[i] ? 3 : 0)"
-        :y="nodeBodyHeight - 5 + (statusIconHovers[i] ? 3 : 0)"
-        origin="bottom-right"
-        @click="statusIcon.tabSlug ? onClick(statusIcon.tabSlug) : _.noop"
-        @mouseover="statusIconHovers[i] = true"
-        @mouseout="statusIconHovers[i] = false"
-      />
-    </v-group>
-
-    <!--  spinner overlay  -->
-    <v-group
-      ref="overlay"
-      :config="{
-        x: -halfWidth,
-        y: 0,
-        opacity: 0,
-        listening: false,
-      }"
-    >
-      <!--  transparent overlay  -->
-      <v-rect
-        :config="{
-          width: nodeWidth,
-          height: nodeBodyHeight,
-          x: 0,
-          y: 0,
-          cornerRadius: [0, 0, CORNER_RADIUS, CORNER_RADIUS],
-          fill: 'rgba(255,255,255,0.30)',
-        }"
-      />
-    </v-group>
-
-    <!-- upgrade icon -->
-    <DiagramIcon
-      v-if="group.def.canBeUpgraded && hideDetails === 'show'"
-      :color="getToneColorHex('action')"
-      :size="24 + (diffIconHover ? 4 : 0)"
-      :x="halfWidth - GROUP_HEADER_ICON_SIZE - 36 / 2"
-      :y="
-        -NODE_HEADER_HEIGHT +
-        GROUP_HEADER_ICON_SIZE / 2 -
-        GROUP_HEADER_BOTTOM_MARGIN +
-        (NODE_HEADER_HEIGHT - GROUP_HEADER_ICON_SIZE) / 2
-      "
-      icon="bolt"
-      origin="center"
-    />
-
-    <!-- added/modified indicator -->
-    <DiagramIcon
-      v-if="(isAdded || isModified || isDeleted) && hideDetails === 'show'"
-      :icon="topRightIcon"
-      :color="topRightIconColor"
-      shadeBg
-      :size="GROUP_HEADER_ICON_SIZE + (diffIconHover ? 8 : 0)"
-      :x="halfWidth - GROUP_HEADER_ICON_SIZE / 2"
-      :y="
-        -NODE_HEADER_HEIGHT +
-        GROUP_HEADER_ICON_SIZE / 2 -
-        GROUP_HEADER_BOTTOM_MARGIN +
-        (NODE_HEADER_HEIGHT - GROUP_HEADER_ICON_SIZE) / 2
-      "
-      origin="center"
-      @click="onClick('diff')"
-      @mouseover="diffIconHover = true"
-      @mouseout="diffIconHover = false"
-    />
-
-    <!-- debug text to show the group width and height -->
-    <v-text
       v-if="debug"
       :config="{
-        x: -nodeWidth / 2,
-        y: -(NODE_HEADER_HEIGHT + GROUP_HEADER_BOTTOM_MARGIN + 22),
-        verticalAlign: 'top',
-        align: 'left',
-        text: `width: ${irect.width} height: ${irect.height}`,
+        width: renderRect.width,
+        height: renderRect.height,
+        x: renderRect.x,
+        y: renderRect.y,
         fill: 'red',
-        fontStyle: 'bold',
-        fontFamily: DIAGRAM_FONT_FAMILY,
-        listening: false,
+        opacity: 0.2,
       }"
     />
+    <v-group
+      ref="groupRef"
+      :config="{
+        id: group.uniqueKey,
+        x: irect.x,
+        y: irect.y,
+        ...(isDeleted && { opacity: 0.5 }),
+      }"
+      @mouseover="onMouseOver"
+      @mouseout="onMouseOut"
+    >
+      <!-- selection box outline -->
+      <v-rect
+        v-if="isHovered || highlightParent || highlightAsNewParent"
+        :config="{
+          width: nodeWidth + 8,
+          height: nodeHeight + 8,
+          x: -halfWidth - 4,
+          y: -4 - NODE_HEADER_HEIGHT - GROUP_HEADER_BOTTOM_MARGIN,
+          cornerRadius: CORNER_RADIUS + 3,
+          stroke: SELECTION_COLOR,
+          strokeWidth: 1,
+          listening: false,
+        }"
+      />
+      <!-- box background - also used by layout manager to figure out nodes location and size -->
+      <!-- <v-rect
+        :config="{
+          id: `${group.uniqueKey}--bg`,
+          width: nodeWidth,
+          height: nodeHeight,
+          x: -halfWidth,
+          y: 0,
+        }"
+      /> -->
+
+      <v-rect
+        :config="{
+          id: `${group.uniqueKey}--bg`,
+          width: nodeWidth,
+          height: nodeBodyHeight,
+          x: -halfWidth,
+          y: 0,
+          cornerRadius: CORNER_RADIUS,
+          fill: colors.bodyBg,
+          fillAfterStrokeEnabled: true,
+          stroke: colors.headerBg,
+          strokeWidth: 3,
+          dash: [8, 8],
+        }"
+      />
+
+      <!--  Node Body  -->
+      <v-rect
+        :config="{
+          id: `${group.uniqueKey}--bg`,
+          width: nodeWidth,
+          height: nodeBodyHeight,
+          x: -halfWidth,
+          y: 0,
+          cornerRadius: CORNER_RADIUS,
+          fill: colors.bodyBg,
+          fillAfterStrokeEnabled: true,
+          stroke: colors.headerBg,
+          strokeWidth: 3,
+          dash: [8, 8],
+
+          shadowForStrokeEnabled: false,
+          hitStrokeWidth: 0,
+          shadowColor: 'black',
+          shadowBlur: 3,
+          shadowOffset: { x: 8, y: 8 },
+          shadowOpacity: 0.3,
+          shadowEnabled: !parentComponentId,
+        }"
+      />
+
+      <!-- resize handles -->
+      <!--  left side handle  -->
+      <v-line
+        :config="{
+          points: [
+            -nodeWidth / 2,
+            -(NODE_HEADER_HEIGHT + GROUP_HEADER_BOTTOM_MARGIN),
+            -nodeWidth / 2,
+            nodeBodyHeight,
+          ],
+          hitStrokeWidth: GROUP_RESIZE_HANDLE_SIZE,
+        }"
+        @mouseover="onResizeHover('left', $event)"
+        @mouseout="onMouseOut"
+      />
+      <!-- right side handle   -->
+      <v-line
+        :config="{
+          points: [
+            nodeWidth / 2,
+            -(NODE_HEADER_HEIGHT + GROUP_HEADER_BOTTOM_MARGIN),
+            nodeWidth / 2,
+            nodeBodyHeight,
+          ],
+          hitStrokeWidth: GROUP_RESIZE_HANDLE_SIZE,
+        }"
+        @mouseover="onResizeHover('right', $event)"
+        @mouseout="onMouseOut"
+      />
+      <!-- Bottom Handle -->
+      <v-line
+        :config="{
+          points: [
+            -nodeWidth / 2,
+            nodeBodyHeight,
+            nodeWidth / 2,
+            nodeBodyHeight,
+          ],
+          hitStrokeWidth: GROUP_RESIZE_HANDLE_SIZE,
+        }"
+        @mouseover="onResizeHover('bottom', $event)"
+        @mouseout="onMouseOut"
+      />
+      <!-- Bottom Left Handle -->
+      <v-circle
+        :config="{
+          width: GROUP_RESIZE_HANDLE_SIZE,
+          height: GROUP_RESIZE_HANDLE_SIZE,
+          x: -nodeWidth / 2,
+          y: nodeBodyHeight,
+        }"
+        @mouseover="onResizeHover('bottom-left', $event)"
+        @mouseout="onMouseOut"
+      />
+      <!-- Bottom Right Handle -->
+      <v-circle
+        :config="{
+          width: GROUP_RESIZE_HANDLE_SIZE,
+          height: GROUP_RESIZE_HANDLE_SIZE,
+          x: nodeWidth / 2,
+          y: nodeBodyHeight,
+        }"
+        @mouseover="onResizeHover('bottom-right', $event)"
+        @mouseout="onMouseOut"
+      />
+      <!-- Top Handle -->
+      <v-line
+        :config="{
+          points: [
+            -nodeWidth / 2,
+            -(NODE_HEADER_HEIGHT + GROUP_HEADER_BOTTOM_MARGIN),
+            nodeWidth / 2,
+            -(NODE_HEADER_HEIGHT + GROUP_HEADER_BOTTOM_MARGIN),
+          ],
+          hitStrokeWidth: GROUP_RESIZE_HANDLE_SIZE,
+        }"
+        @mouseover="onResizeHover('top', $event)"
+        @mouseout="onMouseOut"
+      />
+      <!-- Top Left Handle -->
+      <v-circle
+        :config="{
+          width: GROUP_RESIZE_HANDLE_SIZE,
+          height: GROUP_RESIZE_HANDLE_SIZE,
+          x: -nodeWidth / 2,
+          y: -(NODE_HEADER_HEIGHT + GROUP_HEADER_BOTTOM_MARGIN),
+        }"
+        @mouseover="onResizeHover('top-left', $event)"
+        @mouseout="onMouseOut"
+      />
+      <!-- Top Right Handle -->
+      <v-circle
+        :config="{
+          width: GROUP_RESIZE_HANDLE_SIZE,
+          height: GROUP_RESIZE_HANDLE_SIZE,
+          x: nodeWidth / 2,
+          y: -(NODE_HEADER_HEIGHT + GROUP_HEADER_BOTTOM_MARGIN),
+        }"
+        @mouseover="onResizeHover('top-right', $event)"
+        @mouseout="onMouseOut"
+      />
+
+      <!-- sockets -->
+      <v-group
+        v-if="hideDetails === 'show'"
+        :config="{
+          x: leftSockets.x,
+          y: leftSockets.y,
+        }"
+      >
+        <DiagramNodeSocket
+          v-for="socket in leftSockets.sockets"
+          :key="socket.uniqueKey"
+          :socket="socket"
+          :position="socket.position"
+          :connectedEdges="connectedEdgesBySocketKey[socket.uniqueKey]"
+          :nodeWidth="nodeWidth"
+          @hover:start="onSocketHoverStart(socket)"
+          @hover:end="onSocketHoverEnd(socket)"
+        />
+      </v-group>
+      <v-group
+        v-if="hideDetails === 'show'"
+        :config="{
+          x: rightSockets.x,
+          y: rightSockets.y,
+        }"
+      >
+        <DiagramNodeSocket
+          v-for="socket in rightSockets.sockets"
+          :key="socket.uniqueKey"
+          :socket="socket"
+          :position="socket.position"
+          :connectedEdges="connectedEdgesBySocketKey[socket.uniqueKey]"
+          :nodeWidth="nodeWidth"
+          @hover:start="onSocketHoverStart(socket)"
+          @hover:end="onSocketHoverEnd(socket)"
+        />
+      </v-group>
+
+      <!-- header -->
+      <v-group
+        :config="{
+          x: -halfWidth,
+          y: -NODE_HEADER_HEIGHT - GROUP_HEADER_BOTTOM_MARGIN,
+        }"
+      >
+        <!-- header background -->
+        <!--  TODO check with mark what this width should be   -->
+        <v-rect
+          :config="{
+            cornerRadius: CORNER_RADIUS,
+            fill: colors.headerBg,
+            x: 0,
+            y: 0,
+            width: headerWidth,
+            height: NODE_HEADER_HEIGHT,
+          }"
+        />
+
+        <DiagramIcon
+          v-if="hideDetails !== 'hide'"
+          :icon="COMPONENT_TYPE_ICONS[group.def.componentType]"
+          origin="top-left"
+          :size="32"
+          :x="2"
+          :y="5"
+          :color="colors.headerText"
+        />
+
+        <!-- header text -->
+
+        <!-- rename hitbox -->
+        <v-rect
+          v-if="hideDetails !== 'hide'"
+          :config="{
+            ...renameHitbox,
+            ...(debug && { fill: 'red' }),
+            cornerRadius: 2,
+            strokeWidth: 2,
+            stroke: renameHovered ? SELECTION_COLOR : 'transparent',
+          }"
+          @mouseout="mouseOutRename"
+          @mousemove="mouseOverRename"
+          @mouseover="mouseOverRename"
+          @click="renameIfSelected"
+          @dblclick="rename"
+        />
+
+        <!-- component name -->
+        <v-text
+          v-if="hideDetails !== 'hide'"
+          ref="titleTextRef"
+          :config="{
+            x: GROUP_HEADER_ICON_SIZE - 2,
+            y: 2,
+            verticalAlign: 'top',
+            align: 'left',
+            width:
+              hideDetails === 'show'
+                ? headerWidth - GROUP_HEADER_ICON_SIZE * 2
+                : headerWidth - GROUP_HEADER_ICON_SIZE,
+            text: group.def.title,
+            padding: 6,
+            fill: colors.headerText,
+            fontSize:
+              hideDetails === 'show'
+                ? GROUP_TITLE_FONT_SIZE
+                : GROUP_TITLE_FONT_SIZE_TINY,
+            fontStyle: renameHovered ? 'italic bold' : 'bold',
+            fontFamily: DIAGRAM_FONT_FAMILY,
+            listening: false,
+            wrap: 'none',
+            ellipsis: true,
+          }"
+        />
+
+        <!-- component type and child count -->
+        <v-text
+          v-if="hideDetails === 'show'"
+          ref="subtitleTextRef"
+          :config="{
+            x: GROUP_HEADER_ICON_SIZE - 2,
+            y: 20,
+            verticalAlign: 'top',
+            align: 'left',
+            width: headerWidth - GROUP_HEADER_ICON_SIZE * 2,
+            text: `${group.def.subtitle}: ${childCount ?? 0}`,
+            padding: 6,
+            fill: colors.headerText,
+            fontSize: GROUP_TITLE_FONT_SIZE,
+            fontStyle: 'italic',
+            fontFamily: DIAGRAM_FONT_FAMILY,
+            listening: false,
+            wrap: 'none',
+            ellipsis: true,
+          }"
+        />
+      </v-group>
+
+      <!-- parent frame attachment indicator -->
+      <DiagramIcon
+        v-if="parentComponentId && hideDetails === 'show'"
+        icon="frame"
+        :size="16"
+        :x="-halfWidth + 12"
+        :y="nodeBodyHeight - 12"
+        :color="colors.parentColor"
+        @mouseover="(e) => onMouseOver(e, 'parent')"
+        @mouseout="onMouseOut"
+      />
+
+      <!-- status icons -->
+      <v-group
+        v-if="statusIcons?.length && hideDetails === 'show'"
+        :config="{
+          x: halfWidth - 2,
+          y: 0,
+        }"
+      >
+        <DiagramIcon
+          v-for="(statusIcon, i) in _.reverse(_.slice(statusIcons))"
+          :key="`status-icon-${i}`"
+          :icon="statusIcon.icon"
+          :color="
+            statusIcon.color || statusIcon.tone
+              ? getToneColorHex(statusIcon.tone!)
+              : getToneColorHex('neutral')
+          "
+          :size="24 + (statusIconHovers[i] ? 6 : 0)"
+          :x="i * -26 + (statusIconHovers[i] ? 3 : 0)"
+          :y="nodeBodyHeight - 5 + (statusIconHovers[i] ? 3 : 0)"
+          origin="bottom-right"
+          @click="statusIcon.tabSlug ? onClick(statusIcon.tabSlug) : _.noop"
+          @mouseover="statusIconHovers[i] = true"
+          @mouseout="statusIconHovers[i] = false"
+        />
+      </v-group>
+
+      <!--  spinner overlay  -->
+      <v-group
+        ref="overlay"
+        :config="{
+          x: -halfWidth,
+          y: 0,
+          opacity: 0,
+          listening: false,
+        }"
+      >
+        <!--  transparent overlay  -->
+        <v-rect
+          :config="{
+            width: nodeWidth,
+            height: nodeBodyHeight,
+            x: 0,
+            y: 0,
+            cornerRadius: [0, 0, CORNER_RADIUS, CORNER_RADIUS],
+            fill: 'rgba(255,255,255,0.30)',
+          }"
+        />
+      </v-group>
+
+      <!-- upgrade icon -->
+      <DiagramIcon
+        v-if="group.def.canBeUpgraded && hideDetails === 'show'"
+        :color="getToneColorHex('action')"
+        :size="24 + (diffIconHover ? 4 : 0)"
+        :x="halfWidth - GROUP_HEADER_ICON_SIZE - 36 / 2"
+        :y="
+          -NODE_HEADER_HEIGHT +
+          GROUP_HEADER_ICON_SIZE / 2 -
+          GROUP_HEADER_BOTTOM_MARGIN +
+          (NODE_HEADER_HEIGHT - GROUP_HEADER_ICON_SIZE) / 2
+        "
+        icon="bolt"
+        origin="center"
+      />
+
+      <!-- added/modified indicator -->
+      <DiagramIcon
+        v-if="(isAdded || isModified || isDeleted) && hideDetails === 'show'"
+        :icon="topRightIcon"
+        :color="topRightIconColor"
+        shadeBg
+        :size="GROUP_HEADER_ICON_SIZE + (diffIconHover ? 8 : 0)"
+        :x="halfWidth - GROUP_HEADER_ICON_SIZE / 2"
+        :y="
+          -NODE_HEADER_HEIGHT +
+          GROUP_HEADER_ICON_SIZE / 2 -
+          GROUP_HEADER_BOTTOM_MARGIN +
+          (NODE_HEADER_HEIGHT - GROUP_HEADER_ICON_SIZE) / 2
+        "
+        origin="center"
+        @click="onClick('diff')"
+        @mouseover="diffIconHover = true"
+        @mouseout="diffIconHover = false"
+      />
+
+      <!-- debug text to show the group width and height -->
+      <v-text
+        v-if="debug"
+        :config="{
+          x: -nodeWidth / 2,
+          y: -(NODE_HEADER_HEIGHT + GROUP_HEADER_BOTTOM_MARGIN + 22),
+          verticalAlign: 'top',
+          align: 'left',
+          text: `x: ${irect.x} y: ${irect.y} width: ${irect.width} height: ${irect.height}`,
+          fill: 'red',
+          fontStyle: 'bold',
+          fontFamily: DIAGRAM_FONT_FAMILY,
+          listening: false,
+        }"
+      />
+    </v-group>
   </v-group>
 </template>
 
@@ -425,7 +449,7 @@
 import { computed, onUpdated, PropType, ref, watch } from "vue";
 import * as _ from "lodash-es";
 import tinycolor from "tinycolor2";
-
+import { IRect } from "konva/lib/types";
 import { KonvaEventObject } from "konva/lib/Node";
 import {
   getToneColorHex,
@@ -443,6 +467,7 @@ import {
   GROUP_HEADER_ICON_SIZE,
   GROUP_RESIZE_HANDLE_SIZE,
   GROUP_TITLE_FONT_SIZE,
+  GROUP_TITLE_FONT_SIZE_TINY,
   SELECTION_COLOR,
   NODE_SUBTITLE_TEXT_HEIGHT,
   SOCKET_MARGIN_TOP,
@@ -465,6 +490,7 @@ import {
 } from "./diagram_types";
 import { useDiagramContext } from "./ModelingDiagram.vue";
 import DiagramIcon from "./DiagramIcon.vue";
+import { checkRectanglesOverlap } from "./utils/math";
 
 const props = defineProps({
   group: {
@@ -487,6 +513,7 @@ const props = defineProps({
   },
   debug: Boolean,
   hideDetails: { type: String as PropType<DetailsMode> },
+  occlusionRect: { type: Object as PropType<IRect> },
 });
 
 const diagramContext = useDiagramContext();
@@ -798,4 +825,26 @@ function rename() {
     renaming.value = false;
   });
 }
+
+const RENDER_RECT_EDGE = 8;
+
+const renderRect = computed(() => ({
+  x: irect.value.x - (irect.value.width / 2 + RENDER_RECT_EDGE),
+  y:
+    irect.value.y -
+    (NODE_HEADER_HEIGHT + GROUP_HEADER_BOTTOM_MARGIN + RENDER_RECT_EDGE),
+  width: irect.value.width + RENDER_RECT_EDGE * 2,
+  height:
+    irect.value.height +
+    (NODE_HEADER_HEIGHT + GROUP_HEADER_BOTTOM_MARGIN + RENDER_RECT_EDGE * 2),
+}));
+
+const occlude = computed(() => {
+  if (!props.occlusionRect) {
+    return false;
+  } else {
+    const o = !checkRectanglesOverlap(renderRect.value, props.occlusionRect);
+    return o;
+  }
+});
 </script>

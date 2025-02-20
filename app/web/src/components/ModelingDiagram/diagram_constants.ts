@@ -22,9 +22,12 @@ export const SELECTION_COLOR = COLOR_PALETTE.action[300];
 export const MIN_ZOOM = 0.1; // 10%
 export const MAX_ZOOM = 10; // 1000%
 
+export const NODE_TITLE_FONT_SIZE = 12;
+export const NODE_TITLE_FONT_SIZE_TINY = 26;
 export const NODE_TITLE_HEADER_MARGIN_RIGHT = 56;
 
 export const GROUP_TITLE_FONT_SIZE = 14;
+export const GROUP_TITLE_FONT_SIZE_TINY = 32;
 export const GROUP_INTERNAL_PADDING = 20;
 export const GROUP_RESIZE_HANDLE_SIZE = 20;
 export const GROUP_HEADER_ICON_SIZE = 35;
