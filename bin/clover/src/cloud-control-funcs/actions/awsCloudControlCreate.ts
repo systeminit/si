@@ -16,49 +16,12 @@ async function main(component: Input): Promise<Output> {
     };
   }
 
-  console.log("code", codeString);
   const domain = component.properties?.domain;
   const code = JSON.parse(codeString);
 
   const payload = code["DesiredState"];
   const propUsageMap = JSON.parse(domain.extra.PropUsageMap);
-  if (
-    !Array.isArray(propUsageMap.secrets)
-  ) {
-    throw Error("malformed propUsageMap on asset");
-  }
-
-  for (
-    const {
-      secretKey,
-      propPath,
-    } of propUsageMap.secrets
-  ) {
-    const secret = requestStorage.getItem(secretKey);
-
-    if (!propPath?.length || propPath.length < 1) {
-      throw Error("malformed secret on propUsageMap: bad propPath");
-    }
-    if (secret) {
-      let secretParent = payload;
-      let propKey = propPath[0];
-      for (let i = 1; i < propPath.length; i++) {
-        const thisProp = secretParent[propKey];
-
-        if (!thisProp) {
-          break;
-        }
-
-        secretParent = secretParent[propKey];
-        propKey = propPath[i];
-      }
-
-      // Only add secret to payload if the codegen output has it
-      if (secretParent[propKey] === "[redacted]") {
-        secretParent[propKey] = secret;
-      }
-    }
-  }
+  addSecretsToPayload(payload, propUsageMap);
 
   const inputObject = {
     TypeName: code["TypeName"],
@@ -156,5 +119,54 @@ async function main(component: Input): Promise<Output> {
       message,
       status: "error",
     };
+  }
+}
+
+// If you change this, you should change the same func on awsCloudControlUpdate.ts in this same directory
+function addSecretsToPayload(
+  payload: Record<string, any>,
+  propUsageMap: {
+    secrets: {
+      secretKey: string;
+      propPath: string[];
+    }[];
+  },
+) {
+  if (
+    !Array.isArray(propUsageMap.secrets)
+  ) {
+    throw Error("malformed propUsageMap on asset");
+  }
+
+  for (
+    const {
+      secretKey,
+      propPath,
+    } of propUsageMap.secrets
+  ) {
+    const secret = requestStorage.getItem(secretKey);
+
+    if (!propPath?.length || propPath.length < 1) {
+      throw Error("malformed secret on propUsageMap: bad propPath");
+    }
+    if (!secret) continue;
+
+    let secretParent = payload;
+    let propKey = propPath[0];
+    for (let i = 1; i < propPath.length; i++) {
+      const thisProp = secretParent[propKey];
+
+      if (!thisProp) {
+        break;
+      }
+
+      secretParent = secretParent[propKey];
+      propKey = propPath[i];
+    }
+
+    // Only add secret to payload if the codegen output has it
+    if (propKey in secretParent) {
+      secretParent[propKey] = secret;
+    }
   }
 }

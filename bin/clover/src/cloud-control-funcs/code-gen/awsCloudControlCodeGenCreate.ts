@@ -21,31 +21,7 @@ async function main(component: Input): Promise<Output> {
 
   const payload = _.cloneDeep(component.domain);
 
-  // Push secrets to payload
-  for (
-    const {
-      secretKey,
-      propPath,
-    } of propUsageMap.secrets
-  ) {
-    const secret = requestStorage.getItem(secretKey);
-
-    if (!propPath?.length || propPath.length < 1) {
-      throw Error("malformed secret on propUsageMap: bad propPath");
-    }
-    if (secret) {
-      let secretParent = payload;
-      let propKey = propPath[0];
-      for (let i = 1; i < propPath.length; i++) {
-        // Ensure key exists on payload
-        secretParent[propKey] = secretParent[propKey] ?? {};
-        secretParent = secretParent[propKey];
-        propKey = propPath[i];
-      }
-
-      secretParent[propKey] = secret;
-    }
-  }
+  addSecretsToPayload(payload, propUsageMap);
 
   const propsToVisit = _.keys(payload).map((k: string) => [k]);
 
@@ -128,4 +104,40 @@ function removeEmpty(obj: any): any {
           : value,
       ]),
   );
+}
+
+// If you change this, you should change the same func on awsCloudControlCodeGenUpdate.ts in this same directory
+function addSecretsToPayload(
+  payload: Record<string, any>,
+  propUsageMap: {
+    secrets: {
+      secretKey: string;
+      propPath: string[];
+    }[];
+  },
+) {
+  for (
+    const {
+      secretKey,
+      propPath,
+    } of propUsageMap.secrets
+  ) {
+    const secret = requestStorage.getItem(secretKey);
+
+    if (!propPath?.length || propPath.length < 1) {
+      throw Error("malformed secret on propUsageMap: bad propPath");
+    }
+    if (secret) {
+      let secretParent = payload;
+      let propKey = propPath[0];
+      for (let i = 1; i < propPath.length; i++) {
+        // Ensure key exists on payload
+        secretParent[propKey] = secretParent[propKey] ?? {};
+        secretParent = secretParent[propKey];
+        propKey = propPath[i];
+      }
+
+      secretParent[propKey] = secret;
+    }
+  }
 }
