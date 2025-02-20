@@ -23,6 +23,7 @@ use dal::{
 };
 use dal::{attribute::value::AttributeValueError, component::debug::ComponentDebugViewError};
 use dal::{ChangeSetError, TransactionsError};
+use si_posthog::PosthogError;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::task::JoinError;
@@ -82,6 +83,8 @@ pub enum ComponentError {
     NotFound(ComponentId),
     #[error(transparent)]
     ParseInt(#[from] ParseIntError),
+    #[error("posthog error: {0}")]
+    Posthog(#[from] PosthogError),
     #[error(transparent)]
     Prop(#[from] PropError),
     #[error("property editor error: {0}")]

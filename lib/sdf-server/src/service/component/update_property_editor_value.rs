@@ -62,6 +62,18 @@ pub async fn update_property_editor_value(
         }
     } else {
         AttributeValue::update(&ctx, request.attribute_value_id, request.value.to_owned()).await?;
+        // this is feature flagged! Check if the current workspace has the flag enabled, if so, do this!
+        // If anything goes wrong, just skip this and let the route handler continue
+        if posthog_client
+            .check_feature_flag(
+                "auto-enqueue-update-function".to_owned(),
+                ctx.workspace_pk()?.to_string(),
+            )
+            .await
+            .unwrap_or(false)
+        {
+            Component::enqueue_relevant_update_actions(&ctx, request.attribute_value_id).await?;
+        }
     }
 
     let component = Component::get_by_id(&ctx, request.component_id).await?;
