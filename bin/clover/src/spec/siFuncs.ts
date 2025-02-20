@@ -60,6 +60,10 @@ const funcSpecs: Record<string, FuncSpecInfo> = {
     id: "bc58dae4f4e1361840ec8f081350d7ec6b177ee8dc5a6a55155767c92efe1850",
     kind: "object",
   },
+  "si:setFloat": {
+    id: "ab9875b8d5987e3f41e9d5a3c2cc00896338d89b084ca570fa22202c8da0ec55",
+    kind: "float",
+  },
 };
 
 function createArgument(funcName: string, kind: string): FuncArgumentSpec[] {
@@ -71,10 +75,11 @@ function createArgument(funcName: string, kind: string): FuncArgumentSpec[] {
     // For the identity function, use "identity" as the argument name
     name: funcName === "si:identity" ? "identity" : "value",
     // For identity and validation functions, use "any" as the kind
-    kind: (funcName === "si:identity" || funcName === "si:validation")
-      ? "any"
-      : kind as FuncArgumentKind,
-    elementKind: (kind === "array" || kind === "map") ? "any" : null,
+    kind:
+      funcName === "si:identity" || funcName === "si:validation"
+        ? "any"
+        : (kind as FuncArgumentKind),
+    elementKind: kind === "array" || kind === "map" ? "any" : null,
     uniqueId: null,
     deleted: false,
   };
@@ -114,6 +119,9 @@ export function createSiFuncs(): FuncSpec[] {
     "si:setString",
     "si:unset",
     "si:validation",
+    "si:setFloat",
+    "si:normalizeToArray",
+    "si:resourcePayloadToValue",
   ];
 
   for (const func of siFuncs) {
@@ -121,53 +129,4 @@ export function createSiFuncs(): FuncSpec[] {
   }
 
   return ret;
-}
-
-export function createNormalizeToArray(): FuncSpec {
-  const name = "si:normalizeToArray";
-  const codeBase64 =
-    "YXN5bmMgZnVuY3Rpb24gbWFpbihpbnB1dDogSW5wdXQpOiBQcm9taXNlIDwgT3V0cHV0ID4gewogICAgaWYgKGlucHV0LnZhbHVlID09PSB1bmRlZmluZWQgfHwgaW5wdXQudmFsdWUgPT09IG51bGwpIHJldHVybiBbXTsKICAgIHJldHVybiAhQXJyYXkuaXNBcnJheShpbnB1dC52YWx1ZSkgPyBbaW5wdXQudmFsdWVdIDogaW5wdXQudmFsdWU7Cn0";
-
-  const args: FuncArgumentSpec = {
-    name: "value",
-    kind: "array",
-    elementKind: null,
-    uniqueId: ulid(),
-    deleted: false,
-  };
-
-  return createFunc(
-    name,
-    "jsAttribute",
-    "array",
-    codeBase64,
-    getSiFuncId(name),
-    [
-      args,
-    ],
-  );
-}
-export function createResourcePayloadToValue(): FuncSpec {
-  const name = "si:resourcePayloadToValue";
-  const codeBase64 =
-    "YXN5bmMgZnVuY3Rpb24gbWFpbihhcmc6IElucHV0KTogUHJvbWlzZSA8IE91dHB1dCA+IHsKICAgIHJldHVybiBhcmcucGF5bG9hZCA/PyB7fTsKfQ";
-
-  const args: FuncArgumentSpec = {
-    name: "payload",
-    kind: "object",
-    elementKind: null,
-    uniqueId: ulid(),
-    deleted: false,
-  };
-
-  return createFunc(
-    name,
-    "jsAttribute",
-    "object",
-    codeBase64,
-    getSiFuncId(name),
-    [
-      args,
-    ],
-  );
 }

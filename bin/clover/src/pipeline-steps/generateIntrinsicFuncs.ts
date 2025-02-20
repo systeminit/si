@@ -1,7 +1,5 @@
 import _ from "npm:lodash";
 import {
-  createNormalizeToArray,
-  createResourcePayloadToValue,
   createSiFuncs,
 } from "../spec/siFuncs.ts";
 import { ExpandedPkgSpec } from "../spec/pkgs.ts";
@@ -17,8 +15,6 @@ export function generateIntrinsicFuncs(
     spec.funcs = [
       ...funcs,
       ...createSiFuncs(),
-      createResourcePayloadToValue(),
-      createNormalizeToArray(),
     ];
     newSpecs.push(spec);
   }
