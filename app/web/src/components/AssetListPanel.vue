@@ -10,6 +10,10 @@
         <template #label>
           <div class="flex flex-row gap-xs">
             <div>Assets Installed</div>
+            <PillCounter
+              v-if="!featureFlagsStore.MODULES_TAB"
+              :count="assetList.length"
+            />
           </div>
         </template>
         <div class="flex flex-row gap-xs items-center">
@@ -17,9 +21,9 @@
             :requestStatus="syncModulesReqStatus"
             icon="refresh"
             loadingIcon="loader"
-            loadingTooltip="Checking For Asset Updates And For New Assets..."
+            loadingTooltip="Checking For Asset Updates and Recalculating Contributable Assets..."
             size="sm"
-            tooltip="Check For Asset Updates Or Install New Assets"
+            tooltip="Check For Asset Updates and Recalculate Contributable Assets"
             tooltipPlacement="top"
             @click="syncModules"
           />

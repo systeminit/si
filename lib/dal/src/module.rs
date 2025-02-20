@@ -13,6 +13,7 @@ use thiserror::Error;
 use tokio::sync::TryLockError;
 use tokio::time::Instant;
 
+use crate::cached_module::{CachedModule, CachedModuleError};
 use crate::layer_db_types::{ModuleContent, ModuleContentV2};
 use crate::pkg::export::PkgExporter;
 use crate::pkg::PkgError;
@@ -33,6 +34,8 @@ use crate::{
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum ModuleError {
+    #[error("cached module error: {0}")]
+    CachedModule(#[from] CachedModuleError),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
     #[error("found empty metadata (name: '{0}') (version: '{1}')")]
@@ -179,7 +182,7 @@ impl Module {
         Ok(Self::assemble(id.into(), content))
     }
 
-    pub async fn get_by_id(ctx: &DalContext, id: ModuleId) -> ModuleResult<Self> {
+    pub async fn get_by_id_or_error(ctx: &DalContext, id: ModuleId) -> ModuleResult<Self> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
         let node_index = workspace_snapshot.get_node_index_by_id(id).await?;
@@ -226,7 +229,8 @@ impl Module {
                 .await?
                 .get_content_node_weight_of_kind(ContentAddressDiscriminants::Module)?;
 
-            let module: Module = Self::get_by_id(ctx, module_node_weight.id().into()).await?;
+            let module: Module =
+                Self::get_by_id_or_error(ctx, module_node_weight.id().into()).await?;
             if predicate(&module) {
                 return Ok(Some(module));
             }
@@ -266,7 +270,8 @@ impl Module {
                 if ContentAddressDiscriminants::Module
                     == content_node_weight.content_address().into()
                 {
-                    let module = Self::get_by_id(ctx, content_node_weight.id().into()).await?;
+                    let module =
+                        Self::get_by_id_or_error(ctx, content_node_weight.id().into()).await?;
                     return Ok(Some(module));
                 }
             }
@@ -365,7 +370,7 @@ impl Module {
         Ok(all_schema_variants)
     }
 
-    pub async fn list_installed(ctx: &DalContext) -> ModuleResult<Vec<Self>> {
+    pub async fn list(ctx: &DalContext) -> ModuleResult<Vec<Self>> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
         let mut modules = vec![];
@@ -412,148 +417,106 @@ impl Module {
         Ok(modules)
     }
 
-    /// Takes in a list of [`LatestModules`](si_frontend_types::LatestModule) and creates a
-    /// [`SyncedModules`](si_frontend_types::SyncedModules) object with them. The object enables callers to know what
-    /// [`Modules`](Module) can be upgraded and installed.
+    /// Finds all upgradeable and contributable moduels in the workspace using the local cache and
+    /// local modules for determination.
     #[instrument(
         name = "module.sync"
         level = "info",
         skip_all,
-        fields(
-            latest_modules_count = latest_modules.len()
-        )
     )]
-    pub async fn sync(
-        ctx: &DalContext,
-        latest_modules: Vec<frontend_types::LatestModule>,
-        builtin_modules: Vec<frontend_types::ModuleDetails>,
-        all_modules: Vec<frontend_types::ModuleDetails>,
-    ) -> ModuleResult<frontend_types::SyncedModules> {
+    pub async fn sync(ctx: &DalContext) -> ModuleResult<frontend_types::SyncedModules> {
         let start = Instant::now();
 
-        // Initialize result struct
+        // Initialize the result object.
         let mut synced_modules = frontend_types::SyncedModules::new();
 
-        // Collect all user facing schema variants. We need to see what can be upgraded.
+        // Cache everything we need.
         let schema_variants = SchemaVariant::list_user_facing(ctx).await?;
+        let mut latest_cached_module_by_schema_id = HashMap::new();
+        let mut installed_module_by_schema_id = HashMap::new();
+        let mut past_hashes_by_schema_id: HashMap<SchemaId, HashSet<String>> = HashMap::new();
 
-        // Check the locally found schema_variant_ids to see if it's contributable
-        // Contributable means that it's not avilable in the module index NOR is it a builtin
-        // we check it's a builtin because it's hash would be in the past_hashes_by_module_id
+        // Populate applicable caches upfront to prevent duplicate queries.
         for schema_variant in &schema_variants {
-            let schema_variant_id: SchemaVariantId = schema_variant.schema_variant_id;
-            let schema_id: SchemaId = schema_variant.schema_id;
+            let schema_id = schema_variant.schema_id;
+            if let Some(cached_module) =
+                CachedModule::find_latest_for_schema_id(ctx, schema_id).await?
+            {
+                latest_cached_module_by_schema_id.insert(schema_id, cached_module);
+            }
+            if let Some(installed_module) =
+                Self::find_for_module_schema_id(ctx, schema_id.into()).await?
+            {
+                installed_module_by_schema_id.insert(schema_id, installed_module);
+            }
+        }
+
+        // Find all contributable and upgradeable modules for every user-facing schema variant.
+        for schema_variant in &schema_variants {
+            let schema_id = schema_variant.schema_id;
+
+            // If there is not corresponding module for the schema, there's no need to check
+            // sync-related information.
+            let installed_module = match installed_module_by_schema_id.get(&schema_id) {
+                Some(im) => im,
+                None => continue,
+            };
+
+            let schema_variant_id = schema_variant.schema_variant_id;
             let is_default = SchemaVariant::is_default_by_id(ctx, schema_variant_id).await?;
             let is_locked = SchemaVariant::is_locked_by_id(ctx, schema_variant_id).await?;
 
-            let module = Module::find_for_module_schema_id(ctx, schema_id.into())
-                .await
-                .map_err(|e| SchemaVariantError::Module(e.to_string()))?;
-            if let Some(m) = module {
-                if is_default && is_locked {
-                    let matches_existing_builtin = builtin_modules
-                        .iter()
-                        .any(|md| md.latest_hash == m.root_hash);
-
-                    let matches_existing_module = all_modules.iter().any(|md| {
-                        md.schema_variant_id.as_ref() == Some(&schema_variant_id.to_string())
-                            && md.schema_variant_version.as_ref() == Some(&schema_variant.version)
-                    });
-
-                    if !matches_existing_module && !matches_existing_builtin {
-                        synced_modules.contributable.push(schema_variant_id)
-                    }
-                }
-            }
-        }
-
-        // Build a list of the past hashes for all of the modules
-        let past_hashes_for_module_id = builtin_modules
-            .into_iter()
-            .filter_map(|m| {
-                if let Some(past_hashes) = m.past_hashes {
-                    Some((m.id, HashSet::from_iter(past_hashes.into_iter())))
-                } else {
-                    None
-                }
-            })
-            .collect::<HashMap<_, _>>();
-
-        // For each latest module
-        // if not for existing schema, is installable
-        // if for existing locked schema variant, and hash != hash for module of variant, mark variant as upgradeable
-        // if for existing schema variants, but they are not upgradeable, do nothing
-        let mut latest_modules_by_schema: HashMap<SchemaId, frontend_types::LatestModule> =
-            HashMap::new();
-
-        for latest_module in latest_modules {
-            let schema_id: SchemaId = latest_module
-                .schema_id()
-                .ok_or(ModuleError::MissingSchemaId(
-                    latest_module.id.to_owned(),
-                    latest_module.latest_hash.to_owned(),
-                ))?
-                .into();
-            match latest_modules_by_schema.entry(schema_id) {
-                Entry::Occupied(entry) => {
-                    let existing: frontend_types::LatestModule = entry.get().to_owned();
-                    return Err(ModuleError::TooManyLatestModulesForSchema(
-                        schema_id,
-                        existing.latest_hash,
-                        latest_module.latest_hash,
-                    ));
-                }
-                Entry::Vacant(entry) => {
-                    entry.insert(latest_module.to_owned());
-                }
-            }
-
-            // Compute upgradeable variants
-
-            // Due to rust lifetimes, we need to actually create a set here to reference in unwrap.
-            // The Alternative would be to clone the existing hashset every loop, which is way worse.
-            let empty_set = HashSet::new();
-            let past_hashes = past_hashes_for_module_id
-                .get(&latest_module.id)
-                .unwrap_or(&empty_set);
-
-            // A module is for a schema if its schema id matches the other schema
-            // or if the hash of the package of that schema is contained in the latest hashes list
-            let mut possible_upgrade_targets = vec![];
-            for schema_variant in &schema_variants {
-                let this_schema_id: SchemaId = schema_variant.schema_id;
-                let variant_id: SchemaVariantId = schema_variant.schema_variant_id;
-
-                let Some(variant_module) = Self::find_for_member_id(ctx, variant_id).await? else {
-                    continue;
-                };
-
-                if this_schema_id == schema_id || past_hashes.contains(&variant_module.root_hash) {
-                    possible_upgrade_targets.push((schema_variant, variant_module));
-                }
-            }
-
-            if possible_upgrade_targets.is_empty() {
-                synced_modules.installable.push(latest_module.to_owned());
+            // We can only mark a module as contributable or upgradeable if it is locked and is the
+            // default variant.
+            if !is_default || !is_locked {
                 continue;
             }
 
-            for (upgradeable_variant, variant_module) in possible_upgrade_targets {
-                if latest_module.latest_hash != variant_module.root_hash
-                    && upgradeable_variant.is_locked
-                {
-                    synced_modules.upgradeable.insert(
-                        upgradeable_variant.schema_variant_id,
-                        latest_module.to_owned(),
-                    );
+            if let Some(latest_cached_module) = latest_cached_module_by_schema_id.get(&schema_id) {
+                // If the module is in the cache, it is potentially upgrdeable or contributable.
+                // The first pre-requisite is to ensure the hashes differ.
+                if latest_cached_module.latest_hash != installed_module.root_hash {
+                    // If the hashes differ, reach into the past hashes local cache (avoiding
+                    // multiple calls if we process multiple variants for the same schema, which
+                    // should be impossible with the "is default and is locked" check, but this is
+                    // performance-oriented failsafe).
+                    let hash_in_past_hashes = match past_hashes_by_schema_id.entry(schema_id) {
+                        Entry::Occupied(occupied) => {
+                            occupied.get().contains(installed_module.root_hash.as_str())
+                        }
+                        Entry::Vacant(vacant) => {
+                            let past_hashes = CachedModule::list_for_schema_id(ctx, schema_id)
+                                .await?
+                                .iter()
+                                .map(|cm| cm.latest_hash.to_owned())
+                                .collect::<HashSet<String>>();
+                            let hash_in_past_hashes =
+                                past_hashes.contains(installed_module.root_hash.as_str());
+                            vacant.insert(past_hashes);
+                            hash_in_past_hashes
+                        }
+                    };
+
+                    // If the hash has been seen in the past, we know it's upgrade time. If it
+                    // hasn't, the author has created a new "version" of that asset, and it can be
+                    // contributed.
+                    if hash_in_past_hashes {
+                        synced_modules
+                            .upgradeable
+                            .insert(schema_variant_id, latest_cached_module.to_owned().into());
+                    } else {
+                        synced_modules.contributable.push(schema_variant_id);
+                    }
                 }
+            } else {
+                // If the module is not in the cache, it is new and we can contribute it.
+                synced_modules.contributable.push(schema_variant_id);
             }
         }
 
-        debug!(?synced_modules.installable, "collected installable modules");
-        debug!(?synced_modules.upgradeable, "collected upgradeable modules");
-        debug!(?synced_modules.contributable, "collected contributable modules");
-        debug!("syncing modules took: {:?}", start.elapsed());
+        debug!(upgradeable_modules = ?synced_modules.upgradeable, "collected upgradeable modules");
+        debug!(contributable_modules = ?synced_modules.contributable, "collected contributable modules");
+        debug!(elapsed = ?start.elapsed(), "syncing modules wall clock time");
 
         Ok(synced_modules)
     }

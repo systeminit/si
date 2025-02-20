@@ -313,7 +313,7 @@ impl ManagementPrototype {
                 Some(schema) => schema.name().to_owned(),
                 None => {
                     let Some(cached_module) =
-                        CachedModule::latest_by_schema_id(ctx, schema_id).await?
+                        CachedModule::find_latest_for_schema_id(ctx, schema_id).await?
                     else {
                         continue;
                     };

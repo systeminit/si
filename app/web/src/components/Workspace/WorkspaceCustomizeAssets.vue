@@ -7,14 +7,6 @@
     rememberSizeKey="func-picker"
     side="left"
   >
-    <CustomizeTabs
-      v-if="tabContentSlug === 'newassets'"
-      :tabContentSlug="tabContentSlug"
-    >
-      <template #newassets>
-        <InstallAssetsPanel ref="install" />
-      </template>
-    </CustomizeTabs>
     <template v-if="tabContentSlug === 'assets'" #subpanel1>
       <div class="flex flex-col h-full">
         <div class="relative flex-grow">
@@ -44,11 +36,6 @@
       <AssetEditor
         v-else-if="tabContentSlug === 'assets' && selectedVariantId"
         :schemaVariantId="selectedVariantId"
-      />
-      <InstallAsset
-        v-else-if="tabContentSlug === 'newassets' && !!install?.selectedModule"
-        :moduleId="install?.selectedModule.id"
-        :moduleName="install?.selectedModule.name"
       />
       <WorkspaceCustomizeEmptyState
         v-else
@@ -152,8 +139,6 @@ import { useFuncStore } from "@/store/func/funcs.store";
 import { useModuleStore } from "@/store/module.store";
 import AssetCard from "../AssetCard.vue";
 import AssetListPanel from "../AssetListPanel.vue";
-import InstallAssetsPanel from "../InstallAssetsPanel.vue";
-import InstallAsset from "../InstallAsset.vue";
 import CustomizeTabs from "../CustomizeTabs.vue";
 import AssetDetailsPanel from "../AssetDetailsPanel.vue";
 import AssetFuncListPanel from "../AssetFuncListPanel.vue";
@@ -175,7 +160,6 @@ const selectedFuncId = computed(() => funcStore.selectedFuncId);
 const loadAssetsRequestStatus = assetStore.getRequestStatus(
   "LOAD_SCHEMA_VARIANT_LIST",
 );
-const install = ref<InstanceType<typeof InstallAssetsPanel>>();
 
 const leftResizablePanelRef = ref<InstanceType<typeof ResizablePanel>>();
 const rightResizablePanelRef = ref<InstanceType<typeof ResizablePanel>>();

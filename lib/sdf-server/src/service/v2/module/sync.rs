@@ -3,12 +3,11 @@ use axum::{
     Json,
 };
 use dal::{module::Module, ChangeSetId, WorkspacePk};
-use module_index_client::ModuleIndexClient;
 use si_frontend_types as frontend_types;
 
 use super::ModulesAPIError;
 use crate::{
-    extract::{request::RawAccessToken, HandlerContext, PosthogClient},
+    extract::{HandlerContext, PosthogClient},
     service::v2::AccessBuilder,
     track,
 };
@@ -16,7 +15,6 @@ use crate::{
 pub async fn sync(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(access_builder): AccessBuilder,
-    RawAccessToken(raw_access_token): RawAccessToken,
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
     Host(host_name): Host,
@@ -26,26 +24,7 @@ pub async fn sync(
         .build(access_builder.build(change_set_id.into()))
         .await?;
 
-    let (latest_modules, module_details, all_modules) = {
-        let module_index_url = ctx
-            .module_index_url()
-            .ok_or(ModulesAPIError::ModuleIndexNotConfigured)?;
-        let module_index_client =
-            ModuleIndexClient::new(module_index_url.try_into()?, &raw_access_token);
-        (
-            module_index_client.list_latest_modules().await?,
-            module_index_client.list_builtins().await?,
-            module_index_client.list_module_details().await?,
-        )
-    };
-
-    let synced_modules = Module::sync(
-        &ctx,
-        latest_modules.modules,
-        module_details.modules,
-        all_modules.modules,
-    )
-    .await?;
+    let synced_modules = Module::sync(&ctx).await?;
 
     track(
         &posthog_client,
