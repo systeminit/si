@@ -1,12 +1,23 @@
 use serde::{Deserialize, Serialize};
 use si_data_pg::postgres_types::ToSql;
-use strum::{AsRefStr, Display, EnumString};
+use strum::{AsRefStr, Display, EnumIter, EnumString};
 
 // NOTE(nick): if we can remove the "ToSql" trait, then we can fully move this to "si-events-rs"
 // and delete the duplicate types.
 #[remain::sorted]
 #[derive(
-    AsRefStr, Deserialize, Serialize, Debug, Display, EnumString, PartialEq, Eq, Copy, Clone, ToSql,
+    AsRefStr,
+    Deserialize,
+    Serialize,
+    Debug,
+    Display,
+    EnumString,
+    PartialEq,
+    Eq,
+    Copy,
+    Clone,
+    ToSql,
+    EnumIter,
 )]
 pub enum ChangeSetStatus {
     /// No longer usable
