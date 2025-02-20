@@ -151,7 +151,7 @@ const findSnapshotRowId = async (checksum: Checksum): Promise<RowWithColumnsAndI
   };
 }
 
-const atomExists = async (atom: Atom, rowid: ROWID, isNew: boolean): Promise<boolean> => {
+const atomExists = async (atom: Atom, isNew: boolean): Promise<boolean> => {
   const rows = await db.exec({
     sql: `
     select
@@ -160,13 +160,12 @@ const atomExists = async (atom: Atom, rowid: ROWID, isNew: boolean): Promise<boo
     inner join snapshots_mtm_atoms
       ON atoms.id = snapshots_mtm_atoms.atom_id
     where
-      snapshot_id=? and
       kind=? and
       args=? and
       checksum = ?
     ;
     `,
-    bind: [rowid, atom.kind, atom.args.toString(), isNew ? atom.newChecksum : atom.origChecksum],
+    bind: [atom.kind, atom.args.toString(), isNew ? atom.newChecksum : atom.origChecksum],
     returnValue: "resultRows",
   });
   return rows.length > 0;
@@ -189,7 +188,7 @@ const newSnapshot = async (atom: Atom, fromId: number): Promise<ROWID> => {
 
   const created = await db.exec({
     sql: `INSERT INTO snapshots (change_set_id, checksum) VALUES (?, ?) RETURNING id;`,
-    bind: [atom.changeSetId, atom.newChecksum],
+    bind: [atom.changeSetId, atom.toSnapshotChecksum],
     returnValue: "resultRows",
   });
   const snapshot_id = oneInOne(created);
@@ -293,7 +292,7 @@ const handleEvent = async (messageEvent: MessageEvent<any>) => {
     const fromSnapshotId = snapshots[atom.fromSnapshotChecksum];
     const toSnapshotId = snapshots[atom.toSnapshotChecksum];
     if (!toSnapshotId || !fromSnapshotId) throw new Error(`Expected snapshot ROWIDs for ${atom}`);
-    await handleAtom(atom, fromSnapshotId, toSnapshotId);
+    await handleAtom(atom, toSnapshotId);
   }));
 
   oldSnapshots.forEach((checksum) => {
@@ -301,13 +300,13 @@ const handleEvent = async (messageEvent: MessageEvent<any>) => {
   })
 };
 
-const handleAtom = async (atom: Atom, fromSnapshotId: ROWID, toSnapshotId: ROWID) => {
+const handleAtom = async (atom: Atom, toSnapshotId: ROWID) => {
   // if we have the change already don't do anything
-  const maybeNoop = await atomExists(atom, toSnapshotId, true);
+  const maybeNoop = await atomExists(atom, true);
   if (maybeNoop) return;
 
   // otherwise, find the old record
-  const exists = await atomExists(atom, fromSnapshotId, false);
+  const exists = await atomExists(atom, false);
   let atomid: ROWID | undefined;
   if (atom.fromSnapshotChecksum === "0") {
     if (!exists)  // if i already have it, this is a NOOP
@@ -552,6 +551,8 @@ const dbInterface: DBInterface = {
      * 
      * Let's craft expected payloads over the web socket wire, and only call handle event
      * and assert we have the rows we expect to have!
+     * 
+     * First payload is changing the name of a view
      */
     const payload1: RawAtom = {
       workspaceId: "W",
@@ -592,6 +593,53 @@ const dbInterface: DBInterface = {
     const count_atoms = oneInOne(confirm3);
     // three original atoms, plus the new patched atom
     console.assert(count_atoms === 4, `atoms ${String(count_atoms)} === 4`);
+
+    log("~~ FIRST PAYLOAD SUCCESS ~~")
+
+    /**
+     * Second payload is merging that change to HEAD
+     */
+    const payload2: RawAtom = {
+      workspaceId: "W",
+      changeSetId: "HEAD",
+      fromSnapshotChecksum: "HEAD",
+      toSnapshotChecksum: "new_change_set_on_head",  // will this be different?? if not, my UNIQUE on checksum is bad
+      kind: testRecord,
+      origChecksum: "tr1",
+      newChecksum: "tr1-new-name",
+      data: "new name",
+      args: {},
+    };
+    const event2 = { data: JSON.stringify([payload2]) } as MessageEvent;
+    await handleEvent(event2);
+
+    const confirm4 = await db.exec({
+      sql: `SELECT count(snapshot_id) FROM snapshots_mtm_atoms WHERE snapshot_id = ?;`,
+      bind: [snapshot_id],
+      returnValue: "resultRows",
+    });
+    const count_old_head_snapshot_atoms = oneInOne(confirm4);
+    // one for each original atom
+    console.assert(count_old_head_snapshot_atoms === NOROW, `old head snapshots ${String(count_old_head_snapshot_atoms)} === 0`);
+
+    const confirm5 = await db.exec({
+      sql: `SELECT count(snapshot_id) FROM snapshots_mtm_atoms WHERE snapshot_id != ?;`,
+      bind: [snapshot_id],
+      returnValue: "resultRows",
+    });
+    const count_new_snapshot_atoms_again = oneInOne(confirm5);
+    // copied mtm & the patched atom, 3 for the changeset, 3 for HEAD
+    console.assert(count_new_snapshot_atoms_again === 3*2, `new snapshots ${String(count_new_snapshot_atoms_again)} === 3*2`);
+
+    const confirm6 = await db.exec({
+      sql: `SELECT count(rowid) FROM atoms;`,
+      returnValue: "resultRows",
+    });
+    const count_atoms_no_change = oneInOne(confirm6);
+    // same number of atoms no change
+    console.assert(count_atoms_no_change === 4, `atoms ${String(count_atoms_no_change)} === 4`);
+
+
     log("~~ DIAGNOSTIC COMPLETED ~~")
   }
 };
