@@ -46,6 +46,7 @@ Target = Tuple[PlatformOS, PlatformArch]
 
 
 class Variant(BaseEnum):
+    Binary = "binary"
     Omnibus = "omnibus"
     Rootfs = "rootfs"
 
@@ -303,6 +304,8 @@ def artifact_name(md: ArtifactMetadata) -> str:
     prefix = f"{md.family}-{md.version}-{md.variant.value}-{md.os.value}-{md.arch.value}"
 
     match md.variant:
+        case Variant.Binary:
+            return prefix
         case Variant.Omnibus:
             return f"{prefix}.tar.gz"
         case Variant.Rootfs:
