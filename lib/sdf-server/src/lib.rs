@@ -23,6 +23,7 @@ mod app_state;
 mod config;
 pub mod dal_wrapper;
 mod extract;
+mod garbage_collection;
 mod init;
 pub mod key_generation;
 pub mod middleware;
@@ -42,6 +43,7 @@ pub use self::{
         Config, ConfigBuilder, ConfigError, ConfigFile, IncomingStream, MigrationMode,
         StandardConfig, StandardConfigFile, WorkspacePermissions, WorkspacePermissionsMode,
     },
+    garbage_collection::SnapshotGarbageCollector,
     migrations::Migrator,
     nats_multiplexer::CRDT_MULTIPLEXER_SUBJECT,
     server::{Server, ServerMetadata, ServerSocket},
