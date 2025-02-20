@@ -42,6 +42,18 @@ impl IntrinsicFunc {
         builder.build().map_err(FuncError::IntrinsicSpecCreation)
     }
 
+    pub fn float_pkg_spec() -> FuncResult<PkgSpec> {
+        let mut builder = PkgSpec::builder();
+        builder.name("si-intrinsic-funcs");
+        builder.version("2023-05-24");
+        builder.created_at(DateTime::parse_from_rfc2822(
+            "Wed, 24 May 2023 00:00:00 PST",
+        )?);
+        builder.created_by("System Initiative");
+        builder.func(IntrinsicFunc::SetFloat.to_spec()?);
+        builder.build().map_err(FuncError::IntrinsicSpecCreation)
+    }
+
     pub fn to_spec(&self) -> FuncResult<FuncSpec> {
         let mut builder = FuncSpec::builder();
         builder.name(self.name());
