@@ -1,14 +1,54 @@
 import * as Comlink from "comlink";
 import { applyOperation } from 'fast-json-patch';
-
 import sqlite3InitModule, { Database, Sqlite3Static, SqlValue } from '@sqlite.org/sqlite-wasm';
 import ReconnectingWebSocket from "reconnecting-websocket";
 import { DBInterface, NOROW, Checksum, ROWID, Atom, QueryKey, Args, RawArgs, RawAtom, interpolate,  RowWithColumnsAndId } from "./types/dbinterface";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { WorkspacePk } from "@/store/workspaces.store";
 import { trace, Span, } from '@opentelemetry/api';
+import { WebTracerProvider } from '@opentelemetry/sdk-trace-web';
+import { BatchSpanProcessor, ConsoleSpanExporter } from '@opentelemetry/sdk-trace-base';
+import { FetchInstrumentation } from '@opentelemetry/instrumentation-fetch';
+import { registerInstrumentations } from '@opentelemetry/instrumentation';
+// import { OTLPTraceExporter } from '@opentelemetry/exporter-otlp-http';
+import { Resource } from '@opentelemetry/resources';
+import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION } from '@opentelemetry/semantic-conventions';
+import { getProjectEnvVariables } from "../shared/dynamicEnvVars";
 
-const tracer = trace.getTracer('webworker');
+const { envVariables } = getProjectEnvVariables();
+
+let otelEndpoint =
+  envVariables.VITE_OTEL_EXPORTER_OTLP_ENDPOINT ??
+  import.meta.env.VITE_OTEL_EXPORTER_OTLP_ENDPOINT;
+if (!otelEndpoint) otelEndpoint = window.location.host;
+
+const exporter = new ConsoleSpanExporter();
+/* const exporter = new OTLPTraceExporter({
+  url: `${otelEndpoint}/v1/traces`, 
+}); */
+
+const processor = new BatchSpanProcessor(exporter);
+
+const provider = new WebTracerProvider({
+  resource: new Resource({
+      [ATTR_SERVICE_NAME]: 'bifrost',
+      [ATTR_SERVICE_VERSION]: '0.1',
+  }),
+  spanProcessors: [
+    processor
+  ],
+});
+
+provider.register();
+
+registerInstrumentations({
+  instrumentations: [
+      new FetchInstrumentation(),
+  ],
+});
+
+
+const tracer = trace.getTracer('bifrost');
 const log = console.log;
 const error = console.error;
 
@@ -241,9 +281,9 @@ const removeAtom = async (atom: Atom) => {
 };
 
 const createAtom = async (atom: Atom): Promise<ROWID> => {
-  const document = {};
+  const doc = {};
   atom.data.forEach((op) => {
-    applyOperation(document, op, false, true);
+    applyOperation(doc, op, false, true);
   })
   const rows = await db.exec({
     sql: `insert into atoms
@@ -256,7 +296,7 @@ const createAtom = async (atom: Atom): Promise<ROWID> => {
       atom.kind,
       atom.newChecksum,
       atom.args.toString(),
-      await encodeDocumentForDB(document),
+      await encodeDocumentForDB(doc),
     ],
     returnValue: "resultRows",
   });
@@ -399,10 +439,10 @@ const patchAtom = async (atom: Atom, snapshotId: ROWID): Promise<ROWID> => {
 
   // FUTURE: JSON Patch, where we select the old data, and patch it
   // just inserting right now
-  const doc = atomRow[0]?.[4] as ArrayBuffer;
-  const document = decodeDocumentFromDB(doc);
+  const _doc = atomRow[0]?.[4] as ArrayBuffer;
+  const doc = decodeDocumentFromDB(_doc);
   atom.data.forEach((op) => {
-    applyOperation(document, op, false, true);
+    applyOperation(doc, op, false, true);
   })
 
   const rows = await db.exec({
@@ -417,7 +457,7 @@ const patchAtom = async (atom: Atom, snapshotId: ROWID): Promise<ROWID> => {
       atom.kind,
       atom.args.toString(),
       atom.newChecksum,
-      await encodeDocumentForDB(document),
+      await encodeDocumentForDB(doc),
     ],
     returnValue: "resultRows",
   });
