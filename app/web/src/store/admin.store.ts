@@ -1,8 +1,10 @@
 import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 import { defineStore } from "pinia";
 import * as _ from "lodash-es";
+import { useWorkspacesStore } from "@/store/workspaces.store";
 import { FuncRunId } from "@/store/func_runs.store";
-import { WorkspaceUser } from "./auth.store";
+import { useRealtimeStore } from "@/store/realtime/realtime.store";
+import { WorkspaceUser } from "@/store/auth.store";
 
 export interface AdminWorkspace {
   id: string;
@@ -26,10 +28,20 @@ export const useAdminStore = () => {
   const API_PREFIX = `v2/admin`;
   const WORKSPACE_API_PREFIX = ["v2", "workspaces"];
 
+  const workspacesStore = useWorkspacesStore();
+  const workspaceId = workspacesStore.selectedWorkspacePk;
+  const realtimeStore = useRealtimeStore();
+
   return addStoreHooks(
+    workspaceId,
     null,
-    null,
-    defineStore(`wsNONE/admin`, {
+    defineStore(`ws${workspaceId || "NONE"}/admin`, {
+      state: () => ({
+        updatingModuleCacheOperationId: null as string | null,
+        updatingModuleCacheOperationError: undefined as string | undefined,
+        updatingModuleCacheOperationRunning: false as boolean,
+      }),
+      getters: {},
       actions: {
         async SEARCH_WORKSPACES(query?: string) {
           return new ApiRequest<
@@ -99,13 +111,42 @@ export const useAdminStore = () => {
           });
         },
         async UPDATE_MODULE_CACHE() {
-          return new ApiRequest<{ new_modules: object[] }>({
+          this.updatingModuleCacheOperationRunning = true;
+          this.updatingModuleCacheOperationId = null;
+          this.updatingModuleCacheOperationError = undefined;
+
+          return new ApiRequest<{ id: string }>({
             method: "post",
             url: `${API_PREFIX}/update_module_cache`,
+            onSuccess: (response) => {
+              this.updatingModuleCacheOperationId = response.id;
+            },
+            onFail: () => {
+              this.updatingModuleCacheOperationRunning = false;
+            },
           });
         },
       },
       onActivated() {
+        realtimeStore.subscribe(this.$id, `workspace/${workspaceId}`, [
+          {
+            eventType: "AsyncFinish",
+            callback: async ({ id }: { id: string }) => {
+              if (id === this.updatingModuleCacheOperationId) {
+                this.updatingModuleCacheOperationRunning = false;
+              }
+            },
+          },
+          {
+            eventType: "AsyncError",
+            callback: async ({ id, error }: { id: string; error: string }) => {
+              if (id === this.updatingModuleCacheOperationId) {
+                this.updatingModuleCacheOperationError = error;
+                this.updatingModuleCacheOperationRunning = false;
+              }
+            },
+          },
+        ]);
         return () => {};
       },
     }),
