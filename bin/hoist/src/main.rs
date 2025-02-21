@@ -32,11 +32,24 @@ struct Args {
 #[derive(Subcommand, Debug)]
 #[remain::sorted]
 enum Commands {
+    PruneModules(PruneModulesArgs),
     UploadAllSpecs(UploadAllSpecsArgs),
     UploadSpec(UploadSpecArgs),
     WriteAllSpecs(WriteAllSpecsArgs),
     WriteExistingModulesSpec(WriteExistingModulesSpecArgs),
     WriteSpec(WriteSpecArgs),
+}
+
+#[derive(clap::Args, Debug)]
+#[command(about = "Remove modules from the module index based on a json list")]
+struct PruneModulesArgs {
+    #[arg(
+        long,
+        short = 't',
+        required = true,
+        help = "Path to the directory containing specs to remove"
+    )]
+    target: PathBuf,
 }
 
 #[derive(clap::Args, Debug)]
@@ -57,6 +70,7 @@ struct UploadAllSpecsArgs {
     )]
     max_concurrent: usize,
 }
+
 #[derive(clap::Args, Debug)]
 #[command(about = "Upload the spec {target} to the module index")]
 struct UploadSpecArgs {
@@ -109,6 +123,7 @@ async fn main() -> Result<()> {
     let client = ModuleIndexClient::new(Url::parse(endpoint)?, token);
 
     match args.command {
+        Some(Commands::PruneModules(args)) => prune_specs(&client, args.target).await?,
         Some(Commands::UploadAllSpecs(args)) => {
             upload_pkg_specs(&client, args.target_dir, args.max_concurrent).await?
         }
@@ -141,6 +156,59 @@ enum ModuleState {
     NeedsUpdate,
     New,
 }
+
+async fn prune_specs(client: &ModuleIndexClient, target: PathBuf) -> Result<()> {
+    let buf = fs::read_to_string(&target)?;
+    let specs_to_remove: HashMap<String, String> = serde_json::from_str(&buf)?;
+    let modules = list_specs(client.clone()).await?;
+
+    let mut modules_to_reject = vec![];
+
+    for module in modules {
+        if !specs_to_remove.contains_key(&module.name) {
+            continue;
+        };
+
+        modules_to_reject.push((module.name.clone(), module.id));
+    }
+
+    println!("{} modules can be rejected.", modules_to_reject.len());
+
+    let mut check = true;
+    for (module_name, module_id) in modules_to_reject {
+        let input = if check {
+            println!("{} will be removed, ok? [y/a/s/n]", module_name);
+            let mut input = String::new();
+            std::io::stdin().read_line(&mut input)?;
+            input
+        } else {
+            "y".to_string()
+        };
+
+        match input.trim().to_lowercase().as_str() {
+            "a" => {
+                check = false;
+            }
+            "s" => {
+                println!("Skipping {}...", module_name);
+                continue;
+            }
+            "y" => {}
+            _ => return Ok(()),
+        }
+        println!("Removing {}...", module_name);
+
+        client
+            .reject_module(
+                Ulid::from_string(&module_id)?,
+                CLOVER_DEFAULT_CREATOR.to_string(),
+            )
+            .await?;
+    }
+
+    Ok(())
+}
+
 async fn write_existing_modules_spec(client: ModuleIndexClient, out: PathBuf) -> Result<()> {
     let modules = list_specs(client.clone()).await?;
     let mut entries: HashMap<String, String> = HashMap::new();
