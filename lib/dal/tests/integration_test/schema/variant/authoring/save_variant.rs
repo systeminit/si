@@ -129,9 +129,8 @@ async fn unlock_and_save_variant(ctx: &mut DalContext) {
         .await
         .expect("could not update visibility");
 
-    let schema = Schema::find_by_name(ctx, "dummy-secret")
+    let schema = Schema::get_by_name(ctx, "dummy-secret")
         .await
-        .expect("unable to get schema")
         .expect("schema not found");
     let default_schema_variant = schema
         .get_default_schema_variant_id(ctx)
@@ -231,9 +230,8 @@ async fn unlock_and_save_variant(ctx: &mut DalContext) {
         .expect("could not apply to head");
 
     // check head and make sure everything looks good
-    let schema = Schema::find_by_name(ctx, "dummy-secret")
+    let schema = Schema::get_by_name(ctx, "dummy-secret")
         .await
-        .expect("unable to get schema")
         .expect("schema not found");
     let default_schema_variant = schema
         .get_default_schema_variant_id(ctx)

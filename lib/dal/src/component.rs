@@ -3680,7 +3680,7 @@ impl Component {
         let schema_variant = self.schema_variant(ctx).await?;
         let schema = self.schema(ctx).await?;
         let default_schema_variant_id =
-            SchemaVariant::get_default_id_for_schema(ctx, schema.id()).await?;
+            SchemaVariant::default_id_for_schema(ctx, schema.id()).await?;
 
         let newest_schema_variant_id =
             match SchemaVariant::get_unlocked_for_schema(ctx, schema.id()).await? {

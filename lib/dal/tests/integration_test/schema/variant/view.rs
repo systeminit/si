@@ -24,13 +24,10 @@ async fn list_schema_variant_definition_views(ctx: &DalContext) {
 
 #[test]
 async fn get_schema_variant(ctx: &DalContext) {
-    let maybe_swifty_schema = Schema::find_by_name(ctx, "swifty")
+    let swifty_schema = Schema::get_by_name(ctx, "swifty")
         .await
         .expect("unable to get schema");
 
-    assert!(maybe_swifty_schema.is_some());
-
-    let swifty_schema = maybe_swifty_schema.unwrap();
     let maybe_sv_id = swifty_schema
         .get_default_schema_variant_id(ctx)
         .await

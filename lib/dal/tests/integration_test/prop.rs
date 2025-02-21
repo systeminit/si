@@ -109,9 +109,8 @@ async fn verify_prop_used_as_input_flag(ctx: &DalContext) {
 
 #[test]
 async fn ordered_child_props(ctx: &DalContext) {
-    let schema = Schema::find_by_name(ctx, "starfield")
+    let schema = Schema::get_by_name(ctx, "starfield")
         .await
-        .expect("could not perform find by name")
         .expect("schema not found");
     let schema_variant_id = schema
         .get_default_schema_variant_id(ctx)

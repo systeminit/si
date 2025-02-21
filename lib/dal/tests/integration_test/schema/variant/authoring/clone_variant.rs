@@ -11,9 +11,8 @@ async fn clone_variant(ctx: &mut DalContext) {
         .await
         .expect("could not update visibility");
 
-    let schema = Schema::find_by_name(ctx, "dummy-secret")
+    let schema = Schema::get_by_name(ctx, "dummy-secret")
         .await
-        .expect("unable to get schema")
         .expect("schema not found");
 
     let default_schema_variant = schema

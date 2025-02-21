@@ -45,9 +45,8 @@ async fn create_attribute_prototype_with_attribute_prototype_argument(ctx: &mut 
     );
 
     // Cache the variables we need.
-    let schema = Schema::find_by_name(ctx, "starfield")
+    let schema = Schema::get_by_name(ctx, "starfield")
         .await
-        .expect("could not execute find schema")
         .expect("schema not found");
     let schema_variant_id = SchemaVariant::get_unlocked_for_schema(ctx, schema.id())
         .await
@@ -828,11 +827,7 @@ async fn detach_attribute_func(ctx: &mut DalContext) {
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("commit and update snapshot");
-    let schema = Schema::find_by_name(ctx, "starfield")
-        .await
-        .expect("unable to find by name")
-        .expect("no schema found");
-    let default_schema_variant_id = SchemaVariant::get_default_id_for_schema(ctx, schema.id())
+    let default_schema_variant_id = SchemaVariant::default_id_for_schema_name(ctx, "starfield")
         .await
         .expect("unable to get default schema variant");
 

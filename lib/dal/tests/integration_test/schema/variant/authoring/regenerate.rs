@@ -8,38 +8,27 @@ use dal::prop::PropPath;
 use dal::schema::variant::authoring::VariantAuthoringClient;
 use dal::{
     Component, ComponentType, DalContext, Func, FuncId, InputSocket, OutputSocket, OutputSocketId,
-    Prop, PropId, Schema, SchemaVariant, SchemaVariantId, SocketArity,
+    Prop, PropId, SchemaVariant, SchemaVariantId, SocketArity,
 };
 use dal_test::helpers::{
     connect_components_with_socket_names, create_component_for_default_schema_name_in_default_view,
     ChangeSetTestHelpers,
 };
-use dal_test::test;
+use dal_test::{color_eyre::Result, test};
 
 #[test]
-async fn regenerate_variant(ctx: &mut DalContext) {
-    ChangeSetTestHelpers::fork_from_head_change_set(ctx)
-        .await
-        .expect("could not fork head");
+async fn regenerate_variant(ctx: &mut DalContext) -> Result<()> {
+    ChangeSetTestHelpers::fork_from_head_change_set(ctx).await?;
     // find the variant we know is default and attached to this func already
-    let schema = Schema::find_by_name(ctx, "dummy-secret")
-        .await
-        .expect("unable to find by name")
-        .expect("no schema found");
+    let schema_variant_id = SchemaVariant::default_id_for_schema_name(ctx, "dummy-secret").await?;
 
-    let schema_variant_id = SchemaVariant::get_default_id_for_schema(ctx, schema.id())
-        .await
-        .expect("unable to get default schema variant");
     // Cache the total number of funcs before continuing.
-    let funcs = SchemaVariant::all_funcs(ctx, schema_variant_id)
-        .await
-        .expect("could not list funcs for schema variant");
+    let funcs = SchemaVariant::all_funcs(ctx, schema_variant_id).await?;
 
     // Get the Auth Func
     let fn_name = "test:setDummySecretString";
     let func_id = Func::find_id_by_name(ctx, fn_name)
-        .await
-        .expect("found auth func")
+        .await?
         .expect("has a func");
 
     // ensure the func is attached
@@ -47,15 +36,11 @@ async fn regenerate_variant(ctx: &mut DalContext) {
 
     // unlock schema variant
     let unlocked_schema_variant =
-        VariantAuthoringClient::create_unlocked_variant_copy(ctx, schema_variant_id)
-            .await
-            .expect("could not unlock variant");
+        VariantAuthoringClient::create_unlocked_variant_copy(ctx, schema_variant_id).await?;
 
     // ensure func is attached to new variant
 
-    let funcs_for_unlocked = SchemaVariant::all_funcs(ctx, unlocked_schema_variant.id)
-        .await
-        .expect("could not list funcs for schema variant");
+    let funcs_for_unlocked = SchemaVariant::all_funcs(ctx, unlocked_schema_variant.id).await?;
 
     // ensure the func is attached
     assert!(funcs_for_unlocked
@@ -63,37 +48,30 @@ async fn regenerate_variant(ctx: &mut DalContext) {
         .any(|func| func.id == func_id));
 
     // get the existing default variant and ensure the auth func is still attached to it
-    let funcs_for_default = SchemaVariant::all_funcs(ctx, schema_variant_id)
-        .await
-        .expect("could not list funcs for schema variant");
+    let funcs_for_default = SchemaVariant::all_funcs(ctx, schema_variant_id).await?;
     // ensure the func is attached
     assert!(funcs_for_default.into_iter().any(|func| func.id == func_id));
 
     // regenerate variant
-    VariantAuthoringClient::regenerate_variant(ctx, unlocked_schema_variant.id)
-        .await
-        .expect("could not regenerate variant");
+    VariantAuthoringClient::regenerate_variant(ctx, unlocked_schema_variant.id).await?;
 
     // ensure funcs are attached to regenerated AND the existing default
     // ensure func is attached to new variant
-    let funcs_for_unlocked = SchemaVariant::all_funcs(ctx, unlocked_schema_variant.id)
-        .await
-        .expect("could not list funcs for schema variant");
+    let funcs_for_unlocked = SchemaVariant::all_funcs(ctx, unlocked_schema_variant.id).await?;
     // ensure the func is attached
     assert!(funcs_for_unlocked
         .into_iter()
         .any(|func| func.id == func_id));
 
     // get the existing default variant and ensure the auth func is still attached to it
-    let funcs_for_default = SchemaVariant::all_funcs(ctx, schema_variant_id)
-        .await
-        .expect("could not list funcs for schema variant");
+    let funcs_for_default = SchemaVariant::all_funcs(ctx, schema_variant_id).await?;
     // ensure the func is attached
     assert!(funcs_for_default.into_iter().any(|func| func.id == func_id));
+    Ok(())
 }
 
 #[test]
-async fn update_socket_data_on_regenerate(ctx: &mut DalContext) {
+async fn update_socket_data_on_regenerate(ctx: &mut DalContext) -> Result<()> {
     let name = "Bandit";
     let description = None;
     let link = None;
@@ -110,8 +88,7 @@ async fn update_socket_data_on_regenerate(ctx: &mut DalContext) {
             category,
             color,
         )
-        .await
-        .expect("unable to create schema and variant");
+        .await?;
         schema_variant.id()
     };
     let asset_func = "function main() {
@@ -143,26 +120,18 @@ async fn update_socket_data_on_regenerate(ctx: &mut DalContext) {
         ComponentType::Component,
         Some(asset_func),
     )
-    .await
-    .expect("could not save content");
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("could not commit");
+    .await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
     // Once it's all ready, regenerate and commit.
-    let schema_variant_id = VariantAuthoringClient::regenerate_variant(ctx, schema_variant_id)
-        .await
-        .expect("could not regenerate variant");
+    let schema_variant_id =
+        VariantAuthoringClient::regenerate_variant(ctx, schema_variant_id).await?;
 
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("could not commit");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
     // create a component
     let component =
-        create_component_for_default_schema_name_in_default_view(ctx, "Bandit", "Bluey")
-            .await
-            .expect("could not create component");
+        create_component_for_default_schema_name_in_default_view(ctx, "Bandit", "Bluey").await?;
     let component_id = component.id();
 
     // create 2 more to connect it to things
@@ -171,45 +140,42 @@ async fn update_socket_data_on_regenerate(ctx: &mut DalContext) {
         "small odd lego",
         "small odd",
     )
-    .await
-    .expect("could not create component");
+    .await?;
 
     let output_comp =
         create_component_for_default_schema_name_in_default_view(ctx, "small even lego", "even")
-            .await
-            .expect("could not create component");
+            .await?;
     // let mut input_output_socket_avs = input_comp
     //     .output_socket_attribute_values(ctx)
     //     .await
-    //     .expect("could not find output socket");
+    //     ?;
     // let input_output_socket_id = OutputSocket::find_for_attribute_value_id(
     //     ctx,
     //     input_output_socket_avs.pop().expect("couldn't get id"),
     // )
     // .await
-    // .expect("could not get output socket id")
+    // ?
     // .expect("socket not found");
     // let input_output_socket = OutputSocket::get_by_id(ctx, input_output_socket_id)
     //     .await
-    //     .expect("couldn't get output socket");
+    //     ?;
 
     connect_components_with_socket_names(ctx, input_comp.id(), "two", component_id, "input_socket")
-        .await
-        .expect("could not connect components");
+        .await?;
     // let mut output_input_socket_avs = output_comp
     //     .input_socket_attribute_values(ctx)
     //     .await
-    //     .expect("could not find output socket");
+    //     ?;
     // let output_input_socket_id = InputSocket::find_for_attribute_value_id(
     //     ctx,
     //     output_input_socket_avs.pop().expect("couldn't get id"),
     // )
     // .await
-    // .expect("could not get output socket id")
+    // ?
     // .expect("socket not found");
     // let output_input_socket = InputSocket::get_by_id(ctx, output_input_socket_id)
     //     .await
-    //     .expect("couldn't get output socket");
+    //     ?;
 
     connect_components_with_socket_names(
         ctx,
@@ -218,62 +184,39 @@ async fn update_socket_data_on_regenerate(ctx: &mut DalContext) {
         output_comp.id(),
         "two",
     )
-    .await
-    .expect("could not connect components");
+    .await?;
 
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("could not commit");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
-    let component = Component::get_by_id(ctx, component_id)
-        .await
-        .expect("could not get component");
+    let component = Component::get_by_id(ctx, component_id).await?;
     // check the input socket data
-    let mut input_socket_avs = component
-        .input_socket_attribute_values(ctx)
-        .await
-        .expect("could not get input sockets");
+    let mut input_socket_avs = component.input_socket_attribute_values(ctx).await?;
     assert!(input_socket_avs.len() == 1);
     let input_socket_av = input_socket_avs.pop().expect("has one just checked");
     let input_socket_id = InputSocket::find_for_attribute_value_id(ctx, input_socket_av)
-        .await
-        .expect("couldn't find input socket")
+        .await?
         .expect("has one for the av");
-    let input_socket = InputSocket::get_by_id(ctx, input_socket_id)
-        .await
-        .expect("couldn't find input socket");
+    let input_socket = InputSocket::get_by_id(ctx, input_socket_id).await?;
     assert_eq!(input_socket.arity(), SocketArity::One);
     assert_eq!(format!("{:?}", input_socket.connection_annotations()), "[ConnectionAnnotation { tokens: [\"two\"] }, ConnectionAnnotation { tokens: [\"input_socket\"] }]");
 
     // check output socket data
-    let mut output_socket_avs = component
-        .output_socket_attribute_values(ctx)
-        .await
-        .expect("could not get input sockets");
+    let mut output_socket_avs = component.output_socket_attribute_values(ctx).await?;
     assert!(output_socket_avs.len() == 1);
     let output_socket_av = output_socket_avs.pop().expect("has one just checked");
     let output_socket_id = OutputSocket::find_for_attribute_value_id(ctx, output_socket_av)
-        .await
-        .expect("couldn't find input socket")
+        .await?
         .expect("has one for the av");
-    let output_socket = OutputSocket::get_by_id(ctx, output_socket_id)
-        .await
-        .expect("couldn't find input socket");
+    let output_socket = OutputSocket::get_by_id(ctx, output_socket_id).await?;
     assert_eq!(output_socket.arity(), SocketArity::One);
     assert_eq!(format!("{:?}", output_socket.connection_annotations()), "[ConnectionAnnotation { tokens: [\"two\"] }, ConnectionAnnotation { tokens: [\"output_socket\"] }]");
 
     // check connections on the component
-    let mut incoming_connections = component
-        .incoming_connections(ctx)
-        .await
-        .expect("found incoming connections");
+    let mut incoming_connections = component.incoming_connections(ctx).await?;
     assert_eq!(incoming_connections.len(), 1);
     let incoming_connection = incoming_connections.pop().expect("has one connection");
     assert_eq!(incoming_connection.from_component_id, input_comp.id());
-    let mut outgoing_connections = component
-        .outgoing_connections(ctx)
-        .await
-        .expect("has outgoing connections");
+    let mut outgoing_connections = component.outgoing_connections(ctx).await?;
     assert_eq!(outgoing_connections.len(), 1);
     let outgoing_connection = outgoing_connections.pop().expect("has a connection");
     assert_eq!(outgoing_connection.to_component_id, output_comp.id());
@@ -310,75 +253,52 @@ async fn update_socket_data_on_regenerate(ctx: &mut DalContext) {
         ComponentType::Component,
         Some(asset_func),
     )
-    .await
-    .expect("could not save content");
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("could not commit");
+    .await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
     // Once it's all ready, regenerate and commit.
     // Note that regenerate should auto-update the component
     // so this also ensures the component upgrade is successful
-    VariantAuthoringClient::regenerate_variant(ctx, schema_variant_id)
-        .await
-        .expect("could not regenerate variant");
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("could not commit");
+    VariantAuthoringClient::regenerate_variant(ctx, schema_variant_id).await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
     // check the input socket data
-    let mut input_socket_avs = component
-        .input_socket_attribute_values(ctx)
-        .await
-        .expect("could not get input sockets");
+    let mut input_socket_avs = component.input_socket_attribute_values(ctx).await?;
     assert!(input_socket_avs.len() == 1);
     let input_socket_av = input_socket_avs.pop().expect("has one just checked");
     let input_socket_id = InputSocket::find_for_attribute_value_id(ctx, input_socket_av)
-        .await
-        .expect("couldn't find input socket")
-        .expect("has one for the av");
-    let input_socket = InputSocket::get_by_id(ctx, input_socket_id)
-        .await
+        .await?
         .expect("couldn't find input socket");
+    let input_socket = InputSocket::get_by_id(ctx, input_socket_id).await?;
     assert_eq!(input_socket.arity(), SocketArity::Many);
     assert_eq!(format!("{:?}", input_socket.connection_annotations()), "[ConnectionAnnotation { tokens: [\"two\"] }, ConnectionAnnotation { tokens: [\"dog\"] }, ConnectionAnnotation { tokens: [\"input_socket\"] }]");
 
     // check output socket data
-    let mut output_socket_avs = component
-        .output_socket_attribute_values(ctx)
-        .await
-        .expect("could not get input sockets");
+    let mut output_socket_avs = component.output_socket_attribute_values(ctx).await?;
     assert!(output_socket_avs.len() == 1);
     let output_socket_av = output_socket_avs.pop().expect("has one just checked");
     let output_socket_id = OutputSocket::find_for_attribute_value_id(ctx, output_socket_av)
-        .await
-        .expect("couldn't find input socket")
-        .expect("has one for the av");
-    let output_socket = OutputSocket::get_by_id(ctx, output_socket_id)
-        .await
+        .await?
         .expect("couldn't find input socket");
+    let output_socket = OutputSocket::get_by_id(ctx, output_socket_id).await?;
     assert_eq!(output_socket.arity(), SocketArity::Many);
     assert_eq!(format!("{:?}", output_socket.connection_annotations()), "[ConnectionAnnotation { tokens: [\"one\"] }, ConnectionAnnotation { tokens: [\"dog\"] }, ConnectionAnnotation { tokens: [\"output_socket\"] }]");
 
     // check connections on the component
-    let mut incoming_connections = component
-        .incoming_connections(ctx)
-        .await
-        .expect("found incoming connections");
+    let mut incoming_connections = component.incoming_connections(ctx).await?;
     assert_eq!(incoming_connections.len(), 1);
     let incoming_connection = incoming_connections.pop().expect("has one connection");
     assert_eq!(incoming_connection.from_component_id, input_comp.id());
-    let mut outgoing_connections = component
-        .outgoing_connections(ctx)
-        .await
-        .expect("has outgoing connections");
+    let mut outgoing_connections = component.outgoing_connections(ctx).await?;
     assert_eq!(outgoing_connections.len(), 1);
     let outgoing_connection = outgoing_connections.pop().expect("has a connection");
     assert_eq!(outgoing_connection.to_component_id, output_comp.id());
+
+    Ok(())
 }
 
 #[test]
-async fn retain_bindings(ctx: &mut DalContext) {
+async fn retain_bindings(ctx: &mut DalContext) -> Result<()> {
     let name = "Toto Wolff";
     let description = None;
     let link = None;
@@ -395,8 +315,7 @@ async fn retain_bindings(ctx: &mut DalContext) {
             category,
             color,
         )
-        .await
-        .expect("unable to create schema and variant");
+        .await?;
         schema_variant.id()
     };
     let asset_func = "function main() {
@@ -443,19 +362,13 @@ async fn retain_bindings(ctx: &mut DalContext) {
         ComponentType::Component,
         Some(asset_func),
     )
-    .await
-    .expect("could not save content");
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("could not commit");
+    .await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
     // Once it's all ready, regenerate and commit.
-    let schema_variant_id = VariantAuthoringClient::regenerate_variant(ctx, schema_variant_id)
-        .await
-        .expect("could not regenerate variant");
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("could not commit");
+    let schema_variant_id =
+        VariantAuthoringClient::regenerate_variant(ctx, schema_variant_id).await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
     // Gather all arguments needed to create our bindings.
     let alpha_source_prop_id = Prop::find_prop_id_by_path(
@@ -463,39 +376,32 @@ async fn retain_bindings(ctx: &mut DalContext) {
         schema_variant_id,
         &PropPath::new(["root", "domain", "alpha_source_prop"]),
     )
-    .await
-    .expect("could not find prop id by path");
+    .await?;
     let alpha_destination_prop_id = Prop::find_prop_id_by_path(
         ctx,
         schema_variant_id,
         &PropPath::new(["root", "domain", "alpha_destination_prop"]),
     )
-    .await
-    .expect("could not find prop id by path");
+    .await?;
     let beta_source_prop_id = Prop::find_prop_id_by_path(
         ctx,
         schema_variant_id,
         &PropPath::new(["root", "domain", "beta_source_prop"]),
     )
-    .await
-    .expect("could not find prop id by path");
+    .await?;
     let beta_destination_output_socket_id = {
         let beta_destination_output_socket =
             OutputSocket::find_with_name(ctx, "beta_destination_output_socket", schema_variant_id)
-                .await
-                .expect("could not find with name")
+                .await?
                 .expect("no output socket found");
         beta_destination_output_socket.id()
     };
-    let identity_func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Identity)
-        .await
-        .expect("could not find identity func");
+    let identity_func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Identity).await?;
     let identity_func_argument_id = {
         let identity_func_argument =
             FuncArgument::find_by_name_for_func(ctx, "identity", identity_func_id)
-                .await
-                .expect("could not find by name for func")
-                .expect("no func argument found");
+                .await?
+                .expect("could not find by name for func");
         identity_func_argument.id
     };
 
@@ -509,11 +415,8 @@ async fn retain_bindings(ctx: &mut DalContext) {
         identity_func_id,
         identity_func_argument_id,
     )
-    .await
-    .expect("could not create binding");
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("could not commit");
+    .await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
     // Create the second binding and commit.
     create_binding_simple(
@@ -525,17 +428,13 @@ async fn retain_bindings(ctx: &mut DalContext) {
         identity_func_id,
         identity_func_argument_id,
     )
-    .await
-    .expect("could not create binding");
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("could not commit");
+    .await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
     // Check that the bindings look as we expect.
     let bindings =
         FuncBinding::get_bindings_for_schema_variant_id(ctx, identity_func_id, schema_variant_id)
-            .await
-            .expect("could not get bindings");
+            .await?;
     assert_eq!(
         2,              // expected
         bindings.len()  // actual
@@ -588,12 +487,9 @@ async fn retain_bindings(ctx: &mut DalContext) {
     }
 
     // Regenerate the variant again to ensure that we have retained our bindings.
-    let schema_variant_id = VariantAuthoringClient::regenerate_variant(ctx, schema_variant_id)
-        .await
-        .expect("could not regenerate variant");
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("could not commit");
+    let schema_variant_id =
+        VariantAuthoringClient::regenerate_variant(ctx, schema_variant_id).await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
     // After regenerating again, we need to re-fetch our prop(s) and socket(s).
     let alpha_source_prop_id = Prop::find_prop_id_by_path(
@@ -601,27 +497,23 @@ async fn retain_bindings(ctx: &mut DalContext) {
         schema_variant_id,
         &PropPath::new(["root", "domain", "alpha_source_prop"]),
     )
-    .await
-    .expect("could not find prop id by path");
+    .await?;
     let alpha_destination_prop_id = Prop::find_prop_id_by_path(
         ctx,
         schema_variant_id,
         &PropPath::new(["root", "domain", "alpha_destination_prop"]),
     )
-    .await
-    .expect("could not find prop id by path");
+    .await?;
     let beta_source_prop_id = Prop::find_prop_id_by_path(
         ctx,
         schema_variant_id,
         &PropPath::new(["root", "domain", "beta_source_prop"]),
     )
-    .await
-    .expect("could not find prop id by path");
+    .await?;
     let beta_destination_output_socket_id = {
         let beta_destination_output_socket =
             OutputSocket::find_with_name(ctx, "beta_destination_output_socket", schema_variant_id)
-                .await
-                .expect("could not find with name")
+                .await?
                 .expect("no output socket found");
         beta_destination_output_socket.id()
     };
@@ -629,8 +521,7 @@ async fn retain_bindings(ctx: &mut DalContext) {
     // Check that the bindings look as we expect after regenerating again.
     let bindings =
         FuncBinding::get_bindings_for_schema_variant_id(ctx, identity_func_id, schema_variant_id)
-            .await
-            .expect("could not get bindings");
+            .await?;
     assert_eq!(
         2,              // expected
         bindings.len()  // actual
@@ -681,6 +572,7 @@ async fn retain_bindings(ctx: &mut DalContext) {
             inner_binding => panic!("unexpected binding kind: {inner_binding:?}"),
         }
     }
+    Ok(())
 }
 
 // Mimics the behavior in "v2/func/binding/create_binding" for output sockets.
@@ -692,7 +584,7 @@ async fn create_binding_simple(
     maybe_destination_output_socket_id: Option<OutputSocketId>,
     identity_func_id: FuncId,
     identity_func_argument_id: FuncArgumentId,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<()> {
     let eventual_parent =
         AttributeBinding::assemble_eventual_parent(ctx, None, Some(schema_variant_id)).await?;
     let attribute_output_location = AttributeBinding::assemble_attribute_output_location(

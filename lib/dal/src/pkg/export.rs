@@ -105,7 +105,7 @@ impl PkgExporter {
         let mut funcs = vec![];
         let schema_is_builtin = schema.is_builtin();
 
-        let default_variant = SchemaVariant::get_default_for_schema(ctx, schema.id()).await?;
+        let default_variant = SchemaVariant::default_for_schema(ctx, schema.id()).await?;
 
         let mut schema_spec_builder = SchemaSpec::builder();
         schema_spec_builder.name(schema.name());

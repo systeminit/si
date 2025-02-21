@@ -111,10 +111,9 @@ impl SchemaKey for Schema {
 }
 impl SchemaKey for str {
     async fn lookup_schema(&self, ctx: &DalContext) -> SchemaId {
-        Schema::find_by_name(ctx, self)
+        Schema::get_by_name(ctx, self)
             .await
             .expect("find schema by name")
-            .expect("schema exists")
             .id()
     }
 }

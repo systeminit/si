@@ -160,9 +160,8 @@ async fn delete_on_already_to_delete_does_not_enqueue_destroy_action(ctx: &mut D
 #[test]
 async fn delete_updates_downstream_components(ctx: &mut DalContext) {
     // Get the source schema variant id.
-    let docker_image_schema = Schema::find_by_name(ctx, "Docker Image")
+    let docker_image_schema = Schema::get_by_name(ctx, "Docker Image")
         .await
-        .expect("could not perform find by name")
         .expect("no schema found");
     let mut docker_image_schema_variants =
         SchemaVariant::list_for_schema(ctx, docker_image_schema.id())
@@ -174,9 +173,8 @@ async fn delete_updates_downstream_components(ctx: &mut DalContext) {
     let docker_image_schema_variant_id = docker_image_schema_variant.id();
 
     // Get the destination schema variant id.
-    let butane_schema = Schema::find_by_name(ctx, "Butane")
+    let butane_schema = Schema::get_by_name(ctx, "Butane")
         .await
-        .expect("could not perform find by name")
         .expect("no schema found");
     let mut butane_schema_variants = SchemaVariant::list_for_schema(ctx, butane_schema.id())
         .await
@@ -334,9 +332,8 @@ async fn delete_updates_downstream_components(ctx: &mut DalContext) {
 #[test]
 async fn delete_undo_updates_inputs(ctx: &mut DalContext) {
     // Get the source schema variant id.
-    let docker_image_schema = Schema::find_by_name(ctx, "Docker Image")
+    let docker_image_schema = Schema::get_by_name(ctx, "Docker Image")
         .await
-        .expect("could not perform find by name")
         .expect("no schema found");
     let mut docker_image_schema_variants =
         SchemaVariant::list_for_schema(ctx, docker_image_schema.id())
@@ -348,9 +345,8 @@ async fn delete_undo_updates_inputs(ctx: &mut DalContext) {
     let docker_image_schema_variant_id = docker_image_schema_variant.id();
 
     // Get the destination schema variant id.
-    let butane_schema = Schema::find_by_name(ctx, "Butane")
+    let butane_schema = Schema::get_by_name(ctx, "Butane")
         .await
-        .expect("could not perform find by name")
         .expect("no schema found");
     let mut butane_schema_variants = SchemaVariant::list_for_schema(ctx, butane_schema.id())
         .await

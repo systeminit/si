@@ -35,9 +35,8 @@ async fn create_attribute_prototype_with_attribute_prototype_argument(ctx: &mut 
     );
 
     // Cache the variables we need.
-    let schema = Schema::find_by_name(ctx, "starfield")
+    let schema = Schema::get_by_name(ctx, "starfield")
         .await
-        .expect("could not find schema")
         .expect("schema not found");
     let schema_variant_id = SchemaVariant::get_unlocked_for_schema(ctx, schema.id())
         .await

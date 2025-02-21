@@ -106,9 +106,8 @@ async fn list_root_si_child_props(ctx: &DalContext) {
 
 #[test]
 async fn all_prop_ids(ctx: &DalContext) {
-    let schema = Schema::find_by_name(ctx, "starfield")
+    let schema = Schema::get_by_name(ctx, "starfield")
         .await
-        .expect("unable to get schema")
         .expect("schema not found");
     let schema_variant_id = schema
         .get_default_schema_variant_id(ctx)
@@ -187,9 +186,8 @@ async fn all_prop_ids(ctx: &DalContext) {
 
 #[test]
 async fn all_funcs(ctx: &DalContext) {
-    let schema = Schema::find_by_name(ctx, "swifty")
+    let schema = Schema::get_by_name(ctx, "swifty")
         .await
-        .expect("unable to get schema")
         .expect("schema not found");
     let schema_variant_id = schema
         .get_default_schema_variant_id(ctx)
@@ -216,9 +214,8 @@ async fn all_funcs(ctx: &DalContext) {
     );
     assert_eq!(expected, actual);
 
-    let schema = Schema::find_by_name(ctx, "starfield")
+    let schema = Schema::get_by_name(ctx, "starfield")
         .await
-        .expect("unable to get schema")
         .expect("schema not found");
     let schema_variant_id = schema
         .get_default_schema_variant_id(ctx)

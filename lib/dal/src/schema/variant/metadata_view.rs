@@ -32,7 +32,7 @@ impl SchemaVariantMetadataView {
         let schemas = Schema::list(ctx).await?;
         for schema in schemas {
             let default_schema_variant =
-                SchemaVariant::get_default_for_schema(ctx, schema.id()).await?;
+                SchemaVariant::default_for_schema(ctx, schema.id()).await?;
             views.push(SchemaVariantMetadataView {
                 id: schema.id,
                 default_schema_variant_id: default_schema_variant.id,

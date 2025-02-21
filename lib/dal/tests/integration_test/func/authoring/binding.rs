@@ -144,9 +144,8 @@ async fn get_bindings_for_latest_schema_variants(ctx: &mut DalContext) {
 
 #[test]
 async fn for_action(ctx: &mut DalContext) {
-    let schema = Schema::find_by_name(ctx, "swifty")
+    let schema = Schema::get_by_name(ctx, "swifty")
         .await
-        .expect("could not perform find by name")
         .expect("no schema found");
     let schema_variant_id = schema
         .get_default_schema_variant_id(ctx)
@@ -177,9 +176,8 @@ async fn for_action(ctx: &mut DalContext) {
 
 #[test]
 async fn for_qualification(ctx: &mut DalContext) {
-    let schema = Schema::find_by_name(ctx, "dummy-secret")
+    let schema = Schema::get_by_name(ctx, "dummy-secret")
         .await
-        .expect("could not perform find by name")
         .expect("no schema found");
     let schema_variant_id = schema
         .get_default_schema_variant_id(ctx)
@@ -212,9 +210,8 @@ async fn for_qualification(ctx: &mut DalContext) {
 
 #[test]
 async fn for_code_generation(ctx: &mut DalContext) {
-    let schema = Schema::find_by_name(ctx, "katy perry")
+    let schema = Schema::get_by_name(ctx, "katy perry")
         .await
-        .expect("could not perform find by name")
         .expect("no schema found");
     let schema_variant_id = schema
         .get_default_schema_variant_id(ctx)
@@ -245,9 +242,8 @@ async fn for_code_generation(ctx: &mut DalContext) {
 
 #[test]
 async fn for_authentication(ctx: &mut DalContext) {
-    let schema = Schema::find_by_name(ctx, "dummy-secret")
+    let schema = Schema::get_by_name(ctx, "dummy-secret")
         .await
-        .expect("could not perform find by name")
         .expect("no schema found");
     let schema_variant_id = schema
         .get_default_schema_variant_id(ctx)
@@ -286,9 +282,8 @@ async fn for_attribute_with_prop_input(ctx: &mut DalContext) {
         .pop()
         .expect("got the binding");
 
-    let schema = Schema::find_by_name(ctx, "starfield")
+    let schema = Schema::get_by_name(ctx, "starfield")
         .await
-        .expect("could not perform find by name")
         .expect("no schema found");
     let schema_variant_id = schema
         .get_default_schema_variant_id(ctx)
@@ -395,9 +390,8 @@ async fn for_attribute_with_input_socket_input(ctx: &mut DalContext) {
         .pop()
         .expect("got the binding");
 
-    let schema = Schema::find_by_name(ctx, "starfield")
+    let schema = Schema::get_by_name(ctx, "starfield")
         .await
-        .expect("could not perform find by name")
         .expect("no schema found");
     let schema_variant_id = schema
         .get_default_schema_variant_id(ctx)
@@ -480,9 +474,8 @@ async fn for_attribute_with_input_socket_input(ctx: &mut DalContext) {
 
 #[test]
 async fn for_intrinsics(ctx: &mut DalContext) {
-    let schema = Schema::find_by_name(ctx, "starfield")
+    let schema = Schema::get_by_name(ctx, "starfield")
         .await
-        .expect("unable to get schema")
         .expect("schema not found");
     let schema_variant_id = schema
         .get_default_schema_variant_id(ctx)
@@ -688,9 +681,8 @@ async fn for_intrinsics(ctx: &mut DalContext) {
 
 #[test]
 async fn code_gen_cannot_create_cycle(ctx: &mut DalContext) {
-    let _schema = Schema::find_by_name(ctx, "katy perry")
+    let _schema = Schema::get_by_name(ctx, "katy perry")
         .await
-        .expect("could not perform find by name")
         .expect("no schema found");
     let schema_variant_id = create_unlocked_variant_copy_for_schema_name(ctx, "katy perry")
         .await

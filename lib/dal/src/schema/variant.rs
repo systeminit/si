@@ -897,7 +897,7 @@ impl SchemaVariant {
         let mut schema_variant_ids = Vec::new();
 
         for schema_id in Schema::list_ids(ctx).await? {
-            schema_variant_ids.push(Self::get_default_id_for_schema(ctx, schema_id).await?);
+            schema_variant_ids.push(Self::default_id_for_schema(ctx, schema_id).await?);
         }
 
         Ok(schema_variant_ids)
@@ -940,7 +940,7 @@ impl SchemaVariant {
                 .is_none())
     }
 
-    pub async fn get_latest_for_schema(
+    pub async fn latest_for_schema(
         ctx: &DalContext,
         schema_id: SchemaId,
     ) -> SchemaVariantResult<Option<Self>> {
@@ -951,7 +951,7 @@ impl SchemaVariant {
         Ok(variants.last().cloned())
     }
 
-    pub async fn get_default_for_schema(
+    pub async fn default_for_schema(
         ctx: &DalContext,
         schema_id: SchemaId,
     ) -> SchemaVariantResult<Self> {
@@ -961,7 +961,7 @@ impl SchemaVariant {
         Self::get_by_id_or_error(ctx, default_schema_variant_id).await
     }
 
-    pub async fn get_default_id_for_schema(
+    pub async fn default_id_for_schema(
         ctx: &DalContext,
         schema_id: SchemaId,
     ) -> SchemaVariantResult<SchemaVariantId> {
@@ -969,6 +969,23 @@ impl SchemaVariant {
             Schema::get_default_schema_variant_by_id_or_error(ctx, schema_id).await?;
         Ok(default_schema_variant_id)
     }
+
+    pub async fn default_for_schema_name(
+        ctx: &DalContext,
+        name: impl AsRef<str>,
+    ) -> SchemaVariantResult<Self> {
+        let schema_id = Schema::get_by_name(ctx, name).await?.id();
+        Self::default_for_schema(ctx, schema_id).await
+    }
+
+    pub async fn default_id_for_schema_name(
+        ctx: &DalContext,
+        name: impl AsRef<str>,
+    ) -> SchemaVariantResult<SchemaVariantId> {
+        let schema_id = Schema::get_by_name(ctx, name).await?.id();
+        Self::default_id_for_schema(ctx, schema_id).await
+    }
+
     pub async fn list_for_schema(
         ctx: &DalContext,
         schema_id: SchemaId,
@@ -1082,7 +1099,7 @@ impl SchemaVariant {
     ) -> SchemaVariantResult<bool> {
         let schema_id = Self::schema_id_for_schema_variant_id(ctx, id).await?;
 
-        Ok(Self::get_default_id_for_schema(ctx, schema_id).await? == id)
+        Ok(Self::default_id_for_schema(ctx, schema_id).await? == id)
     }
 
     pub async fn is_default(&self, ctx: &DalContext) -> SchemaVariantResult<bool> {
@@ -2379,7 +2396,7 @@ impl SchemaVariant {
         let mut schema_variants = HashMap::new();
 
         for schema_id in Schema::list_ids(ctx).await? {
-            let default_schema_variant = Self::get_default_for_schema(ctx, schema_id).await?;
+            let default_schema_variant = Self::default_for_schema(ctx, schema_id).await?;
             if !default_schema_variant.ui_hidden() {
                 schema_variants.insert(
                     default_schema_variant.id,
