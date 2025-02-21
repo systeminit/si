@@ -295,6 +295,14 @@ const rightClickMenuItems = computed(() => {
       icon: "cursor",
       onSelect: renameComponent,
     });
+    if (featureFlagsStore.AUTOCONNECT) {
+      items.push({
+        label: "Auto Connect",
+        shortcut: "A",
+        icon: "output-socket",
+        onSelect: autoConnectComponent,
+      });
+    }
 
     // set component type
     const updateComponentType = (componentType: ComponentType) => {
@@ -538,6 +546,12 @@ function triggerWipeFromDiagram() {
 function renameComponent() {
   if (selectedComponentId.value) {
     componentsStore.eventBus.emit("rename", selectedComponentId.value);
+  }
+}
+
+function autoConnectComponent() {
+  if (selectedComponentId.value) {
+    componentsStore.AUTOCONNECT_COMPONENT(selectedComponentId.value);
   }
 }
 

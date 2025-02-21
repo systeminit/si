@@ -8,8 +8,6 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use dal::prop::PropError;
-use dal::property_editor::PropertyEditorError;
 use dal::slow_rt::SlowRuntimeError;
 use dal::validation::ValidationError;
 use dal::{
@@ -22,12 +20,15 @@ use dal::{
     SchemaVariantError, SecretError as DalSecretError, WsEventError,
 };
 use dal::{attribute::value::AttributeValueError, component::debug::ComponentDebugViewError};
+use dal::{prop::PropError, socket::output::OutputSocketError};
+use dal::{property_editor::PropertyEditorError, socket::input::InputSocketError};
 use dal::{ChangeSetError, TransactionsError};
 use si_posthog::PosthogError;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::task::JoinError;
 
+mod autoconnect;
 pub mod conflicts_for_component;
 pub mod debug;
 pub mod delete_property_editor_value;
@@ -73,6 +74,8 @@ pub enum ComponentError {
     Func(#[from] FuncError),
     #[error("hyper error: {0}")]
     Http(#[from] axum::http::Error),
+    #[error("input socket error: {0}")]
+    InputSocket(#[from] InputSocketError),
     #[error("invalid visibility")]
     InvalidVisibility,
     #[error("join error: {0}")]
@@ -81,6 +84,8 @@ pub enum ComponentError {
     KeyAlreadyExists(String),
     #[error("component not found for id: {0}")]
     NotFound(ComponentId),
+    #[error("output socket error: {0}")]
+    OutputSocket(#[from] OutputSocketError),
     #[error(transparent)]
     ParseInt(#[from] ParseIntError),
     #[error("posthog error: {0}")]
@@ -197,6 +202,7 @@ pub fn routes() -> Router<AppState> {
         .route("/set_resource_id", post(set_resource_id::set_resource_id))
         .route("/refresh", post(refresh::refresh))
         .route("/debug", get(debug::debug_component))
+        .route("/autoconnect", post(autoconnect::autoconnect))
         .route("/json", get(json::json))
         .route("/upgrade_component", post(upgrade::upgrade))
         .route("/conflicts", get(conflicts_for_component))

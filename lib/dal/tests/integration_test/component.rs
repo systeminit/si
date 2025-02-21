@@ -8,7 +8,8 @@ use dal::{Component, DalContext, Schema, SchemaVariant};
 use dal_test::expected::{self, ExpectComponent, ExpectView};
 use dal_test::helpers::{
     create_component_for_default_schema_name_in_default_view,
-    create_component_for_schema_variant_on_default_view, ChangeSetTestHelpers,
+    create_component_for_schema_variant_on_default_view, update_attribute_value_for_component,
+    ChangeSetTestHelpers,
 };
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
@@ -843,4 +844,54 @@ async fn paste_component_with_dependent_value(ctx: &mut DalContext) {
         })),
         downstream_copy.view(ctx).await,
     );
+}
+
+#[test]
+async fn autoconnect(ctx: &mut DalContext) {
+    let even =
+        create_component_for_default_schema_name_in_default_view(ctx, "small even lego", "even")
+            .await
+            .expect("couldn't create component");
+    let odd =
+        create_component_for_default_schema_name_in_default_view(ctx, "small odd lego", "odd")
+            .await
+            .expect("couldn't create");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("couldn't commit and update visibility");
+
+    // update both sides attribute values
+    update_attribute_value_for_component(
+        ctx,
+        even.id(),
+        &["root", "domain", "one"],
+        serde_json::json!["1"],
+    )
+    .await
+    .expect("couldn't update attribute value");
+    update_attribute_value_for_component(
+        ctx,
+        odd.id(),
+        &["root", "domain", "one"],
+        serde_json::json!["1"],
+    )
+    .await
+    .expect("couldn't update attribute value");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("couldn't commit and update snapshot");
+
+    // now let's autoconnect!
+    Component::autoconnect(ctx, odd.id())
+        .await
+        .expect("couldn't autoconnect");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("couldn't commit and update snapshot");
+
+    let incoming = Component::incoming_connections_for_id(ctx, odd.id())
+        .await
+        .expect("couldn't get incoming connections");
+    assert!(!incoming.is_empty());
+    assert!(incoming.len() == 1);
 }
