@@ -30,6 +30,7 @@ members = [
     "lib/dal-test",
     "lib/data-warehouse-stream-client",
     "lib/forklift-server",
+    "lib/joi-validator",
     "lib/module-index-client",
     "lib/module-index-server",
     "lib/nats-dead-letter-queue",
