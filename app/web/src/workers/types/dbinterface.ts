@@ -4,7 +4,7 @@ import {
   ChangeSetId,
 } from "@/api/sdf/dal/change_set";
 import { WorkspacePk } from "@/store/workspaces.store";
-import { nonNullable } from "@/utils/typescriptLinter";
+import { Operation } from "fast-json-patch";
 
 export interface QueryMeta {
   kind: string,
@@ -141,12 +141,13 @@ interface AbstractAtom {
   kind: string,
   origChecksum: Checksum,
   newChecksum: Checksum,
-  data: string, // this is a string of JSON we're not parsing
 }
 export interface RawAtom extends AbstractAtom {
   args: RawArgs,
+  data: string, // this is a string of JSON
 };
 
 export interface Atom extends AbstractAtom {
   args: Args,
+  data: Operation[],
 };
