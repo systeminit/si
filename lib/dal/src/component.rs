@@ -33,6 +33,7 @@ use crate::diagram::{
     DiagramError, SummaryDiagramEdge, SummaryDiagramInferredEdge, SummaryDiagramManagementEdge,
 };
 use crate::func::argument::FuncArgumentError;
+use crate::func::binding::FuncBindingError;
 use crate::history_event::HistoryEventMetadata;
 use crate::layer_db_types::{ComponentContent, ComponentContentV2};
 use crate::module::{Module, ModuleError};
@@ -131,6 +132,8 @@ pub enum ComponentError {
     Func(#[from] FuncError),
     #[error("func argument error: {0}")]
     FuncArgumentError(#[from] FuncArgumentError),
+    #[error("func binding error: {0}")]
+    FuncBinding(#[from] Box<FuncBindingError>),
     #[error("helper error: {0}")]
     Helper(#[from] HelperError),
     #[error("InferredConnectionGraph Error: {0}")]
@@ -2751,6 +2754,234 @@ impl Component {
             }
         }
         Ok(enqueued_actions)
+    }
+
+    pub async fn autoconnect(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> ComponentResult<Vec<InputSocketId>> {
+        let mut available_input_sockets_to_connect = HashMap::new();
+        let incoming_connections =
+            Component::incoming_connections_for_id(ctx, component_id).await?;
+        struct PotentialMatchData {
+            attr_value_id: AttributeValueId,
+            value: Option<serde_json::Value>,
+        }
+        // for a given component, check all domain props for values that have a component specific prototype
+        let attribute_value_tree = AttributeValue::tree_for_component(ctx, component_id).await?;
+        let mut flattened = Vec::new();
+        let mut queue = VecDeque::from_iter(attribute_value_tree.keys().copied());
+
+        while let Some(av_id) = queue.pop_front() {
+            flattened.push(av_id);
+            if let Some(children) = attribute_value_tree.get(&av_id) {
+                queue.extend(children);
+            }
+        }
+
+        for attribute_value_id in flattened {
+            if AttributeValue::component_prototype_id(ctx, attribute_value_id)
+                .await?
+                .is_some()
+            {
+                // this is a component specific prototype. Let's see what the input args would have been though
+                if let Some(prop) = AttributeValue::prop_opt(ctx, attribute_value_id).await? {
+                    // get the schema variant defined prototype to see what it's potential inputs are
+                    let schema_prototype = Prop::prototype_id(ctx, prop.id()).await?;
+                    let attribute_prototype_arg_ids =
+                        AttributePrototypeArgument::list_ids_for_prototype(ctx, schema_prototype)
+                            .await?;
+                    // if any of the arguments are for an Input Socket, that means this value *could* have
+                    // been set by a socket
+                    for attr_arg_id in attribute_prototype_arg_ids {
+                        let value_source = AttributePrototypeArgument::value_source_by_id(
+                            ctx,
+                            attr_arg_id,
+                        )
+                        .await?
+                        .ok_or(
+                            AttributeValueError::AttributePrototypeArgumentMissingValueSource(
+                                attr_arg_id,
+                            ),
+                        )?;
+                        if let ValueSource::InputSocket(input_socket_id) = value_source {
+                            // find this specific input socket and see if it already has a connection (actual one)
+                            if !incoming_connections
+                                .iter()
+                                .any(|conn| conn.to_input_socket_id == input_socket_id)
+                            {
+                                // no existing connection, so let's queue this up to see if there's a matching socket
+                                // somewhere!
+                                let av = AttributeValue::get_by_id(ctx, attribute_value_id).await?;
+                                let view = av.view(ctx).await?;
+                                let info_needed = PotentialMatchData {
+                                    attr_value_id: attribute_value_id,
+                                    value: view,
+                                };
+                                available_input_sockets_to_connect
+                                    .insert(input_socket_id, info_needed);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // build up a map of potential matches.  We consider a match valid if the sockets can actually connect
+        // and the value for the attribute value matches the output socket's value
+        // OR for multi-arity sockets, we also check if the output socket matches a single entry in the array
+        let mut potential_matches: HashMap<
+            InputSocketId,
+            Vec<(ComponentId, OutputSocketId, serde_json::Value)>,
+        > = HashMap::new();
+
+        // loop through all components + output sockets
+        for component in Self::list(ctx).await? {
+            // build a map of component output sockets and values
+            let output_sockets = component.output_socket_attribute_values(ctx).await?;
+            for output_socket_av in output_sockets {
+                if let Some(output_socket_id) =
+                    OutputSocket::find_for_attribute_value_id(ctx, output_socket_av).await?
+                {
+                    let av = AttributeValue::get_by_id(ctx, output_socket_av).await?;
+                    let output_value = av.view(ctx).await?;
+
+                    // Check against the list of available input sockets for compatibility
+                    for (input_socket_id, info) in &available_input_sockets_to_connect {
+                        // Does this output socket fit this input socket? (including annotations!)
+                        if OutputSocket::fits_input_by_id(ctx, *input_socket_id, output_socket_id)
+                            .await?
+                        {
+                            let input_socket =
+                                InputSocket::get_by_id(ctx, *input_socket_id).await?;
+
+                            // does the output socket have a value?
+                            if let (Some(input), Some(output)) = (&info.value, &output_value) {
+                                // does the output socket's value match what's set for the attribute value?
+                                if input == output {
+                                    potential_matches
+                                        .entry(*input_socket_id)
+                                        .or_default()
+                                        .push((component.id(), output_socket_id, output.clone()))
+                                }
+                                // if value for the prop we're trying to connect is an array, and the input socket is
+                                // multi-arity, see if the output socket's value matches an entry in the array
+
+                                // let's see if anything matches either case!
+                                if let serde_json::Value::Array(values) = input {
+                                    if input_socket.arity() == SocketArity::Many
+                                        && values.contains(output)
+                                    {
+                                        potential_matches.entry(*input_socket_id).or_default().push(
+                                            (component.id(), output_socket_id, output.clone()),
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // now we've got potential matches, so let's iterate over them and pull out the ones that match 1:1
+        // i.e. if there's multiple potential matches, do nothing for now.
+
+        // Maybe later we can return these and let the user decide??
+
+        let mut connections_created = Vec::new();
+
+        for (input_socket_id, matches) in potential_matches {
+            // Get the input socket to check its arity
+            let input_socket = InputSocket::get_by_id(ctx, input_socket_id).await?;
+
+            if let Some(info_needed) = available_input_sockets_to_connect.get(&input_socket_id) {
+                if let Some(serde_json::Value::Array(values)) = &info_needed.value {
+                    if input_socket.arity() == SocketArity::Many {
+                        // For array values with arity many, ensure each value has exactly one match
+                        let mut valid_matches = Vec::new();
+                        // but first let's see if any output socket matches the whole thing
+                        let whole_array_match: Vec<_> = matches
+                            .iter()
+                            .filter(|(_, _, output_value)| {
+                                Some(output_value) == info_needed.value.as_ref()
+                            })
+                            .collect();
+
+                        for value in values {
+                            let value_matches: Vec<_> = matches
+                                .iter()
+                                .filter(|(_, _, output_value)| output_value == value)
+                                .collect();
+                            if value_matches.len() == 1 {
+                                valid_matches.push(value_matches[0]);
+                            }
+                        }
+                        // only use the whole match if there aren't any individual matches for the
+                        // array items, AND if the whole array has exactly one matching output socket
+                        let should_use_whole_match =
+                            valid_matches.is_empty() && whole_array_match.len() == 1;
+
+                        // only use valid matches if the whole array doesn't match anything
+                        // and there are valid matches for all individual array items
+                        // otherwise we'll lose the values that don't have matches!
+                        let should_use_valid_matches = !valid_matches.is_empty()
+                            && whole_array_match.is_empty()
+                            && valid_matches.len() == values.len();
+
+                        if should_use_whole_match {
+                            // Reset the prototype and create the one connection!
+                            AttributeValue::use_default_prototype(ctx, info_needed.attr_value_id)
+                                .await?;
+                            let (source_component_id, output_socket_id, _) = whole_array_match[0];
+                            connections_created.push(input_socket_id);
+                            Component::connect(
+                                ctx,
+                                *source_component_id,
+                                *output_socket_id,
+                                component_id,
+                                input_socket_id,
+                            )
+                            .await?;
+                        } else if should_use_valid_matches {
+                            // Reset the prototype then create connections for each valid output socket match
+                            AttributeValue::use_default_prototype(ctx, info_needed.attr_value_id)
+                                .await?;
+                            for &(source_component_id, output_socket_id, _) in &valid_matches {
+                                connections_created.push(input_socket_id);
+                                Component::connect(
+                                    ctx,
+                                    *source_component_id,
+                                    *output_socket_id,
+                                    component_id,
+                                    input_socket_id,
+                                )
+                                .await?;
+                            }
+                        }
+                    }
+                } else {
+                    // For non-array values or arity one, just check if there's exactly one match
+                    // if so, use it!
+                    if matches.len() == 1 {
+                        AttributeValue::use_default_prototype(ctx, info_needed.attr_value_id)
+                            .await?;
+                        let (source_component_id, output_socket_id, _) = matches[0];
+                        connections_created.push(input_socket_id);
+                        Component::connect(
+                            ctx,
+                            source_component_id,
+                            output_socket_id,
+                            component_id,
+                            input_socket_id,
+                        )
+                        .await?;
+                    }
+                }
+            }
+        }
+
+        Ok(connections_created)
     }
 
     /// `AttributeValueId`s of all input sockets connected to any output socket of this component.

@@ -700,6 +700,23 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             });
           },
 
+          async AUTOCONNECT_COMPONENT(componentId: ComponentId) {
+            return new ApiRequest<{ connectionsCreated: number }>({
+              url: "component/autoconnect",
+              keyRequestStatusBy: componentId,
+              method: "post",
+              params: {
+                componentId,
+                ...visibilityParams,
+              },
+              onSuccess: (payload) => {
+                if (payload.connectionsCreated === 0) {
+                  toast("No connections found for component");
+                }
+              },
+            });
+          },
+
           async RENAME_COMPONENT(componentId: ComponentId, newName: string) {
             return new ApiRequest<{
               componentId: ComponentId;
