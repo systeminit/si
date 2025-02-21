@@ -14,4 +14,4 @@ export function validate<Z extends Zod.Schema>(obj: any, schema: Z) {
   }
 }
 
-export const ALLOWED_INPUT_REGEX = /^[a-zA-Z0-9-,_@/+ ]+$/;
+export const ALLOWED_INPUT_REGEX = /^[a-zA-Z0-9-.,_@/+ ]*$/;
