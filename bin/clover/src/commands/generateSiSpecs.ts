@@ -32,6 +32,9 @@ import { bfsPropTree, ExpandedPropSpec } from "../spec/props.ts";
 import { PropSpec } from "../bindings/PropSpec.ts";
 import { pruneCfAssets } from "../pipeline-steps/pruneCfAssets.ts";
 import { removeUnneededAssets } from "../pipeline-steps/removeUnneededAssets.ts";
+import {
+  reportDeprecatedAssets,
+} from "../pipeline-steps/reportDeprecatedAssets.ts";
 
 const logger = _logger.ns("siSpecs").seal();
 const SI_SPEC_DIR = "si-specs";
@@ -99,6 +102,9 @@ export async function generateSiSpecs(
   // These need everything to be complete
   specs = generateAssetFuncs(specs);
   specs = updateSchemaIdsForExistingSpecs(existing_specs, specs);
+
+  // Reporting steps
+  reportDeprecatedAssets(existing_specs, specs);
 
   // WRITE OUTS SPECS
   await emptyDirectory(SI_SPEC_DIR);
