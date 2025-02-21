@@ -9,11 +9,12 @@
           <h2 class="font-bold text-lg">UPDATE MODULE CACHE</h2>
           <div class="flex flex-row-reverse gap-sm">
             <VButton
-              :requestStatus="updateModuleCacheReqStatus"
+              :disabled="adminStore.updatingModuleCacheOperationRunning"
               class="flex-grow"
               icon="plus-circle"
               label="Update module cache"
               loadingText="Updating module cache"
+              :loading="adminStore.updatingModuleCacheOperationRunning"
               tone="success"
               @click="updateModuleCache"
             />
@@ -95,10 +96,6 @@ onBeforeMount(async () => {
     await router.push({ name: "workspace-single" });
   }
 });
-
-const updateModuleCacheReqStatus = adminStore.getRequestStatus(
-  "UPDATE_MODULE_CACHE",
-);
 
 const updateModuleCache = async () => {
   await adminStore.UPDATE_MODULE_CACHE();
