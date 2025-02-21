@@ -12,9 +12,9 @@ import {
 } from "./spec/pkgs.ts";
 
 export function pkgSpecFromCf(cfSchema: CfSchema): ExpandedPkgSpec {
-  const [aws, category, name] = cfSchema.typeName.split("::");
+  const [metaCategory, category, name] = cfSchema.typeName.split("::");
 
-  if (!["AWS", "Alexa"].includes(aws) || !category || !name) {
+  if (!["AWS", "Alexa"].includes(metaCategory) || !category || !name) {
     throw `Bad typeName: ${cfSchema.typeName}`;
   }
 
@@ -78,7 +78,7 @@ export function pkgSpecFromCf(cfSchema: CfSchema): ExpandedPkgSpec {
     name: cfSchema.typeName,
     data: {
       name: cfSchema.typeName,
-      category: `AWS ${category}`,
+      category: `${metaCategory}::${category}`,
       categoryName: null,
       uiHidden: false,
       defaultSchemaVariant: variantUniqueKey,
