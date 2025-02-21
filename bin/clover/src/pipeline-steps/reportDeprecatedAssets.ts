@@ -1,9 +1,6 @@
 import _logger from "../logger.ts";
 import _ from "npm:lodash";
 import { ExpandedPkgSpec } from "../spec/pkgs.ts";
-import {
-  deprecateConstructorEntries,
-} from "npm:formdata-node@4.4.1/@type/deprecateConstructorEntries.d.ts";
 const logger = _logger.ns("reportDeprecated").seal();
 
 export function reportDeprecatedAssets(

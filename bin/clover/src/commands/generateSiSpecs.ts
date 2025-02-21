@@ -114,7 +114,12 @@ export async function generateSiSpecs(
 
     try {
       logger.debug(`Writing ${name}.json`);
-      await Deno.writeTextFile(`${SI_SPEC_DIR}/${name}.json`, specJson);
+      const blob = new Blob([specJson]);
+      if (blob.size > 4 * 1024 * 1024) {
+        logger.warn(`${spec.name} is bigger than 4MBs. Skipping.`);
+        continue;
+      }
+      await Deno.writeFile(`${SI_SPEC_DIR}/${name}.json`, blob.stream());
     } catch (e) {
       console.log(`Error writing to file: ${name}: ${e}`);
       continue;
