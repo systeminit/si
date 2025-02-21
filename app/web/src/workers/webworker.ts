@@ -2,7 +2,7 @@ import * as Comlink from "comlink";
 import { applyOperation } from 'fast-json-patch';
 import sqlite3InitModule, { Database, Sqlite3Static, SqlValue } from '@sqlite.org/sqlite-wasm';
 import ReconnectingWebSocket from "reconnecting-websocket";
-import { DBInterface, NOROW, Checksum, ROWID, Atom, QueryKey, Args, RawArgs, RawAtom, interpolate,  RowWithColumnsAndId, AtomMessage, AtomMeta } from "./types/dbinterface";
+import { DBInterface, NOROW, Checksum, ROWID, Atom, QueryKey, Args, RawArgs, AtomOperation, interpolate,  RowWithColumnsAndId, AtomMessage, AtomMeta } from "./types/dbinterface";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { WorkspacePk } from "@/store/workspaces.store";
 import { trace, Span, } from '@opentelemetry/api';
@@ -217,7 +217,7 @@ const atomExists = async (atom: Atom, isNew: boolean): Promise<boolean> => {
       checksum = ?
     ;
     `,
-    bind: [atom.kind, atom.args.toString(), isNew ? atom.newChecksum : atom.origChecksum],
+    bind: [atom.kind, atom.args.toString(), isNew ? atom.kindToChecksum : atom.kindFromChecksum],
     returnValue: "resultRows",
   });
   return rows.length > 0;
@@ -240,7 +240,7 @@ const newSnapshot = async (meta: AtomMeta, fromId: number): Promise<ROWID> => {
 
   const created = await db.exec({
     sql: `INSERT INTO snapshots (change_set_id, checksum) VALUES (?, ?) RETURNING id;`,
-    bind: [meta.changeSetId, meta.toSnapshotChecksum],
+    bind: [meta.changeSetId, meta.snapshotToChecksum],
     returnValue: "resultRows",
   });
   const snapshot_id = oneInOne(created);
@@ -276,13 +276,13 @@ const removeAtom = async (atom: Atom) => {
       args=?
     ;
     `,
-    bind: [atom.kind, atom.origChecksum, atom.args.toString()],
+    bind: [atom.kind, atom.kindFromChecksum, atom.args.toString()],
   }); // CASCADES to the mtm table
 };
 
 const createAtom = async (atom: Atom): Promise<ROWID> => {
   const doc = {};
-  atom.data.forEach((op) => {
+  atom.operations.forEach((op) => {
     applyOperation(doc, op, false, true);
   })
   const rows = await db.exec({
@@ -294,7 +294,7 @@ const createAtom = async (atom: Atom): Promise<ROWID> => {
     `,
     bind: [
       atom.kind,
-      atom.newChecksum,
+      atom.kindToChecksum,
       atom.args.toString(),
       await encodeDocumentForDB(doc),
     ],
@@ -312,11 +312,11 @@ const partialKeyFromKindAndArgs = async (kind: string, args: Args): Promise<Quer
 // FUTURE: maybe not only atoms come over the wire?
 const handleEvent = async (messageEvent: MessageEvent<any>, span?: Span ) => {
   const data = JSON.parse(messageEvent.data) as AtomMessage;
-  span?.setAttribute("numRawAtoms", data.rawAtoms.length);
-  if (data.rawAtoms.length === 0) return;
+  span?.setAttribute("numRawAtoms", data.atoms.length);
+  if (data.atoms.length === 0) return;
   // Assumption: every patch is working on the same workspace and changeset
   // (e.g. we're not bundling messages across workspaces somehow)
-  const { changeSetId, workspaceId, fromSnapshotChecksum, toSnapshotChecksum } = { ...data.meta };
+  const { changeSetId, workspaceId, snapshotFromChecksum: fromSnapshotChecksum, snapshotToChecksum: toSnapshotChecksum } = { ...data.meta };
   span?.setAttributes({ changeSetId, workspaceId, fromSnapshotChecksum, toSnapshotChecksum });
 
   if (!changeSetId) throw new Error("Expected changeSetId")
@@ -343,22 +343,22 @@ const handleEvent = async (messageEvent: MessageEvent<any>, span?: Span ) => {
     }
   }
 
-  const atoms = data.rawAtoms.map((rawAtom) => {
+  const atoms = data.atoms.map((rawAtom) => {
     const atom: Atom = {
       ...rawAtom,
       args: new Args(rawAtom.args as RawArgs),
-      data: JSON.parse(rawAtom.data),
+      operations: JSON.parse(rawAtom.operations),
       workspaceId,
       changeSetId,
-      fromSnapshotChecksum,
-      toSnapshotChecksum,
+      snapshotFromChecksum: fromSnapshotChecksum,
+      snapshotToChecksum: toSnapshotChecksum,
     };
     return atom;
   });
 
   span?.setAttribute("numAtoms", atoms.length);
   await Promise.all(atoms.map(async (atom) => {
-    const toSnapshotId = snapshots[atom.toSnapshotChecksum];
+    const toSnapshotId = snapshots[atom.snapshotToChecksum];
     if (!toSnapshotId) throw new Error(`Expected snapshot ROWID for ${atom}`);
     await handleAtom(atom, toSnapshotId);
   }));
@@ -384,10 +384,10 @@ const handleAtom = async (atom: Atom, toSnapshotId: ROWID) => {
     const exists = await atomExists(atom, false);
     span.setAttribute("exists", exists);
     let atomid: ROWID | undefined;
-    if (atom.origChecksum === "0") {
+    if (atom.kindFromChecksum === "0") {
       if (!exists)  // if i already have it, this is a NOOP
         atomid = await createAtom(atom);
-    } else if (atom.newChecksum === "0") {
+    } else if (atom.kindToChecksum === "0") {
       // if i've already removed it, this is a NOOP
       if (exists) await removeAtom(atom);
     } else {
@@ -425,7 +425,7 @@ const patchAtom = async (atom: Atom, snapshotId: ROWID): Promise<ROWID> => {
         args = ? and
         checksum = ?
       `,
-      bind: [snapshotId, atom.kind, atom.args.toString(), atom.origChecksum],
+      bind: [snapshotId, atom.kind, atom.args.toString(), atom.kindFromChecksum],
       returnValue: "resultRows",
   });
   const atomId = oneInOne(atomRow);
@@ -444,7 +444,7 @@ const patchAtom = async (atom: Atom, snapshotId: ROWID): Promise<ROWID> => {
   // just inserting right now
   const _doc = atomRow[0]?.[4] as ArrayBuffer;
   const doc = decodeDocumentFromDB(_doc);
-  atom.data.forEach((op) => {
+  atom.operations.forEach((op) => {
     applyOperation(doc, op, false, true);
   })
 
@@ -459,7 +459,7 @@ const patchAtom = async (atom: Atom, snapshotId: ROWID): Promise<ROWID> => {
     bind: [
       atom.kind,
       atom.args.toString(),
-      atom.newChecksum,
+      atom.kindToChecksum,
       await encodeDocumentForDB(doc),
     ],
     returnValue: "resultRows",
@@ -697,14 +697,14 @@ const dbInterface: DBInterface = {
       meta: {
         workspaceId: "W",
         changeSetId: "new_change_set",
-        fromSnapshotChecksum: "HEAD",
-        toSnapshotChecksum: "new_change_set",
+        snapshotFromChecksum: "HEAD",
+        snapshotToChecksum: "new_change_set",
       },
-      rawAtoms: [{
+      atoms: [{
         kind: testRecord,
-        origChecksum: "tr1",
-        newChecksum: "tr1-new-name",
-        data: JSON.stringify([{op: "replace", path: "/name", value: "new name"}]),
+        kindFromChecksum: "tr1",
+        kindToChecksum: "tr1-new-name",
+        operations: JSON.stringify([{op: "replace", path: "/name", value: "new name"}]),
         args: {testId: "1"},
       }],
     };
@@ -759,14 +759,14 @@ const dbInterface: DBInterface = {
       meta: {
         workspaceId: "W",
         changeSetId: "HEAD",
-        fromSnapshotChecksum: "HEAD",
-        toSnapshotChecksum: "new_change_set_on_head",  // will this be different?? if not, my UNIQUE on checksum is bad
+        snapshotFromChecksum: "HEAD",
+        snapshotToChecksum: "new_change_set_on_head",  // will this be different?? if not, my UNIQUE on checksum is bad
       },
-      rawAtoms: [{
+      atoms: [{
         kind: testRecord,
-        origChecksum: "tr1",
-        newChecksum: "tr1-new-name",
-        data: JSON.stringify([{op: "replace", path: "/name", value: "new name"}]),
+        kindFromChecksum: "tr1",
+        kindToChecksum: "tr1-new-name",
+        operations: JSON.stringify([{op: "replace", path: "/name", value: "new name"}]),
         args: {testId: "1"},
       }]
     };
@@ -837,29 +837,29 @@ const dbInterface: DBInterface = {
       meta: {
         workspaceId: "W",
         changeSetId: "add_remove",
-        fromSnapshotChecksum: "new_change_set_on_head",
-        toSnapshotChecksum: "add_remove_1",
+        snapshotFromChecksum: "new_change_set_on_head",
+        snapshotToChecksum: "add_remove_1",
       },
-      rawAtoms: [
+      atoms: [
         {
           kind: testRecord,
-          origChecksum: "0",
-          newChecksum: "tr3-add",
-          data: JSON.stringify([{op: "add", path: "/name", value: "record 3"}, {op: "add", path: "/id", value: 3}]),
+          kindFromChecksum: "0",
+          kindToChecksum: "tr3-add",
+          operations: JSON.stringify([{op: "add", path: "/name", value: "record 3"}, {op: "add", path: "/id", value: 3}]),
           args: {testId: "3"},
         },
         {
           kind: testRecord,
-          origChecksum: "tr1-new-name",
-          newChecksum: "0",
-          data: JSON.stringify([]),
+          kindFromChecksum: "tr1-new-name",
+          kindToChecksum: "0",
+          operations: JSON.stringify([]),
           args: {testId: "1"},
         },
         {
           kind: testList,
-          origChecksum: "tl1",
-          newChecksum: "tl1-add-remove",
-          data: JSON.stringify([{op: "remove", path: "/list/0"}, {op: "add", path:"/list/2", value: `${testRecord}:3:tr3-add`}]),
+          kindFromChecksum: "tl1",
+          kindToChecksum: "tl1-add-remove",
+          operations: JSON.stringify([{op: "remove", path: "/list/0"}, {op: "add", path:"/list/2", value: `${testRecord}:3:tr3-add`}]),
           args: {},
         },
       ]

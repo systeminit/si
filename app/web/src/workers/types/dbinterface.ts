@@ -28,33 +28,6 @@ export interface QueryMiss extends QueryMeta {
   status: "does_not_exist",
 };
 
-export interface PayloadMeta {
-  workspaceId: string,
-  changeSetId: ChangeSetId,
-  kind: string,
-  args: Args,
-}
-
-export interface UpsertPayload extends PayloadMeta {
-  method: "upsert",
-  data: ENUM_TYPESCRIPT_BINDING,
-}
-
-export interface JSONPatch {
-  op: string,
-  path: string,
-  value: unknown,
-}
-
-export interface PatchPayload extends PayloadMeta {
-  method: "upsert",
-  patches: JSONPatch[],
-}
-
-export interface PayloadDelete extends PayloadMeta {
-  method: "delete",
-}
-
 export type Column = string;
 export type Columns = Column[];
 type BustCacheFn = (queryKey: string, latestChecksum: string) => void;
@@ -135,27 +108,27 @@ export const NOROW = Symbol("NOROW");
 
 interface AbstractAtom {
   kind: string,
-  origChecksum: Checksum,
-  newChecksum: Checksum,
+  kindFromChecksum: Checksum,
+  kindToChecksum: Checksum,
 }
-export interface RawAtom extends AbstractAtom {
+export interface AtomOperation extends AbstractAtom {
   args: RawArgs,
-  data: string, // this is a string of JSON
+  operations: string, // this is a string of JSON
 };
 
 export interface AtomMeta {
   workspaceId: WorkspacePk,
   changeSetId: ChangeSetId,
-  fromSnapshotChecksum: Checksum,
-  toSnapshotChecksum: Checksum,
+  snapshotFromChecksum: Checksum,
+  snapshotToChecksum: Checksum,
 };
 
 export interface AtomMessage {
   meta: AtomMeta,
-  rawAtoms: RawAtom[],
+  atoms: AtomOperation[],
 };
 
 export interface Atom extends AbstractAtom, AtomMeta {
   args: Args,
-  data: Operation[],
+  operations: Operation[],
 };
