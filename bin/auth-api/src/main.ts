@@ -24,8 +24,24 @@ export const app = new Koa<CustomAppState, CustomAppContext>();
 
 app.proxy = true;
 
+const allowedOrigins = new Set([
+  "https://tools.systeminit.com",
+  "https://app.systeminit.com",
+  "https://auth.systeminit.com",
+  "https://auth-api.systeminit.com",
+  "https://module-index.systeminit.com",
+]);
+
 // include this one early since it can fire off and be done when handling OPTIONS requests
-app.use(cors({ credentials: true }));
+// only allow permitted origins within cors
+app.use(cors({
+  origin: (ctx) => {
+    const requestOrigin = ctx.request.header.origin || "";
+    return allowedOrigins.has(requestOrigin) ? requestOrigin : "null";
+  },
+  credentials: true, // Only send credentials for allowed origins
+}));
+
 app.use(detectClientIp);
 app.use(httpRequestLoggingMiddleware);
 app.use(errorHandlingMiddleware);
