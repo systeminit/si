@@ -2,7 +2,7 @@ import * as Comlink from "comlink";
 import { applyOperation } from 'fast-json-patch';
 import sqlite3InitModule, { Database, Sqlite3Static, SqlValue } from '@sqlite.org/sqlite-wasm';
 import ReconnectingWebSocket from "reconnecting-websocket";
-import { DBInterface, NOROW, Checksum, ROWID, Atom, QueryKey, Args, RawArgs, RawAtom, interpolate,  RowWithColumnsAndId } from "./types/dbinterface";
+import { DBInterface, NOROW, Checksum, ROWID, Atom, QueryKey, Args, RawArgs, RawAtom, interpolate,  RowWithColumnsAndId, AtomMessage, AtomMeta } from "./types/dbinterface";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { WorkspacePk } from "@/store/workspaces.store";
 import { trace, Span, } from '@opentelemetry/api';
@@ -224,23 +224,23 @@ const atomExists = async (atom: Atom, isNew: boolean): Promise<boolean> => {
 };
 
 // SEE PATCH WORKFLOW
-const newSnapshot = async (atom: Atom, fromId: number): Promise<ROWID> => {
+const newSnapshot = async (meta: AtomMeta, fromId: number): Promise<ROWID> => {
   const changeSet = await db.exec({
     sql: `SELECT change_set_id FROM snapshots WHERE change_set_id = ? LIMIT 1;`,
-    bind: [atom.changeSetId],
+    bind: [meta.changeSetId],
     returnValue: "resultRows",
   });
   const changeSetId = oneInOne(changeSet);
   if (changeSetId === NOROW) {
     await db.exec({
       sql: `INSERT INTO changesets (change_set_id, workspace_id) VALUES (?, ?);`,
-      bind: [atom.changeSetId, atom.workspaceId],
+      bind: [meta.changeSetId, meta.workspaceId],
     });
   }
 
   const created = await db.exec({
     sql: `INSERT INTO snapshots (change_set_id, checksum) VALUES (?, ?) RETURNING id;`,
-    bind: [atom.changeSetId, atom.toSnapshotChecksum],
+    bind: [meta.changeSetId, meta.toSnapshotChecksum],
     returnValue: "resultRows",
   });
   const snapshot_id = oneInOne(created);
@@ -311,47 +311,50 @@ const partialKeyFromKindAndArgs = async (kind: string, args: Args): Promise<Quer
 
 // FUTURE: maybe not only atoms come over the wire?
 const handleEvent = async (messageEvent: MessageEvent<any>, span?: Span ) => {
-  const data = JSON.parse(messageEvent.data) as RawAtom[];
-  span?.setAttribute("numEvents", data.length);
-  if (data.length === 0) return;
+  const data = JSON.parse(messageEvent.data) as AtomMessage;
+  span?.setAttribute("numRawAtoms", data.rawAtoms.length);
+  if (data.rawAtoms.length === 0) return;
   // Assumption: every patch is working on the same workspace and changeset
   // (e.g. we're not bundling messages across workspaces somehow)
-  const changeSetId = data[0]?.changeSetId;
-  const workspaceId = data[0]?.workspaceId;
-  span?.setAttributes({ changeSetId, workspaceId });
+  const { changeSetId, workspaceId, fromSnapshotChecksum, toSnapshotChecksum } = { ...data.meta };
+  span?.setAttributes({ changeSetId, workspaceId, fromSnapshotChecksum, toSnapshotChecksum });
 
   if (!changeSetId) throw new Error("Expected changeSetId")
 
   const snapshots: Record<Checksum, ROWID> = {};
   const oldSnapshots: Checksum[] = [];
-  const atoms = await Promise.all(data.map(async (rawAtom) => {
+
+  if (!snapshots[fromSnapshotChecksum]) {
+    const fromSnapshot = await findSnapshotRowId(fromSnapshotChecksum);
+    if (fromSnapshot === NOROW) throw new Error("RAGNAROK!") // TODO
+    snapshots[fromSnapshotChecksum] = fromSnapshot.id;
+  }
+
+  if (!snapshots[toSnapshotChecksum]) {
+    const toSnapshot = await findSnapshotRowId(toSnapshotChecksum);
+    if (toSnapshot !== NOROW) {
+      snapshots[toSnapshotChecksum] = toSnapshot.id;
+    } else {
+      const fromSnapshotId = snapshots[fromSnapshotChecksum]
+      if (!fromSnapshotId) throw new Error("Missing fromSnapshotId");
+      const toSnapshotId = await newSnapshot(data.meta, fromSnapshotId);
+      oldSnapshots.push(fromSnapshotChecksum);
+      snapshots[toSnapshotChecksum] = toSnapshotId;
+    }
+  }
+
+  const atoms = data.rawAtoms.map((rawAtom) => {
     const atom: Atom = {
       ...rawAtom,
       args: new Args(rawAtom.args as RawArgs),
       data: JSON.parse(rawAtom.data),
+      workspaceId,
+      changeSetId,
+      fromSnapshotChecksum,
+      toSnapshotChecksum,
     };
-
-    if (!snapshots[atom.fromSnapshotChecksum]) {
-      const fromSnapshot = await findSnapshotRowId(atom.fromSnapshotChecksum);
-      if (fromSnapshot === NOROW) throw new Error("RAGNAROK!") // TODO
-      snapshots[atom.fromSnapshotChecksum] = fromSnapshot.id;
-    }
-
-    if (!snapshots[atom.toSnapshotChecksum]) {
-      const toSnapshot = await findSnapshotRowId(atom.toSnapshotChecksum);
-      if (toSnapshot !== NOROW) {
-        snapshots[atom.toSnapshotChecksum] = toSnapshot.id;
-      } else {
-        const fromSnapshotId = snapshots[atom.fromSnapshotChecksum]
-        if (!fromSnapshotId) throw new Error("Missing fromSnapshotId");
-        const toSnapshotId = await newSnapshot(atom, fromSnapshotId);
-        oldSnapshots.push(atom.fromSnapshotChecksum);
-        snapshots[atom.toSnapshotChecksum] = toSnapshotId;
-      }
-    }
-
     return atom;
-  }));
+  });
 
   span?.setAttribute("numAtoms", atoms.length);
   await Promise.all(atoms.map(async (atom) => {
@@ -371,8 +374,8 @@ const handleAtom = async (atom: Atom, toSnapshotId: ROWID) => {
     // if we have the change already don't do anything
     span.setAttribute("atom", JSON.stringify(atom));
     const noop = await atomExists(atom, true);
-    span.setAttribute("noop", noop);
     if (noop) {
+      span.addEvent("noop");
       span.end();
       return;
     }
@@ -381,10 +384,10 @@ const handleAtom = async (atom: Atom, toSnapshotId: ROWID) => {
     const exists = await atomExists(atom, false);
     span.setAttribute("exists", exists);
     let atomid: ROWID | undefined;
-    if (atom.fromSnapshotChecksum === "0") {
+    if (atom.origChecksum === "0") {
       if (!exists)  // if i already have it, this is a NOOP
         atomid = await createAtom(atom);
-    } else if (atom.toSnapshotChecksum === "0") {
+    } else if (atom.newChecksum === "0") {
       // if i've already removed it, this is a NOOP
       if (exists) await removeAtom(atom);
     } else {
@@ -393,7 +396,7 @@ const handleAtom = async (atom: Atom, toSnapshotId: ROWID) => {
           atomid = await patchAtom(atom, toSnapshotId);
       // otherwise, fire the small hammer to get the full object
       else {
-        span.setAttribute("mjolnir", true);
+        span.addEvent("mjolnir", { atom: JSON.stringify(atom) });
         mjolnir(atom.kind, atom.args);
       }
     }
@@ -478,6 +481,12 @@ const pruneAtomsForClosedChangeSet = async (workspaceId: WorkspacePk, changeSetI
     await db.exec({
       sql: `
         DELETE FROM snapshots WHERE change_set_id = ?;
+      `,
+      bind: [changeSetId],
+    });
+    await db.exec({
+      sql: `
+        DELETE FROM changesets WHERE change_set_id = ?;
       `,
       bind: [changeSetId],
     });
@@ -610,7 +619,7 @@ const dbInterface: DBInterface = {
       `,
       bind: [
         testRecord,
-        new Args({}).toString(),
+        new Args({testId: "1"}).toString(),
         "tr1",
         await encodeDocumentForDB({id: 1, name: "test record 1"})
       ],
@@ -632,7 +641,7 @@ const dbInterface: DBInterface = {
       `,
       bind: [
         testRecord,
-        new Args({}).toString(),
+        new Args({testId: "2"}).toString(),
         "tr2",
         await encodeDocumentForDB({id: 2, name: "test record 2"})
       ],
@@ -684,18 +693,22 @@ const dbInterface: DBInterface = {
      * 
      * First payload is changing the name of a view
      */
-    const payload1: RawAtom = {
-      workspaceId: "W",
-      changeSetId: "new_change_set",
-      fromSnapshotChecksum: "HEAD",
-      toSnapshotChecksum: "new_change_set",
-      kind: testRecord,
-      origChecksum: "tr1",
-      newChecksum: "tr1-new-name",
-      data: JSON.stringify([{op: "replace", path: "/name", value: "new name"}]),
-      args: {},
+    const payload1: AtomMessage = {
+      meta: {
+        workspaceId: "W",
+        changeSetId: "new_change_set",
+        fromSnapshotChecksum: "HEAD",
+        toSnapshotChecksum: "new_change_set",
+      },
+      rawAtoms: [{
+        kind: testRecord,
+        origChecksum: "tr1",
+        newChecksum: "tr1-new-name",
+        data: JSON.stringify([{op: "replace", path: "/name", value: "new name"}]),
+        args: {testId: "1"},
+      }],
     };
-    const event1 = { data: JSON.stringify([payload1]) } as MessageEvent;
+    const event1 = { data: JSON.stringify(payload1) } as MessageEvent;
     await tracer.startActiveSpan("handleEvent", async (span) => {
       await handleEvent(event1, span);
       span.end()
@@ -742,18 +755,22 @@ const dbInterface: DBInterface = {
     /**
      * Second payload is merging that change to HEAD
      */
-    const payload2: RawAtom = {
-      workspaceId: "W",
-      changeSetId: "HEAD",
-      fromSnapshotChecksum: "HEAD",
-      toSnapshotChecksum: "new_change_set_on_head",  // will this be different?? if not, my UNIQUE on checksum is bad
-      kind: testRecord,
-      origChecksum: "tr1",
-      newChecksum: "tr1-new-name",
-      data: JSON.stringify([{op: "replace", path: "/name", value: "new name"}]),
-      args: {},
+    const payload2: AtomMessage = {
+      meta: {
+        workspaceId: "W",
+        changeSetId: "HEAD",
+        fromSnapshotChecksum: "HEAD",
+        toSnapshotChecksum: "new_change_set_on_head",  // will this be different?? if not, my UNIQUE on checksum is bad
+      },
+      rawAtoms: [{
+        kind: testRecord,
+        origChecksum: "tr1",
+        newChecksum: "tr1-new-name",
+        data: JSON.stringify([{op: "replace", path: "/name", value: "new name"}]),
+        args: {testId: "1"},
+      }]
     };
-    const event2 = { data: JSON.stringify([payload2]) } as MessageEvent;
+    const event2 = { data: JSON.stringify(payload2) } as MessageEvent;
     await tracer.startActiveSpan("handleEvent", async (span) => {
       await handleEvent(event2);
       span.end()
@@ -815,6 +832,74 @@ const dbInterface: DBInterface = {
      * Fourth thing that happens, add a new view, remove an existing view
      * TODO
      */
+
+    const payload3: AtomMessage = {
+      meta: {
+        workspaceId: "W",
+        changeSetId: "add_remove",
+        fromSnapshotChecksum: "new_change_set_on_head",
+        toSnapshotChecksum: "add_remove_1",
+      },
+      rawAtoms: [
+        {
+          kind: testRecord,
+          origChecksum: "0",
+          newChecksum: "tr3-add",
+          data: JSON.stringify([{op: "add", path: "/name", value: "record 3"}, {op: "add", path: "/id", value: 3}]),
+          args: {testId: "3"},
+        },
+        {
+          kind: testRecord,
+          origChecksum: "tr1-new-name",
+          newChecksum: "0",
+          data: JSON.stringify([]),
+          args: {testId: "1"},
+        },
+        {
+          kind: testList,
+          origChecksum: "tl1",
+          newChecksum: "tl1-add-remove",
+          data: JSON.stringify([{op: "remove", path: "/list/0"}, {op: "add", path:"/list/2", value: `${testRecord}:3:tr3-add`}]),
+          args: {},
+        },
+      ]
+    };
+    const event3 = { data: JSON.stringify(payload3) } as MessageEvent;
+    await tracer.startActiveSpan("handleEvent", async (span) => {
+      await handleEvent(event3);
+      span.end()
+    });
+
+    const added_record = await db.exec({
+      sql: `SELECT data FROM atoms WHERE checksum = ?`,
+      bind: ["tr3-add"],
+      returnValue: "resultRows",
+    });
+    const added = oneInOne(added_record);
+    if (added === NOROW) throw new Error("Expected new record, got nothing")
+    const added_doc = decodeDocumentFromDB(added as ArrayBuffer);
+    console.assert(added_doc.id === 3 && added_doc.name === "record 3", `Added document doesn't match (${JSON.stringify(added_doc)})`);
+
+    const removed_record = await db.exec({
+      sql: `SELECT data FROM atoms WHERE checksum = ?`,
+      bind: ["tr1-new-name"],
+      returnValue: "resultRows",
+    });
+    const removed = oneInOne(removed_record);
+    console.assert(removed === NOROW, "Expected removed record gone")
+
+    const modlist = await db.exec({
+      sql: `SELECT data FROM atoms WHERE checksum = ?`,
+      bind: ["tl1-add-remove"],
+      returnValue: "resultRows",
+    });
+    const list = oneInOne(modlist);
+    if (list === NOROW) throw new Error("Expected list, got nothing")
+    const list_doc = decodeDocumentFromDB(list as ArrayBuffer);
+    console.assert(list_doc.list[0] === `${testRecord}:2:tr2`, `List item 1 is wrong (${JSON.stringify(list_doc)})`);
+    console.assert(list_doc.list[1] === `${testRecord}:3:tr3-add`, `List item 2 is wrong (${JSON.stringify(list_doc)})`);
+
+    log("~~ ADD / REMOVE COMPLETED ~~")
 
     log("~~ DIAGNOSTIC COMPLETED ~~")
   }

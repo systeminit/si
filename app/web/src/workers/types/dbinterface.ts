@@ -134,10 +134,6 @@ export type ROWID = number;
 export const NOROW = Symbol("NOROW");
 
 interface AbstractAtom {
-  workspaceId: WorkspacePk,
-  changeSetId: ChangeSetId,
-  fromSnapshotChecksum: Checksum,
-  toSnapshotChecksum: Checksum,
   kind: string,
   origChecksum: Checksum,
   newChecksum: Checksum,
@@ -147,7 +143,19 @@ export interface RawAtom extends AbstractAtom {
   data: string, // this is a string of JSON
 };
 
-export interface Atom extends AbstractAtom {
+export interface AtomMeta {
+  workspaceId: WorkspacePk,
+  changeSetId: ChangeSetId,
+  fromSnapshotChecksum: Checksum,
+  toSnapshotChecksum: Checksum,
+};
+
+export interface AtomMessage {
+  meta: AtomMeta,
+  rawAtoms: RawAtom[],
+};
+
+export interface Atom extends AbstractAtom, AtomMeta {
   args: Args,
   data: Operation[],
 };
