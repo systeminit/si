@@ -1,11 +1,11 @@
 import * as Comlink from "comlink";
+import { applyOperation } from 'fast-json-patch';
 
 import sqlite3InitModule, { Database, Sqlite3Static, SqlValue } from '@sqlite.org/sqlite-wasm';
 import ReconnectingWebSocket from "reconnecting-websocket";
-import { UpsertPayload, PatchPayload, PayloadDelete, DBInterface, NOROW, Checksum, ROWID, Atom, QueryKey, Args, RawArgs, RawAtom, interpolate, RowWithColumns, RowWithColumnsAndId } from "./types/dbinterface";
+import { DBInterface, NOROW, Checksum, ROWID, Atom, QueryKey, Args, RawArgs, RawAtom, interpolate,  RowWithColumnsAndId } from "./types/dbinterface";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { WorkspacePk } from "@/store/workspaces.store";
-import assert from "assert";
 
 const log = console.log;
 const error = console.error;
@@ -24,7 +24,7 @@ const start = async (sqlite3: Sqlite3Static) => {
       : `OPFS is not available, created transient database ${db.filename}`,
   );
   await db.exec({ sql: 'PRAGMA foreign_keys = ON;'});
-  const result = db.exec({ sql: 'PRAGMA foreign_keys', returnValue: "resultRows" })
+  // const result = await db.exec({ sql: 'PRAGMA foreign_keys', returnValue: "resultRows" })
   // log("PRAGMA foreign_keys: ", oneInOne(result), "?");
 };
 
@@ -118,6 +118,16 @@ const ensureTables = async () => {
   return db.exec({sql});
 }
 
+const encodeDocumentForDB = async (doc: object) => {
+  return await new Blob([JSON.stringify(doc)]).arrayBuffer();
+};
+
+const decodeDocumentFromDB = (doc: ArrayBuffer) => {
+  const s = new TextDecoder().decode(doc);
+  const j = JSON.parse(s);
+  return j
+};
+
 const oneInOne = (rows: SqlValue[][]): SqlValue | typeof NOROW => {
   const first = rows[0];
   if (first) {
@@ -207,7 +217,7 @@ const newSnapshot = async (atom: Atom, fromId: number): Promise<ROWID> => {
   return snapshot_id as number;
 };
 
-const newSnapshotEnd = async(changeSetId: ChangeSetId, fromSnapshotChecksum: Checksum) => {
+const removeOldSnapshots = async(changeSetId: ChangeSetId, fromSnapshotChecksum: Checksum) => {
   await db.exec({
     sql: "DELETE FROM snapshots WHERE change_set_id = ? AND checksum = ?",
     bind: [changeSetId, fromSnapshotChecksum],
@@ -229,7 +239,10 @@ const removeAtom = async (atom: Atom) => {
 };
 
 const createAtom = async (atom: Atom): Promise<ROWID> => {
-  const data = await new Blob([atom.data]).arrayBuffer();
+  const document = {};
+  atom.data.forEach((op) => {
+    applyOperation(document, op, false, true);
+  })
   const rows = await db.exec({
     sql: `insert into atoms
       (kind, checksum, args, data)
@@ -237,7 +250,12 @@ const createAtom = async (atom: Atom): Promise<ROWID> => {
       (?, ?, ?, ?)
     returning id;
     `,
-    bind: [atom.kind, atom.newChecksum, atom.args.toString(), data],
+    bind: [
+      atom.kind,
+      atom.newChecksum,
+      atom.args.toString(),
+      await encodeDocumentForDB(document),
+    ],
     returnValue: "resultRows",
   });
   const atom_id = oneInOne(rows);
@@ -258,12 +276,13 @@ const handleEvent = async (messageEvent: MessageEvent<any>) => {
   const changeSetId = data[0]?.changeSetId;
   if (!changeSetId) throw new Error("Expected changeSetId")
 
-  const snapshots: Record<string, ROWID> = {};
-  const oldSnapshots: string[] = [];
+  const snapshots: Record<Checksum, ROWID> = {};
+  const oldSnapshots: Checksum[] = [];
   const atoms = await Promise.all(data.map(async (rawAtom) => {
     const atom: Atom = {
       ...rawAtom,
       args: new Args(rawAtom.args as RawArgs),
+      data: JSON.parse(rawAtom.data),
     };
 
     if (!snapshots[atom.fromSnapshotChecksum]) {
@@ -289,14 +308,13 @@ const handleEvent = async (messageEvent: MessageEvent<any>) => {
   }));
 
   await Promise.all(atoms.map(async (atom) => {
-    const fromSnapshotId = snapshots[atom.fromSnapshotChecksum];
     const toSnapshotId = snapshots[atom.toSnapshotChecksum];
-    if (!toSnapshotId || !fromSnapshotId) throw new Error(`Expected snapshot ROWIDs for ${atom}`);
+    if (!toSnapshotId) throw new Error(`Expected snapshot ROWID for ${atom}`);
     await handleAtom(atom, toSnapshotId);
   }));
 
   oldSnapshots.forEach((checksum) => {
-    newSnapshotEnd(changeSetId, checksum)
+    removeOldSnapshots(changeSetId, checksum)
   })
 };
 
@@ -333,7 +351,7 @@ const handleAtom = async (atom: Atom, toSnapshotId: ROWID) => {
 };
 
 const patchAtom = async (atom: Atom, snapshotId: ROWID): Promise<ROWID> => {
-  const row = await db.exec({
+  const atomRow = await db.exec({
     sql: `SELECT id, kind, args, checksum, data
       FROM atoms 
       INNER JOIN snapshots_mtm_atoms ON atoms.id = snapshots_mtm_atoms.atom_id
@@ -346,7 +364,7 @@ const patchAtom = async (atom: Atom, snapshotId: ROWID): Promise<ROWID> => {
       bind: [snapshotId, atom.kind, atom.args.toString(), atom.origChecksum],
       returnValue: "resultRows",
   });
-  const atomId = oneInOne(row);
+  const atomId = oneInOne(atomRow);
   if (atomId === NOROW) throw new Error("Cannot find atom");
   // delete the MTM row that exists for the current snapshot, it will get replaced
   await db.exec({
@@ -360,7 +378,12 @@ const patchAtom = async (atom: Atom, snapshotId: ROWID): Promise<ROWID> => {
 
   // FUTURE: JSON Patch, where we select the old data, and patch it
   // just inserting right now
-  const data = await new Blob([atom.data]).arrayBuffer();
+  const doc = atomRow[0]?.[4] as ArrayBuffer;
+  const document = decodeDocumentFromDB(doc);
+  atom.data.forEach((op) => {
+    applyOperation(document, op, false, true);
+  })
+
   const rows = await db.exec({
     sql: `
     insert into atoms
@@ -369,7 +392,12 @@ const patchAtom = async (atom: Atom, snapshotId: ROWID): Promise<ROWID> => {
       (?, ?, ?, ?)
     returning id;
     ;`,
-    bind: [atom.kind, atom.args.toString(), atom.newChecksum, data],
+    bind: [
+      atom.kind,
+      atom.args.toString(),
+      atom.newChecksum,
+      await encodeDocumentForDB(document),
+    ],
     returnValue: "resultRows",
   });
   const atom_id = oneInOne(rows);
@@ -512,7 +540,12 @@ const dbInterface: DBInterface = {
         INSERT INTO atoms (kind, args, checksum, data)
         VALUES (?, ?, ?, ?) RETURNING id;
       `,
-      bind: [testRecord, new Args({}).toString(), "tr1", testRecord],
+      bind: [
+        testRecord,
+        new Args({}).toString(),
+        "tr1",
+        await encodeDocumentForDB({id: 1, name: "test record 1"})
+      ],
       returnValue: "resultRows"
     });
     const atom1_id = oneInOne(atom1);
@@ -529,7 +562,12 @@ const dbInterface: DBInterface = {
         INSERT INTO atoms (kind, args, checksum, data)
         VALUES (?, ?, ?, ?) RETURNING id;
       `,
-      bind: [testRecord, new Args({}).toString(), "tr2", testRecord],
+      bind: [
+        testRecord,
+        new Args({}).toString(),
+        "tr2",
+        await encodeDocumentForDB({id: 2, name: "test record 2"})
+      ],
       returnValue: "resultRows"
     });
     const atom2_id = oneInOne(atom2);
@@ -547,7 +585,15 @@ const dbInterface: DBInterface = {
         INSERT INTO atoms (kind, args, checksum, data)
         VALUES (?, ?, ?, ?) RETURNING id;
       `,
-      bind: [testList, new Args({}).toString(), "tl1", testList],
+      bind: [
+        testList,
+        new Args({}).toString(),
+        "tl1",
+        await encodeDocumentForDB({ list: [
+          `${testRecord}:1:tr1`,
+          `${testRecord}:2:tr2`,
+        ]})
+      ],
       returnValue: "resultRows"
     });
     const atom3_id = oneInOne(atom3);
@@ -578,7 +624,7 @@ const dbInterface: DBInterface = {
       kind: testRecord,
       origChecksum: "tr1",
       newChecksum: "tr1-new-name",
-      data: "new name",
+      data: JSON.stringify([{op: "replace", path: "/name", value: "new name"}]),
       args: {},
     };
     const event1 = { data: JSON.stringify([payload1]) } as MessageEvent;
@@ -610,6 +656,15 @@ const dbInterface: DBInterface = {
     // three original atoms, plus the new patched atom
     console.assert(count_atoms === 4, `atoms ${String(count_atoms)} === 4`);
 
+    const new_atom_data = await db.exec({
+      sql: `SELECT data FROM atoms WHERE checksum = ?`,
+      bind: ["tr1-new-name"],
+      returnValue: "resultRows",
+    });
+    const data = oneInOne(new_atom_data) as ArrayBuffer;
+    const doc = decodeDocumentFromDB(data);
+    console.assert(doc.id === 1 && doc.name === "new name", `Document doesn't match (${JSON.stringify(doc)})`);
+
     log("~~ FIRST PAYLOAD SUCCESS ~~")
 
     /**
@@ -623,7 +678,7 @@ const dbInterface: DBInterface = {
       kind: testRecord,
       origChecksum: "tr1",
       newChecksum: "tr1-new-name",
-      data: "new name",
+      data: JSON.stringify([{op: "replace", path: "/name", value: "new name"}]),
       args: {},
     };
     const event2 = { data: JSON.stringify([payload2]) } as MessageEvent;
@@ -680,6 +735,11 @@ const dbInterface: DBInterface = {
     console.assert(count_atoms_after_purge === 3, `atoms ${String(count_atoms_after_purge)} === 3`);
 
     log("~~ PURGE SUCCESS ~~")
+
+    /**
+     * Fourth thing that happens, add a new view, remove an existing view
+     * TODO
+     */
 
     log("~~ DIAGNOSTIC COMPLETED ~~")
   }
