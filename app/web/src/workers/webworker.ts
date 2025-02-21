@@ -6,7 +6,9 @@ import ReconnectingWebSocket from "reconnecting-websocket";
 import { DBInterface, NOROW, Checksum, ROWID, Atom, QueryKey, Args, RawArgs, RawAtom, interpolate,  RowWithColumnsAndId } from "./types/dbinterface";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { WorkspacePk } from "@/store/workspaces.store";
+import { trace, Span, } from '@opentelemetry/api';
 
+const tracer = trace.getTracer('webworker');
 const log = console.log;
 const error = console.error;
 
@@ -268,12 +270,16 @@ const partialKeyFromKindAndArgs = async (kind: string, args: Args): Promise<Quer
 };
 
 // FUTURE: maybe not only atoms come over the wire?
-const handleEvent = async (messageEvent: MessageEvent<any>) => {
+const handleEvent = async (messageEvent: MessageEvent<any>, span?: Span ) => {
   const data = JSON.parse(messageEvent.data) as RawAtom[];
+  span?.setAttribute("numEvents", data.length);
   if (data.length === 0) return;
   // Assumption: every patch is working on the same workspace and changeset
   // (e.g. we're not bundling messages across workspaces somehow)
   const changeSetId = data[0]?.changeSetId;
+  const workspaceId = data[0]?.workspaceId;
+  span?.setAttributes({ changeSetId, workspaceId });
+
   if (!changeSetId) throw new Error("Expected changeSetId")
 
   const snapshots: Record<Checksum, ROWID> = {};
@@ -307,47 +313,62 @@ const handleEvent = async (messageEvent: MessageEvent<any>) => {
     return atom;
   }));
 
+  span?.setAttribute("numAtoms", atoms.length);
   await Promise.all(atoms.map(async (atom) => {
     const toSnapshotId = snapshots[atom.toSnapshotChecksum];
     if (!toSnapshotId) throw new Error(`Expected snapshot ROWID for ${atom}`);
     await handleAtom(atom, toSnapshotId);
   }));
 
+  span?.setAttribute("numSnapshotsRemoved", oldSnapshots.length);
   oldSnapshots.forEach((checksum) => {
     removeOldSnapshots(changeSetId, checksum)
   })
 };
 
 const handleAtom = async (atom: Atom, toSnapshotId: ROWID) => {
-  // if we have the change already don't do anything
-  const maybeNoop = await atomExists(atom, true);
-  if (maybeNoop) return;
+  await tracer.startActiveSpan("handleAtom", async (span) => {
+    // if we have the change already don't do anything
+    span.setAttribute("atom", JSON.stringify(atom));
+    const noop = await atomExists(atom, true);
+    span.setAttribute("noop", noop);
+    if (noop) {
+      span.end();
+      return;
+    }
 
-  // otherwise, find the old record
-  const exists = await atomExists(atom, false);
-  let atomid: ROWID | undefined;
-  if (atom.fromSnapshotChecksum === "0") {
-    if (!exists)  // if i already have it, this is a NOOP
-      atomid = await createAtom(atom);
-  } else if (atom.toSnapshotChecksum === "0") {
-    // if i've already removed it, this is a NOOP
-    if (exists) await removeAtom(atom);
-  } else {
-    // patch it if I can
-    if (exists)
-        atomid = await patchAtom(atom, toSnapshotId);
-    // otherwise, fire the small hammer to get the full object
-    else mjolnir(atom.kind, atom.args);
-  }
+    // otherwise, find the old record
+    const exists = await atomExists(atom, false);
+    span.setAttribute("exists", exists);
+    let atomid: ROWID | undefined;
+    if (atom.fromSnapshotChecksum === "0") {
+      if (!exists)  // if i already have it, this is a NOOP
+        atomid = await createAtom(atom);
+    } else if (atom.toSnapshotChecksum === "0") {
+      // if i've already removed it, this is a NOOP
+      if (exists) await removeAtom(atom);
+    } else {
+      // patch it if I can
+      if (exists)
+          atomid = await patchAtom(atom, toSnapshotId);
+      // otherwise, fire the small hammer to get the full object
+      else {
+        span.setAttribute("mjolnir", true);
+        mjolnir(atom.kind, atom.args);
+      }
+    }
 
-  if (atomid)
-    await db.exec({
-      sql: `insert into snapshots_mtm_atoms
-        (atom_id, snapshot_id)
-          VALUES
-        (?, ?);`,
-      bind: [atomid, toSnapshotId],
-    });
+    if (atomid)
+      await db.exec({
+        sql: `insert into snapshots_mtm_atoms
+          (atom_id, snapshot_id)
+            VALUES
+          (?, ?);`,
+        bind: [atomid, toSnapshotId],
+      });
+
+    span.end()
+  })
 };
 
 const patchAtom = async (atom: Atom, snapshotId: ROWID): Promise<ROWID> => {
@@ -412,22 +433,26 @@ const mjolnir = async (kind: string, args: Args) => {
 
 // FUTURE: when we have changeset data
 const pruneAtomsForClosedChangeSet = async (workspaceId: WorkspacePk, changeSetId: ChangeSetId) => {
-  await db.exec({
-    sql: `
-      DELETE FROM snapshots WHERE change_set_id = ?;
-    `,
-    bind: [changeSetId],
+  await tracer.startActiveSpan("prune", async (span) => {
+    span.setAttributes({ workspaceId, changeSetId });
+    await db.exec({
+      sql: `
+        DELETE FROM snapshots WHERE change_set_id = ?;
+      `,
+      bind: [changeSetId],
+    });
+    await db.exec({
+      sql: `
+        DELETE FROM atoms
+        WHERE id IN (
+          SELECT id FROM atoms
+          LEFT JOIN snapshots_mtm_atoms ON snapshots_mtm_atoms.atom_id = atoms.id
+          WHERE snapshots_mtm_atoms.atom_id IS NULL
+        );
+      `
+    });
+    span.end();
   });
-  await db.exec({
-    sql: `
-      DELETE FROM atoms
-      WHERE id IN (
-        SELECT id FROM atoms
-        LEFT JOIN snapshots_mtm_atoms ON snapshots_mtm_atoms.atom_id = atoms.id
-        WHERE snapshots_mtm_atoms.atom_id IS NULL
-      );
-    `
-  })
 };
 
 const ragnarok = () => {
@@ -460,7 +485,10 @@ const dbInterface: DBInterface = {
     );
 
     socket.addEventListener("message", (messageEvent) => {
-      handleEvent(messageEvent);
+      const root = tracer.startActiveSpan("handleEvent", async (span) => {
+        await handleEvent(messageEvent, span);
+        span.end();
+      })
     });
   
     socket.addEventListener("error", (errorEvent) => {
@@ -628,7 +656,10 @@ const dbInterface: DBInterface = {
       args: {},
     };
     const event1 = { data: JSON.stringify([payload1]) } as MessageEvent;
-    await handleEvent(event1);
+    await tracer.startActiveSpan("handleEvent", async (span) => {
+      await handleEvent(event1, span);
+      span.end()
+    });
 
     const confirm1 = await db.exec({
       sql: `SELECT count(snapshot_id) FROM snapshots_mtm_atoms WHERE snapshot_id = ?;`,
@@ -661,8 +692,9 @@ const dbInterface: DBInterface = {
       bind: ["tr1-new-name"],
       returnValue: "resultRows",
     });
-    const data = oneInOne(new_atom_data) as ArrayBuffer;
-    const doc = decodeDocumentFromDB(data);
+    const data = oneInOne(new_atom_data);
+    if (data === NOROW) throw new Error("Expected data, got nothing")
+    const doc = decodeDocumentFromDB(data as ArrayBuffer);
     console.assert(doc.id === 1 && doc.name === "new name", `Document doesn't match (${JSON.stringify(doc)})`);
 
     log("~~ FIRST PAYLOAD SUCCESS ~~")
@@ -682,7 +714,10 @@ const dbInterface: DBInterface = {
       args: {},
     };
     const event2 = { data: JSON.stringify([payload2]) } as MessageEvent;
-    await handleEvent(event2);
+    await tracer.startActiveSpan("handleEvent", async (span) => {
+      await handleEvent(event2);
+      span.end()
+    });
 
     const confirm4 = await db.exec({
       sql: `SELECT count(snapshot_id) FROM snapshots_mtm_atoms WHERE snapshot_id = ?;`,
