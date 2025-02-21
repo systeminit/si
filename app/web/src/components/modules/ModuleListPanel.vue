@@ -100,5 +100,6 @@ const filteredRemoteList = computed(() => {
 
 onMounted(() => {
   moduleStore.GET_REMOTE_MODULES_LIST({ su: true });
+  moduleStore.LIST_BUILTINS();
 });
 </script>

@@ -514,7 +514,6 @@ export const useModuleStore = () => {
           ) {
             await this.LOAD_LOCAL_MODULES();
           }
-          await this.LIST_BUILTINS();
 
           realtimeStore.subscribe(this.$id, `workspace/${workspaceId}`, [
             {
