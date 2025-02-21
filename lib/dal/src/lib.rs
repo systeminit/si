@@ -256,6 +256,7 @@ pub fn generate_name() -> String {
 )]
 #[strum(serialize_all = "camelCase")]
 pub enum MigrationMode {
+    GarbageCollectSnapshots,
     Run,
     RunAndQuit,
     Skip,
@@ -280,6 +281,10 @@ impl MigrationMode {
     pub fn is_run_and_quit(&self) -> bool {
         matches!(self, Self::RunAndQuit)
     }
+
+    pub fn is_garbage_collect_snapshots(&self) -> bool {
+        matches!(self, Self::GarbageCollectSnapshots)
+    }
 }
 
 #[cfg(test)]
@@ -293,6 +298,10 @@ mod tests {
 
         #[test]
         fn display() {
+            assert_eq!(
+                "garbageCollectSnapshots",
+                MigrationMode::GarbageCollectSnapshots.to_string()
+            );
             assert_eq!("run", MigrationMode::Run.to_string());
             assert_eq!("runAndQuit", MigrationMode::RunAndQuit.to_string());
             assert_eq!("skip", MigrationMode::Skip.to_string());
@@ -300,6 +309,10 @@ mod tests {
 
         #[test]
         fn from_str() {
+            assert_eq!(
+                MigrationMode::GarbageCollectSnapshots,
+                "garbageCollectSnapshots".parse().expect("failed to parse")
+            );
             assert_eq!(MigrationMode::Run, "run".parse().expect("failed to parse"));
             assert_eq!(
                 MigrationMode::RunAndQuit,
