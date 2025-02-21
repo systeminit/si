@@ -260,14 +260,21 @@ async fn upload_pkg_specs(
     };
 
     let mut no_action_needed = 0;
-    let mut new_modules = 0;
-    let mut modules_with_updates = 0;
+    let mut new_modules = vec![];
+    let mut modules_with_updates = vec![];
 
     let mut categorized_modules = vec![];
 
-    println!("Building modules list...");
     let existing_specs = &list_specs(client.clone()).await?;
+    let pb = setup_progress_bar(specs.len() as u64);
+
     for spec in &specs {
+        pb.inc(1);
+        pb.set_message(format!(
+            "Parsing module: {}",
+            spec.file_name().to_string_lossy()
+        ));
+
         let pkg = json_to_pkg(spec.path())?;
         let schema = pkg.schemas()?[0].clone();
         let pkg_schema_id = schema.unique_id().unwrap();
@@ -282,11 +289,11 @@ async fn upload_pkg_specs(
         {
             ModuleState::HashesMatch => no_action_needed += 1,
             ModuleState::NeedsUpdate => {
-                modules_with_updates += 1;
+                modules_with_updates.push(metadata.name().to_string());
                 categorized_modules.push((pkg, metadata));
             }
             ModuleState::New => {
-                new_modules += 1;
+                new_modules.push(metadata.name().to_string());
                 categorized_modules.push((pkg, metadata));
             }
         }
@@ -298,20 +305,37 @@ async fn upload_pkg_specs(
     );
     println!(
         "🔼 {} modules exist and will be updated",
-        modules_with_updates
+        modules_with_updates.len()
     );
-    println!("➕ {} new modules will be uploaded", new_modules);
+    println!("➕ {} new modules will be uploaded", new_modules.len());
 
     if categorized_modules.is_empty() {
         println!("No new modules or update, nothing to do!");
         std::process::exit(0);
     }
 
-    println!("Would you like to continue? (y/n)");
-    let mut input = String::new();
-    std::io::stdin().read_line(&mut input)?;
-    if input.trim().to_lowercase() != "y" {
-        return Ok(());
+    loop {
+        println!(
+            "What would you like to do? [p]ush, list [n]ew assets, list [u]pdated assets, [c]ancel"
+        );
+
+        let mut input = String::new();
+        std::io::stdin().read_line(&mut input)?;
+        match input.trim().to_lowercase().as_str() {
+            "p" => break,
+            "n" => {
+                for module in &new_modules {
+                    println!("{}", module);
+                }
+            }
+            "u" => {
+                for module in &modules_with_updates {
+                    println!("{}", module);
+                }
+            }
+
+            _ => return Ok(()),
+        }
     }
 
     // Set up progress bar
