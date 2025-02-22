@@ -44,6 +44,9 @@ To generate all specs containing "ECS" or "S3", you can pass some services as ar
     .option("--inferred <file:string>", "Inferred database location", {
       default: "inferred.json",
     })
+    .option("--doc-link-cache <file:string>", "Cache of doc link status", {
+      default: "doc-link-cache.json",
+    })
     .option(
       "--force-update-existing-packages",
       "Force the existing package list to be updated",
