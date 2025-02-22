@@ -2837,6 +2837,10 @@ impl Component {
 
         // loop through all components + output sockets
         for component in Self::list(ctx).await? {
+            // don't interrogate current component!
+            if component.id() == component_id {
+                continue;
+            }
             // build a map of component output sockets and values
             let output_sockets = component.output_socket_attribute_values(ctx).await?;
             for output_socket_av in output_sockets {
