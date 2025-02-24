@@ -89,6 +89,7 @@ impl PkgSpec {
             .find(|func_spec| func_spec.name.as_str() == name)
     }
 
+    /// used only to create diffable specs
     pub fn anonymize(&mut self) {
         self.created_at = SystemTime::UNIX_EPOCH.into();
         self.version = String::new();
