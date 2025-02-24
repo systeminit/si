@@ -122,7 +122,7 @@
 
 <script lang="ts" setup>
 import * as _ from "lodash-es";
-import { computed, ref } from "vue";
+import { computed, ref, onMounted } from "vue";
 import {
   VormInput,
   Stack,
@@ -136,7 +136,9 @@ import {
 import { useAsyncState, useIntervalFn } from "@vueuse/core";
 import { apiData } from "@si/vue-lib/pinia";
 import { useHead } from "@vueuse/head";
+import { useRouter } from "vue-router";
 import { useWorkspacesStore, WorkspaceId } from "@/store/workspaces.store";
+import { useAuthStore } from "@/store/auth.store";
 import WorkspacePageHeader from "@/components/WorkspacePageHeader.vue";
 import { AuthToken, useAuthTokensApi } from "@/store/authTokens.store";
 import AuthTokenList from "@/components/AuthTokenList.vue";
@@ -145,6 +147,8 @@ import { ALLOWED_INPUT_REGEX } from "@/lib/validations";
 useHead({ title: "API Tokens" });
 
 const workspacesStore = useWorkspacesStore();
+const router = useRouter();
+const authStore = useAuthStore();
 const api = useAuthTokensApi();
 
 const props = defineProps<{
@@ -264,4 +268,12 @@ const revokeToken = (id: string) => {
     authTokens.state.value[id].revokedAt = new Date();
   }
 };
+
+const user = computed(() => authStore.user);
+
+onMounted(() => {
+  if (!user.value || !user.value?.emailVerified) {
+    return router.push({ name: "profile" });
+  }
+});
 </script>

@@ -163,7 +163,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 
 import * as _ from "lodash-es";
-import { computed, ref, watch } from "vue";
+import { computed, ref, watch, onMounted } from "vue";
 import {
   ErrorMessage,
   Icon,
@@ -173,12 +173,14 @@ import {
   VormInput,
   VButton,
 } from "@si/vue-lib/design-system";
+import { useRouter } from "vue-router";
 import { useHead } from "@vueuse/head";
 import { useAuthStore, BillingDetails } from "@/store/auth.store";
 import { ALLOWED_INPUT_REGEX } from "@/lib/validations";
 
 const { validationMethods } = useValidatedInputGroup();
 const authStore = useAuthStore();
+const router = useRouter();
 
 const loadBillingDetailsReqStatus = authStore.getRequestStatus(
   "LOAD_BILLING_DETAILS",
@@ -484,4 +486,10 @@ const countryOptions: CountryOption[] = [
   { value: "ZM", label: "Zambia" },
   { value: "ZW", label: "Zimbabwe" },
 ];
+
+onMounted(() => {
+  if (!user.value || !user.value?.emailVerified) {
+    return router.push({ name: "profile" });
+  }
+});
 </script>

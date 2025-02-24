@@ -234,7 +234,7 @@
 
 <script lang="ts" setup>
 import * as _ from "lodash-es";
-import { computed, PropType, reactive, ref, watch } from "vue";
+import { computed, PropType, reactive, ref, watch, onMounted } from "vue";
 import {
   Icon,
   VormInput,
@@ -249,6 +249,7 @@ import clsx from "clsx";
 import { useHead } from "@vueuse/head";
 import { useRouter } from "vue-router";
 import { useWorkspacesStore, WorkspaceId } from "@/store/workspaces.store";
+import { useAuthStore } from "@/store/auth.store";
 import { tracker } from "@/lib/posthog";
 import { API_HTTP_URL } from "@/store/api";
 import MemberListItem from "@/components/MemberListItem.vue";
@@ -257,6 +258,7 @@ import { ALLOWED_INPUT_REGEX } from "@/lib/validations";
 
 const workspacesStore = useWorkspacesStore();
 const router = useRouter();
+const authStore = useAuthStore();
 
 const props = defineProps({
   workspaceId: { type: String as PropType<WorkspaceId>, required: true },
@@ -477,4 +479,12 @@ const createWorkspaceTypeDropdownOptions = [
   { label: "Local Dev Instance", value: "local" },
   { label: "Remote URL", value: "url" },
 ];
+
+const user = computed(() => authStore.user);
+
+onMounted(() => {
+  if (!user.value || !user.value?.emailVerified) {
+    return router.push({ name: "profile" });
+  }
+});
 </script>

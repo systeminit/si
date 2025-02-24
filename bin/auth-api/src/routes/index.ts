@@ -16,10 +16,14 @@ const __dirname = getThisDirname(import.meta.url);
 // to centralize error handling and make TS happier when dealing with params
 
 /// Return auth user and fail if not present
-export function extractAuthUser(ctx: CustomRouteContext) {
+export function extractAuthUser(ctx: CustomRouteContext, requiresEmailVerified = false) {
   const authUser = ctx.state.authUser;
   if (!authUser) {
     throw new ApiError("Unauthorized", "You are not logged in");
+  }
+
+  if (requiresEmailVerified && !authUser.emailVerified) {
+    throw new ApiError("Unauthorized", "You must verify your email");
   }
 
   if (authUser.quarantinedAt !== null) {
