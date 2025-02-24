@@ -1,8 +1,9 @@
 import { defineStore } from 'pinia'
 import * as Comlink from "comlink";
-import { Args, Checksum, DBInterface, interpolate, QueryKey, RawArgs } from "@/workers/types/dbinterface";
+import { Args, AtomDocument, Checksum, DBInterface, interpolate, NOROW, QueryKey, RawArgs } from "@/workers/types/dbinterface";
 import { watch, computed, reactive, readonly } from 'vue';
 import { useAuthStore } from '../auth.store';
+import { ChangeSetId } from '@/api/sdf/dal/change_set';
 
 export const useHeimdall = defineStore('heimdall', async () => {
   const authStore = useAuthStore();
@@ -40,15 +41,12 @@ export const useHeimdall = defineStore('heimdall', async () => {
     { immediate: true },
   );
 
-  const bifrost = async (kind: string, rawArgs: RawArgs): Promise<unknown> => {
+  const bifrost = async (changeSetId: ChangeSetId, kind: string, rawArgs: RawArgs): Promise<typeof NOROW | AtomDocument> => {
     const args = new Args(rawArgs);
-    const queryKey = await db.partialKeyFromKindAndArgs(kind, args);
-    const checksum = frigg[queryKey];
-    if (!checksum) {
-      db.mjolnir(kind, args);
-      return {};
-    } else
-      return await db.get(kind, args, checksum);
+    const maybeAtomDoc = await db.get(changeSetId, kind, args);
+    if (maybeAtomDoc === NOROW)
+      db.mjolnir(changeSetId, kind, args);
+    return maybeAtomDoc
   };
 
   await db.fullDiagnosticTest();
