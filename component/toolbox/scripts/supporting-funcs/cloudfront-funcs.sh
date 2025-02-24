@@ -27,7 +27,7 @@ track_invalidations() {
     # Get the list of invalidations that are still in progress
     active_invalidations=$(aws cloudfront list-invalidations --distribution-id "$distribution_id" --query "InvalidationList.Items[?Status=='InProgress'].Id" --output text)
 
-    if [ -z "$active_invalidations" ]; then
+    if [[ -z "$active_invalidations" || "$active_invalidations" == "None" ]]; then
       return
     else
       echo "$distribution_id: Active invalidation $active_invalidations | [current time: $SECONDS / timeout: $end_time]"
