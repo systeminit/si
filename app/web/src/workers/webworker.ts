@@ -305,9 +305,18 @@ const createAtom = async (atom: Atom): Promise<ROWID> => {
   return atom_id as ROWID;
 };
 
-const partialKeyFromKindAndArgs = async (kind: string, args: Args): Promise<QueryKey> => {
+const partialKeyFromKindAndArgs = (kind: string, args: Args): QueryKey => {
   return `${kind}|${args.toString()}`;
 };
+
+const kindAndArgsFromKey = (key: QueryKey): {kind: string, args: Args} => {
+  const pieces = key.split('|', 1);
+  if (pieces.length !== 2) throw new Error("Bad key");
+  if (!pieces[0] || !pieces[1]) throw new Error("Missing key");
+  const kind = pieces[0];
+  const args = Args.fromString(pieces[1]);
+  return { kind, args };
+}
 
 // FUTURE: maybe not only atoms come over the wire?
 const handleEvent = async (messageEvent: MessageEvent<any>, span?: Span ) => {
@@ -587,6 +596,7 @@ const dbInterface: DBInterface = {
   },
 
   partialKeyFromKindAndArgs,
+  kindAndArgsFromKey,
   mjolnir, 
 
   async bootstrapChecksums(changeSetId: ChangeSetId): Promise<Record<QueryKey, Checksum>> {

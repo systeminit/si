@@ -41,7 +41,8 @@ export interface DBInterface {
   bifrostReconnect(): void,
   get(changeSetId: ChangeSetId, kind: string, args: Args): Promise<typeof NOROW | AtomDocument>,
   mjolnir(changeSetId: ChangeSetId, kind: string, args: Args): void,
-  partialKeyFromKindAndArgs (kind: string, args: Args): Promise<QueryKey>, 
+  partialKeyFromKindAndArgs (kind: string, args: Args): QueryKey, 
+  kindAndArgsFromKey(key: QueryKey): { kind: string, args: Args},
   addListenerBustCache(fn: BustCacheFn): void,
   bootstrapChecksums(changeSetId: ChangeSetId): Promise<Record<QueryKey, Checksum>>,
   fullDiagnosticTest(): void,
@@ -98,6 +99,16 @@ export class Args {
 
   toString() {
     return `${this.#key}|${this.#value}`
+  }
+
+  static fromString(key: QueryKey) {
+    const parts = key.split('|');
+    if (parts.length !== 2) throw new Error("Bad parts")
+    const _key = parts[0];
+    const value = parts[1];
+    if (!_key || !value) throw new Error("Missing parts")
+    const raw: RawArgs = {_key: value};
+    return new Args(raw);
   }
 };
 
