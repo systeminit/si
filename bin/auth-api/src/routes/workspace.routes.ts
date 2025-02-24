@@ -169,6 +169,7 @@ router.patch("/workspaces/:workspaceId", async (ctx) => {
     workspace.quarantinedAt,
     reqBody.description,
     workspace.isFavourite,
+    workspace.isHidden,
   );
 
   tracker.trackEvent(authUser, "workspace_updated", {
@@ -372,6 +373,46 @@ router.patch("/workspaces/:workspaceId/favourite", async (ctx) => {
     workspace.quarantinedAt,
     workspace.description,
     reqBody.isFavourite,
+    workspace.isHidden,
+  );
+
+  ctx.body = await getUserWorkspaces(authUser.id);
+});
+
+router.patch("/workspaces/:workspaceId/setHidden", async (ctx) => {
+  extractAuthUser(ctx, true);
+  const { authUser, workspace } = await authorizeWorkspaceRoute(ctx);
+
+  const reqBody = validate(
+    ctx.request.body,
+    z.object({
+      isHidden: z.boolean(),
+    }),
+  );
+
+  const hiddenDate = new Date();
+  if (reqBody.isHidden) {
+    tracker.trackEvent(authUser, "hide_workspace", {
+      hiddenBy: authUser.email,
+      hiddenDate,
+      workspaceId: workspace.id,
+    });
+  } else {
+    tracker.trackEvent(authUser, "unhide_workspace", {
+      unHiddenBy: authUser.email,
+      unHiddenDate: hiddenDate,
+      workspaceId: workspace.id,
+    });
+  }
+
+  await patchWorkspace(
+    workspace.id,
+    workspace.instanceUrl,
+    workspace.displayName,
+    workspace.quarantinedAt,
+    workspace.description,
+    workspace.isFavourite,
+    reqBody.isHidden,
   );
 
   ctx.body = await getUserWorkspaces(authUser.id);

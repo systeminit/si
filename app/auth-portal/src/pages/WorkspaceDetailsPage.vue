@@ -38,6 +38,21 @@
           @click="openApiTokens"
         />
         <IconButton
+          :icon="draftWorkspace.isHidden ? 'hide' : 'show'"
+          :iconIdleTone="draftWorkspace.isHidden ? 'warning' : 'shade'"
+          :tooltip="
+            draftWorkspace.isHidden
+              ? 'Hidden from Workspace List'
+              : 'Shown in Workspace List'
+          "
+          class="flex-none"
+          iconBgActiveTone="action"
+          iconTone="warning"
+          size="lg"
+          tooltipPlacement="top"
+          @click="hideWorkspace(!draftWorkspace.isHidden)"
+        />
+        <IconButton
           :icon="draftWorkspace.isFavourite ? 'star' : 'starOutline'"
           :iconIdleTone="draftWorkspace.isFavourite ? 'warning' : 'shade'"
           :tooltip="
@@ -288,6 +303,7 @@ const blankWorkspace = {
   isDefault: false,
   description: "",
   isFavourite: false,
+  isHidden: false,
 };
 const draftWorkspace = reactive(_.cloneDeep(blankWorkspace));
 const newMember = reactive({ email: "", role: "editor" });
@@ -434,6 +450,13 @@ const favouriteWorkspace = async (isFavourite: boolean) => {
   await workspacesStore.SET_FAVOURITE(props.workspaceId, isFavourite);
 
   draftWorkspace.isFavourite = isFavourite;
+};
+const hideWorkspace = async (isHidden: boolean) => {
+  if (!props.workspaceId) return;
+
+  await workspacesStore.SET_HIDDEN(props.workspaceId, isHidden);
+
+  draftWorkspace.isHidden = isHidden;
 };
 
 const deleteWorkspace = async () => {

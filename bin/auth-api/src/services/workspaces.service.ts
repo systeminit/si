@@ -75,6 +75,7 @@ export async function patchWorkspace(
   quarantinedAt: Date | null,
   description: string | null,
   isFavourite: boolean,
+  isHidden: boolean,
 ) {
   return prisma.workspace.update({
     where: { id },
@@ -84,6 +85,7 @@ export async function patchWorkspace(
       quarantinedAt,
       description,
       isFavourite,
+      isHidden,
     },
   });
 }
