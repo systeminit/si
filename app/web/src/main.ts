@@ -19,18 +19,13 @@ import "@si/vue-lib/tailwind/main.css";
 import "@si/vue-lib/tailwind/tailwind.css";
 
 import App from "@/App.vue";
-import { getProjectEnvVariables } from "./shared/dynamicEnvVars";
 import "./utils/posthog";
 import router from "./router";
 import store from "./store";
 
 export const APP_MINIMUM_WIDTH = 700;
 
-const { envVariables } = getProjectEnvVariables();
-
-let otelEndpoint =
-  envVariables.VITE_OTEL_EXPORTER_OTLP_ENDPOINT ??
-  import.meta.env.VITE_OTEL_EXPORTER_OTLP_ENDPOINT;
+let otelEndpoint = import.meta.env.VITE_OTEL_EXPORTER_OTLP_ENDPOINT;
 if (!otelEndpoint) otelEndpoint = window.location.host;
 const sdk = new HoneycombWebSDK({
   endpoint: `${otelEndpoint}/v1/traces`,

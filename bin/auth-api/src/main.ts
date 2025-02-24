@@ -35,7 +35,7 @@ app.use(loadAuthMiddleware);
 app.use(automationApiRouter.routes());
 app.use(router.use(requireWebTokenMiddleware).routes());
 
-// catch-all middelware after routes handles no route match (404)
+// catch-all middleware after routes handles no route match (404)
 app.use((_ctx, _next) => {
   throw new ApiError("NotFound", "NoMatchingURL", "No matching URL found");
 });
