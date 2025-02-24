@@ -77,10 +77,13 @@ const updateRoute = (newWorkspacePk: string) => {
 };
 
 const workspaceDropdownOptions = computed(() =>
-  _.map(workspacesStore.allWorkspaces ?? [], (w) => ({
-    value: w.pk,
-    label: w.displayName,
-  })),
+  _.map(
+    _.filter(workspacesStore.allWorkspaces ?? [], (w) => !w.isHidden),
+    (w) => ({
+      value: w.pk,
+      label: w.displayName,
+    }),
+  ),
 );
 
 const searchFilteredWorkspaceDropdownOptions = computed(() => {
