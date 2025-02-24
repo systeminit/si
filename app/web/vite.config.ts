@@ -113,11 +113,6 @@ export default (opts: { mode: string }) => {
             react: "React",
             "react-dom": "ReactDOM",
           },
-          manualChunks(id) {
-            if (/dynamicEnvVars.ts/.test(id)) {
-              return "projectEnvVariables";
-            }
-          },
         },
       },
     },
