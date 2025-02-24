@@ -96,6 +96,7 @@ router.get("/workspaces/:workspaceId", async (ctx) => {
 });
 
 router.delete("/workspaces/:workspaceId", async (ctx) => {
+  extractAuthUser(ctx, true);
   const { authUser, workspaceId } = await authorizeWorkspaceRoute(ctx, [RoleType.OWNER]);
 
   await deleteWorkspace(workspaceId);
@@ -110,7 +111,7 @@ router.delete("/workspaces/:workspaceId", async (ctx) => {
 });
 
 router.post("/workspaces/new", async (ctx) => {
-  const authUser = extractAuthUser(ctx);
+  const authUser = extractAuthUser(ctx, true);
 
   const reqBody = validate(
     ctx.request.body,
@@ -147,6 +148,7 @@ router.post("/workspaces/new", async (ctx) => {
 });
 
 router.patch("/workspaces/:workspaceId", async (ctx) => {
+  extractAuthUser(ctx, true);
   const { authUser, workspace } = await authorizeWorkspaceRoute(ctx, [
     RoleType.OWNER,
   ]);
@@ -218,14 +220,6 @@ router.post("/workspace/:workspaceId/membership", async (ctx) => {
   );
 
   const user = await getUserById(reqBody.userId);
-
-  // TODO: Paul
-  // Cleanup when transactional emails are deployed
-  tracker.trackEvent(authUser, "workspace_membership_roles_changed", {
-    role: reqBody.role,
-    userId: reqBody.userId,
-    workspaceId: workspace.id,
-  });
 
   tracker.trackEvent(authUser, "workspace_membership_roles_changed_v2", {
     newPermissionLevel: reqBody.role === "EDITOR" ? "Collaborator" : "Approver",
@@ -316,23 +310,15 @@ router.delete("/workspace/:workspaceId/members", async (ctx) => {
       role: wm.roleType,
       signupAt: wm.user.signupAt,
     });
-  });
 
-  // TODO: Paul
-  // This will be cleaned up when we have deployed the new transactional emails
-  tracker.trackEvent(authUser, "workspace_user_removed", {
-    workspaceId: workspace.id,
-    memberRemoved: reqBody.email,
-    memberRemovedAt: new Date(),
-  });
-
-  tracker.trackEvent(authUser, "workspace_user_removed_v2", {
-    workspaceId: workspace.id,
-    workspaceName: workspace.displayName,
-    initiatedBy: authUser.email,
-    memberUserName: reqBody.email,
-    memberChangedAt: new Date(),
-    newPermissionLevel: "No Access",
+    tracker.trackEvent(authUser, "workspace_user_removed_v2", {
+      workspaceId: workspace.id,
+      workspaceName: workspace.displayName,
+      initiatedBy: authUser.email,
+      memberUserName: reqBody.email,
+      memberChangedAt: new Date(),
+      newPermissionLevel: "No Access",
+    });
   });
 
   ctx.body = members;
@@ -354,6 +340,7 @@ router.patch("/workspaces/:workspaceId/setDefault", async (ctx) => {
 });
 
 router.patch("/workspaces/:workspaceId/favourite", async (ctx) => {
+  extractAuthUser(ctx, true);
   const { authUser, workspace } = await authorizeWorkspaceRoute(ctx);
 
   const reqBody = validate(

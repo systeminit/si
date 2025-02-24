@@ -150,7 +150,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, watch, ref } from "vue";
+import { computed, watch, ref, onMounted } from "vue";
 import {
   Icon,
   Timestamp,
@@ -217,6 +217,11 @@ watch(
   },
   { immediate: true },
 );
+onMounted(() => {
+  if (!user.value || !user.value?.emailVerified) {
+    return router.push({ name: "profile" });
+  }
+});
 
 const workspaceCount = computed(() => workspaces.value.length);
 const workspaceTitle = computed(() => {
