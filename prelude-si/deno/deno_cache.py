@@ -3,6 +3,7 @@
 Runs deno cache.
 """
 import argparse
+from datetime import datetime
 import os
 import pathlib
 import subprocess
@@ -15,6 +16,7 @@ def parse_args() -> argparse.Namespace:
                         required=True,
                         type=pathlib.Path,
                         help="The path to the file to run")
+    parser.add_argument('--marker', required=True)
     return parser.parse_args()
 
 
@@ -44,6 +46,8 @@ def main() -> int:
         abs_input_path = os.path.abspath(args.input)
 
         run_cache(abs_input_path)
+        with open(args.marker, 'w') as f:
+            f.write(f'Cache created at {datetime.now()}')
         return 0
 
     except Exception as e:
