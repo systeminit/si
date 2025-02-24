@@ -26,6 +26,7 @@ export type Workspace = {
   invitedAt: Date;
   isDefault: boolean;
   isFavourite: boolean;
+  isHidden: boolean;
   quarantinedAt: Date;
 };
 
@@ -206,6 +207,15 @@ export const useWorkspacesStore = defineStore("workspaces", {
         url: `/workspaces/${workspaceId}/favourite`,
         params: {
           isFavourite,
+        },
+      });
+    },
+    async SET_HIDDEN(workspaceId: string, isHidden: boolean) {
+      return new ApiRequest<{ user: User }>({
+        method: "patch",
+        url: `/workspaces/${workspaceId}/setHidden`,
+        params: {
+          isHidden,
         },
       });
     },

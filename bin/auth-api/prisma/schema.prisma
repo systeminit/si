@@ -2,183 +2,187 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
-  provider = "prisma-client-js"
+    provider = "prisma-client-js"
 }
 
 datasource db {
-  provider          = "postgresql"
-  url               = env("DATABASE_URL")
-  directUrl         = env("DIRECT_DATABASE_URL")
-  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
+    provider          = "postgresql"
+    url               = env("DATABASE_URL")
+    directUrl         = env("DIRECT_DATABASE_URL")
+    shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
 }
 
 model User {
-  /// SI's id for the user (ULID)
-  id            String  @id @db.Char(26)
-  /// Auth0's id
-  auth0Id       String? @unique @map("auth0_id")
-  /// raw json blob of Auth0 data
-  auth0Details  Json?   @map("auth0_details")
-  /// single name string we can use as label for the user
-  nickname      String?
-  /// user's email
-  email         String
-  /// whether email has been verified
-  emailVerified Boolean @default(false) @map("email_verified")
-  /// user's first name
-  firstName     String? @map("first_name")
-  /// user's last name
-  lastName      String? @map("last_name")
-  /// public url to profile photo
-  pictureUrl    String? @map("picture_url")
+    /// SI's id for the user (ULID)
+    id            String  @id @db.Char(26)
+    /// Auth0's id
+    auth0Id       String? @unique @map("auth0_id")
+    /// raw json blob of Auth0 data
+    auth0Details  Json?   @map("auth0_details")
+    /// single name string we can use as label for the user
+    nickname      String?
+    /// user's email
+    email         String
+    /// whether email has been verified
+    emailVerified Boolean @default(false) @map("email_verified")
+    /// user's first name
+    firstName     String? @map("first_name")
+    /// user's last name
+    lastName      String? @map("last_name")
+    /// public url to profile photo
+    pictureUrl    String? @map("picture_url")
 
-  /// user's discord username/tag - ex: coolbeans#1234
-  discordUsername String? @map("discord_username")
-  /// user's github username
-  githubUsername  String? @map("github_username")
+    /// user's discord username/tag - ex: coolbeans#1234
+    discordUsername String? @map("discord_username")
+    /// user's github username
+    githubUsername  String? @map("github_username")
 
-  /// data about where user is in onboarding
-  onboardingDetails Json? @map("onboarding_details")
+    /// data about where user is in onboarding
+    onboardingDetails Json? @map("onboarding_details")
 
-  /// When a user signed up
-  signupAt DateTime? @map("signup_at")
+    /// When a user signed up
+    signupAt DateTime? @map("signup_at")
 
-  /// array of workspaces the user created
-  CreatedWorkspaces Workspace[]
-  /// array of the workspaces that the user has access to
-  WorkspaceMembers  WorkspaceMembers[]
-  TosAgreement      TosAgreement[]
+    /// array of workspaces the user created
+    CreatedWorkspaces Workspace[]
+    /// array of the workspaces that the user has access to
+    WorkspaceMembers  WorkspaceMembers[]
+    TosAgreement      TosAgreement[]
 
-  /// Timestamp of the latest account quarantine. `undefined` if not quarantined
-  quarantinedAt DateTime? @map("quarantined_at")
+    /// Timestamp of the latest account quarantine. `undefined` if not quarantined
+    quarantinedAt DateTime? @map("quarantined_at")
 
-  /// Timestamp of the latest account suspension. `undefined` if not suspended
-  suspendedAt DateTime? @map("suspended_at")
+    /// Timestamp of the latest account suspension. `undefined` if not suspended
+    suspendedAt DateTime? @map("suspended_at")
 
-  /// List of automation tokens a user has created
-  tokens AuthToken[]
+    /// List of automation tokens a user has created
+    tokens AuthToken[]
 
-  @@index(fields: [email])
-  @@map("users")
+    @@index(fields: [email])
+    @@map("users")
 }
 
 enum InstanceEnvType {
-  LOCAL
-  PRIVATE
-  SI
+    LOCAL
+    PRIVATE
+    SI
 }
 
 model Workspace {
-  /// SI's id for the workspace (ULID)
-  id              String          @id @db.Char(26)
-  /// type of instance (local, private, si sass)
-  instanceEnvType InstanceEnvType @map("instance_env_type")
-  /// url of instance
-  instanceUrl     String?         @map("instance_url")
-  /// label for the workspace
-  displayName     String          @map("display_name")
+    /// SI's id for the workspace (ULID)
+    id              String          @id @db.Char(26)
+    /// type of instance (local, private, si sass)
+    instanceEnvType InstanceEnvType @map("instance_env_type")
+    /// url of instance
+    instanceUrl     String?         @map("instance_url")
+    /// label for the workspace
+    displayName     String          @map("display_name")
 
-  /// id of user who created workspace
-  creatorUserId String @map("creator_user_id")
-  /// user who created workspace
-  creatorUser   User   @relation(fields: [creatorUserId], references: [id])
+    /// id of user who created workspace
+    creatorUserId String @map("creator_user_id")
+    /// user who created workspace
+    creatorUser   User   @relation(fields: [creatorUserId], references: [id])
 
-  // The list of users that have access to this workspace
-  UserMemberships WorkspaceMembers[]
+    // The list of users that have access to this workspace
+    UserMemberships WorkspaceMembers[]
 
-  // The time in which the workspace was deleted
-  deletedAt DateTime? @map("deleted_at")
+    // The time in which the workspace was deleted
+    deletedAt DateTime? @map("deleted_at")
 
-  /// secret token for the workspace (ULID)
-  token String? @db.Char(26)
+    /// secret token for the workspace (ULID)
+    token String? @db.Char(26)
 
-  /// Whether the workspace is the default or not
-  isDefault Boolean @default(false) @map("is_default")
+    /// Whether the workspace is the default or not
+    isDefault Boolean @default(false) @map("is_default")
 
-  /// Timestamp of the latest workspace quarantine. `undefined` if not quarantined
-  quarantinedAt DateTime? @map("quarantined_at")
+    /// Timestamp of the latest workspace quarantine. `undefined` if not quarantined
+    quarantinedAt DateTime? @map("quarantined_at")
 
-  /// A description of the workspace - defaults to empty
-  description String?
+    /// A description of the workspace - defaults to empty
+    description String?
 
-  /// Denotes whether this will show up in a users favourite workspaces list
-  isFavourite Boolean @default(false) @map("is_favourite")
+    /// Denotes whether this will show up in a users favourite workspaces list
+    isFavourite Boolean @default(false) @map("is_favourite")
 
-  tokens AuthToken[]
+    /// Denotes whether this will show up in the workspaces list in app.systeminit.com
+    /// If it's true, then it will not be shown in the workspaces list
+    isHidden Boolean @default(false) @map("is_hidden")
 
-  @@index(fields: [creatorUserId])
-  @@map("workspaces")
+    tokens AuthToken[]
+
+    @@index(fields: [creatorUserId])
+    @@map("workspaces")
 }
 
 enum RoleType {
-  OWNER
-  APPROVER
-  EDITOR
+    OWNER
+    APPROVER
+    EDITOR
 }
 
 model WorkspaceMembers {
-  id String @id @db.Char(26)
+    id String @id @db.Char(26)
 
-  // id of the User
-  userId String @map("user_id")
-  user   User   @relation(fields: [userId], references: [id])
+    // id of the User
+    userId String @map("user_id")
+    user   User   @relation(fields: [userId], references: [id])
 
-  // id of the Workspace
-  workspaceId String    @map("workspace_id")
-  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+    // id of the Workspace
+    workspaceId String    @map("workspace_id")
+    workspace   Workspace @relation(fields: [workspaceId], references: [id])
 
-  // Role of the user
-  roleType RoleType @map("role_type")
+    // Role of the user
+    roleType RoleType @map("role_type")
 
-  // Invitation to workspace date
-  invitedAt DateTime? @map("invited_at")
+    // Invitation to workspace date
+    invitedAt DateTime? @map("invited_at")
 
-  @@unique([userId, workspaceId])
+    @@unique([userId, workspaceId])
 }
 
 model TosAgreement {
-  /// id of agreement - not really used for anything...
-  id           String   @id @db.Char(26)
-  userId       String   @map("user_id")
-  User         User     @relation(fields: [userId], references: [id])
-  /// TOS version ID agreed to (these are sortable to find latest)
-  tosVersionId String   @map("tos_version_id")
-  /// timestamp when they agreed to the TOS
-  timestamp    DateTime
-  /// IP address of user when they agreed
-  ipAddress    String   @map("ip_address")
+    /// id of agreement - not really used for anything...
+    id           String   @id @db.Char(26)
+    userId       String   @map("user_id")
+    User         User     @relation(fields: [userId], references: [id])
+    /// TOS version ID agreed to (these are sortable to find latest)
+    tosVersionId String   @map("tos_version_id")
+    /// timestamp when they agreed to the TOS
+    timestamp    DateTime
+    /// IP address of user when they agreed
+    ipAddress    String   @map("ip_address")
 
-  @@index(fields: [userId])
-  @@map("tos_agreements")
+    @@index(fields: [userId])
+    @@map("tos_agreements")
 }
 
 /// A JWT authenticating a user and granting permissions to a particular workspace
 model AuthToken {
-  // Token ULID used to look up and revoke the token
-  id          String    @id @db.Char(26)
-  // Display name of token for Auth Portal UI
-  name        String?
-  /// User this token authenticates
-  user        User      @relation(fields: [userId], references: [id])
-  userId      String    @db.Char(26)
-  /// Workspace this token grants access to
-  workspace   Workspace @relation(fields: [workspaceId], references: [id])
-  workspaceId String    @db.Char(26)
-  /// When this token was created
-  createdAt   DateTime  @default(now())
-  /// When this token is set to expire (could be in the past).
-  /// Null if it doesn't have a direct expiration date
-  expiresAt   DateTime?
-  /// When this token was revoked. This is separate from expiration dates,
-  /// which are baked into the token and only set on token creation.
-  /// Null if the token has not been revoked.
-  revokedAt   DateTime?
-  /// Json claims in token
-  /// - role ("web" | "automation")
-  claims      Json
+    // Token ULID used to look up and revoke the token
+    id          String    @id @db.Char(26)
+    // Display name of token for Auth Portal UI
+    name        String?
+    /// User this token authenticates
+    user        User      @relation(fields: [userId], references: [id])
+    userId      String    @db.Char(26)
+    /// Workspace this token grants access to
+    workspace   Workspace @relation(fields: [workspaceId], references: [id])
+    workspaceId String    @db.Char(26)
+    /// When this token was created
+    createdAt   DateTime  @default(now())
+    /// When this token is set to expire (could be in the past).
+    /// Null if it doesn't have a direct expiration date
+    expiresAt   DateTime?
+    /// When this token was revoked. This is separate from expiration dates,
+    /// which are baked into the token and only set on token creation.
+    /// Null if the token has not been revoked.
+    revokedAt   DateTime?
+    /// Json claims in token
+    /// - role ("web" | "automation")
+    claims      Json
 
-  /// When this token was last used
-  lastUsedAt DateTime?
-  /// From where this token was last used
-  lastUsedIp String?
+    /// When this token was last used
+    lastUsedAt DateTime?
+    /// From where this token was last used
+    lastUsedIp String?
 }
