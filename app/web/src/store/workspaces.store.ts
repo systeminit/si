@@ -31,6 +31,7 @@ type AuthApiWorkspace = {
   instanceUrl: string;
   role: "OWNER" | "EDITOR";
   token: string;
+  isHidden: boolean;
 };
 
 export type WorkspaceImportSummary = {
