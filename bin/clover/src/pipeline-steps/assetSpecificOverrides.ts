@@ -110,6 +110,16 @@ const overrides = new Map<string, OverrideFn>([
     "AWS::SecretsManager::Secret",
     addSecretProp("Secret String", "secretString", ["SecretString"]),
   ],
+  ["AWS::EC2::Instance", (spec: ExpandedPkgSpec) => {
+     const variant = spec.schemas[0].variants[0];
+     
+     const prop = variant.domain.entries.find((p: ExpandedPropSpec) =>
+       p.name === "UserData"
+     );
+     
+     if (!prop) return;
+     prop.data.widgetKind = "textarea";
+  }]
 ]);
 
 function addSecretProp(
