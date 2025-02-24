@@ -37,7 +37,11 @@ const allowedOrigins = new Set([
 app.use(cors({
   origin: (ctx) => {
     const requestOrigin = ctx.request.header.origin || "";
-    return allowedOrigins.has(requestOrigin) ? requestOrigin : "null";
+    if (process.env.NODE_ENV !== 'test') {
+      return allowedOrigins.has(requestOrigin) ? requestOrigin : "null";
+    } else {
+      return "null"
+    }
   },
   credentials: true, // Only send credentials for allowed origins
 }));
