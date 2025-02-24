@@ -2,7 +2,7 @@ import * as Comlink from "comlink";
 import { applyOperation } from 'fast-json-patch';
 import sqlite3InitModule, { Database, Sqlite3Static, SqlValue } from '@sqlite.org/sqlite-wasm';
 import ReconnectingWebSocket from "reconnecting-websocket";
-import { DBInterface, NOROW, Checksum, ROWID, Atom, QueryKey, Args, RawArgs, AtomOperation, interpolate,  RowWithColumnsAndId, AtomMessage, AtomMeta } from "./types/dbinterface";
+import { DBInterface, NOROW, Checksum, ROWID, Atom, QueryKey, Args, RawArgs, AtomOperation, interpolate,  RowWithColumnsAndId, AtomMessage, AtomMeta, AtomDocument } from "./types/dbinterface";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { WorkspacePk } from "@/store/workspaces.store";
 import { trace, Span, } from '@opentelemetry/api';
@@ -164,7 +164,7 @@ const encodeDocumentForDB = async (doc: object) => {
   return await new Blob([JSON.stringify(doc)]).arrayBuffer();
 };
 
-const decodeDocumentFromDB = (doc: ArrayBuffer) => {
+const decodeDocumentFromDB = (doc: ArrayBuffer): AtomDocument => {
   const s = new TextDecoder().decode(doc);
   const j = JSON.parse(s);
   return j
@@ -397,7 +397,7 @@ const handleAtom = async (atom: Atom, toSnapshotId: ROWID) => {
       // otherwise, fire the small hammer to get the full object
       else {
         span.addEvent("mjolnir", { atom: JSON.stringify(atom) });
-        mjolnir(atom.kind, atom.args);
+        mjolnir(atom.changeSetId, atom.kind, atom.args);
       }
     }
 
@@ -469,7 +469,7 @@ const patchAtom = async (atom: Atom, snapshotId: ROWID): Promise<ROWID> => {
   return atom_id as ROWID;
 };
 
-const mjolnir = async (kind: string, args: Args) => {
+const mjolnir = async (changeSetId: ChangeSetId, kind: string, args: Args) => {
   // TODO: we're missing a key, fire a small hammer to get it
   log("MJOLNIR!")
 };
@@ -563,9 +563,27 @@ const dbInterface: DBInterface = {
     bustCacheFn("foo", "bar2");
   },
 
-  async get(kind: string, args: Args, checksum: Checksum): Promise<unknown> {
-    // TODO: parse json string data from the results
-    return {};
+  async get(changeSetId: ChangeSetId, kind: string, args: Args): Promise<typeof NOROW | object> {
+    const atomData = await db.exec({
+      sql: `
+      select
+        data
+      from
+        atoms
+        inner join snapshots_mtm_atoms mtm ON atoms.id = mtm.atom_id
+        inner join snapshots ON mtm.snapshot_id = snapshots.id
+      where
+        snapshots.change_set_id = ? AND
+        kind = ? AND
+        args = ?
+      ;`,
+      bind: [changeSetId, kind, args.toString()],
+      returnValue: "resultRows",
+    });
+    const data = oneInOne(atomData);
+    if (data === NOROW) return NOROW
+    const atomDoc = decodeDocumentFromDB(data as ArrayBuffer);
+    return atomDoc
   },
 
   partialKeyFromKindAndArgs,

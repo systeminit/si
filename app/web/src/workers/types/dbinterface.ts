@@ -39,8 +39,8 @@ export interface DBInterface {
   initBifrost(url: string, bearerToken: string): void,
   bifrostClose(): void,
   bifrostReconnect(): void,
-  get(kind: string, args: Args, checksum: Checksum): Promise<unknown>,
-  mjolnir(kind: string, args: Args): void,
+  get(changeSetId: ChangeSetId, kind: string, args: Args): Promise<typeof NOROW | AtomDocument>,
+  mjolnir(changeSetId: ChangeSetId, kind: string, args: Args): void,
   partialKeyFromKindAndArgs (kind: string, args: Args): Promise<QueryKey>, 
   addListenerBustCache(fn: BustCacheFn): void,
   bootstrapChecksums(changeSetId: ChangeSetId): Promise<Record<QueryKey, Checksum>>,
@@ -132,3 +132,6 @@ export interface Atom extends AbstractAtom, AtomMeta {
   args: Args,
   operations: Operation[],
 };
+
+// TODO
+export type AtomDocument = any;
