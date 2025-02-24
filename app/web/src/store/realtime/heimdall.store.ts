@@ -49,9 +49,24 @@ export const useHeimdall = defineStore('heimdall', async () => {
     return maybeAtomDoc
   };
 
+  // cold start
+  const niflheim = async (changeSetId: ChangeSetId) => {
+    const request = await fetch("");
+    const [localChecksums, remoteChecksums] = await Promise.all([
+      await db.bootstrapChecksums(changeSetId),
+      await request.json() as Record<QueryKey, Checksum>,
+    ]);
+    Object.entries(remoteChecksums).map(async ([key, checksum]) => {
+      const local = localChecksums[key];
+      const { kind, args } = await db.kindAndArgsFromKey(key);
+      if (!local || local !== checksum) db.mjolnir(changeSetId, kind, args);
+    });
+  };
+
   await db.fullDiagnosticTest();
 
   return {
+    niflheim,
     bifrost,
     frigg: readonly(frigg),
     connectionShouldBeEnabled,
