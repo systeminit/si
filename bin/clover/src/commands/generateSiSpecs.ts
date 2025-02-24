@@ -35,6 +35,7 @@ import { removeUnneededAssets } from "../pipeline-steps/removeUnneededAssets.ts"
 import {
   reportDeprecatedAssets,
 } from "../pipeline-steps/reportDeprecatedAssets.ts";
+import { removeBadDocLinks } from "../pipeline-steps/removeBadDocLinks.ts";
 
 const logger = _logger.ns("siSpecs").seal();
 const SI_SPEC_DIR = "si-specs";
@@ -48,6 +49,7 @@ export async function generateSiSpecs(
   options: {
     forceUpdateExistingPackages?: boolean;
     moduleIndexUrl: string;
+    docLinkCache: string;
     inferred: string;
     services?: string[];
   },
@@ -73,6 +75,7 @@ export async function generateSiSpecs(
   }
 
   // EXECUTE PIPELINE STEPS
+  specs = await removeBadDocLinks(specs, options.docLinkCache);
   specs = addInferredEnums(specs, inferred);
   specs = generateOutputSocketsFromProps(specs);
   specs = addDefaultPropsAndSockets(specs);
