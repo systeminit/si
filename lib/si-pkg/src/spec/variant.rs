@@ -126,6 +126,11 @@ impl SchemaVariantSpecData {
     pub fn builder() -> SchemaVariantSpecDataBuilder {
         SchemaVariantSpecDataBuilder::default()
     }
+
+    pub fn anonymize(&mut self) {
+        self.func_unique_id = "".to_string();
+        self.version = "".to_string();
+    }
 }
 
 impl SchemaVariantSpecDataBuilder {
@@ -199,6 +204,29 @@ pub struct SchemaVariantSpec {
 impl SchemaVariantSpec {
     pub fn builder() -> SchemaVariantSpecBuilder {
         SchemaVariantSpecBuilder::default()
+    }
+
+    pub fn anonymize(&mut self) {
+        self.version = String::new();
+        self.unique_id = None;
+
+        if let Some(ref mut data) = self.data {
+            data.anonymize();
+        }
+
+        self.action_funcs.iter_mut().for_each(|f| f.anonymize());
+        self.auth_funcs.iter_mut().for_each(|f| f.anonymize());
+        self.leaf_functions.iter_mut().for_each(|f| f.anonymize());
+        self.management_funcs.iter_mut().for_each(|f| f.anonymize());
+
+        self.sockets.iter_mut().for_each(|f| f.anonymize());
+
+        self.domain.anonymize();
+        self.secrets.anonymize();
+        if let Some(ref mut secret_def) = self.secret_definition {
+            secret_def.anonymize()
+        };
+        self.resource_value.anonymize();
     }
 
     // This is only used when merging prototypes. If the structure of

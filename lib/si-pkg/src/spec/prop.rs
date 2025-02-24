@@ -175,6 +175,35 @@ impl PropSpec {
         PropSpecBuilder::default()
     }
 
+    pub fn anonymize(&mut self) {
+        match self {
+            PropSpec::Array {
+                type_prop,
+                unique_id,
+                ..
+            }
+            | PropSpec::Map {
+                type_prop,
+                unique_id,
+                ..
+            } => {
+                *unique_id = None;
+                type_prop.anonymize()
+            }
+            PropSpec::Object {
+                entries, unique_id, ..
+            } => {
+                *unique_id = None;
+                entries.iter_mut().for_each(|f| f.anonymize());
+            }
+            PropSpec::Boolean { unique_id, .. }
+            | PropSpec::Float { unique_id, .. }
+            | PropSpec::Json { unique_id, .. }
+            | PropSpec::Number { unique_id, .. }
+            | PropSpec::String { unique_id, .. } => *unique_id = None,
+        }
+    }
+
     pub(crate) fn to_builder_without_children(&self) -> PropSpecBuilder {
         let mut builder = PropSpec::builder();
         builder.name(self.name()).kind(self.kind());

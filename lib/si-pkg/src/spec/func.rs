@@ -56,6 +56,10 @@ impl FuncArgumentSpec {
     pub fn builder() -> FuncArgumentSpecBuilder {
         FuncArgumentSpecBuilder::default()
     }
+
+    pub fn anonymize(&mut self) {
+        self.unique_id = None;
+    }
 }
 
 #[remain::sorted]
@@ -199,5 +203,10 @@ impl FuncSpec {
     #[must_use]
     pub fn builder() -> FuncSpecBuilder {
         FuncSpecBuilder::default()
+    }
+
+    pub fn anonymize(&mut self) {
+        self.unique_id = String::new();
+        self.arguments.iter_mut().for_each(|f| f.anonymize());
     }
 }

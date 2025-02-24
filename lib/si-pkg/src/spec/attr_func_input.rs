@@ -70,6 +70,13 @@ impl AttrFuncInputSpec {
         AttrFuncInputSpecBuilder::default()
     }
 
+    pub fn anonymize(&mut self) {
+        match self {
+            AttrFuncInputSpec::InputSocket { unique_id, .. }
+            | AttrFuncInputSpec::OutputSocket { unique_id, .. }
+            | AttrFuncInputSpec::Prop { unique_id, .. } => *unique_id = None,
+        }
+    }
     pub fn name(&self) -> &str {
         match self {
             Self::InputSocket { name, .. } => name.as_str(),

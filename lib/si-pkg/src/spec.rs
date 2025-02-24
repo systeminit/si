@@ -1,3 +1,5 @@
+use std::time::SystemTime;
+
 use chrono::{DateTime, Utc};
 use derive_builder::{Builder, UninitializedFieldError};
 use serde::{Deserialize, Serialize};
@@ -85,6 +87,14 @@ impl PkgSpec {
         self.funcs
             .iter()
             .find(|func_spec| func_spec.name.as_str() == name)
+    }
+
+    pub fn anonymize(&mut self) {
+        self.created_at = SystemTime::UNIX_EPOCH.into();
+        self.version = String::new();
+
+        self.schemas.iter_mut().for_each(|f| f.anonymize());
+        self.funcs.iter_mut().for_each(|f| f.anonymize());
     }
 }
 

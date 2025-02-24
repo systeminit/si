@@ -52,4 +52,8 @@ impl ActionFuncSpec {
     pub fn builder() -> ActionFuncSpecBuilder {
         ActionFuncSpecBuilder::default()
     }
+
+    pub fn anonymize(&mut self) {
+        self.unique_id = None;
+    }
 }
