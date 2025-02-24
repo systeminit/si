@@ -110,6 +110,42 @@ const overrides = new Map<string, OverrideFn>([
     "AWS::SecretsManager::Secret",
     addSecretProp("Secret String", "secretString", ["SecretString"]),
   ],
+  ["AWS::EC2::Instance", (spec: ExpandedPkgSpec) => {
+     const variant = spec.schemas[0].variants[0];
+     
+     const prop = variant.domain.entries.find((p: ExpandedPropSpec) =>
+       p.name === "UserData"
+     );
+     
+     if (!prop) return;
+     prop.data.widgetKind = "textarea";
+  }],
+  [
+    "AWS::DataZone::Domain",
+    (spec: ExpandedPkgSpec) => {
+      const variant = spec.schemas[0].variants[0];
+
+      const socket = variant.sockets.find(
+        (s: ExpandedSocketSpec) => s.name === "Id" && s.data.kind === "output",
+      );
+      if (!socket) return;
+
+      setAnnotationOnSocket(socket, { tokens: ["Domain Identifier"] });
+    },
+  ],
+  [
+    "AWS::DataZone::Project",
+    (spec: ExpandedPkgSpec) => {
+      const variant = spec.schemas[0].variants[0];
+
+      const socket = variant.sockets.find(
+        (s: ExpandedSocketSpec) => s.name === "Id" && s.data.kind === "output",
+      );
+      if (!socket) return;
+
+      setAnnotationOnSocket(socket, { tokens: ["Project Identifier"] });
+    },
+  ],
 ]);
 
 function addSecretProp(
