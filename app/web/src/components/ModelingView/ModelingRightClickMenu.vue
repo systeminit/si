@@ -303,7 +303,73 @@ const rightClickMenuItems = computed(() => {
         onSelect: autoConnectComponent,
       });
     }
+    if(featureFlagsStore.AUTOCONNECT) {
+      const socketMenuItems: DropdownMenuItemObjectDef[] = [];
+      const componentSelected = viewsStore.selectedComponent;
+      // get sockets for the component
+      if (
+        !componentSelected ||
+        componentSelected instanceof DiagramViewData ||
+        !componentSelected.def.sockets
+          ) {
+            console.log("nope");
+          }else {
+            componentSelected.def.sockets.forEach((s) => {
+              const socketOption: DropdownMenuItemObjectDef[] = [];
+              socketOption.push({
+                label: "Scope to Workspace",
+                icon: "component",
+                checkable: true,
+                checked: true,
+                onSelect:() => {
+                  toggleWorkspaceDefaultSocket(s.id, componentSelected.def.id);
+                },
+              });
+              socketOption.push({
+                label: "Scope to Current View",
+                icon: "component",
+                toggleIcon: true,
+                checked: false,
+         
+                onSelect:() => {
+                  toggleViewDefaultSocket(s.id, componentSelected.def.id, viewsStore.selectedViewId);
+                },
+              });
+              socketOption.push({
+                label: "Scope to Frame",
+                icon: "component",
+                toggleIcon: true,
+                checked: false,
+         
+                onSelect:() => {
+                  toggleFrameDefaultSocket(s.id, componentSelected.def.id);
+                },
+              });
 
+              socketMenuItems.push({
+                label: s.label,
+                icon: "socket",
+                submenuItems: socketOption,
+              });
+              
+          });
+          items.push({
+        label: "Sockets",
+        icon: "socket",
+        submenuItems: socketMenuItems,
+    });
+    }
+    
+  }
+  const toggleWorkspaceDefaultSocket = (socketId: string, componentId: ComponentId) => {
+    componentsStore.TOGGLE_WORKSPACE_DEFAULT_SOCKET(componentId, socketId);
+  };
+  const toggleViewDefaultSocket = (socketId: string, componentId: ComponentId, viewId: ViewId | null) => {
+    componentsStore.TOGGLE_VIEW_DEFAULT_SOCKET(componentId, socketId, viewId);
+  };
+  const toggleFrameDefaultSocket = (socketId: string, componentId: ComponentId) => {
+    componentsStore.TOGGLE_FRAME_DEFAULT_SOCKET(componentId, socketId);
+  };
     // set component type
     const updateComponentType = (componentType: ComponentType) => {
       if (selectedComponentId.value && attributesStore.value) {
@@ -573,4 +639,6 @@ function close() {
 const isOpen = computed(() => contextMenuRef.value?.isOpen);
 
 defineExpose({ open, close, isOpen });
+
+
 </script>

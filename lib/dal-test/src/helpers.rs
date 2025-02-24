@@ -101,7 +101,10 @@ pub async fn create_component_for_default_schema_name(
 ) -> Result<Component> {
     let schema_variant_id = SchemaVariant::default_id_for_schema_name(ctx, schema_name).await?;
 
-    Ok(Component::new(ctx, name.as_ref().to_string(), schema_variant_id, view_id).await?)
+    let component =
+        Component::new(ctx, name.as_ref().to_string(), schema_variant_id, view_id).await?;
+    Component::connect_default_connections(ctx, component.id()).await?;
+    Ok(component)
 }
 
 /// Creates a [`Component`] from the default [`SchemaVariant`] corresponding to a provided
@@ -117,13 +120,15 @@ pub async fn create_component_for_unlocked_schema_name_on_default_view(
         .ok_or(eyre!("no unlocked schema variant for schema name"))?;
     let view_id = ExpectView::get_id_for_default(ctx).await;
 
-    Ok(Component::new(
+    let component = Component::new(
         ctx,
         name.as_ref().to_string(),
         schema_variant_id.id(),
         view_id,
     )
-    .await?)
+    .await?;
+    Component::connect_default_connections(ctx, component.id()).await?;
+    Ok(component)
 }
 
 /// Creates a [`Component`] from the default [`SchemaVariant`] corresponding to a provided
@@ -141,6 +146,7 @@ pub async fn create_component_for_schema_name_with_type_on_default_view(
     let component =
         Component::new(ctx, name.as_ref().to_string(), schema_variant_id, view_id).await?;
     Component::set_type_by_id_unchecked(ctx, component.id(), component_type).await?;
+    Component::connect_default_connections(ctx, component.id()).await?;
     Ok(component)
 }
 
@@ -162,7 +168,10 @@ pub async fn create_named_component_for_schema_variant_on_default_view(
 ) -> Result<Component> {
     let view_id = ExpectView::get_id_for_default(ctx).await;
 
-    Ok(Component::new(ctx, name.as_ref().to_string(), schema_variant_id, view_id).await?)
+    let component =
+        Component::new(ctx, name.as_ref().to_string(), schema_variant_id, view_id).await?;
+    Component::connect_default_connections(ctx, component.id()).await?;
+    Ok(component)
 }
 
 /// Connects two [`Components`](Component) for a given set of socket names.

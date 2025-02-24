@@ -31,6 +31,9 @@ use tokio::task::JoinError;
 mod autoconnect;
 pub mod conflicts_for_component;
 pub mod debug;
+pub mod default_frame_socket;
+pub mod default_view_socket;
+pub mod default_workspace_socket;
 pub mod delete_property_editor_value;
 pub mod get_actions;
 pub mod get_code;
@@ -208,4 +211,16 @@ pub fn routes() -> Router<AppState> {
         .route("/conflicts", get(conflicts_for_component))
         .route("/manage", post(manage::manage))
         .route("/unmanage", post(unmanage::unmanage))
+        .route(
+            "/toggle_workspace_default_socket",
+            post(default_workspace_socket::default_workspace_socket),
+        )
+        .route(
+            "/toggle_view_default_socket",
+            post(default_view_socket::default_view_socket),
+        )
+        .route(
+            "/toggle_frame_default_socket",
+            post(default_frame_socket::default_frame_socket),
+        )
 }

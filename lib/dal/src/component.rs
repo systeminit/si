@@ -5,7 +5,7 @@ use itertools::Itertools;
 use petgraph::Direction::Outgoing;
 use serde::{Deserialize, Serialize};
 use si_pkg::KeyOrIndex;
-use socket::{ComponentInputSocket, ComponentOutputSocket};
+use socket::{ComponentInputSocket, ComponentOutputSocket, ComponentSocket, DefaultConnection};
 use std::collections::{hash_map, HashMap, HashSet, VecDeque};
 use std::num::{ParseFloatError, ParseIntError};
 use std::sync::Arc;
@@ -447,7 +447,83 @@ impl Component {
         // Create geometry node
         Geometry::new_for_component(ctx, component.id, view_id).await?;
 
+        // Check for default connections
+        // let default_connections =
+        //     DefaultConnection::get_default_connections_for_component(ctx, component.id()).await?;
+        // for (socket, connections) in default_connections {
+        //     for conn in connections {
+        //         let component_socker = match conn {
+        //             DefaultConnection::Workspace(component_socket)
+        //             | DefaultConnection::View(component_socket)
+        //             | DefaultConnection::Frame(component_socket) => component_socket,
+        //         };
+        //         match component_socker {
+        //             ComponentSocket::Input(component_input_socket) => {
+        //                 Self::connect(
+        //                     ctx,
+        //                     socket.get_component_id(),
+        //                     socket.get_socket_id().into(),
+        //                     component_input_socket.component_id,
+        //                     component_input_socket.input_socket_id,
+        //                 )
+        //                 .await?;
+        //             }
+        //             ComponentSocket::Output(component_output_socket) => {
+        //                 Self::connect(
+        //                     ctx,
+        //                     component_output_socket.component_id,
+        //                     component_output_socket.output_socket_id,
+        //                     socket.get_component_id(),
+        //                     socket.get_socket_id().into(),
+        //                 )
+        //                 .await?;
+        //             }
+        //         }
+        //     }
+        // }
+
         Ok(component)
+    }
+
+    pub async fn connect_default_connections(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> ComponentResult<()> {
+        // Check for default connections
+        let default_connections =
+            DefaultConnection::get_default_connections_for_component(ctx, component_id).await?;
+        for (socket, connections) in default_connections {
+            for conn in connections {
+                let component_socker = match conn {
+                    DefaultConnection::Workspace(component_socket)
+                    | DefaultConnection::View(component_socket)
+                    | DefaultConnection::Frame(component_socket) => component_socket,
+                };
+                match component_socker {
+                    ComponentSocket::Input(component_input_socket) => {
+                        Self::connect(
+                            ctx,
+                            socket.get_component_id(),
+                            socket.get_socket_id().into(),
+                            component_input_socket.component_id,
+                            component_input_socket.input_socket_id,
+                        )
+                        .await?;
+                    }
+                    ComponentSocket::Output(component_output_socket) => {
+                        Self::connect(
+                            ctx,
+                            component_output_socket.component_id,
+                            component_output_socket.output_socket_id,
+                            socket.get_component_id(),
+                            socket.get_socket_id().into(),
+                        )
+                        .await?;
+                    }
+                }
+            }
+        }
+        Ok(())
     }
 
     /// Create new component node but retain existing content address
@@ -484,20 +560,93 @@ impl Component {
 
         let mut dvu_roots = vec![];
 
+        // // get workspace default things
+        // let workspace_defaults =
+        //     DefaultConnection::get_default_connections_for_workspace(ctx).await?;
+        // // build up a map of potential matches.  We consider a match valid if the sockets can actually connect
+        // // and the value for the attribute value matches the output socket's value
+        // // OR for multi-arity sockets, we also check if the output socket matches a single entry in the array
+        // let mut potential_incoming_matches: HashMap<InputSocketId, Vec<ComponentOutputSocket>> =
+        //     HashMap::new();
+        // let mut potential_outgoing_matches: HashMap<OutputSocketId, Vec<ComponentInputSocket>> =
+        //     HashMap::new();
+
         // Create attribute values for all socket corresponding to input and output sockets.
         for input_socket_id in
             InputSocket::list_ids_for_schema_variant(ctx, schema_variant_id).await?
         {
             let attribute_value =
                 AttributeValue::new(ctx, input_socket_id, Some(id.into()), None, None).await?;
+            // // check against output sockets for workspace and draw edges where needed
+            // let output_sockets: Vec<ComponentOutputSocket> = workspace_defaults
+            //     .iter()
+            //     .filter_map(|default_conn| match default_conn {
+            //         socket::DefaultConnection::Workspace(component_socket) => {
+            //             match component_socket {
+            //                 ComponentSocket::Input(_) => None,
+            //                 ComponentSocket::Output(component_output_socket) => {
+            //                     Some(*component_output_socket)
+            //                 }
+            //             }
+            //         }
+            //         socket::DefaultConnection::View(_) => None,
+            //     })
+            //     .collect();
+
+            // // loop over them
+            // for component_output_socket in output_sockets {
+            //     let output_socket =
+            //         OutputSocket::get_by_id(ctx, component_output_socket.output_socket_id).await?;
+            //     let input_socket = InputSocket::get_by_id(ctx, input_socket_id).await?;
+            //     if output_socket.fits_input(&input_socket) {
+            //         // record it as a potential match
+            //         potential_incoming_matches
+            //             .entry(input_socket_id)
+            //             .or_default()
+            //             .push(component_output_socket);
+            //     }
+            // }
 
             dvu_roots.push(DependentValueRoot::Unfinished(attribute_value.id().into()));
         }
+        // let mut connections_created = Vec::new();
+
         for output_socket_id in
             OutputSocket::list_ids_for_schema_variant(ctx, schema_variant_id).await?
         {
             let attribute_value =
                 AttributeValue::new(ctx, output_socket_id, Some(id.into()), None, None).await?;
+
+            // // check against input sockets for workspace and draw edges where needed
+            // // note the output sockets don't care about who they're feeding, just check arity
+            // let input_sockets: Vec<ComponentInputSocket> = workspace_defaults
+            //     .iter()
+            //     .filter_map(|default_conn| match default_conn {
+            //         socket::DefaultConnection::Workspace(component_socket) => {
+            //             match component_socket {
+            //                 ComponentSocket::Input(component_input_socket) => {
+            //                     Some(*component_input_socket)
+            //                 }
+            //                 ComponentSocket::Output(_) => None,
+            //             }
+            //         }
+            //         socket::DefaultConnection::View(_) => None,
+            //     })
+            //     .collect();
+
+            // // loop over them
+            // for component_input_socket in input_sockets {
+            //     let input_socket =
+            //         InputSocket::get_by_id(ctx, component_input_socket.input_socket_id).await?;
+            //     let output_socket = OutputSocket::get_by_id(ctx, output_socket_id).await?;
+            //     if output_socket.fits_input(&input_socket) {
+            //         // record it as a potential match
+            //         potential_outgoing_matches
+            //             .entry(output_socket_id)
+            //             .or_default()
+            //             .push(component_input_socket);
+            //     }
+            // }
 
             dvu_roots.push(DependentValueRoot::Unfinished(attribute_value.id().into()));
         }
@@ -598,6 +747,72 @@ impl Component {
         let component_graph = DependentValueGraph::new(ctx, dvu_roots).await?;
         let leaf_value_ids = component_graph.independent_values();
         ctx.add_dependent_values_and_enqueue(leaf_value_ids).await?;
+
+        // // finally try and match connections
+        // for (input_socket_id, matches) in potential_incoming_matches {
+        //     // Get the input socket to check its arity
+        //     let input_socket = InputSocket::get_by_id(ctx, input_socket_id).await?;
+        //     if input_socket.arity() == SocketArity::Many {
+        //         // if it's a multi-arity socket, let multiple socket policies set this
+        //         for component_output_socket in matches {
+        //             Component::connect(
+        //                 ctx,
+        //                 component_output_socket.component_id,
+        //                 component_output_socket.output_socket_id,
+        //                 id.into(),
+        //                 input_socket_id,
+        //             )
+        //             .await?;
+        //             connections_created.push(input_socket_id);
+        //         }
+        //     } else if matches.len() == 1 {
+        //         // otherwise, it's single arity, only connect the ONE output match if it
+        //         // exists
+        //         let component_output_socket = matches[0];
+
+        //         Component::connect(
+        //             ctx,
+        //             component_output_socket.component_id,
+        //             component_output_socket.output_socket_id,
+        //             id.into(),
+        //             input_socket_id,
+        //         )
+        //         .await?;
+        //         connections_created.push(input_socket_id);
+        //     }
+        // }
+        // for (output_socket_id, matches) in potential_outgoing_matches {
+        //     // Get the input socket to check its arity
+        //     let output_socket = OutputSocket::get_by_id(ctx, output_socket_id).await?;
+        //     if output_socket.arity() == SocketArity::Many {
+        //         // if it's a multi-arity socket, let multiple socket policies set this
+        //         for component_input_socket in matches {
+        //             Component::connect(
+        //                 ctx,
+        //                 id.into(),
+        //                 output_socket_id,
+        //                 component_input_socket.component_id,
+        //                 component_input_socket.input_socket_id,
+        //             )
+        //             .await?;
+        //             // connections_created.push(input_socket_id);
+        //         }
+        //     } else if matches.len() == 1 {
+        //         // otherwise, it's single arity, only connect the ONE output match if it
+        //         // exists
+        //         let component_input_socket = matches[0];
+
+        //         Component::connect(
+        //             ctx,
+        //             id.into(),
+        //             output_socket_id,
+        //             component_input_socket.component_id,
+        //             component_input_socket.input_socket_id,
+        //         )
+        //         .await?;
+        //         //connections_created.push(input_socket_id);
+        //     }
+        // }
 
         // Find all create action prototypes for the variant and create actions for them.
         for prototype_id in SchemaVariant::find_action_prototypes_by_kind(
@@ -2509,6 +2724,10 @@ impl Component {
                 }
             }
         }
+
+        // Remove all Socket scopes for component
+
+        DefaultConnection::remove_default_connections_for_component(ctx, id).await?;
 
         // Remove all geometries for the component
         Geometry::remove_all_for_component_id(ctx, id).await?;

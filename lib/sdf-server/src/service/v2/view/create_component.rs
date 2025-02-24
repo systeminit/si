@@ -6,7 +6,8 @@ use axum::{
     Json,
 };
 use dal::diagram::geometry::Geometry;
-use dal::Func;
+use dal::diagram::SummaryDiagramEdge;
+use dal::{Func, InputSocket, OutputSocket};
 use serde::{Deserialize, Serialize};
 
 use dal::diagram::view::ViewId;
@@ -219,7 +220,7 @@ pub async fn create_component(
             }),
         );
     }
-
+    Component::connect_default_connections(&ctx, component.id()).await?;
     let mut diagram_sockets = HashMap::new();
     let payload = component
         .into_frontend_type(
@@ -233,6 +234,85 @@ pub async fn create_component(
         .await?
         .publish_on_commit(&ctx)
         .await?;
+
+    let component_id = component.id();
+    let component = Component::get_by_id(&ctx, component_id).await?;
+    for incoming_connection in component.incoming_connections(&ctx).await? {
+        let input_socket_id = incoming_connection.to_input_socket_id;
+        let from_component_id = incoming_connection.from_component_id;
+        let from_socket_id = incoming_connection.from_output_socket_id;
+        let from_component = Component::get_by_id(&ctx, from_component_id).await?;
+        let edge = SummaryDiagramEdge::assemble(
+            incoming_connection,
+            &from_component,
+            &component,
+            ChangeStatus::Added,
+        )?;
+        WsEvent::connection_upserted(&ctx, edge.into())
+            .await?
+            .publish_on_commit(&ctx)
+            .await?;
+        let to_component_name = component.name(&ctx).await?;
+        let to_socket_name = InputSocket::get_by_id(&ctx, input_socket_id)
+            .await?
+            .name()
+            .to_string();
+        ctx.write_audit_log(
+            AuditLogKind::CreateConnection {
+                from_component_id,
+                from_component_name: from_component.name(&ctx).await?,
+                from_socket_id,
+                from_socket_name: OutputSocket::get_by_id(&ctx, from_socket_id)
+                    .await?
+                    .name()
+                    .to_string(),
+                to_component_id: component_id,
+                to_component_name: to_component_name.clone(),
+                to_socket_id: input_socket_id,
+                to_socket_name: to_socket_name.clone(),
+            },
+            format!("{to_component_name} --- {to_socket_name}"),
+        )
+        .await?;
+    }
+    for outgoing_connection in component.outgoing_connections(&ctx).await? {
+        let to_socket_id = outgoing_connection.to_input_socket_id;
+        let to_component_id = outgoing_connection.to_component_id;
+        let from_socket_id = outgoing_connection.from_output_socket_id;
+        let to_component = Component::get_by_id(&ctx, to_component_id).await?;
+        let edge = SummaryDiagramEdge::assemble(
+            outgoing_connection,
+            &component,
+            &to_component,
+            ChangeStatus::Added,
+        )?;
+        WsEvent::connection_upserted(&ctx, edge.into())
+            .await?
+            .publish_on_commit(&ctx)
+            .await?;
+        let to_component_name = to_component.name(&ctx).await?;
+        let to_socket_name = InputSocket::get_by_id(&ctx, to_socket_id)
+            .await?
+            .name()
+            .to_string();
+        ctx.write_audit_log(
+            AuditLogKind::CreateConnection {
+                from_component_id: component_id,
+                from_component_name: component.name(&ctx).await?,
+                from_socket_id,
+                from_socket_name: OutputSocket::get_by_id(&ctx, from_socket_id)
+                    .await?
+                    .name()
+                    .to_string(),
+                to_component_id,
+                to_component_name: to_component_name.clone(),
+                to_socket_id,
+                to_socket_name: to_socket_name.clone(),
+            },
+            format!("{to_component_name} --- {to_socket_name}"),
+        )
+        .await?;
+    }
 
     ctx.commit().await?;
 

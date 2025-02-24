@@ -25,12 +25,15 @@ async function abandon_all_change_sets_inner(sdf: SdfApiClient) {
 
     for (const changeSet of changeSetsToAbandon) {
         const changeSetId = changeSet.id;
-        await sdf.call({
+       try{ await sdf.call({
             route: "abandon_change_set",
             body: {
                 changeSetId,
             },
         });
-    }
+       } catch(err) {
+        console.log(err);
+       }
+}
 
 }

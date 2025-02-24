@@ -1,14 +1,18 @@
 use dal::attribute::value::DependentValueGraph;
+use dal::component::frame::Frame;
+use dal::component::socket::{ComponentOutputSocket, ComponentSocket, DefaultConnection};
+use dal::diagram::view::View;
 use dal::diagram::view::View;
 use dal::diagram::Diagram;
 use dal::prop::{Prop, PropPath};
 use dal::property_editor::values::PropertyEditorValues;
 use dal::workspace_snapshot::DependentValueRoot;
-use dal::{AttributeValue, AttributeValueId};
+use dal::{AttributeValue, AttributeValueId, ComponentType, OutputSocket};
 use dal::{Component, DalContext, Schema, SchemaVariant};
 use dal_test::expected::{self, ExpectComponent};
 use dal_test::helpers::{
     create_component_for_default_schema_name_in_default_view,
+    create_component_for_schema_name_with_type_on_default_view,
     create_component_for_schema_variant_on_default_view, update_attribute_value_for_component,
     ChangeSetTestHelpers,
 };
@@ -665,4 +669,128 @@ async fn autoconnect(ctx: &mut DalContext) -> Result<()> {
     assert!(incoming.len() == 1);
 
     Ok(())
+}
+
+#[test]
+async fn default_connection(ctx: &mut DalContext) {
+    let even =
+        create_component_for_default_schema_name_in_default_view(ctx, "small even lego", "even")
+            .await
+            .expect("couldn't create component");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("couldn't commit and update visibility");
+    let schema_variant = even.schema_variant(ctx).await.expect("nope");
+    let mut output_sockets = OutputSocket::list(ctx, schema_variant.id)
+        .await
+        .expect("nope");
+    let output_socket_id = output_sockets.pop().expect("has one").id();
+    let attribute_value_id = OutputSocket::component_attribute_value_for_output_socket_id(
+        ctx,
+        output_socket_id,
+        even.id(),
+    )
+    .await
+    .expect("nope");
+
+    DefaultConnection::set_default_connection_for_workspace(ctx, attribute_value_id)
+        .await
+        .expect("nope");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("couldn't commit and update visibility");
+    let odd =
+        create_component_for_default_schema_name_in_default_view(ctx, "small odd lego", "odd")
+            .await
+            .expect("couldn't create");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("couldn't commit and update visibility");
+    let incoming = Component::incoming_connections_for_id(ctx, odd.id())
+        .await
+        .expect("couldn't get incoming connections");
+    assert!(!incoming.is_empty());
+    assert!(incoming.len() == 1);
+
+    // now create another component and set a policy for that view
+    let second_even =
+        create_component_for_default_schema_name_in_default_view(ctx, "small even lego", "even")
+            .await
+            .expect("couldn't create component");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("couldn't commit and update visibility");
+    let default_view = View::get_id_for_default(ctx)
+        .await
+        .expect("couldn't get default view");
+    let schema_variant = second_even.schema_variant(ctx).await.expect("nope");
+    let mut output_sockets = OutputSocket::list(ctx, schema_variant.id)
+        .await
+        .expect("nope");
+    let output_socket_id = output_sockets.pop().expect("has one").id();
+    let attribute_value_id = OutputSocket::component_attribute_value_for_output_socket_id(
+        ctx,
+        output_socket_id,
+        second_even.id(),
+    )
+    .await
+    .expect("nope");
+    DefaultConnection::set_default_connection_for_view(ctx, attribute_value_id, default_view)
+        .await
+        .expect("nope");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("couldn't commit and update visibility");
+    let second_odd =
+        create_component_for_default_schema_name_in_default_view(ctx, "small odd lego", "odd")
+            .await
+            .expect("couldn't create");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("couldn't commit and update visibility");
+    let mut incoming = Component::incoming_connections_for_id(ctx, second_odd.id())
+        .await
+        .expect("couldn't get incoming connections");
+    assert!(!incoming.is_empty());
+    assert!(incoming.len() == 1);
+    let conn = incoming.pop().expect("has one");
+    assert!(conn.from_component_id == second_even.id());
+
+    // now let's do frames
+    // create a rando frame, set a policy inside it that's lower, and ensure on create the thing inside gets the lower connection
+    let rando_frame = create_component_for_schema_name_with_type_on_default_view(
+        ctx,
+        "swifty",
+        "rando",
+        ComponentType::ConfigurationFrameDown,
+    )
+    .await
+    .expect("nope");
+    // now create another component and set a frame policy on it
+    let third_even =
+        create_component_for_default_schema_name_in_default_view(ctx, "small even lego", "even 3")
+            .await
+            .expect("couldn't create component");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("couldn't commit and update visibility");
+    Frame::upsert_parent(ctx, third_even.id(), rando_frame.id())
+        .await
+        .expect("couldn't create");
+
+    let schema_variant = third_even.schema_variant(ctx).await.expect("nope");
+    let mut output_sockets = OutputSocket::list(ctx, schema_variant.id)
+        .await
+        .expect("nope");
+    let output_socket_id = output_sockets.pop().expect("has one").id();
+    let attribute_value_id = OutputSocket::component_attribute_value_for_output_socket_id(
+        ctx,
+        output_socket_id,
+        third_even.id(),
+    )
+    .await
+    .expect("nope");
+    DefaultConnection::set_default_connection_for_frame(ctx, attribute_value_id)
+        .await
+        .expect("nope");
 }

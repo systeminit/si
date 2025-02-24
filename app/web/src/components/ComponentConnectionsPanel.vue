@@ -152,6 +152,7 @@ const treeFormItemFromSocket = (
 ) => {
   const combinedId = `${component.id}-${socket.id}`;
   const headerId = `${combinedId}-header`;
+  const policyId = `${combinedId}-policy`;
 
   return {
     propDef: {
@@ -164,6 +165,42 @@ const treeFormItemFromSocket = (
       isReadonly: false,
     } as TreeFormProp,
     children: [
+  //  {
+      //   propDef: {
+      //     id: policyId,
+      //     name: "Workspace Default",
+      //     icon: "none",
+      //     kind: PropertyEditorPropKind.String,
+      //     widgetKind: {
+      //       kind: "checkbox",
+      //     },
+      //     isHidden: false,
+      //     isReadonly: false,
+      //   } as TreeFormProp,
+      //   children: [],
+      //   value: {
+      //     id: policyId,
+      //     propId: policyId,
+      //     value: existingPeers.map((peerSocket) => ({
+      //       label: peerSocket.componentName,
+      //       label2: peerSocket.label,
+      //       value: `${peerSocket.componentId}-${peerSocket.id}`,
+      //       isInferred: peerSocket.edge.isInferred,
+      //     })),
+      //     canBeSetBySocket: false,
+      //     isFromExternalSource: false,
+      //     isControlledByDynamicFunc: false,
+      //     isControlledByAncestor: false,
+      //     overridden: false,
+      //     ancestorManual: false,
+      //   },
+      //   valueId: combinedId,
+      //   parentValueId:
+      //     "workspace",
+
+      //   validation: null,
+      //   propId: combinedId,
+      // },
       {
         propDef: {
           id: combinedId,
@@ -357,6 +394,10 @@ const resetHandler = (item: TreeFormData, value?: string) => {
 };
 
 const setValueHandler = (item: TreeFormData, value: string) => {
+  if (item.parentValueId === "workspace") {
+    console.log("setting workspace for:");
+    console.log(item);
+  }
   if (item.propId === "parent") {
     viewsStore.SET_PARENT([item.propDef.id], value);
     return;

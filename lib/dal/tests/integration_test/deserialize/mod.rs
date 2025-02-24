@@ -207,6 +207,7 @@ fn make_me_one_with_everything(graph: &mut WorkspaceSnapshotGraphVCurrent) {
             EdgeWeightKindDiscriminants::ApprovalRequirementDefinition => {
                 EdgeWeightKind::ApprovalRequirementDefinition
             }
+            EdgeWeightKindDiscriminants::DefaultConnection => EdgeWeightKind::DefaultConnection,
         };
 
         let edge_weight = EdgeWeight::new(edge_weight_kind);

@@ -303,6 +303,33 @@ impl OutputSocket {
         }
     }
 
+    pub async fn component_attribute_value_for_output_socket_id_opt(
+        ctx: &DalContext,
+        output_socket_id: OutputSocketId,
+        component_id: ComponentId,
+    ) -> OutputSocketResult<Option<AttributeValueId>> {
+        let mut result = None;
+        for attribute_value_id in
+            Self::all_attribute_values_everywhere_for_output_socket_id(ctx, output_socket_id)
+                .await?
+        {
+            if AttributeValue::component_id(ctx, attribute_value_id)
+                .await
+                .map_err(Box::new)?
+                == component_id
+            {
+                if result.is_some() {
+                    return Err(OutputSocketError::FoundTooManyForOutputSocketId(
+                        output_socket_id,
+                        component_id,
+                    ));
+                }
+                result = Some(attribute_value_id);
+            }
+        }
+        Ok(result)
+    }
+
     pub async fn list_ids_for_schema_variant(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,

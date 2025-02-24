@@ -1486,7 +1486,11 @@ impl<'a> ManagementOperator<'a> {
 
         let created_component_ids = (!self.created_components.is_empty())
             .then_some(self.created_components.keys().copied().collect());
-
+        if let Some(created) = created_component_ids.clone() {
+            for created in created {
+                Component::connect_default_connections(self.ctx, created).await?;
+            }
+        }
         self.send_component_ws_events(component_graph, inferred_edges_by_component_id)
             .await?;
 

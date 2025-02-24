@@ -219,18 +219,18 @@ const edgeFromRawEdge =
     isInferred?: boolean;
     isManagement?: boolean;
   }) =>
-  (e: RawEdge): Edge => {
-    const edge = structuredClone(toRaw(e)) as Edge;
-    edge.id = generateEdgeId(
-      edge.fromComponentId,
-      edge.toComponentId,
-      edge.fromSocketId,
-      edge.toSocketId,
-    );
-    edge.isInferred = isInferred ?? false;
-    edge.isManagement = isManagement ?? false;
-    return edge;
-  };
+    (e: RawEdge): Edge => {
+      const edge = structuredClone(toRaw(e)) as Edge;
+      edge.id = generateEdgeId(
+        edge.fromComponentId,
+        edge.toComponentId,
+        edge.fromSocketId,
+        edge.toSocketId,
+      );
+      edge.isInferred = isInferred ?? false;
+      edge.isManagement = isManagement ?? false;
+      return edge;
+    };
 
 export const loadCollapsedData = (
   prefix: string,
@@ -291,19 +291,19 @@ export function getPossibleAndExistingPeerSockets(
     .map((edge) =>
       targetSocket.direction === "input"
         ? {
-            edge,
-            thisComponentId: edge.def.toComponentId,
-            thisSocketId: edge.def.toSocketId,
-            peerComponentId: edge.def.fromComponentId,
-            peerSocketId: edge.def.fromSocketId,
-          }
+          edge,
+          thisComponentId: edge.def.toComponentId,
+          thisSocketId: edge.def.toSocketId,
+          peerComponentId: edge.def.fromComponentId,
+          peerSocketId: edge.def.fromSocketId,
+        }
         : {
-            edge,
-            thisComponentId: edge.def.fromComponentId,
-            thisSocketId: edge.def.fromSocketId,
-            peerComponentId: edge.def.toComponentId,
-            peerSocketId: edge.def.toSocketId,
-          },
+          edge,
+          thisComponentId: edge.def.fromComponentId,
+          thisSocketId: edge.def.fromSocketId,
+          peerComponentId: edge.def.toComponentId,
+          peerSocketId: edge.def.toSocketId,
+        },
     )
     // Get only edges relevant to this  socket
     .filter(
@@ -354,13 +354,13 @@ export function getPossibleAndExistingPeerSockets(
             const [outputCAs, inputCAs] =
               targetSocket.direction === "output"
                 ? [
-                    targetSocket.connectionAnnotations,
-                    peerSocket.connectionAnnotations,
-                  ]
+                  targetSocket.connectionAnnotations,
+                  peerSocket.connectionAnnotations,
+                ]
                 : [
-                    peerSocket.connectionAnnotations,
-                    targetSocket.connectionAnnotations,
-                  ];
+                  peerSocket.connectionAnnotations,
+                  targetSocket.connectionAnnotations,
+                ];
 
             // check socket connection annotations compatibility
             for (const outputCA of outputCAs) {
@@ -743,6 +743,41 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               },
             });
           },
+          async TOGGLE_WORKSPACE_DEFAULT_SOCKET(componentId: ComponentId, socketId: string) {
+            return new ApiRequest({
+              method: "post",
+              url: "component/toggle_workspace_default_socket",
+              params: {
+                componentId,
+                socketId,
+                ...visibilityParams
+              },
+            });
+          },
+          async TOGGLE_VIEW_DEFAULT_SOCKET(componentId: ComponentId, socketId: string, viewId: ViewId | null) {
+            return new ApiRequest({
+              method: "post",
+              url: "component/toggle_view_default_socket",
+              params: {
+                componentId,
+                socketId,
+                viewId,
+                ...visibilityParams
+              },
+            });
+          },
+
+          async TOGGLE_FRAME_DEFAULT_SOCKET(componentId: ComponentId, socketId: string) {
+            return new ApiRequest({
+              method: "post",
+              url: "component/toggle_frame_default_socket",
+              params: {
+                componentId,
+                socketId,
+                ...visibilityParams
+              },
+            });
+          },
 
           SET_COMPONENTS_FROM_VIEW(
             response: {
@@ -787,21 +822,21 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             const edges =
               response.edges && response.edges.length > 0
                 ? response.edges.map(
-                    edgeFromRawEdge({ isInferred: false, isManagement: false }),
-                  )
+                  edgeFromRawEdge({ isInferred: false, isManagement: false }),
+                )
                 : [];
             const inferred =
               response.inferredEdges && response.inferredEdges.length > 0
                 ? response.inferredEdges.map(
-                    edgeFromRawEdge({ isInferred: true, isManagement: false }),
-                  )
+                  edgeFromRawEdge({ isInferred: true, isManagement: false }),
+                )
                 : [];
 
             const management =
               response.managementEdges?.length > 0
                 ? response.managementEdges.map(
-                    edgeFromRawEdge({ isInferred: false, isManagement: true }),
-                  )
+                  edgeFromRawEdge({ isInferred: false, isManagement: true }),
+                )
                 : [];
 
             const edgesToSet = [...edges, ...inferred, ...management];
@@ -923,7 +958,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 toSocketId: to.socketId,
                 ...visibilityParams,
               },
-              onSuccess: () => {},
+              onSuccess: () => { },
               optimistic: () => {
                 this.rawEdgesById[newEdge.id] = newEdge;
                 this.processRawEdge(newEdge.id);
@@ -1055,17 +1090,17 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             const edge = this.rawEdgesById[edgeId];
             const params = edge?.isManagement
               ? {
-                  managedComponentId: toComponentId,
-                  managerComponentId: fromComponentId,
-                  ...visibilityParams,
-                }
+                managedComponentId: toComponentId,
+                managerComponentId: fromComponentId,
+                ...visibilityParams,
+              }
               : {
-                  fromSocketId,
-                  toSocketId,
-                  toComponentId,
-                  fromComponentId,
-                  ...visibilityParams,
-                };
+                fromSocketId,
+                toSocketId,
+                toComponentId,
+                fromComponentId,
+                ...visibilityParams,
+              };
 
             const url = edge?.isManagement
               ? "component/unmanage"

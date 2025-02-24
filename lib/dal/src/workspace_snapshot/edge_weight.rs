@@ -71,6 +71,8 @@ pub enum EdgeWeightKind {
     DiagramObject,
     /// Indicates if there is an corresponding approval requirement definition.
     ApprovalRequirementDefinition,
+    /// Indicates there is a default connection policy for a given scope (such as View, Workspace, or a Frame/Component)
+    DefaultConnection,
 }
 
 impl EdgeWeightKind {

@@ -398,6 +398,15 @@ impl View {
             .await
             .map_err(Into::into)
     }
+    pub async fn list_for_component_id(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> DiagramResult<Vec<ViewId>> {
+        ctx.workspace_snapshot()?
+            .list_for_component_id(component_id)
+            .await
+            .map_err(Into::into)
+    }
 }
 
 /// Frontend representation for a [View](View) with a geometry.

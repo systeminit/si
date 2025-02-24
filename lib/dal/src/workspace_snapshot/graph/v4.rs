@@ -891,6 +891,7 @@ impl WorkspaceSnapshotGraphV4 {
                     EdgeWeightKindDiscriminants::SocketValue => "purple",
                     EdgeWeightKindDiscriminants::Use => "black",
                     EdgeWeightKindDiscriminants::ValidationOutput => "darkcyan",
+                    EdgeWeightKindDiscriminants::DefaultConnection => "blue",
                 };
 
                 match edgeref.weight().kind() {
@@ -1581,7 +1582,8 @@ impl WorkspaceSnapshotGraphV4 {
                     | EdgeWeightKind::ManagementPrototype
                     | EdgeWeightKind::Manages
                     | EdgeWeightKind::DiagramObject
-                    | EdgeWeightKind::ApprovalRequirementDefinition => {}
+                    | EdgeWeightKind::ApprovalRequirementDefinition
+                    | EdgeWeightKind::DefaultConnection => {}
                 }
             }
         }

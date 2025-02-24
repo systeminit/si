@@ -12,6 +12,7 @@ use dal::{
     component::{frame::FrameError, inferred_connection_graph::InferredConnectionGraphError},
     pkg::PkgError,
     slow_rt::SlowRuntimeError,
+    socket::{input::InputSocketError, output::OutputSocketError},
     workspace_snapshot::graph::WorkspaceSnapshotGraphError,
     ChangeSetError, ComponentError, FuncError, SchemaError, SchemaId, SchemaVariantError,
     TransactionsError, WorkspaceSnapshotError, WsEventError,
@@ -53,12 +54,16 @@ pub enum ViewError {
     Func(#[from] FuncError),
     #[error("inferred connection graph error: {0}")]
     InferredConnectionGraph(#[from] InferredConnectionGraphError),
+    #[error("input socket error: {0}")]
+    InputSocketError(#[from] InputSocketError),
     #[error("invalid request: {0}")]
     InvalidRequest(String),
     #[error("join error: {0}")]
     Join(#[from] JoinError),
     #[error("there is already a view called {0}")]
     NameAlreadyInUse(String),
+    #[error("output socket error: {0}")]
+    OutputSocket(#[from] OutputSocketError),
     #[error(transparent)]
     ParseInt(#[from] ParseIntError),
     #[error("paste error")]

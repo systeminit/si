@@ -17,7 +17,7 @@ async function install_module_inner(sdf: SdfApiClient,
     changeSetId: string,
 ) {
     // decide how many modules you want to install
-    const num_to_install = 5;
+    const num_to_install = 500;
 
     // get the list of builtins from the module index - note we're doing this and not hitting the schema variants route 
     // so we can separately track install from component creation
