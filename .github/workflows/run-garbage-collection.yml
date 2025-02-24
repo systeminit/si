@@ -1,0 +1,45 @@
+name: Run SDF Garbage Collection
+
+# Required for IDP JWT and actions/checkout
+permissions:
+      id-token: write
+      contents: read
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        type: string
+        required: true
+        description: "Where to garbage collect"
+
+  workflow_dispatch:
+    inputs:
+      environment:
+        type: choice
+        required: true
+        description: "Where to garbage collect"
+        default: "tools"
+        options:
+          - tools
+          - production
+
+jobs:
+  garbage_collect:
+    environment: ${{ inputs.environment }}
+    name: Run Garbage Collection
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ASSUME_ROLE_ARN }}
+          role-session-name: GitHub_to_AWS_via_FederatedOIDC
+          aws-region: us-east-1
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Garbage Collection
+        run: |
+          component/toolbox/awsi.sh snapshot-garbage-collection -p pull-from-env -r us-east-1 -a y
