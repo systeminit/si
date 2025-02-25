@@ -37,7 +37,7 @@
           tooltipPlacement="top"
           @click="openApiTokens"
         />
-        <IconButton
+        <!-- <IconButton
           :icon="draftWorkspace.isHidden ? 'hide' : 'show'"
           :iconIdleTone="draftWorkspace.isHidden ? 'warning' : 'shade'"
           :tooltip="
@@ -64,7 +64,7 @@
           size="lg"
           tooltipPlacement="top"
           @click="favouriteWorkspace(!draftWorkspace.isFavourite)"
-        />
+        /> -->
       </WorkspacePageHeader>
 
       <Stack>
@@ -135,7 +135,7 @@
           >
             {{ createMode ? "Create Workspace" : "Save Workspace" }}
           </VButton>
-          <VButton
+          <!-- <VButton
             v-if="!createMode"
             :disabled="isDefaultWorkspace"
             class="basis-[calc(25%-0.5rem)] flex-grow-0"
@@ -145,7 +145,7 @@
             variant="solid"
             @click="setDefaultWorkspace()"
             >Set as Default</VButton
-          >
+          > -->
         </div>
       </Stack>
       <div v-if="!createMode" class="mt-sm">
@@ -378,11 +378,11 @@ watch(
   },
   { immediate: true },
 );
-const setDefaultWorkspace = async () => {
-  if (!props.workspaceId) return;
+// const setDefaultWorkspace = async () => {
+//   if (!props.workspaceId) return;
 
-  await workspacesStore.SET_DEFAULT_WORKSPACE(props.workspaceId);
-};
+//   await workspacesStore.SET_DEFAULT_WORKSPACE(props.workspaceId);
+// };
 const createWorkspace = async () => {
   if (!draftWorkspace.description) {
     draftWorkspace.description = "";
@@ -444,20 +444,20 @@ const openApiTokens = async () => {
     params: { workspaceId: props.workspaceId },
   });
 };
-const favouriteWorkspace = async (isFavourite: boolean) => {
-  if (!props.workspaceId) return;
+// const favouriteWorkspace = async (isFavourite: boolean) => {
+//   if (!props.workspaceId) return;
 
-  await workspacesStore.SET_FAVOURITE(props.workspaceId, isFavourite);
+//   await workspacesStore.SET_FAVOURITE(props.workspaceId, isFavourite);
 
-  draftWorkspace.isFavourite = isFavourite;
-};
-const hideWorkspace = async (isHidden: boolean) => {
-  if (!props.workspaceId) return;
+//   draftWorkspace.isFavourite = isFavourite;
+// };
+// const hideWorkspace = async (isHidden: boolean) => {
+//   if (!props.workspaceId) return;
 
-  await workspacesStore.SET_HIDDEN(props.workspaceId, isHidden);
+//   await workspacesStore.SET_HIDDEN(props.workspaceId, isHidden);
 
-  draftWorkspace.isHidden = isHidden;
-};
+//   draftWorkspace.isHidden = isHidden;
+// };
 
 const deleteWorkspace = async () => {
   const res = await workspacesStore.DELETE_WORKSPACE(props.workspaceId);
