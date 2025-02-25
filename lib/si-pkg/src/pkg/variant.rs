@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use object_tree::{Hash, HashedNode};
 use petgraph::prelude::*;
 use std::collections::{hash_map::Entry, HashMap, VecDeque};
@@ -193,12 +194,12 @@ impl<'a> SiPkgSchemaVariant<'a> {
     );
 
     fn prop_stack_from_source<I>(
-        source: Source<'a>,
+        source: &Source<'a>,
         node_idx: NodeIndex,
         parent_info: Option<I>,
     ) -> PkgResult<Vec<(SiPkgProp<'a>, Option<I>)>>
     where
-        I: ToOwned + Clone,
+        I: ToOwned + Clone + std::fmt::Debug,
     {
         Ok(
             match source
@@ -211,21 +212,53 @@ impl<'a> SiPkgSchemaVariant<'a> {
                     )
                 }) {
                 Some(prop_child_idxs) => {
-                    let child_node_idxs: Vec<_> = source
+                    // Create the child props
+                    let child_props = source
                         .graph
                         .neighbors_directed(prop_child_idxs, Outgoing)
-                        .collect();
+                        .map(|child_idx| SiPkgProp::from_graph(source.graph, child_idx))
+                        .map_ok(|child_prop| (child_prop, parent_info.to_owned()));
 
-                    let mut entries = vec![];
-                    for child_idx in child_node_idxs {
-                        entries.push((
-                            SiPkgProp::from_graph(source.graph, child_idx)?,
-                            parent_info.to_owned(),
-                        ));
+                    // If the node has a child order, honor it
+                    let node = source
+                        .graph
+                        .node_weight(node_idx)
+                        .ok_or(SiPkgError::prop_tree_invalid("node index not found"))?
+                        .inner();
+                    match node.child_order() {
+                        Some(child_order) => {
+                            // Map the child props by name so we can collect them in order
+                            let mut props_by_name = HashMap::new();
+                            for child_prop in child_props {
+                                let child_prop = child_prop?;
+                                if props_by_name
+                                    .insert(child_prop.0.name().to_owned(), child_prop)
+                                    .is_some()
+                                {
+                                    return Err(SiPkgError::prop_tree_invalid("duplicate prop"));
+                                }
+                            }
+
+                            // Collect the child props in reverse order
+                            let child_props = child_order
+                                .iter()
+                                .rev()
+                                .map(|name| {
+                                    props_by_name
+                                        .remove(name)
+                                        .ok_or(SiPkgError::prop_tree_invalid("dup prop order"))
+                                })
+                                .try_collect()?;
+                            if !props_by_name.is_empty() {
+                                return Err(SiPkgError::prop_tree_invalid("prop order missing"));
+                            }
+                            child_props
+                        }
+                        // If there is no child order, just return the child props
+                        None => child_props.try_collect()?,
                     }
-
-                    entries
                 }
+                // If there are no child props, return empty vec
                 None => vec![],
             },
         )
@@ -288,17 +321,18 @@ impl<'a> SiPkgSchemaVariant<'a> {
     }
 
     pub async fn visit_prop_tree<F, Fut, I, C, E>(
-        &'a self,
+        &self,
         prop_root: SchemaVariantSpecPropRoot,
         process_prop_fn: F,
         parent_info: Option<I>,
-        context: &'a C,
+        context: C,
     ) -> Result<(), E>
     where
-        F: Fn(SiPkgProp<'a>, Option<I>, &'a C) -> Fut,
+        F: Fn(SiPkgProp<'a>, Option<I>, C) -> Fut,
         Fut: Future<Output = Result<Option<I>, E>>,
         E: std::convert::From<SiPkgError>,
-        I: ToOwned + Clone,
+        I: ToOwned + Clone + std::fmt::Debug,
+        C: 'a + Copy,
     {
         if let Some(prop_root_idx) = self.get_prop_root_idx(prop_root).await? {
             let mut child_node_idxs: Vec<_> = self
@@ -317,11 +351,8 @@ impl<'a> SiPkgSchemaVariant<'a> {
             // Skip processing the "root" prop for this tree as a `dal::SchemaVariant::new` already
             // guarantees such a prop has already been created. Rather, we will push all immediate
             // children of the domain prop to be ready for processing.
-            let mut stack = Self::prop_stack_from_source(
-                self.source.clone(),
-                prop_root_node_idx,
-                parent_info.to_owned(),
-            )?;
+            let mut stack =
+                Self::prop_stack_from_source(&self.source, prop_root_node_idx, parent_info)?;
 
             while let Some((prop, parent_info)) = stack.pop() {
                 let node_idx = prop.source().node_idx;
@@ -329,9 +360,9 @@ impl<'a> SiPkgSchemaVariant<'a> {
                     process_prop_fn(prop, parent_info.to_owned(), context).await?;
 
                 stack.extend(Self::prop_stack_from_source(
-                    self.source.clone(),
+                    &self.source,
                     node_idx,
-                    new_parent_info.to_owned(),
+                    new_parent_info,
                 )?);
             }
         }
@@ -359,6 +390,10 @@ impl<'a> SiPkgSchemaVariant<'a> {
         let prop_stack = context.prop_stack.into_inner();
         let prop_parents = context.prop_parents.into_inner();
         let mut prop_children: HashMap<String, Vec<PropSpec>> = HashMap::new();
+        let mut root_children = vec![];
+        // This is a depth-first post-order traversal (parents after children), with the
+        // hitch that the child order is reversed because we're reversing a depth-first
+        // pre-order traversal
         for (path, mut prop) in prop_stack {
             if let Some(children) = prop_children.get(&path) {
                 match prop
@@ -377,7 +412,13 @@ impl<'a> SiPkgSchemaVariant<'a> {
                         prop.type_prop(type_prop.clone());
                     }
                     PropSpecKind::Object => {
-                        prop.entries(children.to_owned());
+                        let mut children = children.clone();
+                        // We have to reverse the children to be able to process them in the correct
+                        // order, because we processed the children in reverse order (the prop stack
+                        // traverses props depth-first, post-order with reverse child order due
+                        // to how things get pushed on it)
+                        children.reverse();
+                        prop.entries(children);
                     }
                     _ => {
                         return Err(SiPkgError::prop_tree_invalid(
@@ -399,9 +440,18 @@ impl<'a> SiPkgSchemaVariant<'a> {
                     }
                 },
                 None => {
-                    builder.prop(prop_root, spec);
+                    root_children.push(spec);
                 }
             }
+        }
+
+        // We have to reverse the children to be able to process them in the correct
+        // order, because we processed the children in reverse order (the prop stack
+        // traverses props depth-first, post-order with reverse child order due
+        // to how things get pushed on it)
+        root_children.reverse();
+        for spec in root_children {
+            builder.prop(prop_root, spec);
         }
 
         Ok(())
