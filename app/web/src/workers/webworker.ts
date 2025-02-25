@@ -513,6 +513,23 @@ const pruneAtomsForClosedChangeSet = async (workspaceId: WorkspacePk, changeSetI
   });
 };
 
+/**
+ * Each unique atom kind & arg ought to have only one
+ * FK to a given snapshot
+ */
+const assertUniqueAtoms = async () => {
+  const result = await db.exec({
+    sql: `SELECT count(*), atoms.kind, atoms.args, snapshots_mtm_atoms.snapshot_id
+    FROM atoms
+    INNER JOIN snapshots_mtm_atoms ON atoms.id = snapshots_mtm_atoms.atom_id
+    GROUP BY atoms.kind, atoms.args, snapshots_mtm_atoms.snapshot_id
+    HAVING count(*) > 1
+    ;`,
+    returnValue: "resultRows",
+  })
+  console.assert(result.length === 0,  `Unique atoms on snapshot failed ${result}`);
+};
+
 const ragnarok = () => {
   // FUTURE: drop the DB data, rebuild it, and enter keys from empty
 };
@@ -741,6 +758,7 @@ const dbInterface: DBInterface = {
       await handleEvent(event1, span);
       span.end()
     });
+    await assertUniqueAtoms();
 
     const confirm1 = await db.exec({
       sql: `SELECT count(snapshot_id) FROM snapshots_mtm_atoms WHERE snapshot_id = ?;`,
@@ -803,6 +821,7 @@ const dbInterface: DBInterface = {
       await handleEvent(event2);
       span.end()
     });
+    await assertUniqueAtoms();
 
     const confirm4 = await db.exec({
       sql: `SELECT count(snapshot_id) FROM snapshots_mtm_atoms WHERE snapshot_id = ?;`,
@@ -897,6 +916,7 @@ const dbInterface: DBInterface = {
       await handleEvent(event3);
       span.end()
     });
+    await assertUniqueAtoms();
 
     const added_record = await db.exec({
       sql: `SELECT data FROM atoms WHERE checksum = ?`,
