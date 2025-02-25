@@ -31,6 +31,7 @@ export function addDefaultPropsAndSockets(
       "extra",
       domain.metadata.propPath,
       undefined,
+      true,
     );
 
     // Create PropUsageMap
@@ -39,6 +40,7 @@ export function addDefaultPropsAndSockets(
         "PropUsageMap",
         "string",
         extraProp.metadata.propPath,
+        false,
       );
       const propUsageMap: PropUsageMap = {
         createOnly: [],
@@ -74,6 +76,7 @@ export function addDefaultPropsAndSockets(
         "Region",
         "string",
         extraProp.metadata.propPath,
+        true,
       );
 
       schemaVariant.sockets.push(createInputSocketFromProp(regionProp));
@@ -86,6 +89,7 @@ export function addDefaultPropsAndSockets(
         "AwsResourceType",
         "string",
         extraProp.metadata.propPath,
+        false,
       );
 
       typeProp.data.defaultValue = schema.name;
@@ -100,6 +104,7 @@ export function addDefaultPropsAndSockets(
         "AWS Credential",
         "string",
         extraProp.metadata.propPath,
+        true,
       );
       credProp.data.widgetKind = "Secret";
       credProp.data.widgetOptions = [{
