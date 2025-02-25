@@ -25,7 +25,7 @@ impl OnFailure for DefaultOnFailure {
             trace!("nacking message");
             if let Err(err) = acker.ack_with(jetstream::AckKind::Nak(None)).await {
                 warn!(
-                    error = ?err,
+                    si.error.message = ?err,
                     subject = head.subject.as_str(),
                     "failed to nack the message",
                 );

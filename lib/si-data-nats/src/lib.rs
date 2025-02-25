@@ -13,6 +13,7 @@ use async_nats::{subject::ToSubject, ToServerAddrs};
 use bytes::Bytes;
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
+use telemetry_utils::metric;
 use thiserror::Error;
 use tokio::sync::Mutex;
 
@@ -121,6 +122,29 @@ impl Client {
         if let Some(connection_name) = &config.connection_name {
             options = options.name(connection_name);
         }
+
+        options = options.event_callback(|event| async move {
+            match event {
+                Event::Connected => metric!(counter.nats.event_callback.connected = 1),
+                Event::Disconnected => metric!(counter.nats.event_callback.disconnected = 1),
+                Event::Closed => metric!(counter.nats.event_callback.closed = 1),
+                Event::LameDuckMode => metric!(counter.nats.event_callback.lame_duck_mode = 1),
+                Event::Draining => metric!(counter.nats.event_callback.draining = 1),
+                Event::SlowConsumer(sid) => {
+                    metric!(counter.nats.event_callback.slow_consumer = 1);
+                    warn!(%sid, "nats event callback: slow consumers for subscription");
+                }
+                Event::ServerError(server_error) => {
+                    metric!(counter.nats.event_callback.server_error = 1);
+                    error!(si.error.message = ?server_error, "nats event callback: server error")
+                }
+                Event::ClientError(client_error) => {
+                    metric!(counter.nats.event_callback.client_error = 1);
+                    error!(si.error.message = ?client_error, "nats event callback: client error")
+                }
+            }
+        });
+
         Self::connect_with_options(&config.url, config.subject_prefix.clone(), options).await
     }
 

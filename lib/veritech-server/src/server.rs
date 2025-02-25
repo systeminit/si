@@ -165,7 +165,7 @@ impl Server {
     #[inline]
     pub async fn run(self) {
         if let Err(err) = self.try_run().await {
-            error!(error = ?err, "error while running veritech main loop");
+            error!(si.error.message = ?err, "error while running veritech main loop");
         }
     }
 
