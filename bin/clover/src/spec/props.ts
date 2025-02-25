@@ -1,8 +1,8 @@
 import { CfObjectProperty, CfProperty, normalizeProperty } from "../cfDb.ts";
 import { ulid } from "https://deno.land/x/ulid@v0.3.0/mod.ts";
-import { PropSpec } from "../bindings/PropSpec.ts";
-import { PropSpecData } from "../bindings/PropSpecData.ts";
 import { PropSpecWidgetKind } from "../bindings/PropSpecWidgetKind.ts";
+import { PropSpecData } from "../bindings/PropSpecData.ts";
+import { PropSpec } from "../bindings/PropSpec.ts";
 import _ from "npm:lodash";
 import ImportedJoi from "joi";
 import { Extend } from "../extend.ts";
@@ -56,7 +56,10 @@ export type ExpandedPropSpec = ExpandedPropSpecFor[keyof ExpandedPropSpecFor];
 interface PropSpecOverrides {
   data: Extend<
     PropSpecData,
-    { widgetOptions: { label: string; value: string }[] | null }
+    {
+      widgetOptions: { label: string; value: string }[] | null;
+      widgetKind: PropSpecWidgetKind | null;
+    }
   >;
   enum?: string[];
   metadata: {
@@ -65,6 +68,7 @@ interface PropSpecOverrides {
     writeOnly: boolean;
     primaryIdentifier: boolean;
     propPath: string[];
+    required: boolean;
   };
   joiValidation?: string;
   cfProp:
@@ -80,10 +84,8 @@ type CreatePropArgs = {
   propPath: string[];
   // The definition for this prop in the schema
   cfProp: CfProperty & { defName?: string };
-  // Whether this prop is required.
-  required: boolean;
-  // Whether the parent CfProperty was an object (only fields get fragment doc refs)
-  cfParentIsObject: boolean;
+  // The parent prop's definition
+  parentProp: ExpandedPropSpecFor["object" | "array" | "map"] | undefined;
   // A handler to add the prop to its parent after it has been created
   addTo?: (data: ExpandedPropSpec) => undefined;
 };
@@ -113,8 +115,7 @@ export function createDefaultPropFromCf(
         propPath: ["root", name],
         // Pretend the prop only has the specified properties (since we split it up)
         cfProp: { ...cfSchema, properties },
-        required: true,
-        cfParentIsObject: false,
+        parentProp: undefined,
         addTo: (prop: ExpandedPropSpec) => {
           if (prop.kind !== "object") {
             throw new Error(`${name} prop is not an object`);
@@ -155,8 +156,9 @@ export function createDefaultPropFromCf(
 export function createDefaultProp(
   name: DefaultPropType,
   cfProp: CfObjectProperty | undefined,
+  required: boolean,
 ): ExpandedPropSpecFor["object"] {
-  return createObjectProp(name, ["root"], cfProp);
+  return createObjectProp(name, ["root"], cfProp, required);
 }
 
 export function createDocLink(
@@ -190,10 +192,11 @@ export function createDocLink(
 }
 
 function createPropFromCf(
-  { propPath, cfProp, cfParentIsObject, required }: CreatePropArgs,
+  { propPath, cfProp, parentProp }: CreatePropArgs,
   { cfSchema, onlyProperties, queue }: CreatePropQueue,
 ): ExpandedPropSpec | undefined {
   const name = propPath[propPath.length - 1];
+  const required = childIsRequired(parentProp, name);
   const propUniqueId = ulid();
   const data: ExpandedPropSpec["data"] = {
     name,
@@ -204,7 +207,7 @@ function createPropFromCf(
     widgetKind: null,
     widgetOptions: [],
     hidden: false,
-    docLink: cfParentIsObject
+    docLink: parentProp?.kind === "object"
       ? createDocLink(cfSchema, cfProp.defName, name)
       : null,
     documentation: cfProp.description ?? null,
@@ -219,6 +222,7 @@ function createPropFromCf(
       writeOnly: onlyProperties.writeOnly.includes(name),
       primaryIdentifier: onlyProperties.primaryIdentifier.includes(name),
       propPath,
+      required,
     },
     cfProp,
   };
@@ -394,8 +398,7 @@ function createPropFromCf(
     queue.push({
       propPath: [...propPath, `${name}Item`],
       cfProp: normalizedCfProp.items,
-      required: true, // If you *do* have an item which is an object, this enables validation for required fields
-      cfParentIsObject: false,
+      parentProp: prop,
       addTo: (data: ExpandedPropSpec) => {
         prop.typeProp = data;
       },
@@ -410,29 +413,28 @@ function createPropFromCf(
 
       const patternProps = Object.entries(normalizedCfProp.patternProperties);
 
-      let cfProp;
+      let cfItemProp;
       if (patternProps.length === 1) {
         const [_thing, patternProp] = patternProps[0];
-        cfProp = patternProp;
+        cfItemProp = patternProp;
       } else if (patternProps.length === 2) {
         // If there is 2 pattern props, that means we have a validation for the key and another one for the value of the map.
         // We take the second one as the type of the value, since it's the thing we can store right now
         const [_thing, patternProp] = patternProps[1];
-        cfProp = patternProp;
+        cfItemProp = patternProp;
       } else {
         console.log(patternProps);
         throw new Error("too many pattern props you fool");
       }
 
-      if (!cfProp) {
+      if (!cfItemProp) {
         throw new Error("could not extract type from pattern prop");
       }
 
       queue.push({
-        cfProp,
+        cfProp: cfItemProp,
         propPath: [...propPath, `${name}Item`],
-        required: true, // If you *do* have an item which is an object, this enables validation for required fields
-        cfParentIsObject: false,
+        parentProp: prop,
         addTo: (data: ExpandedPropSpec) => {
           prop.typeProp = data;
         },
@@ -452,9 +454,7 @@ function createPropFromCf(
         queue.push({
           cfProp: childCfProp,
           propPath: [...propPath, name],
-          // Object fields are only required if the object itself is required
-          required: required && !!normalizedCfProp.required?.includes(name),
-          cfParentIsObject: true,
+          parentProp: prop,
           addTo: (childProp: ExpandedPropSpec) => {
             prop.entries.push(childProp);
           },
@@ -488,6 +488,23 @@ function createPropFromCf(
   throw new Error(`no matching kind in prop with path: ${propPath}`);
 }
 
+function childIsRequired(
+  parentProp: ExpandedPropSpecFor["object" | "array" | "map"] | undefined,
+  childName: string,
+) {
+  // If the parent is an object, then the child is required only if the parent is required
+  // *and* the child is in the parent's "required" list
+  if (parentProp?.kind === "object") {
+    if (!parentProp?.metadata.required) return false;
+    if (!parentProp.cfProp) return false;
+    if (!("required" in parentProp.cfProp)) return false;
+    return parentProp.cfProp.required?.includes(childName) ?? false;
+  }
+  // If the parent is the root prop, or an array or map, the child is required (i.e. if it
+  // gets created then it must have a value).
+  return true;
+}
+
 function setJoiValidation(prop: ExpandedPropSpec, joiValidation: string) {
   prop.joiValidation = joiValidation;
   // Used in the eval() below
@@ -515,6 +532,7 @@ export function createObjectProp(
   name: string,
   parentPath: string[],
   cfProp: CfObjectProperty | undefined,
+  required: boolean,
 ): Extract<ExpandedPropSpec, { kind: "object" }> {
   const data: ExpandedPropSpec["data"] = {
     name,
@@ -541,6 +559,7 @@ export function createObjectProp(
       writeOnly: false,
       primaryIdentifier: false,
       propPath: [...parentPath, name],
+      required,
     },
     cfProp,
   };
@@ -552,7 +571,7 @@ export function createScalarProp(
   name: string,
   kind: "number" | "string" | "boolean",
   parentPath: string[],
-  cfProp?: CfProperty,
+  required: boolean,
 ): ExpandedPropSpec {
   let widgetKind: PropSpecWidgetKind;
   switch (kind) {
@@ -589,8 +608,9 @@ export function createScalarProp(
       writeOnly: false,
       primaryIdentifier: false,
       propPath: [...parentPath, name],
+      required,
     },
-    cfProp,
+    cfProp: undefined,
   };
 
   return prop;

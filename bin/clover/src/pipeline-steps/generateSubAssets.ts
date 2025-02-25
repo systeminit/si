@@ -91,9 +91,9 @@ export function generateSubAssets(
           actionFuncs: [],
           leafFunctions: [],
           managementFuncs: [],
-          resourceValue: createDefaultProp("resource_value", undefined),
+          resourceValue: createDefaultProp("resource_value", undefined, false),
           sockets: [newSpecOutputSocket],
-          secrets: createDefaultProp("secrets", undefined),
+          secrets: createDefaultProp("secrets", undefined, false),
           uniqueId: variantId,
         };
 
