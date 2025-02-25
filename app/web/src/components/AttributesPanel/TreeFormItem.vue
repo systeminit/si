@@ -1427,7 +1427,13 @@ const sourceTooltipText = computed(() => {
 
 function resetNewValueToCurrentValue() {
   newValueBoolean.value = !!currentValue.value;
-  newValueString.value = currentValue.value?.toString() || "";
+  if (currentValue.value instanceof Object) {
+    newValueString.value = JSON.stringify(currentValue.value, null, 2);
+  } else if (currentValue.value) {
+    newValueString.value = "";
+  } else {
+    newValueString.value = currentValue.value?.toString() || "";
+  }
   const valAsNumber = parseFloat(currentValue.value?.toString() || "");
   newValueNumber.value = Number.isNaN(valAsNumber) ? undefined : valAsNumber;
   showValidationDetails.value = false;
