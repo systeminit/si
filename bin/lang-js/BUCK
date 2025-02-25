@@ -23,7 +23,8 @@ alias(
 )
 
 deno_cache(
-  name = "cache"
+  name = "cache",
+  srcs = glob(["src/**/*.ts"])
 )
 
 # this builds bundle.ts so it can be used at runtime by function execution
@@ -31,12 +32,13 @@ deno_run(
     name = "build",
     main = "src/build.ts",
     out = "src/bundle.ts",
-    srcs = glob([
-        "src/**/build.ts",
-    ]) + [
+    srcs = [
         ":cache",
         "//:deno_workspace"
-    ],
+    ] +
+    glob([
+        "src/**/build.ts",
+    ]),
     permissions = [
         "allow-all",
     ],
@@ -47,13 +49,13 @@ deno_compile(
     name = "bin",
     main = "src/index.ts",
     out = "lang-js",
-    srcs = glob([
+    srcs = [
+        ":build",
+    ] +
+    glob([
         "src/**/*.ts",
         "src/**/*.js",
-    ]) + [
-        ":build",
-        "//:deno_workspace"
-    ],
+    ]),
     permissions = [
         "allow-all",
     ],

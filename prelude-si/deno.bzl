@@ -14,17 +14,22 @@ load(
 def deno_cache_impl(ctx: AnalysisContext) -> list[Provider]:
     """Implementation of the deno_cache rule."""
     deno_toolchain = ctx.attrs._deno_toolchain[DenoToolchainInfo]
+    out = ctx.actions.declare_output("deno_cache_marker")
+
 
     cmd = cmd_args(
         ctx.attrs._python_toolchain[PythonToolchainInfo].interpreter,
         deno_toolchain.deno_cache[DefaultInfo].default_outputs[0],
     )
+    cmd.add("--marker", out.as_output())
 
     for src in ctx.attrs.srcs:
         cmd.add("--input", src)
 
+    ctx.actions.run(cmd, category = "deno", identifier = "deno_cache")
+
     return [
-        DefaultInfo(),
+        DefaultInfo(default_output = out),
         RunInfo(args = cmd),
     ]
 
