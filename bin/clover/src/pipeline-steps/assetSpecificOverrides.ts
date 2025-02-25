@@ -144,6 +144,54 @@ const overrides = new Map<string, OverrideFn>([
       setAnnotationOnSocket(socket, { tokens: ["Project Identifier"] });
     },
   ],
+  [
+    "AWS::RDS::DBInstance",
+    (spec: ExpandedPkgSpec) => {
+      const variant = spec.schemas[0].variants[0];
+
+      const prop = variant.domain.entries.find((p: ExpandedPropSpec) =>
+        p.name === "VPCSecurityGroups"
+      );
+  
+      if (!prop) return;
+      const socket = createInputSocketFromProp(prop);
+
+      setAnnotationOnSocket(socket, { tokens: ["Group Id"] });
+      variant.sockets.push(socket);
+    },
+  ],
+  [
+    "AWS::RDS::DBCluster",
+    (spec: ExpandedPkgSpec) => {
+      const variant = spec.schemas[0].variants[0];
+
+      const prop = variant.domain.entries.find((p: ExpandedPropSpec) =>
+        p.name === "VpcSecurityGroupIds"
+      );
+  
+      if (!prop) return;
+      const socket = createInputSocketFromProp(prop);
+
+      setAnnotationOnSocket(socket, { tokens: ["Group Id"] });
+      variant.sockets.push(socket);
+    },
+  ],
+  [
+    "AWS::RDS::DBSubnetGroup",
+    (spec: ExpandedPkgSpec) => {
+      const variant = spec.schemas[0].variants[0];
+
+      const prop = variant.domain.entries.find((p: ExpandedPropSpec) =>
+        p.name === "SubnetIds"
+      );
+  
+      if (!prop) return;
+      const socket = createInputSocketFromProp(prop);
+
+      setAnnotationOnSocket(socket, { tokens: ["Subnet Id"] });
+      variant.sockets.push(socket);
+    },
+  ],
 ]);
 
 function addSecretProp(
