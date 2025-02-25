@@ -1,18 +1,21 @@
 use clap::CommandFactory;
+use commands::Commands;
 use futures::stream::StreamExt;
 use indicatif::{ProgressBar, ProgressStyle};
 use std::collections::HashMap;
-use std::fs::{self};
+use std::fs::{self, DirEntry};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use ulid::Ulid;
 
-use clap::{Parser, Subcommand};
+use clap::Parser;
 use color_eyre::Result;
 use module_index_client::{ModuleDetailsResponse, ModuleIndexClient};
 use si_pkg::{PkgSpec, SiPkg};
 use url::Url;
+
+mod commands;
 
 const CLOVER_DEFAULT_CREATOR: &str = "Clover";
 
@@ -29,76 +32,6 @@ struct Args {
     command: Option<Commands>,
 }
 
-#[derive(Subcommand, Debug)]
-#[remain::sorted]
-enum Commands {
-    UploadAllSpecs(UploadAllSpecsArgs),
-    UploadSpec(UploadSpecArgs),
-    WriteAllSpecs(WriteAllSpecsArgs),
-    WriteExistingModulesSpec(WriteExistingModulesSpecArgs),
-    WriteSpec(WriteSpecArgs),
-}
-
-#[derive(clap::Args, Debug)]
-#[command(about = "Upload all specs in {target_dir} to the module index")]
-struct UploadAllSpecsArgs {
-    #[arg(
-        long,
-        short = 't',
-        required = true,
-        help = "Path to the directory containing specs to upload"
-    )]
-    target_dir: PathBuf,
-
-    #[arg(
-        long,
-        default_value = "100",
-        help = "Maximum number of concurrent uploads."
-    )]
-    max_concurrent: usize,
-}
-#[derive(clap::Args, Debug)]
-#[command(about = "Upload the spec {target} to the module index")]
-struct UploadSpecArgs {
-    #[arg(
-        long,
-        short = 't',
-        required = true,
-        help = "Path to the spec to upload"
-    )]
-    target: PathBuf,
-
-    #[arg(
-        long,
-        default_value = "100",
-        help = "Maximum number of concurrent uploads."
-    )]
-    max_concurrent: usize,
-}
-
-#[derive(clap::Args, Debug)]
-#[command(about = "Get all built-ins an write out a hashmap with their name and schema id")]
-struct WriteExistingModulesSpecArgs {
-    #[arg(long, short = 'o', required = true)]
-    out: PathBuf,
-}
-
-#[derive(clap::Args, Debug)]
-#[command(about = "Get {spec_name} from the module index and write it to {out}")]
-struct WriteSpecArgs {
-    #[arg(long, short = 's', required = true)]
-    spec_name: String,
-    #[arg(long, short = 'o', required = true)]
-    out: PathBuf,
-}
-
-#[derive(clap::Args, Debug)]
-#[command(about = "Get all specs from the module index and write them to {out}")]
-struct WriteAllSpecsArgs {
-    #[arg(long, short = 'o', required = true)]
-    out: PathBuf,
-}
-
 #[tokio::main]
 async fn main() -> Result<()> {
     color_eyre::install()?;
@@ -109,6 +42,7 @@ async fn main() -> Result<()> {
     let client = ModuleIndexClient::new(Url::parse(endpoint)?, token);
 
     match args.command {
+        Some(Commands::AnonymizeSpecs(args)) => anonymize_specs(args.target_dir, args.out).await?,
         Some(Commands::UploadAllSpecs(args)) => {
             upload_pkg_specs(&client, args.target_dir, args.max_concurrent).await?
         }
@@ -141,6 +75,24 @@ enum ModuleState {
     NeedsUpdate,
     New,
 }
+
+async fn anonymize_specs(target_dir: PathBuf, out: PathBuf) -> Result<()> {
+    fs::create_dir_all(&out)?;
+    let specs = spec_from_dir_or_file(target_dir)?;
+    for dir in specs {
+        let mut spec = json_to_spec(dir.path())?;
+        let spec_name = format!("{}.json", spec.name);
+        spec.anonymize();
+
+        fs::write(
+            Path::new(&out).join(spec_name),
+            serde_json::to_string_pretty(&spec)?,
+        )?;
+    }
+
+    Ok(())
+}
+
 async fn write_existing_modules_spec(client: ModuleIndexClient, out: PathBuf) -> Result<()> {
     let modules = list_specs(client.clone()).await?;
     let mut entries: HashMap<String, String> = HashMap::new();
@@ -241,23 +193,7 @@ async fn upload_pkg_specs(
     target_dir: PathBuf,
     max_concurrent: usize,
 ) -> Result<()> {
-    let specs: Vec<_> = if target_dir.is_file() {
-        if let Some(parent) = target_dir.parent() {
-            fs::read_dir(parent)?
-                .filter_map(|entry| entry.ok())
-                .filter(|entry| entry.path() == target_dir)
-                .collect()
-        } else {
-            vec![]
-        }
-    } else {
-        fs::read_dir(&target_dir)?
-            .filter_map(|entry| entry.ok())
-            .filter(|entry| {
-                entry.path().is_file() && entry.path().extension().is_some_and(|ext| ext == "json")
-            })
-            .collect()
-    };
+    let specs: Vec<_> = spec_from_dir_or_file(target_dir)?;
 
     let mut no_action_needed = 0;
     let mut new_modules = vec![];
@@ -383,9 +319,13 @@ async fn upload_pkg_specs(
 }
 
 fn json_to_pkg(spec: PathBuf) -> Result<SiPkg> {
+    Ok(SiPkg::load_from_spec(json_to_spec(spec)?)?)
+}
+
+fn json_to_spec(spec: PathBuf) -> Result<PkgSpec> {
     let buf = fs::read_to_string(&spec)?;
     let spec: PkgSpec = serde_json::from_str(&buf)?;
-    Ok(SiPkg::load_from_spec(spec)?)
+    Ok(spec)
 }
 
 async fn list_specs(client: ModuleIndexClient) -> Result<Vec<ModuleDetailsResponse>> {
@@ -430,4 +370,24 @@ fn setup_progress_bar(length: u64) -> Arc<ProgressBar> {
             .progress_chars("▸▹▹"),
     );
     pb
+}
+
+fn spec_from_dir_or_file(target_dir: PathBuf) -> Result<Vec<DirEntry>> {
+    Ok(if target_dir.is_file() {
+        if let Some(parent) = target_dir.parent() {
+            fs::read_dir(parent)?
+                .filter_map(|entry| entry.ok())
+                .filter(|entry| entry.path() == target_dir)
+                .collect()
+        } else {
+            vec![]
+        }
+    } else {
+        fs::read_dir(&target_dir)?
+            .filter_map(|entry| entry.ok())
+            .filter(|entry| {
+                entry.path().is_file() && entry.path().extension().is_some_and(|ext| ext == "json")
+            })
+            .collect()
+    })
 }

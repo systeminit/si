@@ -73,6 +73,9 @@ impl SocketSpecData {
     pub fn builder() -> SocketSpecDataBuilder {
         SocketSpecDataBuilder::default()
     }
+    pub fn anonymize(&mut self) {
+        self.func_unique_id = None;
+    }
 }
 
 #[derive(Builder, Clone, Debug, Deserialize, Serialize)]
@@ -101,5 +104,9 @@ impl SocketSpec {
 
     pub fn kind(&self) -> Option<SocketSpecKind> {
         self.data.as_ref().map(|data| data.kind)
+    }
+    pub fn anonymize(&mut self) {
+        self.unique_id = None;
+        self.inputs.iter_mut().for_each(|f| f.anonymize())
     }
 }

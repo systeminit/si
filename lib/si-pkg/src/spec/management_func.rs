@@ -27,4 +27,6 @@ impl ManagementFuncSpec {
     pub fn builder() -> ManagementFuncSpecBuilder {
         ManagementFuncSpecBuilder::default()
     }
+
+    pub fn anonymize(&mut self) {}
 }

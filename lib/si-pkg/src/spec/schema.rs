@@ -24,6 +24,10 @@ impl SchemaSpecData {
     pub fn builder() -> SchemaSpecDataBuilder {
         SchemaSpecDataBuilder::default()
     }
+
+    pub fn anonymize(&mut self) {
+        self.default_schema_variant = None;
+    }
 }
 
 #[derive(Builder, Clone, Debug, Deserialize, Serialize)]
@@ -52,6 +56,16 @@ impl SchemaSpec {
     #[must_use]
     pub fn builder() -> SchemaSpecBuilder {
         SchemaSpecBuilder::default()
+    }
+
+    pub fn anonymize(&mut self) {
+        self.unique_id = None;
+
+        if let Some(ref mut data) = self.data {
+            data.anonymize();
+        }
+
+        self.variants.iter_mut().for_each(|f| f.anonymize());
     }
 }
 

@@ -26,4 +26,8 @@ impl AuthenticationFuncSpec {
     pub fn builder() -> AuthenticationFuncSpecBuilder {
         AuthenticationFuncSpecBuilder::default()
     }
+
+    pub fn anonymize(&mut self) {
+        self.unique_id = None;
+    }
 }

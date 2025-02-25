@@ -73,4 +73,8 @@ impl LeafFunctionSpec {
     pub fn builder() -> LeafFunctionSpecBuilder {
         LeafFunctionSpecBuilder::default()
     }
+
+    pub fn anonymize(&mut self) {
+        self.unique_id = None;
+    }
 }
