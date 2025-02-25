@@ -9,11 +9,10 @@ mod authoring;
 
 #[test]
 async fn summary(ctx: &mut DalContext) {
-    let schema = Schema::find_by_name(ctx, "starfield")
+    let schema = Schema::get_by_name(ctx, "starfield")
         .await
-        .expect("could not find schema")
         .expect("schema not found");
-    let schema_variant_id = SchemaVariant::get_default_id_for_schema(ctx, schema.id())
+    let schema_variant_id = SchemaVariant::default_id_for_schema(ctx, schema.id())
         .await
         .expect("no schema variant found");
 
@@ -75,9 +74,8 @@ async fn duplicate(ctx: &mut DalContext) {
 
 #[test]
 async fn get_ts_type_from_root(ctx: &mut DalContext) {
-    let schema = Schema::find_by_name(ctx, "starfield")
+    let schema = Schema::get_by_name(ctx, "starfield")
         .await
-        .expect("could not perform find by name")
         .expect("schema not found");
     let schema_variant_id = schema
         .get_default_schema_variant_id(ctx)

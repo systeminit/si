@@ -7,11 +7,7 @@ use dal_test::test;
 
 #[test]
 async fn attach_multiple_auth_funcs_with_creation(ctx: &mut DalContext) {
-    let schema = Schema::find_by_name(ctx, "katy perry")
-        .await
-        .expect("unable to find by name")
-        .expect("no schema found");
-    let schema_variant_id = SchemaVariant::get_default_id_for_schema(ctx, schema.id())
+    let schema_variant_id = SchemaVariant::default_id_for_schema_name(ctx, "katy perry")
         .await
         .expect("unable to get default schema variant");
 
@@ -67,11 +63,7 @@ async fn attach_multiple_auth_funcs_with_creation(ctx: &mut DalContext) {
 
 #[test]
 async fn detach_auth_func(ctx: &mut DalContext) {
-    let schema = Schema::find_by_name(ctx, "dummy-secret")
-        .await
-        .expect("unable to find by name")
-        .expect("no schema found");
-    let schema_variant_id = SchemaVariant::get_default_id_for_schema(ctx, schema.id())
+    let schema_variant_id = SchemaVariant::default_id_for_schema_name(ctx, "dummy-secret")
         .await
         .expect("unable to get default schema variant");
 
@@ -117,12 +109,11 @@ async fn edit_auth_func(ctx: &mut DalContext) {
         .await
         .expect("could not fork head");
     // find the variant we know is default and attached to this func already
-    let schema = Schema::find_by_name(ctx, "dummy-secret")
+    let schema = Schema::get_by_name(ctx, "dummy-secret")
         .await
-        .expect("unable to find by name")
         .expect("no schema found");
 
-    let schema_variant_id = SchemaVariant::get_default_id_for_schema(ctx, schema.id())
+    let schema_variant_id = SchemaVariant::default_id_for_schema(ctx, schema.id())
         .await
         .expect("unable to get default schema variant");
     // Cache the total number of funcs before continuing.
@@ -206,7 +197,7 @@ async fn edit_auth_func(ctx: &mut DalContext) {
     );
 
     //ensure new schema variant is locked and default
-    let maybe_locked_schema_variant_id = SchemaVariant::get_default_id_for_schema(ctx, schema.id())
+    let maybe_locked_schema_variant_id = SchemaVariant::default_id_for_schema(ctx, schema.id())
         .await
         .expect("unable to get default schema variant");
     let maybe_locked_schema_variant =

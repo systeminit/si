@@ -75,9 +75,8 @@ async fn get_fallout_module(ctx: &DalContext) {
 
 #[test]
 async fn module_export_simple(ctx: &mut DalContext) {
-    let schema = Schema::find_by_name(ctx, "dummy-secret")
+    let schema = Schema::get_by_name(ctx, "dummy-secret")
         .await
-        .expect("unable to get schema")
         .expect("schema not found");
 
     let default_schema_variant = schema
@@ -169,9 +168,8 @@ async fn module_export_simple(ctx: &mut DalContext) {
 
 #[test]
 async fn prepare_contribution_works(ctx: &DalContext) {
-    let schema = Schema::find_by_name(ctx, "swifty")
+    let schema = Schema::get_by_name(ctx, "swifty")
         .await
-        .expect("could not find by name")
         .expect("schema not found");
     let name = "Paul's Test Pkg With Extra Spaces At The End    ";
     let version = "    Version With Spaces At The Beginning 2019-06-03";

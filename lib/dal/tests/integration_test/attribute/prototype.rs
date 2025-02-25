@@ -5,9 +5,8 @@ use pretty_assertions_sorted::assert_eq;
 
 #[test]
 async fn find_for_prop(ctx: &mut DalContext) {
-    let schema = Schema::find_by_name(ctx, "swifty")
+    let schema = Schema::get_by_name(ctx, "swifty")
         .await
-        .expect("unable to get schema")
         .expect("schema not found");
     let schema_variant_id = schema
         .get_default_schema_variant_id(ctx)

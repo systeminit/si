@@ -77,8 +77,7 @@ async fn treat_single_function(
                     should_hide = false;
                 }
             } else {
-                let default_for_schema =
-                    SchemaVariant::get_default_id_for_schema(ctx, schema).await?;
+                let default_for_schema = SchemaVariant::default_id_for_schema(ctx, schema).await?;
 
                 schema_default_map.insert(schema, default_for_schema);
 

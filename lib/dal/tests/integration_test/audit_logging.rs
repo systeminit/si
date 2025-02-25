@@ -24,9 +24,8 @@ async fn round_trip(ctx: &mut DalContext, audit_database_context: AuditDatabaseC
     let context = audit_database_context;
 
     // Collect schema information.
-    let schema = Schema::find_by_name(ctx, "swifty")
+    let schema = Schema::get_by_name(ctx, "swifty")
         .await
-        .expect("could not perform find by name")
         .expect("schema not found by name");
     let schema_variant_id = schema
         .get_default_schema_variant_id(ctx)

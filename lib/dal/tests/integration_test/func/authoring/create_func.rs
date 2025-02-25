@@ -15,12 +15,10 @@ use dal_test::test;
 
 #[test]
 async fn create_qualification_with_schema_variant(ctx: &mut DalContext) {
-    let maybe_swifty_schema = Schema::find_by_name(ctx, "swifty")
+    let swifty_schema = Schema::get_by_name(ctx, "swifty")
         .await
         .expect("unable to get schema");
-    assert!(maybe_swifty_schema.is_some());
 
-    let swifty_schema = maybe_swifty_schema.unwrap();
     let maybe_sv_id = swifty_schema
         .get_default_schema_variant_id(ctx)
         .await
@@ -90,12 +88,10 @@ async fn create_qualification_with_schema_variant(ctx: &mut DalContext) {
 
 #[test]
 async fn create_codegen_with_schema_variant(ctx: &mut DalContext) {
-    let maybe_swifty_schema = Schema::find_by_name(ctx, "swifty")
+    let swifty_schema = Schema::get_by_name(ctx, "swifty")
         .await
         .expect("unable to get schema");
-    assert!(maybe_swifty_schema.is_some());
 
-    let swifty_schema = maybe_swifty_schema.unwrap();
     let maybe_sv_id = swifty_schema
         .get_default_schema_variant_id(ctx)
         .await
@@ -153,9 +149,8 @@ async fn create_codegen_with_schema_variant(ctx: &mut DalContext) {
 
 #[test]
 async fn create_attribute_override_dynamic_func_for_prop(ctx: &mut DalContext) {
-    let schema = Schema::find_by_name(ctx, "swifty")
+    let schema = Schema::get_by_name(ctx, "swifty")
         .await
-        .expect("unable to find schema by name")
         .expect("schema not found");
     let schema_variant_id = schema
         .get_default_schema_variant_id(ctx)
@@ -230,9 +225,8 @@ async fn create_attribute_override_dynamic_func_for_prop(ctx: &mut DalContext) {
 
 #[test]
 async fn create_attribute_override_dynamic_func_for_output_socket(ctx: &mut DalContext) {
-    let schema = Schema::find_by_name(ctx, "swifty")
+    let schema = Schema::get_by_name(ctx, "swifty")
         .await
-        .expect("unable to find schema by name")
         .expect("schema not found");
     let schema_variant_id = schema
         .get_default_schema_variant_id(ctx)
@@ -304,12 +298,10 @@ async fn create_attribute_override_dynamic_func_for_output_socket(ctx: &mut DalC
 
 #[test]
 async fn create_action_with_schema_variant(ctx: &mut DalContext) {
-    let maybe_swifty_schema = Schema::find_by_name(ctx, "small even lego")
+    let swifty_schema = Schema::get_by_name(ctx, "small even lego")
         .await
         .expect("unable to get schema");
-    assert!(maybe_swifty_schema.is_some());
 
-    let swifty_schema = maybe_swifty_schema.unwrap();
     let maybe_sv_id = swifty_schema
         .get_default_schema_variant_id(ctx)
         .await

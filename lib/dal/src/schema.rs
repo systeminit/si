@@ -51,6 +51,8 @@ pub enum SchemaError {
     NoDefaultSchemaVariant(SchemaId),
     #[error("node weight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
+    #[error("No schema variant with name {0}")]
+    NoSchemaVariantWithName(String),
     #[error("pkg error: {0}")]
     Pkg(#[from] Box<PkgError>),
     #[error("schema variant error: {0}")]
@@ -470,10 +472,7 @@ impl Schema {
     }
 
     // NOTE(nick): this assumes that schema names are unique.
-    pub async fn find_by_name(
-        ctx: &DalContext,
-        name: impl AsRef<str>,
-    ) -> SchemaResult<Option<Self>> {
+    pub async fn get_by_name(ctx: &DalContext, name: impl AsRef<str>) -> SchemaResult<Self> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
         let schema_node_indices = {
             let schema_category_index_id = workspace_snapshot
@@ -497,10 +496,12 @@ impl Schema {
             };
             let schema = Self::get_by_id_or_error(ctx, schema_node_weight.id().into()).await?;
             if schema.name == name.as_ref() {
-                return Ok(Some(schema));
+                return Ok(schema);
             }
         }
-        Ok(None)
+        Err(SchemaError::NoSchemaVariantWithName(
+            name.as_ref().to_string(),
+        ))
     }
 
     /// Collect all [`FuncIds`](crate::Func) corresponding to the provided [`SchemaId`](Schema).

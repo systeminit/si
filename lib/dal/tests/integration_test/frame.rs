@@ -126,13 +126,11 @@ async fn frames_and_connections(ctx: &mut DalContext) {
 
 #[test]
 async fn convert_component_to_frame_and_attach_no_nesting(ctx: &mut DalContext) {
-    let starfield_schema = Schema::find_by_name(ctx, "starfield")
+    let starfield_schema = Schema::get_by_name(ctx, "starfield")
         .await
-        .expect("could not perform find by name")
         .expect("schema not found by name");
-    let fallout_schema = Schema::find_by_name(ctx, "fallout")
+    let fallout_schema = Schema::get_by_name(ctx, "fallout")
         .await
-        .expect("could not perform find by name")
         .expect("schema not found by name");
 
     // Create components using the test exclusive schemas. Neither of them should be frames.
@@ -232,13 +230,11 @@ async fn convert_component_to_frame_and_attach_no_nesting(ctx: &mut DalContext) 
 
 #[test]
 async fn simple_frames(ctx: &mut DalContext) {
-    let swifty_schema = Schema::find_by_name(ctx, "swifty")
+    let swifty_schema = Schema::get_by_name(ctx, "swifty")
         .await
-        .expect("could not perform find by name")
         .expect("schema not found by name");
-    let fallout_schema = Schema::find_by_name(ctx, "fallout")
+    let fallout_schema = Schema::get_by_name(ctx, "fallout")
         .await
-        .expect("could not perform find by name")
         .expect("schema not found by name");
 
     // Collect schema variants.
@@ -1910,13 +1906,11 @@ async fn up_frames_multiple_children_moves_and_deletes(ctx: &mut DalContext) {
 
 #[test]
 async fn multiple_frames_with_complex_connections_no_nesting(ctx: &mut DalContext) {
-    let swifty_schema = Schema::find_by_name(ctx, "swifty")
+    let swifty_schema = Schema::get_by_name(ctx, "swifty")
         .await
-        .expect("could not perform find by name")
         .expect("schema not found by name");
-    let fallout_schema = Schema::find_by_name(ctx, "fallout")
+    let fallout_schema = Schema::get_by_name(ctx, "fallout")
         .await
-        .expect("could not perform find by name")
         .expect("schema not found by name");
 
     // Collect schema variants.

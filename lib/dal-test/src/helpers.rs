@@ -72,10 +72,7 @@ pub async fn create_unlocked_variant_copy_for_schema_name(
     ctx: &DalContext,
     schema_name: impl AsRef<str>,
 ) -> Result<SchemaVariantId> {
-    let schema = Schema::find_by_name(ctx, schema_name)
-        .await?
-        .ok_or(eyre!("schema not found"))?;
-    let schema_variant_id = SchemaVariant::get_default_id_for_schema(ctx, schema.id()).await?;
+    let schema_variant_id = SchemaVariant::default_id_for_schema_name(ctx, schema_name).await?;
     let unlocked_copy_sv =
         VariantAuthoringClient::create_unlocked_variant_copy(ctx, schema_variant_id)
             .await?
@@ -102,10 +99,7 @@ pub async fn create_component_for_default_schema_name(
     name: impl AsRef<str>,
     view_id: ViewId,
 ) -> Result<Component> {
-    let schema = Schema::find_by_name(ctx, schema_name)
-        .await?
-        .ok_or(eyre!("schema not found"))?;
-    let schema_variant_id = SchemaVariant::get_default_id_for_schema(ctx, schema.id()).await?;
+    let schema_variant_id = SchemaVariant::default_id_for_schema_name(ctx, schema_name).await?;
 
     Ok(Component::new(ctx, name.as_ref().to_string(), schema_variant_id, view_id).await?)
 }
@@ -117,9 +111,7 @@ pub async fn create_component_for_unlocked_schema_name_on_default_view(
     schema_name: impl AsRef<str>,
     name: impl AsRef<str>,
 ) -> Result<Component> {
-    let schema = Schema::find_by_name(ctx, schema_name)
-        .await?
-        .ok_or(eyre!("schema not found"))?;
+    let schema = Schema::get_by_name(ctx, schema_name).await?;
     let schema_variant_id = SchemaVariant::get_unlocked_for_schema(ctx, schema.id())
         .await?
         .ok_or(eyre!("no unlocked schema variant for schema name"))?;
@@ -142,10 +134,7 @@ pub async fn create_component_for_schema_name_with_type_on_default_view(
     name: impl AsRef<str>,
     component_type: ComponentType,
 ) -> Result<Component> {
-    let schema = Schema::find_by_name(ctx, schema_name)
-        .await?
-        .ok_or(eyre!("schema not found"))?;
-    let schema_variant_id = SchemaVariant::get_default_id_for_schema(ctx, schema.id()).await?;
+    let schema_variant_id = SchemaVariant::default_id_for_schema_name(ctx, schema_name).await?;
 
     let view_id = ExpectView::get_id_for_default(ctx).await;
 

@@ -117,8 +117,6 @@ pub enum FsError {
     Schema(#[from] dal::SchemaError),
     #[error("cannot unlock schema {0}")]
     SchemaCannotUnlock(SchemaId),
-    #[error("Schema named {0} could not be found")]
-    SchemaNotFoundWithName(String),
     #[error("schema variant error: {0}")]
     SchemaVariant(#[from] dal::SchemaVariantError),
     #[error("serde json error: {0}")]
@@ -361,7 +359,7 @@ pub async fn list_schema_categories(
     let mut categories = HashSet::new();
 
     for schema in dal::Schema::list(&ctx).await? {
-        let default_variant = SchemaVariant::get_default_for_schema(&ctx, schema.id()).await?;
+        let default_variant = SchemaVariant::default_for_schema(&ctx, schema.id()).await?;
         categories.insert(default_variant.category().to_string());
     }
 
@@ -403,7 +401,7 @@ async fn get_schema_list(
     let mut installed_set = HashSet::new();
     for schema in dal::Schema::list(ctx).await? {
         installed_set.insert(schema.id());
-        let default_variant = SchemaVariant::get_default_for_schema(ctx, schema.id()).await?;
+        let default_variant = SchemaVariant::default_for_schema(ctx, schema.id()).await?;
 
         if cat_filter.should_skip(default_variant.category()) {
             continue;
@@ -569,7 +567,7 @@ async fn lookup_variant_for_schema_with_prefetched_modules(
     Ok(if unlocked {
         SchemaVariant::get_unlocked_for_schema(ctx, schema_id).await?
     } else {
-        Some(SchemaVariant::get_default_for_schema(ctx, schema_id).await?)
+        Some(SchemaVariant::default_for_schema(ctx, schema_id).await?)
     })
 }
 
@@ -1414,7 +1412,7 @@ async fn unlock_func(
 
     let variant = match lookup_variant_for_schema(&ctx, schema_id, true).await? {
         Some(variant) => variant,
-        None => SchemaVariant::get_default_for_schema(&ctx, schema_id).await?,
+        None => SchemaVariant::default_for_schema(&ctx, schema_id).await?,
     };
     let original_variant_id = variant.id();
 
@@ -1479,13 +1477,7 @@ async fn process_managed_schemas(
         for updated_schema in string_schemas {
             let schema_id = match latest_modules.get(updated_schema) {
                 Some(schema_id) => *schema_id,
-                None => {
-                    let Some(schema) = Schema::find_by_name(ctx, updated_schema).await? else {
-                        return Err(FsError::SchemaNotFoundWithName(updated_schema.to_owned()));
-                    };
-
-                    schema.id()
-                }
+                None => Schema::get_by_name(ctx, updated_schema).await?.id(),
             };
 
             managed_schemas.push(schema_id);

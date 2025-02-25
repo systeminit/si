@@ -45,7 +45,7 @@ pub async fn upgrade(
     let upgrade_target_variant =
         match SchemaVariant::get_unlocked_for_schema(&ctx, schema.id()).await? {
             Some(unlocked_variant) => unlocked_variant,
-            None => SchemaVariant::get_default_for_schema(&ctx, schema.id()).await?,
+            None => SchemaVariant::default_for_schema(&ctx, schema.id()).await?,
         };
 
     // This is just a check to see if someone has made a request incorrectly!

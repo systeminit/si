@@ -5,7 +5,7 @@ use dal::func::authoring::FuncAuthoringClient;
 use dal::func::binding::action::ActionBinding;
 use dal::func::binding::FuncBinding;
 use dal::schema::variant::authoring::VariantAuthoringClient;
-use dal::{DalContext, Func, Schema, SchemaVariant};
+use dal::{DalContext, Func, SchemaVariant};
 use dal_test::helpers::{
     create_component_for_unlocked_schema_name_on_default_view, ChangeSetTestHelpers,
 };
@@ -13,11 +13,7 @@ use dal_test::test;
 
 #[test]
 async fn attach_multiple_action_funcs(ctx: &mut DalContext) {
-    let schema = Schema::find_by_name(ctx, "katy perry")
-        .await
-        .expect("unable to find by name")
-        .expect("no schema found");
-    let schema_variant_id = SchemaVariant::get_default_id_for_schema(ctx, schema.id())
+    let schema_variant_id = SchemaVariant::default_id_for_schema_name(ctx, "katy perry")
         .await
         .expect("unable to get default schema variant");
 
@@ -74,11 +70,7 @@ async fn attach_multiple_action_funcs(ctx: &mut DalContext) {
 
 #[test]
 async fn error_when_attaching_an_exisiting_type(ctx: &mut DalContext) {
-    let schema = Schema::find_by_name(ctx, "fallout")
-        .await
-        .expect("unable to find by name")
-        .expect("no schema found");
-    let schema_variant_id = SchemaVariant::get_default_id_for_schema(ctx, schema.id())
+    let schema_variant_id = SchemaVariant::default_id_for_schema_name(ctx, "fallout")
         .await
         .expect("unable to get default schema variant");
     let func_id = Func::find_id_by_name(ctx, "test:createActionFallout")
@@ -131,11 +123,7 @@ async fn detach_attach_then_delete_action_func_while_enqueued(ctx: &mut DalConte
                 .expect("could get hold status");
         true
     }
-    let schema = Schema::find_by_name(ctx, "starfield")
-        .await
-        .expect("unable to find by name")
-        .expect("no schema found");
-    let old_schema_variant_id = SchemaVariant::get_default_id_for_schema(ctx, schema.id())
+    let old_schema_variant_id = SchemaVariant::default_id_for_schema_name(ctx, "starfield")
         .await
         .expect("unable to get default schema variant");
 
