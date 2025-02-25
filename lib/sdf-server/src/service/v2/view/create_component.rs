@@ -94,9 +94,10 @@ pub async fn create_component(
                 // installed by another user
                 Some(schema) => schema.get_default_schema_variant_id_or_error(&ctx).await?,
                 None => {
-                    let mut uninstalled_module = CachedModule::latest_by_schema_id(&ctx, schema_id)
-                        .await?
-                        .ok_or(ViewError::UninstalledSchemaNotFound(schema_id))?;
+                    let mut uninstalled_module =
+                        CachedModule::find_latest_for_schema_id(&ctx, schema_id)
+                            .await?
+                            .ok_or(ViewError::UninstalledSchemaNotFound(schema_id))?;
 
                     let si_pkg = uninstalled_module.si_pkg(&ctx).await?;
                     import_pkg_from_pkg(

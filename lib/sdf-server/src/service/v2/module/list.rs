@@ -22,7 +22,7 @@ pub async fn list(
         .build(access_builder.build(change_set_id.into()))
         .await?;
 
-    let installed_modules = Module::list_installed(&ctx).await?;
+    let installed_modules = Module::list(&ctx).await?;
 
     let modules: Vec<ModuleSummary> = installed_modules
         .iter()

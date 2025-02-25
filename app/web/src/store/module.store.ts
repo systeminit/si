@@ -13,7 +13,6 @@ import {
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRouterStore } from "./router.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
-import { useFeatureFlagsStore } from "./feature_flags.store";
 import { ModuleIndexApiRequest } from ".";
 
 export type ModuleName = string;
@@ -147,7 +146,6 @@ export const useModuleStore = () => {
       {
         state: () => ({
           upgradeableModules: {} as Record<SchemaVariantId, LatestModule>,
-          installableModulesById: {} as Record<ModuleId, LatestModule>,
           contributableModules: [] as SchemaVariantId[],
           localModulesByName: {} as Record<ModuleName, LocalModuleSummary>,
           localModuleDetailsByName: {} as Record<
@@ -164,15 +162,6 @@ export const useModuleStore = () => {
           exportingWorkspaceOperationRunning: false as boolean,
         }),
         getters: {
-          installableModules: (state) => {
-            return Object.values(state.installableModulesById).filter((mod) => {
-              if (useFeatureFlagsStore().CLOVER_ASSETS) {
-                return true;
-              }
-
-              return mod.ownerDisplayName !== "Clover";
-            });
-          },
           urlSelectedModuleSlug: () => {
             const route = useRouterStore().currentRoute;
             return route?.params?.moduleSlug as ModuleSlug | undefined;
@@ -233,7 +222,6 @@ export const useModuleStore = () => {
             return new ApiRequest<
               {
                 upgradeable: Record<SchemaVariantId, LatestModule>;
-                installable: LatestModule[];
                 contributable: SchemaVariantId[];
               },
               Visibility
@@ -243,10 +231,6 @@ export const useModuleStore = () => {
               onSuccess: (response) => {
                 this.upgradeableModules = response.upgradeable;
                 this.contributableModules = response.contributable;
-                this.installableModulesById = _.keyBy(
-                  response.installable,
-                  (m) => m.id,
-                );
               },
             });
           },

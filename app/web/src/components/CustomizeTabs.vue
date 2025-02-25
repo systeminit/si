@@ -1,5 +1,6 @@
 <template>
   <TabGroup
+    v-if="featureFlagsStore.MODULES_TAB"
     ref="group"
     :startSelectedTabSlug="tabContentSlug"
     marginTop="2xs"
@@ -12,21 +13,15 @@
       </template>
       <slot name="assets" />
     </TabGroupItem>
-    <TabGroupItem slug="newassets">
-      <template #label>
-        Assets Available
-        <PillCounter :count="moduleStore.installableModules.length" />
-      </template>
-      <slot name="newassets" />
-    </TabGroupItem>
-    <TabGroupItem
-      v-if="featureFlagsStore.MODULES_TAB"
-      slug="packages"
-      label="M"
-    >
+    <TabGroupItem slug="packages" label="Modules (Internal)">
       <slot name="packages" />
     </TabGroupItem>
   </TabGroup>
+
+  <!-- NOTE(nick): do not use the tab group if only one slot is used -->
+  <div v-else>
+    <slot name="assets" />
+  </div>
 </template>
 
 <script lang="ts" setup>
@@ -36,13 +31,11 @@ import { storeToRefs } from "pinia";
 import { TabGroup, TabGroupItem, PillCounter } from "@si/vue-lib/design-system";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { useAssetStore } from "@/store/asset.store";
-import { useModuleStore } from "@/store/module.store";
 
 const router = useRouter();
 const route = useRoute();
 const featureFlagsStore = useFeatureFlagsStore();
 const assetStore = useAssetStore();
-const moduleStore = useModuleStore();
 
 const { variantList: assetList } = storeToRefs(assetStore);
 

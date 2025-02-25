@@ -556,7 +556,7 @@ async fn lookup_variant_for_schema_with_prefetched_modules(
             } else {
                 return Err(FsError::ResourceNotFound);
             }
-        } else if CachedModule::latest_by_schema_id(ctx, schema_id)
+        } else if CachedModule::find_latest_for_schema_id(ctx, schema_id)
             .await?
             .is_some()
         {

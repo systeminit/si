@@ -23,6 +23,8 @@ use si_pkg::{SiPkg, SiPkgError};
 
 pub use si_id::CachedModuleId;
 
+const PLACEHOLDER_OWNER_USER_ID: &str = "-";
+
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum CachedModuleError {
@@ -78,6 +80,25 @@ impl From<CachedModule> for si_frontend_types::UninstalledVariant {
             color: value.color,
             description: value.description,
             component_type: value.component_type.into(),
+        }
+    }
+}
+
+// NOTE(nick): the frontend type's shape might be able to be refactored now that syncing only
+// relies on the cache.
+impl From<CachedModule> for si_frontend_types::LatestModule {
+    fn from(value: CachedModule) -> Self {
+        Self {
+            id: value.id.to_string(),
+            name: value.schema_name,
+            description: value.description,
+            owner_user_id: PLACEHOLDER_OWNER_USER_ID.to_string(),
+            owner_display_name: None,
+            metadata: serde_json::Value::Null,
+            latest_hash: value.latest_hash,
+            latest_hash_created_at: value.created_at,
+            created_at: value.created_at,
+            schema_id: Some(value.schema_id.to_string()),
         }
     }
 }
@@ -170,13 +191,14 @@ impl CachedModule {
     /// Calls out to the module index server to fetch the latest module set, and
     /// updates the cache for any new builtin modules
     pub async fn update_cached_modules(ctx: &DalContext) -> CachedModuleResult<Vec<CachedModule>> {
-        let services_context = ctx.services_context();
-        let module_index_url = services_context
-            .module_index_url()
-            .ok_or(CachedModuleError::ModuleIndexUrlNotSet)?;
+        let module_index_client = {
+            let services_context = ctx.services_context();
+            let module_index_url = services_context
+                .module_index_url()
+                .ok_or(CachedModuleError::ModuleIndexUrlNotSet)?;
 
-        let module_index_client =
-            ModuleIndexClient::unauthenticated_client(module_index_url.try_into()?);
+            ModuleIndexClient::unauthenticated_client(module_index_url.try_into()?)
+        };
 
         let modules: HashMap<_, _> = module_index_client
             .list_builtins()
@@ -187,23 +209,7 @@ impl CachedModule {
             .collect();
 
         // We need to remove any schemas that are in the cache but no longer in the builtin list
-        let builtin_schema_ids: HashSet<SchemaId> = modules
-            .values()
-            .filter_map(|module| {
-                module
-                    .schema_id
-                    .as_ref()
-                    .and_then(|id_string| Ulid::from_string(id_string.as_str()).ok())
-            })
-            .map(Into::into)
-            .collect();
-
-        let current_modules = CachedModule::latest_modules(ctx).await?;
-        for cached in current_modules {
-            if !builtin_schema_ids.contains(&cached.schema_id) {
-                CachedModule::remove_by_schema_id(ctx, cached.schema_id).await?;
-            }
-        }
+        Self::remove_unused(ctx, &modules).await?;
 
         let ctx_clone = ctx.clone();
         ctx_clone.commit_no_rebase().await?;
@@ -252,7 +258,37 @@ impl CachedModule {
         Ok(new_modules)
     }
 
-    pub async fn latest_by_schema_id(
+    async fn remove_unused(
+        ctx: &DalContext,
+        module_details_by_hash: &HashMap<String, ModuleDetailsResponse>,
+    ) -> CachedModuleResult<()> {
+        let builtin_schema_ids: HashSet<SchemaId> = module_details_by_hash
+            .values()
+            .filter_map(|module| {
+                module
+                    .schema_id
+                    .as_ref()
+                    .and_then(|id_string| Ulid::from_string(id_string.as_str()).ok())
+            })
+            .map(Into::into)
+            .collect();
+        let cached_schema_ids: Vec<SchemaId> = CachedModule::latest_modules(ctx)
+            .await?
+            .iter()
+            .map(|lm| lm.schema_id)
+            .collect();
+
+        // Look at all schema IDs in the cache and determine if any of them are no longer builtins.
+        // If they aren't, ALL modules corresponding to them get remove.
+        for schema_id in cached_schema_ids {
+            if !builtin_schema_ids.contains(&schema_id) {
+                CachedModule::remove_all_for_schema_id(ctx, schema_id).await?;
+            }
+        }
+        Ok(())
+    }
+
+    pub async fn find_latest_for_schema_id(
         ctx: &DalContext,
         schema_id: SchemaId,
     ) -> CachedModuleResult<Option<CachedModule>> {
@@ -288,6 +324,38 @@ impl CachedModule {
         })
     }
 
+    pub async fn list_for_schema_id(
+        ctx: &DalContext,
+        schema_id: SchemaId,
+    ) -> CachedModuleResult<Vec<CachedModule>> {
+        let query = "
+            SELECT
+                id,
+                schema_id,
+                schema_name,
+                display_name,
+                category,
+                link,
+                color,
+                description,
+                component_type,
+                latest_hash,
+                created_at,
+                NULL::bytea AS package_data
+            FROM cached_modules
+            WHERE schema_id = $1
+            ORDER BY schema_id, created_at DESC
+        ";
+
+        let rows = ctx.txns().await?.pg().query(query, &[&schema_id]).await?;
+
+        let mut result = Vec::with_capacity(rows.len());
+        for row in rows {
+            result.push(row.try_into()?);
+        }
+        Ok(result)
+    }
+
     pub async fn latest_modules(ctx: &DalContext) -> CachedModuleResult<Vec<CachedModule>> {
         let query = "
             SELECT DISTINCT ON (schema_id)
@@ -318,7 +386,7 @@ impl CachedModule {
         Ok(result)
     }
 
-    pub async fn insert(
+    async fn insert(
         ctx: &DalContext,
         module_details: &ModuleDetailsResponse,
         pkg_bytes: Arc<Vec<u8>>,
@@ -423,7 +491,7 @@ impl CachedModule {
         Ok(Some(row.try_into()?))
     }
 
-    pub async fn remove_by_schema_id(
+    pub async fn remove_all_for_schema_id(
         ctx: &DalContext,
         schema_id: SchemaId,
     ) -> CachedModuleResult<()> {

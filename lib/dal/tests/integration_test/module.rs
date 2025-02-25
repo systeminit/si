@@ -1,15 +1,13 @@
-use chrono::Utc;
 use dal::module::Module;
 use dal::pkg::export::PkgExporter;
-use dal::{DalContext, Schema, SchemaVariant};
+use dal::{DalContext, Schema};
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
 use si_pkg::{SocketSpecArity, SocketSpecKind};
-use ulid::Ulid;
 
 #[test]
 async fn list_modules(ctx: &DalContext) {
-    let modules = Module::list_installed(ctx)
+    let modules = Module::list(ctx)
         .await
         .expect("unable to get installed modules");
 
@@ -46,7 +44,7 @@ async fn list_modules(ctx: &DalContext) {
 
 #[test]
 async fn get_fallout_module(ctx: &DalContext) {
-    let modules = Module::list_installed(ctx)
+    let modules = Module::list(ctx)
         .await
         .expect("unable to get installed modules");
 
@@ -167,93 +165,6 @@ async fn module_export_simple(ctx: &mut DalContext) {
     ];
 
     assert_eq!(exported_pkg_func_names, expected_func_names);
-}
-
-#[test]
-async fn dummy_sync(ctx: &DalContext) {
-    let schema = Schema::find_by_name(ctx, "starfield")
-        .await
-        .expect("could not perform find by name")
-        .expect("schema not found");
-    let schema_variant_id = schema
-        .get_default_schema_variant_id(ctx)
-        .await
-        .expect("could not perform get default schema variant id")
-        .expect("no schema variant id found");
-    let module = Module::find_for_member_id(ctx, schema.id())
-        .await
-        .expect("could not perform find for module schema id")
-        .expect("module not found");
-
-    // Create dummy latest modules.
-    let now = Utc::now();
-    let dummy_latest_module_upgradeable = si_frontend_types::LatestModule {
-        id: Ulid::new().to_string(),
-        name: module.name().to_owned(),
-        description: Some(module.description().to_owned()),
-        owner_user_id: "this is BS!".to_string(),
-        owner_display_name: None,
-        metadata: serde_json::Value::Null,
-        latest_hash: Ulid::new().to_string(),
-        latest_hash_created_at: now,
-        created_at: now,
-        schema_id: Some(schema.id().into()),
-    };
-    let dummy_latest_module_installable = si_frontend_types::LatestModule {
-        id: Ulid::new().to_string(),
-        name: "threadripper 7980X".to_string(),
-        description: None,
-        owner_user_id: "this is also BS!".to_string(),
-        owner_display_name: None,
-        metadata: serde_json::Value::Null,
-        latest_hash: Ulid::new().to_string(),
-        latest_hash_created_at: now,
-        created_at: now,
-        schema_id: Some(Ulid::new().to_string()),
-    };
-
-    // Assemble our expected result.
-    let mut expected = si_frontend_types::SyncedModules::new();
-    expected
-        .upgradeable
-        .insert(schema_variant_id, dummy_latest_module_upgradeable.clone());
-    expected
-        .installable
-        .push(dummy_latest_module_installable.clone());
-    expected.contributable.extend(
-        SchemaVariant::list_user_facing(ctx)
-            .await
-            .expect("list_user_facing")
-            .into_iter()
-            .map(|sv| sv.schema_variant_id),
-    );
-
-    // Perform the sync and check that the result is what we expect.
-    let actual = Module::sync(
-        ctx,
-        vec![
-            dummy_latest_module_upgradeable,
-            dummy_latest_module_installable,
-        ],
-        vec![],
-        vec![],
-    )
-    .await
-    .expect("could not sync");
-
-    let mut expected_contributable = expected.contributable.clone();
-    expected_contributable.sort();
-    let mut actual_contributable = actual.contributable.clone();
-    actual_contributable.sort();
-
-    assert_eq!(expected_contributable, actual_contributable);
-
-    expected.contributable.clone_from(&actual.contributable);
-
-    assert_eq!(
-        expected, // expected
-        actual    // actual
-    );
 }
 
 #[test]
