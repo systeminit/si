@@ -9,6 +9,8 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
+telemetry-utils = { path = "../../lib/telemetry-utils-rs" }
+
 async-nats = { workspace = true }
 async-trait = { workspace = true }
 bytes = { workspace = true }

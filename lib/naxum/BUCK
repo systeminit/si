@@ -3,6 +3,7 @@ load("@prelude-si//:macros.bzl", "rust_library")
 rust_library(
     name = "naxum",
     deps = [
+        "//lib/telemetry-utils-rs:telemetry-utils",
         "//third-party/rust:async-nats",
         "//third-party/rust:async-trait",
         "//third-party/rust:bytes",

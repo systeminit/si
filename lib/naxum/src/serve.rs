@@ -11,13 +11,14 @@ use std::{
 };
 
 use futures::{Stream, TryStreamExt};
+use telemetry_utils::metric;
 use tokio::{
     sync::{OwnedSemaphorePermit, Semaphore},
     time,
 };
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use tower::{Service, ServiceExt};
-use tracing::{debug, trace, warn};
+use tracing::{debug, error, info, trace, warn};
 
 use crate::{
     message::{Message, MessageHead},
@@ -154,7 +155,7 @@ where
         let token = graceful_token.clone();
         tracker.spawn(async move {
             signal.await;
-            trace!("received graceful shutdown signal, telling tasks to shutdown");
+            info!("received graceful shutdown signal, telling tasks to shutdown");
             token.cancel();
         });
 
@@ -164,13 +165,14 @@ where
 
         private::ServeFuture(Box::pin(async move {
             tokio::pin!(stream);
+            metric!(counter.naxum.pending_message_count = 0);
 
             loop {
                 let (msg, permit) = tokio::select! {
                     biased;
 
                     _ = graceful_token.cancelled() => {
-                        trace!("signal received, not accepting new messages");
+                        info!("signal received, not accepting new messages");
                         tracker.close();
                         break;
                     }
@@ -178,6 +180,8 @@ where
                         match msg {
                             Some(Ok(msg)) => {
                                 failed_count = 0;
+                                metric!(counter.naxum.failed_count = 0);
+
                                 (msg, permit)
                             },
                             Some(Err(err)) => {
@@ -188,7 +192,7 @@ where
                                 continue;
                             },
                             None => {
-                                trace!("stream is closed, breaking out of loop");
+                                info!("stream is closed, breaking out of loop");
                                 tracker.close();
                                 break;
                             },
@@ -197,6 +201,7 @@ where
                 };
 
                 trace!(subject = msg.subject().as_str(), "message received");
+                metric!(counter.naxum.pending_message_count = 1);
 
                 poll_fn(|cx| make_service.poll_ready(cx))
                     .await
@@ -209,7 +214,7 @@ where
 
                 tracker.spawn(async move {
                     let _result = tower_svc.oneshot(msg).await;
-
+                    metric!(counter.naxum.pending_message_count = -1);
                     trace!("message processed");
 
                     drop(permit);
@@ -231,6 +236,7 @@ where
                     }
                 }
             }
+            metric!(counter.naxum.pending_message_count = 0);
 
             Ok(())
         }))
@@ -270,7 +276,7 @@ where
         ),
         Err(err) => {
             if failed_count > MAX_FAILED_MESSAGES {
-                warn!(
+                error!(
                     si.error.message = ?err,
                     "failed to read message in after {} consecutive failures; closing stream",
                     failed_count,

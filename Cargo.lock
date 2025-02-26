@@ -4490,6 +4490,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_path_to_error",
+ "telemetry-utils",
  "thiserror 2.0.11",
  "time",
  "tokio",
