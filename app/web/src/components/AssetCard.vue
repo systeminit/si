@@ -41,7 +41,7 @@
 
           <IconButton
             v-if="canUpdate"
-            :loading="installStatus.isPending"
+            :loading="upgradeStatus.isPending"
             icon="code-deployed"
             loadingIcon="loader"
             tooltip="Update"
@@ -149,9 +149,9 @@ const assetStore = useAssetStore();
 const moduleStore = useModuleStore();
 const { theme } = useTheme();
 
-const installStatus = moduleStore.getRequestStatus(
-  "INSTALL_REMOTE_MODULE",
-  moduleStore.upgradeableModules[props.assetId]?.id,
+const upgradeStatus = moduleStore.getRequestStatus(
+  "UPGRADE_MODULES",
+  moduleStore.upgradeableModules[props.assetId]?.schemaId,
 );
 
 const contributeAssetModalRef =
@@ -212,7 +212,7 @@ const updateAsset = () => {
     throw new Error("cannot update asset: no upgradeable module for asset");
   }
 
-  moduleStore.INSTALL_REMOTE_MODULE([module.id]);
+  moduleStore.UPGRADE_MODULES([module.schemaId]);
   assetStore.clearSchemaVariantSelection();
 
   return;
