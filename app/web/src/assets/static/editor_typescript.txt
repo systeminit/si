@@ -396,7 +396,6 @@ type PropDefinitionKind =
   | "boolean"
   | "float"
   | "integer"
-  | "json"
   | "map"
   | "object"
   | "string";
@@ -583,7 +582,7 @@ declare class PropBuilder implements IPropBuilder {
   /**
    * The type of the prop
    *
-   * @param {string} kind [array | boolean | float | integer | json | map | object | string]
+   * @param {string} kind [array | boolean | float | integer | map | object | string]
    *
    * @returns this
    *
