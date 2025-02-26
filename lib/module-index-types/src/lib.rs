@@ -44,6 +44,7 @@ pub struct ModuleDetailsResponse {
     pub past_hashes: Option<Vec<String>>,
     pub schema_variant_id: Option<String>,
     pub schema_variant_version: Option<String>,
+    pub structural_hash: Option<String>,
 }
 
 impl ModuleDetailsResponse {
