@@ -99,7 +99,8 @@ impl ActionBinding {
                 return Err(FuncBindingError::ActionKindAlreadyExists(
                     action_kind,
                     schema_variant_id,
-                ));
+                )
+                .into());
             }
         }
 

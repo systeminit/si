@@ -1,11 +1,12 @@
 use std::collections::{HashMap, HashSet};
 
+use anyhow::Result;
 use si_events::audit_log::AuditLogKind;
 use si_id::ComponentId;
 
 use crate::{change_status::ChangeStatus, diagram::SummaryDiagramEdge, DalContext, WsEvent};
 
-use super::{Component, ComponentResult};
+use super::Component;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ComponentDeletionStatus {
@@ -23,7 +24,7 @@ pub async fn delete_components(
     ctx: &DalContext,
     component_ids: &[ComponentId],
     force_erase: bool,
-) -> ComponentResult<HashMap<ComponentId, ComponentDeletionStatus>> {
+) -> Result<HashMap<ComponentId, ComponentDeletionStatus>> {
     let head_components: HashSet<ComponentId> =
         Component::exists_on_head(ctx, component_ids).await?;
     let mut result = HashMap::new();
@@ -121,7 +122,7 @@ async fn delete_component(
     component: &Component,
     force_erase: bool,
     head_components: &HashSet<ComponentId>,
-) -> ComponentResult<ComponentDeletionStatus> {
+) -> Result<ComponentDeletionStatus> {
     let component_id = component.id();
     let component_name = component.name(ctx).await?;
     let component_schema_variant = component.schema_variant(ctx).await?;

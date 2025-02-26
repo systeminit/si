@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use anyhow::Result;
 use petgraph::prelude::*;
 use serde::{Deserialize, Serialize};
 use si_events::merkle_tree_hash::MerkleTreeHash;
@@ -9,7 +10,7 @@ use crate::{
     workspace_snapshot::{
         content_address::{ContentAddress, ContentAddressDiscriminants},
         graph::{deprecated::v1::DeprecatedContentNodeWeightV1, detector::Update, LineageId},
-        node_weight::{traits::CorrectTransforms, NodeWeightError, NodeWeightResult},
+        node_weight::{traits::CorrectTransforms, NodeWeightError},
         NodeInformation,
     },
     ComponentId, EdgeWeightKindDiscriminants, SocketArity, WorkspaceSnapshotGraphVCurrent,
@@ -86,7 +87,7 @@ impl ContentNodeWeight {
         self.merkle_tree_hash
     }
 
-    pub fn new_content_hash(&mut self, content_hash: ContentHash) -> NodeWeightResult<()> {
+    pub fn new_content_hash(&mut self, content_hash: ContentHash) -> Result<()> {
         let new_address = match &self.content_address {
             ContentAddress::DeprecatedAction(_) => ContentAddress::DeprecatedAction(content_hash),
             ContentAddress::DeprecatedActionBatch(_) => {
@@ -100,7 +101,8 @@ impl ContentNodeWeight {
                 return Err(NodeWeightError::InvalidContentAddressForWeightKind(
                     "ApprovalRequirement".to_string(),
                     "Content".to_string(),
-                ));
+                )
+                .into());
             }
             ContentAddress::AttributePrototype(_) => {
                 ContentAddress::AttributePrototype(content_hash)
@@ -113,13 +115,15 @@ impl ContentNodeWeight {
                 return Err(NodeWeightError::InvalidContentAddressForWeightKind(
                     "Geometry".to_string(),
                     "Content".to_string(),
-                ));
+                )
+                .into());
             }
             ContentAddress::InputSocket(_) => {
                 return Err(NodeWeightError::InvalidContentAddressForWeightKind(
                     "InputSocket".to_string(),
                     "Content".to_string(),
-                ));
+                )
+                .into());
             }
             ContentAddress::JsonValue(_) => ContentAddress::JsonValue(content_hash),
             ContentAddress::Module(_) => ContentAddress::Module(content_hash),
@@ -127,21 +131,26 @@ impl ContentNodeWeight {
                 return Err(NodeWeightError::InvalidContentAddressForWeightKind(
                     "Prop".to_string(),
                     "Content".to_string(),
-                ));
+                )
+                .into());
             }
-            ContentAddress::Root => return Err(NodeWeightError::CannotUpdateRootNodeContentHash),
+            ContentAddress::Root => {
+                return Err(NodeWeightError::CannotUpdateRootNodeContentHash.into())
+            }
             ContentAddress::Schema(_) => ContentAddress::Schema(content_hash),
             ContentAddress::SchemaVariant(_) => {
                 return Err(NodeWeightError::InvalidContentAddressForWeightKind(
                     "SchemaVariant".to_string(),
                     "Content".to_string(),
-                ));
+                )
+                .into());
             }
             ContentAddress::Secret(_) => {
                 return Err(NodeWeightError::InvalidContentAddressForWeightKind(
                     "Secret".to_string(),
                     "Content".to_string(),
-                ));
+                )
+                .into());
             }
             ContentAddress::StaticArgumentValue(_) => {
                 ContentAddress::StaticArgumentValue(content_hash)
@@ -157,7 +166,8 @@ impl ContentNodeWeight {
                 return Err(NodeWeightError::InvalidContentAddressForWeightKind(
                     "Geometry".to_string(),
                     "Content".to_string(),
-                ));
+                )
+                .into());
             }
         };
 

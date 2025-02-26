@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use anyhow::Result;
 use axum::{
     extract::{Host, OriginalUri},
     Json,
@@ -7,7 +8,6 @@ use axum::{
 use dal::{component::delete, ChangeSet, Component, ComponentId, Visibility};
 use serde::{Deserialize, Serialize};
 
-use super::DiagramResult;
 use crate::{
     extract::{v1::AccessBuilder, HandlerContext, PosthogClient},
     service::force_change_set_response::ForceChangeSetResponse,
@@ -31,7 +31,7 @@ pub async fn delete_components(
     OriginalUri(original_uri): OriginalUri,
     Host(host_name): Host,
     Json(request): Json<DeleteComponentsRequest>,
-) -> DiagramResult<ForceChangeSetResponse<HashMap<ComponentId, bool>>> {
+) -> Result<ForceChangeSetResponse<HashMap<ComponentId, bool>>> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;

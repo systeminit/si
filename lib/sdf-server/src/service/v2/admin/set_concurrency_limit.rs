@@ -1,3 +1,4 @@
+use anyhow::Result;
 use axum::{
     extract::{Host, OriginalUri, Path},
     response::Json,
@@ -6,11 +7,7 @@ use dal::{Tenancy, Workspace, WorkspaceError, WorkspacePk};
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 
-use crate::{
-    extract::PosthogClient,
-    service::v2::admin::{AdminAPIResult, AdminUserContext},
-    track_no_ctx,
-};
+use crate::{extract::PosthogClient, service::v2::admin::AdminUserContext, track_no_ctx};
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -40,7 +37,7 @@ pub async fn set_concurrency_limit(
     Host(host_name): Host,
     Path(workspace_id): Path<WorkspacePk>,
     Json(request): Json<SetComponentConcurrencyLimitRequest>,
-) -> AdminAPIResult<Json<SetComponentConcurrencyLimitResponse>> {
+) -> Result<Json<SetComponentConcurrencyLimitResponse>> {
     ctx.update_tenancy(Tenancy::new(workspace_id));
 
     let span = current_span_for_instrument_at!("info");

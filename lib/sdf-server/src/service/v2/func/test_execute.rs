@@ -1,3 +1,4 @@
+use anyhow::Result;
 use axum::{
     extract::{Host, OriginalUri, Path},
     Json,
@@ -8,7 +9,6 @@ use dal::{
 use serde::{Deserialize, Serialize};
 use si_events::{audit_log::AuditLogKind, FuncRunId};
 
-use super::FuncAPIResult;
 use crate::{
     extract::{HandlerContext, PosthogClient},
     service::v2::AccessBuilder,
@@ -37,7 +37,7 @@ pub async fn test_execute(
     Host(host_name): Host,
     Path((_workspace_pk, change_set_id, func_id)): Path<(WorkspacePk, ChangeSetId, FuncId)>,
     Json(request): Json<TestExecuteFuncRequest>,
-) -> FuncAPIResult<Json<TestExecuteFuncResponse>> {
+) -> Result<Json<TestExecuteFuncResponse>> {
     let ctx = builder
         .build(access_builder.build(change_set_id.into()))
         .await?;

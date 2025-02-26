@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use anyhow::Result;
 use axum::{
     extract::Path,
     http::StatusCode,
@@ -21,8 +22,10 @@ use si_frontend_types::{DiagramComponentView, GeometryAndView};
 use si_id::ManagementPrototypeId;
 use thiserror::Error;
 
-use crate::extract::{change_set::ChangeSetDalContext, PosthogEventTracker};
-use crate::AppState;
+use crate::{
+    extract::{change_set::ChangeSetDalContext, PosthogEventTracker},
+    AppState,
+};
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -46,8 +49,6 @@ pub enum ChangeSetsError {
     #[error("ws event error: {0}")]
     WsEvent(#[from] dal::WsEventError),
 }
-
-type Result<T> = std::result::Result<T, ChangeSetsError>;
 
 impl IntoResponse for ChangeSetsError {
     fn into_response(self) -> Response {
@@ -77,6 +78,7 @@ async fn update_component_properties(
 ) -> Result<Json<UpdateComponentPropertiesResponse>> {
     tracker.track(ctx, "update_component_properties", json!(payload));
 
+    // TODO: .context(HttpResponse::NOT_FOUND { ... });
     let component = Component::get_by_id(ctx, component_id).await?;
     let component_name = component.name(ctx).await?;
     let schema_variant = component.schema_variant(ctx).await?;

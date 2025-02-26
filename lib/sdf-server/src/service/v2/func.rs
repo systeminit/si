@@ -1,3 +1,4 @@
+use anyhow::Result;
 use asset_sprayer::AssetSprayerError;
 use axum::{
     http::StatusCode,
@@ -104,7 +105,6 @@ pub enum FuncAPIError {
     #[error("ws event error: {0}")]
     WsEvent(#[from] WsEventError),
 }
-pub type FuncAPIResult<T> = Result<T, FuncAPIError>;
 
 impl IntoResponse for FuncAPIError {
     fn into_response(self) -> Response {
@@ -235,7 +235,7 @@ pub fn v2_routes() -> Router<AppState> {
 }
 
 // helper to assemble the front end struct to return the code and types so SDF can decide when these events need to fire
-pub async fn get_code_response(ctx: &DalContext, func_id: FuncId) -> FuncAPIResult<FuncCode> {
+pub async fn get_code_response(ctx: &DalContext, func_id: FuncId) -> Result<FuncCode> {
     let func = Func::get_by_id(ctx, func_id)
         .await?
         .ok_or(FuncAPIError::FuncNotFound(func_id))?;

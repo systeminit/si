@@ -1,46 +1,47 @@
 [package]
-name = "module-index-server"
-version.workspace = true
-authors.workspace = true
-license.workspace = true
-repository.workspace = true
-edition.workspace = true
+name                   = "module-index-server"
+version.workspace      = true
+authors.workspace      = true
+license.workspace      = true
+repository.workspace   = true
+edition.workspace      = true
 rust-version.workspace = true
-publish.workspace = true
+publish.workspace      = true
 
 [dependencies]
-auth-api-client = { path = "../../lib/auth-api-client" }
-buck2-resources = { path = "../../lib/buck2-resources" }
+auth-api-client    = { path = "../../lib/auth-api-client" }
+buck2-resources    = { path = "../../lib/buck2-resources" }
 module-index-types = { path = "../../lib/module-index-types" }
-si-data-pg = { path = "../../lib/si-data-pg" }
-si-hash = { path = "../../lib/si-hash" }
-si-id = { path = "../../lib/si-id" }
-si-jwt-public-key = { path = "../../lib/si-jwt-public-key" }
-si-pkg = { path = "../../lib/si-pkg" }
-si-posthog = { path = "../../lib/si-posthog-rs" }
-si-settings = { path = "../../lib/si-settings" }
-si-std = { path = "../../lib/si-std" }
-telemetry = { path = "../../lib/telemetry-rs" }
+si-data-pg         = { path = "../../lib/si-data-pg" }
+si-hash            = { path = "../../lib/si-hash" }
+si-id              = { path = "../../lib/si-id" }
+si-jwt-public-key  = { path = "../../lib/si-jwt-public-key" }
+si-pkg             = { path = "../../lib/si-pkg" }
+si-posthog         = { path = "../../lib/si-posthog-rs" }
+si-settings        = { path = "../../lib/si-settings" }
+si-std             = { path = "../../lib/si-std" }
+telemetry          = { path = "../../lib/telemetry-rs" }
 
-axum = { workspace = true }
-base64 = { workspace = true }
-chrono = { workspace = true }
+anyhow         = { workspace = true }
+axum           = { workspace = true }
+base64         = { workspace = true }
+chrono         = { workspace = true }
 derive_builder = { workspace = true }
-futures = { workspace = true }
-hyper = { workspace = true }
-jwt-simple = { workspace = true }
-refinery = { workspace = true }
-regex = { workspace = true }
-remain = { workspace = true }
-rust-s3 = { workspace = true }
-sea-orm = { workspace = true }
-serde = { workspace = true }
-serde_json = { workspace = true }
-thiserror = { workspace = true }
-tokio = { workspace = true }
-tokio-stream = { workspace = true }
-tokio-util = { workspace = true }
-tower = { workspace = true }
-tower-http = { workspace = true }
-ulid = { workspace = true }
-url = { workspace = true }
+futures        = { workspace = true }
+hyper          = { workspace = true }
+jwt-simple     = { workspace = true }
+refinery       = { workspace = true }
+regex          = { workspace = true }
+remain         = { workspace = true }
+rust-s3        = { workspace = true }
+sea-orm        = { workspace = true }
+serde          = { workspace = true }
+serde_json     = { workspace = true }
+thiserror      = { workspace = true }
+tokio          = { workspace = true }
+tokio-stream   = { workspace = true }
+tokio-util     = { workspace = true }
+tower          = { workspace = true }
+tower-http     = { workspace = true }
+ulid           = { workspace = true }
+url            = { workspace = true }

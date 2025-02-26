@@ -76,6 +76,7 @@ async fn run_workspace_updates_proto(
 }
 
 mod workspace_updates {
+    use anyhow::Result;
     use axum::extract::ws::{self, WebSocket};
     use dal::{
         component::ComponentSetPositionPayload, user::CursorPayload, user::OnlinePayload,
@@ -156,8 +157,6 @@ mod workspace_updates {
         #[error("error when sending websocket message")]
         WsSendIo(#[source] axum::Error),
     }
-
-    type Result<T> = std::result::Result<T, WorkspaceUpdatesError>;
 
     #[derive(Debug)]
     pub struct WorkspaceUpdates {
@@ -285,7 +284,7 @@ mod workspace_updates {
                                         trace!("websocket has cleanly closed, ending");
                                         return Ok(WorkspaceUpdatesClosing { ws_is_closed: true });
                                 },
-                                _ => return Err(WorkspaceUpdatesError::WsSendIo(err)),
+                                _ => return Err(WorkspaceUpdatesError::WsSendIo(err).into()),
                             }
                         }
                     }

@@ -1,13 +1,11 @@
+use anyhow::Result;
 use si_events::workspace_snapshot::EntityKind;
 use si_id::EntityId;
 
 use crate::{
     workspace_snapshot::{
         content_address::ContentAddressDiscriminants,
-        graph::{
-            traits::entity_kind::EntityKindExt, WorkspaceSnapshotGraphError,
-            WorkspaceSnapshotGraphResult,
-        },
+        graph::traits::entity_kind::EntityKindExt,
         node_weight::{category_node_weight::CategoryNodeKind, NodeWeightError},
     },
     NodeWeightDiscriminants,
@@ -16,7 +14,7 @@ use crate::{
 use super::WorkspaceSnapshotGraphV4;
 
 impl EntityKindExt for WorkspaceSnapshotGraphV4 {
-    fn get_entity_kind_for_id(&self, id: EntityId) -> WorkspaceSnapshotGraphResult<EntityKind> {
+    fn get_entity_kind_for_id(&self, id: EntityId) -> Result<EntityKind> {
         let node_weight = self.get_node_weight_by_id(id)?;
         Ok(match node_weight.into() {
             NodeWeightDiscriminants::Action => EntityKind::Action,
@@ -73,12 +71,11 @@ impl EntityKindExt for WorkspaceSnapshotGraphV4 {
                 ContentAddressDiscriminants::ValidationPrototype => EntityKind::ValidationPrototype,
                 ContentAddressDiscriminants::View => EntityKind::View,
                 invalid => {
-                    return Err(WorkspaceSnapshotGraphError::NodeWeight(
-                        NodeWeightError::InvalidContentAddressForWeightKind(
-                            invalid.to_string(),
-                            "Content".to_string(),
-                        ),
-                    ))
+                    return Err(NodeWeightError::InvalidContentAddressForWeightKind(
+                        invalid.to_string(),
+                        "Content".to_string(),
+                    )
+                    .into())
                 }
             },
             NodeWeightDiscriminants::DependentValueRoot => EntityKind::DependentValueRoot,

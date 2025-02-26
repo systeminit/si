@@ -2,6 +2,7 @@
 
 use std::{collections::HashMap, str::FromStr};
 
+use anyhow::Result;
 use dal::{
     approval_requirement::{ApprovalRequirement, ApprovalRequirementApprover},
     change_set::approval::ChangeSetApproval,
@@ -12,8 +13,6 @@ use si_events::{merkle_tree_hash::MerkleTreeHash, ChangeSetApprovalStatus};
 use si_id::{ChangeSetApprovalId, EntityId};
 
 use super::DalWrapperError;
-
-type Result<T> = std::result::Result<T, DalWrapperError>;
 
 /// Returns all unsatisfied approval requirements (minimal information) for the current change set.
 pub async fn approval_requirements_are_satisfied_or_error(
@@ -30,9 +29,9 @@ pub async fn approval_requirements_are_satisfied_or_error(
     }
 
     if !unsatisfied_requirements.is_empty() {
-        return Err(DalWrapperError::ApplyWithUnsatisfiedRequirements(
-            unsatisfied_requirements,
-        ));
+        return Err(
+            DalWrapperError::ApplyWithUnsatisfiedRequirements(unsatisfied_requirements).into(),
+        );
     }
     Ok(())
 }
@@ -308,7 +307,7 @@ async fn inner_determine_approving_ids_with_hashes(
     let user_id = match user_id {
         Some(user_id) => user_id,
         None => match ctx.history_actor() {
-            HistoryActor::SystemInit => return Err(DalWrapperError::InvalidUser),
+            HistoryActor::SystemInit => return Err(DalWrapperError::InvalidUser.into()),
             HistoryActor::User(user_id) => *user_id,
         },
     };
@@ -348,7 +347,8 @@ async fn inner_determine_approving_ids_with_hashes(
                                         DalWrapperError::InvalidWorkspaceForPermissionLookup(
                                             object_workspace_id,
                                             workspace_id,
-                                        ),
+                                        )
+                                        .into(),
                                     );
                                 }
                                 let has_permission = PermissionBuilder::new()
@@ -365,7 +365,8 @@ async fn inner_determine_approving_ids_with_hashes(
                                     object_type.into(),
                                     object_id.into(),
                                     permission.into(),
-                                ))
+                                )
+                                .into())
                             }
                         }
                     }

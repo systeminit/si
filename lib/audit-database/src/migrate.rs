@@ -1,5 +1,6 @@
 //! Contains functionality for migrating the audit database.
 
+use anyhow::Result;
 use si_data_pg::{PgPool, PgPoolError};
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -13,8 +14,6 @@ pub enum AuditDatabaseMigrationError {
     #[error("pg pool error: {0}")]
     PgPool(#[from] PgPoolError),
 }
-
-type Result<T> = std::result::Result<T, AuditDatabaseMigrationError>;
 
 /// Performs migrations for the audit database.
 #[instrument(level = "info", name = "audit.init.migrate", skip_all)]

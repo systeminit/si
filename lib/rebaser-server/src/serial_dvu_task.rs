@@ -1,5 +1,6 @@
-use std::{result, sync::Arc};
+use std::sync::Arc;
 
+use anyhow::Result;
 use dal::{ChangeSet, ChangeSetError, ChangeSetStatus, DalContextBuilder};
 use si_events::{ChangeSetId, WorkspacePk};
 use telemetry::prelude::*;
@@ -22,8 +23,6 @@ pub(crate) enum SerialDvuTaskError {
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] dal::WorkspaceSnapshotError),
 }
-
-type Result<T> = result::Result<T, SerialDvuTaskError>;
 
 pub(crate) struct SerialDvuTask {
     metadata: Arc<ServerMetadata>,

@@ -1,20 +1,16 @@
+use anyhow::Result;
 use axum::extract::{Host, OriginalUri, Path};
-
-use si_events::audit_log::AuditLogKind;
-use si_frontend_types::SchemaVariant as FrontendVariant;
-
 use dal::{
     schema::variant::authoring::VariantAuthoringClient, ChangeSet, ChangeSetId, Schema,
     SchemaVariant, SchemaVariantId, WorkspacePk, WsEvent,
 };
+use si_events::audit_log::AuditLogKind;
+use si_frontend_types::SchemaVariant as FrontendVariant;
 
 use crate::{
     extract::{HandlerContext, PosthogClient},
     service::v2::AccessBuilder,
-    service::{
-        force_change_set_response::ForceChangeSetResponse,
-        variant::{SchemaVariantError, SchemaVariantResult},
-    },
+    service::{force_change_set_response::ForceChangeSetResponse, variant::SchemaVariantError},
     track,
 };
 
@@ -29,7 +25,7 @@ pub async fn create_unlocked_copy(
         ChangeSetId,
         SchemaVariantId,
     )>,
-) -> SchemaVariantResult<ForceChangeSetResponse<FrontendVariant>> {
+) -> Result<ForceChangeSetResponse<FrontendVariant>> {
     let mut ctx = builder
         .build(request_ctx.build(change_set_id.into()))
         .await?;
@@ -43,15 +39,13 @@ pub async fn create_unlocked_copy(
     if Schema::get_default_schema_variant_by_id(&ctx, schema.id()).await?
         != Some(original_variant.id())
     {
-        return Err(SchemaVariantError::CreatingUnlockedCopyForNonDefault(
-            original_variant.id(),
-        ));
+        return Err(
+            SchemaVariantError::CreatingUnlockedCopyForNonDefault(original_variant.id()).into(),
+        );
     }
 
     if !original_variant.is_locked() {
-        return Err(SchemaVariantError::VariantAlreadyUnlocked(
-            original_variant.id,
-        ));
+        return Err(SchemaVariantError::VariantAlreadyUnlocked(original_variant.id).into());
     }
 
     let unlocked_variant =

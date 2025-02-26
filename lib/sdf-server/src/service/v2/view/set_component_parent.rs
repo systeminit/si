@@ -1,18 +1,18 @@
-use super::ViewResult;
-use crate::{
-    extract::HandlerContext, service::force_change_set_response::ForceChangeSetResponse,
-    service::v2::AccessBuilder,
-};
-use axum::extract::Path;
-use axum::Json;
-use dal::diagram::view::ViewId;
+use anyhow::Result;
+use axum::{extract::Path, Json};
 use dal::{
-    component::frame::Frame, ChangeSet, ChangeSetId, Component, ComponentId, WorkspacePk, WsEvent,
+    component::frame::Frame, diagram::view::ViewId, ChangeSet, ChangeSetId, Component, ComponentId,
+    WorkspacePk, WsEvent,
 };
 use serde::{Deserialize, Serialize};
 use si_events::audit_log::AuditLogKind;
 use std::collections::HashMap;
 use ulid::Ulid;
+
+use crate::{
+    extract::HandlerContext, service::force_change_set_response::ForceChangeSetResponse,
+    service::v2::AccessBuilder,
+};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -34,7 +34,7 @@ pub async fn set_component_parent(
     AccessBuilder(access_builder): AccessBuilder,
     Path((_workspace_pk, change_set_id, _view_id)): Path<(WorkspacePk, ChangeSetId, ViewId)>,
     Json(request): Json<SetComponentParentRequest>,
-) -> ViewResult<ForceChangeSetResponse<SetComponentParentResponse>> {
+) -> Result<ForceChangeSetResponse<SetComponentParentResponse>> {
     let mut ctx = builder
         .build(access_builder.build(change_set_id.into()))
         .await?;

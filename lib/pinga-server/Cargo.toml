@@ -1,38 +1,39 @@
 [package]
-name = "pinga-server"
-version.workspace = true
-authors.workspace = true
-license.workspace = true
-repository.workspace = true
-edition.workspace = true
+name                   = "pinga-server"
+version.workspace      = true
+authors.workspace      = true
+license.workspace      = true
+repository.workspace   = true
+edition.workspace      = true
 rust-version.workspace = true
-publish.workspace = true
+publish.workspace      = true
 
 [dependencies]
 buck2-resources = { path = "../../lib/buck2-resources" }
-dal = { path = "../../lib/dal" }
+dal             = { path = "../../lib/dal" }
 nats-subscriber = { path = "../../lib/nats-subscriber" }
-naxum = { path = "../../lib/naxum" }
-pinga-core = { path = "../../lib/pinga-core" }
-rebaser-client = { path = "../../lib/rebaser-client" }
-si-crypto = { path = "../../lib/si-crypto" }
-si-data-nats = { path = "../../lib/si-data-nats" }
-si-data-pg = { path = "../../lib/si-data-pg" }
-si-layer-cache = { path = "../../lib/si-layer-cache" }
-si-settings = { path = "../../lib/si-settings" }
-si-std = { path = "../../lib/si-std" }
-telemetry = { path = "../../lib/telemetry-rs" }
-telemetry-nats = { path = "../../lib/telemetry-nats-rs" }
+naxum           = { path = "../../lib/naxum" }
+pinga-core      = { path = "../../lib/pinga-core" }
+rebaser-client  = { path = "../../lib/rebaser-client" }
+si-crypto       = { path = "../../lib/si-crypto" }
+si-data-nats    = { path = "../../lib/si-data-nats" }
+si-data-pg      = { path = "../../lib/si-data-pg" }
+si-layer-cache  = { path = "../../lib/si-layer-cache" }
+si-settings     = { path = "../../lib/si-settings" }
+si-std          = { path = "../../lib/si-std" }
+telemetry       = { path = "../../lib/telemetry-rs" }
+telemetry-nats  = { path = "../../lib/telemetry-nats-rs" }
 telemetry-utils = { path = "../../lib/telemetry-utils-rs" }
 veritech-client = { path = "../../lib/veritech-client" }
 
+anyhow         = { workspace = true }
 derive_builder = { workspace = true }
-futures = { workspace = true }
-remain = { workspace = true }
-serde = { workspace = true }
-serde_json = { workspace = true }
-thiserror = { workspace = true }
-tokio = { workspace = true }
-tokio-stream = { workspace = true }
-tokio-util = { workspace = true }
-ulid = { workspace = true }
+futures        = { workspace = true }
+remain         = { workspace = true }
+serde          = { workspace = true }
+serde_json     = { workspace = true }
+thiserror      = { workspace = true }
+tokio          = { workspace = true }
+tokio-stream   = { workspace = true }
+tokio-util     = { workspace = true }
+ulid           = { workspace = true }

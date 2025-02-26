@@ -1,5 +1,6 @@
 use std::collections::{hash_map, HashMap};
 
+use anyhow::Result;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
@@ -14,7 +15,7 @@ use crate::{
     InputSocketId, OutputSocket, OutputSocketId,
 };
 
-use super::{ComponentError, ComponentResult};
+use super::ComponentError;
 
 /// Represents a given [`Component`]'s [`crate::InputSocket`], identified by its
 /// (non-unique) [`InputSocketId`] and unique [`AttributeValueId`]
@@ -49,7 +50,7 @@ impl ComponentOutputSocket {
     pub async fn find_inferred_connections(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
-    ) -> ComponentResult<Vec<ComponentInputSocket>> {
+    ) -> Result<Vec<ComponentInputSocket>> {
         // let's make sure this av is actually for an output socket
         let value_is_for = AttributeValue::is_for(ctx, attribute_value_id).await?;
         let output_socket_id = match value_is_for {
@@ -57,7 +58,8 @@ impl ComponentOutputSocket {
                 return Err(ComponentError::WrongAttributeValueType(
                     attribute_value_id,
                     value_is_for,
-                ))
+                )
+                .into())
             }
             ValueIsFor::OutputSocket(sock) => sock,
         };
@@ -96,7 +98,7 @@ impl ComponentOutputSocket {
         ctx: &DalContext,
         component_id: ComponentId,
         output_socket_id: OutputSocketId,
-    ) -> ComponentResult<Option<ComponentOutputSocket>> {
+    ) -> Result<Option<ComponentOutputSocket>> {
         let output_socket = Self::list_for_component_id(ctx, component_id)
             .await?
             .into_iter()
@@ -111,13 +113,14 @@ impl ComponentOutputSocket {
         ctx: &DalContext,
         component_id: ComponentId,
         output_socket_id: OutputSocketId,
-    ) -> ComponentResult<ComponentOutputSocket> {
+    ) -> Result<ComponentOutputSocket> {
         match Self::get_by_ids(ctx, component_id, output_socket_id).await? {
             Some(component_output_socket) => Ok(component_output_socket),
             None => Err(ComponentError::OutputSocketNotFoundForComponentId(
                 output_socket_id,
                 component_id,
-            )),
+            )
+            .into()),
         }
     }
 
@@ -125,7 +128,7 @@ impl ComponentOutputSocket {
     pub async fn list_for_component_id(
         ctx: &DalContext,
         component_id: ComponentId,
-    ) -> ComponentResult<Vec<Self>> {
+    ) -> Result<Vec<Self>> {
         let mut result = Vec::new();
 
         let socket_values = Component::attribute_values_for_all_sockets(ctx, component_id).await?;
@@ -149,7 +152,7 @@ impl ComponentOutputSocket {
     pub async fn attribute_values_for_component_id(
         ctx: &DalContext,
         component_id: ComponentId,
-    ) -> ComponentResult<Vec<AttributeValueId>> {
+    ) -> Result<Vec<AttributeValueId>> {
         let mut result = HashMap::new();
 
         let socket_values = Component::attribute_values_for_all_sockets(ctx, component_id).await?;
@@ -170,7 +173,8 @@ impl ComponentOutputSocket {
                     hash_map::Entry::Occupied(_) => {
                         return Err(ComponentError::OutputSocketTooManyAttributeValues(
                             output_socket_id,
-                        ));
+                        )
+                        .into());
                     }
                 }
             }
@@ -198,7 +202,7 @@ impl ComponentInputSocket {
     pub async fn find_inferred_connections(
         ctx: &DalContext,
         component_input_socket: ComponentInputSocket,
-    ) -> ComponentResult<Vec<ComponentOutputSocket>> {
+    ) -> Result<Vec<ComponentOutputSocket>> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
         let mut inferred_connection_graph =
             workspace_snapshot.inferred_connection_graph(ctx).await?;
@@ -232,7 +236,7 @@ impl ComponentInputSocket {
     pub async fn connections(
         &self,
         ctx: &DalContext,
-    ) -> ComponentResult<Vec<(ComponentId, OutputSocketId, AttributePrototypeArgument)>> {
+    ) -> Result<Vec<(ComponentId, OutputSocketId, AttributePrototypeArgument)>> {
         let mut result = vec![];
 
         let prototype_id = AttributeValue::prototype_id(ctx, self.attribute_value_id).await?;
@@ -265,7 +269,7 @@ impl ComponentInputSocket {
     pub async fn list_for_component_id(
         ctx: &DalContext,
         component_id: ComponentId,
-    ) -> ComponentResult<Vec<ComponentInputSocket>> {
+    ) -> Result<Vec<ComponentInputSocket>> {
         let mut result = Vec::new();
 
         let socket_values = Component::attribute_values_for_all_sockets(ctx, component_id).await?;
@@ -290,7 +294,7 @@ impl ComponentInputSocket {
         ctx: &DalContext,
         component_id: ComponentId,
         input_socket_id: InputSocketId,
-    ) -> ComponentResult<Option<ComponentInputSocket>> {
+    ) -> Result<Option<ComponentInputSocket>> {
         let input_socket = Self::list_for_component_id(ctx, component_id)
             .await?
             .into_iter()
@@ -305,13 +309,14 @@ impl ComponentInputSocket {
         ctx: &DalContext,
         component_id: ComponentId,
         input_socket_id: InputSocketId,
-    ) -> ComponentResult<ComponentInputSocket> {
+    ) -> Result<ComponentInputSocket> {
         match Self::get_by_ids(ctx, component_id, input_socket_id).await? {
             Some(component_input_socket) => Ok(component_input_socket),
             None => Err(ComponentError::InputSocketNotFoundForComponentId(
                 input_socket_id,
                 component_id,
-            )),
+            )
+            .into()),
         }
     }
 
@@ -319,7 +324,7 @@ impl ComponentInputSocket {
     pub async fn attribute_values_for_component_id(
         ctx: &DalContext,
         component_id: ComponentId,
-    ) -> ComponentResult<Vec<AttributeValueId>> {
+    ) -> Result<Vec<AttributeValueId>> {
         let mut result = HashMap::new();
 
         let socket_values = Component::attribute_values_for_all_sockets(ctx, component_id).await?;
@@ -340,7 +345,8 @@ impl ComponentInputSocket {
                     hash_map::Entry::Occupied(_) => {
                         return Err(ComponentError::InputSocketTooManyAttributeValues(
                             input_socket_id,
-                        ));
+                        )
+                        .into());
                     }
                 }
             }
@@ -362,7 +368,7 @@ impl ComponentInputSocket {
     pub async fn find_connection_arity_one(
         ctx: &DalContext,
         component_input_socket: ComponentInputSocket,
-    ) -> ComponentResult<Option<ComponentId>> {
+    ) -> Result<Option<ComponentId>> {
         let maybe_explicit_connection_source = {
             let explicit_connections =
                 Component::incoming_connections_for_id(ctx, component_input_socket.component_id)
@@ -377,7 +383,8 @@ impl ComponentInputSocket {
                     filtered_explicit_connection_sources,
                     component_input_socket.component_id,
                     component_input_socket.input_socket_id,
-                ));
+                )
+                .into());
             }
             filtered_explicit_connection_sources.first().copied()
         };
@@ -389,17 +396,20 @@ impl ComponentInputSocket {
             .await
             {
                 Ok(inferred_connections) => inferred_connections,
-                Err(ComponentError::ComponentMissingTypeValueMaterializedView(_)) => {
-                    debug!(?component_input_socket, "component type not yet set when finding available inferred connections to input socket");
-                    Vec::new()
-                }
-                Err(other_err) => Err(other_err)?,
+                Err(error) => match error.downcast_ref::<ComponentError>() {
+                    Some(ComponentError::ComponentMissingTypeValueMaterializedView(_)) => {
+                        debug!(?component_input_socket, "component type not yet set when finding available inferred connections to input socket");
+                        Vec::new()
+                    }
+                    _ => return Err(error),
+                },
             };
             if inferred_connections.len() > 1 {
                 return Err(ComponentError::TooManyInferredConnections(
                     inferred_connections,
                     component_input_socket,
-                ));
+                )
+                .into());
             }
             inferred_connections.first().map(|c| c.component_id)
         };
@@ -413,7 +423,8 @@ impl ComponentInputSocket {
                     explicit_source,
                     inferred_source,
                     component_input_socket,
-                ))
+                )
+                .into())
             }
             (Some(explicit_source), None) => Ok(Some(explicit_source)),
             (None, Some(inferred_source)) => Ok(Some(inferred_source)),
@@ -426,7 +437,7 @@ impl ComponentInputSocket {
     pub async fn is_manually_configured(
         ctx: &DalContext,
         component_input_socket: ComponentInputSocket,
-    ) -> ComponentResult<bool> {
+    ) -> Result<bool> {
         // if the input socket has an explicit connection, then we will not gather any implicit
         // note we could do some weird logic here when it comes to sockets with arrity of many
         // but let's punt for now

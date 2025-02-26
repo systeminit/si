@@ -1,3 +1,4 @@
+use anyhow::Result;
 use axum::{
     extract::{Host, OriginalUri, Path},
     Json,
@@ -12,7 +13,7 @@ use crate::{
     track,
 };
 
-use super::{ModuleAPIResult, ModulesAPIError};
+use super::ModulesAPIError;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -28,14 +29,14 @@ pub async fn promote(
     OriginalUri(original_uri): OriginalUri,
     Host(host_name): Host,
     Path((_workspace_pk, change_set_id, module_id)): Path<(WorkspacePk, ChangeSetId, ModuleId)>,
-) -> ModuleAPIResult<Json<PromoteToBuiltinModuleResponse>> {
+) -> Result<Json<PromoteToBuiltinModuleResponse>> {
     let ctx = builder
         .build(request_ctx.build(change_set_id.into()))
         .await?;
 
     let module_index_url = match ctx.module_index_url() {
         Some(url) => url,
-        None => return Err(ModulesAPIError::ModuleIndexNotConfigured),
+        None => return Err(ModulesAPIError::ModuleIndexNotConfigured.into()),
     };
 
     let user = match ctx.history_actor() {
@@ -88,14 +89,14 @@ pub async fn reject(
     OriginalUri(original_uri): OriginalUri,
     Host(host_name): Host,
     Path((_workspace_pk, change_set_id, module_id)): Path<(WorkspacePk, ChangeSetId, ModuleId)>,
-) -> ModuleAPIResult<Json<RejectModuleResponse>> {
+) -> Result<Json<RejectModuleResponse>> {
     let ctx = builder
         .build(request_ctx.build(change_set_id.into()))
         .await?;
 
     let module_index_url = match ctx.module_index_url() {
         Some(url) => url,
-        None => return Err(ModulesAPIError::ModuleIndexNotConfigured),
+        None => return Err(ModulesAPIError::ModuleIndexNotConfigured.into()),
     };
 
     let user = match ctx.history_actor() {

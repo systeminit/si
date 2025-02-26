@@ -3,6 +3,7 @@ use std::{
     sync::Arc,
 };
 
+use anyhow::Result;
 use async_trait::async_trait;
 use si_events::{merkle_tree_hash::MerkleTreeHash, ContentHash};
 use si_id::{ulid::Ulid, ApprovalRequirementDefinitionId, EntityId, UserPk};
@@ -20,7 +21,6 @@ use crate::{
             traits::approval_requirement::ApprovalRequirementExt as ApprovalRequirementExtGraph,
         },
         node_weight::{traits::SiNodeWeight, NodeWeight},
-        WorkspaceSnapshotResult,
     },
     DalContext, EdgeWeight, EdgeWeightKind, WorkspaceSnapshot, WorkspaceSnapshotError,
 };
@@ -37,49 +37,49 @@ pub trait ApprovalRequirementExt {
         entity_id: Ulid,
         minimum_approvers_count: usize,
         approvers: HashSet<ApprovalRequirementApprover>,
-    ) -> WorkspaceSnapshotResult<ApprovalRequirementDefinitionId>;
+    ) -> Result<ApprovalRequirementDefinitionId>;
 
     async fn remove_definition(
         &self,
         approval_requirement_definition_id: ApprovalRequirementDefinitionId,
-    ) -> WorkspaceSnapshotResult<()>;
+    ) -> Result<()>;
 
     async fn add_individual_approver_for_definition(
         &self,
         ctx: &DalContext,
         id: ApprovalRequirementDefinitionId,
         user_id: UserPk,
-    ) -> WorkspaceSnapshotResult<()>;
+    ) -> Result<()>;
 
     async fn remove_individual_approver_for_definition(
         &self,
         ctx: &DalContext,
         id: ApprovalRequirementDefinitionId,
         user_id: UserPk,
-    ) -> WorkspaceSnapshotResult<()>;
+    ) -> Result<()>;
 
     async fn approval_requirements_for_changes(
         &self,
         ctx: &DalContext,
         changes: &[Change],
-    ) -> WorkspaceSnapshotResult<(Vec<ApprovalRequirement>, HashMap<EntityId, MerkleTreeHash>)>;
+    ) -> Result<(Vec<ApprovalRequirement>, HashMap<EntityId, MerkleTreeHash>)>;
 
     async fn approval_requirement_definitions_for_entity_id_opt(
         &self,
         ctx: &DalContext,
         entity_id: EntityId,
-    ) -> WorkspaceSnapshotResult<Option<Vec<ApprovalRequirementDefinition>>>;
+    ) -> Result<Option<Vec<ApprovalRequirementDefinition>>>;
 
     async fn entity_id_for_approval_requirement_definition_id(
         &self,
         id: ApprovalRequirementDefinitionId,
-    ) -> WorkspaceSnapshotResult<EntityId>;
+    ) -> Result<EntityId>;
 
     async fn get_by_id_or_error(
         &self,
         ctx: &DalContext,
         id: ApprovalRequirementDefinitionId,
-    ) -> WorkspaceSnapshotResult<ApprovalRequirementDefinition>;
+    ) -> Result<ApprovalRequirementDefinition>;
 }
 
 #[async_trait]
@@ -88,7 +88,7 @@ impl ApprovalRequirementExt for WorkspaceSnapshot {
         &self,
         ctx: &DalContext,
         id: ApprovalRequirementDefinitionId,
-    ) -> WorkspaceSnapshotResult<ApprovalRequirementDefinition> {
+    ) -> Result<ApprovalRequirementDefinition> {
         let node_weight = self
             .get_node_weight_by_id(id)
             .await?
@@ -110,7 +110,7 @@ impl ApprovalRequirementExt for WorkspaceSnapshot {
         entity_id: Ulid,
         minimum_approvers_count: usize,
         approvers: HashSet<ApprovalRequirementApprover>,
-    ) -> WorkspaceSnapshotResult<ApprovalRequirementDefinitionId> {
+    ) -> Result<ApprovalRequirementDefinitionId> {
         let content = ApprovalRequirementDefinitionContentV1 {
             minimum: minimum_approvers_count,
             approvers,
@@ -141,7 +141,7 @@ impl ApprovalRequirementExt for WorkspaceSnapshot {
     async fn remove_definition(
         &self,
         approval_requirement_definition_id: ApprovalRequirementDefinitionId,
-    ) -> WorkspaceSnapshotResult<()> {
+    ) -> Result<()> {
         self.remove_node_by_id(approval_requirement_definition_id)
             .await
     }
@@ -151,7 +151,7 @@ impl ApprovalRequirementExt for WorkspaceSnapshot {
         ctx: &DalContext,
         id: ApprovalRequirementDefinitionId,
         user_id: UserPk,
-    ) -> WorkspaceSnapshotResult<()> {
+    ) -> Result<()> {
         let node_weight = self.get_node_weight_by_id(id).await?;
         let content: ApprovalRequirementDefinitionContent = ctx
             .layer_db()
@@ -188,7 +188,7 @@ impl ApprovalRequirementExt for WorkspaceSnapshot {
         ctx: &DalContext,
         id: ApprovalRequirementDefinitionId,
         user_id: UserPk,
-    ) -> WorkspaceSnapshotResult<()> {
+    ) -> Result<()> {
         let node_weight = self.get_node_weight_by_id(id).await?;
         let content: ApprovalRequirementDefinitionContent = ctx
             .layer_db()
@@ -224,8 +224,7 @@ impl ApprovalRequirementExt for WorkspaceSnapshot {
         &self,
         ctx: &DalContext,
         changes: &[Change],
-    ) -> WorkspaceSnapshotResult<(Vec<ApprovalRequirement>, HashMap<EntityId, MerkleTreeHash>)>
-    {
+    ) -> Result<(Vec<ApprovalRequirement>, HashMap<EntityId, MerkleTreeHash>)> {
         let mut results = Vec::new();
 
         let workspace_id = ctx.workspace_pk()?;
@@ -290,7 +289,8 @@ impl ApprovalRequirementExt for WorkspaceSnapshot {
                 return Err(WorkspaceSnapshotError::MissingContentFromContentMap(
                     hash,
                     approval_requirement_definition_id,
-                ));
+                )
+                .into());
             }
         }
 
@@ -301,7 +301,7 @@ impl ApprovalRequirementExt for WorkspaceSnapshot {
         &self,
         ctx: &DalContext,
         entity_id: EntityId,
-    ) -> WorkspaceSnapshotResult<Option<Vec<ApprovalRequirementDefinition>>> {
+    ) -> Result<Option<Vec<ApprovalRequirementDefinition>>> {
         let Some(approval_requirement_definition_ids) = self
             .working_copy()
             .await
@@ -325,7 +325,8 @@ impl ApprovalRequirementExt for WorkspaceSnapshot {
             else {
                 return Err(WorkspaceSnapshotError::MissingContentFromStore(
                     definition_node_weight.id(),
-                ));
+                )
+                .into());
             };
             results.push(ApprovalRequirementDefinition::assemble(
                 approval_requirement_definition_id,
@@ -339,7 +340,7 @@ impl ApprovalRequirementExt for WorkspaceSnapshot {
     async fn entity_id_for_approval_requirement_definition_id(
         &self,
         id: ApprovalRequirementDefinitionId,
-    ) -> WorkspaceSnapshotResult<EntityId> {
+    ) -> Result<EntityId> {
         Ok(self
             .working_copy()
             .await

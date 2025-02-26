@@ -1,5 +1,6 @@
 use std::{fmt, future::IntoFuture as _, net::SocketAddr, path::PathBuf, sync::Arc};
 
+use anyhow::{Context, Result};
 use asset_sprayer::AssetSprayer;
 use audit_database::AuditDatabaseContext;
 use axum::{async_trait, routing::IntoMakeService, Router};
@@ -23,7 +24,7 @@ use crate::{
     nats_multiplexer::{CRDT_MULTIPLEXER_SUBJECT, WS_MULTIPLEXER_SUBJECT},
     runnable::Runnable,
     uds::UdsIncomingStream,
-    ApplicationRuntimeMode, AxumApp, Config, IncomingStream, Migrator, ServerError, ServerResult,
+    ApplicationRuntimeMode, AxumApp, Config, IncomingStream, Migrator, ServerError,
     WorkspacePermissions, WorkspacePermissionsMode,
 };
 
@@ -66,7 +67,7 @@ impl fmt::Debug for Server {
 // versions may be able to look more like pinga/veritech/rebaser with naxum.
 #[async_trait]
 impl Runnable for Server {
-    async fn try_run(self) -> ServerResult<()> {
+    async fn try_run(self) -> Result<()> {
         self.inner.try_run().await?;
         info!("sdf main loop shutdown complete");
         Ok(())
@@ -80,7 +81,7 @@ impl Server {
         token: CancellationToken,
         helping_tasks_tracker: &TaskTracker,
         helping_tasks_token: CancellationToken,
-    ) -> ServerResult<Self> {
+    ) -> Result<Self> {
         let (services_context, layer_db_graceful_shutdown) =
             init::services_context_from_config(&config, helping_tasks_token.clone()).await?;
 
@@ -171,7 +172,7 @@ impl Server {
         token: CancellationToken,
         spicedb_client: Option<SpiceDbClient>,
         audit_database_context: AuditDatabaseContext,
-    ) -> ServerResult<Self> {
+    ) -> Result<Self> {
         let app = AxumApp::from_services(
             services_context.clone(),
             jwt_public_signing_key_chain,
@@ -267,7 +268,7 @@ where
     IO: AsyncRead + AsyncWrite + Unpin + Send + 'static,
     IE: Into<Box<dyn std::error::Error + Send + Sync>>,
 {
-    async fn try_run(self) -> ServerResult<()> {
+    async fn try_run(self) -> Result<()> {
         let token = self.token;
 
         self.inner
@@ -275,14 +276,14 @@ where
                 token.cancelled().await;
             })
             .await
-            .map_err(ServerError::Axum)
+            .context(ServerError::Axum)
     }
 }
 
 fn prepare_maintenance_mode_watcher(
     mode: Arc<RwLock<ApplicationRuntimeMode>>,
     cancellation_token: CancellationToken,
-) -> ServerResult<()> {
+) -> Result<()> {
     let mut sigusr2_watcher = signal::unix::signal(signal::unix::SignalKind::user_defined2())
         .map_err(ServerError::Signal)?;
 

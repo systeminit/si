@@ -1,5 +1,6 @@
-use std::{result, str::Utf8Error, sync::Arc};
+use std::{str::Utf8Error, sync::Arc};
 
+use anyhow::Result;
 use dal::{
     job::{
         consumer::{JobConsumer, JobConsumerError, JobInfo},
@@ -34,8 +35,6 @@ pub enum HandlerError {
     #[error("utf8 error when creating subject")]
     Utf8(#[source] Utf8Error),
 }
-
-type Result<T> = result::Result<T, HandlerError>;
 
 impl IntoResponse for HandlerError {
     fn into_response(self) -> Response {
@@ -197,7 +196,7 @@ async fn execute_job_inner(mut ctx_builder: DalContextBuilder, job_info: JobInfo
         }
         stringify!(ComputeValidation) => Box::new(ComputeValidation::try_from(job_info.clone())?)
             as Box<dyn JobConsumer + Send + Sync>,
-        kind => return Err(HandlerError::UnknownJobKind(kind.to_owned())),
+        kind => return Err(HandlerError::UnknownJobKind(kind.to_owned()).into()),
     };
 
     info!("Processing job");

@@ -1,3 +1,4 @@
+use anyhow::Result;
 use axum::{
     extract::{Host, OriginalUri, Path},
     Json,
@@ -18,17 +19,14 @@ use si_frontend_types::{self as frontend_types, FuncBinding};
 use crate::{
     extract::{HandlerContext, PosthogClient},
     service::v2::AccessBuilder,
-    service::{
-        force_change_set_response::ForceChangeSetResponse,
-        v2::func::{FuncAPIError, FuncAPIResult},
-    },
+    service::{force_change_set_response::ForceChangeSetResponse, v2::func::FuncAPIError},
     track,
 };
 
 pub async fn update_attribute_func_bindings(
     ctx: &DalContext,
     bindings: Vec<FuncBinding>,
-) -> FuncAPIResult<()> {
+) -> Result<()> {
     for binding in bindings {
         let frontend_types::FuncBinding::Attribute {
             argument_bindings,
@@ -70,7 +68,7 @@ pub async fn update_attribute_func_bindings(
 pub async fn update_action_func_bindings(
     ctx: &DalContext,
     bindings: Vec<FuncBinding>,
-) -> FuncAPIResult<()> {
+) -> Result<()> {
     for binding in bindings {
         let frontend_types::FuncBinding::Action {
             action_prototype_id,
@@ -96,10 +94,7 @@ pub async fn update_action_func_bindings(
     Ok(())
 }
 
-pub async fn update_leaf_func_bindings(
-    ctx: &DalContext,
-    bindings: Vec<FuncBinding>,
-) -> FuncAPIResult<()> {
+pub async fn update_leaf_func_bindings(ctx: &DalContext, bindings: Vec<FuncBinding>) -> Result<()> {
     for binding in bindings {
         let (attribute_prototype_id, inputs) = binding
             .leaf_inputs()
@@ -124,7 +119,7 @@ pub async fn update_leaf_func_bindings(
                 .await?;
             }
 
-            _ => return Err(FuncAPIError::WrongFunctionKindForBinding),
+            _ => return Err(FuncAPIError::WrongFunctionKindForBinding.into()),
         }
     }
 
@@ -134,7 +129,7 @@ pub async fn update_leaf_func_bindings(
 pub async fn update_mangement_func_bindings(
     ctx: &DalContext,
     bindings: Vec<FuncBinding>,
-) -> FuncAPIResult<()> {
+) -> Result<()> {
     for binding in bindings {
         let frontend_types::FuncBinding::Management {
             managed_schemas,
@@ -142,7 +137,7 @@ pub async fn update_mangement_func_bindings(
             ..
         } = binding
         else {
-            return Err(FuncAPIError::WrongFunctionKindForBinding);
+            return Err(FuncAPIError::WrongFunctionKindForBinding.into());
         };
 
         let management_prototype_id = management_prototype_id
@@ -169,7 +164,7 @@ pub async fn update_binding(
     Host(host_name): Host,
     Path((_workspace_pk, change_set_id, func_id)): Path<(WorkspacePk, ChangeSetId, FuncId)>,
     Json(request): Json<frontend_types::FuncBindings>,
-) -> FuncAPIResult<ForceChangeSetResponse<Vec<frontend_types::FuncBinding>>> {
+) -> Result<ForceChangeSetResponse<Vec<frontend_types::FuncBinding>>> {
     let mut ctx = builder
         .build(access_builder.build(change_set_id.into()))
         .await?;
@@ -191,7 +186,7 @@ pub async fn update_binding(
         FuncKind::Management => {
             update_mangement_func_bindings(&ctx, request.bindings).await?;
         }
-        _ => return Err(FuncAPIError::WrongFunctionKindForBinding),
+        _ => return Err(FuncAPIError::WrongFunctionKindForBinding.into()),
     }
 
     drop(cycle_check_guard);

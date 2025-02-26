@@ -104,13 +104,15 @@ impl AttributeArgumentBinding {
                         return Err(FuncBindingError::UnexpectedValueSource(
                             value_source,
                             attribute_prototype_argument_id,
-                        ))
+                        )
+                        .into())
                     }
                 },
                 None => {
                     return Err(FuncBindingError::MissingValueSource(
                         attribute_prototype_argument_id,
-                    ))
+                    )
+                    .into())
                 }
             };
 

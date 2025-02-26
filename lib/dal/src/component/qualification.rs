@@ -1,12 +1,13 @@
+use anyhow::Result;
 use serde::Deserialize;
 use telemetry::prelude::*;
 
-use crate::component::ComponentResult;
-use crate::qualification::{QualificationSubCheckStatus, QualificationView};
-use crate::schema::variant::root_prop::RootPropChild;
-use crate::ws_event::WsEvent;
-use crate::{AttributeValue, AttributeValueId, DalContext};
-use crate::{Component, ComponentError, ComponentId};
+use crate::{
+    qualification::{QualificationSubCheckStatus, QualificationView},
+    schema::variant::root_prop::RootPropChild,
+    ws_event::WsEvent,
+    AttributeValue, AttributeValueId, Component, ComponentError, ComponentId, DalContext,
+};
 
 // FIXME(nick): use the formal types from the new version of function authoring instead of this
 // struct. This struct is a temporary stopgap until that's implemented.
@@ -20,7 +21,7 @@ impl Component {
     pub async fn list_qualification_avs(
         ctx: &DalContext,
         component_id: ComponentId,
-    ) -> ComponentResult<Vec<AttributeValue>> {
+    ) -> Result<Vec<AttributeValue>> {
         let qualification_map_value_id =
             Self::find_qualification_map_attribute_value_id(ctx, component_id).await?;
 
@@ -29,7 +30,7 @@ impl Component {
     pub async fn list_qualification_statuses(
         ctx: &DalContext,
         component_id: ComponentId,
-    ) -> ComponentResult<Vec<Option<QualificationSubCheckStatus>>> {
+    ) -> Result<Vec<Option<QualificationSubCheckStatus>>> {
         let mut statuses = vec![];
 
         let qualification_avs = Self::list_qualification_avs(ctx, component_id).await?;
@@ -59,7 +60,7 @@ impl Component {
     pub async fn list_qualifications(
         ctx: &DalContext,
         component_id: ComponentId,
-    ) -> ComponentResult<Vec<QualificationView>> {
+    ) -> Result<Vec<QualificationView>> {
         let mut qualification_views = vec![];
 
         let qualification_avs = Self::list_qualification_avs(ctx, component_id).await?;
@@ -90,7 +91,7 @@ impl Component {
     pub async fn find_qualification_map_attribute_value_id(
         ctx: &DalContext,
         component_id: ComponentId,
-    ) -> ComponentResult<AttributeValueId> {
+    ) -> Result<AttributeValueId> {
         match Self::attribute_values_for_prop_by_id(
             ctx,
             component_id,
@@ -103,7 +104,7 @@ impl Component {
         .first()
         {
             Some(qualification_map_attribute_value_id) => Ok(*qualification_map_attribute_value_id),
-            None => Err(ComponentError::MissingQualificationsValue(component_id)),
+            None => Err(ComponentError::MissingQualificationsValue(component_id).into()),
         }
     }
 }

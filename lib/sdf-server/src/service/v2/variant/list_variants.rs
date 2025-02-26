@@ -1,16 +1,15 @@
 use std::collections::HashSet;
 
+use anyhow::Result;
 use axum::{
     extract::{Host, OriginalUri, Path},
     Json,
 };
-
 use dal::{cached_module::CachedModule, ChangeSetId, SchemaVariant, WorkspacePk};
 use si_frontend_types::ListVariantsResponse;
 
 use crate::{
     extract::{HandlerContext, PosthogClient},
-    service::v2::variant::SchemaVariantsAPIError,
     service::v2::AccessBuilder,
     track,
 };
@@ -22,7 +21,7 @@ pub async fn list_variants(
     OriginalUri(original_uri): OriginalUri,
     Host(host_name): Host,
     Path((_workspace_pk, change_set_id)): Path<(WorkspacePk, ChangeSetId)>,
-) -> Result<Json<ListVariantsResponse>, SchemaVariantsAPIError> {
+) -> Result<Json<ListVariantsResponse>> {
     let ctx = builder
         .build(access_builder.build(change_set_id.into()))
         .await?;

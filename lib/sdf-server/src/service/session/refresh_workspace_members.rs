@@ -1,3 +1,4 @@
+use anyhow::Result;
 use axum::{
     extract::{Host, OriginalUri, State},
     http::uri::Uri,
@@ -9,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use si_data_spicedb::SpiceDbClient;
 use strum::{Display, EnumString};
 
-use super::{SessionError, SessionResult};
+use super::SessionError;
 use crate::{
     extract::{request::RawAccessToken, v1::AccessBuilder, HandlerContext, PosthogClient},
     service::session::AuthApiErrBody,
@@ -56,7 +57,7 @@ pub async fn refresh_workspace_members(
     Host(host_name): Host,
     State(mut state): State<AppState>,
     Json(request): Json<RefreshWorkspaceMembersRequest>,
-) -> SessionResult<Json<RefreshWorkspaceMembersResponse>> {
+) -> Result<Json<RefreshWorkspaceMembersResponse>> {
     let client = reqwest::Client::new();
 
     let res = client
@@ -75,7 +76,7 @@ pub async fn refresh_workspace_members(
             .await
             .map_err(|err| SessionError::AuthApiError(err.to_string()))?;
         println!("code exchange failed = {:?}", res_err_body.message);
-        return Err(SessionError::AuthApiError(res_err_body.message));
+        return Err(SessionError::AuthApiError(res_err_body.message).into());
     }
 
     let workspace_members = res.json::<Vec<WorkspaceMember>>().await?;
@@ -124,7 +125,7 @@ async fn sync_workspace_approvers(
     original_uri: &Uri,
     host_name: &String,
     PosthogClient(posthog_client): &PosthogClient,
-) -> SessionResult<()> {
+) -> Result<()> {
     let existing_approvers = RelationBuilder::new()
         .object(ObjectType::Workspace, workspace_id.clone())
         .relation(Relation::Approver)

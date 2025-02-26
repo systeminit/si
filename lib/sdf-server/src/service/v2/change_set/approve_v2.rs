@@ -1,3 +1,4 @@
+use anyhow::Result;
 use axum::{
     extract::{Host, OriginalUri, Path, State},
     Json,
@@ -6,13 +7,14 @@ use dal::{change_set::approval::ChangeSetApproval, ChangeSet, ChangeSetId, Works
 use serde::Deserialize;
 use si_events::{audit_log::AuditLogKind, ChangeSetApprovalStatus};
 
-use super::{ChangeSetAPIError, Error, Result};
 use crate::{
     dal_wrapper,
     extract::{HandlerContext, PosthogClient},
     service::v2::AccessBuilder,
     track, AppState,
 };
+
+use super::{ChangeSetAPIError, Error};
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -48,7 +50,7 @@ pub async fn approve(
         // its via helpers or through the change set methods directly. In addition, they test
         // for success and failure, not solely for success. We should still do this, but not within
         // the PR corresponding to when this message was written.
-        return Err(Error::DvuRootsNotEmpty(ctx.change_set_id()));
+        return Err(Error::DvuRootsNotEmpty(ctx.change_set_id()).into());
     }
 
     // Cache the old status.

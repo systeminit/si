@@ -101,8 +101,6 @@ impl ServerError {
 
 type Error = ServerError;
 
-type Result<T> = std::result::Result<T, ServerError>;
-
 #[derive(Debug)]
 pub(crate) enum Shutdown {
     Graceful,

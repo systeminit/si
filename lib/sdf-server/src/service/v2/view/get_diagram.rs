@@ -1,16 +1,20 @@
 use std::collections::HashMap;
 
-use crate::extract::HandlerContext;
-use crate::service::v2::view::{ViewError, ViewResult};
-use crate::service::v2::AccessBuilder;
+use anyhow::Result;
 use axum::extract::{Json, Path};
-use dal::diagram::geometry::{Geometry, GeometryRepresents};
-use dal::diagram::view::{View, ViewId, ViewView};
-use dal::diagram::{Diagram, DiagramError};
-use dal::{slow_rt, ChangeSetId, ComponentId, DalContext, WorkspacePk};
+use dal::{
+    diagram::{
+        geometry::{Geometry, GeometryRepresents},
+        view::{View, ViewId, ViewView},
+        Diagram, DiagramError,
+    },
+    slow_rt, ChangeSetId, ComponentId, DalContext, WorkspacePk,
+};
 use serde::{Deserialize, Serialize};
 use si_frontend_types::RawGeometry;
 use telemetry::prelude::debug;
+
+use crate::{extract::HandlerContext, service::v2::AccessBuilder};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -25,7 +29,7 @@ pub async fn get_geometry(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(access_builder): AccessBuilder,
     Path((_workspace_pk, change_set_id, view_id)): Path<(WorkspacePk, ChangeSetId, ViewId)>,
-) -> ViewResult<Json<GeometryResponse>> {
+) -> Result<Json<GeometryResponse>> {
     let ctx = builder
         .build(access_builder.build(change_set_id.into()))
         .await?;
@@ -38,21 +42,23 @@ pub async fn get_geometry(
     for geometry in Geometry::list_by_view_id(&ctx, view_id).await? {
         let geo_represents = match Geometry::represented_id(&ctx, geometry.id()).await {
             Ok(id) => id,
-            Err(DiagramError::RepresentedNotFoundForGeometry(geo_id)) => {
-                let changeset_id = ctx.change_set_id();
-                // NOTE(victor): The first version of views didn't delete geometries with components,
-                // so we have dangling geometries in some workspaces. We should clean this up at some point,
-                // but we just skip orphan geometries here to make assemble work.
+            Err(error) => match error.downcast_ref::<DiagramError>() {
+                Some(DiagramError::RepresentedNotFoundForGeometry(geo_id)) => {
+                    let changeset_id = ctx.change_set_id();
+                    // NOTE(victor): The first version of views didn't delete geometries with components,
+                    // so we have dangling geometries in some workspaces. We should clean this up at some point,
+                    // but we just skip orphan geometries here to make assemble work.
 
-                debug!(
-                    si.change_set.id = %changeset_id,
-                    si.geometry.id = %geo_id,
-                    "Could not find component for geometry - skipping"
-                );
+                    debug!(
+                        si.change_set.id = %changeset_id,
+                        si.geometry.id = %geo_id,
+                        "Could not find component for geometry - skipping"
+                    );
 
-                continue;
-            }
-            Err(err) => return Err(err)?,
+                    continue;
+                }
+                _ => return Err(error),
+            },
         };
 
         match geo_represents {
@@ -84,7 +90,7 @@ pub async fn get_diagram(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(access_builder): AccessBuilder,
     Path((_workspace_pk, change_set_id, view_id)): Path<(WorkspacePk, ChangeSetId, ViewId)>,
-) -> ViewResult<Json<Response>> {
+) -> Result<Json<Response>> {
     let ctx = builder
         .build(access_builder.build(change_set_id.into()))
         .await?;
@@ -98,7 +104,7 @@ pub async fn get_default_diagram(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(access_builder): AccessBuilder,
     Path((_workspace_pk, change_set_id)): Path<(WorkspacePk, ChangeSetId)>,
-) -> ViewResult<Json<Response>> {
+) -> Result<Json<Response>> {
     let ctx = builder
         .build(access_builder.build(change_set_id.into()))
         .await?;
@@ -109,12 +115,12 @@ pub async fn get_default_diagram(
     get_diagram_inner(&ctx, view).await
 }
 
-async fn get_diagram_inner(ctx: &DalContext, view: View) -> ViewResult<Json<Response>> {
+async fn get_diagram_inner(ctx: &DalContext, view: View) -> Result<Json<Response>> {
     let ctx_clone = ctx.clone();
     let view_id = view.id();
     let diagram = slow_rt::spawn(async move {
         let ctx = &ctx_clone;
-        Ok::<Diagram, ViewError>(Diagram::assemble(ctx, Some(view_id)).await?)
+        Ok::<Diagram, anyhow::Error>(Diagram::assemble(ctx, Some(view_id)).await?)
     })?
     .await??;
 

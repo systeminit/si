@@ -1,5 +1,6 @@
 use std::{collections::HashMap, str::FromStr};
 
+use anyhow::Result;
 use axum::{
     extract::{Path, State},
     Json,
@@ -24,7 +25,7 @@ pub async fn list_for_entity(
     AccessBuilder(access_builder): AccessBuilder,
     Path((_workspace_pk, change_set_id, entity_id)): Path<(WorkspacePk, ChangeSetId, EntityId)>,
     State(mut state): State<AppState>,
-) -> Result<Json<Vec<ApprovalRequirementDefinition>>, ApprovalRequirementDefinitionError> {
+) -> Result<Json<Vec<ApprovalRequirementDefinition>>> {
     let ctx = builder
         .build(access_builder.build(change_set_id.into()))
         .await?;

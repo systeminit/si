@@ -1,14 +1,7 @@
+use anyhow::Result;
 use axum::{
     extract::{Host, OriginalUri, Path},
     Json,
-};
-use serde::{Deserialize, Serialize};
-
-use crate::{
-    extract::{HandlerContext, PosthogClient},
-    service::force_change_set_response::ForceChangeSetResponse,
-    service::v2::AccessBuilder,
-    track,
 };
 use dal::{
     diagram::{
@@ -17,9 +10,17 @@ use dal::{
     },
     ChangeSet, ChangeSetId, WorkspacePk, WsEvent,
 };
+use serde::{Deserialize, Serialize};
 use si_frontend_types::RawGeometry;
 
-use super::{ViewError, ViewResult};
+use crate::{
+    extract::{HandlerContext, PosthogClient},
+    service::force_change_set_response::ForceChangeSetResponse,
+    service::v2::AccessBuilder,
+    track,
+};
+
+use super::ViewError;
 
 #[derive(Deserialize, Serialize, Debug, Clone, Copy)]
 #[serde(rename_all = "camelCase")]
@@ -55,7 +56,7 @@ pub async fn create_view_object(
         ViewId,
     )>,
     Json(request): Json<Request>,
-) -> ViewResult<ForceChangeSetResponse<Response>> {
+) -> Result<ForceChangeSetResponse<Response>> {
     let mut ctx = builder
         .build(access_builder.build(change_set_id.into()))
         .await?;
@@ -76,7 +77,8 @@ pub async fn create_view_object(
         ctx.rollback().await?;
         return Err(ViewError::InvalidRequest(
             "geometry unable to be parsed from create view object request".into(),
-        ));
+        )
+        .into());
     };
 
     let geometry = RawGeometry {

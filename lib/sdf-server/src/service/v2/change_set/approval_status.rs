@@ -1,3 +1,4 @@
+use anyhow::Result;
 use axum::{
     extract::{Path, State},
     Json,
@@ -11,7 +12,7 @@ use crate::{
     AppState,
 };
 
-use super::{ChangeSetAPIError, Result};
+use super::ChangeSetAPIError;
 
 pub async fn approval_status(
     HandlerContext(builder): HandlerContext,

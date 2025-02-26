@@ -1,3 +1,4 @@
+use anyhow::Result;
 use axum::{
     extract::{Host, OriginalUri, Path},
     Json,
@@ -5,7 +6,6 @@ use axum::{
 use dal::{ChangeSet, ChangeSetId, WorkspacePk};
 use serde::Deserialize;
 
-use super::Result;
 use crate::{
     extract::{HandlerContext, PosthogClient},
     service::v2::AccessBuilder,

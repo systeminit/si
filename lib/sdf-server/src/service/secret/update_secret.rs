@@ -1,3 +1,4 @@
+use anyhow::Result;
 use axum::Json;
 use dal::{
     key_pair::KeyPairPk, ChangeSet, Secret, SecretAlgorithm, SecretId, SecretVersion, SecretView,
@@ -6,9 +7,10 @@ use dal::{
 use serde::{Deserialize, Serialize};
 use si_events::audit_log::AuditLogKind;
 
-use super::SecretResult;
-use crate::extract::{v1::AccessBuilder, HandlerContext};
-use crate::service::force_change_set_response::ForceChangeSetResponse;
+use crate::{
+    extract::{v1::AccessBuilder, HandlerContext},
+    service::force_change_set_response::ForceChangeSetResponse,
+};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -36,7 +38,7 @@ pub async fn update_secret(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_tx): AccessBuilder,
     Json(request): Json<UpdateSecretRequest>,
-) -> SecretResult<ForceChangeSetResponse<SecretView>> {
+) -> Result<ForceChangeSetResponse<SecretView>> {
     let mut ctx = builder.build(request_tx.build(request.visibility)).await?;
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;

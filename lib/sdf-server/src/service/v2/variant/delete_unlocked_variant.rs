@@ -1,14 +1,16 @@
+use anyhow::Result;
 use axum::extract::{Host, OriginalUri, Path};
 use dal::{ChangeSet, ChangeSetId, SchemaVariant, SchemaVariantId, WorkspacePk, WsEvent};
 use si_events::audit_log::AuditLogKind;
 
-use super::{SchemaVariantsAPIError, SchemaVariantsAPIResult};
 use crate::{
     extract::{HandlerContext, PosthogClient},
     service::force_change_set_response::ForceChangeSetResponse,
     service::v2::AccessBuilder,
     track,
 };
+
+use super::SchemaVariantsAPIError;
 
 pub async fn delete_unlocked_variant(
     HandlerContext(builder): HandlerContext,
@@ -21,7 +23,7 @@ pub async fn delete_unlocked_variant(
         ChangeSetId,
         SchemaVariantId,
     )>,
-) -> SchemaVariantsAPIResult<ForceChangeSetResponse<SchemaVariantId>> {
+) -> Result<ForceChangeSetResponse<SchemaVariantId>> {
     let mut ctx = builder
         .build(access_builder.build(change_set_id.into()))
         .await?;
@@ -31,7 +33,7 @@ pub async fn delete_unlocked_variant(
 
     let connected_components = SchemaVariant::list_component_ids(&ctx, schema_variant_id).await?;
     if !connected_components.is_empty() {
-        return Err(SchemaVariantsAPIError::CannotDeleteVariantWithComponents);
+        return Err(SchemaVariantsAPIError::CannotDeleteVariantWithComponents.into());
     }
 
     SchemaVariant::cleanup_unlocked_variant(&ctx, schema_variant_id).await?;

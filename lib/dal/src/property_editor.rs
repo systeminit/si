@@ -2,19 +2,22 @@
 //! [`Component`](crate::Component)'s properties to friendly objects for displaying, accessing
 //! and mutating said properties.
 
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use si_data_pg::PgError;
 use thiserror::Error;
 
-use crate::attribute::prototype::argument::value_source::ValueSourceError;
-use crate::attribute::prototype::argument::AttributePrototypeArgumentError;
-use crate::attribute::prototype::AttributePrototypeError;
-use crate::attribute::value::AttributeValueError;
-use crate::prop::PropError;
-use crate::validation::ValidationError;
-use crate::workspace_snapshot::node_weight::NodeWeightError;
-use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
+    attribute::{
+        prototype::{
+            argument::{value_source::ValueSourceError, AttributePrototypeArgumentError},
+            AttributePrototypeError,
+        },
+        value::AttributeValueError,
+    },
+    prop::PropError,
+    validation::ValidationError,
+    workspace_snapshot::{node_weight::NodeWeightError, WorkspaceSnapshotError},
     AttributeValueId, ComponentError, PropId, SchemaVariantError, SchemaVariantId, SecretError,
     StandardModelError, TransactionsError,
 };
@@ -71,7 +74,7 @@ pub enum PropertyEditorError {
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
 
-pub type PropertyEditorResult<T> = Result<T, PropertyEditorError>;
+pub type PropertyEditorResult<T> = Result<T>;
 
 // Property editor ids used across submodules.
 pub use si_id::PropertyEditorPropId;

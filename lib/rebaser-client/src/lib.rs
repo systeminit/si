@@ -1,5 +1,4 @@
-use std::result;
-
+use anyhow::Result;
 use futures::{future::BoxFuture, StreamExt as _};
 use pending_events::{PendingEventsError, PendingEventsStream};
 use rebaser_core::{
@@ -60,8 +59,6 @@ pub enum ClientError {
 }
 
 type Error = ClientError;
-
-type Result<T> = result::Result<T, ClientError>;
 
 pub type RebaserClient = Client;
 
@@ -333,13 +330,13 @@ where
     let headers = message.headers().ok_or(Error::ReplyMissingHeaders)?;
     let info = ContentInfo::try_from(headers)?;
     if !T::is_content_type_supported(info.content_type.as_str()) {
-        return Err(Error::ReplyUnsupportedContentType);
+        return Err(Error::ReplyUnsupportedContentType.into());
     }
     if !T::is_message_type_supported(info.message_type.as_str()) {
-        return Err(Error::ReplyUnsupportedMessageType);
+        return Err(Error::ReplyUnsupportedMessageType.into());
     }
     if !T::is_message_version_supported(info.message_version.as_u64()) {
-        return Err(Error::ReplyUnsupportedMessageVersion);
+        return Err(Error::ReplyUnsupportedMessageVersion.into());
     }
 
     let deserialized_version = T::from_slice(info.content_type.as_str(), message.payload())?;

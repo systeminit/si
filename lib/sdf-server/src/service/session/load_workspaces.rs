@@ -1,3 +1,4 @@
+use anyhow::Result;
 use axum::{
     extract::{Host, OriginalUri},
     Json,
@@ -5,7 +6,6 @@ use axum::{
 use dal::Workspace;
 use serde::{Deserialize, Serialize};
 
-use super::SessionResult;
 use crate::{
     extract::{v1::AccessBuilder, HandlerContext, PosthogClient},
     track,
@@ -23,7 +23,7 @@ pub async fn load_workspaces(
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
     Host(host_name): Host,
-) -> SessionResult<Json<LoadWorkspaceResponse>> {
+) -> Result<Json<LoadWorkspaceResponse>> {
     let ctx = builder.build_head(access_builder).await?;
 
     let workspaces = Workspace::list_for_user(&ctx).await?;

@@ -1,25 +1,28 @@
+use std::{collections::HashMap, sync::Arc};
+
+use anyhow::Result;
 use postgres_types::{FromSql, ToSql};
 use serde::{Deserialize, Serialize};
 use si_events::ContentHash;
 use si_pkg::FuncArgumentKind as PkgFuncArgumentKind;
-use std::collections::HashMap;
-use std::sync::Arc;
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::attribute::prototype::argument::{
-    AttributePrototypeArgument, AttributePrototypeArgumentError, AttributePrototypeArgumentId,
-};
-use crate::change_set::ChangeSetError;
-use crate::layer_db_types::{FuncArgumentContent, FuncArgumentContentV1};
-use crate::workspace_snapshot::edge_weight::EdgeWeightKindDiscriminants;
-use crate::workspace_snapshot::graph::WorkspaceSnapshotGraphError;
-use crate::workspace_snapshot::node_weight::{
-    FuncArgumentNodeWeight, NodeWeight, NodeWeightDiscriminants, NodeWeightError,
-};
-use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
+    attribute::prototype::argument::{
+        AttributePrototypeArgument, AttributePrototypeArgumentError, AttributePrototypeArgumentId,
+    },
+    change_set::ChangeSetError,
+    layer_db_types::{FuncArgumentContent, FuncArgumentContentV1},
+    workspace_snapshot::{
+        edge_weight::EdgeWeightKindDiscriminants,
+        graph::WorkspaceSnapshotGraphError,
+        node_weight::{
+            FuncArgumentNodeWeight, NodeWeight, NodeWeightDiscriminants, NodeWeightError,
+        },
+        WorkspaceSnapshotError,
+    },
     DalContext, EdgeWeightKind, Func, FuncError, FuncId, HistoryEventError, PropKind,
     StandardModelError, Timestamp, TransactionsError,
 };
@@ -61,7 +64,7 @@ pub enum FuncArgumentError {
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
 
-type FuncArgumentResult<T> = Result<T, FuncArgumentError>;
+type FuncArgumentResult<T> = Result<T>;
 
 #[remain::sorted]
 #[derive(
@@ -230,7 +233,7 @@ impl FuncArgument {
     ) -> FuncArgumentResult<Self> {
         let name = name.into();
         if name.is_empty() {
-            return Err(FuncArgumentError::EmptyNameDuringCreation);
+            return Err(FuncArgumentError::EmptyNameDuringCreation.into());
         }
 
         let timestamp = Timestamp::now();
@@ -355,7 +358,7 @@ impl FuncArgument {
             return Ok(node_weight.id().into());
         }
 
-        Err(FuncArgumentError::FuncIdNotFound(func_arg_id))
+        Err(FuncArgumentError::FuncIdNotFound(func_arg_id).into())
     }
 
     /// List all [`FuncArgument`](Self) for the provided [`FuncId`](crate::FuncId).
@@ -480,10 +483,10 @@ impl FuncArgument {
 
         let node_index = match workspace_snapshot.get_node_index_by_id(id).await {
             Ok(node_index) => node_index,
-            Err(WorkspaceSnapshotError::WorkspaceSnapshotGraph(
-                WorkspaceSnapshotGraphError::NodeWithIdNotFound(_),
-            )) => return Ok(None),
-            Err(err) => return Err(err.into()),
+            Err(error) => match error.downcast_ref() {
+                Some(WorkspaceSnapshotGraphError::NodeWithIdNotFound(_)) => return Ok(None),
+                _ => return Err(error),
+            },
         };
         let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
 
@@ -512,9 +515,7 @@ impl FuncArgument {
         for attribute_prototype_argument_id in
             Self::list_attribute_prototype_argument_ids(ctx, id).await?
         {
-            AttributePrototypeArgument::remove(ctx, attribute_prototype_argument_id)
-                .await
-                .map_err(Box::new)?;
+            AttributePrototypeArgument::remove(ctx, attribute_prototype_argument_id).await?;
         }
 
         // Now, we can remove the argument.
