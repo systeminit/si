@@ -212,8 +212,6 @@ Connect the Output Socket `NAT Gateway ID` of `NAT Gateway 3` Component to the
 
 ### Create the Subnet Route Table Associations
 
-![Create the Subnet Route Table Associations](./aws-vpc/create-subnet-route-table-associations.png)
-
 Add a `AWS::EC2::SubnetRouteTableAssociation` Component to each of the `Private Subnet` frames.
 
 Set the name of each of the association components to be `Private (1|2|3) Assocation`.
