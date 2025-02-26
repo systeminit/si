@@ -10,6 +10,7 @@ publish.workspace = true
 
 [dependencies]
 telemetry = { path = "../../lib/telemetry-rs" }
+telemetry-utils = { path = "../../lib/telemetry-utils-rs" }
 
 async-nats = { workspace = true }
 bytes = { workspace = true }

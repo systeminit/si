@@ -6707,6 +6707,7 @@ dependencies = [
  "serde",
  "serde_json",
  "telemetry",
+ "telemetry-utils",
  "thiserror 2.0.11",
  "tokio",
  "tracing-subscriber",

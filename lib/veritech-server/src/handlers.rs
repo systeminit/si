@@ -309,7 +309,7 @@ where
             };
             request.dec_run_metric();
             if let Err(err) = publisher.publish_result(&func_result_error).await {
-                error!(error = ?err, "failed to publish errored result");
+                error!(si.error.message = ?err, "failed to publish errored result");
             }
         }
     }

@@ -271,7 +271,7 @@ where
         Err(err) => {
             if failed_count > MAX_FAILED_MESSAGES {
                 warn!(
-                    error = ?err,
+                    si.error.message = ?err,
                     "failed to read message in after {} consecutive failures; closing stream",
                     failed_count,
                 );

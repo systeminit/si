@@ -25,7 +25,7 @@ impl OnSuccess for DefaultOnSuccess {
             trace!("double acking message");
             if let Err(err) = acker.double_ack().await {
                 warn!(
-                    error = ?err,
+                    si.error.message = ?err,
                     subject = head.subject.as_str(),
                     "failed to double ack the message",
                 );
