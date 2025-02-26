@@ -90,12 +90,14 @@ impl PkgSpec {
     }
 
     /// used only to create diffable specs
-    pub fn anonymize(&mut self) {
+    pub fn anonymize(mut self) -> PkgSpec {
         self.created_at = SystemTime::UNIX_EPOCH.into();
         self.version = String::new();
 
         self.schemas.iter_mut().for_each(|f| f.anonymize());
         self.funcs.iter_mut().for_each(|f| f.anonymize());
+
+        self
     }
 }
 

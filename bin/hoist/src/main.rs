@@ -80,13 +80,12 @@ async fn anonymize_specs(target_dir: PathBuf, out: PathBuf) -> Result<()> {
     fs::create_dir_all(&out)?;
     let specs = spec_from_dir_or_file(target_dir)?;
     for dir in specs {
-        let mut spec = json_to_spec(dir.path())?;
+        let spec = json_to_spec(dir.path())?;
         let spec_name = format!("{}.json", spec.name);
-        spec.anonymize();
 
         fs::write(
             Path::new(&out).join(spec_name),
-            serde_json::to_string_pretty(&spec)?,
+            serde_json::to_string_pretty(&spec.anonymize())?,
         )?;
     }
 
@@ -212,17 +211,9 @@ async fn upload_pkg_specs(
         ));
 
         let pkg = json_to_pkg(spec.path())?;
-        let schema = pkg.schemas()?[0].clone();
-        let pkg_schema_id = schema.unique_id().unwrap();
         let metadata = pkg.metadata()?;
 
-        match remote_module_state(
-            pkg_schema_id.to_string(),
-            pkg.hash()?.to_string(),
-            existing_specs,
-        )
-        .await?
-        {
+        match remote_module_state(pkg.clone(), existing_specs).await? {
             ModuleState::HashesMatch => no_action_needed += 1,
             ModuleState::NeedsUpdate => {
                 modules_with_updates.push(metadata.name().to_string());
@@ -315,6 +306,8 @@ async fn upload_pkg_specs(
         total - failed.load(Ordering::Relaxed),
         failed_message(),
     ));
+    // If this message is not here, the console does not show the final message for some reason
+    println!("Done");
     Ok(())
 }
 
@@ -343,19 +336,31 @@ async fn list_specs(client: ModuleIndexClient) -> Result<Vec<ModuleDetailsRespon
 }
 
 async fn remote_module_state(
-    schema_id: String,
-    hash: String,
+    pkg: SiPkg,
     modules: &Vec<ModuleDetailsResponse>,
 ) -> Result<ModuleState> {
+    let schema = pkg.schemas()?[0].clone();
+
+    // FIXME(victor, scott) Converting pkg to bytes changes the hash, and since we calculate hashes
+    // on the module index, we need to make this conversion here too to get the same hashes
+    let pkg = SiPkg::load_from_bytes(&pkg.write_to_bytes()?)?;
+
+    let structural_hash = SiPkg::load_from_spec(pkg.to_spec().await?.anonymize())?
+        .metadata()?
+        .hash()
+        .to_string();
+    let schema_id = schema.unique_id().unwrap();
+
     for module in modules {
-        if let Some(module_schema_id) = &module.schema_id {
-            if *module_schema_id == schema_id {
-                if module.latest_hash == hash {
-                    return Ok(ModuleState::HashesMatch);
+        match (&module.schema_id, &module.structural_hash) {
+            (Some(module_schema_id), Some(this_hash)) if *module_schema_id == schema_id => {
+                return if *this_hash == structural_hash {
+                    Ok(ModuleState::HashesMatch)
                 } else {
-                    return Ok(ModuleState::NeedsUpdate);
-                }
+                    Ok(ModuleState::NeedsUpdate)
+                };
             }
+            _ => {}
         }
     }
     Ok(ModuleState::New)

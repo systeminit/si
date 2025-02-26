@@ -221,11 +221,18 @@ pub async fn upsert_module(
             _ => None,
         },
     };
+
+    let structural_hash = SiPkg::load_from_spec(loaded_module.to_spec().await?.anonymize())?
+        .metadata()?
+        .hash()
+        .to_string();
+
     let new_module = si_module::ActiveModel {
         name: Set(module_metadata.name().to_owned()),
         description: Set(Some(module_metadata.description().to_owned())),
         owner_user_id: Set(user_claim.user_id().to_string()),
         owner_display_name: Set(Some(module_metadata.created_by().to_owned())),
+        structural_hash: Set(Some(structural_hash)),
         latest_hash: Set(module_metadata.hash().to_string()),
         // maybe use db's `CLOCK_TIMESTAMP()`?
         latest_hash_created_at: Set(DateTime::<FixedOffset>::from_naive_utc_and_offset(
