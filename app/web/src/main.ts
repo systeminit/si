@@ -5,6 +5,7 @@ import { DocumentLoadInstrumentation } from "@opentelemetry/instrumentation-docu
 import { UserInteractionInstrumentation } from "@opentelemetry/instrumentation-user-interaction";
 import { LongTaskInstrumentation } from "@opentelemetry/instrumentation-long-task";
 import opentelemetry, { Span } from "@opentelemetry/api";
+import { mapStackTrace } from "sourcemapped-stacktrace";
 
 import { createApp } from "vue";
 import FloatingVue from "floating-vue";
@@ -60,23 +61,41 @@ app.use(router);
 app.use(store);
 
 window.onerror = (message, source, lineno, colno, error) => {
-  const span = opentelemetry.trace.getActiveSpan();
+  // ignoring these
+  if (
+    message
+      .toString()
+      .includes("TypeError: NetworkError when attempting to fetch resource.")
+  )
+    return;
 
-  const _report = (span: Span) => {
-    span.setAttribute("error.stacktrace", error?.stack || "");
-    span.setAttribute("error.message", message.toString());
-    span.setAttribute("error.source", source || "");
-    span.setAttribute("error.lineno", lineno || "");
-    span.setAttribute("error.colno", colno || "");
+  const observeError = (stack: string) => {
+    const span = opentelemetry.trace.getActiveSpan();
+
+    const _report = (span: Span) => {
+      span.setAttribute("error.stacktrace", stack);
+      span.setAttribute("error.message", message.toString());
+      span.setAttribute("error.source", source || "");
+      span.setAttribute("error.lineno", lineno || "");
+      span.setAttribute("error.colno", colno || "");
+    };
+
+    if (span) {
+      _report(span);
+    } else {
+      const tracer = opentelemetry.trace.getTracer("errorHandler");
+      tracer.startActiveSpan("error", (span) => {
+        _report(span);
+        span.end();
+      });
+    }
   };
 
-  if (span) {
-    _report(span);
-  } else {
-    const tracer = opentelemetry.trace.getTracer("errorHandler");
-    tracer.startActiveSpan("error", (span) => {
-      _report(span);
-      span.end();
+  if (!error) observeError("");
+  else {
+    mapStackTrace(error.stack, (mappedStack) => {
+      const stack = mappedStack.join("\n");
+      observeError(stack);
     });
   }
 };
