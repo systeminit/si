@@ -520,7 +520,6 @@ export type PropDefinitionKind =
   | "boolean"
   | "float"
   | "integer"
-  | "json"
   | "map"
   | "object"
   | "string";
@@ -758,7 +757,7 @@ export class PropBuilder implements IPropBuilder {
   /**
    * The type of the prop
    *
-   * @param kind {PropDefinitionKind} [array | boolean | float | integer | json | map | object | string]
+   * @param kind {PropDefinitionKind} [array | boolean | float | integer | map | object | string]
    *
    * @returns this
    *
