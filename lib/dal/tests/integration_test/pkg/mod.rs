@@ -9,7 +9,7 @@ use dal::{
 use dal_test::expected::ExpectSchemaVariant;
 use dal_test::helpers::create_component_for_schema_variant_on_default_view;
 use dal_test::{test, Result};
-use si_pkg::{FuncSpec, FuncSpecData, PkgSpec, SchemaSpec, SchemaSpecData, SiPkg};
+use si_pkg::{FuncSpec, FuncSpecData, PkgSpec, PropSpec, SchemaSpec, SchemaSpecData, SiPkg};
 
 #[test]
 async fn import_pkg_from_pkg_set_latest_default(ctx: &mut DalContext) -> Result<()> {
@@ -104,94 +104,102 @@ async fn import_pkg_from_pkg_set_latest_default(ctx: &mut DalContext) -> Result<
 
 #[test]
 async fn prop_order_preserved(ctx: &mut DalContext) -> Result<()> {
-    // Create a variant with a particular prop order
-    let variant_id = ExpectSchemaVariant::create_named(
-        ctx,
-        "testme",
-        r#"function main() {
-            return new AssetBuilder()
-                .addProp(new PropBuilder().setName("foo").setKind("string").build())
-                .addProp(new PropBuilder().setName("bar").setKind("string").build())
-                .addProp(new PropBuilder().setName("baz").setKind("string").build())
-                .build();
-           // return {
-           //     props: [
-           //         { name: "foo", kind: "string" },
-           //         { name: "bar", kind: "string" },
-           //         { name: "baz", kind: "string" },
-           //     ]
-           // };
-        }"#,
-    )
-    .await
-    .id();
-    let schema_id = SchemaVariant::schema_id_for_schema_variant_id(ctx, variant_id).await?;
-    assert_eq!(
-        variant_prop_names(ctx, variant_id).await?,
-        vec!["foo", "bar", "baz"]
-    );
+    let expected_props = vec![
+        "foo",
+        "bar",
+        "bar.john",
+        "bar.jacob",
+        "bar.jingleheimer",
+        "bar.smith",
+        "baz",
+    ];
 
-    // Create a component and check that order is preserved
-    let component_id = create_component_for_schema_variant_on_default_view(ctx, variant_id)
-        .await?
+    let schema_id = {
+        // Create a variant with a particular prop order
+        let variant_id = ExpectSchemaVariant::create_named(
+            ctx,
+            "testme",
+            r#"function main() {
+                return {
+                    props: [
+                        { name: "foo", kind: "string" },
+                        { name: "bar", kind: "object", children: [
+                                { name: "john", kind: "string" },
+                                { name: "jacob", kind: "string" },
+                                { name: "jingleheimer", kind: "string" },
+                                { name: "smith", kind: "string" },
+                        ] },
+                        { name: "baz", kind: "string" },
+                    ]
+                };
+            }"#,
+        )
+        .await
         .id();
-    assert_eq!(
-        component_prop_names(ctx, component_id).await?,
-        vec!["foo", "bar", "baz"]
-    );
+        assert_eq!(variant_prop_names(ctx, variant_id).await?, expected_props,);
+
+        // Create a component and check that order is preserved
+        let component_id = create_component_for_schema_variant_on_default_view(ctx, variant_id)
+            .await?
+            .id();
+        assert_eq!(
+            component_prop_names(ctx, component_id).await?,
+            expected_props,
+        );
+        SchemaVariant::schema_id_for_schema_variant_id(ctx, variant_id).await?
+    };
 
     // Export variant -> PkgSpec
     let exported_spec =
         PkgExporter::new_for_module_contribution("testme", "test_version", "me@me.com", schema_id)
             .export_as_spec(ctx)
             .await?;
-    assert_eq!(spec_prop_names(&exported_spec), vec!["foo", "bar", "baz"]);
+    assert_eq!(spec_prop_names(&exported_spec), expected_props);
 
     // PkgSpec -> SiPkg
     let exported_pkg = SiPkg::load_from_spec(exported_spec)?;
     assert_eq!(
         // check that order is preserved by converting back to spec
         spec_prop_names(&exported_pkg.to_spec().await?),
-        vec!["foo", "bar", "baz"]
+        expected_props
     );
 
     // Round trip SiPkg -> bytes -> SiPkg
     let exported_bytes = exported_pkg.write_to_bytes()?;
     let pkg = SiPkg::load_from_bytes(&exported_bytes)?;
     // check that order is preserved
-    assert_eq!(
-        spec_prop_names(&pkg.to_spec().await?),
-        vec!["foo", "bar", "baz"]
-    );
+    assert_eq!(spec_prop_names(&pkg.to_spec().await?), expected_props);
 
     // Check that the SiPkg -> variant has the same prop order
-    let pkg_variant_id = {
-        let (_, pkg_variant_ids, _) = import_pkg_from_pkg(
-            ctx,
-            &pkg,
-            Some(ImportOptions {
-                schema_id: Some(schema_id.into()),
-                ..Default::default()
-            }),
-        )
-        .await?;
-        assert!(pkg_variant_ids.len() == 1);
-        pkg_variant_ids[0]
-    };
-    assert_eq!(
-        variant_prop_names(ctx, pkg_variant_id).await?,
-        vec!["foo", "bar", "baz"]
-    );
+    {
+        let pkg_variant_id = {
+            let (_, pkg_variant_ids, _) = import_pkg_from_pkg(
+                ctx,
+                &pkg,
+                Some(ImportOptions {
+                    schema_id: Some(schema_id.into()),
+                    ..Default::default()
+                }),
+            )
+            .await?;
+            assert!(pkg_variant_ids.len() == 1);
+            pkg_variant_ids[0]
+        };
+        assert_eq!(
+            variant_prop_names(ctx, pkg_variant_id).await?,
+            expected_props
+        );
 
-    // Create a component and check that order is preserved
-    let pkg_component_id = ExpectSchemaVariant(pkg_variant_id)
-        .create_component_on_default_view(ctx)
-        .await
-        .id();
-    assert_eq!(
-        component_prop_names(ctx, pkg_component_id).await?,
-        vec!["foo", "bar", "baz"]
-    );
+        // Create a component and check that order is preserved
+        let pkg_component_id =
+            create_component_for_schema_variant_on_default_view(ctx, pkg_variant_id)
+                .await?
+                .id();
+        assert_eq!(
+            component_prop_names(ctx, pkg_component_id).await?,
+            expected_props
+        );
+    }
 
     // Check that the SiPkg -> variant -> component has the same prop order
     Ok(())
@@ -208,14 +216,14 @@ async fn variant_prop_names(
 
 async fn child_prop_names(
     ctx: &mut DalContext,
-    prop_id: PropId,
+    parent_prop_id: PropId,
     prefix: Option<&str>,
 ) -> Result<Vec<String>> {
     let mut result = vec![];
-    for Prop { name, id, .. } in Prop::direct_child_props_ordered(ctx, prop_id).await? {
+    for Prop { name, id, .. } in Prop::direct_child_props_ordered(ctx, parent_prop_id).await? {
         let name = match prefix {
             Some(prefix) => format!("{}.{}", prefix, name),
-            None => name,
+            None => name.to_owned(),
         };
         result.push(name.clone());
         result.extend(Box::pin(child_prop_names(ctx, id, Some(&name))).await?);
@@ -234,15 +242,15 @@ async fn component_prop_names(
 
 async fn child_av_names(
     ctx: &mut DalContext,
-    av_id: AttributeValueId,
+    parent_av_id: AttributeValueId,
     prefix: Option<&str>,
 ) -> Result<Vec<String>> {
     let mut result = vec![];
-    for child_av_id in AttributeValue::get_child_av_ids_in_order(ctx, av_id).await? {
+    for child_av_id in AttributeValue::get_child_av_ids_in_order(ctx, parent_av_id).await? {
         let name = AttributeValue::prop(ctx, child_av_id).await?.name;
         let name = match prefix {
             Some(prefix) => format!("{}.{}", prefix, name),
-            None => name,
+            None => name.to_owned(),
         };
         result.push(name.clone());
         result.extend(Box::pin(child_av_names(ctx, child_av_id, Some(&name))).await?);
@@ -251,10 +259,19 @@ async fn child_av_names(
 }
 
 fn spec_prop_names(spec: &PkgSpec) -> Vec<String> {
-    spec.schemas[0].variants[0]
-        .domain
-        .direct_children()
-        .into_iter()
-        .map(|p| p.name().to_owned())
-        .collect()
+    spec_prop_child_names(&spec.schemas[0].variants[0].domain, None)
+}
+
+fn spec_prop_child_names(parent_prop: &PropSpec, prefix: Option<&str>) -> Vec<String> {
+    let mut result = vec![];
+    for child_prop in parent_prop.direct_children() {
+        let name = child_prop.name();
+        let name = match prefix {
+            Some(prefix) => format!("{}.{}", prefix, name),
+            None => name.to_owned(),
+        };
+        result.push(name.clone());
+        result.extend(spec_prop_child_names(child_prop, Some(&name)));
+    }
+    result
 }
