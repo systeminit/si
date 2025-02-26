@@ -3,7 +3,7 @@ use std::{sync::Arc, time::Duration};
 use async_nats::jetstream::{self, message::Acker};
 use tokio::time::{self, Instant, Interval};
 use tokio_util::sync::CancellationToken;
-use tracing::{debug, trace, warn};
+use tracing::{debug, info, trace, warn};
 
 pub struct MaintainProgressTask {
     acker: Arc<Acker>,
@@ -27,8 +27,8 @@ impl MaintainProgressTask {
     }
 
     pub async fn run(mut self) {
-        trace!(task = Self::NAME, "running task");
-        debug!(task = Self::NAME, "first ack message");
+        trace!(si.naxum.task = Self::NAME, "running task");
+        debug!(si.naxum.task = Self::NAME, "first ack message");
         if let Err(err) = self.acker.ack_with(jetstream::AckKind::Progress).await {
             warn!(si.error.message = ?err, "failed initial ack");
         }
@@ -36,7 +36,7 @@ impl MaintainProgressTask {
         loop {
             tokio::select! {
                 _ = self.shutdown_token.cancelled() => {
-                    trace!(task = Self::NAME, "received cancellation");
+                    info!(si.naxum.task = Self::NAME, "received cancellation");
                     break;
                 }
                 _ = self.interval.tick() => {
@@ -48,6 +48,6 @@ impl MaintainProgressTask {
             }
         }
 
-        trace!(task = Self::NAME, "shutdown complete");
+        info!(si.naxum.task = Self::NAME, "naxum shutdown complete");
     }
 }
