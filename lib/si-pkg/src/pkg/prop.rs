@@ -73,6 +73,7 @@ pub enum SiPkgProp<'a> {
         unique_id: Option<String>,
         hash: Hash,
         source: Source<'a>,
+        child_order: Option<Vec<String>>,
     },
     String {
         name: String,
@@ -180,6 +181,7 @@ impl<'a> SiPkgProp<'a> {
                 name,
                 data,
                 unique_id,
+                ..
             }
             | PropNode::String {
                 name,
@@ -271,13 +273,14 @@ impl<'a> SiPkgProp<'a> {
                 hash,
                 source,
             },
-            PropNode::Object { .. } => Self::Object {
+            PropNode::Object { child_order, .. } => Self::Object {
                 name,
                 data,
                 unique_id,
 
                 hash,
                 source,
+                child_order,
             },
         })
     }
@@ -344,6 +347,13 @@ impl<'a> SiPkgProp<'a> {
             | Self::Map { source, .. }
             | Self::Array { source, .. }
             | Self::Object { source, .. } => source,
+        }
+    }
+
+    pub fn child_order(&self) -> Option<&Vec<String>> {
+        match self {
+            Self::Object { child_order, .. } => child_order.as_ref(),
+            _ => None,
         }
     }
 }

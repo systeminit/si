@@ -627,7 +627,7 @@ impl PkgExporter {
         }
 
         let mut stack: Vec<(PropId, Option<PropId>)> = Vec::new();
-        for child_tree_node in Prop::direct_child_prop_ids_unordered(ctx, root_prop.id()).await? {
+        for child_tree_node in Prop::direct_child_prop_ids_ordered(ctx, root_prop.id()).await? {
             stack.push((child_tree_node, None));
         }
 
@@ -680,8 +680,7 @@ impl PkgExporter {
                 parent_prop_id,
             });
 
-            for child_tree_node in Prop::direct_child_prop_ids_unordered(ctx, child_prop.id).await?
-            {
+            for child_tree_node in Prop::direct_child_prop_ids_ordered(ctx, child_prop.id).await? {
                 stack.push((child_tree_node, Some(prop_id)));
             }
         }

@@ -333,6 +333,7 @@ impl ExpectSchemaVariant {
         .id
         .into();
         variant.update_asset_func(ctx, asset_func).await;
+        variant.regenerate(ctx).await;
         variant
     }
 
@@ -687,6 +688,10 @@ impl ExpectComponentProp {
         ExpectProp(self.1)
     }
 
+    pub async fn name(self, ctx: &DalContext) -> String {
+        self.prop().name(ctx).await
+    }
+
     pub async fn attribute_value(self, ctx: &DalContext) -> ExpectAttributeValue {
         let prop_values = ExpectPropertyEditorValues::assemble(ctx, self.0).await;
         let attribute_value_id = prop_values
@@ -976,6 +981,16 @@ impl ExpectAttributeValue {
             .await
             .expect("remove prop value by id failed")
     }
+
+    pub async fn prop(self, ctx: &DalContext) -> ExpectComponentProp {
+        let component_id = AttributeValue::component_id(ctx, self.0)
+            .await
+            .expect("get component id");
+        let prop_id = AttributeValue::prop_id(ctx, self.0)
+            .await
+            .expect("get prop id");
+        ExpectComponentProp(component_id, prop_id)
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Deref, AsRef, AsMut, From, Into)]
@@ -994,6 +1009,27 @@ impl ExpectProp {
 
     pub async fn prop(self, ctx: &DalContext) -> Prop {
         Prop::get_by_id(ctx, self.0).await.expect("get prop by id")
+    }
+
+    pub async fn name(self, ctx: &DalContext) -> String {
+        self.prop(ctx).await.name
+    }
+
+    pub async fn children(self, ctx: &DalContext) -> Vec<ExpectProp> {
+        Prop::direct_child_prop_ids_ordered(ctx, self.0)
+            .await
+            .expect("get direct child prop ids ordered")
+            .into_iter()
+            .map(Into::into)
+            .collect()
+    }
+
+    pub async fn child_names(self, ctx: &DalContext) -> Vec<String> {
+        let mut result = vec![];
+        for child in self.children(ctx).await {
+            result.push(child.name(ctx).await);
+        }
+        result
     }
 
     pub async fn direct_single_child(self, ctx: &DalContext) -> ExpectProp {

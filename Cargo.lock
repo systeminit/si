@@ -6956,6 +6956,7 @@ dependencies = [
  "chrono",
  "derive_builder",
  "indexmap 2.7.1",
+ "itertools 0.13.0",
  "object-tree",
  "petgraph",
  "remain",

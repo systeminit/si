@@ -25,6 +25,7 @@ const KEY_DOC_LINK_STR: &str = "doc_link";
 const KEY_DOCUMENTATION_STR: &str = "documentation";
 const KEY_VALIDATION_FORMAT_STR: &str = "validation_format";
 const KEY_UNIQUE_ID_STR: &str = "unique_id";
+const KEY_CHILD_ORDER_STR: &str = "child_order";
 
 const PROP_TY_STRING: &str = "string";
 const PROP_TY_JSON: &str = "json";
@@ -85,6 +86,8 @@ pub enum PropNode {
         name: String,
         data: Option<PropNodeData>,
         unique_id: Option<String>,
+        // The names of the child props in order
+        child_order: Option<Vec<String>>,
     },
     String {
         name: String,
@@ -104,6 +107,13 @@ impl PropNode {
             Self::Map { .. } => PROP_TY_MAP,
             Self::Array { .. } => PROP_TY_ARRAY,
             Self::Object { .. } => PROP_TY_OBJECT,
+        }
+    }
+
+    pub fn child_order(&self) -> Option<&Vec<String>> {
+        match self {
+            Self::Object { child_order, .. } => child_order.as_ref(),
+            _ => None,
         }
     }
 }
@@ -194,6 +204,18 @@ impl WriteBytes for PropNode {
             | Self::Object { unique_id, .. } => unique_id.as_deref(),
         } {
             write_key_value_line(writer, KEY_UNIQUE_ID_STR, unique_id)?;
+        }
+
+        if let Self::Object { child_order, .. } = self {
+            write_key_value_line_opt(
+                writer,
+                KEY_CHILD_ORDER_STR,
+                child_order
+                    .as_ref()
+                    .map(serde_json::to_string)
+                    .transpose()
+                    .map_err(GraphError::parse)?,
+            )?;
         }
 
         Ok(())
@@ -299,11 +321,18 @@ impl ReadBytes for PropNode {
                 data,
                 unique_id,
             },
-            PROP_TY_OBJECT => Self::Object {
-                name,
-                data,
-                unique_id,
-            },
+            PROP_TY_OBJECT => {
+                let child_order = read_key_value_line_opt(reader, "child_order")?
+                    .map(|child_order_str| serde_json::from_str(&child_order_str))
+                    .transpose()
+                    .map_err(GraphError::parse)?;
+                Self::Object {
+                    name,
+                    data,
+                    unique_id,
+                    child_order,
+                }
+            }
             invalid_kind => {
                 return Err(GraphError::parse_custom(format!(
                     "invalid prop node kind: {invalid_kind}"
@@ -497,6 +526,12 @@ impl NodeChild for PropSpec {
                     name,
                     data,
                     unique_id,
+                    child_order: Some(
+                        entries
+                            .iter()
+                            .map(|entry| entry.name().to_string())
+                            .collect(),
+                    ),
                 }),
                 vec![
                     Box::new(PropChild::Props(entries.clone()))

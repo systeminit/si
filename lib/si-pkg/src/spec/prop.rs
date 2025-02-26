@@ -560,7 +560,7 @@ pub struct PropSpecBuilder {
     inputs: Vec<AttrFuncInputSpec>,
     kind: Option<PropSpecKind>,
     map_key_funcs: Vec<MapKeyFuncSpec>,
-    name: Option<String>,
+    pub name: Option<String>,
     type_prop: Option<PropSpec>,
     validation_format: Option<String>,
     widget_kind: Option<PropSpecWidgetKind>,

@@ -1092,6 +1092,8 @@ impl Prop {
         }
         Ok(prop)
     }
+
+    // Gets child props, in order
     pub async fn direct_child_prop_ids_ordered(
         ctx: &DalContext,
         prop_id: PropId,
@@ -1102,6 +1104,7 @@ impl Prop {
             .await?
         {
             Some(child_ulids) => Ok(child_ulids.into_iter().map(Into::into).collect()),
+            // All props are either ordered, or have no children.
             None => Ok(vec![]),
         }
     }
