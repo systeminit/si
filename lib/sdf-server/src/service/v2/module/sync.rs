@@ -24,6 +24,12 @@ pub async fn sync(
         .build(access_builder.build(change_set_id.into()))
         .await?;
 
+    // TODO(nick): the concept of the inner types returned here are from the module index days and
+    // are bullshit. We should provide the minimal set of information, which is moreso just telling
+    // the frontend which _schemas_ are ready to be upgraded or contributed. Yes, schema variants
+    // are the important granular bits, but in the case of upgradeables, you find the cached module
+    // that is "latest" and in the case of contributeables, you can only contribute the default
+    // variant.
     let synced_modules = Module::sync(&ctx).await?;
 
     track(

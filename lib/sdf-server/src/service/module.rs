@@ -32,6 +32,7 @@ const MAX_NAME_SEARCH_ATTEMPTS: usize = 100;
 pub mod approval_process;
 pub mod import_workspace_vote;
 pub mod install_module;
+pub mod upgrade_modules;
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -40,6 +41,8 @@ pub enum ModuleError {
     Canonicalize(#[from] CanonicalFileError),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
+    #[error("dal cached module error: {0}")]
+    DalCachedModule(#[from] dal::cached_module::CachedModuleError),
     #[error("dal pkg error: {0}")]
     DalPkg(#[from] DalPkgError),
     #[error("Trying to export from/import into root tenancy")]
@@ -234,6 +237,7 @@ pub async fn pkg_open(builder: &DalContextBuilder, file_name: &str) -> ModuleRes
 pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/install_module", post(install_module::install_module))
+        .route("/upgrade_modules", post(upgrade_modules::upgrade_modules))
         .route(
             "/begin_approval_process",
             post(approval_process::begin_approval_process),

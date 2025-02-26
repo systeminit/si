@@ -152,9 +152,7 @@ const loadAssetsReqStatus = assetStore.getRequestStatus(
   "LOAD_SCHEMA_VARIANT_LIST",
 );
 const syncModulesReqStatus = moduleStore.getRequestStatus("SYNC");
-const updateModulesReqStatus = moduleStore.getRequestStatus(
-  "INSTALL_REMOTE_MODULE",
-);
+const updateModulesReqStatus = moduleStore.getRequestStatus("UPGRADE_MODULES");
 
 const contributeAssetSuccessModalRef = ref<InstanceType<typeof Modal>>();
 const newAssetModalRef = ref<InstanceType<typeof AssetNameModal>>();
@@ -241,10 +239,10 @@ const newAsset = async (newAssetName: string) => {
 };
 
 const updateAllAssets = () => {
-  const moduleIds = Object.values(moduleStore.upgradeableModules).map(
-    (m) => m.id,
+  const schemaIds = Object.values(moduleStore.upgradeableModules).map(
+    (m) => m.schemaId,
   );
-  moduleStore.INSTALL_REMOTE_MODULE(moduleIds);
+  moduleStore.UPGRADE_MODULES(schemaIds);
   assetStore.clearSchemaVariantSelection();
 };
 

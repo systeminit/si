@@ -3,7 +3,7 @@ import * as _ from "lodash-es";
 import { addStoreHooks, ApiRequest, URLPattern } from "@si/vue-lib/pinia";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
-import { SchemaVariantId } from "@/api/sdf/dal/schema";
+import { SchemaId, SchemaVariantId } from "@/api/sdf/dal/schema";
 import { Visibility } from "@/api/sdf/dal/visibility";
 import {
   LatestModule,
@@ -381,6 +381,32 @@ export const useModuleStore = () => {
               keyRequestStatusBy: moduleIds,
               params: {
                 ids: moduleIds,
+                ...getVisibilityParams(),
+              },
+              onFail: () => {
+                changeSetsStore.creatingChangeSet = false;
+              },
+              onSuccess: () => {
+                // reset installed list
+                this.SYNC();
+              },
+            });
+          },
+
+          async UPGRADE_MODULES(schemaIds: SchemaId[]) {
+            if (changeSetsStore.creatingChangeSet) {
+              throw new Error("race, wait until the change set is created");
+            }
+            if (changeSetId === changeSetsStore.headChangeSetId) {
+              changeSetsStore.creatingChangeSet = true;
+            }
+
+            return new ApiRequest<{ id: string }>({
+              method: "post",
+              url: "/module/upgrade_modules",
+              keyRequestStatusBy: schemaIds,
+              params: {
+                schemaIds,
                 ...getVisibilityParams(),
               },
               onFail: () => {
