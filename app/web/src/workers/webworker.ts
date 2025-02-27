@@ -13,18 +13,10 @@ import { registerInstrumentations } from '@opentelemetry/instrumentation';
 // import { OTLPTraceExporter } from '@opentelemetry/exporter-otlp-http';
 import { Resource } from '@opentelemetry/resources';
 import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION } from '@opentelemetry/semantic-conventions';
-import { getProjectEnvVariables } from "../shared/dynamicEnvVars";
-
-const { envVariables } = getProjectEnvVariables();
-
-let otelEndpoint =
-  envVariables.VITE_OTEL_EXPORTER_OTLP_ENDPOINT ??
-  import.meta.env.VITE_OTEL_EXPORTER_OTLP_ENDPOINT;
-if (!otelEndpoint) otelEndpoint = window.location.host;
 
 const exporter = new ConsoleSpanExporter();
 /* const exporter = new OTLPTraceExporter({
-  url: `${otelEndpoint}/v1/traces`, 
+  url: `${otelEndpoint}/v1/traces`,
 }); */
 
 const processor = new BatchSpanProcessor(exporter);
@@ -77,7 +69,7 @@ const initializeSQLite = async () => {
     // log('Done initializing. Running demo...');
     await start(sqlite3);
   } catch (err) {
-    if (err instanceof Error) 
+    if (err instanceof Error)
       error('Initialization error:', err.name, err.message);
     else
       error('Initialization error:', err);
@@ -135,11 +127,11 @@ const ensureTables = async () => {
    * RULES:
    * When an Atom is deleted, delete its MTM entry (CASCADE should take care of this)
    * When a Snapshot is deleted, delete its MTM entry, bot not its atoms (CASCADE should take care of this)
-   * 
+   *
    * When a Changeset is closed/deleted:
    *  - delete atoms connected to its snapshot MTMs (We can not CASCADE atom deletion)
    *  - delete its record, CASCADE should delete its snapshots and MTMs
-   * 
+   *
    * PATCH WORKFLOW:
    * When we are given a new snapshot along with patch data:
    *  - rowid = INSERT INTO snapshots <new_checksum>, <this_changeSetId>
@@ -248,7 +240,7 @@ const newSnapshot = async (meta: AtomMeta, fromId: number): Promise<ROWID> => {
 
   await db.exec({
     sql: `INSERT INTO snapshots_mtm_atoms
-      SELECT 
+      SELECT
         ?, atom_id
       FROM snapshots_mtm_atoms
       WHERE
@@ -426,7 +418,7 @@ const handleAtom = async (atom: Atom, toSnapshotId: ROWID) => {
 const patchAtom = async (atom: Atom, snapshotId: ROWID): Promise<ROWID> => {
   const atomRow = await db.exec({
     sql: `SELECT id, kind, args, checksum, data
-      FROM atoms 
+      FROM atoms
       INNER JOIN snapshots_mtm_atoms ON atoms.id = snapshots_mtm_atoms.atom_id
       WHERE
         snapshots_mtm_atoms.snapshot_id = ? and
@@ -565,7 +557,7 @@ const dbInterface: DBInterface = {
         span.end();
       })
     });
-  
+
     socket.addEventListener("error", (errorEvent) => {
       error("ws error", errorEvent.error, errorEvent.message);
     });
@@ -614,7 +606,7 @@ const dbInterface: DBInterface = {
 
   partialKeyFromKindAndArgs,
   kindAndArgsFromKey,
-  mjolnir, 
+  mjolnir,
 
   async bootstrapChecksums(changeSetId: ChangeSetId): Promise<Record<QueryKey, Checksum>> {
     const mapping: Record<QueryKey, Checksum> = {};
@@ -625,7 +617,7 @@ const dbInterface: DBInterface = {
       inner join snapshots ON mtm.snapshot_id = snapshots.id
       where snapshots.change_set_id = ?
       ;
-      `, 
+      `,
       bind: [changeSetId],
       returnValue: "resultRows"});
     rows.forEach((row) => {
@@ -732,10 +724,10 @@ const dbInterface: DBInterface = {
     /**
      * OK, the above code gives us 3 atoms that represent a list and two items within it
      * all hooked up to the snapshot and changeset tables
-     * 
+     *
      * Let's craft expected payloads over the web socket wire, and only call handle event
      * and assert we have the rows we expect to have!
-     * 
+     *
      * First payload is changing the name of a view
      */
     const payload1: AtomMessage = {
