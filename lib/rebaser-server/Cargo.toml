@@ -33,7 +33,7 @@ veritech-client          = { path = "../../lib/veritech-client" }
 
 derive_builder = { workspace = true }
 futures        = { workspace = true }
-json-patch     = { version = "3.0.1" }
+json-patch     = { workspace = true }
 remain         = { workspace = true }
 serde          = { workspace = true }
 serde_json     = { workspace = true }

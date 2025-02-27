@@ -178,6 +178,9 @@ pub async fn perform_rebase(
                 frontend_objects.push(object);
             }
         }
+
+        dbg!(frontend_objects);
+        dbg!(patches);
     }
     let updates_count = rebase_batch.updates().len();
     span.record("si.updates.count", updates_count.to_string());

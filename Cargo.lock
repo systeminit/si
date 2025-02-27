@@ -3297,7 +3297,7 @@ dependencies = [
  "color-eyre",
  "futures",
  "indicatif",
- "json-patch 4.0.0",
+ "json-patch",
  "module-index-client",
  "nix 0.29.0",
  "remain",
@@ -3894,36 +3894,14 @@ dependencies = [
 
 [[package]]
 name = "json-patch"
-version = "3.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "863726d7afb6bc2590eeff7135d923545e5e964f004c2ccf8716c25e70a86f08"
-dependencies = [
- "jsonptr 0.6.3",
- "serde",
- "serde_json",
- "thiserror 1.0.69",
-]
-
-[[package]]
-name = "json-patch"
 version = "4.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "159294d661a039f7644cea7e4d844e6b25aaf71c1ffe9d73a96d768c24b0faf4"
 dependencies = [
- "jsonptr 0.7.1",
+ "jsonptr",
  "serde",
  "serde_json",
  "thiserror 1.0.69",
-]
-
-[[package]]
-name = "jsonptr"
-version = "0.6.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5dea2b27dd239b2556ed7a25ba842fe47fd602e7fc7433c2a8d6106d4d9edd70"
-dependencies = [
- "serde",
- "serde_json",
 ]
 
 [[package]]
@@ -5703,7 +5681,7 @@ dependencies = [
  "dal",
  "derive_builder",
  "futures",
- "json-patch 3.0.1",
+ "json-patch",
  "naxum",
  "pending-events",
  "rebaser-client",
@@ -6879,7 +6857,7 @@ name = "si-frontend-types"
 version = "0.1.0"
 dependencies = [
  "chrono",
- "json-patch 3.0.1",
+ "json-patch",
  "module-index-types",
  "remain",
  "serde",
