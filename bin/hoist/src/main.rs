@@ -349,18 +349,16 @@ async fn remote_module_state(
         .metadata()?
         .hash()
         .to_string();
-    let schema_id = schema.unique_id().unwrap();
+    let schema_id = schema
+        .unique_id()
+        .expect("generated module does not have a schema_id");
 
     for module in modules {
-        match (&module.schema_id, &module.structural_hash) {
-            (Some(module_schema_id), Some(this_hash)) if *module_schema_id == schema_id => {
-                return if *this_hash == structural_hash {
-                    Ok(ModuleState::HashesMatch)
-                } else {
-                    Ok(ModuleState::NeedsUpdate)
-                };
+        if Some(schema_id) == module.schema_id.as_deref() {
+            if Some(structural_hash) == module.structural_hash {
+                return Ok(ModuleState::HashesMatch);
             }
-            _ => {}
+            return Ok(ModuleState::NeedsUpdate);
         }
     }
     Ok(ModuleState::New)

@@ -837,6 +837,13 @@
       "HIVE"
     ]
   },
+  "The encryption type to use.\n If you use the ``KMS`` encryption type, the contents of the repository will be encrypted using server-side encryption with KMSlong key stored in KMS. When you use KMS to encrypt your data, you can either use the default AWS managed KMS key for Amazon ECR, or specify your own KMS key, which you already created.\n If you use the ``KMS_DSSE`` encryption type, the contents of the repository will be encrypted with two layers of encryption using server-side encryption with the KMS Management Service key stored in KMS. Similar to the ``KMS`` encryption type, you can either use the default AWS managed KMS key for Amazon ECR, or specify your own KMS key, which you've already created. \n If you use the ``AES256`` encryption type, Amazon ECR uses server-side encryption with Amazon S3-managed encryption keys which encrypts the images in the repository using an AES256 encryption algorithm.\n For more information, see [Amazon ECR encryption at rest](https://docs.aws.amazon.com/AmazonECR/latest/userguide/encryption-at-rest.html) in the *Amazon Elastic Container Registry User Guide*.": {
+    "enum": [
+      "KMS",
+      "KMS_DSSE",
+      "AES256"
+    ]
+  },
   "[HTTP/HTTPS protocol] The protocol version. The possible values are GRPC, HTTP1, and HTTP2.": {
     "enum": [
       "GRPC",
@@ -1504,6 +1511,12 @@
       "Minimize"
     ]
   },
+  "The tag mutability setting for the repository. If this parameter is omitted, the default setting of MUTABLE will be used which will allow image tags to be overwritten. If IMMUTABLE is specified, all image tags within the repository will be immutable which will prevent them from being overwritten.": {
+    "enum": [
+      "MUTABLE",
+      "IMMUTABLE"
+    ]
+  },
   "The tag mutability setting for the repository. If this parameter is omitted, the default setting of ``MUTABLE`` will be used which will allow image tags to be overwritten. If ``IMMUTABLE`` is specified, all image tags within the repository will be immutable which will prevent them from being overwritten.": {
     "enum": [
       "MUTABLE",
@@ -1928,6 +1941,11 @@
       "SINGLE_MASTER"
     ]
   },
+  "The type of resource for the publishing destination. Currently only Amazon S3 buckets are supported.": {
+    "enum": [
+      "S3"
+    ]
+  },
   "The FHIR version. Only R4 version data is supported.": {
     "enum": [
       "R4"
@@ -2036,6 +2054,9 @@
     "enum": null
   },
   "(Node.js and Python) The source code of your Lambda function. If you include your function source inline with this parameter, CFN places it in a file named ``index`` and zips it to create a [deployment package](https://docs.aws.amazon.com/lambda/latest/dg/gettingstarted-package.html). This zip file cannot exceed 4MB. For the ``Handler`` property, the first part of the handler identifier must be ``index``. For example, ``index.handler``.\n  For JSON, you must escape quotes and special characters such as newline (``\\n``) with a backslash.\n If you specify a function that interacts with an AWS CloudFormation custom resource, you don't have to write your own functions to send responses to the custom resource that invoked the function. AWS CloudFormation provides a response module ([cfn-response](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/cfn-lambda-function-code-cfnresponsemodule.html)) that simplifies sending responses. See [Using Lambda with CloudFormation](https://docs.aws.amazon.com/lambda/latest/dg/services-cloudformation.html) for details.": {
+    "enum": null
+  },
+  "(Node.js and Python) The source code of your Lambda function. If you include your function source inline with this parameter, CFN places it in a file named ``index`` and zips it to create a [deployment package](https://docs.aws.amazon.com/lambda/latest/dg/gettingstarted-package.html). This zip file cannot exceed 4MB. For the ``Handler`` property, the first part of the handler identifier must be ``index``. For example, ``index.handler``.\n  When you specify source code inline for a Node.js function, the ``index`` file that CFN creates uses the extension ``.js``. This means that LAM treats the file as a CommonJS module. ES modules aren't supported for inline functions.\n   For JSON, you must escape quotes and special characters such as newline (``\\n``) with a backslash.\n If you specify a function that interacts with an AWS CloudFormation custom resource, you don't have to write your own functions to send responses to the custom resource that invoked the function. AWS CloudFormation provides a response module ([cfn-response](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/cfn-lambda-function-code-cfnresponsemodule.html)) that simplifies sending responses. See [Using Lambda with CloudFormation](https://docs.aws.amazon.com/lambda/latest/dg/services-cloudformation.html) for details.": {
     "enum": null
   },
   "(Optional) Specify the HTTP version(s) that you want viewers to use to communicate with CF. The default value for new distributions is ``http1.1``.\n For viewers and CF to use HTTP/2, viewers must support TLSv1.2 or later, and must support Server Name Indication (SNI).\n For viewers and CF to use HTTP/3, viewers must support TLSv1.3 and Server Name Indication (SNI). CF supports HTTP/3 connection migration to allow the viewer to switch networks without losing connection. For more information about connection migration, see [Connection Migration](https://docs.aws.amazon.com/https://www.rfc-editor.org/rfc/rfc9000.html#name-connection-migration) at RFC 9000. For more information about supported TLSv1.3 ciphers, see [Supported protocols and ciphers between viewers and CloudFront](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/secure-connections-supported-viewer-protocols-ciphers.html).": {
@@ -3484,6 +3505,9 @@
   "Additional information that is included any time Amazon EC2 Auto Scaling sends a message to the notification target.": {
     "enum": null
   },
+  "Agent collaboration state": {
+    "enum": null
+  },
   "Algorithm used to solve the problem.": {
     "enum": null
   },
@@ -4010,6 +4034,9 @@
     "enum": null
   },
   "Custom attribute for this saml integration": {
+    "enum": null
+  },
+  "Custom entity id attribute to override default entity id for this saml integration": {
     "enum": null
   },
   "Custom response body key.": {
@@ -5086,6 +5113,12 @@
   "Maximum match distance.": {
     "enum": null
   },
+  "Maximum number of Sessions to Summarize": {
+    "enum": null
+  },
+  "Maximum number of days to store session details": {
+    "enum": null
+  },
   "Maximum number of files": {
     "enum": null
   },
@@ -5234,6 +5267,9 @@
     "enum": null
   },
   "Name of Cluster": {
+    "enum": null
+  },
+  "Name of ConsumableResource.": {
     "enum": null
   },
   "Name of FUOTA task": {
@@ -6031,10 +6067,22 @@
   "Specifies a custom period of time between each rotation date. If no value is specified, the default value is 365 days.\n The rotation period defines the number of days after you enable automatic key rotation that KMS will rotate your key material, and the number of days between each automatic rotation thereafter.\n You can use the [kms:RotationPeriodInDays](https://docs.aws.amazon.com/kms/latest/developerguide/conditions-kms.html#conditions-kms-rotation-period-in-days) condition key to further constrain the values that principals can specify in the ``RotationPeriodInDays`` parameter.\n For more information about rotating KMS keys and automatic rotation, see [Rotating keys](https://docs.aws.amazon.com/kms/latest/developerguide/rotate-keys.html) in the *Developer Guide*.": {
     "enum": null
   },
+  "Specifies a favicon to display in the browser tab.": {
+    "enum": null
+  },
   "Specifies a log group name using an Amazon Resource Name (ARN), a unique identifier that represents the log group to which CloudTrail logs will be delivered. Not required unless you specify CloudWatchLogsRoleArn.": {
     "enum": null
   },
+  "Specifies a logo to display on the web app.": {
+    "enum": null
+  },
   "Specifies a name for the bucket. The bucket name must contain only lowercase letters, numbers, and hyphens (-). A directory bucket name must be unique in the chosen Availability Zone or Local Zone. The bucket name must also follow the format 'bucket_base_name--zone_id--x-s3'. The zone_id can be the ID of an Availability Zone or a Local Zone. If you don't specify a name, AWS CloudFormation generates a unique physical ID and uses that ID for the bucket name.": {
+    "enum": null
+  },
+  "Specifies a service principal name (SPN), which is an identity in your Kerberos realm that has permission to access the files, folders, and file metadata in your SMB file server. SPNs are case sensitive and must include a prepended cifs/. For example, an SPN might look like cifs/kerberosuser@EXAMPLE.COM. Your task execution will fail if the SPN that you provide for this parameter doesn't match exactly what's in your keytab or krb5.conf files.": {
+    "enum": null
+  },
+  "Specifies a title to display on the web app.": {
     "enum": null
   },
   "Specifies an ECS task group for the task. The maximum length is 255 characters.": {
@@ -6403,6 +6451,9 @@
   "Specify a KMSlong key ID to encrypt the managed storage.": {
     "enum": null
   },
+  "Specify a KMSlong key ID to encrypt the managed storage.\n The key must be a single Region key.": {
+    "enum": null
+  },
   "Specify a target type to define the kinds of resources the document can run on.": {
     "enum": null
   },
@@ -6416,6 +6467,9 @@
     "enum": null
   },
   "Specify the KMSlong key ID for the Fargate ephemeral storage.": {
+    "enum": null
+  },
+  "Specify the KMSlong key ID for the Fargate ephemeral storage.\n The key must be a single Region key.": {
     "enum": null
   },
   "Specify the authentication mode that should be used to create your cluster.": {
@@ -6718,7 +6772,16 @@
   "The ARN of the KMS key that the customer can optionally specify to use to encrypt RepositoryLink properties. If not specified, a default key will be used.": {
     "enum": null
   },
+  "The ARN of the KMS key to use for encryption.": {
+    "enum": null
+  },
   "The ARN of the KMSlong (KMS) customer managed key that Lambda uses to encrypt your function's [filter criteria](https://docs.aws.amazon.com/lambda/latest/dg/invocation-eventfiltering.html#filtering-basics).": {
+    "enum": null
+  },
+  "The ARN of the KMSlong (KMS) customer managed key that's used to encrypt the following resources:\n  +  The function's [environment variables](https://docs.aws.amazon.com/lambda/latest/dg/configuration-envvars.html#configuration-envvars-encryption).\n  +  The function's [Lambda SnapStart](https://docs.aws.amazon.com/lambda/latest/dg/snapstart-security.html) snapshots.\n  +  When used with ``SourceKMSKeyArn``, the unzipped version of the .zip deployment package that's used for function invocations. For more information, see [Specifying a customer managed key for Lambda](https://docs.aws.amazon.com/lambda/latest/dg/encrypt-zip-package.html#enable-zip-custom-encryption).\n  +  The optimized version of the container image that's used for function invocations. Note that this is not the same key that's used to protect your container image in the Amazon Elastic Container Registry (Amazon ECR). For more information, see [Function lifecycle](https://docs.aws.amazon.com/lambda/latest/dg/images-create.html#images-lifecycle).\n  \n If you don't provide a customer managed key, Lambda uses an [owned key](https://docs.aws.amazon.com/kms/latest/developerguide/concepts.html#aws-owned-cmk) or an [](https://docs.aws.amazon.com/kms/latest/developerguide/concepts.html#aws-managed-cmk).": {
+    "enum": null
+  },
+  "The ARN of the KMSlong (KMS) customer managed key that's used to encrypt your function's .zip deployment package. If you don't provide a customer managed key, Lambda uses an [owned key](https://docs.aws.amazon.com/kms/latest/developerguide/concepts.html#aws-owned-cmk).": {
     "enum": null
   },
   "The ARN of the KMSlong (KMS) customer managed key that's used to encrypt your function's [environment variables](https://docs.aws.amazon.com/lambda/latest/dg/configuration-envvars.html#configuration-envvars-encryption). When [SnapStart](https://docs.aws.amazon.com/lambda/latest/dg/snapstart-security.html) is activated, LAM also uses this key is to encrypt your function's snapshot. If you deploy your function using a container image, LAM also uses this key to encrypt your function when it's deployed. Note that this is not the same key that's used to protect your container image in the ECRlong (ECR). If you don't provide a customer managed key, LAM uses a default service key.": {
@@ -6760,6 +6823,9 @@
   "The ARN of the SageMaker image that the image version belongs to.": {
     "enum": null
   },
+  "The ARN of the Secrets Manager secret associated with the pull through cache rule.": {
+    "enum": null
+  },
   "The ARN of the VPC.": {
     "enum": null
   },
@@ -6782,6 +6848,9 @@
     "enum": null
   },
   "The ARN of the cloud flow used as a source of this bridge.": {
+    "enum": null
+  },
+  "The ARN of the contact flow this version is tied to.": {
     "enum": null
   },
   "The ARN of the dataset group that provides the training data.": {
@@ -6850,6 +6919,9 @@
   "The ARN of the recipe to use for model training. Only specified when performAutoML is false.": {
     "enum": null
   },
+  "The ARN of the resource to publish to.": {
+    "enum": null
+  },
   "The ARN of the role that CloudFormation should assume when sending log entries to CloudWatch logs.": {
     "enum": null
   },
@@ -6878,6 +6950,9 @@
     "enum": null
   },
   "The ARN of the role that you created during setup (when you set up AWS Elemental MediaConnect as a trusted entity).": {
+    "enum": null
+  },
+  "The ARN of the role to be assumed by Amazon ECR. Amazon ECR will assume your supplied role when the customRoleArn is specified. When this field isn't specified, Amazon ECR will use the service-linked role for the repository creation template.": {
     "enum": null
   },
   "The ARN of the role to be assumed by ECR. This role must be in the same account as the registry that you are configuring.": {
@@ -7099,6 +7174,9 @@
   "The Access Key portion of the credentials.": {
     "enum": null
   },
+  "The AccessEndpoint is the URL that you provide to your users for them to interact with the Transfer Family web app. You can specify a custom URL or use the default value.": {
+    "enum": null
+  },
   "The Active Directory directory ID to create the DB instance in. Currently, only Db2, MySQL, Microsoft SQL Server, Oracle, and PostgreSQL DB instances can be created in an Active Directory Domain.\n For more information, see [Kerberos Authentication](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/kerberos-authentication.html) in the *Amazon RDS User Guide*.": {
     "enum": null
   },
@@ -7109,6 +7187,9 @@
     "enum": null
   },
   "The Amazon CloudWatch log group to which CloudFormation sends error logging information when invoking the type's handlers.": {
+    "enum": null
+  },
+  "The Amazon ECR repository prefix associated with the pull through cache rule.": {
     "enum": null
   },
   "The Amazon Eventbridge bus for the event integration.": {
@@ -7151,6 +7232,9 @@
     "enum": null
   },
   "The Amazon Resource Name (ARN) for the FSx for Windows file system.": {
+    "enum": null
+  },
+  "The Amazon Resource Name (ARN) for the IAM Identity Center used for the web app.": {
     "enum": null
   },
   "The Amazon Resource Name (ARN) for the IAM role that allows MediaPackage to communicate with AWS Secrets Manager.": {
@@ -7714,6 +7798,9 @@
   "The Base64 string representation of the Keytab file.": {
     "enum": null
   },
+  "The Base64 string representation of the Keytab file. Specifies your Kerberos key table (keytab) file, which includes mappings between your service principal name (SPN) and encryption keys. To avoid task execution errors, make sure that the SPN in the keytab file matches exactly what you specify for KerberosPrincipal and in your krb5.conf file.": {
+    "enum": null
+  },
   "The Base64-encoded user data to make available to the launched EC2 instances.": {
     "enum": null
   },
@@ -7874,6 +7961,9 @@
     "enum": null
   },
   "The IAM role ARN that the pod identity association is created for.": {
+    "enum": null
+  },
+  "The IAM role in IAM Identity Center used for the web app.": {
     "enum": null
   },
   "The IAM role that will be assumed by the Amazon EMR Studio. The service role provides a way for Amazon EMR Studio to interoperate with other AWS services.": {
@@ -8072,6 +8162,9 @@
     "enum": null
   },
   "The ID of the ENI that you want to attach.": {
+    "enum": null
+  },
+  "The ID of the GuardDuty detector associated with the publishing destination.": {
     "enum": null
   },
   "The ID of the IPv4 IPAM pool to Associate a CIDR from to a VPC.": {
@@ -8360,6 +8453,9 @@
     "enum": null
   },
   "The ID of the scene.": {
+    "enum": null
+  },
+  "The ID of the security configuration.": {
     "enum": null
   },
   "The ID of the security group to use with the endpoint.": {
@@ -9598,6 +9694,9 @@
   "The deployment strategy ID.": {
     "enum": null
   },
+  "The description associated with the repository creation template.": {
+    "enum": null
+  },
   "The description for the DB cluster parameter group.": {
     "enum": null
   },
@@ -9923,6 +10022,9 @@
     "enum": null
   },
   "The desired detector version status for the detector": {
+    "enum": null
+  },
+  "The desired name of the Data Cells Filter.": {
     "enum": null
   },
   "The desired netmask length of the allocation. If set, IPAM will choose a block of free space with this size and return the CIDR representing it.": {
@@ -10324,6 +10426,9 @@
   "The group ID of the specified security group.": {
     "enum": null
   },
+  "The grouping attribute for the insight's findings": {
+    "enum": null
+  },
   "The grouping type of the application": {
     "enum": null
   },
@@ -10694,6 +10799,9 @@
     "enum": null
   },
   "The life cycle type of the global cluster. You can use this setting to enroll your global cluster into Amazon RDS Extended Support.": {
+    "enum": null
+  },
+  "The lifecycle policy to use for repositories created using the template.": {
     "enum": null
   },
   "The limit of how many bytes that a message can contain before SQS rejects it. You can specify an integer value from ``1,024`` bytes (1 KiB) to ``262,144`` bytes (256 KiB). The default value is ``262,144`` (256 KiB).": {
@@ -11491,6 +11599,9 @@
   "The name of the DB shard group.": {
     "enum": null
   },
+  "The name of the Database that the Table resides in.": {
+    "enum": null
+  },
   "The name of the Elastic Beanstalk application that is associated with this application version. ": {
     "enum": null
   },
@@ -11627,6 +11738,9 @@
     "enum": null
   },
   "The name of the TTL attribute used to store the expiration time for items in the table.\n   +  The ``AttributeName`` property is required when enabling the TTL, or when TTL is already enabled.\n  +  To update this property, you must first disable TTL and then enable TTL with the new attribute name.": {
+    "enum": null
+  },
+  "The name of the Table to create a Data Cells Filter for.": {
     "enum": null
   },
   "The name of the UsageProfile.": {
@@ -12469,6 +12583,9 @@
   "The name of the upstream registry.": {
     "enum": null
   },
+  "The name of the upstream source registry associated with the pull through cache rule.": {
+    "enum": null
+  },
   "The name of the user hierarchy group.": {
     "enum": null
   },
@@ -12604,6 +12721,9 @@
   "The name to associate with the stack set. The name must be unique in the Region where you create your stack set.": {
     "enum": null
   },
+  "The name to use for the public repository. The repository name may be specified on its own (such as ``nginx-web-app``) or it can be prepended with a namespace to group the repository into a category (such as ``project-a/nginx-web-app``). If you don't specify a name, CFNlong generates a unique physical ID and uses that ID for the repository name. For more information, see [Name Type](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-name.html).\n  If you specify a name, you cannot perform updates that require replacement of this resource. You can perform updates that require no or some interruption. If you must replace the resource, specify a new name.": {
+    "enum": null
+  },
   "The name to use for the repository. The repository name may be specified on its own (such as ``nginx-web-app``) or it can be prepended with a namespace to group the repository into a category (such as ``project-a/nginx-web-app``). If you don't specify a name, CFNlong generates a unique physical ID and uses that ID for the repository name. For more information, see [Name type](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-name.html).\n The repository name must start with a letter and can only contain lowercase letters, numbers, hyphens, underscores, and forward slashes.\n  If you specify a name, you cannot perform updates that require replacement of this resource. You can perform updates that require no or some interruption. If you must replace the resource, specify a new name.": {
     "enum": null
   },
@@ -12644,6 +12764,9 @@
     "enum": null
   },
   "The namespace name or full Amazon Resource Name (ARN) of the CMAPlong namespace for use with Service Connect. The namespace must be in the same AWS Region as the Amazon ECS service and cluster. The type of namespace doesn't affect Service Connect. For more information about CMAPlong, see [Working with Services](https://docs.aws.amazon.com/cloud-map/latest/dg/working-with-services.html) in the *Developer Guide*.": {
+    "enum": null
+  },
+  "The namespace name or full Amazon Resource Name (ARN) of the CMAPlong namespace that's used when you create a service and don't specify a Service Connect configuration. The namespace name can include up to 1024 characters. The name is case-sensitive. The name can't include greater than (>), less than (<), double quotation marks (\"), or slash (/).\n If you enter an existing namespace name or ARN, then that namespace will be used. Any namespace type is supported. The namespace must be in this account and this AWS Region.\n If you enter a new name, a CMAPlong namespace will be created. Amazon ECS creates a CMAP namespace with the \"API calls\" method of instance discovery only. This instance discovery method is the \"HTTP\" namespace type in the CLIlong. Other types of instance discovery aren't used by Service Connect.\n If you update the cluster with an empty string ``\"\"`` for the namespace name, the cluster configuration for Service Connect is removed. Note that the namespace will remain in CMAP and must be deleted separately.\n For more information about CMAPlong, see [Working with Services](https://docs.aws.amazon.com/cloud-map/latest/dg/working-with-services.html) in the *Developer Guide*.": {
     "enum": null
   },
   "The namespace name or full Amazon Resource Name (ARN) of the CMAPlong namespace that's used when you create a service and don't specify a Service Connect configuration. The namespace name can include up to 1024 characters. The name is case-sensitive. The name can't include hyphens (-), tilde (~), greater than (>), less than (<), or slash (/).\n If you enter an existing namespace name or ARN, then that namespace will be used. Any namespace type is supported. The namespace must be in this account and this AWS Region.\n If you enter a new name, a CMAPlong namespace will be created. Amazon ECS creates a CMAP namespace with the \"API calls\" method of instance discovery only. This instance discovery method is the \"HTTP\" namespace type in the CLIlong. Other types of instance discovery aren't used by Service Connect.\n If you update the cluster with an empty string ``\"\"`` for the namespace name, the cluster configuration for Service Connect is removed. Note that the namespace will remain in CMAP and must be deleted separately.\n For more information about CMAPlong, see [Working with Services](https://docs.aws.amazon.com/cloud-map/latest/dg/working-with-services.html) in the *Developer Guide*.": {
@@ -13510,6 +13633,9 @@
   "The repository metadata.": {
     "enum": null
   },
+  "The repository namespace prefix associated with the repository creation template.": {
+    "enum": null
+  },
   "The request header name that you want CloudFront to send to your staging distribution. The header must contain the prefix ``aws-cf-cd-``.": {
     "enum": null
   },
@@ -13676,6 +13802,9 @@
     "enum": null
   },
   "The service principal for the AWS service to which this role is attached.": {
+    "enum": null
+  },
+  "The service role of the domain that is created.": {
     "enum": null
   },
   "The service role that AWS AppSync will assume to publish to Amazon CloudWatch Logs in your account.": {
@@ -13955,6 +14084,9 @@
     "enum": null
   },
   "The string representation of the Krb5Conf file, or the presigned URL to access the Krb5.conf file within an S3 bucket.": {
+    "enum": null
+  },
+  "The string representation of the Krb5Conf file, or the presigned URL to access the Krb5.conf file within an S3 bucket. Specifies a Kerberos configuration file (krb5.conf) that defines your Kerberos realm configuration. To avoid task execution errors, make sure that the service principal name (SPN) in the krb5.conf file matches exactly what you specify for KerberosPrincipal and in your keytab file.": {
     "enum": null
   },
   "The string value for the tag.": {
@@ -14569,6 +14701,9 @@
   "The upper limit in gibibytes (GiB) to which Amazon RDS can automatically scale the storage of the DB instance.\n For more information about this setting, including limitations that apply to it, see [Managing capacity automatically with Amazon RDS storage autoscaling](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_PIOPS.StorageTypes.html#USER_PIOPS.Autoscaling) in the *Amazon RDS User Guide*.\n This setting doesn't apply to the following DB instances:\n  +  Amazon Aurora (Storage is managed by the DB cluster.)\n  +  RDS Custom": {
     "enum": null
   },
+  "The upstream registry URL associated with the pull through cache rule.": {
+    "enum": null
+  },
   "The upstreamRegistryUrl is the endpoint of upstream registry url of the public repository to be cached": {
     "enum": null
   },
@@ -14779,6 +14914,9 @@
   "The version of the component.": {
     "enum": null
   },
+  "The version of the domain.": {
+    "enum": null
+  },
   "The version of the file, if object versioning is turned on for the bucket. Amazon GameLift uses this information when retrieving files from your S3 bucket. To retrieve a specific version of the file, provide an object version. To retrieve the latest version of the file, do not set this parameter.": {
     "enum": null
   },
@@ -14986,6 +15124,9 @@
   "Todo: add description": {
     "enum": null
   },
+  "Total Quantity of ConsumableResource.": {
+    "enum": null
+  },
   "Total amount of time for a deployment to last.": {
     "enum": null
   },
@@ -15007,6 +15148,9 @@
   "Two-digit code that specifies the country in which the certificate subject located.": {
     "enum": null
   },
+  "Type of Consumable Resource.": {
+    "enum": null
+  },
   "Type of authentication strategy for this user.": {
     "enum": null
   },
@@ -15017,6 +15161,9 @@
     "enum": null
   },
   "Type of the policy.": {
+    "enum": null
+  },
+  "Types of orchestration strategy for agents": {
     "enum": null
   },
   "Typically a qualifier appended to the name of an individual. Examples include Jr. for junior, Sr. for senior, and III for third.": {
@@ -15341,6 +15488,9 @@
     "enum": null
   },
   "destination arn": {
+    "enum": null
+  },
+  "he repository policy to apply to repositories created using the template. A repository policy is a permissions policy associated with a repository to control access permissions.": {
     "enum": null
   },
   "intended use cases.": {
