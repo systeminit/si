@@ -30,6 +30,12 @@ const DEFAULT_CYCLONE_CLIENT_EXECUTION_TIMEOUT_SECS: u64 = 60 * 35;
 const DEFAULT_CYCLONE_CLIENT_EXECUTION_TIMEOUT: Duration =
     Duration::from_secs(DEFAULT_CYCLONE_CLIENT_EXECUTION_TIMEOUT_SECS);
 
+const DEFAULT_PAUSE_DURATION_MS: u64 = 500;
+const DEFAULT_PAUSE_DURATION: Duration = Duration::from_millis(DEFAULT_PAUSE_DURATION_MS);
+const DEFAULT_RECONNECT_BACKOFF_DURATION_MS: u64 = 500;
+const DEFAULT_RECONNECT_BACKOFF_DURATION: Duration =
+    Duration::from_millis(DEFAULT_RECONNECT_BACKOFF_DURATION_MS);
+
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ConfigError {
@@ -76,6 +82,15 @@ pub struct Config {
 
     #[builder(default = "random_instance_id()")]
     instance_id: String,
+
+    #[builder(default = "default_exclude_pause_resume_stream_wrapper()")]
+    exclude_pause_resume_stream_wrapper: bool,
+
+    #[builder(default = "default_pause_duration()")]
+    pause_duration: Duration,
+
+    #[builder(default = "default_reconnect_backoff_duration()")]
+    reconnect_backoff_duration: Duration,
 }
 
 impl StandardConfig for Config {
@@ -128,6 +143,21 @@ impl Config {
     pub fn instance_id(&self) -> &str {
         self.instance_id.as_ref()
     }
+
+    /// Returns if the config will disable the "pause-resume" stream.
+    pub fn exclude_pause_resume_stream_wrapper(&self) -> bool {
+        self.exclude_pause_resume_stream_wrapper
+    }
+
+    /// Gets the config's pause duration.
+    pub fn pause_duration(&self) -> Duration {
+        self.pause_duration
+    }
+
+    /// Gets the config's reconnect backoff duration.
+    pub fn reconnect_backoff_duration(&self) -> Duration {
+        self.reconnect_backoff_duration
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -145,6 +175,12 @@ pub struct ConfigFile {
     concurrency_limit: usize,
     #[serde(default = "random_instance_id")]
     instance_id: String,
+    #[serde(default = "default_exclude_pause_resume_stream_wrapper")]
+    exclude_pause_resume_stream_wrapper: bool,
+    #[serde(default = "default_pause_duration_ms")]
+    pause_duration_ms: u64,
+    #[serde(default = "default_reconnect_backoff_duration_ms")]
+    reconnect_backoff_duration_ms: u64,
 }
 
 impl Default for ConfigFile {
@@ -163,6 +199,9 @@ impl ConfigFile {
             cyclone_client_execution_timeout_secs: default_cyclone_client_execution_timeout_secs(),
             concurrency_limit: default_concurrency_limit(),
             instance_id: random_instance_id(),
+            exclude_pause_resume_stream_wrapper: default_exclude_pause_resume_stream_wrapper(),
+            pause_duration_ms: default_pause_duration_ms(),
+            reconnect_backoff_duration_ms: default_reconnect_backoff_duration_ms(),
         }
     }
 
@@ -175,6 +214,9 @@ impl ConfigFile {
             cyclone_client_execution_timeout_secs: default_cyclone_client_execution_timeout_secs(),
             concurrency_limit: default_concurrency_limit(),
             instance_id: random_instance_id(),
+            exclude_pause_resume_stream_wrapper: default_exclude_pause_resume_stream_wrapper(),
+            pause_duration_ms: default_pause_duration_ms(),
+            reconnect_backoff_duration_ms: default_reconnect_backoff_duration_ms(),
         }
     }
 }
@@ -198,6 +240,11 @@ impl TryFrom<ConfigFile> for Config {
         ));
         config.concurrency_limit(value.concurrency_limit);
         config.instance_id(value.instance_id);
+        config.exclude_pause_resume_stream_wrapper(value.exclude_pause_resume_stream_wrapper);
+        config.pause_duration(Duration::from_millis(value.pause_duration_ms));
+        config
+            .reconnect_backoff_duration(Duration::from_millis(value.reconnect_backoff_duration_ms));
+
         config.build().map_err(Into::into)
     }
 }
@@ -555,6 +602,26 @@ fn default_cyclone_client_execution_timeout_secs() -> u64 {
 
 fn default_concurrency_limit() -> usize {
     DEFAULT_CONCURRENCY_LIMIT
+}
+
+fn default_exclude_pause_resume_stream_wrapper() -> bool {
+    false
+}
+
+fn default_pause_duration_ms() -> u64 {
+    DEFAULT_PAUSE_DURATION_MS
+}
+
+fn default_pause_duration() -> Duration {
+    DEFAULT_PAUSE_DURATION
+}
+
+fn default_reconnect_backoff_duration_ms() -> u64 {
+    DEFAULT_RECONNECT_BACKOFF_DURATION_MS
+}
+
+fn default_reconnect_backoff_duration() -> Duration {
+    DEFAULT_RECONNECT_BACKOFF_DURATION
 }
 
 #[allow(clippy::disallowed_methods)] // Used to determine if running in development

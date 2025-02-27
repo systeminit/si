@@ -105,6 +105,27 @@ pub(crate) struct Args {
     /// back to an instance of a Pinga service.
     #[arg(long)]
     pub(crate) instance_id: Option<String>,
+
+    /// Excludes the "pause-resume" stream wrapper around the core stream used for receiving function
+    /// execution requests.
+    #[arg(long, default_value = "false")]
+    pub(crate) exclude_pause_resume_stream_wrapper: bool,
+
+    /// The duration that a naxum stream will be paused on command.
+    ///
+    /// Only used if the "pause-resume" stream is enabled.
+    #[arg(long)]
+    pub(crate) pause_duration_ms: Option<u64>,
+
+    /// The duration for backoff subscribing to a naxum stream with pause-resume semantics.
+    ///
+    /// Only used if the "pause-resume" stream is enabled.
+    #[arg(long)]
+    pub(crate) reconnect_backoff_duration_ms: Option<u64>,
+
+    /// The graceful shutdown timeout in seconds.
+    #[arg(long)]
+    pub(crate) graceful_shutdown_timeout_secs: Option<u64>,
 }
 
 impl TryFrom<Args> for Config {
@@ -151,6 +172,25 @@ impl TryFrom<Args> for Config {
             }
             if let Some(instance_id) = args.instance_id {
                 config_map.set("instance_id", instance_id);
+            }
+            config_map.set(
+                "exclude_pause_resume_stream_wrapper",
+                args.exclude_pause_resume_stream_wrapper,
+            );
+            if let Some(pause_duration_ms) = args.pause_duration_ms {
+                config_map.set("pause_duration_ms", pause_duration_ms);
+            }
+            if let Some(reconnect_backoff_duration_ms) = args.reconnect_backoff_duration_ms {
+                config_map.set(
+                    "reconnect_backoff_duration_ms",
+                    reconnect_backoff_duration_ms,
+                );
+            }
+            if let Some(graceful_shutdown_timeout_secs) = args.graceful_shutdown_timeout_secs {
+                config_map.set(
+                    "graceful_shutdown_timeout_secs",
+                    graceful_shutdown_timeout_secs,
+                );
             }
         })?
         .try_into()

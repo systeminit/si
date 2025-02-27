@@ -10,7 +10,7 @@ use tokio::sync::oneshot;
 use tokio::sync::Mutex;
 use veritech_core::ExecutionId;
 
-use crate::server::ServerMetadata;
+use crate::server::{PauseResumeController, ServerMetadata};
 
 /// Application state.
 #[derive(Clone, Debug)]
@@ -25,6 +25,7 @@ pub struct AppState {
     pub cyclone_client_execution_timeout: Duration,
     pub nats: NatsClient,
     pub kill_senders: Arc<Mutex<HashMap<ExecutionId, oneshot::Sender<()>>>>,
+    pub pause_resume_controller: Option<PauseResumeController>,
 }
 
 impl AppState {
@@ -36,6 +37,7 @@ impl AppState {
         cyclone_client_execution_timeout: Duration,
         nats: NatsClient,
         kill_senders: Arc<Mutex<HashMap<ExecutionId, oneshot::Sender<()>>>>,
+        pause_resume_controller: Option<PauseResumeController>,
     ) -> Self {
         Self {
             metadata,
@@ -44,6 +46,7 @@ impl AppState {
             cyclone_client_execution_timeout,
             nats,
             kill_senders,
+            pause_resume_controller,
         }
     }
 

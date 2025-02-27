@@ -8,7 +8,7 @@ mod args;
 const BIN_NAME: &str = env!("CARGO_BIN_NAME");
 const LIB_NAME: &str = concat!(env!("CARGO_BIN_NAME"), "_server");
 
-const GRACEFUL_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(60 * 60 * 6);
+const DEFAULT_GRACEFUL_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(15);
 
 fn main() -> Result<()> {
     rt::block_on(BIN_NAME, async_main())
@@ -48,8 +48,13 @@ async fn async_main() -> Result<()> {
             .set_verbosity_and_wait(args.verbose.into())
             .await?;
     }
-    debug!(arguments =?args, "parsed cli arguments");
 
+    let graceful_shutdown_timeout = match args.graceful_shutdown_timeout_secs {
+        Some(provided) => Duration::from_secs(provided),
+        None => DEFAULT_GRACEFUL_SHUTDOWN_TIMEOUT,
+    };
+
+    debug!(arguments =?args, "parsed cli arguments");
     let config = Config::try_from(args)?;
 
     let server = Server::from_config(config, main_token.clone()).await?;
@@ -63,7 +68,7 @@ async fn async_main() -> Result<()> {
         .group(main_tracker, main_token)
         .group(telemetry_tracker, telemetry_token)
         .telemetry_guard(telemetry_shutdown.into_future())
-        .timeout(GRACEFUL_SHUTDOWN_TIMEOUT)
+        .timeout(graceful_shutdown_timeout)
         .wait()
         .await
         .map_err(Into::into)

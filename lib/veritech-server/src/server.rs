@@ -21,13 +21,17 @@ use naxum::{
     MessageHead, ServiceBuilder, ServiceExt as _, TowerServiceExt as _,
 };
 use si_crypto::VeritechDecryptionKey;
-use si_data_nats::{async_nats, jetstream, NatsClient, Subscriber};
+use si_data_nats::{
+    async_nats::{self},
+    jetstream, NatsClient, Subscriber,
+};
 use si_pool_noodle::{
     instance::cyclone::{LocalUdsInstance, LocalUdsInstanceSpec},
     pool_noodle::PoolNoodleConfig,
     KillExecutionRequest, PoolNoodle, Spec,
 };
 use telemetry::prelude::*;
+use telemetry_utils::metric;
 use tokio::sync::{oneshot, Mutex};
 use tokio_util::sync::CancellationToken;
 use veritech_core::{incoming_subject, veritech_work_queue, ExecutionId, GetNatsSubjectFor};
@@ -37,6 +41,10 @@ use crate::{
     config::CycloneSpec,
     handlers, Config, ServerError, ServerResult,
 };
+
+mod pause_resume_stream;
+
+pub use pause_resume_stream::{PauseResumeController, PauseResumeStream};
 
 const CONSUMER_NAME: &str = "veritech-server";
 const CONSUMER_MAX_DELIVERY: i64 = 5;
@@ -136,17 +144,40 @@ impl Server {
                     .run()
                     .map_err(|e| ServerError::CyclonePool(Box::new(e)))?;
 
-                let inner_future = Self::build_app(
-                    metadata.clone(),
-                    config.concurrency_limit(),
-                    cyclone_pool,
-                    Arc::new(decryption_key),
-                    config.cyclone_client_execution_timeout(),
-                    nats.clone(),
-                    kill_senders.clone(),
-                    token.clone(),
-                )
-                .await?;
+                // Reset metrics before creating the naxum apps.
+                metric!(counter.veritech.handlers_doing_work = 0);
+                metric!(counter.veritech.pool_exhausted = 0);
+                metric!(counter.veritech.pause_resume_stream.missing_heartbeat = 0);
+
+                let inner_future = if config.exclude_pause_resume_stream_wrapper() {
+                    info!("building app without pause resume stream wrapper");
+                    Self::build_app_without_pause_resume_stream(
+                        metadata.clone(),
+                        config.concurrency_limit(),
+                        cyclone_pool,
+                        Arc::new(decryption_key),
+                        config.cyclone_client_execution_timeout(),
+                        nats.clone(),
+                        kill_senders.clone(),
+                        token.clone(),
+                    )
+                    .await?
+                } else {
+                    info!("building app with pause resume stream wrapper");
+                    Self::build_app(
+                        metadata.clone(),
+                        config.concurrency_limit(),
+                        cyclone_pool,
+                        Arc::new(decryption_key),
+                        config.cyclone_client_execution_timeout(),
+                        nats.clone(),
+                        kill_senders.clone(),
+                        token.clone(),
+                        config.pause_duration(),
+                        config.reconnect_backoff_duration(),
+                    )
+                    .await?
+                };
 
                 let kill_inner_future =
                     Self::build_kill_app(metadata.clone(), nats, kill_senders, token.clone())
@@ -181,7 +212,7 @@ impl Server {
     }
 
     #[allow(clippy::too_many_arguments)]
-    async fn build_app(
+    async fn build_app_without_pause_resume_stream(
         metadata: Arc<ServerMetadata>,
         concurrency_limit: usize,
         cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
@@ -213,6 +244,70 @@ impl Server {
             cyclone_client_execution_timeout,
             nats,
             kill_senders,
+            None,
+        );
+
+        let app = ServiceBuilder::new()
+            .layer(
+                MatchedSubjectLayer::new()
+                    .for_subject(VeritechForSubject::with_prefix(prefix.as_deref())),
+            )
+            .layer(
+                TraceLayer::new()
+                    .make_span_with(
+                        telemetry_nats::NatsMakeSpan::builder(connection_metadata).build(),
+                    )
+                    .on_response(telemetry_nats::NatsOnResponse::new()),
+            )
+            .layer(AckLayer::new())
+            .service(handlers::process_request.with_state(state))
+            .map_response(Response::into_response);
+
+        let inner =
+            naxum::serve_with_incoming_limit(incoming, app.into_make_service(), concurrency_limit)
+                .with_graceful_shutdown(naxum::wait_on_cancelled(token));
+
+        Ok(Box::new(inner.into_future()))
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    async fn build_app(
+        metadata: Arc<ServerMetadata>,
+        concurrency_limit: usize,
+        cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
+        decryption_key: Arc<VeritechDecryptionKey>,
+        cyclone_client_execution_timeout: Duration,
+        nats: NatsClient,
+        kill_senders: Arc<Mutex<HashMap<ExecutionId, oneshot::Sender<()>>>>,
+        token: CancellationToken,
+        pause_duration: Duration,
+        reconnect_backoff_duration: Duration,
+    ) -> ServerResult<Box<dyn Future<Output = io::Result<()>> + Unpin + Send>> {
+        let connection_metadata = nats.metadata_clone();
+
+        // Take the *active* subject prefix from the connected NATS client
+        let prefix = nats.metadata().subject_prefix().map(|s| s.to_owned());
+
+        let incoming = {
+            let context = jetstream::new(nats.clone());
+            PauseResumeStream::new(
+                veritech_work_queue(&context, prefix.as_deref())
+                    .await?
+                    .create_consumer(Self::incoming_consumer_config(prefix.as_deref()))
+                    .await?,
+                pause_duration,
+                reconnect_backoff_duration,
+            )
+        };
+
+        let state = AppState::new(
+            metadata,
+            cyclone_pool,
+            decryption_key,
+            cyclone_client_execution_timeout,
+            nats,
+            kill_senders,
+            Some(incoming.controller()),
         );
 
         let app = ServiceBuilder::new()
