@@ -77,13 +77,13 @@ const overrides = new Map<string, OverrideFn>([
     variant.sockets.push(socket);
   }],
   ["AWS::DataZone::Domain", (spec: ExpandedPkgSpec) => {
-      const variant = spec.schemas[0].variants[0];
+    const variant = spec.schemas[0].variants[0];
 
-      const socket = variant.sockets.find(
-        (s: ExpandedSocketSpec) => s.name === "Id" && s.data.kind === "output",
-      );
+    const socket = variant.sockets.find(
+      (s: ExpandedSocketSpec) => s.name === "Id" && s.data.kind === "output",
+    );
 
-      setAnnotationOnSocket(socket!, { tokens: ["Domain Identifier"] });
+    setAnnotationOnSocket(socket!, { tokens: ["Domain Identifier"] });
   }],
   ["AWS::DataZone::Project", (spec: ExpandedPkgSpec) => {
     const variant = spec.schemas[0].variants[0];
@@ -101,8 +101,14 @@ const overrides = new Map<string, OverrideFn>([
     const prop = variant.domain.entries.find((p: ExpandedPropSpec) =>
       p.name === "UserData"
     );
+    prop!.data.widgetKind = "CodeEditor";
 
-    prop!.data.widgetKind = "TextArea";
+    const securityGroupIdsProp = variant.domain.entries.find((p: ExpandedPropSpec) =>
+      p.name === "SecurityGroupIds"
+    );
+    const socket = createInputSocketFromProp(securityGroupIdsProp!);
+    setAnnotationOnSocket(socket, { tokens: ["GroupId"] });
+    variant.sockets.push(socket);
   }],
   ["AWS::EC2::Route", (spec: ExpandedPkgSpec) => {
     const variant = spec.schemas[0].variants[0];
@@ -125,21 +131,21 @@ const overrides = new Map<string, OverrideFn>([
     const prop = variant.domain.entries.find((p: ExpandedPropSpec) =>
       p.name === "KeyPolicy"
     );
-      
+
     if (!prop) return;
-    prop.kind = "json"
+    prop.kind = "json";
     prop!.data.widgetKind = "CodeEditor";
   }],
   ["AWS::Logs::LogGroup", (spec: ExpandedPkgSpec) => {
-      const variant = spec.schemas[0].variants[0];
+    const variant = spec.schemas[0].variants[0];
 
-      const prop = variant.domain.entries.find((p: ExpandedPropSpec) =>
-        p.name === "DataProtectionPolicy"
-      );
-      
-      if (!prop) return;
-      prop.kind = "json"
-      prop!.data.widgetKind = "CodeEditor";
+    const prop = variant.domain.entries.find((p: ExpandedPropSpec) =>
+      p.name === "DataProtectionPolicy"
+    );
+
+    if (!prop) return;
+    prop.kind = "json";
+    prop!.data.widgetKind = "CodeEditor";
   }],
   ["AWS::RDS::DBCluster", (spec: ExpandedPkgSpec) => {
     const variant = spec.schemas[0].variants[0];
@@ -147,7 +153,7 @@ const overrides = new Map<string, OverrideFn>([
     const prop = variant.domain.entries.find((p: ExpandedPropSpec) =>
       p.name === "VpcSecurityGroupIds"
     );
-  
+
     if (!prop) return;
     const socket = createInputSocketFromProp(prop);
 
@@ -160,7 +166,7 @@ const overrides = new Map<string, OverrideFn>([
     const prop = variant.domain.entries.find((p: ExpandedPropSpec) =>
       p.name === "VPCSecurityGroups"
     );
-  
+
     if (!prop) return;
     const socket = createInputSocketFromProp(prop);
 
@@ -173,12 +179,17 @@ const overrides = new Map<string, OverrideFn>([
     const prop = variant.domain.entries.find((p: ExpandedPropSpec) =>
       p.name === "Parameters"
     );
-      
+
     if (!prop) return;
-    prop.kind = "map"
-      
+    prop.kind = "map";
+
     if (prop.kind === "map") {
-      prop.typeProp = createScalarProp("parameter", "string", prop.metadata.propPath, false)
+      prop.typeProp = createScalarProp(
+        "parameter",
+        "string",
+        prop.metadata.propPath,
+        false,
+      );
     }
   }],
   ["AWS::RDS::DBSubnetGroup", (spec: ExpandedPkgSpec) => {
@@ -187,7 +198,7 @@ const overrides = new Map<string, OverrideFn>([
     const prop = variant.domain.entries.find((p: ExpandedPropSpec) =>
       p.name === "SubnetIds"
     );
-  
+
     if (!prop) return;
     const socket = createInputSocketFromProp(prop);
 
@@ -205,9 +216,31 @@ const overrides = new Map<string, OverrideFn>([
 
     setAnnotationOnSocket(socket, { tokens: ["HostedZoneId"] });
   }],
-  ["AWS::SecretsManager::Secret",
+  [
+    "AWS::SecretsManager::Secret",
     addSecretProp("Secret String", "secretString", ["SecretString"]),
   ],
+  ["AWS::EC2::NetworkInterface", (spec: ExpandedSocketSpec) => {
+    const variant = spec.schemas[0].variants[0];
+
+    // Add an annotation for the Id output socket to connect to HostedZoneId
+    const socket = variant.sockets.find(
+      (s: ExpandedSocketSpec) => s.name === "Id" && s.data.kind === "output",
+    );
+    if (!socket) return;
+
+    setAnnotationOnSocket(socket, { tokens: ["NetworkInterfaceId"] });
+
+    const prop = variant.domain.entries.find((p: ExpandedPropSpec) =>
+      p.name === "GroupSet"
+    );
+
+    if (!prop) return;
+    const groupSocket = createInputSocketFromProp(prop);
+
+    setAnnotationOnSocket(groupSocket, { tokens: ["GroupId"] });
+    variant.sockets.push(groupSocket);
+  }],
 ]);
 
 function addSecretProp(

@@ -75,10 +75,9 @@ function createArgument(funcName: string, kind: string): FuncArgumentSpec[] {
     // For the identity function, use "identity" as the argument name
     name: funcName === "si:identity" ? "identity" : "value",
     // For identity and validation functions, use "any" as the kind
-    kind:
-      funcName === "si:identity" || funcName === "si:validation"
-        ? "any"
-        : (kind as FuncArgumentKind),
+    kind: funcName === "si:identity" || funcName === "si:validation"
+      ? "any"
+      : (kind as FuncArgumentKind),
     elementKind: kind === "array" || kind === "map" ? "any" : null,
     uniqueId: null,
     deleted: false,
