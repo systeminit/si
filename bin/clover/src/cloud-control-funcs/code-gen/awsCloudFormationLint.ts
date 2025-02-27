@@ -53,7 +53,7 @@ async function main(component: Input): Promise<Output> {
   const cleaned = removeEmpty(payload);
 
   const resources = {};
-  console.log('foo', component);
+  console.log("foo", component);
   resources["cfnResource"] = {
     Type: cloudControlType,
     Properties: cleaned,
