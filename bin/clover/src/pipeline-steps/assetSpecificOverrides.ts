@@ -241,6 +241,19 @@ const overrides = new Map<string, OverrideFn>([
     setAnnotationOnSocket(groupSocket, { tokens: ["GroupId"] });
     variant.sockets.push(groupSocket);
   }],
+  ["TargetGroup Targets", (spec: ExpandedPkgSpec) => {
+    const variant = spec.schemas[0].variants[0];
+
+    // Add an annotation for the Id output socket to connect to HostedZoneId
+    const socket = variant.sockets.find(
+      (s: ExpandedSocketSpec) => s.name === "Id" && s.data.kind === "input",
+    );
+    if (!socket) return;
+
+    setAnnotationOnSocket(socket, { tokens: ["InstanceId"] });
+    setAnnotationOnSocket(socket, { tokens: ["arn<string>"] });
+    setAnnotationOnSocket(socket, { tokens: ["arn"] });
+  }],
 ]);
 
 function addSecretProp(
