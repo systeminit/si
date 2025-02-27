@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import * as Comlink from "comlink";
 import { Args, AtomDocument, Checksum, DBInterface, interpolate, NOROW, QueryKey, RawArgs } from "@/workers/types/dbinterface";
-import { watch, computed, reactive, readonly } from 'vue';
+import { watch, computed  } from 'vue';
 import { useAuthStore } from '../auth.store';
 import { ChangeSetId } from '@/api/sdf/dal/change_set';
 
@@ -9,11 +9,9 @@ export const useHeimdall = defineStore('heimdall', async () => {
   const authStore = useAuthStore();
 
   type AtomChecksumByKey = Record<Checksum, QueryKey>;
-  const frigg: AtomChecksumByKey = reactive({});
 
   const bustTanStackCache = (queryKey: QueryKey, latestChecksum: Checksum) => {
     console.log("BUST", queryKey)
-    frigg[queryKey] = latestChecksum;
     // TODO bust tanstack once we have it
   };
 
@@ -51,15 +49,17 @@ export const useHeimdall = defineStore('heimdall', async () => {
 
   // cold start
   const niflheim = async (changeSetId: ChangeSetId) => {
-    const request = await fetch("");
+    const frigg = await fetch("newarch/frigg");
     const [localChecksums, remoteChecksums] = await Promise.all([
-      await db.bootstrapChecksums(changeSetId),
-      await request.json() as Record<QueryKey, Checksum>,
+      await db.atomChecksumsFor(changeSetId),
+      await frigg.json() as Record<QueryKey, Checksum>,
     ]);
     Object.entries(remoteChecksums).map(async ([key, checksum]) => {
       const local = localChecksums[key];
-      const { kind, args } = await db.kindAndArgsFromKey(key);
-      if (!local || local !== checksum) db.mjolnir(changeSetId, kind, args);
+      if (!local || local !== checksum) {
+        const { kind, args } = await db.kindAndArgsFromKey(key);
+        db.mjolnir(changeSetId, kind, args);
+      }
     });
   };
 
@@ -68,7 +68,6 @@ export const useHeimdall = defineStore('heimdall', async () => {
   return {
     niflheim,
     bifrost,
-    frigg: readonly(frigg),
     connectionShouldBeEnabled,
   }
 

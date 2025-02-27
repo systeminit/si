@@ -44,7 +44,7 @@ export interface DBInterface {
   partialKeyFromKindAndArgs (kind: string, args: Args): QueryKey, 
   kindAndArgsFromKey(key: QueryKey): { kind: string, args: Args},
   addListenerBustCache(fn: BustCacheFn): void,
-  bootstrapChecksums(changeSetId: ChangeSetId): Promise<Record<QueryKey, Checksum>>,
+  atomChecksumsFor(changeSetId: ChangeSetId): Promise<Record<QueryKey, Checksum>>,
   fullDiagnosticTest(): void,
 }
 
@@ -134,14 +134,26 @@ export interface AtomMeta {
   snapshotToChecksum: Checksum,
 };
 
-export interface AtomMessage {
+export enum MessageKind {
+  PATCH = "PatchMessage",
+  MJOLNIR = "MjolnirAtom",
+}
+
+export interface PatchAtomMessage {
   meta: AtomMeta,
-  atoms: AtomOperation[],
+  kind: MessageKind.PATCH,
+  patches: AtomOperation[],
+};
+
+export interface AtomMessage {
+  kind: MessageKind.MJOLNIR,
+  atom: Atom,
+  data: object,
 };
 
 export interface Atom extends AbstractAtom, AtomMeta {
   args: Args,
-  operations: Operation[],
+  operations?: Operation[],
 };
 
 // TODO
