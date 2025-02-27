@@ -89,7 +89,9 @@ pub async fn perform_rebase(
     debug!("before snapshot fetch and parse: {:?}", start.elapsed());
     let to_rebase_workspace_snapshot =
         WorkspaceSnapshot::find(ctx, to_rebase_workspace_snapshot_address).await?;
-    let original_workspace_snapshot = to_rebase_workspace_snapshot.clone();
+    // Rather than clone the above snapshot we want an independent copy of this snapshot
+    let original_workspace_snapshot =
+        WorkspaceSnapshot::find(ctx, to_rebase_workspace_snapshot_address).await?;
 
     let rebase_batch = ctx
         .layer_db()
@@ -135,6 +137,7 @@ pub async fn perform_rebase(
         let changes = original_workspace_snapshot
             .detect_changes(&to_rebase_workspace_snapshot)
             .await?;
+        dbg!(&changes);
 
         ctx.set_workspace_snapshot(to_rebase_workspace_snapshot);
 

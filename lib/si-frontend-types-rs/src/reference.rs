@@ -26,7 +26,7 @@ where
 {
     pub kind: ReferenceKind,
     pub id: ReferenceId<T>,
-    pub checksum: Checksum,
+    pub checksum: String,
 }
 
 impl<T> std::fmt::Display for ReferenceId<T>
@@ -77,7 +77,7 @@ where
         Reference {
             kind: self.reference_kind(),
             id: self.reference_id(),
-            checksum: FrontendChecksum::checksum(self),
+            checksum: FrontendChecksum::checksum(self).to_string(),
         }
     }
 

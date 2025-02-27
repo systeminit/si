@@ -377,12 +377,14 @@ pub fn build_mv(input: proc_macro2::TokenStream) -> syn::Result<proc_macro2::Tok
                         .await
                         .is_none()
                     {
+                        // Object was removed
                         return Ok((
                             Some(si_frontend_types::object::patch::ObjectPatch {
                                 kind: <#mv_name as si_frontend_types::materialized_view::MaterializedView>::kind(),
                                 id: change.entity_id,
-                                from_checksum: Checksum::default(),
-                                to_checksum: Checksum::default(),
+                                // TODO: we need to get the prior version of this
+                                from_checksum: Checksum::default().to_string(),
+                                to_checksum: "0".to_string(),
                                 patch: json_patch::Patch(vec![json_patch::PatchOperation::Remove(
                                     json_patch::RemoveOperation::default(),
                                 )]),
@@ -405,7 +407,7 @@ pub fn build_mv(input: proc_macro2::TokenStream) -> syn::Result<proc_macro2::Tok
                             dal::workspace_snapshot::WorkspaceSnapshotError::WorkspaceMissing,
                         )
                     })?;
-                    let to_checksum = si_frontend_types::checksum::FrontendChecksum::checksum(&mv);
+                    let to_checksum = si_frontend_types::checksum::FrontendChecksum::checksum(&mv).to_string();
                     let frontend_object: si_frontend_types::object::FrontendObject = mv.try_into().map_err(|_| {
                         // XXX: This error is absolutely incorrect, but sorting out the tangle of nested error types is
                         //      a task for the not-a-spike version of this.
@@ -414,11 +416,13 @@ pub fn build_mv(input: proc_macro2::TokenStream) -> syn::Result<proc_macro2::Tok
                         )
                     })?;
 
+                    // NOTE: we have no prior state, so we're computing this as a net-new create
                     Ok((
                         Some(si_frontend_types::object::patch::ObjectPatch {
                             kind: <#mv_name as si_frontend_types::materialized_view::MaterializedView>::kind(),
                             id: change.entity_id,
-                            from_checksum: Checksum::default(),
+                            // TODO: get prior state if it already exists
+                            from_checksum: "0".to_string(),
                             to_checksum,
                             patch: json_patch::diff(&serde_json::Value::Null, &mv_json),
                         }),
