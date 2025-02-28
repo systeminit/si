@@ -116,14 +116,15 @@ export function createInputSocketsBasedOnOutputSockets(
     // Create sockets for all Arns
     // TODO: we can be smarter about this, but this covers off on every case of
     // wanting to connecting something like "TaskArn" or "Arn" -> "TaskRoleArn"
-    for (const prop of domain.entries) {
-      if (!prop.name.toLowerCase().endsWith("arn")) continue;
-      const socket = getOrCreateInputSocketFromProp(schemaVariant, prop);
-      setAnnotationOnSocket(socket, { tokens: ["Arn"] });
-      setAnnotationOnSocket(socket, {
-        tokens: createExtendedAnnotationForProp(["arn"], prop),
-      });
-    }
+    bfsPropTree(domain, (prop) => {
+      if (prop.name.toLowerCase().endsWith("arn")) {
+        const socket = getOrCreateInputSocketFromProp(schemaVariant, prop);
+        setAnnotationOnSocket(socket, { tokens: ["Arn"] });
+        setAnnotationOnSocket(socket, {
+          tokens: createExtendedAnnotationForProp(["arn"], prop),
+        });
+      }
+    }, { skipTypeProps: true });
 
     // create input sockets for all strings and arrays of strings whose props name matches
     // the name of a component that exists
