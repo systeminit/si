@@ -1,8 +1,13 @@
 import _ from "npm:lodash";
+
 import {
   ConnectionAnnotation,
+  createExtendedAnnotationForProp,
+  createInputSocketFromProp,
+  getSocketOnVariant,
   propPathToString,
   setAnnotationOnSocket,
+  socketNameFromProp,
 } from "../spec/sockets.ts";
 import { bfsPropTree } from "../spec/props.ts";
 import pluralize from "npm:pluralize";
@@ -34,9 +39,7 @@ export function createInputSocketsBasedOnOutputSockets(
 
         for (const { tokens } of existingAnnotations) {
           if (tokens.length !== 1) {
-            throw new Error(
-              `Unexpected number of tokens on annotation for ${socket.name} on ${spec.name}`,
-            );
+            continue;
           }
 
           const annotationToken = tokens[0];
@@ -117,7 +120,9 @@ export function createInputSocketsBasedOnOutputSockets(
       if (!prop.name.toLowerCase().endsWith("arn")) continue;
       const socket = getOrCreateInputSocketFromProp(schemaVariant, prop);
       setAnnotationOnSocket(socket, { tokens: ["Arn"] });
-      setAnnotationOnSocket(socket, { tokens: ["arn<string>"] });
+      setAnnotationOnSocket(socket, {
+        tokens: createExtendedAnnotationForProp(["arn"], prop),
+      });
     }
 
     // create input sockets for all strings and arrays of strings whose props name matches
@@ -165,8 +170,26 @@ export function createInputSocketsBasedOnOutputSockets(
       }
     }, { skipTypeProps: true });
 
+    // for all arrays of scalars, create an input socket if one does not exist
+    bfsPropTree(domain, (prop) => {
+      if (
+        prop.kind === "array" &&
+        ["boolean", "string", "number", "float"].includes(prop.typeProp.kind)
+      ) {
+        const socketName = socketNameFromProp(prop);
+        let socket = getSocketOnVariant(schemaVariant, socketName, "input");
+
+        if (!socket) {
+          socket = createInputSocketFromProp(prop);
+          schemaVariant.sockets.push(socket);
+          setAnnotationOnSocket(socket, {
+            tokens: createExtendedAnnotationForProp([], prop),
+          });
+        }
+      }
+    }, { skipTypeProps: true });
+
     newSpecs.push(spec);
   }
-
   return newSpecs;
 }

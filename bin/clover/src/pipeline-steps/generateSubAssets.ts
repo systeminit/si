@@ -6,10 +6,11 @@ import {
   generatePropHash,
 } from "../spec/props.ts";
 import { ulid } from "https://deno.land/x/ulid@v0.3.0/mod.ts";
-import { attrFuncInputSpecFromSocket } from "../spec/sockets.ts";
-import { createSocket } from "../spec/sockets.ts";
+import {
+  createInputSocketFromProp,
+  createOutputSocketFromProp,
+} from "../spec/sockets.ts";
 import { attrFuncInputSpecFromProp } from "../spec/sockets.ts";
-import { getSiFuncId } from "../spec/siFuncs.ts";
 import _logger from "../logger.ts";
 import { ExpandedPkgSpec, ExpandedSchemaVariantSpec } from "../spec/pkgs.ts";
 
@@ -52,14 +53,8 @@ export function generateSubAssets(
         const hash = generatePropHash(newDomain);
 
         // set the parent prop to have an input socket for this new asset
-        const propInputSocket = createSocket(objName, "input", "many");
-        if (prop.data) {
-          prop.data.inputs = [
-            attrFuncInputSpecFromSocket(propInputSocket, "value"),
-          ];
-          prop.data.funcUniqueId = getSiFuncId("si:normalizeToArray");
-          schemaVariant.sockets.push(propInputSocket);
-        }
+        const propInputSocket = createInputSocketFromProp(prop);
+        schemaVariant.sockets.push(propInputSocket);
 
         // reuse existing assets so we don't recreate the same asset over and
         // over again
@@ -71,11 +66,8 @@ export function generateSubAssets(
         }
 
         // output the domain of this new spec
-        const newSpecOutputSocket = createSocket(objName, "output", "one");
-        if (newSpecOutputSocket.data) {
-          newSpecOutputSocket.data.funcUniqueId = getSiFuncId("si:identity");
-          newSpecOutputSocket.inputs.push(attrFuncInputSpecFromProp(newDomain));
-        }
+        const newSpecOutputSocket = createOutputSocketFromProp(prop, objName);
+        newSpecOutputSocket.inputs = [attrFuncInputSpecFromProp(newDomain)];
 
         const variantData = _.cloneDeep(schemaVariant.data);
         const variant: ExpandedSchemaVariantSpec = {

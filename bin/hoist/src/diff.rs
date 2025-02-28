@@ -8,6 +8,7 @@ use std::fmt::{Display, Formatter};
 enum PatchTarget {
     Socket(String),
     Prop(String),
+    PropContents((String, String)),
     Func(String),
     Variant,
 }
@@ -24,6 +25,9 @@ impl Display for PatchTarget {
                 f.write_str(format!("{} socket {}", kind, name).as_str())
             }
             PatchTarget::Prop(name) => f.write_str(format!("prop {}", name).as_str()),
+            PatchTarget::PropContents((name, target)) => {
+                f.write_str(format!("prop contents {} at {}", name, target).as_str())
+            }
             PatchTarget::Func(name) => f.write_str(format!("function {}", name).as_str()),
             PatchTarget::Variant => f.write_str("variant"),
         }?;
@@ -61,16 +65,18 @@ pub fn patch_list_to_changelog(patch: Patch) -> Vec<String> {
 
                 let mut found_prop_root = false;
                 let mut last_one_was_entries = false;
+                let mut prop_contents = vec![];
+
                 for token in path.tokens().map(|t| t.to_string()) {
                     if !found_prop_root {
                         if token == prop_root.to_string() {
                             found_prop_root = true
                         }
                     } else if !last_one_was_entries {
-                        if token == "entries" {
+                        if token == "entries" && prop_contents.is_empty() {
                             last_one_was_entries = true;
                         } else {
-                            break;
+                            prop_contents.push(token);
                         }
                     } else {
                         last_one_was_entries = false;
@@ -84,7 +90,11 @@ pub fn patch_list_to_changelog(patch: Patch) -> Vec<String> {
                 }
 
                 let prop_name = format!("/root/{}", prop_name_tokens.join("/"));
-                PatchTarget::Prop(prop_name)
+                if !prop_contents.is_empty() {
+                    PatchTarget::PropContents((prop_name, prop_contents.join("/")))
+                } else {
+                    PatchTarget::Prop(prop_name)
+                }
             } else {
                 PatchTarget::Variant
             }
@@ -93,9 +103,19 @@ pub fn patch_list_to_changelog(patch: Patch) -> Vec<String> {
         };
 
         match operation {
-            PatchOperation::Add(_) => logs.push(format!("Added {target}")),
+            PatchOperation::Add(op) => {
+                logs.push(format!(
+                    "Added {target}:\n{}",
+                    serde_json::to_string_pretty(&op.value).expect("unable to parse json")
+                ));
+            }
             PatchOperation::Remove(_) => logs.push(format!("Removed {target}")),
-            PatchOperation::Replace(_) => logs.push(format!("Replaced value within {target}")),
+            PatchOperation::Replace(op) => {
+                logs.push(format!(
+                    "Replaced value within {target}:\n{}",
+                    serde_json::to_string_pretty(&op.value).expect("unable to parse json")
+                ));
+            }
             change @ (PatchOperation::Move(_)
             | PatchOperation::Copy(_)
             | PatchOperation::Test(_)) => println!("Unhandled Operation: \n{change}"),
@@ -160,9 +180,20 @@ pub fn rewrite_spec_for_diff(spec: Value) -> Value {
 
             let mut prop = prop.clone();
 
-            if kind != "object" {
+            if !["array", "map", "object"].contains(&kind) {
                 return (name.to_string(), prop);
             };
+
+            if kind != "object" {
+                let (_, type_prop) =
+                    rewrite_prop(prop.get("typeProp").expect("could not get typeProp"));
+                prop.assign(
+                    Pointer::from_static("/typeProp"),
+                    serde_json::to_value(type_prop).expect("couldn't make new entries into json"),
+                )
+                .expect("could not assign value");
+                return (name.to_string(), prop);
+            }
 
             let mut new_entries = HashMap::new();
 
