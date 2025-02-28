@@ -266,7 +266,7 @@ const overrides = new Map<string, OverrideFn>([
       if (!prop) return;
       const socket = createInputSocketFromProp(prop);
       
-      setAnnotationOnSocket(socket, { tokens: ["arn<string>"] });
+      setAnnotationOnSocket(socket, { tokens: ["arn", "string"] });
       setAnnotationOnSocket(socket, { tokens: ["arn"] });
       variant.sockets.push(socket);
     }
