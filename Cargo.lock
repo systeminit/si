@@ -7066,6 +7066,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "si-split-graph"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "blake3",
+ "petgraph",
+ "serde",
+ "si-events",
+ "si-id",
+ "thiserror 2.0.11",
+]
+
+[[package]]
 name = "si-std"
 version = "0.1.0"
 dependencies = [
