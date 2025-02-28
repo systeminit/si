@@ -70,6 +70,7 @@ members = [
     "lib/si-runtime-rs",
     "lib/si-service",
     "lib/si-settings",
+    "lib/si-split-graph",
     "lib/si-std",
     "lib/si-test-macros",
     "lib/telemetry-application-rs",

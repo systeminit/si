@@ -1,0 +1,20 @@
+[package]
+name = "si-split-graph"
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+si-id = { path = "../../lib/si-id" }
+si-events = { path = "../../lib/si-events-rs" }
+
+async-trait = { workspace = true }
+blake3 = { workspace = true }
+petgraph = { workspace = true }
+serde = { workspace = true }
+strum = { workspace = true }
+thiserror = { workspace = true }
