@@ -254,6 +254,23 @@ const overrides = new Map<string, OverrideFn>([
     setAnnotationOnSocket(socket, { tokens: ["arn<string>"] });
     setAnnotationOnSocket(socket, { tokens: ["arn"] });
   }],
+  [
+    "AWS::APS::Workspace",
+    (spec: ExpandedPkgSpec) => { 
+      const variant = spec.schemas[0].variants[0];
+      
+      const prop = variant.domain.entries.find((p: ExpandedPropSpec) =>
+        p.name === "LogGroupArn"
+      );
+
+      if (!prop) return;
+      const socket = createInputSocketFromProp(prop);
+      
+      setAnnotationOnSocket(socket, { tokens: ["arn", "string"] });
+      setAnnotationOnSocket(socket, { tokens: ["arn"] });
+      variant.sockets.push(socket);
+    }
+  ]
 ]);
 
 function addSecretProp(
