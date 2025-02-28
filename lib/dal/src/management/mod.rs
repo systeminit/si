@@ -26,7 +26,7 @@ use crate::{
         value::AttributeValueError,
     },
     change_status::ChangeStatus::Added,
-    component::IncomingConnection,
+    component::Connection,
     diagram::{geometry::RawGeometry, SummaryDiagramEdge},
     history_event::HistoryEventMetadata,
     prop::{PropError, PropPath},
@@ -828,7 +828,7 @@ impl<'a> ManagementOperator<'a> {
                     timestamp: apa.timestamp().created_at,
                 }
             };
-            let incoming_connection = IncomingConnection {
+            let incoming_connection = Connection {
                 attribute_prototype_argument_id: connection_apa_id,
                 to_component_id: destination_component_id,
                 to_input_socket_id: destination_input_socket_id,
