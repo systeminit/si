@@ -13,6 +13,7 @@ audit-database = { path = "../../lib/audit-database" }
 audit-logs-stream = { path = "../../lib/audit-logs-stream" }
 billing-events = { path = "../../lib/billing-events" }
 dal-macros = { path = "../../lib/dal-macros" }
+joi-validator = { path = "../../lib/joi-validator" }
 module-index-client = { path = "../../lib/module-index-client" }
 object-tree = { path = "../../lib/object-tree" }
 pending-events = { path = "../../lib/pending-events" }

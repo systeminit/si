@@ -1,3 +1,5 @@
+use itertools::join;
+use joi_validator::Validator;
 use serde::{Deserialize, Serialize};
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
@@ -68,6 +70,24 @@ pub enum ValidationError {
     Transactions(#[from] TransactionsError),
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
+}
+
+impl From<AttributeValueError> for ValidationError {
+    fn from(e: AttributeValueError) -> Self {
+        Box::new(e).into()
+    }
+}
+
+impl From<ComponentError> for ValidationError {
+    fn from(e: ComponentError) -> Self {
+        Box::new(e).into()
+    }
+}
+
+impl From<FuncRunnerError> for ValidationError {
+    fn from(e: FuncRunnerError) -> Self {
+        Box::new(e).into()
+    }
 }
 
 pub type ValidationResult<T> = Result<T, ValidationError>;
@@ -250,8 +270,7 @@ impl ValidationOutput {
         attribute_value_id: AttributeValueId,
     ) -> ValidationResult<Option<String>> {
         Ok(AttributeValue::prop_opt(ctx, attribute_value_id)
-            .await
-            .map_err(Box::new)?
+            .await?
             .and_then(|prop| prop.validation_format))
     }
 
@@ -262,77 +281,33 @@ impl ValidationOutput {
         attribute_value_id: AttributeValueId,
         value: Option<serde_json::Value>,
     ) -> ValidationResult<Option<ValidationOutput>> {
-        let validation_format = if let Some(validation_format) =
-            Self::get_format_for_attribute_value_id(ctx, attribute_value_id).await?
-        {
-            validation_format
-        } else {
-            return Ok(None);
-        };
-
-        let result_channel =
-            FuncRunner::run_validation_format(ctx, attribute_value_id, value, validation_format)
-                .await
-                .map_err(Box::new)?;
-
-        let mut validation_output = None;
-
-        let func_result_value = match result_channel
-            .await
-            .map_err(|_| ValidationError::FuncRunGone)?
-        {
-            Ok(func_run_result) => func_run_result,
-            Err(FuncRunnerError::ResultFailure { kind, message, .. }) => {
-                let _ = validation_output.insert(ValidationOutput {
-                    status: ValidationStatus::Error,
-                    message: Some(format!("{kind}: {message}")),
-                });
-                return Ok(validation_output);
-            }
-            Err(e) => return Err(Box::new(e).into()),
-        };
-
-        let message = match func_result_value.value() {
-            Some(raw_value) => {
-                let validation_result: ValidationRunResult =
-                    serde_json::from_value(raw_value.clone())?;
-
-                validation_result.error
-            }
-            None => None,
-        };
-
-        let status = if message.is_none() {
-            ValidationStatus::Success
-        } else {
-            ValidationStatus::Failure
-        };
-
-        let output = ValidationOutput { status, message };
-
-        ctx.layer_db()
-            .func_run()
-            .set_state_to_success(
-                func_result_value.func_run_id(),
-                ctx.events_tenancy(),
-                ctx.events_actor(),
-            )
-            .await?;
-
-        Ok(Some(output))
+        match Self::get_format_for_attribute_value_id(ctx, attribute_value_id).await? {
+            None => Ok(None),
+            Some(validation_format) => Ok(Some(
+                // If we can't deserialize the validation format, run remotely
+                match serde_json::from_str(&validation_format) {
+                    Ok(validator) => run_locally(validator, value),
+                    Err(serde_error) => {
+                        run_remotely(
+                            ctx,
+                            attribute_value_id,
+                            value,
+                            validation_format,
+                            Some(serde_error),
+                        )
+                        .await?
+                    }
+                },
+            )),
+        }
     }
 
     pub async fn list_for_component(
         ctx: &DalContext,
         component_id: ComponentId,
     ) -> ValidationResult<Vec<(AttributeValueId, ValidationOutput)>> {
-        let component = Component::get_by_id(ctx, component_id)
-            .await
-            .map_err(Box::new)?;
-        let domain_av = component
-            .domain_prop_attribute_value(ctx)
-            .await
-            .map_err(Box::new)?;
+        let component = Component::get_by_id(ctx, component_id).await?;
+        let domain_av = component.domain_prop_attribute_value(ctx).await?;
 
         let mut outputs = vec![];
         let mut queue = VecDeque::from(vec![domain_av]);
@@ -343,9 +318,7 @@ impl ValidationOutput {
                     .map(|node| node.validation);
 
             let children_av_ids =
-                AttributeValue::get_child_av_ids_in_order(ctx, attribute_value_id)
-                    .await
-                    .map_err(Box::new)?;
+                AttributeValue::get_child_av_ids_in_order(ctx, attribute_value_id).await?;
 
             queue.extend(children_av_ids);
 
@@ -356,4 +329,82 @@ impl ValidationOutput {
 
         Ok(outputs)
     }
+}
+
+#[instrument(
+    name = "validation.run_locally",
+    level = "info",
+    skip_all,
+    fields(si.validation.rules = %validator.rule_names().join(", "))
+)]
+fn run_locally(validator: Validator, value: Option<serde_json::Value>) -> ValidationOutput {
+    // We treat value as undefined if it's null
+    let value = match value {
+        Some(serde_json::Value::Null) => None,
+        value => value,
+    };
+    match validator.validate(&value).error {
+        None => ValidationOutput {
+            status: ValidationStatus::Success,
+            message: None,
+        },
+        Some(error) => ValidationOutput {
+            status: ValidationStatus::Failure,
+            message: Some(join(error.details.iter().map(|e| &e.message), "\n")),
+        },
+    }
+}
+
+#[instrument(
+    name = "validation.run_remotely",
+    level = "info",
+    skip_all,
+    fields(si.validation.because = because.map(|e| e.to_string()))
+)]
+async fn run_remotely(
+    ctx: &DalContext,
+    attribute_value_id: AttributeValueId,
+    value: Option<serde_json::Value>,
+    validation_format: String,
+    because: Option<serde_json::Error>,
+) -> ValidationResult<ValidationOutput> {
+    let result_channel =
+        FuncRunner::run_validation_format(ctx, attribute_value_id, value, validation_format)
+            .await?;
+
+    let func_result_value = match result_channel
+        .await
+        .map_err(|_| ValidationError::FuncRunGone)?
+    {
+        Ok(func_run_result) => func_run_result,
+        Err(FuncRunnerError::ResultFailure { kind, message, .. }) => {
+            return Ok(ValidationOutput {
+                status: ValidationStatus::Error,
+                message: Some(format!("{kind}: {message}")),
+            });
+        }
+        Err(e) => return Err(e.into()),
+    };
+
+    let message = match func_result_value.value() {
+        Some(raw_value) => serde_json::from_value::<ValidationRunResult>(raw_value.clone())?.error,
+        None => None,
+    };
+
+    ctx.layer_db()
+        .func_run()
+        .set_state_to_success(
+            func_result_value.func_run_id(),
+            ctx.events_tenancy(),
+            ctx.events_actor(),
+        )
+        .await?;
+
+    Ok(ValidationOutput {
+        status: match message {
+            Some(_) => ValidationStatus::Failure,
+            None => ValidationStatus::Success,
+        },
+        message,
+    })
 }

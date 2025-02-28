@@ -11,6 +11,7 @@ rust_library(
         "//lib/audit-logs-stream:audit-logs-stream",
         "//lib/billing-events:billing-events",
         "//lib/dal-macros:dal-macros",
+        "//lib/joi-validator:joi-validator",
         "//lib/module-index-client:module-index-client",
         "//lib/object-tree:object-tree",
         "//lib/pending-events:pending-events",
