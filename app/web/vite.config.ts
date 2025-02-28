@@ -108,7 +108,7 @@ export default (opts: { mode: string }) => {
       manifest: true,
       rollupOptions: {
         output: {
-          sourcemap: true,
+          sourcemap: "inline",
           format: "es",
           globals: {
             react: "React",
