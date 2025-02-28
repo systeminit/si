@@ -23,27 +23,28 @@ async function main(component: Input): Promise<Output> {
     message = `cfn-lint failed: \n\n${child.stdout}\n\n${child.stderr}`;
   } else if (child.exitCode === 2) {
     result = "failure";
-  // is a warning
+    // is a warning
   } else if (child.exitCode === 4) {
     result = "warning";
-  // is an error & warning
+    // is an error & warning
   } else if (child.exitCode === 6) {
     result = "failure";
-  // is informational
+    // is informational
   } else if (child.exitCode === 8) {
     result = "warning";
-  // is an error & informational
+    // is an error & informational
   } else if (child.exitCode === 10) {
     result = "failure";
-  // is a warning & informational
+    // is a warning & informational
   } else if (child.exitCode === 12) {
     result = "warning";
-  // is an error & warning & informational
+    // is an error & warning & informational
   } else if (child.exitCode === 14) {
     result = "failure";
   } else if (child.exitCode !== 0) {
     result = "failure";
-    message = `cfn-lint failed: \n\n${child.stdout}\n\n${child.stderr}\n\n${child.shortMessage}`;
+    message =
+      `cfn-lint failed: \n\n${child.stdout}\n\n${child.stderr}\n\n${child.shortMessage}`;
   }
 
   return {

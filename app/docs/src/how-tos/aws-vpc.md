@@ -38,7 +38,7 @@ Create a Change Set named `VPC How-to`.
 
 ### Create AWS Credentials
 
-Add a `AWS Credential` to your Change Set and configure your AWS credentials
+Add an `AWS Credential` to your Change Set and configure your AWS credentials
 
 <video src="./aws-vpc/create-aws-credential.mp4" controls></video>
 
@@ -53,7 +53,7 @@ Add a `AWS Region` to your Change Set and set the `region` property to
 
 ![Create a VPC Component](./aws-vpc/create-a-vpc-component.png)
 
-Add a `VPC` to your `us-east-1` region frame.
+Add a `AWS::EC2::VPC` to your `us-east-1` region frame.
 
 Set the Component type to be `Down Frame` and expand it to fill the region
 frame.
@@ -70,14 +70,14 @@ Enable `EnableDnsResolution`.
 
 ![Create the Public Subnet Components](./aws-vpc/create-public-subnet.png)
 
-This VPC will span multiple availability zones in our AWS Region. Add 3 `Subnet`
-Components to your VPC frame and configure them as follows:
+This VPC will span multiple availability zones in our AWS Region. Add 3
+`AWS::EC2::Subnet` Components to your VPC frame and configure them as follows:
 
-| Component Name | `CidrBlock`   | `AvailabilityZone` | `IsPublic` |
-| -------------- | ------------- | ------------------ | ---------- |
-| Public 1       | 10.0.128.0/20 | us-east-1a         | true       |
-| Public 2       | 10.0.144.0/20 | us-east-1b         | true       |
-| Public 3       | 10.0.160.0/20 | us-east-1c         | true       |
+| Component Name | `CidrBlock`   | `AvailabilityZone` | `MapPublicIpOnLaunch` |
+| -------------- | ------------- | ------------------ | --------------------- |
+| Public 1       | 10.0.128.0/20 | us-east-1a         | true                  |
+| Public 2       | 10.0.144.0/20 | us-east-1b         | true                  |
+| Public 3       | 10.0.160.0/20 | us-east-1c         | true                  |
 
 Set the Component type for each of the public subnet Components to be
 `Configuration Frame (down)`.
@@ -86,20 +86,24 @@ Set the Component type for each of the public subnet Components to be
 
 ![Create the NAT Gateway Components](./aws-vpc/create-nat-gateway.png)
 
-Add a `NAT Gateway` Component to each of the `Public` subnet frames.
+Add a `AWS::EC2::NATGateway` Component to each of the `Public` subnet frames.
 
 Set name names of the Component to be `NAT Gateway (1|2|3)` - the index should
 align with the subnet it is inside.
+
+Set the `ConnectivityType` of each of the NAT Gateway Components to be `public`.
 
 ### Create the Elastic IPs for each NAT Gateway
 
 ![Create the Elastic IPs for each NAT Gateway](./aws-vpc/create-elastic-ip.png)
 
-To each of the `Public` subnet frames, add an `Elastic IP` Component.
+To each of the `Public` subnet frames, add an `AWS::EC2::EIP` Component.
 
 Set the names of the Components to be `NAT Gateway IP (1|2|3)` - the index
 should align with the subnet it is inside, and match the `NAT Gateway`
 Component.
+
+Set the `Domain` of each of the Elastic IP Components to be `vpc`.
 
 Connect the `Allocation ID` Output Socket of the `Elastic IP` Component to the
 `Allocation ID` Input Socket of the `NAT Gateway` Component. The connections
@@ -109,7 +113,7 @@ should be in the same subnet.
 
 ![Create the Public Route Table Component](./aws-vpc/create-public-route-table.png)
 
-Add a `Route Table` Component to the VPC frame.
+Add a `AWS::EC2::RouteTable` Component to the VPC frame.
 
 Set the Component type to be `Configuration Frame (down)`.
 
@@ -118,11 +122,23 @@ Set the Component name to be `Public Route Table`.
 Connect the `Subnet ID` Output Socket of the Public `Subnet` Components to the
 `Subnet ID` Input Socket of the `Public Route Table` Component.
 
+Add 3 `AWS::EC2::SubnetRouteTableAssociation` components to the
+`Public Route Table` component.
+
+Set the Component type to be `Configuration Frame (down)`.
+
+Set the Component name to be `Public (1|2|3) Association`.
+
+Connect the corresponding `Subnet ID` Output Socket of the Public `Subnet`
+Components to the `Subnet ID` Input Socket of the correct
+`Public Subnet Route Table Association` Component. e.g. Public Subnet 1 connects
+to Public Subnet 1 Association
+
 ### Create a Route Component
 
 ![Create a Route Component](./aws-vpc/create-route.png)
 
-Add a `Route` Component to the `Public Route Table` frame.
+Add a `AWS::EC2::Route` Component to the `Public Route Table` frame.
 
 Set the Component name to be `Route to Internet`.
 
@@ -132,19 +148,26 @@ Set `DestinationCidrBlock` to be `0.0.0.0/0`.
 
 ![Create IGW](./aws-vpc/create-igw.png)
 
-Add an `Internet Gateway` Component to the VPC frame.
+Add an `AWS::EC2::InternetGateway` Component to the VPC frame.
 
 Set the name to be `IGW`.
+
+Add an `AWS::EC2::VPCGatewayAttachment` Component to the VPC frame.
+
+Set the name to be `Gateway VPC Attachment`.
 
 Connect the `Gateway ID` Output Socket of the `IGW` Component to the
 `Gateway ID` Input Socket of the `Route to Internet` Component in the
 `Public Route Table` frame.
 
+Connect the `Internet Gateway ID` Output Socket of the `IGW` Component to the
+`Internet Gateway ID` Input Socket of the `Gateway VPC Attachment` Component.
+
 ### Create the Private Subnet Components
 
 ![Create the Private Subnet Components](./aws-vpc/create-private-subnet.png)
 
-Add 3 `Subnet` Components to your VPC frame and configure them as follows:
+Add 3 `AWS::EC2::Subnet` Components to your VPC frame and configure them as follows:
 
 | Component name | `CidrBlock`  | `AvailabilityZone` |
 | -------------- | ------------ | ------------------ |
@@ -159,7 +182,7 @@ Set the Component type for each of the public subnet Components to be
 
 ![Create the Private Route Table Components](./aws-vpc/create-private-route-table.png)
 
-To each of the `Private` subnet frames, add a `Route Table` Component.
+To each of the `Private` subnet frames, add a `AWS::EC2::RouteTable` Component.
 
 Set the name to be `Private Route Table 1(2|3)` - the index should align with
 the subnet frame it is inside.
@@ -171,7 +194,7 @@ Set the Component type for each of the `Private Route Table` Components to be
 
 ![Create the Private Route Components](./aws-vpc/create-private-route.png)
 
-Add a `Route` Component to each of the `Private Route Table` frames.
+Add a `AWS::EC2::Route` Component to each of the `Private Route Table` frames.
 
 Set the Component name to be `Route to Internet (1|2|3)` - the index should
 align with the route table frame it is inside.
@@ -187,6 +210,12 @@ Connect the Output Socket `NAT Gateway ID` of `NAT Gateway 2` Component to the
 Connect the Output Socket `NAT Gateway ID` of `NAT Gateway 3` Component to the
 `NAT Gateway ID` Input Socket of `Route to Internet 3` Component.
 
+### Create the Subnet Route Table Associations
+
+Add a `AWS::EC2::SubnetRouteTableAssociation` Component to each of the `Private Subnet` frames.
+
+Set the name of each of the association components to be `Private (1|2|3) Assocation`.
+
 ### Apply your Change Set
 
 ![Apply your Change Set](./aws-vpc/apply.png)
@@ -198,13 +227,11 @@ Click the `Apply Change Set` button to:
 
 - Create a VPC Component
 - Create 6 Subnets
-- Create an Internet Gateway
+- Create an Internet Gateway and the VPC Association
 - Create 3 Elastic IPs and 3 NAT Gateways
-- Create 4 Route Tables and 4 Routes
+- Create 4 Route Tables and the subnet associations and 4 Routes
 
 ### Explore your resources
-
-![Explore your resources](./aws-vpc/explore-resources.png)
 
 Review the completed AWS resources by clicking the `Resource` sub-panel for each
 of your new resources.

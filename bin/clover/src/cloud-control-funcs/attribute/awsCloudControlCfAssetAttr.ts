@@ -6,5 +6,5 @@ async function main(input: Input): Promise<Output> {
     "Type": input.cfnType,
     "Properties": properties,
   };
-  return JSON.stringify(result);
+  return result;
 }

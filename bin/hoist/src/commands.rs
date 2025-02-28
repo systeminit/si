@@ -5,6 +5,7 @@ use std::path::PathBuf;
 #[remain::sorted]
 pub enum Commands {
     AnonymizeSpecs(AnonymizeSpecsArgs),
+    CompareSpecs(CompareSpecsArgs),
     UploadAllSpecs(UploadAllSpecsArgs),
     UploadSpec(UploadSpecArgs),
     WriteAllSpecs(WriteAllSpecsArgs),
@@ -12,6 +13,25 @@ pub enum Commands {
     WriteSpec(WriteSpecArgs),
 }
 
+#[derive(clap::Args, Debug)]
+#[command(about = "Upload all specs in {target_dir} to the module index")]
+pub struct CompareSpecsArgs {
+    #[arg(
+        long,
+        short = 's',
+        required = true,
+        help = "Path to the first spec to compare"
+    )]
+    pub source_path: PathBuf,
+
+    #[arg(
+        long,
+        short = 't',
+        required = true,
+        help = "Path to the second spec to compare"
+    )]
+    pub target_path: PathBuf,
+}
 #[derive(clap::Args, Debug)]
 #[command(about = "Generate an anonymized version of target spec(s)")]
 pub struct AnonymizeSpecsArgs {

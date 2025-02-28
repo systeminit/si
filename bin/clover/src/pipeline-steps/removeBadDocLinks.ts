@@ -33,7 +33,7 @@ export async function removeBadDocLinks(
   let lastSaved = Date.now();
   for (const link of foundLinks) {
     if (!(link in linkCache)) {
-      logger.info(`Checking doc link: ${link} ...`);
+      logger.debug(`Checking doc link: ${link} ...`);
       linkCache[link] = (await fetch(link, { redirect: "manual" })).status;
     }
     // Save periodically in case there are issues

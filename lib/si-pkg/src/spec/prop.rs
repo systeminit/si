@@ -176,31 +176,55 @@ impl PropSpec {
     }
 
     pub fn anonymize(&mut self) {
-        match self {
+        let (unique_id, data) = match self {
             PropSpec::Array {
                 type_prop,
                 unique_id,
+                data,
                 ..
             }
             | PropSpec::Map {
                 type_prop,
                 unique_id,
+                data,
                 ..
             } => {
-                *unique_id = None;
-                type_prop.anonymize()
+                type_prop.anonymize();
+                (unique_id, data)
             }
             PropSpec::Object {
-                entries, unique_id, ..
+                entries,
+                unique_id,
+                data,
+                ..
             } => {
-                *unique_id = None;
                 entries.iter_mut().for_each(|f| f.anonymize());
+                (unique_id, data)
             }
-            PropSpec::Boolean { unique_id, .. }
-            | PropSpec::Float { unique_id, .. }
-            | PropSpec::Json { unique_id, .. }
-            | PropSpec::Number { unique_id, .. }
-            | PropSpec::String { unique_id, .. } => *unique_id = None,
+            PropSpec::Boolean {
+                unique_id, data, ..
+            }
+            | PropSpec::Float {
+                unique_id, data, ..
+            }
+            | PropSpec::Json {
+                unique_id, data, ..
+            }
+            | PropSpec::Number {
+                unique_id, data, ..
+            }
+            | PropSpec::String {
+                unique_id, data, ..
+            } => (unique_id, data),
+        };
+
+        *unique_id = None;
+        if let Some(PropSpecData {
+            inputs: Some(inputs),
+            ..
+        }) = data
+        {
+            inputs.iter_mut().for_each(AttrFuncInputSpec::anonymize)
         }
     }
 
@@ -536,7 +560,7 @@ pub struct PropSpecBuilder {
     inputs: Vec<AttrFuncInputSpec>,
     kind: Option<PropSpecKind>,
     map_key_funcs: Vec<MapKeyFuncSpec>,
-    name: Option<String>,
+    pub name: Option<String>,
     type_prop: Option<PropSpec>,
     validation_format: Option<String>,
     widget_kind: Option<PropSpecWidgetKind>,

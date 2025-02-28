@@ -6,7 +6,7 @@ import {
   setAnnotationOnSocket,
 } from "../spec/sockets.ts";
 import { ExpandedPkgSpec } from "../spec/pkgs.ts";
-import { ExpandedPropSpec } from "../spec/props.ts";
+import { createScalarProp, ExpandedPropSpec } from "../spec/props.ts";
 import { PropUsageMap } from "./addDefaultPropsAndSockets.ts";
 
 const logger = _logger.ns("assetOverrides").seal();
@@ -30,22 +30,6 @@ export function assetSpecificOverrides(
 type OverrideFn = (spec: ExpandedPkgSpec) => void;
 
 const overrides = new Map<string, OverrideFn>([
-  ["AWS::EC2::Route", (spec: ExpandedPkgSpec) => {
-    // Add GatewayId Socket
-    const variant = spec.schemas[0].variants[0];
-
-    const prop = variant.domain.entries.find((p: ExpandedPropSpec) =>
-      p.name === "GatewayId"
-    );
-
-    if (!prop) return;
-    const socket = createInputSocketFromProp(prop);
-
-    setAnnotationOnSocket(socket, { tokens: ["InternetGatewayId"] });
-    setAnnotationOnSocket(socket, { tokens: ["VPNGatewayId"] });
-
-    variant.sockets.push(socket);
-  }],
   ["AWS::CloudTrail::Trail", (spec: ExpandedPkgSpec) => {
     const variant = spec.schemas[0].variants[0];
 
@@ -78,20 +62,6 @@ const overrides = new Map<string, OverrideFn>([
       }
     }
   }],
-  [
-    "AWS::Route53::HostedZone",
-    (spec: ExpandedPkgSpec) => {
-      const variant = spec.schemas[0].variants[0];
-
-      // Add an annotation for the Id output socket to connect to HostedZoneId
-      const socket = variant.sockets.find(
-        (s: ExpandedSocketSpec) => s.name === "Id" && s.data.kind === "output",
-      );
-      if (!socket) return;
-
-      setAnnotationOnSocket(socket, { tokens: ["HostedZoneId"] });
-    },
-  ],
   ["ContainerDefinitions Secrets", (spec: ExpandedPkgSpec) => {
     const variant = spec.schemas[0].variants[0];
 
@@ -106,92 +76,184 @@ const overrides = new Map<string, OverrideFn>([
 
     variant.sockets.push(socket);
   }],
-  [
-    "AWS::SecretsManager::Secret",
-    addSecretProp("Secret String", "secretString", ["SecretString"]),
-  ],
+  ["AWS::DataZone::Domain", (spec: ExpandedPkgSpec) => {
+    const variant = spec.schemas[0].variants[0];
+
+    const socket = variant.sockets.find(
+      (s: ExpandedSocketSpec) => s.name === "Id" && s.data.kind === "output",
+    );
+
+    setAnnotationOnSocket(socket!, { tokens: ["Domain Identifier"] });
+  }],
+  ["AWS::DataZone::Project", (spec: ExpandedPkgSpec) => {
+    const variant = spec.schemas[0].variants[0];
+
+    const socket = variant.sockets.find(
+      (s: ExpandedSocketSpec) => s.name === "Id" && s.data.kind === "output",
+    );
+    if (!socket) return;
+
+    setAnnotationOnSocket(socket, { tokens: ["Project Identifier"] });
+  }],
   ["AWS::EC2::Instance", (spec: ExpandedPkgSpec) => {
     const variant = spec.schemas[0].variants[0];
 
     const prop = variant.domain.entries.find((p: ExpandedPropSpec) =>
       p.name === "UserData"
     );
+    prop!.data.widgetKind = "CodeEditor";
 
-    prop!.data.widgetKind = "TextArea";
+    const securityGroupIdsProp = variant.domain.entries.find((p: ExpandedPropSpec) =>
+      p.name === "SecurityGroupIds"
+    );
+    const socket = createInputSocketFromProp(securityGroupIdsProp!);
+    setAnnotationOnSocket(socket, { tokens: ["GroupId"] });
+    variant.sockets.push(socket);
+  }],
+  ["AWS::EC2::Route", (spec: ExpandedPkgSpec) => {
+    const variant = spec.schemas[0].variants[0];
+
+    const prop = variant.domain.entries.find((p: ExpandedPropSpec) =>
+      p.name === "GatewayId"
+    );
+
+    if (!prop) return;
+    const socket = createInputSocketFromProp(prop);
+
+    setAnnotationOnSocket(socket, { tokens: ["InternetGatewayId"] });
+    setAnnotationOnSocket(socket, { tokens: ["VPNGatewayId"] });
+
+    variant.sockets.push(socket);
+  }],
+  ["AWS::KMS::Key", (spec: ExpandedPkgSpec) => {
+    const variant = spec.schemas[0].variants[0];
+
+    const prop = variant.domain.entries.find((p: ExpandedPropSpec) =>
+      p.name === "KeyPolicy"
+    );
+
+    if (!prop) return;
+    prop.kind = "json";
+    prop!.data.widgetKind = "CodeEditor";
+  }],
+  ["AWS::Logs::LogGroup", (spec: ExpandedPkgSpec) => {
+    const variant = spec.schemas[0].variants[0];
+
+    const prop = variant.domain.entries.find((p: ExpandedPropSpec) =>
+      p.name === "DataProtectionPolicy"
+    );
+
+    if (!prop) return;
+    prop.kind = "json";
+    prop!.data.widgetKind = "CodeEditor";
+  }],
+  ["AWS::RDS::DBCluster", (spec: ExpandedPkgSpec) => {
+    const variant = spec.schemas[0].variants[0];
+
+    const prop = variant.domain.entries.find((p: ExpandedPropSpec) =>
+      p.name === "VpcSecurityGroupIds"
+    );
+
+    if (!prop) return;
+    const socket = createInputSocketFromProp(prop);
+
+    setAnnotationOnSocket(socket, { tokens: ["Group Id"] });
+    variant.sockets.push(socket);
+  }],
+  ["AWS::RDS::DBInstance", (spec: ExpandedPkgSpec) => {
+    const variant = spec.schemas[0].variants[0];
+
+    const prop = variant.domain.entries.find((p: ExpandedPropSpec) =>
+      p.name === "VPCSecurityGroups"
+    );
+
+    if (!prop) return;
+    const socket = createInputSocketFromProp(prop);
+
+    setAnnotationOnSocket(socket, { tokens: ["Group Id"] });
+    variant.sockets.push(socket);
+  }],
+  ["AWS::RDS::DBParameterGroup", (spec: ExpandedPkgSpec) => {
+    const variant = spec.schemas[0].variants[0];
+
+    const prop = variant.domain.entries.find((p: ExpandedPropSpec) =>
+      p.name === "Parameters"
+    );
+
+    if (!prop) return;
+    prop.kind = "map";
+
+    if (prop.kind === "map") {
+      prop.typeProp = createScalarProp(
+        "parameter",
+        "string",
+        prop.metadata.propPath,
+        false,
+      );
+    }
+  }],
+  ["AWS::RDS::DBSubnetGroup", (spec: ExpandedPkgSpec) => {
+    const variant = spec.schemas[0].variants[0];
+
+    const prop = variant.domain.entries.find((p: ExpandedPropSpec) =>
+      p.name === "SubnetIds"
+    );
+
+    if (!prop) return;
+    const socket = createInputSocketFromProp(prop);
+
+    setAnnotationOnSocket(socket, { tokens: ["Subnet Id"] });
+    variant.sockets.push(socket);
+  }],
+  ["AWS::Route53::HostedZone", (spec: ExpandedPkgSpec) => {
+    const variant = spec.schemas[0].variants[0];
+
+    // Add an annotation for the Id output socket to connect to HostedZoneId
+    const socket = variant.sockets.find(
+      (s: ExpandedSocketSpec) => s.name === "Id" && s.data.kind === "output",
+    );
+    if (!socket) return;
+
+    setAnnotationOnSocket(socket, { tokens: ["HostedZoneId"] });
   }],
   [
-    "AWS::DataZone::Domain",
-    (spec: ExpandedPkgSpec) => {
-      const variant = spec.schemas[0].variants[0];
-
-      const socket = variant.sockets.find(
-        (s: ExpandedSocketSpec) => s.name === "Id" && s.data.kind === "output",
-      );
-
-      setAnnotationOnSocket(socket!, { tokens: ["Domain Identifier"] });
-    },
+    "AWS::SecretsManager::Secret",
+    addSecretProp("Secret String", "secretString", ["SecretString"]),
   ],
-  [
-    "AWS::DataZone::Project",
-    (spec: ExpandedPkgSpec) => {
-      const variant = spec.schemas[0].variants[0];
+  ["AWS::EC2::NetworkInterface", (spec: ExpandedSocketSpec) => {
+    const variant = spec.schemas[0].variants[0];
 
-      const socket = variant.sockets.find(
-        (s: ExpandedSocketSpec) => s.name === "Id" && s.data.kind === "output",
-      );
-      if (!socket) return;
+    // Add an annotation for the Id output socket to connect to HostedZoneId
+    const socket = variant.sockets.find(
+      (s: ExpandedSocketSpec) => s.name === "Id" && s.data.kind === "output",
+    );
+    if (!socket) return;
 
-      setAnnotationOnSocket(socket, { tokens: ["Project Identifier"] });
-    },
-  ],
-  [
-    "AWS::RDS::DBInstance",
-    (spec: ExpandedPkgSpec) => {
-      const variant = spec.schemas[0].variants[0];
+    setAnnotationOnSocket(socket, { tokens: ["NetworkInterfaceId"] });
 
-      const prop = variant.domain.entries.find((p: ExpandedPropSpec) =>
-        p.name === "VPCSecurityGroups"
-      );
-  
-      if (!prop) return;
-      const socket = createInputSocketFromProp(prop);
+    const prop = variant.domain.entries.find((p: ExpandedPropSpec) =>
+      p.name === "GroupSet"
+    );
 
-      setAnnotationOnSocket(socket, { tokens: ["Group Id"] });
-      variant.sockets.push(socket);
-    },
-  ],
-  [
-    "AWS::RDS::DBCluster",
-    (spec: ExpandedPkgSpec) => {
-      const variant = spec.schemas[0].variants[0];
+    if (!prop) return;
+    const groupSocket = createInputSocketFromProp(prop);
 
-      const prop = variant.domain.entries.find((p: ExpandedPropSpec) =>
-        p.name === "VpcSecurityGroupIds"
-      );
-  
-      if (!prop) return;
-      const socket = createInputSocketFromProp(prop);
+    setAnnotationOnSocket(groupSocket, { tokens: ["GroupId"] });
+    variant.sockets.push(groupSocket);
+  }],
+  ["TargetGroup Targets", (spec: ExpandedPkgSpec) => {
+    const variant = spec.schemas[0].variants[0];
 
-      setAnnotationOnSocket(socket, { tokens: ["Group Id"] });
-      variant.sockets.push(socket);
-    },
-  ],
-  [
-    "AWS::RDS::DBSubnetGroup",
-    (spec: ExpandedPkgSpec) => {
-      const variant = spec.schemas[0].variants[0];
+    // Add an annotation for the Id output socket to connect to HostedZoneId
+    const socket = variant.sockets.find(
+      (s: ExpandedSocketSpec) => s.name === "Id" && s.data.kind === "input",
+    );
+    if (!socket) return;
 
-      const prop = variant.domain.entries.find((p: ExpandedPropSpec) =>
-        p.name === "SubnetIds"
-      );
-  
-      if (!prop) return;
-      const socket = createInputSocketFromProp(prop);
-
-      setAnnotationOnSocket(socket, { tokens: ["Subnet Id"] });
-      variant.sockets.push(socket);
-    },
-  ],
+    setAnnotationOnSocket(socket, { tokens: ["InstanceId"] });
+    setAnnotationOnSocket(socket, { tokens: ["arn<string>"] });
+    setAnnotationOnSocket(socket, { tokens: ["arn"] });
+  }],
   [
     "AWS::APS::Workspace",
     (spec: ExpandedPkgSpec) => { 

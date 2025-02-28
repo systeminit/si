@@ -12,6 +12,7 @@ rust_binary(
         "//third-party/rust:color-eyre",
         "//third-party/rust:futures",
         "//third-party/rust:indicatif",
+        "//third-party/rust:json-patch",
         "//third-party/rust:nix",
         "//third-party/rust:remain",
         "//third-party/rust:serde_json",

@@ -22,6 +22,7 @@ pub struct Model {
     pub metadata: Json,
     pub latest_hash: String,
     pub latest_hash_created_at: DateTimeWithTimeZone,
+    pub structural_hash: Option<String>,
     pub created_at: DateTimeWithTimeZone,
     pub rejected_at: Option<DateTimeWithTimeZone>,
     pub rejected_by_display_name: Option<String>,
@@ -153,6 +154,7 @@ pub fn make_module_details_response(
                 .map(|module| module.latest_hash)
                 .collect(),
         ),
+        structural_hash: module.structural_hash,
     }
 }
 

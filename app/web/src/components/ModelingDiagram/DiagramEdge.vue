@@ -171,11 +171,7 @@ const showEdge = computed(() => {
     return false;
   }
 
-  if (props.edge.def.isManagement) {
-    return isFromOrToSelected.value || props.isSelected;
-  }
-
-  return true;
+  return isFromOrToSelected.value || props.isSelected;
 });
 
 const mainLineOpacity = computed(() => {

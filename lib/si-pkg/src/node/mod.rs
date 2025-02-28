@@ -223,6 +223,13 @@ impl PkgNode {
             Self::AuthFunc(_) => NODE_KIND_AUTH_FUNC,
         }
     }
+
+    pub fn child_order(&self) -> Option<&Vec<String>> {
+        match self {
+            Self::Prop(prop) => prop.child_order(),
+            _ => None,
+        }
+    }
 }
 
 impl NameStr for PkgNode {
