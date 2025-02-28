@@ -103,9 +103,9 @@ const overrides = new Map<string, OverrideFn>([
     );
     prop!.data.widgetKind = "CodeEditor";
 
-    const securityGroupIdsProp = variant.domain.entries.find((p: ExpandedPropSpec) =>
-      p.name === "SecurityGroupIds"
-    );
+    const securityGroupIdsProp = variant.domain.entries.find((
+      p: ExpandedPropSpec,
+    ) => p.name === "SecurityGroupIds");
     const socket = createInputSocketFromProp(securityGroupIdsProp!);
     setAnnotationOnSocket(socket, { tokens: ["GroupId"] });
     variant.sockets.push(socket);
@@ -147,32 +147,6 @@ const overrides = new Map<string, OverrideFn>([
     prop.kind = "json";
     prop!.data.widgetKind = "CodeEditor";
   }],
-  ["AWS::RDS::DBCluster", (spec: ExpandedPkgSpec) => {
-    const variant = spec.schemas[0].variants[0];
-
-    const prop = variant.domain.entries.find((p: ExpandedPropSpec) =>
-      p.name === "VpcSecurityGroupIds"
-    );
-
-    if (!prop) return;
-    const socket = createInputSocketFromProp(prop);
-
-    setAnnotationOnSocket(socket, { tokens: ["Group Id"] });
-    variant.sockets.push(socket);
-  }],
-  ["AWS::RDS::DBInstance", (spec: ExpandedPkgSpec) => {
-    const variant = spec.schemas[0].variants[0];
-
-    const prop = variant.domain.entries.find((p: ExpandedPropSpec) =>
-      p.name === "VPCSecurityGroups"
-    );
-
-    if (!prop) return;
-    const socket = createInputSocketFromProp(prop);
-
-    setAnnotationOnSocket(socket, { tokens: ["Group Id"] });
-    variant.sockets.push(socket);
-  }],
   ["AWS::RDS::DBParameterGroup", (spec: ExpandedPkgSpec) => {
     const variant = spec.schemas[0].variants[0];
 
@@ -192,19 +166,6 @@ const overrides = new Map<string, OverrideFn>([
       );
     }
   }],
-  ["AWS::RDS::DBSubnetGroup", (spec: ExpandedPkgSpec) => {
-    const variant = spec.schemas[0].variants[0];
-
-    const prop = variant.domain.entries.find((p: ExpandedPropSpec) =>
-      p.name === "SubnetIds"
-    );
-
-    if (!prop) return;
-    const socket = createInputSocketFromProp(prop);
-
-    setAnnotationOnSocket(socket, { tokens: ["Subnet Id"] });
-    variant.sockets.push(socket);
-  }],
   ["AWS::Route53::HostedZone", (spec: ExpandedPkgSpec) => {
     const variant = spec.schemas[0].variants[0];
 
@@ -220,7 +181,7 @@ const overrides = new Map<string, OverrideFn>([
     "AWS::SecretsManager::Secret",
     addSecretProp("Secret String", "secretString", ["SecretString"]),
   ],
-  ["AWS::EC2::NetworkInterface", (spec: ExpandedSocketSpec) => {
+  ["AWS::EC2::NetworkInterface", (spec: ExpandedPkgSpec) => {
     const variant = spec.schemas[0].variants[0];
 
     // Add an annotation for the Id output socket to connect to HostedZoneId

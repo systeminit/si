@@ -18,22 +18,12 @@ export type ExpandedSocketSpec = Extend<SocketSpec, {
 
 export function createOutputSocketFromProp(
   prop: ExpandedPropSpec,
+  overrideName?: string,
 ): ExpandedSocketSpec {
-  const arity = prop.kind === "array" ? "many" : "one";
-  const socketName = socketNameFromProp(prop);
-  const extraConnectionAnnotations = [];
-  if (socketName !== prop.name) {
-    extraConnectionAnnotations.push({ tokens: [prop.name] });
-  }
-
-  const socket = createSocket(
-    socketName,
-    "output",
-    arity,
-    extraConnectionAnnotations,
-  );
+  const socket = createSocketFromPropInner(prop, "output", overrideName);
   socket.data.funcUniqueId = getSiFuncId("si:identity");
   socket.inputs = [attrFuncInputSpecFromProp(prop)];
+
   return socket;
 }
 
@@ -43,18 +33,10 @@ export function createInputSocketFromProp(
   prop: ExpandedPropSpec,
   extraConnectionAnnotations?: ConnectionAnnotation[],
 ): ExpandedSocketSpec {
-  extraConnectionAnnotations ??= [];
-  const socketName = socketNameFromProp(prop);
-  // If we get a prop inside an object on domain, let's name its socket a bit better
-  if (socketName !== prop.name) {
-    extraConnectionAnnotations.push({ tokens: [prop.name] });
-  }
-
-  const arity = prop.kind === "array" ? "many" : "one";
-  const socket = createSocket(
-    socketName,
+  const socket = createSocketFromPropInner(
+    prop,
     "input",
-    arity,
+    undefined,
     extraConnectionAnnotations,
   );
   if (prop.kind === "array" && socket.data) {
@@ -68,7 +50,36 @@ export function createInputSocketFromProp(
   return socket;
 }
 
-function socketNameFromProp(prop: ExpandedPropSpec) {
+function createSocketFromPropInner(
+  prop: ExpandedPropSpec,
+  kind: "input" | "output",
+  overrideName?: string,
+  extraConnectionAnnotations?: ConnectionAnnotation[],
+) {
+  const arity = prop.kind === "array" ? "many" : "one";
+  const socketName = overrideName ?? socketNameFromProp(prop);
+  extraConnectionAnnotations ??= [];
+
+  if (!overrideName && socketName !== prop.name) {
+    extraConnectionAnnotations.push({ tokens: [prop.name] });
+    extraConnectionAnnotations.push({
+      tokens: createExtendedAnnotationForProp([prop.name], prop),
+    });
+  }
+
+  extraConnectionAnnotations.push({
+    tokens: createExtendedAnnotationForProp([prop.name], prop),
+  });
+
+  return createSocket(
+    socketName,
+    kind,
+    arity,
+    extraConnectionAnnotations,
+  );
+}
+
+export function socketNameFromProp(prop: ExpandedPropSpec) {
   const propPath = prop.metadata.propPath;
   let socketName = prop.name;
   // If we get a prop inside an object on domain, let's name its socket a bit better
@@ -134,6 +145,25 @@ export function getOrCreateOutputSocketFromProp(
   return socket;
 }
 
+export function createExtendedAnnotationForProp(
+  annotation: string[],
+  prop: ExpandedPropSpec,
+) {
+  switch (prop.kind) {
+    case "string":
+    case "number":
+    case "boolean":
+    case "float":
+    case "json":
+      return [...annotation, prop.kind, "scalar"];
+    case "array":
+    case "map":
+      return createExtendedAnnotationForProp(annotation, prop.typeProp);
+    case "object":
+      return [...annotation];
+  }
+}
+
 export function setAnnotationOnSocket(
   socket: ExpandedSocketSpec,
   annotation: string | ConnectionAnnotation,
@@ -190,7 +220,24 @@ export function createSocket(
     uniqueId: socketId,
   };
 
+  socket.data.connectionAnnotations = dedupeAnnotations(
+    socket.data.connectionAnnotations,
+  );
+
   return socket;
+}
+
+function dedupeAnnotations(annotations: string) {
+  const seen = new Set<string>();
+  const annotationsParsed: ConnectionAnnotation[] = JSON.parse(annotations);
+  return JSON.stringify(annotationsParsed.filter((entry) => {
+    const key = JSON.stringify(entry.tokens);
+    if (seen.has(key)) {
+      return false;
+    }
+    seen.add(key);
+    return true;
+  }));
 }
 
 export function propPathToString(array: string[]): string {
