@@ -73,6 +73,39 @@
       </ErrorMessage>
     </div>
 
+    <div
+      :class="
+        clsx(
+          'flex flex-row gap-xs flex-1 overflow-hidden',
+          fineGrainedAccessControl ? 'place-content-evenly' : 'justify-center',
+        )
+      "
+    >
+      <div
+        :class="
+          clsx(
+            'flex flex-col gap-xs overflow-hidden text-center',
+            fineGrainedAccessControl && 'basis-1/2',
+          )
+        "
+      >
+        <RouterLink
+          :to="{
+            name: 'workspace-audit',
+            params: { changeSetId: 'auto' },
+          }"
+          target="_blank"
+          class="text-action-500 hover:underline pl-4 pb-2xs text-sm font-bold"
+          >See the breakdown of changes
+          <Icon
+            size="sm"
+            name="logs-pop-square"
+            class="ml-2xs inline-block mb-[-.3em]"
+          />
+        </RouterLink>
+      </div>
+    </div>
+
     <!-- MAIN SECTION -->
     <div
       :class="
@@ -233,6 +266,7 @@ import {
   TruncateWithTooltip,
 } from "@si/vue-lib/design-system";
 import { computed, ref } from "vue";
+import { RouterLink } from "vue-router";
 import clsx from "clsx";
 import {
   ApprovalData,
