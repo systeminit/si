@@ -14,20 +14,15 @@ pub enum ReferenceKind {
     View,
     ViewList,
 }
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
-pub struct ReferenceId<T>(pub T)
+
+// Why the #[serde(bound...)] stuff? Well..
+//
+// See: https://github.com/serde-rs/serde/issues/964#issuecomment-364326970
+// See: https://serde.rs/attr-bound.html
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
+pub struct ReferenceId<T>(#[serde(bound(deserialize = "T: Deserialize<'de>"))] pub T)
 where
     T: Eq + PartialEq + Clone + std::fmt::Debug + Serialize + std::fmt::Display;
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
-pub struct Reference<T>
-where
-    T: Eq + PartialEq + Clone + std::fmt::Debug + Serialize + std::fmt::Display,
-{
-    pub kind: ReferenceKind,
-    pub id: ReferenceId<T>,
-    pub checksum: String,
-}
 
 impl<T> std::fmt::Display for ReferenceId<T>
 where
@@ -38,14 +33,44 @@ where
     }
 }
 
-// impl<T> FrontendChecksum for ReferenceId<T>
-// where
-//     T: Eq + PartialEq + Clone + std::fmt::Debug + Serialize + std::fmt::Display,
-// {
-//     fn checksum(&self) -> Checksum {
-//         todo!()
-//     }
-// }
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct Reference<T>
+where
+    T: Eq + PartialEq + Clone + std::fmt::Debug + Serialize + std::fmt::Display,
+{
+    pub kind: ReferenceKind,
+    pub id: ReferenceId<T>,
+    pub checksum: String,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct IndexReference {
+    pub kind: ReferenceKind,
+    pub id: String,
+    pub checksum: String,
+}
+
+impl<T> From<Reference<T>> for IndexReference
+where
+    T: Eq + PartialEq + Clone + std::fmt::Debug + Serialize + std::fmt::Display,
+{
+    fn from(value: Reference<T>) -> Self {
+        Self {
+            kind: value.kind,
+            id: value.id.to_string(),
+            checksum: value.checksum,
+        }
+    }
+}
+
+impl<T> FrontendChecksum for ReferenceId<T>
+where
+    T: Eq + PartialEq + Clone + std::fmt::Debug + Serialize + std::fmt::Display,
+{
+    fn checksum(&self) -> Checksum {
+        todo!()
+    }
+}
 
 impl FrontendChecksum for ReferenceKind {
     fn checksum(&self) -> Checksum {

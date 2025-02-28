@@ -2845,6 +2845,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "frigg"
+version = "0.1.0"
+dependencies = [
+ "bytes",
+ "remain",
+ "serde_json",
+ "si-data-nats",
+ "si-events",
+ "si-frontend-types",
+ "si-id",
+ "thiserror 2.0.11",
+]
+
+[[package]]
 name = "fs4"
 version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
