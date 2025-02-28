@@ -7,7 +7,7 @@ import { LongTaskInstrumentation } from "@opentelemetry/instrumentation-long-tas
 import opentelemetry, { Span } from "@opentelemetry/api";
 import { mapStackTrace } from "sourcemapped-stacktrace";
 
-import { createApp } from "vue";
+import { ComponentPublicInstance, createApp } from "vue";
 import FloatingVue from "floating-vue";
 import VueKonva from "vue-konva";
 import { createHead } from "@vueuse/head";
@@ -60,6 +60,27 @@ app.use(createHead());
 app.use(router);
 app.use(store);
 
+const observeError = (message: string, stack: string, components?: string) => {
+  const span = opentelemetry.trace.getActiveSpan();
+
+  const _report = (span: Span) => {
+    span.setAttribute("error.stacktrace", stack);
+    span.setAttribute("error.message", message);
+    if (components) span.setAttribute("error.components", components);
+  };
+
+  if (span) {
+    _report(span);
+  } else {
+    const tracer = opentelemetry.trace.getTracer("errorHandler");
+    tracer.startActiveSpan("error", (span) => {
+      _report(span);
+      span.end();
+    });
+  }
+};
+
+// This handles local errors
 window.onerror = (message, source, lineno, colno, error) => {
   // ignoring these
   if (
@@ -69,39 +90,51 @@ window.onerror = (message, source, lineno, colno, error) => {
   )
     return;
 
-  const observeError = (stack: string) => {
-    const span = opentelemetry.trace.getActiveSpan();
-
-    const _report = (span: Span) => {
-      span.setAttribute("error.stacktrace", stack);
-      span.setAttribute("error.message", message.toString());
-      span.setAttribute("error.source", source || "");
-      span.setAttribute("error.lineno", lineno || "");
-      span.setAttribute("error.colno", colno || "");
-    };
-
-    if (span) {
-      _report(span);
-    } else {
-      const tracer = opentelemetry.trace.getTracer("errorHandler");
-      tracer.startActiveSpan("error", (span) => {
-        _report(span);
-        span.end();
-      });
-    }
-  };
-
-  if (!error) observeError("");
-  else {
-    mapStackTrace(error.stack, (mappedStack) => {
-      const stack = mappedStack.join("\n");
-      observeError(stack);
-    });
-  }
+  if (!error) observeError(message.toString(), "");
+  else if (error.stack) observeError(message.toString(), error.stack);
 };
 
-// seemingly this doesnt do anything at all
-// app.config.errorHandler = (err, instance, info) => {};
+// This handles prod-build errors
+app.config.errorHandler = (
+  err: unknown,
+  instance: ComponentPublicInstance | null,
+) => {
+  // ignoring these
+  if (!(err instanceof Error)) return;
+  if (
+    err.message
+      .toString()
+      .includes("TypeError: NetworkError when attempting to fetch resource.")
+  )
+    return;
+
+  if (err.stack) {
+    const componentDesc = [];
+    if (instance) {
+      const components = [instance];
+      while (components.length > 0) {
+        const inst = components.shift();
+        if (!inst) break;
+        if (inst.$.type.__name === "AppLayout") break; // dont need anything higher than this
+
+        componentDesc.push(
+          `${inst.$.type.__name}: ${JSON.stringify(inst.$props)}`,
+        );
+        if (inst.$parent) components.push(inst.$parent);
+      }
+    }
+    const componentPath = componentDesc.reverse().join(" > ");
+
+    mapStackTrace(
+      err.stack,
+      (mappedStack) => {
+        const stack = mappedStack.join("\n");
+        observeError(err.message.toString(), stack, componentPath);
+      },
+      { cacheGlobally: true },
+    );
+  }
+};
 
 // set the default tooltip delay to show and hide faster
 FloatingVue.options.themes.tooltip.delay = { show: 10, hide: 100 };
