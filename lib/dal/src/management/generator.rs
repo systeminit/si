@@ -232,6 +232,8 @@ async fn make_placeholder(name: &str, placeholders: &HashSet<String>) -> String 
     }
 }
 
+const RESOURCE_ID: &[&str] = &["root", "si", "resourceId"];
+
 async fn calculate_paths_to_remove(
     ctx: &DalContext,
     component_id: ComponentId,
@@ -243,7 +245,8 @@ async fn calculate_paths_to_remove(
     let mut work_queue = VecDeque::new();
     work_queue.push_back((vec!["root".to_string()], properties));
 
-    let mut result = vec![];
+    // Never copy resource id into the template
+    let mut result = vec![RESOURCE_ID.iter().map(ToString::to_string).collect()];
 
     while let Some((path, current_val)) = work_queue.pop_front() {
         let path_as_refs: Vec<_> = path.iter().map(|part| part.as_str()).collect();
