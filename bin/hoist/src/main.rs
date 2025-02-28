@@ -1,5 +1,6 @@
 use clap::CommandFactory;
 use commands::Commands;
+use diff::{patch_list_to_changelog, rewrite_spec_for_diff};
 use futures::stream::StreamExt;
 use indicatif::{ProgressBar, ProgressStyle};
 use std::collections::HashMap;
@@ -11,11 +12,13 @@ use ulid::Ulid;
 
 use clap::Parser;
 use color_eyre::Result;
+use json_patch::diff;
 use module_index_client::{ModuleDetailsResponse, ModuleIndexClient};
 use si_pkg::{PkgSpec, SiPkg};
 use url::Url;
 
 mod commands;
+mod diff;
 
 const CLOVER_DEFAULT_CREATOR: &str = "Clover";
 
@@ -64,6 +67,9 @@ async fn main() -> Result<()> {
                 std::process::exit(1);
             }
             std::process::exit(0);
+        }
+        Some(Commands::CompareSpecs(args)) => {
+            compare_specs(args.source_path, args.target_path).await?
         }
     }
 
@@ -149,6 +155,36 @@ async fn write_all_specs(client: ModuleIndexClient, out: PathBuf) -> Result<()> 
     pb.set_message("⏰ Waiting for all downloads to complete...");
     joinset.join_all().await;
     pb.finish_with_message("✨ All downloads complete!");
+    Ok(())
+}
+
+async fn compare_specs(source: PathBuf, target: PathBuf) -> Result<()> {
+    let source_spec = json_to_spec(source)?;
+    let target_spec = json_to_spec(target)?;
+
+    let source_spec = source_spec.anonymize();
+    let target_spec = target_spec.anonymize();
+
+    let source_hash = SiPkg::load_from_spec(source_spec.clone())?
+        .metadata()?
+        .hash();
+    let target_hash = SiPkg::load_from_spec(target_spec.clone())?
+        .metadata()?
+        .hash();
+
+    if source_hash == target_hash {
+        println!("Specs match!");
+        return Ok(());
+    }
+
+    let source_value = rewrite_spec_for_diff(serde_json::to_value(source_spec)?);
+    let target_value = rewrite_spec_for_diff(serde_json::to_value(target_spec)?);
+
+    let patch = diff(&source_value, &target_value);
+
+    println!("found {} changes", patch.len());
+    println!("{}", patch_list_to_changelog(patch).join("\n"));
+
     Ok(())
 }
 
