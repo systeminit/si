@@ -1,6 +1,13 @@
 <template>
   <Modal ref="modalRef" size="sm" noInnerPadding noWrapper>
-    <div class="flex flex-row gap-sm items-center bg-black">
+    <div
+      :class="
+        clsx(
+          'flex flex-row gap-sm items-center',
+          themeClasses('bg-white', 'bg-black'),
+        )
+      "
+    >
       <Icon
         name="alert-circle"
         class="text-warning-600 content-center ml-md"
@@ -33,7 +40,8 @@
 <script lang="ts" setup>
 import * as _ from "lodash-es";
 import { ref } from "vue";
-import { VButton, Icon, Modal } from "@si/vue-lib/design-system";
+import { VButton, Icon, Modal, themeClasses } from "@si/vue-lib/design-system";
+import clsx from "clsx";
 
 const modalRef = ref<InstanceType<typeof Modal> | null>(null);
 
