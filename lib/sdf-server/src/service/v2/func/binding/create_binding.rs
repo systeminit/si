@@ -152,6 +152,19 @@ pub async fn create_binding(
                                 func.name.clone(),
                             )
                             .await?;
+
+                            if let Some(variant_id) = schema_variant_id {
+                                let schema = SchemaVariant::schema_id_for_schema_variant_id(
+                                    &ctx, variant_id,
+                                )
+                                .await?;
+                                let schema_variant =
+                                    SchemaVariant::get_by_id_or_error(&ctx, variant_id).await?;
+                                WsEvent::schema_variant_updated(&ctx, schema, schema_variant)
+                                    .await?
+                                    .publish_on_commit(&ctx)
+                                    .await?;
+                            }
                         }
                         None => {
                             return Err(FuncAPIError::MissingFuncId);
