@@ -285,6 +285,23 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
 
             const isInsert = "insert" in updatePayload;
 
+            if (!isInsert) {
+              const propId = updatePayload.update.propId;
+              const prop = this.schema?.props[propId];
+              if (
+                prop?.kind === "json" &&
+                typeof updatePayload.update.value === "string"
+              ) {
+                try {
+                  updatePayload.update.value = JSON.parse(
+                    updatePayload.update.value,
+                  );
+                } catch (error) {
+                  window.reportError(error);
+                }
+              }
+            }
+
             // If the valueid for this update does not exist in the values tree,
             // we shouldn't perform the update!
             if (
