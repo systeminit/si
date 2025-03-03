@@ -271,7 +271,7 @@ async fn calculate_paths_to_remove(
 
         // remove the value if it matches the default. This ensures default value changes from prop
         // updates are propagated
-        if Prop::default_value(ctx, prop_id).await? == Some(current_val.clone()) {
+        if Prop::default_value(ctx, prop_id).await?.as_ref() == Some(current_val) {
             result.push(path_as_refs.iter().map(|&s| s.to_string()).collect());
             continue;
         }
