@@ -195,11 +195,11 @@ const findSnapshotRowId = async (checksum: Checksum): Promise<RowWithColumnsAndI
   };
 }
 
-const atomExists = async (atom: Atom, isNew: boolean): Promise<boolean> => {
+const atomExists = async (atom: Atom, isNew: boolean): Promise<[false, null] | [true, ROWID]> => {
   const rows = await db.exec({
     sql: `
     select
-      snapshot_id
+     atoms.id
     from atoms
     inner join snapshots_mtm_atoms
       ON atoms.id = snapshots_mtm_atoms.atom_id
@@ -212,7 +212,13 @@ const atomExists = async (atom: Atom, isNew: boolean): Promise<boolean> => {
     bind: [atom.kind, atom.args.toString(), isNew ? atom.kindToChecksum : atom.kindFromChecksum],
     returnValue: "resultRows",
   });
-  return rows.length > 0;
+  if (rows.length === 0)
+    return [false, null];
+  else {
+    const atomid = oneInOne(rows);
+    if (atomid === NOROW) return [false, null];
+    else return [true, atomid as ROWID];
+  }
 };
 
 // SEE PATCH WORKFLOW
@@ -258,18 +264,14 @@ const removeOldSnapshots = async(changeSetId: ChangeSetId, fromSnapshotChecksum:
   })
 };
 
-const removeAtom = async (atom: Atom) => {
+const removeAtom = async (snapshotId: ROWID, atomId: ROWID) => {
   await db.exec({
-    sql: `delete
-    from atoms
-    where
-      kind=? and
-      checksum=? and
-      args=?
-    ;
+    sql: `
+    DELETE FROM snapshots_mtm_atoms
+    WHERE snapshotId = ? AND atom_id = ?
     `,
-    bind: [atom.kind, atom.kindFromChecksum, atom.args.toString()],
-  }); // CASCADES to the mtm table
+    bind: [snapshotId, atomId],
+  });
 };
 
 const createAtomFromPatch = async (atom: Atom): Promise<ROWID> => {
@@ -404,7 +406,7 @@ const applyPatch = async (atom: Atom, toSnapshotId: ROWID) => {
   await tracer.startActiveSpan("applyPatch", async (span) => {
     // if we have the change already don't do anything
     span.setAttribute("atom", JSON.stringify(atom));
-    const noop = await atomExists(atom, true);
+    const [noop, _] = await atomExists(atom, true);
     if (noop) {
       span.addEvent("noop");
       span.end();
@@ -412,7 +414,7 @@ const applyPatch = async (atom: Atom, toSnapshotId: ROWID) => {
     }
 
     // otherwise, find the old record
-    const exists = await atomExists(atom, false);
+    const [exists, existingAtomId] = await atomExists(atom, false);
     span.setAttribute("exists", exists);
     let atomid: ROWID | undefined;
     if (atom.kindFromChecksum === "0") {
@@ -420,7 +422,7 @@ const applyPatch = async (atom: Atom, toSnapshotId: ROWID) => {
         atomid = await createAtomFromPatch(atom);
     } else if (atom.kindToChecksum === "0") {
       // if i've already removed it, this is a NOOP
-      if (exists) await removeAtom(atom);
+      if (exists) await removeAtom(toSnapshotId, existingAtomId);
     } else {
       // patch it if I can
       if (exists)
@@ -807,7 +809,7 @@ const dbInterface: DBInterface = {
     });
     const count_new_snapshot_atoms = oneInOne(confirm2);
     // copied mtm & the patched atom
-    console.assert(count_new_snapshot_atoms === 3, `new snapshots ${String(count_new_snapshot_atoms)} === 1`);
+    console.assert(count_new_snapshot_atoms === 3, `new snapshots ${String(count_new_snapshot_atoms)} === 3`);
 
     const confirm3 = await db.exec({
       sql: `SELECT count(rowid) FROM atoms;`,
@@ -959,7 +961,7 @@ const dbInterface: DBInterface = {
     console.assert(added_doc.id === 3 && added_doc.name === "record 3", `Added document doesn't match (${JSON.stringify(added_doc)})`);
 
     const removed_record = await db.exec({
-      sql: `SELECT data FROM atoms WHERE checksum = ?`,
+      sql: `SELECT data FROM atoms INNER JOIN snapshots_mtm_atoms ON atoms.id = snapshots_mtm_atoms.atom_id WHERE checksum = ?`,
       bind: ["tr1-new-name"],
       returnValue: "resultRows",
     });
