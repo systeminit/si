@@ -442,6 +442,17 @@ const containerViewportY = ref(0);
 // and we're choosing to keep our origin (defaulting to 0,0) at the center of the diagram to keep things (hopefully) simpler
 const gridOrigin = ref<Vector2d>({ x: 0, y: 0 });
 
+watch(
+  gridOrigin,
+  () => {
+    window.localStorage.setItem(
+      `si-diagram-grid-origin-${viewsStore.selectedViewId}`,
+      JSON.stringify(gridOrigin.value),
+    );
+  },
+  { flush: "post" },
+);
+
 // zoom level (1 = 100%)
 // I opted to track this internally rather than use v-model so the parent component isn't _forced_ to care about it
 // but there will often probably be some external controls, which can be done using exposed setZoom and update:zoom event
@@ -614,6 +625,24 @@ onMounted(() => {
     zoomLevel.value = Number(lastZoomValue);
   }
 });
+
+watch(
+  () => viewsStore.selectedViewId,
+  () => {
+    const key = `si-diagram-grid-origin-${viewsStore.selectedViewId}`;
+    const lastGridOriginString = window.localStorage.getItem(key);
+    if (lastGridOriginString) {
+      const lastGridOrigin: Vector2d = JSON.parse(lastGridOriginString);
+      if (lastGridOrigin.x && lastGridOrigin.y) {
+        gridOrigin.value.x = lastGridOrigin.x;
+        gridOrigin.value.y = lastGridOrigin.y;
+      }
+    } else {
+      gridOrigin.value.x = 0;
+      gridOrigin.value.y = 0;
+    }
+  },
+);
 
 const CLIPBOARD_LOCALSTORAGE_KEY = computed(
   () => `clipboard-si-${changeSetsStore.selectedChangeSetId}`,

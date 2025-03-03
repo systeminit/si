@@ -176,7 +176,8 @@ export function useChangeSetsStore() {
           if (!stayOnView && name === "workspace-compose-view") {
             name = "workspace-compose";
             delete params.viewId;
-          } else if (params.viewId) {
+          }
+          if (params.viewId) {
             name = "workspace-compose-view";
           }
           await router.push({
