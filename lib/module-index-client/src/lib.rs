@@ -14,6 +14,8 @@ pub enum ModuleIndexClientError {
     Deserialization(serde_json::Error),
     #[error("Request error: {0}")]
     InvalidHeaderValue(#[from] reqwest::header::InvalidHeaderValue),
+    #[error("module not found (module id: {0})")]
+    ModuleNotFound(String),
     #[error("Request error: {0}")]
     Request(#[from] reqwest::Error),
     #[error("Serialization error: {0}")]
@@ -63,8 +65,15 @@ impl ModuleIndexClient {
             )
             .bearer_auth(&self.auth_token)
             .send()
-            .await?
-            .error_for_status()?;
+            .await?;
+
+        if upload_response.status() == reqwest::StatusCode::NOT_FOUND {
+            return Err(ModuleIndexClientError::ModuleNotFound(
+                module_id.to_string(),
+            ));
+        }
+
+        let upload_response = upload_response.error_for_status()?;
 
         Ok(upload_response.json::<ModuleRejectionResponse>().await?)
     }
@@ -88,8 +97,15 @@ impl ModuleIndexClient {
             )
             .bearer_auth(&self.auth_token)
             .send()
-            .await?
-            .error_for_status()?;
+            .await?;
+
+        if promote_response.status() == reqwest::StatusCode::NOT_FOUND {
+            return Err(ModuleIndexClientError::ModuleNotFound(
+                module_id.to_string(),
+            ));
+        }
+
+        let promote_response = promote_response.error_for_status()?;
 
         Ok(promote_response.json::<ModulePromotedResponse>().await?)
     }
@@ -218,9 +234,15 @@ impl ModuleIndexClient {
             .get(download_url)
             .bearer_auth(&self.auth_token)
             .send()
-            .await?
-            .error_for_status()?;
+            .await?;
 
+        if response.status() == reqwest::StatusCode::NOT_FOUND {
+            return Err(ModuleIndexClientError::ModuleNotFound(
+                module_id.to_string(),
+            ));
+        }
+
+        let response = response.error_for_status()?;
         let bytes = response.bytes().await?;
 
         Ok(bytes.to_vec())
@@ -265,14 +287,22 @@ impl ModuleIndexClient {
             .join("modules/")?
             .join(&format!("{}", module_id))?;
 
-        Ok(reqwest::Client::new()
+        let response = reqwest::Client::new()
             .get(details_url)
             .bearer_auth(&self.auth_token)
             .send()
-            .await?
-            .error_for_status()?
-            .json()
-            .await?)
+            .await?;
+
+        if response.status() == reqwest::StatusCode::NOT_FOUND {
+            return Err(ModuleIndexClientError::ModuleNotFound(
+                module_id.to_string(),
+            ));
+        }
+
+        let response = response.error_for_status()?;
+        let response = response.json().await?;
+
+        Ok(response)
     }
 
     pub async fn get_builtin(&self, module_id: Ulid) -> ModuleIndexClientResult<Vec<u8>> {
