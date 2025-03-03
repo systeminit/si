@@ -31,6 +31,8 @@ export const useRouterStore = defineStore("router", {
       location: RouteLocationAsRelativeGeneric,
     ) {
       // if you're not operating on the same change set we are viewing, you can't change the router/URL
+      if (!location.name && this.currentRoute)
+        location.name = this.currentRoute.name;
       if (this.currentRoute?.params?.changeSetId === originChangeSetId) {
         router.replace(location);
         this.currentRoute = location;
