@@ -1,26 +1,49 @@
 use serde::{Deserialize, Serialize};
 use si_events::workspace_snapshot::Checksum;
 
+use crate::reference::ReferenceKind;
+
 pub mod patch;
 
-pub const KIND_INDEX: &str = "index";
-
 // Payload wrapper for sending data views to the frontend.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FrontendObject {
-    pub kind: String,
+    pub kind: ReferenceKind,
     pub id: String,
     pub checksum: Checksum,
     pub data: serde_json::Value,
 }
 
-pub trait FrontendObjectificate {}
-
-pub mod index {
-    use serde::{Deserialize, Serialize};
-
-    use crate::reference::IndexReference;
-
-    #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-    pub struct FrontendObjectIndex(Vec<IndexReference>);
+impl std::cmp::Ord for FrontendObject {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        match self.kind.cmp(&other.kind) {
+            core::cmp::Ordering::Equal => {}
+            ord => return ord,
+        }
+        match self.id.cmp(&other.id) {
+            core::cmp::Ordering::Equal => {}
+            ord => return ord,
+        }
+        // We can stop with the checksum since if the checksums are
+        // equal, `data` will (better) also be euqal. So, no need to
+        // fall back in the case of equality here.
+        self.checksum.cmp(&other.checksum)
+    }
 }
+
+impl std::cmp::PartialOrd for FrontendObject {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl std::cmp::PartialEq for FrontendObject {
+    fn eq(&self, other: &Self) -> bool {
+        self.kind == other.kind
+            && self.id == other.id
+            && self.checksum == other.checksum
+            && self.data == other.data
+    }
+}
+
+impl Eq for FrontendObject {}

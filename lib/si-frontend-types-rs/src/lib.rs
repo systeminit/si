@@ -6,6 +6,7 @@ mod component;
 mod conflict;
 pub mod fs;
 mod func;
+pub mod index;
 pub mod materialized_view;
 mod module;
 pub mod object;

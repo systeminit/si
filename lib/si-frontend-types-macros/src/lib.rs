@@ -120,14 +120,12 @@ fn derive_frontend_object(
     }
     errors.into_result()?;
 
-    let ident_string = ident.to_string();
-
     let output = quote! {
         impl ::std::convert::TryFrom<#ident> for FrontendObject {
             type Error = ::serde_json::Error;
 
             fn try_from(value: #ident) -> ::std::result::Result<Self, Self::Error> {
-                let kind = #ident_string.to_string();
+                let kind = ReferenceKind::#ident;
                 let id = value.id.to_string();
                 let checksum = FrontendChecksum::checksum(&value);
                 let data = ::serde_json::to_value(value)?;

@@ -1,12 +1,9 @@
 use std::{result, str::Utf8Error};
 
 use bytes::Bytes;
-use si_data_nats::{
-    async_nats::jetstream::{self, kv},
-    Subject,
-};
+use si_data_nats::{async_nats::jetstream::kv, Subject};
 use si_events::workspace_snapshot::Checksum;
-use si_frontend_types::object::{FrontendObject, KIND_INDEX};
+use si_frontend_types::{object::FrontendObject, reference::ReferenceKind};
 use si_id::{ChangeSetId, WorkspaceId};
 use thiserror::Error;
 
@@ -22,8 +19,8 @@ pub enum Error {
     Entry(#[from] kv::EntryError),
     #[error("index object not found at key: {0}")]
     IndexObjectNotFound(Subject),
-    #[error("object kind was expected to be '{KIND_INDEX}' but was '{0}'")]
-    NotIndexKind(String),
+    #[error("object kind was expected to be 'ReferenceKind::MvIndex' but was '{0}'")]
+    NotIndexKind(ReferenceKind),
     #[error("put error: {0}")]
     Put(#[from] kv::PutError),
     #[error("error serializing kv value: {0}")]
@@ -62,7 +59,12 @@ impl FriggStore {
         workspace_id: WorkspaceId,
         object: &FrontendObject,
     ) -> Result<Subject> {
-        let key = Self::object_key(workspace_id, &object.kind, &object.id, object.checksum);
+        let key = Self::object_key(
+            workspace_id,
+            &object.kind.to_string(),
+            &object.id,
+            object.checksum,
+        );
         let value = serde_json::to_vec(&object).map_err(Error::Serialize)?;
         self.store.put(key.as_str(), value.into()).await?;
 
@@ -116,8 +118,8 @@ impl FriggStore {
         object: &FrontendObject,
         revision: KvRevision,
     ) -> Result<KvRevision> {
-        if object.kind != KIND_INDEX {
-            return Err(Error::NotIndexKind(object.kind.to_string()));
+        if object.kind != ReferenceKind::MvIndex {
+            return Err(Error::NotIndexKind(object.kind));
         }
 
         // Insert the index as an object and get back the key name where it's stored

@@ -1,16 +1,27 @@
 use serde::{Deserialize, Serialize};
 use si_events::workspace_snapshot::{Checksum, ChecksumHasher};
 
-use crate::checksum::FrontendChecksum;
+use crate::{checksum::FrontendChecksum, object::FrontendObject};
 
 #[remain::sorted]
 #[derive(
-    Clone, Copy, Debug, Eq, PartialEq, Deserialize, Serialize, strum::Display, strum::EnumIter,
+    Clone,
+    Copy,
+    Debug,
+    Eq,
+    PartialEq,
+    Ord,
+    PartialOrd,
+    Deserialize,
+    Serialize,
+    strum::Display,
+    strum::EnumIter,
 )]
 #[serde(rename_all = "camelCase")]
 pub enum ReferenceKind {
     ChangeSetList,
     ChangeSetRecord,
+    MvIndex,
     View,
     ViewList,
 }
@@ -60,6 +71,27 @@ where
             id: value.id.to_string(),
             checksum: value.checksum,
         }
+    }
+}
+
+impl From<FrontendObject> for IndexReference {
+    fn from(value: FrontendObject) -> Self {
+        IndexReference {
+            kind: value.kind,
+            id: value.id.to_string(),
+            checksum: value.checksum.to_string(),
+        }
+    }
+}
+
+impl FrontendChecksum for IndexReference {
+    fn checksum(&self) -> Checksum {
+        let mut hasher = ChecksumHasher::new();
+        hasher.update(FrontendChecksum::checksum(&self.kind).as_bytes());
+        hasher.update(FrontendChecksum::checksum(&self.id).as_bytes());
+        hasher.update(FrontendChecksum::checksum(&self.checksum).as_bytes());
+
+        hasher.finalize()
     }
 }
 

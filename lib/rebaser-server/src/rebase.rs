@@ -14,6 +14,7 @@ use si_events::{
     rebase_batch_address::RebaseBatchAddress, workspace_snapshot::Checksum,
     WorkspaceSnapshotAddress,
 };
+use si_frontend_types::{index::MvIndex, object::FrontendObject, reference::IndexReference};
 use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -33,6 +34,8 @@ pub(crate) enum RebaseError {
     MissingRebaseBatch(RebaseBatchAddress),
     #[error("pending events error: {0}")]
     PendingEvents(#[from] PendingEventsError),
+    #[error("serde_json error: {0}")]
+    SerdeJson(#[from] serde_json::Error),
     #[error("shuttle error: {0}")]
     Shuttle(#[from] ShuttleError),
     #[error("transactions error: {0}")]
@@ -182,8 +185,16 @@ pub async fn perform_rebase(
             }
         }
 
-        dbg!(frontend_objects);
+        dbg!(&frontend_objects);
         dbg!(patches);
+
+        frontend_objects.sort();
+
+        let index_entries: Vec<IndexReference> =
+            frontend_objects.into_iter().map(Into::into).collect();
+        let mv_index = FrontendObject::try_from(MvIndex::new(ctx.change_set_id(), index_entries))?;
+
+        dbg!(mv_index);
     }
     let updates_count = rebase_batch.updates().len();
     span.record("si.updates.count", updates_count.to_string());
