@@ -54,7 +54,9 @@ where
     pub checksum: String,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, Eq, PartialEq, Serialize, Deserialize, si_frontend_types_macros::FrontendChecksum,
+)]
 pub struct IndexReference {
     pub kind: ReferenceKind,
     pub id: String,
@@ -81,17 +83,6 @@ impl From<FrontendObject> for IndexReference {
             id: value.id.to_string(),
             checksum: value.checksum.to_string(),
         }
-    }
-}
-
-impl FrontendChecksum for IndexReference {
-    fn checksum(&self) -> Checksum {
-        let mut hasher = ChecksumHasher::new();
-        hasher.update(FrontendChecksum::checksum(&self.kind).as_bytes());
-        hasher.update(FrontendChecksum::checksum(&self.id).as_bytes());
-        hasher.update(FrontendChecksum::checksum(&self.checksum).as_bytes());
-
-        hasher.finalize()
     }
 }
 

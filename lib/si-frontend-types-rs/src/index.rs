@@ -8,7 +8,9 @@ use crate::{
     reference::{IndexReference, ReferenceKind},
 };
 
-#[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
+#[derive(
+    Clone, Debug, Eq, PartialEq, Deserialize, Serialize, si_frontend_types_macros::FrontendChecksum,
+)]
 pub struct MvIndex {
     pub change_set_id: ChangeSetId,
     pub mv_list: Vec<IndexReference>,
@@ -20,16 +22,6 @@ impl MvIndex {
             change_set_id,
             mv_list,
         }
-    }
-}
-
-impl FrontendChecksum for MvIndex {
-    fn checksum(&self) -> Checksum {
-        let mut hasher = ChecksumHasher::new();
-        hasher.update(FrontendChecksum::checksum(&self.change_set_id.to_string()).as_bytes());
-        hasher.update(FrontendChecksum::checksum(&self.mv_list).as_bytes());
-
-        hasher.finalize()
     }
 }
 
