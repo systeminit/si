@@ -18,7 +18,7 @@
               {{ item.message }}
             </ErrorMessage>
             <div class="relative">
-              <CodeViewer v-if="item.code" :code="item.code" />
+              <CodeViewer v-if="item.code && !item.message" :code="item.code" />
             </div>
           </div>
         </template>
