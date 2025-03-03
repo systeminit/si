@@ -22,6 +22,11 @@ async function main({
   for (const [key, value] of Object.entries(refinement)) {
     if (_.isEmpty(value)) {
       delete refinement[key];
+    } else if (_.isPlainObject(value)) {
+      refinement[key] = _.pickBy(value, (v) => !_.isEmpty(v) || _.isNumber(v) || _.isBoolean(v));
+      if (_.isEmpty(refinement[key])) {
+        delete refinement[key];
+      }
     }
   }
 
