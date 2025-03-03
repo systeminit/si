@@ -169,12 +169,15 @@ export function useChangeSetsStore() {
           }
 
           const route = router.currentRoute.value;
+
           const params = { ...route.params };
           let name = route.name;
           // if abandoning changeset and you were looking at view, it may not exist in HEAD
           if (!stayOnView && name === "workspace-compose-view") {
             name = "workspace-compose";
             delete params.viewId;
+          } else if (params.viewId) {
+            name = "workspace-compose-view";
           }
           await router.push({
             name: name ?? undefined,
