@@ -5,7 +5,7 @@ outline:
 
 # Road map
 
-Updated January 22, 2025.
+Updated March 3, 2025.
 
 Want to influence the road map?
 [Learn more about how to work on System Initiative](../explanation/working-on-si.md).
@@ -46,7 +46,7 @@ to learn more about import functionality
 Discover builds on import where you can discover all infrastructure within a
 cloud environment
 
-### Visual Templates (In development)
+### Visual Templates (In private beta)
 
 <iframe width="560" height="315" src="https://www.youtube.com/embed/HSqf1w-PJco?si=hHMfnNx9VzEuFIf6" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
 
@@ -83,7 +83,7 @@ Read our
 [announcement blog post](https://www.systeminit.com/blog/announcing-audit-trail)
 to learn more about audit history.
 
-### Fine Grained Access Control (In development)
+### Fine Grained Access Control (In private beta)
 
 <iframe width="560" height="315" src="https://www.youtube.com/embed/bELJ7qjZHqM?si=reuQ_xO0v77XSn0p" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
 
@@ -105,7 +105,7 @@ Read our
 [announcement blog post](https://www.systeminit.com/blog/announcing-views) to
 learn more about views.
 
-## GitHub Actions to drive SI (In development)
+## GitHub Actions to drive SI (In private beta)
 
 <iframe width="560" height="315" src="https://www.youtube.com/embed/UCZzTjBWSpg?si=co2wa47XcG4sqwfu" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
 
@@ -116,7 +116,7 @@ the status of the resulting action.
 
 [Read the blog post to learn more.](https://www.systeminit.com/blog/opportunity-github-actions-to-trigger-system-initiative)
 
-## Editor Integration (In development)
+## Editor Integration (In private beta)
 
 We are building a FUSE-based file system to allow for a user to mount a
 workspace and get access to all of the schemas and functions within their
