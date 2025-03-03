@@ -127,7 +127,7 @@ fn derive_frontend_object(
             fn try_from(value: #ident) -> ::std::result::Result<Self, Self::Error> {
                 let kind = ReferenceKind::#ident;
                 let id = value.id.to_string();
-                let checksum = FrontendChecksum::checksum(&value);
+                let checksum = FrontendChecksum::checksum(&value).to_string();
                 let data = ::serde_json::to_value(value)?;
 
                 Ok(FrontendObject {
@@ -379,7 +379,7 @@ pub fn build_mv(input: proc_macro2::TokenStream) -> syn::Result<proc_macro2::Tok
                         return Ok((
                             Some(si_frontend_types::object::patch::ObjectPatch {
                                 kind: <#mv_name as si_frontend_types::materialized_view::MaterializedView>::kind(),
-                                id: change.entity_id,
+                                id: change.entity_id.to_string(),
                                 // TODO: we need to get the prior version of this
                                 from_checksum: Checksum::default().to_string(),
                                 to_checksum: "0".to_string(),
@@ -418,7 +418,7 @@ pub fn build_mv(input: proc_macro2::TokenStream) -> syn::Result<proc_macro2::Tok
                     Ok((
                         Some(si_frontend_types::object::patch::ObjectPatch {
                             kind: <#mv_name as si_frontend_types::materialized_view::MaterializedView>::kind(),
-                            id: change.entity_id,
+                            id: change.entity_id.to_string(),
                             // TODO: get prior state if it already exists
                             from_checksum: "0".to_string(),
                             to_checksum,

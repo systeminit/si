@@ -5,6 +5,7 @@ use dal::{
     ChangeSetStatus, DalContext, TransactionsError, Workspace, WorkspaceError, WorkspacePk,
     WorkspaceSnapshot, WsEvent, WsEventError,
 };
+use frigg::{FriggError, FriggStore};
 use pending_events::PendingEventsError;
 use rebaser_core::api_types::{
     enqueue_updates_request::EnqueueUpdatesRequest, enqueue_updates_response::v1::RebaseStatus,
@@ -14,7 +15,12 @@ use si_events::{
     rebase_batch_address::RebaseBatchAddress, workspace_snapshot::Checksum,
     WorkspaceSnapshotAddress,
 };
-use si_frontend_types::{index::MvIndex, object::FrontendObject, reference::IndexReference};
+use si_frontend_types::{
+    index::MvIndex,
+    object::{patch::ObjectPatch, FrontendObject},
+    reference::{IndexReference, ReferenceKind},
+    MaterializedView,
+};
 use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -28,6 +34,8 @@ pub(crate) enum RebaseError {
     AuditLogsStream(#[from] AuditLogsStreamError),
     #[error("workspace snapshot error: {0}")]
     ChangeSet(#[from] ChangeSetError),
+    #[error("frigg error: {0}")]
+    Frigg(#[from] FriggError),
     #[error("layerdb error: {0}")]
     LayerDb(#[from] LayerDbError),
     #[error("missing rebase batch {0}")]
@@ -68,6 +76,7 @@ type RebaseResult<T> = Result<T, RebaseError>;
     ))]
 pub async fn perform_rebase(
     ctx: &mut DalContext,
+    frigg: &FriggStore,
     request: &EnqueueUpdatesRequest,
     server_tracker: &TaskTracker,
 ) -> RebaseResult<RebaseStatus> {
@@ -126,6 +135,11 @@ pub async fn perform_rebase(
 
     debug!("updates complete: {:?}", start.elapsed());
 
+    let mut maybe_index_update = None;
+    let mut maybe_index_revision = None;
+
+    let workspace_pk = ctx.workspace_pk()?;
+
     if !corrected_updates.is_empty() {
         // Once all updates have been performed, we can write out, and update the pointer.
         to_rebase_workspace_snapshot.write(ctx).await?;
@@ -146,6 +160,11 @@ pub async fn perform_rebase(
 
         let mut frontend_objects: Vec<si_frontend_types::object::FrontendObject> = Vec::new();
         let mut patches = Vec::new();
+
+        let maybe_index = frigg.get_index(workspace_pk, ctx.change_set_id()).await?;
+        maybe_index_revision = maybe_index.as_ref().map(|index| index.1);
+        let maybe_previous_index = maybe_index.map(|index| index.0);
+
         // TODO: Only process changes for EntityKind where all of the MVs referenced have already been processed.
         for change in &changes {
             let (maybe_patch, maybe_object) = {
@@ -186,16 +205,36 @@ pub async fn perform_rebase(
         }
 
         dbg!(&frontend_objects);
-        dbg!(patches);
+        frigg
+            .insert_objects(ctx.workspace_pk()?, frontend_objects.iter())
+            .await?;
 
         frontend_objects.sort();
 
         let index_entries: Vec<IndexReference> =
             frontend_objects.into_iter().map(Into::into).collect();
-        let mv_index = FrontendObject::try_from(MvIndex::new(ctx.change_set_id(), index_entries))?;
 
-        dbg!(mv_index);
+        let mv_index = MvIndex::new(ctx.change_set_id(), index_entries);
+        let mv_index_frontend_object = FrontendObject::try_from(mv_index)?;
+        dbg!(&mv_index_frontend_object);
+
+        let (from_checksum, from_json_value) = match maybe_previous_index {
+            Some(previous_index) => (previous_index.checksum.to_string(), previous_index.data),
+            None => ("0".to_string(), serde_json::Value::Null),
+        };
+        let index_patch = ObjectPatch {
+            kind: ReferenceKind::MvIndex,
+            id: mv_index_frontend_object.id.clone(),
+            from_checksum,
+            to_checksum: mv_index_frontend_object.checksum.to_string(),
+            patch: json_patch::diff(&from_json_value, &mv_index_frontend_object.data),
+        };
+        patches.push(index_patch);
+        dbg!(patches);
+
+        maybe_index_update = Some(mv_index_frontend_object);
     }
+
     let updates_count = rebase_batch.updates().len();
     span.record("si.updates.count", updates_count.to_string());
     span.record(
@@ -206,6 +245,19 @@ pub async fn perform_rebase(
 
     // Before replying to the requester, we must commit.
     ctx.commit_no_rebase().await?;
+
+    if let Some(index_update) = maybe_index_update {
+        match maybe_index_revision {
+            Some(revision) => {
+                frigg
+                    .update_index(workspace_pk, &index_update, revision)
+                    .await?;
+            }
+            None => {
+                frigg.insert_index(workspace_pk, &index_update).await?;
+            }
+        }
+    }
 
     {
         let ctx_clone = ctx.clone();

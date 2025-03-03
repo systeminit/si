@@ -5694,6 +5694,7 @@ dependencies = [
  "buck2-resources",
  "dal",
  "derive_builder",
+ "frigg",
  "futures",
  "json-patch",
  "naxum",

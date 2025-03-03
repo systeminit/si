@@ -6,7 +6,7 @@ use crate::reference::ReferenceKind;
 #[derive(Debug, Clone, Serialize)]
 pub struct ObjectPatch {
     pub kind: ReferenceKind,
-    pub id: EntityId,
+    pub id: String,
     /// Checksum of `"0"` means this is a new object that must be created.
     pub from_checksum: String,
     /// Checksum of `"0"` means this is an existing object that must be removed

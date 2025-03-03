@@ -1,11 +1,16 @@
 use std::{result, str::Utf8Error};
 
 use bytes::Bytes;
-use si_data_nats::{async_nats::jetstream::kv, Subject};
+use si_data_nats::{
+    async_nats::{self, jetstream::kv},
+    jetstream, Subject,
+};
 use si_events::workspace_snapshot::Checksum;
 use si_frontend_types::{object::FrontendObject, reference::ReferenceKind};
-use si_id::{ChangeSetId, WorkspaceId};
+use si_id::{ChangeSetId, WorkspacePk};
 use thiserror::Error;
+
+const NATS_KV_BUCKET_NAME: &str = "FRIGG";
 
 const KEY_PREFIX_INDEX: &str = "index";
 const KEY_PREFIX_OBJECT: &str = "object";
@@ -13,6 +18,8 @@ const KEY_PREFIX_OBJECT: &str = "object";
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum Error {
+    #[error("error creating kv store: {0}")]
+    CreateKeyValue(#[from] async_nats::jetstream::context::CreateKeyValueError),
     #[error("error deserializing kv value: {0}")]
     Deserialize(#[source] serde_json::Error),
     #[error("entry error: {0}")]
@@ -56,14 +63,14 @@ impl FriggStore {
 
     pub async fn insert_object(
         &self,
-        workspace_id: WorkspaceId,
+        workspace_id: WorkspacePk,
         object: &FrontendObject,
     ) -> Result<Subject> {
         let key = Self::object_key(
             workspace_id,
             &object.kind.to_string(),
             &object.id,
-            object.checksum,
+            &object.checksum,
         );
         let value = serde_json::to_vec(&object).map_err(Error::Serialize)?;
         self.store.put(key.as_str(), value.into()).await?;
@@ -71,15 +78,32 @@ impl FriggStore {
         Ok(key)
     }
 
+    pub async fn insert_objects(
+        &self,
+        workspace_id: WorkspacePk,
+        objects: impl Iterator<Item = &FrontendObject>,
+    ) -> Result<()> {
+        for object in objects {
+            self.insert_object(workspace_id, object).await?;
+        }
+
+        Ok(())
+    }
+
     pub async fn get_object(
         &self,
-        workspace_id: WorkspaceId,
+        workspace_id: WorkspacePk,
         kind: String,
         id: String,
         checksum: Checksum,
     ) -> Result<Option<FrontendObject>> {
         match self
-            .get_object_raw_bytes(&Self::object_key(workspace_id, &kind, &id, checksum))
+            .get_object_raw_bytes(&Self::object_key(
+                workspace_id,
+                &kind,
+                &id,
+                &checksum.to_string(),
+            ))
             .await?
         {
             Some((bytes, _)) => Ok(Some(
@@ -91,7 +115,7 @@ impl FriggStore {
 
     pub async fn get_current_object(
         &self,
-        workspace_id: WorkspaceId,
+        workspace_id: WorkspacePk,
         change_set_id: ChangeSetId,
         kind: String,
         id: String,
@@ -106,7 +130,7 @@ impl FriggStore {
 
     pub async fn insert_index(
         &self,
-        workspace_id: WorkspaceId,
+        workspace_id: WorkspacePk,
         object: &FrontendObject,
     ) -> Result<KvRevision> {
         self.update_index(workspace_id, object, 0.into()).await
@@ -114,7 +138,7 @@ impl FriggStore {
 
     pub async fn update_index(
         &self,
-        workspace_id: WorkspaceId,
+        workspace_id: WorkspacePk,
         object: &FrontendObject,
         revision: KvRevision,
     ) -> Result<KvRevision> {
@@ -141,18 +165,22 @@ impl FriggStore {
 
     pub async fn get_index(
         &self,
-        workspace_id: WorkspaceId,
+        workspace_id: WorkspacePk,
         change_set_id: ChangeSetId,
     ) -> Result<Option<(FrontendObject, KvRevision)>> {
         let index_pointer_key = Self::index_key(workspace_id, &change_set_id.to_string());
 
-        let Some(bytes) = self.store.get(index_pointer_key.into_string()).await? else {
+        let Some((bytes, revision)) = self
+            .get_object_raw_bytes(&index_pointer_key)
+            .await?
+        else {
             return Ok(None);
         };
 
         let object_key = Subject::from_utf8(bytes)?;
-        let (bytes, revision) = self
-            .get_object_raw_bytes(&object_key)
+        let bytes = self
+            .store
+            .get(object_key.to_string())
             .await?
             .ok_or(Error::IndexObjectNotFound(object_key))?;
         let object = serde_json::from_slice(bytes.as_ref()).map_err(Error::Deserialize)?;
@@ -172,14 +200,37 @@ impl FriggStore {
     }
 
     #[inline]
-    fn object_key(workspace_id: WorkspaceId, kind: &str, id: &str, checksum: Checksum) -> Subject {
+    fn object_key(workspace_id: WorkspacePk, kind: &str, id: &str, checksum: &str) -> Subject {
         Subject::from(format!(
             "{KEY_PREFIX_OBJECT}.{workspace_id}.{kind}.{id}.{checksum}"
         ))
     }
 
     #[inline]
-    fn index_key(workspace_id: WorkspaceId, change_set_id: &str) -> Subject {
+    fn index_key(workspace_id: WorkspacePk, change_set_id: &str) -> Subject {
         Subject::from(format!("{KEY_PREFIX_INDEX}.{workspace_id}.{change_set_id}"))
+    }
+}
+
+pub async fn frigg_kv(context: &jetstream::Context, prefix: Option<&str>) -> Result<kv::Store> {
+    let bucket = nats_stream_name(prefix, NATS_KV_BUCKET_NAME);
+
+    let kv = context
+        .create_key_value(kv::Config {
+            bucket,
+            description: "Frigg store data".to_owned(),
+            ..Default::default()
+        })
+        .await?;
+
+    Ok(kv)
+}
+
+fn nats_stream_name(prefix: Option<&str>, suffix: impl AsRef<str>) -> String {
+    let suffix = suffix.as_ref();
+
+    match prefix {
+        Some(prefix) => format!("{prefix}_{suffix}"),
+        None => suffix.to_owned(),
     }
 }

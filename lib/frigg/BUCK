@@ -1,3 +1,5 @@
+load("@prelude-si//:macros.bzl", "rust_library")
+
 rust_library(
     name = "frigg",
     deps = [

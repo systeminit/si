@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use si_events::workspace_snapshot::Checksum;
 
 use crate::reference::ReferenceKind;
 
@@ -10,7 +9,7 @@ pub mod patch;
 pub struct FrontendObject {
     pub kind: ReferenceKind,
     pub id: String,
-    pub checksum: Checksum,
+    pub checksum: String,
     pub data: serde_json::Value,
 }
 
