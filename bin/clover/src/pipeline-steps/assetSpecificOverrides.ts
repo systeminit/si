@@ -110,6 +110,27 @@ const overrides = new Map<string, OverrideFn>([
     setAnnotationOnSocket(socket, { tokens: ["GroupId"] });
     variant.sockets.push(socket);
   }],
+  ["AWS::EC2::NetworkInterface", (spec: ExpandedPkgSpec) => {
+    const variant = spec.schemas[0].variants[0];
+
+    // Add an annotation for the Id output socket to connect to HostedZoneId
+    const socket = variant.sockets.find(
+      (s: ExpandedSocketSpec) => s.name === "Id" && s.data.kind === "output",
+    );
+    if (!socket) return;
+
+    setAnnotationOnSocket(socket, { tokens: ["NetworkInterfaceId"] });
+
+    const prop = variant.domain.entries.find((p: ExpandedPropSpec) =>
+      p.name === "GroupSet"
+    );
+
+    if (!prop) return;
+    const groupSocket = createInputSocketFromProp(prop);
+
+    setAnnotationOnSocket(groupSocket, { tokens: ["GroupId"] });
+    variant.sockets.push(groupSocket);
+  }],
   ["AWS::EC2::Route", (spec: ExpandedPkgSpec) => {
     const variant = spec.schemas[0].variants[0];
 
@@ -124,6 +145,17 @@ const overrides = new Map<string, OverrideFn>([
     setAnnotationOnSocket(socket, { tokens: ["VPNGatewayId"] });
 
     variant.sockets.push(socket);
+  }],
+  ["AWS::EC2::VPCEndpoint", (spec: ExpandedPkgSpec) => {
+    const variant = spec.schemas[0].variants[0];
+
+    const prop = variant.domain.entries.find((p: ExpandedPropSpec) =>
+      p.name === "PolicyDocument"
+    );
+
+    if (!prop) return;
+    prop.kind = "json";
+    prop!.data.widgetKind = "CodeEditor";
   }],
   ["AWS::KMS::Key", (spec: ExpandedPkgSpec) => {
     const variant = spec.schemas[0].variants[0];
@@ -181,27 +213,6 @@ const overrides = new Map<string, OverrideFn>([
     "AWS::SecretsManager::Secret",
     addSecretProp("Secret String", "secretString", ["SecretString"]),
   ],
-  ["AWS::EC2::NetworkInterface", (spec: ExpandedPkgSpec) => {
-    const variant = spec.schemas[0].variants[0];
-
-    // Add an annotation for the Id output socket to connect to HostedZoneId
-    const socket = variant.sockets.find(
-      (s: ExpandedSocketSpec) => s.name === "Id" && s.data.kind === "output",
-    );
-    if (!socket) return;
-
-    setAnnotationOnSocket(socket, { tokens: ["NetworkInterfaceId"] });
-
-    const prop = variant.domain.entries.find((p: ExpandedPropSpec) =>
-      p.name === "GroupSet"
-    );
-
-    if (!prop) return;
-    const groupSocket = createInputSocketFromProp(prop);
-
-    setAnnotationOnSocket(groupSocket, { tokens: ["GroupId"] });
-    variant.sockets.push(groupSocket);
-  }],
   ["TargetGroup Targets", (spec: ExpandedPkgSpec) => {
     const variant = spec.schemas[0].variants[0];
 
