@@ -3439,13 +3439,6 @@ impl Component {
         // Re fetch the component with the old id
         let finalized_new_component = Self::get_by_id(ctx, original_component_id).await?;
         let mut diagram_sockets = HashMap::new();
-        let payload = finalized_new_component
-            .into_frontend_type(ctx, None, ChangeStatus::Unmodified, &mut diagram_sockets)
-            .await?;
-        WsEvent::component_upgraded(ctx, payload, finalized_new_component.id())
-            .await?
-            .publish_on_commit(ctx)
-            .await?;
 
         // Restore parent connection on new component
         if let Some(parent) = original_parent {
@@ -3453,6 +3446,14 @@ impl Component {
                 .await
                 .map_err(Box::new)?;
         }
+
+        let payload = finalized_new_component
+            .into_frontend_type(ctx, None, ChangeStatus::Unmodified, &mut diagram_sockets)
+            .await?;
+        WsEvent::component_upgraded(ctx, payload, finalized_new_component.id())
+            .await?
+            .publish_on_commit(ctx)
+            .await?;
 
         // Restore child connections on new component
         for child in original_children {
