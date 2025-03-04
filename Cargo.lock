@@ -6299,6 +6299,7 @@ dependencies = [
  "futures-lite",
  "hyper 0.14.32",
  "indoc",
+ "itertools 0.13.0",
  "module-index-client",
  "names",
  "nats-multiplexer",

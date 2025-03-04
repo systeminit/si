@@ -23,7 +23,7 @@ use crate::{
     change_status::ChangeStatus,
     component::{
         inferred_connection_graph::InferredConnectionGraphError, ComponentError, ComponentResult,
-        IncomingConnection, InferredConnection, OutgoingConnection,
+        Connection, InferredConnection,
     },
     diagram::{
         geometry::{Geometry, GeometryId, GeometryRepresents},
@@ -162,7 +162,7 @@ pub struct SummaryDiagramEdge {
 }
 
 impl SummaryDiagramEdge {
-    pub fn assemble_just_added(incoming_connection: IncomingConnection) -> ComponentResult<Self> {
+    pub fn assemble_just_added(incoming_connection: Connection) -> ComponentResult<Self> {
         Ok(SummaryDiagramEdge {
             from_component_id: incoming_connection.from_component_id,
             from_socket_id: incoming_connection.from_output_socket_id,
@@ -177,7 +177,7 @@ impl SummaryDiagramEdge {
     }
 
     pub fn assemble(
-        incoming_connection: IncomingConnection,
+        incoming_connection: Connection,
         from_component: &Component,
         to_component: &Component,
         change_status: ChangeStatus,
@@ -190,25 +190,6 @@ impl SummaryDiagramEdge {
             change_status,
             created_info: serde_json::to_value(incoming_connection.created_info)?,
             deleted_info: serde_json::to_value(incoming_connection.deleted_info)?,
-            to_delete: from_component.to_delete() || to_component.to_delete(),
-            from_base_change_set: false,
-        })
-    }
-
-    pub fn assemble_outgoing(
-        outgoing_connection: OutgoingConnection,
-        from_component: &Component,
-        to_component: &Component,
-        change_status: ChangeStatus,
-    ) -> ComponentResult<Self> {
-        Ok(SummaryDiagramEdge {
-            from_component_id: outgoing_connection.from_component_id,
-            from_socket_id: outgoing_connection.from_output_socket_id,
-            to_component_id: outgoing_connection.to_component_id,
-            to_socket_id: outgoing_connection.to_input_socket_id,
-            change_status,
-            created_info: serde_json::to_value(outgoing_connection.created_info)?,
-            deleted_info: serde_json::to_value(outgoing_connection.deleted_info)?,
             to_delete: from_component.to_delete() || to_component.to_delete(),
             from_base_change_set: false,
         })
@@ -291,14 +272,14 @@ struct ComponentInfo {
 type ComponentInfoCache = HashMap<ComponentId, ComponentInfo>;
 
 impl SummaryDiagramInferredEdge {
-    pub fn assemble(inferred_incoming_connection: InferredConnection) -> DiagramResult<Self> {
-        Ok(SummaryDiagramInferredEdge {
+    pub fn assemble(inferred_incoming_connection: InferredConnection) -> Self {
+        SummaryDiagramInferredEdge {
             from_component_id: inferred_incoming_connection.from_component_id,
             from_socket_id: inferred_incoming_connection.from_output_socket_id,
             to_component_id: inferred_incoming_connection.to_component_id,
             to_socket_id: inferred_incoming_connection.to_input_socket_id,
             to_delete: inferred_incoming_connection.to_delete,
-        })
+        }
     }
 }
 
@@ -552,7 +533,7 @@ impl Diagram {
 
     #[instrument(level = "info", skip_all)]
     async fn assemble_removed_edges(ctx: &DalContext) -> DiagramResult<Vec<SummaryDiagramEdge>> {
-        let removed_incoming_connections: Vec<IncomingConnection> = ctx
+        let removed_incoming_connections: Vec<Connection> = ctx
             .workspace_snapshot()?
             .socket_edges_removed_relative_to_base(ctx)
             .await?;

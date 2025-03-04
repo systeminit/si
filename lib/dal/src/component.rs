@@ -85,9 +85,9 @@ pub mod socket;
 #[derive(Debug, Error)]
 pub enum ComponentError {
     #[error("action error: {0}")]
-    Action(Box<ActionError>),
+    Action(#[from] Box<ActionError>),
     #[error("action prototype error: {0}")]
-    ActionPrototype(Box<ActionPrototypeError>),
+    ActionPrototype(#[from] Box<ActionPrototypeError>),
     #[error("attribute prototype error: {0}")]
     AttributePrototype(#[from] AttributePrototypeError),
     #[error("attribute prototype argument error: {0}")]
@@ -125,7 +125,7 @@ pub enum ComponentError {
     #[error("connection destination component {0} has no attribute value for input socket {1}")]
     DestinationComponentMissingAttributeValueForInputSocket(ComponentId, InputSocketId),
     #[error("diagram error: {0}")]
-    Diagram(Box<DiagramError>),
+    Diagram(#[from] Box<DiagramError>),
     #[error("frame error: {0}")]
     Frame(#[from] Box<FrameError>),
     #[error("func error: {0}")]
@@ -234,23 +234,38 @@ pub enum ComponentError {
     WsEvent(#[from] WsEventError),
 }
 
+impl From<ActionError> for ComponentError {
+    fn from(err: ActionError) -> Self {
+        Box::new(err).into()
+    }
+}
+impl From<ActionPrototypeError> for ComponentError {
+    fn from(err: ActionPrototypeError) -> Self {
+        Box::new(err).into()
+    }
+}
+impl From<DiagramError> for ComponentError {
+    fn from(err: DiagramError) -> Self {
+        Box::new(err).into()
+    }
+}
+impl From<FrameError> for ComponentError {
+    fn from(err: FrameError) -> Self {
+        Box::new(err).into()
+    }
+}
+impl From<FuncBindingError> for ComponentError {
+    fn from(err: FuncBindingError) -> Self {
+        Box::new(err).into()
+    }
+}
+
 pub type ComponentResult<T> = Result<T, ComponentError>;
 
 pub use si_id::ComponentId;
 
 #[derive(Clone, Debug)]
-pub struct IncomingConnection {
-    pub attribute_prototype_argument_id: AttributePrototypeArgumentId,
-    pub to_component_id: ComponentId,
-    pub to_input_socket_id: InputSocketId,
-    pub from_component_id: ComponentId,
-    pub from_output_socket_id: OutputSocketId,
-    pub created_info: HistoryEventMetadata,
-    pub deleted_info: Option<HistoryEventMetadata>,
-}
-
-#[derive(Clone, Debug)]
-pub struct OutgoingConnection {
+pub struct Connection {
     pub attribute_prototype_argument_id: AttributePrototypeArgumentId,
     pub to_component_id: ComponentId,
     pub to_input_socket_id: InputSocketId,
@@ -430,9 +445,7 @@ impl Component {
                 .await?;
 
         // Create geometry node
-        Geometry::new_for_component(ctx, component.id, view_id)
-            .await
-            .map_err(|e| ComponentError::Diagram(Box::new(e)))?;
+        Geometry::new_for_component(ctx, component.id, view_id).await?;
 
         Ok(component)
     }
@@ -594,9 +607,7 @@ impl Component {
         )
         .await?
         {
-            Action::new(ctx, prototype_id, Some(component.id))
-                .await
-                .map_err(|err| ComponentError::Action(Box::new(err)))?;
+            Action::new(ctx, prototype_id, Some(component.id)).await?;
         }
 
         Ok(component)
@@ -1050,7 +1061,7 @@ impl Component {
     pub async fn outgoing_connections_for_id(
         ctx: &DalContext,
         component_id: ComponentId,
-    ) -> ComponentResult<Vec<OutgoingConnection>> {
+    ) -> ComponentResult<Vec<Connection>> {
         let mut outgoing_edges = vec![];
 
         for from_output_socket in
@@ -1089,7 +1100,7 @@ impl Component {
                     if let Some(AttributePrototypeSource::InputSocket(input_socket, _)) =
                         input_sources.first()
                     {
-                        outgoing_edges.push(OutgoingConnection {
+                        outgoing_edges.push(Connection {
                             attribute_prototype_argument_id: apa_id,
                             to_component_id: destination_component_id,
                             from_component_id: source_component_id,
@@ -1106,18 +1117,12 @@ impl Component {
         Ok(outgoing_edges)
     }
 
-    pub async fn outgoing_connections(
-        &self,
-        ctx: &DalContext,
-    ) -> ComponentResult<Vec<OutgoingConnection>> {
+    pub async fn outgoing_connections(&self, ctx: &DalContext) -> ComponentResult<Vec<Connection>> {
         Self::outgoing_connections_for_id(ctx, self.id).await
     }
 
     /// Calls [`Self::incoming_connections_by_id`] by passing in the id from [`self`](Component).
-    pub async fn incoming_connections(
-        &self,
-        ctx: &DalContext,
-    ) -> ComponentResult<Vec<IncomingConnection>> {
+    pub async fn incoming_connections(&self, ctx: &DalContext) -> ComponentResult<Vec<Connection>> {
         Self::incoming_connections_for_id(ctx, self.id).await
     }
 
@@ -1131,7 +1136,7 @@ impl Component {
     pub async fn incoming_connections_for_id(
         ctx: &DalContext,
         id: ComponentId,
-    ) -> ComponentResult<Vec<IncomingConnection>> {
+    ) -> ComponentResult<Vec<Connection>> {
         let mut incoming_connections = vec![];
 
         for component_input_socket in ComponentInputSocket::list_for_component_id(ctx, id).await? {
@@ -1146,7 +1151,7 @@ impl Component {
                         timestamp: apa.timestamp().created_at,
                     }
                 };
-                incoming_connections.push(IncomingConnection {
+                incoming_connections.push(Connection {
                     attribute_prototype_argument_id: apa.id(),
                     to_component_id: id,
                     from_component_id,
@@ -1448,9 +1453,7 @@ impl Component {
     }
 
     pub async fn geometry(&self, ctx: &DalContext, view_id: ViewId) -> ComponentResult<Geometry> {
-        Geometry::get_by_component_and_view(ctx, self.id, view_id)
-            .await
-            .map_err(|e| ComponentError::Diagram(Box::new(e)))
+        Ok(Geometry::get_by_component_and_view(ctx, self.id, view_id).await?)
     }
 
     pub async fn set_geometry(
@@ -1480,10 +1483,7 @@ impl Component {
     ) -> ComponentResult<Geometry> {
         let mut geometry_pre = self.geometry(ctx, view_id).await?;
         if geometry_pre.into_raw() != raw_geometry {
-            geometry_pre
-                .update(ctx, raw_geometry)
-                .await
-                .map_err(|e| ComponentError::Diagram(Box::new(e)))?;
+            geometry_pre.update(ctx, raw_geometry).await?;
         }
 
         Ok(geometry_pre)
@@ -1727,8 +1727,7 @@ impl Component {
                 | (ComponentType::ConfigurationFrameUp, ComponentType::Component)
                 | (ComponentType::ConfigurationFrameUp, ComponentType::ConfigurationFrameDown) => {
                     Frame::update_type_from_or_to_frame(ctx, component_id, reference_id, new_type)
-                        .await
-                        .map_err(Box::new)?;
+                        .await?;
                 }
                 (new, old) => return Err(ComponentError::InvalidComponentTypeUpdate(old, new)),
             }
@@ -2481,13 +2480,9 @@ impl Component {
             // if we are removing a component with children, re-parent them if I have a parent
             // if this component doesn't have a parent, it's children will be orphaned anyways
             for child_id in Component::get_children_for_id(ctx, id).await? {
-                Frame::upsert_parent(ctx, child_id, parent_id)
-                    .await
-                    .map_err(Box::new)?;
+                Frame::upsert_parent(ctx, child_id, parent_id).await?;
             }
-            Frame::orphan_child(ctx, id)
-                .await
-                .map_err(|e| ComponentError::Frame(Box::new(e)))?;
+            Frame::orphan_child(ctx, id).await?;
         }
 
         for incoming_connection in component.incoming_connections(ctx).await? {
@@ -2516,14 +2511,10 @@ impl Component {
         }
 
         // Remove all geometries for the component
-        Geometry::remove_all_for_component_id(ctx, id)
-            .await
-            .map_err(|e| ComponentError::Diagram(Box::new(e)))?;
+        Geometry::remove_all_for_component_id(ctx, id).await?;
 
         // Remove all actions for this component from queue
-        Action::remove_all_for_component_id(ctx, id)
-            .await
-            .map_err(|err| ComponentError::Action(Box::new(err)))?;
+        Action::remove_all_for_component_id(ctx, id).await?;
         WsEvent::action_list_updated(ctx)
             .await?
             .publish_on_commit(ctx)
@@ -2659,15 +2650,11 @@ impl Component {
             )
             .await?
             {
-                Action::new(ctx, prototype_id, Some(component_id))
-                    .await
-                    .map_err(|err| ComponentError::Action(Box::new(err)))?;
+                Action::new(ctx, prototype_id, Some(component_id)).await?;
             }
         } else if !to_delete {
             // Remove delete actions for component
-            Action::remove_all_for_component_id(ctx, component_id)
-                .await
-                .map_err(|err| ComponentError::Action(Box::new(err)))?;
+            Action::remove_all_for_component_id(ctx, component_id).await?;
             WsEvent::action_list_updated(ctx)
                 .await?
                 .publish_on_commit(ctx)
@@ -2742,13 +2729,10 @@ impl Component {
             for prototype_id in prototypes_for_variant {
                 // don't enqueue the same action twice!
                 if Action::find_equivalent(ctx, prototype_id, Some(component_id))
-                    .await
-                    .map_err(|err| ComponentError::Action(Box::new(err)))?
+                    .await?
                     .is_none()
                 {
-                    let new_action = Action::new(ctx, prototype_id, Some(component_id))
-                        .await
-                        .map_err(|err| ComponentError::Action(Box::new(err)))?;
+                    let new_action = Action::new(ctx, prototype_id, Some(component_id)).await?;
                     enqueued_actions.push(new_action);
                 }
             }
@@ -3033,7 +3017,7 @@ impl Component {
         Ok(results)
     }
 
-    pub async fn create_copy(
+    pub async fn copy_without_connections(
         &self,
         ctx: &DalContext,
         view_id: ViewId,
@@ -3064,6 +3048,94 @@ impl Component {
         Ok(pasted_comp)
     }
 
+    // Copy a batch of components, and replicate connections between them
+    pub async fn batch_copy(
+        ctx: &mut DalContext,
+        to_view_id: ViewId,
+        to_parent_id: Option<ComponentId>,
+        components: Vec<(ComponentId, RawGeometry)>,
+    ) -> ComponentResult<Vec<ComponentId>> {
+        // Paste all the components and get the mapping from original to pasted
+        let mut pasted_component_ids = vec![];
+        let mut to_pasted_id = HashMap::new();
+        for (component_id, raw_geometry) in components.into_iter() {
+            let component = Component::get_by_id(ctx, component_id).await?;
+            let pasted_component = component
+                .copy_without_connections(ctx, to_view_id, raw_geometry)
+                .await?;
+            pasted_component_ids.push(pasted_component.id());
+            to_pasted_id.insert(component_id, pasted_component.id());
+        }
+
+        let maybe_pasted = |id: ComponentId| to_pasted_id.get(&id).copied().unwrap_or(id);
+
+        // Fix parentage and connections
+        for (&component_id, &pasted_component_id) in &to_pasted_id {
+            // Fix parentage:
+            // 1. If the component's parent was in the batch, use the pasted version.
+            // 2. Otherwise, set it to the place the user is pasting to.
+            let pasted_parent_id = Component::get_parent_by_id(ctx, component_id)
+                .await?
+                .and_then(|parent_id| to_pasted_id.get(&parent_id).copied());
+            if let Some(pasted_parent_id) = pasted_parent_id.or(to_parent_id) {
+                Frame::upsert_parent(ctx, pasted_component_id, pasted_parent_id).await?;
+            }
+
+            // Copy manager connections
+            for manager_id in Component::managers_by_id(ctx, component_id).await? {
+                // If we were managed by a component that was also pasted, we should be managed by
+                // the pasted version--otherwise we're still managed by the original
+                match Component::manage_component(
+                    ctx,
+                    maybe_pasted(manager_id),
+                    maybe_pasted(component_id),
+                )
+                .await
+                {
+                    Ok(_) => {}
+                    Err(ComponentError::ComponentNotManagedSchema(_, _, _)) => {
+                        // This error should not occur, but we also don't want to
+                        // fail the paste just because the managed schemas are out
+                        // of sync
+                        error!("Could not manage pasted component, but continuing paste");
+                    }
+                    Err(err) => {
+                        return Err(err)?;
+                    }
+                };
+            }
+
+            // Copy incoming socket connections
+            for connection in Component::incoming_connections_for_id(ctx, component_id).await? {
+                println!(
+                    "Connecting {}.{} <- {}.{} (was from {}.{})",
+                    Component::name_by_id(ctx, pasted_component_id).await?,
+                    InputSocket::get_by_id(ctx, connection.to_input_socket_id)
+                        .await?
+                        .name(),
+                    Component::name_by_id(ctx, maybe_pasted(connection.from_component_id)).await?,
+                    OutputSocket::get_by_id(ctx, connection.from_output_socket_id)
+                        .await?
+                        .name(),
+                    Component::name_by_id(ctx, connection.from_component_id).await?,
+                    OutputSocket::get_by_id(ctx, connection.from_output_socket_id)
+                        .await?
+                        .name(),
+                );
+                Component::connect(
+                    ctx,
+                    maybe_pasted(connection.from_component_id),
+                    connection.from_output_socket_id,
+                    pasted_component_id,
+                    connection.to_input_socket_id,
+                )
+                .await?;
+            }
+        }
+
+        Ok(pasted_component_ids)
+    }
+
     pub async fn add_to_view(
         ctx: &DalContext,
         component_id: ComponentId,
@@ -3071,8 +3143,7 @@ impl Component {
         raw_geometry: RawGeometry,
     ) -> ComponentResult<()> {
         if Geometry::try_get_by_component_and_view(ctx, component_id, view_id)
-            .await
-            .map_err(|e| ComponentError::Diagram(Box::new(e)))?
+            .await?
             .is_some()
         {
             return Err(ComponentError::ComponentAlreadyInView(
@@ -3081,14 +3152,9 @@ impl Component {
             ));
         }
 
-        let mut geometry = Geometry::new_for_component(ctx, component_id, view_id)
-            .await
-            .map_err(|e| ComponentError::Diagram(Box::new(e)))?;
+        let mut geometry = Geometry::new_for_component(ctx, component_id, view_id).await?;
 
-        geometry
-            .update(ctx, raw_geometry)
-            .await
-            .map_err(|e| ComponentError::Diagram(Box::new(e)))?;
+        geometry.update(ctx, raw_geometry).await?;
 
         Ok(())
     }
@@ -3295,9 +3361,7 @@ impl Component {
         let original_parent = original_component.parent(ctx).await?;
         let original_children = Component::get_children_for_id(ctx, original_component_id).await?;
 
-        let geometry_ids = Geometry::list_ids_by_component(ctx, self.id)
-            .await
-            .map_err(|e| ComponentError::Diagram(Box::new(e)))?;
+        let geometry_ids = Geometry::list_ids_by_component(ctx, self.id).await?;
 
         // ================================================================================
         // Create new component and run changes that depend on the old one still existing
@@ -3416,7 +3480,7 @@ impl Component {
         // Remove all children from the "old" frame before we delete it. We'll add them all to the
         // new frame after we've deleted the old one.
         for &child in &original_children {
-            Frame::orphan_child(ctx, child).await.map_err(Box::new)?;
+            Frame::orphan_child(ctx, child).await?;
         }
 
         // Remove the original resource so that we don't queue a delete action
@@ -3442,9 +3506,7 @@ impl Component {
 
         // Restore parent connection on new component
         if let Some(parent) = original_parent {
-            Frame::upsert_parent(ctx, finalized_new_component.id(), parent)
-                .await
-                .map_err(Box::new)?;
+            Frame::upsert_parent(ctx, finalized_new_component.id(), parent).await?;
         }
 
         let payload = finalized_new_component
@@ -3457,9 +3519,7 @@ impl Component {
 
         // Restore child connections on new component
         for child in original_children {
-            Frame::upsert_parent(ctx, child, finalized_new_component.id())
-                .await
-                .map_err(Box::new)?;
+            Frame::upsert_parent(ctx, child, finalized_new_component.id()).await?;
         }
 
         // Restore connections on new component
@@ -3558,38 +3618,25 @@ impl Component {
     ) -> ComponentResult<()> {
         // Remove any actions created for the new component as a side effect of the upgrade
         // Then loop through the existing queued actions for the old component and re-add them piecemeal.
-        Action::remove_all_for_component_id(ctx, new_component_id)
-            .await
-            .map_err(|err| ComponentError::Action(Box::new(err)))?;
+        Action::remove_all_for_component_id(ctx, new_component_id).await?;
 
-        let queued_for_old_component = Action::find_for_component_id(ctx, old_component_id)
-            .await
-            .map_err(|err| ComponentError::Action(Box::new(err)))?;
-        let available_for_new_component = ActionPrototype::for_variant(ctx, new_schema_variant_id)
-            .await
-            .map_err(|err| ComponentError::ActionPrototype(Box::new(err)))?;
+        let queued_for_old_component = Action::find_for_component_id(ctx, old_component_id).await?;
+        let available_for_new_component =
+            ActionPrototype::for_variant(ctx, new_schema_variant_id).await?;
         for existing_queued in queued_for_old_component {
-            let action = Action::get_by_id(ctx, existing_queued)
-                .await
-                .map_err(|err| ComponentError::Action(Box::new(err)))?;
-            let action_prototype_id = Action::prototype_id(ctx, existing_queued)
-                .await
-                .map_err(|err| ComponentError::Action(Box::new(err)))?;
+            let action = Action::get_by_id(ctx, existing_queued).await?;
+            let action_prototype_id = Action::prototype_id(ctx, existing_queued).await?;
             // what do we do about the various states?
             // maybe you shouldn't upgrade a component if an action
             // is dispatched or running for the current?
             match action.state() {
                 ActionState::Failed | ActionState::OnHold | ActionState::Queued => {
-                    let func_id = ActionPrototype::func_id(ctx, action_prototype_id)
-                        .await
-                        .map_err(|err| ComponentError::ActionPrototype(Box::new(err)))?;
+                    let func_id = ActionPrototype::func_id(ctx, action_prototype_id).await?;
                     let queued_func = Func::get_by_id_or_error(ctx, func_id).await?;
 
                     for available_action_prototype in available_for_new_component.clone() {
                         let available_func_id =
-                            ActionPrototype::func_id(ctx, available_action_prototype.id())
-                                .await
-                                .map_err(|err| ComponentError::ActionPrototype(Box::new(err)))?;
+                            ActionPrototype::func_id(ctx, available_action_prototype.id()).await?;
                         let available_func =
                             Func::get_by_id_or_error(ctx, available_func_id).await?;
 
@@ -3601,8 +3648,7 @@ impl Component {
                                 available_action_prototype.id(),
                                 Some(new_component_id),
                             )
-                            .await
-                            .map_err(|err| ComponentError::Action(Box::new(err)))?;
+                            .await?;
                         }
                     }
                 }
@@ -3653,9 +3699,7 @@ impl Component {
         ctx.add_dependent_values_and_enqueue(component.input_socket_attribute_values(ctx).await?)
             .await?;
 
-        Geometry::restore_all_for_component_id(ctx, component_id)
-            .await
-            .map_err(|e| ComponentError::Diagram(Box::new(e)))?;
+        Geometry::restore_all_for_component_id(ctx, component_id).await?;
 
         Ok(())
     }
@@ -3794,6 +3838,28 @@ impl Component {
         Ok(result)
     }
 
+    /// Return the ids of all the components that manage this component
+    pub async fn managers_by_id(
+        ctx: &DalContext,
+        id: ComponentId,
+    ) -> ComponentResult<Vec<ComponentId>> {
+        let mut result = vec![];
+
+        let snapshot = ctx.workspace_snapshot()?;
+
+        for source_idx in snapshot
+            .incoming_sources_for_edge_weight_kind(id, EdgeWeightKindDiscriminants::Manages)
+            .await?
+        {
+            let node_weight = snapshot.get_node_weight(source_idx).await?;
+            if let NodeWeight::Component(_) = &node_weight {
+                result.push(node_weight.id().into());
+            }
+        }
+
+        Ok(result)
+    }
+
     /// Return the ids of all the components managed by this component
     pub async fn get_managed(&self, ctx: &DalContext) -> ComponentResult<Vec<ComponentId>> {
         let mut result = vec![];
@@ -3909,9 +3975,7 @@ impl Component {
         let maybe_parent = self.parent(ctx).await?;
 
         let geometry = if let Some(geometry) = maybe_geometry {
-            let view_id = Geometry::get_view_id_by_id(ctx, geometry.id())
-                .await
-                .map_err(|e| ComponentError::Diagram(Box::new(e)))?;
+            let view_id = Geometry::get_view_id_by_id(ctx, geometry.id()).await?;
 
             Some(GeometryAndView {
                 view_id,
@@ -3954,9 +4018,7 @@ impl Component {
         change_status: ChangeStatus,
         diagram_sockets: &mut HashMap<SchemaVariantId, Vec<DiagramSocket>>,
     ) -> ComponentResult<DiagramComponentView> {
-        let default_view_id = View::get_id_for_default(ctx)
-            .await
-            .map_err(|e| ComponentError::Diagram(Box::new(e)))?;
+        let default_view_id = View::get_id_for_default(ctx).await?;
         let geometry = self.geometry(ctx, default_view_id).await?;
 
         self.into_frontend_type(ctx, Some(&geometry), change_status, diagram_sockets)

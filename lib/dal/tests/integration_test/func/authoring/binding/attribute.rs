@@ -16,8 +16,8 @@ use dal::{
 };
 use dal_test::helpers::{
     connect_components_with_socket_names, create_component_for_default_schema_name_in_default_view,
-    get_attribute_value_for_component, get_component_output_socket_value,
-    update_attribute_value_for_component, ChangeSetTestHelpers,
+    get_attribute_value_for_component, get_attribute_value_for_component_opt,
+    get_component_output_socket_value, update_attribute_value_for_component, ChangeSetTestHelpers,
 };
 use dal_test::test;
 use itertools::Itertools;
@@ -478,15 +478,13 @@ async fn create_intrinsic_binding_then_unset(ctx: &mut DalContext) {
     // check test prop to make sure the value propagated
     let value = get_attribute_value_for_component(ctx, component.id(), test_prop_path)
         .await
-        .expect("could not get attribute value")
-        .expect("attribute value is none");
+        .expect("could not get attribute value");
     assert_eq!(serde_json::Value::String("test".to_string()), value);
 
     // check another prop too
     let value = get_attribute_value_for_component(ctx, component.id(), another_test_prop_path)
         .await
-        .expect("could not get attribute value")
-        .expect("attribute value is none");
+        .expect("could not get attribute value");
     assert_eq!(serde_json::Value::String("test".to_string()), value);
 
     // check output socket
@@ -537,7 +535,7 @@ async fn create_intrinsic_binding_then_unset(ctx: &mut DalContext) {
         .any(|binding| binding.output_location == AttributeFuncDestination::Prop(another_prop)));
 
     // let's make sure another_prop was cleared!
-    let value = get_attribute_value_for_component(ctx, component.id(), another_test_prop_path)
+    let value = get_attribute_value_for_component_opt(ctx, component.id(), another_test_prop_path)
         .await
         .expect("could not get attribute value");
 

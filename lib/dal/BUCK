@@ -109,6 +109,7 @@ rust_test(
         "//lib/veritech-client:veritech-client",
         "//third-party/rust:chrono",
         "//third-party/rust:base64",
+        "//third-party/rust:derive_more",
         "//third-party/rust:itertools",
         "//third-party/rust:petgraph",
         "//third-party/rust:pretty_assertions_sorted",

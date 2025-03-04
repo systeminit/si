@@ -94,7 +94,7 @@ pub async fn set_component_position(
                         };
                         diagram_inferred_edges.push(SummaryDiagramInferredEdge::assemble(
                             inferred_stack_connection,
-                        )?)
+                        ))
                     }
                 }
             }
