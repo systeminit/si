@@ -1,13 +1,11 @@
 use serde::{Deserialize, Serialize};
 
-use crate::reference::ReferenceKind;
-
 pub mod patch;
 
 // Payload wrapper for sending data views to the frontend.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FrontendObject {
-    pub kind: ReferenceKind,
+    pub kind: String,
     pub id: String,
     pub checksum: String,
     pub data: serde_json::Value,

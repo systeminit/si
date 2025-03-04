@@ -22,6 +22,7 @@ pub(crate) struct AppState {
 
 impl AppState {
     /// Creates a new [`AppState`].
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn new(
         metadata: Arc<ServerMetadata>,
         nats: NatsClient,

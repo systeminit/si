@@ -19,7 +19,6 @@ use si_frontend_types::{
     index::MvIndex,
     object::{patch::ObjectPatch, FrontendObject},
     reference::{IndexReference, ReferenceKind},
-    MaterializedView,
 };
 use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
@@ -170,6 +169,7 @@ pub async fn perform_rebase(
             let (maybe_patch, maybe_object) = {
                 si_frontend_types_macros::build_mv!(
                     ctx,
+                    frigg,
                     change,
                     si_frontend_types::view::ViewList,
                     dal::diagram::view::View::as_frontend_list_type(ctx).await
@@ -186,6 +186,7 @@ pub async fn perform_rebase(
             let (maybe_patch, maybe_object) = {
                 si_frontend_types_macros::build_mv!(
                     ctx,
+                    frigg,
                     change,
                     si_frontend_types::view::View,
                     dal::diagram::view::View::as_frontend_type(
@@ -223,7 +224,7 @@ pub async fn perform_rebase(
             None => ("0".to_string(), serde_json::Value::Null),
         };
         let index_patch = ObjectPatch {
-            kind: ReferenceKind::MvIndex,
+            kind: ReferenceKind::MvIndex.to_string(),
             id: mv_index_frontend_object.id.clone(),
             from_checksum,
             to_checksum: mv_index_frontend_object.checksum.to_string(),

@@ -125,7 +125,7 @@ fn derive_frontend_object(
             type Error = ::serde_json::Error;
 
             fn try_from(value: #ident) -> ::std::result::Result<Self, Self::Error> {
-                let kind = ReferenceKind::#ident;
+                let kind = ReferenceKind::#ident.to_string();
                 let id = value.id.to_string();
                 let checksum = FrontendChecksum::checksum(&value).to_string();
                 let data = ::serde_json::to_value(value)?;
@@ -313,6 +313,7 @@ fn path_to_string(path: &syn::Path) -> String {
 
 struct BuildMv {
     ctx: syn::Expr,
+    frigg: syn::Expr,
     change: syn::Expr,
     mv_name: syn::Path,
     build_fn: syn::Expr,
@@ -321,6 +322,8 @@ struct BuildMv {
 impl syn::parse::Parse for BuildMv {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         let ctx = input.parse::<syn::Expr>()?;
+        input.parse::<syn::Token![,]>()?;
+        let frigg = input.parse::<syn::Expr>()?;
         input.parse::<syn::Token![,]>()?;
         let change = input.parse::<syn::Expr>()?;
         input.parse::<syn::Token![,]>()?;
@@ -331,6 +334,7 @@ impl syn::parse::Parse for BuildMv {
 
         Ok(BuildMv {
             ctx,
+            frigg,
             change,
             mv_name,
             build_fn,
@@ -344,6 +348,7 @@ impl syn::parse::Parse for BuildMv {
 pub fn build_mv(input: proc_macro2::TokenStream) -> syn::Result<proc_macro2::TokenStream> {
     let BuildMv {
         ctx,
+        frigg,
         change,
         mv_name,
         build_fn,
@@ -363,6 +368,7 @@ pub fn build_mv(input: proc_macro2::TokenStream) -> syn::Result<proc_macro2::Tok
         {
             async fn #build_mv_ident(
                 ctx: &DalContext,
+                frigg: &frigg::FriggStore,
                 change: &dal::workspace_snapshot::graph::detector::Change,
             ) -> RebaseResult<(
                 Option<si_frontend_types::object::patch::ObjectPatch>,
@@ -378,7 +384,7 @@ pub fn build_mv(input: proc_macro2::TokenStream) -> syn::Result<proc_macro2::Tok
                         // Object was removed
                         return Ok((
                             Some(si_frontend_types::object::patch::ObjectPatch {
-                                kind: <#mv_name as si_frontend_types::materialized_view::MaterializedView>::kind(),
+                                kind: <#mv_name as si_frontend_types::materialized_view::MaterializedView>::kind().to_string(),
                                 id: change.entity_id.to_string(),
                                 // TODO: we need to get the prior version of this
                                 from_checksum: Checksum::default().to_string(),
@@ -414,15 +420,22 @@ pub fn build_mv(input: proc_macro2::TokenStream) -> syn::Result<proc_macro2::Tok
                         )
                     })?;
 
-                    // NOTE: we have no prior state, so we're computing this as a net-new create
+                    let kind = <#mv_name as si_frontend_types::materialized_view::MaterializedView>::kind().to_string();
+                    let id = change.entity_id.to_string();
+                    let (from_checksum, previous_data) = if let Some(previous_version) = frigg.get_current_object(ctx.workspace_pk()?, ctx.change_set_id(), &kind, &id).await? {
+                        (previous_version.checksum, previous_version.data)
+                    } else {
+                        // Object is new
+                        ("0".to_string(), serde_json::Value::Null)
+                    };
+
                     Ok((
                         Some(si_frontend_types::object::patch::ObjectPatch {
-                            kind: <#mv_name as si_frontend_types::materialized_view::MaterializedView>::kind(),
-                            id: change.entity_id.to_string(),
-                            // TODO: get prior state if it already exists
-                            from_checksum: "0".to_string(),
+                            kind,
+                            id,
+                            from_checksum,
                             to_checksum,
-                            patch: json_patch::diff(&serde_json::Value::Null, &mv_json),
+                            patch: json_patch::diff(&previous_data, &mv_json),
                         }),
                         Some(frontend_object),
                     ))
@@ -431,7 +444,7 @@ pub fn build_mv(input: proc_macro2::TokenStream) -> syn::Result<proc_macro2::Tok
                 }
             }
 
-            #build_mv_ident(#ctx, #change)
+            #build_mv_ident(#ctx, #frigg, #change)
         }
     };
 

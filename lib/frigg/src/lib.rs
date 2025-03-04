@@ -5,8 +5,7 @@ use si_data_nats::{
     async_nats::{self, jetstream::kv},
     jetstream, Subject,
 };
-use si_events::workspace_snapshot::Checksum;
-use si_frontend_types::{object::FrontendObject, reference::ReferenceKind};
+use si_frontend_types::{index::MvIndex, object::FrontendObject, reference::ReferenceKind};
 use si_id::{ChangeSetId, WorkspacePk};
 use thiserror::Error;
 
@@ -26,8 +25,15 @@ pub enum Error {
     Entry(#[from] kv::EntryError),
     #[error("index object not found at key: {0}")]
     IndexObjectNotFound(Subject),
-    #[error("object kind was expected to be 'ReferenceKind::MvIndex' but was '{0}'")]
-    NotIndexKind(ReferenceKind),
+    #[error("object kind was expected to be 'MvIndex' but was '{0}'")]
+    NotIndexKind(String),
+    #[error("object listed in index not found: workspace: {workspace_id}, change set: {change_set_id}, kind: {kind}, id: {id}")]
+    ObjectNotFoundFromIndex {
+        workspace_id: WorkspacePk,
+        change_set_id: ChangeSetId,
+        kind: String,
+        id: String,
+    },
     #[error("put error: {0}")]
     Put(#[from] kv::PutError),
     #[error("error serializing kv value: {0}")]
@@ -93,17 +99,12 @@ impl FriggStore {
     pub async fn get_object(
         &self,
         workspace_id: WorkspacePk,
-        kind: String,
-        id: String,
-        checksum: Checksum,
+        kind: &str,
+        id: &str,
+        checksum: &str,
     ) -> Result<Option<FrontendObject>> {
         match self
-            .get_object_raw_bytes(&Self::object_key(
-                workspace_id,
-                &kind,
-                &id,
-                &checksum.to_string(),
-            ))
+            .get_object_raw_bytes(&Self::object_key(workspace_id, kind, id, checksum))
             .await?
         {
             Some((bytes, _)) => Ok(Some(
@@ -117,15 +118,30 @@ impl FriggStore {
         &self,
         workspace_id: WorkspacePk,
         change_set_id: ChangeSetId,
-        kind: String,
-        id: String,
+        kind: &str,
+        id: &str,
     ) -> Result<Option<FrontendObject>> {
-        // We want to consult an index to determine this which involves:
-        //
-        // - Retrieve current index
-        // - Consult it for the checksum of the kind/id we were given
-        // - Fetch that object
-        todo!()
+        let Some((current_index, _)) = self.get_index(workspace_id, change_set_id).await? else {
+            return Ok(None);
+        };
+        let mv_index: MvIndex =
+            serde_json::from_value(current_index.data).map_err(FriggError::Deserialize)?;
+        for index_entry in mv_index.mv_list {
+            if index_entry.kind == kind && index_entry.id == id {
+                return Ok(Some(
+                    self.get_object(workspace_id, kind, id, &index_entry.checksum)
+                        .await?
+                        .ok_or_else(|| FriggError::ObjectNotFoundFromIndex {
+                            workspace_id,
+                            change_set_id,
+                            kind: kind.to_string(),
+                            id: id.to_string(),
+                        })?,
+                ));
+            }
+        }
+
+        Ok(None)
     }
 
     pub async fn insert_index(
@@ -142,8 +158,9 @@ impl FriggStore {
         object: &FrontendObject,
         revision: KvRevision,
     ) -> Result<KvRevision> {
-        if object.kind != ReferenceKind::MvIndex {
-            return Err(Error::NotIndexKind(object.kind));
+        let mv_index_kind_string = ReferenceKind::MvIndex.to_string();
+        if object.kind != mv_index_kind_string {
+            return Err(Error::NotIndexKind(object.kind.clone()));
         }
 
         // Insert the index as an object and get back the key name where it's stored
@@ -170,10 +187,7 @@ impl FriggStore {
     ) -> Result<Option<(FrontendObject, KvRevision)>> {
         let index_pointer_key = Self::index_key(workspace_id, &change_set_id.to_string());
 
-        let Some((bytes, revision)) = self
-            .get_object_raw_bytes(&index_pointer_key)
-            .await?
-        else {
+        let Some((bytes, revision)) = self.get_object_raw_bytes(&index_pointer_key).await? else {
             return Ok(None);
         };
 

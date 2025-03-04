@@ -30,7 +30,7 @@ impl TryFrom<MvIndex> for FrontendObject {
 
     fn try_from(value: MvIndex) -> Result<Self, Self::Error> {
         Ok(Self {
-            kind: ReferenceKind::MvIndex,
+            kind: ReferenceKind::MvIndex.to_string(),
             id: value.change_set_id.to_string(),
             checksum: FrontendChecksum::checksum(&value).to_string(),
             data: serde_json::to_value(&value)?,

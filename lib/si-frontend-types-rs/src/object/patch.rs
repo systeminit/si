@@ -1,11 +1,8 @@
 use serde::Serialize;
-use si_id::EntityId;
-
-use crate::reference::ReferenceKind;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct ObjectPatch {
-    pub kind: ReferenceKind,
+    pub kind: String,
     pub id: String,
     /// Checksum of `"0"` means this is a new object that must be created.
     pub from_checksum: String,

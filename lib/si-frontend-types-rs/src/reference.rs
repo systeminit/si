@@ -58,7 +58,7 @@ where
     Clone, Debug, Eq, PartialEq, Serialize, Deserialize, si_frontend_types_macros::FrontendChecksum,
 )]
 pub struct IndexReference {
-    pub kind: ReferenceKind,
+    pub kind: String,
     pub id: String,
     pub checksum: String,
 }
@@ -69,7 +69,7 @@ where
 {
     fn from(value: Reference<T>) -> Self {
         Self {
-            kind: value.kind,
+            kind: value.kind.to_string(),
             id: value.id.to_string(),
             checksum: value.checksum,
         }
