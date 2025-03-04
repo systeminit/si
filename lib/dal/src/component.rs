@@ -2843,42 +2843,64 @@ impl Component {
             }
             // build a map of component output sockets and values
             let output_sockets = component.output_socket_attribute_values(ctx).await?;
+            let outgoing_connections_to_check = component
+                .outgoing_connections(ctx)
+                .await?
+                .iter()
+                .map(|outgoing| outgoing.from_output_socket_id)
+                .collect_vec();
             for output_socket_av in output_sockets {
                 if let Some(output_socket_id) =
                     OutputSocket::find_for_attribute_value_id(ctx, output_socket_av).await?
                 {
-                    let av = AttributeValue::get_by_id(ctx, output_socket_av).await?;
-                    let output_value = av.view(ctx).await?;
-
-                    // Check against the list of available input sockets for compatibility
-                    for (input_socket_id, info) in &available_input_sockets_to_connect {
-                        // Does this output socket fit this input socket? (including annotations!)
-                        if OutputSocket::fits_input_by_id(ctx, *input_socket_id, output_socket_id)
+                    let is_single_arity = OutputSocket::get_by_id(ctx, output_socket_id)
+                        .await?
+                        .arity()
+                        == SocketArity::One;
+                    // First ensure that if the socket arity is single, there isn't an existing connection from this output socket
+                    if !is_single_arity
+                        || !outgoing_connections_to_check.contains(&output_socket_id)
+                    {
+                        let av = AttributeValue::get_by_id(ctx, output_socket_av).await?;
+                        let output_value = av.view(ctx).await?;
+                        // Check against the list of available input sockets for compatibility
+                        for (input_socket_id, info) in &available_input_sockets_to_connect {
+                            // Does this output socket fits this input socket? (including annotations!)
+                            if OutputSocket::fits_input_by_id(
+                                ctx,
+                                *input_socket_id,
+                                output_socket_id,
+                            )
                             .await?
-                        {
-                            let input_socket =
-                                InputSocket::get_by_id(ctx, *input_socket_id).await?;
+                            {
+                                let input_socket =
+                                    InputSocket::get_by_id(ctx, *input_socket_id).await?;
 
-                            // does the output socket have a value?
-                            if let (Some(input), Some(output)) = (&info.value, &output_value) {
-                                // does the output socket's value match what's set for the attribute value?
-                                if input == output {
-                                    potential_matches
-                                        .entry(*input_socket_id)
-                                        .or_default()
-                                        .push((component.id(), output_socket_id, output.clone()))
-                                }
-                                // if value for the prop we're trying to connect is an array, and the input socket is
-                                // multi-arity, see if the output socket's value matches an entry in the array
-
-                                // let's see if anything matches either case!
-                                if let serde_json::Value::Array(values) = input {
-                                    if input_socket.arity() == SocketArity::Many
-                                        && values.contains(output)
-                                    {
+                                // does the output socket have a value?
+                                if let (Some(input), Some(output)) = (&info.value, &output_value) {
+                                    // does the output socket's value match what's set for the attribute value?
+                                    if input == output {
                                         potential_matches.entry(*input_socket_id).or_default().push(
                                             (component.id(), output_socket_id, output.clone()),
                                         )
+                                    }
+                                    // if value for the prop we're trying to connect is an array, and the input socket is
+                                    // multi-arity, see if the output socket's value matches an entry in the array
+
+                                    // let's see if anything matches either case!
+                                    if let serde_json::Value::Array(values) = input {
+                                        if input_socket.arity() == SocketArity::Many
+                                            && values.contains(output)
+                                        {
+                                            potential_matches
+                                                .entry(*input_socket_id)
+                                                .or_default()
+                                                .push((
+                                                    component.id(),
+                                                    output_socket_id,
+                                                    output.clone(),
+                                                ))
+                                        }
                                     }
                                 }
                             }
