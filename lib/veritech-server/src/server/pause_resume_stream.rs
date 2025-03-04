@@ -105,34 +105,35 @@ impl futures::Stream for PauseResumeStream {
     ) -> std::task::Poll<Option<Self::Item>> {
         let project = self.project();
 
-        // Drain everything in the controller channel until we reach the last unprocessed command.
-        // We don't have to worry about the order of the messages because if handlers need to issue
-        // a new command in the future, then they will.
-        loop {
-            match project.rx.poll_recv(cx) {
-                // We have received a "pause" command and we should keep going until the last command
-                Poll::Ready(Some(PauseResumeCommand::Pause)) => {
-                    trace!(previous_last_unprocessed_command = ?project.last_unprocessed_command, "changing last command to pause");
-                    *project.last_unprocessed_command = Some(PauseResumeCommand::Pause);
-                    continue;
-                }
-                // We have received a "resume" command and we should keep going until the last command
-                Poll::Ready(Some(PauseResumeCommand::Resume)) => {
-                    trace!(previous_last_unprocessed_command = ?project.last_unprocessed_command, "changing last command to resume");
-                    *project.last_unprocessed_command = Some(PauseResumeCommand::Resume);
-                    continue;
-                }
-                // The channel stream has closed
-                Poll::Ready(None) => {
-                    trace!("the channel stream has closed for monitoring commands within the pause resume stream");
-                    break;
-                }
-                // No more messages inbounded, but the channel stream is alive
-                // This is the critical path!
-                Poll::Pending => break,
-            }
-        }
-        trace!(last_unprocessed_command = ?project.last_unprocessed_command, "determined last unprocessed command");
+        // TODO(nick,brit): restore or delete pause/resume.
+        // // Drain everything in the controller channel until we reach the last unprocessed command.
+        // // We don't have to worry about the order of the messages because if handlers need to issue
+        // // a new command in the future, then they will.
+        // loop {
+        //     match project.rx.poll_recv(cx) {
+        //         // We have received a "pause" command and we should keep going until the last command
+        //         Poll::Ready(Some(PauseResumeCommand::Pause)) => {
+        //             trace!(previous_last_unprocessed_command = ?project.last_unprocessed_command, "changing last command to pause");
+        //             *project.last_unprocessed_command = Some(PauseResumeCommand::Pause);
+        //             continue;
+        //         }
+        //         // We have received a "resume" command and we should keep going until the last command
+        //         Poll::Ready(Some(PauseResumeCommand::Resume)) => {
+        //             trace!(previous_last_unprocessed_command = ?project.last_unprocessed_command, "changing last command to resume");
+        //             *project.last_unprocessed_command = Some(PauseResumeCommand::Resume);
+        //             continue;
+        //         }
+        //         // The channel stream has closed
+        //         Poll::Ready(None) => {
+        //             trace!("the channel stream has closed for monitoring commands within the pause resume stream");
+        //             break;
+        //         }
+        //         // No more messages inbounded, but the channel stream is alive
+        //         // This is the critical path!
+        //         Poll::Pending => break,
+        //     }
+        // }
+        // trace!(last_unprocessed_command = ?project.last_unprocessed_command, "determined last unprocessed command");
 
         // Now that we've stored the last unprocessed command, we can determine what to do with the
         // inner stream.
@@ -155,64 +156,82 @@ impl futures::Stream for PauseResumeStream {
                 }
                 // We are subscribed!
                 // This is the critical path!
-                State::Subscribed(stream) => {
-                    match project.last_unprocessed_command {
-                        // If we received a pause command and are subscribed, we need to unsubscribe.
-                        // We do this by replacing the mutably borrowed state wrapper and (hopefully)
-                        // "dropping" the old stream. We need to reset the last unprocessed command
-                        // since we've "used" it.
-                        Some(PauseResumeCommand::Pause) => {
-                            *project.last_unprocessed_command = None;
-                            debug!("subscribed --> pause --> unsubscribed");
-                            *project.incoming = State::Unsubscribed(Box::pin(tokio::time::sleep(
-                                project.pause_duration.to_owned(),
-                            )));
+                State::Subscribed(stream) => match stream.poll_next_unpin(cx) {
+                    Poll::Ready(msg) => match msg {
+                        // If we are missing a heartbeat, we need to unsubscribe.
+                        // TODO(nick): decide is this is too invasive into the "pause-resume" pattern.
+                        Some(Err(err))
+                            if err.kind()
+                                == consumer::pull::MessagesErrorKind::MissingHeartbeat =>
+                        {
+                            metric!(counter.veritech.pause_resume_stream.missing_heartbeat = 1);
+                            error!("fatal: encountered missing heartbeat");
+                            perform_verinuke();
                         }
-                        // If we received resume command, we are good to keep on truckin'! We need to
-                        // reset the last unprocessed command since we've "used" it.
-                        Some(PauseResumeCommand::Resume) => {
-                            *project.last_unprocessed_command = None;
-                            match stream.poll_next_unpin(cx) {
-                                Poll::Ready(Some(msg)) => match msg {
-                                    // If we are missing a heartbeat, we need to unsubscribe.
-                                    // TODO(nick): decide is this is too invasive into the "pause-resume" pattern.
-                                    Err(err) if err.kind() == consumer::pull::MessagesErrorKind::MissingHeartbeat => {
-                                        metric!(counter.veritech.pause_resume_stream.missing_heartbeat = 1);
-                                        error!("fatal: encountered missing heartbeat");
-                                        perform_verinuke();
-                                    },
-                                    // For all other errors and successful cases, return ready!
-                                    _ => return Poll::Ready(Some(msg)),
-                                },
-                                Poll::Ready(None) => return Poll::Ready(None),
-                                Poll::Pending => return Poll::Pending,
-                            }
-                        }
-                        // If we received a no command command, we are good to keep on truckin'!
-                        // This is the critical path!
-                        None => match stream.poll_next_unpin(cx) {
-                            Poll::Ready(Some(msg)) => match msg {
-                                // If we are missing a heartbeat, we need to unsubscribe.
-                                // TODO(nick): decide is this is too invasive into the "pause-resume" pattern.
-                                Err(err)
-                                    if err.kind()
-                                        == consumer::pull::MessagesErrorKind::MissingHeartbeat =>
-                                {
-                                    metric!(
-                                        counter.veritech.pause_resume_stream.missing_heartbeat = 1
-                                    );
-                                    error!("fatal: encountered missing heartbeat");
-                                    perform_verinuke();
-                                }
-                                // For all other errors and successful cases, return ready!
-                                // This the critical path!
-                                _ => return Poll::Ready(Some(msg)),
-                            },
-                            Poll::Ready(None) => return Poll::Ready(None),
-                            Poll::Pending => return Poll::Pending,
-                        },
-                    }
-                }
+                        // For all other errors and successful cases, return ready!
+                        // This the critical path!
+                        _ => return Poll::Ready(msg),
+                    },
+                    Poll::Pending => return Poll::Pending,
+                    // TODO(nick,brit): restore or delete pause/resume.
+                    //     match project.last_unprocessed_command {
+                    //         // If we received a pause command and are subscribed, we need to unsubscribe.
+                    //         // We do this by replacing the mutably borrowed state wrapper and (hopefully)
+                    //         // "dropping" the old stream. We need to reset the last unprocessed command
+                    //         // since we've "used" it.
+                    //         Some(PauseResumeCommand::Pause) => {
+                    //             *project.last_unprocessed_command = None;
+                    //             debug!("subscribed --> pause --> unsubscribed");
+                    //             *project.incoming = State::Unsubscribed(Box::pin(tokio::time::sleep(
+                    //                 project.pause_duration.to_owned(),
+                    //             )));
+                    //         }
+                    //         // If we received resume command, we are good to keep on truckin'! We need to
+                    //         // reset the last unprocessed command since we've "used" it.
+                    //         Some(PauseResumeCommand::Resume) => {
+                    //             *project.last_unprocessed_command = None;
+                    //             match stream.poll_next_unpin(cx) {
+                    //                 Poll::Ready(Some(msg)) => match msg {
+                    //                     // If we are missing a heartbeat, we need to unsubscribe.
+                    //                     // TODO(nick): decide is this is too invasive into the "pause-resume" pattern.
+                    //                     Err(err) if err.kind() == consumer::pull::MessagesErrorKind::MissingHeartbeat => {
+                    //                         metric!(counter.veritech.pause_resume_stream.missing_heartbeat = 1);
+                    //                         error!("fatal: encountered missing heartbeat");
+                    //                         perform_verinuke();
+                    //                     },
+                    //                     // For all other errors and successful cases, return ready!
+                    //                     _ => return Poll::Ready(Some(msg)),
+                    //                 },
+                    //                 Poll::Ready(None) => return Poll::Ready(None),
+                    //                 Poll::Pending => return Poll::Pending,
+                    //             }
+                    //         }
+                    //         // If we received a no command command, we are good to keep on truckin'!
+                    //         // This is the critical path!
+                    //         None => match stream.poll_next_unpin(cx) {
+                    //             Poll::Ready(Some(msg)) => match msg {
+                    //                 // If we are missing a heartbeat, we need to unsubscribe.
+                    //                 // TODO(nick): decide is this is too invasive into the "pause-resume" pattern.
+                    //                 Err(err)
+                    //                     if err.kind()
+                    //                         == consumer::pull::MessagesErrorKind::MissingHeartbeat =>
+                    //                 {
+                    //                     metric!(
+                    //                         counter.veritech.pause_resume_stream.missing_heartbeat = 1
+                    //                     );
+                    //                     error!("fatal: encountered missing heartbeat");
+                    //                     perform_verinuke();
+                    //                 }
+                    //                 // For all other errors and successful cases, return ready!
+                    //                 // This the critical path!
+                    //                 _ => return Poll::Ready(Some(msg)),
+                    //             },
+                    //             Poll::Ready(None) => return Poll::Ready(None),
+                    //             Poll::Pending => return Poll::Pending,
+                    //         },
+                    //     }
+                    // }
+                },
                 // Let's try to transition from "subscribing" to "subscribed"
                 State::Subscribing(subscribing) => match subscribing.poll_unpin(cx) {
                     // Success! The stream is ready. We can return poll pending.
@@ -259,8 +278,5 @@ fn perform_verinuke() {
     // NOTE(nick): the "si-service" crate sees SIGTERM and will return "Ok(())", which will make
     // veritech exit with exit code 0. However, we believe we will always exceed the shutdown
     // timeout and we'll have a non-zero exit code anyway.
-    let _result = Command::new("kill")
-        .arg("-15")
-        .arg(pid.to_string())
-        .output();
+    let _result = Command::new("kill").arg("-15").arg(pid.to_string()).spawn();
 }
