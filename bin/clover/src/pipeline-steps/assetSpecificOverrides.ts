@@ -2,6 +2,7 @@ import _ from "npm:lodash";
 import _logger from "../logger.ts";
 import {
   createInputSocketFromProp,
+  createOutputSocketFromProp,
   ExpandedSocketSpec,
   setAnnotationOnSocket,
 } from "../spec/sockets.ts";
@@ -122,6 +123,31 @@ const overrides = new Map<string, OverrideFn>([
 
     setAnnotationOnSocket(socket, { tokens: ["InternetGatewayId"] });
     setAnnotationOnSocket(socket, { tokens: ["VPNGatewayId"] });
+
+    variant.sockets.push(socket);
+  }],
+  ["AWS::Route53::HostedZone", (spec: ExpandedPkgSpec) => {
+    const variant = spec.schemas[0].variants[0];
+
+    const prop = variant.resourceValue.entries.find((p: ExpandedPropSpec) =>
+      p.name === "NameServers"
+    )
+
+    if (!prop) return;
+    const socket = createOutputSocketFromProp(prop);
+
+    variant.sockets.push(socket);
+  }],
+  ["AWS::Route53::RecordSet", (spec: ExpandedPkgSpec) => {
+    const variant = spec.schemas[0].variants[0];
+
+    const prop = variant.domain.entries.find((p: ExpandedPropSpec) =>
+      p.name === "ResourceRecords"
+    );
+
+    if (!prop) return;
+    const socket = createInputSocketFromProp(prop);
+    setAnnotationOnSocket(socket, { tokens: ["NameServers"] });
 
     variant.sockets.push(socket);
   }],
