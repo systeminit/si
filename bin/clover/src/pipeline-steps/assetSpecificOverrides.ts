@@ -30,38 +30,6 @@ export function assetSpecificOverrides(
 type OverrideFn = (spec: ExpandedPkgSpec) => void;
 
 const overrides = new Map<string, OverrideFn>([
-  ["AWS::CloudTrail::Trail", (spec: ExpandedPkgSpec) => {
-    const variant = spec.schemas[0].variants[0];
-
-    for (const prop of variant.domain.entries) {
-      switch (prop.name) {
-        case "S3BucketName": {
-          const socket = createInputSocketFromProp(prop, [{
-            tokens: ["BucketName"],
-          }]);
-
-          variant.sockets.push(socket);
-          break;
-        }
-        case "SnsTopicName": {
-          const socket = createInputSocketFromProp(prop, [{
-            tokens: ["TopicName"],
-          }]);
-
-          variant.sockets.push(socket);
-          break;
-        }
-        case "KMSKeyId": {
-          const socket = createInputSocketFromProp(prop, [{
-            tokens: ["KeyId"],
-          }]);
-
-          variant.sockets.push(socket);
-          break;
-        }
-      }
-    }
-  }],
   ["ContainerDefinitions Secrets", (spec: ExpandedPkgSpec) => {
     const variant = spec.schemas[0].variants[0];
 
@@ -76,25 +44,6 @@ const overrides = new Map<string, OverrideFn>([
 
     variant.sockets.push(socket);
   }],
-  ["AWS::DataZone::Domain", (spec: ExpandedPkgSpec) => {
-    const variant = spec.schemas[0].variants[0];
-
-    const socket = variant.sockets.find(
-      (s: ExpandedSocketSpec) => s.name === "Id" && s.data.kind === "output",
-    );
-
-    setAnnotationOnSocket(socket!, { tokens: ["Domain Identifier"] });
-  }],
-  ["AWS::DataZone::Project", (spec: ExpandedPkgSpec) => {
-    const variant = spec.schemas[0].variants[0];
-
-    const socket = variant.sockets.find(
-      (s: ExpandedSocketSpec) => s.name === "Id" && s.data.kind === "output",
-    );
-    if (!socket) return;
-
-    setAnnotationOnSocket(socket, { tokens: ["Project Identifier"] });
-  }],
   ["AWS::EC2::Instance", (spec: ExpandedPkgSpec) => {
     const variant = spec.schemas[0].variants[0];
 
@@ -102,13 +51,6 @@ const overrides = new Map<string, OverrideFn>([
       p.name === "UserData"
     );
     prop!.data.widgetKind = "CodeEditor";
-
-    const securityGroupIdsProp = variant.domain.entries.find((
-      p: ExpandedPropSpec,
-    ) => p.name === "SecurityGroupIds");
-    const socket = createInputSocketFromProp(securityGroupIdsProp!);
-    setAnnotationOnSocket(socket, { tokens: ["GroupId"] });
-    variant.sockets.push(socket);
   }],
   ["AWS::EC2::NetworkInterface", (spec: ExpandedPkgSpec) => {
     const variant = spec.schemas[0].variants[0];
@@ -198,21 +140,23 @@ const overrides = new Map<string, OverrideFn>([
       );
     }
   }],
-  ["AWS::Route53::HostedZone", (spec: ExpandedPkgSpec) => {
-    const variant = spec.schemas[0].variants[0];
-
-    // Add an annotation for the Id output socket to connect to HostedZoneId
-    const socket = variant.sockets.find(
-      (s: ExpandedSocketSpec) => s.name === "Id" && s.data.kind === "output",
-    );
-    if (!socket) return;
-
-    setAnnotationOnSocket(socket, { tokens: ["HostedZoneId"] });
-  }],
   [
     "AWS::SecretsManager::Secret",
     addSecretProp("Secret String", "secretString", ["SecretString"]),
   ],
+  ["AWS::EC2::NetworkInterface", (spec: ExpandedPkgSpec) => {
+    const variant = spec.schemas[0].variants[0];
+
+    const prop = variant.domain.entries.find((p: ExpandedPropSpec) =>
+      p.name === "GroupSet"
+    );
+
+    if (!prop) return;
+    const groupSocket = createInputSocketFromProp(prop);
+
+    setAnnotationOnSocket(groupSocket, { tokens: ["GroupId"] });
+    variant.sockets.push(groupSocket);
+  }],
   ["TargetGroup Targets", (spec: ExpandedPkgSpec) => {
     const variant = spec.schemas[0].variants[0];
 

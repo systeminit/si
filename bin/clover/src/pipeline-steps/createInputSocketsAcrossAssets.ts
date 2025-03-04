@@ -28,8 +28,8 @@ export function createInputSocketsBasedOnOutputSockets(
 
     for (const socket of schemaVariant.sockets) {
       if (socket.data?.kind === "output") {
-        foundOutputSockets[socket.name] ??= [];
-        foundOutputSockets[socket.name].push(schemaVariant);
+        foundOutputSockets[socket.name.toLowerCase()] ??= [];
+        foundOutputSockets[socket.name.toLowerCase()].push(schemaVariant);
 
         // add annotations as we may generate relevant output socket annotations
         // that match props
@@ -38,10 +38,6 @@ export function createInputSocketsBasedOnOutputSockets(
         ) as ConnectionAnnotation[];
 
         for (const { tokens } of existingAnnotations) {
-          if (tokens.length !== 1) {
-            continue;
-          }
-
           const annotationToken = tokens[0];
 
           // One of the annotations is always the socket name. We'll skip that one
@@ -49,8 +45,8 @@ export function createInputSocketsBasedOnOutputSockets(
             continue;
           }
 
-          foundOutputSockets[annotationToken] ??= [];
-          foundOutputSockets[annotationToken].push(schemaVariant);
+          foundOutputSockets[annotationToken.toLowerCase()] ??= [];
+          foundOutputSockets[annotationToken.toLowerCase()].push(schemaVariant);
         }
       }
     }
@@ -73,36 +69,13 @@ export function createInputSocketsBasedOnOutputSockets(
   }
 
   for (const spec of specs) {
-    const schema = spec.schemas[0];
-
-    if (!schema) {
-      console.log(
-        `Could not generate input for ${spec.name}: missing schema`,
-      );
-      continue;
-    }
-
-    const schemaVariant = schema.variants[0];
-
-    if (!schemaVariant) {
-      console.log(
-        `Could not generate input for ${spec.name}: missing variant`,
-      );
-      continue;
-    }
-
-    const domain = schema.variants[0].domain;
-
-    if (domain?.kind !== "object") {
-      console.log(
-        `Could not generate input for ${spec.name}: missing domain`,
-      );
-      continue;
-    }
+    const [schema] = spec.schemas;
+    const [schemaVariant] = schema.variants;
+    const domain = schemaVariant.domain;
 
     // Create sockets that props match exactly
     for (const prop of domain.entries) {
-      const fromVariants = foundOutputSockets[prop.name];
+      const fromVariants = foundOutputSockets[prop.name.toLowerCase()];
       if (!fromVariants) continue;
       // We don't create input sockets *just* to link to the same output socket/component.
       // There has to be another reason.
