@@ -22,6 +22,7 @@ import {
   ExpandedSchemaVariantSpec,
 } from "../spec/pkgs.ts";
 import { createPolicyDocumentInputSockets } from "../pipeline-steps/createPolicyDocumentInputSockets.ts";
+import { annotateCommonOutputSockets } from "../pipeline-steps/annotateCommonOutputSockets.ts";
 import { prettifySocketNames } from "../pipeline-steps/prettifySocketNames.ts";
 import { loadInferred } from "../spec/inferred.ts";
 import { addInferredEnums } from "../pipeline-steps/addInferredEnums.ts";
@@ -79,6 +80,7 @@ export async function generateSiSpecs(
   specs = await removeBadDocLinks(specs, options.docLinkCache);
   specs = addInferredEnums(specs, inferred);
   specs = generateOutputSocketsFromProps(specs);
+  specs = annotateCommonOutputSockets(specs);
   specs = addDefaultPropsAndSockets(specs);
   specs = attachDefaultActionFuncs(specs);
   specs = generateDefaultLeafFuncs(specs);

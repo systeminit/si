@@ -34,15 +34,13 @@ function createSocketsFromResource(
   if (resource.kind !== "object") throw "Resource prop is not object";
 
   for (const prop of resource.entries) {
-    if (!["array", "object"].includes(prop.kind)) {
-      const socket = getOrCreateOutputSocketFromProp(variant, prop);
-      // if this socket is an arn, we want to make sure that all input sockets
-      // that might also be arns can take this value
-      if (socket.name.toLowerCase().endsWith("arn")) {
-        const token = prop.name.slice(0, -3);
-        if (token !== "") {
-          setAnnotationOnSocket(socket, { tokens: [token] });
-        }
+    const socket = getOrCreateOutputSocketFromProp(variant, prop);
+    // if this socket is an arn, we want to make sure that all input sockets
+    // that might also be arns can take this value
+    if (socket.name.toLowerCase().endsWith("arn")) {
+      const token = prop.name.slice(0, -3);
+      if (token !== "") {
+        setAnnotationOnSocket(socket, { tokens: [token] });
       }
     }
   }
