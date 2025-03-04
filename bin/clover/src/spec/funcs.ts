@@ -114,6 +114,14 @@ const QUALIFICATION_FUNC_SPECS = {
     displayName: "Qualification for validating Cloudformation document",
     path: "./src/cloud-control-funcs/qualifications/awsCloudFormationLint.ts",
   },
+  awsIamPermissionsCheck: {
+    id: "62a0b8b43761ea04669d7d799a90f168cfd5a4307c27e2367e9762342984fd2c",
+    backendKind: "jsAttribute",
+    responseType: "qualification",
+    displayName: "Qualification for checking Cloud Formation permissions",
+    path:
+      "./src/cloud-control-funcs/qualifications/awsPermissionsSimulation.ts",
+  },
 } as const satisfies Record<string, FuncSpecInfo>;
 
 export function createFunc(
