@@ -24,7 +24,11 @@ import {
   setUpdatedDefaultWorkspace,
   WorkspaceId,
 } from "../services/workspaces.service";
-import { validate, ALLOWED_INPUT_REGEX } from "../lib/validation-helpers";
+import {
+  validate,
+  ALLOWED_INPUT_REGEX,
+  ALLOWED_URL_REGEX,
+} from "../lib/validation-helpers";
 
 import { CustomRouteContext } from "../custom-state";
 import {
@@ -116,7 +120,7 @@ router.post("/workspaces/new", async (ctx) => {
   const reqBody = validate(
     ctx.request.body,
     z.object({
-      instanceUrl: z.string().url(),
+      instanceUrl: z.string().url().regex(new RegExp(ALLOWED_URL_REGEX)),
       displayName: z.string().regex(ALLOWED_INPUT_REGEX),
       isDefault: z.boolean(),
       description: z.string().regex(ALLOWED_INPUT_REGEX),
