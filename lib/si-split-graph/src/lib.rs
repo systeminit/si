@@ -8,7 +8,7 @@ use thiserror::Error;
 pub mod subgraph;
 pub mod subgraph_address;
 
-use subgraph::{SubGraph, SubGraphNodeIndex};
+use subgraph::{SubGraph, SubGraphEdgeIndex, SubGraphNodeIndex};
 pub use subgraph_address::SubGraphAddress;
 
 pub const MAX_NODES: usize = ((u16::MAX / 2) - 1) as usize;
@@ -108,6 +108,8 @@ where
         subgraph: SubGraphIndex,
         edge_kind: K,
     },
+    // Ordering,
+    // Ordinal,
 }
 
 impl<E, K> SplitGraphEdgeWeight<E, K>
@@ -125,28 +127,35 @@ where
 
 pub trait EdgeKind: PartialEq + Copy + Clone + std::fmt::Debug {}
 
-pub trait CustomNodeWeight: Clone + std::fmt::Debug {
+pub trait CustomNodeWeight: PartialEq + Clone + std::fmt::Debug {
     fn id(&self) -> NodeId;
 
     fn set_merkle_tree_hash(&mut self, hash: MerkleTreeHash);
     fn get_merkle_tree_hash(&self) -> MerkleTreeHash;
     fn node_hash(&self) -> ContentHash;
+    fn ordered(&self) -> bool;
 }
 
-pub trait CustomEdgeWeight<K>: Clone + std::fmt::Debug
+pub trait CustomEdgeWeight<K>: PartialEq + Clone + std::fmt::Debug
 where
     K: EdgeKind,
 {
     fn kind(&self) -> K;
 }
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
-pub struct SplitGraphIndex {
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
+pub struct SplitGraphNodeIndex {
     subgraph: SubGraphIndex,
     index: SubGraphNodeIndex,
 }
 
-impl SplitGraphIndex {
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
+pub struct SplitGraphEdgeIndex {
+    subgraph: SubGraphIndex,
+    index: SubGraphEdgeIndex,
+}
+
+impl SplitGraphNodeIndex {
     pub fn new(subgraph: SubGraphIndex, index: SubGraphNodeIndex) -> Self {
         Self { subgraph, index }
     }
@@ -155,11 +164,11 @@ impl SplitGraphIndex {
 #[derive(Serialize, Deserialize)]
 pub struct SuperGraph {
     addresses: Vec<SubGraphAddress>,
-    root_index: SplitGraphIndex,
+    root_index: SplitGraphNodeIndex,
     split_max: u16,
 }
 
-pub struct SplitGraph<'a, 'b, N, E, R, W, K>
+pub struct SplitGraph<'a, 'b, N, E, K, R, W>
 where
     N: CustomNodeWeight,
     E: CustomEdgeWeight<K>,
@@ -173,7 +182,7 @@ where
     writer: &'b W,
 }
 
-impl<'a, 'b, N, E, R, W, K> SplitGraph<'a, 'b, N, E, R, W, K>
+impl<'a, 'b, N, E, K, R, W> SplitGraph<'a, 'b, N, E, K, R, W>
 where
     N: CustomNodeWeight,
     K: EdgeKind,
@@ -193,7 +202,7 @@ where
         Self {
             supergraph: SuperGraph {
                 addresses: vec![],
-                root_index: SplitGraphIndex {
+                root_index: SplitGraphNodeIndex {
                     index: root_index,
                     subgraph: 0,
                 },
@@ -270,20 +279,27 @@ where
         subgraph_index
     }
 
-    fn add_node_inner(
+    fn add_node_to_subgraph(
         &mut self,
         subgraph_index: SubGraphIndex,
         node: SplitGraphNodeWeight<N>,
-    ) -> SplitGraphIndex {
+    ) -> SplitGraphNodeIndex {
         let subgraph = self.subgraphs.get_mut(subgraph_index as usize).unwrap();
-        let node_id = node.id();
-        let node_index = subgraph.graph.add_node(node);
-        subgraph.node_index_by_id.insert(dbg!(node_id), node_index);
+        let node_index = subgraph.add_node(node);
 
-        SplitGraphIndex::new(subgraph_index, node_index)
+        SplitGraphNodeIndex::new(subgraph_index, node_index)
     }
 
-    pub fn add_node(&mut self, node: N) -> SplitGraphIndex {
+    pub fn add_or_replace_node(&mut self, node: N) -> SplitGraphNodeIndex {
+        let node_id = node.id();
+        if let Some(split_graph_index) = self.node_id_to_index(node_id) {
+            if let Some(subgraph) = self.subgraphs.get_mut(split_graph_index.subgraph as usize) {
+                subgraph.replace_node(split_graph_index.index, SplitGraphNodeWeight::Custom(node));
+            }
+
+            return split_graph_index;
+        }
+
         let subgraph_index = if let Some((index, _)) =
             self.subgraphs.iter().enumerate().find(|(_, sub)| {
                 // We add one to the max so that the root node is not part of the count
@@ -294,10 +310,10 @@ where
             self.new_subgraph()
         };
 
-        self.add_node_inner(subgraph_index, SplitGraphNodeWeight::Custom(node))
+        self.add_node_to_subgraph(subgraph_index, SplitGraphNodeWeight::Custom(node))
     }
 
-    fn node_weight_by_index(&self, index: SplitGraphIndex) -> Option<&SplitGraphNodeWeight<N>> {
+    fn node_weight_by_index(&self, index: SplitGraphNodeIndex) -> Option<&SplitGraphNodeWeight<N>> {
         self.subgraphs
             .get(index.subgraph as usize)
             .and_then(|sub| sub.graph.node_weight(index.index))
@@ -313,7 +329,7 @@ where
         None
     }
 
-    pub fn node_id_to_index(&self, id: NodeId) -> Option<SplitGraphIndex> {
+    pub fn node_id_to_index(&self, id: NodeId) -> Option<SplitGraphNodeIndex> {
         self.subgraphs
             .iter()
             .enumerate()
@@ -321,7 +337,7 @@ where
             .and_then(|(idx, sub)| {
                 sub.node_index_by_id
                     .get(&id)
-                    .map(|subgraph_index| SplitGraphIndex::new(idx as u16, *subgraph_index))
+                    .map(|subgraph_index| SplitGraphNodeIndex::new(idx as u16, *subgraph_index))
             })
     }
 
@@ -415,14 +431,14 @@ where
         let to_subgraph_idx = to_index.subgraph;
         if from_subgraph_idx == to_subgraph_idx {
             let from_subgraph = self.subgraphs.get_mut(from_subgraph_idx as usize).unwrap();
-            from_subgraph.graph.add_edge(
+            from_subgraph.add_edge(
                 from_index.index,
-                to_index.index,
                 SplitGraphEdgeWeight::Custom(edge),
+                to_index.index,
             );
         } else {
             let ext_target_id = Ulid::new();
-            let ext_target_idx = self.add_node_inner(
+            let ext_target_idx = self.add_node_to_subgraph(
                 from_subgraph_idx,
                 SplitGraphNodeWeight::ExternalTarget {
                     id: ext_target_id,
@@ -431,20 +447,20 @@ where
                 },
             );
             let from_subgraph = self.subgraphs.get_mut(from_subgraph_idx as usize).unwrap();
-            from_subgraph.graph.add_edge(
+            from_subgraph.add_edge(
                 from_index.index,
-                ext_target_idx.index,
                 SplitGraphEdgeWeight::Custom(edge.clone()),
+                ext_target_idx.index,
             );
             let to_subgraph = self.subgraphs.get_mut(to_subgraph_idx as usize).unwrap();
-            to_subgraph.graph.add_edge(
+            to_subgraph.add_edge(
                 to_subgraph.root_index,
-                to_index.index,
                 SplitGraphEdgeWeight::ExternalSource {
                     source_id: from_id,
                     subgraph: from_subgraph_idx,
                     edge_kind: edge.kind(),
                 },
+                to_index.index,
             );
         }
     }
@@ -570,6 +586,18 @@ where
     }
 }
 
+impl<N, E, K, R, W> petgraph::visit::GraphBase for SplitGraph<'_, '_, N, E, K, R, W>
+where
+    N: CustomNodeWeight,
+    E: CustomEdgeWeight<K>,
+    K: EdgeKind,
+    R: SubGraphReader<N, E, K>,
+    W: SubGraphWriter<N, E, K>,
+{
+    type EdgeId = SplitGraphEdgeIndex;
+    type NodeId = SplitGraphNodeIndex;
+}
+
 #[cfg(test)]
 mod tests {
     use std::{
@@ -579,7 +607,7 @@ mod tests {
 
     use super::*;
 
-    #[derive(Clone)]
+    #[derive(Clone, PartialEq)]
     struct TestNodeWeight {
         id: NodeId,
         name: String,
@@ -609,6 +637,10 @@ mod tests {
             let mut hasher = ContentHash::hasher();
             hasher.update(&self.name.as_bytes());
             hasher.finalize()
+        }
+
+        fn ordered(&self) -> bool {
+            false
         }
     }
 
@@ -648,6 +680,39 @@ mod tests {
     impl CustomEdgeWeight<()> for () {
         fn kind(&self) -> () {
             ()
+        }
+    }
+
+    #[test]
+    fn replace_node() {
+        let reader_writer = TestReadWriter {
+            graphs: HashMap::new(),
+        };
+        let mut splitgraph = SplitGraph::new(&reader_writer, &reader_writer, 2);
+
+        let mut nodes: Vec<TestNodeWeight> = ["1", "2", "3", "4", "5", "6"]
+            .into_iter()
+            .map(|name| TestNodeWeight {
+                id: Ulid::new(),
+                name: name.to_string(),
+                merkle_tree_hash: MerkleTreeHash::nil(),
+            })
+            .collect();
+
+        for node in &nodes {
+            splitgraph.add_or_replace_node(node.clone());
+        }
+
+        for node in nodes.iter_mut() {
+            node.name = format!("{}-{}", node.name, node.id);
+            splitgraph.add_or_replace_node(node.clone());
+        }
+
+        for node in &nodes {
+            assert_eq!(
+                Some(node),
+                splitgraph.node_weight(node.id()).and_then(|n| n.custom())
+            );
         }
     }
 
@@ -727,12 +792,12 @@ mod tests {
         let mut name_to_id_map = HashMap::new();
         for name in &nodes {
             let id = Ulid::new();
-            splitgraph.add_node(TestNodeWeight {
+            splitgraph.add_or_replace_node(TestNodeWeight {
                 id,
                 name: name.to_string(),
                 merkle_tree_hash: MerkleTreeHash::nil(),
             });
-            unsplitgraph.add_node(TestNodeWeight {
+            unsplitgraph.add_or_replace_node(TestNodeWeight {
                 id,
                 name: name.to_string(),
                 merkle_tree_hash: MerkleTreeHash::nil(),

@@ -1,6 +1,6 @@
 use petgraph::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::io::Write;
 
 use crate::{
@@ -9,6 +9,7 @@ use crate::{
 };
 
 pub type SubGraphNodeIndex = NodeIndex<u16>;
+pub type SubGraphEdgeIndex = EdgeIndex<u16>;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct SubGraph<N, E, K>
@@ -20,6 +21,9 @@ where
     pub(super) graph: StableDiGraph<SplitGraphNodeWeight<N>, SplitGraphEdgeWeight<E, K>, u16>,
     pub(super) node_index_by_id: HashMap<NodeId, SubGraphNodeIndex>,
     pub(super) root_index: SubGraphNodeIndex,
+
+    #[serde(skip)]
+    pub(super) touched_nodes: HashSet<SubGraphNodeIndex>,
 }
 
 impl<N, E, K> Default for SubGraph<N, E, K>
@@ -44,6 +48,8 @@ where
             graph: StableDiGraph::with_capacity(MAX_NODES, MAX_NODES * 2),
             node_index_by_id: HashMap::new(),
             root_index: NodeIndex::new(0),
+
+            touched_nodes: HashSet::new(),
         }
     }
 
@@ -66,6 +72,55 @@ where
 
         self.node_index_by_id
             .retain(|_id, index| self.graph.node_weight(*index).is_some());
+    }
+
+    pub(super) fn add_node(&mut self, node: SplitGraphNodeWeight<N>) -> SubGraphNodeIndex {
+        let node_id = node.id();
+        let node_index = self.graph.add_node(node);
+        self.node_index_by_id.insert(node_id, node_index);
+        self.touched_nodes.insert(node_index);
+
+        node_index
+    }
+
+    pub(super) fn replace_node(&mut self, index: SubGraphNodeIndex, node: SplitGraphNodeWeight<N>) {
+        if let Some(node_ref) = self.graph.node_weight_mut(index) {
+            *node_ref = node;
+        }
+        self.touched_nodes.insert(index);
+    }
+
+    pub(super) fn add_edge(
+        &mut self,
+        from_index: SubGraphNodeIndex,
+        edge_weight: SplitGraphEdgeWeight<E, K>,
+        to_index: SubGraphNodeIndex,
+    ) {
+        let exists =
+            self.graph
+                .edges_connecting(from_index, to_index)
+                .any(|edge_ref| match edge_ref.weight() {
+                    SplitGraphEdgeWeight::Custom(custom_edge) => {
+                        Some(custom_edge.kind()) == edge_weight.custom().map(|e| e.kind())
+                    }
+                    SplitGraphEdgeWeight::ExternalSource {
+                        source_id,
+                        edge_kind,
+                        ..
+                    } => match &edge_weight {
+                        SplitGraphEdgeWeight::Custom(_) => false,
+                        SplitGraphEdgeWeight::ExternalSource {
+                            source_id: new_source_id,
+                            edge_kind: new_edge_kind,
+                            ..
+                        } => source_id == new_source_id && edge_kind == new_edge_kind,
+                    },
+                });
+
+        if !exists {
+            self.graph.add_edge(from_index, to_index, edge_weight);
+            self.touched_nodes.insert(from_index);
+        }
     }
 
     pub fn tiny_dot_to_file(&self, name: &str) {
