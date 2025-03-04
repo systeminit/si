@@ -29,10 +29,10 @@ export interface IValueFromBuilder {
  *  .build()
  */
 export class ValueFromBuilder implements IValueFromBuilder {
-  valueFrom = <ValueFrom> {};
+  valueFrom = <ValueFrom>{};
 
   constructor() {
-    this.valueFrom = <ValueFrom> {};
+    this.valueFrom = <ValueFrom>{};
   }
 
   /**
@@ -136,11 +136,11 @@ export interface ISocketDefinitionBuilder {
  *  .build();
  */
 export class SocketDefinitionBuilder implements ISocketDefinitionBuilder {
-  socket = <SocketDefinition> {};
+  socket = <SocketDefinition>{};
   connectionAnnotations: string[] = [];
 
   constructor() {
-    this.socket = <SocketDefinition> {};
+    this.socket = <SocketDefinition>{};
   }
 
   /**
@@ -310,11 +310,12 @@ export interface IPropWidgetDefinitionBuilder {
  *  .build()
  */
 export class PropWidgetDefinitionBuilder
-  implements IPropWidgetDefinitionBuilder {
-  propWidget = <PropWidgetDefinition> {};
+  implements IPropWidgetDefinitionBuilder
+{
+  propWidget = <PropWidgetDefinition>{};
 
   constructor() {
-    this.propWidget = <PropWidgetDefinition> {};
+    this.propWidget = <PropWidgetDefinition>{};
   }
 
   /**
@@ -342,12 +343,10 @@ export class PropWidgetDefinitionBuilder
       this.propWidget.options = [];
     }
 
-    this.propWidget.options.push(
-      <Option> {
-        label: "si_create_only_prop",
-        value: "true",
-      },
-    );
+    this.propWidget.options.push(<Option>{
+      label: "si_create_only_prop",
+      value: "true",
+    });
 
     return this;
   }
@@ -369,12 +368,10 @@ export class PropWidgetDefinitionBuilder
       this.propWidget.options = [];
     }
 
-    this.propWidget.options.push(
-      <Option> {
-        label: key,
-        value,
-      },
-    );
+    this.propWidget.options.push(<Option>{
+      label: key,
+      value,
+    });
     return this;
   }
 
@@ -411,10 +408,10 @@ export interface IMapKeyFuncBuilder {
  *    .build()
  */
 export class MapKeyFuncBuilder implements IMapKeyFuncBuilder {
-  mapKeyFunc = <MapKeyFunc> {};
+  mapKeyFunc = <MapKeyFunc>{};
 
   constructor() {
-    this.mapKeyFunc = <MapKeyFunc> {};
+    this.mapKeyFunc = <MapKeyFunc>{};
   }
 
   /**
@@ -487,11 +484,12 @@ export interface ISiPropValueFromDefinitionBuilder {
 }
 
 export class SiPropValueFromDefinitionBuilder
-  implements ISiPropValueFromDefinitionBuilder {
-  definition = <SiPropValueFromDefinition> {};
+  implements ISiPropValueFromDefinitionBuilder
+{
+  definition = <SiPropValueFromDefinition>{};
 
   constructor() {
-    this.definition = <SiPropValueFromDefinition> {};
+    this.definition = <SiPropValueFromDefinition>{};
   }
 
   /**
@@ -520,6 +518,7 @@ export type PropDefinitionKind =
   | "boolean"
   | "float"
   | "integer"
+  | "json"
   | "map"
   | "object"
   | "string";
@@ -584,7 +583,7 @@ export interface IPropBuilder {
  *  .build();
  */
 export class PropBuilder implements IPropBuilder {
-  prop = <PropDefinition> {};
+  prop = <PropDefinition>{};
 
   /**
    * Adds a child to an object type prop
@@ -757,7 +756,7 @@ export class PropBuilder implements IPropBuilder {
   /**
    * The type of the prop
    *
-   * @param kind {PropDefinitionKind} [array | boolean | float | integer | map | object | string]
+   * @param kind {PropDefinitionKind} [array | boolean | float | integer | json | map | object | string]
    *
    * @returns this
    *
@@ -863,10 +862,10 @@ export interface ISecretPropBuilder {
  *  .build();
  */
 export class SecretPropBuilder implements ISecretPropBuilder {
-  prop = <SecretPropDefinition> {};
+  prop = <SecretPropDefinition>{};
 
   constructor() {
-    this.prop = <SecretPropDefinition> {};
+    this.prop = <SecretPropDefinition>{};
     this.prop.kind = "string";
     this.prop.widget = {
       kind: "secret",
@@ -983,7 +982,7 @@ export class SecretDefinitionBuilder implements ISecretDefinitionBuilder {
   definition: SecretDefinition;
 
   constructor() {
-    this.definition = <SecretDefinition> {};
+    this.definition = <SecretDefinition>{};
     this.definition.name = "";
     this.definition.props = [];
     this.definition.connectionAnnotations = "";
@@ -1096,10 +1095,10 @@ export interface IAssetBuilder {
  * return asset.build();
  */
 export class AssetBuilder implements IAssetBuilder {
-  asset = <Asset> {};
+  asset = <Asset>{};
 
   constructor() {
-    this.asset = <Asset> {};
+    this.asset = <Asset>{};
   }
 
   /**

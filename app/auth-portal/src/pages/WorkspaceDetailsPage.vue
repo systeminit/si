@@ -100,6 +100,7 @@
           autocomplete="url"
           label="URL"
           placeholder="The instance url for this workspace"
+          :regex="ALLOWED_URL_REGEX"
           required
         />
 
@@ -269,7 +270,7 @@ import { tracker } from "@/lib/posthog";
 import { API_HTTP_URL } from "@/store/api";
 import MemberListItem from "@/components/MemberListItem.vue";
 import WorkspacePageHeader from "@/components/WorkspacePageHeader.vue";
-import { ALLOWED_INPUT_REGEX } from "@/lib/validations";
+import { ALLOWED_INPUT_REGEX, ALLOWED_URL_REGEX } from "@/lib/validations";
 
 const workspacesStore = useWorkspacesStore();
 const router = useRouter();

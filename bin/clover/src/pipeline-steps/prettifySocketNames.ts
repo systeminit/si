@@ -40,6 +40,6 @@ function toSpaceCase(name: string) {
   return name
     // separate any sequence of lowercase letters followed by an uppercase letter
     .replace(/([a-z])([A-Z])/g, "$1 $2")
-    // Separate any sequence of more than 1 of uppercase letters (acronyms) from the next word
-    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2");
+    // Separate any sequence of more than 3 of uppercase letters (acronyms) from the next word
+    .replace(/([A-Z]{3,})([A-Z][a-z])/g, "$1 $2");
 }

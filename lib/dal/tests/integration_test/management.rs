@@ -1432,10 +1432,10 @@ async fn upgrade_manager_variant(ctx: &mut DalContext) {
         ctx,
         "createme",
         r#"
-        function main() {
-            return new AssetBuilder().build();
-        }
-    "#,
+            function main() {
+                return new AssetBuilder().build();
+            }
+        "#,
     )
     .await;
     expected::commit_and_update_snapshot_to_visibility(ctx).await;
@@ -1444,17 +1444,17 @@ async fn upgrade_manager_variant(ctx: &mut DalContext) {
             ctx,
             &[original_variant.schema(ctx).await.id()],
             r#"
-            function main(input) {
-                return {
-                    status: "ok",
-                    ops: {
-                        create: {
-                            created: { kind: "createme" }
+                function main(input) {
+                    return {
+                        status: "ok",
+                        ops: {
+                            create: {
+                                created: { kind: "createme" }
+                            }
                         }
                     }
                 }
-            }
-        "#,
+            "#,
         )
         .await;
     expected::commit_and_update_snapshot_to_visibility(ctx).await;

@@ -98,6 +98,23 @@ export function addDefaultPropsAndSockets(
       extraProp.entries.push(typeProp);
     }
 
+    // Create Permissions Map
+    {
+      const permissionsMapProp = createScalarProp(
+        "AwsPermissionsMap",
+        "string",
+        extraProp.metadata.propPath,
+        false,
+      );
+
+      permissionsMapProp.data.defaultValue = JSON.stringify(
+        schemaVariant.cfSchema.handlers,
+      );
+      permissionsMapProp.data.hidden = true;
+
+      extraProp.entries.push(permissionsMapProp);
+    }
+
     // Create Credential prop and socket under root/secrets
     {
       const credProp = createScalarProp(

@@ -123,6 +123,16 @@ impl Client {
             options = options.name(connection_name);
         }
 
+        // Reset all of the metrics before setting up the event callback.
+        metric!(counter.nats.event_callback.connected = 0);
+        metric!(counter.nats.event_callback.disconnected = 0);
+        metric!(counter.nats.event_callback.closed = 0);
+        metric!(counter.nats.event_callback.lame_duck_mode = 0);
+        metric!(counter.nats.event_callback.draining = 0);
+        metric!(counter.nats.event_callback.slow_consumer = 0);
+        metric!(counter.nats.event_callback.server_error = 0);
+        metric!(counter.nats.event_callback.client_error = 0);
+
         options = options.event_callback(|event| async move {
             match event {
                 Event::Connected => metric!(counter.nats.event_callback.connected = 1),
@@ -132,15 +142,21 @@ impl Client {
                 Event::Draining => metric!(counter.nats.event_callback.draining = 1),
                 Event::SlowConsumer(sid) => {
                     metric!(counter.nats.event_callback.slow_consumer = 1);
-                    warn!(%sid, "nats event callback: slow consumers for subscription");
+
+                    // This is at trace level because these messages can be produced in the millions.
+                    trace!(%sid, "nats event callback: slow consumer for subscription with sid");
                 }
                 Event::ServerError(server_error) => {
                     metric!(counter.nats.event_callback.server_error = 1);
-                    error!(si.error.message = ?server_error, "nats event callback: server error")
+
+                    // This is at trace level because these messages can be produced in the millions.
+                    trace!(si.error.message = ?server_error, "nats event callback: server error")
                 }
                 Event::ClientError(client_error) => {
                     metric!(counter.nats.event_callback.client_error = 1);
-                    error!(si.error.message = ?client_error, "nats event callback: client error")
+
+                    // This is at trace level because these messages can be produced in the millions.
+                    trace!(si.error.message = ?client_error, "nats event callback: client error")
                 }
             }
         });

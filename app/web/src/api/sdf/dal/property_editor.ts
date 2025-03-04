@@ -13,6 +13,7 @@ export enum PropertyEditorPropKind {
   Object = "object",
   String = "string",
   Map = "map",
+  Json = "json",
 }
 
 export interface PropertyEditorPropWidgetKindCodeEditor {

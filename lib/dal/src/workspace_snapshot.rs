@@ -31,7 +31,7 @@ use crate::change_set::{ChangeSetError, ChangeSetId};
 use crate::component::inferred_connection_graph::{
     InferredConnectionGraph, InferredConnectionGraphError,
 };
-use crate::component::{ComponentResult, IncomingConnection};
+use crate::component::{ComponentResult, Connection};
 use crate::slow_rt::{self, SlowRuntimeError};
 use crate::socket::connection_annotation::ConnectionAnnotationError;
 use crate::socket::input::InputSocketError;
@@ -1429,7 +1429,7 @@ impl WorkspaceSnapshot {
     pub async fn socket_edges_removed_relative_to_base(
         &self,
         ctx: &DalContext,
-    ) -> WorkspaceSnapshotResult<Vec<IncomingConnection>> {
+    ) -> WorkspaceSnapshotResult<Vec<Connection>> {
         // Even though the default change set for a workspace can have a base change set, we don't
         // want to consider anything as new/modified/removed when looking at the default change
         // set.

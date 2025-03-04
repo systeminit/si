@@ -16,6 +16,7 @@ use dal::{
     ChangeSetError, ComponentError, FuncError, SchemaError, SchemaId, SchemaVariantError,
     TransactionsError, WorkspaceSnapshotError, WsEventError,
 };
+use si_id::ViewId;
 use thiserror::Error;
 use tokio::task::JoinError;
 
@@ -162,4 +163,9 @@ pub fn v2_routes() -> Router<AppState> {
             "/:view_id/view_object/set_geometry",
             put(set_geometry::set_view_object_geometry),
         )
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct ViewParam {
+    view_id: ViewId,
 }
