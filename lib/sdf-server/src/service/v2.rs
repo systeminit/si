@@ -18,6 +18,7 @@ pub mod audit_log;
 pub mod change_set;
 pub mod fs;
 pub mod func;
+pub mod index;
 pub mod integrations;
 pub mod management;
 pub mod module;
@@ -50,6 +51,7 @@ fn workspace_routes(state: AppState) -> Router<AppState> {
                 )
                 .route_layer(middleware::from_extractor::<TargetChangeSetIdFromPath>()),
         )
+        .nest("/index", index::v2_workspace_routes())
         .nest("/integrations", integrations::v2_routes())
         .nest("/fs", fs::fs_routes(state))
         .route_layer(middleware::from_extractor::<TargetWorkspaceIdFromPath>())

@@ -3,6 +3,7 @@ use std::{ops::Deref, sync::Arc};
 use asset_sprayer::AssetSprayer;
 use audit_database::AuditDatabaseContext;
 use axum::extract::FromRef;
+use frigg::FriggStore;
 use nats_multiplexer_client::MultiplexerClient;
 use si_data_spicedb::SpiceDbClient;
 use si_jwt_public_key::JwtPublicSigningKeyChain;
@@ -37,6 +38,7 @@ pub struct AppState {
     pub application_runtime_mode: Arc<RwLock<ApplicationRuntimeMode>>,
     shutdown_token: CancellationToken,
     spicedb_client: Option<SpiceDbClient>,
+    frigg: FriggStore,
     audit_database_context: AuditDatabaseContext,
 }
 
@@ -56,6 +58,7 @@ impl AppState {
         application_runtime_mode: Arc<RwLock<ApplicationRuntimeMode>>,
         shutdown_token: CancellationToken,
         spicedb_client: Option<SpiceDbClient>,
+        frigg: FriggStore,
         audit_database_context: AuditDatabaseContext,
     ) -> Self {
         let nats_multiplexer_clients = NatsMultiplexerClients {
@@ -77,6 +80,7 @@ impl AppState {
             application_runtime_mode,
             shutdown_token,
             spicedb_client,
+            frigg,
             audit_database_context,
         }
     }
@@ -127,6 +131,10 @@ impl AppState {
 
     pub fn audit_database_context(&self) -> &AuditDatabaseContext {
         &self.audit_database_context
+    }
+
+    pub fn frigg(&self) -> &FriggStore {
+        &self.frigg
     }
 }
 

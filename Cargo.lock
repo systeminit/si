@@ -2849,6 +2849,7 @@ name = "frigg"
 version = "0.1.0"
 dependencies = [
  "bytes",
+ "futures",
  "remain",
  "serde_json",
  "si-data-nats",
@@ -6298,6 +6299,7 @@ dependencies = [
  "dal-test",
  "derive_builder",
  "derive_more",
+ "frigg",
  "futures",
  "futures-lite",
  "hyper 0.14.32",

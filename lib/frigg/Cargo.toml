@@ -14,6 +14,7 @@ si-events                = { path = "../../lib/si-events-rs" }
 si-frontend-types        = { path = "../../lib/si-frontend-types-rs" }
 si-id                    = { path = "../../lib/si-id" }
 bytes                    = { workspace = true }
+futures                  = { workspace = true }
 remain                   = { workspace = true }
 serde_json               = { workspace = true }
 thiserror                = { workspace = true }

@@ -8,6 +8,7 @@ rust_library(
         "//lib/si-frontend-types-rs:si-frontend-types",
         "//lib/si-id:si-id",
         "//third-party/rust:bytes",
+        "//third-party/rust:futures",
         "//third-party/rust:remain",
         "//third-party/rust:serde_json",
         "//third-party/rust:thiserror",

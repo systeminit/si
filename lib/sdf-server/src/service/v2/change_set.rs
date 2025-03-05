@@ -160,4 +160,5 @@ pub fn change_set_routes(state: AppState) -> Router<AppState> {
         .route("/approval_status", get(approval_status::approval_status))
         .route("/approve_v2", post(approve_v2::approve))
         .route("/apply_v2", post(apply_v2::apply))
+        .nest("/index", super::index::v2_change_set_routes())
 }

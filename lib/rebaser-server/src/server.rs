@@ -159,7 +159,7 @@ impl Server {
 
         let requests_stream = nats::rebaser_requests_jetstream_stream(&context).await?;
 
-        let frigg = FriggStore::new(frigg_kv(&context, prefix.as_deref()).await?);
+        let frigg = FriggStore::new(nats.clone(), frigg_kv(&context, prefix.as_deref()).await?);
 
         let ctx_builder = DalContext::builder(services_context, false);
 

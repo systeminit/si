@@ -4,9 +4,11 @@ use asset_sprayer::AssetSprayer;
 use audit_database::AuditDatabaseContext;
 use axum::{async_trait, routing::IntoMakeService, Router};
 use dal::ServicesContext;
+use frigg::{frigg_kv, FriggStore};
 use hyper::server::accept::Accept;
 use nats_multiplexer::Multiplexer;
 use nats_multiplexer_client::MultiplexerClient;
+use si_data_nats::jetstream;
 use si_data_spicedb::SpiceDbClient;
 use si_jwt_public_key::JwtPublicSigningKeyChain;
 use si_posthog::PosthogClient;
@@ -123,6 +125,16 @@ impl Server {
             spicedb_client = Some(SpiceDbClient::new(config.spicedb()).await?);
         }
 
+        let frigg = {
+            let nats = services_context.nats_conn().clone();
+            let context = jetstream::new(nats.clone());
+
+            FriggStore::new(
+                nats,
+                frigg_kv(&context, context.metadata().subject_prefix()).await?,
+            )
+        };
+
         prepare_maintenance_mode_watcher(application_runtime_mode.clone(), token.clone())?;
 
         // Spawn helping tasks and track them for graceful shutdown
@@ -148,6 +160,7 @@ impl Server {
             application_runtime_mode,
             token,
             spicedb_client,
+            frigg,
             audit_database_context,
         )
         .await
@@ -170,6 +183,7 @@ impl Server {
         application_runtime_mode: Arc<RwLock<ApplicationRuntimeMode>>,
         token: CancellationToken,
         spicedb_client: Option<SpiceDbClient>,
+        frigg: FriggStore,
         audit_database_context: AuditDatabaseContext,
     ) -> ServerResult<Self> {
         let app = AxumApp::from_services(
@@ -185,6 +199,7 @@ impl Server {
             application_runtime_mode,
             token.clone(),
             spicedb_client,
+            frigg,
             // TODO(nick): split the migrator context and the reader-only context (should be read-only pg pool).
             audit_database_context.clone(),
         )
