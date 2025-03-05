@@ -41,7 +41,7 @@ export interface DBInterface {
   bifrostClose(): void,
   bifrostReconnect(): void,
   get(changeSetId: ChangeSetId, kind: string, id: Id): Promise<typeof NOROW | AtomDocument>,
-  mjolnir(changeSetId: ChangeSetId, kind: string, id: Id, checksum?: Checksum): void,
+  mjolnir(workspaceId: string, changeSetId: ChangeSetId, kind: string, id: Id, checksum?: Checksum): void,
   partialKeyFromKindAndId (kind: string, id: Id): QueryKey, 
   kindAndIdFromKey(key: QueryKey): { kind: string, id: Id},
   addListenerBustCache(fn: BustCacheFn): void,

@@ -44,10 +44,10 @@ export const useHeimdall = defineStore('heimdall', () => {
     { immediate: true },
   );
 
-  const bifrost = async (changeSetId: ChangeSetId, kind: string, id: Id): Promise<typeof NOROW | AtomDocument> => {
+  const bifrost = async (workspaceId: string, changeSetId: ChangeSetId, kind: string, id: Id): Promise<typeof NOROW | AtomDocument> => {
     const maybeAtomDoc = await db.get(changeSetId, kind, id);
     if (maybeAtomDoc === NOROW)
-      db.mjolnir(changeSetId, kind, id);
+      db.mjolnir(workspaceId, changeSetId, kind, id);
     return maybeAtomDoc
   };
 

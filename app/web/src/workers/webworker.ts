@@ -432,7 +432,7 @@ const applyPatch = async (atom: Atom, toSnapshotId: ROWID) => {
       // otherwise, fire the small hammer to get the full object
       else {
         span.addEvent("mjolnir", { atom: JSON.stringify(atom) });
-        mjolnir(atom.changeSetId, atom.kind, atom.id, atom.kindToChecksum);
+        mjolnir(atom.workspaceId, atom.changeSetId, atom.kind, atom.id, atom.kindToChecksum);
       }
     }
 
@@ -497,12 +497,12 @@ const patchAtom = async (atom: Atom, snapshotId: ROWID): Promise<ROWID> => {
   return atom_id as ROWID;
 };
 
-const mjolnir = async (changeSetId: ChangeSetId, kind: string, id: Id, checksum?: Checksum) => {
+const mjolnir = async (workspaceId: string, changeSetId: ChangeSetId, kind: string, id: Id, checksum?: Checksum) => {
   // TODO this is probably a WsEvent, so SDF knows who to reply to
   const pattern = [
     "v2",
     "workspaces",
-    { workspaceId: "01HRFEV0S23R1G23RP75QQDCA7" },
+    { workspaceId },
     "change-sets",
     { changeSetId },
     "index", "mjolnir"
@@ -745,7 +745,7 @@ const dbInterface: DBInterface = {
         const local = localChecksums[key];
         if (!local || local !== checksum) {
           const { kind, id } = kindAndArgsFromKey(key);
-          mjolnir(changeSetId, kind, id, checksum);
+          mjolnir(workspaceId, changeSetId, kind, id, checksum);
           numHammers++;
         }
       });
