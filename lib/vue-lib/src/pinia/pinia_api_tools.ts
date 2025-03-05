@@ -253,6 +253,7 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
     store,
     options: storeOptions,
   }: PiniaPluginContext) => {
+    if (store.$id === "heimdall") return;
     /* eslint-disable no-param-reassign */
 
     // bail if plugin already called - not sure if necessary but previous pinia version needed it
