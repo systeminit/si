@@ -1,7 +1,13 @@
+use std::collections::HashSet;
+
 use async_trait::async_trait;
+use fixedbitset::FixedBitSet;
 use petgraph::{prelude::*, stable_graph};
 use serde::{Deserialize, Serialize};
-use si_events::{merkle_tree_hash::MerkleTreeHash, ContentHash};
+use si_events::{
+    merkle_tree_hash::{self, MerkleTreeHash},
+    ContentHash,
+};
 use si_id::ulid::Ulid;
 use thiserror::Error;
 
@@ -23,7 +29,7 @@ pub enum SplitGraphError {
 
 pub type SplitGraphResult<T> = Result<T, SplitGraphError>;
 
-pub type NodeId = Ulid;
+pub type SplitGraphNodeId = Ulid;
 pub type SubGraphIndex = u16;
 
 #[async_trait]
@@ -65,26 +71,77 @@ where
     Custom(N),
     /// A placeholder for an edge that points to a node in another subgraph
     ExternalTarget {
-        id: NodeId,
+        id: SplitGraphNodeId,
         subgraph: SubGraphIndex,
-        target: NodeId,
+        target: SplitGraphNodeId,
+        merkle_tree_hash: MerkleTreeHash,
+    },
+    /// The ordering node for an ordered container
+    Ordering {
+        id: SplitGraphNodeId,
+        order: Vec<SplitGraphNodeId>,
+        merkle_tree_hash: MerkleTreeHash,
     },
     /// The root node for the entire graph
-    GraphRoot(NodeId),
+    GraphRoot {
+        id: SplitGraphNodeId,
+        merkle_tree_hash: MerkleTreeHash,
+    },
+    /// A ordering node, which cont
     /// The root node for a subgraph (besides the first subgraph, which has the GraphRoot root)
-    SubGraphRoot(NodeId),
+    SubGraphRoot {
+        id: SplitGraphNodeId,
+        merkle_tree_hash: MerkleTreeHash,
+    },
 }
 
 impl<N> SplitGraphNodeWeight<N>
 where
     N: CustomNodeWeight,
 {
-    pub fn id(&self) -> NodeId {
+    pub fn id(&self) -> SplitGraphNodeId {
         match self {
-            SplitGraphNodeWeight::ExternalTarget { id, .. } => *id,
-            SplitGraphNodeWeight::GraphRoot(id) => *id,
             SplitGraphNodeWeight::Custom(n) => n.id(),
-            SplitGraphNodeWeight::SubGraphRoot(id) => *id,
+            SplitGraphNodeWeight::ExternalTarget { id, .. }
+            | SplitGraphNodeWeight::Ordering { id, .. }
+            | SplitGraphNodeWeight::GraphRoot { id, .. }
+            | SplitGraphNodeWeight::SubGraphRoot { id, .. } => *id,
+        }
+    }
+
+    pub fn set_merkle_tree_hash(&mut self, hash: MerkleTreeHash) {
+        match self {
+            SplitGraphNodeWeight::Custom(n) => n.set_merkle_tree_hash(hash),
+            SplitGraphNodeWeight::ExternalTarget {
+                merkle_tree_hash, ..
+            }
+            | SplitGraphNodeWeight::Ordering {
+                merkle_tree_hash, ..
+            }
+            | SplitGraphNodeWeight::GraphRoot {
+                merkle_tree_hash, ..
+            }
+            | SplitGraphNodeWeight::SubGraphRoot {
+                merkle_tree_hash, ..
+            } => *merkle_tree_hash = hash,
+        }
+    }
+
+    pub fn merkle_tree_hash(&self) -> MerkleTreeHash {
+        match self {
+            SplitGraphNodeWeight::Custom(n) => n.merkle_tree_hash(),
+            SplitGraphNodeWeight::ExternalTarget {
+                merkle_tree_hash, ..
+            }
+            | SplitGraphNodeWeight::Ordering {
+                merkle_tree_hash, ..
+            }
+            | SplitGraphNodeWeight::GraphRoot {
+                merkle_tree_hash, ..
+            }
+            | SplitGraphNodeWeight::SubGraphRoot {
+                merkle_tree_hash, ..
+            } => *merkle_tree_hash,
         }
     }
 
@@ -104,12 +161,12 @@ where
 {
     Custom(E),
     ExternalSource {
-        source_id: NodeId,
+        source_id: SplitGraphNodeId,
         subgraph: SubGraphIndex,
         edge_kind: K,
     },
-    // Ordering,
-    // Ordinal,
+    Ordering,
+    Ordinal,
 }
 
 impl<E, K> SplitGraphEdgeWeight<E, K>
@@ -128,10 +185,10 @@ where
 pub trait EdgeKind: PartialEq + Copy + Clone + std::fmt::Debug {}
 
 pub trait CustomNodeWeight: PartialEq + Clone + std::fmt::Debug {
-    fn id(&self) -> NodeId;
+    fn id(&self) -> SplitGraphNodeId;
 
     fn set_merkle_tree_hash(&mut self, hash: MerkleTreeHash);
-    fn get_merkle_tree_hash(&self) -> MerkleTreeHash;
+    fn merkle_tree_hash(&self) -> MerkleTreeHash;
     fn node_hash(&self) -> ContentHash;
     fn ordered(&self) -> bool;
 }
@@ -143,13 +200,13 @@ where
     fn kind(&self) -> K;
 }
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct SplitGraphNodeIndex {
     subgraph: SubGraphIndex,
     index: SubGraphNodeIndex,
 }
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct SplitGraphEdgeIndex {
     subgraph: SubGraphIndex,
     index: SubGraphEdgeIndex,
@@ -195,7 +252,10 @@ where
         let root_id = Ulid::new();
         let root_index = first_subgraph
             .graph
-            .add_node(SplitGraphNodeWeight::GraphRoot(root_id));
+            .add_node(SplitGraphNodeWeight::GraphRoot {
+                id: root_id,
+                merkle_tree_hash: MerkleTreeHash::nil(),
+            });
         first_subgraph.node_index_by_id.insert(root_id, root_index);
         first_subgraph.root_index = root_index;
 
@@ -214,7 +274,13 @@ where
         }
     }
 
-    pub fn root_id(&self) -> NodeId {
+    pub fn node_count(&self) -> usize {
+        self.subgraphs.iter().fold(0, |count, subgraph| {
+            count.saturating_add(subgraph.node_index_by_id.len())
+        })
+    }
+
+    pub fn root_id(&self) -> SplitGraphNodeId {
         self.node_weight_by_index(self.supergraph.root_index)
             .map(|node| node.id())
             .unwrap()
@@ -258,7 +324,7 @@ where
         Ok(())
     }
 
-    pub fn make_node_id(&mut self) -> NodeId {
+    pub fn make_node_id(&mut self) -> SplitGraphNodeId {
         Ulid::new()
     }
 
@@ -268,7 +334,10 @@ where
         let mut subgraph = SubGraph::new();
         let new_root_id = Ulid::new();
 
-        let root_node = SplitGraphNodeWeight::SubGraphRoot(new_root_id);
+        let root_node = SplitGraphNodeWeight::SubGraphRoot {
+            id: new_root_id,
+            merkle_tree_hash: MerkleTreeHash::nil(),
+        };
         let subgraph_index = self.subgraphs.len() as u16;
         let index = subgraph.graph.add_node(root_node);
         subgraph.root_index = index;
@@ -319,7 +388,7 @@ where
             .and_then(|sub| sub.graph.node_weight(index.index))
     }
 
-    pub fn node_weight(&self, node_id: NodeId) -> Option<&SplitGraphNodeWeight<N>> {
+    pub fn node_weight(&self, node_id: SplitGraphNodeId) -> Option<&SplitGraphNodeWeight<N>> {
         for sub in &self.subgraphs {
             if let Some(index) = sub.node_index_by_id.get(&node_id) {
                 return sub.graph.node_weight(*index);
@@ -329,7 +398,7 @@ where
         None
     }
 
-    pub fn node_id_to_index(&self, id: NodeId) -> Option<SplitGraphNodeIndex> {
+    pub fn node_id_to_index(&self, id: SplitGraphNodeId) -> Option<SplitGraphNodeIndex> {
         self.subgraphs
             .iter()
             .enumerate()
@@ -341,7 +410,12 @@ where
             })
     }
 
-    pub fn remove_edge(&mut self, from_id: NodeId, edge_kind: K, to_id: NodeId) {
+    pub fn remove_edge(
+        &mut self,
+        from_id: SplitGraphNodeId,
+        edge_kind: K,
+        to_id: SplitGraphNodeId,
+    ) {
         let from_index = self.node_id_to_index(from_id).unwrap();
         let to_index = self.node_id_to_index(to_id).unwrap();
 
@@ -367,7 +441,7 @@ where
                 })
                 .map(|edge_ref| edge_ref.id())
             {
-                from_subgraph.graph.remove_edge(edge_idx);
+                from_subgraph.remove_edge(edge_idx);
             }
         } else {
             let from_subgraph = self.subgraphs.get_mut(from_subgraph_idx as usize).unwrap();
@@ -393,7 +467,7 @@ where
                 })
                 .map(|edge_ref| edge_ref.id())
             {
-                from_subgraph.graph.remove_edge(edge_idx);
+                from_subgraph.remove_edge(edge_idx);
                 let to_subgraph = self.subgraphs.get_mut(to_subgraph_idx as usize).unwrap();
                 let root_index = to_subgraph.root_index;
                 if let Some(edge_idx) = to_subgraph
@@ -417,13 +491,13 @@ where
                     })
                     .map(|edge_ref| edge_ref.id())
                 {
-                    to_subgraph.graph.remove_edge(edge_idx);
+                    to_subgraph.remove_edge(edge_idx);
                 }
             }
         }
     }
 
-    pub fn add_edge(&mut self, from_id: NodeId, edge: E, to_id: NodeId) {
+    pub fn add_edge(&mut self, from_id: SplitGraphNodeId, edge: E, to_id: SplitGraphNodeId) {
         let from_index = self.node_id_to_index(from_id).unwrap();
         let to_index = self.node_id_to_index(to_id).unwrap();
 
@@ -444,6 +518,7 @@ where
                     id: ext_target_id,
                     subgraph: to_subgraph_idx,
                     target: to_id,
+                    merkle_tree_hash: MerkleTreeHash::nil(),
                 },
             );
             let from_subgraph = self.subgraphs.get_mut(from_subgraph_idx as usize).unwrap();
@@ -467,7 +542,7 @@ where
 
     pub fn edges_directed(
         &self,
-        from_id: NodeId,
+        from_id: SplitGraphNodeId,
         direction: Direction,
     ) -> SplitGraphEdges<N, E, K> {
         let split_graph_index = self.node_id_to_index(from_id).unwrap();
@@ -507,8 +582,8 @@ where
     E: 'a + CustomEdgeWeight<K>,
     K: EdgeKind,
 {
-    source_id: NodeId,
-    target_id: NodeId,
+    source_id: SplitGraphNodeId,
+    target_id: SplitGraphNodeId,
     weight: &'a SplitGraphEdgeWeight<E, K>,
 }
 
@@ -517,11 +592,11 @@ where
     E: CustomEdgeWeight<K>,
     K: EdgeKind,
 {
-    pub fn source(&self) -> NodeId {
+    pub fn source(&self) -> SplitGraphNodeId {
         self.source_id
     }
 
-    pub fn target(&self) -> NodeId {
+    pub fn target(&self) -> SplitGraphNodeId {
         self.target_id
     }
 
@@ -529,6 +604,17 @@ where
         self.weight
     }
 }
+
+// pub struct SplitGraphNeighbors<'a, N, E, K>
+// where
+//     N: CustomNodeWeight,
+//     E: CustomEdgeWeight<K>,
+//     K: EdgeKind,
+// {
+//     subgraphs: &'a [SubGraph<N, E, K>],
+//     edges: stable_graph::Edges<'a, SplitGraphEdgeWeight<E, K>, Directed, SubGraphIndex>,
+//     start:
+// }
 
 pub struct SplitGraphEdges<'a, N, E, K>
 where
@@ -538,7 +624,7 @@ where
 {
     subgraph: &'a SubGraph<N, E, K>,
     edges: stable_graph::Edges<'a, SplitGraphEdgeWeight<E, K>, Directed, SubGraphIndex>,
-    from_id: NodeId,
+    from_id: SplitGraphNodeId,
     direction: Direction,
 }
 
@@ -569,7 +655,9 @@ where
                 let weight = edge_ref.weight();
 
                 match weight {
-                    SplitGraphEdgeWeight::Custom(_) => self
+                    SplitGraphEdgeWeight::Custom(_)
+                    | SplitGraphEdgeWeight::Ordinal
+                    | SplitGraphEdgeWeight::Ordering => self
                         .subgraph
                         .graph
                         .node_weight(edge_ref.source())
@@ -595,8 +683,42 @@ where
     W: SubGraphWriter<N, E, K>,
 {
     type EdgeId = SplitGraphEdgeIndex;
-    type NodeId = SplitGraphNodeIndex;
+    type NodeId = Ulid;
 }
+
+impl<N, E, K, R, W> petgraph::visit::Visitable for SplitGraph<'_, '_, N, E, K, R, W>
+where
+    N: CustomNodeWeight,
+    E: CustomEdgeWeight<K>,
+    K: EdgeKind,
+    R: SubGraphReader<N, E, K>,
+    W: SubGraphWriter<N, E, K>,
+{
+    type Map = HashSet<Ulid>;
+
+    fn visit_map(self: &Self) -> Self::Map {
+        HashSet::with_capacity(self.node_count())
+    }
+
+    fn reset_map(self: &Self, map: &mut Self::Map) {
+        map.clear();
+    }
+}
+
+// impl<'a, N, E, K, R, W> petgraph::visit::IntoNeighbors for &'a SplitGraph<'_, '_, N, E, K, R, W>
+// where
+//     N: CustomNodeWeight,
+//     E: CustomEdgeWeight<K>,
+//     K: EdgeKind,
+//     R: SubGraphReader<N, E, K>,
+//     W: SubGraphWriter<N, E, K>,
+// {
+//     type Neighbors = ;
+
+//     fn neighbors(self, a: Self::NodeId) -> Self::Neighbors {
+//         todo!()
+//     }
+// }
 
 #[cfg(test)]
 mod tests {
@@ -609,7 +731,7 @@ mod tests {
 
     #[derive(Clone, PartialEq)]
     struct TestNodeWeight {
-        id: NodeId,
+        id: SplitGraphNodeId,
         name: String,
         merkle_tree_hash: MerkleTreeHash,
     }
@@ -621,7 +743,7 @@ mod tests {
     }
 
     impl CustomNodeWeight for TestNodeWeight {
-        fn id(&self) -> NodeId {
+        fn id(&self) -> SplitGraphNodeId {
             self.id
         }
 
@@ -629,7 +751,7 @@ mod tests {
             self.merkle_tree_hash = hash;
         }
 
-        fn get_merkle_tree_hash(&self) -> MerkleTreeHash {
+        fn merkle_tree_hash(&self) -> MerkleTreeHash {
             self.merkle_tree_hash
         }
 
@@ -809,10 +931,16 @@ mod tests {
             name_to_id_map.insert(name, id);
         }
 
-        let mut expected_outgoing_targets: HashMap<NodeId, HashSet<NodeId>> = HashMap::new();
-        let mut split_expected_incoming_sources: HashMap<NodeId, HashSet<NodeId>> = HashMap::new();
-        let mut unsplit_expected_incoming_sources: HashMap<NodeId, HashSet<NodeId>> =
+        let mut expected_outgoing_targets: HashMap<SplitGraphNodeId, HashSet<SplitGraphNodeId>> =
             HashMap::new();
+        let mut split_expected_incoming_sources: HashMap<
+            SplitGraphNodeId,
+            HashSet<SplitGraphNodeId>,
+        > = HashMap::new();
+        let mut unsplit_expected_incoming_sources: HashMap<
+            SplitGraphNodeId,
+            HashSet<SplitGraphNodeId>,
+        > = HashMap::new();
 
         for (from_name, to_name) in edges {
             let (split_from_id, unsplit_from_id) = if from_name.is_empty() {
@@ -867,20 +995,20 @@ mod tests {
                 (id, id)
             };
 
-            let outgoing_targets: HashSet<NodeId> = splitgraph
+            let outgoing_targets: HashSet<SplitGraphNodeId> = splitgraph
                 .edges_directed(split_from_id, Outgoing)
                 .map(|edge_ref| edge_ref.target())
                 .collect();
-            let unsplit_outgoing_targets: HashSet<NodeId> = unsplitgraph
+            let unsplit_outgoing_targets: HashSet<SplitGraphNodeId> = unsplitgraph
                 .edges_directed(unsplit_from_id, Outgoing)
                 .map(|edge_ref| edge_ref.target())
                 .collect();
 
-            let incoming_sources: HashSet<NodeId> = splitgraph
+            let incoming_sources: HashSet<SplitGraphNodeId> = splitgraph
                 .edges_directed(split_from_id, Incoming)
                 .map(|edge_ref| edge_ref.source())
                 .collect();
-            let unsplit_incoming_sources: HashSet<NodeId> = unsplitgraph
+            let unsplit_incoming_sources: HashSet<SplitGraphNodeId> = unsplitgraph
                 .edges_directed(unsplit_from_id, Incoming)
                 .map(|edge_ref| edge_ref.source())
                 .collect();
