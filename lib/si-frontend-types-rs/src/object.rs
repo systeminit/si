@@ -4,6 +4,7 @@ pub mod patch;
 
 // Payload wrapper for sending data views to the frontend.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct FrontendObject {
     pub kind: String,
     pub id: String,
