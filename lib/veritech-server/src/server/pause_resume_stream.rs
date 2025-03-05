@@ -150,6 +150,7 @@ impl futures::Stream for PauseResumeStream {
                     };
 
                     // Set to subscribing and continue the loop
+                    metric!(counter.veritech.pause_resume_stream.subscribing = 1);
                     debug!("ready to subscribe --> subscribing");
                     *project.incoming = State::Subscribing(subscribing);
                 }
@@ -224,11 +225,13 @@ impl futures::Stream for PauseResumeStream {
                 State::Subscribing(subscribing) => match subscribing.poll_unpin(cx) {
                     // Success! The stream is ready. We can return poll pending.
                     Poll::Ready(Ok(stream)) => {
+                        metric!(counter.veritech.pause_resume_stream.subscribed = 1);
                         debug!("subscribing --> ready --> subscribed ");
                         *project.incoming = State::Subscribed(stream);
                     }
                     // Epic fail! We can't connect to the stream. Let's backoff and try again.
                     Poll::Ready(Err(stream_error)) => {
+                        metric!(counter.veritech.pause_resume_stream.stream_error = 1);
                         error!(si.error.message = ?stream_error, reconnect_backoff_duration = ?project.reconnect_backoff_duration, "hit stream error while trying to subscribe within pause resume stream (backing off and trying again)");
                         debug!("subscribing --> ready with stream error --> unsubscribed");
                         *project.incoming = State::Unsubscribed(Box::pin(tokio::time::sleep(
@@ -242,6 +245,7 @@ impl futures::Stream for PauseResumeStream {
                 State::Unsubscribed(sleep) => match sleep.poll_unpin(cx) {
                     // If we are ready to go, let's loop again and start subscribing
                     Poll::Ready(()) => {
+                        metric!(counter.veritech.pause_resume_stream.sleep_done = 1);
                         debug!("unsubscribed --> sleep done --> ready to subscribe");
                         *project.incoming = State::ReadyToSubscribe
                     }

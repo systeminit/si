@@ -163,6 +163,8 @@ where
             tokio::pin!(stream);
 
             metric!(counter.naxum.next_message.processing = 0);
+            metric!(counter.naxum.next_message.failed = 0);
+            metric!(counter.naxum.next_message.none = 0);
 
             loop {
                 let (msg, permit) = tokio::select! {
@@ -186,7 +188,10 @@ where
                                 continue;
                             },
                             None => {
-                                warn!("next message is 'None' on provided stream");
+                                let duration_ms = 500;
+                                warn!(%duration_ms, "sleeping: next message is 'None' on provided stream");
+                                metric!(counter.naxum.next_message.none = 1);
+                                std::thread::sleep(std::time::Duration::from_millis(duration_ms));
                                 continue;
                             },
                         }

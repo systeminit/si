@@ -149,6 +149,10 @@ impl Server {
                 metric!(counter.veritech.pool_exhausted = 0);
                 metric!(counter.veritech.pause_resume_stream.missing_heartbeat = 0);
                 metric!(counter.veritech.pause_resume_stream.paused = 0);
+                metric!(counter.veritech.pause_resume_stream.sleep_done = 0);
+                metric!(counter.veritech.pause_resume_stream.subscribing = 0);
+                metric!(counter.veritech.pause_resume_stream.subscribed = 0);
+                metric!(counter.veritech.pause_resume_stream.stream_error = 0);
 
                 let inner_future = if config.exclude_pause_resume_stream_wrapper() {
                     info!("building app without pause resume stream wrapper");
