@@ -1,5 +1,6 @@
 use audit_logs_stream::AuditLogsStreamError;
 use dal::{
+    billing_publish,
     change_set::{ChangeSet, ChangeSetError, ChangeSetId},
     workspace_snapshot::WorkspaceSnapshotError,
     ChangeSetStatus, DalContext, TransactionsError, Workspace, WorkspaceError, WorkspacePk,
@@ -125,6 +126,12 @@ pub async fn perform_rebase(
         to_rebase_change_set
             .update_pointer(ctx, to_rebase_workspace_snapshot.id().await)
             .await?;
+
+        if let Err(err) =
+            billing_publish::for_head_change_set_pointer_update(ctx, &to_rebase_change_set).await
+        {
+            error!(si.error.message = ?err, "Failed to publish billing for change set pointer update on HEAD");
+        }
 
         debug!("pointer updated: {:?}", start.elapsed());
 
