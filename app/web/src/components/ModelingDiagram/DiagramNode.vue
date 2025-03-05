@@ -22,19 +22,6 @@
       @mouseout="onMouseOut"
     >
       <v-group :config="{ opacity: isDeleted ? 0.5 : 1 }">
-        <!-- drop shadow -->
-        <!-- <v-rect
-          :config="{
-            width: nodeWidth,
-            height: nodeHeight,
-            x: -halfWidth - 10,
-            y: 10,
-            cornerRadius: CORNER_RADIUS,
-            fill: colors.bodyBg,
-            fillAfterStrokeEnabled: true,
-          }"
-        /> -->
-
         <!-- box background - also used by layout manager to figure out nodes location and size -->
         <v-rect
           :config="{
@@ -50,8 +37,6 @@
             hitStrokeWidth: 0,
           }"
         />
-
-        <!-- header text -->
 
         <!-- rename hitbox -->
         <v-rect
@@ -251,6 +236,7 @@
       <!-- sockets -->
       <v-group
         v-if="hideDetails === 'show'"
+        ref="socketsRef"
         :config="{ opacity: isDeleted ? 0.5 : 1 }"
       >
         <v-group
@@ -310,7 +296,15 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, onUpdated, PropType, ref, watch } from "vue";
+import {
+  computed,
+  onUpdated,
+  PropType,
+  ref,
+  watch,
+  onMounted,
+  nextTick,
+} from "vue";
 import * as _ from "lodash-es";
 import tinycolor from "tinycolor2";
 
@@ -324,6 +318,7 @@ import {
   QualificationStatus,
   statusIconsForComponent,
 } from "@/store/qualifications.store";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import {
   DiagramEdgeData,
   DiagramElementUniqueKey,
@@ -371,6 +366,7 @@ const emit = defineEmits<{
   (e: "rename", v: () => void): void;
 }>();
 
+const featureFlagsStore = useFeatureFlagsStore();
 const componentsStore = useComponentsStore();
 const viewStore = useViewsStore();
 const componentId = computed(() => props.node.def.componentId);
@@ -415,6 +411,7 @@ const topRightIconColor = computed(() => {
 const titleTextRef = ref();
 const subtitleTextRef = ref();
 const groupRef = ref();
+const socketsRef = ref();
 
 const leftSockets = computed(() =>
   props.node.layoutLeftSockets(nodeWidth.value),
@@ -436,7 +433,7 @@ const connectedEdgesBySocketKey = computed(() => {
 
 const MAX_TITLE_LENGTH = 14;
 const MAX_TITLE_LENGTH_TINY = 8;
-const MAX_SUBTITLE_LENGTH = 30;
+const MAX_SUBTITLE_LENGTH = 20;
 
 const truncatedNodeTitle = computed(() => {
   if (
@@ -653,4 +650,61 @@ const occlude = computed(() => {
     return o;
   }
 });
+
+const cache = () => {
+  if (
+    !featureFlagsStore.DIAGRAM_OPTIMIZATION_2 ||
+    occlude.value ||
+    props.hideDetails !== "show"
+  )
+    return;
+
+  // this allows us to fire the cache via the watcher on occlusion
+  nextTick(() => {
+    const node = socketsRef.value?.getNode();
+    if (node) {
+      node.cache();
+    }
+  });
+};
+
+const clearCache = () => {
+  if (!featureFlagsStore.DIAGRAM_OPTIMIZATION_2) return;
+
+  const node = socketsRef.value?.getNode();
+  if (node) {
+    node.clearCache();
+  }
+};
+
+onMounted(() => {
+  cache();
+});
+
+// cache nodes when they come on screen
+watch(
+  () => occlude.value,
+  () => {
+    cache();
+  },
+);
+
+// re-run caching when switching between semantic zoom states
+watch(
+  () => props.hideDetails,
+  () => {
+    cache();
+  },
+);
+
+// re-run caching when sockets change
+watch(
+  () => connectedEdgesBySocketKey.value,
+  () => {
+    cache();
+  },
+  { deep: true },
+);
+
+defineExpose({ clearCache });
 </script>

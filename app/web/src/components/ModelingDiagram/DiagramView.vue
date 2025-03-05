@@ -22,68 +22,69 @@
       @mouseout="onMouseOut"
       @dblclick="goto"
     >
-      <v-shape :config="config" />
+      <v-group ref="cacheRef">
+        <v-shape :config="config" />
 
-      <v-text
-        v-if="hideDetails !== 'hide'"
-        :config="{
-          x: -radius * 0.8,
-          y: -radius,
-          align: 'center',
-          verticalAlign: 'middle',
-          width: view.width * 0.8,
-          height: view.width,
-          text: view.name,
-          padding: 2,
-          fill: colors.headerText,
-          fontSize: fontSize,
-          fontFamily: DIAGRAM_FONT_FAMILY,
-          listening: false,
-          wrap: 'word',
-        }"
-      />
+        <v-text
+          v-if="hideDetails !== 'hide'"
+          :config="{
+            x: -radius * 0.8,
+            y: -radius,
+            align: 'center',
+            verticalAlign: 'middle',
+            width: view.width * 0.8,
+            height: view.width,
+            text: view.name,
+            padding: 2,
+            fill: colors.headerText,
+            fontSize: fontSize,
+            fontFamily: DIAGRAM_FONT_FAMILY,
+            listening: false,
+            wrap: 'word',
+          }"
+        />
 
-      <!-- status icons -->
-      <v-group
-        v-if="statusIcons?.length && hideDetails === 'show'"
-        :config="{
-          x: (statusIcons.length * 26) / 2,
-          y: -20,
-        }"
-      >
-        <template
-          v-for="(statusIcon, i) in _.reverse(_.slice(statusIcons))"
-          :key="`status-icon-${i}`"
+        <!-- status icons -->
+        <v-group
+          v-if="statusIcons?.length && hideDetails === 'show'"
+          :config="{
+            x: (statusIcons.length * 26) / 2,
+            y: -20,
+          }"
         >
-          <v-text
-            v-if="hideDetails === 'show'"
-            :config="{
-              x: i * -26 - 25,
-              y: radius - 43,
-              align: 'center',
-              verticalAlign: 'top',
-              width: 25,
-              height: 30,
-              text: statusIcon.count,
-              padding: 2,
-              fill: colors.headerText,
-              fontSize: 11,
-              fontFamily: DIAGRAM_FONT_FAMILY,
-              listening: false,
-              wrap: 'char',
-            }"
-          />
-          <DiagramIcon
-            :icon="statusIcon.icon"
-            :color="getToneColorHex(statusIcon.tone)"
-            :size="24"
-            :x="i * -26"
-            :y="radius - 5"
-            origin="bottom-right"
-          />
-        </template>
+          <template
+            v-for="(statusIcon, i) in _.reverse(_.slice(statusIcons))"
+            :key="`status-icon-${i}`"
+          >
+            <v-text
+              v-if="hideDetails === 'show'"
+              :config="{
+                x: i * -26 - 25,
+                y: radius - 43,
+                align: 'center',
+                verticalAlign: 'top',
+                width: 25,
+                height: 30,
+                text: statusIcon.count,
+                padding: 2,
+                fill: colors.headerText,
+                fontSize: 11,
+                fontFamily: DIAGRAM_FONT_FAMILY,
+                listening: false,
+                wrap: 'char',
+              }"
+            />
+            <DiagramIcon
+              :icon="statusIcon.icon"
+              :color="getToneColorHex(statusIcon.tone)"
+              :size="24"
+              :x="i * -26"
+              :y="radius - 5"
+              origin="bottom-right"
+            />
+          </template>
+        </v-group>
       </v-group>
-
       <v-shape v-if="isHovered" :config="selectionConfig" />
     </v-group>
   </v-group>
@@ -91,7 +92,7 @@
 
 <script lang="ts" setup>
 import * as _ from "lodash-es";
-import { computed, reactive, watch } from "vue";
+import { computed, reactive, watch, ref, nextTick, onMounted } from "vue";
 import { Vector2d, IRect } from "konva/lib/types";
 import { KonvaEventObject } from "konva/lib/Node";
 import tinycolor from "tinycolor2";
@@ -103,6 +104,7 @@ import {
   DetailsMode,
 } from "@/components/ModelingDiagram/diagram_constants";
 import { useViewsStore } from "@/store/views.store";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { DiagramViewDef, ElementHoverMeta } from "./diagram_types";
 import DiagramIcon from "./DiagramIcon.vue";
 import { checkRectanglesOverlap } from "./utils/math";
@@ -302,4 +304,53 @@ const occlude = computed(() => {
     return o;
   }
 });
+
+const featureFlagsStore = useFeatureFlagsStore();
+const cacheRef = ref();
+
+const cache = () => {
+  if (!featureFlagsStore.DIAGRAM_OPTIMIZATION_2 || occlude.value) return;
+
+  // this allows us to fire the cache via the watcher on occlusion
+  nextTick(() => {
+    const node = cacheRef.value?.getNode();
+    if (node) {
+      node.cache({
+        width: radius.value * 2,
+        height: radius.value * 2,
+        x: -radius.value,
+        y: -radius.value,
+      });
+    }
+  });
+};
+
+const clearCache = () => {
+  const node = cacheRef.value?.getNode();
+  if (node) {
+    node.clearCache();
+  }
+};
+
+onMounted(() => {
+  cache();
+});
+
+// cache nodes when they come on screen
+watch(
+  () => occlude.value,
+  () => {
+    cache();
+  },
+);
+
+// re-run caching when switching between semantic zoom states
+watch(
+  () => props.hideDetails,
+  () => {
+    cache();
+  },
+);
+
+defineExpose({ clearCache });
 </script>
