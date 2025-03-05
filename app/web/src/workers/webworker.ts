@@ -2,7 +2,7 @@ import * as Comlink from "comlink";
 import { applyOperation } from 'fast-json-patch';
 import sqlite3InitModule, { Database, Sqlite3Static, SqlValue } from '@sqlite.org/sqlite-wasm';
 import ReconnectingWebSocket from "reconnecting-websocket";
-import { DBInterface, NOROW, Checksum, ROWID, Atom, QueryKey, Args, RawArgs, interpolate,  RowWithColumnsAndId, PatchAtomMessage, AtomMeta, AtomDocument, AtomMessage, MessageKind } from "./types/dbinterface";
+import { DBInterface, NOROW, Checksum, ROWID, Atom, QueryKey, Id, interpolate,  RowWithColumnsAndId, PatchAtomMessage, AtomMeta, AtomDocument, AtomMessage, MessageKind, IndexObjectMeta } from "./types/dbinterface";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { WorkspacePk } from "@/store/workspaces.store";
 import { trace, Span, } from '@opentelemetry/api';
@@ -13,6 +13,8 @@ import { registerInstrumentations } from '@opentelemetry/instrumentation';
 // import { OTLPTraceExporter } from '@opentelemetry/exporter-otlp-http';
 import { Resource } from '@opentelemetry/resources';
 import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION } from '@opentelemetry/semantic-conventions';
+import { URLPattern, describePattern } from "@si/vue-lib/pinia";
+import { sdfApiInstance as sdf } from "../store/apis";
 
 const exporter = new ConsoleSpanExporter();
 /* const exporter = new OTLPTraceExporter({
@@ -209,7 +211,7 @@ const atomExists = async (atom: Atom, isNew: boolean): Promise<[false, null] | [
       checksum = ?
     ;
     `,
-    bind: [atom.kind, atom.args.toString(), isNew ? atom.kindToChecksum : atom.kindFromChecksum],
+    bind: [atom.kind, atom.id.toString(), isNew ? atom.kindToChecksum : atom.kindFromChecksum],
     returnValue: "resultRows",
   });
   if (rows.length === 0)
@@ -293,7 +295,7 @@ const createAtom = async (atom: Atom, doc: object): Promise<ROWID> => {
     bind: [
       atom.kind,
       atom.kindToChecksum,
-      atom.args.toString(),
+      atom.id.toString(),
       await encodeDocumentForDB(doc),
     ],
     returnValue: "resultRows",
@@ -303,17 +305,17 @@ const createAtom = async (atom: Atom, doc: object): Promise<ROWID> => {
   return atom_id as ROWID;
 };
 
-const partialKeyFromKindAndArgs = (kind: string, args: Args): QueryKey => {
-  return `${kind}|${args.toString()}`;
+const partialKeyFromKindAndArgs = (kind: string, id: Id): QueryKey => {
+  return `${kind}|${id}`;
 };
 
-const kindAndArgsFromKey = (key: QueryKey): {kind: string, args: Args} => {
-  const pieces = key.split('|', 1);
-  if (pieces.length !== 2) throw new Error("Bad key");
-  if (!pieces[0] || !pieces[1]) throw new Error("Missing key");
+const kindAndArgsFromKey = (key: QueryKey): {kind: string, id: Id} => {
+  const pieces = key.split('|', 2);
+  if (pieces.length !== 2) throw new Error(`Bad key ${key} -> ${pieces}`);
+  if (!pieces[0] || !pieces[1]) throw new Error(`Missing key ${key} -> ${pieces}`);
   const kind = pieces[0];
-  const args = Args.fromString(pieces[1]);
-  return { kind, args };
+  const id = pieces[1];
+  return { kind, id };
 }
 
 const handleHammer = async (msg: AtomMessage, span?: Span) => {
@@ -383,7 +385,6 @@ const handlePatchMessage = async (data: PatchAtomMessage, span?: Span ) => {
     const atom: Atom = {
       ...rawAtom,
       ...data.meta,
-      args: new Args(rawAtom.args as RawArgs),
       operations: JSON.parse(rawAtom.operations),
     };
     return atom;
@@ -430,7 +431,7 @@ const applyPatch = async (atom: Atom, toSnapshotId: ROWID) => {
       // otherwise, fire the small hammer to get the full object
       else {
         span.addEvent("mjolnir", { atom: JSON.stringify(atom) });
-        mjolnir(atom.changeSetId, atom.kind, atom.args);
+        mjolnir(atom.changeSetId, atom.kind, atom.id, atom.kindToChecksum);
       }
     }
 
@@ -451,7 +452,7 @@ const patchAtom = async (atom: Atom, snapshotId: ROWID): Promise<ROWID> => {
         args = ? and
         checksum = ?
       `,
-      bind: [snapshotId, atom.kind, atom.args.toString(), atom.kindFromChecksum],
+      bind: [snapshotId, atom.kind, atom.id.toString(), atom.kindFromChecksum],
       returnValue: "resultRows",
   });
   const atomId = oneInOne(atomRow);
@@ -484,7 +485,7 @@ const patchAtom = async (atom: Atom, snapshotId: ROWID): Promise<ROWID> => {
     ;`,
     bind: [
       atom.kind,
-      atom.args.toString(),
+      atom.id.toString(),
       atom.kindToChecksum,
       await encodeDocumentForDB(doc),
     ],
@@ -495,9 +496,9 @@ const patchAtom = async (atom: Atom, snapshotId: ROWID): Promise<ROWID> => {
   return atom_id as ROWID;
 };
 
-const mjolnir = async (changeSetId: ChangeSetId, kind: string, args: Args) => {
+const mjolnir = async (changeSetId: ChangeSetId, kind: string, id: Id, checksum?: Checksum) => {
   // TODO this is probably a WsEvent, so SDF knows who to reply to
-  const body = { changeSetId, kind, args: args.toString() };
+  const body = { changeSetId, kind, id, checksum};
   fetch("newarch/mjolnir", {
     method: "POST",
     body: JSON.stringify(body),
@@ -533,6 +534,27 @@ const pruneAtomsForClosedChangeSet = async (workspaceId: WorkspacePk, changeSetI
     });
     span.end();
   });
+};
+
+
+const atomChecksumsFor = async (changeSetId: ChangeSetId): Promise<Record<QueryKey, Checksum>> => {
+  const mapping: Record<QueryKey, Checksum> = {};
+  const rows = await db.exec({sql: `
+    select atoms.kind, atoms.args, atoms.checksum
+    from atoms
+    inner join snapshots_mtm_atoms mtm ON atoms.id = mtm.atom_id
+    inner join snapshots ON mtm.snapshot_id = snapshots.id
+    where snapshots.change_set_id = ?
+    ;
+    `,
+    bind: [changeSetId],
+    returnValue: "resultRows"});
+  rows.forEach((row) => {
+    const key = `${row[0]}|${row[1]}` as QueryKey;
+    const checksum = row[3] as Checksum;
+    mapping[key] = checksum;
+  })
+  return mapping;
 };
 
 /**
@@ -622,7 +644,7 @@ const dbInterface: DBInterface = {
     bustCacheFn("foo", "bar2");
   },
 
-  async get(changeSetId: ChangeSetId, kind: string, args: Args): Promise<typeof NOROW | object> {
+  async get(changeSetId: ChangeSetId, kind: string, id: Id): Promise<typeof NOROW | object> {
     const atomData = await db.exec({
       sql: `
       select
@@ -636,7 +658,7 @@ const dbInterface: DBInterface = {
         kind = ? AND
         args = ?
       ;`,
-      bind: [changeSetId, kind, args.toString()],
+      bind: [changeSetId, kind, id],
       returnValue: "resultRows",
     });
     const data = oneInOne(atomData);
@@ -645,28 +667,51 @@ const dbInterface: DBInterface = {
     return atomDoc
   },
 
-  partialKeyFromKindAndArgs,
-  kindAndArgsFromKey,
+  partialKeyFromKindAndId: partialKeyFromKindAndArgs,
+  kindAndIdFromKey: kindAndArgsFromKey,
   mjolnir,
+  atomChecksumsFor,
 
-  async atomChecksumsFor(changeSetId: ChangeSetId): Promise<Record<QueryKey, Checksum>> {
-    const mapping: Record<QueryKey, Checksum> = {};
-    const rows = await db.exec({sql: `
-      select atoms.kind, atoms.args, atoms.checksum
-      from atoms
-      inner join snapshots_mtm_atoms mtm ON atoms.id = mtm.atom_id
-      inner join snapshots ON mtm.snapshot_id = snapshots.id
-      where snapshots.change_set_id = ?
-      ;
-      `,
-      bind: [changeSetId],
-      returnValue: "resultRows"});
-    rows.forEach((row) => {
-      const key = `${row[0]}|${row[1]}` as QueryKey;
-      const checksum = row[3] as Checksum;
-      mapping[key] = checksum;
-    })
-    return mapping;
+  niflheim:  async (workspaceId: string, changeSetId: ChangeSetId) => {
+    tracer.startActiveSpan("niflheim", async (span: Span) => {
+      const pattern = [
+        "v2",
+        "workspaces",
+        { workspaceId },
+        "change-sets",
+        { changeSetId },
+        "index",
+      ] as URLPattern;
+      const [url, desc] = describePattern(pattern);
+      const frigg = tracer.startSpan(`GET ${desc}`);
+      const req = await sdf<IndexObjectMeta>({
+        method: "get",
+        url,
+      });
+      const atoms = req.data.frontEndObject.data.mvList;
+      frigg.setAttribute("numEntries", atoms.length)
+      frigg.end();
+
+      const local = tracer.startSpan("localChecksums");
+      const localChecksums = await atomChecksumsFor(changeSetId);
+      local.setAttribute("numEntries", Object.keys(localChecksums).length);
+      local.end();
+
+      const compare = tracer.startSpan("compare");
+      let numHammers = 0;
+      atoms.forEach(({kind, id, checksum}) => {
+        const key = partialKeyFromKindAndArgs(kind, id);
+        const local = localChecksums[key];
+        if (!local || local !== checksum) {
+          const { kind, id } = kindAndArgsFromKey(key);
+          mjolnir(changeSetId, kind, id, checksum);
+          numHammers++;
+        }
+      });
+      compare.setAttribute("numHammers", numHammers);
+      compare.end();
+      span.end();
+    });
   },
 
   async fullDiagnosticTest() {
@@ -697,7 +742,7 @@ const dbInterface: DBInterface = {
       `,
       bind: [
         testRecord,
-        new Args({testId: "1"}).toString(),
+        "testId1",
         "tr1",
         await encodeDocumentForDB({id: 1, name: "test record 1"})
       ],
@@ -719,7 +764,7 @@ const dbInterface: DBInterface = {
       `,
       bind: [
         testRecord,
-        new Args({testId: "2"}).toString(),
+        "testId2",
         "tr2",
         await encodeDocumentForDB({id: 2, name: "test record 2"})
       ],
@@ -742,7 +787,7 @@ const dbInterface: DBInterface = {
       `,
       bind: [
         testList,
-        new Args({}).toString(),
+        "changeSetId",
         "tl1",
         await encodeDocumentForDB({ list: [
           `${testRecord}:1:tr1`,
@@ -784,7 +829,7 @@ const dbInterface: DBInterface = {
         kindFromChecksum: "tr1",
         kindToChecksum: "tr1-new-name",
         operations: JSON.stringify([{op: "replace", path: "/name", value: "new name"}]),
-        args: {testId: "1"},
+        id: "testId1",
       }],
     };
     await tracer.startActiveSpan("handleEvent", async (span) => {
@@ -847,7 +892,7 @@ const dbInterface: DBInterface = {
         kindFromChecksum: "tr1",
         kindToChecksum: "tr1-new-name",
         operations: JSON.stringify([{op: "replace", path: "/name", value: "new name"}]),
-        args: {testId: "1"},
+        id: "testId1",
       }]
     };
     await tracer.startActiveSpan("handleEvent", async (span) => {
@@ -926,21 +971,21 @@ const dbInterface: DBInterface = {
           kindFromChecksum: "0",
           kindToChecksum: "tr3-add",
           operations: JSON.stringify([{op: "add", path: "/name", value: "record 3"}, {op: "add", path: "/id", value: 3}]),
-          args: {testId: "3"},
+          id: "testId3",
         },
         {
           kind: testRecord,
           kindFromChecksum: "tr1-new-name",
           kindToChecksum: "0",
           operations: JSON.stringify([]),
-          args: {testId: "1"},
+          id: "testId1",
         },
         {
           kind: testList,
           kindFromChecksum: "tl1",
           kindToChecksum: "tl1-add-remove",
           operations: JSON.stringify([{op: "remove", path: "/list/0"}, {op: "add", path:"/list/2", value: `${testRecord}:3:tr3-add`}]),
-          args: {},
+          id: "changeSetId",
         },
       ]
     };

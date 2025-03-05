@@ -1,11 +1,11 @@
 import { defineStore } from 'pinia'
 import * as Comlink from "comlink";
-import { Args, AtomDocument, Checksum, DBInterface, interpolate, NOROW, QueryKey, RawArgs } from "@/workers/types/dbinterface";
+import {  AtomDocument, Checksum, DBInterface, interpolate, NOROW, QueryKey, Id } from "@/workers/types/dbinterface";
 import { watch, computed  } from 'vue';
 import { useAuthStore } from '../auth.store';
 import { ChangeSetId } from '@/api/sdf/dal/change_set';
 
-export const useHeimdall = defineStore('heimdall', async () => {
+export const useHeimdall = defineStore('heimdall', () => {
   const authStore = useAuthStore();
 
   type AtomChecksumByKey = Record<Checksum, QueryKey>;
@@ -18,8 +18,11 @@ export const useHeimdall = defineStore('heimdall', async () => {
   const worker = new Worker(new URL("../../workers/webworker.ts", import.meta.url), { type: 'module' });
   const db: Comlink.Remote<DBInterface> = Comlink.wrap(worker)
 
-  await db.addListenerBustCache(Comlink.proxy(bustTanStackCache));
-  await db.initBifrost("", "");
+  // PSA: these are not await'd
+  // but stuff happens in here we do need to wait for
+  // figure that out :sweat:
+  db.addListenerBustCache(Comlink.proxy(bustTanStackCache));
+  db.initBifrost("", "");
 
   const connectionShouldBeEnabled = computed(
     () =>
@@ -39,35 +42,26 @@ export const useHeimdall = defineStore('heimdall', async () => {
     { immediate: true },
   );
 
-  const bifrost = async (changeSetId: ChangeSetId, kind: string, rawArgs: RawArgs): Promise<typeof NOROW | AtomDocument> => {
-    const args = new Args(rawArgs);
-    const maybeAtomDoc = await db.get(changeSetId, kind, args);
+  const bifrost = async (changeSetId: ChangeSetId, kind: string, id: Id): Promise<typeof NOROW | AtomDocument> => {
+    const maybeAtomDoc = await db.get(changeSetId, kind, id);
     if (maybeAtomDoc === NOROW)
-      db.mjolnir(changeSetId, kind, args);
+      db.mjolnir(changeSetId, kind, id);
     return maybeAtomDoc
   };
 
   // cold start
-  const niflheim = async (changeSetId: ChangeSetId) => {
-    const frigg = await fetch("newarch/frigg");
-    const [localChecksums, remoteChecksums] = await Promise.all([
-      await db.atomChecksumsFor(changeSetId),
-      await frigg.json() as Record<QueryKey, Checksum>,
-    ]);
-    Object.entries(remoteChecksums).map(async ([key, checksum]) => {
-      const local = localChecksums[key];
-      if (!local || local !== checksum) {
-        const { kind, args } = await db.kindAndArgsFromKey(key);
-        db.mjolnir(changeSetId, kind, args);
-      }
-    });
+  const niflheim = async (workspaceId: string, changeSetId: ChangeSetId) => {
+    await db.niflheim(workspaceId, changeSetId);
   };
 
-  await db.fullDiagnosticTest();
+  const fullDiagnosticTest = async () => {
+    await db.fullDiagnosticTest();
+  }
 
   return {
     niflheim,
     bifrost,
+    fullDiagnosticTest,
     connectionShouldBeEnabled,
   }
 

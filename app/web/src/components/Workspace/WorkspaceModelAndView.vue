@@ -162,6 +162,7 @@ import TemplateSelectionModal from "../ModelingView/TemplateSelectionModal.vue";
 import CommandModal from "./CommandModal.vue";
 import InsetApprovalModal from "../InsetApprovalModal.vue";
 import ViewDetailsPanel from "../ViewDetailsPanel.vue";
+import { useHeimdall } from "@/store/realtime/heimdall.store";
 
 const changeSetsStore = useChangeSetsStore();
 const viewsStore = useViewsStore();
@@ -281,6 +282,12 @@ onBeforeMount(async () => {
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       authStore.LIST_WORKSPACE_USERS(changeSetsStore.selectedWorkspacePk!),
     ]);
+  }
+
+  if (changeSetsStore.selectedWorkspacePk && changeSetsStore.selectedChangeSetId) {
+    const heimdall = useHeimdall();
+    heimdall.niflheim(changeSetsStore.selectedWorkspacePk, changeSetsStore.selectedChangeSetId);
+    // await heimdall.fullDiagnosticTest();
   }
 });
 
