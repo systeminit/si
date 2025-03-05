@@ -391,7 +391,7 @@ impl Server {
 
     #[instrument(name = "veritech.init.connect_to_nats", level = "info", skip_all)]
     async fn connect_to_nats(config: &Config) -> ServerResult<NatsClient> {
-        let client = NatsClient::new(config.nats())
+        let client = NatsClient::new_for_veritech(config.nats())
             .await
             .map_err(ServerError::NatsClient)?;
         debug!("successfully connected nats client");

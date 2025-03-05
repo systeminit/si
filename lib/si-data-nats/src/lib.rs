@@ -109,10 +109,24 @@ impl Client {
         (self.inner, self.metadata)
     }
 
-    #[instrument(name = "nats_client::new", skip_all, level = "debug")]
-    pub async fn new(config: &NatsConfig) -> Result<Self> {
+    #[instrument(name = "nats_client::new_for_veritech", skip_all, level = "debug")]
+    pub async fn new_for_veritech(config: &NatsConfig) -> Result<Self> {
         let mut options = ConnectOptions::default();
 
+        options = options.client_capacity(2048 * 8);
+
+        Self::new_inner(config, options).await
+    }
+
+    #[instrument(name = "nats_client::new", skip_all, level = "debug")]
+    pub async fn new(config: &NatsConfig) -> Result<Self> {
+        let options = ConnectOptions::default();
+
+        Self::new_inner(config, options).await
+    }
+
+    #[instrument(name = "nats_client::new_inner", skip_all, level = "debug")]
+    async fn new_inner(config: &NatsConfig, mut options: ConnectOptions) -> Result<Self> {
         if let Some(creds) = &config.creds {
             options = options.credentials(creds)?;
         }
