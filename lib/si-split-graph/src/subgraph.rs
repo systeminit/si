@@ -1,10 +1,12 @@
 use petgraph::prelude::*;
 use serde::{Deserialize, Serialize};
+use si_events::merkle_tree_hash::MerkleTreeHash;
+use si_id::ulid::Ulid;
 use std::collections::{HashMap, HashSet};
 use std::io::Write;
 
 use crate::{
-    CustomEdgeWeight, CustomNodeWeight, EdgeKind, NodeId, SplitGraphEdgeWeight,
+    CustomEdgeWeight, CustomNodeWeight, EdgeKind, SplitGraphEdgeWeight, SplitGraphNodeId,
     SplitGraphNodeWeight, MAX_NODES,
 };
 
@@ -19,7 +21,7 @@ where
     K: EdgeKind,
 {
     pub(super) graph: StableDiGraph<SplitGraphNodeWeight<N>, SplitGraphEdgeWeight<E, K>, u16>,
-    pub(super) node_index_by_id: HashMap<NodeId, SubGraphNodeIndex>,
+    pub(super) node_index_by_id: HashMap<SplitGraphNodeId, SubGraphNodeIndex>,
     pub(super) root_index: SubGraphNodeIndex,
 
     #[serde(skip)]
@@ -90,36 +92,139 @@ where
         self.touched_nodes.insert(index);
     }
 
+    fn edge_exists(
+        &self,
+        from_index: SubGraphNodeIndex,
+        edge_weight: &SplitGraphEdgeWeight<E, K>,
+        to_index: SubGraphNodeIndex,
+    ) -> bool {
+        self.graph
+            .edges_connecting(from_index, to_index)
+            .any(|edge_ref| match edge_ref.weight() {
+                SplitGraphEdgeWeight::Custom(custom_edge) => {
+                    Some(custom_edge.kind()) == edge_weight.custom().map(|e| e.kind())
+                }
+                SplitGraphEdgeWeight::ExternalSource {
+                    source_id,
+                    edge_kind,
+                    ..
+                } => match &edge_weight {
+                    SplitGraphEdgeWeight::ExternalSource {
+                        source_id: new_source_id,
+                        edge_kind: new_edge_kind,
+                        ..
+                    } => source_id == new_source_id && edge_kind == new_edge_kind,
+                    _ => false,
+                },
+                SplitGraphEdgeWeight::Ordering => {
+                    matches!(edge_weight, SplitGraphEdgeWeight::Ordering)
+                }
+                SplitGraphEdgeWeight::Ordinal => {
+                    matches!(edge_weight, SplitGraphEdgeWeight::Ordinal)
+                }
+            })
+    }
+
     pub(super) fn add_edge(
         &mut self,
         from_index: SubGraphNodeIndex,
         edge_weight: SplitGraphEdgeWeight<E, K>,
         to_index: SubGraphNodeIndex,
     ) {
-        let exists =
-            self.graph
-                .edges_connecting(from_index, to_index)
-                .any(|edge_ref| match edge_ref.weight() {
-                    SplitGraphEdgeWeight::Custom(custom_edge) => {
-                        Some(custom_edge.kind()) == edge_weight.custom().map(|e| e.kind())
-                    }
-                    SplitGraphEdgeWeight::ExternalSource {
-                        source_id,
-                        edge_kind,
-                        ..
-                    } => match &edge_weight {
-                        SplitGraphEdgeWeight::Custom(_) => false,
-                        SplitGraphEdgeWeight::ExternalSource {
-                            source_id: new_source_id,
-                            edge_kind: new_edge_kind,
-                            ..
-                        } => source_id == new_source_id && edge_kind == new_edge_kind,
-                    },
-                });
+        let exists = self.edge_exists(from_index, &edge_weight, to_index);
+        let is_ordered_container = self
+            .graph
+            .node_weight(from_index)
+            .and_then(|weight| weight.custom().map(|c| c.ordered()))
+            .is_some_and(|ordered| ordered);
+
+        if is_ordered_container {
+            let target_id = self.graph.node_weight(to_index).map(|n| n.id()).unwrap();
+            let ordering_node_index = match self
+                .graph
+                .edges_directed(from_index, Outgoing)
+                .find(|edge_ref| matches!(edge_ref.weight(), SplitGraphEdgeWeight::Ordering))
+                .map(|edge_ref| edge_ref.target())
+            {
+                Some(target) => target,
+                None => self.graph.add_node(SplitGraphNodeWeight::Ordering {
+                    id: Ulid::new(),
+                    order: vec![],
+                    merkle_tree_hash: MerkleTreeHash::nil(),
+                }),
+            };
+
+            if let Some(SplitGraphNodeWeight::Ordering { order, .. }) =
+                self.graph.node_weight_mut(ordering_node_index)
+            {
+                if !order.contains(&target_id) {
+                    order.push(target_id);
+                }
+                if !self.edge_exists(
+                    ordering_node_index,
+                    &SplitGraphEdgeWeight::Ordinal,
+                    to_index,
+                ) {
+                    self.graph.add_edge(
+                        ordering_node_index,
+                        to_index,
+                        SplitGraphEdgeWeight::Ordinal,
+                    );
+                }
+            }
+        }
 
         if !exists {
             self.graph.add_edge(from_index, to_index, edge_weight);
-            self.touched_nodes.insert(from_index);
+            self.touch_node(from_index);
+        }
+    }
+
+    fn touch_node(&mut self, node_index: SubGraphNodeIndex) {
+        self.touched_nodes.insert(node_index);
+    }
+
+    pub(super) fn remove_edge(&mut self, edge_index: EdgeIndex<u16>) {
+        if let Some((from_index, to_index)) = self.graph.edge_endpoints(edge_index) {
+            self.touch_node(from_index);
+
+            let is_ordered_container = self
+                .graph
+                .node_weight(from_index)
+                .and_then(|weight| weight.custom().map(|c| c.ordered()))
+                .is_some_and(|ordered| ordered);
+
+            if is_ordered_container {
+                let target_id = self.graph.node_weight(to_index).map(|n| n.id()).unwrap();
+                if let Some(ordering_node_index) = self
+                    .graph
+                    .edges_directed(from_index, Outgoing)
+                    .find(|edge_ref| matches!(edge_ref.weight(), SplitGraphEdgeWeight::Ordering))
+                    .map(|edge_ref| edge_ref.target())
+                {
+                    self.touch_node(ordering_node_index);
+                    if let Some(ordinal_edge_index) = self
+                        .graph
+                        .edges_directed(ordering_node_index, Outgoing)
+                        .find(|edge_ref| {
+                            matches!(edge_ref.weight(), SplitGraphEdgeWeight::Ordinal)
+                                && self.graph.node_weight(edge_ref.target()).map(|n| n.id())
+                                    == Some(target_id)
+                        })
+                        .map(|edge_ref| edge_ref.id())
+                    {
+                        self.graph.remove_edge(ordinal_edge_index);
+
+                        if let Some(SplitGraphNodeWeight::Ordering { order, .. }) =
+                            self.graph.node_weight_mut(ordering_node_index)
+                        {
+                            order.retain(|id| *id != target_id);
+                        }
+                    }
+                }
+            }
+
+            self.graph.remove_edge(edge_index);
         }
     }
 
@@ -130,18 +235,22 @@ where
                 petgraph::dot::Config::NodeNoLabel,
                 petgraph::dot::Config::EdgeNoLabel,
             ],
-            &|_, edge_ref| match edge_ref.weight() {
-                SplitGraphEdgeWeight::Custom(_) => format!("label = \"\"\ncolor = black"),
-                SplitGraphEdgeWeight::ExternalSource {
-                    source_id,
-                    subgraph,
-                    ..
-                } => {
-                    format!(
-                        "label = \"external source: {source_id}\nsubgraph: {}\"\ncolor = red",
-                        subgraph + 1
-                    )
-                }
+            &|_, edge_ref| {
+                let (label, color) = match edge_ref.weight() {
+                    SplitGraphEdgeWeight::Custom(_) => ("".into(), "black"),
+                    SplitGraphEdgeWeight::ExternalSource {
+                        source_id,
+                        subgraph,
+                        ..
+                    } => (
+                        format!("external source: {source_id}\nsubgraph: {}", subgraph + 1),
+                        "red",
+                    ),
+                    SplitGraphEdgeWeight::Ordering => ("ordering".into(), "green"),
+                    SplitGraphEdgeWeight::Ordinal => ("ordinal".into(), "green"),
+                };
+
+                format!("label = \"{label}\"\ncolor = {color}")
             },
             &|_, (_, node_weight)| {
                 let (label, color) = match node_weight {
@@ -158,8 +267,15 @@ where
                         format!("external target: {target}\nsubgraph: {}", subgraph + 1),
                         "red",
                     ),
-                    SplitGraphNodeWeight::GraphRoot(_) => (format!("graph root"), "blue"),
-                    SplitGraphNodeWeight::SubGraphRoot(_) => (format!("subgraph root"), "blue"),
+                    SplitGraphNodeWeight::GraphRoot { id, .. } => {
+                        (format!("graph root: {id}"), "blue")
+                    }
+                    SplitGraphNodeWeight::SubGraphRoot { id, .. } => {
+                        (format!("subgraph root: {id}"), "blue")
+                    }
+                    SplitGraphNodeWeight::Ordering { id, .. } => {
+                        (format!("ordering: {id}"), "green")
+                    }
                 };
 
                 format!("label = \"{label}\"\ncolor = {color}")
