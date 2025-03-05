@@ -71,38 +71,77 @@ async function main(component: Input): Promise<Output> {
 }
 
 function removeEmpty(obj: any): any {
-  if (Array.isArray(obj)) {
-    return obj
-      .filter((item) => {
-        if (item === null || item === undefined || item === "") return false;
-        if (Array.isArray(item) && item.length === 0) return false;
-        if (typeof item === "object" && Object.keys(item).length === 0) {
-          return false;
+  // Stack to keep track of objects to process
+  const stack: any = [{
+    parent: null,
+    key: null,
+    value: obj,
+  }];
+
+  while (stack.length) {
+    const {
+      parent,
+      key,
+      value,
+    } = stack.pop();
+
+    if (_.isObject(value)) {
+      // Iterate over the keys of the current object
+      _.forOwn(value, (childValue, childKey) => {
+        stack.push({
+          parent: value,
+          key: childKey,
+          value: childValue,
+        });
+      });
+
+      // After processing children, check if the current object is empty
+      if (_.isEmpty(value) && parent) {
+        if (_.isArray(parent)) {
+          parent.splice(key, 1);
+        } else {
+          delete parent[key];
         }
-        return true;
-      })
-      .map((item) =>
-        typeof item === "object" && item !== null ? removeEmpty(item) : item
-      );
+      }
+    } else if (_.isArray(value)) {
+      // Iterate over the array elements
+      for (let i = value.length - 1; i >= 0; i--) {
+        stack.push({
+          parent: value,
+          key: i,
+          value: value[i],
+        });
+      }
+
+      // After processing elements, check if the current array is empty
+      if (_.isEmpty(value) && parent) {
+        parent.splice(key, 1);
+      }
+    } else {
+      // Handle primitive values: remove if null, undefined, or empty string
+      if (value === null || value === undefined || value === "") {
+        if (_.isArray(parent)) {
+          parent.splice(key, 1);
+        } else {
+          delete parent[key];
+        }
+      }
+    }
   }
 
-  return Object.fromEntries(
-    Object.entries(obj)
-      .filter(([_, value]) => {
-        if (value === null || value === undefined || value === "") return false;
-        if (Array.isArray(value) && value.length === 0) return false;
-        if (typeof value === "object" && Object.keys(value).length === 0) {
-          return false;
-        }
-        return true;
-      })
-      .map(([key, value]) => [
-        key,
-        typeof value === "object" && value !== null
-          ? removeEmpty(value)
-          : value,
-      ]),
-  );
+  // Final pass to remove any remaining empty objects or arrays at the root level
+  _.forOwn(obj, (value, key) => {
+    if (
+      (_.isObject(value) && _.isEmpty(value)) ||
+      value === null ||
+      value === undefined ||
+      value === ""
+    ) {
+      delete obj[key];
+    }
+  });
+
+  return obj;
 }
 
 // If you change this, you should change the same func on awsCloudControlCodeGenCreate.ts in this same directory
