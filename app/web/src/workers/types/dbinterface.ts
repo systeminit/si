@@ -45,7 +45,6 @@ export interface DBInterface {
   kindAndArgsFromKey(key: QueryKey): { kind: string, args: Args},
   addListenerBustCache(fn: BustCacheFn): void,
   atomChecksumsFor(changeSetId: ChangeSetId): Promise<Record<QueryKey, Checksum>>,
-  niflheim(workspaceId: string, changeSetId: ChangeSetId): void,
   fullDiagnosticTest(): void,
 }
 
