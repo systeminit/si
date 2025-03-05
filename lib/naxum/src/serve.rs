@@ -186,9 +186,8 @@ where
                                 continue;
                             },
                             None => {
-                                info!("stream is closed, breaking out of loop");
-                                tracker.close();
-                                break;
+                                warn!("next message is 'None' on provided stream");
+                                continue;
                             },
                         }
                     }

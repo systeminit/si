@@ -191,12 +191,11 @@ where
             if let PoolNoodleError::ExecutionPoolStarved = err {
                 metric!(counter.veritech.pool_exhausted = 1);
 
-                // TODO(nick,brit): restore pausing... and add pause metrics to the stream side.
-                // // This will only be available if the "pause-resume" stream is used.
-                // if let Some(controller) = state.pause_resume_controller {
-                //     warn!(execution_id = %request.execution_id(), kind = %request.kind(), "pausing stream");
-                //     controller.pause();
-                // }
+                // This will only be available if the "pause-resume" stream is used.
+                if let Some(controller) = state.pause_resume_controller {
+                    warn!(execution_id = %request.execution_id(), kind = %request.kind(), "pausing stream");
+                    controller.pause();
+                }
             }
             return Err(span.record_err(HandlerError::CyclonePool(Box::new(err))));
         }
