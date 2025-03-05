@@ -191,41 +191,43 @@
       />
 
       <!-- sockets -->
-      <v-group
-        v-if="hideDetails === 'show'"
-        :config="{
-          x: leftSockets.x,
-          y: leftSockets.y,
-        }"
-      >
-        <DiagramNodeSocket
-          v-for="socket in leftSockets.sockets"
-          :key="socket.uniqueKey"
-          :socket="socket"
-          :position="socket.position"
-          :connectedEdges="connectedEdgesBySocketKey[socket.uniqueKey]"
-          :nodeWidth="nodeWidth"
-          @hover:start="onSocketHoverStart(socket)"
-          @hover:end="onSocketHoverEnd(socket)"
-        />
-      </v-group>
-      <v-group
-        v-if="hideDetails === 'show'"
-        :config="{
-          x: rightSockets.x,
-          y: rightSockets.y,
-        }"
-      >
-        <DiagramNodeSocket
-          v-for="socket in rightSockets.sockets"
-          :key="socket.uniqueKey"
-          :socket="socket"
-          :position="socket.position"
-          :connectedEdges="connectedEdgesBySocketKey[socket.uniqueKey]"
-          :nodeWidth="nodeWidth"
-          @hover:start="onSocketHoverStart(socket)"
-          @hover:end="onSocketHoverEnd(socket)"
-        />
+      <v-group v-if="hideDetails === 'show'">
+        <v-group
+          ref="socketsLeftRef"
+          :config="{
+            x: leftSockets.x,
+            y: leftSockets.y,
+          }"
+        >
+          <DiagramNodeSocket
+            v-for="socket in leftSockets.sockets"
+            :key="socket.uniqueKey"
+            :socket="socket"
+            :position="socket.position"
+            :connectedEdges="connectedEdgesBySocketKey[socket.uniqueKey]"
+            :nodeWidth="nodeWidth"
+            @hover:start="onSocketHoverStart(socket)"
+            @hover:end="onSocketHoverEnd(socket)"
+          />
+        </v-group>
+        <v-group
+          ref="socketsRightRef"
+          :config="{
+            x: rightSockets.x,
+            y: rightSockets.y,
+          }"
+        >
+          <DiagramNodeSocket
+            v-for="socket in rightSockets.sockets"
+            :key="socket.uniqueKey"
+            :socket="socket"
+            :position="socket.position"
+            :connectedEdges="connectedEdgesBySocketKey[socket.uniqueKey]"
+            :nodeWidth="nodeWidth"
+            @hover:start="onSocketHoverStart(socket)"
+            @hover:end="onSocketHoverEnd(socket)"
+          />
+        </v-group>
       </v-group>
 
       <!-- header -->
@@ -446,7 +448,15 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, onUpdated, PropType, ref, watch } from "vue";
+import {
+  computed,
+  onUpdated,
+  PropType,
+  ref,
+  watch,
+  onMounted,
+  nextTick,
+} from "vue";
 import * as _ from "lodash-es";
 import tinycolor from "tinycolor2";
 import { IRect } from "konva/lib/types";
@@ -479,6 +489,7 @@ import {
   statusIconsForComponent,
 } from "@/store/qualifications.store";
 import { useViewsStore } from "@/store/views.store";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import {
   DiagramDrawEdgeState,
   DiagramEdgeData,
@@ -516,6 +527,8 @@ const props = defineProps({
   occlusionRect: { type: Object as PropType<IRect> },
 });
 
+const featureFlagsStore = useFeatureFlagsStore();
+
 const diagramContext = useDiagramContext();
 
 const componentId = computed(() => props.group.def.componentId);
@@ -542,6 +555,8 @@ const { theme } = useTheme();
 const titleTextRef = ref();
 const subtitleTextRef = ref();
 const groupRef = ref();
+const socketsLeftRef = ref();
+const socketsRightRef = ref();
 
 const componentsStore = useComponentsStore();
 const viewStore = useViewsStore();
@@ -847,4 +862,65 @@ const occlude = computed(() => {
     return o;
   }
 });
+
+const cache = () => {
+  if (
+    !featureFlagsStore.DIAGRAM_OPTIMIZATION_2 ||
+    occlude.value ||
+    props.hideDetails !== "show"
+  )
+    return;
+
+  // this allows us to fire the cache via the watcher on occlusion
+  nextTick(() => {
+    const left = socketsLeftRef.value?.getNode();
+    const right = socketsRightRef.value?.getNode();
+    if (left && right) {
+      left.cache();
+      right.cache();
+    }
+  });
+};
+
+const clearCache = () => {
+  if (!featureFlagsStore.DIAGRAM_OPTIMIZATION_2) return;
+
+  const left = socketsLeftRef.value?.getNode();
+  const right = socketsRightRef.value?.getNode();
+  if (left && right) {
+    left.clearCache();
+    right.clearCache();
+  }
+};
+
+onMounted(() => {
+  cache();
+});
+
+// cache nodes when they come on screen
+watch(
+  () => occlude.value,
+  () => {
+    cache();
+  },
+);
+
+// re-run caching when switching between semantic zoom states
+watch(
+  () => props.hideDetails,
+  () => {
+    cache();
+  },
+);
+
+// re-run caching when sockets change
+watch(
+  () => connectedEdgesBySocketKey.value,
+  () => {
+    cache();
+  },
+  { deep: true },
+);
+
+defineExpose({ clearCache });
 </script>

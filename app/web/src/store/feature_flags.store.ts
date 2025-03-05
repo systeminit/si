@@ -14,6 +14,7 @@ const FLAG_MAPPING = {
   TEMPLATE_MGMT_FUNC_GENERATION: "template-mgmt-func-generation",
   CLOVER_ASSETS: "clover-assets",
   DIAGRAM_OPTIMIZATION: "diagram-optimization",
+  DIAGRAM_OPTIMIZATION_2: "diagram-optimization-2",
   AUTOCONNECT: "autoconnect-component-input-sockets",
 };
 
