@@ -7,6 +7,7 @@ import { ChangeSetId } from '@/api/sdf/dal/change_set';
 
 export const useHeimdall = defineStore('heimdall', () => {
   const authStore = useAuthStore();
+  if (!authStore.selectedOrDefaultAuthToken) return;
 
   type AtomChecksumByKey = Record<Checksum, QueryKey>;
 
@@ -23,6 +24,7 @@ export const useHeimdall = defineStore('heimdall', () => {
   // figure that out :sweat:
   db.addListenerBustCache(Comlink.proxy(bustTanStackCache));
   db.initBifrost("", "");
+  db.setBearer(authStore.selectedOrDefaultAuthToken)
 
   const connectionShouldBeEnabled = computed(
     () =>

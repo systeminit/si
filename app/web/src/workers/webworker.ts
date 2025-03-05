@@ -14,7 +14,7 @@ import { registerInstrumentations } from '@opentelemetry/instrumentation';
 import { Resource } from '@opentelemetry/resources';
 import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION } from '@opentelemetry/semantic-conventions';
 import { URLPattern, describePattern } from "@si/vue-lib/pinia";
-import { sdfApiInstance as sdf } from "../store/apis";
+import Axios, { AxiosInstance, InternalAxiosRequestConfig } from "axios";
 
 const exporter = new ConsoleSpanExporter();
 /* const exporter = new OTLPTraceExporter({
@@ -47,6 +47,7 @@ const log = console.log;
 const error = console.error;
 
 let db: Database;
+let sdf: AxiosInstance;
 
 const start = async (sqlite3: Sqlite3Static) => {
   // log('Running SQLite3 version', sqlite3.version.libVersion);
@@ -592,6 +593,35 @@ const ragnarok = () => {
 let socket: ReconnectingWebSocket;
 let bustCacheFn;
 const dbInterface: DBInterface = {
+  setBearer(token) {
+    // api base url - can use a proxy or set a full url
+    let apiUrl: string;
+    if (import.meta.env.VITE_API_PROXY_PATH) {
+        apiUrl = `http://localhost:8080${import.meta.env.VITE_API_PROXY_PATH}`;
+    }
+    else if (import.meta.env.VITE_API_URL) apiUrl = import.meta.env.VITE_API_URL;
+    else throw new Error("Invalid API env var config");
+    const API_HTTP_URL = apiUrl;
+    
+    sdf = Axios.create({
+      headers: {
+        "Content-Type": "application/json",
+      },
+      baseURL: API_HTTP_URL,
+    });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    function injectBearerTokenAuth(config: InternalAxiosRequestConfig) {
+      // inject auth token from the store as a custom header
+      config.headers = config.headers || {};
+    
+      if (token) {
+        config.headers.authorization = `Bearer ${token}`;
+      }
+      return config;
+    }
+    
+    sdf.interceptors.request.use(injectBearerTokenAuth);
+  },
   async initDB() {
     return initializeSQLite();
   },

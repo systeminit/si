@@ -35,6 +35,7 @@ type BustCacheFn = (queryKey: string, latestChecksum: string) => void;
 export interface DBInterface {
   initDB: () => Promise<void>,
   migrate: () => void,
+  setBearer: (token: string) => void,
   initSocket (url: string, bearerToken: string): void,
   initBifrost(url: string, bearerToken: string): void,
   bifrostClose(): void,
