@@ -335,10 +335,6 @@ impl ChangeSet {
 
         self.workspace_snapshot_address = workspace_snapshot_address;
 
-        billing_publish::for_head_change_set_pointer_update(ctx, self)
-            .await
-            .map_err(Box::new)?;
-
         Ok(())
     }
 

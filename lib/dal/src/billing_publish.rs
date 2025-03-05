@@ -62,7 +62,8 @@ type BillingPublishResult<T> = Result<T, BillingPublishError>;
     level = "debug",
     skip(ctx, change_set)
 )]
-pub(crate) async fn for_head_change_set_pointer_update(
+/// Publishes a billing event with resource count if the change set that was updated is HEAD
+pub async fn for_head_change_set_pointer_update(
     ctx: &DalContext,
     change_set: &ChangeSet,
 ) -> BillingPublishResult<()> {

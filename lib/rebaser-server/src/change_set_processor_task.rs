@@ -270,7 +270,7 @@ async fn graceful_shutdown_signal(
 mod handlers {
     use std::result;
 
-    use dal::{ChangeSet, Workspace, WorkspaceSnapshot, WsEvent};
+    use dal::{billing_publish, ChangeSet, Workspace, WorkspaceSnapshot, WsEvent};
     use naxum::{
         extract::State,
         response::{IntoResponse, Response},
@@ -397,6 +397,14 @@ mod handlers {
                         // Manually update the pointer to the new address/id that reflects the new
                         // Action states.
                         change_set.update_pointer(&ctx, new_snapshot_id).await?;
+
+                        if let Err(err) =
+                            billing_publish::for_head_change_set_pointer_update(&ctx, &change_set)
+                                .await
+                        {
+                            error!(si.error.message = ?err, "Failed to publish billing for change set pointer update on HEAD");
+                        }
+
                         // No need to send the request over to the rebaser as we are the rebaser.
                         ctx.commit_no_rebase().await?;
                     }
