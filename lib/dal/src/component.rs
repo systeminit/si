@@ -2921,30 +2921,57 @@ impl Component {
                             // Reset the prototype and create the one connection!
                             AttributeValue::use_default_prototype(ctx, info_needed.attr_value_id)
                                 .await?;
-                            let (source_component_id, output_socket_id, _) = whole_array_match[0];
-                            connections_created.push(input_socket_id);
-                            Component::connect(
+                            let (source_component_id, output_socket_id, value) =
+                                whole_array_match[0];
+
+                            match Component::connect(
                                 ctx,
                                 *source_component_id,
                                 *output_socket_id,
                                 component_id,
                                 input_socket_id,
                             )
-                            .await?;
+                            .await
+                            {
+                                Ok(_) => connections_created.push(input_socket_id),
+                                Err(err) => {
+                                    warn!(si.error.message = ?err, "Failed to create connection to Component {}", *source_component_id);
+                                    AttributeValue::set_value(
+                                        ctx,
+                                        info_needed.attr_value_id,
+                                        Some(value.clone()),
+                                    )
+                                    .await?;
+                                }
+                            }
                         } else if should_use_valid_matches {
                             // Reset the prototype then create connections for each valid output socket match
                             AttributeValue::use_default_prototype(ctx, info_needed.attr_value_id)
                                 .await?;
-                            for &(source_component_id, output_socket_id, _) in &valid_matches {
-                                connections_created.push(input_socket_id);
-                                Component::connect(
+                            for &(source_component_id, output_socket_id, value) in &valid_matches {
+                                match Component::connect(
                                     ctx,
                                     *source_component_id,
                                     *output_socket_id,
                                     component_id,
                                     input_socket_id,
                                 )
-                                .await?;
+                                .await
+                                {
+                                    Ok(_) => connections_created.push(input_socket_id),
+                                    Err(err) => {
+                                        warn!(si.error.message = ?err, "Failed to create connection to Component {}", *source_component_id);
+                                        // need to reset this value if there was an error otherwise it's lost
+                                        AttributeValue::set_value(
+                                            ctx,
+                                            info_needed.attr_value_id,
+                                            Some(value.clone()),
+                                        )
+                                        .await?;
+                                        // don't keep looping if one of the array values fails, just reset to what it was
+                                        break;
+                                    }
+                                }
                             }
                         }
                     }
@@ -2954,16 +2981,27 @@ impl Component {
                     if matches.len() == 1 {
                         AttributeValue::use_default_prototype(ctx, info_needed.attr_value_id)
                             .await?;
-                        let (source_component_id, output_socket_id, _) = matches[0];
-                        connections_created.push(input_socket_id);
-                        Component::connect(
+                        let (source_component_id, output_socket_id, value) = &matches[0];
+                        match Component::connect(
                             ctx,
-                            source_component_id,
-                            output_socket_id,
+                            *source_component_id,
+                            *output_socket_id,
                             component_id,
                             input_socket_id,
                         )
-                        .await?;
+                        .await
+                        {
+                            Ok(_) => connections_created.push(input_socket_id),
+                            Err(err) => {
+                                warn!(si.error.message = ?err, "Failed to create connection to Component {}", source_component_id);
+                                AttributeValue::set_value(
+                                    ctx,
+                                    info_needed.attr_value_id,
+                                    Some(value.clone()),
+                                )
+                                .await?;
+                            }
+                        }
                     }
                 }
             }
