@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 use axum::{
-    extract::Path,
+    extract::{Path, Query},
     response::{IntoResponse, Response},
     routing::get,
     Json, Router,
@@ -91,10 +91,49 @@ pub async fn get_change_set_index(
     }))
 }
 
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct FrontendObjectRequest {
+    pub kind: String,
+    pub id: String,
+    pub checksum: Option<String>,
+}
+
+pub async fn get_front_end_object(
+    HandlerContext(builder): HandlerContext,
+    AccessBuilder(access_builder): AccessBuilder,
+    FriggStore(frigg): FriggStore,
+    Path((workspace_pk, change_set_id)): Path<(WorkspacePk, ChangeSetId)>,
+    Query(request): Query<FrontendObjectRequest>,
+) -> IndexResult<Json<FrontEndObjectMeta>> {
+    let ctx = builder.build_head(access_builder).await?;
+    let change_set = ChangeSet::get_by_id(&ctx, change_set_id).await?;
+
+    let obj;
+    if let Some(checksum) = request.checksum {
+        obj = frigg
+            .get_object(workspace_pk, &request.kind, &request.id, &checksum)
+            .await?
+            .ok_or(IndexError::IndexNotFound(workspace_pk, change_set_id))?;
+    } else {
+        obj = frigg
+            .get_current_object(workspace_pk, change_set_id, &request.kind, &request.id)
+            .await?
+            .ok_or(IndexError::IndexNotFound(workspace_pk, change_set_id))?;
+    }
+
+    Ok(Json(FrontEndObjectMeta {
+        workspace_snapshot_address: change_set.workspace_snapshot_address,
+        front_end_object: obj,
+    }))
+}
+
 pub fn v2_workspace_routes() -> Router<AppState> {
     Router::new().route("/", get(get_workspace_index))
 }
 
 pub fn v2_change_set_routes() -> Router<AppState> {
-    Router::new().route("/", get(get_change_set_index))
+    Router::new()
+        .route("/", get(get_change_set_index))
+        .route("/mjolnir", get(get_front_end_object))
 }

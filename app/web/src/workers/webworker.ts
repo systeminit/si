@@ -498,12 +498,23 @@ const patchAtom = async (atom: Atom, snapshotId: ROWID): Promise<ROWID> => {
 
 const mjolnir = async (changeSetId: ChangeSetId, kind: string, id: Id, checksum?: Checksum) => {
   // TODO this is probably a WsEvent, so SDF knows who to reply to
-  const body = { changeSetId, kind, id, checksum};
-  fetch("newarch/mjolnir", {
-    method: "POST",
-    body: JSON.stringify(body),
+  const pattern = [
+    "v2",
+    "workspaces",
+    { workspaceId: "01HRFEV0S23R1G23RP75QQDCA7" },
+    "change-sets",
+    { changeSetId },
+    "index", "mjolnir"
+  ] as URLPattern;
+  const [url, desc] = describePattern(pattern);
+  const params = { changeSetId, kind, id, checksum};
+  const req = await sdf<IndexObjectMeta>({
+    method: "get",
+    url,
+    params 
   });
-  // this will cause an incoming message as a reply
+  // TODO listen to the reply on the websocket
+  console.log("MJOLNIR?", req.data);
 };
 
 // FUTURE: when we have changeset data
