@@ -2,6 +2,8 @@ import * as Comlink from "comlink";
 import { applyOperation } from 'fast-json-patch';
 import sqlite3InitModule, { Database, Sqlite3Static, SqlValue } from '@sqlite.org/sqlite-wasm';
 import ReconnectingWebSocket from "reconnecting-websocket";
+import { sdfApiInstance as sdf } from "../store/apis";
+import { describePattern, URLPattern } from '@si/vue-lib/pinia';
 import { DBInterface, NOROW, Checksum, ROWID, Atom, QueryKey, Args, RawArgs, interpolate,  RowWithColumnsAndId, PatchAtomMessage, AtomMeta, AtomDocument, AtomMessage, MessageKind } from "./types/dbinterface";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { WorkspacePk } from "@/store/workspaces.store";
@@ -552,6 +554,26 @@ const assertUniqueAtoms = async () => {
   console.assert(result.length === 0,  `Unique atoms on snapshot failed ${result}`);
 };
 
+const atomChecksumsFor = async (changeSetId: ChangeSetId): Promise<Record<QueryKey, Checksum>> => {
+  const mapping: Record<QueryKey, Checksum> = {};
+  const rows = await db.exec({sql: `
+    select atoms.kind, atoms.args, atoms.checksum
+    from atoms
+    inner join snapshots_mtm_atoms mtm ON atoms.id = mtm.atom_id
+    inner join snapshots ON mtm.snapshot_id = snapshots.id
+    where snapshots.change_set_id = ?
+    ;
+    `,
+    bind: [changeSetId],
+    returnValue: "resultRows"});
+  rows.forEach((row) => {
+    const key = `${row[0]}|${row[1]}` as QueryKey;
+    const checksum = row[3] as Checksum;
+    mapping[key] = checksum;
+  })
+  return mapping;
+};
+
 const ragnarok = () => {
   // FUTURE: drop the DB data, rebuild it, and enter keys from empty
 };
@@ -648,25 +670,47 @@ const dbInterface: DBInterface = {
   partialKeyFromKindAndArgs,
   kindAndArgsFromKey,
   mjolnir,
+  atomChecksumsFor,
 
-  async atomChecksumsFor(changeSetId: ChangeSetId): Promise<Record<QueryKey, Checksum>> {
-    const mapping: Record<QueryKey, Checksum> = {};
-    const rows = await db.exec({sql: `
-      select atoms.kind, atoms.args, atoms.checksum
-      from atoms
-      inner join snapshots_mtm_atoms mtm ON atoms.id = mtm.atom_id
-      inner join snapshots ON mtm.snapshot_id = snapshots.id
-      where snapshots.change_set_id = ?
-      ;
-      `,
-      bind: [changeSetId],
-      returnValue: "resultRows"});
-    rows.forEach((row) => {
-      const key = `${row[0]}|${row[1]}` as QueryKey;
-      const checksum = row[3] as Checksum;
-      mapping[key] = checksum;
-    })
-    return mapping;
+  niflheim:  async (workspaceId: string, changeSetId: ChangeSetId) => {
+    tracer.startActiveSpan("niflheim", async (span: Span) => {
+      const pattern = [
+        "v2",
+        "workspaces",
+        { workspaceId },
+        "change-sets",
+        { changeSetId },
+        "index",
+      ] as URLPattern;
+      const [url, desc] = describePattern(pattern);
+      const frigg = tracer.startSpan(`GET ${desc}`);
+      const req = await sdf<Record<QueryKey, Checksum>>({
+        method: "get",
+        url,
+      });
+      const remoteChecksums = req.data;
+      frigg.setAttribute("numEntries", Object.keys(remoteChecksums).length)
+      frigg.end();
+
+      const local = tracer.startSpan("localChecksums");
+      const localChecksums = await atomChecksumsFor(changeSetId);
+      local.setAttribute("numEntries", Object.keys(localChecksums).length);
+      local.end();
+
+      const compare = tracer.startSpan("compare");
+      let numHammers = 0;
+      Object.entries(remoteChecksums).map(async ([key, checksum]) => {
+        const local = localChecksums[key];
+        if (!local || local !== checksum) {
+          const { kind, args } = await kindAndArgsFromKey(key);
+          mjolnir(changeSetId, kind, args);
+          numHammers++;
+        }
+      });
+      compare.setAttribute("numHammers", numHammers);
+      compare.end();
+      span.end();
+    });
   },
 
   async fullDiagnosticTest() {

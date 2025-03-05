@@ -173,7 +173,7 @@ type OptimisticFn = (requestUlid: RequestUlid) => OptimisticReturn;
 export type URLPattern = Array<
   string | Record<string, string | undefined | null>
 >;
-const describePattern = (pattern: URLPattern): [string, string] => {
+export const describePattern = (pattern: URLPattern): [string, string] => {
   const _url: string[] = [];
   const _urlName: string[] = [];
   pattern.forEach((p) => {
