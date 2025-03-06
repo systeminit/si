@@ -235,9 +235,9 @@ impl Server {
         metric!(counter.veritech.internal_heartbeat.publish.success = 0);
         metric!(counter.veritech.internal_heartbeat.publish.error = 0);
         metric!(counter.veritech.internal_heartbeat.publish.timeout = 0);
-        metric!(counter.veritech.internal_heartbeat.force_reconnect.success = 1);
-        metric!(counter.veritech.internal_heartbeat.force_reconnect.error = 1);
-        metric!(counter.veritech.internal_heartbeat.force_reconnect.timeout = 1);
+        metric!(counter.veritech.internal_heartbeat.force_reconnect.success = 0);
+        metric!(counter.veritech.internal_heartbeat.force_reconnect.error = 0);
+        metric!(counter.veritech.internal_heartbeat.force_reconnect.timeout = 0);
         metric!(
             counter
                 .veritech
