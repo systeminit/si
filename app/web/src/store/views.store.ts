@@ -697,21 +697,20 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
         pushRecentView(id: ViewId) {
           this.recentViews.push(id);
         },
-        async LIST_VIEWS(all = false) {
+        async LIST_VIEWS() {
           return new ApiRequest<ViewDescription[]>({
             method: "get",
             url: API_PREFIX,
             onSuccess: async (views) => {
               this.viewList = views;
               this.SORT_LIST_VIEWS();
-              await componentsStore.FETCH_ALL_COMPONENTS();
-              for (const { id } of views) {
-                // assuming we're coming from "on load", we have the FETCH that gets the selectedViewId
-                if (all || id !== this.selectedViewId)
-                  await this.FETCH_VIEW_GEOMETRY(id);
-              }
             },
           });
+        },
+        async FETCH_COMPLETE_DATA() {
+          await componentsStore.FETCH_ALL_COMPONENTS();
+          const ids = this.viewList.map((v) => v.id);
+          await Promise.all([...ids.map((id) => this.FETCH_VIEW_GEOMETRY(id))]);
         },
         SORT_LIST_VIEWS() {
           this.viewList = this.viewList.sort((a, b) => {
@@ -2170,7 +2169,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                 // If the applied change set has rebased into this change set,
                 // then refetch (i.e. there might be updates!)
                 if (data.toRebaseChangeSetId === changeSetId) {
-                  this.LIST_VIEWS(true); // loads all other view data
+                  this.FETCH_COMPLETE_DATA();
                 }
               },
             },

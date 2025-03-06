@@ -241,16 +241,14 @@ const approvalData = computed(
 );
 
 onBeforeMount(async () => {
-  // get to first paint ASAP
-  await Promise.all([
-    viewsStore.LIST_VIEWS(),
-    assetStore.LOAD_SCHEMA_VARIANT_LIST(),
-  ]);
   let viewId;
   if (routeStore.currentRoute?.params?.viewId)
     viewId = routeStore.currentRoute.params.viewId as string;
 
+  // get to first paint ASAP
   await Promise.all([
+    viewsStore.LIST_VIEWS(),
+    assetStore.LOAD_SCHEMA_VARIANT_LIST(),
     viewsStore.FETCH_VIEW(viewId), // draws the minimal diagram, later gets all geometry and component
     funcStore.FETCH_FUNC_LIST(), // required for actions of a selected component to work
   ]);
@@ -266,21 +264,20 @@ onBeforeMount(async () => {
   }
 
   // filling out the rest of the needed data
-  await Promise.all([
-    actionsStore.LOAD_ACTIONS(),
-    actionsStore.LOAD_ACTION_HISTORY(),
-    statusStore.FETCH_DVU_ROOTS(),
-  ]);
+  // we're not waiting on any of this data
+  // however, tests show that even if we did, we can get a first paint
+  viewsStore.FETCH_COMPLETE_DATA();
+  actionsStore.LOAD_ACTIONS();
+  actionsStore.LOAD_ACTION_HISTORY();
+  statusStore.FETCH_DVU_ROOTS();
 
   if (featureFlagsStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL) {
-    await Promise.all([
-      changeSetsStore.FETCH_APPROVAL_STATUS(
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        changeSetsStore.selectedChangeSetId!,
-      ),
+    changeSetsStore.FETCH_APPROVAL_STATUS(
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      authStore.LIST_WORKSPACE_USERS(changeSetsStore.selectedWorkspacePk!),
-    ]);
+      changeSetsStore.selectedChangeSetId!,
+    );
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    authStore.LIST_WORKSPACE_USERS(changeSetsStore.selectedWorkspacePk!);
   }
 });
 
