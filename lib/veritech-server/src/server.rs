@@ -235,6 +235,9 @@ impl Server {
         metric!(counter.veritech.internal_heartbeat.publish.success = 0);
         metric!(counter.veritech.internal_heartbeat.publish.error = 0);
         metric!(counter.veritech.internal_heartbeat.publish.timeout = 0);
+        metric!(counter.veritech.internal_heartbeat.force_reconnect.success = 1);
+        metric!(counter.veritech.internal_heartbeat.force_reconnect.error = 1);
+        metric!(counter.veritech.internal_heartbeat.force_reconnect.timeout = 1);
         metric!(
             counter
                 .veritech
@@ -254,46 +257,93 @@ impl Server {
         let empty_byte_array: Vec<u8> = Vec::new();
         let sleep_seconds = 5;
         let publish_timeout_seconds = 5;
+        let force_reconnect_timeout_seconds = 20;
+
+        // Don't try to publish again if we haven't force reconnected.
+        let mut needs_force_reconnect = false;
 
         loop {
             metric!(counter.veritech.internal_heartbeat.loop_iteration = 1);
             tokio::select! {
                 _ = tokio::time::sleep(Duration::from_secs(sleep_seconds)) => {
-                    info!(%sleep_seconds, "finished sleeping and publishing heartbeat...");
+                    info!(%sleep_seconds, "internal heartbeat: finished sleeping!");
 
-                    match tokio::time::timeout(
-                        Duration::from_secs(publish_timeout_seconds),
-                        nats.publish(
-                            "veritech.internal_heartbeat",
-                            empty_byte_array.to_owned().into(),
-                        ),
-                    )
-                    .await
-                    {
-                        Ok(publish_result) => match publish_result {
-                            Ok(()) => {
-                                metric!(counter.veritech.internal_heartbeat.publish_success = 1);
-                            }
+                    if needs_force_reconnect {
+                        // TODO(nick): perform reconnect while attempting to keep publishing
+                        // heartbeats. This isn't a big deal for now since we want to see the
+                        // reconnect work, but in the future if this code sticks, we should do both
+                        // concurrently.
+                        warn!("internal heartbeat: performing force reconnect due to internal heartbeat publish timeout...");
+                        match tokio::time::timeout(
+                            Duration::from_secs(force_reconnect_timeout_seconds),
+                            nats.force_reconnect(),
+                        )
+                        .await
+                        {
+                            Ok(force_reconnect_result) => match force_reconnect_result {
+                                Ok(()) => {
+                                    warn!("internal heartbeat: performed force reconnect!");
+                                    metric!(counter.veritech.internal_heartbeat.force_reconnect.success = 1);
+                                    needs_force_reconnect = false;
+                                }
+                                Err(err) => {
+                                    error!(si.error.message = ?err, "internal heartbeat: force reconnect error");
+                                    metric!(counter.veritech.internal_heartbeat.force_reconnect.error = 1);
+                                }
+                            },
                             Err(err) => {
-                                error!(si.error.message = ?err, "internal heartbeat: publish error");
-                                metric!(counter.veritech.internal_heartbeat.publish_error = 1);
+                                error!(si.error.message = ?err, %force_reconnect_timeout_seconds, "internal heartbeat: force reconnect timeout");
+                                metric!(counter.veritech.internal_heartbeat.force_reconnect.timeout = 1);
                             }
-                        },
-                        Err(err) => {
-                            error!(si.error.message = ?err, %publish_timeout_seconds, "internal heartbeat: publish timeout");
-                            metric!(counter.veritech.internal_heartbeat.publish_timeout = 1);
+                        }
+                    } else {
+                        info!("internal heartbeat: publishing heartbeat...");
+                        match tokio::time::timeout(
+                            Duration::from_secs(publish_timeout_seconds),
+                            nats.publish(
+                                "veritech.internal_heartbeat",
+                                empty_byte_array.to_owned().into(),
+                            ),
+                        )
+                        .await
+                        {
+                            Ok(publish_result) => match publish_result {
+                                Ok(()) => {
+                                    metric!(counter.veritech.internal_heartbeat.publish.success = 1);
+                                }
+                                Err(err) => {
+                                    error!(si.error.message = ?err, "internal heartbeat: publish error");
+                                    metric!(counter.veritech.internal_heartbeat.publish.error = 1);
+                                }
+                            },
+                            Err(err) => {
+                                error!(si.error.message = ?err, %publish_timeout_seconds, "internal heartbeat: publish timeout");
+                                metric!(counter.veritech.internal_heartbeat.publish.timeout = 1);
+                                needs_force_reconnect = true;
+                            }
                         }
                     }
 
-                    info!("published and now getting connection state... (has a read lock!)");
-
+                    info!("internal heartbeat: getting connection state... (has a read lock!)");
                     let state = match nats.connection_state() {
                         State::Connected => {
-                            metric!(counter.veritech.internal_heartbeat.connection_state.connected = 1);
+                            metric!(
+                                counter
+                                    .veritech
+                                    .internal_heartbeat
+                                    .connection_state
+                                    .connected = 1
+                            );
                             State::Connected
                         }
                         State::Disconnected => {
-                            metric!(counter.veritech.internal_heartbeat.connection_state.disconnected = 1);
+                            metric!(
+                                counter
+                                    .veritech
+                                    .internal_heartbeat
+                                    .connection_state
+                                    .disconnected = 1
+                            );
                             State::Disconnected
                         }
                         State::Pending => {
@@ -301,11 +351,10 @@ impl Server {
                             State::Pending
                         }
                     };
-
-                    info!(?state, "got connection state and looping!");
+                    info!(?state, "internal heartbeat: got connection state!");
                 }
                 _ = token.cancelled() => {
-                    info!("shutting down internal heartbeat app");
+                    info!("internal heartbeat: shutting down internal heartbeat app");
                     break;
                 }
             }

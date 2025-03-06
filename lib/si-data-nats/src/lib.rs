@@ -39,6 +39,8 @@ pub type NatsError = Error;
 pub enum Error {
     #[error("io error: {0}")]
     Io(#[from] io::Error),
+    #[error("nats client reconnect error: {0}")]
+    NatsClientReconnect(#[from] async_nats::client::ReconnectError),
     #[error("nats connect error: {0}")]
     NatsConnect(#[from] async_nats::ConnectError),
     #[error("nats flush error: {0}")]
@@ -1131,6 +1133,11 @@ impl Client {
     /// Gets a cloned copy of the client's metadata.
     pub fn metadata_clone(&self) -> Arc<ConnectionMetadata> {
         self.metadata.clone()
+    }
+
+    #[instrument(name = "nats_client::force_reconnect", skip_all, level = "debug")]
+    pub async fn force_reconnect(&self) -> Result<()> {
+        Ok(self.inner.force_reconnect().await?)
     }
 }
 
