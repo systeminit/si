@@ -1,14 +1,11 @@
 import * as _ from "lodash-es";
-import Axios, {
-  InternalAxiosRequestConfig,
-} from "axios";
+import Axios, { InternalAxiosRequestConfig } from "axios";
 
 // api base url - can use a proxy or set a full url
 let apiUrl: string;
 if (import.meta.env.VITE_API_PROXY_PATH) {
-    apiUrl = `http://localhost:8080${import.meta.env.VITE_API_PROXY_PATH}`;
-}
-else if (import.meta.env.VITE_API_URL) apiUrl = import.meta.env.VITE_API_URL;
+  apiUrl = `http://localhost:8080${import.meta.env.VITE_API_PROXY_PATH}`;
+} else if (import.meta.env.VITE_API_URL) apiUrl = import.meta.env.VITE_API_URL;
 else throw new Error("Invalid API env var config");
 export const API_HTTP_URL = apiUrl;
 

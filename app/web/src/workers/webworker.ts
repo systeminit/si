@@ -1,21 +1,44 @@
 import * as Comlink from "comlink";
-import { applyOperation } from 'fast-json-patch';
-import sqlite3InitModule, { Database, Sqlite3Static, SqlValue } from '@sqlite.org/sqlite-wasm';
+import { applyOperation } from "fast-json-patch";
+import sqlite3InitModule, {
+  Database,
+  Sqlite3Static,
+  SqlValue,
+} from "@sqlite.org/sqlite-wasm";
 import ReconnectingWebSocket from "reconnecting-websocket";
-import { DBInterface, NOROW, Checksum, ROWID, Atom, QueryKey, Id, interpolate,  RowWithColumnsAndId, PatchAtomMessage, AtomMeta, AtomDocument, AtomMessage, MessageKind, IndexObjectMeta } from "./types/dbinterface";
-import { ChangeSetId } from "@/api/sdf/dal/change_set";
-import { WorkspacePk } from "@/store/workspaces.store";
-import { trace, Span, } from '@opentelemetry/api';
-import { WebTracerProvider } from '@opentelemetry/sdk-trace-web';
-import { BatchSpanProcessor, ConsoleSpanExporter } from '@opentelemetry/sdk-trace-base';
-import { FetchInstrumentation } from '@opentelemetry/instrumentation-fetch';
-import { registerInstrumentations } from '@opentelemetry/instrumentation';
+import { trace, Span } from "@opentelemetry/api";
+import { WebTracerProvider } from "@opentelemetry/sdk-trace-web";
+import {
+  BatchSpanProcessor,
+  ConsoleSpanExporter,
+} from "@opentelemetry/sdk-trace-base";
+import { FetchInstrumentation } from "@opentelemetry/instrumentation-fetch";
+import { registerInstrumentations } from "@opentelemetry/instrumentation";
 // import { OTLPTraceExporter } from '@opentelemetry/exporter-otlp-http';
-import { Resource } from '@opentelemetry/resources';
-import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION } from '@opentelemetry/semantic-conventions';
+import { Resource } from "@opentelemetry/resources";
+import {
+  ATTR_SERVICE_NAME,
+  ATTR_SERVICE_VERSION,
+} from "@opentelemetry/semantic-conventions";
 import { URLPattern, describePattern } from "@si/vue-lib/pinia";
 import Axios, { AxiosInstance, InternalAxiosRequestConfig } from "axios";
+import { WorkspacePk } from "@/store/workspaces.store";
+import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { nonNullable } from "@/utils/typescriptLinter";
+import {
+  DBInterface,
+  NOROW,
+  Checksum,
+  Atom,
+  QueryKey,
+  Id,
+  PatchAtomMessage,
+  AtomMeta,
+  AtomDocument,
+  AtomMessage,
+  MessageKind,
+  IndexObjectMeta,
+} from "./types/dbinterface";
 
 const exporter = new ConsoleSpanExporter();
 /* const exporter = new OTLPTraceExporter({
@@ -26,24 +49,19 @@ const processor = new BatchSpanProcessor(exporter);
 
 const provider = new WebTracerProvider({
   resource: new Resource({
-      [ATTR_SERVICE_NAME]: 'bifrost',
-      [ATTR_SERVICE_VERSION]: '0.1',
+    [ATTR_SERVICE_NAME]: "bifrost",
+    [ATTR_SERVICE_VERSION]: "0.1",
   }),
-  spanProcessors: [
-    processor
-  ],
+  spanProcessors: [processor],
 });
 
 provider.register();
 
 registerInstrumentations({
-  instrumentations: [
-      new FetchInstrumentation(),
-  ],
+  instrumentations: [new FetchInstrumentation()],
 });
 
-
-const tracer = trace.getTracer('bifrost');
+const tracer = trace.getTracer("bifrost");
 const log = console.log;
 const error = console.error;
 
@@ -53,15 +71,15 @@ let sdf: AxiosInstance;
 const start = async (sqlite3: Sqlite3Static) => {
   // log('Running SQLite3 version', sqlite3.version.libVersion);
   db =
-    'opfs' in sqlite3
-      ? new sqlite3.oo1.OpfsDb('/si.sqlite3')
-      : new sqlite3.oo1.DB('/si.sqlite3', 'ct');
+    "opfs" in sqlite3
+      ? new sqlite3.oo1.OpfsDb("/si.sqlite3")
+      : new sqlite3.oo1.DB("/si.sqlite3", "ct");
   log(
-    'opfs' in sqlite3
+    "opfs" in sqlite3
       ? `OPFS is available, created persisted database at ${db.filename}`
       : `OPFS is not available, created transient database ${db.filename}`,
   );
-  await db.exec({ sql: 'PRAGMA foreign_keys = ON;'});
+  await db.exec({ sql: "PRAGMA foreign_keys = ON;" });
   // const result = await db.exec({ sql: 'PRAGMA foreign_keys', returnValue: "resultRows" })
   // log("PRAGMA foreign_keys: ", oneInOne(result), "?");
 };
@@ -74,9 +92,8 @@ const initializeSQLite = async () => {
     await start(sqlite3);
   } catch (err) {
     if (err instanceof Error)
-      error('Initialization error:', err.name, err.message);
-    else
-      error('Initialization error:', err);
+      error("Initialization error:", err.name, err.message);
+    else error("Initialization error:", err);
   }
 };
 
@@ -153,8 +170,8 @@ const ensureTables = async () => {
    *  - DELETE FROM snapshots WHERE change_set_id=<this_changeSetId> AND checksum=<old_checksum>
    */
 
-  return db.exec({sql});
-}
+  return db.exec({ sql });
+};
 
 const encodeDocumentForDB = async (doc: object) => {
   return await new Blob([JSON.stringify(doc)]).arrayBuffer();
@@ -163,7 +180,7 @@ const encodeDocumentForDB = async (doc: object) => {
 const decodeDocumentFromDB = (doc: ArrayBuffer): AtomDocument => {
   const s = new TextDecoder().decode(doc);
   const j = JSON.parse(s);
-  return j
+  return j;
 };
 
 const oneInOne = (rows: SqlValue[][]): SqlValue | typeof NOROW => {
@@ -173,9 +190,12 @@ const oneInOne = (rows: SqlValue[][]): SqlValue | typeof NOROW => {
     if (id || id === 0) return id;
   }
   return NOROW;
-}
+};
 
-const atomExistsOnSnapshots = async (atom: Atom, kindChecksum: Checksum): Promise<Checksum[]> => {
+const atomExistsOnSnapshots = async (
+  atom: Atom,
+  kindChecksum: Checksum,
+): Promise<Checksum[]> => {
   const rows = await db.exec({
     sql: `
     select
@@ -195,7 +215,6 @@ const atomExistsOnSnapshots = async (atom: Atom, kindChecksum: Checksum): Promis
 
 // SEE PATCH WORKFLOW
 const newSnapshot = async (meta: AtomMeta, fromSnapshotAddress?: string) => {
-
   await db.exec({
     sql: `INSERT INTO snapshots (address) VALUES (?);`,
     bind: [meta.snapshotToChecksum],
@@ -210,7 +229,7 @@ const newSnapshot = async (meta: AtomMeta, fromSnapshotAddress?: string) => {
         WHERE
           snapshot_address = ?
         `,
-      bind: [meta.snapshotToChecksum, fromSnapshotAddress]
+      bind: [meta.snapshotToChecksum, fromSnapshotAddress],
     });
   }
 };
@@ -253,27 +272,31 @@ const partialKeyFromKindAndArgs = (kind: string, id: Id): QueryKey => {
   return `${kind}|${id}`;
 };
 
-const kindAndArgsFromKey = (key: QueryKey): {kind: string, id: Id} => {
-  const pieces = key.split('|', 2);
+const kindAndArgsFromKey = (key: QueryKey): { kind: string; id: Id } => {
+  const pieces = key.split("|", 2);
   if (pieces.length !== 2) throw new Error(`Bad key ${key} -> ${pieces}`);
-  if (!pieces[0] || !pieces[1]) throw new Error(`Missing key ${key} -> ${pieces}`);
+  if (!pieces[0] || !pieces[1])
+    throw new Error(`Missing key ${key} -> ${pieces}`);
   const kind = pieces[0];
   const id = pieces[1];
   return { kind, id };
-}
+};
 
 const handleHammer = async (msg: AtomMessage, span?: Span) => {
   const toSnapshotAddress = await snapshotLogic(msg.atom, span);
   await createAtom(msg.atom, msg.data);
 
-  if (!toSnapshotAddress) throw new Error(`Expected snapshot ROWID for ${msg.atom.snapshotToChecksum}`);
+  if (!toSnapshotAddress)
+    throw new Error(
+      `Expected snapshot ROWID for ${msg.atom.snapshotToChecksum}`,
+    );
   await insertAtomMTM(msg.atom, toSnapshotAddress);
 
   updateChangeSetWithNewSnapshot(msg.atom);
   removeOldSnapshot();
 };
 
-const insertAtomMTM = async(atom: Atom, toSnapshotAddress: Checksum) => {
+const insertAtomMTM = async (atom: Atom, toSnapshotAddress: Checksum) => {
   await db.exec({
     sql: `insert into snapshots_mtm_atoms
       (snapshot_address, kind, args, checksum)
@@ -284,40 +307,54 @@ const insertAtomMTM = async(atom: Atom, toSnapshotAddress: Checksum) => {
 };
 
 const snapshotLogic = async (meta: AtomMeta, span?: Span) => {
-  const { changeSetId, workspaceId, snapshotFromChecksum: fromSnapshotChecksum, snapshotToChecksum: toSnapshotChecksum } = { ...meta };
-  span?.setAttributes({ changeSetId, workspaceId, fromSnapshotChecksum, toSnapshotChecksum });
+  const {
+    changeSetId,
+    workspaceId,
+    snapshotFromChecksum: fromSnapshotChecksum,
+    snapshotToChecksum: toSnapshotChecksum,
+  } = { ...meta };
+  span?.setAttributes({
+    changeSetId,
+    workspaceId,
+    fromSnapshotChecksum,
+    toSnapshotChecksum,
+  });
 
   const changeSetQuery = await db.exec({
     sql: `select change_set_id, snapshot_address from changesets where change_set_id = ?`,
-      returnValue: "resultRows",
+    returnValue: "resultRows",
     bind: [meta.changeSetId],
-  })
+  });
   let changeSetExists;
   let fromSnapshotAddress;
   const changeSet = changeSetQuery[0] as string[];
   if (changeSet) {
-    ([changeSetExists, fromSnapshotAddress] = [...changeSet]);
+    [changeSetExists, fromSnapshotAddress] = [...changeSet];
   }
 
   const snapshotQuery = await db.exec({
     sql: `select address from snapshots where address = ?`,
-      returnValue: "resultRows",
+    returnValue: "resultRows",
     bind: [toSnapshotChecksum],
-  })
+  });
   const snapshotExists = oneInOne(snapshotQuery);
-  if (snapshotExists === NOROW)
-    await newSnapshot(meta, fromSnapshotChecksum);
+  if (snapshotExists === NOROW) await newSnapshot(meta, fromSnapshotChecksum);
 
   if (!changeSetExists) {
     // first time i see this change set
     await db.exec({
       sql: "insert into changesets (change_set_id, workspace_id, snapshot_address) VALUES (?, ?, ?);",
       bind: [meta.changeSetId, meta.workspaceId, toSnapshotChecksum],
-    })
+    });
   } else {
     // new snapshot on an existing change set
-    if (!fromSnapshotAddress) throw new Error("Null value from SQL, impossible");
-    if (meta.snapshotFromChecksum && fromSnapshotAddress !== fromSnapshotChecksum) throw new Error("RAGNAROK!")
+    if (!fromSnapshotAddress)
+      throw new Error("Null value from SQL, impossible");
+    if (
+      meta.snapshotFromChecksum &&
+      fromSnapshotAddress !== fromSnapshotChecksum
+    )
+      throw new Error("RAGNAROK!");
 
     if (fromSnapshotAddress !== toSnapshotChecksum)
       await newSnapshot(meta, fromSnapshotAddress);
@@ -326,37 +363,44 @@ const snapshotLogic = async (meta: AtomMeta, span?: Span) => {
   return toSnapshotChecksum;
 };
 
-const handlePatchMessage = async (data: PatchAtomMessage, span?: Span ) => {
+const handlePatchMessage = async (data: PatchAtomMessage, span?: Span) => {
   span?.setAttribute("numRawPatches", data.patches.length);
   if (data.patches.length === 0) return;
   // Assumption: every patch is working on the same workspace and changeset
   // (e.g. we're not bundling messages across workspaces somehow)
 
-  if (!data.meta.changeSetId) throw new Error("Expected changeSetId")
+  if (!data.meta.changeSetId) throw new Error("Expected changeSetId");
 
   const toSnapshotAddress = await snapshotLogic(data.meta, span);
 
-  const atoms = data.patches.map((rawAtom) => {
-    const atom: Atom = {
-      ...rawAtom,
-      ...data.meta,
-      operations: JSON.parse(rawAtom.operations),
-    };
-    return atom;
-  }).filter(
-      (rawAtom): rawAtom is Required<Atom> => !!rawAtom.kindFromChecksum);
+  const atoms = data.patches
+    .map((rawAtom) => {
+      const atom: Atom = {
+        ...rawAtom,
+        ...data.meta,
+        operations: JSON.parse(rawAtom.operations),
+      };
+      return atom;
+    })
+    .filter((rawAtom): rawAtom is Required<Atom> => !!rawAtom.kindFromChecksum);
 
   span?.setAttribute("numAtoms", atoms.length);
-  if (!toSnapshotAddress) throw new Error(`Expected snapshot for ${data.meta.snapshotToChecksum}`);
-  await Promise.all(atoms.map(async (atom) => {
-    await applyPatch(atom, toSnapshotAddress);
-  }));
+  if (!toSnapshotAddress)
+    throw new Error(`Expected snapshot for ${data.meta.snapshotToChecksum}`);
+  await Promise.all(
+    atoms.map(async (atom) => {
+      await applyPatch(atom, toSnapshotAddress);
+    }),
+  );
 
-  updateChangeSetWithNewSnapshot(data.meta)
+  updateChangeSetWithNewSnapshot(data.meta);
   removeOldSnapshot();
 };
 
-const applyPatch = async (atom: Required<Atom>, toSnapshotAddress: Checksum) => {
+const applyPatch = async (
+  atom: Required<Atom>,
+  toSnapshotAddress: Checksum,
+) => {
   await tracer.startActiveSpan("applyPatch", async (span) => {
     span.setAttribute("atom", JSON.stringify(atom));
 
@@ -369,16 +413,20 @@ const applyPatch = async (atom: Required<Atom>, toSnapshotAddress: Checksum) => 
     }
 
     // otherwise, find the old record
-    const previousSnapshots = await atomExistsOnSnapshots(atom, atom.kindFromChecksum);
+    const previousSnapshots = await atomExistsOnSnapshots(
+      atom,
+      atom.kindFromChecksum,
+    );
     span.setAttribute("previousSnapshots", JSON.stringify(previousSnapshots));
     const exists = previousSnapshots.includes(atom.snapshotFromChecksum);
     span.setAttribute("exists", exists);
 
     let needToInsertMTM = false;
     if (atom.kindFromChecksum === "0") {
-      if (!exists)  {// if i already have it, this is a NOOP
+      if (!exists) {
+        // if i already have it, this is a NOOP
         await createAtomFromPatch(atom);
-        needToInsertMTM = true
+        needToInsertMTM = true;
       }
     } else if (atom.kindToChecksum === "0") {
       // if i've already removed it, this is a NOOP
@@ -392,16 +440,21 @@ const applyPatch = async (atom: Required<Atom>, toSnapshotAddress: Checksum) => 
       // otherwise, fire the small hammer to get the full object
       else {
         span.addEvent("mjolnir", { atom: JSON.stringify(atom) });
-        mjolnir(atom.workspaceId, atom.changeSetId, atom.kind, atom.id, atom.kindToChecksum);
+        mjolnir(
+          atom.workspaceId,
+          atom.changeSetId,
+          atom.kind,
+          atom.id,
+          atom.kindToChecksum,
+        );
       }
     }
 
     // this insert potentially replaces the MTM row that exists for the current snapshot
     // based on the table constraint
-    if (needToInsertMTM)
-      await insertAtomMTM(atom, toSnapshotAddress);
-    span.end()
-  })
+    if (needToInsertMTM) await insertAtomMTM(atom, toSnapshotAddress);
+    span.end();
+  });
 };
 
 const patchAtom = async (atom: Required<Atom>) => {
@@ -413,10 +466,11 @@ const patchAtom = async (atom: Required<Atom>) => {
         args = ? and
         checksum = ?
       ;`,
-      bind: [atom.kind, atom.id, atom.kindFromChecksum],
-      returnValue: "resultRows",
+    bind: [atom.kind, atom.id, atom.kindFromChecksum],
+    returnValue: "resultRows",
   });
   if (atomRows.length === 0) throw new Error("Cannot find atom");
+  // eslint-disable-line @typescript-eslint/no-non-null-assertion
   const atomRow = atomRows[0]!;
 
   // FUTURE: JSON Patch, where we select the old data, and patch it
@@ -425,7 +479,7 @@ const patchAtom = async (atom: Required<Atom>) => {
   const doc = decodeDocumentFromDB(_doc);
   atom.operations?.forEach((op) => {
     applyOperation(doc, op, false, true);
-  })
+  });
 
   await db.exec({
     sql: `
@@ -444,7 +498,13 @@ const patchAtom = async (atom: Required<Atom>) => {
   });
 };
 
-const mjolnir = async (workspaceId: string, changeSetId: ChangeSetId, kind: string, id: Id, checksum?: Checksum) => {
+const mjolnir = async (
+  workspaceId: string,
+  changeSetId: ChangeSetId,
+  kind: string,
+  id: Id,
+  checksum?: Checksum,
+) => {
   // TODO this is probably a WsEvent, so SDF knows who to reply to
   const pattern = [
     "v2",
@@ -452,14 +512,15 @@ const mjolnir = async (workspaceId: string, changeSetId: ChangeSetId, kind: stri
     { workspaceId },
     "change-sets",
     { changeSetId },
-    "index", "mjolnir"
+    "index",
+    "mjolnir",
   ] as URLPattern;
-  const [url, desc] = describePattern(pattern);
-  const params = { changeSetId, kind, id, checksum};
+  const [url, _desc] = describePattern(pattern);
+  const params = { changeSetId, kind, id, checksum };
   const req = await sdf<IndexObjectMeta>({
     method: "get",
     url,
-    params 
+    params,
   });
   // TODO listen to the reply on the websocket
 
@@ -473,7 +534,7 @@ const mjolnir = async (workspaceId: string, changeSetId: ChangeSetId, kind: stri
       changeSetId,
       snapshotToChecksum: req.data.workspaceSnapshotAddress,
     },
-    data: req.data.frontEndObject.data
+    data: req.data.frontEndObject.data,
   };
   await handleHammer(msg);
 };
@@ -481,9 +542,9 @@ const mjolnir = async (workspaceId: string, changeSetId: ChangeSetId, kind: stri
 const updateChangeSetWithNewSnapshot = async (meta: AtomMeta) => {
   await db.exec({
     sql: "update changesets set snapshot_address = ? where change_set_id = ?;",
-    bind: [meta.snapshotToChecksum, meta.changeSetId]
+    bind: [meta.snapshotToChecksum, meta.changeSetId],
   });
-}
+};
 
 const removeOldSnapshot = async () => {
   await tracer.startActiveSpan("pruneFromSnapshot", async (span) => {
@@ -498,14 +559,17 @@ const removeOldSnapshot = async () => {
         WHERE (kind, args, checksum) NOT IN (
           SELECT  kind, args, checksum  FROM snapshots_mtm_atoms
         ) returning atoms.kind, atoms.args, atoms.checksum;
-      `
+      `,
     });
     span.end();
   });
-}
+};
 
 // FUTURE: when we have changeset data
-const pruneAtomsForClosedChangeSet = async (workspaceId: WorkspacePk, changeSetId: ChangeSetId) => {
+const pruneAtomsForClosedChangeSet = async (
+  workspaceId: WorkspacePk,
+  changeSetId: ChangeSetId,
+) => {
   await tracer.startActiveSpan("pruneClosedChangeSet", async (span) => {
     span.setAttributes({ workspaceId, changeSetId });
     await db.exec({
@@ -519,10 +583,12 @@ const pruneAtomsForClosedChangeSet = async (workspaceId: WorkspacePk, changeSetI
   });
 };
 
-
-const atomChecksumsFor = async (changeSetId: ChangeSetId): Promise<Record<QueryKey, Checksum>> => {
+const atomChecksumsFor = async (
+  changeSetId: ChangeSetId,
+): Promise<Record<QueryKey, Checksum>> => {
   const mapping: Record<QueryKey, Checksum> = {};
-  const rows = await db.exec({sql: `
+  const rows = await db.exec({
+    sql: `
     select atoms.kind, atoms.args, atoms.checksum
     from atoms
     inner join snapshots_mtm_atoms mtm
@@ -533,12 +599,13 @@ const atomChecksumsFor = async (changeSetId: ChangeSetId): Promise<Record<QueryK
     ;
     `,
     bind: [changeSetId],
-    returnValue: "resultRows"});
+    returnValue: "resultRows",
+  });
   rows.forEach((row) => {
     const key = `${row[0]}|${row[1]}` as QueryKey;
     const checksum = row[3] as Checksum;
     mapping[key] = checksum;
-  })
+  });
   return mapping;
 };
 
@@ -556,8 +623,11 @@ const assertUniqueAtoms = async () => {
     HAVING count(*) > 1
     ;`,
     returnValue: "resultRows",
-  })
-  console.assert(result.length === 0,  `Unique atoms on snapshot failed ${result}`);
+  });
+  console.assert(
+    result.length === 0,
+    `Unique atoms on snapshot failed ${result}`,
+  );
 };
 
 const ragnarok = () => {
@@ -571,12 +641,12 @@ const dbInterface: DBInterface = {
     // api base url - can use a proxy or set a full url
     let apiUrl: string;
     if (import.meta.env.VITE_API_PROXY_PATH) {
-        apiUrl = `http://localhost:8080${import.meta.env.VITE_API_PROXY_PATH}`;
-    }
-    else if (import.meta.env.VITE_API_URL) apiUrl = import.meta.env.VITE_API_URL;
+      apiUrl = `http://localhost:8080${import.meta.env.VITE_API_PROXY_PATH}`;
+    } else if (import.meta.env.VITE_API_URL)
+      apiUrl = import.meta.env.VITE_API_URL;
     else throw new Error("Invalid API env var config");
     const API_HTTP_URL = apiUrl;
-    
+
     sdf = Axios.create({
       headers: {
         "Content-Type": "application/json",
@@ -587,13 +657,13 @@ const dbInterface: DBInterface = {
     function injectBearerTokenAuth(config: InternalAxiosRequestConfig) {
       // inject auth token from the store as a custom header
       config.headers = config.headers || {};
-    
+
       if (token) {
         config.headers.authorization = `Bearer ${token}`;
       }
       return config;
     }
-    
+
     sdf.interceptors.request.use(injectBearerTokenAuth);
   },
   async initDB() {
@@ -606,10 +676,9 @@ const dbInterface: DBInterface = {
     return result;
   },
 
-  async initSocket (url: string, bearerToken: string) {
+  async initSocket(url: string, bearerToken: string) {
     socket = new ReconnectingWebSocket(
-      () =>
-        `${url}/bifrost?token=Bearer+${bearerToken}`,
+      () => `${url}/bifrost?token=Bearer+${bearerToken}`,
       [],
       {
         // see options https://www.npmjs.com/package/reconnecting-websocket#available-options
@@ -622,9 +691,10 @@ const dbInterface: DBInterface = {
       tracer.startActiveSpan("handleEvent", async (span) => {
         // we'll either be getting AtomMessages as patches to the data
         // OR we'll be getting mjolnir responses with the Atom as a whole
-        const data = JSON.parse(messageEvent.data) as PatchAtomMessage | AtomMessage;
-        if (!("kind" in data))
-          span.setAttribute("kindMissing", "no kind")
+        const data = JSON.parse(messageEvent.data) as
+          | PatchAtomMessage
+          | AtomMessage;
+        if (!("kind" in data)) span.setAttribute("kindMissing", "no kind");
         else {
           span.setAttribute("messageKind", data.kind);
           if (data.kind === MessageKind.PATCH)
@@ -633,7 +703,7 @@ const dbInterface: DBInterface = {
             await handleHammer(data, span);
         }
         span.end();
-      })
+      });
     });
 
     socket.addEventListener("error", (errorEvent) => {
@@ -642,11 +712,11 @@ const dbInterface: DBInterface = {
   },
 
   async initBifrost(url: string, bearerToken: string) {
-    await Promise.all([this.initDB(), ]); // this.initSocket(url, bearerToken)]);
+    await Promise.all([this.initDB()]); // this.initSocket(url, bearerToken)]);
     await this.migrate();
   },
 
-  async bifrostClose () {
+  async bifrostClose() {
     // socket.close();
   },
 
@@ -654,12 +724,18 @@ const dbInterface: DBInterface = {
     // socket.reconnect();
   },
 
-  async addListenerBustCache (cb: (queryKey: QueryKey, latestChecksum: Checksum) => void) {
+  async addListenerBustCache(
+    cb: (queryKey: QueryKey, latestChecksum: Checksum) => void,
+  ) {
     bustCacheFn = cb;
     bustCacheFn("foo", "bar2");
   },
 
-  async get(changeSetId: ChangeSetId, kind: string, id: Id): Promise<typeof NOROW | object> {
+  async get(
+    changeSetId: ChangeSetId,
+    kind: string,
+    id: Id,
+  ): Promise<typeof NOROW | object> {
     const atomData = await db.exec({
       sql: `
       select
@@ -679,9 +755,9 @@ const dbInterface: DBInterface = {
       returnValue: "resultRows",
     });
     const data = oneInOne(atomData);
-    if (data === NOROW) return NOROW
+    if (data === NOROW) return NOROW;
     const atomDoc = decodeDocumentFromDB(data as ArrayBuffer);
-    return atomDoc
+    return atomDoc;
   },
 
   partialKeyFromKindAndId: partialKeyFromKindAndArgs,
@@ -689,7 +765,7 @@ const dbInterface: DBInterface = {
   mjolnir,
   atomChecksumsFor,
 
-  niflheim:  async (workspaceId: string, changeSetId: ChangeSetId) => {
+  niflheim: async (workspaceId: string, changeSetId: ChangeSetId) => {
     tracer.startActiveSpan("niflheim", async (span: Span) => {
       const pattern = [
         "v2",
@@ -706,7 +782,7 @@ const dbInterface: DBInterface = {
         url,
       });
       const atoms = req.data.frontEndObject.data.mvList;
-      frigg.setAttribute("numEntries", atoms.length)
+      frigg.setAttribute("numEntries", atoms.length);
       frigg.end();
 
       const local = tracer.startSpan("localChecksums");
@@ -716,7 +792,7 @@ const dbInterface: DBInterface = {
 
       const compare = tracer.startSpan("compare");
       let numHammers = 0;
-      atoms.forEach(({kind, id, checksum}) => {
+      atoms.forEach(({ kind, id, checksum }) => {
         const key = partialKeyFromKindAndArgs(kind, id);
         const local = localChecksums[key];
         if (!local || local !== checksum) {
@@ -732,18 +808,20 @@ const dbInterface: DBInterface = {
   },
 
   async fullDiagnosticTest() {
-    log("~~ DIAGNOSTIC STARTED ~~")
+    log("~~ DIAGNOSTIC STARTED ~~");
     const head = "HEAD";
     const workspace = "W";
-    const checksum = 'HEAD';
-    await db.exec({sql: `
+    const checksum = "HEAD";
+    await db.exec({
+      sql: `
         INSERT INTO snapshots (address)
         VALUES (?);
       `,
       bind: [checksum],
     });
 
-    await db.exec({sql: `
+    await db.exec({
+      sql: `
         INSERT INTO changesets (change_set_id, workspace_id, snapshot_address)
         VALUES (?, ?, ?);
       `,
@@ -751,7 +829,8 @@ const dbInterface: DBInterface = {
     });
 
     const testRecord = "testRecord";
-    await db.exec({sql: `
+    await db.exec({
+      sql: `
         INSERT INTO atoms (kind, args, checksum, data)
         VALUES (?, ?, ?, ?);
       `,
@@ -759,18 +838,20 @@ const dbInterface: DBInterface = {
         testRecord,
         "testId1",
         "tr1",
-        await encodeDocumentForDB({id: 1, name: "test record 1"})
+        await encodeDocumentForDB({ id: 1, name: "test record 1" }),
       ],
     });
 
-    await db.exec({sql: `
+    await db.exec({
+      sql: `
         INSERT INTO snapshots_mtm_atoms (snapshot_address, kind, args, checksum)
         VALUES (?, ?, ?, ?);
       `,
       bind: [checksum, testRecord, "testId1", "tr1"],
     });
 
-    await db.exec({sql: `
+    await db.exec({
+      sql: `
         INSERT INTO atoms (kind, args, checksum, data)
         VALUES (?, ?, ?, ?);
       `,
@@ -778,19 +859,21 @@ const dbInterface: DBInterface = {
         testRecord,
         "testId2",
         "tr2",
-        await encodeDocumentForDB({id: 2, name: "test record 2"})
+        await encodeDocumentForDB({ id: 2, name: "test record 2" }),
       ],
     });
 
-    await db.exec({sql: `
+    await db.exec({
+      sql: `
         INSERT INTO snapshots_mtm_atoms (snapshot_address, kind, args, checksum)
         VALUES (?, ?, ?, ?);
       `,
       bind: [checksum, testRecord, "testId2", "tr2"],
     });
 
-    const testList = "testList"
-    await db.exec({sql: `
+    const testList = "testList";
+    await db.exec({
+      sql: `
         INSERT INTO atoms (kind, args, checksum, data)
         VALUES (?, ?, ?, ?);
       `,
@@ -798,20 +881,20 @@ const dbInterface: DBInterface = {
         testList,
         "changeSetId",
         "tl1",
-        await encodeDocumentForDB({ list: [
-          `${testRecord}:1:tr1`,
-          `${testRecord}:2:tr2`,
-        ]})
+        await encodeDocumentForDB({
+          list: [`${testRecord}:1:tr1`, `${testRecord}:2:tr2`],
+        }),
       ],
     });
 
-    await db.exec({sql: `
+    await db.exec({
+      sql: `
         INSERT INTO snapshots_mtm_atoms (snapshot_address, kind, args, checksum)
         VALUES (?, ?, ?, ?);
       `,
       bind: [checksum, testList, "changeSetId", "tl1"],
     });
-    log("~~ FIXTURE COMPLETED ~~")
+    log("~~ FIXTURE COMPLETED ~~");
 
     /**
      * OK, the above code gives us 3 atoms that represent a list and two items within it
@@ -830,17 +913,21 @@ const dbInterface: DBInterface = {
         snapshotToChecksum: "new_change_set",
       },
       kind: MessageKind.PATCH,
-      patches: [{
-        kind: testRecord,
-        kindFromChecksum: "tr1",
-        kindToChecksum: "tr1-new-name",
-        operations: JSON.stringify([{op: "replace", path: "/name", value: "new name"}]),
-        id: "testId1",
-      }],
+      patches: [
+        {
+          kind: testRecord,
+          kindFromChecksum: "tr1",
+          kindToChecksum: "tr1-new-name",
+          operations: JSON.stringify([
+            { op: "replace", path: "/name", value: "new name" },
+          ]),
+          id: "testId1",
+        },
+      ],
     };
     await tracer.startActiveSpan("handleEvent", async (span) => {
       await handlePatchMessage(payload1, span);
-      span.end()
+      span.end();
     });
     await assertUniqueAtoms();
 
@@ -851,7 +938,10 @@ const dbInterface: DBInterface = {
     });
     const count_old_snapshot_atoms = oneInOne(confirm1);
     // one for each original atom
-    console.assert(count_old_snapshot_atoms === 3, `old snapshots ${String(count_old_snapshot_atoms)} === 3`);
+    console.assert(
+      count_old_snapshot_atoms === 3,
+      `old snapshots ${String(count_old_snapshot_atoms)} === 3`,
+    );
 
     const confirm2 = await db.exec({
       sql: `SELECT count(snapshot_address) FROM snapshots_mtm_atoms WHERE snapshot_address = ?;`,
@@ -860,7 +950,10 @@ const dbInterface: DBInterface = {
     });
     const count_new_snapshot_atoms = oneInOne(confirm2);
     // copied mtm & the patched atom
-    console.assert(count_new_snapshot_atoms === 3, `new snapshots ${String(count_new_snapshot_atoms)} === 3`);
+    console.assert(
+      count_new_snapshot_atoms === 3,
+      `new snapshots ${String(count_new_snapshot_atoms)} === 3`,
+    );
 
     const confirm3 = await db.exec({
       sql: `SELECT count(*) FROM atoms;`,
@@ -868,7 +961,10 @@ const dbInterface: DBInterface = {
     });
     const count_atoms = oneInOne(confirm3);
     // three original atoms, plus the new patched atom
-    console.assert(count_atoms === 4, `payload1 atoms ${String(count_atoms)} === 4`);
+    console.assert(
+      count_atoms === 4,
+      `payload1 atoms ${String(count_atoms)} === 4`,
+    );
 
     const new_atom_data = await db.exec({
       sql: `SELECT data FROM atoms WHERE checksum = ?`,
@@ -876,11 +972,14 @@ const dbInterface: DBInterface = {
       returnValue: "resultRows",
     });
     const data = oneInOne(new_atom_data);
-    if (data === NOROW) throw new Error("Expected data, got nothing")
+    if (data === NOROW) throw new Error("Expected data, got nothing");
     const doc = decodeDocumentFromDB(data as ArrayBuffer);
-    console.assert(doc.id === 1 && doc.name === "new name", `Document doesn't match (${JSON.stringify(doc)})`);
+    console.assert(
+      doc.id === 1 && doc.name === "new name",
+      `Document doesn't match (${JSON.stringify(doc)})`,
+    );
 
-    log("~~ FIRST PAYLOAD SUCCESS ~~")
+    log("~~ FIRST PAYLOAD SUCCESS ~~");
 
     /**
      * Second payload is merging that change to HEAD
@@ -890,20 +989,24 @@ const dbInterface: DBInterface = {
         workspaceId: "W",
         changeSetId: "HEAD",
         snapshotFromChecksum: "HEAD",
-        snapshotToChecksum: "new_change_set_on_head",  // will this be different?? if not, my UNIQUE on checksum is bad
+        snapshotToChecksum: "new_change_set_on_head", // will this be different?? if not, my UNIQUE on checksum is bad
       },
       kind: MessageKind.PATCH,
-      patches: [{
-        kind: testRecord,
-        kindFromChecksum: "tr1",
-        kindToChecksum: "tr1-new-name",
-        operations: JSON.stringify([{op: "replace", path: "/name", value: "new name"}]),
-        id: "testId1",
-      }]
+      patches: [
+        {
+          kind: testRecord,
+          kindFromChecksum: "tr1",
+          kindToChecksum: "tr1-new-name",
+          operations: JSON.stringify([
+            { op: "replace", path: "/name", value: "new name" },
+          ]),
+          id: "testId1",
+        },
+      ],
     };
     await tracer.startActiveSpan("handleEvent", async (span) => {
       await handlePatchMessage(payload2);
-      span.end()
+      span.end();
     });
     await assertUniqueAtoms();
 
@@ -914,7 +1017,10 @@ const dbInterface: DBInterface = {
     });
     const count_old_head_snapshot_atoms = oneInOne(confirm4);
     // one for each original atom
-    console.assert(count_old_head_snapshot_atoms === 0, `old head snapshots ${String(count_old_head_snapshot_atoms)} === 0`);
+    console.assert(
+      count_old_head_snapshot_atoms === 0,
+      `old head snapshots ${String(count_old_head_snapshot_atoms)} === 0`,
+    );
 
     const confirm5 = await db.exec({
       sql: `SELECT count(snapshot_address) FROM snapshots_mtm_atoms WHERE snapshot_address != ?;`,
@@ -923,7 +1029,10 @@ const dbInterface: DBInterface = {
     });
     const count_new_snapshot_atoms_again = oneInOne(confirm5);
     // copied mtm & the patched atom, 3 for the changeset, 3 for HEAD
-    console.assert(count_new_snapshot_atoms_again === 3*2, `new snapshots ${String(count_new_snapshot_atoms_again)} === 3*2`);
+    console.assert(
+      count_new_snapshot_atoms_again === 3 * 2,
+      `new snapshots ${String(count_new_snapshot_atoms_again)} === 3*2`,
+    );
 
     const confirm6 = await db.exec({
       sql: `SELECT count(*) FROM atoms;`,
@@ -931,9 +1040,12 @@ const dbInterface: DBInterface = {
     });
     const count_atoms_no_change = oneInOne(confirm6);
     // same number of atoms no change
-    console.assert(count_atoms_no_change === 3, `payload2 atoms ${String(count_atoms_no_change)} === 3`);
+    console.assert(
+      count_atoms_no_change === 3,
+      `payload2 atoms ${String(count_atoms_no_change)} === 3`,
+    );
 
-    log("~~ SECOND PAYLOAD SUCCESS ~~")
+    log("~~ SECOND PAYLOAD SUCCESS ~~");
 
     /**
      * Third thing that happens, closing out that changeSet
@@ -946,7 +1058,7 @@ const dbInterface: DBInterface = {
     });
     const before = oneInOne(removed_record_before);
 
-    console.assert(before === 2, `Before state wrong ${removed_record_before}`)
+    console.assert(before === 2, `Before state wrong ${removed_record_before}`);
 
     await pruneAtomsForClosedChangeSet("W", "new_change_set");
     const confirm7 = await db.exec({
@@ -956,7 +1068,10 @@ const dbInterface: DBInterface = {
     });
     const count_snapshots_after_purge = oneInOne(confirm7);
     // 3 for HEAD
-    console.assert(count_snapshots_after_purge === 3, `new snapshots ${String(count_snapshots_after_purge)} === 3`);
+    console.assert(
+      count_snapshots_after_purge === 3,
+      `new snapshots ${String(count_snapshots_after_purge)} === 3`,
+    );
 
     const confirm8 = await db.exec({
       sql: `SELECT count(*) FROM atoms;`,
@@ -964,7 +1079,10 @@ const dbInterface: DBInterface = {
     });
     const count_atoms_after_purge = oneInOne(confirm8);
     // back to 3 atoms, like original
-    console.assert(count_atoms_after_purge === 3, `purge atoms ${String(count_atoms_after_purge)} === 3`);
+    console.assert(
+      count_atoms_after_purge === 3,
+      `purge atoms ${String(count_atoms_after_purge)} === 3`,
+    );
 
     const removed_record = await db.exec({
       sql: `SELECT COUNT(snapshot_address) FROM snapshots_mtm_atoms WHERE checksum = ?`,
@@ -972,9 +1090,9 @@ const dbInterface: DBInterface = {
       returnValue: "resultRows",
     });
     const removed = oneInOne(removed_record);
-    console.assert(removed === 1, "Expected removed is still here")
+    console.assert(removed === 1, "Expected removed is still here");
 
-    log("~~ PURGE SUCCESS ~~")
+    log("~~ PURGE SUCCESS ~~");
 
     /**
      * Fourth thing that happens, add a new view, remove an existing view
@@ -993,7 +1111,10 @@ const dbInterface: DBInterface = {
           kind: testRecord,
           kindFromChecksum: "0",
           kindToChecksum: "tr3-add",
-          operations: JSON.stringify([{op: "add", path: "/name", value: "record 3"}, {op: "add", path: "/id", value: 3}]),
+          operations: JSON.stringify([
+            { op: "add", path: "/name", value: "record 3" },
+            { op: "add", path: "/id", value: 3 },
+          ]),
           id: "testId3",
         },
         {
@@ -1007,14 +1128,17 @@ const dbInterface: DBInterface = {
           kind: testList,
           kindFromChecksum: "tl1",
           kindToChecksum: "tl1-add-remove",
-          operations: JSON.stringify([{op: "remove", path: "/list/0"}, {op: "add", path:"/list/2", value: `${testRecord}:3:tr3-add`}]),
+          operations: JSON.stringify([
+            { op: "remove", path: "/list/0" },
+            { op: "add", path: "/list/2", value: `${testRecord}:3:tr3-add` },
+          ]),
           id: "changeSetId",
         },
-      ]
+      ],
     };
     await tracer.startActiveSpan("handleEvent", async (span) => {
       await handlePatchMessage(payload3);
-      span.end()
+      span.end();
     });
     await assertUniqueAtoms();
 
@@ -1024,9 +1148,12 @@ const dbInterface: DBInterface = {
       returnValue: "resultRows",
     });
     const added = oneInOne(added_record);
-    if (added === NOROW) throw new Error("Expected new record, got nothing")
+    if (added === NOROW) throw new Error("Expected new record, got nothing");
     const added_doc = decodeDocumentFromDB(added as ArrayBuffer);
-    console.assert(added_doc.id === 3 && added_doc.name === "record 3", `Added document doesn't match (${JSON.stringify(added_doc)})`);
+    console.assert(
+      added_doc.id === 3 && added_doc.name === "record 3",
+      `Added document doesn't match (${JSON.stringify(added_doc)})`,
+    );
 
     const modlist = await db.exec({
       sql: `SELECT data FROM atoms WHERE checksum = ?`,
@@ -1034,18 +1161,23 @@ const dbInterface: DBInterface = {
       returnValue: "resultRows",
     });
     const list = oneInOne(modlist);
-    if (list === NOROW) throw new Error("Expected list, got nothing")
+    if (list === NOROW) throw new Error("Expected list, got nothing");
     const list_doc = decodeDocumentFromDB(list as ArrayBuffer);
-    console.assert(list_doc.list[0] === `${testRecord}:2:tr2`, `List item 1 is wrong (${JSON.stringify(list_doc)})`);
-    console.assert(list_doc.list[1] === `${testRecord}:3:tr3-add`, `List item 2 is wrong (${JSON.stringify(list_doc)})`);
+    console.assert(
+      list_doc.list[0] === `${testRecord}:2:tr2`,
+      `List item 1 is wrong (${JSON.stringify(list_doc)})`,
+    );
+    console.assert(
+      list_doc.list[1] === `${testRecord}:3:tr3-add`,
+      `List item 2 is wrong (${JSON.stringify(list_doc)})`,
+    );
 
-    log("~~ ADD / REMOVE COMPLETED ~~")
+    log("~~ ADD / REMOVE COMPLETED ~~");
 
     // TODO, test mjolnir!
 
-    log("~~ DIAGNOSTIC COMPLETED ~~")
-  }
+    log("~~ DIAGNOSTIC COMPLETED ~~");
+  },
 };
-
 
 Comlink.expose(dbInterface);

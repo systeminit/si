@@ -15,7 +15,7 @@ import UnscheduledDowntime from "@/components/toasts/UnscheduledDowntime.vue";
 // api base url - can use a proxy or set a full url
 let apiUrl: string;
 if (import.meta.env.VITE_API_PROXY_PATH)
-    apiUrl = `${window.location.origin}${import.meta.env.VITE_API_PROXY_PATH}`;
+  apiUrl = `${window.location.origin}${import.meta.env.VITE_API_PROXY_PATH}`;
 else if (import.meta.env.VITE_API_URL) apiUrl = import.meta.env.VITE_API_URL;
 else throw new Error("Invalid API env var config");
 export const API_HTTP_URL = apiUrl;
@@ -46,8 +46,6 @@ sdfApiInstance.interceptors.request.use(injectBearerTokenAuth);
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 if (typeof window !== "undefined") (window as any).sdf = sdfApiInstance;
-
-
 
 async function handleForcedChangesetRedirection(response: AxiosResponse) {
   if (response.headers.force_change_set_id) {

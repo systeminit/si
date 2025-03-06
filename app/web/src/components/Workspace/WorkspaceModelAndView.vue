@@ -284,9 +284,15 @@ onBeforeMount(async () => {
     ]);
   }
 
-  if (changeSetsStore.selectedWorkspacePk && changeSetsStore.selectedChangeSetId) {
+  if (
+    changeSetsStore.selectedWorkspacePk &&
+    changeSetsStore.selectedChangeSetId
+  ) {
     const heimdall = useHeimdall();
-    heimdall.niflheim(changeSetsStore.selectedWorkspacePk, changeSetsStore.selectedChangeSetId);
+    heimdall.niflheim(
+      changeSetsStore.selectedWorkspacePk,
+      changeSetsStore.selectedChangeSetId,
+    );
     // await heimdall.fullDiagnosticTest();
   }
 });
