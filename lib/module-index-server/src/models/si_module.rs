@@ -34,6 +34,7 @@ pub struct Model {
     #[sea_orm(column_type = r##"custom("ident")"##, nullable)]
     pub schema_variant_id: Option<SchemaVariantId>,
     pub schema_variant_version: Option<String>,
+    pub is_private_scoped: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
