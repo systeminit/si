@@ -201,7 +201,7 @@ const newSnapshot = async (meta: AtomMeta, fromSnapshotAddress?: string) => {
     bind: [meta.snapshotToChecksum],
   });
 
-  if (fromSnapshotAddress) {
+  if (fromSnapshotAddress && fromSnapshotAddress !== meta.snapshotToChecksum) {
     await db.exec({
       sql: `INSERT INTO snapshots_mtm_atoms
         SELECT
@@ -287,28 +287,40 @@ const snapshotLogic = async (meta: AtomMeta, span?: Span) => {
   const { changeSetId, workspaceId, snapshotFromChecksum: fromSnapshotChecksum, snapshotToChecksum: toSnapshotChecksum } = { ...meta };
   span?.setAttributes({ changeSetId, workspaceId, fromSnapshotChecksum, toSnapshotChecksum });
 
-  const query = await db.exec({
-    sql: `select snapshot_address from changesets where change_set_id = ?`,
+  const changeSetQuery = await db.exec({
+    sql: `select change_set_id, snapshot_address from changesets where change_set_id = ?`,
       returnValue: "resultRows",
     bind: [meta.changeSetId],
   })
-  const myFromSnapshotAddress = oneInOne(query);
+  let changeSetExists;
+  let fromSnapshotAddress;
+  const changeSet = changeSetQuery[0] as string[];
+  if (changeSet) {
+    ([changeSetExists, fromSnapshotAddress] = [...changeSet]);
+  }
 
-  if (myFromSnapshotAddress === NOROW) {
-    // first time i see this change set
+  const snapshotQuery = await db.exec({
+    sql: `select address from snapshots where address = ?`,
+      returnValue: "resultRows",
+    bind: [toSnapshotChecksum],
+  })
+  const snapshotExists = oneInOne(snapshotQuery);
+  if (snapshotExists === NOROW)
     await newSnapshot(meta, fromSnapshotChecksum);
+
+  if (!changeSetExists) {
+    // first time i see this change set
     await db.exec({
       sql: "insert into changesets (change_set_id, workspace_id, snapshot_address) VALUES (?, ?, ?);",
       bind: [meta.changeSetId, meta.workspaceId, toSnapshotChecksum],
     })
   } else {
     // new snapshot on an existing change set
-    if (!myFromSnapshotAddress) throw new Error("Null value from SQL, impossible");
-
-    const fromSnapshotAddress = myFromSnapshotAddress.toString();
+    if (!fromSnapshotAddress) throw new Error("Null value from SQL, impossible");
     if (meta.snapshotFromChecksum && fromSnapshotAddress !== fromSnapshotChecksum) throw new Error("RAGNAROK!")
 
-    await newSnapshot(meta, fromSnapshotAddress);
+    if (fromSnapshotAddress !== toSnapshotChecksum)
+      await newSnapshot(meta, fromSnapshotAddress);
   }
 
   return toSnapshotChecksum;
@@ -450,7 +462,6 @@ const mjolnir = async (workspaceId: string, changeSetId: ChangeSetId, kind: stri
     params 
   });
   // TODO listen to the reply on the websocket
-  console.log("MJOLNIR?", req.data);
 
   const msg: AtomMessage = {
     kind: MessageKind.MJOLNIR,
@@ -464,7 +475,7 @@ const mjolnir = async (workspaceId: string, changeSetId: ChangeSetId, kind: stri
     },
     data: req.data.frontEndObject.data
   };
-  // await handleHammer(msg);
+  await handleHammer(msg);
 };
 
 const updateChangeSetWithNewSnapshot = async (meta: AtomMeta) => {
