@@ -92,6 +92,8 @@ impl JobConsumer for ComputeValidation {
         }
 
         let workspace_snapshot = ctx.workspace_snapshot()?;
+        let mut tasks = Vec::new();
+
         for &av_id in &self.attribute_values {
             // It's possible that one or more of the initial AttributeValueIds provided by the enqueued ComputeValidation
             // may have been removed from the snapshot between when the CV job was created and when we're processing
@@ -107,22 +109,33 @@ impl JobConsumer for ComputeValidation {
                 continue;
             }
 
-            let value = AttributeValue::get_by_id(ctx, av_id)
-                .await?
-                .value(ctx)
-                .await?;
-
-            let maybe_validation =
-                ValidationOutput::compute_for_attribute_value_and_value(ctx, av_id, value.clone())
+            let ctx_clone = ctx.clone();
+            let task = tokio::spawn(async move {
+                let value = AttributeValue::get_by_id(&ctx_clone, av_id)
+                    .await?
+                    .value(&ctx_clone)
                     .await?;
 
-            ValidationOutputNode::upsert_or_wipe_for_attribute_value(
-                ctx,
-                av_id,
-                maybe_validation.clone(),
-            )
-            .await?;
+                let maybe_validation = ValidationOutput::compute_for_attribute_value_and_value(
+                    &ctx_clone,
+                    av_id,
+                    value.clone(),
+                )
+                .await?;
+
+                ValidationOutputNode::upsert_or_wipe_for_attribute_value(
+                    &ctx_clone,
+                    av_id,
+                    maybe_validation.clone(),
+                )
+                .await?;
+
+                Ok::<(), JobConsumerError>(())
+            });
+            tasks.push(task);
         }
+
+        futures::future::try_join_all(tasks).await?;
 
         ctx.commit().await?;
         Ok(JobCompletionState::Done)
