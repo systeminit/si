@@ -20,7 +20,12 @@ export function createOutputSocketFromProp(
   prop: ExpandedPropSpec,
   overrideName?: string,
 ): ExpandedSocketSpec {
-  const socket = createSocketFromPropInner(prop, "output", overrideName);
+  const socket = createSocketFromPropInner(
+    prop,
+    "output",
+    "many",
+    overrideName,
+  );
   socket.data.funcUniqueId = getSiFuncId("si:identity");
   socket.inputs = [attrFuncInputSpecFromProp(prop)];
 
@@ -36,6 +41,7 @@ export function createInputSocketFromProp(
   const socket = createSocketFromPropInner(
     prop,
     "input",
+    prop.kind === "array" ? "many" : "one",
     undefined,
     extraConnectionAnnotations,
   );
@@ -53,10 +59,10 @@ export function createInputSocketFromProp(
 function createSocketFromPropInner(
   prop: ExpandedPropSpec,
   kind: "input" | "output",
+  arity: SocketSpecArity,
   overrideName?: string,
   extraConnectionAnnotations?: ConnectionAnnotation[],
 ) {
-  const arity = prop.kind === "array" ? "many" : "one";
   const socketName = overrideName ?? socketNameFromProp(prop);
   extraConnectionAnnotations ??= [];
 
