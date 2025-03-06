@@ -7,9 +7,7 @@ import { ChangeSetId } from '@/api/sdf/dal/change_set';
 
 export const useHeimdall = defineStore('heimdall', () => {
   const authStore = useAuthStore();
-  if (!authStore.selectedOrDefaultAuthToken) return;
-
-  type AtomChecksumByKey = Record<Checksum, QueryKey>;
+  if (!authStore.selectedOrDefaultAuthToken) throw new Error("Missing Auth Token");
 
   const bustTanStackCache = (queryKey: QueryKey, latestChecksum: Checksum) => {
     console.log("BUST", queryKey)

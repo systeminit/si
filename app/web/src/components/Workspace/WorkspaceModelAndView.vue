@@ -141,6 +141,7 @@ import { useRouterStore } from "@/store/router.store";
 import { useAssetStore } from "@/store/asset.store";
 import { useFuncStore } from "@/store/func/funcs.store";
 import { useAuthStore } from "@/store/auth.store";
+import { useHeimdall } from "@/store/realtime/heimdall.store";
 import LeftPanelDrawer from "../LeftPanelDrawer.vue";
 import ModelingDiagram from "../ModelingDiagram/ModelingDiagram.vue";
 import AssetPalette from "../AssetPalette.vue";
@@ -162,7 +163,6 @@ import TemplateSelectionModal from "../ModelingView/TemplateSelectionModal.vue";
 import CommandModal from "./CommandModal.vue";
 import InsetApprovalModal from "../InsetApprovalModal.vue";
 import ViewDetailsPanel from "../ViewDetailsPanel.vue";
-import { useHeimdall } from "@/store/realtime/heimdall.store";
 
 const changeSetsStore = useChangeSetsStore();
 const viewsStore = useViewsStore();
