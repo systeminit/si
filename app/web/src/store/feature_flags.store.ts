@@ -15,6 +15,7 @@ const FLAG_MAPPING = {
   DIAGRAM_OPTIMIZATION: "diagram-optimization",
   DIAGRAM_OPTIMIZATION_2: "diagram-optimization-2",
   AUTOCONNECT: "autoconnect-component-input-sockets",
+  PRIVATE_SCOPED_MODULES: "private-scoped-modules",
 };
 
 const WORKSPACE_FLAG_MAPPING = {

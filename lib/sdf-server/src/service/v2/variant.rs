@@ -5,7 +5,7 @@ use axum::{
     Router,
 };
 use dal::{
-    cached_module::CachedModuleError, module::ModuleError, ChangeSetError, SchemaVariantId,
+    cached_module::CachedModuleError, module::ModuleError, ChangeSetError, SchemaVariantId, UserPk,
     WsEventError,
 };
 use telemetry::prelude::*;
@@ -31,6 +31,8 @@ pub enum SchemaVariantsAPIError {
     ChangeSet(#[from] ChangeSetError),
     #[error("hyper error: {0}")]
     Http(#[from] axum::http::Error),
+    #[error("invalid user: {0}")]
+    InvalidUser(UserPk),
     #[error("Module error: {0}")]
     Module(#[from] ModuleError),
     #[error("schema variant error: {0}")]

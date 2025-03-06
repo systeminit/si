@@ -3,7 +3,7 @@ use axum::{
     response::IntoResponse,
     Json,
 };
-use dal::{module::Module, ChangeSetId, WorkspacePk};
+use dal::{cached_module::CachedModule, module::Module, ChangeSetId, WorkspacePk};
 use module_index_client::ModuleIndexClient;
 use si_events::audit_log::AuditLogKind;
 use si_frontend_types as frontend_types;
@@ -60,11 +60,15 @@ pub async fn contribute(
             version.as_str(),
             based_on_hash.clone(),
             schema_id.map(|id| id.to_string()),
-            payload,
+            payload.clone(),
             Some(request.schema_variant_id.to_string()),
             Some(schema_variant_version.clone()),
+            Some(request.is_private_module),
         )
         .await?;
+    if request.is_private_module {
+        CachedModule::create_private_module(&ctx, response.clone(), payload).await?;
+    };
 
     ctx.write_audit_log(
         AuditLogKind::ContributeModule {

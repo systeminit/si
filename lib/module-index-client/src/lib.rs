@@ -120,6 +120,7 @@ impl ModuleIndexClient {
         module_bytes: Vec<u8>,
         module_schema_variant_id: Option<String>,
         module_schema_variant_version: Option<String>,
+        module_is_private_scoped: Option<bool>,
     ) -> ModuleIndexClientResult<ModuleDetailsResponse> {
         let module_upload_part = reqwest::multipart::Part::bytes(module_bytes)
             .file_name(format!("{module_name}_{module_version}.tar"));
@@ -152,6 +153,13 @@ impl ModuleIndexClient {
             multipart_form = multipart_form.part(
                 MODULE_SCHEMA_VARIANT_VERSION_FIELD_NAME,
                 reqwest::multipart::Part::text(schema_variant_version),
+            );
+        }
+
+        if let Some(is_private_scoped) = module_is_private_scoped {
+            multipart_form = multipart_form.part(
+                MODULE_IS_PRIVATE_SCOPED_FIELD_NAME,
+                reqwest::multipart::Part::text(is_private_scoped.to_string()),
             );
         }
 

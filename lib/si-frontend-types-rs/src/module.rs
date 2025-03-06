@@ -26,6 +26,7 @@ pub struct ModuleContributeRequest {
     pub name: String,
     pub version: String,
     pub schema_variant_id: SchemaVariantId,
+    pub is_private_module: bool,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, Serialize, PartialEq, Default)]
