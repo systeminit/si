@@ -4,7 +4,7 @@ use std::{
     path::PathBuf,
     string::FromUtf8Error,
     sync::Arc,
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 use axum::extract::ws::WebSocket;
@@ -238,6 +238,52 @@ async fn handle_stderr(
     }
 }
 
+const MAX_OUTPUT_MESSAGE: usize = 8 * 1024 * 1024;
+const MAX_OUTPUT_INTERVAL: Duration = Duration::from_millis(50);
+
+#[derive(Default)]
+struct OutputBuffer {
+    buffer: Option<(OutputStream, Instant)>,
+}
+
+impl OutputBuffer {
+    #[must_use]
+    fn append(&mut self, output: OutputStream) -> Option<OutputStream> {
+        // If the buffer would be too big, or has the wrong log level, take it so we can return it
+        let old_buffer = if self.buffer.as_ref().is_some_and(|(buffer, _)| {
+            buffer.message.len() + output.message.len() < MAX_OUTPUT_MESSAGE
+                || output.execution_id != buffer.execution_id
+                || output.stream != buffer.stream
+                || output.level != buffer.level
+                || output.group != buffer.group
+        }) {
+            self.buffer.take().map(|(buffer, _)| buffer)
+        } else {
+            None
+        };
+
+        // Append to the buffer if it exists; set it if not.
+        match self.buffer {
+            None => self.buffer = Some((output, Instant::now())),
+            Some((ref mut buffer, _)) => buffer.message.push_str(&output.message),
+        }
+
+        old_buffer
+    }
+
+    #[must_use]
+    fn take(&mut self) -> Option<OutputStream> {
+        self.buffer.take().map(|(buffer, _)| buffer)
+    }
+
+    fn age(&self) -> Duration {
+        self.buffer
+            .as_ref()
+            .map(|(_, instant)| instant.elapsed())
+            .unwrap_or_default()
+    }
+}
+
 impl<LangServerSuccess, Success> ExecutionStarted<LangServerSuccess, Success>
 where
     Success: Serialize + Unpin + fmt::Debug,
@@ -248,35 +294,50 @@ where
     pub async fn process(self, ws: &mut WebSocket) -> Result<ExecutionClosing<Success>> {
         tokio::spawn(handle_stderr(self.stderr, self.sensitive_strings.clone()));
 
-        let mut stream = self
-            .stdout
-            .map(|ls_result| match ls_result {
-                Ok(ls_msg) => match ls_msg {
-                    LangServerMessage::Output(mut output) => {
-                        Self::filter_output(&mut output, &self.sensitive_strings)?;
-                        Ok(Message::OutputStream(output.into()))
-                    }
-                    LangServerMessage::Result(mut result) => {
-                        Self::filter_result(&mut result, &self.sensitive_strings)?;
-                        Ok(Message::Result(result.into()))
-                    }
-                },
-                Err(err) => Err(ExecutionError::ChildRecvIO(err)),
-            })
-            .map(|msg_result: Result<_>| match msg_result {
-                Ok(msg) => match msg
-                    .serialize_to_string()
-                    .map_err(ExecutionError::JSONSerialize)
-                {
-                    Ok(json_str) => Ok(WebSocketMessage::Text(json_str)),
-                    Err(err) => Err(err),
-                },
-                Err(err) => Err(err),
-            });
+        let mut stream = self.stdout.map(|ls_result| match ls_result {
+            Ok(ls_msg) => match ls_msg {
+                LangServerMessage::Output(mut output) => {
+                    Self::filter_output(&mut output, &self.sensitive_strings)?;
+                    Ok(Message::OutputStream(output.into()))
+                }
+                LangServerMessage::Result(mut result) => {
+                    Self::filter_result(&mut result, &self.sensitive_strings)?;
+                    Ok(Message::Result(result.into()))
+                }
+            },
+            Err(err) => Err(ExecutionError::ChildRecvIO(err)),
+        });
 
         let receive_loop = async {
+            let mut buffer = OutputBuffer::default();
             while let Some(msg) = stream.try_next().await? {
-                ws.send(msg).await.map_err(ExecutionError::WSSendIO)?;
+                // Add output to the buffer
+                let maybe_msg = match msg {
+                    Message::OutputStream(output) => {
+                        if let Some(old_buffer) = buffer.append(output) {
+                            Self::send_message(ws, Message::OutputStream(old_buffer)).await?
+                        }
+                        None
+                    }
+                    msg => Some(msg),
+                };
+
+                // Ship the cached output if it's stale
+                if buffer.age() >= MAX_OUTPUT_INTERVAL {
+                    if let Some(buffer) = buffer.take() {
+                        Self::send_message(ws, Message::OutputStream(buffer)).await?;
+                    }
+                }
+
+                // Send the message
+                if let Some(msg) = maybe_msg {
+                    Self::send_message(ws, msg).await?;
+                }
+            }
+
+            // Send any remaining buffered output now that we're done
+            if let Some(buffer) = buffer.take() {
+                Self::send_message(ws, Message::OutputStream(buffer)).await?;
             }
 
             Result::<_>::Ok(())
@@ -303,6 +364,15 @@ where
             child: self.child,
             success_marker: PhantomData,
         })
+    }
+
+    async fn send_message(ws: &mut WebSocket, msg: Message<Success>) -> Result<()> {
+        let msg = msg
+            .serialize_to_string()
+            .map_err(ExecutionError::JSONSerialize)?;
+        ws.send(WebSocketMessage::Text(msg))
+            .await
+            .map_err(ExecutionError::WSSendIO)
     }
 
     fn filter_output(
