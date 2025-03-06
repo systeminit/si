@@ -108,7 +108,7 @@ export interface PatchAtomMessage {
 
 export interface AtomMessage {
   kind: MessageKind.MJOLNIR,
-  atom: Atom,
+  atom: Omit<Atom, "kindFromChecksum">,
   data: object,
 };
 

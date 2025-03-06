@@ -285,7 +285,7 @@ const createAtomFromPatch = async (atom: Atom): Promise<ROWID> => {
   return createAtom(atom, doc);
 };
 
-const createAtom = async (atom: Atom, doc: object): Promise<ROWID> => {
+const createAtom = async (atom: Omit<Atom, "kindFromChecksum">, doc: object): Promise<ROWID> => {
   const rows = await db.exec({
     sql: `insert into atoms
       (kind, checksum, args, data)
@@ -516,6 +516,21 @@ const mjolnir = async (workspaceId: string, changeSetId: ChangeSetId, kind: stri
   });
   // TODO listen to the reply on the websocket
   console.log("MJOLNIR?", req.data);
+
+  const msg: AtomMessage = {
+    kind: MessageKind.MJOLNIR,
+    atom: {
+      id: req.data.frontEndObject.id,
+      kind: req.data.frontEndObject.kind,
+      kindToChecksum: req.data.frontEndObject.checksum,
+      workspaceId,
+      changeSetId,
+      snapshotFromChecksum: null,
+      snapshotToChecksum: req.data.workspaceSnapshotAddress,
+    },
+    data: req.data.frontEndObject.data
+  };
+  // await handleHammer(msg);
 };
 
 // FUTURE: when we have changeset data
