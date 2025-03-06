@@ -594,13 +594,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                   schemaVariants,
                 };
               })
-              .filter(({ displayName }) => {
-                if (featureFlagsStore.CLOVER_ASSETS) {
-                  return true;
-                }
-
-                return !displayName.startsWith("Clover:");
-              })
               .filter(nonNullable)
               .sort((a, b) => a.displayName.localeCompare(b.displayName));
           },
