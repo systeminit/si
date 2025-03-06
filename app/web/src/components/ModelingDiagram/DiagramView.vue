@@ -43,47 +43,46 @@
             wrap: 'word',
           }"
         />
-
-        <!-- status icons -->
-        <v-group
-          v-if="statusIcons?.length && hideDetails === 'show'"
-          :config="{
-            x: (statusIcons.length * 26) / 2,
-            y: -20,
-          }"
+      </v-group>
+      <!-- status icons -->
+      <v-group
+        v-if="statusIcons?.length && hideDetails === 'show'"
+        :config="{
+          x: (statusIcons.length * 26) / 2,
+          y: -20,
+        }"
+      >
+        <template
+          v-for="(statusIcon, i) in _.reverse(_.slice(statusIcons))"
+          :key="`status-icon-${i}`"
         >
-          <template
-            v-for="(statusIcon, i) in _.reverse(_.slice(statusIcons))"
-            :key="`status-icon-${i}`"
-          >
-            <v-text
-              v-if="hideDetails === 'show'"
-              :config="{
-                x: i * -26 - 25,
-                y: radius - 43,
-                align: 'center',
-                verticalAlign: 'top',
-                width: 25,
-                height: 30,
-                text: statusIcon.count,
-                padding: 2,
-                fill: colors.headerText,
-                fontSize: 11,
-                fontFamily: DIAGRAM_FONT_FAMILY,
-                listening: false,
-                wrap: 'char',
-              }"
-            />
-            <DiagramIcon
-              :icon="statusIcon.icon"
-              :color="getToneColorHex(statusIcon.tone)"
-              :size="24"
-              :x="i * -26"
-              :y="radius - 5"
-              origin="bottom-right"
-            />
-          </template>
-        </v-group>
+          <v-text
+            v-if="hideDetails === 'show'"
+            :config="{
+              x: i * -26 - 25,
+              y: radius - 43,
+              align: 'center',
+              verticalAlign: 'top',
+              width: 25,
+              height: 30,
+              text: statusIcon.count,
+              padding: 2,
+              fill: colors.headerText,
+              fontSize: 11,
+              fontFamily: DIAGRAM_FONT_FAMILY,
+              listening: false,
+              wrap: 'char',
+            }"
+          />
+          <DiagramIcon
+            :icon="statusIcon.icon"
+            :color="getToneColorHex(statusIcon.tone)"
+            :size="24"
+            :x="i * -26"
+            :y="radius - 5"
+            origin="bottom-right"
+          />
+        </template>
       </v-group>
       <v-shape v-if="isHovered" :config="selectionConfig" />
     </v-group>
