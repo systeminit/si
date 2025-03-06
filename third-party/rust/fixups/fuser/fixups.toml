@@ -19,5 +19,6 @@ linker_flags = []
 
 [extra_mapped_srcs]
 
-[platform_fixup]
-
+[platform_fixup.'cfg(target_os = "macos")']
+features = ["libfuse"]
+extra_deps = [":pkg-config"]

@@ -22,3 +22,9 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
+
+[target.'cfg(not(target_os = "macos"))'.dependencies]
+fuser = { workspace = true, features = [] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+fuser = { workspace = true, features = ["libfuse"] }

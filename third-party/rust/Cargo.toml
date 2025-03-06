@@ -126,6 +126,7 @@ paste = "1.0.15"
 pathdiff = "0.2.3"
 petgraph = { version = "0.6.5", features = ["serde-1"] }
 pin-project-lite = "0.2.15"
+pkg-config = "0.3.14"
 postcard = { version = "1.1.1", features = ["use-std"] }
 postgres-types = { version = "0.2.8", features = ["derive"] }
 pretty_assertions_sorted = "1.2.3"

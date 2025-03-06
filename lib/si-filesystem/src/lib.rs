@@ -20,7 +20,7 @@ use fuser::{
 use inode_table::{InodeEntry, InodeEntryData, InodeTable, InodeTableError, Size};
 use nix::{
     libc::{
-        EACCES, EBADFD, EINVAL, ENODATA, ENOENT, ENOSYS, ENOTDIR, O_ACCMODE, O_APPEND, O_RDWR,
+        EACCES, EBADF, EINVAL, ENODATA, ENOENT, ENOSYS, ENOTDIR, O_ACCMODE, O_APPEND, O_RDWR,
         O_WRONLY,
     },
     unistd::{self, Gid, Uid},
@@ -1636,7 +1636,7 @@ impl SiFileSystem {
             };
 
             let Some(mut open_file) = self.open_files.get_mut(&fh) else {
-                reply.error(EBADFD);
+                reply.error(EBADF);
                 return Ok(());
             };
 

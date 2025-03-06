@@ -60,6 +60,7 @@
         ]
         ++ lib.optionals pkgs.stdenv.isDarwin [
           darwin.sigtool
+          pkg-config
         ];
 
       buck2BuildInputs = with pkgs;
@@ -72,6 +73,7 @@
         ]
         ++ lib.optionals pkgs.stdenv.isDarwin [
           libiconv
+          macfuse-stubs
           darwin.apple_sdk.frameworks.Security
           darwin.apple_sdk.frameworks.SystemConfiguration
           darwin.apple_sdk.frameworks.CoreFoundation
