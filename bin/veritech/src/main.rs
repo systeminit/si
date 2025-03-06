@@ -57,8 +57,10 @@ async fn async_main() -> Result<()> {
     debug!(arguments =?args, "parsed cli arguments");
     let config = Config::try_from(args)?;
 
-    let server = Server::from_config(config, main_token.clone()).await?;
+    let (server, internal_heartbeat_future) =
+        Server::from_config(config, main_token.clone()).await?;
 
+    main_tracker.spawn(internal_heartbeat_future);
     main_tracker.spawn(async move {
         info!("ready to receive messages");
         server.run().await

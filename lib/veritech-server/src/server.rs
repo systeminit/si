@@ -3,7 +3,7 @@ use std::{
     convert::Infallible,
     fmt,
     future::{Future, IntoFuture as _},
-    io,
+    io::{self},
     sync::Arc,
     time::Duration,
 };
@@ -23,7 +23,7 @@ use naxum::{
 use si_crypto::VeritechDecryptionKey;
 use si_data_nats::{
     async_nats::{self},
-    jetstream, NatsClient, Subscriber,
+    jetstream, NatsClient, State, Subscriber,
 };
 use si_pool_noodle::{
     instance::cyclone::{LocalUdsInstance, LocalUdsInstanceSpec},
@@ -82,7 +82,10 @@ impl fmt::Debug for Server {
 
 impl Server {
     #[instrument(name = "veritech.init.from_config", level = "info", skip_all)]
-    pub async fn from_config(config: Config, token: CancellationToken) -> ServerResult<Self> {
+    pub async fn from_config(
+        config: Config,
+        token: CancellationToken,
+    ) -> ServerResult<(Self, impl Future<Output = ()>)> {
         let nats = Self::connect_to_nats(&config).await?;
 
         let metadata = Arc::new(ServerMetadata {
@@ -184,16 +187,26 @@ impl Server {
                     .await?
                 };
 
-                let kill_inner_future =
-                    Self::build_kill_app(metadata.clone(), nats, kill_senders, token.clone())
-                        .await?;
+                let kill_inner_future = Self::build_kill_app(
+                    metadata.clone(),
+                    nats.clone(),
+                    kill_senders,
+                    token.clone(),
+                )
+                .await?;
 
-                Ok(Server {
-                    metadata,
-                    inner: inner_future,
-                    kill_inner: kill_inner_future,
-                    shutdown_token: token,
-                })
+                let internal_heartbeat_inner_future =
+                    Self::run_internal_heartbeat_app(nats, token.clone());
+
+                Ok((
+                    Server {
+                        metadata,
+                        inner: inner_future,
+                        kill_inner: kill_inner_future,
+                        shutdown_token: token,
+                    },
+                    internal_heartbeat_inner_future,
+                ))
             }
         }
     }
@@ -214,6 +227,89 @@ impl Server {
 
         info!("veritech main loop shutdown complete");
         Ok(())
+    }
+
+    async fn run_internal_heartbeat_app(nats: NatsClient, token: CancellationToken) {
+        info!("resetting internal heartbeat app metrics and running app...");
+        metric!(counter.veritech.internal_heartbeat.loop_iteration = 0);
+        metric!(counter.veritech.internal_heartbeat.publish.success = 0);
+        metric!(counter.veritech.internal_heartbeat.publish.error = 0);
+        metric!(counter.veritech.internal_heartbeat.publish.timeout = 0);
+        metric!(
+            counter
+                .veritech
+                .internal_heartbeat
+                .connection_state
+                .connected = 0
+        );
+        metric!(
+            counter
+                .veritech
+                .internal_heartbeat
+                .connection_state
+                .disconnected = 0
+        );
+        metric!(counter.veritech.internal_heartbeat.connection_state.pending = 0);
+
+        let empty_byte_array: Vec<u8> = Vec::new();
+        let sleep_seconds = 5;
+        let publish_timeout_seconds = 5;
+
+        loop {
+            metric!(counter.veritech.internal_heartbeat.loop_iteration = 1);
+            tokio::select! {
+                _ = tokio::time::sleep(Duration::from_secs(sleep_seconds)) => {
+                    info!(%sleep_seconds, "finished sleeping and publishing heartbeat...");
+
+                    match tokio::time::timeout(
+                        Duration::from_secs(publish_timeout_seconds),
+                        nats.publish(
+                            "veritech.internal_heartbeat",
+                            empty_byte_array.to_owned().into(),
+                        ),
+                    )
+                    .await
+                    {
+                        Ok(publish_result) => match publish_result {
+                            Ok(()) => {
+                                metric!(counter.veritech.internal_heartbeat.publish_success = 1);
+                            }
+                            Err(err) => {
+                                error!(si.error.message = ?err, "internal heartbeat: publish error");
+                                metric!(counter.veritech.internal_heartbeat.publish_error = 1);
+                            }
+                        },
+                        Err(err) => {
+                            error!(si.error.message = ?err, %publish_timeout_seconds, "internal heartbeat: publish timeout");
+                            metric!(counter.veritech.internal_heartbeat.publish_timeout = 1);
+                        }
+                    }
+
+                    info!("published and now getting connection state... (has a read lock!)");
+
+                    let state = match nats.connection_state() {
+                        State::Connected => {
+                            metric!(counter.veritech.internal_heartbeat.connection_state.connected = 1);
+                            State::Connected
+                        }
+                        State::Disconnected => {
+                            metric!(counter.veritech.internal_heartbeat.connection_state.disconnected = 1);
+                            State::Disconnected
+                        }
+                        State::Pending => {
+                            metric!(counter.veritech.internal_heartbeat.connection_state.pending = 1);
+                            State::Pending
+                        }
+                    };
+
+                    info!(?state, "got connection state and looping!");
+                }
+                _ = token.cancelled() => {
+                    info!("shutting down internal heartbeat app");
+                    break;
+                }
+            }
+        }
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -238,6 +334,9 @@ impl Server {
                 .await?
                 .create_consumer(Self::incoming_consumer_config(prefix.as_deref()))
                 .await?
+                // TODO(nick): disable jetstream heartbeat from Jarret's recommendation
+                // .stream()
+                // .heartbeat(Duration::from_secs(0))
                 .messages()
                 .await?
         };
