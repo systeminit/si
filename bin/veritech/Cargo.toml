@@ -13,11 +13,13 @@ name = "veritech"
 path = "src/main.rs"
 
 [dependencies]
-clap = { workspace = true }
-color-eyre = { workspace = true }
 si-service = { path = "../../lib/si-service" }
 si-std = { path = "../../lib/si-std" }
 telemetry-application = { path = "../../lib/telemetry-application-rs" }
+tokio-watchdog = { path = "../../lib/tokio-watchdog" }
+veritech-server = { path = "../../lib/veritech-server" }
+
+clap = { workspace = true }
+color-eyre = { workspace = true }
 tokio = { workspace = true }
 tokio-util = { workspace = true }
-veritech-server = { path = "../../lib/veritech-server" }

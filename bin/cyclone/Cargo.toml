@@ -13,11 +13,13 @@ name = "cyclone"
 path = "src/main.rs"
 
 [dependencies]
-clap = { workspace = true }
-color-eyre = { workspace = true }
 cyclone-server = { path = "../../lib/cyclone-server" }
 si-service = { path = "../../lib/si-service" }
 telemetry-application = { path = "../../lib/telemetry-application-rs" }
+tokio-watchdog = { path = "../../lib/tokio-watchdog" }
+
+clap = { workspace = true }
+color-eyre = { workspace = true }
 tokio = { workspace = true }
 tokio-util = { workspace = true }
 

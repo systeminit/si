@@ -10,6 +10,7 @@ rust_binary(
     deps = [
         "//lib/sdf-server:sdf-server",
         "//lib/si-service:si-service",
+        "//lib/tokio-watchdog:tokio-watchdog",
         "//third-party/rust:clap",
     ],
     srcs = glob(["src/**/*.rs"]),

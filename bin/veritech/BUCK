@@ -33,6 +33,7 @@ rust_binary(
         "//lib/si-std:si-std",
         "//lib/si-service:si-service",
         "//lib/telemetry-application-rs:telemetry-application",
+        "//lib/tokio-watchdog:tokio-watchdog",
         "//lib/veritech-server:veritech-server",
         "//third-party/rust:clap",
         "//third-party/rust:color-eyre",

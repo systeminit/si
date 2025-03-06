@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 use si_service::{color_eyre, prelude::*, rt, shutdown, startup, telemetry_application};
+use tokio_watchdog::spawn_tokio_watchdog;
 use veritech_server::{Config, Server};
 
 mod args;
@@ -49,6 +50,8 @@ async fn async_main() -> Result<()> {
             .await?;
     }
     debug!(arguments =?args, "parsed cli arguments");
+
+    spawn_tokio_watchdog(Duration::from_secs(1), main_token.clone())?;
 
     let config = Config::try_from(args)?;
 

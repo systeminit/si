@@ -33,6 +33,7 @@ rust_binary(
         "//lib/cyclone-server:cyclone-server",
         "//lib/si-service:si-service",
         "//lib/telemetry-application-rs:telemetry-application",
+        "//lib/tokio-watchdog:tokio-watchdog",
         "//third-party/rust:clap",
         "//third-party/rust:color-eyre",
         "//third-party/rust:tokio",

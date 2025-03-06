@@ -1744,6 +1744,7 @@ dependencies = [
  "telemetry-application",
  "tokio",
  "tokio-util",
+ "tokio-watchdog",
 ]
 
 [[package]]
@@ -6274,6 +6275,7 @@ dependencies = [
  "clap",
  "sdf-server",
  "si-service",
+ "tokio-watchdog",
 ]
 
 [[package]]
@@ -8042,6 +8044,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "tokio-watchdog"
+version = "0.1.0"
+dependencies = [
+ "telemetry",
+ "telemetry-utils",
+ "tokio",
+ "tokio-util",
+]
+
+[[package]]
 name = "tokio-websockets"
 version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8534,6 +8546,7 @@ dependencies = [
  "telemetry-application",
  "tokio",
  "tokio-util",
+ "tokio-watchdog",
  "veritech-server",
 ]
 

@@ -1,0 +1,15 @@
+[package]
+name = "tokio-watchdog"
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+telemetry = { path = "../../lib/telemetry-rs" }
+telemetry-utils = { path = "../../lib/telemetry-utils-rs" }
+tokio = { workspace = true }
+tokio-util = { workspace = true }

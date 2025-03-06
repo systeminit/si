@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use color_eyre::Result;
 #[cfg(target_os = "linux")]
 use cyclone_server::process_gatherer;
@@ -7,8 +9,15 @@ use si_firecracker::stream::TcpStreamForwarder;
 use si_service::startup;
 use telemetry_application::prelude::*;
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
+use tokio_watchdog::spawn_tokio_watchdog;
 
 mod args;
+
+// TODO can we rely on this where cyclone runs?
+// const BIN_NAME: &str = env!("CARGO_BIN_NAME");
+// const LIB_NAME: &str = concat!(env!("CARGO_BIN_NAME"), "_server");
+const BIN_NAME: &str = "cyclone";
+const LIB_NAME: &str = "cyclone_server";
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -26,17 +35,17 @@ async fn main() -> Result<()> {
                     .then_some(ConsoleLogFormat::Json)
                     .unwrap_or_default(),
             )
-            .service_name("cyclone")
+            .service_name(BIN_NAME)
             .service_namespace("si")
             .log_env_var_prefix("SI")
-            .app_modules(vec!["cyclone", "cyclone_server"])
+            .app_modules(vec![BIN_NAME, LIB_NAME])
             .interesting_modules(vec!["cyclone_core"])
             .build()?;
 
         telemetry_application::init(config, &task_tracker, shutdown_token.clone())?
     };
 
-    startup::startup("cyclone").await?;
+    startup::startup(BIN_NAME).await?;
 
     if args.verbose > 0 {
         telemetry
@@ -44,6 +53,8 @@ async fn main() -> Result<()> {
             .await?;
     }
     debug!(arguments =?args, "parsed cli arguments");
+
+    spawn_tokio_watchdog(Duration::from_secs(1), shutdown_token.clone())?;
 
     let config = Config::try_from(args)?;
 
