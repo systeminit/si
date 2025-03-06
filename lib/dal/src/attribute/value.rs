@@ -2267,16 +2267,36 @@ impl AttributeValue {
         Self::fetch_value_from_store(ctx, self.value).await
     }
 
+    async fn default_value(
+        &self,
+        ctx: &DalContext,
+    ) -> AttributeValueResult<Option<serde_json::Value>> {
+        match AttributeValue::is_for(ctx, self.id).await? {
+            ValueIsFor::Prop(prop_id) => Ok(Prop::default_value(ctx, prop_id).await?),
+            ValueIsFor::InputSocket(_) | ValueIsFor::OutputSocket(_) => Ok(None),
+        }
+    }
+
     pub async fn value_or_default(
+        &self,
+        ctx: &DalContext,
+    ) -> AttributeValueResult<Option<serde_json::Value>> {
+        match self.value(ctx).await? {
+            Some(value) => Ok(Some(value)),
+            None => self.default_value(ctx).await,
+        }
+    }
+
+    pub async fn value_or_default_or_null(
         &self,
         ctx: &DalContext,
         prop_id: PropId,
     ) -> AttributeValueResult<serde_json::Value> {
-        match Self::fetch_value_from_store(ctx, self.value).await {
-            Ok(Some(value)) => Ok(value),
-            _ => Ok(Prop::default_value(ctx, prop_id)
+        match self.value(ctx).await? {
+            Some(value) => Ok(value),
+            None => Ok(Prop::default_value(ctx, prop_id)
                 .await?
-                .unwrap_or(Value::Null)),
+                .unwrap_or(serde_json::Value::Null)),
         }
     }
 

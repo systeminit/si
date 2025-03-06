@@ -783,7 +783,8 @@ impl Component {
                             // If for whatever reason, there isn't a value set yet for the type, set it to the old
                             // Prop's default value
                             if prop_path == ["root", "si", "type"] {
-                                let old_value = old_av.value_or_default(ctx, old_prop_id).await?;
+                                let old_value =
+                                    old_av.value_or_default_or_null(ctx, old_prop_id).await?;
                                 AttributeValue::set_value(ctx, new_av_id, Some(old_value)).await?;
                             }
 

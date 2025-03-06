@@ -275,12 +275,16 @@ impl ValidationOutput {
     }
 
     /// If an attribute value is for a [Prop](Prop) that has a `validation_format`, run a validation
-    /// for that format and the value passed in.
-    pub async fn compute_for_attribute_value_and_value(
+    /// for that format.
+    pub async fn compute_for_attribute_value(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
-        value: Option<serde_json::Value>,
     ) -> ValidationResult<Option<ValidationOutput>> {
+        let value = AttributeValue::get_by_id(ctx, attribute_value_id)
+            .await?
+            .value_or_default(ctx)
+            .await?;
+
         match Self::get_format_for_attribute_value_id(ctx, attribute_value_id).await? {
             None => Ok(None),
             Some(validation_format) => Ok(Some(

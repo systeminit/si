@@ -1,30 +1,27 @@
 use dal::workspace_snapshot::content_address::ContentAddressDiscriminants;
 use dal::workspace_snapshot::edge_weight::EdgeWeightKindDiscriminants;
 use dal::{AttributeValue, Component, DalContext};
+use dal_test::expected::ExpectSchemaVariant;
 use dal_test::helpers::{
     connect_components_with_socket_names, create_component_for_default_schema_name_in_default_view,
     PropEditorTestView,
 };
 use dal_test::helpers::{extract_value_and_validation, ChangeSetTestHelpers};
-use dal_test::test;
+use dal_test::{test, Result};
+use pretty_assertions_sorted::assert_eq;
 use serde_json::json;
 
 #[test]
-async fn validation_format_errors(ctx: &mut DalContext) {
+async fn validation_format_errors(ctx: &mut DalContext) -> Result<()> {
     let component =
         create_component_for_default_schema_name_in_default_view(ctx, "BadValidations", "bad")
-            .await
-            .expect("could not create component");
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("could not commit and update snapshot to visibility");
+            .await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
     let bad_json_path = &["root", "domain", "bad_validation_json"];
     let prop_view = PropEditorTestView::for_component_id(ctx, component.id())
-        .await
-        .expect("could not get property editor test view")
-        .get_value(bad_json_path)
-        .expect("could not get value");
+        .await?
+        .get_value(bad_json_path)?;
     assert_eq!(
         json!({
             "value": null,
@@ -33,15 +30,13 @@ async fn validation_format_errors(ctx: &mut DalContext) {
                 "message": "UserCodeException: Invalid JSON format",
             }
         }),
-        extract_value_and_validation(prop_view).expect("could not extract")
+        extract_value_and_validation(prop_view)?
     );
 
     let bad_format_path = &["root", "domain", "bad_validation_format"];
     let prop_view = PropEditorTestView::for_component_id(ctx, component.id())
-        .await
-        .expect("could not get property editor test view")
-        .get_value(bad_format_path)
-        .expect("could not get value");
+        .await?
+        .get_value(bad_format_path)?;
 
     assert_eq!(
         json!({
@@ -51,33 +46,29 @@ async fn validation_format_errors(ctx: &mut DalContext) {
                 "message": "UserCodeException: validationFormat must be of type object",
             }
         }),
-        extract_value_and_validation(prop_view).expect("could not extract")
+        extract_value_and_validation(prop_view)?
     );
+
+    Ok(())
 }
 
 #[test]
-async fn prop_editor_validation(ctx: &mut DalContext) {
+async fn prop_editor_validation(ctx: &mut DalContext) -> Result<()> {
     let component =
         create_component_for_default_schema_name_in_default_view(ctx, "pirate", "Robinson Crusoe")
-            .await
-            .expect("could not create component");
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("could not commit and update snapshot to visibility");
+            .await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
     let prop_path = &["root", "domain", "working_eyes"];
     let av_id = component
         .attribute_values_for_prop(ctx, prop_path)
-        .await
-        .expect("find value ids for the prop")
+        .await?
         .pop()
         .expect("there should only be one value id");
 
     let prop_view = PropEditorTestView::for_component_id(ctx, component.id())
-        .await
-        .expect("could not get property editor test view")
-        .get_value(prop_path)
-        .expect("could not get value");
+        .await?
+        .get_value(prop_path)?;
 
     assert_eq!(
         json!({
@@ -87,22 +78,16 @@ async fn prop_editor_validation(ctx: &mut DalContext) {
                 "message": "\"value\" is required",
             }
         }),
-        extract_value_and_validation(prop_view).expect("could not extract")
+        extract_value_and_validation(prop_view)?
     );
 
-    AttributeValue::update(ctx, av_id, Some(json!(1)))
-        .await
-        .expect("override attribute value");
+    AttributeValue::update(ctx, av_id, Some(json!(1))).await?;
 
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("could not commit and update snapshot to visibility");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
     let prop_view = PropEditorTestView::for_component_id(ctx, component.id())
-        .await
-        .expect("could not get property editor test view")
-        .get_value(prop_path)
-        .expect("could not get value");
+        .await?
+        .get_value(prop_path)?;
 
     assert_eq!(
         json!({
@@ -112,22 +97,16 @@ async fn prop_editor_validation(ctx: &mut DalContext) {
                 "message": null,
             }
         }),
-        extract_value_and_validation(prop_view).expect("could not extract")
+        extract_value_and_validation(prop_view)?
     );
 
-    AttributeValue::update(ctx, av_id, Some(json!(3)))
-        .await
-        .expect("override attribute value");
+    AttributeValue::update(ctx, av_id, Some(json!(3))).await?;
 
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("could not commit and update snapshot to visibility");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
     let prop_view = PropEditorTestView::for_component_id(ctx, component.id())
-        .await
-        .expect("could not get property editor test view")
-        .get_value(prop_path)
-        .expect("could not get value");
+        .await?
+        .get_value(prop_path)?;
 
     assert_eq!(
         json!({
@@ -137,25 +116,23 @@ async fn prop_editor_validation(ctx: &mut DalContext) {
                 "message": "\"value\" must be less than or equal to 2",
             }
         }),
-        extract_value_and_validation(prop_view).expect("could not extract")
+        extract_value_and_validation(prop_view)?
     );
+
+    Ok(())
 }
 
 #[ignore]
 #[test]
-async fn validation_on_dependent_value(ctx: &mut DalContext) {
+async fn validation_on_dependent_value(ctx: &mut DalContext) -> Result<()> {
     let output_component =
         create_component_for_default_schema_name_in_default_view(ctx, "ValidatedOutput", "Output")
-            .await
-            .expect("could not create component");
+            .await?;
     let input_component =
         create_component_for_default_schema_name_in_default_view(ctx, "ValidatedInput", "Input")
-            .await
-            .expect("could not create component");
+            .await?;
 
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("could not commit and update snapshot to visibility");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
     connect_components_with_socket_names(
         ctx,
@@ -164,38 +141,28 @@ async fn validation_on_dependent_value(ctx: &mut DalContext) {
         input_component.id(),
         "number",
     )
-    .await
-    .expect("could not connect components with socket names");
+    .await?;
 
     let prop_path = &["root", "domain", "a_number"];
     let av_id = output_component
         .attribute_values_for_prop(ctx, prop_path)
-        .await
-        .expect("find value ids for the prop")
+        .await?
         .pop()
         .expect("there should only be one value id");
 
-    AttributeValue::update(ctx, av_id, Some(json!(1)))
-        .await
-        .expect("override attribute value");
+    AttributeValue::update(ctx, av_id, Some(json!(1))).await?;
 
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("could not commit and update snapshot to visibility");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
     let source_prop_view = PropEditorTestView::for_component_id(ctx, output_component.id())
-        .await
-        .expect("could not get property test view")
-        .get_value(prop_path)
-        .expect("could not get value");
+        .await?
+        .get_value(prop_path)?;
     let destination_prop_view = PropEditorTestView::for_component_id(ctx, input_component.id())
-        .await
-        .expect("could not get property test view")
-        .get_value(prop_path)
-        .expect("could not get value");
+        .await?
+        .get_value(prop_path)?;
 
     // Check validations and values
-    let source_result = extract_value_and_validation(source_prop_view).expect("could not extract");
+    let source_result = extract_value_and_validation(source_prop_view)?;
     assert_eq!(
         json!({
             "value": 1,
@@ -208,30 +175,21 @@ async fn validation_on_dependent_value(ctx: &mut DalContext) {
         source_result
     );
 
-    let destination_result =
-        extract_value_and_validation(destination_prop_view).expect("could not extract");
+    let destination_result = extract_value_and_validation(destination_prop_view)?;
     assert_eq!(source_result, destination_result,);
 
-    AttributeValue::update(ctx, av_id, Some(json!(3)))
-        .await
-        .expect("override attribute value");
+    AttributeValue::update(ctx, av_id, Some(json!(3))).await?;
 
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("could not commit and update snapshot to visibility");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
     let source_prop_view = PropEditorTestView::for_component_id(ctx, input_component.id())
-        .await
-        .expect("could not get property test view")
-        .get_value(prop_path)
-        .expect("could not get value");
+        .await?
+        .get_value(prop_path)?;
     let destination_prop_view = PropEditorTestView::for_component_id(ctx, output_component.id())
-        .await
-        .expect("could not get property test view")
-        .get_value(prop_path)
-        .expect("could not get value");
+        .await?
+        .get_value(prop_path)?;
 
-    let source_result = extract_value_and_validation(source_prop_view).expect("could not extract");
+    let source_result = extract_value_and_validation(source_prop_view)?;
     assert_eq!(
         json!({
             "value": 3,
@@ -244,53 +202,42 @@ async fn validation_on_dependent_value(ctx: &mut DalContext) {
         source_result
     );
 
-    let destination_result =
-        extract_value_and_validation(destination_prop_view).expect("could not extract");
+    let destination_result = extract_value_and_validation(destination_prop_view)?;
     assert_eq!(source_result, destination_result,);
+
+    Ok(())
 }
 
 #[test]
-async fn multiple_changes_single_validation(ctx: &mut DalContext) {
+async fn multiple_changes_single_validation(ctx: &mut DalContext) -> Result<()> {
     let component =
         create_component_for_default_schema_name_in_default_view(ctx, "pirate", "Robinson Crusoe")
-            .await
-            .expect("could not create component");
+            .await?;
 
     let prop_path = &["root", "domain", "working_eyes"];
     let av_id = component
         .attribute_values_for_prop(ctx, prop_path)
-        .await
-        .expect("find value ids for the prop")
+        .await?
         .pop()
         .expect("there should only be one value id");
 
-    AttributeValue::update(ctx, av_id, Some(json!(1)))
-        .await
-        .expect("override attribute value");
+    AttributeValue::update(ctx, av_id, Some(json!(1))).await?;
 
-    AttributeValue::update(ctx, av_id, Some(json!(3)))
-        .await
-        .expect("override attribute value");
+    AttributeValue::update(ctx, av_id, Some(json!(3))).await?;
 
-    AttributeValue::update(ctx, av_id, Some(json!(1)))
-        .await
-        .expect("override attribute value");
+    AttributeValue::update(ctx, av_id, Some(json!(1))).await?;
 
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("could not commit and update snapshot to visibility");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
     // There should be only one ValidationOutput node for attribute value
     {
         let validation_node_idxs = ctx
-            .workspace_snapshot()
-            .expect("get workspace snapshot")
+            .workspace_snapshot()?
             .outgoing_targets_for_edge_weight_kind(
                 av_id,
                 EdgeWeightKindDiscriminants::ValidationOutput,
             )
-            .await
-            .expect("get outgoing targets");
+            .await?;
 
         assert_eq!(validation_node_idxs.len(), 1);
 
@@ -298,31 +245,27 @@ async fn multiple_changes_single_validation(ctx: &mut DalContext) {
             .first()
             .expect("Have a validation node id");
 
-        ctx.workspace_snapshot()
-            .expect("get workspace snapshot")
+        ctx.workspace_snapshot()?
             .get_node_weight(*validation_node_idx)
-            .await
-            .expect("get validation node weight")
+            .await?
             .get_option_content_node_weight_of_kind(ContentAddressDiscriminants::ValidationOutput)
             .expect("find ValidationOutput node weight");
     }
+
+    Ok(())
 }
 
 #[test]
-async fn validation_qualification(ctx: &mut DalContext) {
+async fn validation_qualification(ctx: &mut DalContext) -> Result<()> {
     let component =
         create_component_for_default_schema_name_in_default_view(ctx, "pirate", "Robinson Crusoe")
-            .await
-            .expect("could not create component");
+            .await?;
 
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("could not commit and update snapshot to visibility");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
     // Get qualifications, should be failure (required)
     let validation_qualification = Component::list_qualifications(ctx, component.id())
-        .await
-        .expect("to get qualifications view")
+        .await?
         .into_iter()
         .find(|q| q.qualification_name == "validations")
         .expect("find validations qualification");
@@ -349,29 +292,23 @@ async fn validation_qualification(ctx: &mut DalContext) {
             },
             "qualificationName": "validations",
         }),
-        serde_json::to_value(&validation_qualification).expect("serialise qualification")
+        serde_json::to_value(&validation_qualification)?
     );
 
     // Update Value
     let prop_path = &["root", "domain", "working_eyes"];
     let av_id = component
         .attribute_values_for_prop(ctx, prop_path)
-        .await
-        .expect("find value ids for the prop")
+        .await?
         .pop()
         .expect("there should only be one value id");
-    AttributeValue::update(ctx, av_id, Some(json!(1)))
-        .await
-        .expect("override attribute value");
+    AttributeValue::update(ctx, av_id, Some(json!(1))).await?;
 
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("could not commit and update snapshot to visibility");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
     // Get qualifications, should be ok
     let validation_qualification = Component::list_qualifications(ctx, component.id())
-        .await
-        .expect("to get qualifications view")
+        .await?
         .into_iter()
         .find(|q| q.qualification_name == "validations")
         .expect("find validations qualification");
@@ -394,6 +331,131 @@ async fn validation_qualification(ctx: &mut DalContext) {
             },
             "qualificationName": "validations",
         }),
-        serde_json::to_value(validation_qualification).expect("serialise qualification")
+        serde_json::to_value(validation_qualification)?
     );
+
+    Ok(())
+}
+
+#[test]
+async fn required_unset_value(ctx: &mut DalContext) -> Result<()> {
+    ExpectSchemaVariant::create_named(
+        ctx,
+        "required_value",
+        r#"
+            function main() {
+                return new AssetBuilder()
+                    .addProp(new PropBuilder()
+                        .setName("Value")
+                        .setKind("string")
+                        .setValidationFormat(Joi.string().required())
+                        .build()
+                    )
+                    .build();
+            }
+        "#,
+    )
+    .await;
+
+    let component = create_component_for_default_schema_name_in_default_view(
+        ctx,
+        "required_value",
+        "required_value",
+    )
+    .await?;
+
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+    // Get qualifications, should be failure (required)
+    let validation_qualification = Component::list_qualifications(ctx, component.id())
+        .await?
+        .into_iter()
+        .find(|q| q.qualification_name == "validations")
+        .expect("find validations qualification");
+
+    assert_eq!(
+        json!({
+            "title": "Prop Validations",
+            "output": [{
+                "stream": "stdout",
+                "line": "Value: \"value\" is required",
+                "level": "log",
+            }],
+            "description": null,
+            "link": null,
+            "result": {
+                "status": "failure",
+                "title": null,
+                "link": null,
+                "sub_checks": [{
+                    "description": "Component has 1 invalid value(s).",
+                    "status": "failure",
+                }],
+            },
+            "qualificationName": "validations",
+            "finalized": true,
+        }),
+        serde_json::to_value(&validation_qualification)?
+    );
+    Ok(())
+}
+
+#[test]
+async fn required_default_value(ctx: &mut DalContext) -> Result<()> {
+    ExpectSchemaVariant::create_named(
+        ctx,
+        "required_default",
+        r#"
+            function main() {
+                return new AssetBuilder()
+                    .addProp(new PropBuilder()
+                        .setName("Value")
+                        .setKind("string")
+                        .setDefaultValue("ok")
+                        .setValidationFormat(Joi.string().required())
+                        .build()
+                    )
+                    .build();
+            }
+        "#,
+    )
+    .await;
+
+    let component = create_component_for_default_schema_name_in_default_view(
+        ctx,
+        "required_default",
+        "required_default",
+    )
+    .await?;
+
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+    // Get qualifications, should be success (not required)
+    let validation_qualification = Component::list_qualifications(ctx, component.id())
+        .await?
+        .into_iter()
+        .find(|q| q.qualification_name == "validations")
+        .expect("find validations qualification");
+
+    assert_eq!(
+        json!({
+            "title": "Prop Validations",
+            "output": [],
+            "finalized": true,
+            "description": null,
+            "link": null,
+            "result": {
+                "status": "success",
+                "title": null,
+                "link": null,
+                "sub_checks": [{
+                    "description": "Component has 0 invalid value(s).",
+                    "status": "success",
+                }],
+            },
+            "qualificationName": "validations",
+        }),
+        serde_json::to_value(&validation_qualification)?
+    );
+    Ok(())
 }
