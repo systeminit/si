@@ -7,6 +7,7 @@ pub const MODULE_BASED_ON_HASH_FIELD_NAME: &str = "based_on_hash";
 pub const MODULE_SCHEMA_ID_FIELD_NAME: &str = "schema_id";
 pub const MODULE_SCHEMA_VARIANT_ID_FIELD_NAME: &str = "schema_variant_id";
 pub const MODULE_SCHEMA_VARIANT_VERSION_FIELD_NAME: &str = "schema_variant_version";
+pub const MODULE_IS_PRIVATE_SCOPED_FIELD_NAME: &str = "is_private_scoped";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

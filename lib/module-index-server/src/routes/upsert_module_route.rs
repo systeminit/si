@@ -9,8 +9,8 @@ use axum::{
 use chrono::{DateTime, FixedOffset, Offset, Utc};
 use hyper::StatusCode;
 use module_index_types::{
-    ExtraMetadata, FuncMetadata, ModuleDetailsResponse, MODULE_SCHEMA_VARIANT_ID_FIELD_NAME,
-    MODULE_SCHEMA_VARIANT_VERSION_FIELD_NAME,
+    ExtraMetadata, FuncMetadata, ModuleDetailsResponse, MODULE_IS_PRIVATE_SCOPED_FIELD_NAME,
+    MODULE_SCHEMA_VARIANT_ID_FIELD_NAME, MODULE_SCHEMA_VARIANT_VERSION_FIELD_NAME,
 };
 use module_index_types::{
     MODULE_BASED_ON_HASH_FIELD_NAME, MODULE_BUNDLE_FIELD_NAME, MODULE_SCHEMA_ID_FIELD_NAME,
@@ -102,6 +102,7 @@ pub struct SiMultipartData {
     pub schema_variant_version: Option<String>,
     pub module_based_on_hash: Option<String>,
     pub module_data: Option<Bytes>,
+    pub module_is_private_scoped: Option<bool>,
 }
 
 pub async fn extract_multiparts(
@@ -112,6 +113,7 @@ pub async fn extract_multiparts(
     let mut module_schema_id = None;
     let mut module_schema_variant_id = None;
     let mut module_schema_variant_version = None;
+    let mut module_is_private_scoped = None;
     while let Some(field) = multipart.next_field().await? {
         match field.name() {
             Some(MODULE_BUNDLE_FIELD_NAME) => {
@@ -129,6 +131,10 @@ pub async fn extract_multiparts(
             Some(MODULE_SCHEMA_VARIANT_VERSION_FIELD_NAME) => {
                 module_schema_variant_version = Some(field.text().await?);
             }
+            Some(MODULE_IS_PRIVATE_SCOPED_FIELD_NAME) => {
+                module_is_private_scoped =
+                    Some(field.text().await?.parse::<bool>().unwrap_or_default());
+            }
             _ => debug!("Unknown multipart form field on module upload, skipping..."),
         }
     }
@@ -139,6 +145,7 @@ pub async fn extract_multiparts(
         schema_variant_version: module_schema_variant_version,
         module_based_on_hash,
         module_data,
+        module_is_private_scoped,
     })
 }
 
@@ -248,6 +255,7 @@ pub async fn upsert_module(
         schema_id: Set(schema_id),
         schema_variant_id: Set(schema_variant_id),
         schema_variant_version: Set(multi_part_data.schema_variant_version),
+        is_private_scoped: Set(multi_part_data.module_is_private_scoped.unwrap_or_default()),
         ..Default::default() // all other attributes are `NotSet`
     };
     s3_bucket
