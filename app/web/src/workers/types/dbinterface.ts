@@ -81,7 +81,7 @@ export const NOROW = Symbol("NOROW");
 interface AbstractAtom {
   id: Id,
   kind: string,
-  kindFromChecksum: Checksum,
+  kindFromChecksum?: Checksum,
   kindToChecksum: Checksum,
 }
 export interface AtomOperation extends AbstractAtom {
@@ -91,7 +91,7 @@ export interface AtomOperation extends AbstractAtom {
 export interface AtomMeta {
   workspaceId: WorkspacePk,
   changeSetId: ChangeSetId,
-  snapshotFromChecksum: Checksum,
+  snapshotFromChecksum?: Checksum,
   snapshotToChecksum: Checksum,
 };
 
@@ -108,7 +108,7 @@ export interface PatchAtomMessage {
 
 export interface AtomMessage {
   kind: MessageKind.MJOLNIR,
-  atom: Omit<Atom, "kindFromChecksum">,
+  atom: Atom,
   data: object,
 };
 

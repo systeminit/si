@@ -286,8 +286,8 @@ onBeforeMount(async () => {
 
   if (changeSetsStore.selectedWorkspacePk && changeSetsStore.selectedChangeSetId) {
     const heimdall = useHeimdall();
-    heimdall.niflheim(changeSetsStore.selectedWorkspacePk, changeSetsStore.selectedChangeSetId);
-    // await heimdall.fullDiagnosticTest();
+    // heimdall.niflheim(changeSetsStore.selectedWorkspacePk, changeSetsStore.selectedChangeSetId);
+    await heimdall.fullDiagnosticTest();
   }
 });
 
