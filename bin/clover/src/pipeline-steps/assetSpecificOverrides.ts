@@ -8,6 +8,7 @@ import {
 import { ExpandedPkgSpec } from "../spec/pkgs.ts";
 import { createScalarProp, ExpandedPropSpec } from "../spec/props.ts";
 import { PropUsageMap } from "./addDefaultPropsAndSockets.ts";
+import { MANAGEMENT_FUNCS, modifyFunc } from "../spec/funcs.ts";
 
 const logger = _logger.ns("assetOverrides").seal();
 
@@ -51,6 +52,15 @@ const overrides = new Map<string, OverrideFn>([
       p.name === "UserData"
     );
     prop!.data.widgetKind = "CodeEditor";
+  }],
+  ["AWS::EC2::LaunchTemplate", (spec: ExpandedPkgSpec) => {
+    const targetId = MANAGEMENT_FUNCS["Import from AWS"].id;
+    const newId =
+      "0583c411a5b41594706ae8af473ed6d881357a1e692fb53981417f625f99374b";
+    const path =
+      "./src/cloud-control-funcs/overrides/AWS::EC2::LaunchTemplate/import.ts";
+
+    modifyFunc(spec, targetId, newId, path);
   }],
   ["AWS::EC2::NetworkInterface", (spec: ExpandedPkgSpec) => {
     const variant = spec.schemas[0].variants[0];
