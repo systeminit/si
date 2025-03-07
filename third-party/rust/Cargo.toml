@@ -141,7 +141,7 @@ reqwest = { version = "0.12.9", default-features = false, features = [
     "json",
     "multipart",
 ] }
-ring = "=0.17.6"
+ring = "=0.17.12"
 rust-s3 = { version = "0.34.0-rc4", default-features = false, features = [
     "tokio-rustls-tls",
     "fail-on-err",
