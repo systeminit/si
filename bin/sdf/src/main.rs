@@ -9,7 +9,6 @@ use si_service::{
     rt, shutdown, startup,
     telemetry_application::{self, TelemetryShutdownGuard},
 };
-use tokio_watchdog::spawn_tokio_watchdog;
 
 mod args;
 
@@ -57,6 +56,7 @@ async fn async_main() -> Result<()> {
 
         telemetry_application::init(config, &telemetry_tracker, telemetry_token.clone())?
     };
+    tokio_watchdog::new_for_current(BIN_NAME, main_token.clone()).spawn()?;
 
     startup::startup(BIN_NAME).await?;
 
@@ -66,8 +66,6 @@ async fn async_main() -> Result<()> {
             .await?;
     }
     debug!(arguments =?args, "parsed cli arguments");
-
-    spawn_tokio_watchdog(Duration::from_secs(1), main_token.clone())?;
 
     if let Some((secret_key_path, public_key_path)) = args.generating_veritech_key_pair() {
         generate_veritech_key_pair(

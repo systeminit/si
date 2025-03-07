@@ -32,12 +32,8 @@ rust_binary(
     deps = [
         "//lib/cyclone-server:cyclone-server",
         "//lib/si-service:si-service",
-        "//lib/telemetry-application-rs:telemetry-application",
-        "//lib/tokio-watchdog:tokio-watchdog",
         "//third-party/rust:clap",
-        "//third-party/rust:color-eyre",
         "//third-party/rust:tokio",
-        "//third-party/rust:tokio-util",
     ] + select({
         "DEFAULT": [],
         "config//os:linux": [
@@ -45,6 +41,7 @@ rust_binary(
         ],
     }),
     srcs = glob(["src/**/*.rs"]),
+    env = {"CARGO_BIN_NAME": "cyclone"},
 )
 
 export_file(

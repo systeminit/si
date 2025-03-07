@@ -1737,14 +1737,10 @@ name = "cyclone"
 version = "0.1.0"
 dependencies = [
  "clap",
- "color-eyre",
  "cyclone-server",
  "si-firecracker",
  "si-service",
- "telemetry-application",
  "tokio",
- "tokio-util",
- "tokio-watchdog",
 ]
 
 [[package]]
@@ -2693,7 +2689,6 @@ dependencies = [
  "clap",
  "forklift-server",
  "si-service",
- "si-std",
 ]
 
 [[package]]
@@ -5657,7 +5652,6 @@ dependencies = [
  "clap",
  "rebaser-server",
  "si-service",
- "si-std",
 ]
 
 [[package]]
@@ -6275,7 +6269,6 @@ dependencies = [
  "clap",
  "sdf-server",
  "si-service",
- "tokio-watchdog",
 ]
 
 [[package]]
@@ -7056,6 +7049,7 @@ dependencies = [
  "thiserror 2.0.11",
  "tokio",
  "tokio-util",
+ "tokio-watchdog",
 ]
 
 [[package]]
@@ -8540,13 +8534,7 @@ name = "veritech"
 version = "0.1.0"
 dependencies = [
  "clap",
- "color-eyre",
  "si-service",
- "si-std",
- "telemetry-application",
- "tokio",
- "tokio-util",
- "tokio-watchdog",
  "veritech-server",
 ]
 
