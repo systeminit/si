@@ -170,6 +170,16 @@ const overrides = new Map<string, OverrideFn>([
     setAnnotationOnSocket(socket, { tokens: ["arn", "string"] });
     setAnnotationOnSocket(socket, { tokens: ["arn"] });
   }],
+  ["AWS::ImageBuilder::Component", (spec: ExpandedPkgSpec) => {
+    const variant = spec.schemas[0].variants[0];
+
+    const prop = variant.domain.entries.find((p: ExpandedPropSpec) =>
+      p.name === "Data"
+    );
+
+    if (!prop) return;
+    prop!.data.widgetKind = "CodeEditor";
+  }],
 ]);
 
 function addSecretProp(
