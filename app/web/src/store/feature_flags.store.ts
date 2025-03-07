@@ -12,7 +12,6 @@ const FLAG_MAPPING = {
   ON_DEMAND_ASSETS: "on_demand_assets",
   SLACK_WEBHOOK: "slack_webhook",
   TEMPLATE_MGMT_FUNC_GENERATION: "template-mgmt-func-generation",
-  CLOVER_ASSETS: "clover-assets",
   DIAGRAM_OPTIMIZATION: "diagram-optimization",
   DIAGRAM_OPTIMIZATION_2: "diagram-optimization-2",
   AUTOCONNECT: "autoconnect-component-input-sockets",

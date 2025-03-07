@@ -171,13 +171,6 @@ const canUpdate = computed(
 const categorizedAssets = computed(() =>
   assetList.value
     .filter((asset) => {
-      if (
-        !featureFlagsStore.CLOVER_ASSETS &&
-        asset.category.startsWith("Clover:")
-      ) {
-        return false;
-      }
-
       let include = true;
 
       if (
