@@ -213,7 +213,6 @@ const atomExistsOnSnapshots = async (
   return rows.flat().filter(nonNullable) as Checksum[];
 };
 
-// SEE PATCH WORKFLOW
 const newSnapshot = async (meta: AtomMeta, fromSnapshotAddress?: string) => {
   await db.exec({
     sql: `INSERT INTO snapshots (address) VALUES (?);`,
@@ -310,14 +309,14 @@ const snapshotLogic = async (meta: AtomMeta, span?: Span) => {
   const {
     changeSetId,
     workspaceId,
-    snapshotFromChecksum: fromSnapshotChecksum,
-    snapshotToChecksum: toSnapshotChecksum,
+    snapshotFromChecksum,
+    snapshotToChecksum,
   } = { ...meta };
   span?.setAttributes({
     changeSetId,
     workspaceId,
-    fromSnapshotChecksum,
-    toSnapshotChecksum,
+    snapshotFromChecksum,
+    snapshotToChecksum,
   });
 
   const changeSetQuery = await db.exec({
@@ -335,32 +334,31 @@ const snapshotLogic = async (meta: AtomMeta, span?: Span) => {
   const snapshotQuery = await db.exec({
     sql: `select address from snapshots where address = ?`,
     returnValue: "resultRows",
-    bind: [toSnapshotChecksum],
+    bind: [snapshotToChecksum],
   });
   const snapshotExists = oneInOne(snapshotQuery);
-  if (snapshotExists === NOROW) await newSnapshot(meta, fromSnapshotChecksum);
+
+  if (changeSetExists && !fromSnapshotAddress)
+    throw new Error("Null value from SQL, impossible");
+
+  if (
+    changeSetExists &&
+    meta.snapshotFromChecksum &&
+    fromSnapshotAddress !== snapshotFromChecksum
+  )
+    throw new Error("RAGNAROK!");
+
+  if (fromSnapshotAddress !== snapshotToChecksum || snapshotExists === NOROW)
+    await newSnapshot(meta, snapshotFromChecksum);
 
   if (!changeSetExists) {
-    // first time i see this change set
     await db.exec({
       sql: "insert into changesets (change_set_id, workspace_id, snapshot_address) VALUES (?, ?, ?);",
-      bind: [meta.changeSetId, meta.workspaceId, toSnapshotChecksum],
+      bind: [meta.changeSetId, meta.workspaceId, snapshotToChecksum],
     });
-  } else {
-    // new snapshot on an existing change set
-    if (!fromSnapshotAddress)
-      throw new Error("Null value from SQL, impossible");
-    if (
-      meta.snapshotFromChecksum &&
-      fromSnapshotAddress !== fromSnapshotChecksum
-    )
-      throw new Error("RAGNAROK!");
-
-    if (fromSnapshotAddress !== toSnapshotChecksum)
-      await newSnapshot(meta, fromSnapshotAddress);
   }
 
-  return toSnapshotChecksum;
+  return snapshotToChecksum;
 };
 
 const handlePatchMessage = async (data: PatchAtomMessage, span?: Span) => {
@@ -473,8 +471,6 @@ const patchAtom = async (atom: Required<Atom>) => {
   // eslint-disable-line @typescript-eslint/no-non-null-assertion
   const atomRow = atomRows[0]!;
 
-  // FUTURE: JSON Patch, where we select the old data, and patch it
-  // just inserting right now
   const _doc = atomRow[3] as ArrayBuffer;
   const doc = decodeDocumentFromDB(_doc);
   atom.operations?.forEach((op) => {
@@ -691,16 +687,26 @@ const dbInterface: DBInterface = {
       tracer.startActiveSpan("handleEvent", async (span) => {
         // we'll either be getting AtomMessages as patches to the data
         // OR we'll be getting mjolnir responses with the Atom as a whole
-        const data = JSON.parse(messageEvent.data) as
-          | PatchAtomMessage
-          | AtomMessage;
-        if (!("kind" in data)) span.setAttribute("kindMissing", "no kind");
-        else {
-          span.setAttribute("messageKind", data.kind);
-          if (data.kind === MessageKind.PATCH)
-            await handlePatchMessage(data, span);
-          else if (data.kind === MessageKind.MJOLNIR)
-            await handleHammer(data, span);
+        try {
+          const data = JSON.parse(messageEvent.data) as
+            | PatchAtomMessage
+            | AtomMessage;
+          if (!("kind" in data)) span.setAttribute("kindMissing", "no kind");
+          else {
+            span.setAttribute("messageKind", data.kind);
+            if (data.kind === MessageKind.PATCH)
+              await handlePatchMessage(data, span);
+            else if (data.kind === MessageKind.MJOLNIR)
+              await handleHammer(data, span);
+          }
+        } catch (error: unknown) {
+          console.error(error);
+          if (error instanceof Error) {
+            span.addEvent("error", {
+              "error.message": error.message,
+              "error.stacktrace": error.stack,
+            });
+          }
         }
         span.end();
       });
@@ -979,6 +985,14 @@ const dbInterface: DBInterface = {
       `Document doesn't match (${JSON.stringify(doc)})`,
     );
 
+    const addressQuery = await db.exec({
+      sql: "select snapshot_address from changesets where change_set_id = ?;",
+      bind: ["new_change_set"],
+      returnValue: "resultRows",
+    })
+    const address = oneInOne(addressQuery) as string;
+    console.assert(address === "new_change_set", `Changeset address didn't move forward ${address}`);
+
     log("~~ FIRST PAYLOAD SUCCESS ~~");
 
     /**
@@ -989,7 +1003,7 @@ const dbInterface: DBInterface = {
         workspaceId: "W",
         changeSetId: "HEAD",
         snapshotFromChecksum: "HEAD",
-        snapshotToChecksum: "new_change_set_on_head", // will this be different?? if not, my UNIQUE on checksum is bad
+        snapshotToChecksum: "new_change_set_on_head",
       },
       kind: MessageKind.PATCH,
       patches: [
@@ -1172,9 +1186,67 @@ const dbInterface: DBInterface = {
       `List item 2 is wrong (${JSON.stringify(list_doc)})`,
     );
 
+    const confirmCount = await db.exec({
+      sql: `SELECT count(*) FROM atoms;`,
+      returnValue: "resultRows",
+    });
+    const count_atoms_after_addremove = oneInOne(confirmCount);
+
+    console.assert(
+      count_atoms_after_addremove === 5,
+      `after mjolnir atom count ${String(count_atoms_after_addremove)} === 5`,
+    );
+
     log("~~ ADD / REMOVE COMPLETED ~~");
 
-    // TODO, test mjolnir!
+    // test mjolnir!
+    const hammer1: AtomMessage = {
+      kind: MessageKind.MJOLNIR,
+      atom: {
+        id: "fb1",
+        kind: "foobar",
+        kindToChecksum: "fb1",
+        workspaceId: "W",
+        changeSetId: "add_remove",
+        snapshotToChecksum: "add_remove_1"
+      },
+      data: { "foo": "bar" }
+    };
+
+    await tracer.startActiveSpan("handleEvent", async (span) => {
+      await handleHammer(hammer1);
+      span.end();
+    });
+    await assertUniqueAtoms();
+
+    const query = await db.exec({
+      sql: "select args from atoms where kind = ? and args = ? and checksum = ?",
+      bind: ["foobar", "fb1", "fb1"],
+      returnValue: "resultRows"
+    });
+    const fb = oneInOne(query);
+    console.assert(fb === "fb1", "Mjolnir atom doesn't exist");
+
+    const confirm9 = await db.exec({
+      sql: `SELECT count(*) FROM atoms;`,
+      returnValue: "resultRows",
+    });
+    const count_atoms_after_hammer = oneInOne(confirm9);
+
+    console.assert(
+      count_atoms_after_hammer === 6,
+      `after mjolnir atom count ${String(count_atoms_after_hammer)} === 6`,
+    );
+
+    const addressQuery2 = await db.exec({
+      sql: "select snapshot_address from changesets where change_set_id = ?;",
+      bind: ["add_remove"],
+      returnValue: "resultRows",
+    })
+    const address2 = oneInOne(addressQuery2) as string;
+    console.assert(address2 === "add_remove_1", `Changeset address didn't move forward ${address2}`);
+
+    log("~~ MJOLNIR COMPLETED ~~");
 
     log("~~ DIAGNOSTIC COMPLETED ~~");
   },
