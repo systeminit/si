@@ -34,63 +34,80 @@ use telemetry::prelude::*;
 use telemetry_utils::metric;
 use tokio::{
     runtime::Handle,
-    sync::mpsc::{
-        self,
-        error::{TryRecvError, TrySendError},
-        Receiver, Sender,
-    },
+    sync::mpsc::{self, error::TrySendError, Receiver, Sender},
 };
 use tokio_util::sync::CancellationToken;
 
-const DEFAULT_TICK_DURATION: Duration = Duration::from_millis(100);
+const DEFAULT_MEASUREMENT_FREQUENCY: Duration = Duration::from_secs(5);
 const DEFAULT_WARN_THRESHOLD: Duration = Duration::from_millis(100);
+/// The maximum delay between being cancelled and the watchdog thread actually stopping.
+/// The smaller this value, the more the watchdog will "spin" the thread, which could take
+/// work away from other threads.
+const MAX_CANCELLATION_DELAY: Duration = Duration::from_millis(200);
 
-pub fn new(
-    runtime_name: impl Into<String>,
+/// Spawn a new TokioWatchdog for the main tokio runtime.
+pub fn spawn(
+    bin_name: impl Into<Box<str>>,
+    cancellation_token: CancellationToken,
+) -> io::Result<thread::JoinHandle<()>> {
+    TokioWatchdog::new(bin_name, cancellation_token).spawn()
+}
+
+/// Spawn a new TokioWatchdog for the current tokio runtime.
+pub fn spawn_for_runtime(
+    runtime_name: impl Into<Box<str>>,
     handle: Handle,
     cancellation_token: CancellationToken,
-) -> TokioWatchdog {
-    TokioWatchdog::new(runtime_name.into(), handle, cancellation_token)
+) -> io::Result<thread::JoinHandle<()>> {
+    TokioWatchdog::new_for_runtime(runtime_name, handle, cancellation_token).spawn()
 }
 
-pub fn new_for_current(
-    runtime_name: impl Into<String>,
-    cancellation_token: CancellationToken,
-) -> TokioWatchdog {
-    TokioWatchdog::new(runtime_name.into(), Handle::current(), cancellation_token)
-}
-
+/// Watchdog for measuring the delay in the tokio reactor.
 #[derive(Debug)]
 pub struct TokioWatchdog {
     runtime_name: Box<str>,
     handle: Handle,
-    tick_duration: Duration,
+    measurement_frequency: Duration,
     warn_threshold: Duration,
     cancellation_token: CancellationToken,
 }
 
+/// Used as an error to signal that the watchdog was cancelled.
+enum WatchdogError {
+    Cancelled,
+    InternalError,
+}
+
 impl TokioWatchdog {
-    pub fn new(
-        runtime_name: String,
+    /// Create a new TokioWatchdog for the current Tokio runtime.
+    pub fn new(runtime_name: impl Into<Box<str>>, cancellation_token: CancellationToken) -> Self {
+        Self::new_for_runtime(runtime_name, Handle::current(), cancellation_token)
+    }
+
+    /// Create a new TokioWatchdog for a specific Tokio runtime.
+    pub fn new_for_runtime(
+        runtime_name: impl Into<Box<str>>,
         handle: Handle,
         cancellation_token: CancellationToken,
     ) -> Self {
         Self {
-            runtime_name: runtime_name.into_boxed_str(),
+            runtime_name: runtime_name.into(),
             handle,
-            tick_duration: DEFAULT_TICK_DURATION,
+            measurement_frequency: DEFAULT_MEASUREMENT_FREQUENCY,
             warn_threshold: DEFAULT_WARN_THRESHOLD,
             cancellation_token,
         }
     }
 
-    pub fn with_tick_duration(self, tick_duration: Duration) -> Self {
+    /// Set the frequency at which we measure the delay in the tokio reactor.
+    pub fn with_measurement_frequency(self, measurement_frequency: Duration) -> Self {
         Self {
-            tick_duration,
+            measurement_frequency,
             ..self
         }
     }
 
+    /// Set warn threshold
     pub fn with_warn_threshold(self, warn_threshold: Duration) -> Self {
         Self {
             warn_threshold,
@@ -117,154 +134,164 @@ impl TokioWatchdog {
     /// - `count.tokio_watchdog.respond_failures`: Number of times the tokio watchdog failed to
     ///    respond to a request.
     pub fn spawn(self) -> io::Result<thread::JoinHandle<()>> {
-        let Self {
-            runtime_name,
-            handle,
-            tick_duration,
-            warn_threshold,
-            cancellation_token,
-        } = self;
-
-        if (tick_duration + warn_threshold).is_zero() {
+        if self.warn_threshold.is_zero() {
             warn!(
-                runtime = runtime_name,
-                "sum of tick and warn duration must be non-zero"
+                runtime = self.runtime_name,
+                "warn threshold must be above 0"
             );
             return Err(io::Error::other("invalid watchdog configuration"));
         }
-        // Set up an async task in tokio that will receive a request and respond as quickly as
-        // possible.
-        let (tx_request, mut rx_request) = mpsc::channel::<Instant>(1);
-        let (tx_response, rx_response) = mpsc::channel::<Duration>(1);
-
-        handle.spawn(async move {
-            loop {
-                let start = match rx_request.recv().await {
-                    Some(start) => start,
-                    None => {
-                        debug!(
-                            "tokio watchdog responder task shutting down because watchdog tx closed"
-                        );
-                        return;
-                    }
-                };
-
-                // The `start.elapsed()` time should be almost immediate and represents the time
-                // from the watchdog thread channel send to when the runtime wakes this task to
-                // read the value and immediately send it back on a response channel. A slow and/or
-                // hanging runtime may take some time to wake this task to read the value. This is
-                // what we are measuring.
-                match tx_response.try_send(start.elapsed()) {
-                    Ok(_) => {}
-                    Err(TrySendError::Full(_)) => {
-                        metric!(counter.tokio_watchdog.send_failures = 1);
-                        continue;
-                    }
-                    Err(TrySendError::Closed(_)) => {
-                        debug!(
-                            "tokio watchdog responder task shutting down because watchdog rx closed"
-                        );
-                        return;
-                    }
-                }
-            }
-        });
-
-        thread::Builder::new()
-            .name(format!("tokio watchdog for {runtime_name}"))
-            .spawn(move || {
-                run_tokio_watchdog(
-                    runtime_name,
-                    tick_duration,
-                    warn_threshold,
-                    tx_request,
-                    rx_response,
-                    cancellation_token,
-                )
-            })
-    }
-}
-
-// This blocks forever (at least until cancellation happens)
-fn run_tokio_watchdog(
-    runtime_name: Box<str>,
-    tick_duration: Duration,
-    warn_threshold: Duration,
-    tx_request: Sender<Instant>,
-    mut rx_response: Receiver<Duration>,
-    cancellation_token: CancellationToken,
-) {
-    while !cancellation_token.is_cancelled() {
-        // Sleep thread until next tick
-        thread::sleep(tick_duration);
-
-        // Send the request, including the time the request was sent so the receiver
-        // can figure out the delay.
-        match tx_request.try_send(Instant::now()) {
-            Ok(()) => {}
-            Err(TrySendError::Full(_)) => {
-                metric!(counter.tokio_watchdog.send_failures = 1);
-                continue;
-            }
-            Err(TrySendError::Closed(_)) => {
-                error!("tokio watchdog shutting down because responder closed; shutting down");
-                return;
-            }
+        if self.measurement_frequency <= self.warn_threshold {
+            warn!(
+                runtime = self.runtime_name,
+                "measurement frequency must be longer than warn threshold"
+            );
+            return Err(io::Error::other("invalid watchdog configuration"));
         }
 
-        // Note that we sent the request
-        metric!(count.tokio_watchdog.sent = 1);
-
-        // Sleep thread until for `warn_threshold` time.
-        //
-        // This blocks the thread; we don't use async here because that would put us on the tokio
-        // reactor.
-        thread::sleep(warn_threshold);
-
-        // Immediately try to read the `delay` value from the channel.
-        let delay = match rx_response.try_recv() {
-            // A value is immediately available within the `warn_threshold` time period.
-            //
-            // This signals a responsive and healthy runtime.
-            Ok(delay) => delay,
-            // There is not yet a value ready on the response channel.
-            //
-            // This means it will have taken longer than `warn_threshold` time to receive a
-            // response. By our definition, the runtime is slow and/or hangining and therefore is
-            // not healthy.
-            Err(TryRecvError::Empty) => {
-                // Log and count that the runtime is unhealty
-                warn!(runtime = runtime_name, "tokio runtime starts hanging",);
-                metric!(counter.tokio_watchdog.hang = 1);
-
-                // Now we block the watchdog thread and wait for the response on the channel. At
-                // this point we know the runtime is not healthy.
-                let delay = match rx_response.blocking_recv() {
-                    Some(delay) => delay,
-                    // The sender has closed the channel.
-                    None => {
-                        debug!("tokio watchdog responder task tx has closed; shutting down");
-                        return;
-                    }
-                };
-
-                warn!(
-                    runtime = runtime_name,
-                    hang_nanos = delay.as_nanos(),
-                    "tokio runtime has stops hanging",
-                );
-
-                delay
-            }
-            // The sender has closed the channel.
-            Err(TryRecvError::Disconnected) => {
-                debug!("tokio watchdog responder task tx has closed; shutting down");
-                return;
-            }
-        };
-
-        metric!(histogram.tokio_watchdog.response_time_nanos = delay.as_nanos());
+        // Clear the hang metric before starting
+        metric!(counter.tokio_watchdog.hang = 0);
+        self.spawn_watchdog_loop()
     }
 
-    debug!("tokio watchdog for {runtime_name} cancelled; shutting down");
+    fn spawn_watchdog_loop(self) -> io::Result<thread::JoinHandle<()>> {
+        thread::Builder::new()
+            .name(format!("tokio watchdog for {}", self.runtime_name))
+            .spawn(move || {
+                // Throw away the error that tells us whether it was cancelled
+                let _ = self.watchdog_loop();
+                // Clear the hang metric if there is one
+                metric!(counter.tokio_watchdog.hang = 0);
+            })
+    }
+
+    // This blocks forever (at least until cancellation happens)
+    fn watchdog_loop(self) -> Result<(), WatchdogError> {
+        // Set up an async task in tokio that will receive a request and respond as quickly as
+        // possible.
+        let tx_request = self.spawn_responder_loop();
+
+        debug!(
+            runtime_name = self.runtime_name,
+            measurement_frequency_secs = self.measurement_frequency.as_secs_f64(),
+            warn_threshold_secs = self.warn_threshold.as_secs_f64(),
+            "tokio watchdog started",
+        );
+
+        let mut sent_at = Instant::now();
+        loop {
+            self.send_tokio_metrics();
+
+            // Sleep thread until it's time to measure again
+            self.blocking_sleep(self.measurement_frequency.saturating_sub(sent_at.elapsed()))?;
+
+            // Send the request, including the time the request was sent so the receiver
+            // can figure out the delay.
+            sent_at = Instant::now();
+            match tx_request.try_send(sent_at) {
+                Ok(()) => {}
+                // It should be impossible for the channel to be full. The fact that we looped
+                // back around means we waited for the receiver to pick up the last request.
+                Err(TrySendError::Full(_)) => {
+                    error!("tokio watchdog internal error: channel is full");
+                    return Err(WatchdogError::InternalError);
+                }
+                Err(TrySendError::Closed(_)) => {
+                    error!("tokio watchdog shutting down because responder closed early; shutting down");
+                    return Err(WatchdogError::InternalError);
+                }
+            }
+
+            // If the request isn't processed within the warn_threshold, we'll log a warning.
+            self.blocking_sleep(self.warn_threshold)?;
+            if Self::not_received_yet(&tx_request) {
+                // It's taking forever. Mark it as a hang!
+                warn!(
+                    runtime = self.runtime_name,
+                    elapsed = sent_at.elapsed().as_millis(),
+                    capacity = tx_request.capacity(),
+                    is_closed = tx_request.is_closed(),
+                    "tokio watchdog hang detected"
+                );
+                metric!(counter.tokio_watchdog.hang = 1);
+
+                // Wait for the responder to pick up the work (at which point the hang is over).
+                // If we don't do this, the next iteration of the loop will have to handle
+                // "channel is full" anyway, so may as well do it here.
+                while Self::not_received_yet(&tx_request) {
+                    self.blocking_sleep(MAX_CANCELLATION_DELAY)?;
+                }
+
+                // The responder finally picked up the work; we know we're not hanging now.
+                warn!(
+                    runtime = self.runtime_name,
+                    hang_nanos = sent_at.elapsed().as_nanos(),
+                    "tokio watchdog hang ended"
+                );
+                metric!(counter.tokio_watchdog.hang = 0);
+            }
+        }
+    }
+
+    /// true if the request channel still has a value that hasn't been received, *and*
+    /// the receiver is alive to receive it.
+    fn not_received_yet(tx_request: &Sender<Instant>) -> bool {
+        tx_request.capacity() == 0 && !tx_request.is_closed()
+    }
+
+    /// Blocks the thread for the given duration without invoking the tokio reactor.
+    /// Will cancel the sleep early if the watchdog is cancelled.
+    fn blocking_sleep(&self, mut duration: Duration) -> Result<(), WatchdogError> {
+        // Sleep for small increments, wake up, and check for cancellation
+        while duration > MAX_CANCELLATION_DELAY && self.check_cancelled()? {
+            thread::sleep(MAX_CANCELLATION_DELAY);
+            duration -= MAX_CANCELLATION_DELAY;
+        }
+        if self.check_cancelled()? && duration > Duration::ZERO {
+            thread::sleep(duration);
+        }
+        Ok(())
+    }
+
+    // Check if we've been cancelled and toss an error if so.
+    // Returns true if we haven't been cancelled, so it can be used in while loops.
+    fn check_cancelled(&self) -> Result<bool, WatchdogError> {
+        if self.cancellation_token.is_cancelled() {
+            return Err(WatchdogError::Cancelled);
+        }
+        Ok(true)
+    }
+
+    fn spawn_responder_loop(&self) -> Sender<Instant> {
+        let (tx_request, rx_request) = mpsc::channel::<Instant>(1);
+        self.handle.spawn(Self::responder_loop(rx_request));
+        tx_request
+    }
+
+    /// Loop that receives requests on the tokio threads and records a metric of how long
+    /// they took
+    async fn responder_loop(mut rx_request: Receiver<Instant>) {
+        loop {
+            match rx_request.recv().await {
+                Some(start) => {
+                    // Record the metric
+                    let request_time_nanos = start.elapsed().as_nanos() as u64;
+                    metric!(counter.tokio_watchdog.request_time_nanos = request_time_nanos);
+                }
+                None => {
+                    debug!(
+                        "tokio watchdog responder task shutting down because watchdog tx closed"
+                    );
+                    return;
+                }
+            };
+        }
+    }
+
+    fn send_tokio_metrics(&self) {
+        let metrics = self.handle.metrics();
+        metric!(counter.tokio_watchdog.global_queue_depth = metrics.global_queue_depth());
+        metric!(counter.tokio_watchdog.num_workers = metrics.num_workers());
+        metric!(counter.tokio_watchdog.num_alive_tasks = metrics.num_alive_tasks());
+    }
 }

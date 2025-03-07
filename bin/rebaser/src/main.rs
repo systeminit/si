@@ -50,7 +50,7 @@ async fn async_main() -> Result<()> {
 
         telemetry_application::init(config, &telemetry_tracker, telemetry_token.clone())?
     };
-    tokio_watchdog::new_for_current(BIN_NAME, main_token.clone()).spawn()?;
+    tokio_watchdog::spawn(BIN_NAME, main_token.clone())?;
 
     startup::startup(BIN_NAME).await?;
 

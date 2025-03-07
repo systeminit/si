@@ -35,7 +35,7 @@ async fn main() -> Result<()> {
 
         telemetry_application::init(config, &task_tracker, shutdown_token.clone())?
     };
-    tokio_watchdog::new_for_current(BIN_NAME, shutdown_token.clone()).spawn()?;
+    tokio_watchdog::spawn(BIN_NAME, shutdown_token.clone())?;
 
     startup::startup(BIN_NAME).await?;
 
