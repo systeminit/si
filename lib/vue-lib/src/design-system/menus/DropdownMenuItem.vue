@@ -61,13 +61,10 @@
       />
     </slot>
 
-    <div
-      ref="labelRef"
-      class="max-w-full min-w-0 shrink pointer-events-none leading-tight"
-    >
-      <div class="truncate">
+    <div ref="labelRef" class="max-w-full min-w-0 shrink leading-tight">
+      <TruncateWithTooltip role="menuitem">
         <slot>{{ label }}</slot>
-      </div>
+      </TruncateWithTooltip>
     </div>
     <div
       v-if="!(centerHeader && header)"
@@ -126,6 +123,7 @@ import DropdownMenu, {
   DropdownMenuVariant,
   useDropdownMenuContext,
 } from "./DropdownMenu.vue";
+import TruncateWithTooltip from "../general/TruncateWithTooltip.vue";
 import Toggle from "../general/Toggle.vue";
 import { useThemeContainer } from "../utils/theme_tools";
 

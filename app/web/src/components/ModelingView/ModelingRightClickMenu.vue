@@ -267,11 +267,14 @@ const rightClickMenuItems = computed(() => {
         onSelect: newView,
       }),
     });
-    items.push({
-      label: "Copy to",
-      icon: "clipboard-copy",
-      submenuItems: viewsSubitems(viewAdd(false)),
-    });
+    const copyToSubmenuItems = viewsSubitems(viewAdd(false));
+    if (copyToSubmenuItems.length > 0) {
+      items.push({
+        label: "Copy to",
+        icon: "clipboard-copy",
+        submenuItems: copyToSubmenuItems,
+      });
+    }
   }
   items.push({
     label: "Remove",
