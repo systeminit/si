@@ -11,7 +11,7 @@ use crate::{
         JobConsumer, JobConsumerError, JobConsumerMetadata, JobConsumerResult, JobInfo,
     },
     job::producer::{JobProducer, JobProducerResult},
-    AccessBuilder, AttributeValue, AttributeValueId, DalContext, Visibility,
+    AccessBuilder, AttributeValueId, DalContext, Visibility,
 };
 use crate::{ChangeSet, ChangeSetStatus};
 
@@ -107,14 +107,8 @@ impl JobConsumer for ComputeValidation {
                 continue;
             }
 
-            let value = AttributeValue::get_by_id(ctx, av_id)
-                .await?
-                .value(ctx)
-                .await?;
-
             let maybe_validation =
-                ValidationOutput::compute_for_attribute_value_and_value(ctx, av_id, value.clone())
-                    .await?;
+                ValidationOutput::compute_for_attribute_value(ctx, av_id).await?;
 
             ValidationOutputNode::upsert_or_wipe_for_attribute_value(
                 ctx,
