@@ -303,8 +303,11 @@ impl Server {
                                 Ok(new_nats) => {
                                     warn!("internal heartbeat: created new client!");
                                     metric!(counter.veritech.internal_heartbeat.new_client.success = 1);
+
+                                    warn!("internal heartbeat: performing client hot swap...");
                                     let mut guard = nats.lock().await;
                                     *guard = new_nats;
+                                    warn!("internal heartbeat: hot swapped clients!");
                                     needs_new_client = false;
                                 }
                                 Err(err) => {
