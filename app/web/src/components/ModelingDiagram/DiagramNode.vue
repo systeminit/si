@@ -341,6 +341,7 @@ import {
 } from "./diagram_constants";
 import DiagramIcon from "./DiagramIcon.vue";
 import { checkRectanglesOverlap } from "./utils/math";
+import { useDiagramContext } from "./ModelingDiagram.vue";
 
 const props = defineProps({
   node: {
@@ -367,6 +368,7 @@ const emit = defineEmits<{
 }>();
 
 const featureFlagsStore = useFeatureFlagsStore();
+const diagramContext = useDiagramContext();
 const componentsStore = useComponentsStore();
 const viewStore = useViewsStore();
 const componentId = computed(() => props.node.def.componentId);
@@ -481,14 +483,16 @@ const colors = computed(() => {
   // body bg
   const bodyBgHsl = primaryColor.toHsl();
   bodyBgHsl.l = theme.value === "dark" ? 0.08 : 0.95;
-  const bodyBg = tinycolor(bodyBgHsl);
 
+  const bodyBg = tinycolor(bodyBgHsl).toRgbString();
+  const border = primaryColor.toRgbString();
   const bodyText = theme.value === "dark" ? "#FFF" : "#000";
+
   return {
-    border: primaryColor.toRgbString(),
+    border,
     icon: bodyText,
     headerText: bodyText,
-    bodyBg: bodyBg.toRgbString(),
+    bodyBg,
     bodyText,
     parentColor:
       componentsStore.allComponentsById[parentComponentId.value || ""]?.def
@@ -663,7 +667,9 @@ const cache = () => {
   nextTick(() => {
     const node = socketsRef.value?.getNode();
     if (node) {
-      node.cache();
+      node.cache({
+        pixelRatio: Math.max(1, diagramContext.zoomLevel.value),
+      });
     }
   });
 };
@@ -704,6 +710,34 @@ watch(
     cache();
   },
   { deep: true },
+);
+
+// re-run caching when an edge is being drawn
+watch(
+  () => diagramContext.drawEdgeState.value,
+  () => {
+    cache();
+  },
+  { deep: true },
+);
+
+// re-run caching when zoomed in close enough
+watch(
+  () => diagramContext.zoomLevel.value,
+  (zoomLevel) => {
+    if (zoomLevel > 1) {
+      cache();
+    }
+  },
+  { deep: true },
+);
+
+// re-run caching when switching color themes
+watch(
+  () => theme.value,
+  () => {
+    cache();
+  },
 );
 
 defineExpose({ clearCache });
