@@ -23,7 +23,7 @@ use naxum::{
 use si_crypto::VeritechDecryptionKey;
 use si_data_nats::{
     async_nats::{self},
-    jetstream, NatsClient, NatsConfig, State, Subscriber,
+    State, Subscriber,
 };
 use si_pool_noodle::{
     instance::cyclone::{LocalUdsInstance, LocalUdsInstanceSpec},
@@ -39,12 +39,14 @@ use veritech_core::{incoming_subject, veritech_work_queue, ExecutionId, GetNatsS
 use crate::{
     app_state::{AppState, KillAppState},
     config::CycloneSpec,
-    handlers, Config, ServerError, ServerResult,
+    handlers,
+    nats_client::NatsClient,
+    Config, ServerError, ServerResult,
 };
 
 mod pause_resume_stream;
 
-pub use pause_resume_stream::{PauseResumeController, PauseResumeStream};
+pub use pause_resume_stream::PauseResumeController;
 
 const CONSUMER_NAME: &str = "veritech-server";
 const CONSUMER_MAX_DELIVERY: i64 = 5;
@@ -86,7 +88,7 @@ impl Server {
         config: Config,
         token: CancellationToken,
     ) -> ServerResult<(Self, impl Future<Output = ()>)> {
-        let nats = Self::connect_to_nats(&config).await?;
+        let nats = NatsClient::new(config.nats().to_owned()).await?;
 
         let metadata = Arc::new(ServerMetadata {
             instance_id: config.instance_id().into(),
@@ -157,8 +159,6 @@ impl Server {
                 metric!(counter.veritech.pause_resume_stream.subscribed = 0);
                 metric!(counter.veritech.pause_resume_stream.stream_error = 0);
 
-                let nats = Arc::new(Mutex::new(nats));
-
                 // let inner_future = if config.exclude_pause_resume_stream_wrapper() {
                 info!("building app without pause resume stream wrapper");
                 let inner_future = Self::build_app_without_pause_resume_stream(
@@ -198,7 +198,7 @@ impl Server {
                 .await?;
 
                 let internal_heartbeat_inner_future =
-                    Self::run_internal_heartbeat_app(nats, config.nats().to_owned(), token.clone());
+                    Self::run_internal_heartbeat_app(nats, token.clone());
 
                 Ok((
                     Server {
@@ -231,27 +231,9 @@ impl Server {
         Ok(())
     }
 
-    async fn run_internal_heartbeat_app(
-        nats: Arc<Mutex<NatsClient>>,
-        nats_config: NatsConfig,
-        token: CancellationToken,
-    ) {
+    async fn run_internal_heartbeat_app(nats: NatsClient, token: CancellationToken) {
         info!("resetting internal heartbeat app metrics and running app...");
         metric!(counter.veritech.internal_heartbeat.loop_iteration = 0);
-        metric!(
-            counter
-                .veritech
-                .internal_heartbeat
-                .client_lock_failure
-                .for_publish = 0
-        );
-        metric!(
-            counter
-                .veritech
-                .internal_heartbeat
-                .client_lock_failure
-                .for_connection_state = 0
-        );
         metric!(counter.veritech.internal_heartbeat.publish.success = 0);
         metric!(counter.veritech.internal_heartbeat.publish.error = 0);
         metric!(counter.veritech.internal_heartbeat.publish.timeout = 0);
@@ -278,7 +260,6 @@ impl Server {
         let sleep_seconds = 5;
         let publish_timeout_seconds = 5;
         let create_client_timeout_seconds = 20;
-        let client_lock_timeout_seconds = 10;
 
         // Don't try to publish again if we haven't force reconnected.
         let mut needs_new_client = false;
@@ -295,19 +276,14 @@ impl Server {
                         );
                         match tokio::time::timeout(
                             Duration::from_secs(create_client_timeout_seconds),
-                            NatsClient::new_for_veritech(&nats_config),
+                            nats.lock_hot_swap_client_unlock()
                         )
                         .await
                         {
                             Ok(new_client_result) => match new_client_result {
-                                Ok(new_nats) => {
-                                    warn!("internal heartbeat: created new client!");
-                                    metric!(counter.veritech.internal_heartbeat.new_client.success = 1);
-
-                                    warn!("internal heartbeat: performing client hot swap...");
-                                    let mut guard = nats.lock().await;
-                                    *guard = new_nats;
+                                Ok(()) => {
                                     warn!("internal heartbeat: hot swapped clients!");
+                                    metric!(counter.veritech.internal_heartbeat.new_client.success = 1);
                                     needs_new_client = false;
                                 }
                                 Err(err) => {
@@ -322,24 +298,12 @@ impl Server {
                         }
                     } else {
                         info!("internal heartbeat: acquiring lock for publishing heartbeat...");
-                        let lock = match tokio::time::timeout(
-                            Duration::from_secs(client_lock_timeout_seconds),
-                            nats.lock(),
-                        )
-                        .await
-                        {
-                            Ok(lock) => lock,
-                            Err(err) => {
-                                error!(si.error.message = ?err, "internal heartbeat: could not acquire lock for nats client");
-                                metric!(counter.veritech.internal_heartbeat.client_lock_failure.for_publish = 1);
-                                continue;
-                            }
-                        };
+                        let guard = nats.lock().await;
 
                         info!("internal heartbeat: publishing heartbeat...");
                         match tokio::time::timeout(
                             Duration::from_secs(publish_timeout_seconds),
-                            lock.publish(
+                            guard.publish(
                                 "veritech.internal_heartbeat",
                                 empty_byte_array.to_owned().into(),
                             ),
@@ -361,27 +325,14 @@ impl Server {
                                 needs_new_client = true;
                             }
                         }
-
-                        drop(lock);
+                        drop(guard);
                     }
 
                     info!("internal heartbeat: acquiring lock for getting connection state...");
-                    let lock = match tokio::time::timeout(
-                        Duration::from_secs(client_lock_timeout_seconds),
-                        nats.lock(),
-                    )
-                    .await
-                    {
-                        Ok(lock) => lock,
-                        Err(err) => {
-                            error!(si.error.message = ?err, "internal heartbeat: could not acquire lock for nats client");
-                            metric!(counter.veritech.internal_heartbeat.client_lock_failure.for_connection_state = 1);
-                            continue;
-                        }
-                    };
+                    let guard = nats.lock().await;
 
                     info!("internal heartbeat: getting connection state... (has an internal read lock!)");
-                    let state = match lock.connection_state() {
+                    let state = match guard.connection_state() {
                         State::Connected => {
                             metric!(
                                 counter
@@ -407,7 +358,7 @@ impl Server {
                             State::Pending
                         }
                     };
-                    drop(lock);
+                    drop(guard);
                     info!(?state, "internal heartbeat: got connection state!");
                 }
                 _ = token.cancelled() => {
@@ -425,7 +376,7 @@ impl Server {
         cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
         decryption_key: Arc<VeritechDecryptionKey>,
         cyclone_client_execution_timeout: Duration,
-        nats: Arc<Mutex<NatsClient>>,
+        nats: NatsClient,
         kill_senders: Arc<Mutex<HashMap<ExecutionId, oneshot::Sender<()>>>>,
         token: CancellationToken,
     ) -> ServerResult<Box<dyn Future<Output = io::Result<()>> + Unpin + Send>> {
@@ -440,7 +391,7 @@ impl Server {
             .map(|s| s.to_owned());
 
         let incoming = {
-            let context = jetstream::new(nats.lock().await.clone());
+            let context = nats.jetstream_context_no_hot_swap().await;
             veritech_work_queue(&context, prefix.as_deref())
                 .await?
                 .create_consumer(Self::incoming_consumer_config(prefix.as_deref()))
@@ -550,7 +501,7 @@ impl Server {
 
     async fn build_kill_app(
         metadata: Arc<ServerMetadata>,
-        nats: Arc<Mutex<NatsClient>>,
+        nats: NatsClient,
         kill_senders: Arc<Mutex<HashMap<ExecutionId, oneshot::Sender<()>>>>,
         token: CancellationToken,
     ) -> ServerResult<Box<dyn Future<Output = io::Result<()>> + Unpin + Send>> {
@@ -593,10 +544,7 @@ impl Server {
     // NOTE(nick,fletcher): it's a little funky that the prefix is taken from the nats client, but
     // we ask for both here. We don't want users to forget the prefix, so being explicit is
     // helpful, but maybe we can change this in the future.
-    async fn kill_subscriber(
-        nats: Arc<Mutex<NatsClient>>,
-        prefix: Option<&str>,
-    ) -> ServerResult<Subscriber> {
+    async fn kill_subscriber(nats: NatsClient, prefix: Option<&str>) -> ServerResult<Subscriber> {
         // we have to make a dummy request here to get the nats subject from it
         let dummy_request = KillExecutionRequest {
             execution_id: "".into(),
@@ -609,14 +557,14 @@ impl Server {
             .map_err(|err| ServerError::NatsSubscribe(subject, err))
     }
 
-    #[instrument(name = "veritech.init.connect_to_nats", level = "info", skip_all)]
-    async fn connect_to_nats(config: &Config) -> ServerResult<NatsClient> {
-        let client = NatsClient::new_for_veritech(config.nats())
-            .await
-            .map_err(ServerError::NatsClient)?;
-        debug!("successfully connected nats client");
-        Ok(client)
-    }
+    // #[instrument(name = "veritech.init.connect_to_nats", level = "info", skip_all)]
+    // async fn connect_to_nats(config: &Config) -> ServerResult<NatsClient> {
+    //     let client = NatsClient::new_for_veritech(config.nats())
+    //         .await
+    //         .map_err(ServerError::NatsClient)?;
+    //     debug!("successfully connected nats client");
+    //     Ok(client)
+    // }
 
     #[inline]
     fn incoming_consumer_config(
