@@ -6,6 +6,7 @@ use si_pool_noodle::{
     instance::cyclone::{LocalUdsInstance, LocalUdsInstanceSpec},
     PoolNoodle,
 };
+use si_runtime::DedicatedExecutor;
 use tokio::sync::oneshot;
 use tokio::sync::Mutex;
 use veritech_core::ExecutionId;
@@ -24,6 +25,7 @@ pub struct AppState {
     // TODO(nick,fletcher,scott): make this mutable at runtime.
     pub cyclone_client_execution_timeout: Duration,
     pub nats: NatsClient,
+    pub compute_executor: DedicatedExecutor,
     pub kill_senders: Arc<Mutex<HashMap<ExecutionId, oneshot::Sender<()>>>>,
 }
 
@@ -35,6 +37,7 @@ impl AppState {
         decryption_key: Arc<VeritechDecryptionKey>,
         cyclone_client_execution_timeout: Duration,
         nats: NatsClient,
+        compute_executor: DedicatedExecutor,
         kill_senders: Arc<Mutex<HashMap<ExecutionId, oneshot::Sender<()>>>>,
     ) -> Self {
         Self {
@@ -43,6 +46,7 @@ impl AppState {
             decryption_key,
             cyclone_client_execution_timeout,
             nats,
+            compute_executor,
             kill_senders,
         }
     }
@@ -59,6 +63,7 @@ pub struct KillAppState {
     #[allow(unused)]
     pub metadata: Arc<ServerMetadata>,
     pub nats: NatsClient,
+    pub compute_executor: DedicatedExecutor,
     pub kill_senders: Arc<Mutex<HashMap<ExecutionId, oneshot::Sender<()>>>>,
 }
 
@@ -67,11 +72,13 @@ impl KillAppState {
     pub fn new(
         metadata: Arc<ServerMetadata>,
         nats: NatsClient,
+        compute_executor: DedicatedExecutor,
         kill_senders: Arc<Mutex<HashMap<ExecutionId, oneshot::Sender<()>>>>,
     ) -> Self {
         Self {
             metadata,
             nats,
+            compute_executor,
             kill_senders,
         }
     }

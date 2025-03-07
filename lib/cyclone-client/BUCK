@@ -4,6 +4,7 @@ rust_library(
     name = "cyclone-client",
     deps = [
         "//lib/cyclone-core:cyclone-core",
+        "//lib/si-runtime-rs:si-runtime",
         "//lib/telemetry-http-rs:telemetry-http",
         "//lib/telemetry-rs:telemetry",
         "//third-party/rust:async-trait",
@@ -12,6 +13,7 @@ rust_library(
         "//third-party/rust:http",
         "//third-party/rust:hyper",
         "//third-party/rust:hyperlocal",
+        "//third-party/rust:pin-project-lite",
         "//third-party/rust:remain",
         "//third-party/rust:serde",
         "//third-party/rust:serde_json",

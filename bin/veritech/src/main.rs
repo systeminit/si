@@ -12,6 +12,11 @@ const GRACEFUL_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(60 * 60 * 6);
 
 fn main() -> Result<()> {
     rt::block_on(BIN_NAME, async_main())
+    //
+    // // Alternative
+    // rt::block_on_customize(BIN_NAME, async_main(), |builder| {
+    //     builder.worker_threads(2);
+    // })
 }
 
 async fn async_main() -> Result<()> {

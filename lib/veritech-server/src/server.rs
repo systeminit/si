@@ -27,6 +27,7 @@ use si_pool_noodle::{
     pool_noodle::PoolNoodleConfig,
     KillExecutionRequest, PoolNoodle, Spec,
 };
+use si_runtime::DedicatedExecutor;
 use telemetry::prelude::*;
 use tokio::sync::{oneshot, Mutex};
 use tokio_util::sync::CancellationToken;
@@ -76,6 +77,7 @@ impl Server {
     #[instrument(name = "veritech.init.from_config", level = "info", skip_all)]
     pub async fn from_config(config: Config, token: CancellationToken) -> ServerResult<Self> {
         let nats = Self::connect_to_nats(&config).await?;
+        let compute_executor = Self::create_compute_executor()?;
 
         let metadata = Arc::new(ServerMetadata {
             instance_id: config.instance_id().into(),
@@ -143,14 +145,20 @@ impl Server {
                     Arc::new(decryption_key),
                     config.cyclone_client_execution_timeout(),
                     nats.clone(),
+                    compute_executor.clone(),
                     kill_senders.clone(),
                     token.clone(),
                 )
                 .await?;
 
-                let kill_inner_future =
-                    Self::build_kill_app(metadata.clone(), nats, kill_senders, token.clone())
-                        .await?;
+                let kill_inner_future = Self::build_kill_app(
+                    metadata.clone(),
+                    nats,
+                    compute_executor,
+                    kill_senders,
+                    token.clone(),
+                )
+                .await?;
 
                 Ok(Server {
                     metadata,
@@ -188,6 +196,7 @@ impl Server {
         decryption_key: Arc<VeritechDecryptionKey>,
         cyclone_client_execution_timeout: Duration,
         nats: NatsClient,
+        compute_executor: DedicatedExecutor,
         kill_senders: Arc<Mutex<HashMap<ExecutionId, oneshot::Sender<()>>>>,
         token: CancellationToken,
     ) -> ServerResult<Box<dyn Future<Output = io::Result<()>> + Unpin + Send>> {
@@ -212,6 +221,7 @@ impl Server {
             decryption_key,
             cyclone_client_execution_timeout,
             nats,
+            compute_executor,
             kill_senders,
         );
 
@@ -241,6 +251,7 @@ impl Server {
     async fn build_kill_app(
         metadata: Arc<ServerMetadata>,
         nats: NatsClient,
+        compute_executor: DedicatedExecutor,
         kill_senders: Arc<Mutex<HashMap<ExecutionId, oneshot::Sender<()>>>>,
         token: CancellationToken,
     ) -> ServerResult<Box<dyn Future<Output = io::Result<()>> + Unpin + Send>> {
@@ -256,7 +267,7 @@ impl Server {
                 .map(Ok::<_, Infallible>)
         };
 
-        let state = KillAppState::new(metadata, nats, kill_senders);
+        let state = KillAppState::new(metadata, nats, compute_executor, kill_senders);
 
         let app = ServiceBuilder::new()
             .layer(
@@ -296,6 +307,15 @@ impl Server {
             .map_err(ServerError::NatsClient)?;
         debug!("successfully connected nats client");
         Ok(client)
+    }
+
+    #[instrument(
+        name = "veritech.init.create_compute_executor",
+        level = "info",
+        skip_all
+    )]
+    fn create_compute_executor() -> ServerResult<DedicatedExecutor> {
+        si_runtime::compute_executor("veritech").map_err(Into::into)
     }
 
     #[inline]

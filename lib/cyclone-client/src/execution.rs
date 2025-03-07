@@ -1,3 +1,4 @@
+use core::fmt;
 use std::{
     marker::PhantomData,
     pin::Pin,
@@ -5,9 +6,12 @@ use std::{
 };
 
 use cyclone_core::{CycloneRequest, CycloneRequestable, FunctionResult, Message, ProgressMessage};
-use futures::{Future, SinkExt, Stream, StreamExt};
+use futures::{future::BoxFuture, Future, SinkExt, Stream, StreamExt};
+use futures_lite::FutureExt as _;
 use hyper::client::connect::Connection;
+use pin_project_lite::pin_project;
 use serde::{de::DeserializeOwned, Serialize};
+use si_runtime::{DedicatedExecutor, DedicatedExecutorError};
 use thiserror::Error;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_tungstenite::WebSocketStream;
@@ -33,6 +37,8 @@ where
 pub enum ExecutionError<Success> {
     #[error("closing execution stream without a result")]
     ClosingWithoutResult,
+    #[error("dedicated executor error: {0}")]
+    DedicatedExecutor(#[from] DedicatedExecutorError),
     #[error("finish message received before result message was received")]
     FinishBeforeResult,
     #[error("execution error: failed to deserialize json message")]
@@ -72,9 +78,12 @@ impl<T, Request, Success> Execution<T, Request, Success>
 where
     T: AsyncRead + AsyncWrite + Connection + Unpin + Send + 'static,
     Success: DeserializeOwned,
-    Request: Serialize + CycloneRequestable,
+    Request: Serialize + CycloneRequestable + Send + 'static,
 {
-    pub async fn start(mut self) -> Result<ExecutionStarted<T, Success>, ExecutionError<Success>> {
+    pub async fn start(
+        mut self,
+        compute_executor: DedicatedExecutor,
+    ) -> Result<ExecutionStarted<T, Success>, ExecutionError<Success>> {
         // As soon as we see the "start" message, we are good to go.
         match self.stream.next().await {
             Some(Ok(WebSocketMessage::Text(json_str))) => {
@@ -94,31 +103,57 @@ where
 
         // Once the start message has been seen on the stream, we can send the request.
         let msg = serde_json::to_string(&self.request).map_err(ExecutionError::JSONSerialize)?;
+        //
+        // // Alternative
+        // let msg = compute_executor
+        //     .spawn(async move { serde_json::to_string(&self.request) })
+        //     .await?
+        //     .map_err(ExecutionError::JSONSerialize)?;
         self.stream
             .send(WebSocketMessage::Text(msg))
             .await
             .map_err(ExecutionError::WSSendIO)?;
 
-        Ok(self.into())
-    }
-}
-
-impl<T, Request, Success> From<Execution<T, Request, Success>> for ExecutionStarted<T, Success>
-where
-    Request: CycloneRequestable,
-{
-    fn from(value: Execution<T, Request, Success>) -> Self {
-        Self {
-            stream: value.stream,
+        Ok(ExecutionStarted {
+            compute_executor,
+            deserialize_fut: None,
+            stream: self.stream,
             result: None,
-        }
+        })
     }
 }
 
-#[derive(Debug)]
-pub struct ExecutionStarted<T, Success> {
-    stream: WebSocketStream<T>,
-    result: Option<FunctionResult<Success>>,
+pin_project! {
+    pub struct ExecutionStarted<T, Success> {
+        compute_executor: DedicatedExecutor,
+        deserialize_fut: Option<Result<Message<Success>, ExecutionError<Success>>>,
+        //
+        // // Alternative
+        // #[pin]
+        // deserialize_fut: Option<
+        //     BoxFuture<
+        //         'static,
+        //         Result<Result<Message<Success>, ExecutionError<Success>>, DedicatedExecutorError>,
+        //     >,
+        // >,
+        #[pin]
+        stream: WebSocketStream<T>,
+        result: Option<FunctionResult<Success>>,
+    }
+}
+
+impl<T, Success> fmt::Debug for ExecutionStarted<T, Success>
+where
+    T: fmt::Debug,
+    Success: fmt::Debug,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ExecutionStarted")
+            .field("compute_executor", &self.compute_executor)
+            .field("stream", &self.stream)
+            .field("result", &self.result)
+            .finish_non_exhaustive()
+    }
 }
 
 impl<T, Success> ExecutionStarted<T, Success>
@@ -133,60 +168,97 @@ where
 impl<T, Success> Stream for ExecutionStarted<T, Success>
 where
     T: AsyncRead + AsyncWrite + Connection + Unpin + Send + 'static,
-    Success: DeserializeOwned + std::marker::Unpin + std::fmt::Debug,
+    Success: DeserializeOwned + std::marker::Unpin + std::fmt::Debug + Send + 'static,
 {
     type Item = Result<ProgressMessage, ExecutionError<Success>>;
 
-    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        match Pin::new(&mut self.stream.next()).poll(cx) {
-            // We successfully got a websocket text message
-            Poll::Ready(Some(Ok(WebSocketMessage::Text(json_str)))) => {
-                let msg = Message::deserialize_from_str(&json_str)
-                    .map_err(ExecutionError::JSONDeserialize)?;
+    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        let mut this = self.project();
+
+        loop {
+            // If there a deserialize future, then poll it first to see if a deserialized message
+            // is ready
+            if let Some(deserialize_fut) = this.deserialize_fut.take() {
+                // match deserialize_fut.poll(cx) {
+                //     // Message has finished deserializing
+                //     Poll::Ready(msg_result) => {
+                //         let msg = msg_result??;
+                let msg = deserialize_fut?;
+
                 match msg {
                     // We got a heartbeat message, pass it on
-                    Message::Heartbeat => Poll::Ready(Some(Ok(ProgressMessage::Heartbeat))),
+                    Message::Heartbeat => return Poll::Ready(Some(Ok(ProgressMessage::Heartbeat))),
                     // We got an output message, pass it on
                     Message::OutputStream(output_stream) => {
-                        Poll::Ready(Some(Ok(ProgressMessage::OutputStream(output_stream))))
+                        return Poll::Ready(Some(Ok(ProgressMessage::OutputStream(output_stream))))
                     }
                     // We got a funtion result message, save it and continue
                     Message::Result(function_result) => {
-                        self.result = Some(function_result);
-                        // TODO(fnichol): what is the right return here??
-                        // (future fnichol): hey buddy! pretty sure you can:
-                        // `cx.waker().wake_by_ref()` before returning Poll::Ready which immediatly
-                        // re-wakes this stream to maybe pop another item off. cool huh? I think
-                        // you're learning and that's great.
-                        Poll::Ready(Some(Ok(ProgressMessage::Heartbeat)))
-                        //Poll::Pending
+                        *this.result = Some(function_result);
                     }
                     // We got a finish message
                     Message::Finish => {
-                        if self.result.is_some() {
+                        if this.result.is_some() {
                             // If we have saved the result, then close this stream out
-                            Poll::Ready(None)
+                            return Poll::Ready(None);
                         } else {
                             // Otherwise we got a finish before seeing the result
-                            Poll::Ready(Some(Err(ExecutionError::FinishBeforeResult)))
+                            return Poll::Ready(Some(Err(ExecutionError::FinishBeforeResult)));
                         }
                     }
                     // We got an unexpected message
                     unexpected => {
-                        Poll::Ready(Some(Err(ExecutionError::UnexpectedMessage(unexpected))))
+                        return Poll::Ready(Some(Err(ExecutionError::UnexpectedMessage(
+                            unexpected,
+                        ))));
                     }
                 }
+
+                //     }
+                //     Poll::Pending => {
+                //         // If we're still waiting on the deserialize, keep tracking this future
+                //         *this.deserialize_fut = Some(deserialize_fut);
+                //         return Poll::Pending;
+                //     }
+                // }
             }
-            // We successfully got an unexpected websocket message type that was not text
-            Poll::Ready(Some(Ok(unexpected))) => {
-                Poll::Ready(Some(Err(ExecutionError::UnexpectedMessageType(unexpected))))
+
+            // Next, check the websocket stream for a message
+            match this.stream.next().poll(cx) {
+                // We successfully got a websocket text message
+                Poll::Ready(Some(Ok(WebSocketMessage::Text(json_str)))) => {
+                    *this.deserialize_fut = Some(
+                        Message::deserialize_from_str(&json_str)
+                            .map_err(ExecutionError::JSONDeserialize),
+                    );
+                    //
+                    // // Alternative
+                    //
+                    // // Spawn and save a tracked deserialized future, then go poll it
+                    // *this.deserialize_fut =
+                    //     Some(Box::pin(this.compute_executor.spawn(async move {
+                    //         Message::deserialize_from_str(&json_str)
+                    //             .map_err(ExecutionError::JSONDeserialize)
+                    //     })));
+                    continue;
+                }
+                // We successfully got an unexpected websocket message type that was not text
+                Poll::Ready(Some(Ok(unexpected))) => {
+                    return Poll::Ready(Some(Err(ExecutionError::UnexpectedMessageType(
+                        unexpected,
+                    ))));
+                }
+                // We failed to get the next websocket message
+                Poll::Ready(Some(Err(err))) => {
+                    return Poll::Ready(Some(Err(ExecutionError::WSReadIO(err))));
+                }
+                // We see the end of the websocket stream, but finish was never sent
+                Poll::Ready(None) => {
+                    return Poll::Ready(Some(Err(ExecutionError::WSClosedBeforeFinish)));
+                }
+                // Not ready, so...not ready!
+                Poll::Pending => return Poll::Pending,
             }
-            // We failed to get the next websocket message
-            Poll::Ready(Some(Err(err))) => Poll::Ready(Some(Err(ExecutionError::WSReadIO(err)))),
-            // We see the end of the websocket stream, but finish was never sent
-            Poll::Ready(None) => Poll::Ready(Some(Err(ExecutionError::WSClosedBeforeFinish))),
-            // Not ready, so...not ready!
-            Poll::Pending => Poll::Pending,
         }
     }
 }

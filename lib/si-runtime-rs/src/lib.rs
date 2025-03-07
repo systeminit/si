@@ -25,12 +25,25 @@ pub use tokio_dedicated_executor::{
 
 /// Builds a main/primary Tokio [`Runtime`] with sensible defaults.
 pub fn main_tokio_runtime(runtime_name: impl Into<String>) -> std::io::Result<Runtime> {
-    common_tokio_builder("main", runtime_name)
+    main_tokio_runtime_customize(runtime_name, |_| {})
+}
+
+/// Builds a main/primary Tokio [`Runtime`] with sensible defaults and the ability to customize
+pub fn main_tokio_runtime_customize<F>(
+    runtime_name: impl Into<String>,
+    f: F,
+) -> std::io::Result<Runtime>
+where
+    F: FnOnce(&mut Builder),
+{
+    let mut builder = common_tokio_builder("main", runtime_name);
+    builder
         .thread_stack_size(DEFAULT_TOKIO_RT_THREAD_STACK_SIZE)
         .max_blocking_threads(DEFAULT_TOKIO_RT_BLOCKING_POOL_SIZE)
         // Enables using net, process, signal, and some I/O types
-        .enable_io()
-        .build()
+        .enable_io();
+    f(&mut builder);
+    builder.build()
 }
 
 /// Builds a "compute" [`DedicatedExecutor`] for running CPU-intensive tasks.

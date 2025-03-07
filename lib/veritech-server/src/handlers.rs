@@ -14,6 +14,7 @@ use si_pool_noodle::{
     ResolverFunctionResultSuccess, SchemaVariantDefinitionResultSuccess, SensitiveStrings,
     ValidationResultSuccess,
 };
+use si_runtime::DedicatedExecutorError;
 use std::{collections::HashMap, result, str::Utf8Error, sync::Arc, time::Duration};
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -38,6 +39,8 @@ pub enum HandlerError {
     CyclonePool(#[source] Box<dyn std::error::Error + Sync + Send + 'static>),
     #[error("cyclone timed out: {0:?}")]
     CycloneTimeout(Duration),
+    #[error("dedicated executor error: {0}")]
+    DedicatedExecutor(#[from] DedicatedExecutorError),
     #[error("invalid incoming subject: {0}")]
     InvalidIncomingSubject(Subject),
     #[error("function execution killed: {0}")]
@@ -130,6 +133,17 @@ pub async fn process_request(
 
     let veritech_request =
         VeritechRequest::from_subject_and_payload(request_subject, &msg.payload)?;
+    //
+    // // Alternative
+    // let veritech_request = {
+    //     let request_subject = request_subject.to_owned();
+    //     state
+    //         .compute_executor
+    //         .spawn(async move {
+    //             VeritechRequest::from_subject_and_payload(&request_subject, &msg.payload)
+    //         })
+    //         .await??
+    // };
 
     info!(execution_kind = %veritech_request.subject_suffix(), execution_id = %veritech_request.execution_id(), "validated request and about to execute");
 
@@ -164,9 +178,10 @@ async fn dispatch_request<Request>(
     reply_mailbox: Subject,
 ) -> HandlerResult<()>
 where
-    Request: CycloneRequestable + DecryptRequest + Serialize + Clone + Send + Sync,
+    Request: CycloneRequestable + DecryptRequest + Serialize + Clone + Send + Sync + 'static,
     Request::Response: Serialize + DeserializeOwned + std::fmt::Debug + std::marker::Unpin,
     HandlerError: From<ExecutionError<<Request as CycloneRequestable>::Response>>,
+    <Request as CycloneRequestable>::Response: Send,
 {
     let span = current_span_for_instrument_at!("info");
     let mut client = state
@@ -184,7 +199,7 @@ where
 
     // NOTE(nick,fletcher): we need to create a owned client here because publisher has its own lifetime. Yeehaw.
     let nats_for_publisher = state.nats.clone();
-    let publisher = Publisher::new(&nats_for_publisher, &reply_mailbox);
+    let publisher = Publisher::new(&nats_for_publisher, &reply_mailbox, &state.compute_executor);
     let execution_id = request.execution_id().to_owned();
     let cyclone_request = CycloneRequest::from_parts(request.clone(), sensitive_strings);
 
@@ -206,15 +221,18 @@ where
         })?;
 
     let progress_loop = async {
-        let mut progress = unstarted_progress.start().await.map_err(|err| {
-            request.dec_run_metric();
-            span.record_err(err)
-        })?;
+        let mut progress = unstarted_progress
+            .start(state.compute_executor.clone())
+            .await
+            .map_err(|err| {
+                request.dec_run_metric();
+                span.record_err(err)
+            })?;
 
         while let Some(msg) = progress.next().await {
             match msg {
                 Ok(ProgressMessage::OutputStream(output)) => {
-                    publisher.publish_output(&output).await.map_err(|err| {
+                    publisher.publish_output(output).await.map_err(|err| {
                         request.dec_run_metric();
                         span.record_err(err)
                     })?;
@@ -264,7 +282,7 @@ where
     match result {
         // Got an Ok - let anyone subscribing to a reply know
         Ok(function_result) => {
-            if let Err(err) = publisher.publish_result(&function_result).await {
+            if let Err(err) = publisher.publish_result(function_result).await {
                 error!(si.error.message = ?err, "failed to publish errored result");
             }
 
@@ -308,7 +326,7 @@ where
                 }
             };
             request.dec_run_metric();
-            if let Err(err) = publisher.publish_result(&func_result_error).await {
+            if let Err(err) = publisher.publish_result(func_result_error).await {
                 error!(si.error.message = ?err, "failed to publish errored result");
             }
         }

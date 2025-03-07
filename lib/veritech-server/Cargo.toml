@@ -14,6 +14,7 @@ naxum = { path = "../../lib/naxum" }
 si-crypto = { path = "../../lib/si-crypto" }
 si-data-nats = { path = "../../lib/si-data-nats" }
 si-pool-noodle = { path = "../../lib/si-pool-noodle" }
+si-runtime = { path = "../../lib/si-runtime-rs" }
 si-settings = { path = "../../lib/si-settings" }
 si-std = { path = "../../lib/si-std" }
 telemetry = { path = "../../lib/telemetry-rs" }

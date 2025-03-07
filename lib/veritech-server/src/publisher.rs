@@ -1,6 +1,7 @@
 use serde::Serialize;
 use si_data_nats::{NatsClient, Subject};
 use si_pool_noodle::{FunctionResult, OutputStream};
+use si_runtime::{DedicatedExecutor, DedicatedExecutorError};
 use telemetry_nats::propagation;
 use thiserror::Error;
 use veritech_core::{reply_mailbox_for_output, reply_mailbox_for_result, FINAL_MESSAGE_HEADER_KEY};
@@ -8,6 +9,8 @@ use veritech_core::{reply_mailbox_for_output, reply_mailbox_for_result, FINAL_ME
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum PublisherError {
+    #[error("dedicated executor error: {0}")]
+    DedicatedExecutor(#[from] DedicatedExecutorError),
     #[error("failed to serialize json message")]
     JSONSerialize(#[source] serde_json::Error),
     #[error("failed to publish message to nats subject: {1}")]
@@ -19,21 +22,36 @@ type Result<T> = std::result::Result<T, PublisherError>;
 #[derive(Debug)]
 pub struct Publisher<'a> {
     nats: &'a NatsClient,
+    compute_executor: &'a DedicatedExecutor,
     reply_mailbox_output: Subject,
     reply_mailbox_result: Subject,
 }
 
 impl<'a> Publisher<'a> {
-    pub fn new(nats: &'a NatsClient, reply_mailbox: &str) -> Self {
+    pub fn new(
+        nats: &'a NatsClient,
+        reply_mailbox: &str,
+        compute_executor: &'a DedicatedExecutor,
+    ) -> Self {
         Self {
             nats,
+            compute_executor,
             reply_mailbox_output: reply_mailbox_for_output(reply_mailbox).into(),
             reply_mailbox_result: reply_mailbox_for_result(reply_mailbox).into(),
         }
     }
 
-    pub async fn publish_output(&self, output: &OutputStream) -> Result<()> {
-        let nats_msg = serde_json::to_string(output).map_err(PublisherError::JSONSerialize)?;
+    pub async fn publish_output(&self, output: OutputStream) -> Result<()> {
+        let nats_msg = serde_json::to_string(&output).map_err(PublisherError::JSONSerialize)?;
+        //
+        // // Alternative
+        // let nats_msg = {
+        //     self.compute_executor
+        //         .spawn(async move {
+        //             serde_json::to_string(&output).map_err(PublisherError::JSONSerialize)
+        //         })
+        //         .await??
+        // };
 
         self.nats
             .publish_with_headers(
@@ -55,11 +73,20 @@ impl<'a> Publisher<'a> {
             .map_err(|err| PublisherError::NatsPublish(err, self.reply_mailbox_output.to_string()))
     }
 
-    pub async fn publish_result<R>(&self, result: &FunctionResult<R>) -> Result<()>
+    pub async fn publish_result<R>(&self, result: FunctionResult<R>) -> Result<()>
     where
-        R: Serialize,
+        R: Serialize + Send + 'static,
     {
-        let nats_msg = serde_json::to_string(result).map_err(PublisherError::JSONSerialize)?;
+        let nats_msg = serde_json::to_string(&result).map_err(PublisherError::JSONSerialize)?;
+        //
+        // // Alternative
+        // let nats_msg = {
+        //     self.compute_executor
+        //         .spawn(async move {
+        //             serde_json::to_string(&result).map_err(PublisherError::JSONSerialize)
+        //         })
+        //         .await??
+        // };
 
         self.nats
             .publish_with_headers(

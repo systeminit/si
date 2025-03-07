@@ -35,7 +35,7 @@ async fn kill_execution_request_task(
     request: KillExecutionRequest,
     reply_mailbox: Subject,
 ) {
-    let publisher = Publisher::new(&state.nats, &reply_mailbox);
+    let publisher = Publisher::new(&state.nats, &reply_mailbox, &state.compute_executor);
 
     let execution_id = request.execution_id;
 
@@ -51,7 +51,7 @@ async fn kill_execution_request_task(
         )),
     };
 
-    if let Err(err) = publisher.publish_result(&result).await {
+    if let Err(err) = publisher.publish_result(result).await {
         error!(?err, "failed to publish result");
     }
 }

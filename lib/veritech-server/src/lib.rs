@@ -8,6 +8,7 @@ mod server;
 use std::io;
 
 use si_data_nats::{async_nats, NatsError, Subject};
+use si_runtime::DedicatedExecutorInitializeError;
 use thiserror::Error;
 
 pub use si_pool_noodle::{instance::cyclone::LocalUdsInstance, Instance};
@@ -28,6 +29,8 @@ pub enum ServerError {
     CyclonePool(#[source] Box<dyn std::error::Error + Sync + Send + 'static>),
     #[error("cyclone spec setup error: {0}")]
     CycloneSetupError(#[source] Box<dyn std::error::Error + Sync + Send + 'static>),
+    #[error("compute executor initialization error: {0}")]
+    DedicatedExecutorInitialize(#[from] DedicatedExecutorInitializeError),
     #[error("jetstream consumer error: {0}")]
     JetStreamConsumer(#[from] async_nats::jetstream::stream::ConsumerError),
     #[error("jetstream consumer stream error: {0}")]

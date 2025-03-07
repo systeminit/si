@@ -16,9 +16,11 @@ futures-lite = { workspace = true }
 http = { workspace = true }
 hyper = { workspace = true }
 hyperlocal = { workspace = true }
+pin-project-lite = { workspace = true }
 remain = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+si-runtime = { path = "../../lib/si-runtime-rs" }
 telemetry = { path = "../../lib/telemetry-rs" }
 telemetry-http = { path = "../../lib/telemetry-http-rs" }
 thiserror = { workspace = true }
