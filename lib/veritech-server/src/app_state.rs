@@ -23,7 +23,7 @@ pub struct AppState {
     pub decryption_key: Arc<VeritechDecryptionKey>,
     // TODO(nick,fletcher,scott): make this mutable at runtime.
     pub cyclone_client_execution_timeout: Duration,
-    pub nats: NatsClient,
+    pub nats: Arc<Mutex<NatsClient>>,
     pub kill_senders: Arc<Mutex<HashMap<ExecutionId, oneshot::Sender<()>>>>,
     pub pause_resume_controller: Option<PauseResumeController>,
 }
@@ -35,7 +35,7 @@ impl AppState {
         cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
         decryption_key: Arc<VeritechDecryptionKey>,
         cyclone_client_execution_timeout: Duration,
-        nats: NatsClient,
+        nats: Arc<Mutex<NatsClient>>,
         kill_senders: Arc<Mutex<HashMap<ExecutionId, oneshot::Sender<()>>>>,
         pause_resume_controller: Option<PauseResumeController>,
     ) -> Self {
@@ -51,8 +51,8 @@ impl AppState {
     }
 
     /// Determine if the nats client is using a subject prefix.
-    pub fn nats_subject_has_prefix(&self) -> bool {
-        self.nats.metadata().subject_prefix().is_some()
+    pub async fn nats_subject_has_prefix(&self) -> bool {
+        self.nats.lock().await.metadata().subject_prefix().is_some()
     }
 }
 
@@ -61,7 +61,7 @@ impl AppState {
 pub struct KillAppState {
     #[allow(unused)]
     pub metadata: Arc<ServerMetadata>,
-    pub nats: NatsClient,
+    pub nats: Arc<Mutex<NatsClient>>,
     pub kill_senders: Arc<Mutex<HashMap<ExecutionId, oneshot::Sender<()>>>>,
 }
 
@@ -69,7 +69,7 @@ impl KillAppState {
     /// Creates a new [`KillAppState`].
     pub fn new(
         metadata: Arc<ServerMetadata>,
-        nats: NatsClient,
+        nats: Arc<Mutex<NatsClient>>,
         kill_senders: Arc<Mutex<HashMap<ExecutionId, oneshot::Sender<()>>>>,
     ) -> Self {
         Self {

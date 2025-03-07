@@ -25,21 +25,21 @@ pub async fn process_kill_request(
         None => return Err(HandlerError::NoReplyInbox),
     };
 
-    kill_execution_request_task(&state, request, reply_mailbox).await;
+    kill_execution_request_task(state, request, reply_mailbox).await;
 
     Ok(())
 }
 
 async fn kill_execution_request_task(
-    state: &KillAppState,
+    state: KillAppState,
     request: KillExecutionRequest,
     reply_mailbox: Subject,
 ) {
-    let publisher = Publisher::new(&state.nats, &reply_mailbox);
+    let publisher = Publisher::new(state.nats.clone(), &reply_mailbox);
 
     let execution_id = request.execution_id;
 
-    let result = match kill_execution_request(state, execution_id.to_owned()).await {
+    let result = match kill_execution_request(&state, execution_id.to_owned()).await {
         Ok(()) => FunctionResult::Success(()),
         Err(err) => FunctionResult::Failure(FunctionResultFailure::new(
             execution_id,

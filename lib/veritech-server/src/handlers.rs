@@ -113,7 +113,7 @@ async fn process_request_inner(
 
     // Based on whether or not there is a prefix, we need to determine how many parts there are
     // before the exact subject part we are interested in.
-    if state.nats_subject_has_prefix() {
+    if state.nats_subject_has_prefix().await {
         match (
             parts.next(),
             parts.next(),
@@ -209,8 +209,7 @@ where
     request.decrypt(&mut sensitive_strings, &state.decryption_key)?;
 
     // NOTE(nick,fletcher): we need to create a owned client here because publisher has its own lifetime. Yeehaw.
-    let nats_for_publisher = state.nats.clone();
-    let publisher = Publisher::new(&nats_for_publisher, &reply_mailbox);
+    let publisher = Publisher::new(state.nats, &reply_mailbox);
     let execution_id = request.execution_id().to_owned();
     let cyclone_request = CycloneRequest::from_parts(request.clone(), sensitive_strings);
 
