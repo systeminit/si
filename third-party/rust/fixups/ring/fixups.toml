@@ -23,11 +23,11 @@ exclude = [ "crypto/fipsmodule/aes/aes.c" ]
 include_paths = ["include"]
 compiler_flags = ["-Wno-error"]
 
-# redundant `any` is needed to differentiate key for config specific to v0.17.5 version
+# redundant `any` is needed to differentiate key for config specific to v0.17.6 version
 [platform_fixup.'cfg(any(all(target_arch = "x86_64", target_os = "linux")))']
-version = "=0.17.5"
+version = "=0.17.6"
 [platform_fixup.'cfg(any(all(target_arch = "x86_64", target_os = "linux")))'.env]
-RING_CORE_PREFIX = "ring_core_0_17_5_"
+RING_CORE_PREFIX = "ring_core_0_17_6_"
 [[platform_fixup.'cfg(any(all(target_arch = "x86_64", target_os = "linux")))'.buildscript]]
 [platform_fixup.'cfg(any(all(target_arch = "x86_64", target_os = "linux")))'.buildscript.cxx_library]
 name = "ring-c-asm-elf-x86_84"
@@ -49,9 +49,9 @@ include_paths = ["include"]
 compiler_flags = ["-Wno-error"]
 
 [platform_fixup.'cfg(any(all(target_arch = "aarch64", target_os = "linux")))']
-version = "=0.17.5"
+version = "=0.17.6"
 [platform_fixup.'cfg(any(all(target_arch = "aarch64", target_os = "linux")))'.env]
-RING_CORE_PREFIX = "ring_core_0_17_5_"
+RING_CORE_PREFIX = "ring_core_0_17_6_"
 [[platform_fixup.'cfg(any(all(target_arch = "aarch64", target_os = "linux")))'.buildscript]]
 [platform_fixup.'cfg(any(all(target_arch = "aarch64", target_os = "linux")))'.buildscript.cxx_library]
 name = "ring-c-asm-elf-aarch64"
@@ -73,9 +73,9 @@ include_paths = ["include"]
 compiler_flags = ["-Wno-error"]
 
 [platform_fixup.'cfg(any(all(target_arch = "x86_64", target_os = "macos")))']
-version = "=0.17.5"
+version = "=0.17.6"
 [platform_fixup.'cfg(any(all(target_arch = "x86_64", target_os = "macos")))'.env]
-RING_CORE_PREFIX = "ring_core_0_17_5_"
+RING_CORE_PREFIX = "ring_core_0_17_6_"
 [[platform_fixup.'cfg(any(all(target_arch = "x86_64", target_os = "macos")))'.buildscript]]
 [platform_fixup.'cfg(any(all(target_arch = "x86_64", target_os = "macos")))'.buildscript.cxx_library]
 name = "ring-c-asm-macos-x86_64"
@@ -97,9 +97,9 @@ include_paths = ["include"]
 compiler_flags = ["-Wno-error"]
 
 [platform_fixup.'cfg(any(all(target_arch = "aarch64", target_os = "macos")))']
-version = "=0.17.5"
+version = "=0.17.6"
 [platform_fixup.'cfg(any(all(target_arch = "aarch64", target_os = "macos")))'.env]
-RING_CORE_PREFIX = "ring_core_0_17_5_"
+RING_CORE_PREFIX = "ring_core_0_17_6_"
 [[platform_fixup.'cfg(any(all(target_arch = "aarch64", target_os = "macos")))'.buildscript]]
 [platform_fixup.'cfg(any(all(target_arch = "aarch64", target_os = "macos")))'.buildscript.cxx_library]
 name = "ring-c-asm-macos-arm64"
@@ -121,9 +121,9 @@ include_paths = ["include"]
 compiler_flags = ["-Wno-error"]
 
 [platform_fixup.'cfg(any(all(target_arch = "x86_64", target_os = "windows", target_env = "gnu")))']
-version = "=0.17.5"
+version = "=0.17.6"
 [platform_fixup.'cfg(any(all(target_arch = "x86_64", target_os = "windows", target_env = "gnu")))'.env]
-RING_CORE_PREFIX = "ring_core_0_17_5_"
+RING_CORE_PREFIX = "ring_core_0_17_6_"
 [[platform_fixup.'cfg(any(all(target_arch = "x86_64", target_os = "windows", target_env = "gnu")))'.buildscript]]
 [platform_fixup.'cfg(any(all(target_arch = "x86_64", target_os = "windows", target_env = "gnu")))'.buildscript.cxx_library]
 name = "ring-c-win-x86_84"
@@ -145,9 +145,9 @@ exclude = [ "crypto/fipsmodule/aes/aes.c" ]
 include_paths = ["include"]
 
 [platform_fixup.'cfg(any(all(target_arch = "x86_64", target_os = "windows", target_env = "msvc")))']
-version = "=0.17.5"
+version = "=0.17.6"
 [platform_fixup.'cfg(any(all(target_arch = "x86_64", target_os = "windows", target_env = "msvc")))'.env]
-RING_CORE_PREFIX = "ring_core_0_17_5_"
+RING_CORE_PREFIX = "ring_core_0_17_6_"
 [[platform_fixup.'cfg(any(all(target_arch = "x86_64", target_os = "windows", target_env = "msvc")))'.buildscript]]
 [platform_fixup.'cfg(any(all(target_arch = "x86_64", target_os = "windows", target_env = "msvc")))'.buildscript.cxx_library]
 name = "ring-c-win-msvc-x86_84"
@@ -164,7 +164,7 @@ name = "ring-asm-windows-x86_84"
 static_libs = [ "pregenerated/*x86_64*-nasm.obj" ]
 
 [platform_fixup.'cfg(any(all(target_arch = "x86_64", target_os = "windows")))']
-version = "=0.17.5"
+version = "=0.17.6"
 [[platform_fixup.'cfg(any(all(target_arch = "x86_64", target_os = "windows")))'.buildscript]]
 [platform_fixup.'cfg(any(all(target_arch = "x86_64", target_os = "windows")))'.buildscript.prebuilt_cxx_library]
 name = "ring-asm-windows-x86_84"
