@@ -89,6 +89,11 @@ impl Server {
         token: CancellationToken,
     ) -> ServerResult<(Self, impl Future<Output = ()>)> {
         let nats = NatsClient::new(config.nats().to_owned()).await?;
+        let context = si_data_nats::jetstream::new(
+            si_data_nats::Client::new_for_veritech(config.nats())
+                .await
+                .expect("poop"),
+        );
 
         let metadata = Arc::new(ServerMetadata {
             instance_id: config.instance_id().into(),
@@ -170,6 +175,7 @@ impl Server {
                     nats.clone(),
                     kill_senders.clone(),
                     token.clone(),
+                    &context,
                 )
                 .await?;
                 // } else {
@@ -379,19 +385,15 @@ impl Server {
         nats: NatsClient,
         kill_senders: Arc<Mutex<HashMap<ExecutionId, oneshot::Sender<()>>>>,
         token: CancellationToken,
+        context: &si_data_nats::jetstream::Context,
     ) -> ServerResult<Box<dyn Future<Output = io::Result<()>> + Unpin + Send>> {
-        let connection_metadata = nats.lock().await.metadata_clone();
-
         // Take the *active* subject prefix from the connected NATS client
-        let prefix = nats
-            .lock()
-            .await
-            .metadata()
-            .subject_prefix()
-            .map(|s| s.to_owned());
+        let guard = nats.lock().await;
+        let connection_metadata = guard.metadata_clone();
+        let prefix = guard.metadata().subject_prefix().map(|s| s.to_owned());
+        drop(guard);
 
         let incoming = {
-            let context = nats.jetstream_context_no_hot_swap().await;
             veritech_work_queue(&context, prefix.as_deref())
                 .await?
                 .create_consumer(Self::incoming_consumer_config(prefix.as_deref()))
@@ -505,16 +507,13 @@ impl Server {
         kill_senders: Arc<Mutex<HashMap<ExecutionId, oneshot::Sender<()>>>>,
         token: CancellationToken,
     ) -> ServerResult<Box<dyn Future<Output = io::Result<()>> + Unpin + Send>> {
-        let connection_metadata = nats.lock().await.metadata_clone();
+        let guard = nats.lock().await;
+        let connection_metadata = guard.metadata_clone();
+        let prefix = guard.metadata().subject_prefix().map(|s| s.to_owned());
+        drop(guard);
 
         let incoming = {
-            let prefix = nats
-                .lock()
-                .await
-                .metadata()
-                .subject_prefix()
-                .map(|s| s.to_owned());
-            Self::kill_subscriber(nats.clone(), prefix.as_deref())
+            Self::kill_subscriber(&nats, prefix.as_deref())
                 .await?
                 .map(|msg| msg.into_parts().0)
                 // Core NATS subscriptions are a stream of `Option<Message>` so we convert this
@@ -544,17 +543,19 @@ impl Server {
     // NOTE(nick,fletcher): it's a little funky that the prefix is taken from the nats client, but
     // we ask for both here. We don't want users to forget the prefix, so being explicit is
     // helpful, but maybe we can change this in the future.
-    async fn kill_subscriber(nats: NatsClient, prefix: Option<&str>) -> ServerResult<Subscriber> {
+    async fn kill_subscriber(nats: &NatsClient, prefix: Option<&str>) -> ServerResult<Subscriber> {
         // we have to make a dummy request here to get the nats subject from it
         let dummy_request = KillExecutionRequest {
             execution_id: "".into(),
         };
         let subject = dummy_request.nats_subject(prefix, None, None);
-        nats.lock()
-            .await
+        let guard = nats.lock().await;
+        let result = guard
             .subscribe(subject.clone())
             .await
-            .map_err(|err| ServerError::NatsSubscribe(subject, err))
+            .map_err(|err| ServerError::NatsSubscribe(subject, err));
+        drop(guard);
+        result
     }
 
     // #[instrument(name = "veritech.init.connect_to_nats", level = "info", skip_all)]

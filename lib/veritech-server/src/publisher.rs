@@ -51,9 +51,15 @@ impl Publisher {
             .await;
             drop(guard);
             match timeout_result {
-                Ok(publish_result) => publish_result.map_err(|err| {
-                    PublisherError::NatsPublish(err, self.reply_mailbox_output.to_string())
-                })?,
+                Ok(publish_result) => match publish_result {
+                    Ok(()) => return Ok(()),
+                    Err(err) => {
+                        return Err(PublisherError::NatsPublish(
+                            err,
+                            self.reply_mailbox_output.to_string(),
+                        ))
+                    }
+                },
                 Err(_) => {
                     warn!("publisher: dropping guard and sleeping to give time for the hot swapped client...");
                     tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
@@ -80,9 +86,15 @@ impl Publisher {
             .await;
             drop(guard);
             match timeout_result {
-                Ok(publish_result) => publish_result.map_err(|err| {
-                    PublisherError::NatsPublish(err, self.reply_mailbox_output.to_string())
-                })?,
+                Ok(publish_result) => match publish_result {
+                    Ok(()) => return Ok(()),
+                    Err(err) => {
+                        return Err(PublisherError::NatsPublish(
+                            err,
+                            self.reply_mailbox_output.to_string(),
+                        ))
+                    }
+                },
                 Err(_) => {
                     warn!("publisher: dropping guard and sleeping to give time for the hot swapped client...");
                     tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
@@ -110,9 +122,15 @@ impl Publisher {
             .await;
             drop(guard);
             match timeout_result {
-                Ok(publish_result) => publish_result.map_err(|err| {
-                    PublisherError::NatsPublish(err, self.reply_mailbox_output.to_string())
-                })?,
+                Ok(publish_result) => match publish_result {
+                    Ok(()) => return Ok(()),
+                    Err(err) => {
+                        return Err(PublisherError::NatsPublish(
+                            err,
+                            self.reply_mailbox_output.to_string(),
+                        ))
+                    }
+                },
                 Err(_) => {
                     warn!("publisher: dropping guard and sleeping to give time for the hot swapped client...");
                     tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;

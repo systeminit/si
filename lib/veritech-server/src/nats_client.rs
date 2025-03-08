@@ -46,7 +46,7 @@ impl NatsClient {
             if let Ok(guard) = self.inner.try_lock() {
                 return guard;
             }
-            tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+            tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
             metric!(counter.veritech.nats_client.try_lock_attempt = 1);
         }
     }

@@ -253,6 +253,7 @@ where
                 }
             }
         }
+
         publisher.finalize_output().await.map_err(|err| {
             request.dec_run_metric();
             span.record_err(err)
@@ -271,6 +272,7 @@ where
     let timeout = state.cyclone_client_execution_timeout;
     let result = tokio::select! {
         _ = tokio::time::sleep(timeout) => {
+
             error!("hit timeout for communicating with cyclone server:{:?}", &timeout);
             kill_sender_remove_blocking(&state.kill_senders, execution_id.to_owned()).await?;
             Err(HandlerError::CycloneTimeout(
@@ -294,6 +296,7 @@ where
             }
 
             request.dec_run_metric();
+
             span.record_ok();
         }
         // Got an error that we don't want to recover from here - need to let anyone subscribing know we're done
@@ -308,10 +311,12 @@ where
                         "timed out trying to run function to completion",
                         timestamp(),
                     );
+
                     si_pool_noodle::FunctionResult::Failure::<Request>(func_res_failure)
                 }
                 HandlerError::Killed(ref execution_id) => {
                     warn!(si.error.message = ?err, si.func_run.id = ?execution_id, "function killed during execution: {:?} via signal", execution_id);
+
                     let func_res_failure = FunctionResultFailure::new(
                         execution_id.to_owned(),
                         FunctionResultFailureError {
@@ -332,7 +337,9 @@ where
                     si_pool_noodle::FunctionResult::Failure::<Request>(func_res_failure)
                 }
             };
+
             request.dec_run_metric();
+
             if let Err(err) = publisher.publish_result(&func_result_error).await {
                 error!(si.error.message = ?err, "failed to publish errored result");
             }
