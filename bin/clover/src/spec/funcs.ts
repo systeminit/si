@@ -10,7 +10,6 @@ import { LeafKind } from "../bindings/LeafKind.ts";
 import { ManagementFuncSpec } from "../bindings/ManagementFuncSpec.ts";
 import { Buffer } from "node:buffer";
 import { CfHandlerKind } from "../cfDb.ts";
-import { ExpandedPkgSpec } from "./pkgs.ts";
 
 interface FuncSpecInfo {
   id: string;
@@ -20,7 +19,7 @@ interface FuncSpecInfo {
   path: string;
 }
 
-export const ACTION_FUNC_SPECS = {
+const ACTION_FUNC_SPECS = {
   // Actions
   "Create Asset": {
     id: "bc58dae4f4e1361840ec8f081350d7ec6b177ee8dc5a6a55155767c92efe1850",
@@ -84,7 +83,7 @@ export const CODE_GENERATION_FUNC_SPECS = {
   },
 } as const satisfies Record<string, FuncSpecInfo>;
 
-export const MANAGEMENT_FUNCS = {
+const MANAGEMENT_FUNCS = {
   // Management
   "Discover on AWS": {
     id: "dba1f6e327c1e82363fa3ceaf0d3e908d367ed7c6bfa25da0a06127fb81ff1b6",
@@ -107,7 +106,7 @@ export const MANAGEMENT_FUNCS = {
   FuncSpecInfo & { handlers: CfHandlerKind[] }
 >;
 
-export const QUALIFICATION_FUNC_SPECS = {
+const QUALIFICATION_FUNC_SPECS = {
   awsCloudFormationLintQualification: {
     id: "a8586fc5b4886497626fd3274c13de3f778f71b8169b3b7f20ee6db7d29b1069",
     backendKind: "jsAttribute",
@@ -262,28 +261,6 @@ export function createManagementFuncSpec(
     funcUniqueId,
     managedSchemas: null,
   };
-}
-
-export function modifyFunc(
-  spec: ExpandedPkgSpec,
-  targetId: string,
-  newId: string,
-  path: string,
-) {
-  const variant = spec.schemas[0].variants[0];
-  const func = spec.funcs.find((f: FuncSpec) => f.uniqueId === targetId);
-  const func_spec = [
-    variant.actionFuncs,
-    variant.leafFunctions,
-    variant.managementFuncs,
-  ].flat().find((item) => item.funcUniqueId === targetId);
-
-  const code = Deno.readTextFileSync(path);
-  const codeBase64: string = strippedBase64(code);
-
-  func_spec.funcUniqueId = newId;
-  func.uniqueId = newId;
-  func.data.codeBase64 = codeBase64;
 }
 
 // Si uses a version of base64 that removes the padding at the end for some reason
