@@ -167,6 +167,57 @@ const overrides = new Map<string, OverrideFn>([
     setAnnotationOnSocket(groupSocket, { tokens: ["GroupId"] });
     variant.sockets.push(groupSocket);
   }],
+  ["AWS::AutoScaling::AutoScalingGroup", (spec: ExpandedPkgSpec) => {
+    const variant = spec.schemas[0].variants[0];
+    const launchTemplateProp = variant.domain.entries.find((p) =>
+      p.name === "LaunchTemplate"
+    );
+    if (!launchTemplateProp || launchTemplateProp.kind !== "object") return;
+    const launchTemplateName = launchTemplateProp.entries.find((p) =>
+      p.name === "LaunchTemplateName"
+    );
+    if (!launchTemplateName) return;
+    const launchTemplateNameSocket = createInputSocketFromProp(
+      launchTemplateName,
+      [
+        { tokens: ["Launch Template Name"] },
+        { tokens: ["LaunchTemplateName"] },
+        { tokens: ["LaunchTemplateName<string<scalar>>"] },
+      ],
+      "Launch Template Name",
+    );
+    variant.sockets.push(launchTemplateNameSocket);
+
+    const launchTemplateId = launchTemplateProp.entries.find((p) =>
+      p.name === "LaunchTemplateId"
+    );
+    if (!launchTemplateId) return;
+    const launchTemplateIdSocket = createInputSocketFromProp(launchTemplateId, [
+      { tokens: ["Launch Template Id"] },
+      { tokens: ["LaunchTemplateId"] },
+      { tokens: ["LaunchTemplateId<string<scalar>>"] },
+    ],
+      "Launch Template Id",
+    );
+    variant.sockets.push(launchTemplateIdSocket);
+
+    const launchTemplateVersion = launchTemplateProp.entries.find((p) =>
+      p.name === "Version"
+    );
+    if (!launchTemplateVersion) return;
+    const launchTemplateVersionSocket = createInputSocketFromProp(
+      launchTemplateVersion,
+      [
+        { tokens: ["Launch Template Version"] },
+        { tokens: ["LaunchTemplateVersion"] },
+        { tokens: ["LaunchTemplateVersion<string<scalar>>"] },
+        { tokens: ["DefaultVersionNumber"] },
+        { tokens: ["LatestVersionNumber"] },
+      ],
+      "Launch Template Version",
+    );
+    variant.sockets.push(launchTemplateVersionSocket);
+  }],
   ["TargetGroup Targets", (spec: ExpandedPkgSpec) => {
     const variant = spec.schemas[0].variants[0];
 
