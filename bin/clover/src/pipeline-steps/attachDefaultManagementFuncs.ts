@@ -18,7 +18,9 @@ export function attachDefaultManagementFuncs(
       // Skip management funcs that require handlers we don't have
       if (!handlers.every((handler) => cfSchema.handlers?.[handler])) continue;
 
-      funcs.push(func);
+      // clone otherwise modifications to these cause changes on all
+      // specs
+      funcs.push(_.cloneDeep(func));
       variant.managementFuncs.push(
         createManagementFuncSpec(func.name, func.uniqueId),
       );
