@@ -94,7 +94,7 @@ rust-version = "1.82"
 publish = false
 
 [workspace.dependencies]
-async-nats = { version = "0.38.0", features = ["service"] }
+async-nats = { version = "0.39.0", features = ["service"] }
 async-openai = "0.26.0"
 async-recursion = "1.1.1"
 async-trait = "0.1.83"
