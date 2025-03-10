@@ -39,3 +39,4 @@ We contributors to System Initiative:
 * Arne Keller (@FliegendeWurst)
 * Henry Hermes (@sandalwing)
 * Mr Lizard (@Mr-Lizard)
+* Aaron Dernley (@aaron-dernley)
