@@ -1,0 +1,224 @@
+{
+  "typeName": "AWS::Connect::SecurityProfile",
+  "description": "Resource Type definition for AWS::Connect::SecurityProfile",
+  "sourceUrl": "https://github.com/aws-cloudformation/aws-cloudformation-resource-providers-connect",
+  "definitions": {
+    "Permission": {
+      "description": "A permission associated with the security profile.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "ResourceName": {
+      "description": "A resource that a security profile applies tag or hierarchy restrictions to in Amazon Connect.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "ApplicationPermission": {
+      "description": "The permissions that the agent is granted on the application.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "Application": {
+      "description": "A third-party application's metadata.",
+      "type": "object",
+      "properties": {
+        "ApplicationPermissions": {
+          "type": "array",
+          "maxItems": 10,
+          "uniqueItems": true,
+          "insertionOrder": false,
+          "description": "The permissions that the agent is granted on the application",
+          "items": {
+            "$ref": "#/definitions/ApplicationPermission"
+          }
+        },
+        "Namespace": {
+          "type": "string",
+          "description": "Namespace of the application that you want to give access to.",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      },
+      "required": ["ApplicationPermissions", "Namespace"],
+      "additionalProperties": false
+    },
+    "Tag": {
+      "description": "A key-value pair to associate with a resource.",
+      "type": "object",
+      "properties": {
+        "Key": {
+          "type": "string",
+          "description": "The key name of the tag. You can specify a value that is 1 to 128 Unicode characters in length and cannot be prefixed with aws:. You can use any of the following characters: the set of Unicode letters, digits, whitespace, _, ., /, =, +, and -.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^(?!aws:)[a-zA-Z+-=._:/]+$"
+        },
+        "Value": {
+          "type": "string",
+          "description": "The value for the tag. You can specify a value that is 0 to 256 Unicode characters in length and cannot be prefixed with aws:. You can use any of the following characters: the set of Unicode letters, digits, whitespace, _, ., /, =, +, and -.",
+          "minLength": 0,
+          "maxLength": 256
+        }
+      },
+      "required": ["Key", "Value"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "AllowedAccessControlTags": {
+      "type": "array",
+      "maxItems": 2,
+      "uniqueItems": true,
+      "insertionOrder": false,
+      "description": "The list of tags that a security profile uses to restrict access to resources in Amazon Connect.",
+      "items": {
+        "$ref": "#/definitions/Tag"
+      }
+    },
+    "Description": {
+      "type": "string",
+      "minLength": 0,
+      "maxLength": 250,
+      "description": "The description of the security profile."
+    },
+    "InstanceArn": {
+      "type": "string",
+      "description": "The identifier of the Amazon Connect instance.",
+      "pattern": "^arn:aws[-a-z0-9]*:connect:[-a-z0-9]*:[0-9]{12}:instance/[-a-zA-Z0-9]*$"
+    },
+    "Permissions": {
+      "type": "array",
+      "maxItems": 500,
+      "uniqueItems": true,
+      "insertionOrder": false,
+      "description": "Permissions assigned to the security profile.",
+      "items": {
+        "$ref": "#/definitions/Permission"
+      }
+    },
+    "SecurityProfileArn": {
+      "type": "string",
+      "description": "The Amazon Resource Name (ARN) for the security profile.",
+      "pattern": "^arn:aws[-a-z0-9]*:connect:[-a-z0-9]*:[0-9]{12}:instance/[-a-zA-Z0-9]*/security-profile/[-a-zA-Z0-9]*$"
+    },
+    "SecurityProfileName": {
+      "type": "string",
+      "pattern": "^[ a-zA-Z0-9_@-]+$",
+      "minLength": 1,
+      "maxLength": 127,
+      "description": "The name of the security profile."
+    },
+    "TagRestrictedResources": {
+      "type": "array",
+      "maxItems": 10,
+      "uniqueItems": true,
+      "insertionOrder": false,
+      "description": "The list of resources that a security profile applies tag restrictions to in Amazon Connect.",
+      "items": {
+        "$ref": "#/definitions/ResourceName"
+      }
+    },
+    "HierarchyRestrictedResources": {
+      "type": "array",
+      "maxItems": 10,
+      "uniqueItems": true,
+      "insertionOrder": false,
+      "description": "The list of resources that a security profile applies hierarchy restrictions to in Amazon Connect.",
+      "items": {
+        "$ref": "#/definitions/ResourceName"
+      }
+    },
+    "AllowedAccessControlHierarchyGroupId": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9-]+$",
+      "minLength": 0,
+      "maxLength": 127,
+      "description": "The identifier of the hierarchy group that a security profile uses to restrict access to resources in Amazon Connect."
+    },
+    "Applications": {
+      "type": "array",
+      "maxItems": 10,
+      "uniqueItems": true,
+      "insertionOrder": false,
+      "description": "A list of third-party applications that the security profile will give access to.",
+      "items": {
+        "$ref": "#/definitions/Application"
+      }
+    },
+    "Tags": {
+      "type": "array",
+      "maxItems": 50,
+      "uniqueItems": true,
+      "insertionOrder": false,
+      "description": "The tags used to organize, track, or control access for this resource.",
+      "items": {
+        "$ref": "#/definitions/Tag"
+      }
+    },
+    "LastModifiedRegion": {
+      "type": "string",
+      "pattern": "[a-z]{2}(-[a-z]+){1,2}(-[0-9])?",
+      "description": "The AWS Region where this resource was last modified."
+    },
+    "LastModifiedTime": {
+      "type": "number",
+      "description": "The timestamp when this resource was last modified."
+    }
+  },
+  "additionalProperties": false,
+  "tagging": {
+    "taggable": true,
+    "tagOnCreate": true,
+    "tagUpdatable": true,
+    "cloudFormationSystemTags": true,
+    "tagProperty": "/properties/Tags",
+    "permissions": ["connect:TagResource", "connect:UntagResource"]
+  },
+  "required": ["InstanceArn", "SecurityProfileName"],
+  "createOnlyProperties": [
+    "/properties/SecurityProfileName",
+    "/properties/InstanceArn"
+  ],
+  "readOnlyProperties": [
+    "/properties/SecurityProfileArn",
+    "/properties/LastModifiedRegion",
+    "/properties/LastModifiedTime"
+  ],
+  "primaryIdentifier": ["/properties/SecurityProfileArn"],
+  "handlers": {
+    "create": {
+      "permissions": ["connect:CreateSecurityProfile", "connect:TagResource"]
+    },
+    "read": {
+      "permissions": [
+        "connect:DescribeSecurityProfile",
+        "connect:ListSecurityProfileApplications",
+        "connect:ListSecurityProfilePermissions"
+      ]
+    },
+    "update": {
+      "permissions": [
+        "connect:TagResource",
+        "connect:UpdateSecurityProfile",
+        "connect:UntagResource"
+      ]
+    },
+    "delete": {
+      "permissions": ["connect:DeleteSecurityProfile", "connect:UntagResource"]
+    },
+    "list": {
+      "handlerSchema": {
+        "properties": {
+          "InstanceArn": {
+            "$ref": "#/properties/InstanceArn"
+          }
+        },
+        "required": ["InstanceArn"]
+      },
+      "permissions": ["connect:ListSecurityProfiles"]
+    }
+  }
+}

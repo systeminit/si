@@ -1,0 +1,94 @@
+{
+  "typeName": "AWS::Route53Profiles::ProfileResourceAssociation",
+  "description": "Resource Type definition for AWS::Route53Profiles::ProfileResourceAssociation",
+  "sourceUrl": "https://github.com/aws-cloudformation/aws-cloudformation-resource-providers-route53profiles",
+  "additionalProperties": false,
+  "properties": {
+    "ProfileId": {
+      "description": "The ID of the  profile that you associated the resource to that is specified by ResourceArn.",
+      "type": "string"
+    },
+    "Id": {
+      "description": "Primary Identifier for  Profile Resource Association",
+      "type": "string"
+    },
+    "Name": {
+      "description": "The name of an association between the  Profile and resource.",
+      "type": "string"
+    },
+    "ResourceArn": {
+      "description": "The arn of the resource that you associated to the  Profile.",
+      "type": "string"
+    },
+    "ResourceProperties": {
+      "description": "A JSON-formatted string with key-value pairs specifying the properties of the associated resource.",
+      "type": "string"
+    },
+    "ResourceType": {
+      "description": "The type of the resource associated to the  Profile.",
+      "type": "string"
+    }
+  },
+  "required": ["ProfileId", "Name", "ResourceArn"],
+  "readOnlyProperties": ["/properties/Id", "/properties/ResourceType"],
+  "createOnlyProperties": [
+    "/properties/ProfileId",
+    "/properties/Name",
+    "/properties/ResourceArn"
+  ],
+  "primaryIdentifier": ["/properties/Id"],
+  "tagging": {
+    "taggable": false,
+    "tagOnCreate": false,
+    "tagUpdatable": false,
+    "cloudFormationSystemTags": false
+  },
+  "handlers": {
+    "create": {
+      "permissions": [
+        "route53profiles:AssociateResourceToProfile",
+        "route53profiles:GetProfileResourceAssociation",
+        "route53resolver:*",
+        "route53:*"
+      ]
+    },
+    "read": {
+      "permissions": [
+        "route53profiles:GetProfileResourceAssociation",
+        "route53resolver:*",
+        "route53:*"
+      ]
+    },
+    "delete": {
+      "permissions": [
+        "route53profiles:DisassociateResourceFromProfile",
+        "route53profiles:GetProfileResourceAssociation",
+        "route53resolver:*",
+        "route53:*"
+      ]
+    },
+    "list": {
+      "handlerSchema": {
+        "properties": {
+          "ProfileId": {
+            "$ref": "#/properties/ProfileId"
+          }
+        },
+        "required": ["ProfileId"]
+      },
+      "permissions": [
+        "route53profiles:ListProfileResourceAssociations",
+        "route53resolver:*",
+        "route53:*"
+      ]
+    },
+    "update": {
+      "permissions": [
+        "route53profiles:UpdateProfileResourceAssociation",
+        "route53profiles:GetProfileResourceAssociation",
+        "route53resolver:*",
+        "route53:*"
+      ]
+    }
+  }
+}

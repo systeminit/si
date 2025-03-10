@@ -1,0 +1,75 @@
+{
+  "typeName": "AWS::Cognito::UserPoolGroup",
+  "description": "Resource Type definition for AWS::Cognito::UserPoolGroup",
+  "sourceUrl": "https://github.com/aws-cloudformation/aws-cloudformation-rpdk.git",
+  "properties": {
+    "Description": {
+      "type": "string",
+      "maxLength": 2048
+    },
+    "GroupName": {
+      "type": "string"
+    },
+    "Precedence": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "RoleArn": {
+      "type": "string"
+    },
+    "UserPoolId": {
+      "type": "string"
+    }
+  },
+  "tagging": {
+    "taggable": false,
+    "tagOnCreate": false,
+    "tagUpdatable": false,
+    "cloudFormationSystemTags": false
+  },
+  "additionalProperties": false,
+  "required": ["UserPoolId"],
+  "createOnlyProperties": ["/properties/UserPoolId", "/properties/GroupName"],
+  "primaryIdentifier": ["/properties/UserPoolId", "/properties/GroupName"],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "cognito-idp:CreateGroup",
+        "iam:PassRole",
+        "iam:PutRolePolicy",
+        "cognito-idp:GetGroup"
+      ],
+      "timeoutInMinutes": 5
+    },
+    "read": {
+      "permissions": ["cognito-idp:GetGroup"]
+    },
+    "update": {
+      "permissions": [
+        "cognito-idp:UpdateGroup",
+        "iam:PassRole",
+        "iam:PutRolePolicy"
+      ],
+      "timeoutInMinutes": 5
+    },
+    "delete": {
+      "permissions": [
+        "cognito-idp:DeleteGroup",
+        "cognito-idp:GetGroup",
+        "iam:PutRolePolicy"
+      ],
+      "timeoutInMinutes": 5
+    },
+    "list": {
+      "handlerSchema": {
+        "properties": {
+          "UserPoolId": {
+            "$ref": "#/properties/UserPoolId"
+          }
+        },
+        "required": ["UserPoolId"]
+      },
+      "permissions": ["cognito-idp:ListGroups"]
+    }
+  }
+}

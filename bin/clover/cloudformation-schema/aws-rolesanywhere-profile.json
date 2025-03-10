@@ -1,0 +1,172 @@
+{
+  "typeName": "AWS::RolesAnywhere::Profile",
+  "description": "Definition of AWS::RolesAnywhere::Profile Resource Type",
+  "definitions": {
+    "AttributeMapping": {
+      "type": "object",
+      "properties": {
+        "MappingRules": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/MappingRule"
+          }
+        },
+        "CertificateField": {
+          "$ref": "#/definitions/CertificateField"
+        }
+      },
+      "required": ["CertificateField", "MappingRules"],
+      "additionalProperties": false
+    },
+    "MappingRule": {
+      "type": "object",
+      "properties": {
+        "Specifier": {
+          "type": "string"
+        }
+      },
+      "required": ["Specifier"],
+      "additionalProperties": false
+    },
+    "CertificateField": {
+      "type": "string",
+      "enum": ["x509Subject", "x509Issuer", "x509SAN"]
+    },
+    "Tag": {
+      "type": "object",
+      "properties": {
+        "Key": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "Value": {
+          "type": "string",
+          "maxLength": 256,
+          "minLength": 0
+        }
+      },
+      "required": ["Key", "Value"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "DurationSeconds": {
+      "type": "number",
+      "maximum": 43200,
+      "minimum": 900
+    },
+    "Enabled": {
+      "type": "boolean"
+    },
+    "ManagedPolicyArns": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "Name": {
+      "type": "string"
+    },
+    "ProfileArn": {
+      "type": "string"
+    },
+    "ProfileId": {
+      "type": "string",
+      "pattern": "[a-f0-9]{8}-([a-z0-9]{4}-){3}[a-z0-9]{12}"
+    },
+    "RequireInstanceProperties": {
+      "type": "boolean"
+    },
+    "RoleArns": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "maxLength": 1011,
+        "minLength": 1
+      }
+    },
+    "SessionPolicy": {
+      "type": "string"
+    },
+    "Tags": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Tag"
+      },
+      "maxItems": 200,
+      "minItems": 0
+    },
+    "AttributeMappings": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/AttributeMapping"
+      }
+    },
+    "AcceptRoleSessionName": {
+      "type": "boolean"
+    }
+  },
+  "tagging": {
+    "taggable": true,
+    "tagOnCreate": true,
+    "tagUpdatable": true,
+    "cloudFormationSystemTags": true,
+    "tagProperty": "/properties/Tags",
+    "permissions": [
+      "rolesanywhere:UntagResource",
+      "rolesanywhere:TagResource",
+      "rolesanywhere:ListTagsForResource"
+    ]
+  },
+  "createOnlyProperties": ["/properties/RequireInstanceProperties"],
+  "readOnlyProperties": ["/properties/ProfileId", "/properties/ProfileArn"],
+  "writeOnlyProperties": ["/properties/RequireInstanceProperties"],
+  "primaryIdentifier": ["/properties/ProfileId"],
+  "required": ["Name", "RoleArns"],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "iam:GetRole",
+        "iam:GetPolicy",
+        "iam:PassRole",
+        "rolesanywhere:CreateProfile",
+        "rolesanywhere:TagResource",
+        "rolesanywhere:PutAttributeMapping",
+        "rolesanywhere:DeleteAttributeMapping"
+      ]
+    },
+    "read": {
+      "permissions": [
+        "rolesanywhere:GetProfile",
+        "rolesanywhere:ListTagsForResource"
+      ]
+    },
+    "update": {
+      "permissions": [
+        "iam:GetRole",
+        "iam:GetPolicy",
+        "iam:PassRole",
+        "rolesanywhere:GetProfile",
+        "rolesanywhere:UpdateProfile",
+        "rolesanywhere:EnableProfile",
+        "rolesanywhere:DisableProfile",
+        "rolesanywhere:TagResource",
+        "rolesanywhere:UntagResource",
+        "rolesanywhere:ListTagsForResource",
+        "rolesanywhere:PutAttributeMapping",
+        "rolesanywhere:DeleteAttributeMapping"
+      ]
+    },
+    "delete": {
+      "permissions": ["rolesanywhere:DeleteProfile"]
+    },
+    "list": {
+      "permissions": [
+        "rolesanywhere:ListProfiles",
+        "rolesanywhere:ListTagsForResource"
+      ]
+    }
+  },
+  "additionalProperties": false
+}

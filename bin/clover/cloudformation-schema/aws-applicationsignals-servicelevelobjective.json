@@ -1,0 +1,488 @@
+{
+  "typeName": "AWS::ApplicationSignals::ServiceLevelObjective",
+  "description": "Resource Type definition for AWS::ApplicationSignals::ServiceLevelObjective",
+  "sourceUrl": "https://github.com/aws-cloudformation/aws-cloudformation-resource-providers-applicationsignals",
+  "additionalProperties": false,
+  "properties": {
+    "Arn": {
+      "description": "The ARN of this SLO.",
+      "type": "string",
+      "pattern": "^arn:[^:]*:application-signals:[^:]*:[^:]*:slo\\/[0-9A-Za-z][-._0-9A-Za-z ]{0,126}[0-9A-Za-z]$"
+    },
+    "Name": {
+      "description": "The name of this SLO.",
+      "type": "string",
+      "pattern": "^[0-9A-Za-z][-._0-9A-Za-z ]{0,126}[0-9A-Za-z]$"
+    },
+    "Description": {
+      "description": "An optional description for this SLO. Default is 'No description'",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1024,
+      "default": "No description"
+    },
+    "CreatedTime": {
+      "type": "integer",
+      "description": "Epoch time in seconds of the time that this SLO was created",
+      "minimum": 946684800
+    },
+    "LastUpdatedTime": {
+      "type": "integer",
+      "description": "Epoch time in seconds of the time that this SLO was most recently updated",
+      "minimum": 946684800
+    },
+    "Sli": {
+      "$ref": "#/definitions/Sli"
+    },
+    "RequestBasedSli": {
+      "$ref": "#/definitions/RequestBasedSli"
+    },
+    "EvaluationType": {
+      "description": "Displays whether this is a period-based SLO or a request-based SLO.",
+      "type": "string",
+      "enum": ["PeriodBased", "RequestBased"]
+    },
+    "Goal": {
+      "$ref": "#/definitions/Goal"
+    },
+    "Tags": {
+      "$ref": "#/definitions/Tags"
+    },
+    "BurnRateConfigurations": {
+      "$ref": "#/definitions/BurnRateConfigurations"
+    }
+  },
+  "required": ["Name"],
+  "readOnlyProperties": [
+    "/properties/Arn",
+    "/properties/CreatedTime",
+    "/properties/LastUpdatedTime",
+    "/properties/EvaluationType"
+  ],
+  "primaryIdentifier": ["/properties/Arn"],
+  "createOnlyProperties": ["/properties/Name"],
+  "definitions": {
+    "Sli": {
+      "description": "This structure contains information about the performance metric that an SLO monitors.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "SliMetric": {
+          "$ref": "#/definitions/SliMetric"
+        },
+        "MetricThreshold": {
+          "description": "The value that the SLI metric is compared to.",
+          "type": "number"
+        },
+        "ComparisonOperator": {
+          "description": "The arithmetic operation used when comparing the specified metric to the threshold.",
+          "type": "string",
+          "enum": [
+            "GreaterThanOrEqualTo",
+            "LessThanOrEqualTo",
+            "LessThan",
+            "GreaterThan"
+          ]
+        }
+      },
+      "required": ["SliMetric", "MetricThreshold", "ComparisonOperator"]
+    },
+    "RequestBasedSli": {
+      "description": "This structure contains information about the performance metric that a request-based SLO monitors.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "RequestBasedSliMetric": {
+          "$ref": "#/definitions/RequestBasedSliMetric"
+        },
+        "MetricThreshold": {
+          "description": "The value that the SLI metric is compared to.",
+          "type": "number"
+        },
+        "ComparisonOperator": {
+          "description": "The arithmetic operation used when comparing the specified metric to the threshold.",
+          "type": "string",
+          "enum": [
+            "GreaterThanOrEqualTo",
+            "LessThanOrEqualTo",
+            "LessThan",
+            "GreaterThan"
+          ]
+        }
+      },
+      "required": ["RequestBasedSliMetric"]
+    },
+    "Goal": {
+      "description": "A structure that contains the attributes that determine the goal of the SLO. This includes the time period for evaluation and the attainment threshold.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "Interval": {
+          "$ref": "#/definitions/Interval"
+        },
+        "AttainmentGoal": {
+          "description": "The threshold that determines if the goal is being met. An attainment goal is the ratio of good periods that meet the threshold requirements to the total periods within the interval. For example, an attainment goal of 99.9% means that within your interval, you are targeting 99.9% of the periods to be in healthy state.\nIf you omit this parameter, 99 is used to represent 99% as the attainment goal.",
+          "type": "number"
+        },
+        "WarningThreshold": {
+          "description": "The percentage of remaining budget over total budget that you want to get warnings for. If you omit this parameter, the default of 50.0 is used.",
+          "type": "number"
+        }
+      }
+    },
+    "SliMetric": {
+      "description": "A structure that contains information about the metric that the SLO monitors.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "KeyAttributes": {
+          "$ref": "#/definitions/KeyAttributes"
+        },
+        "OperationName": {
+          "description": "If the SLO monitors a specific operation of the service, this field displays that operation name.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "MetricType": {
+          "description": "If the SLO monitors either the LATENCY or AVAILABILITY metric that Application Signals collects, this field displays which of those metrics is used.",
+          "type": "string",
+          "enum": ["LATENCY", "AVAILABILITY"]
+        },
+        "Statistic": {
+          "description": "The statistic to use for comparison to the threshold. It can be any CloudWatch statistic or extended statistic",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 20
+        },
+        "PeriodSeconds": {
+          "description": "The number of seconds to use as the period for SLO evaluation. Your application's performance is compared to the SLI during each period. For each period, the application is determined to have either achieved or not achieved the necessary performance.",
+          "type": "integer",
+          "minimum": 60,
+          "maximum": 900
+        },
+        "MetricDataQueries": {
+          "$ref": "#/definitions/MetricDataQueries"
+        }
+      }
+    },
+    "RequestBasedSliMetric": {
+      "description": "This structure contains the information about the metric that is used for a request-based SLO.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "KeyAttributes": {
+          "$ref": "#/definitions/KeyAttributes"
+        },
+        "OperationName": {
+          "description": "If the SLO monitors a specific operation of the service, this field displays that operation name.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "MetricType": {
+          "description": "If the SLO monitors either the LATENCY or AVAILABILITY metric that Application Signals collects, this field displays which of those metrics is used.",
+          "type": "string",
+          "enum": ["LATENCY", "AVAILABILITY"]
+        },
+        "TotalRequestCountMetric": {
+          "description": "This structure defines the metric that is used as the \"total requests\" number for a request-based SLO. The number observed for this metric is divided by the number of \"good requests\" or \"bad requests\" that is observed for the metric defined in `MonitoredRequestCountMetric`.",
+          "$ref": "#/definitions/MetricDataQueries"
+        },
+        "MonitoredRequestCountMetric": {
+          "$ref": "#/definitions/MonitoredRequestCountMetric"
+        }
+      }
+    },
+    "MonitoredRequestCountMetric": {
+      "description": "This structure defines the metric that is used as the \"good request\" or \"bad request\" value for a request-based SLO. This value observed for the metric defined in `TotalRequestCountMetric` is divided by the number found for `MonitoredRequestCountMetric` to determine the percentage of successful requests that this SLO tracks.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "GoodCountMetric": {
+          "description": "If you want to count \"good requests\" to determine the percentage of successful requests for this request-based SLO, specify the metric to use as \"good requests\" in this structure.",
+          "$ref": "#/definitions/MetricDataQueries"
+        },
+        "BadCountMetric": {
+          "description": "If you want to count \"bad requests\" to determine the percentage of successful requests for this request-based SLO, specify the metric to use as \"bad requests\" in this structure.",
+          "$ref": "#/definitions/MetricDataQueries"
+        }
+      }
+    },
+    "KeyAttributes": {
+      "description": "This is a string-to-string map that contains information about the type of object that this SLO is related to.",
+      "patternProperties": {
+        "^.+$": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Interval": {
+      "description": "The time period used to evaluate the SLO. It can be either a calendar interval or rolling interval.\nIf you omit this parameter, a rolling interval of 7 days is used.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "RollingInterval": {
+          "$ref": "#/definitions/RollingInterval"
+        },
+        "CalendarInterval": {
+          "$ref": "#/definitions/CalendarInterval"
+        }
+      }
+    },
+    "RollingInterval": {
+      "description": "If the interval is a calendar interval, this structure contains the interval specifications.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "DurationUnit": {
+          "$ref": "#/definitions/DurationUnit"
+        },
+        "Duration": {
+          "$ref": "#/definitions/Duration"
+        }
+      },
+      "required": ["DurationUnit", "Duration"]
+    },
+    "CalendarInterval": {
+      "description": "If the interval for this service level objective is a calendar interval, this structure contains the interval specifications.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "StartTime": {
+          "type": "integer",
+          "description": "Epoch time in seconds you want the first interval to start. Be sure to choose a time that configures the intervals the way that you want. For example, if you want weekly intervals starting on Mondays at 6 a.m., be sure to specify a start time that is a Monday at 6 a.m.\nAs soon as one calendar interval ends, another automatically begins.",
+          "minimum": 946684800
+        },
+        "DurationUnit": {
+          "$ref": "#/definitions/DurationUnit"
+        },
+        "Duration": {
+          "$ref": "#/definitions/Duration"
+        }
+      },
+      "required": ["StartTime", "DurationUnit", "Duration"]
+    },
+    "DurationUnit": {
+      "description": "Specifies the calendar interval unit.",
+      "type": "string",
+      "enum": ["DAY", "MONTH"]
+    },
+    "Duration": {
+      "description": "Specifies the duration of each calendar interval. For example, if `Duration` is 1 and `DurationUnit` is `MONTH`, each interval is one month, aligned with the calendar.",
+      "type": "integer",
+      "minimum": 1
+    },
+    "MetricDataQueries": {
+      "description": "If this SLO monitors a CloudWatch metric or the result of a CloudWatch metric math expression, this structure includes the information about that metric or expression.",
+      "type": "array",
+      "uniqueItems": false,
+      "insertionOrder": true,
+      "items": {
+        "$ref": "#/definitions/MetricDataQuery"
+      }
+    },
+    "MetricDataQuery": {
+      "description": "Use this structure to define a metric or metric math expression that you want to use as for a service level objective.\nEach `MetricDataQuery` in the `MetricDataQueries` array specifies either a metric to retrieve, or a metric math expression to be performed on retrieved metrics. A single `MetricDataQueries` array can include as many as 20 `MetricDataQuery` structures in the array. The 20 structures can include as many as 10 structures that contain a `MetricStat` parameter to retrieve a metric, and as many as 10 structures that contain the `Expression` parameter to perform a math expression. Of those Expression structures, exactly one must have true as the value for `ReturnData`. The result of this expression used for the SLO.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "MetricStat": {
+          "description": "A metric to be used directly for the SLO, or to be used in the math expression that will be used for the SLO. Within one MetricDataQuery, you must specify either Expression or MetricStat but not both.",
+          "$ref": "#/definitions/MetricStat"
+        },
+        "Id": {
+          "description": "A short name used to tie this object to the results in the response.",
+          "type": "string"
+        },
+        "ReturnData": {
+          "description": "This option indicates whether to return the timestamps and raw data values of this metric.",
+          "type": "boolean"
+        },
+        "Expression": {
+          "description": "The math expression to be performed on the returned data.",
+          "type": "string"
+        },
+        "AccountId": {
+          "description": "The ID of the account where the metrics are located, if this is a cross-account alarm.",
+          "type": "string"
+        }
+      },
+      "required": ["Id"]
+    },
+    "MetricStat": {
+      "description": "A metric to be used directly for the SLO, or to be used in the math expression that will be used for the SLO. Within one MetricDataQuery object, you must specify either Expression or MetricStat but not both.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "Period": {
+          "description": "The granularity, in seconds, to be used for the metric.",
+          "type": "integer"
+        },
+        "Metric": {
+          "$ref": "#/definitions/Metric"
+        },
+        "Stat": {
+          "description": "The statistic to use for comparison to the threshold. It can be any CloudWatch statistic or extended statistic.",
+          "type": "string"
+        },
+        "Unit": {
+          "description": "If you omit Unit then all data that was collected with any unit is returned, along with the corresponding units that were specified when the data was reported to CloudWatch. If you specify a unit, the operation returns only data that was collected with that unit specified. If you specify a unit that does not match the data collected, the results of the operation are null. CloudWatch does not perform unit conversions.",
+          "type": "string"
+        }
+      },
+      "required": ["Stat", "Period", "Metric"]
+    },
+    "Metric": {
+      "description": "This structure defines the metric used for a service level indicator, including the metric name, namespace, and dimensions.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "MetricName": {
+          "description": "The name of the metric to use.",
+          "type": "string"
+        },
+        "Dimensions": {
+          "description": "An array of one or more dimensions to use to define the metric that you want to use.",
+          "type": "array",
+          "uniqueItems": false,
+          "insertionOrder": false,
+          "items": {
+            "$ref": "#/definitions/Dimension"
+          }
+        },
+        "Namespace": {
+          "description": "The namespace of the metric.",
+          "type": "string"
+        }
+      }
+    },
+    "Dimension": {
+      "description": "A dimension is a name/value pair that is part of the identity of a metric. Because dimensions are part of the unique identifier for a metric, whenever you add a unique name/value pair to one of your metrics, you are creating a new variation of that metric. For example, many Amazon EC2 metrics publish `InstanceId` as a dimension name, and the actual instance ID as the value for that dimension. You can assign up to 30 dimensions to a metric.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "Value": {
+          "description": "The value of the dimension. Dimension values must contain only ASCII characters and must include at least one non-whitespace character. ASCII control characters are not supported as part of dimension values",
+          "type": "string"
+        },
+        "Name": {
+          "description": "The name of the dimension. Dimension names must contain only ASCII characters, must include at least one non-whitespace character, and cannot start with a colon (:). ASCII control characters are not supported as part of dimension names.",
+          "type": "string"
+        }
+      },
+      "required": ["Value", "Name"]
+    },
+    "Tags": {
+      "description": "The list of tag keys and values associated with the resource you specified",
+      "type": "array",
+      "uniqueItems": true,
+      "insertionOrder": false,
+      "items": {
+        "$ref": "#/definitions/Tag"
+      },
+      "minItems": 1,
+      "maxItems": 200
+    },
+    "Tag": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "Key": {
+          "type": "string",
+          "pattern": "^(?!aws:)[a-zA-Z+-=._:/]+$",
+          "description": "A string that you can use to assign a value. The combination of tag keys and values can help you organize and categorize your resources.",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "Value": {
+          "type": "string",
+          "description": "The value for the specified tag key.",
+          "minLength": 0,
+          "maxLength": 256
+        }
+      },
+      "required": ["Key", "Value"]
+    },
+    "BurnRateConfigurations": {
+      "description": "Each object in this array defines the length of the look-back window used to calculate one burn rate metric for this SLO. The burn rate measures how fast the service is consuming the error budget, relative to the attainment goal of the SLO.",
+      "type": "array",
+      "uniqueItems": true,
+      "insertionOrder": false,
+      "items": {
+        "$ref": "#/definitions/BurnRateConfiguration"
+      },
+      "minItems": 0,
+      "maxItems": 10
+    },
+    "BurnRateConfiguration": {
+      "type": "object",
+      "description": "This object defines the length of the look-back window used to calculate one burn rate metric for this SLO. The burn rate measures how fast the service is consuming the error budget, relative to the attainment goal of the SLO. A burn rate of exactly 1 indicates that the SLO goal will be met exactly.\nFor example, if you specify 60 as the number of minutes in the look-back window, the burn rate is calculated as the following:\nburn rate = error rate over the look-back window / (1 - attainment goal percentage)",
+      "additionalProperties": false,
+      "properties": {
+        "LookBackWindowMinutes": {
+          "description": "The number of minutes to use as the look-back window.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10080
+        }
+      },
+      "required": ["LookBackWindowMinutes"]
+    }
+  },
+  "handlers": {
+    "create": {
+      "permissions": [
+        "application-signals:CreateServiceLevelObjective",
+        "cloudwatch:GetMetricData",
+        "application-signals:TagResource",
+        "application-signals:GetServiceLevelObjective",
+        "application-signals:ListTagsForResource",
+        "iam:GetRole",
+        "iam:CreateServiceLinkedRole"
+      ]
+    },
+    "read": {
+      "permissions": [
+        "application-signals:GetServiceLevelObjective",
+        "application-signals:ListTagsForResource"
+      ]
+    },
+    "update": {
+      "permissions": [
+        "application-signals:UpdateServiceLevelObjective",
+        "cloudwatch:GetMetricData",
+        "application-signals:TagResource",
+        "application-signals:UntagResource",
+        "application-signals:GetServiceLevelObjective",
+        "application-signals:ListTagsForResource"
+      ]
+    },
+    "delete": {
+      "permissions": [
+        "application-signals:DeleteServiceLevelObjective",
+        "application-signals:UntagResource",
+        "application-signals:GetServiceLevelObjective"
+      ]
+    },
+    "list": {
+      "permissions": [
+        "application-signals:ListServiceLevelObjectives",
+        "application-signals:ListTagsForResource"
+      ]
+    }
+  },
+  "tagging": {
+    "taggable": true,
+    "tagOnCreate": true,
+    "tagUpdatable": true,
+    "cloudFormationSystemTags": true,
+    "tagProperty": "/properties/Tags",
+    "permissions": [
+      "application-signals:ListTagsForResource",
+      "application-signals:TagResource",
+      "application-signals:UntagResource"
+    ]
+  }
+}

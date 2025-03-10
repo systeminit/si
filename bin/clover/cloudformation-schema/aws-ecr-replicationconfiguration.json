@@ -1,0 +1,148 @@
+{
+  "typeName": "AWS::ECR::ReplicationConfiguration",
+  "description": "The ``AWS::ECR::ReplicationConfiguration`` resource creates or updates the replication configuration for a private registry. The first time a replication configuration is applied to a private registry, a service-linked IAM role is created in your account for the replication process. For more information, see [Using Service-Linked Roles for Amazon ECR](https://docs.aws.amazon.com/AmazonECR/latest/userguide/using-service-linked-roles.html) in the *Amazon Elastic Container Registry User Guide*.\n  When configuring cross-account replication, the destination account must grant the source account permission to replicate. This permission is controlled using a private registry permissions policy. For more information, see ``AWS::ECR::RegistryPolicy``.",
+  "sourceUrl": "https://github.com/aws-cloudformation/aws-cloudformation-resource-providers-ecr.git",
+  "definitions": {
+    "ReplicationConfiguration": {
+      "type": "object",
+      "properties": {
+        "Rules": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 10,
+          "items": {
+            "$ref": "#/definitions/ReplicationRule"
+          },
+          "description": "An array of objects representing the replication destinations and repository filters for a replication configuration."
+        }
+      },
+      "description": "The replication configuration for a registry.",
+      "required": ["Rules"],
+      "additionalProperties": false
+    },
+    "ReplicationRule": {
+      "type": "object",
+      "properties": {
+        "RepositoryFilters": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 100,
+          "items": {
+            "$ref": "#/definitions/RepositoryFilter"
+          },
+          "description": "An array of objects representing the filters for a replication rule. Specifying a repository filter for a replication rule provides a method for controlling which repositories in a private registry are replicated."
+        },
+        "Destinations": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 25,
+          "items": {
+            "$ref": "#/definitions/ReplicationDestination"
+          },
+          "description": "An array of objects representing the destination for a replication rule."
+        }
+      },
+      "description": "An array of objects representing the replication destinations and repository filters for a replication configuration.",
+      "required": ["Destinations"],
+      "additionalProperties": false
+    },
+    "RepositoryFilter": {
+      "type": "object",
+      "properties": {
+        "Filter": {
+          "$ref": "#/definitions/Filter",
+          "description": "The repository filter details. When the ``PREFIX_MATCH`` filter type is specified, this value is required and should be the repository name prefix to configure replication for."
+        },
+        "FilterType": {
+          "$ref": "#/definitions/FilterType",
+          "description": "The repository filter type. The only supported value is ``PREFIX_MATCH``, which is a repository name prefix specified with the ``filter`` parameter."
+        }
+      },
+      "description": "The filter settings used with image replication. Specifying a repository filter to a replication rule provides a method for controlling which repositories in a private registry are replicated. If no filters are added, the contents of all repositories are replicated.",
+      "required": ["Filter", "FilterType"],
+      "additionalProperties": false
+    },
+    "Filter": {
+      "type": "string",
+      "description": "The repository filter to be applied for replication.",
+      "pattern": "^(?:[a-z0-9]+(?:[._-][a-z0-9]*)*/)*[a-z0-9]*(?:[._-][a-z0-9]*)*$"
+    },
+    "FilterType": {
+      "description": "Type of repository filter",
+      "type": "string",
+      "enum": ["PREFIX_MATCH"]
+    },
+    "ReplicationDestination": {
+      "type": "object",
+      "properties": {
+        "Region": {
+          "$ref": "#/definitions/Region",
+          "description": "The Region to replicate to."
+        },
+        "RegistryId": {
+          "$ref": "#/definitions/RegistryId",
+          "description": "The AWS account ID of the Amazon ECR private registry to replicate to. When configuring cross-Region replication within your own registry, specify your own account ID."
+        }
+      },
+      "description": "An array of objects representing the destination for a replication rule.",
+      "required": ["Region", "RegistryId"],
+      "additionalProperties": false
+    },
+    "RegistryId": {
+      "type": "string",
+      "description": "The account ID of the destination registry to replicate to.",
+      "pattern": "^[0-9]{12}$"
+    },
+    "Region": {
+      "description": "A Region to replicate to.",
+      "type": "string",
+      "pattern": "[0-9a-z-]{2,25}"
+    }
+  },
+  "properties": {
+    "ReplicationConfiguration": {
+      "$ref": "#/definitions/ReplicationConfiguration",
+      "description": "The replication configuration for a registry."
+    },
+    "RegistryId": {
+      "type": "string",
+      "description": ""
+    }
+  },
+  "required": ["ReplicationConfiguration"],
+  "primaryIdentifier": ["/properties/RegistryId"],
+  "readOnlyProperties": ["/properties/RegistryId"],
+  "tagging": {
+    "taggable": false
+  },
+  "additionalProperties": false,
+  "handlers": {
+    "create": {
+      "permissions": [
+        "ecr:DescribeRegistry",
+        "ecr:PutReplicationConfiguration",
+        "iam:CreateServiceLinkedRole"
+      ]
+    },
+    "read": {
+      "permissions": ["ecr:DescribeRegistry"]
+    },
+    "update": {
+      "permissions": [
+        "ecr:DescribeRegistry",
+        "ecr:PutReplicationConfiguration",
+        "iam:CreateServiceLinkedRole"
+      ]
+    },
+    "delete": {
+      "permissions": [
+        "ecr:DescribeRegistry",
+        "ecr:PutReplicationConfiguration",
+        "iam:CreateServiceLinkedRole"
+      ]
+    },
+    "list": {
+      "permissions": ["ecr:DescribeRegistry"]
+    }
+  }
+}

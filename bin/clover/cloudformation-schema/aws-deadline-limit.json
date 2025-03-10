@@ -1,0 +1,101 @@
+{
+  "typeName": "AWS::Deadline::Limit",
+  "description": "Definition of AWS::Deadline::Limit Resource Type",
+  "sourceUrl": "https://github.com/aws-cloudformation/aws-cloudformation-resource-providers-deadline",
+  "properties": {
+    "AmountRequirementName": {
+      "type": "string",
+      "maxLength": 1024
+    },
+    "CurrentCount": {
+      "type": "integer",
+      "maximum": 2147483647,
+      "minimum": 0
+    },
+    "Description": {
+      "type": "string",
+      "default": "",
+      "maxLength": 100,
+      "minLength": 0
+    },
+    "DisplayName": {
+      "type": "string",
+      "maxLength": 100,
+      "minLength": 1
+    },
+    "FarmId": {
+      "type": "string",
+      "pattern": "^farm-[0-9a-f]{32}$"
+    },
+    "LimitId": {
+      "type": "string",
+      "pattern": "^limit-[0-9a-f]{32}$"
+    },
+    "MaxCount": {
+      "type": "integer",
+      "maximum": 2147483647,
+      "minimum": -1
+    }
+  },
+  "required": ["AmountRequirementName", "DisplayName", "MaxCount", "FarmId"],
+  "readOnlyProperties": ["/properties/CurrentCount", "/properties/LimitId"],
+  "createOnlyProperties": [
+    "/properties/AmountRequirementName",
+    "/properties/FarmId"
+  ],
+  "primaryIdentifier": ["/properties/FarmId", "/properties/LimitId"],
+  "tagging": {
+    "taggable": false,
+    "tagOnCreate": false,
+    "tagUpdatable": false,
+    "cloudFormationSystemTags": false
+  },
+  "handlers": {
+    "create": {
+      "permissions": [
+        "deadline:CreateLimit",
+        "deadline:GetLimit",
+        "kms:Encrypt",
+        "identitystore:ListGroupMembershipsForMember"
+      ]
+    },
+    "read": {
+      "permissions": [
+        "deadline:GetLimit",
+        "kms:Decrypt",
+        "identitystore:ListGroupMembershipsForMember"
+      ]
+    },
+    "update": {
+      "permissions": [
+        "deadline:UpdateLimit",
+        "deadline:GetLimit",
+        "kms:Encrypt",
+        "identitystore:ListGroupMembershipsForMember"
+      ]
+    },
+    "delete": {
+      "permissions": [
+        "deadline:DeleteLimit",
+        "deadline:GetLimit",
+        "kms:Decrypt",
+        "identitystore:ListGroupMembershipsForMember"
+      ]
+    },
+    "list": {
+      "handlerSchema": {
+        "properties": {
+          "FarmId": {
+            "$ref": "#/properties/FarmId"
+          }
+        },
+        "required": ["FarmId"]
+      },
+      "permissions": [
+        "deadline:ListLimits",
+        "identitystore:ListGroupMembershipsForMember"
+      ]
+    }
+  },
+  "additionalProperties": false
+}

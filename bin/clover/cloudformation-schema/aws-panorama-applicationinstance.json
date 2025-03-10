@@ -1,0 +1,317 @@
+{
+  "tagging": {
+    "permissions": [
+      "panorama:ListTagsForResource",
+      "panorama:TagResource",
+      "panorama:UntagResource"
+    ],
+    "taggable": true,
+    "tagOnCreate": true,
+    "tagUpdatable": true,
+    "tagProperty": "/properties/Tags",
+    "cloudFormationSystemTags": true
+  },
+  "typeName": "AWS::Panorama::ApplicationInstance",
+  "readOnlyProperties": [
+    "/properties/ApplicationInstanceId",
+    "/properties/Arn",
+    "/properties/Status",
+    "/properties/HealthStatus",
+    "/properties/StatusDescription",
+    "/properties/DefaultRuntimeContextDeviceName",
+    "/properties/CreatedTime",
+    "/properties/LastUpdatedTime"
+  ],
+  "description": "Creates an application instance and deploys it to a device.",
+  "createOnlyProperties": [
+    "/properties/Name",
+    "/properties/Description",
+    "/properties/ManifestPayload",
+    "/properties/ManifestOverridesPayload",
+    "/properties/RuntimeRoleArn",
+    "/properties/DefaultRuntimeContextDevice",
+    "/properties/ApplicationInstanceIdToReplace"
+  ],
+  "primaryIdentifier": ["/properties/ApplicationInstanceId"],
+  "required": ["ManifestPayload", "DefaultRuntimeContextDevice"],
+  "sourceUrl": "https://github.com/aws-cloudformation/aws-cloudformation-rpdk.git",
+  "handlers": {
+    "read": {
+      "permissions": [
+        "panorama:DescribeApplicationInstance",
+        "panorama:DescribeApplicationInstanceDetails",
+        "panorama:ListTagsForResource",
+        "s3:ListObjects",
+        "s3:GetObject",
+        "s3:GetObjectVersion"
+      ]
+    },
+    "create": {
+      "permissions": [
+        "panorama:CreateApplicationInstance",
+        "panorama:ListTagsForResource",
+        "panorama:TagResource",
+        "panorama:DescribeApplicationInstance",
+        "panorama:DescribeApplicationInstanceDetails",
+        "iam:PassRole",
+        "s3:ListBucket",
+        "s3:PutObject",
+        "s3:GetObject",
+        "s3:GetObjectVersion"
+      ]
+    },
+    "update": {
+      "permissions": [
+        "panorama:ListTagsForResource",
+        "panorama:TagResource",
+        "panorama:UntagResource",
+        "panorama:DescribeApplicationInstance",
+        "panorama:DescribeApplicationInstanceDetails",
+        "s3:ListObjects",
+        "s3:GetObject",
+        "s3:GetObjectVersion"
+      ]
+    },
+    "list": {
+      "permissions": [
+        "panorama:ListApplicationInstances",
+        "s3:ListBucket",
+        "s3:GetObject",
+        "s3:GetObjectVersion"
+      ]
+    },
+    "delete": {
+      "permissions": [
+        "panorama:RemoveApplicationInstance",
+        "panorama:DescribeApplicationInstance",
+        "panorama:DescribeApplicationInstanceDetails",
+        "s3:DeleteObject",
+        "s3:DeleteObjectVersion",
+        "s3:DeleteObjectVersionTagging",
+        "s3:ListObjects",
+        "s3:GetObject",
+        "s3:GetObjectVersion"
+      ]
+    }
+  },
+  "writeOnlyProperties": ["/properties/ApplicationInstanceIdToReplace"],
+  "additionalProperties": false,
+  "definitions": {
+    "DefaultRuntimeContextDevice": {
+      "minLength": 1,
+      "pattern": "^[a-zA-Z0-9\\-\\_]+$",
+      "type": "string",
+      "maxLength": 255
+    },
+    "Description": {
+      "minLength": 0,
+      "pattern": "^.*$",
+      "type": "string",
+      "maxLength": 255
+    },
+    "DeviceId": {
+      "minLength": 1,
+      "pattern": "^[a-zA-Z0-9\\-\\_]+$",
+      "type": "string",
+      "maxLength": 255
+    },
+    "ApplicationInstanceStatus": {
+      "type": "string",
+      "enum": [
+        "DEPLOYMENT_PENDING",
+        "DEPLOYMENT_REQUESTED",
+        "DEPLOYMENT_IN_PROGRESS",
+        "DEPLOYMENT_ERROR",
+        "DEPLOYMENT_SUCCEEDED",
+        "REMOVAL_PENDING",
+        "REMOVAL_REQUESTED",
+        "REMOVAL_IN_PROGRESS",
+        "REMOVAL_FAILED",
+        "REMOVAL_SUCCEEDED"
+      ]
+    },
+    "ManifestOverridesPayload": {
+      "description": "Parameter overrides for an application instance. This is a JSON document that has a single key (``PayloadData``) where the value is an escaped string representation of the overrides document.",
+      "additionalProperties": false,
+      "type": "object",
+      "properties": {
+        "PayloadData": {
+          "description": "The overrides document.",
+          "$ref": "#/definitions/ManifestOverridesPayloadData"
+        }
+      }
+    },
+    "RuntimeRoleArn": {
+      "minLength": 1,
+      "pattern": "^arn:[a-z0-9][-.a-z0-9]{0,62}:iam::[0-9]{12}:role/.+$",
+      "type": "string",
+      "maxLength": 255
+    },
+    "Timestamp": {
+      "type": "integer"
+    },
+    "Name": {
+      "minLength": 1,
+      "pattern": "^[a-zA-Z0-9\\-\\_]+$",
+      "type": "string",
+      "maxLength": 255
+    },
+    "ApplicationInstanceId": {
+      "minLength": 1,
+      "pattern": "^[a-zA-Z0-9\\-\\_]+$",
+      "type": "string",
+      "maxLength": 255
+    },
+    "ManifestPayloadData": {
+      "minLength": 1,
+      "pattern": "^.+$",
+      "type": "string",
+      "maxLength": 51200
+    },
+    "ApplicationInstanceHealthStatus": {
+      "type": "string",
+      "enum": ["RUNNING", "ERROR", "NOT_AVAILABLE"]
+    },
+    "StatusFilter": {
+      "type": "string",
+      "enum": [
+        "DEPLOYMENT_SUCCEEDED",
+        "DEPLOYMENT_ERROR",
+        "REMOVAL_SUCCEEDED",
+        "REMOVAL_FAILED",
+        "PROCESSING_DEPLOYMENT",
+        "PROCESSING_REMOVAL"
+      ]
+    },
+    "TagList": {
+      "uniqueItems": true,
+      "description": "List of tags",
+      "insertionOrder": false,
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Tag"
+      }
+    },
+    "ManifestPayload": {
+      "description": "A application verion's manifest file. This is a JSON document that has a single key (``PayloadData``) where the value is an escaped string representation of the application manifest (``graph.json``). This file is located in the ``graphs`` folder in your application source.",
+      "additionalProperties": false,
+      "type": "object",
+      "properties": {
+        "PayloadData": {
+          "description": "The application manifest.",
+          "$ref": "#/definitions/ManifestPayloadData"
+        }
+      }
+    },
+    "ApplicationInstanceArn": {
+      "minLength": 1,
+      "type": "string",
+      "maxLength": 255
+    },
+    "ManifestOverridesPayloadData": {
+      "minLength": 0,
+      "pattern": "^.+$",
+      "type": "string",
+      "maxLength": 51200
+    },
+    "ApplicationInstanceStatusDescription": {
+      "minLength": 1,
+      "type": "string",
+      "maxLength": 255
+    },
+    "Tag": {
+      "description": "",
+      "additionalProperties": false,
+      "type": "object",
+      "properties": {
+        "Value": {
+          "minLength": 0,
+          "pattern": "^.+$",
+          "description": "",
+          "type": "string",
+          "maxLength": 256
+        },
+        "Key": {
+          "minLength": 1,
+          "pattern": "^.+$",
+          "description": "",
+          "type": "string",
+          "maxLength": 128
+        }
+      },
+      "required": ["Key", "Value"]
+    },
+    "DeviceName": {
+      "minLength": 1,
+      "pattern": "^[a-zA-Z0-9\\-\\_]+$",
+      "type": "string",
+      "maxLength": 255
+    }
+  },
+  "properties": {
+    "DefaultRuntimeContextDeviceName": {
+      "description": "",
+      "$ref": "#/definitions/DeviceName"
+    },
+    "Status": {
+      "description": "",
+      "$ref": "#/definitions/ApplicationInstanceStatus"
+    },
+    "DefaultRuntimeContextDevice": {
+      "description": "The device's ID.",
+      "$ref": "#/definitions/DefaultRuntimeContextDevice"
+    },
+    "Description": {
+      "description": "A description for the application instance.",
+      "$ref": "#/definitions/Description"
+    },
+    "ApplicationInstanceIdToReplace": {
+      "description": "The ID of an application instance to replace with the new instance.",
+      "$ref": "#/definitions/ApplicationInstanceId"
+    },
+    "CreatedTime": {
+      "description": "",
+      "$ref": "#/definitions/Timestamp"
+    },
+    "HealthStatus": {
+      "description": "",
+      "$ref": "#/definitions/ApplicationInstanceHealthStatus"
+    },
+    "ManifestOverridesPayload": {
+      "description": "Setting overrides for the application manifest.",
+      "$ref": "#/definitions/ManifestOverridesPayload"
+    },
+    "LastUpdatedTime": {
+      "description": "",
+      "$ref": "#/definitions/Timestamp"
+    },
+    "RuntimeRoleArn": {
+      "description": "The ARN of a runtime role for the application instance.",
+      "$ref": "#/definitions/RuntimeRoleArn"
+    },
+    "Name": {
+      "description": "A name for the application instance.",
+      "$ref": "#/definitions/Name"
+    },
+    "ApplicationInstanceId": {
+      "description": "",
+      "$ref": "#/definitions/ApplicationInstanceId"
+    },
+    "StatusDescription": {
+      "description": "",
+      "$ref": "#/definitions/ApplicationInstanceStatusDescription"
+    },
+    "ManifestPayload": {
+      "description": "The application's manifest document.",
+      "$ref": "#/definitions/ManifestPayload"
+    },
+    "Arn": {
+      "description": "",
+      "$ref": "#/definitions/ApplicationInstanceArn"
+    },
+    "Tags": {
+      "description": "Tags for the application instance.",
+      "$ref": "#/definitions/TagList"
+    }
+  }
+}

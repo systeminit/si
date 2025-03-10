@@ -1,0 +1,140 @@
+{
+  "typeName": "AWS::Connect::View",
+  "description": "Resource Type definition for AWS::Connect::View",
+  "sourceUrl": "https://github.com/aws-cloudformation/aws-cloudformation-resource-providers-connect",
+  "definitions": {
+    "Tag": {
+      "description": "A key-value pair to associate with a resource.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "Key": {
+          "type": "string",
+          "description": "The key name of the tag. You can specify a value that is 1 to 128 Unicode characters",
+          "pattern": "^(?!aws:)[a-zA-Z+-=._:/]+$",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "Value": {
+          "type": "string",
+          "description": "The value for the tag. . You can specify a value that is maximum of 256 Unicode characters",
+          "maxLength": 256
+        }
+      },
+      "required": ["Key", "Value"]
+    }
+  },
+  "properties": {
+    "InstanceArn": {
+      "description": "The Amazon Resource Name (ARN) of the instance.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100,
+      "pattern": "^arn:aws[-a-z0-9]*:connect:[-a-z0-9]*:[0-9]{12}:instance/[-a-zA-Z0-9]*$"
+    },
+    "ViewArn": {
+      "description": "The Amazon Resource Name (ARN) of the view.",
+      "type": "string",
+      "pattern": "^arn:aws[-a-z0-9]*:connect:[-a-z0-9]*:[0-9]{12}:instance/[-a-zA-Z0-9]*/view/[-:$a-zA-Z0-9]*$",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "ViewId": {
+      "description": "The view id of the view.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500,
+      "pattern": "^[a-zA-Z0-9\\_\\-:\\/$]+$"
+    },
+    "Name": {
+      "description": "The name of the view.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512,
+      "pattern": "^([\\p{L}\\p{N}_.:\\/=+\\-@]+[\\p{L}\\p{Z}\\p{N}_.:\\/=+\\-@]*)$"
+    },
+    "Description": {
+      "description": "The description of the view.",
+      "type": "string",
+      "minLength": 0,
+      "maxLength": 4096,
+      "pattern": "^([\\p{L}\\p{N}_.:\\/=+\\-@,]+[\\p{L}\\p{Z}\\p{N}_.:\\/=+\\-@,]*)$"
+    },
+    "Template": {
+      "description": "The template of the view as JSON.",
+      "type": "object"
+    },
+    "Actions": {
+      "description": "The actions of the view in an array.",
+      "type": "array",
+      "insertionOrder": false,
+      "maxItems": 1000,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 255,
+        "pattern": "^([\\p{L}\\p{N}_.:\\/=+\\-@]+[\\p{L}\\p{Z}\\p{N}_.:\\/=+\\-@]*)$"
+      }
+    },
+    "ViewContentSha256": {
+      "description": "The view content hash.",
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9]{64}$"
+    },
+    "Tags": {
+      "description": "One or more tags.",
+      "type": "array",
+      "maxItems": 50,
+      "uniqueItems": true,
+      "insertionOrder": false,
+      "items": {
+        "$ref": "#/definitions/Tag"
+      }
+    }
+  },
+  "required": ["InstanceArn", "Template", "Actions", "Name"],
+  "tagging": {
+    "taggable": true,
+    "tagOnCreate": true,
+    "tagUpdatable": true,
+    "cloudFormationSystemTags": true,
+    "tagProperty": "/properties/Tags"
+  },
+  "handlers": {
+    "create": {
+      "permissions": ["connect:CreateView", "connect:TagResource"]
+    },
+    "read": {
+      "permissions": ["connect:DescribeView"]
+    },
+    "delete": {
+      "permissions": ["connect:DeleteView", "connect:UntagResource"]
+    },
+    "list": {
+      "handlerSchema": {
+        "properties": {
+          "InstanceArn": {
+            "$ref": "#/properties/InstanceArn"
+          }
+        },
+        "required": ["InstanceArn"]
+      },
+      "permissions": ["connect:ListViews"]
+    },
+    "update": {
+      "permissions": [
+        "connect:UpdateViewMetadata",
+        "connect:UpdateViewContent",
+        "connect:TagResource",
+        "connect:UntagResource"
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "primaryIdentifier": ["/properties/ViewArn"],
+  "readOnlyProperties": [
+    "/properties/ViewArn",
+    "/properties/ViewId",
+    "/properties/ViewContentSha256"
+  ]
+}

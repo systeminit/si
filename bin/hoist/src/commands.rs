@@ -71,6 +71,14 @@ pub struct UploadAllSpecsArgs {
         help = "Maximum number of concurrent uploads."
     )]
     pub max_concurrent: usize,
+
+    #[arg(
+        long = "skip-confirmation",
+        short = 'y',
+        help = "Skip confirmation prompts",
+        action = clap::ArgAction::SetTrue
+    )]
+    pub skip_confirmation: bool,
 }
 
 #[derive(clap::Args, Debug)]
@@ -90,6 +98,14 @@ pub struct UploadSpecArgs {
         help = "Maximum number of concurrent uploads."
     )]
     pub max_concurrent: usize,
+
+    #[arg(
+        long = "skip-confirmation",
+        short = 'y',
+        help = "Skip confirmation prompts",
+        action = clap::ArgAction::SetTrue
+    )]
+    pub skip_confirmation: bool,
 }
 
 #[derive(clap::Args, Debug)]

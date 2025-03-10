@@ -1,0 +1,81 @@
+{
+  "typeName": "AWS::Notifications::ManagedNotificationAccountContactAssociation",
+  "description": "This resource schema represents the ManagedNotificationAccountContactAssociation resource in the AWS User Notifications.",
+  "sourceUrl": "https://github.com/aws-cloudformation/aws-cloudformation-rpdk.git",
+  "definitions": {
+    "ManagedNotificationConfigurationArn": {
+      "description": "The managed notification configuration ARN, against which the account contact association will be created",
+      "type": "string",
+      "pattern": "^arn:[-.a-z0-9]{1,63}:notifications::[0-9]{12}:managed-notification-configuration/category/[a-zA-Z0-9-]{3,64}/sub-category/[a-zA-Z0-9-]{3,64}$"
+    },
+    "ContactIdentifier": {
+      "description": "This unique identifier for Contact",
+      "type": "string",
+      "enum": [
+        "ACCOUNT_PRIMARY",
+        "ACCOUNT_ALTERNATE_SECURITY",
+        "ACCOUNT_ALTERNATE_OPERATIONS",
+        "ACCOUNT_ALTERNATE_BILLING"
+      ]
+    }
+  },
+  "required": ["ContactIdentifier", "ManagedNotificationConfigurationArn"],
+  "tagging": {
+    "taggable": false
+  },
+  "properties": {
+    "ManagedNotificationConfigurationArn": {
+      "$ref": "#/definitions/ManagedNotificationConfigurationArn"
+    },
+    "ContactIdentifier": {
+      "$ref": "#/definitions/ContactIdentifier"
+    }
+  },
+  "additionalProperties": false,
+  "createOnlyProperties": [
+    "/properties/ManagedNotificationConfigurationArn",
+    "/properties/ContactIdentifier"
+  ],
+  "primaryIdentifier": [
+    "/properties/ManagedNotificationConfigurationArn",
+    "/properties/ContactIdentifier"
+  ],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "notifications:AssociateManagedNotificationAccountContact",
+        "notifications:ListManagedNotificationChannelAssociations"
+      ]
+    },
+    "read": {
+      "permissions": [
+        "notifications:ListManagedNotificationChannelAssociations"
+      ]
+    },
+    "update": {
+      "permissions": [
+        "notifications:ListManagedNotificationChannelAssociations"
+      ]
+    },
+    "delete": {
+      "permissions": [
+        "notifications:DisassociateManagedNotificationAccountContact",
+        "notifications:ListManagedNotificationChannelAssociations"
+      ]
+    },
+    "list": {
+      "handlerSchema": {
+        "properties": {
+          "ManagedNotificationConfigurationArn": {
+            "type": "string",
+            "pattern": "^arn:[-.a-z0-9]{1,63}:notifications::([0-9]{12}|):managed-notification-configuration/category/[a-zA-Z0-9-]{3,64}/sub-category/[a-zA-Z0-9-]{3,64}$"
+          }
+        },
+        "required": ["ManagedNotificationConfigurationArn"]
+      },
+      "permissions": [
+        "notifications:ListManagedNotificationChannelAssociations"
+      ]
+    }
+  }
+}

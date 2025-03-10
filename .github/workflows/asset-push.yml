@@ -1,0 +1,30 @@
+name: Push Clover Assets
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'bin/clover/**'
+      - 'bin/hoist/**'
+
+jobs:
+  push-assets:
+    runs-on: ubuntu-latest
+    env:
+      SI_BEARER_TOKEN: ${{ secrets.SI_BEARER_TOKEN }}
+      SI_MODULE_INDEX_URL: "https://module-index.systeminit.com"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Generate and Push
+        run: |
+          cd bin/clover
+          LOG_LEVEL=debug deno task run generate-specs
+
+      - name: Generate Diff
+        run: |
+          cd bin/hoist
+          cargo run -- upload-all-specs -y -t ./bin/clover/si-specs

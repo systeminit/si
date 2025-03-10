@@ -1,0 +1,125 @@
+{
+  "typeName": "AWS::EventSchemas::Schema",
+  "sourceUrl": "https://github.com/aws-cloudformation/aws-cloudformation-resource-providers-eventschemas",
+  "description": "Resource Type definition for AWS::EventSchemas::Schema",
+  "additionalProperties": false,
+  "properties": {
+    "Type": {
+      "type": "string",
+      "description": "The type of schema. Valid types include OpenApi3 and JSONSchemaDraft4."
+    },
+    "Description": {
+      "type": "string",
+      "description": "A description of the schema."
+    },
+    "SchemaVersion": {
+      "type": "string",
+      "description": "The version number of the schema."
+    },
+    "Content": {
+      "type": "string",
+      "description": "The source of the schema definition."
+    },
+    "RegistryName": {
+      "type": "string",
+      "description": "The name of the schema registry."
+    },
+    "SchemaArn": {
+      "type": "string",
+      "description": "The ARN of the schema."
+    },
+    "SchemaName": {
+      "type": "string",
+      "description": "The name of the schema."
+    },
+    "LastModified": {
+      "type": "string",
+      "description": "The last modified time of the schema."
+    },
+    "VersionCreatedDate": {
+      "type": "string",
+      "description": "The date the schema version was created."
+    },
+    "Tags": {
+      "type": "array",
+      "uniqueItems": false,
+      "items": {
+        "$ref": "#/definitions/TagsEntry"
+      },
+      "description": "Tags associated with the resource."
+    }
+  },
+  "definitions": {
+    "TagsEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "Value": {
+          "type": "string"
+        },
+        "Key": {
+          "type": "string"
+        }
+      },
+      "required": ["Value", "Key"]
+    }
+  },
+  "required": ["Type", "Content", "RegistryName"],
+  "primaryIdentifier": ["/properties/SchemaArn"],
+  "createOnlyProperties": [
+    "/properties/SchemaName",
+    "/properties/RegistryName"
+  ],
+  "readOnlyProperties": [
+    "/properties/SchemaArn",
+    "/properties/LastModified",
+    "/properties/VersionCreatedDate",
+    "/properties/SchemaVersion"
+  ],
+  "tagging": {
+    "taggable": true,
+    "tagOnCreate": true,
+    "tagUpdatable": true,
+    "cloudFormationSystemTags": false,
+    "tagProperty": "/properties/Tags"
+  },
+  "handlers": {
+    "create": {
+      "permissions": [
+        "schemas:DescribeSchema",
+        "schemas:CreateSchema",
+        "schemas:TagResource"
+      ]
+    },
+    "read": {
+      "permissions": ["schemas:DescribeSchema"]
+    },
+    "update": {
+      "permissions": [
+        "schemas:DescribeSchema",
+        "schemas:UpdateSchema",
+        "schemas:TagResource",
+        "schemas:UntagResource",
+        "schemas:ListTagsForResource"
+      ]
+    },
+    "delete": {
+      "permissions": [
+        "schemas:DescribeSchema",
+        "schemas:DeleteSchema",
+        "schemas:DeleteSchemaVersion"
+      ]
+    },
+    "list": {
+      "handlerSchema": {
+        "properties": {
+          "RegistryName": {
+            "type": "string"
+          }
+        },
+        "required": ["RegistryName"]
+      },
+      "permissions": ["schemas:ListSchemas", "schemas:ListSchemaVersions"]
+    }
+  }
+}

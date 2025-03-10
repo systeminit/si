@@ -1,0 +1,517 @@
+{
+  "typeName": "AWS::CustomerProfiles::SegmentDefinition",
+  "description": "A segment definition resource of Amazon Connect Customer Profiles",
+  "sourceUrl": "https://github.com/aws-cloudformation/aws-cloudformation-resource-providers-customer-profiles",
+  "definitions": {
+    "Tag": {
+      "description": "A key-value pair to associate with a resource.",
+      "type": "object",
+      "properties": {
+        "Key": {
+          "type": "string",
+          "pattern": "^(?!aws:)[a-zA-Z+-=._:/]+$",
+          "description": "The key name of the tag. You can specify a value that is 1 to 128 Unicode characters in length and cannot be prefixed with aws:. You can use any of the following characters: the set of Unicode letters, digits, whitespace, _, ., /, =, +, and -.",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "Value": {
+          "type": "string",
+          "description": "The value for the tag. You can specify a value that is 0 to 256 Unicode characters in length and cannot be prefixed with aws:. You can use any of the following characters: the set of Unicode letters, digits, whitespace, _, ., /, =, +, and -.",
+          "minLength": 0,
+          "maxLength": 256
+        }
+      },
+      "required": ["Key", "Value"],
+      "additionalProperties": false
+    },
+    "ConditionOverrides": {
+      "description": "Overrides the condition block within the original calculated attribute definition.",
+      "type": "object",
+      "properties": {
+        "Range": {
+          "$ref": "#/definitions/RangeOverride"
+        }
+      },
+      "additionalProperties": false
+    },
+    "RangeOverride": {
+      "description": "Defines the range to be applied to the calculated attribute definition.",
+      "type": "object",
+      "properties": {
+        "Start": {
+          "description": "The starting point for this overridden range.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 366
+        },
+        "End": {
+          "description": "The ending point for this overridden range.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 366
+        },
+        "Unit": {
+          "description": "The unit to be applied to the range.",
+          "type": "string",
+          "enum": ["DAYS"]
+        }
+      },
+      "required": ["Start", "Unit"],
+      "additionalProperties": false
+    },
+    "AddressDimension": {
+      "description": "The address based criteria for the segment.",
+      "type": "object",
+      "properties": {
+        "City": {
+          "$ref": "#/definitions/ProfileDimension"
+        },
+        "Country": {
+          "$ref": "#/definitions/ProfileDimension"
+        },
+        "County": {
+          "$ref": "#/definitions/ProfileDimension"
+        },
+        "PostalCode": {
+          "$ref": "#/definitions/ProfileDimension"
+        },
+        "Province": {
+          "$ref": "#/definitions/ProfileDimension"
+        },
+        "State": {
+          "$ref": "#/definitions/ProfileDimension"
+        }
+      },
+      "additionalProperties": false
+    },
+    "AttributeDimension": {
+      "description": "Specifies attribute based criteria for a segment.",
+      "type": "object",
+      "properties": {
+        "DimensionType": {
+          "$ref": "#/definitions/AttributeDimensionType"
+        },
+        "Values": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1
+          },
+          "insertionOrder": false,
+          "minItems": 1,
+          "maxItems": 50
+        }
+      },
+      "required": ["DimensionType", "Values"],
+      "additionalProperties": false
+    },
+    "AttributeDimensionType": {
+      "description": "The type of segment dimension to use.",
+      "type": "string",
+      "enum": [
+        "INCLUSIVE",
+        "EXCLUSIVE",
+        "CONTAINS",
+        "BEGINS_WITH",
+        "ENDS_WITH",
+        "BEFORE",
+        "AFTER",
+        "BETWEEN",
+        "NOT_BETWEEN",
+        "ON",
+        "GREATER_THAN",
+        "LESS_THAN",
+        "GREATER_THAN_OR_EQUAL",
+        "LESS_THAN_OR_EQUAL",
+        "EQUAL"
+      ]
+    },
+    "CalculatedAttributeDimension": {
+      "description": "Specifies calculated attribute based criteria for a segment.",
+      "type": "object",
+      "properties": {
+        "DimensionType": {
+          "$ref": "#/definitions/AttributeDimensionType"
+        },
+        "Values": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255
+          },
+          "insertionOrder": false,
+          "minItems": 1,
+          "maxItems": 50
+        },
+        "ConditionOverrides": {
+          "$ref": "#/definitions/ConditionOverrides"
+        }
+      },
+      "required": ["DimensionType", "Values"],
+      "additionalProperties": false
+    },
+    "CustomAttributes": {
+      "description": "One or more custom attributes to use as criteria for the segment.",
+      "type": "object",
+      "patternProperties": {
+        "^[a-zA-Z_][a-zA-Z_0-9-]*$": {
+          "$ref": "#/definitions/AttributeDimension"
+        }
+      },
+      "additionalProperties": false
+    },
+    "CalculatedCustomAttributes": {
+      "description": "One or more calculated attributes to use as criteria for the segment.",
+      "type": "object",
+      "patternProperties": {
+        "^[a-zA-Z_][a-zA-Z_0-9-]*$": {
+          "$ref": "#/definitions/CalculatedAttributeDimension"
+        }
+      },
+      "additionalProperties": false
+    },
+    "DateDimension": {
+      "description": "Specifies date based criteria for a segment.",
+      "type": "object",
+      "properties": {
+        "DimensionType": {
+          "$ref": "#/definitions/DateDimensionType"
+        },
+        "Values": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "insertionOrder": false,
+          "minItems": 1,
+          "maxItems": 50
+        }
+      },
+      "required": ["DimensionType", "Values"],
+      "additionalProperties": false
+    },
+    "DateDimensionType": {
+      "description": "The type of segment dimension to use for a date dimension.",
+      "type": "string",
+      "enum": ["BEFORE", "AFTER", "BETWEEN", "NOT_BETWEEN", "ON"]
+    },
+    "Dimension": {
+      "description": "The criteria that define the dimensions for the segment.",
+      "oneOf": [{
+        "type": "object",
+        "title": "ProfileAttributes",
+        "properties": {
+          "ProfileAttributes": {
+            "$ref": "#/definitions/ProfileAttributes"
+          }
+        },
+        "required": ["ProfileAttributes"],
+        "additionalProperties": false
+      }, {
+        "type": "object",
+        "title": "CalculatedAttributes",
+        "properties": {
+          "CalculatedAttributes": {
+            "$ref": "#/definitions/CalculatedCustomAttributes"
+          }
+        },
+        "additionalProperties": false
+      }]
+    },
+    "ExtraLengthValueProfileDimension": {
+      "description": "Specifies criteria for a segment using extended-length string values.",
+      "type": "object",
+      "properties": {
+        "DimensionType": {
+          "$ref": "#/definitions/StringDimensionType"
+        },
+        "Values": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 1
+          },
+          "insertionOrder": false,
+          "minItems": 1,
+          "maxItems": 50
+        }
+      },
+      "required": ["DimensionType", "Values"],
+      "additionalProperties": false
+    },
+    "Group": {
+      "description": "An array that defines the set of segment criteria to evaluate when handling segment groups for the segment.",
+      "type": "object",
+      "properties": {
+        "Dimensions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Dimension"
+          }
+        },
+        "SourceSegments": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/SourceSegment"
+          }
+        },
+        "SourceType": {
+          "$ref": "#/definitions/IncludeOptions"
+        },
+        "Type": {
+          "$ref": "#/definitions/IncludeOptions"
+        }
+      },
+      "additionalProperties": false
+    },
+    "IncludeOptions": {
+      "description": "Specifies the operator on how to handle multiple groups within the same segment.",
+      "type": "string",
+      "enum": ["ALL", "ANY", "NONE"]
+    },
+    "ProfileAttributes": {
+      "description": "Specifies the dimension settings within profile attributes for a segment.",
+      "type": "object",
+      "properties": {
+        "AccountNumber": {
+          "$ref": "#/definitions/ProfileDimension"
+        },
+        "AdditionalInformation": {
+          "$ref": "#/definitions/ExtraLengthValueProfileDimension"
+        },
+        "FirstName": {
+          "$ref": "#/definitions/ProfileDimension"
+        },
+        "LastName": {
+          "$ref": "#/definitions/ProfileDimension"
+        },
+        "MiddleName": {
+          "$ref": "#/definitions/ProfileDimension"
+        },
+        "GenderString": {
+          "$ref": "#/definitions/ProfileDimension"
+        },
+        "PartyTypeString": {
+          "$ref": "#/definitions/ProfileDimension"
+        },
+        "BirthDate": {
+          "$ref": "#/definitions/DateDimension"
+        },
+        "PhoneNumber": {
+          "$ref": "#/definitions/ProfileDimension"
+        },
+        "BusinessName": {
+          "$ref": "#/definitions/ProfileDimension"
+        },
+        "BusinessPhoneNumber": {
+          "$ref": "#/definitions/ProfileDimension"
+        },
+        "HomePhoneNumber": {
+          "$ref": "#/definitions/ProfileDimension"
+        },
+        "MobilePhoneNumber": {
+          "$ref": "#/definitions/ProfileDimension"
+        },
+        "EmailAddress": {
+          "$ref": "#/definitions/ProfileDimension"
+        },
+        "PersonalEmailAddress": {
+          "$ref": "#/definitions/ProfileDimension"
+        },
+        "BusinessEmailAddress": {
+          "$ref": "#/definitions/ProfileDimension"
+        },
+        "Address": {
+          "$ref": "#/definitions/AddressDimension"
+        },
+        "ShippingAddress": {
+          "$ref": "#/definitions/AddressDimension"
+        },
+        "MailingAddress": {
+          "$ref": "#/definitions/AddressDimension"
+        },
+        "BillingAddress": {
+          "$ref": "#/definitions/AddressDimension"
+        },
+        "Attributes": {
+          "$ref": "#/definitions/CustomAttributes"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ProfileDimension": {
+      "description": "Specifies profile based criteria for a segment.",
+      "type": "object",
+      "properties": {
+        "DimensionType": {
+          "$ref": "#/definitions/StringDimensionType"
+        },
+        "Values": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1
+          },
+          "insertionOrder": false,
+          "minItems": 1,
+          "maxItems": 50
+        }
+      },
+      "required": ["DimensionType", "Values"],
+      "additionalProperties": false
+    },
+    "SegmentGroup": {
+      "type": "object",
+      "properties": {
+        "Groups": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Group"
+          }
+        },
+        "Include": {
+          "$ref": "#/definitions/IncludeOptions"
+        }
+      },
+      "additionalProperties": false
+    },
+    "SourceSegment": {
+      "description": "The base segment to build the segment on.",
+      "type": "object",
+      "properties": {
+        "SegmentDefinitionName": {
+          "type": "string",
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[a-zA-Z0-9_-]+$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "StringDimensionType": {
+      "description": "The type of segment dimension to use for a string dimension.",
+      "type": "string",
+      "enum": ["INCLUSIVE", "EXCLUSIVE", "CONTAINS", "BEGINS_WITH", "ENDS_WITH"]
+    }
+  },
+  "properties": {
+    "CreatedAt": {
+      "description": "The time of this segment definition got created.",
+      "type": "string",
+      "format": "date-time"
+    },
+    "Description": {
+      "description": "The description of the segment definition.",
+      "type": "string",
+      "maxLength": 1000,
+      "minLength": 1
+    },
+    "DisplayName": {
+      "description": "The display name of the segment definition.",
+      "type": "string",
+      "maxLength": 255,
+      "minLength": 1
+    },
+    "DomainName": {
+      "description": "The unique name of the domain.",
+      "type": "string",
+      "maxLength": 64,
+      "minLength": 1,
+      "pattern": "^[a-zA-Z0-9_-]+$"
+    },
+    "SegmentDefinitionName": {
+      "description": "The unique name of the segment definition.",
+      "type": "string",
+      "maxLength": 64,
+      "minLength": 1,
+      "pattern": "^[a-zA-Z0-9_-]+$"
+    },
+    "SegmentGroups": {
+      "description": "An array that defines the set of segment criteria to evaluate when handling segment groups for the segment.",
+      "$ref": "#/definitions/SegmentGroup"
+    },
+    "SegmentDefinitionArn": {
+      "description": "The Amazon Resource Name (ARN) of the segment definition.",
+      "type": "string",
+      "maxLength": 255,
+      "minLength": 1
+    },
+    "Tags": {
+      "description": "The tags used to organize, track, or control access for this resource.",
+      "type": "array",
+      "uniqueItems": true,
+      "insertionOrder": false,
+      "items": {
+        "$ref": "#/definitions/Tag"
+      },
+      "minItems": 0,
+      "maxItems": 50
+    }
+  },
+  "required": [
+    "DomainName",
+    "DisplayName",
+    "SegmentDefinitionName",
+    "SegmentGroups"
+  ],
+  "readOnlyProperties": [
+    "/properties/CreatedAt",
+    "/properties/SegmentDefinitionArn"
+  ],
+  "createOnlyProperties": [
+    "/properties/DomainName",
+    "/properties/SegmentDefinitionName",
+    "/properties/DisplayName",
+    "/properties/SegmentGroups"
+  ],
+  "primaryIdentifier": [
+    "/properties/DomainName",
+    "/properties/SegmentDefinitionName"
+  ],
+  "handlers": {
+    "create": {
+      "permissions": ["profile:CreateSegmentDefinition", "profile:TagResource"]
+    },
+    "read": {
+      "permissions": ["profile:GetSegmentDefinition"]
+    },
+    "update": {
+      "permissions": [
+        "profile:GetSegmentDefinition",
+        "profile:UntagResource",
+        "profile:TagResource"
+      ]
+    },
+    "delete": {
+      "permissions": ["profile:DeleteSegmentDefinition"]
+    },
+    "list": {
+      "handlerSchema": {
+        "properties": {
+          "DomainName": {
+            "$ref": "#/properties/DomainName"
+          }
+        },
+        "required": ["DomainName"]
+      },
+      "permissions": ["profile:ListSegmentDefinitions"]
+    }
+  },
+  "tagging": {
+    "taggable": true,
+    "tagOnCreate": true,
+    "tagUpdatable": true,
+    "cloudFormationSystemTags": true,
+    "tagProperty": "/properties/Tags",
+    "permissions": [
+      "profile:TagResource",
+      "profile:UntagResource",
+      "profile:ListTagsForResource"
+    ]
+  },
+  "additionalProperties": false
+}

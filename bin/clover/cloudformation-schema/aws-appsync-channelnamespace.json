@@ -1,0 +1,166 @@
+{
+  "tagging": {
+    "permissions": ["appsync:TagResource", "appsync:UntagResource"],
+    "taggable": true,
+    "tagOnCreate": true,
+    "tagUpdatable": true,
+    "tagProperty": "/properties/Tags",
+    "cloudFormationSystemTags": true
+  },
+  "typeName": "AWS::AppSync::ChannelNamespace",
+  "readOnlyProperties": ["/properties/ChannelNamespaceArn"],
+  "description": "Resource schema for AppSync ChannelNamespace",
+  "createOnlyProperties": ["/properties/ApiId", "/properties/Name"],
+  "primaryIdentifier": ["/properties/ChannelNamespaceArn"],
+  "required": ["ApiId", "Name"],
+  "sourceUrl": "https://github.com/aws-cloudformation/aws-cloudformation-rpdk.git",
+  "handlers": {
+    "read": {
+      "permissions": [
+        "appsync:GetChannelNamespace",
+        "appsync:ListTagsForResource"
+      ]
+    },
+    "create": {
+      "permissions": [
+        "appsync:CreateChannelNamespace",
+        "appsync:TagResource",
+        "appsync:GetChannelNamespace",
+        "s3:GetObject"
+      ]
+    },
+    "update": {
+      "permissions": [
+        "appsync:UpdateChannelNamespace",
+        "appsync:TagResource",
+        "appsync:UntagResource",
+        "appsync:GetChannelNamespace",
+        "s3:GetObject"
+      ]
+    },
+    "list": {
+      "permissions": ["appsync:ListChannelNamespaces"],
+      "handlerSchema": {
+        "properties": {
+          "ApiId": {
+            "$ref": "#/properties/ApiId"
+          }
+        },
+        "required": ["ApiId"]
+      }
+    },
+    "delete": {
+      "permissions": ["appsync:DeleteChannelNamespace", "appsync:UntagResource"]
+    }
+  },
+  "writeOnlyProperties": ["/properties/CodeS3Location"],
+  "additionalProperties": false,
+  "definitions": {
+    "AuthModes": {
+      "insertionOrder": false,
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/AuthMode"
+      }
+    },
+    "Code": {
+      "minLength": 1,
+      "description": "String of APPSYNC_JS code to be used by the handlers.",
+      "type": "string",
+      "maxLength": 32768
+    },
+    "Namespace": {
+      "minLength": 1,
+      "pattern": "([A-Za-z0-9](?:[A-Za-z0-9\\-]{0,48}[A-Za-z0-9])?)",
+      "description": "Namespace indentifier.",
+      "type": "string",
+      "maxLength": 50
+    },
+    "ChannelNamespaceArn": {
+      "description": "The Amazon Resource Name (ARN) for the Channel Namespace.",
+      "type": "string"
+    },
+    "Tag": {
+      "description": "An arbitrary set of tags (key-value pairs) for this AppSync API.",
+      "additionalProperties": false,
+      "type": "object",
+      "properties": {
+        "Value": {
+          "minLength": 0,
+          "pattern": "^[\\s\\w+-=\\.:/@]*$",
+          "description": "A string containing the value for this tag. You can specify a maximum of 256 characters for a tag value.",
+          "type": "string",
+          "maxLength": 256
+        },
+        "Key": {
+          "minLength": 1,
+          "pattern": "^(?!aws:)[ a-zA-Z+-=._:/]+$",
+          "description": "A string used to identify this tag. You can specify a maximum of 128 characters for a tag key.",
+          "type": "string",
+          "maxLength": 128
+        }
+      },
+      "required": ["Key", "Value"]
+    },
+    "AuthMode": {
+      "description": "An auth mode.",
+      "additionalProperties": false,
+      "type": "object",
+      "properties": {
+        "AuthType": {
+          "$ref": "#/definitions/AuthenticationType"
+        }
+      }
+    },
+    "Tags": {
+      "uniqueItems": true,
+      "description": "An arbitrary set of tags (key-value pairs) for this AppSync API.",
+      "insertionOrder": false,
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Tag"
+      }
+    },
+    "AuthenticationType": {
+      "description": "Security configuration for your AppSync API.",
+      "type": "string",
+      "enum": [
+        "AMAZON_COGNITO_USER_POOLS",
+        "AWS_IAM",
+        "API_KEY",
+        "OPENID_CONNECT",
+        "AWS_LAMBDA"
+      ]
+    }
+  },
+  "properties": {
+    "SubscribeAuthModes": {
+      "description": "List of AuthModes supported for Subscribe operations.",
+      "$ref": "#/definitions/AuthModes"
+    },
+    "CodeS3Location": {
+      "description": "The Amazon S3 endpoint where the code is located.",
+      "type": "string"
+    },
+    "PublishAuthModes": {
+      "description": "List of AuthModes supported for Publish operations.",
+      "$ref": "#/definitions/AuthModes"
+    },
+    "CodeHandlers": {
+      "$ref": "#/definitions/Code"
+    },
+    "ApiId": {
+      "description": "AppSync Api Id that this Channel Namespace belongs to.",
+      "type": "string"
+    },
+    "ChannelNamespaceArn": {
+      "$ref": "#/definitions/ChannelNamespaceArn"
+    },
+    "Tags": {
+      "$ref": "#/definitions/Tags"
+    },
+    "Name": {
+      "$ref": "#/definitions/Namespace"
+    }
+  }
+}
