@@ -383,3 +383,89 @@ export async function createComponent(
   return componentId;
 }
 
+// Func Helpers ------------------------------------------------------------
+
+export async function getFuncRun(sdf: SdfApiClient, changeSetId: string, funcRunId: string) {
+  console.log(funcRunId);
+  const funcRun = await sdf.call({
+    route: "get_func_run",
+    routeVars: {
+      workspaceId: sdf.workspaceId,
+      changeSetId,
+      funcRunId,
+    }
+  });
+  return funcRun;
+}
+export async function testExecuteFunc(sdf: SdfApiClient, changeSetId: string, funcId: string, componentId: string, code: string, args: any) {
+  const testExecuteFuncPayload = {
+    args,
+    code,
+    componentId
+  };
+  const createFuncResp = await sdf.call({
+    route: "test_execute",
+    routeVars: {
+      workspaceId: sdf.workspaceId,
+      changeSetId,
+      funcId,
+    },
+    body: testExecuteFuncPayload,
+  });
+  // returns the func_run_id
+  return createFuncResp;
+}
+
+export async function createQualification(sdf: SdfApiClient, changeSetId: string, name: string, schemaVariantId: string, code: string) {
+  const createFuncPayload = {
+    name,
+    displayName: name,
+    description: "",
+    binding: {
+      funcId: nilId,
+      schemaVariantId,
+      bindingKind: "qualification",
+      inputs: [],
+    },
+    kind: "Qualification",
+    requestUlid: changeSetId,
+  };
+  const createFuncResp = await sdf.call({
+    route: "create_func",
+    routeVars: {
+      workspaceId: sdf.workspaceId,
+      changeSetId,
+    },
+    body: createFuncPayload,
+  });
+  // now list funcs and let's make sure we see it
+  const funcs = await sdf.call({
+    route: "func_list",
+    routeVars: {
+      workspaceId: sdf.workspaceId,
+      changeSetId,
+    },
+  });
+
+  const createdFunc = funcs.find((f) => f.name === name);
+  assert(createdFunc, "Expected to find newly created func");
+  const funcId = createdFunc.funcId;
+  const codePayload = {
+    code,
+    requestUlid: changeSetId,
+  };
+
+  // save the code
+  const updateFuncResp = await sdf.call({
+    route: "update_func_code",
+    routeVars: {
+      workspaceId: sdf.workspaceId,
+      changeSetId,
+      funcId,
+    },
+    body: codePayload,
+  });
+  return funcId;
+
+}
+
