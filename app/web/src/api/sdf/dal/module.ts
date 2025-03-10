@@ -18,4 +18,5 @@ export interface ModuleContributeRequest {
   name: string;
   version: string;
   schemaVariantId: SchemaVariantId;
+  isPrivateModule: boolean;
 }

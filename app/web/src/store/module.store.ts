@@ -243,6 +243,7 @@ export const useModuleStore = () => {
                 name: request.name,
                 version: request.version,
                 schemaVariantId: request.schemaVariantId,
+                isPrivateModule: request.isPrivateModule,
               },
             });
           },

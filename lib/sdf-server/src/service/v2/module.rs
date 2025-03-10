@@ -6,6 +6,7 @@ use axum::{
     routing::{get, post},
     Router,
 };
+use dal::cached_module::CachedModuleError;
 use dal::pkg::PkgError;
 use dal::{ChangeSetError, FuncError, UserError, WsEventError};
 use si_frontend_types as frontend_types;
@@ -28,6 +29,8 @@ pub type ModuleAPIResult<T> = Result<T, ModulesAPIError>;
 pub enum ModulesAPIError {
     #[error("axum http error: {0}")]
     AxumHttp(#[from] axum::http::Error),
+    #[error("cached module error: {0:?}")]
+    CachedModule(#[from] CachedModuleError),
     #[error("changeset error: {0:?}")]
     Changeset(#[from] ChangeSetError),
     #[error("module not contributed: {0:?}")]

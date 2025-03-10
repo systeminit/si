@@ -1,0 +1,1 @@
+ALTER TABLE cached_modules ADD COLUMN scoped_to_user_pk ident;
