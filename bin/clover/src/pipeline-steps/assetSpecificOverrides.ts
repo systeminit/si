@@ -63,7 +63,7 @@ const overrides = new Map<string, OverrideFn>([
     const socket = createInputSocketFromProp(prop);
     variant.sockets.push(socket);
     prop!.data.widgetKind = "CodeEditor";
-    
+
     const importTargetId = MANAGEMENT_FUNCS["Import from AWS"].id;
     const newImportId =
       "0583c411a5b41594706ae8af473ed6d881357a1e692fb53981417f625f99374b";
@@ -286,6 +286,45 @@ const overrides = new Map<string, OverrideFn>([
       ]
     );
     variant.sockets.push(ipv4IpamSocket);
+  }],
+  ["AWS::ECS::Cluster", (spec: ExpandedPkgSpec) => {
+    const variant = spec.schemas[0].variants[0];
+    const configurationProp = variant.domain.entries.find((p) =>
+      p.name === "Configuration"
+    );
+    if (!configurationProp || configurationProp.kind !== "object") return;
+    const managedStorageConfigurationProp = configurationProp.entries.find((p) =>
+      p.name === "ManagedStorageConfiguration"
+    );
+    if (!managedStorageConfigurationProp) return;
+
+    const fargateKmsProp = managedStorageConfigurationProp.entries.find((p: ExpandedPropSpec) =>
+      p.name === "FargateEphemeralStorageKmsKeyId"
+    );
+    if (!fargateKmsProp) return;
+    const fargateKmsSocket = createInputSocketFromProp(fargateKmsProp,
+      [
+        { tokens: ["Key Id"] },
+        { tokens: ["KeyId"] },
+        { tokens: ["KeyId", "string", "scalar"] },
+      ],
+      "Fargate Storage KMS Key Id",
+    );
+    variant.sockets.push(fargateKmsSocket);
+
+    const kmsKeyIdProp = managedStorageConfigurationProp.entries.find((p: ExpandedPropSpec) =>
+      p.name === "KmsKeyId"
+    );
+    if (!kmsKeyIdProp) return;
+    const kmsKeyIdSocket = createInputSocketFromProp(kmsKeyIdProp,
+      [
+        { tokens: ["Key Id"] },
+        { tokens: ["KeyId"] },
+        { tokens: ["KeyId", "string", "scalar"] },
+      ],
+      "Storage KMS Key Id",
+    );
+    variant.sockets.push(kmsKeyIdSocket);
   }],
 ]);
 
