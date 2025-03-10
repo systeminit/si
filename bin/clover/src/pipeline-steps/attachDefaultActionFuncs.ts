@@ -23,7 +23,9 @@ export function attachDefaultActionFuncs(
       const handlerKind: CfHandlerKind = kind === "refresh" ? "read" : kind;
       if (!cfSchema.handlers?.[handlerKind]) continue;
 
-      funcs.push(actionFunc);
+      // clone otherwise modifications to these cause changes on all
+      // specs
+      funcs.push(_.cloneDeep(actionFunc));
       actionFuncs.push(createActionFuncSpec(kind, actionFunc.uniqueId));
     }
   }
