@@ -528,7 +528,6 @@ const props = defineProps({
 });
 
 const featureFlagsStore = useFeatureFlagsStore();
-
 const diagramContext = useDiagramContext();
 
 const componentId = computed(() => props.group.def.componentId);
@@ -652,21 +651,24 @@ const colors = computed(() => {
   // body bg
   const bodyBgHsl = primaryColor.toHsl();
   bodyBgHsl.l = theme.value === "dark" ? 0.08 : 0.95;
-  const bodyBg = tinycolor(bodyBgHsl);
 
+  const bodyBg = tinycolor(bodyBgHsl).toRgbString();
+  const headerBg = primaryColor.toRgbString();
   const bodyText = theme.value === "dark" ? "#FFF" : "#000";
+
   let headerText;
   if (primaryColor.toHsl().l < 0.5) {
     headerText = "#FFF";
   } else {
     headerText = "#000";
   }
+
   return {
-    headerBg: primaryColor.toRgbString(),
+    headerBg,
     icon: "#000",
     headerText,
-    bodyBg: bodyBg.toRgbString(),
-    labelText: theme.value === "dark" ? "#FFF" : "#000",
+    bodyBg,
+    labelText: bodyText,
     bodyText,
     parentColor:
       componentsStore.allComponentsById[parentComponentId.value || ""]?.def
@@ -876,8 +878,12 @@ const cache = () => {
     const left = socketsLeftRef.value?.getNode();
     const right = socketsRightRef.value?.getNode();
     if (left && right) {
-      left.cache();
-      right.cache();
+      left.cache({
+        pixelRatio: Math.max(1, diagramContext.zoomLevel.value),
+      });
+      right.cache({
+        pixelRatio: Math.max(1, diagramContext.zoomLevel.value),
+      });
     }
   });
 };
@@ -920,6 +926,34 @@ watch(
     cache();
   },
   { deep: true },
+);
+
+// re-run caching when an edge is being drawn
+watch(
+  () => diagramContext.drawEdgeState.value,
+  () => {
+    cache();
+  },
+  { deep: true },
+);
+
+// re-run caching when zoomed in close enough
+watch(
+  () => diagramContext.zoomLevel.value,
+  (zoomLevel) => {
+    if (zoomLevel > 1) {
+      cache();
+    }
+  },
+  { deep: true },
+);
+
+// re-run caching when switching color themes
+watch(
+  () => theme.value,
+  () => {
+    cache();
+  },
 );
 
 defineExpose({ clearCache });
