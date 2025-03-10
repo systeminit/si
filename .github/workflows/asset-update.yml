@@ -1,4 +1,4 @@
-name: Generate Clover Diffs
+name: Weekly Update of CF Schemas
 
 on:
   schedule:
@@ -14,7 +14,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: denoland/setup-deno@v2
-      - uses: dtolnay/rust-toolchain@stable
 
       - name: Update Schemas
         run: |
