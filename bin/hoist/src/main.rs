@@ -26,7 +26,7 @@ const CLOVER_DEFAULT_CREATOR: &str = "Clover";
 #[command(name = "hoist", version = "0.1")]
 #[command(about = "Gets and puts cloud control assets from the module index")]
 struct Args {
-    #[arg(long, short = 'e')]
+    #[arg(long, short = 'e', env = "SI_MODULE_INDEX_URL")]
     endpoint: String,
     #[arg(long, short = 't', env = "SI_BEARER_TOKEN", hide_env_values(true))]
     token: String,
@@ -47,10 +47,22 @@ async fn main() -> Result<()> {
     match args.command {
         Some(Commands::AnonymizeSpecs(args)) => anonymize_specs(args.target_dir, args.out).await?,
         Some(Commands::UploadAllSpecs(args)) => {
-            upload_pkg_specs(&client, args.target_dir, args.max_concurrent).await?
+            upload_pkg_specs(
+                &client,
+                args.target_dir,
+                args.max_concurrent,
+                args.skip_confirmation,
+            )
+            .await?
         }
         Some(Commands::UploadSpec(args)) => {
-            upload_pkg_specs(&client, args.target, args.max_concurrent).await?
+            upload_pkg_specs(
+                &client,
+                args.target,
+                args.max_concurrent,
+                args.skip_confirmation,
+            )
+            .await?
         }
         Some(Commands::WriteExistingModulesSpec(args)) => {
             write_existing_modules_spec(client, args.out).await?
@@ -227,6 +239,7 @@ async fn upload_pkg_specs(
     client: &ModuleIndexClient,
     target_dir: PathBuf,
     max_concurrent: usize,
+    skip_confirmation: bool,
 ) -> Result<()> {
     let specs: Vec<_> = spec_from_dir_or_file(target_dir)?;
 
@@ -277,27 +290,29 @@ async fn upload_pkg_specs(
         std::process::exit(0);
     }
 
-    loop {
-        println!(
+    if !skip_confirmation {
+        loop {
+            println!(
             "What would you like to do? [p]ush, list [n]ew assets, list [u]pdated assets, [c]ancel"
         );
 
-        let mut input = String::new();
-        std::io::stdin().read_line(&mut input)?;
-        match input.trim().to_lowercase().as_str() {
-            "p" => break,
-            "n" => {
-                for module in &new_modules {
-                    println!("{}", module);
+            let mut input = String::new();
+            std::io::stdin().read_line(&mut input)?;
+            match input.trim().to_lowercase().as_str() {
+                "p" => break,
+                "n" => {
+                    for module in &new_modules {
+                        println!("{}", module);
+                    }
                 }
-            }
-            "u" => {
-                for module in &modules_with_updates {
-                    println!("{}", module);
+                "u" => {
+                    for module in &modules_with_updates {
+                        println!("{}", module);
+                    }
                 }
-            }
 
-            _ => return Ok(()),
+                _ => return Ok(()),
+            }
         }
     }
 

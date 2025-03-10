@@ -1,0 +1,25 @@
+name: Weekly Update of CF Schemas
+
+on:
+  schedule:
+    # weekly
+    - cron: "0 0 * * 0"
+
+jobs:
+  update-schemas:
+    runs-on: ubuntu-latest
+    env:
+      SI_BEARER_TOKEN: ${{ secrets.SI_BEARER_TOKEN }}
+      SI_MODULE_INDEX_URL: "https://module-index.systeminit.com"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+
+      - name: Update Schemas
+        run: |
+          cd bin/clover
+          LOG_LEVEL=debug deno task run fetch-schema
+          LOG_LEVEL=debug deno task run infer-ai
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v7

@@ -1,0 +1,63 @@
+{
+  "typeName": "AWS::ApiGateway::Model",
+  "description": "The ``AWS::ApiGateway::Model`` resource defines the structure of a request or response payload for an API method.",
+  "sourceUrl": "https://github.com/aws-cloudformation/aws-cloudformation-resource-providers-apigateway",
+  "additionalProperties": false,
+  "properties": {
+    "ContentType": {
+      "type": "string",
+      "description": ""
+    },
+    "Description": {
+      "type": "string",
+      "description": ""
+    },
+    "Name": {
+      "type": "string",
+      "description": "A name for the model. If you don't specify a name, CFN generates a unique physical ID and uses that ID for the model name. For more information, see [Name Type](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-name.html).\n  If you specify a name, you cannot perform updates that require replacement of this resource. You can perform updates that require no or some interruption. If you must replace the resource, specify a new name."
+    },
+    "RestApiId": {
+      "type": "string",
+      "description": ""
+    },
+    "Schema": {
+      "description": "",
+      "type": ["object", "string"]
+    }
+  },
+  "required": ["RestApiId"],
+  "tagging": {
+    "taggable": false
+  },
+  "createOnlyProperties": [
+    "/properties/ContentType",
+    "/properties/Name",
+    "/properties/RestApiId"
+  ],
+  "primaryIdentifier": ["/properties/RestApiId", "/properties/Name"],
+  "handlers": {
+    "create": {
+      "permissions": ["apigateway:POST", "apigateway:GET"]
+    },
+    "read": {
+      "permissions": ["apigateway:GET"]
+    },
+    "update": {
+      "permissions": ["apigateway:PATCH", "apigateway:GET"]
+    },
+    "delete": {
+      "permissions": ["apigateway:GET", "apigateway:DELETE"]
+    },
+    "list": {
+      "handlerSchema": {
+        "properties": {
+          "RestApiId": {
+            "$ref": "#/properties/RestApiId"
+          }
+        },
+        "required": ["RestApiId"]
+      },
+      "permissions": ["apigateway:GET"]
+    }
+  }
+}

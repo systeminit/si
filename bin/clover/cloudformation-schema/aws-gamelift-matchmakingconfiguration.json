@@ -1,0 +1,217 @@
+{
+  "$schema": "https://schema.cloudformation.us-east-1.amazonaws.com/provider.definition.schema.v1.json",
+  "typeName": "AWS::GameLift::MatchmakingConfiguration",
+  "description": "The AWS::GameLift::MatchmakingConfiguration resource creates an Amazon GameLift (GameLift) matchmaking configuration.",
+  "sourceUrl": "https://github.com/aws-cloudformation/aws-cloudformation-resource-providers-gamelift.git",
+  "tagging": {
+    "taggable": true,
+    "cloudFormationSystemTags": false,
+    "tagProperty": "/properties/Tags",
+    "tagOnCreate": true,
+    "tagUpdatable": true,
+    "permissions": [
+      "gamelift:ListTagsForResource",
+      "gamelift:TagResource",
+      "gamelift:UntagResource"
+    ]
+  },
+  "definitions": {
+    "GameProperty": {
+      "description": "A key-value pair that contains information about a game session.",
+      "type": "object",
+      "properties": {
+        "Key": {
+          "type": "string",
+          "description": "The game property identifier.",
+          "maxLength": 32
+        },
+        "Value": {
+          "type": "string",
+          "description": "The game property value.",
+          "maxLength": 96
+        }
+      },
+      "required": ["Key", "Value"],
+      "additionalProperties": false
+    },
+    "Tag": {
+      "description": "A key-value pair to associate with a resource.",
+      "type": "object",
+      "properties": {
+        "Key": {
+          "type": "string",
+          "description": "The key name of the tag. You can specify a value that is 1 to 128 Unicode characters in length.",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "Value": {
+          "type": "string",
+          "description": "The value for the tag. You can specify a value that is 0 to 256 Unicode characters in length.",
+          "minLength": 0,
+          "maxLength": 256
+        }
+      },
+      "required": ["Key", "Value"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "AcceptanceRequired": {
+      "description": "A flag that indicates whether a match that was created with this configuration must be accepted by the matched players",
+      "type": "boolean"
+    },
+    "AcceptanceTimeoutSeconds": {
+      "description": "The length of time (in seconds) to wait for players to accept a proposed match, if acceptance is required.",
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 600
+    },
+    "AdditionalPlayerCount": {
+      "description": "The number of player slots in a match to keep open for future players.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "BackfillMode": {
+      "description": "The method used to backfill game sessions created with this matchmaking configuration.",
+      "type": "string",
+      "enum": ["AUTOMATIC", "MANUAL"]
+    },
+    "Arn": {
+      "description": "The Amazon Resource Name (ARN) that is assigned to a Amazon GameLift matchmaking configuration resource and uniquely identifies it.",
+      "type": "string",
+      "pattern": "^arn:.*:matchmakingconfiguration\\/[a-zA-Z0-9-\\.]*"
+    },
+    "CreationTime": {
+      "description": "A time stamp indicating when this data object was created.",
+      "type": "string"
+    },
+    "CustomEventData": {
+      "description": "Information to attach to all events related to the matchmaking configuration.",
+      "type": "string",
+      "minLength": 0,
+      "maxLength": 256
+    },
+    "Description": {
+      "description": "A descriptive label that is associated with matchmaking configuration.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1024
+    },
+    "FlexMatchMode": {
+      "description": "Indicates whether this matchmaking configuration is being used with Amazon GameLift hosting or as a standalone matchmaking solution.",
+      "type": "string",
+      "enum": ["STANDALONE", "WITH_QUEUE"]
+    },
+    "GameProperties": {
+      "description": "A set of custom properties for a game session, formatted as key:value pairs.",
+      "type": "array",
+      "uniqueItems": true,
+      "insertionOrder": false,
+      "maxItems": 16,
+      "items": {
+        "$ref": "#/definitions/GameProperty"
+      }
+    },
+    "GameSessionData": {
+      "description": "A set of custom game session properties, formatted as a single string value.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096
+    },
+    "GameSessionQueueArns": {
+      "description": "The Amazon Resource Name (ARN) that is assigned to a Amazon GameLift game session queue resource and uniquely identifies it.",
+      "type": "array",
+      "insertionOrder": false,
+      "items": {
+        "type": "string",
+        "pattern": "[a-zA-Z0-9:/-]+",
+        "minLength": 1,
+        "maxLength": 256
+      }
+    },
+    "Name": {
+      "description": "A unique identifier for the matchmaking configuration.",
+      "type": "string",
+      "pattern": "[a-zA-Z0-9-\\.]*",
+      "maxLength": 128
+    },
+    "NotificationTarget": {
+      "description": "An SNS topic ARN that is set up to receive matchmaking notifications.",
+      "type": "string",
+      "pattern": "[a-zA-Z0-9:_/-]*(.fifo)?",
+      "minLength": 0,
+      "maxLength": 300
+    },
+    "RequestTimeoutSeconds": {
+      "description": "The maximum duration, in seconds, that a matchmaking ticket can remain in process before timing out.",
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 43200
+    },
+    "RuleSetArn": {
+      "description": "The Amazon Resource Name (ARN) associated with the GameLift matchmaking rule set resource that this configuration uses.",
+      "type": "string",
+      "pattern": "^arn:.*:matchmakingruleset\\/[a-zA-Z0-9-\\.]*"
+    },
+    "RuleSetName": {
+      "description": "A unique identifier for the matchmaking rule set to use with this configuration.",
+      "type": "string",
+      "pattern": "[a-zA-Z0-9-\\.]*",
+      "maxLength": 128
+    },
+    "Tags": {
+      "description": "An array of key-value pairs to apply to this resource.",
+      "type": "array",
+      "uniqueItems": true,
+      "insertionOrder": false,
+      "maxItems": 200,
+      "items": {
+        "$ref": "#/definitions/Tag"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "AcceptanceRequired",
+    "Name",
+    "RequestTimeoutSeconds",
+    "RuleSetName"
+  ],
+  "createOnlyProperties": ["/properties/Name"],
+  "readOnlyProperties": ["/properties/Arn"],
+  "primaryIdentifier": ["/properties/Name"],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "gamelift:CreateMatchmakingConfiguration",
+        "gamelift:ListTagsForResource",
+        "gamelift:TagResource",
+        "gamelift:DescribeMatchmakingConfigurations"
+      ]
+    },
+    "read": {
+      "permissions": [
+        "gamelift:DescribeMatchmakingConfigurations",
+        "gamelift:ListTagsForResource"
+      ]
+    },
+    "delete": {
+      "permissions": [
+        "gamelift:DescribeMatchmakingConfigurations",
+        "gamelift:DeleteMatchmakingConfiguration"
+      ]
+    },
+    "list": {
+      "permissions": ["gamelift:DescribeMatchmakingConfigurations"]
+    },
+    "update": {
+      "permissions": [
+        "gamelift:DescribeMatchmakingConfigurations",
+        "gamelift:UpdateMatchmakingConfiguration",
+        "gamelift:ListTagsForResource",
+        "gamelift:TagResource",
+        "gamelift:UntagResource"
+      ]
+    }
+  }
+}

@@ -1,0 +1,479 @@
+{
+  "typeName": "AWS::Connect::EvaluationForm",
+  "description": "Creates an evaluation form for the specified CON instance.",
+  "sourceUrl": "https://github.com/aws-cloudformation/aws-cloudformation-resource-providers-connect",
+  "definitions": {
+    "RefId": {
+      "description": "The identifier to reference the item.",
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9._-]{1,40}$"
+    },
+    "Weight": {
+      "description": "The item weight used for scoring.",
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "Score": {
+      "description": "The score of an answer option.",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 10
+    },
+    "EvaluationFormBaseItem": {
+      "description": "An item at the root level. All items must be sections.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "Section": {
+          "description": "A subsection or inner section of an item.",
+          "$ref": "#/definitions/EvaluationFormSection"
+        }
+      },
+      "required": ["Section"]
+    },
+    "EvaluationFormItem": {
+      "description": "Items that are part of the evaluation form. The total number of sections and questions must not exceed 100 each. Questions must be contained in a section.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "Section": {
+          "description": "The information of the section.",
+          "$ref": "#/definitions/EvaluationFormSection"
+        },
+        "Question": {
+          "description": "The information of the question.",
+          "$ref": "#/definitions/EvaluationFormQuestion"
+        }
+      }
+    },
+    "EvaluationFormSection": {
+      "description": "Information about a section from an evaluation form. A section can contain sections and/or questions. Evaluation forms can only contain sections and subsections (two level nesting).",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "Title": {
+          "description": "The title of the section.\n  *Length Constraints*: Minimum length of 1. Maximum length of 128.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "Instructions": {
+          "description": "The instructions of the section.",
+          "type": "string",
+          "maxLength": 1024
+        },
+        "RefId": {
+          "description": "The identifier of the section. An identifier must be unique within the evaluation form.\n  *Length Constraints*: Minimum length of 1. Maximum length of 40.",
+          "$ref": "#/definitions/RefId"
+        },
+        "Items": {
+          "description": "The items of the section.\n  *Minimum*: 1",
+          "type": "array",
+          "insertionOrder": true,
+          "minItems": 1,
+          "maxItems": 200,
+          "items": {
+            "$ref": "#/definitions/EvaluationFormItem"
+          }
+        },
+        "Weight": {
+          "description": "The scoring weight of the section.\n  *Minimum*: 0 \n  *Maximum*: 100",
+          "$ref": "#/definitions/Weight"
+        }
+      },
+      "required": ["RefId", "Title"]
+    },
+    "EvaluationFormNumericQuestionOption": {
+      "description": "Information about the option range used for scoring in numeric questions.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "MinValue": {
+          "description": "The minimum answer value of the range option.",
+          "type": "integer"
+        },
+        "MaxValue": {
+          "description": "The maximum answer value of the range option.",
+          "type": "integer"
+        },
+        "Score": {
+          "description": "The score assigned to answer values within the range option.\n  *Minimum*: 0\n  *Maximum*: 10",
+          "$ref": "#/definitions/Score"
+        },
+        "AutomaticFail": {
+          "description": "The flag to mark the option as automatic fail. If an automatic fail answer is provided, the overall evaluation gets a score of 0.",
+          "type": "boolean"
+        }
+      },
+      "required": ["MinValue", "MaxValue"]
+    },
+    "NumericQuestionPropertyValueAutomation": {
+      "description": "Information about the property value used in automation of a numeric questions.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "Label": {
+          "description": "The property label of the automation.",
+          "type": "string",
+          "enum": [
+            "OVERALL_CUSTOMER_SENTIMENT_SCORE",
+            "OVERALL_AGENT_SENTIMENT_SCORE",
+            "NON_TALK_TIME",
+            "NON_TALK_TIME_PERCENTAGE",
+            "NUMBER_OF_INTERRUPTIONS",
+            "CONTACT_DURATION",
+            "AGENT_INTERACTION_DURATION",
+            "CUSTOMER_HOLD_TIME"
+          ]
+        }
+      },
+      "required": ["Label"]
+    },
+    "EvaluationFormNumericQuestionAutomation": {
+      "description": "Information about the automation configuration in numeric questions.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "PropertyValue": {
+          "description": "The property value of the automation.",
+          "$ref": "#/definitions/NumericQuestionPropertyValueAutomation"
+        }
+      },
+      "required": ["PropertyValue"]
+    },
+    "EvaluationFormNumericQuestionProperties": {
+      "description": "Information about properties for a numeric question in an evaluation form.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "MinValue": {
+          "description": "The minimum answer value.",
+          "type": "integer"
+        },
+        "MaxValue": {
+          "description": "The maximum answer value.",
+          "type": "integer"
+        },
+        "Options": {
+          "description": "The scoring options of the numeric question.",
+          "type": "array",
+          "insertionOrder": true,
+          "minItems": 1,
+          "maxItems": 10,
+          "items": {
+            "$ref": "#/definitions/EvaluationFormNumericQuestionOption"
+          }
+        },
+        "Automation": {
+          "description": "The automation properties of the numeric question.",
+          "$ref": "#/definitions/EvaluationFormNumericQuestionAutomation"
+        }
+      },
+      "required": ["MinValue", "MaxValue"]
+    },
+    "EvaluationFormSingleSelectQuestionAutomationOption": {
+      "description": "The automation options of the single select question.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "RuleCategory": {
+          "description": "The automation option based on a rule category for the single select question.",
+          "$ref": "#/definitions/SingleSelectQuestionRuleCategoryAutomation"
+        }
+      },
+      "required": ["RuleCategory"]
+    },
+    "SingleSelectQuestionRuleCategoryAutomation": {
+      "description": "Information about the automation option based on a rule category for a single select question.\n  *Length Constraints*: Minimum length of 1. Maximum length of 50.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "Category": {
+          "description": "The category name, as defined in Rules.\n  *Minimum*: 1\n  *Maximum*: 50",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 50
+        },
+        "Condition": {
+          "description": "The condition to apply for the automation option. If the condition is PRESENT, then the option is applied when the contact data includes the category. Similarly, if the condition is NOT_PRESENT, then the option is applied when the contact data does not include the category.\n  *Allowed values*: ``PRESENT`` | ``NOT_PRESENT`` \n  *Maximum*: 50",
+          "type": "string",
+          "enum": ["PRESENT", "NOT_PRESENT"]
+        },
+        "OptionRefId": {
+          "description": "The identifier of the answer option. An identifier must be unique within the question.\n  *Length Constraints*: Minimum length of 1. Maximum length of 40.",
+          "$ref": "#/definitions/RefId"
+        }
+      },
+      "required": ["Category", "Condition", "OptionRefId"]
+    },
+    "EvaluationFormSingleSelectQuestionAutomation": {
+      "description": "Information about the automation configuration in single select questions. Automation options are evaluated in order, and the first matched option is applied. If no automation option matches, and there is a default option, then the default option is applied.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "Options": {
+          "description": "The automation options of the single select question.\n  *Minimum*: 1\n  *Maximum*: 20",
+          "type": "array",
+          "insertionOrder": true,
+          "minItems": 1,
+          "maxItems": 20,
+          "items": {
+            "$ref": "#/definitions/EvaluationFormSingleSelectQuestionAutomationOption"
+          }
+        },
+        "DefaultOptionRefId": {
+          "description": "The identifier of the default answer option, when none of the automation options match the criteria.\n  *Length Constraints*: Minimum length of 1. Maximum length of 40.",
+          "$ref": "#/definitions/RefId"
+        }
+      },
+      "required": ["Options"]
+    },
+    "EvaluationFormSingleSelectQuestionOption": {
+      "description": "Information about the automation configuration in single select questions.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "RefId": {
+          "description": "The identifier of the answer option. An identifier must be unique within the question.\n  *Length Constraints*: Minimum length of 1. Maximum length of 40.",
+          "$ref": "#/definitions/RefId"
+        },
+        "Text": {
+          "description": "The title of the answer option.\n  *Length Constraints*: Minimum length of 1. Maximum length of 128.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "Score": {
+          "description": "The score assigned to the answer option.\n  *Minimum*: 0\n  *Maximum*: 10",
+          "$ref": "#/definitions/Score"
+        },
+        "AutomaticFail": {
+          "description": "The flag to mark the option as automatic fail. If an automatic fail answer is provided, the overall evaluation gets a score of 0.",
+          "type": "boolean"
+        }
+      },
+      "required": ["RefId", "Text"]
+    },
+    "EvaluationFormSingleSelectQuestionProperties": {
+      "description": "Information about the options in single select questions.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "Options": {
+          "description": "The answer options of the single select question.\n  *Minimum*: 2\n  *Maximum*: 256",
+          "type": "array",
+          "insertionOrder": true,
+          "minItems": 2,
+          "maxItems": 256,
+          "items": {
+            "$ref": "#/definitions/EvaluationFormSingleSelectQuestionOption"
+          }
+        },
+        "DisplayAs": {
+          "description": "The display mode of the single select question.\n  *Allowed values*: ``DROPDOWN`` | ``RADIO``",
+          "type": "string",
+          "enum": ["DROPDOWN", "RADIO"]
+        },
+        "Automation": {
+          "description": "The display mode of the single select question.",
+          "$ref": "#/definitions/EvaluationFormSingleSelectQuestionAutomation"
+        }
+      },
+      "required": ["Options"]
+    },
+    "EvaluationFormQuestionTypeProperties": {
+      "description": "Information about properties for a question in an evaluation form. The question type properties must be either for a numeric question or a single select question.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "Numeric": {
+          "description": "The properties of the numeric question.",
+          "$ref": "#/definitions/EvaluationFormNumericQuestionProperties"
+        },
+        "SingleSelect": {
+          "description": "The properties of the numeric question.",
+          "$ref": "#/definitions/EvaluationFormSingleSelectQuestionProperties"
+        }
+      }
+    },
+    "EvaluationFormQuestion": {
+      "description": "Information about a question from an evaluation form.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "Title": {
+          "description": "The title of the question.\n  *Length Constraints*: Minimum length of 1. Maximum length of 350.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 350
+        },
+        "Instructions": {
+          "description": "The instructions of the section.\n  *Length Constraints*: Minimum length of 0. Maximum length of 1024.",
+          "type": "string",
+          "maxLength": 1024
+        },
+        "RefId": {
+          "description": "The identifier of the question. An identifier must be unique within the evaluation form.\n  *Length Constraints*: Minimum length of 1. Maximum length of 40.",
+          "$ref": "#/definitions/RefId"
+        },
+        "NotApplicableEnabled": {
+          "description": "The flag to enable not applicable answers to the question.",
+          "type": "boolean"
+        },
+        "QuestionType": {
+          "description": "The type of the question.\n  *Allowed values*: ``NUMERIC`` | ``SINGLESELECT`` | ``TEXT``",
+          "type": "string",
+          "enum": ["NUMERIC", "SINGLESELECT", "TEXT"]
+        },
+        "QuestionTypeProperties": {
+          "description": "The properties of the type of question. Text questions do not have to define question type properties.",
+          "$ref": "#/definitions/EvaluationFormQuestionTypeProperties"
+        },
+        "Weight": {
+          "description": "The scoring weight of the section.\n  *Minimum*: 0\n  *Maximum*: 100",
+          "$ref": "#/definitions/Weight"
+        }
+      },
+      "required": ["RefId", "Title", "QuestionType"]
+    },
+    "ScoringStrategy": {
+      "description": "A scoring strategy of the evaluation form.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "Mode": {
+          "description": "The scoring mode of the evaluation form.\n  *Allowed values*: ``QUESTION_ONLY`` | ``SECTION_ONLY``",
+          "type": "string",
+          "enum": ["QUESTION_ONLY", "SECTION_ONLY"]
+        },
+        "Status": {
+          "description": "The scoring status of the evaluation form.\n  *Allowed values*: ``ENABLED`` | ``DISABLED``",
+          "type": "string",
+          "enum": ["ENABLED", "DISABLED"]
+        }
+      },
+      "required": ["Mode", "Status"]
+    },
+    "Tag": {
+      "description": "A key-value pair to associate with a resource.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "Key": {
+          "type": "string",
+          "description": "The key name of the tag. You can specify a value that is 1 to 128 Unicode characters in length and cannot be prefixed with aws:. You can use any of the following characters: the set of Unicode letters, digits, whitespace, _, ., /, =, +, and -",
+          "pattern": "^(?!aws:)[a-zA-Z+-=._:/]+$",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "Value": {
+          "type": "string",
+          "description": "The value for the tag. You can specify a value that is 0 to 256 Unicode characters in length and cannot be prefixed with aws:. You can use any of the following characters: the set of Unicode letters, digits, whitespace, _, ., /, =, +, and -",
+          "maxLength": 256
+        }
+      },
+      "required": ["Key", "Value"]
+    }
+  },
+  "properties": {
+    "Title": {
+      "description": "A title of the evaluation form.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "Description": {
+      "description": "The description of the evaluation form.\n  *Length Constraints*: Minimum length of 0. Maximum length of 1024.",
+      "type": "string",
+      "maxLength": 1024
+    },
+    "EvaluationFormArn": {
+      "description": "",
+      "type": "string",
+      "pattern": "^arn:aws[-a-z0-9]*:connect:[-a-z0-9]*:[0-9]{12}:instance/[-a-zA-Z0-9]*/evaluation-form/[-a-zA-Z0-9]*$"
+    },
+    "InstanceArn": {
+      "description": "The identifier of the Amazon Connect instance.",
+      "type": "string",
+      "pattern": "^arn:aws[-a-z0-9]*:connect:[-a-z0-9]*:[0-9]{12}:instance/[-a-zA-Z0-9]*$"
+    },
+    "Items": {
+      "description": "Items that are part of the evaluation form. The total number of sections and questions must not exceed 100 each. Questions must be contained in a section.\n  *Minimum size*: 1\n  *Maximum size*: 100",
+      "type": "array",
+      "insertionOrder": true,
+      "minItems": 1,
+      "maxItems": 200,
+      "items": {
+        "$ref": "#/definitions/EvaluationFormBaseItem"
+      }
+    },
+    "ScoringStrategy": {
+      "description": "A scoring strategy of the evaluation form.",
+      "$ref": "#/definitions/ScoringStrategy"
+    },
+    "Status": {
+      "description": "The status of the evaluation form.\n  *Allowed values*: ``DRAFT`` | ``ACTIVE``",
+      "type": "string",
+      "default": "DRAFT",
+      "enum": ["DRAFT", "ACTIVE"]
+    },
+    "Tags": {
+      "description": "The tags used to organize, track, or control access for this resource. For example, { \"tags\": {\"key1\":\"value1\", \"key2\":\"value2\"} }.",
+      "type": "array",
+      "maxItems": 50,
+      "uniqueItems": true,
+      "insertionOrder": false,
+      "items": {
+        "$ref": "#/definitions/Tag"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "required": ["Title", "InstanceArn", "Items", "Status"],
+  "readOnlyProperties": ["/properties/EvaluationFormArn"],
+  "primaryIdentifier": ["/properties/EvaluationFormArn"],
+  "tagging": {
+    "taggable": true,
+    "tagOnCreate": false,
+    "tagUpdatable": true,
+    "cloudFormationSystemTags": true,
+    "tagProperty": "/properties/Tags",
+    "permissions": [
+      "connect:ListTagsForResource",
+      "connect:UntagResource",
+      "connect:TagResource"
+    ]
+  },
+  "handlers": {
+    "create": {
+      "permissions": [
+        "connect:CreateEvaluationForm",
+        "connect:ActivateEvaluationForm",
+        "connect:TagResource"
+      ]
+    },
+    "read": {
+      "permissions": [
+        "connect:DescribeEvaluationForm",
+        "connect:ListEvaluationFormVersions"
+      ]
+    },
+    "list": {
+      "permissions": ["connect:ListEvaluationForms"]
+    },
+    "update": {
+      "permissions": [
+        "connect:UpdateEvaluationForm",
+        "connect:ListEvaluationFormVersions",
+        "connect:ActivateEvaluationForm",
+        "connect:DeactivateEvaluationForm",
+        "connect:TagResource",
+        "connect:UntagResource"
+      ]
+    },
+    "delete": {
+      "permissions": ["connect:DeleteEvaluationForm", "connect:UntagResource"]
+    }
+  }
+}

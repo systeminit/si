@@ -1,0 +1,195 @@
+{
+  "typeName": "AWS::Glue::Connection",
+  "description": "Resource Type definition for AWS::Glue::Connection",
+  "additionalProperties": false,
+  "properties": {
+    "ConnectionInput": {
+      "$ref": "#/definitions/ConnectionInput"
+    },
+    "CatalogId": {
+      "type": "string"
+    },
+    "Id": {
+      "type": "string"
+    }
+  },
+  "definitions": {
+    "OAuth2PropertiesInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "AuthorizationCodeProperties": {
+          "$ref": "#/definitions/AuthorizationCodeProperties"
+        },
+        "OAuth2ClientApplication": {
+          "$ref": "#/definitions/OAuth2ClientApplication"
+        },
+        "TokenUrl": {
+          "type": "string"
+        },
+        "OAuth2Credentials": {
+          "$ref": "#/definitions/OAuth2Credentials"
+        },
+        "OAuth2GrantType": {
+          "type": "string"
+        },
+        "TokenUrlParametersMap": {
+          "type": "object"
+        }
+      }
+    },
+    "ConnectionInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "AuthenticationConfiguration": {
+          "$ref": "#/definitions/AuthenticationConfigurationInput"
+        },
+        "PythonProperties": {
+          "type": "object"
+        },
+        "Description": {
+          "type": "string"
+        },
+        "ConnectionType": {
+          "type": "string"
+        },
+        "MatchCriteria": {
+          "type": "array",
+          "uniqueItems": false,
+          "items": {
+            "type": "string"
+          }
+        },
+        "ConnectionProperties": {
+          "type": "object"
+        },
+        "AthenaProperties": {
+          "type": "object"
+        },
+        "ValidateForComputeEnvironments": {
+          "type": "array",
+          "uniqueItems": false,
+          "items": {
+            "type": "string"
+          }
+        },
+        "Name": {
+          "type": "string"
+        },
+        "SparkProperties": {
+          "type": "object"
+        },
+        "PhysicalConnectionRequirements": {
+          "$ref": "#/definitions/PhysicalConnectionRequirements"
+        },
+        "ValidateCredentials": {
+          "type": "boolean"
+        }
+      },
+      "required": ["ConnectionType"]
+    },
+    "PhysicalConnectionRequirements": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "AvailabilityZone": {
+          "type": "string"
+        },
+        "SecurityGroupIdList": {
+          "type": "array",
+          "uniqueItems": false,
+          "items": {
+            "type": "string"
+          }
+        },
+        "SubnetId": {
+          "type": "string"
+        }
+      }
+    },
+    "BasicAuthenticationCredentials": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "Username": {
+          "type": "string"
+        },
+        "Password": {
+          "type": "string"
+        }
+      }
+    },
+    "AuthorizationCodeProperties": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "AuthorizationCode": {
+          "type": "string"
+        },
+        "RedirectUri": {
+          "type": "string"
+        }
+      }
+    },
+    "OAuth2ClientApplication": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "AWSManagedClientApplicationReference": {
+          "type": "string"
+        },
+        "UserManagedClientApplicationClientId": {
+          "type": "string"
+        }
+      }
+    },
+    "OAuth2Credentials": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "UserManagedClientApplicationClientSecret": {
+          "type": "string"
+        },
+        "JwtToken": {
+          "type": "string"
+        },
+        "RefreshToken": {
+          "type": "string"
+        },
+        "AccessToken": {
+          "type": "string"
+        }
+      }
+    },
+    "AuthenticationConfigurationInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "SecretArn": {
+          "type": "string"
+        },
+        "KmsKeyArn": {
+          "type": "string"
+        },
+        "OAuth2Properties": {
+          "$ref": "#/definitions/OAuth2PropertiesInput"
+        },
+        "CustomAuthenticationCredentials": {
+          "type": "object"
+        },
+        "BasicAuthenticationCredentials": {
+          "$ref": "#/definitions/BasicAuthenticationCredentials"
+        },
+        "AuthenticationType": {
+          "type": "string"
+        }
+      },
+      "required": ["AuthenticationType"]
+    }
+  },
+  "required": ["ConnectionInput", "CatalogId"],
+  "createOnlyProperties": ["/properties/CatalogId"],
+  "primaryIdentifier": ["/properties/Id"],
+  "readOnlyProperties": ["/properties/Id"]
+}

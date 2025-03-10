@@ -1,0 +1,166 @@
+{
+  "typeName": "AWS::ECR::RepositoryCreationTemplate",
+  "description": "The details of the repository creation template associated with the request.",
+  "sourceUrl": "https://github.com/aws-cloudformation/aws-cloudformation-resource-providers-ecr.git",
+  "definitions": {
+    "EncryptionConfiguration": {
+      "type": "object",
+      "description": "The encryption configuration for the repository. This determines how the contents of your repository are encrypted at rest.\n By default, when no encryption configuration is set or the ``AES256`` encryption type is used, Amazon ECR uses server-side encryption with Amazon S3-managed encryption keys which encrypts your data at rest using an AES256 encryption algorithm. This does not require any action on your part.\n For more control over the encryption of the contents of your repository, you can use server-side encryption with KMSlong key stored in KMSlong (KMS) to encrypt your images. For more information, see [Amazon ECR encryption at rest](https://docs.aws.amazon.com/AmazonECR/latest/userguide/encryption-at-rest.html) in the *Amazon Elastic Container Registry User Guide*.",
+      "properties": {
+        "EncryptionType": {
+          "$ref": "#/definitions/EncryptionType",
+          "description": "The encryption type to use.\n If you use the ``KMS`` encryption type, the contents of the repository will be encrypted using server-side encryption with KMSlong key stored in KMS. When you use KMS to encrypt your data, you can either use the default AWS managed KMS key for Amazon ECR, or specify your own KMS key, which you already created.\n If you use the ``KMS_DSSE`` encryption type, the contents of the repository will be encrypted with two layers of encryption using server-side encryption with the KMS Management Service key stored in KMS. Similar to the ``KMS`` encryption type, you can either use the default AWS managed KMS key for Amazon ECR, or specify your own KMS key, which you've already created. \n If you use the ``AES256`` encryption type, Amazon ECR uses server-side encryption with Amazon S3-managed encryption keys which encrypts the images in the repository using an AES256 encryption algorithm.\n For more information, see [Amazon ECR encryption at rest](https://docs.aws.amazon.com/AmazonECR/latest/userguide/encryption-at-rest.html) in the *Amazon Elastic Container Registry User Guide*."
+        },
+        "KmsKey": {
+          "$ref": "#/definitions/KmsKey",
+          "description": "If you use the ``KMS`` encryption type, specify the KMS key to use for encryption. The alias, key ID, or full ARN of the KMS key can be specified. The key must exist in the same Region as the repository. If no key is specified, the default AWS managed KMS key for Amazon ECR will be used."
+        }
+      },
+      "required": ["EncryptionType"],
+      "additionalProperties": false
+    },
+    "EncryptionType": {
+      "type": "string",
+      "description": "The encryption type to use.",
+      "enum": ["AES256", "KMS", "KMS_DSSE"]
+    },
+    "KmsKey": {
+      "type": "string",
+      "description": "If you use the KMS or KMS_DSSE encryption type, specify the CMK to use for encryption. The alias, key ID, or full ARN of the CMK can be specified. The key must exist in the same Region as the repository. If no key is specified, the default AWS managed CMK for Amazon ECR will be used.",
+      "minLength": 1,
+      "maxLength": 2048
+    },
+    "Tag": {
+      "description": "The metadata to apply to a resource to help you categorize and organize them. Each tag consists of a key and a value, both of which you define. Tag keys can have a maximum character length of 128 characters, and tag values can have a maximum length of 256 characters.",
+      "type": "object",
+      "properties": {
+        "Key": {
+          "type": "string",
+          "description": "One part of a key-value pair that make up a tag. A ``key`` is a general label that acts like a category for more specific tag values.",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "Value": {
+          "type": "string",
+          "description": "A ``value`` acts as a descriptor within a tag category (key).",
+          "minLength": 0,
+          "maxLength": 256
+        }
+      },
+      "required": ["Key", "Value"],
+      "additionalProperties": false
+    },
+    "AppliedForItem": {
+      "type": "string",
+      "description": "Enumerable Strings representing the repository creation scenarios that the template will apply towards.",
+      "enum": ["REPLICATION", "PULL_THROUGH_CACHE"]
+    }
+  },
+  "properties": {
+    "Prefix": {
+      "description": "The repository namespace prefix associated with the repository creation template.",
+      "type": "string",
+      "pattern": "^((?:[a-z0-9]+(?:[._-][a-z0-9]+)*/)*[a-z0-9]+(?:[._-][a-z0-9]+)*/?|ROOT)$",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "Description": {
+      "description": "The description associated with the repository creation template.",
+      "type": "string",
+      "minLength": 0,
+      "maxLength": 256
+    },
+    "ImageTagMutability": {
+      "type": "string",
+      "description": "The tag mutability setting for the repository. If this parameter is omitted, the default setting of MUTABLE will be used which will allow image tags to be overwritten. If IMMUTABLE is specified, all image tags within the repository will be immutable which will prevent them from being overwritten.",
+      "enum": ["MUTABLE", "IMMUTABLE"]
+    },
+    "RepositoryPolicy": {
+      "type": "string",
+      "description": "he repository policy to apply to repositories created using the template. A repository policy is a permissions policy associated with a repository to control access permissions."
+    },
+    "LifecyclePolicy": {
+      "type": "string",
+      "description": "The lifecycle policy to use for repositories created using the template.",
+      "minLength": 100,
+      "maxLength": 30720
+    },
+    "EncryptionConfiguration": {
+      "$ref": "#/definitions/EncryptionConfiguration",
+      "description": "The encryption configuration associated with the repository creation template."
+    },
+    "ResourceTags": {
+      "type": "array",
+      "maxItems": 50,
+      "uniqueItems": true,
+      "insertionOrder": false,
+      "description": "The metadata to apply to the repository to help you categorize and organize. Each tag consists of a key and an optional value, both of which you define. Tag keys can have a maximum character length of 128 characters, and tag values can have a maximum length of 256 characters.",
+      "items": {
+        "$ref": "#/definitions/Tag"
+      }
+    },
+    "AppliedFor": {
+      "type": "array",
+      "uniqueItems": true,
+      "insertionOrder": false,
+      "description": "A list of enumerable Strings representing the repository creation scenarios that this template will apply towards. The two supported scenarios are PULL_THROUGH_CACHE and REPLICATION",
+      "items": {
+        "$ref": "#/definitions/AppliedForItem"
+      }
+    },
+    "CustomRoleArn": {
+      "type": "string",
+      "description": "The ARN of the role to be assumed by Amazon ECR. Amazon ECR will assume your supplied role when the customRoleArn is specified. When this field isn't specified, Amazon ECR will use the service-linked role for the repository creation template.",
+      "maxLength": 2048,
+      "pattern": "^arn:aws[-a-z0-9]*:iam::[0-9]{12}:role/[A-Za-z0-9+=,-.@_]*$"
+    },
+    "CreatedAt": {
+      "description": "",
+      "type": "string"
+    },
+    "UpdatedAt": {
+      "description": "",
+      "type": "string"
+    }
+  },
+  "required": ["Prefix", "AppliedFor"],
+  "createOnlyProperties": ["/properties/Prefix"],
+  "readOnlyProperties": ["/properties/CreatedAt", "/properties/UpdatedAt"],
+  "primaryIdentifier": ["/properties/Prefix"],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "ecr:CreateRepositoryCreationTemplate",
+        "ecr:PutLifecyclePolicy",
+        "ecr:SetRepositoryPolicy",
+        "ecr:CreateRepository",
+        "iam:CreateServiceLinkedRole",
+        "iam:PassRole"
+      ]
+    },
+    "read": {
+      "permissions": ["ecr:DescribeRepositoryCreationTemplates"]
+    },
+    "update": {
+      "permissions": [
+        "ecr:DescribeRepositoryCreationTemplates",
+        "ecr:UpdateRepositoryCreationTemplate",
+        "ecr:PutLifecyclePolicy",
+        "ecr:SetRepositoryPolicy",
+        "ecr:CreateRepository",
+        "iam:CreateServiceLinkedRole",
+        "iam:PassRole"
+      ]
+    },
+    "delete": {
+      "permissions": ["ecr:DeleteRepositoryCreationTemplate"]
+    },
+    "list": {
+      "permissions": ["ecr:DescribeRepositoryCreationTemplates"]
+    }
+  },
+  "tagging": {
+    "taggable": false
+  },
+  "additionalProperties": false
+}

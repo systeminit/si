@@ -1,0 +1,58 @@
+{
+  "typeName": "AWS::ApiGateway::UsagePlanKey",
+  "description": "The ``AWS::ApiGateway::UsagePlanKey`` resource associates an API key with a usage plan. This association determines which users the usage plan is applied to.",
+  "sourceUrl": "https://github.com/aws-cloudformation/aws-cloudformation-resource-providers-apigateway",
+  "additionalProperties": false,
+  "properties": {
+    "KeyId": {
+      "description": "The Id of the UsagePlanKey resource.",
+      "type": "string"
+    },
+    "KeyType": {
+      "description": "",
+      "type": "string",
+      "enum": ["API_KEY"]
+    },
+    "UsagePlanId": {
+      "description": "The Id of the UsagePlan resource representing the usage plan containing the UsagePlanKey resource representing a plan customer.",
+      "type": "string"
+    },
+    "Id": {
+      "description": "",
+      "type": "string"
+    }
+  },
+  "tagging": {
+    "taggable": false
+  },
+  "required": ["KeyType", "UsagePlanId", "KeyId"],
+  "createOnlyProperties": [
+    "/properties/KeyId",
+    "/properties/UsagePlanId",
+    "/properties/KeyType"
+  ],
+  "primaryIdentifier": ["/properties/Id"],
+  "readOnlyProperties": ["/properties/Id"],
+  "handlers": {
+    "create": {
+      "permissions": ["apigateway:POST", "apigateway:GET"]
+    },
+    "read": {
+      "permissions": ["apigateway:GET"]
+    },
+    "delete": {
+      "permissions": ["apigateway:DELETE", "apigateway:GET"]
+    },
+    "list": {
+      "handlerSchema": {
+        "properties": {
+          "UsagePlanId": {
+            "$ref": "#/properties/UsagePlanId"
+          }
+        },
+        "required": ["UsagePlanId"]
+      },
+      "permissions": ["apigateway:GET"]
+    }
+  }
+}

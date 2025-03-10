@@ -1,0 +1,161 @@
+{
+  "typeName": "AWS::NotificationsContacts::EmailContact",
+  "description": "Definition of AWS::NotificationsContacts::EmailContact Resource Type",
+  "definitions": {
+    "EmailContact": {
+      "type": "object",
+      "properties": {
+        "Arn": {
+          "type": "string",
+          "pattern": "^arn:aws:notifications-contacts::[0-9]{12}:emailcontact/[a-z0-9]{27}$"
+        },
+        "Name": {
+          "type": "string",
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "[\\w-.~]+"
+        },
+        "Address": {
+          "type": "string",
+          "maxLength": 254,
+          "minLength": 6,
+          "pattern": "^(.+)@(.+)$"
+        },
+        "Status": {
+          "$ref": "#/definitions/EmailContactStatus"
+        },
+        "CreationTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "UpdateTime": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "Address",
+        "Arn",
+        "CreationTime",
+        "Name",
+        "Status",
+        "UpdateTime"
+      ],
+      "additionalProperties": false
+    },
+    "EmailContactStatus": {
+      "type": "string",
+      "enum": ["inactive", "active"]
+    },
+    "TagMap": {
+      "description": "A list of tags that are attached to the role.",
+      "type": "array",
+      "uniqueItems": false,
+      "insertionOrder": false,
+      "items": {
+        "$ref": "#/definitions/Tag"
+      }
+    },
+    "Tag": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "Key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "Value": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 256
+        }
+      },
+      "required": ["Key", "Value"]
+    }
+  },
+  "properties": {
+    "Arn": {
+      "type": "string",
+      "pattern": "^arn:aws:notifications-contacts::[0-9]{12}:emailcontact/[a-z0-9]{27}$"
+    },
+    "EmailAddress": {
+      "type": "string",
+      "maxLength": 254,
+      "minLength": 6,
+      "pattern": "^(.+)@(.+)$"
+    },
+    "Name": {
+      "type": "string",
+      "maxLength": 64,
+      "minLength": 1,
+      "pattern": "[\\w-.~]+"
+    },
+    "EmailContact": {
+      "$ref": "#/definitions/EmailContact"
+    },
+    "Tags": {
+      "$ref": "#/definitions/TagMap"
+    }
+  },
+  "required": ["EmailAddress", "Name"],
+  "readOnlyProperties": [
+    "/properties/Arn",
+    "/properties/EmailContact",
+    "/properties/EmailContact/Arn",
+    "/properties/EmailContact/Address",
+    "/properties/EmailContact/Name",
+    "/properties/EmailContact/Status",
+    "/properties/EmailContact/CreationTime",
+    "/properties/EmailContact/UpdateTime"
+  ],
+  "writeOnlyProperties": ["/properties/EmailAddress", "/properties/Name"],
+  "createOnlyProperties": [
+    "/properties/EmailAddress",
+    "/properties/Name",
+    "/properties/Tags"
+  ],
+  "primaryIdentifier": ["/properties/Arn"],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "notifications-contacts:CreateEmailContact",
+        "notifications-contacts:GetEmailContact",
+        "notifications-contacts:SendActivationCode",
+        "notifications-contacts:ListEmailContacts",
+        "notifications-contacts:TagResource",
+        "notifications-contacts:UntagResource",
+        "notifications-contacts:ListTagsForResource"
+      ]
+    },
+    "read": {
+      "permissions": [
+        "notifications-contacts:GetEmailContact",
+        "notifications-contacts:ListTagsForResource",
+        "notifications-contacts:TagResource"
+      ]
+    },
+    "delete": {
+      "permissions": [
+        "notifications-contacts:DeleteEmailContact",
+        "notifications-contacts:GetEmailContact"
+      ]
+    },
+    "list": {
+      "permissions": ["notifications-contacts:ListEmailContacts"]
+    }
+  },
+  "tagging": {
+    "taggable": true,
+    "tagOnCreate": true,
+    "tagUpdatable": false,
+    "cloudFormationSystemTags": true,
+    "tagProperty": "/properties/Tags",
+    "permissions": [
+      "notifications-contacts:TagResource",
+      "notifications-contacts:UntagResource",
+      "notifications-contacts:ListTagsForResource"
+    ]
+  },
+  "additionalProperties": false
+}

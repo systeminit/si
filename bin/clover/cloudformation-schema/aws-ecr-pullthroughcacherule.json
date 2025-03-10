@@ -1,0 +1,130 @@
+{
+  "typeName": "AWS::ECR::PullThroughCacheRule",
+  "description": "The ``AWS::ECR::PullThroughCacheRule`` resource creates or updates a pull through cache rule. A pull through cache rule provides a way to cache images from an upstream registry in your Amazon ECR private registry.",
+  "sourceUrl": "https://github.com/aws-cloudformation/aws-cloudformation-resource-providers-ecr.git",
+  "definitions": {
+    "PullThroughCacheRule": {
+      "minItems": 0,
+      "maxItems": 50,
+      "type": "object",
+      "properties": {
+        "RegistryId": {
+          "$ref": "#/definitions/RegistryId"
+        },
+        "EcrRepositoryPrefix": {
+          "$ref": "#/definitions/EcrRepositoryPrefix"
+        },
+        "UpstreamRegistryUrl": {
+          "$ref": "#/definitions/UpstreamRegistryUrl"
+        },
+        "CredentialArn": {
+          "$ref": "#/definitions/CredentialArn"
+        },
+        "UpstreamRegistry": {
+          "$ref": "#/definitions/UpstreamRegistry"
+        }
+      },
+      "required": ["EcrRepositoryPrefix", "UpstreamRegistryUrl"],
+      "additionalProperties": false,
+      "description": ""
+    },
+    "RegistryId": {
+      "type": "string",
+      "description": "The account ID of the registry pull-through cache repository will be created in.",
+      "pattern": "^[0-9]{12}$"
+    },
+    "EcrRepositoryPrefix": {
+      "type": "string",
+      "description": "The ECRRepositoryPrefix is a custom alias for upstream registry url.",
+      "minLength": 2,
+      "maxLength": 30,
+      "pattern": "(?:[a-z0-9]+(?:[._-][a-z0-9]+)*/)*[a-z0-9]+(?:[._-][a-z0-9]+)*"
+    },
+    "UpstreamRegistryUrl": {
+      "type": "string",
+      "description": "The upstreamRegistryUrl is the endpoint of upstream registry url of the public repository to be cached"
+    },
+    "CredentialArn": {
+      "type": "string",
+      "description": "The Amazon Resource Name (ARN) of the AWS Secrets Manager secret that identifies the credentials to authenticate to the upstream registry.",
+      "minLength": 50,
+      "maxLength": 612,
+      "pattern": "^arn:aws:secretsmanager:[a-zA-Z0-9-:]+:secret:ecr\\-pullthroughcache\\/[a-zA-Z0-9\\/_+=.@-]+$"
+    },
+    "UpstreamRegistry": {
+      "type": "string",
+      "description": "The name of the upstream registry."
+    }
+  },
+  "properties": {
+    "EcrRepositoryPrefix": {
+      "type": "string",
+      "description": "The Amazon ECR repository prefix associated with the pull through cache rule.",
+      "minLength": 2,
+      "maxLength": 30,
+      "pattern": "(?:[a-z0-9]+(?:[._-][a-z0-9]+)*/)*[a-z0-9]+(?:[._-][a-z0-9]+)*"
+    },
+    "UpstreamRegistryUrl": {
+      "type": "string",
+      "description": "The upstream registry URL associated with the pull through cache rule."
+    },
+    "CredentialArn": {
+      "type": "string",
+      "description": "The ARN of the Secrets Manager secret associated with the pull through cache rule.",
+      "minLength": 50,
+      "maxLength": 612,
+      "pattern": "^arn:aws:secretsmanager:[a-zA-Z0-9-:]+:secret:ecr\\-pullthroughcache\\/[a-zA-Z0-9\\/_+=.@-]+$"
+    },
+    "UpstreamRegistry": {
+      "type": "string",
+      "description": "The name of the upstream source registry associated with the pull through cache rule."
+    }
+  },
+  "tagging": {
+    "taggable": false
+  },
+  "primaryIdentifier": ["/properties/EcrRepositoryPrefix"],
+  "createOnlyProperties": [
+    "/properties/EcrRepositoryPrefix",
+    "/properties/UpstreamRegistryUrl",
+    "/properties/CredentialArn",
+    "/properties/UpstreamRegistry"
+  ],
+  "writeOnlyProperties": [
+    "/properties/CredentialArn",
+    "/properties/UpstreamRegistry"
+  ],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "ecr:DescribePullThroughCacheRules",
+        "ecr:CreatePullThroughCacheRule",
+        "ecr:DeletePullThroughCacheRule",
+        "iam:CreateServiceLinkedRole",
+        "secretsmanager:GetSecretValue"
+      ]
+    },
+    "read": {
+      "permissions": ["ecr:DescribePullThroughCacheRules"]
+    },
+    "update": {
+      "permissions": [
+        "ecr:DescribePullThroughCacheRules",
+        "ecr:CreatePullThroughCacheRule",
+        "ecr:DeletePullThroughCacheRule",
+        "iam:CreateServiceLinkedRole",
+        "secretsmanager:GetSecretValue"
+      ]
+    },
+    "delete": {
+      "permissions": [
+        "ecr:DescribePullThroughCacheRules",
+        "ecr:DeletePullThroughCacheRule"
+      ]
+    },
+    "list": {
+      "permissions": ["ecr:DescribePullThroughCacheRules"]
+    }
+  },
+  "additionalProperties": false
+}

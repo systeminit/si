@@ -1,0 +1,195 @@
+{
+  "sourceUrl": "https://github.com/aws-cloudformation/aws-cloudformation-resource-providers-networkfirewall.git",
+  "tagging": {
+    "permissions": [
+      "network-firewall:TagResource",
+      "network-firewall:UntagResource",
+      "network-firewall:ListTagsForResource"
+    ],
+    "taggable": true,
+    "tagOnCreate": true,
+    "tagUpdatable": true,
+    "tagProperty": "/properties/Tags",
+    "cloudFormationSystemTags": true
+  },
+  "handlers": {
+    "read": {
+      "permissions": [
+        "network-firewall:DescribeFirewall",
+        "network-firewall:ListTagsForResource"
+      ]
+    },
+    "create": {
+      "permissions": [
+        "ec2:CreateVpcEndpoint",
+        "ec2:DescribeVpcEndpoints",
+        "ec2:DescribeSubnets",
+        "ec2:DescribeVpcs",
+        "iam:CreateServiceLinkedRole",
+        "network-firewall:CreateFirewall",
+        "network-firewall:DescribeFirewallPolicy",
+        "network-firewall:DescribeRuleGroup",
+        "network-firewall:TagResource",
+        "network-firewall:AssociateSubnets",
+        "network-firewall:AssociateFirewallPolicy",
+        "network-firewall:DescribeFirewall"
+      ]
+    },
+    "update": {
+      "permissions": [
+        "network-firewall:AssociateSubnets",
+        "network-firewall:DisassociateSubnets",
+        "network-firewall:UpdateFirewallDescription",
+        "network-firewall:UpdateFirewallDeleteProtection",
+        "network-firewall:UpdateSubnetChangeProtection",
+        "network-firewall:UpdateFirewallPolicyChangeProtection",
+        "network-firewall:AssociateFirewallPolicy",
+        "network-firewall:TagResource",
+        "network-firewall:UntagResource",
+        "network-firewall:DescribeFirewall",
+        "network-firewall:UpdateFirewallAnalysisSettings"
+      ]
+    },
+    "list": {
+      "permissions": ["network-firewall:ListFirewalls"]
+    },
+    "delete": {
+      "permissions": [
+        "ec2:DeleteVpcEndpoints",
+        "ec2:DescribeRouteTables",
+        "logs:DescribeLogGroups",
+        "logs:DescribeResourcePolicies",
+        "logs:GetLogDelivery",
+        "logs:ListLogDeliveries",
+        "network-firewall:DeleteFirewall",
+        "network-firewall:UntagResource",
+        "network-firewall:DescribeFirewall"
+      ]
+    }
+  },
+  "typeName": "AWS::NetworkFirewall::Firewall",
+  "readOnlyProperties": [
+    "/properties/FirewallArn",
+    "/properties/FirewallId",
+    "/properties/EndpointIds"
+  ],
+  "description": "Resource type definition for AWS::NetworkFirewall::Firewall",
+  "createOnlyProperties": ["/properties/VpcId", "/properties/FirewallName"],
+  "additionalProperties": false,
+  "primaryIdentifier": ["/properties/FirewallArn"],
+  "definitions": {
+    "ResourceArn": {
+      "minLength": 1,
+      "pattern": "^arn:aws.*$",
+      "description": "A resource ARN.",
+      "type": "string",
+      "maxLength": 256
+    },
+    "EnabledAnalysisType": {
+      "description": "An analysis type.",
+      "type": "string",
+      "enum": ["TLS_SNI", "HTTP_HOST"]
+    },
+    "SubnetMapping": {
+      "additionalProperties": false,
+      "type": "object",
+      "properties": {
+        "IPAddressType": {
+          "description": "A IPAddressType",
+          "type": "string"
+        },
+        "SubnetId": {
+          "description": "A SubnetId.",
+          "type": "string"
+        }
+      },
+      "required": ["SubnetId"]
+    },
+    "EndpointId": {
+      "description": "An endpoint Id.",
+      "type": "string"
+    },
+    "Tag": {
+      "additionalProperties": false,
+      "type": "object",
+      "properties": {
+        "Value": {
+          "minLength": 0,
+          "type": "string",
+          "maxLength": 255
+        },
+        "Key": {
+          "minLength": 1,
+          "type": "string",
+          "maxLength": 128
+        }
+      },
+      "required": ["Value", "Key"]
+    }
+  },
+  "required": ["FirewallName", "FirewallPolicyArn", "VpcId", "SubnetMappings"],
+  "properties": {
+    "FirewallPolicyArn": {
+      "$ref": "#/definitions/ResourceArn"
+    },
+    "Description": {
+      "pattern": "^.*$",
+      "type": "string",
+      "maxLength": 512
+    },
+    "FirewallId": {
+      "minLength": 36,
+      "pattern": "^([0-9a-f]{8})-([0-9a-f]{4}-){3}([0-9a-f]{12})$",
+      "type": "string",
+      "maxLength": 36
+    },
+    "SubnetChangeProtection": {
+      "type": "boolean"
+    },
+    "FirewallName": {
+      "minLength": 1,
+      "pattern": "^[a-zA-Z0-9-]+$",
+      "type": "string",
+      "maxLength": 128
+    },
+    "VpcId": {
+      "minLength": 1,
+      "pattern": "^vpc-[0-9a-f]+$",
+      "type": "string",
+      "maxLength": 128
+    },
+    "DeleteProtection": {
+      "type": "boolean"
+    },
+    "FirewallArn": {
+      "$ref": "#/definitions/ResourceArn"
+    },
+    "EndpointIds": {
+      "insertionOrder": false,
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/EndpointId"
+      }
+    },
+    "FirewallPolicyChangeProtection": {
+      "type": "boolean"
+    },
+    "Tags": {
+      "uniqueItems": true,
+      "insertionOrder": false,
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Tag"
+      }
+    },
+    "SubnetMappings": {
+      "minItems": 1,
+      "uniqueItems": true,
+      "insertionOrder": false,
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/SubnetMapping"
+      }
+    }
+  }
+}

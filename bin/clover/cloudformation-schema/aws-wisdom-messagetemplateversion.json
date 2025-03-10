@@ -1,0 +1,69 @@
+{
+  "typeName": "AWS::Wisdom::MessageTemplateVersion",
+  "description": "A version for the specified customer-managed message template within the specified knowledge base.",
+  "sourceUrl": "https://github.com/aws-cloudformation/aws-cloudformation-rpdk.git",
+  "properties": {
+    "MessageTemplateArn": {
+      "description": "The unqualified Amazon Resource Name (ARN) of the message template.",
+      "type": "string",
+      "pattern": "^arn:[a-z-]*?:wisdom:[a-z0-9-]*?:[0-9]{12}:[a-z-]*?/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}(?:/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})?$"
+    },
+    "MessageTemplateVersionArn": {
+      "description": "The unqualified Amazon Resource Name (ARN) of the message template version.",
+      "type": "string",
+      "pattern": "^arn:[a-z-]*?:wisdom:[a-z0-9-]*?:[0-9]{12}:[a-z-]*?/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}(?:/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}):[0-9]+?$"
+    },
+    "MessageTemplateContentSha256": {
+      "description": "The content SHA256 of the message template.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "MessageTemplateVersionNumber": {
+      "description": "Current version number of the message template.",
+      "type": "number"
+    }
+  },
+  "additionalProperties": false,
+  "tagging": {
+    "taggable": false
+  },
+  "required": ["MessageTemplateArn"],
+  "readOnlyProperties": [
+    "/properties/MessageTemplateVersionNumber",
+    "/properties/MessageTemplateVersionArn"
+  ],
+  "createOnlyProperties": ["/properties/MessageTemplateArn"],
+  "conditionalCreateOnlyProperties": [
+    "/properties/MessageTemplateContentSha256"
+  ],
+  "primaryIdentifier": ["/properties/MessageTemplateVersionArn"],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "wisdom:CreateMessageTemplateVersion",
+        "wisdom:ListMessageTemplateVersions"
+      ]
+    },
+    "delete": {
+      "permissions": ["wisdom:DeleteMessageTemplate"]
+    },
+    "update": {
+      "permissions": ["wisdom:CreateMessageTemplateVersion"]
+    },
+    "list": {
+      "handlerSchema": {
+        "properties": {
+          "MessageTemplateArn": {
+            "$ref": "#/properties/MessageTemplateArn"
+          }
+        },
+        "required": ["MessageTemplateArn"]
+      },
+      "permissions": ["wisdom:ListMessageTemplateVersions"]
+    },
+    "read": {
+      "permissions": ["wisdom:GetMessageTemplate"]
+    }
+  }
+}

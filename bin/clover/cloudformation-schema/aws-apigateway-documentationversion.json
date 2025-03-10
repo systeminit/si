@@ -1,0 +1,60 @@
+{
+  "typeName": "AWS::ApiGateway::DocumentationVersion",
+  "description": "The ``AWS::ApiGateway::DocumentationVersion`` resource creates a snapshot of the documentation for an API. For more information, see [Representation of API Documentation in API Gateway](https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-documenting-api-content-representation.html) in the *API Gateway Developer Guide*.",
+  "sourceUrl": "https://github.com/aws-cloudformation/aws-cloudformation-resource-providers-apigateway",
+  "definitions": {},
+  "properties": {
+    "Description": {
+      "description": "",
+      "type": "string"
+    },
+    "DocumentationVersion": {
+      "description": "",
+      "type": "string",
+      "minLength": 1
+    },
+    "RestApiId": {
+      "description": "",
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "additionalProperties": false,
+  "required": ["DocumentationVersion", "RestApiId"],
+  "createOnlyProperties": [
+    "/properties/DocumentationVersion",
+    "/properties/RestApiId"
+  ],
+  "tagging": {
+    "taggable": false
+  },
+  "primaryIdentifier": [
+    "/properties/DocumentationVersion",
+    "/properties/RestApiId"
+  ],
+  "handlers": {
+    "create": {
+      "permissions": ["apigateway:GET", "apigateway:POST"]
+    },
+    "read": {
+      "permissions": ["apigateway:GET"]
+    },
+    "update": {
+      "permissions": ["apigateway:GET", "apigateway:PATCH"]
+    },
+    "delete": {
+      "permissions": ["apigateway:DELETE"]
+    },
+    "list": {
+      "handlerSchema": {
+        "properties": {
+          "RestApiId": {
+            "$ref": "#/properties/RestApiId"
+          }
+        },
+        "required": ["RestApiId"]
+      },
+      "permissions": ["apigateway:GET"]
+    }
+  }
+}

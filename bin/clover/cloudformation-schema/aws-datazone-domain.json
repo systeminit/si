@@ -1,0 +1,208 @@
+{
+  "typeName": "AWS::DataZone::Domain",
+  "description": "A domain is an organizing entity for connecting together assets, users, and their projects",
+  "definitions": {
+    "AuthType": {
+      "type": "string",
+      "description": "The type of single sign-on in Amazon DataZone.",
+      "enum": ["IAM_IDC", "DISABLED"]
+    },
+    "DomainStatus": {
+      "type": "string",
+      "description": "The status of the Amazon DataZone domain.",
+      "enum": [
+        "CREATING",
+        "AVAILABLE",
+        "CREATION_FAILED",
+        "DELETING",
+        "DELETED",
+        "DELETION_FAILED"
+      ]
+    },
+    "SingleSignOn": {
+      "type": "object",
+      "description": "The single-sign on configuration of the Amazon DataZone domain.",
+      "properties": {
+        "Type": {
+          "$ref": "#/definitions/AuthType"
+        },
+        "UserAssignment": {
+          "$ref": "#/definitions/UserAssignment"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Tag": {
+      "description": "A key-value pair to associate with the domain.",
+      "type": "object",
+      "properties": {
+        "Key": {
+          "type": "string",
+          "description": "The key name of the tag.",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "Value": {
+          "type": "string",
+          "description": "The value for the tag.",
+          "minLength": 0,
+          "maxLength": 256
+        }
+      },
+      "required": ["Key", "Value"],
+      "additionalProperties": false
+    },
+    "UserAssignment": {
+      "type": "string",
+      "description": "The single sign-on user assignment in Amazon DataZone.",
+      "enum": ["AUTOMATIC", "MANUAL"]
+    }
+  },
+  "properties": {
+    "Arn": {
+      "type": "string",
+      "description": "The ARN of the Amazon DataZone domain.",
+      "pattern": "^arn:aws(|-cn|-us-gov):datazone:\\w+(?:-\\w+)+:\\d{12}:domain/dzd[-_][a-zA-Z0-9_-]{1,36}$"
+    },
+    "CreatedAt": {
+      "type": "string",
+      "description": "The timestamp of when the Amazon DataZone domain was last updated.",
+      "format": "date-time"
+    },
+    "Description": {
+      "type": "string",
+      "description": "The description of the Amazon DataZone domain."
+    },
+    "DomainExecutionRole": {
+      "type": "string",
+      "description": "The domain execution role that is created when an Amazon DataZone domain is created. The domain execution role is created in the AWS account that houses the Amazon DataZone domain.",
+      "pattern": "^arn:aws[^:]*:iam::\\d{12}:(role|role/service-role)/[\\w+=,.@-]*$"
+    },
+    "ServiceRole": {
+      "type": "string",
+      "description": "The service role of the domain that is created.",
+      "pattern": "^arn:aws[^:]*:iam::\\d{12}:(role|role/service-role)/[\\w+=,.@-]*$"
+    },
+    "DomainVersion": {
+      "type": "string",
+      "description": "The version of the domain.",
+      "enum": ["V1", "V2"]
+    },
+    "Id": {
+      "type": "string",
+      "description": "The id of the Amazon DataZone domain.",
+      "pattern": "^dzd[-_][a-zA-Z0-9_-]{1,36}$"
+    },
+    "KmsKeyIdentifier": {
+      "type": "string",
+      "maxLength": 1024,
+      "description": "The identifier of the AWS Key Management Service (KMS) key that is used to encrypt the Amazon DataZone domain, metadata, and reporting data.",
+      "minLength": 1,
+      "pattern": "^arn:aws(|-cn|-us-gov):kms:[a-zA-Z0-9-]*:[0-9]{12}:key/[a-zA-Z0-9-]{36}$"
+    },
+    "LastUpdatedAt": {
+      "type": "string",
+      "description": "The timestamp of when the Amazon DataZone domain was last updated.",
+      "format": "date-time"
+    },
+    "ManagedAccountId": {
+      "type": "string",
+      "description": "The identifier of the AWS account that manages the domain."
+    },
+    "Name": {
+      "type": "string",
+      "description": "The name of the Amazon DataZone domain."
+    },
+    "PortalUrl": {
+      "type": "string",
+      "description": "The URL of the data portal for this Amazon DataZone domain."
+    },
+    "SingleSignOn": {
+      "$ref": "#/definitions/SingleSignOn",
+      "description": "The single-sign on configuration of the Amazon DataZone domain."
+    },
+    "Status": {
+      "$ref": "#/definitions/DomainStatus",
+      "description": "The status of the Amazon DataZone domain."
+    },
+    "Tags": {
+      "type": "array",
+      "description": "The tags specified for the Amazon DataZone domain.",
+      "uniqueItems": true,
+      "insertionOrder": false,
+      "items": {
+        "$ref": "#/definitions/Tag"
+      }
+    }
+  },
+  "required": ["DomainExecutionRole", "Name"],
+  "readOnlyProperties": [
+    "/properties/Arn",
+    "/properties/CreatedAt",
+    "/properties/Id",
+    "/properties/LastUpdatedAt",
+    "/properties/ManagedAccountId",
+    "/properties/PortalUrl",
+    "/properties/Status"
+  ],
+  "createOnlyProperties": [
+    "/properties/KmsKeyIdentifier",
+    "/properties/DomainVersion"
+  ],
+  "primaryIdentifier": ["/properties/Id"],
+  "additionalIdentifiers": [["/properties/Name"]],
+  "tagging": {
+    "taggable": true,
+    "tagOnCreate": true,
+    "tagUpdatable": true,
+    "cloudFormationSystemTags": false,
+    "tagProperty": "/properties/Tags",
+    "permissions": ["datazone:TagResource", "datazone:UntagResource"]
+  },
+  "handlers": {
+    "create": {
+      "permissions": [
+        "datazone:CreateDomain",
+        "datazone:UpdateDomain",
+        "datazone:GetDomain",
+        "datazone:TagResource",
+        "sso:CreateManagedApplicationInstance",
+        "sso:DeleteManagedApplicationInstance",
+        "sso:PutApplicationAssignmentConfiguration",
+        "sso:ListInstances",
+        "sso:PutApplicationAccessScope",
+        "iam:PassRole"
+      ]
+    },
+    "read": {
+      "permissions": ["datazone:GetDomain"]
+    },
+    "update": {
+      "permissions": [
+        "datazone:UpdateDomain",
+        "datazone:GetDomain",
+        "datazone:TagResource",
+        "datazone:UntagResource",
+        "sso:CreateManagedApplicationInstance",
+        "sso:DeleteManagedApplicationInstance",
+        "sso:PutApplicationAssignmentConfiguration",
+        "sso:ListInstances",
+        "sso:PutApplicationAccessScope",
+        "iam:PassRole"
+      ]
+    },
+    "delete": {
+      "permissions": [
+        "datazone:DeleteDomain",
+        "datazone:GetDomain",
+        "sso:DeleteManagedApplicationInstance",
+        "sso:PutApplicationAssignmentConfiguration",
+        "sso:ListInstances"
+      ]
+    },
+    "list": {
+      "permissions": ["datazone:ListDomains"]
+    }
+  },
+  "additionalProperties": false
+}

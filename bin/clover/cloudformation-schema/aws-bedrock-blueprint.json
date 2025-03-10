@@ -1,0 +1,162 @@
+{
+  "typeName": "AWS::Bedrock::Blueprint",
+  "description": "Definition of AWS::Bedrock::Blueprint Resource Type",
+  "definitions": {
+    "Tag": {
+      "type": "object",
+      "description": "Definition of the key/value pair for a tag",
+      "properties": {
+        "Key": {
+          "type": "string",
+          "description": "Key for the tag",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9\\s._:/=+@-]*$"
+        },
+        "Value": {
+          "type": "string",
+          "description": "Value for the tag",
+          "minLength": 0,
+          "maxLength": 256,
+          "pattern": "^[a-zA-Z0-9\\s._:/=+@-]*$"
+        }
+      },
+      "required": ["Key", "Value"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "BlueprintArn": {
+      "type": "string",
+      "maxLength": 128,
+      "pattern": "^arn:aws(|-cn|-us-gov):bedrock:[a-zA-Z0-9-]*:(aws|[0-9]{12}):blueprint/(bedrock-data-automation-public-[a-zA-Z0-9-_]{1,30}|[a-zA-Z0-9-]{12,36})$",
+      "description": "ARN of a Blueprint"
+    },
+    "BlueprintName": {
+      "type": "string",
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[a-zA-Z0-9-_]+$",
+      "description": "Name of the Blueprint"
+    },
+    "CreationTime": {
+      "type": "string",
+      "description": "Creation timestamp",
+      "format": "date-time"
+    },
+    "LastModifiedTime": {
+      "type": "string",
+      "description": "Last modified timestamp",
+      "format": "date-time"
+    },
+    "Schema": {
+      "type": "object",
+      "description": "Schema of the blueprint"
+    },
+    "Type": {
+      "type": "string",
+      "description": "Modality Type",
+      "enum": ["DOCUMENT", "IMAGE"]
+    },
+    "BlueprintStage": {
+      "type": "string",
+      "description": "Stage of the Blueprint",
+      "enum": ["DEVELOPMENT", "LIVE"]
+    },
+    "KmsKeyId": {
+      "type": "string",
+      "description": "KMS key identifier",
+      "minLength": 1,
+      "maxLength": 2048
+    },
+    "KmsEncryptionContext": {
+      "type": "object",
+      "description": "KMS encryption context",
+      "patternProperties": {
+        "^.*$": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "dependencies": {
+        "KmsEncryptionContext": ["KmsKeyId"]
+      }
+    },
+    "Tags": {
+      "description": "List of Tags",
+      "type": "array",
+      "insertionOrder": false,
+      "minItems": 0,
+      "maxItems": 200,
+      "items": {
+        "$ref": "#/definitions/Tag"
+      }
+    }
+  },
+  "required": ["BlueprintName", "Schema", "Type"],
+  "primaryIdentifier": ["/properties/BlueprintArn"],
+  "createOnlyProperties": ["/properties/BlueprintName", "/properties/Type"],
+  "readOnlyProperties": [
+    "/properties/BlueprintArn",
+    "/properties/BlueprintStage",
+    "/properties/CreationTime",
+    "/properties/LastModifiedTime"
+  ],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "bedrock:CreateBlueprint",
+        "bedrock:GetBlueprint",
+        "bedrock:TagResource",
+        "bedrock:ListTagsForResource",
+        "kms:DescribeKey",
+        "kms:Decrypt",
+        "kms:GenerateDataKey"
+      ]
+    },
+    "read": {
+      "permissions": [
+        "bedrock:GetBlueprint",
+        "bedrock:ListTagsForResource",
+        "kms:DescribeKey",
+        "kms:Decrypt"
+      ]
+    },
+    "update": {
+      "permissions": [
+        "bedrock:UpdateBlueprint",
+        "bedrock:GetBlueprint",
+        "bedrock:TagResource",
+        "bedrock:UntagResource",
+        "bedrock:ListTagsForResource",
+        "kms:DescribeKey",
+        "kms:Decrypt",
+        "kms:GenerateDataKey"
+      ]
+    },
+    "delete": {
+      "permissions": [
+        "bedrock:DeleteBlueprint",
+        "bedrock:GetBlueprint",
+        "kms:DescribeKey",
+        "kms:Decrypt"
+      ]
+    },
+    "list": {
+      "permissions": ["bedrock:ListBlueprints"]
+    }
+  },
+  "tagging": {
+    "cloudFormationSystemTags": false,
+    "tagOnCreate": true,
+    "tagProperty": "/properties/Tags",
+    "tagUpdatable": true,
+    "taggable": true,
+    "permissions": [
+      "bedrock:TagResource",
+      "bedrock:UntagResource",
+      "bedrock:ListTagsForResource"
+    ]
+  },
+  "additionalProperties": false
+}
