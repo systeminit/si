@@ -1,14 +1,14 @@
-use color_eyre::Result;
 #[cfg(target_os = "linux")]
 use cyclone_server::process_gatherer;
 use cyclone_server::{Config, Runnable as _, Server};
 #[cfg(target_os = "linux")]
 use si_firecracker::stream::TcpStreamForwarder;
-use si_service::startup;
-use telemetry_application::prelude::*;
-use tokio_util::{sync::CancellationToken, task::TaskTracker};
+use si_service::{color_eyre, prelude::*, startup, telemetry_application};
 
 mod args;
+
+const BIN_NAME: &str = env!("CARGO_BIN_NAME");
+const LIB_NAME: &str = concat!(env!("CARGO_BIN_NAME"), "_server");
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -26,17 +26,18 @@ async fn main() -> Result<()> {
                     .then_some(ConsoleLogFormat::Json)
                     .unwrap_or_default(),
             )
-            .service_name("cyclone")
+            .service_name(BIN_NAME)
             .service_namespace("si")
             .log_env_var_prefix("SI")
-            .app_modules(vec!["cyclone", "cyclone_server"])
+            .app_modules(vec![BIN_NAME, LIB_NAME])
             .interesting_modules(vec!["cyclone_core"])
             .build()?;
 
         telemetry_application::init(config, &task_tracker, shutdown_token.clone())?
     };
+    tokio_watchdog::spawn(BIN_NAME, shutdown_token.clone())?;
 
-    startup::startup("cyclone").await?;
+    startup::startup(BIN_NAME).await?;
 
     if args.verbose > 0 {
         telemetry

@@ -32,4 +32,5 @@ pub mod prelude {
     pub use si_std::SensitiveString;
     pub use telemetry_application::prelude::*;
     pub use tokio_util::{sync::CancellationToken, task::TaskTracker};
+    pub use tokio_watchdog;
 }

@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use clap::{ArgAction, Parser};
 use forklift_server::{Config, ConfigError, ConfigFile, StandardConfigFile};
-use si_std::SensitiveString;
+use si_service::prelude::*;
 
 const NAME: &str = "forklift";
 
