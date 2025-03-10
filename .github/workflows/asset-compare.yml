@@ -27,9 +27,9 @@ jobs:
         with:
           script: |
             const commentBody = context.payload.comment.body || '';
-            if (!commentBody) {
+            if (!commentBody || commentBody === "") {
               console.log('Comment body is empty or undefined');
-              core.setFailed('Malformed diff, no name found!');
+              core.setFailed('No name passed, nothing to diff');
               return '';
             }
             // Extract everything after '/diff '
@@ -37,6 +37,11 @@ jobs:
             console.log(`Extracted: ${name}`);
             return name;
           result-encoding: string
+
+      - name: Generate Specs
+        run: |
+          cd bin/clover
+          LOG_LEVEL=debug deno task run generate-specs
 
       - name: Generate Diff
         run: |
