@@ -3,7 +3,7 @@ use std::{
     convert::Infallible,
     fmt,
     future::{Future, IntoFuture as _},
-    io,
+    io::{self},
     sync::Arc,
     time::Duration,
 };
@@ -21,13 +21,17 @@ use naxum::{
     MessageHead, ServiceBuilder, ServiceExt as _, TowerServiceExt as _,
 };
 use si_crypto::VeritechDecryptionKey;
-use si_data_nats::{async_nats, jetstream, NatsClient, Subscriber};
+use si_data_nats::{
+    async_nats::{self},
+    State, Subscriber,
+};
 use si_pool_noodle::{
     instance::cyclone::{LocalUdsInstance, LocalUdsInstanceSpec},
     pool_noodle::PoolNoodleConfig,
     KillExecutionRequest, PoolNoodle, Spec,
 };
 use telemetry::prelude::*;
+use telemetry_utils::metric;
 use tokio::sync::{oneshot, Mutex};
 use tokio_util::sync::CancellationToken;
 use veritech_core::{incoming_subject, veritech_work_queue, ExecutionId, GetNatsSubjectFor};
@@ -35,8 +39,14 @@ use veritech_core::{incoming_subject, veritech_work_queue, ExecutionId, GetNatsS
 use crate::{
     app_state::{AppState, KillAppState},
     config::CycloneSpec,
-    handlers, Config, ServerError, ServerResult,
+    handlers,
+    nats_client::NatsClient,
+    Config, ServerError, ServerResult,
 };
+
+mod pause_resume_stream;
+
+pub use pause_resume_stream::PauseResumeController;
 
 const CONSUMER_NAME: &str = "veritech-server";
 const CONSUMER_MAX_DELIVERY: i64 = 5;
@@ -74,8 +84,16 @@ impl fmt::Debug for Server {
 
 impl Server {
     #[instrument(name = "veritech.init.from_config", level = "info", skip_all)]
-    pub async fn from_config(config: Config, token: CancellationToken) -> ServerResult<Self> {
-        let nats = Self::connect_to_nats(&config).await?;
+    pub async fn from_config(
+        config: Config,
+        token: CancellationToken,
+    ) -> ServerResult<(Self, impl Future<Output = ()>)> {
+        let nats = NatsClient::new(config.nats().to_owned()).await?;
+        let context = si_data_nats::jetstream::new(
+            si_data_nats::Client::new_for_veritech(config.nats())
+                .await
+                .expect("poop"),
+        );
 
         let metadata = Arc::new(ServerMetadata {
             instance_id: config.instance_id().into(),
@@ -136,7 +154,19 @@ impl Server {
                     .run()
                     .map_err(|e| ServerError::CyclonePool(Box::new(e)))?;
 
-                let inner_future = Self::build_app(
+                // Reset metrics before creating the naxum apps.
+                metric!(counter.veritech.handlers_doing_work = 0);
+                metric!(counter.veritech.pool_exhausted = 0);
+                metric!(counter.veritech.pause_resume_stream.missing_heartbeat = 0);
+                metric!(counter.veritech.pause_resume_stream.paused = 0);
+                metric!(counter.veritech.pause_resume_stream.sleep_done = 0);
+                metric!(counter.veritech.pause_resume_stream.subscribing = 0);
+                metric!(counter.veritech.pause_resume_stream.subscribed = 0);
+                metric!(counter.veritech.pause_resume_stream.stream_error = 0);
+
+                // let inner_future = if config.exclude_pause_resume_stream_wrapper() {
+                info!("building app without pause resume stream wrapper");
+                let inner_future = Self::build_app_without_pause_resume_stream(
                     metadata.clone(),
                     config.concurrency_limit(),
                     cyclone_pool,
@@ -145,19 +175,46 @@ impl Server {
                     nats.clone(),
                     kill_senders.clone(),
                     token.clone(),
+                    &context,
+                )
+                .await?;
+                // } else {
+                //     info!("building app with pause resume stream wrapper");
+                //     Self::build_app(
+                //         metadata.clone(),
+                //         config.concurrency_limit(),
+                //         cyclone_pool,
+                //         Arc::new(decryption_key),
+                //         config.cyclone_client_execution_timeout(),
+                //         nats.clone(),
+                //         kill_senders.clone(),
+                //         token.clone(),
+                //         config.pause_duration(),
+                //         config.reconnect_backoff_duration(),
+                //     )
+                //     .await?
+                // };
+
+                let kill_inner_future = Self::build_kill_app(
+                    metadata.clone(),
+                    nats.clone(),
+                    kill_senders,
+                    token.clone(),
                 )
                 .await?;
 
-                let kill_inner_future =
-                    Self::build_kill_app(metadata.clone(), nats, kill_senders, token.clone())
-                        .await?;
+                let internal_heartbeat_inner_future =
+                    Self::run_internal_heartbeat_app(nats, token.clone());
 
-                Ok(Server {
-                    metadata,
-                    inner: inner_future,
-                    kill_inner: kill_inner_future,
-                    shutdown_token: token,
-                })
+                Ok((
+                    Server {
+                        metadata,
+                        inner: inner_future,
+                        kill_inner: kill_inner_future,
+                        shutdown_token: token,
+                    },
+                    internal_heartbeat_inner_future,
+                ))
             }
         }
     }
@@ -180,8 +237,146 @@ impl Server {
         Ok(())
     }
 
+    async fn run_internal_heartbeat_app(nats: NatsClient, token: CancellationToken) {
+        info!("resetting internal heartbeat app metrics and running app...");
+        metric!(counter.veritech.internal_heartbeat.loop_iteration = 0);
+        metric!(counter.veritech.internal_heartbeat.publish.success = 0);
+        metric!(counter.veritech.internal_heartbeat.publish.error = 0);
+        metric!(counter.veritech.internal_heartbeat.publish.timeout = 0);
+        metric!(counter.veritech.internal_heartbeat.new_client.success = 0);
+        metric!(counter.veritech.internal_heartbeat.new_client.error = 0);
+        metric!(counter.veritech.internal_heartbeat.new_client.timeout = 0);
+        metric!(
+            counter
+                .veritech
+                .internal_heartbeat
+                .connection_state
+                .connected = 0
+        );
+        metric!(
+            counter
+                .veritech
+                .internal_heartbeat
+                .connection_state
+                .disconnected = 0
+        );
+        metric!(counter.veritech.internal_heartbeat.connection_state.pending = 0);
+
+        let empty_byte_array: Vec<u8> = Vec::new();
+        let sleep_seconds = 5;
+        let publish_timeout_seconds = 5;
+        let create_client_timeout_seconds = 20;
+
+        // Don't try to publish again if we haven't force reconnected.
+        let mut needs_new_client = false;
+
+        loop {
+            metric!(counter.veritech.internal_heartbeat.loop_iteration = 1);
+            tokio::select! {
+                _ = tokio::time::sleep(Duration::from_secs(sleep_seconds)) => {
+                    info!(%sleep_seconds, "internal heartbeat: finished sleeping!");
+
+                    if needs_new_client {
+                        warn!(
+                            "internal heartbeat: creating new client due to internal heartbeat publish timeout..."
+                        );
+                        match tokio::time::timeout(
+                            Duration::from_secs(create_client_timeout_seconds),
+                            nats.lock_hot_swap_client_unlock()
+                        )
+                        .await
+                        {
+                            Ok(new_client_result) => match new_client_result {
+                                Ok(()) => {
+                                    warn!("internal heartbeat: hot swapped clients!");
+                                    metric!(counter.veritech.internal_heartbeat.new_client.success = 1);
+                                    needs_new_client = false;
+                                }
+                                Err(err) => {
+                                    error!(si.error.message = ?err, "internal heartbeat: new client error");
+                                    metric!(counter.veritech.internal_heartbeat.new_client.error = 1);
+                                }
+                            },
+                            Err(err) => {
+                                error!(si.error.message = ?err, %create_client_timeout_seconds, "internal heartbeat: new client timeout");
+                                metric!(counter.veritech.internal_heartbeat.new_client.timeout = 1);
+                            }
+                        }
+                    } else {
+                        info!("internal heartbeat: acquiring lock for publishing heartbeat...");
+                        let guard = nats.lock().await;
+
+                        info!("internal heartbeat: publishing heartbeat...");
+                        match tokio::time::timeout(
+                            Duration::from_secs(publish_timeout_seconds),
+                            guard.publish(
+                                "veritech.internal_heartbeat",
+                                empty_byte_array.to_owned().into(),
+                            ),
+                        )
+                        .await
+                        {
+                            Ok(publish_result) => match publish_result {
+                                Ok(()) => {
+                                    metric!(counter.veritech.internal_heartbeat.publish.success = 1);
+                                }
+                                Err(err) => {
+                                    error!(si.error.message = ?err, "internal heartbeat: publish error");
+                                    metric!(counter.veritech.internal_heartbeat.publish.error = 1);
+                                }
+                            },
+                            Err(err) => {
+                                error!(si.error.message = ?err, %publish_timeout_seconds, "internal heartbeat: publish timeout");
+                                metric!(counter.veritech.internal_heartbeat.publish.timeout = 1);
+                                needs_new_client = true;
+                            }
+                        }
+                        drop(guard);
+                    }
+
+                    info!("internal heartbeat: acquiring lock for getting connection state...");
+                    let guard = nats.lock().await;
+
+                    info!("internal heartbeat: getting connection state... (has an internal read lock!)");
+                    let state = match guard.connection_state() {
+                        State::Connected => {
+                            metric!(
+                                counter
+                                    .veritech
+                                    .internal_heartbeat
+                                    .connection_state
+                                    .connected = 1
+                            );
+                            State::Connected
+                        }
+                        State::Disconnected => {
+                            metric!(
+                                counter
+                                    .veritech
+                                    .internal_heartbeat
+                                    .connection_state
+                                    .disconnected = 1
+                            );
+                            State::Disconnected
+                        }
+                        State::Pending => {
+                            metric!(counter.veritech.internal_heartbeat.connection_state.pending = 1);
+                            State::Pending
+                        }
+                    };
+                    drop(guard);
+                    info!(?state, "internal heartbeat: got connection state!");
+                }
+                _ = token.cancelled() => {
+                    info!("internal heartbeat: shutting down internal heartbeat app");
+                    break;
+                }
+            }
+        }
+    }
+
     #[allow(clippy::too_many_arguments)]
-    async fn build_app(
+    async fn build_app_without_pause_resume_stream(
         metadata: Arc<ServerMetadata>,
         concurrency_limit: usize,
         cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
@@ -190,18 +385,22 @@ impl Server {
         nats: NatsClient,
         kill_senders: Arc<Mutex<HashMap<ExecutionId, oneshot::Sender<()>>>>,
         token: CancellationToken,
+        context: &si_data_nats::jetstream::Context,
     ) -> ServerResult<Box<dyn Future<Output = io::Result<()>> + Unpin + Send>> {
-        let connection_metadata = nats.metadata_clone();
-
         // Take the *active* subject prefix from the connected NATS client
-        let prefix = nats.metadata().subject_prefix().map(|s| s.to_owned());
+        let guard = nats.lock().await;
+        let connection_metadata = guard.metadata_clone();
+        let prefix = guard.metadata().subject_prefix().map(|s| s.to_owned());
+        drop(guard);
 
         let incoming = {
-            let context = jetstream::new(nats.clone());
             veritech_work_queue(&context, prefix.as_deref())
                 .await?
                 .create_consumer(Self::incoming_consumer_config(prefix.as_deref()))
                 .await?
+                // TODO(nick): disable jetstream heartbeat from Jarret's recommendation
+                // .stream()
+                // .heartbeat(Duration::from_secs(0))
                 .messages()
                 .await?
         };
@@ -213,6 +412,7 @@ impl Server {
             cyclone_client_execution_timeout,
             nats,
             kill_senders,
+            None,
         );
 
         let app = ServiceBuilder::new()
@@ -238,16 +438,81 @@ impl Server {
         Ok(Box::new(inner.into_future()))
     }
 
+    // #[allow(clippy::too_many_arguments)]
+    // async fn build_app(
+    //     metadata: Arc<ServerMetadata>,
+    //     concurrency_limit: usize,
+    //     cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
+    //     decryption_key: Arc<VeritechDecryptionKey>,
+    //     cyclone_client_execution_timeout: Duration,
+    //     nats: NatsClient,
+    //     kill_senders: Arc<Mutex<HashMap<ExecutionId, oneshot::Sender<()>>>>,
+    //     token: CancellationToken,
+    //     pause_duration: Duration,
+    //     reconnect_backoff_duration: Duration,
+    // ) -> ServerResult<Box<dyn Future<Output = io::Result<()>> + Unpin + Send>> {
+    //     let connection_metadata = nats.metadata_clone();
+
+    //     // Take the *active* subject prefix from the connected NATS client
+    //     let prefix = nats.metadata().subject_prefix().map(|s| s.to_owned());
+
+    //     let incoming = {
+    //         let context = jetstream::new(nats.clone());
+    //         PauseResumeStream::new(
+    //             veritech_work_queue(&context, prefix.as_deref())
+    //                 .await?
+    //                 .create_consumer(Self::incoming_consumer_config(prefix.as_deref()))
+    //                 .await?,
+    //             pause_duration,
+    //             reconnect_backoff_duration,
+    //         )
+    //     };
+
+    //     let state = AppState::new(
+    //         metadata,
+    //         cyclone_pool,
+    //         decryption_key,
+    //         cyclone_client_execution_timeout,
+    //         nats,
+    //         kill_senders,
+    //         Some(incoming.controller()),
+    //     );
+
+    //     let app = ServiceBuilder::new()
+    //         .layer(
+    //             MatchedSubjectLayer::new()
+    //                 .for_subject(VeritechForSubject::with_prefix(prefix.as_deref())),
+    //         )
+    //         .layer(
+    //             TraceLayer::new()
+    //                 .make_span_with(
+    //                     telemetry_nats::NatsMakeSpan::builder(connection_metadata).build(),
+    //                 )
+    //                 .on_response(telemetry_nats::NatsOnResponse::new()),
+    //         )
+    //         .layer(AckLayer::new())
+    //         .service(handlers::process_request.with_state(state))
+    //         .map_response(Response::into_response);
+
+    //     let inner =
+    //         naxum::serve_with_incoming_limit(incoming, app.into_make_service(), concurrency_limit)
+    //             .with_graceful_shutdown(naxum::wait_on_cancelled(token));
+
+    //     Ok(Box::new(inner.into_future()))
+    // }
+
     async fn build_kill_app(
         metadata: Arc<ServerMetadata>,
         nats: NatsClient,
         kill_senders: Arc<Mutex<HashMap<ExecutionId, oneshot::Sender<()>>>>,
         token: CancellationToken,
     ) -> ServerResult<Box<dyn Future<Output = io::Result<()>> + Unpin + Send>> {
-        let connection_metadata = nats.metadata_clone();
+        let guard = nats.lock().await;
+        let connection_metadata = guard.metadata_clone();
+        let prefix = guard.metadata().subject_prefix().map(|s| s.to_owned());
+        drop(guard);
 
         let incoming = {
-            let prefix = nats.metadata().subject_prefix().map(|s| s.to_owned());
             Self::kill_subscriber(&nats, prefix.as_deref())
                 .await?
                 .map(|msg| msg.into_parts().0)
@@ -284,19 +549,23 @@ impl Server {
             execution_id: "".into(),
         };
         let subject = dummy_request.nats_subject(prefix, None, None);
-        nats.subscribe(subject.clone())
+        let guard = nats.lock().await;
+        let result = guard
+            .subscribe(subject.clone())
             .await
-            .map_err(|err| ServerError::NatsSubscribe(subject, err))
+            .map_err(|err| ServerError::NatsSubscribe(subject, err));
+        drop(guard);
+        result
     }
 
-    #[instrument(name = "veritech.init.connect_to_nats", level = "info", skip_all)]
-    async fn connect_to_nats(config: &Config) -> ServerResult<NatsClient> {
-        let client = NatsClient::new(config.nats())
-            .await
-            .map_err(ServerError::NatsClient)?;
-        debug!("successfully connected nats client");
-        Ok(client)
-    }
+    // #[instrument(name = "veritech.init.connect_to_nats", level = "info", skip_all)]
+    // async fn connect_to_nats(config: &Config) -> ServerResult<NatsClient> {
+    //     let client = NatsClient::new_for_veritech(config.nats())
+    //         .await
+    //         .map_err(ServerError::NatsClient)?;
+    //     debug!("successfully connected nats client");
+    //     Ok(client)
+    // }
 
     #[inline]
     fn incoming_consumer_config(

@@ -7,7 +7,7 @@
 )]
 #![allow(clippy::missing_errors_doc)]
 
-use std::{fmt::Debug, hash, io, ops, sync::Arc, time::Duration};
+use std::{cmp, fmt::Debug, hash, io, ops, sync::Arc, time::Duration};
 
 use async_nats::{subject::ToSubject, ToServerAddrs};
 use bytes::Bytes;
@@ -39,6 +39,8 @@ pub type NatsError = Error;
 pub enum Error {
     #[error("io error: {0}")]
     Io(#[from] io::Error),
+    #[error("nats client reconnect error: {0}")]
+    NatsClientReconnect(#[from] async_nats::client::ReconnectError),
     #[error("nats connect error: {0}")]
     NatsConnect(#[from] async_nats::ConnectError),
     #[error("nats flush error: {0}")]
@@ -109,10 +111,38 @@ impl Client {
         (self.inner, self.metadata)
     }
 
-    #[instrument(name = "nats_client::new", skip_all, level = "debug")]
-    pub async fn new(config: &NatsConfig) -> Result<Self> {
+    #[instrument(name = "nats_client::new_for_veritech", skip_all, level = "debug")]
+    pub async fn new_for_veritech(config: &NatsConfig) -> Result<Self> {
         let mut options = ConnectOptions::default();
 
+        options = options.client_capacity(2048 * 8);
+
+        metric!(counter.nats.reconnect_delay_callback.zero_or_one_attempts = 0);
+        metric!(counter.nats.reconnect_delay_callback.at_least_one_attempt = 0);
+        options = options.reconnect_delay_callback(|attempts| {
+            if attempts <= 1 {
+                metric!(counter.nats.reconnect_delay_callback.zero_or_one_attempts = 1);
+                Duration::from_millis(0)
+            } else {
+                metric!(counter.nats.reconnect_delay_callback.at_least_one_attempt = 1);
+                let exp: u32 = (attempts - 1).try_into().unwrap_or(u32::MAX);
+                let max = Duration::from_secs(4);
+                cmp::min(Duration::from_millis(2_u64.saturating_pow(exp)), max)
+            }
+        });
+
+        Self::new_inner(config, options).await
+    }
+
+    #[instrument(name = "nats_client::new", skip_all, level = "debug")]
+    pub async fn new(config: &NatsConfig) -> Result<Self> {
+        let options = ConnectOptions::default();
+
+        Self::new_inner(config, options).await
+    }
+
+    #[instrument(name = "nats_client::new_inner", skip_all, level = "debug")]
+    async fn new_inner(config: &NatsConfig, mut options: ConnectOptions) -> Result<Self> {
         if let Some(creds) = &config.creds {
             options = options.credentials(creds)?;
         }
@@ -1103,6 +1133,11 @@ impl Client {
     /// Gets a cloned copy of the client's metadata.
     pub fn metadata_clone(&self) -> Arc<ConnectionMetadata> {
         self.metadata.clone()
+    }
+
+    #[instrument(name = "nats_client::force_reconnect", skip_all, level = "debug")]
+    pub async fn force_reconnect(&self) -> Result<()> {
+        Ok(self.inner.force_reconnect().await?)
     }
 }
 

@@ -1,6 +1,7 @@
 mod app_state;
 mod config;
 mod handlers;
+mod nats_client;
 mod publisher;
 mod request;
 mod server;
@@ -36,8 +37,10 @@ pub enum ServerError {
     JetStreamCreateStreamError(#[from] async_nats::jetstream::context::CreateStreamError),
     #[error("join error: {0}")]
     Join(#[from] tokio::task::JoinError),
-    #[error("failed to initialize a nats client: {0}")]
-    NatsClient(#[source] NatsError),
+    // #[error("failed to initialize a nats client: {0}")]
+    // NatsClient(#[source] NatsError),
+    #[error("nats client error: {0}")]
+    NatsClient(#[from] crate::nats_client::NatsClientError),
     #[error("failed to subscribe to nats subject ({0}): {1}")]
     NatsSubscribe(Subject, #[source] NatsError),
     #[error("naxum error: {0}")]

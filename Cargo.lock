@@ -8584,6 +8584,7 @@ dependencies = [
  "futures",
  "naxum",
  "once_cell",
+ "pin-project-lite",
  "remain",
  "serde",
  "serde_json",

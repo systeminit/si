@@ -6,16 +6,17 @@ use naxum::{
     Message,
 };
 use serde::{de::DeserializeOwned, Serialize};
-use si_data_nats::{InnerMessage, Subject};
+use si_data_nats::{HeaderMap, InnerMessage, Subject};
 // seems strange to get these cyclone_core types from si_pool_noodle?
 use si_pool_noodle::{
-    ActionRunResultSuccess, CycloneClient, CycloneRequest, CycloneRequestable, ExecutionError,
-    FunctionResultFailure, FunctionResultFailureError, ManagementResultSuccess, ProgressMessage,
-    ResolverFunctionResultSuccess, SchemaVariantDefinitionResultSuccess, SensitiveStrings,
-    ValidationResultSuccess,
+    errors::PoolNoodleError, ActionRunResultSuccess, CycloneClient, CycloneRequest,
+    CycloneRequestable, ExecutionError, FunctionResultFailure, FunctionResultFailureError,
+    ManagementResultSuccess, ProgressMessage, ResolverFunctionResultSuccess,
+    SchemaVariantDefinitionResultSuccess, SensitiveStrings, ValidationResultSuccess,
 };
 use std::{collections::HashMap, result, str::Utf8Error, sync::Arc, time::Duration};
 use telemetry::prelude::*;
+use telemetry_utils::metric;
 use thiserror::Error;
 use tokio::sync::{oneshot, Mutex};
 use veritech_core::{
@@ -87,6 +88,18 @@ pub async fn process_request(
     Headers(maybe_headers): Headers,
     msg: Message<InnerMessage>,
 ) -> HandlerResult<()> {
+    metric!(counter.veritech.handlers_doing_work = 1);
+    let result = process_request_inner(state, subject, maybe_headers, msg).await;
+    metric!(counter.veritech.handlers_doing_work = -1);
+    result
+}
+
+async fn process_request_inner(
+    state: AppState,
+    subject: Subject,
+    maybe_headers: Option<HeaderMap>,
+    msg: Message<InnerMessage>,
+) -> HandlerResult<()> {
     let span = Span::current();
 
     let reply_subject = match maybe_headers
@@ -100,7 +113,7 @@ pub async fn process_request(
 
     // Based on whether or not there is a prefix, we need to determine how many parts there are
     // before the exact subject part we are interested in.
-    if state.nats_subject_has_prefix() {
+    if state.nats_subject_has_prefix().await {
         match (
             parts.next(),
             parts.next(),
@@ -131,8 +144,10 @@ pub async fn process_request(
     let veritech_request =
         VeritechRequest::from_subject_and_payload(request_subject, &msg.payload)?;
 
-    info!(execution_kind = %veritech_request.subject_suffix(), execution_id = %veritech_request.execution_id(), "validated request and about to execute");
-
+    let execution_kind = veritech_request.subject_suffix().to_owned();
+    let execution_id = veritech_request.execution_id().to_owned();
+    info!(execution_kind = %veritech_request.subject_suffix(), execution_id = %veritech_request.execution_id(),
+        "validated request and about to execute");
     match veritech_request {
         VeritechRequest::ActionRun(request) => {
             dispatch_request(state, request, reply_subject).await?
@@ -154,6 +169,7 @@ pub async fn process_request(
             return Err(HandlerError::InvalidIncomingSubject(subject));
         }
     }
+    info!(%execution_kind, %execution_id, "finished execution");
 
     Ok(())
 }
@@ -169,11 +185,21 @@ where
     HandlerError: From<ExecutionError<<Request as CycloneRequestable>::Response>>,
 {
     let span = current_span_for_instrument_at!("info");
-    let mut client = state
-        .cyclone_pool
-        .get()
-        .await
-        .map_err(|err| span.record_err(HandlerError::CyclonePool(Box::new(err))))?;
+    let mut client = match state.cyclone_pool.get().await {
+        Ok(client) => client,
+        Err(err) => {
+            if let PoolNoodleError::ExecutionPoolStarved = err {
+                metric!(counter.veritech.pool_exhausted = 1);
+
+                // This will only be available if the "pause-resume" stream is used.
+                if let Some(controller) = state.pause_resume_controller {
+                    warn!(execution_id = %request.execution_id(), kind = %request.kind(), "pausing stream");
+                    controller.pause();
+                }
+            }
+            return Err(span.record_err(HandlerError::CyclonePool(Box::new(err))));
+        }
+    };
 
     request.inc_run_metric();
 
@@ -183,8 +209,7 @@ where
     request.decrypt(&mut sensitive_strings, &state.decryption_key)?;
 
     // NOTE(nick,fletcher): we need to create a owned client here because publisher has its own lifetime. Yeehaw.
-    let nats_for_publisher = state.nats.clone();
-    let publisher = Publisher::new(&nats_for_publisher, &reply_mailbox);
+    let publisher = Publisher::new(state.nats, &reply_mailbox);
     let execution_id = request.execution_id().to_owned();
     let cyclone_request = CycloneRequest::from_parts(request.clone(), sensitive_strings);
 
@@ -228,6 +253,7 @@ where
                 }
             }
         }
+
         publisher.finalize_output().await.map_err(|err| {
             request.dec_run_metric();
             span.record_err(err)
@@ -246,6 +272,7 @@ where
     let timeout = state.cyclone_client_execution_timeout;
     let result = tokio::select! {
         _ = tokio::time::sleep(timeout) => {
+
             error!("hit timeout for communicating with cyclone server:{:?}", &timeout);
             kill_sender_remove_blocking(&state.kill_senders, execution_id.to_owned()).await?;
             Err(HandlerError::CycloneTimeout(
@@ -269,6 +296,7 @@ where
             }
 
             request.dec_run_metric();
+
             span.record_ok();
         }
         // Got an error that we don't want to recover from here - need to let anyone subscribing know we're done
@@ -283,10 +311,12 @@ where
                         "timed out trying to run function to completion",
                         timestamp(),
                     );
+
                     si_pool_noodle::FunctionResult::Failure::<Request>(func_res_failure)
                 }
                 HandlerError::Killed(ref execution_id) => {
                     warn!(si.error.message = ?err, si.func_run.id = ?execution_id, "function killed during execution: {:?} via signal", execution_id);
+
                     let func_res_failure = FunctionResultFailure::new(
                         execution_id.to_owned(),
                         FunctionResultFailureError {
@@ -307,7 +337,9 @@ where
                     si_pool_noodle::FunctionResult::Failure::<Request>(func_res_failure)
                 }
             };
+
             request.dec_run_metric();
+
             if let Err(err) = publisher.publish_result(&func_result_error).await {
                 error!(si.error.message = ?err, "failed to publish errored result");
             }

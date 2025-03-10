@@ -1,7 +1,6 @@
 use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use si_crypto::VeritechDecryptionKey;
-use si_data_nats::NatsClient;
 use si_pool_noodle::{
     instance::cyclone::{LocalUdsInstance, LocalUdsInstanceSpec},
     PoolNoodle,
@@ -10,7 +9,10 @@ use tokio::sync::oneshot;
 use tokio::sync::Mutex;
 use veritech_core::ExecutionId;
 
-use crate::server::ServerMetadata;
+use crate::{
+    nats_client::NatsClient,
+    server::{PauseResumeController, ServerMetadata},
+};
 
 /// Application state.
 #[derive(Clone, Debug)]
@@ -25,6 +27,7 @@ pub struct AppState {
     pub cyclone_client_execution_timeout: Duration,
     pub nats: NatsClient,
     pub kill_senders: Arc<Mutex<HashMap<ExecutionId, oneshot::Sender<()>>>>,
+    pub pause_resume_controller: Option<PauseResumeController>,
 }
 
 impl AppState {
@@ -36,6 +39,7 @@ impl AppState {
         cyclone_client_execution_timeout: Duration,
         nats: NatsClient,
         kill_senders: Arc<Mutex<HashMap<ExecutionId, oneshot::Sender<()>>>>,
+        pause_resume_controller: Option<PauseResumeController>,
     ) -> Self {
         Self {
             metadata,
@@ -44,12 +48,16 @@ impl AppState {
             cyclone_client_execution_timeout,
             nats,
             kill_senders,
+            pause_resume_controller,
         }
     }
 
     /// Determine if the nats client is using a subject prefix.
-    pub fn nats_subject_has_prefix(&self) -> bool {
-        self.nats.metadata().subject_prefix().is_some()
+    pub async fn nats_subject_has_prefix(&self) -> bool {
+        let guard = self.nats.lock().await;
+        let result = guard.metadata().subject_prefix().is_some();
+        drop(guard);
+        result
     }
 }
 

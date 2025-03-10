@@ -18,14 +18,12 @@ use tokio::{
 };
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use tower::{Service, ServiceExt};
-use tracing::{debug, error, info, trace, warn};
+use tracing::{debug, info, trace, warn};
 
 use crate::{
     message::{Message, MessageHead},
     response::Response,
 };
-
-const MAX_FAILED_MESSAGES: usize = 4;
 
 pub fn serve<M, S, T, E, R>(stream: T, make_service: M) -> Serve<M, S, T, E, R>
 where
@@ -159,13 +157,14 @@ where
             token.cancel();
         });
 
-        let mut failed_count = 0;
-
         let semaphore = limit.map(|limit| Arc::new(Semaphore::new(limit)));
 
         private::ServeFuture(Box::pin(async move {
             tokio::pin!(stream);
-            metric!(counter.naxum.pending_message_count = 0);
+
+            metric!(counter.naxum.next_message.processing = 0);
+            metric!(counter.naxum.next_message.failed = 0);
+            metric!(counter.naxum.next_message.none = 0);
 
             loop {
                 let (msg, permit) = tokio::select! {
@@ -176,32 +175,31 @@ where
                         tracker.close();
                         break;
                     }
-                    (msg, permit) = next_message(&mut stream, semaphore.clone(), failed_count) => {
+                    (msg, permit) = next_message(&mut stream, semaphore.clone()) => {
                         match msg {
                             Some(Ok(msg)) => {
-                                failed_count = 0;
-                                metric!(counter.naxum.failed_count = 0);
-
                                 (msg, permit)
                             },
                             Some(Err(err)) => {
                                 // TODO(fnichol): this level might need to be `trace!()`, just
                                 // unclear at the moment
                                 warn!(si.error.message = ?err, "failed to read next message from stream");
-                                failed_count += 1;
+                                metric!(counter.naxum.next_message.failed = 1);
                                 continue;
                             },
                             None => {
-                                info!("stream is closed, breaking out of loop");
-                                tracker.close();
-                                break;
+                                let duration_ms = 500;
+                                warn!(%duration_ms, "sleeping: next message is 'None' on provided stream");
+                                metric!(counter.naxum.next_message.none = 1);
+                                std::thread::sleep(std::time::Duration::from_millis(duration_ms));
+                                continue;
                             },
                         }
                     }
                 };
 
                 trace!(subject = msg.subject().as_str(), "message received");
-                metric!(counter.naxum.pending_message_count = 1);
+                metric!(counter.naxum.next_message.processing = 1);
 
                 poll_fn(|cx| make_service.poll_ready(cx))
                     .await
@@ -214,7 +212,7 @@ where
 
                 tracker.spawn(async move {
                     let _result = tower_svc.oneshot(msg).await;
-                    metric!(counter.naxum.pending_message_count = -1);
+                    metric!(counter.naxum.next_message.processing = -1);
                     trace!("message processed");
 
                     drop(permit);
@@ -236,7 +234,7 @@ where
                     }
                 }
             }
-            metric!(counter.naxum.pending_message_count = 0);
+            metric!(counter.naxum.next_message.processing = 0);
 
             Ok(())
         }))
@@ -246,7 +244,6 @@ where
 async fn next_message<T, E, R>(
     stream: &mut Pin<&mut T>,
     semaphore: Option<Arc<Semaphore>>,
-    failed_count: usize,
 ) -> (Option<Result<Message<R>, E>>, Option<OwnedSemaphorePermit>)
 where
     T: Stream<Item = Result<R, E>> + Send + 'static,
@@ -274,18 +271,7 @@ where
             Ok(maybe.map(|inner| Message::new(inner))).transpose(),
             permit,
         ),
-        Err(err) => {
-            if failed_count > MAX_FAILED_MESSAGES {
-                error!(
-                    si.error.message = ?err,
-                    "failed to read message in after {} consecutive failures; closing stream",
-                    failed_count,
-                );
-                (None, permit)
-            } else {
-                (Some(Err(err)), permit)
-            }
-        }
+        Err(err) => (Some(Err(err)), permit),
     }
 }
 
