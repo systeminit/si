@@ -54,13 +54,32 @@ const overrides = new Map<string, OverrideFn>([
     prop!.data.widgetKind = "CodeEditor";
   }],
   ["AWS::EC2::LaunchTemplate", (spec: ExpandedPkgSpec) => {
-    const targetId = MANAGEMENT_FUNCS["Import from AWS"].id;
-    const newId =
+    const variant = spec.schemas[0].variants[0];
+    const prop = variant.domain.entries.find((p: ExpandedPropSpec) =>
+      p.name === "UserData"
+    );
+
+    if (!prop) return;
+    const socket = createInputSocketFromProp(prop);
+    setAnnotationOnSocket(socket, { tokens: ["UserData"] });
+    variant.sockets.push(socket);
+    prop!.data.widgetKind = "CodeEditor";
+    
+    const importTargetId = MANAGEMENT_FUNCS["Import from AWS"].id;
+    const newImportId =
       "0583c411a5b41594706ae8af473ed6d881357a1e692fb53981417f625f99374b";
-    const path =
+    const importPath =
       "./src/cloud-control-funcs/overrides/AWS::EC2::LaunchTemplate/import.ts";
 
-    modifyFunc(spec, targetId, newId, path);
+    modifyFunc(spec, importTargetId, newImportId, importPath);
+
+    const discoverTargetId = MANAGEMENT_FUNCS["Discover on AWS"].id;
+    const newDiscoverId =
+      "cfebba8fc2d7cd88e5fc2b0c47a777b3737b8c2bcb88fbbb143be48018f22836";
+    const discoverPath =
+      "./src/cloud-control-funcs/overrides/AWS::EC2::LaunchTemplate/discover.ts";
+
+    modifyFunc(spec, discoverTargetId, newDiscoverId, discoverPath);
   }],
   ["AWS::EC2::NetworkInterface", (spec: ExpandedPkgSpec) => {
     const variant = spec.schemas[0].variants[0];
