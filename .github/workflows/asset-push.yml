@@ -19,12 +19,12 @@ jobs:
       - uses: denoland/setup-deno@v2
       - uses: dtolnay/rust-toolchain@stable
 
-      - name: Generate and Push
+      - name: Generate Specs
         run: |
           cd bin/clover
           LOG_LEVEL=debug deno task run generate-specs
 
-      - name: Generate Diff
+      - name: Push Specs
         run: |
           cd bin/hoist
-          cargo run -- upload-all-specs -y -t ./bin/clover/si-specs
+          cargo run -- upload-all-specs -y -t ../clover/si-specs

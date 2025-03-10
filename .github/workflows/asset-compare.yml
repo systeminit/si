@@ -1,0 +1,58 @@
+name: Generate Asset Compare
+
+on:
+  issue_comment:
+    types: [created, edited, deleted]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  asset-compare:
+    if: ${{  github.event.issue.pull_request && startsWith(github.event.comment.body, '/diff') }}
+    env:
+      SI_BEARER_TOKEN: ${{ secrets.SI_BEARER_TOKEN }}
+      SI_MODULE_INDEX_URL: "https://module-index.systeminit.com"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Extract asset name from comment
+        id: extract-name
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const commentBody = github.event.comment.body || '';
+            if (!commentBody) {
+              console.log('Comment body is empty or undefined');
+              core.setFailed('Malformed diff, no name found!');
+              return '';
+            }
+            // Extract everything after '/diff '
+            const name = commentBody.substring('/diff '.length).trim();
+            console.log(`Extracted: ${name}`);
+            return name;
+          result-encoding: string
+
+      - name: Generate Diff
+        run: |
+          cd bin/hoist
+          cargo run -- compare-specs -s ../clover/si-specs/${{ steps.extract-name.outputs.result }}.json -t ../clover/si-specs/${{ steps.extract-name.outputs.result }}.json > diff.md
+
+      - name: Post Diff to PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const diff = fs.readFileSync('./bin/hoist/diff.md', 'utf8');
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: diff
+            })
