@@ -24,12 +24,16 @@ export function generateDefaultQualificationFuncs(
       continue;
     }
 
-    const defaultCodeGenFuncs = createDefaultQualificationFuncs(domain_id);
+    const defaultQualificationFuncs = createDefaultQualificationFuncs(
+      domain_id,
+    );
 
-    for (const codeGenFunc of defaultCodeGenFuncs) {
-      funcs.push(codeGenFunc);
+    for (const func of defaultQualificationFuncs) {
+      // clone otherwise modifications to these cause changes on all
+      // specs
+      funcs.push(_.cloneDeep(func));
       leafFuncs.push(
-        createLeafFuncSpec("qualification", codeGenFunc.uniqueId, [
+        createLeafFuncSpec("qualification", func.uniqueId, [
           "domain",
           "code",
         ]),

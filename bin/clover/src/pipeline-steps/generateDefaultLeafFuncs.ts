@@ -25,7 +25,9 @@ export function generateDefaultLeafFuncs(
     const defaultCodeGenFuncs = createDefaultCodeGenFuncs(domain_id);
 
     for (const codeGenFunc of defaultCodeGenFuncs) {
-      funcs.push(codeGenFunc);
+      // clone otherwise modifications to these cause changes on all
+      // specs
+      funcs.push(_.cloneDeep(codeGenFunc));
       leafFuncs.push(
         createLeafFuncSpec("codeGeneration", codeGenFunc.uniqueId, ["domain"]),
       );
