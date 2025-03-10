@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use clap::{ArgAction, Parser};
-use si_std::SensitiveString;
+use si_service::prelude::*;
 use veritech_server::{Config, ConfigError, ConfigFile, StandardConfigFile};
 
 const NAME: &str = "veritech";

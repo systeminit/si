@@ -78,6 +78,7 @@ members = [
     "lib/telemetry-rs",
     "lib/telemetry-utils-rs",
     "lib/tokio-dedicated-executor",
+    "lib/tokio-watchdog",
     "lib/veritech-client",
     "lib/veritech-core",
     "lib/veritech-server",

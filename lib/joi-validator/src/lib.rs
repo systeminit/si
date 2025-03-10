@@ -1,4 +1,4 @@
-//! This create provides centralized support for using AI to generate assets.
+//! This crate validates a subset of Joi schema rules in Rust.
 
 #![warn(
     bad_style,

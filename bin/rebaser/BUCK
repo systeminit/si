@@ -10,7 +10,6 @@ rust_binary(
     deps = [
         "//lib/rebaser-server:rebaser-server",
         "//lib/si-service:si-service",
-        "//lib/si-std:si-std",
         "//third-party/rust:clap",
     ],
     srcs = glob(["src/**/*.rs"]),

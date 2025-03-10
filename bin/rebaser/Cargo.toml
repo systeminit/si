@@ -16,4 +16,3 @@ path = "src/main.rs"
 clap = { workspace = true }
 rebaser-server = { path = "../../lib/rebaser-server" }
 si-service = { path = "../../lib/si-service" }
-si-std = { path = "../../lib/si-std" }
