@@ -1,0 +1,127 @@
+{
+  "typeName": "AWS::Omics::SequenceStore",
+  "description": "Definition of AWS::Omics::SequenceStore Resource Type",
+  "definitions": {
+    "EncryptionType": {
+      "type": "string",
+      "enum": ["KMS"]
+    },
+    "SseConfig": {
+      "type": "object",
+      "description": "Server-side encryption (SSE) settings for a store.",
+      "properties": {
+        "Type": {
+          "$ref": "#/definitions/EncryptionType"
+        },
+        "KeyArn": {
+          "type": "string",
+          "maxLength": 2048,
+          "minLength": 20,
+          "pattern": "arn:([^:\n]*):([^:\n]*):([^:\n]*):([0-9]{12}):([^:\n]*)",
+          "description": "An encryption key ARN."
+        }
+      },
+      "required": ["Type"],
+      "additionalProperties": false
+    },
+    "TagMap": {
+      "type": "object",
+      "patternProperties": {
+        ".+": {
+          "type": "string",
+          "maxLength": 256,
+          "minLength": 0
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "Arn": {
+      "type": "string",
+      "maxLength": 127,
+      "minLength": 1,
+      "pattern": "^arn:.+$",
+      "description": "The store's ARN."
+    },
+    "CreationTime": {
+      "type": "string",
+      "description": "When the store was created.",
+      "format": "date-time"
+    },
+    "Description": {
+      "type": "string",
+      "maxLength": 255,
+      "minLength": 1,
+      "pattern": "^[\\p{L}||\\p{M}||\\p{Z}||\\p{S}||\\p{N}||\\p{P}]+$",
+      "description": "A description for the store."
+    },
+    "Name": {
+      "type": "string",
+      "maxLength": 127,
+      "minLength": 1,
+      "pattern": "^[\\p{L}||\\p{M}||\\p{Z}||\\p{S}||\\p{N}||\\p{P}]+$",
+      "description": "A name for the store."
+    },
+    "FallbackLocation": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^s3:\\/\\/([a-z0-9][a-z0-9-.]{1,61}[a-z0-9])\\/?((.{1,1024})\\/)?$",
+      "description": "An S3 URI representing the bucket and folder to store failed read set uploads."
+    },
+    "SequenceStoreId": {
+      "type": "string",
+      "maxLength": 36,
+      "minLength": 10,
+      "pattern": "^[0-9]+$"
+    },
+    "SseConfig": {
+      "$ref": "#/definitions/SseConfig"
+    },
+    "Tags": {
+      "$ref": "#/definitions/TagMap"
+    }
+  },
+  "required": ["Name"],
+  "readOnlyProperties": [
+    "/properties/Arn",
+    "/properties/CreationTime",
+    "/properties/SequenceStoreId"
+  ],
+  "writeOnlyProperties": ["/properties/Tags"],
+  "createOnlyProperties": [
+    "/properties/Description",
+    "/properties/Name",
+    "/properties/FallbackLocation",
+    "/properties/SseConfig",
+    "/properties/Tags"
+  ],
+  "primaryIdentifier": ["/properties/SequenceStoreId"],
+  "tagging": {
+    "taggable": true,
+    "tagOnCreate": true,
+    "tagUpdatable": false,
+    "cloudFormationSystemTags": true,
+    "tagProperty": "/properties/Tags",
+    "permissions": ["omics:TagResource", "omics:ListTagsForResource"]
+  },
+  "handlers": {
+    "create": {
+      "permissions": [
+        "omics:CreateSequenceStore",
+        "omics:TagResource",
+        "kms:DescribeKey"
+      ]
+    },
+    "read": {
+      "permissions": ["omics:GetSequenceStore", "omics:ListTagsForResource"]
+    },
+    "delete": {
+      "permissions": ["omics:DeleteSequenceStore"]
+    },
+    "list": {
+      "permissions": ["omics:ListSequenceStores"]
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,80 @@
+{
+  "typeName": "AWS::EC2::SubnetCidrBlock",
+  "$schema": "https://schema.cloudformation.us-east-1.amazonaws.com/provider.definition.schema.v1.json",
+  "description": "The AWS::EC2::SubnetCidrBlock resource creates association between subnet and IPv6 CIDR",
+  "sourceUrl": "https://github.com/aws-cloudformation/aws-cloudformation-resource-providers-ec2/subnetcidrblock",
+  "additionalProperties": false,
+  "properties": {
+    "Id": {
+      "description": "Information about the IPv6 association.",
+      "type": "string"
+    },
+    "Ipv6CidrBlock": {
+      "description": "The IPv6 network range for the subnet, in CIDR notation. The subnet size must use a /64 prefix length",
+      "type": "string",
+      "maxLength": 42
+    },
+    "Ipv6IpamPoolId": {
+      "description": "The ID of an IPv6 Amazon VPC IP Address Manager (IPAM) pool from which to allocate, to get the subnet's CIDR",
+      "type": "string"
+    },
+    "Ipv6NetmaskLength": {
+      "description": "The netmask length of the IPv6 CIDR to allocate to the subnet from an IPAM pool",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 128
+    },
+    "SubnetId": {
+      "description": "The ID of the subnet",
+      "type": "string"
+    },
+    "Ipv6AddressAttribute": {
+      "type": "string",
+      "description": "The value denoting whether an IPv6 Subnet CIDR Block is public or private."
+    },
+    "IpSource": {
+      "type": "string",
+      "description": "The IP Source of an IPv6 Subnet CIDR Block."
+    }
+  },
+  "required": ["SubnetId"],
+  "createOnlyProperties": [
+    "/properties/Ipv6CidrBlock",
+    "/properties/SubnetId",
+    "/properties/Ipv6IpamPoolId",
+    "/properties/Ipv6NetmaskLength"
+  ],
+  "readOnlyProperties": [
+    "/properties/Id",
+    "/properties/Ipv6AddressAttribute",
+    "/properties/IpSource"
+  ],
+  "writeOnlyProperties": [
+    "/properties/Ipv6IpamPoolId",
+    "/properties/Ipv6NetmaskLength"
+  ],
+  "primaryIdentifier": ["/properties/Id"],
+  "propertyTransform": {
+    "/properties/Ipv6CidrBlock": "$join([$match($replace(Ipv6CidrBlock, /(^|:)(0{1,4})([0-9a-fA-F]{1,4})/, \"$1$3\"), /^([0-9a-fA-F]{1,4}:){4}/).match, \":/64\"])"
+  },
+  "tagging": {
+    "taggable": false,
+    "tagOnCreate": false,
+    "tagUpdatable": false,
+    "cloudFormationSystemTags": false
+  },
+  "handlers": {
+    "create": {
+      "permissions": ["ec2:AssociateSubnetCidrBlock", "ec2:DescribeSubnets"]
+    },
+    "delete": {
+      "permissions": ["ec2:DisassociateSubnetCidrBlock", "ec2:DescribeSubnets"]
+    },
+    "list": {
+      "permissions": ["ec2:DescribeSubnets"]
+    },
+    "read": {
+      "permissions": ["ec2:DescribeSubnets"]
+    }
+  }
+}

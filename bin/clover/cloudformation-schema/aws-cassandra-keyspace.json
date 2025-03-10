@@ -1,0 +1,165 @@
+{
+  "typeName": "AWS::Cassandra::Keyspace",
+  "description": "Resource schema for AWS::Cassandra::Keyspace",
+  "properties": {
+    "KeyspaceName": {
+      "description": "Name for Cassandra keyspace",
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_]{1,47}$"
+    },
+    "Tags": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/definitions/Tag"
+      },
+      "minItems": 0,
+      "maxItems": 50
+    },
+    "ReplicationSpecification": {
+      "$ref": "#/definitions/ReplicationSpecification"
+    },
+    "ClientSideTimestampsEnabled": {
+      "type": "boolean",
+      "description": "Indicates whether client-side timestamps are enabled (true) or disabled (false) for all tables in the keyspace. To add a Region to a single-Region keyspace with at least one table, the value must be set to true. After you enabled client-side timestamps for a table, you can’t disable it again."
+    }
+  },
+  "definitions": {
+    "Tag": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "Key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "Value": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        }
+      },
+      "required": ["Value", "Key"]
+    },
+    "ReplicationSpecification": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ReplicationStrategy": {
+          "type": "string",
+          "enum": ["SINGLE_REGION", "MULTI_REGION"]
+        },
+        "RegionList": {
+          "$ref": "#/definitions/RegionList"
+        }
+      },
+      "default": {
+        "properties": {
+          "ReplicationStrategy": {
+            "type": "string",
+            "const": "SINGLE_REGION"
+          }
+        }
+      },
+      "dependencies": {
+        "RegionList": ["ReplicationStrategy"]
+      }
+    },
+    "RegionList": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "ap-northeast-1",
+          "ap-northeast-2",
+          "ap-south-1",
+          "ap-southeast-1",
+          "ap-southeast-2",
+          "ca-central-1",
+          "eu-central-1",
+          "eu-north-1",
+          "eu-west-1",
+          "eu-west-2",
+          "eu-west-3",
+          "sa-east-1",
+          "us-east-1",
+          "us-east-2",
+          "us-west-1",
+          "us-west-2"
+        ]
+      },
+      "uniqueItems": true,
+      "insertionOrder": false,
+      "minItems": 2,
+      "maxItems": 6
+    }
+  },
+  "additionalProperties": false,
+  "required": [],
+  "createOnlyProperties": ["/properties/KeyspaceName"],
+  "primaryIdentifier": ["/properties/KeyspaceName"],
+  "tagging": {
+    "taggable": true,
+    "tagOnCreate": true,
+    "tagUpdatable": true,
+    "cloudFormationSystemTags": true,
+    "tagProperty": "/properties/Tags",
+    "permissions": [
+      "cassandra:TagResource",
+      "cassandra:TagMultiRegionResource",
+      "cassandra:UntagResource",
+      "cassandra:UntagMultiRegionResource"
+    ]
+  },
+  "handlers": {
+    "create": {
+      "permissions": [
+        "cassandra:Create",
+        "cassandra:CreateMultiRegionResource",
+        "cassandra:Select",
+        "cassandra:SelectMultiRegionResource",
+        "cassandra:TagResource",
+        "cassandra:TagMultiRegionResource",
+        "iam:CreateServiceLinkedRole"
+      ]
+    },
+    "read": {
+      "permissions": ["cassandra:Select", "cassandra:SelectMultiRegionResource"]
+    },
+    "update": {
+      "permissions": [
+        "cassandra:Alter",
+        "cassandra:AlterMultiRegionResource",
+        "cassandra:Modify",
+        "cassandra:ModifyMultiRegionResource",
+        "cassandra:Select",
+        "cassandra:SelectMultiRegionResource",
+        "cassandra:TagResource",
+        "cassandra:TagMultiRegionResource",
+        "cassandra:UntagResource",
+        "cassandra:UntagMultiRegionResource",
+        "application-autoscaling:RegisterScalableTarget",
+        "application-autoscaling:DeregisterScalableTarget",
+        "application-autoscaling:DescribeScalableTargets",
+        "application-autoscaling:DescribeScalingPolicies",
+        "application-autoscaling:PutScalingPolicy",
+        "cloudwatch:DeleteAlarms",
+        "cloudwatch:DescribeAlarms",
+        "cloudwatch:PutMetricAlarm",
+        "iam:CreateServiceLinkedRole"
+      ]
+    },
+    "delete": {
+      "permissions": [
+        "cassandra:Drop",
+        "cassandra:DropMultiRegionResource",
+        "cassandra:Select",
+        "cassandra:SelectMultiRegionResource"
+      ]
+    },
+    "list": {
+      "permissions": ["cassandra:Select", "cassandra:SelectMultiRegionResource"]
+    }
+  }
+}

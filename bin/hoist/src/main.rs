@@ -26,7 +26,7 @@ const CLOVER_DEFAULT_CREATOR: &str = "Clover";
 #[command(name = "hoist", version = "0.1")]
 #[command(about = "Gets and puts cloud control assets from the module index")]
 struct Args {
-    #[arg(long, short = 'e')]
+    #[arg(long, short = 'e', env = "SI_MODULE_INDEX_URL")]
     endpoint: String,
     #[arg(long, short = 't', env = "SI_BEARER_TOKEN", hide_env_values(true))]
     token: String,

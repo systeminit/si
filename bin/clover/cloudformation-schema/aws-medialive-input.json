@@ -1,0 +1,239 @@
+{
+  "typeName": "AWS::MediaLive::Input",
+  "description": "Resource Type definition for AWS::MediaLive::Input",
+  "additionalProperties": false,
+  "properties": {
+    "SrtSettings": {
+      "$ref": "#/definitions/SrtSettingsRequest"
+    },
+    "InputNetworkLocation": {
+      "type": "string"
+    },
+    "Destinations": {
+      "type": "array",
+      "uniqueItems": false,
+      "items": {
+        "$ref": "#/definitions/InputDestinationRequest"
+      }
+    },
+    "Vpc": {
+      "$ref": "#/definitions/InputVpcRequest"
+    },
+    "MediaConnectFlows": {
+      "type": "array",
+      "uniqueItems": false,
+      "items": {
+        "$ref": "#/definitions/MediaConnectFlowRequest"
+      }
+    },
+    "Sources": {
+      "type": "array",
+      "uniqueItems": false,
+      "items": {
+        "$ref": "#/definitions/InputSourceRequest"
+      }
+    },
+    "RoleArn": {
+      "type": "string"
+    },
+    "Name": {
+      "type": "string"
+    },
+    "Type": {
+      "type": "string"
+    },
+    "Id": {
+      "type": "string"
+    },
+    "Arn": {
+      "type": "string"
+    },
+    "InputSecurityGroups": {
+      "type": "array",
+      "uniqueItems": false,
+      "items": {
+        "type": "string"
+      }
+    },
+    "MulticastSettings": {
+      "$ref": "#/definitions/MulticastSettingsCreateRequest"
+    },
+    "InputDevices": {
+      "type": "array",
+      "uniqueItems": false,
+      "items": {
+        "$ref": "#/definitions/InputDeviceSettings"
+      }
+    },
+    "Tags": {
+      "type": "object"
+    }
+  },
+  "definitions": {
+    "SrtCallerSourceRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "SrtListenerPort": {
+          "type": "string"
+        },
+        "StreamId": {
+          "type": "string"
+        },
+        "MinimumLatency": {
+          "type": "integer"
+        },
+        "Decryption": {
+          "$ref": "#/definitions/SrtCallerDecryptionRequest"
+        },
+        "SrtListenerAddress": {
+          "type": "string"
+        }
+      }
+    },
+    "SrtCallerDecryptionRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "Algorithm": {
+          "type": "string"
+        },
+        "PassphraseSecretArn": {
+          "type": "string"
+        }
+      }
+    },
+    "InputSourceRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "PasswordParam": {
+          "type": "string"
+        },
+        "Username": {
+          "type": "string"
+        },
+        "Url": {
+          "type": "string"
+        }
+      }
+    },
+    "MulticastSettingsCreateRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "Sources": {
+          "type": "array",
+          "uniqueItems": false,
+          "items": {
+            "$ref": "#/definitions/MulticastSourceCreateRequest"
+          }
+        }
+      }
+    },
+    "InputDeviceSettings": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "Id": {
+          "type": "string"
+        }
+      }
+    },
+    "InputDestinationRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "StreamName": {
+          "type": "string"
+        },
+        "NetworkRoutes": {
+          "type": "array",
+          "uniqueItems": false,
+          "items": {
+            "$ref": "#/definitions/InputRequestDestinationRoute"
+          }
+        },
+        "StaticIpAddress": {
+          "type": "string"
+        },
+        "Network": {
+          "type": "string"
+        }
+      }
+    },
+    "SrtSettingsRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "SrtCallerSources": {
+          "type": "array",
+          "uniqueItems": false,
+          "items": {
+            "$ref": "#/definitions/SrtCallerSourceRequest"
+          }
+        }
+      }
+    },
+    "InputVpcRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "SecurityGroupIds": {
+          "type": "array",
+          "uniqueItems": false,
+          "items": {
+            "type": "string"
+          }
+        },
+        "SubnetIds": {
+          "type": "array",
+          "uniqueItems": false,
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "InputRequestDestinationRoute": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "Cidr": {
+          "type": "string"
+        },
+        "Gateway": {
+          "type": "string"
+        }
+      }
+    },
+    "MediaConnectFlowRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "FlowArn": {
+          "type": "string"
+        }
+      }
+    },
+    "MulticastSourceCreateRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "Url": {
+          "type": "string"
+        },
+        "SourceIp": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "createOnlyProperties": [
+    "/properties/Vpc",
+    "/properties/Type",
+    "/properties/InputNetworkLocation"
+  ],
+  "primaryIdentifier": ["/properties/Id"],
+  "readOnlyProperties": ["/properties/Id", "/properties/Arn"]
+}

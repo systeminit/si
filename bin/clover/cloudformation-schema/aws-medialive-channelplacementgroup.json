@@ -1,0 +1,136 @@
+{
+  "typeName": "AWS::MediaLive::ChannelPlacementGroup",
+  "description": "Definition of AWS::MediaLive::ChannelPlacementGroup Resource Type",
+  "sourceUrl": "https://github.com/aws-cloudformation/aws-cloudformation-resource-providers-medialive.git",
+  "properties": {
+    "Arn": {
+      "type": "string",
+      "description": "The ARN of the channel placement group."
+    },
+    "Channels": {
+      "type": "array",
+      "insertionOrder": false,
+      "description": "List of channel IDs added to the channel placement group.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "ClusterId": {
+      "type": "string",
+      "description": "The ID of the cluster the node is on."
+    },
+    "Id": {
+      "type": "string",
+      "description": "Unique internal identifier."
+    },
+    "Name": {
+      "type": "string",
+      "description": "The name of the channel placement group."
+    },
+    "Nodes": {
+      "type": "array",
+      "insertionOrder": false,
+      "description": "List of nodes added to the channel placement group",
+      "items": {
+        "type": "string"
+      }
+    },
+    "State": {
+      "$ref": "#/definitions/ChannelPlacementGroupState"
+    },
+    "Tags": {
+      "description": "A collection of key-value pairs.",
+      "type": "array",
+      "insertionOrder": false,
+      "items": {
+        "$ref": "#/definitions/Tags"
+      }
+    }
+  },
+  "definitions": {
+    "ChannelPlacementGroupState": {
+      "type": "string",
+      "description": "The current state of the ChannelPlacementGroupState",
+      "enum": [
+        "UNASSIGNED",
+        "ASSIGNING",
+        "ASSIGNED",
+        "DELETING",
+        "DELETED",
+        "UNASSIGNING"
+      ]
+    },
+    "Tags": {
+      "description": "A key-value pair to associate with a resource.",
+      "type": "object",
+      "properties": {
+        "Key": {
+          "type": "string"
+        },
+        "Value": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "createOnlyProperties": ["/properties/ClusterId"],
+  "readOnlyProperties": [
+    "/properties/Arn",
+    "/properties/Channels",
+    "/properties/Id",
+    "/properties/State"
+  ],
+  "primaryIdentifier": ["/properties/Id", "/properties/ClusterId"],
+  "tagging": {
+    "taggable": true,
+    "tagOnCreate": true,
+    "tagUpdatable": true,
+    "cloudFormationSystemTags": false,
+    "tagProperty": "/properties/Tags",
+    "permissions": ["medialive:CreateTags", "medialive:DeleteTags"]
+  },
+  "handlers": {
+    "create": {
+      "permissions": [
+        "medialive:CreateChannelPlacementGroup",
+        "medialive:DescribeChannelPlacementGroup",
+        "medialive:CreateTags",
+        "medialive:ListTagsForResource"
+      ]
+    },
+    "read": {
+      "permissions": [
+        "medialive:DescribeChannelPlacementGroup",
+        "medialive:ListTagsForResource"
+      ]
+    },
+    "update": {
+      "permissions": [
+        "medialive:UpdateChannelPlacementGroup",
+        "medialive:DescribeChannelPlacementGroup",
+        "medialive:CreateTags",
+        "medialive:DeleteTags",
+        "medialive:ListTagsForResource"
+      ]
+    },
+    "delete": {
+      "permissions": [
+        "medialive:DeleteChannelPlacementGroup",
+        "medialive:DescribeChannelPlacementGroup"
+      ]
+    },
+    "list": {
+      "permissions": ["medialive:ListChannelPlacementGroups"],
+      "handlerSchema": {
+        "properties": {
+          "ClusterId": {
+            "$ref": "#/properties/ClusterId"
+          }
+        },
+        "required": ["ClusterId"]
+      }
+    }
+  },
+  "additionalProperties": false
+}

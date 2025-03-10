@@ -1,0 +1,95 @@
+{
+  "typeName": "AWS::AppConfig::Application",
+  "description": "Resource Type definition for AWS::AppConfig::Application",
+  "sourceUrl": "https://github.com/aws-cloudformation/aws-cloudformation-resource-providers-appconfig.git",
+  "definitions": {
+    "Tags": {
+      "description": "Metadata to assign to the application. Tags help organize and categorize your AWS AppConfig resources. Each tag consists of a key and an optional value, both of which you define.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "Key": {
+          "type": "string",
+          "description": "The key-value string map. The valid character set is [a-zA-Z1-9 +-=._:/-]. The tag key can be up to 128 characters and must not start with aws:.",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "Value": {
+          "type": "string",
+          "description": "The tag value can be up to 256 characters.",
+          "minLength": 0,
+          "maxLength": 256
+        }
+      },
+      "required": ["Key", "Value"]
+    }
+  },
+  "properties": {
+    "Description": {
+      "type": "string",
+      "description": "A description of the application."
+    },
+    "ApplicationId": {
+      "type": "string",
+      "description": "The application Id"
+    },
+    "Tags": {
+      "type": "array",
+      "description": "Metadata to assign to the application. Tags help organize and categorize your AWS AppConfig resources. Each tag consists of a key and an optional value, both of which you define.",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/definitions/Tags"
+      },
+      "insertionOrder": false
+    },
+    "Name": {
+      "type": "string",
+      "description": "A name for the application."
+    }
+  },
+  "additionalProperties": false,
+  "required": ["Name"],
+  "readOnlyProperties": ["/properties/ApplicationId"],
+  "primaryIdentifier": ["/properties/ApplicationId"],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "appconfig:CreateApplication",
+        "appconfig:GetApplication",
+        "appconfig:ListTagsForResource",
+        "appconfig:TagResource"
+      ]
+    },
+    "read": {
+      "permissions": [
+        "appconfig:GetApplication",
+        "appconfig:ListTagsForResource"
+      ]
+    },
+    "update": {
+      "permissions": [
+        "appconfig:UpdateApplication",
+        "appconfig:TagResource",
+        "appconfig:UntagResource"
+      ]
+    },
+    "delete": {
+      "permissions": ["appconfig:GetApplication", "appconfig:DeleteApplication"]
+    },
+    "list": {
+      "permissions": ["appconfig:ListApplications"]
+    }
+  },
+  "tagging": {
+    "taggable": true,
+    "tagOnCreate": true,
+    "tagUpdatable": true,
+    "cloudFormationSystemTags": true,
+    "tagProperty": "/properties/Tags",
+    "permissions": [
+      "appconfig:TagResource",
+      "appconfig:UntagResource",
+      "appconfig:ListTagsForResource"
+    ]
+  }
+}

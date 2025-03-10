@@ -1,0 +1,125 @@
+{
+  "typeName": "AWS::IVS::PlaybackRestrictionPolicy",
+  "description": "Resource Type definition for AWS::IVS::PlaybackRestrictionPolicy.",
+  "sourceUrl": "https://github.com/aws-cloudformation/aws-cloudformation-rpdk.git",
+  "definitions": {
+    "Tag": {
+      "description": "A key-value pair to associate with a resource.",
+      "type": "object",
+      "properties": {
+        "Key": {
+          "type": "string",
+          "description": "The key name of the tag. You can specify a value that is 1 to 128 Unicode characters in length and cannot be prefixed with aws:. You can use any of the following characters: the set of Unicode letters, digits, whitespace, _, ., /, =, +, and -.",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "Value": {
+          "type": "string",
+          "description": "The value for the tag. You can specify a value that is 0 to 256 Unicode characters in length and cannot be prefixed with aws:. You can use any of the following characters: the set of Unicode letters, digits, whitespace, _, ., /, =, +, and -.",
+          "minLength": 0,
+          "maxLength": 256
+        }
+      },
+      "required": ["Key", "Value"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "Arn": {
+      "description": "Playback-restriction-policy identifier.",
+      "type": "string",
+      "pattern": "^arn:aws:ivs:[a-z0-9-]+:[0-9]+:playback-restriction-policy/[a-zA-Z0-9-]+$",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "AllowedCountries": {
+      "description": "A list of country codes that control geoblocking restriction. Allowed values are the officially assigned ISO 3166-1 alpha-2 codes. Default: All countries (an empty array).",
+      "type": "array",
+      "uniqueItems": true,
+      "insertionOrder": false,
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "AllowedOrigins": {
+      "description": "A list of origin sites that control CORS restriction. Allowed values are the same as valid values of the Origin header defined at https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Origin",
+      "type": "array",
+      "insertionOrder": false,
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "EnableStrictOriginEnforcement": {
+      "description": "Whether channel playback is constrained by origin site.",
+      "default": false,
+      "type": "boolean"
+    },
+    "Name": {
+      "description": "Playback-restriction-policy name.",
+      "type": "string",
+      "maxLength": 128,
+      "minLength": 0,
+      "pattern": "^[a-zA-Z0-9-_]*$"
+    },
+    "Tags": {
+      "description": "An array of key-value pairs to apply to this resource.",
+      "type": "array",
+      "uniqueItems": true,
+      "insertionOrder": false,
+      "maxItems": 50,
+      "items": {
+        "$ref": "#/definitions/Tag"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "required": ["AllowedCountries", "AllowedOrigins"],
+  "tagging": {
+    "taggable": true,
+    "tagOnCreate": true,
+    "tagUpdatable": true,
+    "cloudFormationSystemTags": false,
+    "tagProperty": "/properties/Tags",
+    "permissions": [
+      "ivs:TagResource",
+      "ivs:UntagResource",
+      "ivs:ListTagsForResource"
+    ]
+  },
+  "readOnlyProperties": ["/properties/Arn"],
+  "primaryIdentifier": ["/properties/Arn"],
+  "handlers": {
+    "create": {
+      "permissions": ["ivs:CreatePlaybackRestrictionPolicy", "ivs:TagResource"]
+    },
+    "read": {
+      "permissions": [
+        "ivs:GetPlaybackRestrictionPolicy",
+        "ivs:ListTagsForResource"
+      ]
+    },
+    "update": {
+      "permissions": [
+        "ivs:GetPlaybackRestrictionPolicy",
+        "ivs:UpdatePlaybackRestrictionPolicy",
+        "ivs:ListTagsForResource",
+        "ivs:UntagResource",
+        "ivs:TagResource"
+      ]
+    },
+    "delete": {
+      "permissions": [
+        "ivs:DeletePlaybackRestrictionPolicy",
+        "ivs:UntagResource"
+      ]
+    },
+    "list": {
+      "permissions": [
+        "ivs:ListPlaybackRestrictionPolicies",
+        "ivs:ListTagsForResource"
+      ]
+    }
+  }
+}

@@ -1,0 +1,77 @@
+{
+  "typeName": "AWS::QBusiness::Permission",
+  "description": "Definition of AWS::QBusiness::Permission Resource Type",
+  "properties": {
+    "ApplicationId": {
+      "type": "string",
+      "maxLength": 36,
+      "minLength": 36,
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9-]{35}$"
+    },
+    "StatementId": {
+      "type": "string",
+      "maxLength": 100,
+      "minLength": 1,
+      "pattern": "^[a-zA-Z0-9_-]+$"
+    },
+    "Actions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^qbusiness:[a-zA-Z]+$"
+      },
+      "maxItems": 10,
+      "minItems": 1
+    },
+    "Principal": {
+      "type": "string",
+      "maxLength": 1284,
+      "minLength": 1,
+      "pattern": "^arn:aws:iam::[0-9]{12}:role/[a-zA-Z0-9_/+=,.@-]+$"
+    }
+  },
+  "required": ["ApplicationId", "StatementId", "Actions", "Principal"],
+  "createOnlyProperties": [
+    "/properties/ApplicationId",
+    "/properties/StatementId",
+    "/properties/Actions",
+    "/properties/Principal"
+  ],
+  "primaryIdentifier": ["/properties/ApplicationId", "/properties/StatementId"],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "qbusiness:AssociatePermission",
+        "qbusiness:PutResourcePolicy"
+      ]
+    },
+    "read": {
+      "permissions": ["qbusiness:GetPolicy"]
+    },
+    "delete": {
+      "permissions": [
+        "qbusiness:DisassociatePermission",
+        "qbusiness:PutResourcePolicy"
+      ]
+    },
+    "list": {
+      "permissions": ["qbusiness:GetPolicy"],
+      "handlerSchema": {
+        "properties": {
+          "ApplicationId": {
+            "$ref": "#/properties/ApplicationId"
+          }
+        },
+        "required": ["ApplicationId"]
+      }
+    }
+  },
+  "tagging": {
+    "taggable": false,
+    "tagOnCreate": false,
+    "tagUpdatable": false,
+    "cloudFormationSystemTags": false
+  },
+  "sourceUrl": "https://github.com/aws-cloudformation/aws-cloudformation-resource-providers-qbusiness",
+  "additionalProperties": false
+}

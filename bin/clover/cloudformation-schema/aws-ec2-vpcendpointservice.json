@@ -1,0 +1,118 @@
+{
+  "typeName": "AWS::EC2::VPCEndpointService",
+  "description": "Resource Type definition for AWS::EC2::VPCEndpointService",
+  "additionalProperties": false,
+  "definitions": {
+    "Tag": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "Value": {
+          "type": "string"
+        },
+        "Key": {
+          "type": "string"
+        }
+      },
+      "required": ["Value", "Key"]
+    }
+  },
+  "properties": {
+    "NetworkLoadBalancerArns": {
+      "type": "array",
+      "uniqueItems": false,
+      "items": {
+        "type": "string",
+        "relationshipRef": {
+          "typeName": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+          "propertyPath": "/properties/LoadBalancerArn"
+        }
+      }
+    },
+    "ContributorInsightsEnabled": {
+      "type": "boolean"
+    },
+    "PayerResponsibility": {
+      "type": "string"
+    },
+    "ServiceId": {
+      "type": "string"
+    },
+    "AcceptanceRequired": {
+      "type": "boolean"
+    },
+    "GatewayLoadBalancerArns": {
+      "type": "array",
+      "uniqueItems": false,
+      "items": {
+        "type": "string"
+      }
+    },
+    "Tags": {
+      "type": "array",
+      "description": "The tags to add to the VPC endpoint service.",
+      "uniqueItems": false,
+      "insertionOrder": false,
+      "items": {
+        "$ref": "#/definitions/Tag"
+      }
+    }
+  },
+  "primaryIdentifier": ["/properties/ServiceId"],
+  "readOnlyProperties": ["/properties/ServiceId"],
+  "writeOnlyProperties": ["/properties/ContributorInsightsEnabled"],
+  "tagging": {
+    "taggable": true,
+    "tagOnCreate": true,
+    "tagUpdatable": true,
+    "cloudFormationSystemTags": false,
+    "tagProperty": "/properties/Tags",
+    "permissions": ["ec2:CreateTags", "ec2:DeleteTags"]
+  },
+  "handlers": {
+    "create": {
+      "permissions": [
+        "ec2:CreateVpcEndpointServiceConfiguration",
+        "ec2:ModifyVpcEndpointServicePayerResponsibility",
+        "cloudwatch:ListManagedInsightRules",
+        "cloudwatch:DeleteInsightRules",
+        "cloudwatch:PutManagedInsightRules",
+        "ec2:DescribeVpcEndpointServiceConfigurations",
+        "ec2:CreateTags"
+      ]
+    },
+    "update": {
+      "permissions": [
+        "ec2:ModifyVpcEndpointServiceConfiguration",
+        "ec2:DescribeVpcEndpointServiceConfigurations",
+        "ec2:ModifyVpcEndpointServicePayerResponsibility",
+        "cloudwatch:ListManagedInsightRules",
+        "cloudwatch:DeleteInsightRules",
+        "cloudwatch:PutManagedInsightRules",
+        "ec2:CreateTags",
+        "ec2:DeleteTags"
+      ]
+    },
+    "read": {
+      "permissions": [
+        "ec2:DescribeVpcEndpointServiceConfigurations",
+        "cloudwatch:ListManagedInsightRules"
+      ]
+    },
+    "delete": {
+      "permissions": [
+        "ec2:DeleteVpcEndpointServiceConfigurations",
+        "ec2:DescribeVpcEndpointServiceConfigurations",
+        "cloudwatch:ListManagedInsightRules",
+        "cloudwatch:DeleteInsightRules",
+        "ec2:DeleteTags"
+      ]
+    },
+    "list": {
+      "permissions": [
+        "ec2:DescribeVpcEndpointServiceConfigurations",
+        "cloudwatch:ListManagedInsightRules"
+      ]
+    }
+  }
+}

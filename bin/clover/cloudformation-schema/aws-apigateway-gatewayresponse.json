@@ -1,0 +1,76 @@
+{
+  "typeName": "AWS::ApiGateway::GatewayResponse",
+  "description": "The ``AWS::ApiGateway::GatewayResponse`` resource creates a gateway response for your API. For more information, see [API Gateway Responses](https://docs.aws.amazon.com/apigateway/latest/developerguide/customize-gateway-responses.html#api-gateway-gatewayResponse-definition) in the *API Gateway Developer Guide*.",
+  "sourceUrl": "https://github.com/aws-cloudformation/aws-cloudformation-rpdk.git",
+  "additionalProperties": false,
+  "properties": {
+    "Id": {
+      "description": "",
+      "type": "string"
+    },
+    "RestApiId": {
+      "description": "",
+      "type": "string"
+    },
+    "ResponseType": {
+      "description": "",
+      "type": "string"
+    },
+    "StatusCode": {
+      "description": "",
+      "type": "string"
+    },
+    "ResponseParameters": {
+      "description": "",
+      "type": "object",
+      "additionalProperties": false,
+      "patternProperties": {
+        "[a-zA-Z0-9]+": {
+          "type": "string"
+        }
+      }
+    },
+    "ResponseTemplates": {
+      "description": "",
+      "type": "object",
+      "additionalProperties": false,
+      "patternProperties": {
+        "[a-zA-Z0-9]+": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "required": ["ResponseType", "RestApiId"],
+  "createOnlyProperties": ["/properties/ResponseType", "/properties/RestApiId"],
+  "primaryIdentifier": ["/properties/Id"],
+  "readOnlyProperties": ["/properties/Id"],
+  "tagging": {
+    "taggable": false
+  },
+  "handlers": {
+    "create": {
+      "permissions": ["apigateway:PUT", "apigateway:GET"]
+    },
+    "read": {
+      "permissions": ["apigateway:GET"]
+    },
+    "update": {
+      "permissions": ["apigateway:GET", "apigateway:PUT"]
+    },
+    "delete": {
+      "permissions": ["apigateway:GET", "apigateway:DELETE"]
+    },
+    "list": {
+      "handlerSchema": {
+        "properties": {
+          "RestApiId": {
+            "$ref": "#/properties/RestApiId"
+          }
+        },
+        "required": ["RestApiId"]
+      },
+      "permissions": ["apigateway:GET"]
+    }
+  }
+}

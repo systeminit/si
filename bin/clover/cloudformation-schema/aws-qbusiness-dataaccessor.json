@@ -1,0 +1,303 @@
+{
+  "typeName": "AWS::QBusiness::DataAccessor",
+  "description": "Definition of AWS::QBusiness::DataAccessor Resource Type",
+  "definitions": {
+    "ActionConfiguration": {
+      "type": "object",
+      "properties": {
+        "Action": {
+          "type": "string",
+          "pattern": "^qbusiness:[a-zA-Z]+$"
+        },
+        "FilterConfiguration": {
+          "$ref": "#/definitions/ActionFilterConfiguration"
+        }
+      },
+      "required": ["Action"],
+      "additionalProperties": false
+    },
+    "ActionFilterConfiguration": {
+      "type": "object",
+      "properties": {
+        "DocumentAttributeFilter": {
+          "$ref": "#/definitions/AttributeFilter"
+        }
+      },
+      "required": ["DocumentAttributeFilter"],
+      "additionalProperties": false
+    },
+    "AttributeFilter": {
+      "type": "object",
+      "properties": {
+        "AndAllFilters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/AttributeFilter"
+          }
+        },
+        "OrAllFilters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/AttributeFilter"
+          }
+        },
+        "NotFilter": {
+          "$ref": "#/definitions/AttributeFilter"
+        },
+        "EqualsTo": {
+          "$ref": "#/definitions/DocumentAttribute"
+        },
+        "ContainsAll": {
+          "$ref": "#/definitions/DocumentAttribute"
+        },
+        "ContainsAny": {
+          "$ref": "#/definitions/DocumentAttribute"
+        },
+        "GreaterThan": {
+          "$ref": "#/definitions/DocumentAttribute"
+        },
+        "GreaterThanOrEquals": {
+          "$ref": "#/definitions/DocumentAttribute"
+        },
+        "LessThan": {
+          "$ref": "#/definitions/DocumentAttribute"
+        },
+        "LessThanOrEquals": {
+          "$ref": "#/definitions/DocumentAttribute"
+        }
+      },
+      "additionalProperties": false
+    },
+    "DocumentAttribute": {
+      "type": "object",
+      "properties": {
+        "Name": {
+          "type": "string",
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[a-zA-Z0-9_][a-zA-Z0-9_-]*$"
+        },
+        "Value": {
+          "$ref": "#/definitions/DocumentAttributeValue"
+        }
+      },
+      "required": ["Name", "Value"],
+      "additionalProperties": false
+    },
+    "DocumentAttributeValue": {
+      "oneOf": [{
+        "type": "object",
+        "title": "StringValue",
+        "properties": {
+          "StringValue": {
+            "type": "string",
+            "maxLength": 2048
+          }
+        },
+        "required": ["StringValue"],
+        "additionalProperties": false
+      }, {
+        "type": "object",
+        "title": "StringListValue",
+        "properties": {
+          "StringListValue": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 2048,
+              "minLength": 1
+            }
+          }
+        },
+        "required": ["StringListValue"],
+        "additionalProperties": false
+      }, {
+        "type": "object",
+        "title": "LongValue",
+        "properties": {
+          "LongValue": {
+            "type": "number"
+          }
+        },
+        "required": ["LongValue"],
+        "additionalProperties": false
+      }, {
+        "type": "object",
+        "title": "DateValue",
+        "properties": {
+          "DateValue": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": ["DateValue"],
+        "additionalProperties": false
+      }]
+    },
+    "Tag": {
+      "type": "object",
+      "properties": {
+        "Key": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "Value": {
+          "type": "string",
+          "maxLength": 256,
+          "minLength": 0
+        }
+      },
+      "required": ["Key", "Value"],
+      "additionalProperties": false
+    },
+    "Unit": {
+      "type": "object",
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "ActionConfigurations": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/ActionConfiguration"
+      },
+      "maxItems": 10,
+      "minItems": 1
+    },
+    "ApplicationId": {
+      "type": "string",
+      "maxLength": 36,
+      "minLength": 36,
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9-]{35}$"
+    },
+    "CreatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "DataAccessorArn": {
+      "type": "string",
+      "maxLength": 1284,
+      "minLength": 0,
+      "pattern": "^arn:[a-z0-9-\\.]{1,63}:[a-z0-9-\\.]{0,63}:[a-z0-9-\\.]{0,63}:[a-z0-9-\\.]{0,63}:[^/].{0,1023}$"
+    },
+    "DataAccessorId": {
+      "type": "string",
+      "maxLength": 36,
+      "minLength": 36,
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9-]{35}$"
+    },
+    "DisplayName": {
+      "type": "string",
+      "maxLength": 100,
+      "minLength": 1,
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_-]*$"
+    },
+    "IdcApplicationArn": {
+      "type": "string",
+      "maxLength": 1224,
+      "minLength": 10,
+      "pattern": "^arn:(aws|aws-us-gov|aws-cn|aws-iso|aws-iso-b):sso::\\d{12}:application/(sso)?ins-[a-zA-Z0-9-.]{16}/apl-[a-zA-Z0-9]{16}$"
+    },
+    "Principal": {
+      "type": "string",
+      "maxLength": 1284,
+      "minLength": 1,
+      "pattern": "^arn:aws:iam::[0-9]{12}:role/[a-zA-Z0-9_/+=,.@-]+$"
+    },
+    "Tags": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Tag"
+      },
+      "maxItems": 200,
+      "minItems": 0
+    },
+    "UpdatedAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "ApplicationId",
+    "ActionConfigurations",
+    "DisplayName",
+    "Principal"
+  ],
+  "readOnlyProperties": [
+    "/properties/CreatedAt",
+    "/properties/DataAccessorArn",
+    "/properties/DataAccessorId",
+    "/properties/IdcApplicationArn",
+    "/properties/UpdatedAt"
+  ],
+  "createOnlyProperties": [
+    "/properties/ApplicationId",
+    "/properties/Principal"
+  ],
+  "primaryIdentifier": [
+    "/properties/ApplicationId",
+    "/properties/DataAccessorId"
+  ],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "qbusiness:CreateDataAccessor",
+        "qbusiness:GetDataAccessor",
+        "qbusiness:ListTagsForResource",
+        "qbusiness:TagResource",
+        "sso:CreateApplication",
+        "sso:PutApplicationAuthenticationMethod",
+        "sso:PutApplicationGrant",
+        "sso:PutApplicationAccessScope"
+      ]
+    },
+    "read": {
+      "permissions": [
+        "qbusiness:GetDataAccessor",
+        "qbusiness:ListTagsForResource"
+      ]
+    },
+    "update": {
+      "permissions": [
+        "qbusiness:GetDataAccessor",
+        "qbusiness:ListTagsForResource",
+        "qbusiness:TagResource",
+        "qbusiness:UntagResource",
+        "qbusiness:UpdateDataAccessor"
+      ]
+    },
+    "delete": {
+      "permissions": [
+        "qbusiness:DeleteDataAccessor",
+        "qbusiness:GetDataAccessor",
+        "sso:DeleteApplication"
+      ]
+    },
+    "list": {
+      "permissions": ["qbusiness:ListDataAccessors"],
+      "handlerSchema": {
+        "properties": {
+          "ApplicationId": {
+            "$ref": "#/properties/ApplicationId"
+          }
+        },
+        "required": ["ApplicationId"]
+      }
+    }
+  },
+  "tagging": {
+    "taggable": true,
+    "tagUpdatable": true,
+    "tagOnCreate": true,
+    "cloudFormationSystemTags": true,
+    "tagProperty": "/properties/Tags",
+    "permissions": [
+      "qbusiness:UntagResource",
+      "qbusiness:TagResource",
+      "qbusiness:ListTagsForResource"
+    ]
+  },
+  "sourceUrl": "https://github.com/aws-cloudformation/aws-cloudformation-resource-providers-qbusiness",
+  "additionalProperties": false
+}

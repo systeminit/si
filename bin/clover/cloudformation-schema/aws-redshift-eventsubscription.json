@@ -1,0 +1,183 @@
+{
+  "tagging": {
+    "taggable": true
+  },
+  "typeName": "AWS::Redshift::EventSubscription",
+  "readOnlyProperties": [
+    "/properties/CustomerAwsId",
+    "/properties/CustSubscriptionId",
+    "/properties/Status",
+    "/properties/SubscriptionCreationTime",
+    "/properties/SourceIdsList",
+    "/properties/EventCategoriesList"
+  ],
+  "description": "The `AWS::Redshift::EventSubscription` resource creates an Amazon Redshift Event Subscription.",
+  "createOnlyProperties": ["/properties/SubscriptionName"],
+  "primaryIdentifier": ["/properties/SubscriptionName"],
+  "required": ["SubscriptionName"],
+  "sourceUrl": "https://github.com/aws-cloudformation/aws-cloudformation-resource-providers-redshift",
+  "handlers": {
+    "read": {
+      "permissions": [
+        "redshift:DescribeEventSubscriptions",
+        "redshift:DescribeTags"
+      ]
+    },
+    "create": {
+      "permissions": [
+        "redshift:CreateEventSubscription",
+        "redshift:CreateTags",
+        "redshift:DescribeTags",
+        "redshift:DescribeEventSubscriptions"
+      ]
+    },
+    "update": {
+      "permissions": [
+        "redshift:ModifyEventSubscription",
+        "redshift:CreateTags",
+        "redshift:DescribeTags",
+        "redshift:DescribeEventSubscriptions",
+        "redshift:DeleteTags"
+      ]
+    },
+    "list": {
+      "permissions": [
+        "redshift:DescribeTags",
+        "redshift:DescribeEventSubscriptions"
+      ]
+    },
+    "delete": {
+      "permissions": [
+        "redshift:DescribeEventSubscriptions",
+        "redshift:DeleteEventSubscription",
+        "redshift:DescribeTags",
+        "redshift:DeleteTags"
+      ]
+    }
+  },
+  "writeOnlyProperties": [
+    "/properties/Tags",
+    "/properties/Tags/*/Key",
+    "/properties/Tags/*/Value"
+  ],
+  "additionalProperties": false,
+  "definitions": {
+    "Tag": {
+      "description": "A key-value pair to associate with a resource.",
+      "additionalProperties": false,
+      "type": "object",
+      "properties": {
+        "Value": {
+          "minLength": 0,
+          "description": "The value for the tag. You can specify a value that is 0 to 256 Unicode characters in length and cannot be prefixed with aws:. You can use any of the following characters: the set of Unicode letters, digits, whitespace, _, ., /, =, +, and -.",
+          "type": "string",
+          "maxLength": 256
+        },
+        "Key": {
+          "minLength": 1,
+          "description": "The key name of the tag. You can specify a value that is 1 to 128 Unicode characters in length and cannot be prefixed with aws:. You can use any of the following characters: the set of Unicode letters, digits, whitespace, _, ., /, =, +, and -.",
+          "type": "string",
+          "maxLength": 128
+        }
+      },
+      "required": ["Key", "Value"]
+    }
+  },
+  "properties": {
+    "Status": {
+      "description": "The status of the Amazon Redshift event notification subscription.",
+      "type": "string",
+      "enum": ["active", "no-permission", "topic-not-exist"]
+    },
+    "CustSubscriptionId": {
+      "description": "The name of the Amazon Redshift event notification subscription.",
+      "type": "string"
+    },
+    "EventCategoriesList": {
+      "uniqueItems": true,
+      "description": "The list of Amazon Redshift event categories specified in the event notification subscription.",
+      "insertionOrder": false,
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "SourceType": {
+      "description": "The type of source that will be generating the events.",
+      "type": "string",
+      "enum": [
+        "cluster",
+        "cluster-parameter-group",
+        "cluster-security-group",
+        "cluster-snapshot",
+        "scheduled-action"
+      ]
+    },
+    "EventCategories": {
+      "uniqueItems": true,
+      "description": "Specifies the Amazon Redshift event categories to be published by the event notification subscription.",
+      "insertionOrder": false,
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "configuration",
+          "management",
+          "monitoring",
+          "security",
+          "pending"
+        ]
+      }
+    },
+    "Enabled": {
+      "description": "A boolean value; set to true to activate the subscription, and set to false to create the subscription but not activate it.",
+      "type": "boolean"
+    },
+    "Severity": {
+      "description": "Specifies the Amazon Redshift event severity to be published by the event notification subscription.",
+      "type": "string",
+      "enum": ["ERROR", "INFO"]
+    },
+    "SubscriptionName": {
+      "pattern": "^(?=^[a-zA-Z][a-zA-Z0-9]*(-[a-zA-Z0-9]+)*$).{1,255}$",
+      "description": "The name of the Amazon Redshift event notification subscription",
+      "type": "string"
+    },
+    "SourceIds": {
+      "description": "A list of one or more identifiers of Amazon Redshift source objects.",
+      "insertionOrder": false,
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "CustomerAwsId": {
+      "description": "The AWS account associated with the Amazon Redshift event notification subscription.",
+      "type": "string"
+    },
+    "SourceIdsList": {
+      "description": "A list of the sources that publish events to the Amazon Redshift event notification subscription.",
+      "insertionOrder": false,
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "SnsTopicArn": {
+      "description": "The Amazon Resource Name (ARN) of the Amazon SNS topic used to transmit the event notifications.",
+      "type": "string"
+    },
+    "SubscriptionCreationTime": {
+      "description": "The date and time the Amazon Redshift event notification subscription was created.",
+      "type": "string"
+    },
+    "Tags": {
+      "description": "An array of key-value pairs to apply to this resource.",
+      "insertionOrder": false,
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Tag"
+      }
+    }
+  }
+}
