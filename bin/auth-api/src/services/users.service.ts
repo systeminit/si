@@ -22,6 +22,8 @@ import {
 const prisma = new PrismaClient();
 
 export type UserId = string;
+export type Auth0User = Auth0.GetUsers200ResponseOneOfInner;
+export type ApiResponse<T> = Auth0.ApiResponse<T>;
 
 export async function getUserById(id: UserId) {
   const userWithTosAgreement = await prisma.user.findUnique({
@@ -102,8 +104,9 @@ export async function getQuarantinedUsers() {
 }
 
 export async function createOrUpdateUserFromAuth0Details(
-  auth0UserData: Auth0.User,
+  auth0UserDataRaw: ApiResponse<Auth0User>,
 ) {
+  const auth0UserData = auth0UserDataRaw.data;
   // not sure why this type says the id could be empty? probably will not happen but we'll watch for this error
   if (!auth0UserData.user_id) throw new Error("Missing auth0 user_id");
   if (!auth0UserData.email) throw new Error("Missing auth0 email");
@@ -192,13 +195,13 @@ export async function refreshUserAuth0Profile(user: User) {
     throw new ApiError("Conflict", "User has no auth0 id");
   }
   const auth0Details = await fetchAuth0Profile(user.auth0Id);
-  setUserDataFromAuth0Details(user, auth0Details);
+  setUserDataFromAuth0Details(user, auth0Details.data);
   await saveUser(user);
 }
 
 function setUserDataFromAuth0Details(
   user: any,
-  auth0Details: Auth0.User,
+  auth0Details: Auth0User,
   isSignup = false,
 ) {
   // save most up to date copy of auth0 details

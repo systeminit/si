@@ -13,27 +13,5 @@
   "engines": {
     "node": ">=18 <19"
   },
-  "packageManager": "pnpm@10.0.0",
-  "pnpm": {
-    "overrides": {
-      "axios@<0.28.0": "^0.28.0"
-    }
-  },
-  "@pnpm.overrides-comments": [
-    "Upgrade transitive dependencies with PNPM",
-    "",
-    "See: https://blog.logto.io/pnpm-upgrade-transitive-dependencies",
-    "",
-    "",
-    "@axios@<0.28.0:",
-    "  Pinned to 0.28.0 to address:",
-    "  https://github.com/advisories/GHSA-wf5p-g6vw-rhxx",
-    "",
-    "  This old version is pulled in transitively via:",
-    "    - auth0@3.2.0",
-    "    - posthog-node@2.6.0",
-    "",
-    "  An effort should be made to upgrade these increasingly old package",
-    "  versions."
-  ]
+  "packageManager": "pnpm@10.0.0"
 }

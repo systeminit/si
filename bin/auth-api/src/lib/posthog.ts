@@ -7,5 +7,5 @@ export const posthog = new PostHog(
 );
 
 asyncExitHook(async () => {
-  await posthog.shutdownAsync();
+  await posthog.shutdown();
 }, { minimumWait: 500 });

@@ -1,6 +1,6 @@
 import Axios from "axios";
 import { nanoid } from "nanoid";
-import Auth0 from "auth0";
+import { ManagementClient } from "auth0";
 import JWT from "jsonwebtoken";
 
 import { ApiError } from "../lib/api-error";
@@ -8,7 +8,7 @@ import { tryCatch } from "../lib/try-catch";
 import { getQueryString } from "../lib/querystring";
 import { getCache, setCache } from "../lib/cache";
 
-// const auth0Client = new Auth0.AuthenticationClient({
+// const auth0Client = new AuthenticationClient({
 //   /* eslint-disable @typescript-eslint/no-non-null-assertion */
 //   domain: process.env.AUTH0_DOMAIN!,
 //   clientId: process.env.AUTH0_CLIENT_ID!,
@@ -21,9 +21,7 @@ const auth0Api = Axios.create({
   baseURL: `https://${process.env.AUTH0_DOMAIN}`,
 });
 
-export type Auth0UserData = Auth0.UserData;
-
-export async function getAuth0UserCredential(username: String, password: String) {
+export async function getAuth0UserCredential(username: string, password: string) {
   const authResult = await auth0Api.request({
     method: "post",
     url: "/oauth/token",
@@ -118,7 +116,6 @@ export async function completeAuth0TokenExchange(code: string) {
 
     // if the error doesn't look like a normal auth0 response just throw it
     if (!err?.response.data.error_description) throw err;
-
     throw new ApiError(
       "Conflict",
       "AUTH0_EXCHANGE_FAILURE",
@@ -127,6 +124,7 @@ export async function completeAuth0TokenExchange(code: string) {
   });
   // access token is an "opaque token" so does not contain any info and cannot be decoded
   // but id_token data is decoded into idTokenData and includes some basic info
+
   const { accessToken, idTokenData } = tokenAndBasicProfile!;
   const profile = await fetchAuth0Profile(idTokenData.sub);
 
@@ -168,7 +166,6 @@ async function getManagementApiToken() {
     clientId: process.env.AUTH0_M2M_CLIENT_ID,
     token,
   }, {
-    // expire the key from redis 5 minutes before token expiration
     expiresIn: result.data.expires_in - (5 * 60),
   });
 
@@ -187,8 +184,8 @@ export async function setManagementApiTokenForTesting() {
 
 async function getManagementClient() {
   const m2mToken = await getManagementApiToken();
-  return new Auth0.ManagementClient({
-    /* eslint-disable @typescript-eslint/no-non-null-assertion */
+  /* eslint-disable @typescript-eslint/no-non-null-assertion */
+  return new ManagementClient({
     domain: process.env.AUTH0_DOMAIN!,
     // clientId: process.env.AUTH0_M2M_CLIENT_ID!,
     token: m2mToken,
@@ -199,7 +196,7 @@ export async function fetchAuth0Profile(auth0Id: string) {
   const auth0ManagementClient = await getManagementClient();
 
   const profile = await tryCatch(async () => {
-    return await auth0ManagementClient.getUser({ id: auth0Id });
+    return await auth0ManagementClient.users.get({ id: auth0Id });
   }, (err) => {
     if (!err?.response.data.error_description) throw err;
     throw new ApiError(
@@ -215,5 +212,5 @@ export async function fetchAuth0Profile(auth0Id: string) {
 
 export async function resendAuth0EmailVerification(auth0Id: string) {
   const auth0ManagementClient = await getManagementClient();
-  await auth0ManagementClient.sendEmailVerification({ user_id: auth0Id });
+  await auth0ManagementClient.jobs.verifyEmail({ user_id: auth0Id });
 }
