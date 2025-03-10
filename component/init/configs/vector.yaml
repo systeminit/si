@@ -11,6 +11,21 @@ sources:
       SYSLOG_IDENTIFIER: ["sdf-migration"]
     journal_directory: "/var/log/journal"
 
+transforms:
+  honeycomb_format:
+    type: remap
+    inputs: ["$SI_SERVICE-journal", "sdf-migration"]
+    source: |-
+      if exists(.message) {
+        level_match, err = parse_regex(.message, r'^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d+Z\\s+([A-Z]+)\\s')
+
+        if err == null && exists(level_match[1]) {
+            .level = level_match[1]
+          } else {
+            .level = "INFO"
+          }
+        }
+
 sinks:
   cloudwatch:
     type: "aws_cloudwatch_logs"
@@ -21,3 +36,8 @@ sinks:
     region: "us-east-1"
     group_name: "/ec2/$SI_HOSTENV-$SI_SERVICE"
     stream_name: "{{ host }}"
+  honeycomb:
+    type: "honeycomb"
+    inputs: ["honeycomb_format"]
+    api_key: "$SI_HONEYCOMB_API_KEY"
+    dataset: "$SI_SERVICE"
