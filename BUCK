@@ -98,6 +98,7 @@ deno_workspace(
         "//bin/clover:deno.json",
         "//bin/lang-js:deno.json",
         "//lib/ts-lib-deno:deno.json",
+        "//lib/jsr-systeminit/remove-empty:deno.json",
     ],
     visibility = ["PUBLIC"],
 )

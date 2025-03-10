@@ -14,6 +14,7 @@ import { FunctionKind } from "./function.ts";
 import { makeExec } from "./sandbox/exec.ts";
 import layout from "./sandbox/layout.ts";
 import template from "./sandbox/template.ts";
+import { extLib } from "./sandbox/extLib.ts";
 import * as assetBuilder from "./asset_builder.ts";
 import {
   makeBeforeRequestStorage,
@@ -38,6 +39,7 @@ function commonSandbox(executionId: string): Sandbox {
     jsonpatch,
     layout,
     template,
+    extLib,
   };
 }
 

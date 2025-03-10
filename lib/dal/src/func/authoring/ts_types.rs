@@ -91,6 +91,10 @@ pub(crate) fn compile_langjs_types() -> &'static str {
         function getKeys(): string[];
     }
 
+    declare namespace extLib {
+        function removeEmpty(object: any): any;
+    }
+
     declare namespace siExec {
 
     interface WatchArgs {
