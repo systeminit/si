@@ -41,10 +41,14 @@ pub enum Error {
     Io(#[from] io::Error),
     #[error("nats connect error: {0}")]
     NatsConnect(#[from] async_nats::ConnectError),
+    #[error("nats drain error: {0}")]
+    NatsDrain(#[from] async_nats::client::DrainError),
     #[error("nats flush error: {0}")]
     NatsFlush(#[from] async_nats::client::FlushError),
     #[error("nats publish error: {0}")]
     NatsPublish(#[from] async_nats::PublishError),
+    #[error("nats reconnect error: {0}")]
+    NatsReconnect(#[from] async_nats::client::ReconnectError),
     #[error("nats request error: {0}")]
     NatsRequest(#[from] async_nats::RequestError),
     #[error("nats subscribe error: {0}")]
@@ -164,6 +168,25 @@ impl Client {
         Self::connect_with_options(&config.url, config.subject_prefix.clone(), options).await
     }
 
+    /// Returns the default timeout for requests set when creating the client.
+    ///
+    /// # Examples
+    /// ```no_run
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), async_nats::Error> {
+    /// let client = si_data_nats::Client::connect_with_options(
+    ///     "demo.nats.io",
+    ///     None,
+    ///     Default::default(),
+    /// ).await?;
+    /// println!("default request timeout: {:?}", client.timeout());
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn timeout(&self) -> Option<Duration> {
+        self.inner.timeout()
+    }
+
     /// Returns last received info from the server.
     ///
     /// # Examples
@@ -249,7 +272,7 @@ impl Client {
             server.port = self.metadata.server_port(),
         )
     )]
-    pub async fn publish(&self, subject: impl ToSubject, payload: Bytes) -> Result<()> {
+    pub async fn publish<S: ToSubject>(&self, subject: S, payload: Bytes) -> Result<()> {
         let span = current_span_for_instrument_at!("debug");
 
         let subject = subject.to_subject();
@@ -316,9 +339,9 @@ impl Client {
             server.port = self.metadata.server_port(),
         )
     )]
-    pub async fn publish_with_headers(
+    pub async fn publish_with_headers<S: ToSubject>(
         &self,
-        subject: impl ToSubject,
+        subject: S,
         headers: HeaderMap,
         payload: Bytes,
     ) -> Result<()> {
@@ -384,10 +407,10 @@ impl Client {
             server.port = self.metadata.server_port(),
         )
     )]
-    pub async fn publish_with_reply(
+    pub async fn publish_with_reply<S: ToSubject, R: ToSubject>(
         &self,
-        subject: impl ToSubject,
-        reply: impl ToSubject,
+        subject: S,
+        reply: R,
         payload: Bytes,
     ) -> Result<()> {
         let span = current_span_for_instrument_at!("debug");
@@ -461,10 +484,10 @@ impl Client {
             server.port = self.metadata.server_port(),
         )
     )]
-    pub async fn publish_with_reply_and_headers(
+    pub async fn publish_with_reply_and_headers<S: ToSubject, R: ToSubject>(
         &self,
-        subject: impl ToSubject,
-        reply: impl ToSubject,
+        subject: S,
+        reply: R,
         headers: HeaderMap,
         payload: Bytes,
     ) -> Result<()> {
@@ -529,7 +552,7 @@ impl Client {
             server.port = self.metadata.server_port(),
         )
     )]
-    pub async fn request(&self, subject: impl ToSubject, payload: Bytes) -> Result<Message> {
+    pub async fn request<S: ToSubject>(&self, subject: S, payload: Bytes) -> Result<Message> {
         let span = current_span_for_instrument_at!("debug");
 
         let subject = subject.to_subject();
@@ -596,9 +619,9 @@ impl Client {
             server.port = self.metadata.server_port(),
         )
     )]
-    pub async fn request_with_headers(
+    pub async fn request_with_headers<S: ToSubject>(
         &self,
-        subject: impl ToSubject,
+        subject: S,
         headers: HeaderMap,
         payload: Bytes,
     ) -> Result<Message> {
@@ -666,7 +689,11 @@ impl Client {
             server.port = self.metadata.server_port(),
         )
     )]
-    pub async fn send_request(&self, subject: impl ToSubject, request: Request) -> Result<Message> {
+    pub async fn send_request<S: ToSubject>(
+        &self,
+        subject: S,
+        request: Request,
+    ) -> Result<Message> {
         let span = current_span_for_instrument_at!("debug");
 
         let subject = subject.to_subject();
@@ -755,7 +782,7 @@ impl Client {
             server.port = self.metadata.server_port(),
         )
     )]
-    pub async fn subscribe(&self, subject: impl ToSubject) -> Result<Subscriber> {
+    pub async fn subscribe<S: ToSubject>(&self, subject: S) -> Result<Subscriber> {
         let span = current_span_for_instrument_at!("debug");
 
         let subject = subject.to_subject();
@@ -825,9 +852,9 @@ impl Client {
             server.port = self.metadata.server_port(),
         )
     )]
-    pub async fn queue_subscribe(
+    pub async fn queue_subscribe<S: ToSubject>(
         &self,
-        subject: impl ToSubject,
+        subject: S,
         queue_group: String,
     ) -> Result<Subscriber> {
         let span = current_span_for_instrument_at!("debug");
@@ -904,6 +931,71 @@ impl Client {
         Ok(())
     }
 
+    /// Drains all subscriptions, stops any new messages from being published, and flushes any
+    /// remaining messages, then closes the connection.
+    ///
+    /// Once completed, any associated streams associated with the client will be closed, and
+    /// further client commands will fail
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), async_nats::Error> {
+    /// use futures::StreamExt;
+    /// let client = si_data_nats::Client::connect_with_options(
+    ///     "demo.nats.io",
+    ///     None,
+    ///     Default::default(),
+    /// ).await?;
+    /// let mut subscription = client.subscribe("events.>").await?;
+    ///
+    /// client.drain().await?;
+    ///
+    /// # // existing subscriptions are closed and further commands will fail
+    /// assert!(subscription.next().await.is_none());
+    /// client
+    ///     .subscribe("events.>")
+    ///     .await
+    ///     .expect_err("Expected further commands to fail");
+    ///
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[instrument(
+        name = "nats_client.drain",
+        skip_all,
+        level = "debug",
+        fields(
+            messaging.client_id = self.metadata.messaging_client_id(),
+            messaging.nats.server.id = self.metadata.messaging_nats_server_id(),
+            messaging.nats.server.name = self.metadata.messaging_nats_server_name(),
+            messaging.nats.server.version = self.metadata.messaging_nats_server_version(),
+            messaging.system = self.metadata.messaging_system(),
+            messaging.url = self.metadata.messaging_url(),
+            network.peer.address = self.metadata.network_peer_address(),
+            network.protocol.name = self.metadata.network_protocol_name(),
+            network.protocol.version = self.metadata.network_protocol_version(),
+            network.transport = self.metadata.network_transport(),
+            otel.kind = SpanKind::Client.as_str(), // similar to an RPC operation
+            otel.status_code = Empty,
+            otel.status_message = Empty,
+            server.address = self.metadata.server_address(),
+            server.port = self.metadata.server_port(),
+        )
+    )]
+    pub async fn drain(&self) -> Result<()> {
+        let span = current_span_for_instrument_at!("debug");
+
+        self.inner
+            .drain()
+            .await
+            .map_err(|err| span.record_err(Error::NatsDrain(err)))?;
+
+        span.record_ok();
+        Ok(())
+    }
+
     /// Returns the current state of the connection.
     ///
     /// # Examples
@@ -922,6 +1014,80 @@ impl Client {
     /// ```
     pub fn connection_state(&self) -> State {
         self.inner.connection_state()
+    }
+
+    /// Forces the client to reconnect.
+    /// Keep in mind that client will reconnect automatically if the connection is lost and this
+    /// method does not have to be used in normal circumstances.
+    /// However, if you want to force the client to reconnect, for example to re-trigger
+    /// the `auth-callback`, or manually rebalance connections, this method can be useful.
+    /// This method does not wait for connection to be re-established.
+    ///
+    /// # Examples
+    /// ```no_run
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), async_nats::Error> {
+    /// let client = async_nats::connect("demo.nats.io").await?;
+    /// client.force_reconnect().await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[instrument(
+        name = "nats_client.force_reconnect",
+        skip_all,
+        level = "debug",
+        fields(
+            messaging.client_id = self.metadata.messaging_client_id(),
+            messaging.nats.server.id = self.metadata.messaging_nats_server_id(),
+            messaging.nats.server.name = self.metadata.messaging_nats_server_name(),
+            messaging.nats.server.version = self.metadata.messaging_nats_server_version(),
+            messaging.system = self.metadata.messaging_system(),
+            messaging.url = self.metadata.messaging_url(),
+            network.peer.address = self.metadata.network_peer_address(),
+            network.protocol.name = self.metadata.network_protocol_name(),
+            network.protocol.version = self.metadata.network_protocol_version(),
+            network.transport = self.metadata.network_transport(),
+            otel.kind = SpanKind::Client.as_str(), // similar to an RPC operation
+            otel.status_code = Empty,
+            otel.status_message = Empty,
+            server.address = self.metadata.server_address(),
+            server.port = self.metadata.server_port(),
+        )
+    )]
+    pub async fn force_reconnect(&self) -> Result<()> {
+        let span = current_span_for_instrument_at!("debug");
+
+        self.inner
+            .force_reconnect()
+            .await
+            .map_err(|err| span.record_err(Error::NatsReconnect(err)))?;
+
+        span.record_ok();
+        Ok(())
+    }
+
+    /// Returns struct representing statistics of the whole lifecycle of the client.
+    ///
+    /// This includes number of bytes sent/received, number of messages sent/received, and number
+    /// of times the connection was established. As this returns [Arc] with [AtomicU64] fields, it
+    /// can be safely reused and shared across threads.
+    ///
+    /// # Examples
+    /// ```no_run
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), async_nats::Error> {
+    /// let client = si_data_nats::Client::connect_with_options(
+    ///     "demo.nats.io",
+    ///     None,
+    ///     Default::default(),
+    /// ).await?;
+    /// let statistics = client.statistics();
+    /// println!("client statistics: {:#?}", statistics);
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn statistics(&self) -> Arc<async_nats::Statistics> {
+        self.inner.statistics()
     }
 }
 
