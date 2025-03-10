@@ -47,14 +47,14 @@ CREATE OR REPLACE VIEW workspace_verifications.owner_subscriptions_summary AS
 
 -- Owners must:
 -- 1. Have subscriptions (we allow for one day of slop on this)
--- 2. Have a free trial subscription
+-- 2. Have a free trial subscription (we allow old free trials to be deleted if they can't possibly affect billing anymore)
 -- 3. Have exactly one unbounded subscription (the last one)
 CREATE OR REPLACE VIEW workspace_verifications.subscription_count_issues AS
     SELECT
         *,
         CASE
             WHEN subscription_count IS NULL AND first_timestamp < getdate() - INTERVAL '1 day' DAY THEN 'no_subscriptions'
-            WHEN free_trial_count = 0 THEN 'no_free_trial'
+            WHEN free_trial_count = 0 AND first_subscription_start_time >= getdate() - INTERVAL '2 months' THEN 'no_free_trial'
             WHEN unbounded_subscription_count = 0 THEN 'no_unbounded_subscription'
             WHEN unbounded_subscription_count > 1 THEN 'multiple_unbounded_subscriptions'
             ELSE NULL
