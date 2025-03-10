@@ -37,12 +37,13 @@ export type ConnectionAnnotation = { tokens: string[] };
 export function createInputSocketFromProp(
   prop: ExpandedPropSpec,
   extraConnectionAnnotations?: ConnectionAnnotation[],
+  overrideName?: string,
 ): ExpandedSocketSpec {
   const socket = createSocketFromPropInner(
     prop,
     "input",
     prop.kind === "array" ? "many" : "one",
-    undefined,
+    overrideName,
     extraConnectionAnnotations,
   );
   if (prop.kind === "array" && socket.data) {
