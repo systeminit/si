@@ -222,5 +222,11 @@ function onKeyDown(e: KeyboardEvent) {
   }
 }
 
-defineExpose({ filteringActive, activeFilters, clearSearch });
+const focusSearch = () => {
+  if (searchInputRef.value) {
+    searchInputRef.value.focus();
+  }
+};
+
+defineExpose({ filteringActive, activeFilters, clearSearch, focusSearch });
 </script>

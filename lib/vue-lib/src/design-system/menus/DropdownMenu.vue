@@ -270,6 +270,10 @@ function open(e?: MouseEvent, anchorToMouse?: boolean) {
 function finishOpening() {
   readjustMenuPosition();
   startListening();
+  if (props.search && siSearchRef.value) {
+    siSearchRef.value.focusSearch();
+    selectSearch();
+  }
 }
 function close(shouldNotClose = false, closeRecursively = true) {
   if (shouldNotClose) return;
