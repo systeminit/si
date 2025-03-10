@@ -1,7 +1,6 @@
 use petgraph::prelude::*;
 use serde::{Deserialize, Serialize};
 use si_events::merkle_tree_hash::MerkleTreeHash;
-use si_id::ulid::Ulid;
 use std::collections::{HashMap, HashSet};
 use std::io::Write;
 
@@ -125,6 +124,173 @@ where
             })
     }
 
+    pub(super) fn ordering_node_for_node_index(
+        &self,
+        node_index: SubGraphNodeIndex,
+    ) -> Option<SubGraphNodeIndex> {
+        let Some(true) = self
+            .graph
+            .node_weight(node_index)
+            .and_then(|weight| weight.custom().map(|c| c.ordered()))
+        else {
+            return None;
+        };
+
+        let ordering_node_index = self
+            .graph
+            .edges_directed(node_index, Outgoing)
+            .find(|edge_ref| matches!(edge_ref.weight(), SplitGraphEdgeWeight::Ordering))
+            .map(|edge_ref| edge_ref.target())?;
+
+        if let SplitGraphNodeWeight::Ordering { .. } =
+            self.graph.node_weight(ordering_node_index)?
+        {
+            Some(ordering_node_index)
+        } else {
+            None
+        }
+    }
+
+    pub(super) fn reorder_node<L>(&mut self, node_index: SubGraphNodeIndex, lambda: L)
+    where
+        L: FnOnce(&[SplitGraphNodeId]) -> Vec<SplitGraphNodeId>,
+    {
+        let Some(ordering_node_index) = self.ordering_node_for_node_index(node_index) else {
+            return;
+        };
+
+        let Some(SplitGraphNodeWeight::Ordering { order, .. }) =
+            self.graph.node_weight_mut(ordering_node_index)
+        else {
+            return;
+        };
+
+        let new_order = lambda(order.as_slice());
+        order.copy_from_slice(new_order.as_slice());
+        self.touch_node(node_index);
+    }
+
+    pub(super) fn ordered_children_for_node(
+        &self,
+        node_index: SubGraphNodeIndex,
+    ) -> Option<Vec<SubGraphNodeIndex>> {
+        let ordering_node_index = self.ordering_node_for_node_index(node_index)?;
+
+        let SplitGraphNodeWeight::Ordering { order, .. } =
+            self.graph.node_weight(ordering_node_index)?
+        else {
+            return None;
+        };
+
+        Some(
+            order
+                .into_iter()
+                .filter_map(|id| self.node_index_by_id.get(id).copied())
+                .collect(),
+        )
+    }
+
+    pub(super) fn root_node_merkle_tree_hash(&self) -> MerkleTreeHash {
+        self.graph
+            .node_weight(self.root_index)
+            .map(|node| node.merkle_tree_hash())
+            .unwrap_or(MerkleTreeHash::nil())
+    }
+
+    pub(super) fn recalculate_entire_merkle_tree_hash(&mut self) {
+        let mut dfs = petgraph::visit::DfsPostOrder::new(&self.graph, self.root_index);
+
+        while let Some(node_index) = dfs.next(&self.graph) {
+            if let Some(hash) = self.calculate_merkle_hash_for_node(node_index) {
+                if let Some(node_weight_mut) = self.graph.node_weight_mut(node_index) {
+                    node_weight_mut.set_merkle_tree_hash(hash);
+                }
+            }
+        }
+    }
+
+    pub(super) fn recalculate_merkle_tree_hash_based_on_touched_nodes(&mut self) {
+        let mut dfs = petgraph::visit::DfsPostOrder::new(&self.graph, self.root_index);
+
+        let mut discovered_nodes = HashSet::new();
+
+        while let Some(node_index) = dfs.next(&self.graph) {
+            if self.touched_nodes.contains(&node_index) || discovered_nodes.contains(&node_index) {
+                if let Some(hash) = self.calculate_merkle_hash_for_node(node_index) {
+                    if let Some(node_weight_mut) = self.graph.node_weight_mut(node_index) {
+                        node_weight_mut.set_merkle_tree_hash(hash);
+                    }
+                }
+                self.graph
+                    .neighbors_directed(node_index, Incoming)
+                    .for_each(|node_idx| {
+                        discovered_nodes.insert(node_idx);
+                    });
+            }
+        }
+
+        self.touched_nodes.clear();
+    }
+
+    pub(super) fn all_outgoing_stably_ordered(
+        &self,
+        node_index: SubGraphNodeIndex,
+    ) -> Vec<SubGraphNodeIndex> {
+        let ordered_children = self
+            .ordered_children_for_node(node_index)
+            .unwrap_or_default();
+        let mut unordered_children: Vec<(_, _)> = self
+            .graph
+            .neighbors_directed(node_index, Outgoing)
+            .filter(|child_idx| !ordered_children.contains(&child_idx))
+            .filter_map(|child_idx| {
+                self.graph
+                    .node_weight(child_idx)
+                    .map(|weight| (weight.id(), child_idx))
+            })
+            .collect();
+
+        // We want to keep the "unordered" children stably sorted as well, so that we get the same hash every time if there are no changes
+        unordered_children.sort_by_cached_key(|(id, _)| *id);
+        let mut all_children =
+            Vec::with_capacity(ordered_children.len() + unordered_children.len());
+        all_children.extend(ordered_children);
+        all_children.extend(unordered_children.into_iter().map(|(_, index)| index));
+
+        all_children
+    }
+
+    fn calculate_merkle_hash_for_node(
+        &self,
+        node_index: SubGraphNodeIndex,
+    ) -> Option<MerkleTreeHash> {
+        let mut hasher = MerkleTreeHash::hasher();
+        hasher.update(
+            self.graph
+                .node_weight(node_index)
+                .unwrap()
+                .node_hash()
+                .as_bytes(),
+        );
+
+        for child_idx in self.all_outgoing_stably_ordered(node_index) {
+            hasher.update(
+                self.graph
+                    .node_weight(child_idx)?
+                    .merkle_tree_hash()
+                    .as_bytes(),
+            );
+
+            for edge_ref in self.graph.edges_connecting(node_index, child_idx) {
+                if let Some(edge_hash) = edge_ref.weight().edge_hash() {
+                    hasher.update(edge_hash.as_bytes());
+                }
+            }
+        }
+
+        Some(hasher.finalize())
+    }
+
     pub(super) fn add_edge(
         &mut self,
         from_index: SubGraphNodeIndex,
@@ -147,11 +313,21 @@ where
                 .map(|edge_ref| edge_ref.target())
             {
                 Some(target) => target,
-                None => self.graph.add_node(SplitGraphNodeWeight::Ordering {
-                    id: Ulid::new(),
-                    order: vec![],
-                    merkle_tree_hash: MerkleTreeHash::nil(),
-                }),
+                None => {
+                    let ordering_node_index = self.graph.add_node(SplitGraphNodeWeight::Ordering {
+                        id: SplitGraphNodeId::new(),
+                        order: vec![],
+                        merkle_tree_hash: MerkleTreeHash::nil(),
+                    });
+
+                    self.graph.add_edge(
+                        from_index,
+                        ordering_node_index,
+                        SplitGraphEdgeWeight::Ordering,
+                    );
+
+                    ordering_node_index
+                }
             };
 
             if let Some(SplitGraphNodeWeight::Ordering { order, .. }) =
@@ -172,6 +348,8 @@ where
                     );
                 }
             }
+
+            self.touch_node(ordering_node_index);
         }
 
         if !exists {

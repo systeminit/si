@@ -1,7 +1,6 @@
 use std::collections::HashSet;
 
 use async_trait::async_trait;
-use fixedbitset::FixedBitSet;
 use petgraph::{prelude::*, stable_graph};
 use serde::{Deserialize, Serialize};
 use si_events::{
@@ -145,6 +144,41 @@ where
         }
     }
 
+    pub fn node_hash(&self) -> ContentHash {
+        let mut hasher = ContentHash::hasher();
+        if let SplitGraphNodeWeight::Custom(n) = self {
+            return n.node_hash();
+        }
+
+        match self {
+            SplitGraphNodeWeight::Custom(_) => {}
+            SplitGraphNodeWeight::ExternalTarget {
+                id,
+                subgraph,
+                target,
+                ..
+            } => {
+                hasher.update(&id.inner().to_bytes());
+                hasher.update(&subgraph.to_le_bytes());
+                hasher.update(&target.inner().to_bytes());
+            }
+            SplitGraphNodeWeight::Ordering { id, order, .. } => {
+                hasher.update(&id.inner().to_bytes());
+                for id in order {
+                    hasher.update(&id.inner().to_bytes());
+                }
+            }
+            SplitGraphNodeWeight::GraphRoot { id, .. } => {
+                hasher.update(&id.inner().to_bytes());
+            }
+            SplitGraphNodeWeight::SubGraphRoot { id, .. } => {
+                hasher.update(&id.inner().to_bytes());
+            }
+        };
+
+        hasher.finalize()
+    }
+
     pub fn custom(&self) -> Option<&N> {
         match self {
             SplitGraphNodeWeight::Custom(inner) => Some(inner),
@@ -180,6 +214,23 @@ where
             _ => None,
         }
     }
+
+    pub fn edge_hash(&self) -> Option<ContentHash> {
+        match self {
+            SplitGraphEdgeWeight::Custom(c) => c.edge_hash(),
+            SplitGraphEdgeWeight::ExternalSource {
+                source_id,
+                subgraph,
+                ..
+            } => {
+                let mut hasher = ContentHash::hasher();
+                hasher.update(&source_id.inner().to_bytes());
+                hasher.update(&subgraph.to_le_bytes());
+                Some(hasher.finalize())
+            }
+            SplitGraphEdgeWeight::Ordering | SplitGraphEdgeWeight::Ordinal => None,
+        }
+    }
 }
 
 pub trait EdgeKind: PartialEq + Copy + Clone + std::fmt::Debug {}
@@ -198,6 +249,7 @@ where
     K: EdgeKind,
 {
     fn kind(&self) -> K;
+    fn edge_hash(&self) -> Option<ContentHash>;
 }
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
@@ -235,6 +287,7 @@ where
 {
     supergraph: SuperGraph,
     subgraphs: Vec<SubGraph<N, E, K>>,
+    root_hashes_at_read_time: Vec<MerkleTreeHash>,
     reader: &'a R,
     writer: &'b W,
 }
@@ -269,6 +322,7 @@ where
                 split_max,
             },
             subgraphs: vec![first_subgraph],
+            root_hashes_at_read_time: vec![MerkleTreeHash::nil()],
             reader,
             writer,
         }
@@ -322,6 +376,18 @@ where
         }
 
         Ok(())
+    }
+
+    pub fn recalculate_merkle_tree_hashes_based_on_touched_nodes(&mut self) {
+        self.subgraphs
+            .iter_mut()
+            .for_each(|subgraph| subgraph.recalculate_merkle_tree_hash_based_on_touched_nodes());
+    }
+
+    pub fn recalculate_entire_merkle_tree_hashes(&mut self) {
+        self.subgraphs
+            .iter_mut()
+            .for_each(|subgraph| subgraph.recalculate_entire_merkle_tree_hash());
     }
 
     pub fn make_node_id(&mut self) -> SplitGraphNodeId {
@@ -540,6 +606,32 @@ where
         }
     }
 
+    pub fn reorder_node<L>(&mut self, node_id: SplitGraphNodeId, lambda: L)
+    where
+        L: FnOnce(&[SplitGraphNodeId]) -> Vec<SplitGraphNodeId>,
+    {
+        let split_graph_index = self.node_id_to_index(node_id).unwrap();
+        let subgraph = self
+            .subgraphs
+            .get_mut(split_graph_index.subgraph as usize)
+            .unwrap();
+        subgraph.reorder_node(split_graph_index.index, lambda);
+    }
+
+    pub fn ordered_children(&self, node_id: SplitGraphNodeId) -> Option<Vec<SplitGraphNodeId>> {
+        let split_graph_index = self.node_id_to_index(node_id)?;
+        let subgraph = self.subgraphs.get(split_graph_index.subgraph as usize)?;
+
+        subgraph
+            .ordered_children_for_node(split_graph_index.index)
+            .map(|node_indexes| {
+                node_indexes
+                    .into_iter()
+                    .filter_map(|idx| subgraph.graph.node_weight(idx).map(|n| n.id()))
+                    .collect()
+            })
+    }
+
     pub fn edges_directed(
         &self,
         from_id: SplitGraphNodeId,
@@ -638,26 +730,32 @@ where
 
     fn next(&mut self) -> Option<Self::Item> {
         self.edges.next().and_then(|edge_ref| match self.direction {
-            Outgoing => self
-                .subgraph
-                .graph
-                .node_weight(edge_ref.target())
-                .map(|n| match n {
-                    SplitGraphNodeWeight::ExternalTarget { target, .. } => *target,
-                    internal_target => internal_target.id(),
-                })
-                .map(|target_id| SplitGraphEdgeReference {
-                    source_id: self.from_id,
-                    target_id,
-                    weight: edge_ref.weight(),
-                }),
+            Outgoing => {
+                if matches!(edge_ref.weight(), SplitGraphEdgeWeight::Ordering) {
+                    // Ordering nodes are hidden
+                    self.next()
+                } else {
+                    self.subgraph
+                        .graph
+                        .node_weight(edge_ref.target())
+                        .map(|n| match n {
+                            SplitGraphNodeWeight::ExternalTarget { target, .. } => *target,
+                            internal_target => internal_target.id(),
+                        })
+                        .map(|target_id| SplitGraphEdgeReference {
+                            source_id: self.from_id,
+                            target_id,
+                            weight: edge_ref.weight(),
+                        })
+                }
+            }
             Incoming => {
                 let weight = edge_ref.weight();
-
                 match weight {
-                    SplitGraphEdgeWeight::Custom(_)
-                    | SplitGraphEdgeWeight::Ordinal
-                    | SplitGraphEdgeWeight::Ordering => self
+                    SplitGraphEdgeWeight::Ordinal => {
+                        return self.next();
+                    }
+                    SplitGraphEdgeWeight::Custom(_) | SplitGraphEdgeWeight::Ordering => self
                         .subgraph
                         .graph
                         .node_weight(edge_ref.source())
@@ -733,6 +831,7 @@ mod tests {
     struct TestNodeWeight {
         id: SplitGraphNodeId,
         name: String,
+        ordered: bool,
         merkle_tree_hash: MerkleTreeHash,
     }
 
@@ -757,12 +856,14 @@ mod tests {
 
         fn node_hash(&self) -> ContentHash {
             let mut hasher = ContentHash::hasher();
+            hasher.update(&self.id.inner().to_bytes());
             hasher.update(&self.name.as_bytes());
+            hasher.update(&[self.ordered as u8]);
             hasher.finalize()
         }
 
         fn ordered(&self) -> bool {
-            false
+            self.ordered
         }
     }
 
@@ -803,6 +904,78 @@ mod tests {
         fn kind(&self) -> () {
             ()
         }
+
+        fn edge_hash(&self) -> Option<ContentHash> {
+            None
+        }
+    }
+
+    #[test]
+    fn ordered_container() {
+        let reader_writer = TestReadWriter {
+            graphs: HashMap::new(),
+        };
+        let mut splitgraph = SplitGraph::new(&reader_writer, &reader_writer, 10000);
+
+        let mut node_name_to_id_map = HashMap::new();
+        let container_nodes: Vec<TestNodeWeight> = ["a"]
+            .into_iter()
+            .map(|name| TestNodeWeight {
+                id: Ulid::new(),
+                name: name.to_string(),
+                merkle_tree_hash: MerkleTreeHash::nil(),
+                ordered: true,
+            })
+            .collect();
+
+        let mut nodes_per_container = HashMap::new();
+
+        for container_node in container_nodes {
+            let container_name = container_node.name.to_owned();
+            let container_node_id = container_node.id();
+
+            splitgraph.add_or_replace_node(container_node);
+            splitgraph.add_edge(splitgraph.root_id(), (), container_node_id);
+
+            node_name_to_id_map.insert(container_name.to_owned(), container_node_id);
+            let mut nodes = vec![];
+            for i in 0..5 {
+                let node_name = format!("{container_name}-{i}");
+                let node_id = Ulid::new();
+                node_name_to_id_map.insert(node_name.to_owned(), node_id);
+                splitgraph.add_or_replace_node(TestNodeWeight {
+                    id: node_id,
+                    name: node_name,
+                    ordered: false,
+                    merkle_tree_hash: MerkleTreeHash::nil(),
+                });
+                nodes.push(node_id);
+                splitgraph.add_edge(container_node_id, (), node_id);
+            }
+            nodes_per_container.insert(container_node_id, nodes);
+        }
+
+        for (container_id, expected_nodes) in nodes_per_container {
+            let ordered_children = splitgraph
+                .ordered_children(container_id)
+                .expect("should have ordered children");
+            assert_eq!(expected_nodes, ordered_children);
+
+            let reversed_nodes: Vec<_> = expected_nodes.into_iter().rev().collect();
+            splitgraph.reorder_node(container_id, |current_order| {
+                current_order
+                    .iter()
+                    .rev()
+                    .map(ToOwned::to_owned)
+                    .collect::<Vec<_>>()
+            });
+
+            let ordered_children = splitgraph
+                .ordered_children(container_id)
+                .expect("should have ordered children");
+
+            assert_eq!(reversed_nodes, ordered_children);
+        }
     }
 
     #[test]
@@ -818,6 +991,7 @@ mod tests {
                 id: Ulid::new(),
                 name: name.to_string(),
                 merkle_tree_hash: MerkleTreeHash::nil(),
+                ordered: false,
             })
             .collect();
 
@@ -840,276 +1014,287 @@ mod tests {
 
     #[test]
     fn test_cross_graph_edges() {
-        let reader_writer = TestReadWriter {
-            graphs: HashMap::new(),
-        };
-
-        let mut splitgraph = SplitGraph::new(&reader_writer, &reader_writer, 9);
-        let mut unsplitgraph = SplitGraph::new(&reader_writer, &reader_writer, MAX_NODES as u16);
-
-        let nodes = [
-            "graph-1-a",
-            "graph-1-b",
-            "graph-1-c",
-            "graph-1-d",
-            "graph-1-e",
-            "graph-1-f",
-            "graph-1-g",
-            "graph-1-h",
-            "graph-1-i",
-            "graph-2-j",
-            "graph-2-k",
-            "graph-2-l",
-            "graph-2-m",
-            "graph-2-n",
-            "graph-2-o",
-            "graph-2-p",
-            "graph-2-q",
-            "graph-2-r",
-            "graph-3-s",
-            "graph-3-t",
-            "graph-3-u",
-            "graph-3-v",
-            "graph-3-w",
-            "graph-3-x",
-            "graph-3-y",
-            "graph-3-z",
-        ];
-
-        let edges = [
-            ("", "graph-1-a"),
-            ("graph-1-a", "graph-1-b"),
-            ("graph-1-a", "graph-1-c"),
-            ("graph-1-c", "graph-1-d"),
-            ("graph-1-d", "graph-1-e"),
-            ("graph-1-e", "graph-1-f"),
-            ("graph-1-f", "graph-1-g"),
-            ("graph-1-g", "graph-1-h"),
-            ("graph-1-h", "graph-1-i"),
-            ("graph-1-a", "graph-2-j"),
-            ("graph-1-a", "graph-2-k"),
-            ("graph-1-b", "graph-2-k"),
-            ("graph-1-c", "graph-2-k"),
-            ("", "graph-2-l"),
-            ("graph-2-l", "graph-1-b"),
-            ("graph-2-l", "graph-1-c"),
-            ("graph-2-l", "graph-1-d"),
-            ("graph-2-l", "graph-2-m"),
-            ("graph-2-l", "graph-2-n"),
-            ("graph-2-l", "graph-2-o"),
-            ("graph-2-l", "graph-2-p"),
-            ("graph-2-p", "graph-2-q"),
-            ("graph-2-q", "graph-2-r"),
-            ("graph-2-q", "graph-3-s"),
-            ("graph-2-q", "graph-3-t"),
-            ("graph-3-t", "graph-1-b"),
-            ("graph-3-t", "graph-3-u"),
-            ("graph-3-t", "graph-3-v"),
-            ("graph-3-t", "graph-3-w"),
-            ("graph-3-t", "graph-3-x"),
-            ("graph-3-t", "graph-3-y"),
-            ("graph-3-t", "graph-3-z"),
-        ];
-
-        let mut name_to_id_map = HashMap::new();
-        for name in &nodes {
-            let id = Ulid::new();
-            splitgraph.add_or_replace_node(TestNodeWeight {
-                id,
-                name: name.to_string(),
-                merkle_tree_hash: MerkleTreeHash::nil(),
-            });
-            unsplitgraph.add_or_replace_node(TestNodeWeight {
-                id,
-                name: name.to_string(),
-                merkle_tree_hash: MerkleTreeHash::nil(),
-            });
-            println!(
-                "added node {name}:{id}, subgraphs: {}",
-                splitgraph.subgraph_count()
-            );
-            name_to_id_map.insert(name, id);
-        }
-
-        let mut expected_outgoing_targets: HashMap<SplitGraphNodeId, HashSet<SplitGraphNodeId>> =
-            HashMap::new();
-        let mut split_expected_incoming_sources: HashMap<
-            SplitGraphNodeId,
-            HashSet<SplitGraphNodeId>,
-        > = HashMap::new();
-        let mut unsplit_expected_incoming_sources: HashMap<
-            SplitGraphNodeId,
-            HashSet<SplitGraphNodeId>,
-        > = HashMap::new();
-
-        for (from_name, to_name) in edges {
-            let (split_from_id, unsplit_from_id) = if from_name.is_empty() {
-                (splitgraph.root_id(), unsplitgraph.root_id())
-            } else {
-                (
-                    name_to_id_map.get(&from_name).copied().unwrap(),
-                    name_to_id_map.get(&from_name).copied().unwrap(),
-                )
+        for ordered in [false, true] {
+            let reader_writer = TestReadWriter {
+                graphs: HashMap::new(),
             };
 
-            let to_id = name_to_id_map.get(&to_name).copied().unwrap();
+            let mut splitgraph = SplitGraph::new(&reader_writer, &reader_writer, 9);
+            let mut unsplitgraph =
+                SplitGraph::new(&reader_writer, &reader_writer, MAX_NODES as u16);
 
-            println!("adding edge {from_name}:{split_from_id} -> {to_name}:{to_id}");
+            let nodes = [
+                "graph-1-a",
+                "graph-1-b",
+                "graph-1-c",
+                "graph-1-d",
+                "graph-1-e",
+                "graph-1-f",
+                "graph-1-g",
+                "graph-1-h",
+                "graph-1-i",
+                "graph-2-j",
+                "graph-2-k",
+                "graph-2-l",
+                "graph-2-m",
+                "graph-2-n",
+                "graph-2-o",
+                "graph-2-p",
+                "graph-2-q",
+                "graph-2-r",
+                "graph-3-s",
+                "graph-3-t",
+                "graph-3-u",
+                "graph-3-v",
+                "graph-3-w",
+                "graph-3-x",
+                "graph-3-y",
+                "graph-3-z",
+            ];
 
-            splitgraph.add_edge(dbg!(split_from_id), (), dbg!(to_id));
-            println!("adding to unsplitgraph");
-            unsplitgraph.add_edge(dbg!(unsplit_from_id), (), dbg!(to_id));
+            let edges = [
+                ("", "graph-1-a"),
+                ("graph-1-a", "graph-1-b"),
+                ("graph-1-a", "graph-1-c"),
+                ("graph-1-c", "graph-1-d"),
+                ("graph-1-d", "graph-1-e"),
+                ("graph-1-e", "graph-1-f"),
+                ("graph-1-f", "graph-1-g"),
+                ("graph-1-g", "graph-1-h"),
+                ("graph-1-h", "graph-1-i"),
+                ("graph-1-a", "graph-2-j"),
+                ("graph-1-a", "graph-2-k"),
+                ("graph-1-b", "graph-2-k"),
+                ("graph-1-c", "graph-2-k"),
+                ("", "graph-2-l"),
+                ("graph-2-l", "graph-1-b"),
+                ("graph-2-l", "graph-1-c"),
+                ("graph-2-l", "graph-1-d"),
+                ("graph-2-l", "graph-2-m"),
+                ("graph-2-l", "graph-2-n"),
+                ("graph-2-l", "graph-2-o"),
+                ("graph-2-l", "graph-2-p"),
+                ("graph-2-p", "graph-2-q"),
+                ("graph-2-q", "graph-2-r"),
+                ("graph-2-q", "graph-3-s"),
+                ("graph-2-q", "graph-3-t"),
+                ("graph-3-t", "graph-1-b"),
+                ("graph-3-t", "graph-3-u"),
+                ("graph-3-t", "graph-3-v"),
+                ("graph-3-t", "graph-3-w"),
+                ("graph-3-t", "graph-3-x"),
+                ("graph-3-t", "graph-3-y"),
+                ("graph-3-t", "graph-3-z"),
+            ];
 
-            expected_outgoing_targets
-                .entry(split_from_id)
-                .and_modify(|outgoing| {
-                    outgoing.insert(to_id);
-                })
-                .or_insert(HashSet::from([to_id]));
-            expected_outgoing_targets
-                .entry(unsplit_from_id)
-                .and_modify(|outgoing| {
-                    outgoing.insert(to_id);
-                })
-                .or_insert(HashSet::from([to_id]));
-
-            split_expected_incoming_sources
-                .entry(to_id)
-                .and_modify(|incoming| {
-                    incoming.insert(split_from_id);
-                })
-                .or_insert(HashSet::from([split_from_id]));
-            unsplit_expected_incoming_sources
-                .entry(to_id)
-                .and_modify(|incoming| {
-                    incoming.insert(unsplit_from_id);
-                })
-                .or_insert(HashSet::from([unsplit_from_id]));
-        }
-
-        for from_name in &nodes {
-            let (split_from_id, unsplit_from_id) = if from_name.is_empty() {
-                (splitgraph.root_id(), unsplitgraph.root_id())
-            } else {
-                let id = name_to_id_map.get(&from_name).copied().unwrap();
-                (id, id)
-            };
-
-            let outgoing_targets: HashSet<SplitGraphNodeId> = splitgraph
-                .edges_directed(split_from_id, Outgoing)
-                .map(|edge_ref| edge_ref.target())
-                .collect();
-            let unsplit_outgoing_targets: HashSet<SplitGraphNodeId> = unsplitgraph
-                .edges_directed(unsplit_from_id, Outgoing)
-                .map(|edge_ref| edge_ref.target())
-                .collect();
-
-            let incoming_sources: HashSet<SplitGraphNodeId> = splitgraph
-                .edges_directed(split_from_id, Incoming)
-                .map(|edge_ref| edge_ref.source())
-                .collect();
-            let unsplit_incoming_sources: HashSet<SplitGraphNodeId> = unsplitgraph
-                .edges_directed(unsplit_from_id, Incoming)
-                .map(|edge_ref| edge_ref.source())
-                .collect();
-
-            let name = splitgraph
-                .node_weight(split_from_id)
-                .and_then(|n| n.custom().map(|n| n.name.as_str()))
-                .unwrap();
-
-            println!(
-                "{split_from_id} ({name}):\n\t{:?}\n\t{:?}",
-                outgoing_targets, incoming_sources
-            );
-
-            if outgoing_targets.is_empty() {
-                assert!(expected_outgoing_targets.get(&split_from_id).is_none());
-                assert!(expected_outgoing_targets.get(&unsplit_from_id).is_none());
-            } else {
-                assert_eq!(
-                    expected_outgoing_targets
-                        .get(&split_from_id)
-                        .cloned()
-                        .unwrap(),
-                    outgoing_targets
+            let mut name_to_id_map = HashMap::new();
+            for name in &nodes {
+                let id = Ulid::new();
+                splitgraph.add_or_replace_node(TestNodeWeight {
+                    id,
+                    name: name.to_string(),
+                    merkle_tree_hash: MerkleTreeHash::nil(),
+                    ordered,
+                });
+                unsplitgraph.add_or_replace_node(TestNodeWeight {
+                    id,
+                    name: name.to_string(),
+                    merkle_tree_hash: MerkleTreeHash::nil(),
+                    ordered,
+                });
+                println!(
+                    "added node {name}:{id}, subgraphs: {}",
+                    splitgraph.subgraph_count()
                 );
-                assert_eq!(
-                    expected_outgoing_targets
-                        .get(&unsplit_from_id)
-                        .cloned()
-                        .unwrap(),
-                    unsplit_outgoing_targets
+                name_to_id_map.insert(name, id);
+            }
+
+            let mut expected_outgoing_targets: HashMap<
+                SplitGraphNodeId,
+                HashSet<SplitGraphNodeId>,
+            > = HashMap::new();
+            let mut split_expected_incoming_sources: HashMap<
+                SplitGraphNodeId,
+                HashSet<SplitGraphNodeId>,
+            > = HashMap::new();
+            let mut unsplit_expected_incoming_sources: HashMap<
+                SplitGraphNodeId,
+                HashSet<SplitGraphNodeId>,
+            > = HashMap::new();
+
+            for (from_name, to_name) in edges {
+                let (split_from_id, unsplit_from_id) = if from_name.is_empty() {
+                    (splitgraph.root_id(), unsplitgraph.root_id())
+                } else {
+                    (
+                        name_to_id_map.get(&from_name).copied().unwrap(),
+                        name_to_id_map.get(&from_name).copied().unwrap(),
+                    )
+                };
+
+                let to_id = name_to_id_map.get(&to_name).copied().unwrap();
+
+                println!("adding edge {from_name}:{split_from_id} -> {to_name}:{to_id}");
+
+                splitgraph.add_edge(split_from_id, (), to_id);
+                println!("adding to unsplitgraph");
+                unsplitgraph.add_edge(unsplit_from_id, (), to_id);
+
+                expected_outgoing_targets
+                    .entry(split_from_id)
+                    .and_modify(|outgoing| {
+                        outgoing.insert(to_id);
+                    })
+                    .or_insert(HashSet::from([to_id]));
+                expected_outgoing_targets
+                    .entry(unsplit_from_id)
+                    .and_modify(|outgoing| {
+                        outgoing.insert(to_id);
+                    })
+                    .or_insert(HashSet::from([to_id]));
+
+                split_expected_incoming_sources
+                    .entry(to_id)
+                    .and_modify(|incoming| {
+                        incoming.insert(split_from_id);
+                    })
+                    .or_insert(HashSet::from([split_from_id]));
+                unsplit_expected_incoming_sources
+                    .entry(to_id)
+                    .and_modify(|incoming| {
+                        incoming.insert(unsplit_from_id);
+                    })
+                    .or_insert(HashSet::from([unsplit_from_id]));
+            }
+
+            for from_name in &nodes {
+                let (split_from_id, unsplit_from_id) = if from_name.is_empty() {
+                    (splitgraph.root_id(), unsplitgraph.root_id())
+                } else {
+                    let id = name_to_id_map.get(&from_name).copied().unwrap();
+                    (id, id)
+                };
+
+                let outgoing_targets: HashSet<SplitGraphNodeId> = splitgraph
+                    .edges_directed(split_from_id, Outgoing)
+                    .map(|edge_ref| edge_ref.target())
+                    .collect();
+                let unsplit_outgoing_targets: HashSet<SplitGraphNodeId> = unsplitgraph
+                    .edges_directed(unsplit_from_id, Outgoing)
+                    .map(|edge_ref| edge_ref.target())
+                    .collect();
+
+                let incoming_sources: HashSet<SplitGraphNodeId> = splitgraph
+                    .edges_directed(split_from_id, Incoming)
+                    .map(|edge_ref| edge_ref.source())
+                    .collect();
+                let unsplit_incoming_sources: HashSet<SplitGraphNodeId> = unsplitgraph
+                    .edges_directed(unsplit_from_id, Incoming)
+                    .map(|edge_ref| edge_ref.source())
+                    .collect();
+
+                let name = splitgraph
+                    .node_weight(split_from_id)
+                    .and_then(|n| n.custom().map(|n| n.name.as_str()))
+                    .unwrap();
+
+                println!(
+                    "{split_from_id} ({name}):\n\t{:?}\n\t{:?}",
+                    outgoing_targets, incoming_sources
                 );
 
-                for target_id in outgoing_targets {
-                    if let Some(node) = splitgraph.node_weight(target_id).and_then(|n| n.custom()) {
-                        assert_eq!(
-                            Some(target_id),
-                            name_to_id_map.get(&node.name.as_str()).copied()
-                        );
+                if outgoing_targets.is_empty() {
+                    assert!(expected_outgoing_targets.get(&split_from_id).is_none());
+                    assert!(expected_outgoing_targets.get(&unsplit_from_id).is_none());
+                } else {
+                    assert_eq!(
+                        expected_outgoing_targets
+                            .get(&split_from_id)
+                            .cloned()
+                            .unwrap(),
+                        outgoing_targets
+                    );
+                    assert_eq!(
+                        expected_outgoing_targets
+                            .get(&unsplit_from_id)
+                            .cloned()
+                            .unwrap(),
+                        unsplit_outgoing_targets
+                    );
+
+                    for target_id in outgoing_targets {
+                        if let Some(node) =
+                            splitgraph.node_weight(target_id).and_then(|n| n.custom())
+                        {
+                            assert_eq!(
+                                Some(target_id),
+                                name_to_id_map.get(&node.name.as_str()).copied()
+                            );
+                        }
                     }
+                }
+
+                if incoming_sources.is_empty() {
+                    assert!(split_expected_incoming_sources
+                        .get(&split_from_id)
+                        .is_none());
+                    assert!(unsplit_expected_incoming_sources
+                        .get(&unsplit_from_id)
+                        .is_none());
+                } else {
+                    assert_eq!(
+                        split_expected_incoming_sources
+                            .get(&split_from_id)
+                            .cloned()
+                            .unwrap(),
+                        incoming_sources
+                    );
+                    assert_eq!(
+                        unsplit_expected_incoming_sources
+                            .get(&unsplit_from_id)
+                            .cloned()
+                            .unwrap(),
+                        unsplit_incoming_sources
+                    );
                 }
             }
 
-            if incoming_sources.is_empty() {
-                assert!(split_expected_incoming_sources
-                    .get(&split_from_id)
-                    .is_none());
-                assert!(unsplit_expected_incoming_sources
-                    .get(&unsplit_from_id)
-                    .is_none());
-            } else {
-                assert_eq!(
-                    split_expected_incoming_sources
-                        .get(&split_from_id)
-                        .cloned()
-                        .unwrap(),
-                    incoming_sources
-                );
-                assert_eq!(
-                    unsplit_expected_incoming_sources
-                        .get(&unsplit_from_id)
-                        .cloned()
-                        .unwrap(),
-                    unsplit_incoming_sources
-                );
+            // splitgraph.tiny_dot_to_file("before-removal");
+            // unsplitgraph.tiny_dot_to_file("unsplitgraph");
+
+            let graph_2_q = "graph-2-q";
+            let graph_3_t = "graph-3-t";
+            let graph_3_s = "graph-3-s";
+            let graph_2_q_id = name_to_id_map.get(&graph_2_q).copied().unwrap();
+            let graph_3_t_id = name_to_id_map.get(&graph_3_t).copied().unwrap();
+            let graph_3_s_id = name_to_id_map.get(&graph_3_s).copied().unwrap();
+            splitgraph.remove_edge(graph_2_q_id, (), graph_3_t_id);
+            unsplitgraph.remove_edge(graph_2_q_id, (), graph_3_t_id);
+            splitgraph.cleanup();
+            splitgraph.recalculate_merkle_tree_hashes_based_on_touched_nodes();
+            unsplitgraph.cleanup();
+            unsplitgraph.recalculate_merkle_tree_hashes_based_on_touched_nodes();
+
+            // splitgraph.tiny_dot_to_file("after-removal");
+
+            assert!(splitgraph.node_weight(graph_2_q_id).is_some());
+            assert!(unsplitgraph.node_weight(graph_2_q_id).is_some());
+            assert!(splitgraph.node_weight(graph_3_s_id).is_some());
+            assert!(unsplitgraph.node_weight(graph_3_s_id).is_some());
+
+            for graph_3_name in [
+                "graph-3-t",
+                "graph-3-u",
+                "graph-3-v",
+                "graph-3-w",
+                "graph-3-x",
+                "graph-3-y",
+                "graph-3-z",
+            ] {
+                let id = name_to_id_map.get(&graph_3_name).copied().unwrap();
+                assert!(splitgraph.node_weight(id).is_none());
+                assert!(unsplitgraph.node_weight(id).is_none());
             }
-        }
-
-        // splitgraph.tiny_dot_to_file("before-removal");
-        // unsplitgraph.tiny_dot_to_file("unsplitgraph");
-
-        let graph_2_q = "graph-2-q";
-        let graph_3_t = "graph-3-t";
-        let graph_3_s = "graph-3-s";
-        let graph_2_q_id = name_to_id_map.get(&graph_2_q).copied().unwrap();
-        let graph_3_t_id = name_to_id_map.get(&graph_3_t).copied().unwrap();
-        let graph_3_s_id = name_to_id_map.get(&graph_3_s).copied().unwrap();
-        splitgraph.remove_edge(graph_2_q_id, (), graph_3_t_id);
-        unsplitgraph.remove_edge(graph_2_q_id, (), graph_3_t_id);
-        splitgraph.cleanup();
-        unsplitgraph.cleanup();
-
-        // splitgraph.tiny_dot_to_file("after-removal");
-
-        assert!(splitgraph.node_weight(graph_2_q_id).is_some());
-        assert!(unsplitgraph.node_weight(graph_2_q_id).is_some());
-        assert!(splitgraph.node_weight(graph_3_s_id).is_some());
-        assert!(unsplitgraph.node_weight(graph_3_s_id).is_some());
-
-        for graph_3_name in [
-            "graph-3-t",
-            "graph-3-u",
-            "graph-3-v",
-            "graph-3-w",
-            "graph-3-x",
-            "graph-3-y",
-            "graph-3-z",
-        ] {
-            let id = name_to_id_map.get(&graph_3_name).copied().unwrap();
-            assert!(splitgraph.node_weight(id).is_none());
-            assert!(unsplitgraph.node_weight(id).is_none());
         }
     }
 }
