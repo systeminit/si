@@ -8,13 +8,12 @@ Deno.test(function simpleObject() {
     "three": undefined,
     "four": null,
     "five": [],
-  }
+  };
   const finishedObj = {
     "one": "one",
-  }
+  };
   assertEquals(removeEmpty(startingObj), finishedObj);
 });
-
 
 Deno.test(function nestedObject() {
   const startingObj = {
@@ -26,10 +25,10 @@ Deno.test(function nestedObject() {
     "six": {
       "seven": {},
     },
-  }
+  };
   const finishedObj = {
     "one": "one",
-  }
+  };
   assertEquals(removeEmpty(startingObj), finishedObj);
 });
 
@@ -45,10 +44,10 @@ Deno.test(function nestedArray() {
         "eight": [],
       },
     },
-  }
+  };
   const finishedObj = {
     "one": "one",
-  }
+  };
   assertEquals(removeEmpty(startingObj), finishedObj);
 });
 
@@ -64,10 +63,10 @@ Deno.test(function nestedArrayWithEmptyObject() {
         "eight": [{}],
       },
     },
-  }
+  };
   const finishedObj = {
     "one": "one",
-  }
+  };
   assertEquals(removeEmpty(startingObj), finishedObj);
 });
 
@@ -83,14 +82,12 @@ Deno.test(function nestedArrayWithEmptyObjectNulls() {
         "eight": [{}, null, undefined, {}],
       },
     },
-  }
+  };
   const finishedObj = {
     "one": "one",
-  }
+  };
   assertEquals(removeEmpty(startingObj), finishedObj);
 });
-
-
 
 Deno.test(function autoScaleGroup() {
   const startingObj = {
@@ -115,7 +112,8 @@ Deno.test(function autoScaleGroup() {
       ],
     },
   };
-  const finishObj = { "TypeName": "AWS::AutoScaling::AutoScalingGroup",
+  const finishObj = {
+    "TypeName": "AWS::AutoScaling::AutoScalingGroup",
     "DesiredState": {
       "MaxSize": "3",
       "MinSize": "3",
