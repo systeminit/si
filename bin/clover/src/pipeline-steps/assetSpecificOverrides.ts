@@ -190,6 +190,34 @@ const overrides = new Map<string, OverrideFn>([
     if (!prop) return;
     prop!.data.widgetKind = "CodeEditor";
   }],
+  ["AWS::EC2::VPCCidrBlock", (spec: ExpandedPkgSpec) => {
+    const variant = spec.schemas[0].variants[0];
+
+    const ipv6IpamProp = variant.domain.entries.find((p: ExpandedPropSpec) =>
+      p.name === "Ipv6IpamPoolId"
+    );
+    if (!ipv6IpamProp) return;
+    const ipv6IpamSocket = createInputSocketFromProp(ipv6IpamProp,
+      [
+        { tokens: ["Ipam Pool Id"] },
+        { tokens: ["IpamPoolId"] },
+        { tokens: ["IpamPoolId", "string", "scalar"] },
+      ]
+    );
+    variant.sockets.push(ipv6IpamSocket);
+    const ipv4IpamProp = variant.domain.entries.find((p: ExpandedPropSpec) =>
+      p.name === "Ipv4IpamPoolId"
+    );
+    if (!ipv4IpamProp) return;
+    const ipv4IpamSocket = createInputSocketFromProp(ipv4IpamProp,
+      [
+        { tokens: ["Ipam Pool Id"] },
+        { tokens: ["IpamPoolId"] },
+        { tokens: ["IpamPoolId", "string", "scalar"] },
+      ]
+    );
+    variant.sockets.push(ipv4IpamSocket);
+  }],
 ]);
 
 function addSecretProp(
