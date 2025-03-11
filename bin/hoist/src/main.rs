@@ -213,44 +213,52 @@ async fn diff_summaries_with_module_index(
     let specs: Vec<_> = spec_from_dir_or_file(target_dir)?;
 
     let existing_specs = &list_specs(client.clone()).await?;
-    let mut new_modules = vec![];
 
     // TODO deal with func changes
 
-    for spec in &specs {
-        let pkg = json_to_pkg(spec.path())?;
-        let metadata = pkg.metadata()?;
+    let max_concurrent = 100;
+    futures::stream::iter(specs)
+        .for_each_concurrent(max_concurrent, |spec| async move {
+            let pkg = json_to_pkg(spec.path()).unwrap();
+            let metadata = pkg.metadata().unwrap();
 
-        let remote_module_id = match remote_module_state(pkg.clone(), existing_specs).await? {
-            ModuleState::HashesMatch => continue,
-            ModuleState::NeedsUpdate(remote_module_id) => remote_module_id,
-            ModuleState::New => {
-                new_modules.push(metadata.name().to_string());
-                continue;
+            let remote_module_id = match remote_module_state(pkg.clone(), existing_specs)
+                .await
+                .unwrap()
+            {
+                ModuleState::HashesMatch => return,
+                ModuleState::NeedsUpdate(remote_module_id) => remote_module_id,
+                ModuleState::New => {
+                    println!("[{}]: new module", metadata.name());
+                    return;
+                }
+            };
+
+            let remote_ulid = Ulid::from_string(&remote_module_id).unwrap();
+
+            let module_bytes = client.get_builtin(remote_ulid).await.unwrap();
+            let current_pkg = SiPkg::load_from_bytes(&module_bytes)
+                .unwrap()
+                .to_spec()
+                .await
+                .unwrap()
+                .anonymize();
+
+            let new_pkg = pkg.to_spec().await.unwrap().anonymize();
+            let new_spec_json = rewrite_spec_for_diff(serde_json::to_value(new_pkg).unwrap());
+            let current_spec_json =
+                rewrite_spec_for_diff(serde_json::to_value(current_pkg).unwrap());
+
+            let patch = diff(&current_spec_json, &new_spec_json);
+
+            let (maybe_change_summary, _this_changed_funcs) =
+                patch_list_to_summary(metadata.name(), patch.clone());
+
+            if let Some(summary) = maybe_change_summary {
+                println!("{summary}");
             }
-        };
-
-        let remote_ulid = Ulid::from_string(&remote_module_id)?;
-
-        let module_bytes = client.get_builtin(remote_ulid).await?;
-        let current_pkg = SiPkg::load_from_bytes(&module_bytes)?
-            .to_spec()
-            .await?
-            .anonymize();
-
-        let new_pkg = pkg.to_spec().await?.anonymize();
-
-        let new_spec_json = rewrite_spec_for_diff(serde_json::to_value(new_pkg)?);
-        let current_spec_json = rewrite_spec_for_diff(serde_json::to_value(current_pkg)?);
-
-        let patch = diff(&current_spec_json, &new_spec_json);
-
-        let (maybe_change_summary, _this_changed_funcs) =
-            patch_list_to_summary(metadata.name(), patch.clone());
-        if let Some(summary) = maybe_change_summary {
-            println!("{summary}");
-        }
-    }
+        })
+        .await;
 
     Ok(())
 }
@@ -476,10 +484,6 @@ async fn remote_module_state(
     modules: &Vec<ModuleDetailsResponse>,
 ) -> Result<ModuleState> {
     let schema = pkg.schemas()?[0].clone();
-
-    // FIXME(victor, scott) Converting pkg to bytes changes the hash, and since we calculate hashes
-    // on the module index, we need to make this conversion here too to get the same hashes
-    let pkg = SiPkg::load_from_bytes(&pkg.write_to_bytes()?)?;
 
     let structural_hash = SiPkg::load_from_spec(pkg.to_spec().await?.anonymize())?
         .metadata()?
