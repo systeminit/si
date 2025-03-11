@@ -17,7 +17,6 @@
         id: group.uniqueKey,
         x: irect.x,
         y: irect.y,
-        ...(isDeleted && { opacity: 0.5 }),
       }"
       @mouseover="onMouseOver"
       @mouseout="onMouseOut"
@@ -206,6 +205,7 @@
             :position="socket.position"
             :connectedEdges="connectedEdgesBySocketKey[socket.uniqueKey]"
             :nodeWidth="nodeWidth"
+            :isDeleted="isDeleted"
             @hover:start="onSocketHoverStart(socket)"
             @hover:end="onSocketHoverEnd(socket)"
           />
@@ -224,6 +224,7 @@
             :position="socket.position"
             :connectedEdges="connectedEdgesBySocketKey[socket.uniqueKey]"
             :nodeWidth="nodeWidth"
+            :isDeleted="isDeleted"
             @hover:start="onSocketHoverStart(socket)"
             @hover:end="onSocketHoverEnd(socket)"
           />
@@ -355,7 +356,7 @@
           :key="`status-icon-${i}`"
           :icon="statusIcon.icon"
           :color="
-            statusIcon.color || statusIcon.tone
+            (statusIcon.color || statusIcon.tone) && !isDeleted
               ? getToneColorHex(statusIcon.tone!)
               : getToneColorHex('neutral')
           "
@@ -647,14 +648,27 @@ const nodeHeight = computed(
 
 const colors = computed(() => {
   const primaryColor = tinycolor(props.group.def.color || DEFAULT_NODE_COLOR);
-
-  // body bg
   const bodyBgHsl = primaryColor.toHsl();
+  const borderHsl = primaryColor.toHsl();
+
+  let bodyText = theme.value === "dark" ? "#FFF" : "#000";
+
+  const parentColorHsl = tinycolor(
+    componentsStore.allComponentsById[parentComponentId.value || ""]?.def
+      .color || "#FFF",
+  ).toHsl();
+
   bodyBgHsl.l = theme.value === "dark" ? 0.08 : 0.95;
+  if (isDeleted.value) {
+    bodyBgHsl.s = 0.1;
+    borderHsl.s = 0.5;
+    bodyText = "#999";
+    parentColorHsl.s = 0.5;
+  }
 
   const bodyBg = tinycolor(bodyBgHsl).toRgbString();
-  const headerBg = primaryColor.toRgbString();
-  const bodyText = theme.value === "dark" ? "#FFF" : "#000";
+  const border = tinycolor(borderHsl).toRgbString();
+  const parentColor = tinycolor(parentColorHsl).toRgbString();
 
   let headerText;
   if (primaryColor.toHsl().l < 0.5) {
@@ -664,15 +678,13 @@ const colors = computed(() => {
   }
 
   return {
-    headerBg,
+    headerBg: border,
     icon: "#000",
     headerText,
     bodyBg,
     labelText: bodyText,
     bodyText,
-    parentColor:
-      componentsStore.allComponentsById[parentComponentId.value || ""]?.def
-        .color || "#FFF",
+    parentColor,
   };
 });
 

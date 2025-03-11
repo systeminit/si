@@ -21,7 +21,7 @@
       @mouseover="onMouseOver"
       @mouseout="onMouseOut"
     >
-      <v-group :config="{ opacity: isDeleted ? 0.5 : 1 }">
+      <v-group>
         <!-- box background - also used by layout manager to figure out nodes location and size -->
         <v-rect
           :config="{
@@ -124,7 +124,6 @@
             stroke: colors.border,
             strokeWidth: 1,
             listening: false,
-            opacity: 1,
           }"
         />
 
@@ -140,7 +139,7 @@
             v-for="(statusIcon, i) in _.reverse(_.slice(statusIcons))"
             :key="`status-icon-${i}`"
             :color="
-              statusIcon.color || statusIcon.tone
+              (statusIcon.color || statusIcon.tone) && !isDeleted
                 ? getToneColorHex(statusIcon.tone!)
                 : getToneColorHex('neutral')
             "
@@ -234,11 +233,7 @@
       />
 
       <!-- sockets -->
-      <v-group
-        v-if="hideDetails === 'show'"
-        ref="socketsRef"
-        :config="{ opacity: isDeleted ? 0.5 : 1 }"
-      >
+      <v-group v-if="hideDetails === 'show'" ref="socketsRef">
         <v-group
           :config="{
             x: leftSockets.x,
@@ -252,6 +247,7 @@
             :nodeWidth="nodeWidth"
             :socket="socket"
             :position="socket.position"
+            :isDeleted="isDeleted"
             @hover:start="onSocketHoverStart(socket)"
             @hover:end="onSocketHoverEnd(socket)"
           />
@@ -270,6 +266,7 @@
             :nodeWidth="nodeWidth"
             :socket="socket"
             :position="socket.position"
+            :isDeleted="isDeleted"
             @hover:start="onSocketHoverStart(socket)"
             @hover:end="onSocketHoverEnd(socket)"
           />
@@ -479,14 +476,27 @@ const position = computed(() => {
 
 const colors = computed(() => {
   const primaryColor = tinycolor(props.node.def.color || DEFAULT_NODE_COLOR);
-
-  // body bg
   const bodyBgHsl = primaryColor.toHsl();
+  const borderHsl = primaryColor.toHsl();
+
+  let bodyText = theme.value === "dark" ? "#FFF" : "#000";
+
+  const parentColorHsl = tinycolor(
+    componentsStore.allComponentsById[parentComponentId.value || ""]?.def
+      .color || "#FFF",
+  ).toHsl();
+
   bodyBgHsl.l = theme.value === "dark" ? 0.08 : 0.95;
+  if (isDeleted.value) {
+    bodyBgHsl.s = 0.1;
+    borderHsl.s = 0.5;
+    bodyText = "#999";
+    parentColorHsl.s = 0.5;
+  }
 
   const bodyBg = tinycolor(bodyBgHsl).toRgbString();
-  const border = primaryColor.toRgbString();
-  const bodyText = theme.value === "dark" ? "#FFF" : "#000";
+  const border = tinycolor(borderHsl).toRgbString();
+  const parentColor = tinycolor(parentColorHsl).toRgbString();
 
   return {
     border,
@@ -494,9 +504,7 @@ const colors = computed(() => {
     headerText: bodyText,
     bodyBg,
     bodyText,
-    parentColor:
-      componentsStore.allComponentsById[parentComponentId.value || ""]?.def
-        .color || "#FFF",
+    parentColor,
   };
 });
 
