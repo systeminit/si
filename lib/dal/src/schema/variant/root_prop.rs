@@ -407,6 +407,19 @@ impl RootProp {
         )
         .await?;
 
+        let _child_message_prop = Prop::new(
+            ctx,
+            "message",
+            PropKind::String,
+            true,
+            None,
+            None,
+            None,
+            None,
+            code_map_item_prop_id,
+        )
+        .await?;
+
         Ok(code_map_prop_id)
     }
 
