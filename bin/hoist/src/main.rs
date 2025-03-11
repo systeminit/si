@@ -12,6 +12,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use ulid::Ulid;
 
+use crate::diff::patch_list_to_summary;
 use clap::Parser;
 use color_eyre::Result;
 use json_patch::diff;
@@ -85,6 +86,9 @@ async fn main() -> Result<()> {
         Some(Commands::CompareSpecs(args)) => {
             compare_specs(args.source_path, args.target_path).await?
         }
+        Some(Commands::GetDiffSummary(args)) => {
+            diff_summaries_with_module_index(&client, args.target_dir).await?
+        }
     }
 
     Ok(())
@@ -92,7 +96,7 @@ async fn main() -> Result<()> {
 
 enum ModuleState {
     HashesMatch,
-    NeedsUpdate,
+    NeedsUpdate(String), // Contains Remote Module Id
     New,
 }
 
@@ -202,6 +206,55 @@ async fn compare_specs(source: PathBuf, target: PathBuf) -> Result<()> {
     Ok(())
 }
 
+async fn diff_summaries_with_module_index(
+    client: &ModuleIndexClient,
+    target_dir: PathBuf,
+) -> Result<()> {
+    let specs: Vec<_> = spec_from_dir_or_file(target_dir)?;
+
+    let existing_specs = &list_specs(client.clone()).await?;
+    let mut new_modules = vec![];
+
+    // TODO deal with func changes
+
+    for spec in &specs {
+        let pkg = json_to_pkg(spec.path())?;
+        let metadata = pkg.metadata()?;
+
+        let remote_module_id = match remote_module_state(pkg.clone(), existing_specs).await? {
+            ModuleState::HashesMatch => continue,
+            ModuleState::NeedsUpdate(remote_module_id) => remote_module_id,
+            ModuleState::New => {
+                new_modules.push(metadata.name().to_string());
+                continue;
+            }
+        };
+
+        let remote_ulid = Ulid::from_string(&remote_module_id)?;
+
+        let module_bytes = client.get_builtin(remote_ulid).await?;
+        let current_pkg = SiPkg::load_from_bytes(&module_bytes)?
+            .to_spec()
+            .await?
+            .anonymize();
+
+        let new_pkg = pkg.to_spec().await?.anonymize();
+
+        let new_spec_json = rewrite_spec_for_diff(serde_json::to_value(new_pkg)?);
+        let current_spec_json = rewrite_spec_for_diff(serde_json::to_value(current_pkg)?);
+
+        let patch = diff(&current_spec_json, &new_spec_json);
+
+        let (maybe_change_summary, _this_changed_funcs) =
+            patch_list_to_summary(metadata.name(), patch.clone());
+        if let Some(summary) = maybe_change_summary {
+            println!("{summary}");
+        }
+    }
+
+    Ok(())
+}
+
 async fn write_spec(client: ModuleIndexClient, module_id: String, out: PathBuf) -> Result<()> {
     let pkg = SiPkg::load_from_bytes(
         &client
@@ -266,9 +319,9 @@ async fn upload_pkg_specs(
 
         match remote_module_state(pkg.clone(), existing_specs).await? {
             ModuleState::HashesMatch => no_action_needed += 1,
-            ModuleState::NeedsUpdate => {
+            ModuleState::NeedsUpdate(_) => {
                 modules_with_updates.push(metadata.name().to_string());
-                categorized_modules.push((pkg, metadata));
+                categorized_modules.push((pkg.clone(), metadata));
             }
             ModuleState::New => {
                 new_modules.push(metadata.name().to_string());
@@ -441,7 +494,7 @@ async fn remote_module_state(
             if Some(structural_hash) == module.structural_hash {
                 return Ok(ModuleState::HashesMatch);
             }
-            return Ok(ModuleState::NeedsUpdate);
+            return Ok(ModuleState::NeedsUpdate(module.id.clone()));
         }
     }
     Ok(ModuleState::New)

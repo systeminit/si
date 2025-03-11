@@ -6,6 +6,7 @@ use std::path::PathBuf;
 pub enum Commands {
     AnonymizeSpecs(AnonymizeSpecsArgs),
     CompareSpecs(CompareSpecsArgs),
+    GetDiffSummary(GetDiffSummaryArgs),
     UploadAllSpecs(UploadAllSpecsArgs),
     UploadSpec(UploadSpecArgs),
     WriteAllSpecs(WriteAllSpecsArgs),
@@ -52,6 +53,18 @@ pub struct AnonymizeSpecsArgs {
         help = "Maximum number of concurrent uploads."
     )]
     pub max_concurrent: usize,
+}
+
+#[derive(clap::Args, Debug)]
+#[command(about = "Upload all specs in {target_dir} to the module index")]
+pub struct GetDiffSummaryArgs {
+    #[arg(
+        long,
+        short = 't',
+        required = true,
+        help = "Path to the directory containing specs to diff"
+    )]
+    pub target_dir: PathBuf,
 }
 
 #[derive(clap::Args, Debug)]

@@ -27,9 +27,7 @@ jobs:
       - name: Generate Diff
         run: |
           cd bin/hoist
-          #cargo run -- generate-diff -t ../clover/si-specs -o ./diff.md
-          #the below is just for testing until generate-diff exists
-          cargo run -- compare-specs -s ../clover/si-specs/AWS::EC2::LaunchTemplate.json -t ../clover/si-specs/AWS::EC2::LaunchTemplate.json > diff.md
+          cargo run -- get-diff-summary -t ../clover/si-specs | tee diff.md
 
       - name: Post Diff to PR
         uses: actions/github-script@v7
