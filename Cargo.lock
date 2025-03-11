@@ -3354,6 +3354,7 @@ dependencies = [
  "json-patch",
  "module-index-client",
  "nix 0.29.0",
+ "rand 0.8.5",
  "remain",
  "serde_json",
  "si-pkg",
