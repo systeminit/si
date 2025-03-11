@@ -11,7 +11,6 @@ const FLAG_MAPPING = {
   ADMIN_PANEL_ACCESS: "si_admin_panel_access",
   ON_DEMAND_ASSETS: "on_demand_assets",
   SLACK_WEBHOOK: "slack_webhook",
-  TEMPLATE_MGMT_FUNC_GENERATION: "template-mgmt-func-generation",
   DIAGRAM_OPTIMIZATION_2: "diagram-optimization-2",
   AUTOCONNECT: "autoconnect-component-input-sockets",
   PRIVATE_SCOPED_MODULES: "private-scoped-modules",

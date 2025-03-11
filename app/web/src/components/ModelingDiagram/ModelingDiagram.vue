@@ -319,7 +319,6 @@ import { ComponentType } from "@/api/sdf/dal/schema";
 import { useStatusStore } from "@/store/status.store";
 import { useQualificationsStore } from "@/store/qualifications.store";
 import { nonNullable } from "@/utils/typescriptLinter";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { DefaultMap } from "@/utils/defaultmap";
 import DiagramGridBackground from "./DiagramGridBackground.vue";
 import {
@@ -420,7 +419,6 @@ const emit = defineEmits<{
 const componentsStore = useComponentsStore();
 const viewsStore = useViewsStore();
 const statusStore = useStatusStore();
-const featureFlagsStore = useFeatureFlagsStore();
 const modelingEventBus = componentsStore.eventBus;
 
 const fetchDiagramReqStatus = viewsStore.getRequestStatus("FETCH_VIEW");
@@ -935,7 +933,6 @@ async function onKeyDown(e: KeyboardEvent) {
   }
   if (
     !props.readOnly &&
-    featureFlagsStore.TEMPLATE_MGMT_FUNC_GENERATION &&
     e.key === "t" &&
     viewsStore.restorableSelectedComponents.length === 0 &&
     viewsStore.selectedComponents.length > 0 &&

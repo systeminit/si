@@ -409,10 +409,7 @@ const rightClickMenuItems = computed(() => {
       disabled,
     });
   }
-  if (
-    restorableSelectedComponents.value.length === 0 &&
-    featureFlagsStore.TEMPLATE_MGMT_FUNC_GENERATION
-  ) {
+  if (restorableSelectedComponents.value.length === 0) {
     items.push({
       label: `Create Template`,
       shortcut: "T",
