@@ -51,9 +51,40 @@ const overrides = new Map<string, OverrideFn>([
     const prop = propForOverride(variant.domain, "UserData");
     if (!prop) return;
     prop!.data.widgetKind = "CodeEditor";
+    
+    const launchTemplateProp = propForOverride(variant.domain, "LaunchTemplate");
+    if (!launchTemplateProp || launchTemplateProp.kind !== "object") return;
+    
+    const launchTemplateNameProp = propForOverride(launchTemplateProp, "LaunchTemplateName");
+    if (!launchTemplateNameProp) return;
+    
+    const launchTemplateNameSocket = createInputSocketFromProp(
+      launchTemplateNameProp,
+      [
+        { tokens: ["Launch Template Name"] },
+        { tokens: ["LaunchTemplateName"] },
+        { tokens: ["LaunchTemplateName<string<scalar>>"] },
+      ],
+      "Launch Template Name",
+    );
+    variant.sockets.push(launchTemplateNameSocket);
   }],
   ["AWS::EC2::LaunchTemplate", (spec: ExpandedPkgSpec) => {
     const variant = spec.schemas[0].variants[0];
+    
+    // Ensures we can connect to the Version input for the EC2 Instance and AutoScaling Group Assets
+    const defaultVersionSocket = variant.sockets.find(
+      (s: ExpandedSocketSpec) => s.name === "Default Version Number" && s.data.kind === "output",
+    );
+    if (!defaultVersionSocket) return;
+    setAnnotationOnSocket(defaultVersionSocket, { tokens: ["Version"] });
+    
+    const latestVersionSocket = variant.sockets.find(
+      (s: ExpandedSocketSpec) => s.name === "Latest Version Number" && s.data.kind === "output",
+    );
+    if (!latestVersionSocket) return;
+    setAnnotationOnSocket(latestVersionSocket, { tokens: ["Version"] });
+    
     const ltData = propForOverride(variant.domain, "LaunchTemplateData");
     if (!ltData || ltData.kind !== "object") return;
 
