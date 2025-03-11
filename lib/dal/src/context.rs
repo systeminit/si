@@ -23,6 +23,7 @@ use si_layer_cache::LayerDbError;
 use si_runtime::DedicatedExecutor;
 use strum::EnumDiscriminants;
 use telemetry::prelude::*;
+use telemetry_utils::metric;
 use thiserror::Error;
 use tokio::sync::{MappedMutexGuard, Mutex, MutexGuard};
 use tokio::time;
@@ -1701,6 +1702,7 @@ async fn rebase_with_reply(
     let reply = time::timeout(timeout, reply_fut)
         .await
         .map_err(|_elapsed| {
+            metric!(dal.context.rebase_with_reply.deadline_elapsed = 1);
             TransactionsError::RebaserReplyDeadlineElasped(timeout, request_id)
         })??;
 

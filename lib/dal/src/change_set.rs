@@ -10,6 +10,7 @@ use si_events::audit_log::AuditLogKind;
 use si_events::{ulid::Ulid, WorkspaceSnapshotAddress};
 use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
+use telemetry_utils::metric;
 use thiserror::Error;
 use tokio::time;
 
@@ -832,6 +833,7 @@ impl ChangeSet {
             let _reply = time::timeout(timeout, reply_fut)
                 .await
                 .map_err(|_elapsed| {
+                    metric!(dal.context.rebase_with_reply.deadline_elapsed = 1);
                     TransactionsError::RebaserReplyDeadlineElasped(timeout, request_id)
                 })??;
         }

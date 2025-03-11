@@ -2,7 +2,8 @@ use std::sync::Arc;
 
 use async_nats::jetstream::message::Acker;
 use futures::future::BoxFuture;
-use tracing::{trace, warn};
+use telemetry_utils::metric;
+use tracing::{info, trace, warn};
 
 use crate::Head;
 
@@ -29,6 +30,7 @@ impl OnSuccess for DefaultOnSuccess {
                     subject = head.subject.as_str(),
                     "failed to double ack the message",
                 );
+                metric!(counter.naxum.ack_layer.on_success.double_ack_failed = 1);
             }
         })
     }
