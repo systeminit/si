@@ -87,6 +87,12 @@ const overrides = new Map<string, OverrideFn>([
     
     const ltData = propForOverride(variant.domain, "LaunchTemplateData");
     if (!ltData || ltData.kind !== "object") return;
+    
+    // KeyName Socket
+    const keyNameProp = propForOverride(ltData, "KeyName");
+    if (!keyNameProp) return;
+    const keyNameSocket = createInputSocketFromProp(keyNameProp);
+    variant.sockets.push(keyNameSocket);
 
     const prop = propForOverride(ltData, "UserData");
     if (!prop) return;
