@@ -134,6 +134,7 @@ overflow hidden */
             :key="view.id"
           >
             <DiagramView
+              ref="diagramViewRefs"
               :isHovered="elementIsHovered(view)"
               :isSelected="elementIsSelected(view)"
               :view="view.def"
@@ -320,6 +321,8 @@ import { useStatusStore } from "@/store/status.store";
 import { useQualificationsStore } from "@/store/qualifications.store";
 import { nonNullable } from "@/utils/typescriptLinter";
 import { DefaultMap } from "@/utils/defaultmap";
+import { ViewId } from "@/api/sdf/dal/views";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import DiagramGridBackground from "./DiagramGridBackground.vue";
 import {
   DiagramDrawEdgeState,
@@ -416,6 +419,7 @@ const emit = defineEmits<{
   (e: "close-right-click-menu"): void;
 }>();
 
+const featureFlagsStore = useFeatureFlagsStore();
 const componentsStore = useComponentsStore();
 const viewsStore = useViewsStore();
 const statusStore = useStatusStore();
@@ -428,6 +432,7 @@ const customFontsLoaded = useCustomFontsLoaded();
 let kStage: KonvaStage;
 const stageRef = ref();
 const containerRef = ref<HTMLDivElement>();
+const diagramViewRefs = ref<InstanceType<typeof DiagramView>[]>();
 
 // we track the container dimensions and position locally here using a resize observer
 // so if the outside world wants to resize the diagram, it should just resize whatever container it lives in
@@ -3261,15 +3266,27 @@ onMounted(() => {
   modelingEventBus.on("panToComponent", panToComponent);
   modelingEventBus.on("rename", renameOnDiagramByComponentId);
   modelingEventBus.on("setSelection", selectComponents);
+  modelingEventBus.on("renameView", refreshViewObjects);
 });
 onBeforeUnmount(() => {
   modelingEventBus.off("panToComponent", panToComponent);
   modelingEventBus.off("rename", renameOnDiagramByComponentId);
   modelingEventBus.off("setSelection", selectComponents);
+  modelingEventBus.on("renameView", refreshViewObjects);
 });
 
 const selectComponents = (components: ComponentId[]) => {
   viewsStore.setSelectedComponentId(components);
+};
+
+const refreshViewObjects = (viewId: ViewId) => {
+  if (diagramViewRefs.value && featureFlagsStore.DIAGRAM_OPTIMIZATION_2) {
+    diagramViewRefs.value.forEach((view) => {
+      if (view.$props.view.id === viewId) {
+        view.clearCache();
+      }
+    });
+  }
 };
 
 // this object gets provided to the children within the diagram that need it

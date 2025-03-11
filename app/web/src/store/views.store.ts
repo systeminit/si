@@ -820,6 +820,9 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
             method: "put",
             url: API_PREFIX.concat([view_id]),
             params: { name, clientUlid },
+            onSuccess: () => {
+              componentsStore.eventBus.emit("renameView", view_id);
+            },
           });
         },
 
