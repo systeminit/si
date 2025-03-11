@@ -108,6 +108,7 @@ pub fn patch_list_to_changelog(patch: Patch) -> Vec<String> {
                 PatchTarget::Variant
             }
         } else {
+            dbg!(&operation);
             panic!("Unhandled patch operation")
         };
 

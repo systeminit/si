@@ -89,7 +89,55 @@ async fn main() -> Result<()> {
         Some(Commands::GetDiffSummary(args)) => {
             diff_summaries_with_module_index(&client, args.target_dir).await?
         }
+        Some(Commands::GetDiffForAsset(args)) => {
+            diff_with_module_index(&client, args.target_path).await?
+        }
     }
+
+    Ok(())
+}
+
+async fn diff_with_module_index(client: &ModuleIndexClient, target_path: PathBuf) -> Result<()> {
+    let new_spec = json_to_spec(target_path)?;
+
+    let existing_specs = &list_specs(client.clone()).await?;
+
+    // TODO deal with func changes
+
+    let pkg = SiPkg::load_from_spec(new_spec.clone())?;
+    let metadata = pkg.metadata()?;
+    println!("Diffed {} with the module index:", metadata.name());
+
+    let remote_module_id = match remote_module_state(pkg, existing_specs).await? {
+        ModuleState::HashesMatch => {
+            println!("Asset matches the module index hash");
+            return Ok(());
+        }
+        ModuleState::NeedsUpdate(remote_module_id) => remote_module_id,
+        ModuleState::New => {
+            println!("Asset is brand new");
+            return Ok(());
+        }
+    };
+
+    let remote_ulid = Ulid::from_string(&remote_module_id)?;
+
+    let module_bytes = client.download_module(remote_ulid).await?;
+
+    let current_pkg = SiPkg::load_from_bytes(&module_bytes)?
+        .to_spec()
+        .await?
+        .anonymize();
+
+    let new_spec = new_spec.anonymize();
+
+    let new_spec_json = rewrite_spec_for_diff(serde_json::to_value(new_spec)?);
+    let current_spec_json = rewrite_spec_for_diff(serde_json::to_value(current_pkg)?);
+
+    let patch = diff(&current_spec_json, &new_spec_json);
+
+    let logs = patch_list_to_changelog(patch.clone());
+    println!("{}", logs.join("\n"));
 
     Ok(())
 }
@@ -236,7 +284,7 @@ async fn diff_summaries_with_module_index(
 
             let remote_ulid = Ulid::from_string(&remote_module_id).unwrap();
 
-            let module_bytes = client.get_builtin(remote_ulid).await.unwrap();
+            let module_bytes = client.download_module(remote_ulid).await.unwrap();
             let current_pkg = SiPkg::load_from_bytes(&module_bytes)
                 .unwrap()
                 .to_spec()
