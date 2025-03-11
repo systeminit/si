@@ -54,6 +54,7 @@ async fn main() -> Result<()> {
                 args.target_dir,
                 args.max_concurrent,
                 args.skip_confirmation,
+                args.non_interactive,
             )
             .await?
         }
@@ -63,6 +64,7 @@ async fn main() -> Result<()> {
                 args.target,
                 args.max_concurrent,
                 args.skip_confirmation,
+                args.non_interactive,
             )
             .await?
         }
@@ -242,6 +244,7 @@ async fn upload_pkg_specs(
     target_dir: PathBuf,
     max_concurrent: usize,
     skip_confirmation: bool,
+    non_interactive: bool,
 ) -> Result<()> {
     let specs: Vec<_> = spec_from_dir_or_file(target_dir)?;
 
@@ -256,10 +259,11 @@ async fn upload_pkg_specs(
 
     for spec in &specs {
         pb.inc(1);
-        pb.set_message(format!(
-            "Parsing module: {}",
-            spec.file_name().to_string_lossy()
-        ));
+        let msg = format!("Parsing module: {}", spec.file_name().to_string_lossy());
+        pb.set_message(msg.to_string());
+        if non_interactive {
+            println!("{}", msg);
+        };
 
         let pkg = json_to_pkg(spec.path())?;
         let metadata = pkg.metadata()?;
@@ -321,7 +325,11 @@ async fn upload_pkg_specs(
     // Set up progress bar
     let total = categorized_modules.len() as u64;
     let pb = setup_progress_bar(total);
-    pb.set_message("⏰ Beginning uploads ...");
+    let msg = "⏰ Beginning uploads ...";
+    pb.set_message(msg);
+    if non_interactive {
+        println!("{}", msg);
+    };
 
     // Generates the "X failed" message for various set_message() calls to use
     let failed = AtomicU64::new(0);
@@ -338,11 +346,11 @@ async fn upload_pkg_specs(
         .for_each_concurrent(max_concurrent, |(pkg, metadata)| {
             let pb = pb.clone();
             let failed = &failed;
-            pb.set_message(format!(
-                "{}⏰ Uploading: {}",
-                failed_message(),
-                metadata.name(),
-            ));
+            let msg = format!("{}⏰ Uploading: {}", failed_message(), metadata.name());
+            pb.set_message(msg.to_string());
+            if non_interactive {
+                println!("{}", msg);
+            };
             pb.inc(1);
             async move {
                 let max_retries = 5;
@@ -384,11 +392,15 @@ async fn upload_pkg_specs(
         })
         .await;
 
-    pb.finish_with_message(format!(
+    let msg = format!(
         "✨ {} uploads complete!{}",
         total - failed.load(Ordering::Relaxed),
         failed_message(),
-    ));
+    );
+    pb.finish_with_message(msg.to_string());
+    if non_interactive {
+        println!("{}", msg);
+    };
     // If this message is not here, the console does not show the final message for some reason
     println!("Done");
     Ok(())

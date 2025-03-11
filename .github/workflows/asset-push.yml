@@ -28,4 +28,4 @@ jobs:
       - name: Push Specs
         run: |
           cd bin/hoist
-          cargo run -- upload-all-specs -y --max-concurrent 25 -t ../clover/si-specs
+          cargo run -- upload-all-specs -y --non-interactive --max-concurrent 25 -t ../clover/si-specs

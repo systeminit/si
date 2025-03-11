@@ -107,6 +107,9 @@ impl SocketSpec {
     }
     pub fn anonymize(&mut self) {
         self.unique_id = None;
-        self.inputs.iter_mut().for_each(|f| f.anonymize())
+        self.inputs.iter_mut().for_each(|f| f.anonymize());
+        if let Some(ref mut data) = self.data {
+            data.anonymize();
+        }
     }
 }
