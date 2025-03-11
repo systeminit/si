@@ -6,7 +6,12 @@ import {
   setAnnotationOnSocket,
 } from "../spec/sockets.ts";
 import { ExpandedPkgSpec } from "../spec/pkgs.ts";
-import { createScalarProp, ExpandedPropSpec } from "../spec/props.ts";
+import {
+  createScalarProp,
+  ExpandedPropSpec,
+  ExpandedPropSpecFor,
+  findPropByName,
+} from "../spec/props.ts";
 import { PropUsageMap } from "./addDefaultPropsAndSockets.ts";
 import { MANAGEMENT_FUNCS, modifyFunc } from "../spec/funcs.ts";
 
@@ -34,32 +39,27 @@ const overrides = new Map<string, OverrideFn>([
   ["ContainerDefinitions Secrets", (spec: ExpandedPkgSpec) => {
     const variant = spec.schemas[0].variants[0];
 
-    const prop = variant.domain.entries.find((p: ExpandedPropSpec) =>
-      p.name === "ValueFrom"
-    );
-
+    const prop = propForOverride(variant.domain, "ValueFrom");
     if (!prop) return;
     const socket = createInputSocketFromProp(prop);
-
     setAnnotationOnSocket(socket, { tokens: ["Id"] });
-
     variant.sockets.push(socket);
   }],
   ["AWS::EC2::Instance", (spec: ExpandedPkgSpec) => {
     const variant = spec.schemas[0].variants[0];
 
-    const prop = variant.domain.entries.find((p: ExpandedPropSpec) =>
-      p.name === "UserData"
-    );
+    const prop = propForOverride(variant.domain, "UserData");
+    if (!prop) return;
     prop!.data.widgetKind = "CodeEditor";
   }],
   ["AWS::EC2::LaunchTemplate", (spec: ExpandedPkgSpec) => {
     const variant = spec.schemas[0].variants[0];
-    const prop = variant.domain.entries.find((p: ExpandedPropSpec) =>
-      p.name === "UserData"
-    );
+    const ltData = propForOverride(variant.domain, "LaunchTemplateData");
+    if (!ltData || ltData.kind !== "object") return;
 
+    const prop = propForOverride(ltData, "UserData");
     if (!prop) return;
+
     const socket = createInputSocketFromProp(prop);
     variant.sockets.push(socket);
     prop!.data.widgetKind = "CodeEditor";
@@ -91,10 +91,7 @@ const overrides = new Map<string, OverrideFn>([
 
     setAnnotationOnSocket(socket, { tokens: ["NetworkInterfaceId"] });
 
-    const prop = variant.domain.entries.find((p: ExpandedPropSpec) =>
-      p.name === "GroupSet"
-    );
-
+    const prop = propForOverride(variant.domain, "GroupSet");
     if (!prop) return;
     const groupSocket = createInputSocketFromProp(prop);
 
@@ -104,10 +101,7 @@ const overrides = new Map<string, OverrideFn>([
   ["AWS::EC2::Route", (spec: ExpandedPkgSpec) => {
     const variant = spec.schemas[0].variants[0];
 
-    const prop = variant.domain.entries.find((p: ExpandedPropSpec) =>
-      p.name === "GatewayId"
-    );
-
+    const prop = propForOverride(variant.domain, "GatewayId");
     if (!prop) return;
     const socket = createInputSocketFromProp(prop);
 
@@ -119,10 +113,7 @@ const overrides = new Map<string, OverrideFn>([
   ["AWS::EC2::VPCEndpoint", (spec: ExpandedPkgSpec) => {
     const variant = spec.schemas[0].variants[0];
 
-    const prop = variant.domain.entries.find((p: ExpandedPropSpec) =>
-      p.name === "PolicyDocument"
-    );
-
+    const prop = propForOverride(variant.domain, "PolicyDocument");
     if (!prop) return;
     prop.kind = "json";
     prop!.data.widgetKind = "CodeEditor";
@@ -130,10 +121,7 @@ const overrides = new Map<string, OverrideFn>([
   ["AWS::KMS::Key", (spec: ExpandedPkgSpec) => {
     const variant = spec.schemas[0].variants[0];
 
-    const prop = variant.domain.entries.find((p: ExpandedPropSpec) =>
-      p.name === "KeyPolicy"
-    );
-
+    const prop = propForOverride(variant.domain, "KeyPolicy");
     if (!prop) return;
     prop.kind = "json";
     prop!.data.widgetKind = "CodeEditor";
@@ -141,10 +129,7 @@ const overrides = new Map<string, OverrideFn>([
   ["AWS::Logs::LogGroup", (spec: ExpandedPkgSpec) => {
     const variant = spec.schemas[0].variants[0];
 
-    const prop = variant.domain.entries.find((p: ExpandedPropSpec) =>
-      p.name === "DataProtectionPolicy"
-    );
-
+    const prop = propForOverride(variant.domain, "DataProtectionPolicy");
     if (!prop) return;
     prop.kind = "json";
     prop!.data.widgetKind = "CodeEditor";
@@ -152,10 +137,7 @@ const overrides = new Map<string, OverrideFn>([
   ["AWS::RDS::DBParameterGroup", (spec: ExpandedPkgSpec) => {
     const variant = spec.schemas[0].variants[0];
 
-    const prop = variant.domain.entries.find((p: ExpandedPropSpec) =>
-      p.name === "Parameters"
-    );
-
+    const prop = propForOverride(variant.domain, "Parameters");
     if (!prop) return;
     prop.kind = "map";
 
@@ -175,10 +157,7 @@ const overrides = new Map<string, OverrideFn>([
   ["AWS::EC2::NetworkInterface", (spec: ExpandedPkgSpec) => {
     const variant = spec.schemas[0].variants[0];
 
-    const prop = variant.domain.entries.find((p: ExpandedPropSpec) =>
-      p.name === "GroupSet"
-    );
-
+    const prop = propForOverride(variant.domain, "GroupSet");
     if (!prop) return;
     const groupSocket = createInputSocketFromProp(prop);
 
@@ -187,12 +166,15 @@ const overrides = new Map<string, OverrideFn>([
   }],
   ["AWS::AutoScaling::AutoScalingGroup", (spec: ExpandedPkgSpec) => {
     const variant = spec.schemas[0].variants[0];
-    const launchTemplateProp = variant.domain.entries.find((p) =>
-      p.name === "LaunchTemplate"
+    const launchTemplateProp = propForOverride(
+      variant.domain,
+      "LaunchTemplate",
     );
     if (!launchTemplateProp || launchTemplateProp.kind !== "object") return;
-    const launchTemplateName = launchTemplateProp.entries.find((p) =>
-      p.name === "LaunchTemplateName"
+
+    const launchTemplateName = propForOverride(
+      launchTemplateProp,
+      "LaunchTemplateName",
     );
     if (!launchTemplateName) return;
     const launchTemplateNameSocket = createInputSocketFromProp(
@@ -206,23 +188,25 @@ const overrides = new Map<string, OverrideFn>([
     );
     variant.sockets.push(launchTemplateNameSocket);
 
-    const launchTemplateId = launchTemplateProp.entries.find((p) =>
-      p.name === "LaunchTemplateId"
+    const launchTemplateId = propForOverride(
+      launchTemplateProp,
+      "LaunchTemplateId",
     );
     if (!launchTemplateId) return;
+
     const launchTemplateIdSocket = createInputSocketFromProp(launchTemplateId, [
       { tokens: ["Launch Template Id"] },
       { tokens: ["LaunchTemplateId"] },
       { tokens: ["LaunchTemplateId<string<scalar>>"] },
-    ],
-      "Launch Template Id",
-    );
+    ], "Launch Template Id");
     variant.sockets.push(launchTemplateIdSocket);
 
-    const launchTemplateVersion = launchTemplateProp.entries.find((p) =>
-      p.name === "Version"
+    const launchTemplateVersion = propForOverride(
+      launchTemplateProp,
+      "Version",
     );
     if (!launchTemplateVersion) return;
+
     const launchTemplateVersionSocket = createInputSocketFromProp(
       launchTemplateVersion,
       [
@@ -252,78 +236,70 @@ const overrides = new Map<string, OverrideFn>([
   ["AWS::ImageBuilder::Component", (spec: ExpandedPkgSpec) => {
     const variant = spec.schemas[0].variants[0];
 
-    const prop = variant.domain.entries.find((p: ExpandedPropSpec) =>
-      p.name === "Data"
-    );
-
+    const prop = propForOverride(variant.domain, "Data");
     if (!prop) return;
     prop!.data.widgetKind = "CodeEditor";
   }],
   ["AWS::EC2::VPCCidrBlock", (spec: ExpandedPkgSpec) => {
     const variant = spec.schemas[0].variants[0];
 
-    const ipv6IpamProp = variant.domain.entries.find((p: ExpandedPropSpec) =>
-      p.name === "Ipv6IpamPoolId"
-    );
+    const ipv6IpamProp = propForOverride(variant.domain, "Ipv6IpamPoolId");
     if (!ipv6IpamProp) return;
-    const ipv6IpamSocket = createInputSocketFromProp(ipv6IpamProp,
-      [
-        { tokens: ["Ipam Pool Id"] },
-        { tokens: ["IpamPoolId"] },
-        { tokens: ["IpamPoolId", "string", "scalar"] },
-      ]
-    );
+
+    const ipv6IpamSocket = createInputSocketFromProp(ipv6IpamProp, [
+      { tokens: ["Ipam Pool Id"] },
+      { tokens: ["IpamPoolId"] },
+      { tokens: ["IpamPoolId", "string", "scalar"] },
+    ]);
     variant.sockets.push(ipv6IpamSocket);
-    const ipv4IpamProp = variant.domain.entries.find((p: ExpandedPropSpec) =>
-      p.name === "Ipv4IpamPoolId"
-    );
+    const ipv4IpamProp = propForOverride(variant.domain, "Ipv4IpamPoolId");
     if (!ipv4IpamProp) return;
-    const ipv4IpamSocket = createInputSocketFromProp(ipv4IpamProp,
-      [
-        { tokens: ["Ipam Pool Id"] },
-        { tokens: ["IpamPoolId"] },
-        { tokens: ["IpamPoolId", "string", "scalar"] },
-      ]
-    );
+
+    const ipv4IpamSocket = createInputSocketFromProp(ipv4IpamProp, [
+      { tokens: ["Ipam Pool Id"] },
+      { tokens: ["IpamPoolId"] },
+      { tokens: ["IpamPoolId", "string", "scalar"] },
+    ]);
     variant.sockets.push(ipv4IpamSocket);
   }],
   ["AWS::ECS::Cluster", (spec: ExpandedPkgSpec) => {
     const variant = spec.schemas[0].variants[0];
-    const configurationProp = variant.domain.entries.find((p) =>
-      p.name === "Configuration"
-    );
+    const configurationProp = propForOverride(variant.domain, "Configuration");
     if (!configurationProp || configurationProp.kind !== "object") return;
-    const managedStorageConfigurationProp = configurationProp.entries.find((p) =>
-      p.name === "ManagedStorageConfiguration"
-    );
-    if (!managedStorageConfigurationProp) return;
 
-    const fargateKmsProp = managedStorageConfigurationProp.entries.find((p: ExpandedPropSpec) =>
-      p.name === "FargateEphemeralStorageKmsKeyId"
+    const managedStorageConfigurationProp = propForOverride(
+      configurationProp,
+      "ManagedStorageConfiguration",
+    );
+    if (
+      !managedStorageConfigurationProp ||
+      managedStorageConfigurationProp.kind !== "object"
+    ) return;
+
+    const fargateKmsProp = propForOverride(
+      managedStorageConfigurationProp,
+      "FargateEphemeralStorageKmsKeyId",
     );
     if (!fargateKmsProp) return;
-    const fargateKmsSocket = createInputSocketFromProp(fargateKmsProp,
-      [
-        { tokens: ["Key Id"] },
-        { tokens: ["KeyId"] },
-        { tokens: ["KeyId", "string", "scalar"] },
-      ],
-      "Fargate Storage KMS Key Id",
-    );
+
+    const fargateKmsSocket = createInputSocketFromProp(fargateKmsProp, [
+      { tokens: ["Key Id"] },
+      { tokens: ["KeyId"] },
+      { tokens: ["KeyId", "string", "scalar"] },
+    ], "Fargate Storage KMS Key Id");
     variant.sockets.push(fargateKmsSocket);
 
-    const kmsKeyIdProp = managedStorageConfigurationProp.entries.find((p: ExpandedPropSpec) =>
-      p.name === "KmsKeyId"
+    const kmsKeyIdProp = propForOverride(
+      managedStorageConfigurationProp,
+      "KmsKeyId",
     );
     if (!kmsKeyIdProp) return;
-    const kmsKeyIdSocket = createInputSocketFromProp(kmsKeyIdProp,
-      [
-        { tokens: ["Key Id"] },
-        { tokens: ["KeyId"] },
-        { tokens: ["KeyId", "string", "scalar"] },
-      ],
-      "Storage KMS Key Id",
-    );
+
+    const kmsKeyIdSocket = createInputSocketFromProp(kmsKeyIdProp, [
+      { tokens: ["Key Id"] },
+      { tokens: ["KeyId"] },
+      { tokens: ["KeyId", "string", "scalar"] },
+    ], "Storage KMS Key Id");
     variant.sockets.push(kmsKeyIdSocket);
   }],
 ]);
@@ -412,4 +388,15 @@ function addSecretProp(
     });
     propUsageMapProp.data.defaultValue = JSON.stringify(propUsageMap);
   };
+}
+
+function propForOverride(
+  objPropSpec: ExpandedPropSpecFor["object"],
+  propName: string,
+): ExpandedPropSpec | undefined {
+  const prop = findPropByName(objPropSpec, propName);
+  if (!prop) {
+    logger.warn(`Prop not found for override ${propName}!`);
+  }
+  return prop;
 }

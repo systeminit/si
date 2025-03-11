@@ -98,6 +98,17 @@ export type CreatePropQueue = {
 
 const MAX_PROP_DEPTH = 30;
 
+export function findPropByName(
+  objPropSpec: ExpandedPropSpecFor["object"],
+  propName: string,
+): ExpandedPropSpec | undefined {
+  if (!objPropSpec.entries) {
+    throw Error("findPropByName must be used on objects");
+  }
+
+  return objPropSpec.entries.find((p) => p.name === propName);
+}
+
 // Create top-level prop such as domain, resource_value, secrets, etc.
 export function createDefaultPropFromCf(
   name: DefaultPropType,
