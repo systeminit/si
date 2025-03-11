@@ -7,7 +7,7 @@
 )]
 #![allow(clippy::missing_errors_doc)]
 
-use std::{fmt::Debug, hash, io, ops, sync::Arc, time::Duration};
+use std::{cmp, fmt::Debug, hash, io, ops, sync::Arc, time::Duration};
 
 use async_nats::{subject::ToSubject, ToServerAddrs};
 use bytes::Bytes;
@@ -127,6 +127,21 @@ impl Client {
             options = options.name(connection_name);
         }
 
+        // Add metrics for reconnect delay callback. It uses the default reconnect delay callback
+        // code with new metrics.
+        // Source: https://docs.rs/async-nats/latest/src/async_nats/connector.rs.html#84-92
+        metric!(counter.nats.reconnect_delay_callback.multiple_attempts = 0);
+        options = options.reconnect_delay_callback(|attempts| {
+            if attempts <= 1 {
+                Duration::from_millis(0)
+            } else {
+                metric!(counter.nats.reconnect_delay_callback.multiple_attempts = 1);
+                let exp: u32 = (attempts - 1).try_into().unwrap_or(u32::MAX);
+                let max = Duration::from_secs(4);
+                cmp::min(Duration::from_millis(2_u64.saturating_pow(exp)), max)
+            }
+        });
+
         // Reset all of the metrics before setting up the event callback.
         metric!(counter.nats.event_callback.connected = 0);
         metric!(counter.nats.event_callback.disconnected = 0);
@@ -134,8 +149,17 @@ impl Client {
         metric!(counter.nats.event_callback.lame_duck_mode = 0);
         metric!(counter.nats.event_callback.draining = 0);
         metric!(counter.nats.event_callback.slow_consumer = 0);
-        metric!(counter.nats.event_callback.server_error = 0);
-        metric!(counter.nats.event_callback.client_error = 0);
+        metric!(
+            counter
+                .nats
+                .event_callback
+                .server_error
+                .authorization_violation = 0
+        );
+        metric!(counter.nats.event_callback.server_error.slow_consumer = 0);
+        metric!(counter.nats.event_callback.server_error.other = 0);
+        metric!(counter.nats.event_callback.client_error.max_reconnects = 0);
+        metric!(counter.nats.event_callback.client_error.other = 0);
 
         options = options.event_callback(|event| async move {
             match event {
@@ -145,22 +169,37 @@ impl Client {
                 Event::LameDuckMode => metric!(counter.nats.event_callback.lame_duck_mode = 1),
                 Event::Draining => metric!(counter.nats.event_callback.draining = 1),
                 Event::SlowConsumer(sid) => {
-                    metric!(counter.nats.event_callback.slow_consumer = 1);
-
-                    // This is at trace level because these messages can be produced in the millions.
-                    trace!(%sid, "nats event callback: slow consumer for subscription with sid");
+                    metric!(counter.nats.event_callback.slow_consumer = 1, sid = sid)
                 }
-                Event::ServerError(server_error) => {
-                    metric!(counter.nats.event_callback.server_error = 1);
-
-                    // This is at trace level because these messages can be produced in the millions.
-                    trace!(si.error.message = ?server_error, "nats event callback: server error")
+                Event::ServerError(async_nats::ServerError::AuthorizationViolation) => {
+                    metric!(
+                        counter
+                            .nats
+                            .event_callback
+                            .server_error
+                            .authorization_violation = 1
+                    )
                 }
-                Event::ClientError(client_error) => {
-                    metric!(counter.nats.event_callback.client_error = 1);
-
-                    // This is at trace level because these messages can be produced in the millions.
-                    trace!(si.error.message = ?client_error, "nats event callback: client error")
+                Event::ServerError(async_nats::ServerError::SlowConsumer(sid)) => {
+                    metric!(
+                        counter.nats.event_callback.server_error.slow_consumer = 1,
+                        sid = sid
+                    )
+                }
+                Event::ServerError(async_nats::ServerError::Other(err_string)) => {
+                    metric!(
+                        counter.nats.event_callback.server_error.other = 1,
+                        si_error_message = err_string
+                    )
+                }
+                Event::ClientError(async_nats::ClientError::MaxReconnects) => {
+                    metric!(counter.nats.event_callback.client_error.max_reconnects = 1)
+                }
+                Event::ClientError(async_nats::ClientError::Other(err_string)) => {
+                    metric!(
+                        counter.nats.event_callback.client_error.other = 1,
+                        si_error_message = err_string
+                    )
                 }
             }
         });

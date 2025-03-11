@@ -728,6 +728,7 @@ pub async fn veritech_server_for_uds_cyclone(
         let mut config_file = veritech_server::ConfigFile::default_local_uds();
         config_file.nats = nats_config;
         config_file.cyclone.set_pool_size(4);
+        config_file.heartbeat_app = false;
         veritech_server::detect_and_configure_development(&mut config_file)
             .wrap_err("failed to detect and configure Veritech ConfigFile")?;
         config_file
@@ -735,7 +736,7 @@ pub async fn veritech_server_for_uds_cyclone(
             .wrap_err("failed to build Veritech server config")?
     };
 
-    let server = veritech_server::Server::from_config(config, token)
+    let (server, _disabled_heartbeat_app) = veritech_server::Server::from_config(config, token)
         .await
         .wrap_err("failed to create Veritech server")?;
 

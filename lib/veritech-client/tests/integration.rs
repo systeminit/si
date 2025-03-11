@@ -63,11 +63,13 @@ async fn veritech_server_for_uds_cyclone(
         .cyclone_spec(cyclone_spec)
         .crypto(config_file.crypto)
         .healthcheck_pool(false)
+        .heartbeat_app(false)
         .build()
         .expect("failed to build spec");
-    Server::from_config(config, shutdown_token)
+    let (server, _disabled_heartbeat_app) = Server::from_config(config, shutdown_token)
         .await
-        .expect("failed to create server")
+        .expect("failed to create server");
+    server
 }
 
 async fn client(subject_prefix: String) -> Client {

@@ -105,6 +105,30 @@ pub(crate) struct Args {
     /// back to an instance of a Pinga service.
     #[arg(long)]
     pub(crate) instance_id: Option<String>,
+
+    /// Overrides the default graceful shutdown timeout (in seconds).
+    #[arg(long)]
+    pub(crate) graceful_shutdown_timeout_secs: Option<u64>,
+
+    /// Enables or disables the heartbeat app.
+    #[arg(long)]
+    pub(crate) heartbeat_app: Option<bool>,
+
+    /// Enables or disables auto force reconnect logic within the heartbeat app.
+    #[arg(long)]
+    pub(crate) heartbeat_app_auto_force_reconnect_logic: Option<bool>,
+
+    /// Overrides the default heartbeat app sleep duration (in seconds).
+    #[arg(long)]
+    pub(crate) heartbeat_app_sleep_secs: Option<u64>,
+
+    /// Overrides the default heartbeat app publish timeout duration (in seconds).
+    #[arg(long)]
+    pub(crate) heartbeat_app_publish_timeout_secs: Option<u64>,
+
+    /// Overrides the default heartbeat app force reconnect timeout duration (in seconds).
+    #[arg(long)]
+    pub(crate) heartbeat_app_force_reconnect_timeout_secs: Option<u64>,
 }
 
 impl TryFrom<Args> for Config {
@@ -151,6 +175,44 @@ impl TryFrom<Args> for Config {
             }
             if let Some(instance_id) = args.instance_id {
                 config_map.set("instance_id", instance_id);
+            }
+
+            if let Some(graceful_shutdown_timeout_secs) = args.graceful_shutdown_timeout_secs {
+                config_map.set(
+                    "graceful_shutdown_timeout_secs",
+                    graceful_shutdown_timeout_secs,
+                );
+            }
+
+            if let Some(heartbeat_app) = args.heartbeat_app {
+                config_map.set("heartbeat_app", heartbeat_app);
+            }
+            if let Some(heartbeat_app_auto_force_reconnect_logic) =
+                args.heartbeat_app_auto_force_reconnect_logic
+            {
+                config_map.set(
+                    "heartbeat_app_auto_force_reconnect_logic",
+                    heartbeat_app_auto_force_reconnect_logic,
+                );
+            }
+            if let Some(heartbeat_app_sleep_secs) = args.heartbeat_app_sleep_secs {
+                config_map.set("heartbeat_app_sleep_secs", heartbeat_app_sleep_secs);
+            }
+            if let Some(heartbeat_app_publish_timeout_secs) =
+                args.heartbeat_app_publish_timeout_secs
+            {
+                config_map.set(
+                    "heartbeat_app_publish_timeout_secs",
+                    heartbeat_app_publish_timeout_secs,
+                );
+            }
+            if let Some(heartbeat_app_force_reconnect_timeout_secs) =
+                args.heartbeat_app_force_reconnect_timeout_secs
+            {
+                config_map.set(
+                    "heartbeat_app_force_reconnect_timeout_secs",
+                    heartbeat_app_force_reconnect_timeout_secs,
+                );
             }
         })?
         .try_into()

@@ -1,6 +1,7 @@
 mod app_state;
 mod config;
 mod handlers;
+mod heartbeat;
 mod publisher;
 mod request;
 mod server;

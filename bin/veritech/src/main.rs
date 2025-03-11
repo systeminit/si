@@ -8,7 +8,7 @@ mod args;
 const BIN_NAME: &str = env!("CARGO_BIN_NAME");
 const LIB_NAME: &str = concat!(env!("CARGO_BIN_NAME"), "_server");
 
-const GRACEFUL_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(60 * 60 * 6);
+const DEFAULT_GRACEFUL_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(60 * 20);
 
 fn main() -> Result<()> {
     rt::block_on(BIN_NAME, async_main())
@@ -49,13 +49,20 @@ async fn async_main() -> Result<()> {
             .set_verbosity_and_wait(args.verbose.into())
             .await?;
     }
+    let graceful_shutdown_timeout = match args.graceful_shutdown_timeout_secs {
+        Some(provided) => Duration::from_secs(provided),
+        None => DEFAULT_GRACEFUL_SHUTDOWN_TIMEOUT,
+    };
     debug!(arguments =?args, "parsed cli arguments");
 
     let config = Config::try_from(args)?;
     debug!(?config, "computed configuration");
 
-    let server = Server::from_config(config, main_token.clone()).await?;
+    let (server, maybe_heartbeat_app) = Server::from_config(config, main_token.clone()).await?;
 
+    if let Some(mut heartbeat_app) = maybe_heartbeat_app {
+        main_tracker.spawn(async move { heartbeat_app.run().await });
+    }
     main_tracker.spawn(async move {
         info!("ready to receive messages");
         server.run().await
@@ -65,7 +72,7 @@ async fn async_main() -> Result<()> {
         .group(main_tracker, main_token)
         .group(telemetry_tracker, telemetry_token)
         .telemetry_guard(telemetry_shutdown.into_future())
-        .timeout(GRACEFUL_SHUTDOWN_TIMEOUT)
+        .timeout(graceful_shutdown_timeout)
         .wait()
         .await
         .map_err(Into::into)
