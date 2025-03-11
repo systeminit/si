@@ -6,6 +6,7 @@ on:
       - '.github/workflows/asset-diff.yml'
       - 'bin/clover/**'
       - 'bin/hoist/**'
+      - 'lib/si-pkg/**'
 
 jobs:
   generate-diff:
