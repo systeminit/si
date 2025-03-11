@@ -319,7 +319,6 @@ import { ComponentType } from "@/api/sdf/dal/schema";
 import { useStatusStore } from "@/store/status.store";
 import { useQualificationsStore } from "@/store/qualifications.store";
 import { nonNullable } from "@/utils/typescriptLinter";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { DefaultMap } from "@/utils/defaultmap";
 import DiagramGridBackground from "./DiagramGridBackground.vue";
 import {
@@ -382,7 +381,7 @@ import DiagramEmptyState from "./DiagramEmptyState.vue";
 import DiagramView from "./DiagramView.vue";
 
 const hideDiagramDetails = computed(() => {
-  if (!featureFlagsStore.DIAGRAM_OPTIMIZATION || zoomLevel.value > 0.51) {
+  if (zoomLevel.value > 0.51) {
     return "show";
   } else if (zoomLevel.value > 0.31) {
     return "titles";
@@ -420,7 +419,6 @@ const emit = defineEmits<{
 const componentsStore = useComponentsStore();
 const viewsStore = useViewsStore();
 const statusStore = useStatusStore();
-const featureFlagsStore = useFeatureFlagsStore();
 const modelingEventBus = componentsStore.eventBus;
 
 const fetchDiagramReqStatus = viewsStore.getRequestStatus("FETCH_VIEW");
@@ -935,7 +933,6 @@ async function onKeyDown(e: KeyboardEvent) {
   }
   if (
     !props.readOnly &&
-    featureFlagsStore.TEMPLATE_MGMT_FUNC_GENERATION &&
     e.key === "t" &&
     viewsStore.restorableSelectedComponents.length === 0 &&
     viewsStore.selectedComponents.length > 0 &&
@@ -3249,9 +3246,6 @@ function onRenameKeyDown(e: KeyboardEvent) {
 const helpModalRef = ref();
 
 const occlusionRect = computed(() => {
-  // If the feature flag is off, disable occlusion
-  if (!featureFlagsStore.DIAGRAM_OPTIMIZATION) return undefined;
-
   const OCCLUSION_EDGE = 100;
 
   return {

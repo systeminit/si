@@ -72,10 +72,7 @@
         </div>
         <div>Press N to rename a component or frame.</div>
       </div>
-      <div
-        v-if="featureFlagsStore.TEMPLATE_MGMT_FUNC_GENERATION"
-        class="flex flex-row items-center gap-xs"
-      >
+      <div class="flex flex-row items-center gap-xs">
         <div class="w-12 flex flex-row items-center justify-center">
           <div class="text-xl font-bold leading-none flex-grow text-center">
             T
@@ -114,11 +111,8 @@
 <script lang="ts" setup>
 import { ref } from "vue";
 import { Modal, useModal, Icon } from "@si/vue-lib/design-system";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 
 const modalRef = ref<InstanceType<typeof Modal>>();
 const { open, close } = useModal(modalRef);
 defineExpose({ open, close });
-
-const featureFlagsStore = useFeatureFlagsStore();
 </script>

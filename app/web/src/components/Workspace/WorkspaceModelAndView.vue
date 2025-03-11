@@ -113,9 +113,7 @@
   <DeleteSelectionModal />
   <RestoreSelectionModal />
   <EraseSelectionModal />
-  <TemplateSelectionModal
-    v-if="featureFlagsStore.TEMPLATE_MGMT_FUNC_GENERATION"
-  />
+  <TemplateSelectionModal />
   <CommandModal />
 </template>
 

@@ -83,12 +83,10 @@ import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { storeToRefs } from "pinia";
 import { useComponentsStore } from "@/store/components.store";
 import { useViewsStore } from "@/store/views.store";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { DiagramViewData } from "../ModelingDiagram/diagram_types";
 
 const componentsStore = useComponentsStore();
 const viewsStore = useViewsStore();
-const featureFlagsStore = useFeatureFlagsStore();
 
 const { selectedComponents, restorableSelectedComponents } =
   storeToRefs(viewsStore);
@@ -124,11 +122,7 @@ const readyToSubmit = computed(() =>
 
 const open = () => {
   // only open the modal if the selected components are valid for template generation
-  // and the feature flag is enabled!
-  if (
-    !validSelectedComponents.value ||
-    !featureFlagsStore.TEMPLATE_MGMT_FUNC_GENERATION
-  ) {
+  if (!validSelectedComponents.value) {
     return;
   }
 
