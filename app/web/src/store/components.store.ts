@@ -176,6 +176,7 @@ type EventBusEvents = {
   };
   setSelection: ComponentId[];
   rename: ComponentId;
+  renameView: ViewId;
 };
 
 export const DEFAULT_COLLAPSED_SIZE = { height: 100, width: 300 };
