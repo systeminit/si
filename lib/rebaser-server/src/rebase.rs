@@ -1,6 +1,7 @@
 use audit_logs_stream::AuditLogsStreamError;
 use dal::{
     change_set::{ChangeSet, ChangeSetError, ChangeSetId},
+    data_cache::{DataCache, DataCacheError},
     workspace_snapshot::WorkspaceSnapshotError,
     ChangeSetStatus, DalContext, TransactionsError, Workspace, WorkspaceError, WorkspacePk,
     WorkspaceSnapshot, WsEvent, WsEventError,
@@ -17,7 +18,10 @@ use si_events::{
 };
 use si_frontend_types::{
     index::MvIndex,
-    object::{patch::ObjectPatch, FrontendObject},
+    object::{
+        patch::{ObjectPatch, PatchBatch, PatchBatchMeta, PATCH_BATCH_KIND},
+        FrontendObject,
+    },
     reference::{IndexReference, ReferenceKind},
 };
 use si_layer_cache::LayerDbError;
@@ -33,6 +37,8 @@ pub(crate) enum RebaseError {
     AuditLogsStream(#[from] AuditLogsStreamError),
     #[error("workspace snapshot error: {0}")]
     ChangeSet(#[from] ChangeSetError),
+    #[error("Data Cache error: {0}")]
+    DataCache(#[from] DataCacheError),
     #[error("frigg error: {0}")]
     Frigg(#[from] FriggError),
     #[error("layerdb error: {0}")]
@@ -155,7 +161,7 @@ pub async fn perform_rebase(
             .await?;
         dbg!(&changes);
 
-        ctx.set_workspace_snapshot(to_rebase_workspace_snapshot);
+        ctx.set_workspace_snapshot(to_rebase_workspace_snapshot.clone());
 
         let mut frontend_objects: Vec<si_frontend_types::object::FrontendObject> = Vec::new();
         let mut patches = Vec::new();
@@ -231,7 +237,18 @@ pub async fn perform_rebase(
             patch: json_patch::diff(&from_json_value, &mv_index_frontend_object.data),
         };
         patches.push(index_patch);
-        dbg!(patches);
+
+        let patch_batch = PatchBatch {
+            meta: PatchBatchMeta {
+                workspace_id: workspace_pk,
+                change_set_id: Some(ctx.change_set_id()),
+                snapshot_from_address: Some(original_workspace_snapshot.id().await),
+                snapshot_to_address: Some(to_rebase_workspace_snapshot.id().await),
+            },
+            kind: PATCH_BATCH_KIND,
+            patches,
+        };
+        DataCache::publish_patch_batch(ctx, dbg!(patch_batch)).await?;
 
         maybe_index_update = Some(mv_index_frontend_object);
     }
