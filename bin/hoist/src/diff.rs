@@ -165,13 +165,13 @@ impl ModificationSets {
         let mut message = self.category.to_string();
 
         if !self.added.is_empty() {
-            message = format!("{message} +{}", self.added.len());
+            message = format!("{message} ➕{}", self.added.len());
         }
         if !self.removed.is_empty() {
-            message = format!("{message} -{}", self.removed.len());
+            message = format!("{message} ➖{}", self.removed.len());
         }
         if !self.modified.is_empty() {
-            message = format!("{message} ~{}", self.modified.len());
+            message = format!("{message} 🔀{}", self.modified.len());
         }
 
         Some(message)
