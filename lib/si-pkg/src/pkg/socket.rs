@@ -143,6 +143,8 @@ impl<'a> TryFrom<SiPkgSocket<'a>> for SocketSpec {
                 .connection_annotations(&data.connection_annotations)
                 .arity(data.arity)
                 .ui_hidden(data.ui_hidden);
+
+            builder.data(data_builder.build()?);
         }
 
         Ok(builder.build()?)
