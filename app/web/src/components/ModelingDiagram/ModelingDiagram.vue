@@ -382,7 +382,7 @@ import DiagramEmptyState from "./DiagramEmptyState.vue";
 import DiagramView from "./DiagramView.vue";
 
 const hideDiagramDetails = computed(() => {
-  if (!featureFlagsStore.DIAGRAM_OPTIMIZATION || zoomLevel.value > 0.51) {
+  if (zoomLevel.value > 0.51) {
     return "show";
   } else if (zoomLevel.value > 0.31) {
     return "titles";
@@ -3249,9 +3249,6 @@ function onRenameKeyDown(e: KeyboardEvent) {
 const helpModalRef = ref();
 
 const occlusionRect = computed(() => {
-  // If the feature flag is off, disable occlusion
-  if (!featureFlagsStore.DIAGRAM_OPTIMIZATION) return undefined;
-
   const OCCLUSION_EDGE = 100;
 
   return {
