@@ -86,7 +86,6 @@
 import * as _ from "lodash-es";
 import { KonvaEventObject } from "konva/lib/Node";
 import { computed } from "vue";
-import tinycolor from "tinycolor2";
 import { useTheme } from "@si/vue-lib/design-system";
 import { Vector2d } from "konva/lib/types";
 import { DiagramEdgeData, DiagramSocketData } from "./diagram_types";
@@ -104,6 +103,7 @@ const props = defineProps<{
   isHovered?: boolean;
   isSelected?: boolean;
   isManagement?: boolean;
+  isDeleted: boolean;
 }>();
 
 const emit = defineEmits(["hover:start", "hover:end"]);
@@ -159,13 +159,20 @@ const colors = computed(() => {
   const isFilled = ["draw_edge_from", "draw_edge_to", "connected"].includes(
     state.value,
   );
-  const primaryColor = tinycolor(theme.value === "dark" ? "#FFF" : "#000");
+  let primaryColor = theme.value === "dark" ? "#FFF" : "#000";
   const noFillColor = theme.value === "dark" ? "#000" : "#FFF";
+
+  let labelText = theme.value === "dark" ? "#FFF" : "#000";
+  if (props.isDeleted) {
+    labelText = "#999";
+    primaryColor = "#999";
+  }
+
   return {
-    stroke: primaryColor.toRgbString(),
-    fill: isFilled ? primaryColor.toRgbString() : noFillColor,
-    fillReverse: isFilled ? noFillColor : primaryColor.toRgbString(),
-    labelText: theme.value === "dark" ? "#FFF" : "#000",
+    stroke: primaryColor,
+    fill: isFilled ? primaryColor : noFillColor,
+    fillReverse: isFilled ? noFillColor : primaryColor,
+    labelText,
   };
 });
 

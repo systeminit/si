@@ -17,7 +17,6 @@
         strokeWidth: 2,
         hitStrokeWidth: 10,
         listening: !edge.def.isInferred,
-        opacity: mainLineOpacity,
         dash: [10, 10],
         dashEnabled: isDeleted,
         shadowColor: '#000',
@@ -172,23 +171,6 @@ const showEdge = computed(() => {
   }
 
   return isFromOrToSelected.value || props.isSelected;
-});
-
-const mainLineOpacity = computed(() => {
-  if (willDeleteIfPendingEdgeCreated.value) return 0.3;
-  if (isDeleted.value) return 0.75;
-  if (
-    props.edge.def.fromComponentId === selectedComponentId.value ||
-    props.edge.def.toComponentId === selectedComponentId.value
-  ) {
-    return 0.8;
-  }
-
-  if (props.edge.def.isManagement) {
-    return 0.0;
-  }
-
-  return 0.1;
 });
 
 function onMouseOver() {
