@@ -213,7 +213,7 @@ where
                 if let Err(_elapsed) = time::timeout(timeout, await_groups).await {
                     warn!("graceful shutdown timeout exceeded; completing shutdown anyway");
                     if let Some(telemetry_guard) = telemetry_guard {
-                        debug!("performing graceful shutdown for telemetry guard");
+                        warn!("performing graceful shutdown for telemetry guard");
                         telemetry_guard.await.map_err(ShutdownError::telemetry)?;
                     }
                     return Err(ShutdownError::TimeoutElapsed(timeout));

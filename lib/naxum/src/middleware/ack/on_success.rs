@@ -2,7 +2,8 @@ use std::sync::Arc;
 
 use async_nats::jetstream::message::Acker;
 use futures::future::BoxFuture;
-use tracing::{trace, warn};
+use telemetry_utils::metric;
+use tracing::{error, info, trace};
 
 use crate::Head;
 
@@ -24,11 +25,12 @@ impl OnSuccess for DefaultOnSuccess {
         Box::pin(async move {
             trace!("double acking message");
             if let Err(err) = acker.double_ack().await {
-                warn!(
+                error!(
                     si.error.message = ?err,
                     subject = head.subject.as_str(),
                     "failed to double ack the message",
                 );
+                metric!(counter.naxum.ack_layer.on_success.double_ack_failed = 1);
             }
         })
     }

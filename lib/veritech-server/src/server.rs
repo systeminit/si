@@ -28,6 +28,7 @@ use si_pool_noodle::{
     KillExecutionRequest, PoolNoodle, Spec,
 };
 use telemetry::prelude::*;
+use telemetry_utils::metric;
 use tokio::sync::{oneshot, Mutex};
 use tokio_util::sync::CancellationToken;
 use veritech_core::{incoming_subject, veritech_work_queue, ExecutionId, GetNatsSubjectFor};
@@ -35,7 +36,9 @@ use veritech_core::{incoming_subject, veritech_work_queue, ExecutionId, GetNatsS
 use crate::{
     app_state::{AppState, KillAppState},
     config::CycloneSpec,
-    handlers, Config, ServerError, ServerResult,
+    handlers,
+    heartbeat::HeartbeatApp,
+    Config, ServerError, ServerResult,
 };
 
 const CONSUMER_NAME: &str = "veritech-server";
@@ -74,7 +77,10 @@ impl fmt::Debug for Server {
 
 impl Server {
     #[instrument(name = "veritech.init.from_config", level = "info", skip_all)]
-    pub async fn from_config(config: Config, token: CancellationToken) -> ServerResult<Self> {
+    pub async fn from_config(
+        config: Config,
+        token: CancellationToken,
+    ) -> ServerResult<(Self, Option<HeartbeatApp>)> {
         let nats = Self::connect_to_nats(&config).await?;
 
         let metadata = Arc::new(ServerMetadata {
@@ -136,6 +142,11 @@ impl Server {
                     .run()
                     .map_err(|e| ServerError::CyclonePool(Box::new(e)))?;
 
+                // Reset metrics before creating the naxum apps.
+                metric!(counter.veritech.handlers_doing_work = 0);
+                metric!(counter.veritech.pool_exhausted = 0);
+                metric!(counter.veritech.publisher.in_progress = 0);
+
                 let inner_future = Self::build_app(
                     metadata.clone(),
                     config.concurrency_limit(),
@@ -148,16 +159,37 @@ impl Server {
                 )
                 .await?;
 
-                let kill_inner_future =
-                    Self::build_kill_app(metadata.clone(), nats, kill_senders, token.clone())
-                        .await?;
+                let kill_inner_future = Self::build_kill_app(
+                    metadata.clone(),
+                    nats.clone(),
+                    kill_senders,
+                    token.clone(),
+                )
+                .await?;
 
-                Ok(Server {
-                    metadata,
-                    inner: inner_future,
-                    kill_inner: kill_inner_future,
-                    shutdown_token: token,
-                })
+                let maybe_heartbeat_app = if config.heartbeat_app() {
+                    Some(HeartbeatApp::new(
+                        nats,
+                        token.clone(),
+                        config.instance_id(),
+                        config.heartbeat_app_auto_force_reconnect_logic(),
+                        config.heartbeat_app_sleep_duration(),
+                        config.heartbeat_app_publish_timeout_duration(),
+                        config.heartbeat_app_force_reconnect_timeout_duration(),
+                    ))
+                } else {
+                    None
+                };
+
+                Ok((
+                    Server {
+                        metadata,
+                        inner: inner_future,
+                        kill_inner: kill_inner_future,
+                        shutdown_token: token,
+                    },
+                    maybe_heartbeat_app,
+                ))
             }
         }
     }
@@ -173,7 +205,14 @@ impl Server {
         let (inner_result, kill_inner_result) =
             join!(tokio::spawn(self.inner), tokio::spawn(self.kill_inner));
 
-        inner_result?.map_err(ServerError::Naxum)?;
+        // NOTE(nick,fletcher): we need to cancel before going to the kill app in case the stream
+        // has closed, but the cancellation token has not been cancelled. This is a valid way to
+        // close and we should handle it more gracefully in the future, but explicitly calling the
+        // "cancel" method is sufficient here.
+        match inner_result? {
+            Ok(()) => self.shutdown_token.cancel(),
+            Err(err) => return Err(ServerError::Naxum(err)),
+        }
         kill_inner_result?.map_err(ServerError::Naxum)?;
 
         info!("veritech main loop shutdown complete");
