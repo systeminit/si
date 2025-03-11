@@ -79,6 +79,14 @@ pub struct UploadAllSpecsArgs {
         action = clap::ArgAction::SetTrue
     )]
     pub skip_confirmation: bool,
+
+    #[arg(
+        long = "non-interactive",
+        short = 'v',
+        help = "Write to console instead of progress bar",
+        action = clap::ArgAction::SetTrue
+    )]
+    pub non_interactive: bool,
 }
 
 #[derive(clap::Args, Debug)]
@@ -106,6 +114,14 @@ pub struct UploadSpecArgs {
         action = clap::ArgAction::SetTrue
     )]
     pub skip_confirmation: bool,
+
+    #[arg(
+        long = "non-interactive",
+        short = 'v',
+        help = "Write to console instead of progress bar",
+        action = clap::ArgAction::SetTrue
+    )]
+    pub non_interactive: bool,
 }
 
 #[derive(clap::Args, Debug)]
