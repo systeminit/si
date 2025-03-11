@@ -3,11 +3,13 @@ use commands::Commands;
 use diff::{patch_list_to_changelog, rewrite_spec_for_diff};
 use futures::stream::StreamExt;
 use indicatif::{ProgressBar, ProgressStyle};
+use rand::random;
 use std::collections::HashMap;
 use std::fs::{self, DirEntry};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::time::Duration;
 use ulid::Ulid;
 
 use clap::Parser;
@@ -343,10 +345,40 @@ async fn upload_pkg_specs(
             ));
             pb.inc(1);
             async move {
-                if let Err(e) = upload_pkg_spec(client, &pkg).await {
-                    println!("Failed to upload {} due to {}", metadata.name(), e);
-                    failed.fetch_add(1, Ordering::Relaxed);
-                    pb.set_message(failed_message());
+                let max_retries = 5;
+                let mut retries = 0;
+                let mut backoff_ms = 100;
+
+                loop {
+                    match upload_pkg_spec(client, &pkg).await {
+                        Ok(_) => break,
+                        Err(e) => {
+                            retries += 1;
+                            if retries > max_retries {
+                                println!(
+                                    "Failed to upload {} after {} retries due to {}",
+                                    metadata.name(),
+                                    max_retries,
+                                    e
+                                );
+                                failed.fetch_add(1, Ordering::Relaxed);
+                                pb.set_message(failed_message());
+                                break;
+                            }
+
+                            println!(
+                                "Retrying upload for {} (attempt {}/{}): {}",
+                                metadata.name(),
+                                retries,
+                                max_retries,
+                                e
+                            );
+
+                            let jitter = random::<u64>() % 50; // 0-49ms of jitter
+                            tokio::time::sleep(Duration::from_millis(backoff_ms + jitter)).await;
+                            backoff_ms *= 2;
+                        }
+                    }
                 }
             }
         })

@@ -14,6 +14,7 @@ rust_binary(
         "//third-party/rust:indicatif",
         "//third-party/rust:json-patch",
         "//third-party/rust:nix",
+        "//third-party/rust:rand",
         "//third-party/rust:remain",
         "//third-party/rust:serde_json",
         "//third-party/rust:tokio",
