@@ -1,7 +1,7 @@
 ---
 services:
   app:
-    image: systeminit/ci-base:stable
+    image: 179845983369.dkr.ecr.us-east-2.amazonaws.com/docker-hub/systeminit/ci-base:stable
     environment:
       - "USE_CI_PG_SETUP=true"
       - "SI_TEST_PG_HOSTNAME=postgres-test"
