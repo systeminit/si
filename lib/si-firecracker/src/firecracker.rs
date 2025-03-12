@@ -12,6 +12,7 @@ use std::result;
 use tokio::fs;
 use tokio::process::Child;
 use tokio::process::Command;
+use tracing::info;
 
 type Result<T> = result::Result<T, FirecrackerJailError>;
 
@@ -91,8 +92,13 @@ impl FirecrackerJail {
         Ok(())
     }
 
-    pub async fn setup(pool_size: u32) -> Result<()> {
-        Self::create_scripts().await?;
+    pub async fn setup(pool_size: u32, create_scripts: bool) -> Result<()> {
+        if create_scripts {
+            info!("creating scripts during firecracker setup...");
+            Self::create_scripts().await?;
+        } else {
+            info!("skipping scripts creation during firecracker setup...");
+        }
 
         // we want to work with a clean slate, but we don't necessarily care about failures here
         for id in 0..pool_size + 1 {
