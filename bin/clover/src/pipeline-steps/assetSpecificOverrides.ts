@@ -277,6 +277,14 @@ const overrides = new Map<string, OverrideFn>([
     if (!prop) return;
     prop!.data.widgetKind = "CodeEditor";
   }],
+  ["AWS::S3::BucketPolicy", (spec: ExpandedPkgSpec) => {
+    const variant = spec.schemas[0].variants[0];
+
+    const prop = propForOverride(variant.domain, "PolicyDocument");
+    if (!prop) return;
+    prop.kind = "json";
+    prop!.data.widgetKind = "CodeEditor";
+  }],
   ["AWS::EC2::VPCCidrBlock", (spec: ExpandedPkgSpec) => {
     const variant = spec.schemas[0].variants[0];
 
