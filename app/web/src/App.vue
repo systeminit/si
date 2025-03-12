@@ -117,7 +117,6 @@ const selectedWorkspace = computed(() => workspacesStore.selectedWorkspace);
 
 // initialize the realtime store - which will watch for auth and open/close websocket
 const _realtimeStore = useRealtimeStore();
-const _heimdall = useHeimdall();
 </script>
 
 <style lang="less">

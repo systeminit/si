@@ -33,8 +33,8 @@ export interface DBInterface {
   initDB: () => Promise<void>;
   migrate: () => void;
   setBearer: (token: string) => void;
-  initSocket(url: string, bearerToken: string): void;
-  initBifrost(url: string, bearerToken: string): void;
+  initSocket(workspaceId: string): void;
+  initBifrost(workspaceId: string): void;
   bifrostClose(): void;
   bifrostReconnect(): void;
   get(
@@ -88,18 +88,18 @@ export const NOROW = Symbol("NOROW");
 interface AbstractAtom {
   id: Id;
   kind: string;
-  kindFromChecksum?: Checksum;
-  kindToChecksum: Checksum;
+  fromChecksum?: Checksum;
+  toChecksum: Checksum;
 }
 export interface AtomOperation extends AbstractAtom {
-  operations: string; // this is a string of JSON
+  patch: Operation[];
 }
 
 export interface AtomMeta {
   workspaceId: WorkspacePk;
   changeSetId: ChangeSetId;
-  snapshotFromChecksum?: Checksum;
-  snapshotToChecksum: Checksum;
+  snapshotFromAddress?: Checksum;
+  snapshotToAddress: Checksum;
 }
 
 export enum MessageKind {
@@ -107,7 +107,7 @@ export enum MessageKind {
   MJOLNIR = "MjolnirAtom",
 }
 
-export interface PatchAtomMessage {
+export interface PatchBatch {
   meta: AtomMeta;
   kind: MessageKind.PATCH;
   patches: AtomOperation[];

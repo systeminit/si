@@ -1,11 +1,10 @@
 import { defineStore } from "pinia";
 import * as Comlink from "comlink";
-import { watch, computed } from "vue";
+import { watch, computed, ref } from "vue";
 import {
   AtomDocument,
   Checksum,
   DBInterface,
-  interpolate,
   NOROW,
   QueryKey,
   Id,
@@ -13,7 +12,7 @@ import {
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { useAuthStore } from "../auth.store";
 
-export const useHeimdall = defineStore("heimdall", () => {
+export const useHeimdall = (workspaceId: string) => defineStore("heimdall", () => {
   const authStore = useAuthStore();
   if (!authStore.selectedOrDefaultAuthToken)
     throw new Error("Missing Auth Token");
@@ -33,8 +32,9 @@ export const useHeimdall = defineStore("heimdall", () => {
   // but stuff happens in here we do need to wait for
   // figure that out :sweat:
   db.addListenerBustCache(Comlink.proxy(bustTanStackCache));
-  db.initBifrost("", "");
   db.setBearer(authStore.selectedOrDefaultAuthToken);
+
+  db.initBifrost(workspaceId);
 
   const connectionShouldBeEnabled = computed(
     () =>

@@ -32,7 +32,7 @@ import {
   Atom,
   QueryKey,
   Id,
-  PatchAtomMessage,
+  PatchBatch,
   AtomMeta,
   AtomDocument,
   AtomMessage,
@@ -216,10 +216,10 @@ const atomExistsOnSnapshots = async (
 const newSnapshot = async (meta: AtomMeta, fromSnapshotAddress?: string) => {
   await db.exec({
     sql: `INSERT INTO snapshots (address) VALUES (?);`,
-    bind: [meta.snapshotToChecksum],
+    bind: [meta.snapshotToAddress],
   });
 
-  if (fromSnapshotAddress && fromSnapshotAddress !== meta.snapshotToChecksum) {
+  if (fromSnapshotAddress && fromSnapshotAddress !== meta.snapshotToAddress) {
     await db.exec({
       sql: `INSERT INTO snapshots_mtm_atoms
         SELECT
@@ -228,7 +228,7 @@ const newSnapshot = async (meta: AtomMeta, fromSnapshotAddress?: string) => {
         WHERE
           snapshot_address = ?
         `,
-      bind: [meta.snapshotToChecksum, fromSnapshotAddress],
+      bind: [meta.snapshotToAddress, fromSnapshotAddress],
     });
   }
 };
@@ -239,7 +239,7 @@ const removeAtom = async (snapshotAddress: Checksum, atom: Required<Atom>) => {
     DELETE FROM snapshots_mtm_atoms
     WHERE snapshot_address = ? AND kind = ? AND args = ? AND checksum = ?
     `,
-    bind: [snapshotAddress, atom.kind, atom.id, atom.kindFromChecksum],
+    bind: [snapshotAddress, atom.kind, atom.id, atom.fromChecksum],
   });
 };
 
@@ -260,7 +260,7 @@ const createAtom = async (atom: Atom, doc: object) => {
     `,
     bind: [
       atom.kind,
-      atom.kindToChecksum,
+      atom.toChecksum,
       atom.id,
       await encodeDocumentForDB(doc),
     ],
@@ -287,7 +287,7 @@ const handleHammer = async (msg: AtomMessage, span?: Span) => {
 
   if (!toSnapshotAddress)
     throw new Error(
-      `Expected snapshot ROWID for ${msg.atom.snapshotToChecksum}`,
+      `Expected snapshot ROWID for ${msg.atom.snapshotToAddress}`,
     );
   await insertAtomMTM(msg.atom, toSnapshotAddress);
 
@@ -301,17 +301,13 @@ const insertAtomMTM = async (atom: Atom, toSnapshotAddress: Checksum) => {
       (snapshot_address, kind, args, checksum)
         VALUES
       (?, ?, ?, ?);`,
-    bind: [toSnapshotAddress, atom.kind, atom.id, atom.kindToChecksum],
+    bind: [toSnapshotAddress, atom.kind, atom.id, atom.toChecksum],
   });
 };
 
 const snapshotLogic = async (meta: AtomMeta, span?: Span) => {
-  const {
-    changeSetId,
-    workspaceId,
-    snapshotFromChecksum,
-    snapshotToChecksum,
-  } = { ...meta };
+  const { changeSetId, workspaceId, snapshotFromAddress: snapshotFromChecksum, snapshotToAddress: snapshotToChecksum } =
+    { ...meta };
   span?.setAttributes({
     changeSetId,
     workspaceId,
@@ -343,7 +339,7 @@ const snapshotLogic = async (meta: AtomMeta, span?: Span) => {
 
   if (
     changeSetExists &&
-    meta.snapshotFromChecksum &&
+    meta.snapshotFromAddress &&
     fromSnapshotAddress !== snapshotFromChecksum
   )
     throw new Error("RAGNAROK!");
@@ -361,7 +357,7 @@ const snapshotLogic = async (meta: AtomMeta, span?: Span) => {
   return snapshotToChecksum;
 };
 
-const handlePatchMessage = async (data: PatchAtomMessage, span?: Span) => {
+const handlePatchMessage = async (data: PatchBatch, span?: Span) => {
   span?.setAttribute("numRawPatches", data.patches.length);
   if (data.patches.length === 0) return;
   // Assumption: every patch is working on the same workspace and changeset
@@ -376,15 +372,15 @@ const handlePatchMessage = async (data: PatchAtomMessage, span?: Span) => {
       const atom: Atom = {
         ...rawAtom,
         ...data.meta,
-        operations: JSON.parse(rawAtom.operations),
+        operations: rawAtom.patch,
       };
       return atom;
     })
-    .filter((rawAtom): rawAtom is Required<Atom> => !!rawAtom.kindFromChecksum);
+    .filter((rawAtom): rawAtom is Required<Atom> => !!rawAtom.fromChecksum);
 
   span?.setAttribute("numAtoms", atoms.length);
   if (!toSnapshotAddress)
-    throw new Error(`Expected snapshot for ${data.meta.snapshotToChecksum}`);
+    throw new Error(`Expected snapshot for ${data.meta.snapshotToAddress}`);
   await Promise.all(
     atoms.map(async (atom) => {
       await applyPatch(atom, toSnapshotAddress);
@@ -403,8 +399,8 @@ const applyPatch = async (
     span.setAttribute("atom", JSON.stringify(atom));
 
     // if we have the change already don't do anything
-    const snapshots = await atomExistsOnSnapshots(atom, atom.kindToChecksum);
-    if (snapshots.includes(atom.snapshotToChecksum)) {
+    const snapshots = await atomExistsOnSnapshots(atom, atom.toChecksum);
+    if (snapshots.includes(atom.snapshotToAddress)) {
       span.addEvent("noop");
       span.end();
       return;
@@ -413,20 +409,20 @@ const applyPatch = async (
     // otherwise, find the old record
     const previousSnapshots = await atomExistsOnSnapshots(
       atom,
-      atom.kindFromChecksum,
+      atom.fromChecksum,
     );
     span.setAttribute("previousSnapshots", JSON.stringify(previousSnapshots));
-    const exists = previousSnapshots.includes(atom.snapshotFromChecksum);
+    const exists = previousSnapshots.includes(atom.snapshotFromAddress);
     span.setAttribute("exists", exists);
 
     let needToInsertMTM = false;
-    if (atom.kindFromChecksum === "0") {
+    if (atom.fromChecksum === "0") {
       if (!exists) {
         // if i already have it, this is a NOOP
         await createAtomFromPatch(atom);
         needToInsertMTM = true;
       }
-    } else if (atom.kindToChecksum === "0") {
+    } else if (atom.toChecksum === "0") {
       // if i've already removed it, this is a NOOP
       if (exists) await removeAtom(toSnapshotAddress, atom);
     } else {
@@ -443,7 +439,7 @@ const applyPatch = async (
           atom.changeSetId,
           atom.kind,
           atom.id,
-          atom.kindToChecksum,
+          atom.toChecksum,
         );
       }
     }
@@ -464,7 +460,7 @@ const patchAtom = async (atom: Required<Atom>) => {
         args = ? and
         checksum = ?
       ;`,
-    bind: [atom.kind, atom.id, atom.kindFromChecksum],
+    bind: [atom.kind, atom.id, atom.fromChecksum],
     returnValue: "resultRows",
   });
   if (atomRows.length === 0) throw new Error("Cannot find atom");
@@ -488,7 +484,7 @@ const patchAtom = async (atom: Required<Atom>) => {
     bind: [
       atom.kind,
       atom.id,
-      atom.kindToChecksum,
+      atom.toChecksum,
       await encodeDocumentForDB(doc),
     ],
   });
@@ -525,10 +521,10 @@ const mjolnir = async (
     atom: {
       id: req.data.frontEndObject.id,
       kind: req.data.frontEndObject.kind,
-      kindToChecksum: req.data.frontEndObject.checksum,
+      toChecksum: req.data.frontEndObject.checksum,
       workspaceId,
       changeSetId,
-      snapshotToChecksum: req.data.workspaceSnapshotAddress,
+      snapshotToAddress: req.data.workspaceSnapshotAddress,
     },
     data: req.data.frontEndObject.data,
   };
@@ -538,7 +534,7 @@ const mjolnir = async (
 const updateChangeSetWithNewSnapshot = async (meta: AtomMeta) => {
   await db.exec({
     sql: "update changesets set snapshot_address = ? where change_set_id = ?;",
-    bind: [meta.snapshotToChecksum, meta.changeSetId],
+    bind: [meta.snapshotToAddress, meta.changeSetId],
   });
 };
 
@@ -632,8 +628,10 @@ const ragnarok = () => {
 
 let socket: ReconnectingWebSocket;
 let bustCacheFn;
+let bearerToken: string;
 const dbInterface: DBInterface = {
   setBearer(token) {
+    bearerToken = token;
     // api base url - can use a proxy or set a full url
     let apiUrl: string;
     if (import.meta.env.VITE_API_PROXY_PATH) {
@@ -672,9 +670,10 @@ const dbInterface: DBInterface = {
     return result;
   },
 
-  async initSocket(url: string, bearerToken: string) {
+  async initSocket(workspaceId: string) {
     socket = new ReconnectingWebSocket(
-      () => `${url}/bifrost?token=Bearer+${bearerToken}`,
+      () =>
+        `/api/v2/workspaces/${workspaceId}/ws/bifrost?token=Bearer+${bearerToken}`,
       [],
       {
         // see options https://www.npmjs.com/package/reconnecting-websocket#available-options
@@ -689,7 +688,7 @@ const dbInterface: DBInterface = {
         // OR we'll be getting mjolnir responses with the Atom as a whole
         try {
           const data = JSON.parse(messageEvent.data) as
-            | PatchAtomMessage
+            | PatchBatch
             | AtomMessage;
           if (!("kind" in data)) span.setAttribute("kindMissing", "no kind");
           else {
@@ -714,20 +713,21 @@ const dbInterface: DBInterface = {
 
     socket.addEventListener("error", (errorEvent) => {
       error("ws error", errorEvent.error, errorEvent.message);
+      console.dir(errorEvent)
     });
   },
 
-  async initBifrost(url: string, bearerToken: string) {
-    await Promise.all([this.initDB()]); // this.initSocket(url, bearerToken)]);
+  async initBifrost(workspaceId: string) {
+    await Promise.all([this.initDB(), this.initSocket(workspaceId)]);
     await this.migrate();
   },
 
   async bifrostClose() {
-    // socket.close();
+    socket.close();
   },
 
   async bifrostReconnect() {
-    // socket.reconnect();
+    socket.reconnect();
   },
 
   async addListenerBustCache(
@@ -911,22 +911,22 @@ const dbInterface: DBInterface = {
      *
      * First payload is changing the name of a view
      */
-    const payload1: PatchAtomMessage = {
+    const payload1: PatchBatch = {
       meta: {
         workspaceId: "W",
         changeSetId: "new_change_set",
-        snapshotFromChecksum: "HEAD",
-        snapshotToChecksum: "new_change_set",
+        snapshotFromAddress: "HEAD",
+        snapshotToAddress: "new_change_set",
       },
       kind: MessageKind.PATCH,
       patches: [
         {
           kind: testRecord,
-          kindFromChecksum: "tr1",
-          kindToChecksum: "tr1-new-name",
-          operations: JSON.stringify([
+          fromChecksum: "tr1",
+          toChecksum: "tr1-new-name",
+          patch: [
             { op: "replace", path: "/name", value: "new name" },
-          ]),
+          ],
           id: "testId1",
         },
       ],
@@ -989,31 +989,34 @@ const dbInterface: DBInterface = {
       sql: "select snapshot_address from changesets where change_set_id = ?;",
       bind: ["new_change_set"],
       returnValue: "resultRows",
-    })
+    });
     const address = oneInOne(addressQuery) as string;
-    console.assert(address === "new_change_set", `Changeset address didn't move forward ${address}`);
+    console.assert(
+      address === "new_change_set",
+      `Changeset address didn't move forward ${address}`,
+    );
 
     log("~~ FIRST PAYLOAD SUCCESS ~~");
 
     /**
      * Second payload is merging that change to HEAD
      */
-    const payload2: PatchAtomMessage = {
+    const payload2: PatchBatch = {
       meta: {
         workspaceId: "W",
         changeSetId: "HEAD",
-        snapshotFromChecksum: "HEAD",
-        snapshotToChecksum: "new_change_set_on_head",
+        snapshotFromAddress: "HEAD",
+        snapshotToAddress: "new_change_set_on_head",
       },
       kind: MessageKind.PATCH,
       patches: [
         {
           kind: testRecord,
-          kindFromChecksum: "tr1",
-          kindToChecksum: "tr1-new-name",
-          operations: JSON.stringify([
+          fromChecksum: "tr1",
+          toChecksum: "tr1-new-name",
+          patch: [
             { op: "replace", path: "/name", value: "new name" },
-          ]),
+          ],
           id: "testId1",
         },
       ],
@@ -1112,40 +1115,40 @@ const dbInterface: DBInterface = {
      * Fourth thing that happens, add a new view, remove an existing view
      */
 
-    const payload3: PatchAtomMessage = {
+    const payload3: PatchBatch = {
       meta: {
         workspaceId: "W",
         changeSetId: "add_remove",
-        snapshotFromChecksum: "new_change_set_on_head",
-        snapshotToChecksum: "add_remove_1",
+        snapshotFromAddress: "new_change_set_on_head",
+        snapshotToAddress: "add_remove_1",
       },
       kind: MessageKind.PATCH,
       patches: [
         {
           kind: testRecord,
-          kindFromChecksum: "0",
-          kindToChecksum: "tr3-add",
-          operations: JSON.stringify([
+          fromChecksum: "0",
+          toChecksum: "tr3-add",
+          patch: [
             { op: "add", path: "/name", value: "record 3" },
             { op: "add", path: "/id", value: 3 },
-          ]),
+          ],
           id: "testId3",
         },
         {
           kind: testRecord,
-          kindFromChecksum: "tr1-new-name",
-          kindToChecksum: "0",
-          operations: JSON.stringify([]),
+          fromChecksum: "tr1-new-name",
+          toChecksum: "0",
+          patch: [],
           id: "testId1",
         },
         {
           kind: testList,
-          kindFromChecksum: "tl1",
-          kindToChecksum: "tl1-add-remove",
-          operations: JSON.stringify([
+          fromChecksum: "tl1",
+          toChecksum: "tl1-add-remove",
+          patch: [
             { op: "remove", path: "/list/0" },
             { op: "add", path: "/list/2", value: `${testRecord}:3:tr3-add` },
-          ]),
+          ],
           id: "changeSetId",
         },
       ],
@@ -1205,12 +1208,12 @@ const dbInterface: DBInterface = {
       atom: {
         id: "fb1",
         kind: "foobar",
-        kindToChecksum: "fb1",
+        toChecksum: "fb1",
         workspaceId: "W",
         changeSetId: "add_remove",
-        snapshotToChecksum: "add_remove_1"
+        snapshotToAddress: "add_remove_1",
       },
-      data: { "foo": "bar" }
+      data: { foo: "bar" },
     };
 
     await tracer.startActiveSpan("handleEvent", async (span) => {
@@ -1222,7 +1225,7 @@ const dbInterface: DBInterface = {
     const query = await db.exec({
       sql: "select args from atoms where kind = ? and args = ? and checksum = ?",
       bind: ["foobar", "fb1", "fb1"],
-      returnValue: "resultRows"
+      returnValue: "resultRows",
     });
     const fb = oneInOne(query);
     console.assert(fb === "fb1", "Mjolnir atom doesn't exist");
@@ -1242,9 +1245,12 @@ const dbInterface: DBInterface = {
       sql: "select snapshot_address from changesets where change_set_id = ?;",
       bind: ["add_remove"],
       returnValue: "resultRows",
-    })
+    });
     const address2 = oneInOne(addressQuery2) as string;
-    console.assert(address2 === "add_remove_1", `Changeset address didn't move forward ${address2}`);
+    console.assert(
+      address2 === "add_remove_1",
+      `Changeset address didn't move forward ${address2}`,
+    );
 
     log("~~ MJOLNIR COMPLETED ~~");
 
