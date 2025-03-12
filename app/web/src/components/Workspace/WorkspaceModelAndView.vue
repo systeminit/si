@@ -108,6 +108,7 @@
     </component>
   </section>
 
+  <FloatingPalette />
   <!-- Modals and Menus outside of the flow of the page -->
   <ModelingRightClickMenu ref="contextMenuRef" />
   <DeleteSelectionModal />
@@ -160,6 +161,7 @@ import TemplateSelectionModal from "../ModelingView/TemplateSelectionModal.vue";
 import CommandModal from "./CommandModal.vue";
 import InsetApprovalModal from "../InsetApprovalModal.vue";
 import ViewDetailsPanel from "../ViewDetailsPanel.vue";
+import FloatingPalette from "../ModelingView/FloatingPalette.vue";
 
 const changeSetsStore = useChangeSetsStore();
 const viewsStore = useViewsStore();
