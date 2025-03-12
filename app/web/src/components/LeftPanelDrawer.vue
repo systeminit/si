@@ -40,6 +40,12 @@
         />
       </template>
 
+      <div v-if="ffStore.FRONTEND_ARCH_VIEWS">
+        <IconButton icon="circle-stack" size="md"
+        @click="heimdall.odin()"
+        />
+      </div>
+
       <div>
         <ViewCard
           v-for="view in filteredViews"
@@ -71,7 +77,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, ref } from "vue";
+import { computed, reactive, ref } from "vue";
 import clsx from "clsx";
 import {
   PillCounter,
@@ -86,10 +92,18 @@ import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
 import { useViewsStore } from "@/store/views.store";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import ViewCard from "./ViewCard.vue";
+import { useQuery, useQueryClient } from '@tanstack/vue-query'
+import { useChangeSetsStore } from "@/store/change_sets.store";
+import { useHeimdall } from "@/store/realtime/heimdall.store";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
+import { ViewDescription } from "@/api/sdf/dal/views";
 
 const props = defineProps<{ changeSetId: ChangeSetId | undefined }>();
 
 const viewStore = useViewsStore();
+const changeSetsStore = useChangeSetsStore();
+const heimdall = useHeimdall();
+const ffStore = useFeatureFlagsStore();
 
 const emit = defineEmits<{
   (e: "closed"): void;
@@ -104,11 +118,61 @@ const onSearchUpdated = (q: string) => {
   searchTerm.value = q;
 };
 
-const filteredViews = computed(() => {
-  if (!searchTerm.value) return viewStore.viewList;
-  return viewStore.viewList.filter((v) =>
-    v.name.toLowerCase().includes(searchTerm.value.toLowerCase()),
-  );
+interface BifrostView {
+  id: string,
+  name: string,
+  isDefault: boolean,
+  created_at: string,
+  updated_at: string,
+}
+
+interface Reference {
+  id: string,
+  checksum: string,
+  kind: string,
+}
+
+interface BifrostViewList {
+  id: string,
+  views: Reference[],
+}
+
+const kind = "ViewList";
+const viewListOverBifrost = useQuery<BifrostView[]>({
+  queryKey: [changeSetsStore.selectedWorkspacePk, changeSetsStore.selectedChangeSetId, kind, changeSetsStore.selectedChangeSetId],
+  queryFn: async (): Promise<BifrostView[]> => {
+    const rawList = await heimdall.bifrost<BifrostViewList>(changeSetsStore.selectedWorkspacePk!, changeSetsStore.selectedChangeSetId!, kind, changeSetsStore.selectedChangeSetId!);
+    if (rawList !== -1) {
+      const maybeViews = await Promise.all(rawList.views.map(async (v) => {
+        return await heimdall.bifrost<BifrostView>(changeSetsStore.selectedWorkspacePk!, changeSetsStore.selectedChangeSetId!, v.kind, v.id);
+      }));
+      return reactive(maybeViews.filter((v): v is BifrostView => v !== -1));
+    }
+    return [];
+  },
+});
+
+const filteredViews = computed<ViewDescription[] | BifrostView[]>(() => {
+  if (ffStore.FRONTEND_ARCH_VIEWS) {
+    let data: BifrostView[] = [];
+    if (viewListOverBifrost.isError.value)
+      return data;
+
+    if (viewListOverBifrost.data.value)
+      data = viewListOverBifrost.data.value;
+
+    if (!searchTerm.value) {
+      return data
+    }
+    return data.filter((v) =>
+      v.name.toLowerCase().includes(searchTerm.value.toLowerCase()),
+    );
+  } else {
+    if (!searchTerm.value) return viewStore.viewList;
+    return viewStore.viewList.filter((v) =>
+      v.name.toLowerCase().includes(searchTerm.value.toLowerCase()),
+    );
+  }
 });
 
 const modalRef = ref<InstanceType<typeof Modal>>();

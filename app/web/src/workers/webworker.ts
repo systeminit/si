@@ -38,6 +38,7 @@ import {
   AtomMessage,
   MessageKind,
   IndexObjectMeta,
+  BustCacheFn,
 } from "./types/dbinterface";
 
 const exporter = new ConsoleSpanExporter();
@@ -64,31 +65,31 @@ registerInstrumentations({
 const tracer = trace.getTracer("bifrost");
 const log = console.log;
 const error = console.error;
+const _DEBUG = true;
+function debug(...args: any | any[]) {
+  if (_DEBUG)
+    console.debug(args);
+}
 
 let db: Database;
 let sdf: AxiosInstance;
 
 const start = async (sqlite3: Sqlite3Static) => {
-  // log('Running SQLite3 version', sqlite3.version.libVersion);
   db =
     "opfs" in sqlite3
       ? new sqlite3.oo1.OpfsDb("/si.sqlite3")
       : new sqlite3.oo1.DB("/si.sqlite3", "ct");
-  log(
+  debug(
     "opfs" in sqlite3
       ? `OPFS is available, created persisted database at ${db.filename}`
       : `OPFS is not available, created transient database ${db.filename}`,
   );
   await db.exec({ sql: "PRAGMA foreign_keys = ON;" });
-  // const result = await db.exec({ sql: 'PRAGMA foreign_keys', returnValue: "resultRows" })
-  // log("PRAGMA foreign_keys: ", oneInOne(result), "?");
 };
 
 const initializeSQLite = async () => {
   try {
-    // log('Loading and initializing SQLite3 module...');
     const sqlite3 = await sqlite3InitModule({ print: log, printErr: error });
-    // log('Done initializing. Running demo...');
     await start(sqlite3);
   } catch (err) {
     if (err instanceof Error)
@@ -170,7 +171,7 @@ const ensureTables = async () => {
    *  - DELETE FROM snapshots WHERE change_set_id=<this_changeSetId> AND checksum=<old_checksum>
    */
 
-  return db.exec({ sql });
+  return await db.exec({ sql });
 };
 
 const encodeDocumentForDB = async (doc: object) => {
@@ -252,19 +253,25 @@ const createAtomFromPatch = async (atom: Atom) => {
 };
 
 const createAtom = async (atom: Atom, doc: object) => {
-  await db.exec({
-    sql: `insert into atoms
-      (kind, checksum, args, data)
-        VALUES
-      (?, ?, ?, ?)
-    `,
-    bind: [
-      atom.kind,
-      atom.toChecksum,
-      atom.id,
-      await encodeDocumentForDB(doc),
-    ],
-  });
+  debug("createAtom", atom, doc);
+  try {
+    await db.exec({
+      sql: `insert into atoms
+        (kind, checksum, args, data)
+          VALUES
+        (?, ?, ?, ?)
+      `,
+      bind: [
+        atom.kind,
+        atom.toChecksum,
+        atom.id,
+        await encodeDocumentForDB(doc),
+      ],
+    });
+  } catch (err) {
+    error("createAtom failed", atom, doc);
+    throw err;
+  }
 };
 
 const partialKeyFromKindAndArgs = (kind: string, id: Id): QueryKey => {
@@ -282,6 +289,10 @@ const kindAndArgsFromKey = (key: QueryKey): { kind: string; id: Id } => {
 };
 
 const handleHammer = async (msg: AtomMessage, span?: Span) => {
+  // in between throwing a hammer and receiving it, i might already have written the atom
+  const snapshots = await atomExistsOnSnapshots(msg.atom, msg.atom.toChecksum);
+  if (snapshots.includes(msg.atom.snapshotToAddress)) return;  // noop
+
   const toSnapshotAddress = await snapshotLogic(msg.atom, span);
   await createAtom(msg.atom, msg.data);
 
@@ -293,6 +304,8 @@ const handleHammer = async (msg: AtomMessage, span?: Span) => {
 
   updateChangeSetWithNewSnapshot(msg.atom);
   removeOldSnapshot();
+
+  if (bustCacheFn) bustCacheFn(msg.atom.workspaceId, msg.atom.changeSetId, msg.atom.kind, msg.atom.id);
 };
 
 const insertAtomMTM = async (atom: Atom, toSnapshotAddress: Checksum) => {
@@ -416,20 +429,26 @@ const applyPatch = async (
     span.setAttribute("exists", exists);
 
     let needToInsertMTM = false;
+    let bustCache = false;
     if (atom.fromChecksum === "0") {
       if (!exists) {
         // if i already have it, this is a NOOP
         await createAtomFromPatch(atom);
         needToInsertMTM = true;
+        bustCache = true;
       }
     } else if (atom.toChecksum === "0") {
       // if i've already removed it, this is a NOOP
-      if (exists) await removeAtom(toSnapshotAddress, atom);
+      if (exists) {
+        await removeAtom(toSnapshotAddress, atom);
+        bustCache = true;
+      }
     } else {
       // patch it if I can
       if (exists) {
         await patchAtom(atom);
         needToInsertMTM = true;
+        bustCache = true;
       }
       // otherwise, fire the small hammer to get the full object
       else {
@@ -447,6 +466,7 @@ const applyPatch = async (
     // this insert potentially replaces the MTM row that exists for the current snapshot
     // based on the table constraint
     if (needToInsertMTM) await insertAtomMTM(atom, toSnapshotAddress);
+    if (bustCache && bustCacheFn) bustCacheFn(atom.workspaceId, atom.changeSetId, atom.kind, atom.id);
     span.end();
   });
 };
@@ -497,6 +517,7 @@ const mjolnir = async (
   id: Id,
   checksum?: Checksum,
 ) => {
+  debug("🔨 mjolnir", kind, id, checksum)
   // TODO this is probably a WsEvent, so SDF knows who to reply to
   const pattern = [
     "v2",
@@ -509,11 +530,18 @@ const mjolnir = async (
   ] as URLPattern;
   const [url, _desc] = describePattern(pattern);
   const params = { changeSetId, kind, id, checksum };
-  const req = await sdf<IndexObjectMeta>({
-    method: "get",
-    url,
-    params,
-  });
+  let req;
+  try {
+    req = await sdf<IndexObjectMeta>({
+      method: "get",
+      url,
+      params,
+    });
+  } catch (err) {
+    error("MJOLNIR 404", params, err);
+    return;
+  }
+  if (!req) throw new Error("Impossible...");
   // TODO listen to the reply on the websocket
 
   const msg: AtomMessage = {
@@ -626,8 +654,10 @@ const ragnarok = () => {
   // FUTURE: drop the DB data, rebuild it, and enter keys from empty
 };
 
+console.log("LOG?!", import.meta.env.VITE_LOG_WS, '?');
+
 let socket: ReconnectingWebSocket;
-let bustCacheFn;
+let bustCacheFn: BustCacheFn;
 let bearerToken: string;
 const dbInterface: DBInterface = {
   setBearer(token) {
@@ -666,7 +696,7 @@ const dbInterface: DBInterface = {
 
   async migrate() {
     const result = ensureTables();
-    // log("Migration completed");
+    debug("Migration completed");
     return result;
   },
 
@@ -686,8 +716,7 @@ const dbInterface: DBInterface = {
       if (
         import.meta.env.VITE_LOG_WS
       ) {
-        /* eslint-disable-next-line no-console */
-        console.log("bifrost", messageEvent.data);
+        log("🌈 bifrost incoming", messageEvent.data);
       }
       tracer.startActiveSpan("handleEvent", async (span) => {
         // we'll either be getting AtomMessages as patches to the data
@@ -704,12 +733,12 @@ const dbInterface: DBInterface = {
             else if (data.kind === MessageKind.MJOLNIR)
               await handleHammer(data, span);
           }
-        } catch (error: unknown) {
-          console.error(error);
-          if (error instanceof Error) {
+        } catch (err: unknown) {
+          error(err);
+          if (err instanceof Error) {
             span.addEvent("error", {
-              "error.message": error.message,
-              "error.stacktrace": error.stack,
+              "error.message": err.message,
+              "error.stacktrace": err.stack,
             });
           }
         }
@@ -719,7 +748,6 @@ const dbInterface: DBInterface = {
 
     socket.addEventListener("error", (errorEvent) => {
       error("ws error", errorEvent.error, errorEvent.message);
-      console.dir(errorEvent)
     });
   },
 
@@ -737,19 +765,18 @@ const dbInterface: DBInterface = {
   },
 
   async addListenerBustCache(
-    cb: (queryKey: QueryKey, latestChecksum: Checksum) => void,
+    cb: BustCacheFn,
   ) {
     bustCacheFn = cb;
-    bustCacheFn("foo", "bar2");
+    // bustCacheFn("foo", "bar2");
   },
 
   async get(
     changeSetId: ChangeSetId,
     kind: string,
     id: Id,
-  ): Promise<typeof NOROW | object> {
-    const atomData = await db.exec({
-      sql: `
+  ): Promise<-1 | object> {
+    const sql = `
       select
         data
       from
@@ -757,18 +784,23 @@ const dbInterface: DBInterface = {
         inner join snapshots_mtm_atoms mtm
           ON atoms.kind = mtm.kind AND atoms.args = mtm.args AND atoms.checksum = mtm.checksum
         inner join snapshots ON mtm.snapshot_address = snapshots.address
-        inner join changesets ON changsets.snapshot_address = snapshots.address
+        inner join changesets ON changesets.snapshot_address = snapshots.address
       where
         changesets.change_set_id = ? AND
-        kind = ? AND
-        args = ?
-      ;`,
-      bind: [changeSetId, kind, id],
+        atoms.kind = ? AND
+        atoms.args = ?
+      ;`;
+    const bind = [changeSetId, kind, id];
+    const atomData = await db.exec({
+      sql,
+      bind,
       returnValue: "resultRows",
     });
     const data = oneInOne(atomData);
-    if (data === NOROW) return NOROW;
+    debug("❓ sql get", bind, ' returns ?', data === NOROW);
+    if (data === NOROW) return -1;
     const atomDoc = decodeDocumentFromDB(data as ArrayBuffer);
+    debug("📄 atom doc", atomDoc);
     return atomDoc;
   },
 
@@ -817,6 +849,27 @@ const dbInterface: DBInterface = {
       compare.end();
       span.end();
     });
+  },
+
+  async odin(): Promise<object> {
+    const c = db.exec({
+      sql: "select * from changesets;",
+      returnValue: "resultRows"
+    });
+    const s = db.exec({
+      sql: "select * from snapshots;",
+      returnValue: "resultRows"
+    });
+    const a = db.exec({
+      sql: "select * from atoms;",
+      returnValue: "resultRows"
+    });
+    const m = db.exec({
+      sql: "select * from snapshots_mtm_atoms;",
+      returnValue: "resultRows"
+    });
+    const [changesets, snapshots, atoms, mtm] = await Promise.all([c, s, a, m]);
+    return { changesets, snapshots, atoms, mtm };
   },
 
   async fullDiagnosticTest() {

@@ -27,7 +27,7 @@ export interface QueryMiss extends QueryMeta {
 
 export type Column = string;
 export type Columns = Column[];
-type BustCacheFn = (queryKey: string, latestChecksum: string) => void;
+export type BustCacheFn = (workspaceId: string, changeSetId: string, kind: string, id: string) => void;
 
 export interface DBInterface {
   initDB: () => Promise<void>;
@@ -57,6 +57,7 @@ export interface DBInterface {
   ): Promise<Record<QueryKey, Checksum>>;
   niflheim(workspaceId: string, changeSetId: ChangeSetId): void;
   fullDiagnosticTest(): void;
+  odin(): object;
 }
 
 export type RealSqlValue = NonNullable<SqlValue>;

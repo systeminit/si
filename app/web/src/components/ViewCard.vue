@@ -184,11 +184,19 @@ const toast = useToast();
 const viewsStore = useViewsStore();
 const featureFlagsStore = useFeatureFlagsStore();
 
+interface BifrostView {
+  id: string,
+  name: string,
+  isDefault: boolean,
+  created_at: string,
+  updated_at: string,
+};
+
 const props = defineProps<{
   selected?: boolean;
   outlined?: boolean;
   displayAsComponentCard?: DiagramViewData;
-  view: ViewDescription;
+  view: ViewDescription | BifrostView;
 }>();
 
 const mouseNode = ref();
