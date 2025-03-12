@@ -1,16 +1,19 @@
 use json_patch::jsonptr::{Assign, Pointer};
 use json_patch::{Patch, PatchOperation};
 use serde_json::Value;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::fmt::{Display, Formatter};
 
 enum PatchTarget {
     Socket(String),
+    SocketContents(String),
     Prop(String),
     PropContents((String, String)),
     Func(String),
+    FuncBinding(String),
     Variant,
+    VariantContent(String),
 }
 
 impl Display for PatchTarget {
@@ -24,12 +27,24 @@ impl Display for PatchTarget {
 
                 f.write_str(format!("{} socket {}", kind, name).as_str())
             }
+            PatchTarget::SocketContents(name) => {
+                let split_name = name.split("-").collect::<Vec<_>>();
+                let (Some(kind), Some(name)) = (split_name.first(), split_name.get(1)) else {
+                    return Err(fmt::Error);
+                };
+
+                f.write_str(format!("contents of {} socket {}", kind, name).as_str())
+            }
             PatchTarget::Prop(name) => f.write_str(format!("prop {}", name).as_str()),
             PatchTarget::PropContents((name, target)) => {
-                f.write_str(format!("prop contents {} at {}", name, target).as_str())
+                f.write_str(format!("contents of prop {} at {}", name, target).as_str())
             }
             PatchTarget::Func(name) => f.write_str(format!("function {}", name).as_str()),
+            PatchTarget::FuncBinding(kind) => f.write_str(format!("{kind} binding").as_str()),
             PatchTarget::Variant => f.write_str("variant"),
+            PatchTarget::VariantContent(path) => {
+                f.write_str(format!("variant content at {path}").as_str())
+            }
         }?;
         Ok(())
     }
@@ -40,27 +55,207 @@ pub fn patch_list_to_changelog(patch: Patch) -> Vec<String> {
     for operation in patch.iter() {
         let path = operation.path();
 
-        let target = if path.starts_with(Pointer::from_static("/funcs")) {
-            let Some(name) = path.get(1) else {
-                println!("Change directly to funcs object");
-                continue;
-            };
+        let Some(target) = determine_patch_target(path) else {
+            continue;
+        };
 
-            PatchTarget::Func(name.to_string())
-        } else if path.starts_with(Pointer::from_static("/schemas/0/variants/0/sockets")) {
-            let Some(name) = path.get(5) else {
-                println!("Change directly to sockets object");
-                continue;
-            };
+        match operation {
+            PatchOperation::Add(op) => {
+                logs.push(format!(
+                    "#### Added {target}:\n```\n{}\n```\n",
+                    serde_json::to_string_pretty(&op.value).expect("unable to parse json")
+                ));
+            }
+            PatchOperation::Remove(_) => logs.push(format!("Removed {target}")),
+            PatchOperation::Replace(op) => {
+                logs.push(format!(
+                    "#### Replaced value within {target}:\n```\n{}\n```\n",
+                    serde_json::to_string_pretty(&op.value).expect("unable to parse json")
+                ));
+            }
+            change @ (PatchOperation::Move(_)
+            | PatchOperation::Copy(_)
+            | PatchOperation::Test(_)) => println!("Unhandled Operation: \n{change}"),
+        }
+    }
 
+    logs.sort();
+
+    logs
+}
+
+pub struct ModificationSets {
+    pub added: HashSet<String>,
+    pub modified: HashSet<String>,
+    pub removed: HashSet<String>,
+    category: &'static str,
+}
+
+impl ModificationSets {
+    fn new(category: &'static str) -> ModificationSets {
+        ModificationSets {
+            added: Default::default(),
+            modified: Default::default(),
+            removed: Default::default(),
+            category,
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.added.len() == 0 && self.removed.len() == 0 && self.modified.len() == 0
+    }
+
+    pub fn into_text_summary(self) -> Option<String> {
+        if self.is_empty() {
+            return None;
+        }
+
+        let mut message = self.category.to_string();
+
+        if !self.added.is_empty() {
+            message = format!("{message} ➕{}", self.added.len());
+        }
+        if !self.removed.is_empty() {
+            message = format!("{message} ➖{}", self.removed.len());
+        }
+        if !self.modified.is_empty() {
+            message = format!("{message} 🔀{}", self.modified.len());
+        }
+
+        Some(message)
+    }
+}
+
+pub fn patch_list_to_summary(
+    asset_name: impl AsRef<str>,
+    patch: Patch,
+) -> (Option<String>, ModificationSets) {
+    let mut sockets_set = ModificationSets::new("sockets");
+    let mut props_set = ModificationSets::new("props");
+    let mut variant_contents_set = ModificationSets::new("other variant contents");
+    let funcs_set = ModificationSets::new("funcs");
+
+    for operation in patch.iter() {
+        let path = operation.path();
+
+        let Some(target) = determine_patch_target(path) else {
+            continue;
+        };
+
+        match operation {
+            PatchOperation::Add(_) => match target {
+                PatchTarget::Socket(name) => {
+                    sockets_set.added.insert(name);
+                }
+                PatchTarget::SocketContents(name) => {
+                    sockets_set.modified.insert(name);
+                }
+                PatchTarget::Prop(name) => {
+                    props_set.added.insert(name);
+                }
+                PatchTarget::PropContents((name, _)) => {
+                    props_set.modified.insert(name);
+                }
+                PatchTarget::Func(_) => {}
+                PatchTarget::FuncBinding(func_kind) => {
+                    variant_contents_set.added.insert(func_kind);
+                }
+                PatchTarget::Variant => {}
+                PatchTarget::VariantContent(path) => {
+                    variant_contents_set.added.insert(path);
+                }
+            },
+            PatchOperation::Remove(_) => match target {
+                PatchTarget::Socket(name) => {
+                    sockets_set.removed.insert(name);
+                }
+                PatchTarget::SocketContents(name) => {
+                    sockets_set.modified.insert(name);
+                }
+                PatchTarget::Prop(name) => {
+                    props_set.removed.insert(name);
+                }
+                PatchTarget::PropContents((name, _)) => {
+                    props_set.modified.insert(name);
+                }
+                PatchTarget::Func(_) => {}
+                PatchTarget::FuncBinding(func_kind) => {
+                    variant_contents_set.removed.insert(func_kind);
+                }
+                PatchTarget::Variant => {}
+                PatchTarget::VariantContent(path) => {
+                    variant_contents_set.removed.insert(path);
+                }
+            },
+            PatchOperation::Replace(_) => match target {
+                PatchTarget::Socket(name) => {
+                    sockets_set.modified.insert(name);
+                }
+                PatchTarget::SocketContents(name) => {
+                    sockets_set.modified.insert(name);
+                }
+                PatchTarget::Prop(name) => {
+                    props_set.modified.insert(name);
+                }
+                PatchTarget::PropContents((name, _)) => {
+                    props_set.modified.insert(name);
+                }
+                PatchTarget::Func(_) => {}
+                PatchTarget::FuncBinding(func_kind) => {
+                    variant_contents_set.modified.insert(func_kind);
+                }
+                PatchTarget::Variant => {}
+                PatchTarget::VariantContent(path) => {
+                    variant_contents_set.modified.insert(path);
+                }
+            },
+            PatchOperation::Move(_) | PatchOperation::Copy(_) | PatchOperation::Test(_) => {}
+        }
+    }
+
+    let prop_summary = props_set.into_text_summary();
+    let sockets_summary = sockets_set.into_text_summary();
+    let variant_contents_summary = variant_contents_set.into_text_summary();
+
+    let summaries = vec![prop_summary, sockets_summary, variant_contents_summary]
+        .into_iter()
+        .flatten()
+        .collect::<Vec<_>>();
+
+    if summaries.is_empty() {
+        return (None, funcs_set);
+    }
+
+    let summaries_text = summaries.join(", ");
+
+    let message = format!("[{}]: {summaries_text}", asset_name.as_ref());
+
+    (Some(message), funcs_set)
+}
+
+fn determine_patch_target(path: &Pointer) -> Option<PatchTarget> {
+    let target = if path.starts_with(Pointer::from_static("/funcs")) {
+        let Some(name) = path.get(1) else {
+            // println!("Change directly to funcs container");
+            return None;
+        };
+
+        PatchTarget::Func(name.to_string())
+    } else if path.starts_with(Pointer::from_static("/schemas/0/variants/0/sockets")) {
+        let Some(name) = path.get(5) else {
+            // println!("Change directly to sockets container");
+            return None;
+        };
+
+        // We're in a field deeper than the socket itself
+        if path.get(6).is_some() {
+            PatchTarget::SocketContents(name.to_string())
+        } else {
             PatchTarget::Socket(name.to_string())
-        } else if path.starts_with(Pointer::from_static("/schemas/0/variants/0")) {
-            let Some(prop_root) = path.get(4) else {
-                println!("Change directly to variant object");
-                continue;
-            };
-
-            if ["domain", "secret", "resourceValue"].contains(&prop_root.to_string().as_str()) {
+        }
+    } else if path.starts_with(Pointer::from_static("/schemas/0/variants/0")) {
+        if let Some(prop_root) = path.get(4) {
+            if ["domain", "secrets", "resourceValue"].contains(&prop_root.to_string().as_str()) {
                 let mut prop_name_tokens = vec![prop_root.to_string()];
 
                 let mut found_prop_root = false;
@@ -84,51 +279,45 @@ pub fn patch_list_to_changelog(patch: Patch) -> Vec<String> {
                     }
                 }
 
-                if prop_name_tokens.len() == 1 {
-                    println!("unhandled change");
-                    continue;
-                }
-
                 let prop_name = format!("/root/{}", prop_name_tokens.join("/"));
                 if !prop_contents.is_empty() {
                     PatchTarget::PropContents((prop_name, prop_contents.join("/")))
                 } else {
                     PatchTarget::Prop(prop_name)
                 }
+            } else if [
+                "actionFuncs",
+                "authFuncs",
+                "leafFunctions",
+                "siPropFuncs",
+                "managementFuncs",
+                "rootPropFuncs",
+            ]
+            .contains(&prop_root.to_string().as_str())
+            {
+                PatchTarget::FuncBinding(prop_root.to_string())
             } else {
-                PatchTarget::Variant
+                PatchTarget::VariantContent(path.to_string())
             }
         } else {
-            panic!("Unhandled patch operation")
-        };
-
-        match operation {
-            PatchOperation::Add(op) => {
-                logs.push(format!(
-                    "Added {target}:\n{}",
-                    serde_json::to_string_pretty(&op.value).expect("unable to parse json")
-                ));
-            }
-            PatchOperation::Remove(_) => logs.push(format!("Removed {target}")),
-            PatchOperation::Replace(op) => {
-                logs.push(format!(
-                    "Replaced value within {target}:\n{}",
-                    serde_json::to_string_pretty(&op.value).expect("unable to parse json")
-                ));
-            }
-            change @ (PatchOperation::Move(_)
-            | PatchOperation::Copy(_)
-            | PatchOperation::Test(_)) => println!("Unhandled Operation: \n{change}"),
+            PatchTarget::Variant
         }
-    }
+    } else {
+        panic!("Unhandled patch operation")
+    };
 
-    logs.sort();
-
-    logs
+    Some(target)
 }
 
 pub fn rewrite_spec_for_diff(spec: Value) -> Value {
     let mut spec = spec.clone();
+
+    let module_name = spec
+        .pointer("/name")
+        .expect("could not get module name")
+        .as_str()
+        .expect("could not get module name as  str")
+        .to_owned();
 
     let variant = spec
         .pointer_mut("/schemas/0/variants/0")
@@ -251,13 +440,18 @@ pub fn rewrite_spec_for_diff(spec: Value) -> Value {
             .expect("funcs field is not an array");
 
         for func in funcs {
-            let name = func
+            let func_name = func
                 .get("name")
                 .expect("could not get name")
                 .as_str()
                 .expect("kind should be a string");
 
-            new_funcs.insert(name, func.clone());
+            // Ignore asset func
+            if func_name == module_name {
+                continue;
+            }
+
+            new_funcs.insert(func_name, func.clone());
         }
         spec.assign(
             Pointer::from_static("/funcs"),

@@ -128,7 +128,7 @@ impl<'a> SiPkgSchema<'a> {
     pub async fn to_spec(&self) -> PkgResult<SchemaSpec> {
         let mut builder = SchemaSpec::builder();
 
-        builder.name(self.name());
+        builder.name(self.name()).is_builtin(self.is_builtin);
         if let Some(unique_id) = self.unique_id() {
             builder.unique_id(unique_id);
         }
