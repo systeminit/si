@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 use petgraph::{
     prelude::*,
@@ -39,6 +39,7 @@ where
     NewNode {
         node_weight: SplitGraphNodeWeight<N>,
     },
+    NewSubGraph,
 }
 
 #[derive(Clone, Debug)]
@@ -360,4 +361,46 @@ where
 
         updates
     }
+}
+
+/// Transforms a subgraph into NewNode and NewEdge updates
+pub fn subgraph_as_updates<N, E, K>(subgraph: &SubGraph<N, E, K>) -> Vec<Update<N, E, K>>
+where
+    N: CustomNodeWeight,
+    E: CustomEdgeWeight<K>,
+    K: EdgeKind,
+{
+    let mut updates = vec![];
+    let mut node_index_to_id = BTreeMap::new();
+
+    petgraph::visit::depth_first_search(&subgraph.graph, Some(subgraph.root_index), |event| {
+        match event {
+            DfsEvent::Discover(node_index, _) => {
+                if let Some(node_weight) = subgraph.graph.node_weight(node_index).cloned() {
+                    node_index_to_id.insert(node_index, node_weight.id());
+                    updates.push(Update::NewNode { node_weight })
+                }
+            }
+            DfsEvent::Finish(node_index, _) => {
+                updates.extend(
+                    subgraph
+                        .graph
+                        .edges_directed(node_index, Outgoing)
+                        .filter_map(|edge_ref| {
+                            node_index_to_id
+                                .get(&edge_ref.source())
+                                .zip(node_index_to_id.get(&edge_ref.target()))
+                                .map(|(&source, &destination)| Update::NewEdge {
+                                    source,
+                                    destination,
+                                    edge_weight: edge_ref.weight().to_owned(),
+                                })
+                        }),
+                );
+            }
+            _ => {}
+        }
+    });
+
+    updates
 }

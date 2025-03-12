@@ -450,18 +450,8 @@ where
     pub fn new_subgraph(&mut self) -> u16 {
         self.supergraph.addresses.push(SubGraphAddress::nil());
 
-        let mut subgraph = SubGraph::new();
-        let new_root_id = Ulid::new();
-
-        let root_node = SplitGraphNodeWeight::SubGraphRoot {
-            id: new_root_id,
-            merkle_tree_hash: MerkleTreeHash::nil(),
-        };
+        let subgraph = SubGraph::new_with_root();
         let subgraph_index = self.subgraphs.len() as u16;
-        let index = subgraph.graph.add_node(root_node);
-        subgraph.root_index = index;
-        subgraph.node_index_by_id.insert(new_root_id, index);
-
         self.subgraphs.push(subgraph);
 
         subgraph_index
@@ -716,22 +706,25 @@ where
     }
 
     pub fn detect_updates(&self, base_graph: &SplitGraph<N, E, K, R, W>) -> Vec<Update<N, E, K>> {
-        let mut result = vec![];
+        let mut updates = vec![];
         for (updated_subgraph, maybe_base_subgraph) in
             OptZip::new(self.subgraphs.iter(), base_graph.subgraphs.iter())
         {
             let updated_subgraph = updated_subgraph.unwrap();
-            let subgraph_updates = match maybe_base_subgraph {
-                Some(base_subgraph) => {
-                    todo!()
-                }
+            match maybe_base_subgraph {
+                Some(base_subgraph) => updates.extend(
+                    updates::Detector::new(base_subgraph, updated_subgraph)
+                        .detect_updates()
+                        .into_iter(),
+                ),
                 None => {
-                    todo!()
+                    updates.push(Update::NewSubGraph);
+                    updates.extend(updates::subgraph_as_updates(updated_subgraph).into_iter())
                 }
-            };
+            }
         }
 
-        result
+        updates
     }
 
     pub fn tiny_dot_to_file(&self, prefix: &str) {
@@ -897,6 +890,8 @@ mod tests {
         u16,
     };
 
+    use updates::subgraph_as_updates;
+
     use super::*;
 
     #[derive(Clone, PartialEq, Eq)]
@@ -947,6 +942,33 @@ mod tests {
 
     struct TestReadWriter {
         graphs: HashMap<SubGraphAddress, SubGraph<TestNodeWeight, (), ()>>,
+    }
+
+    fn add_nodes_to_graph<'a, 'b, E, K>(
+        graph: &'a mut SubGraph<TestNodeWeight, E, K>,
+        nodes: &'a [&'b str],
+        ordered: bool,
+    ) -> HashMap<&'b str, Ulid>
+    where
+        E: CustomEdgeWeight<K>,
+        K: EdgeKind,
+    {
+        let mut node_id_map = HashMap::new();
+        for node in nodes {
+            // "props" here are just nodes that are easy to create and render the name on the dot
+            // output. there is no domain modeling in this test.
+            let id = SplitGraphNodeId::new();
+            let node_weight = TestNodeWeight {
+                id,
+                name: node.to_string(),
+                ordered,
+                merkle_tree_hash: MerkleTreeHash::nil(),
+            };
+            graph.add_node(SplitGraphNodeWeight::Custom(node_weight));
+
+            node_id_map.insert(*node, id);
+        }
+        node_id_map
     }
 
     #[async_trait]
@@ -1372,5 +1394,93 @@ mod tests {
                 assert!(unsplitgraph.node_weight(id).is_none());
             }
         }
+    }
+
+    #[test]
+    fn subgraph_as_updates_test() {
+        let nodes = ["r", "t", "u", "v", "a", "b", "c", "d", "e"];
+        let edges = [
+            (None, "r"),
+            (None, "t"),
+            (Some("t"), "u"),
+            (Some("u"), "v"),
+            (Some("r"), "a"),
+            (Some("r"), "b"),
+            (Some("r"), "e"),
+            (Some("a"), "c"),
+            (Some("b"), "c"),
+            (Some("c"), "d"),
+            (Some("b"), "d"),
+            (Some("d"), "e"),
+            (Some("c"), "e"),
+            (Some("e"), "u"),
+            (Some("c"), "u"),
+            (Some("a"), "u"),
+            (Some("a"), "b"),
+        ];
+
+        let mut subgraph = SubGraph::new_with_root();
+        let node_id_map = add_nodes_to_graph(&mut subgraph, &nodes, false);
+
+        for (source, target) in edges {
+            let from_index = match source {
+                Some(name) => subgraph
+                    .node_id_to_index(node_id_map.get(&name).copied().unwrap())
+                    .unwrap(),
+                None => subgraph.root_index,
+            };
+            let to_index = subgraph
+                .node_id_to_index(node_id_map.get(&target).copied().unwrap())
+                .unwrap();
+
+            subgraph.add_edge(from_index, SplitGraphEdgeWeight::Custom(()), to_index);
+        }
+
+        subgraph.cleanup();
+
+        let root_id = subgraph
+            .graph
+            .node_weight(subgraph.root_index)
+            .unwrap()
+            .id();
+
+        let expected_edges: Vec<Update<TestNodeWeight, (), ()>> = edges
+            .into_iter()
+            .map(|(source, target)| {
+                let source = source
+                    .map(|source| node_id_map.get(&source).copied().unwrap())
+                    .unwrap_or(root_id);
+                let destination = node_id_map.get(&target).copied().unwrap();
+
+                Update::NewEdge {
+                    source,
+                    destination,
+                    edge_weight: SplitGraphEdgeWeight::Custom(()),
+                }
+            })
+            .collect();
+
+        let updates = subgraph_as_updates(&subgraph);
+        assert!(!updates.is_empty());
+        let mut new_edge_count = 0;
+        let mut new_node_count = 0;
+        for update in updates {
+            match &update {
+                new_edge @ Update::NewEdge { .. } => {
+                    new_edge_count += 1;
+                    assert!(expected_edges.contains(new_edge));
+                }
+                Update::NewNode {
+                    node_weight: SplitGraphNodeWeight::Custom(TestNodeWeight { id, name, .. }),
+                } => {
+                    new_node_count += 1;
+                    assert_eq!(node_id_map.get(&name.as_str()), Some(id))
+                }
+                _ => {}
+            }
+        }
+
+        assert_eq!(expected_edges.len(), new_edge_count);
+        assert_eq!(nodes.len(), new_node_count);
     }
 }

@@ -56,6 +56,27 @@ where
         }
     }
 
+    pub fn new_with_root() -> Self {
+        let mut subgraph = Self {
+            graph: StableDiGraph::with_capacity(MAX_NODES, MAX_NODES * 2),
+            node_index_by_id: HashMap::new(),
+            node_indexes_by_lineage_id: HashMap::new(),
+            root_index: NodeIndex::new(0),
+
+            touched_nodes: HashSet::new(),
+        };
+
+        let root_id = SplitGraphNodeId::new();
+        let root_index = subgraph.graph.add_node(SplitGraphNodeWeight::SubGraphRoot {
+            id: root_id,
+            merkle_tree_hash: MerkleTreeHash::nil(),
+        });
+        subgraph.node_index_by_id.insert(root_id, root_index);
+        subgraph.root_index = root_index;
+
+        subgraph
+    }
+
     pub fn cleanup(&mut self) {
         loop {
             let orphaned_node_indexes: Vec<SubGraphNodeIndex> = self
@@ -304,6 +325,10 @@ where
         }
 
         Some(hasher.finalize())
+    }
+
+    pub(crate) fn node_id_to_index(&self, id: SplitGraphNodeId) -> Option<SubGraphNodeIndex> {
+        self.node_index_by_id.get(&id).copied()
     }
 
     pub(crate) fn add_edge(
