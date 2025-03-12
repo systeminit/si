@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 
 use async_trait::async_trait;
+use opt_zip::OptZip;
 use petgraph::{prelude::*, stable_graph};
 use serde::{Deserialize, Serialize};
 use si_events::{
@@ -10,11 +11,14 @@ use si_events::{
 use si_id::ulid::Ulid;
 use thiserror::Error;
 
+mod opt_zip;
 pub mod subgraph;
 pub mod subgraph_address;
+pub mod updates;
 
 use subgraph::{SubGraph, SubGraphEdgeIndex, SubGraphNodeIndex};
 pub use subgraph_address::SubGraphAddress;
+use updates::Update;
 
 pub const MAX_NODES: usize = ((u16::MAX / 2) - 1) as usize;
 
@@ -61,7 +65,7 @@ where
     ) -> Result<SubGraphAddress, Self::Error>;
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub enum SplitGraphNodeWeight<N>
 where
     N: CustomNodeWeight,
@@ -105,6 +109,13 @@ where
             | SplitGraphNodeWeight::Ordering { id, .. }
             | SplitGraphNodeWeight::GraphRoot { id, .. }
             | SplitGraphNodeWeight::SubGraphRoot { id, .. } => *id,
+        }
+    }
+
+    pub fn lineage_id(&self) -> SplitGraphNodeId {
+        match self {
+            SplitGraphNodeWeight::Custom(n) => n.lineage_id(),
+            other => other.id(),
         }
     }
 
@@ -187,7 +198,7 @@ where
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub enum SplitGraphEdgeWeight<E, K>
 where
     E: CustomEdgeWeight<K>,
@@ -201,6 +212,47 @@ where
     },
     Ordering,
     Ordinal,
+}
+
+#[derive(PartialEq, Eq, Copy, Clone, Debug, Serialize, Deserialize, Hash)]
+pub enum SplitGraphEdgeWeightKind<K>
+where
+    K: EdgeKind,
+{
+    Custom(K),
+    ExternalSource,
+    Ordering,
+    Ordinal,
+}
+
+impl<E, K> From<SplitGraphEdgeWeight<E, K>> for SplitGraphEdgeWeightKind<K>
+where
+    E: CustomEdgeWeight<K>,
+    K: EdgeKind,
+{
+    fn from(value: SplitGraphEdgeWeight<E, K>) -> Self {
+        match value {
+            SplitGraphEdgeWeight::Custom(c) => SplitGraphEdgeWeightKind::Custom(c.kind()),
+            SplitGraphEdgeWeight::ExternalSource { .. } => SplitGraphEdgeWeightKind::ExternalSource,
+            SplitGraphEdgeWeight::Ordering => SplitGraphEdgeWeightKind::Ordering,
+            SplitGraphEdgeWeight::Ordinal => SplitGraphEdgeWeightKind::Ordinal,
+        }
+    }
+}
+
+impl<E, K> From<&SplitGraphEdgeWeight<E, K>> for SplitGraphEdgeWeightKind<K>
+where
+    E: CustomEdgeWeight<K>,
+    K: EdgeKind,
+{
+    fn from(value: &SplitGraphEdgeWeight<E, K>) -> Self {
+        match value {
+            SplitGraphEdgeWeight::Custom(c) => SplitGraphEdgeWeightKind::Custom(c.kind()),
+            SplitGraphEdgeWeight::ExternalSource { .. } => SplitGraphEdgeWeightKind::ExternalSource,
+            SplitGraphEdgeWeight::Ordering => SplitGraphEdgeWeightKind::Ordering,
+            SplitGraphEdgeWeight::Ordinal => SplitGraphEdgeWeightKind::Ordinal,
+        }
+    }
 }
 
 impl<E, K> SplitGraphEdgeWeight<E, K>
@@ -233,10 +285,11 @@ where
     }
 }
 
-pub trait EdgeKind: PartialEq + Copy + Clone + std::fmt::Debug {}
+pub trait EdgeKind: std::hash::Hash + PartialEq + Eq + Copy + Clone + std::fmt::Debug {}
 
-pub trait CustomNodeWeight: PartialEq + Clone + std::fmt::Debug {
+pub trait CustomNodeWeight: PartialEq + Eq + Clone + std::fmt::Debug {
     fn id(&self) -> SplitGraphNodeId;
+    fn lineage_id(&self) -> SplitGraphNodeId;
 
     fn set_merkle_tree_hash(&mut self, hash: MerkleTreeHash);
     fn merkle_tree_hash(&self) -> MerkleTreeHash;
@@ -244,7 +297,7 @@ pub trait CustomNodeWeight: PartialEq + Clone + std::fmt::Debug {
     fn ordered(&self) -> bool;
 }
 
-pub trait CustomEdgeWeight<K>: PartialEq + Clone + std::fmt::Debug
+pub trait CustomEdgeWeight<K>: PartialEq + Eq + Clone + std::fmt::Debug
 where
     K: EdgeKind,
 {
@@ -662,6 +715,25 @@ where
         }
     }
 
+    pub fn detect_updates(&self, base_graph: &SplitGraph<N, E, K, R, W>) -> Vec<Update<N, E, K>> {
+        let mut result = vec![];
+        for (updated_subgraph, maybe_base_subgraph) in
+            OptZip::new(self.subgraphs.iter(), base_graph.subgraphs.iter())
+        {
+            let updated_subgraph = updated_subgraph.unwrap();
+            let subgraph_updates = match maybe_base_subgraph {
+                Some(base_subgraph) => {
+                    todo!()
+                }
+                None => {
+                    todo!()
+                }
+            };
+        }
+
+        result
+    }
+
     pub fn tiny_dot_to_file(&self, prefix: &str) {
         for (idx, subgraph) in self.subgraphs.iter().enumerate() {
             subgraph.tiny_dot_to_file(&format!("{prefix}-subgraph-{}", idx + 1));
@@ -827,7 +899,7 @@ mod tests {
 
     use super::*;
 
-    #[derive(Clone, PartialEq)]
+    #[derive(Clone, PartialEq, Eq)]
     struct TestNodeWeight {
         id: SplitGraphNodeId,
         name: String,
@@ -843,6 +915,10 @@ mod tests {
 
     impl CustomNodeWeight for TestNodeWeight {
         fn id(&self) -> SplitGraphNodeId {
+            self.id
+        }
+
+        fn lineage_id(&self) -> SplitGraphNodeId {
             self.id
         }
 

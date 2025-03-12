@@ -7076,6 +7076,7 @@ dependencies = [
  "serde",
  "si-events",
  "si-id",
+ "strum",
  "thiserror 2.0.11",
 ]
 

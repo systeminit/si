@@ -19,12 +19,13 @@ where
     E: CustomEdgeWeight<K>,
     K: EdgeKind,
 {
-    pub(super) graph: StableDiGraph<SplitGraphNodeWeight<N>, SplitGraphEdgeWeight<E, K>, u16>,
-    pub(super) node_index_by_id: HashMap<SplitGraphNodeId, SubGraphNodeIndex>,
-    pub(super) root_index: SubGraphNodeIndex,
+    pub(crate) graph: StableDiGraph<SplitGraphNodeWeight<N>, SplitGraphEdgeWeight<E, K>, u16>,
+    pub(crate) node_index_by_id: HashMap<SplitGraphNodeId, SubGraphNodeIndex>,
+    pub(crate) node_indexes_by_lineage_id: HashMap<SplitGraphNodeId, HashSet<SubGraphNodeIndex>>,
+    pub(crate) root_index: SubGraphNodeIndex,
 
     #[serde(skip)]
-    pub(super) touched_nodes: HashSet<SubGraphNodeIndex>,
+    pub(crate) touched_nodes: HashSet<SubGraphNodeIndex>,
 }
 
 impl<N, E, K> Default for SubGraph<N, E, K>
@@ -48,6 +49,7 @@ where
         Self {
             graph: StableDiGraph::with_capacity(MAX_NODES, MAX_NODES * 2),
             node_index_by_id: HashMap::new(),
+            node_indexes_by_lineage_id: HashMap::new(),
             root_index: NodeIndex::new(0),
 
             touched_nodes: HashSet::new(),
@@ -73,18 +75,31 @@ where
 
         self.node_index_by_id
             .retain(|_id, index| self.graph.node_weight(*index).is_some());
+        self.node_indexes_by_lineage_id
+            .iter_mut()
+            .for_each(|(_, node_indexes)| {
+                node_indexes.retain(|index| self.graph.node_weight(*index).is_some());
+            });
+        self.node_indexes_by_lineage_id
+            .retain(|_, indexes| !indexes.is_empty());
     }
 
-    pub(super) fn add_node(&mut self, node: SplitGraphNodeWeight<N>) -> SubGraphNodeIndex {
+    pub(crate) fn add_node(&mut self, node: SplitGraphNodeWeight<N>) -> SubGraphNodeIndex {
         let node_id = node.id();
         let node_index = self.graph.add_node(node);
         self.node_index_by_id.insert(node_id, node_index);
+        self.node_indexes_by_lineage_id
+            .entry(node_id)
+            .and_modify(|set| {
+                set.insert(node_index);
+            })
+            .or_insert(HashSet::from([node_index]));
         self.touched_nodes.insert(node_index);
 
         node_index
     }
 
-    pub(super) fn replace_node(&mut self, index: SubGraphNodeIndex, node: SplitGraphNodeWeight<N>) {
+    pub(crate) fn replace_node(&mut self, index: SubGraphNodeIndex, node: SplitGraphNodeWeight<N>) {
         if let Some(node_ref) = self.graph.node_weight_mut(index) {
             *node_ref = node;
         }
@@ -124,7 +139,7 @@ where
             })
     }
 
-    pub(super) fn ordering_node_for_node_index(
+    pub(crate) fn ordering_node_for_node_index(
         &self,
         node_index: SubGraphNodeIndex,
     ) -> Option<SubGraphNodeIndex> {
@@ -151,7 +166,7 @@ where
         }
     }
 
-    pub(super) fn reorder_node<L>(&mut self, node_index: SubGraphNodeIndex, lambda: L)
+    pub(crate) fn reorder_node<L>(&mut self, node_index: SubGraphNodeIndex, lambda: L)
     where
         L: FnOnce(&[SplitGraphNodeId]) -> Vec<SplitGraphNodeId>,
     {
@@ -170,7 +185,7 @@ where
         self.touch_node(node_index);
     }
 
-    pub(super) fn ordered_children_for_node(
+    pub(crate) fn ordered_children_for_node(
         &self,
         node_index: SubGraphNodeIndex,
     ) -> Option<Vec<SubGraphNodeIndex>> {
@@ -184,20 +199,20 @@ where
 
         Some(
             order
-                .into_iter()
+                .iter()
                 .filter_map(|id| self.node_index_by_id.get(id).copied())
                 .collect(),
         )
     }
 
-    pub(super) fn root_node_merkle_tree_hash(&self) -> MerkleTreeHash {
+    pub(crate) fn root_node_merkle_tree_hash(&self) -> MerkleTreeHash {
         self.graph
             .node_weight(self.root_index)
             .map(|node| node.merkle_tree_hash())
             .unwrap_or(MerkleTreeHash::nil())
     }
 
-    pub(super) fn recalculate_entire_merkle_tree_hash(&mut self) {
+    pub(crate) fn recalculate_entire_merkle_tree_hash(&mut self) {
         let mut dfs = petgraph::visit::DfsPostOrder::new(&self.graph, self.root_index);
 
         while let Some(node_index) = dfs.next(&self.graph) {
@@ -209,7 +224,7 @@ where
         }
     }
 
-    pub(super) fn recalculate_merkle_tree_hash_based_on_touched_nodes(&mut self) {
+    pub(crate) fn recalculate_merkle_tree_hash_based_on_touched_nodes(&mut self) {
         let mut dfs = petgraph::visit::DfsPostOrder::new(&self.graph, self.root_index);
 
         let mut discovered_nodes = HashSet::new();
@@ -232,7 +247,7 @@ where
         self.touched_nodes.clear();
     }
 
-    pub(super) fn all_outgoing_stably_ordered(
+    pub(crate) fn all_outgoing_stably_ordered(
         &self,
         node_index: SubGraphNodeIndex,
     ) -> Vec<SubGraphNodeIndex> {
@@ -242,7 +257,7 @@ where
         let mut unordered_children: Vec<(_, _)> = self
             .graph
             .neighbors_directed(node_index, Outgoing)
-            .filter(|child_idx| !ordered_children.contains(&child_idx))
+            .filter(|child_idx| !ordered_children.contains(child_idx))
             .filter_map(|child_idx| {
                 self.graph
                     .node_weight(child_idx)
@@ -291,7 +306,7 @@ where
         Some(hasher.finalize())
     }
 
-    pub(super) fn add_edge(
+    pub(crate) fn add_edge(
         &mut self,
         from_index: SubGraphNodeIndex,
         edge_weight: SplitGraphEdgeWeight<E, K>,
@@ -362,7 +377,7 @@ where
         self.touched_nodes.insert(node_index);
     }
 
-    pub(super) fn remove_edge(&mut self, edge_index: EdgeIndex<u16>) {
+    pub(crate) fn remove_edge(&mut self, edge_index: EdgeIndex<u16>) {
         if let Some((from_index, to_index)) = self.graph.edge_endpoints(edge_index) {
             self.touch_node(from_index);
 
