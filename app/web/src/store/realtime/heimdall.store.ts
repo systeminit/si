@@ -12,7 +12,7 @@ import {
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { useAuthStore } from "../auth.store";
 
-export const useHeimdall = (workspaceId: string) => defineStore("heimdall", () => {
+export const useHeimdall = defineStore("heimdall", () => {
   const authStore = useAuthStore();
   if (!authStore.selectedOrDefaultAuthToken)
     throw new Error("Missing Auth Token");
@@ -34,7 +34,7 @@ export const useHeimdall = (workspaceId: string) => defineStore("heimdall", () =
   db.addListenerBustCache(Comlink.proxy(bustTanStackCache));
   db.setBearer(authStore.selectedOrDefaultAuthToken);
 
-  db.initBifrost(workspaceId);
+  db.initBifrost();
 
   const connectionShouldBeEnabled = computed(
     () =>

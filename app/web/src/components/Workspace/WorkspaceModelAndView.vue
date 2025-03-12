@@ -288,7 +288,7 @@ onBeforeMount(async () => {
     changeSetsStore.selectedWorkspacePk &&
     changeSetsStore.selectedChangeSetId
   ) {
-    const heimdall = useHeimdall(changeSetsStore.selectedWorkspacePk)();
+    const heimdall = useHeimdall();
     heimdall.niflheim(
       changeSetsStore.selectedWorkspacePk,
       changeSetsStore.selectedChangeSetId,

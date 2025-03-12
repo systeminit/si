@@ -670,7 +670,7 @@ const dbInterface: DBInterface = {
     return result;
   },
 
-  async initSocket(workspaceId: string) {
+  async initSocket() {
     socket = new ReconnectingWebSocket(
       () =>
         `/api/ws/bifrost?token=Bearer+${bearerToken}`,
@@ -683,6 +683,12 @@ const dbInterface: DBInterface = {
     );
 
     socket.addEventListener("message", (messageEvent) => {
+      if (
+        import.meta.env.VITE_LOG_WS
+      ) {
+        /* eslint-disable-next-line no-console */
+        console.log("bifrost", messageEvent.data);
+      }
       tracer.startActiveSpan("handleEvent", async (span) => {
         // we'll either be getting AtomMessages as patches to the data
         // OR we'll be getting mjolnir responses with the Atom as a whole
@@ -717,8 +723,8 @@ const dbInterface: DBInterface = {
     });
   },
 
-  async initBifrost(workspaceId: string) {
-    await Promise.all([this.initDB(), this.initSocket(workspaceId)]);
+  async initBifrost() {
+    await Promise.all([this.initDB(), this.initSocket()]);
     await this.migrate();
   },
 

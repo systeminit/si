@@ -33,8 +33,8 @@ export interface DBInterface {
   initDB: () => Promise<void>;
   migrate: () => void;
   setBearer: (token: string) => void;
-  initSocket(workspaceId: string): void;
-  initBifrost(workspaceId: string): void;
+  initSocket(): void;
+  initBifrost(): void;
   bifrostClose(): void;
   bifrostReconnect(): void;
   get(
