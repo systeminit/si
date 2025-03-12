@@ -673,7 +673,7 @@ const dbInterface: DBInterface = {
   async initSocket(workspaceId: string) {
     socket = new ReconnectingWebSocket(
       () =>
-        `/api/v2/workspaces/${workspaceId}/ws/bifrost?token=Bearer+${bearerToken}`,
+        `/api/ws/bifrost?token=Bearer+${bearerToken}`,
       [],
       {
         // see options https://www.npmjs.com/package/reconnecting-websocket#available-options
