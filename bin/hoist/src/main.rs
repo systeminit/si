@@ -7,7 +7,7 @@ use rand::random;
 use std::collections::HashMap;
 use std::fs::{self, DirEntry};
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 use ulid::Ulid;
@@ -90,14 +90,17 @@ async fn main() -> Result<()> {
             diff_summaries_with_module_index(&client, args.target_dir).await?
         }
         Some(Commands::GetDiffForAsset(args)) => {
-            diff_with_module_index(&client, args.target_path).await?
+            detailed_diff_with_module_index(&client, args.target_path).await?
         }
     }
 
     Ok(())
 }
 
-async fn diff_with_module_index(client: &ModuleIndexClient, target_path: PathBuf) -> Result<()> {
+async fn detailed_diff_with_module_index(
+    client: &ModuleIndexClient,
+    target_path: PathBuf,
+) -> Result<()> {
     let new_spec = json_to_spec(target_path)?;
 
     let existing_specs = &list_specs(client.clone()).await?;
@@ -264,49 +267,65 @@ async fn diff_summaries_with_module_index(
 
     // TODO deal with func changes
 
+    let total_changes = Arc::new(AtomicUsize::new(0));
+    let total_added = Arc::new(AtomicUsize::new(0));
+
     let max_concurrent = 100;
     futures::stream::iter(specs)
-        .for_each_concurrent(max_concurrent, |spec| async move {
-            let pkg = json_to_pkg(spec.path()).unwrap();
-            let metadata = pkg.metadata().unwrap();
+        .for_each_concurrent(max_concurrent, |spec| {
+            let total_changes = total_changes.clone();
+            let total_added = total_added.clone();
 
-            let remote_module_id = match remote_module_state(pkg.clone(), existing_specs)
-                .await
-                .unwrap()
-            {
-                ModuleState::HashesMatch => return,
-                ModuleState::NeedsUpdate(remote_module_id) => remote_module_id,
-                ModuleState::New => {
-                    println!("[{}]: new module", metadata.name());
-                    return;
+            async move {
+                let pkg = json_to_pkg(spec.path()).unwrap();
+                let metadata = pkg.metadata().unwrap();
+
+                let remote_module_id = match remote_module_state(pkg.clone(), existing_specs)
+                    .await
+                    .unwrap()
+                {
+                    ModuleState::HashesMatch => return,
+                    ModuleState::NeedsUpdate(remote_module_id) => remote_module_id,
+                    ModuleState::New => {
+                        total_added.fetch_add(1, Ordering::SeqCst);
+                        println!("[{}]: new module", metadata.name());
+                        return;
+                    }
+                };
+
+                let remote_ulid = Ulid::from_string(&remote_module_id).unwrap();
+
+                let module_bytes = client.download_module(remote_ulid).await.unwrap();
+                let current_pkg = SiPkg::load_from_bytes(&module_bytes)
+                    .unwrap()
+                    .to_spec()
+                    .await
+                    .unwrap()
+                    .anonymize();
+
+                let new_pkg = pkg.to_spec().await.unwrap().anonymize();
+                let new_spec_json = rewrite_spec_for_diff(serde_json::to_value(new_pkg).unwrap());
+                let current_spec_json =
+                    rewrite_spec_for_diff(serde_json::to_value(current_pkg).unwrap());
+
+                let patch = diff(&current_spec_json, &new_spec_json);
+
+                let (maybe_change_summary, _this_changed_funcs) =
+                    patch_list_to_summary(metadata.name(), patch.clone());
+
+                if let Some(summary) = maybe_change_summary {
+                    total_changes.fetch_add(1, Ordering::SeqCst);
+                    println!("{summary}");
                 }
-            };
-
-            let remote_ulid = Ulid::from_string(&remote_module_id).unwrap();
-
-            let module_bytes = client.download_module(remote_ulid).await.unwrap();
-            let current_pkg = SiPkg::load_from_bytes(&module_bytes)
-                .unwrap()
-                .to_spec()
-                .await
-                .unwrap()
-                .anonymize();
-
-            let new_pkg = pkg.to_spec().await.unwrap().anonymize();
-            let new_spec_json = rewrite_spec_for_diff(serde_json::to_value(new_pkg).unwrap());
-            let current_spec_json =
-                rewrite_spec_for_diff(serde_json::to_value(current_pkg).unwrap());
-
-            let patch = diff(&current_spec_json, &new_spec_json);
-
-            let (maybe_change_summary, _this_changed_funcs) =
-                patch_list_to_summary(metadata.name(), patch.clone());
-
-            if let Some(summary) = maybe_change_summary {
-                println!("{summary}");
             }
         })
         .await;
+
+    println!(
+        "Total: {} new asset(s), {} changed asset(s)",
+        total_added.load(Ordering::SeqCst),
+        total_changes.load(Ordering::SeqCst)
+    );
 
     Ok(())
 }
