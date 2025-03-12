@@ -6482,6 +6482,7 @@ dependencies = [
  "aws-config",
  "aws-sdk-firehose",
  "axum 0.6.20",
+ "backtrace",
  "base64 0.22.1",
  "blake3",
  "bollard",

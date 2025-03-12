@@ -7,11 +7,6 @@
 )]
 // TODO(fnichol): document all, then drop `missing_errors_doc`
 #![allow(clippy::missing_errors_doc)]
-use telemetry::opentelemetry::{
-    metrics::MetricsError,
-    trace::{TraceError, TracerProvider},
-};
-use tracing_subscriber::{filter::FilterExt, layer::SubscriberExt, util::SubscriberInitExt};
 
 use std::{
     borrow::Cow,
@@ -23,8 +18,6 @@ use std::{
     result, thread,
     time::{Duration, Instant},
 };
-use tracing::Metadata;
-use tracing_subscriber::layer::Filter;
 
 use derive_builder::Builder;
 use opentelemetry_sdk::{
@@ -39,6 +32,8 @@ use opentelemetry_semantic_conventions::resource;
 use telemetry::{
     opentelemetry::{
         global::{self},
+        metrics::MetricsError,
+        trace::{TraceError, TracerProvider},
         KeyValue,
     },
     prelude::*,
@@ -52,10 +47,15 @@ use tokio::{
     time,
 };
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
+use tracing::Metadata;
 use tracing_opentelemetry::MetricsLayer;
 use tracing_subscriber::{
-    filter::ParseError, fmt::format::FmtSpan, reload, util::TryInitError, EnvFilter, Layer,
-    Registry,
+    filter::{FilterExt, ParseError},
+    fmt::format::FmtSpan,
+    layer::{Filter, SubscriberExt},
+    reload,
+    util::{SubscriberInitExt, TryInitError},
+    EnvFilter, Layer, Registry,
 };
 
 pub use telemetry::tracing;
@@ -466,6 +466,7 @@ fn create_client(
     let (update_telemetry_tx, update_telemetry_rx) = mpsc::unbounded_channel();
 
     let client = ApplicationTelemetryClient::new(
+        config.service_name.to_string().into_boxed_str(),
         config.app_modules,
         config.interesting_modules,
         config.never_modules,
@@ -554,6 +555,7 @@ struct TelemetrySignalHandlerTask {
     client: ApplicationTelemetryClient,
     shutdown_token: CancellationToken,
     sig_usr1: unix::Signal,
+    sig_quit: unix::Signal,
 }
 
 impl TelemetrySignalHandlerTask {
@@ -564,11 +566,13 @@ impl TelemetrySignalHandlerTask {
         shutdown_token: CancellationToken,
     ) -> io::Result<Self> {
         let sig_usr1 = unix::signal(SignalKind::user_defined1())?;
+        let sig_quit = unix::signal(SignalKind::quit())?;
 
         Ok(Self {
             client,
             shutdown_token,
             sig_usr1,
+            sig_quit,
         })
     }
 
@@ -588,6 +592,9 @@ impl TelemetrySignalHandlerTask {
                         );
                     }
                 }
+                Some(_) = self.sig_quit.recv() => {
+                    self.generate_process_report()
+                }
                 else => {
                     // All other arms are closed, nothing let to do but return
                     trace!(task = Self::NAME, "all signal listeners have closed");
@@ -597,6 +604,29 @@ impl TelemetrySignalHandlerTask {
         }
 
         debug!(task = Self::NAME, "shutdown complete");
+    }
+
+    #[cfg(target_os = "linux")]
+    fn generate_process_report(&self) {
+        const THREAD_NAME: &str = "generate-process-report";
+
+        let report_writer = self::linux::ReportWriter {
+            service_name: self.client.service_name().to_string().into_boxed_str(),
+            deadline: std::time::Duration::from_secs(5),
+            handle: tokio::runtime::Handle::current(),
+        };
+
+        if let Err(err) = thread::Builder::new()
+            .name(THREAD_NAME.to_string())
+            .spawn(move || report_writer.generate())
+        {
+            error!(si.error = ?err, "failed to spawn {THREAD_NAME} thread");
+        }
+    }
+
+    #[cfg(not(target_os = "linux"))]
+    fn generate_process_report(&self) {
+        info!("generating a process report is only supported on linux systems");
     }
 }
 
@@ -876,5 +906,100 @@ impl Deref for TracingDirectives {
 
     fn deref(&self) -> &Self::Target {
         self.as_str()
+    }
+}
+
+#[cfg(target_os = "linux")]
+mod linux {
+    use std::{
+        fs::File,
+        io::{self, BufWriter, Write as _},
+        path::{Path, PathBuf},
+        time::Duration,
+    };
+
+    use chrono::{SecondsFormat, Utc};
+    use telemetry::prelude::*;
+    use tokio::{
+        runtime::{Dump, Handle},
+        time,
+    };
+
+    pub(super) struct ReportWriter {
+        pub(super) service_name: Box<str>,
+        pub(super) deadline: Duration,
+        pub(super) handle: Handle,
+    }
+
+    impl ReportWriter {
+        const TEMP_ENV_VARS: &[&str] = &["TMPDIR", "TMP", "TEMP"];
+
+        pub(super) fn generate(self) {
+            let Self {
+                service_name,
+                deadline,
+                handle,
+            } = self;
+
+            let Ok(dump) = handle.block_on(async { time::timeout(deadline, handle.dump()).await })
+            else {
+                warn!("generate process report deadline elapsed");
+                return;
+            };
+
+            let timestamp = Utc::now().to_rfc3339_opts(SecondsFormat::Secs, true);
+            let report_path = PathBuf::from(
+                #[allow(clippy::disallowed_methods)]
+                // We want to check for env vars in use for temp
+                Self::TEMP_ENV_VARS
+                    .iter()
+                    .map(|name| std::env::var(name).ok())
+                    .find(|maybe_value| maybe_value.is_some())
+                    .flatten()
+                    .unwrap_or_else(|| "/tmp".to_string()),
+            )
+            .join(format!("{service_name}.report.{timestamp}.md"));
+
+            let Ok(file) = File::create(&report_path) else {
+                warn!("failed to create file {} for report", report_path.display());
+                return;
+            };
+            let file = BufWriter::new(file);
+
+            if let Err(err) =
+                Self::write_report(dump, &service_name, &timestamp, &report_path, file)
+            {
+                warn!(
+                    si.error = ?err,
+                    report = ?report_path,
+                    "failed to write to report file, aborting report",
+                );
+            }
+        }
+
+        fn write_report(
+            dump: Dump,
+            service_name: &str,
+            timestamp: &str,
+            report_path: &Path,
+            mut file: BufWriter<File>,
+        ) -> io::Result<()> {
+            info!(report = ?report_path, "writing process report file");
+
+            file.write_fmt(format_args!(
+                "# {service_name} Report ({timestamp})\n\n## Tokio Task Traces\n\n"
+            ))?;
+
+            for (i, task) in dump.tasks().iter().enumerate() {
+                file.write_fmt(format_args!("### Task {i} Trace\n```\n"))?;
+
+                let trace = task.trace().to_string();
+                file.write_all(trace.as_bytes())?;
+                file.write_all(b"\n```\n\n")?;
+            }
+
+            file.flush()?;
+            Ok(())
+        }
     }
 }

@@ -176,7 +176,7 @@
         '',
         extraBuildPhase ? "",
         installPhase,
-        dontStrip ? false,
+        dontStrip ? true,
         dontPatchELF ? false,
         dontAutoPatchELF ? false,
         postFixup ? "",
@@ -256,7 +256,7 @@
         pkgName,
         extraBuildPhase ? "",
         extraInstallPhase ? "",
-        dontStrip ? false,
+        dontStrip ? true,
         dontPatchELF ? false,
         dontAutoPatchELF ? false,
       }: (buck2Derivation {

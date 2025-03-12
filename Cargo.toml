@@ -105,6 +105,7 @@ axum = { version = "0.6.20", features = [
     "multipart",
     "ws",
 ] } # todo: upgrade this alongside hyper/http/tokio-tungstenite
+backtrace = "0.3.71"
 base64 = "0.22.1"
 blake3 = "1.5.5"
 bollard = "0.18.1"
