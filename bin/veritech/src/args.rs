@@ -87,6 +87,10 @@ pub(crate) struct Args {
     #[arg(long)]
     pub(crate) cyclone_pool_size: Option<u32>,
 
+    /// Cyclone create firecracker setup scripts
+    #[arg(long)]
+    pub(crate) cyclone_create_firecracker_setup_scripts: Option<bool>,
+
     /// Veritech decryption key file location [example: /run/veritech/veritech.key]
     #[arg(long)]
     pub(crate) decryption_key: Option<PathBuf>,
@@ -159,6 +163,14 @@ impl TryFrom<Args> for Config {
             }
             if let Some(size) = args.cyclone_pool_size {
                 config_map.set("cyclone.pool_size", size);
+            }
+            if let Some(create_firecracker_setup_scripts) =
+                args.cyclone_create_firecracker_setup_scripts
+            {
+                config_map.set(
+                    "cyclone.create_firecracker_setup_scripts",
+                    create_firecracker_setup_scripts,
+                );
             }
             if let Some(decryption_key_path) = args.decryption_key {
                 config_map.set(
