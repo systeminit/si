@@ -109,7 +109,7 @@ async fn detailed_diff_with_module_index(
 
     let pkg = SiPkg::load_from_spec(new_spec.clone())?;
     let metadata = pkg.metadata()?;
-    println!("Diffed {} with the module index:", metadata.name());
+    println!("### Diffed *{}* with the module index:", metadata.name());
 
     let remote_module_id = match remote_module_state(pkg, existing_specs).await? {
         ModuleState::HashesMatch => {
@@ -267,13 +267,15 @@ async fn diff_summaries_with_module_index(
 
     // TODO deal with func changes
 
-    let total_changes = Arc::new(AtomicUsize::new(0));
+    let hash_mismatches = Arc::new(AtomicUsize::new(0));
+    let changes_with_summary = Arc::new(AtomicUsize::new(0));
     let total_added = Arc::new(AtomicUsize::new(0));
 
     let max_concurrent = 100;
     futures::stream::iter(specs)
         .for_each_concurrent(max_concurrent, |spec| {
-            let total_changes = total_changes.clone();
+            let hash_mismatches = hash_mismatches.clone();
+            let changes_with_summary = changes_with_summary.clone();
             let total_added = total_added.clone();
 
             async move {
@@ -285,7 +287,10 @@ async fn diff_summaries_with_module_index(
                     .unwrap()
                 {
                     ModuleState::HashesMatch => return,
-                    ModuleState::NeedsUpdate(remote_module_id) => remote_module_id,
+                    ModuleState::NeedsUpdate(remote_module_id) => {
+                        hash_mismatches.fetch_add(1, Ordering::SeqCst);
+                        remote_module_id
+                    }
                     ModuleState::New => {
                         total_added.fetch_add(1, Ordering::SeqCst);
                         println!("[{}]: new module", metadata.name());
@@ -314,18 +319,33 @@ async fn diff_summaries_with_module_index(
                     patch_list_to_summary(metadata.name(), patch.clone());
 
                 if let Some(summary) = maybe_change_summary {
-                    total_changes.fetch_add(1, Ordering::SeqCst);
+                    changes_with_summary.fetch_add(1, Ordering::SeqCst);
                     println!("{summary}");
+                } else {
+                    println!(
+                        "[{}]: hash mismatch but no summary generated",
+                        metadata.name()
+                    );
                 }
             }
         })
         .await;
 
+    let total_added = total_added.load(Ordering::SeqCst);
+    let changes_with_summary = changes_with_summary.load(Ordering::SeqCst);
+    let hash_mismatches = hash_mismatches.load(Ordering::SeqCst);
+
     println!(
         "Total: {} new asset(s), {} changed asset(s)",
-        total_added.load(Ordering::SeqCst),
-        total_changes.load(Ordering::SeqCst)
+        total_added, hash_mismatches
     );
+
+    if changes_with_summary != hash_mismatches {
+        println!(
+            "Failed to generate change summary for {} assets that had hash mismatches",
+            hash_mismatches - changes_with_summary,
+        );
+    }
 
     Ok(())
 }
