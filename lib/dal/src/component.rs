@@ -1825,9 +1825,20 @@ impl Component {
         for attribute_value_id in
             Prop::all_attribute_values_everywhere_for_prop_id(ctx, prop_id).await?
         {
-            let value_component_id = AttributeValue::component_id(ctx, attribute_value_id).await?;
-            if value_component_id == component_id {
-                result.push(attribute_value_id)
+            if let Some(value_component_id) =
+                match AttributeValue::component_id(ctx, attribute_value_id).await {
+                    Ok(component_id) => Some(component_id),
+                    // If there's a deleted component in the workspace for the same Schema Variant
+                    // that hasn't been cleaned up yet, we might detect an orphaned value.
+                    // We don't want to error, as the component_id is gone so we know it
+                    // isn't the one we're looking for.
+                    Err(AttributeValueError::OrphanedAttributeValue(_)) => None,
+                    Err(other_err) => Err(other_err)?,
+                }
+            {
+                if value_component_id == component_id {
+                    result.push(attribute_value_id)
+                }
             }
         }
         Ok(result)
