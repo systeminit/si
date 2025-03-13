@@ -41,7 +41,7 @@
         :class="
           clsx(
             'attributes-panel__items-wrap',
-            'relative grow pb-md',
+            'relative grow',
             `before:absolute before:w-6 before:left-0 before:top-0 before:bottom-0 before:content-['']`,
             themeClasses(
               'before:bg-neutral-100 bg-shade-0',
