@@ -16,6 +16,8 @@ type Result<T> = std::result::Result<T, BifrostError>;
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum BifrostError {
+    #[error("axum error: {0}")]
+    Axum(#[from] axum::Error),
     #[error("Broadcast channel receive error: {0}")]
     BroadcastReceive(#[from] tokio::sync::broadcast::error::RecvError),
     #[error("Multiplexer client error: {0}")]
@@ -105,10 +107,17 @@ impl BifrostStarted {
                     }
                     return Ok(BifrostClosing { ws_is_closed: true });
                 }
-                _msg = ws.recv() => {
-                    // We don't support any incoming commands over this websocket yet, but
-                    // when we do, this is where we'd handle dispatch for them.
-                    continue;
+                msg = ws.recv() => {
+                    match msg {
+                        Some(Ok(_)) => {
+                            // We don't support any incoming commands over this websocket yet, but
+                            // when we do, this is where we'd handle dispatch for them.
+                            continue;
+
+                        }
+                        Some(Err(err)) => return Err(err.into()),
+                        None => return Ok(BifrostClosing { ws_is_closed: true }),
+                    }
                 }
                 recv_result = self.receiver.recv() => {
                     let nats_msg =  recv_result?;
