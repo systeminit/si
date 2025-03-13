@@ -273,7 +273,7 @@ pub(crate) async fn migrate_test_exclusive_schema_small_odd_lego(
     )?;
 
     // This will create a small even lego component and connect its inputs to everything
-    // conneted to the management component's "one" or "arity_one" sockets.
+    // connected to the management component's "one" or "arity_one" sockets.
     let create_and_connect_to_inputs_func = build_management_func(
         r#"
     async function main({ thisComponent, components }: Input): Promise<Output> {

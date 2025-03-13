@@ -1414,11 +1414,8 @@ impl FuncRunner {
                             input_socket_id,
                         )
                         .await?;
-                        if let Some(source_component_id) =
-                            ComponentInputSocket::find_connection_arity_one(
-                                ctx,
-                                component_input_socket,
-                            )
+                        if let Some(source_component_id) = component_input_socket
+                            .find_connection_arity_one(ctx)
                             .await?
                         {
                             work_queue.push_back(source_component_id);

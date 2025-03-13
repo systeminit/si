@@ -196,19 +196,15 @@ impl ComponentInputSocket {
     /// to none, forcing the user to explicity configure a connection by drawing an Edge
     #[instrument(level = "debug", name="component.component_output_socket.find_inferred_connections" skip(ctx))]
     pub async fn find_inferred_connections(
+        &self,
         ctx: &DalContext,
-        component_input_socket: ComponentInputSocket,
     ) -> ComponentResult<Vec<ComponentOutputSocket>> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
         let mut inferred_connection_graph =
             workspace_snapshot.inferred_connection_graph(ctx).await?;
         let mut connections = Vec::new();
         for inferred_connection in inferred_connection_graph
-            .inferred_connections_for_input_socket(
-                ctx,
-                component_input_socket.component_id,
-                component_input_socket.input_socket_id,
-            )
+            .inferred_connections_for_input_socket(ctx, self.component_id, self.input_socket_id)
             .await?
         {
             let attribute_value_id = OutputSocket::component_attribute_value_for_output_socket_id(
@@ -360,37 +356,31 @@ impl ComponentInputSocket {
         skip_all
     )]
     pub async fn find_connection_arity_one(
+        self,
         ctx: &DalContext,
-        component_input_socket: ComponentInputSocket,
     ) -> ComponentResult<Option<ComponentId>> {
         let maybe_explicit_connection_source = {
             let explicit_connections =
-                Component::incoming_connections_for_id(ctx, component_input_socket.component_id)
-                    .await?;
+                Component::incoming_connections_for_id(ctx, self.component_id).await?;
             let filtered_explicit_connection_sources: Vec<ComponentId> = explicit_connections
                 .iter()
-                .filter(|c| c.to_input_socket_id == component_input_socket.input_socket_id)
+                .filter(|c| c.to_input_socket_id == self.input_socket_id)
                 .map(|c| c.from_component_id)
                 .collect();
             if filtered_explicit_connection_sources.len() > 1 {
                 return Err(ComponentError::TooManyExplicitConnectionSources(
                     filtered_explicit_connection_sources,
-                    component_input_socket.component_id,
-                    component_input_socket.input_socket_id,
+                    self.component_id,
+                    self.input_socket_id,
                 ));
             }
             filtered_explicit_connection_sources.first().copied()
         };
         let maybe_inferred_connection_source = {
-            let inferred_connections = match Self::find_inferred_connections(
-                ctx,
-                component_input_socket,
-            )
-            .await
-            {
+            let inferred_connections = match self.find_inferred_connections(ctx).await {
                 Ok(inferred_connections) => inferred_connections,
                 Err(ComponentError::ComponentMissingTypeValueMaterializedView(_)) => {
-                    debug!(?component_input_socket, "component type not yet set when finding available inferred connections to input socket");
+                    debug!(?self, "component type not yet set when finding available inferred connections to input socket");
                     Vec::new()
                 }
                 Err(other_err) => Err(other_err)?,
@@ -398,7 +388,7 @@ impl ComponentInputSocket {
             if inferred_connections.len() > 1 {
                 return Err(ComponentError::TooManyInferredConnections(
                     inferred_connections,
-                    component_input_socket,
+                    self,
                 ));
             }
             inferred_connections.first().map(|c| c.component_id)
@@ -412,7 +402,7 @@ impl ComponentInputSocket {
                 Err(ComponentError::UnexpectedExplicitAndInferredSources(
                     explicit_source,
                     inferred_source,
-                    component_input_socket,
+                    self,
                 ))
             }
             (Some(explicit_source), None) => Ok(Some(explicit_source)),
@@ -423,16 +413,12 @@ impl ComponentInputSocket {
 
     /// Return true if the input socket already has an explicit connection (a user drew an edge)
     #[instrument(level = "debug", skip(ctx))]
-    pub async fn is_manually_configured(
-        ctx: &DalContext,
-        component_input_socket: ComponentInputSocket,
-    ) -> ComponentResult<bool> {
+    pub async fn is_manually_configured(&self, ctx: &DalContext) -> ComponentResult<bool> {
         // if the input socket has an explicit connection, then we will not gather any implicit
         // note we could do some weird logic here when it comes to sockets with arrity of many
         // but let's punt for now
         if let Some(maybe_attribute_prototype) =
-            AttributePrototype::find_for_input_socket(ctx, component_input_socket.input_socket_id)
-                .await?
+            AttributePrototype::find_for_input_socket(ctx, self.input_socket_id).await?
         {
             // if this socket has an attribute prototype argument,
             //that means it has an explicit connection and we should not
@@ -440,7 +426,7 @@ impl ComponentInputSocket {
             let maybe_apa = AttributePrototypeArgument::list_ids_for_prototype_and_destination(
                 ctx,
                 maybe_attribute_prototype,
-                component_input_socket.component_id,
+                self.component_id,
             )
             .await?;
             if !maybe_apa.is_empty() {
