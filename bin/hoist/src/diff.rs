@@ -14,6 +14,8 @@ enum PatchTarget {
     FuncBinding(String),
     Variant,
     VariantContent(String),
+    Schema,
+    SchemaContent(String),
 }
 
 impl Display for PatchTarget {
@@ -45,6 +47,10 @@ impl Display for PatchTarget {
             PatchTarget::VariantContent(path) => {
                 f.write_str(format!("variant content at {path}").as_str())
             }
+            PatchTarget::Schema => f.write_str("schema"),
+            PatchTarget::SchemaContent(path) => {
+                f.write_str(format!("schema content at {path}").as_str())
+            }
         }?;
         Ok(())
     }
@@ -53,9 +59,7 @@ impl Display for PatchTarget {
 pub fn patch_list_to_changelog(patch: Patch) -> Vec<String> {
     let mut logs = vec![];
     for operation in patch.iter() {
-        let path = operation.path();
-
-        let Some(target) = determine_patch_target(path) else {
+        let Some(target) = determine_patch_target(operation) else {
             continue;
         };
 
@@ -132,13 +136,11 @@ pub fn patch_list_to_summary(
 ) -> (Option<String>, ModificationSets) {
     let mut sockets_set = ModificationSets::new("sockets");
     let mut props_set = ModificationSets::new("props");
-    let mut variant_contents_set = ModificationSets::new("other variant contents");
+    let mut asset_contents_set = ModificationSets::new("other schema contents");
     let funcs_set = ModificationSets::new("funcs");
 
     for operation in patch.iter() {
-        let path = operation.path();
-
-        let Some(target) = determine_patch_target(path) else {
+        let Some(target) = determine_patch_target(operation) else {
             continue;
         };
 
@@ -158,11 +160,15 @@ pub fn patch_list_to_summary(
                 }
                 PatchTarget::Func(_) => {}
                 PatchTarget::FuncBinding(func_kind) => {
-                    variant_contents_set.added.insert(func_kind);
+                    asset_contents_set.added.insert(func_kind);
                 }
                 PatchTarget::Variant => {}
                 PatchTarget::VariantContent(path) => {
-                    variant_contents_set.added.insert(path);
+                    asset_contents_set.added.insert(path);
+                }
+                PatchTarget::Schema => {}
+                PatchTarget::SchemaContent(path) => {
+                    asset_contents_set.added.insert(path);
                 }
             },
             PatchOperation::Remove(_) => match target {
@@ -180,11 +186,15 @@ pub fn patch_list_to_summary(
                 }
                 PatchTarget::Func(_) => {}
                 PatchTarget::FuncBinding(func_kind) => {
-                    variant_contents_set.removed.insert(func_kind);
+                    asset_contents_set.removed.insert(func_kind);
                 }
                 PatchTarget::Variant => {}
                 PatchTarget::VariantContent(path) => {
-                    variant_contents_set.removed.insert(path);
+                    asset_contents_set.removed.insert(path);
+                }
+                PatchTarget::Schema => {}
+                PatchTarget::SchemaContent(path) => {
+                    asset_contents_set.removed.insert(path);
                 }
             },
             PatchOperation::Replace(_) => match target {
@@ -202,11 +212,15 @@ pub fn patch_list_to_summary(
                 }
                 PatchTarget::Func(_) => {}
                 PatchTarget::FuncBinding(func_kind) => {
-                    variant_contents_set.modified.insert(func_kind);
+                    asset_contents_set.modified.insert(func_kind);
                 }
                 PatchTarget::Variant => {}
                 PatchTarget::VariantContent(path) => {
-                    variant_contents_set.modified.insert(path);
+                    asset_contents_set.modified.insert(path);
+                }
+                PatchTarget::Schema => {}
+                PatchTarget::SchemaContent(path) => {
+                    asset_contents_set.modified.insert(path);
                 }
             },
             PatchOperation::Move(_) | PatchOperation::Copy(_) | PatchOperation::Test(_) => {}
@@ -215,7 +229,7 @@ pub fn patch_list_to_summary(
 
     let prop_summary = props_set.into_text_summary();
     let sockets_summary = sockets_set.into_text_summary();
-    let variant_contents_summary = variant_contents_set.into_text_summary();
+    let variant_contents_summary = asset_contents_set.into_text_summary();
 
     let summaries = vec![prop_summary, sockets_summary, variant_contents_summary]
         .into_iter()
@@ -233,7 +247,9 @@ pub fn patch_list_to_summary(
     (Some(message), funcs_set)
 }
 
-fn determine_patch_target(path: &Pointer) -> Option<PatchTarget> {
+fn determine_patch_target(operation: &PatchOperation) -> Option<PatchTarget> {
+    let path = operation.path();
+
     let target = if path.starts_with(Pointer::from_static("/funcs")) {
         let Some(name) = path.get(1) else {
             // println!("Change directly to funcs container");
@@ -302,7 +318,14 @@ fn determine_patch_target(path: &Pointer) -> Option<PatchTarget> {
         } else {
             PatchTarget::Variant
         }
+    } else if path.starts_with(Pointer::from_static("/schemas/0")) {
+        if let Some(prop_root) = path.get(2) {
+            PatchTarget::SchemaContent(prop_root.to_string())
+        } else {
+            PatchTarget::Schema
+        }
     } else {
+        dbg!(operation);
         panic!("Unhandled patch operation")
     };
 
