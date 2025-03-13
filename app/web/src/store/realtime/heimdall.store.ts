@@ -1,14 +1,12 @@
 import { defineStore } from "pinia";
 import * as Comlink from "comlink";
-import { watch, computed, reactive } from "vue";
-import {
-  DBInterface,
-  Id,
-  BustCacheFn,
-} from "@/workers/types/dbinterface";
+import { watch, computed, reactive, Reactive } from "vue";
+import { useQueryClient } from "@tanstack/vue-query";
+import { DBInterface, Id, BustCacheFn } from "@/workers/types/dbinterface";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { useAuthStore } from "../auth.store";
-import { useQueryClient } from "@tanstack/vue-query";
+import { useChangeSetsStore } from "../change_sets.store";
+import { useWorkspacesStore } from "../workspaces.store";
 
 export const useHeimdall = defineStore("heimdall", () => {
   const authStore = useAuthStore();
@@ -19,10 +17,15 @@ export const useHeimdall = defineStore("heimdall", () => {
     throw new Error("Missing Auth Token");
 
   const queryClient = useQueryClient();
-  const bustTanStackCache: BustCacheFn = (workspaceId: string, changeSetId: string, kind: string, id: string) => {
+  const bustTanStackCache: BustCacheFn = (
+    workspaceId: string,
+    changeSetId: string,
+    kind: string,
+    id: string,
+  ) => {
     const queryKey = [workspaceId, changeSetId, kind, id];
     console.log("💥 bust cache for", queryKey);
-    queryClient.invalidateQueries({ queryKey })
+    queryClient.invalidateQueries({ queryKey });
   };
 
   const worker = new Worker(
@@ -58,37 +61,68 @@ export const useHeimdall = defineStore("heimdall", () => {
   );
 
   /**
-   * PSA, comlink isn't able to serialize a symbol over the wire... 
+   * PSA, comlink isn't able to serialize a symbol over the wire...
    * So we're using -1 as a replacement for NOROW on this side of the fence...
    */
 
-  const bifrost = async <T>(
-    workspaceId: string,
-    changeSetId: ChangeSetId,
-    kind: string,
-    id: Id,
-  ): Promise<-1 | T> => {
+  const bifrost = async <T>(args: {
+    workspaceId: string;
+    changeSetId: ChangeSetId;
+    kind: string;
+    id: Id;
+  }): Promise<Reactive<T> | null> => {
     // if i haven't cold started yet, dont try and query, temporary
-    const key = `${workspaceId}:${changeSetId}`
-    if (!coldStarts[key]) return -1;
+    const key = `${args.workspaceId}:${args.changeSetId}`;
+    if (!coldStarts[key]) return null;
 
-    console.log("🌈 bifrost query", kind, id);
-    const maybeAtomDoc = await db.get(changeSetId, kind, id);
+    console.log("🌈 bifrost query", args.kind, args.id);
+    const maybeAtomDoc = await db.get(args.changeSetId, args.kind, args.id);
     if (maybeAtomDoc === -1) {
-      db.mjolnir(workspaceId, changeSetId, kind, id);
-      return -1;
+      db.mjolnir(args.workspaceId, args.changeSetId, args.kind, args.id);
+      return null;
     }
-    return maybeAtomDoc;
+    return reactive(maybeAtomDoc);
   };
 
   // cold start
-  const niflheim = async (workspaceId: string, changeSetId: ChangeSetId, force?: boolean) => {
-    const key = `${workspaceId}:${changeSetId}`
+  const niflheim = async (
+    workspaceId: string,
+    changeSetId: ChangeSetId,
+    force?: boolean,
+  ) => {
+    const key = `${workspaceId}:${changeSetId}`;
     if (!coldStarts[key] && force !== true) {
       console.log("❄️ NIFLHEIM ❄️");
       await db.niflheim(workspaceId, changeSetId);
       coldStarts[key] = true;
     }
+  };
+
+  const changeSetId = computed(() => {
+    const changeSetsStore = useChangeSetsStore();
+    return changeSetsStore.selectedChangeSetId;
+  });
+  const workspaceId = computed(() => {
+    const workspaceStore = useWorkspacesStore();
+    return workspaceStore.selectedWorkspacePk;
+  });
+
+  const makeKey = (kind: string, id?: string) => {
+    return [
+      workspaceId.value!,
+      changeSetId.value!,
+      kind,
+      id ?? changeSetId.value!,
+    ];
+  };
+
+  const makeArgs = (kind: string, id?: string) => {
+    return {
+      workspaceId: workspaceId.value!,
+      changeSetId: changeSetId.value!,
+      kind,
+      id: id ?? changeSetId.value!,
+    };
   };
 
   const fullDiagnosticTest = async () => {
@@ -102,6 +136,10 @@ export const useHeimdall = defineStore("heimdall", () => {
   };
 
   return {
+    changeSetId,
+    workspaceId,
+    makeKey,
+    makeArgs,
     coldStarts,
     odin,
     niflheim,

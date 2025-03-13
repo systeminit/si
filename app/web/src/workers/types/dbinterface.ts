@@ -27,7 +27,12 @@ export interface QueryMiss extends QueryMeta {
 
 export type Column = string;
 export type Columns = Column[];
-export type BustCacheFn = (workspaceId: string, changeSetId: string, kind: string, id: string) => void;
+export type BustCacheFn = (
+  workspaceId: string,
+  changeSetId: string,
+  kind: string,
+  id: string,
+) => void;
 
 export interface DBInterface {
   initDB: () => Promise<void>;
@@ -123,10 +128,6 @@ export interface AtomMessage {
 export interface Atom extends AbstractAtom, AtomMeta {
   operations?: Operation[];
 }
-
-// TODO
-export type AtomDocument = any;
-
 interface Common {
   kind: string;
   id: Id;
@@ -142,4 +143,32 @@ export interface IndexObject extends Common {
 export interface IndexObjectMeta {
   workspaceSnapshotAddress: string;
   frontEndObject: IndexObject;
+}
+
+// TODO
+export type AtomDocument = any;
+
+// FAKING IT
+export interface BifrostView {
+  id: string;
+  name: string;
+  isDefault: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BifrostViewList {
+  id: string;
+  views: BifrostView[];
+}
+
+interface Reference {
+  id: string;
+  checksum: string;
+  kind: string;
+}
+
+export interface RawViewList {
+  id: string;
+  views: Reference[];
 }

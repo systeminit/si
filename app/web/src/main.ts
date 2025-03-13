@@ -6,7 +6,7 @@ import { UserInteractionInstrumentation } from "@opentelemetry/instrumentation-u
 import { LongTaskInstrumentation } from "@opentelemetry/instrumentation-long-task";
 import opentelemetry, { Span } from "@opentelemetry/api";
 import { mapStackTrace } from "sourcemapped-stacktrace";
-import { VueQueryPlugin } from '@tanstack/vue-query'
+import { VueQueryPlugin } from "@tanstack/vue-query";
 
 import { createApp } from "vue";
 import FloatingVue from "floating-vue";

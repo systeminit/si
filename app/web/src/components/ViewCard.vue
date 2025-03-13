@@ -176,6 +176,7 @@ import { ViewDescription } from "@/api/sdf/dal/views";
 import { useViewsStore } from "@/store/views.store";
 import NodeSkeleton from "@/components/NodeSkeleton.vue";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
+import { BifrostView } from "@/workers/types/dbinterface";
 import DetailsPanelMenuIcon from "./DetailsPanelMenuIcon.vue";
 import ComponentCard from "./ComponentCard.vue";
 import { DiagramViewData } from "./ModelingDiagram/diagram_types";
@@ -183,14 +184,6 @@ import { DiagramViewData } from "./ModelingDiagram/diagram_types";
 const toast = useToast();
 const viewsStore = useViewsStore();
 const featureFlagsStore = useFeatureFlagsStore();
-
-interface BifrostView {
-  id: string,
-  name: string,
-  isDefault: boolean,
-  created_at: string,
-  updated_at: string,
-};
 
 const props = defineProps<{
   selected?: boolean;

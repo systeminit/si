@@ -1,5 +1,5 @@
 import * as Comlink from "comlink";
-import { applyOperation } from "fast-json-patch";
+import { applyPatch as applyOperations } from "fast-json-patch";
 import sqlite3InitModule, {
   Database,
   Sqlite3Static,
@@ -39,6 +39,9 @@ import {
   MessageKind,
   IndexObjectMeta,
   BustCacheFn,
+  BifrostViewList,
+  RawViewList,
+  BifrostView,
 } from "./types/dbinterface";
 
 const exporter = new ConsoleSpanExporter();
@@ -67,8 +70,7 @@ const log = console.log;
 const error = console.error;
 const _DEBUG = true;
 function debug(...args: any | any[]) {
-  if (_DEBUG)
-    console.debug(args);
+  if (_DEBUG) console.debug(args);
 }
 
 let db: Database;
@@ -246,10 +248,12 @@ const removeAtom = async (snapshotAddress: Checksum, atom: Required<Atom>) => {
 
 const createAtomFromPatch = async (atom: Atom) => {
   const doc = {};
-  atom.operations?.forEach((op) => {
-    applyOperation(doc, op, false, true);
-  });
-  return createAtom(atom, doc);
+  let afterDoc = {};
+  if (atom.operations) {
+    const applied = applyOperations(doc, atom.operations);
+    afterDoc = applied.newDocument;
+  }
+  return await createAtom(atom, afterDoc);
 };
 
 const createAtom = async (atom: Atom, doc: object) => {
@@ -291,7 +295,7 @@ const kindAndArgsFromKey = (key: QueryKey): { kind: string; id: Id } => {
 const handleHammer = async (msg: AtomMessage, span?: Span) => {
   // in between throwing a hammer and receiving it, i might already have written the atom
   const snapshots = await atomExistsOnSnapshots(msg.atom, msg.atom.toChecksum);
-  if (snapshots.includes(msg.atom.snapshotToAddress)) return;  // noop
+  if (snapshots.includes(msg.atom.snapshotToAddress)) return; // noop
 
   const toSnapshotAddress = await snapshotLogic(msg.atom, span);
   await createAtom(msg.atom, msg.data);
@@ -305,7 +309,13 @@ const handleHammer = async (msg: AtomMessage, span?: Span) => {
   updateChangeSetWithNewSnapshot(msg.atom);
   removeOldSnapshot();
 
-  if (bustCacheFn) bustCacheFn(msg.atom.workspaceId, msg.atom.changeSetId, msg.atom.kind, msg.atom.id);
+  if (bustCacheFn)
+    bustCacheFn(
+      msg.atom.workspaceId,
+      msg.atom.changeSetId,
+      msg.atom.kind,
+      msg.atom.id,
+    );
 };
 
 const insertAtomMTM = async (atom: Atom, toSnapshotAddress: Checksum) => {
@@ -319,8 +329,12 @@ const insertAtomMTM = async (atom: Atom, toSnapshotAddress: Checksum) => {
 };
 
 const snapshotLogic = async (meta: AtomMeta, span?: Span) => {
-  const { changeSetId, workspaceId, snapshotFromAddress: snapshotFromChecksum, snapshotToAddress: snapshotToChecksum } =
-    { ...meta };
+  const {
+    changeSetId,
+    workspaceId,
+    snapshotFromAddress: snapshotFromChecksum,
+    snapshotToAddress: snapshotToChecksum,
+  } = { ...meta };
   span?.setAttributes({
     changeSetId,
     workspaceId,
@@ -433,6 +447,7 @@ const applyPatch = async (
     if (atom.fromChecksum === "0") {
       if (!exists) {
         // if i already have it, this is a NOOP
+        span.setAttribute("createAtomFromPatch", true);
         await createAtomFromPatch(atom);
         needToInsertMTM = true;
         bustCache = true;
@@ -440,12 +455,14 @@ const applyPatch = async (
     } else if (atom.toChecksum === "0") {
       // if i've already removed it, this is a NOOP
       if (exists) {
+        span.setAttribute("removeAtom", true);
         await removeAtom(toSnapshotAddress, atom);
         bustCache = true;
       }
     } else {
       // patch it if I can
       if (exists) {
+        span.setAttribute("patchAtom", true);
         await patchAtom(atom);
         needToInsertMTM = true;
         bustCache = true;
@@ -466,7 +483,8 @@ const applyPatch = async (
     // this insert potentially replaces the MTM row that exists for the current snapshot
     // based on the table constraint
     if (needToInsertMTM) await insertAtomMTM(atom, toSnapshotAddress);
-    if (bustCache && bustCacheFn) bustCacheFn(atom.workspaceId, atom.changeSetId, atom.kind, atom.id);
+    if (bustCache && bustCacheFn)
+      bustCacheFn(atom.workspaceId, atom.changeSetId, atom.kind, atom.id);
     span.end();
   });
 };
@@ -489,9 +507,11 @@ const patchAtom = async (atom: Required<Atom>) => {
 
   const _doc = atomRow[3] as ArrayBuffer;
   const doc = decodeDocumentFromDB(_doc);
-  atom.operations?.forEach((op) => {
-    applyOperation(doc, op, false, true);
-  });
+  let afterDoc = doc;
+  if (atom.operations) {
+    const applied = applyOperations(doc, atom.operations);
+    afterDoc = applied.newDocument;
+  }
 
   await db.exec({
     sql: `
@@ -505,7 +525,7 @@ const patchAtom = async (atom: Required<Atom>) => {
       atom.kind,
       atom.id,
       atom.toChecksum,
-      await encodeDocumentForDB(doc),
+      await encodeDocumentForDB(afterDoc),
     ],
   });
 };
@@ -517,7 +537,7 @@ const mjolnir = async (
   id: Id,
   checksum?: Checksum,
 ) => {
-  debug("🔨 mjolnir", kind, id, checksum)
+  debug("🔨 mjolnir", kind, id, checksum);
   // TODO this is probably a WsEvent, so SDF knows who to reply to
   const pattern = [
     "v2",
@@ -585,7 +605,6 @@ const removeOldSnapshot = async () => {
   });
 };
 
-// FUTURE: when we have changeset data
 const pruneAtomsForClosedChangeSet = async (
   workspaceId: WorkspacePk,
   changeSetId: ChangeSetId,
@@ -654,7 +673,55 @@ const ragnarok = () => {
   // FUTURE: drop the DB data, rebuild it, and enter keys from empty
 };
 
-console.log("LOG?!", import.meta.env.VITE_LOG_WS, '?');
+const get = async (
+  changeSetId: ChangeSetId,
+  kind: string,
+  id: Id,
+): Promise<-1 | object> => {
+  const sql = `
+    select
+      data
+    from
+      atoms
+      inner join snapshots_mtm_atoms mtm
+        ON atoms.kind = mtm.kind AND atoms.args = mtm.args AND atoms.checksum = mtm.checksum
+      inner join snapshots ON mtm.snapshot_address = snapshots.address
+      inner join changesets ON changesets.snapshot_address = snapshots.address
+    where
+      changesets.change_set_id = ? AND
+      atoms.kind = ? AND
+      atoms.args = ?
+    ;`;
+  const bind = [changeSetId, kind, id];
+  const atomData = await db.exec({
+    sql,
+    bind,
+    returnValue: "resultRows",
+  });
+  const data = oneInOne(atomData);
+  debug("❓ sql get", bind, " returns ?", data === NOROW);
+  if (data === NOROW) return -1;
+  const atomDoc = decodeDocumentFromDB(data as ArrayBuffer);
+  debug("📄 atom doc", atomDoc);
+
+  // THIS GETS REPLACED WITH AUTO-GEN CODE
+  if (kind === "ViewList") {
+    const rawList = atomDoc as RawViewList;
+    const maybeViews = await Promise.all(
+      rawList.views.map(async (v) => {
+        return await get(changeSetId, v.kind, v.id);
+      }),
+    );
+    const views = maybeViews.filter(
+      (v): v is BifrostView => v !== -1 && Object.keys(v).length > 0,
+    );
+    const list: BifrostViewList = {
+      id: rawList.id,
+      views,
+    };
+    return list;
+  } else return atomDoc;
+};
 
 let socket: ReconnectingWebSocket;
 let bustCacheFn: BustCacheFn;
@@ -662,7 +729,6 @@ let bearerToken: string;
 const dbInterface: DBInterface = {
   setBearer(token) {
     bearerToken = token;
-    // api base url - can use a proxy or set a full url
     let apiUrl: string;
     if (import.meta.env.VITE_API_PROXY_PATH) {
       apiUrl = `http://localhost:8080${import.meta.env.VITE_API_PROXY_PATH}`;
@@ -702,8 +768,7 @@ const dbInterface: DBInterface = {
 
   async initSocket() {
     socket = new ReconnectingWebSocket(
-      () =>
-        `/api/ws/bifrost?token=Bearer+${bearerToken}`,
+      () => `/api/ws/bifrost?token=Bearer+${bearerToken}`,
       [],
       {
         // see options https://www.npmjs.com/package/reconnecting-websocket#available-options
@@ -713,14 +778,13 @@ const dbInterface: DBInterface = {
     );
 
     socket.addEventListener("message", (messageEvent) => {
-      if (
-        import.meta.env.VITE_LOG_WS
-      ) {
+      if (import.meta.env.VITE_LOG_WS) {
         log("🌈 bifrost incoming", messageEvent.data);
       }
       tracer.startActiveSpan("handleEvent", async (span) => {
         // we'll either be getting AtomMessages as patches to the data
         // OR we'll be getting mjolnir responses with the Atom as a whole
+        // TODO we also need "changeset closed" messages
         try {
           const data = JSON.parse(messageEvent.data) as
             | PatchBatch
@@ -764,46 +828,11 @@ const dbInterface: DBInterface = {
     socket.reconnect();
   },
 
-  async addListenerBustCache(
-    cb: BustCacheFn,
-  ) {
+  async addListenerBustCache(cb: BustCacheFn) {
     bustCacheFn = cb;
-    // bustCacheFn("foo", "bar2");
   },
 
-  async get(
-    changeSetId: ChangeSetId,
-    kind: string,
-    id: Id,
-  ): Promise<-1 | object> {
-    const sql = `
-      select
-        data
-      from
-        atoms
-        inner join snapshots_mtm_atoms mtm
-          ON atoms.kind = mtm.kind AND atoms.args = mtm.args AND atoms.checksum = mtm.checksum
-        inner join snapshots ON mtm.snapshot_address = snapshots.address
-        inner join changesets ON changesets.snapshot_address = snapshots.address
-      where
-        changesets.change_set_id = ? AND
-        atoms.kind = ? AND
-        atoms.args = ?
-      ;`;
-    const bind = [changeSetId, kind, id];
-    const atomData = await db.exec({
-      sql,
-      bind,
-      returnValue: "resultRows",
-    });
-    const data = oneInOne(atomData);
-    debug("❓ sql get", bind, ' returns ?', data === NOROW);
-    if (data === NOROW) return -1;
-    const atomDoc = decodeDocumentFromDB(data as ArrayBuffer);
-    debug("📄 atom doc", atomDoc);
-    return atomDoc;
-  },
-
+  get,
   partialKeyFromKindAndId: partialKeyFromKindAndArgs,
   kindAndIdFromKey: kindAndArgsFromKey,
   mjolnir,
@@ -854,19 +883,19 @@ const dbInterface: DBInterface = {
   async odin(): Promise<object> {
     const c = db.exec({
       sql: "select * from changesets;",
-      returnValue: "resultRows"
+      returnValue: "resultRows",
     });
     const s = db.exec({
       sql: "select * from snapshots;",
-      returnValue: "resultRows"
+      returnValue: "resultRows",
     });
     const a = db.exec({
       sql: "select * from atoms;",
-      returnValue: "resultRows"
+      returnValue: "resultRows",
     });
     const m = db.exec({
       sql: "select * from snapshots_mtm_atoms;",
-      returnValue: "resultRows"
+      returnValue: "resultRows",
     });
     const [changesets, snapshots, atoms, mtm] = await Promise.all([c, s, a, m]);
     return { changesets, snapshots, atoms, mtm };
@@ -983,9 +1012,7 @@ const dbInterface: DBInterface = {
           kind: testRecord,
           fromChecksum: "tr1",
           toChecksum: "tr1-new-name",
-          patch: [
-            { op: "replace", path: "/name", value: "new name" },
-          ],
+          patch: [{ op: "replace", path: "/name", value: "new name" }],
           id: "testId1",
         },
       ],
@@ -1073,9 +1100,7 @@ const dbInterface: DBInterface = {
           kind: testRecord,
           fromChecksum: "tr1",
           toChecksum: "tr1-new-name",
-          patch: [
-            { op: "replace", path: "/name", value: "new name" },
-          ],
+          patch: [{ op: "replace", path: "/name", value: "new name" }],
           id: "testId1",
         },
       ],

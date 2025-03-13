@@ -81,16 +81,19 @@ export function useFeatureFlagsStore() {
             }),
           },
         );
-        const result = await resp.json();
-        Object.entries(WORKSPACE_FLAG_MAPPING).forEach(
-          ([storeFlagKey, phFlag]) => {
-            this[storeFlagKey] = result.featureFlags[phFlag] ?? false;
-          },
-        );
+        if (resp.ok) {
+          const result = await resp.json();
+          Object.entries(WORKSPACE_FLAG_MAPPING).forEach(
+            ([storeFlagKey, phFlag]) => {
+              this[storeFlagKey] = result.featureFlags[phFlag] ?? false;
+            },
+          );
+        }
 
         // You can override feature flags while working on a feature by setting them to true/false here
         // for example:
         // this.FEATURE_FLAG_NAME = false;
+        this.FRONTEND_ARCH_VIEWS = true;
       },
     }),
   )();
