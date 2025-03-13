@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use audit_logs_stream::AuditLogsStreamError;
 use dal::{
     change_set::{ChangeSet, ChangeSetError, ChangeSetId},
@@ -216,10 +218,41 @@ pub async fn perform_rebase(
             .insert_objects(ctx.workspace_pk()?, frontend_objects.iter())
             .await?;
 
-        frontend_objects.sort();
-
-        let index_entries: Vec<IndexReference> =
+        let mut index_entries: Vec<IndexReference> =
             frontend_objects.into_iter().map(Into::into).collect();
+        let new_index_entries: HashSet<(String, String)> = index_entries
+            .iter()
+            .map(|index_entry| (index_entry.kind.clone(), index_entry.id.clone()))
+            .collect();
+
+        // We need to get the old index, and update it with the new items,
+        // and remove any items that have also been removed.
+        if let Some((index_to_update, _revision)) =
+            frigg.get_index(workspace_pk, ctx.change_set_id()).await?
+        {
+            let mv_index: MvIndex = serde_json::from_value(index_to_update.data)?;
+            let removal_checksum = "0".to_string();
+            let removed_items: HashSet<(String, String)> = patches
+                .iter()
+                .filter_map(|patch| {
+                    if patch.to_checksum == removal_checksum {
+                        Some((patch.kind.clone(), patch.id.clone()))
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+
+            for index_entry in dbg!(&mv_index.mv_list) {
+                if !removed_items.contains(&(index_entry.kind.clone(), index_entry.id.clone()))
+                    && !new_index_entries
+                        .contains(&(index_entry.kind.clone(), index_entry.id.clone()))
+                {
+                    index_entries.push(index_entry.clone());
+                }
+            }
+        }
+        index_entries.sort();
 
         let mv_index = MvIndex::new(ctx.change_set_id(), index_entries);
         let mv_index_frontend_object = FrontendObject::try_from(mv_index)?;

@@ -54,9 +54,7 @@ where
     pub checksum: String,
 }
 
-#[derive(
-    Clone, Debug, Eq, PartialEq, Serialize, Deserialize, si_frontend_types_macros::FrontendChecksum,
-)]
+#[derive(Clone, Debug, Serialize, Deserialize, si_frontend_types_macros::FrontendChecksum)]
 pub struct IndexReference {
     pub kind: String,
     pub id: String,
@@ -85,6 +83,36 @@ impl From<FrontendObject> for IndexReference {
         }
     }
 }
+
+// When you manually implement `std::cmp::Ord`, you are also supposed to manually
+// implement `std::cmp::PartialOrd`, `std::cmp::PartialEq`, and `std::cmp::Eq`.
+impl std::cmp::Ord for IndexReference {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        match self.kind.cmp(&other.kind) {
+            core::cmp::Ordering::Equal => {}
+            ord => return ord,
+        }
+        match self.id.cmp(&other.id) {
+            core::cmp::Ordering::Equal => {}
+            ord => return ord,
+        }
+        self.checksum.cmp(&other.checksum)
+    }
+}
+
+impl std::cmp::PartialOrd for IndexReference {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl std::cmp::PartialEq for IndexReference {
+    fn eq(&self, other: &Self) -> bool {
+        self.kind == other.kind && self.id == other.id && self.checksum == other.checksum
+    }
+}
+
+impl Eq for IndexReference {}
 
 impl<T> FrontendChecksum for ReferenceId<T>
 where
