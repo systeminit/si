@@ -5,12 +5,11 @@ use std::collections::{hash_map::Entry, HashMap, VecDeque};
 use std::future::Future;
 use tokio::sync::Mutex;
 
-use url::Url;
-
 use super::{
     PkgResult, SiPkgActionFunc, SiPkgError, SiPkgLeafFunction, SiPkgManagementFunc, SiPkgProp,
     SiPkgPropData, SiPkgSiPropFunc, SiPkgSocket, Source,
 };
+use url::Url;
 
 use crate::{
     node::{PkgNode, PropChildNode, SchemaVariantChildNode},
@@ -460,7 +459,10 @@ impl<'a> SiPkgSchemaVariant<'a> {
     pub async fn to_spec(&self) -> PkgResult<SchemaVariantSpec> {
         let mut builder = SchemaVariantSpec::builder();
 
-        builder.version(self.version()).deleted(self.deleted);
+        builder
+            .version(self.version())
+            .deleted(self.deleted)
+            .is_builtin(self.is_builtin);
 
         if let Some(unique_id) = self.unique_id() {
             builder.unique_id(unique_id);
@@ -489,6 +491,14 @@ impl<'a> SiPkgSchemaVariant<'a> {
             builder.action_func(action_func.try_into()?);
         }
 
+        for func in self.auth_funcs()? {
+            builder.auth_func(func.try_into()?);
+        }
+
+        for func in self.leaf_functions()? {
+            builder.leaf_function(func.try_into()?);
+        }
+
         for socket in self.sockets()? {
             builder.socket(socket.try_into()?);
         }
@@ -501,7 +511,13 @@ impl<'a> SiPkgSchemaVariant<'a> {
             builder.management_func(management_func.try_into()?);
         }
 
+        for func in self.root_prop_funcs()? {
+            builder.root_prop_func(func.try_into()?);
+        }
+
         self.build_prop_specs(SchemaVariantSpecPropRoot::Domain, &mut builder)
+            .await?;
+        self.build_prop_specs(SchemaVariantSpecPropRoot::Secrets, &mut builder)
             .await?;
         self.build_prop_specs(SchemaVariantSpecPropRoot::ResourceValue, &mut builder)
             .await?;
@@ -601,15 +617,20 @@ async fn create_prop_stack(
             builder.name(name);
 
             if let Some(SiPkgPropData {
+                name,
+                hidden,
                 widget_kind,
                 widget_options,
                 func_unique_id,
-                hidden,
-                ..
+                doc_link,
+                documentation,
+                default_value,
+                validation_format,
             }) = data
             {
                 builder
                     .has_data(true)
+                    .name(name)
                     .hidden(*hidden)
                     .widget_kind(*widget_kind);
 
@@ -622,6 +643,22 @@ async fn create_prop_stack(
                     for input in spec.inputs()? {
                         builder.input(AttrFuncInputSpec::try_from(input)?);
                     }
+                }
+
+                if let Some(doc_link) = doc_link {
+                    builder.doc_link(doc_link.to_owned());
+                }
+
+                if let Some(documentation) = documentation {
+                    builder.documentation(documentation.to_owned());
+                }
+
+                if let Some(default_value) = default_value {
+                    builder.default_value(default_value.to_owned());
+                }
+
+                if let Some(validation_format) = validation_format {
+                    builder.validation_format(validation_format.to_owned());
                 }
             }
         }
