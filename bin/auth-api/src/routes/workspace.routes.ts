@@ -303,19 +303,29 @@ router.delete("/workspace/:workspaceId/members", async (ctx) => {
     }),
   );
 
-  await removeUser(reqBody.email, workspace.id);
-
-  const members: Member[] = [];
   const workspaceMembers = await getWorkspaceMembers(workspace.id);
-  workspaceMembers.forEach((wm) => {
-    members.push({
+
+  const userToRemove = workspaceMembers.find(
+    (wm) => wm.user.email === reqBody.email,
+  );
+
+  if (!userToRemove || !userToRemove.user) {
+    ctx.status = 404;
+    ctx.body = { error: "User not found in workspace" };
+    return;
+  }
+
+  await removeUser(userToRemove.userId, workspace.id);
+
+  const members: Member[] = workspaceMembers
+    .filter((wm) => wm.user.email !== reqBody.email)
+    .map((wm) => ({
       userId: wm.userId,
       email: wm.user.email,
       nickname: wm.user.nickname || "",
       role: wm.roleType,
       signupAt: wm.user.signupAt,
-    });
-  });
+    }));
 
   tracker.trackEvent(authUser, "workspace_user_removed_v2", {
     workspaceId: workspace.id,

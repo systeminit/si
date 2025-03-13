@@ -6,7 +6,6 @@ import { ulid } from "ulidx";
 import { tracker } from "../lib/tracker";
 import {
   createInvitedUser,
-  getUserByEmail,
   getUserById,
   getUsersByEmail,
   UserId,
@@ -234,15 +233,10 @@ export async function inviteMember(
   });
 }
 
-export async function removeUser(email: string, workspaceId: WorkspaceId) {
-  const user = await getUserByEmail(email);
-  if (!user) {
-    return;
-  }
-
+export async function removeUser(userId: string, workspaceId: WorkspaceId) {
   const memberShip = await prisma.workspaceMembers.findFirst({
     where: {
-      userId: user.id,
+      userId,
       workspaceId,
     },
   });
