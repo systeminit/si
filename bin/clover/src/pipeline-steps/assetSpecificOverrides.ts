@@ -2,6 +2,7 @@ import _ from "npm:lodash";
 import _logger from "../logger.ts";
 import {
   createInputSocketFromProp,
+  createOutputSocketFromProp,
   ExpandedSocketSpec,
   setAnnotationOnSocket,
 } from "../spec/sockets.ts";
@@ -207,6 +208,48 @@ const overrides = new Map<string, OverrideFn>([
     setAnnotationOnSocket(groupSocket, { tokens: ["GroupId"] });
     variant.sockets.push(groupSocket);
   }],
+  ["AWS::EC2::SecurityGroupIngress", (spec: ExpandedPkgSpec) => {
+    const variant = spec.schemas[0].variants[0];
+
+    // Add Source SG ID to an input socket
+    const idProp = propForOverride(variant.domain, "SourceSecurityGroupId");
+    if (!idProp) return;
+    const groupIdSocket = createInputSocketFromProp(idProp);
+
+    setAnnotationOnSocket(groupIdSocket, { tokens: ["SourceSecurityGroupId","GroupId"] });
+    variant.sockets.push(groupIdSocket);
+
+    // Add Source SG Name to an input socket
+    const nameProp = propForOverride(variant.domain, "SourceSecurityGroupName");
+    if (!nameProp) return;
+    const groupSocket = createInputSocketFromProp(nameProp);
+
+    setAnnotationOnSocket(groupSocket, { tokens: ["SourceSecurityGroupName", "GroupName"] });
+    variant.sockets.push(groupSocket);
+
+  }],
+  ["AWS::EC2::SecurityGroup", (spec: ExpandedPkgSpec) => {
+    const variant = spec.schemas[0].variants[0];
+
+    // Add SG GroupName to an output socket
+    const nameProp = propForOverride(variant.domain, "GroupName");
+    if (!nameProp) return;
+    const groupSocket = createOutputSocketFromProp(nameProp);
+    variant.sockets.push(groupSocket);
+
+  }],
+  ["AWS::EC2::SecurityGroupEgress", (spec: ExpandedPkgSpec) => {
+    const variant = spec.schemas[0].variants[0];
+
+    // Add Destination SG ID to an input socket
+    const idProp = propForOverride(variant.domain, "DestinationSecurityGroupId");
+    if (!idProp) return;
+    const groupIdSocket = createInputSocketFromProp(idProp);
+
+    setAnnotationOnSocket(groupIdSocket, { tokens: ["DestinationSecurityGroupId","GroupId"] });
+    variant.sockets.push(groupIdSocket);
+  }],
+
   ["AWS::AutoScaling::AutoScalingGroup", (spec: ExpandedPkgSpec) => {
     const variant = spec.schemas[0].variants[0];
     const launchTemplateProp = propForOverride(
