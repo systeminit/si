@@ -29,6 +29,7 @@
         @blur="deselectSearch"
         @search="onSearch"
         @clearSearch="onSearch('')"
+        @enterPressed="selectFirst"
       />
       <div
         ref="scrollDivRef"
@@ -576,6 +577,12 @@ const emit = defineEmits<{
 
 function onSearch(searchString: string) {
   emit("search", searchString);
+}
+
+function selectFirst() {
+  if (focusedItemEl.value) {
+    focusedItemEl.value.click();
+  }
 }
 
 const searchFilteringActive = computed(

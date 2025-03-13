@@ -143,6 +143,7 @@ const emit = defineEmits<{
   (e: "search", searchTerm: string): void;
   (e: "clearSearch"): void;
   (e: "update:modelValue", newValue: string): void;
+  (e: "enterPressed"): void;
 }>();
 
 const props = defineProps({
@@ -216,7 +217,10 @@ function triggerAutoSearch() {
 }
 
 function onKeyDown(e: KeyboardEvent) {
-  if (e.key === "Enter") triggerSearch();
+  if (e.key === "Enter") {
+    triggerSearch();
+    emit("enterPressed");
+  }
   if (e.key === "Escape" && searchInputRef.value) {
     searchInputRef.value.blur();
   }
