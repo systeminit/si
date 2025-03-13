@@ -315,15 +315,15 @@ router.delete("/workspace/:workspaceId/members", async (ctx) => {
       role: wm.roleType,
       signupAt: wm.user.signupAt,
     });
+  });
 
-    tracker.trackEvent(authUser, "workspace_user_removed_v2", {
-      workspaceId: workspace.id,
-      workspaceName: workspace.displayName,
-      initiatedBy: authUser.email,
-      memberUserName: reqBody.email,
-      memberChangedAt: new Date(),
-      newPermissionLevel: "No Access",
-    });
+  tracker.trackEvent(authUser, "workspace_user_removed_v2", {
+    workspaceId: workspace.id,
+    workspaceName: workspace.displayName,
+    initiatedBy: authUser.email,
+    memberUserName: reqBody.email,
+    memberChangedAt: new Date(),
+    newPermissionLevel: "No Access",
   });
 
   ctx.body = members;
