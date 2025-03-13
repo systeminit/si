@@ -2,7 +2,7 @@ name: Generate Asset Compare
 
 on:
   issue_comment:
-    types: [ created, edited, deleted ]
+    types: [ created, edited ]
 
 permissions:
   contents: read
@@ -17,9 +17,13 @@ jobs:
       SI_MODULE_INDEX_URL: "https://module-index.systeminit.com"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
       - uses: denoland/setup-deno@v2
       - uses: dtolnay/rust-toolchain@stable
+
+      - name: Checkout pull request
+        uses: actions/checkout@v4
+        with:
+          ref: refs/pull/${{ github.event.issue.number }}/head
 
       - name: Extract asset name from comment
         id: extract-name

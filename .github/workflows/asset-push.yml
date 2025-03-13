@@ -7,7 +7,6 @@ on:
     paths:
       - 'bin/clover/**'
       - 'bin/hoist/**'
-      - 'lib/si-pkg/**'
 
 jobs:
   push-assets:
