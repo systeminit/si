@@ -175,12 +175,19 @@ pub async fn perform_rebase(
         // TODO: Only process changes for EntityKind where all of the MVs referenced have already been processed.
         for change in &changes {
             let (maybe_patch, maybe_object) = {
+                let mv_id = change.entity_id.to_string();
+
                 si_frontend_types_macros::build_mv!(
                     ctx,
                     frigg,
                     change,
-                    si_frontend_types::view::ViewList,
-                    dal::diagram::view::View::as_frontend_list_type(ctx).await
+                    mv_id,
+                    si_frontend_types::view::View,
+                    dal::diagram::view::View::as_frontend_type(
+                        ctx,
+                        si_events::ulid::Ulid::from(change.entity_id).into()
+                    )
+                    .await,
                 )
                 .await?
             };
@@ -192,16 +199,15 @@ pub async fn perform_rebase(
             }
 
             let (maybe_patch, maybe_object) = {
+                let mv_id = ctx.change_set_id().to_string();
+
                 si_frontend_types_macros::build_mv!(
                     ctx,
                     frigg,
                     change,
-                    si_frontend_types::view::View,
-                    dal::diagram::view::View::as_frontend_type(
-                        ctx,
-                        si_events::ulid::Ulid::from(change.entity_id).into()
-                    )
-                    .await
+                    mv_id,
+                    si_frontend_types::view::ViewList,
+                    dal::diagram::view::View::as_frontend_list_type(ctx).await,
                 )
                 .await?
             };

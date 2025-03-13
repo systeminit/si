@@ -315,6 +315,7 @@ struct BuildMv {
     ctx: syn::Expr,
     frigg: syn::Expr,
     change: syn::Expr,
+    mv_id: syn::Expr,
     mv_name: syn::Path,
     build_fn: syn::Expr,
 }
@@ -327,6 +328,8 @@ impl syn::parse::Parse for BuildMv {
         input.parse::<syn::Token![,]>()?;
         let change = input.parse::<syn::Expr>()?;
         input.parse::<syn::Token![,]>()?;
+        let mv_id = input.parse::<syn::Expr>()?;
+        input.parse::<syn::Token![,]>()?;
         let mv_name = input.parse::<syn::Path>()?;
         input.parse::<syn::Token![,]>()?;
         let build_fn = input.parse::<syn::Expr>()?;
@@ -336,6 +339,7 @@ impl syn::parse::Parse for BuildMv {
             ctx,
             frigg,
             change,
+            mv_id,
             mv_name,
             build_fn,
         })
@@ -350,6 +354,7 @@ pub fn build_mv(input: proc_macro2::TokenStream) -> syn::Result<proc_macro2::Tok
         ctx,
         frigg,
         change,
+        mv_id,
         mv_name,
         build_fn,
     } = syn::parse::<BuildMv>(input.into())?;
@@ -370,6 +375,7 @@ pub fn build_mv(input: proc_macro2::TokenStream) -> syn::Result<proc_macro2::Tok
                 ctx: &DalContext,
                 frigg: &frigg::FriggStore,
                 change: &dal::workspace_snapshot::graph::detector::Change,
+                mv_id: String,
             ) -> RebaseResult<(
                 Option<si_frontend_types::object::patch::ObjectPatch>,
                 Option<si_frontend_types::object::FrontendObject>,
@@ -385,7 +391,7 @@ pub fn build_mv(input: proc_macro2::TokenStream) -> syn::Result<proc_macro2::Tok
                         return Ok((
                             Some(si_frontend_types::object::patch::ObjectPatch {
                                 kind: <#mv_name as si_frontend_types::materialized_view::MaterializedView>::kind().to_string(),
-                                id: change.entity_id.to_string(),
+                                id: mv_id,
                                 // TODO: we need to get the prior version of this
                                 from_checksum: Checksum::default().to_string(),
                                 to_checksum: "0".to_string(),
@@ -421,8 +427,7 @@ pub fn build_mv(input: proc_macro2::TokenStream) -> syn::Result<proc_macro2::Tok
                     })?;
 
                     let kind = <#mv_name as si_frontend_types::materialized_view::MaterializedView>::kind().to_string();
-                    let id = change.entity_id.to_string();
-                    let (from_checksum, previous_data) = if let Some(previous_version) = frigg.get_current_object(ctx.workspace_pk()?, ctx.change_set_id(), &kind, &id).await? {
+                    let (from_checksum, previous_data) = if let Some(previous_version) = frigg.get_current_object(ctx.workspace_pk()?, ctx.change_set_id(), &kind, &mv_id).await? {
                         (previous_version.checksum, previous_version.data)
                     } else {
                         // Object is new
@@ -432,7 +437,7 @@ pub fn build_mv(input: proc_macro2::TokenStream) -> syn::Result<proc_macro2::Tok
                     Ok((
                         Some(si_frontend_types::object::patch::ObjectPatch {
                             kind,
-                            id,
+                            id: mv_id,
                             from_checksum,
                             to_checksum,
                             patch: json_patch::diff(&previous_data, &mv_json),
@@ -444,7 +449,7 @@ pub fn build_mv(input: proc_macro2::TokenStream) -> syn::Result<proc_macro2::Tok
                 }
             }
 
-            #build_mv_ident(#ctx, #frigg, #change)
+            #build_mv_ident(#ctx, #frigg, #change, #mv_id)
         }
     };
 
