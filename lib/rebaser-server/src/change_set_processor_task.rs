@@ -102,7 +102,7 @@ impl ChangeSetProcessorTask {
                     change_set_id,
                     quiesced_notify,
                 } = &captured;
-                info!(
+                debug!(
                     service.instance.id = instance_id,
                     si.workspace.id = %workspace_id,
                     si.change_set.id = %change_set_id,
@@ -150,7 +150,7 @@ impl ChangeSetProcessorTask {
         self.inner.await.map_err(Error::Naxum)?;
         metric!(counter.change_set_processor_task.change_set_task = -1);
 
-        info!(
+        debug!(
             task = Self::NAME,
             si.workspace.id = %self.workspace_id,
             si.change_set.id = %self.change_set_id,
@@ -187,7 +187,7 @@ impl post_process::OnSuccess for DeleteMessageOnSuccess {
         let stream = self.stream.clone();
 
         Box::pin(async move {
-            info!("deleting message on success");
+            debug!("deleting message on success");
             if let Err(err) = stream.delete_message(info.stream_sequence).await {
                 warn!(
                     si.error.message = ?err,

@@ -479,7 +479,7 @@ impl WorkspaceSnapshot {
 
     #[instrument(
         name = "workspace_snapshot.write",
-        level = "info",
+        level = "debug",
         skip_all,
         fields(
             si.workspace_snapshot.address = Empty,

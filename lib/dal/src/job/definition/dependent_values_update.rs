@@ -521,7 +521,7 @@ type PrototypeFunctionExecutionResult = (
 /// play more nicely with being spawned into a `JoinSet`.
 #[instrument(
     name = "dependent_values_update.values_from_prototype_function_execution",
-    level = "info",
+    level = "debug",
     parent = &parent_span,
     skip_all,
     fields(

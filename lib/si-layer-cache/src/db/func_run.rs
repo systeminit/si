@@ -103,7 +103,7 @@ impl FuncRunDb {
         Ok(result)
     }
 
-    #[instrument(level = "info", skip_all)]
+    #[instrument(level = "debug", skip_all)]
     pub async fn get_last_run_for_action_id(
         &self,
         workspace_pk: WorkspacePk,

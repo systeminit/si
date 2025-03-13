@@ -520,7 +520,7 @@ impl Action {
     /// hold, we will not dispatch the action
     #[instrument(
         name = "action.get_hold_status_influenced_by",
-        level = "info",
+        level = "debug",
         skip(ctx, action_dependency_graph)
     )]
     pub async fn get_hold_status_influenced_by(
