@@ -7703,6 +7703,7 @@ dependencies = [
 name = "telemetry-application"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "derive_builder",
  "opentelemetry-otlp",
  "opentelemetry-semantic-conventions",

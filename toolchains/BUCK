@@ -62,7 +62,10 @@ system_rust_toolchain(
     visibility = ["PUBLIC"],
     rustc_flags = [
         "-Copt-level=3",
-        "-Cdebuginfo=none",
+        # https://doc.rust-lang.org/cargo/reference/profiles.html#debug
+        "-Cdebuginfo=line-tables-only",
+        # https://doc.rust-lang.org/cargo/reference/profiles.html#strip
+        "-Cstrip=none",
         "-Cdebug-assertions=false",
         "-Coverflow-checks=false",
         "-Clto=false",

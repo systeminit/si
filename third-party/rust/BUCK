@@ -1965,6 +1965,12 @@ cargo.rust_library(
     ],
 )
 
+alias(
+    name = "backtrace",
+    actual = ":backtrace-0.3.71",
+    visibility = ["PUBLIC"],
+)
+
 http_archive(
     name = "backtrace-0.3.71.crate",
     sha256 = "26b05800d2e817c8b3b4b54abd461726265fa9789ae34330622f2db9ee696f9d",
@@ -17813,6 +17819,7 @@ cargo.rust_binary(
         ":aws-config-1.5.18",
         ":aws-sdk-firehose-1.68.0",
         ":axum-0.6.20",
+        ":backtrace-0.3.71",
         ":base64-0.22.1",
         ":blake3-1.6.1",
         ":bollard-0.18.1",
@@ -18382,50 +18389,80 @@ cargo.rust_library(
     ],
     platform = {
         "linux-arm64": dict(
+            rustc_flags = [
+                "--cfg=tokio_taskdump",
+                "--cfg=tokio_track_caller",
+                "--cfg=tokio_unstable",
+            ],
             deps = [
+                ":backtrace",
                 ":libc-0.2.171",
                 ":signal-hook-registry-1.4.2",
                 ":socket2-0.5.8",
+                ":tracing",
             ],
         ),
         "linux-x86_64": dict(
+            rustc_flags = [
+                "--cfg=tokio_taskdump",
+                "--cfg=tokio_track_caller",
+                "--cfg=tokio_unstable",
+            ],
             deps = [
+                ":backtrace",
                 ":libc-0.2.171",
                 ":signal-hook-registry-1.4.2",
                 ":socket2-0.5.8",
+                ":tracing",
             ],
         ),
         "macos-arm64": dict(
+            rustc_flags = [
+                "--cfg=tokio_track_caller",
+                "--cfg=tokio_unstable",
+            ],
             deps = [
                 ":libc-0.2.171",
                 ":signal-hook-registry-1.4.2",
                 ":socket2-0.5.8",
+                ":tracing",
             ],
         ),
         "macos-x86_64": dict(
+            rustc_flags = [
+                "--cfg=tokio_track_caller",
+                "--cfg=tokio_unstable",
+            ],
             deps = [
                 ":libc-0.2.171",
                 ":signal-hook-registry-1.4.2",
                 ":socket2-0.5.8",
+                ":tracing",
             ],
         ),
         "windows-gnu": dict(
+            rustc_flags = [
+                "--cfg=tokio_track_caller",
+                "--cfg=tokio_unstable",
+            ],
             deps = [
                 ":socket2-0.5.8",
+                ":tracing",
                 ":windows-sys-0.52.0",
             ],
         ),
         "windows-msvc": dict(
+            rustc_flags = [
+                "--cfg=tokio_track_caller",
+                "--cfg=tokio_unstable",
+            ],
             deps = [
                 ":socket2-0.5.8",
+                ":tracing",
                 ":windows-sys-0.52.0",
             ],
         ),
     },
-    rustc_flags = [
-        "--cfg=tokio_track_caller",
-        "--cfg=tokio_unstable",
-    ],
     visibility = [],
     deps = [
         ":bytes-1.10.1",
@@ -18433,7 +18470,6 @@ cargo.rust_library(
         ":parking_lot-0.12.3",
         ":pin-project-lite-0.2.16",
         ":tokio-macros-2.5.0",
-        ":tracing",
     ],
 )
 

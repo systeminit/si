@@ -1,0 +1,10 @@
+[target.'cfg(target_os = "linux")']
+rustflags = [
+    "--cfg", "tokio_taskdump",
+    "--cfg", "tokio_unstable",
+]
+
+[target.'cfg(not(target_os = "linux"))']
+rustflags = [
+    "--cfg", "tokio_unstable",
+]

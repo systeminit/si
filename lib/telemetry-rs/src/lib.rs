@@ -179,6 +179,7 @@ pub trait TelemetryLevel: Send + Sync {
 /// A telemetry client which holds handles to a process' tracing and OpenTelemetry setup.
 #[derive(Clone, Debug)]
 pub struct ApplicationTelemetryClient {
+    service_name: Box<str>,
     app_modules: Arc<Vec<&'static str>>,
     interesting_modules: Arc<Vec<&'static str>>,
     never_modules: Arc<Vec<&'static str>>,
@@ -188,6 +189,7 @@ pub struct ApplicationTelemetryClient {
 
 impl ApplicationTelemetryClient {
     pub fn new(
+        service_name: Box<str>,
         app_modules: Vec<&'static str>,
         interesting_modules: Vec<&'static str>,
         never_modules: Vec<&'static str>,
@@ -195,12 +197,17 @@ impl ApplicationTelemetryClient {
         update_telemetry_tx: mpsc::UnboundedSender<TelemetryCommand>,
     ) -> Self {
         Self {
+            service_name,
             app_modules: Arc::new(app_modules),
             interesting_modules: Arc::new(interesting_modules),
             never_modules: Arc::new(never_modules),
             tracing_level: Arc::new(Mutex::new(tracing_level)),
             update_telemetry_tx,
         }
+    }
+
+    pub fn service_name(&self) -> &str {
+        &self.service_name
     }
 
     pub async fn set_verbosity_and_wait(&mut self, updated: Verbosity) -> Result<(), ClientError> {
