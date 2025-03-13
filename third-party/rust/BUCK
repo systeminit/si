@@ -18,6 +18,13 @@ git_fetch(
 )
 
 git_fetch(
+    name = "nats.rs-639306d6e61a4ca7.git",
+    repo = "https://github.com/systeminit/nats.rs.git",
+    rev = "f9468de5062d60d5bb4c77f51da164323688d6ff",
+    visibility = [],
+)
+
+git_fetch(
     name = "rust-s3-61c54947c717d042.git",
     repo = "https://github.com/ScuffleTV/rust-s3.git",
     rev = "27c5c7a0fac45ecb6e766a4b4239bdd98d9b3395",
@@ -606,22 +613,14 @@ alias(
     visibility = ["PUBLIC"],
 )
 
-http_archive(
-    name = "async-nats-0.39.0.crate",
-    sha256 = "a798aab0c0203b31d67d501e5ed1f3ac6c36a329899ce47fc93c3bea53f3ae89",
-    strip_prefix = "async-nats-0.39.0",
-    urls = ["https://static.crates.io/crates/async-nats/0.39.0/download"],
-    visibility = [],
-)
-
 cargo.rust_library(
     name = "async-nats-0.39.0",
-    srcs = [":async-nats-0.39.0.crate"],
+    srcs = [":nats.rs-639306d6e61a4ca7.git"],
     crate = "async_nats",
-    crate_root = "async-nats-0.39.0.crate/src/lib.rs",
+    crate_root = "nats.rs-639306d6e61a4ca7/async-nats/src/lib.rs",
     edition = "2021",
     env = {
-        "CARGO_MANIFEST_DIR": "async-nats-0.39.0.crate",
+        "CARGO_MANIFEST_DIR": "nats.rs-639306d6e61a4ca7",
         "CARGO_PKG_AUTHORS": "Tomasz Pietrek <tomasz@nats.io>:Casper Beyer <caspervonb@pm.me>",
         "CARGO_PKG_DESCRIPTION": "A async Rust NATS client",
         "CARGO_PKG_NAME": "async-nats",

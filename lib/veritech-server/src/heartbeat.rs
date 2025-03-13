@@ -112,15 +112,11 @@ impl HeartbeatApp {
                     Err(err) => {
                         error!(si.error.message = ?err, "heartbeat: publish error");
                         metric!(counter.veritech.heartbeat.publish.error = 1);
+                        self.needs_force_reconnect = true;
                     }
                 },
-                // NOTE(nick): this is going to be an "Elapsed" error, which contains a single private
-                // field: the unit type. As a result of this, we cannot match on the specific error. I
-                // don't love the underscore here in case the underlying API changes, but here we are.
                 Err(_) => {
                     metric!(counter.veritech.heartbeat.publish.timeout = 1);
-
-                    // How do we know we need to reconnect? We are unable to publish in a reasonable timeframe.
                     self.needs_force_reconnect = true;
                 }
             }
@@ -164,10 +160,6 @@ impl HeartbeatApp {
     }
 
     async fn perform_force_reconnect(&mut self) {
-        // NOTE(nick): consider not blocking heartbeats when performing force reconnection.
-        // This is tricky because you don't want to pile on the pain if you need to force a
-        // reconnection, but we also may not want to block heartbeats. We could go either way
-        // on this one, but the current stance should be sufficient.
         match tokio::time::timeout(
             self.force_reconnect_timeout_duration,
             self.nats.force_reconnect(),
@@ -182,12 +174,13 @@ impl HeartbeatApp {
                 Err(err) => {
                     error!(si.error.message = ?err, "heartbeat: force reconnect error");
                     metric!(counter.veritech.heartbeat.force_reconnect.error = 1);
+                    self.needs_force_reconnect = true;
                 }
             },
-            // NOTE(nick): this is going to be an "Elapsed" error, which contains a single private
-            // field: the unit type. As a result of this, we cannot match on the specific error. I
-            // don't love the underscore here in case the underlying API changes, but here we are.
-            Err(_) => metric!(counter.veritech.heartbeat.force_reconnect.timeout = 1),
+            Err(_) => {
+                metric!(counter.veritech.heartbeat.force_reconnect.timeout = 1);
+                self.needs_force_reconnect = true;
+            }
         }
     }
 }
