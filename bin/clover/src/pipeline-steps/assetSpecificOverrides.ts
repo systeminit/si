@@ -93,6 +93,12 @@ const overrides = new Map<string, OverrideFn>([
     if (!keyNameProp) return;
     const keyNameSocket = createInputSocketFromProp(keyNameProp);
     variant.sockets.push(keyNameSocket);
+    
+    // ImageId Socket
+    const imageIdProp = propForOverride(ltData, "ImageId");
+    if (!imageIdProp) return;
+    const imageIdSocket = createInputSocketFromProp(imageIdProp);
+    variant.sockets.push(imageIdSocket);
 
     const prop = propForOverride(ltData, "UserData");
     if (!prop) return;
