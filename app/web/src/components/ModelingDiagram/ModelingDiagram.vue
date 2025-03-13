@@ -87,9 +87,10 @@ overflow hidden */
         @mousedown="onMouseDown"
         @click.right="onRightClick"
       >
+        <!-- default rendering layer -->
         <v-layer>
           <DiagramGroup
-            v-for="group in groups"
+            v-for="group in staticRenderGroups"
             :key="group.uniqueKey"
             :connectedEdges="connectedEdgesByElementKey[group.uniqueKey]"
             :debug="enableDebugMode"
@@ -107,46 +108,36 @@ overflow hidden */
               }
             "
           />
-          <template v-for="node of nodes" :key="node.uniqueKey">
-            <DiagramNode
-              :connectedEdges="connectedEdgesByElementKey[node.uniqueKey]"
-              :debug="enableDebugMode"
-              :isHovered="elementIsHovered(node)"
-              :isLoading="statusStore.componentIsLoading(node.def.id)"
-              :isSelected="elementIsSelected(node)"
-              :node="node"
-              :qualificationStatus="
-                qualificationStore.qualificationStatusForComponentId(
-                  node.def.id,
-                )
-              "
-              :hideDetails="hideDiagramDetails"
-              :occlusionRect="occlusionRect"
-              @rename="
-                (f) => {
-                  renameOnDiagram(node, f);
-                }
-              "
-            />
-          </template>
-          <template
-            v-for="view in Object.values(viewsStore.viewNodes)"
-            :key="view.id"
-          >
-            <DiagramView
-              ref="diagramViewRefs"
-              :isHovered="elementIsHovered(view)"
-              :isSelected="elementIsSelected(view)"
-              :view="view.def"
-              :hideDetails="hideDiagramDetails"
-              :occlusionRect="occlusionRect"
-              :debug="enableDebugMode"
-            />
-          </template>
-          <DiagramCursor
-            v-for="mouseCursor in presenceStore.diagramCursors"
-            :key="mouseCursor.userId"
-            :cursor="mouseCursor"
+          <DiagramNode
+            v-for="node of staticRenderNodes"
+            :key="node.uniqueKey"
+            :connectedEdges="connectedEdgesByElementKey[node.uniqueKey]"
+            :debug="enableDebugMode"
+            :isHovered="elementIsHovered(node)"
+            :isLoading="statusStore.componentIsLoading(node.def.id)"
+            :isSelected="elementIsSelected(node)"
+            :node="node"
+            :qualificationStatus="
+              qualificationStore.qualificationStatusForComponentId(node.def.id)
+            "
+            :hideDetails="hideDiagramDetails"
+            :occlusionRect="occlusionRect"
+            @rename="
+              (f) => {
+                renameOnDiagram(node, f);
+              }
+            "
+          />
+          <DiagramView
+            v-for="view in staticRenderViews"
+            :key="view.def.id"
+            ref="diagramViewRefs"
+            :isHovered="elementIsHovered(view)"
+            :isSelected="elementIsSelected(view)"
+            :view="view.def"
+            :hideDetails="hideDiagramDetails"
+            :occlusionRect="occlusionRect"
+            :debug="enableDebugMode"
           />
           <DiagramEdge
             v-for="edge in viewsStore.edges"
@@ -158,7 +149,7 @@ overflow hidden */
             :toPoint="getSocketLocationInfo('to', edge)?.center"
           />
           <DiagramGroupOverlay
-            v-for="group in groups"
+            v-for="group in staticRenderGroups"
             :key="group.uniqueKey"
             :group="group"
           />
@@ -191,6 +182,12 @@ overflow hidden */
             />
           </template>
 
+          <DiagramCursor
+            v-for="mouseCursor in presenceStore.diagramCursors"
+            :key="mouseCursor.userId"
+            :cursor="mouseCursor"
+          />
+
           <!-- drag to select selection box -->
           <v-rect
             v-if="dragSelectActive && dragSelectStartPos && dragSelectEndPos"
@@ -220,8 +217,64 @@ overflow hidden */
           />
         </v-layer>
 
-        <!-- selection outline -->
+        <!-- dragging components and outlines on their own layer -->
         <v-layer>
+          <DiagramGroup
+            v-for="group in dragRenderGroups"
+            :key="group.uniqueKey"
+            :connectedEdges="connectedEdgesByElementKey[group.uniqueKey]"
+            :debug="enableDebugMode"
+            :group="group"
+            :isHovered="elementIsHovered(group)"
+            :isSelected="elementIsSelected(group)"
+            :qualificationStatus="
+              qualificationStore.qualificationStatusForComponentId(group.def.id)
+            "
+            :hideDetails="hideDiagramDetails"
+            :occlusionRect="occlusionRect"
+            @rename="
+              (f) => {
+                renameOnDiagram(group, f);
+              }
+            "
+          />
+          <DiagramNode
+            v-for="node of dragRenderNodes"
+            :key="node.uniqueKey"
+            :connectedEdges="connectedEdgesByElementKey[node.uniqueKey]"
+            :debug="enableDebugMode"
+            :isHovered="elementIsHovered(node)"
+            :isLoading="statusStore.componentIsLoading(node.def.id)"
+            :isSelected="elementIsSelected(node)"
+            :node="node"
+            :qualificationStatus="
+              qualificationStore.qualificationStatusForComponentId(node.def.id)
+            "
+            :hideDetails="hideDiagramDetails"
+            :occlusionRect="occlusionRect"
+            @rename="
+              (f) => {
+                renameOnDiagram(node, f);
+              }
+            "
+          />
+          <DiagramView
+            v-for="view in dragRenderViews"
+            :key="view.def.id"
+            ref="diagramViewRefs"
+            :isHovered="elementIsHovered(view)"
+            :isSelected="elementIsSelected(view)"
+            :view="view.def"
+            :hideDetails="hideDiagramDetails"
+            :occlusionRect="occlusionRect"
+            :debug="enableDebugMode"
+          />
+          <DiagramGroupOverlay
+            v-for="group in dragRenderGroups"
+            :key="group.uniqueKey"
+            :group="group"
+          />
+
           <v-rect
             v-for="rect in selectionRects"
             :key="`${rect.x}_${rect.y}`"
@@ -1544,7 +1597,7 @@ function endDragSelect(doSelection = true) {
  */
 const dragElementsActive = ref(false);
 const currentSelectionMovableElements = computed(() => {
-  // filter selection for nodes and groups
+  // filter selection for nodes and groups and views
   const elements = _.filter(
     currentSelectionElements.value,
     (el) => el && "componentType" in el.def,
@@ -1620,6 +1673,9 @@ const draggedElementsPositionsPreDrag = ref<
 >({});
 const edgeScrolledDuringDrag = ref<Vector2d>({ x: 0, y: 0 });
 
+const dragElements = ref<
+  (DiagramNodeData | DiagramGroupData | DiagramViewData)[]
+>([]);
 const draggedChildren = ref<
   (DiagramNodeData | DiagramGroupData | DiagramViewData)[]
 >([]);
@@ -1642,15 +1698,20 @@ function beginDragElements() {
   });
   draggedChildren.value = [...children];
 
+  dragElements.value = currentSelectionMovableElements.value.concat(
+    draggedChildren.value,
+  );
+
   // starting position of all children and dragging elements
-  draggedElementsPositionsPreDrag.value = currentSelectionMovableElements.value
-    .concat(draggedChildren.value)
-    .reduce((obj, el) => {
+  draggedElementsPositionsPreDrag.value = dragElements.value.reduce(
+    (obj, el) => {
       const geo = viewsStore.geoFrom(el);
 
       if (geo) obj[el.uniqueKey] = { ...geo };
       return obj;
-    }, {} as Record<DiagramElementUniqueKey, Vector2d>);
+    },
+    {} as Record<DiagramElementUniqueKey, Vector2d>,
+  );
 }
 
 function onDragElementsMove() {
@@ -1761,6 +1822,7 @@ function onDragElementsMove() {
 
 function endDragElements() {
   dragElementsActive.value = false;
+  dragElements.value = [];
   prevDragTotal.value = { x: 0, y: 0 };
   const selectionIds = currentSelectionMovableElements.value.map(
     (s) => s.def.id,
@@ -2969,6 +3031,34 @@ const nodes = computed(() => {
   return components;
 });
 
+const staticRenderNodes = computed(() => {
+  if (
+    featureFlagsStore.DIAGRAM_DRAG_LAYER &&
+    dragElementsActive.value &&
+    dragElements.value
+  ) {
+    return nodes.value.filter((node) => {
+      return !dragElements.value.includes(node);
+    });
+  } else {
+    return nodes.value;
+  }
+});
+
+const dragRenderNodes = computed(() => {
+  if (
+    featureFlagsStore.DIAGRAM_DRAG_LAYER &&
+    dragElementsActive.value &&
+    dragElements.value
+  ) {
+    return nodes.value.filter((node) => {
+      return dragElements.value.includes(node);
+    });
+  } else {
+    return [] as DiagramNodeData[];
+  }
+});
+
 const groups = computed(() => {
   // order groups biggest at the back, smallest at the front (not according to lineage)
   const componentIds = Object.keys(viewsStore.groups);
@@ -3005,6 +3095,64 @@ const groups = computed(() => {
   });
 
   return orderedGroups;
+});
+
+const staticRenderGroups = computed(() => {
+  if (
+    featureFlagsStore.DIAGRAM_DRAG_LAYER &&
+    dragElementsActive.value &&
+    dragElements.value
+  ) {
+    return groups.value.filter((group) => {
+      return !dragElements.value.includes(group);
+    });
+  } else {
+    return groups.value;
+  }
+});
+
+const dragRenderGroups = computed(() => {
+  if (
+    featureFlagsStore.DIAGRAM_DRAG_LAYER &&
+    dragElementsActive.value &&
+    dragElements.value
+  ) {
+    return groups.value.filter((group) => {
+      return dragElements.value.includes(group);
+    });
+  } else {
+    return [] as DiagramGroupData[];
+  }
+});
+
+const views = computed(() => Object.values(viewsStore.viewNodes));
+
+const staticRenderViews = computed(() => {
+  if (
+    featureFlagsStore.DIAGRAM_DRAG_LAYER &&
+    dragElementsActive.value &&
+    dragElements.value
+  ) {
+    return views.value.filter((view) => {
+      return !dragElements.value.includes(view);
+    });
+  } else {
+    return views.value;
+  }
+});
+
+const dragRenderViews = computed(() => {
+  if (
+    featureFlagsStore.DIAGRAM_DRAG_LAYER &&
+    dragElementsActive.value &&
+    dragElements.value
+  ) {
+    return views.value.filter((view) => {
+      return dragElements.value.includes(view);
+    });
+  } else {
+    return [] as DiagramViewData[];
+  }
 });
 
 const sockets = computed(() => {
