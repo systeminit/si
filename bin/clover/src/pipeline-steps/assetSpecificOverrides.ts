@@ -396,6 +396,35 @@ const overrides = new Map<string, OverrideFn>([
     ], "Storage KMS Key Id");
     variant.sockets.push(kmsKeyIdSocket);
   }],
+  ["AWS::EC2::VPCPeeringConnection", (spec: ExpandedPkgSpec) => {
+    const variant = spec.schemas[0].variants[0];
+
+    const peerVpcIdProp = propForOverride(
+      variant.domain,
+      "PeerVpcId",
+    );
+    if (!peerVpcIdProp) return;
+
+    const peerVpcIdSocket = createInputSocketFromProp(peerVpcIdProp, [
+      { tokens: ["VPC Id"] },
+      { tokens: ["VpcId"] },
+      { tokens: ["VpcId", "string", "scalar"] },
+    ], "Peer Vpc Id");
+    variant.sockets.push(peerVpcIdSocket);
+    
+    const peerOwnerIdProp = propForOverride(
+      variant.domain,
+      "PeerOwnerId",
+    );
+    if (!peerOwnerIdProp) return;
+
+    const peerOwnerIdSocket = createInputSocketFromProp(peerOwnerIdProp, [
+      { tokens: ["Account Id"] },
+      { tokens: ["AccountId"] },
+      { tokens: ["AccountId", "string", "scalar"] },
+    ], "Peer Owner Id");
+    variant.sockets.push(peerOwnerIdSocket);
+  }],
 ]);
 
 function addSecretProp(
