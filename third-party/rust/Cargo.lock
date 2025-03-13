@@ -219,7 +219,7 @@ dependencies = [
 [[package]]
 name = "async-nats"
 version = "0.39.0"
-source = "git+https://github.com/systeminit/nats.rs.git?branch=nick%2Fd94750e#29a440a338b16ef6237757ebd1b4ec1baa0e2fbf"
+source = "git+https://github.com/systeminit/nats.rs.git?branch=nick%2Fd94750e#e18584b4c3ae49609e9eccbf9e9fc031bd09aa19"
 dependencies = [
  "base64 0.22.1",
  "bytes",
@@ -946,9 +946,9 @@ dependencies = [
 
 [[package]]
 name = "base64ct"
-version = "1.7.2"
+version = "1.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8faa168b8c4ffca39c2699e772943af41ec2b75fb1683dda07b28a6d285c53dc"
+checksum = "89e25b6adfb930f02d1981565a6e5d9c547ac15a96606256d3b59040e5cd4ca3"
 
 [[package]]
 name = "bigdecimal"
@@ -4146,9 +4146,9 @@ dependencies = [
 
 [[package]]
 name = "once_cell"
-version = "1.21.0"
+version = "1.21.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cde51589ab56b20a6f686b2c68f7a0bd6add753d697abf720d63f8db3ab7b1ad"
+checksum = "d75b0bedcc4fe52caa0e03d9f1151a323e4aa5e2d78ba3580400cd3c9e2bc4bc"
 
 [[package]]
 name = "openssl-probe"
