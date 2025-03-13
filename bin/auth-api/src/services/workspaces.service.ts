@@ -250,6 +250,10 @@ export async function removeUser(email: string, workspaceId: WorkspaceId) {
     return;
   }
 
+  if (memberShip.roleType === RoleType.OWNER) {
+    throw new Error("An owner cannot be removed from the workspace - contact support@systeminit.com to help resolve!");
+  }
+
   return await prisma.workspaceMembers.delete({
     where: {
       id: memberShip.id,
