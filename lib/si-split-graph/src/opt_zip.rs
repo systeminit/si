@@ -76,7 +76,7 @@ mod tests {
     #[test]
     fn b_longer_than_a() {
         let a = [1, 2, 3];
-        let b = [1, 2, 3, 4];
+        let b = [1, 2, 3, 4, 5, 6, 7];
 
         let opt_zip = OptZip::new(a.into_iter(), b.into_iter());
 
@@ -85,6 +85,9 @@ mod tests {
             (Some(2), Some(2)),
             (Some(3), Some(3)),
             (None, Some(4)),
+            (None, Some(5)),
+            (None, Some(6)),
+            (None, Some(7)),
         ];
 
         let collected: Vec<(_, _)> = opt_zip.into_iter().collect();

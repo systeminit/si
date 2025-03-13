@@ -447,10 +447,20 @@ where
         Ulid::new()
     }
 
-    pub fn new_subgraph(&mut self) -> u16 {
+    fn new_subgraph(&mut self) -> u16 {
         self.supergraph.addresses.push(SubGraphAddress::nil());
 
         let subgraph = SubGraph::new_with_root();
+        let subgraph_index = self.subgraphs.len() as u16;
+        self.subgraphs.push(subgraph);
+
+        subgraph_index
+    }
+
+    fn new_empty_subgraph(&mut self) -> u16 {
+        self.supergraph.addresses.push(SubGraphAddress::nil());
+
+        let subgraph = SubGraph::new();
         let subgraph_index = self.subgraphs.len() as u16;
         self.subgraphs.push(subgraph);
 
@@ -550,7 +560,7 @@ where
                 })
                 .map(|edge_ref| edge_ref.id())
             {
-                from_subgraph.remove_edge(edge_idx);
+                from_subgraph.remove_edge_by_index(edge_idx);
             }
         } else {
             let from_subgraph = self.subgraphs.get_mut(from_subgraph_idx as usize).unwrap();
@@ -576,7 +586,7 @@ where
                 })
                 .map(|edge_ref| edge_ref.id())
             {
-                from_subgraph.remove_edge(edge_idx);
+                from_subgraph.remove_edge_by_index(edge_idx);
                 let to_subgraph = self.subgraphs.get_mut(to_subgraph_idx as usize).unwrap();
                 let root_index = to_subgraph.root_index;
                 if let Some(edge_idx) = to_subgraph
@@ -600,7 +610,7 @@ where
                     })
                     .map(|edge_ref| edge_ref.id())
                 {
-                    to_subgraph.remove_edge(edge_idx);
+                    to_subgraph.remove_edge_by_index(edge_idx);
                 }
             }
         }
@@ -707,24 +717,126 @@ where
 
     pub fn detect_updates(&self, base_graph: &SplitGraph<N, E, K, R, W>) -> Vec<Update<N, E, K>> {
         let mut updates = vec![];
-        for (updated_subgraph, maybe_base_subgraph) in
-            OptZip::new(self.subgraphs.iter(), base_graph.subgraphs.iter())
-        {
-            let updated_subgraph = updated_subgraph.unwrap();
+        for (updated_subgraph, maybe_base_subgraph) in OptZip::new(
+            self.subgraphs.iter().enumerate(),
+            base_graph.subgraphs.iter(),
+        ) {
+            let Some((updated_subgraph_index, updated_subgraph)) = updated_subgraph else {
+                continue;
+            };
+
             match maybe_base_subgraph {
                 Some(base_subgraph) => updates.extend(
-                    updates::Detector::new(base_subgraph, updated_subgraph)
-                        .detect_updates()
-                        .into_iter(),
+                    updates::Detector::new(
+                        base_subgraph,
+                        updated_subgraph,
+                        updated_subgraph_index as u16,
+                    )
+                    .detect_updates()
+                    .into_iter(),
                 ),
                 None => {
                     updates.push(Update::NewSubGraph);
-                    updates.extend(updates::subgraph_as_updates(updated_subgraph).into_iter())
+                    updates.extend(
+                        updates::subgraph_as_updates(
+                            updated_subgraph,
+                            updated_subgraph_index as u16,
+                        )
+                        .into_iter(),
+                    )
                 }
             }
         }
 
         updates
+    }
+
+    pub fn perform_updates(&mut self, updates: &[Update<N, E, K>]) {
+        for update in updates {
+            match update {
+                Update::NewEdge {
+                    subgraph_index,
+                    source,
+                    destination,
+                    edge_weight,
+                } => {
+                    let Some(subgraph) = self.subgraphs.get_mut(*subgraph_index as usize) else {
+                        continue;
+                    };
+                    let Some((from_index, to_index)) = subgraph
+                        .node_id_to_index(*source)
+                        .zip(subgraph.node_id_to_index(*destination))
+                    else {
+                        continue;
+                    };
+
+                    subgraph.add_raw_edge(from_index, edge_weight.clone(), to_index);
+                }
+                Update::RemoveEdge {
+                    subgraph_index,
+                    source,
+                    destination,
+                    edge_kind,
+                } => {
+                    let Some(subgraph) = self.subgraphs.get_mut(*subgraph_index as usize) else {
+                        continue;
+                    };
+                    let Some((from_index, to_index)) = subgraph
+                        .node_id_to_index(*source)
+                        .zip(subgraph.node_id_to_index(*destination))
+                    else {
+                        continue;
+                    };
+
+                    if matches!(edge_kind, SplitGraphEdgeWeightKind::Ordinal) {
+                        subgraph.remove_from_order(from_index, *destination);
+                    }
+
+                    subgraph.remove_edge_raw(from_index, edge_kind.clone(), to_index);
+                }
+                Update::RemoveNode { subgraph_index, id } => {
+                    let Some(subgraph) = self.subgraphs.get_mut(*subgraph_index as usize) else {
+                        continue;
+                    };
+                    let Some(node_index) = subgraph.node_id_to_index(*id) else {
+                        continue;
+                    };
+
+                    subgraph.remove_node(node_index);
+                }
+                Update::ReplaceNode {
+                    subgraph_index,
+                    node_weight,
+                } => {
+                    let Some(subgraph) = self.subgraphs.get_mut(*subgraph_index as usize) else {
+                        continue;
+                    };
+                    let Some(node_index) = subgraph.node_id_to_index(node_weight.id()) else {
+                        continue;
+                    };
+                    subgraph.replace_node(node_index, node_weight.clone());
+                }
+                Update::NewNode {
+                    subgraph_index,
+                    node_weight,
+                } => {
+                    let Some(subgraph) = self.subgraphs.get_mut(*subgraph_index as usize) else {
+                        continue;
+                    };
+                    match subgraph.node_id_to_index(node_weight.id()) {
+                        Some(existing_index) => {
+                            subgraph.replace_node(existing_index, node_weight.clone())
+                        }
+                        None => {
+                            subgraph.add_node(node_weight.clone());
+                        }
+                    }
+                }
+                Update::NewSubGraph => {
+                    self.new_empty_subgraph();
+                }
+            }
+        }
     }
 
     pub fn tiny_dot_to_file(&self, prefix: &str) {
@@ -1111,7 +1223,7 @@ mod tests {
     }
 
     #[test]
-    fn test_cross_graph_edges() {
+    fn cross_graph_edges() {
         for ordered in [false, true] {
             let reader_writer = TestReadWriter {
                 graphs: HashMap::new(),
@@ -1397,7 +1509,10 @@ mod tests {
     }
 
     #[test]
-    fn subgraph_as_updates_test() {
+    fn updates_test() {}
+
+    #[test]
+    fn single_subgraph_as_updates() {
         let nodes = ["r", "t", "u", "v", "a", "b", "c", "d", "e"];
         let edges = [
             (None, "r"),
@@ -1456,11 +1571,12 @@ mod tests {
                     source,
                     destination,
                     edge_weight: SplitGraphEdgeWeight::Custom(()),
+                    subgraph_index: 0,
                 }
             })
             .collect();
 
-        let updates = subgraph_as_updates(&subgraph);
+        let updates = subgraph_as_updates(&subgraph, 0);
         assert!(!updates.is_empty());
         let mut new_edge_count = 0;
         let mut new_node_count = 0;
@@ -1472,6 +1588,7 @@ mod tests {
                 }
                 Update::NewNode {
                     node_weight: SplitGraphNodeWeight::Custom(TestNodeWeight { id, name, .. }),
+                    ..
                 } => {
                     new_node_count += 1;
                     assert_eq!(node_id_map.get(&name.as_str()), Some(id))

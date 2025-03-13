@@ -5,8 +5,8 @@ use std::collections::{HashMap, HashSet};
 use std::io::Write;
 
 use crate::{
-    CustomEdgeWeight, CustomNodeWeight, EdgeKind, SplitGraphEdgeWeight, SplitGraphNodeId,
-    SplitGraphNodeWeight, MAX_NODES,
+    CustomEdgeWeight, CustomNodeWeight, EdgeKind, SplitGraphEdgeWeight, SplitGraphEdgeWeightKind,
+    SplitGraphNodeId, SplitGraphNodeWeight, MAX_NODES,
 };
 
 pub type SubGraphNodeIndex = NodeIndex<u16>;
@@ -331,13 +331,39 @@ where
         self.node_index_by_id.get(&id).copied()
     }
 
+    pub(crate) fn add_raw_edge(
+        &mut self,
+        from_index: SubGraphNodeIndex,
+        edge_weight: SplitGraphEdgeWeight<E, K>,
+        to_index: SubGraphNodeIndex,
+    ) {
+        if !self.edge_exists(from_index, &edge_weight, to_index) {
+            self.graph.add_edge(from_index, to_index, edge_weight);
+            self.touch_node(from_index);
+        }
+    }
+
+    pub(crate) fn remove_node(&mut self, node_index: SubGraphNodeIndex) {
+        let parents: Vec<_> = self
+            .graph
+            .neighbors_directed(node_index, Incoming)
+            .collect();
+
+        self.graph.remove_node(node_index);
+        parents
+            .into_iter()
+            .for_each(|parent_idx| self.touch_node(parent_idx));
+    }
+
+    /// Add an edge between `from_index` and `to_index` if the edge does not exist.
+    /// Handles the creation of ordering nodes and the ordering edges if the node at
+    /// `from_index` is an ordered container.
     pub(crate) fn add_edge(
         &mut self,
         from_index: SubGraphNodeIndex,
         edge_weight: SplitGraphEdgeWeight<E, K>,
         to_index: SubGraphNodeIndex,
     ) {
-        let exists = self.edge_exists(from_index, &edge_weight, to_index);
         let is_ordered_container = self
             .graph
             .node_weight(from_index)
@@ -360,10 +386,10 @@ where
                         merkle_tree_hash: MerkleTreeHash::nil(),
                     });
 
-                    self.graph.add_edge(
+                    self.add_raw_edge(
                         from_index,
-                        ordering_node_index,
                         SplitGraphEdgeWeight::Ordering,
+                        ordering_node_index,
                     );
 
                     ordering_node_index
@@ -376,33 +402,52 @@ where
                 if !order.contains(&target_id) {
                     order.push(target_id);
                 }
-                if !self.edge_exists(
-                    ordering_node_index,
-                    &SplitGraphEdgeWeight::Ordinal,
-                    to_index,
-                ) {
-                    self.graph.add_edge(
-                        ordering_node_index,
-                        to_index,
-                        SplitGraphEdgeWeight::Ordinal,
-                    );
-                }
+                self.add_raw_edge(ordering_node_index, SplitGraphEdgeWeight::Ordinal, to_index);
             }
-
-            self.touch_node(ordering_node_index);
         }
 
-        if !exists {
-            self.graph.add_edge(from_index, to_index, edge_weight);
-            self.touch_node(from_index);
-        }
+        self.add_raw_edge(from_index, edge_weight, to_index);
     }
 
     fn touch_node(&mut self, node_index: SubGraphNodeIndex) {
         self.touched_nodes.insert(node_index);
     }
 
-    pub(crate) fn remove_edge(&mut self, edge_index: EdgeIndex<u16>) {
+    /// Removes all edges between `from_index` and `to_index` that match the passed in kind.
+    /// Also handles removing any correspond
+    pub(crate) fn remove_edge_raw(
+        &mut self,
+        from_index: SubGraphNodeIndex,
+        kind: SplitGraphEdgeWeightKind<K>,
+        to_index: SubGraphNodeIndex,
+    ) {
+        let edge_indexes: Vec<_> = self
+            .graph
+            .edges_directed(from_index, Outgoing)
+            .filter(|edge_ref| kind == edge_ref.weight().into() && edge_ref.target() == to_index)
+            .map(|edge_ref| edge_ref.id())
+            .collect();
+        for edge_index in edge_indexes {
+            self.graph.remove_edge(edge_index);
+        }
+    }
+
+    pub(crate) fn remove_from_order(
+        &mut self,
+        ordering_node_index: SubGraphNodeIndex,
+        item_id: SplitGraphNodeId,
+    ) {
+        if let Some(SplitGraphNodeWeight::Ordering { order, .. }) =
+            self.graph.node_weight_mut(ordering_node_index)
+        {
+            order.retain(|id| *id != item_id);
+        }
+    }
+
+    /// Removes the edge specified by `edge_index`. Also handles edges to and
+    /// from the ordering node, if one exists for `from_index`, and removes
+    /// the target from the order.
+    pub(crate) fn remove_edge_by_index(&mut self, edge_index: EdgeIndex<u16>) {
         if let Some((from_index, to_index)) = self.graph.edge_endpoints(edge_index) {
             self.touch_node(from_index);
 
@@ -432,12 +477,7 @@ where
                         .map(|edge_ref| edge_ref.id())
                     {
                         self.graph.remove_edge(ordinal_edge_index);
-
-                        if let Some(SplitGraphNodeWeight::Ordering { order, .. }) =
-                            self.graph.node_weight_mut(ordering_node_index)
-                        {
-                            order.retain(|id| *id != target_id);
-                        }
+                        self.remove_from_order(ordering_node_index, target_id);
                     }
                 }
             }
