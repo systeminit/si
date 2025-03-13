@@ -165,11 +165,11 @@ pub struct FuncRunner {
 impl FuncRunner {
     #[instrument(
         name = "func_runner.run_test",
-        level = "debug",
+        level = "info",
         skip_all,
         fields(
             job.id = Empty,
-            job.invoked_args = Empty,
+            // job.invoked_args = Empty,
             // job.instance = metadata.job_instance,
             job.invoked_name = func.name.as_str(),
             // job.invoked_provider = metadata.job_invoked_provider,
@@ -178,7 +178,7 @@ impl FuncRunner {
             otel.status_message = Empty,
             si.change_set.id = Empty,
             si.component.id = Empty,
-            si.func_run.func.args = Empty,
+            // si.func_run.func.args = Empty,
             si.func_run.func.backend_kind = func.backend_kind.as_ref(),
             si.func_run.func.backend_response_type = func.backend_response_type.as_ref(),
             si.func_run.func.id = Empty,
@@ -194,7 +194,7 @@ impl FuncRunner {
         args: serde_json::Value,
         component_id: ComponentId,
     ) -> FuncRunnerResult<(FuncRunId, FuncRunnerValueChannel)> {
-        let span = current_span_for_instrument_at!("debug");
+        let span = current_span_for_instrument_at!("info");
 
         // Prepares the function for execution.
         //
@@ -249,11 +249,6 @@ impl FuncRunner {
                 span.record("job.id", &id);
                 span.record("si.func_run.id", &id);
 
-                let invoked_args = serde_json::to_string(&args)
-                    .unwrap_or_else(|_| "args failed to serialize".to_owned());
-                span.record("job.invoked_args", invoked_args.as_str());
-                span.record("si.func_run.func.args", invoked_args.as_str());
-
                 span.record("si.func_run.func.id", func.id.array_to_str(&mut id_buf));
 
                 span.record(
@@ -299,11 +294,11 @@ impl FuncRunner {
 
     #[instrument(
         name = "func_runner.run_asset_definition_func",
-        level = "debug",
+        level = "info",
         skip_all,
         fields(
             job.id = Empty,
-            job.invoked_args = Empty,
+            // job.invoked_args = Empty,
             // job.instance = metadata.job_instance,
             job.invoked_name = func.name.as_str(),
             // job.invoked_provider = metadata.job_invoked_provider,
@@ -313,7 +308,7 @@ impl FuncRunner {
             si.action.id = Empty,
             si.action.kind = Empty,
             si.change_set.id = Empty,
-            si.func_run.func.args = Empty,
+            // si.func_run.func.args = Empty,
             si.func_run.func.backend_kind = func.backend_kind.as_ref(),
             si.func_run.func.backend_response_type = func.backend_response_type.as_ref(),
             si.func_run.func.id = Empty,
@@ -327,7 +322,7 @@ impl FuncRunner {
         ctx: &DalContext,
         func: &Func,
     ) -> FuncRunnerResult<FuncRunnerValueChannel> {
-        let span = current_span_for_instrument_at!("debug");
+        let span = current_span_for_instrument_at!("info");
 
         // Prepares the function for execution.
         //
@@ -397,11 +392,6 @@ impl FuncRunner {
                 span.record("job.id", &id);
                 span.record("si.func_run.id", &id);
 
-                let invoked_args = serde_json::to_string(&args)
-                    .unwrap_or_else(|_| "args failed to serialize".to_owned());
-                span.record("job.invoked_args", invoked_args.as_str());
-                span.record("si.func_run.func.args", invoked_args.as_str());
-
                 span.record("si.func_run.func.id", func.id.array_to_str(&mut id_buf));
 
                 span.record(
@@ -445,11 +435,11 @@ impl FuncRunner {
 
     #[instrument(
         name = "func_runner.run_validation_format",
-        level = "debug",
+        level = "info",
         skip_all,
         fields(
             job.id = Empty,
-            job.invoked_args = Empty,
+            // job.invoked_args = Empty,
             // job.instance = metadata.job_instance,
             job.invoked_name = Empty,
             // job.invoked_provider = metadata.job_invoked_provider,
@@ -459,7 +449,7 @@ impl FuncRunner {
             si.attribute_value.id = Empty,
             si.change_set.id = Empty,
             si.component.id = Empty,
-            si.func_run.func.args = Empty,
+            // si.func_run.func.args = Empty,
             si.func_run.func.backend_kind = Empty,
             si.func_run.func.backend_response_type = Empty,
             si.func_run.func.id = Empty,
@@ -475,7 +465,7 @@ impl FuncRunner {
         value: Option<serde_json::Value>,
         validation_format: String,
     ) -> FuncRunnerResult<FuncRunnerValueChannel> {
-        let span = current_span_for_instrument_at!("debug");
+        let span = current_span_for_instrument_at!("info");
 
         // Prepares the function for execution.
         //
@@ -558,11 +548,6 @@ impl FuncRunner {
                 span.record("job.id", &id);
                 span.record("si.func_run.id", &id);
 
-                let invoked_args = serde_json::to_string(&args)
-                    .unwrap_or_else(|_| "args failed to serialize".to_owned());
-                span.record("job.invoked_args", invoked_args.as_str());
-                span.record("si.func_run.func.args", invoked_args.as_str());
-
                 span.record("job.invoked_name", func.name.as_str());
                 span.record("si.func_run.func.name", func.name.as_str());
 
@@ -624,7 +609,7 @@ impl FuncRunner {
         skip_all,
         fields(
             job.id = Empty,
-            job.invoked_args = Empty,
+            // job.invoked_args = Empty,
             // job.instance = metadata.job_instance,
             job.invoked_name = Empty,
             // job.invoked_provider = metadata.job_invoked_provider,
@@ -633,7 +618,7 @@ impl FuncRunner {
             otel.status_message = Empty,
             si.attribute_value.id = Empty,
             si.component.id = Empty,
-            si.func_run.func.args = Empty,
+            // si.func_run.func.args = Empty,
             si.func_run.func.backend_kind = Empty,
             si.func_run.func.backend_response_type = Empty,
             si.func_run.func.id = Empty,
@@ -656,7 +641,7 @@ impl FuncRunner {
         // and in order to time the function's preparation vs. execution timings.
         #[instrument(
             name = "func_runner.run_attribute_value.prepare",
-            level = "info",
+            level = "debug",
             skip_all,
             fields()
         )]
@@ -733,11 +718,6 @@ impl FuncRunner {
                 parent_span.record("job.id", &id);
                 parent_span.record("si.func_run.id", &id);
 
-                let invoked_args = serde_json::to_string(&args)
-                    .unwrap_or_else(|_| "args failed to serialize".to_owned());
-                parent_span.record("job.invoked_args", invoked_args.as_str());
-                parent_span.record("si.func_run.func.args", invoked_args.as_str());
-
                 parent_span.record("job.invoked_name", func.name.as_str());
                 parent_span.record("si.func_run.func.name", func.name.as_str());
 
@@ -789,11 +769,11 @@ impl FuncRunner {
 
     #[instrument(
         name = "func_runner.run_management",
-        level = "debug",
+        level = "info",
         skip_all,
         fields(
             job.id = Empty,
-            job.invoked_args = Empty,
+            // job.invoked_args = Empty,
             // job.instance = metadata.job_instance,
             job.invoked_name = Empty,
             // job.invoked_provider = metadata.job_invoked_provider,
@@ -804,7 +784,7 @@ impl FuncRunner {
             si.action.kind = Empty,
             si.change_set.id = Empty,
             si.component.id = Empty,
-            si.func_run.func.args = Empty,
+            // si.func_run.func.args = Empty,
             si.func_run.func.backend_kind = Empty,
             si.func_run.func.backend_response_type = Empty,
             si.func_run.func.id = Empty,
@@ -821,7 +801,7 @@ impl FuncRunner {
         management_func_id: FuncId,
         args: serde_json::Value,
     ) -> FuncRunnerResult<FuncRunnerValueChannel> {
-        let span = current_span_for_instrument_at!("debug");
+        let span = current_span_for_instrument_at!("info");
 
         // Prepares the function for execution.
         //
@@ -906,11 +886,6 @@ impl FuncRunner {
                 span.record("job.id", &id);
                 span.record("si.func_run.id", &id);
 
-                let invoked_args = serde_json::to_string(&args)
-                    .unwrap_or_else(|_| "args failed to serialize".to_owned());
-                span.record("job.invoked_args", invoked_args.as_str());
-                span.record("si.func_run.func.args", invoked_args.as_str());
-
                 span.record("job.invoked_name", func.name.as_str());
                 span.record("si.func_run.func.name", func.name.as_str());
 
@@ -974,11 +949,11 @@ impl FuncRunner {
 
     #[instrument(
         name = "func_runner.run_action",
-        level = "debug",
+        level = "info",
         skip_all,
         fields(
             job.id = Empty,
-            job.invoked_args = Empty,
+            // job.invoked_args = Empty,
             // job.instance = metadata.job_instance,
             job.invoked_name = Empty,
             // job.invoked_provider = metadata.job_invoked_provider,
@@ -989,7 +964,7 @@ impl FuncRunner {
             si.action.kind = Empty,
             si.change_set.id = Empty,
             si.component.id = Empty,
-            si.func_run.func.args = Empty,
+            // si.func_run.func.args = Empty,
             si.func_run.func.backend_kind = Empty,
             si.func_run.func.backend_response_type = Empty,
             si.func_run.func.id = Empty,
@@ -1006,7 +981,7 @@ impl FuncRunner {
         func_id: FuncId,
         args: serde_json::Value,
     ) -> FuncRunnerResult<FuncRunnerValueChannel> {
-        let span = current_span_for_instrument_at!("debug");
+        let span = current_span_for_instrument_at!("info");
 
         // Prepares the function for execution.
         //
@@ -1121,11 +1096,6 @@ impl FuncRunner {
                 let id = func_run_inner.id().array_to_str(&mut id_buf);
                 span.record("job.id", &id);
                 span.record("si.func_run.id", &id);
-
-                let invoked_args = serde_json::to_string(&args)
-                    .unwrap_or_else(|_| "args failed to serialize".to_owned());
-                span.record("job.invoked_args", invoked_args.as_str());
-                span.record("si.func_run.func.args", invoked_args.as_str());
 
                 span.record("job.invoked_name", func.name.as_str());
                 span.record("si.func_run.func.name", func.name.as_str());
@@ -1614,13 +1584,13 @@ impl FuncRunnerExecutionTask {
 
     #[instrument(
         name = "func_runner.execution_task.run",
-        level = "info",
+        level = "debug",
         parent = &self.parent_span,
         skip_all,
         fields()
     )]
     async fn run(self) {
-        let span = current_span_for_instrument_at!("info");
+        let span = current_span_for_instrument_at!("debug");
 
         let parent_span = self.parent_span.clone();
 

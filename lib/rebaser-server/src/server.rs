@@ -30,6 +30,7 @@ use si_crypto::{
 use si_data_nats::{async_nats, jetstream, NatsClient, NatsConfig};
 use si_data_pg::{PgPool, PgPoolConfig};
 use telemetry::prelude::*;
+use telemetry_utils::metric;
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use veritech_client::Client as VeritechClient;
 
@@ -313,7 +314,8 @@ where
     R: MessageHead,
 {
     fn on_request(&mut self, req: &Message<R>, _span: &Span) {
-        info!(task = req.subject().as_str(), "starting task");
+        debug!(task = req.subject().as_str(), "starting task");
+        metric!(counter.change_set_processor_task.change_set_task = 1);
     }
 }
 

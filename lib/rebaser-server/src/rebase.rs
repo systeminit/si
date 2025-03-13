@@ -59,6 +59,7 @@ type RebaseResult<T> = Result<T, RebaseError>;
         si.conflicts.count = Empty,
         si.updates = Empty,
         si.updates.count = Empty,
+        si.corrected_updates.count = Empty,
         si.workspace.id = %request.workspace_id,
     ))]
 pub async fn perform_rebase(

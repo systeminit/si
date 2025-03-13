@@ -37,7 +37,7 @@ where
         }
     }
 
-    #[instrument(level = "info", skip_all,fields(
+    #[instrument(level = "debug", skip_all,fields(
         si.layer_cache.workspace_snapshot.write_serialize = Empty,
     ))]
     pub fn write(
@@ -78,7 +78,7 @@ where
 
     #[instrument(
         name = "workspace_snapshot.read",
-        level = "info",
+        level = "debug",
         skip_all,
         fields(
             si.workspace_snapshot.address = %key,
@@ -90,7 +90,7 @@ where
 
     #[instrument(
         name = "workspace_snapshot.read_wait_for_memory",
-        level = "info",
+        level = "debug",
         skip_all,
         fields(
             si.layer_cache.memory_cache.hit = Empty,
@@ -103,7 +103,7 @@ where
         &self,
         key: &WorkspaceSnapshotAddress,
     ) -> LayerDbResult<Option<Arc<V>>> {
-        let span = current_span_for_instrument_at!("debug");
+        let span = current_span_for_instrument_at!("info");
 
         let key: Arc<str> = key.to_string().into();
         const MAX_TRIES: i32 = 2000;
@@ -164,7 +164,7 @@ where
     /// snapshot, useful when converting an out of date snapshot into a new one
     #[instrument(
         name = "workspace_snapshot.read_bytes_from_durable_storage",
-        level = "info",
+        level = "debug",
         skip_all,
         fields(
             si.workspace_snapshot.address = %key,
@@ -180,7 +180,7 @@ where
     }
     #[instrument(
         name = "workspace_snapshot.write_bytes_to_durable_storage",
-        level = "info",
+        level = "debug",
         skip_all,
         fields(
             si.workspace_snapshot.address = %key,

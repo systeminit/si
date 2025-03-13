@@ -522,7 +522,7 @@ impl DalContext {
         }
     }
 
-    #[instrument(name = "context.write_rebase_batch", level = "info", skip_all)]
+    #[instrument(name = "context.write_rebase_batch", level = "debug", skip_all)]
     pub async fn write_rebase_batch(
         &self,
         rebase_batch: RebaseBatch,
@@ -546,7 +546,7 @@ impl DalContext {
         Ok(rebase_batch_address)
     }
 
-    #[instrument(name = "context.write_current_rebase_batch", level = "info", skip_all)]
+    #[instrument(name = "context.write_current_rebase_batch", level = "debug", skip_all)]
     async fn write_current_rebase_batch(
         &self,
     ) -> Result<Option<RebaseBatchAddress>, TransactionsError> {
