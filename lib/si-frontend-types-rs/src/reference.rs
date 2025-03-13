@@ -17,7 +17,7 @@ use crate::{checksum::FrontendChecksum, object::FrontendObject};
     strum::Display,
     strum::EnumIter,
 )]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "PascalCase")]
 pub enum ReferenceKind {
     ChangeSetList,
     ChangeSetRecord,
