@@ -129,7 +129,7 @@ async fn detailed_diff_with_module_index(
 
     let module_bytes = client.download_module(remote_ulid).await?;
 
-    let current_pkg = SiPkg::load_from_bytes(&module_bytes)?
+    let current_spec = SiPkg::load_from_bytes(&module_bytes)?
         .to_spec()
         .await?
         .anonymize();
@@ -137,7 +137,7 @@ async fn detailed_diff_with_module_index(
     let new_spec = new_spec.anonymize();
 
     let new_spec_json = rewrite_spec_for_diff(serde_json::to_value(new_spec)?);
-    let current_spec_json = rewrite_spec_for_diff(serde_json::to_value(current_pkg)?);
+    let current_spec_json = rewrite_spec_for_diff(serde_json::to_value(current_spec)?);
 
     let patch = diff(&current_spec_json, &new_spec_json);
 
@@ -583,6 +583,10 @@ async fn remote_module_state(
     modules: &Vec<ModuleDetailsResponse>,
 ) -> Result<ModuleState> {
     let schema = pkg.schemas()?[0].clone();
+
+    // FIXME(victor, scott) Converting pkg to bytes changes the hash, and since we calculate hashes
+    // on the module index, we need to make this conversion here too to get the same hashes
+    let pkg = SiPkg::load_from_bytes(&pkg.write_to_bytes()?)?;
 
     let structural_hash = SiPkg::load_from_spec(pkg.to_spec().await?.anonymize())?
         .metadata()?

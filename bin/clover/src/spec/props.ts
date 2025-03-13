@@ -158,7 +158,9 @@ export function createDefaultPropFromCf(
   }
 
   // Top level prop doesn't actually get the generated doc; we add that to the schema instead
-  rootProp.data.hidden = null;
+  rootProp.data.inputs = null;
+  rootProp.data.widgetOptions = null;
+  rootProp.data.hidden = false;
   rootProp.data.documentation = null;
 
   return rootProp;
@@ -553,7 +555,7 @@ export function createObjectProp(
     inputs: [],
     widgetKind: "Header",
     widgetOptions: [],
-    hidden: null,
+    hidden: false,
     docLink: null,
     documentation: null,
   };
@@ -603,7 +605,7 @@ export function createScalarProp(
     inputs: [],
     widgetKind,
     widgetOptions: null,
-    hidden: null,
+    hidden: false,
     docLink: null,
     documentation: null,
   };

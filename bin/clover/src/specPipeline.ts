@@ -52,7 +52,7 @@ export function pkgSpecFromCf(cfSchema: CfSchema): ExpandedPkgSpec {
       version,
       link: createDocLink(cfSchema, undefined),
       color: "#FF9900",
-      displayName: name,
+      displayName: null, // siPkg does not store this
       componentType: "component",
       funcUniqueId: assetFuncUniqueKey,
       description: cfSchema.description,
