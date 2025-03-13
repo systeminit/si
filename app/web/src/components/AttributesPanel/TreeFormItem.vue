@@ -4,11 +4,11 @@
     :class="
       clsx(
         'attributes-panel-item',
-        'relative text-sm first:mt-xs',
+        'relative text-sm',
         isFocus && '--focus',
         isHover && '--hover',
         isSectionHover && '--section-hover',
-        canHaveChildren ? '--section' : '--input',
+        canHaveChildren ? '--section' : '--input first:pt-2xs last:pb-2xs',
         canHaveChildren && (isOpen ? '--open' : '--collapsed'),
       )
     "
@@ -22,7 +22,11 @@
       <!-- HEADER -->
       <div
         :class="
-          clsx('attributes-panel-item__section-header-wrap', 'sticky h-6')
+          clsx(
+            'attributes-panel-item__section-header-wrap',
+            'sticky h-6',
+            !headerHasContent && 'mb-2xs',
+          )
         "
         :style="{
           top: topPx,
@@ -280,7 +284,7 @@
           <div
             v-else-if="widgetKind !== 'users'"
             :style="{ marginLeft: indentPx }"
-            class="h-[34px] flex flex-row grow gap-xs relative overflow-hidden items-center pt-2xs"
+            class="h-[40px] flex flex-row grow gap-xs relative overflow-hidden items-center py-2xs"
           >
             <Icon
               class="w-[14px] h-[14px] ml-xs"
@@ -316,7 +320,7 @@
               :class="
                 clsx(
                   'items-center rounded-sm flex flex-row gap-2xs justify-center cursor-pointer shrink-0',
-                  'mr-xs px-sm py-2xs relative border select-none',
+                  'mr-xs px-xs py-2xs relative border select-none',
                   themeClasses(
                     'border-shade-100 hover:bg-action-500 hover:text-shade-0',
                     'border-shade-0 hover:bg-action-300 hover:text-shade-100',
@@ -1923,9 +1927,7 @@ const disabledOverlayTooltipText = computed(() => {
 
 // add spacing when inputs/sections are next to each other
 // and any sections after an open section
-.attributes-panel-item.--section + .attributes-panel-item.--input,
-.attributes-panel-item.--input + .attributes-panel-item.--section,
-.attributes-panel-item.--section.--open + .attributes-panel-item.--section {
-  margin-top: 8px;
+.attributes-panel-item.--input + .attributes-panel-item.--section {
+  margin-top: 4px;
 }
 </style>
