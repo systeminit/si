@@ -492,7 +492,7 @@ impl ExpectComponent {
             .await
     }
 
-    pub async fn list(ctx: &mut DalContext) -> Vec<ExpectComponent> {
+    pub async fn list(ctx: &DalContext) -> Vec<ExpectComponent> {
         Component::list_ids(ctx)
             .await
             .expect("list components")
@@ -501,7 +501,7 @@ impl ExpectComponent {
             .collect()
     }
 
-    pub async fn find_opt(ctx: &mut DalContext, name: impl AsRef<str>) -> Option<ExpectComponent> {
+    pub async fn find_opt(ctx: &DalContext, name: impl AsRef<str>) -> Option<ExpectComponent> {
         for component in ExpectComponent::list(ctx).await {
             if name.as_ref() == component.name(ctx).await {
                 return Some(component);
@@ -510,7 +510,7 @@ impl ExpectComponent {
         None
     }
 
-    pub async fn find(ctx: &mut DalContext, name: impl AsRef<str>) -> ExpectComponent {
+    pub async fn find(ctx: &DalContext, name: impl AsRef<str>) -> ExpectComponent {
         Self::find_opt(ctx, name)
             .await
             .expect("component not found")
@@ -526,7 +526,7 @@ impl ExpectComponent {
             .expect("get component by id")
     }
 
-    pub async fn name(&self, ctx: &mut DalContext) -> String {
+    pub async fn name(&self, ctx: &DalContext) -> String {
         Component::name_by_id(ctx, self.0)
             .await
             .expect("get component name")
@@ -575,6 +575,10 @@ impl ExpectComponent {
         let schema_variant = self.schema_variant(ctx).await;
         let prop_id = prop.lookup_prop(ctx, schema_variant.id()).await;
         ExpectComponentProp(self.0, prop_id)
+    }
+
+    pub async fn domain(self, ctx: &DalContext) -> Value {
+        self.prop(ctx, ["root", "domain"]).await.get(ctx).await
     }
 
     pub async fn connect(
