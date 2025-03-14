@@ -28,6 +28,8 @@ const KEY_PREFIX_OBJECT: &str = "object";
 pub enum Error {
     #[error("consumer error: {0}")]
     Consumer(#[from] ConsumerError),
+    #[error("create error: {0}")]
+    Create(#[from] kv::CreateError),
     #[error("error creating kv store: {0}")]
     CreateKeyValue(#[from] async_nats::jetstream::context::CreateKeyValueError),
     #[error("error deserializing kv value: {0}")]
@@ -162,29 +164,56 @@ impl FriggStore {
         Ok(None)
     }
 
+    async fn insert_or_update_index_preamble(
+        &self,
+        workspace_id: WorkspacePk,
+        object: &FrontendObject,
+    ) -> Result<(Subject, Subject)> {
+        let mv_index_kind_string = ReferenceKind::MvIndex.to_string();
+        if object.kind != mv_index_kind_string {
+            return Err(Error::NotIndexKind(object.kind.clone()));
+        }
+
+        let index_object_key = self.insert_object(workspace_id, object).await?;
+        let index_pointer_key = Self::index_key(workspace_id, &object.id);
+
+        Ok((index_object_key, index_pointer_key))
+    }
+
+    /// Insert a new `MvIndex` into the store, and update the associated index pointer to refer
+    /// to the newly inserted `MvIndex`.
+    ///
+    /// Will fail if the index pointer already exists.
     pub async fn insert_index(
         &self,
         workspace_id: WorkspacePk,
         object: &FrontendObject,
     ) -> Result<KvRevision> {
-        self.update_index(workspace_id, object, 0.into()).await
+        let (index_object_key, index_pointer_key) = self
+            .insert_or_update_index_preamble(workspace_id, object)
+            .await?;
+
+        let new_revision = self
+            .store
+            .create(index_pointer_key, index_object_key.into_string().into())
+            .await?;
+
+        Ok(new_revision.into())
     }
 
+    /// Insert an updated `MvIndex` into the store, and update the associated index pointer to refer
+    /// to the newly inserted `MvIndex`.
+    ///
+    /// Will fail if the index pointer has been updated since `revision` was fetched.
     pub async fn update_index(
         &self,
         workspace_id: WorkspacePk,
         object: &FrontendObject,
         revision: KvRevision,
     ) -> Result<KvRevision> {
-        let mv_index_kind_string = ReferenceKind::MvIndex.to_string();
-        if object.kind != mv_index_kind_string {
-            return Err(Error::NotIndexKind(object.kind.clone()));
-        }
-
-        // Insert the index as an object and get back the key name where it's stored
-        let index_object_key = self.insert_object(workspace_id, object).await?;
-
-        let index_pointer_key = Self::index_key(workspace_id, &object.id);
+        let (index_object_key, index_pointer_key) = self
+            .insert_or_update_index_preamble(workspace_id, object)
+            .await?;
 
         let new_revision = self
             .store

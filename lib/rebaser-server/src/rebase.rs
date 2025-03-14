@@ -1,9 +1,8 @@
-use std::collections::HashSet;
-
 use audit_logs_stream::AuditLogsStreamError;
 use dal::{
     change_set::{ChangeSet, ChangeSetError, ChangeSetId},
-    data_cache::{DataCache, DataCacheError},
+    data_cache::DataCacheError,
+    materialized_view::MaterializedViewError,
     workspace_snapshot::WorkspaceSnapshotError,
     ChangeSetStatus, DalContext, TransactionsError, Workspace, WorkspaceError, WorkspacePk,
     WorkspaceSnapshot, WsEvent, WsEventError,
@@ -14,18 +13,7 @@ use rebaser_core::api_types::{
     enqueue_updates_request::EnqueueUpdatesRequest, enqueue_updates_response::v1::RebaseStatus,
 };
 use shuttle_server::ShuttleError;
-use si_events::{
-    rebase_batch_address::RebaseBatchAddress, workspace_snapshot::Checksum,
-    WorkspaceSnapshotAddress,
-};
-use si_frontend_types::{
-    index::MvIndex,
-    object::{
-        patch::{ObjectPatch, PatchBatch, PatchBatchMeta, PATCH_BATCH_KIND},
-        FrontendObject,
-    },
-    reference::{IndexReference, ReferenceKind},
-};
+use si_events::{rebase_batch_address::RebaseBatchAddress, WorkspaceSnapshotAddress};
 use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -45,6 +33,8 @@ pub(crate) enum RebaseError {
     Frigg(#[from] FriggError),
     #[error("layerdb error: {0}")]
     LayerDb(#[from] LayerDbError),
+    #[error("Materialized view error: {0}")]
+    MaterializedView(#[from] MaterializedViewError),
     #[error("missing rebase batch {0}")]
     MissingRebaseBatch(RebaseBatchAddress),
     #[error("pending events error: {0}")]
@@ -142,11 +132,6 @@ pub async fn perform_rebase(
 
     debug!("updates complete: {:?}", start.elapsed());
 
-    let mut maybe_index_update = None;
-    let mut maybe_index_revision = None;
-
-    let workspace_pk = ctx.workspace_pk()?;
-
     if !corrected_updates.is_empty() {
         // Once all updates have been performed, we can write out, and update the pointer.
         to_rebase_workspace_snapshot.write(ctx).await?;
@@ -157,139 +142,7 @@ pub async fn perform_rebase(
 
         debug!("pointer updated: {:?}", start.elapsed());
 
-        info!("Rebuild affected materialized views");
-        let changes = original_workspace_snapshot
-            .detect_changes(&to_rebase_workspace_snapshot)
-            .await?;
-        dbg!(&changes);
-
         ctx.set_workspace_snapshot(to_rebase_workspace_snapshot.clone());
-
-        let mut frontend_objects: Vec<si_frontend_types::object::FrontendObject> = Vec::new();
-        let mut patches = Vec::new();
-
-        let maybe_index = frigg.get_index(workspace_pk, ctx.change_set_id()).await?;
-        maybe_index_revision = maybe_index.as_ref().map(|index| index.1);
-        let maybe_previous_index = maybe_index.map(|index| index.0);
-
-        // TODO: Only process changes for EntityKind where all of the MVs referenced have already been processed.
-        for change in &changes {
-            let (maybe_patch, maybe_object) = {
-                let mv_id = change.entity_id.to_string();
-
-                si_frontend_types_macros::build_mv!(
-                    ctx,
-                    frigg,
-                    change,
-                    mv_id,
-                    si_frontend_types::view::View,
-                    dal::diagram::view::View::as_frontend_type(
-                        ctx,
-                        si_events::ulid::Ulid::from(change.entity_id).into()
-                    )
-                    .await,
-                )
-                .await?
-            };
-            if let Some(patch) = maybe_patch {
-                patches.push(patch);
-            }
-            if let Some(object) = maybe_object {
-                frontend_objects.push(object);
-            }
-
-            let (maybe_patch, maybe_object) = {
-                let mv_id = ctx.change_set_id().to_string();
-
-                si_frontend_types_macros::build_mv!(
-                    ctx,
-                    frigg,
-                    change,
-                    mv_id,
-                    si_frontend_types::view::ViewList,
-                    dal::diagram::view::View::as_frontend_list_type(ctx).await,
-                )
-                .await?
-            };
-            if let Some(patch) = maybe_patch {
-                patches.push(patch);
-            }
-            if let Some(object) = maybe_object {
-                frontend_objects.push(object);
-            }
-        }
-
-        dbg!(&frontend_objects);
-        frigg
-            .insert_objects(ctx.workspace_pk()?, frontend_objects.iter())
-            .await?;
-
-        let mut index_entries: Vec<IndexReference> =
-            frontend_objects.into_iter().map(Into::into).collect();
-        let new_index_entries: HashSet<(String, String)> = index_entries
-            .iter()
-            .map(|index_entry| (index_entry.kind.clone(), index_entry.id.clone()))
-            .collect();
-
-        // We need to get the old index, and update it with the new items,
-        // and remove any items that have also been removed.
-        if let Some((index_to_update, _revision)) =
-            frigg.get_index(workspace_pk, ctx.change_set_id()).await?
-        {
-            let mv_index: MvIndex = serde_json::from_value(index_to_update.data)?;
-            let removal_checksum = "0".to_string();
-            let removed_items: HashSet<(String, String)> = patches
-                .iter()
-                .filter_map(|patch| {
-                    if patch.to_checksum == removal_checksum {
-                        Some((patch.kind.clone(), patch.id.clone()))
-                    } else {
-                        None
-                    }
-                })
-                .collect();
-
-            for index_entry in dbg!(&mv_index.mv_list) {
-                if !removed_items.contains(&(index_entry.kind.clone(), index_entry.id.clone()))
-                    && !new_index_entries
-                        .contains(&(index_entry.kind.clone(), index_entry.id.clone()))
-                {
-                    index_entries.push(index_entry.clone());
-                }
-            }
-        }
-        index_entries.sort();
-
-        let mv_index = MvIndex::new(ctx.change_set_id(), index_entries);
-        let mv_index_frontend_object = FrontendObject::try_from(mv_index)?;
-        dbg!(&mv_index_frontend_object);
-
-        let (from_checksum, from_json_value) = match maybe_previous_index {
-            Some(previous_index) => (previous_index.checksum.to_string(), previous_index.data),
-            None => ("0".to_string(), serde_json::Value::Null),
-        };
-        let index_patch = ObjectPatch {
-            kind: ReferenceKind::MvIndex.to_string(),
-            id: mv_index_frontend_object.id.clone(),
-            from_checksum,
-            to_checksum: mv_index_frontend_object.checksum.to_string(),
-            patch: json_patch::diff(&from_json_value, &mv_index_frontend_object.data),
-        };
-        patches.push(index_patch);
-
-        let patch_batch = PatchBatch {
-            meta: PatchBatchMeta {
-                workspace_id: workspace_pk,
-                change_set_id: Some(ctx.change_set_id()),
-                snapshot_from_address: Some(original_workspace_snapshot.id().await),
-                snapshot_to_address: Some(to_rebase_workspace_snapshot.id().await),
-            },
-            kind: PATCH_BATCH_KIND,
-            patches,
-        };
-        DataCache::publish_patch_batch(ctx, dbg!(patch_batch)).await?;
-
-        maybe_index_update = Some(mv_index_frontend_object);
     }
 
     let updates_count = rebase_batch.updates().len();
@@ -300,21 +153,39 @@ pub async fn perform_rebase(
     );
     info!("rebase performed: {:?}", start.elapsed());
 
+    if frigg
+        .get_index(ctx.workspace_pk()?, ctx.change_set_id())
+        .await?
+        .is_some()
+    {
+        info!("Frigg index found, triggering rebuild of materialized views");
+        let changes = original_workspace_snapshot
+            .detect_changes(&to_rebase_workspace_snapshot)
+            .instrument(tracing::info_span!(
+                "Detect changes for materialized view rebuild"
+            ))
+            .await?;
+        dal::materialized_view::build_mv_for_changes_in_change_set(
+            ctx,
+            frigg,
+            ctx.change_set_id(),
+            original_workspace_snapshot.id().await,
+            to_rebase_workspace_snapshot.id().await,
+            &changes,
+        )
+        .instrument(tracing::info_span!("Rebuild affected materialized views"))
+        .await?;
+    } else {
+        info!("No Frigg index found, triggering initial build of materialized views");
+        dal::materialized_view::build_all_mv_for_change_set(ctx, frigg)
+            .instrument(tracing::info_span!(
+                "Initial build of all materialized views"
+            ))
+            .await?;
+    }
+
     // Before replying to the requester, we must commit.
     ctx.commit_no_rebase().await?;
-
-    if let Some(index_update) = maybe_index_update {
-        match maybe_index_revision {
-            Some(revision) => {
-                frigg
-                    .update_index(workspace_pk, &index_update, revision)
-                    .await?;
-            }
-            None => {
-                frigg.insert_index(workspace_pk, &index_update).await?;
-            }
-        }
-    }
 
     {
         let ctx_clone = ctx.clone();

@@ -374,12 +374,12 @@ pub fn build_mv(input: proc_macro2::TokenStream) -> syn::Result<proc_macro2::Tok
             async fn #build_mv_ident(
                 ctx: &DalContext,
                 frigg: &frigg::FriggStore,
-                change: &dal::workspace_snapshot::graph::detector::Change,
+                change: &Change,
                 mv_id: String,
-            ) -> RebaseResult<(
+            ) -> Result<(
                 Option<si_frontend_types::object::patch::ObjectPatch>,
                 Option<si_frontend_types::object::FrontendObject>,
-            )> {
+            ), MaterializedViewError> {
                 if <#mv_name as si_frontend_types::materialized_view::MaterializedView>::trigger_entity() == change.entity_kind {
                     if ctx
                         .workspace_snapshot()?
@@ -403,28 +403,10 @@ pub fn build_mv(input: proc_macro2::TokenStream) -> syn::Result<proc_macro2::Tok
                         ));
                     }
 
-                    let mv = #build_fn.map_err(|_| {
-                        // XXX: This error is absolutely incorrect, but sorting out the tangle of nested error types is
-                        //      a task for the not-a-spike version of this.
-                        RebaseError::WorkspaceSnapshot(
-                            dal::workspace_snapshot::WorkspaceSnapshotError::WorkspaceMissing,
-                        )
-                    })?;
-                    let mv_json = serde_json::to_value(&mv).map_err(|_| {
-                        // XXX: This error is absolutely incorrect, but sorting out the tangle of nested error types is
-                        //      a task for the not-a-spike version of this.
-                        RebaseError::WorkspaceSnapshot(
-                            dal::workspace_snapshot::WorkspaceSnapshotError::WorkspaceMissing,
-                        )
-                    })?;
+                    let mv = #build_fn?;
+                    let mv_json = serde_json::to_value(&mv)?;
                     let to_checksum = si_frontend_types::checksum::FrontendChecksum::checksum(&mv).to_string();
-                    let frontend_object: si_frontend_types::object::FrontendObject = mv.try_into().map_err(|_| {
-                        // XXX: This error is absolutely incorrect, but sorting out the tangle of nested error types is
-                        //      a task for the not-a-spike version of this.
-                        RebaseError::WorkspaceSnapshot(
-                            dal::workspace_snapshot::WorkspaceSnapshotError::WorkspaceMissing,
-                        )
-                    })?;
+                    let frontend_object: si_frontend_types::object::FrontendObject = mv.try_into()?;
 
                     let kind = <#mv_name as si_frontend_types::materialized_view::MaterializedView>::kind().to_string();
                     let (from_checksum, previous_data) = if let Some(previous_version) = frigg.get_current_object(ctx.workspace_pk()?, ctx.change_set_id(), &kind, &mv_id).await? {

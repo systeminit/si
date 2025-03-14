@@ -10,6 +10,7 @@ use axum::{
 use dal::{ChangeSet, ChangeSetId, WorkspacePk, WorkspaceSnapshotAddress};
 use hyper::StatusCode;
 use si_frontend_types::object::FrontendObject;
+use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{
@@ -29,6 +30,8 @@ pub enum IndexError {
     Frigg(#[from] frigg::FriggError),
     #[error("index not found; workspace_pk={0}, change_set_id={1}")]
     IndexNotFound(WorkspacePk, ChangeSetId),
+    #[error("Materialized view error: {0}")]
+    MaterializedView(#[from] dal::materialized_view::MaterializedViewError),
     #[error("transactions error: {0}")]
     Transactions(#[from] dal::TransactionsError),
 }
@@ -76,14 +79,34 @@ pub async fn get_change_set_index(
     FriggStore(frigg): FriggStore,
     Path((workspace_pk, change_set_id)): Path<(WorkspacePk, ChangeSetId)>,
 ) -> IndexResult<Json<FrontEndObjectMeta>> {
-    let ctx = builder.build_head(access_builder).await?;
+    let ctx = builder
+        .build(access_builder.build(change_set_id.into()))
+        .await?;
     let change_set = ChangeSet::get_by_id(&ctx, change_set_id).await?;
 
-    let index = frigg
-        .get_index(workspace_pk, change_set_id)
-        .await?
-        .map(|i| i.0)
-        .ok_or(IndexError::IndexNotFound(workspace_pk, change_set_id))?;
+    let index = match frigg.get_index(workspace_pk, change_set_id).await? {
+        Some((index, _kv_revision)) => index,
+        None => {
+            info!(
+                "Index not found for change_set {}; attempting full build",
+                change_set_id,
+            );
+            // We know the change set exists, but the index hasn't been built yet, so
+            // we'll trigger a full MV build and then try again.
+            dal::materialized_view::build_all_mv_for_change_set(&ctx, &frigg)
+                .instrument(tracing::info_span!(
+                    "Initial build of all materialized views"
+                ))
+                .await?;
+            ctx.commit_no_rebase().await?;
+
+            frigg
+                .get_index(workspace_pk, change_set_id)
+                .await?
+                .map(|i| i.0)
+                .ok_or(IndexError::IndexNotFound(workspace_pk, change_set_id))?
+        }
+    };
 
     Ok(Json(FrontEndObjectMeta {
         workspace_snapshot_address: change_set.workspace_snapshot_address,
@@ -106,7 +129,9 @@ pub async fn get_front_end_object(
     Path((workspace_pk, change_set_id)): Path<(WorkspacePk, ChangeSetId)>,
     Query(request): Query<FrontendObjectRequest>,
 ) -> IndexResult<Json<FrontEndObjectMeta>> {
-    let ctx = builder.build_head(access_builder).await?;
+    let ctx = builder
+        .build(access_builder.build(change_set_id.into()))
+        .await?;
     let change_set = ChangeSet::get_by_id(&ctx, change_set_id).await?;
 
     let obj;
