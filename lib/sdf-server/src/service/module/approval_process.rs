@@ -42,9 +42,7 @@ pub async fn begin_approval_process(
     let metadata = pkg_data.into_latest().metadata;
 
     let user = match ctx.history_actor() {
-        HistoryActor::User(user_pk) => User::get_by_pk(&ctx, *user_pk)
-            .await?
-            .ok_or(ModuleError::InvalidUser(*user_pk))?,
+        HistoryActor::User(user_pk) => User::get_by_pk(&ctx, *user_pk).await?,
 
         HistoryActor::SystemInit => {
             return Err(ModuleError::InvalidUserSystemInit);
@@ -101,9 +99,7 @@ pub async fn cancel_approval_process(
 
     let user_pk = match ctx.history_actor() {
         HistoryActor::User(user_pk) => {
-            let user = User::get_by_pk(&ctx, *user_pk)
-                .await?
-                .ok_or(ModuleError::InvalidUser(*user_pk))?;
+            let user = User::get_by_pk(&ctx, *user_pk).await?;
 
             Some(user.pk())
         }

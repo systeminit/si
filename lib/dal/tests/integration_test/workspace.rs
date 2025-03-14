@@ -31,10 +31,9 @@ async fn export_import_loop(ctx: &mut DalContext) {
         .expect("commit and update snapshot to visibility");
 
     let workspace_pk = ctx.tenancy().workspace_pk_opt().expect("find workspace pk");
-    let mut workspace = Workspace::get_by_pk(ctx, &workspace_pk)
+    let mut workspace = Workspace::get_by_pk(ctx, workspace_pk)
         .await
-        .expect("execute find workspace")
-        .expect("find workspace");
+        .expect("execute find workspace");
 
     // Export changeset
     let workspace_export = workspace

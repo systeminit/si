@@ -27,7 +27,7 @@ use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     standard_model, standard_model_accessor_ro, BuiltinsError, DalContext, HistoryActor,
     HistoryEvent, HistoryEventError, KeyPairError, StandardModelError, Tenancy, Timestamp,
-    TransactionsError, User, UserError, UserPk, WorkspaceSnapshot, WorkspaceSnapshotGraph,
+    TransactionsError, User, UserError, WorkspaceSnapshot, WorkspaceSnapshotGraph,
 };
 
 pub use si_id::WorkspaceId;
@@ -63,8 +63,6 @@ pub enum WorkspaceError {
     HistoryEvent(#[from] HistoryEventError),
     #[error("Trying to import a changeset that does not have a valid base: {0}")]
     ImportingOrphanChangeset(ChangeSetId),
-    #[error("invalid user {0}")]
-    InvalidUser(UserPk),
     #[error(transparent)]
     KeyPair(#[from] KeyPairError),
     #[error("LayerDb error: {0}")]
@@ -451,9 +449,9 @@ impl Workspace {
         Ok(new_workspace)
     }
 
-    pub async fn get_by_pk(
+    pub async fn get_by_pk_opt(
         ctx: &DalContext,
-        pk: &WorkspacePk,
+        pk: WorkspacePk,
     ) -> WorkspaceResult<Option<Workspace>> {
         let row = ctx
             .txns()
@@ -469,11 +467,8 @@ impl Workspace {
         }
     }
 
-    pub async fn get_by_pk_or_error(
-        ctx: &DalContext,
-        pk: WorkspacePk,
-    ) -> WorkspaceResult<Workspace> {
-        Self::get_by_pk(ctx, &pk)
+    pub async fn get_by_pk(ctx: &DalContext, pk: WorkspacePk) -> WorkspaceResult<Workspace> {
+        Self::get_by_pk_opt(ctx, pk)
             .await?
             .ok_or(WorkspaceError::WorkspaceNotFound(pk))
     }
@@ -542,9 +537,7 @@ impl Workspace {
         let (content_store_values, _) = serialize::to_vec(&store_values_map)?;
 
         let created_by = if let HistoryActor::User(user_pk) = ctx.history_actor() {
-            let user = User::get_by_pk(ctx, *user_pk)
-                .await?
-                .ok_or(WorkspaceError::InvalidUser(*user_pk))?;
+            let user = User::get_by_pk(ctx, *user_pk).await?;
 
             user.email().clone()
         } else {

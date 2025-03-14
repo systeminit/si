@@ -133,7 +133,7 @@ impl KeyPair {
     standard_model_accessor_ro!(created_lamport_clock, u64);
 
     pub async fn workspace(&self, ctx: &DalContext) -> KeyPairResult<Workspace> {
-        Workspace::get_by_pk(ctx, &self.workspace_pk)
+        Workspace::get_by_pk_opt(ctx, self.workspace_pk)
             .await
             .map_err(Box::new)?
             .ok_or(KeyPairError::InvalidWorkspace(self.workspace_pk))

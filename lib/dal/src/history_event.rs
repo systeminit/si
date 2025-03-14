@@ -50,7 +50,7 @@ impl HistoryActor {
     pub async fn email(&self, ctx: &DalContext) -> HistoryEventResult<String> {
         Ok(match self {
             HistoryActor::SystemInit => "sally@systeminit.com".to_string(),
-            HistoryActor::User(user_pk) => User::get_by_pk_or_error(ctx, *user_pk)
+            HistoryActor::User(user_pk) => User::get_by_pk(ctx, *user_pk)
                 .await
                 .map_err(|e| HistoryEventError::User(e.to_string()))?
                 .email()

@@ -139,18 +139,12 @@ async fn create_action_using_secret(ctx: &mut DalContext, nw: &WorkspaceSignup) 
     );
 
     // set workspace token as it is currently set by interacting with the auth-api
-    Workspace::get_by_pk(
-        ctx,
-        &ctx.tenancy()
-            .workspace_pk_opt()
-            .expect("could not get workspace pk"),
-    )
-    .await
-    .expect("could not get workspace")
-    .expect("workspace is not some")
-    .set_token(ctx, "token".to_string())
-    .await
-    .expect("could not set token");
+    Workspace::get_by_pk(ctx, ctx.tenancy().workspace_pk().expect("workspace"))
+        .await
+        .expect("could not get workspace")
+        .set_token(ctx, "token".to_string())
+        .await
+        .expect("could not set token");
 
     // Ensure that the parent is head so that the "create" action will execute by default.
     // Technically, this primarily validates the test setup rather than the system itself, but it

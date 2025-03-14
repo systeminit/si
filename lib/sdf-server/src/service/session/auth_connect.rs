@@ -102,7 +102,7 @@ async fn find_or_create_user_and_workspace(
     spicedb_client: Option<&mut SpiceDbClient>,
 ) -> SessionResult<(User, Workspace)> {
     // lookup user or create if we've never seen it before
-    let maybe_user = User::get_by_pk(&ctx, auth_api_user.id).await?;
+    let maybe_user = User::get_by_pk_opt(&ctx, auth_api_user.id).await?;
     let user = match maybe_user {
         Some(user) => user,
         None => {
@@ -119,7 +119,7 @@ async fn find_or_create_user_and_workspace(
     ctx.update_history_actor(HistoryActor::User(user.pk()));
 
     // lookup workspace or create if we've never seen it before
-    let maybe_workspace = Workspace::get_by_pk(&ctx, &auth_api_workspace.id).await?;
+    let maybe_workspace = Workspace::get_by_pk_opt(&ctx, auth_api_workspace.id).await?;
     let workspace = match maybe_workspace {
         Some(mut workspace) => {
             ctx.update_tenancy(Tenancy::new(*workspace.pk()));

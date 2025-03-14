@@ -229,7 +229,7 @@ impl ChangeSet {
     pub async fn fork_head(ctx: &DalContext, name: impl AsRef<str>) -> ChangeSetResult<Self> {
         let workspace_pk = ctx.workspace_pk()?;
 
-        let workspace = Workspace::get_by_pk_or_error(ctx, workspace_pk).await?;
+        let workspace = Workspace::get_by_pk(ctx, workspace_pk).await?;
 
         let head = workspace.default_change_set(ctx).await?;
 
@@ -245,19 +245,21 @@ impl ChangeSet {
     ) -> ChangeSetResult<si_frontend_types::ChangeSet> {
         let merge_requested_by_user =
             if let Some(merge_requested_by) = self.merge_requested_by_user_id {
-                User::get_by_pk(ctx, merge_requested_by).await?.map(|user| {
-                    if user.name().is_empty() {
-                        user.email().clone()
-                    } else {
-                        user.name().clone()
-                    }
-                })
+                User::get_by_pk_opt(ctx, merge_requested_by)
+                    .await?
+                    .map(|user| {
+                        if user.name().is_empty() {
+                            user.email().clone()
+                        } else {
+                            user.name().clone()
+                        }
+                    })
             } else {
                 None
             };
 
         let reviewed_by_user = if let Some(reviewed_by) = self.reviewed_by_user_id {
-            User::get_by_pk(ctx, reviewed_by).await?.map(|user| {
+            User::get_by_pk_opt(ctx, reviewed_by).await?.map(|user| {
                 if user.name().is_empty() {
                     user.email().clone()
                 } else {
@@ -311,7 +313,7 @@ impl ChangeSet {
     }
 
     async fn workspace(&self, ctx: &DalContext) -> ChangeSetResult<Workspace> {
-        Ok(Workspace::get_by_pk_or_error(ctx, self.workspace_id()?).await?)
+        Ok(Workspace::get_by_pk(ctx, self.workspace_id()?).await?)
     }
 
     pub async fn is_head(&self, ctx: &DalContext) -> ChangeSetResult<bool> {
@@ -916,7 +918,7 @@ impl ChangeSet {
     pub async fn extract_userid_from_context(ctx: &DalContext) -> Option<UserPk> {
         let user_id = match ctx.history_actor() {
             HistoryActor::User(user_pk) => {
-                let maybe_user = User::get_by_pk(ctx, *user_pk).await;
+                let maybe_user = User::get_by_pk_opt(ctx, *user_pk).await;
                 match maybe_user {
                     Ok(user_option) => user_option.map(|user| user.pk()),
                     Err(_) => None,
@@ -929,7 +931,7 @@ impl ChangeSet {
     pub async fn extract_userid_from_context_or_error(ctx: &DalContext) -> ChangeSetResult<UserPk> {
         let user_id = match ctx.history_actor() {
             HistoryActor::User(user_pk) => {
-                let maybe_user = User::get_by_pk_or_error(ctx, *user_pk).await;
+                let maybe_user = User::get_by_pk(ctx, *user_pk).await;
                 match maybe_user {
                     Ok(user) => user.pk(),
                     Err(err) => return Err(ChangeSetError::User(err)),

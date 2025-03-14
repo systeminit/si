@@ -449,7 +449,7 @@ impl Diagram {
             return Ok((ctx.workspace_snapshot()?.clone(), false));
         };
 
-        let workspace = Workspace::get_by_pk_or_error(
+        let workspace = Workspace::get_by_pk(
             ctx,
             ctx.tenancy()
                 .workspace_pk_opt()

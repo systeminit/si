@@ -384,7 +384,7 @@ mod handlers {
                 run_notify.notify_one();
             }
 
-            if let Some(workspace) = Workspace::get_by_pk(&ctx, &workspace_id).await? {
+            if let Some(workspace) = Workspace::get_by_pk_opt(&ctx, workspace_id).await? {
                 if workspace.default_change_set_id() == ctx.visibility().change_set_id {
                     let mut change_set =
                         ChangeSet::get_by_id(&ctx, ctx.visibility().change_set_id).await?;

@@ -124,8 +124,6 @@ pub enum PkgError {
     Workspace(#[from] WorkspaceError),
     #[error("workspace export not supported")]
     WorkspaceExportNotSupported(),
-    #[error("Workspace not found: {0}")]
-    WorkspaceNotFound(WorkspacePk),
     #[error("workspace pk not found on context")]
     WorkspacePkNone,
     #[error("workspace snapshot error: {0}")]

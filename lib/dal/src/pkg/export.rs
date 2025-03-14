@@ -1093,9 +1093,7 @@ impl PkgExporter {
 
         if let Some(workspace_pk) = ctx.tenancy().workspace_pk_opt() {
             pkg_spec_builder.workspace_pk(workspace_pk.to_string());
-            let workspace = Workspace::get_by_pk(ctx, &workspace_pk)
-                .await?
-                .ok_or(PkgError::WorkspaceNotFound(workspace_pk))?;
+            let workspace = Workspace::get_by_pk(ctx, workspace_pk).await?;
             pkg_spec_builder.workspace_name(workspace.name());
         }
 

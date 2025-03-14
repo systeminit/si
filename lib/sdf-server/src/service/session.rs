@@ -6,7 +6,7 @@ use axum::{
 };
 use dal::{
     workspace_integrations::WorkspaceIntegrationsError, KeyPairError, StandardModelError,
-    TransactionsError, UserError, UserPk, WorkspaceError, WorkspacePk,
+    TransactionsError, UserError, WorkspaceError, WorkspacePk,
 };
 use serde::{Deserialize, Serialize};
 use si_data_spicedb::SpiceDbError;
@@ -28,10 +28,6 @@ pub enum SessionError {
     AuthApiError(String),
     #[error(transparent)]
     ContextTransactions(#[from] TransactionsError),
-    #[error("Invalid user: {0}")]
-    InvalidUser(UserPk),
-    #[error("Invalid workspace: {0}")]
-    InvalidWorkspace(WorkspacePk),
     #[error("json serialize failed")]
     JSONSerialize(#[from] serde_json::Error),
     #[error(transparent)]
@@ -73,10 +69,12 @@ pub type SessionResult<T> = std::result::Result<T, SessionError>;
 impl IntoResponse for SessionError {
     fn into_response(self) -> Response {
         let (status_code, error_message) = match self {
-            SessionError::LoginFailed => (StatusCode::CONFLICT, self.to_string()),
-            SessionError::InvalidWorkspace(_) => (StatusCode::CONFLICT, self.to_string()),
-            SessionError::WorkspacePermission(_) => (StatusCode::UNAUTHORIZED, self.to_string()),
-            SessionError::AuthApiError(_) => (StatusCode::UNAUTHORIZED, self.to_string()),
+            Self::LoginFailed => (StatusCode::CONFLICT, self.to_string()),
+            Self::Workspace(WorkspaceError::WorkspaceNotFound(_)) => {
+                (StatusCode::CONFLICT, self.to_string())
+            }
+            Self::WorkspacePermission(_) => (StatusCode::UNAUTHORIZED, self.to_string()),
+            Self::AuthApiError(_) => (StatusCode::UNAUTHORIZED, self.to_string()),
             _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
         };
 

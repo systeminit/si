@@ -42,9 +42,7 @@ pub async fn install_workspace(
             .tenancy()
             .workspace_pk_opt()
             .ok_or(WorkspaceAPIError::RootTenancyInstallAttempt)?;
-        Workspace::get_by_pk(&ctx, &workspace_pk)
-            .await?
-            .ok_or(WorkspaceAPIError::WorkspaceNotFound(workspace_pk))?
+        Workspace::get_by_pk(&ctx, workspace_pk).await?
     };
 
     let id = Ulid::new();

@@ -380,9 +380,7 @@ impl DalContext {
             .tenancy()
             .workspace_pk_opt()
             .unwrap_or(WorkspacePk::NONE);
-        let workspace = Workspace::get_by_pk(self, &workspace_pk)
-            .await?
-            .ok_or(TransactionsError::WorkspaceNotFound(workspace_pk))?;
+        let workspace = Workspace::get_by_pk(self, workspace_pk).await?;
         Ok(workspace.default_change_set_id())
     }
 
@@ -391,17 +389,13 @@ impl DalContext {
             .tenancy()
             .workspace_pk_opt()
             .unwrap_or(WorkspacePk::NONE);
-        let workspace = Workspace::get_by_pk(self, &workspace_pk)
-            .await?
-            .ok_or(TransactionsError::WorkspaceNotFound(workspace_pk))?;
+        let workspace = Workspace::get_by_pk(self, workspace_pk).await?;
         Ok(workspace.token())
     }
 
     pub async fn get_workspace(&self) -> Result<Workspace, TransactionsError> {
         let workspace_pk = self.tenancy().workspace_pk().unwrap_or(WorkspacePk::NONE);
-        let workspace = Workspace::get_by_pk(self, &workspace_pk)
-            .await?
-            .ok_or(TransactionsError::WorkspaceNotFound(workspace_pk))?;
+        let workspace = Workspace::get_by_pk(self, workspace_pk).await?;
 
         Ok(workspace)
     }
@@ -770,7 +764,7 @@ impl DalContext {
     }
 
     async fn workspace(&self) -> TransactionsResult<Workspace> {
-        Ok(Workspace::get_by_pk_or_error(self, self.tenancy.workspace_pk()?).await?)
+        Ok(Workspace::get_by_pk(self, self.tenancy.workspace_pk()?).await?)
     }
 
     pub async fn parent_is_head(&self) -> TransactionsResult<bool> {
@@ -1419,8 +1413,6 @@ pub enum TransactionsError {
     TxnStart(&'static str),
     #[error("workspace error: {0}")]
     Workspace(#[from] Box<WorkspaceError>),
-    #[error("workspace not found by pk: {0}")]
-    WorkspaceNotFound(WorkspacePk),
     #[error("workspace not set on DalContext")]
     WorkspaceNotSet,
     #[error("workspace snapshot error: {0}")]

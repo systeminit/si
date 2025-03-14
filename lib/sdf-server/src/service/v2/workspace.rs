@@ -4,7 +4,6 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use dal::{UserPk, WorkspacePk};
 use thiserror::Error;
 
 use crate::{app_state::AppState, service::ApiError};
@@ -29,12 +28,8 @@ pub enum WorkspaceAPIError {
     Url(#[from] url::ParseError),
     #[error("user error: {0}")]
     User(#[from] dal::UserError),
-    #[error("user not found: {0}")]
-    UserNotFound(UserPk),
     #[error("workspace error: {0}")]
     Workspace(#[from] dal::WorkspaceError),
-    #[error("workspace not found: {0}")]
-    WorkspaceNotFound(WorkspacePk),
 }
 
 pub type WorkspaceAPIResult<T> = Result<T, WorkspaceAPIError>;
@@ -42,7 +37,9 @@ pub type WorkspaceAPIResult<T> = Result<T, WorkspaceAPIError>;
 impl IntoResponse for WorkspaceAPIError {
     fn into_response(self) -> Response {
         let (status_code, error_message) = match self {
-            WorkspaceAPIError::WorkspaceNotFound(_) => (StatusCode::NOT_FOUND, self.to_string()),
+            Self::Workspace(dal::WorkspaceError::WorkspaceNotFound(_)) => {
+                (StatusCode::NOT_FOUND, self.to_string())
+            }
             _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
         };
 
