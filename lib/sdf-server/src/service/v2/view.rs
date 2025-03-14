@@ -13,8 +13,8 @@ use dal::{
     pkg::PkgError,
     slow_rt::SlowRuntimeError,
     workspace_snapshot::graph::WorkspaceSnapshotGraphError,
-    ChangeSetError, ComponentError, FuncError, SchemaError, SchemaId, SchemaVariantError,
-    TransactionsError, WorkspaceSnapshotError, WsEventError,
+    ChangeSetError, ComponentError, FuncError, SchemaError, SchemaVariantError, TransactionsError,
+    WorkspaceSnapshotError, WsEventError,
 };
 use si_id::ViewId;
 use thiserror::Error;
@@ -67,8 +67,6 @@ pub enum ViewError {
     Pkg(#[from] PkgError),
     #[error("schema error: {0}")]
     Schema(#[from] SchemaError),
-    #[error("No schema installed after successful package import for {0}")]
-    SchemaNotInstalledAfterImport(SchemaId),
     #[error("schema variant error: {0}")]
     SchemaVariant(#[from] SchemaVariantError),
     #[error("serrde error: {0}")]
@@ -77,8 +75,6 @@ pub enum ViewError {
     SlowRuntime(#[from] SlowRuntimeError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
-    #[error("No installable module found for schema id {0}")]
-    UninstalledSchemaNotFound(SchemaId),
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
     #[error("WsEvent error: {0}")]

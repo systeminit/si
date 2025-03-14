@@ -28,14 +28,10 @@ async fn get_schema_variant(ctx: &DalContext) {
         .await
         .expect("unable to get schema");
 
-    let maybe_sv_id = swifty_schema
-        .get_default_schema_variant_id(ctx)
+    let sv_id = Schema::default_variant_id(ctx, swifty_schema.id())
         .await
         .expect("unable to get schema variant");
 
-    assert!(maybe_sv_id.is_some());
-
-    let sv_id = maybe_sv_id.unwrap();
     let sv_funcs = SchemaVariant::all_funcs(ctx, sv_id)
         .await
         .expect("Unable to get all schema variant funcs");

@@ -464,9 +464,7 @@ impl ChangeSet {
 
         // Lock all unlocked variants
         for schema_id in Schema::list_ids(ctx).await.map_err(Box::new)? {
-            let schema = Schema::get_by_id_or_error(ctx, schema_id)
-                .await
-                .map_err(Box::new)?;
+            let schema = Schema::get_by_id(ctx, schema_id).await.map_err(Box::new)?;
             let Some(variant) = SchemaVariant::get_unlocked_for_schema(ctx, schema_id)
                 .await
                 .map_err(Box::new)?
@@ -478,7 +476,7 @@ impl ChangeSet {
 
             variant.lock(ctx).await.map_err(Box::new)?;
             schema
-                .set_default_schema_variant(ctx, variant_id)
+                .set_default_variant_id(ctx, variant_id)
                 .await
                 .map_err(Box::new)?;
         }

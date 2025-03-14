@@ -4,7 +4,7 @@ use dal::diagram::Diagram;
 use dal::func::authoring::FuncAuthoringClient;
 use dal::prop::PropPath;
 use dal::schema::variant::authoring::VariantAuthoringClient;
-use dal::{AttributeValue, Component, ComponentType, DalContext, Prop, SchemaVariant};
+use dal::{AttributeValue, Component, ComponentType, DalContext, Prop, Schema, SchemaVariant};
 use dal_test::expected::{ExpectComponent, ExpectSchema, ExpectSchemaVariant};
 use dal_test::helpers::{
     create_component_for_default_schema_name_in_default_view, ChangeSetTestHelpers,
@@ -37,12 +37,11 @@ async fn auto_upgrade_component(ctx: &mut DalContext) {
         .await
         .expect("Unable to get the schema for the variant");
 
-    let default_schema_variant = my_asset_schema
-        .get_default_schema_variant_id(ctx)
-        .await
-        .expect("unable to get the default schema variant id");
-    assert!(default_schema_variant.is_some());
-    assert_eq!(default_schema_variant, Some(variant_zero.id()));
+    let default_schema_variant =
+        Schema::default_variant_id(ctx, my_asset_schema.id())
+            .await
+            .expect("unable to get the default schema variant id");
+    assert_eq!(default_schema_variant, variant_zero.id());
 
     // Build Create Action Func
     let create_action_code = "async function main() {

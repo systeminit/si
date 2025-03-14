@@ -1088,7 +1088,7 @@ async fn install_schema(
 
     check_change_set_and_not_head(&ctx).await?;
 
-    if Schema::get_by_id(&ctx, schema_id).await?.is_none() {
+    if !Schema::exists_locally(&ctx, schema_id).await? {
         let default_variant_id = Schema::get_or_install_default_variant(&ctx, schema_id).await?;
         let variant = SchemaVariant::get_by_id_or_error(&ctx, default_variant_id).await?;
 

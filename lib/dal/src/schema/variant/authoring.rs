@@ -357,9 +357,7 @@ impl VariantAuthoringClient {
             }
 
             if original_is_default {
-                schema
-                    .set_default_schema_variant(ctx, new_variant.id)
-                    .await?;
+                schema.set_default_variant_id(ctx, new_variant.id).await?;
             }
 
             // When we get here, "schema_variant_id" points to an unlocked variant with no components

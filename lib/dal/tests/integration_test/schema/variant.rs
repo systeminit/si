@@ -109,11 +109,9 @@ async fn all_prop_ids(ctx: &DalContext) {
     let schema = Schema::get_by_name(ctx, "starfield")
         .await
         .expect("schema not found");
-    let schema_variant_id = schema
-        .get_default_schema_variant_id(ctx)
+    let schema_variant_id = Schema::default_variant_id(ctx, schema.id())
         .await
-        .expect("unable to get schema variant")
-        .expect("schema variant not found");
+        .expect("unable to get schema variant");
 
     let all_prop_ids = SchemaVariant::all_prop_ids(ctx, schema_variant_id)
         .await
@@ -189,11 +187,9 @@ async fn all_funcs(ctx: &DalContext) {
     let schema = Schema::get_by_name(ctx, "swifty")
         .await
         .expect("schema not found");
-    let schema_variant_id = schema
-        .get_default_schema_variant_id(ctx)
+    let schema_variant_id = Schema::default_variant_id(ctx, schema.id())
         .await
-        .expect("unable to get schema variant")
-        .expect("schema variant not found");
+        .expect("unable to get schema variant");
     let all_funcs = SchemaVariant::all_funcs(ctx, schema_variant_id)
         .await
         .expect("unable to get all funcs");
@@ -217,11 +213,9 @@ async fn all_funcs(ctx: &DalContext) {
     let schema = Schema::get_by_name(ctx, "starfield")
         .await
         .expect("schema not found");
-    let schema_variant_id = schema
-        .get_default_schema_variant_id(ctx)
+    let schema_variant_id = Schema::default_variant_id(ctx, schema.id())
         .await
-        .expect("unable to get schema variant")
-        .expect("schema variant not found");
+        .expect("unable to get schema variant");
     let all_funcs = SchemaVariant::all_funcs(ctx, schema_variant_id)
         .await
         .expect("unable to get all funcs");

@@ -4,7 +4,7 @@ use dal::prop::PropPath;
 use dal::schema::variant::authoring::VariantAuthoringClient;
 use dal::{
     AttributeValue, AttributeValueId, Component, ComponentId, DalContext, FuncBackendKind,
-    FuncBackendResponseType, Prop, PropId, SchemaVariant, SchemaVariantId,
+    FuncBackendResponseType, Prop, PropId, Schema, SchemaVariant, SchemaVariantId,
 };
 use dal_test::expected::ExpectSchemaVariant;
 use dal_test::helpers::create_component_for_schema_variant_on_default_view;
@@ -31,10 +31,9 @@ async fn import_pkg_from_pkg_set_latest_default(ctx: &mut DalContext) -> Result<
 
     let schema = variant.schema(ctx).await?;
 
-    let default_schema_variant = schema.get_default_schema_variant_id(ctx).await?;
+    let default_schema_variant = Schema::default_variant_id(ctx, schema.id()).await?;
 
-    assert!(default_schema_variant.is_some());
-    assert_eq!(default_schema_variant, Some(variant.id()));
+    assert_eq!(default_schema_variant, variant.id());
 
     // now lets create a pkg from the asset and import it
     let (variant_spec, variant_funcs) =
@@ -90,14 +89,10 @@ async fn import_pkg_from_pkg_set_latest_default(ctx: &mut DalContext) -> Result<
     .await?;
     assert_eq!(variants.len(), 1);
 
-    let default_schema_variant = schema.get_default_schema_variant_id(ctx).await?;
+    let default_schema_variant = Schema::default_variant_id(ctx, schema.id()).await?;
 
     // the new default variant should be the one we just added
-    assert!(default_schema_variant.is_some());
-    assert_eq!(
-        default_schema_variant,
-        Some(variants.pop().expect("should pop"))
-    );
+    assert_eq!(default_schema_variant, variants.pop().expect("should pop"));
 
     Ok(())
 }

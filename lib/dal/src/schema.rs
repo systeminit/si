@@ -55,6 +55,8 @@ pub enum SchemaError {
     NoSchemaVariantWithName(String),
     #[error("pkg error: {0}")]
     Pkg(#[from] Box<PkgError>),
+    #[error("No schema installed after successful package import for {0}")]
+    SchemaNotInstalledAfterImport(SchemaId),
     #[error("schema variant error: {0}")]
     SchemaVariant(#[from] Box<SchemaVariantError>),
     #[error("transactions error: {0}")]
@@ -65,6 +67,18 @@ pub enum SchemaError {
     UninstalledSchemaNotFound(SchemaId),
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
+}
+
+impl From<PkgError> for SchemaError {
+    fn from(value: PkgError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<SchemaVariantError> for SchemaError {
+    fn from(value: SchemaVariantError) -> Self {
+        Box::new(value).into()
+    }
 }
 
 pub type SchemaResult<T> = Result<T, SchemaError>;
@@ -172,21 +186,16 @@ impl Schema {
         Ok(Self::assemble(id, content))
     }
 
-    pub async fn get_default_schema_variant_id(
-        &self,
+    pub async fn default_variant_id(
         ctx: &DalContext,
-    ) -> SchemaResult<Option<SchemaVariantId>> {
-        Self::get_default_schema_variant_by_id(ctx, self.id).await
-    }
-
-    pub async fn get_default_schema_variant_id_or_error(
-        &self,
-        ctx: &DalContext,
+        schema_id: SchemaId,
     ) -> SchemaResult<SchemaVariantId> {
-        Self::get_default_schema_variant_by_id_or_error(ctx, self.id).await
+        Self::default_variant_id_opt(ctx, schema_id)
+            .await?
+            .ok_or(SchemaError::DefaultSchemaVariantNotFound(schema_id))
     }
 
-    pub async fn get_default_schema_variant_by_id(
+    pub async fn default_variant_id_opt(
         ctx: &DalContext,
         schema_id: SchemaId,
     ) -> SchemaResult<Option<SchemaVariantId>> {
@@ -209,15 +218,6 @@ impl Schema {
         }
 
         Ok(None)
-    }
-
-    pub async fn get_default_schema_variant_by_id_or_error(
-        ctx: &DalContext,
-        schema_id: SchemaId,
-    ) -> SchemaResult<SchemaVariantId> {
-        Self::get_default_schema_variant_by_id(ctx, schema_id)
-            .await?
-            .ok_or(SchemaError::DefaultSchemaVariantNotFound(schema_id))
     }
 
     /// This method returns all [`SchemaVariantIds`](SchemaVariant) that are used by the [`Schema`]
@@ -248,7 +248,7 @@ impl Schema {
         Ok(schema_variant_ids)
     }
 
-    pub async fn set_default_schema_variant(
+    pub async fn set_default_variant_id(
         &self,
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
@@ -330,7 +330,7 @@ impl Schema {
             .is_some())
     }
 
-    pub async fn get_by_id(ctx: &DalContext, id: SchemaId) -> SchemaResult<Option<Self>> {
+    pub async fn get_by_id_opt(ctx: &DalContext, id: SchemaId) -> SchemaResult<Option<Self>> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
         let Some(node_index) = workspace_snapshot.get_node_index_by_id_opt(id).await else {
@@ -353,7 +353,7 @@ impl Schema {
         Ok(Some(Self::assemble(id, inner)))
     }
 
-    pub async fn get_by_id_or_error(ctx: &DalContext, id: SchemaId) -> SchemaResult<Self> {
+    pub async fn get_by_id(ctx: &DalContext, id: SchemaId) -> SchemaResult<Self> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
         let node_index = workspace_snapshot.get_node_index_by_id(id).await?;
@@ -472,7 +472,10 @@ impl Schema {
     }
 
     // NOTE(nick): this assumes that schema names are unique.
-    pub async fn get_by_name(ctx: &DalContext, name: impl AsRef<str>) -> SchemaResult<Self> {
+    pub async fn get_by_name_opt(
+        ctx: &DalContext,
+        name: impl AsRef<str>,
+    ) -> SchemaResult<Option<Self>> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
         let schema_node_indices = {
             let schema_category_index_id = workspace_snapshot
@@ -494,14 +497,18 @@ impl Schema {
                     .await?
                     .get_content_node_weight_of_kind(ContentAddressDiscriminants::Schema)?
             };
-            let schema = Self::get_by_id_or_error(ctx, schema_node_weight.id().into()).await?;
+            let schema = Self::get_by_id(ctx, schema_node_weight.id().into()).await?;
             if schema.name == name.as_ref() {
-                return Ok(schema);
+                return Ok(Some(schema));
             }
         }
-        Err(SchemaError::NoSchemaVariantWithName(
-            name.as_ref().to_string(),
-        ))
+        Ok(None)
+    }
+
+    pub async fn get_by_name(ctx: &DalContext, name: impl AsRef<str>) -> SchemaResult<Self> {
+        Self::get_by_name_opt(ctx, name.as_ref())
+            .await?
+            .ok_or_else(|| SchemaError::NoSchemaVariantWithName(name.as_ref().to_string()))
     }
 
     /// Collect all [`FuncIds`](crate::Func) corresponding to the provided [`SchemaId`](Schema).
@@ -510,11 +517,7 @@ impl Schema {
     pub async fn all_func_ids(ctx: &DalContext, id: SchemaId) -> SchemaResult<HashSet<FuncId>> {
         let mut func_ids = HashSet::new();
         for schema_variant_id in Self::list_schema_variant_ids(ctx, id).await? {
-            func_ids.extend(
-                SchemaVariant::all_func_ids(ctx, schema_variant_id)
-                    .await
-                    .map_err(Box::new)?,
-            );
+            func_ids.extend(SchemaVariant::all_func_ids(ctx, schema_variant_id).await?);
         }
         Ok(func_ids)
     }
@@ -539,33 +542,26 @@ impl Schema {
         ctx: &DalContext,
         schema_id: SchemaId,
     ) -> SchemaResult<SchemaVariantId> {
-        Ok(match Schema::get_by_id(ctx, schema_id).await? {
-            Some(schema) => schema
-                .get_default_schema_variant_id(ctx)
+        // Install the schema, if it isn't already
+        if !Self::exists_locally(ctx, schema_id).await? {
+            let mut uninstalled_module = CachedModule::find_latest_for_schema_id(ctx, schema_id)
                 .await?
-                .ok_or(SchemaError::NoDefaultSchemaVariant(schema_id))?,
-            None => {
-                let mut uninstalled_module =
-                    CachedModule::find_latest_for_schema_id(ctx, schema_id)
-                        .await?
-                        .ok_or(SchemaError::UninstalledSchemaNotFound(schema_id))?;
+                .ok_or(SchemaError::UninstalledSchemaNotFound(schema_id))?;
 
-                let si_pkg = uninstalled_module.si_pkg(ctx).await?;
-                import_pkg_from_pkg(
-                    ctx,
-                    &si_pkg,
-                    Some(ImportOptions {
-                        schema_id: Some(schema_id.into()),
-                        ..Default::default()
-                    }),
-                )
-                .await
-                .map_err(Box::new)?;
+            let si_pkg = uninstalled_module.si_pkg(ctx).await?;
+            import_pkg_from_pkg(
+                ctx,
+                &si_pkg,
+                Some(ImportOptions {
+                    schema_id: Some(schema_id.into()),
+                    ..Default::default()
+                }),
+            )
+            .await?;
+        }
 
-                Schema::get_default_schema_variant_by_id(ctx, schema_id)
-                    .await?
-                    .ok_or(SchemaError::NoDefaultSchemaVariant(schema_id))?
-            }
-        })
+        Self::default_variant_id_opt(ctx, schema_id)
+            .await?
+            .ok_or(SchemaError::SchemaNotInstalledAfterImport(schema_id))
     }
 }

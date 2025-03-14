@@ -132,18 +132,12 @@ async fn unlock_and_save_variant(ctx: &mut DalContext) {
     let schema = Schema::get_by_name(ctx, "dummy-secret")
         .await
         .expect("schema not found");
-    let default_schema_variant = schema
-        .get_default_schema_variant_id(ctx)
+    let default_schema_variant = Schema::default_variant_id(ctx, schema.id())
         .await
         .expect("Unable to find the default schema variant id");
-    let existing_variant = SchemaVariant::get_by_id_or_error(
-        ctx,
-        default_schema_variant.expect("unable to unwrap schema variant id"),
-    )
-    .await
-    .expect("unable to lookup the default schema variant");
-
-    assert!(default_schema_variant.is_some());
+    let existing_variant = SchemaVariant::get_by_id_or_error(ctx, default_schema_variant)
+        .await
+        .expect("unable to lookup the default schema variant");
 
     let unlocked_schema_variant =
         VariantAuthoringClient::create_unlocked_variant_copy(ctx, existing_variant.id())
@@ -233,18 +227,13 @@ async fn unlock_and_save_variant(ctx: &mut DalContext) {
     let schema = Schema::get_by_name(ctx, "dummy-secret")
         .await
         .expect("schema not found");
-    let default_schema_variant = schema
-        .get_default_schema_variant_id(ctx)
+    let default_schema_variant = Schema::default_variant_id(ctx, schema.id())
         .await
         .expect("Unable to find the default schema variant id");
-    let new_merged_variant = SchemaVariant::get_by_id_or_error(
-        ctx,
-        default_schema_variant.expect("unable to unwrap schema variant id"),
-    )
-    .await
-    .expect("unable to lookup the default schema variant");
+    let new_merged_variant = SchemaVariant::get_by_id_or_error(ctx, default_schema_variant)
+        .await
+        .expect("unable to lookup the default schema variant");
 
-    assert!(default_schema_variant.is_some());
     // schema variant ids should match
     assert_eq!(new_merged_variant.id(), unlocked_schema_variant.id());
     // new variant is now locked

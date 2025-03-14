@@ -309,7 +309,7 @@ impl ManagementPrototype {
         }
 
         for schema_id in managed_schemas {
-            let schema_name = match Schema::get_by_id(ctx, schema_id).await? {
+            let schema_name = match Schema::get_by_id_opt(ctx, schema_id).await? {
                 Some(schema) => schema.name().to_owned(),
                 None => {
                     let Some(cached_module) =
@@ -531,7 +531,7 @@ impl ManagementPrototype {
         let mut variant_socket_map = HashMap::new();
         let schemas = Schema::list(ctx).await?;
         for schema in schemas {
-            let variant_id = schema.get_default_schema_variant_id(ctx).await?;
+            let variant_id = Schema::default_variant_id_opt(ctx, schema.id()).await?;
             if let Some(variant_id) = variant_id {
                 let (output_sockets, input_sockets) =
                     SchemaVariant::list_all_socket_ids(ctx, variant_id).await?;

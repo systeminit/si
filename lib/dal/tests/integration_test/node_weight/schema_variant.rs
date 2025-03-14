@@ -163,7 +163,7 @@ async fn only_one_default_schema_variant(ctx: &mut DalContext) {
         .await
         .expect("unable to lock the schema variant");
     schema
-        .set_default_schema_variant(ctx, updated_sv_id_cs_1)
+        .set_default_variant_id(ctx, updated_sv_id_cs_1)
         .await
         .expect("unable to update the default schema variant id");
 
@@ -193,7 +193,7 @@ async fn only_one_default_schema_variant(ctx: &mut DalContext) {
         .await
         .expect("unable to lock the schema variant");
     schema
-        .set_default_schema_variant(ctx, updated_sv_id_cs_2)
+        .set_default_variant_id(ctx, updated_sv_id_cs_2)
         .await
         .expect("unable to update the default schema variant id");
     assert!(SchemaVariant::is_default_by_id(ctx, updated_sv_id_cs_2)

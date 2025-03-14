@@ -40,9 +40,7 @@ pub async fn create_unlocked_copy(
 
     let schema = original_variant.schema(&ctx).await?;
 
-    if Schema::get_default_schema_variant_by_id(&ctx, schema.id()).await?
-        != Some(original_variant.id())
-    {
+    if Schema::default_variant_id_opt(&ctx, schema.id()).await? != Some(original_variant.id()) {
         return Err(SchemaVariantError::CreatingUnlockedCopyForNonDefault(
             original_variant.id(),
         ));

@@ -77,7 +77,7 @@ async fn create_variant_merge_unlock_and_edit(ctx: &mut DalContext) {
         .await
         .expect("unable to lock the schema variant");
     schema
-        .set_default_schema_variant(ctx, updated_sv_id)
+        .set_default_variant_id(ctx, updated_sv_id)
         .await
         .expect("unable to update the default schema variant id");
     asset_func

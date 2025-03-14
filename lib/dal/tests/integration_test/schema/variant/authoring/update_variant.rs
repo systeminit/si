@@ -10,7 +10,7 @@ use dal::schema::variant::authoring::VariantAuthoringClient;
 use dal::schema::variant::leaves::{LeafInputLocation, LeafKind};
 use dal::{
     AttributePrototype, AttributePrototypeId, Component, ComponentType, DalContext, Func, Prop,
-    SchemaVariant, SchemaVariantId,
+    Schema, SchemaVariant, SchemaVariantId,
 };
 use dal_test::expected::commit_and_update_snapshot_to_visibility;
 use dal_test::helpers::{
@@ -42,12 +42,10 @@ async fn update_variant(ctx: &mut DalContext) {
         .await
         .expect("Unable to get the schema for the variant");
 
-    let default_schema_variant = schema
-        .get_default_schema_variant_id(ctx)
+    let default_schema_variant = Schema::default_variant_id(ctx, schema.id())
         .await
         .expect("unable to get the default schema variant id");
-    assert!(default_schema_variant.is_some());
-    assert_eq!(default_schema_variant, Some(first_variant.id()));
+    assert_eq!(default_schema_variant, first_variant.id());
 
     // Now let's update the variant
     let new_code = "function main() {\n const myProp = new PropBuilder().setName(\"testProp\").setKind(\"string\").build()\n  return new AssetBuilder().addProp(myProp).build()\n}".to_string();
@@ -151,12 +149,10 @@ async fn update_variant(ctx: &mut DalContext) {
     .expect("able to find anotherProp prop");
 
     // Let's check that the default schema variant has been updated
-    let updated_default_schema_variant = schema
-        .get_default_schema_variant_id(ctx)
+    let updated_default_schema_variant = Schema::default_variant_id(ctx, schema.id())
         .await
         .expect("unable to get the default schema variant id");
-    assert!(updated_default_schema_variant.is_some());
-    assert_eq!(updated_default_schema_variant, Some(second_updated_sv_id));
+    assert_eq!(updated_default_schema_variant, second_updated_sv_id);
 }
 
 #[test]
@@ -204,13 +200,11 @@ async fn update_variant_with_new_metadata(ctx: &mut DalContext) {
         .await
         .expect("Unable to get the schema for the variant");
 
-    let default_schema_variant = schema
-        .get_default_schema_variant_id(ctx)
+    let default_schema_variant = Schema::default_variant_id(ctx, schema.id())
         .await
         .expect("unable to get the default schema variant id");
 
-    assert!(default_schema_variant.is_some());
-    assert_eq!(default_schema_variant, Some(first_variant.id()));
+    assert_eq!(default_schema_variant, first_variant.id());
 
     let first_variant = SchemaVariant::get_by_id_or_error(ctx, first_sv_id)
         .await
