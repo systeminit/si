@@ -12,7 +12,7 @@ use crate::{
 pub type SubGraphNodeIndex = NodeIndex<u16>;
 pub type SubGraphEdgeIndex = EdgeIndex<u16>;
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SubGraph<N, E, K>
 where
     N: CustomNodeWeight,
@@ -331,7 +331,7 @@ where
         self.node_index_by_id.get(&id).copied()
     }
 
-    pub(crate) fn add_raw_edge(
+    pub(crate) fn add_edge_raw(
         &mut self,
         from_index: SubGraphNodeIndex,
         edge_weight: SplitGraphEdgeWeight<E, K>,
@@ -386,7 +386,7 @@ where
                         merkle_tree_hash: MerkleTreeHash::nil(),
                     });
 
-                    self.add_raw_edge(
+                    self.add_edge_raw(
                         from_index,
                         SplitGraphEdgeWeight::Ordering,
                         ordering_node_index,
@@ -402,14 +402,14 @@ where
                 if !order.contains(&target_id) {
                     order.push(target_id);
                 }
-                self.add_raw_edge(ordering_node_index, SplitGraphEdgeWeight::Ordinal, to_index);
+                self.add_edge_raw(ordering_node_index, SplitGraphEdgeWeight::Ordinal, to_index);
             }
         }
 
-        self.add_raw_edge(from_index, edge_weight, to_index);
+        self.add_edge_raw(from_index, edge_weight, to_index);
     }
 
-    fn touch_node(&mut self, node_index: SubGraphNodeIndex) {
+    pub(crate) fn touch_node(&mut self, node_index: SubGraphNodeIndex) {
         self.touched_nodes.insert(node_index);
     }
 

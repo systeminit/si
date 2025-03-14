@@ -1,8 +1,8 @@
-
 use std::{
     collections::{HashMap, HashSet},
     u16,
 };
+use strum::EnumDiscriminants;
 
 use updates::subgraph_as_updates;
 
@@ -14,6 +14,12 @@ struct TestNodeWeight {
     name: String,
     ordered: bool,
     merkle_tree_hash: MerkleTreeHash,
+}
+
+impl TestNodeWeight {
+    fn set_name(&mut self, name: String) {
+        self.name = name;
+    }
 }
 
 impl std::fmt::Debug for TestNodeWeight {
@@ -52,10 +58,12 @@ impl CustomNodeWeight for TestNodeWeight {
     }
 }
 
-impl EdgeKind for () {}
-
+#[derive(Clone, Debug)]
 struct TestReadWriter {
-    graphs: HashMap<SubGraphAddress, SubGraph<TestNodeWeight, (), ()>>,
+    graphs: HashMap<
+        SubGraphAddress,
+        SubGraph<TestNodeWeight, TestEdgeWeight, TestEdgeWeightDiscriminants>,
+    >,
 }
 
 fn add_nodes_to_graph<'a, 'b, E, K>(
@@ -86,13 +94,18 @@ where
 }
 
 #[async_trait]
-impl SubGraphReader<TestNodeWeight, (), ()> for TestReadWriter {
+impl SubGraphReader<TestNodeWeight, TestEdgeWeight, TestEdgeWeightDiscriminants>
+    for TestReadWriter
+{
     type Error = SplitGraphError;
 
     async fn read_subgraph(
         &self,
         address: SubGraphAddress,
-    ) -> Result<SubGraph<TestNodeWeight, (), ()>, SplitGraphError> {
+    ) -> Result<
+        SubGraph<TestNodeWeight, TestEdgeWeight, TestEdgeWeightDiscriminants>,
+        SplitGraphError,
+    > {
         self.graphs
             .get(&address)
             .cloned()
@@ -101,24 +114,55 @@ impl SubGraphReader<TestNodeWeight, (), ()> for TestReadWriter {
 }
 
 #[async_trait]
-impl SubGraphWriter<TestNodeWeight, (), ()> for TestReadWriter {
+impl SubGraphWriter<TestNodeWeight, TestEdgeWeight, TestEdgeWeightDiscriminants>
+    for TestReadWriter
+{
     type Error = SplitGraphError;
 
     async fn write_subgraph(
         &mut self,
-        _subgraph: &SubGraph<TestNodeWeight, (), ()>,
+        _subgraph: &SubGraph<TestNodeWeight, TestEdgeWeight, TestEdgeWeightDiscriminants>,
     ) -> Result<SubGraphAddress, SplitGraphError> {
         todo!()
     }
 }
 
-impl CustomEdgeWeight<()> for () {
-    fn kind(&self) -> () {
-        ()
+#[derive(EnumDiscriminants, Clone, Debug, PartialEq, Eq, Hash)]
+#[strum_discriminants(derive(Hash))]
+pub enum TestEdgeWeight {
+    EdgeA,
+    EdgeB { is_default: bool },
+}
+
+impl EdgeKind for TestEdgeWeightDiscriminants {}
+
+impl CustomEdgeWeight<TestEdgeWeightDiscriminants> for TestEdgeWeight {
+    fn kind(&self) -> TestEdgeWeightDiscriminants {
+        self.into()
     }
 
     fn edge_hash(&self) -> Option<ContentHash> {
-        None
+        let mut hasher = ContentHash::hasher();
+        match self {
+            TestEdgeWeight::EdgeA => hasher.update(&(1u8.to_le_bytes())),
+            TestEdgeWeight::EdgeB { is_default } => {
+                hasher.update(&(2u8.to_le_bytes()));
+                hasher.update(&[*is_default as u8]);
+            }
+        }
+
+        Some(hasher.finalize())
+    }
+
+    fn clone_as_non_default(&self) -> Self {
+        match self {
+            TestEdgeWeight::EdgeA => TestEdgeWeight::EdgeA,
+            TestEdgeWeight::EdgeB { .. } => TestEdgeWeight::EdgeB { is_default: false },
+        }
+    }
+
+    fn is_default(&self) -> bool {
+        false
     }
 }
 
@@ -147,7 +191,11 @@ fn ordered_container() {
         let container_node_id = container_node.id();
 
         splitgraph.add_or_replace_node(container_node);
-        splitgraph.add_edge(splitgraph.root_id(), (), container_node_id);
+        splitgraph.add_edge(
+            splitgraph.root_id(),
+            TestEdgeWeight::EdgeA,
+            container_node_id,
+        );
 
         node_name_to_id_map.insert(container_name.to_owned(), container_node_id);
         let mut nodes = vec![];
@@ -162,7 +210,7 @@ fn ordered_container() {
                 merkle_tree_hash: MerkleTreeHash::nil(),
             });
             nodes.push(node_id);
-            splitgraph.add_edge(container_node_id, (), node_id);
+            splitgraph.add_edge(container_node_id, TestEdgeWeight::EdgeA, node_id);
         }
         nodes_per_container.insert(container_node_id, nodes);
     }
@@ -219,7 +267,9 @@ fn replace_node() {
     for node in &nodes {
         assert_eq!(
             Some(node),
-            splitgraph.node_weight(node.id()).and_then(|n| n.custom())
+            splitgraph
+                .raw_node_weight(node.id())
+                .and_then(|n| n.custom())
         );
     }
 }
@@ -345,9 +395,9 @@ fn cross_graph_edges() {
 
             println!("adding edge {from_name}:{split_from_id} -> {to_name}:{to_id}");
 
-            splitgraph.add_edge(split_from_id, (), to_id);
+            splitgraph.add_edge(split_from_id, TestEdgeWeight::EdgeA, to_id);
             println!("adding to unsplitgraph");
-            unsplitgraph.add_edge(unsplit_from_id, (), to_id);
+            unsplitgraph.add_edge(unsplit_from_id, TestEdgeWeight::EdgeA, to_id);
 
             expected_outgoing_targets
                 .entry(split_from_id)
@@ -403,7 +453,7 @@ fn cross_graph_edges() {
                 .collect();
 
             let name = splitgraph
-                .node_weight(split_from_id)
+                .raw_node_weight(split_from_id)
                 .and_then(|n| n.custom().map(|n| n.name.as_str()))
                 .unwrap();
 
@@ -432,7 +482,10 @@ fn cross_graph_edges() {
                 );
 
                 for target_id in outgoing_targets {
-                    if let Some(node) = splitgraph.node_weight(target_id).and_then(|n| n.custom()) {
+                    if let Some(node) = splitgraph
+                        .raw_node_weight(target_id)
+                        .and_then(|n| n.custom())
+                    {
                         assert_eq!(
                             Some(target_id),
                             name_to_id_map.get(&node.name.as_str()).copied()
@@ -475,8 +528,16 @@ fn cross_graph_edges() {
         let graph_2_q_id = name_to_id_map.get(&graph_2_q).copied().unwrap();
         let graph_3_t_id = name_to_id_map.get(&graph_3_t).copied().unwrap();
         let graph_3_s_id = name_to_id_map.get(&graph_3_s).copied().unwrap();
-        splitgraph.remove_edge(graph_2_q_id, (), graph_3_t_id);
-        unsplitgraph.remove_edge(graph_2_q_id, (), graph_3_t_id);
+        splitgraph.remove_edge(
+            graph_2_q_id,
+            TestEdgeWeightDiscriminants::EdgeA,
+            graph_3_t_id,
+        );
+        unsplitgraph.remove_edge(
+            graph_2_q_id,
+            TestEdgeWeightDiscriminants::EdgeA,
+            graph_3_t_id,
+        );
         splitgraph.cleanup();
         splitgraph.recalculate_merkle_tree_hashes_based_on_touched_nodes();
         unsplitgraph.cleanup();
@@ -484,10 +545,10 @@ fn cross_graph_edges() {
 
         // splitgraph.tiny_dot_to_file("after-removal");
 
-        assert!(splitgraph.node_weight(graph_2_q_id).is_some());
-        assert!(unsplitgraph.node_weight(graph_2_q_id).is_some());
-        assert!(splitgraph.node_weight(graph_3_s_id).is_some());
-        assert!(unsplitgraph.node_weight(graph_3_s_id).is_some());
+        assert!(splitgraph.raw_node_weight(graph_2_q_id).is_some());
+        assert!(unsplitgraph.raw_node_weight(graph_2_q_id).is_some());
+        assert!(splitgraph.raw_node_weight(graph_3_s_id).is_some());
+        assert!(unsplitgraph.raw_node_weight(graph_3_s_id).is_some());
 
         for graph_3_name in [
             "graph-3-t",
@@ -499,14 +560,112 @@ fn cross_graph_edges() {
             "graph-3-z",
         ] {
             let id = name_to_id_map.get(&graph_3_name).copied().unwrap();
-            assert!(splitgraph.node_weight(id).is_none());
-            assert!(unsplitgraph.node_weight(id).is_none());
+            assert!(splitgraph.raw_node_weight(id).is_none());
+            assert!(unsplitgraph.raw_node_weight(id).is_none());
         }
     }
 }
 
 #[test]
-fn perform_updates() {}
+fn detect_updates_simple() {
+    let reader_writer = TestReadWriter {
+        graphs: HashMap::new(),
+    };
+
+    let mut base_graph = SplitGraph::new(&reader_writer, &reader_writer, 3200);
+    base_graph.cleanup_and_merkle_tree_hash();
+    let mut updated_graph = base_graph.clone();
+    updated_graph.cleanup_and_merkle_tree_hash();
+
+    assert!(updated_graph.detect_updates(&base_graph).is_empty());
+
+    let new_node = TestNodeWeight {
+        name: "damaya".to_string(),
+        id: Ulid::new(),
+        ordered: false,
+        merkle_tree_hash: MerkleTreeHash::nil(),
+    };
+
+    updated_graph.add_or_replace_node(new_node.clone());
+    updated_graph.add_edge(
+        updated_graph.root_id(),
+        TestEdgeWeight::EdgeA,
+        new_node.id(),
+    );
+    updated_graph.cleanup_and_merkle_tree_hash();
+
+    let updates = updated_graph.detect_updates(&base_graph);
+
+    assert_eq!(2, updates.len());
+
+    let update_1 = updates.first().unwrap();
+    let update_2 = updates.get(1).unwrap();
+
+    assert!(matches!(
+        update_1,
+        Update::NewNode {
+            subgraph_index: 0,
+            node_weight: SplitGraphNodeWeight::Custom(TestNodeWeight { .. })
+        }
+    ));
+
+    let Update::NewNode {
+        subgraph_index: 0,
+        node_weight: SplitGraphNodeWeight::Custom(custom_node),
+    } = update_1
+    else {
+        unreachable!("we already asserted this!")
+    };
+
+    assert_eq!(new_node.node_hash(), custom_node.node_hash());
+
+    assert!(matches!(
+        update_2,
+        Update::NewEdge {
+            subgraph_index: 0,
+            edge_weight: SplitGraphEdgeWeight::Custom(TestEdgeWeight::EdgeA),
+            ..
+        }
+    ));
+
+    let Update::NewEdge {
+        source,
+        destination,
+        ..
+    } = update_2
+    else {
+        unreachable!("bridge over the river kwai");
+    };
+
+    assert_eq!(updated_graph.root_id(), *source);
+    assert_eq!(new_node.id(), *destination);
+
+    let inverse_updates = base_graph.detect_updates(&updated_graph);
+    assert_eq!(2, inverse_updates.len());
+
+    assert!(matches!(
+        inverse_updates.first().unwrap(),
+        Update::RemoveEdge { .. }
+    ));
+    assert!(matches!(
+        inverse_updates.get(1).unwrap(),
+        Update::RemoveNode { .. }
+    ));
+
+    let mut second_updated_graph = updated_graph.clone();
+    let mut updated_node = new_node.clone();
+    updated_node.name = "syenite".into();
+    second_updated_graph.add_or_replace_node(updated_node);
+    second_updated_graph.cleanup_and_merkle_tree_hash();
+    let replace_node_update = second_updated_graph.detect_updates(&updated_graph);
+    assert!(matches!(
+        replace_node_update.first().unwrap(),
+        Update::ReplaceNode {
+            subgraph_index: 0,
+            node_weight: SplitGraphNodeWeight::Custom(TestNodeWeight { .. }),
+        }
+    ));
+}
 
 #[test]
 fn single_subgraph_as_updates() {
@@ -545,7 +704,11 @@ fn single_subgraph_as_updates() {
             .node_id_to_index(node_id_map.get(&target).copied().unwrap())
             .unwrap();
 
-        subgraph.add_edge(from_index, SplitGraphEdgeWeight::Custom(()), to_index);
+        subgraph.add_edge(
+            from_index,
+            SplitGraphEdgeWeight::Custom(TestEdgeWeight::EdgeA),
+            to_index,
+        );
     }
 
     subgraph.cleanup();
@@ -556,22 +719,23 @@ fn single_subgraph_as_updates() {
         .unwrap()
         .id();
 
-    let expected_edges: Vec<Update<TestNodeWeight, (), ()>> = edges
-        .into_iter()
-        .map(|(source, target)| {
-            let source = source
-                .map(|source| node_id_map.get(&source).copied().unwrap())
-                .unwrap_or(root_id);
-            let destination = node_id_map.get(&target).copied().unwrap();
+    let expected_edges: Vec<Update<TestNodeWeight, TestEdgeWeight, TestEdgeWeightDiscriminants>> =
+        edges
+            .into_iter()
+            .map(|(source, target)| {
+                let source = source
+                    .map(|source| node_id_map.get(&source).copied().unwrap())
+                    .unwrap_or(root_id);
+                let destination = node_id_map.get(&target).copied().unwrap();
 
-            Update::NewEdge {
-                source,
-                destination,
-                edge_weight: SplitGraphEdgeWeight::Custom(()),
-                subgraph_index: 0,
-            }
-        })
-        .collect();
+                Update::NewEdge {
+                    source,
+                    destination,
+                    edge_weight: SplitGraphEdgeWeight::Custom(TestEdgeWeight::EdgeA),
+                    subgraph_index: 0,
+                }
+            })
+            .collect();
 
     let updates = subgraph_as_updates(&subgraph, 0);
     assert!(!updates.is_empty());

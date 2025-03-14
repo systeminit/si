@@ -99,6 +99,18 @@ where
             |event| self.calculate_updates_dfs_event(event, &mut updates, &mut difference_cache),
         );
 
+        // If a node is in base graph but not in updated_graph, it has been removed
+        updates.extend(
+            self.base_graph
+                .node_index_by_id
+                .keys()
+                .filter(|id| !self.updated_graph.node_index_by_id.contains_key(id))
+                .map(|id| Update::RemoveNode {
+                    subgraph_index: self.updated_graph_index,
+                    id: *id,
+                }),
+        );
+
         updates
     }
 
@@ -120,14 +132,12 @@ where
                     // `WorkspaceSnapshotGraph` will be `self`, and the "local" one will be
                     // `onto`.
                     base_graph_node_indexes.insert(self.base_graph.root_index);
-                } else {
-                    if let Some(new_base_graph_node_indexes) = self
-                        .base_graph
-                        .node_indexes_by_lineage_id
-                        .get(&updated_graph_node_weight.lineage_id())
-                    {
-                        base_graph_node_indexes.extend(new_base_graph_node_indexes.into_iter());
-                    }
+                } else if let Some(new_base_graph_node_indexes) = self
+                    .base_graph
+                    .node_indexes_by_lineage_id
+                    .get(&updated_graph_node_weight.lineage_id())
+                {
+                    base_graph_node_indexes.extend(new_base_graph_node_indexes);
                 }
 
                 base_graph_node_indexes
@@ -268,7 +278,7 @@ where
             pub edge_weight: SplitGraphEdgeWeight<E, K>,
         }
 
-        #[derive(Debug, Clone, Hash, PartialEq, Eq)]
+        #[derive(Debug, Clone, PartialEq, Eq, Hash)]
         struct UniqueEdgeInfo<K>
         where
             K: EdgeKind,
