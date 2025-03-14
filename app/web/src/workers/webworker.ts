@@ -298,7 +298,8 @@ const handleHammer = async (msg: AtomMessage, span?: Span) => {
   if (snapshots.includes(msg.atom.snapshotToAddress)) return; // noop
 
   const toSnapshotAddress = await snapshotLogic(msg.atom, span);
-  await createAtom(msg.atom, msg.data);
+  if (snapshots.length === 0)  // if the atom exists, i just need the MTM
+    await createAtom(msg.atom, msg.data);
 
   if (!toSnapshotAddress)
     throw new Error(
