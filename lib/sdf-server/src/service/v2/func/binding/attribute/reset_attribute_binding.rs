@@ -32,7 +32,7 @@ pub async fn reset_attribute_binding(
         .build(access_builder.build(change_set_id.into()))
         .await?;
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
-    let func = Func::get_by_id_or_error(&ctx, func_id).await?;
+    let func = Func::get_by_id(&ctx, func_id).await?;
 
     if func.kind != dal::func::FuncKind::Attribute {
         return Err(FuncAPIError::WrongFunctionKindForBinding);
@@ -57,8 +57,7 @@ pub async fn reset_attribute_binding(
             EventualParent::SchemaVariant(schema_variant_id) => {
                 let schema =
                     SchemaVariant::schema_id_for_schema_variant_id(&ctx, schema_variant_id).await?;
-                let schema_variant =
-                    SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id).await?;
+                let schema_variant = SchemaVariant::get_by_id(&ctx, schema_variant_id).await?;
                 ctx.write_audit_log(
                     AuditLogKind::DetachFunc {
                         func_id,
@@ -105,12 +104,12 @@ pub async fn reset_attribute_binding(
             "func_kind": func.kind.clone(),
         }),
     );
-    let binding = Func::get_by_id_or_error(&ctx, func_id)
+    let binding = Func::get_by_id(&ctx, func_id)
         .await?
         .into_frontend_type(&ctx)
         .await?
         .bindings;
-    let func_summary = Func::get_by_id_or_error(&ctx, func_id)
+    let func_summary = Func::get_by_id(&ctx, func_id)
         .await?
         .into_frontend_type(&ctx)
         .await?;

@@ -55,7 +55,7 @@ pub async fn add_action(
     let component = Component::get_by_id(&ctx, request.component_id).await?;
     let action = Action::new(&ctx, request.prototype_id, Some(request.component_id)).await?;
     let func_id = ActionPrototype::func_id(&ctx, prototype.id).await?;
-    let func = Func::get_by_id_or_error(&ctx, func_id).await?;
+    let func = Func::get_by_id(&ctx, func_id).await?;
     track(
         &posthog_client,
         &ctx,

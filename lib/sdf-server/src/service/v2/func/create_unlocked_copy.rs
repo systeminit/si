@@ -45,7 +45,7 @@ pub async fn create_unlocked_copy(
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
 
-    let existing_func = Func::get_by_id_or_error(&ctx, func_id).await?;
+    let existing_func = Func::get_by_id(&ctx, func_id).await?;
     if !existing_func.is_locked {
         return Err(FuncAPIError::FuncAlreadyUnlocked(func_id));
     }
@@ -57,7 +57,7 @@ pub async fn create_unlocked_copy(
     let summary = new_func.into_frontend_type(&ctx).await?;
 
     let variant = if let Some(schema_variant_id) = request.schema_variant_id {
-        SchemaVariant::get_by_id(&ctx, schema_variant_id).await?
+        SchemaVariant::get_by_id_opt(&ctx, schema_variant_id).await?
     } else {
         None
     };

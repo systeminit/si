@@ -39,7 +39,7 @@ pub async fn update_func(
         .build(access_builder.build(change_set_id.into()))
         .await?;
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
-    let old_func = Func::get_by_id_or_error(&ctx, func_id).await?;
+    let old_func = Func::get_by_id(&ctx, func_id).await?;
     let updated_func =
         FuncAuthoringClient::update_func(&ctx, func_id, request.display_name, request.description)
             .await?

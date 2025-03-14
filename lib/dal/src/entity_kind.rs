@@ -78,7 +78,7 @@ impl EntityKind {
             | EntityKindEvents::ValidationOutput
             | EntityKindEvents::ValidationPrototype => None,
             EntityKindEvents::SchemaVariant => {
-                let variant_name = SchemaVariant::get_by_id_or_error(ctx, id.into_inner().into())
+                let variant_name = SchemaVariant::get_by_id(ctx, id.into_inner().into())
                     .await?
                     .display_name()
                     .to_owned();

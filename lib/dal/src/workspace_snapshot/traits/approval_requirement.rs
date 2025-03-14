@@ -75,7 +75,7 @@ pub trait ApprovalRequirementExt {
         id: ApprovalRequirementDefinitionId,
     ) -> WorkspaceSnapshotResult<EntityId>;
 
-    async fn get_by_id_or_error(
+    async fn get_approval_requirement_definition_by_id(
         &self,
         ctx: &DalContext,
         id: ApprovalRequirementDefinitionId,
@@ -84,7 +84,7 @@ pub trait ApprovalRequirementExt {
 
 #[async_trait]
 impl ApprovalRequirementExt for WorkspaceSnapshot {
-    async fn get_by_id_or_error(
+    async fn get_approval_requirement_definition_by_id(
         &self,
         ctx: &DalContext,
         id: ApprovalRequirementDefinitionId,

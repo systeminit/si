@@ -48,7 +48,7 @@ async fn duplicate(ctx: &mut DalContext) {
             .await
             .expect("unable to create func");
 
-    let func = Func::get_by_id_or_error(ctx, authoring_func.id)
+    let func = Func::get_by_id(ctx, authoring_func.id)
         .await
         .expect("Unable to get the authored func");
 

@@ -94,10 +94,7 @@ pub async fn update_property_editor_value(
             let (before_secret_id, before_secret_name) = if let Some(inner) = before_value {
                 let secret_key = Secret::key_from_value_in_attribute_value(inner.to_owned())?;
                 let secret_id = Secret::get_id_by_key_or_error(&ctx, secret_key).await?;
-                let secret_name = Secret::get_by_id_or_error(&ctx, secret_id)
-                    .await?
-                    .name()
-                    .to_string();
+                let secret_name = Secret::get_by_id(&ctx, secret_id).await?.name().to_string();
                 (Some(secret_id), Some(secret_name))
             } else {
                 (None, None)
@@ -106,10 +103,7 @@ pub async fn update_property_editor_value(
             let (after_secret_id, after_secret_name) = if let Some(inner) = request.value {
                 let secret_id: SecretId = serde_json::from_value(inner)
                     .map_err(ComponentError::SecretIdDeserialization)?;
-                let secret_name = Secret::get_by_id_or_error(&ctx, secret_id)
-                    .await?
-                    .name()
-                    .to_string();
+                let secret_name = Secret::get_by_id(&ctx, secret_id).await?.name().to_string();
                 (Some(secret_id), Some(secret_name))
             } else {
                 (None, None)

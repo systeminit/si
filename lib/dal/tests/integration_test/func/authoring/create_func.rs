@@ -429,10 +429,9 @@ async fn create_qualification_and_code_gen_with_existing_component(ctx: &mut Dal
         .await
         .expect("Unable to get the schema for the variant");
 
-    let default_schema_variant =
-        Schema::default_variant_id(ctx, my_asset_schema.id())
-            .await
-            .expect("unable to get the default schema variant id");
+    let default_schema_variant = Schema::default_variant_id(ctx, my_asset_schema.id())
+        .await
+        .expect("unable to get the default schema variant id");
     assert_eq!(default_schema_variant, variant_zero.id());
 
     // Now let's update the variant

@@ -29,7 +29,7 @@ pub async fn delete_func(
     let mut ctx = builder
         .build(access_builder.build(change_set_id.into()))
         .await?;
-    let func = Func::get_by_id_or_error(&ctx, func_id).await?;
+    let func = Func::get_by_id(&ctx, func_id).await?;
     if func.is_locked {
         return Err(FuncAPIError::CannotDeleteLockedFunc(func_id));
     }

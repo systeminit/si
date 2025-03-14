@@ -241,7 +241,7 @@ impl FuncAuthoringClient {
         maybe_updated_code: Option<String>,
         component_id: ComponentId,
     ) -> FuncAuthoringResult<FuncRunId> {
-        let mut func = Func::get_by_id_or_error(ctx, id).await?;
+        let mut func = Func::get_by_id(ctx, id).await?;
 
         // If updated code is provided, and it differs from the existing code, modify the function.
         if let Some(updated_code) = maybe_updated_code {
@@ -317,7 +317,7 @@ impl FuncAuthoringClient {
     /// Executes a [`Func`].
     #[instrument(name = "func.authoring.execute_func", level = "info", skip(ctx))]
     pub async fn execute_func(ctx: &DalContext, id: FuncId) -> FuncAuthoringResult<()> {
-        let func = Func::get_by_id_or_error(ctx, id).await?;
+        let func = Func::get_by_id(ctx, id).await?;
 
         match func.kind {
             FuncKind::Qualification | FuncKind::CodeGeneration | FuncKind::Attribute => {
@@ -345,7 +345,7 @@ impl FuncAuthoringClient {
         kind: FuncArgumentKind,
         element_kind: Option<FuncArgumentKind>,
     ) -> FuncAuthoringResult<FuncArgument> {
-        let func = Func::get_by_id_or_error(ctx, id).await?;
+        let func = Func::get_by_id(ctx, id).await?;
         // don't create a func argument if the function is locked
         func.error_if_locked()?;
         if func.kind != FuncKind::Attribute {
@@ -367,7 +367,7 @@ impl FuncAuthoringClient {
     ) -> FuncAuthoringResult<()> {
         // don't delete func argument if func is locked
         let func_id = FuncArgument::get_func_id_for_func_arg_id(ctx, id).await?;
-        let func = Func::get_by_id_or_error(ctx, func_id).await?;
+        let func = Func::get_by_id(ctx, func_id).await?;
         func.error_if_locked()?;
 
         for attribute_prototype_argument_id in
@@ -409,12 +409,11 @@ impl FuncAuthoringClient {
         func_id: FuncId,
         schema_variant_id: SchemaVariantId,
     ) -> FuncAuthoringResult<Func> {
-        let old_func = Func::get_by_id_or_error(ctx, func_id).await?;
+        let old_func = Func::get_by_id(ctx, func_id).await?;
 
         let schema = SchemaVariant::schema_id_for_schema_variant_id(ctx, schema_variant_id).await?;
         // is the current schema varaint already unlocked? if so, proceed
-        let current_schema_variant =
-            SchemaVariant::get_by_id_or_error(ctx, schema_variant_id).await?;
+        let current_schema_variant = SchemaVariant::get_by_id(ctx, schema_variant_id).await?;
         let new_func = if !current_schema_variant.is_locked() {
             //already on an unlocked variant, just create unlocked copy of the func and reattach
             // bindings for that schema variant
@@ -431,7 +430,7 @@ impl FuncAuthoringClient {
                 }
             }
 
-            let variant = SchemaVariant::get_by_id_or_error(ctx, schema_variant_id).await?;
+            let variant = SchemaVariant::get_by_id(ctx, schema_variant_id).await?;
             WsEvent::schema_variant_updated(ctx, schema, variant)
                 .await?
                 .publish_on_commit(ctx)
@@ -456,7 +455,7 @@ impl FuncAuthoringClient {
                     binding.port_binding_to_new_func(ctx, new_func.id).await?;
                 }
             }
-            let new_variant = SchemaVariant::get_by_id_or_error(ctx, new_schema_variant_id).await?;
+            let new_variant = SchemaVariant::get_by_id(ctx, new_schema_variant_id).await?;
             WsEvent::schema_variant_created(ctx, schema, new_variant)
                 .await?
                 .publish_on_commit(ctx)
@@ -481,7 +480,7 @@ impl FuncAuthoringClient {
         ctx: &DalContext,
         func_id: FuncId,
     ) -> FuncAuthoringResult<Func> {
-        let old_func = Func::get_by_id_or_error(ctx, func_id).await?;
+        let old_func = Func::get_by_id(ctx, func_id).await?;
         let mut new_schema_variants = vec![];
         // Create unlocked versions of all schema variants that are locked, default and have a bindings to old func
         for (schema_variant_id, _) in
@@ -537,7 +536,7 @@ impl FuncAuthoringClient {
         func_id: FuncId,
         code: String,
     ) -> FuncAuthoringResult<()> {
-        let func = Func::get_by_id_or_error(ctx, func_id).await?;
+        let func = Func::get_by_id(ctx, func_id).await?;
         func.error_if_locked()?;
         Func::modify_by_id(ctx, func.id, |func| {
             func.code_base64 = Some(general_purpose::STANDARD_NO_PAD.encode(code));
@@ -563,7 +562,7 @@ impl FuncAuthoringClient {
         display_name: Option<String>,
         description: Option<String>,
     ) -> FuncAuthoringResult<Func> {
-        let func = Func::get_by_id_or_error(ctx, func_id).await?;
+        let func = Func::get_by_id(ctx, func_id).await?;
         func.error_if_locked()?;
         let updated_func = Func::modify_by_id(ctx, func.id, |func| {
             display_name.clone_into(&mut func.display_name);

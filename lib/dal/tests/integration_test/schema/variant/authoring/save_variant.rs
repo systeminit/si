@@ -47,7 +47,7 @@ async fn save_variant(ctx: &mut DalContext) {
     );
     assert!(variant.asset_func_id().is_some());
 
-    let maybe_func = Func::get_by_id(
+    let func = Func::get_by_id(
         ctx,
         variant
             .asset_func_id()
@@ -55,10 +55,6 @@ async fn save_variant(ctx: &mut DalContext) {
     )
     .await
     .expect("unable to get asset authoring func");
-
-    assert!(maybe_func.is_some());
-
-    let func = maybe_func.unwrap();
 
     let scaffold_func_name = format!("{}Scaffold_", asset_name);
     assert!(func.name.contains(&scaffold_func_name));
@@ -96,7 +92,7 @@ async fn save_variant(ctx: &mut DalContext) {
     .await
     .expect("Unable to save the func");
 
-    let maybe_func = Func::get_by_id(
+    let func = Func::get_by_id(
         ctx,
         variant
             .asset_func_id()
@@ -104,8 +100,6 @@ async fn save_variant(ctx: &mut DalContext) {
     )
     .await
     .expect("unable to get asset authoring func");
-    assert!(maybe_func.is_some());
-    let func = maybe_func.unwrap();
 
     assert_eq!(func.kind, FuncKind::SchemaVariantDefinition);
     assert_eq!(
@@ -135,7 +129,7 @@ async fn unlock_and_save_variant(ctx: &mut DalContext) {
     let default_schema_variant = Schema::default_variant_id(ctx, schema.id())
         .await
         .expect("Unable to find the default schema variant id");
-    let existing_variant = SchemaVariant::get_by_id_or_error(ctx, default_schema_variant)
+    let existing_variant = SchemaVariant::get_by_id(ctx, default_schema_variant)
         .await
         .expect("unable to lookup the default schema variant");
 
@@ -230,7 +224,7 @@ async fn unlock_and_save_variant(ctx: &mut DalContext) {
     let default_schema_variant = Schema::default_variant_id(ctx, schema.id())
         .await
         .expect("Unable to find the default schema variant id");
-    let new_merged_variant = SchemaVariant::get_by_id_or_error(ctx, default_schema_variant)
+    let new_merged_variant = SchemaVariant::get_by_id(ctx, default_schema_variant)
         .await
         .expect("unable to lookup the default schema variant");
 

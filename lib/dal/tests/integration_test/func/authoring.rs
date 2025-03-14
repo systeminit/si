@@ -141,7 +141,7 @@ async fn create_unlocked_copy_attribute_func(ctx: &mut DalContext) {
     );
 
     // argument name is "entries"
-    let func_arg_name = FuncArgument::get_by_id_or_error(ctx, arg_binding.func_argument_id)
+    let func_arg_name = FuncArgument::get_by_id(ctx, arg_binding.func_argument_id)
         .await
         .expect("found func arg");
 
@@ -155,9 +155,7 @@ async fn create_unlocked_copy_attribute_func(ctx: &mut DalContext) {
         panic!("expect parent to be for schema variant");
     };
 
-    let sv = SchemaVariant::get_by_id_or_error(ctx, sv_id)
-        .await
-        .expect("has sv");
+    let sv = SchemaVariant::get_by_id(ctx, sv_id).await.expect("has sv");
     assert!(sv.is_locked());
 
     // let's try to edit the func, this will fail because it's currently locked
@@ -237,7 +235,7 @@ async fn create_unlocked_copy_attribute_func(ctx: &mut DalContext) {
         input_socket.name()  // actual
     );
     // func arg name is "entries"
-    let func_arg_name = FuncArgument::get_by_id_or_error(ctx, arg_binding.func_argument_id)
+    let func_arg_name = FuncArgument::get_by_id(ctx, arg_binding.func_argument_id)
         .await
         .expect("found func arg");
 
@@ -326,7 +324,7 @@ async fn create_unlocked_func_and_check_locked_on_apply(ctx: &mut DalContext) {
         .await
         .expect("could not commit and update snapshot to visibility");
 
-    let func = Func::get_by_id_or_error(ctx, func_id)
+    let func = Func::get_by_id(ctx, func_id)
         .await
         .expect("can't find the new func");
 

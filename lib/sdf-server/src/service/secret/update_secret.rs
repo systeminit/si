@@ -42,7 +42,7 @@ pub async fn update_secret(
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
 
     // Update secret metadata.
-    let mut secret = Secret::get_by_id_or_error(&ctx, request.id).await?;
+    let mut secret = Secret::get_by_id(&ctx, request.id).await?;
     secret = secret
         .update_metadata(&ctx, request.name, request.description)
         .await?;

@@ -56,7 +56,7 @@ impl ActionBinding {
         let schema_variant_id =
             ActionPrototype::schema_variant_id(ctx, action_prototype_id).await?;
         let func_id = ActionPrototype::func_id(ctx, action_prototype_id).await?;
-        let func = Func::get_by_id_or_error(ctx, func_id).await?; // delete and recreate the prototype
+        let func = Func::get_by_id(ctx, func_id).await?; // delete and recreate the prototype
 
         ActionPrototype::remove(ctx, action_prototype_id).await?;
         ActionPrototype::new(
@@ -103,7 +103,7 @@ impl ActionBinding {
             }
         }
 
-        let func = Func::get_by_id_or_error(ctx, func_id).await?;
+        let func = Func::get_by_id(ctx, func_id).await?;
         ActionPrototype::new(
             ctx,
             action_kind,

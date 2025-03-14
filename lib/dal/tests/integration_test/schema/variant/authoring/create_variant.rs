@@ -44,7 +44,7 @@ async fn create_variant(ctx: &mut DalContext) {
     );
     assert!(variant.asset_func_id().is_some());
 
-    let maybe_func = Func::get_by_id(
+    let func = Func::get_by_id(
         ctx,
         variant
             .asset_func_id()
@@ -52,10 +52,6 @@ async fn create_variant(ctx: &mut DalContext) {
     )
     .await
     .expect("unable to get asset authoring func");
-
-    assert!(maybe_func.is_some());
-
-    let func = maybe_func.unwrap();
 
     let scaffold_func_name = format!("{}Scaffold_", asset_name);
     assert!(func.name.contains(&scaffold_func_name));

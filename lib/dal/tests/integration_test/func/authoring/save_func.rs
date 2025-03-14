@@ -44,7 +44,7 @@ pub async fn save_func_setup(
         .await
         .expect("could not create unlocked copy")
         .id;
-    let func = Func::get_by_id_or_error(ctx, func_id)
+    let func = Func::get_by_id(ctx, func_id)
         .await
         .expect("could not get func by id");
     let before = func
@@ -61,7 +61,7 @@ pub async fn save_func_setup(
         .expect("could not commit and update snapshot to visibility");
 
     // Perform base assertions before getting started.
-    let func = Func::get_by_id_or_error(ctx, func_id)
+    let func = Func::get_by_id(ctx, func_id)
         .await
         .expect("could not get func by id");
     let after = func

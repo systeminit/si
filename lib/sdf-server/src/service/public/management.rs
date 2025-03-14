@@ -83,7 +83,7 @@ async fn run_prototype(
         }
 
         let func_id = ManagementPrototype::func_id(ctx, prototype_id).await?;
-        let func = Func::get_by_id_or_error(ctx, func_id).await?;
+        let func = Func::get_by_id(ctx, func_id).await?;
 
         WsEvent::management_operations_complete(
             ctx,

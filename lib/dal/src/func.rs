@@ -292,7 +292,7 @@ impl Func {
         }
     }
 
-    pub async fn get_by_id(ctx: &DalContext, id: FuncId) -> FuncResult<Option<Self>> {
+    pub async fn get_by_id_opt(ctx: &DalContext, id: FuncId) -> FuncResult<Option<Self>> {
         let (func_node_weight, hash) = if let Some((func_node_weight, hash)) =
             Self::get_node_weight_and_content_hash(ctx, id).await?
         {
@@ -305,7 +305,7 @@ impl Func {
         Ok(Some(func))
     }
 
-    pub async fn get_by_id_or_error(ctx: &DalContext, id: FuncId) -> FuncResult<Self> {
+    pub async fn get_by_id(ctx: &DalContext, id: FuncId) -> FuncResult<Self> {
         let (func_node_weight, hash) =
             Self::get_node_weight_and_content_hash_or_error(ctx, id).await?;
         Self::get_by_id_inner(ctx, &hash, &func_node_weight).await
@@ -316,7 +316,7 @@ impl Func {
         ctx: &DalContext,
         id: FuncId,
     ) -> FuncResult<IntrinsicFunc> {
-        let func = Self::get_by_id_or_error(ctx, id).await?;
+        let func = Self::get_by_id(ctx, id).await?;
 
         Self::get_intrinsic_kind_by_id(ctx, id)
             .await?
@@ -327,7 +327,7 @@ impl Func {
         ctx: &DalContext,
         id: FuncId,
     ) -> FuncResult<Option<IntrinsicFunc>> {
-        let func = Self::get_by_id_or_error(ctx, id).await?;
+        let func = Self::get_by_id(ctx, id).await?;
         Ok(IntrinsicFunc::maybe_from_str(func.name.clone()))
     }
 
@@ -451,7 +451,7 @@ impl Func {
     where
         L: FnOnce(&mut Func) -> FuncResult<()>,
     {
-        let func = Func::get_by_id_or_error(ctx, id).await?;
+        let func = Func::get_by_id(ctx, id).await?;
         let modified_func = func.modify(ctx, lambda).await?;
         Ok(modified_func)
     }
@@ -566,7 +566,7 @@ impl Func {
 
     /// Deletes the [`Func`] and returns the name.
     pub async fn delete_by_id(ctx: &DalContext, id: FuncId) -> FuncResult<String> {
-        let func = Self::get_by_id_or_error(ctx, id).await?;
+        let func = Self::get_by_id(ctx, id).await?;
         // Check that we can remove the func.
         if !FuncBinding::for_func_id(ctx, id)
             .await

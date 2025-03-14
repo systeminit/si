@@ -166,7 +166,7 @@ async fn edit_auth_func(ctx: &mut DalContext) {
         .await
         .expect("could not save code");
 
-    let unlocked_func = Func::get_by_id_or_error(ctx, unlocked_func_id.id)
+    let unlocked_func = Func::get_by_id(ctx, unlocked_func_id.id)
         .await
         .expect("could not get func");
     // ensure it saved
@@ -183,7 +183,7 @@ async fn edit_auth_func(ctx: &mut DalContext) {
         .expect("could not apply to base");
 
     // ensure new func is locked
-    let new_locked_func = Func::get_by_id_or_error(ctx, unlocked_func.id)
+    let new_locked_func = Func::get_by_id(ctx, unlocked_func.id)
         .await
         .expect("could not get func");
 
@@ -200,9 +200,8 @@ async fn edit_auth_func(ctx: &mut DalContext) {
     let maybe_locked_schema_variant_id = SchemaVariant::default_id_for_schema(ctx, schema.id())
         .await
         .expect("unable to get default schema variant");
-    let maybe_locked_schema_variant =
-        SchemaVariant::get_by_id_or_error(ctx, maybe_locked_schema_variant_id)
-            .await
-            .expect("could not get schema variant");
+    let maybe_locked_schema_variant = SchemaVariant::get_by_id(ctx, maybe_locked_schema_variant_id)
+        .await
+        .expect("could not get schema variant");
     assert!(maybe_locked_schema_variant.is_locked());
 }

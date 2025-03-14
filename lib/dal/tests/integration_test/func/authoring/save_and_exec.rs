@@ -10,7 +10,7 @@ async fn save_and_exec_action_func(ctx: &mut DalContext) {
         .await
         .expect("could not perform find func by name")
         .expect("no func found");
-    Func::get_by_id_or_error(ctx, func_id)
+    Func::get_by_id(ctx, func_id)
         .await
         .expect("could not get func by id");
 
@@ -37,7 +37,7 @@ async fn save_and_exec_attribute_func(ctx: &mut DalContext) {
         .await
         .expect("could not perform find func by name")
         .expect("no func found");
-    let func = Func::get_by_id_or_error(ctx, func_id)
+    let func = Func::get_by_id(ctx, func_id)
         .await
         .expect("could not get func by id");
     func.into_frontend_type(ctx)

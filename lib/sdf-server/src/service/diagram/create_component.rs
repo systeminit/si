@@ -81,7 +81,7 @@ pub async fn create_component(
             ))?;
 
             let variant_id = Schema::get_or_install_default_variant(&ctx, schema_id).await?;
-            let variant = SchemaVariant::get_by_id_or_error(&ctx, variant_id).await?;
+            let variant = SchemaVariant::get_by_id(&ctx, variant_id).await?;
             let managed_schema_ids = SchemaVariant::all_managed_schemas(&ctx, variant_id).await?;
 
             // Also install any schemas managed by the variant
@@ -95,7 +95,7 @@ pub async fn create_component(
                 .publish_on_commit(&ctx)
                 .await?;
             for func_id in front_end_variant.func_ids.iter() {
-                let func = Func::get_by_id_or_error(&ctx, *func_id).await?;
+                let func = Func::get_by_id(&ctx, *func_id).await?;
                 let front_end_func = func.into_frontend_type(&ctx).await?;
                 WsEvent::func_updated(&ctx, front_end_func, None)
                     .await?
@@ -107,7 +107,7 @@ pub async fn create_component(
         }
     };
 
-    let variant = SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id).await?;
+    let variant = SchemaVariant::get_by_id(&ctx, schema_variant_id).await?;
     let view_id = View::get_id_for_default(&ctx).await?;
     let mut component = Component::new(&ctx, &name, variant.id(), view_id).await?;
     let initial_geometry = component.geometry(&ctx, view_id).await?;

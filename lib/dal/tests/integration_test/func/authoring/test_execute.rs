@@ -27,7 +27,7 @@ async fn test_execute_action_func(ctx: &mut DalContext) {
         .await
         .expect("could not perform find func by name")
         .expect("no func found");
-    let func = Func::get_by_id_or_error(ctx, func_id)
+    let func = Func::get_by_id(ctx, func_id)
         .await
         .expect("could not get func by id");
 
@@ -67,7 +67,7 @@ async fn test_execute_attribute_func(ctx: &mut DalContext) {
         .await
         .expect("could not perform find func by name")
         .expect("no func found");
-    let func = Func::get_by_id_or_error(ctx, func_id)
+    let func = Func::get_by_id(ctx, func_id)
         .await
         .expect("could not get func by id");
 
@@ -107,7 +107,7 @@ async fn test_execute_code_generation_func(ctx: &mut DalContext) {
         .await
         .expect("could not perform find func by name")
         .expect("no func found");
-    let func = Func::get_by_id_or_error(ctx, func_id)
+    let func = Func::get_by_id(ctx, func_id)
         .await
         .expect("could not get func by id");
 
@@ -147,7 +147,7 @@ async fn test_execute_qualification_func(ctx: &mut DalContext) {
         .await
         .expect("could not perform find func by name")
         .expect("no func found");
-    let func = Func::get_by_id_or_error(ctx, func_id)
+    let func = Func::get_by_id(ctx, func_id)
         .await
         .expect("could not get func by id");
 
@@ -191,7 +191,7 @@ async fn test_execute_with_modified_code(ctx: &mut DalContext) {
         .await
         .expect("could create new func")
         .id;
-    let func = Func::get_by_id_or_error(ctx, func_id)
+    let func = Func::get_by_id(ctx, func_id)
         .await
         .expect("could not get func by id");
 

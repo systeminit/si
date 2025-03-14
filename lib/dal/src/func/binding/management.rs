@@ -39,7 +39,7 @@ impl ManagementBinding {
         // don't add binding if parent is locked
         SchemaVariant::error_if_locked(ctx, schema_variant_id).await?;
 
-        let func = Func::get_by_id_or_error(ctx, func_id).await?;
+        let func = Func::get_by_id(ctx, func_id).await?;
         ManagementPrototype::new(
             ctx,
             func.name.to_owned(),

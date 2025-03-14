@@ -97,8 +97,6 @@ pub enum FuncRunnerError {
     Func(#[from] FuncError),
     #[error("function backend error: {0}")]
     FuncBackend(#[from] FuncBackendError),
-    #[error("validation function intrinsic func is missing -- bug!")]
-    FuncIntrinsicValidationMissing,
     #[error("func run builder error: {0}")]
     FuncRunBuilder(#[from] FuncRunBuilderError),
     #[error("history event error: {0}")]
@@ -487,9 +485,7 @@ impl FuncRunner {
         ) -> FuncRunnerResult<FuncRunner> {
             let func_id =
                 Func::find_intrinsic(ctx, super::intrinsics::IntrinsicFunc::Validation).await?;
-            let func = Func::get_by_id(ctx, func_id)
-                .await?
-                .ok_or(FuncRunnerError::FuncIntrinsicValidationMissing)?;
+            let func = Func::get_by_id(ctx, func_id).await?;
 
             let args = serde_json::json!({
                 "value": value,
@@ -653,7 +649,7 @@ impl FuncRunner {
             args: serde_json::Value,
             parent_span: &Span,
         ) -> FuncRunnerResult<FuncRunner> {
-            let func = Func::get_by_id_or_error(ctx, func_id).await?;
+            let func = Func::get_by_id(ctx, func_id).await?;
 
             let function_args: CasValue = args.clone().into();
 
@@ -822,7 +818,7 @@ impl FuncRunner {
             args: serde_json::Value,
             span: &Span,
         ) -> FuncRunnerResult<FuncRunner> {
-            let func = Func::get_by_id_or_error(ctx, management_func_id).await?;
+            let func = Func::get_by_id(ctx, management_func_id).await?;
 
             let function_args: CasValue = args.clone().into();
             let (function_args_cas_address, _) = ctx.layer_db().cas().write(
@@ -1002,7 +998,7 @@ impl FuncRunner {
             args: serde_json::Value,
             span: &Span,
         ) -> FuncRunnerResult<FuncRunner> {
-            let func = Func::get_by_id_or_error(ctx, func_id).await?;
+            let func = Func::get_by_id(ctx, func_id).await?;
             let prototype = ActionPrototype::get_by_id(ctx, action_prototype_id)
                 .await
                 .map_err(Box::new)?;
@@ -1478,7 +1474,7 @@ impl FuncRunner {
                     SchemaVariant::list_auth_func_ids_for_id(ctx, secret_defining_schema_variant_id)
                         .await?
                 {
-                    auth_funcs.push(Func::get_by_id_or_error(ctx, auth_func_id).await?)
+                    auth_funcs.push(Func::get_by_id(ctx, auth_func_id).await?)
                 }
                 return Ok(auth_funcs);
             }

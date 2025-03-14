@@ -27,7 +27,7 @@ pub async fn cancel(
         let prototype_id = Action::prototype_id(&ctx, action_id).await?;
         let prototype = ActionPrototype::get_by_id(&ctx, prototype_id).await?;
         let func_id = ActionPrototype::func_id(&ctx, prototype_id).await?;
-        let func = Func::get_by_id_or_error(&ctx, func_id).await?;
+        let func = Func::get_by_id(&ctx, func_id).await?;
         ctx.write_audit_log(
             AuditLogKind::CancelAction {
                 prototype_id,

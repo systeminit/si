@@ -27,7 +27,7 @@ async fn delete_unlocked_variant(ctx: &mut DalContext) {
         .await
         .expect("unable to commit");
 
-    let asset_func = Func::get_by_id_or_error(
+    let asset_func = Func::get_by_id(
         ctx,
         variant
             .asset_func_id()

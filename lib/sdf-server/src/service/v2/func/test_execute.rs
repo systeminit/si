@@ -42,7 +42,7 @@ pub async fn test_execute(
         .build(access_builder.build(change_set_id.into()))
         .await?;
 
-    let func = Func::get_by_id_or_error(&ctx, func_id).await?;
+    let func = Func::get_by_id(&ctx, func_id).await?;
     let func_run_id = FuncAuthoringClient::test_execute_func(
         &ctx,
         func_id,

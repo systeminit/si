@@ -53,7 +53,7 @@ async fn create_and_delete_attribute_func_with_arguments(ctx: &mut DalContext) {
     // Fetch the view and prepare for adding two func arguments. Then, add the two func arguments
     // and commit.
     {
-        let func = Func::get_by_id_or_error(ctx, func_id)
+        let func = Func::get_by_id(ctx, func_id)
             .await
             .expect("could not get func");
 
@@ -96,7 +96,7 @@ async fn create_and_delete_attribute_func_with_arguments(ctx: &mut DalContext) {
 
     // Fetch the view and check that we added two func arguments successfully.
     let (cached_string_func_argument_id, cached_array_func_argument_id) = {
-        let func = Func::get_by_id_or_error(ctx, func_id)
+        let func = Func::get_by_id(ctx, func_id)
             .await
             .expect("could not get func");
 
@@ -143,7 +143,7 @@ async fn create_and_delete_attribute_func_with_arguments(ctx: &mut DalContext) {
 
     // Fetch the view. Then, delete the two arguments and commit.
     {
-        let func = Func::get_by_id_or_error(ctx, func_id)
+        let func = Func::get_by_id(ctx, func_id)
             .await
             .expect("could not get func");
 
@@ -202,18 +202,19 @@ async fn create_and_delete_attribute_func_with_arguments(ctx: &mut DalContext) {
             .expect("could not commit and update snapshot to visibility");
 
         // Check that the func and its arguments do not exist.
-        let maybe_func = Func::get_by_id(ctx, func_id)
+        let maybe_func = Func::get_by_id_opt(ctx, func_id)
             .await
             .expect("could not perform find by name");
         assert!(maybe_func.is_none());
         let maybe_string_func_argument =
-            FuncArgument::get_by_id(ctx, cached_string_func_argument_id)
+            FuncArgument::get_by_id_opt(ctx, cached_string_func_argument_id)
                 .await
                 .expect("could not perform find by name for func");
         assert!(maybe_string_func_argument.is_none());
-        let maybe_array_func_argument = FuncArgument::get_by_id(ctx, cached_array_func_argument_id)
-            .await
-            .expect("could not perform find by name for func");
+        let maybe_array_func_argument =
+            FuncArgument::get_by_id_opt(ctx, cached_array_func_argument_id)
+                .await
+                .expect("could not perform find by name for func");
         assert!(maybe_array_func_argument.is_none());
     }
 }

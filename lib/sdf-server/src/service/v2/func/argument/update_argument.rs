@@ -43,7 +43,7 @@ pub async fn update_func_argument(
     })
     .await?;
 
-    let func_summary = Func::get_by_id_or_error(&ctx, func_id)
+    let func_summary = Func::get_by_id(&ctx, func_id)
         .await?
         .into_frontend_type(&ctx)
         .await?;

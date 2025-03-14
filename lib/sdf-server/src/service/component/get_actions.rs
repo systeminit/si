@@ -27,9 +27,7 @@ impl ActionPrototypeView {
         ctx: &DalContext,
         prototype: ActionPrototype,
     ) -> ComponentResult<ActionPrototypeView> {
-        let func =
-            Func::get_by_id_or_error(ctx, ActionPrototype::func_id(ctx, prototype.id).await?)
-                .await?;
+        let func = Func::get_by_id(ctx, ActionPrototype::func_id(ctx, prototype.id).await?).await?;
         let display_name = func.display_name.map(|dname| dname.to_string());
         Ok(Self {
             id: prototype.id,

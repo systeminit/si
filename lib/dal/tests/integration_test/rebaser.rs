@@ -31,7 +31,7 @@ async fn modify_func_node(ctx: &mut DalContext) {
         .await
         .expect("could not commit and update snapshot to visibility");
 
-    Func::get_by_id_or_error(ctx, func.id)
+    Func::get_by_id(ctx, func.id)
         .await
         .expect("able to get func by id");
 
@@ -52,7 +52,7 @@ async fn modify_func_node(ctx: &mut DalContext) {
         .await
         .expect("could not commit");
 
-    let refetched_func = Func::get_by_id_or_error(ctx, func.id)
+    let refetched_func = Func::get_by_id(ctx, func.id)
         .await
         .expect("able to fetch func");
 
@@ -71,7 +71,7 @@ async fn modify_func_node(ctx: &mut DalContext) {
         .await
         .expect("could not commit and update snapshot to visibility");
 
-    let modified_func = Func::get_by_id_or_error(ctx, func.id)
+    let modified_func = Func::get_by_id(ctx, func.id)
         .await
         .expect("able to get func by id again");
 
@@ -111,7 +111,7 @@ async fn func_node_with_arguments(ctx: &mut DalContext) {
     .await
     .expect("able to make a func");
 
-    Func::get_by_id_or_error(ctx, func.id)
+    Func::get_by_id(ctx, func.id)
         .await
         .expect("able to get func by id before commit");
 
@@ -119,7 +119,7 @@ async fn func_node_with_arguments(ctx: &mut DalContext) {
         .await
         .expect("could not commit and update snapshot to visibility");
 
-    Func::get_by_id_or_error(ctx, func.id)
+    Func::get_by_id(ctx, func.id)
         .await
         .expect("able to get func by id after rebase");
 
@@ -148,7 +148,7 @@ async fn func_node_with_arguments(ctx: &mut DalContext) {
         .await
         .expect("could not commit and update snapshot to visibility");
 
-    let modified_func = Func::get_by_id_or_error(ctx, func.id)
+    let modified_func = Func::get_by_id(ctx, func.id)
         .await
         .expect("able to get func by id again");
 
@@ -173,7 +173,7 @@ async fn func_node_with_arguments(ctx: &mut DalContext) {
     .await
     .expect("able to modify func");
 
-    let func_arg_refetch = FuncArgument::get_by_id_or_error(ctx, arg_1.id)
+    let func_arg_refetch = FuncArgument::get_by_id(ctx, arg_1.id)
         .await
         .expect("get func arg");
 
@@ -230,7 +230,7 @@ async fn delete_func_node(ctx: &mut DalContext) {
 
     let snapshot_id_before_deletion = ctx.workspace_snapshot().expect("get snap").id().await;
 
-    Func::get_by_id_or_error(ctx, func.id)
+    Func::get_by_id(ctx, func.id)
         .await
         .expect("able to get func by id");
 
@@ -238,7 +238,7 @@ async fn delete_func_node(ctx: &mut DalContext) {
         .await
         .expect("able to remove func");
 
-    assert!(Func::get_by_id_or_error(ctx, func.id).await.is_err());
+    assert!(Func::get_by_id(ctx, func.id).await.is_err());
 
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
@@ -249,7 +249,7 @@ async fn delete_func_node(ctx: &mut DalContext) {
     // A sanity check
     assert_ne!(snapshot_id_before_deletion, snapshot_id_after_deletion);
 
-    let result = Func::get_by_id_or_error(ctx, func.id).await;
+    let result = Func::get_by_id(ctx, func.id).await;
     assert!(result.is_err());
 }
 

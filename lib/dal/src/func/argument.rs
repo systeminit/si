@@ -263,7 +263,7 @@ impl FuncArgument {
         Ok(FuncArgument::assemble(&func_argument_node_weight, &content))
     }
 
-    pub async fn get_by_id(
+    pub async fn get_by_id_opt(
         ctx: &DalContext,
         id: FuncArgumentId,
     ) -> FuncArgumentResult<Option<Self>> {
@@ -279,10 +279,7 @@ impl FuncArgument {
         Ok(Some(func_argument))
     }
 
-    pub async fn get_by_id_or_error(
-        ctx: &DalContext,
-        id: FuncArgumentId,
-    ) -> FuncArgumentResult<Self> {
+    pub async fn get_by_id(ctx: &DalContext, id: FuncArgumentId) -> FuncArgumentResult<Self> {
         let (node_weight, hash) = Self::get_node_weight_and_content_hash_or_error(ctx, id).await?;
         Self::get_by_id_inner(ctx, &hash, &node_weight).await
     }
@@ -426,7 +423,7 @@ impl FuncArgument {
     where
         L: FnOnce(&mut FuncArgument) -> FuncArgumentResult<()>,
     {
-        let func_argument = Self::get_by_id_or_error(ctx, id).await?;
+        let func_argument = Self::get_by_id(ctx, id).await?;
         let modified_func_argument = func_argument.modify(ctx, lambda).await?;
         Ok(modified_func_argument)
     }

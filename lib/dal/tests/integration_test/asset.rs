@@ -96,7 +96,7 @@ async fn save_and_regenerate(
     schema_name: impl AsRef<str>,
     schema_variant_id: SchemaVariantId,
 ) -> Result<SchemaVariantId, Box<dyn std::error::Error>> {
-    let schema_variant = SchemaVariant::get_by_id_or_error(ctx, schema_variant_id).await?;
+    let schema_variant = SchemaVariant::get_by_id(ctx, schema_variant_id).await?;
     let schema_name = schema_name.as_ref();
 
     VariantAuthoringClient::save_variant_content(

@@ -353,7 +353,7 @@ impl PkgExporter {
         ctx: &DalContext,
         variant_id: SchemaVariantId,
     ) -> PkgResult<Vec<SiPropFuncSpec>> {
-        let _variant = SchemaVariant::get_by_id_or_error(ctx, variant_id).await?;
+        let _variant = SchemaVariant::get_by_id(ctx, variant_id).await?;
         let mut specs = vec![];
 
         for kind in SiPropFuncSpecKind::iter() {
@@ -799,13 +799,9 @@ impl PkgExporter {
     ) -> PkgResult<Option<(String, Vec<AttrFuncInputSpec>)>> {
         let _proto = AttributePrototype::get_by_id(ctx, prototype_id).await?;
         let func_id = AttributePrototype::func_id(ctx, prototype_id).await?;
-        let proto_func =
-            Func::get_by_id(ctx, func_id)
-                .await?
-                .ok_or(PkgError::MissingAttributePrototypeFunc(
-                    prototype_id,
-                    func_id,
-                ))?;
+        let proto_func = Func::get_by_id_opt(ctx, func_id).await?.ok_or(
+            PkgError::MissingAttributePrototypeFunc(prototype_id, func_id),
+        )?;
 
         let apas: Vec<AttributePrototypeArgumentId> =
             AttributePrototypeArgument::list_ids_for_prototype(ctx, prototype_id).await?;
@@ -830,7 +826,7 @@ impl PkgExporter {
         for apa_id in &apas {
             let func_arg_id =
                 AttributePrototypeArgument::func_argument_id_by_id(ctx, *apa_id).await?;
-            let func_arg = FuncArgument::get_by_id_or_error(ctx, func_arg_id).await?;
+            let func_arg = FuncArgument::get_by_id(ctx, func_arg_id).await?;
             let arg_name = func_arg.name;
 
             let mut builder = AttrFuncInputSpec::builder();
@@ -1009,8 +1005,7 @@ impl PkgExporter {
                         Func::find_id_by_name_and_kind(ctx, intrinsic_name, FuncKind::Intrinsic)
                             .await?
                     {
-                        let intrinsic_func =
-                            Func::get_by_id_or_error(ctx, intrinsic_func_id).await?;
+                        let intrinsic_func = Func::get_by_id(ctx, intrinsic_func_id).await?;
 
                         let (spec, _) = self.add_func_to_map(ctx, &intrinsic_func).await?;
 
@@ -1023,8 +1018,7 @@ impl PkgExporter {
                     let maybe_intrinsic_func_id =
                         Func::find_id_by_name(ctx, intrinsic.name()).await?;
                     if let Some(intrinsic_func_id) = maybe_intrinsic_func_id {
-                        let intrinsic_func =
-                            Func::get_by_id_or_error(ctx, intrinsic_func_id).await?;
+                        let intrinsic_func = Func::get_by_id(ctx, intrinsic_func_id).await?;
                         let (spec, _) = self.add_func_to_map(ctx, &intrinsic_func).await?;
                         func_specs.push(spec);
                     } else {
@@ -1039,8 +1033,7 @@ impl PkgExporter {
                             .await?
                             .ok_or(PkgError::MissingIntrinsicFunc("si:setFloat".to_string()))?;
 
-                        let intrinsic_func =
-                            Func::get_by_id_or_error(ctx, intrinsic_func_id).await?;
+                        let intrinsic_func = Func::get_by_id(ctx, intrinsic_func_id).await?;
                         let (spec, _) = self.add_func_to_map(ctx, &intrinsic_func).await?;
                         func_specs.push(spec);
                     }
@@ -1053,7 +1046,7 @@ impl PkgExporter {
                         .await?
                         .ok_or(PkgError::MissingIntrinsicFunc(intrinsic_name.to_string()))?;
 
-                    let intrinsic_func = Func::get_by_id_or_error(ctx, intrinsic_func_id).await?;
+                    let intrinsic_func = Func::get_by_id(ctx, intrinsic_func_id).await?;
 
                     let (spec, _) = self.add_func_to_map(ctx, &intrinsic_func).await?;
 
@@ -1206,12 +1199,12 @@ impl PkgExporter {
             }
         }
 
-        let variant = SchemaVariant::get_by_id_or_error(ctx, schema_variant_id).await?;
+        let variant = SchemaVariant::get_by_id(ctx, schema_variant_id).await?;
 
         // Asset Funcs are not stored in the FuncMap
         // So we need to look it up directly then store it!
         if let Some(asset_func_id) = overridden_asset_func_id.or_else(|| variant.asset_func_id()) {
-            let asset_func = Func::get_by_id_or_error(ctx, asset_func_id).await?;
+            let asset_func = Func::get_by_id(ctx, asset_func_id).await?;
             let (func_spec, include) = self.add_func_to_map(ctx, &asset_func).await?;
 
             if include {

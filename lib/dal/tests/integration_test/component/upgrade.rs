@@ -37,10 +37,9 @@ async fn auto_upgrade_component(ctx: &mut DalContext) {
         .await
         .expect("Unable to get the schema for the variant");
 
-    let default_schema_variant =
-        Schema::default_variant_id(ctx, my_asset_schema.id())
-            .await
-            .expect("unable to get the default schema variant id");
+    let default_schema_variant = Schema::default_variant_id(ctx, my_asset_schema.id())
+        .await
+        .expect("unable to get the default schema variant id");
     assert_eq!(default_schema_variant, variant_zero.id());
 
     // Build Create Action Func
@@ -897,7 +896,7 @@ async fn update_schema_variant_component_type(
     .await
     .expect("save variant contents");
 
-    SchemaVariant::get_by_id_or_error(ctx, variant.id)
+    SchemaVariant::get_by_id(ctx, variant.id)
         .await
         .expect("could not get updated variant")
         .into()
@@ -923,7 +922,7 @@ async fn update_schema_variant_description(
     )
     .await
     .expect("save variant contents");
-    SchemaVariant::get_by_id_or_error(ctx, variant.id)
+    SchemaVariant::get_by_id(ctx, variant.id)
         .await
         .expect("could not get updated variant")
         .into()

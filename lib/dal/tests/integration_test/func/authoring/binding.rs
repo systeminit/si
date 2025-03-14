@@ -55,7 +55,7 @@ async fn get_bindings_for_latest_schema_variants(ctx: &mut DalContext) {
     let old_schema_variant_id = binding.get_schema_variant().expect("has a schema variant");
 
     // this schema variant is locked
-    let old_schema_variant = SchemaVariant::get_by_id_or_error(ctx, old_schema_variant_id)
+    let old_schema_variant = SchemaVariant::get_by_id(ctx, old_schema_variant_id)
         .await
         .expect("has a schema variant");
 
@@ -84,10 +84,9 @@ async fn get_bindings_for_latest_schema_variants(ctx: &mut DalContext) {
     );
 
     for binding in new_bindings {
-        let _sv =
-            SchemaVariant::get_by_id_or_error(ctx, binding.get_schema_variant().expect("has sv"))
-                .await
-                .expect("has sv");
+        let _sv = SchemaVariant::get_by_id(ctx, binding.get_schema_variant().expect("has sv"))
+            .await
+            .expect("has sv");
     }
 
     // now we should have 1 unlocked func binding

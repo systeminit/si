@@ -91,7 +91,7 @@ async fn treat_single_function(
                     should_hide = false;
                 }
             } else {
-                let variant = SchemaVariant::get_by_id_or_error(ctx, schema_variant_id).await?;
+                let variant = SchemaVariant::get_by_id(ctx, schema_variant_id).await?;
                 if !variant.is_locked() {
                     should_hide = false;
                 }
