@@ -368,10 +368,10 @@ async fn simple_frames(ctx: &mut DalContext) {
                 .expect("couldn't get input sockets")
         {
             if component_input_socket.input_socket_id == swifty_input.id() {
-                let mut possible_match =
-                    ComponentInputSocket::find_inferred_connections(ctx, component_input_socket)
-                        .await
-                        .expect("couldn't find implicit inputs");
+                let mut possible_match = component_input_socket
+                    .find_inferred_connections(ctx)
+                    .await
+                    .expect("couldn't find implicit inputs");
                 assert!(!possible_match.is_empty());
                 let travis_output_match = possible_match.pop().expect("has a value");
                 //maybe_travis_output_socket = Some(travis_output);
@@ -455,10 +455,10 @@ async fn simple_frames(ctx: &mut DalContext) {
                 .expect("couldn't get input sockets")
         {
             if component_input_socket.input_socket_id == swifty_input.id() {
-                let possible_match =
-                    ComponentInputSocket::find_inferred_connections(ctx, component_input_socket)
-                        .await
-                        .expect("couldn't find implicit inputs");
+                let possible_match = component_input_socket
+                    .find_inferred_connections(ctx)
+                    .await
+                    .expect("couldn't find implicit inputs");
                 assert!(possible_match.is_empty());
             }
         }

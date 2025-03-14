@@ -7,6 +7,7 @@ use std::{
 
 use serde::{Deserialize, Serialize};
 use si_events::FuncRunId;
+use si_id::OutputSocketId;
 use telemetry::prelude::*;
 use thiserror::Error;
 use veritech_client::{ManagementFuncStatus, ManagementResultSuccess};
@@ -171,45 +172,63 @@ async fn build_incoming_connections(
     ctx: &DalContext,
     component_id: ComponentId,
 ) -> ManagementPrototypeResult<HashMap<String, SocketRefsAndValues>> {
-    let mut connections = HashMap::new();
+    let mut incoming_connections = HashMap::new();
     for input_socket in ComponentInputSocket::list_for_component_id(ctx, component_id).await? {
-        let mut connection_values = Vec::new();
+        // Collect explicit connections for this input socket
+        let mut socket_connections = Vec::new();
         for (from_component_id, from_socket_id, _) in input_socket.connections(ctx).await? {
-            let component = from_component_id.to_string();
-            let socket = OutputSocket::get_by_id(ctx, from_socket_id)
-                .await?
-                .name()
-                .to_owned();
-            let av_id = OutputSocket::component_attribute_value_for_output_socket_id(
-                ctx,
-                from_socket_id,
-                from_component_id,
-            )
-            .await?;
-            let value = AttributeValue::get_by_id(ctx, av_id)
-                .await?
-                .view(ctx)
-                .await?;
-            connection_values.push(SocketRefAndValue {
-                socket_ref: SocketRef { component, socket },
-                value,
-            });
+            socket_connections
+                .push(build_connection(ctx, from_component_id, from_socket_id).await?);
         }
 
-        // If there are multiple sockets, this will only keep the last one.
-        // This situation is supposed to be prevented elsewhere.
+        // Collect inferred connections for this input socket
+        for from in input_socket.find_inferred_connections(ctx).await? {
+            socket_connections
+                .push(build_connection(ctx, from.component_id, from.output_socket_id).await?);
+        }
+
+        // Create an array or single connection value depending on arity
         let input_socket = InputSocket::get_by_id(ctx, input_socket.input_socket_id).await?;
         let name = input_socket.name().to_owned();
-        let connection_values = match input_socket.arity() {
-            SocketArity::One if connection_values.len() > 1 => {
+        let socket_connections = match input_socket.arity() {
+            SocketArity::One if socket_connections.len() > 1 => {
                 return Err(ManagementPrototypeError::MoreThanOneInputConnection(name))
             }
-            SocketArity::One => SocketRefsAndValues::One(connection_values.pop()),
-            SocketArity::Many => SocketRefsAndValues::Many(connection_values),
+            SocketArity::One => SocketRefsAndValues::One(socket_connections.pop()),
+            SocketArity::Many => SocketRefsAndValues::Many(socket_connections),
         };
-        connections.insert(name, connection_values);
+
+        // If there are multiple sockets with the same name, this will only keep the last one.
+        // This situation is supposed to be prevented elsewhere.
+        incoming_connections.insert(name, socket_connections);
     }
-    Ok(connections)
+    Ok(incoming_connections)
+}
+
+async fn build_connection(
+    ctx: &DalContext,
+    from_component_id: ComponentId,
+    from_socket_id: OutputSocketId,
+) -> ManagementPrototypeResult<SocketRefAndValue> {
+    let component = from_component_id.to_string();
+    let socket = OutputSocket::get_by_id(ctx, from_socket_id)
+        .await?
+        .name()
+        .to_owned();
+    let av_id = OutputSocket::component_attribute_value_for_output_socket_id(
+        ctx,
+        from_socket_id,
+        from_component_id,
+    )
+    .await?;
+    let value = AttributeValue::get_by_id(ctx, av_id)
+        .await?
+        .view(ctx)
+        .await?;
+    Ok(SocketRefAndValue {
+        socket_ref: SocketRef { component, socket },
+        value,
+    })
 }
 
 impl ManagedComponent {

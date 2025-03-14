@@ -270,9 +270,9 @@ impl AttributePrototypeDebugView {
                     .await?
             {
                 // now get inferred func binding args and values!
-                for output_match in
-                    ComponentInputSocket::find_inferred_connections(ctx, component_input_socket)
-                        .await?
+                for output_match in component_input_socket
+                    .find_inferred_connections(ctx)
+                    .await?
                 {
                     let arg_used = Component::should_data_flow_between_components(
                         ctx,

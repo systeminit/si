@@ -130,12 +130,12 @@ impl SocketDebugView {
         let path =
             (AttributeValue::get_path_for_id(ctx, attribute_value_id).await?).unwrap_or_default();
         let value_view = attribute_value.view(ctx).await?;
-        let inferred_connections =
-            ComponentInputSocket::find_inferred_connections(ctx, component_input_socket)
-                .await?
-                .into_iter()
-                .map(|output_socket| Ulid::from(output_socket.attribute_value_id))
-                .collect();
+        let inferred_connections = component_input_socket
+            .find_inferred_connections(ctx)
+            .await?
+            .into_iter()
+            .map(|output_socket| Ulid::from(output_socket.attribute_value_id))
+            .collect();
         let view = SocketDebugView {
             prototype_id,
             prototype_is_component_specific: prototype_debug_view.is_component_specific,

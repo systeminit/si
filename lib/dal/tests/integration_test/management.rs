@@ -10,14 +10,11 @@ use dal::{
     AttributeValue, Component, ComponentId, DalContext, SchemaId,
 };
 use dal_test::{
-    expected::{
-        self, apply_change_set_to_base, ExpectComponent, ExpectComponentInputSocket,
-        ExpectSchemaVariant, ExpectView,
-    },
+    expected::{ExpectComponent, ExpectComponentInputSocket, ExpectSchemaVariant, ExpectView},
     helpers::ChangeSetTestHelpers,
 };
 use dal_test::{
-    helpers::create_component_for_default_schema_name_in_default_view, test,
+    helpers::create_component_for_default_schema_name_in_default_view, test, Result,
     SCHEMA_ID_SMALL_EVEN_LEGO,
 };
 use serde_json::json;
@@ -32,14 +29,11 @@ async fn exec_mgmt_func(
     component_id: ComponentId,
     prototype_name: &str,
     view_id: Option<ViewId>,
-) -> (ManagementPrototypeExecution, ManagementFuncReturn) {
-    let schema_variant_id = Component::schema_variant_id(ctx, component_id)
-        .await
-        .expect("get schema variant id");
+) -> Result<(ManagementPrototypeExecution, ManagementFuncReturn)> {
+    let schema_variant_id = Component::schema_variant_id(ctx, component_id).await?;
 
     let management_prototype = ManagementPrototype::list_for_variant_id(ctx, schema_variant_id)
-        .await
-        .expect("get prototypes")
+        .await?
         .into_iter()
         .find(|proto| proto.name() == prototype_name)
         .expect("could not find prototype");
@@ -52,17 +46,15 @@ async fn exec_mgmt_func(
                 println!("Error: {}", err);
             }
             err
-        })
-        .expect("should execute management prototype func");
+        })?;
 
     let result: ManagementFuncReturn = execution_result
         .result
         .take()
         .expect("should have a result success")
-        .try_into()
-        .expect("should be a valid management func return");
+        .try_into()?;
 
-    (execution_result, result)
+    Ok((execution_result, result))
 }
 
 async fn exec_mgmt_func_and_operate(
@@ -70,51 +62,43 @@ async fn exec_mgmt_func_and_operate(
     component_id: ComponentId,
     prototype_name: &str,
     view_id: Option<ViewId>,
-) {
+) -> Result<()> {
     let (execution_result, result) =
-        exec_mgmt_func(ctx, component_id, prototype_name, view_id).await;
+        exec_mgmt_func(ctx, component_id, prototype_name, view_id).await?;
 
     assert_eq!(ManagementFuncStatus::Ok, result.status);
 
     let operations = result.operations.expect("should have operations");
 
     ManagementOperator::new(ctx, component_id, operations, execution_result, None)
-        .await
-        .expect("should create operator")
+        .await?
         .operate()
-        .await
-        .expect("should operate");
+        .await?;
+
+    Ok(())
 }
 
 #[test]
-async fn update_managed_components_in_view(ctx: &DalContext) {
+async fn update_managed_components_in_view(ctx: &DalContext) -> Result<()> {
     let small_odd_lego = create_component_for_default_schema_name_in_default_view(
         ctx,
         "small odd lego",
         "small odd lego",
     )
-    .await
-    .expect("could not create component");
+    .await?;
     let small_even_lego = create_component_for_default_schema_name_in_default_view(
         ctx,
         "small even lego",
         "small even lego",
     )
-    .await
-    .expect("could not create component");
+    .await?;
 
     let view_name = "a view askew";
     let new_view_id = ExpectView::create_with_name(ctx, view_name).await.id();
-    Geometry::new_for_component(ctx, small_odd_lego.id(), new_view_id)
-        .await
-        .expect("create geometry in view");
-    Geometry::new_for_component(ctx, small_even_lego.id(), new_view_id)
-        .await
-        .expect("create geometry in view");
+    Geometry::new_for_component(ctx, small_odd_lego.id(), new_view_id).await?;
+    Geometry::new_for_component(ctx, small_even_lego.id(), new_view_id).await?;
 
-    Component::manage_component(ctx, small_odd_lego.id(), small_even_lego.id())
-        .await
-        .expect("add manages edge");
+    Component::manage_component(ctx, small_odd_lego.id(), small_even_lego.id()).await?;
 
     let (execution_result, result) = exec_mgmt_func(
         ctx,
@@ -122,7 +106,7 @@ async fn update_managed_components_in_view(ctx: &DalContext) {
         "Update in View",
         Some(new_view_id),
     )
-    .await;
+    .await?;
 
     assert_eq!(ManagementFuncStatus::Ok, result.status);
     assert_eq!(Some(view_name), result.message.as_deref());
@@ -136,17 +120,15 @@ async fn update_managed_components_in_view(ctx: &DalContext) {
         execution_result,
         Some(new_view_id),
     )
-    .await
-    .expect("should create operator")
+    .await?
     .operate()
-    .await
-    .expect("should operate");
+    .await?;
 
     let mut new_component = None;
-    let components = Component::list(ctx).await.expect("list components");
+    let components = Component::list(ctx).await?;
     assert_eq!(2, components.len());
     for c in components {
-        if c.name(ctx).await.expect("get name") == "small even lego managed by small odd lego" {
+        if c.name(ctx).await? == "small even lego managed by small odd lego" {
             new_component = Some(c);
             break;
         }
@@ -154,125 +136,110 @@ async fn update_managed_components_in_view(ctx: &DalContext) {
 
     let new_component = new_component.expect("should have found the cloned component");
     let default_view_id = ExpectView::get_id_for_default(ctx).await;
-    let default_view_geometry = new_component
-        .geometry(ctx, default_view_id)
-        .await
-        .expect("get geometry for default view");
+    let default_view_geometry = new_component.geometry(ctx, default_view_id).await?;
 
     assert_eq!(0, default_view_geometry.x());
     assert_eq!(0, default_view_geometry.y());
 
-    let new_view_geometry = new_component
-        .geometry(ctx, new_view_id)
-        .await
-        .expect("get geo for view askew");
+    let new_view_geometry = new_component.geometry(ctx, new_view_id).await?;
 
     assert_eq!(1000, new_view_geometry.x());
     assert_eq!(750, new_view_geometry.y());
+    Ok(())
 }
 
 #[test]
-async fn update_managed_components(ctx: &DalContext) {
+async fn update_managed_components(ctx: &DalContext) -> Result<()> {
     let small_odd_lego = create_component_for_default_schema_name_in_default_view(
         ctx,
         "small odd lego",
         "small odd lego",
     )
-    .await
-    .expect("could not create component");
+    .await?;
     let small_even_lego = create_component_for_default_schema_name_in_default_view(
         ctx,
         "small even lego",
         "small even lego",
     )
-    .await
-    .expect("could not create component");
+    .await?;
 
-    Component::manage_component(ctx, small_odd_lego.id(), small_even_lego.id())
-        .await
-        .expect("add manages edge");
+    Component::manage_component(ctx, small_odd_lego.id(), small_even_lego.id()).await?;
 
-    let (execution_result, result) = exec_mgmt_func(ctx, small_odd_lego.id(), "Update", None).await;
+    let (execution_result, result) =
+        exec_mgmt_func(ctx, small_odd_lego.id(), "Update", None).await?;
 
     assert_eq!(result.status, ManagementFuncStatus::Ok);
 
     let operations = result.operations.expect("should have operations");
 
     ManagementOperator::new(ctx, small_odd_lego.id(), operations, execution_result, None)
-        .await
-        .expect("should create operator")
+        .await?
         .operate()
-        .await
-        .expect("should operate");
+        .await?;
 
     let mut new_component = None;
-    let components = Component::list(ctx).await.expect("list components");
+    let components = Component::list(ctx).await?;
     assert_eq!(2, components.len());
     for c in components {
-        if c.name(ctx).await.expect("get name") == "small even lego managed by small odd lego" {
+        if c.name(ctx).await? == "small even lego managed by small odd lego" {
             new_component = Some(c);
             break;
         }
     }
 
     let _new_component = new_component.expect("should have found the cloned component");
+
+    Ok(())
 }
 
 #[test]
-async fn create_component_of_other_schema(ctx: &DalContext) {
+async fn create_component_of_other_schema(ctx: &DalContext) -> Result<()> {
     let small_odd_lego = create_component_for_default_schema_name_in_default_view(
         ctx,
         "small odd lego",
         "small odd lego",
     )
-    .await
-    .expect("could not create component");
+    .await?;
     let small_even_lego = create_component_for_default_schema_name_in_default_view(
         ctx,
         "small even lego",
         "small even lego",
     )
-    .await
-    .expect("could not create component");
+    .await?;
 
     let av_id = Component::attribute_value_for_prop_by_id(
         ctx,
         small_even_lego.id(),
         &["root", "si", "resourceId"],
     )
-    .await
-    .expect("av should exist");
+    .await?;
 
     AttributeValue::update(
         ctx,
         av_id,
         Some(serde_json::json!("small even lego resource id")),
     )
-    .await
-    .expect("able to update value");
+    .await?;
 
-    Component::manage_component(ctx, small_odd_lego.id(), small_even_lego.id())
-        .await
-        .expect("add manages edge");
+    Component::manage_component(ctx, small_odd_lego.id(), small_even_lego.id()).await?;
 
-    let (execution_result, result) = exec_mgmt_func(ctx, small_odd_lego.id(), "Clone", None).await;
+    let (execution_result, result) =
+        exec_mgmt_func(ctx, small_odd_lego.id(), "Clone", None).await?;
 
     assert_eq!(result.status, ManagementFuncStatus::Ok);
 
     let operations = result.operations.expect("should have operations");
 
     ManagementOperator::new(ctx, small_odd_lego.id(), operations, execution_result, None)
-        .await
-        .expect("should create operator")
+        .await?
         .operate()
-        .await
-        .expect("should operate");
+        .await?;
 
     let mut new_component = None;
-    let components = Component::list(ctx).await.expect("list components");
+    let components = Component::list(ctx).await?;
     assert_eq!(4, components.len());
     for c in components {
-        if c.name(ctx).await.expect("get name") == "small even lego_clone" {
+        if c.name(ctx).await? == "small even lego_clone" {
             new_component = Some(c);
             break;
         }
@@ -284,43 +251,38 @@ async fn create_component_of_other_schema(ctx: &DalContext) {
         new_component.id(),
         &["root", "si", "resourceId"],
     )
-    .await
-    .expect("av should exist");
+    .await?;
 
-    let av = AttributeValue::get_by_id(ctx, av_id)
-        .await
-        .expect("get value");
+    let av = AttributeValue::get_by_id(ctx, av_id).await?;
 
     assert_eq!(
-        Some(serde_json::json!("small even lego resource id")),
-        av.value(ctx).await.expect("get value")
+        Some(json!("small even lego resource id")),
+        av.value(ctx).await?
     );
+
+    Ok(())
 }
 
 #[test]
-async fn create_and_connect_to_self_as_children(ctx: &mut DalContext) {
+async fn create_and_connect_to_self_as_children(ctx: &mut DalContext) -> Result<()> {
     let small_odd_lego = create_component_for_default_schema_name_in_default_view(
         ctx,
         "small odd lego",
         "small odd lego",
     )
-    .await
-    .expect("could not create component");
+    .await?;
 
     let av_id = Component::attribute_value_for_prop_by_id(
         ctx,
         small_odd_lego.id(),
         &["root", "si", "resourceId"],
     )
-    .await
-    .expect("av should exist");
+    .await?;
 
     let new_component_count = 3;
     let string_count = format!("{new_component_count}");
 
-    AttributeValue::update(ctx, av_id, Some(serde_json::json!(string_count)))
-        .await
-        .expect("able to update value");
+    AttributeValue::update(ctx, av_id, Some(serde_json::json!(string_count))).await?;
 
     let (execution_result, result) = exec_mgmt_func(
         ctx,
@@ -328,86 +290,69 @@ async fn create_and_connect_to_self_as_children(ctx: &mut DalContext) {
         "Create and Connect to Self as Children",
         None,
     )
-    .await;
+    .await?;
 
     assert_eq!(result.status, ManagementFuncStatus::Ok);
 
     let operations = result.operations.expect("should have operations");
 
     ManagementOperator::new(ctx, small_odd_lego.id(), operations, execution_result, None)
-        .await
-        .expect("should create operator")
+        .await?
         .operate()
-        .await
-        .expect("should operate");
+        .await?;
 
     let geometry = small_odd_lego
         .geometry(ctx, ExpectView::get_id_for_default(ctx).await)
-        .await
-        .expect("get geometry");
+        .await?;
 
     assert_eq!(Some(500), geometry.width());
     assert_eq!(Some(500), geometry.height());
 
-    let components = Component::list(ctx).await.expect("get components");
+    let components = Component::list(ctx).await?;
     assert_eq!(4, components.len());
 
     let children: HashSet<_> = Component::get_children_for_id(ctx, small_odd_lego.id())
-        .await
-        .expect("get frame children")
+        .await?
         .into_iter()
         .collect();
     assert_eq!(3, children.len());
-    let managed: HashSet<_> = small_odd_lego
-        .get_managed(ctx)
-        .await
-        .expect("get managed")
-        .into_iter()
-        .collect();
+    let managed: HashSet<_> = small_odd_lego.get_managed(ctx).await?.into_iter().collect();
     assert_eq!(children, managed);
 
-    let small_even_lego_schema_id: SchemaId = ulid::Ulid::from_string(SCHEMA_ID_SMALL_EVEN_LEGO)
-        .expect("make ulid")
-        .into();
+    let small_even_lego_schema_id: SchemaId =
+        ulid::Ulid::from_string(SCHEMA_ID_SMALL_EVEN_LEGO)?.into();
 
     for &child_id in &children {
-        let c = Component::get_by_id(ctx, child_id)
-            .await
-            .expect("get component");
-        let schema_id = c.schema(ctx).await.expect("get schema").id();
+        let c = Component::get_by_id(ctx, child_id).await?;
+        let schema_id = c.schema(ctx).await?.id();
         assert_eq!(small_even_lego_schema_id, schema_id);
     }
 
     // Ensure parallel edges make it through the rebase
-    apply_change_set_to_base(ctx).await;
+    ChangeSetTestHelpers::apply_change_set_to_base(ctx).await?;
 
     let children_base: HashSet<_> = Component::get_children_for_id(ctx, small_odd_lego.id())
-        .await
-        .expect("get frame children")
+        .await?
         .into_iter()
         .collect();
     assert_eq!(3, children_base.len());
-    let managed_base: HashSet<_> = small_odd_lego
-        .get_managed(ctx)
-        .await
-        .expect("get managed")
-        .into_iter()
-        .collect();
+    let managed_base: HashSet<_> = small_odd_lego.get_managed(ctx).await?.into_iter().collect();
 
     assert_eq!(children, children_base);
     assert_eq!(children_base, managed_base);
+
+    Ok(())
 }
 
 #[test]
-async fn create_and_connect_to_self(ctx: &DalContext) {
+async fn create_and_connect_to_self(ctx: &DalContext) -> Result<()> {
     let mut small_odd_lego = create_component_for_default_schema_name_in_default_view(
         ctx,
         "small odd lego",
         "small odd lego",
     )
-    .await
-    .expect("could not create component");
-    let view_id = View::get_id_for_default(ctx).await.expect("get view id");
+    .await?;
+    let view_id = View::get_id_for_default(ctx).await?;
 
     let manager_x: isize = 123;
     let manager_y: isize = 346;
@@ -421,94 +366,76 @@ async fn create_and_connect_to_self(ctx: &DalContext) {
             None::<isize>,
             None::<isize>,
         )
-        .await
-        .expect("set geometry");
+        .await?;
 
     let av_id = Component::attribute_value_for_prop_by_id(
         ctx,
         small_odd_lego.id(),
         &["root", "si", "resourceId"],
     )
-    .await
-    .expect("av should exist");
+    .await?;
 
     let new_component_count = 3;
     let string_count = format!("{new_component_count}");
 
-    AttributeValue::update(ctx, av_id, Some(serde_json::json!(string_count)))
-        .await
-        .expect("able to update value");
+    AttributeValue::update(ctx, av_id, Some(serde_json::json!(string_count))).await?;
 
     let (execution_result, result) =
-        exec_mgmt_func(ctx, small_odd_lego.id(), "Create and Connect to Self", None).await;
+        exec_mgmt_func(ctx, small_odd_lego.id(), "Create and Connect to Self", None).await?;
 
     assert_eq!(result.status, ManagementFuncStatus::Ok);
 
     let operations = result.operations.expect("should have operations");
 
     ManagementOperator::new(ctx, small_odd_lego.id(), operations, execution_result, None)
-        .await
-        .expect("should create operator")
+        .await?
         .operate()
-        .await
-        .expect("should operate");
+        .await?;
 
-    let components = Component::list(ctx).await.expect("get components");
+    let components = Component::list(ctx).await?;
     assert_eq!(4, components.len());
 
-    let connections = small_odd_lego
-        .incoming_connections(ctx)
-        .await
-        .expect("get incoming conns");
+    let connections = small_odd_lego.incoming_connections(ctx).await?;
     assert_eq!(3, connections.len());
-    let small_even_lego_schema_id: SchemaId = ulid::Ulid::from_string(SCHEMA_ID_SMALL_EVEN_LEGO)
-        .expect("make ulid")
-        .into();
-    let manager_geometry = small_odd_lego
-        .geometry(ctx, view_id)
-        .await
-        .expect("get geometry")
-        .into_raw();
+    let small_even_lego_schema_id: SchemaId =
+        ulid::Ulid::from_string(SCHEMA_ID_SMALL_EVEN_LEGO)?.into();
+    let manager_geometry = small_odd_lego.geometry(ctx, view_id).await?.into_raw();
     for connection in connections {
-        let c = Component::get_by_id(ctx, connection.from_component_id)
-            .await
-            .expect("get component");
+        let c = Component::get_by_id(ctx, connection.from_component_id).await?;
 
-        let c_geo = c.geometry(ctx, view_id).await.expect("get geo").into_raw();
+        let c_geo = c.geometry(ctx, view_id).await?.into_raw();
         assert_eq!(manager_x, manager_geometry.x);
         assert_eq!(manager_y, manager_geometry.y);
         assert_eq!(manager_geometry.x + 10, c_geo.x);
         assert_eq!(manager_geometry.y + 10, c_geo.y);
 
-        let schema_id = c.schema(ctx).await.expect("get schema").id();
+        let schema_id = c.schema(ctx).await?.id();
         assert_eq!(small_even_lego_schema_id, schema_id);
     }
+
+    Ok(())
 }
 
 #[test]
-async fn create_and_connect_from_self(ctx: &DalContext) {
+async fn create_and_connect_from_self(ctx: &DalContext) -> Result<()> {
     let small_odd_lego = create_component_for_default_schema_name_in_default_view(
         ctx,
         "small odd lego",
         "small odd lego",
     )
-    .await
-    .expect("could not create component");
+    .await?;
 
     let av_id = Component::attribute_value_for_prop_by_id(
         ctx,
         small_odd_lego.id(),
         &["root", "si", "resourceId"],
     )
-    .await
-    .expect("av should exist");
+    .await?;
 
     let new_component_count = 3;
     let string_count = format!("{new_component_count}");
 
-    AttributeValue::update(ctx, av_id, Some(serde_json::json!(string_count)))
-        .await
-        .expect("able to update value");
+    AttributeValue::update(ctx, av_id, Some(serde_json::json!(string_count))).await?;
 
     let (execution_result, result) = exec_mgmt_func(
         ctx,
@@ -516,66 +443,58 @@ async fn create_and_connect_from_self(ctx: &DalContext) {
         "Create and Connect From Self",
         None,
     )
-    .await;
+    .await?;
 
     assert_eq!(result.status, ManagementFuncStatus::Ok);
 
     let operations = result.operations.expect("should have operations");
 
     ManagementOperator::new(ctx, small_odd_lego.id(), operations, execution_result, None)
-        .await
-        .expect("should create operator")
+        .await?
         .operate()
-        .await
-        .expect("should operate");
+        .await?;
 
-    let components = Component::list(ctx).await.expect("get components");
+    let components = Component::list(ctx).await?;
     assert_eq!(4, components.len());
 
-    let connections = small_odd_lego
-        .outgoing_connections(ctx)
-        .await
-        .expect("get outgoing conns");
+    let connections = small_odd_lego.outgoing_connections(ctx).await?;
     assert_eq!(3, connections.len());
-    let small_even_lego_schema_id: SchemaId = ulid::Ulid::from_string(SCHEMA_ID_SMALL_EVEN_LEGO)
-        .expect("make ulid")
-        .into();
+    let small_even_lego_schema_id: SchemaId =
+        ulid::Ulid::from_string(SCHEMA_ID_SMALL_EVEN_LEGO)?.into();
     for connection in connections {
-        let c = Component::get_by_id(ctx, connection.to_component_id)
-            .await
-            .expect("get component");
-        let schema_id = c.schema(ctx).await.expect("get schema").id();
+        let c = Component::get_by_id(ctx, connection.to_component_id).await?;
+        let schema_id = c.schema(ctx).await?.id();
         assert_eq!(small_even_lego_schema_id, schema_id);
     }
+
+    Ok(())
 }
 
 #[test]
-async fn create_component_of_same_schema(ctx: &DalContext) {
+async fn create_component_of_same_schema(ctx: &DalContext) -> Result<()> {
     let small_odd_lego = create_component_for_default_schema_name_in_default_view(
         ctx,
         "small odd lego",
         "small odd lego",
     )
-    .await
-    .expect("could not create component");
+    .await?;
 
-    let (execution_result, result) = exec_mgmt_func(ctx, small_odd_lego.id(), "Clone", None).await;
+    let (execution_result, result) =
+        exec_mgmt_func(ctx, small_odd_lego.id(), "Clone", None).await?;
     assert_eq!(result.status, ManagementFuncStatus::Ok);
 
     let operations = result.operations.expect("should have operations");
 
     ManagementOperator::new(ctx, small_odd_lego.id(), operations, execution_result, None)
-        .await
-        .expect("should create operator")
+        .await?
         .operate()
-        .await
-        .expect("should operate");
+        .await?;
 
     let mut new_component = None;
-    let components = Component::list(ctx).await.expect("list components");
+    let components = Component::list(ctx).await?;
     assert_eq!(2, components.len());
     for c in components {
-        if c.name(ctx).await.expect("get name") == "small odd lego_clone" {
+        if c.name(ctx).await? == "small odd lego_clone" {
             new_component = Some(c);
             break;
         }
@@ -586,15 +505,14 @@ async fn create_component_of_same_schema(ctx: &DalContext) {
     let new_component = new_component.expect("should have found the cloned component");
     let new_geometry: ManagementGeometry = new_component
         .geometry(ctx, default_view_id)
-        .await
-        .expect("get geometry")
+        .await?
         .into_raw()
         .into();
 
     assert_eq!(Some(10.0), new_geometry.x);
     assert_eq!(Some(20.0), new_geometry.y);
 
-    let managers = new_component.managers(ctx).await.expect("get managers");
+    let managers = new_component.managers(ctx).await?;
 
     assert_eq!(1, managers.len());
     assert_eq!(
@@ -603,116 +521,105 @@ async fn create_component_of_same_schema(ctx: &DalContext) {
         "should have the same manager"
     );
 
-    let (execution_result, result) = exec_mgmt_func(ctx, small_odd_lego.id(), "Clone", None).await;
+    let (execution_result, result) =
+        exec_mgmt_func(ctx, small_odd_lego.id(), "Clone", None).await?;
 
     assert_eq!(result.status, ManagementFuncStatus::Ok);
 
     let operations = result.operations.expect("should have operations");
 
     ManagementOperator::new(ctx, small_odd_lego.id(), operations, execution_result, None)
-        .await
-        .expect("should create operator")
+        .await?
         .operate()
-        .await
-        .expect("should operate");
+        .await?;
 
     let mut new_component_2 = None;
 
-    let components = Component::list(ctx).await.expect("list components");
+    let components = Component::list(ctx).await?;
     assert_eq!(4, components.len());
     for c in components {
-        let name = c.name(ctx).await.expect("get name");
+        let name = c.name(ctx).await?;
         if name == "small odd lego_clone_clone" {
             new_component_2 = Some(c);
             //break;
         }
     }
     let _new_component_2 = new_component_2.expect("should have found the cloned component again");
+
+    Ok(())
 }
 
 #[test]
-async fn execute_management_func(ctx: &DalContext) {
+async fn execute_management_func(ctx: &DalContext) -> Result<()> {
     let small_odd_lego = create_component_for_default_schema_name_in_default_view(
         ctx,
         "small odd lego",
         "small odd lego",
     )
-    .await
-    .expect("could not create component");
+    .await?;
 
     let av_id = Component::attribute_value_for_prop_by_id(
         ctx,
         small_odd_lego.id(),
         &["root", "si", "resourceId"],
     )
-    .await
-    .expect("av should exist");
+    .await?;
 
-    AttributeValue::update(ctx, av_id, Some(serde_json::json!("import id")))
-        .await
-        .expect("able to update value");
+    AttributeValue::update(ctx, av_id, Some(serde_json::json!("import id"))).await?;
 
     let (execution_result, result) =
-        exec_mgmt_func(ctx, small_odd_lego.id(), "Import small odd lego", None).await;
+        exec_mgmt_func(ctx, small_odd_lego.id(), "Import small odd lego", None).await?;
 
     assert_eq!(result.status, ManagementFuncStatus::Ok);
 
     let operations = result.operations.expect("should have operations");
 
     ManagementOperator::new(ctx, small_odd_lego.id(), operations, execution_result, None)
-        .await
-        .expect("should create operator")
+        .await?
         .operate()
-        .await
-        .expect("should operate");
+        .await?;
 
     let av_id = Component::attribute_value_for_prop_by_id(
         ctx,
         small_odd_lego.id(),
         &["root", "domain", "two"],
     )
-    .await
-    .expect("get four");
+    .await?;
 
-    let two_av = AttributeValue::get_by_id(ctx, av_id)
-        .await
-        .expect("a fleetwood to my mac");
+    let two_av = AttributeValue::get_by_id(ctx, av_id).await?;
 
-    let two_value = two_av.value(ctx).await.expect("get value");
+    let two_value = two_av.value(ctx).await?;
 
     assert_eq!(Some(serde_json::json!("step")), two_value);
+
+    Ok(())
 }
 
 #[test]
-async fn deeply_nested_children(ctx: &DalContext) {
+async fn deeply_nested_children(ctx: &DalContext) -> Result<()> {
     let small_odd_lego = create_component_for_default_schema_name_in_default_view(
         ctx,
         "small odd lego",
         "small odd lego",
     )
-    .await
-    .expect("could not create component");
+    .await?;
 
     let (execution_result, result) =
-        exec_mgmt_func(ctx, small_odd_lego.id(), "Deeply Nested Children", None).await;
+        exec_mgmt_func(ctx, small_odd_lego.id(), "Deeply Nested Children", None).await?;
     assert_eq!(result.status, ManagementFuncStatus::Ok);
 
     let operations = result.operations.expect("should have operations");
 
     ManagementOperator::new(ctx, small_odd_lego.id(), operations, execution_result, None)
-        .await
-        .expect("should create operator")
+        .await?
         .operate()
-        .await
-        .expect("should operate");
+        .await?;
 
     let mut component_names = vec![];
 
     let mut current = small_odd_lego.id();
     loop {
-        let children = Component::get_children_for_id(ctx, current)
-            .await
-            .expect("get children");
+        let children = Component::get_children_for_id(ctx, current).await?;
 
         if children.is_empty() {
             break;
@@ -720,12 +627,7 @@ async fn deeply_nested_children(ctx: &DalContext) {
 
         let child_id = children[0];
         current = child_id;
-        let name = Component::get_by_id(ctx, child_id)
-            .await
-            .expect("get comp")
-            .name(ctx)
-            .await
-            .expect("get name");
+        let name = Component::get_by_id(ctx, child_id).await?.name(ctx).await?;
 
         component_names.push(name);
     }
@@ -736,71 +638,59 @@ async fn deeply_nested_children(ctx: &DalContext) {
             "clone_8", "clone_9",
         ],
         component_names
-    )
+    );
+
+    Ok(())
 }
 
 #[test]
-async fn override_values_set_by_sockets(ctx: &DalContext) {
+async fn override_values_set_by_sockets(ctx: &DalContext) -> Result<()> {
     let small_odd_lego = create_component_for_default_schema_name_in_default_view(
         ctx,
         "small odd lego",
         "small odd lego",
     )
-    .await
-    .expect("could not create component");
+    .await?;
 
     let (execution_result, result) =
-        exec_mgmt_func(ctx, small_odd_lego.id(), "Override Props", None).await;
+        exec_mgmt_func(ctx, small_odd_lego.id(), "Override Props", None).await?;
     assert_eq!(result.status, ManagementFuncStatus::Ok);
 
     let operations = result.operations.expect("should have operations");
 
     ManagementOperator::new(ctx, small_odd_lego.id(), operations, execution_result, None)
-        .await
-        .expect("should create operator")
+        .await?
         .operate()
-        .await
-        .expect("should operate");
+        .await?;
 
     let current = small_odd_lego.id();
-    let children = Component::get_children_for_id(ctx, current)
-        .await
-        .expect("get children");
+    let children = Component::get_children_for_id(ctx, current).await?;
     assert_eq!(children.len(), 1);
     let child_id = children[0];
-    let component = Component::get_by_id(ctx, child_id).await.expect("get comp");
+    let component = Component::get_by_id(ctx, child_id).await?;
 
-    let props = component
-        .domain_prop_attribute_value(ctx)
-        .await
-        .expect("could not get domain");
-    let domain = AttributeValue::get_by_id(ctx, props)
-        .await
-        .expect("could not get attribute value");
-    let view = domain.view(ctx).await.expect("could not get view");
+    let props = component.domain_prop_attribute_value(ctx).await?;
+    let domain = AttributeValue::get_by_id(ctx, props).await?;
+    let view = domain.view(ctx).await?;
     assert!(view.is_some());
 
     let one_av_id = component
         .attribute_value_for_prop(ctx, &["root", "domain", "one"])
-        .await
-        .expect("get av for prop");
+        .await?;
 
-    assert!(
-        !AttributeValue::is_set_by_dependent_function(ctx, one_av_id)
-            .await
-            .expect("check if dependent func")
-    );
+    assert!(!AttributeValue::is_set_by_dependent_function(ctx, one_av_id).await?);
+
+    Ok(())
 }
 
 #[test]
-async fn create_in_views(ctx: &DalContext) {
+async fn create_in_views(ctx: &DalContext) -> Result<()> {
     let mut small_odd_lego = create_component_for_default_schema_name_in_default_view(
         ctx,
         "small odd lego",
         "small odd lego",
     )
-    .await
-    .expect("could not create component");
+    .await?;
 
     let default_view_id = ExpectView::get_id_for_default(ctx).await;
 
@@ -809,43 +699,35 @@ async fn create_in_views(ctx: &DalContext) {
 
     small_odd_lego
         .set_geometry(ctx, default_view_id, manager_x, manager_y, None, None)
-        .await
-        .expect("set manager component geometry");
+        .await?;
 
     let av_id = Component::attribute_value_for_prop_by_id(
         ctx,
         small_odd_lego.id(),
         &["root", "si", "resourceId"],
     )
-    .await
-    .expect("av should exist");
+    .await?;
 
     let view_name = "the black lodge";
     let view = ExpectView::create_with_name(ctx, view_name).await;
 
-    AttributeValue::update(ctx, av_id, Some(serde_json::json!(view_name)))
-        .await
-        .expect("able to update value");
+    AttributeValue::update(ctx, av_id, Some(serde_json::json!(view_name))).await?;
 
     let (execution_result, result) =
-        exec_mgmt_func(ctx, small_odd_lego.id(), "Create in Other Views", None).await;
+        exec_mgmt_func(ctx, small_odd_lego.id(), "Create in Other Views", None).await?;
 
     let operations = result.operations.expect("should have operations");
 
     let component_id =
         ManagementOperator::new(ctx, small_odd_lego.id(), operations, execution_result, None)
-            .await
-            .expect("should create operator")
+            .await?
             .operate()
-            .await
-            .expect("should operate")
+            .await?
             .expect("should return component ids")
             .pop()
             .expect("should have a component id");
 
-    let geometries = Geometry::by_view_for_component_id(ctx, component_id)
-        .await
-        .expect("get geometries");
+    let geometries = Geometry::by_view_for_component_id(ctx, component_id).await?;
 
     assert_eq!(2, geometries.len());
 
@@ -864,17 +746,18 @@ async fn create_in_views(ctx: &DalContext) {
 
     assert_eq!(100, default_geometry.x() - manager_x);
     assert_eq!(100, default_geometry.y() - manager_y);
+
+    Ok(())
 }
 
 #[test]
-async fn create_view_and_in_view(ctx: &DalContext) {
+async fn create_view_and_in_view(ctx: &DalContext) -> Result<()> {
     let mut small_odd_lego = create_component_for_default_schema_name_in_default_view(
         ctx,
         "small odd lego",
         "small odd lego",
     )
-    .await
-    .expect("could not create component");
+    .await?;
 
     let default_view_id = ExpectView::get_id_for_default(ctx).await;
 
@@ -883,21 +766,17 @@ async fn create_view_and_in_view(ctx: &DalContext) {
 
     small_odd_lego
         .set_geometry(ctx, default_view_id, manager_x, manager_y, None, None)
-        .await
-        .expect("set manager component geometry");
+        .await?;
 
     let av_id = Component::attribute_value_for_prop_by_id(
         ctx,
         small_odd_lego.id(),
         &["root", "si", "resourceId"],
     )
-    .await
-    .expect("av should exist");
+    .await?;
 
     let view_name = "the red room";
-    AttributeValue::update(ctx, av_id, Some(serde_json::json!(view_name)))
-        .await
-        .expect("able to update value");
+    AttributeValue::update(ctx, av_id, Some(serde_json::json!(view_name))).await?;
 
     let (execution_result, result) = exec_mgmt_func(
         ctx,
@@ -905,29 +784,24 @@ async fn create_view_and_in_view(ctx: &DalContext) {
         "Create View and Component in View",
         None,
     )
-    .await;
+    .await?;
 
     let operations = result.operations.expect("should have operations");
 
     let component_id =
         ManagementOperator::new(ctx, small_odd_lego.id(), operations, execution_result, None)
-            .await
-            .expect("should create operator")
+            .await?
             .operate()
-            .await
-            .expect("should operate")
+            .await?
             .expect("should return component ids")
             .pop()
             .expect("should have a component id");
 
     let red_room = View::find_by_name(ctx, view_name)
-        .await
-        .expect("find view")
-        .expect("view exists");
+        .await?
+        .expect("find view");
 
-    let geometries = Geometry::by_view_for_component_id(ctx, component_id)
-        .await
-        .expect("get geometries");
+    let geometries = Geometry::by_view_for_component_id(ctx, component_id).await?;
 
     assert_eq!(1, geometries.len());
 
@@ -938,17 +812,18 @@ async fn create_view_and_in_view(ctx: &DalContext) {
 
     assert_eq!(315, red_room_geo.x() - manager_x);
     assert_eq!(315, red_room_geo.y() - manager_y);
+
+    Ok(())
 }
 
 #[test]
-async fn delete_and_erase_components(ctx: &mut DalContext) {
+async fn delete_and_erase_components(ctx: &mut DalContext) -> Result<()> {
     let manager = create_component_for_default_schema_name_in_default_view(
         ctx,
         "small odd lego",
         "middle manager",
     )
-    .await
-    .expect("could not create component");
+    .await?;
 
     let component_with_resource_to_delete =
         create_component_for_default_schema_name_in_default_view(
@@ -956,16 +831,14 @@ async fn delete_and_erase_components(ctx: &mut DalContext) {
             "small odd lego",
             "component with resource to delete",
         )
-        .await
-        .expect("could not create component");
+        .await?;
 
     let component_still_on_head = create_component_for_default_schema_name_in_default_view(
         ctx,
         "small odd lego",
         "component still on head",
     )
-    .await
-    .expect("could not create component");
+    .await?;
 
     let component_with_resource_to_erase =
         create_component_for_default_schema_name_in_default_view(
@@ -973,26 +846,19 @@ async fn delete_and_erase_components(ctx: &mut DalContext) {
             "small odd lego",
             "component with resource to erase",
         )
-        .await
-        .expect("could not create component");
+        .await?;
 
     for component_id in [
         component_with_resource_to_delete.id(),
         component_still_on_head.id(),
         component_with_resource_to_erase.id(),
     ] {
-        Component::manage_component(ctx, manager.id(), component_id)
-            .await
-            .expect("failed to create management edge");
+        Component::manage_component(ctx, manager.id(), component_id).await?;
     }
 
-    ChangeSetTestHelpers::apply_change_set_to_base(ctx)
-        .await
-        .expect("could not apply change set");
+    ChangeSetTestHelpers::apply_change_set_to_base(ctx).await?;
 
-    ChangeSetTestHelpers::fork_from_head_change_set(ctx)
-        .await
-        .expect("could not fork head");
+    ChangeSetTestHelpers::fork_from_head_change_set(ctx).await?;
 
     let resource_data = ResourceData::new(
         ResourceStatus::Ok,
@@ -1001,109 +867,88 @@ async fn delete_and_erase_components(ctx: &mut DalContext) {
 
     component_with_resource_to_delete
         .set_resource(ctx, resource_data.clone())
-        .await
-        .expect("failed to set resource");
+        .await?;
     component_with_resource_to_erase
         .set_resource(ctx, resource_data.clone())
-        .await
-        .expect("failed to set resource");
+        .await?;
 
     let component_to_delete = create_component_for_default_schema_name_in_default_view(
         ctx,
         "small odd lego",
         "component to delete",
     )
-    .await
-    .expect("could not create component");
+    .await?;
 
-    Component::manage_component(ctx, manager.id(), component_to_delete.id())
-        .await
-        .expect("failed to create management edge");
+    Component::manage_component(ctx, manager.id(), component_to_delete.id()).await?;
 
     let av_id =
         Component::attribute_value_for_prop_by_id(ctx, manager.id(), &["root", "si", "resourceId"])
-            .await
-            .expect("av should exist");
+            .await?;
 
     let resource_id = format!(
         "{},{},{},{}",
-        component_to_delete.name(ctx).await.expect("get name"),
-        component_with_resource_to_delete
-            .name(ctx)
-            .await
-            .expect("get name"),
-        component_still_on_head.name(ctx).await.expect("get name"),
-        component_with_resource_to_erase
-            .name(ctx)
-            .await
-            .expect("get name")
+        component_to_delete.name(ctx).await?,
+        component_with_resource_to_delete.name(ctx).await?,
+        component_still_on_head.name(ctx).await?,
+        component_with_resource_to_erase.name(ctx).await?
     );
 
-    AttributeValue::update(ctx, av_id, Some(serde_json::json!(resource_id)))
-        .await
-        .expect("able to update value");
+    AttributeValue::update(ctx, av_id, Some(serde_json::json!(resource_id))).await?;
 
     let (execution_result, result) =
-        exec_mgmt_func(ctx, manager.id(), "Delete and Erase", None).await;
+        exec_mgmt_func(ctx, manager.id(), "Delete and Erase", None).await?;
     assert_eq!(ManagementFuncStatus::Ok, result.status);
 
     let operations = result.operations.expect("should have operations");
 
     ManagementOperator::new(ctx, manager.id(), operations, execution_result, None)
-        .await
-        .expect("should create operator")
+        .await?
         .operate()
-        .await
-        .expect("should operate");
+        .await?;
 
     assert!(
         Component::try_get_by_id(ctx, component_to_delete.id())
-            .await
-            .expect("should succeed")
+            .await?
             .is_none(),
         "deleted component should be gone"
     );
 
     assert!(
         Component::try_get_by_id(ctx, component_still_on_head.id())
-            .await
-            .expect("should succeed")
+            .await?
             .is_none(),
         "deleted component that is still on head should be gone in this change set"
     );
 
     assert!(
         Component::exists_on_head(ctx, &[component_still_on_head.id()])
-            .await
-            .expect("should be able to check for components on head")
+            .await?
             .contains(&component_still_on_head.id()),
         "component should still exist on head"
     );
 
     assert!(
         Component::try_get_by_id(ctx, component_with_resource_to_erase.id())
-            .await
-            .expect("should be able to look for component")
+            .await?
             .is_none(),
         "erased component should be gone"
     );
 
     let component_with_resource_to_delete =
-        Component::get_by_id(ctx, component_with_resource_to_delete.id())
-            .await
-            .expect("component with resource should still exist");
+        Component::get_by_id(ctx, component_with_resource_to_delete.id()).await?;
     assert!(
         component_with_resource_to_delete.to_delete(),
         "component with resource should be marked as to delete"
     );
+
+    Ok(())
 }
 
 #[test]
-async fn remove_view_and_component_from_view(ctx: &DalContext) {
+async fn remove_view_and_component_from_view(ctx: &DalContext) -> Result<()> {
     let manager =
         create_component_for_default_schema_name_in_default_view(ctx, "small odd lego", "c-suite")
-            .await
-            .expect("could not create component");
+            .await?;
 
     let new_view_name = "vista del mar";
     let new_view = ExpectView::create_with_name(ctx, new_view_name).await;
@@ -1113,16 +958,14 @@ async fn remove_view_and_component_from_view(ctx: &DalContext) {
         "small odd lego",
         "both views 1",
     )
-    .await
-    .expect("could not create component");
+    .await?;
 
     let component_in_both_views_2 = create_component_for_default_schema_name_in_default_view(
         ctx,
         "small odd lego",
         "both views 2",
     )
-    .await
-    .expect("could not create component");
+    .await?;
 
     for component_id in [
         component_in_both_views_1.id(),
@@ -1135,50 +978,36 @@ async fn remove_view_and_component_from_view(ctx: &DalContext) {
             height: None,
         };
 
-        Component::manage_component(ctx, manager.id(), component_id)
-            .await
-            .expect("could not manage component");
+        Component::manage_component(ctx, manager.id(), component_id).await?;
 
-        Component::add_to_view(ctx, component_id, new_view.id(), raw_geometry)
-            .await
-            .expect("could not add to view");
+        Component::add_to_view(ctx, component_id, new_view.id(), raw_geometry).await?;
     }
 
     let av_id =
         Component::attribute_value_for_prop_by_id(ctx, manager.id(), &["root", "si", "resourceId"])
-            .await
-            .expect("av should exist");
+            .await?;
 
-    AttributeValue::update(ctx, av_id, Some(serde_json::json!(new_view_name)))
-        .await
-        .expect("able to update value");
+    AttributeValue::update(ctx, av_id, Some(serde_json::json!(new_view_name))).await?;
 
     let (execution_result, result) =
-        exec_mgmt_func(ctx, manager.id(), "Remove View and Components", None).await;
+        exec_mgmt_func(ctx, manager.id(), "Remove View and Components", None).await?;
 
     assert_eq!(ManagementFuncStatus::Ok, result.status);
 
     let operations = result.operations.expect("should have operations");
 
     ManagementOperator::new(ctx, manager.id(), operations, execution_result, None)
-        .await
-        .expect("should create operator")
+        .await?
         .operate()
-        .await
-        .expect("should operate");
+        .await?;
 
-    assert!(View::find_by_name(ctx, new_view_name)
-        .await
-        .expect("could not search views by name")
-        .is_none());
+    assert!(View::find_by_name(ctx, new_view_name).await?.is_none());
 
     for component_id in [
         component_in_both_views_1.id(),
         component_in_both_views_2.id(),
     ] {
-        let geometries = Geometry::by_view_for_component_id(ctx, component_id)
-            .await
-            .expect("get geometries by view for component");
+        let geometries = Geometry::by_view_for_component_id(ctx, component_id).await?;
         assert!(!geometries.is_empty());
         assert!(!geometries.contains_key(&new_view.id()));
     }
@@ -1186,28 +1015,23 @@ async fn remove_view_and_component_from_view(ctx: &DalContext) {
     // try to delete the default view
     let av_id =
         Component::attribute_value_for_prop_by_id(ctx, manager.id(), &["root", "si", "resourceId"])
-            .await
-            .expect("av should exist");
+            .await?;
 
-    AttributeValue::update(ctx, av_id, Some(serde_json::json!("DEFAULT")))
-        .await
-        .expect("able to update value");
+    AttributeValue::update(ctx, av_id, Some(serde_json::json!("DEFAULT"))).await?;
 
     let default_view_id = ExpectView::get_id_for_default(ctx).await;
 
     let (execution_result, result) =
-        exec_mgmt_func(ctx, manager.id(), "Remove View and Components", None).await;
+        exec_mgmt_func(ctx, manager.id(), "Remove View and Components", None).await?;
 
     assert_eq!(ManagementFuncStatus::Ok, result.status);
 
     let operations = result.operations.expect("should have operations");
 
     ManagementOperator::new(ctx, manager.id(), operations, execution_result, None)
-        .await
-        .expect("should create operator")
+        .await?
         .operate()
-        .await
-        .expect("Should succeed, even though the view will not be removed since the removal would orphan the manager");
+        .await?;
 
     assert_eq!(default_view_id, ExpectView::get_id_for_default(ctx).await);
 
@@ -1215,11 +1039,11 @@ async fn remove_view_and_component_from_view(ctx: &DalContext) {
         component_in_both_views_1.id(),
         component_in_both_views_2.id(),
     ] {
-        let geometries = Geometry::by_view_for_component_id(ctx, component_id)
-            .await
-            .expect("get geometries by view for component");
+        let geometries = Geometry::by_view_for_component_id(ctx, component_id).await?;
         assert!(!geometries.is_empty());
     }
+
+    Ok(())
 }
 
 struct SmallOddLego {
@@ -1240,41 +1064,42 @@ impl SmallOddLego {
     async fn create_and_connect_to_inputs(
         &self,
         ctx: &mut DalContext,
-    ) -> ExpectComponentInputSocket {
+    ) -> Result<ExpectComponentInputSocket> {
         exec_mgmt_func_and_operate(
             ctx,
             self.component.id(),
             "Create and Connect to Inputs",
             None,
         )
-        .await;
-        ExpectComponent::find(ctx, "lego")
+        .await?;
+        Ok(ExpectComponent::find(ctx, "lego")
             .await
             .input_socket(ctx, "two")
-            .await
+            .await)
     }
 
-    async fn connect_to_inputs(&self, ctx: &mut DalContext) {
+    async fn connect_to_inputs(&self, ctx: &mut DalContext) -> Result<()> {
         exec_mgmt_func_and_operate(ctx, self.component.id(), "Connect to Inputs", None).await
     }
 
-    async fn disconnect_from_inputs(&self, ctx: &mut DalContext) {
+    async fn disconnect_from_inputs(&self, ctx: &mut DalContext) -> Result<()> {
         exec_mgmt_func_and_operate(ctx, self.component.id(), "Disconnect from Inputs", None).await
     }
 
-    async fn get_input_values(&self, ctx: &mut DalContext) -> serde_json::Value {
-        exec_mgmt_func_and_operate(ctx, self.component.id(), "Get Input Values", None).await;
-        self.component
+    async fn get_input_values(&self, ctx: &mut DalContext) -> Result<serde_json::Value> {
+        exec_mgmt_func_and_operate(ctx, self.component.id(), "Get Input Values", None).await?;
+        Ok(self
+            .component
             .prop(ctx, ["root", "domain", "test_result"])
             .await
             .view(ctx)
             .await
-            .expect("No test_result value")
+            .expect("No test_result value"))
     }
 }
 
 #[test]
-async fn create_connect_input_sockets(ctx: &mut DalContext) {
+async fn create_connect_input_sockets(ctx: &mut DalContext) -> Result<()> {
     // Manager component
     let manager = SmallOddLego::create(ctx).await;
 
@@ -1288,12 +1113,14 @@ async fn create_connect_input_sockets(ctx: &mut DalContext) {
     one.connect(ctx, manager.arity_one).await;
     three.connect(ctx, manager.one).await;
     five.connect(ctx, manager.one).await;
-    let lego = manager.create_and_connect_to_inputs(ctx).await;
+    let lego = manager.create_and_connect_to_inputs(ctx).await?;
     assert_eq!(lego.connections(ctx).await, vec![one, three, five]);
+
+    Ok(())
 }
 
 #[test]
-async fn update_connect_add_input_sockets(ctx: &mut DalContext) {
+async fn update_connect_add_input_sockets(ctx: &mut DalContext) -> Result<()> {
     // Manager component
     let manager = SmallOddLego::create(ctx).await;
 
@@ -1304,19 +1131,21 @@ async fn update_connect_add_input_sockets(ctx: &mut DalContext) {
     let five = external.output_socket(ctx, "five").await;
 
     // Create empty lego
-    let lego = manager.create_and_connect_to_inputs(ctx).await;
+    let lego = manager.create_and_connect_to_inputs(ctx).await?;
     assert_eq!(lego.connections(ctx).await, vec![]);
 
     // Connect lego to inputs arity_one=one, two=[three,five]
     one.connect(ctx, manager.arity_one).await;
     three.connect(ctx, manager.one).await;
     five.connect(ctx, manager.one).await;
-    manager.connect_to_inputs(ctx).await;
+    manager.connect_to_inputs(ctx).await?;
     assert_eq!(lego.connections(ctx).await, vec![one, three, five]);
+
+    Ok(())
 }
 
 #[test]
-async fn update_connect_remove_input_sockets(ctx: &mut DalContext) {
+async fn update_connect_remove_input_sockets(ctx: &mut DalContext) -> Result<()> {
     // Manager component
     let manager = SmallOddLego::create(ctx).await;
 
@@ -1330,16 +1159,18 @@ async fn update_connect_remove_input_sockets(ctx: &mut DalContext) {
     one.connect(ctx, manager.arity_one).await;
     three.connect(ctx, manager.one).await;
     five.connect(ctx, manager.one).await;
-    let lego = manager.create_and_connect_to_inputs(ctx).await;
+    let lego = manager.create_and_connect_to_inputs(ctx).await?;
     assert_eq!(lego.connections(ctx).await, vec![one, three, five]);
 
     // Disconnect from all inputs
-    manager.disconnect_from_inputs(ctx).await;
+    manager.disconnect_from_inputs(ctx).await?;
     assert_eq!(lego.connections(ctx).await, vec![]);
+
+    Ok(())
 }
 
 #[test]
-async fn connect_input_sockets_redundant(ctx: &mut DalContext) {
+async fn connect_input_sockets_redundant(ctx: &mut DalContext) -> Result<()> {
     // Manager component
     let manager = SmallOddLego::create(ctx).await;
 
@@ -1350,7 +1181,7 @@ async fn connect_input_sockets_redundant(ctx: &mut DalContext) {
     let five = external.output_socket(ctx, "five").await;
 
     // Create empty lego
-    let lego = manager.create_and_connect_to_inputs(ctx).await;
+    let lego = manager.create_and_connect_to_inputs(ctx).await?;
     assert_eq!(lego.connections(ctx).await, vec![]);
 
     // Connect all inputs to all sockets (including arity_one and one, which means we'll pass
@@ -1361,20 +1192,22 @@ async fn connect_input_sockets_redundant(ctx: &mut DalContext) {
     five.connect(ctx, manager.one).await;
 
     // Disconnect from all inputs even though there are no inputs to disconnect from
-    manager.disconnect_from_inputs(ctx).await;
+    manager.disconnect_from_inputs(ctx).await?;
     assert_eq!(lego.connections(ctx).await, vec![]);
 
     // Connect to all inputs
-    manager.connect_to_inputs(ctx).await;
+    manager.connect_to_inputs(ctx).await?;
     assert_eq!(lego.connections(ctx).await, vec![one, three, five]);
 
     // Connect to all inputs again even though we've already connected to them all
-    manager.connect_to_inputs(ctx).await;
+    manager.connect_to_inputs(ctx).await?;
     assert_eq!(lego.connections(ctx).await, vec![one, three, five]);
+
+    Ok(())
 }
 
 #[test]
-async fn get_input_socket_values(ctx: &mut DalContext) {
+async fn get_input_socket_values(ctx: &mut DalContext) -> Result<()> {
     // Manager component
     let manager = SmallOddLego::create(ctx).await;
 
@@ -1400,33 +1233,35 @@ async fn get_input_socket_values(ctx: &mut DalContext) {
         .await;
 
     // Create empty lego
-    manager.create_and_connect_to_inputs(ctx).await;
-    expected::commit_and_update_snapshot_to_visibility(ctx).await; // wait for dvu
-    assert_eq!(manager.get_input_values(ctx).await, json!({ "one": [] }));
+    manager.create_and_connect_to_inputs(ctx).await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?; // wait for dvu
+    assert_eq!(manager.get_input_values(ctx).await?, json!({ "one": [] }));
 
     // Connect all sockets
     one.connect(ctx, manager.arity_one).await;
     three.connect(ctx, manager.one).await;
     five.connect(ctx, manager.one).await;
-    manager.connect_to_inputs(ctx).await;
-    expected::commit_and_update_snapshot_to_visibility(ctx).await; // wait for dvu
+    manager.connect_to_inputs(ctx).await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?; // wait for dvu
     assert_eq!(
-        manager.get_input_values(ctx).await,
+        manager.get_input_values(ctx).await?,
         json!({ "arity_one": "one", "one": ["five", "three"] })
     );
 
     // Connect one socket redundantly
     one.connect(ctx, manager.one).await;
-    manager.connect_to_inputs(ctx).await;
-    expected::commit_and_update_snapshot_to_visibility(ctx).await; // wait for dvu
+    manager.connect_to_inputs(ctx).await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?; // wait for dvu
     assert_eq!(
-        manager.get_input_values(ctx).await,
+        manager.get_input_values(ctx).await?,
         json!({ "arity_one": "one", "one": ["five", "one", "three"] })
     );
+
+    Ok(())
 }
 
 #[test]
-async fn upgrade_manager_variant(ctx: &mut DalContext) {
+async fn upgrade_manager_variant(ctx: &mut DalContext) -> Result<()> {
     // Set up management schema
     let original_variant = ExpectSchemaVariant::create_named(
         ctx,
@@ -1438,7 +1273,7 @@ async fn upgrade_manager_variant(ctx: &mut DalContext) {
         "#,
     )
     .await;
-    expected::commit_and_update_snapshot_to_visibility(ctx).await;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
     let runme = original_variant
         .create_management_func(
             ctx,
@@ -1457,7 +1292,7 @@ async fn upgrade_manager_variant(ctx: &mut DalContext) {
             "#,
         )
         .await;
-    expected::commit_and_update_snapshot_to_visibility(ctx).await;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
     // Create manager component and run management function to create managed component
     let manager = original_variant.create_component_on_default_view(ctx).await;
@@ -1467,31 +1302,316 @@ async fn upgrade_manager_variant(ctx: &mut DalContext) {
 
     // Check that the managed component is in the list
     assert_eq!(
-        manager
-            .component(ctx)
-            .await
-            .get_managed(ctx)
-            .await
-            .expect("get_managed"),
+        manager.component(ctx).await.get_managed(ctx).await?,
         vec![created.id()]
     );
 
     // Regenerate the schema variant and ensure both components got upgraded
-    expected::commit_and_update_snapshot_to_visibility(ctx).await;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
     let new_variant = original_variant.regenerate(ctx).await;
     assert_ne!(new_variant, original_variant);
-    expected::commit_and_update_snapshot_to_visibility(ctx).await;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
     assert_eq!(manager.schema_variant(ctx).await, new_variant);
     assert_eq!(created.schema_variant(ctx).await, new_variant);
 
     // Check that the managed component is still in the list
     assert_eq!(
-        manager
-            .component(ctx)
-            .await
-            .get_managed(ctx)
-            .await
-            .expect("get_managed"),
+        manager.component(ctx).await.get_managed(ctx).await?,
         vec![created.id()]
     );
+
+    Ok(())
+}
+
+#[test]
+async fn incoming_connections_inferred_from_parent(ctx: DalContext) -> Result<()> {
+    // Create a manager with inferred connection to parent value
+    let mut test = connection_test::setup(ctx).await;
+    let parent = test.create_input("parent", None).await;
+    test.set(parent, "Value", "parent").await;
+    let manager = test.create_output("manager", parent).await;
+    test.commit().await?;
+    assert_eq!(
+        manager.domain(&test.ctx).await,
+        json!({ "Value": "parent" })
+    );
+
+    // Call management function to create component with inferred parent connections.
+    let component = test.create_output_and_copy_connection(manager).await?;
+    test.commit().await?;
+
+    // Check that value propagated from parent to connection
+    assert_eq!(
+        component.domain(&test.ctx).await,
+        json!({ "Value": "parent" })
+    );
+
+    // Check that the connection is real: delete manager and update parent value, and see if it
+    // propagates.
+    manager.component(&test.ctx).await.delete(&test.ctx).await?;
+    test.set(parent, "Value", "new_parent").await;
+    test.commit().await?;
+    assert_eq!(
+        component.domain(&test.ctx).await,
+        json!({ "Value": "new_parent" })
+    );
+
+    Ok(())
+}
+
+#[test]
+async fn incoming_connections_inferred_multiple_ancestors(ctx: DalContext) -> Result<()> {
+    // Create a manager with inferred connection to parent value
+    let mut test = connection_test::setup(ctx).await;
+    let parent = test.create_input("parent", None).await;
+    let parent2 = test.create_input2("parent2", parent).await;
+    test.set(parent, "Value", "parent").await;
+    test.set(parent2, "Value2", "parent2").await;
+    let manager = test.create_output("manager", parent2).await;
+    test.commit().await?;
+    assert_eq!(
+        manager.domain(&test.ctx).await,
+        json!({ "Value": "parent", "Value2": "parent2" })
+    );
+
+    // Call management function to create component with inferred parent connections.
+    let component = test.create_output_and_copy_connection(manager).await?;
+    test.commit().await?;
+    assert_eq!(
+        component.domain(&test.ctx).await,
+        json!({ "Value": "parent", "Value2": "parent2" })
+    );
+
+    // Check that the connection is real: delete manager and update parent value, and see if it
+    // propagates.
+    manager.component(&test.ctx).await.delete(&test.ctx).await?;
+    test.set(parent, "Value", "new_parent").await;
+    test.set(parent2, "Value2", "new_parent2").await;
+    test.commit().await?;
+    assert_eq!(
+        component.domain(&test.ctx).await,
+        json!({ "Value": "new_parent", "Value2": "new_parent2" })
+    );
+
+    Ok(())
+}
+
+#[test]
+async fn incoming_connections_none(ctx: DalContext) -> Result<()> {
+    // Create a manager with inferred connection
+    let mut test = connection_test::setup(ctx).await;
+    let manager = test.create_output("manager", None).await;
+    test.commit().await?;
+    assert_eq!(manager.domain(&test.ctx).await, json!({}));
+
+    // Call management function to create component without incomingConnections.
+    let component = test.create_output_and_copy_connection(manager).await?;
+    test.commit().await?;
+    assert_eq!(component.domain(&test.ctx).await, json!({}));
+
+    Ok(())
+}
+
+pub mod connection_test {
+    use dal::{ComponentType, DalContext};
+    use dal_test::{
+        expected::{ExpectComponent, ExpectFunc, ExpectSchemaVariant},
+        helpers::ChangeSetTestHelpers,
+        Result,
+    };
+    use serde_json::Value;
+
+    pub async fn setup(ctx: DalContext) -> ConnectionTest {
+        // "input" with Value output socket.
+        let input = ExpectSchemaVariant::create_named(
+            &ctx,
+            "input",
+            r#"
+                function main() {
+                    return {
+                        props: [
+                            { name: "Value", kind: "string" },
+                        ],
+                        outputSockets: [
+                            { name: "Value", arity: "many", valueFrom: { kind: "prop", prop_path: [ "root", "domain", "Value" ] }, connectionAnnotations: "[\"Value\"]" },
+                        ],
+                    };
+                }
+            "#,
+        ).await;
+        input
+            .set_type(&ctx, ComponentType::ConfigurationFrameDown)
+            .await;
+
+        // "input2" with Value output socket.
+        let input2 = ExpectSchemaVariant::create_named(
+            &ctx,
+            "input2",
+            r#"
+                function main() {
+                    return {
+                        props: [
+                            { name: "Value2", kind: "string" },
+                        ],
+                        outputSockets: [
+                            { name: "Value2", arity: "many", valueFrom: { kind: "prop", prop_path: [ "root", "domain", "Value2" ] }, connectionAnnotations: "[\"Value2\"]" },
+                        ],
+                    };
+                }
+            "#,
+        ).await;
+        input2
+            .set_type(&ctx, ComponentType::ConfigurationFrameDown)
+            .await;
+
+        // "output" with Value and Value2 input sockets.
+        let output = ExpectSchemaVariant::create_named(&ctx, "output", r#"
+            function main() {
+                return {
+                    inputSockets: [
+                        { name: "Value", arity: "one", connectionAnnotations: "[\"Value\"]" },
+                        { name: "Value2", arity: "one", connectionAnnotations: "[\"Value2\"]" },
+                    ],
+                    props: [
+                        { name: "Value", kind: "string", valueFrom: { kind: "inputSocket", socket_name: "Value" } },
+                        { name: "Value2", kind: "string", valueFrom: { kind: "inputSocket", socket_name: "Value2" } },
+                    ],
+                };
+            }
+        "#).await;
+
+        // Management func that creates a new component connected to our input
+        let create_output_and_copy_connection = output
+            .create_management_func(
+                &ctx,
+                [output.schema(&ctx).await.id()],
+                r#"
+                    async function main({ thisComponent }: Input): Promise<Output> {
+                        let connect = [];
+                        if (thisComponent.incomingConnections.Value) {
+                            connect.push({
+                                from: thisComponent.incomingConnections.Value,
+                                to: "Value"
+                            });
+                        }
+                        if (thisComponent.incomingConnections.Value2) {
+                            connect.push({
+                                from: thisComponent.incomingConnections.Value2,
+                                to: "Value2"
+                            });
+                        }
+                        return {
+                            status: "ok",
+                            ops: {
+                                create: {
+                                    output: {
+                                        kind: "output",
+                                        connect
+                                    }
+                                }
+                            }
+                        }
+                    }
+                "#,
+            )
+            .await;
+        ConnectionTest {
+            ctx,
+            input,
+            input2,
+            output,
+            create_output_and_copy_connection,
+        }
+    }
+
+    pub struct ConnectionTest {
+        pub ctx: DalContext,
+        pub input: ExpectSchemaVariant,
+        pub input2: ExpectSchemaVariant,
+        pub output: ExpectSchemaVariant,
+        pub create_output_and_copy_connection: ExpectFunc,
+    }
+
+    impl ConnectionTest {
+        /// Create an input2 component with given (optional) parent
+        pub async fn create_input(
+            &self,
+            name: &str,
+            parent: impl Into<Option<ExpectComponent>>,
+        ) -> ExpectComponent {
+            let component = self
+                .input
+                .create_named_component_on_default_view(&self.ctx, name)
+                .await;
+            if let Some(parent) = parent.into() {
+                component.upsert_parent(&self.ctx, parent).await;
+            }
+            component
+        }
+
+        /// Create an input2 component with given (optional) parent
+        pub async fn create_input2(
+            &self,
+            name: &str,
+            parent: impl Into<Option<ExpectComponent>>,
+        ) -> ExpectComponent {
+            let component = self
+                .input2
+                .create_named_component_on_default_view(&self.ctx, name)
+                .await;
+            if let Some(parent) = parent.into() {
+                component.upsert_parent(&self.ctx, parent).await;
+            }
+            component
+        }
+
+        /// Create an output component with given (optional) parent
+        pub async fn create_output(
+            &self,
+            name: &str,
+            parent: impl Into<Option<ExpectComponent>>,
+        ) -> ExpectComponent {
+            let component = self
+                .output
+                .create_named_component_on_default_view(&self.ctx, name)
+                .await;
+            if let Some(parent) = parent.into() {
+                component.upsert_parent(&self.ctx, parent).await;
+            }
+            component
+        }
+
+        pub async fn set(&self, component: ExpectComponent, prop: &str, value: &str) -> Value {
+            component
+                .prop(&self.ctx, ["root", "domain", prop])
+                .await
+                .set(&self.ctx, value)
+                .await;
+            serde_json::json!(value)
+        }
+
+        pub async fn create_output_and_copy_connection(
+            &self,
+            manager: ExpectComponent,
+        ) -> Result<ExpectComponent> {
+            manager
+                .execute_management_func(&self.ctx, self.create_output_and_copy_connection)
+                .await;
+            let mut managed = manager
+                .component(&self.ctx)
+                .await
+                .get_managed(&self.ctx)
+                .await?;
+            assert_eq!(managed.len(), 1);
+            Ok(managed
+                .pop()
+                .expect("should have a managed component")
+                .into())
+        }
+
+        pub async fn commit(&mut self) -> Result<()> {
+            ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(&mut self.ctx).await?;
+            Ok(())
+        }
+    }
 }
