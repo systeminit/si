@@ -237,6 +237,15 @@ const overrides = new Map<string, OverrideFn>([
     const groupSocket = createOutputSocketFromProp(nameProp);
     variant.sockets.push(groupSocket);
 
+    // Add annotations to Group Id output socket
+    const groupIdSocket = variant.sockets.find(
+      (s: ExpandedSocketSpec) => s.name === "Group Id" && s.data.kind === "output",
+    );
+    if (!groupIdSocket) return;
+
+    setAnnotationOnSocket(groupIdSocket, { tokens: ["Security Group Ids"] });
+    setAnnotationOnSocket(groupIdSocket, { tokens: ["Security Group Id"] });
+    setAnnotationOnSocket(groupIdSocket, { tokens: ["GroupId"] });
   }],
   ["AWS::EC2::SecurityGroupEgress", (spec: ExpandedPkgSpec) => {
     const variant = spec.schemas[0].variants[0];
