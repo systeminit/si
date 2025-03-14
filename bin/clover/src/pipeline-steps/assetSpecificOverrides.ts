@@ -235,6 +235,7 @@ const overrides = new Map<string, OverrideFn>([
     const nameProp = propForOverride(variant.domain, "GroupName");
     if (!nameProp) return;
     const groupSocket = createOutputSocketFromProp(nameProp);
+    setAnnotationOnSocket(groupSocket, { tokens: ["Security Group Ids", "Security Group Id", "GroupId"] });
     variant.sockets.push(groupSocket);
 
   }],
@@ -424,6 +425,19 @@ const overrides = new Map<string, OverrideFn>([
       { tokens: ["AccountId", "string", "scalar"] },
     ], "Peer Owner Id");
     variant.sockets.push(peerOwnerIdSocket);
+  }],
+  ["AWS::ApiGatewayV2::Route", (spec: ExpandedPkgSpec) => {
+    const variant = spec.schemas[0].variants[0];
+
+    const requestModelsProp = propForOverride(variant.domain, "RequestModels")
+    if (!requestModelsProp) return;
+    requestModelsProp.kind = "json";
+    requestModelsProp!.data.widgetKind = "CodeEditor";
+    
+    const requestParametersProp = propForOverride(variant.domain, "RequestParameters")
+    if (!requestParametersProp) return;
+    requestParametersProp.kind = "json";
+    requestParametersProp!.data.widgetKind = "CodeEditor";
   }],
 ]);
 
