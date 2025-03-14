@@ -101,7 +101,7 @@ impl User {
         Ok(object)
     }
 
-    pub async fn get_by_pk(ctx: &DalContext, pk: UserPk) -> UserResult<Option<Self>> {
+    pub async fn get_by_pk_opt(ctx: &DalContext, pk: UserPk) -> UserResult<Option<Self>> {
         let row = ctx
             .txns()
             .await?
@@ -115,8 +115,8 @@ impl User {
             Ok(None)
         }
     }
-    pub async fn get_by_pk_or_error(ctx: &DalContext, pk: UserPk) -> UserResult<Self> {
-        Self::get_by_pk(ctx, pk)
+    pub async fn get_by_pk(ctx: &DalContext, pk: UserPk) -> UserResult<Self> {
+        Self::get_by_pk_opt(ctx, pk)
             .await?
             .ok_or_else(|| UserError::NotFoundInTenancy(pk, *ctx.tenancy()))
     }

@@ -10,7 +10,7 @@ use convert_case::{Case, Casing};
 use dal::{
     pkg::PkgError as DalPkgError, ChangeSetError, DalContextBuilder, FuncError, SchemaError,
     SchemaId, SchemaVariantError, SchemaVariantId, StandardModelError, TenancyError,
-    TransactionsError, UserError, UserPk, WorkspaceError, WorkspacePk, WorkspaceSnapshotError,
+    TransactionsError, UserError, WorkspaceError, WorkspacePk, WorkspaceSnapshotError,
     WsEventError,
 };
 use serde::{Deserialize, Serialize};
@@ -53,8 +53,6 @@ pub enum ModuleError {
     Hyper(#[from] hyper::http::Error),
     #[error("Invalid package file name: {0}")]
     InvalidPackageFileName(String),
-    #[error("invalid user: {0}")]
-    InvalidUser(UserPk),
     #[error("invalid user system init")]
     InvalidUserSystemInit,
     #[error("IO Error: {0}")]

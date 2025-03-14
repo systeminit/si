@@ -39,7 +39,7 @@ pub async fn promote(
     };
 
     let user = match ctx.history_actor() {
-        HistoryActor::User(user_pk) => User::get_by_pk(&ctx, *user_pk).await?,
+        HistoryActor::User(user_pk) => User::get_by_pk_opt(&ctx, *user_pk).await?,
         _ => None,
     };
 
@@ -99,7 +99,7 @@ pub async fn reject(
     };
 
     let user = match ctx.history_actor() {
-        HistoryActor::User(user_pk) => User::get_by_pk(&ctx, *user_pk).await?,
+        HistoryActor::User(user_pk) => User::get_by_pk_opt(&ctx, *user_pk).await?,
         _ => None,
     };
 

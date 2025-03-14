@@ -28,9 +28,7 @@ pub async fn import_workspace_vote(
     let ctx = builder.build_head(request_ctx).await?;
 
     let user = match ctx.history_actor() {
-        HistoryActor::User(user_pk) => User::get_by_pk(&ctx, *user_pk)
-            .await?
-            .ok_or(ModuleError::InvalidUser(*user_pk))?,
+        HistoryActor::User(user_pk) => User::get_by_pk(&ctx, *user_pk).await?,
 
         HistoryActor::SystemInit => {
             return Err(ModuleError::InvalidUserSystemInit);

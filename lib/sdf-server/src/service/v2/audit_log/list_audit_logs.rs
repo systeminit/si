@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use si_events::{ChangeSetId, UserPk};
 use si_frontend_types as frontend_types;
 
-use super::{AuditLogError, AuditLogResult};
+use super::AuditLogResult;
 use crate::{extract::HandlerContext, service::v2::AccessBuilder, AppState};
 
 #[derive(Deserialize, Debug)]
@@ -142,9 +142,7 @@ impl Assembler {
                         Some(user.name().to_owned()),
                     ))
                 } else {
-                    let user = User::get_by_pk(ctx, user_id)
-                        .await?
-                        .ok_or(AuditLogError::UserNotFound(user_id))?;
+                    let user = User::get_by_pk(ctx, user_id).await?;
                     let found_data = (
                         Some(user_id),
                         Some(user.email().to_owned()),

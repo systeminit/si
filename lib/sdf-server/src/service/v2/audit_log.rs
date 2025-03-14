@@ -3,7 +3,6 @@ use axum::{
     routing::get,
     Router,
 };
-use si_events::UserPk;
 use thiserror::Error;
 
 use crate::{service::ApiError, AppState};
@@ -21,8 +20,6 @@ pub enum AuditLogError {
     DalTransactions(#[from] dal::TransactionsError),
     #[error("dal user error: {0}")]
     DalUser(#[from] dal::UserError),
-    #[error("user not found for id: {0}")]
-    UserNotFound(UserPk),
 }
 
 pub type AuditLogResult<T> = Result<T, AuditLogError>;

@@ -546,7 +546,7 @@ impl Module {
         String,
     )> {
         let user = match ctx.history_actor() {
-            HistoryActor::User(user_pk) => User::get_by_pk(ctx, *user_pk).await?,
+            HistoryActor::User(user_pk) => User::get_by_pk_opt(ctx, *user_pk).await?,
             _ => None,
         };
         let (created_by_name, created_by_email) = user

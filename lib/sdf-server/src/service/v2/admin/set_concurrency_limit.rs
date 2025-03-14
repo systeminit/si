@@ -2,7 +2,7 @@ use axum::{
     extract::{Host, OriginalUri, Path},
     response::Json,
 };
-use dal::{Tenancy, Workspace, WorkspaceError, WorkspacePk};
+use dal::{Tenancy, Workspace, WorkspacePk};
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 
@@ -53,9 +53,7 @@ pub async fn set_concurrency_limit(
             .unwrap_or("default".to_string()),
     );
 
-    let mut workspace = Workspace::get_by_pk(&ctx, &workspace_id)
-        .await?
-        .ok_or(WorkspaceError::WorkspaceNotFound(workspace_id))?;
+    let mut workspace = Workspace::get_by_pk(&ctx, workspace_id).await?;
 
     workspace
         .set_component_concurrency_limit(&ctx, request.concurrency_limit)

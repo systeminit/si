@@ -37,8 +37,6 @@ pub(crate) enum RebaseError {
     Transactions(#[from] TransactionsError),
     #[error("workspace error: {0}")]
     Workspace(#[from] WorkspaceError),
-    #[error("workspace {0} missing")]
-    WorkspaceMissing(WorkspacePk),
     #[error("workspace pk expected but was none")]
     WorkspacePkExpected,
     #[error("workspace snapshot error: {0}")]
@@ -271,7 +269,5 @@ async fn get_workspace(ctx: &DalContext) -> RebaseResult<Workspace> {
         .workspace_pk_opt()
         .ok_or(RebaseError::WorkspacePkExpected)?;
 
-    Workspace::get_by_pk(ctx, &workspace_pk)
-        .await?
-        .ok_or(RebaseError::WorkspaceMissing(workspace_pk))
+    Ok(Workspace::get_by_pk(ctx, workspace_pk).await?)
 }

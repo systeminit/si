@@ -1433,7 +1433,7 @@ impl WorkspaceSnapshot {
         // Even though the default change set for a workspace can have a base change set, we don't
         // want to consider anything as new/modified/removed when looking at the default change
         // set.
-        let workspace = Workspace::get_by_pk_or_error(ctx, ctx.tenancy().workspace_pk()?)
+        let workspace = Workspace::get_by_pk(ctx, ctx.tenancy().workspace_pk()?)
             .await
             .map_err(Box::new)?;
         if workspace.default_change_set_id() == ctx.change_set_id() {
