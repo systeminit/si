@@ -392,7 +392,7 @@ impl FuncAssociations {
             }
         }
         for (arg_id, ts_types) in argument_types.iter() {
-            let func_arg = FuncArgument::get_by_id_or_error(ctx, *arg_id).await?;
+            let func_arg = FuncArgument::get_by_id(ctx, *arg_id).await?;
             let arg_name = func_arg.name;
             input_ts_types
                 .push_str(format!("{}?: {} | null;\n", arg_name, ts_types.join(" | ")).as_str());

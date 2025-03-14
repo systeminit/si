@@ -36,7 +36,7 @@ pub async fn create_binding(
         .build(access_builder.build(change_set_id.into()))
         .await?;
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
-    let func = Func::get_by_id_or_error(&ctx, func_id).await?;
+    let func = Func::get_by_id(&ctx, func_id).await?;
 
     // add cycle check so we don't end up with a cycle as a result of creating this binding
     let cycle_check_guard = ctx.workspace_snapshot()?.enable_cycle_check().await;
@@ -97,11 +97,10 @@ pub async fn create_binding(
                             // Fire WS Event if the func has changed
                             if let Some(old_func_id) = old_func {
                                 if old_func_id != func_id {
-                                    let old_func_summary =
-                                        Func::get_by_id_or_error(&ctx, old_func_id)
-                                            .await?
-                                            .into_frontend_type(&ctx)
-                                            .await?;
+                                    let old_func_summary = Func::get_by_id(&ctx, old_func_id)
+                                        .await?
+                                        .into_frontend_type(&ctx)
+                                        .await?;
 
                                     WsEvent::func_updated(&ctx, old_func_summary, None)
                                         .await?
@@ -117,7 +116,7 @@ pub async fn create_binding(
                             ) = match eventual_parent {
                                 Some(eventual_parent) => match eventual_parent {
                                     EventualParent::SchemaVariant(schema_variant_id) => (
-                                        SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id)
+                                        SchemaVariant::get_by_id(&ctx, schema_variant_id)
                                             .await?
                                             .display_name()
                                             .to_string(),
@@ -159,7 +158,7 @@ pub async fn create_binding(
                                 )
                                 .await?;
                                 let schema_variant =
-                                    SchemaVariant::get_by_id_or_error(&ctx, variant_id).await?;
+                                    SchemaVariant::get_by_id(&ctx, variant_id).await?;
                                 WsEvent::schema_variant_updated(&ctx, schema, schema_variant)
                                     .await?
                                     .publish_on_commit(&ctx)
@@ -190,8 +189,8 @@ pub async fn create_binding(
                             )
                             .await?;
                             let schema_variant =
-                                SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id).await?;
-                            let func = Func::get_by_id_or_error(&ctx, func_id).await?;
+                                SchemaVariant::get_by_id(&ctx, schema_variant_id).await?;
+                            let func = Func::get_by_id(&ctx, func_id).await?;
                             ctx.write_audit_log(
                                 AuditLogKind::AttachAuthFunc {
                                     func_id: func.id,
@@ -235,8 +234,8 @@ pub async fn create_binding(
                             )
                             .await?;
                             let schema_variant =
-                                SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id).await?;
-                            let func = Func::get_by_id_or_error(&ctx, func_id).await?;
+                                SchemaVariant::get_by_id(&ctx, schema_variant_id).await?;
+                            let func = Func::get_by_id(&ctx, func_id).await?;
                             ctx.write_audit_log(
                                 AuditLogKind::AttachActionFunc {
                                     func_id: func.id,
@@ -289,8 +288,8 @@ pub async fn create_binding(
                             )
                             .await?;
                             let schema_variant =
-                                SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id).await?;
-                            let func = Func::get_by_id_or_error(&ctx, func_id).await?;
+                                SchemaVariant::get_by_id(&ctx, schema_variant_id).await?;
+                            let func = Func::get_by_id(&ctx, func_id).await?;
                             ctx.write_audit_log(
                                 AuditLogKind::AttachCodeGenFunc {
                                     func_id: func.id,
@@ -336,8 +335,8 @@ pub async fn create_binding(
                             )
                             .await?;
                             let schema_variant =
-                                SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id).await?;
-                            let func = Func::get_by_id_or_error(&ctx, func_id).await?;
+                                SchemaVariant::get_by_id(&ctx, schema_variant_id).await?;
+                            let func = Func::get_by_id(&ctx, func_id).await?;
                             ctx.write_audit_log(
                                 AuditLogKind::AttachQualificationFunc {
                                     func_id: func.id,
@@ -386,8 +385,8 @@ pub async fn create_binding(
                             )
                             .await?;
                             let schema_variant =
-                                SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id).await?;
-                            let func = Func::get_by_id_or_error(&ctx, func_id).await?;
+                                SchemaVariant::get_by_id(&ctx, schema_variant_id).await?;
+                            let func = Func::get_by_id(&ctx, func_id).await?;
                             ctx.write_audit_log(
                                 AuditLogKind::AttachManagementFunc {
                                     func_id: func.id,
@@ -432,7 +431,7 @@ pub async fn create_binding(
         }),
     );
 
-    let func_summary = Func::get_by_id_or_error(&ctx, func_id)
+    let func_summary = Func::get_by_id(&ctx, func_id)
         .await?
         .into_frontend_type(&ctx)
         .await?;

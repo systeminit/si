@@ -310,7 +310,7 @@ impl AttributeBinding {
         output_location: AttributeFuncDestination,
         prototype_arguments: Vec<AttributeArgumentBinding>,
     ) -> FuncBindingResult<(AttributePrototype, Option<FuncId>)> {
-        let func = Func::get_by_id_or_error(ctx, func_id).await?;
+        let func = Func::get_by_id(ctx, func_id).await?;
 
         let needs_validate_intrinsic_input = match func.kind {
             FuncKind::Attribute => false,
@@ -471,7 +471,7 @@ impl AttributeBinding {
 
         for arg in &prototype_arguments {
             // Ensure a func argument exists for each input location, before creating new Attribute Prototype Arguments
-            if let Err(err) = FuncArgument::get_by_id_or_error(ctx, arg.func_argument_id).await {
+            if let Err(err) = FuncArgument::get_by_id(ctx, arg.func_argument_id).await {
                 match err {
                     FuncArgumentError::WorkspaceSnapshot(
                         WorkspaceSnapshotError::WorkspaceSnapshotGraph(
@@ -573,7 +573,7 @@ impl AttributeBinding {
         for arg in &prototype_arguments {
             // Ensure the func argument exists before continuing. By continuing, we will not add the
             // attribute prototype to the id set and will be deleted.
-            if let Err(err) = FuncArgument::get_by_id_or_error(ctx, arg.func_argument_id).await {
+            if let Err(err) = FuncArgument::get_by_id(ctx, arg.func_argument_id).await {
                 match err {
                     FuncArgumentError::WorkspaceSnapshot(
                         WorkspaceSnapshotError::WorkspaceSnapshotGraph(
@@ -778,7 +778,7 @@ impl AttributeBinding {
         }
 
         for (arg_id, ts_types) in argument_types.iter() {
-            let func_arg = FuncArgument::get_by_id_or_error(ctx, *arg_id).await?;
+            let func_arg = FuncArgument::get_by_id(ctx, *arg_id).await?;
             let arg_name = func_arg.name;
             input_ts_types
                 .push_str(format!("{}?: {} | null;\n", arg_name, ts_types.join(" | ")).as_str());

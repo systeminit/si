@@ -30,7 +30,7 @@ async fn create_variant_merge_unlock_and_edit(ctx: &mut DalContext) {
         .await
         .expect("Unable to get the schema for the variant");
 
-    let asset_func = Func::get_by_id_or_error(
+    let asset_func = Func::get_by_id(
         ctx,
         variant
             .asset_func_id()
@@ -70,7 +70,7 @@ async fn create_variant_merge_unlock_and_edit(ctx: &mut DalContext) {
         .await
         .expect("unable to update asset");
 
-    let sv = SchemaVariant::get_by_id_or_error(ctx, updated_sv_id)
+    let sv = SchemaVariant::get_by_id(ctx, updated_sv_id)
         .await
         .expect("unable to get the updated sv");
     sv.lock(ctx)
@@ -93,13 +93,13 @@ async fn create_variant_merge_unlock_and_edit(ctx: &mut DalContext) {
         .await
         .expect("could not commit and update snapshot to visibility");
 
-    let sv = SchemaVariant::get_by_id_or_error(ctx, updated_sv_id)
+    let sv = SchemaVariant::get_by_id(ctx, updated_sv_id)
         .await
         .expect("unable to get the new schema variant");
 
     assert!(sv.is_locked());
 
-    let asset_func = Func::get_by_id_or_error(
+    let asset_func = Func::get_by_id(
         ctx,
         variant
             .asset_func_id()
@@ -122,7 +122,7 @@ async fn create_variant_merge_unlock_and_edit(ctx: &mut DalContext) {
         .await
         .expect("unable to commit");
 
-    let unlocked_asset_func = Func::get_by_id_or_error(
+    let unlocked_asset_func = Func::get_by_id(
         ctx,
         unlocked_schema_variant
             .asset_func_id()

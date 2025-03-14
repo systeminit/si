@@ -198,7 +198,7 @@ impl VariantAuthoringClient {
             .copied()
             .ok_or(VariantAuthoringError::NoAssetCreated)?;
 
-        Ok(SchemaVariant::get_by_id_or_error(ctx, schema_variant_id).await?)
+        Ok(SchemaVariant::get_by_id(ctx, schema_variant_id).await?)
     }
 
     pub async fn create_schema_and_variant(
@@ -235,11 +235,11 @@ impl VariantAuthoringClient {
             return Err(VariantAuthoringError::DuplicatedSchemaName(schema_name));
         };
 
-        let variant = SchemaVariant::get_by_id_or_error(ctx, schema_variant_id).await?;
+        let variant = SchemaVariant::get_by_id(ctx, schema_variant_id).await?;
         let schema = variant.schema(ctx).await?;
 
         if let Some(asset_func_id) = variant.asset_func_id() {
-            let old_func = Func::get_by_id_or_error(ctx, asset_func_id).await?;
+            let old_func = Func::get_by_id(ctx, asset_func_id).await?;
 
             let cloned_func = old_func
                 .clone_func_with_new_name(ctx, schema_name.clone())
@@ -290,7 +290,7 @@ impl VariantAuthoringClient {
                 .ok_or(VariantAuthoringError::NoAssetCreated)?;
 
             Ok((
-                SchemaVariant::get_by_id_or_error(ctx, new_schema_variant_id).await?,
+                SchemaVariant::get_by_id(ctx, new_schema_variant_id).await?,
                 schema,
             ))
         } else {
@@ -309,7 +309,7 @@ impl VariantAuthoringClient {
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
     ) -> VariantAuthoringResult<SchemaVariantId> {
-        let schema_variant = SchemaVariant::get_by_id_or_error(ctx, schema_variant_id).await?;
+        let schema_variant = SchemaVariant::get_by_id(ctx, schema_variant_id).await?;
 
         if schema_variant.is_locked {
             return Err(VariantAuthoringError::LockedVariant(schema_variant_id));
@@ -389,7 +389,7 @@ impl VariantAuthoringClient {
     ) -> VariantAuthoringResult<()> {
         // Ok we need to delete the first level of outgoing children for the schema variant
         let current_schema_variant =
-            SchemaVariant::get_by_id_or_error(ctx, current_schema_variant_id).await?;
+            SchemaVariant::get_by_id(ctx, current_schema_variant_id).await?;
 
         // then we can build the package and reimport ALL but the schema variant itself
         let asset_func = current_schema_variant.get_asset_func(ctx).await?;
@@ -447,7 +447,7 @@ impl VariantAuthoringClient {
             .first()
             .ok_or(VariantAuthoringError::PkgMissingSchemaVariant)?;
 
-        let schema = SchemaVariant::get_by_id_or_error(ctx, current_schema_variant_id)
+        let schema = SchemaVariant::get_by_id(ctx, current_schema_variant_id)
             .await?
             .schema(ctx)
             .await?;
@@ -523,7 +523,7 @@ impl VariantAuthoringClient {
     ) -> VariantAuthoringResult<SchemaVariant> {
         let schema_name = schema_name.into();
 
-        let old_sv = SchemaVariant::get_by_id_or_error(ctx, current_sv_id).await?;
+        let old_sv = SchemaVariant::get_by_id(ctx, current_sv_id).await?;
         let old_asset_func = old_sv.get_asset_func(ctx).await?;
 
         let new_asset_func = old_asset_func
@@ -581,7 +581,7 @@ impl VariantAuthoringClient {
             .first()
             .ok_or(VariantAuthoringError::PkgMissingSchemaVariant)?;
 
-        let schema = SchemaVariant::get_by_id_or_error(ctx, current_sv_id)
+        let schema = SchemaVariant::get_by_id(ctx, current_sv_id)
             .await?
             .schema(ctx)
             .await?;
@@ -620,7 +620,7 @@ impl VariantAuthoringClient {
         ctx: &DalContext,
         locked_variant_id: SchemaVariantId,
     ) -> VariantAuthoringResult<SchemaVariant> {
-        let locked_variant = SchemaVariant::get_by_id_or_error(ctx, locked_variant_id).await?;
+        let locked_variant = SchemaVariant::get_by_id(ctx, locked_variant_id).await?;
         let schema = locked_variant.schema(ctx).await?;
 
         if let Some(variant) = SchemaVariant::get_unlocked_for_schema(ctx, schema.id).await? {
@@ -719,7 +719,7 @@ impl VariantAuthoringClient {
         component_type: ComponentType,
         code: Option<impl Into<String>>,
     ) -> VariantAuthoringResult<()> {
-        let schema_variant = SchemaVariant::get_by_id_or_error(ctx, schema_variant_id).await?;
+        let schema_variant = SchemaVariant::get_by_id(ctx, schema_variant_id).await?;
 
         if schema_variant.is_locked {
             return Err(VariantAuthoringError::LockedVariant(schema_variant_id));
@@ -771,7 +771,7 @@ impl VariantAuthoringClient {
         }
 
         let code_base64 = code.map(|c| general_purpose::STANDARD_NO_PAD.encode(c.into()));
-        let current_func = Func::get_by_id_or_error(ctx, asset_func_id).await?;
+        let current_func = Func::get_by_id(ctx, asset_func_id).await?;
         current_func
             .modify(ctx, |func| {
                 func.name = generate_scaffold_func_name(schema_name);
@@ -856,7 +856,7 @@ async fn build_variant_spec_based_on_existing_variant(
 ) -> VariantAuthoringResult<(SchemaVariantSpec, Vec<MergeSkip>, Vec<FuncSpec>)> {
     let identity_func_spec = IntrinsicFunc::Identity.to_spec()?;
 
-    let existing_variant = SchemaVariant::get_by_id_or_error(ctx, existing_variant_id).await?;
+    let existing_variant = SchemaVariant::get_by_id(ctx, existing_variant_id).await?;
     let schema = existing_variant.schema(ctx).await?;
     let variant_spec = definition.to_spec(
         metadata.clone(),

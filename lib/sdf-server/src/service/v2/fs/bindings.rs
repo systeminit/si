@@ -53,7 +53,7 @@ pub async fn get_bindings_for_func_and_schema_variant(
     func_id: FuncId,
     schema_variant_id: Option<SchemaVariantId>,
 ) -> FsResult<Vec<FuncBinding>> {
-    let func = dal::Func::get_by_id_or_error(ctx, func_id).await?;
+    let func = dal::Func::get_by_id(ctx, func_id).await?;
 
     Ok(match func.kind {
         dal::func::FuncKind::Action => {
@@ -96,7 +96,7 @@ pub async fn get_bindings(
     func_id: FuncId,
     schema_id: SchemaId,
 ) -> FsResult<(fs::Bindings, Vec<FuncBinding>)> {
-    let func = Func::get_by_id_or_error(ctx, func_id).await?;
+    let func = Func::get_by_id(ctx, func_id).await?;
 
     // Locked functions could be on unlocked schemas
     let bindings = if func.is_locked {
@@ -662,7 +662,7 @@ async fn create_action_binding(
 ) -> FsResult<()> {
     ActionBinding::create_action_binding(ctx, func_id, action_kind.into(), schema_variant_id)
         .await?;
-    let func = Func::get_by_id_or_error(ctx, func_id).await?;
+    let func = Func::get_by_id(ctx, func_id).await?;
     ctx.write_audit_log(
         AuditLogKind::AttachActionFunc {
             func_id: func.id,
@@ -685,7 +685,7 @@ async fn create_auth_binding(
 ) -> FsResult<()> {
     AuthBinding::create_auth_binding(ctx, func_id, schema_variant_id).await?;
 
-    let func = Func::get_by_id_or_error(ctx, func_id).await?;
+    let func = Func::get_by_id(ctx, func_id).await?;
     ctx.write_audit_log(
         AuditLogKind::AttachAuthFunc {
             func_id: func.id,
@@ -716,8 +716,8 @@ async fn create_leaf_binding(
     )
     .await?;
 
-    let schema_variant = SchemaVariant::get_by_id_or_error(ctx, schema_variant_id).await?;
-    let func = Func::get_by_id_or_error(ctx, func_id).await?;
+    let schema_variant = SchemaVariant::get_by_id(ctx, schema_variant_id).await?;
+    let func = Func::get_by_id(ctx, func_id).await?;
     ctx.write_audit_log(
         match leaf_kind {
             LeafKind::CodeGeneration => AuditLogKind::AttachCodeGenFunc {
@@ -756,8 +756,8 @@ async fn create_management_binding(
     )
     .await?;
 
-    let schema_variant = SchemaVariant::get_by_id_or_error(ctx, schema_variant_id).await?;
-    let func = Func::get_by_id_or_error(ctx, func_id).await?;
+    let schema_variant = SchemaVariant::get_by_id(ctx, schema_variant_id).await?;
+    let func = Func::get_by_id(ctx, func_id).await?;
     ctx.write_audit_log(
         AuditLogKind::AttachManagementFunc {
             func_id: func.id,
@@ -813,7 +813,7 @@ async fn create_attribute_binding(
 
     if let Some(old_func_id) = old_func {
         if old_func_id != func_id {
-            let old_func_summary = Func::get_by_id_or_error(ctx, old_func_id)
+            let old_func_summary = Func::get_by_id(ctx, old_func_id)
                 .await?
                 .into_frontend_type(ctx)
                 .await?;
@@ -825,13 +825,13 @@ async fn create_attribute_binding(
         }
     }
 
-    let subject_name = SchemaVariant::get_by_id_or_error(ctx, schema_variant_id)
+    let subject_name = SchemaVariant::get_by_id(ctx, schema_variant_id)
         .await?
         .display_name()
         .to_string();
     let destination_name = output_location.get_name_of_destination(ctx).await?;
 
-    let func = Func::get_by_id_or_error(ctx, func_id).await?;
+    let func = Func::get_by_id(ctx, func_id).await?;
     ctx.write_audit_log(
         AuditLogKind::AttachAttributeFunc {
             func_id: func.id,
@@ -952,7 +952,7 @@ async fn create_func_binding(ctx: &DalContext, binding: FuncBinding) -> FsResult
         let schema_id =
             SchemaVariant::schema_id_for_schema_variant_id(ctx, schema_variant_id).await?;
 
-        let schema_variant = SchemaVariant::get_by_id_or_error(ctx, schema_variant_id).await?;
+        let schema_variant = SchemaVariant::get_by_id(ctx, schema_variant_id).await?;
         WsEvent::schema_variant_updated(ctx, schema_id, schema_variant)
             .await?
             .publish_on_commit(ctx)
@@ -1002,8 +1002,8 @@ async fn delete_binding(
     };
 
     if did_delete {
-        let func = Func::get_by_id_or_error(ctx, func_id).await?;
-        let schema_variant = SchemaVariant::get_by_id_or_error(ctx, schema_variant_id).await?;
+        let func = Func::get_by_id(ctx, func_id).await?;
+        let schema_variant = SchemaVariant::get_by_id(ctx, schema_variant_id).await?;
         let schema_id =
             SchemaVariant::schema_id_for_schema_variant_id(ctx, schema_variant_id).await?;
 
@@ -1165,7 +1165,7 @@ pub async fn set_func_bindings(
         }),
     );
 
-    let func = Func::get_by_id(&ctx, func_id)
+    let func = Func::get_by_id_opt(&ctx, func_id)
         .await?
         .ok_or(FsError::ResourceNotFound)?;
 
@@ -1271,7 +1271,7 @@ pub async fn set_func_bindings(
         }
     }
 
-    let func_summary = Func::get_by_id_or_error(&ctx, func_id)
+    let func_summary = Func::get_by_id(&ctx, func_id)
         .await?
         .into_frontend_type(&ctx)
         .await?;
@@ -1481,7 +1481,7 @@ pub async fn set_identity_bindings(
     }
 
     for func_id in [identity_func_id, unset_func_id] {
-        let func_summary = Func::get_by_id_or_error(&ctx, func_id)
+        let func_summary = Func::get_by_id(&ctx, func_id)
             .await?
             .into_frontend_type(&ctx)
             .await?;

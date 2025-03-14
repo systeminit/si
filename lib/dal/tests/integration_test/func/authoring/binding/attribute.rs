@@ -113,7 +113,7 @@ async fn create_attribute_prototype_with_attribute_prototype_argument(ctx: &mut 
         .expect("could not commit and update snapshot to visibility");
 
     // Ensure that everything looks as we expect with the new prototype and prototype argument.
-    let func = Func::get_by_id_or_error(ctx, func_id)
+    let func = Func::get_by_id(ctx, func_id)
         .await
         .expect("could not get func by id");
     let func_summary = func

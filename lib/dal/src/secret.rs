@@ -402,7 +402,7 @@ impl Secret {
     /// [`error`](SecretError).
     ///
     /// _Note:_ this does not contain the encrypted or sensitive bits and is safe for external use.
-    pub async fn get_by_id_or_error(ctx: &DalContext, id: SecretId) -> SecretResult<Self> {
+    pub async fn get_by_id(ctx: &DalContext, id: SecretId) -> SecretResult<Self> {
         let (secret_node_weight, hash) =
             Self::get_node_weight_and_content_hash_or_error(ctx, id).await?;
 
@@ -441,7 +441,7 @@ impl Secret {
         ctx: &DalContext,
         secret_id: SecretId,
     ) -> SecretResult<Value> {
-        let secret = Self::get_by_id_or_error(ctx, secret_id).await?;
+        let secret = Self::get_by_id(ctx, secret_id).await?;
         Ok(serde_json::to_value(
             secret.encrypted_secret_key.to_string(),
         )?)

@@ -182,7 +182,7 @@ impl Module {
         Ok(Self::assemble(id.into(), content))
     }
 
-    pub async fn get_by_id_or_error(ctx: &DalContext, id: ModuleId) -> ModuleResult<Self> {
+    pub async fn get_by_id(ctx: &DalContext, id: ModuleId) -> ModuleResult<Self> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
         let node_index = workspace_snapshot.get_node_index_by_id(id).await?;
@@ -229,8 +229,7 @@ impl Module {
                 .await?
                 .get_content_node_weight_of_kind(ContentAddressDiscriminants::Module)?;
 
-            let module: Module =
-                Self::get_by_id_or_error(ctx, module_node_weight.id().into()).await?;
+            let module: Module = Self::get_by_id(ctx, module_node_weight.id().into()).await?;
             if predicate(&module) {
                 return Ok(Some(module));
             }
@@ -270,8 +269,7 @@ impl Module {
                 if ContentAddressDiscriminants::Module
                     == content_node_weight.content_address().into()
                 {
-                    let module =
-                        Self::get_by_id_or_error(ctx, content_node_weight.id().into()).await?;
+                    let module = Self::get_by_id(ctx, content_node_weight.id().into()).await?;
                     return Ok(Some(module));
                 }
             }
@@ -301,7 +299,7 @@ impl Module {
         let node_weights = workspace_snapshot.all_outgoing_targets(self.id).await?;
         for node_weight in node_weights {
             if let NodeWeight::Func(inner) = &node_weight {
-                let func = Func::get_by_id_or_error(ctx, inner.id().into()).await?;
+                let func = Func::get_by_id(ctx, inner.id().into()).await?;
                 all_funcs.push(func);
             }
         }
@@ -353,15 +351,14 @@ impl Module {
         let node_weights = workspace_snapshot.all_outgoing_targets(self.id).await?;
         for node_weight in node_weights {
             if let NodeWeight::SchemaVariant(variant_weight) = &node_weight {
-                let variant =
-                    SchemaVariant::get_by_id_or_error(ctx, variant_weight.id().into()).await?;
+                let variant = SchemaVariant::get_by_id(ctx, variant_weight.id().into()).await?;
                 all_schema_variants.push(variant);
             } else if let NodeWeight::Content(inner) = &node_weight {
                 let inner_addr_discrim: ContentAddressDiscriminants =
                     inner.content_address().into();
 
                 if inner_addr_discrim == ContentAddressDiscriminants::SchemaVariant {
-                    let variant = SchemaVariant::get_by_id_or_error(ctx, inner.id().into()).await?;
+                    let variant = SchemaVariant::get_by_id(ctx, inner.id().into()).await?;
                     all_schema_variants.push(variant);
                 }
             }
@@ -573,7 +570,7 @@ impl Module {
         // The frontend will send us the schema variant as this is what we care about from
         // there. We can then use that schema variant to be able to understand the associated
         // schema for it.
-        let variant = SchemaVariant::get_by_id_or_error(ctx, schema_variant_id).await?;
+        let variant = SchemaVariant::get_by_id(ctx, schema_variant_id).await?;
         let associated_schema = variant.schema(ctx).await?;
 
         // Create module payload.

@@ -169,8 +169,7 @@ async fn detach_attach_then_delete_action_func_while_enqueued(ctx: &mut DalConte
         .expect("no func found");
     let _func = Func::get_by_id(ctx, func_id)
         .await
-        .expect("unable to get func")
-        .expect("func is some");
+        .expect("unable to get func");
 
     let bindings = FuncBinding::for_func_id(ctx, func_id)
         .await

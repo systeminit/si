@@ -107,7 +107,7 @@ async fn import_change_set(
             };
 
             if let Some(func_id) = maybe_func_id {
-                let func = Func::get_by_id_or_error(ctx, func_id).await?;
+                let func = Func::get_by_id(ctx, func_id).await?;
 
                 thing_map.insert(
                     func_spec.unique_id().to_owned(),
@@ -1070,7 +1070,7 @@ pub async fn import_only_new_funcs(
                     Func::find_id_by_name_and_kind(ctx, func_spec.name(), FuncKind::Intrinsic)
                         .await?
                 {
-                    let func = Func::get_by_id_or_error(ctx, func_id).await?;
+                    let func = Func::get_by_id(ctx, func_id).await?;
                     thing_map.insert(func_spec.unique_id().into(), Thing::Func(func));
                 } else {
                     let mut override_intrinsic_func_specs =
@@ -1108,13 +1108,13 @@ pub async fn import_only_new_funcs(
                     .await?
                     .ok_or(PkgError::MissingIntrinsicFunc(func_spec.name().to_owned()))?;
 
-                let func = Func::get_by_id_or_error(ctx, func_id).await?;
+                let func = Func::get_by_id(ctx, func_id).await?;
                 thing_map.insert(func_spec.unique_id().into(), Thing::Func(func));
             }
         } else {
             // Find or create the func for the provided spec.
             let func = if let Some(func) =
-                Func::get_by_id(ctx, FuncId::from_str(func_spec.unique_id())?).await?
+                Func::get_by_id_opt(ctx, FuncId::from_str(func_spec.unique_id())?).await?
             {
                 func
             } else {

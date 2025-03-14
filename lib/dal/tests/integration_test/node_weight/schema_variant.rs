@@ -155,7 +155,7 @@ async fn only_one_default_schema_variant(ctx: &mut DalContext) {
             .expect("unable to create variant copy")
             .id();
 
-    let sv_cs_1 = SchemaVariant::get_by_id_or_error(ctx, updated_sv_id_cs_1)
+    let sv_cs_1 = SchemaVariant::get_by_id(ctx, updated_sv_id_cs_1)
         .await
         .expect("unable to get the updated sv");
     sv_cs_1
@@ -185,7 +185,7 @@ async fn only_one_default_schema_variant(ctx: &mut DalContext) {
             .expect("unable to create variant copy")
             .id();
 
-    let sv_cs_2 = SchemaVariant::get_by_id_or_error(ctx, updated_sv_id_cs_2)
+    let sv_cs_2 = SchemaVariant::get_by_id(ctx, updated_sv_id_cs_2)
         .await
         .expect("unable to get the updated sv");
     sv_cs_2

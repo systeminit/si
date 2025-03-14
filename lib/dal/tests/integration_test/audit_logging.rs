@@ -30,7 +30,7 @@ async fn round_trip(ctx: &mut DalContext, audit_database_context: AuditDatabaseC
     let schema_variant_id = Schema::default_variant_id(ctx, schema.id())
         .await
         .expect("could not get default schema variant id");
-    let schema_variant = SchemaVariant::get_by_id_or_error(ctx, schema_variant_id)
+    let schema_variant = SchemaVariant::get_by_id(ctx, schema_variant_id)
         .await
         .expect("could not get schema variant");
 

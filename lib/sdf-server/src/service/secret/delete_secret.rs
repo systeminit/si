@@ -26,7 +26,7 @@ pub async fn delete_secret(
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
 
     // Delete Secret
-    let secret = Secret::get_by_id_or_error(&ctx, request.id).await?;
+    let secret = Secret::get_by_id(&ctx, request.id).await?;
 
     let connected_components = secret.clone().find_connected_components(&ctx).await?;
     if !connected_components.is_empty() {

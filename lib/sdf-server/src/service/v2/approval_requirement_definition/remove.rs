@@ -48,8 +48,7 @@ pub async fn remove(
     );
 
     let current_approval_definition =
-        ApprovalRequirementDefinition::get_by_id_or_error(&ctx, approval_requirement_definition_id)
-            .await?;
+        ApprovalRequirementDefinition::get_by_id(&ctx, approval_requirement_definition_id).await?;
     let individual_approvers: Vec<UserPk> = current_approval_definition
         .approvers
         .iter()

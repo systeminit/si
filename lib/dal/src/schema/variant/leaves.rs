@@ -226,7 +226,7 @@ impl SchemaVariant {
         leaf_kind: LeafKind,
         inputs: Vec<LeafInput>,
     ) -> SchemaVariantResult<(PropId, AttributePrototypeId)> {
-        let func = Func::get_by_id_or_error(ctx, func_id).await?;
+        let func = Func::get_by_id(ctx, func_id).await?;
 
         // Ensure the func matches what we need.
         if func.backend_kind != FuncBackendKind::JsAttribute {

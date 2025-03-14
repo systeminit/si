@@ -236,7 +236,7 @@ pub fn v2_routes() -> Router<AppState> {
 
 // helper to assemble the front end struct to return the code and types so SDF can decide when these events need to fire
 pub async fn get_code_response(ctx: &DalContext, func_id: FuncId) -> FuncAPIResult<FuncCode> {
-    let func = Func::get_by_id(ctx, func_id)
+    let func = Func::get_by_id_opt(ctx, func_id)
         .await?
         .ok_or(FuncAPIError::FuncNotFound(func_id))?;
     let code = func.code_plaintext()?.unwrap_or("".to_string());

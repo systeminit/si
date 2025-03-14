@@ -26,7 +26,7 @@ pub async fn delete_unlocked_variant(
         .build(access_builder.build(change_set_id.into()))
         .await?;
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
-    let schema_variant = SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id).await?;
+    let schema_variant = SchemaVariant::get_by_id(&ctx, schema_variant_id).await?;
     let schema = schema_variant.schema(&ctx).await?;
 
     let connected_components = SchemaVariant::list_component_ids(&ctx, schema_variant_id).await?;

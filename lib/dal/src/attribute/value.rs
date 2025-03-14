@@ -616,7 +616,7 @@ impl AttributeValue {
             None => None,
         };
 
-        let func = Func::get_by_id_or_error(ctx, prototype_func_id).await?;
+        let func = Func::get_by_id(ctx, prototype_func_id).await?;
         if !func.is_intrinsic() {
             ctx.layer_db()
                 .func_run()
@@ -845,7 +845,7 @@ impl AttributeValue {
     ) -> AttributeValueResult<Func> {
         let prototype_id = Self::prototype_id(ctx, attribute_value_id).await?;
         let prototype_func_id = AttributePrototype::func_id(ctx, prototype_id).await?;
-        Ok(Func::get_by_id_or_error(ctx, prototype_func_id).await?)
+        Ok(Func::get_by_id(ctx, prototype_func_id).await?)
     }
 
     pub async fn is_set_by_dependent_function(
@@ -1901,7 +1901,7 @@ impl AttributeValue {
             }
         };
         let func_id = Func::find_intrinsic(ctx, intrinsic_func).await?;
-        let func = Func::get_by_id_or_error(ctx, func_id).await?;
+        let func = Func::get_by_id(ctx, func_id).await?;
         let prototype = AttributePrototype::new(ctx, func_id).await?;
 
         Self::set_component_prototype_id(ctx, attribute_value_id, prototype.id(), None).await?;

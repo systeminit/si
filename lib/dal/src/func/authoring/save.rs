@@ -394,7 +394,7 @@ pub(crate) async fn save_attr_func_proto_arguments(
     for arg in &arguments {
         // Ensure the func argument exists before continuing. By continuing, we will not add the
         // attribute prototype to the id set and will be deleted.
-        if let Err(err) = FuncArgument::get_by_id_or_error(ctx, arg.func_argument_id).await {
+        if let Err(err) = FuncArgument::get_by_id(ctx, arg.func_argument_id).await {
             match err {
                 FuncArgumentError::WorkspaceSnapshot(
                     WorkspaceSnapshotError::WorkspaceSnapshotGraph(

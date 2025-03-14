@@ -187,12 +187,9 @@ impl ApprovalRequirementDefinition {
             approvers: content.approvers,
         }
     }
-    pub async fn get_by_id_or_error(
-        ctx: &DalContext,
-        id: ApprovalRequirementDefinitionId,
-    ) -> Result<Self> {
+    pub async fn get_by_id(ctx: &DalContext, id: ApprovalRequirementDefinitionId) -> Result<Self> {
         ctx.workspace_snapshot()?
-            .get_by_id_or_error(ctx, id)
+            .get_approval_requirement_definition_by_id(ctx, id)
             .await
             .map_err(Into::into)
     }

@@ -384,7 +384,7 @@ impl ExpectSchemaVariant {
     }
 
     pub async fn schema_variant(self, ctx: &DalContext) -> SchemaVariant {
-        SchemaVariant::get_by_id_or_error(ctx, self.0)
+        SchemaVariant::get_by_id(ctx, self.0)
             .await
             .expect("find schema variant by id")
     }

@@ -26,7 +26,7 @@ pub async fn execute_func(
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
 
     FuncAuthoringClient::execute_func(&ctx, func_id).await?;
-    let func = Func::get_by_id_or_error(&ctx, func_id).await?;
+    let func = Func::get_by_id(&ctx, func_id).await?;
 
     ctx.write_audit_log(
         AuditLogKind::ExecuteFunc {

@@ -181,7 +181,7 @@ async fn update_variant_with_new_metadata(ctx: &mut DalContext) {
         .await
         .expect("could not commit");
 
-    let asset_func = Func::get_by_id_or_error(
+    let asset_func = Func::get_by_id(
         ctx,
         first_variant
             .asset_func_id()
@@ -206,7 +206,7 @@ async fn update_variant_with_new_metadata(ctx: &mut DalContext) {
 
     assert_eq!(default_schema_variant, first_variant.id());
 
-    let first_variant = SchemaVariant::get_by_id_or_error(ctx, first_sv_id)
+    let first_variant = SchemaVariant::get_by_id(ctx, first_sv_id)
         .await
         .expect("could not get schema variant");
 
@@ -248,7 +248,7 @@ async fn update_variant_with_new_metadata(ctx: &mut DalContext) {
         .expect("could not commit");
 
     // ensure metadata is correct for the schema variant
-    let second_variant = SchemaVariant::get_by_id_or_error(ctx, first_sv_id)
+    let second_variant = SchemaVariant::get_by_id(ctx, first_sv_id)
         .await
         .expect("could not get schema variant");
     let schema = second_variant
@@ -304,10 +304,9 @@ async fn update_variant_with_new_metadata(ctx: &mut DalContext) {
         .expect("could not commit");
 
     // get updated schema variant after regenerating
-    let updated_variant_after_regen =
-        SchemaVariant::get_by_id_or_error(ctx, updated_sv_id_after_regen)
-            .await
-            .expect("could not get schema variant");
+    let updated_variant_after_regen = SchemaVariant::get_by_id(ctx, updated_sv_id_after_regen)
+        .await
+        .expect("could not get schema variant");
 
     // let's ensure schema variant is as it was before
     assert_ne!(updated_variant_after_regen.id(), first_sv_id);
@@ -370,10 +369,9 @@ async fn update_variant_with_new_metadata(ctx: &mut DalContext) {
         .expect("could not commit");
 
     // make sure everything saved as expected
-    let updated_sv_after_metadata_change =
-        SchemaVariant::get_by_id_or_error(ctx, updated_sv_id_after_regen)
-            .await
-            .expect("could not get schema variant");
+    let updated_sv_after_metadata_change = SchemaVariant::get_by_id(ctx, updated_sv_id_after_regen)
+        .await
+        .expect("could not get schema variant");
     assert_eq!(
         updated_sv_after_metadata_change.id(),
         updated_sv_id_after_regen
@@ -423,10 +421,9 @@ async fn update_variant_with_new_metadata(ctx: &mut DalContext) {
         .await
         .expect("could not commit");
     assert_ne!(updated_sv_id_after_regen, first_sv_id);
-    let updated_variant_after_regen =
-        SchemaVariant::get_by_id_or_error(ctx, updated_sv_id_after_regen)
-            .await
-            .expect("could not get schema variant");
+    let updated_variant_after_regen = SchemaVariant::get_by_id(ctx, updated_sv_id_after_regen)
+        .await
+        .expect("could not get schema variant");
 
     // make sure the metadata matches
     assert_eq!(updated_variant_after_regen.category(), third_category);
@@ -877,7 +874,7 @@ async fn update_variant_with_leaf_func(ctx: &mut DalContext) {
                 .build();
             return new AssetBuilder().addProp(input1).addProp(input2).addProp(calculate).build()
         }";
-    let schema_variant = SchemaVariant::get_by_id_or_error(ctx, first_update_variant_id)
+    let schema_variant = SchemaVariant::get_by_id(ctx, first_update_variant_id)
         .await
         .expect("could not get schema variant");
 
@@ -939,7 +936,7 @@ async fn update_variant_with_leaf_func(ctx: &mut DalContext) {
                 message: 'Component qualified'
             };
         }";
-    // let func = Func::get_by_id_or_error(ctx, created_func_two.id)
+    // let func = Func::get_by_id(ctx, created_func_two.id)
     //     .await
     //     .expect("could not get func");
     FuncAuthoringClient::save_code(ctx, created_func_two.id, code.to_string())

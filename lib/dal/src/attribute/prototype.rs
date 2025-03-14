@@ -186,7 +186,7 @@ impl AttributePrototype {
         ctx: &DalContext,
         prototype_id: AttributePrototypeId,
     ) -> AttributePrototypeResult<Func> {
-        Ok(Func::get_by_id_or_error(ctx, Self::func_id(ctx, prototype_id).await?).await?)
+        Ok(Func::get_by_id(ctx, Self::func_id(ctx, prototype_id).await?).await?)
     }
 
     pub async fn find_for_prop(

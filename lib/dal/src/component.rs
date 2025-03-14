@@ -587,7 +587,7 @@ impl Component {
         component.set_name(ctx, &name).await?;
 
         //set a component specific prototype for the root/si/type as we don't want it to ever change other than manually
-        let sv_type = SchemaVariant::get_by_id_or_error(ctx, schema_variant_id)
+        let sv_type = SchemaVariant::get_by_id(ctx, schema_variant_id)
             .await?
             .get_type(ctx)
             .await?;
@@ -810,7 +810,7 @@ impl Component {
                         continue;
                     };
 
-                    let prototype_func = Func::get_by_id_or_error(
+                    let prototype_func = Func::get_by_id(
                         ctx,
                         AttributePrototype::func_id(ctx, old_component_prototype_id).await?,
                     )
@@ -1419,7 +1419,7 @@ impl Component {
         component_id: ComponentId,
     ) -> ComponentResult<SchemaVariant> {
         let schema_variant_id = Self::schema_variant_id(ctx, component_id).await?;
-        Ok(SchemaVariant::get_by_id_or_error(ctx, schema_variant_id).await?)
+        Ok(SchemaVariant::get_by_id(ctx, schema_variant_id).await?)
     }
 
     pub async fn schema_variant(&self, ctx: &DalContext) -> ComponentResult<SchemaVariant> {
@@ -2306,7 +2306,7 @@ impl Component {
         while let Some((av_id, maybe_parent_av_id)) = av_queue.pop_front() {
             let prototype_id = AttributeValue::prototype_id(ctx, av_id).await?;
             let func_id = AttributePrototype::func_id(ctx, prototype_id).await?;
-            let func = Func::get_by_id_or_error(ctx, func_id).await?;
+            let func = Func::get_by_id(ctx, func_id).await?;
 
             let this_tuple = ControllingFuncData {
                 func_id,
@@ -3704,13 +3704,12 @@ impl Component {
             match action.state() {
                 ActionState::Failed | ActionState::OnHold | ActionState::Queued => {
                     let func_id = ActionPrototype::func_id(ctx, action_prototype_id).await?;
-                    let queued_func = Func::get_by_id_or_error(ctx, func_id).await?;
+                    let queued_func = Func::get_by_id(ctx, func_id).await?;
 
                     for available_action_prototype in available_for_new_component.clone() {
                         let available_func_id =
                             ActionPrototype::func_id(ctx, available_action_prototype.id()).await?;
-                        let available_func =
-                            Func::get_by_id_or_error(ctx, available_func_id).await?;
+                        let available_func = Func::get_by_id(ctx, available_func_id).await?;
 
                         if available_func.name == queued_func.name
                             && available_func.kind == queued_func.kind

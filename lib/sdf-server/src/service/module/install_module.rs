@@ -130,7 +130,7 @@ pub async fn install_module(
         );
 
         if let Some(schema_variant_id) = svs.first() {
-            let variant = SchemaVariant::get_by_id_or_error(&ctx, *schema_variant_id).await?;
+            let variant = SchemaVariant::get_by_id(&ctx, *schema_variant_id).await?;
             let schema_id = variant.schema(&ctx).await?.id();
             let front_end_variant = variant.into_frontend_type(&ctx, schema_id).await?;
             WsEvent::module_imported(&ctx, vec![front_end_variant.clone()])
@@ -138,7 +138,7 @@ pub async fn install_module(
                 .publish_on_commit(&ctx)
                 .await?;
             for func_id in front_end_variant.func_ids.iter() {
-                let func = Func::get_by_id_or_error(&ctx, *func_id).await?;
+                let func = Func::get_by_id(&ctx, *func_id).await?;
                 let front_end_func = func.into_frontend_type(&ctx).await?;
                 WsEvent::func_updated(&ctx, front_end_func, None)
                     .await?

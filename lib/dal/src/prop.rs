@@ -947,7 +947,7 @@ impl Prop {
         let prototype_id = Self::prototype_id(ctx, prop_id).await?;
         let prototype_func_id = AttributePrototype::func_id(ctx, prototype_id).await?;
 
-        Ok(Func::get_by_id(ctx, prototype_func_id)
+        Ok(Func::get_by_id_opt(ctx, prototype_func_id)
             .await?
             .map(|f| f.is_dynamic())
             .unwrap_or(false))
@@ -959,8 +959,7 @@ impl Prop {
     ) -> PropResult<Option<serde_json::Value>> {
         let prototype_id = Self::prototype_id(ctx, prop_id).await?;
         let prototype_func =
-            Func::get_by_id_or_error(ctx, AttributePrototype::func_id(ctx, prototype_id).await?)
-                .await?;
+            Func::get_by_id(ctx, AttributePrototype::func_id(ctx, prototype_id).await?).await?;
         if prototype_func.is_dynamic() {
             return Ok(None);
         }

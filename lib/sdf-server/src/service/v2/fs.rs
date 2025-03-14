@@ -700,7 +700,7 @@ async fn get_func_code(
         serde_json::json!({ "func_id": func_id }),
     );
 
-    let func = dal::Func::get_by_id(&ctx, func_id)
+    let func = dal::Func::get_by_id_opt(&ctx, func_id)
         .await?
         .ok_or(FsError::ResourceNotFound)?;
 
@@ -740,7 +740,7 @@ async fn set_func_code(
 }
 
 async fn func_types_size(ctx: &DalContext, func_id: FuncId) -> FsResult<u64> {
-    let func = dal::Func::get_by_id_or_error(ctx, func_id).await?;
+    let func = dal::Func::get_by_id(ctx, func_id).await?;
     Ok(func.get_types(ctx).await?.len() as u64)
 }
 
@@ -762,7 +762,7 @@ async fn get_func_types(
         serde_json::json!({"func_id": func_id}),
     );
 
-    let func = dal::Func::get_by_id(&ctx, func_id)
+    let func = dal::Func::get_by_id_opt(&ctx, func_id)
         .await?
         .ok_or(FsError::ResourceNotFound)?;
 
@@ -1057,7 +1057,7 @@ async fn set_asset_func_code(
         )
         .await?;
 
-    let updated_variant = SchemaVariant::get_by_id_or_error(&ctx_clone, updated_variant_id).await?;
+    let updated_variant = SchemaVariant::get_by_id(&ctx_clone, updated_variant_id).await?;
 
     if schema_variant_id == updated_variant_id {
         WsEvent::schema_variant_updated(&ctx_clone, schema_id, updated_variant)
@@ -1090,7 +1090,7 @@ async fn install_schema(
 
     if !Schema::exists_locally(&ctx, schema_id).await? {
         let default_variant_id = Schema::get_or_install_default_variant(&ctx, schema_id).await?;
-        let variant = SchemaVariant::get_by_id_or_error(&ctx, default_variant_id).await?;
+        let variant = SchemaVariant::get_by_id(&ctx, default_variant_id).await?;
 
         let front_end_variant = variant.clone().into_frontend_type(&ctx, schema_id).await?;
         WsEvent::module_imported(&ctx, vec![front_end_variant.clone()])
@@ -1394,7 +1394,7 @@ async fn unlock_func(
 
     check_change_set_and_not_head(&ctx).await?;
 
-    let existing_func = dal::Func::get_by_id(&ctx, func_id)
+    let existing_func = dal::Func::get_by_id_opt(&ctx, func_id)
         .await?
         .ok_or(FsError::ResourceNotFound)?;
     if !existing_func.is_locked {

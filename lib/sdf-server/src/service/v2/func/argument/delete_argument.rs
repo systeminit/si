@@ -33,10 +33,10 @@ pub async fn delete_func_argument(
         .build(access_builder.build(change_set_id.into()))
         .await?;
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
-    let func_arg = FuncArgument::get_by_id_or_error(&ctx, func_argument_id).await?;
+    let func_arg = FuncArgument::get_by_id(&ctx, func_argument_id).await?;
     FuncAuthoringClient::delete_func_argument(&ctx, func_argument_id).await?;
 
-    let func_summary = Func::get_by_id_or_error(&ctx, func_id)
+    let func_summary = Func::get_by_id(&ctx, func_id)
         .await?
         .into_frontend_type(&ctx)
         .await?;

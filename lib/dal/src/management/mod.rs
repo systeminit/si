@@ -1584,7 +1584,7 @@ async fn remove_action(
             for action_id in actions {
                 let prototype_id = Action::prototype_id(ctx, action_id).await?;
                 let func_id = ActionPrototype::func_id(ctx, prototype_id).await?;
-                let func = Func::get_by_id_or_error(ctx, func_id).await?;
+                let func = Func::get_by_id(ctx, func_id).await?;
                 if Some(func.name) == action.manual_func_name {
                     Action::remove_by_id(ctx, action_id).await?;
                 }
@@ -1635,11 +1635,9 @@ async fn add_action(
                 .iter()
                 .filter(|proto| proto.kind == ActionKind::Manual)
             {
-                let func = Func::get_by_id_or_error(
-                    ctx,
-                    ActionPrototype::func_id(ctx, manual_proto.id()).await?,
-                )
-                .await?;
+                let func =
+                    Func::get_by_id(ctx, ActionPrototype::func_id(ctx, manual_proto.id()).await?)
+                        .await?;
                 if func.name == manual_func_name {
                     proto_id = Some(manual_proto.id());
                     break;

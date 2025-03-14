@@ -295,7 +295,7 @@ impl AttributePrototypeArgument {
         ctx: &DalContext,
     ) -> AttributePrototypeArgumentResult<FuncArgument> {
         let func_arg_id = Self::func_argument_id_by_id(ctx, self.id).await?;
-        Ok(FuncArgument::get_by_id_or_error(ctx, func_arg_id).await?)
+        Ok(FuncArgument::get_by_id(ctx, func_arg_id).await?)
     }
 
     pub async fn func_argument_id_by_id(

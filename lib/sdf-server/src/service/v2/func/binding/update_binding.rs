@@ -174,7 +174,7 @@ pub async fn update_binding(
         .build(access_builder.build(change_set_id.into()))
         .await?;
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
-    let func = Func::get_by_id_or_error(&ctx, func_id).await?;
+    let func = Func::get_by_id(&ctx, func_id).await?;
     // add cycle check so we don't end up with a cycle as a result of updating this binding
     let cycle_check_guard = ctx.workspace_snapshot()?.enable_cycle_check().await;
 
@@ -209,12 +209,12 @@ pub async fn update_binding(
             "func_kind": func.kind.clone(),
         }),
     );
-    let binding = Func::get_by_id_or_error(&ctx, func_id)
+    let binding = Func::get_by_id(&ctx, func_id)
         .await?
         .into_frontend_type(&ctx)
         .await?
         .bindings;
-    let func_summary = Func::get_by_id_or_error(&ctx, func_id)
+    let func_summary = Func::get_by_id(&ctx, func_id)
         .await?
         .into_frontend_type(&ctx)
         .await?;

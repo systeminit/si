@@ -38,7 +38,7 @@ pub async fn delete_binding(
         .build(access_builder.build(change_set_id.into()))
         .await?;
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
-    let func = Func::get_by_id_or_error(&ctx, func_id).await?;
+    let func = Func::get_by_id(&ctx, func_id).await?;
 
     let mut modified_sv_ids = HashSet::new();
 
@@ -119,8 +119,7 @@ pub async fn delete_binding(
         };
         match eventual_parent {
             EventualParent::SchemaVariant(schema_variant_id) => {
-                let schema_variant =
-                    SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id).await?;
+                let schema_variant = SchemaVariant::get_by_id(&ctx, schema_variant_id).await?;
                 ctx.write_audit_log(
                     AuditLogKind::DetachFunc {
                         func_id,
@@ -154,7 +153,7 @@ pub async fn delete_binding(
     for schema_variant_id in modified_sv_ids {
         let schema =
             SchemaVariant::schema_id_for_schema_variant_id(&ctx, schema_variant_id).await?;
-        let schema_variant = SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id).await?;
+        let schema_variant = SchemaVariant::get_by_id(&ctx, schema_variant_id).await?;
 
         WsEvent::schema_variant_updated(&ctx, schema, schema_variant)
             .await?
@@ -175,12 +174,12 @@ pub async fn delete_binding(
             "func_kind": func.kind.clone(),
         }),
     );
-    let binding = Func::get_by_id_or_error(&ctx, func_id)
+    let binding = Func::get_by_id(&ctx, func_id)
         .await?
         .into_frontend_type(&ctx)
         .await?
         .bindings;
-    let func_summary = Func::get_by_id_or_error(&ctx, func_id)
+    let func_summary = Func::get_by_id(&ctx, func_id)
         .await?
         .into_frontend_type(&ctx)
         .await?;

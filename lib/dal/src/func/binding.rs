@@ -397,7 +397,7 @@ impl FuncBinding {
         ctx: &DalContext,
         func_id: FuncId,
     ) -> FuncBindingResult<Vec<FuncBinding>> {
-        let func = Func::get_by_id_or_error(ctx, func_id).await?;
+        let func = Func::get_by_id(ctx, func_id).await?;
         let bindings = match func.kind {
             FuncKind::Action => ActionBinding::assemble_action_bindings(ctx, func_id).await?,
             FuncKind::Attribute => {
@@ -447,7 +447,7 @@ impl FuncBinding {
                     }
                     None => {
                         if !SchemaVariant::is_locked_by_id(ctx, schema_variant_id).await?
-                            || SchemaVariant::get_by_id_or_error(ctx, schema_variant_id)
+                            || SchemaVariant::get_by_id(ctx, schema_variant_id)
                                 .await?
                                 .is_default(ctx)
                                 .await?
@@ -548,7 +548,7 @@ impl FuncBinding {
         let func_bindings = FuncBinding::for_func_id(ctx, func_id).await?;
         for binding in func_bindings {
             if let Some(sv_id) = binding.get_schema_variant() {
-                let sv = SchemaVariant::get_by_id_or_error(ctx, sv_id).await?;
+                let sv = SchemaVariant::get_by_id(ctx, sv_id).await?;
 
                 // If the variant is locked, not default and was created on this changeset, it needs to be garbage collected
                 if sv.is_locked()
@@ -595,7 +595,7 @@ impl FuncBinding {
 
     /// Compile all the types for all of the bindings to return to the front end for type checking
     pub async fn compile_types(ctx: &DalContext, func_id: FuncId) -> FuncBindingResult<String> {
-        let func = Func::get_by_id_or_error(ctx, func_id).await?;
+        let func = Func::get_by_id(ctx, func_id).await?;
         let types: String = match func.kind {
             FuncKind::Action => ActionBinding::compile_action_types(ctx, func_id).await?,
             FuncKind::CodeGeneration | FuncKind::Qualification => {

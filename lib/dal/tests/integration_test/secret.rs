@@ -48,7 +48,7 @@ async fn new(ctx: &DalContext, nw: &WorkspaceSignup) {
     assert_eq!(nw.key_pair.pk(), key_pair.pk());
 
     // Fetch the secret by id too.
-    let found_secret = Secret::get_by_id_or_error(ctx, secret.id())
+    let found_secret = Secret::get_by_id(ctx, secret.id())
         .await
         .expect("could not perform get by id or secret not found");
     assert_eq!(secret, found_secret);
@@ -81,7 +81,7 @@ async fn encrypt_decrypt_round_trip(ctx: &DalContext, nw: &WorkspaceSignup) {
     .expect("failed to create encrypted secret");
 
     // Ensure that the fetched secret looks as we expected.
-    let found_secret = Secret::get_by_id_or_error(ctx, secret.id())
+    let found_secret = Secret::get_by_id(ctx, secret.id())
         .await
         .expect("could not perform get by id or secret not found");
     assert_eq!(secret.name(), found_secret.name());
@@ -134,7 +134,7 @@ async fn update_metadata_and_encrypted_contents(ctx: &DalContext, nw: &Workspace
     .expect("failed to create encrypted secret");
 
     // Ensure that the fetched secret looks as we expect.
-    let found_secret = Secret::get_by_id_or_error(ctx, secret.id())
+    let found_secret = Secret::get_by_id(ctx, secret.id())
         .await
         .expect("could not perform get by id or secret not found");
     assert_eq!(secret.name(), found_secret.name());
@@ -174,7 +174,7 @@ async fn update_metadata_and_encrypted_contents(ctx: &DalContext, nw: &Workspace
         )
         .await
         .expect("could not update encrypted contents");
-    let found_updated_secret = Secret::get_by_id_or_error(ctx, updated_secret.id())
+    let found_updated_secret = Secret::get_by_id(ctx, updated_secret.id())
         .await
         .expect("could not perform get by id or secret not found");
 
@@ -208,7 +208,7 @@ async fn update_metadata_and_encrypted_contents(ctx: &DalContext, nw: &Workspace
 
     // Now, update the metadata.
     let double_updated_secret = updated_secret.update_metadata(ctx, name, Some("alright, so now we are in the air and I am writing this test offline, which is awesome!".to_string())).await.expect("could not update metadata");
-    let found_double_updated_secret = Secret::get_by_id_or_error(ctx, double_updated_secret.id())
+    let found_double_updated_secret = Secret::get_by_id(ctx, double_updated_secret.id())
         .await
         .expect("could not perform get by id or secret not found");
 
@@ -392,7 +392,7 @@ async fn consumed_secrets_work_when_dvu_not_up_to_date(ctx: &mut DalContext, nw:
         .expect("could not attach secret");
     expected::commit_and_update_snapshot_to_visibility(ctx).await;
 
-    let found_secret = Secret::get_by_id_or_error(ctx, secret.id())
+    let found_secret = Secret::get_by_id(ctx, secret.id())
         .await
         .expect("could not perform get by id or secret not found");
     assert_eq!(secret_message, found_secret.encrypted_secret_key());
@@ -420,7 +420,7 @@ async fn consumed_secrets_work_when_dvu_not_up_to_date(ctx: &mut DalContext, nw:
     )
     .await
     .expect("could not encrypt message");
-    let updated_secret = Secret::get_by_id_or_error(ctx, secret.id())
+    let updated_secret = Secret::get_by_id(ctx, secret.id())
         .await
         .expect("no secret")
         .update_encrypted_contents(
@@ -435,7 +435,7 @@ async fn consumed_secrets_work_when_dvu_not_up_to_date(ctx: &mut DalContext, nw:
     let updated_secret_message = updated_secret.encrypted_secret_key();
 
     // Validate that the secret has the new value.
-    let found_secret = Secret::get_by_id_or_error(ctx, secret.id())
+    let found_secret = Secret::get_by_id(ctx, secret.id())
         .await
         .expect("could not perform get by id or secret not found");
     assert_eq!(updated_secret_message, found_secret.encrypted_secret_key());

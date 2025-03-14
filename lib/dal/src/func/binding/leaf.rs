@@ -94,7 +94,7 @@ impl LeafBinding {
         // don't create binding if parent is locked
         eventual_parent.error_if_locked(ctx).await?;
 
-        let func = Func::get_by_id_or_error(ctx, func_id).await?;
+        let func = Func::get_by_id(ctx, func_id).await?;
         match eventual_parent {
             EventualParent::SchemaVariant(schema_variant_id) => {
                 let inputs = match inputs.is_empty() {

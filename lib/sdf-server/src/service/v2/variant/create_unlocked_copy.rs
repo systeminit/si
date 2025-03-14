@@ -36,7 +36,7 @@ pub async fn create_unlocked_copy(
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
 
-    let original_variant = SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id).await?;
+    let original_variant = SchemaVariant::get_by_id(&ctx, schema_variant_id).await?;
 
     let schema = original_variant.schema(&ctx).await?;
 

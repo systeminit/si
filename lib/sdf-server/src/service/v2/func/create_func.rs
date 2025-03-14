@@ -173,7 +173,7 @@ pub async fn create_func(
                     None => {
                         let schema_variant_id = output_location.find_schema_variant(&ctx).await?;
                         (
-                            SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id)
+                            SchemaVariant::get_by_id(&ctx, schema_variant_id)
                                 .await?
                                 .display_name()
                                 .to_string(),
@@ -264,11 +264,10 @@ pub async fn create_func(
                     func.name.clone(),
                 )
                 .await?;
-                let schema_variant_name =
-                    SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id)
-                        .await?
-                        .display_name()
-                        .to_string();
+                let schema_variant_name = SchemaVariant::get_by_id(&ctx, schema_variant_id)
+                    .await?
+                    .display_name()
+                    .to_string();
                 ctx.write_audit_log(
                     AuditLogKind::AttachCodeGenFunc {
                         func_id: func.id,
@@ -314,11 +313,10 @@ pub async fn create_func(
                     func.name.clone(),
                 )
                 .await?;
-                let schema_variant_name =
-                    SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id)
-                        .await?
-                        .display_name()
-                        .to_string();
+                let schema_variant_name = SchemaVariant::get_by_id(&ctx, schema_variant_id)
+                    .await?
+                    .display_name()
+                    .to_string();
                 ctx.write_audit_log(
                     AuditLogKind::AttachQualificationFunc {
                         func_id: func.id,
@@ -355,11 +353,10 @@ pub async fn create_func(
                     func.name.clone(),
                 )
                 .await?;
-                let schema_variant_name =
-                    SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id)
-                        .await?
-                        .display_name()
-                        .to_string();
+                let schema_variant_name = SchemaVariant::get_by_id(&ctx, schema_variant_id)
+                    .await?
+                    .display_name()
+                    .to_string();
                 ctx.write_audit_log(
                     AuditLogKind::AttachManagementFunc {
                         func_id: func.id,
@@ -427,7 +424,7 @@ pub async fn create_func(
         } => {
             let schema_id =
                 SchemaVariant::schema_id_for_schema_variant_id(&ctx, schema_variant_id).await?;
-            let schema_variant = SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id).await?;
+            let schema_variant = SchemaVariant::get_by_id(&ctx, schema_variant_id).await?;
             WsEvent::schema_variant_updated(&ctx, schema_id, schema_variant)
                 .await?
                 .publish_on_commit(&ctx)

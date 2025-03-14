@@ -604,7 +604,7 @@ impl SchemaVariant {
     ) -> SchemaVariantResult<bool> {
         let base_change_set_ctx = ctx.clone_with_base().await?;
 
-        Ok(Self::get_by_id(&base_change_set_ctx, self.id)
+        Ok(Self::get_by_id_opt(&base_change_set_ctx, self.id)
             .await?
             .is_none())
     }
@@ -613,7 +613,7 @@ impl SchemaVariant {
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
     ) -> SchemaVariantResult<()> {
-        let variant = Self::get_by_id_or_error(ctx, schema_variant_id).await?;
+        let variant = Self::get_by_id(ctx, schema_variant_id).await?;
 
         if variant.is_locked() {
             return Err(SchemaVariantError::SchemaVariantLocked(schema_variant_id));
@@ -717,16 +717,13 @@ impl SchemaVariant {
         Ok(all_props)
     }
 
-    pub async fn get_by_id_or_error(
-        ctx: &DalContext,
-        id: SchemaVariantId,
-    ) -> SchemaVariantResult<Self> {
-        Self::get_by_id(ctx, id)
+    pub async fn get_by_id(ctx: &DalContext, id: SchemaVariantId) -> SchemaVariantResult<Self> {
+        Self::get_by_id_opt(ctx, id)
             .await?
             .ok_or_else(|| SchemaVariantError::NotFound(id))
     }
 
-    pub async fn get_by_id(
+    pub async fn get_by_id_opt(
         ctx: &DalContext,
         id: SchemaVariantId,
     ) -> SchemaVariantResult<Option<Self>> {
@@ -919,7 +916,7 @@ impl SchemaVariant {
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
     ) -> SchemaVariantResult<bool> {
-        let schema_variant = Self::get_by_id_or_error(ctx, schema_variant_id).await?;
+        let schema_variant = Self::get_by_id(ctx, schema_variant_id).await?;
         Ok(schema_variant.is_locked)
     }
 
@@ -958,7 +955,7 @@ impl SchemaVariant {
         schema_id: SchemaId,
     ) -> SchemaVariantResult<Self> {
         let default_schema_variant_id = Self::default_id_for_schema(ctx, schema_id).await?;
-        Self::get_by_id_or_error(ctx, default_schema_variant_id).await
+        Self::get_by_id(ctx, default_schema_variant_id).await
     }
 
     pub async fn default_id_for_schema(
@@ -1106,7 +1103,7 @@ impl SchemaVariant {
 
     pub async fn get_asset_func(&self, ctx: &DalContext) -> SchemaVariantResult<Func> {
         let asset_func_id = self.asset_func_id_or_error()?;
-        Ok(Func::get_by_id_or_error(ctx, asset_func_id).await?)
+        Ok(Func::get_by_id(ctx, asset_func_id).await?)
     }
 
     /// This method unlocks the asset [`Func`] without creating a copy.
@@ -1121,7 +1118,7 @@ impl SchemaVariant {
         let asset_func_id = self
             .asset_func_id
             .ok_or(SchemaVariantError::MissingAssetFuncId(self.id))?;
-        let asset_func = Func::get_by_id_or_error(ctx, asset_func_id).await?;
+        let asset_func = Func::get_by_id(ctx, asset_func_id).await?;
         asset_func.unsafe_unlock_without_copy(ctx).await?;
         Ok(())
     }
