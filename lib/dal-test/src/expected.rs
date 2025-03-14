@@ -337,7 +337,6 @@ impl ExpectSchemaVariant {
     pub async fn create_management_func(
         self,
         ctx: &DalContext,
-        schemas: impl Into<Vec<SchemaId>>,
         code: impl Into<String>,
     ) -> ExpectFunc {
         let func: ExpectFunc =
@@ -346,7 +345,6 @@ impl ExpectSchemaVariant {
                 .expect("create management func")
                 .into();
         func.update_code(ctx, code).await;
-        func.update_managed_schemas(ctx, schemas).await;
         func
     }
 

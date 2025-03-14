@@ -65,6 +65,8 @@ pub enum SchemaError {
     TryLock(#[from] TryLockError),
     #[error("uninstalled schema {0} not found")]
     UninstalledSchemaNotFound(SchemaId),
+    #[error("uninstalled schema {0} not found")]
+    UninstalledSchemaNotFoundByName(String),
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
@@ -511,6 +513,20 @@ impl Schema {
             .ok_or_else(|| SchemaError::NoSchemaVariantWithName(name.as_ref().to_string()))
     }
 
+    pub async fn get_or_install_by_name(ctx: &DalContext, name: &str) -> SchemaResult<Schema> {
+        // If there's an installed schema, return it
+        Ok(match Self::get_by_name_opt(ctx, name).await? {
+            Some(schema) => schema,
+            None => {
+                let uninstalled_module = CachedModule::find_latest_for_schema_name(ctx, name)
+                    .await?
+                    .ok_or(SchemaError::UninstalledSchemaNotFoundByName(name.into()))?;
+
+                Self::install_from_module(ctx, uninstalled_module).await?
+            }
+        })
+    }
+
     /// Collect all [`FuncIds`](crate::Func) corresponding to the provided [`SchemaId`](Schema).
     /// Since [`SchemaVariants`](SchemaVariant) can use the same [`Funcs`](crate::Func) (and
     /// often do), we use a [`HashSet`] to de-duplicate results.
@@ -543,25 +559,37 @@ impl Schema {
         schema_id: SchemaId,
     ) -> SchemaResult<SchemaVariantId> {
         // Install the schema, if it isn't already
+        Self::ensure_installed(ctx, schema_id).await?;
+        Self::default_variant_id(ctx, schema_id).await
+    }
+
+    async fn ensure_installed(ctx: &DalContext, schema_id: SchemaId) -> SchemaResult<()> {
+        // Install the schema, if it isn't already
         if !Self::exists_locally(ctx, schema_id).await? {
-            let mut uninstalled_module = CachedModule::find_latest_for_schema_id(ctx, schema_id)
+            let module = CachedModule::find_latest_for_schema_id(ctx, schema_id)
                 .await?
                 .ok_or(SchemaError::UninstalledSchemaNotFound(schema_id))?;
-
-            let si_pkg = uninstalled_module.si_pkg(ctx).await?;
-            import_pkg_from_pkg(
-                ctx,
-                &si_pkg,
-                Some(ImportOptions {
-                    schema_id: Some(schema_id.into()),
-                    ..Default::default()
-                }),
-            )
-            .await?;
+            Self::install_from_module(ctx, module).await?;
         }
+        Ok(())
+    }
 
-        Self::default_variant_id_opt(ctx, schema_id)
+    async fn install_from_module(
+        ctx: &DalContext,
+        mut module: CachedModule,
+    ) -> SchemaResult<Schema> {
+        let si_pkg = module.si_pkg(ctx).await?;
+        import_pkg_from_pkg(
+            ctx,
+            &si_pkg,
+            Some(ImportOptions {
+                schema_id: Some(module.schema_id.into()),
+                ..Default::default()
+            }),
+        )
+        .await?;
+        Self::get_by_id_opt(ctx, module.schema_id)
             .await?
-            .ok_or(SchemaError::SchemaNotInstalledAfterImport(schema_id))
+            .ok_or(SchemaError::UninstalledSchemaNotFound(module.schema_id))
     }
 }

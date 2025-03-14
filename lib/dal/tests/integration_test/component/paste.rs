@@ -899,7 +899,6 @@ impl ConnectableTest {
         let management_func = manager
             .create_management_func(
                 ctx,
-                &[connectable.schema(ctx).await.id()],
                 r#"
                     function main(input) {
                         let managed_values = Object.values(input.components).map(c => c.properties.domain.Value).sort();
