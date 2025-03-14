@@ -230,18 +230,15 @@ impl ExpectSchema {
     }
 
     pub async fn schema(self, ctx: &DalContext) -> Schema {
-        Schema::get_by_id_or_error(ctx, self.0)
+        Schema::get_by_id(ctx, self.0)
             .await
             .expect("get schema by id")
     }
 
     pub async fn default_variant(self, ctx: &DalContext) -> ExpectSchemaVariant {
-        let schema = self.schema(ctx).await;
-        let schema_variant_id = schema
-            .get_default_schema_variant_id(ctx)
+        let schema_variant_id = Schema::default_variant_id(ctx, self.0)
             .await
-            .expect("get default variant id")
-            .expect("default variant exists");
+            .expect("get default variant id");
         ExpectSchemaVariant(schema_variant_id)
     }
 

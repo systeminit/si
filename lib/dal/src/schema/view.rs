@@ -15,8 +15,6 @@ use crate::{
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum SchemaViewError {
-    #[error("default variant not found for schema: {0}")]
-    DefaultVariantNotFoundForSchema(SchemaId),
     #[error("schema error: {0}")]
     Schema(#[from] SchemaError),
     #[error("schema variant error: {0}")]
@@ -48,57 +46,53 @@ impl SchemaView {
             }
 
             let mut schema_variant_views = Vec::new();
+            let default_variant_id = Schema::default_variant_id(ctx, schema.id).await?;
             let schema_variants = SchemaVariant::list_for_schema(ctx, schema.id).await?;
-
-            if let Some(default_variant_id) = schema.get_default_schema_variant_id(ctx).await? {
-                for schema_variant in schema_variants {
-                    if schema_variant.ui_hidden() {
-                        continue;
-                    }
-
-                    let (output_sockets, input_sockets) =
-                        SchemaVariant::list_all_sockets(ctx, schema_variant.id()).await?;
-
-                    schema_variant_views.push(SchemaVariantView {
-                        id: schema_variant.id(),
-                        // FIXME(nick): use the real value here
-                        builtin: true,
-                        is_default: schema_variant.id() == default_variant_id,
-                        name: schema_variant.version().to_owned(),
-                        color: schema_variant.get_color(ctx).await?,
-                        category: schema_variant.category().to_owned(),
-                        component_type: schema_variant.component_type().to_owned(),
-                        input_sockets: input_sockets
-                            .iter()
-                            .map(|s| InputSocketView {
-                                id: s.id(),
-                                name: s.name().to_owned(),
-                            })
-                            .collect(),
-                        output_sockets: output_sockets
-                            .iter()
-                            .map(|s| OutputSocketView {
-                                id: s.id(),
-                                name: s.name().to_owned(),
-                            })
-                            .collect(),
-                        timestamp: schema_variant.timestamp(),
-                        description: schema_variant.description(),
-                        display_name: Some(schema_variant.display_name().to_string()),
-                        is_locked: schema_variant.is_locked(),
-                    });
+            for schema_variant in schema_variants {
+                if schema_variant.ui_hidden() {
+                    continue;
                 }
 
-                schema_views.push(Self {
-                    id: schema.id,
+                let (output_sockets, input_sockets) =
+                    SchemaVariant::list_all_sockets(ctx, schema_variant.id()).await?;
+
+                schema_variant_views.push(SchemaVariantView {
+                    id: schema_variant.id(),
                     // FIXME(nick): use the real value here
                     builtin: true,
-                    name: schema.name,
-                    variants: schema_variant_views,
+                    is_default: schema_variant.id() == default_variant_id,
+                    name: schema_variant.version().to_owned(),
+                    color: schema_variant.get_color(ctx).await?,
+                    category: schema_variant.category().to_owned(),
+                    component_type: schema_variant.component_type().to_owned(),
+                    input_sockets: input_sockets
+                        .iter()
+                        .map(|s| InputSocketView {
+                            id: s.id(),
+                            name: s.name().to_owned(),
+                        })
+                        .collect(),
+                    output_sockets: output_sockets
+                        .iter()
+                        .map(|s| OutputSocketView {
+                            id: s.id(),
+                            name: s.name().to_owned(),
+                        })
+                        .collect(),
+                    timestamp: schema_variant.timestamp(),
+                    description: schema_variant.description(),
+                    display_name: Some(schema_variant.display_name().to_string()),
+                    is_locked: schema_variant.is_locked(),
                 });
-            } else {
-                return Err(SchemaViewError::DefaultVariantNotFoundForSchema(schema.id));
             }
+
+            schema_views.push(Self {
+                id: schema.id,
+                // FIXME(nick): use the real value here
+                builtin: true,
+                name: schema.name,
+                variants: schema_variant_views,
+            });
         }
 
         Ok(schema_views)

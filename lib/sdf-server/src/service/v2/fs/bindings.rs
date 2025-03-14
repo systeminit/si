@@ -178,11 +178,7 @@ async fn management_binding_to_fs_management_binding(
             let schema_name =
                 match CachedModule::find_latest_for_schema_id(ctx, managed_schema_id).await? {
                     Some(cached_module) => cached_module.schema_name,
-                    None => {
-                        Schema::get_by_id_or_error(ctx, managed_schema_id)
-                            .await?
-                            .name
-                    }
+                    None => Schema::get_by_id(ctx, managed_schema_id).await?.name,
                 };
             managed_names.push(schema_name);
         }

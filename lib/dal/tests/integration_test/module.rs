@@ -79,12 +79,9 @@ async fn module_export_simple(ctx: &mut DalContext) {
         .await
         .expect("schema not found");
 
-    let default_schema_variant = schema
-        .get_default_schema_variant_id(ctx)
+    Schema::default_variant_id(ctx, schema.id())
         .await
         .expect("Unable to find the default schema variant id");
-
-    assert!(default_schema_variant.is_some());
 
     let name = "Paul's Test Pkg".to_string();
     let version = "2019-06-03".to_string();
@@ -174,11 +171,9 @@ async fn prepare_contribution_works(ctx: &DalContext) {
     let name = "Paul's Test Pkg With Extra Spaces At The End    ";
     let version = "    Version With Spaces At The Beginning 2019-06-03";
 
-    let default_variant_id = schema
-        .get_default_schema_variant_id(ctx)
+    let default_variant_id = Schema::default_variant_id(ctx, schema.id())
         .await
-        .expect("unable to get a default variant")
-        .expect("error getting the default variant id");
+        .expect("unable to get a default variant");
 
     let (actual_name, actual_version, _, _, _, _, _, _) =
         Module::prepare_contribution(ctx, name, version, default_variant_id)

@@ -8,11 +8,9 @@ async fn find_for_prop(ctx: &mut DalContext) {
     let schema = Schema::get_by_name(ctx, "swifty")
         .await
         .expect("schema not found");
-    let schema_variant_id = schema
-        .get_default_schema_variant_id(ctx)
+    let schema_variant_id = Schema::default_variant_id(ctx, schema.id())
         .await
-        .expect("unable to get schema variant")
-        .expect("schema variant not found");
+        .expect("unable to get schema variant");
     let func_name = "test:generateCode";
 
     // Find the sole attribute prototype via its func. Ensure that we find one and only one.

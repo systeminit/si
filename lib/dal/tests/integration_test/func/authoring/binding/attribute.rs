@@ -255,12 +255,10 @@ async fn create_intrinsic_binding_then_unset(ctx: &mut DalContext) {
         .await
         .expect("Unable to get the schema for the variant");
 
-    let default_schema_variant = schema
-        .get_default_schema_variant_id(ctx)
+    let default_schema_variant = Schema::default_variant_id(ctx, schema.id())
         .await
         .expect("unable to get the default schema variant id");
-    assert!(default_schema_variant.is_some());
-    assert_eq!(default_schema_variant, Some(first_variant.id()));
+    assert_eq!(default_schema_variant, first_variant.id());
 
     // Now let's update the asset and create two props, an input socket, and an output socket
     let new_code = "function main() {\n const myProp = new PropBuilder().setName(\"testProp\").setKind(\"string\").build();\n const inputSocket = new SocketDefinitionBuilder()
@@ -572,12 +570,10 @@ async fn invalid_identity_bindings(ctx: &mut DalContext) {
         .await
         .expect("Unable to get the schema for the variant");
 
-    let default_schema_variant = schema
-        .get_default_schema_variant_id(ctx)
+    let default_schema_variant = Schema::default_variant_id(ctx, schema.id())
         .await
         .expect("unable to get the default schema variant id");
-    assert!(default_schema_variant.is_some());
-    assert_eq!(default_schema_variant, Some(first_variant.id()));
+    assert_eq!(default_schema_variant, first_variant.id());
 
     // Now let's update the asset and create two props, an input socket, and an output socket
     let new_code = "function main() {\n const myProp = new PropBuilder().setName(\"testProp\").setKind(\"string\").build();\n const inputSocket = new SocketDefinitionBuilder()

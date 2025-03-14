@@ -77,11 +77,9 @@ async fn get_ts_type_from_root(ctx: &mut DalContext) {
     let schema = Schema::get_by_name(ctx, "starfield")
         .await
         .expect("schema not found");
-    let schema_variant_id = schema
-        .get_default_schema_variant_id(ctx)
+    let schema_variant_id = Schema::default_variant_id(ctx, schema.id())
         .await
-        .expect("could not perform get default schema variant")
-        .expect("schema variant not found");
+        .expect("could not perform get default schema variant");
 
     let root_prop_id = SchemaVariant::get_root_prop_id(ctx, schema_variant_id)
         .await

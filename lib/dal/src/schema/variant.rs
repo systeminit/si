@@ -224,9 +224,9 @@ impl SchemaVariant {
             .into_iter()
             .collect();
 
-        let schema = Schema::get_by_id_or_error(ctx, schema_id).await?;
+        let schema = Schema::get_by_id(ctx, schema_id).await?;
 
-        let is_default = schema.get_default_schema_variant_id(ctx).await? == Some(self.id());
+        let is_default = Schema::default_variant_id_opt(ctx, schema_id).await? == Some(self.id());
         let props = Self::all_props(ctx, self.id()).await?;
         let mut front_end_props = Vec::with_capacity(props.len());
         for prop in props {
@@ -636,7 +636,9 @@ impl SchemaVariant {
 
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
-        if let Some(default_schema_variant_id) = schema.get_default_schema_variant_id(ctx).await? {
+        if let Some(default_schema_variant_id) =
+            Schema::default_variant_id_opt(ctx, schema.id()).await?
+        {
             if schema_variant.id == default_schema_variant_id {
                 workspace_snapshot.remove_node_by_id(schema.id()).await?;
             }
@@ -955,9 +957,7 @@ impl SchemaVariant {
         ctx: &DalContext,
         schema_id: SchemaId,
     ) -> SchemaVariantResult<Self> {
-        let default_schema_variant_id =
-            Schema::get_default_schema_variant_by_id_or_error(ctx, schema_id).await?;
-
+        let default_schema_variant_id = Self::default_id_for_schema(ctx, schema_id).await?;
         Self::get_by_id_or_error(ctx, default_schema_variant_id).await
     }
 
@@ -965,9 +965,7 @@ impl SchemaVariant {
         ctx: &DalContext,
         schema_id: SchemaId,
     ) -> SchemaVariantResult<SchemaVariantId> {
-        let default_schema_variant_id =
-            Schema::get_default_schema_variant_by_id_or_error(ctx, schema_id).await?;
-        Ok(default_schema_variant_id)
+        Ok(Schema::default_variant_id(ctx, schema_id).await?)
     }
 
     pub async fn default_for_schema_name(
@@ -1874,7 +1872,7 @@ impl SchemaVariant {
     ) -> SchemaVariantResult<Schema> {
         let schema_id = Self::schema_id_for_schema_variant_id(ctx, schema_variant_id).await?;
 
-        Ok(Schema::get_by_id_or_error(ctx, schema_id).await?)
+        Ok(Schema::get_by_id(ctx, schema_id).await?)
     }
 
     pub async fn schema_id_for_schema_variant_id(

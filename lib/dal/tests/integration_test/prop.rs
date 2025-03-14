@@ -43,11 +43,9 @@ async fn verify_prop_used_as_input_flag(ctx: &DalContext) {
         .expect("pirate does not exist")
         .to_owned();
 
-    let pirate_default_variant_id = pirate_schema
-        .get_default_schema_variant_id(ctx)
+    let pirate_default_variant_id = Schema::default_variant_id(ctx, pirate_schema.id())
         .await
-        .expect("should be able to get default")
-        .expect("should have a default schema variant");
+        .expect("should be able to get default");
 
     let _pirate = SchemaVariant::get_by_id_or_error(ctx, pirate_default_variant_id)
         .await
@@ -112,11 +110,9 @@ async fn ordered_child_props(ctx: &DalContext) {
     let schema = Schema::get_by_name(ctx, "starfield")
         .await
         .expect("schema not found");
-    let schema_variant_id = schema
-        .get_default_schema_variant_id(ctx)
+    let schema_variant_id = Schema::default_variant_id(ctx, schema.id())
         .await
-        .expect("could not perform get default schema variant")
-        .expect("schema variant not found");
+        .expect("could not perform get default schema variant");
 
     let root_prop_id = SchemaVariant::get_root_prop_id(ctx, schema_variant_id)
         .await

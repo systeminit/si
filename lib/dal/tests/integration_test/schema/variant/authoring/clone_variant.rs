@@ -15,23 +15,17 @@ async fn clone_variant(ctx: &mut DalContext) {
         .await
         .expect("schema not found");
 
-    let default_schema_variant = schema
-        .get_default_schema_variant_id(ctx)
+    let default_schema_variant = Schema::default_variant_id(ctx, schema.id())
         .await
         .expect("Unable to find the default schema variant id");
-    let existing_variant = SchemaVariant::get_by_id_or_error(
-        ctx,
-        default_schema_variant.expect("unable to unwrap schema variant id"),
-    )
-    .await
-    .expect("unable to lookup the default schema variant");
-
-    assert!(default_schema_variant.is_some());
+    let existing_variant = SchemaVariant::get_by_id_or_error(ctx, default_schema_variant)
+        .await
+        .expect("unable to lookup the default schema variant");
 
     let clone_name = format!("{}-Clone", schema.name());
     let (new_schema_variant, _) = VariantAuthoringClient::new_schema_with_cloned_variant(
         ctx,
-        default_schema_variant.expect("unable to get the schema variant id from the option"),
+        default_schema_variant,
         clone_name,
     )
     .await
@@ -54,8 +48,5 @@ async fn clone_variant(ctx: &mut DalContext) {
     );
     assert!(new_schema_variant.asset_func_id().is_some());
 
-    assert_ne!(
-        new_schema_variant.id(),
-        default_schema_variant.expect("unable to unwrap default schema variant id")
-    );
+    assert_ne!(new_schema_variant.id(), default_schema_variant);
 }

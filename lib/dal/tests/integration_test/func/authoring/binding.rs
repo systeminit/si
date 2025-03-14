@@ -147,11 +147,9 @@ async fn for_action(ctx: &mut DalContext) {
     let schema = Schema::get_by_name(ctx, "swifty")
         .await
         .expect("no schema found");
-    let schema_variant_id = schema
-        .get_default_schema_variant_id(ctx)
+    let schema_variant_id = Schema::default_variant_id(ctx, schema.id())
         .await
-        .expect("could not perform get default schema variant")
-        .expect("default schema variant not found");
+        .expect("could not perform get default schema variant");
 
     let func_id = Func::find_id_by_name(ctx, "test:createActionSwifty")
         .await
@@ -179,11 +177,9 @@ async fn for_qualification(ctx: &mut DalContext) {
     let schema = Schema::get_by_name(ctx, "dummy-secret")
         .await
         .expect("no schema found");
-    let schema_variant_id = schema
-        .get_default_schema_variant_id(ctx)
+    let schema_variant_id = Schema::default_variant_id(ctx, schema.id())
         .await
-        .expect("could not perform get default schema variant")
-        .expect("default schema variant not found");
+        .expect("could not perform get default schema variant");
 
     let func_id = Func::find_id_by_name(ctx, "test:qualificationDummySecretStringIsTodd")
         .await
@@ -213,11 +209,9 @@ async fn for_code_generation(ctx: &mut DalContext) {
     let schema = Schema::get_by_name(ctx, "katy perry")
         .await
         .expect("no schema found");
-    let schema_variant_id = schema
-        .get_default_schema_variant_id(ctx)
+    let schema_variant_id = Schema::default_variant_id(ctx, schema.id())
         .await
-        .expect("could not perform get default schema variant")
-        .expect("default schema variant not found");
+        .expect("could not perform get default schema variant");
 
     let func_id = Func::find_id_by_name(ctx, "test:generateStringCode")
         .await
@@ -245,11 +239,9 @@ async fn for_authentication(ctx: &mut DalContext) {
     let schema = Schema::get_by_name(ctx, "dummy-secret")
         .await
         .expect("no schema found");
-    let schema_variant_id = schema
-        .get_default_schema_variant_id(ctx)
+    let schema_variant_id = Schema::default_variant_id(ctx, schema.id())
         .await
-        .expect("could not perform get default schema variant")
-        .expect("default schema variant not found");
+        .expect("could not perform get default schema variant");
 
     let func_id = Func::find_id_by_name(ctx, "test:setDummySecretString")
         .await
@@ -285,11 +277,9 @@ async fn for_attribute_with_prop_input(ctx: &mut DalContext) {
     let schema = Schema::get_by_name(ctx, "starfield")
         .await
         .expect("no schema found");
-    let schema_variant_id = schema
-        .get_default_schema_variant_id(ctx)
+    let schema_variant_id = Schema::default_variant_id(ctx, schema.id())
         .await
-        .expect("could not perform get default schema variant")
-        .expect("default schema variant not found");
+        .expect("could not perform get default schema variant");
 
     // Find the sole func argument id. Ensure there is only one.
     let mut func_argument_ids = FuncArgument::list_ids_for_func(ctx, func_id)
@@ -393,11 +383,9 @@ async fn for_attribute_with_input_socket_input(ctx: &mut DalContext) {
     let schema = Schema::get_by_name(ctx, "starfield")
         .await
         .expect("no schema found");
-    let schema_variant_id = schema
-        .get_default_schema_variant_id(ctx)
+    let schema_variant_id = Schema::default_variant_id(ctx, schema.id())
         .await
-        .expect("could not perform get default schema variant")
-        .expect("default schema variant not found");
+        .expect("could not perform get default schema variant");
 
     // Find the sole func argument id. Ensure there is only one.
     let mut func_argument_ids = FuncArgument::list_ids_for_func(ctx, func_id)
@@ -477,11 +465,9 @@ async fn for_intrinsics(ctx: &mut DalContext) {
     let schema = Schema::get_by_name(ctx, "starfield")
         .await
         .expect("schema not found");
-    let schema_variant_id = schema
-        .get_default_schema_variant_id(ctx)
+    let schema_variant_id = Schema::default_variant_id(ctx, schema.id())
         .await
-        .expect("unable to get schema variant")
-        .expect("schema variant not found");
+        .expect("unable to get schema variant");
     let all_funcs = SchemaVariant::all_funcs(ctx, schema_variant_id)
         .await
         .expect("unable to get all funcs");

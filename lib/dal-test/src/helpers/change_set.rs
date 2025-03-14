@@ -147,7 +147,7 @@ impl ChangeSetTestHelpers {
     pub async fn apply_change_set_to_base(ctx: &mut DalContext) -> Result<()> {
         // Lock all unlocked variants
         for schema_id in Schema::list_ids(ctx).await? {
-            let schema = Schema::get_by_id_or_error(ctx, schema_id).await?;
+            let schema = Schema::get_by_id(ctx, schema_id).await?;
             let Some(variant) = SchemaVariant::get_unlocked_for_schema(ctx, schema_id).await?
             else {
                 continue;
@@ -156,7 +156,7 @@ impl ChangeSetTestHelpers {
             let variant_id = variant.id();
 
             variant.lock(ctx).await?;
-            schema.set_default_schema_variant(ctx, variant_id).await?;
+            schema.set_default_variant_id(ctx, variant_id).await?;
         }
         // Lock all unlocked functions too
         for func in Func::list_for_default_and_editing(ctx).await? {

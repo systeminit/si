@@ -599,7 +599,7 @@ async fn import_schema_variants_for_imported_schema(
                 can_lock = false;
                 variant.unlock_asset_func_without_copy(ctx).await?;
             } else {
-                schema.set_default_schema_variant(ctx, variant_id).await?;
+                schema.set_default_variant_id(ctx, variant_id).await?;
             }
         }
 

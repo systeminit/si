@@ -19,12 +19,9 @@ async fn create_qualification_with_schema_variant(ctx: &mut DalContext) {
         .await
         .expect("unable to get schema");
 
-    let maybe_sv_id = swifty_schema
-        .get_default_schema_variant_id(ctx)
+    let sv_id = Schema::default_variant_id(ctx, swifty_schema.id())
         .await
         .expect("unable to get schema variant");
-    assert!(maybe_sv_id.is_some());
-    let sv_id = maybe_sv_id.unwrap();
 
     let func_name = "Paul's Test Func 2".to_string();
     assert!(FuncAuthoringClient::create_new_leaf_func(
@@ -92,12 +89,9 @@ async fn create_codegen_with_schema_variant(ctx: &mut DalContext) {
         .await
         .expect("unable to get schema");
 
-    let maybe_sv_id = swifty_schema
-        .get_default_schema_variant_id(ctx)
+    let sv_id = Schema::default_variant_id(ctx, swifty_schema.id())
         .await
         .expect("unable to get schema variant");
-    assert!(maybe_sv_id.is_some());
-    let sv_id = maybe_sv_id.unwrap();
 
     // create unlocked copy
     let sv_id = VariantAuthoringClient::create_unlocked_variant_copy(ctx, sv_id)
@@ -152,11 +146,9 @@ async fn create_attribute_override_dynamic_func_for_prop(ctx: &mut DalContext) {
     let schema = Schema::get_by_name(ctx, "swifty")
         .await
         .expect("schema not found");
-    let schema_variant_id = schema
-        .get_default_schema_variant_id(ctx)
+    let schema_variant_id = Schema::default_variant_id(ctx, schema.id())
         .await
-        .expect("unable to get default schema variant id")
-        .expect("default schema variant id not found");
+        .expect("unable to get default schema variant id");
     // create unlocked copy
     let schema_variant_id =
         VariantAuthoringClient::create_unlocked_variant_copy(ctx, schema_variant_id)
@@ -228,11 +220,9 @@ async fn create_attribute_override_dynamic_func_for_output_socket(ctx: &mut DalC
     let schema = Schema::get_by_name(ctx, "swifty")
         .await
         .expect("schema not found");
-    let schema_variant_id = schema
-        .get_default_schema_variant_id(ctx)
+    let schema_variant_id = Schema::default_variant_id(ctx, schema.id())
         .await
-        .expect("unable to get default schema variant id")
-        .expect("default schema variant id not found");
+        .expect("unable to get default schema variant id");
     // create unlocked copy
     let schema_variant_id =
         VariantAuthoringClient::create_unlocked_variant_copy(ctx, schema_variant_id)
@@ -302,12 +292,9 @@ async fn create_action_with_schema_variant(ctx: &mut DalContext) {
         .await
         .expect("unable to get schema");
 
-    let maybe_sv_id = swifty_schema
-        .get_default_schema_variant_id(ctx)
+    let sv_id = Schema::default_variant_id(ctx, swifty_schema.id())
         .await
         .expect("unable to get schema variant");
-    assert!(maybe_sv_id.is_some());
-    let sv_id = maybe_sv_id.unwrap();
     // create unlocked copy
     let sv_id = VariantAuthoringClient::create_unlocked_variant_copy(ctx, sv_id)
         .await
@@ -442,12 +429,11 @@ async fn create_qualification_and_code_gen_with_existing_component(ctx: &mut Dal
         .await
         .expect("Unable to get the schema for the variant");
 
-    let default_schema_variant = my_asset_schema
-        .get_default_schema_variant_id(ctx)
-        .await
-        .expect("unable to get the default schema variant id");
-    assert!(default_schema_variant.is_some());
-    assert_eq!(default_schema_variant, Some(variant_zero.id()));
+    let default_schema_variant =
+        Schema::default_variant_id(ctx, my_asset_schema.id())
+            .await
+            .expect("unable to get the default schema variant id");
+    assert_eq!(default_schema_variant, variant_zero.id());
 
     // Now let's update the variant
     let first_code_update = "function main() {\n

@@ -11,13 +11,8 @@ use serde::{Deserialize, Serialize};
 
 use dal::diagram::view::ViewId;
 use dal::{
-    cached_module::CachedModule,
-    change_status::ChangeStatus,
-    component::frame::Frame,
-    generate_name,
-    pkg::{import_pkg_from_pkg, ImportOptions},
-    ChangeSet, ChangeSetId, Component, ComponentId, Schema, SchemaId, SchemaVariant,
-    SchemaVariantId, WorkspacePk, WsEvent,
+    change_status::ChangeStatus, component::frame::Frame, generate_name, ChangeSet, ChangeSetId,
+    Component, ComponentId, Schema, SchemaId, SchemaVariant, SchemaVariantId, WorkspacePk, WsEvent,
 };
 use si_events::audit_log::AuditLogKind;
 use si_frontend_types::SchemaVariant as FrontendVariant;
@@ -88,37 +83,13 @@ pub async fn create_component(
                 "schemaId missing on uninstalled schema create component request".into(),
             ))?;
 
-            let variant_id = match Schema::get_by_id(&ctx, schema_id).await? {
-                // We want to be sure that we don't have stale frontend data,
-                // since this module might have just been installed, or
-                // installed by another user
-                Some(schema) => schema.get_default_schema_variant_id_or_error(&ctx).await?,
-                None => {
-                    let mut uninstalled_module =
-                        CachedModule::find_latest_for_schema_id(&ctx, schema_id)
-                            .await?
-                            .ok_or(ViewError::UninstalledSchemaNotFound(schema_id))?;
-
-                    let si_pkg = uninstalled_module.si_pkg(&ctx).await?;
-                    import_pkg_from_pkg(
-                        &ctx,
-                        &si_pkg,
-                        Some(ImportOptions {
-                            schema_id: Some(schema_id.into()),
-                            ..Default::default()
-                        }),
-                    )
-                    .await?;
-
-                    Schema::get_default_schema_variant_by_id(&ctx, schema_id)
-                        .await?
-                        .ok_or(ViewError::SchemaNotInstalledAfterImport(schema_id))?
-                }
-            };
-
+            // We want to be sure that we don't have stale frontend data,
+            // since this module might have just been installed, or
+            // installed by another user
+            let variant_id = Schema::get_or_install_default_variant(&ctx, schema_id).await?;
             let variant = SchemaVariant::get_by_id_or_error(&ctx, variant_id).await?;
 
-            let front_end_variant = variant.clone().into_frontend_type(&ctx, schema_id).await?;
+            let front_end_variant = variant.into_frontend_type(&ctx, schema_id).await?;
             WsEvent::module_imported(&ctx, vec![front_end_variant.clone()])
                 .await?
                 .publish_on_commit(&ctx)
@@ -132,10 +103,7 @@ pub async fn create_component(
                     .await?;
             }
 
-            (
-                variant_id,
-                Some(variant.into_frontend_type(&ctx, schema_id).await?),
-            )
+            (variant_id, Some(front_end_variant))
         }
     };
 
