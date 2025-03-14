@@ -447,6 +447,16 @@ const overrides = new Map<string, OverrideFn>([
     requestParametersProp.kind = "json";
     requestParametersProp!.data.widgetKind = "CodeEditor";
   }],
+  ["Certificate DomainValidationOptions", (spec: ExpandedPkgSpec) => {
+    const variant = spec.schemas[0].variants[0];
+
+    const socket = variant.sockets.find(
+      (s: ExpandedSocketSpec) => s.name === "Hosted Zone Id" && s.data.kind === "input",
+    );
+    if (!socket) return;
+
+    setAnnotationOnSocket(socket, { tokens: ["Id"] });
+  }],
 ]);
 
 function addSecretProp(
