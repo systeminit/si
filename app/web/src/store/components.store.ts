@@ -212,26 +212,25 @@ export const generateEdgeId = (
   toSocketId: string,
 ) => `${toComponentId}_${toSocketId}_${fromSocketId}_${fromComponentId}`;
 
-const edgeFromRawEdge =
-  ({
-    isInferred,
-    isManagement,
-  }: {
-    isInferred?: boolean;
-    isManagement?: boolean;
-  }) =>
-  (e: RawEdge): Edge => {
-    const edge = structuredClone(toRaw(e)) as Edge;
-    edge.id = generateEdgeId(
-      edge.fromComponentId,
-      edge.toComponentId,
-      edge.fromSocketId,
-      edge.toSocketId,
-    );
-    edge.isInferred = isInferred ?? false;
-    edge.isManagement = isManagement ?? false;
-    return edge;
-  };
+const edgeFromRawEdge = ({
+  isInferred,
+  isManagement,
+}: {
+  isInferred?: boolean;
+  isManagement?: boolean;
+}) =>
+(e: RawEdge): Edge => {
+  const edge = structuredClone(toRaw(e)) as Edge;
+  edge.id = generateEdgeId(
+    edge.fromComponentId,
+    edge.toComponentId,
+    edge.fromSocketId,
+    edge.toSocketId,
+  );
+  edge.isInferred = isInferred ?? false;
+  edge.isManagement = isManagement ?? false;
+  return edge;
+};
 
 export const loadCollapsedData = (
   prefix: string,
@@ -292,19 +291,19 @@ export function getPossibleAndExistingPeerSockets(
     .map((edge) =>
       targetSocket.direction === "input"
         ? {
-            edge,
-            thisComponentId: edge.def.toComponentId,
-            thisSocketId: edge.def.toSocketId,
-            peerComponentId: edge.def.fromComponentId,
-            peerSocketId: edge.def.fromSocketId,
-          }
+          edge,
+          thisComponentId: edge.def.toComponentId,
+          thisSocketId: edge.def.toSocketId,
+          peerComponentId: edge.def.fromComponentId,
+          peerSocketId: edge.def.fromSocketId,
+        }
         : {
-            edge,
-            thisComponentId: edge.def.fromComponentId,
-            thisSocketId: edge.def.fromSocketId,
-            peerComponentId: edge.def.toComponentId,
-            peerSocketId: edge.def.toSocketId,
-          },
+          edge,
+          thisComponentId: edge.def.fromComponentId,
+          thisSocketId: edge.def.fromSocketId,
+          peerComponentId: edge.def.toComponentId,
+          peerSocketId: edge.def.toSocketId,
+        }
     )
     // Get only edges relevant to this  socket
     .filter(
@@ -326,42 +325,23 @@ export function getPossibleAndExistingPeerSockets(
       (c) =>
         c.def.sockets
           ?.filter((peerSocket) => {
-            // Management inputs can only be connected to management outputs
-            // if the output schema manages the input
-            let isManagedSchema;
-            if (targetSocket.direction === "output") {
-              isManagedSchema =
-                peerSocket.schemaId &&
-                targetSocket.managedSchemas &&
-                targetSocket.managedSchemas.includes(peerSocket.schemaId);
-            } else {
-              isManagedSchema =
-                targetSocket.schemaId &&
-                peerSocket.managedSchemas &&
-                peerSocket.managedSchemas.includes(targetSocket.schemaId);
-            }
-
-            const isSameSchema = targetSocket.schemaId === peerSocket.schemaId;
-
             // Get only input sockets for output sockets and vice versa
             if (peerSocket.direction === targetSocket.direction) return false;
 
-            if (peerSocket.isManagement && targetSocket.isManagement) {
-              return !!(isSameSchema || isManagedSchema);
-            } else if (peerSocket.isManagement || targetSocket.isManagement) {
+            // Management sockets can only connect to other management sockets
+            if ((!!peerSocket.isManagement) != (!!targetSocket.isManagement)) {
               return false;
             }
 
-            const [outputCAs, inputCAs] =
-              targetSocket.direction === "output"
-                ? [
-                    targetSocket.connectionAnnotations,
-                    peerSocket.connectionAnnotations,
-                  ]
-                : [
-                    peerSocket.connectionAnnotations,
-                    targetSocket.connectionAnnotations,
-                  ];
+            const [outputCAs, inputCAs] = targetSocket.direction === "output"
+              ? [
+                targetSocket.connectionAnnotations,
+                peerSocket.connectionAnnotations,
+              ]
+              : [
+                peerSocket.connectionAnnotations,
+                targetSocket.connectionAnnotations,
+              ];
 
             // check socket connection annotations compatibility
             for (const outputCA of outputCAs) {
@@ -587,7 +567,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                     a.variant.displayName || a.variant.schemaName
                   )?.localeCompare(
                     b.variant.displayName || b.variant.schemaName,
-                  ),
+                  )
                 );
 
                 return {
@@ -785,25 +765,23 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               });
             });
 
-            const edges =
-              response.edges && response.edges.length > 0
-                ? response.edges.map(
-                    edgeFromRawEdge({ isInferred: false, isManagement: false }),
-                  )
-                : [];
+            const edges = response.edges && response.edges.length > 0
+              ? response.edges.map(
+                edgeFromRawEdge({ isInferred: false, isManagement: false }),
+              )
+              : [];
             const inferred =
               response.inferredEdges && response.inferredEdges.length > 0
                 ? response.inferredEdges.map(
-                    edgeFromRawEdge({ isInferred: true, isManagement: false }),
-                  )
+                  edgeFromRawEdge({ isInferred: true, isManagement: false }),
+                )
                 : [];
 
-            const management =
-              response.managementEdges?.length > 0
-                ? response.managementEdges.map(
-                    edgeFromRawEdge({ isInferred: false, isManagement: true }),
-                  )
-                : [];
+            const management = response.managementEdges?.length > 0
+              ? response.managementEdges.map(
+                edgeFromRawEdge({ isInferred: false, isManagement: true }),
+              )
+              : [];
 
             const edgesToSet = [...edges, ...inferred, ...management];
             if (options.representsAllComponents) {
@@ -1056,17 +1034,17 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             const edge = this.rawEdgesById[edgeId];
             const params = edge?.isManagement
               ? {
-                  managedComponentId: toComponentId,
-                  managerComponentId: fromComponentId,
-                  ...visibilityParams,
-                }
+                managedComponentId: toComponentId,
+                managerComponentId: fromComponentId,
+                ...visibilityParams,
+              }
               : {
-                  fromSocketId,
-                  toSocketId,
-                  toComponentId,
-                  fromComponentId,
-                  ...visibilityParams,
-                };
+                fromSocketId,
+                toSocketId,
+                toComponentId,
+                fromComponentId,
+                ...visibilityParams,
+              };
 
             const url = edge?.isManagement
               ? "component/unmanage"
@@ -1245,7 +1223,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               funcId: string;
             }>({
               method: "post",
-              url: `v2/workspaces/${workspaceId}/change-sets/${changeSetId}/management/generate_template/${viewId}`,
+              url:
+                `v2/workspaces/${workspaceId}/change-sets/${changeSetId}/management/generate_template/${viewId}`,
               params: {
                 componentIds,
                 assetName,
@@ -1391,8 +1370,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                   // don't update
                   if (metadata.change_set_id !== changeSetId) return;
                   const componentId = data.component.id;
-                  const oldParent =
-                    this.rawComponentsById[componentId]?.parentId;
+                  const oldParent = this.rawComponentsById[componentId]
+                    ?.parentId;
 
                   this.rawComponentsById[componentId] = data.component;
                   this.processAndStoreRawComponent(componentId, {});
@@ -1405,10 +1384,9 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 eventType: "InferredEdgeUpsert",
                 callback: (data) => {
                   if (data.changeSetId !== changeSetId) return;
-                  const edges =
-                    data.edges && data.edges.length > 0
-                      ? data.edges.map(edgeFromRawEdge({ isInferred: true }))
-                      : [];
+                  const edges = data.edges && data.edges.length > 0
+                    ? data.edges.map(edgeFromRawEdge({ isInferred: true }))
+                    : [];
                   for (const edge of edges) {
                     this.rawEdgesById[edge.id] = edge;
                     this.processRawEdge(edge.id);
@@ -1419,10 +1397,9 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 eventType: "InferredEdgeRemove",
                 callback: (data) => {
                   if (data.changeSetId !== changeSetId) return;
-                  const edges =
-                    data.edges && data.edges.length > 0
-                      ? data.edges.map(edgeFromRawEdge({ isInferred: true }))
-                      : [];
+                  const edges = data.edges && data.edges.length > 0
+                    ? data.edges.map(edgeFromRawEdge({ isInferred: true }))
+                    : [];
                   for (const edge of edges) {
                     delete this.rawEdgesById[edge.id];
                     delete this.diagramEdgesById[edge.id];

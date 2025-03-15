@@ -67,13 +67,13 @@ export interface DiagramSocketDataWithPosition extends DiagramSocketData {
 }
 abstract class DiagramNodeHasSockets extends DiagramElementData {
   public sockets: DiagramSocketData[];
-  public readonly socketStartingY: number =
-    NODE_HEADER_HEIGHT + SOCKET_TOP_MARGIN + SOCKET_MARGIN_TOP;
+  public readonly socketStartingY: number = NODE_HEADER_HEIGHT +
+    SOCKET_TOP_MARGIN + SOCKET_MARGIN_TOP;
 
   constructor(readonly def: DiagramNodeDef) {
     super();
-    this.sockets =
-      def.sockets?.map((s) => new DiagramSocketData(this, s)) || [];
+    this.sockets = def.sockets?.map((s) => new DiagramSocketData(this, s)) ||
+      [];
   }
 
   get socketEndingY() {
@@ -199,8 +199,8 @@ export class DiagramGroupData extends DiagramNodeHasSockets {
     return DiagramGroupData.generateUniqueKey(this.def.id);
   }
 
-  public readonly socketStartingY: number =
-    SOCKET_TOP_MARGIN + SOCKET_MARGIN_TOP;
+  public readonly socketStartingY: number = SOCKET_TOP_MARGIN +
+    SOCKET_MARGIN_TOP;
 
   static generateUniqueKey(id: string | number) {
     return `g-${id}`;
@@ -410,11 +410,8 @@ export type DiagramSocketDef = {
   nodeSide: "left" | "right"; // add top/bottom later?
   /** is the socket a management socket */
   isManagement?: boolean;
-  /** the schema ids managed by the socket, if a management socket, if any */
-  managedSchemas?: string[];
   /** schema id, for management socket compatibility */
   schemaId?: string;
-
   // color
   // shape
 };

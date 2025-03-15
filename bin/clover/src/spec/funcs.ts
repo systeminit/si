@@ -260,7 +260,6 @@ export function createManagementFuncSpec(
     name,
     description: null,
     funcUniqueId,
-    managedSchemas: null,
   };
 }
 

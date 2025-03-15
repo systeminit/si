@@ -2538,16 +2538,7 @@ const drawEdgePossibleTargetSocketKeys = computed(() => {
     if (fromSocket.def.direction === possibleToSocket.def.direction)
       return false;
 
-    const isManagedSchema =
-      possibleToSocket.def.schemaId &&
-      fromSocket.def.managedSchemas &&
-      fromSocket.def.managedSchemas.includes(possibleToSocket.def.schemaId);
-    const isSameSchema =
-      possibleToSocket.def.schemaId === fromSocket.def.schemaId;
-
-    if (fromSocket.def.isManagement && possibleToSocket.def.isManagement) {
-      return !!(isSameSchema || isManagedSchema);
-    }
+    // TODO it feels like we need to check whether both (or neither) are management sockets?
 
     const [outputCAs, inputCAs] =
       fromSocket.def.direction === "output"

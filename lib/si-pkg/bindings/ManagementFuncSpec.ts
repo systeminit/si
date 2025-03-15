@@ -4,5 +4,4 @@ export type ManagementFuncSpec = {
   funcUniqueId: string;
   name: string;
   description: string | null;
-  managedSchemas: Array<string> | null;
 };
