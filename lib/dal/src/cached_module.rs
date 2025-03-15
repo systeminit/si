@@ -16,7 +16,7 @@ use ulid::Ulid;
 
 use crate::{
     slow_rt::{self, SlowRuntimeError},
-    ComponentType, DalContext, SchemaId, TransactionsError,
+    ComponentType, DalContext, HistoryActor, SchemaId, TransactionsError,
 };
 use module_index_client::{ModuleDetailsResponse, ModuleIndexClient, ModuleIndexClientError};
 use si_data_pg::{PgError, PgRow};
@@ -288,7 +288,7 @@ impl CachedModule {
             })
             .map(Into::into)
             .collect();
-        let cached_schema_ids: Vec<SchemaId> = CachedModule::latest_modules(ctx)
+        let cached_schema_ids: Vec<SchemaId> = CachedModule::latest_user_independent_modules(ctx)
             .await?
             .iter()
             .map(|lm| lm.schema_id)
@@ -398,7 +398,10 @@ impl CachedModule {
         rows.into_iter().map(TryInto::try_into).try_collect()
     }
 
-    pub async fn latest_modules(ctx: &DalContext) -> CachedModuleResult<Vec<CachedModule>> {
+    // TODO most likely, we should always be including user modules
+    pub async fn latest_user_independent_modules(
+        ctx: &DalContext,
+    ) -> CachedModuleResult<Vec<CachedModule>> {
         let query = "
             SELECT DISTINCT ON (schema_id)
                 id,
@@ -430,10 +433,11 @@ impl CachedModule {
         Ok(result)
     }
 
-    pub async fn get_user_scoped_modules(
-        ctx: &DalContext,
-        user_pk: UserPk,
-    ) -> CachedModuleResult<Vec<CachedModule>> {
+    pub async fn latest_modules(ctx: &DalContext) -> CachedModuleResult<Vec<CachedModule>> {
+        let HistoryActor::User(user_pk) = ctx.history_actor() else {
+            return Self::latest_user_independent_modules(ctx).await;
+        };
+
         let query = "
             SELECT DISTINCT ON (schema_id)
                 id,
@@ -450,7 +454,7 @@ impl CachedModule {
                 NULL::bytea AS package_data,
                 scoped_to_user_pk
             FROM cached_modules
-            WHERE scoped_to_user_pk = $1
+            WHERE scoped_to_user_pk IS NULL OR scoped_to_user_pk = $1
             ORDER BY schema_id, created_at DESC
         ";
 

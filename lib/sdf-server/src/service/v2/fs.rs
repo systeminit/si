@@ -187,7 +187,7 @@ pub async fn hydrate(
 
     tracker.track(ctx, "fs/hydrate", serde_json::json!({}));
 
-    let cached_modules = Arc::new(CachedModule::latest_modules(ctx).await?);
+    let cached_modules = Arc::new(CachedModule::latest_user_independent_modules(ctx).await?);
 
     let mut hydrated_change_sets = vec![];
     for change_set in open_change_sets {
@@ -363,7 +363,7 @@ pub async fn list_schema_categories(
         categories.insert(default_variant.category().to_string());
     }
 
-    for module in CachedModule::latest_modules(&ctx).await? {
+    for module in CachedModule::latest_user_independent_modules(&ctx).await? {
         categories.insert(module.category.unwrap_or("".into()));
     }
 
@@ -420,7 +420,7 @@ async fn get_schema_list(
     for module in match cached_modules {
         Some(cms) => cms,
         None => {
-            cached_module_list = CachedModule::latest_modules(ctx).await?;
+            cached_module_list = CachedModule::latest_user_independent_modules(ctx).await?;
             cached_module_list.as_slice()
         }
     }
@@ -1466,7 +1466,7 @@ async fn process_managed_schemas(
     ctx: &DalContext,
     string_schemas: &Option<Vec<String>>,
 ) -> FsResult<Option<Vec<SchemaId>>> {
-    let latest_modules: HashMap<String, _> = CachedModule::latest_modules(ctx)
+    let latest_modules: HashMap<String, _> = CachedModule::latest_user_independent_modules(ctx)
         .await?
         .into_iter()
         .map(|module| (module.schema_name, module.schema_id))

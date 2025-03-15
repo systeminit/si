@@ -13,7 +13,7 @@ use thiserror::Error;
 use veritech_client::{ManagementFuncStatus, ManagementResultSuccess};
 
 use crate::{
-    cached_module::{CachedModule, CachedModuleError},
+    cached_module::CachedModuleError,
     component::socket::ComponentInputSocket,
     diagram::{
         geometry::Geometry,
@@ -310,43 +310,6 @@ impl ManagementPrototype {
         ))
     }
 
-    /// Generates a map between the schema name and its schema id (even for
-    /// uninstalled schemas), and a reverse mapping. These names will be
-    /// provided to the management executor and operator so that management
-    /// functions can create components of specific schema kinds.
-    pub async fn managed_schemas_map(
-        &self,
-        ctx: &DalContext,
-    ) -> ManagementPrototypeResult<(HashMap<String, SchemaId>, HashMap<SchemaId, String>)> {
-        let mut managed_schemas_map = HashMap::new();
-        let mut reverse_map = HashMap::new();
-
-        let mut managed_schemas = self.managed_schemas().cloned().unwrap_or_default();
-        if let Some(schema_id) = self.schema_id(ctx).await? {
-            managed_schemas.insert(schema_id);
-        }
-
-        for schema_id in managed_schemas {
-            let schema_name = match Schema::get_by_id_opt(ctx, schema_id).await? {
-                Some(schema) => schema.name().to_owned(),
-                None => {
-                    let Some(cached_module) =
-                        CachedModule::find_latest_for_schema_id(ctx, schema_id).await?
-                    else {
-                        continue;
-                    };
-
-                    cached_module.schema_name
-                }
-            };
-
-            managed_schemas_map.insert(schema_name.clone(), schema_id);
-            reverse_map.insert(schema_id, schema_name);
-        }
-
-        Ok((managed_schemas_map, reverse_map))
-    }
-
     pub async fn new(
         ctx: &DalContext,
         name: String,
@@ -429,7 +392,7 @@ impl ManagementPrototype {
         })
     }
 
-    pub async fn get_by_id(
+    pub async fn get_by_id_opt(
         ctx: &DalContext,
         id: ManagementPrototypeId,
     ) -> ManagementPrototypeResult<Option<Self>> {
@@ -463,6 +426,15 @@ impl ManagementPrototype {
             name: content_inner.name,
             description: content_inner.description,
         }))
+    }
+
+    pub async fn get_by_id(
+        ctx: &DalContext,
+        id: ManagementPrototypeId,
+    ) -> ManagementPrototypeResult<Self> {
+        Self::get_by_id_opt(ctx, id)
+            .await?
+            .ok_or(ManagementPrototypeError::NotFound(id))
     }
 
     pub async fn func_id(
@@ -698,7 +670,7 @@ impl ManagementPrototype {
             let node_weight_id = node_weight.id();
             if NodeWeightDiscriminants::ManagementPrototype == node_weight.into() {
                 if let Some(management_prototype) =
-                    Self::get_by_id(ctx, node_weight_id.into()).await?
+                    Self::get_by_id_opt(ctx, node_weight_id.into()).await?
                 {
                     management_prototypes.push(management_prototype);
                 }
@@ -722,7 +694,7 @@ impl ManagementPrototype {
             let node_weight_id = node_weight.id();
             if NodeWeightDiscriminants::ManagementPrototype == node_weight.into() {
                 if let Some(management_prototype) =
-                    Self::get_by_id(ctx, node_weight_id.into()).await?
+                    Self::get_by_id_opt(ctx, node_weight_id.into()).await?
                 {
                     management_prototype_ids.push(management_prototype.id);
                 }
@@ -757,7 +729,7 @@ impl ManagementPrototype {
             let node_weight_id = node_weight.id();
             if NodeWeightDiscriminants::ManagementPrototype == node_weight.into() {
                 if let Some(management_prototype) =
-                    Self::get_by_id(ctx, node_weight_id.into()).await?
+                    Self::get_by_id_opt(ctx, node_weight_id.into()).await?
                 {
                     return Ok(Some(management_prototype.id));
                 }

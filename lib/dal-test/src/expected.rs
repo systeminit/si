@@ -642,7 +642,7 @@ impl ExpectComponent {
 
     pub async fn execute_management_func(self, ctx: &DalContext, func: ExpectFunc) {
         let prototype_id = func.management_prototype_id(ctx).await;
-        let management_prototype = ManagementPrototype::get_by_id(ctx, prototype_id)
+        let management_prototype = ManagementPrototype::get_by_id_opt(ctx, prototype_id)
             .await
             .expect("get management prototype by func id")
             .expect("management prototype exists");

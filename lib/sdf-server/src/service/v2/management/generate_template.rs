@@ -224,7 +224,7 @@ pub async fn generate_template(
     );
     FuncAuthoringClient::save_code(&ctx, vars_func.id, vars_func_code).await?;
 
-    let prototype = ManagementPrototype::get_by_id(&ctx, prototype_id)
+    let prototype = ManagementPrototype::get_by_id_opt(&ctx, prototype_id)
         .await?
         .ok_or(ManagementApiError::FuncMissingPrototype(func.id))?;
 

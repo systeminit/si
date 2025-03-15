@@ -62,6 +62,8 @@ pub enum FuncBindingError {
     AttributePrototypeMissing,
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] AttributeValueError),
+    #[error("cached modules error: {0}")]
+    CachedModules(#[from] crate::cached_module::CachedModuleError),
     #[error("cannot compile types for func: {0}")]
     CannotCompileTypes(FuncId),
     #[error("cannot set intrinsic func for component: {0}")]
