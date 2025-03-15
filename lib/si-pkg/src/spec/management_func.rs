@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
 
@@ -17,10 +15,6 @@ pub struct ManagementFuncSpec {
 
     #[builder(setter(into), default)]
     pub description: Option<String>,
-
-    #[builder(setter(into), default)]
-    #[serde(default)]
-    pub managed_schemas: Option<HashSet<String>>,
 }
 
 impl ManagementFuncSpec {

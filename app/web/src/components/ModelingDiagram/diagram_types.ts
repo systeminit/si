@@ -410,8 +410,6 @@ export type DiagramSocketDef = {
   nodeSide: "left" | "right"; // add top/bottom later?
   /** is the socket a management socket */
   isManagement?: boolean;
-  /** the schema ids managed by the socket, if a management socket, if any */
-  managedSchemas?: string[];
   /** schema id, for management socket compatibility */
   schemaId?: string;
   /** if there's a value propagated */

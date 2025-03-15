@@ -7,7 +7,6 @@ use axum::{
 
 use dal::{cached_module::CachedModule, ChangeSetId, SchemaVariant, WorkspacePk};
 use si_frontend_types::ListVariantsResponse;
-use telemetry::tracing::info;
 
 use crate::{
     extract::{HandlerContext, PosthogClient},
@@ -39,21 +38,13 @@ pub async fn list_variants(
         ));
     }
 
-    let mut user_scoped_modules: Vec<CachedModule> = vec![];
-    match ctx.history_actor() {
-        &dal::HistoryActor::User(user_pk) => {
-            user_scoped_modules = CachedModule::get_user_scoped_modules(&ctx, user_pk).await?;
-        }
-        _ => info!("No userPk found so skipping get_user_scoped_modules"),
-    };
-
     let cached_modules: Vec<CachedModule> = CachedModule::latest_modules(&ctx).await?;
 
     let mut uninstalled = vec![];
     // We want to hide uninstalled modules that would create duplicate assets in
     // the AssetPanel in old workspace. We do this just by name + category
     // matching. (We also hide if the schema is installed)
-    for module in [cached_modules, user_scoped_modules].concat() {
+    for module in cached_modules {
         let category = module.category.as_deref().unwrap_or("");
 
         let schema_name = module.schema_name.as_str();

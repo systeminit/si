@@ -7,7 +7,6 @@ use dal::component::socket::ComponentInputSocket;
 use dal::diagram::geometry::{Geometry, RawGeometry};
 use dal::diagram::view::{View, ViewId};
 use dal::func::authoring::FuncAuthoringClient;
-use dal::func::binding::management::ManagementBinding;
 use dal::management::prototype::{ManagementPrototype, ManagementPrototypeError};
 use dal::management::{ManagementFuncReturn, ManagementOperator};
 use dal::FuncId;
@@ -288,13 +287,6 @@ impl ExpectFunc {
         let prototype_id = prototype_ids.pop().expect("management prototype exists");
         assert!(prototype_ids.is_empty());
         prototype_id
-    }
-
-    pub async fn update_managed_schemas(self, ctx: &DalContext, schemas: impl Into<Vec<SchemaId>>) {
-        let prototype_id = self.management_prototype_id(ctx).await;
-        ManagementBinding::update_management_binding(ctx, prototype_id, Some(schemas.into()))
-            .await
-            .expect("update management binding");
     }
 }
 
@@ -642,7 +634,7 @@ impl ExpectComponent {
 
     pub async fn execute_management_func(self, ctx: &DalContext, func: ExpectFunc) {
         let prototype_id = func.management_prototype_id(ctx).await;
-        let management_prototype = ManagementPrototype::get_by_id(ctx, prototype_id)
+        let management_prototype = ManagementPrototype::get_by_id_opt(ctx, prototype_id)
             .await
             .expect("get management prototype by func id")
             .expect("management prototype exists");

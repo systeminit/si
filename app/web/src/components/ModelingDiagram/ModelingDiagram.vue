@@ -2557,15 +2557,11 @@ const drawEdgePossibleTargetSocketKeys = computed(() => {
     if (fromSocket.def.direction === possibleToSocket.def.direction)
       return false;
 
-    const isManagedSchema =
-      possibleToSocket.def.schemaId &&
-      fromSocket.def.managedSchemas &&
-      fromSocket.def.managedSchemas.includes(possibleToSocket.def.schemaId);
-    const isSameSchema =
-      possibleToSocket.def.schemaId === fromSocket.def.schemaId;
-
-    if (fromSocket.def.isManagement && possibleToSocket.def.isManagement) {
-      return !!(isSameSchema || isManagedSchema);
+    // management sockets can only connect to other management sockets
+    if (fromSocket.def.isManagement || possibleToSocket.def.isManagement) {
+      return (
+        !!fromSocket.def.isManagement && !!possibleToSocket.def.isManagement
+      );
     }
 
     const [outputCAs, inputCAs] =

@@ -1,7 +1,4 @@
-use std::{
-    collections::HashSet,
-    io::{BufRead, Write},
-};
+use std::io::{BufRead, Write};
 
 use object_tree::{
     read_key_value_line, read_key_value_line_opt, write_key_value_line, write_key_value_line_opt,
@@ -22,7 +19,6 @@ pub struct ManagementFuncNode {
     pub func_unique_id: String,
     pub name: String,
     pub description: Option<String>,
-    pub managed_schemas: Option<HashSet<String>>,
 }
 
 impl WriteBytes for ManagementFuncNode {
@@ -35,11 +31,6 @@ impl WriteBytes for ManagementFuncNode {
 
         write_key_value_line(writer, KEY_NAME_STR, &self.name)?;
         write_key_value_line_opt(writer, KEY_DESCRIPTION_STR, self.description.as_deref())?;
-        let managed_schemas_str = match self.managed_schemas.as_ref() {
-            None => None,
-            Some(managed_schemas) => Some(serde_json::to_string(managed_schemas)?),
-        };
-        write_key_value_line_opt(writer, KEY_MANAGED_SCHEMAS_STR, managed_schemas_str)?;
 
         Ok(())
     }
@@ -53,17 +44,13 @@ impl ReadBytes for ManagementFuncNode {
         let func_unique_id = read_key_value_line(reader, KEY_FUNC_UNIQUE_ID_STR)?;
         let name = read_key_value_line(reader, KEY_NAME_STR)?;
         let description = read_key_value_line_opt(reader, KEY_DESCRIPTION_STR)?;
-        let managed_schemas_str = read_key_value_line_opt(reader, KEY_MANAGED_SCHEMAS_STR)?;
-        let managed_schemas = match managed_schemas_str {
-            None => None,
-            Some(managed_schemas_str) => Some(serde_json::from_str(&managed_schemas_str)?),
-        };
+        // Ignore managed schemas now that we no longer support it
+        let _ = read_key_value_line_opt(reader, KEY_MANAGED_SCHEMAS_STR)?;
 
         Ok(Some(Self {
             func_unique_id,
             name,
             description,
-            managed_schemas,
         }))
     }
 }
@@ -78,7 +65,6 @@ impl NodeChild for ManagementFuncSpec {
                 name: self.name.to_owned(),
                 func_unique_id: self.func_unique_id.to_owned(),
                 description: self.description.to_owned(),
-                managed_schemas: self.managed_schemas.to_owned(),
             }),
             vec![],
         )

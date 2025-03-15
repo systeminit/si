@@ -62,6 +62,8 @@ pub enum FuncBindingError {
     AttributePrototypeMissing,
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] AttributeValueError),
+    #[error("cached modules error: {0}")]
+    CachedModules(#[from] crate::cached_module::CachedModuleError),
     #[error("cannot compile types for func: {0}")]
     CannotCompileTypes(FuncId),
     #[error("cannot set intrinsic func for component: {0}")]
@@ -249,9 +251,6 @@ impl From<FuncBinding> for si_frontend_types::FuncBinding {
                 schema_variant_id: Some(mgmt.schema_variant_id),
                 management_prototype_id: Some(mgmt.management_prototype_id),
                 func_id: Some(mgmt.func_id),
-                managed_schemas: mgmt
-                    .managed_schemas
-                    .map(|s| s.into_iter().map(Into::into).collect()),
             },
             FuncBinding::CodeGeneration(code_gen) => {
                 si_frontend_types::FuncBinding::CodeGeneration {

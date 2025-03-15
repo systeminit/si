@@ -133,7 +133,6 @@ pub struct DiagramSocket {
     pub is_required: Option<bool>,
     pub node_side: DiagramSocketNodeSide,
     pub is_management: Option<bool>,
-    pub managed_schemas: Option<Vec<SchemaId>>,
     pub value: Option<serde_json::Value>,
 }
 

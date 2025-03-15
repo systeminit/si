@@ -14,8 +14,8 @@ use crate::{
     action::ActionCompletionStatus, func::argument::FuncArgumentKind, prop::WidgetOptions,
     property_editor::schema::WidgetKind, socket::connection_annotation::ConnectionAnnotation,
     ActionPrototypeId, ComponentId, ComponentType, DalContext, FuncBackendKind,
-    FuncBackendResponseType, FuncId, PropId, PropKind, SchemaId, SchemaVariant, SchemaVariantId,
-    SocketArity, SocketKind, Timestamp, UserPk,
+    FuncBackendResponseType, FuncId, PropId, PropKind, SchemaVariant, SchemaVariantId, SocketArity,
+    SocketKind, Timestamp, UserPk,
 };
 
 #[remain::sorted]
@@ -683,7 +683,6 @@ pub enum ManagementPrototypeContent {
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct ManagementPrototypeContentV1 {
     pub name: String,
-    pub managed_schemas: Option<HashSet<SchemaId>>,
     pub description: Option<String>,
 }
 

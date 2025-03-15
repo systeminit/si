@@ -1,11 +1,13 @@
 use std::collections::HashSet;
 
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 
 use crate::{
+    cached_module::CachedModule,
     management::prototype::{ManagementPrototype, ManagementPrototypeId},
-    DalContext, Func, FuncId, Prop, Schema, SchemaId, SchemaVariant, SchemaVariantId, SocketArity,
+    DalContext, Func, FuncId, Prop, Schema, SchemaVariant, SchemaVariantId, SocketArity,
 };
 
 use super::{EventualParent, FuncBinding, FuncBindingResult};
@@ -16,7 +18,6 @@ pub struct ManagementBinding {
     pub schema_variant_id: SchemaVariantId,
     pub management_prototype_id: ManagementPrototypeId,
     pub func_id: FuncId,
-    pub managed_schemas: Option<Vec<SchemaId>>,
 }
 
 const INCOMING_CONNECTION_TYPE: &str = "{ component: string, socket: string; value: any }";
@@ -34,7 +35,6 @@ impl ManagementBinding {
         ctx: &DalContext,
         func_id: FuncId,
         schema_variant_id: SchemaVariantId,
-        managed_schemas: Option<HashSet<SchemaId>>,
     ) -> FuncBindingResult<Vec<FuncBinding>> {
         // don't add binding if parent is locked
         SchemaVariant::error_if_locked(ctx, schema_variant_id).await?;
@@ -45,7 +45,6 @@ impl ManagementBinding {
             func.name.to_owned(),
             func.description.to_owned(),
             func.id,
-            managed_schemas,
             schema_variant_id,
         )
         .await?;
@@ -70,84 +69,125 @@ impl ManagementBinding {
             component_create_type,
             component_input_type,
         ) = match ManagementPrototype::prototype_id_for_func_id(ctx, func_id).await? {
-            Some(prototype_id) => match ManagementPrototype::get_by_id(ctx, prototype_id).await? {
-                Some(prototype) => {
+            Some(prototype_id) => {
+                let mut installable_schemas: HashSet<String> = CachedModule::latest_modules(ctx)
+                    .await?
+                    .into_iter()
+                    .map(|m| m.schema_name)
+                    .collect();
+
+                let mut component_create_types = vec![];
+                let mut component_input_types = vec![];
+                for schema in Schema::list(ctx).await? {
+                    // Since it's already installed, we don't include it in "installable_schemas"
+                    installable_schemas.remove(schema.name());
+
                     let variant_id =
-                        ManagementPrototype::get_schema_variant_id(ctx, prototype_id).await?;
+                        Schema::get_or_install_default_variant(ctx, schema.id()).await?;
+                    let root_prop_id = SchemaVariant::get_root_prop_id(ctx, variant_id).await?;
+                    let sv_type = Prop::ts_type(ctx, root_prop_id).await?;
 
-                    let (_, reverse_map) = prototype.managed_schemas_map(ctx).await?;
+                    let json_name = serde_json::to_string(schema.name())?;
 
-                    let mut component_create_types = vec![];
-                    let mut component_update_types = vec![];
-                    for (schema_id, name) in reverse_map {
-                        let variant_id =
-                            Schema::get_or_install_default_variant(ctx, schema_id).await?;
-                        let root_prop_id = SchemaVariant::get_root_prop_id(ctx, variant_id).await?;
-                        let sv_type = Prop::ts_type(ctx, root_prop_id).await?;
+                    let component_input_type = format!(
+                        r#"
+                            {{
+                                kind: {json_name},
+                                properties?: {sv_type},
+                                geometry?: {{ [key: string]: Geometry }},
+                                connect?: {{
+                                    from: string,
+                                    to: {{
+                                        component: string;
+                                        socket: string;
+                                    }}
+                                }}[],
+                                parent?: string,
+                            }}
+                        "#
+                    );
 
-                        let json_name = serde_json::to_string(&name)?;
+                    let component_create_type = format!(
+                        r#"
+                            {{
+                                kind: {json_name},
+                                properties?: {sv_type},
+                                geometry?: Geometry | {{ [key: string]: Geometry }},
+                                connect?: Connection[],
+                                parent?: string,
+                            }}
+                        "#
+                    );
+                    component_create_types.push(component_create_type);
+                    component_input_types.push(component_input_type);
+                }
 
-                        let component_update_type = format!(
-                            r#"
-                                {{
-                                    kind: {json_name},
-                                    properties?: {sv_type},
-                                    geometry?: {{ [key: string]: Geometry }},
-                                    connect?: {{
-                                        from: string,
-                                        to: {{
-                                            component: string;
-                                            socket: string;
-                                        }}
-                                    }}[],
-                                    parent?: string,
-                                }}
-                                "#
-                        );
+                // Add a generic type for any uninstalled modules, but with the names so that
+                // you know what can be installed
+                if !installable_schemas.is_empty() {
+                    let kinds: Vec<String> = installable_schemas
+                        .into_iter()
+                        .sorted()
+                        .map(|name| serde_json::to_string(&name))
+                        .try_collect()?;
+                    let kinds = kinds.join(" | ");
+                    component_input_types.push(format!(
+                        r#"
+                            {{
+                                kind: {kinds},
+                                properties?: {{ [key: string]: unknown }},
+                                geometry?: {{ [key: string]: Geometry }},
+                                connect?: {{
+                                    from: string,
+                                    to: {{
+                                        component: string;
+                                        socket: string;
+                                    }}
+                                }}[],
+                                parent?: string,
+                            }}
+                        "#
+                    ));
+                    component_create_types.push(format!(
+                        r#"
+                            {{
+                                kind: {kinds},
+                                properties?: {{ [key: string]: any }},
+                                geometry?: Geometry | {{ [key: string]: Geometry }},
+                                connect?: Connection[],
+                                parent?: string,
+                            }}
+                        "#
+                    ))
+                }
 
-                        let component_create_type = format!(
-                            r#"
-                                {{
-                                    kind?: {json_name},
-                                    properties?: {sv_type},
-                                    geometry?: Geometry | {{ [key: string]: Geometry }},
-                                    connect?: Connection[],
-                                    parent?: string,
-                                }}
-                                "#
-                        );
-                        component_create_types.push(component_create_type);
-                        component_update_types.push(component_update_type);
-                    }
+                let component_create_type = component_create_types.join("|\n");
+                let component_input_type = component_input_types.join("|\n");
 
-                    let component_create_type = component_create_types.join("|\n");
-                    let component_input_type = component_update_types.join("|\n");
-
-                    let mut this_incoming_connections = "    {\n".to_string();
-                    let this_root_prop_id =
-                        SchemaVariant::get_root_prop_id(ctx, variant_id).await?;
-                    let this_component_iface = Prop::ts_type(ctx, this_root_prop_id).await?;
-                    for input_socket in SchemaVariant::list_all_sockets(ctx, variant_id).await?.1 {
-                        let json_input_socket_name = serde_json::to_string(input_socket.name())?;
-                        let type_qualifier = match input_socket.arity() {
-                            SocketArity::One => " | undefined",
-                            SocketArity::Many => "[]",
-                        };
-                        this_incoming_connections.push_str(&format!(
+                let mut this_incoming_connections = "    {\n".to_string();
+                let variant_id =
+                    ManagementPrototype::get_schema_variant_id(ctx, prototype_id).await?;
+                let this_root_prop_id = SchemaVariant::get_root_prop_id(ctx, variant_id).await?;
+                let this_component_iface = Prop::ts_type(ctx, this_root_prop_id).await?;
+                for input_socket in SchemaVariant::list_all_sockets(ctx, variant_id).await?.1 {
+                    let json_input_socket_name = serde_json::to_string(input_socket.name())?;
+                    let type_qualifier = match input_socket.arity() {
+                        SocketArity::One => " | undefined",
+                        SocketArity::Many => "[]",
+                    };
+                    this_incoming_connections.push_str(&format!(
                             "      {json_input_socket_name}: {INCOMING_CONNECTION_TYPE}{type_qualifier},\n"
                         ));
-                    }
-                    this_incoming_connections.push_str("    }\n");
-
-                    (
-                        this_component_iface,
-                        this_incoming_connections,
-                        component_create_type,
-                        component_input_type,
-                    )
                 }
-                None => default_types,
-            },
+                this_incoming_connections.push_str("    }\n");
+
+                (
+                    this_component_iface,
+                    this_incoming_connections,
+                    component_create_type,
+                    component_input_type,
+                )
+            }
             None => default_types,
         };
 
@@ -178,10 +218,10 @@ type Output = {{
   status: 'ok' | 'error';
   ops?: {{
     views?: {{ create?: string[]; remove?: string[] }},
-    create?: {{ [key: string]: {component_create_type} }},
-    update?: {{ [key: string]: {{
-        properties?: {{ [key: string]: unknown }},
-        geometry?: {{ [key: string]: Geometry }},
+    create?: {{ [name: string]: {component_create_type} }},
+    update?: {{ [name: string]: {{
+        properties?: {{ [name: string]: unknown }},
+        geometry?: {{ [view: string]: Geometry }},
         connect?: {{
             add?: Connection[],
             remove?: Connection[],
@@ -202,10 +242,10 @@ type Input = {{
   currentView: string,
   thisComponent: {{
     properties: {this_component_iface},
-    geometry: {{ [key: string]: Geometry }},
+    geometry: {{ [view: string]: Geometry }},
     incomingConnections: {this_incoming_connections},
   }},
-  components: {{ [key: string]: {component_input_type} }},
+  components: {{ [name: string]: {component_input_type} }},
   variantSocketMap: Record<string, number>,
 }};"#
         ))
@@ -219,16 +259,6 @@ type Input = {{
         for management_prototype_id in
             ManagementPrototype::list_ids_for_func_id(ctx, func_id).await?
         {
-            let Some(prototype) =
-                ManagementPrototype::get_by_id(ctx, management_prototype_id).await?
-            else {
-                error!("Could not get bindings for func_id {func_id}");
-                continue;
-            };
-
-            let managed_schemas = prototype
-                .managed_schemas()
-                .map(|schemas| schemas.iter().map(ToOwned::to_owned).collect());
             let schema_variant_id =
                 ManagementPrototype::get_schema_variant_id(ctx, management_prototype_id).await;
             match schema_variant_id {
@@ -237,7 +267,6 @@ type Input = {{
                         schema_variant_id,
                         func_id,
                         management_prototype_id,
-                        managed_schemas,
                     }));
                 }
                 Err(err) => {
@@ -256,14 +285,9 @@ type Input = {{
     ) -> FuncBindingResult<Vec<FuncBinding>> {
         let schema_variant_id = self.schema_variant_id;
 
-        let managed_schemas = ManagementPrototype::get_by_id(ctx, self.management_prototype_id)
-            .await?
-            .and_then(|prototype| prototype.managed_schemas().map(ToOwned::to_owned));
-
         ManagementPrototype::remove(ctx, self.management_prototype_id).await?;
 
-        Self::create_management_binding(ctx, new_func_id, schema_variant_id, managed_schemas)
-            .await?;
+        Self::create_management_binding(ctx, new_func_id, schema_variant_id).await?;
 
         FuncBinding::for_func_id(ctx, new_func_id).await
     }
@@ -285,39 +309,5 @@ type Input = {{
         ManagementPrototype::remove(ctx, management_prototype_id).await?;
 
         Ok(EventualParent::SchemaVariant(schema_variant_id))
-    }
-
-    pub async fn update_management_binding(
-        ctx: &DalContext,
-        management_prototype_id: ManagementPrototypeId,
-        managed_schemas: Option<Vec<SchemaId>>,
-    ) -> FuncBindingResult<Vec<FuncBinding>> {
-        let func_id = ManagementPrototype::func_id(ctx, management_prototype_id).await?;
-        let Some(management_prototype) =
-            ManagementPrototype::get_by_id(ctx, management_prototype_id).await?
-        else {
-            return FuncBinding::for_func_id(ctx, func_id).await;
-        };
-
-        let schema_variant_id =
-            ManagementPrototype::get_schema_variant_id(ctx, management_prototype_id).await?;
-        let eventual_parent = EventualParent::SchemaVariant(schema_variant_id);
-        eventual_parent.error_if_locked(ctx).await?;
-        let manager_schema_id =
-            SchemaVariant::schema_id_for_schema_variant_id(ctx, schema_variant_id).await?;
-
-        management_prototype
-            .modify(ctx, |proto| {
-                proto.managed_schemas = managed_schemas.map(|schemas| {
-                    schemas
-                        .into_iter()
-                        .filter(|schema_id| schema_id != &manager_schema_id)
-                        .collect()
-                });
-                Ok(())
-            })
-            .await?;
-
-        FuncBinding::for_func_id(ctx, func_id).await
     }
 }

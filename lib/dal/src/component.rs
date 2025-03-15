@@ -3962,7 +3962,6 @@ impl Component {
                         is_required: Some(false),
                         node_side: DiagramSocketNodeSide::Left,
                         is_management: Some(false),
-                        managed_schemas: None,
                         value: None,
                     });
                 }
@@ -3988,7 +3987,6 @@ impl Component {
                         is_required: Some(false),
                         node_side: DiagramSocketNodeSide::Right,
                         is_management: Some(false),
-                        managed_schemas: None,
                         value: None,
                     });
                 }
