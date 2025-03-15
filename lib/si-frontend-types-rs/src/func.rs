@@ -125,6 +125,7 @@ pub enum FuncBinding {
         schema_variant_id: Option<SchemaVariantId>,
         management_prototype_id: Option<ManagementPrototypeId>,
         func_id: Option<FuncId>,
+        // TODO can probably remove this, because serde allows extra fields when deserializing
         managed_schemas: Option<Vec<SchemaId>>,
     },
     #[serde(rename_all = "camelCase")]

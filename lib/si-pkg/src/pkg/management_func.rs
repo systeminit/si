@@ -12,6 +12,7 @@ pub struct SiPkgManagementFunc<'a> {
     func_unique_id: String,
     name: String,
     description: Option<String>,
+    // TODO can probably remove this
     managed_schemas: Option<HashSet<String>>,
 
     hash: Hash,

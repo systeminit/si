@@ -683,6 +683,7 @@ pub enum ManagementPrototypeContent {
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct ManagementPrototypeContentV1 {
     pub name: String,
+    // TODO can probably remove this, because serde allows extra fields when deserializing
     pub managed_schemas: Option<HashSet<SchemaId>>,
     pub description: Option<String>,
 }

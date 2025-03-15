@@ -197,6 +197,7 @@ pub enum Binding {
         inputs: Vec<LeafInputLocation>,
     },
     Management {
+        // TODO can probably remove this, because serde allows extra fields when deserializing
         managed_schemas: Option<Vec<String>>,
     },
     Qualification {

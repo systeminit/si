@@ -22,6 +22,7 @@ pub struct ManagementFuncNode {
     pub func_unique_id: String,
     pub name: String,
     pub description: Option<String>,
+    // TODO remove this, and just ignore managed_schemas property if it is found
     pub managed_schemas: Option<HashSet<String>>,
 }
 

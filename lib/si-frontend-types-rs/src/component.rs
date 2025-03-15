@@ -133,6 +133,7 @@ pub struct DiagramSocket {
     pub is_required: Option<bool>,
     pub node_side: DiagramSocketNodeSide,
     pub is_management: Option<bool>,
+    // TODO can probably remove this, because serde allows extra fields when deserializing
     pub managed_schemas: Option<Vec<SchemaId>>,
 }
 

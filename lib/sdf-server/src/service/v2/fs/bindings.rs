@@ -6,7 +6,6 @@ use axum::{
 };
 use dal::{
     attribute::prototype::argument::AttributePrototypeArgument,
-    cached_module::CachedModule,
     func::{
         argument::FuncArgument,
         binding::{
@@ -19,7 +18,7 @@ use dal::{
     },
     prop::PropPath,
     schema::variant::leaves::LeafKind,
-    ChangeSetId, DalContext, Func, FuncId, InputSocket, OutputSocket, Prop, Schema, SchemaId,
+    ChangeSetId, DalContext, Func, FuncId, InputSocket, OutputSocket, Prop, SchemaId,
     SchemaVariant, SchemaVariantId, WsEvent,
 };
 use si_events::{audit_log::AuditLogKind, ActionKind};
@@ -160,35 +159,10 @@ pub async fn func_binding_to_fs_binding(
         }
         FuncBinding::Authentication { .. } => fs::Binding::Authentication,
         FuncBinding::CodeGeneration { inputs, .. } => fs::Binding::CodeGeneration { inputs },
-        FuncBinding::Management {
-            managed_schemas, ..
-        } => management_binding_to_fs_management_binding(ctx, managed_schemas).await?,
-        FuncBinding::Qualification { inputs, .. } => fs::Binding::Qualification { inputs },
-    })
-}
-
-async fn management_binding_to_fs_management_binding(
-    ctx: &DalContext,
-    managed_schemas: Option<Vec<SchemaId>>,
-) -> FsResult<fs::Binding> {
-    Ok(if let Some(schemas) = managed_schemas {
-        let mut managed_names = vec![];
-        for managed_schema_id in schemas {
-            let schema_name =
-                match CachedModule::find_latest_for_schema_id(ctx, managed_schema_id).await? {
-                    Some(cached_module) => cached_module.schema_name,
-                    None => Schema::get_by_id(ctx, managed_schema_id).await?.name,
-                };
-            managed_names.push(schema_name);
-        }
-
-        fs::Binding::Management {
-            managed_schemas: Some(managed_names),
-        }
-    } else {
-        fs::Binding::Management {
+        FuncBinding::Management { .. } => fs::Binding::Management {
             managed_schemas: None,
-        }
+        },
+        FuncBinding::Qualification { inputs, .. } => fs::Binding::Qualification { inputs },
     })
 }
 
