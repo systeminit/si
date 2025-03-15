@@ -100,6 +100,8 @@ deno_workspace(
         "//lib/ts-lib-deno:deno.json",
         "//lib/jsr-systeminit/remove-empty:deno.json",
         "//lib/jsr-systeminit/ecs-template-qualification:deno.json",
+        "//lib/jsr-systeminit/cf-db:deno.json",
+        "//lib/jsr-systeminit/ai-agent:deno.json",
     ],
     visibility = ["PUBLIC"],
 )

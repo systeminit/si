@@ -1,0 +1,16 @@
+{
+  "name": "@systeminit/cf-db",
+  "version": "0.1.4",
+  "license": "Apache-2.0",
+  "exports": "./mod.ts",
+  "lint": {
+    "rules": {
+      "exclude": ["no-explicit-any"]
+    }
+  },
+  "imports": {
+    "@apidevtools/json-schema-ref-parser": "npm:@apidevtools/json-schema-ref-parser@^11.9.3",
+    "adze": "npm:adze@^2.2.1",
+    "lodash": "npm:lodash@^4.17.21"
+  }
+}
