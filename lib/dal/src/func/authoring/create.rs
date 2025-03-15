@@ -47,7 +47,7 @@ pub(crate) async fn create_management_func(
     )
     .await?;
 
-    ManagementBinding::create_management_binding(ctx, func.id, schema_variant_id, None).await?;
+    ManagementBinding::create_management_binding(ctx, func.id, schema_variant_id).await?;
 
     Ok(func)
 }

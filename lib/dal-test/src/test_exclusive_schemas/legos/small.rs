@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use dal::action::prototype::ActionKind;
 use dal::pkg::{import_pkg_from_pkg, ImportOptions};
 use dal::{BuiltinsResult, DalContext, PropKind};
@@ -13,7 +11,7 @@ use si_pkg::{ManagementFuncSpec, SchemaSpecData};
 use crate::test_exclusive_schemas::legos::bricks::LegoBricks;
 use crate::test_exclusive_schemas::{
     build_action_func, build_asset_func, build_management_func, create_identity_func,
-    PKG_CREATED_BY, PKG_VERSION, SCHEMA_ID_SMALL_EVEN_LEGO,
+    PKG_CREATED_BY, PKG_VERSION,
 };
 
 /// The "small odd lego" has a special importance for our tests. It is a
@@ -665,77 +663,66 @@ pub(crate) async fn migrate_test_exclusive_schema_small_odd_lego(
                 .management_func(
                     ManagementFuncSpec::builder()
                         .name("Clone")
-                        .managed_schemas(HashSet::from([SCHEMA_ID_SMALL_EVEN_LEGO.to_string()]))
                         .func_unique_id(&clone_me_mgmt_func.unique_id)
                         .build()?,
                 )
                 .management_func(
                     ManagementFuncSpec::builder()
                         .name("Update")
-                        .managed_schemas(HashSet::from([SCHEMA_ID_SMALL_EVEN_LEGO.to_string()]))
                         .func_unique_id(&update_mgmt_func.unique_id)
                         .build()?,
                 )
                 .management_func(
                     ManagementFuncSpec::builder()
                         .name("Update in View")
-                        .managed_schemas(HashSet::from([SCHEMA_ID_SMALL_EVEN_LEGO.to_string()]))
                         .func_unique_id(&update_in_view_mgmt_func.unique_id)
                         .build()?,
                 )
                 .management_func(
                     ManagementFuncSpec::builder()
                         .name("Create and Connect From Self")
-                        .managed_schemas(HashSet::from([SCHEMA_ID_SMALL_EVEN_LEGO.to_string()]))
                         .func_unique_id(&create_and_connect_from_self_func.unique_id)
                         .build()?,
                 )
                 .management_func(
                     ManagementFuncSpec::builder()
                         .name("Create and Connect to Self")
-                        .managed_schemas(HashSet::from([SCHEMA_ID_SMALL_EVEN_LEGO.to_string()]))
                         .func_unique_id(&create_and_connect_to_self_func.unique_id)
                         .build()?,
                 )
                 .management_func(
                     ManagementFuncSpec::builder()
                         .name("Create and Connect to Inputs")
-                        .managed_schemas(HashSet::from([SCHEMA_ID_SMALL_EVEN_LEGO.to_string()]))
                         .func_unique_id(&create_and_connect_to_inputs_func.unique_id)
                         .build()?,
                 )
                 .management_func(
                     ManagementFuncSpec::builder()
                         .name("Connect to Inputs")
-                        .managed_schemas(HashSet::from([SCHEMA_ID_SMALL_EVEN_LEGO.to_string()]))
                         .func_unique_id(&connect_to_inputs_func.unique_id)
                         .build()?,
                 )
                 .management_func(
                     ManagementFuncSpec::builder()
                         .name("Disconnect from Inputs")
-                        .managed_schemas(HashSet::from([SCHEMA_ID_SMALL_EVEN_LEGO.to_string()]))
                         .func_unique_id(&disconnect_from_inputs_func.unique_id)
                         .build()?,
                 )
                 .management_func(
                     ManagementFuncSpec::builder()
                         .name("Get Input Values")
-                        .managed_schemas(HashSet::from([SCHEMA_ID_SMALL_EVEN_LEGO.to_string()]))
                         .func_unique_id(&get_input_values_func.unique_id)
                         .build()?,
                 )
                 .management_func(
                     ManagementFuncSpec::builder()
                         .name("Deeply Nested Children")
-                        .managed_schemas(HashSet::from([SCHEMA_ID_SMALL_EVEN_LEGO.to_string()]))
                         .func_unique_id(&deeply_nested_children.unique_id)
                         .build()?,
                 )
                 .management_func(
                     ManagementFuncSpec::builder()
                         .name("Create and Connect to Self as Children")
-                        .managed_schemas(HashSet::from([SCHEMA_ID_SMALL_EVEN_LEGO.to_string()]))
                         .func_unique_id(&create_and_connect_to_self_as_children_func.unique_id)
                         .build()?,
                 )

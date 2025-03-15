@@ -82,12 +82,6 @@ pub async fn create_component(
 
             let variant_id = Schema::get_or_install_default_variant(&ctx, schema_id).await?;
             let variant = SchemaVariant::get_by_id(&ctx, variant_id).await?;
-            let managed_schema_ids = SchemaVariant::all_managed_schemas(&ctx, variant_id).await?;
-
-            // Also install any schemas managed by the variant
-            for schema_id in managed_schema_ids {
-                Schema::get_or_install_default_variant(&ctx, schema_id).await?;
-            }
 
             let front_end_variant = variant.clone().into_frontend_type(&ctx, schema_id).await?;
             WsEvent::module_imported(&ctx, vec![front_end_variant.clone()])

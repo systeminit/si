@@ -875,13 +875,6 @@ async fn import_management_func(
         management_func_spec.name().to_string(),
         management_func_spec.description().map(Into::into),
         func_id,
-        management_func_spec.managed_schemas().map(|schemas| {
-            schemas
-                .iter()
-                .filter_map(|ulid| Ulid::from_string(ulid).ok())
-                .map(Into::into)
-                .collect()
-        }),
         schema_variant_id,
     )
     .await?;

@@ -7,7 +7,7 @@ use telemetry::prelude::*;
 use crate::{
     cached_module::CachedModule,
     management::prototype::{ManagementPrototype, ManagementPrototypeId},
-    DalContext, Func, FuncId, Prop, Schema, SchemaId, SchemaVariant, SchemaVariantId, SocketArity,
+    DalContext, Func, FuncId, Prop, Schema, SchemaVariant, SchemaVariantId, SocketArity,
 };
 
 use super::{EventualParent, FuncBinding, FuncBindingResult};
@@ -18,7 +18,6 @@ pub struct ManagementBinding {
     pub schema_variant_id: SchemaVariantId,
     pub management_prototype_id: ManagementPrototypeId,
     pub func_id: FuncId,
-    pub managed_schemas: Option<Vec<SchemaId>>,
 }
 
 const INCOMING_CONNECTION_TYPE: &str = "{ component: string, socket: string; value: any }";
@@ -36,7 +35,6 @@ impl ManagementBinding {
         ctx: &DalContext,
         func_id: FuncId,
         schema_variant_id: SchemaVariantId,
-        managed_schemas: Option<HashSet<SchemaId>>,
     ) -> FuncBindingResult<Vec<FuncBinding>> {
         // don't add binding if parent is locked
         SchemaVariant::error_if_locked(ctx, schema_variant_id).await?;
@@ -47,7 +45,6 @@ impl ManagementBinding {
             func.name.to_owned(),
             func.description.to_owned(),
             func.id,
-            managed_schemas,
             schema_variant_id,
         )
         .await?;
@@ -271,16 +268,6 @@ type Input = {{
         for management_prototype_id in
             ManagementPrototype::list_ids_for_func_id(ctx, func_id).await?
         {
-            let Some(prototype) =
-                ManagementPrototype::get_by_id_opt(ctx, management_prototype_id).await?
-            else {
-                error!("Could not get bindings for func_id {func_id}");
-                continue;
-            };
-
-            let managed_schemas = prototype
-                .managed_schemas()
-                .map(|schemas| schemas.iter().map(ToOwned::to_owned).collect());
             let schema_variant_id =
                 ManagementPrototype::get_schema_variant_id(ctx, management_prototype_id).await;
             match schema_variant_id {
@@ -289,7 +276,6 @@ type Input = {{
                         schema_variant_id,
                         func_id,
                         management_prototype_id,
-                        managed_schemas,
                     }));
                 }
                 Err(err) => {
@@ -308,14 +294,9 @@ type Input = {{
     ) -> FuncBindingResult<Vec<FuncBinding>> {
         let schema_variant_id = self.schema_variant_id;
 
-        let managed_schemas = ManagementPrototype::get_by_id_opt(ctx, self.management_prototype_id)
-            .await?
-            .and_then(|prototype| prototype.managed_schemas().map(ToOwned::to_owned));
-
         ManagementPrototype::remove(ctx, self.management_prototype_id).await?;
 
-        Self::create_management_binding(ctx, new_func_id, schema_variant_id, managed_schemas)
-            .await?;
+        Self::create_management_binding(ctx, new_func_id, schema_variant_id).await?;
 
         FuncBinding::for_func_id(ctx, new_func_id).await
     }
@@ -337,39 +318,5 @@ type Input = {{
         ManagementPrototype::remove(ctx, management_prototype_id).await?;
 
         Ok(EventualParent::SchemaVariant(schema_variant_id))
-    }
-
-    pub async fn update_management_binding(
-        ctx: &DalContext,
-        management_prototype_id: ManagementPrototypeId,
-        managed_schemas: Option<Vec<SchemaId>>,
-    ) -> FuncBindingResult<Vec<FuncBinding>> {
-        let func_id = ManagementPrototype::func_id(ctx, management_prototype_id).await?;
-        let Some(management_prototype) =
-            ManagementPrototype::get_by_id_opt(ctx, management_prototype_id).await?
-        else {
-            return FuncBinding::for_func_id(ctx, func_id).await;
-        };
-
-        let schema_variant_id =
-            ManagementPrototype::get_schema_variant_id(ctx, management_prototype_id).await?;
-        let eventual_parent = EventualParent::SchemaVariant(schema_variant_id);
-        eventual_parent.error_if_locked(ctx).await?;
-        let manager_schema_id =
-            SchemaVariant::schema_id_for_schema_variant_id(ctx, schema_variant_id).await?;
-
-        management_prototype
-            .modify(ctx, |proto| {
-                proto.managed_schemas = managed_schemas.map(|schemas| {
-                    schemas
-                        .into_iter()
-                        .filter(|schema_id| schema_id != &manager_schema_id)
-                        .collect()
-                });
-                Ok(())
-            })
-            .await?;
-
-        FuncBinding::for_func_id(ctx, func_id).await
     }
 }

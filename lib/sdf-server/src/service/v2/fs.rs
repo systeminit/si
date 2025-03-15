@@ -1,5 +1,5 @@
 use std::{
-    collections::{BTreeMap, HashMap, HashSet},
+    collections::{BTreeMap, HashSet},
     sync::Arc,
 };
 
@@ -1460,34 +1460,6 @@ async fn unlock_func(
         bindings_size,
         types_size,
     )))
-}
-
-async fn process_managed_schemas(
-    ctx: &DalContext,
-    string_schemas: &Option<Vec<String>>,
-) -> FsResult<Option<Vec<SchemaId>>> {
-    let latest_modules: HashMap<String, _> = CachedModule::latest_user_independent_modules(ctx)
-        .await?
-        .into_iter()
-        .map(|module| (module.schema_name, module.schema_id))
-        .collect();
-
-    let mut managed_schemas = vec![];
-    if let Some(string_schemas) = string_schemas {
-        for updated_schema in string_schemas {
-            let schema_id = match latest_modules.get(updated_schema) {
-                Some(schema_id) => *schema_id,
-                None => Schema::get_by_name(ctx, updated_schema).await?.id(),
-            };
-
-            managed_schemas.push(schema_id);
-        }
-    }
-    Ok(if managed_schemas.is_empty() {
-        None
-    } else {
-        Some(managed_schemas)
-    })
 }
 
 pub fn fs_routes(state: AppState) -> Router<AppState> {

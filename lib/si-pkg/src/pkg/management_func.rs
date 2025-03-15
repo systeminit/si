@@ -57,10 +57,6 @@ impl<'a> SiPkgManagementFunc<'a> {
         self.description.as_deref()
     }
 
-    pub fn managed_schemas(&self) -> Option<&HashSet<String>> {
-        self.managed_schemas.as_ref()
-    }
-
     pub fn hash(&self) -> Hash {
         self.hash
     }

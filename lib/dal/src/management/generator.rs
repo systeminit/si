@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 
 use si_frontend_types::RawGeometry;
-use si_id::{ComponentId, SchemaId, ViewId};
+use si_id::{ComponentId, ViewId};
 
 use crate::management::{
     ManagementConnection, ManagementCreateGeometry, ManagementCreateOperation, ManagementGeometry,
@@ -16,7 +16,7 @@ pub async fn generate_template(
     ctx: &DalContext,
     view_id: ViewId,
     component_ids: &[ComponentId],
-) -> ManagementResult<(ManagementCreateOperations, Vec<SchemaId>)> {
+) -> ManagementResult<ManagementCreateOperations> {
     #[derive(Debug, Clone)]
     struct ConnectionInfo {
         from_socket_name: String,
@@ -199,10 +199,7 @@ pub async fn generate_template(
         creates.insert(placeholder, create);
     }
 
-    Ok((
-        creates,
-        schema_names.keys().map(ToOwned::to_owned).collect(),
-    ))
+    Ok(creates)
 }
 
 async fn make_placeholder(name: &str, placeholders: &HashSet<String>) -> String {

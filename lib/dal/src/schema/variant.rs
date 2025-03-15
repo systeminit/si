@@ -1666,7 +1666,6 @@ impl SchemaVariant {
     ) -> SchemaVariantResult<(DiagramSocket, Option<DiagramSocket>)> {
         let schema_id =
             SchemaVariant::schema_id_for_schema_variant_id(ctx, schema_variant_id).await?;
-        let managed_schemas = Self::all_managed_schemas(ctx, schema_variant_id).await?;
         let has_mgmt_protos =
             ManagementPrototype::variant_has_management_prototype(ctx, schema_variant_id)
                 .await
@@ -1694,7 +1693,7 @@ impl SchemaVariant {
             is_required: Some(false),
             node_side: DiagramSocketNodeSide::Right,
             is_management: Some(true),
-            managed_schemas: Some(managed_schemas.into_iter().map(Into::into).collect()),
+            managed_schemas: None,
         });
 
         Ok((management_input_socket, management_output_socket))
@@ -2424,24 +2423,5 @@ impl SchemaVariant {
         }
 
         Ok(schema_variants.into_values().collect())
-    }
-
-    /// Gathers all the schemas managed by the management prototypes for a given [`SchemaVariant`](SchemaVariant).
-    pub async fn all_managed_schemas(
-        ctx: &DalContext,
-        schema_variant_id: SchemaVariantId,
-    ) -> SchemaVariantResult<HashSet<SchemaId>> {
-        let mut result = HashSet::new();
-
-        for prototype in ManagementPrototype::list_for_variant_id(ctx, schema_variant_id)
-            .await
-            .map_err(Box::new)?
-        {
-            if let Some(managed_schemas) = prototype.managed_schemas() {
-                result.extend(managed_schemas);
-            }
-        }
-
-        Ok(result)
     }
 }

@@ -1,9 +1,6 @@
 //! A [`ManagementPrototype`] points to a Management [`Func`] for a schema variant
 
-use std::{
-    collections::{HashMap, HashSet},
-    sync::Arc,
-};
+use std::{collections::HashMap, sync::Arc};
 
 use serde::{Deserialize, Serialize};
 use si_events::FuncRunId;
@@ -92,7 +89,6 @@ pub use si_id::ManagementPrototypeId;
 #[serde(rename_all = "camelCase")]
 pub struct ManagementPrototype {
     pub id: ManagementPrototypeId,
-    pub managed_schemas: Option<HashSet<SchemaId>>,
     pub name: String,
     pub description: Option<String>,
 }
@@ -101,7 +97,7 @@ impl From<ManagementPrototype> for ManagementPrototypeContent {
     fn from(value: ManagementPrototype) -> Self {
         Self::V1(ManagementPrototypeContentV1 {
             name: value.name,
-            managed_schemas: value.managed_schemas,
+            managed_schemas: None,
             description: value.description,
         })
     }
@@ -276,10 +272,6 @@ impl ManagementPrototype {
         self.id
     }
 
-    pub fn managed_schemas(&self) -> Option<&HashSet<SchemaId>> {
-        self.managed_schemas.as_ref()
-    }
-
     pub fn name(&self) -> &str {
         &self.name
     }
@@ -315,14 +307,11 @@ impl ManagementPrototype {
         name: String,
         description: Option<String>,
         func_id: FuncId,
-        managed_schemas: Option<HashSet<SchemaId>>,
         schema_variant_id: SchemaVariantId,
     ) -> ManagementPrototypeResult<Self> {
         let content = ManagementPrototypeContentV1 {
             name: name.clone(),
-            managed_schemas: managed_schemas
-                .clone()
-                .map(|schemas| schemas.into_iter().map(Into::into).collect()),
+            managed_schemas: None,
             description: description.clone(),
         };
 
@@ -352,7 +341,6 @@ impl ManagementPrototype {
         Ok(ManagementPrototype {
             id: id.into(),
             name,
-            managed_schemas,
             description,
         })
     }
@@ -386,7 +374,6 @@ impl ManagementPrototype {
 
         Ok(Self {
             id: proto_id,
-            managed_schemas: inner.managed_schemas,
             name: inner.name,
             description: inner.description,
         })
@@ -420,9 +407,6 @@ impl ManagementPrototype {
 
         Ok(Some(Self {
             id,
-            managed_schemas: content_inner
-                .managed_schemas
-                .map(|schemas| schemas.into_iter().map(Into::into).collect()),
             name: content_inner.name,
             description: content_inner.description,
         }))
@@ -737,20 +721,6 @@ impl ManagementPrototype {
         }
 
         Ok(None)
-    }
-
-    pub async fn set_managed_schemas(
-        self,
-        ctx: &DalContext,
-        managed_schemas: Option<Vec<SchemaId>>,
-    ) -> ManagementPrototypeResult<()> {
-        self.modify(ctx, |proto| {
-            proto.managed_schemas = managed_schemas.map(|schemas| schemas.into_iter().collect());
-            Ok(())
-        })
-        .await?;
-
-        Ok(())
     }
 }
 
