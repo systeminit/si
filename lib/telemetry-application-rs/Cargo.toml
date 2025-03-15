@@ -10,6 +10,7 @@ publish.workspace = true
 
 [dependencies]
 chrono = { workspace = true }
+console-subscriber = { workspace = true }
 derive_builder = { workspace = true }
 opentelemetry-otlp = { workspace = true }
 opentelemetry-semantic-conventions = { workspace = true }

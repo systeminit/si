@@ -396,6 +396,7 @@
               shfmt
               spicedb-zed
               tilt
+              tokio-console
               typos
               yapf
             ]

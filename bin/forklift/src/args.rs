@@ -56,6 +56,17 @@ pub(crate) struct Args {
     )]
     pub(crate) log_json: bool,
 
+    /// Enables support for emitting async runtime data to `tokio-console`.
+    ///
+    /// For more details, visit: <https://github.com/tokio-rs/console>.
+    #[arg(
+        long = "tokio-console",
+        default_value = "false",
+        env = "SI_TOKIO_CONSOLE",
+        hide_env_values = true
+    )]
+    pub(crate) tokio_console: bool,
+
     /// The ID of this forklift instance [example: 01GWEAANW5BVFK5KDRVS6DEY0F"]
     #[arg(long)]
     pub(crate) instance_id: Option<String>,

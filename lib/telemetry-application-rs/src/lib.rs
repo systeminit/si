@@ -19,6 +19,7 @@ use std::{
     time::{Duration, Instant},
 };
 
+use console_subscriber::ConsoleLayer;
 use derive_builder::Builder;
 use opentelemetry_sdk::{
     metrics::SdkMeterProvider,
@@ -156,6 +157,9 @@ pub struct TelemetryConfig {
     #[builder(setter(into), default)]
     console_log_format: ConsoleLogFormat,
 
+    #[builder(setter(into), default = "false")]
+    tokio_console: bool,
+
     #[builder(default = "true")]
     signal_handlers: bool,
 }
@@ -259,6 +263,10 @@ pub fn init(
         directives = TracingDirectives::from(&tracing_level).as_str(),
         "telemetry configuration"
     );
+
+    if config.tokio_console {
+        warn!("tokio-console support is enabled; this could impact production performance");
+    }
 
     let (client, guard) = create_client(config, tracing_level, handles, tracker, shutdown_token)?;
 
@@ -399,10 +407,25 @@ fn tracing_subscriber(
         (layer, reloader)
     };
 
+    // `registry.with()` accepts an `Option<L: Layer>` which let's us unconditionally create a
+    // layer type that itself is optional.
+    //
+    // Thanks to:
+    // https://github.com/MaterializeInc/materialize/blob/bcba457395c7b79cad9ac1cca7c8b4ad02508821/src/ore/src/tracing.rs#L511-L526
+    let tokio_console_layer = if config.tokio_console {
+        let builder = ConsoleLayer::builder().with_default_env();
+        let layer = builder.spawn();
+
+        Some(layer)
+    } else {
+        None
+    };
+
     let registry = Registry::default();
     let registry = registry.with(console_log_layer);
     let registry = registry.with(otel_layer);
     let registry = registry.with(metrics_layer);
+    let registry = registry.with(tokio_console_layer);
 
     let handles = TelemetryHandles {
         console_log_filter_reload,
