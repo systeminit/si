@@ -7,7 +7,7 @@ use tracing::debug;
 use nix::unistd::{chown, Gid, Uid};
 use std::path::{Path, PathBuf};
 use tokio::net::{TcpListener, TcpStream};
-use tokio_vsock::VsockStream;
+use tokio_vsock::{VsockAddr, VsockStream, VMADDR_CID_HOST};
 
 use tokio::fs;
 
@@ -17,7 +17,6 @@ use tokio::net::UnixListener;
 
 const UID_BASE: u32 = 5000;
 const GID: u32 = 10000;
-const HOST_CID: u32 = 2;
 const DEFAULT_OTEL_PORT: u32 = 4317;
 
 #[remain::sorted]
@@ -113,7 +112,7 @@ impl TcpStreamForwarder {
                     .await
                     .map_err(StreamForwarderError::Accept)?;
 
-                let vsock_stream = VsockStream::connect(HOST_CID, self.port)
+                let vsock_stream = VsockStream::connect(VsockAddr::new(VMADDR_CID_HOST, self.port))
                     .await
                     .map_err(StreamForwarderError::Vsock)?;
 
