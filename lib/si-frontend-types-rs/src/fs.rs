@@ -196,10 +196,9 @@ pub enum Binding {
     CodeGeneration {
         inputs: Vec<LeafInputLocation>,
     },
-    Management {
-        // TODO can probably remove this, because serde allows extra fields when deserializing
-        managed_schemas: Option<Vec<String>>,
-    },
+    // TODO can we remove this? Don't want to remove directories if it's necessary, and I don't
+    // know whether it is!
+    Management,
     Qualification {
         inputs: Vec<LeafInputLocation>,
     },

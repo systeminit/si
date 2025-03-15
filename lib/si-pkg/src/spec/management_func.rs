@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
 
@@ -17,11 +15,6 @@ pub struct ManagementFuncSpec {
 
     #[builder(setter(into), default)]
     pub description: Option<String>,
-
-    // TODO can probably remove this, because serde allows extra fields when deserializing
-    #[builder(setter(into), default)]
-    #[serde(default)]
-    pub managed_schemas: Option<HashSet<String>>,
 }
 
 impl ManagementFuncSpec {

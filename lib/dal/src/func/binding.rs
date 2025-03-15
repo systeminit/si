@@ -251,7 +251,6 @@ impl From<FuncBinding> for si_frontend_types::FuncBinding {
                 schema_variant_id: Some(mgmt.schema_variant_id),
                 management_prototype_id: Some(mgmt.management_prototype_id),
                 func_id: Some(mgmt.func_id),
-                managed_schemas: None,
             },
             FuncBinding::CodeGeneration(code_gen) => {
                 si_frontend_types::FuncBinding::CodeGeneration {

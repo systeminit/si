@@ -159,9 +159,7 @@ pub async fn func_binding_to_fs_binding(
         }
         FuncBinding::Authentication { .. } => fs::Binding::Authentication,
         FuncBinding::CodeGeneration { inputs, .. } => fs::Binding::CodeGeneration { inputs },
-        FuncBinding::Management { .. } => fs::Binding::Management {
-            managed_schemas: None,
-        },
+        FuncBinding::Management { .. } => fs::Binding::Management,
         FuncBinding::Qualification { inputs, .. } => fs::Binding::Qualification { inputs },
     })
 }
@@ -480,7 +478,7 @@ async fn parse_binding_for_update(
         } => {
             parse_code_gen_bindings_for_update(bindings_to_update, func_binding, update_inputs)?;
         }
-        Binding::Management { managed_schemas: _ } => {}
+        Binding::Management => {}
         Binding::Qualification {
             inputs: update_inputs,
         } => {
@@ -551,11 +549,10 @@ async fn parse_binding_for_create(
             attribute_prototype_id: None,
             inputs,
         },
-        Binding::Management { managed_schemas: _ } => FuncBinding::Management {
+        Binding::Management => FuncBinding::Management {
             schema_variant_id: Some(schema_variant_id),
             management_prototype_id: None,
             func_id: Some(func_id),
-            managed_schemas: None,
         },
         Binding::Qualification { inputs } => FuncBinding::Qualification {
             schema_variant_id: Some(schema_variant_id),

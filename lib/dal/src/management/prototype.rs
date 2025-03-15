@@ -97,7 +97,6 @@ impl From<ManagementPrototype> for ManagementPrototypeContent {
     fn from(value: ManagementPrototype) -> Self {
         Self::V1(ManagementPrototypeContentV1 {
             name: value.name,
-            managed_schemas: None,
             description: value.description,
         })
     }
@@ -311,7 +310,6 @@ impl ManagementPrototype {
     ) -> ManagementPrototypeResult<Self> {
         let content = ManagementPrototypeContentV1 {
             name: name.clone(),
-            managed_schemas: None,
             description: description.clone(),
         };
 
