@@ -41,7 +41,7 @@ pub async fn list_variants(
 
     let mut user_scoped_modules: Vec<CachedModule> = vec![];
     match ctx.history_actor() {
-        dal::HistoryActor::User(user_pk) => {
+        &dal::HistoryActor::User(user_pk) => {
             user_scoped_modules = CachedModule::get_user_scoped_modules(&ctx, user_pk).await?;
         }
         _ => info!("No userPk found so skipping get_user_scoped_modules"),

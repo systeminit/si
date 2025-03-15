@@ -112,7 +112,6 @@ pub struct ManagementPrototypeExecution {
     pub func_run_id: FuncRunId,
     pub result: Option<ManagementResultSuccess>,
     pub manager_component_geometry: HashMap<String, ManagementGeometry>,
-    pub managed_schema_map: HashMap<String, SchemaId>,
     pub managed_component_placeholders: HashMap<String, ComponentId>,
 }
 
@@ -500,16 +499,11 @@ impl ManagementPrototype {
         manager_component_id: ComponentId,
         view_id: Option<ViewId>,
     ) -> ManagementPrototypeResult<ManagementPrototypeExecution> {
-        let prototype = Self::get_by_id(ctx, id)
+        let views: HashMap<ViewId, String> = View::list(ctx)
             .await?
-            .ok_or(ManagementPrototypeError::NotFound(id))?;
-
-        let mut views = HashMap::new();
-        for view in View::list(ctx).await? {
-            views.insert(view.id(), view.name().to_owned());
-        }
-
-        let (managed_schema_map, reverse_map) = prototype.managed_schemas_map(ctx).await?;
+            .into_iter()
+            .map(|view| (view.id(), view.name().to_owned()))
+            .collect();
 
         let view_id = match view_id {
             Some(view_id) => view_id,
@@ -523,19 +517,14 @@ impl ManagementPrototype {
         let mut managed_component_placeholders = HashMap::new();
         let mut managed_components = HashMap::new();
         for component_id in manager_component.get_managed(ctx).await? {
-            let schema_id = Component::schema_for_component_id(ctx, component_id)
-                .await?
-                .id();
+            let schema = Component::schema_for_component_id(ctx, component_id).await?;
+            let managed_component =
+                ManagedComponent::new(ctx, component_id, schema.name(), &views).await?;
 
-            if let Some(managed_schema_name) = reverse_map.get(&schema_id) {
-                let managed_component =
-                    ManagedComponent::new(ctx, component_id, managed_schema_name, &views).await?;
-
-                managed_components.insert(component_id, managed_component);
-                let name = Component::name_by_id(ctx, component_id).await?;
-                managed_component_placeholders.insert(name, component_id);
-                managed_component_placeholders.insert(component_id.to_string(), component_id);
-            }
+            managed_components.insert(component_id, managed_component);
+            let name = Component::name_by_id(ctx, component_id).await?;
+            managed_component_placeholders.insert(name, component_id);
+            managed_component_placeholders.insert(component_id.to_string(), component_id);
         }
 
         let this_schema = Component::schema_for_component_id(ctx, manager_component_id)
@@ -646,7 +635,6 @@ impl ManagementPrototype {
             func_run_id,
             result: maybe_run_result,
             manager_component_geometry,
-            managed_schema_map,
             managed_component_placeholders,
         })
     }

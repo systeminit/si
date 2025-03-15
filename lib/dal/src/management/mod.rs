@@ -86,8 +86,6 @@ pub enum ManagementError {
     Prop(#[from] PropError),
     #[error("schema error: {0}")]
     Schema(#[from] SchemaError),
-    #[error("Cannot create component for Schema {0}, this schema does not exist or is not managed by this component")]
-    SchemaDoesNotExist(String),
     #[error("standard model error: {0}")]
     StandardModel(#[from] StandardModelError),
     #[error("transactions error: {0}")]
@@ -454,7 +452,6 @@ pub struct ManagementOperator<'a> {
     manager_schema_id: SchemaId,
     last_component_geometry: HashMap<ViewId, ManagementGeometry>,
     operations: ManagementOperations,
-    schema_map: HashMap<String, SchemaId>,
     managed_component_id_placeholders: HashMap<String, ComponentId>,
     component_id_placeholders: HashMap<String, ComponentId>,
     component_schema_map: ComponentSchemaMap,
@@ -545,7 +542,6 @@ impl<'a> ManagementOperator<'a> {
             last_component_geometry: manager_component_geometry_in_view.clone(),
             manager_component_geometry: manager_component_geometry_in_view,
             operations,
-            schema_map: management_execution.managed_schema_map,
             managed_component_id_placeholders: management_execution.managed_component_placeholders,
             component_id_placeholders,
             component_schema_map,
@@ -582,15 +578,10 @@ impl<'a> ManagementOperator<'a> {
         operation: &ManagementCreateOperation,
     ) -> ManagementResult<CreatedComponent> {
         let schema_id = match &operation.kind {
-            Some(kind) => self
-                .schema_map
-                .get(kind)
-                .copied()
-                .ok_or(ManagementError::SchemaDoesNotExist(kind.clone()))?,
+            Some(kind) => Schema::get_or_install_by_name(self.ctx, kind).await?.id(),
             None => self.manager_schema_id,
         };
-
-        let variant_id = Schema::get_or_install_default_variant(self.ctx, schema_id).await?;
+        let variant_id = Schema::default_variant_id(self.ctx, schema_id).await?;
         let mut created_geometries = HashMap::new();
 
         let component = match &operation.geometry {

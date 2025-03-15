@@ -1277,7 +1277,6 @@ async fn upgrade_manager_variant(ctx: &mut DalContext) -> Result<()> {
     let runme = original_variant
         .create_management_func(
             ctx,
-            &[original_variant.schema(ctx).await.id()],
             r#"
                 function main(input) {
                     return {
@@ -1484,7 +1483,6 @@ pub mod connection_test {
         let create_output_and_copy_connection = output
             .create_management_func(
                 &ctx,
-                [output.schema(&ctx).await.id()],
                 r#"
                     async function main({ thisComponent }: Input): Promise<Output> {
                         let connect = [];

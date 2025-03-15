@@ -51,7 +51,7 @@ use crate::workspace_snapshot::node_weight::attribute_prototype_argument_node_we
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::workspace_snapshot::node_weight::{ComponentNodeWeight, NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::{DependentValueRoot, WorkspaceSnapshotError};
-use crate::{AttributePrototypeId, EdgeWeight, SchemaId, SocketArity};
+use crate::{AttributePrototypeId, EdgeWeight, SocketArity};
 use frame::{Frame, FrameError};
 use resource::ResourceData;
 use si_frontend_types::{
@@ -120,8 +120,6 @@ pub enum ComponentError {
     ComponentMissingTypeValueMaterializedView(ComponentId),
     #[error("component {0} has no attribute value for the {1} prop")]
     ComponentMissingValue(ComponentId, PropId),
-    #[error("component {0} is based on a schema {1} that is not managed by {2}")]
-    ComponentNotManagedSchema(ComponentId, SchemaId, ComponentId),
     #[error("connection destination component {0} has no attribute value for input socket {1}")]
     DestinationComponentMissingAttributeValueForInputSocket(ComponentId, InputSocketId),
     #[error("diagram error: {0}")]
@@ -3157,24 +3155,12 @@ impl Component {
             for manager_id in Component::managers_by_id(ctx, component_id).await? {
                 // If we were managed by a component that was also pasted, we should be managed by
                 // the pasted version--otherwise we're still managed by the original
-                match Component::manage_component(
+                Component::manage_component(
                     ctx,
                     maybe_pasted(manager_id),
                     maybe_pasted(component_id),
                 )
-                .await
-                {
-                    Ok(_) => {}
-                    Err(ComponentError::ComponentNotManagedSchema(_, _, _)) => {
-                        // This error should not occur, but we also don't want to
-                        // fail the paste just because the managed schemas are out
-                        // of sync
-                        error!("Could not manage pasted component, but continuing paste");
-                    }
-                    Err(err) => {
-                        return Err(err)?;
-                    }
-                };
+                .await?;
             }
 
             // Copy incoming socket connections
@@ -3852,23 +3838,9 @@ impl Component {
         let manager_schema_id = Component::schema_for_component_id(ctx, manager_component_id)
             .await?
             .id();
-        let manager_variant =
-            Self::schema_variant_for_component_id(ctx, manager_component_id).await?;
         let managed_component_schema_id = Self::schema_for_component_id(ctx, managed_component_id)
             .await?
             .id();
-
-        let managed_schemas = SchemaVariant::all_managed_schemas(ctx, manager_variant.id()).await?;
-
-        if !managed_schemas.contains(&managed_component_schema_id)
-            && manager_schema_id != managed_component_schema_id
-        {
-            return Err(ComponentError::ComponentNotManagedSchema(
-                managed_component_id,
-                managed_component_schema_id,
-                manager_component_id,
-            ));
-        }
 
         let guard = ctx.workspace_snapshot()?.enable_cycle_check().await;
 
