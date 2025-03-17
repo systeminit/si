@@ -375,6 +375,8 @@ pub enum CycloneConfig {
         pool_size: u32,
         #[serde(default)]
         connect_timeout: u64,
+        #[serde(default = "default_create_firecracker_setup_scripts")]
+        create_firecracker_setup_scripts: bool,
     },
 }
 
@@ -407,6 +409,7 @@ impl CycloneConfig {
             action: default_enable_endpoint(),
             pool_size: default_pool_size(),
             connect_timeout: default_connect_timeout(),
+            create_firecracker_setup_scripts: default_create_firecracker_setup_scripts(),
         }
     }
 
@@ -517,6 +520,7 @@ impl TryFrom<CycloneConfig> for CycloneSpec {
                 action,
                 pool_size,
                 connect_timeout,
+                create_firecracker_setup_scripts,
             } => {
                 let mut builder = LocalUdsInstance::spec();
 
@@ -549,6 +553,7 @@ impl TryFrom<CycloneConfig> for CycloneSpec {
                 }
                 builder.pool_size(pool_size);
                 builder.connect_timeout(connect_timeout);
+                builder.create_firecracker_setup_scripts(create_firecracker_setup_scripts);
 
                 Ok(Self::LocalUds(
                     builder.build().map_err(ConfigError::cyclone_spec_build)?,
@@ -615,6 +620,10 @@ fn default_limit_requests() -> Option<u32> {
 }
 
 fn default_enable_endpoint() -> bool {
+    true
+}
+
+fn default_create_firecracker_setup_scripts() -> bool {
     true
 }
 
