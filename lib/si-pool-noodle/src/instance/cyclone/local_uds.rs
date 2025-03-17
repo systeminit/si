@@ -466,7 +466,7 @@ fn temp_path_and_socket_from(
 ) -> Result<(Option<TempPath>, PathBuf)> {
     match socket_strategy {
         LocalUdsSocketStrategy::Random => {
-            let temp_path = NamedTempFile::new()
+            let temp_path = NamedTempFile::with_prefix("cyclone")
                 .map_err(LocalUdsInstanceError::TempSocket)?
                 .into_temp_path();
             let socket = PathBuf::from(&temp_path);
