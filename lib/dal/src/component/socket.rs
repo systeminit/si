@@ -180,6 +180,20 @@ impl ComponentOutputSocket {
             .map(|component_output_socket| component_output_socket.attribute_value_id)
             .collect_vec())
     }
+
+    pub async fn value_for_output_socket_id_for_component_id_opt(
+        ctx: &DalContext,
+        component_id: ComponentId,
+        output_socket_id: OutputSocketId,
+    ) -> ComponentResult<Option<serde_json::Value>> {
+        let attribute_value_id = Self::get_by_ids_or_error(ctx, component_id, output_socket_id)
+            .await?
+            .attribute_value_id;
+
+        let av = AttributeValue::get_by_id(ctx, attribute_value_id).await?;
+        let view = av.view(ctx).await?;
+        Ok(view)
+    }
 }
 
 impl ComponentInputSocket {
@@ -409,6 +423,19 @@ impl ComponentInputSocket {
             (None, Some(inferred_source)) => Ok(Some(inferred_source)),
             (None, None) => Ok(None),
         }
+    }
+
+    pub async fn value_for_input_socket_id_for_component_id_opt(
+        ctx: &DalContext,
+        component_id: ComponentId,
+        input_socket_id: InputSocketId,
+    ) -> ComponentResult<Option<serde_json::Value>> {
+        let attribute_value_id = Self::get_by_ids_or_error(ctx, component_id, input_socket_id)
+            .await?
+            .attribute_value_id;
+        let av = AttributeValue::get_by_id(ctx, attribute_value_id).await?;
+        let view = av.view(ctx).await?;
+        Ok(view)
     }
 
     /// Return true if the input socket already has an explicit connection (a user drew an edge)

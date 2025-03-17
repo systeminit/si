@@ -38,6 +38,7 @@ import {
 } from "@/store/components.store";
 import { LabelEntry, LabelList } from "@/api/sdf/dal/label_list";
 import { useViewsStore } from "@/store/views.store";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import {
   DiagramNodeDef,
   DiagramSocketDef,
@@ -50,6 +51,7 @@ import AttributesPanelCustomInputs from "./AttributesPanel/AttributesPanelCustom
 
 const componentsStore = useComponentsStore();
 const viewsStore = useViewsStore();
+const featureFlagStore = useFeatureFlagsStore();
 
 // PARENTS
 const parentOptionsList = computed(() => {
@@ -144,6 +146,7 @@ const currentParent = computed(() => {
 });
 
 // SOCKETS
+
 const treeFormItemFromSocket = (
   socket: DiagramSocketDef,
   component: DiagramNodeDef,
@@ -156,10 +159,11 @@ const treeFormItemFromSocket = (
   return {
     propDef: {
       id: headerId,
-      name: socket.label,
+      name: getSocketNameWithValue(socket.label, socket.value),
       icon: socket.nodeSide === "left" ? "input-socket" : "output-socket",
       kind: PropertyEditorPropKind.Object,
       widgetKind: { kind: "header" },
+      documentation: socket.connectionAnnotations.join(", "),
       isHidden: false,
       isReadonly: false,
     } as TreeFormProp,
@@ -167,16 +171,13 @@ const treeFormItemFromSocket = (
       {
         propDef: {
           id: combinedId,
-          name: socket.label,
+          name: getSocketNameWithValue(socket.label, socket.value),
           icon: "none",
           kind: PropertyEditorPropKind.String,
           widgetKind: {
             kind: "socketConnection",
             options: possiblePeers.map((peerSocket) => ({
-              label: peerSocket.componentName,
-              label2: peerSocket.label,
-              value: `${peerSocket.componentId}-${peerSocket.id}`,
-              componentId: peerSocket.componentId,
+              ...getSocketConnectionValue(peerSocket),
             })),
             isSingleArity:
               socket.nodeSide === "left" && socket.maxConnections === 1,
@@ -192,9 +193,7 @@ const treeFormItemFromSocket = (
           id: combinedId,
           propId: combinedId,
           value: existingPeers.map((peerSocket) => ({
-            label: peerSocket.componentName,
-            label2: peerSocket.label,
-            value: `${peerSocket.componentId}-${peerSocket.id}`,
+            ...getSocketConnectionValue(peerSocket),
             isInferred: peerSocket.edge.isInferred,
           })),
           canBeSetBySocket: false,
@@ -219,6 +218,38 @@ const treeFormItemFromSocket = (
     validation: null,
     propId: headerId,
   };
+};
+
+const getSocketConnectionValue = (peerSocket: SocketWithParent) => {
+  if (featureFlagStore.SOCKET_VALUE) {
+    const label =
+      `${peerSocket.schemaName}/${peerSocket.componentName}` || undefined;
+    const label2 = getSocketNameWithValue(peerSocket.label, peerSocket.value);
+    return {
+      label,
+      label2,
+      value: `${peerSocket.componentId}-${peerSocket.id}`,
+      componentId: peerSocket.componentId,
+    };
+  } else {
+    return {
+      label: peerSocket.componentName,
+      label2: peerSocket.label,
+      value: `${peerSocket.componentId}-${peerSocket.id}`,
+      componentId: peerSocket.componentId,
+    };
+  }
+};
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const getSocketNameWithValue = (label: string, value: any) => {
+  if (featureFlagStore.SOCKET_VALUE) {
+    if (value) {
+      return `${label}/${JSON.stringify(value)}`;
+    }
+    return label;
+  }
+  return label;
 };
 
 const sockets = computed(() => {

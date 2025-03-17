@@ -268,6 +268,7 @@ const getAncestorIds = (
 export type SocketWithParent = DiagramSocketDef & {
   componentName: string;
   componentId: ComponentId;
+  schemaName: string;
 };
 
 export type SocketWithParentAndEdge = SocketWithParent & {
@@ -378,6 +379,7 @@ export function getPossibleAndExistingPeerSockets(
             ...s,
             componentName: c.def.displayName,
             componentId: c.def.id,
+            schemaName: c.def.schemaName,
           })) ?? [],
     );
 

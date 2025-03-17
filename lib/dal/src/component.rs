@@ -8,6 +8,7 @@ use si_pkg::KeyOrIndex;
 use socket::{ComponentInputSocket, ComponentOutputSocket};
 use std::collections::{hash_map, HashMap, HashSet, VecDeque};
 use std::num::{ParseFloatError, ParseIntError};
+use std::str::FromStr;
 use std::sync::Arc;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -212,6 +213,8 @@ pub enum ComponentError {
     Transactions(#[from] TransactionsError),
     #[error("try lock error: {0}")]
     TryLock(#[from] TryLockError),
+    #[error("ulid decode error: {0}")]
+    Ulid(#[from] ulid::DecodeError),
     #[error("unexpected explicit source ({0}) and inferred source ({1}) for input socket match ({2:?}) with an arity of one")]
     UnexpectedExplicitAndInferredSources(ComponentId, ComponentId, ComponentInputSocket),
     #[error("validation error: {0}")]
@@ -3931,7 +3934,7 @@ impl Component {
     ) -> ComponentResult<DiagramComponentView> {
         let schema_variant = self.schema_variant(ctx).await?;
 
-        let sockets = match diagram_sockets.entry(schema_variant.id()) {
+        let schema_sockets = match diagram_sockets.entry(schema_variant.id()) {
             hash_map::Entry::Vacant(entry) => {
                 let (output_sockets, input_sockets) =
                     SchemaVariant::list_all_sockets(ctx, schema_variant.id()).await?;
@@ -3960,6 +3963,7 @@ impl Component {
                         node_side: DiagramSocketNodeSide::Left,
                         is_management: Some(false),
                         managed_schemas: None,
+                        value: None,
                     });
                 }
 
@@ -3985,6 +3989,7 @@ impl Component {
                         node_side: DiagramSocketNodeSide::Right,
                         is_management: Some(false),
                         managed_schemas: None,
+                        value: None,
                     });
                 }
                 entry.insert(sockets.to_owned());
@@ -3992,6 +3997,35 @@ impl Component {
             }
             hash_map::Entry::Occupied(entry) => entry.get().to_owned(),
         };
+        let mut sockets = Vec::new();
+        for mut comp_socket in schema_sockets.clone() {
+            if let Some(is_managed) = comp_socket.is_management {
+                if is_managed {
+                    continue;
+                }
+            }
+            let socket_value = match comp_socket.direction {
+                DiagramSocketDirection::Bidirectional => None,
+                DiagramSocketDirection::Input => {
+                    ComponentInputSocket::value_for_input_socket_id_for_component_id_opt(
+                        ctx,
+                        self.id(),
+                        InputSocketId::from_str(&comp_socket.id)?,
+                    )
+                    .await?
+                }
+                DiagramSocketDirection::Output => {
+                    ComponentOutputSocket::value_for_output_socket_id_for_component_id_opt(
+                        ctx,
+                        self.id(),
+                        OutputSocketId::from_str(&comp_socket.id)?,
+                    )
+                    .await?
+                }
+            };
+            comp_socket.value = socket_value;
+            sockets.push(comp_socket);
+        }
         let schema = SchemaVariant::schema_for_schema_variant_id(ctx, schema_variant.id()).await?;
         let schema_id = schema.id();
 
