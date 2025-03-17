@@ -1,0 +1,68 @@
+name: Publish to JSR
+
+on:
+  workflow_dispatch:
+    inputs:
+      library:
+        description: "Select the library to publish"
+        required: true
+        type: choice
+        options:
+          - remove-empty
+
+jobs:
+  check_branch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check branch is main
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "This workflow can only be run on the main branch."
+          exit 1
+  publish:
+    needs: check_branch
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.x
+
+      - name: Set library path
+        id: set-path
+        run: |
+          LIBRARY_PATH="lib/jsr-systeminit/${{ inputs.library }}"
+          if [ ! -d "${LIBRARY_PATH}" ]; then
+            echo "Library path ${LIBRARY_PATH} does not exist!"
+            exit 1
+          fi
+          echo "Publishing library from: ${LIBRARY_PATH}"
+          echo "library_path=${LIBRARY_PATH}" >> "${GITHUB_OUTPUT}"
+
+      - name: Run tests
+        working-directory: ${{ steps.set-path.outputs.library_path }}
+        run: deno test
+        continue-on-error: false
+
+      - name: Check formatting
+        working-directory: ${{ steps.set-path.outputs.library_path }}
+        run: deno fmt --check
+
+      - name: Lint code
+        working-directory: ${{ steps.set-path.outputs.library_path }}
+        run: deno lint
+
+      - name: Authenticate with JSR
+        run: deno add @jsr/npm
+
+      - name: Configure JSR token
+        env:
+          JSR_TOKEN: ${{ secrets.JSR_TOKEN }}
+        run: deno jsr login "$JSR_TOKEN"
+
+      - name: Publish to JSR (default tag)
+        working-directory: ${{ steps.set-path.outputs.library_path }}
+        run: deno jsr publish
