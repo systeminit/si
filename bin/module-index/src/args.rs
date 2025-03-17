@@ -59,6 +59,17 @@ pub(crate) struct Args {
     )]
     pub(crate) log_json: bool,
 
+    /// Enables support for emitting async runtime data to `tokio-console`.
+    ///
+    /// For more details, visit: <https://github.com/tokio-rs/console>.
+    #[arg(
+        long = "tokio-console",
+        default_value = "false",
+        env = "SI_TOKIO_CONSOLE",
+        hide_env_values = true
+    )]
+    pub(crate) tokio_console: bool,
+
     /// Override for the auth api url
     #[arg(long, env = "SI_AUTH_API_URL")]
     pub(crate) auth_api_url: Option<String>,

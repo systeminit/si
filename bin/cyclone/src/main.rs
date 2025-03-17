@@ -26,6 +26,7 @@ async fn main() -> Result<()> {
                     .then_some(ConsoleLogFormat::Json)
                     .unwrap_or_default(),
             )
+            .tokio_console(args.tokio_console)
             .service_name(BIN_NAME)
             .service_namespace("si")
             .log_env_var_prefix("SI")
