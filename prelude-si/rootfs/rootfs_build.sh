@@ -93,7 +93,7 @@ cyclone_args=(
   --watch-timeout 30
   --enable-ping
   --enable-watch
-  --enable-forwarder
+  --disable-forwarder
   --enable-process-gatherer
   -vvvv
 )

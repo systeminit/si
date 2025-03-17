@@ -1,6 +1,5 @@
 use crate::disk::FirecrackerDisk;
 use crate::errors::FirecrackerJailError;
-use crate::stream::UnixStreamForwarder;
 use cyclone_core::process;
 use std::fs::Permissions;
 use std::io::Error;
@@ -83,10 +82,10 @@ impl FirecrackerJail {
             )));
         }
 
-        UnixStreamForwarder::new(FirecrackerDisk::jail_dir_from_id(id), id)
-            .await?
-            .start()
-            .await?;
+        // UnixStreamForwarder::new(FirecrackerDisk::jail_dir_from_id(id), id)
+        //     .await?
+        //     .start()
+        //     .await?;
 
         Ok(())
     }
