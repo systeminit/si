@@ -217,6 +217,7 @@ const overrides = new Map<string, OverrideFn>([
     const groupIdSocket = createInputSocketFromProp(idProp);
 
     setAnnotationOnSocket(groupIdSocket, { tokens: ["SourceSecurityGroupId","GroupId"] });
+    setAnnotationOnSocket(groupIdSocket, { tokens: ["GroupId"] });
     variant.sockets.push(groupIdSocket);
 
     // Add Source SG Name to an input socket
@@ -256,6 +257,7 @@ const overrides = new Map<string, OverrideFn>([
     const groupIdSocket = createInputSocketFromProp(idProp);
 
     setAnnotationOnSocket(groupIdSocket, { tokens: ["DestinationSecurityGroupId","GroupId"] });
+    setAnnotationOnSocket(groupIdSocket, { tokens: ["GroupId"] });
     variant.sockets.push(groupIdSocket);
   }],
 
