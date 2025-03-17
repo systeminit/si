@@ -328,17 +328,46 @@ impl CachedModule {
             ORDER BY schema_id, created_at DESC
         ";
 
-        let maybe_row = ctx
-            .txns()
+        ctx.txns()
             .await?
             .pg()
             .query_opt(query, &[&schema_id])
-            .await?;
+            .await?
+            .map(TryInto::try_into)
+            .transpose()
+    }
 
-        Ok(match maybe_row {
-            Some(row) => Some(row.try_into()?),
-            None => None,
-        })
+    pub async fn find_latest_for_schema_name(
+        ctx: &DalContext,
+        schema_name: &str,
+    ) -> CachedModuleResult<Option<CachedModule>> {
+        let query = "
+            SELECT DISTINCT ON (schema_id)
+                id,
+                schema_id,
+                schema_name,
+                display_name,
+                category,
+                link,
+                color,
+                description,
+                component_type,
+                latest_hash,
+                created_at,
+                package_data,
+                scoped_to_user_pk
+            FROM cached_modules
+            WHERE schema_name = $1
+            ORDER BY schema_id, created_at DESC
+        ";
+
+        ctx.txns()
+            .await?
+            .pg()
+            .query_opt(query, &[&schema_name])
+            .await?
+            .map(TryInto::try_into)
+            .transpose()
     }
 
     pub async fn list_for_schema_id(
@@ -366,12 +395,7 @@ impl CachedModule {
         ";
 
         let rows = ctx.txns().await?.pg().query(query, &[&schema_id]).await?;
-
-        let mut result = Vec::with_capacity(rows.len());
-        for row in rows {
-            result.push(row.try_into()?);
-        }
-        Ok(result)
+        rows.into_iter().map(TryInto::try_into).try_collect()
     }
 
     pub async fn latest_modules(ctx: &DalContext) -> CachedModuleResult<Vec<CachedModule>> {
@@ -408,7 +432,7 @@ impl CachedModule {
 
     pub async fn get_user_scoped_modules(
         ctx: &DalContext,
-        user_pk: &UserPk,
+        user_pk: UserPk,
     ) -> CachedModuleResult<Vec<CachedModule>> {
         let query = "
             SELECT DISTINCT ON (schema_id)
@@ -430,7 +454,7 @@ impl CachedModule {
             ORDER BY schema_id, created_at DESC
         ";
 
-        let rows = ctx.txns().await?.pg().query(query, &[user_pk]).await?;
+        let rows = ctx.txns().await?.pg().query(query, &[&user_pk]).await?;
 
         let mut result = vec![];
 
