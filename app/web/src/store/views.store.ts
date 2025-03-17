@@ -1624,6 +1624,42 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
             },
           });
         },
+        async CONVERT_TO_VIEW(
+          sourceViewId: ViewId,
+          componentId: ComponentId,
+          containedComponentIds: ComponentId[],
+        ) {
+          const placeViewAt = this.groups[componentId];
+          const viewToHexagonGeo = {
+            x: placeViewAt?.x.toString(),
+            y: placeViewAt?.y.toString(),
+            radius: "250",
+          };
+          const stringGeometries: Record<ComponentId, StringGeometry> = {};
+          containedComponentIds.forEach((c) => {
+            const geo = this.components[c];
+            stringGeometries[c] = {
+              x: Math.round(geo?.x || 0).toString(),
+              y: Math.round(geo?.y || 0).toString(),
+              width: Math.round(geo?.width || 0).toString(),
+              height: Math.round(geo?.height || 0).toString(),
+            };
+          });
+          return new ApiRequest({
+            method: "post",
+            url: API_PREFIX.concat(["convert_to_view"]),
+            params: {
+              componentId,
+              sourceViewId,
+              containedComponentIds: stringGeometries,
+              placeViewAt: viewToHexagonGeo,
+            },
+            optimistic: () => {
+              this.setSelectedComponentId(null);
+              this.syncSelectionIntoUrl();
+            },
+          });
+        },
         async CREATE_VIEW_AND_MOVE(
           name: string,
           sourceViewId: ViewId,

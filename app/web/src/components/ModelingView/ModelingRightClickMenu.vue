@@ -41,7 +41,6 @@ import {
 } from "@si/vue-lib/design-system";
 import { storeToRefs } from "pinia";
 import { computed, ref } from "vue";
-// import plur from "plur";
 import { RouteLocationRaw } from "vue-router";
 import { IRect } from "konva/lib/types";
 import { ComponentType } from "@/api/sdf/dal/schema";
@@ -64,6 +63,7 @@ import {
   DiagramNodeDef,
   DiagramViewData,
 } from "../ModelingDiagram/diagram_types";
+import { FindChildrenByBoundingBox } from "../ModelingDiagram/utils/childrenByBoundingBox";
 
 const contextMenuRef = ref<InstanceType<typeof DropdownMenu>>();
 
@@ -211,6 +211,23 @@ const newView = () => {
   modalRef.value?.open();
 };
 
+const convertToView = async () => {
+  if (!viewsStore.selectedViewId) return;
+  if (!viewsStore.selectedComponent) return;
+  const children = FindChildrenByBoundingBox(
+    viewsStore.selectedComponent as DiagramNodeData | DiagramGroupData,
+    true,
+  );
+  const child_ids = children.map((c) => c.def.id);
+  if (viewsStore.selectedComponentId) {
+    await viewsStore.CONVERT_TO_VIEW(
+      viewsStore.selectedViewId,
+      viewsStore.selectedComponentId,
+      child_ids,
+    );
+  }
+};
+
 const create = async () => {
   if (!viewsStore.selectedViewId) return;
   if (!viewName.value) {
@@ -275,6 +292,13 @@ const rightClickMenuItems = computed(() => {
         submenuItems: copyToSubmenuItems,
       });
     }
+  }
+  if (featureFlagsStore.CONVERT_TO_VIEW) {
+    items.push({
+      label: "Convert to View",
+      icon: "create",
+      onSelect: convertToView,
+    });
   }
   items.push({
     label: "Remove",

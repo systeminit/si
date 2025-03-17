@@ -17,6 +17,7 @@ const FLAG_MAPPING = {
   DIAGRAM_DRAG_LAYER: "diagram-drag-layer",
   SOCKET_VALUE: "socket-value",
   FLOATING_CONNECTION_MENU: "floating-connection-menu",
+  CONVERT_TO_VIEW: "convert-to-view",
 };
 
 const WORKSPACE_FLAG_MAPPING = {
