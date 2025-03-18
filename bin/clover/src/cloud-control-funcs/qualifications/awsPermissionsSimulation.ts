@@ -15,6 +15,13 @@ async function main(component: Input): Promise<Output> {
 
   const identity = JSON.parse(identityChild.stdout);
   const userArn = convertAssumedRoleArnToRoleArn(identity.Arn);
+  
+  if (userArn.endsWith("root")) {
+    return {
+      result: "success",
+      message: `${userArn} is a root account!`,
+    };
+  }
 
   const permsMap = JSON.parse(_.get(component, [
     "domain",
