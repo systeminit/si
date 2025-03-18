@@ -36,7 +36,7 @@ button.
 Click `AWS Credential` from the AWS category of the Asset pallete, and drop it
 on the Diagram canvas. This creates a new
 [credential](../reference/vocabulary#credential)
-[ Component](../reference/vocabulary#Component).
+[ Component](../reference/vocabulary#component).
 
 `Resize` the Component until it fills most of the visible canvas by dragging the
 lower right corner of the frame.
