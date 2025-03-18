@@ -1,5 +1,6 @@
 <template>
   <TreeNode
+    ref="treeNodeRef"
     :classes="
       clsx(
         themeClasses('text-shade-100', 'text-shade-0 bg-neutral-800'),
@@ -49,7 +50,7 @@
 </template>
 
 <script lang="ts" setup>
-import { PropType, computed } from "vue";
+import { PropType, computed, ref, watch } from "vue";
 import { storeToRefs } from "pinia";
 import { TreeNode, Icon, themeClasses } from "@si/vue-lib/design-system";
 import clsx from "clsx";
@@ -92,4 +93,21 @@ const onClick = (e: MouseEvent) => {
     }
   } else assetStore.setSchemaVariantSelection(props.a.schemaVariantId);
 };
+
+const treeNodeRef = ref<InstanceType<typeof TreeNode>>();
+
+const scrollIntoView = () => {
+  if (treeNodeRef.value) {
+    treeNodeRef.value.scrollIntoView();
+  }
+};
+
+watch(
+  () => isSelected.value,
+  () => {
+    if (isSelected.value) {
+      scrollIntoView();
+    }
+  },
+);
 </script>
