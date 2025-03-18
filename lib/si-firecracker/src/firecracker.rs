@@ -40,7 +40,7 @@ impl FirecrackerJail {
 
     pub async fn build(id: u32) -> Result<Self> {
         let mut cmd = Command::new("/usr/bin/jailer");
-            cmd.arg("--cgroup-version")
+        cmd.arg("--cgroup-version")
             .arg("2")
             .arg("--parent-cgroup")
             .arg("veritech/firecracker")
