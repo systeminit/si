@@ -282,6 +282,10 @@ pub struct LocalUdsInstanceSpec {
     /// Sets the timeout for connecting to firecracker
     #[builder(setter(into), default = "10")]
     connect_timeout: u64,
+
+    /// Sets whether or not the firecracker setup scripts will be created.
+    #[builder(default = "true")]
+    create_firecracker_setup_scripts: bool,
 }
 
 #[async_trait]
@@ -749,7 +753,7 @@ impl LocalFirecrackerRuntime {
     }
 
     async fn setup_firecracker(spec: &LocalUdsInstanceSpec) -> Result<()> {
-        Ok(FirecrackerJail::setup(spec.pool_size).await?)
+        Ok(FirecrackerJail::setup(spec.pool_size, spec.create_firecracker_setup_scripts).await?)
     }
 }
 

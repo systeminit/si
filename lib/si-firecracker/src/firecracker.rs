@@ -1,5 +1,3 @@
-use crate::disk::FirecrackerDisk;
-use crate::errors::FirecrackerJailError;
 use cyclone_core::process;
 use std::fs::Permissions;
 use std::io::Error;
@@ -11,6 +9,10 @@ use std::result;
 use tokio::fs;
 use tokio::process::Child;
 use tokio::process::Command;
+use tracing::info;
+
+use crate::disk::FirecrackerDisk;
+use crate::errors::FirecrackerJailError;
 
 type Result<T> = result::Result<T, FirecrackerJailError>;
 
@@ -84,6 +86,7 @@ impl FirecrackerJail {
             )));
         }
 
+        // TODO(nick,john,fletcher): delete or restore this once verideath investigation is done.
         // UnixStreamForwarder::new(FirecrackerDisk::jail_dir_from_id(id), id)
         //     .await?
         //     .start()
@@ -92,8 +95,30 @@ impl FirecrackerJail {
         Ok(())
     }
 
-    pub async fn setup(pool_size: u32) -> Result<()> {
-        Self::create_scripts().await?;
+    pub async fn setup(pool_size: u32, create_scripts: bool) -> Result<()> {
+        if create_scripts {
+            info!("creating scripts...");
+            Self::create_scripts().await?;
+        } else {
+            info!("skipping creation of scripts and checking that they exist...");
+
+            // This is normally not a good idea. Just try to use the file and don't perform
+            // point-in-time file existence checks. HOWEVER, this is a weird case where we are
+            // explicitly not creating our own scripts, so performing a safety gut check (the foil
+            // to "create these scripts") will help disambiguate the error vs. running the command
+            // to execute the script and then not having a clear error for what's going on.
+            let mut missing_scripts = Vec::new();
+            for (path, _) in FIRECRACKER_SCRIPTS {
+                if !std::fs::exists(path)? {
+                    missing_scripts.push(path.to_string());
+                }
+            }
+            if !missing_scripts.is_empty() {
+                return Err(FirecrackerJailError::SetupScriptsDoNotExist(
+                    missing_scripts,
+                ));
+            }
+        }
 
         // we want to work with a clean slate, but we don't necessarily care about failures here
         for id in 0..pool_size + 1 {
@@ -110,6 +135,11 @@ impl FirecrackerJail {
             .await?;
 
         if !output.status.success() {
+            // FIXME(nick): came by and read this... it looks like we wanted this error enum to
+            // encapsulate all kinds of setup errors into one. We should instead create a new
+            // error enum with its own variants and make this a formal variant. Why? We may need
+            // to provide more context and/or capture stdout here. Many script errors end with
+            // empty stderr.
             return Err(FirecrackerJailError::Setup(Error::new(
                 ErrorKind::Other,
                 String::from_utf8(output.stderr)
