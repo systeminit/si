@@ -459,6 +459,17 @@ const overrides = new Map<string, OverrideFn>([
 
     setAnnotationOnSocket(socket, { tokens: ["Id"] });
   }],
+  ["AWS::ElasticLoadBalancingV2::LoadBalancer", (spec: ExpandedPkgSpec) => {
+    const variant = spec.schemas[0].variants[0];
+
+    // Add annotations to Security Groups input socket
+    const securityGroupsSocket = variant.sockets.find(
+      (s: ExpandedSocketSpec) => s.name === "Security Groups" && s.data.kind === "input",
+    );
+    if (!securityGroupsSocket) return;
+
+    setAnnotationOnSocket(securityGroupsSocket, { tokens: ["GroupId"] });
+  }],
 ]);
 
 function addSecretProp(
