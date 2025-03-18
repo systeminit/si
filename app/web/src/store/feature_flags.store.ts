@@ -15,6 +15,7 @@ const FLAG_MAPPING = {
   AUTOCONNECT: "autoconnect-component-input-sockets",
   PRIVATE_SCOPED_MODULES: "private-scoped-modules",
   DIAGRAM_DRAG_LAYER: "diagram-drag-layer",
+  SOCKET_VALUE: "socket-value",
 };
 
 const WORKSPACE_FLAG_MAPPING = {

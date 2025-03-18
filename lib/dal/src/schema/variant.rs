@@ -1682,6 +1682,7 @@ impl SchemaVariant {
             node_side: DiagramSocketNodeSide::Left,
             is_management: Some(true),
             managed_schemas: None,
+            value: None,
         };
 
         // You only have an "output" if you have management prototypes
@@ -1695,6 +1696,7 @@ impl SchemaVariant {
             node_side: DiagramSocketNodeSide::Right,
             is_management: Some(true),
             managed_schemas: Some(managed_schemas.into_iter().map(Into::into).collect()),
+            value: None,
         });
 
         Ok((management_input_socket, management_output_socket))

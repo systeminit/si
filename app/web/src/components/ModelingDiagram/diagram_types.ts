@@ -414,7 +414,9 @@ export type DiagramSocketDef = {
   managedSchemas?: string[];
   /** schema id, for management socket compatibility */
   schemaId?: string;
-
+  /** if there's a value propagated */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  value?: any;
   // color
   // shape
 };
