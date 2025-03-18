@@ -16,6 +16,7 @@ const FLAG_MAPPING = {
   PRIVATE_SCOPED_MODULES: "private-scoped-modules",
   DIAGRAM_DRAG_LAYER: "diagram-drag-layer",
   SOCKET_VALUE: "socket-value",
+  FLOATING_CONNECTION_MENU: "floating-connection-menu",
 };
 
 const WORKSPACE_FLAG_MAPPING = {

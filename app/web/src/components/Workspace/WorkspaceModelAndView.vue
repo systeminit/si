@@ -2,11 +2,11 @@
 <template>
   <!-- Left Panel - views drawer and outline + asset palette -->
   <section
-    class="absolute flex flex-row h-full"
     :style="{
       left: drawerLeftPos + 'px',
       transition: 'left 0.15s ease-out',
     }"
+    class="absolute flex flex-row h-full"
   >
     <LeftPanelDrawer
       :changeSetId="changeSetsStore.selectedChangeSetId"
@@ -24,8 +24,8 @@
       <template #subpanel1>
         <DiagramOutline
           :actionsAreRunning="actionsAreRunning"
-          :toggleDrawer="toggleDrawer"
           :leftDrawerOpen="presenceStore.leftDrawerOpen"
+          :toggleDrawer="toggleDrawer"
           @right-click-item="onOutlineRightClick"
         />
       </template>
@@ -68,9 +68,9 @@
     <component
       :is="ResizablePanel"
       ref="rightResizablePanelRef"
-      class="h-full"
       :defaultSize="320"
       :minSize="320"
+      class="h-full"
       rememberSizeKey="details-panel"
       side="right"
       @sizeSet="rightPanelSize"
@@ -115,6 +115,7 @@
   <EraseSelectionModal />
   <TemplateSelectionModal />
   <CommandModal />
+  <FloatingConnectionMenu v-if="featureFlagsStore.FLOATING_CONNECTION_MENU" />
 </template>
 
 <script lang="ts" setup>
@@ -139,6 +140,7 @@ import { useRouterStore } from "@/store/router.store";
 import { useAssetStore } from "@/store/asset.store";
 import { useFuncStore } from "@/store/func/funcs.store";
 import { useAuthStore } from "@/store/auth.store";
+import FloatingConnectionMenu from "@/components/ModelingView/FloatingConnectionMenu.vue";
 import LeftPanelDrawer from "../LeftPanelDrawer.vue";
 import ModelingDiagram from "../ModelingDiagram/ModelingDiagram.vue";
 import AssetPalette from "../AssetPalette.vue";

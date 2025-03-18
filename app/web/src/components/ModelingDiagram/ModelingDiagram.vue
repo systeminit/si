@@ -95,13 +95,13 @@ overflow hidden */
             :connectedEdges="connectedEdgesByElementKey[group.uniqueKey]"
             :debug="enableDebugMode"
             :group="group"
+            :hideDetails="hideDiagramDetails"
             :isHovered="elementIsHovered(group)"
             :isSelected="elementIsSelected(group)"
+            :occlusionRect="occlusionRect"
             :qualificationStatus="
               qualificationStore.qualificationStatusForComponentId(group.def.id)
             "
-            :hideDetails="hideDiagramDetails"
-            :occlusionRect="occlusionRect"
             @rename="
               (f) => {
                 renameOnDiagram(group, f);
@@ -113,15 +113,15 @@ overflow hidden */
             :key="node.uniqueKey"
             :connectedEdges="connectedEdgesByElementKey[node.uniqueKey]"
             :debug="enableDebugMode"
+            :hideDetails="hideDiagramDetails"
             :isHovered="elementIsHovered(node)"
             :isLoading="statusStore.componentIsLoading(node.def.id)"
             :isSelected="elementIsSelected(node)"
             :node="node"
+            :occlusionRect="occlusionRect"
             :qualificationStatus="
               qualificationStore.qualificationStatusForComponentId(node.def.id)
             "
-            :hideDetails="hideDiagramDetails"
-            :occlusionRect="occlusionRect"
             @rename="
               (f) => {
                 renameOnDiagram(node, f);
@@ -132,12 +132,12 @@ overflow hidden */
             v-for="view in staticRenderViews"
             :key="view.def.id"
             ref="diagramViewRefs"
+            :debug="enableDebugMode"
+            :hideDetails="hideDiagramDetails"
             :isHovered="elementIsHovered(view)"
             :isSelected="elementIsSelected(view)"
-            :view="view.def"
-            :hideDetails="hideDiagramDetails"
             :occlusionRect="occlusionRect"
-            :debug="enableDebugMode"
+            :view="view.def"
           />
           <DiagramEdge
             v-for="edge in viewsStore.edges"
@@ -225,13 +225,13 @@ overflow hidden */
             :connectedEdges="connectedEdgesByElementKey[group.uniqueKey]"
             :debug="enableDebugMode"
             :group="group"
+            :hideDetails="hideDiagramDetails"
             :isHovered="elementIsHovered(group)"
             :isSelected="elementIsSelected(group)"
+            :occlusionRect="occlusionRect"
             :qualificationStatus="
               qualificationStore.qualificationStatusForComponentId(group.def.id)
             "
-            :hideDetails="hideDiagramDetails"
-            :occlusionRect="occlusionRect"
             @rename="
               (f) => {
                 renameOnDiagram(group, f);
@@ -243,15 +243,15 @@ overflow hidden */
             :key="node.uniqueKey"
             :connectedEdges="connectedEdgesByElementKey[node.uniqueKey]"
             :debug="enableDebugMode"
+            :hideDetails="hideDiagramDetails"
             :isHovered="elementIsHovered(node)"
             :isLoading="statusStore.componentIsLoading(node.def.id)"
             :isSelected="elementIsSelected(node)"
             :node="node"
+            :occlusionRect="occlusionRect"
             :qualificationStatus="
               qualificationStore.qualificationStatusForComponentId(node.def.id)
             "
-            :hideDetails="hideDiagramDetails"
-            :occlusionRect="occlusionRect"
             @rename="
               (f) => {
                 renameOnDiagram(node, f);
@@ -262,12 +262,12 @@ overflow hidden */
             v-for="view in dragRenderViews"
             :key="view.def.id"
             ref="diagramViewRefs"
+            :debug="enableDebugMode"
+            :hideDetails="hideDiagramDetails"
             :isHovered="elementIsHovered(view)"
             :isSelected="elementIsSelected(view)"
-            :view="view.def"
-            :hideDetails="hideDiagramDetails"
             :occlusionRect="occlusionRect"
-            :debug="enableDebugMode"
+            :view="view.def"
           />
           <DiagramGroupOverlay
             v-for="group in dragRenderGroups"
@@ -998,6 +998,25 @@ async function onKeyDown(e: KeyboardEvent) {
   ) {
     e.preventDefault();
     modelingEventBus.emit("templateFromSelection");
+  }
+  if (
+    featureFlagsStore.FLOATING_CONNECTION_MENU &&
+    !props.readOnly &&
+    !(e.metaKey || e.ctrlKey) &&
+    e.key === "c"
+  ) {
+    e.preventDefault();
+    componentsStore.eventBus.emit("openConnectionsMenu", {
+      aDirection: undefined,
+      A: {
+        componentId: viewsStore.selectedComponentId ?? undefined,
+        socketId: undefined,
+      },
+      B: {
+        componentId: undefined,
+        socketId: undefined,
+      },
+    });
   }
 }
 

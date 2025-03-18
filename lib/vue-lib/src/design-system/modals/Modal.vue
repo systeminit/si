@@ -58,6 +58,8 @@
                     '4xl': 'max-w-4xl',
                     '4wxl': 'w-[56rem]',
                     '6xl': 'max-w-6xl',
+                    '7xl': 'max-w-7xl',
+                    max: 'max-w-[75vw]',
                   }[size],
                 )
               "
@@ -84,21 +86,21 @@
                   class="py-3 flex flex-row justify-between gap-sm"
                 >
                   <VButton
-                    tone="destructive"
                     buttonRank="tertiary"
                     icon="x"
                     label="Cancel"
-                    variant="ghost"
                     size="xs"
+                    tone="destructive"
+                    variant="ghost"
                     @click="close"
                   />
                   <VButton
                     :disabled="disableSave"
-                    tone="success"
-                    icon="check"
                     :label="saveLabel"
-                    size="xs"
                     class="grow"
+                    icon="check"
+                    size="xs"
+                    tone="success"
                     @click="emit('save')"
                   />
                 </div>
@@ -111,13 +113,13 @@
                 "
               >
                 <DialogTitle
-                  as="p"
                   :class="
                     clsx(
                       'font-medium line-clamp-5 pb-[1px]',
                       capitalizeTitle && 'capitalize',
                     )
                   "
+                  as="p"
                 >
                   <slot name="title">{{ title }}</slot>
                 </DialogTitle>
@@ -167,7 +169,7 @@ const props = defineProps({
   beginOpen: { type: Boolean, default: false },
   size: {
     type: String as PropType<
-      "sm" | "md" | "lg" | "xl" | "2xl" | "4xl" | "4wxl" | "6xl"
+      "sm" | "md" | "lg" | "xl" | "2xl" | "4xl" | "4wxl" | "6xl" | "7xl" | "max"
     >,
     default: "md",
   },

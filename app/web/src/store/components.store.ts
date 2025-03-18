@@ -164,6 +164,19 @@ export type APIComponentGeometry = {
   height?: string;
 };
 
+export type ConnectionMenuStateEntry = {
+  componentId: ComponentId;
+  socketId: SocketId;
+};
+
+export type ConnectionDirection = "output" | "input";
+
+export type ConnectionMenuData = {
+  aDirection: ConnectionDirection | undefined;
+  A: Partial<ConnectionMenuStateEntry>;
+  B: Partial<ConnectionMenuStateEntry>;
+};
+
 type EventBusEvents = {
   deleteSelection: void;
   restoreSelection: void;
@@ -177,6 +190,7 @@ type EventBusEvents = {
   setSelection: ComponentId[];
   rename: ComponentId;
   renameView: ViewId;
+  openConnectionsMenu: ConnectionMenuData;
 };
 
 export const DEFAULT_COLLAPSED_SIZE = { height: 100, width: 300 };
