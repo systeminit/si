@@ -70,10 +70,16 @@
         "
         label="Add to Diagram"
         icon="plus"
-        @click="(e: MouseEvent) => {
-          if (viewsStore.selectedViewId === view.id && !viewsStore.viewNodes[view.id]) return;
-          onAdd(view.id, e);
-        }"
+        @click="
+          (e: MouseEvent) => {
+            if (
+              viewsStore.selectedViewId === view.id &&
+              !viewsStore.viewNodes[view.id]
+            )
+              return;
+            onAdd(view.id, e);
+          }
+        "
       />
       <DropdownMenuItem
         label="Open View in Diagram"
@@ -100,7 +106,6 @@
         :onSelect="() => removeFromView()"
       />
       <DropdownMenuItem
-        v-else-if="featureFlagsStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL"
         label="Approval Requirements"
         icon="bullet-list"
         :onSelect="() => displayApprovalRequirements()"
@@ -175,14 +180,12 @@ import { useToast } from "vue-toastification";
 import { ViewDescription } from "@/api/sdf/dal/views";
 import { useViewsStore } from "@/store/views.store";
 import NodeSkeleton from "@/components/NodeSkeleton.vue";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import DetailsPanelMenuIcon from "./DetailsPanelMenuIcon.vue";
 import ComponentCard from "./ComponentCard.vue";
 import { DiagramViewData } from "./ModelingDiagram/diagram_types";
 
 const toast = useToast();
 const viewsStore = useViewsStore();
-const featureFlagsStore = useFeatureFlagsStore();
 
 const props = defineProps<{
   selected?: boolean;

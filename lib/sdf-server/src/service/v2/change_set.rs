@@ -17,12 +17,9 @@ use thiserror::Error;
 
 use crate::{middleware::WorkspacePermissionLayer, service::ApiError, AppState};
 
-mod apply;
-mod approve;
 mod cancel_approval_request;
 mod force_apply;
 mod list;
-mod reject;
 mod rename;
 mod reopen;
 mod request_approval;
@@ -124,24 +121,9 @@ pub fn change_sets_routes() -> Router<AppState> {
 
 pub fn change_set_routes(state: AppState) -> Router<AppState> {
     Router::new()
-        .route("/apply", post(apply::apply))
         .route(
             "/request_approval",
             post(request_approval::request_approval),
-        )
-        .route(
-            "/approve",
-            post(approve::approve).layer(WorkspacePermissionLayer::new(
-                state.clone(),
-                permissions::Permission::Approve,
-            )),
-        )
-        .route(
-            "/reject",
-            post(reject::reject).layer(WorkspacePermissionLayer::new(
-                state.clone(),
-                permissions::Permission::Approve,
-            )),
         )
         .route(
             "/cancel_approval_request",

@@ -21,7 +21,6 @@ import { useRealtimeStore } from "./realtime/realtime.store";
 import { useRouterStore } from "./router.store";
 import handleStoreError from "./errors";
 import { useStatusStore } from "./status.store";
-import { useFeatureFlagsStore } from "./feature_flags.store";
 
 const toast = useToast();
 
@@ -79,7 +78,6 @@ export function useChangeSetsStore() {
   const workspacePk = workspacesStore.selectedWorkspacePk;
 
   const authStore = useAuthStore();
-  const featureFlagsStore = useFeatureFlagsStore();
   const realtimeStore = useRealtimeStore();
 
   const BASE_API = [
@@ -193,16 +191,13 @@ export function useChangeSetsStore() {
         },
 
         async FETCH_APPROVAL_STATUS(changeSetId: ChangeSetId) {
-          if (featureFlagsStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL) {
-            return new ApiRequest<ApprovalData>({
-              method: "get",
-              url: BASE_API.concat([{ changeSetId }, "approval_status"]),
-              onSuccess: (response) => {
-                this.changeSetsApprovalData[changeSetId] = response;
-              },
-            });
-          }
-          return Promise.resolve();
+          return new ApiRequest<ApprovalData>({
+            method: "get",
+            url: BASE_API.concat([{ changeSetId }, "approval_status"]),
+            onSuccess: (response) => {
+              this.changeSetsApprovalData[changeSetId] = response;
+            },
+          });
         },
 
         async FETCH_CHANGE_SETS() {
@@ -294,40 +289,26 @@ export function useChangeSetsStore() {
 
           if (!changeSetId) throw new Error("Select a change set");
 
-          if (featureFlagsStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL) {
-            return new ApiRequest({
-              method: "post",
-              url: BASE_API.concat([{ changeSetId }, "approve_v2"]),
-              params: {
-                status: "Approved",
-              },
-            });
-          } else {
-            return new ApiRequest({
-              method: "post",
-              url: BASE_API.concat([{ changeSetId }, "approve"]),
-            });
-          }
+          return new ApiRequest({
+            method: "post",
+            url: BASE_API.concat([{ changeSetId }, "approve_v2"]),
+            params: {
+              status: "Approved",
+            },
+          });
         },
         async REJECT_CHANGE_SET_APPLY(id?: ChangeSetId) {
           const changeSetId = id || this.selectedChangeSetId;
 
           if (!changeSetId) throw new Error("Select a change set");
 
-          if (featureFlagsStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL) {
-            return new ApiRequest({
-              method: "post",
-              url: BASE_API.concat([{ changeSetId }, "approve_v2"]),
-              params: {
-                status: "Rejected",
-              },
-            });
-          } else {
-            return new ApiRequest({
-              method: "post",
-              url: BASE_API.concat([{ changeSetId }, "reject"]),
-            });
-          }
+          return new ApiRequest({
+            method: "post",
+            url: BASE_API.concat([{ changeSetId }, "approve_v2"]),
+            params: {
+              status: "Rejected",
+            },
+          });
         },
         async CANCEL_APPROVAL_REQUEST() {
           if (!this.selectedChangeSet) throw new Error("Select a change set");
@@ -352,14 +333,9 @@ export function useChangeSetsStore() {
           if (!this.selectedChangeSet) throw new Error("Select a change set");
           const selectedChangeSetId = this.selectedChangeSetId;
 
-          let url = BASE_API.concat([{ selectedChangeSetId }, "apply"]);
-          if (featureFlagsStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL) {
-            url = BASE_API.concat([{ selectedChangeSetId }, "apply_v2"]);
-          }
-
           return new ApiRequest({
             method: "post",
-            url,
+            url: BASE_API.concat([{ selectedChangeSetId }, "apply_v2"]),
             optimistic: () => {
               toast({
                 component: IncomingChangesMerging,

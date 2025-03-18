@@ -34,32 +34,7 @@
           There are approvals that must be met before the change set can be
           applied.
         </template>
-        <template
-          v-else-if="
-            !fineGrainedAccessControl &&
-            (mode === 'approved' || mode === 'rejected')
-          "
-        >
-          {{ requesterIsYou ? "Your" : "The" }} request to
-          <span class="font-bold">Apply</span> change set
-          <span class="font-bold">{{ changeSetName }}</span> was {{ mode }} by
-          <span class="font-bold">{{ approverEmail + " " }}</span>
-
-          <!-- {{ modalData.date.getTime() === new Date().getTime() ? "" : "on" }} -->
-          <span class="font-bold">
-            <Timestamp :date="modalData.date" showTimeIfToday size="extended" />
-          </span>
-          <div
-            v-if="!requesterIsYou && !userIsApprover && mode === 'approved'"
-            class="pt-xs"
-          >
-            <span class="font-bold">{{ requesterEmail }}</span> requested this
-            <span class="font-bold">Apply</span> and can merge this change set.
-            You can switch to a different change set using the dropdown at the
-            top of the screen.
-          </div>
-        </template>
-        <template v-else-if="fineGrainedAccessControl && mode === 'approved'">
+        <template v-else-if="mode === 'approved'">
           <p>
             {{ requesterIsYou ? "Your" : "The" }} request to
             <span class="font-bold">Apply</span> change set
@@ -75,18 +50,12 @@
 
     <div
       :class="
-        clsx(
-          'flex flex-row gap-xs flex-1 overflow-hidden',
-          fineGrainedAccessControl ? 'place-content-evenly' : 'justify-center',
-        )
+        clsx('flex flex-row gap-xs flex-1 overflow-hidden place-content-evenly')
       "
     >
       <div
         :class="
-          clsx(
-            'flex flex-col gap-xs overflow-hidden text-center',
-            fineGrainedAccessControl && 'basis-1/2',
-          )
+          clsx('flex flex-col gap-xs overflow-hidden text-center basis-1/2')
         "
       >
         <RouterLink
@@ -109,16 +78,10 @@
     <!-- MAIN SECTION -->
     <div
       :class="
-        clsx(
-          'flex flex-row gap-xs flex-1 overflow-hidden',
-          fineGrainedAccessControl ? 'place-content-evenly' : 'justify-center',
-        )
+        clsx('flex flex-row gap-xs flex-1 overflow-hidden place-content-evenly')
       "
     >
-      <div
-        v-if="fineGrainedAccessControl"
-        class="flex flex-col basis-1/2 text-sm gap-xs overflow-y-auto"
-      >
+      <div class="flex flex-col basis-1/2 text-sm gap-xs overflow-y-auto">
         <div
           v-for="group in requirementGroups"
           :key="group.key"
@@ -187,15 +150,8 @@
           </ul>
         </div>
       </div>
-      <div
-        :class="
-          clsx(
-            'flex flex-col gap-xs overflow-hidden',
-            fineGrainedAccessControl && 'basis-1/2',
-          )
-        "
-      >
-        <div v-if="!fineGrainedAccessControl" class="text-sm">
+      <div :class="clsx('flex flex-col gap-xs overflow-hidden basis-1/2')">
+        <div class="text-sm">
           These actions will be applied to the real world:
         </div>
         <div
@@ -215,22 +171,16 @@
         icon="x"
         @click="withdraw"
       />
-      <template
-        v-if="
-          fineGrainedAccessControl
-            ? userIsApprover
-            : changeSetsStore.currentUserIsDefaultApprover
-        "
-      >
+      <template v-if="userIsApprover">
         <VButton
-          :disabled="fineGrainedAccessControl ? iRejected : mode === 'rejected'"
+          :disabled="iRejected"
           label="Reject Request"
           tone="destructive"
           icon="thumbs-down"
           @click="rejectHandler"
         />
         <VButton
-          :disabled="fineGrainedAccessControl ? iApproved : mode === 'approved'"
+          :disabled="iApproved"
           label="Approve Request"
           tone="success"
           icon="thumbs-up"
@@ -276,7 +226,6 @@ import {
 } from "@/store/change_sets.store";
 import { useAuthStore, WorkspaceUser } from "@/store/auth.store";
 import { ChangeSetStatus, ChangeSet } from "@/api/sdf/dal/change_set";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { useViewsStore } from "@/store/views.store";
 import ActionsList from "./Actions/ActionsList.vue";
 
@@ -288,15 +237,10 @@ export type InsetApprovalModalMode =
 
 const authStore = useAuthStore();
 const changeSetsStore = useChangeSetsStore();
-const featureFlagsStore = useFeatureFlagsStore();
 const viewStore = useViewsStore();
 
 const applyingChangeSet = ref(false);
 const changeSetName = computed(() => changeSetsStore.selectedChangeSet?.name);
-
-const fineGrainedAccessControl = computed(
-  () => featureFlagsStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL,
-);
 
 const props = defineProps<{
   approvalData: ApprovalData | undefined;
@@ -392,9 +336,7 @@ const requirementGroups = computed(() => {
 });
 
 const satisfied = computed(
-  () =>
-    fineGrainedAccessControl.value &&
-    !props.approvalData?.requirements.some((r) => r.isSatisfied === false),
+  () => !props.approvalData?.requirements.some((r) => r.isSatisfied === false),
 );
 
 const myVote = computed(() =>

@@ -46,11 +46,7 @@
     "
   >
     <InsetApprovalModal
-      v-if="
-        changeSetsStore.selectedChangeSet &&
-        (approvalData ||
-          featureFlagsStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL === false)
-      "
+      v-if="changeSetsStore.selectedChangeSet && approvalData"
       :approvalData="approvalData"
       :changeSet="changeSetsStore.selectedChangeSet"
     />
@@ -85,7 +81,7 @@
           v-else-if="selectedComponent"
           :key="selectedComponent.def.id"
           :component="selectedComponent"
-          :menuSelected="contextMenuRef?.isOpen as boolean ?? false"
+          :menuSelected="(contextMenuRef?.isOpen as boolean) ?? false"
           @openMenu="onThreeDotMenuClick"
         />
         <MultiSelectDetailsPanel
@@ -95,7 +91,6 @@
         />
         <ViewDetailsPanel
           v-else-if="
-            featureFlagsStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL &&
             (selectedComponentIds.length === 1 || selectedViewDetails) &&
             selectedView &&
             selectedViewComponent
@@ -133,9 +128,9 @@ import { usePresenceStore } from "@/store/presence.store";
 import { useSecretsStore } from "@/store/secrets.store";
 import EraseSelectionModal from "@/components/ModelingView/EraseSelectionModal.vue";
 import { useStatusStore } from "@/store/status.store";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import { useViewsStore, VIEW_DEFAULTS } from "@/store/views.store";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { ComponentType } from "@/api/sdf/dal/schema";
 import { useRouterStore } from "@/store/router.store";
 import { useAssetStore } from "@/store/asset.store";
@@ -173,8 +168,8 @@ const assetStore = useAssetStore();
 const _secretsStore = useSecretsStore(); // adding this so we fetch once
 const statusStore = useStatusStore();
 const funcStore = useFuncStore();
-const featureFlagsStore = useFeatureFlagsStore();
 const authStore = useAuthStore();
+const featureFlagsStore = useFeatureFlagsStore();
 
 const showInsetModal = computed(
   () => changeSetsStore.selectedChangeSet?.status !== ChangeSetStatus.Open,
@@ -273,14 +268,12 @@ onBeforeMount(async () => {
   actionsStore.LOAD_ACTION_HISTORY();
   statusStore.FETCH_DVU_ROOTS();
 
-  if (featureFlagsStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL) {
-    changeSetsStore.FETCH_APPROVAL_STATUS(
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      changeSetsStore.selectedChangeSetId!,
-    );
+  changeSetsStore.FETCH_APPROVAL_STATUS(
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    authStore.LIST_WORKSPACE_USERS(changeSetsStore.selectedWorkspacePk!);
-  }
+    changeSetsStore.selectedChangeSetId!,
+  );
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  authStore.LIST_WORKSPACE_USERS(changeSetsStore.selectedWorkspacePk!);
 });
 
 onMounted(async () => {
