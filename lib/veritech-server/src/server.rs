@@ -149,7 +149,7 @@ impl Server {
 
                 let inner_future = Self::build_app(
                     metadata.clone(),
-                    config.concurrency_limit(),
+                    config.veritech_requests_concurrency_limit(),
                     cyclone_pool,
                     Arc::new(decryption_key),
                     config.cyclone_client_execution_timeout(),

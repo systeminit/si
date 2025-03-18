@@ -98,6 +98,10 @@ pub(crate) struct Args {
     #[arg(long)]
     pub(crate) cyclone_pool_size: Option<u32>,
 
+    /// Cyclone create firecracker setup scripts
+    #[arg(long)]
+    pub(crate) cyclone_create_firecracker_setup_scripts: Option<bool>,
+
     /// Veritech decryption key file location [example: /run/veritech/veritech.key]
     #[arg(long)]
     pub(crate) decryption_key: Option<PathBuf>,
@@ -106,9 +110,9 @@ pub(crate) struct Args {
     #[arg(long)]
     pub(crate) cyclone_client_execution_timeout_secs: Option<u64>,
 
-    /// The number of concurrent functions that can be executed [default: 1000]
+    /// The number of concurrent requests that will be processed
     #[arg(long)]
-    pub(crate) concurrency: Option<u32>,
+    pub(crate) veritech_requests_concurrency_limit: Option<u32>,
 
     /// Instance ID [example: 01GWEAANW5BVFK5KDRVS6DEY0F"]
     ///
@@ -156,6 +160,7 @@ impl TryFrom<Args> for Config {
             if let Some(creds_file) = args.nats_creds_path {
                 config_map.set("nats.creds_file", creds_file.display().to_string());
             }
+
             if args.cyclone_local_firecracker {
                 config_map.set("cyclone.runtime_strategy", "LocalFirecracker");
             }
@@ -171,6 +176,15 @@ impl TryFrom<Args> for Config {
             if let Some(size) = args.cyclone_pool_size {
                 config_map.set("cyclone.pool_size", size);
             }
+            if let Some(cyclone_create_firecracker_setup_scripts) =
+                args.cyclone_create_firecracker_setup_scripts
+            {
+                config_map.set(
+                    "cyclone.create_firecracker_setup_scripts",
+                    cyclone_create_firecracker_setup_scripts,
+                );
+            }
+
             if let Some(decryption_key_path) = args.decryption_key {
                 config_map.set(
                     "decryption_key_path",
@@ -181,8 +195,13 @@ impl TryFrom<Args> for Config {
             if let Some(timeout) = args.cyclone_client_execution_timeout_secs {
                 config_map.set("cyclone_client_execution_timeout_secs", timeout);
             }
-            if let Some(concurrency) = args.concurrency {
-                config_map.set("concurrency_limit", i64::from(concurrency));
+            if let Some(veritech_requests_concurrency_limit) =
+                args.veritech_requests_concurrency_limit
+            {
+                config_map.set(
+                    "veritech_requests_concurrency_limit",
+                    i64::from(veritech_requests_concurrency_limit),
+                );
             }
             if let Some(instance_id) = args.instance_id {
                 config_map.set("instance_id", instance_id);

@@ -26,6 +26,9 @@ pub enum FirecrackerJailError {
     // Failed to setup firecracker
     #[error("Failed to setup firecracker: {0}")]
     Setup(#[from] tokio::io::Error),
+    // The setup script(s) do not exist
+    #[error("Setup script(s) do not exist: {0:?}")]
+    SetupScriptsDoNotExist(Vec<String>),
     // Failed to spawn firecracker
     #[error("Failed to spawn firecracker: {0}")]
     Spawn(#[source] tokio::io::Error),

@@ -24,7 +24,7 @@ use thiserror::Error;
 
 pub use si_settings::{StandardConfig, StandardConfigFile};
 
-const DEFAULT_CONCURRENCY_LIMIT: usize = 1000;
+const DEFAULT_VERITECH_REQUESTS_CONCURRENCY_LIMIT: usize = 1000;
 const DEFAULT_POOL_SIZE: u32 = 50;
 
 const DEFAULT_CYCLONE_CLIENT_EXECUTION_TIMEOUT_SECS: u64 = 60 * 35;
@@ -83,8 +83,8 @@ pub struct Config {
     #[builder(default = "default_cyclone_client_execution_timeout()")]
     cyclone_client_execution_timeout: Duration,
 
-    #[builder(default = "default_concurrency_limit()")]
-    concurrency_limit: usize,
+    #[builder(default = "default_veritech_requests_concurrency_limit()")]
+    veritech_requests_concurrency_limit: usize,
 
     #[builder(default = "random_instance_id()")]
     instance_id: String,
@@ -146,9 +146,9 @@ impl Config {
         self.cyclone_client_execution_timeout
     }
 
-    /// Gets the config's concurrency limit.
-    pub fn concurrency_limit(&self) -> usize {
-        self.concurrency_limit
+    /// Gets the config's veritech requests concurrency limit.
+    pub fn veritech_requests_concurrency_limit(&self) -> usize {
+        self.veritech_requests_concurrency_limit
     }
 
     /// Gets the config's instance ID.
@@ -193,8 +193,8 @@ pub struct ConfigFile {
     healthcheck_pool: bool,
     #[serde(default = "default_cyclone_client_execution_timeout_secs")]
     cyclone_client_execution_timeout_secs: u64,
-    #[serde(default = "default_concurrency_limit")]
-    concurrency_limit: usize,
+    #[serde(default = "default_veritech_requests_concurrency_limit")]
+    veritech_requests_concurrency_limit: usize,
     #[serde(default = "random_instance_id")]
     instance_id: String,
     #[serde(default = "default_heartbeat_app")]
@@ -223,7 +223,7 @@ impl ConfigFile {
             crypto: Default::default(),
             healthcheck_pool: default_healthcheck_pool(),
             cyclone_client_execution_timeout_secs: default_cyclone_client_execution_timeout_secs(),
-            concurrency_limit: default_concurrency_limit(),
+            veritech_requests_concurrency_limit: default_veritech_requests_concurrency_limit(),
             instance_id: random_instance_id(),
             heartbeat_app: default_heartbeat_app(),
             heartbeat_app_auto_force_reconnect_logic:
@@ -242,7 +242,7 @@ impl ConfigFile {
             crypto: Default::default(),
             healthcheck_pool: default_healthcheck_pool(),
             cyclone_client_execution_timeout_secs: default_cyclone_client_execution_timeout_secs(),
-            concurrency_limit: default_concurrency_limit(),
+            veritech_requests_concurrency_limit: default_veritech_requests_concurrency_limit(),
             instance_id: random_instance_id(),
             heartbeat_app: default_heartbeat_app(),
             heartbeat_app_auto_force_reconnect_logic:
@@ -272,7 +272,7 @@ impl TryFrom<ConfigFile> for Config {
         config.cyclone_client_execution_timeout(Duration::from_secs(
             value.cyclone_client_execution_timeout_secs,
         ));
-        config.concurrency_limit(value.concurrency_limit);
+        config.veritech_requests_concurrency_limit(value.veritech_requests_concurrency_limit);
         config.instance_id(value.instance_id);
 
         config.heartbeat_app(value.heartbeat_app);
@@ -375,6 +375,8 @@ pub enum CycloneConfig {
         pool_size: u32,
         #[serde(default)]
         connect_timeout: u64,
+        #[serde(default = "default_create_firecracker_setup_scripts")]
+        create_firecracker_setup_scripts: bool,
     },
 }
 
@@ -407,6 +409,7 @@ impl CycloneConfig {
             action: default_enable_endpoint(),
             pool_size: default_pool_size(),
             connect_timeout: default_connect_timeout(),
+            create_firecracker_setup_scripts: default_create_firecracker_setup_scripts(),
         }
     }
 
@@ -517,6 +520,7 @@ impl TryFrom<CycloneConfig> for CycloneSpec {
                 action,
                 pool_size,
                 connect_timeout,
+                create_firecracker_setup_scripts,
             } => {
                 let mut builder = LocalUdsInstance::spec();
 
@@ -549,6 +553,7 @@ impl TryFrom<CycloneConfig> for CycloneSpec {
                 }
                 builder.pool_size(pool_size);
                 builder.connect_timeout(connect_timeout);
+                builder.create_firecracker_setup_scripts(create_firecracker_setup_scripts);
 
                 Ok(Self::LocalUds(
                     builder.build().map_err(ConfigError::cyclone_spec_build)?,
@@ -642,8 +647,8 @@ fn default_cyclone_client_execution_timeout_secs() -> u64 {
     DEFAULT_CYCLONE_CLIENT_EXECUTION_TIMEOUT_SECS
 }
 
-fn default_concurrency_limit() -> usize {
-    DEFAULT_CONCURRENCY_LIMIT
+fn default_veritech_requests_concurrency_limit() -> usize {
+    DEFAULT_VERITECH_REQUESTS_CONCURRENCY_LIMIT
 }
 
 fn default_heartbeat_app() -> bool {
@@ -676,6 +681,10 @@ fn default_heartbeat_app_force_reconnect_timeout_duration() -> Duration {
 
 fn default_heartbeat_app_force_reconnect_timeout_secs() -> u64 {
     DEFAULT_HEARTBEAT_APP_FORCE_RECONNECT_TIMEOUT_SECONDS
+}
+
+fn default_create_firecracker_setup_scripts() -> bool {
+    true
 }
 
 #[allow(clippy::disallowed_methods)] // Used to determine if running in development
