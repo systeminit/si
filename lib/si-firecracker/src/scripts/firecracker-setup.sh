@@ -282,8 +282,8 @@ execute_configuration_management() {
         echo "0" > "$VERITECH_CGROUP/cpuset.mems"
         echo "0" > "$FIRECRACKER_CGROUP/cpuset.mems"
 
-        # Set CPU quota for Firecracker (75% CPU time)
-        echo "750000 1000000" > "$FIRECRACKER_CGROUP/cpu.max"
+        # Set CPU quota for Firecracker (85% CPU time across all nodes)
+        echo "$((850000 * TOTAL_CPUS)) 1000000" > "$FIRECRACKER_CGROUP/cpu.max"
 
         # Set unlimited CPU for Veritech
         echo "max" > "$VERITECH_CGROUP/cpu.max"
