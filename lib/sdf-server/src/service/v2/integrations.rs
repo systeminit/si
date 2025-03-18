@@ -3,6 +3,7 @@ use axum::{
     routing::{get, post},
     Router,
 };
+use dal::UserPk;
 use hyper::StatusCode;
 use thiserror::Error;
 
@@ -16,8 +17,16 @@ pub mod update_integration;
 pub enum IntegrationsError {
     #[error("integration with id {0} not found")]
     IntegrationNotFound(dal::workspace_integrations::WorkspaceIntegrationId),
+    #[error("invalid user found")]
+    InvalidUser,
+    #[error("permissions error: {0}")]
+    Permissions(#[from] permissions::Error),
+    #[error("SpiceDb client not found")]
+    SpiceDbClientNotFound,
     #[error("transactions error: {0}")]
     Transactions(#[from] dal::TransactionsError),
+    #[error("user unable to approve integration: {0}")]
+    UserUnableToApproveIntegration(UserPk),
     #[error("workspace integration error: {0}")]
     WorkspaceIntegrations(#[from] dal::workspace_integrations::WorkspaceIntegrationsError),
 }
