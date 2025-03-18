@@ -256,34 +256,28 @@ execute_configuration_management() {
 
         # Define Cgroup Names
         VERITECH_CGROUP="/sys/fs/cgroup/veritech"
-        FIRECRACKER_CGROUP="/sys/fs/cgroup/firecracker"
 
         # Enable CPU and cpuset controllers in root cgroup
         echo "+cpuset +cpu" > /sys/fs/cgroup/cgroup.subtree_control
 
-        # Create Cgroups
+        # Create Cgroup for veritech
         mkdir -p "$VERITECH_CGROUP"
-        mkdir -p "$FIRECRACKER_CGROUP"
 
         # Enable controllers for both Cgroups
         echo "+cpuset +cpu" > "$VERITECH_CGROUP/cgroup.subtree_control"
-        echo "+cpuset +cpu" > "$FIRECRACKER_CGROUP/cgroup.subtree_control"
+
+        # Marks Veritech as a CPU partition root
+        echo "1" > /sys/fs/cgroup/veritech/cpuset.cpus.partition
 
         # Define CPU Allocation
         TOTAL_CPUS=64
-        VERITECH_CPUS="0-15"      # 25% of CPUs
-        FIRECRACKER_CPUS="16-63"  # 75% of CPUs
+        VERITECH_CPUS="0-15"
 
         # Assign CPU affinity
         echo "$VERITECH_CPUS" > "$VERITECH_CGROUP/cpuset.cpus"
-        echo "$FIRECRACKER_CPUS" > "$FIRECRACKER_CGROUP/cpuset.cpus"
 
         # Enable memory nodes
         echo "0" > "$VERITECH_CGROUP/cpuset.mems"
-        echo "0" > "$FIRECRACKER_CGROUP/cpuset.mems"
-
-        # Set CPU quota for Firecracker (85% CPU time across all nodes)
-        echo "$((850000 * TOTAL_CPUS)) 1000000" > "$FIRECRACKER_CGROUP/cpu.max"
 
         # Set unlimited CPU for Veritech
         echo "max" > "$VERITECH_CGROUP/cpu.max"
@@ -300,6 +294,19 @@ execute_configuration_management() {
         else
             echo "Warning: Veritech process not found, unable to allocate cgroup!"
         fi
+
+        # Create Firecracker’s parent cgroup under Veritech
+        mkdir -p /sys/fs/cgroup/veritech/firecracker
+
+        # Restrict Firecracker instances to CPUs 16-63
+        echo "16-63" > /sys/fs/cgroup/veritech/firecracker/cpuset.cpus
+        echo "1" > /sys/fs/cgroup/veritech/firecracker/cpuset.cpus.partition
+
+        # Limit all Firecracker VMs to 85% of CPUs 16-63
+        echo "850000 1000000" > /sys/fs/cgroup/veritech/firecracker/cpu.max
+
+        # Allow child VMs to inherit Firecracker cgroup rules
+        echo "+cpu +cpuset" > /sys/fs/cgroup/veritech/firecracker/cgroup.subtree_control
 
         # Avoid "nf_conntrack: table full, dropping packet"
         #sudo sysctl -w net.ipv4.netfilter.ls=99999999
