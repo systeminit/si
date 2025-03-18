@@ -40,6 +40,8 @@ impl FirecrackerJail {
         let mut cmd = Command::new("/usr/bin/jailer");
         cmd.arg("--cgroup-version")
             .arg("2")
+            .arg("--cgroup")
+            .arg("/sys/fs/cgroup/firecracker")
             .arg("--id")
             .arg(id.to_string())
             .arg("--exec-file")

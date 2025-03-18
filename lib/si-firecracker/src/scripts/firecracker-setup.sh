@@ -222,6 +222,85 @@ execute_configuration_management() {
         # Configure packet forwarding
         sysctl -w net.ipv4.conf.all.forwarding=1
 
+        # Configure TCP memory and write buffer limits
+        # Previously: net.ipv4.tcp_mem = 3079470 4105960 6158940
+        sysctl -w net.ipv4.tcp_mem="8388608 12582912 16777216" 
+        # Previously: net.ipv4.tcp_wmem = 4096 20480 4194304
+        sysctl -w net.ipv4.tcp_wmem="4096 524288 16777216"
+        # Previously: net.ipv4.tcp_rmem = 4096 131072 6291456
+        sysctl -w net.ipv4.tcp_rmem="4096 524288 16777216"
+
+        # Optimize TCP keepalive settings
+        # Previously: net.ipv4.tcp_keepalive_time = 7200
+        sysctl -w net.ipv4.tcp_keepalive_time=30  # Detect stale connections faster
+        # Previously: net.ipv4.tcp_keepalive_intvl = 75
+        sysctl -w net.ipv4.tcp_keepalive_intvl=10 # Reduce keepalive interval
+        # Previously: net.ipv4.tcp_keepalive_probes = 9
+        sysctl -w net.ipv4.tcp_keepalive_probes=5 # Reduce keepalive retries
+
+        # Prevent SYN drops under high load
+        # Previously: net.ipv4.tcp_max_syn_backlog = 4096
+        sysctl -w net.ipv4.tcp_max_syn_backlog=8192
+
+        # Allow more queued connections
+        # Previously: net.core.somaxconn = 4096
+        sysctl -w net.core.somaxconn=8192           
+
+        # Reduce stale socket overhead
+        # net.ipv4.tcp_fin_timeout = 60
+        sysctl -w net.ipv4.tcp_fin_timeout=15
+
+        # Reuse closed connections faster
+        # Previously net.ipv4.tcp_tw_reuse = 2
+        sysctl -w net.ipv4.tcp_tw_reuse=1
+
+        # Define Cgroup Names
+        VERITECH_CGROUP="/sys/fs/cgroup/veritech"
+        FIRECRACKER_CGROUP="/sys/fs/cgroup/firecracker"
+
+        # Enable CPU and cpuset controllers in root cgroup
+        echo "+cpuset +cpu" > /sys/fs/cgroup/cgroup.subtree_control
+
+        # Create Cgroups
+        mkdir -p "$VERITECH_CGROUP"
+        mkdir -p "$FIRECRACKER_CGROUP"
+
+        # Enable controllers for both Cgroups
+        echo "+cpuset +cpu" > "$VERITECH_CGROUP/cgroup.subtree_control"
+        echo "+cpuset +cpu" > "$FIRECRACKER_CGROUP/cgroup.subtree_control"
+
+        # Define CPU Allocation
+        TOTAL_CPUS=64
+        VERITECH_CPUS="0-15"      # 25% of CPUs
+        FIRECRACKER_CPUS="16-63"  # 75% of CPUs
+
+        # Assign CPU affinity
+        echo "$VERITECH_CPUS" > "$VERITECH_CGROUP/cpuset.cpus"
+        echo "$FIRECRACKER_CPUS" > "$FIRECRACKER_CGROUP/cpuset.cpus"
+
+        # Enable memory nodes
+        echo "0" > "$VERITECH_CGROUP/cpuset.mems"
+        echo "0" > "$FIRECRACKER_CGROUP/cpuset.mems"
+
+        # Set CPU quota for Firecracker (75% CPU time)
+        echo "750000 1000000" > "$FIRECRACKER_CGROUP/cpu.max"
+
+        # Set unlimited CPU for Veritech
+        echo "max" > "$VERITECH_CGROUP/cpu.max"
+
+        # Get Veritech process ID
+        VERITECH_PID=$(pgrep -f "/usr/local/bin/veritech")
+
+        # Check if we found any matching processes
+        if [[ -n "$VERITECH_PID" ]]; then
+            echo "Assigning Veritech processes to cgroup..."
+            for PID in $VERITECH_PID; do
+                echo $PID > "$VERITECH_CGROUP/cgroup.procs"
+            done
+        else
+            echo "Warning: Veritech process not found, unable to allocate cgroup!"
+        fi
+
         # Avoid "nf_conntrack: table full, dropping packet"
         #sudo sysctl -w net.ipv4.netfilter.ls=99999999
 
@@ -247,6 +326,9 @@ execute_configuration_management() {
         # Adjust MTU to make it consistent
         ip link set dev $(ip route get 8.8.8.8 | awk -- '{printf $5}') mtu 1500
 
+        # Save/Reload Kernel Settings
+        sysctl -p
+
     else
         echo "Error: Unsupported or unknown configuration management tool specified, exiting."
         exit 1
@@ -255,7 +337,6 @@ execute_configuration_management() {
     echo "Info: System configuration complete"
 
 }
-
 
 execute_cleanup() {
 
