@@ -222,6 +222,38 @@ execute_configuration_management() {
         # Configure packet forwarding
         sysctl -w net.ipv4.conf.all.forwarding=1
 
+        # Configure TCP memory and write buffer limits
+        # Previously: net.ipv4.tcp_mem = 3079470 4105960 6158940
+        sysctl -w net.ipv4.tcp_mem="8388608 12582912 16777216" 
+        # Previously: net.ipv4.tcp_wmem = 4096 20480 4194304
+        sysctl -w net.ipv4.tcp_wmem="4096 524288 16777216"
+        # Previously: net.ipv4.tcp_rmem = 4096 131072 6291456
+        sysctl -w net.ipv4.tcp_rmem="4096 524288 16777216"
+
+        # Optimize TCP keepalive settings
+        # Previously: net.ipv4.tcp_keepalive_time = 7200
+        sysctl -w net.ipv4.tcp_keepalive_time=30  # Detect stale connections faster
+        # Previously: net.ipv4.tcp_keepalive_intvl = 75
+        sysctl -w net.ipv4.tcp_keepalive_intvl=10 # Reduce keepalive interval
+        # Previously: net.ipv4.tcp_keepalive_probes = 9
+        sysctl -w net.ipv4.tcp_keepalive_probes=5 # Reduce keepalive retries
+
+        # Prevent SYN drops under high load
+        # Previously: net.ipv4.tcp_max_syn_backlog = 4096
+        sysctl -w net.ipv4.tcp_max_syn_backlog=8192
+
+        # Allow more queued connections
+        # Previously: net.core.somaxconn = 4096
+        sysctl -w net.core.somaxconn=8192           
+
+        # Reduce stale socket overhead
+        # net.ipv4.tcp_fin_timeout = 60
+        sysctl -w net.ipv4.tcp_fin_timeout=15
+
+        # Reuse closed connections faster
+        # Previously net.ipv4.tcp_tw_reuse = 2
+        sysctl -w net.ipv4.tcp_tw_reuse=1
+
         # Avoid "nf_conntrack: table full, dropping packet"
         #sudo sysctl -w net.ipv4.netfilter.ls=99999999
 
@@ -247,6 +279,8 @@ execute_configuration_management() {
         # Adjust MTU to make it consistent
         ip link set dev $(ip route get 8.8.8.8 | awk -- '{printf $5}') mtu 1500
 
+        sysctl -p
+
     else
         echo "Error: Unsupported or unknown configuration management tool specified, exiting."
         exit 1
@@ -255,7 +289,6 @@ execute_configuration_management() {
     echo "Info: System configuration complete"
 
 }
-
 
 execute_cleanup() {
 
