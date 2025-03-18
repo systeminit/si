@@ -240,5 +240,11 @@ const toggleIsOpen = (state = !isOpen.value) => {
   isOpen.value = state;
 };
 
-defineExpose({ isOpen, toggleIsOpen });
+const scrollIntoView = () => {
+  if (nodeRef.value) {
+    nodeRef.value.scrollIntoView();
+  }
+};
+
+defineExpose({ isOpen, toggleIsOpen, scrollIntoView });
 </script>
