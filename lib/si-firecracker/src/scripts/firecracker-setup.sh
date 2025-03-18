@@ -254,42 +254,43 @@ execute_configuration_management() {
         # Previously net.ipv4.tcp_tw_reuse = 2
         sysctl -w net.ipv4.tcp_tw_reuse=1
 
+        # -----------------------------------------------------
+        # ------ Cgroup Allocation ----------------------------
+        # -----------------------------------------------------
+
         # Define Cgroup Names
         VERITECH_CGROUP="/sys/fs/cgroup/veritech"
-        FIRECRACKER_CGROUP="/sys/fs/cgroup/firecracker"
+        FIRECRACKER_CGROUP="/sys/fs/cgroup/veritech/firecracker"
 
-        # Enable CPU and cpuset controllers in root cgroup
-        echo "+cpuset +cpu" > /sys/fs/cgroup/cgroup.subtree_control
-
-        # Create Cgroups
+        # Create Cgroup for veritech 
         mkdir -p "$VERITECH_CGROUP"
-        mkdir -p "$FIRECRACKER_CGROUP"
 
-        # Enable controllers for both Cgroups
-        echo "+cpuset +cpu" > "$VERITECH_CGROUP/cgroup.subtree_control"
-        echo "+cpuset +cpu" > "$FIRECRACKER_CGROUP/cgroup.subtree_control"
-
-        # Define CPU Allocation
-        TOTAL_CPUS=64
-        VERITECH_CPUS="0-15"      # 25% of CPUs
-        FIRECRACKER_CPUS="16-63"  # 75% of CPUs
+        # Marks Veritech as a CPU partition root so it can further delegate cpu partitions
+        echo "root" > "$VERITECH_CGROUP/cpuset.cpus.partition"
 
         # Assign CPU affinity
-        echo "$VERITECH_CPUS" > "$VERITECH_CGROUP/cpuset.cpus"
-        echo "$FIRECRACKER_CPUS" > "$FIRECRACKER_CGROUP/cpuset.cpus"
+        echo "0-15" > "$VERITECH_CGROUP/cpuset.cpus"
 
-        # Enable memory nodes
+        # Ensure memory comes from NUMA node 0 (needed for cpu affinity)
         echo "0" > "$VERITECH_CGROUP/cpuset.mems"
+
+        # Allow veritech to delegate cpuset
+        echo "+cpuset" > /sys/fs/cgroup/veritech/cgroup.subtree_control
+
+        # Create Firecracker’s parent cgroup under Veritech
+        mkdir -p "$FIRECRACKER_CGROUP"
+
+        # Marks Firecracker as a normal cgroup
+        echo "member" > "$FIRECRACKER_CGROUP/cpuset.cpus.partition"
+
+        # Restrict Firecracker instances to CPUs 16-63
+        echo "16-63" > "$FIRECRACKER_CGROUP/cpuset.cpus"
+
+        # Ensure memory comes from NUMA node 0 (needed for cpu allocation) 
         echo "0" > "$FIRECRACKER_CGROUP/cpuset.mems"
 
-        # Set CPU quota for Firecracker (85% CPU time across all nodes)
-        echo "$((850000 * TOTAL_CPUS)) 1000000" > "$FIRECRACKER_CGROUP/cpu.max"
-
-        # Set unlimited CPU for Veritech
-        echo "max" > "$VERITECH_CGROUP/cpu.max"
-
         # Get Current Process ID
-        VERITECH_PID=$(echo $$ || "")
+        VERITECH_PID=$$
 
         # Check if we found any matching processes
         if [[ -n "$VERITECH_PID" ]]; then
@@ -300,6 +301,8 @@ execute_configuration_management() {
         else
             echo "Warning: Veritech process not found, unable to allocate cgroup!"
         fi
+
+        # -----------------------------------------------------
 
         # Avoid "nf_conntrack: table full, dropping packet"
         #sudo sysctl -w net.ipv4.netfilter.ls=99999999
