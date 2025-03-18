@@ -288,8 +288,8 @@ execute_configuration_management() {
         # Set unlimited CPU for Veritech
         echo "max" > "$VERITECH_CGROUP/cpu.max"
 
-        # Get Veritech process ID
-        VERITECH_PID=$(pgrep -f "/usr/local/bin/veritech")
+        # Get Current Process ID
+        VERITECH_PID=$(echo $$ || "")
 
         # Check if we found any matching processes
         if [[ -n "$VERITECH_PID" ]]; then
