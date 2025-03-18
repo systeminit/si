@@ -20,6 +20,9 @@ else if (import.meta.env.VITE_API_URL) apiUrl = import.meta.env.VITE_API_URL;
 else throw new Error("Invalid API env var config");
 export const API_HTTP_URL = apiUrl;
 
+// eslint-disable-next-line no-console
+console.log("API ENV?", import.meta.env)
+
 // set up websocket url, by replacing protocol and appending /ws
 export const API_WS_URL = `${API_HTTP_URL.replace(/^http/, "ws")}/ws`;
 
