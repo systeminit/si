@@ -417,6 +417,10 @@ pub enum AuditLogKindV1 {
     WithdrawRequestForChangeSetApply {
         from_status: ChangeSetStatus,
     },
+    WorkspaceIntegration {
+        old_slack_webhook_url: String,
+        new_slack_webhook_url: String,
+    },
 }
 
 /// This is an identical copy of latest [`AuditLogKind`], but uses "serde untagged" wrapper. This is used for inserting
@@ -850,6 +854,11 @@ pub enum AuditLogMetadataV1 {
     },
     #[serde(rename_all = "camelCase")]
     WithdrawRequestForChangeSetApply { from_status: ChangeSetStatus },
+    #[serde(rename_all = "camelCase")]
+    WorkspaceIntegration {
+        old_slack_webhook_url: String,
+        new_slack_webhook_url: String,
+    },
 }
 
 impl AuditLogMetadataV1 {
@@ -938,6 +947,7 @@ impl AuditLogMetadataV1 {
             MetadataDiscrim::WithdrawRequestForChangeSetApply => {
                 ("Withdrew Request to Apply", Some("Change Set"))
             }
+            MetadataDiscrim::WorkspaceIntegration => ("Workspace Integration Updated", None),
         }
     }
 }
@@ -1592,6 +1602,13 @@ impl From<Kind> for Metadata {
             Kind::WithdrawRequestForChangeSetApply { from_status } => {
                 Self::WithdrawRequestForChangeSetApply { from_status }
             }
+            Kind::WorkspaceIntegration {
+                old_slack_webhook_url,
+                new_slack_webhook_url,
+            } => Self::WorkspaceIntegration {
+                old_slack_webhook_url,
+                new_slack_webhook_url,
+            },
         }
     }
 }

@@ -6,7 +6,7 @@ use dal::{change_set::approval::ChangeSetApproval, ChangeSet, ChangeSetId, Works
 use serde::Deserialize;
 use si_events::{audit_log::AuditLogKind, ChangeSetApprovalStatus};
 
-use super::{ChangeSetAPIError, Error, Result};
+use super::{post_to_webhook, ChangeSetAPIError, Error, Result};
 use crate::{
     dal_wrapper,
     extract::{HandlerContext, PosthogClient},
@@ -27,7 +27,7 @@ pub async fn approve(
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
     Host(host_name): Host,
-    Path((_workspace_pk, change_set_id)): Path<(WorkspacePk, ChangeSetId)>,
+    Path((workspace_pk, change_set_id)): Path<(WorkspacePk, ChangeSetId)>,
     State(mut state): State<AppState>,
     Json(request): Json<Request>,
 ) -> Result<()> {
@@ -114,6 +114,20 @@ pub async fn approve(
             }
         }
     }
+
+    let change_set_view = ChangeSet::get_by_id(&ctx, ctx.visibility().change_set_id)
+        .await?
+        .into_frontend_type(&ctx)
+        .await?;
+    let actor = ctx.history_actor().email(&ctx).await?;
+    let change_set_url = format!("https://{}/w/{}/{}", host_name, workspace_pk, change_set_id);
+    let message = format!(
+        "{} approved merge of change set {}: {}",
+        actor,
+        change_set_view.name.clone(),
+        change_set_url
+    );
+    post_to_webhook(&ctx, workspace_pk, message.as_str()).await?;
 
     ctx.commit().await?;
 
