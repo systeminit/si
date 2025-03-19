@@ -14,17 +14,17 @@
     />
     <Modal
       ref="modalRef"
-      type="save"
-      size="sm"
       saveLabel="Create"
+      size="sm"
       title="Create View"
+      type="save"
       @save="create"
     >
       <VormInput
         ref="labelRef"
         v-model="viewName"
-        required
         label="View Name"
+        required
         @enterPressed="create"
       />
     </Modal>
@@ -298,6 +298,14 @@ const rightClickMenuItems = computed(() => {
       icon: "cursor",
       onSelect: renameComponent,
     });
+    if (featureFlagsStore.FLOATING_CONNECTION_MENU) {
+      items.push({
+        label: "Connections",
+        shortcut: "C",
+        icon: "socket",
+        onSelect: openConnectionsMenu,
+      });
+    }
     if (featureFlagsStore.AUTOCONNECT) {
       items.push({
         label: "Auto Connect",
@@ -547,6 +555,20 @@ function renameComponent() {
   if (selectedComponentId.value) {
     componentsStore.eventBus.emit("rename", selectedComponentId.value);
   }
+}
+
+function openConnectionsMenu() {
+  componentsStore.eventBus.emit("openConnectionsMenu", {
+    aDirection: undefined,
+    A: {
+      componentId: selectedComponentId.value ?? undefined,
+      socketId: undefined,
+    },
+    B: {
+      componentId: undefined,
+      socketId: undefined,
+    },
+  });
 }
 
 function autoConnectComponent() {
