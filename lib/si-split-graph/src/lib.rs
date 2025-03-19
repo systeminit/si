@@ -1,10 +1,14 @@
-use std::collections::HashSet;
+use std::collections::{HashSet, VecDeque};
 
 use async_trait::async_trait;
 use opt_zip::OptZip;
 use petgraph::{prelude::*, stable_graph};
 use serde::{Deserialize, Serialize};
-use si_events::{merkle_tree_hash::MerkleTreeHash, ContentHash};
+use si_events::{
+    merkle_tree_hash::MerkleTreeHash,
+    workspace_snapshot::{Change, EntityKind},
+    ContentHash,
+};
 use si_id::ulid::Ulid;
 use thiserror::Error;
 
@@ -124,6 +128,16 @@ where
         match self {
             SplitGraphNodeWeight::Custom(n) => n.lineage_id(),
             other => other.id(),
+        }
+    }
+
+    pub fn entity_kind(&self) -> EntityKind {
+        match self {
+            SplitGraphNodeWeight::Custom(c) => c.entity_kind(),
+            SplitGraphNodeWeight::ExternalTarget { .. } => EntityKind::ExternalTarget,
+            SplitGraphNodeWeight::Ordering { .. } => EntityKind::Ordering,
+            SplitGraphNodeWeight::GraphRoot { .. } => EntityKind::Root,
+            SplitGraphNodeWeight::SubGraphRoot { .. } => EntityKind::SubGraphRoot,
         }
     }
 
@@ -336,6 +350,7 @@ pub trait EdgeKind: std::hash::Hash + PartialEq + Eq + Copy + Clone + std::fmt::
 pub trait CustomNodeWeight: PartialEq + Eq + Clone + std::fmt::Debug {
     fn id(&self) -> SplitGraphNodeId;
     fn lineage_id(&self) -> SplitGraphNodeId;
+    fn entity_kind(&self) -> EntityKind;
 
     fn set_merkle_tree_hash(&mut self, hash: MerkleTreeHash);
     fn merkle_tree_hash(&self) -> MerkleTreeHash;
@@ -807,7 +822,7 @@ where
         let subgraph = self.subgraphs.get(split_graph_index.subgraph as usize)?;
 
         subgraph
-            .ordered_children_for_node(split_graph_index.index)
+            .ordered_children(split_graph_index.index)
             .map(|node_indexes| {
                 node_indexes
                     .into_iter()
@@ -819,6 +834,33 @@ where
                     })
                     .collect()
             })
+    }
+
+    /// Find all ancestors of `node_id` across all subgraphs (includes non-custom nodes).
+    /// Cycle-safe, and non-recursive.
+    pub fn all_parents_of(
+        &self,
+        node_id: SplitGraphNodeId,
+    ) -> SplitGraphResult<Vec<SplitGraphNodeId>> {
+        let mut result = vec![];
+
+        let mut seen_list = HashSet::new();
+        let mut work_queue = VecDeque::from([node_id]);
+
+        while let Some(node_id) = work_queue.pop_front() {
+            if seen_list.contains(&node_id) {
+                continue;
+            }
+            seen_list.insert(node_id);
+            result.push(node_id);
+
+            work_queue.extend(
+                self.edges_directed(node_id, Incoming)?
+                    .map(|edge_ref| edge_ref.source()),
+            );
+        }
+
+        Ok(result)
     }
 
     pub fn edges_directed(
@@ -856,16 +898,20 @@ where
     }
 
     /// Calculate the updates that this graph has relative to `base_graph`
-    pub fn detect_updates(&self, base_graph: &SplitGraph<N, E, K, R, W>) -> Vec<Update<N, E, K>> {
+    pub fn detect_updates(
+        &self,
+        updated_graph: &SplitGraph<N, E, K, R, W>,
+    ) -> Vec<Update<N, E, K>> {
         let mut updates = vec![];
-        for (updated_subgraph, maybe_base_subgraph) in OptZip::new(
-            self.subgraphs.iter().enumerate(),
-            base_graph.subgraphs.iter(),
-        ) {
-            let Some((updated_subgraph_index, updated_subgraph)) = updated_subgraph else {
-                continue;
-            };
 
+        let mut subgraph_iter = OptZip::new(
+            updated_graph.subgraphs.iter().enumerate(),
+            self.subgraphs.iter(),
+        );
+
+        while let Some((Some((updated_subgraph_index, updated_subgraph)), maybe_base_subgraph)) =
+            subgraph_iter.next()
+        {
             match maybe_base_subgraph {
                 Some(base_subgraph) => updates.extend(
                     updates::Detector::new(
@@ -890,6 +936,126 @@ where
         }
 
         updates
+    }
+
+    pub fn detect_changes(
+        &self,
+        updated_graph: &SplitGraph<N, E, K, R, W>,
+    ) -> SplitGraphResult<Vec<Change>> {
+        let mut changes = vec![];
+
+        let mut subgraph_iter = OptZip::new(
+            updated_graph.subgraphs.iter().enumerate(),
+            self.subgraphs.iter(),
+        );
+
+        let mut detected_ids = HashSet::new();
+
+        while let Some((Some((updated_subgraph_index, updated_subgraph)), maybe_base_subgraph)) =
+            subgraph_iter.next()
+        {
+            match maybe_base_subgraph {
+                Some(base_subgraph) => {
+                    let mut subgraph_changes = updates::Detector::new(
+                        base_subgraph,
+                        updated_subgraph,
+                        updated_subgraph_index as u16,
+                    )
+                    .detect_changes();
+
+                    for subgraph_change in &subgraph_changes {
+                        detected_ids.insert(subgraph_change.entity_id);
+                    }
+
+                    subgraph_changes.extend(
+                        base_subgraph
+                            .node_index_by_id
+                            .keys()
+                            .filter(|node_id| {
+                                !updated_subgraph.node_index_by_id.contains_key(*node_id)
+                            })
+                            .filter_map(|node_id| {
+                                match base_subgraph
+                                    .node_id_to_index(*node_id)
+                                    .and_then(|index| base_subgraph.graph.node_weight(index))
+                                {
+                                    Some(SplitGraphNodeWeight::Custom(c)) => Some(Change {
+                                        entity_id: (*node_id).into(),
+                                        entity_kind: c.entity_kind(),
+                                        merkle_tree_hash: c.merkle_tree_hash(),
+                                    }),
+                                    _ => None,
+                                }
+                            }),
+                    );
+
+                    changes.extend(subgraph_changes);
+                }
+                None => {
+                    // This entire subgraph is a new set of changes
+                    changes.extend(updated_subgraph.graph.node_weights().filter_map(
+                        |node_weight| match node_weight {
+                            SplitGraphNodeWeight::Custom(_)
+                            | SplitGraphNodeWeight::GraphRoot { .. } => {
+                                detected_ids.insert(node_weight.id().into());
+
+                                Some(Change {
+                                    entity_id: node_weight.id().into(),
+                                    entity_kind: node_weight.entity_kind(),
+                                    merkle_tree_hash: node_weight.merkle_tree_hash(),
+                                })
+                            }
+                            SplitGraphNodeWeight::ExternalTarget { .. }
+                            | SplitGraphNodeWeight::Ordering { .. }
+                            | SplitGraphNodeWeight::SubGraphRoot { .. } => None,
+                        },
+                    ));
+                }
+            }
+        }
+
+        let mut final_changes = vec![];
+
+        // Now that we've detected all the changed nodes in every subgraph, we need to detect all the
+        // parents of these changed nodes, *across* subgraphs, since these will have also changed.
+        // reversed so that parents come before children in the finalized list
+        for change in &changes {
+            for parent_id in self
+                .all_parents_of(change.entity_id.into())?
+                .into_iter()
+                .rev()
+            {
+                if detected_ids.contains(&parent_id.into()) {
+                    continue;
+                }
+                detected_ids.insert(parent_id.into());
+
+                if let Some(
+                    weight @ SplitGraphNodeWeight::GraphRoot { .. }
+                    | weight @ SplitGraphNodeWeight::Custom(_),
+                ) = self.raw_node_weight(parent_id)
+                {
+                    // If we find this node now, that means its merkle tree hash
+                    // hasn't changed since it was in different subgraph than the
+                    // child node which *did* change. This just adds a bit of entropy
+                    // to the changes so that the checksum generated is different.
+                    // May not be necessary since there *will* be at least one
+                    // other changed node?
+                    let mut hasher = MerkleTreeHash::hasher();
+                    hasher.update(change.merkle_tree_hash.as_bytes());
+                    hasher.update(weight.merkle_tree_hash().as_bytes());
+                    final_changes.push(Change {
+                        entity_id: parent_id.into(),
+                        entity_kind: weight.entity_kind(),
+                        merkle_tree_hash: hasher.finalize(),
+                    });
+                }
+            }
+        }
+
+        final_changes.extend(changes);
+
+        Ok(final_changes)
     }
 
     pub fn perform_updates(&mut self, updates: &[Update<N, E, K>]) {

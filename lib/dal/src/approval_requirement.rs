@@ -30,17 +30,15 @@
 use std::collections::{HashMap, HashSet};
 
 use serde::{Deserialize, Serialize};
-use si_events::merkle_tree_hash::MerkleTreeHash;
+use si_events::{merkle_tree_hash::MerkleTreeHash, workspace_snapshot::Change};
 use si_id::{ulid::Ulid, ApprovalRequirementDefinitionId, EntityId, UserPk};
 use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{
     layer_db_types::ApprovalRequirementDefinitionContentV1,
-    workspace_snapshot::{
-        graph::detector::Change, traits::approval_requirement::ApprovalRequirementExt,
-    },
-    DalContext, WorkspaceSnapshotError, WsEvent, WsEventResult, WsPayload,
+    workspace_snapshot::traits::approval_requirement::ApprovalRequirementExt, DalContext,
+    WorkspaceSnapshotError, WsEvent, WsEventResult, WsPayload,
 };
 
 pub use crate::workspace_snapshot::traits::approval_requirement::{

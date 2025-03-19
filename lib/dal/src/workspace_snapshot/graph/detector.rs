@@ -5,8 +5,7 @@ use petgraph::{
     visit::{Control, DfsEvent},
 };
 use serde::{Deserialize, Serialize};
-use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, workspace_snapshot::EntityKind};
-use si_id::EntityId;
+use si_events::{ulid::Ulid, workspace_snapshot::Change};
 use strum::EnumDiscriminants;
 
 use crate::{
@@ -38,13 +37,6 @@ pub enum Update {
     NewNode {
         node_weight: NodeWeight,
     },
-}
-
-#[derive(Debug, Clone, Copy)]
-pub struct Change {
-    pub entity_id: EntityId,
-    pub entity_kind: EntityKind,
-    pub merkle_tree_hash: MerkleTreeHash,
 }
 
 #[derive(Clone, Debug)]

@@ -224,7 +224,7 @@ where
         Ok(())
     }
 
-    pub(crate) fn ordered_children_for_node(
+    pub(crate) fn ordered_children(
         &self,
         node_index: SubGraphNodeIndex,
     ) -> Option<Vec<SubGraphNodeIndex>> {
@@ -291,9 +291,7 @@ where
         &self,
         node_index: SubGraphNodeIndex,
     ) -> Vec<SubGraphNodeIndex> {
-        let ordered_children = self
-            .ordered_children_for_node(node_index)
-            .unwrap_or_default();
+        let ordered_children = self.ordered_children(node_index).unwrap_or_default();
         let mut unordered_children: Vec<(_, _)> = self
             .graph
             .neighbors_directed(node_index, Outgoing)

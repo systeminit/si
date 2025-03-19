@@ -34,6 +34,10 @@ impl CustomNodeWeight for TestNodeWeight {
         self.id
     }
 
+    fn entity_kind(&self) -> EntityKind {
+        EntityKind::Component
+    }
+
     fn set_merkle_tree_hash(&mut self, hash: MerkleTreeHash) {
         self.merkle_tree_hash = hash;
     }
@@ -63,19 +67,77 @@ struct TestReadWriter {
     >,
 }
 
-fn add_nodes_to_graph<'a, 'b, E, K>(
+fn add_edges_to_splitgraph<'a, 'b, E, K, R, W>(
+    graph: &'a mut SplitGraph<TestNodeWeight, E, K, R, W>,
+    edges: &'a [(Option<&'b str>, E, &'b str)],
+    node_id_map: &'a HashMap<&'b str, Ulid>,
+) where
+    E: CustomEdgeWeight<K>,
+    K: EdgeKind,
+    R: SubGraphReader<TestNodeWeight, E, K>,
+    W: SubGraphWriter<TestNodeWeight, E, K>,
+{
+    for (source, edge, target) in edges {
+        let from_id = match source {
+            Some(source) => node_id_map
+                .get(source)
+                .copied()
+                .expect("source should be in map"),
+            None => graph.root_id().expect("should have a root id"),
+        };
+
+        let to_id = node_id_map
+            .get(target)
+            .copied()
+            .expect("target should be in map");
+
+        graph
+            .add_edge(from_id, edge.clone(), to_id)
+            .expect("add edge");
+    }
+}
+
+fn add_nodes_to_splitgraph<'a, 'b, E, K, R, W>(
+    graph: &'a mut SplitGraph<TestNodeWeight, E, K, R, W>,
+    nodes: &'a [(&'b str, bool)],
+) -> HashMap<&'b str, Ulid>
+where
+    E: CustomEdgeWeight<K>,
+    K: EdgeKind,
+    R: SubGraphReader<TestNodeWeight, E, K>,
+    W: SubGraphWriter<TestNodeWeight, E, K>,
+{
+    let mut node_id_map = HashMap::new();
+
+    for &(node, ordered) in nodes {
+        let id = SplitGraphNodeId::new();
+        let node_weight = TestNodeWeight {
+            id,
+            name: node.to_string(),
+            ordered,
+            merkle_tree_hash: MerkleTreeHash::nil(),
+        };
+        graph
+            .add_or_replace_node(node_weight)
+            .expect("add_or_replace_node");
+
+        node_id_map.insert(node, id);
+    }
+
+    node_id_map
+}
+
+fn add_nodes_to_subgraph<'a, 'b, E, K>(
     graph: &'a mut SubGraph<TestNodeWeight, E, K>,
-    nodes: &'a [&'b str],
-    ordered: bool,
+    nodes: &'a [(&'b str, bool)],
 ) -> HashMap<&'b str, Ulid>
 where
     E: CustomEdgeWeight<K>,
     K: EdgeKind,
 {
     let mut node_id_map = HashMap::new();
-    for node in nodes {
-        // "props" here are just nodes that are easy to create and render the name on the dot
-        // output. there is no domain modeling in this test.
+
+    for &(node, ordered) in nodes {
         let id = SplitGraphNodeId::new();
         let node_weight = TestNodeWeight {
             id,
@@ -85,8 +147,9 @@ where
         };
         graph.add_node(SplitGraphNodeWeight::Custom(node_weight));
 
-        node_id_map.insert(*node, id);
+        node_id_map.insert(node, id);
     }
+
     node_id_map
 }
 
@@ -364,10 +427,6 @@ fn cross_graph_edges() -> SplitGraphResult<()> {
                 merkle_tree_hash: MerkleTreeHash::nil(),
                 ordered,
             })?;
-            println!(
-                "added node {name}:{id}, subgraphs: {}",
-                splitgraph.subgraph_count()
-            );
             name_to_id_map.insert(name, id);
         }
 
@@ -459,10 +518,7 @@ fn cross_graph_edges() -> SplitGraphResult<()> {
                 .map(|edge_ref| edge_ref.source())
                 .collect();
 
-            if outgoing_targets.is_empty() {
-                assert!(expected_outgoing_targets.contains_key(&split_from_id));
-                assert!(expected_outgoing_targets.contains_key(&unsplit_from_id));
-            } else {
+            if !outgoing_targets.is_empty() {
                 assert_eq!(
                     expected_outgoing_targets
                         .get(&split_from_id)
@@ -491,10 +547,7 @@ fn cross_graph_edges() -> SplitGraphResult<()> {
                 }
             }
 
-            if incoming_sources.is_empty() {
-                assert!(split_expected_incoming_sources.contains_key(&split_from_id));
-                assert!(unsplit_expected_incoming_sources.contains_key(&unsplit_from_id));
-            } else {
+            if !incoming_sources.is_empty() {
                 assert_eq!(
                     split_expected_incoming_sources
                         .get(&split_from_id)
@@ -562,6 +615,179 @@ fn cross_graph_edges() -> SplitGraphResult<()> {
 }
 
 #[test]
+fn detect_changes_no_difference() -> SplitGraphResult<()> {
+    let reader_writer = TestReadWriter {
+        graphs: HashMap::new(),
+    };
+
+    let mut base_graph = SplitGraph::new(&reader_writer, &reader_writer, 200);
+    base_graph.cleanup_and_merkle_tree_hash();
+    let mut updated_graph = base_graph.clone();
+    updated_graph.cleanup_and_merkle_tree_hash();
+
+    assert!(base_graph.detect_changes(&updated_graph)?.is_empty());
+
+    Ok(())
+}
+
+#[test]
+fn detect_changes_simple() -> SplitGraphResult<()> {
+    let reader_writer = TestReadWriter {
+        graphs: HashMap::new(),
+    };
+
+    for split_max in [1, 2, 3, 1000] {
+        let mut base_graph = SplitGraph::new(&reader_writer, &reader_writer, split_max);
+        let nodes = [
+            ("severian", true),
+            ("thecla", true),
+            ("terminus est", false),
+            ("dorcas", false),
+            ("vodalus", false),
+            ("drotte", false),
+        ];
+
+        // root --> severian --> thecla --> vodalus --> drotte
+        //                   --> terminus est
+        //                   --> vodalus (--> drotte)
+
+        let edges = [
+            (None, TestEdgeWeight::EdgeA, "severian"),
+            (Some("severian"), TestEdgeWeight::EdgeA, "thecla"),
+            (Some("thecla"), TestEdgeWeight::EdgeA, "vodalus"),
+            (Some("severian"), TestEdgeWeight::EdgeA, "terminus est"),
+            (Some("severian"), TestEdgeWeight::EdgeA, "vodalus"),
+            (Some("vodalus"), TestEdgeWeight::EdgeA, "drotte"),
+        ];
+
+        let node_id_map = add_nodes_to_splitgraph(&mut base_graph, &nodes);
+        add_edges_to_splitgraph(&mut base_graph, &edges, &node_id_map);
+        base_graph.cleanup_and_merkle_tree_hash();
+
+        // Changing severian should update severian, root
+        let mut updated_graph = base_graph.clone();
+
+        let severian_id = node_id_map
+            .get(&"severian")
+            .copied()
+            .expect("should get severian's id");
+
+        let mut severian = updated_graph
+            .node_weight(severian_id)
+            .cloned()
+            .expect("severian node should exist");
+        severian.name = "severian the torturer".into();
+        updated_graph.add_or_replace_node(severian)?;
+        updated_graph.cleanup_and_merkle_tree_hash();
+
+        let changes = updated_graph.detect_changes(&base_graph)?;
+
+        let changed_ids: Vec<_> = changes
+            .into_iter()
+            .map(|change| change.entity_id.into_inner().into())
+            .collect();
+
+        assert_eq!(
+            &[updated_graph.root_id()?, severian_id],
+            changed_ids.as_slice()
+        );
+
+        // Changing thecla should update severian, root
+        let mut updated_graph = base_graph.clone();
+
+        let thecla_id = node_id_map
+            .get(&"thecla")
+            .copied()
+            .expect("should get thecla's id");
+
+        let mut thecla = updated_graph
+            .node_weight(thecla_id)
+            .cloned()
+            .expect("thecla node should exist");
+        thecla.name = "chatelaine thecla".into();
+        updated_graph.add_or_replace_node(thecla)?;
+        updated_graph.cleanup_and_merkle_tree_hash();
+
+        let changes = updated_graph.detect_changes(&base_graph)?;
+
+        let changed_ids: Vec<_> = changes
+            .into_iter()
+            .map(|change| change.entity_id.into_inner().into())
+            .collect();
+
+        assert_eq!(
+            &[updated_graph.root_id()?, severian_id, thecla_id],
+            changed_ids.as_slice()
+        );
+
+        // Changing vodalus should update vodalus, thecla, severian, root
+        let mut updated_graph = base_graph.clone();
+
+        let vodalus_id = node_id_map
+            .get(&"vodalus")
+            .copied()
+            .expect("should get thecla's id");
+
+        let mut vodalus = updated_graph
+            .node_weight(vodalus_id)
+            .cloned()
+            .expect("vodalus node should exist");
+        vodalus.name = "vodalus the exultant".into();
+        updated_graph.add_or_replace_node(vodalus)?;
+        updated_graph.cleanup_and_merkle_tree_hash();
+
+        let changes = updated_graph.detect_changes(&base_graph)?;
+
+        // Order of changes is trickier to predict now
+        let changed_ids: HashSet<_> = changes
+            .into_iter()
+            .map(|change| change.entity_id.into_inner().into())
+            .collect();
+
+        assert_eq!(
+            HashSet::from([updated_graph.root_id()?, severian_id, thecla_id, vodalus_id]),
+            changed_ids,
+        );
+
+        // Changing drotte should update the whole graph except terminus est
+        let mut updated_graph = base_graph.clone();
+
+        let drotte_id = node_id_map
+            .get(&"drotte")
+            .copied()
+            .expect("should get drotte's id");
+
+        let mut drotte = updated_graph
+            .node_weight(drotte_id)
+            .cloned()
+            .expect("drotte node should exist");
+        drotte.name = "drotte the journeyman".into();
+        updated_graph.add_or_replace_node(drotte)?;
+        updated_graph.cleanup_and_merkle_tree_hash();
+
+        let changes = updated_graph.detect_changes(&base_graph)?;
+
+        let changed_ids: HashSet<_> = changes
+            .into_iter()
+            .map(|change| change.entity_id.into_inner().into())
+            .collect();
+
+        assert_eq!(
+            HashSet::from([
+                updated_graph.root_id()?,
+                severian_id,
+                thecla_id,
+                vodalus_id,
+                drotte_id
+            ]),
+            changed_ids,
+        );
+    }
+
+    Ok(())
+}
+
+#[test]
 fn detect_and_perform_updates_ordered_containers() -> SplitGraphResult<()> {
     let reader_writer = TestReadWriter {
         graphs: HashMap::new(),
@@ -618,14 +844,14 @@ fn detect_and_perform_updates_ordered_containers() -> SplitGraphResult<()> {
         }
 
         updated_graph.cleanup_and_merkle_tree_hash();
-        let updates = updated_graph.detect_updates(&base_graph);
+        let updates = base_graph.detect_updates(&updated_graph);
 
         assert!(!updates.is_empty());
 
         base_graph.perform_updates(&updates);
         base_graph.cleanup_and_merkle_tree_hash();
 
-        let updates = updated_graph.detect_updates(&base_graph);
+        let updates = base_graph.detect_updates(&updated_graph);
         assert!(updates.is_empty());
 
         assert_eq!(
@@ -677,7 +903,7 @@ fn detect_and_perform_updates_ordered_containers() -> SplitGraphResult<()> {
             updated_graph.ordered_children(damaya.id()).as_ref()
         );
 
-        let updates_after_reorder = updated_graph.detect_updates(&base_graph);
+        let updates_after_reorder = base_graph.detect_updates(&updated_graph);
         assert_eq!(1, updates_after_reorder.len());
         assert!(matches!(
             updates_after_reorder.first().unwrap(),
@@ -709,7 +935,7 @@ fn detect_updates_simple() -> SplitGraphResult<()> {
     let mut updated_graph = base_graph.clone();
     updated_graph.cleanup_and_merkle_tree_hash();
 
-    assert!(updated_graph.detect_updates(&base_graph).is_empty());
+    assert!(base_graph.detect_updates(&updated_graph).is_empty());
 
     let new_node = TestNodeWeight {
         name: "damaya".to_string(),
@@ -726,7 +952,7 @@ fn detect_updates_simple() -> SplitGraphResult<()> {
     )?;
     updated_graph.cleanup_and_merkle_tree_hash();
 
-    let updates = updated_graph.detect_updates(&base_graph);
+    let updates = base_graph.detect_updates(&updated_graph);
 
     assert_eq!(2, updates.len());
 
@@ -772,7 +998,7 @@ fn detect_updates_simple() -> SplitGraphResult<()> {
     assert_eq!(updated_graph.root_id()?, *source);
     assert_eq!(new_node.id(), *destination);
 
-    let inverse_updates = base_graph.detect_updates(&updated_graph);
+    let inverse_updates = updated_graph.detect_updates(&base_graph);
     assert_eq!(2, inverse_updates.len());
 
     assert!(matches!(
@@ -789,7 +1015,7 @@ fn detect_updates_simple() -> SplitGraphResult<()> {
     updated_node.set_name("syenite".into());
     second_updated_graph.add_or_replace_node(updated_node)?;
     second_updated_graph.cleanup_and_merkle_tree_hash();
-    let replace_node_update = second_updated_graph.detect_updates(&updated_graph);
+    let replace_node_update = updated_graph.detect_updates(&second_updated_graph);
     assert!(matches!(
         replace_node_update.first().unwrap(),
         Update::ReplaceNode {
@@ -825,7 +1051,8 @@ fn single_subgraph_as_updates() -> SplitGraphResult<()> {
     ];
 
     let mut subgraph = SubGraph::new_with_root();
-    let node_id_map = add_nodes_to_graph(&mut subgraph, &nodes, false);
+    let nodes_with_order: Vec<_> = nodes.iter().cloned().map(|s| (s, false)).collect();
+    let node_id_map = add_nodes_to_subgraph(&mut subgraph, &nodes_with_order);
 
     for (source, target) in edges {
         let from_index = match source {

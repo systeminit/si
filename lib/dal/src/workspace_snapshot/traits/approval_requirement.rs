@@ -4,7 +4,7 @@ use std::{
 };
 
 use async_trait::async_trait;
-use si_events::{merkle_tree_hash::MerkleTreeHash, ContentHash};
+use si_events::{merkle_tree_hash::MerkleTreeHash, workspace_snapshot::Change, ContentHash};
 use si_id::{ulid::Ulid, ApprovalRequirementDefinitionId, EntityId, UserPk};
 
 use crate::{
@@ -15,10 +15,7 @@ use crate::{
         ApprovalRequirementDefinitionContent, ApprovalRequirementDefinitionContentV1,
     },
     workspace_snapshot::{
-        graph::{
-            detector::Change,
-            traits::approval_requirement::ApprovalRequirementExt as ApprovalRequirementExtGraph,
-        },
+        graph::traits::approval_requirement::ApprovalRequirementExt as ApprovalRequirementExtGraph,
         node_weight::{traits::SiNodeWeight, NodeWeight},
         WorkspaceSnapshotResult,
     },

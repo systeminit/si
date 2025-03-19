@@ -5,6 +5,7 @@ use petgraph::{
     visit::{Control, DfsEvent},
 };
 use serde::{Deserialize, Serialize};
+use si_events::workspace_snapshot::Change;
 use strum::EnumDiscriminants;
 
 use crate::{
@@ -112,6 +113,65 @@ where
         );
 
         updates
+    }
+
+    pub fn detect_changes(&self) -> Vec<Change> {
+        let mut changes = vec![];
+
+        petgraph::visit::depth_first_search(
+            &self.updated_graph.graph,
+            Some(self.updated_graph.root_index),
+            |event| {
+                if let DfsEvent::Discover(updated_graph_index, _) = event {
+                    let Some(updated_node_weight) =
+                        self.updated_graph.graph.node_weight(updated_graph_index)
+                    else {
+                        return Control::Break(());
+                    };
+
+                    match updated_node_weight {
+                        // Ordering node changes will impact the container node's merkle tree hash,
+                        // and external target nodes will never change.
+                        SplitGraphNodeWeight::ExternalTarget { .. }
+                        | SplitGraphNodeWeight::Ordering { .. } => {
+                            return Control::Prune;
+                        }
+                        _ => {}
+                    }
+
+                    let node_id = updated_node_weight.id();
+
+                    if let Some(base_graph_weight) = self
+                        .base_graph
+                        .node_id_to_index(node_id)
+                        .and_then(|index| self.base_graph.graph.node_weight(index))
+                    {
+                        if base_graph_weight.merkle_tree_hash()
+                            == updated_node_weight.merkle_tree_hash()
+                        {
+                            return Control::Prune;
+                        }
+                    }
+
+                    // We still want to prune if the subgraph root merkle tree hashes match.
+                    // But we don't need to record the change, since subgraph roots only exist
+                    // so the subgraph ... has a root. :)
+                    if !matches!(
+                        updated_node_weight,
+                        SplitGraphNodeWeight::SubGraphRoot { .. }
+                    ) {
+                        changes.push(Change {
+                            entity_id: node_id.into(),
+                            entity_kind: updated_node_weight.entity_kind(),
+                            merkle_tree_hash: updated_node_weight.merkle_tree_hash(),
+                        });
+                    }
+                }
+                Control::Continue
+            },
+        );
+
+        changes
     }
 
     fn node_diff_from_base_graph(
