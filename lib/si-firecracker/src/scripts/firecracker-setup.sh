@@ -113,8 +113,10 @@ execute_configuration_management() {
         DOWNLOAD_ROOTFS="${1:-false}" # Default to false
         DOWNLOAD_KERNEL="${2:-false}" # Default to false
 
-        # TODO(johnrwatson): Set up cgroup and cpu time/memory limits for jailer.
-        # < limits here > - will do later
+        # Clear up any jails that may well be lingering, sometimes it happens
+        # when jails are left behind and it causes grief with device usage 
+        # on startup after upgrade in place or similar.
+        pkill firecracker
 
         # Update Process Limits
         if grep -Fxq "jailer-shared" /etc/security/limits.conf; then
