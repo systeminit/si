@@ -268,8 +268,8 @@ execute_configuration_management() {
         # Marks Veritech as a CPU partition root so it can further delegate cpu partitions
         echo "root" > "$VERITECH_CGROUP/cpuset.cpus.partition"
 
-        # Assign CPU affinity
-        echo "0-15" > "$VERITECH_CGROUP/cpuset.cpus"
+        # Assign CPU affinity for the parent cgroup, i.e. all cores
+        echo "0-63" > "$VERITECH_CGROUP/cpuset.cpus"
 
         # Ensure memory comes from NUMA node 0 (needed for cpu affinity)
         echo "0" > "$VERITECH_CGROUP/cpuset.mems"
@@ -283,8 +283,8 @@ execute_configuration_management() {
         # Marks Firecracker as a normal cgroup
         echo "member" > "$FIRECRACKER_CGROUP/cpuset.cpus.partition"
 
-        # Restrict Firecracker instances to CPUs 16-63
-        echo "16-63" > "$FIRECRACKER_CGROUP/cpuset.cpus"
+        # Restrict Firecracker instances to CPUs 8-63
+        echo "8-63" > "$FIRECRACKER_CGROUP/cpuset.cpus"
 
         # Ensure memory comes from NUMA node 0 (needed for cpu allocation) 
         echo "0" > "$FIRECRACKER_CGROUP/cpuset.mems"
