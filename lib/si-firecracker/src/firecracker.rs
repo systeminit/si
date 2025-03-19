@@ -42,10 +42,12 @@ impl FirecrackerJail {
         let mut cmd = Command::new("/usr/bin/jailer");
         cmd.arg("--cgroup-version")
             .arg("2")
+            .arg("--parent-cgroup")
+            .arg("veritech/firecracker")
             .arg("--cgroup")
             .arg("cpuset.cpus=16-63")
             .arg("--cgroup")
-            .arg("cpu.max=750000,1000000")
+            .arg("cpu.max=1000000,1000000")
             .arg("--id")
             .arg(id.to_string())
             .arg("--exec-file")
