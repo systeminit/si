@@ -1298,9 +1298,7 @@ impl SiFileSystem {
                     FuncKind::Authentication => Some(Binding::Authentication),
                     FuncKind::CodeGeneration => Some(Binding::CodeGeneration { inputs: vec![] }),
                     FuncKind::Qualification => Some(Binding::Qualification { inputs: vec![] }),
-                    FuncKind::Management => Some(Binding::Management {
-                        managed_schemas: None,
-                    }),
+                    FuncKind::Management => Some(Binding::Management),
                     _ => {
                         reply.error(EINVAL);
                         return Ok(());
@@ -1747,9 +1745,7 @@ impl SiFileSystem {
             FuncKind::Authentication => Some(Binding::Authentication),
             FuncKind::CodeGeneration => Some(Binding::CodeGeneration { inputs: vec![] }),
             FuncKind::Qualification => Some(Binding::Qualification { inputs: vec![] }),
-            FuncKind::Management => Some(Binding::Management {
-                managed_schemas: None,
-            }),
+            FuncKind::Management => Some(Binding::Management),
             _ => {
                 reply.error(EINVAL);
                 return Ok(());

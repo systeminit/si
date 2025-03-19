@@ -6,7 +6,6 @@ use axum::{
 };
 use dal::{
     attribute::prototype::argument::AttributePrototypeArgument,
-    cached_module::CachedModule,
     func::{
         argument::FuncArgument,
         binding::{
@@ -19,7 +18,7 @@ use dal::{
     },
     prop::PropPath,
     schema::variant::leaves::LeafKind,
-    ChangeSetId, DalContext, Func, FuncId, InputSocket, OutputSocket, Prop, Schema, SchemaId,
+    ChangeSetId, DalContext, Func, FuncId, InputSocket, OutputSocket, Prop, SchemaId,
     SchemaVariant, SchemaVariantId, WsEvent,
 };
 use si_events::{audit_log::AuditLogKind, ActionKind};
@@ -37,7 +36,6 @@ use crate::{
     service::v2::{
         func::binding::update_binding::{
             update_action_func_bindings, update_attribute_func_bindings, update_leaf_func_bindings,
-            update_mangement_func_bindings,
         },
         AccessBuilder,
     },
@@ -45,7 +43,7 @@ use crate::{
 
 use super::{
     check_change_set, check_change_set_and_not_head, dal_func_to_fs_func, func_types_size,
-    get_or_unlock_schema, lookup_variant_for_schema, process_managed_schemas, FsError, FsResult,
+    get_or_unlock_schema, lookup_variant_for_schema, FsError, FsResult,
 };
 
 pub async fn get_bindings_for_func_and_schema_variant(
@@ -161,35 +159,8 @@ pub async fn func_binding_to_fs_binding(
         }
         FuncBinding::Authentication { .. } => fs::Binding::Authentication,
         FuncBinding::CodeGeneration { inputs, .. } => fs::Binding::CodeGeneration { inputs },
-        FuncBinding::Management {
-            managed_schemas, ..
-        } => management_binding_to_fs_management_binding(ctx, managed_schemas).await?,
+        FuncBinding::Management { .. } => fs::Binding::Management,
         FuncBinding::Qualification { inputs, .. } => fs::Binding::Qualification { inputs },
-    })
-}
-
-async fn management_binding_to_fs_management_binding(
-    ctx: &DalContext,
-    managed_schemas: Option<Vec<SchemaId>>,
-) -> FsResult<fs::Binding> {
-    Ok(if let Some(schemas) = managed_schemas {
-        let mut managed_names = vec![];
-        for managed_schema_id in schemas {
-            let schema_name =
-                match CachedModule::find_latest_for_schema_id(ctx, managed_schema_id).await? {
-                    Some(cached_module) => cached_module.schema_name,
-                    None => Schema::get_by_id(ctx, managed_schema_id).await?.name,
-                };
-            managed_names.push(schema_name);
-        }
-
-        fs::Binding::Management {
-            managed_schemas: Some(managed_names),
-        }
-    } else {
-        fs::Binding::Management {
-            managed_schemas: None,
-        }
     })
 }
 
@@ -507,12 +478,7 @@ async fn parse_binding_for_update(
         } => {
             parse_code_gen_bindings_for_update(bindings_to_update, func_binding, update_inputs)?;
         }
-        Binding::Management {
-            managed_schemas: updated_schemas,
-        } => {
-            parse_mgmt_bindings_for_update(ctx, bindings_to_update, func_binding, updated_schemas)
-                .await?;
-        }
+        Binding::Management => {}
         Binding::Qualification {
             inputs: update_inputs,
         } => {
@@ -583,11 +549,10 @@ async fn parse_binding_for_create(
             attribute_prototype_id: None,
             inputs,
         },
-        Binding::Management { managed_schemas } => FuncBinding::Management {
+        Binding::Management => FuncBinding::Management {
             schema_variant_id: Some(schema_variant_id),
             management_prototype_id: None,
             func_id: Some(func_id),
-            managed_schemas: process_managed_schemas(ctx, &managed_schemas).await?,
         },
         Binding::Qualification { inputs } => FuncBinding::Qualification {
             schema_variant_id: Some(schema_variant_id),
@@ -621,34 +586,6 @@ fn parse_qualification_bindings_for_update(
         func_id,
         attribute_prototype_id,
         inputs: update_inputs.to_owned(),
-    });
-
-    Ok(())
-}
-
-async fn parse_mgmt_bindings_for_update(
-    ctx: &DalContext,
-    final_bindings: &mut Vec<FuncBinding>,
-    func_binding: FuncBinding,
-    updated_schemas: &Option<Vec<String>>,
-) -> FsResult<()> {
-    let FuncBinding::Management {
-        schema_variant_id,
-        management_prototype_id,
-        func_id,
-        ..
-    } = func_binding
-    else {
-        return Err(FsError::FuncBindingKindMismatch);
-    };
-
-    let managed_schemas = process_managed_schemas(ctx, updated_schemas).await?;
-
-    final_bindings.push(FuncBinding::Management {
-        schema_variant_id,
-        management_prototype_id,
-        func_id,
-        managed_schemas,
     });
 
     Ok(())
@@ -746,15 +683,8 @@ async fn create_management_binding(
     ctx: &DalContext,
     func_id: FuncId,
     schema_variant_id: SchemaVariantId,
-    managed_schemas: Option<Vec<SchemaId>>,
 ) -> FsResult<()> {
-    ManagementBinding::create_management_binding(
-        ctx,
-        func_id,
-        schema_variant_id,
-        managed_schemas.map(|schemas| schemas.into_iter().collect()),
-    )
-    .await?;
+    ManagementBinding::create_management_binding(ctx, func_id, schema_variant_id).await?;
 
     let schema_variant = SchemaVariant::get_by_id(ctx, schema_variant_id).await?;
     let func = Func::get_by_id(ctx, func_id).await?;
@@ -918,11 +848,10 @@ async fn create_func_binding(ctx: &DalContext, binding: FuncBinding) -> FsResult
         FuncBinding::Management {
             schema_variant_id,
             func_id,
-            managed_schemas,
             ..
         } => match schema_variant_id.zip(func_id) {
             Some((schema_variant_id, func_id)) => {
-                create_management_binding(ctx, func_id, schema_variant_id, managed_schemas).await?;
+                create_management_binding(ctx, func_id, schema_variant_id).await?;
                 Some(schema_variant_id)
             }
             None => None,
@@ -1248,9 +1177,6 @@ pub async fn set_func_bindings(
                 let cycle_check_guard = ctx.workspace_snapshot()?.enable_cycle_check().await;
                 update_leaf_func_bindings(&ctx, bindings_to_update).await?;
                 drop(cycle_check_guard);
-            }
-            FuncKind::Management => {
-                update_mangement_func_bindings(&ctx, bindings_to_update).await?;
             }
             _ => return Err(FsError::FuncBindingKindMismatch),
         }

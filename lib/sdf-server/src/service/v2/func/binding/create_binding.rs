@@ -376,7 +376,6 @@ pub async fn create_binding(
                                 &ctx,
                                 func_id,
                                 schema_variant_id,
-                                None,
                             )
                             .await?;
                             let schema = SchemaVariant::schema_id_for_schema_variant_id(

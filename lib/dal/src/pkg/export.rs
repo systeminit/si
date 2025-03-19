@@ -1,4 +1,3 @@
-use std::collections::HashSet;
 use std::collections::{hash_map::Entry, HashMap};
 use std::ops::Deref;
 
@@ -528,11 +527,6 @@ impl PkgExporter {
             let mut builder = ManagementFuncSpec::builder();
             if let Some(description) = management_proto.description() {
                 builder.description(description.to_string());
-            }
-            if let Some(managed_schemas) = management_proto.managed_schemas() {
-                let managed_schemas: HashSet<_> =
-                    managed_schemas.iter().map(|id| id.to_string()).collect();
-                builder.managed_schemas(managed_schemas);
             }
 
             specs.push(

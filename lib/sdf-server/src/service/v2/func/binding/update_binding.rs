@@ -6,7 +6,7 @@ use dal::{
     func::{
         binding::{
             action::ActionBinding, attribute::AttributeBinding, leaf::LeafBinding,
-            management::ManagementBinding, AttributeArgumentBinding,
+            AttributeArgumentBinding,
         },
         FuncKind,
     },
@@ -131,36 +131,6 @@ pub async fn update_leaf_func_bindings(
     Ok(())
 }
 
-pub async fn update_mangement_func_bindings(
-    ctx: &DalContext,
-    bindings: Vec<FuncBinding>,
-) -> FuncAPIResult<()> {
-    for binding in bindings {
-        let frontend_types::FuncBinding::Management {
-            managed_schemas,
-            management_prototype_id,
-            ..
-        } = binding
-        else {
-            return Err(FuncAPIError::WrongFunctionKindForBinding);
-        };
-
-        let management_prototype_id = management_prototype_id
-            .ok_or(FuncAPIError::MissingPrototypeId)?
-            .into_raw_id()
-            .into();
-
-        ManagementBinding::update_management_binding(
-            ctx,
-            management_prototype_id,
-            managed_schemas.map(|schemas| schemas.into_iter().map(Into::into).collect()),
-        )
-        .await?;
-    }
-
-    Ok(())
-}
-
 pub async fn update_binding(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(access_builder): AccessBuilder,
@@ -187,9 +157,6 @@ pub async fn update_binding(
         }
         FuncKind::CodeGeneration | FuncKind::Qualification => {
             update_leaf_func_bindings(&ctx, request.bindings).await?;
-        }
-        FuncKind::Management => {
-            update_mangement_func_bindings(&ctx, request.bindings).await?;
         }
         _ => return Err(FuncAPIError::WrongFunctionKindForBinding),
     }

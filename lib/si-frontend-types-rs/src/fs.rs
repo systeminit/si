@@ -196,9 +196,7 @@ pub enum Binding {
     CodeGeneration {
         inputs: Vec<LeafInputLocation>,
     },
-    Management {
-        managed_schemas: Option<Vec<String>>,
-    },
+    Management,
     Qualification {
         inputs: Vec<LeafInputLocation>,
     },

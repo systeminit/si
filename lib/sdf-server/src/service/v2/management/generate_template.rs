@@ -144,7 +144,7 @@ pub async fn generate_template(
         .pop()
         .ok_or(ManagementApiError::FuncMissingPrototype(func.id))?;
 
-    let (create_operations, managed_schemas) =
+    let create_operations =
         dal::management::generator::generate_template(&ctx, view_id, &request.component_ids)
             .await?;
 
@@ -223,14 +223,6 @@ pub async fn generate_template(
         mgmtComponentName = request.asset_name,
     );
     FuncAuthoringClient::save_code(&ctx, vars_func.id, vars_func_code).await?;
-
-    let prototype = ManagementPrototype::get_by_id(&ctx, prototype_id)
-        .await?
-        .ok_or(ManagementApiError::FuncMissingPrototype(func.id))?;
-
-    prototype
-        .set_managed_schemas(&ctx, Some(managed_schemas))
-        .await?;
 
     let schema_variant_id = new_variant.id();
     WsEvent::schema_variant_created(&ctx, schema_id, new_variant.clone())

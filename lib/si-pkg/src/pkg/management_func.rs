@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use object_tree::{Hash, HashedNode};
 use petgraph::prelude::*;
 
@@ -12,7 +10,6 @@ pub struct SiPkgManagementFunc<'a> {
     func_unique_id: String,
     name: String,
     description: Option<String>,
-    managed_schemas: Option<HashSet<String>>,
 
     hash: Hash,
     source: Source<'a>,
@@ -38,7 +35,6 @@ impl<'a> SiPkgManagementFunc<'a> {
             func_unique_id: node.func_unique_id,
             name: node.name,
             description: node.description,
-            managed_schemas: node.managed_schemas,
 
             hash: hashed_node.hash(),
             source: Source::new(graph, node_idx),
@@ -55,10 +51,6 @@ impl<'a> SiPkgManagementFunc<'a> {
 
     pub fn description(&self) -> Option<&str> {
         self.description.as_deref()
-    }
-
-    pub fn managed_schemas(&self) -> Option<&HashSet<String>> {
-        self.managed_schemas.as_ref()
     }
 
     pub fn hash(&self) -> Hash {
@@ -78,7 +70,6 @@ impl<'a> TryFrom<SiPkgManagementFunc<'a>> for ManagementFuncSpec {
             .func_unique_id(value.func_unique_id())
             .name(value.name().to_owned())
             .description(value.description().map(ToOwned::to_owned))
-            .managed_schemas(value.managed_schemas)
             .build()?)
     }
 }

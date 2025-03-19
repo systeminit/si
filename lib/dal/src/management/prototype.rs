@@ -1,9 +1,6 @@
 //! A [`ManagementPrototype`] points to a Management [`Func`] for a schema variant
 
-use std::{
-    collections::{HashMap, HashSet},
-    sync::Arc,
-};
+use std::{collections::HashMap, sync::Arc};
 
 use serde::{Deserialize, Serialize};
 use si_events::FuncRunId;
@@ -13,7 +10,7 @@ use thiserror::Error;
 use veritech_client::{ManagementFuncStatus, ManagementResultSuccess};
 
 use crate::{
-    cached_module::{CachedModule, CachedModuleError},
+    cached_module::CachedModuleError,
     component::socket::ComponentInputSocket,
     diagram::{
         geometry::Geometry,
@@ -92,7 +89,6 @@ pub use si_id::ManagementPrototypeId;
 #[serde(rename_all = "camelCase")]
 pub struct ManagementPrototype {
     pub id: ManagementPrototypeId,
-    pub managed_schemas: Option<HashSet<SchemaId>>,
     pub name: String,
     pub description: Option<String>,
 }
@@ -101,7 +97,6 @@ impl From<ManagementPrototype> for ManagementPrototypeContent {
     fn from(value: ManagementPrototype) -> Self {
         Self::V1(ManagementPrototypeContentV1 {
             name: value.name,
-            managed_schemas: value.managed_schemas,
             description: value.description,
         })
     }
@@ -276,10 +271,6 @@ impl ManagementPrototype {
         self.id
     }
 
-    pub fn managed_schemas(&self) -> Option<&HashSet<SchemaId>> {
-        self.managed_schemas.as_ref()
-    }
-
     pub fn name(&self) -> &str {
         &self.name
     }
@@ -310,56 +301,15 @@ impl ManagementPrototype {
         ))
     }
 
-    /// Generates a map between the schema name and its schema id (even for
-    /// uninstalled schemas), and a reverse mapping. These names will be
-    /// provided to the management executor and operator so that management
-    /// functions can create components of specific schema kinds.
-    pub async fn managed_schemas_map(
-        &self,
-        ctx: &DalContext,
-    ) -> ManagementPrototypeResult<(HashMap<String, SchemaId>, HashMap<SchemaId, String>)> {
-        let mut managed_schemas_map = HashMap::new();
-        let mut reverse_map = HashMap::new();
-
-        let mut managed_schemas = self.managed_schemas().cloned().unwrap_or_default();
-        if let Some(schema_id) = self.schema_id(ctx).await? {
-            managed_schemas.insert(schema_id);
-        }
-
-        for schema_id in managed_schemas {
-            let schema_name = match Schema::get_by_id_opt(ctx, schema_id).await? {
-                Some(schema) => schema.name().to_owned(),
-                None => {
-                    let Some(cached_module) =
-                        CachedModule::find_latest_for_schema_id(ctx, schema_id).await?
-                    else {
-                        continue;
-                    };
-
-                    cached_module.schema_name
-                }
-            };
-
-            managed_schemas_map.insert(schema_name.clone(), schema_id);
-            reverse_map.insert(schema_id, schema_name);
-        }
-
-        Ok((managed_schemas_map, reverse_map))
-    }
-
     pub async fn new(
         ctx: &DalContext,
         name: String,
         description: Option<String>,
         func_id: FuncId,
-        managed_schemas: Option<HashSet<SchemaId>>,
         schema_variant_id: SchemaVariantId,
     ) -> ManagementPrototypeResult<Self> {
         let content = ManagementPrototypeContentV1 {
             name: name.clone(),
-            managed_schemas: managed_schemas
-                .clone()
-                .map(|schemas| schemas.into_iter().map(Into::into).collect()),
             description: description.clone(),
         };
 
@@ -389,7 +339,6 @@ impl ManagementPrototype {
         Ok(ManagementPrototype {
             id: id.into(),
             name,
-            managed_schemas,
             description,
         })
     }
@@ -423,13 +372,12 @@ impl ManagementPrototype {
 
         Ok(Self {
             id: proto_id,
-            managed_schemas: inner.managed_schemas,
             name: inner.name,
             description: inner.description,
         })
     }
 
-    pub async fn get_by_id(
+    pub async fn get_by_id_opt(
         ctx: &DalContext,
         id: ManagementPrototypeId,
     ) -> ManagementPrototypeResult<Option<Self>> {
@@ -457,12 +405,18 @@ impl ManagementPrototype {
 
         Ok(Some(Self {
             id,
-            managed_schemas: content_inner
-                .managed_schemas
-                .map(|schemas| schemas.into_iter().map(Into::into).collect()),
             name: content_inner.name,
             description: content_inner.description,
         }))
+    }
+
+    pub async fn get_by_id(
+        ctx: &DalContext,
+        id: ManagementPrototypeId,
+    ) -> ManagementPrototypeResult<Self> {
+        Self::get_by_id_opt(ctx, id)
+            .await?
+            .ok_or(ManagementPrototypeError::NotFound(id))
     }
 
     pub async fn func_id(
@@ -698,7 +652,7 @@ impl ManagementPrototype {
             let node_weight_id = node_weight.id();
             if NodeWeightDiscriminants::ManagementPrototype == node_weight.into() {
                 if let Some(management_prototype) =
-                    Self::get_by_id(ctx, node_weight_id.into()).await?
+                    Self::get_by_id_opt(ctx, node_weight_id.into()).await?
                 {
                     management_prototypes.push(management_prototype);
                 }
@@ -722,7 +676,7 @@ impl ManagementPrototype {
             let node_weight_id = node_weight.id();
             if NodeWeightDiscriminants::ManagementPrototype == node_weight.into() {
                 if let Some(management_prototype) =
-                    Self::get_by_id(ctx, node_weight_id.into()).await?
+                    Self::get_by_id_opt(ctx, node_weight_id.into()).await?
                 {
                     management_prototype_ids.push(management_prototype.id);
                 }
@@ -757,7 +711,7 @@ impl ManagementPrototype {
             let node_weight_id = node_weight.id();
             if NodeWeightDiscriminants::ManagementPrototype == node_weight.into() {
                 if let Some(management_prototype) =
-                    Self::get_by_id(ctx, node_weight_id.into()).await?
+                    Self::get_by_id_opt(ctx, node_weight_id.into()).await?
                 {
                     return Ok(Some(management_prototype.id));
                 }
@@ -765,20 +719,6 @@ impl ManagementPrototype {
         }
 
         Ok(None)
-    }
-
-    pub async fn set_managed_schemas(
-        self,
-        ctx: &DalContext,
-        managed_schemas: Option<Vec<SchemaId>>,
-    ) -> ManagementPrototypeResult<()> {
-        self.modify(ctx, |proto| {
-            proto.managed_schemas = managed_schemas.map(|schemas| schemas.into_iter().collect());
-            Ok(())
-        })
-        .await?;
-
-        Ok(())
     }
 }
 

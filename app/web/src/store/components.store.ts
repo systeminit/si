@@ -374,30 +374,12 @@ export function getPossibleAndExistingPeerSockets(
       (c) =>
         c.def.sockets
           ?.filter((peerSocket) => {
-            // Management inputs can only be connected to management outputs
-            // if the output schema manages the input
-            let isManagedSchema;
-            if (targetSocket.direction === "output") {
-              isManagedSchema =
-                peerSocket.schemaId &&
-                targetSocket.managedSchemas &&
-                targetSocket.managedSchemas.includes(peerSocket.schemaId);
-            } else {
-              isManagedSchema =
-                targetSocket.schemaId &&
-                peerSocket.managedSchemas &&
-                peerSocket.managedSchemas.includes(targetSocket.schemaId);
-            }
-
-            const isSameSchema = targetSocket.schemaId === peerSocket.schemaId;
-
             // Get only input sockets for output sockets and vice versa
             if (peerSocket.direction === targetSocket.direction) return false;
 
-            if (peerSocket.isManagement && targetSocket.isManagement) {
-              return !!(isSameSchema || isManagedSchema);
-            } else if (peerSocket.isManagement || targetSocket.isManagement) {
-              return false;
+            // management sockets can only connect to other management sockets
+            if (peerSocket.isManagement || targetSocket.isManagement) {
+              return !!peerSocket.isManagement && !!targetSocket.isManagement;
             }
 
             const [outputCAs, inputCAs] =

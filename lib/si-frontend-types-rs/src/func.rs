@@ -5,7 +5,7 @@ pub use si_events::FuncKind;
 use si_events::{
     ActionKind, ActionPrototypeId, AttributePrototypeArgumentId, AttributePrototypeId, ComponentId,
     FuncArgumentId, FuncBackendKind, FuncId, InputSocketId, ManagementPrototypeId, OutputSocketId,
-    PropId, SchemaId, SchemaVariantId, Timestamp,
+    PropId, SchemaVariantId, Timestamp,
 };
 
 #[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
@@ -125,7 +125,6 @@ pub enum FuncBinding {
         schema_variant_id: Option<SchemaVariantId>,
         management_prototype_id: Option<ManagementPrototypeId>,
         func_id: Option<FuncId>,
-        managed_schemas: Option<Vec<SchemaId>>,
     },
     #[serde(rename_all = "camelCase")]
     Qualification {

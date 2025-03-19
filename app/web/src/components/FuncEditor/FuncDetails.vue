@@ -147,24 +147,6 @@
               </Stack>
             </TreeNode>
 
-            <TreeNode
-              v-if="editingFunc.kind === FuncKind.Management"
-              alwaysShowArrow
-              childrenContainerClasses="border-b border-neutral-200 dark:border-neutral-600"
-              defaultOpen
-              enableGroupToggle
-              indentationSize="none"
-              label="Managed Assets"
-              labelClasses="border-b border-neutral-200 dark:border-neutral-600"
-              leftBorderSize="none"
-            >
-              <ManagementDetails
-                ref="detachRef"
-                :disabled="editingFunc.isLocked"
-                :funcId="editingFunc.funcId"
-                :schemaVariantId="$props.schemaVariantId"
-              />
-            </TreeNode>
             <ActionDetails
               v-if="editingFunc.kind === FuncKind.Action"
               ref="detachRef"
@@ -303,7 +285,6 @@ import { useAssetStore } from "@/store/asset.store";
 import AuthenticationDetails from "@/components/FuncEditor/AuthenticationDetails.vue";
 import FuncArguments from "./FuncArguments.vue";
 import ActionDetails from "./ActionDetails.vue";
-import ManagementDetails from "./ManagementDetails.vue";
 import AttributeBindings from "./AttributeBindings.vue";
 import CodeGenerationDetails from "./CodeGenerationDetails.vue";
 import QualificationDetails from "./QualificationDetails.vue";
