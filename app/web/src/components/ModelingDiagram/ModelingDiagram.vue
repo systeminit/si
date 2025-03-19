@@ -414,6 +414,8 @@ import {
   NODE_TITLE_HEADER_MARGIN_RIGHT,
   GROUP_HEADER_ICON_SIZE,
   NODE_HEADER_HEIGHT,
+  ONLY_SHOW_DIAGRAM_TITLES_BELOW_THIS_ZOOM,
+  HIDE_ALL_DIAGRAM_DETAILS_BELOW_THIS_ZOOM,
 } from "./diagram_constants";
 import {
   vectorDistance,
@@ -437,9 +439,9 @@ import DiagramEmptyState from "./DiagramEmptyState.vue";
 import DiagramView from "./DiagramView.vue";
 
 const hideDiagramDetails = computed(() => {
-  if (zoomLevel.value > 0.51) {
+  if (zoomLevel.value > ONLY_SHOW_DIAGRAM_TITLES_BELOW_THIS_ZOOM) {
     return "show";
-  } else if (zoomLevel.value > 0.31) {
+  } else if (zoomLevel.value > HIDE_ALL_DIAGRAM_DETAILS_BELOW_THIS_ZOOM) {
     return "titles";
   } else {
     return "hide";
