@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use si_events::{ComponentId, SchemaId, SchemaVariantId, ViewId};
 use std::num::ParseIntError;
 use strum::{AsRefStr, Display, EnumIter, EnumString};
@@ -163,4 +164,21 @@ pub struct DiagramComponentView {
     pub can_be_upgraded: bool,
     pub from_base_change_set: bool,
     pub view_data: Option<GeometryAndView>,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct PotentialConnection {
+    pub socket_id: String,
+    pub attribute_value_id: String,
+    pub value: Option<Value>,
+    pub direction: DiagramSocketDirection, // whether it's input or output
+    pub matches: Vec<PotentialMatch>,
+}
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct PotentialMatch {
+    pub socket_id: String,
+    pub component_id: String,
+    pub value: Option<Value>,
 }

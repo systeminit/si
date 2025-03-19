@@ -9,13 +9,13 @@ use dal::{Component, DalContext, Schema, SchemaVariant};
 use dal_test::expected::{self, ExpectComponent};
 use dal_test::helpers::{
     create_component_for_default_schema_name_in_default_view,
-    create_component_for_schema_variant_on_default_view, update_attribute_value_for_component,
-    ChangeSetTestHelpers,
+    create_component_for_schema_variant_on_default_view, ChangeSetTestHelpers,
 };
 use dal_test::{test, Result};
 use pretty_assertions_sorted::assert_eq;
 use serde_json::json;
 
+mod autoconnect;
 mod debug;
 mod delete;
 mod get_code;
@@ -625,44 +625,6 @@ async fn set_the_universe(ctx: &mut DalContext) -> Result<()> {
         .expect("has a view");
 
     assert_eq!(universe_json, view);
-
-    Ok(())
-}
-
-#[test]
-async fn autoconnect(ctx: &mut DalContext) -> Result<()> {
-    let even =
-        create_component_for_default_schema_name_in_default_view(ctx, "small even lego", "even")
-            .await?;
-    let odd =
-        create_component_for_default_schema_name_in_default_view(ctx, "small odd lego", "odd")
-            .await?;
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
-
-    // update both sides attribute values
-    update_attribute_value_for_component(
-        ctx,
-        even.id(),
-        &["root", "domain", "one"],
-        serde_json::json!["1"],
-    )
-    .await?;
-    update_attribute_value_for_component(
-        ctx,
-        odd.id(),
-        &["root", "domain", "one"],
-        serde_json::json!["1"],
-    )
-    .await?;
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
-
-    // now let's autoconnect!
-    Component::autoconnect(ctx, odd.id()).await?;
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
-
-    let incoming = Component::incoming_connections_for_id(ctx, odd.id()).await?;
-    assert!(!incoming.is_empty());
-    assert!(incoming.len() == 1);
 
     Ok(())
 }

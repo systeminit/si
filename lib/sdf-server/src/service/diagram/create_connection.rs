@@ -10,7 +10,7 @@ use axum::{
 };
 use dal::{
     change_status::ChangeStatus, diagram::SummaryDiagramEdge, ChangeSet, Component, ComponentId,
-    InputSocket, InputSocketId, OutputSocketId, Visibility, WsEvent,
+    DalContext, InputSocket, InputSocketId, OutputSocketId, Visibility, WsEvent,
 };
 use dal::{diagram::SummaryDiagramInferredEdge, OutputSocket};
 use serde::{Deserialize, Serialize};
@@ -68,15 +68,14 @@ pub async fn create_connection(
             .await?;
     }
 
-    Component::connect(
+    create_connection_inner(
         &ctx,
         request.from_component_id,
         request.from_socket_id,
         request.to_component_id,
         request.to_socket_id,
     )
-    .await?
-    .ok_or(DiagramError::DuplicatedConnection)?;
+    .await?;
 
     track(
         &posthog_client,
@@ -94,10 +93,34 @@ pub async fn create_connection(
         }),
     );
 
-    let from_component = Component::get_by_id(&ctx, request.from_component_id).await?;
-    let to_component = Component::get_by_id(&ctx, request.to_component_id).await?;
-    for incoming_connection in to_component.incoming_connections(&ctx).await? {
-        if incoming_connection.to_input_socket_id == request.to_socket_id
+    ctx.commit().await?;
+
+    Ok(ForceChangeSetResponse::empty(force_change_set_id))
+}
+
+// Wraps the Create Connection Logic including all of the Ws Events for new connections and the
+// Audit log events. Doesn't handle inferred connections
+pub async fn create_connection_inner(
+    ctx: &DalContext,
+    source_component_id: ComponentId,
+    source_output_socket_id: OutputSocketId,
+    destination_component_id: ComponentId,
+    destination_input_socket_id: InputSocketId,
+) -> Result<(), DiagramError> {
+    Component::connect(
+        ctx,
+        source_component_id,
+        source_output_socket_id,
+        destination_component_id,
+        destination_input_socket_id,
+    )
+    .await?
+    .ok_or(DiagramError::DuplicatedConnection)?;
+
+    let from_component = Component::get_by_id(ctx, source_component_id).await?;
+    let to_component = Component::get_by_id(ctx, destination_component_id).await?;
+    for incoming_connection in to_component.incoming_connections(ctx).await? {
+        if incoming_connection.to_input_socket_id == destination_input_socket_id
             && incoming_connection.from_component_id == from_component.id()
             && incoming_connection.to_component_id == to_component.id()
         {
@@ -107,36 +130,33 @@ pub async fn create_connection(
                 &to_component,
                 ChangeStatus::Added,
             )?;
-            WsEvent::connection_upserted(&ctx, edge.into())
+            WsEvent::connection_upserted(ctx, edge.into())
                 .await?
-                .publish_on_commit(&ctx)
+                .publish_on_commit(ctx)
                 .await?;
         }
     }
-    let to_component_name = to_component.name(&ctx).await?;
-    let to_socket_name = InputSocket::get_by_id(&ctx, request.to_socket_id)
+    let to_component_name = to_component.name(ctx).await?;
+    let to_socket_name = InputSocket::get_by_id(ctx, destination_input_socket_id)
         .await?
         .name()
         .to_string();
     ctx.write_audit_log(
         AuditLogKind::CreateConnection {
-            from_component_id: request.from_component_id,
-            from_component_name: from_component.name(&ctx).await?,
-            from_socket_id: request.from_socket_id,
-            from_socket_name: OutputSocket::get_by_id(&ctx, request.from_socket_id)
+            from_component_id: source_component_id,
+            from_component_name: from_component.name(ctx).await?,
+            from_socket_id: source_output_socket_id,
+            from_socket_name: OutputSocket::get_by_id(ctx, source_output_socket_id)
                 .await?
                 .name()
                 .to_string(),
-            to_component_id: request.to_component_id,
+            to_component_id: destination_component_id,
             to_component_name: to_component_name.clone(),
-            to_socket_id: request.to_socket_id,
+            to_socket_id: destination_input_socket_id,
             to_socket_name: to_socket_name.clone(),
         },
         format!("{to_component_name} --- {to_socket_name}"),
     )
     .await?;
-
-    ctx.commit().await?;
-
-    Ok(ForceChangeSetResponse::empty(force_change_set_id))
+    Ok(())
 }

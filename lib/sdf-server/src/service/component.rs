@@ -42,6 +42,7 @@ pub mod insert_property_editor_value;
 pub mod json;
 pub mod list_qualifications;
 mod manage;
+mod override_with_connection;
 pub mod refresh;
 pub mod restore_default_function;
 pub mod set_name;
@@ -68,6 +69,8 @@ pub enum ComponentError {
     ComponentDebugView(#[from] ComponentDebugViewError),
     #[error("dal component error: {0}")]
     DalComponent(#[from] DalComponentError),
+    #[error("diagram error: {0}")]
+    Diagram(#[from] crate::service::diagram::DiagramError),
     #[error("diagram error: {0}")]
     DiagramError(#[from] dal::diagram::DiagramError),
     #[error("func error: {0}")]
@@ -203,6 +206,10 @@ pub fn routes() -> Router<AppState> {
         .route("/refresh", post(refresh::refresh))
         .route("/debug", get(debug::debug_component))
         .route("/autoconnect", post(autoconnect::autoconnect))
+        .route(
+            "/override_with_connection",
+            post(override_with_connection::override_with_connection),
+        )
         .route("/json", get(json::json))
         .route("/upgrade_component", post(upgrade::upgrade))
         .route("/conflicts", get(conflicts_for_component))

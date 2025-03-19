@@ -2756,7 +2756,16 @@ impl Component {
     pub async fn autoconnect(
         ctx: &DalContext,
         component_id: ComponentId,
-    ) -> ComponentResult<Vec<InputSocketId>> {
+    ) -> ComponentResult<(
+        Vec<InputSocketId>,
+        HashMap<
+            ComponentInputSocket,
+            (
+                Vec<(ComponentId, OutputSocketId, serde_json::Value)>,
+                Option<serde_json::Value>,
+            ),
+        >,
+    )> {
         let mut available_input_sockets_to_connect = HashMap::new();
         let incoming_connections =
             Component::incoming_connections_for_id(ctx, component_id).await?;
@@ -2907,12 +2916,11 @@ impl Component {
             }
         }
 
-        // now we've got potential matches, so let's iterate over them and pull out the ones that match 1:1
-        // i.e. if there's multiple potential matches, do nothing for now.
-
-        // Maybe later we can return these and let the user decide??
+        // now we've got potential matches, so let's iterate over them and create connections for the ones that match 1:1
+        // if there's a conflict, record it as such and surface it to the user!
 
         let mut connections_created = Vec::new();
+        let mut conflicted_connections = HashMap::new();
 
         for (input_socket_id, matches) in potential_matches {
             // Get the input socket to check its arity
@@ -2923,6 +2931,8 @@ impl Component {
                     if input_socket.arity() == SocketArity::Many {
                         // For array values with arity many, ensure each value has exactly one match
                         let mut valid_matches = Vec::new();
+                        let mut coverage_for_all_items = true;
+                        let mut duplicate_entry_for_items = false;
                         // but first let's see if any output socket matches the whole thing
                         let whole_array_match: Vec<_> = matches
                             .iter()
@@ -2939,19 +2949,32 @@ impl Component {
                             if value_matches.len() == 1 {
                                 valid_matches.push(value_matches[0]);
                             }
+                            // if there's one value that doesn't exist, it means we don't have a full set
+                            else if value_matches.is_empty() {
+                                coverage_for_all_items = false;
+                            }
+                            // if there are multiple valid matches, record them anyways for returning conflicts later
+                            else if value_matches.len() > 1 {
+                                duplicate_entry_for_items = true;
+                                valid_matches.extend(value_matches);
+                            }
                         }
-                        // only use the whole match if there aren't any individual matches for the
-                        // array items, AND if the whole array has exactly one matching output socket
+
+                        // Use the whole match iff (if and only if!):
+                        // 1. There is exactly one connection that is a whole match AND
+                        // 2. We don't have coverage for all of the entries by individual connections OR
                         let should_use_whole_match =
-                            valid_matches.is_empty() && whole_array_match.len() == 1;
+                            (whole_array_match.len() == 1) && !coverage_for_all_items;
 
-                        // only use valid matches if the whole array doesn't match anything
-                        // and there are valid matches for all individual array items
-                        // otherwise we'll lose the values that don't have matches!
-                        let should_use_valid_matches = !valid_matches.is_empty()
-                            && whole_array_match.is_empty()
-                            && valid_matches.len() == values.len();
+                        // Use the individual matches iff:
+                        // 1. There are no whole matches AND
+                        // 2. We have coverage of all entries in the array AND
+                        // 3. We do not have any duplicates!
+                        let should_use_valid_matches = whole_array_match.is_empty()
+                            && coverage_for_all_items
+                            && !duplicate_entry_for_items;
 
+                        // only 1 valid match on the whole array, yeehaw
                         if should_use_whole_match {
                             // Reset the prototype and create the one connection!
                             AttributeValue::use_default_prototype(ctx, info_needed.attr_value_id)
@@ -3008,41 +3031,72 @@ impl Component {
                                     }
                                 }
                             }
-                        }
-                    }
-                } else {
-                    // For non-array values or arity one, just check if there's exactly one match
-                    // if so, use it!
-                    if matches.len() == 1 {
-                        AttributeValue::use_default_prototype(ctx, info_needed.attr_value_id)
-                            .await?;
-                        let (source_component_id, output_socket_id, value) = &matches[0];
-                        match Component::connect(
-                            ctx,
-                            *source_component_id,
-                            *output_socket_id,
-                            component_id,
-                            input_socket_id,
-                        )
-                        .await
-                        {
-                            Ok(_) => connections_created.push(input_socket_id),
-                            Err(err) => {
-                                warn!(si.error.message = ?err, "Failed to create connection to Component {}", source_component_id);
-                                AttributeValue::set_value(
-                                    ctx,
-                                    info_needed.attr_value_id,
-                                    Some(value.clone()),
-                                )
-                                .await?;
+                        } else {
+                            // conflicted!
+                            // Return all whole matches we found, and all individual matches but only if we have full coverage
+                            // maybe in the future we return partial matches??
+                            let mut conflicted = Vec::new();
+                            for wm in whole_array_match {
+                                conflicted.push(wm.clone());
+                            }
+                            if coverage_for_all_items {
+                                for im in valid_matches {
+                                    conflicted.push(im.clone());
+                                }
+                            }
+                            if !conflicted.is_empty() {
+                                conflicted_connections.insert(
+                                    ComponentInputSocket {
+                                        component_id,
+                                        input_socket_id,
+                                        attribute_value_id: info_needed.attr_value_id,
+                                    },
+                                    (conflicted, info_needed.value.clone()),
+                                );
                             }
                         }
                     }
+                } else
+                // For non-array values or arity one, just check if there's exactly one match
+                // if so, use it!
+                if matches.len() == 1 {
+                    AttributeValue::use_default_prototype(ctx, info_needed.attr_value_id).await?;
+                    let (source_component_id, output_socket_id, value) = &matches[0];
+                    match Component::connect(
+                        ctx,
+                        *source_component_id,
+                        *output_socket_id,
+                        component_id,
+                        input_socket_id,
+                    )
+                    .await
+                    {
+                        Err(err) => {
+                            warn!(si.error.message = ?err, "Failed to create connection to Component {}", source_component_id);
+                            AttributeValue::set_value(
+                                ctx,
+                                info_needed.attr_value_id,
+                                Some(value.clone()),
+                            )
+                            .await?;
+                        }
+                        Ok(_) => connections_created.push(input_socket_id),
+                    }
+                } else if matches.len() > 1 {
+                    // conflicted! let the user pick
+                    conflicted_connections.insert(
+                        ComponentInputSocket {
+                            component_id,
+                            input_socket_id,
+                            attribute_value_id: info_needed.attr_value_id,
+                        },
+                        (matches, info_needed.value.clone()),
+                    );
                 }
             }
         }
 
-        Ok(connections_created)
+        Ok((connections_created, conflicted_connections))
     }
 
     /// `AttributeValueId`s of all input sockets connected to any output socket of this component.

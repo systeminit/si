@@ -18,8 +18,8 @@ pub use crate::{
     },
     component::{
         ChangeStatus, ConnectionAnnotation, DiagramComponentView, DiagramSocket,
-        DiagramSocketDirection, DiagramSocketNodeSide, GeometryAndView, GridPoint, RawGeometry,
-        Size2D, StringGeometry,
+        DiagramSocketDirection, DiagramSocketNodeSide, GeometryAndView, GridPoint,
+        PotentialConnection, PotentialMatch, RawGeometry, Size2D, StringGeometry,
     },
     conflict::ConflictWithHead,
     func::{

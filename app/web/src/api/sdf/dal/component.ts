@@ -7,6 +7,7 @@ import { ComponentType } from "@/api/sdf/dal/schema";
 import { ViewDescription, ViewId } from "@/api/sdf/dal/views";
 import {
   DiagramSocketDef,
+  DiagramSocketDirection,
   Size2D,
 } from "@/components/ModelingDiagram/diagram_types";
 
@@ -88,3 +89,18 @@ export type Edge = RawEdge & {
   isInferred: boolean;
   isManagement?: boolean;
 };
+
+export interface PotentialConnection {
+  socketId: SocketId;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  value: any | null;
+  attributeValueId: string;
+  direction: DiagramSocketDirection;
+  matches: PotentialMatch[];
+}
+export interface PotentialMatch {
+  socketId: SocketId;
+  componentId: ComponentId;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  value: any | null;
+}
