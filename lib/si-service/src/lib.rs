@@ -32,5 +32,8 @@ pub mod prelude {
     pub use si_std::SensitiveString;
     pub use telemetry_application::prelude::*;
     pub use tokio_util::{sync::CancellationToken, task::TaskTracker};
-    pub use tokio_watchdog;
+
+    // NOTE(nick): if we decide to restore/reuse tokio watchdog, we should provide it through the
+    // service prelude again.
+    // pub use tokio_watchdog;
 }
