@@ -4054,7 +4054,10 @@ impl Component {
         let mut sockets = Vec::new();
         for mut comp_socket in schema_sockets.clone() {
             if let Some(is_managed) = comp_socket.is_management {
+                // management sockets do not have values, so don't try to get them
+                // but we still want to return them, silly silly
                 if is_managed {
+                    sockets.push(comp_socket.clone());
                     continue;
                 }
             }
