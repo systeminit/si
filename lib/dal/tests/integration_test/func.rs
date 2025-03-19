@@ -84,10 +84,8 @@ async fn get_ts_type_from_root(ctx: &mut DalContext) {
     let root_prop_id = SchemaVariant::get_root_prop_id(ctx, schema_variant_id)
         .await
         .expect("could not get root prop id");
-    let root_prop = Prop::get_by_id(ctx, root_prop_id)
-        .await
-        .expect("could not get prop by id");
-
     // TODO(nick): check that the ts type is right!
-    let _ts_type = root_prop.ts_type(ctx).await.expect("could not get ts type");
+    let _ts_type = Prop::ts_type(ctx, root_prop_id)
+        .await
+        .expect("could not get ts type");
 }

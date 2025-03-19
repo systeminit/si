@@ -1,4 +1,3 @@
-use async_recursion::async_recursion;
 use petgraph::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -24,6 +23,7 @@ use crate::workspace_snapshot::edge_weight::EdgeWeightKind;
 use crate::workspace_snapshot::edge_weight::EdgeWeightKindDiscriminants;
 use crate::workspace_snapshot::node_weight::traits::SiNodeWeight;
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError, PropNodeWeight};
+use crate::workspace_snapshot::traits::prop::PropExt as _;
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     implement_add_edge_to, label_list::ToLabelList, property_editor::schema::WidgetKind,
@@ -83,6 +83,8 @@ pub enum PropError {
     TryLock(#[from] tokio::sync::TryLockError),
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
+    #[error("workspace snapshot graph error: {0}")]
+    WorkspaceSnapshotGraph(#[from] crate::workspace_snapshot::graph::WorkspaceSnapshotGraphError),
 }
 
 pub type PropResult<T> = Result<T, PropError>;
@@ -1132,52 +1134,7 @@ impl Prop {
         Self::find_prop_id_by_path(ctx, schema_variant_id, &prop_path).await
     }
 
-    #[async_recursion]
-    pub async fn ts_type(&self, ctx: &DalContext) -> PropResult<String> {
-        let self_path = self.path(ctx).await?;
-
-        if self_path == PropPath::new(["root", "resource", "payload"]) {
-            return Ok("any".to_string());
-        }
-
-        if self_path == PropPath::new(["root", "resource", "status"]) {
-            return Ok("'ok' | 'warning' | 'error' | undefined | null".to_owned());
-        }
-
-        Ok(match self.kind {
-            PropKind::Boolean => "boolean".to_string(),
-            PropKind::Float => "float".to_string(),
-            PropKind::Integer => "number".to_string(),
-            PropKind::String => "string".to_string(),
-            PropKind::Array => {
-                let element_prop_id = Self::element_prop_id(ctx, self.id).await?;
-                let element_prop = Self::get_by_id(ctx, element_prop_id).await?;
-                format!("{}[]", element_prop.ts_type(ctx).await?)
-            }
-            PropKind::Map => {
-                let element_prop_id = Self::element_prop_id(ctx, self.id).await?;
-                let element_prop = Self::get_by_id(ctx, element_prop_id).await?;
-                format!("Record<string, {}>", element_prop.ts_type(ctx).await?)
-            }
-            PropKind::Object => {
-                let mut object_type = "{\n".to_string();
-                for child in Self::direct_child_props_ordered(ctx, self.id).await? {
-                    let name_value = serde_json::to_value(&child.name)?;
-                    let name_serialized = serde_json::to_string(&name_value)?;
-                    object_type.push_str(
-                        format!(
-                            "{}?: {} | null;\n",
-                            &name_serialized,
-                            child.ts_type(ctx).await?
-                        )
-                        .as_str(),
-                    );
-                }
-                object_type.push('}');
-
-                object_type
-            }
-            _ => "".to_string(),
-        })
+    pub async fn ts_type(ctx: &DalContext, prop_id: PropId) -> PropResult<String> {
+        ctx.workspace_snapshot()?.ts_type(prop_id).await
     }
 }

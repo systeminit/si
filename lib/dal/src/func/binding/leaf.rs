@@ -293,8 +293,8 @@ impl LeafBinding {
         let mut per_variant_types = vec![];
 
         for variant_id in variant_ids {
-            let prop = Prop::find_prop_by_path(ctx, *variant_id, path).await?;
-            let ts_type = prop.ts_type(ctx).await?;
+            let prop_id = Prop::find_prop_id_by_path(ctx, *variant_id, path).await?;
+            let ts_type = Prop::ts_type(ctx, prop_id).await?;
 
             if !per_variant_types.contains(&ts_type) {
                 per_variant_types.push(ts_type);
