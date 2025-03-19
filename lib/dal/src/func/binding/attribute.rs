@@ -745,8 +745,7 @@ impl AttributeBinding {
                     if let AttributeFuncArgumentSource::Prop(prop_id) =
                         arg.attribute_func_input_location
                     {
-                        let prop = Prop::get_by_id(ctx, prop_id).await?;
-                        let ts_type = prop.ts_type(ctx).await?;
+                        let ts_type = Prop::ts_type(ctx, prop_id).await?;
 
                         if let std::collections::hash_map::Entry::Vacant(e) =
                             argument_types.entry(arg.func_argument_id)
@@ -763,10 +762,7 @@ impl AttributeBinding {
                     let output_type = if let AttributeFuncDestination::Prop(output_prop_id) =
                         attribute.output_location
                     {
-                        Prop::get_by_id(ctx, output_prop_id)
-                            .await?
-                            .ts_type(ctx)
-                            .await?
+                        Prop::ts_type(ctx, output_prop_id).await?
                     } else {
                         "any".to_string()
                     };

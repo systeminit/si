@@ -74,11 +74,6 @@ impl ManagementBinding {
                 Some(prototype) => {
                     let variant_id =
                         ManagementPrototype::get_schema_variant_id(ctx, prototype_id).await?;
-                    let root_prop = Prop::get_by_id(
-                        ctx,
-                        SchemaVariant::get_root_prop_id(ctx, variant_id).await?,
-                    )
-                    .await?;
 
                     let (_, reverse_map) = prototype.managed_schemas_map(ctx).await?;
 
@@ -87,14 +82,8 @@ impl ManagementBinding {
                     for (schema_id, name) in reverse_map {
                         let variant_id =
                             Schema::get_or_install_default_variant(ctx, schema_id).await?;
-
-                        let root_prop = Prop::get_by_id(
-                            ctx,
-                            SchemaVariant::get_root_prop_id(ctx, variant_id).await?,
-                        )
-                        .await?;
-
-                        let sv_type = root_prop.ts_type(ctx).await?;
+                        let root_prop_id = SchemaVariant::get_root_prop_id(ctx, variant_id).await?;
+                        let sv_type = Prop::ts_type(ctx, root_prop_id).await?;
 
                         let json_name = serde_json::to_string(&name)?;
 
@@ -135,7 +124,9 @@ impl ManagementBinding {
                     let component_input_type = component_update_types.join("|\n");
 
                     let mut this_incoming_connections = "    {\n".to_string();
-                    let this_component_iface = root_prop.ts_type(ctx).await?;
+                    let this_root_prop_id =
+                        SchemaVariant::get_root_prop_id(ctx, variant_id).await?;
+                    let this_component_iface = Prop::ts_type(ctx, this_root_prop_id).await?;
                     for input_socket in SchemaVariant::list_all_sockets(ctx, variant_id).await?.1 {
                         let json_input_socket_name = serde_json::to_string(input_socket.name())?;
                         let type_qualifier = match input_socket.arity() {

@@ -152,7 +152,7 @@ impl ActionBinding {
                 .map_err(|_| {
                     SchemaVariantError::PropNotFoundAtPath(variant_id, path.to_string())
                 })?;
-            ts_types.push(prop.ts_type(ctx).await?)
+            ts_types.push(Prop::ts_type(ctx, prop.id()).await?)
         }
         Ok(format!(
             "type Input {{
