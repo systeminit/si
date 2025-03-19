@@ -393,6 +393,8 @@ export type DiagramNodeDef = {
   resourceId: string;
 };
 
+export type DiagramSocketDirection = "input" | "output" | "bidirectional";
+
 export type DiagramSocketDef = {
   /** unique id of the socket - should be unique across all sockets */
   id: DiagramElementId;
@@ -401,7 +403,7 @@ export type DiagramSocketDef = {
   /** socket can only connect with sockets with compatible annotations */
   connectionAnnotations: ConnectionAnnotation[];
   /** direction of data flow from this socket */
-  direction: "input" | "output" | "bidirectional";
+  direction: DiagramSocketDirection;
   /** arity / max number of connections - null = no limit (most will likely be either 1 or null) */
   maxConnections: number | null;
   /** is a connection required to be valid - will affect display */

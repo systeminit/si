@@ -6,8 +6,10 @@ use dal::{
     change_status::ChangeStatus, diagram::SummaryDiagramEdge, ChangeSet, Component, ComponentId,
     InputSocket, OutputSocket, Visibility, WsEvent,
 };
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use si_events::audit_log::AuditLogKind;
+use si_frontend_types::{DiagramSocketDirection, PotentialConnection, PotentialMatch};
 
 use super::ComponentResult;
 use crate::{
@@ -27,7 +29,8 @@ pub struct AutoconnectComponentRequest {
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct AutoconnectComponentResponse {
-    pub connections_created: usize,
+    pub created: usize,
+    pub potential_incoming: Vec<PotentialConnection>,
 }
 
 pub async fn autoconnect(
@@ -38,13 +41,15 @@ pub async fn autoconnect(
     PosthogClient(posthog_client): PosthogClient,
     Json(AutoconnectComponentRequest {
         component_id,
+
         visibility,
     }): Json<AutoconnectComponentRequest>,
 ) -> ComponentResult<ForceChangeSetResponse<AutoconnectComponentResponse>> {
     let mut ctx = builder.build(request_ctx.build(visibility)).await?;
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
 
-    let input_sockets_connected = Component::autoconnect(&ctx, component_id).await?;
+    let (input_sockets_connected, potential_connections) =
+        Component::autoconnect(&ctx, component_id).await?;
 
     // just look at all this paperwork!
     track(
@@ -59,6 +64,26 @@ pub async fn autoconnect(
         }),
     );
 
+    let mut connections = Vec::new();
+
+    for (input_socket, (matches, value)) in potential_connections.into_iter() {
+        let potential_matches = matches
+            .iter()
+            .map(|(comp, sock, val)| PotentialMatch {
+                socket_id: sock.to_string(),
+                component_id: comp.to_string(),
+                value: Some(val.clone()),
+            })
+            .collect_vec();
+
+        connections.push(PotentialConnection {
+            socket_id: input_socket.input_socket_id.to_string(),
+            attribute_value_id: input_socket.attribute_value_id.to_string(),
+            value: value.clone(),
+            direction: DiagramSocketDirection::Input,
+            matches: potential_matches,
+        });
+    }
     let component = Component::get_by_id(&ctx, component_id).await?;
     for incoming_connection in component.incoming_connections(&ctx).await? {
         let input_socket_id = incoming_connection.to_input_socket_id;
@@ -106,7 +131,8 @@ pub async fn autoconnect(
     Ok(ForceChangeSetResponse::new(
         force_change_set_id,
         AutoconnectComponentResponse {
-            connections_created: input_sockets_connected.len(),
+            created: input_sockets_connected.len(),
+            potential_incoming: connections,
         },
     ))
 }

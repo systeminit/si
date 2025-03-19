@@ -114,6 +114,7 @@
   <RestoreSelectionModal />
   <EraseSelectionModal />
   <TemplateSelectionModal />
+  <AutoconnectMenu v-if="featureFlagsStore.AUTOCONNECT" />
   <CommandModal />
 </template>
 
@@ -141,6 +142,7 @@ import { useFuncStore } from "@/store/func/funcs.store";
 import { useAuthStore } from "@/store/auth.store";
 import LeftPanelDrawer from "../LeftPanelDrawer.vue";
 import ModelingDiagram from "../ModelingDiagram/ModelingDiagram.vue";
+import AutoconnectMenu from "../ModelingView/AutoconnectMenu.vue";
 import AssetPalette from "../AssetPalette.vue";
 import {
   DiagramElementData,

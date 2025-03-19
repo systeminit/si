@@ -31,8 +31,12 @@ pub async fn restore_default_function(
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
-
-    AttributeValue::use_default_prototype(&ctx, request.attribute_value_id).await?;
+    if AttributeValue::component_prototype_id(&ctx, request.attribute_value_id)
+        .await?
+        .is_some()
+    {
+        AttributeValue::use_default_prototype(&ctx, request.attribute_value_id).await?;
+    }
 
     track(
         &posthog_client,

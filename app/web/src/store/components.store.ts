@@ -16,6 +16,7 @@ import {
   DiagramNodeData,
   DiagramNodeDef,
   DiagramSocketDef,
+  DiagramSocketDirection,
   DiagramStatusIcon,
   Size2D,
 } from "@/components/ModelingDiagram/diagram_types";
@@ -30,6 +31,7 @@ import {
   ComponentId,
   Edge,
   EdgeId,
+  PotentialConnection,
   RawComponent,
   RawEdge,
   SocketId,
@@ -125,6 +127,36 @@ export interface FuncArgDebugView {
   isUsed: boolean;
 }
 
+export type AutoconnectData = {
+  componentId: ComponentId;
+  componentName: string;
+  createdConnections: number;
+  potentialConnections: PotentialConnectionData[];
+};
+
+export type PotentialConnectionData = {
+  socketName: string;
+  socketArity: "one" | "many";
+  processingConnections: PotentialConnectionMatchData[];
+  socketId: SocketId;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  value: any | null;
+  attributeValueId: string;
+  direction: DiagramSocketDirection;
+};
+
+export type PotentialConnectionMatchData = {
+  socketName: string;
+  socketArity: "one" | "many";
+  componentName: string;
+  schemaVariantName: string;
+  socketId: SocketId;
+  componentId: ComponentId;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  value: any | null;
+  key: string;
+};
+
 export interface SocketDebugView extends AttributeDebugView {
   socketId: string;
   connectionAnnotations: string[];
@@ -170,6 +202,7 @@ type EventBusEvents = {
   refreshSelectionResource: void;
   eraseSelection: void;
   templateFromSelection: void;
+  autoconnectComponent: void;
   panToComponent: {
     component: DiagramNodeData | DiagramGroupData;
     center?: boolean;
@@ -523,6 +556,9 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           diagramEdgesById: {} as Record<EdgeId, DiagramEdgeData>,
           copyingFrom: null as { x: number; y: number } | null,
 
+          // used during autoconnect to hold the data to display in a modal.
+          autoconnectData: null as AutoconnectData | null,
+
           panTargetComponentId: null as ComponentId | null,
 
           // used by the diagram to track which schema is selected for
@@ -697,7 +733,10 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           },
 
           async AUTOCONNECT_COMPONENT(componentId: ComponentId) {
-            return new ApiRequest<{ connectionsCreated: number }>({
+            return new ApiRequest<{
+              created: number;
+              potentialIncoming: PotentialConnection[];
+            }>({
               url: "component/autoconnect",
               keyRequestStatusBy: componentId,
               method: "post",
@@ -706,8 +745,68 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 ...visibilityParams,
               },
               onSuccess: (payload) => {
-                if (payload.connectionsCreated === 0) {
-                  toast("No connections found for component");
+                if (payload.potentialIncoming.length === 0) {
+                  if (payload.created === 0) {
+                    toast("No available connections found for component");
+                  } else {
+                    toast(`Created ${payload.created} connections`);
+                  }
+                } else {
+                  const thisComponent = this.allComponentsById[componentId];
+                  if (!thisComponent) return;
+                  this.autoconnectData = {
+                    createdConnections: payload.created,
+                    potentialConnections: payload.potentialIncoming.map(
+                      (pc) => {
+                        const socket = thisComponent.def.sockets?.find(
+                          (s) => s.id === pc.socketId,
+                        );
+                        return {
+                          socketId: pc.socketId,
+                          socketName: socket?.label || "",
+                          socketArity:
+                            socket?.maxConnections === 1 ? "one" : "many",
+                          attributeValueId: pc.attributeValueId,
+                          value: pc.value,
+                          direction: pc.direction,
+                          processingConnections: pc.matches.map(
+                            (m: {
+                              componentId: string | number;
+                              socketId: string;
+                              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                              value: any;
+                            }) => {
+                              const otherComponent =
+                                this.allComponentsById[m.componentId];
+                              const otherSocket =
+                                otherComponent?.def.sockets?.find(
+                                  (s) => s.id === m.socketId,
+                                );
+                              return {
+                                socketId: m.socketId,
+                                socketName: otherSocket?.label,
+                                socketArity:
+                                  otherSocket?.maxConnections === 1
+                                    ? "one"
+                                    : "many",
+                                componentId: m.componentId,
+                                componentName:
+                                  otherComponent?.def.displayName || "",
+                                schemaVariantName:
+                                  otherComponent?.def.schemaName || "",
+                                value: m.value,
+                                state: "PENDING",
+                                key: `${m.componentId}-${m.socketId}`,
+                              } as PotentialConnectionMatchData;
+                            },
+                          ),
+                        } as PotentialConnectionData;
+                      },
+                    ),
+                    componentId,
+                    componentName: thisComponent?.def.displayName || "",
+                  };
+                  this.eventBus.emit("autoconnectComponent");
                 }
               },
             });
@@ -890,6 +989,64 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             });
           },
 
+          async OVERRIDE_WITH_CONNECTION(
+            from: { componentId: ComponentNodeId; socketId: SocketId },
+            to: { componentId: ComponentNodeId; socketId: SocketId },
+            attributeValueIdToOverride: string,
+          ) {
+            const timestamp = new Date().toISOString();
+            const newEdge = edgeFromRawEdge({})({
+              fromComponentId: from.componentId,
+              fromSocketId: from.socketId,
+              toComponentId: to.componentId,
+              toSocketId: to.socketId,
+              toDelete: false,
+              changeStatus: "added",
+              createdInfo: {
+                timestamp,
+                actor: { kind: "user", label: "You" },
+              },
+            });
+
+            return new ApiRequest({
+              method: "post",
+              url: "component/override_with_connection",
+              params: {
+                fromComponentId: from.componentId,
+                fromSocketId: from.socketId,
+                toComponentId: to.componentId,
+                toSocketId: to.socketId,
+                attributeValueIdToOverride,
+                ...visibilityParams,
+              },
+              optimistic: () => {
+                this.rawEdgesById[newEdge.id] = newEdge;
+                this.processRawEdge(newEdge.id);
+
+                const edgesBeingReplaced = Object.values(
+                  this.rawEdgesById,
+                ).filter(
+                  (e) =>
+                    e.isInferred &&
+                    e.toSocketId === to.socketId &&
+                    e.toComponentId === to.componentId,
+                );
+
+                for (const edge of edgesBeingReplaced) {
+                  delete this.rawEdgesById[edge.id];
+                  delete this.diagramEdgesById[edge.id];
+                }
+                return () => {
+                  delete this.rawEdgesById[newEdge.id];
+                  for (const edge of edgesBeingReplaced) {
+                    delete this.rawEdgesById[edge.id];
+                    delete this.diagramEdgesById[edge.id];
+                  }
+                };
+              },
+            });
+          },
+
           async CREATE_COMPONENT_CONNECTION(
             from: { componentId: ComponentNodeId; socketId: SocketId },
             to: { componentId: ComponentNodeId; socketId: SocketId },
@@ -926,7 +1083,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 toSocketId: to.socketId,
                 ...visibilityParams,
               },
-              onSuccess: () => {},
               optimistic: () => {
                 this.rawEdgesById[newEdge.id] = newEdge;
                 this.processRawEdge(newEdge.id);
