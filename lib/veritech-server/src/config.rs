@@ -33,14 +33,11 @@ const DEFAULT_CYCLONE_CLIENT_EXECUTION_TIMEOUT: Duration =
 
 const DEFAULT_HEARTBEAT_APP_SLEEP_SECONDS: u64 = 15;
 const DEFAULT_HEARTBEAT_APP_PUBLISH_TIMEOUT_SECONDS: u64 = 10;
-const DEFAULT_HEARTBEAT_APP_FORCE_RECONNECT_TIMEOUT_SECONDS: u64 = 20;
 
 const DEFAULT_HEARTBEAT_APP_SLEEP_DURATION: Duration =
     Duration::from_secs(DEFAULT_HEARTBEAT_APP_SLEEP_SECONDS);
 const DEFAULT_HEARTBEAT_APP_PUBLISH_TIMEOUT_DURATION: Duration =
     Duration::from_secs(DEFAULT_HEARTBEAT_APP_PUBLISH_TIMEOUT_SECONDS);
-const DEFAULT_HEARTBEAT_APP_FORCE_RECONNECT_TIMEOUT_DURATION: Duration =
-    Duration::from_secs(DEFAULT_HEARTBEAT_APP_FORCE_RECONNECT_TIMEOUT_SECONDS);
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -92,17 +89,11 @@ pub struct Config {
     #[builder(default = "default_heartbeat_app()")]
     heartbeat_app: bool,
 
-    #[builder(default = "default_heartbeat_app_auto_force_reconnect_logic()")]
-    heartbeat_app_auto_force_reconnect_logic: bool,
-
     #[builder(default = "default_heartbeat_app_sleep_duration()")]
     heartbeat_app_sleep_duration: Duration,
 
     #[builder(default = "default_heartbeat_app_publish_timeout_duration()")]
     heartbeat_app_publish_timeout_duration: Duration,
-
-    #[builder(default = "default_heartbeat_app_force_reconnect_timeout_duration()")]
-    heartbeat_app_force_reconnect_timeout_duration: Duration,
 }
 
 impl StandardConfig for Config {
@@ -161,11 +152,6 @@ impl Config {
         self.heartbeat_app
     }
 
-    /// Indicates if the heartbeat app's auto force reconnect logic will be enabled.
-    pub fn heartbeat_app_auto_force_reconnect_logic(&self) -> bool {
-        self.heartbeat_app_auto_force_reconnect_logic
-    }
-
     /// Gets the config's sleep duration.
     pub fn heartbeat_app_sleep_duration(&self) -> Duration {
         self.heartbeat_app_sleep_duration
@@ -174,11 +160,6 @@ impl Config {
     /// Gets the config's publish timeout duration.
     pub fn heartbeat_app_publish_timeout_duration(&self) -> Duration {
         self.heartbeat_app_publish_timeout_duration
-    }
-
-    /// Gets the config's force reconnect timeout duration.
-    pub fn heartbeat_app_force_reconnect_timeout_duration(&self) -> Duration {
-        self.heartbeat_app_force_reconnect_timeout_duration
     }
 }
 
@@ -199,14 +180,10 @@ pub struct ConfigFile {
     instance_id: String,
     #[serde(default = "default_heartbeat_app")]
     pub heartbeat_app: bool,
-    #[serde(default = "default_heartbeat_app_auto_force_reconnect_logic")]
-    heartbeat_app_auto_force_reconnect_logic: bool,
     #[serde(default = "default_heartbeat_app_sleep_secs")]
     heartbeat_app_sleep_secs: u64,
     #[serde(default = "default_heartbeat_app_publish_timeout_secs")]
     heartbeat_app_publish_timeout_secs: u64,
-    #[serde(default = "default_heartbeat_app_force_reconnect_timeout_secs")]
-    heartbeat_app_force_reconnect_timeout_secs: u64,
 }
 
 impl Default for ConfigFile {
@@ -226,12 +203,8 @@ impl ConfigFile {
             veritech_requests_concurrency_limit: default_veritech_requests_concurrency_limit(),
             instance_id: random_instance_id(),
             heartbeat_app: default_heartbeat_app(),
-            heartbeat_app_auto_force_reconnect_logic:
-                default_heartbeat_app_auto_force_reconnect_logic(),
             heartbeat_app_sleep_secs: default_heartbeat_app_sleep_secs(),
             heartbeat_app_publish_timeout_secs: default_heartbeat_app_publish_timeout_secs(),
-            heartbeat_app_force_reconnect_timeout_secs:
-                default_heartbeat_app_force_reconnect_timeout_secs(),
         }
     }
 
@@ -245,12 +218,8 @@ impl ConfigFile {
             veritech_requests_concurrency_limit: default_veritech_requests_concurrency_limit(),
             instance_id: random_instance_id(),
             heartbeat_app: default_heartbeat_app(),
-            heartbeat_app_auto_force_reconnect_logic:
-                default_heartbeat_app_auto_force_reconnect_logic(),
             heartbeat_app_sleep_secs: default_heartbeat_app_sleep_secs(),
             heartbeat_app_publish_timeout_secs: default_heartbeat_app_publish_timeout_secs(),
-            heartbeat_app_force_reconnect_timeout_secs:
-                default_heartbeat_app_force_reconnect_timeout_secs(),
         }
     }
 }
@@ -276,15 +245,9 @@ impl TryFrom<ConfigFile> for Config {
         config.instance_id(value.instance_id);
 
         config.heartbeat_app(value.heartbeat_app);
-        config.heartbeat_app_auto_force_reconnect_logic(
-            value.heartbeat_app_auto_force_reconnect_logic,
-        );
         config.heartbeat_app_sleep_duration(Duration::from_secs(value.heartbeat_app_sleep_secs));
         config.heartbeat_app_publish_timeout_duration(Duration::from_secs(
             value.heartbeat_app_publish_timeout_secs,
-        ));
-        config.heartbeat_app_force_reconnect_timeout_duration(Duration::from_secs(
-            value.heartbeat_app_force_reconnect_timeout_secs,
         ));
 
         config.build().map_err(Into::into)
@@ -655,10 +618,6 @@ fn default_heartbeat_app() -> bool {
     true
 }
 
-fn default_heartbeat_app_auto_force_reconnect_logic() -> bool {
-    true
-}
-
 fn default_heartbeat_app_sleep_duration() -> Duration {
     DEFAULT_HEARTBEAT_APP_SLEEP_DURATION
 }
@@ -673,14 +632,6 @@ fn default_heartbeat_app_publish_timeout_duration() -> Duration {
 
 fn default_heartbeat_app_publish_timeout_secs() -> u64 {
     DEFAULT_HEARTBEAT_APP_PUBLISH_TIMEOUT_SECONDS
-}
-
-fn default_heartbeat_app_force_reconnect_timeout_duration() -> Duration {
-    DEFAULT_HEARTBEAT_APP_FORCE_RECONNECT_TIMEOUT_DURATION
-}
-
-fn default_heartbeat_app_force_reconnect_timeout_secs() -> u64 {
-    DEFAULT_HEARTBEAT_APP_FORCE_RECONNECT_TIMEOUT_SECONDS
 }
 
 fn default_create_firecracker_setup_scripts() -> bool {

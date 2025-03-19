@@ -1,5 +1,4 @@
-//! This module contains the [`HeartbeatApp`] used for assessing the health of veritech as well as
-//! performing force reconnects as needed.
+//! This module contains the [`HeartbeatApp`] used for assessing the health of veritech and its NATS client.
 
 use std::sync::atomic::Ordering;
 use std::time::Duration;
@@ -11,18 +10,15 @@ use tokio_util::sync::CancellationToken;
 
 const HEARTBEAT_SUBJECT_PREFIX: &str = "veritech.heartbeat";
 
-/// An app for assessing the health of veritech as well as performing force reconnects as needed.
+/// An app for assessing the health of veritech and its NATS client.
 #[derive(Debug)]
 pub struct HeartbeatApp {
     nats: NatsClient,
     token: CancellationToken,
-    auto_force_reconnect_logic_enabled: bool,
     sleep_duration: Duration,
     publish_timeout_duration: Duration,
-    force_reconnect_timeout_duration: Duration,
     heartbeat_subject: Subject,
     heartbeat_payload: Vec<u8>,
-    needs_force_reconnect: bool,
 }
 
 impl HeartbeatApp {
@@ -31,10 +27,8 @@ impl HeartbeatApp {
         nats: NatsClient,
         token: CancellationToken,
         instance_id: &str,
-        enable_auto_force_reconnect_logic: bool,
         sleep_duration: Duration,
         publish_timeout_duration: Duration,
-        force_reconnect_timeout_duration: Duration,
     ) -> Self {
         let heartbeat_subject = Subject::from(match nats.metadata().subject_prefix() {
             Some(prefix) => format!("{prefix}.{HEARTBEAT_SUBJECT_PREFIX}.{instance_id}"),
@@ -44,23 +38,18 @@ impl HeartbeatApp {
         Self {
             nats,
             token,
-            auto_force_reconnect_logic_enabled: enable_auto_force_reconnect_logic,
             sleep_duration,
             publish_timeout_duration,
-            force_reconnect_timeout_duration,
             heartbeat_subject,
             heartbeat_payload: Vec::new(),
-            needs_force_reconnect: false,
         }
     }
 
     /// Runs the [`HeartbeatApp`]. This method explicitly does not return anything.
     pub async fn run(&mut self) {
         info!(
-            veritech.heartbeat.auto_force_reconnect_logic.enabled = self.auto_force_reconnect_logic_enabled,
             veritech.heartbeat.sleep_duration = ?self.sleep_duration,
             veritech.heartbeat.publish_timeout_duration = ?self.publish_timeout_duration,
-            veritech.heartbeat.force_reconnect_timeout_duration = ?self.force_reconnect_timeout_duration,
             "running heartbeat app"
         );
 
@@ -69,9 +58,6 @@ impl HeartbeatApp {
         metric!(counter.veritech.heartbeat.publish.success = 0);
         metric!(counter.veritech.heartbeat.publish.error = 0);
         metric!(counter.veritech.heartbeat.publish.timeout = 0);
-        metric!(counter.veritech.heartbeat.force_reconnect.success = 0);
-        metric!(counter.veritech.heartbeat.force_reconnect.error = 0);
-        metric!(counter.veritech.heartbeat.force_reconnect.timeout = 0);
         metric!(counter.veritech.heartbeat.connection_state.connected = 0);
         metric!(counter.veritech.heartbeat.connection_state.disconnected = 0);
         metric!(counter.veritech.heartbeat.connection_state.pending = 0);
@@ -91,39 +77,28 @@ impl HeartbeatApp {
     }
 
     async fn perform_heartbeat(&mut self) {
-        // Either perform the reconnect or publish the heartbeat, but do not do both. We only do
-        // force reconnection if the app has the feature enabled (which it likely is, by default).
-        if self.auto_force_reconnect_logic_enabled && self.needs_force_reconnect {
-            self.perform_force_reconnect().await
-        } else {
-            match tokio::time::timeout(
-                self.publish_timeout_duration,
-                self.nats.publish(
-                    self.heartbeat_subject.to_owned(),
-                    self.heartbeat_payload.to_owned().into(),
-                ),
-            )
-            .await
-            {
-                Ok(publish_result) => match publish_result {
-                    Ok(()) => {
-                        metric!(counter.veritech.heartbeat.publish.success = 1);
-                    }
-                    Err(err) => {
-                        error!(si.error.message = ?err, "heartbeat: publish error");
-                        metric!(counter.veritech.heartbeat.publish.error = 1);
-                    }
-                },
-                // NOTE(nick): this is going to be an "Elapsed" error, which contains a single private
-                // field: the unit type. As a result of this, we cannot match on the specific error. I
-                // don't love the underscore here in case the underlying API changes, but here we are.
-                Err(_) => {
-                    metric!(counter.veritech.heartbeat.publish.timeout = 1);
-
-                    // How do we know we need to reconnect? We are unable to publish in a reasonable timeframe.
-                    self.needs_force_reconnect = true;
+        match tokio::time::timeout(
+            self.publish_timeout_duration,
+            self.nats.publish(
+                self.heartbeat_subject.to_owned(),
+                self.heartbeat_payload.to_owned().into(),
+            ),
+        )
+        .await
+        {
+            Ok(publish_result) => match publish_result {
+                Ok(()) => {
+                    metric!(counter.veritech.heartbeat.publish.success = 1);
                 }
-            }
+                Err(err) => {
+                    error!(si.error.message = ?err, "heartbeat: publish error");
+                    metric!(counter.veritech.heartbeat.publish.error = 1);
+                }
+            },
+            // NOTE(nick): this is going to be an "Elapsed" error, which contains a single private
+            // field: the unit type. As a result of this, we cannot match on the specific error. I
+            // don't love the underscore here in case the underlying API changes, but here we are.
+            Err(_) => metric!(counter.veritech.heartbeat.publish.timeout = 1),
         }
 
         // Track the connection state, which does not use internal channel(s).
@@ -161,33 +136,5 @@ impl HeartbeatApp {
             histogram.veritech.heartbeat.statistics.connects =
                 statistics.connects.load(Ordering::Relaxed)
         );
-    }
-
-    async fn perform_force_reconnect(&mut self) {
-        // NOTE(nick): consider not blocking heartbeats when performing force reconnection.
-        // This is tricky because you don't want to pile on the pain if you need to force a
-        // reconnection, but we also may not want to block heartbeats. We could go either way
-        // on this one, but the current stance should be sufficient.
-        match tokio::time::timeout(
-            self.force_reconnect_timeout_duration,
-            self.nats.force_reconnect(),
-        )
-        .await
-        {
-            Ok(force_reconnect_result) => match force_reconnect_result {
-                Ok(()) => {
-                    metric!(counter.veritech.heartbeat.force_reconnect.success = 1);
-                    self.needs_force_reconnect = false;
-                }
-                Err(err) => {
-                    error!(si.error.message = ?err, "heartbeat: force reconnect error");
-                    metric!(counter.veritech.heartbeat.force_reconnect.error = 1);
-                }
-            },
-            // NOTE(nick): this is going to be an "Elapsed" error, which contains a single private
-            // field: the unit type. As a result of this, we cannot match on the specific error. I
-            // don't love the underscore here in case the underlying API changes, but here we are.
-            Err(_) => metric!(counter.veritech.heartbeat.force_reconnect.timeout = 1),
-        }
     }
 }

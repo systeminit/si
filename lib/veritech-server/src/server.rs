@@ -172,10 +172,8 @@ impl Server {
                         nats,
                         token.clone(),
                         config.instance_id(),
-                        config.heartbeat_app_auto_force_reconnect_logic(),
                         config.heartbeat_app_sleep_duration(),
                         config.heartbeat_app_publish_timeout_duration(),
-                        config.heartbeat_app_force_reconnect_timeout_duration(),
                     ))
                 } else {
                     None
