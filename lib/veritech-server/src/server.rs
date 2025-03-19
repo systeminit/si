@@ -145,7 +145,6 @@ impl Server {
                 // Reset metrics before creating the naxum apps.
                 metric!(counter.veritech.handlers_doing_work = 0);
                 metric!(counter.veritech.pool_exhausted = 0);
-                metric!(counter.veritech.publisher.in_progress = 0);
 
                 let inner_future = Self::build_app(
                     metadata.clone(),
