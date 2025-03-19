@@ -487,16 +487,16 @@ impl Workspace {
             // From root, get every value from every node, store with hash
             let mut queue = VecDeque::from([snap.root().await?]);
 
-            while let Some(this_node_idx) = queue.pop_front() {
+            while let Some(this_node_id) = queue.pop_front() {
                 // Queue contents
                 content_hashes.extend(
-                    snap.get_node_weight(this_node_idx)
+                    snap.get_node_weight(this_node_id)
                         .await?
                         .content_store_hashes(),
                 );
 
                 let children = snap
-                    .edges_directed_by_index(this_node_idx, Direction::Outgoing)
+                    .edges_directed(this_node_id, Direction::Outgoing)
                     .await?
                     .into_iter()
                     .map(|(_, _, target)| target)

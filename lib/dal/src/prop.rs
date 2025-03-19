@@ -3,6 +3,7 @@ use petgraph::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use si_events::ContentHash;
+use si_id::ulid::Ulid;
 use si_pkg::PropSpecKind;
 use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
@@ -45,8 +46,8 @@ pub enum PropError {
     AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
-    #[error("child prop of {0:?} not found by name: {1}")]
-    ChildPropNotFoundByName(NodeIndex, String),
+    #[error("child prop of {0} not found by name: {1}")]
+    ChildPropNotFoundByName(Ulid, String),
     #[error("prop {0} of kind {1} does not have an element prop")]
     ElementPropNotOnKind(PropId, PropKind),
     #[error("func error: {0}")]
@@ -659,7 +660,7 @@ impl Prop {
     pub async fn path_by_id(ctx: &DalContext, prop_id: PropId) -> PropResult<PropPath> {
         let name = ctx
             .workspace_snapshot()?
-            .get_node_weight_by_id(prop_id)
+            .get_node_weight(prop_id)
             .await?
             .get_prop_node_weight()?
             .name()
@@ -671,10 +672,8 @@ impl Prop {
         while let Some(prop_id) = work_queue.pop_front() {
             if let Some(prop_id) = Self::parent_prop_id_by_id(ctx, prop_id).await? {
                 let workspace_snapshot = ctx.workspace_snapshot()?;
-                let node_idx = workspace_snapshot.get_node_index_by_id(prop_id).await?;
 
-                if let NodeWeight::Prop(inner) =
-                    workspace_snapshot.get_node_weight(node_idx).await?
+                if let NodeWeight::Prop(inner) = workspace_snapshot.get_node_weight(prop_id).await?
                 {
                     parts.push_front(inner.name().to_owned());
                     work_queue.push_back(inner.id().into());
@@ -722,10 +721,8 @@ impl Prop {
 
     pub async fn get_by_id(ctx: &DalContext, id: PropId) -> PropResult<Self> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
-        let ulid: ::si_events::ulid::Ulid = id.into();
-        let node_index = workspace_snapshot.get_node_index_by_id(ulid).await?;
         let node_weight = workspace_snapshot
-            .get_node_weight(node_index)
+            .get_node_weight(id)
             .await?
             .get_prop_node_weight()?;
         let hash = node_weight.content_hash();
@@ -735,7 +732,7 @@ impl Prop {
             .cas()
             .try_read_as(&hash)
             .await?
-            .ok_or(WorkspaceSnapshotError::MissingContentFromStore(ulid))?;
+            .ok_or(WorkspaceSnapshotError::MissingContentFromStore(id.into()))?;
 
         // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
         let PropContent::V1(inner) = content;
@@ -751,31 +748,28 @@ impl Prop {
             .ok_or(PropError::MapOrArrayMissingElementProp(prop_id))
     }
 
-    pub async fn find_child_prop_index_by_name(
+    pub async fn find_child_prop_id_by_name(
         ctx: &DalContext,
-        node_index: NodeIndex,
+        parent_node_id: Ulid,
         child_name: impl AsRef<str>,
-    ) -> PropResult<NodeIndex> {
+    ) -> PropResult<PropId> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
-        for prop_node_index in workspace_snapshot
-            .outgoing_targets_for_edge_weight_kind_by_index(
-                node_index,
-                EdgeWeightKindDiscriminants::Use,
-            )
+        for prop_node_id in workspace_snapshot
+            .outgoing_targets_for_edge_weight_kind(parent_node_id, EdgeWeightKindDiscriminants::Use)
             .await?
         {
             if let NodeWeight::Prop(prop_inner) =
-                workspace_snapshot.get_node_weight(prop_node_index).await?
+                workspace_snapshot.get_node_weight(prop_node_id).await?
             {
                 if prop_inner.name() == child_name.as_ref() {
-                    return Ok(prop_node_index);
+                    return Ok(prop_node_id.into());
                 }
             }
         }
 
         Err(PropError::ChildPropNotFoundByName(
-            node_index,
+            parent_node_id,
             child_name.as_ref().to_string(),
         ))
     }
@@ -846,20 +840,17 @@ impl Prop {
     ) -> PropResult<PropId> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
-        let schema_variant_node_index = workspace_snapshot
-            .get_node_index_by_id(schema_variant_id)
-            .await?;
-
         let path_parts = path.as_parts();
 
-        let mut current_node_index = schema_variant_node_index;
+        let mut current_id: Ulid = schema_variant_id.into();
         for part in path_parts {
-            current_node_index =
-                Self::find_child_prop_index_by_name(ctx, current_node_index, part).await?;
+            current_id = Self::find_child_prop_id_by_name(ctx, current_id, part)
+                .await?
+                .into();
         }
 
         Ok(workspace_snapshot
-            .get_node_weight(current_node_index)
+            .get_node_weight(current_id)
             .await?
             .id()
             .into())
@@ -1035,9 +1026,8 @@ impl Prop {
         let mut node_weights = vec![];
         let mut content_hashes = vec![];
         for prop_id in prop_ids {
-            let prop_node_index = workspace_snapshot.get_node_index_by_id(prop_id).await?;
             let node_weight = workspace_snapshot
-                .get_node_weight(prop_node_index)
+                .get_node_weight(prop_id)
                 .await?
                 .get_prop_node_weight()?;
             content_hashes.push(node_weight.content_hash());

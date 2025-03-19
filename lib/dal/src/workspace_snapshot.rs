@@ -122,6 +122,8 @@ pub enum WorkspaceSnapshotError {
     MissingVectorClockForChangeSet(ChangeSetId),
     #[error("monotonic error: {0}")]
     Monotonic(#[from] ulid::MonotonicError),
+    #[error("node not found at node index: {0:?}")]
+    NodeNotFoundAtIndex(NodeIndex),
     #[error("NodeWeight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
     #[error("ordering not found for node with ordered children: {0}")]
@@ -560,8 +562,9 @@ impl WorkspaceSnapshot {
         *self.address.read().await
     }
 
-    pub async fn root(&self) -> WorkspaceSnapshotResult<NodeIndex> {
-        Ok(self.working_copy().await.root())
+    pub async fn root(&self) -> WorkspaceSnapshotResult<Ulid> {
+        let root_idx = self.working_copy().await.root();
+        Ok(self.working_copy().await.get_node_weight(root_idx)?.id())
     }
 
     #[instrument(name = "workspace_snapshot.working_copy", level = "trace", skip_all)]
@@ -623,17 +626,14 @@ impl WorkspaceSnapshot {
 
     /// Adds this node to the graph, or replaces it if a node with the same id
     /// already exists.
-    pub async fn add_or_replace_node(
-        &self,
-        node: NodeWeight,
-    ) -> WorkspaceSnapshotResult<NodeIndex> {
-        let new_node_index = self.working_copy_mut().await.add_or_replace_node(node)?;
-        Ok(new_node_index)
+    pub async fn add_or_replace_node(&self, node: NodeWeight) -> WorkspaceSnapshotResult<()> {
+        self.working_copy_mut().await.add_or_replace_node(node)?;
+        Ok(())
     }
 
-    pub async fn add_ordered_node(&self, node: NodeWeight) -> WorkspaceSnapshotResult<NodeIndex> {
-        let new_node_index = self.working_copy_mut().await.add_ordered_node(node)?;
-        Ok(new_node_index)
+    pub async fn add_ordered_node(&self, node: NodeWeight) -> WorkspaceSnapshotResult<()> {
+        self.working_copy_mut().await.add_ordered_node(node)?;
+        Ok(())
     }
 
     pub async fn update_content(
@@ -684,10 +684,12 @@ impl WorkspaceSnapshot {
     /// indices directly.
     pub async fn add_edge_unchecked(
         &self,
-        from_node_index: NodeIndex,
+        from_id: impl Into<Ulid>,
         edge_weight: EdgeWeight,
-        to_node_index: NodeIndex,
+        to_id: impl Into<Ulid>,
     ) -> WorkspaceSnapshotResult<()> {
+        let from_node_index = self.working_copy().await.get_node_index_by_id(from_id)?;
+        let to_node_index = self.working_copy().await.get_node_index_by_id(to_id)?;
         self.working_copy_mut()
             .await
             .add_edge(from_node_index, edge_weight, to_node_index)?;
@@ -782,15 +784,12 @@ impl WorkspaceSnapshot {
         // merkle tree hash as our sole ID and hash so that algorithms using the checksum can
         // "invalidate" as needed.
         if ids_with_hashes.is_empty() {
-            let root_node_index = ctx.workspace_snapshot()?.root().await?;
-            let root_node_weight = ctx
+            let root_node_id = ctx.workspace_snapshot()?.root().await?;
+            let root_node = ctx
                 .workspace_snapshot()?
-                .get_node_weight(root_node_index)
+                .get_node_weight(root_node_id)
                 .await?;
-            ids_with_hashes.push((
-                root_node_weight.id().into(),
-                root_node_weight.merkle_tree_hash(),
-            ));
+            ids_with_hashes.push((root_node_id.into(), root_node.merkle_tree_hash()));
         }
 
         // We MUST sort IDs (not hashes) before creating the checksum. This is so that we have
@@ -810,8 +809,21 @@ impl WorkspaceSnapshot {
     pub async fn edge_endpoints(
         &self,
         edge_index: EdgeIndex,
-    ) -> WorkspaceSnapshotResult<(NodeIndex, NodeIndex)> {
-        Ok(self.working_copy_mut().await.edge_endpoints(edge_index)?)
+    ) -> WorkspaceSnapshotResult<(Ulid, Ulid)> {
+        let (source_idx, target_idx) = self.working_copy().await.edge_endpoints(edge_index)?;
+
+        let source_id = self
+            .working_copy()
+            .await
+            .node_index_to_id(source_idx)
+            .ok_or(WorkspaceSnapshotError::NodeNotFoundAtIndex(source_idx))?;
+        let target_id = self
+            .working_copy()
+            .await
+            .node_index_to_id(target_idx)
+            .ok_or(WorkspaceSnapshotError::NodeNotFoundAtIndex(target_idx))?;
+
+        Ok((source_id, target_id))
     }
 
     #[instrument(
@@ -831,7 +843,7 @@ impl WorkspaceSnapshot {
             .import_component_subgraph(&other.read_only_graph, component_node_index)?)
     }
 
-    pub async fn get_node_weight_by_id(
+    pub async fn get_node_weight(
         &self,
         id: impl Into<Ulid>,
     ) -> WorkspaceSnapshotResult<NodeWeight> {
@@ -843,39 +855,12 @@ impl WorkspaceSnapshot {
             .to_owned())
     }
 
-    pub async fn get_node_weight(
-        &self,
-        node_index: NodeIndex,
-    ) -> WorkspaceSnapshotResult<NodeWeight> {
-        Ok(self
-            .working_copy()
-            .await
-            .get_node_weight(node_index)?
-            .to_owned())
-    }
-
-    pub async fn get_node_weight_opt(&self, node_index: NodeIndex) -> Option<NodeWeight> {
-        self.working_copy()
-            .await
-            .get_node_weight_opt(node_index)
-            .map(ToOwned::to_owned)
-    }
-
-    #[instrument(
-        name = "workspace_snapshot.find_equivalent_node",
-        level = "debug",
-        skip_all,
-        fields()
-    )]
-    pub async fn find_equivalent_node(
-        &self,
-        id: Ulid,
-        lineage_id: Ulid,
-    ) -> WorkspaceSnapshotResult<Option<NodeIndex>> {
-        Ok(self
-            .working_copy()
-            .await
-            .find_equivalent_node(id, lineage_id)?)
+    pub async fn get_node_weight_opt(&self, id: impl Into<Ulid>) -> Option<NodeWeight> {
+        let working_copy = self.working_copy().await;
+        working_copy
+            .get_node_index_by_id_opt(id)
+            .and_then(|node_index| working_copy.get_node_weight_opt(node_index))
+            .cloned()
     }
 
     /// Remove any nodes without incoming edges from the graph, and update the
@@ -900,22 +885,27 @@ impl WorkspaceSnapshot {
     }
 
     #[instrument(name = "workspace_snapshot.nodes", level = "debug", skip_all, fields())]
-    pub async fn nodes(&self) -> WorkspaceSnapshotResult<Vec<(NodeWeight, NodeIndex)>> {
+    pub async fn nodes(&self) -> WorkspaceSnapshotResult<Vec<NodeWeight>> {
         Ok(self
             .working_copy()
             .await
             .nodes()
-            .map(|(weight, index)| (weight.to_owned(), index))
+            .map(|(weight, _)| weight)
+            .cloned()
             .collect())
     }
 
     #[instrument(name = "workspace_snapshot.edges", level = "debug", skip_all, fields())]
-    pub async fn edges(&self) -> WorkspaceSnapshotResult<Vec<(EdgeWeight, NodeIndex, NodeIndex)>> {
-        Ok(self
-            .working_copy()
-            .await
+    pub async fn edges(&self) -> WorkspaceSnapshotResult<Vec<(EdgeWeight, Ulid, Ulid)>> {
+        let working_copy = self.working_copy().await;
+        Ok(working_copy
             .edges()
-            .map(|(weight, from, to)| (weight.to_owned(), from, to))
+            .filter_map(|(weight, from, to)| {
+                working_copy
+                    .node_index_to_id(from)
+                    .zip(working_copy.node_index_to_id(to))
+                    .map(|(from_id, to_id)| (weight.to_owned(), from_id, to_id))
+            })
             .collect())
     }
 
@@ -952,15 +942,19 @@ impl WorkspaceSnapshot {
         self.read_only_graph.write_to_disk(file_suffix);
     }
 
-    pub async fn get_node_index_by_id(
+    async fn get_node_index_by_id(
         &self,
         id: impl Into<Ulid>,
     ) -> WorkspaceSnapshotResult<NodeIndex> {
         Ok(self.working_copy().await.get_node_index_by_id(id)?)
     }
 
-    pub async fn get_node_index_by_id_opt(&self, id: impl Into<Ulid>) -> Option<NodeIndex> {
+    async fn get_node_index_by_id_opt(&self, id: impl Into<Ulid>) -> Option<NodeIndex> {
         self.working_copy().await.get_node_index_by_id_opt(id)
+    }
+
+    pub async fn node_exists(&self, id: impl Into<Ulid>) -> bool {
+        self.get_node_index_by_id_opt(id).await.is_some()
     }
 
     #[instrument(name = "workspace_snapshot.find", level = "debug", skip_all, fields())]
@@ -1072,18 +1066,17 @@ impl WorkspaceSnapshot {
         &self,
         id: impl Into<Ulid>,
         direction: Direction,
-    ) -> WorkspaceSnapshotResult<Vec<(EdgeWeight, NodeIndex, NodeIndex)>> {
-        let node_index = self.working_copy().await.get_node_index_by_id(id)?;
-        Ok(self
-            .working_copy()
-            .await
+    ) -> WorkspaceSnapshotResult<Vec<(EdgeWeight, Ulid, Ulid)>> {
+        let working_copy = self.working_copy().await;
+
+        let node_index = working_copy.get_node_index_by_id(id)?;
+        Ok(working_copy
             .edges_directed(node_index, direction)
-            .map(|edge_ref| {
-                (
-                    edge_ref.weight().to_owned(),
-                    edge_ref.source(),
-                    edge_ref.target(),
-                )
+            .filter_map(|edge_ref| {
+                working_copy
+                    .node_index_to_id(edge_ref.source())
+                    .zip(working_copy.node_index_to_id(edge_ref.target()))
+                    .map(|(source, target)| (edge_ref.weight().to_owned(), source, target))
             })
             .collect())
     }
@@ -1093,30 +1086,18 @@ impl WorkspaceSnapshot {
         id: impl Into<Ulid>,
         direction: Direction,
         edge_kind: EdgeWeightKindDiscriminants,
-    ) -> WorkspaceSnapshotResult<Vec<(EdgeWeight, NodeIndex, NodeIndex)>> {
-        let node_index = self.working_copy().await.get_node_index_by_id(id)?;
+    ) -> WorkspaceSnapshotResult<Vec<(EdgeWeight, Ulid, Ulid)>> {
+        let working_copy = self.working_copy().await;
+        let node_index = working_copy.get_node_index_by_id(id)?;
 
-        Ok(self
-            .working_copy()
-            .await
-            .edges_directed_for_edge_weight_kind(node_index, direction, edge_kind))
-    }
-
-    pub async fn edges_directed_by_index(
-        &self,
-        node_index: NodeIndex,
-        direction: Direction,
-    ) -> WorkspaceSnapshotResult<Vec<(EdgeWeight, NodeIndex, NodeIndex)>> {
-        Ok(self
-            .working_copy()
-            .await
-            .edges_directed(node_index, direction)
-            .map(|edge_ref| {
-                (
-                    edge_ref.weight().to_owned(),
-                    edge_ref.source(),
-                    edge_ref.target(),
-                )
+        Ok(working_copy
+            .edges_directed_for_edge_weight_kind(node_index, direction, edge_kind)
+            .into_iter()
+            .filter_map(|(edge_weight, source_idx, target_idx)| {
+                working_copy
+                    .node_index_to_id(source_idx)
+                    .zip(working_copy.node_index_to_id(target_idx))
+                    .map(|(source_id, target_id)| (edge_weight, source_id, target_id))
             })
             .collect())
     }
@@ -1138,14 +1119,14 @@ impl WorkspaceSnapshot {
         &self,
         id: impl Into<Ulid>,
         edge_weight_kind_discrim: EdgeWeightKindDiscriminants,
-    ) -> WorkspaceSnapshotResult<Vec<NodeIndex>> {
+    ) -> WorkspaceSnapshotResult<Vec<Ulid>> {
         Ok(self
             .edges_directed(id.into(), Direction::Incoming)
             .await?
             .into_iter()
-            .filter_map(|(edge_weight, source_idx, _)| {
+            .filter_map(|(edge_weight, source_id, _)| {
                 if edge_weight_kind_discrim == edge_weight.kind().into() {
-                    Some(source_idx)
+                    Some(source_id)
                 } else {
                     None
                 }
@@ -1157,34 +1138,15 @@ impl WorkspaceSnapshot {
         &self,
         id: impl Into<Ulid>,
         edge_weight_kind_discrim: EdgeWeightKindDiscriminants,
-    ) -> WorkspaceSnapshotResult<Vec<NodeIndex>> {
+    ) -> WorkspaceSnapshotResult<Vec<Ulid>> {
         let id = id.into();
         Ok(self
             .edges_directed(id, Direction::Outgoing)
             .await?
             .into_iter()
-            .filter_map(|(edge_weight, _, target_idx)| {
+            .filter_map(|(edge_weight, _, target_id)| {
                 if edge_weight_kind_discrim == edge_weight.kind().into() {
-                    Some(target_idx)
-                } else {
-                    None
-                }
-            })
-            .collect())
-    }
-
-    pub async fn outgoing_targets_for_edge_weight_kind_by_index(
-        &self,
-        node_index: NodeIndex,
-        edge_weight_kind_discrim: EdgeWeightKindDiscriminants,
-    ) -> WorkspaceSnapshotResult<Vec<NodeIndex>> {
-        Ok(self
-            .edges_directed_by_index(node_index, Direction::Outgoing)
-            .await?
-            .into_iter()
-            .filter_map(|(edge_weight, _, target_idx)| {
-                if edge_weight_kind_discrim == edge_weight.kind().into() {
-                    Some(target_idx)
+                    Some(target_id)
                 } else {
                     None
                 }
@@ -1197,15 +1159,15 @@ impl WorkspaceSnapshot {
         id: impl Into<Ulid>,
     ) -> WorkspaceSnapshotResult<Vec<NodeWeight>> {
         let mut result = vec![];
-        let target_idxs: Vec<NodeIndex> = self
+        let target_ids: Vec<_> = self
             .edges_directed(id, Direction::Outgoing)
             .await?
             .into_iter()
-            .map(|(_, _, target_idx)| target_idx)
+            .map(|(_, _, target_id)| target_id)
             .collect();
 
-        for target_idx in target_idxs {
-            let node_weight = self.get_node_weight(target_idx).await?;
+        for target_id in target_ids {
+            let node_weight = self.get_node_weight(target_id).await?;
             result.push(node_weight.to_owned());
         }
 
@@ -1217,15 +1179,15 @@ impl WorkspaceSnapshot {
         id: impl Into<Ulid>,
     ) -> WorkspaceSnapshotResult<Vec<NodeWeight>> {
         let mut result = vec![];
-        let source_idxs: Vec<NodeIndex> = self
+        let source_ids: Vec<Ulid> = self
             .edges_directed(id, Direction::Incoming)
             .await?
             .into_iter()
-            .map(|(_, source_idx, _)| source_idx)
+            .map(|(_, source_id, _)| source_id)
             .collect();
 
-        for source_idx in source_idxs {
-            let node_weight = self.get_node_weight(source_idx).await?;
+        for source_id in source_ids {
+            let node_weight = self.get_node_weight(source_id).await?;
             result.push(node_weight.to_owned());
         }
 
@@ -1242,10 +1204,8 @@ impl WorkspaceSnapshot {
         let sources = self
             .incoming_sources_for_edge_weight_kind(target_id, kind)
             .await?;
-        for source_node_idx in sources {
-            let target_node_idx = self.get_node_index_by_id(target_id).await?;
-            self.remove_edge(source_node_idx, target_node_idx, kind)
-                .await?;
+        for source_id in sources {
+            self.remove_edge(source_id, target_id, kind).await?;
         }
 
         Ok(())
@@ -1256,15 +1216,12 @@ impl WorkspaceSnapshot {
         from_node_id: Ulid,
         to_node_id: Ulid,
     ) -> WorkspaceSnapshotResult<Vec<EdgeWeight>> {
-        let from_node_index = self.get_node_index_by_id(from_node_id).await?;
-
-        let to_node_index = self.get_node_index_by_id(to_node_id).await?;
         let edges = self
             .edges()
             .await?
             .into_iter()
             .filter_map(|(edge, node_from, node_to)| {
-                if node_from == from_node_index && node_to == to_node_index {
+                if node_from == from_node_id && node_to == to_node_id {
                     Some(edge)
                 } else {
                     None
@@ -1292,10 +1249,13 @@ impl WorkspaceSnapshot {
 
     pub async fn remove_edge(
         &self,
-        source_node_index: NodeIndex,
-        target_node_index: NodeIndex,
+        source_id: impl Into<Ulid>,
+        target_id: impl Into<Ulid>,
         edge_kind: EdgeWeightKindDiscriminants,
     ) -> WorkspaceSnapshotResult<()> {
+        let source_node_index = self.get_node_index_by_id(source_id).await?;
+        let target_node_index = self.get_node_index_by_id(target_id).await?;
+
         self.working_copy_mut().await.remove_edge(
             source_node_index,
             target_node_index,
@@ -1328,15 +1288,7 @@ impl WorkspaceSnapshot {
         target_node_id: impl Into<Ulid>,
         edge_kind: EdgeWeightKindDiscriminants,
     ) -> WorkspaceSnapshotResult<()> {
-        let source_node_index = self
-            .working_copy()
-            .await
-            .get_node_index_by_id(source_node_id)?;
-        let target_node_index = self
-            .working_copy()
-            .await
-            .get_node_index_by_id(target_node_id)?;
-        self.remove_edge(source_node_index, target_node_index, edge_kind)
+        self.remove_edge(source_node_id, target_node_id, edge_kind)
             .await
     }
 
@@ -1365,8 +1317,9 @@ impl WorkspaceSnapshot {
     /// "finalizing" a schema variant!
     pub async fn mark_prop_as_able_to_be_used_as_prototype_arg(
         &self,
-        node_index: NodeIndex,
+        id: impl Into<Ulid>,
     ) -> WorkspaceSnapshotResult<()> {
+        let node_index = self.get_node_index_by_id(id).await?;
         self.working_copy_mut()
             .await
             .update_node_weight(node_index, |node_weight| match node_weight {
@@ -1408,11 +1361,13 @@ impl WorkspaceSnapshot {
     ) -> WorkspaceSnapshotResult<Option<Vec<Ulid>>> {
         let idx = self.get_node_index_by_id(id.into()).await?;
         let mut result = vec![];
+        let working_copy = self.working_copy().await;
         Ok(
-            if let Some(idxs) = self.working_copy().await.ordered_children_for_node(idx)? {
+            if let Some(idxs) = working_copy.ordered_children_for_node(idx)? {
                 for idx in idxs {
-                    let id = self.get_node_weight(idx).await?.id();
-                    result.push(id);
+                    if let Some(id) = working_copy.node_index_to_id(idx) {
+                        result.push(id);
+                    }
                 }
                 Some(result)
             } else {
@@ -1590,11 +1545,11 @@ impl WorkspaceSnapshot {
         let mut value_ids = vec![];
         let mut pending_removes = vec![];
 
-        for dv_node_idx in self
+        for dv_node_id in self
             .outgoing_targets_for_edge_weight_kind(dv_category_id, EdgeWeightKindDiscriminants::Use)
             .await?
         {
-            let root = match self.get_node_weight(dv_node_idx).await? {
+            let root = match self.get_node_weight(dv_node_id).await? {
                 NodeWeight::DependentValueRoot(unfinished) => Some((
                     DependentValueRoot::Unfinished(unfinished.value_id()),
                     unfinished.id(),

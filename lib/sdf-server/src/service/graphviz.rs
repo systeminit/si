@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashSet, VecDeque};
 
 use axum::{extract::Query, routing::get, Json, Router};
 use dal::{
@@ -111,10 +111,9 @@ pub async fn schema_variant(
     let workspace_snapshot = ctx.workspace_snapshot()?;
 
     let sv_node: GraphVizNode = {
-        let node_idx = workspace_snapshot
-            .get_node_index_by_id(request.schema_variant_id)
+        let sv_node_weight = workspace_snapshot
+            .get_node_weight(request.schema_variant_id)
             .await?;
-        let sv_node_weight = workspace_snapshot.get_node_weight(node_idx).await?;
 
         added_nodes.insert(sv_node_weight.id());
         GraphVizNode {
@@ -319,9 +318,7 @@ pub async fn components(
             continue;
         }
 
-        let node_weight = workspace_snapshot
-            .get_node_weight_by_id(component.id())
-            .await?;
+        let node_weight = workspace_snapshot.get_node_weight(component.id()).await?;
         let node = GraphVizNode {
             id: node_weight.id(),
             content_kind: node_weight.content_address_discriminants(),
@@ -401,14 +398,11 @@ pub async fn nodes_edges(
 
     let workspace_snapshot = ctx.workspace_snapshot()?;
 
-    let mut node_idx_to_id = HashMap::new();
-
-    let root_node_idx = workspace_snapshot.root().await?;
+    let root_node_id = workspace_snapshot.root().await?;
 
     let mut nodes = vec![];
 
-    for (weight, idx) in workspace_snapshot.nodes().await?.into_iter() {
-        node_idx_to_id.insert(idx, weight.id());
+    for weight in workspace_snapshot.nodes().await?.into_iter() {
         let name = match &weight {
             NodeWeight::Category(inner) => Some(inner.kind().to_string()),
             NodeWeight::Func(inner) => Some(inner.name().to_owned()),
@@ -444,28 +438,18 @@ pub async fn nodes_edges(
         .edges()
         .await?
         .into_iter()
-        .filter_map(|(edge_weight, from, to)| {
-            match (node_idx_to_id.get(&from), node_idx_to_id.get(&to)) {
-                (None, _) | (_, None) => None,
-                (Some(&from), Some(&to)) => Some(GraphVizEdge {
-                    from,
-                    to,
-                    edge_weight_kind: edge_weight.kind().into(),
-                    direction: Direction::Outgoing,
-                }),
-            }
+        .map(|(edge_weight, from, to)| GraphVizEdge {
+            from,
+            to,
+            edge_weight_kind: edge_weight.kind().into(),
+            direction: Direction::Outgoing,
         })
         .collect();
 
     let response = GraphVizResponse {
         nodes,
         edges,
-        root_node_id: Some(
-            node_idx_to_id
-                .get(&root_node_idx)
-                .copied()
-                .ok_or(GraphVizError::NoRootNode)?,
-        ),
+        root_node_id: Some(root_node_id),
     };
 
     Ok(Json(response))

@@ -542,12 +542,7 @@ async fn lookup_variant_for_schema_with_prefetched_modules(
     unlocked: bool,
     cached_modules: &Option<&[CachedModule]>,
 ) -> FsResult<Option<SchemaVariant>> {
-    if ctx
-        .workspace_snapshot()?
-        .get_node_index_by_id_opt(schema_id)
-        .await
-        .is_none()
-    {
+    if !ctx.workspace_snapshot()?.node_exists(schema_id).await {
         if let Some(cached_modules) = cached_modules {
             if cached_modules.iter().any(|m| m.schema_id == schema_id) {
                 return Ok(None);

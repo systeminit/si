@@ -70,8 +70,7 @@ impl StaticArgumentValue {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
         let ulid: si_events::ulid::Ulid = id.into();
-        let node_index = workspace_snapshot.get_node_index_by_id(ulid).await?;
-        let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
+        let node_weight = workspace_snapshot.get_node_weight(ulid).await?;
         let hash = node_weight.content_hash();
 
         let content: StaticArgumentValueContent = ctx

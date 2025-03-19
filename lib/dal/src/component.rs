@@ -514,7 +514,7 @@ impl Component {
             let should_descend = key.is_none();
 
             let prop_kind = workspace_snapshot
-                .get_node_weight_by_id(prop_id)
+                .get_node_weight(prop_id)
                 .await?
                 .get_prop_node_weight()?
                 .kind();
@@ -1305,12 +1305,7 @@ impl Component {
         component_id: ComponentId,
     ) -> ComponentResult<Option<(ComponentNodeWeight, ContentHash)>> {
         let id: Ulid = component_id.into();
-        if let Some(node_index) = ctx.workspace_snapshot()?.get_node_index_by_id_opt(id).await {
-            let node_weight = ctx
-                .workspace_snapshot()?
-                .get_node_weight(node_index)
-                .await?;
-
+        if let Some(node_weight) = ctx.workspace_snapshot()?.get_node_weight_opt(id).await {
             let hash = node_weight.content_hash();
             let component_node_weight = node_weight.get_component_node_weight()?;
             return Ok(Some((component_node_weight, hash)));
@@ -2161,13 +2156,9 @@ impl Component {
             base_change_set_connection,
         );
 
-        let base_attribute_prototype_argument_node_index = base_change_set_ctx
-            .workspace_snapshot()?
-            .get_node_index_by_id(base_change_set_connection.attribute_prototype_argument_id)
-            .await?;
         let base_attribute_prototype_argument_node_weight = base_change_set_ctx
             .workspace_snapshot()?
-            .get_node_weight(base_attribute_prototype_argument_node_index)
+            .get_node_weight(base_change_set_connection.attribute_prototype_argument_id)
             .await?;
         let base_func_arg_id = AttributePrototypeArgument::func_argument_id_by_id(
             base_change_set_ctx,
@@ -2418,17 +2409,14 @@ impl Component {
     ) -> ComponentResult<Option<bool>> {
         match ctx
             .workspace_snapshot()?
-            .get_node_index_by_id_opt(component_id)
+            .get_node_weight_opt(component_id)
             .await
         {
-            Some(component_idx) => {
-                let component_node_weight = ctx
-                    .workspace_snapshot()?
-                    .get_node_weight(component_idx)
-                    .await?
-                    .get_component_node_weight()?;
-                Ok(Some(component_node_weight.to_delete()))
-            }
+            Some(component_node_weight) => Ok(Some(
+                component_node_weight
+                    .get_component_node_weight()?
+                    .to_delete(),
+            )),
             None => Ok(None),
         }
     }
@@ -2446,13 +2434,9 @@ impl Component {
         // The `to_delete` lives on the node itself, not in the content, so we need to be a little
         // more manual when updating that field.
         if component.to_delete != original_component.to_delete {
-            let component_idx = ctx
-                .workspace_snapshot()?
-                .get_node_index_by_id(original_component.id)
-                .await?;
             let component_node_weight = ctx
                 .workspace_snapshot()?
-                .get_node_weight(component_idx)
+                .get_node_weight(original_component.id)
                 .await?
                 .get_component_node_weight()?;
             let mut new_component_node_weight = component_node_weight.clone();
@@ -2477,7 +2461,7 @@ impl Component {
 
         let component_node_weight = ctx
             .workspace_snapshot()?
-            .get_node_weight_by_id(original_component.id)
+            .get_node_weight(original_component.id)
             .await?
             .get_component_node_weight()?;
 
@@ -3407,8 +3391,7 @@ impl Component {
         // ================================================================================
         let snap = ctx.workspace_snapshot()?;
 
-        let original_component_node_weight =
-            snap.get_node_weight_by_id(original_component.id).await?;
+        let original_component_node_weight = snap.get_node_weight(original_component.id).await?;
 
         let original_component_name = self.name(ctx).await?;
         let original_component_id = self.id();

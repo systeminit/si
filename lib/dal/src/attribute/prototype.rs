@@ -154,7 +154,7 @@ impl AttributePrototype {
         let lineage_id = workspace_snapshot.generate_ulid().await?;
         let node_weight =
             NodeWeight::new_content(id, lineage_id, ContentAddress::AttributePrototype(hash));
-        let _node_index = workspace_snapshot.add_or_replace_node(node_weight).await?;
+        workspace_snapshot.add_or_replace_node(node_weight).await?;
 
         let prototype = AttributePrototype::assemble(id.into(), &content);
 
@@ -292,7 +292,7 @@ impl AttributePrototype {
     ) -> AttributePrototypeResult<(ContentNodeWeight, AttributePrototypeContentV1)> {
         let content_weight = ctx
             .workspace_snapshot()?
-            .get_node_weight_by_id(prototype_id)
+            .get_node_weight(prototype_id)
             .await?;
         let prototype_node_weight = content_weight
             .get_content_node_weight_of_kind(ContentAddressDiscriminants::AttributePrototype)?;
@@ -319,11 +319,7 @@ impl AttributePrototype {
     ) -> AttributePrototypeResult<()> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
-        let attribute_prototype_idx = workspace_snapshot
-            .get_node_index_by_id(attribute_prototype_id)
-            .await?;
-
-        let current_func_node_idx = workspace_snapshot
+        let current_func_node_id = workspace_snapshot
             .edges_directed(attribute_prototype_id, Direction::Outgoing)
             .await?
             .iter()
@@ -335,8 +331,8 @@ impl AttributePrototype {
 
         workspace_snapshot
             .remove_edge(
-                attribute_prototype_idx,
-                current_func_node_idx,
+                attribute_prototype_id,
+                current_func_node_id,
                 EdgeWeightKindDiscriminants::Use,
             )
             .await?;

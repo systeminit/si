@@ -424,9 +424,7 @@ impl Secret {
         id: SecretId,
     ) -> SecretResult<(SecretNodeWeight, ContentHash)> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
-        let ulid: Ulid = id.into();
-        let node_index = workspace_snapshot.get_node_index_by_id(ulid).await?;
-        let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
+        let node_weight = workspace_snapshot.get_node_weight(id).await?;
 
         let hash = node_weight.content_hash();
         let secret_node_weight = node_weight.get_secret_node_weight()?;

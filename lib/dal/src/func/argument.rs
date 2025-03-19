@@ -14,7 +14,6 @@ use crate::attribute::prototype::argument::{
 use crate::change_set::ChangeSetError;
 use crate::layer_db_types::{FuncArgumentContent, FuncArgumentContentV1};
 use crate::workspace_snapshot::edge_weight::EdgeWeightKindDiscriminants;
-use crate::workspace_snapshot::graph::WorkspaceSnapshotGraphError;
 use crate::workspace_snapshot::node_weight::{
     FuncArgumentNodeWeight, NodeWeight, NodeWeightDiscriminants, NodeWeightError,
 };
@@ -305,7 +304,7 @@ impl FuncArgument {
     ) -> FuncArgumentResult<String> {
         let node_weight = ctx
             .workspace_snapshot()?
-            .get_node_weight_by_id(func_arg_id)
+            .get_node_weight(func_arg_id)
             .await?;
         let func_arg_node_weight = node_weight.get_func_argument_node_weight()?;
         let name = func_arg_node_weight.name().to_string();
@@ -475,14 +474,9 @@ impl FuncArgument {
     ) -> FuncArgumentResult<Option<(FuncArgumentNodeWeight, ContentHash)>> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
-        let node_index = match workspace_snapshot.get_node_index_by_id(id).await {
-            Ok(node_index) => node_index,
-            Err(WorkspaceSnapshotError::WorkspaceSnapshotGraph(
-                WorkspaceSnapshotGraphError::NodeWithIdNotFound(_),
-            )) => return Ok(None),
-            Err(err) => return Err(err.into()),
+        let Some(node_weight) = workspace_snapshot.get_node_weight_opt(id).await else {
+            return Ok(None);
         };
-        let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
 
         let hash = node_weight.content_hash();
         let func_argument_node_weight = node_weight.get_func_argument_node_weight()?;
@@ -495,8 +489,7 @@ impl FuncArgument {
     ) -> FuncArgumentResult<(FuncArgumentNodeWeight, ContentHash)> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
-        let node_index = workspace_snapshot.get_node_index_by_id(id).await?;
-        let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
+        let node_weight = workspace_snapshot.get_node_weight(id).await?;
 
         let hash = node_weight.content_hash();
         let func_argument_node_weight = node_weight.get_func_argument_node_weight()?;

@@ -165,10 +165,8 @@ impl ValidationOutputNode {
         {
             let id = existing_node.id;
 
-            let idx = workspace_snapshot.get_node_index_by_id(id).await?;
-
             let node_weight = workspace_snapshot
-                .get_node_weight(idx)
+                .get_node_weight(id)
                 .await?
                 .get_content_node_weight_of_kind(ContentAddressDiscriminants::ValidationOutput)?;
 

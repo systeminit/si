@@ -368,12 +368,9 @@ impl Diagram {
                     ..
                 }) = components.get(&incoming_connection.from_component_id)
                 {
-                    let edge_status = if base_snapshot
-                        .get_node_index_by_id_opt(
-                            incoming_connection.attribute_prototype_argument_id,
-                        )
+                    let edge_status = if !base_snapshot
+                        .node_exists(incoming_connection.attribute_prototype_argument_id)
                         .await
-                        .is_none()
                     {
                         ChangeStatus::Added
                     } else {
@@ -593,31 +590,21 @@ impl Diagram {
             let from_sv = Component::schema_variant_for_component_id(&head_ctx, from_id).await?;
             let from_schema_id =
                 SchemaVariant::schema_id_for_schema_variant_id(&head_ctx, from_sv.id()).await?;
-            let Some(from_idx) = base_snapshot.get_node_index_by_id_opt(from_id).await else {
-                continue;
-            };
 
-            for to_idx in base_snapshot
-                .edges_directed_by_index(from_idx, Direction::Outgoing)
+            for (_, _, to_id) in base_snapshot
+                .edges_directed_for_edge_weight_kind(
+                    from_id,
+                    Direction::Outgoing,
+                    EdgeWeightKindDiscriminants::Manages,
+                )
                 .await?
-                .iter()
-                .filter(|(edge_weight, _, _)| {
-                    EdgeWeightKindDiscriminants::Manages == edge_weight.kind().into()
-                })
-                .map(|(_, _, to_idx)| *to_idx)
             {
-                let Some(to_id) = base_snapshot
-                    .get_node_weight_opt(to_idx)
-                    .await
-                    .map(|weight| weight.id().into())
-                else {
-                    continue;
-                };
-                let to_sv = Component::schema_variant_for_component_id(&head_ctx, to_id).await?;
+                let to_sv =
+                    Component::schema_variant_for_component_id(&head_ctx, to_id.into()).await?;
                 let to_schema_id =
                     SchemaVariant::schema_id_for_schema_variant_id(&head_ctx, to_sv.id()).await?;
 
-                if existing_management_edges.contains(&(from_id, to_id)) {
+                if existing_management_edges.contains(&(from_id, to_id.into())) {
                     continue;
                 }
 
@@ -625,7 +612,7 @@ impl Diagram {
                     from_schema_id,
                     to_schema_id,
                     from_id,
-                    to_id,
+                    to_id.into(),
                     true,
                 ));
             }

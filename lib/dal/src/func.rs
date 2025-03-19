@@ -21,7 +21,6 @@ use crate::func::argument::FuncArgumentId;
 use crate::func::intrinsics::IntrinsicFunc;
 use crate::layer_db_types::{FuncContent, FuncContentV2};
 use crate::workspace_snapshot::edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants};
-use crate::workspace_snapshot::graph::WorkspaceSnapshotGraphError;
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::workspace_snapshot::node_weight::{FuncNodeWeight, NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
@@ -468,15 +467,10 @@ impl Func {
         func_id: FuncId,
     ) -> FuncResult<Option<(FuncNodeWeight, ContentHash)>> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
-        let id: Ulid = func_id.into();
-        let node_index = match workspace_snapshot.get_node_index_by_id(id).await {
-            Ok(node_index) => node_index,
-            Err(WorkspaceSnapshotError::WorkspaceSnapshotGraph(
-                WorkspaceSnapshotGraphError::NodeWithIdNotFound(_),
-            )) => return Ok(None),
-            Err(err) => return Err(err.into()),
+
+        let Some(node_weight) = workspace_snapshot.get_node_weight_opt(func_id).await else {
+            return Ok(None);
         };
-        let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
 
         let hash = node_weight.content_hash();
         let func_node_weight = node_weight.get_func_node_weight()?;
@@ -488,9 +482,7 @@ impl Func {
         func_id: FuncId,
     ) -> FuncResult<(FuncNodeWeight, ContentHash)> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
-        let id: Ulid = func_id.into();
-        let node_index = workspace_snapshot.get_node_index_by_id(id).await?;
-        let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
+        let node_weight = workspace_snapshot.get_node_weight(func_id).await?;
 
         let hash = node_weight.content_hash();
         let func_node_weight = node_weight.get_func_node_weight()?;
@@ -658,7 +650,7 @@ impl Func {
         let mut func_content_hashes = Vec::new();
         for id in func_ids {
             let node_weight = workspace_snapshot
-                .get_node_weight_by_id(id)
+                .get_node_weight(id)
                 .await?
                 .get_func_node_weight()?;
             func_content_hashes.push(node_weight.content_hash());

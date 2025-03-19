@@ -384,7 +384,7 @@ async fn inner_determine_approving_ids_with_hashes(
                     *merkle_tree_hash_for_deleted_node
                 } else {
                     ctx.workspace_snapshot()?
-                        .get_node_weight_by_id(rule.entity_id)
+                        .get_node_weight(rule.entity_id)
                         .await?
                         .merkle_tree_hash()
                 };

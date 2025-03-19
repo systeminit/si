@@ -90,7 +90,7 @@ impl ApprovalRequirementExt for WorkspaceSnapshot {
         id: ApprovalRequirementDefinitionId,
     ) -> WorkspaceSnapshotResult<ApprovalRequirementDefinition> {
         let node_weight = self
-            .get_node_weight_by_id(id)
+            .get_node_weight(id)
             .await?
             .get_approval_requirement_definition_node_weight()?;
         let content: ApprovalRequirementDefinitionContent = ctx
@@ -152,7 +152,7 @@ impl ApprovalRequirementExt for WorkspaceSnapshot {
         id: ApprovalRequirementDefinitionId,
         user_id: UserPk,
     ) -> WorkspaceSnapshotResult<()> {
-        let node_weight = self.get_node_weight_by_id(id).await?;
+        let node_weight = self.get_node_weight(id).await?;
         let content: ApprovalRequirementDefinitionContent = ctx
             .layer_db()
             .cas()
@@ -189,7 +189,7 @@ impl ApprovalRequirementExt for WorkspaceSnapshot {
         id: ApprovalRequirementDefinitionId,
         user_id: UserPk,
     ) -> WorkspaceSnapshotResult<()> {
-        let node_weight = self.get_node_weight_by_id(id).await?;
+        let node_weight = self.get_node_weight(id).await?;
         let content: ApprovalRequirementDefinitionContent = ctx
             .layer_db()
             .cas()
