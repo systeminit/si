@@ -5,6 +5,7 @@
     size="sm"
     saveLabel="Save"
     title="Save Integrations"
+    :disableSave="!changeSetsStore.currentUserIsDefaultApprover"
     @save="updateIntegrations"
   >
     <VormInput ref="labelRef" v-model="webhookUrl" label="Slack Webhook Url" />
@@ -15,8 +16,10 @@
 import { Modal, VormInput } from "@si/vue-lib/design-system";
 import { ref, computed } from "vue";
 import { useWorkspacesStore } from "@/store/workspaces.store";
+import { useChangeSetsStore } from "@/store/change_sets.store";
 
 const workspacesStore = useWorkspacesStore();
+const changeSetsStore = useChangeSetsStore();
 
 const modalRef = ref<InstanceType<typeof Modal>>();
 

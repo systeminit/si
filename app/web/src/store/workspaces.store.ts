@@ -117,15 +117,6 @@ export const useWorkspacesStore = () => {
             },
           });
         },
-        async INVITE_USER(email: string) {
-          return new AuthApiRequest<void>({
-            method: "post",
-            url: "workspace/invite",
-            params: {
-              email,
-            },
-          });
-        },
         async BEGIN_WORKSPACE_IMPORT(moduleId: ModuleId) {
           this.workspaceApprovals = {};
           this.importId = null;

@@ -1,13 +1,15 @@
 use crate::extract::{HandlerContext, PosthogClient};
 use crate::service::v2::AccessBuilder;
 
-use axum::extract::{Host, OriginalUri, Path};
+use axum::extract::{Host, OriginalUri, Path, State};
 use axum::Json;
 use dal::workspace_integrations::{WorkspaceIntegration, WorkspaceIntegrationId};
-use dal::WorkspacePk;
+use dal::{HistoryActor, UserPk, WorkspacePk};
+use permissions::{Permission, PermissionBuilder};
 use serde::{Deserialize, Serialize};
+use si_events::audit_log::AuditLogKind;
 
-use super::{IntegrationsError, IntegrationsResult};
+use super::{AppState, IntegrationsError, IntegrationsResult};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -21,16 +23,36 @@ pub struct UpdateIntegrationResponse {
     pub integration: WorkspaceIntegration,
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn update_integration(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(access_builder): AccessBuilder,
     PosthogClient(_posthog_client): PosthogClient,
     OriginalUri(_original_uri): OriginalUri,
     Host(_host_name): Host,
-    Path((_workspace_pk, workspace_integration_id)): Path<(WorkspacePk, WorkspaceIntegrationId)>,
+    State(mut state): State<AppState>,
+    Path((workspace_pk, workspace_integration_id)): Path<(WorkspacePk, WorkspaceIntegrationId)>,
     Json(request): Json<UpdateIntegrationRequest>,
 ) -> IntegrationsResult<Json<UpdateIntegrationResponse>> {
     let ctx = builder.build_head(access_builder).await?;
+
+    let spicedb_client = state
+        .spicedb_client()
+        .ok_or(IntegrationsError::SpiceDbClientNotFound)?;
+
+    let user_pk: UserPk = match ctx.history_actor() {
+        HistoryActor::User(user_id) => *user_id,
+        _ => return Err(IntegrationsError::InvalidUser),
+    };
+    let has_permission = PermissionBuilder::new()
+        .workspace_object(workspace_pk)
+        .permission(Permission::Approve)
+        .user_subject(user_pk)
+        .has_permission(spicedb_client)
+        .await?;
+    if !has_permission {
+        return Err(IntegrationsError::UserUnableToApproveIntegration(user_pk));
+    }
 
     let mut integration = WorkspaceIntegration::get_by_pk(&ctx, workspace_integration_id)
         .await?
@@ -39,9 +61,22 @@ pub async fn update_integration(
         ))?;
 
     if let Some(webhook_url) = request.slack_webhook_url {
-        integration.update_webhook_url(&ctx, webhook_url).await?;
+        let old_url = integration.slack_webhook_url().unwrap_or_default();
+        integration
+            .update_webhook_url(&ctx, webhook_url.clone())
+            .await?;
+
+        ctx.write_audit_log_to_head(
+            AuditLogKind::WorkspaceIntegration {
+                old_slack_webhook_url: old_url,
+                new_slack_webhook_url: webhook_url.clone(),
+            },
+            "slack_webhook_url".to_string(),
+        )
+        .await?;
     }
-    ctx.commit().await?;
+
+    ctx.commit_no_rebase().await?;
 
     Ok(Json(UpdateIntegrationResponse { integration }))
 }
