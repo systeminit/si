@@ -190,6 +190,27 @@ impl User {
 
         Ok(users)
     }
+
+    pub async fn list_member_pks_for_workspace(
+        ctx: &DalContext,
+        workspace_pk: String,
+    ) -> UserResult<Vec<UserPk>> {
+        let rows = ctx
+            .txns()
+            .await?
+            .pg()
+            .query(
+                "SELECT users.pk FROM users INNER JOIN user_belongs_to_workspaces ON user_belongs_to_workspaces.user_pk = users.pk WHERE user_belongs_to_workspaces.workspace_pk = $1 ORDER BY users.created_at ASC",
+                &[&workspace_pk]
+            )
+            .await?;
+
+        let mut user_pks: Vec<UserPk> = Vec::new();
+        for row in rows.into_iter() {
+            user_pks.push(row.try_get("pk")?);
+        }
+        Ok(user_pks)
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Eq)]

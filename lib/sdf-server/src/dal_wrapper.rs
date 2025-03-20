@@ -53,6 +53,8 @@ pub enum DalWrapperError {
     InvalidWorkspaceForPermissionLookup(dal::WorkspacePk, dal::WorkspacePk),
     #[error("missing applicable approval id: {0}")]
     MissingApplicableApproval(si_id::ChangeSetApprovalId),
+    #[error("no users in workspace: {0}")]
+    NoUsersInWorkspace(si_id::WorkspacePk),
     #[error("permissions error: {0}")]
     Permissions(#[from] permissions::Error),
     #[error("spicedb lookup subjects error: {0}")]
@@ -63,6 +65,8 @@ pub enum DalWrapperError {
     UlidDecode(#[from] ulid::DecodeError),
     #[error("unsupported permission lookup: {0}")]
     UnsupportedPermissionLookup(String, String, String),
+    #[error("user error: {0}")]
+    User(#[from] dal::UserError),
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] dal::WorkspaceSnapshotError),
 }
