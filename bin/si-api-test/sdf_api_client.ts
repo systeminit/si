@@ -141,6 +141,11 @@ export const ROUTES = {
       `/v2/workspaces/${vars.workspaceId}/change-sets/${vars.changeSetId}/schema-variants/${vars.schemaVariantId}`,
     method: "GET",
   },
+  create_unlocked_copy: {
+    path: (vars: ROUTE_VARS) =>
+      `/v2/workspaces/${vars.workspaceId}/change-sets/${vars.changeSetId}/schema-variants/${vars.schemaVariantId}`,
+    method: "POST",
+  },
 
   // Action Management -----------------------------------------------------------
   action_list: {
@@ -181,6 +186,16 @@ export const ROUTES = {
     path: (vars: ROUTE_VARS) =>
       `/v2/workspaces/${vars.workspaceId}/change-sets/${vars.changeSetId}/funcs/${vars.funcId}/code`,
     method: "PUT",
+  },
+  test_execute: {
+    path: (vars: ROUTE_VARS) =>
+      `/v2/workspaces/${vars.workspaceId}/change-sets/${vars.changeSetId}/funcs/${vars.funcId}/test_execute`,
+    method: "POST",
+  },
+  get_func_run: {
+    path: (vars: ROUTE_VARS) =>
+      `/v2/workspaces/${vars.workspaceId}/change-sets/${vars.changeSetId}/funcs/runs/${vars.funcRunId}`,
+    method: "GET",
   },
 
   // Modules --------------------------------------
