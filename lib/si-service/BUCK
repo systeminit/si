@@ -7,7 +7,6 @@ rust_library(
         "//lib/si-std:si-std",
         "//lib/telemetry-application-rs:telemetry-application",
         "//lib/telemetry-rs:telemetry",
-        "//lib/tokio-watchdog:tokio-watchdog",
         "//third-party/rust:color-eyre",
         "//third-party/rust:glob",
         "//third-party/rust:thiserror",
