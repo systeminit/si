@@ -119,13 +119,8 @@ Set the Component type to be `Configuration Frame (down)`.
 
 Set the Component name to be `Public Route Table`.
 
-Connect the `Subnet ID` Output Socket of the Public `Subnet` Components to the
-`Subnet ID` Input Socket of the `Public Route Table` Component.
-
 Add 3 `AWS::EC2::SubnetRouteTableAssociation` components to the
 `Public Route Table` component.
-
-Set the Component type to be `Configuration Frame (down)`.
 
 Set the Component name to be `Public (1|2|3) Association`.
 
@@ -156,7 +151,7 @@ Add an `AWS::EC2::VPCGatewayAttachment` Component to the VPC frame.
 
 Set the name to be `Gateway VPC Attachment`.
 
-Connect the `Gateway ID` Output Socket of the `IGW` Component to the
+Connect the `Internet Gateway ID` Output Socket of the `IGW` Component to the
 `Gateway ID` Input Socket of the `Route to Internet` Component in the
 `Public Route Table` frame.
 
