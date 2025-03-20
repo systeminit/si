@@ -1,10 +1,6 @@
 <template>
   <button
-    v-if="
-      userIsApprover ||
-      (featureFlagsStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL &&
-        numberICanApprove > 0)
-    "
+    v-if="numberICanApprove > 0"
     v-tooltip="{
       content: tooltipText,
       theme: 'notifications',
@@ -49,26 +45,16 @@ import {
   useChangeSetsStore,
 } from "@/store/change_sets.store";
 import { useAuthStore } from "@/store/auth.store";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import ApprovalPendingModal from "../../ApprovalPendingModal.vue";
 
 const changeSetsStore = useChangeSetsStore();
 const authStore = useAuthStore();
-const featureFlagsStore = useFeatureFlagsStore();
 
 const pendingApprovalModalRef = ref<InstanceType<
   typeof ApprovalPendingModal
 > | null>(null);
 
-const userIsApprover = computed(() => {
-  if (featureFlagsStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL) return false;
-  return changeSetsStore.currentUserIsDefaultApprover;
-});
-
 const numberICanApprove = computed(() => {
-  if (!featureFlagsStore.WORKSPACE_FINE_GRAINED_ACCESS_CONTROL) {
-    return changeSetsStore.changeSetsNeedingApproval.length;
-  }
   let approvable = 0;
   changeSetsStore.changeSetsNeedingApproval.forEach((changeSet) => {
     const approvalData = changeSetsStore.changeSetsApprovalData[changeSet.id];
