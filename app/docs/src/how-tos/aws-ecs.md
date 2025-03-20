@@ -42,63 +42,66 @@ this in your Diagram:
 
 ![Create Loadbalancer](./aws-ecs/create-loadbalancer.png)
 
-Add a `Loadbalancer` to your `VPC How-to` vpc frame.
+Add a `AWS::ElasticLoadBalancingV2::LoadBalancer` to your `VPC How-to` vpc frame.
 
-Set the Component type to be `Configuration Frame (down)`.
+Set the Component type to `Down Frame`.
 
 Set the Component name to `application-alb`.
 
-Set the `LbName` to `application-alb`.
+Set the `IpAddressType` to `ipv4`.
 
-Set the `IpAddressType` to be `ipv4`.
+Set the `Name` to `application-alb`.
 
-Set the `LbType` to be `application`.
+Set the `Scheme` to `internet-facing`.
 
-Set the `Scheme` to be `internet-facing`.
+Set the `Type` to `application`.
 
-Connect the `Subnet ID` Output Socket of each of the public subnet Components to
-the `Subnet ID` Input Socket of the `application-alb` Component.
+Connect the `Subnet Id` Output Socket of each of the public subnet Components to
+the `Subnets` Input Socket of the `application-alb` Component.
 
 ### Create a Security Group Component for the Loadbalancer
 
 ![Create Security Group](./aws-ecs/create-ec2-security-group.png)
 
-Add a `Security Group` to your `VPC How-to` vpc frame.
+Add a `AWS::EC2::SecurityGroup` to your `VPC How-to` vpc frame.
 
 Set the Component name to `alb-sg`.
 
+Set the `GroupDescription` to be `Security Group to allow access to the Loadbalancer`
+
 Set the `GroupName` to `alb-sg`.
 
-Set the `Description` to be `Security Group to allow access to the Loadbalancer`
+Connect the `Group Id` Output Socket of `alb-sg` Component to the
+`Security Groups` Input Socket of the `application-alb` frame.
 
-Connect the `Security Group ID` Output Socket of `alb-sg` Component to the
-`Security Group ID` Input Socket of the `application-alb` frame.
-
-### Create an Ingress Rule Component
+### Create a Security Group Ingress Rule Component
 
 ![Create Ingress Rule](./aws-ecs/create-security-group-ingress.png)
 
-Add a `Security Group Rule (Ingress)` to your `VPC How-to` vpc frame.
+Add a `AWS::EC2::SecurityGroupIngress` Component to your `VPC How-to` vpc frame.
 
-Set the Component name to be `alb-80-ingress`.
+Set the Component name to `alb-80-ingress`.
 
-Set the `Description` to be `Ingress to allow 80 from the world`.
+Set the `IpProtocol` to `TCP`.
 
-Set the `TrafficPort` to be `80/tcp`.
+Set `CidrIp` to be `0.0.0.0/0`.
 
-Add an `IpRange` array item.
+Set the `Description` to `Ingress to allow 80 from the world`.
 
-Set the `IP Range [CIDR]` to be `0.0.0.0/0` and the `Description` to be
-`The world`.
+Set `FromPort` to be `80`.
 
-Connect the `Security Group ID` Output Socket of `alb-sg` Component to the
-`Security Group ID` Input Socket of this `alb-80-ingress` Component.
+Set `ToPort` to be `80`.
+
+Connect the `Group Id` Output Socket of `alb-sg` Component to the
+`Group Id` Input Socket of this `alb-80-ingress` Component.
 
 ### Create a Listener Component
 
 ![Create Listener](./aws-ecs/create-listener.png)
 
-Add a `Listener` Component to your `application-alb` loadbalancer frame.
+Add a `AWS::ElasticLoadBalancingV2::Listener` Component to your `application-alb` loadbalancer frame.
+
+Set the Component type to `Down Frame`.
 
 Set the Component name to `HTTP:80`.
 
@@ -112,229 +115,276 @@ Resize the frame to be large enough to fit another Component.
 
 ![Create Target Group](./aws-ecs/create-target-group.png)
 
-Add a `Target Group` Component to your `Listener` frame.
+Add a `AWS::ElasticLoadBalancingV2::TargetGroup` Component to your `Listener` frame.
 
 Set the Component name to `app-tg`.
 
-Set `TgName` to be `app-tg`.
-
-Set `HealthCheckEnabled` to be enabled.
+Set `HealthCheckEnabled` to `TRUE`.
 
 Set `HealthCheckIntervalSeconds` to `30` seconds.
 
-Set `HealthCheckPath` to be `/`.
+Set `HealthCheckPath` to `/`.
 
-Set `HealthCheckPort` to be `80`.
+Set `HealthCheckPort` to `80`.
 
-Set `HealthCheckProtocol` to be `HTTP`.
+Set `HealthCheckProtocol` to `HTTP`.
 
-Set `HealthCheckTimeoutSeconds` to be `5`.
+Set `HealthCheckTimeoutSeconds` to `5`.
 
-Set `HealthyThresholdCount` to be `5`.
+Set `HealthyThresholdCount` to `5`.
 
-Set `HttpCode` to be `200`.
+Set `IpAddressType` to `ipv4`
 
-Set `Port` to be `80`.
+Set `Name` to be `app-tg`.
 
-Set `Protocol` to be `HTTP`.
+Set `Port` to `80`.
 
-Set `TargetType` to be `ip`.
+Set `Protocol` to `HTTP`.
+
+Set `ProtocolVersion` to `HTTP1`
+
+Set `TargetType` to `ip`.
 
 Set `UnhealthyThresholdCount` to be `2`.
 
-Connect the `Target Group ARN` Output Socket of `app-tg` Component to the
-`Target Group ARN` Input Socket of the `HTTP:80` frame.
+Set `HttpCode` to `200`.
+
+### Create a Listener Default Action
+
+![Create Listener Default Action](./aws-ecs/create-listener-default-action.png)
+
+Add a `Listener DefaultActions` Component to your `Listener` frame.
+
+Set the Component name to `listener-actions`.
+
+Set `Type` to `forward`.
+
+Connect the `Target Group Arn` Output Socket of the `app-tg` Component to the
+`Target Group Arn` Input Socket of the `listener-actions` Component.
+
+Connect the `Default Actions` Output Socket of the `listener-actions` Component to the `Default Actions` Input Socket of the `HTTP:80` Listener Component.
 
 ### Create an IAM Role
 
 ![Create IAM Role](./aws-ecs/create-iam-role.png)
 
-Add an `AWS IAM Role` Component to your `VPC How-to` vpc frame.
+Add an `AWS::IAM::Role` Component to your `VPC How-to` vpc frame.
 
 Set the Component name to `ecs-tasks-service`.
 
 Set the `RoleName` to `ecs-tasks-service`.
 
-Set the `Description` to `IAM Role to allow ECS to spawn tasks`.
-
 Set the `Path` to `/si-tutorial/`.
+
+Set the `Description` to `IAM Role to allow ECS to spawn tasks`.
 
 ### Create an AWS IAM Policy Statement
 
 ![Create IAM Policy Statement](./aws-ecs/create-iam-policy-statement.png)
 
-Add an `AWS IAM Policy Statement` within the `ecs-tasks-service` AWS IAM Role
+Add an `AWS::IAM::PolicyStatement` within the `ecs-tasks-service` AWS IAM Role
 frame.
 
 Set the Component name to `ecs-tasks-assume-role-policy`.
-
-Set the `Effect` to `Allow`.
 
 Add an array item to the `Action` array.
 
 Set the `[0]` value for the `Action` array to `sts:AssumeRole`.
 
-### Create an AWS IAM AWS Service Principal
+Set the `Effect` to `Allow`.
+
+### Create an AWS IAM Service Principal
 
 ![Create Service Principal](./aws-ecs/create-iam-service-principal.png)
 
-Add an `AWS IAM Service Principal` within the `ecs-tasks-service` AWS IAM Role
+Add an `AWS::IAM::ServicePrincipal` within the `ecs-tasks-service` AWS IAM Role
 frame.
 
 Set the Component name to `ecs-tasks.amazonaws.com`.
 
 Set the `Service` to `ecs-tasks.amazonaws.com`.
 
-Connect the `Principal` Output Socket of the `ecs-tasks.amazonaws.com` AWS IAM
-AWS Service Principal to the `Principal` Input Socket of your
-`ecs-tasks-assume-role-policy` AWS IAM Policy Statement.
+Connect the `Principal` Output Socket of the `ecs-tasks.amazonaws.com` AWS IAM Service Principal to the `Principal` Input Socket of your `ecs-tasks-assume-role-policy` AWS IAM Policy Statement.
 
 ### Create a Security Group Component for the Application
 
 ![create-security-group-for-application](./aws-ecs/create-security-group-for-application.png)
 
-Add a `Security Group` to your `VPC How-to` vpc frame.
+Add a `AWS::EC2::SecurityGroup` to your `VPC How-to` vpc frame.
 
 Set the Component name to `container-sg`
 
-Set the `GroupName` to `container-sg`.
+Set the `GroupDescription` to be `Container Security Group`
 
-Set the `Description` to be `Container Security Group`
+Set the `GroupName` to `container-sg`.
 
 ### Create an Ingress Rule Component for the Application
 
 ![create-ingress-rule-for-application.png](./aws-ecs/create-ingress-rule-for-application.png)
 
-Add a `Security Group Rule (Ingress)` to your `VPC How-to` vpc frame.
+Add a `AWS::EC2::SecurityGroupIngress` to your `VPC How-to` vpc frame.
 
 Set the Component name to be `container-80-ingress`.
 
+Set the `IpProtocol` to `TCP`.
+
 Set the `Description` to be `Ingress to allow access to port 80`.
 
-Set the `TrafficPort` to be `80/tcp`.
+Set `FromPort` to be `80`.
 
-Connect the `Security Group ID` Output Socket of `container-sg` Component to the
-`Security Group ID` Input Socket of this`container-80-ingress` Component.
+Set `ToPort` to be `80`.
 
-Connect the `Security Group ID` Output Socket of `alb-sg` Component to the
-`Source Traffic Security Group ID` Input Socket of this `container-80-ingress`
+Connect the `Group Id` Output Socket of `container-sg` Component to the
+`Group Id` Input Socket of this`container-80-ingress` Component.
+
+Connect the `Group Id` Output Socket of `alb-sg` Component to the
+`SourceSecurityGroupId` Input Socket of this `container-80-ingress`
 Component.
 
 ### Create an ECS Cluster
 
 ![Create ECS Cluster](./aws-ecs/create-ecs-cluster.png)
 
-Add an `ECS Cluster` to your `VPC How-to` vpc frame.
+Add an `AWS::ECS::Cluster` to your `VPC How-to` vpc frame.
 
-Set the Component type to be `Configuration Frame (down)`.
+Set the Component type to be `Down Frame`.
 
 Set the Component name to `application-cluster`.
 
 Set the `ClusterName` to `application-cluster`.
 
-Set the `Description` to be `Cluster to run the Tutorial App`
+### Create a ECS Capacity Provider Strategy
+
+![Create ECS CapacityProviderStrategy](./aws-ecs/create-ecs-capacity-provider-strategy.png)
+
+Add a `ECS CapacityProviderStrategy` component to the `application-cluster` frame.
+
+Set the Component name to `ecs-capacity-strategy`.
+
+Set `Base` to `0`.
+
+Set `CapacityProvider` to `FARGATE`.
+
+Set `Weight` to `1`.
+
+### Create a ECS Cluster Capacity Provider Association
+
+![Create ECS Capacity Provider Association](./aws-ecs/create-ecs-capacity-provider-assoc.png)
+
+Add an `AWS::ECS::ClusterCapacityProviderAssociations` Component to the `application-cluster` frame.
+
+Set the Component name to `ecs-capacity-associations`.
+
+Add two array items to the `CapacityProviders` array.
+
+Set the `[0]` value for the `CapacityProviders` array to `FARGATE`.
+
+Set the `[1]` value for the `CapacityProviders` array to `FARGATE_SPOT`.
+
+Connect the `Default Capacity Provider Strategy` Output Socket of the `ecs-capacity-strategy` Component to the `Default Capacity Provider Strategy` Input Socket of this `ecs-capacity-associations` Component.
 
 ### Create an ECS Service
 
 ![Create ECS Service](./aws-ecs/create-ecs-service.png)
 
-Add an `ECS Service` to your `application-cluster` cluster frame.
+Add an `AWS::ECS::Service` to your `application-cluster` cluster frame.
+
+Set the Component type to be `Up Frame`.
 
 Set the Component name to `demo-service`.
 
-Set the `serviceName` to `demo-service`.
+Set the `DesiredCount` to be `1`.
 
-Set the `desiredCount` to be `1`.
-
-Set the `description` to be `Service to run my demo application`.
+Set the `ServiceName` to `demo-service`.
 
 Connect the `Subnet ID` Output Socket of each of the private subnet Components
-to the `Subnet ID` Input Socket of this `demo-service` Component.
+to the `Network Awsvpc Security Groups` Input Socket of this `demo-service` Component.
 
-Connect the `Security Group ID` Output Socket of `container-sg` Component to the
-`Security Group ID` Input Socket of this `demo-service` Component.
+Connect the `Id` Output Socket of `container-sg` Component to the
+`Network Awsvpc Security Groups` Input Socket of this `demo-service` Component.
 
 ### Create an ECS Task Definition
 
 ![Create Task Definition](./aws-ecs/create-task-definition.png)
 
-Add an `ECS Task Definition` to your `demo-service` service frame.
+Add an `AWS::ECS::TaskDefinition` to your `demo-service` service frame.
 
-Set the Component type to be `Configuration Frame (up)`.
+Set the Component type to be `Frame Up`.
 
 Set the Component name to `demo-app`.
 
-Set the `taskDefinitionFamily` to be `demo-app`.
+Set `Cpu` to be `256`.
 
-Set `cpu` to be `0.25 vCPU`.
+Set the `Family` to be `demo-app`.
 
-Set `memory` to be `.5 GB`.
+Set `Memory` to be `512`.
 
-Connect the `ARN` Output Socket of the `ecs-tasks-service` AWS IAM Role to the
-`Task Role ARN` Input Socket of your `demo-app` ECS Task Definition.
+Set `NetworkMode` to be `awsvpc`.
+
+Click `set: manually` on `RequiresCompatibilities`, then `Add array item`.
+
+In item [0] add the value `FARGATE`.
+
+Connect the `Task Definition Arn` Output Socket of the TaskDefition to the `Task Defition` input Socket of the ECS Service.
+
+Connect the `ARN` Output Socket of the `ecs-tasks-service` AWS IAM Role to the `Task Role ARN` Input Socket of your `demo-app` ECS Task Definition.
 
 ### Create a Container Definition
 
 ![Create Container Definition](./aws-ecs/create-container-definition.png)
 
-Add a `Container Definition` to your `demo-app` frame.
+Add a `TaskDefinition ContainerDefinitions` Component to your `demo-app` frame.
 
 Set the Component name to `hello-world`.
 
 Set `Name` to `hello-world`.
 
-Set `Essential` to be selected.
+Set `Essential` to `TRUE`.
 
 ### Create a Docker Image
 
 ![Create Docker Image](./aws-ecs/create-docker-image.png)
 
-Add a `Docker Image` to your `demo-app` frame.
+Add a `Docker Image` Component to your `demo-app` frame.
 
 Set the Component name to `tutum/hello-world`.
 
 Set `image` to be `tutum/hello-world`.
 
-Connect the `Container Image` Output Socket of this `tutum/hello-world` Docker
-Image to the `Container Image` Input Socket of the `hello-world` Container
-Defintion.
+Connect the `Image Name` Output Socket of this `tutum/hello-world` Docker Image to the `Image` Input Socket of the `hello-world` Container Defintion.
 
 ### Create an ECS Container Definition Port Mapping
 
 ![create-port-mapping](./aws-ecs/create-port-mapping.png)
 
-Add a `ECS Container Definition Port Mapping` to the `demo-app` frame.
+Add a `ContainerDefinitions PortMappings` Component to the `demo-app` frame.
 
 Set the Component name to be `http`.
 
-Set the `name` to be `http`.
+Set the `ContainerPort` to be `80`.
 
-Set the `containerPort` to be `80`.
+Set the `HostPort` to be `80`.
 
-Set the `hostPort` to be `80`.
+Set the `Name` to be `http`.
 
-Set the `protocol` to be `tcp`.
+Set the `Protocol` to be `tcp`.
 
-Connect the `Port Mapping` Output Socket of this `http` ECS Container Defintion
-Port Mapping to the `Port Mapping` Input Socket of the `hello-world` Container
-Defintion.
+Connect the `Port Mappings` Output Socket of this `http` ECS ContainerDefintions PortMappings Component to the `Port Mappings` Input Socket of the `hello-world` TeskDefinition ContainerDefintions Component.
 
 ### Create a ECS Load Balancer Configuration
 
 ![create-ecs-lb-config](./aws-ecs/create-ecs-lb-config.png)
 
-Add a `ECS Load Balancer Configuration` to the `demo-service` frame.
+Add a `Service LoadBalancers` Component to the `demo-service` frame.
 
 Set the Component name to be `lb-config`.
 
-Connect the `Target Group ARN` Output Socket of the `app-tg` Target Group to the
-`Target Group ARN` Input Socket of this `lb-config` Component.
+Set the `ContainerName` to be `hello-world`.
 
-Connect the `Container Name` Output Socket of the `hello-world` Container
-Defintion to the `Container Name` Input Socket of this `lb-config` Component.
+Set the `ContainerPort` to `80`.
 
-Connect the `Container Port` Output Socket of the `http` ECS Container Defintion
-Port Mapping to the `Container Port` Input Socket of this `lb-config` Component.
+Connect the `Target Group Arn` Output Socket of the `app-tg` Target Group to the
+`Target Group Arn` Input Socket of this `lb-config` Component.
 
 ### Apply your Change Set
 
@@ -343,7 +393,13 @@ Port Mapping to the `Container Port` Input Socket of this `lb-config` Component.
 Press `Escape` or click anywhere on the canvas background to select the
 Workspace.
 
-Click the `Apply Change Set` button to:
+Click the `Apply Change Set` button.
+
+Click the `Request Approval` button.
+
+Click the `Approve Request` button.
+
+Click `Apply Change Set` to:
 
 - Create 2 Security Groups and associated ingress rules
 - Create an application load balancer, a listener and a target group
