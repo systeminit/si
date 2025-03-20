@@ -10,7 +10,8 @@ use dal_test::helpers::ChangeSetTestHelpers;
 use dal_test::helpers::{
     connect_components_with_socket_names, disconnect_components_with_socket_names,
 };
-use dal_test::test;
+use dal_test::{test, Result};
+use itertools::Itertools;
 use pretty_assertions_sorted::assert_eq;
 
 #[test]
@@ -491,4 +492,195 @@ async fn actions_are_ordered_correctly(ctx: &mut DalContext) {
         action_graph.direct_dependencies_of(third_component_action),
         vec![first_component_action]
     );
+}
+
+#[test]
+async fn simple_transitive_action_ordering(ctx: &mut DalContext) -> Result<()> {
+    // Simple case: a chain of 3 components: A->B->C, an action for A and C only
+    // First we'll connect the components via edges and ensure the create actions for A and C are ordered correctly
+    // Next we'll remove the edges and replace them with Frames and ensure the actions are still ordered correctly
+    // Finally we'll remove the create actions and enqueue Delete actions and ensure they're ordered correctly too!
+
+    // create three components and connect them via edges
+    let first_component = create_component_for_schema_name_with_type_on_default_view(
+        ctx,
+        "small odd lego",
+        "first component",
+        dal::ComponentType::ConfigurationFrameDown,
+    )
+    .await?;
+    let first_component_id = first_component.id();
+    let first_component_sv_id = first_component.schema_variant(ctx).await?.id();
+    let second_component = create_component_for_schema_name_with_type_on_default_view(
+        ctx,
+        "small even lego",
+        "second component",
+        dal::ComponentType::ConfigurationFrameDown,
+    )
+    .await?;
+    let second_component_id = second_component.id();
+
+    connect_components_with_socket_names(
+        ctx,
+        first_component_id,
+        "two",
+        second_component_id,
+        "two",
+    )
+    .await?;
+
+    let third_component = create_component_for_schema_name_with_type_on_default_view(
+        ctx,
+        "medium odd lego",
+        "third component",
+        dal::ComponentType::ConfigurationFrameDown,
+    )
+    .await?;
+    let third_component_id = third_component.id();
+    let third_component_sv_id = third_component.schema_variant(ctx).await?.id();
+    connect_components_with_socket_names(
+        ctx,
+        second_component_id,
+        "one",
+        third_component_id,
+        "one",
+    )
+    .await?;
+    // remove the action for the second component
+    Action::remove_all_for_component_id(ctx, second_component_id).await?;
+
+    // there should be two actions enqueued
+    let actions = Action::list_topologically(ctx)
+        .await
+        .expect("could not list actions");
+    // make sure two actions are enqueued
+    assert_eq!(actions.len(), 2);
+
+    let first_component_action = Action::find_for_component_id(ctx, first_component_id)
+        .await
+        .expect("could not get actions")
+        .pop()
+        .expect("doesn't have one");
+    let third_component_actions = Action::find_for_component_id(ctx, third_component_id)
+        .await
+        .expect("could not list actions")
+        .pop()
+        .expect("didnt have an action");
+    let action_graph = ActionDependencyGraph::for_workspace(ctx)
+        .await
+        .expect("could not get graph");
+
+    // Create for the third action is dependent on the create for the first action
+    assert_eq!(
+        action_graph.get_all_dependencies(first_component_action),
+        vec![third_component_actions]
+    );
+    assert_eq!(
+        action_graph.direct_dependencies_of(third_component_actions),
+        vec![first_component_action]
+    );
+
+    // now remove the edge and let's use frames
+    disconnect_components_with_socket_names(
+        ctx,
+        first_component_id,
+        "two",
+        second_component_id,
+        "two",
+    )
+    .await
+    .expect("could not create connection");
+    disconnect_components_with_socket_names(
+        ctx,
+        second_component_id,
+        "one",
+        third_component_id,
+        "one",
+    )
+    .await
+    .expect("could not create connection");
+    Frame::upsert_parent(ctx, second_component_id, first_component_id).await?;
+    Frame::upsert_parent(ctx, third_component_id, second_component_id).await?;
+
+    // there should be two actions enqueued
+    let actions = Action::list_topologically(ctx)
+        .await
+        .expect("could not list actions");
+    // make sure two actions are enqueued
+    assert_eq!(actions.len(), 2);
+
+    // order is still preserved
+    let first_component_action = Action::find_for_component_id(ctx, first_component_id)
+        .await
+        .expect("could not get actions")
+        .pop()
+        .expect("doesn't have one");
+    let third_component_actions = Action::find_for_component_id(ctx, third_component_id)
+        .await
+        .expect("could not list actions")
+        .pop()
+        .expect("didnt have an action");
+    let action_graph = ActionDependencyGraph::for_workspace(ctx)
+        .await
+        .expect("could not get graph");
+
+    assert_eq!(
+        action_graph.get_all_dependencies(first_component_action),
+        vec![third_component_actions]
+    );
+    assert_eq!(
+        action_graph.direct_dependencies_of(third_component_actions),
+        vec![first_component_action]
+    );
+    // now let's do destroy actions
+    Action::remove_all_for_component_id(ctx, first_component_id).await?;
+    Action::remove_all_for_component_id(ctx, third_component_id).await?;
+    // there should be no actions enqueued
+    let actions = Action::list_topologically(ctx)
+        .await
+        .expect("could not list actions");
+    // make sure two actions are enqueued
+    assert!(actions.is_empty());
+    // manually enqueue deletes for the first and third component
+    let first_actions = ActionPrototype::for_variant(ctx, first_component_sv_id)
+        .await
+        .expect("could not list actions")
+        .into_iter()
+        .filter(|proto| proto.kind == ActionKind::Destroy)
+        .collect_vec();
+    assert_eq!(first_actions.len(), 1);
+
+    let first_action = Action::new(ctx, first_actions[0].id, Some(first_component_id))
+        .await?
+        .id();
+
+    let third_actions = ActionPrototype::for_variant(ctx, third_component_sv_id)
+        .await?
+        .into_iter()
+        .filter(|proto| proto.kind == ActionKind::Destroy)
+        .collect_vec();
+    assert_eq!(third_actions.len(), 1);
+    let third_action = Action::new(ctx, third_actions[0].id, Some(third_component_id))
+        .await?
+        .id();
+
+    // there should be two actions enqueued
+    let actions = Action::list_topologically(ctx).await?;
+    assert_eq!(actions.len(), 2);
+
+    let action_graph = ActionDependencyGraph::for_workspace(ctx)
+        .await
+        .expect("could not get graph");
+
+    // Delete for the first action is dependent on the delete for the third action
+    assert_eq!(
+        action_graph.get_all_dependencies(third_action),
+        vec![first_action]
+    );
+    assert_eq!(
+        action_graph.direct_dependencies_of(first_action),
+        vec![third_action]
+    );
+
+    Ok(())
 }
