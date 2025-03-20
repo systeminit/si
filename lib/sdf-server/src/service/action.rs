@@ -68,6 +68,11 @@ impl IntoResponse for ActionError {
     fn into_response(self) -> Response {
         let (status_code, error_message) = match self {
             ActionError::InvalidOnHoldTransition(_) => (StatusCode::NOT_MODIFIED, self.to_string()),
+            ActionError::Action(dal::action::ActionError::WorkspaceSnapshot(err))
+                if err.is_node_with_id_not_found() =>
+            {
+                (StatusCode::GONE, err.to_string())
+            }
             _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
         };
 
