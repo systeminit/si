@@ -116,7 +116,7 @@ execute_configuration_management() {
         # Clear up any jails that may well be lingering, sometimes it happens
         # when jails are left behind and it causes grief with device usage 
         # on startup after upgrade in place or similar.
-        pkill firecracker || true
+        pkill -e -f '^/firecracker --id' || true
 
         # Update Process Limits
         if grep -Fxq "jailer-shared" /etc/security/limits.conf; then
