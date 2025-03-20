@@ -105,7 +105,6 @@ pub enum InodeEntryData {
         func_id: FuncId,
     },
     FuncTypesDenoConfig,
-    FuncTypesTsConfig,
     InstalledSchemaMarker,
     SchemaAttrsJson {
         schema_id: SchemaId,
@@ -199,7 +198,6 @@ impl InodeEntryData {
             InodeEntryData::FuncCode { .. }
                 | InodeEntryData::FuncTypes { .. }
                 | InodeEntryData::FuncTypesDenoConfig
-                | InodeEntryData::FuncTypesTsConfig
                 | InodeEntryData::AssetFuncCode { .. }
                 | InodeEntryData::AssetFuncTypes { .. }
                 | InodeEntryData::SchemaAttrsJson { .. }
