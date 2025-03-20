@@ -1,12 +1,15 @@
 [Unit]
-Description=Veritech Server
+Description=Veritech
 After=network.target
 
 [Service]
-ExecStart=/usr/local/bin/veritech --cyclone-local-firecracker --cyclone-pool-size 1000
+ExecStartPre=-/usr/bin/pkill -e -f '^/firecracker --id'
+ExecStart=/usr/local/bin/veritech
+ExecStopPost=-/usr/bin/pkill -e -f '^/firecracker --id'
+LimitNOFILE=1048576
+
 Type=exec
 Restart=always
-
 
 [Install]
 WantedBy=default.target
