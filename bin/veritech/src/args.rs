@@ -129,10 +129,6 @@ pub(crate) struct Args {
     #[arg(long)]
     pub(crate) heartbeat_app: Option<bool>,
 
-    /// Enables or disables auto force reconnect logic within the heartbeat app.
-    #[arg(long)]
-    pub(crate) heartbeat_app_auto_force_reconnect_logic: Option<bool>,
-
     /// Overrides the default heartbeat app sleep duration (in seconds).
     #[arg(long)]
     pub(crate) heartbeat_app_sleep_secs: Option<u64>,
@@ -140,10 +136,6 @@ pub(crate) struct Args {
     /// Overrides the default heartbeat app publish timeout duration (in seconds).
     #[arg(long)]
     pub(crate) heartbeat_app_publish_timeout_secs: Option<u64>,
-
-    /// Overrides the default heartbeat app force reconnect timeout duration (in seconds).
-    #[arg(long)]
-    pub(crate) heartbeat_app_force_reconnect_timeout_secs: Option<u64>,
 }
 
 impl TryFrom<Args> for Config {
@@ -217,14 +209,6 @@ impl TryFrom<Args> for Config {
             if let Some(heartbeat_app) = args.heartbeat_app {
                 config_map.set("heartbeat_app", heartbeat_app);
             }
-            if let Some(heartbeat_app_auto_force_reconnect_logic) =
-                args.heartbeat_app_auto_force_reconnect_logic
-            {
-                config_map.set(
-                    "heartbeat_app_auto_force_reconnect_logic",
-                    heartbeat_app_auto_force_reconnect_logic,
-                );
-            }
             if let Some(heartbeat_app_sleep_secs) = args.heartbeat_app_sleep_secs {
                 config_map.set("heartbeat_app_sleep_secs", heartbeat_app_sleep_secs);
             }
@@ -234,14 +218,6 @@ impl TryFrom<Args> for Config {
                 config_map.set(
                     "heartbeat_app_publish_timeout_secs",
                     heartbeat_app_publish_timeout_secs,
-                );
-            }
-            if let Some(heartbeat_app_force_reconnect_timeout_secs) =
-                args.heartbeat_app_force_reconnect_timeout_secs
-            {
-                config_map.set(
-                    "heartbeat_app_force_reconnect_timeout_secs",
-                    heartbeat_app_force_reconnect_timeout_secs,
                 );
             }
         })?
