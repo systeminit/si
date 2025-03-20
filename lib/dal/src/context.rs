@@ -489,8 +489,26 @@ impl DalContext {
 
     async fn commit_internal(
         &self,
-        maybe_rebase: DelayedRebaseWithReply<'_>,
+        rebase_batch: Option<RebaseBatchAddress>,
     ) -> TransactionsResult<()> {
+        let maybe_rebase = match rebase_batch {
+            Some(updates_address) => DelayedRebaseWithReply::WithUpdates {
+                rebaser: self.rebaser(),
+                workspace_pk: self.workspace_pk()?,
+                change_set_id: self.change_set_id(),
+                updates_address,
+                event_session_id: self.event_session_id,
+            },
+            None => {
+                // Since we are not rebasing, we need to write the final message and flush all
+                // pending audit logs.
+                self.write_audit_log_final_message().await?;
+                self.publish_pending_audit_logs(None, None).await?;
+
+                DelayedRebaseWithReply::NoUpdates
+            }
+        };
+
         if self.blocking {
             self.blocking_commit_internal(maybe_rebase).await?;
         } else {
@@ -579,46 +597,13 @@ impl DalContext {
     /// Consumes all inner transactions and committing all changes made within them.
     #[instrument(name = "context.commit", level = "info", skip_all)]
     pub async fn commit(&self) -> TransactionsResult<()> {
-        let maybe_rebase = match self.write_current_rebase_batch().await? {
-            Some(updates_address) => DelayedRebaseWithReply::WithUpdates {
-                rebaser: self.rebaser(),
-                workspace_pk: self.workspace_pk()?,
-                change_set_id: self.change_set_id(),
-                updates_address,
-                event_session_id: self.event_session_id,
-            },
-            None => {
-                // Since we are not rebasing, we need to write the final message and flush all
-                // pending audit logs.
-                self.write_audit_log_final_message().await?;
-                self.publish_pending_audit_logs(None, None).await?;
-                DelayedRebaseWithReply::NoUpdates
-            }
-        };
-
-        if self.blocking {
-            self.blocking_commit_internal(maybe_rebase).await
-        } else {
-            self.commit_internal(maybe_rebase).await
-        }
+        let rebase_batch = self.write_current_rebase_batch().await?;
+        self.commit_internal(rebase_batch).await
     }
 
     #[instrument(name = "context.commit_no_rebase", level = "info", skip_all)]
     pub async fn commit_no_rebase(&self) -> TransactionsResult<()> {
-        // Since we are not rebasing, we need to write the final message and flush all
-        // pending audit logs.
-        self.write_audit_log_final_message().await?;
-        self.publish_pending_audit_logs(None, None).await?;
-
-        if self.blocking {
-            self.blocking_commit_internal(DelayedRebaseWithReply::NoUpdates)
-                .await?;
-        } else {
-            self.commit_internal(DelayedRebaseWithReply::NoUpdates)
-                .await?;
-        }
-
-        Ok(())
+        self.commit_internal(None).await
     }
 
     pub fn workspace_pk(&self) -> TransactionsResult<WorkspacePk> {
