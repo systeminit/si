@@ -50,6 +50,10 @@ impl ComponentNodeWeight {
         }
     }
 
+    pub fn node_weight_discriminant(&self) -> NodeWeightDiscriminants {
+        Component
+    }
+
     pub fn content_address(&self) -> ContentAddress {
         self.content_address
     }

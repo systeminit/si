@@ -513,11 +513,7 @@ impl Component {
             // create child values when that function is executed
             let should_descend = key.is_none();
 
-            let prop_kind = workspace_snapshot
-                .get_node_weight(prop_id)
-                .await?
-                .get_prop_node_weight()?
-                .kind();
+            let prop_kind = workspace_snapshot.get_node_weight(prop_id).await?.kind();
 
             // Create an attribute value for the prop.
             let attribute_value = AttributeValue::new(
@@ -2253,7 +2249,7 @@ impl Component {
         // We only need to import the AttributePrototypeArgument node, as all of the other relevant
         // nodes should already exist.
         ctx.workspace_snapshot()?
-            .add_or_replace_node(base_attribute_prototype_argument_node_weight.clone())
+            .add_or_replace_node(base_attribute_prototype_argument_node_weight.clone().into())
             .await?;
         ctx.workspace_snapshot()?
             .add_edge(
@@ -2437,8 +2433,7 @@ impl Component {
             let component_node_weight = ctx
                 .workspace_snapshot()?
                 .get_node_weight(original_component.id)
-                .await?
-                .get_component_node_weight()?;
+                .await?;
             let mut new_component_node_weight = component_node_weight.clone();
             new_component_node_weight.set_to_delete(component.to_delete);
             ctx.workspace_snapshot()?
@@ -2462,8 +2457,7 @@ impl Component {
         let component_node_weight = ctx
             .workspace_snapshot()?
             .get_node_weight(original_component.id)
-            .await?
-            .get_component_node_weight()?;
+            .await?;
 
         Ok(Component::assemble(&component_node_weight, updated))
     }

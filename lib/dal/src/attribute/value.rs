@@ -348,7 +348,6 @@ impl AttributeValue {
             ctx.workspace_snapshot()?
                 .get_node_weight(prop_id)
                 .await?
-                .get_prop_node_weight()?
                 .kind()
                 .ordered()
         } else {
@@ -676,7 +675,6 @@ impl AttributeValue {
                     .workspace_snapshot()?
                     .get_node_weight(func_arg_id)
                     .await?
-                    .get_func_argument_node_weight()?
                     .name()
                     .to_owned();
                 let values_for_arg =
@@ -1084,12 +1082,7 @@ impl AttributeValue {
                     None => return Ok(()),
                 };
 
-                let prop_node = {
-                    ctx.workspace_snapshot()?
-                        .get_node_weight(prop_id)
-                        .await?
-                        .get_prop_node_weight()?
-                };
+                let prop_node = { ctx.workspace_snapshot()?.get_node_weight(prop_id).await? };
 
                 prop_node.kind()
             };
@@ -1121,20 +1114,11 @@ impl AttributeValue {
         prop_id: PropId,
         key: Option<String>,
     ) -> AttributeValueResult<AttributeValueId> {
-        let prop_kind = {
-            let workspace_snapshot = ctx.workspace_snapshot()?;
-
-            if let NodeWeight::Prop(prop_inner) =
-                workspace_snapshot.get_node_weight(prop_id).await?
-            {
-                prop_inner.kind()
-            } else {
-                return Err(AttributeValueError::NodeWeightMismatch(
-                    prop_id.into(),
-                    NodeWeightDiscriminants::Prop,
-                ));
-            }
-        };
+        let prop_kind = ctx
+            .workspace_snapshot()?
+            .get_node_weight(prop_id)
+            .await?
+            .kind();
 
         let new_attribute_value =
             Self::new(ctx, prop_id, None, Some(attribute_value_id), key).await?;
@@ -1876,11 +1860,7 @@ impl AttributeValue {
         };
 
         let intrinsic_func = {
-            let prop_node = ctx
-                .workspace_snapshot()?
-                .get_node_weight(prop_id)
-                .await?
-                .get_prop_node_weight()?;
+            let prop_node = ctx.workspace_snapshot()?.get_node_weight(prop_id).await?;
 
             if let Some(inner_value) = &value {
                 // Unfortunately, there isn't a good way to consistently track "there is no value", and "the
@@ -1919,7 +1899,6 @@ impl AttributeValue {
                     ctx.workspace_snapshot()?
                         .get_node_weight(func_arg_id)
                         .await?
-                        .get_func_argument_node_weight()?
                         .name()
                         .to_owned()
                 };
@@ -1956,8 +1935,7 @@ impl AttributeValue {
         let workspace_snapshot = ctx.workspace_snapshot()?;
         let av_node_weight = workspace_snapshot
             .get_node_weight(attribute_value_id)
-            .await?
-            .get_attribute_value_node_weight()?;
+            .await?;
 
         let content_value: Option<si_events::CasValue> =
             func_run_value.value().cloned().map(Into::into);
@@ -2064,14 +2042,8 @@ impl AttributeValue {
     ) -> AttributeValueResult<()> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
-        let mut dest_node_weight = workspace_snapshot
-            .get_node_weight(dest_av_id)
-            .await?
-            .get_attribute_value_node_weight()?;
-        let from_node_weight = workspace_snapshot
-            .get_node_weight(from_av_id)
-            .await?
-            .get_attribute_value_node_weight()?;
+        let mut dest_node_weight = workspace_snapshot.get_node_weight(dest_av_id).await?;
+        let from_node_weight = workspace_snapshot.get_node_weight(from_av_id).await?;
         dest_node_weight.set_unprocessed_value(from_node_weight.unprocessed_value());
         dest_node_weight.set_value(from_node_weight.value());
         workspace_snapshot
@@ -2173,8 +2145,7 @@ impl AttributeValue {
 
         let node_weight = workspace_snapshot
             .get_node_weight(attribute_value_id)
-            .await?
-            .get_attribute_value_node_weight()?;
+            .await?;
 
         Ok(node_weight.into())
     }

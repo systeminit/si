@@ -11,6 +11,7 @@ use graph::correct_transforms::correct_transforms;
 use graph::detector::{Change, Update};
 use graph::{RebaseBatch, WorkspaceSnapshotGraph};
 use node_weight::traits::CorrectTransformsError;
+use node_weight::NodeWeightId;
 use petgraph::prelude::*;
 use serde::{Deserialize, Serialize};
 use si_data_pg::PgError;
@@ -843,15 +844,14 @@ impl WorkspaceSnapshot {
             .import_component_subgraph(&other.read_only_graph, component_node_index)?)
     }
 
-    pub async fn get_node_weight(
+    pub async fn get_node_weight<Id: NodeWeightId>(
         &self,
-        id: impl Into<Ulid>,
-    ) -> WorkspaceSnapshotResult<NodeWeight> {
-        let node_idx = self.get_node_index_by_id(id).await?;
+        id: Id,
+    ) -> WorkspaceSnapshotResult<Id::NodeWeight> {
         Ok(self
             .working_copy()
             .await
-            .get_node_weight(node_idx)?
+            .get_node_weight_by_id(id)?
             .to_owned())
     }
 

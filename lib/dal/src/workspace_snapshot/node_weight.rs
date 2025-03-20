@@ -127,9 +127,197 @@ pub type NodeWeightResult<T> = Result<T, NodeWeightError>;
 
 /// **WARNING**: the order of this enum is important! Do not re-order elements.
 /// New variants must go at the end, even if it's not in lexical order!
-#[derive(Debug, Serialize, Deserialize, Clone, EnumDiscriminants, PartialEq, Eq)]
+#[derive(
+    Debug, Serialize, Deserialize, Clone, EnumDiscriminants, PartialEq, Eq, derive_more::From,
+)]
 #[strum_discriminants(derive(strum::Display, Hash, Serialize, Deserialize, EnumIter))]
 pub enum NodeWeight {
+    Action(ActionNodeWeight),
+    ActionPrototype(ActionPrototypeNodeWeight),
+    AttributePrototypeArgument(AttributePrototypeArgumentNodeWeight),
+    AttributeValue(AttributeValueNodeWeight),
+    Category(CategoryNodeWeight),
+    Component(ComponentNodeWeight),
+    Content(ContentNodeWeight),
+    DependentValueRoot(DependentValueRootNodeWeight),
+    Func(FuncNodeWeight),
+    FuncArgument(FuncArgumentNodeWeight),
+    Ordering(OrderingNodeWeight),
+    Prop(PropNodeWeight),
+    Secret(SecretNodeWeight),
+    FinishedDependentValueRoot(FinishedDependentValueRootNodeWeight),
+    InputSocket(InputSocketNodeWeight),
+    SchemaVariant(SchemaVariantNodeWeight),
+    ManagementPrototype(ManagementPrototypeNodeWeight),
+    Geometry(GeometryNodeWeight),
+    View(ViewNodeWeight),
+    DiagramObject(DiagramObjectNodeWeight),
+    ApprovalRequirementDefinition(ApprovalRequirementDefinitionNodeWeight),
+}
+
+pub trait FromNodeWeight: Into<NodeWeight> + Clone + std::fmt::Debug {
+    fn from_node_weight(node_weight: NodeWeight) -> NodeWeightResult<Self>;
+    fn from_node_weight_ref(node_weight: &NodeWeight) -> NodeWeightResult<&Self>;
+    fn from_node_weight_opt(node_weight: NodeWeight) -> Option<Self>;
+    fn from_node_weight_ref_opt(node_weight: &NodeWeight) -> Option<&Self>;
+}
+
+macro_rules! impl_node_weight_variants {
+    ($($discriminant:ident($node_weight:ty),)*) => {
+        $(
+            impl FromNodeWeight for $node_weight {
+                fn from_node_weight(node_weight: NodeWeight) -> NodeWeightResult<Self> {
+                    match node_weight {
+                        NodeWeight::$discriminant(inner) => Ok(inner),
+                        _ => Err(NodeWeightError::UnexpectedNodeWeightVariant(NodeWeightDiscriminants::$discriminant, node_weight.into())),
+                    }
+                }
+                fn from_node_weight_ref(node_weight: &NodeWeight) -> NodeWeightResult<&Self> {
+                    match node_weight {
+                        NodeWeight::$discriminant(inner) => Ok(inner),
+                        _ => Err(NodeWeightError::UnexpectedNodeWeightVariant(NodeWeightDiscriminants::$discriminant, node_weight.into())),
+                    }
+                }
+                fn from_node_weight_opt(node_weight: NodeWeight) -> Option<Self> {
+                    match node_weight {
+                        NodeWeight::$discriminant(inner) => Some(inner),
+                        _ => None,
+                    }
+                }
+                fn from_node_weight_ref_opt(node_weight: &NodeWeight) -> Option<&Self> {
+                    match node_weight {
+                        NodeWeight::$discriminant(inner) => Some(inner),
+                        _ => None,
+                    }
+                }
+            }
+            impl TryFrom<NodeWeight> for $node_weight {
+                type Error = NodeWeightError;
+                fn try_from(node_weight: NodeWeight) -> NodeWeightResult<Self> {
+                    FromNodeWeight::from_node_weight(node_weight)
+                }
+            }
+            impl<'a> TryFrom<&'a NodeWeight> for &'a $node_weight {
+                type Error = NodeWeightError;
+                fn try_from(node_weight: &'a NodeWeight) -> NodeWeightResult<Self> {
+                    FromNodeWeight::from_node_weight_ref(node_weight)
+                }
+            }
+        )*
+    };
+}
+
+impl FromNodeWeight for NodeWeight {
+    fn from_node_weight(node_weight: NodeWeight) -> NodeWeightResult<Self> {
+        Ok(node_weight)
+    }
+    fn from_node_weight_ref(node_weight: &NodeWeight) -> NodeWeightResult<&Self> {
+        Ok(node_weight)
+    }
+    fn from_node_weight_opt(node_weight: NodeWeight) -> Option<Self> {
+        Some(node_weight)
+    }
+    fn from_node_weight_ref_opt(node_weight: &NodeWeight) -> Option<&Self> {
+        Some(node_weight)
+    }
+}
+
+pub trait NodeWeightId: Into<Ulid> + From<Ulid> {
+    type NodeWeight: FromNodeWeight;
+}
+
+impl NodeWeightId for Ulid {
+    type NodeWeight = NodeWeight;
+}
+impl NodeWeightId for ulid::Ulid {
+    type NodeWeight = NodeWeight;
+}
+impl NodeWeightId for si_id::ActionId {
+    type NodeWeight = ActionNodeWeight;
+}
+impl NodeWeightId for si_id::ActionPrototypeId {
+    type NodeWeight = ActionPrototypeNodeWeight;
+}
+impl NodeWeightId for si_id::AttributePrototypeId {
+    type NodeWeight = ContentNodeWeight;
+}
+impl NodeWeightId for si_id::AttributePrototypeArgumentId {
+    type NodeWeight = AttributePrototypeArgumentNodeWeight;
+}
+impl NodeWeightId for si_id::AttributeValueId {
+    type NodeWeight = AttributeValueNodeWeight;
+}
+// impl NodeWeightVariantId for si_id::CategoryId {
+//     type NodeWeight = CategoryNodeWeight;
+// }
+impl NodeWeightId for si_id::ComponentId {
+    type NodeWeight = ComponentNodeWeight;
+}
+// impl NodeWeightVariantId for si_id::ContentId {
+//     type NodeWeight = ContentNodeWeight;
+// }
+// impl NodeWeightVariantId for si_id::DependentValueRootId {
+//     type NodeWeight = DependentValueRootNodeWeight;
+// }
+impl NodeWeightId for si_id::FuncId {
+    type NodeWeight = FuncNodeWeight;
+}
+impl NodeWeightId for si_id::FuncArgumentId {
+    type NodeWeight = FuncArgumentNodeWeight;
+}
+impl NodeWeightId for si_id::InputSocketId {
+    type NodeWeight = InputSocketNodeWeight;
+}
+impl NodeWeightId for si_id::ManagementPrototypeId {
+    type NodeWeight = ManagementPrototypeNodeWeight;
+}
+// impl NodeWeightVariantId for si_id::OrderingId {
+//     type NodeWeight = OrderingNodeWeight;
+// }
+impl NodeWeightId for si_id::PropId {
+    type NodeWeight = PropNodeWeight;
+}
+impl NodeWeightId for si_id::SecretId {
+    type NodeWeight = SecretNodeWeight;
+}
+// impl NodeWeightVariantId for si_id::FinishedDependentValueRootId {
+//     type NodeWeight = FinishedDependentValueRootNodeWeight;
+// }
+impl NodeWeightId for si_id::SchemaVariantId {
+    type NodeWeight = SchemaVariantNodeWeight;
+}
+impl NodeWeightId for si_id::GeometryId {
+    type NodeWeight = GeometryNodeWeight;
+}
+impl NodeWeightId for si_id::ViewId {
+    type NodeWeight = ViewNodeWeight;
+}
+// impl NodeWeightVariantId for si_id::DiagramObjectId {
+//     type NodeWeight = DiagramObjectNodeWeight;
+// }
+impl NodeWeightId for si_id::ApprovalRequirementDefinitionId {
+    type NodeWeight = ApprovalRequirementDefinitionNodeWeight;
+}
+impl NodeWeightId for si_id::SchemaId {
+    type NodeWeight = NodeWeight; // TODO probably ContentNodeWeight, but I can't quite tell if that's universal across graph types?
+}
+impl NodeWeightId for si_id::ModuleId {
+    type NodeWeight = NodeWeight; // TODO probably ContentNodeWeight, but I can't quite tell if that's universal across graph types?
+}
+impl NodeWeightId for si_id::OutputSocketId {
+    type NodeWeight = NodeWeight; // TODO probably ContentNodeWeight, but I can't quite tell if that's universal across graph types?
+}
+impl NodeWeightId for si_id::EntityId {
+    type NodeWeight = NodeWeight; // TODO I don't know what this is, but it seems genericish? Make specific if we can
+}
+impl NodeWeightId for si_id::ValidationOutputId {
+    type NodeWeight = ContentNodeWeight;
+}
+impl NodeWeightId for si_id::WorkspaceSnapshotNodeId {
+    type NodeWeight = NodeWeight; // TODO I'm not actually sure what this *is*
+}
+
+impl_node_weight_variants! {
     Action(ActionNodeWeight),
     ActionPrototype(ActionPrototypeNodeWeight),
     AttributePrototypeArgument(AttributePrototypeArgumentNodeWeight),
@@ -751,24 +939,8 @@ impl NodeWeight {
         &self,
         content_addr_discrim: ContentAddressDiscriminants,
     ) -> NodeWeightResult<ContentNodeWeight> {
-        match self {
-            NodeWeight::Content(inner) => {
-                let inner_addr_discrim: ContentAddressDiscriminants =
-                    inner.content_address().into();
-                if inner_addr_discrim != content_addr_discrim {
-                    return Err(NodeWeightError::UnexpectedContentAddressVariant(
-                        content_addr_discrim,
-                        inner_addr_discrim,
-                    ));
-                }
-
-                Ok(inner.to_owned())
-            }
-            other => Err(NodeWeightError::UnexpectedNodeWeightVariant(
-                NodeWeightDiscriminants::Content,
-                other.into(),
-            )),
-        }
+        self.get_content_node_weight()?
+            .get_content_node_weight_of_kind(content_addr_discrim)
     }
 
     pub fn get_option_content_node_weight_of_kind(

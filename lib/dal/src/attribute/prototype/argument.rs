@@ -183,9 +183,7 @@ impl AttributePrototypeArgument {
 
         let node_weight = workspace_snapshot.get_node_weight(id).await?;
 
-        Ok(node_weight
-            .get_attribute_prototype_argument_node_weight()?
-            .into())
+        Ok(node_weight.into())
     }
 
     pub async fn new(

@@ -662,7 +662,6 @@ impl Prop {
             .workspace_snapshot()?
             .get_node_weight(prop_id)
             .await?
-            .get_prop_node_weight()?
             .name()
             .to_owned();
 
@@ -671,13 +670,9 @@ impl Prop {
 
         while let Some(prop_id) = work_queue.pop_front() {
             if let Some(prop_id) = Self::parent_prop_id_by_id(ctx, prop_id).await? {
-                let workspace_snapshot = ctx.workspace_snapshot()?;
-
-                if let NodeWeight::Prop(inner) = workspace_snapshot.get_node_weight(prop_id).await?
-                {
-                    parts.push_front(inner.name().to_owned());
-                    work_queue.push_back(inner.id().into());
-                }
+                let prop = ctx.workspace_snapshot()?.get_node_weight(prop_id).await?;
+                parts.push_front(prop.name().to_owned());
+                work_queue.push_back(prop.id().into());
             }
         }
 
@@ -721,10 +716,7 @@ impl Prop {
 
     pub async fn get_by_id(ctx: &DalContext, id: PropId) -> PropResult<Self> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
-        let node_weight = workspace_snapshot
-            .get_node_weight(id)
-            .await?
-            .get_prop_node_weight()?;
+        let node_weight = workspace_snapshot.get_node_weight(id).await?;
         let hash = node_weight.content_hash();
 
         let content: PropContent = ctx
@@ -1026,10 +1018,7 @@ impl Prop {
         let mut node_weights = vec![];
         let mut content_hashes = vec![];
         for prop_id in prop_ids {
-            let node_weight = workspace_snapshot
-                .get_node_weight(prop_id)
-                .await?
-                .get_prop_node_weight()?;
+            let node_weight = workspace_snapshot.get_node_weight(prop_id).await?;
             content_hashes.push(node_weight.content_hash());
             node_weights.push(node_weight);
         }

@@ -26,7 +26,7 @@ use crate::{
             detector::{Detector, Update},
             MerkleTreeHash, WorkspaceSnapshotGraphError, WorkspaceSnapshotGraphResult,
         },
-        node_weight::{CategoryNodeWeight, NodeWeight},
+        node_weight::{CategoryNodeWeight, FromNodeWeight, NodeWeight, NodeWeightId},
         CategoryNodeKind, ContentAddressDiscriminants, LineageId, OrderingNodeWeight,
     },
     DalContext, EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants, NodeWeightDiscriminants,
@@ -1085,12 +1085,14 @@ impl WorkspaceSnapshotGraphV4 {
             .ok_or(WorkspaceSnapshotGraphError::NodeWeightNotFound)
     }
 
-    pub fn get_node_weight_by_id(
+    pub fn get_node_weight_by_id<Id: NodeWeightId>(
         &self,
-        id: impl Into<Ulid>,
-    ) -> WorkspaceSnapshotGraphResult<&NodeWeight> {
+        id: Id,
+    ) -> WorkspaceSnapshotGraphResult<&Id::NodeWeight> {
         let node_index = self.get_node_index_by_id(id)?;
-        self.get_node_weight(node_index)
+        Ok(FromNodeWeight::from_node_weight_ref(
+            self.get_node_weight(node_index)?,
+        )?)
     }
 
     pub fn get_node_weight_by_id_opt(&self, id: impl Into<Ulid>) -> Option<&NodeWeight> {

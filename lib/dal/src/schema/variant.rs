@@ -151,8 +151,6 @@ pub enum SchemaVariantError {
     OutputSocket(#[from] OutputSocketError),
     #[error("prop error: {0}")]
     Prop(#[from] PropError),
-    #[error("found prop id {0} that is not a prop")]
-    PropIdNotAProp(PropId),
     #[error("cannot find prop at path {1} for SchemaVariant {0}")]
     PropNotFoundAtPath(SchemaVariantId, String),
     #[error("schema variant {0} has no root node")]
@@ -578,12 +576,10 @@ impl SchemaVariant {
                 .await?;
 
             if schema_variant.is_locked() != before_modification_variant.is_locked() {
-                let node_weight = ctx
+                let mut schema_variant_node_weight = ctx
                     .workspace_snapshot()?
                     .get_node_weight(before_modification_variant.id())
                     .await?;
-                let mut schema_variant_node_weight =
-                    node_weight.get_schema_variant_node_weight()?;
                 crate::workspace_snapshot::node_weight::traits::SiVersionedNodeWeight::inner_mut(
                     &mut schema_variant_node_weight,
                 )
@@ -673,30 +669,23 @@ impl SchemaVariant {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
         while let Some(prop_id) = work_queue.pop_front() {
-            let node_weight = workspace_snapshot.get_node_weight(prop_id).await?;
-
             // Find and load any child props.
-            match node_weight {
-                NodeWeight::Prop(_) => {
-                    if let Some(ordering_node_idx) = workspace_snapshot
-                        .outgoing_targets_for_edge_weight_kind(
-                            prop_id,
-                            EdgeWeightKindDiscriminants::Ordering,
-                        )
-                        .await?
-                        .first()
-                    {
-                        let ordering_node_weight = workspace_snapshot
-                            .get_node_weight(*ordering_node_idx)
-                            .await?
-                            .get_ordering_node_weight()?;
+            if let Some(ordering_node_idx) = workspace_snapshot
+                .outgoing_targets_for_edge_weight_kind(
+                    prop_id,
+                    EdgeWeightKindDiscriminants::Ordering,
+                )
+                .await?
+                .first()
+            {
+                let ordering_node_weight = workspace_snapshot
+                    .get_node_weight(*ordering_node_idx)
+                    .await?
+                    .get_ordering_node_weight()?;
 
-                        for &id in ordering_node_weight.order() {
-                            work_queue.push_back(id.into());
-                        }
-                    }
+                for &id in ordering_node_weight.order() {
+                    work_queue.push_back(id.into());
                 }
-                _ => return Err(SchemaVariantError::PropIdNotAProp(prop_id)),
             }
 
             // Once processed, push onto the list that will be returned.
@@ -1766,8 +1755,7 @@ impl SchemaVariant {
                 WorkspaceSnapshotError::MissingContentFromStore(input_socket_id.into()),
             )?;
 
-            let node_weight = workspace_snapshot.get_node_weight(input_socket_id).await?;
-            let input_socket_weight = node_weight.get_input_socket_node_weight()?;
+            let input_socket_weight = workspace_snapshot.get_node_weight(input_socket_id).await?;
 
             let input_socket_content_inner = match input_socket_content {
                 InputSocketContent::V1(_) => {

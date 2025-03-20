@@ -482,10 +482,9 @@ impl Func {
         func_id: FuncId,
     ) -> FuncResult<(FuncNodeWeight, ContentHash)> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
-        let node_weight = workspace_snapshot.get_node_weight(func_id).await?;
+        let func_node_weight = workspace_snapshot.get_node_weight(func_id).await?;
 
-        let hash = node_weight.content_hash();
-        let func_node_weight = node_weight.get_func_node_weight()?;
+        let hash = func_node_weight.content_hash();
         Ok((func_node_weight, hash))
     }
 
@@ -648,11 +647,8 @@ impl Func {
 
         let mut func_node_weights = Vec::new();
         let mut func_content_hashes = Vec::new();
-        for id in func_ids {
-            let node_weight = workspace_snapshot
-                .get_node_weight(id)
-                .await?
-                .get_func_node_weight()?;
+        for &id in func_ids {
+            let node_weight = workspace_snapshot.get_node_weight(id).await?;
             func_content_hashes.push(node_weight.content_hash());
             func_node_weights.push(node_weight);
         }

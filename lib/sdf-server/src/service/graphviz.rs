@@ -7,7 +7,7 @@ use dal::{
     workspace_snapshot::{
         content_address::ContentAddressDiscriminants,
         edge_weight::EdgeWeightKindDiscriminants,
-        node_weight::{NodeWeight, NodeWeightDiscriminants},
+        node_weight::{traits::SiNodeWeight, NodeWeight, NodeWeightDiscriminants},
         WorkspaceSnapshotError,
     },
     AttributeValue, Component, ComponentError, SchemaVariant, SchemaVariantId, TransactionsError,
@@ -118,8 +118,8 @@ pub async fn schema_variant(
         added_nodes.insert(sv_node_weight.id());
         GraphVizNode {
             id: sv_node_weight.id(),
-            content_kind: sv_node_weight.content_address_discriminants(),
-            node_kind: sv_node_weight.into(),
+            content_kind: None,
+            node_kind: sv_node_weight.node_weight_discriminant(),
             name: Some(sv.version().to_owned()),
         }
     };
@@ -321,8 +321,8 @@ pub async fn components(
         let node_weight = workspace_snapshot.get_node_weight(component.id()).await?;
         let node = GraphVizNode {
             id: node_weight.id(),
-            content_kind: node_weight.content_address_discriminants(),
-            node_kind: node_weight.into(),
+            content_kind: None,
+            node_kind: node_weight.node_weight_discriminant(),
             name: Some(component.name(&ctx).await?.to_owned()),
         };
         nodes.push(node);

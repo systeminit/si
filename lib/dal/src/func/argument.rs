@@ -302,11 +302,10 @@ impl FuncArgument {
         ctx: &DalContext,
         func_arg_id: FuncArgumentId,
     ) -> FuncArgumentResult<String> {
-        let node_weight = ctx
+        let func_arg_node_weight = ctx
             .workspace_snapshot()?
             .get_node_weight(func_arg_id)
             .await?;
-        let func_arg_node_weight = node_weight.get_func_argument_node_weight()?;
         let name = func_arg_node_weight.name().to_string();
         Ok(name)
     }
@@ -492,8 +491,7 @@ impl FuncArgument {
         let node_weight = workspace_snapshot.get_node_weight(id).await?;
 
         let hash = node_weight.content_hash();
-        let func_argument_node_weight = node_weight.get_func_argument_node_weight()?;
-        Ok((func_argument_node_weight, hash))
+        Ok((node_weight, hash))
     }
 
     pub async fn remove(ctx: &DalContext, id: FuncArgumentId) -> FuncArgumentResult<()> {

@@ -8,7 +8,7 @@ use crate::{
             traits::socket::input::InputSocketExt, LineageId, WorkspaceSnapshotGraphResult,
             WorkspaceSnapshotGraphV4,
         },
-        node_weight::{InputSocketNodeWeight, NodeWeight, NodeWeightError},
+        node_weight::{InputSocketNodeWeight, NodeWeight},
     },
     AttributeValueId, ComponentId, EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants,
     InputSocketId, NodeWeightDiscriminants, SchemaVariantId, SocketArity,
@@ -41,18 +41,9 @@ impl InputSocketExt for WorkspaceSnapshotGraphV4 {
         &self,
         input_socket_id: crate::InputSocketId,
     ) -> WorkspaceSnapshotGraphResult<InputSocketNodeWeight> {
-        let node_weight = self.get_node_weight_by_id(input_socket_id)?;
+        let input_socket_node_weight = self.get_node_weight_by_id(input_socket_id)?;
 
-        match node_weight {
-            NodeWeight::InputSocket(input_socket_node_weight) => {
-                Ok(input_socket_node_weight.clone())
-            }
-            unexpected => Err(NodeWeightError::UnexpectedNodeWeightVariant(
-                unexpected.into(),
-                NodeWeightDiscriminants::InputSocket,
-            )
-            .into()),
-        }
+        Ok(input_socket_node_weight.clone())
     }
 
     fn list_input_sockets_for_schema_variant(

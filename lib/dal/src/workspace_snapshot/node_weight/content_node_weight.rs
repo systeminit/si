@@ -181,6 +181,21 @@ impl ContentNodeWeight {
     pub const fn exclusive_outgoing_edges(&self) -> &[EdgeWeightKindDiscriminants] {
         &[]
     }
+
+    pub fn get_content_node_weight_of_kind(
+        self,
+        content_addr_discrim: ContentAddressDiscriminants,
+    ) -> NodeWeightResult<ContentNodeWeight> {
+        let inner_addr_discrim: ContentAddressDiscriminants = self.content_address().into();
+        if inner_addr_discrim != content_addr_discrim {
+            return Err(NodeWeightError::UnexpectedContentAddressVariant(
+                content_addr_discrim,
+                inner_addr_discrim,
+            ));
+        }
+
+        Ok(self)
+    }
 }
 
 impl std::fmt::Debug for ContentNodeWeight {

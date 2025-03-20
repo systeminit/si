@@ -89,10 +89,7 @@ impl ApprovalRequirementExt for WorkspaceSnapshot {
         ctx: &DalContext,
         id: ApprovalRequirementDefinitionId,
     ) -> WorkspaceSnapshotResult<ApprovalRequirementDefinition> {
-        let node_weight = self
-            .get_node_weight(id)
-            .await?
-            .get_approval_requirement_definition_node_weight()?;
+        let node_weight = self.get_node_weight(id).await?;
         let content: ApprovalRequirementDefinitionContent = ctx
             .layer_db()
             .cas()
@@ -241,10 +238,8 @@ impl ApprovalRequirementExt for WorkspaceSnapshot {
                 bag.explicit_approval_requirement_definition_ids
             {
                 let requirement_node_weight = self
-                    .working_copy()
-                    .await
-                    .get_node_weight_by_id(approval_requirement_definition_id)?
-                    .get_approval_requirement_definition_node_weight()?;
+                    .get_node_weight(approval_requirement_definition_id)
+                    .await?;
                 let hash = requirement_node_weight.content_hash();
                 cache.insert(
                     hash,
@@ -313,10 +308,8 @@ impl ApprovalRequirementExt for WorkspaceSnapshot {
         let mut results = Vec::new();
         for approval_requirement_definition_id in approval_requirement_definition_ids {
             let definition_node_weight = self
-                .working_copy()
-                .await
-                .get_node_weight_by_id(approval_requirement_definition_id)?
-                .get_approval_requirement_definition_node_weight()?;
+                .get_node_weight(approval_requirement_definition_id)
+                .await?;
             let Some(ApprovalRequirementDefinitionContent::V1(definition_content)) = ctx
                 .layer_db()
                 .cas()

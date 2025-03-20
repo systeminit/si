@@ -187,7 +187,6 @@ impl ActionPrototype {
             .workspace_snapshot()?
             .get_node_weight(new_id)
             .await?
-            .get_action_prototype_node_weight()?
             .into();
 
         Ok(new_prototype)
@@ -210,12 +209,7 @@ impl ActionPrototype {
     );
 
     pub async fn get_by_id(ctx: &DalContext, id: ActionPrototypeId) -> ActionPrototypeResult<Self> {
-        let prototype: Self = ctx
-            .workspace_snapshot()?
-            .get_node_weight(id)
-            .await?
-            .get_action_prototype_node_weight()?
-            .into();
+        let prototype: Self = ctx.workspace_snapshot()?.get_node_weight(id).await?.into();
         Ok(prototype)
     }
 
