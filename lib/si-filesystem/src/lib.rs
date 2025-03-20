@@ -55,7 +55,6 @@ const FILE_HANDLE_WRITE_BIT: FileHandle = FileHandle::new(1 << 62);
 
 const FILE_STR_TS_INDEX: &str = "index.ts";
 const FILE_STR_TS_INDEX_D_TS: &str = "index.d.ts";
-const FILE_STR_TS_CONFIG: &str = "tsconfig.json";
 const FILE_STR_DENO_CONFIG: &str = "deno.json";
 const FILE_STR_ATTRS_JSON: &str = "attrs.json";
 const FILE_STR_BINDINGS_JSON: &str = "bindings.json";
@@ -80,26 +79,15 @@ const VSCODE_SETTINGS: &str = r#"{ "deno.enable": true }"#;
 
 const DENO_CONFIG: &str = r#"{
     "compilerOptions": {
+        "noImplicitAny": "false",
+        "strict": "false",
+        "supressImplicitAnyIndexErrors": "true",
         "lib": [
-            "esnext",
-            "dom"
+            "deno.window"
         ]
     }
 }"#;
 const DIR_STR_BLANK_CATEGORY: &str = "__UNCATEGORIZED__";
-
-const TS_CONFIG: &str = r#"{
-    "compilerOptions": {
-        "lib": [
-            "es2015",
-            "dom"
-        ]
-    },
-    "files": [
-        "./index.ts",
-        "./index.d.ts"
-    ]
-}"#;
 
 #[derive(Error, Debug)]
 pub enum SiFileSystemError {
@@ -761,7 +749,6 @@ impl SiFileSystem {
                 .as_bytes()
                 .to_vec(),
             InodeEntryData::FuncTypesDenoConfig => DENO_CONFIG.as_bytes().to_vec(),
-            InodeEntryData::FuncTypesTsConfig => TS_CONFIG.as_bytes().to_vec(),
             InodeEntryData::VsCodeSettingsJson => VSCODE_SETTINGS.as_bytes().to_vec(),
             InodeEntryData::SchemaAttrsJson {
                 schema_id,
@@ -1386,7 +1373,6 @@ impl SiFileSystem {
             | InodeEntryData::VsCodeSettingsJson
             | InodeEntryData::FuncTypes { .. }
             | InodeEntryData::FuncTypesDenoConfig
-            | InodeEntryData::FuncTypesTsConfig
             | InodeEntryData::SchemaBindingsJson { .. }
             | InodeEntryData::InstalledSchemaMarker
             | InodeEntryData::SchemaFuncBindings { .. } => {
@@ -2001,8 +1987,6 @@ impl SiFileSystem {
             | InodeEntryData::FuncTypes { .. }
             // `/change-sets/$change_set_name/functions/$func_kind/$func_name/{locked|unlocked}/deno.json`
             | InodeEntryData::FuncTypesDenoConfig
-            // `/change-sets/$change_set_name/functions/$func_kind/$func_name/{locked|unlocked}/tsconfig.json`
-            | InodeEntryData::FuncTypesTsConfig
             // `/change-sets/$change_set_name/functions/$func_kind/$func_name/(locked|unlocked}/attrs.json`
             | InodeEntryData::SchemaFuncBindings { .. }
             // `/change-sets/$change_set_name/schemas/$schema_name/$func_name/PENDING_BINDINGS_EDIT_ME.json`
@@ -2086,22 +2070,12 @@ impl SiFileSystem {
         let ino = inode_table.upsert_with_parent_ino(
             entry.ino,
             FILE_STR_DENO_CONFIG,
-            InodeEntryData::FuncTypesTsConfig,
+            InodeEntryData::FuncTypesDenoConfig,
             FileType::RegularFile,
             false,
             Size::UseExisting(DENO_CONFIG.len() as u64),
         )?;
         dirs.add(ino, FILE_STR_DENO_CONFIG.into(), FileType::RegularFile);
-
-        let ino = inode_table.upsert_with_parent_ino(
-            entry.ino,
-            FILE_STR_TS_CONFIG,
-            InodeEntryData::FuncTypesTsConfig,
-            FileType::RegularFile,
-            false,
-            Size::UseExisting(TS_CONFIG.len() as u64),
-        )?;
-        dirs.add(ino, FILE_STR_TS_CONFIG.into(), FileType::RegularFile);
 
         let ino = inode_table.upsert_with_parent_ino(
             entry.ino,
@@ -2180,22 +2154,12 @@ impl SiFileSystem {
         let ino = inode_table.upsert_with_parent_ino(
             entry.ino,
             FILE_STR_DENO_CONFIG,
-            InodeEntryData::FuncTypesTsConfig,
+            InodeEntryData::FuncTypesDenoConfig,
             FileType::RegularFile,
             false,
             Size::UseExisting(DENO_CONFIG.len() as u64),
         )?;
         dirs.add(ino, FILE_STR_DENO_CONFIG.into(), FileType::RegularFile);
-
-        let ino = inode_table.upsert_with_parent_ino(
-            entry.ino,
-            FILE_STR_TS_CONFIG,
-            InodeEntryData::FuncTypesTsConfig,
-            FileType::RegularFile,
-            false,
-            Size::UseExisting(TS_CONFIG.len() as u64),
-        )?;
-        dirs.add(ino, FILE_STR_TS_CONFIG.into(), FileType::RegularFile);
 
         let ino = inode_table.upsert_with_parent_ino(
             entry.ino,
@@ -2681,22 +2645,12 @@ impl SiFileSystem {
         let ino = inode_table.upsert_with_parent_ino(
             entry.ino,
             FILE_STR_DENO_CONFIG,
-            InodeEntryData::FuncTypesTsConfig,
+            InodeEntryData::FuncTypesDenoConfig,
             FileType::RegularFile,
             false,
             Size::UseExisting(DENO_CONFIG.len() as u64),
         )?;
         dirs.add(ino, FILE_STR_DENO_CONFIG.into(), FileType::RegularFile);
-
-        let ino = inode_table.upsert_with_parent_ino(
-            entry.ino,
-            FILE_STR_TS_CONFIG,
-            InodeEntryData::FuncTypesTsConfig,
-            FileType::RegularFile,
-            false,
-            Size::UseExisting(TS_CONFIG.len() as u64),
-        )?;
-        dirs.add(ino, FILE_STR_TS_CONFIG.into(), FileType::RegularFile);
 
         Ok(())
     }
