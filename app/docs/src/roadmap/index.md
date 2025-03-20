@@ -5,7 +5,7 @@ outline:
 
 # Road map
 
-Updated March 3, 2025.
+Updated March 20, 2025.
 
 Want to influence the road map?
 [Learn more about how to work on System Initiative](../explanation/working-on-si.md).
@@ -83,15 +83,15 @@ Read our
 [announcement blog post](https://www.systeminit.com/blog/announcing-audit-trail)
 to learn more about audit history.
 
-### Fine Grained Access Control (In private beta)
-
-<iframe width="560" height="315" src="https://www.youtube.com/embed/bELJ7qjZHqM?si=reuQ_xO0v77XSn0p" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+### Fine-Grained Access Control (Generally Available)
 
 We are providing the ability to attach approvers to specific sets of components,
 via views. This means core parts of the infrastructure can have approvers
 attached to them ensuring safer changes to the infrastructure.
 
-[Read the blog post to learn more.](https://www.systeminit.com/blog/opportunity-fine-grained-access-control)
+Read our
+[announcement blog post](https://www.systeminit.com/blog/announcing-fine-grained-access-control)
+to learn more about fine-grained access control.
 
 ## Views (Generally Available)
 
