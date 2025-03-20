@@ -30,19 +30,18 @@ impl PropertyEditorValues {
     ) -> PropertyEditorResult<Self> {
         let component = Component::get_by_id(ctx, component_id).await?;
 
-        let sockets_on_component: HashSet<InputSocketId> = component
-            .incoming_connections(ctx)
-            .await?
-            .iter()
-            .map(|c| c.to_input_socket_id)
-            .chain(
-                component
-                    .inferred_incoming_connections(ctx)
-                    .await?
-                    .iter()
-                    .map(|c| c.to_input_socket_id),
-            )
-            .collect();
+        let sockets_on_component: HashSet<InputSocketId> =
+            Component::incoming_connections_for_id(ctx, component_id)
+                .await?
+                .iter()
+                .map(|c| c.to_input_socket_id)
+                .chain(
+                    Component::inferred_incoming_connections(ctx, component_id)
+                        .await?
+                        .iter()
+                        .map(|c| c.to_input_socket_id),
+                )
+                .collect();
 
         let controlling_ancestors_for_av_id =
             Component::list_av_controlling_func_ids_for_id(ctx, component_id).await?;

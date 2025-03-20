@@ -85,18 +85,23 @@ impl ChangeSetTestHelpers {
         Ok(())
     }
 
-    async fn apply_change_set_to_base_inner(ctx: &mut DalContext) -> Result<()> {
+    async fn has_updates(ctx: &mut DalContext) -> Result<bool> {
+        let expected_rebase_batch = ctx
+            .change_set()?
+            .detect_updates_that_will_be_applied(ctx)
+            .await?;
+
+        Ok(expected_rebase_batch.is_some_and(|batch| !batch.updates().is_empty()))
+    }
+
+    async fn apply_change_set_to_base_inner(ctx: &mut DalContext) -> Result<bool> {
         let mut open_change_sets = ChangeSet::list_active(ctx)
             .await?
             .iter()
             .map(|change_set| (change_set.id, change_set.updated_at))
             .collect::<Vec<(_, _)>>();
 
-        let expected_rebase_batch = ctx
-            .change_set()?
-            .detect_updates_that_will_be_applied(ctx)
-            .await?;
-
+        let had_updates = Self::has_updates(ctx).await?;
         let applied_change_set = ChangeSet::apply_to_base_change_set(ctx).await?;
 
         ctx.update_visibility_and_snapshot_to_visibility(
@@ -111,40 +116,40 @@ impl ChangeSetTestHelpers {
         // sets. We want to be sure that we've waited until those changes are
         // replayed, so we loop here for a little while (up to 10 seconds),
         // waiting for the changes to reach the open change sets.
-        if let Some(expected_rebase_batch) = expected_rebase_batch {
-            if !expected_rebase_batch.updates().is_empty() {
-                let mut iters = 0;
-                // only do this for 10 seconds
-                while !open_change_sets.is_empty() && iters < 1000 {
-                    let mut updated_sets = vec![];
-                    for (change_set_id, original_updated_at) in &open_change_sets {
-                        if let Some(change_set) = ChangeSet::find(ctx, *change_set_id).await? {
-                            if &change_set.updated_at > original_updated_at {
-                                updated_sets.push(change_set.id);
-                            }
-                        } else {
-                            // if we couldn't get it remove it so we don't loop forever
-                            updated_sets.push(*change_set_id);
+        if had_updates {
+            let mut iters = 0;
+            // only do this for 10 seconds
+            while !open_change_sets.is_empty() && iters < 1000 {
+                let mut updated_sets = vec![];
+                for (change_set_id, original_updated_at) in &open_change_sets {
+                    if let Some(change_set) = ChangeSet::find(ctx, *change_set_id).await? {
+                        if &change_set.updated_at > original_updated_at {
+                            updated_sets.push(change_set.id);
                         }
+                    } else {
+                        // if we couldn't get it remove it so we don't loop forever
+                        updated_sets.push(*change_set_id);
                     }
-                    open_change_sets
-                        .retain(|(change_set_id, _)| !updated_sets.contains(change_set_id));
-                    if open_change_sets.is_empty() {
-                        break;
-                    }
-                    tokio::time::sleep(Duration::from_millis(10)).await;
-                    iters += 1
                 }
+                open_change_sets.retain(|(change_set_id, _)| !updated_sets.contains(change_set_id));
+                if open_change_sets.is_empty() {
+                    break;
+                }
+                tokio::time::sleep(Duration::from_millis(10)).await;
+                iters += 1
             }
         }
-        Ok(())
+        Ok(had_updates)
     }
 
-    /// Applies the current [`ChangeSet`] to its base [`ChangeSet`]. Then, it updates the snapshot
-    /// to the visibility without using an editing [`ChangeSet`]. In other words, the resulting,
-    /// snapshot is "HEAD" without an editing [`ChangeSet`].
+    /// Applies the current [`ChangeSet`] to its base [`ChangeSet`], leaving ctx pointed at HEAD.
+    /// 1. Prepares the apply by locking unlocked variants.
+    /// 2. Prepares the apply by Then, it updates the snapshot
+    ///    to the visibility without using an editing [`ChangeSet`]. In other words, the resulting,
+    ///    snapshot is "HEAD" without an editing [`ChangeSet`].
+    ///
     /// Also locks existing editing funcs and schema variants to mimic SDF
-    pub async fn apply_change_set_to_base(ctx: &mut DalContext) -> Result<()> {
+    pub async fn apply_change_set_to_base(ctx: &mut DalContext) -> Result<bool> {
         // Lock all unlocked variants
         for schema_id in Schema::list_ids(ctx).await? {
             let schema = Schema::get_by_id(ctx, schema_id).await?;
@@ -165,9 +170,8 @@ impl ChangeSetTestHelpers {
             }
         }
 
-        Self::commit_and_update_snapshot_to_visibility(ctx).await?;
-        Self::apply_change_set_to_base_inner(ctx).await?;
-        Ok(())
+        ctx.commit().await?;
+        Self::apply_change_set_to_base_inner(ctx).await
     }
 
     /// Abandons the current [`ChangeSet`].
@@ -208,6 +212,24 @@ impl ChangeSetTestHelpers {
         Ok(new_change_set)
     }
 
+    /// Wait for the changeset's DVUs to be completely processed before continuing
+    pub async fn wait_for_dvu(ctx: &DalContext) -> Result<()> {
+        loop {
+            let mut ctx_clone = ctx.clone();
+            ctx_clone.update_snapshot_to_visibility().await?;
+            if !ctx_clone
+                .workspace_snapshot()?
+                .has_dependent_value_roots()
+                .await?
+            {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(25)).await;
+        }
+
+        Ok(())
+    }
+
     async fn blocking_commit(ctx: &DalContext) -> Result<()> {
         // The rebaser has responsibility for executing dvu jobs, so we should
         // prevent them from running in tests
@@ -221,18 +243,7 @@ impl ChangeSetTestHelpers {
 
         // But we have to wait until the dvu jobs complete
         if has_roots {
-            loop {
-                let mut ctx_clone = ctx.clone();
-                ctx_clone.update_snapshot_to_visibility().await?;
-                if !ctx_clone
-                    .workspace_snapshot()?
-                    .has_dependent_value_roots()
-                    .await?
-                {
-                    break;
-                }
-                tokio::time::sleep(Duration::from_millis(25)).await;
-            }
+            Self::wait_for_dvu(ctx).await?;
         }
 
         Ok(())

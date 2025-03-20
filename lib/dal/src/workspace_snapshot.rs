@@ -1079,7 +1079,6 @@ impl WorkspaceSnapshot {
 
         Ok(working_copy
             .edges_directed_for_edge_weight_kind(node_index, direction, edge_kind)
-            .into_iter()
             .filter_map(|(edge_weight, source_idx, target_idx)| {
                 working_copy
                     .node_index_to_id(source_idx)

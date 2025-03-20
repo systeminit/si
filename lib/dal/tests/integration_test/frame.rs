@@ -2597,8 +2597,7 @@ async fn up_frames_multiple_input_sockets_match(ctx: &mut DalContext) {
     let new_comp_variant = VariantAuthoringClient::regenerate_variant(ctx, comp_variant.id())
         .await
         .expect("could not regenerate variant");
-    let new_component = component
-        .upgrade_to_new_variant(ctx, new_comp_variant)
+    let new_component = Component::upgrade_to_new_variant(ctx, component.id(), new_comp_variant)
         .await
         .expect("could not upgrade component");
     //commit for propagation
