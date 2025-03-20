@@ -1,14 +1,16 @@
+use std::{
+    ffi::OsString,
+    fs::{self, remove_dir_all},
+    path::{Path, PathBuf},
+    result,
+};
+
+use devicemapper::{DevId, DmName, DmOptions, DM};
+use krataloopdev::LoopDevice;
 use nix::{errno::Errno, mount::umount};
+use telemetry::prelude::*;
 
 use crate::errors::FirecrackerJailError;
-use devicemapper::{DevId, DmName, DmOptions, DM};
-
-use krataloopdev::LoopDevice;
-use std::ffi::OsString;
-use std::fs;
-use std::path::{Path, PathBuf};
-use std::{fs::remove_dir_all, result};
-use tracing::trace;
 
 type Result<T> = result::Result<T, FirecrackerJailError>;
 
