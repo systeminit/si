@@ -459,16 +459,13 @@ impl Geometry {
         ctx: &DalContext,
         geometry_id: GeometryId,
     ) -> DiagramResult<Option<(GeometryNodeWeight, GeometryContent)>> {
-        let id: Ulid = geometry_id.into();
-
-        let Some(node_index) = ctx.workspace_snapshot()?.get_node_index_by_id_opt(id).await else {
+        let Some(node_weight) = ctx
+            .workspace_snapshot()?
+            .get_node_weight_opt(geometry_id)
+            .await
+        else {
             return Ok(None);
         };
-
-        let node_weight = ctx
-            .workspace_snapshot()?
-            .get_node_weight(node_index)
-            .await?;
 
         let hash = node_weight.content_hash();
         let component_node_weight = node_weight.get_geometry_node_weight()?;

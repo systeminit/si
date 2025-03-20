@@ -229,15 +229,10 @@ impl View {
     ) -> DiagramResult<Option<(ViewNodeWeight, ViewContent)>> {
         let id: Ulid = view_id.into();
 
-        let Some(node_index) = ctx.workspace_snapshot()?.get_node_index_by_id_opt(id).await else {
-            return Ok(None);
+        let node_weight = match ctx.workspace_snapshot()?.get_node_weight_opt(id).await {
+            Some(node_weight) => node_weight.get_view_node_weight()?,
+            None => return Ok(None),
         };
-
-        let node_weight = ctx
-            .workspace_snapshot()?
-            .get_node_weight(node_index)
-            .await?
-            .get_view_node_weight()?;
 
         let hash = node_weight.content_hash();
 

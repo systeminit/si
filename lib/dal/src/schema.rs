@@ -302,13 +302,8 @@ impl Schema {
             .await?;
         }
 
-        let source_index = workspace_snapshot.get_node_index_by_id(self.id).await?;
-        let target_index = workspace_snapshot
-            .get_node_index_by_id(schema_variant_id)
-            .await?;
-
         workspace_snapshot
-            .remove_edge(source_index, target_index, EdgeWeightKind::new_use().into())
+            .remove_edge(self.id, schema_variant_id, EdgeWeightKind::new_use().into())
             .await?;
 
         Self::add_edge_to_variant(
@@ -325,21 +320,15 @@ impl Schema {
     /// Returns whether or not the [`Schema`] exists locally. This works because
     /// [`Schemas`](Schema) are unique across workspaces.
     pub async fn exists_locally(ctx: &DalContext, id: SchemaId) -> SchemaResult<bool> {
-        Ok(ctx
-            .workspace_snapshot()?
-            .get_node_index_by_id_opt(id)
-            .await
-            .is_some())
+        Ok(ctx.workspace_snapshot()?.node_exists(id).await)
     }
 
     pub async fn get_by_id_opt(ctx: &DalContext, id: SchemaId) -> SchemaResult<Option<Self>> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
-        let Some(node_index) = workspace_snapshot.get_node_index_by_id_opt(id).await else {
+        let Some(node_weight) = workspace_snapshot.get_node_weight_opt(id).await else {
             return Ok(None);
         };
-
-        let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
         let hash = node_weight.content_hash();
 
         let content: SchemaContent = ctx
@@ -358,8 +347,7 @@ impl Schema {
     pub async fn get_by_id(ctx: &DalContext, id: SchemaId) -> SchemaResult<Self> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
-        let node_index = workspace_snapshot.get_node_index_by_id(id).await?;
-        let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
+        let node_weight = workspace_snapshot.get_node_weight(id).await?;
         let hash = node_weight.content_hash();
 
         let content: SchemaContent = ctx

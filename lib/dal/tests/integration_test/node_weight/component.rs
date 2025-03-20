@@ -177,12 +177,12 @@ async fn deleting_a_component_deletes_component_in_other_change_sets(ctx: &mut D
 
     update_visibility_and_snapshot_to_visibility(ctx, cs_1.id).await;
 
-    assert!(ctx
-        .workspace_snapshot()
-        .expect("get snap")
-        .get_node_index_by_id_opt(docker_image_1.id())
-        .await
-        .is_none());
+    assert!(
+        !ctx.workspace_snapshot()
+            .expect("get snap")
+            .node_exists(docker_image_1.id())
+            .await
+    );
 }
 
 #[test]

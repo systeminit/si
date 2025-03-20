@@ -287,7 +287,7 @@ impl Action {
     pub async fn get_by_id(ctx: &DalContext, id: ActionId) -> ActionResult<Self> {
         let action: Self = ctx
             .workspace_snapshot()?
-            .get_node_weight_by_id(id)
+            .get_node_weight(id)
             .await?
             .get_action_node_weight()?
             .into();
@@ -296,10 +296,9 @@ impl Action {
 
     #[instrument(level = "info", skip_all, fields(si.action.id = ?id, si.action.state = ?state))]
     pub async fn set_state(ctx: &DalContext, id: ActionId, state: ActionState) -> ActionResult<()> {
-        let idx = ctx.workspace_snapshot()?.get_node_index_by_id(id).await?;
         let node_weight = ctx
             .workspace_snapshot()?
-            .get_node_weight(idx)
+            .get_node_weight(id)
             .await?
             .get_action_node_weight()?;
         let mut new_node_weight = node_weight.clone();
@@ -362,7 +361,7 @@ impl Action {
 
         let new_action: Self = ctx
             .workspace_snapshot()?
-            .get_node_weight_by_id(new_id)
+            .get_node_weight(new_id)
             .await?
             .get_action_node_weight()?
             .into();

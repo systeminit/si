@@ -98,11 +98,7 @@ impl JobConsumer for ComputeValidation {
             // things now. This could happen if there are other modifications to the snapshot before the CV job starts
             // executing, as the job always operates on the current state of the change set's snapshot, not the state at the time
             // the job was created.
-            if workspace_snapshot
-                .get_node_index_by_id_opt(av_id)
-                .await
-                .is_none()
-            {
+            if !workspace_snapshot.node_exists(av_id).await {
                 debug!("Attribute Value {av_id} missing, skipping it in ComputeValidations");
                 continue;
             }

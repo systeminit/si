@@ -84,16 +84,12 @@ impl DependentValueGraph {
             // are other modifications to the snapshot before the DVU job starts executing, as the
             // job always operates on the current state of the change set's snapshot, not the state
             // at the time the job was created.
-            if workspace_snapshot
-                .get_node_index_by_id_opt(root_ulid)
-                .await
-                .is_none()
-            {
+            if !workspace_snapshot.node_exists(root_ulid).await {
                 debug!(%root_ulid, "missing node, skipping it in DependentValueGraph");
                 continue;
             }
 
-            let node_weight = workspace_snapshot.get_node_weight_by_id(root_ulid).await?;
+            let node_weight = workspace_snapshot.get_node_weight(root_ulid).await?;
 
             match node_weight.into() {
                 NodeWeightDiscriminants::AttributeValue => {

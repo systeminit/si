@@ -185,8 +185,7 @@ impl Module {
     pub async fn get_by_id(ctx: &DalContext, id: ModuleId) -> ModuleResult<Self> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
-        let node_index = workspace_snapshot.get_node_index_by_id(id).await?;
-        let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
+        let node_weight = workspace_snapshot.get_node_weight(id).await?;
         let hash = node_weight.content_hash();
 
         let content: ModuleContent = ctx

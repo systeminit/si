@@ -222,7 +222,7 @@ impl OutputSocket {
     ) -> OutputSocketResult<(ContentNodeWeight, OutputSocketContentV1)> {
         let weight = ctx
             .workspace_snapshot()?
-            .get_node_weight_by_id(output_socket_id)
+            .get_node_weight(output_socket_id)
             .await?
             .get_content_node_weight_of_kind(ContentAddressDiscriminants::OutputSocket)?;
         let content: OutputSocketContent = ctx

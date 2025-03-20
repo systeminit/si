@@ -63,7 +63,7 @@ async fn node_debug(
     let mut outgoing_edges = vec![];
 
     let snapshot = ctx.workspace_snapshot()?;
-    let node = snapshot.get_node_weight_by_id(node_id).await?;
+    let node = snapshot.get_node_weight(node_id).await?;
 
     for (edge_weight, source_idx, _) in snapshot
         .edges_directed(node_id, Direction::Incoming)

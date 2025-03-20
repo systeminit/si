@@ -16,7 +16,7 @@ async fn new_and_list_latest(ctx: &mut DalContext) -> Result<()> {
     let status = ChangeSetApprovalStatus::Approved;
     let component_node_weight = ctx
         .workspace_snapshot()?
-        .get_node_weight_by_id(component.id())
+        .get_node_weight(component.id())
         .await?;
     let approving_ids_with_hashes = vec![(
         component_node_weight.id().into(),

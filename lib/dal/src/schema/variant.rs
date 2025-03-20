@@ -43,7 +43,6 @@ use crate::socket::output::OutputSocketError;
 use crate::workspace_snapshot::{
     content_address::{ContentAddress, ContentAddressDiscriminants},
     edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants},
-    graph::NodeIndex,
     node_weight::{
         input_socket_node_weight::InputSocketNodeWeightError, traits::SiNodeWeight, NodeWeight,
         NodeWeightDiscriminants, NodeWeightError, PropNodeWeight, SchemaVariantNodeWeight,
@@ -581,7 +580,7 @@ impl SchemaVariant {
             if schema_variant.is_locked() != before_modification_variant.is_locked() {
                 let node_weight = ctx
                     .workspace_snapshot()?
-                    .get_node_weight_by_id(before_modification_variant.id())
+                    .get_node_weight(before_modification_variant.id())
                     .await?;
                 let mut schema_variant_node_weight =
                     node_weight.get_schema_variant_node_weight()?;
@@ -674,7 +673,7 @@ impl SchemaVariant {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
         while let Some(prop_id) = work_queue.pop_front() {
-            let node_weight = workspace_snapshot.get_node_weight_by_id(prop_id).await?;
+            let node_weight = workspace_snapshot.get_node_weight(prop_id).await?;
 
             // Find and load any child props.
             match node_weight {
@@ -729,20 +728,10 @@ impl SchemaVariant {
     ) -> SchemaVariantResult<Option<Self>> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
-        let maybe_node_result = workspace_snapshot.get_node_index_by_id(id).await;
-
-        let node_index = match maybe_node_result {
-            Ok(node_index) => node_index,
-            Err(e) => {
-                return if e.is_node_with_id_not_found() {
-                    Ok(None)
-                } else {
-                    Err(SchemaVariantError::from(e))
-                }
-            }
+        let Some(node_weight) = workspace_snapshot.get_node_weight_opt(id).await else {
+            return Ok(None);
         };
 
-        let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
         let schema_variant_node_weight = node_weight.get_schema_variant_node_weight()?;
 
         let content: SchemaVariantContent = ctx
@@ -988,22 +977,18 @@ impl SchemaVariant {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
         let mut schema_variants = vec![];
-        let parent_index = workspace_snapshot.get_node_index_by_id(schema_id).await?;
 
         // We want to use the EdgeWeightKindDiscriminants rather than EdgeWeightKind
         // this will bring us back all use and default edges!
-        let node_indices = workspace_snapshot
-            .outgoing_targets_for_edge_weight_kind_by_index(
-                parent_index,
-                EdgeWeightKindDiscriminants::Use,
-            )
+        let variant_ids = workspace_snapshot
+            .outgoing_targets_for_edge_weight_kind(schema_id, EdgeWeightKindDiscriminants::Use)
             .await?;
 
         let mut node_weights = vec![];
         let mut content_hashes = vec![];
-        for index in node_indices {
+        for id in variant_ids {
             let node_weight = workspace_snapshot
-                .get_node_weight(index)
+                .get_node_weight(id)
                 .await?
                 .get_schema_variant_node_weight()?;
             content_hashes.push(node_weight.content_hash());
@@ -1136,16 +1121,15 @@ impl SchemaVariant {
         schema_variant_id: SchemaVariantId,
     ) -> SchemaVariantResult<PropNodeWeight> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
-        let edge_targets: Vec<NodeIndex> = workspace_snapshot
+        let edge_targets: Vec<_> = workspace_snapshot
             .edges_directed(schema_variant_id, Direction::Outgoing)
             .await?
             .into_iter()
-            .map(|(_, _, target_idx)| target_idx)
+            .map(|(_, _, target_id)| target_id)
             .collect();
 
-        for index in edge_targets {
-            let node_weight = workspace_snapshot.get_node_weight(index).await?;
-            // TODO(nick): ensure that only one prop can be under a schema variant.
+        for id in edge_targets {
+            let node_weight = workspace_snapshot.get_node_weight(id).await?;
             if let NodeWeight::Prop(inner_weight) = node_weight {
                 if inner_weight.name() == "root" {
                     return Ok(inner_weight.clone());
@@ -1224,20 +1208,17 @@ impl SchemaVariant {
     ) -> SchemaVariantResult<()> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
         let root_prop_node_weight = Self::get_root_prop_node_weight(ctx, schema_variant_id).await?;
-        let root_prop_idx = workspace_snapshot
-            .get_node_index_by_id(root_prop_node_weight.id())
-            .await?;
 
         let mut work_queue = VecDeque::new();
-        work_queue.push_back(root_prop_idx);
+        work_queue.push_back(root_prop_node_weight.id());
 
-        while let Some(prop_idx) = work_queue.pop_front() {
+        while let Some(prop_id) = work_queue.pop_front() {
             workspace_snapshot
-                .mark_prop_as_able_to_be_used_as_prototype_arg(prop_idx)
+                .mark_prop_as_able_to_be_used_as_prototype_arg(prop_id)
                 .await?;
 
             let node_weight = workspace_snapshot
-                .get_node_weight(prop_idx)
+                .get_node_weight(prop_id)
                 .await?
                 .to_owned();
             if let NodeWeight::Prop(prop) = node_weight {
@@ -1782,13 +1763,7 @@ impl SchemaVariant {
                 WorkspaceSnapshotError::MissingContentFromStore(input_socket_id.into()),
             )?;
 
-            let node_weight = workspace_snapshot
-                .get_node_weight(
-                    workspace_snapshot
-                        .get_node_index_by_id(input_socket_id)
-                        .await?,
-                )
-                .await?;
+            let node_weight = workspace_snapshot.get_node_weight(input_socket_id).await?;
             let input_socket_weight = node_weight.get_input_socket_node_weight()?;
 
             let input_socket_content_inner = match input_socket_content {

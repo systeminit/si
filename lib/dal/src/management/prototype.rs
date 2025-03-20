@@ -383,12 +383,8 @@ impl ManagementPrototype {
     ) -> ManagementPrototypeResult<Option<Self>> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
-        let Some(idx) = workspace_snapshot.get_node_index_by_id_opt(id).await else {
-            return Ok(None);
-        };
-
-        let NodeWeight::ManagementPrototype(inner) =
-            workspace_snapshot.get_node_weight(idx).await?
+        let Some(NodeWeight::ManagementPrototype(inner)) =
+            workspace_snapshot.get_node_weight_opt(id).await
         else {
             return Ok(None);
         };

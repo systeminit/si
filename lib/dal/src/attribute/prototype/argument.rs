@@ -181,8 +181,7 @@ impl AttributePrototypeArgument {
     ) -> AttributePrototypeArgumentResult<Self> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
-        let node_index = workspace_snapshot.get_node_index_by_id(id).await?;
-        let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
+        let node_weight = workspace_snapshot.get_node_weight(id).await?;
 
         Ok(node_weight
             .get_attribute_prototype_argument_node_weight()?
@@ -421,10 +420,9 @@ impl AttributePrototypeArgument {
             )
             .await?
         {
-            let self_node_index = workspace_snapshot.get_node_index_by_id(apa_id).await?;
             workspace_snapshot
                 .remove_edge(
-                    self_node_index,
+                    apa_id,
                     existing_value_source,
                     EdgeWeightKindDiscriminants::PrototypeArgumentValue,
                 )

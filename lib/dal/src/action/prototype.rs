@@ -185,7 +185,7 @@ impl ActionPrototype {
 
         let new_prototype: Self = ctx
             .workspace_snapshot()?
-            .get_node_weight_by_id(new_id)
+            .get_node_weight(new_id)
             .await?
             .get_action_prototype_node_weight()?
             .into();
@@ -212,7 +212,7 @@ impl ActionPrototype {
     pub async fn get_by_id(ctx: &DalContext, id: ActionPrototypeId) -> ActionPrototypeResult<Self> {
         let prototype: Self = ctx
             .workspace_snapshot()?
-            .get_node_weight_by_id(id)
+            .get_node_weight(id)
             .await?
             .get_action_prototype_node_weight()?
             .into();
@@ -220,15 +220,13 @@ impl ActionPrototype {
     }
 
     pub async fn func_id(ctx: &DalContext, id: ActionPrototypeId) -> ActionPrototypeResult<FuncId> {
-        for (_, _tail_node_idx, head_node_idx) in ctx
+        for (_, _, target_id) in ctx
             .workspace_snapshot()?
             .edges_directed_for_edge_weight_kind(id, Outgoing, EdgeWeightKindDiscriminants::Use)
             .await?
         {
-            if let NodeWeight::Func(node_weight) = ctx
-                .workspace_snapshot()?
-                .get_node_weight(head_node_idx)
-                .await?
+            if let NodeWeight::Func(node_weight) =
+                ctx.workspace_snapshot()?.get_node_weight(target_id).await?
             {
                 return Ok(node_weight.id().into());
             }
