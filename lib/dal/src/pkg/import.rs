@@ -1223,9 +1223,7 @@ pub(crate) async fn import_schema_variant(
             }
         }
 
-        schema_variant
-            .set_type(ctx, data.component_type().to_string())
-            .await?;
+        SchemaVariant::set_type(ctx, schema_variant.id, data.component_type().to_string()).await?;
     }
 
     let mut side_effects = CreatePropsSideEffects::default();

@@ -1429,13 +1429,12 @@ impl SchemaVariant {
     /// we will remove that edge and replace it with one pointing to
     /// `SetString`.
     pub async fn set_type(
-        &self,
         ctx: &DalContext,
+        id: SchemaVariantId,
         component_type: impl AsRef<str>,
     ) -> SchemaVariantResult<()> {
         let type_prop_id =
-            Prop::find_prop_id_by_path(ctx, self.id, &PropPath::new(["root", "si", "type"]))
-                .await?;
+            Prop::find_prop_id_by_path(ctx, id, &PropPath::new(["root", "si", "type"])).await?;
 
         Prop::set_default_value(ctx, type_prop_id, component_type.as_ref()).await?;
 
@@ -1449,10 +1448,12 @@ impl SchemaVariant {
     /// [`IntrinsicFunc::SetString`](crate::func::intrinsics::IntrinsicFunc::SetString)
     /// we will remove that edge and replace it with one pointing to
     /// `SetString`.
-    pub async fn get_type(&self, ctx: &DalContext) -> SchemaVariantResult<Option<ComponentType>> {
+    pub async fn get_type(
+        ctx: &DalContext,
+        id: SchemaVariantId,
+    ) -> SchemaVariantResult<Option<ComponentType>> {
         let type_prop_id =
-            Prop::find_prop_id_by_path(ctx, self.id, &PropPath::new(["root", "si", "type"]))
-                .await?;
+            Prop::find_prop_id_by_path(ctx, id, &PropPath::new(["root", "si", "type"])).await?;
 
         let prototype_id = Prop::prototype_id(ctx, type_prop_id).await?;
 

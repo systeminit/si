@@ -380,18 +380,14 @@ impl ExpectSchemaVariant {
     }
 
     pub async fn get_type(self, ctx: &DalContext) -> ComponentType {
-        self.schema_variant(ctx)
-            .await
-            .get_type(ctx)
+        SchemaVariant::get_type(ctx, self.0)
             .await
             .expect("get type")
             .expect("has type")
     }
 
     pub async fn set_type(self, ctx: &DalContext, component_type: ComponentType) {
-        self.schema_variant(ctx)
-            .await
-            .set_type(ctx, component_type)
+        SchemaVariant::set_type(ctx, self.0, component_type)
             .await
             .expect("set type")
     }

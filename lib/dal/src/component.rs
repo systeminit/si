@@ -588,10 +588,7 @@ impl Component {
         component.set_name(ctx, &name).await?;
 
         //set a component specific prototype for the root/si/type as we don't want it to ever change other than manually
-        let sv_type = SchemaVariant::get_by_id(ctx, schema_variant_id)
-            .await?
-            .get_type(ctx)
-            .await?;
+        let sv_type = SchemaVariant::get_type(ctx, schema_variant_id).await?;
         if let Some(sv_type) = sv_type {
             component.set_type(ctx, sv_type).await?;
         }
@@ -2569,7 +2566,8 @@ impl Component {
 
         // Check all inferred outgoing connections, which accounts for up and down configuration
         // frames alike due to the direction of the connection.
-        let inferred_outgoing_connections = self.inferred_outgoing_connections(ctx).await?;
+        let inferred_outgoing_connections =
+            Component::inferred_outgoing_connections(ctx, self.id()).await?;
         for inferred_outgoing in inferred_outgoing_connections {
             let connected_to_component =
                 Self::get_by_id(ctx, inferred_outgoing.to_component_id).await?;
@@ -3264,10 +3262,9 @@ impl Component {
     /// via FrameContains Edges.
     #[instrument(level = "debug", skip(ctx))]
     pub async fn inferred_incoming_connections(
-        &self,
         ctx: &DalContext,
+        to_component_id: ComponentId,
     ) -> ComponentResult<Vec<InferredConnection>> {
-        let to_component_id = self.id();
         let mut connections = vec![];
 
         let workspace_snapshot = ctx.workspace_snapshot()?;
@@ -3282,10 +3279,10 @@ impl Component {
             // Both "deleted" and not deleted Components can feed data into
             // "deleted" Components. **ONLY** not deleted Components can feed
             // data into not deleted Components.
-            let source_component =
+            let from_component =
                 Self::get_by_id(ctx, incoming_connection.source_component_id).await?;
             let to_delete =
-                !Self::should_data_flow_between_components(ctx, self.id, source_component.id)
+                !Self::should_data_flow_between_components(ctx, to_component_id, from_component.id)
                     .await?;
 
             connections.push(InferredConnection {
@@ -3305,18 +3302,19 @@ impl Component {
     /// result of lineage via an [`EdgeWeightKind::FrameContains`] edge.
     #[instrument(level = "info", skip(ctx))]
     pub async fn inferred_outgoing_connections(
-        &self,
         ctx: &DalContext,
+        from_component_id: ComponentId,
     ) -> ComponentResult<Vec<InferredConnection>> {
         let mut connections = vec![];
 
         let workspace_snapshot = ctx.workspace_snapshot()?;
         let mut inferred_connections = workspace_snapshot.inferred_connection_graph(ctx).await?;
         let mut inferred_connections_for_component_stack = inferred_connections
-            .inferred_connections_for_component_stack(ctx, self.id)
+            .inferred_connections_for_component_stack(ctx, from_component_id)
             .await?;
-        inferred_connections_for_component_stack
-            .retain(|inferred_connection| inferred_connection.source_component_id == self.id);
+        inferred_connections_for_component_stack.retain(|inferred_connection| {
+            inferred_connection.source_component_id == from_component_id
+        });
 
         for outgoing_connection in inferred_connections_for_component_stack {
             // add the check for to_delete on either to or from component
@@ -3324,12 +3322,11 @@ impl Component {
             // "deleted" Components. **ONLY** not deleted Components can feed
             // data into not deleted Components.
             let destination_component = outgoing_connection.destination_component_id;
-            let source_component = self.id();
 
             let to_delete = !Self::should_data_flow_between_components(
                 ctx,
                 destination_component,
-                source_component,
+                from_component_id,
             )
             .await?;
             connections.push(InferredConnection {

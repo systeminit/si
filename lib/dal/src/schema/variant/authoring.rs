@@ -765,9 +765,7 @@ impl VariantAuthoringClient {
             schema_variant.set_color(ctx, color).await?;
         }
         if original_type != component_type {
-            schema_variant
-                .set_type(ctx, component_type.to_string())
-                .await?;
+            SchemaVariant::set_type(ctx, schema_variant.id, component_type.to_string()).await?;
         }
 
         let code_base64 = code.map(|c| general_purpose::STANDARD_NO_PAD.encode(c.into()));

@@ -41,8 +41,7 @@ impl SchemaVariantMetadataView {
                 category: default_schema_variant.category.to_owned(),
                 color: default_schema_variant.get_color(ctx).await?,
                 timestamp: default_schema_variant.timestamp.to_owned(),
-                component_type: default_schema_variant
-                    .get_type(ctx)
+                component_type: SchemaVariant::get_type(ctx, default_schema_variant.id)
                     .await?
                     .unwrap_or(ComponentType::Component),
                 link: default_schema_variant.link.to_owned(),

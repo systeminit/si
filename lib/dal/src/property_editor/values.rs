@@ -36,8 +36,7 @@ impl PropertyEditorValues {
             .iter()
             .map(|c| c.to_input_socket_id)
             .chain(
-                component
-                    .inferred_incoming_connections(ctx)
+                Component::inferred_incoming_connections(ctx, component_id)
                     .await?
                     .iter()
                     .map(|c| c.to_input_socket_id),
@@ -70,9 +69,9 @@ impl PropertyEditorValues {
             secret_ids_by_key
         };
 
-        let secrets_av_id = component
-            .attribute_value_for_prop(ctx, &["root", "secrets"])
-            .await?;
+        let secrets_av_id =
+            Component::attribute_value_for_prop_by_id(ctx, component_id, &["root", "secrets"])
+                .await?;
         values.insert(
             root_value_id,
             PropertyEditorValue {
