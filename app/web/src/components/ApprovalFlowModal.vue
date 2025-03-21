@@ -75,7 +75,6 @@ function closeModalHandler() {
 function applyButtonHandler() {
   if (workspaceHasOneUser.value && authStore.user) {
     changeSetsStore.APPLY_CHANGE_SET(authStore.user.name);
-    return;
   } else {
     changeSetsStore.REQUEST_CHANGE_SET_APPROVAL();
 
@@ -86,9 +85,10 @@ function applyButtonHandler() {
     if (changeSet.value) {
       changeSetsStore.FETCH_APPROVAL_STATUS(changeSet.value.id);
     }
+
+    presenceStore.leftDrawerOpen = false; // close the left draw for the InsetModal
   }
 
-  presenceStore.leftDrawerOpen = false; // close the left draw for the InsetModal
   closeModalHandler();
 }
 
