@@ -4434,7 +4434,6 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
- "si-id",
  "si-pkg",
  "thiserror 2.0.12",
  "tokio",
@@ -4489,7 +4488,6 @@ dependencies = [
  "chrono",
  "serde",
  "serde_json",
- "si-id",
  "ulid",
 ]
 

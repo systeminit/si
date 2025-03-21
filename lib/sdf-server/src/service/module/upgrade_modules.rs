@@ -64,7 +64,7 @@ pub async fn upgrade_modules(
             &ctx,
             &si_pkg,
             Some(ImportOptions {
-                schema_id: Some(schema_id),
+                schema_id: Some(schema_id.into()),
                 ..Default::default()
             }),
         )
@@ -106,7 +106,7 @@ pub async fn upgrade_modules(
             }
             variants.push(front_end_variant);
         } else {
-            return Err(ModuleError::SchemaNotFoundFromInstall(schema_id));
+            return Err(ModuleError::SchemaNotFoundFromInstall(schema_id.into()));
         };
     }
 

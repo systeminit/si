@@ -10,6 +10,7 @@ use serde_json::error::Category;
 use thiserror::Error;
 
 use pkg::import::import_schema_variant;
+use si_events::ulid::Ulid;
 use si_events::FuncRunId;
 use si_layer_cache::LayerDbError;
 use si_pkg::{
@@ -186,7 +187,7 @@ impl VariantAuthoringClient {
                     asset_func.clone(),
                 )])),
                 create_unlocked: true,
-                schema_id: Some(SchemaId::new()),
+                schema_id: Some(Ulid::new()),
                 ..Default::default()
             }),
         )
@@ -277,7 +278,7 @@ impl VariantAuthoringClient {
                         cloned_func.clone(),
                     )])),
                     create_unlocked: true,
-                    schema_id: Some(SchemaId::new()),
+                    schema_id: Some(Ulid::new()),
                     ..Default::default()
                 }),
             )
