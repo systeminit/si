@@ -481,6 +481,17 @@ const overrides = new Map<string, OverrideFn>([
       
     setAnnotationOnSocket(imageSocket, { tokens: ["repositoryuri"] });    
   }],
+  ["AWS::Lambda::Function", (spec: ExpandedPkgSpec) => {
+    const variant = spec.schemas[0].variants[0];
+
+    const roleSocket = variant.sockets.find(
+      (s: ExpandedSocketSpec) => s.name === "Role" && s.data.kind === "input",
+    );
+    if (!roleSocket) return;
+      
+    setAnnotationOnSocket(roleSocket, { tokens: ["arn", "string"] });
+    setAnnotationOnSocket(roleSocket, { tokens: ["arn"] }); 
+  }],
 ]);
 
 function addSecretProp(
