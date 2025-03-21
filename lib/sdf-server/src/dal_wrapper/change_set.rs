@@ -5,7 +5,7 @@ use std::{collections::HashMap, str::FromStr};
 use dal::{
     approval_requirement::{ApprovalRequirement, ApprovalRequirementApprover},
     change_set::approval::ChangeSetApproval,
-    ChangeSet, DalContext, HistoryActor, UserPk, WorkspacePk,
+    ChangeSet, DalContext, HistoryActor, User, UserPk, WorkspacePk,
 };
 use permissions::{Permission, PermissionBuilder};
 use si_events::{merkle_tree_hash::MerkleTreeHash, ChangeSetApprovalStatus};
@@ -43,8 +43,26 @@ pub async fn protected_apply_to_base_change_set(
     ctx: &mut DalContext,
     spicedb_client: &mut si_data_spicedb::Client,
 ) -> Result<()> {
-    // First, check if all requirements have been satisfied.
-    approval_requirements_are_satisfied_or_error(ctx, spicedb_client).await?;
+    let solo_user_in_workspace = match ctx.history_actor() {
+        HistoryActor::SystemInit => return Err(DalWrapperError::InvalidUser),
+        HistoryActor::User(user_pk) => {
+            let workspace_pk = ctx.workspace_pk()?;
+            let user_pks =
+                User::list_member_pks_for_workspace(ctx, workspace_pk.to_string()).await?;
+
+            user_pks.len() == 1
+                && user_pks
+                    .first()
+                    .ok_or(DalWrapperError::NoUsersInWorkspace(workspace_pk))?
+                    == user_pk
+        }
+    };
+
+    // First, check if all requirements have been satisfied. We do not need to check this
+    // if we are allowed to skip the approval flow.
+    if !solo_user_in_workspace {
+        approval_requirements_are_satisfied_or_error(ctx, spicedb_client).await?;
+    }
 
     // With no unsatisfied requirements, we can prepare to apply.
     ChangeSet::prepare_for_apply_without_status_check(ctx).await?;

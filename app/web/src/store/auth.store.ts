@@ -69,6 +69,9 @@ export const useAuthStore = () => {
       selectedOrDefaultAuthToken(): string | undefined {
         return this.selectedWorkspaceToken || _.values(this.tokens)[0];
       },
+      workspaceHasOneUser(): boolean {
+        return Object.keys(this.workspaceUsers).length === 1;
+      },
     },
     actions: {
       // NOTE(nick): this probably needs a new home for users eventually.

@@ -258,24 +258,6 @@ export function useChangeSetsStore() {
             },
           });
         },
-        async FORCE_APPLY_CHANGE_SET(username: string) {
-          if (!this.selectedChangeSet) throw new Error("Select a change set");
-          const selectedChangeSetId = this.selectedChangeSetId;
-          return new ApiRequest<{ changeSet: ChangeSet }>({
-            method: "post",
-            url: BASE_API.concat([{ selectedChangeSetId }, "force_apply"]),
-            // todo(brit): decide what needs to happen here
-            optimistic: () => {
-              toast({
-                component: IncomingChangesMerging,
-                props: {
-                  username,
-                },
-              });
-            },
-            _delay: 2000,
-          });
-        },
         async REQUEST_CHANGE_SET_APPROVAL() {
           if (!this.selectedChangeSet) throw new Error("Select a change set");
           const selectedChangeSetId = this.selectedChangeSetId;
@@ -291,7 +273,7 @@ export function useChangeSetsStore() {
 
           return new ApiRequest({
             method: "post",
-            url: BASE_API.concat([{ changeSetId }, "approve_v2"]),
+            url: BASE_API.concat([{ changeSetId }, "approve"]),
             params: {
               status: "Approved",
             },
@@ -304,7 +286,7 @@ export function useChangeSetsStore() {
 
           return new ApiRequest({
             method: "post",
-            url: BASE_API.concat([{ changeSetId }, "approve_v2"]),
+            url: BASE_API.concat([{ changeSetId }, "approve"]),
             params: {
               status: "Rejected",
             },
@@ -335,7 +317,7 @@ export function useChangeSetsStore() {
 
           return new ApiRequest({
             method: "post",
-            url: BASE_API.concat([{ selectedChangeSetId }, "apply_v2"]),
+            url: BASE_API.concat([{ selectedChangeSetId }, "apply"]),
             optimistic: () => {
               toast({
                 component: IncomingChangesMerging,

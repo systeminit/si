@@ -17,17 +17,15 @@ use thiserror::Error;
 
 use crate::{middleware::WorkspacePermissionLayer, service::ApiError, AppState};
 
+mod apply;
+mod approval_status;
+mod approve;
 mod cancel_approval_request;
 mod force_apply;
 mod list;
 mod rename;
 mod reopen;
 mod request_approval;
-
-// NOTE(nick): move these to the above group and remove old modules once the feature flag has been removed;
-mod apply_v2;
-mod approval_status;
-mod approve_v2;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -121,16 +119,13 @@ pub fn change_sets_routes() -> Router<AppState> {
 
 pub fn change_set_routes(state: AppState) -> Router<AppState> {
     Router::new()
-        .route(
-            "/request_approval",
-            post(request_approval::request_approval),
-        )
+        .route("/apply", post(apply::apply))
+        .route("/approval_status", get(approval_status::approval_status))
+        .route("/approve", post(approve::approve))
         .route(
             "/cancel_approval_request",
             post(cancel_approval_request::cancel_approval_request),
         )
-        // Consider how we make it editable again after it's been rejected
-        .route("/reopen", post(reopen::reopen))
         .route(
             "/force_apply",
             post(force_apply::force_apply).layer(WorkspacePermissionLayer::new(
@@ -139,7 +134,10 @@ pub fn change_set_routes(state: AppState) -> Router<AppState> {
             )),
         )
         .route("/rename", post(rename::rename))
-        .route("/approval_status", get(approval_status::approval_status))
-        .route("/approve_v2", post(approve_v2::approve))
-        .route("/apply_v2", post(apply_v2::apply))
+        // Consider how we make it editable again after it's been rejected
+        .route("/reopen", post(reopen::reopen))
+        .route(
+            "/request_approval",
+            post(request_approval::request_approval),
+        )
 }

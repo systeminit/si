@@ -429,8 +429,8 @@ impl ChangeSet {
         Self::prepare_for_apply_inner(ctx, true).await
     }
 
-    // TODO(nick): when the fine grained access control feature flag dies, get rid of the separate
-    // functions (and this inner one) and collapse them into one again.
+    // TODO(nick): now that the fine grained access control flag is gone, we can collapse the two
+    // outer methods and chase down tests continuing to use the old method.
     async fn prepare_for_apply_inner(
         ctx: &DalContext,
         dangerous_skip_status_check: bool,
