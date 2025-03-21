@@ -10,7 +10,7 @@ use thiserror::Error;
 use veritech_client::{ManagementFuncStatus, ManagementResultSuccess};
 
 use crate::{
-    cached_module::CachedModuleError,
+    cached_module::{CachedModule, CachedModuleError},
     component::socket::ComponentInputSocket,
     diagram::{
         geometry::Geometry,
@@ -486,25 +486,7 @@ impl ManagementPrototype {
             ManagerComponent::new(ctx, manager_component_id, &this_schema, &views).await?;
         let manager_component_geometry = manager_component.component.geometry.to_owned();
 
-        let mut variant_socket_map = HashMap::new();
-        let schemas = Schema::list(ctx).await?;
-        for schema in schemas {
-            let variant_id = Schema::default_variant_id_opt(ctx, schema.id()).await?;
-            if let Some(variant_id) = variant_id {
-                let (output_sockets, input_sockets) =
-                    SchemaVariant::list_all_socket_ids(ctx, variant_id).await?;
-
-                let has_manage_prototype =
-                    ManagementPrototype::variant_has_management_prototype(ctx, variant_id).await?;
-                let manage_count = if has_manage_prototype { 1 } else { 0 };
-
-                // 1 + for the Manager input socket
-                variant_socket_map.insert(
-                    schema.name().to_string(),
-                    1 + manage_count + output_sockets.len() + input_sockets.len(),
-                );
-            }
-        }
+        let variant_socket_map = Self::variant_socket_map(ctx).await?;
 
         let args = serde_json::json!({
             "current_view": current_view,
@@ -587,6 +569,43 @@ impl ManagementPrototype {
             manager_component_geometry,
             managed_component_placeholders,
         })
+    }
+
+    async fn variant_socket_map(
+        ctx: &DalContext,
+    ) -> ManagementPrototypeResult<HashMap<String, u32>> {
+        // Count sockets on uninstalled schemas
+        let mut variant_socket_map: HashMap<_, _> = CachedModule::latest_modules(ctx)
+            .await?
+            .into_iter()
+            .filter_map(|module| {
+                module
+                    .package_summary
+                    .as_ref()
+                    .map(|summary| (module.schema_name.to_owned(), summary.socket_count))
+            })
+            .collect();
+
+        // Count sockets on installed schemas (and overwrite the counts from uninstalled ones)
+        for schema in Schema::list(ctx).await? {
+            let variant_id = Schema::default_variant_id_opt(ctx, schema.id()).await?;
+            if let Some(variant_id) = variant_id {
+                let (output_sockets, input_sockets) =
+                    SchemaVariant::list_all_socket_ids(ctx, variant_id).await?;
+
+                let has_manage_prototype =
+                    ManagementPrototype::variant_has_management_prototype(ctx, variant_id).await?;
+                let manage_count: u32 = if has_manage_prototype { 1 } else { 0 };
+
+                // 1 + for the Manager input socket
+                variant_socket_map.insert(
+                    schema.name().to_string(),
+                    1 + manage_count + output_sockets.len() as u32 + input_sockets.len() as u32,
+                );
+            }
+        }
+
+        Ok(variant_socket_map)
     }
 
     pub async fn get_schema_variant_id(
