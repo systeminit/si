@@ -1,7 +1,7 @@
 use std::{
     collections::{HashMap, HashSet},
-    str::FromStr,
     sync::Arc,
+    time::Duration,
 };
 
 use chrono::{DateTime, Utc};
@@ -20,7 +20,7 @@ use crate::{
 };
 use module_index_client::{ModuleDetailsResponse, ModuleIndexClient, ModuleIndexClientError};
 use si_data_pg::{PgError, PgRow};
-use si_pkg::{SiPkg, SiPkgError};
+use si_pkg::{SiPkg, SiPkgError, SiPkgSchemaData, SiPkgSchemaVariantData};
 
 pub use si_id::CachedModuleId;
 
@@ -31,6 +31,8 @@ const PLACEHOLDER_OWNER_USER_ID: &str = "-";
 pub enum CachedModuleError {
     #[error("join error: {0}")]
     Join(#[from] tokio::task::JoinError),
+    #[error("json error: {0}")]
+    Json(#[from] serde_json::Error),
     #[error("module index client error: {0}")]
     ModuleIndexClient(#[from] ModuleIndexClientError),
     #[error("No module index url set on the services context")]
@@ -67,10 +69,17 @@ pub struct CachedModule {
     pub color: Option<String>,
     pub description: Option<String>,
     pub component_type: ComponentType,
+    pub package_summary: Option<PackageSummary>,
     pub latest_hash: String,
     pub created_at: DateTime<Utc>,
     pub package_data: Option<Vec<u8>>,
     pub scoped_to_user_pk: Option<UserPk>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct PackageSummary {
+    pub socket_count: u32,
 }
 
 impl From<CachedModule> for si_frontend_types::UninstalledVariant {
@@ -112,7 +121,9 @@ impl TryFrom<PgRow> for CachedModule {
 
     fn try_from(row: PgRow) -> Result<Self, Self::Error> {
         let component_type_string: String = row.try_get("component_type")?;
-        let component_type = ComponentType::from_str(&component_type_string)?;
+        let component_type = component_type_string.parse()?;
+        let package_summary: Option<serde_json::Value> = row.try_get("package_summary")?;
+        let package_summary = package_summary.map(serde_json::from_value).transpose()?;
 
         Ok(Self {
             id: row.try_get("id")?,
@@ -124,6 +135,7 @@ impl TryFrom<PgRow> for CachedModule {
             color: row.try_get("color")?,
             description: row.try_get("description")?,
             component_type,
+            package_summary,
             latest_hash: row.try_get("latest_hash")?,
             created_at: row.try_get("created_at")?,
             package_data: row.try_get("package_data")?,
@@ -131,6 +143,43 @@ impl TryFrom<PgRow> for CachedModule {
         })
     }
 }
+
+const CACHED_MODULE_GET_FIELDS: &str = "
+    id,
+    schema_id,
+    schema_name,
+    display_name,
+    category,
+    link,
+    color,
+    description,
+    component_type,
+    latest_hash,
+    created_at,
+    package_data,
+    scoped_to_user_pk,
+    package_summary
+";
+
+const CACHED_MODULE_LIST_FIELDS: &str = "
+    id,
+    schema_id,
+    schema_name,
+    display_name,
+    category,
+    link,
+    color,
+    description,
+    component_type,
+    latest_hash,
+    created_at,
+    NULL::bytea AS package_data,
+    scoped_to_user_pk,
+    package_summary
+";
+
+const BATCH_SIZE: usize = 10;
+const WAIT_BETWEEN_BATCHES: Duration = Duration::from_millis(100);
 
 impl CachedModule {
     pub async fn si_pkg(&mut self, ctx: &DalContext) -> CachedModuleResult<SiPkg> {
@@ -183,14 +232,10 @@ impl CachedModule {
         );
 
         let rows = ctx.txns().await?.pg().query(&query, &params).await?;
-
-        let mut result = vec![];
-
-        for row in rows {
-            result.push(row.try_get("hash")?);
-        }
-
-        Ok(result)
+        Ok(rows
+            .into_iter()
+            .map(|row| row.try_get("hash"))
+            .try_collect()?)
     }
 
     pub async fn create_private_module(
@@ -198,8 +243,9 @@ impl CachedModule {
         module_details: ModuleDetailsResponse,
         payload: Vec<u8>,
     ) -> CachedModuleResult<Option<Self>> {
+        let user_pk: UserPk = module_details.owner_user_id.parse()?;
         let maybe_module =
-            Self::insert_private_module(ctx, &module_details, Arc::new(payload)).await?;
+            Self::insert(ctx, &module_details, Arc::new(payload), Some(user_pk)).await?;
 
         Ok(maybe_module)
     }
@@ -230,12 +276,24 @@ impl CachedModule {
         let ctx_clone = ctx.clone();
         ctx_clone.commit_no_rebase().await?;
 
-        let hashes: Vec<_> = modules.keys().map(ToOwned::to_owned).collect();
+        let new_modules = Self::cache_modules(ctx, &modules, module_index_client).await?;
+
+        // Now check and fix up any missing package summaries
+        Self::update_missing_package_summaries(ctx).await?;
+
+        Ok(new_modules)
+    }
+
+    async fn cache_modules(
+        ctx: &DalContext,
+        modules: &HashMap<String, ModuleDetailsResponse>,
+        module_index_client: ModuleIndexClient,
+    ) -> CachedModuleResult<Vec<CachedModule>> {
+        let hashes = modules.keys().map(ToOwned::to_owned).collect_vec();
         let uncached_hashes = CachedModule::find_missing_entries(ctx, hashes).await?;
 
-        let batch_size = 10;
         let mut new_modules = vec![];
-        for hash_chunk in uncached_hashes.chunks(batch_size) {
+        for hash_chunk in uncached_hashes.chunks(BATCH_SIZE) {
             let ctx = ctx.clone();
             let mut join_set = JoinSet::new();
 
@@ -260,7 +318,9 @@ impl CachedModule {
 
             while let Some(res) = join_set.join_next().await {
                 let (module, module_bytes) = res??;
-                if let Some(new_cached_module) = Self::insert(&ctx, &module, module_bytes).await? {
+                if let Some(new_cached_module) =
+                    Self::insert(&ctx, &module, module_bytes, None).await?
+                {
                     new_modules.push(new_cached_module);
                 }
             }
@@ -268,7 +328,7 @@ impl CachedModule {
             if !uncached_hashes.is_empty() {
                 ctx.commit_no_rebase().await?;
             }
-            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+            tokio::time::sleep(WAIT_BETWEEN_BATCHES).await;
         }
 
         Ok(new_modules)
@@ -288,19 +348,15 @@ impl CachedModule {
             })
             .map(Into::into)
             .collect();
-        let cached_schema_ids: Vec<SchemaId> = CachedModule::latest_user_independent_modules(ctx)
-            .await?
-            .iter()
-            .map(|lm| lm.schema_id)
-            .collect();
 
         // Look at all schema IDs in the cache and determine if any of them are no longer builtins.
         // If they aren't, ALL modules corresponding to them get remove.
-        for schema_id in cached_schema_ids {
-            if !builtin_schema_ids.contains(&schema_id) {
-                CachedModule::remove_all_for_schema_id(ctx, schema_id).await?;
+        for lm in CachedModule::latest_user_independent_modules(ctx).await? {
+            if !builtin_schema_ids.contains(&lm.schema_id) {
+                CachedModule::remove_all_for_schema_id(ctx, lm.schema_id).await?;
             }
         }
+
         Ok(())
     }
 
@@ -308,93 +364,63 @@ impl CachedModule {
         ctx: &DalContext,
         schema_id: SchemaId,
     ) -> CachedModuleResult<Option<CachedModule>> {
-        let query = "
-            SELECT DISTINCT ON (schema_id)
-                id,
-                schema_id,
-                schema_name,
-                display_name,
-                category,
-                link,
-                color,
-                description,
-                component_type,
-                latest_hash,
-                created_at,
-                package_data,
-                scoped_to_user_pk
-            FROM cached_modules
-            WHERE schema_id = $1
-            ORDER BY schema_id, created_at DESC
-        ";
+        let query = format!(
+            "
+                SELECT DISTINCT ON (schema_id)
+                    {CACHED_MODULE_GET_FIELDS}
+                FROM cached_modules
+                WHERE schema_id = $1
+                ORDER BY schema_id, created_at DESC
+            "
+        );
 
-        ctx.txns()
+        let row = ctx
+            .txns()
             .await?
             .pg()
-            .query_opt(query, &[&schema_id])
-            .await?
-            .map(TryInto::try_into)
-            .transpose()
+            .query_opt(&query, &[&schema_id])
+            .await?;
+        row.map(TryInto::try_into).transpose()
     }
 
     pub async fn find_latest_for_schema_name(
         ctx: &DalContext,
         schema_name: &str,
     ) -> CachedModuleResult<Option<CachedModule>> {
-        let query = "
-            SELECT DISTINCT ON (schema_id)
-                id,
-                schema_id,
-                schema_name,
-                display_name,
-                category,
-                link,
-                color,
-                description,
-                component_type,
-                latest_hash,
-                created_at,
-                package_data,
-                scoped_to_user_pk
-            FROM cached_modules
-            WHERE schema_name = $1
-            ORDER BY schema_id, created_at DESC
-        ";
+        let query = format!(
+            "
+                SELECT DISTINCT ON (schema_id)
+                    {CACHED_MODULE_GET_FIELDS}
+                FROM cached_modules
+                WHERE schema_name = $1
+                ORDER BY schema_id, created_at DESC
+            "
+        );
 
-        ctx.txns()
+        let row = ctx
+            .txns()
             .await?
             .pg()
-            .query_opt(query, &[&schema_name])
-            .await?
-            .map(TryInto::try_into)
-            .transpose()
+            .query_opt(&query, &[&schema_name])
+            .await?;
+        row.map(TryInto::try_into).transpose()
     }
 
     pub async fn list_for_schema_id(
         ctx: &DalContext,
         schema_id: SchemaId,
     ) -> CachedModuleResult<Vec<CachedModule>> {
-        let query = "
-            SELECT
-                id,
-                schema_id,
-                schema_name,
-                display_name,
-                category,
-                link,
-                color,
-                description,
-                component_type,
-                latest_hash,
-                created_at,
-                NULL::bytea AS package_data,
-                scoped_to_user_pk
-            FROM cached_modules
-            WHERE schema_id = $1
-            ORDER BY schema_id, created_at DESC
-        ";
+        let query = format!(
+            "
+                SELECT
+                    {CACHED_MODULE_LIST_FIELDS}
+                FROM cached_modules
+                WHERE schema_id = $1
+                ORDER BY schema_id, created_at DESC
+            "
+        );
 
-        let rows = ctx.txns().await?.pg().query(query, &[&schema_id]).await?;
+        let rows = ctx.txns().await?.pg().query(&query, &[&schema_id]).await?;
         rows.into_iter().map(TryInto::try_into).try_collect()
     }
 
@@ -402,35 +428,18 @@ impl CachedModule {
     pub async fn latest_user_independent_modules(
         ctx: &DalContext,
     ) -> CachedModuleResult<Vec<CachedModule>> {
-        let query = "
-            SELECT DISTINCT ON (schema_id)
-                id,
-                schema_id,
-                schema_name,
-                display_name,
-                category,
-                link,
-                color,
-                description,
-                component_type,
-                latest_hash,
-                created_at,
-                NULL::bytea AS package_data,
-                scoped_to_user_pk
-            FROM cached_modules
-            WHERE scoped_to_user_pk IS NULL
-            ORDER BY schema_id, created_at DESC
-        ";
+        let query = format!(
+            "
+                SELECT DISTINCT ON (schema_id)
+                    {CACHED_MODULE_LIST_FIELDS}
+                FROM cached_modules
+                WHERE scoped_to_user_pk IS NULL
+                ORDER BY schema_id, created_at DESC
+            "
+        );
 
-        let rows = ctx.txns().await?.pg().query(query, &[]).await?;
-
-        let mut result = vec![];
-
-        for row in rows {
-            result.push(row.try_into()?);
-        }
-
-        Ok(result)
+        let rows = ctx.txns().await?.pg().query(&query, &[]).await?;
+        rows.into_iter().map(TryInto::try_into).try_collect()
     }
 
     pub async fn latest_modules(ctx: &DalContext) -> CachedModuleResult<Vec<CachedModule>> {
@@ -438,189 +447,49 @@ impl CachedModule {
             return Self::latest_user_independent_modules(ctx).await;
         };
 
-        let query = "
-            SELECT DISTINCT ON (schema_id)
-                id,
-                schema_id,
-                schema_name,
-                display_name,
-                category,
-                link,
-                color,
-                description,
-                component_type,
-                latest_hash,
-                created_at,
-                NULL::bytea AS package_data,
-                scoped_to_user_pk
-            FROM cached_modules
-            WHERE scoped_to_user_pk IS NULL OR scoped_to_user_pk = $1
-            ORDER BY schema_id, created_at DESC
-        ";
-
-        let rows = ctx.txns().await?.pg().query(query, &[&user_pk]).await?;
-
-        let mut result = vec![];
-
-        for row in rows {
-            result.push(row.try_into()?);
-        }
-
-        Ok(result)
-    }
-
-    // TO-DO: Paul
-    // I will refactor this + insert together - this is to temporarily get something working
-    async fn insert_private_module(
-        ctx: &DalContext,
-        module_details: &ModuleDetailsResponse,
-        pkg_bytes: Arc<Vec<u8>>,
-    ) -> CachedModuleResult<Option<Self>> {
-        let bytes_clone = pkg_bytes.clone();
-        let pkg = slow_rt::spawn(async move { SiPkg::load_from_bytes(&bytes_clone) })?.await??;
-
-        let user_pk =
-            UserPk::from_raw_id(Ulid::from_string(module_details.owner_user_id.as_str())?);
-        dbg!(&user_pk);
-        let query = "
-            INSERT INTO cached_modules (
-                schema_id,
-                schema_name,
-                display_name,
-                category,
-                link,
-                color,
-                description,
-                component_type,
-                latest_hash,
-                created_at,
-                package_data,
-                scoped_to_user_pk
-            ) VALUES (
-                $1, $2, $3, $4, $5, $6,
-                $7, $8, $9, $10, $11, $12
-            ) RETURNING
-              id,
-              schema_id,
-              schema_name,
-              display_name,
-              category,
-              link,
-              color,
-              description,
-              component_type,
-              latest_hash,
-              created_at,
-              NULL::bytea AS package_data,
-              NULL::ident AS scoped_to_user_pk
-        ";
-
-        let Some(schema_id) = module_details.schema_id() else {
-            warn!("builtin module {} has no schema id", module_details.id);
-            return Ok(None);
-        };
-        let schema_id: SchemaId = schema_id.into();
-
-        let Some(pkg_schema) = pkg.schemas()?.first().cloned() else {
-            warn!("builtin module {} has no schema", module_details.id);
-            return Ok(None);
-        };
-
-        let Some(pkg_variant) = pkg_schema.variants()?.first().cloned() else {
-            warn!(
-                "builtin module {} has a schema with no variant",
-                module_details.id
-            );
-            return Ok(None);
-        };
-
-        let schema_name = pkg_schema
-            .data()
-            .map(|data| data.name())
-            .unwrap_or(module_details.name.as_str());
-        let display_name = pkg_schema.data().and_then(|data| data.category_name());
-        let category = pkg_schema.data().map(|data| data.category()).unwrap_or("");
-        let link = pkg_variant
-            .data()
-            .and_then(|data| data.link().map(ToString::to_string));
-        let color = pkg_variant.data().and_then(|data| data.color());
-        let description = pkg_variant.data().and_then(|data| data.description());
-        let component_type: ComponentType = pkg_variant
-            .data()
-            .map(|data| data.component_type().into())
-            .unwrap_or_default();
-
-        dbg!(
-            "Creating private module cache entry for {} - {schema_name} ({category:?})",
-            &module_details.name
+        let query = format!(
+            "
+                SELECT DISTINCT ON (schema_id)
+                    {CACHED_MODULE_LIST_FIELDS}
+                FROM cached_modules
+                WHERE scoped_to_user_pk IS NULL OR scoped_to_user_pk = $1
+                ORDER BY schema_id, created_at DESC
+            "
         );
 
-        let bytes_ref = pkg_bytes.as_slice();
-        let row = ctx
-            .txns()
-            .await?
-            .pg()
-            .query_one(
-                query,
-                &[
-                    &schema_id,
-                    &schema_name,
-                    &display_name,
-                    &category,
-                    &link,
-                    &color,
-                    &description,
-                    &component_type.to_string(),
-                    &module_details.latest_hash,
-                    &module_details.created_at,
-                    &bytes_ref,
-                    &user_pk,
-                ],
-            )
-            .await?;
-
-        Ok(Some(row.try_into()?))
+        let rows = ctx.txns().await?.pg().query(&query, &[&user_pk]).await?;
+        rows.into_iter().map(TryInto::try_into).try_collect()
     }
 
     async fn insert(
         ctx: &DalContext,
         module_details: &ModuleDetailsResponse,
         pkg_bytes: Arc<Vec<u8>>,
+        scoped_to_user_pk: Option<UserPk>,
     ) -> CachedModuleResult<Option<Self>> {
-        let bytes_clone = pkg_bytes.clone();
-        let pkg = slow_rt::spawn(async move { SiPkg::load_from_bytes(&bytes_clone) })?.await??;
-
-        let query = "
-            INSERT INTO cached_modules (
-                schema_id,
-                schema_name,
-                display_name,
-                category,
-                link,
-                color,
-                description,
-                component_type,
-                latest_hash,
-                created_at,
-                package_data
-            ) VALUES (
-                $1, $2, $3, $4, $5, $6,
-                $7, $8, $9, $10, $11
-            ) RETURNING
-                id,
-                schema_id,
-                schema_name,
-                display_name,
-                category,
-                link,
-                color,
-                description,
-                component_type,
-                latest_hash,
-                created_at,
-                NULL::bytea AS package_data,
-                NULL::ident AS scoped_to_user_pk
-        ";
+        let query = format!(
+            "
+                INSERT INTO cached_modules (
+                    schema_id,
+                    schema_name,
+                    display_name,
+                    category,
+                    link,
+                    color,
+                    description,
+                    component_type,
+                    package_summary,
+                    latest_hash,
+                    created_at,
+                    package_data,
+                    scoped_to_user_pk
+                ) VALUES (
+                    $1, $2, $3, $4, $5, $6,
+                    $7, $8, $9, $10, $11, $12, $13
+                ) RETURNING
+                    {CACHED_MODULE_LIST_FIELDS}
+            "
+        );
 
         let Some(schema_id) = module_details.schema_id() else {
             warn!("builtin module {} has no schema id", module_details.id);
@@ -628,38 +497,22 @@ impl CachedModule {
         };
         let schema_id: SchemaId = schema_id.into();
 
-        let Some(pkg_schema) = pkg.schemas()?.first().cloned() else {
-            warn!("builtin module {} has no schema", module_details.id);
+        let Some(package) = PackageData::load(&module_details.id, &pkg_bytes).await? else {
             return Ok(None);
         };
-
-        let Some(pkg_variant) = pkg_schema.variants()?.first().cloned() else {
-            warn!(
-                "builtin module {} has a schema with no variant",
-                module_details.id
-            );
-            return Ok(None);
-        };
-
-        let schema_name = pkg_schema
-            .data()
-            .map(|data| data.name())
-            .unwrap_or(module_details.name.as_str());
-        let display_name = pkg_schema.data().and_then(|data| data.category_name());
-        let category = pkg_schema.data().map(|data| data.category()).unwrap_or("");
-        let link = pkg_variant
-            .data()
-            .and_then(|data| data.link().map(ToString::to_string));
-        let color = pkg_variant.data().and_then(|data| data.color());
-        let description = pkg_variant.data().and_then(|data| data.description());
-        let component_type: ComponentType = pkg_variant
-            .data()
-            .map(|data| data.component_type().into())
-            .unwrap_or_default();
 
         info!(
-            "Updating sdf module cache for {} - {schema_name} ({category:?})",
-            module_details.name
+            "{} for {} - {} ({:?})",
+            if scoped_to_user_pk.is_some() {
+                "Creating private module cache entry"
+            } else {
+                "Updating sdf module cache"
+            },
+            module_details.name,
+            package
+                .schema_name()
+                .unwrap_or(module_details.name.as_str()),
+            package.category(),
         );
 
         let bytes_ref = pkg_bytes.as_slice();
@@ -668,19 +521,23 @@ impl CachedModule {
             .await?
             .pg()
             .query_one(
-                query,
+                &query,
                 &[
                     &schema_id,
-                    &schema_name,
-                    &display_name,
-                    &category,
-                    &link,
-                    &color,
-                    &description,
-                    &component_type.to_string(),
+                    &package
+                        .schema_name()
+                        .unwrap_or(module_details.name.as_str()),
+                    &package.display_name(),
+                    &package.category(),
+                    &package.link(),
+                    &package.color(),
+                    &package.description(),
+                    &package.component_type().to_string(),
+                    &package.package_summary(),
                     &module_details.latest_hash,
                     &module_details.created_at,
                     &bytes_ref,
+                    &scoped_to_user_pk,
                 ],
             )
             .await?;
@@ -699,5 +556,164 @@ impl CachedModule {
         ctx.txns().await?.pg().query(query, &[&schema_id]).await?;
 
         Ok(())
+    }
+
+    // module_id is just for debugging purposes; we only want one record per hash
+    pub async fn update_missing_package_summaries(ctx: &DalContext) -> CachedModuleResult<()> {
+        // The inner query narrows the search down to only the latest hash for each module;
+        // we'd be here forever if we tried to update old versions that don't matter anymore.
+        let query = "
+            SELECT DISTINCT ON (latest_hash)
+                id,
+                latest_hash
+            FROM (
+                SELECT DISTINCT ON (schema_id)
+                    id,
+                    latest_hash,
+                    created_at,
+                    package_summary
+                FROM cached_modules
+                ORDER BY schema_id, created_at DESC
+            ) AS latest_modules
+            WHERE package_summary IS NULL AND latest_hash IS NOT NULL
+            ORDER BY latest_hash, created_at DESC
+        ";
+
+        let hashes_without_summaries = ctx.txns().await?.pg().query(query, &[]).await?;
+        if hashes_without_summaries.is_empty() {
+            return Ok(());
+        }
+        info!(
+            "Updating {} hashes without summaries",
+            hashes_without_summaries.len()
+        );
+        for hash_without_summary in hashes_without_summaries {
+            let module_id: String = hash_without_summary.try_get("id")?;
+            let hash: String = hash_without_summary.try_get("latest_hash")?;
+            Self::update_package_summary_for_hash(ctx, &module_id, &hash).await?;
+            ctx.commit_no_rebase().await?;
+        }
+
+        Ok(())
+    }
+
+    async fn update_package_summary_for_hash(
+        ctx: &DalContext,
+        module_id: &str, // For debug messages to make it easier to find where it came from
+        hash: &str,
+    ) -> CachedModuleResult<()> {
+        let Some(pkg_bytes) = Self::package_data_for_hash(ctx, hash).await? else {
+            // This shouldn't happen because we already checked for package_data IS NOT NULL,
+            // but if it does, it's fine, we'll just skip on the assumption it won't
+            // happen again.
+            return Ok(());
+        };
+        // This is more problematic because we'll end up retrying summaries all the time
+        let Some(summary) = PackageData::load(module_id, &Arc::new(pkg_bytes)).await? else {
+            return Ok(());
+        };
+        let query = "
+            UPDATE cached_modules
+            SET package_summary = $1
+            WHERE latest_hash = $2
+        ";
+        info!(
+            "module {} ({}): {}",
+            module_id,
+            summary.schema_name().unwrap_or("<no name in package>"),
+            summary.package_summary()
+        );
+        ctx.txns()
+            .await?
+            .pg()
+            .execute(query, &[&summary.package_summary(), &hash])
+            .await?;
+        Ok(())
+    }
+
+    async fn package_data_for_hash(
+        ctx: &DalContext,
+        hash: &str,
+    ) -> CachedModuleResult<Option<Vec<u8>>> {
+        let query = "
+            SELECT DISTINCT package_data
+            FROM cached_modules
+            WHERE latest_hash = $1 AND package_data IS NOT NULL
+            LIMIT 1
+        ";
+        let Some(matching_data) = ctx.txns().await?.pg().query_opt(query, &[&hash]).await? else {
+            return Ok(None);
+        };
+        Ok(matching_data.try_get("package_data")?)
+    }
+}
+
+struct PackageData {
+    schema: Option<SiPkgSchemaData>,
+    variant: Option<SiPkgSchemaVariantData>,
+    package_summary: serde_json::Value,
+}
+
+impl PackageData {
+    async fn load(
+        module_id: &str, // just for debug messages so we can find the broken rows
+        pkg_bytes: &Arc<Vec<u8>>,
+    ) -> CachedModuleResult<Option<Self>> {
+        let pkg_bytes = pkg_bytes.clone();
+        let pkg = slow_rt::spawn(async move { SiPkg::load_from_bytes(&pkg_bytes) })?.await??;
+
+        let Some(schema) = pkg.schemas()?.into_iter().next() else {
+            warn!("builtin module {} has no schema", module_id);
+            return Ok(None);
+        };
+
+        let Some(variant) = schema.variants()?.into_iter().next() else {
+            warn!("builtin module {} has a schema with no variant", module_id);
+            return Ok(None);
+        };
+
+        let package_summary = PackageSummary {
+            socket_count: variant.sockets()?.len() as u32
+                + variant.management_funcs()?.len().max(1) as u32,
+        };
+
+        Ok(Some(Self {
+            schema: schema.data,
+            variant: variant.data,
+            package_summary: serde_json::to_value(&package_summary)?,
+        }))
+    }
+
+    fn schema_name(&self) -> Option<&str> {
+        self.schema.as_ref().map(|data| data.name())
+    }
+    fn display_name(&self) -> Option<&str> {
+        self.schema.as_ref().and_then(|data| data.category_name())
+    }
+    fn category(&self) -> &str {
+        self.schema
+            .as_ref()
+            .map(|data| data.category())
+            .unwrap_or("")
+    }
+    fn link(&self) -> Option<String> {
+        self.variant
+            .as_ref()
+            .and_then(|data| data.link().map(ToString::to_string))
+    }
+    fn color(&self) -> Option<&str> {
+        self.variant.as_ref().and_then(|data| data.color())
+    }
+    fn description(&self) -> Option<&str> {
+        self.variant.as_ref().and_then(|data| data.description())
+    }
+    fn component_type(&self) -> ComponentType {
+        self.variant
+            .as_ref()
+            .map(|data| data.component_type().into())
+            .unwrap_or_default()
+    }
+    fn package_summary(&self) -> &serde_json::Value {
+        &self.package_summary
     }
 }

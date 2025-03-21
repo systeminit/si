@@ -5,7 +5,7 @@ use audit_database::{
 };
 use dal::{
     cached_module::CachedModule, slow_rt::SlowRuntimeError,
-    workspace_snapshot::migrator::SnapshotGraphMigrator, ServicesContext,
+    workspace_snapshot::migrator::SnapshotGraphMigrator, DalContext, ServicesContext,
 };
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -181,16 +181,7 @@ impl Migrator {
 
     #[instrument(name = "sdf.migrator.migrate_module_cache", level = "info", skip_all)]
     async fn migrate_module_cache(&self) -> MigratorResult<()> {
-        let dal_context = self.services_context.clone().into_builder(true);
-        let ctx = dal_context
-            .build_default(None)
-            .await
-            .map_err(MigratorError::migrate_cached_modules)?;
-
-        info!("Updating local module cache");
-
-        let ctx = ctx.clone();
-        tokio::spawn(async move {
+        async fn update_cached_modules(ctx: DalContext) -> MigratorResult<()> {
             let new_modules = CachedModule::update_cached_modules(&ctx)
                 .await
                 .map_err(MigratorError::migrate_cached_modules)?;
@@ -199,6 +190,25 @@ impl Migrator {
                 new_modules.len()
             );
             Ok::<(), MigratorError>(())
+        }
+
+        let dal_context = self.services_context.clone().into_builder(true);
+        let ctx = dal_context
+            .build_default(None)
+            .await
+            .map_err(MigratorError::migrate_cached_modules)?;
+
+        info!("Updating local module cache");
+
+        tokio::spawn(async move {
+            match update_cached_modules(ctx).await {
+                Ok(()) => {
+                    info!("Module cache updated successfully");
+                }
+                Err(err) => {
+                    error!("Error updating module cache: {}", err);
+                }
+            }
         });
 
         Ok(())
