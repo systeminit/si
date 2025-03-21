@@ -99,6 +99,7 @@ const overrides = new Map<string, OverrideFn>([
     const imageIdProp = propForOverride(ltData, "ImageId");
     if (!imageIdProp) return;
     const imageIdSocket = createInputSocketFromProp(imageIdProp);
+    setAnnotationOnSocket(imageIdSocket, { tokens: ["Image Id"] })
     variant.sockets.push(imageIdSocket);
 
     const prop = propForOverride(ltData, "UserData");
