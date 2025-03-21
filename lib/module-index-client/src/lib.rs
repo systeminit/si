@@ -1,4 +1,5 @@
 use reqwest::StatusCode;
+use si_id::ModuleId;
 use si_pkg::WorkspaceExport;
 use thiserror::Error;
 use ulid::Ulid;
@@ -232,11 +233,11 @@ impl ModuleIndexClient {
         Ok(upsert_response.json::<bool>().await?)
     }
 
-    pub async fn download_module(&self, module_id: Ulid) -> ModuleIndexClientResult<Vec<u8>> {
+    pub async fn download_module(&self, module_id: ModuleId) -> ModuleIndexClientResult<Vec<u8>> {
         let download_url = self
             .base_url
             .join("modules/")?
-            .join(&format!("{}/", module_id.to_string()))?
+            .join(&format!("{}/", module_id))?
             .join("download")?;
         let response = reqwest::Client::new()
             .get(download_url)
@@ -288,7 +289,7 @@ impl ModuleIndexClient {
 
     pub async fn module_details(
         &self,
-        module_id: Ulid,
+        module_id: ModuleId,
     ) -> ModuleIndexClientResult<ModuleDetailsResponse> {
         let details_url = self
             .base_url
@@ -313,11 +314,11 @@ impl ModuleIndexClient {
         Ok(response)
     }
 
-    pub async fn get_builtin(&self, module_id: Ulid) -> ModuleIndexClientResult<Vec<u8>> {
+    pub async fn get_builtin(&self, module_id: ModuleId) -> ModuleIndexClientResult<Vec<u8>> {
         let download_url = self
             .base_url
             .join("modules/")?
-            .join(&format!("{}/", module_id.to_string()))?
+            .join(&format!("{}/", module_id))?
             .join("download_builtin")?;
 
         let mut response = reqwest::Client::new().get(download_url).send().await?;
@@ -328,7 +329,7 @@ impl ModuleIndexClient {
             // We want to fall back to the production module index to pull builtins from there instead
             let url = Url::parse("https://module-index.systeminit.com")?
                 .join("modules/")?
-                .join(&format!("{}/", module_id.to_string()))?
+                .join(&format!("{}/", module_id))?
                 .join("download_builtin")?;
 
             response = reqwest::Client::new().get(url).send().await?;

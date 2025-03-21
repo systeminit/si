@@ -571,7 +571,7 @@ impl Schema {
             ctx,
             &si_pkg,
             Some(ImportOptions {
-                schema_id: Some(module.schema_id.into()),
+                schema_id: Some(module.schema_id),
                 ..Default::default()
             }),
         )

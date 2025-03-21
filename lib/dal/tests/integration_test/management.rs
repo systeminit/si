@@ -7,7 +7,7 @@ use dal::{
         prototype::{ManagementPrototype, ManagementPrototypeError, ManagementPrototypeExecution},
         ManagementFuncReturn, ManagementGeometry, ManagementOperator,
     },
-    AttributeValue, Component, ComponentId, DalContext, SchemaId,
+    AttributeValue, Component, ComponentId, DalContext,
 };
 use dal_test::{
     expected::{ExpectComponent, ExpectComponentInputSocket, ExpectSchemaVariant, ExpectView},
@@ -319,13 +319,10 @@ async fn create_and_connect_to_self_as_children(ctx: &mut DalContext) -> Result<
     let managed: HashSet<_> = small_odd_lego.get_managed(ctx).await?.into_iter().collect();
     assert_eq!(children, managed);
 
-    let small_even_lego_schema_id: SchemaId =
-        ulid::Ulid::from_string(SCHEMA_ID_SMALL_EVEN_LEGO)?.into();
-
     for &child_id in &children {
         let c = Component::get_by_id(ctx, child_id).await?;
         let schema_id = c.schema(ctx).await?.id();
-        assert_eq!(small_even_lego_schema_id, schema_id);
+        assert_eq!(schema_id, SCHEMA_ID_SMALL_EVEN_LEGO.parse()?);
     }
 
     // Ensure parallel edges make it through the rebase
@@ -397,8 +394,6 @@ async fn create_and_connect_to_self(ctx: &DalContext) -> Result<()> {
 
     let connections = small_odd_lego.incoming_connections(ctx).await?;
     assert_eq!(3, connections.len());
-    let small_even_lego_schema_id: SchemaId =
-        ulid::Ulid::from_string(SCHEMA_ID_SMALL_EVEN_LEGO)?.into();
     let manager_geometry = small_odd_lego.geometry(ctx, view_id).await?.into_raw();
     for connection in connections {
         let c = Component::get_by_id(ctx, connection.from_component_id).await?;
@@ -410,7 +405,7 @@ async fn create_and_connect_to_self(ctx: &DalContext) -> Result<()> {
         assert_eq!(manager_geometry.y + 10, c_geo.y);
 
         let schema_id = c.schema(ctx).await?.id();
-        assert_eq!(small_even_lego_schema_id, schema_id);
+        assert_eq!(schema_id, SCHEMA_ID_SMALL_EVEN_LEGO.parse()?);
     }
 
     Ok(())
@@ -459,12 +454,10 @@ async fn create_and_connect_from_self(ctx: &DalContext) -> Result<()> {
 
     let connections = small_odd_lego.outgoing_connections(ctx).await?;
     assert_eq!(3, connections.len());
-    let small_even_lego_schema_id: SchemaId =
-        ulid::Ulid::from_string(SCHEMA_ID_SMALL_EVEN_LEGO)?.into();
     for connection in connections {
         let c = Component::get_by_id(ctx, connection.to_component_id).await?;
         let schema_id = c.schema(ctx).await?.id();
-        assert_eq!(small_even_lego_schema_id, schema_id);
+        assert_eq!(schema_id, SCHEMA_ID_SMALL_EVEN_LEGO.parse()?);
     }
 
     Ok(())

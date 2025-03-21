@@ -1,6 +1,5 @@
 use std::{
     collections::{HashMap, HashSet},
-    str::FromStr,
     sync::Arc,
 };
 
@@ -112,7 +111,7 @@ impl TryFrom<PgRow> for CachedModule {
 
     fn try_from(row: PgRow) -> Result<Self, Self::Error> {
         let component_type_string: String = row.try_get("component_type")?;
-        let component_type = ComponentType::from_str(&component_type_string)?;
+        let component_type = component_type_string.parse()?;
 
         Ok(Self {
             id: row.try_get("id")?,
@@ -246,14 +245,10 @@ impl CachedModule {
 
                 let client = module_index_client.clone();
                 join_set.spawn(async move {
-                    let module_id = module.id.to_owned();
+                    let module_id = Ulid::from_string(&module.id).unwrap_or_default().into();
                     Ok::<(ModuleDetailsResponse, Arc<Vec<u8>>), CachedModuleError>((
                         module,
-                        Arc::new(
-                            client
-                                .get_builtin(Ulid::from_string(&module_id).unwrap_or_default())
-                                .await?,
-                        ),
+                        Arc::new(client.get_builtin(module_id).await?),
                     ))
                 });
             }
@@ -284,9 +279,8 @@ impl CachedModule {
                 module
                     .schema_id
                     .as_ref()
-                    .and_then(|id_string| Ulid::from_string(id_string.as_str()).ok())
+                    .and_then(|id_string| id_string.parse().ok())
             })
-            .map(Into::into)
             .collect();
         let cached_schema_ids: Vec<SchemaId> = CachedModule::latest_user_independent_modules(ctx)
             .await?
@@ -479,8 +473,7 @@ impl CachedModule {
         let bytes_clone = pkg_bytes.clone();
         let pkg = slow_rt::spawn(async move { SiPkg::load_from_bytes(&bytes_clone) })?.await??;
 
-        let user_pk =
-            UserPk::from_raw_id(Ulid::from_string(module_details.owner_user_id.as_str())?);
+        let user_pk: UserPk = module_details.owner_user_id.parse()?;
         dbg!(&user_pk);
         let query = "
             INSERT INTO cached_modules (
@@ -519,7 +512,6 @@ impl CachedModule {
             warn!("builtin module {} has no schema id", module_details.id);
             return Ok(None);
         };
-        let schema_id: SchemaId = schema_id.into();
 
         let Some(pkg_schema) = pkg.schemas()?.first().cloned() else {
             warn!("builtin module {} has no schema", module_details.id);
@@ -626,7 +618,6 @@ impl CachedModule {
             warn!("builtin module {} has no schema id", module_details.id);
             return Ok(None);
         };
-        let schema_id: SchemaId = schema_id.into();
 
         let Some(pkg_schema) = pkg.schemas()?.first().cloned() else {
             warn!("builtin module {} has no schema", module_details.id);

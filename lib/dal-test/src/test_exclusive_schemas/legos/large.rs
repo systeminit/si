@@ -141,7 +141,7 @@ pub(crate) async fn migrate_test_exclusive_schema_large_odd_lego(
         ctx,
         &pkg,
         Some(ImportOptions {
-            schema_id: Some(schema_id.into()),
+            schema_id: Some(schema_id),
             ..Default::default()
         }),
     )
@@ -278,7 +278,7 @@ pub(crate) async fn migrate_test_exclusive_schema_large_even_lego(
         ctx,
         &pkg,
         Some(ImportOptions {
-            schema_id: Some(schema_id.into()),
+            schema_id: Some(schema_id),
             ..Default::default()
         }),
     )
