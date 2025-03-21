@@ -5,7 +5,7 @@ use frigg::FriggStore;
 use si_data_nats::{async_nats::jetstream, NatsClient};
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 
-use crate::ServerMetadata;
+use crate::{Features, ServerMetadata};
 
 /// Application state.
 #[derive(Clone, Debug)]
@@ -18,6 +18,7 @@ pub(crate) struct AppState {
     pub(crate) quiescent_period: Duration,
     pub(crate) token: CancellationToken,
     pub(crate) server_tracker: TaskTracker,
+    pub(crate) features: Features,
 }
 
 impl AppState {
@@ -32,6 +33,7 @@ impl AppState {
         quiescent_period: Duration,
         token: CancellationToken,
         server_tracker: TaskTracker,
+        features: Features,
     ) -> Self {
         Self {
             metadata,
@@ -42,6 +44,7 @@ impl AppState {
             quiescent_period,
             token,
             server_tracker,
+            features,
         }
     }
 }

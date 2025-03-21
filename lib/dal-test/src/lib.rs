@@ -711,6 +711,7 @@ pub async fn rebaser_server(
         services_context,
         config.quiescent_period(),
         shutdown_token,
+        config.features(),
     )
     .await
     .wrap_err("failed to create Rebaser server")?;
