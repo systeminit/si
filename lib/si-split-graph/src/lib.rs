@@ -179,12 +179,11 @@ where
 
     pub fn node_hash(&self) -> ContentHash {
         let mut hasher = ContentHash::hasher();
-        if let SplitGraphNodeWeight::Custom(n) = self {
-            return n.node_hash();
-        }
 
         match self {
-            SplitGraphNodeWeight::Custom(_) => {}
+            SplitGraphNodeWeight::Custom(c) => {
+                return c.node_hash();
+            }
             SplitGraphNodeWeight::ExternalTarget {
                 id,
                 subgraph,
