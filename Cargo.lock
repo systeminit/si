@@ -6975,11 +6975,11 @@ dependencies = [
  "krata-loopdev",
  "nix 0.29.0",
  "remain",
+ "telemetry",
  "thiserror 2.0.12",
  "tokio",
  "tokio-util",
  "tokio-vsock",
- "tracing",
 ]
 
 [[package]]

@@ -50,10 +50,18 @@ async fn main() -> Result<()> {
 
     let telemetry = Box::new(telemetry);
 
-    if config.enable_forwarder() {
+    let maybe_forwarder_handle = if config.enable_forwarder() {
         #[cfg(target_os = "linux")]
-        TcpStreamForwarder::new().await?.start().await?;
-    }
+        {
+            Some(TcpStreamForwarder::new().await?.start().await?)
+        }
+        #[cfg(not(target_os = "linux"))]
+        {
+            None
+        }
+    } else {
+        None
+    };
 
     #[cfg(target_os = "linux")]
     let gatherer_shutdown = process_gatherer::init(
@@ -74,6 +82,9 @@ async fn main() -> Result<()> {
         shutdown_token.cancel();
         #[cfg(target_os = "linux")]
         gatherer_shutdown.wait().await?;
+        if let Some(forwarder_handle) = maybe_forwarder_handle {
+            forwarder_handle.shutdown().await?;
+        }
         task_tracker.wait().await;
         telemetry_shutdown.wait().await?;
     }
