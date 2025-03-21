@@ -8,6 +8,9 @@ data_warehouse_stream_name = "$SI_FORKLIFT_DATA_WAREHOUSE_STREAM_NAME"
 enable_audit_logs_app = $SI_FORKLIFT_ENABLE_AUDIT_LOGS_APP
 veritech_requests_concurrency_limit = $SI_VERITECH_REQUESTS_CONCURRENCY_LIMIT
 
+[features]
+generate_mvs = $SI_FEATURES_GENERATE_MVS
+
 [crypto]
 encryption_key_base64 = "$SI_ENCRYPTION_KEY_BASE64"
 decryption_key_base64 = "$SI_DECRYPTION_KEY_BASE64"

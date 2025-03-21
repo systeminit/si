@@ -71,6 +71,9 @@ pub struct Config {
 
     #[builder(default = "default_quiescent_period()")]
     quiescent_period: Duration,
+
+    #[builder(default = "Features::default()")]
+    features: Features,
 }
 
 impl StandardConfig for Config {
@@ -126,6 +129,19 @@ impl Config {
     pub fn quiescent_period(&self) -> Duration {
         self.quiescent_period
     }
+
+    /// Gets the config's feature toggles.
+    pub fn features(&self) -> Features {
+        self.features
+    }
+}
+
+/// Static feature flags for Rebaser.
+#[derive(Builder, Clone, Copy, Debug, Default, Deserialize, Serialize)]
+pub struct Features {
+    /// Whether or not to generate materialized views in the rebase logic
+    #[builder(default)]
+    pub generate_mvs: bool,
 }
 
 /// The configuration file for creating a [`Server`].
@@ -147,6 +163,8 @@ pub struct ConfigFile {
     instance_id: String,
     #[serde(default = "default_quiescent_period_secs")]
     quiescent_period_secs: u64,
+    #[serde(default)]
+    features: Features,
 }
 
 impl Default for ConfigFile {
@@ -160,6 +178,7 @@ impl Default for ConfigFile {
             concurrency_limit: default_concurrency_limit(),
             instance_id: random_instance_id(),
             quiescent_period_secs: default_quiescent_period_secs(),
+            features: Default::default(),
         }
     }
 }
@@ -183,6 +202,7 @@ impl TryFrom<ConfigFile> for Config {
         config.concurrency_limit(value.concurrency_limit);
         config.instance_id(value.instance_id);
         config.quiescent_period(Duration::from_secs(value.quiescent_period_secs));
+        config.features(value.features);
         config.build().map_err(Into::into)
     }
 }

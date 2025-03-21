@@ -40,7 +40,9 @@ mod serial_dvu_task;
 mod server;
 
 pub use self::{
-    config::{detect_and_configure_development, Config, ConfigBuilder, ConfigError, ConfigFile},
+    config::{
+        detect_and_configure_development, Config, ConfigBuilder, ConfigError, ConfigFile, Features,
+    },
     server::{Server, ServerMetadata},
 };
 pub use si_settings::{StandardConfig, StandardConfigFile};
