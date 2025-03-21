@@ -2,8 +2,8 @@ use std::collections::HashSet;
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use si_events::ulid::Ulid;
 use si_events::{CasValue, ContentHash};
-use si_id::SchemaId;
 use strum::EnumDiscriminants;
 use thiserror::Error;
 
@@ -435,7 +435,7 @@ pub struct ModuleContentV2 {
     pub description: String,
     pub created_by_email: String,
     pub created_at: DateTime<Utc>,
-    pub schema_id: Option<SchemaId>,
+    pub schema_id: Option<Ulid>,
 }
 
 impl From<ModuleContentV1> for ModuleContentV2 {

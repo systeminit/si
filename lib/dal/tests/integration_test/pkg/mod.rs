@@ -82,7 +82,7 @@ async fn import_pkg_from_pkg_set_latest_default(ctx: &mut DalContext) -> Result<
         ctx,
         &pkg,
         Some(ImportOptions {
-            schema_id: Some(schema.id()),
+            schema_id: Some(schema.id().into()),
             ..Default::default()
         }),
     )
@@ -172,7 +172,7 @@ async fn prop_order_preserved(ctx: &mut DalContext) -> Result<()> {
                 ctx,
                 &pkg,
                 Some(ImportOptions {
-                    schema_id: Some(schema_id),
+                    schema_id: Some(schema_id.into()),
                     ..Default::default()
                 }),
             )

@@ -137,7 +137,7 @@ pub(crate) async fn migrate_test_exclusive_schema_medium_odd_lego(
         ctx,
         &pkg,
         Some(ImportOptions {
-            schema_id: Some(schema_id),
+            schema_id: Some(schema_id.into()),
             ..Default::default()
         }),
     )
@@ -269,7 +269,7 @@ pub(crate) async fn migrate_test_exclusive_schema_medium_even_lego(
         ctx,
         &pkg,
         Some(ImportOptions {
-            schema_id: Some(schema_id),
+            schema_id: Some(schema_id.into()),
             ..Default::default()
         }),
     )
