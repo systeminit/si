@@ -46,6 +46,9 @@ where
         node_weight: SplitGraphNodeWeight<N>,
     },
     NewSubGraph,
+    RemoveSubGraph {
+        subgraph_index: u16,
+    },
 }
 
 #[derive(Clone, Debug)]

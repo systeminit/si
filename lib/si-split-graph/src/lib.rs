@@ -903,25 +903,23 @@ where
     ) -> Vec<Update<N, E, K>> {
         let mut updates = vec![];
 
-        let mut subgraph_iter = OptZip::new(
+        for (maybe_updated_subgraph, maybe_base_subgraph) in OptZip::new(
             updated_graph.subgraphs.iter().enumerate(),
-            self.subgraphs.iter(),
-        );
-
-        while let Some((Some((updated_subgraph_index, updated_subgraph)), maybe_base_subgraph)) =
-            subgraph_iter.next()
-        {
-            match maybe_base_subgraph {
-                Some(base_subgraph) => updates.extend(
-                    updates::Detector::new(
-                        base_subgraph,
-                        updated_subgraph,
-                        updated_subgraph_index as u16,
+            self.subgraphs.iter().enumerate(),
+        ) {
+            match (maybe_base_subgraph, maybe_updated_subgraph) {
+                (Some((_, base_subgraph)), Some((updated_subgraph_index, updated_subgraph))) => {
+                    updates.extend(
+                        updates::Detector::new(
+                            base_subgraph,
+                            updated_subgraph,
+                            updated_subgraph_index as u16,
+                        )
+                        .detect_updates()
+                        .into_iter(),
                     )
-                    .detect_updates()
-                    .into_iter(),
-                ),
-                None => {
+                }
+                (None, Some((updated_subgraph_index, updated_subgraph))) => {
                     updates.push(Update::NewSubGraph);
                     updates.extend(
                         updates::subgraph_as_updates(
@@ -931,6 +929,18 @@ where
                         .into_iter(),
                     )
                 }
+                (Some((base_subgraph_index, base_subgraph)), None) => {
+                    updates.extend(base_subgraph.graph.node_weights().map(|weight| {
+                        Update::RemoveNode {
+                            subgraph_index: base_subgraph_index as u16,
+                            id: weight.id(),
+                        }
+                    }));
+                    updates.push(Update::RemoveSubGraph {
+                        subgraph_index: base_subgraph_index as u16,
+                    });
+                }
+                (None, None) => unreachable!("optzip will not produce this combination"),
             }
         }
 
@@ -943,18 +953,14 @@ where
     ) -> SplitGraphResult<Vec<Change>> {
         let mut changes = vec![];
 
-        let mut subgraph_iter = OptZip::new(
-            updated_graph.subgraphs.iter().enumerate(),
-            self.subgraphs.iter(),
-        );
-
         let mut detected_ids = HashSet::new();
 
-        while let Some((Some((updated_subgraph_index, updated_subgraph)), maybe_base_subgraph)) =
-            subgraph_iter.next()
-        {
-            match maybe_base_subgraph {
-                Some(base_subgraph) => {
+        for (maybe_updated_subgraph, maybe_base_subgraph) in OptZip::new(
+            updated_graph.subgraphs.iter().enumerate(),
+            self.subgraphs.iter(),
+        ) {
+            match (maybe_base_subgraph, maybe_updated_subgraph) {
+                (Some(base_subgraph), Some((updated_subgraph_index, updated_subgraph))) => {
                     let mut subgraph_changes = updates::Detector::new(
                         base_subgraph,
                         updated_subgraph,
@@ -990,7 +996,30 @@ where
 
                     changes.extend(subgraph_changes);
                 }
-                None => {
+                (Some(base_subgraph), None) => {
+                    // The entire base subgraph has been "removed"
+                    changes.extend(
+                        base_subgraph
+                            .graph
+                            .node_weights()
+                            .filter_map(|node_weight| match node_weight {
+                                SplitGraphNodeWeight::Custom(_)
+                                | SplitGraphNodeWeight::GraphRoot { .. } => {
+                                    detected_ids.insert(node_weight.id().into());
+
+                                    Some(Change {
+                                        entity_id: node_weight.id().into(),
+                                        entity_kind: node_weight.entity_kind(),
+                                        merkle_tree_hash: node_weight.merkle_tree_hash(),
+                                    })
+                                }
+                                SplitGraphNodeWeight::ExternalTarget { .. }
+                                | SplitGraphNodeWeight::Ordering { .. }
+                                | SplitGraphNodeWeight::SubGraphRoot { .. } => None,
+                            }),
+                    );
+                }
+                (None, Some((_, updated_subgraph))) => {
                     // This entire subgraph is a new set of changes
                     changes.extend(updated_subgraph.graph.node_weights().filter_map(
                         |node_weight| match node_weight {
@@ -1009,6 +1038,9 @@ where
                             | SplitGraphNodeWeight::SubGraphRoot { .. } => None,
                         },
                     ));
+                }
+                (None, None) => {
+                    unreachable!("opt zip will stop iterating if we have a None, None");
                 }
             }
         }
@@ -1058,6 +1090,7 @@ where
     }
 
     pub fn perform_updates(&mut self, updates: &[Update<N, E, K>]) {
+        let mut truncate_subgraph_at = None;
         for update in updates {
             match update {
                 Update::NewEdge {
@@ -1150,7 +1183,14 @@ where
                 Update::NewSubGraph => {
                     self.new_empty_subgraph();
                 }
+                Update::RemoveSubGraph { subgraph_index } => {
+                    truncate_subgraph_at.get_or_insert(*subgraph_index);
+                }
             }
+        }
+
+        if let Some(truncate_at) = truncate_subgraph_at {
+            self.subgraphs.truncate(truncate_at as usize);
         }
     }
 

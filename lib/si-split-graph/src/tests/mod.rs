@@ -952,7 +952,7 @@ fn detect_updates_simple() -> SplitGraphResult<()> {
     )?;
     updated_graph.cleanup_and_merkle_tree_hash();
 
-    let updates = base_graph.detect_updates(&updated_graph);
+    let updates = dbg!(base_graph.detect_updates(&updated_graph));
 
     assert_eq!(2, updates.len());
 
