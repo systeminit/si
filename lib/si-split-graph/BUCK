@@ -1,0 +1,19 @@
+load("@prelude-si//:macros.bzl", "rust_library")
+
+rust_library(
+    name = "si-split-graph",
+    deps = [
+        "//lib/si-events-rs:si-events",
+        "//lib/si-id:si-id",
+
+        "//third-party/rust:async-trait",
+        "//third-party/rust:blake3",
+        "//third-party/rust:petgraph",
+        "//third-party/rust:serde",
+        "//third-party/rust:strum",
+        "//third-party/rust:thiserror",
+    ],
+    srcs = glob([
+        "src/**/*.rs",
+    ]),
+)

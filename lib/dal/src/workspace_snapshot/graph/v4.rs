@@ -12,7 +12,7 @@ use petgraph::{
     visit::DfsEvent,
 };
 use serde::{Deserialize, Serialize};
-use si_events::{ulid::Ulid, ContentHash};
+use si_events::{ulid::Ulid, workspace_snapshot::Change, ContentHash};
 use si_layer_cache::db::serialize;
 use strum::IntoEnumIterator;
 use telemetry::prelude::*;
@@ -32,8 +32,6 @@ use crate::{
     DalContext, EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants, NodeWeightDiscriminants,
     Timestamp,
 };
-
-use super::detector::Change;
 
 pub mod approval_requirement;
 pub mod component;

@@ -8,14 +8,14 @@ use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 
 use graph::correct_transforms::correct_transforms;
-use graph::detector::{Change, Update};
+use graph::detector::Update;
 use graph::{RebaseBatch, WorkspaceSnapshotGraph};
 use node_weight::traits::CorrectTransformsError;
 use petgraph::prelude::*;
 use serde::{Deserialize, Serialize};
 use si_data_pg::PgError;
 use si_events::merkle_tree_hash::MerkleTreeHash;
-use si_events::workspace_snapshot::Checksum;
+use si_events::workspace_snapshot::{Change, Checksum};
 use si_events::{ulid::Ulid, ContentHash, WorkspaceSnapshotAddress};
 use si_id::{ApprovalRequirementDefinitionId, EntityId};
 use si_layer_cache::LayerDbError;

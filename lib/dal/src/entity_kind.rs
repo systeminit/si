@@ -76,6 +76,8 @@ impl EntityKind {
             | EntityKindEvents::Secret
             | EntityKindEvents::StaticArgumentValue
             | EntityKindEvents::ValidationOutput
+            | EntityKindEvents::SubGraphRoot
+            | EntityKindEvents::ExternalTarget
             | EntityKindEvents::ValidationPrototype => None,
             EntityKindEvents::SchemaVariant => {
                 let variant_name = SchemaVariant::get_by_id(ctx, id.into_inner().into())

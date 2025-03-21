@@ -1,13 +1,15 @@
 use std::collections::{HashMap, HashSet};
 
 use petgraph::{prelude::*, Direction};
-use si_events::{merkle_tree_hash::MerkleTreeHash, workspace_snapshot::EntityKind};
+use si_events::{
+    merkle_tree_hash::MerkleTreeHash,
+    workspace_snapshot::{Change, EntityKind},
+};
 use si_id::{ApprovalRequirementDefinitionId, EntityId, WorkspacePk};
 
 use crate::{
     workspace_snapshot::{
         graph::{
-            detector::Change,
             traits::approval_requirement::{
                 ApprovalRequirementApprover, ApprovalRequirementExt,
                 ApprovalRequirementPermissionLookup, ApprovalRequirementRule,

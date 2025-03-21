@@ -1,10 +1,13 @@
 use std::collections::{HashMap, HashSet};
 
 use serde::{Deserialize, Serialize};
-use si_events::{merkle_tree_hash::MerkleTreeHash, workspace_snapshot::EntityKind};
+use si_events::{
+    merkle_tree_hash::MerkleTreeHash,
+    workspace_snapshot::{Change, EntityKind},
+};
 use si_id::{ApprovalRequirementDefinitionId, EntityId, UserPk, WorkspacePk};
 
-use crate::workspace_snapshot::graph::{detector::Change, WorkspaceSnapshotGraphResult};
+use crate::workspace_snapshot::graph::WorkspaceSnapshotGraphResult;
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ApprovalRequirementPermissionLookup {
