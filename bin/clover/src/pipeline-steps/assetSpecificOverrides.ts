@@ -470,6 +470,16 @@ const overrides = new Map<string, OverrideFn>([
 
     setAnnotationOnSocket(securityGroupsSocket, { tokens: ["GroupId"] });
   }],
+  ["TaskDefinition ContainerDefinitions", (spec: ExpandedPkgSpec) => {
+    const variant = spec.schemas[0].variants[0];
+
+    const imageSocket = variant.sockets.find(
+      (s: ExpandedSocketSpec) => s.name === "Image" && s.data.kind === "input",
+    );
+    if (!imageSocket) return;
+      
+    setAnnotationOnSocket(imageSocket, { tokens: ["repositoryuri"] });    
+  }],
 ]);
 
 function addSecretProp(
