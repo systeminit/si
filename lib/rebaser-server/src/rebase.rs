@@ -16,6 +16,7 @@ use rebaser_core::api_types::{
 use shuttle_server::ShuttleError;
 use si_events::{rebase_batch_address::RebaseBatchAddress, WorkspaceSnapshotAddress};
 use si_layer_cache::LayerDbError;
+use si_posthog::PosthogClient;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::time::Instant;
@@ -74,6 +75,7 @@ type RebaseResult<T> = Result<T, RebaseError>;
 pub async fn perform_rebase(
     ctx: &mut DalContext,
     frigg: &FriggStore,
+    posthog: &PosthogClient,
     request: &EnqueueUpdatesRequest,
     server_tracker: &TaskTracker,
 ) -> RebaseResult<RebaseStatus> {

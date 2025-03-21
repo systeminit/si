@@ -5828,6 +5828,7 @@ dependencies = [
  "si-frontend-types",
  "si-frontend-types-macros",
  "si-layer-cache",
+ "si-posthog",
  "si-settings",
  "si-std",
  "strum",

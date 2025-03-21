@@ -24,6 +24,7 @@ use si_data_nats::{
     NatsClient,
 };
 use si_events::{ChangeSetId, WorkspacePk};
+use si_posthog::PosthogClient;
 use telemetry::prelude::*;
 use telemetry_utils::metric;
 use thiserror::Error;
@@ -63,6 +64,7 @@ impl ChangeSetProcessorTask {
         stream: jetstream::stream::Stream,
         incoming: push::Ordered,
         frigg: FriggStore,
+        posthog: PosthogClient,
         workspace_id: WorkspacePk,
         change_set_id: ChangeSetId,
         ctx_builder: DalContextBuilder,
@@ -82,6 +84,7 @@ impl ChangeSetProcessorTask {
             change_set_id,
             nats,
             frigg,
+            posthog,
             ctx_builder,
             run_dvu_notify,
             server_tracker,
@@ -350,6 +353,7 @@ mod handlers {
             change_set_id,
             nats,
             frigg,
+            posthog,
             ctx_builder,
             run_notify,
             server_tracker,
@@ -362,7 +366,7 @@ mod handlers {
         span.record("si.workspace.id", workspace_id.to_string());
         span.record("si.change_set.id", change_set_id.to_string());
 
-        let rebase_status = perform_rebase(&mut ctx, &frigg, &request, &server_tracker)
+        let rebase_status = perform_rebase(&mut ctx, &frigg, &posthog, &request, &server_tracker)
             .await
             .unwrap_or_else(|err| {
                 error!(
@@ -456,6 +460,7 @@ mod app_state {
     use frigg::FriggStore;
     use si_data_nats::NatsClient;
     use si_events::{ChangeSetId, WorkspacePk};
+    use si_posthog::PosthogClient;
     use tokio::sync::Notify;
     use tokio_util::task::TaskTracker;
 
@@ -470,6 +475,8 @@ mod app_state {
         pub(crate) nats: NatsClient,
         /// Frigg store
         pub(crate) frigg: FriggStore,
+        /// PostHog client
+        pub(crate) posthog: PosthogClient,
         /// DAL context builder for each processing request
         pub(crate) ctx_builder: DalContextBuilder,
         /// Signal to run a DVU job
@@ -486,6 +493,7 @@ mod app_state {
             change_set_id: ChangeSetId,
             nats: NatsClient,
             frigg: FriggStore,
+            posthog: PosthogClient,
             ctx_builder: DalContextBuilder,
             run_notify: Arc<Notify>,
             server_tracker: TaskTracker,
@@ -495,6 +503,7 @@ mod app_state {
                 change_set_id,
                 nats,
                 frigg,
+                posthog,
                 ctx_builder,
                 run_notify,
                 server_tracker,

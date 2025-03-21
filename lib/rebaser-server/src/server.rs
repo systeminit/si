@@ -30,6 +30,7 @@ use si_crypto::{
 };
 use si_data_nats::{async_nats, jetstream, NatsClient, NatsConfig};
 use si_data_pg::{PgPool, PgPoolConfig};
+use si_posthog::{PosthogClient, PosthogConfig};
 use telemetry::prelude::*;
 use telemetry_utils::metric;
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
@@ -88,6 +89,7 @@ impl Server {
 
         let encryption_key = Self::load_encryption_key(config.crypto().clone()).await?;
         let nats = Self::connect_to_nats(config.nats()).await?;
+        let posthog = Self::create_posthog(config.posthog().clone(), shutdown_token.clone())?;
         let jetstream_streams = JetstreamStreams::new(nats.clone()).await?;
         let pg_pool = Self::create_pg_pool(config.pg_pool()).await?;
         let rebaser = Self::create_rebaser_client(nats.clone()).await?;
@@ -125,6 +127,7 @@ impl Server {
             config.instance_id().to_string(),
             config.concurrency_limit(),
             services_context,
+            posthog,
             config.quiescent_period(),
             shutdown_token,
         )
@@ -137,6 +140,7 @@ impl Server {
         instance_id: impl Into<String>,
         concurrency_limit: Option<usize>,
         services_context: ServicesContext,
+        posthog: PosthogClient,
         quiescent_period: Duration,
         shutdown_token: CancellationToken,
     ) -> Result<Self> {
@@ -169,6 +173,7 @@ impl Server {
             metadata.clone(),
             nats,
             frigg,
+            posthog,
             requests_stream,
             ctx_builder,
             quiescent_period,
@@ -258,6 +263,16 @@ impl Server {
     async fn connect_to_nats(nats_config: &NatsConfig) -> Result<NatsClient> {
         let client = NatsClient::new(nats_config).await?;
         debug!("successfully connected nats client");
+        Ok(client)
+    }
+
+    #[instrument(name = "rebaser.init.create_posthog", level = "info", skip_all)]
+    fn create_posthog(
+        posthog_config: &PosthogConfig,
+        shutdown_token: CancellationToken,
+    ) -> Result<PosthogClient> {
+        let client = si_posthog::from_config(posthog_config, shutdown_token)?;
+        debug!("Successfully initialized the posthog client");
         Ok(client)
     }
 

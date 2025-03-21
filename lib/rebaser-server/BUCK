@@ -19,6 +19,7 @@ rust_library(
         "//lib/si-frontend-types-macros:si-frontend-types-macros",
         "//lib/si-frontend-types-rs:si-frontend-types",
         "//lib/si-layer-cache:si-layer-cache",
+        "//lib/si-posthog-rs:si-posthog",
         "//lib/si-settings:si-settings",
         "//lib/si-std:si-std",
         "//lib/telemetry-nats-rs:telemetry-nats",

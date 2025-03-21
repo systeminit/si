@@ -3,6 +3,7 @@ use std::{sync::Arc, time::Duration};
 use dal::DalContextBuilder;
 use frigg::FriggStore;
 use si_data_nats::{async_nats::jetstream, NatsClient};
+use si_posthog::PosthogClient;
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 
 use crate::ServerMetadata;
@@ -13,6 +14,7 @@ pub(crate) struct AppState {
     pub(crate) metadata: Arc<ServerMetadata>,
     pub(crate) nats: NatsClient,
     pub(crate) frigg: FriggStore,
+    pub(crate) posthog: PosthogClient,
     pub(crate) requests_stream: jetstream::stream::Stream,
     pub(crate) ctx_builder: DalContextBuilder,
     pub(crate) quiescent_period: Duration,
@@ -27,6 +29,7 @@ impl AppState {
         metadata: Arc<ServerMetadata>,
         nats: NatsClient,
         frigg: FriggStore,
+        posthog: PosthogClient,
         requests_stream: jetstream::stream::Stream,
         ctx_builder: DalContextBuilder,
         quiescent_period: Duration,
@@ -37,6 +40,7 @@ impl AppState {
             metadata,
             nats,
             frigg,
+            posthog,
             requests_stream,
             ctx_builder,
             quiescent_period,
