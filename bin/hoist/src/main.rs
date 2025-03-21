@@ -10,7 +10,6 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
-use ulid::Ulid;
 
 use crate::diff::patch_list_to_summary;
 use clap::Parser;
@@ -125,7 +124,7 @@ async fn detailed_diff_with_module_index(
         }
     };
 
-    let remote_ulid = Ulid::from_string(&remote_module_id)?;
+    let remote_ulid = remote_module_id.parse()?;
 
     let module_bytes = client.download_module(remote_ulid).await?;
 
@@ -300,7 +299,7 @@ async fn diff_summaries_with_module_index(
                     }
                 };
 
-                let remote_ulid = Ulid::from_string(&remote_module_id).unwrap();
+                let remote_ulid = remote_module_id.parse().unwrap();
 
                 let module_bytes = client.download_module(remote_ulid).await.unwrap();
                 let current_pkg = SiPkg::load_from_bytes(&module_bytes)
@@ -353,11 +352,7 @@ async fn diff_summaries_with_module_index(
 }
 
 async fn write_spec(client: ModuleIndexClient, module_id: String, out: PathBuf) -> Result<()> {
-    let pkg = SiPkg::load_from_bytes(
-        &client
-            .download_module(Ulid::from_string(&module_id)?)
-            .await?,
-    )?;
+    let pkg = SiPkg::load_from_bytes(&client.download_module(module_id.parse()?).await?)?;
     let spec = pkg.to_spec().await?;
     let spec_name = format!("{}.json", spec.name);
     fs::create_dir_all(&out)?;

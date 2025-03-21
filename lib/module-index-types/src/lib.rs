@@ -1,5 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use si_id::SchemaId;
 use ulid::Ulid;
 
 pub const MODULE_BUNDLE_FIELD_NAME: &str = "module_bundle";
@@ -49,10 +50,10 @@ pub struct ModuleDetailsResponse {
 }
 
 impl ModuleDetailsResponse {
-    pub fn schema_id(&self) -> Option<Ulid> {
+    pub fn schema_id(&self) -> Option<SchemaId> {
         self.schema_id
             .as_deref()
-            .and_then(|schema_id| Ulid::from_string(schema_id).ok())
+            .and_then(|schema_id| schema_id.parse().ok())
     }
 }
 
@@ -99,6 +100,6 @@ impl LatestModuleResponse {
     pub fn schema_id(&self) -> Option<Ulid> {
         self.schema_id
             .as_deref()
-            .and_then(|schema_id| Ulid::from_string(schema_id).ok())
+            .and_then(|schema_id| schema_id.parse().ok())
     }
 }

@@ -5,8 +5,8 @@ use axum::{
 use dal::{ChangeSetId, WorkspacePk};
 use module_index_client::ModuleIndexClient;
 use serde::{Deserialize, Serialize};
+use si_id::ModuleId;
 use si_pkg::SiPkg;
-use ulid::Ulid;
 
 use crate::{
     extract::{request::RawAccessToken, HandlerContext, PosthogClient},
@@ -19,7 +19,7 @@ use super::{ModuleAPIResult, ModulesAPIError};
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct GetRemoteModuleDetailsRequest {
-    pub id: Ulid,
+    pub id: ModuleId,
 }
 
 pub type RemoteModuleDetailsResponse = si_pkg::PkgSpec;

@@ -1,5 +1,5 @@
 use chrono::NaiveDateTime;
-use si_events::ulid::Ulid;
+use si_id::SchemaId;
 use si_pkg::{
     SchemaVariantSpecPropRoot, SiPkg, SiPkgActionFunc, SiPkgAttrFuncInputView, SiPkgAuthFunc,
     SiPkgComponent, SiPkgEdge, SiPkgError, SiPkgFunc, SiPkgFuncArgument, SiPkgFuncData, SiPkgKind,
@@ -69,7 +69,7 @@ pub struct ImportOptions {
     /// editable components.
     pub create_unlocked: bool,
     /// The "schema id" for this asset, provided by the module index API
-    pub schema_id: Option<Ulid>,
+    pub schema_id: Option<SchemaId>,
     /// A list of "past hashes" for this module, used to find the existing
     /// schema if a schema_id is not provided
     pub past_module_hashes: Option<Vec<String>>,
@@ -452,11 +452,11 @@ async fn import_func_arguments(
 
 async fn create_schema(
     ctx: &DalContext,
-    maybe_existing_schema_id: Option<Ulid>,
+    maybe_existing_schema_id: Option<SchemaId>,
     schema_spec_data: &SiPkgSchemaData,
 ) -> PkgResult<Schema> {
     let schema = match maybe_existing_schema_id {
-        Some(id) => Schema::new_with_id(ctx, id.into(), schema_spec_data.name()).await?,
+        Some(id) => Schema::new_with_id(ctx, id, schema_spec_data.name()).await?,
         None => Schema::new(ctx, schema_spec_data.name()).await?,
     }
     .modify(ctx, |schema| {

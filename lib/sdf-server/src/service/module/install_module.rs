@@ -9,8 +9,8 @@ use dal::{
 use module_index_client::ModuleIndexClient;
 use serde::{Deserialize, Serialize};
 use si_frontend_types::SchemaVariant as FrontendVariant;
+use si_id::ModuleId;
 use si_pkg::SiPkg;
-use ulid::Ulid;
 
 use crate::{
     extract::{request::RawAccessToken, v1::AccessBuilder, HandlerContext, PosthogClient},
@@ -23,7 +23,7 @@ use telemetry::prelude::*;
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct InstallModuleRequest {
-    pub ids: Vec<Ulid>,
+    pub ids: Vec<ModuleId>,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
@@ -57,15 +57,15 @@ pub async fn install_module(
         let module_details = module_index_client.module_details(id).await?;
 
         if let Some(schema_id) = module_details.schema_id() {
-            if Schema::exists_locally(&ctx, schema_id.into()).await?
-                && SchemaVariant::get_unlocked_for_schema(&ctx, schema_id.into())
+            if Schema::exists_locally(&ctx, schema_id).await?
+                && SchemaVariant::get_unlocked_for_schema(&ctx, schema_id)
                     .await?
                     .is_some()
             {
                 // TODO(nick): do not use the 500 toast for this.
                 return Err(ModuleError::UnlockedSchemaVariantForModuleToInstall(
                     module_details.id,
-                    schema_id.into(),
+                    schema_id,
                 ));
             }
         } else {
@@ -94,10 +94,7 @@ pub async fn install_module(
         let (schema_id, past_module_hashes) = if pkg.schemas()?.len() > 1 {
             (None, None)
         } else {
-            (
-                module_details.schema_id().map(Into::into),
-                module_details.past_hashes,
-            )
+            (module_details.schema_id(), module_details.past_hashes)
         };
         let metadata = pkg.metadata()?;
         let (_, svs, _) = match import_pkg_from_pkg(
@@ -147,7 +144,7 @@ pub async fn install_module(
             }
             variants.push(front_end_variant);
         } else {
-            return Err(ModuleError::SchemaNotFoundFromInstall(id));
+            return Err(ModuleError::NoSchemaVariantsInModule(id));
         };
     }
 

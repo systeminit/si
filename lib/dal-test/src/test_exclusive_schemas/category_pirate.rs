@@ -134,7 +134,7 @@ pub(crate) async fn migrate_test_exclusive_schema_pirate(
         ctx,
         &pkg,
         Some(ImportOptions {
-            schema_id: Some(schema_id.into()),
+            schema_id: Some(schema_id),
             ..Default::default()
         }),
     )
@@ -231,7 +231,7 @@ pub(crate) async fn migrate_test_exclusive_schema_pet_shop(
         ctx,
         &pkg,
         Some(ImportOptions {
-            schema_id: Some(schema_id.into()),
+            schema_id: Some(schema_id),
             ..Default::default()
         }),
     )

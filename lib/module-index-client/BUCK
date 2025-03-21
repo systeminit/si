@@ -4,6 +4,7 @@ rust_library(
     name = "module-index-client",
     deps = [
         "//lib/module-index-types:module-index-types",
+        "//lib/si-id:si-id",
         "//lib/si-pkg:si-pkg",
         "//third-party/rust:chrono",
         "//third-party/rust:remain",

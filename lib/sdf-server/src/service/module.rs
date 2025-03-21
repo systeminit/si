@@ -14,6 +14,7 @@ use dal::{
     WsEventError,
 };
 use serde::{Deserialize, Serialize};
+use si_id::ModuleId;
 use si_layer_cache::LayerDbError;
 use si_pkg::{SiPkg, SiPkgError};
 use si_std::canonical_file::safe_canonically_join;
@@ -21,7 +22,6 @@ use si_std::CanonicalFileError;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::fs::read_dir;
-use ulid::Ulid;
 
 use super::ApiError;
 use crate::AppState;
@@ -69,6 +69,8 @@ pub enum ModuleError {
     ModuleIndexNotConfigured,
     #[error("No packages path provided")]
     NoPackagesPath,
+    #[error("no schema variants found in module: {0}")]
+    NoSchemaVariantsInModule(ModuleId),
     #[error("Package with that name already installed: {0}")]
     PackageAlreadyInstalled(String),
     #[error("That package already exists: {0}")]
@@ -92,7 +94,7 @@ pub enum ModuleError {
     #[error("schema not found for variant {0}")]
     SchemaNotFoundForVariant(SchemaVariantId),
     #[error("schema install pkg result empty: {0}")]
-    SchemaNotFoundFromInstall(Ulid),
+    SchemaNotFoundFromInstall(SchemaId),
     #[error("schema variant error: {0}")]
     SchemaVariant(#[from] SchemaVariantError),
     #[error("schema variant not found {0}")]
