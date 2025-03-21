@@ -10,13 +10,13 @@
     />
     <DropdownMenuButton
       v-if="isAttributeFunc"
-      v-model="selectedPrototypeId"
+      v-model="selectedOutputLocationId"
+      :options="outputLocationAttributeOptions"
       class="w-full"
-      placeholder="no binding selected"
-      :options="prototypeAttributeOptions"
-      :disabled="!selectedComponentId"
+      placeholder="no output location selected"
       checkable
-      @select="setSelectedBinding"
+      :disabled="!selectedComponentId"
+      @select="setSelectedOutputLocation"
     />
     <VButton
       class="w-full"
@@ -55,7 +55,7 @@ const props = defineProps({
 });
 
 const selectedComponentId = ref<string | undefined>(undefined);
-const selectedPrototypeId = ref<string | undefined>(undefined);
+const selectedOutputLocationId = ref<string | undefined>(undefined);
 
 const componentAttributeOptions = computed(() => {
   return componentsForSchemaVariantId.value.map((c) => {
@@ -72,48 +72,55 @@ const disableTestButton = computed(
   (): boolean =>
     !selectedComponentId.value ||
     !props.readyToTest ||
-    (props.isAttributeFunc && !selectedPrototypeId.value),
+    (props.isAttributeFunc && !selectedOutputLocationId.value),
 );
 
-// Only for attribute funcs, assemble prototypes that belong to the selected component.
-const prototypeAttributeOptions = computed(() => {
+const outputLocationAttributeOptions = computed(() => {
   let options: GroupedOptions = {};
 
-  // Despite the fact that we can compile prototype options for _all_ components, we should wait until
-  // the user selects a _single_ component.
-  if (!funcStore.selectedFuncId || !selectedComponentId.value) return [];
-
-  if (funcStore.selectedFuncSummary?.kind === FuncKind.Attribute) {
-    funcStore.attributeBindings[funcStore.selectedFuncSummary.funcId]?.forEach(
-      (binding) => {
-        let schemaVariant;
-        if (
-          binding.schemaVariantId &&
-          binding.schemaVariantId === props.schemaVariantId
-        )
-          schemaVariant =
-            assetStore.variantFromListById[binding.schemaVariantId];
-        if (
-          binding.componentId &&
-          binding.componentId === selectedComponentId.value
-        ) {
-          const schemaVariantId =
-            componentsStore.allComponentsById[binding.componentId]?.def
-              .schemaVariantId;
-          if (schemaVariantId)
-            schemaVariant = assetStore.variantFromListById[schemaVariantId];
-        }
-        if (schemaVariant) {
-          options = outputSocketsAndPropsFor(schemaVariant);
-        }
-      },
-    );
-
+  if (!funcStore.selectedFuncId || !selectedComponentId.value) return options;
+  if (funcStore.selectedFuncSummary?.kind !== FuncKind.Attribute)
     return options;
-  } else {
-    // If the selected func is not an attribute func, there are no options to assemble.
-    return {};
+
+  funcStore.attributeBindings[funcStore.selectedFuncSummary.funcId]?.forEach(
+    (binding) => {
+      let schemaVariant;
+      if (
+        binding.schemaVariantId &&
+        binding.schemaVariantId === props.schemaVariantId
+      )
+        schemaVariant = assetStore.variantFromListById[binding.schemaVariantId];
+      if (
+        binding.componentId &&
+        binding.componentId === selectedComponentId.value
+      ) {
+        const schemaVariantId =
+          componentsStore.allComponentsById[binding.componentId]?.def
+            .schemaVariantId;
+        if (schemaVariantId)
+          schemaVariant = assetStore.variantFromListById[schemaVariantId];
+      }
+      if (schemaVariant) {
+        options = outputSocketsAndPropsFor(schemaVariant);
+      }
+    },
+  );
+
+  // NOTE(nick): this is a bit cursed, but we need to flatten the results to work with the current
+  // state of the func test panel. We will "fix" the label accordingly.
+  const processedOptions = [];
+  for (const [groupLabel, innerOptions] of Object.entries(options)) {
+    for (const innerOption of innerOptions) {
+      processedOptions.push({
+        label:
+          groupLabel === "Output Sockets"
+            ? innerOption.label
+            : `/${groupLabel}${innerOption.label}`,
+        value: innerOption.value,
+      });
+    }
   }
+  return processedOptions;
 });
 
 const setSelectedComponentId = (id: string) => {
@@ -121,8 +128,8 @@ const setSelectedComponentId = (id: string) => {
   loadInputIfNotAttributeFunc();
 };
 
-const setSelectedBinding = (id: string) => {
-  selectedPrototypeId.value = id;
+const setSelectedOutputLocation = (id: string) => {
+  selectedOutputLocationId.value = id;
   emit("loadInput");
 };
 
@@ -134,7 +141,7 @@ const loadInputIfNotAttributeFunc = () => {
   emit("loadInput");
 };
 
-defineExpose({ selectedComponentId, selectedPrototypeId });
+defineExpose({ selectedComponentId, selectedOutputLocationId });
 
 const emit = defineEmits<{
   (e: "startTest"): void;

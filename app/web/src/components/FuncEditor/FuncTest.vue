@@ -257,7 +257,7 @@ const enableTestTabGroup = computed((): boolean => {
   if (funcStore.selectedFuncSummary?.kind === FuncKind.Attribute) {
     if (
       funcTestSelectorRef.value?.selectedComponentId &&
-      funcTestSelectorRef.value?.selectedPrototypeId
+      funcTestSelectorRef.value?.selectedOutputLocationId
     ) {
       return true;
     }
@@ -366,20 +366,19 @@ const prepareTest = async () => {
   resetTestData();
 
   if (funcStore.selectedFuncSummary?.kind === FuncKind.Attribute) {
-    if (!funcTestSelectorRef.value.selectedPrototypeId) {
+    if (!funcTestSelectorRef.value.selectedOutputLocationId) {
       throw new Error(
-        "cannot prepare test for attribute func without a selected prototype",
+        "cannot prepare test for attribute func without a selected output location",
       );
     }
 
-    const propId = funcTestSelectorRef.value.selectedPrototypeId.startsWith(
-      "p_",
-    )
-      ? funcTestSelectorRef.value.selectedPrototypeId.replace("p_", "")
-      : undefined;
+    const propId =
+      funcTestSelectorRef.value.selectedOutputLocationId.startsWith("p_")
+        ? funcTestSelectorRef.value.selectedOutputLocationId.replace("p_", "")
+        : undefined;
     const outputSocketId =
-      funcTestSelectorRef.value.selectedPrototypeId.startsWith("s_")
-        ? funcTestSelectorRef.value.selectedPrototypeId.replace("s_", "")
+      funcTestSelectorRef.value.selectedOutputLocationId.startsWith("s_")
+        ? funcTestSelectorRef.value.selectedOutputLocationId.replace("s_", "")
         : undefined;
 
     const res = await funcStore.FETCH_PROTOTYPE_ARGUMENTS(
