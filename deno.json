@@ -3,7 +3,8 @@
     "./bin/lang-js",
     "./lib/ts-lib-deno",
     "./bin/clover",
-    "./lib/jsr-systeminit/remove-empty"
+    "./lib/jsr-systeminit/remove-empty",
+    "./lib/jsr-systeminit/ecs-template-qualification"
   ],
   "imports": {
     "@cliffy/command": "jsr:@cliffy/command@^1.0.0-rc.7",
