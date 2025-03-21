@@ -5,7 +5,7 @@ outline:
 
 # Road map
 
-Updated March 20, 2025.
+Updated March 21, 2025.
 
 Want to influence the road map?
 [Learn more about how to work on System Initiative](../explanation/working-on-si.md).
@@ -125,15 +125,21 @@ System Initiative.
 
 [Read the blog post to learn more.](https://www.systeminit.com/blog/opportunity-editor-integration-with-system-initiative)
 
-## Growing coverage of cloud platforms
+## Full Coverage of the AWS Cloud Control API (Generally Available)
 
-We are using
-[Generative AI](https://en.wikipedia.org/wiki/Generative_artificial_intelligence)
-as a way to accelerate the speed at which we can provide high-quality assets. We
-are still primarily focused on AWS, as we need to increase the coverage and
-quality of the assets there, but we hope to start on Google Cloud, Azure and
-other platforms as well. If there is something specific you want or need, come
-chat with us on [Discord](https://discord.com/invite/q6H2ZyFh) anytime.
+We have implemented integration with
+[AWS Cloud Control API](https://aws.amazon.com/cloudcontrolapi/), providing full
+coverage of all AWS resources supported by
+[CloudFormation](https://aws.amazon.com/cloudformation/). This enables our
+platform to create, read, update, and delete any AWS resource that
+CloudFormation supports, expanding our coverage beyond previously supported
+resource types.
 
-This is currently in internal testing behind a feature flag and is anticipated
-to be Generally Available, January 2025.
+This integration eliminates manual resource modeling and maintains automatic
+synchronization with AWS's service catalog. As AWS releases new resources or
+updates existing ones through CloudFormation, our platform supports these
+changes without additional development work.
+
+If there is something specific you want or need from these assets, or need
+support for something outside of AWS, come chat with us on
+[Discord](https://discord.com/invite/q6H2ZyFh) anytime.
