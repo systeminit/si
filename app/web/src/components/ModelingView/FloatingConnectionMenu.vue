@@ -1,5 +1,5 @@
 <template>
-  <Modal ref="popoverRef" size="max" title="Create Connection">
+  <Modal ref="modalRef" size="max" title="Create Connection">
     <div
       class="flex flex-col border-2 h-[80vh]"
       @click="focusOnInput"
@@ -9,21 +9,25 @@
       @keydown.tab.prevent="toggleEditTarget"
     >
       <VormInput ref="inputRef" v-model="searchString" label="Search" noLabel />
-      <div class="flex flex-row grow border-t-2">
+      <div class="flex flex-row grow border-t-2 min-h-0">
         <!-- Socket A -->
         <ConnectionMenuSocketList
           :active="activeSide === 'a'"
           :highlightedIndex="highlightedIndex"
           :listItems="listAItems"
+          :selectedComponent="selectedComponentA"
           :selectedSocket="selectedSocketA"
           class="border-r-2"
-          @select="selectA"
+          @select="(index:number) => selectAndProcess('a', index)"
         />
         <!-- Socket B -->
         <ConnectionMenuSocketList
           :active="activeSide === 'b'"
           :highlightedIndex="highlightedIndex"
           :listItems="listBItems"
+          :selectedComponent="selectedComponentB"
+          :selectedSocket="selectedSocketB"
+          @select="(index:number) => selectAndProcess('b', index)"
         />
       </div>
     </div>
@@ -41,16 +45,18 @@ import {
   reactive,
   ref,
   watch,
+  watchEffect,
 } from "vue";
 import {
   ConnectionMenuData,
   useComponentsStore,
 } from "@/store/components.store";
+import { DiagramSocketData } from "@/components/ModelingDiagram/diagram_types";
 import ConnectionMenuSocketList, {
   SocketListEntry,
 } from "./ConnectionMenuSocketList.vue";
 
-const popoverRef = ref<InstanceType<typeof Modal>>();
+const modalRef = ref<InstanceType<typeof Modal>>();
 const inputRef = ref<InstanceType<typeof VormInput>>();
 
 onMounted(() => {
@@ -64,14 +70,9 @@ onUnmounted(() => {
 const componentsStore = useComponentsStore();
 
 const searchString = ref("");
-// const socketKind = ref<"input" | "output" | undefined>();
 
 const listAItems = ref<SocketListEntry[]>([]);
 const listBItems = ref<SocketListEntry[]>([]);
-// const filteredListItems = computed(() =>
-//   listItems.value
-//   // listItems.value.filter((s) => s.def.label.toLowerCase().includes(searchString.value.toLowerCase()))
-// )
 
 const focusOnInput = () => {
   nextTick(() => {
@@ -103,162 +104,128 @@ const invertDirection = (direction?: string) => {
   }
 };
 
-const bDirection = computed(() => invertDirection(connectionData.aDirection));
-
-const selectedSocketA = computed(() => {
-  if (!connectionData.A.componentId || !connectionData.A.socketId) {
-    return;
-  }
-
-  const component =
-    componentsStore.allComponentsById[connectionData.A.componentId];
-
-  if (!component) return;
-
-  return component.sockets.find((s) => s.def.id === connectionData.A.socketId);
-});
+const selectedComponentA = computed(
+  () => componentsStore.allComponentsById[connectionData.A.componentId ?? ""],
+);
+const selectedComponentB = computed(
+  () => componentsStore.allComponentsById[connectionData.B.componentId ?? ""],
+);
+const selectedSocketA = computed(() =>
+  selectedComponentA.value?.sockets.find(
+    (s) => s.def.id === connectionData.A.socketId,
+  ),
+);
+const selectedSocketB = computed(() =>
+  selectedComponentB.value?.sockets.find(
+    (s) => s.def.id === connectionData.B.socketId,
+  ),
+);
 
 const activeSide = ref<"a" | "b">("a");
 const toggleEditTarget = () => {
   activeSide.value = activeSide.value === "a" ? "b" : "a";
 };
 
-// TODO only show sockets that have matching annotations
-watch(
-  connectionData,
-  (data) => {
-    let AComponents = data.A.componentId
-      ? _.compact([componentsStore.allComponentsById[data.A.componentId]])
-      : _.values(componentsStore.allComponentsById);
+// TODO Break this into computed variables
+watchEffect(() => {
+  const [activeSideData, otherSideData] =
+    activeSide.value === "a"
+      ? [connectionData.A, connectionData.B]
+      : [connectionData.B, connectionData.A];
+  const [activeSideList, otherSideList] =
+    activeSide.value === "a"
+      ? [listAItems, listBItems]
+      : [listBItems, listAItems];
 
-    if (data.B.componentId) {
-      AComponents = AComponents.filter((c) => c.def.id !== data.B.componentId);
-    }
+  // I'm the active side
+  // I need to run the peersFunc for *all my components*
+  // If I can still estabilish connections, I'll be on my list
 
-    let aSockets = _.flatten(
-      AComponents?.map((c) =>
-        c.sockets
-          .filter((s) => !s.def.isManagement)
-          .map((s) => ({
-            component: c,
-            socket: s,
-          })),
-      ),
-    );
+  const edges = _.values(componentsStore.diagramEdgesById);
 
-    if (data.aDirection) {
-      aSockets = aSockets.filter(
-        ({ socket }) => socket.def.direction === data.aDirection,
-      );
-    }
+  // Active side
+  const componentsActiveSide = _.filter(
+    activeSideData.componentId
+      ? _.compact([
+          componentsStore.allComponentsById[activeSideData.componentId],
+        ])
+      : _.values(componentsStore.allComponentsById),
+    // Do not get the peer component, if one is selected
+    (c) => !otherSideData.componentId || c.def.id !== otherSideData.componentId,
+  );
 
-    listAItems.value = aSockets;
+  const activeSideSockets = _.flatten(
+    componentsActiveSide?.map((c) =>
+      c.sockets
+        .filter((s) => !s.def.isManagement)
+        // If socket is unary and has connection, skip it
+        .filter((s) => {
+          if (s.def.direction !== "input" || s.def.maxConnections === null) {
+            return true;
+          }
 
-    let BComponents = data.B.componentId
-      ? _.compact([componentsStore.allComponentsById[data.B.componentId]])
-      : _.values(componentsStore.allComponentsById);
+          const incomingConnections = edges.filter(
+            (e) => e.toSocketKey === s.uniqueKey,
+          );
 
-    if (data.A.componentId) {
-      BComponents = BComponents.filter((c) => c.def.id !== data.A.componentId);
-    }
-
-    let bSockets = _.flatten(
-      BComponents?.map((c) =>
-        c.sockets.map((s) => ({
+          return incomingConnections.length < s.def.maxConnections;
+        })
+        .filter((s) =>
+          s.def.label
+            .toLowerCase()
+            .includes(searchString.value?.toLowerCase() ?? ""),
+        )
+        .map((s) => ({
           component: c,
           socket: s,
         })),
-      ),
-    );
+    ),
+  );
 
-    if (bDirection.value) {
-      bSockets = bSockets.filter(
-        ({ socket }) => socket.def.direction === bDirection.value,
-      );
-    }
+  const peersFunction = componentsStore.possibleAndExistingPeerSocketsFn;
+  const validPeers = _.flatten(
+    activeSideSockets
+      .map(({ component, socket }) =>
+        peersFunction(socket.def, component.def.id).possiblePeers.map((p) => ({
+          originatorSocket: socket,
+          ...p,
+        })),
+      )
+      .filter((peers) => peers.length > 0),
+  )
+    .filter((s) => !otherSideData.socketId || otherSideData.socketId === s.id)
+    .filter(
+      (s) =>
+        !otherSideData.componentId ||
+        otherSideData.componentId === s.componentId,
+    )
+    .map((s) => {
+      const component = componentsStore.allComponentsById[s.componentId];
 
-    listBItems.value = bSockets;
+      if (!component) {
+        return;
+      }
 
-    // const componentA = componentsStore.allComponentsById[data.A.componentId];
-    //
-    // if (!componentA) {
-    //   listAItems.value = [];
-    //   return;
-    // }
-    //
-    // if (!data.B.componentId) {
-    //   if (!data.A.socketId) {
-    //     const sockets = data.A.direction ? componentA.sockets.filter((s) => s.def.direction === data.A.direction) : componentA.sockets;
-    //
-    //     listAItems.value = sockets.map(s => ({
-    //       component: componentA,
-    //       socket: s,
-    //     }));
-    //
-    //   } else {
-    //     // TODO filter component Bs to only have components that could match the selected socket
-    //     listAItems.value = _.values(componentsStore.allComponentsById)
-    //       .filter(c => c.def.id !== data.A.componentId)
-    //       .map(c => ({
-    //       component: c,
-    //       socket: undefined,
-    //     }));
-    //   }
+      return {
+        originatorSocket: s.originatorSocket,
+        component,
+        socket: new DiagramSocketData(component, s),
+      };
+    });
 
-    //   return;
-    // }
-    //
-    //
-    // const componentB = componentsStore.allComponentsById[data.B.componentId];
-    //
-    // if (!componentB) {
-    //   listAItems.value = [];
-    //   return;
-    // }
-    //
-    // if (!data.A.socketId) {
-    //   // TODO list only sockets that would match between components A and B
-    //   const sockets = data.A.direction ? componentA.sockets.filter((s) => s.def.direction === data.A.direction) : componentA.sockets;
-    //
-    //   listAItems.value = sockets.map(s => ({
-    //     component: componentA,
-    //     socket: s,
-    //   }));
-    //
-    //   return;
-    // }
-    //
-    //
-    // if (data.B.socketId) {
-    //   // TODO something when A and B sockets are selected
-    //   listAItems.value = [];
-    //   const [from, to] = data.A.direction === "output" ?
-    //     [
-    //       { componentId: data.A.componentId, socketId: data.A.socketId},
-    //       { componentId: data.B.componentId, socketId: data.B.socketId},
-    //     ] :
-    //     [
-    //       { componentId: data.B.componentId, socketId: data.B.socketId},
-    //       { componentId: data.A.componentId, socketId: data.A.socketId},
-    //     ];
-    //
-    //   componentsStore.CREATE_COMPONENT_CONNECTION(from, to);
-    //   // FIXME select both components when we show edges between the components that are selected
-    //   componentsStore.eventBus.emit("setSelection", [data.A.componentId]);
-    //
-    //   close();
-    //   return;
-    // }
-    //
-    // // TODO list only sockets that would match socket A
-    // listAItems.value = componentB.sockets
-    //   .map(s => ({
-    //     component: componentB,
-    //     socket: s,
-    //   }));
-  },
-  { immediate: true },
-);
+  // Remove the undefined
+  const otherSideSockets = {} as Record<string, SocketListEntry>;
+  const socketsWithPossiblePeers = new Set();
+  for (const peer of _.compact(validPeers)) {
+    otherSideSockets[peer.socket.uniqueKey] = peer;
+    socketsWithPossiblePeers.add(peer.originatorSocket.uniqueKey);
+  }
+
+  activeSideList.value = activeSideSockets.filter((e) =>
+    socketsWithPossiblePeers.has(e.socket.uniqueKey),
+  );
+  otherSideList.value = _.values(otherSideSockets);
+});
 
 const highlightedIndex = ref(0);
 // Try to keep the selected option selected when list changes, else reset selected to 0
@@ -287,8 +254,9 @@ const highlightPrev = () => {
   highlightedIndex.value = Math.max(highlightedIndex.value - 1, 0);
 };
 
-const selectA = (index: number) => {
+const selectAndProcess = (side: "a" | "b", index: number) => {
   highlightedIndex.value = index;
+  activeSide.value = side;
   processHighlighted();
 };
 
@@ -366,8 +334,9 @@ const processHighlighted = () => {
 
 // Modal Mgmt
 function open(initialState: ConnectionMenuData) {
-  popoverRef.value?.open();
+  modalRef.value?.open();
 
+  searchString.value = "";
   activeSide.value = "a";
   connectionData.aDirection = initialState.aDirection;
   connectionData.A = initialState.A;
@@ -380,10 +349,10 @@ function open(initialState: ConnectionMenuData) {
 }
 
 function close() {
-  popoverRef.value?.close();
+  modalRef.value?.close();
 }
 
-const isOpen = computed(() => popoverRef.value?.isOpen);
+const isOpen = computed(() => modalRef.value?.isOpen);
 
 defineExpose({ open, close, isOpen });
 </script>
