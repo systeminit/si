@@ -24,6 +24,7 @@ use starfield::migrate_test_exclusive_schema_etoiles;
 use starfield::migrate_test_exclusive_schema_morningstar;
 use starfield::migrate_test_exclusive_schema_private_language;
 use starfield::migrate_test_exclusive_schema_starfield;
+use std::str::FromStr;
 use swifty::migrate_test_exclusive_schema_swifty;
 
 mod category_pirate;
@@ -86,31 +87,153 @@ pub const SCHEMA_ID_FAKE_BUTANE: &str = "01JARH2BTA5DK4J9Q4Q0XH46SR";
 // allow expect here for the Ulid conversion. These will never panic.
 #[allow(clippy::expect_used)]
 pub(crate) async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
-    migrate_test_exclusive_schema_starfield(ctx, SCHEMA_ID_STARFIELD.parse()?).await?;
-    migrate_test_exclusive_schema_private_language(ctx, SCHEMA_ID_PRIVATE_LANGUAGE.parse()?)
-        .await?;
-    migrate_test_exclusive_schema_etoiles(ctx, SCHEMA_ID_ETOILES.parse()?).await?;
-    migrate_test_exclusive_schema_morningstar(ctx, SCHEMA_ID_MORNINGSTAR.parse()?).await?;
-    migrate_test_exclusive_schema_fallout(ctx, SCHEMA_ID_FALLOUT.parse()?).await?;
-    migrate_test_exclusive_schema_dummy_secret(ctx, SCHEMA_ID_DUMMY_SECRET.parse()?).await?;
-    migrate_test_exclusive_schema_swifty(ctx, SCHEMA_ID_SWIFTY.parse()?).await?;
-    migrate_test_exclusive_schema_katy_perry(ctx, SCHEMA_ID_KATY_PERRY.parse()?).await?;
-    migrate_test_exclusive_schema_pirate(ctx, SCHEMA_ID_PIRATE.parse()?).await?;
-    migrate_test_exclusive_schema_pet_shop(ctx, SCHEMA_ID_PET_SHOP.parse()?).await?;
-    migrate_test_exclusive_schema_validated_input(ctx, SCHEMA_ID_VALIDATED_INPUT.parse()?).await?;
-    migrate_test_exclusive_schema_validated_output(ctx, SCHEMA_ID_VALIDATED_OUTPUT.parse()?)
-        .await?;
-    migrate_test_exclusive_schema_bad_validations(ctx, SCHEMA_ID_BAD_VALIDATIONS.parse()?).await?;
-    migrate_test_exclusive_schema_large_odd_lego(ctx, SCHEMA_ID_LARGE_ODD_LEGO.parse()?).await?;
-    migrate_test_exclusive_schema_large_even_lego(ctx, SCHEMA_ID_LARGE_EVEN_LEGO.parse()?).await?;
-    migrate_test_exclusive_schema_medium_even_lego(ctx, SCHEMA_ID_MEDIUM_EVEN_LEGO.parse()?)
-        .await?;
-    migrate_test_exclusive_schema_medium_odd_lego(ctx, SCHEMA_ID_MEDIUM_ODD_LEGO.parse()?).await?;
-    migrate_test_exclusive_schema_small_odd_lego(ctx, SCHEMA_ID_SMALL_ODD_LEGO.parse()?).await?;
-    migrate_test_exclusive_schema_small_even_lego(ctx, SCHEMA_ID_SMALL_EVEN_LEGO.parse()?).await?;
-    migrate_test_exclusive_schema_fake_docker_image(ctx, SCHEMA_ID_FAKE_DOCKER_IMAGE.parse()?)
-        .await?;
-    migrate_test_exclusive_schema_fake_butane(ctx, SCHEMA_ID_FAKE_BUTANE.parse()?).await?;
+    migrate_test_exclusive_schema_starfield(
+        ctx,
+        ulid::Ulid::from_str(SCHEMA_ID_STARFIELD)
+            .expect("should convert")
+            .into(),
+    )
+    .await?;
+    migrate_test_exclusive_schema_private_language(
+        ctx,
+        ulid::Ulid::from_str(SCHEMA_ID_PRIVATE_LANGUAGE)
+            .expect("should convert")
+            .into(),
+    )
+    .await?;
+    migrate_test_exclusive_schema_etoiles(
+        ctx,
+        ulid::Ulid::from_str(SCHEMA_ID_ETOILES)
+            .expect("should convert")
+            .into(),
+    )
+    .await?;
+    migrate_test_exclusive_schema_morningstar(
+        ctx,
+        ulid::Ulid::from_str(SCHEMA_ID_MORNINGSTAR)
+            .expect("should convert")
+            .into(),
+    )
+    .await?;
+    migrate_test_exclusive_schema_fallout(
+        ctx,
+        ulid::Ulid::from_str(SCHEMA_ID_FALLOUT)
+            .expect("should convert")
+            .into(),
+    )
+    .await?;
+    migrate_test_exclusive_schema_dummy_secret(
+        ctx,
+        ulid::Ulid::from_str(SCHEMA_ID_DUMMY_SECRET)
+            .expect("should convert")
+            .into(),
+    )
+    .await?;
+    migrate_test_exclusive_schema_swifty(
+        ctx,
+        ulid::Ulid::from_str(SCHEMA_ID_SWIFTY)
+            .expect("should convert")
+            .into(),
+    )
+    .await?;
+    migrate_test_exclusive_schema_katy_perry(
+        ctx,
+        ulid::Ulid::from_str(SCHEMA_ID_KATY_PERRY)
+            .expect("should convert")
+            .into(),
+    )
+    .await?;
+    migrate_test_exclusive_schema_pirate(
+        ctx,
+        ulid::Ulid::from_str(SCHEMA_ID_PIRATE)
+            .expect("should convert")
+            .into(),
+    )
+    .await?;
+    migrate_test_exclusive_schema_pet_shop(
+        ctx,
+        ulid::Ulid::from_str(SCHEMA_ID_PET_SHOP)
+            .expect("should convert")
+            .into(),
+    )
+    .await?;
+    migrate_test_exclusive_schema_validated_input(
+        ctx,
+        ulid::Ulid::from_str(SCHEMA_ID_VALIDATED_INPUT)
+            .expect("should convert")
+            .into(),
+    )
+    .await?;
+    migrate_test_exclusive_schema_validated_output(
+        ctx,
+        ulid::Ulid::from_str(SCHEMA_ID_VALIDATED_OUTPUT)
+            .expect("should convert")
+            .into(),
+    )
+    .await?;
+    migrate_test_exclusive_schema_bad_validations(
+        ctx,
+        ulid::Ulid::from_str(SCHEMA_ID_BAD_VALIDATIONS)
+            .expect("should convert")
+            .into(),
+    )
+    .await?;
+    migrate_test_exclusive_schema_large_odd_lego(
+        ctx,
+        ulid::Ulid::from_str(SCHEMA_ID_LARGE_ODD_LEGO)
+            .expect("should convert")
+            .into(),
+    )
+    .await?;
+    migrate_test_exclusive_schema_large_even_lego(
+        ctx,
+        ulid::Ulid::from_str(SCHEMA_ID_LARGE_EVEN_LEGO)
+            .expect("should convert")
+            .into(),
+    )
+    .await?;
+    migrate_test_exclusive_schema_medium_even_lego(
+        ctx,
+        ulid::Ulid::from_str(SCHEMA_ID_MEDIUM_EVEN_LEGO)
+            .expect("should convert")
+            .into(),
+    )
+    .await?;
+    migrate_test_exclusive_schema_medium_odd_lego(
+        ctx,
+        ulid::Ulid::from_str(SCHEMA_ID_MEDIUM_ODD_LEGO)
+            .expect("should convert")
+            .into(),
+    )
+    .await?;
+    migrate_test_exclusive_schema_small_odd_lego(
+        ctx,
+        ulid::Ulid::from_str(SCHEMA_ID_SMALL_ODD_LEGO)
+            .expect("should convert")
+            .into(),
+    )
+    .await?;
+    migrate_test_exclusive_schema_small_even_lego(
+        ctx,
+        ulid::Ulid::from_str(SCHEMA_ID_SMALL_EVEN_LEGO)
+            .expect("should convert")
+            .into(),
+    )
+    .await?;
+    migrate_test_exclusive_schema_fake_docker_image(
+        ctx,
+        ulid::Ulid::from_str(SCHEMA_ID_FAKE_DOCKER_IMAGE)
+            .expect("should convert")
+            .into(),
+    )
+    .await?;
+    migrate_test_exclusive_schema_fake_butane(
+        ctx,
+        ulid::Ulid::from_str(SCHEMA_ID_FAKE_BUTANE)
+            .expect("should convert")
+            .into(),
+    )
+    .await?;
     Ok(())
 }
 

@@ -3,7 +3,6 @@ load("@prelude-si//:macros.bzl", "rust_library")
 rust_library(
     name = "module-index-types",
     deps = [
-        "//lib/si-id:si-id",
         "//third-party/rust:chrono",
         "//third-party/rust:serde",
         "//third-party/rust:serde_json",

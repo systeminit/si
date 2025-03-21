@@ -69,8 +69,6 @@ pub enum BuiltinsError {
     StandardModel(#[from] StandardModelError),
     #[error("error creating new transactions")]
     Transactions(#[from] TransactionsError),
-    #[error("ulid decode error")]
-    UlidDecode(#[from] ulid::DecodeError),
 }
 
 pub type BuiltinsResult<T> = Result<T, BuiltinsError>;

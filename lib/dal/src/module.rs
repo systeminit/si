@@ -81,7 +81,7 @@ pub struct Module {
     description: String,
     created_by_email: String,
     created_at: DateTime<Utc>,
-    schema_id: Option<SchemaId>,
+    schema_id: Option<Ulid>,
 }
 
 impl Module {
@@ -128,7 +128,7 @@ impl Module {
     /// time installing the asset, the schema will get this, but this is not
     /// guaranteed to be the id of the schema in workspaces that have assets
     /// installed before this feature was added!
-    pub fn schema_id(&self) -> Option<SchemaId> {
+    pub fn schema_id(&self) -> Option<Ulid> {
         self.schema_id
     }
 
@@ -141,7 +141,7 @@ impl Module {
         description: impl Into<String>,
         created_by_email: impl Into<String>,
         created_at: impl Into<DateTime<Utc>>,
-        schema_id: Option<SchemaId>,
+        schema_id: Option<Ulid>,
     ) -> ModuleResult<Self> {
         let content = ModuleContentV2 {
             timestamp: Timestamp::now(),
@@ -246,7 +246,7 @@ impl Module {
 
     pub async fn find_for_module_schema_id(
         ctx: &DalContext,
-        module_schema_id: SchemaId,
+        module_schema_id: Ulid,
     ) -> ModuleResult<Option<Self>> {
         Self::find(ctx, |module| module.schema_id() == Some(module_schema_id)).await
     }
@@ -440,7 +440,9 @@ impl Module {
             {
                 latest_cached_module_by_schema_id.insert(schema_id, cached_module);
             }
-            if let Some(installed_module) = Self::find_for_module_schema_id(ctx, schema_id).await? {
+            if let Some(installed_module) =
+                Self::find_for_module_schema_id(ctx, schema_id.into()).await?
+            {
                 installed_module_by_schema_id.insert(schema_id, installed_module);
             }
         }
@@ -582,7 +584,10 @@ impl Module {
         // Check if local information exists for contribution metadata.
         let (local_module_based_on_hash, local_module_schema_id) =
             match Module::find_for_member_id(ctx, associated_schema.id()).await? {
-                Some(module) => (Some(module.root_hash().to_string()), module.schema_id()),
+                Some(module) => (
+                    Some(module.root_hash().to_string()),
+                    module.schema_id().map(|id| id.into()),
+                ),
                 None => (None, None),
             };
 

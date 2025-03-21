@@ -86,7 +86,7 @@ pub(crate) async fn migrate_test_exclusive_schema_bad_validations(
         ctx,
         &pkg,
         Some(ImportOptions {
-            schema_id: Some(schema_id),
+            schema_id: Some(schema_id.into()),
             ..Default::default()
         }),
     )
@@ -177,7 +177,7 @@ pub(crate) async fn migrate_test_exclusive_schema_validated_output(
         ctx,
         &pkg,
         Some(ImportOptions {
-            schema_id: Some(schema_id),
+            schema_id: Some(schema_id.into()),
             ..Default::default()
         }),
     )
@@ -275,7 +275,7 @@ pub(crate) async fn migrate_test_exclusive_schema_validated_input(
         ctx,
         &pkg,
         Some(ImportOptions {
-            schema_id: Some(schema_id),
+            schema_id: Some(schema_id.into()),
             ..Default::default()
         }),
     )

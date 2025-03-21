@@ -190,7 +190,7 @@ pub(crate) async fn migrate_test_exclusive_schema_swifty(
         ctx,
         &pkg,
         Some(ImportOptions {
-            schema_id: Some(schema_id),
+            schema_id: Some(schema_id.into()),
             ..Default::default()
         }),
     )
