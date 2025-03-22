@@ -6,16 +6,16 @@ import { useToast } from "vue-toastification";
 import { IconNames } from "@si/vue-lib/design-system";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import {
-  ViewId,
-  View,
-  Components,
-  Sockets,
-  Groups,
-  ViewDescription,
-  StringGeometry,
-  ViewNodes,
   ApprovalRequirementDefinitionId,
+  Components,
+  Groups,
+  Sockets,
+  StringGeometry,
+  View,
   ViewApprovalRequirementDefinition,
+  ViewDescription,
+  ViewId,
+  ViewNodes,
 } from "@/api/sdf/dal/views";
 import {
   DiagramGroupData,
@@ -46,10 +46,10 @@ import router from "@/router";
 import handleStoreError from "./errors";
 
 import {
-  useChangeSetsStore,
   diagramUlid as clientUlid,
+  useChangeSetsStore,
 } from "./change_sets.store";
-import { useComponentsStore, processRawComponent } from "./components.store";
+import { processRawComponent, useComponentsStore } from "./components.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import { useWorkspacesStore } from "./workspaces.store";
 import { useRouterStore } from "./router.store";
@@ -215,7 +215,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
          * as selectedView changes we repopulate all this data
          * this is pushing together `movedElementPositions` and `resizedElementSizes`
          * and can make `renderedGeometriesByComponentId` unnecessary
-         * */
+         */
         components: {} as Components,
         groups: {} as Groups,
         sockets: {} as Sockets,
@@ -337,8 +337,9 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
               !(c instanceof DiagramViewData) &&
               "changeStatus" in c.def &&
               c.def.changeStatus !== "deleted"
-            )
+            ) {
               components.push(c);
+            }
           });
           return components;
         },
@@ -349,8 +350,9 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
               !(c instanceof DiagramViewData) &&
               "changeStatus" in c.def &&
               c.def.changeStatus === "deleted"
-            )
+            ) {
               components.push(c);
+            }
           });
           return components;
         },
@@ -361,8 +363,9 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
               !(c instanceof DiagramViewData) &&
               "changeStatus" in c.def &&
               c.def.changeStatus !== "deleted"
-            )
+            ) {
               components.push(c);
+            }
           });
           return components;
         },
@@ -443,8 +446,9 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
               right === undefined ||
               top === undefined ||
               bottom === undefined
-            )
+            ) {
               continue;
+            }
 
             // i dont know if i need these paddings yet
             boxDictionary[group.def.id] = {
@@ -474,6 +478,24 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
           }
           return out;
         },
+
+        viewNamesByComponentId: (state) => {
+          const record = {} as Record<ComponentId, string[]>;
+          const views = _.values(state.viewsById);
+
+          for (const view of views) {
+            for (const componentId of _.keys(view.components)) {
+              record[componentId] ??= [];
+              record[componentId]?.push(view.name);
+            }
+            for (const groupId of _.keys(view.groups)) {
+              record[groupId] ??= [];
+              record[groupId]?.push(view.name);
+            }
+          }
+
+          return record;
+        },
       },
       actions: {
         geoFrom(
@@ -482,13 +504,14 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
           let geo: IRect | undefined;
           if (el.def.componentType === ComponentType.View) {
             const v = this.viewNodes[el.def.id];
-            if (v)
+            if (v) {
               geo = {
                 x: v.def.x,
                 y: v.def.y,
                 width: v.def.width,
                 height: v.def.height,
               };
+            }
           } else {
             geo = el.def.isGroup
               ? this.groups[el.def.id]
@@ -587,8 +610,9 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
             this.selectedComponentIds = [];
             // forget which details tab is active when selection is cleared
             this.selectedComponentDetailsTab = null;
-            if (router.currentRoute.value.name === "workspace-compose")
+            if (router.currentRoute.value.name === "workspace-compose") {
               window.localStorage.removeItem(key);
+            }
           } else {
             const validSelectionArray = _.reject(
               _.isArray(selection) ? selection : [selection],
@@ -647,7 +671,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
            * this does mean that `draggedElementsPositionsPreDrag` and
            * `resizedElementSizesPreResize` need to be populated
            * but those could just be a `structuredClone` of this data
-           * */
+           */
           this.components = view.components;
           this.groups = view.groups;
           this.viewNodes = view.viewNodes;
@@ -799,13 +823,15 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
             const componentIds = this.selectedComponents
               .filter((c) => c.def.componentType !== ComponentType.View)
               .map((c) => c.def.id);
-            if (componentIds.length > 0)
+            if (componentIds.length > 0) {
               this.REMOVE_FROM(this.selectedViewId, componentIds);
+            }
             const viewIds = this.selectedComponents
               .filter((c) => c.def.componentType === ComponentType.View)
               .map((c) => c.def.id);
-            if (viewIds.length > 0)
+            if (viewIds.length > 0) {
               this.REMOVE_VIEW_FROM(this.selectedViewId, viewIds);
+            }
           }
         },
         async CREATE_VIEW(name: string) {
@@ -875,9 +901,9 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
               const groups: RawComponent[] = [];
               for (const component of response.diagram.components) {
                 if (component) {
-                  if (component.componentType === ComponentType.Component)
+                  if (component.componentType === ComponentType.Component) {
                     components.push(component);
-                  else groups.push(component);
+                  } else groups.push(component);
                 }
               }
               const views: (ViewDescription & IRect)[] = [];
@@ -1032,13 +1058,14 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
               const geo = c.def.isGroup
                 ? this.groups[c.def.id]
                 : this.components[c.def.id];
-              if (geo)
+              if (geo) {
                 payload[c.def.id] = {
                   x: Math.round(geo.x).toString(),
                   y: Math.round(geo.y).toString(),
                   width: Math.round(geo.width).toString(),
                   height: Math.round(geo.height).toString(),
                 };
+              }
             });
             return new ApiRequest<{ requestUlid: RequestUlid }>({
               method: "put",
@@ -1159,13 +1186,14 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
             const payload: Record<ComponentId, StringGeometry> = {};
             components.forEach((c) => {
               const geo = this.viewNodes[c.def.id]?.def;
-              if (geo)
+              if (geo) {
                 payload[c.def.id] = {
                   x: Math.round(geo.x).toString(),
                   y: Math.round(geo.y).toString(),
                   width: Math.round(geo.width).toString(),
                   height: Math.round(geo.height).toString(),
                 };
+              }
             });
             return new ApiRequest<{ requestUlid: RequestUlid }>({
               method: "put",
@@ -1339,11 +1367,12 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                 if (!component) return;
                 component.parentId = oldParentIds[componentId];
                 componentsStore.processAndStoreRawComponent(componentId, {});
-                if (component.parentId)
+                if (component.parentId) {
                   componentsStore.processAndStoreRawComponent(
                     component.parentId,
                     {},
                   );
+                }
               });
             },
           });
@@ -1355,10 +1384,12 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
           parentId?: string,
           size?: Size2D,
         ) {
-          if (changeSetsStore.creatingChangeSet)
+          if (changeSetsStore.creatingChangeSet) {
             throw new Error("race, wait until the change set is created");
-          if (changeSetId === changeSetsStore.headChangeSetId)
+          }
+          if (changeSetId === changeSetsStore.headChangeSetId) {
             changeSetsStore.creatingChangeSet = true;
+          }
 
           const categoryVariant =
             componentsStore.categoryVariantById[categoryVariantId];
@@ -1431,10 +1462,12 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
           }[],
           newParentNodeId?: ComponentId,
         ) {
-          if (changeSetsStore.creatingChangeSet)
+          if (changeSetsStore.creatingChangeSet) {
             throw new Error("race, wait until the change set is created");
-          if (changeSetId === changeSetsStore.headChangeSetId)
+          }
+          if (changeSetId === changeSetsStore.headChangeSetId) {
             changeSetsStore.creatingChangeSet = true;
+          }
 
           if (components.length === 0) return;
 
@@ -1725,8 +1758,9 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                 // don't update
                 if (data.changeSetId !== changeSetId) return;
                 const { viewId, geometry } = { ...data.component.viewData };
-                if (!viewId || !geometry)
+                if (!viewId || !geometry) {
                   throw new Error("Expected view geometry on new component");
+                }
                 const view = this.viewsById[viewId];
                 if (!view) return; // FIXME later when we have full WsEvents
                 if (data.component.componentType === ComponentType.Component) {
@@ -1769,8 +1803,9 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                 // If the component that updated wasn't in this change set,
                 // don't update
                 if (data.changeSetId !== changeSetId) return;
-                if (this.selectedComponentId === data.component.id)
+                if (this.selectedComponentId === data.component.id) {
                   componentsStore.FETCH_COMPONENT_DEBUG_VIEW(data.component.id);
+                }
               },
             },
             {
@@ -1892,11 +1927,11 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                 this.setGroupZIndex();
 
                 if (this.selectedComponentId === data.component.id) {
-                  if (data.component.changeStatus !== "deleted")
+                  if (data.component.changeStatus !== "deleted") {
                     componentsStore.FETCH_COMPONENT_DEBUG_VIEW(
                       data.component.id,
                     );
-                  else {
+                  } else {
                     const idx = this.selectedComponentIds.findIndex(
                       (cId) => cId === data.component.id,
                     );
@@ -1998,11 +2033,12 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                   else {
                     const v = this.viewList[0];
                     if (v) this.selectView(v.id);
-                    else
+                    else {
                       router.push({
                         name: "workspace-single",
                         params: { workspacePk: workspaceId },
                       });
+                    }
                   }
                 }
               },

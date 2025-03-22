@@ -49,15 +49,20 @@ import {
 } from "vue";
 import {
   ConnectionMenuData,
+  generateSocketPaths,
   useComponentsStore,
 } from "@/store/components.store";
 import { DiagramSocketData } from "@/components/ModelingDiagram/diagram_types";
+import { useViewsStore } from "@/store/views.store";
 import ConnectionMenuSocketList, {
   SocketListEntry,
 } from "./ConnectionMenuSocketList.vue";
 
 const modalRef = ref<InstanceType<typeof Modal>>();
 const inputRef = ref<InstanceType<typeof VormInput>>();
+
+const componentsStore = useComponentsStore();
+const viewsStore = useViewsStore();
 
 onMounted(() => {
   componentsStore.eventBus.on("openConnectionsMenu", open);
@@ -66,8 +71,6 @@ onMounted(() => {
 onUnmounted(() => {
   componentsStore.eventBus.off("openConnectionsMenu", open);
 });
-
-const componentsStore = useComponentsStore();
 
 const searchString = ref("");
 
@@ -128,6 +131,10 @@ const toggleEditTarget = () => {
 
 // TODO Break this into computed variables
 watchEffect(() => {
+  if (!modalRef.value?.isOpen) {
+    return;
+  }
+
   const [activeSideData, otherSideData] =
     activeSide.value === "a"
       ? [connectionData.A, connectionData.B]
@@ -136,10 +143,6 @@ watchEffect(() => {
     activeSide.value === "a"
       ? [listAItems, listBItems]
       : [listBItems, listAItems];
-
-  // I'm the active side
-  // I need to run the peersFunc for *all my components*
-  // If I can still estabilish connections, I'll be on my list
 
   const edges = _.values(componentsStore.diagramEdgesById);
 
@@ -214,17 +217,54 @@ watchEffect(() => {
     });
 
   // Remove the undefined
-  const otherSideSockets = {} as Record<string, SocketListEntry>;
+  const otherSideSockets = {} as Record<string, Omit<SocketListEntry, "label">>;
   const socketsWithPossiblePeers = new Set();
   for (const peer of _.compact(validPeers)) {
     otherSideSockets[peer.socket.uniqueKey] = peer;
     socketsWithPossiblePeers.add(peer.originatorSocket.uniqueKey);
   }
 
-  activeSideList.value = activeSideSockets.filter((e) =>
+  const activeSideSocketsWithLabels = [] as SocketListEntry[];
+  for (const entry of activeSideSockets.filter((e) =>
     socketsWithPossiblePeers.has(e.socket.uniqueKey),
-  );
-  otherSideList.value = _.values(otherSideSockets);
+  )) {
+    const paths = generateSocketPaths(entry.socket, viewsStore);
+    for (const path of paths) {
+      activeSideSocketsWithLabels.push({ ...entry, label: path });
+    }
+  }
+
+  const otherSideSocketsWithLabels = [] as SocketListEntry[];
+  for (const entry of _.values(otherSideSockets)) {
+    const paths = generateSocketPaths(entry.socket, viewsStore);
+    for (const path of paths) {
+      otherSideSocketsWithLabels.push({ ...entry, label: path });
+    }
+  }
+
+  const sortFn = (s1: SocketListEntry, s2: SocketListEntry) => {
+    if (s1.socket.def.direction === s2.socket.def.direction) {
+      if (s1.label < s2.label) {
+        return -1;
+      }
+      if (s1.label > s2.label) {
+        return 1;
+      }
+      return 0;
+    }
+
+    if (s1.socket.def.direction === "input") {
+      return -1;
+    } else {
+      return 1;
+    }
+  };
+
+  activeSideSocketsWithLabels.sort(sortFn);
+  otherSideSocketsWithLabels.sort(sortFn);
+
+  activeSideList.value = activeSideSocketsWithLabels;
+  otherSideList.value = otherSideSocketsWithLabels;
 });
 
 const highlightedIndex = ref(0);

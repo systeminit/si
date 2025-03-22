@@ -15,6 +15,7 @@ import {
   DiagramGroupData,
   DiagramNodeData,
   DiagramNodeDef,
+  DiagramSocketData,
   DiagramSocketDef,
   DiagramSocketDirection,
   DiagramStatusIcon,
@@ -49,6 +50,7 @@ import { useRealtimeStore } from "./realtime/realtime.store";
 import { useWorkspacesStore } from "./workspaces.store";
 import { useFeatureFlagsStore } from "./feature_flags.store";
 import { useRouterStore } from "./router.store";
+import { useViewsStore } from "./views.store";
 
 export type ComponentNodeId = string;
 
@@ -224,6 +226,26 @@ type EventBusEvents = {
   rename: ComponentId;
   renameView: ViewId;
   openConnectionsMenu: ConnectionMenuData;
+};
+
+export const generateSocketPaths = (
+  socket: DiagramSocketData,
+  viewsStore: ReturnType<typeof useViewsStore>,
+): string[] => {
+  const socketName = socket.def.label;
+  const component = socket.parent;
+  const componentName = socket.parent.def.displayName;
+  const schemaName = socket.parent.def.schemaName;
+  const viewNames = viewsStore.viewNamesByComponentId[component.def.id] ?? [];
+
+  const paths = [] as string[];
+
+  for (const viewName of viewNames) {
+    const path = `${viewName}/${schemaName}/${componentName}/${socketName}`;
+    paths.push(path);
+  }
+
+  return paths;
 };
 
 export const DEFAULT_COLLAPSED_SIZE = { height: 100, width: 300 };
