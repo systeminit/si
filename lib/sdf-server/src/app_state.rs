@@ -3,6 +3,7 @@ use std::{ops::Deref, sync::Arc};
 use asset_sprayer::AssetSprayer;
 use audit_database::AuditDatabaseContext;
 use axum::extract::FromRef;
+use frigg::FriggStore;
 use nats_multiplexer_client::MultiplexerClient;
 use si_data_spicedb::SpiceDbClient;
 use si_jwt_public_key::JwtPublicSigningKeyChain;
@@ -37,6 +38,7 @@ pub struct AppState {
     pub application_runtime_mode: Arc<RwLock<ApplicationRuntimeMode>>,
     shutdown_token: CancellationToken,
     spicedb_client: Option<SpiceDbClient>,
+    frigg: FriggStore,
     audit_database_context: AuditDatabaseContext,
 }
 
@@ -51,16 +53,19 @@ impl AppState {
         for_tests: bool,
         ws_multiplexer_client: MultiplexerClient,
         crdt_multiplexer_client: MultiplexerClient,
+        data_cache_multiplexer_client: MultiplexerClient,
         create_workspace_permissions: WorkspacePermissionsMode,
         create_workspace_allowlist: Vec<WorkspacePermissions>,
         application_runtime_mode: Arc<RwLock<ApplicationRuntimeMode>>,
         shutdown_token: CancellationToken,
         spicedb_client: Option<SpiceDbClient>,
+        frigg: FriggStore,
         audit_database_context: AuditDatabaseContext,
     ) -> Self {
         let nats_multiplexer_clients = NatsMultiplexerClients {
             ws: Arc::new(Mutex::new(ws_multiplexer_client)),
             crdt: Arc::new(Mutex::new(crdt_multiplexer_client)),
+            data_cache: Arc::new(Mutex::new(data_cache_multiplexer_client)),
         };
 
         Self {
@@ -77,6 +82,7 @@ impl AppState {
             application_runtime_mode,
             shutdown_token,
             spicedb_client,
+            frigg,
             audit_database_context,
         }
     }
@@ -127,6 +133,10 @@ impl AppState {
 
     pub fn audit_database_context(&self) -> &AuditDatabaseContext {
         &self.audit_database_context
+    }
+
+    pub fn frigg(&self) -> &FriggStore {
+        &self.frigg
     }
 }
 

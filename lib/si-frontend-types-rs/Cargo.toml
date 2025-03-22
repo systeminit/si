@@ -1,20 +1,22 @@
 [package]
-name = "si-frontend-types"
-version.workspace = true
-authors.workspace = true
-license.workspace = true
-repository.workspace = true
-edition.workspace = true
+name                   = "si-frontend-types"
+version.workspace      = true
+authors.workspace      = true
+license.workspace      = true
+repository.workspace   = true
+edition.workspace      = true
 rust-version.workspace = true
-publish.workspace = true
+publish.workspace      = true
 
 [dependencies]
-module-index-types = { path = "../../lib/module-index-types" }
-si-events = { path = "../../lib/si-events-rs" }
-si-id = { path = "../../lib/si-id" }
+module-index-types       = { path = "../../lib/module-index-types" }
+si-events                = { path = "../../lib/si-events-rs" }
+si-frontend-types-macros = { path = "../../lib/si-frontend-types-macros" }
+si-id                    = { path = "../../lib/si-id" }
 
-chrono = { workspace = true }
-remain = { workspace = true }
-serde = { workspace = true }
+chrono     = { workspace = true }
+json-patch = { workspace = true }
+remain     = { workspace = true }
+serde      = { workspace = true }
 serde_json = { workspace = true }
-strum = { workspace = true }
+strum      = { workspace = true }

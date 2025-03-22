@@ -2,10 +2,13 @@ use audit_logs_stream::AuditLogsStreamError;
 use dal::{
     billing_publish,
     change_set::{ChangeSet, ChangeSetError, ChangeSetId},
+    data_cache::DataCacheError,
+    materialized_view::MaterializedViewError,
     workspace_snapshot::WorkspaceSnapshotError,
     ChangeSetStatus, DalContext, TransactionsError, Workspace, WorkspaceError, WorkspacePk,
     WorkspaceSnapshot, WsEvent, WsEventError,
 };
+use frigg::{FriggError, FriggStore};
 use pending_events::PendingEventsError;
 use rebaser_core::api_types::{
     enqueue_updates_request::EnqueueUpdatesRequest, enqueue_updates_response::v1::RebaseStatus,
@@ -25,12 +28,20 @@ pub(crate) enum RebaseError {
     AuditLogsStream(#[from] AuditLogsStreamError),
     #[error("workspace snapshot error: {0}")]
     ChangeSet(#[from] ChangeSetError),
+    #[error("Data Cache error: {0}")]
+    DataCache(#[from] DataCacheError),
+    #[error("frigg error: {0}")]
+    Frigg(#[from] FriggError),
     #[error("layerdb error: {0}")]
     LayerDb(#[from] LayerDbError),
+    #[error("Materialized view error: {0}")]
+    MaterializedView(#[from] MaterializedViewError),
     #[error("missing rebase batch {0}")]
     MissingRebaseBatch(RebaseBatchAddress),
     #[error("pending events error: {0}")]
     PendingEvents(#[from] PendingEventsError),
+    #[error("serde_json error: {0}")]
+    SerdeJson(#[from] serde_json::Error),
     #[error("shuttle error: {0}")]
     Shuttle(#[from] ShuttleError),
     #[error("transactions error: {0}")]
@@ -62,6 +73,7 @@ type RebaseResult<T> = Result<T, RebaseError>;
     ))]
 pub async fn perform_rebase(
     ctx: &mut DalContext,
+    frigg: &FriggStore,
     request: &EnqueueUpdatesRequest,
     server_tracker: &TaskTracker,
 ) -> RebaseResult<RebaseStatus> {
@@ -85,6 +97,9 @@ pub async fn perform_rebase(
     let to_rebase_workspace_snapshot_address = to_rebase_change_set.workspace_snapshot_address;
     debug!("before snapshot fetch and parse: {:?}", start.elapsed());
     let to_rebase_workspace_snapshot =
+        WorkspaceSnapshot::find(ctx, to_rebase_workspace_snapshot_address).await?;
+    // Rather than clone the above snapshot we want an independent copy of this snapshot
+    let original_workspace_snapshot =
         WorkspaceSnapshot::find(ctx, to_rebase_workspace_snapshot_address).await?;
 
     let rebase_batch = ctx
@@ -118,8 +133,7 @@ pub async fn perform_rebase(
     debug!("updates complete: {:?}", start.elapsed());
 
     if !corrected_updates.is_empty() {
-        // Once all updates have been performed, we can write out, mark everything as recently seen
-        // and update the pointer.
+        // Once all updates have been performed, we can write out, and update the pointer.
         to_rebase_workspace_snapshot.write(ctx).await?;
         debug!("snapshot written: {:?}", start.elapsed());
         to_rebase_change_set
@@ -134,8 +148,9 @@ pub async fn perform_rebase(
 
         debug!("pointer updated: {:?}", start.elapsed());
 
-        ctx.set_workspace_snapshot(to_rebase_workspace_snapshot);
+        ctx.set_workspace_snapshot(to_rebase_workspace_snapshot.clone());
     }
+
     let updates_count = rebase_batch.updates().len();
     span.record("si.updates.count", updates_count.to_string());
     span.record(
@@ -143,6 +158,37 @@ pub async fn perform_rebase(
         corrected_updates.len().to_string(),
     );
     info!("rebase performed: {:?}", start.elapsed());
+
+    if frigg
+        .get_index(ctx.workspace_pk()?, ctx.change_set_id())
+        .await?
+        .is_some()
+    {
+        info!("Frigg index found, triggering rebuild of materialized views");
+        let changes = original_workspace_snapshot
+            .detect_changes(&to_rebase_workspace_snapshot)
+            .instrument(tracing::info_span!(
+                "Detect changes for materialized view rebuild"
+            ))
+            .await?;
+        dal::materialized_view::build_mv_for_changes_in_change_set(
+            ctx,
+            frigg,
+            ctx.change_set_id(),
+            original_workspace_snapshot.id().await,
+            to_rebase_workspace_snapshot.id().await,
+            &changes,
+        )
+        .instrument(tracing::info_span!("Rebuild affected materialized views"))
+        .await?;
+    } else {
+        info!("No Frigg index found, triggering initial build of materialized views");
+        dal::materialized_view::build_all_mv_for_change_set(ctx, frigg)
+            .instrument(tracing::info_span!(
+                "Initial build of all materialized views"
+            ))
+            .await?;
+    }
 
     // Before replying to the requester, we must commit.
     ctx.commit_no_rebase().await?;

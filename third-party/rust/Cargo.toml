@@ -92,10 +92,10 @@ indexmap = { version = "2.7.0", features = ["serde", "std"] }
 indicatif = "0.17.11"
 indoc = "2.0.5"
 itertools = "0.13.0"
+json-patch = "4.0.0"
 jwt-simple = { version = "0.12.11", default-features = false, features = [
     "pure-rust",
 ] }
-json-patch = "4.0.0"
 krata-loopdev = "0.0.21"
 lazy_static = "1.5.0"
 log = "0.4"

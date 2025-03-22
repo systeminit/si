@@ -1,0 +1,21 @@
+load("@prelude-si//:cargo.bzl", "cargo_test")
+load("@prelude-si//:macros.bzl", "rust_library")
+
+cargo_test(
+    name = "test-unit",
+    crate = "si-frontend-types-macros",
+    srcs = glob(["src/**/*.rs", "tests/**"]),
+)
+
+rust_library(
+    name = "si-frontend-types-macros",
+    deps = [
+        "//third-party/rust:darling",
+        "//third-party/rust:manyhow",
+        "//third-party/rust:proc-macro2",
+        "//third-party/rust:quote",
+        "//third-party/rust:syn",
+    ],
+    srcs = glob(["src/**/*.rs"]),
+    proc_macro = True,
+)

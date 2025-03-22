@@ -12,8 +12,6 @@ export class WindowListenerManager {
     >
   > = {};
 
-  constructor(private el: Window) {}
-
   addEventListener<ET extends WindowListenerTypes>(
     type: ET,
     callback: ListenerCallback,
@@ -73,4 +71,4 @@ export class WindowListenerManager {
   };
 }
 
-export const windowListenerManager = new WindowListenerManager(window);
+export const windowListenerManager = new WindowListenerManager();

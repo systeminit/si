@@ -10,6 +10,7 @@ use dal::{
     feature_flags::FeatureFlagService, DalContext, DalLayerDb, DedicatedExecutor, JetstreamStreams,
     JobQueueProcessor, NatsProcessor, ServicesContext,
 };
+use frigg::{frigg_kv, FriggStore};
 use naxum::{
     extract::MatchedSubject,
     handler::Handler as _,
@@ -159,12 +160,15 @@ impl Server {
 
         let requests_stream = nats::rebaser_requests_jetstream_stream(&context).await?;
 
+        let frigg = FriggStore::new(nats.clone(), frigg_kv(&context, prefix.as_deref()).await?);
+
         let ctx_builder = DalContext::builder(services_context, false);
 
         let server_tracker = TaskTracker::new();
         let state = AppState::new(
             metadata.clone(),
             nats,
+            frigg,
             requests_stream,
             ctx_builder,
             quiescent_period,
