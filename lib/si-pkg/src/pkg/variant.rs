@@ -56,7 +56,7 @@ impl SiPkgSchemaVariantData {
 #[derive(Clone, Debug)]
 pub struct SiPkgSchemaVariant<'a> {
     version: String,
-    data: Option<SiPkgSchemaVariantData>,
+    pub data: Option<SiPkgSchemaVariantData>,
     unique_id: Option<String>,
     deleted: bool,
     is_builtin: bool,
