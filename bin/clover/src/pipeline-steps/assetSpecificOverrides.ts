@@ -480,6 +480,7 @@ const overrides = new Map<string, OverrideFn>([
     if (!imageSocket) return;
       
     setAnnotationOnSocket(imageSocket, { tokens: ["repositoryuri"] });    
+    setAnnotationOnSocket(imageSocket, { tokens: ["repository uri"] });    
   }],
   ["AWS::Lambda::Function", (spec: ExpandedPkgSpec) => {
     const variant = spec.schemas[0].variants[0];
