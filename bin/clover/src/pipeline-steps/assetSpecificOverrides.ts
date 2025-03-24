@@ -493,6 +493,56 @@ const overrides = new Map<string, OverrideFn>([
     setAnnotationOnSocket(roleSocket, { tokens: ["arn", "string"] });
     setAnnotationOnSocket(roleSocket, { tokens: ["arn"] }); 
   }],
+  ["AWS::ECS::TaskDefinition", (spec: ExpandedPkgSpec) => {
+      const variant = spec.schemas[0].variants[0];
+
+      // List of props to remove read-only
+      const propsToRemove = [
+        "ContainerDefinitions",
+        "Cpu",
+        "EnableFaultInjection",
+        "ExecutionRoleArn",
+        "InferenceAccelerators",
+        "Memory",
+        "NetworkMode",
+        "PlacementConstraints",
+        "ProxyConfiguration",
+        "RequiresCompatibilities",
+        "RuntimePlatform",
+        "TaskRoleArn",
+        "Volumes",
+        "PidMode",
+        "IpcMode",
+        "EphemeralStorage",
+      ];
+
+      const extraProp = propForOverride(variant.domain, "extra");
+      if (!extraProp || extraProp.kind !== "object") return;
+
+      const propUsageMapProp = propForOverride(extraProp, "PropUsageMap");
+      if (!propUsageMapProp || !propUsageMapProp.data?.defaultValue) return;
+
+      const defaultValue = JSON.parse(propUsageMapProp.data.defaultValue as string);
+      let createOnly = defaultValue["createOnly"];
+      const updatable = defaultValue["updatable"];
+
+      propsToRemove.forEach((propName) => {
+        const prop = propForOverride(variant.domain, propName);
+        if (!prop) return;
+        
+        const currentWidgetOptions = prop.data.widgetOptions;
+        prop.data.widgetOptions = currentWidgetOptions?.filter((w) => w.label !== "si_create_only_prop") ?? null
+        
+        createOnly = createOnly?.filter((p: string) => p !== propName);
+        
+        updatable.push(propName);
+      });
+      
+      defaultValue["createOnly"] = createOnly;
+      defaultValue["updatable"] = updatable;
+      propUsageMapProp!.data.defaultValue = JSON.stringify(defaultValue);
+    },
+  ],
 ]);
 
 function addSecretProp(
