@@ -13,6 +13,7 @@ use dal::{
 use reqwest::Client;
 use serde::Serialize;
 use si_data_spicedb::SpiceDbError;
+use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{middleware::WorkspacePermissionLayer, service::ApiError, AppState};
@@ -52,8 +53,6 @@ pub enum Error {
     Transactions(#[from] dal::TransactionsError),
     #[error("found an unexpected number of open change sets matching default change set (should be one, found {0:?})")]
     UnexpectedNumberOfOpenChangeSetsMatchingDefaultChangeSet(Vec<ChangeSetId>),
-    #[error("Failed to post to webhook: {0}")]
-    Webhook(String),
     #[error("workspace integration error: {0}")]
     WorkspaceIntegrations(#[from] dal::workspace_integrations::WorkspaceIntegrationsError),
     #[error("workspace snapshot error: {0}")]
@@ -88,7 +87,7 @@ struct SlackMessage<'a> {
 
 pub async fn post_to_webhook(
     ctx: &DalContext,
-    _workspace_id: WorkspacePk,
+    workspace_id: WorkspacePk,
     message: &str,
 ) -> Result<()> {
     if let Some(integration) = WorkspaceIntegration::get_integrations_for_workspace_pk(ctx).await? {
@@ -96,16 +95,27 @@ pub async fn post_to_webhook(
             let client = Client::new();
             let slack_message = SlackMessage { text: message };
 
-            let response = client
+            match client
                 .post(webhook_url.clone())
                 .json(&slack_message)
                 .send()
-                .await?;
-
-            if response.status().is_success() {
-                return Ok(());
-            } else {
-                return Err(Error::Webhook(webhook_url));
+                .await
+            {
+                Ok(response) if !response.status().is_success() => {
+                    info!(
+                        "Failed to post to Slack webhook for workspace {} to URL {}, status: {}",
+                        workspace_id,
+                        webhook_url,
+                        response.status()
+                    );
+                }
+                Err(err) => {
+                    info!(
+                        "Error posting to Slack webhook for workspace {} to URL {}: {}",
+                        workspace_id, webhook_url, err
+                    );
+                }
+                _ => {}
             }
         }
     }
