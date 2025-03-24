@@ -13,10 +13,10 @@ cyclone-core = { path = "../cyclone-core" }
 futures = { workspace = true }
 nix = { workspace = true }
 remain = { workspace = true }
+telemetry = { path = "../../lib/telemetry-rs" }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 tokio-util = { workspace = true }
-tracing = { workspace = true }
 
 [dev-dependencies]
 

@@ -1,18 +1,23 @@
-use cyclone_core::process;
-use std::fs::Permissions;
-use std::io::Error;
-use std::io::ErrorKind;
-use std::os::unix::fs::PermissionsExt;
-use std::path::Path;
-use std::path::PathBuf;
-use std::result;
-use tokio::fs;
-use tokio::process::Child;
-use tokio::process::Command;
-use tracing::info;
+use std::{
+    fs::Permissions,
+    io::{Error, ErrorKind},
+    os::unix::fs::PermissionsExt,
+    path::{Path, PathBuf},
+    result,
+};
 
-use crate::disk::FirecrackerDisk;
-use crate::errors::FirecrackerJailError;
+use cyclone_core::process;
+use telemetry::prelude::*;
+use tokio::{
+    fs,
+    process::{Child, Command},
+};
+
+use crate::{
+    disk::FirecrackerDisk,
+    errors::FirecrackerJailError,
+    stream::{StreamForwarderHandle, UnixStreamForwarder},
+};
 
 type Result<T> = result::Result<T, FirecrackerJailError>;
 
@@ -28,8 +33,9 @@ const FIRECRACKER_SCRIPTS: &[(&str, &[u8])] = &[
 
 #[derive(Debug)]
 pub struct FirecrackerJail {
+    id: u32,
     jailer: Command,
-    child: Option<Child>,
+    child: Option<(Child, Option<StreamForwarderHandle>)>,
     socket: PathBuf,
 }
 
@@ -64,6 +70,7 @@ impl FirecrackerJail {
         let socket = PathBuf::from(&format!("/srv/jailer/firecracker/{}/root/v.sock", id));
 
         Ok(Self {
+            id,
             jailer: cmd,
             child: None,
             socket,
@@ -89,12 +96,6 @@ impl FirecrackerJail {
                     .unwrap_or_else(|_| "Failed to decode stderr".to_string()),
             )));
         }
-
-        // TODO(nick,john,fletcher): delete or restore this once verideath investigation is done.
-        // UnixStreamForwarder::new(FirecrackerDisk::jail_dir_from_id(id), id)
-        //     .await?
-        //     .start()
-        //     .await?;
 
         Ok(())
     }
@@ -155,14 +156,26 @@ impl FirecrackerJail {
     }
 
     pub async fn spawn(&mut self) -> Result<()> {
-        self.child = Some(self.jailer.spawn().map_err(FirecrackerJailError::Spawn)?);
+        let handle = UnixStreamForwarder::new(FirecrackerDisk::jail_dir_from_id(self.id), self.id)
+            .await?
+            .start()
+            .await?;
+
+        self.child = Some((
+            self.jailer.spawn().map_err(FirecrackerJailError::Spawn)?,
+            Some(handle),
+        ));
         Ok(())
     }
 
     pub async fn terminate(&mut self) -> Result<()> {
         match self.child.as_mut() {
-            Some(c) => {
-                process::child_shutdown(c, Some(process::Signal::SIGTERM), None).await?;
+            Some((child, handle)) => {
+                process::child_shutdown(child, Some(process::Signal::SIGTERM), None).await?;
+                // Handle shutdown consumes self so only call it once
+                if let Some(handle) = handle.take() {
+                    handle.shutdown().await?;
+                }
                 Ok(())
             }
             None => Ok(()),
