@@ -12,6 +12,7 @@ use graph::detector::Update;
 use graph::{RebaseBatch, WorkspaceSnapshotGraph};
 use node_weight::traits::CorrectTransformsError;
 use petgraph::prelude::*;
+use selector::WorkspaceSnapshotSelectorDiscriminants;
 use serde::{Deserialize, Serialize};
 use si_data_pg::PgError;
 use si_events::merkle_tree_hash::MerkleTreeHash;
@@ -46,8 +47,8 @@ use crate::{
     DalContext, TransactionsError, WorkspaceSnapshotGraphVCurrent,
 };
 use crate::{
-    AttributeValueId, Component, ComponentError, ComponentId, InputSocketId, OutputSocketId,
-    SchemaId, SchemaVariantId, TenancyError, Workspace, WorkspaceError,
+    Component, ComponentError, ComponentId, InputSocketId, OutputSocketId, SchemaId,
+    SchemaVariantId, TenancyError, Workspace, WorkspaceError,
 };
 
 use self::node_weight::{NodeWeightDiscriminants, OrderingNodeWeight};
@@ -58,11 +59,13 @@ pub mod graph;
 pub mod lamport_clock;
 pub mod migrator;
 pub mod node_weight;
+pub mod selector;
 pub mod traits;
 pub mod update;
 pub mod vector_clock;
 
 pub use petgraph::Direction;
+pub use selector::WorkspaceSnapshotSelector;
 pub use si_id::WorkspaceSnapshotNodeId as NodeId;
 pub use traits::{
     entity_kind::EntityKindExt, schema::variant::SchemaVariantExt, socket::input::InputSocketExt,
@@ -152,6 +155,8 @@ pub enum WorkspaceSnapshotError {
     UnexpectedEdgeTarget(Ulid, Ulid, EdgeWeightKindDiscriminants),
     #[error("Unexpected number of incoming edges of type {0:?} for node type {1:?} with id {2}")]
     UnexpectedNumberOfIncomingEdges(EdgeWeightKindDiscriminants, NodeWeightDiscriminants, Ulid),
+    #[error("Unexpected snapshot kind: {0}")]
+    UnexpectedSnapshotKind(WorkspaceSnapshotSelectorDiscriminants),
     #[error("Workspace error: {0}")]
     Workspace(#[from] Box<WorkspaceError>),
     #[error("Tenancy missing Workspace")]
@@ -749,24 +754,6 @@ impl WorkspaceSnapshot {
                 .detect_changes(&*onto_clone.working_copy().await)
         })?
         .await??)
-    }
-
-    /// A wrapper around [`Self::detect_changes`](Self::detect_changes) where the "onto" snapshot is derived from the
-    /// workspace's default [`ChangeSet`](crate::ChangeSet).
-    #[instrument(
-        name = "workspace_snapshot.detect_changes_from_head",
-        level = "debug",
-        skip_all
-    )]
-    pub async fn detect_changes_from_head(
-        &self,
-        ctx: &DalContext,
-    ) -> WorkspaceSnapshotResult<Vec<Change>> {
-        let head_change_set_id = ctx.get_workspace_default_change_set_id().await?;
-        let head_snapshot = Self::find_for_change_set(ctx, head_change_set_id).await?;
-        head_snapshot
-            .detect_changes(&ctx.workspace_snapshot()?.clone())
-            .await
     }
 
     /// Calculates the checksum based on a list of IDs with hashes passed in.
@@ -1605,92 +1592,6 @@ impl WorkspaceSnapshot {
         }
 
         Ok(roots)
-    }
-
-    /// If this node is associated to a single av, return it
-    pub async fn associated_attribute_value_id(
-        &self,
-        node_weight: NodeWeight,
-    ) -> WorkspaceSnapshotResult<Option<AttributeValueId>> {
-        let mut this_node_weight = node_weight;
-        while let Some(edge_kind) = match &this_node_weight {
-            NodeWeight::AttributeValue(av) => return Ok(Some(av.id().into())),
-            NodeWeight::AttributePrototypeArgument(_) => {
-                Some(EdgeWeightKindDiscriminants::PrototypeArgument)
-            }
-            NodeWeight::Ordering(_) => Some(EdgeWeightKindDiscriminants::Ordering),
-
-            NodeWeight::Content(content) => match content.content_address_discriminants() {
-                ContentAddressDiscriminants::AttributePrototype => {
-                    Some(EdgeWeightKindDiscriminants::Prototype)
-                }
-                ContentAddressDiscriminants::StaticArgumentValue => {
-                    Some(EdgeWeightKindDiscriminants::PrototypeArgumentValue)
-                }
-                ContentAddressDiscriminants::ValidationOutput => {
-                    Some(EdgeWeightKindDiscriminants::ValidationOutput)
-                }
-
-                ContentAddressDiscriminants::ActionPrototype
-                | ContentAddressDiscriminants::ApprovalRequirementDefinition
-                | ContentAddressDiscriminants::Component
-                | ContentAddressDiscriminants::DeprecatedAction
-                | ContentAddressDiscriminants::DeprecatedActionBatch
-                | ContentAddressDiscriminants::DeprecatedActionRunner
-                | ContentAddressDiscriminants::Func
-                | ContentAddressDiscriminants::FuncArg
-                | ContentAddressDiscriminants::Geometry
-                | ContentAddressDiscriminants::InputSocket
-                | ContentAddressDiscriminants::JsonValue
-                | ContentAddressDiscriminants::ManagementPrototype
-                | ContentAddressDiscriminants::Module
-                | ContentAddressDiscriminants::OutputSocket
-                | ContentAddressDiscriminants::Prop
-                | ContentAddressDiscriminants::Root
-                | ContentAddressDiscriminants::Schema
-                | ContentAddressDiscriminants::SchemaVariant
-                | ContentAddressDiscriminants::Secret
-                | ContentAddressDiscriminants::ValidationPrototype
-                | ContentAddressDiscriminants::View => None,
-            },
-
-            NodeWeight::Action(_)
-            | NodeWeight::ActionPrototype(_)
-            | NodeWeight::ApprovalRequirementDefinition(_)
-            | NodeWeight::Category(_)
-            | NodeWeight::Component(_)
-            | NodeWeight::DependentValueRoot(_)
-            | NodeWeight::DiagramObject(_)
-            | NodeWeight::FinishedDependentValueRoot(_)
-            | NodeWeight::Func(_)
-            | NodeWeight::FuncArgument(_)
-            | NodeWeight::Geometry(_)
-            | NodeWeight::InputSocket(_)
-            | NodeWeight::ManagementPrototype(_)
-            | NodeWeight::Prop(_)
-            | NodeWeight::SchemaVariant(_)
-            | NodeWeight::Secret(_)
-            | NodeWeight::View(_) => None,
-        } {
-            let next_node_idxs = self
-                .incoming_sources_for_edge_weight_kind(this_node_weight.id(), edge_kind)
-                .await?;
-
-            this_node_weight = match next_node_idxs.first() {
-                Some(&next_node_idx) if next_node_idxs.len() == 1 => {
-                    self.get_node_weight(next_node_idx).await?
-                }
-                _ => {
-                    return Err(WorkspaceSnapshotError::UnexpectedNumberOfIncomingEdges(
-                        edge_kind,
-                        NodeWeightDiscriminants::from(&this_node_weight),
-                        this_node_weight.id(),
-                    ))
-                }
-            };
-        }
-
-        Ok(None)
     }
 
     pub async fn schema_variant_id_for_component_id(

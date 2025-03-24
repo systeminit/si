@@ -15,6 +15,7 @@ use thiserror::Error;
 
 use crate::approval_requirement::ApprovalRequirementError;
 use crate::workspace_snapshot::node_weight::NodeWeight;
+use crate::workspace_snapshot::WorkspaceSnapshotSelector;
 use crate::{
     attribute::{
         prototype::argument::{AttributePrototypeArgumentError, AttributePrototypeArgumentId},
@@ -303,7 +304,7 @@ impl Diagram {
     #[instrument(level = "info", skip_all)]
     async fn assemble_component_views(
         ctx: &DalContext,
-        base_snapshot: &Arc<WorkspaceSnapshot>,
+        base_snapshot: &WorkspaceSnapshotSelector,
         components: &ComponentInfoCache,
         diagram_sockets: &mut HashMap<SchemaVariantId, Vec<DiagramSocket>>,
     ) -> DiagramResult<DiagramComponentViews> {
@@ -439,7 +440,9 @@ impl Diagram {
     }
 
     #[instrument(level = "info", skip_all)]
-    async fn get_base_snapshot(ctx: &DalContext) -> DiagramResult<(Arc<WorkspaceSnapshot>, bool)> {
+    async fn get_base_snapshot(
+        ctx: &DalContext,
+    ) -> DiagramResult<(WorkspaceSnapshotSelector, bool)> {
         let base_change_set_id = if let Some(change_set_id) = ctx.change_set()?.base_change_set_id {
             change_set_id
         } else {
@@ -459,7 +462,9 @@ impl Diagram {
         }
 
         Ok((
-            Arc::new(WorkspaceSnapshot::find_for_change_set(ctx, base_change_set_id).await?),
+            WorkspaceSnapshotSelector::LegacySnapshot(Arc::new(
+                WorkspaceSnapshot::find_for_change_set(ctx, base_change_set_id).await?,
+            )),
             true,
         ))
     }
@@ -467,7 +472,7 @@ impl Diagram {
     #[instrument(level = "info", skip_all)]
     async fn assemble_removed_components(
         ctx: &DalContext,
-        base_snapshot: Arc<WorkspaceSnapshot>,
+        base_snapshot: WorkspaceSnapshotSelector,
         maybe_view_id: Option<ViewId>,
         diagram_sockets: &mut HashMap<SchemaVariantId, Vec<DiagramSocket>>,
     ) -> DiagramResult<Vec<DiagramComponentView>> {
@@ -560,7 +565,7 @@ impl Diagram {
     #[instrument(level = "info", skip_all)]
     async fn assemble_removed_management_edges(
         ctx: &DalContext,
-        base_snapshot: Arc<WorkspaceSnapshot>,
+        base_snapshot: WorkspaceSnapshotSelector,
     ) -> DiagramResult<Vec<SummaryDiagramManagementEdge>> {
         let mut removed_edges = vec![];
 
@@ -570,14 +575,14 @@ impl Diagram {
             if component.to_delete() {
                 continue;
             }
-            for source_idx in workspace_snapshot
+            for source_id in workspace_snapshot
                 .incoming_sources_for_edge_weight_kind(
                     component.id(),
                     EdgeWeightKindDiscriminants::Manages,
                 )
                 .await?
             {
-                let node_weight = workspace_snapshot.get_node_weight(source_idx).await?;
+                let node_weight = workspace_snapshot.get_node_weight(source_id).await?;
                 if let NodeWeight::Component(_) = &node_weight {
                     existing_management_edges.insert((node_weight.id().into(), component.id()));
                 }
