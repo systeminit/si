@@ -127,19 +127,18 @@ System Initiative.
 
 ## Full Coverage of the AWS Cloud Control API (Generally Available)
 
-We have implemented integration with
-[AWS Cloud Control API](https://aws.amazon.com/cloudcontrolapi/), providing full
+We have an integration with the
+[AWS Cloud Control API](https://aws.amazon.com/cloudcontrolapi/), providing complete
 coverage of all AWS resources supported by
 [CloudFormation](https://aws.amazon.com/cloudformation/). This enables our
-platform to create, read, update, and delete any AWS resource that
-CloudFormation supports, expanding our coverage beyond previously supported
-resource types.
+platform to create, read, update, and delete any AWS resource
+CloudFormation supports.
 
-This integration eliminates manual resource modeling and maintains automatic
-synchronization with AWS's service catalog. As AWS releases new resources or
+This integration eliminates manual resource modeling and automatically
+synchronizes with AWS's service catalog. As AWS releases new resources or
 updates existing ones through CloudFormation, our platform supports these
 changes without additional development work.
 
-If there is something specific you want or need from these assets, or need
+If there is something specific you want or need from these assets, or if you need
 support for something outside of AWS, come chat with us on
 [Discord](https://discord.com/invite/q6H2ZyFh) anytime.
