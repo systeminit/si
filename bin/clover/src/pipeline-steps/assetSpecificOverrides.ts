@@ -543,6 +543,22 @@ const overrides = new Map<string, OverrideFn>([
       propUsageMapProp!.data.defaultValue = JSON.stringify(defaultValue);
     },
   ],
+  ["AWS::ECR::RegistryPolicy", (spec: ExpandedPkgSpec) => {
+    const variant = spec.schemas[0].variants[0];
+
+    const policyTextProp = propForOverride(variant.domain, "PolicyText");
+    if (!policyTextProp) return;
+
+    // PolicyText needs to be prop kind json and widgetkind CodeEditor
+    policyTextProp.kind = "json";
+    policyTextProp.data.widgetKind = "CodeEditor";
+
+    // Create an input socket that connects PolicyDocument
+    const policyDocumentSocket = createInputSocketFromProp(policyTextProp, [
+      { tokens: ["policydocument"] },
+    ], "Policy Document");
+    variant.sockets.push(policyDocumentSocket);    
+  }],
 ]);
 
 function addSecretProp(
