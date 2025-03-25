@@ -1,4 +1,6 @@
+use crate::checksum::FrontendChecksum;
 use serde::{Deserialize, Serialize};
+use si_events::workspace_snapshot::{Checksum, ChecksumHasher};
 use si_events::{
     FuncId, InputSocketId, OutputSocketId, PropId, SchemaId, SchemaVariantId, Timestamp,
 };
@@ -11,7 +13,9 @@ pub struct ListVariantsResponse {
     pub uninstalled: Vec<UninstalledVariant>,
 }
 
-#[derive(Clone, Debug, Deserialize, Eq, Serialize, PartialEq)]
+#[derive(
+    Clone, Debug, Deserialize, Eq, Serialize, PartialEq, si_frontend_types_macros::FrontendChecksum,
+)]
 #[serde(rename_all = "camelCase")]
 pub struct SchemaVariant {
     pub schema_id: SchemaId,
@@ -36,7 +40,9 @@ pub struct SchemaVariant {
     pub can_contribute: bool,
 }
 
-#[derive(Clone, Debug, Deserialize, Eq, Serialize, PartialEq)]
+#[derive(
+    Clone, Debug, Deserialize, Eq, Serialize, PartialEq, si_frontend_types_macros::FrontendChecksum,
+)]
 #[serde(rename_all = "camelCase")]
 pub struct UninstalledVariant {
     pub schema_id: SchemaId,
@@ -64,6 +70,7 @@ pub struct UninstalledVariant {
     Ord,
     PartialEq,
     PartialOrd,
+    si_frontend_types_macros::FrontendChecksum,
 )]
 #[serde(rename_all = "camelCase")]
 pub enum ComponentType {
@@ -102,7 +109,7 @@ pub struct Prop {
 }
 
 #[remain::sorted]
-#[derive(Clone, Debug, Deserialize, Eq, Serialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Display, Eq, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub enum PropKind {
     Any,

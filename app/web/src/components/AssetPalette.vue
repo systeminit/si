@@ -75,7 +75,7 @@
               schemaVariant.id
             "
             showSelection
-            @mousedown.left.stop="onSelect(schemaVariant.id, $event)"
+            @mousedown.left.stop="onSelect(useCorrectId(schemaVariant), $event)"
             @click.right.prevent
           >
             <template #label>
@@ -134,10 +134,12 @@ import {
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { windowListenerManager } from "@si/vue-lib";
+import { useQuery } from "@tanstack/vue-query";
 import {
   useComponentsStore,
   getAssetIcon,
   Categories,
+  CategoryVariant,
 } from "@/store/components.store";
 import { schemaVariantDisplayName, useAssetStore } from "@/store/asset.store";
 import { SchemaVariant } from "@/api/sdf/dal/schema";
@@ -145,6 +147,8 @@ import NodeSkeleton from "@/components/NodeSkeleton.vue";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
 import EditingPill from "@/components/EditingPill.vue";
 import { useViewsStore } from "@/store/views.store";
+import { bifrost, makeArgs, makeKey } from "@/store/realtime/heimdall";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 
 const searchRef = ref<InstanceType<typeof SiSearch>>();
 
@@ -157,6 +161,15 @@ const schemasReqStatus = assetStore.getRequestStatus(
 );
 
 const collapsibleRefs = ref<InstanceType<typeof TreeNode>[]>([]);
+
+const useCorrectId = (schemaVariant: CategoryVariant) => {
+  if (!ffStore.FRONTEND_ARCH_VIEWS) return schemaVariant.id;
+  else {
+    if (schemaVariant.type === "uninstalled")
+      return `${schemaVariant.type}-${schemaVariant.variant.schemaId}`;
+    return `${schemaVariant.type}-${schemaVariant.id}`;
+  }
+};
 
 const searchString = ref("");
 const searchStringCleaned = computed(() =>
@@ -172,7 +185,28 @@ function onSearchUpdated(newFilterString: string) {
     c.toggleIsOpen(true);
   });
 }
-const categories = computed(() => componentsStore.categories);
+
+const ffStore = useFeatureFlagsStore();
+
+const queryKey = makeKey("SchemaVariantCategories");
+interface SchemaVariantCategories {
+  id: string; // change set id
+  categories: Categories;
+}
+const schemaVariantCategoriesOverBifrost =
+  useQuery<SchemaVariantCategories | null>({
+    queryKey,
+    queryFn: async () =>
+      await bifrost<SchemaVariantCategories>(
+        makeArgs("SchemaVariantCategories"),
+      ),
+  });
+
+const categories = computed(() => {
+  if (ffStore.FRONTEND_ARCH_VIEWS) {
+    return schemaVariantCategoriesOverBifrost.data.value?.categories ?? [];
+  } else return componentsStore.categories;
+});
 
 const filteredCategoriesBySearchString = (
   categories: Categories,
