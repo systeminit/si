@@ -11,7 +11,7 @@ pub mod materialized_view;
 mod module;
 pub mod object;
 pub mod reference;
-mod schema_variant;
+pub mod schema_variant;
 pub mod view;
 mod workspace;
 

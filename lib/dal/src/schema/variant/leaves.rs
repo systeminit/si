@@ -251,21 +251,30 @@ impl SchemaVariant {
             .ok_or_else(|| SchemaVariantError::LeafMapPropNotFound(item_prop_id))?;
 
         // Clear existing prototypes as needed.
-        if let Some(prototype_id) =
-            AttributePrototype::find_for_prop(ctx, item_prop_id, &None).await?
+        if let Some(prototype_id) = AttributePrototype::find_for_prop(ctx, item_prop_id, &None)
+            .await
+            .map_err(Box::new)?
         {
             debug!(%prototype_id, %item_prop_id, "removing attribute prototype without key for leaf item prop");
-            AttributePrototype::remove(ctx, prototype_id).await?;
+            AttributePrototype::remove(ctx, prototype_id)
+                .await
+                .map_err(Box::new)?;
         }
-        if let Some(prototype_id) =
-            AttributePrototype::find_for_prop(ctx, item_prop_id, &key).await?
+        if let Some(prototype_id) = AttributePrototype::find_for_prop(ctx, item_prop_id, &key)
+            .await
+            .map_err(Box::new)?
         {
             debug!(%prototype_id, %item_prop_id, ?key, "removing attribute prototype for leaf item prop and key that already exists");
-            AttributePrototype::remove(ctx, prototype_id).await?;
+            AttributePrototype::remove(ctx, prototype_id)
+                .await
+                .map_err(Box::new)?;
         }
 
         // Create the new prototype and add an edge to the item prop using a populated key.
-        let attribute_prototype_id = AttributePrototype::new(ctx, func_id).await?.id();
+        let attribute_prototype_id = AttributePrototype::new(ctx, func_id)
+            .await
+            .map_err(Box::new)?
+            .id();
         Prop::add_edge_to_attribute_prototype(
             ctx,
             item_prop_id,

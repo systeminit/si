@@ -3,7 +3,13 @@ use si_events::{
     workspace_snapshot::{Checksum, ChecksumHasher},
     ChangeSetStatus, Timestamp,
 };
-use si_id::{ChangeSetId, ViewId, WorkspaceId};
+use si_id::{
+    ChangeSetId, FuncId, InputSocketId, OutputSocketId, PropId, SchemaId, SchemaVariantId, ViewId,
+    WorkspaceId,
+};
+
+use crate::schema_variant::SchemaVariantsByCategory;
+use crate::{InputSocket, OutputSocket, Prop, PropKind};
 
 pub trait FrontendChecksum {
     fn checksum(&self) -> Checksum;
@@ -33,6 +39,91 @@ impl FrontendChecksum for WorkspaceId {
 impl FrontendChecksum for ViewId {
     fn checksum(&self) -> Checksum {
         FrontendChecksum::checksum(&self.to_string())
+    }
+}
+
+impl FrontendChecksum for SchemaId {
+    fn checksum(&self) -> Checksum {
+        FrontendChecksum::checksum(&self.to_string())
+    }
+}
+
+impl FrontendChecksum for FuncId {
+    fn checksum(&self) -> Checksum {
+        FrontendChecksum::checksum(&self.to_string())
+    }
+}
+
+impl FrontendChecksum for InputSocketId {
+    fn checksum(&self) -> Checksum {
+        FrontendChecksum::checksum(&self.to_string())
+    }
+}
+
+impl FrontendChecksum for OutputSocketId {
+    fn checksum(&self) -> Checksum {
+        FrontendChecksum::checksum(&self.to_string())
+    }
+}
+
+impl FrontendChecksum for PropId {
+    fn checksum(&self) -> Checksum {
+        FrontendChecksum::checksum(&self.to_string())
+    }
+}
+
+impl FrontendChecksum for PropKind {
+    fn checksum(&self) -> Checksum {
+        FrontendChecksum::checksum(&self.to_string())
+    }
+}
+
+impl FrontendChecksum for Prop {
+    fn checksum(&self) -> Checksum {
+        let mut hasher = ChecksumHasher::new();
+        hasher.update(FrontendChecksum::checksum(&self.id).as_bytes());
+        hasher.update(FrontendChecksum::checksum(&self.name).as_bytes());
+        hasher.update(FrontendChecksum::checksum(&self.kind).as_bytes());
+        hasher.update(FrontendChecksum::checksum(&self.path).as_bytes());
+        hasher.update(FrontendChecksum::checksum(&self.hidden).as_bytes());
+        hasher.update(FrontendChecksum::checksum(&self.eligible_to_receive_data).as_bytes());
+        hasher.update(FrontendChecksum::checksum(&self.eligible_to_send_data).as_bytes());
+        hasher.finalize()
+    }
+}
+
+impl FrontendChecksum for InputSocket {
+    fn checksum(&self) -> Checksum {
+        let mut hasher = ChecksumHasher::new();
+        hasher.update(FrontendChecksum::checksum(&self.id).as_bytes());
+        hasher.update(FrontendChecksum::checksum(&self.name).as_bytes());
+        hasher.update(FrontendChecksum::checksum(&self.eligible_to_send_data).as_bytes());
+        hasher.finalize()
+    }
+}
+
+impl FrontendChecksum for OutputSocket {
+    fn checksum(&self) -> Checksum {
+        let mut hasher = ChecksumHasher::new();
+        hasher.update(FrontendChecksum::checksum(&self.id).as_bytes());
+        hasher.update(FrontendChecksum::checksum(&self.name).as_bytes());
+        hasher.update(FrontendChecksum::checksum(&self.eligible_to_receive_data).as_bytes());
+        hasher.finalize()
+    }
+}
+
+impl FrontendChecksum for SchemaVariantId {
+    fn checksum(&self) -> Checksum {
+        FrontendChecksum::checksum(&self.to_string())
+    }
+}
+
+impl FrontendChecksum for SchemaVariantsByCategory {
+    fn checksum(&self) -> Checksum {
+        let mut hasher = ChecksumHasher::new();
+        hasher.update(FrontendChecksum::checksum(&self.display_name).as_bytes());
+        hasher.update(FrontendChecksum::checksum(&self.schema_variants).as_bytes());
+        hasher.finalize()
     }
 }
 
