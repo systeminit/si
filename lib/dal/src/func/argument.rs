@@ -62,7 +62,9 @@ pub enum FuncArgumentError {
 
 type FuncArgumentResult<T> = Result<T, FuncArgumentError>;
 
-#[remain::sorted]
+/// To ensure we don't break the enum deserialization
+/// with postcard, DO *NOT* add new types to this list in alphabetical order.
+/// Add them to the *END* of the enum *ONLY*.
 #[derive(
     Deserialize,
     Serialize,
