@@ -1,0 +1,1 @@
+ALTER TABLE cached_modules ADD COLUMN package_summary jsonb;

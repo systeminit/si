@@ -40,7 +40,7 @@ impl SiPkgSchemaData {
 #[derive(Clone, Debug)]
 pub struct SiPkgSchema<'a> {
     name: String,
-    data: Option<SiPkgSchemaData>,
+    pub data: Option<SiPkgSchemaData>,
     unique_id: Option<String>,
     deleted: bool,
     is_builtin: bool,
