@@ -99,7 +99,7 @@ pub use si_id::PropId;
 // deserialize into a serde_json::Value.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct WidgetOption {
-    label: String,
+    pub label: String,
     pub value: String,
 }
 

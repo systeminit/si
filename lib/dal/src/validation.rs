@@ -94,6 +94,7 @@ pub type ValidationResult<T> = Result<T, ValidationError>;
 
 pub use si_id::ValidationOutputId;
 
+// This type goes into the content store so cannot be re-ordered, only extended
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub enum ValidationStatus {
     Pending,

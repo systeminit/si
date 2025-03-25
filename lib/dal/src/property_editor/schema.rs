@@ -230,9 +230,7 @@ pub enum PropertyEditorPropWidgetKind {
     TextArea,
 }
 
-// NOTE(nick): this was from the old edit fields code, but it's interesting that we have multiple
-// widget kind enums? Not important to look at right now, though.
-#[remain::sorted]
+/// This type goes into the content store. It cannot be reordered, and existing variants cannot be changed. new variants can be added to the end.
 #[derive(
     AsRefStr, Clone, Deserialize, Serialize, Debug, PartialEq, Eq, Display, EnumString, Copy,
 )]
