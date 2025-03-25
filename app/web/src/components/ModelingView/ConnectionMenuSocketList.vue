@@ -34,6 +34,7 @@
         @click="emit('select', index)"
       >
         <Icon
+          :class="clsx(item.socket.def.direction === 'output' && 'rotate-180')"
           :name="
             item.socket.def.direction === 'output'
               ? 'output-socket'
@@ -43,8 +44,13 @@
         />
 
         <span>
-          {{ item.socket.def.label }} on component
-          {{ item.component.def.title }} ({{ item.component.def.schemaName }})
+          <template
+            v-for="(part, partIndex) in item.label.split('/')"
+            :key="partIndex"
+          >
+            <span v-if="partIndex !== 0" class="text-neutral-400"> / </span>
+            <span>{{ part }}</span>
+          </template>
         </span>
       </div>
     </div>
@@ -85,6 +91,7 @@ import {
 export type SocketListEntry = {
   component: DiagramNodeData | DiagramGroupData;
   socket: DiagramSocketData;
+  label: string;
 };
 
 const props = defineProps({
