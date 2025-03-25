@@ -122,8 +122,9 @@ pub async fn approve(
     let actor = ctx.history_actor().email(&ctx).await?;
     let change_set_url = format!("https://{}/w/{}/{}", host_name, workspace_pk, change_set_id);
     let message = format!(
-        "{} approved merge of change set {}: {}",
+        "{} {} merge of change set {}: {}",
         actor,
+        request.status,
         change_set_view.name.clone(),
         change_set_url
     );

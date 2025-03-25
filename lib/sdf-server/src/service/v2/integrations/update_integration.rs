@@ -1,5 +1,6 @@
 use crate::extract::{HandlerContext, PosthogClient};
 use crate::service::v2::AccessBuilder;
+use crate::track;
 
 use axum::extract::{Host, OriginalUri, Path, State};
 use axum::Json;
@@ -27,9 +28,9 @@ pub struct UpdateIntegrationResponse {
 pub async fn update_integration(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(access_builder): AccessBuilder,
-    PosthogClient(_posthog_client): PosthogClient,
-    OriginalUri(_original_uri): OriginalUri,
-    Host(_host_name): Host,
+    PosthogClient(posthog_client): PosthogClient,
+    OriginalUri(original_uri): OriginalUri,
+    Host(host_name): Host,
     State(mut state): State<AppState>,
     Path((workspace_pk, workspace_integration_id)): Path<(WorkspacePk, WorkspaceIntegrationId)>,
     Json(request): Json<UpdateIntegrationRequest>,
@@ -65,6 +66,17 @@ pub async fn update_integration(
         integration
             .update_webhook_url(&ctx, webhook_url.clone())
             .await?;
+
+        // We don't want to track the webhook URL change
+        // we only want to track that the feature was interacted with
+        track(
+            &posthog_client,
+            &ctx,
+            &original_uri,
+            &host_name,
+            "update_workspace_integration",
+            serde_json::json!({}),
+        );
 
         ctx.write_audit_log_to_head(
             AuditLogKind::WorkspaceIntegration {
