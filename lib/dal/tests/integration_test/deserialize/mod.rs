@@ -1,7 +1,25 @@
+use std::collections::HashSet;
 use std::io::Read;
 
+use chrono::{DateTime, TimeZone, Utc};
 use dal::action::prototype::ActionKind;
+use dal::action::ActionCompletionStatus;
+use dal::approval_requirement::ApprovalRequirementApprover;
+use dal::func::argument::FuncArgumentKind;
 use dal::func::FuncKind;
+use dal::layer_db_types::{
+    ApprovalRequirementDefinitionContent, AttributePrototypeContent, AttributePrototypeContentV1,
+    ComponentContent, ContentTypes, ContentTypesDiscriminants, DeprecatedActionBatchContent,
+    DeprecatedActionContent, DeprecatedActionPrototypeContent, DeprecatedActionRunnerContent,
+    DeprecatedActionRunnerContentV1, FuncArgumentContent, FuncArgumentContentV1, FuncContent,
+    FuncContentV2, GeometryContent, InputSocketContent, InputSocketContentV2,
+    ManagementPrototypeContent, ManagementPrototypeContentV1, ModuleContent, OutputSocketContent,
+    PropContent, PropContentV1, SchemaContent, SchemaVariantContent, SecretContent,
+    StaticArgumentValueContent, ValidationContent, ViewContent,
+};
+use dal::prop::WidgetOption;
+use dal::socket::connection_annotation::ConnectionAnnotation;
+use dal::validation::ValidationStatus;
 use dal::workspace_snapshot::content_address::ContentAddress;
 use dal::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use dal::workspace_snapshot::node_weight::diagram_object_node_weight::DiagramObjectKind;
@@ -10,17 +28,20 @@ use dal::workspace_snapshot::node_weight::{
     ArgumentTargets, CategoryNodeWeight, NodeWeight, OrderingNodeWeight,
 };
 use dal::{
-    ContentHash, DalContext, EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants,
-    NodeWeightDiscriminants, SocketArity, WorkspaceSnapshotGraph, WorkspaceSnapshotGraphVCurrent,
+    ComponentType, ContentHash, DalContext, EdgeWeight, EdgeWeightKind,
+    EdgeWeightKindDiscriminants, NodeWeightDiscriminants, SocketArity, SocketKind, Timestamp,
+    WorkspaceSnapshotGraph, WorkspaceSnapshotGraphVCurrent,
 };
 use dal::{PropKind, Ulid};
 use dal_test::test;
-use si_events::EncryptedSecretKey;
+use si_events::{CasValue, EncryptedSecretKey};
 use si_layer_cache::db::serialize;
 use strum::IntoEnumIterator;
 
 const CURRENT_SERIALIZED_GRAPH_DIR_PATH: &str = "./lib/dal/tests";
 const CURRENT_SERIALIZED_GRAPH_FILENAME: &str = "serialization-test-data-2024-11-21.snapshot";
+const CURRENT_SERIALIZED_CONTENT_FILENAME: &str =
+    "serialization-test-content-store-data-2025-03-25.bin";
 
 // If you're modifying this, you probably just added a new node or edge weight. Before you replace
 // the snapshot with one that includes the new weights, ensure that your current code passes the
@@ -223,6 +244,267 @@ fn make_me_one_with_everything(graph: &mut WorkspaceSnapshotGraphVCurrent) {
     }
 }
 
+fn make_static_utc() -> DateTime<Utc> {
+    // The windows 95 release date
+    Utc.with_ymd_and_hms(1995, 8, 24, 0, 0, 0).unwrap()
+}
+
+fn make_static_timestamp() -> Timestamp {
+    Timestamp::assemble(make_static_utc(), make_static_utc())
+}
+
+fn make_static_ulid<T>() -> T
+where
+    T: From<Ulid>,
+{
+    T::from(Ulid::from_string("01GW28EN4ZKTD192J5EFC3P3K0").unwrap())
+}
+
+fn make_me_one_with_everything_content_types_edition() -> Vec<ContentTypes> {
+    let mut result = vec![];
+    let timestamp = make_static_timestamp();
+    let utc = make_static_utc();
+
+    let cas_value = CasValue::from(
+        serde_json::json!({ "null": null, "bool": true, "number": 1.618033988, "string": "string", "array": ["of", "string"] }),
+    );
+
+    for content_type_kind in ContentTypesDiscriminants::iter() {
+        result.push(match content_type_kind {
+            ContentTypesDiscriminants::Any => ContentTypes::Any(cas_value.clone()),
+            ContentTypesDiscriminants::AttributePrototype => {
+                AttributePrototypeContent::V1(AttributePrototypeContentV1 { timestamp }).into()
+            }
+            ContentTypesDiscriminants::Component => {
+                ComponentContent::V2(dal::layer_db_types::ComponentContentV2 { timestamp }).into()
+            }
+            ContentTypesDiscriminants::DeprecatedAction => {
+                DeprecatedActionContent::V1(dal::layer_db_types::DeprecatedActionContentV1 {
+                    creation_user_pk: Some(make_static_ulid()),
+                    timestamp,
+                })
+                .into()
+            }
+            ContentTypesDiscriminants::DeprecatedActionBatch => DeprecatedActionBatchContent::V1(
+                dal::layer_db_types::DeprecatedActionBatchContentV1 {
+                    author: "Schaffa".into(),
+                    actors: "Edki Guardian Warrant".into(),
+                    started_at: Some(utc),
+                    finished_at: Some(utc),
+                    completion_status: Some(ActionCompletionStatus::Success),
+                    timestamp: make_static_timestamp(),
+                },
+            )
+            .into(),
+            ContentTypesDiscriminants::DeprecatedActionPrototype => {
+                DeprecatedActionPrototypeContent::V1(
+                    dal::layer_db_types::DeprecatedActionPrototypeContentV1 {
+                        kind: ActionKind::Create,
+                        name: Some("orogeny".into()),
+                        timestamp,
+                    },
+                )
+                .into()
+            }
+            ContentTypesDiscriminants::DeprecatedActionRunner => {
+                DeprecatedActionRunnerContent::V1(DeprecatedActionRunnerContentV1 {
+                    timestamp,
+                    component_id: make_static_ulid(),
+                    component_name: "Jija".into(),
+                    schema_name: "The Lost Moon".into(),
+                    func_name: "Syl Anagist".into(),
+                    action_prototype_id: make_static_ulid(),
+                    action_kind: ActionKind::Destroy,
+                    resource: Some("sessapinae".into()),
+                    started_at: Some(utc),
+                    finished_at: Some(utc),
+                    completion_status: Some(ActionCompletionStatus::Unstarted),
+                    completion_message: Some("the onyx".into()),
+                })
+                .into()
+            }
+            ContentTypesDiscriminants::Func => FuncContent::V2(FuncContentV2 {
+                timestamp,
+                display_name: Some("Binof".into()),
+                description: Some("Leadership Yumenes".into()),
+                link: Some("https://zombo.com".into()),
+                hidden: true,
+                builtin: true,
+                backend_response_type: dal::FuncBackendResponseType::SchemaVariantDefinition,
+                backend_kind: dal::FuncBackendKind::JsSchemaVariantDefinition,
+                handler: Some("handler".into()),
+                code_base64: Some("this isn't base64, is it".into()),
+                code_blake3: ContentHash::nil(),
+                is_locked: true,
+            })
+            .into(),
+            ContentTypesDiscriminants::FuncArgument => {
+                FuncArgumentContent::V1(FuncArgumentContentV1 {
+                    kind: FuncArgumentKind::String,
+                    element_kind: Some(FuncArgumentKind::String),
+                    timestamp,
+                })
+                .into()
+            }
+            ContentTypesDiscriminants::InputSocket => {
+                InputSocketContent::V2(InputSocketContentV2 {
+                    timestamp,
+                    name: "That port they use to jack into the Matrix".into(),
+                    inbound_type_definition: Some("the type of all types".into()),
+                    outbound_type_definition: Some("the barber who cuts their own hair".into()),
+                    kind: SocketKind::Standard,
+                    required: true,
+                    ui_hidden: true,
+                    connection_annotations: vec![ConnectionAnnotation::from_tokens_array(vec![
+                        "a".into(),
+                        "b".into(),
+                    ])],
+                })
+                .into()
+            }
+            ContentTypesDiscriminants::Module => {
+                ModuleContent::V2(dal::layer_db_types::ModuleContentV2 {
+                    timestamp,
+                    name: "Mod yule? That's changing christmas".into(),
+                    root_hash: "abcdefghijkl".into(),
+                    version: "turning and turning in the widening gyre".into(),
+                    description: "the falcon cannot hear the falconer".into(),
+                    created_by_email: "yeats@sandymount".into(),
+                    created_at: utc,
+                    schema_id: Some(make_static_ulid()),
+                })
+                .into()
+            }
+            ContentTypesDiscriminants::Prop => PropContent::V1(PropContentV1 {
+                timestamp,
+                name: "a prop?".into(),
+                kind: PropKind::Float,
+                widget_kind: dal::property_editor::schema::WidgetKind::TextArea,
+                widget_options: Some(vec![WidgetOption {
+                    label: "prim".into(),
+                    value: "and proper".into(),
+                }]),
+                doc_link: Some("https://en.wikipedia.org/wiki/RTFM".into()),
+                documentation: Some("papers please".into()),
+                hidden: true,
+                refers_to_prop_id: Some(make_static_ulid()),
+                diff_func_id: Some(make_static_ulid()),
+                validation_format: Some("smack barm pey wet".into()),
+            })
+            .into(),
+            ContentTypesDiscriminants::Schema => {
+                SchemaContent::V1(dal::layer_db_types::SchemaContentV1 {
+                    timestamp,
+                    name: "A schema is a plan".into(),
+                    ui_hidden: true,
+                    is_builtin: true,
+                })
+                .into()
+            }
+            ContentTypesDiscriminants::SchemaVariant => {
+                SchemaVariantContent::V3(dal::layer_db_types::SchemaVariantContentV3 {
+                    timestamp,
+                    ui_hidden: true,
+                    version: "1.0".into(),
+                    display_name: "display name".into(),
+                    category: "someday a real rain will come".into(),
+                    color: "vantablack".into(),
+                    component_type: ComponentType::ConfigurationFrameUp,
+                    link: Some("https://novell.com".into()),
+                    description: Some("a variant of a plan".into()),
+                    asset_func_id: Some(make_static_ulid()),
+                    finalized_once: true,
+                    is_builtin: true,
+                })
+                .into()
+            }
+            ContentTypesDiscriminants::Secret => {
+                SecretContent::V1(dal::layer_db_types::SecretContentV1 {
+                    timestamp,
+                    created_by: Some(make_static_ulid()),
+                    updated_by: Some(make_static_ulid()),
+                    name: "shhhhhhh! mum's the word".into(),
+                    definition: "look it up in the dictionary".into(),
+                    description: Some("just don't add a journalist to your signal".into()),
+                })
+                .into()
+            }
+            ContentTypesDiscriminants::StaticArgumentValue => {
+                StaticArgumentValueContent::V1(dal::layer_db_types::StaticArgumentValueContentV1 {
+                    timestamp,
+                    value: cas_value.clone(),
+                })
+                .into()
+            }
+            ContentTypesDiscriminants::Validation => {
+                ValidationContent::V1(dal::layer_db_types::ValidationContentV1 {
+                    timestamp,
+                    status: ValidationStatus::Success,
+                    message: Some(
+                        "valid comes from the latin 'validus', meaning strong, healthy and shares an indo-germanic root with 'well'".into(),
+                    ),
+                })
+                .into()
+            }
+            ContentTypesDiscriminants::OutputSocket => {
+                OutputSocketContent::V1(dal::layer_db_types::OutputSocketContentV1 {
+                    timestamp,
+                    name: "GIGO".into(),
+                    type_definition: Some(
+                        "a type is a set of x such that for all x, P(x) is true".into(),
+                    ),
+                    arity: SocketArity::One,
+                    kind: SocketKind::Standard,
+                    required: true,
+                    ui_hidden: true,
+                    connection_annotations: vec![ConnectionAnnotation::from_tokens_array(vec![
+                        "a".into(),
+                        "b".into(),
+                    ])],
+                })
+                .into()
+            }
+            ContentTypesDiscriminants::ManagementPrototype => {
+                ManagementPrototypeContent::V1(ManagementPrototypeContentV1 {
+                    name: "demenager".into(),
+                    description: Some("debrouiller".into()),
+                })
+                .into()
+            }
+            ContentTypesDiscriminants::Geometry => {
+                GeometryContent::V1(dal::layer_db_types::GeometryContentV1 {
+                    timestamp,
+                    x: "pi".into(),
+                    y: "e".into(),
+                    width: Some("why are these".into()),
+                    height: Some("strings".into()),
+                })
+                .into()
+            }
+            ContentTypesDiscriminants::View => {
+                ViewContent::V1(dal::layer_db_types::ViewContentV1 {
+                    timestamp,
+                    name: "buena vista".into(),
+                })
+                .into()
+            }
+            ContentTypesDiscriminants::ApprovalRequirementDefinition => {
+                ApprovalRequirementDefinitionContent::V1(
+                    dal::layer_db_types::ApprovalRequirementDefinitionContentV1 {
+                        minimum: 1_000_000,
+                        approvers: HashSet::from([ApprovalRequirementApprover::User(
+                            make_static_ulid(),
+                        )]),
+                    },
+                )
+                .into()
+            }
+        });
+    }
+
+    result
+}
+
 // Run this test to produce a serialized version of the graph. Do this any time
 // a breaking change in serialization occurs.
 //
@@ -254,6 +536,47 @@ async fn write_deserialization_data(ctx: &DalContext) {
     ))
     .expect("create file");
     file.write_all(&serialized).expect("write file");
+}
+
+// Run this test to produce a serialized version of the content types. Do this any time
+// a breaking change in serialization occurs.
+//
+// cd to the root of "si"
+// then run:
+//
+// $ buck2 run //lib/dal:test-integration -- write_deserialization_content_store_data --ignored
+//
+// Then delete the old copy of the graph, and replace the constant
+// `CURRENT_SERIALIZED_CONTENT_FILENAME` with the filename of the new graph.
+#[test]
+#[ignore = "only run this when you want to produce a new serialized set of content store objects"]
+async fn write_deserialization_content_store_data() {
+    let content = make_me_one_with_everything_content_types_edition();
+
+    let (serialized, _) = serialize::to_vec(&content).expect("serialize");
+
+    let date = chrono::Utc::now().format("%Y-%m-%d").to_string();
+
+    let mut file = std::fs::File::create(format!(
+        "{CURRENT_SERIALIZED_GRAPH_DIR_PATH}/serialization-test-content-store-data-{date}.bin"
+    ))
+    .expect("create file");
+    file.write_all(&serialized).expect("write file");
+}
+
+#[test]
+async fn content_can_be_deserialized(_ctx: &DalContext) {
+    let mut file = std::fs::File::open(dbg!(format!(
+        "{CURRENT_SERIALIZED_GRAPH_DIR_PATH}/{CURRENT_SERIALIZED_CONTENT_FILENAME}"
+    )))
+    .expect("open file");
+    let mut bytes = vec![];
+    file.read_to_end(&mut bytes).expect("able to read bytes");
+
+    let content: Vec<ContentTypes> = serialize::from_bytes(&bytes).expect("deserialize");
+    let expected = make_me_one_with_everything_content_types_edition();
+
+    assert_eq!(expected, content);
 }
 
 #[test]

@@ -10,7 +10,6 @@ use si_pkg::SchemaVariantSpecComponentType;
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 
 /// The possible values of "/root/si/type".
-#[remain::sorted]
 #[derive(
     AsRefStr,
     Clone,

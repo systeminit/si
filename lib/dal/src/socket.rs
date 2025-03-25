@@ -9,7 +9,7 @@ pub mod debug;
 pub mod input;
 pub mod output;
 
-#[remain::sorted]
+// This type goes into the content store so cannot be re-ordered, only extended
 #[derive(
     AsRefStr,
     Clone,
@@ -30,7 +30,7 @@ pub enum SocketKind {
     Standard,
 }
 
-#[remain::sorted]
+// This type goes into the content store so can only be extended, not reordered
 #[derive(
     AsRefStr,
     Copy,
