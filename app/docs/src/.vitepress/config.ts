@@ -182,6 +182,10 @@ export default defineConfig({
             text: "Working on System Initiative",
             link: "/explanation/working-on-si",
           },
+          {
+            text: "Enable Slack Webhook",
+            link: "/explanation/enable-slack-webhook",
+          },
         ],
       },
       {
