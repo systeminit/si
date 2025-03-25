@@ -76,11 +76,21 @@ impl fmt::Debug for Server {
 }
 
 impl Server {
-    #[instrument(name = "veritech.init.from_config", level = "info", skip_all)]
+    #[instrument(
+        name = "veritech.init.from_config",
+        level = "info",
+        skip_all,
+        fields(
+            veritech.config.veritech_requests_concurrency_limit = Empty,
+            veritech.config.cyclone.pool_size = Empty
+        )
+    )]
     pub async fn from_config(
         config: Config,
         token: CancellationToken,
     ) -> ServerResult<(Self, Option<HeartbeatApp>)> {
+        let span = current_span_for_instrument_at!("info");
+
         let nats = Self::connect_to_nats(&config).await?;
 
         let metadata = Arc::new(ServerMetadata {
@@ -123,6 +133,12 @@ impl Server {
                 unimplemented!("get ready for a surprise!!")
             }
             CycloneSpec::LocalUds(spec) => {
+                span.record(
+                    "veritech.config.veritech_requests_concurrency_limit",
+                    config.veritech_requests_concurrency_limit(),
+                );
+                span.record("veritech.config.cyclone.pool_size", spec.pool_size);
+
                 let pool_config = PoolNoodleConfig {
                     check_health: config.healthcheck_pool(),
                     pool_size: spec.pool_size,
