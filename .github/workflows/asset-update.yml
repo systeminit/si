@@ -11,6 +11,7 @@ jobs:
     env:
       SI_BEARER_TOKEN: ${{ secrets.SI_BEARER_TOKEN }}
       SI_MODULE_INDEX_URL: "https://module-index.systeminit.com"
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
     steps:
       - uses: actions/checkout@v4
       - uses: denoland/setup-deno@v2
