@@ -26,6 +26,7 @@ pub enum ReferenceKind {
     ChangeSetList,
     ChangeSetRecord,
     MvIndex,
+    SchemaVariantCategories,
     View,
     ViewList,
 }
