@@ -95,28 +95,8 @@ pub async fn process_request(
     msg: Message<InnerMessage>,
 ) -> HandlerResult<()> {
     metric!(counter.veritech.handlers_doing_work = 1);
-    let statistics = state.nats.statistics();
-    metric!(
-        histogram.veritech.handlers.statistics.in_bytes =
-            statistics.in_bytes.load(Ordering::Relaxed)
-    );
-    metric!(
-        histogram.veritech.handlers.statistics.out_bytes =
-            statistics.out_bytes.load(Ordering::Relaxed)
-    );
-    metric!(
-        histogram.veritech.handlers.statistics.in_messages =
-            statistics.in_messages.load(Ordering::Relaxed)
-    );
-    metric!(
-        histogram.veritech.handlers.statistics.out_messages =
-            statistics.out_messages.load(Ordering::Relaxed)
-    );
-    metric!(
-        histogram.veritech.handlers.statistics.connects =
-            statistics.connects.load(Ordering::Relaxed)
-    );
     let result = process_request_inner(state, subject, maybe_headers, msg).await;
+    metric!(counter.veritech.handlers_doing_work = -1);
     result
 }
 
@@ -278,7 +258,7 @@ where
                     count += 1;
                 }
                 Ok(ProgressMessage::Heartbeat) => {
-                    info!("received heartbeat message");
+                    trace!("received heartbeat message");
                 }
                 Err(err) => {
                     warn!(si.error.message = ?err, "next progress message was an error, bailing out");

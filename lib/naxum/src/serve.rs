@@ -237,8 +237,8 @@ where
                     }
                 };
 
-                let subject = msg.subject().to_string();
-                info!(naxum.next_message.subject = %subject, "message received");
+                // let subject = msg.subject().to_string();
+                // info!(naxum.next_message.subject = %subject, "message received");
                 metric!(counter.naxum.next_message.processing = 1);
 
                 poll_fn(|cx| make_service.poll_ready(cx))
@@ -253,7 +253,7 @@ where
                 tracker.spawn(async move {
                     let _result = tower_svc.oneshot(msg).await;
                     metric!(counter.naxum.next_message.processing = -1);
-                    info!(naxum.next_message.subject = %subject, "message processed");
+                    // info!(naxum.next_message.subject = %subject, "message processed");
 
                     drop(permit);
                 });
