@@ -1857,6 +1857,11 @@
           "npm:web-streams-polyfill@3.3.3"
         ]
       },
+      "lib/jsr-systeminit/ecs-template-qualification": {
+        "dependencies": [
+          "jsr:@std/assert@1"
+        ]
+      },
       "lib/jsr-systeminit/remove-empty": {
         "dependencies": [
           "jsr:@std/assert@1",

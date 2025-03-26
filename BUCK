@@ -99,6 +99,7 @@ deno_workspace(
         "//bin/lang-js:deno.json",
         "//lib/ts-lib-deno:deno.json",
         "//lib/jsr-systeminit/remove-empty:deno.json",
+        "//lib/jsr-systeminit/ecs-template-qualification:deno.json",
     ],
     visibility = ["PUBLIC"],
 )
@@ -118,4 +119,3 @@ export_file(
 workspace_node_modules(
     name = "node_modules",
 )
-
