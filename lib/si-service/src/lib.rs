@@ -28,10 +28,13 @@ pub use tokio_util::{sync::CancellationToken, task::TaskTracker};
 pub mod prelude {
     pub use std::future::IntoFuture as _;
 
-    pub use color_eyre::Result;
+    pub use color_eyre::{self, Result};
+    pub use si_runtime::{get_cpu_cores, get_cpu_cores_from_range_expr, CoreId, CoreIds};
     pub use si_std::SensitiveString;
-    pub use telemetry_application::prelude::*;
+    pub use telemetry_application::{self, prelude::*};
     pub use tokio_util::{sync::CancellationToken, task::TaskTracker};
+
+    pub use super::{rt, shutdown, startup};
 
     // NOTE(nick): if we decide to restore/reuse tokio watchdog, we should provide it through the
     // service prelude again.

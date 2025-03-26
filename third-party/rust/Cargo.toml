@@ -56,6 +56,7 @@ color-eyre = "0.6.3"
 config = { version = "0.14.1", default-features = false, features = ["toml"] }
 console-subscriber = { version = "0.4.1", default-features = false }
 convert_case = "0.6.0"
+core_affinity = "0.8.3"
 crossbeam-queue = { version = "0.3.11" }
 darling = "0.20.10"
 dashmap = "6.1.0"

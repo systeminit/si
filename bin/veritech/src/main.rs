@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use si_service::{color_eyre, prelude::*, rt, shutdown, startup, telemetry_application};
+use si_service::prelude::*;
 use veritech_server::{Config, Server};
 
 mod args;
@@ -11,17 +11,23 @@ const LIB_NAME: &str = concat!(env!("CARGO_BIN_NAME"), "_server");
 const DEFAULT_GRACEFUL_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(60 * 20);
 
 fn main() -> Result<()> {
-    rt::block_on(BIN_NAME, async_main())
+    color_eyre::install()?;
+    let args = args::parse();
+
+    match args.tokio_cpu_cores() {
+        Some(tokio_cpu_cores) => {
+            rt::block_on_with_core_affinity(BIN_NAME, async_main(args), tokio_cpu_cores)
+        }
+        None => rt::block_on(BIN_NAME, async_main(args)),
+    }
 }
 
-async fn async_main() -> Result<()> {
+async fn async_main(args: args::Args) -> Result<()> {
     let main_tracker = TaskTracker::new();
     let main_token = CancellationToken::new();
     let telemetry_tracker = TaskTracker::new();
     let telemetry_token = CancellationToken::new();
 
-    color_eyre::install()?;
-    let args = args::parse();
     let (mut telemetry, telemetry_shutdown) = {
         let config = TelemetryConfig::builder()
             .force_color(args.force_color.then_some(true))

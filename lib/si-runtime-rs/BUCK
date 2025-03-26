@@ -4,7 +4,14 @@ rust_library(
     name = "si-runtime",
     deps = [
         "//lib/tokio-dedicated-executor:tokio-dedicated-executor",
+        "//third-party/rust:core_affinity",
+        "//third-party/rust:rand",
         "//third-party/rust:tokio",
     ],
     srcs = glob(["src/**/*.rs"]),
+)
+
+alias(
+    name = "si-runtime-rs",
+    actual = ":si-runtime",
 )

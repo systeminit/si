@@ -66,6 +66,14 @@ pub(crate) struct Args {
     )]
     pub(crate) tokio_console: bool,
 
+    /// Pins main Tokio runtime to specific CPU cores [example: 0-3]
+    #[arg(
+        long = "tokio-cpu-cores",
+        env = "SI_TOKIO_CPU_CORES",
+        hide_env_values = true
+    )]
+    pub(crate) tokio_cpu_cores: Option<CoreIds>,
+
     /// NATS connection URL [example: 0.0.0.0:4222]
     #[arg(long, short = 'u')]
     pub(crate) nats_url: Option<String>,
@@ -136,6 +144,12 @@ pub(crate) struct Args {
     /// Overrides the default heartbeat app publish timeout duration (in seconds).
     #[arg(long)]
     pub(crate) heartbeat_app_publish_timeout_secs: Option<u64>,
+}
+
+impl Args {
+    pub fn tokio_cpu_cores(&self) -> Option<Vec<CoreId>> {
+        self.tokio_cpu_cores.clone().map(|c| c.into_inner())
+    }
 }
 
 impl TryFrom<Args> for Config {
