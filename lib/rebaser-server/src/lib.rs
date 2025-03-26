@@ -27,6 +27,7 @@
     while_true
 )]
 
+use frigg::FriggError;
 use thiserror::Error;
 
 mod app_state;
@@ -39,7 +40,9 @@ mod serial_dvu_task;
 mod server;
 
 pub use self::{
-    config::{detect_and_configure_development, Config, ConfigBuilder, ConfigError, ConfigFile},
+    config::{
+        detect_and_configure_development, Config, ConfigBuilder, ConfigError, ConfigFile, Features,
+    },
     server::{Server, ServerMetadata},
 };
 pub use si_settings::{StandardConfig, StandardConfigFile};
@@ -72,6 +75,9 @@ pub enum ServerError {
     /// When failing to create a Jetstream stream
     #[error("stream create error: {0}")]
     JsCreateStreamError(#[from] si_data_nats::async_nats::jetstream::context::CreateStreamError),
+    /// When we fail to create or fetch a jetstream k/v store
+    #[error("kv store error: {0}")]
+    KvStore(#[from] FriggError),
     /// When a LayerDb error occurs
     #[error("layer db error: {0}")]
     LayerDb(#[from] si_layer_cache::LayerDbError),

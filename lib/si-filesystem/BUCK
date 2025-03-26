@@ -5,7 +5,6 @@ rust_library(
     deps = [
         "//lib/si-id:si-id",
         "//lib/si-frontend-types-rs:si-frontend-types",
-
         "//third-party/rust:dashmap",
         "//third-party/rust:fuser",
         "//third-party/rust:log",

@@ -6,6 +6,7 @@ use std::{
 };
 
 use dal::DalContextBuilder;
+use frigg::FriggStore;
 use futures::{future::BoxFuture, TryStreamExt};
 use naxum::{
     extract::MatchedSubject,
@@ -31,7 +32,7 @@ use tokio_stream::StreamExt as _;
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 
 use self::app_state::AppState;
-use crate::ServerMetadata;
+use crate::{Features, ServerMetadata};
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -61,6 +62,7 @@ impl ChangeSetProcessorTask {
         nats: NatsClient,
         stream: jetstream::stream::Stream,
         incoming: push::Ordered,
+        frigg: FriggStore,
         workspace_id: WorkspacePk,
         change_set_id: ChangeSetId,
         ctx_builder: DalContextBuilder,
@@ -70,6 +72,7 @@ impl ChangeSetProcessorTask {
         quiesced_token: CancellationToken,
         task_token: CancellationToken,
         server_tracker: TaskTracker,
+        features: Features,
     ) -> Self {
         let connection_metadata = nats.metadata_clone();
 
@@ -79,9 +82,11 @@ impl ChangeSetProcessorTask {
             workspace_id,
             change_set_id,
             nats,
+            frigg,
             ctx_builder,
             run_dvu_notify,
             server_tracker,
+            features,
         );
 
         let captured = QuiescedCaptured {
@@ -346,9 +351,11 @@ mod handlers {
             workspace_id,
             change_set_id,
             nats,
+            frigg,
             ctx_builder,
             run_notify,
             server_tracker,
+            features,
         } = state;
         let mut ctx = ctx_builder
             .build_for_change_set_as_system(workspace_id, change_set_id, None)
@@ -358,7 +365,7 @@ mod handlers {
         span.record("si.workspace.id", workspace_id.to_string());
         span.record("si.change_set.id", change_set_id.to_string());
 
-        let rebase_status = perform_rebase(&mut ctx, &request, &server_tracker)
+        let rebase_status = perform_rebase(&mut ctx, &frigg, &request, &server_tracker, features)
             .await
             .unwrap_or_else(|err| {
                 error!(
@@ -449,10 +456,13 @@ mod app_state {
     use std::sync::Arc;
 
     use dal::DalContextBuilder;
+    use frigg::FriggStore;
     use si_data_nats::NatsClient;
     use si_events::{ChangeSetId, WorkspacePk};
     use tokio::sync::Notify;
     use tokio_util::task::TaskTracker;
+
+    use crate::Features;
 
     /// Application state.
     #[derive(Clone, Debug)]
@@ -461,8 +471,10 @@ mod app_state {
         pub(crate) workspace_id: WorkspacePk,
         /// Change set ID for the task
         pub(crate) change_set_id: ChangeSetId,
-        /// NATS Jetstream context
+        /// NATS client
         pub(crate) nats: NatsClient,
+        /// Frigg store
+        pub(crate) frigg: FriggStore,
         /// DAL context builder for each processing request
         pub(crate) ctx_builder: DalContextBuilder,
         /// Signal to run a DVU job
@@ -470,25 +482,32 @@ mod app_state {
         /// A task tracker for server-level tasks that can outlive the lifetime of a change set
         /// processor task
         pub(crate) server_tracker: TaskTracker,
+        /// Static feature gate on new mv behavior
+        pub(crate) features: Features,
     }
 
     impl AppState {
         /// Creates a new [`AppState`].
+        #[allow(clippy::too_many_arguments)]
         pub(crate) fn new(
             workspace_id: WorkspacePk,
             change_set_id: ChangeSetId,
             nats: NatsClient,
+            frigg: FriggStore,
             ctx_builder: DalContextBuilder,
             run_notify: Arc<Notify>,
             server_tracker: TaskTracker,
+            features: Features,
         ) -> Self {
             Self {
                 workspace_id,
                 change_set_id,
                 nats,
+                frigg,
                 ctx_builder,
                 run_notify,
                 server_tracker,
+                features,
             }
         }
     }

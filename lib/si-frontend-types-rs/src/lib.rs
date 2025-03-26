@@ -1,12 +1,18 @@
 mod approval_requirement;
 mod audit_log;
 mod change_set;
+pub mod checksum;
 mod component;
 mod conflict;
 pub mod fs;
 mod func;
+pub mod index;
+pub mod materialized_view;
 mod module;
+pub mod object;
+pub mod reference;
 mod schema_variant;
+pub mod view;
 mod workspace;
 
 pub use crate::{
@@ -26,6 +32,7 @@ pub use crate::{
         AttributeArgumentBinding, FuncArgument, FuncArgumentKind, FuncBinding, FuncBindings,
         FuncCode, FuncKind, FuncSummary, LeafInputLocation,
     },
+    materialized_view::MaterializedView,
     module::{
         BuiltinModules, LatestModule, ModuleContributeRequest, ModuleDetails, ModuleSummary,
         SyncedModules,
@@ -34,5 +41,6 @@ pub use crate::{
         ComponentType, InputSocket, ListVariantsResponse, OutputSocket, Prop, PropKind,
         SchemaVariant, UninstalledVariant,
     },
+    view::{View, ViewList},
     workspace::WorkspaceMetadata,
 };

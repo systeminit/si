@@ -10,6 +10,7 @@ use dal::{
     feature_flags::FeatureFlagService, DalContext, DalLayerDb, DedicatedExecutor, JetstreamStreams,
     JobQueueProcessor, NatsProcessor, ServicesContext,
 };
+use frigg::{frigg_kv, FriggStore};
 use naxum::{
     extract::MatchedSubject,
     handler::Handler as _,
@@ -34,7 +35,7 @@ use telemetry_utils::metric;
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use veritech_client::Client as VeritechClient;
 
-use crate::{app_state::AppState, handlers, Config, Error, Result};
+use crate::{app_state::AppState, handlers, Config, Error, Features, Result};
 
 const TASKS_CONSUMER_NAME: &str = "rebaser-tasks";
 
@@ -126,6 +127,7 @@ impl Server {
             services_context,
             config.quiescent_period(),
             shutdown_token,
+            config.features(),
         )
         .await
     }
@@ -138,6 +140,7 @@ impl Server {
         services_context: ServicesContext,
         quiescent_period: Duration,
         shutdown_token: CancellationToken,
+        features: Features,
     ) -> Result<Self> {
         let metadata = Arc::new(ServerMetadata {
             instance_id: instance_id.into(),
@@ -159,17 +162,21 @@ impl Server {
 
         let requests_stream = nats::rebaser_requests_jetstream_stream(&context).await?;
 
+        let frigg = FriggStore::new(nats.clone(), frigg_kv(&context, prefix.as_deref()).await?);
+
         let ctx_builder = DalContext::builder(services_context, false);
 
         let server_tracker = TaskTracker::new();
         let state = AppState::new(
             metadata.clone(),
             nats,
+            frigg,
             requests_stream,
             ctx_builder,
             quiescent_period,
             shutdown_token.clone(),
             server_tracker.clone(),
+            features,
         );
 
         let app = ServiceBuilder::new()

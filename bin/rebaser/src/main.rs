@@ -62,6 +62,7 @@ async fn async_main() -> Result<()> {
     debug!(arguments =?args, "parsed cli arguments");
 
     let config = Config::try_from(args)?;
+    debug!(?config, "computed configuration");
 
     let server = Server::from_config(
         config,

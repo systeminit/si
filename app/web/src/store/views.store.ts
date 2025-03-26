@@ -1,9 +1,10 @@
 import { defineStore } from "pinia";
 import * as _ from "lodash-es";
-import { addStoreHooks, ApiRequest, URLPattern } from "@si/vue-lib/pinia";
+import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 import { IRect, Vector2d } from "konva/lib/types";
 import { useToast } from "vue-toastification";
 import { IconNames } from "@si/vue-lib/design-system";
+import { URLPattern } from "@si/vue-lib";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import {
   ApprovalRequirementDefinitionId,

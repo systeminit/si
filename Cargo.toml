@@ -6,8 +6,8 @@ resolver = "2"
 members = [
     "bin/asset-sprayer-prompts",
     "bin/cyclone",
-    "bin/hoist",
     "bin/forklift",
+    "bin/hoist",
     "bin/module-index",
     "bin/pinga",
     "bin/rebaser",
@@ -30,6 +30,7 @@ members = [
     "lib/dal-test",
     "lib/data-warehouse-stream-client",
     "lib/forklift-server",
+    "lib/frigg",
     "lib/joi-validator",
     "lib/module-index-client",
     "lib/module-index-server",
@@ -59,6 +60,7 @@ members = [
     "lib/si-events-rs",
     "lib/si-filesystem",
     "lib/si-firecracker",
+    "lib/si-frontend-types-macros",
     "lib/si-frontend-types-rs",
     "lib/si-hash",
     "lib/si-id",
@@ -159,10 +161,10 @@ indexmap = { version = "2.7.0", features = ["serde", "std"] }
 indicatif = "0.17.11"
 indoc = "2.0.5"
 itertools = "0.13.0"
+json-patch = "4.0.0"
 jwt-simple = { version = "0.12.11", default-features = false, features = [
     "pure-rust",
 ] }
-json-patch = "4.0.0"
 krata-loopdev = "0.0.21"
 lazy_static = "1.5.0"
 log = "0.4"

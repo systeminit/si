@@ -152,3 +152,18 @@ impl FromRequestParts<AppState> for AuthApiClient {
         Ok(Self(client))
     }
 }
+
+#[derive(Clone, Debug, Deref, Into)]
+pub struct FriggStore(pub frigg::FriggStore);
+
+#[async_trait]
+impl FromRequestParts<AppState> for FriggStore {
+    type Rejection = ErrorResponse;
+
+    async fn from_request_parts(
+        _parts: &mut Parts,
+        state: &AppState,
+    ) -> Result<Self, Self::Rejection> {
+        Ok(Self(state.frigg().clone()))
+    }
+}

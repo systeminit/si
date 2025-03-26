@@ -1,8 +1,9 @@
 import * as _ from "lodash-es";
 import { defineStore } from "pinia";
-import { addStoreHooks, ApiRequest, URLPattern } from "@si/vue-lib/pinia";
+import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 import { ulid } from "ulid";
 import { useToast } from "vue-toastification";
+import { URLPattern } from "@si/vue-lib";
 import { Visibility } from "@/api/sdf/dal/visibility";
 import {
   FuncArgument,

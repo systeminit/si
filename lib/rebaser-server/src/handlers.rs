@@ -84,11 +84,13 @@ pub(crate) async fn default(State(state): State<AppState>, subject: Subject) -> 
     let AppState {
         metadata,
         nats,
+        frigg,
         requests_stream,
         ctx_builder,
         quiescent_period,
         token: server_token,
         server_tracker,
+        features,
     } = state;
     let subject_prefix = nats.metadata().subject_prefix();
 
@@ -140,6 +142,7 @@ pub(crate) async fn default(State(state): State<AppState>, subject: Subject) -> 
         nats,
         requests_stream.clone(),
         incoming,
+        frigg,
         workspace.id,
         change_set.id,
         ctx_builder,
@@ -149,6 +152,7 @@ pub(crate) async fn default(State(state): State<AppState>, subject: Subject) -> 
         quiesced_token,
         tasks_token.clone(),
         server_tracker,
+        features,
     );
 
     let dvu_task_result = tracker.spawn(dvu_task.try_run());
