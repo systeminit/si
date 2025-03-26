@@ -180,6 +180,12 @@ pub(crate) trait FnSetupExpander {
     fn start_pinga_server(&self) -> Option<()>;
     fn set_start_pinga_server(&mut self, value: Option<()>);
 
+    fn edda_server(&self) -> Option<&Rc<Ident>>;
+    fn set_edda_server(&mut self, value: Option<Rc<Ident>>);
+
+    fn start_edda_server(&self) -> Option<()>;
+    fn set_start_edda_server(&mut self, value: Option<()>);
+
     fn rebaser_server(&self) -> Option<&Rc<Ident>>;
     fn set_rebaser_server(&mut self, value: Option<Rc<Ident>>);
 
@@ -317,6 +323,54 @@ pub(crate) trait FnSetupExpander {
             ::tokio::spawn(#pinga_server.run());
         });
         self.set_start_pinga_server(Some(()));
+    }
+
+    fn setup_edda_server(&mut self) -> Rc<Ident> {
+        if let Some(ident) = self.edda_server() {
+            return ident.clone();
+        }
+
+        let test_context = self.setup_test_context();
+        let test_context = test_context.as_ref();
+
+        let cancellation_token = self.setup_cancellation_token();
+        let cancellation_token = cancellation_token.as_ref();
+
+        let task_tracker = self.setup_task_tracker();
+        let task_tracker = task_tracker.as_ref();
+
+        let var = Ident::new("edda_server", Span::call_site());
+        self.code_extend(quote! {
+            let #var = {
+                let s_ctx = #test_context
+                    .create_services_context(
+                        #cancellation_token.clone(),
+                        #task_tracker.clone(),
+                    )
+                    .await;
+                ::dal_test::edda_server(
+                    s_ctx,
+                    #cancellation_token.clone(),
+                ).await?
+            };
+        });
+        self.set_edda_server(Some(Rc::new(var)));
+
+        self.edda_server().unwrap().clone()
+    }
+
+    fn setup_start_edda_server(&mut self) {
+        if self.start_edda_server().is_some() {
+            return;
+        }
+
+        let edda_server = self.setup_edda_server();
+        let edda_server = edda_server.as_ref();
+
+        self.code_extend(quote! {
+            ::tokio::spawn(#edda_server.run());
+        });
+        self.set_start_edda_server(Some(()));
     }
 
     fn setup_rebaser_server(&mut self) -> Rc<Ident> {

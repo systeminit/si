@@ -17,6 +17,7 @@ groups = {
     ],
     "backend": [
         "auth-api",
+        "edda",
         "forklift",
         "module-index",
         "pinga",
@@ -198,6 +199,17 @@ si_buck2_resource(
     **RUST_RESOURCE_ARGS
 )
 
+# Locally build and run `edda`
+si_buck2_resource(
+    "//bin/edda:edda",
+    resource_deps = [
+        "rust-initial-build",
+        "nats",
+        "otelcol",
+    ],
+    **RUST_RESOURCE_ARGS
+)
+
 # Locally build and run `forklift`
 si_buck2_resource(
     "//bin/forklift:forklift",
@@ -249,6 +261,7 @@ si_buck2_resource(
         "postgres",
         "veritech",
         "rebaser",
+        "edda",
         "forklift",
     ],
     readiness_probe = probe(
@@ -349,6 +362,7 @@ si_buck2_resource(
 )
 
 rust_build_targets = [
+    "//bin/edda:edda",
     "//bin/forklift:forklift",
     "//bin/pinga:pinga",
     "//bin/rebaser:rebaser",

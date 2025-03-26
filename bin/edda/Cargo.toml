@@ -1,0 +1,18 @@
+[package]
+name = "edda"
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "edda"
+path = "src/main.rs"
+
+[dependencies]
+clap = { workspace = true }
+edda-server = { path = "../../lib/edda-server" }
+si-service = { path = "../../lib/si-service" }

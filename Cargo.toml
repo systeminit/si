@@ -6,6 +6,7 @@ resolver = "2"
 members = [
     "bin/asset-sprayer-prompts",
     "bin/cyclone",
+    "bin/edda",
     "bin/forklift",
     "bin/hoist",
     "bin/module-index",
@@ -29,6 +30,7 @@ members = [
     "lib/dal-macros",
     "lib/dal-test",
     "lib/data-warehouse-stream-client",
+    "lib/edda-server",
     "lib/forklift-server",
     "lib/frigg",
     "lib/joi-validator",
