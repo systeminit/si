@@ -1,3 +1,5 @@
+// TODO(fnichol): this module can be moved into lib/edaa-server
+
 use std::collections::HashSet;
 
 use frigg::{Error as FriggError, FriggStore, KvRevision};
@@ -50,6 +52,10 @@ pub enum MaterializedViewError {
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
 
+// TODO(fnichol): can be moved into lib/edda-server, currently called from:
+// - lib/rebaser-server
+// - lib/sdf-server
+//
 /// This function builds all Materialized Views (MVs) for the change set in the [`DalContext`].
 /// It assumes there is no existing [`MvIndex`] for the change set.
 #[instrument(
@@ -179,6 +185,8 @@ async fn build_all_mv_for_change_set_inner(
     Ok(mv_index_frontend_object)
 }
 
+// TODO(fnichol): can be moved into lib/edda-server, currently called from:
+// - lib/rebaser-server
 #[instrument(
     name = "materialized_view.build_mv_for_changes_in_change_set",
     level = "debug",
@@ -273,7 +281,7 @@ pub async fn build_mv_for_changes_in_change_set(
     Ok(())
 }
 
-pub async fn build_mv_inner(
+async fn build_mv_inner(
     ctx: &DalContext,
     frigg: &FriggStore,
     workspace_pk: si_id::WorkspacePk,

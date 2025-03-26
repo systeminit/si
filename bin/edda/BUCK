@@ -1,0 +1,34 @@
+load(
+    "@prelude-si//:macros.bzl",
+    "docker_image",
+    "nix_omnibus_pkg",
+    "rust_binary",
+)
+
+rust_binary(
+    name = "edda",
+    deps = [
+        "//lib/edda-server:edda-server",
+        "//lib/si-service:si-service",
+        "//third-party/rust:clap",
+    ],
+    srcs = glob(["src/**/*.rs"]),
+    env = {"CARGO_BIN_NAME": "edda"},
+    resources = {
+        "dev.encryption.key": "//lib/veritech-server:dev.encryption.key",
+        "dev.donkey.key": "//lib/dal:dev.donkey.key",
+        "dev.postgres.root.crt": "//config/keys:dev.postgres.root.crt",
+    },
+)
+
+docker_image(
+    name = "image",
+    image_name = "edda",
+    build_deps = ["//bin/edda:edda"],
+)
+
+nix_omnibus_pkg(
+    name = "omnibus",
+    pkg_name = "edda",
+    build_dep = "//bin/edda:edda",
+)

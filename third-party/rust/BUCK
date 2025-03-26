@@ -8714,6 +8714,49 @@ cargo.rust_library(
     ],
 )
 
+alias(
+    name = "insta",
+    actual = ":insta-1.42.2",
+    visibility = ["PUBLIC"],
+)
+
+http_archive(
+    name = "insta-1.42.2.crate",
+    sha256 = "50259abbaa67d11d2bcafc7ba1d094ed7a0c70e3ce893f0d0997f73558cb3084",
+    strip_prefix = "insta-1.42.2",
+    urls = ["https://static.crates.io/crates/insta/1.42.2/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "insta-1.42.2",
+    srcs = [":insta-1.42.2.crate"],
+    crate = "insta",
+    crate_root = "insta-1.42.2.crate/src/lib.rs",
+    edition = "2021",
+    features = [
+        "colors",
+        "console",
+        "default",
+        "glob",
+        "globset",
+        "json",
+        "serde",
+        "walkdir",
+    ],
+    visibility = [],
+    deps = [
+        ":console-0.15.11",
+        ":globset-0.4.16",
+        ":linked-hash-map-0.5.6",
+        ":once_cell-1.21.1",
+        ":pin-project-1.1.10",
+        ":serde-1.0.219",
+        ":similar-2.7.0",
+        ":walkdir-2.5.0",
+    ],
+)
+
 http_archive(
     name = "instant-0.1.13.crate",
     sha256 = "e0242819d153cba4b4b05a5a8f2a7e9bbf97b6055b2a002b395c96b5ff3c0222",
@@ -9794,6 +9837,23 @@ cxx_library(
         "-I$(location :libsodium-sys-0.2.7.crate)/libsodium/src/libsodium/include",
         "-I$(location :libsodium-sys-0.2.7.crate)/libsodium/src/libsodium/include/sodium",
     ],
+    visibility = [],
+)
+
+http_archive(
+    name = "linked-hash-map-0.5.6.crate",
+    sha256 = "0717cef1bc8b636c6e1c1bbdefc09e6322da8a9321966e8928ef80d20f7f770f",
+    strip_prefix = "linked-hash-map-0.5.6",
+    urls = ["https://static.crates.io/crates/linked-hash-map/0.5.6/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "linked-hash-map-0.5.6",
+    srcs = [":linked-hash-map-0.5.6.crate"],
+    crate = "linked_hash_map",
+    crate_root = "linked-hash-map-0.5.6.crate/src/lib.rs",
+    edition = "2015",
     visibility = [],
 )
 
@@ -16855,6 +16915,28 @@ cargo.rust_library(
 )
 
 http_archive(
+    name = "similar-2.7.0.crate",
+    sha256 = "bbbb5d9659141646ae647b42fe094daf6c6192d1620870b449d9557f748b2daa",
+    strip_prefix = "similar-2.7.0",
+    urls = ["https://static.crates.io/crates/similar/2.7.0/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "similar-2.7.0",
+    srcs = [":similar-2.7.0.crate"],
+    crate = "similar",
+    crate_root = "similar-2.7.0.crate/src/lib.rs",
+    edition = "2018",
+    features = [
+        "default",
+        "inline",
+        "text",
+    ],
+    visibility = [],
+)
+
+http_archive(
     name = "siphasher-1.0.1.crate",
     sha256 = "56199f7ddabf13fe5074ce809e7d3f42b42ae711800501b5b16ea82ad029c39d",
     strip_prefix = "siphasher-1.0.1",
@@ -17985,6 +18067,7 @@ cargo.rust_binary(
         ":indexmap-2.8.0",
         ":indicatif-0.17.11",
         ":indoc-2.0.6",
+        ":insta-1.42.2",
         ":itertools-0.13.0",
         ":json-patch-4.0.0",
         ":jwt-simple-0.12.12",

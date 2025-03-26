@@ -199,6 +199,7 @@ fn fn_setup<'a>(params: impl Iterator<Item = &'a FnArg>) -> SdfTestFnSetup {
         expander.setup_start_forklift_server();
         expander.setup_start_veritech_server();
         expander.setup_start_pinga_server();
+        expander.setup_start_edda_server();
         expander.setup_start_rebaser_server();
     }
 
@@ -225,6 +226,8 @@ struct SdfTestFnSetupExpander {
     task_tracker: Option<Rc<Ident>>,
     pinga_server: Option<Rc<Ident>>,
     start_pinga_server: Option<()>,
+    edda_server: Option<Rc<Ident>>,
+    start_edda_server: Option<()>,
     rebaser_server: Option<Rc<Ident>>,
     start_rebaser_server: Option<()>,
     forklift_server: Option<Rc<Ident>>,
@@ -260,6 +263,8 @@ impl SdfTestFnSetupExpander {
             task_tracker: None,
             pinga_server: None,
             start_pinga_server: None,
+            edda_server: None,
+            start_edda_server: None,
             rebaser_server: None,
             start_rebaser_server: None,
             forklift_server: None,
@@ -526,6 +531,22 @@ impl FnSetupExpander for SdfTestFnSetupExpander {
 
     fn set_start_pinga_server(&mut self, value: Option<()>) {
         self.start_pinga_server = value;
+    }
+
+    fn edda_server(&self) -> Option<&Rc<Ident>> {
+        self.edda_server.as_ref()
+    }
+
+    fn set_edda_server(&mut self, value: Option<Rc<Ident>>) {
+        self.edda_server = value;
+    }
+
+    fn start_edda_server(&self) -> Option<()> {
+        self.start_edda_server
+    }
+
+    fn set_start_edda_server(&mut self, value: Option<()>) {
+        self.start_edda_server = value;
     }
 
     fn rebaser_server(&self) -> Option<&Rc<Ident>> {

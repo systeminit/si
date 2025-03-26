@@ -2036,6 +2036,7 @@ dependencies = [
  "dal",
  "derive_builder",
  "derive_more",
+ "edda-server",
  "forklift-server",
  "itertools 0.13.0",
  "jwt-simple",
@@ -2473,6 +2474,75 @@ dependencies = [
  "sha2",
  "signature 2.2.0",
  "subtle",
+]
+
+[[package]]
+name = "edda"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "edda-server",
+ "si-service",
+]
+
+[[package]]
+name = "edda-client"
+version = "0.1.0"
+dependencies = [
+ "edda-core",
+ "futures",
+ "remain",
+ "si-data-nats",
+ "si-events",
+ "telemetry",
+ "telemetry-nats",
+ "thiserror 2.0.12",
+]
+
+[[package]]
+name = "edda-core"
+version = "0.1.0"
+dependencies = [
+ "insta",
+ "naxum-api-types",
+ "remain",
+ "serde",
+ "serde_json",
+ "si-data-nats",
+ "si-events",
+ "strum",
+]
+
+[[package]]
+name = "edda-server"
+version = "0.1.0"
+dependencies = [
+ "buck2-resources",
+ "dal",
+ "derive_builder",
+ "edda-core",
+ "frigg",
+ "futures",
+ "naxum",
+ "rebaser-client",
+ "remain",
+ "serde",
+ "si-crypto",
+ "si-data-nats",
+ "si-data-pg",
+ "si-events",
+ "si-layer-cache",
+ "si-settings",
+ "si-std",
+ "telemetry",
+ "telemetry-nats",
+ "telemetry-utils",
+ "thiserror 2.0.12",
+ "tokio",
+ "tokio-stream",
+ "tokio-util",
+ "ulid",
+ "veritech-client",
 ]
 
 [[package]]
@@ -3948,6 +4018,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "insta"
+version = "1.42.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "50259abbaa67d11d2bcafc7ba1d094ed7a0c70e3ce893f0d0997f73558cb3084"
+dependencies = [
+ "console",
+ "globset",
+ "linked-hash-map",
+ "once_cell",
+ "pin-project",
+ "serde",
+ "similar",
+ "walkdir",
+]
+
+[[package]]
 name = "instant"
 version = "0.1.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4202,6 +4288,12 @@ dependencies = [
  "pkg-config",
  "vcpkg",
 ]
+
+[[package]]
+name = "linked-hash-map"
+version = "0.5.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0717cef1bc8b636c6e1c1bbdefc09e6322da8a9321966e8928ef80d20f7f770f"
 
 [[package]]
 name = "linux-raw-sys"
@@ -7339,6 +7431,12 @@ name = "simdutf8"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e3a9fe34e3e7a50316060351f37187a3f546bce95496156754b601a5fa71b76e"
+
+[[package]]
+name = "similar"
+version = "2.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bbbb5d9659141646ae647b42fe094daf6c6192d1620870b449d9557f748b2daa"
 
 [[package]]
 name = "siphasher"
