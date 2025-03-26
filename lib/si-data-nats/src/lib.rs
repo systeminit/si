@@ -1074,7 +1074,7 @@ impl Client {
     #[instrument(
         name = "nats_client.force_reconnect",
         skip_all,
-        level = "debug",
+        level = "info",
         fields(
             messaging.client_id = self.metadata.messaging_client_id(),
             messaging.nats.server.id = self.metadata.messaging_nats_server_id(),
@@ -1094,12 +1094,20 @@ impl Client {
         )
     )]
     pub async fn force_reconnect(&self) -> Result<()> {
-        let span = current_span_for_instrument_at!("debug");
+        let span = current_span_for_instrument_at!("info");
 
+        warn!(
+            si.investigation.name = "verideath",
+            "asking inner client for force reconnect..."
+        );
         self.inner
             .force_reconnect()
             .await
             .map_err(|err| span.record_err(Error::NatsReconnect(err)))?;
+        warn!(
+            si.investigation.name = "verideath",
+            "force reconnect succeeded from client wrapper's perspective"
+        );
 
         span.record_ok();
         Ok(())

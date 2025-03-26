@@ -18,7 +18,7 @@ use tokio::{
 };
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use tower::{Service, ServiceExt};
-use tracing::{debug, error, info, trace};
+use tracing::{debug, error, info, trace, warn};
 
 use crate::{
     message::{Message, MessageHead},
@@ -52,6 +52,32 @@ where
 {
     Serve {
         stream,
+        force_reconnect_sender: None,
+        make_service,
+        limit: limit.into(),
+        _service_marker: PhantomData,
+        _stream_error_marker: PhantomData,
+        _request_marker: PhantomData,
+    }
+}
+
+pub fn serve_with_incoming_limit_and_force_reconnect_sender<M, S, T, E, R>(
+    stream: T,
+    force_reconnect_sender: tokio::sync::mpsc::Sender<()>,
+    make_service: M,
+    limit: impl Into<Option<usize>>,
+) -> Serve<M, S, T, E, R>
+where
+    M: for<'a> Service<IncomingMessage<'a, R>, Error = Infallible, Response = S>,
+    S: Service<Message<R>, Response = Response, Error = Infallible> + Clone + Send + 'static,
+    S::Future: Send,
+    T: Stream<Item = Result<R, E>>,
+    E: error::Error,
+    R: MessageHead,
+{
+    Serve {
+        stream,
+        force_reconnect_sender: Some(force_reconnect_sender),
         make_service,
         limit: limit.into(),
         _service_marker: PhantomData,
@@ -63,6 +89,7 @@ where
 #[must_use = "futures must be awaited or polled"]
 pub struct Serve<M, S, T, E, R> {
     stream: T,
+    force_reconnect_sender: Option<tokio::sync::mpsc::Sender<()>>,
     make_service: M,
     limit: Option<usize>,
     _service_marker: PhantomData<S>,
@@ -88,6 +115,7 @@ impl<M, S, T, E, R> Serve<M, S, T, E, R> {
     {
         WithGracefulShutdown {
             stream: self.stream,
+            force_reconnect_sender: self.force_reconnect_sender,
             make_service: self.make_service,
             limit: self.limit,
             signal,
@@ -102,6 +130,7 @@ impl<M, S, T, E, R> Serve<M, S, T, E, R> {
 #[must_use = "futures must be awaited or polled"]
 pub struct WithGracefulShutdown<M, S, T, E, R, F> {
     stream: T,
+    force_reconnect_sender: Option<tokio::sync::mpsc::Sender<()>>,
     make_service: M,
     limit: Option<usize>,
     signal: F,
@@ -183,6 +212,20 @@ where
                             Some(Err(err)) => {
                                 error!(si.error.message = ?err, "failed to read next message from stream");
                                 metric!(counter.naxum.next_message.failed = 1);
+                                if let Some(sender) = self.force_reconnect_sender.clone() {
+                                    warn!(
+                                        si.investigation.name = "verideath",
+                                        "sending (blocking send) force reconnect in naxum..."
+                                    );
+                                    if let Err(err) = sender.blocking_send(()) {
+                                        error!(si.error.message = ?err, "could not send force reconnect in naxum");
+                                    } else {
+                                        warn!(
+                                            si.investigation.name = "verideath",
+                                            "sent (blocking send) force reconnect in naxum!"
+                                        );
+                                    }
+                                }
                                 continue;
                             },
                             None => {

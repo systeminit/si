@@ -263,7 +263,7 @@ impl Server {
             cyclone_pool,
             decryption_key,
             cyclone_client_execution_timeout,
-            nats,
+            nats.clone(),
             kill_senders,
         );
 
@@ -283,9 +283,40 @@ impl Server {
             .service(handlers::process_request.with_state(state))
             .map_response(Response::into_response);
 
-        let inner =
-            naxum::serve_with_incoming_limit(incoming, app.into_make_service(), concurrency_limit)
-                .with_graceful_shutdown(naxum::wait_on_cancelled(token));
+        let (sender, mut receiver) = tokio::sync::mpsc::channel(1);
+
+        let token_for_receiver = token.clone();
+        tokio::spawn(async move {
+            loop {
+                tokio::select! {
+                    _ = receiver.recv() => {
+                        warn!(
+                            si.investigation.name = "verideath",
+                            "trying to send force reconnect from veritech server"
+                        );
+                        if let Err(err) = nats.force_reconnect().await {
+                            error!(si.error.message = ?err, "could not send force reconnect from veritech server");
+                        }
+                        warn!(
+                            si.investigation.name = "verideath",
+                            "sent force reconnect from veritech server!"
+                        );
+                    }
+                    _ = token_for_receiver.cancelled() => {
+                        info!(si.investigation.name = "verideath", "shutting down force reconnect for verideath");
+                        break;
+                    }
+                }
+            }
+        });
+
+        let inner = naxum::serve_with_incoming_limit_and_force_reconnect_sender(
+            incoming,
+            sender,
+            app.into_make_service(),
+            concurrency_limit,
+        )
+        .with_graceful_shutdown(naxum::wait_on_cancelled(token));
 
         Ok(Box::new(inner.into_future()))
     }
