@@ -7,15 +7,15 @@ export default defineConfig({
     setupNodeEvents(on, config) {
       on('file:preprocessor',
         vitePreprocessor(
-          path.resolve('./vite.config.ts'),
+          path.resolve('./vite.cypress.ts'),
         )
       ),
-      on('task', {
-        log(message) {
-          console.log(message)
-          return null
-        }
-      })
+        on('task', {
+          log(message) {
+            console.log(message)
+            return null
+          }
+        })
     },
 
     // Hotfix, needs amended
