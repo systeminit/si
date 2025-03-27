@@ -42,7 +42,10 @@ use dal::{
         input::InputSocketError,
         output::OutputSocketError,
     },
-    workspace_snapshot::WorkspaceSnapshotError,
+    workspace_snapshot::{
+        WorkspaceSnapshotError,
+        dependent_value_root::DependentValueRootError,
+    },
 };
 use sdf_core::{
     api_error::ApiError,
@@ -93,6 +96,8 @@ pub enum DiagramError {
     DalSchemaVariant(#[from] dal::schema::variant::SchemaVariantError),
     #[error("dal schema view error: {0}")]
     DalSchemaView(#[from] dal::schema::view::SchemaViewError),
+    #[error("dependent value root error: {0}")]
+    DependentValueRoot(#[from] DependentValueRootError),
     #[error("duplicated connection")]
     DuplicatedConnection,
     #[error("edge not found")]

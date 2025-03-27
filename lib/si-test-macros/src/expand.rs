@@ -570,11 +570,11 @@ pub(crate) trait FnSetupExpander {
         let var_auth_token = Ident::new("auth_token", Span::call_site());
         self.code_extend(quote! {
             let (#var_nw, #var_auth_token) = {
-                let ctx = #dal_context_builder
+                let mut ctx = #dal_context_builder
                     .build_default(None)
                     .await
                     .wrap_err("failed to build default dal ctx for workspace_signup")?;
-                let r = ::dal_test::expand_helpers::workspace_signup(&ctx).await?;
+                let r = ::dal_test::expand_helpers::workspace_signup(&mut ctx).await?;
                 ctx.blocking_commit()
                     .await
                     .wrap_err("failed to commit workspace_signup")?;

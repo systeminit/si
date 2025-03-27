@@ -59,6 +59,7 @@ use dal_test::{
 };
 use itertools::Itertools;
 use pretty_assertions_sorted::assert_eq;
+use si_split_graph::SplitGraphError;
 
 mod action;
 mod attribute;
@@ -739,10 +740,14 @@ async fn code_gen_cannot_create_cycle(ctx: &mut DalContext) {
             AttributePrototypeArgumentError::WorkspaceSnapshot(
                 WorkspaceSnapshotError::WorkspaceSnapshotGraph(
                     WorkspaceSnapshotGraphError::CreateGraphCycle,
-                ),
+                )
+                | WorkspaceSnapshotError::SplitGraph(SplitGraphError::WouldCreateGraphCycle),
             ),
         ))) => {}
-        _ => panic!("Test should fail if we don't get this error"),
+        other => panic!(
+            "Test should fail if we don't get this error, got: {:?}",
+            other
+        ),
     }
 }
 

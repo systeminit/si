@@ -235,6 +235,7 @@ async fn unlock_and_save_variant(ctx: &mut DalContext) {
     let new_merged_variant = SchemaVariant::get_by_id(ctx, default_schema_variant)
         .await
         .expect("unable to lookup the default schema variant");
+    assert!(new_merged_variant.is_locked());
 
     // schema variant ids should match
     assert_eq!(new_merged_variant.id(), unlocked_schema_variant.id());

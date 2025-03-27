@@ -23,7 +23,7 @@ use crate::integration_test::{
     setup_pg_db,
 };
 
-type TestLayerDb = LayerDb<Arc<String>, Arc<String>, String, String>;
+type TestLayerDb = LayerDb<Arc<String>, Arc<String>, String, String, String, String, String>;
 
 #[tokio::test]
 async fn activities() {

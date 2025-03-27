@@ -28,6 +28,14 @@ impl WorkspaceSnapshotAddress {
         Self(blake3::hash(input))
     }
 
+    pub fn from_hash(hash: blake3::Hash) -> Self {
+        Self(hash)
+    }
+
+    pub fn inner(&self) -> blake3::Hash {
+        self.0
+    }
+
     pub fn nil() -> Self {
         Self(blake3::Hash::from_bytes([0; 32]))
     }

@@ -18,10 +18,14 @@ use si_data_pg::{
     PgRow,
 };
 use si_events::{
+    RebaseBatchAddressKind,
     WorkspaceSnapshotAddress,
     audit_log::AuditLogKind,
+    merkle_tree_hash::MerkleTreeHash,
     ulid::Ulid,
+    workspace_snapshot::Checksum,
 };
+use si_id::EntityId;
 use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -55,10 +59,21 @@ use crate::{
         ActionError,
         ActionId,
     },
-    billing_publish,
-    billing_publish::BillingPublishError,
+    billing_publish::{
+        self,
+        BillingPublishError,
+    },
     slow_rt::SlowRuntimeError,
-    workspace_snapshot::graph::RebaseBatch,
+    workspace_snapshot::{
+        DependentValueRoot,
+        dependent_value_root::DependentValueRootError,
+        graph::RebaseBatch,
+        selector::WorkspaceSnapshotSelectorDiscriminants,
+        split_snapshot::{
+            SplitRebaseBatchVCurrent,
+            SplitSnapshot,
+        },
+    },
 };
 
 pub mod approval;
@@ -79,6 +94,8 @@ pub enum ChangeSetError {
     ChangeSetNotFound(ChangeSetId),
     #[error("default change set {0} has no workspace snapshot pointer")]
     DefaultChangeSetNoWorkspaceSnapshotPointer(ChangeSetId),
+    #[error("dependent value root error: {0}")]
+    DependentValueRoot(#[from] DependentValueRootError),
     #[error("dvu roots are not empty for change set: {0}")]
     DvuRootsNotEmpty(ChangeSetId),
     #[error("enum parse error: {0}")]
@@ -238,6 +255,8 @@ impl ChangeSet {
         // the edit session vs what the changeset already contained. The "onto"
         // changeset needs to have seen the "to_rebase" or we will treat them as
         // completely disjoint changesets.
+        // XXX: None of this is true anymore since we removed vector clocks and we can likely
+        // remove this second write, which would reduce pressure on the database
         let workspace_snapshot_address = workspace_snapshot.write(ctx).await.map_err(Box::new)?;
 
         let workspace_id = ctx.tenancy().workspace_pk_opt();
@@ -472,14 +491,7 @@ impl ChangeSet {
         dangerous_skip_status_check: bool,
     ) -> ChangeSetResult<()> {
         // Ensure that DVU roots are empty before continuing.
-        if !ctx
-            .workspace_snapshot()
-            .map_err(Box::new)?
-            .get_dependent_value_roots()
-            .await
-            .map_err(Box::new)?
-            .is_empty()
-        {
+        if DependentValueRoot::roots_exist(ctx).await? {
             // TODO(nick): we should consider requiring this check in integration tests too. Why did I
             // not do this at the time of writing? Tests have multiple ways to call "apply", whether
             // its via helpers or through the change set methods directly. In addition, they test
@@ -806,10 +818,40 @@ impl ChangeSet {
 
     #[instrument(
         level = "info",
-        name = "change_set.detect_updates_that_will_be_applied",
+        name = "change_set.detect_updates_that_will_be_applied_split",
         skip_all
     )]
-    pub async fn detect_updates_that_will_be_applied(
+    pub async fn detect_updates_that_will_be_applied_split(
+        &self,
+        ctx: &DalContext,
+    ) -> ChangeSetResult<Option<SplitRebaseBatchVCurrent>> {
+        let base_change_set_id = self
+            .base_change_set_id
+            .ok_or(ChangeSetError::NoBaseChangeSet(self.id))?;
+
+        let base_snapshot = Arc::new(
+            SplitSnapshot::find_for_change_set(ctx, base_change_set_id)
+                .await
+                .map_err(Box::new)?,
+        );
+
+        Ok(SplitSnapshot::calculate_rebase_batch(
+            base_snapshot,
+            ctx.workspace_snapshot()
+                .map_err(Box::new)?
+                .as_split_snapshot()
+                .map_err(Box::new)?,
+        )
+        .await
+        .map_err(Box::new)?)
+    }
+
+    #[instrument(
+        level = "info",
+        name = "change_set.detect_updates_that_will_be_applied_legacy",
+        skip_all
+    )]
+    pub async fn detect_updates_that_will_be_applied_legacy(
         &self,
         ctx: &DalContext,
     ) -> ChangeSetResult<Option<RebaseBatch>> {
@@ -848,14 +890,40 @@ impl ChangeSet {
             .base_change_set_id
             .ok_or(ChangeSetError::NoBaseChangeSet(self.id))?;
 
-        if let Some(rebase_batch) = self.detect_updates_that_will_be_applied(ctx).await? {
-            let updates_address = ctx.write_rebase_batch(rebase_batch).await?;
+        let snapshot_kind: WorkspaceSnapshotSelectorDiscriminants =
+            ctx.workspace_snapshot().map_err(Box::new)?.into();
 
+        let maybe_rebase_batch_address = match snapshot_kind {
+            WorkspaceSnapshotSelectorDiscriminants::LegacySnapshot => {
+                if let Some(rebase_batch) =
+                    self.detect_updates_that_will_be_applied_legacy(ctx).await?
+                {
+                    Some(RebaseBatchAddressKind::Legacy(
+                        ctx.write_legacy_rebase_batch(rebase_batch).await?,
+                    ))
+                } else {
+                    None
+                }
+            }
+            WorkspaceSnapshotSelectorDiscriminants::SplitSnapshot => {
+                if let Some(rebase_batch) =
+                    self.detect_updates_that_will_be_applied_split(ctx).await?
+                {
+                    Some(RebaseBatchAddressKind::Split(
+                        ctx.write_split_snapshot_rebase_batch(rebase_batch).await?,
+                    ))
+                } else {
+                    None
+                }
+            }
+        };
+
+        if let Some(rebase_batch_address) = maybe_rebase_batch_address {
             let (request_id, reply_fut) = ctx
                 .run_rebase_from_change_set_with_reply(
                     workspace_id,
                     base_change_set_id,
-                    updates_address,
+                    rebase_batch_address,
                     self.id,
                 )
                 .await?;
@@ -1072,4 +1140,43 @@ impl std::fmt::Debug for ChangeSet {
             )
             .finish()
     }
+}
+
+/// Calculates the checksum based on a list of IDs with hashes passed in.
+#[instrument(name = "calculate_checksum", level = "debug", skip_all)]
+pub async fn calculate_checksum(
+    ctx: &DalContext,
+    mut ids_with_hashes: Vec<(EntityId, MerkleTreeHash)>,
+) -> ChangeSetResult<Checksum> {
+    // If an empty list of IDs with hashes wass passed in, then we use the root node's ID and
+    // merkle tree hash as our sole ID and hash so that algorithms using the checksum can
+    // "invalidate" as needed.
+    if ids_with_hashes.is_empty() {
+        let root_node_id = ctx
+            .workspace_snapshot()
+            .map_err(Box::new)?
+            .root()
+            .await
+            .map_err(Box::new)?;
+        let root_node = ctx
+            .workspace_snapshot()
+            .map_err(Box::new)?
+            .get_node_weight(root_node_id)
+            .await
+            .map_err(Box::new)?;
+
+        ids_with_hashes.push((root_node_id.into(), root_node.merkle_tree_hash()));
+    }
+
+    // We MUST sort IDs (not hashes) before creating the checksum. This is so that we have
+    // stable checksum calculation.
+    ids_with_hashes.sort_by_key(|(id, _)| *id);
+
+    // Now that we have strictly ordered IDs with hasesh and there's at least one group
+    // present, we can create the checksum.
+    let mut hasher = Checksum::hasher();
+    for (_, hash) in ids_with_hashes {
+        hasher.update(hash.as_bytes());
+    }
+    Ok(hasher.finalize())
 }

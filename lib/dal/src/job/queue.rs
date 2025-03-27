@@ -3,7 +3,6 @@ use std::{
         HashMap,
         HashSet,
         VecDeque,
-        hash_map::Entry,
     },
     sync::Arc,
 };
@@ -93,26 +92,6 @@ impl JobQueue {
         }
 
         false
-    }
-
-    /// Grab the dependent value update set for a change set and remove it from
-    /// the queue (for sending via a rebase request)
-    pub async fn take_dependent_values_for_change_set(
-        &self,
-        change_set_id: ChangeSetId,
-    ) -> Option<Vec<Ulid>> {
-        match self
-            .attribute_value_based_jobs
-            .lock()
-            .await
-            .entry(AttributeValueBasedJobIdentifier::DependentValuesUpdate)
-        {
-            Entry::Vacant(_) => None,
-            Entry::Occupied(mut entry) => entry
-                .get_mut()
-                .remove(&change_set_id)
-                .map(|(values, _)| values.into_iter().collect()),
-        }
     }
 
     pub async fn fetch_attribute_value_based_job(

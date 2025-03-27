@@ -2637,6 +2637,7 @@ async fn up_frames_multiple_input_sockets_match(ctx: &mut DalContext) {
     let new_component = Component::upgrade_to_new_variant(ctx, component.id(), new_comp_variant)
         .await
         .expect("could not upgrade component");
+
     //commit for propagation
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await

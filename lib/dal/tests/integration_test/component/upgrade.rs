@@ -217,8 +217,7 @@ async fn auto_upgrade_component(ctx: &mut DalContext) -> Result<()> {
     assert_eq!(my_upgraded_component.schema_variant_id, variant_one);
 
     let view_after_upgrade = Component::get_by_id(ctx, my_upgraded_component.component_id)
-        .await
-        .unwrap()
+        .await?
         .view(ctx)
         .await?;
 

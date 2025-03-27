@@ -212,7 +212,6 @@ impl Connectable {
             .execute_management_func(ctx, ExpectFunc(self.test.management_func_id))
             .await;
         ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
-
         get_attribute_value_for_component(ctx, self.id, &["root", "domain", "ManagedValues"]).await
     }
 

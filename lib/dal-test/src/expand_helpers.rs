@@ -9,6 +9,8 @@ use dal::{
     ChangeSet,
     ChangeSetId,
     DalContext,
+    Tenancy,
+    WorkspacePk,
 };
 use jwt_simple::{
     algorithms::RSAKeyPairLike,
@@ -169,8 +171,11 @@ fn tracing_init_inner(span_events_env_var: &str, log_env_var: &str) {
 }
 
 /// This function is used during macro expansion for setting up the workspace for integration tests.
-pub async fn workspace_signup(ctx: &DalContext) -> crate::Result<(WorkspaceSignup, String)> {
+pub async fn workspace_signup(ctx: &mut DalContext) -> crate::Result<(WorkspaceSignup, String)> {
     use color_eyre::eyre::WrapErr;
+    // Tenancy must be set here or the update_visibility call will fail, since it now needs to check
+    // the workspace snapshot_kind
+    ctx.update_tenancy(Tenancy::new(WorkspacePk::NONE));
 
     let mut ctx = ctx.clone_with_head().await?;
 

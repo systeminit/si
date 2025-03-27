@@ -342,7 +342,13 @@ impl PersistEventTask {
             | LayeredEventKind::RebaseBatchEvict
             | LayeredEventKind::RebaseBatchWrite
             | LayeredEventKind::SnapshotEvict
-            | LayeredEventKind::SnapshotWrite => {
+            | LayeredEventKind::SnapshotWrite
+            | LayeredEventKind::SplitSnapshotSubGraphEvict
+            | LayeredEventKind::SplitSnapshotSubGraphWrite
+            | LayeredEventKind::SplitSnapshotSuperGraphEvict
+            | LayeredEventKind::SplitSnapshotSuperGraphWrite
+            | LayeredEventKind::SplitRebaseBatchEvict
+            | LayeredEventKind::SplitRebaseBatchWrite => {
                 pg_layer
                     .insert(
                         &event.payload.key,

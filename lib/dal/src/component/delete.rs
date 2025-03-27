@@ -126,7 +126,7 @@ pub async fn delete_components(
     Ok(result)
 }
 
-async fn delete_component(
+pub async fn delete_component(
     ctx: &DalContext,
     component: &Component,
     force_erase: bool,

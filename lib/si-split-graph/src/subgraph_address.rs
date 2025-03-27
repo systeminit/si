@@ -1,5 +1,6 @@
 use std::{
     fmt,
+    hash::Hash,
     str::FromStr,
 };
 
@@ -11,6 +12,7 @@ use serde::{
         Visitor,
     },
 };
+use si_events::WorkspaceSnapshotAddress;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -26,8 +28,16 @@ impl SubGraphAddress {
         Self(blake3::hash(input))
     }
 
+    pub fn from_hash(hash: blake3::Hash) -> Self {
+        Self(hash)
+    }
+
     pub fn nil() -> Self {
         Self(blake3::Hash::from_bytes([0; 32]))
+    }
+
+    pub fn inner(&self) -> blake3::Hash {
+        self.0
     }
 }
 
@@ -77,5 +87,17 @@ impl<'de> Deserialize<'de> for SubGraphAddress {
         D: serde::Deserializer<'de>,
     {
         deserializer.deserialize_str(SubGraphAddressVisitor)
+    }
+}
+
+impl From<SubGraphAddress> for WorkspaceSnapshotAddress {
+    fn from(value: SubGraphAddress) -> Self {
+        WorkspaceSnapshotAddress::from_hash(value.inner())
+    }
+}
+
+impl From<WorkspaceSnapshotAddress> for SubGraphAddress {
+    fn from(value: WorkspaceSnapshotAddress) -> Self {
+        SubGraphAddress::from_hash(value.inner())
     }
 }

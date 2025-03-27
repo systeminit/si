@@ -5,8 +5,8 @@ use serde::{
 };
 use si_events::{
     ChangeSetId,
+    RebaseBatchAddressKind,
     WorkspacePk,
-    rebase_batch_address::RebaseBatchAddress,
 };
 
 #[derive(Clone, Debug, Deserialize, Eq, Serialize, PartialEq)]
@@ -22,7 +22,7 @@ pub struct EnqueueUpdatesResponseV1 {
 #[serde(rename_all = "camelCase")]
 pub enum RebaseStatus {
     Success {
-        updates_performed: RebaseBatchAddress,
+        updates_performed: RebaseBatchAddressKind,
     },
     Error {
         message: String,

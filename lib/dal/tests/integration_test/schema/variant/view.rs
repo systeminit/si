@@ -40,7 +40,6 @@ async fn get_schema_variant(ctx: &DalContext) {
         .expect("Unable to get all schema variant funcs");
 
     assert_eq!(9, sv_funcs.len());
-
     let mut func_names: Vec<String> = sv_funcs.iter().map(|f| f.name.clone()).collect();
     func_names.sort();
     let expected: Vec<String> = vec![

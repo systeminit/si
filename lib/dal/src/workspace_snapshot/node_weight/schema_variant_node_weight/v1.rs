@@ -34,8 +34,10 @@ use crate::{
         SchemaVariantContentV3,
     },
     workspace_snapshot::{
-        ContentAddressDiscriminants,
-        content_address::ContentAddress,
+        content_address::{
+            ContentAddress,
+            ContentAddressDiscriminants,
+        },
         graph::{
             LineageId,
             WorkspaceSnapshotGraphError,

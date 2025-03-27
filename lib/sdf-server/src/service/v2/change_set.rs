@@ -16,6 +16,7 @@ use dal::{
     WorkspacePk,
     WsEventError,
     workspace_integrations::WorkspaceIntegration,
+    workspace_snapshot::dependent_value_root::DependentValueRootError,
 };
 use reqwest::Client;
 use sdf_core::{
@@ -51,6 +52,8 @@ pub enum Error {
     ChangeSetApproval(#[from] dal::change_set::approval::ChangeSetApprovalError),
     #[error("dal wrapper error: {0}")]
     DalWrapper(#[from] sdf_core::dal_wrapper::DalWrapperError),
+    #[error("dependent value root error: {0}")]
+    DependentValueRoot(#[from] DependentValueRootError),
     #[error("dvu roots are not empty for change set: {0}")]
     DvuRootsNotEmpty(ChangeSetId),
     #[error("history event: {0}")]

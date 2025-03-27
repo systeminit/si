@@ -50,10 +50,12 @@ use crate::{
     },
     workspace_snapshot::{
         CategoryNodeKind,
-        ContentAddressDiscriminants,
         LineageId,
         OrderingNodeWeight,
-        content_address::ContentAddress,
+        content_address::{
+            ContentAddress,
+            ContentAddressDiscriminants,
+        },
         graph::{
             MerkleTreeHash,
             WorkspaceSnapshotGraphError,
@@ -1764,29 +1766,6 @@ impl WorkspaceSnapshotGraphV4 {
                 }
             }
         }
-
-        Ok(())
-    }
-
-    /// Update node weight in place with a lambda. Use with caution. Generally
-    /// we treat node weights as immutable and replace them by creating a new
-    /// node with a new node weight and replacing references to point to the new
-    /// node.
-    pub(crate) fn update_node_weight<L>(
-        &mut self,
-        node_idx: NodeIndex,
-        lambda: L,
-    ) -> WorkspaceSnapshotGraphResult<()>
-    where
-        L: FnOnce(&mut NodeWeight) -> WorkspaceSnapshotGraphResult<()>,
-    {
-        let node_weight = self
-            .graph
-            .node_weight_mut(node_idx)
-            .ok_or(WorkspaceSnapshotGraphError::NodeWeightNotFound)?;
-
-        lambda(node_weight)?;
-        self.touch_node(node_idx);
 
         Ok(())
     }

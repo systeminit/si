@@ -31,6 +31,7 @@ use crate::{
     },
     workspace_snapshot::{
         WorkspaceSnapshotError,
+        dependent_value_root::DependentValueRootError,
         edge_weight::{
             EdgeWeightKind,
             EdgeWeightKindDiscriminants,
@@ -47,6 +48,8 @@ pub enum FrameError {
     AttributeValueError(#[from] AttributeValueError),
     #[error("component error: {0}")]
     Component(#[from] ComponentError),
+    #[error("dependent value root error: {0}")]
+    DependentValueRoot(#[from] DependentValueRootError),
     #[error("InferredConnectionGraph error: {0}")]
     InferredConnectionGraph(#[from] InferredConnectionGraphError),
     #[error("input socket error: {0}")]
@@ -74,6 +77,7 @@ pub type FrameResult<T> = Result<T, FrameError>;
 /// A unit struct containing logic for working with frames.
 pub struct Frame;
 
+#[derive(Debug)]
 pub struct InferredEdgeChanges {
     pub removed_edges: Vec<SummaryDiagramInferredEdge>,
     pub upserted_edges: Vec<SummaryDiagramInferredEdge>,

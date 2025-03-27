@@ -1,5 +1,7 @@
 //! Edges
 
+use std::hash::Hash;
+
 use serde::{
     Deserialize,
     Serialize,
@@ -91,7 +93,7 @@ impl EdgeWeightKind {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[derive(Hash, Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct EdgeWeight {
     kind: EdgeWeightKind,
 }
@@ -109,5 +111,97 @@ impl EdgeWeight {
 impl From<DeprecatedEdgeWeightV1> for EdgeWeight {
     fn from(value: DeprecatedEdgeWeightV1) -> Self {
         Self { kind: value.kind }
+    }
+}
+
+impl si_split_graph::EdgeKind for EdgeWeightKindDiscriminants {}
+
+impl si_split_graph::CustomEdgeWeight<EdgeWeightKindDiscriminants> for EdgeWeight {
+    fn kind(&self) -> EdgeWeightKindDiscriminants {
+        self.kind().into()
+    }
+
+    fn edge_entropy(&self) -> Option<Vec<u8>> {
+        match self.kind() {
+            EdgeWeightKind::Contain(Some(key)) => Some(key.as_bytes().to_vec()),
+            EdgeWeightKind::Prototype(Some(key)) => Some(key.as_bytes().to_vec()),
+            EdgeWeightKind::Use { is_default } => Some(vec![*is_default as u8]),
+
+            EdgeWeightKind::Contain(None)
+            | EdgeWeightKind::Action
+            | EdgeWeightKind::ActionPrototype
+            | EdgeWeightKind::AuthenticationPrototype
+            | EdgeWeightKind::FrameContains
+            | EdgeWeightKind::Ordering
+            | EdgeWeightKind::Ordinal
+            | EdgeWeightKind::Prop
+            | EdgeWeightKind::Prototype(None)
+            | EdgeWeightKind::PrototypeArgument
+            | EdgeWeightKind::PrototypeArgumentValue
+            | EdgeWeightKind::Proxy
+            | EdgeWeightKind::Root
+            | EdgeWeightKind::Socket
+            | EdgeWeightKind::SocketValue
+            | EdgeWeightKind::ValidationOutput
+            | EdgeWeightKind::ManagementPrototype
+            | EdgeWeightKind::Represents
+            | EdgeWeightKind::Manages
+            | EdgeWeightKind::DiagramObject
+            | EdgeWeightKind::ApprovalRequirementDefinition => None,
+        }
+    }
+
+    fn is_default(&self) -> bool {
+        match self.kind() {
+            EdgeWeightKind::Use { is_default } => *is_default,
+            EdgeWeightKind::Action
+            | EdgeWeightKind::ActionPrototype
+            | EdgeWeightKind::AuthenticationPrototype
+            | EdgeWeightKind::Contain(_)
+            | EdgeWeightKind::FrameContains
+            | EdgeWeightKind::Ordering
+            | EdgeWeightKind::Ordinal
+            | EdgeWeightKind::Prop
+            | EdgeWeightKind::Prototype(_)
+            | EdgeWeightKind::PrototypeArgument
+            | EdgeWeightKind::PrototypeArgumentValue
+            | EdgeWeightKind::Proxy
+            | EdgeWeightKind::Root
+            | EdgeWeightKind::Socket
+            | EdgeWeightKind::SocketValue
+            | EdgeWeightKind::ValidationOutput
+            | EdgeWeightKind::ManagementPrototype
+            | EdgeWeightKind::Represents
+            | EdgeWeightKind::Manages
+            | EdgeWeightKind::DiagramObject
+            | EdgeWeightKind::ApprovalRequirementDefinition => false,
+        }
+    }
+
+    fn clone_as_non_default(&self) -> Self {
+        match self.kind() {
+            EdgeWeightKind::Use { .. } => EdgeWeight::new(EdgeWeightKind::new_use()),
+            EdgeWeightKind::Action
+            | EdgeWeightKind::ActionPrototype
+            | EdgeWeightKind::AuthenticationPrototype
+            | EdgeWeightKind::Contain(_)
+            | EdgeWeightKind::FrameContains
+            | EdgeWeightKind::Ordering
+            | EdgeWeightKind::Ordinal
+            | EdgeWeightKind::Prop
+            | EdgeWeightKind::Prototype(_)
+            | EdgeWeightKind::PrototypeArgument
+            | EdgeWeightKind::PrototypeArgumentValue
+            | EdgeWeightKind::Proxy
+            | EdgeWeightKind::Root
+            | EdgeWeightKind::Socket
+            | EdgeWeightKind::SocketValue
+            | EdgeWeightKind::ValidationOutput
+            | EdgeWeightKind::ManagementPrototype
+            | EdgeWeightKind::Represents
+            | EdgeWeightKind::Manages
+            | EdgeWeightKind::DiagramObject
+            | EdgeWeightKind::ApprovalRequirementDefinition => self.clone(),
+        }
     }
 }
