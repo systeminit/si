@@ -1,14 +1,28 @@
 <template>
   <Modal ref="modalRef" size="max" title="Create Connection">
     <div
-      class="flex flex-col border-2 h-[80vh]"
+      class="flex flex-col border-2 h-[80vh] rounded-sm"
       @click="focusOnInput"
       @keydown.up.prevent="highlightPrev"
       @keydown.down.prevent="highlightNext"
       @keydown.enter.prevent="processHighlighted"
-      @keydown.tab.prevent="toggleEditTarget"
+      @keydown.tab.exact.prevent="processHighlighted"
+      @keydown.shift.tab.prevent="undoASelection"
     >
-      <VormInput ref="inputRef" v-model="searchString" label="Search" noLabel />
+      <VormInput
+        v-if="activeSide === 'a'"
+        ref="inputARef"
+        v-model="searchStringA"
+        label="Search"
+        noLabel
+      />
+      <VormInput
+        v-else
+        ref="inputBRef"
+        v-model="searchStringB"
+        label="Search"
+        noLabel
+      />
       <div class="flex flex-row grow border-t-2 min-h-0">
         <!-- Socket A -->
         <ConnectionMenuSocketList
@@ -47,6 +61,7 @@ import {
   watch,
   watchEffect,
 } from "vue";
+import { Fzf } from "fzf";
 import {
   ConnectionMenuData,
   generateSocketPaths,
@@ -59,7 +74,8 @@ import ConnectionMenuSocketList, {
 } from "./ConnectionMenuSocketList.vue";
 
 const modalRef = ref<InstanceType<typeof Modal>>();
-const inputRef = ref<InstanceType<typeof VormInput>>();
+const inputARef = ref<InstanceType<typeof VormInput>>();
+const inputBRef = ref<InstanceType<typeof VormInput>>();
 
 const componentsStore = useComponentsStore();
 const viewsStore = useViewsStore();
@@ -72,14 +88,18 @@ onUnmounted(() => {
   componentsStore.eventBus.off("openConnectionsMenu", open);
 });
 
-const searchString = ref("");
+const searchStringA = ref("");
+const searchStringB = ref("");
+const activeInputRef = computed(() =>
+  activeSide.value === "a" ? inputARef : inputBRef,
+);
 
 const listAItems = ref<SocketListEntry[]>([]);
 const listBItems = ref<SocketListEntry[]>([]);
 
 const focusOnInput = () => {
   nextTick(() => {
-    inputRef.value?.focus();
+    activeInputRef.value.value?.focus();
   });
 };
 
@@ -125,10 +145,17 @@ const selectedSocketB = computed(() =>
 );
 
 const activeSide = ref<"a" | "b">("a");
-const toggleEditTarget = () => {
-  activeSide.value = activeSide.value === "a" ? "b" : "a";
+// TODO this will undo the previous connection
+const undoASelection = () => {
+  if (activeSide.value === "a") {
+    return;
+  }
+  activeSide.value = "a";
+  connectionData.A = {};
+  focusOnInput();
 };
 
+// Generate the options on both sides
 // TODO Break this into computed variables
 watchEffect(() => {
   if (!modalRef.value?.isOpen) {
@@ -144,9 +171,11 @@ watchEffect(() => {
       ? [listAItems, listBItems]
       : [listBItems, listAItems];
 
+  const activeSearchString =
+    activeSide.value === "a" ? searchStringA.value : searchStringB.value;
+
   const edges = _.values(componentsStore.diagramEdgesById);
 
-  // Active side
   const componentsActiveSide = _.filter(
     activeSideData.componentId
       ? _.compact([
@@ -157,6 +186,7 @@ watchEffect(() => {
     (c) => !otherSideData.componentId || c.def.id !== otherSideData.componentId,
   );
 
+  // Gather all sockets on the active side
   const activeSideSockets = _.flatten(
     componentsActiveSide?.map((c) =>
       c.sockets
@@ -173,74 +203,20 @@ watchEffect(() => {
 
           return incomingConnections.length < s.def.maxConnections;
         })
-        .filter((s) =>
-          s.def.label
-            .toLowerCase()
-            .includes(searchString.value?.toLowerCase() ?? ""),
-        )
         .map((s) => ({
           component: c,
           socket: s,
-        })),
+        }))
+        .reduce((acc, entry) => {
+          const paths = generateSocketPaths(entry.socket, viewsStore);
+          for (const path of paths) {
+            acc.push({ ...entry, label: path });
+          }
+
+          return acc;
+        }, [] as SocketListEntry[]),
     ),
   );
-
-  const peersFunction = componentsStore.possibleAndExistingPeerSocketsFn;
-  const validPeers = _.flatten(
-    activeSideSockets
-      .map(({ component, socket }) =>
-        peersFunction(socket.def, component.def.id).possiblePeers.map((p) => ({
-          originatorSocket: socket,
-          ...p,
-        })),
-      )
-      .filter((peers) => peers.length > 0),
-  )
-    .filter((s) => !otherSideData.socketId || otherSideData.socketId === s.id)
-    .filter(
-      (s) =>
-        !otherSideData.componentId ||
-        otherSideData.componentId === s.componentId,
-    )
-    .map((s) => {
-      const component = componentsStore.allComponentsById[s.componentId];
-
-      if (!component) {
-        return;
-      }
-
-      return {
-        originatorSocket: s.originatorSocket,
-        component,
-        socket: new DiagramSocketData(component, s),
-      };
-    });
-
-  // Remove the undefined
-  const otherSideSockets = {} as Record<string, Omit<SocketListEntry, "label">>;
-  const socketsWithPossiblePeers = new Set();
-  for (const peer of _.compact(validPeers)) {
-    otherSideSockets[peer.socket.uniqueKey] = peer;
-    socketsWithPossiblePeers.add(peer.originatorSocket.uniqueKey);
-  }
-
-  const activeSideSocketsWithLabels = [] as SocketListEntry[];
-  for (const entry of activeSideSockets.filter((e) =>
-    socketsWithPossiblePeers.has(e.socket.uniqueKey),
-  )) {
-    const paths = generateSocketPaths(entry.socket, viewsStore);
-    for (const path of paths) {
-      activeSideSocketsWithLabels.push({ ...entry, label: path });
-    }
-  }
-
-  const otherSideSocketsWithLabels = [] as SocketListEntry[];
-  for (const entry of _.values(otherSideSockets)) {
-    const paths = generateSocketPaths(entry.socket, viewsStore);
-    for (const path of paths) {
-      otherSideSocketsWithLabels.push({ ...entry, label: path });
-    }
-  }
 
   const sortFn = (s1: SocketListEntry, s2: SocketListEntry) => {
     if (s1.socket.def.direction === s2.socket.def.direction) {
@@ -252,7 +228,6 @@ watchEffect(() => {
       }
       return 0;
     }
-
     if (s1.socket.def.direction === "input") {
       return -1;
     } else {
@@ -260,11 +235,82 @@ watchEffect(() => {
     }
   };
 
-  activeSideSocketsWithLabels.sort(sortFn);
-  otherSideSocketsWithLabels.sort(sortFn);
+  activeSideSockets.sort(sortFn);
 
-  activeSideList.value = activeSideSocketsWithLabels;
-  otherSideList.value = otherSideSocketsWithLabels;
+  let matchedActiveSideSockets = activeSideSockets;
+
+  if (activeSearchString) {
+    const fzf = new Fzf(activeSideSockets, {
+      selector: (item) => item.label,
+    });
+
+    matchedActiveSideSockets = fzf.find(activeSearchString).map((e) => ({
+      ...e.item,
+      labelHighlights: e.positions,
+    }));
+  }
+
+  // Get all valid peer sockets for the active sockets
+  const peersFunction = componentsStore.possibleAndExistingPeerSocketsFn;
+  type SocketListEntryWithOriginator = SocketListEntry & {
+    originatorSocketLabel: string;
+  };
+
+  const validPeers = matchedActiveSideSockets
+    .flatMap(({ component, socket, label }) =>
+      peersFunction(socket.def, component.def.id).possiblePeers.map((p) => ({
+        originatorSocketLabel: label,
+        ...p,
+      })),
+    )
+    .filter(
+      (s) =>
+        !otherSideData.componentId ||
+        otherSideData.componentId === s.componentId,
+    )
+    .filter((s) => !otherSideData.socketId || otherSideData.socketId === s.id)
+    .map((s) => {
+      const component = componentsStore.allComponentsById[s.componentId];
+
+      if (!component) {
+        return;
+      }
+
+      return {
+        originatorSocketLabel: s.originatorSocketLabel,
+        component,
+        socket: new DiagramSocketData(component, s),
+      };
+    })
+    .reduce((acc, entry) => {
+      if (!entry) return acc;
+
+      const paths = generateSocketPaths(entry.socket, viewsStore);
+      for (const path of paths) {
+        acc.push({ ...entry, label: path });
+      }
+
+      return acc;
+    }, [] as SocketListEntryWithOriginator[]);
+
+  // Remove the active side sockets without peers
+  const otherSideSockets = {} as Record<string, SocketListEntry>;
+  const socketsWithPossiblePeers = new Set();
+  for (const peer of _.compact(validPeers)) {
+    otherSideSockets[peer.label] = peer;
+    socketsWithPossiblePeers.add(peer.originatorSocketLabel);
+  }
+
+  const activeSideSocketsWithPeers = matchedActiveSideSockets.filter((e) =>
+    socketsWithPossiblePeers.has(e.label),
+  );
+
+  const deduplicatedOtherSideSockets = _.values(otherSideSockets);
+
+  deduplicatedOtherSideSockets.sort(sortFn);
+
+  activeSideList.value = activeSideSocketsWithPeers;
+  otherSideList.value = deduplicatedOtherSideSockets;
 });
 
 const highlightedIndex = ref(0);
@@ -304,6 +350,8 @@ watch(activeSide, () => {
   highlightedIndex.value = 0;
 });
 
+// NOTE(victor): This code was written with the expectation that you could go from B to A without unsetting data on A.
+// this has since changed, but some overengineering was kept in case we change our minds
 const processHighlighted = () => {
   if (activeSide.value === "a") {
     const selectedItem = listAItems.value[highlightedIndex.value];
@@ -314,6 +362,9 @@ const processHighlighted = () => {
         ? undefined
         : selectedItem.socket.def.direction;
     connectionData.A.componentId = selectedItem.component.def.id;
+
+    searchStringA.value = selectedItem.label;
+    activeSide.value = "b";
   } else {
     const selectedItem = listBItems.value[highlightedIndex.value];
     if (!selectedItem) return;
@@ -364,8 +415,6 @@ const processHighlighted = () => {
     ]);
 
     close();
-  } else {
-    toggleEditTarget();
   }
 
   highlightedIndex.value = 0;
@@ -374,17 +423,55 @@ const processHighlighted = () => {
 
 // Modal Mgmt
 function open(initialState: ConnectionMenuData) {
-  modalRef.value?.open();
-
-  searchString.value = "";
   activeSide.value = "a";
-  connectionData.aDirection = initialState.aDirection;
-  connectionData.A = initialState.A;
-  connectionData.B = initialState.B;
+  connectionData.A = {};
+  connectionData.B = {};
+  activeSide.value = "a";
+  searchStringB.value = "";
 
+  let initialASearch = "";
+  let aSocketSelected = false;
+  const initialComponent =
+    componentsStore.allComponentsById[initialState.A.componentId || ""];
+  if (initialComponent) {
+    const componentViews =
+      viewsStore.viewNamesByComponentId[initialComponent.def.id];
+    if (componentViews && componentViews.length > 0) {
+      const componentView = componentViews.includes(
+        viewsStore.selectedView?.name ?? "",
+      )
+        ? viewsStore.selectedView?.name
+        : componentViews[0];
+
+      if (componentView) {
+        initialASearch += `${componentView}/`;
+      }
+    }
+
+    initialASearch += `${initialComponent.def.schemaName}/${initialComponent.def.displayName}/`;
+
+    const filteredSockets = initialComponent.sockets.filter(
+      (s) => !s.def.isManagement,
+    );
+    const initialSocket =
+      filteredSockets.length === 1
+        ? filteredSockets[0]
+        : filteredSockets.find((s) => s.def.id === initialState.A.socketId);
+    if (initialSocket) {
+      aSocketSelected = true;
+      initialASearch += `${initialSocket.def.label}`;
+    }
+  }
+
+  searchStringA.value = initialASearch;
+
+  modalRef.value?.open();
   // For some reason nextTick does not work but this does and UX feels fine
   setTimeout(() => {
-    inputRef.value?.focus();
+    activeInputRef.value.value?.focus();
+    if (aSocketSelected) {
+      processHighlighted();
+    }
   }, 100);
 }
 

@@ -75,6 +75,7 @@
     "fast-json-patch": "^3.1.1",
     "floating-vue": "^2.0.0-beta.20",
     "fontfaceobserver": "^2.3.0",
+    "fzf": "^0.5.2",
     "graphology": "^0.25.4",
     "graphology-layout-forceatlas2": "^0.10.1",
     "graphology-layout-noverlap": "^0.4.2",
