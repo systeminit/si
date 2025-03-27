@@ -1,0 +1,22 @@
+omit_targets = []
+extra_srcs = []
+omit_srcs = []
+rustc_flags = []
+cfgs = []
+features = []
+omit_features = []
+extra_deps = []
+omit_deps = []
+cargo_env = false
+linker_flags = []
+
+[rustc_flags_select]
+
+[env]
+
+[[buildscript]]
+unresolved = "Unresolved build script at ../../../../.cargo/registry/src/index.crates.io-6f17d22bba15001f/icu_properties_data-1.5.1/build.rs."
+
+[extra_mapped_srcs]
+
+[platform_fixup]

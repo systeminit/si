@@ -20,7 +20,7 @@ git_fetch(
 git_fetch(
     name = "nats.rs-639306d6e61a4ca7.git",
     repo = "https://github.com/systeminit/nats.rs.git",
-    rev = "728f32a7f09ac4f7ac9247ad33517b9193193f94",
+    rev = "45616281e56596e6908e04b1d3e6701be9bd35bf",
     visibility = [],
 )
 
@@ -609,12 +609,12 @@ cargo.rust_library(
 
 alias(
     name = "async-nats",
-    actual = ":async-nats-0.39.0",
+    actual = ":async-nats-0.40.0",
     visibility = ["PUBLIC"],
 )
 
 cargo.rust_library(
-    name = "async-nats-0.39.0",
+    name = "async-nats-0.40.0",
     srcs = [":nats.rs-639306d6e61a4ca7.git"],
     crate = "async_nats",
     crate_root = "nats.rs-639306d6e61a4ca7/async-nats/src/lib.rs",
@@ -625,15 +625,16 @@ cargo.rust_library(
         "CARGO_PKG_DESCRIPTION": "A async Rust NATS client",
         "CARGO_PKG_NAME": "async-nats",
         "CARGO_PKG_REPOSITORY": "https://github.com/nats-io/nats.rs",
-        "CARGO_PKG_VERSION": "0.39.0",
+        "CARGO_PKG_VERSION": "0.40.0",
         "CARGO_PKG_VERSION_MAJOR": "0",
-        "CARGO_PKG_VERSION_MINOR": "39",
+        "CARGO_PKG_VERSION_MINOR": "40",
         "CARGO_PKG_VERSION_PATCH": "0",
     },
     features = [
         "default",
         "ring",
         "server_2_10",
+        "server_2_11",
         "service",
     ],
     named_deps = {
@@ -3217,23 +3218,23 @@ buildscript_run(
 
 alias(
     name = "clap",
-    actual = ":clap-4.5.32",
+    actual = ":clap-4.5.34",
     visibility = ["PUBLIC"],
 )
 
 http_archive(
-    name = "clap-4.5.32.crate",
-    sha256 = "6088f3ae8c3608d19260cd7445411865a485688711b78b5be70d78cd96136f83",
-    strip_prefix = "clap-4.5.32",
-    urls = ["https://static.crates.io/crates/clap/4.5.32/download"],
+    name = "clap-4.5.34.crate",
+    sha256 = "e958897981290da2a852763fe9cdb89cd36977a5d729023127095fa94d95e2ff",
+    strip_prefix = "clap-4.5.34",
+    urls = ["https://static.crates.io/crates/clap/4.5.34/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "clap-4.5.32",
-    srcs = [":clap-4.5.32.crate"],
+    name = "clap-4.5.34",
+    srcs = [":clap-4.5.34.crate"],
     crate = "clap",
-    crate_root = "clap-4.5.32.crate/src/lib.rs",
+    crate_root = "clap-4.5.34.crate/src/lib.rs",
     edition = "2021",
     features = [
         "color",
@@ -3249,24 +3250,24 @@ cargo.rust_library(
     ],
     visibility = [],
     deps = [
-        ":clap_builder-4.5.32",
+        ":clap_builder-4.5.34",
         ":clap_derive-4.5.32",
     ],
 )
 
 http_archive(
-    name = "clap_builder-4.5.32.crate",
-    sha256 = "22a7ef7f676155edfb82daa97f99441f3ebf4a58d5e32f295a56259f1b6facc8",
-    strip_prefix = "clap_builder-4.5.32",
-    urls = ["https://static.crates.io/crates/clap_builder/4.5.32/download"],
+    name = "clap_builder-4.5.34.crate",
+    sha256 = "83b0f35019843db2160b5bb19ae09b4e6411ac33fc6a712003c33e03090e2489",
+    strip_prefix = "clap_builder-4.5.34",
+    urls = ["https://static.crates.io/crates/clap_builder/4.5.34/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "clap_builder-4.5.32",
-    srcs = [":clap_builder-4.5.32.crate"],
+    name = "clap_builder-4.5.34",
+    srcs = [":clap_builder-4.5.34.crate"],
     crate = "clap_builder",
-    crate_root = "clap_builder-4.5.32.crate/src/lib.rs",
+    crate_root = "clap_builder-4.5.34.crate/src/lib.rs",
     edition = "2021",
     features = [
         "color",
@@ -6364,7 +6365,7 @@ cargo.rust_library(
         ":auto_enums-0.8.7",
         ":bincode-1.3.3",
         ":bytes-1.10.1",
-        ":clap-4.5.32",
+        ":clap-4.5.34",
         ":equivalent-1.0.2",
         ":fastrace-0.7.9",
         ":flume-0.11.1",
@@ -8204,7 +8205,7 @@ cargo.rust_library(
     deps = [
         ":displaydoc-0.2.5",
         ":icu_locid-1.5.0",
-        ":icu_locid_transform_data-1.5.0",
+        ":icu_locid_transform_data-1.5.1",
         ":icu_provider-1.5.0",
         ":tinystr-0.7.6",
         ":zerovec-0.10.4",
@@ -8212,18 +8213,18 @@ cargo.rust_library(
 )
 
 http_archive(
-    name = "icu_locid_transform_data-1.5.0.crate",
-    sha256 = "fdc8ff3388f852bede6b579ad4e978ab004f139284d7b28715f773507b946f6e",
-    strip_prefix = "icu_locid_transform_data-1.5.0",
-    urls = ["https://static.crates.io/crates/icu_locid_transform_data/1.5.0/download"],
+    name = "icu_locid_transform_data-1.5.1.crate",
+    sha256 = "7515e6d781098bf9f7205ab3fc7e9709d34554ae0b21ddbcb5febfa4bc7df11d",
+    strip_prefix = "icu_locid_transform_data-1.5.1",
+    urls = ["https://static.crates.io/crates/icu_locid_transform_data/1.5.1/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "icu_locid_transform_data-1.5.0",
-    srcs = [":icu_locid_transform_data-1.5.0.crate"],
+    name = "icu_locid_transform_data-1.5.1",
+    srcs = [":icu_locid_transform_data-1.5.1.crate"],
     crate = "icu_locid_transform_data",
-    crate_root = "icu_locid_transform_data-1.5.0.crate/src/lib.rs",
+    crate_root = "icu_locid_transform_data-1.5.1.crate/src/lib.rs",
     edition = "2021",
     visibility = [],
 )
@@ -8250,7 +8251,7 @@ cargo.rust_library(
     deps = [
         ":displaydoc-0.2.5",
         ":icu_collections-1.5.0",
-        ":icu_normalizer_data-1.5.0",
+        ":icu_normalizer_data-1.5.1",
         ":icu_properties-1.5.1",
         ":icu_provider-1.5.0",
         ":smallvec-1.14.0",
@@ -8262,18 +8263,18 @@ cargo.rust_library(
 )
 
 http_archive(
-    name = "icu_normalizer_data-1.5.0.crate",
-    sha256 = "f8cafbf7aa791e9b22bec55a167906f9e1215fd475cd22adfcf660e03e989516",
-    strip_prefix = "icu_normalizer_data-1.5.0",
-    urls = ["https://static.crates.io/crates/icu_normalizer_data/1.5.0/download"],
+    name = "icu_normalizer_data-1.5.1.crate",
+    sha256 = "c5e8338228bdc8ab83303f16b797e177953730f601a96c25d10cb3ab0daa0cb7",
+    strip_prefix = "icu_normalizer_data-1.5.1",
+    urls = ["https://static.crates.io/crates/icu_normalizer_data/1.5.1/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "icu_normalizer_data-1.5.0",
-    srcs = [":icu_normalizer_data-1.5.0.crate"],
+    name = "icu_normalizer_data-1.5.1",
+    srcs = [":icu_normalizer_data-1.5.1.crate"],
     crate = "icu_normalizer_data",
-    crate_root = "icu_normalizer_data-1.5.0.crate/src/lib.rs",
+    crate_root = "icu_normalizer_data-1.5.1.crate/src/lib.rs",
     edition = "2021",
     visibility = [],
 )
@@ -8301,7 +8302,7 @@ cargo.rust_library(
         ":displaydoc-0.2.5",
         ":icu_collections-1.5.0",
         ":icu_locid_transform-1.5.0",
-        ":icu_properties_data-1.5.0",
+        ":icu_properties_data-1.5.1",
         ":icu_provider-1.5.0",
         ":tinystr-0.7.6",
         ":zerovec-0.10.4",
@@ -8309,18 +8310,18 @@ cargo.rust_library(
 )
 
 http_archive(
-    name = "icu_properties_data-1.5.0.crate",
-    sha256 = "67a8effbc3dd3e4ba1afa8ad918d5684b8868b3b26500753effea8d2eed19569",
-    strip_prefix = "icu_properties_data-1.5.0",
-    urls = ["https://static.crates.io/crates/icu_properties_data/1.5.0/download"],
+    name = "icu_properties_data-1.5.1.crate",
+    sha256 = "85fb8799753b75aee8d2a21d7c14d9f38921b54b3dbda10f5a3c7a7b82dba5e2",
+    strip_prefix = "icu_properties_data-1.5.1",
+    urls = ["https://static.crates.io/crates/icu_properties_data/1.5.1/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "icu_properties_data-1.5.0",
-    srcs = [":icu_properties_data-1.5.0.crate"],
+    name = "icu_properties_data-1.5.1",
+    srcs = [":icu_properties_data-1.5.1.crate"],
     crate = "icu_properties_data",
-    crate_root = "icu_properties_data-1.5.0.crate/src/lib.rs",
+    crate_root = "icu_properties_data-1.5.1.crate/src/lib.rs",
     edition = "2021",
     visibility = [],
 )
@@ -17862,7 +17863,7 @@ cargo.rust_binary(
     edition = "2021",
     visibility = [],
     deps = [
-        ":async-nats-0.39.0",
+        ":async-nats-0.40.0",
         ":async-openai-0.26.0",
         ":async-recursion-1.1.1",
         ":async-trait-0.1.88",
@@ -17876,7 +17877,7 @@ cargo.rust_binary(
         ":bytes-1.10.1",
         ":chrono-0.4.40",
         ":ciborium-0.2.2",
-        ":clap-4.5.32",
+        ":clap-4.5.34",
         ":color-eyre-0.6.3",
         ":config-0.14.1",
         ":console-subscriber-0.4.1",
