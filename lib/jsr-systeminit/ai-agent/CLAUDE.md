@@ -22,7 +22,7 @@ Cloud Control API.
 
 - Use TypeScript with explicit types
 - Format: Standard Deno formatting (2-space indentation)
-- Imports: Use JSR modules (@openai/openai, @std/assert) and npm modules (zod)
+- Imports: Use JSR modules (@openai/openai, @std/assert), and npm modules if needed
 - Error handling: Use try/catch with explicit Error types
 - Testing: Use Deno.test() with @std/assert for assertions
 - Documentation: JSDoc style comments for functions and modules

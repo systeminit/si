@@ -2,9 +2,8 @@
  * AI agent for System Initiative that automates AWS infrastructure provisioning
  * by interacting with CloudFormation schemas via the AWS Cloud Control API.
  *
- * This module provides functionality for extracting AWS resource types,
- * extracting field values from CloudFormation schemas, editing existing AWS
- * components, and prototyping infrastructure based on natural language requests.
+ * This module provides functionality for extracting field values from CloudFormation
+ * schemas and editing existing AWS components based on natural language requests.
  *
  * @module
  */
@@ -12,9 +11,9 @@
 import {
   checkPropertyCaseMismatches,
   editComponent,
+  proposeEdits,
+  extractionResponseToMarkdown,
 } from "./src/editComponent.ts";
-import { extractTypes } from "./src/extractTypes.ts";
-import { prototypeInfrastructure } from "./src/prototypeInfrastructure.ts";
 import { extractFields } from "./src/extractFields.ts";
 
 export type {
@@ -34,18 +33,18 @@ export {
    */
   editComponent,
   /**
+   * Proposes edits for a component based on natural language instructions.
+   * Extracts field suggestions but doesn't actually perform the component update.
+   */
+  proposeEdits,
+  /**
    * Extracts fields from CloudFormation schemas based on natural language request.
    * Parses AWS resource schemas to populate field values based on user requirements.
    */
   extractFields,
   /**
-   * Extracts relevant CloudFormation resource types based on a natural language request.
-   * Identifies appropriate AWS resource types needed for the described infrastructure.
+   * Translates an extract fields response to a Markdown document for easy
+   * reading.
    */
-  extractTypes,
-  /**
-   * Builds a prototype of infrastructure with System Initiative based on natural language description.
-   * Creates properly configured AWS resource components with CloudFormation properties.
-   */
-  prototypeInfrastructure,
+  extractionResponseToMarkdown,
 };
