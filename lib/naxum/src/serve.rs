@@ -217,7 +217,7 @@ where
                                         si.investigation.name = "verideath",
                                         "sending (blocking send) force reconnect in naxum..."
                                     );
-                                    if let Err(err) = sender.blocking_send(()) {
+                                    if let Err(err) = sender.try_send(()) {
                                         error!(si.error.message = ?err, "could not send force reconnect in naxum");
                                     } else {
                                         warn!(
