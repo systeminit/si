@@ -125,7 +125,7 @@ Set `HealthCheckIntervalSeconds` to `30` seconds.
 
 Set `HealthCheckPath` to `/`.
 
-Set `HealthCheckPort` to `80`.
+Set `HealthCheckPort` to `8080`.
 
 Set `HealthCheckProtocol` to `HTTP`.
 
@@ -137,7 +137,7 @@ Set `IpAddressType` to `ipv4`
 
 Set `Name` to be `app-tg`.
 
-Set `Port` to `80`.
+Set `Port` to `8080`.
 
 Set `Protocol` to `HTTP`.
 
@@ -230,9 +230,9 @@ Set the `IpProtocol` to `TCP`.
 
 Set the `Description` to be `Ingress to allow access to port 80`.
 
-Set `FromPort` to be `80`.
+Set `FromPort` to be `8080`.
 
-Set `ToPort` to be `80`.
+Set `ToPort` to be `8080`.
 
 Connect the `Group Id` Output Socket of `container-sg` Component to the
 `Group Id` Input Socket of this`container-80-ingress` Component.
@@ -294,6 +294,8 @@ Set the Component type to be `Up Frame`.
 Set the Component name to `demo-service`.
 
 Set the `DesiredCount` to be `1`.
+
+Set the `LaunchType` to `FARGATE`.
 
 Set the `ServiceName` to `demo-service`.
 
@@ -361,9 +363,9 @@ Add a `ContainerDefinitions PortMappings` Component to the `demo-app` frame.
 
 Set the Component name to be `http`.
 
-Set the `ContainerPort` to be `80`.
+Set the `ContainerPort` to be `8080`.
 
-Set the `HostPort` to be `80`.
+Set the `HostPort` to be `8080`.
 
 Set the `Name` to be `http`.
 
@@ -379,9 +381,9 @@ Add a `Service LoadBalancers` Component to the `demo-service` frame.
 
 Set the Component name to be `lb-config`.
 
-Set the `ContainerName` to be `hello-world`.
+Set the `ContainerName` to be `hello-world-demo`.
 
-Set the `ContainerPort` to `80`.
+Set the `ContainerPort` to `8080`.
 
 Connect the `Target Group Arn` Output Socket of the `app-tg` Target Group to the
 `Target Group Arn` Input Socket of this `lb-config` Component.

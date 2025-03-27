@@ -81,7 +81,7 @@ Connect the `Group Id` Output Socket of `alb-sg` Component to the
 
 Add a `AWS::EC2::SecurityGroupIngress` Component to your `application-alb` loadbalancer frame.
 
-Set the Component name to `alb-8080-ingress`.
+Set the Component name to `alb-80-ingress`.
 
 Set the `IpProtocol` to `TCP`.
 
@@ -89,9 +89,9 @@ Set `CidrIp` to be `0.0.0.0/0`.
 
 Set the `Description` to `Public traffic to HTTP 8080`.
 
-Set `FromPort` to be `8080`.
+Set `FromPort` to be `80`.
 
-Set `ToPort` to be `8080`.
+Set `ToPort` to be `80`.
 
 Connect the `Group Id` Output Socket of `alb-sg` Component to the
 `Group Id` Input Socket of this `alb-8080-ingress` Component.
@@ -104,9 +104,9 @@ Add a `AWS::ElasticLoadBalancingV2::Listener` Component to your `application-alb
 
 Set the Component type to `Down Frame`.
 
-Set the Component name to `HTTP:8080`.
+Set the Component name to `HTTP:80`.
 
-Set the `Port` to be `8080`.
+Set the `Port` to be `80`.
 
 Set the `Protocol` to be `HTTP`.
 
