@@ -299,24 +299,14 @@ const overrides = new Map<string, OverrideFn>([
     ], "Launch Template Id");
     variant.sockets.push(launchTemplateIdSocket);
 
-    const launchTemplateVersion = propForOverride(
-      launchTemplateProp,
-      "Version",
+    const launchTemplateVersionSocket = variant.sockets.find(
+      (s: ExpandedSocketSpec) => s.name === "Launch Template Version" && s.data.kind === "input",
     );
-    if (!launchTemplateVersion) return;
-
-    const launchTemplateVersionSocket = createInputSocketFromProp(
-      launchTemplateVersion,
-      [
-        { tokens: ["Launch Template Version"] },
-        { tokens: ["LaunchTemplateVersion"] },
-        { tokens: ["LaunchTemplateVersion<string<scalar>>"] },
-        { tokens: ["DefaultVersionNumber"] },
-        { tokens: ["LatestVersionNumber"] },
-      ],
-      "Launch Template Version",
-    );
-    variant.sockets.push(launchTemplateVersionSocket);
+    if (!launchTemplateVersionSocket) return;
+      
+    setAnnotationOnSocket(launchTemplateVersionSocket, { tokens: ["DefaultVersionNumber"] });
+    setAnnotationOnSocket(launchTemplateVersionSocket, { tokens: ["LatestVersionNumber"] });
+    setAnnotationOnSocket(launchTemplateVersionSocket, { tokens: ["LaunchTemplateVersion<string<scalar>>"] }); 
   }],
   ["TargetGroup Targets", (spec: ExpandedPkgSpec) => {
     const variant = spec.schemas[0].variants[0];
