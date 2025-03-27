@@ -3788,7 +3788,7 @@ impl Component {
         let base_change_set_ctx = ctx.clone_with_base().await?;
 
         ctx.workspace_snapshot()?
-            .import_component_subgraph(&*base_change_set_ctx.workspace_snapshot()?, component_id)
+            .import_component_subgraph(&base_change_set_ctx.workspace_snapshot()?, component_id)
             .await?;
 
         let component = Component::get_by_id(ctx, component_id).await?;

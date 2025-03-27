@@ -14,6 +14,7 @@ use si_data_nats::{jetstream, NatsClient, NatsError, NatsTxn};
 use si_data_pg::{InstrumentedClient, PgError, PgPool, PgPoolError, PgPoolResult, PgTxn};
 use si_events::audit_log::AuditLogKind;
 use si_events::rebase_batch_address::RebaseBatchAddress;
+use si_events::workspace_snapshot::Change;
 use si_events::AuthenticationMethod;
 use si_events::EventSessionId;
 use si_events::WorkspaceSnapshotAddress;
@@ -36,7 +37,9 @@ use crate::job::definition::AttributeValueBasedJobIdentifier;
 use crate::layer_db_types::ContentTypes;
 use crate::slow_rt::SlowRuntimeError;
 use crate::workspace_snapshot::graph::{RebaseBatch, WorkspaceSnapshotGraph};
-use crate::workspace_snapshot::DependentValueRoot;
+use crate::workspace_snapshot::{
+    DependentValueRoot, WorkspaceSnapshotResult, WorkspaceSnapshotSelector,
+};
 use crate::{audit_logging, slow_rt, ChangeSetError, EncryptedSecret, Workspace, WorkspaceError};
 use crate::{
     change_set::{ChangeSet, ChangeSetId},
@@ -353,7 +356,7 @@ pub struct DalContext {
     /// this context. Useful for builtin migrations, since we don't care about attribute values propagation then.
     no_dependent_values: bool,
     /// The workspace snapshot for this context
-    workspace_snapshot: Option<Arc<WorkspaceSnapshot>>,
+    workspace_snapshot: Option<WorkspaceSnapshotSelector>,
     /// The change set for this context
     change_set: Option<ChangeSet>,
     /// The event session identifier
@@ -545,7 +548,13 @@ impl DalContext {
         &self,
     ) -> Result<Option<RebaseBatchAddress>, TransactionsError> {
         Ok(if let Some(snapshot) = &self.workspace_snapshot {
-            if let Some(rebase_batch) = snapshot.current_rebase_batch().await.map_err(Box::new)? {
+            if let Some(rebase_batch) = snapshot
+                .as_legacy_snapshot()
+                .map_err(Box::new)?
+                .current_rebase_batch()
+                .await
+                .map_err(Box::new)?
+            {
                 Some(self.write_rebase_batch(rebase_batch).await?)
             } else {
                 None
@@ -553,6 +562,18 @@ impl DalContext {
         } else {
             None
         })
+    }
+
+    pub async fn detect_changes_from_head(&self) -> WorkspaceSnapshotResult<Vec<Change>> {
+        let head_change_set_id = self.get_workspace_default_change_set_id().await?;
+
+        match &self.workspace_snapshot()? {
+            WorkspaceSnapshotSelector::LegacySnapshot(workspace_snapshot) => {
+                let head_snapshot =
+                    WorkspaceSnapshot::find_for_change_set(self, head_change_set_id).await?;
+                head_snapshot.detect_changes(workspace_snapshot).await
+            }
+        }
     }
 
     /// Consumes all inner transactions and committing all changes made within them.
@@ -643,11 +664,13 @@ impl DalContext {
         &mut self,
         workspace_snapshot: impl Into<Arc<WorkspaceSnapshot>>,
     ) {
-        self.workspace_snapshot = Some(workspace_snapshot.into())
+        self.workspace_snapshot = Some(WorkspaceSnapshotSelector::LegacySnapshot(
+            workspace_snapshot.into(),
+        ));
     }
 
     /// Fetch the workspace snapshot for the current visibility
-    pub fn workspace_snapshot(&self) -> Result<Arc<WorkspaceSnapshot>, WorkspaceSnapshotError> {
+    pub fn workspace_snapshot(&self) -> Result<WorkspaceSnapshotSelector, WorkspaceSnapshotError> {
         match &self.workspace_snapshot {
             Some(workspace_snapshot) => Ok(workspace_snapshot.clone()),
             None => Err(WorkspaceSnapshotError::WorkspaceSnapshotNotFetched),

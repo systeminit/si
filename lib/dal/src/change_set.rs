@@ -789,7 +789,10 @@ impl ChangeSet {
 
         Ok(WorkspaceSnapshot::calculate_rebase_batch(
             base_snapshot,
-            ctx.workspace_snapshot().map_err(Box::new)?,
+            ctx.workspace_snapshot()
+                .map_err(Box::new)?
+                .as_legacy_snapshot()
+                .map_err(Box::new)?,
         )
         .await
         .map_err(Box::new)?)

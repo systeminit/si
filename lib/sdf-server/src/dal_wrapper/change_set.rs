@@ -85,10 +85,7 @@ pub async fn status(
     Vec<si_frontend_types::ChangeSetApproval>,
     Vec<si_frontend_types::ChangeSetApprovalRequirement>,
 )> {
-    let changes = ctx
-        .workspace_snapshot()?
-        .detect_changes_from_head(ctx)
-        .await?;
+    let changes = ctx.detect_changes_from_head().await?;
     let (requirements, ids_with_hashes_for_deleted_nodes) =
         ApprovalRequirement::list(ctx, &changes).await?;
 
@@ -119,10 +116,7 @@ pub async fn new_approval_approving_ids_with_hashes(
     spicedb_client: &mut si_data_spicedb::Client,
 ) -> Result<Vec<(EntityId, MerkleTreeHash)>> {
     let workspace_id = ctx.workspace_pk()?;
-    let changes = ctx
-        .workspace_snapshot()?
-        .detect_changes_from_head(ctx)
-        .await?;
+    let changes = ctx.detect_changes_from_head().await?;
     let (requirements, ids_with_hashes_for_deleted_nodes) =
         ApprovalRequirement::list(ctx, &changes).await?;
     inner_determine_approving_ids_with_hashes(
