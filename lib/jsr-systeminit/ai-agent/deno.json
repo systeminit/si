@@ -1,0 +1,17 @@
+{
+  "name": "@systeminit/ai-agent",
+  "version": "0.1.5",
+  "license": "Apache-2.0",
+  "exports": "./mod.ts",
+  "imports": {
+    "@openai/openai": "jsr:@openai/openai@^4.87.3",
+    "@std/assert": "jsr:@std/assert@^1",
+    "zod": "npm:zod@^3.24.2",
+    "@systeminit/cf-db": "jsr:@systeminit/cf-db@^0.1.4"
+  },
+  "lint": {
+    "rules": {
+      "exclude": ["no-explicit-any"]
+    }
+  }
+}

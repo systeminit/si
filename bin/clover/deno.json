@@ -1,6 +1,6 @@
 {
   "tasks": {
-    "updateSchema": "./update-schema.sh",
+    "updateSchema": "../../lib/jsr-systeminit/cf-db/update-schema.sh",
     "run": "deno run --allow-all main.ts"
   },
   "imports": {
@@ -11,6 +11,7 @@
     "adze": "npm:adze@^2.2.0",
     "json-schema-typed": "npm:json-schema-typed@^8.0.1",
     "lodash": "npm:lodash@^4.17.21",
-    "openai": "npm:openai@^4.85.1"
+    "openai": "npm:openai@^4.85.1",
+    "cf-db": "../../lib/jsr-systeminit/cf-db"
   }
 }
