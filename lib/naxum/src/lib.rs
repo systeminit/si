@@ -20,7 +20,9 @@ pub use self::error::Error;
 pub use self::json::Json;
 pub use self::make_service::IntoMakeService;
 pub use self::message::{Extensions, Head, HeadRef, Message, MessageHead};
-pub use self::serve::{serve, serve_with_incoming_limit};
+pub use self::serve::{
+    serve, serve_with_incoming_limit, serve_with_incoming_limit_and_force_reconnect_sender,
+};
 pub use self::service_ext::ServiceExt;
 
 pub use async_nats::StatusCode;

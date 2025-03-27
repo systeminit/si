@@ -14,7 +14,13 @@ use si_pool_noodle::{
     ManagementResultSuccess, ProgressMessage, ResolverFunctionResultSuccess,
     SchemaVariantDefinitionResultSuccess, SensitiveStrings, ValidationResultSuccess,
 };
-use std::{collections::HashMap, result, str::Utf8Error, sync::Arc, time::Duration};
+use std::{
+    collections::HashMap,
+    result,
+    str::Utf8Error,
+    sync::{atomic::Ordering, Arc},
+    time::Duration,
+};
 use telemetry::prelude::*;
 use telemetry_utils::metric;
 use thiserror::Error;
@@ -207,6 +213,7 @@ where
     let nats_for_publisher = state.nats.clone();
     let publisher = Publisher::new(&nats_for_publisher, &reply_mailbox);
     let execution_id = request.execution_id().to_owned();
+    let execution_kind = request.kind().to_owned();
     let cyclone_request = CycloneRequest::from_parts(request.clone(), sensitive_strings);
 
     let (kill_sender, kill_receiver) = oneshot::channel::<()>();
@@ -232,13 +239,23 @@ where
             span.record_err(err)
         })?;
 
+        let mut count = 1;
         while let Some(msg) = progress.next().await {
             match msg {
                 Ok(ProgressMessage::OutputStream(output)) => {
-                    publisher.publish_output(&output).await.map_err(|err| {
-                        request.dec_run_metric();
-                        span.record_err(err)
-                    })?;
+                    publisher
+                        .publish_output(
+                            &output,
+                            execution_id.to_owned(),
+                            execution_kind.to_owned(),
+                            count,
+                        )
+                        .await
+                        .map_err(|err| {
+                            request.dec_run_metric();
+                            span.record_err(err)
+                        })?;
+                    count += 1;
                 }
                 Ok(ProgressMessage::Heartbeat) => {
                     trace!("received heartbeat message");
@@ -249,10 +266,13 @@ where
                 }
             }
         }
-        publisher.finalize_output().await.map_err(|err| {
-            request.dec_run_metric();
-            span.record_err(err)
-        })?;
+        publisher
+            .finalize_output(execution_id.to_owned(), execution_kind.to_owned())
+            .await
+            .map_err(|err| {
+                request.dec_run_metric();
+                span.record_err(err)
+            })?;
 
         let function_result = progress.finish().await.map_err(|err| {
             request.dec_run_metric();
@@ -285,7 +305,10 @@ where
     match result {
         // Got an Ok - let anyone subscribing to a reply know
         Ok(function_result) => {
-            if let Err(err) = publisher.publish_result(&function_result).await {
+            if let Err(err) = publisher
+                .publish_result(&function_result, execution_id, execution_kind)
+                .await
+            {
                 error!(si.error.message = ?err, "failed to publish errored result");
             }
 
@@ -329,7 +352,10 @@ where
                 }
             };
             request.dec_run_metric();
-            if let Err(err) = publisher.publish_result(&func_result_error).await {
+            if let Err(err) = publisher
+                .publish_result(&func_result_error, execution_id, execution_kind)
+                .await
+            {
                 error!(si.error.message = ?err, "failed to publish errored result");
             }
         }

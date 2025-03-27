@@ -4,7 +4,7 @@ use naxum::{
 };
 use si_data_nats::Subject;
 use si_pool_noodle::{
-    FunctionResult, FunctionResultFailure, FunctionResultFailureError,
+    CycloneRequestable, FunctionResult, FunctionResultFailure, FunctionResultFailureError,
     FunctionResultFailureErrorKind, KillExecutionRequest,
 };
 use telemetry::prelude::*;
@@ -37,12 +37,13 @@ async fn kill_execution_request_task(
 ) {
     let publisher = Publisher::new(&state.nats, &reply_mailbox);
 
+    let execution_kind = request.kind().to_owned();
     let execution_id = request.execution_id;
 
     let result = match kill_execution_request(state, execution_id.to_owned()).await {
         Ok(()) => FunctionResult::Success(()),
         Err(err) => FunctionResult::Failure(FunctionResultFailure::new(
-            execution_id,
+            execution_id.to_owned(),
             FunctionResultFailureError {
                 kind: FunctionResultFailureErrorKind::KilledExecution,
                 message: err.to_string(),
@@ -51,7 +52,10 @@ async fn kill_execution_request_task(
         )),
     };
 
-    if let Err(err) = publisher.publish_result(&result).await {
+    if let Err(err) = publisher
+        .publish_result(&result, execution_id, execution_kind)
+        .await
+    {
         error!(?err, "failed to publish result");
     }
 }
