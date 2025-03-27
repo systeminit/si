@@ -13,13 +13,15 @@ use dal::{
     pkg::PkgError,
     slow_rt::SlowRuntimeError,
     workspace_snapshot::graph::WorkspaceSnapshotGraphError,
-    ChangeSetError, ComponentError, FuncError, SchemaError, SchemaVariantError, TransactionsError,
-    WorkspaceSnapshotError, WsEventError,
+    ChangeSetError, ComponentError, ComponentId, FuncError, SchemaError, SchemaVariantError,
+    TransactionsError, WorkspaceSnapshotError, WsEventError,
 };
+use serde::{Deserialize, Serialize};
 use si_id::ViewId;
 use thiserror::Error;
 use tokio::task::JoinError;
 
+pub mod convert_to_view;
 pub mod create_component;
 pub mod create_view;
 pub mod create_view_and_move;
@@ -45,6 +47,8 @@ pub enum ViewError {
     ChangeSet(#[from] ChangeSetError),
     #[error("component error: {0}")]
     Component(#[from] ComponentError),
+    #[error("cannot convert component to a view: {0}")]
+    ComponentIsNotAFrame(ComponentId),
     #[error("dal diagram error: {0}")]
     DalDiagram(#[from] dal::diagram::DiagramError),
     #[error("frame error: {0}")]
@@ -109,6 +113,14 @@ impl IntoResponse for ViewError {
     }
 }
 
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ViewNodeGeometry {
+    pub x: String,
+    pub y: String,
+    pub radius: String,
+}
+
 pub fn v2_routes() -> Router<AppState> {
     Router::new()
         .route("/", get(list_views::list_views))
@@ -117,6 +129,7 @@ pub fn v2_routes() -> Router<AppState> {
             "/create_and_move",
             post(create_view_and_move::create_view_and_move),
         )
+        .route("/convert_to_view", post(convert_to_view::convert_to_view))
         .route(
             "/:view_id",
             put(update_view::update_view).delete(remove_view::remove_view),

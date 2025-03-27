@@ -428,6 +428,7 @@ import {
   rectContainsPoint,
   vectorSubtract,
 } from "./utils/math";
+import { FindChildrenByBoundingBox } from "./utils/childrenByBoundingBox";
 import DiagramNewEdge from "./DiagramNewEdge.vue";
 import { convertArrowKeyToDirection } from "./utils/keyboard";
 import DiagramControls from "./DiagramControls.vue";
@@ -1631,62 +1632,6 @@ const currentSelectionMovableElements = computed(() => {
   });
 });
 
-const findChildrenByBoundingBox = (
-  el: DiagramNodeData | DiagramGroupData,
-  allowDeletedChildrenToBeFilteredOut: boolean,
-): (DiagramNodeData | DiagramGroupData | DiagramViewData)[] => {
-  const cRect = el.def.isGroup
-    ? viewsStore.groups[el.def.id]
-    : viewsStore.components[el.def.id];
-  if (!cRect) return [];
-
-  const rect = { ...cRect };
-  rect.x -= rect.width / 2;
-
-  const nodes: (DiagramGroupData | DiagramNodeData | DiagramViewData)[] = [];
-  const process = ([id, elRect]: [ComponentId, IRect]) => {
-    // i do not fit inside myself
-    if (el.def.id === id) return;
-    const _r = { ...elRect };
-    _r.x -= _r.width / 2;
-    if (rectContainsAnother(rect, _r)) {
-      const component = componentsStore.allComponentsById[id];
-      if (component) {
-        if (allowDeletedChildrenToBeFilteredOut) {
-          if (
-            "changeStatus" in component.def &&
-            component.def.changeStatus === "deleted"
-          )
-            return;
-          if (
-            "fromBaseChangeSet" in component.def &&
-            component.def.fromBaseChangeSet
-          )
-            return;
-        }
-        nodes.push(component);
-      }
-    }
-  };
-
-  Object.entries(viewsStore.groups).forEach(process);
-  Object.entries(viewsStore.components).forEach(process);
-  Object.values(viewsStore.viewNodes).forEach((viewNode) => {
-    const _r = {
-      x: viewNode.def.x,
-      y: viewNode.def.y,
-      width: viewNode.def.width,
-      height: viewNode.def.height,
-    };
-    _r.x -= _r.width / 2;
-    _r.y -= _r.height / 2;
-    if (rectContainsAnother(rect, _r)) {
-      nodes.push(viewNode);
-    }
-  });
-  return nodes;
-};
-
 const draggedElementsPositionsPreDrag = ref<
   Record<DiagramElementUniqueKey, Vector2d | undefined>
 >({});
@@ -1708,7 +1653,7 @@ function beginDragElements() {
     new Set();
   currentSelectionMovableElements.value.forEach((el) => {
     if (el.def.componentType !== ComponentType.View) {
-      const childs = findChildrenByBoundingBox(
+      const childs = FindChildrenByBoundingBox(
         el as DiagramNodeData | DiagramGroupData,
         true,
       );
@@ -3082,7 +3027,7 @@ const groups = computed(() => {
   );
   const ancestryByBounds = new DefaultMap<ComponentId, ComponentId[]>(() => []);
   frames.forEach((g) => {
-    const childIds = findChildrenByBoundingBox(g, false).map((el) => el.def.id);
+    const childIds = FindChildrenByBoundingBox(g, false).map((el) => el.def.id);
     childIds.forEach((child) => {
       const ancestors = ancestryByBounds.get(child);
       ancestors.push(g.def.id);
