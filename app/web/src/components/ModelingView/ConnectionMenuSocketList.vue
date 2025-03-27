@@ -1,5 +1,7 @@
 <template>
-  <div class="flex flex-col basis-1/2 h-full">
+  <div
+    :class="clsx('flex flex-col basis-1/2 h-full', active && 'bg-neutral-800')"
+  >
     <div
       v-if="listItems.length"
       :class="
@@ -45,11 +47,12 @@
 
         <span>
           <template
-            v-for="(part, partIndex) in item.label.split('/')"
+            v-for="(part, partIndex) in item.label.split('')"
             :key="partIndex"
           >
-            <span v-if="partIndex !== 0" class="text-neutral-400"> / </span>
-            <span>{{ part }}</span>
+            <span v-if="part === '/'" class="text-neutral-400"> / </span>
+            <b v-else-if="item.labelHighlights?.has(partIndex)">{{ part }}</b>
+            <span v-else>{{ part }}</span>
           </template>
         </span>
       </div>
@@ -92,6 +95,7 @@ export type SocketListEntry = {
   component: DiagramNodeData | DiagramGroupData;
   socket: DiagramSocketData;
   label: string;
+  labelHighlights?: Set<number>;
 };
 
 const props = defineProps({

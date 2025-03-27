@@ -356,8 +356,17 @@ export function getPossibleAndExistingPeerSockets(
   allComponents: (DiagramNodeData | DiagramGroupData)[],
   allEdges: DiagramEdgeData[],
 ): PossibleAndExistingPeersLists {
-  const existingEdges = allEdges
-    .filter((e) => e.def.changeStatus !== "deleted")
+  const nonDeletedEdges = allEdges.filter(
+    (e) => e.def.changeStatus !== "deleted",
+  );
+
+  const edgeCountForInputKey = {} as Record<string, number>;
+  nonDeletedEdges.forEach((e) => {
+    edgeCountForInputKey[e.toSocketKey] ??= 0;
+    edgeCountForInputKey[e.toSocketKey] += 1;
+  });
+
+  const existingEdges = nonDeletedEdges
     // map to/from into this/peer to simplify the rest of the algorithm
     .map((edge) =>
       targetSocket.direction === "input"
@@ -402,6 +411,19 @@ export function getPossibleAndExistingPeerSockets(
             // management sockets can only connect to other management sockets
             if (peerSocket.isManagement || targetSocket.isManagement) {
               return !!peerSocket.isManagement && !!targetSocket.isManagement;
+            }
+
+            if (peerSocket.direction === "input") {
+              const componentAndSocketKey = `${c.uniqueKey}--s-${peerSocket.id}`;
+              const edgeCount =
+                edgeCountForInputKey[componentAndSocketKey] ?? 0;
+
+              if (
+                peerSocket.maxConnections &&
+                edgeCount >= peerSocket.maxConnections
+              ) {
+                return false;
+              }
             }
 
             const [outputCAs, inputCAs] =
