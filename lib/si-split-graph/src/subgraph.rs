@@ -164,14 +164,6 @@ where
         &self,
         node_index: SubGraphNodeIndex,
     ) -> Option<SubGraphNodeIndex> {
-        let Some(true) = self
-            .graph
-            .node_weight(node_index)
-            .and_then(|weight| weight.custom().map(|c| c.ordered()))
-        else {
-            return None;
-        };
-
         let ordering_node_index = self
             .graph
             .edges_directed(node_index, Outgoing)
@@ -368,6 +360,60 @@ where
             .for_each(|parent_idx| self.touch_node(parent_idx));
     }
 
+    pub(crate) fn add_ordered_edge(
+        &mut self,
+        from_index: SubGraphNodeIndex,
+        edge_weight: SplitGraphEdgeWeight<E, K>,
+        to_index: SubGraphNodeIndex,
+    ) -> SplitGraphResult<()> {
+        let target_id = self
+            .graph
+            .node_weight(to_index)
+            .map(|n| n.id())
+            .ok_or(SplitGraphError::NodeNotFoundAtIndex)?;
+
+        let ordering_node_index = match self
+            .graph
+            .edges_directed(from_index, Outgoing)
+            .find(|edge_ref| matches!(edge_ref.weight(), SplitGraphEdgeWeight::Ordering))
+            .map(|edge_ref| edge_ref.target())
+        {
+            Some(target) => target,
+            None => {
+                let new_ordering_node_id = SplitGraphNodeId::new();
+                let ordering_node_index = self.graph.add_node(SplitGraphNodeWeight::Ordering {
+                    id: new_ordering_node_id,
+                    order: vec![],
+                    merkle_tree_hash: MerkleTreeHash::nil(),
+                });
+
+                self.node_index_by_id
+                    .insert(new_ordering_node_id, ordering_node_index);
+
+                self.add_edge_raw(
+                    from_index,
+                    SplitGraphEdgeWeight::Ordering,
+                    ordering_node_index,
+                );
+
+                ordering_node_index
+            }
+        };
+
+        if let Some(SplitGraphNodeWeight::Ordering { order, .. }) =
+            self.graph.node_weight_mut(ordering_node_index)
+        {
+            if !order.contains(&target_id) {
+                order.push(target_id);
+            }
+            self.add_edge_raw(ordering_node_index, SplitGraphEdgeWeight::Ordinal, to_index);
+        }
+
+        self.add_edge_raw(from_index, edge_weight, to_index);
+
+        Ok(())
+    }
+
     /// Add an edge between `from_index` and `to_index` if the edge does not exist.
     /// Handles the creation of ordering nodes and the ordering edges if the node at
     /// `from_index` is an ordered container.
@@ -377,57 +423,6 @@ where
         edge_weight: SplitGraphEdgeWeight<E, K>,
         to_index: SubGraphNodeIndex,
     ) -> SplitGraphResult<()> {
-        let is_ordered_container = self
-            .graph
-            .node_weight(from_index)
-            .and_then(|weight| weight.custom().map(|c| c.ordered()))
-            .is_some_and(|ordered| ordered);
-
-        if is_ordered_container {
-            let target_id = self
-                .graph
-                .node_weight(to_index)
-                .map(|n| n.id())
-                .ok_or(SplitGraphError::NodeNotFoundAtIndex)?;
-
-            let ordering_node_index = match self
-                .graph
-                .edges_directed(from_index, Outgoing)
-                .find(|edge_ref| matches!(edge_ref.weight(), SplitGraphEdgeWeight::Ordering))
-                .map(|edge_ref| edge_ref.target())
-            {
-                Some(target) => target,
-                None => {
-                    let new_ordering_node_id = SplitGraphNodeId::new();
-                    let ordering_node_index = self.graph.add_node(SplitGraphNodeWeight::Ordering {
-                        id: new_ordering_node_id,
-                        order: vec![],
-                        merkle_tree_hash: MerkleTreeHash::nil(),
-                    });
-
-                    self.node_index_by_id
-                        .insert(new_ordering_node_id, ordering_node_index);
-
-                    self.add_edge_raw(
-                        from_index,
-                        SplitGraphEdgeWeight::Ordering,
-                        ordering_node_index,
-                    );
-
-                    ordering_node_index
-                }
-            };
-
-            if let Some(SplitGraphNodeWeight::Ordering { order, .. }) =
-                self.graph.node_weight_mut(ordering_node_index)
-            {
-                if !order.contains(&target_id) {
-                    order.push(target_id);
-                }
-                self.add_edge_raw(ordering_node_index, SplitGraphEdgeWeight::Ordinal, to_index);
-            }
-        }
-
         self.add_edge_raw(from_index, edge_weight, to_index);
 
         Ok(())
@@ -475,34 +470,26 @@ where
         if let Some((from_index, to_index)) = self.graph.edge_endpoints(edge_index) {
             self.touch_node(from_index);
 
-            let is_ordered_container = self
+            let target_id = self.graph.node_weight(to_index).map(|n| n.id()).unwrap();
+            if let Some(ordering_node_index) = self
                 .graph
-                .node_weight(from_index)
-                .and_then(|weight| weight.custom().map(|c| c.ordered()))
-                .is_some_and(|ordered| ordered);
-
-            if is_ordered_container {
-                let target_id = self.graph.node_weight(to_index).map(|n| n.id()).unwrap();
-                if let Some(ordering_node_index) = self
+                .edges_directed(from_index, Outgoing)
+                .find(|edge_ref| matches!(edge_ref.weight(), SplitGraphEdgeWeight::Ordering))
+                .map(|edge_ref| edge_ref.target())
+            {
+                self.touch_node(ordering_node_index);
+                if let Some(ordinal_edge_index) = self
                     .graph
-                    .edges_directed(from_index, Outgoing)
-                    .find(|edge_ref| matches!(edge_ref.weight(), SplitGraphEdgeWeight::Ordering))
-                    .map(|edge_ref| edge_ref.target())
+                    .edges_directed(ordering_node_index, Outgoing)
+                    .find(|edge_ref| {
+                        matches!(edge_ref.weight(), SplitGraphEdgeWeight::Ordinal)
+                            && self.graph.node_weight(edge_ref.target()).map(|n| n.id())
+                                == Some(target_id)
+                    })
+                    .map(|edge_ref| edge_ref.id())
                 {
-                    self.touch_node(ordering_node_index);
-                    if let Some(ordinal_edge_index) = self
-                        .graph
-                        .edges_directed(ordering_node_index, Outgoing)
-                        .find(|edge_ref| {
-                            matches!(edge_ref.weight(), SplitGraphEdgeWeight::Ordinal)
-                                && self.graph.node_weight(edge_ref.target()).map(|n| n.id())
-                                    == Some(target_id)
-                        })
-                        .map(|edge_ref| edge_ref.id())
-                    {
-                        self.graph.remove_edge(ordinal_edge_index);
-                        self.remove_from_order(ordering_node_index, target_id);
-                    }
+                    self.graph.remove_edge(ordinal_edge_index);
+                    self.remove_from_order(ordering_node_index, target_id);
                 }
             }
 
