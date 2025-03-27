@@ -9,25 +9,27 @@
       @keydown.tab.exact.prevent="processHighlighted"
       @keydown.shift.tab.prevent="undoASelection"
     >
-      <VormInput
-        v-if="activeSide === 'a'"
-        ref="inputARef"
-        v-model="searchStringA"
-        label="Search"
-        noLabel
-      />
-      <VormInput
-        v-else
-        ref="inputBRef"
-        v-model="searchStringB"
-        label="Search"
-        noLabel
-      />
+      <div class="flex flex-row w-full children:basis-1/2">
+        <VormInput
+          ref="inputARef"
+          v-model="searchStringA"
+          class="border-r-2"
+          label="Search"
+          noLabel
+        />
+        <VormInput
+          ref="inputBRef"
+          v-model="searchStringB"
+          label="Search"
+          noLabel
+        />
+      </div>
       <div class="flex flex-row grow border-t-2 min-h-0">
         <!-- Socket A -->
         <ConnectionMenuSocketList
           :active="activeSide === 'a'"
           :highlightedIndex="highlightedIndex"
+          :highlightedSocket="highlightedSocket"
           :listItems="listAItems"
           :selectedComponent="selectedComponentA"
           :selectedSocket="selectedSocketA"
@@ -38,6 +40,7 @@
         <ConnectionMenuSocketList
           :active="activeSide === 'b'"
           :highlightedIndex="highlightedIndex"
+          :highlightedSocket="highlightedSocket"
           :listItems="listBItems"
           :selectedComponent="selectedComponentB"
           :selectedSocket="selectedSocketB"
@@ -144,6 +147,14 @@ const selectedSocketB = computed(() =>
   ),
 );
 
+const highlightedSocket = computed(
+  () =>
+    (activeSide.value === "a"
+      ? listAItems.value[highlightedIndex.value]
+      : listBItems.value[highlightedIndex.value]
+    )?.socket,
+);
+
 const activeSide = ref<"a" | "b">("a");
 // TODO this will undo the previous connection
 const undoASelection = () => {
@@ -152,6 +163,7 @@ const undoASelection = () => {
   }
   activeSide.value = "a";
   connectionData.A = {};
+  connectionData.B = {};
   focusOnInput();
 };
 
@@ -241,6 +253,7 @@ watchEffect(() => {
 
   if (activeSearchString) {
     const fzf = new Fzf(activeSideSockets, {
+      casing: "case-insensitive",
       selector: (item) => item.label,
     });
 
