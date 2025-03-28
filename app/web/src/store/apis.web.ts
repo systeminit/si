@@ -107,6 +107,7 @@ async function handleOutageModes(error: AxiosError) {
     const toast = useToast();
     toast(
       {
+        id: "MAINTENANCE",
         component: MaintenanceMode,
       },
       {
@@ -121,6 +122,7 @@ async function handleOutageModes(error: AxiosError) {
     const toast = useToast();
     toast(
       {
+        id: "DOWNTIMETOAST",
         component: UnscheduledDowntime,
       },
       {
