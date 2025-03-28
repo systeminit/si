@@ -4,6 +4,9 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 
+use super::{ComponentError, ComponentResult};
+use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
+use crate::workspace_snapshot::node_weight::NodeWeight;
 use crate::{
     attribute::{
         prototype::argument::{value_source::ValueSource, AttributePrototypeArgument},
@@ -11,10 +14,8 @@ use crate::{
     },
     workspace_snapshot::node_weight::ArgumentTargets,
     AttributePrototype, AttributeValue, AttributeValueId, Component, ComponentId, DalContext,
-    InputSocketId, OutputSocket, OutputSocketId,
+    InputSocketId, OutputSocket, OutputSocketId, Prop,
 };
-
-use super::{ComponentError, ComponentResult};
 
 /// Represents a given [`Component`]'s [`crate::InputSocket`], identified by its
 /// (non-unique) [`InputSocketId`] and unique [`AttributeValueId`]
@@ -434,6 +435,92 @@ impl ComponentInputSocket {
             .await?
             .attribute_value_id;
         let av = AttributeValue::get_by_id(ctx, attribute_value_id).await?;
+        let view = av.view(ctx).await?;
+        Ok(view)
+    }
+
+    /// If the [ComponentInputSocket] populates a single [Prop], return its value
+    pub async fn direct_downstream_prop_value(
+        ctx: &DalContext,
+        component_id: ComponentId,
+        input_socket_id: InputSocketId,
+    ) -> ComponentResult<Option<serde_json::Value>> {
+        let snap = ctx.workspace_snapshot()?;
+
+        let Some(apa) = ({
+            let apas = snap
+                .all_incoming_sources(input_socket_id)
+                .await?
+                .into_iter()
+                .filter(|a| match a {
+                    NodeWeight::AttributePrototypeArgument(_) => true,
+                    _ => false,
+                })
+                .collect_vec();
+
+            if apas.len() != 1 {
+                return Ok(None);
+            }
+
+            apas.get(0).cloned()
+        }) else {
+            return Ok(None);
+        };
+
+        let Some(ap) = snap
+            .all_incoming_sources(apa.id())
+            .await?
+            .into_iter()
+            .find(|a| match a {
+                NodeWeight::Content(c) => {
+                    ContentAddressDiscriminants::AttributePrototype
+                        == c.content_address_discriminants()
+                }
+                _ => false,
+            })
+        else {
+            return Ok(None);
+        };
+
+        let Some(prop_weight) = ({
+            let props = snap
+                .all_incoming_sources(ap.id())
+                .await?
+                .into_iter()
+                .filter(|a| match a {
+                    NodeWeight::Prop(_) => true,
+                    _ => false,
+                })
+                .collect_vec();
+
+            if props.len() != 1 {
+                return Ok(None);
+            }
+
+            props.get(0).cloned()
+        }) else {
+            return Ok(None);
+        };
+
+        let mut maybe_av = None;
+        for av_id in
+            Prop::all_attribute_values_everywhere_for_prop_id(ctx, prop_weight.id().into()).await?
+        {
+            if AttributeValue::component_id(ctx, av_id).await? != component_id {
+                continue;
+            }
+
+            if maybe_av.is_some() {
+                return Ok(None);
+            }
+            maybe_av = Some(AttributeValue::get_by_id(ctx, av_id).await?);
+        }
+
+        let Some(av) = maybe_av else {
+            return Ok(None);
+        };
+        // TODO at this point we have prop, so we just need to change the return type on the endpoint to return that data too
+
         let view = av.view(ctx).await?;
         Ok(view)
     }

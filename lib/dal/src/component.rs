@@ -4045,12 +4045,22 @@ impl Component {
             let socket_value = match comp_socket.direction {
                 DiagramSocketDirection::Bidirectional => None,
                 DiagramSocketDirection::Input => {
-                    ComponentInputSocket::value_for_input_socket_id_for_component_id_opt(
+                    if let value @ Some(_) = ComponentInputSocket::direct_downstream_prop_value(
                         ctx,
                         self.id(),
                         InputSocketId::from_str(&comp_socket.id)?,
                     )
                     .await?
+                    {
+                        value
+                    } else {
+                        ComponentInputSocket::value_for_input_socket_id_for_component_id_opt(
+                            ctx,
+                            self.id(),
+                            InputSocketId::from_str(&comp_socket.id)?,
+                        )
+                        .await?
+                    }
                 }
                 DiagramSocketDirection::Output => {
                     ComponentOutputSocket::value_for_output_socket_id_for_component_id_opt(
