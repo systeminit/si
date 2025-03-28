@@ -9,5 +9,7 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
+core_affinity = { workspace = true }
+rand = { workspace = true }
 tokio = { workspace = true }
 tokio-dedicated-executor = { path = "../tokio-dedicated-executor" }
