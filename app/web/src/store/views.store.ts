@@ -56,6 +56,7 @@ import { useWorkspacesStore } from "./workspaces.store";
 import { useRouterStore } from "./router.store";
 import { useQualificationsStore } from "./qualifications.store";
 import { useAuthStore, UserId } from "./auth.store";
+import { useFeatureFlagsStore } from "./feature_flags.store";
 
 const MAX_RETRIES = 5;
 
@@ -162,6 +163,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
   const authStore = useAuthStore();
   const realtimeStore = useRealtimeStore();
   const toast = useToast();
+  const featureFlagsStore = useFeatureFlagsStore();
 
   let changeSetId: ChangeSetId | undefined;
   if (forceChangeSetId) {
@@ -1009,12 +1011,27 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
               orig.x = newPos.x;
               orig.y = newPos.y;
 
-              c.sockets.forEach((s) => {
-                const geo = this.sockets[s.uniqueKey];
-                if (!geo) return;
-                geo.center.x += positionDelta.x;
-                geo.center.y += positionDelta.y;
-              });
+              if (featureFlagsStore.SIMPLE_SOCKET_UI) {
+                const displaySockets = c.sockets.filter(
+                  (s) =>
+                    s.def.id.startsWith("mgmt_") || s.def.id.endsWith("socket"),
+                );
+                new Set(displaySockets.map((s) => s.uniqueKey)).forEach(
+                  (uniqueKey) => {
+                    const geo = this.sockets[uniqueKey];
+                    if (!geo) return;
+                    geo.center.x += positionDelta.x;
+                    geo.center.y += positionDelta.y;
+                  },
+                );
+              } else {
+                c.sockets.forEach((s) => {
+                  const geo = this.sockets[s.uniqueKey];
+                  if (!geo) return;
+                  geo.center.x += positionDelta.x;
+                  geo.center.y += positionDelta.y;
+                });
+              }
             });
           }
           if (!opts.broadcastToClients && !opts.writeToChangeSet) return;
