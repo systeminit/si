@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use axum::{
     extract::{Path, Query},
@@ -9,7 +9,7 @@ use axum::{
 };
 use dal::{ChangeSet, ChangeSetId, WorkspacePk, WorkspaceSnapshotAddress};
 use hyper::StatusCode;
-use si_frontend_types::object::FrontendObject;
+use si_frontend_types::{index::MvIndex, object::FrontendObject, reference::ReferenceKind};
 use telemetry::prelude::*;
 use thiserror::Error;
 
@@ -26,6 +26,8 @@ use super::AccessBuilder;
 pub enum IndexError {
     #[error("change set error: {0}")]
     ChangeSet(#[from] dal::ChangeSetError),
+    #[error("deserializing mv index data error: {0}")]
+    DeserializingMvIndexData(#[source] serde_json::Error),
     #[error("frigg error: {0}")]
     Frigg(#[from] frigg::FriggError),
     #[error("index not found; workspace_pk={0}, change_set_id={1}")]
@@ -85,7 +87,49 @@ pub async fn get_change_set_index(
     let change_set = ChangeSet::get_by_id(&ctx, change_set_id).await?;
 
     let index = match frigg.get_index(workspace_pk, change_set_id).await? {
-        Some((index, _kv_revision)) => index,
+        Some((index, _kv_revision)) => {
+            let mv_index: MvIndex = serde_json::from_value(index.data.to_owned())
+                .map_err(IndexError::DeserializingMvIndexData)?;
+
+            let mut implemented_kinds = HashSet::new();
+            for index_ref in mv_index.mv_list {
+                let kind = match index_ref.kind.to_lowercase().as_str() {
+                    "changesetlist" => ReferenceKind::ChangeSetList,
+                    "changesetrecord" => ReferenceKind::ChangeSetRecord,
+                    "mvindex" => ReferenceKind::MvIndex,
+                    "view" => ReferenceKind::View,
+                    "viewlist" => ReferenceKind::ViewList,
+                    _ => panic!("FIXME(nick): handle this"),
+                };
+                if kind.is_implemented() {
+                    implemented_kinds.insert(kind);
+                }
+            }
+
+            // If anything is missing...
+            if implemented_kinds != ReferenceKind::implemented() {
+                info!(
+                    "Index out of date for change_set {}; attempting full build",
+                    change_set_id,
+                );
+                // We know the change set exists, but the index hasn't been built yet, so
+                // we'll trigger a full MV build and then try again.
+                dal::materialized_view::build_all_mv_for_change_set(&ctx, &frigg)
+                    .instrument(tracing::info_span!(
+                        "Initial build of all materialized views"
+                    ))
+                    .await?;
+                ctx.commit_no_rebase().await?;
+
+                frigg
+                    .get_index(workspace_pk, change_set_id)
+                    .await?
+                    .map(|i| i.0)
+                    .ok_or(IndexError::IndexNotFound(workspace_pk, change_set_id))?
+            } else {
+                index
+            }
+        }
         None => {
             info!(
                 "Index not found for change_set {}; attempting full build",

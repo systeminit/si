@@ -54,6 +54,7 @@ pub mod prompt_override;
 pub mod prop;
 pub mod property_editor;
 pub mod qualification;
+pub mod reference;
 pub mod resource_metadata;
 pub mod schema;
 pub mod secret;

@@ -1,5 +1,8 @@
+use std::collections::HashSet;
+
 use serde::{Deserialize, Serialize};
 use si_events::workspace_snapshot::{Checksum, ChecksumHasher};
+use strum::IntoEnumIterator;
 
 use crate::{checksum::FrontendChecksum, object::FrontendObject};
 
@@ -25,6 +28,25 @@ pub enum ReferenceKind {
     MvIndex,
     View,
     ViewList,
+}
+
+impl ReferenceKind {
+    pub fn implemented() -> HashSet<Self> {
+        let mut implemented_kinds = HashSet::new();
+        for kind in Self::iter() {
+            if kind.is_implemented() {
+                implemented_kinds.insert(kind);
+            }
+        }
+        implemented_kinds
+    }
+
+    pub fn is_implemented(&self) -> bool {
+        match self {
+            Self::ChangeSetList | Self::ChangeSetRecord | Self::MvIndex => false,
+            _ => true,
+        }
+    }
 }
 
 // Why the #[serde(bound...)] stuff? Well..
