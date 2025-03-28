@@ -1,12 +1,18 @@
 <template>
   <div
-    :class="clsx('flex flex-col basis-1/2 h-full', active && 'bg-neutral-800')"
+    :class="
+      clsx(
+        'basis-1/2 h-full min-h-0 ',
+        active && 'bg-neutral-800',
+        socketToShow?.uniqueKey ? 'children:h-1/2' : 'children:h-full',
+      )
+    "
   >
     <div
       v-if="listItems.length"
       :class="
         clsx(
-          'flex flex-col grow px-2xs gap-2xs py-3xs min-h-0 overflow-auto',
+          'flex flex-col grow shrink-0 px-2xs gap-2xs py-3xs min-h-0 overflow-auto',
           !active && 'text-neutral-400',
         )
       "
@@ -63,28 +69,30 @@
     >
       No available sockets
     </div>
-    <div class="w-full border-t-2 p-xs min-h-[64px]">
-      <div v-if="selectedSocket">
-        Component: {{ selectedSocket.parent.def.displayName }} ({{
-          selectedSocket.parent.def.schemaName
-        }}) <br />
-        Socket: {{ selectedSocket?.def.label }} <br />
+    <div v-if="socketToShow?.uniqueKey" class="w-full border-t-2 min-h-0">
+      <CodeEditor
+        v-if="socketToShow.value"
+        :id="`func-${socketToShow.uniqueKey}`"
+        v-model="socketToShow.value"
+        :recordId="''"
+        disabled
+        json
+      />
+      <div
+        v-else
+        class="flex flex-col h-full align-middle justify-center grow text-center"
+      >
+        &lt;EMPTY&gt;
       </div>
-      <div v-else-if="selectedComponent">
-        Component: {{ selectedComponent.def.displayName }} ({{
-          selectedComponent.def.schemaName
-        }}) <br />
-        Socket: None
-      </div>
-      <div v-else>Nothing selected.</div>
     </div>
   </div>
 </template>
 
 <script lang="ts" setup>
-import { computed, PropType } from "vue";
+import { computed, PropType, reactive, watchEffect } from "vue";
 import clsx from "clsx";
 import { Icon } from "@si/vue-lib/design-system";
+import CodeEditor from "@/components/CodeEditor.vue";
 import {
   DiagramGroupData,
   DiagramNodeData,
@@ -108,11 +116,35 @@ const props = defineProps({
   },
   selectedSocket: { type: Object as PropType<DiagramSocketData> },
   highlightedIndex: { type: Number },
+  highlightedSocket: { type: Object as PropType<DiagramSocketData> },
   active: { type: Boolean },
 });
 const localHighlightedIndex = computed(() =>
   props.active ? props.highlightedIndex : undefined,
 );
+
+const socketToShow = reactive<{ uniqueKey?: string; value?: string }>({});
+
+watchEffect(() => {
+  if (props.active && props.highlightedSocket) {
+    socketToShow.uniqueKey = props.highlightedSocket.uniqueKey;
+    socketToShow.value = JSON.stringify(
+      props.highlightedSocket.def.value ?? undefined,
+      null,
+      2,
+    );
+  } else if (!props.active && props.selectedSocket) {
+    socketToShow.uniqueKey = props.selectedSocket.uniqueKey;
+    socketToShow.value = JSON.stringify(
+      props.selectedSocket.def.value ?? undefined,
+      null,
+      2,
+    );
+  } else {
+    socketToShow.uniqueKey = undefined;
+    socketToShow.value = undefined;
+  }
+});
 
 const emit = defineEmits<{
   (e: "select", index: number): void;
