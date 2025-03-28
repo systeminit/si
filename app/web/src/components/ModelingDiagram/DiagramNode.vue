@@ -243,7 +243,13 @@
           <DiagramNodeSocket
             v-for="socket in leftSockets.sockets"
             :key="socket.uniqueKey"
-            :connectedEdges="connectedEdgesBySocketKey[socket.uniqueKey]"
+            :connectedEdges="
+              connectedEdgesBySocketKey[
+                featureFlagsStore.SIMPLE_SOCKET_UI && !socket.def.isManagement
+                  ? `${node.def.id}-inputsocket`
+                  : socket.uniqueKey
+              ]
+            "
             :nodeWidth="nodeWidth"
             :socket="socket"
             :position="socket.position"
@@ -262,7 +268,13 @@
           <DiagramNodeSocket
             v-for="socket in rightSockets.sockets"
             :key="socket.uniqueKey"
-            :connectedEdges="connectedEdgesBySocketKey[socket.uniqueKey]"
+            :connectedEdges="
+              connectedEdgesBySocketKey[
+                featureFlagsStore.SIMPLE_SOCKET_UI && !socket.def.isManagement
+                  ? `${node.def.id}-outputsocket`
+                  : socket.uniqueKey
+              ]
+            "
             :nodeWidth="nodeWidth"
             :socket="socket"
             :position="socket.position"
@@ -422,10 +434,21 @@ const rightSockets = computed(() =>
 const connectedEdgesBySocketKey = computed(() => {
   const lookup: Record<DiagramElementUniqueKey, DiagramEdgeData[]> = {};
   _.each(props.connectedEdges, (edge) => {
-    lookup[edge.fromSocketKey] ||= [];
-    lookup[edge.fromSocketKey]!.push(edge); // eslint-disable-line @typescript-eslint/no-non-null-assertion
-    lookup[edge.toSocketKey] ||= [];
-    lookup[edge.toSocketKey]!.push(edge); // eslint-disable-line @typescript-eslint/no-non-null-assertion
+    if (featureFlagsStore.SIMPLE_SOCKET_UI && !edge.def.isManagement) {
+      if (edge.toNodeKey === props.node.uniqueKey) {
+        lookup[`${props.node.def.id}-inputsocket`] ||= [];
+        lookup[`${props.node.def.id}-inputsocket`]!.push(edge); // eslint-disable-line @typescript-eslint/no-non-null-assertion
+      }
+      if (edge.fromNodeKey === props.node.uniqueKey) {
+        lookup[`${props.node.def.id}-outputsocket`] ||= [];
+        lookup[`${props.node.def.id}-outputsocket`]!.push(edge); // eslint-disable-line @typescript-eslint/no-non-null-assertion
+      }
+    } else {
+      lookup[edge.fromSocketKey] ||= [];
+      lookup[edge.fromSocketKey]!.push(edge); // eslint-disable-line @typescript-eslint/no-non-null-assertion
+      lookup[edge.toSocketKey] ||= [];
+      lookup[edge.toSocketKey]!.push(edge); // eslint-disable-line @typescript-eslint/no-non-null-assertion
+    }
   });
   return lookup;
 });

@@ -203,7 +203,13 @@
             :key="socket.uniqueKey"
             :socket="socket"
             :position="socket.position"
-            :connectedEdges="connectedEdgesBySocketKey[socket.uniqueKey]"
+            :connectedEdges="
+              connectedEdgesBySocketKey[
+                featureFlagsStore.SIMPLE_SOCKET_UI && !socket.def.isManagement
+                  ? `${group.def.id}-inputsocket`
+                  : socket.uniqueKey
+              ]
+            "
             :nodeWidth="nodeWidth"
             :isDeleted="isDeleted"
             @hover:start="onSocketHoverStart(socket)"
@@ -222,7 +228,13 @@
             :key="socket.uniqueKey"
             :socket="socket"
             :position="socket.position"
-            :connectedEdges="connectedEdgesBySocketKey[socket.uniqueKey]"
+            :connectedEdges="
+              connectedEdgesBySocketKey[
+                featureFlagsStore.SIMPLE_SOCKET_UI && !socket.def.isManagement
+                  ? `${group.def.id}-outputsocket`
+                  : socket.uniqueKey
+              ]
+            "
             :nodeWidth="nodeWidth"
             :isDeleted="isDeleted"
             @hover:start="onSocketHoverStart(socket)"
@@ -633,10 +645,21 @@ const rightSockets = computed(() =>
 const connectedEdgesBySocketKey = computed(() => {
   const lookup: Record<DiagramElementUniqueKey, DiagramEdgeData[]> = {};
   _.each(props.connectedEdges, (edge) => {
-    lookup[edge.fromSocketKey] ||= [];
-    lookup[edge.fromSocketKey]!.push(edge); // eslint-disable-line @typescript-eslint/no-non-null-assertion
-    lookup[edge.toSocketKey] ||= [];
-    lookup[edge.toSocketKey]!.push(edge); // eslint-disable-line @typescript-eslint/no-non-null-assertion
+    if (featureFlagsStore.SIMPLE_SOCKET_UI && !edge.def.isManagement) {
+      if (edge.toNodeKey === props.group.uniqueKey) {
+        lookup[`${props.group.def.id}-inputsocket`] ||= [];
+        lookup[`${props.group.def.id}-inputsocket`]!.push(edge); // eslint-disable-line @typescript-eslint/no-non-null-assertion
+      }
+      if (edge.fromNodeKey === props.group.uniqueKey) {
+        lookup[`${props.group.def.id}-outputsocket`] ||= [];
+        lookup[`${props.group.def.id}-outputsocket`]!.push(edge); // eslint-disable-line @typescript-eslint/no-non-null-assertion
+      }
+    } else {
+      lookup[edge.fromSocketKey] ||= [];
+      lookup[edge.fromSocketKey]!.push(edge); // eslint-disable-line @typescript-eslint/no-non-null-assertion
+      lookup[edge.toSocketKey] ||= [];
+      lookup[edge.toSocketKey]!.push(edge); // eslint-disable-line @typescript-eslint/no-non-null-assertion
+    }
   });
   return lookup;
 });

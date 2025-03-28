@@ -18,6 +18,7 @@ const FLAG_MAPPING = {
   SOCKET_VALUE: "socket-value",
   FLOATING_CONNECTION_MENU: "floating-connection-menu",
   CONVERT_TO_VIEW: "convert-to-view",
+  SIMPLE_SOCKET_UI: "simple-socket-ui",
 };
 
 const WORKSPACE_FLAG_MAPPING = {

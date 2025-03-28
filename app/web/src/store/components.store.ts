@@ -532,10 +532,14 @@ const processRawEdge = (
   edge: Edge,
   allComponentsById: Record<ComponentId, DiagramGroupData | DiagramNodeData>,
 ): DiagramEdgeData | null => {
+  const featureFlagsStore = useFeatureFlagsStore();
   const toComponent = allComponentsById[edge.toComponentId];
   if (!allComponentsById[edge.fromComponentId]) return null;
   if (!toComponent) return null;
-  else if (!toComponent.def.sockets?.find((s) => s.id === edge.toSocketId)) {
+  else if (
+    !featureFlagsStore.SIMPLE_SOCKET_UI &&
+    !toComponent.def.sockets?.find((s) => s.id === edge.toSocketId)
+  ) {
     return null;
   }
   return new DiagramEdgeData(edge);

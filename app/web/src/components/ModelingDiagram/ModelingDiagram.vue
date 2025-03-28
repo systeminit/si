@@ -140,7 +140,7 @@ overflow hidden */
             :view="view.def"
           />
           <DiagramEdge
-            v-for="edge in viewsStore.edges"
+            v-for="edge in displayEdges"
             :key="edge.uniqueKey"
             :edge="edge"
             :fromPoint="getSocketLocationInfo('from', edge)?.center"
@@ -414,6 +414,8 @@ import {
   NODE_TITLE_HEADER_MARGIN_RIGHT,
   GROUP_HEADER_ICON_SIZE,
   NODE_HEADER_HEIGHT,
+  ONLY_SHOW_DIAGRAM_TITLES_BELOW_THIS_ZOOM,
+  HIDE_ALL_DIAGRAM_DETAILS_BELOW_THIS_ZOOM,
 } from "./diagram_constants";
 import {
   vectorDistance,
@@ -438,9 +440,9 @@ import DiagramEmptyState from "./DiagramEmptyState.vue";
 import DiagramView from "./DiagramView.vue";
 
 const hideDiagramDetails = computed(() => {
-  if (zoomLevel.value > 0.51) {
+  if (zoomLevel.value > ONLY_SHOW_DIAGRAM_TITLES_BELOW_THIS_ZOOM) {
     return "show";
-  } else if (zoomLevel.value > 0.31) {
+  } else if (zoomLevel.value > HIDE_ALL_DIAGRAM_DETAILS_BELOW_THIS_ZOOM) {
     return "titles";
   } else {
     return "hide";
@@ -2969,8 +2971,13 @@ function getSocketLocationInfo(
   edge?: DiagramEdgeData,
   socketKey?: DiagramElementUniqueKey,
 ) {
-  if (edge) {
-    // if from component is collapsed, return the position of its center
+  if (featureFlagsStore.SIMPLE_SOCKET_UI && edge && !edge.def.isManagement) {
+    const key =
+      direction === "from"
+        ? edge.simpleDisplayFromSocketKey
+        : edge.simpleDisplayToSocketKey;
+    return viewsStore.sockets[key];
+  } else if (edge) {
     const key = direction === "from" ? edge.fromSocketKey : edge.toSocketKey;
     return viewsStore.sockets[key];
   }
@@ -3396,6 +3403,28 @@ const refreshViewObjects = (viewId: ViewId) => {
     });
   }
 };
+
+const displayEdges = computed(() => {
+  if (featureFlagsStore.SIMPLE_SOCKET_UI) {
+    const edges = viewsStore.edges;
+    const connections = [] as string[];
+    const displayEdges = [] as DiagramEdgeData[];
+    edges.forEach((edge) => {
+      const to = edge.toNodeKey.substring(2);
+      const from = edge.fromNodeKey.substring(2);
+      const connection = to + from;
+      const isManagement = edge.def.isManagement;
+      if (isManagement) {
+        displayEdges.push(edge);
+      } else if (!connections.includes(connection)) {
+        connections.push(connection); // we have the one connection for these two components
+        displayEdges.push(edge); // only one edge gets pushed, who cares which one!
+      }
+    });
+    return displayEdges;
+  }
+  return viewsStore.edges;
+});
 
 // this object gets provided to the children within the diagram that need it
 const context: DiagramContext = {

@@ -66,5 +66,9 @@ export const NODE_PADDING_BOTTOM = 10; //
 // width/height of sockets
 export const SOCKET_SIZE = 15;
 
+// hide diagram details zoom levels
+export const ONLY_SHOW_DIAGRAM_TITLES_BELOW_THIS_ZOOM = 0.51;
+export const HIDE_ALL_DIAGRAM_DETAILS_BELOW_THIS_ZOOM = 0.31;
+
 export const detailsModeArray = ["show", "titles", "hide"] as const;
 export type DetailsMode = (typeof detailsModeArray)[number];
