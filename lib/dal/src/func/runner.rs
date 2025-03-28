@@ -182,7 +182,6 @@ impl FuncRunner {
             si.func_run.func.id = Empty,
             si.func_run.func.kind = func.kind.as_ref(),
             si.func_run.func.name = func.name.as_str(),
-            si.func_run.func.code_plaintext = Empty,
             si.func_run.id = Empty,
             si.workspace.id = Empty,
         )
@@ -247,7 +246,6 @@ impl FuncRunner {
                 let id = func_run_inner.id().array_to_str(&mut id_buf);
                 span.record("job.id", &id);
                 span.record("si.func_run.id", &id);
-                span.record("si.func_run.func.code_plaintext", &func.code_plaintext()?);
 
                 span.record("si.func_run.func.id", func.id.array_to_str(&mut id_buf));
 
@@ -314,7 +312,6 @@ impl FuncRunner {
             si.func_run.func.id = Empty,
             si.func_run.func.kind = func.kind.as_ref(),
             si.func_run.func.name = func.name.as_str(),
-            si.func_run.func.code_plaintext = Empty,
             si.func_run.id = Empty,
             si.workspace.id = Empty,
         )
@@ -392,7 +389,6 @@ impl FuncRunner {
                 let id = func_run_inner.id().array_to_str(&mut id_buf);
                 span.record("job.id", &id);
                 span.record("si.func_run.id", &id);
-                span.record("si.func_run.func.code_plaintext", &func.code_plaintext()?);
 
                 span.record("si.func_run.func.id", func.id.array_to_str(&mut id_buf));
 
@@ -457,7 +453,6 @@ impl FuncRunner {
             si.func_run.func.id = Empty,
             si.func_run.func.kind = Empty,
             si.func_run.func.name = Empty,
-            si.func_run.func.code_plaintext = Empty,
             si.func_run.id = Empty,
             si.workspace.id = Empty,
         )
@@ -548,7 +543,6 @@ impl FuncRunner {
                 let id = func_run_inner.id().array_to_str(&mut id_buf);
                 span.record("job.id", &id);
                 span.record("si.func_run.id", &id);
-                span.record("si.func_run.func.code_plaintext", &func.code_plaintext()?);
 
                 span.record("job.invoked_name", func.name.as_str());
                 span.record("si.func_run.func.name", func.name.as_str());
@@ -626,7 +620,6 @@ impl FuncRunner {
             si.func_run.func.id = Empty,
             si.func_run.func.kind = Empty,
             si.func_run.func.name = Empty,
-            si.func_run.func.code_plaintext = Empty,
             si.func_run.id = Empty,
         )
     )]
@@ -720,7 +713,6 @@ impl FuncRunner {
                 let id = func_run_inner.id().array_to_str(&mut id_buf);
                 parent_span.record("job.id", &id);
                 parent_span.record("si.func_run.id", &id);
-                parent_span.record("si.func_run.func.code_plaintext", &func.code_plaintext()?);
 
                 parent_span.record("job.invoked_name", func.name.as_str());
                 parent_span.record("si.func_run.func.name", func.name.as_str());
@@ -794,7 +786,6 @@ impl FuncRunner {
             si.func_run.func.id = Empty,
             si.func_run.func.kind = Empty,
             si.func_run.func.name = Empty,
-            si.func_run.func.code_plaintext = Empty,
             si.func_run.id = Empty,
             si.workspace.id = Empty,
         )
@@ -890,7 +881,6 @@ impl FuncRunner {
                 let id = func_run_inner.id().array_to_str(&mut id_buf);
                 span.record("job.id", &id);
                 span.record("si.func_run.id", &id);
-                span.record("si.func_run.func.code_plaintext", &func.code_plaintext()?);
 
                 span.record("job.invoked_name", func.name.as_str());
                 span.record("si.func_run.func.name", func.name.as_str());
@@ -976,7 +966,6 @@ impl FuncRunner {
             si.func_run.func.id = Empty,
             si.func_run.func.kind = Empty,
             si.func_run.func.name = Empty,
-            si.func_run.func.code_plaintext = Empty,
             si.func_run.id = Empty,
             si.workspace.id = Empty,
         )
@@ -1103,7 +1092,6 @@ impl FuncRunner {
                 let id = func_run_inner.id().array_to_str(&mut id_buf);
                 span.record("job.id", &id);
                 span.record("si.func_run.id", &id);
-                span.record("si.func_run.func.code_plaintext", &func.code_plaintext()?);
 
                 span.record("job.invoked_name", func.name.as_str());
                 span.record("si.func_run.func.name", func.name.as_str());
