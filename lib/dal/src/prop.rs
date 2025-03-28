@@ -31,7 +31,7 @@ use crate::{
     AttributePrototype, AttributePrototypeId, DalContext, Func, FuncBackendResponseType, FuncId,
     HelperError, SchemaVariant, SchemaVariantError, SchemaVariantId, Timestamp, TransactionsError,
 };
-use crate::{AttributeValueId, InputSocketId};
+use crate::{slow_rt, AttributeValueId, InputSocketId};
 
 pub const PROP_VERSION: PropContentDiscriminants = PropContentDiscriminants::V1;
 
@@ -56,6 +56,8 @@ pub enum PropError {
     FuncArgument(#[from] FuncArgumentError),
     #[error("helper error: {0}")]
     Helper(#[from] HelperError),
+    #[error("tokio join error: {0}")]
+    JoinError(#[from] tokio::task::JoinError),
     #[error("layer db error: {0}")]
     LayerDb(#[from] si_layer_cache::LayerDbError),
     #[error("map or array {0} missing element prop")]
@@ -78,6 +80,8 @@ pub enum PropError {
     SingleChildPropHasUnexpectedSiblings(PropId, PropId, Vec<PropId>),
     #[error("no single child prop found for parent: {0}")]
     SingleChildPropNotFound(PropId),
+    #[error("slow runtime: {0}")]
+    SlowRuntimeError(#[from] slow_rt::SlowRuntimeError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("could not acquire lock: {0}")]

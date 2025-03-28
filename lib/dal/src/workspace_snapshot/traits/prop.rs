@@ -3,8 +3,8 @@ use petgraph::prelude::*;
 use si_id::PropId;
 
 use crate::{
-    prop::PropResult, workspace_snapshot::node_weight::PropNodeWeight, EdgeWeightKindDiscriminants,
-    PropKind, WorkspaceSnapshot, WorkspaceSnapshotGraphVCurrent,
+    prop::PropResult, slow_rt, workspace_snapshot::node_weight::PropNodeWeight,
+    EdgeWeightKindDiscriminants, PropKind, WorkspaceSnapshot, WorkspaceSnapshotGraphVCurrent,
 };
 
 #[async_trait]
@@ -16,13 +16,18 @@ pub trait PropExt {
 #[async_trait]
 impl PropExt for WorkspaceSnapshot {
     async fn ts_type(&self, prop_id: PropId) -> PropResult<String> {
-        let graph = self.working_copy().await;
-        let index = graph.get_node_index_by_id(prop_id)?;
-        let node = graph.get_node_weight(index)?.as_prop_node_weight()?;
-        let mut result = String::new();
-        append_ts_type(&graph, node, index, &mut result)?;
-        Ok(result)
+        let self_clone = self.clone();
+        slow_rt::spawn(async move { ts_type(self_clone, prop_id).await })?.await?
     }
+}
+
+async fn ts_type(snap: WorkspaceSnapshot, prop_id: PropId) -> PropResult<String> {
+    let graph = snap.working_copy().await;
+    let index = graph.get_node_index_by_id(prop_id)?;
+    let node = graph.get_node_weight(index)?.as_prop_node_weight()?;
+    let mut result = String::new();
+    append_ts_type(&graph, node, index, &mut result)?;
+    Ok(result)
 }
 
 fn append_ts_type(
