@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use frigg::{Error as FriggError, FriggStore};
+use frigg::{Error as FriggError, FriggStore, KvRevision};
 use si_events::{
     workspace_snapshot::{Change, Checksum},
     WorkspaceSnapshotAddress,
@@ -64,6 +64,7 @@ pub enum MaterializedViewError {
 pub async fn build_all_mv_for_change_set(
     ctx: &DalContext,
     frigg: &FriggStore,
+    current_kv_revision: Option<KvRevision>,
 ) -> Result<(), MaterializedViewError> {
     let span = current_span_for_instrument_at!("debug");
     span.record("si.workspace.id", ctx.workspace_pk()?.to_string());
@@ -103,17 +104,27 @@ pub async fn build_all_mv_for_change_set(
         patches,
     };
 
-    // This will fail if the index has already been created by something else.
-    if let Err(error) = frigg
-        .insert_index(ctx.workspace_pk()?, &mv_index_frontend_object)
-        .await
-    {
-        warn!(
+    if let Some(current_kv_revision) = current_kv_revision {
+        frigg
+            .update_index(
+                ctx.workspace_pk()?,
+                &mv_index_frontend_object,
+                current_kv_revision,
+            )
+            .await?;
+    } else {
+        // This will fail if the index has already been created by something else.
+        if let Err(error) = frigg
+            .insert_index(ctx.workspace_pk()?, &mv_index_frontend_object)
+            .await
+        {
+            warn!(
             "Problem updating MvIndex pointer for change set {}, skipping patch batch publish: {:?}",
             ctx.change_set_id(),
             error,
         );
-        return Ok(());
+            return Ok(());
+        }
     }
 
     DataCache::publish_patch_batch(ctx, patch_batch)

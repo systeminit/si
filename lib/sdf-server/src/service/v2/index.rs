@@ -87,7 +87,7 @@ pub async fn get_change_set_index(
     let change_set = ChangeSet::get_by_id(&ctx, change_set_id).await?;
 
     let index = match frigg.get_index(workspace_pk, change_set_id).await? {
-        Some((index, _kv_revision)) => {
+        Some((index, kv_revision)) => {
             let mv_index: MvIndex = serde_json::from_value(index.data.to_owned())
                 .map_err(IndexError::DeserializingMvIndexData)?;
 
@@ -114,11 +114,15 @@ pub async fn get_change_set_index(
                 );
                 // We know the change set exists, but the index hasn't been built yet, so
                 // we'll trigger a full MV build and then try again.
-                dal::materialized_view::build_all_mv_for_change_set(&ctx, &frigg)
-                    .instrument(tracing::info_span!(
-                        "Initial build of all materialized views"
-                    ))
-                    .await?;
+                dal::materialized_view::build_all_mv_for_change_set(
+                    &ctx,
+                    &frigg,
+                    Some(kv_revision),
+                )
+                .instrument(tracing::info_span!(
+                    "Initial build of all materialized views"
+                ))
+                .await?;
                 ctx.commit_no_rebase().await?;
 
                 frigg
@@ -137,7 +141,7 @@ pub async fn get_change_set_index(
             );
             // We know the change set exists, but the index hasn't been built yet, so
             // we'll trigger a full MV build and then try again.
-            dal::materialized_view::build_all_mv_for_change_set(&ctx, &frigg)
+            dal::materialized_view::build_all_mv_for_change_set(&ctx, &frigg, None)
                 .instrument(tracing::info_span!(
                     "Initial build of all materialized views"
                 ))

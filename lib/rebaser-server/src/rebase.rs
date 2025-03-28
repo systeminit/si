@@ -187,7 +187,7 @@ pub async fn perform_rebase(
             .await?;
         } else {
             info!("No Frigg index found, triggering initial build of materialized views");
-            dal::materialized_view::build_all_mv_for_change_set(ctx, frigg)
+            dal::materialized_view::build_all_mv_for_change_set(ctx, frigg, None)
                 .instrument(tracing::info_span!(
                     "Initial build of all materialized views"
                 ))
