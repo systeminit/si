@@ -8,7 +8,7 @@ use std::{
 use petgraph::{
     algo,
     prelude::*,
-    stable_graph::{Edges, Neighbors},
+    stable_graph::{EdgeReference, Edges, Neighbors},
     visit::DfsEvent,
 };
 use serde::{Deserialize, Serialize};
@@ -475,6 +475,46 @@ impl WorkspaceSnapshotGraphV4 {
         self.graph.edges_directed(node_index, direction)
     }
 
+    /// Get the target nodes of outgoing edges of the given kind
+    pub fn targets(
+        &self,
+        node_index: NodeIndex,
+        kind: impl Into<EdgeWeightKindDiscriminants>,
+    ) -> impl Iterator<Item = NodeIndex> + '_ {
+        self.outgoing_edges(node_index, kind).map(|e| e.target())
+    }
+
+    /// Get the source nodes of outgoing edges of the given kind
+    pub fn sources(
+        &self,
+        node_index: NodeIndex,
+        kind: impl Into<EdgeWeightKindDiscriminants>,
+    ) -> impl Iterator<Item = NodeIndex> + '_ {
+        self.incoming_edges(node_index, kind).map(|e| e.source())
+    }
+
+    /// Get Incoming edges of the given kind
+    pub fn incoming_edges(
+        &self,
+        node_index: NodeIndex,
+        kind: impl Into<EdgeWeightKindDiscriminants>,
+    ) -> impl Iterator<Item = EdgeReference<'_, EdgeWeight>> + '_ {
+        let kind = kind.into();
+        self.edges_directed(node_index, Incoming)
+            .filter(move |e| kind == e.weight().kind().into())
+    }
+
+    /// Get Outgoing edges of the given kind
+    pub fn outgoing_edges(
+        &self,
+        node_index: NodeIndex,
+        kind: impl Into<EdgeWeightKindDiscriminants>,
+    ) -> impl Iterator<Item = EdgeReference<'_, EdgeWeight>> + '_ {
+        let kind = kind.into();
+        self.edges_directed(node_index, Outgoing)
+            .filter(move |e| kind == e.weight().kind().into())
+    }
+
     pub fn neighbors_directed(
         &self,
         node_index: NodeIndex,
@@ -501,10 +541,10 @@ impl WorkspaceSnapshotGraphV4 {
         node_index: NodeIndex,
         direction: Direction,
         edge_kind: EdgeWeightKindDiscriminants,
-    ) -> Vec<(EdgeWeight, NodeIndex, NodeIndex)> {
+    ) -> impl Iterator<Item = (EdgeWeight, NodeIndex, NodeIndex)> + '_ {
         self.graph
             .edges_directed(node_index, direction)
-            .filter_map(|edge_ref| {
+            .filter_map(move |edge_ref| {
                 if edge_kind == edge_ref.weight().kind().into() {
                     Some((
                         edge_ref.weight().to_owned(),
@@ -515,7 +555,6 @@ impl WorkspaceSnapshotGraphV4 {
                     None
                 }
             })
-            .collect()
     }
 
     pub fn nodes(&self) -> impl Iterator<Item = (&NodeWeight, NodeIndex)> {
@@ -1731,25 +1770,26 @@ impl WorkspaceSnapshotGraphV4 {
         edge_direction: Direction,
         edge_weight_kind: EdgeWeightKindDiscriminants,
     ) -> WorkspaceSnapshotGraphResult<Option<NodeIndex>> {
-        let edges_of_kind = self.edges_directed_for_edge_weight_kind(
+        let mut edges_of_kind = self.edges_directed_for_edge_weight_kind(
             source_node_idx,
             edge_direction,
             edge_weight_kind,
         );
-        if edges_of_kind.len() > 1 {
+        let Some((_edge_weight, source_node_idx, target_node_idx)) = edges_of_kind.next() else {
+            return Ok(None);
+        };
+
+        if edges_of_kind.next().is_some() {
             return Err(WorkspaceSnapshotGraphError::TooManyEdgesOfKind(
                 source_node_idx,
                 edge_weight_kind,
             ));
         }
-        let Some((_edge_weight, source_node_idx, target_node_idx)) = edges_of_kind.first() else {
-            return Ok(None);
-        };
 
         Ok(Some(if edge_direction == Direction::Incoming {
-            *source_node_idx
+            source_node_idx
         } else {
-            *target_node_idx
+            target_node_idx
         }))
     }
 }

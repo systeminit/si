@@ -350,10 +350,7 @@ impl VariantAuthoringClient {
             .await?;
 
             for component_id in components_in_use {
-                Component::get_by_id(ctx, component_id)
-                    .await?
-                    .upgrade_to_new_variant(ctx, new_variant.id)
-                    .await?;
+                Component::upgrade_to_new_variant(ctx, component_id, new_variant.id).await?;
             }
 
             if original_is_default {

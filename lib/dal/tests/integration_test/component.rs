@@ -16,6 +16,7 @@ use pretty_assertions_sorted::assert_eq;
 use serde_json::json;
 
 mod autoconnect;
+mod connectable_test;
 mod debug;
 mod delete;
 mod get_code;
