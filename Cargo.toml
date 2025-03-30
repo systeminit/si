@@ -221,7 +221,7 @@ rust-s3 = { version = "0.34.0-rc4", default-features = false, features = [
 rustls = { version = "0.23.19", default-features = false } # NOTE(nick,fletcher): rustls switched to "aws-lc-rs" as its default crypto provider, but we want ring (i.e. we disable the default feature for "aws-lc-rs")
 rustls-native-certs = "0.8.1"
 rustls-pemfile = { version = "2.2.0" }
-sea-orm = { version = "1.1.2", features = [
+sea-orm = { version = "1.1.8", features = [
     "sqlx-postgres",
     "runtime-tokio-rustls",
     "macros",
