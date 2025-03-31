@@ -71,6 +71,7 @@ pub async fn update_property_editor_value(
             )
             .await
             .unwrap_or(false)
+            && request.value != before_value
         {
             Component::enqueue_relevant_update_actions(&ctx, request.attribute_value_id).await?;
         }
