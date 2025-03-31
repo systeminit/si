@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use si_id::PropId;
 use thiserror::Error;
 
 use crate::history_event::HistoryEventMetadata;
@@ -42,7 +43,11 @@ pub struct SecretView {
 
 impl SecretView {
     /// Assembles a [`view`](SecretView) for a given [`Secret`].
-    pub async fn from_secret(ctx: &DalContext, secret: Secret) -> SecretViewResult<Self> {
+    pub async fn from_secret(
+        ctx: &DalContext,
+        secret: Secret,
+        prefetched_secret_props: Option<&[PropId]>,
+    ) -> SecretViewResult<Self> {
         let created_info = {
             let actor = match secret.created_by {
                 None => HistoryActor::SystemInit,
@@ -76,7 +81,10 @@ impl SecretView {
         };
 
         let is_usable = secret.can_be_decrypted(ctx).await?;
-        let connected_components = secret.clone().find_connected_components(ctx).await?;
+        let connected_components = secret
+            .clone()
+            .find_connected_components(ctx, prefetched_secret_props)
+            .await?;
 
         Ok(Self {
             id: secret.id,

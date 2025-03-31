@@ -35,6 +35,8 @@ pub enum SecretError {
     Nats(#[from] si_data_nats::NatsError),
     #[error("pg error: {0}")]
     Pg(#[from] si_data_pg::PgError),
+    #[error("schema variant error: {0}")]
+    SchemaVariant(#[from] dal::SchemaVariantError),
     #[error("secret definition view error: {0}")]
     SecretDefinitionView(#[from] dal::SecretDefinitionViewError),
     #[error("secret view error: {0}")]

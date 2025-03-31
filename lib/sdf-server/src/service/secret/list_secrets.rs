@@ -49,12 +49,16 @@ pub async fn list_secrets(
         })
         .collect::<HashMap<_, _>>();
 
+    let prefetched_secret_props = Secret::list_all_secret_prop_ids(&ctx).await?;
     for secret in Secret::list(&ctx).await? {
         hash_map
             .get_mut(secret.definition())
             .ok_or(SecretError::SecretWithInvalidDefinition(secret.id()))?
             .secrets
-            .push(SecretView::from_secret(&ctx, secret).await?);
+            .push(
+                SecretView::from_secret(&ctx, secret, Some(prefetched_secret_props.as_slice()))
+                    .await?,
+            );
     }
 
     Ok(Json(hash_map))

@@ -78,6 +78,6 @@ pub async fn update_secret(
 
     Ok(ForceChangeSetResponse::new(
         force_change_set_id,
-        SecretView::from_secret(&ctx, secret).await?,
+        SecretView::from_secret(&ctx, secret, None).await?,
     ))
 }

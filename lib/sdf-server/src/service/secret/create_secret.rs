@@ -63,7 +63,7 @@ pub async fn create_secret(
 
     ctx.commit().await?;
 
-    let secret = SecretView::from_secret(&ctx, secret).await?;
+    let secret = SecretView::from_secret(&ctx, secret, None).await?;
 
     Ok(ForceChangeSetResponse::new(force_change_set_id, secret))
 }

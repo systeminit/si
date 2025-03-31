@@ -38,6 +38,7 @@ struct SecretFormDataView {
 impl SecretDefinitionView {
     /// Assembles [`views`](SecretDefinitionView) for all secret definitions in the
     /// [`snapshot`](crate::WorkspaceSnapshot).
+    #[instrument(level = "debug", name = "list_secret_definition_views", skip_all)]
     pub async fn list(ctx: &DalContext) -> SecretDefinitionViewResult<Vec<Self>> {
         let schema_variant_ids = SchemaVariant::list_default_ids(ctx).await?;
 
