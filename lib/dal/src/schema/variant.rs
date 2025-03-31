@@ -970,6 +970,22 @@ impl SchemaVariant {
         Self::default_id_for_schema(ctx, schema_id).await
     }
 
+    /// Returns a list of all schema variants that are on the graph (not uninstalled variants!)
+    pub async fn list_all_ids(ctx: &DalContext) -> SchemaVariantResult<Vec<SchemaVariantId>> {
+        let mut result = vec![];
+
+        for schema_id in Schema::list_ids(ctx).await? {
+            result.extend(
+                Self::list_for_schema(ctx, schema_id)
+                    .await?
+                    .into_iter()
+                    .map(|sv| sv.id()),
+            );
+        }
+
+        Ok(result)
+    }
+
     pub async fn list_for_schema(
         ctx: &DalContext,
         schema_id: SchemaId,

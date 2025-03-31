@@ -30,8 +30,10 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use si_crypto::{SymmetricCryptoError, SymmetricCryptoService, SymmetricNonce};
 use si_data_pg::PgError;
+use si_events::encrypted_secret::EncryptedSecretKeyParseError;
 use si_events::{ulid::Ulid, ContentHash, EncryptedSecretKey};
 use si_hash::Hash;
+use si_id::PropId;
 use si_layer_cache::LayerDbError;
 use sodiumoxide::crypto::box_::{PublicKey, SecretKey};
 use sodiumoxide::crypto::sealedbox;
@@ -67,7 +69,6 @@ use crate::{
     HistoryEventError, KeyPair, KeyPairError, Prop, SchemaVariant, SchemaVariantError,
     StandardModelError, Timestamp, TransactionsError, UserPk,
 };
-use si_events::encrypted_secret::EncryptedSecretKeyParseError;
 
 mod algorithm;
 mod definition_view;
@@ -553,6 +554,7 @@ impl Secret {
     }
 
     /// Lists all [`Secrets`](Secret) in the current [`snapshot`](crate::WorkspaceSnapshot).
+    #[instrument(name = "list_secrets", level = "debug", skip_all, fields(secret_count = Empty))]
     pub async fn list(ctx: &DalContext) -> SecretResult<Vec<Self>> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
@@ -561,18 +563,21 @@ impl Secret {
             .get_category_node_or_err(None, CategoryNodeKind::Secret)
             .await?;
 
-        let secret_node_indices = workspace_snapshot
+        let secret_node_ids = workspace_snapshot
             .outgoing_targets_for_edge_weight_kind(
                 secret_category_node_id,
                 EdgeWeightKindDiscriminants::Use,
             )
             .await?;
 
+        let span = Span::current();
+        span.record("secret_count", secret_node_ids.len());
+
         let mut secret_node_weights = vec![];
         let mut hashes = vec![];
-        for index in secret_node_indices {
+        for id in secret_node_ids {
             let secret_node_weight = workspace_snapshot
-                .get_node_weight(index)
+                .get_node_weight(id)
                 .await?
                 .get_secret_node_weight()?;
             hashes.push(secret_node_weight.content_hash());
@@ -644,27 +649,43 @@ impl Secret {
         .await
     }
 
+    /// Finds all secret prop ids for all schema variants
+    #[instrument(name = "find_secret_prop_ids", level = "debug", skip_all)]
+    pub async fn list_all_secret_prop_ids(ctx: &DalContext) -> SecretResult<Vec<PropId>> {
+        let mut result = vec![];
+        for variant_id in SchemaVariant::list_all_ids(ctx).await? {
+            let secrets_prop =
+                Prop::find_prop_by_path(ctx, variant_id, &RootPropChild::Secrets.prop_path())
+                    .await?;
+            result.extend(Prop::direct_child_prop_ids_ordered(ctx, secrets_prop.id).await?);
+        }
+
+        Ok(result)
+    }
+
     /// Finds all the connected component Ids for the [`Secret`]
+    #[instrument(name = "find_connected_components", level = "debug", skip_all)]
     pub async fn find_connected_components(
         self,
         ctx: &DalContext,
+        prefetched_secret_props: Option<&[PropId]>,
     ) -> SecretResult<Vec<ComponentId>> {
         let secret_details = self.encrypted_secret_key().to_string();
         let mut connected_components = Vec::new();
-        let mut secret_prop_ids = Vec::new();
-        let schema_variants = SchemaVariant::list_user_facing(ctx).await?;
-        for schema_variant in schema_variants {
-            let secrets_prop = Prop::find_prop_by_path(
-                ctx,
-                schema_variant.schema_variant_id,
-                &RootPropChild::Secrets.prop_path(),
-            )
-            .await?;
-            secret_prop_ids
-                .extend(Prop::direct_child_prop_ids_ordered(ctx, secrets_prop.id).await?);
-        }
 
-        for secret_prop_id in secret_prop_ids {
+        // This is a trick to make the borrow checker allow us to return a
+        // reference to the list constructed in the list_all_secret_prop_ids
+        //  call, so that we don't have to clone the variants passed in as
+        // `prefetched_secret_props`.
+        let secret_props;
+
+        for &secret_prop_id in match prefetched_secret_props {
+            Some(variants) => variants,
+            None => {
+                secret_props = Self::list_all_secret_prop_ids(ctx).await?;
+                secret_props.as_slice()
+            }
+        } {
             let all_connected_attribute_values =
                 Prop::all_attribute_values_everywhere_for_prop_id(ctx, secret_prop_id).await?;
             for connected_av in all_connected_attribute_values {

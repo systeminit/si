@@ -28,7 +28,7 @@ pub async fn delete_secret(
     // Delete Secret
     let secret = Secret::get_by_id(&ctx, request.id).await?;
 
-    let connected_components = secret.clone().find_connected_components(&ctx).await?;
+    let connected_components = secret.clone().find_connected_components(&ctx, None).await?;
     if !connected_components.is_empty() {
         return Err(SecretError::CantDeleteSecret(request.id));
     }
