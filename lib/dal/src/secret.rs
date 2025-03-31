@@ -561,32 +561,25 @@ impl Secret {
             .get_category_node_or_err(None, CategoryNodeKind::Secret)
             .await?;
 
-        let secret_node_indices = workspace_snapshot
+        let secret_node_ids = workspace_snapshot
             .outgoing_targets_for_edge_weight_kind(
                 secret_category_node_id,
                 EdgeWeightKindDiscriminants::Use,
             )
             .await?;
 
-        let mut secret_node_weights = vec![];
-        let mut hashes = vec![];
-        for index in secret_node_indices {
+        for id in secret_node_ids {
             let secret_node_weight = workspace_snapshot
-                .get_node_weight(index)
+                .get_node_weight(id)
                 .await?
                 .get_secret_node_weight()?;
-            hashes.push(secret_node_weight.content_hash());
-            secret_node_weights.push(secret_node_weight);
-        }
 
-        let contents: HashMap<ContentHash, SecretContent> = ctx
-            .layer_db()
-            .cas()
-            .try_read_many_as(hashes.as_slice())
-            .await?;
-
-        for secret_node_weight in secret_node_weights {
-            match contents.get(&secret_node_weight.content_hash()) {
+            match ctx
+                .layer_db()
+                .cas()
+                .try_read_as(&secret_node_weight.content_hash())
+                .await?
+            {
                 Some(content) => {
                     // NOTE(nick): if we had a v2, then there would be migration logic here.
                     let SecretContent::V1(inner) = content;
