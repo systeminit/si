@@ -1415,4 +1415,3 @@ const dbInterface: DBInterface = {
 };
 
 Comlink.expose(dbInterface);
-debug("WebWorker EOF");

@@ -23,6 +23,7 @@ import { useRouterStore } from "./router.store";
 import handleStoreError from "./errors";
 import { useStatusStore } from "./status.store";
 import * as heimdall from "./realtime/heimdall";
+import { useFeatureFlagsStore } from "./feature_flags.store";
 
 const toast = useToast();
 
@@ -81,6 +82,7 @@ export function useChangeSetsStore() {
 
   const authStore = useAuthStore();
   const realtimeStore = useRealtimeStore();
+  const featureFlagsStore = useFeatureFlagsStore();
 
   const BASE_API = [
     "v2",
@@ -445,7 +447,8 @@ export function useChangeSetsStore() {
                 ].includes(data.changeSet.status) &&
                 data.changeSet.id !== this.headChangeSetId
               ) {
-                heimdall.prune(workspacePk, data.changeSet.id);
+                if (featureFlagsStore.FRONTEND_ARCH_VIEWS)
+                  heimdall.prune(workspacePk, data.changeSet.id);
               }
               // If I'm the one who requested this change set - toast that it's been approved/rejected/etc.
               if (
@@ -482,7 +485,8 @@ export function useChangeSetsStore() {
             eventType: "ChangeSetAbandoned",
             callback: async (data) => {
               if (data.changeSetId !== this.headChangeSetId) {
-                heimdall.prune(workspacePk, data.changeSetId);
+                if (featureFlagsStore.FRONTEND_ARCH_VIEWS)
+                  heimdall.prune(workspacePk, data.changeSetId);
               }
 
               const changeSetName = this.selectedChangeSet?.name;
@@ -531,7 +535,8 @@ export function useChangeSetsStore() {
                 if (changeSet.id !== this.headChangeSetId) {
                   // never set HEAD to Applied
                   changeSet.status = ChangeSetStatus.Applied;
-                  heimdall.prune(workspacePk, changeSet.id);
+                  if (featureFlagsStore.FRONTEND_ARCH_VIEWS)
+                    heimdall.prune(workspacePk, changeSet.id);
                 }
                 if (this.selectedChangeSet?.id === changeSetId) {
                   this.postApplyActor = userPk;

@@ -258,7 +258,7 @@ const connectionShouldBeEnabled = computed(() => {
 });
 
 const queryClient = useQueryClient();
-onBeforeMount(async () => {
+const begin = async () => {
   let viewId;
   if (routeStore.currentRoute?.params?.viewId)
     viewId = routeStore.currentRoute.params.viewId as string;
@@ -269,24 +269,26 @@ onBeforeMount(async () => {
     changeSetsStore.selectedChangeSetId &&
     authStore.selectedOrDefaultAuthToken
   ) {
-    await heimdall.init(authStore.selectedOrDefaultAuthToken, queryClient);
-    watch(
-      connectionShouldBeEnabled,
-      async () => {
-        if (connectionShouldBeEnabled.value) {
-          await heimdall.bifrostReconnect();
-        } else {
-          await heimdall.bifrostClose();
-        }
-      },
-      { immediate: true },
-    );
-    heimdall.niflheim(
-      changeSetsStore.selectedWorkspacePk,
-      changeSetsStore.selectedChangeSetId,
-      true,
-    );
-    // await heimdall.fullDiagnosticTest();
+    if (featureFlagsStore.FRONTEND_ARCH_VIEWS) {
+      await heimdall.init(authStore.selectedOrDefaultAuthToken, queryClient);
+      watch(
+        connectionShouldBeEnabled,
+        async () => {
+          if (connectionShouldBeEnabled.value) {
+            await heimdall.bifrostReconnect();
+          } else {
+            await heimdall.bifrostClose();
+          }
+        },
+        { immediate: true },
+      );
+      heimdall.niflheim(
+        changeSetsStore.selectedWorkspacePk,
+        changeSetsStore.selectedChangeSetId,
+        true,
+      );
+      // await heimdall.fullDiagnosticTest();
+    }
   } else {
     throw new Error("bifrost is down");
   }
@@ -321,6 +323,16 @@ onBeforeMount(async () => {
   );
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   authStore.LIST_WORKSPACE_USERS(changeSetsStore.selectedWorkspacePk!);
+};
+onBeforeMount(() => {
+  // NOTE, once the flag is gone we dont need to watch
+  watch(
+    () => featureFlagsStore.FRONTEND_ARCH_VIEWS,
+    () => {
+      begin();
+    },
+    { immediate: true },
+  );
 });
 
 onMounted(async () => {
