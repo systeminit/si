@@ -163,7 +163,7 @@ pub struct FuncRunner {
 impl FuncRunner {
     #[instrument(
         name = "func_runner.run_test",
-        level = "info",
+        level = "debug",
         skip_all,
         fields(
             job.id = Empty,
@@ -192,7 +192,7 @@ impl FuncRunner {
         args: serde_json::Value,
         component_id: ComponentId,
     ) -> FuncRunnerResult<(FuncRunId, FuncRunnerValueChannel)> {
-        let span = current_span_for_instrument_at!("info");
+        let span = current_span_for_instrument_at!("debug");
 
         // Prepares the function for execution.
         //
@@ -292,7 +292,7 @@ impl FuncRunner {
 
     #[instrument(
         name = "func_runner.run_asset_definition_func",
-        level = "info",
+        level = "debug",
         skip_all,
         fields(
             job.id = Empty,
@@ -320,7 +320,7 @@ impl FuncRunner {
         ctx: &DalContext,
         func: &Func,
     ) -> FuncRunnerResult<FuncRunnerValueChannel> {
-        let span = current_span_for_instrument_at!("info");
+        let span = current_span_for_instrument_at!("debug");
 
         // Prepares the function for execution.
         //
@@ -433,7 +433,7 @@ impl FuncRunner {
 
     #[instrument(
         name = "func_runner.run_validation_format",
-        level = "info",
+        level = "debug",
         skip_all,
         fields(
             job.id = Empty,
@@ -463,7 +463,7 @@ impl FuncRunner {
         value: Option<serde_json::Value>,
         validation_format: String,
     ) -> FuncRunnerResult<FuncRunnerValueChannel> {
-        let span = current_span_for_instrument_at!("info");
+        let span = current_span_for_instrument_at!("debug");
 
         // Prepares the function for execution.
         //
@@ -765,7 +765,7 @@ impl FuncRunner {
 
     #[instrument(
         name = "func_runner.run_management",
-        level = "info",
+        level = "debug",
         skip_all,
         fields(
             job.id = Empty,
@@ -797,7 +797,7 @@ impl FuncRunner {
         management_func_id: FuncId,
         args: serde_json::Value,
     ) -> FuncRunnerResult<FuncRunnerValueChannel> {
-        let span = current_span_for_instrument_at!("info");
+        let span = current_span_for_instrument_at!("debug");
 
         // Prepares the function for execution.
         //
@@ -977,7 +977,7 @@ impl FuncRunner {
         func_id: FuncId,
         args: serde_json::Value,
     ) -> FuncRunnerResult<FuncRunnerValueChannel> {
-        let span = current_span_for_instrument_at!("info");
+        let span = current_span_for_instrument_at!("debug");
 
         // Prepares the function for execution.
         //
