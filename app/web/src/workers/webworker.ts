@@ -18,7 +18,11 @@ import {
   ATTR_SERVICE_VERSION,
 } from "@opentelemetry/semantic-conventions";
 import { URLPattern, describePattern } from "@si/vue-lib";
-import Axios, { AxiosInstance, InternalAxiosRequestConfig } from "axios";
+import Axios, {
+  AxiosInstance,
+  AxiosResponse,
+  InternalAxiosRequestConfig,
+} from "axios";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { nonNullable } from "@/utils/typescriptLinter";
 import {
@@ -584,19 +588,28 @@ const mjolnir = async (
     "index",
     "mjolnir",
   ] as URLPattern;
-  const [url, _desc] = describePattern(pattern);
+  const [url, desc] = describePattern(pattern);
   const params = { changeSetId, kind, id, checksum };
-  let req;
-  try {
-    req = await sdf<IndexObjectMeta>({
-      method: "get",
-      url,
-      params,
-    });
-  } catch (err) {
-    error("MJOLNIR 404", url, params, err);
-    return;
-  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let req: undefined | AxiosResponse<IndexObjectMeta, any>;
+
+  tracer.startActiveSpan(`GET ${desc}`, async (span) => {
+    span.setAttributes({ workspaceId, changeSetId, kind, id, checksum });
+    try {
+      req = await sdf<IndexObjectMeta>({
+        method: "get",
+        url,
+        params,
+      });
+    } catch (err) {
+      span.setAttribute("http.status", 404);
+      error("MJOLNIR 404", url, params, err);
+    } finally {
+      if (req?.status) span.setAttribute("http.status", req.status);
+      span.end();
+    }
+  });
   if (!req) throw new Error("Impossible...");
   // TODO listen to the reply on the websocket
 
@@ -678,7 +691,7 @@ const atomChecksumsFor = async (
   });
   rows.forEach((row) => {
     const key = `${row[0]}|${row[1]}` as QueryKey;
-    const checksum = row[3] as Checksum;
+    const checksum = row[2] as Checksum;
     mapping[key] = checksum;
   });
   return mapping;
@@ -696,6 +709,7 @@ const niflheim = async (workspaceId: string, changeSetId: ChangeSetId) => {
     ] as URLPattern;
     const [url, desc] = describePattern(pattern);
     const frigg = tracer.startSpan(`GET ${desc}`);
+    frigg.setAttributes({ workspaceId, changeSetId });
     const req = await sdf<IndexObjectMeta>({
       method: "get",
       url,
