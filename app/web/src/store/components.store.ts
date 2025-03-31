@@ -683,6 +683,9 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
           // The "category variants", which include both installed and
           // uninstalled, by their unique ids
+
+          // TODO: once we remove the flag for new arch (e.g. everyone is using it)
+          // We can delete this reference and instead use the values from bifrost
           categoryVariantById(): { [key: string]: CategoryVariant } {
             return this.categories.reduce((accum, category) => {
               category.schemaVariants.forEach((variant) => {

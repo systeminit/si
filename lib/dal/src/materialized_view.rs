@@ -24,7 +24,7 @@ use crate::{
     data_cache::{DataCache, DataCacheError},
     dependency_graph::DependencyGraph,
     diagram::DiagramError,
-    DalContext, TransactionsError, WorkspaceSnapshotError,
+    DalContext, SchemaVariantError, TransactionsError, WorkspaceSnapshotError,
 };
 
 #[derive(Debug, Error)]
@@ -40,6 +40,8 @@ pub enum MaterializedViewError {
         workspace_pk: WorkspacePk,
         change_set_id: ChangeSetId,
     },
+    #[error("SchemaVariant error: {0}")]
+    SchemaVariant(#[from] SchemaVariantError),
     #[error("serde_json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("Transactions error: {0}")]
@@ -332,6 +334,30 @@ pub async fn build_mv_inner(
                                 mv_id,
                                 si_frontend_types::view::ViewList,
                                 crate::diagram::view::View::as_frontend_list_type(ctx).await,
+                            )
+                            .await?;
+
+                        if let Some(patch) = maybe_patch {
+                            patches.push(patch);
+                        }
+                        if let Some(object) = maybe_frontend_object {
+                            frontend_objects.push(object);
+                        }
+                    }
+                    ReferenceKind::SchemaVariantCategories => {
+                        let mv_id = change_set_id.to_string();
+
+                        let (maybe_patch, maybe_frontend_object) =
+                            si_frontend_types_macros::build_mv!(
+                                ctx,
+                                frigg,
+                                change,
+                                mv_id,
+                                si_frontend_types::schema_variant::SchemaVariantCategories,
+                                crate::schema::variant::SchemaVariant::as_frontend_list_type_by_category(
+                                    ctx
+                                )
+                                .await,
                             )
                             .await?;
 

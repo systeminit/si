@@ -3,15 +3,20 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::Arc;
 
+use authoring::VariantAuthoringError;
 use chrono::Utc;
 use petgraph::{Direction, Outgoing};
 use serde::{Deserialize, Serialize};
+use si_frontend_types::schema_variant::{
+    DisambiguateVariant, SchemaVariantCategories, SchemaVariantsByCategory, Variant, VariantType,
+};
 use thiserror::Error;
 use url::ParseError;
 
 use si_events::{ulid::Ulid, ContentHash};
 use si_frontend_types::{
     DiagramSocket, DiagramSocketDirection, DiagramSocketNodeSide, SchemaVariant as FrontendVariant,
+    UninstalledVariant,
 };
 use si_layer_cache::LayerDbError;
 use si_pkg::SpecError;
@@ -23,6 +28,7 @@ use crate::attribute::prototype::argument::{
 };
 use crate::attribute::prototype::AttributePrototypeError;
 use crate::attribute::value::{AttributeValueError, ValueIsFor};
+use crate::cached_module::{CachedModule, CachedModuleError};
 use crate::change_set::ChangeSetError;
 use crate::diagram::SummaryDiagramManagementEdge;
 use crate::func::argument::{FuncArgument, FuncArgumentError};
@@ -88,7 +94,7 @@ pub enum SchemaVariantError {
     #[error("asset func not found for schema variant: {0}")]
     AssetFuncNotFound(SchemaVariantId),
     #[error("attribute prototype error: {0}")]
-    AttributePrototype(#[from] AttributePrototypeError),
+    AttributePrototype(#[from] Box<AttributePrototypeError>),
     #[error("attribute argument prototype error: {0}")]
     AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
     #[error("attribute prototype not found for input socket id: {0}")]
@@ -97,6 +103,12 @@ pub enum SchemaVariantError {
     AttributePrototypeNotFoundForOutputSocket(OutputSocketId),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] Box<AttributeValueError>),
+    #[error("cached module error: {0}")]
+    CachedModule(#[from] CachedModuleError),
+    #[error("cannot delete locked schema variant: {0}")]
+    CannotDeleteLockedSchemaVariant(SchemaVariantId),
+    #[error("cannot delete a schema variant that has attached components")]
+    CannotDeleteVariantWithComponents,
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
     #[error("component error: {0}")]
@@ -177,6 +189,8 @@ pub enum SchemaVariantError {
     TryLock(#[from] tokio::sync::TryLockError),
     #[error("url parse error: {0}")]
     Url(#[from] ParseError),
+    #[error("variant authoring error: {0}")]
+    VariantAuthoring(#[from] Box<VariantAuthoringError>),
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
@@ -205,6 +219,77 @@ pub struct SchemaVariant {
 }
 
 impl SchemaVariant {
+    pub async fn as_frontend_list_type_by_category(
+        ctx: &DalContext,
+    ) -> SchemaVariantResult<SchemaVariantCategories> {
+        let mut variant_by_category = HashMap::new();
+
+        let installed = SchemaVariant::list_user_facing(ctx).await?;
+        let mut installed_schema_ids = HashSet::new();
+        let mut installed_cat_and_name = HashSet::new();
+        for installed_variant in &installed {
+            let category = installed_variant.category.as_str();
+            let variants = variant_by_category
+                .entry(category.to_owned())
+                .or_insert(vec![]);
+            variants.push(DisambiguateVariant {
+                variant: Variant::SchemaVariant(installed_variant.clone()),
+                variant_type: VariantType::Installed,
+                id: installed_variant.schema_variant_id.to_string(),
+            });
+
+            installed_schema_ids.insert(installed_variant.schema_id);
+            installed_cat_and_name.insert((category, installed_variant.schema_name.as_str()));
+        }
+
+        let cached_modules: Vec<CachedModule> = CachedModule::latest_modules(ctx).await?;
+
+        // We want to hide uninstalled modules that would create duplicate assets in
+        // the AssetPanel in old workspace. We do this just by name + category
+        // matching. (We also hide if the schema is installed)
+        for module in cached_modules {
+            let category = module.category.to_owned();
+            let category = category.as_deref().unwrap_or("");
+
+            let schema_name = module.schema_name.as_str();
+            if !installed_schema_ids.contains(&module.schema_id)
+                && !installed_cat_and_name.contains(&(category, schema_name))
+            {
+                let module_id = module.id.to_string();
+                let variants = variant_by_category
+                    .entry(category.to_owned())
+                    .or_insert(vec![]);
+                let uninstalled: UninstalledVariant = module.into();
+                variants.push(DisambiguateVariant {
+                    variant: Variant::UninstalledVariant(uninstalled),
+                    variant_type: VariantType::Uninstalled,
+                    id: module_id, // is this right? no SV id?
+                });
+            }
+        }
+
+        let mut categories: Vec<SchemaVariantsByCategory> = vec![];
+        for (name, variants) in variant_by_category.iter() {
+            let mut variants = variants.to_vec();
+            variants.sort_by_key(|v| match v.variant.to_owned() {
+                Variant::SchemaVariant(schema_variant) => schema_variant.display_name,
+                Variant::UninstalledVariant(uninstalled_variant) => uninstalled_variant
+                    .display_name
+                    .unwrap_or(uninstalled_variant.schema_name),
+            });
+            categories.push(SchemaVariantsByCategory {
+                display_name: name.to_string(),
+                schema_variants: variants,
+            });
+        }
+        categories.sort_by_key(|c| c.display_name.to_owned());
+
+        Ok(SchemaVariantCategories {
+            id: ctx.change_set_id(),
+            categories,
+        })
+    }
+
     pub async fn into_frontend_type(
         self,
         ctx: &DalContext,
@@ -1191,7 +1276,9 @@ impl SchemaVariant {
             // Create the attribute prototype and appropriate edges if they do not exist.
             if found_attribute_prototype_id.is_none() {
                 // We did not find a prototype, so we must create one.
-                let attribute_prototype = AttributePrototype::new(ctx, func_id).await?;
+                let attribute_prototype = AttributePrototype::new(ctx, func_id)
+                    .await
+                    .map_err(Box::new)?;
 
                 // New edge Prop --Prototype--> AttributePrototype.
                 Prop::add_edge_to_attribute_prototype(
@@ -1337,7 +1424,9 @@ impl SchemaVariant {
 
         for (maybe_key, proto) in Prop::prototypes_by_key(ctx, leaf_item_prop_id).await? {
             if maybe_key.is_some() {
-                let func_id = AttributePrototype::func_id(ctx, proto).await?;
+                let func_id = AttributePrototype::func_id(ctx, proto)
+                    .await
+                    .map_err(Box::new)?;
                 func_ids.push(func_id);
             }
         }
@@ -1549,7 +1638,10 @@ impl SchemaVariant {
         }
 
         let attribute_prototype_id =
-            match AttributePrototype::find_for_prop(ctx, leaf_item_prop_id, &key).await? {
+            match AttributePrototype::find_for_prop(ctx, leaf_item_prop_id, &key)
+                .await
+                .map_err(Box::new)?
+            {
                 Some(existing_proto_id) => {
                     Self::upsert_leaf_function_inputs(
                         ctx,
@@ -1946,7 +2038,9 @@ impl SchemaVariant {
         for prop_id in prop_list {
             let keys_and_prototypes = Prop::prototypes_by_key(ctx, prop_id).await?;
             for (_, attribute_prototype_id) in keys_and_prototypes {
-                let func_id = AttributePrototype::func_id(ctx, attribute_prototype_id).await?;
+                let func_id = AttributePrototype::func_id(ctx, attribute_prototype_id)
+                    .await
+                    .map_err(Box::new)?;
                 all_func_ids.insert(func_id);
             }
         }
@@ -1956,17 +2050,25 @@ impl SchemaVariant {
             Self::list_all_socket_ids(ctx, schema_variant_id).await?;
         for output_socket_id in output_socket_ids {
             if let Some(attribute_prototype_id) =
-                AttributePrototype::find_for_output_socket(ctx, output_socket_id).await?
+                AttributePrototype::find_for_output_socket(ctx, output_socket_id)
+                    .await
+                    .map_err(Box::new)?
             {
-                let func_id = AttributePrototype::func_id(ctx, attribute_prototype_id).await?;
+                let func_id = AttributePrototype::func_id(ctx, attribute_prototype_id)
+                    .await
+                    .map_err(Box::new)?;
                 all_func_ids.insert(func_id);
             }
         }
         for input_socket_id in input_socket_ids {
             if let Some(attribute_prototype_id) =
-                AttributePrototype::find_for_input_socket(ctx, input_socket_id).await?
+                AttributePrototype::find_for_input_socket(ctx, input_socket_id)
+                    .await
+                    .map_err(Box::new)?
             {
-                let func_id = AttributePrototype::func_id(ctx, attribute_prototype_id).await?;
+                let func_id = AttributePrototype::func_id(ctx, attribute_prototype_id)
+                    .await
+                    .map_err(Box::new)?;
                 all_func_ids.insert(func_id);
             }
         }

@@ -1,4 +1,5 @@
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 use si_events::{
     workspace_snapshot::{Checksum, ChecksumHasher, EntityKind},
     Timestamp,
