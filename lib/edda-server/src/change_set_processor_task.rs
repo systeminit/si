@@ -34,6 +34,8 @@ use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use self::app_state::AppState;
 use crate::ServerMetadata;
 
+mod materialized_view;
+
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub(crate) enum ChangeSetProcessorTaskError {
@@ -271,21 +273,23 @@ async fn graceful_shutdown_signal(
 mod handlers {
     use std::result;
 
-    use edda_core::api_types::update_request::UpdateRequest;
     use naxum::{
         extract::State,
         response::{IntoResponse, Response},
     };
+    use si_events::change_batch::ChangeBatchAddress;
     use telemetry::prelude::*;
     use telemetry_utils::metric;
     use thiserror::Error;
 
-    use super::app_state::AppState;
-    use crate::extract::ApiTypesNegotiate;
+    use super::{app_state::AppState, materialized_view};
+    use crate::extract::{ApiTypesNegotiate, EddaRequestKind};
 
     #[remain::sorted]
     #[derive(Debug, Error)]
     pub(crate) enum HandlerError {
+        #[error("change batch not found: {0}")]
+        ChangeBatchNotFound(ChangeBatchAddress),
         /// Failures related to ChangeSets
         #[error("Change set error: {0}")]
         ChangeSet(#[from] dal::ChangeSetError),
@@ -294,6 +298,12 @@ mod handlers {
         /// When failing to create a DAL context
         #[error("error creating a dal ctx: {0}")]
         DalTransactions(#[from] dal::TransactionsError),
+        #[error("frigg error: {0}")]
+        Frigg(#[from] frigg::Error),
+        #[error("layerdb error: {0}")]
+        LayerDb(#[from] si_layer_cache::LayerDbError),
+        #[error("materialized view error: {0}")]
+        MaterializedView(#[from] materialized_view::MaterializedViewError),
         /// When failing to find the workspace
         #[error("workspace error: {0}")]
         Workspace(#[from] dal::WorkspaceError),
@@ -304,8 +314,6 @@ mod handlers {
         #[error("failed to construct ws event: {0}")]
         WsEvent(#[from] dal::WsEventError),
     }
-
-    type Error = HandlerError;
 
     type Result<T> = result::Result<T, HandlerError>;
 
@@ -320,17 +328,17 @@ mod handlers {
 
     pub(crate) async fn default(
         State(state): State<AppState>,
-        ApiTypesNegotiate(_request): ApiTypesNegotiate<UpdateRequest>,
+        ApiTypesNegotiate(request): ApiTypesNegotiate,
     ) -> Result<()> {
         let AppState {
             workspace_id,
             change_set_id,
             nats: _,
-            frigg: _,
+            frigg,
             ctx_builder,
             server_tracker: _,
         } = state;
-        let mut _ctx = ctx_builder
+        let ctx = ctx_builder
             .build_for_change_set_as_system(workspace_id, change_set_id, None)
             .await?;
 
@@ -338,7 +346,52 @@ mod handlers {
         span.record("si.workspace.id", workspace_id.to_string());
         span.record("si.change_set.id", change_set_id.to_string());
 
-        // TODO(fnichol): guess what? edda process request request logic goes here!
+        match request {
+            EddaRequestKind::Update(update_request)
+                if frigg
+                    .get_index(workspace_id, change_set_id)
+                    .await?
+                    .is_some()
+                    && ctx.workspace_snapshot()?.id().await
+                        == update_request.to_snapshot_address =>
+            {
+                let change_batch = ctx
+                    .layer_db()
+                    .change_batch()
+                    .read_wait_for_memory(&update_request.change_batch_address)
+                    .await?
+                    .ok_or(HandlerError::ChangeBatchNotFound(
+                        update_request.change_batch_address,
+                    ))?;
+
+                materialized_view::build_mv_for_changes_in_change_set(
+                    &ctx,
+                    &frigg,
+                    change_set_id,
+                    update_request.from_snapshot_address,
+                    update_request.to_snapshot_address,
+                    change_batch.changes(),
+                )
+                .instrument(tracing::info_span!("Build materialized views for changes"))
+                .await?;
+                return Ok(());
+            }
+            EddaRequestKind::Update(update_request)
+                if ctx.workspace_snapshot()?.id().await != update_request.to_snapshot_address =>
+            {
+                info!("Workspace snapshot moved; rebuild of all materialized views");
+            }
+            EddaRequestKind::Update(_) => {
+                info!("No frigg index found; initial build of all materialized views")
+            }
+            EddaRequestKind::Rebuild(_) => {
+                info!("Explicit rebuild of all materialized views")
+            }
+        }
+
+        materialized_view::build_all_mv_for_change_set(&ctx, &frigg)
+            .instrument(tracing::info_span!("Rebuild of all materialized views"))
+            .await?;
 
         Ok(())
     }
@@ -361,6 +414,7 @@ mod app_state {
         /// Change set ID for the task
         pub(crate) change_set_id: ChangeSetId,
         /// NATS client
+        #[allow(dead_code)]
         pub(crate) nats: NatsClient,
         /// Frigg store
         pub(crate) frigg: FriggStore,
@@ -368,6 +422,7 @@ mod app_state {
         pub(crate) ctx_builder: DalContextBuilder,
         /// A task tracker for server-level tasks that can outlive the lifetime of a change set
         /// processor task
+        #[allow(dead_code)]
         pub(crate) server_tracker: TaskTracker,
     }
 

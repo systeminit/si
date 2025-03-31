@@ -14,6 +14,7 @@ audit-database = { path = "../../lib/audit-database" }
 auth-api-client = { path = "../../lib/auth-api-client" }
 buck2-resources = { path = "../../lib/buck2-resources" }
 dal = { path = "../../lib/dal" }
+edda-client = { path = "../../lib/edda-client" }
 frigg = { path = "../../lib/frigg" }
 module-index-client = { path = "../../lib/module-index-client" }
 nats-multiplexer = { path = "../../lib/nats-multiplexer" }

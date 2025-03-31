@@ -4,6 +4,7 @@ use asset_sprayer::AssetSprayer;
 use audit_database::AuditDatabaseContext;
 use axum::Router;
 use dal::ServicesContext;
+use edda_client::EddaClient;
 use frigg::FriggStore;
 use nats_multiplexer_client::MultiplexerClient;
 use si_data_spicedb::SpiceDbClient;
@@ -41,6 +42,7 @@ impl AxumApp {
         spicedb_client: Option<SpiceDbClient>,
         frigg: FriggStore,
         audit_database_context: AuditDatabaseContext,
+        edda_client: EddaClient,
     ) -> Self {
         Self::inner_from_services(
             services_context,
@@ -59,6 +61,7 @@ impl AxumApp {
             spicedb_client,
             frigg,
             audit_database_context,
+            edda_client,
         )
     }
 
@@ -85,6 +88,7 @@ impl AxumApp {
         spicedb_client: SpiceDbClient,
         frigg: FriggStore,
         audit_database_context: AuditDatabaseContext,
+        edda_client: EddaClient,
     ) -> Self {
         Self::inner_from_services(
             services_context,
@@ -103,6 +107,7 @@ impl AxumApp {
             Some(spicedb_client),
             frigg,
             audit_database_context,
+            edda_client,
         )
     }
 
@@ -128,6 +133,7 @@ impl AxumApp {
         spicedb_client: Option<SpiceDbClient>,
         frigg: FriggStore,
         audit_database_context: AuditDatabaseContext,
+        edda_client: EddaClient,
     ) -> Self {
         let state = AppState::new(
             services_context,
@@ -146,6 +152,7 @@ impl AxumApp {
             spicedb_client,
             frigg,
             audit_database_context,
+            edda_client,
         );
 
         let path_filter = Box::new(|path: &str| match path {

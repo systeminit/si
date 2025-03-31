@@ -2,8 +2,7 @@ use std::sync::Arc;
 
 use serde::{de::DeserializeOwned, Serialize};
 use si_data_nats::NatsClient;
-use si_events::{FuncRun, FuncRunLog};
-use strum::{AsRefStr, EnumString};
+use si_events::{change_batch::ChangeBatch, FuncRun, FuncRunLog};
 use telemetry::prelude::*;
 use tokio::sync::mpsc::UnboundedReceiver;
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
@@ -14,17 +13,6 @@ use crate::{
     event::{LayeredEvent, LayeredEventServer},
     layer_cache::LayerCache,
 };
-
-#[remain::sorted]
-#[derive(Copy, Clone, Debug, EnumString, AsRefStr)]
-#[strum(serialize_all = "snake_case")]
-enum CacheName {
-    Cas,
-    EncryptedSecret,
-    FuncRun,
-    FuncRunLog,
-    WorkspaceSnapshots,
-}
 
 pub struct CacheUpdatesTask<
     CasValue,
@@ -38,6 +26,7 @@ pub struct CacheUpdatesTask<
     RebaseBatchValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
     cas_cache: Arc<LayerCache<Arc<CasValue>>>,
+    change_batch_cache: Arc<LayerCache<Arc<ChangeBatch>>>,
     encrypted_secret_cache: Arc<LayerCache<Arc<EncryptedSecretValue>>>,
     func_run_cache: Arc<LayerCache<Arc<FuncRun>>>,
     func_run_log_cache: Arc<LayerCache<Arc<FuncRunLog>>>,
@@ -63,6 +52,7 @@ where
         instance_id: Ulid,
         nats_client: &NatsClient,
         cas_cache: Arc<LayerCache<Arc<CasValue>>>,
+        change_batch_cache: Arc<LayerCache<Arc<ChangeBatch>>>,
         encrypted_secret_cache: Arc<LayerCache<Arc<EncryptedSecretValue>>>,
         func_run_cache: Arc<LayerCache<Arc<FuncRun>>>,
         func_run_log_cache: Arc<LayerCache<Arc<FuncRunLog>>>,
@@ -79,6 +69,7 @@ where
 
         Ok(Self {
             cas_cache,
+            change_batch_cache,
             encrypted_secret_cache,
             func_run_cache,
             func_run_log_cache,
@@ -108,6 +99,7 @@ where
         while let Some(event) = self.event_channel.recv().await {
             let cache_update_task = CacheUpdateTask::new(
                 self.cas_cache.clone(),
+                self.change_batch_cache.clone(),
                 self.encrypted_secret_cache.clone(),
                 self.func_run_cache.clone(),
                 self.func_run_log_cache.clone(),
@@ -128,6 +120,7 @@ where
     T: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
     cas_cache: Arc<LayerCache<Arc<Q>>>,
+    change_batch_cache: Arc<LayerCache<Arc<ChangeBatch>>>,
     encrypted_secret_cache: Arc<LayerCache<Arc<R>>>,
     func_run_cache: Arc<LayerCache<Arc<FuncRun>>>,
     func_run_log_cache: Arc<LayerCache<Arc<FuncRunLog>>>,
@@ -144,6 +137,7 @@ where
 {
     fn new(
         cas_cache: Arc<LayerCache<Arc<Q>>>,
+        change_batch_cache: Arc<LayerCache<Arc<ChangeBatch>>>,
         encrypted_secret_cache: Arc<LayerCache<Arc<R>>>,
         func_run_cache: Arc<LayerCache<Arc<FuncRun>>>,
         func_run_log_cache: Arc<LayerCache<Arc<FuncRunLog>>>,
@@ -152,6 +146,7 @@ where
     ) -> CacheUpdateTask<Q, R, S, T> {
         CacheUpdateTask {
             cas_cache,
+            change_batch_cache,
             encrypted_secret_cache,
             func_run_cache,
             func_run_log_cache,
@@ -170,6 +165,17 @@ where
                         .insert_from_cache_updates(event.key, serialized_value);
                 }
             }
+            crate::event::LayeredEventKind::ChangeBatchWrite => {
+                if !self.change_batch_cache.contains(&event.key) {
+                    let serialized_value =
+                        Arc::try_unwrap(event.payload.value).unwrap_or_else(|arc| (*arc).clone());
+                    self.change_batch_cache
+                        .insert_from_cache_updates(event.key, serialized_value);
+                }
+            }
+            crate::event::LayeredEventKind::ChangeBatchEvict => {
+                self.change_batch_cache.evict_from_cache_updates(event.key);
+            }
             crate::event::LayeredEventKind::EncryptedSecretInsertion => {
                 if !self.encrypted_secret_cache.contains(&event.key) {
                     let serialized_value =
@@ -177,6 +183,18 @@ where
                     self.encrypted_secret_cache
                         .insert_from_cache_updates(event.key, serialized_value);
                 }
+            }
+            crate::event::LayeredEventKind::FuncRunWrite => {
+                let serialized_value =
+                    Arc::try_unwrap(event.payload.value).unwrap_or_else(|arc| (*arc).clone());
+                self.func_run_cache
+                    .insert_or_update_from_cache_updates(event.key, serialized_value);
+            }
+            crate::event::LayeredEventKind::FuncRunLogWrite => {
+                let serialized_value =
+                    Arc::try_unwrap(event.payload.value).unwrap_or_else(|arc| (*arc).clone());
+                self.func_run_log_cache
+                    .insert_or_update_from_cache_updates(event.key, serialized_value);
             }
             crate::event::LayeredEventKind::Raw => {
                 warn!("Recevied a 'raw' layered event kind - this is for testing only. Bug!");
@@ -193,7 +211,6 @@ where
             crate::event::LayeredEventKind::RebaseBatchEvict => {
                 self.rebase_batch_cache.evict_from_cache_updates(event.key);
             }
-
             crate::event::LayeredEventKind::SnapshotWrite => {
                 if !self.snapshot_cache.contains(&event.key) {
                     let serialized_value =
@@ -204,18 +221,6 @@ where
             }
             crate::event::LayeredEventKind::SnapshotEvict => {
                 self.snapshot_cache.evict_from_cache_updates(event.key);
-            }
-            crate::event::LayeredEventKind::FuncRunWrite => {
-                let serialized_value =
-                    Arc::try_unwrap(event.payload.value).unwrap_or_else(|arc| (*arc).clone());
-                self.func_run_cache
-                    .insert_or_update_from_cache_updates(event.key, serialized_value);
-            }
-            crate::event::LayeredEventKind::FuncRunLogWrite => {
-                let serialized_value =
-                    Arc::try_unwrap(event.payload.value).unwrap_or_else(|arc| (*arc).clone());
-                self.func_run_log_cache
-                    .insert_or_update_from_cache_updates(event.key, serialized_value);
             }
         }
 

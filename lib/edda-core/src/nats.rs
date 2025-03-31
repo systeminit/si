@@ -90,7 +90,7 @@ pub mod subject {
     }
 
     #[inline]
-    pub fn update_for_change_set(
+    pub fn request_for_change_set(
         prefix: Option<&str>,
         workspace_id: &str,
         change_set_id: &str,

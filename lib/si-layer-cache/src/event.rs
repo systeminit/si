@@ -68,6 +68,8 @@ pub use si_id::LayeredEventId;
 #[strum(serialize_all = "snake_case")]
 pub enum LayeredEventKind {
     CasInsertion,
+    ChangeBatchEvict,
+    ChangeBatchWrite,
     EncryptedSecretInsertion,
     FuncRunLogWrite,
     FuncRunWrite,

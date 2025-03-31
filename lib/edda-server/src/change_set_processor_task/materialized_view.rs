@@ -1,12 +1,14 @@
-// TODO(fnichol): this module can be moved into lib/edaa-server
-
 use std::collections::HashSet;
 
-use frigg::{Error as FriggError, FriggStore, KvRevision};
-use si_events::{
-    workspace_snapshot::{Change, Checksum},
-    WorkspaceSnapshotAddress,
+use dal::{
+    data_cache::{DataCache, DataCacheError},
+    dependency_graph::DependencyGraph,
+    diagram::DiagramError,
+    DalContext, SchemaVariantError, TransactionsError, WorkspaceSnapshotError,
 };
+use frigg::{FriggError, FriggStore};
+use si_events::workspace_snapshot::Checksum;
+use si_events::{workspace_snapshot::Change, WorkspaceSnapshotAddress};
 use si_frontend_types::{
     index::MvIndex,
     object::{
@@ -14,6 +16,7 @@ use si_frontend_types::{
         FrontendObject,
     },
     reference::{IndexReference, ReferenceKind},
+    schema_variant::SchemaVariantCategories as SchemaVariantCategoriesMv,
     view::{View as ViewMv, ViewList as ViewListMv},
     MaterializedView,
 };
@@ -21,13 +24,6 @@ use si_id::{ChangeSetId, WorkspacePk};
 use strum::IntoEnumIterator;
 use telemetry::prelude::*;
 use thiserror::Error;
-
-use crate::{
-    data_cache::{DataCache, DataCacheError},
-    dependency_graph::DependencyGraph,
-    diagram::DiagramError,
-    DalContext, SchemaVariantError, TransactionsError, WorkspaceSnapshotError,
-};
 
 #[derive(Debug, Error)]
 pub enum MaterializedViewError {
@@ -52,10 +48,6 @@ pub enum MaterializedViewError {
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
 
-// TODO(fnichol): can be moved into lib/edda-server, currently called from:
-// - lib/rebaser-server
-// - lib/sdf-server
-//
 /// This function builds all Materialized Views (MVs) for the change set in the [`DalContext`].
 /// It assumes there is no existing [`MvIndex`] for the change set.
 #[instrument(
@@ -71,75 +63,6 @@ pub async fn build_all_mv_for_change_set(
     ctx: &DalContext,
     frigg: &FriggStore,
 ) -> Result<(), MaterializedViewError> {
-    let span = current_span_for_instrument_at!("debug");
-    span.record("si.workspace.id", ctx.workspace_pk()?.to_string());
-
-    let mv_index_frontend_object = build_all_mv_for_change_set_inner(ctx, frigg).await?;
-
-    // This will fail if the index has already been created by something else.
-    if let Err(error) = frigg
-        .insert_index(ctx.workspace_pk()?, &mv_index_frontend_object)
-        .await
-    {
-        warn!(
-            "Problem updating MvIndex pointer for change set {}, skipping patch batch publish: {:?}",
-            ctx.change_set_id(),
-            error,
-        );
-        return Ok(());
-    }
-
-    Ok(())
-}
-
-/// This function builds all Materialized Views (MVs) for the change set in the [`DalContext`].
-/// It assumes that there is an [`MvIndex`] for the change set.
-///
-/// If you are unsure what to use, look at [`build_all_mv_for_change_set`] and
-/// [`build_mv_for_changes_in_change_set`] instead.
-#[instrument(
-    name = "materialized_view.build_all_mv_for_change_set_and_existing_index",
-    level = "debug",
-    skip_all,
-    fields(
-        si.workspace.id = Empty,
-        si.change_set.id = %ctx.change_set_id(),
-    ),
-)]
-pub async fn build_all_mv_for_change_set_and_existing_index(
-    ctx: &DalContext,
-    frigg: &FriggStore,
-    kv_revision_for_existing_index: KvRevision,
-) -> Result<(), MaterializedViewError> {
-    let span = current_span_for_instrument_at!("debug");
-    span.record("si.workspace.id", ctx.workspace_pk()?.to_string());
-
-    let mv_index_frontend_object = build_all_mv_for_change_set_inner(ctx, frigg).await?;
-
-    frigg
-        .update_index(
-            ctx.workspace_pk()?,
-            &mv_index_frontend_object,
-            kv_revision_for_existing_index,
-        )
-        .await?;
-
-    Ok(())
-}
-
-#[instrument(
-    name = "materialized_view.build_all_mv_for_change_set_inner",
-    level = "debug",
-    skip_all,
-    fields(
-        si.workspace.id = Empty,
-        si.change_set.id = %ctx.change_set_id(),
-    ),
-)]
-async fn build_all_mv_for_change_set_inner(
-    ctx: &DalContext,
-    frigg: &FriggStore,
-) -> Result<FrontendObject, MaterializedViewError> {
     let span = current_span_for_instrument_at!("debug");
     span.record("si.workspace.id", ctx.workspace_pk()?.to_string());
 
@@ -178,15 +101,17 @@ async fn build_all_mv_for_change_set_inner(
         patches,
     };
 
+    frigg
+        .put_index(ctx.workspace_pk()?, &mv_index_frontend_object)
+        .await?;
+
     DataCache::publish_patch_batch(ctx, patch_batch)
         .instrument(tracing::info_span!("Publishing patch batch"))
         .await?;
 
-    Ok(mv_index_frontend_object)
+    Ok(())
 }
 
-// TODO(fnichol): can be moved into lib/edda-server, currently called from:
-// - lib/rebaser-server
 #[instrument(
     name = "materialized_view.build_mv_for_changes_in_change_set",
     level = "debug",
@@ -316,7 +241,7 @@ async fn build_mv_inner(
                                 change,
                                 mv_id,
                                 si_frontend_types::view::View,
-                                crate::diagram::view::View::as_frontend_type(
+                                dal::diagram::view::View::as_frontend_type(
                                     ctx,
                                     si_events::ulid::Ulid::from(change.entity_id).into()
                                 )
@@ -341,7 +266,7 @@ async fn build_mv_inner(
                                 change,
                                 mv_id,
                                 si_frontend_types::view::ViewList,
-                                crate::diagram::view::View::as_frontend_list_type(ctx).await,
+                                dal::diagram::view::View::as_frontend_list_type(ctx).await,
                             )
                             .await?;
 
@@ -362,7 +287,7 @@ async fn build_mv_inner(
                                 change,
                                 mv_id,
                                 si_frontend_types::schema_variant::SchemaVariantCategories,
-                                crate::schema::variant::SchemaVariant::as_frontend_list_type_by_category(
+                                dal::schema::variant::SchemaVariant::as_frontend_list_type_by_category(
                                     ctx
                                 )
                                 .await,
@@ -418,6 +343,11 @@ fn mv_dependency_graph() -> Result<DependencyGraph<ReferenceKind>, MaterializedV
         dependency_graph,
         ReferenceKind::ViewList,
         ViewListMv,
+    );
+    add_reference_dependencies_to_dependency_graph!(
+        dependency_graph,
+        ReferenceKind::SchemaVariantCategories,
+        SchemaVariantCategoriesMv,
     );
 
     // The MvIndex depends on everything else, but doesn't define any

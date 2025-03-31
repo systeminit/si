@@ -8,6 +8,7 @@ rust_library(
         "//lib/si-events-rs:si-events",
         "//lib/telemetry-nats-rs:telemetry-nats",
         "//lib/telemetry-rs:telemetry",
+        "//third-party/rust:bytes",
         "//third-party/rust:futures",
         "//third-party/rust:remain",
         "//third-party/rust:thiserror",

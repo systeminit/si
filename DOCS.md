@@ -428,10 +428,10 @@ Then, it pipes that output into `buck2 build`.
 ## How do I build all runnable services written in Rust with `buck2`?
 
 If you intend to run these services with optimial performance, you need to build with release mode.
-Here is an example building `sdf`, `pinga`, `veritech`, `rebaser` and `forklift` from the repository root:
+Here is an example building `sdf`, `pinga`, `veritech`, `rebaser`, `forklift` and `edda` from the repository root:
 
 ```shell
-buck2 build @//mode/release bin/sdf bin/pinga bin/veritech bin/rebaser bin/forklift
+buck2 build @//mode/release bin/sdf bin/pinga bin/veritech bin/rebaser bin/forklift bin/edda
 ```
 
 ## What are modes used in `buck2` builds?
@@ -722,6 +722,7 @@ aforementioned action(s) without spending too much time thinking about them.
 
 This section contains the paths and brief definitions of the services that run in the System Initiative software stack.
 
+- **[edda](bin/edda/):** builds materialized views of graph-based objects for the frontend
 - **[forklift](bin/forklift/):** the service that forklifts data from SI to a data warehouse (or perform an "ack and no-op")
 - **[pinga](bin/pinga/):** the job queueing and execution service used to execute non-trivial jobs
 - **[rebaser](bin/rebaser/):** where all workspace-level changes are persisted and conflicts are detected based on proposed changes

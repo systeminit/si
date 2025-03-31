@@ -27,7 +27,6 @@
     while_true
 )]
 
-use frigg::FriggError;
 use thiserror::Error;
 
 mod app_state;
@@ -66,6 +65,9 @@ pub enum ServerError {
     /// When a database pool error occurs
     #[error("dal pg pool error: {0}")]
     DalPgPool(#[source] Box<si_data_pg::PgPoolError>),
+    /// When an error is returned from the edda client
+    #[error("edda client error: {0}")]
+    EddaClient(#[from] edda_client::ClientError),
     /// When failing to create or fetch a Jetstream consumer
     #[error("jetstream consumer error: {0}")]
     JsConsumer(#[from] si_data_nats::async_nats::jetstream::stream::ConsumerError),
@@ -75,9 +77,6 @@ pub enum ServerError {
     /// When failing to create a Jetstream stream
     #[error("stream create error: {0}")]
     JsCreateStreamError(#[from] si_data_nats::async_nats::jetstream::context::CreateStreamError),
-    /// When we fail to create or fetch a jetstream k/v store
-    #[error("kv store error: {0}")]
-    KvStore(#[from] FriggError),
     /// When a LayerDb error occurs
     #[error("layer db error: {0}")]
     LayerDb(#[from] si_layer_cache::LayerDbError),

@@ -1,7 +1,9 @@
 use std::result;
 
+use bytes::Bytes;
 use edda_core::{
     api_types::{
+        rebuild_request::{RebuildRequest, RebuildRequestVCurrent},
         update_request::{UpdateRequest, UpdateRequestVCurrent},
         ApiWrapper, ContentInfo, DeserializeError, HeaderMapParseMessageInfoError, RequestId,
         SerializeError, UpgradeError,
@@ -14,7 +16,9 @@ use si_data_nats::{
     jetstream::{self, Context},
     HeaderMap, NatsClient,
 };
-use si_events::{ChangeSetId, WorkspacePk, WorkspaceSnapshotAddress};
+use si_events::{
+    change_batch::ChangeBatchAddress, ChangeSetId, WorkspacePk, WorkspaceSnapshotAddress,
+};
 use telemetry_nats::propagation;
 use thiserror::Error;
 
@@ -72,33 +76,70 @@ impl Client {
     }
 
     /// Asynchronously request an index update from a workspace past snapshot to the current
-    /// snapshot & return a [`RequetId`].
+    /// snapshot & return a [`RequestId`].
     pub async fn update_from_workspace_snapshot(
         &self,
         workspace_id: WorkspacePk,
         change_set_id: ChangeSetId,
         from_snapshot_address: WorkspaceSnapshotAddress,
+        to_snapshot_address: WorkspaceSnapshotAddress,
+        change_batch_address: ChangeBatchAddress,
     ) -> Result<RequestId> {
         let id = RequestId::new();
-
         let request = UpdateRequest::new_current(UpdateRequestVCurrent {
             id,
+            from_snapshot_address,
+            to_snapshot_address,
+            change_batch_address,
+        });
+        let info = ContentInfo::from(&request);
+
+        self.publish_inner(
             workspace_id,
             change_set_id,
-            from_snapshot_address: Some(from_snapshot_address),
-        });
+            id,
+            request.to_vec()?.into(),
+            info,
+        )
+        .await
+    }
 
+    pub async fn rebuild_for_change_set(
+        &self,
+        workspace_id: WorkspacePk,
+        change_set_id: ChangeSetId,
+    ) -> Result<RequestId> {
+        let id = RequestId::new();
+        let request = RebuildRequest::new_current(RebuildRequestVCurrent { id });
+        let info = ContentInfo::from(&request);
+
+        self.publish_inner(
+            workspace_id,
+            change_set_id,
+            id,
+            request.to_vec()?.into(),
+            info,
+        )
+        .await
+    }
+
+    async fn publish_inner(
+        &self,
+        workspace_id: WorkspacePk,
+        change_set_id: ChangeSetId,
+        id: RequestId,
+        payload: Bytes,
+        info: ContentInfo<'_>,
+    ) -> Result<RequestId> {
         // Cut down on the amount of `String` allocations dealing with ids
         let mut wid_buf = [0; WorkspacePk::ID_LEN];
         let mut csid_buf = [0; ChangeSetId::ID_LEN];
 
-        let requests_subject = nats::subject::update_for_change_set(
+        let requests_subject = nats::subject::request_for_change_set(
             self.context.metadata().subject_prefix(),
             workspace_id.array_to_str(&mut wid_buf),
             change_set_id.array_to_str(&mut csid_buf),
         );
-
-        let info = ContentInfo::from(&request);
 
         let mut headers = HeaderMap::new();
         propagation::inject_headers(&mut headers);
@@ -106,7 +147,7 @@ impl Client {
         headers.insert(header::NATS_MESSAGE_ID, id.to_string());
 
         self.context
-            .publish_with_headers(requests_subject, headers, request.to_vec()?.into())
+            .publish_with_headers(requests_subject, headers, payload)
             .await?
             .await?;
 

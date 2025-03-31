@@ -9,6 +9,7 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
+bytes = { workspace = true }
 edda-core = { path = "../../lib/edda-core" }
 futures = { workspace = true }
 remain = { workspace = true }

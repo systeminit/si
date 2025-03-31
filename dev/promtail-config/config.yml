@@ -37,3 +37,8 @@ scrape_configs:
     labels:
       job: forklift
       __path__: /logs/forklift
+  - targets:
+      - localhost
+    labels:
+      job: edda
+      __path__: /logs/edda

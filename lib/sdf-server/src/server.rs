@@ -4,6 +4,7 @@ use asset_sprayer::AssetSprayer;
 use audit_database::AuditDatabaseContext;
 use axum::{async_trait, routing::IntoMakeService, Router};
 use dal::ServicesContext;
+use edda_client::EddaClient;
 use frigg::{frigg_kv, FriggStore};
 use hyper::server::accept::Accept;
 use nats_multiplexer::Multiplexer;
@@ -154,6 +155,9 @@ impl Server {
 
         let audit_database_context = AuditDatabaseContext::from_config(config.audit()).await?;
 
+        let edda_client =
+            edda_client::EddaClient::new(services_context.nats_conn().clone()).await?;
+
         Self::from_services(
             config.instance_id().to_string(),
             config.incoming_stream().clone(),
@@ -172,6 +176,7 @@ impl Server {
             spicedb_client,
             frigg,
             audit_database_context,
+            edda_client,
         )
         .await
     }
@@ -196,6 +201,7 @@ impl Server {
         spicedb_client: Option<SpiceDbClient>,
         frigg: FriggStore,
         audit_database_context: AuditDatabaseContext,
+        edda_client: EddaClient,
     ) -> ServerResult<Self> {
         let app = AxumApp::from_services(
             services_context.clone(),
@@ -212,8 +218,8 @@ impl Server {
             token.clone(),
             spicedb_client,
             frigg,
-            // TODO(nick): split the migrator context and the reader-only context (should be read-only pg pool).
             audit_database_context.clone(),
+            edda_client,
         )
         .into_inner();
 

@@ -328,6 +328,8 @@
             '';
           };
 
+          edda = binDerivation {pkgName = "edda";};
+
           forklift = binDerivation {pkgName = "forklift";};
 
           module-index = binDerivation {pkgName = "module-index";};

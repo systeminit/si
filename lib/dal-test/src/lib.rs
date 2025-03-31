@@ -714,6 +714,7 @@ pub async fn edda_server(
         config.instance_id(),
         config.concurrency_limit(),
         services_context,
+        config.quiescent_period(),
         shutdown_token,
     )
     .await

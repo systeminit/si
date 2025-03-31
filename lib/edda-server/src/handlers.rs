@@ -89,11 +89,11 @@ pub(crate) async fn default(State(state): State<AppState>, subject: Subject) -> 
     let (workspace, change_set) = parse_subject(subject_prefix, subject_str)?;
 
     let requests_stream_filter_subject =
-        nats::subject::update_for_change_set(subject_prefix, workspace.str, change_set.str);
+        nats::subject::request_for_change_set(subject_prefix, workspace.str, change_set.str);
 
     let tracker = TaskTracker::new();
 
-    // We want to indendently control the lifecyle of our tasks
+    // We want to independently control the lifecyle of our tasks
     let tasks_token = CancellationToken::new();
 
     let quiesced_token = CancellationToken::new();

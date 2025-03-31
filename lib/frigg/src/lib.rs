@@ -8,7 +8,7 @@ use si_data_nats::{
         jetstream::{
             consumer::{push::OrderedConfig, StreamError},
             context::RequestError,
-            kv,
+            kv::{self, Watch},
             stream::ConsumerError,
         },
     },
@@ -285,6 +285,38 @@ impl FriggStore {
         Ok(new_revision.into())
     }
 
+    /// Put a new `MvIndex` into the store, and update the associated index pointer to refer
+    /// to the newly inserted `MvIndex`.
+    ///
+    /// Will NOT fail if the index pointer already exists.
+    #[instrument(
+        name = "frigg.put_index",
+        level = "debug",
+        skip_all,
+        fields(
+            si.workspace.id = %workspace_id,
+            si.frontend_object.id = %object.id,
+            si.frontend_object.kind = %object.kind,
+            si.frontend_object.checksum = %object.checksum,
+        )
+    )]
+    pub async fn put_index(
+        &self,
+        workspace_id: WorkspacePk,
+        object: &FrontendObject,
+    ) -> Result<KvRevision> {
+        let (index_object_key, index_pointer_key) = self
+            .insert_or_update_index_preamble(workspace_id, object)
+            .await?;
+
+        let new_revision = self
+            .store
+            .put(index_pointer_key, index_object_key.into_string().into())
+            .await?;
+
+        Ok(new_revision.into())
+    }
+
     #[instrument(
         name = "frigg.get_index",
         level = "debug",
@@ -314,6 +346,27 @@ impl FriggStore {
         let object = serde_json::from_slice(bytes.as_ref()).map_err(Error::Deserialize)?;
 
         Ok(Some((object, revision)))
+    }
+
+    #[instrument(
+        name = "frigg.watch_index",
+        level = "debug",
+        skip_all,
+        fields(
+            si.workspace.id = %workspace_id,
+            si.change_set.id = %change_set_id,
+        )
+    )]
+    pub async fn watch_index(
+        &self,
+        workspace_id: WorkspacePk,
+        change_set_id: ChangeSetId,
+    ) -> Result<Watch> {
+        let index_pointer_key = Self::index_key(workspace_id, &change_set_id.to_string());
+        self.store
+            .watch(index_pointer_key)
+            .await
+            .map_err(Into::into)
     }
 
     #[instrument(

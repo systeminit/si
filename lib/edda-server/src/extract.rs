@@ -4,14 +4,18 @@
 //! These should not be extracted into Naxum itself as the extractors related to custom ways we are
 //! using headers.
 
+use bytes::Bytes;
+use edda_core::{
+    api_types::{
+        rebuild_request::RebuildRequest, update_request::UpdateRequest, ApiVersionsWrapper,
+        ApiWrapper,
+    },
+    nats,
+};
 use naxum::{
     async_trait, composite_rejection, define_rejection,
     extract::{FromMessage, FromMessageHead},
     Head, Message, MessageHead,
-};
-use edda_core::{
-    api_types::{ApiVersionsWrapper, ApiWrapper},
-    nats,
 };
 use si_data_nats::Subject;
 use telemetry::prelude::*;
@@ -79,7 +83,7 @@ composite_rejection! {
     }
 }
 
-/// An extractor for [`rebaser_core::api_types::ContentInfo`].
+/// An extractor for [`edda_core::api_types::ContentInfo`].
 #[derive(Debug)]
 pub struct ContentInfo(pub edda_core::api_types::ContentInfo<'static>);
 
@@ -155,15 +159,20 @@ composite_rejection! {
     }
 }
 
-/// An extractor which determines the type, versioning, and serialization of a API message.
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum EddaRequestKind {
+    Update(UpdateRequest),
+    Rebuild(RebuildRequest),
+}
+
+/// An extractor which determines the type, versioning, and serialization of a API message for edda.
+#[derive(Clone, Debug)]
 #[must_use]
-pub struct ApiTypesNegotiate<T>(pub T);
+pub struct ApiTypesNegotiate(pub EddaRequestKind);
 
 #[async_trait]
-impl<T, S, R> FromMessage<S, R> for ApiTypesNegotiate<T>
+impl<S, R> FromMessage<S, R> for ApiTypesNegotiate
 where
-    T: ApiWrapper,
     R: MessageHead + Send + 'static,
     S: Send + Sync,
 {
@@ -173,23 +182,42 @@ where
         let (mut head, payload) = req.into_parts();
         let ContentInfo(content_info) = ContentInfo::from_message_head(&mut head, state).await?;
 
-        if !T::is_content_type_supported(content_info.content_type.as_str()) {
-            return Err(UnsupportedContentTypeError.into());
-        }
-        if !T::is_message_type_supported(content_info.message_type.as_str()) {
-            return Err(UnsupportedMessageTypeError.into());
-        }
-        if !T::is_message_version_supported(content_info.message_version.as_u64()) {
-            return Err(UnsupportedMessageVersionError.into());
-        }
+        let api_type = match content_info.message_type.as_str() {
+            <UpdateRequest as ApiWrapper>::MESSAGE_TYPE => {
+                EddaRequestKind::Update(negotiate(content_info, &payload).await?)
+            }
+            <RebuildRequest as ApiWrapper>::MESSAGE_TYPE => {
+                EddaRequestKind::Rebuild(negotiate(content_info, &payload).await?)
+            }
+            _ => return Err(UnsupportedContentTypeError.into()),
+        };
 
-        let deserialized_versions = T::from_slice(content_info.content_type.as_str(), &payload)
-            .map_err(DeserializeError::from_err)?;
-        let current_version = deserialized_versions
-            .into_current_version()
-            .map_err(MessageUpgradeError::from_err)?;
-
-        Ok(Self(current_version))
+        Ok(Self(api_type))
     }
 }
 
+async fn negotiate<T>(
+    content_info: edda_core::api_types::ContentInfo<'_>,
+    payload: &Bytes,
+) -> Result<T, ApiTypesNegotiateRejection>
+where
+    T: ApiWrapper,
+{
+    if !T::is_content_type_supported(content_info.content_type.as_str()) {
+        return Err(UnsupportedContentTypeError.into());
+    }
+    if !T::is_message_type_supported(content_info.message_type.as_str()) {
+        return Err(UnsupportedMessageTypeError.into());
+    }
+    if !T::is_message_version_supported(content_info.message_version.as_u64()) {
+        return Err(UnsupportedMessageVersionError.into());
+    }
+
+    let deserialized_versions = T::from_slice(content_info.content_type.as_str(), payload)
+        .map_err(DeserializeError::from_err)?;
+    let current_version = deserialized_versions
+        .into_current_version()
+        .map_err(MessageUpgradeError::from_err)?;
+
+    Ok(current_version)
+}

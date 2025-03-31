@@ -1,3 +1,4 @@
+use change_batch::ChangeBatchDb;
 use serde::Deserialize;
 use si_data_pg::PgPoolConfig;
 use si_runtime::DedicatedExecutor;
@@ -31,6 +32,7 @@ use self::{
 
 mod cache_updates;
 pub mod cas;
+pub mod change_batch;
 pub mod encrypted_secret;
 pub mod func_run;
 pub mod func_run_log;
@@ -47,6 +49,7 @@ where
     RebaseBatchValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
     cas: CasDb<CasValue>,
+    change_batch: ChangeBatchDb,
     encrypted_secret: EncryptedSecretDb<EncryptedSecretValue>,
     func_run: FuncRunDb,
     func_run_log: FuncRunLogDb,
@@ -103,6 +106,7 @@ where
 
         let (
             cas_cache,
+            change_batch_cache,
             encrypted_secret_cache,
             func_run_cache,
             func_run_log_cache,
@@ -116,8 +120,18 @@ where
                 compute_executor.clone(),
                 tracker.clone(),
                 token.clone(),
-                30,
-                30
+                25,
+                25
+            ),
+            create_layer_cache(
+                change_batch::CACHE_NAME,
+                pg_pool.clone(),
+                cache_config.clone(),
+                compute_executor.clone(),
+                tracker.clone(),
+                token.clone(),
+                5,
+                5
             ),
             create_layer_cache(
                 encrypted_secret::CACHE_NAME,
@@ -175,6 +189,7 @@ where
             instance_id,
             &nats_client,
             cas_cache.clone(),
+            change_batch_cache.clone(),
             encrypted_secret_cache.clone(),
             func_run_cache.clone(),
             func_run_log_cache.clone(),
@@ -196,6 +211,7 @@ where
         tracker.spawn(persister_task.run());
 
         let cas = CasDb::new(cas_cache, persister_client.clone());
+        let change_batch = ChangeBatchDb::new(change_batch_cache, persister_client.clone());
         let encrypted_secret =
             EncryptedSecretDb::new(encrypted_secret_cache, persister_client.clone());
         let func_run = FuncRunDb::new(func_run_cache, persister_client.clone());
@@ -209,6 +225,7 @@ where
         let layerdb = LayerDb {
             activity,
             cas,
+            change_batch,
             encrypted_secret,
             func_run,
             func_run_log,
@@ -237,6 +254,10 @@ where
 
     pub fn cas(&self) -> &CasDb<CasValue> {
         &self.cas
+    }
+
+    pub fn change_batch(&self) -> &ChangeBatchDb {
+        &self.change_batch
     }
 
     pub fn encrypted_secret(&self) -> &EncryptedSecretDb<EncryptedSecretValue> {
