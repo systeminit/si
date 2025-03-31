@@ -103,7 +103,7 @@ where
         &self,
         key: &WorkspaceSnapshotAddress,
     ) -> LayerDbResult<Option<Arc<V>>> {
-        let span = current_span_for_instrument_at!("info");
+        let span = current_span_for_instrument_at!("debug");
 
         let key: Arc<str> = key.to_string().into();
         const MAX_TRIES: i32 = 2000;
