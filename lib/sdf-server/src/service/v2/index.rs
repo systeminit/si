@@ -93,14 +93,20 @@ pub async fn get_change_set_index(
             let mv_index: MvIndex = serde_json::from_value(index.data.to_owned())
                 .map_err(IndexError::DeserializingMvIndexData)?;
 
-            let mut implemented_kinds = HashSet::new();
-            for index_ref in mv_index.mv_list {
-                let kind = ReferenceKind::try_from(index_ref.kind.as_str())
-                    .map_err(IndexError::InvalidStringForReferenceKind)?;
-                if kind.is_revision_sensitive() {
-                    implemented_kinds.insert(kind);
+            // NOTE(nick,jacob): even though this is moving to "edda", let's trace this to ensure
+            // that this stopgap solution does not bog the system down.
+            let span = info_span!("sdf.index.get_change_set_index.implemented_kinds");
+            let implemented_kinds = span.in_scope(|| {
+                let mut implemented_kinds = HashSet::new();
+                for index_ref in mv_index.mv_list {
+                    let kind = ReferenceKind::try_from(index_ref.kind.as_str())
+                        .map_err(IndexError::InvalidStringForReferenceKind)?;
+                    if kind.is_revision_sensitive() {
+                        implemented_kinds.insert(kind);
+                    }
                 }
-            }
+                IndexResult::Ok(implemented_kinds)
+            })?;
 
             // NOTE(nick): if the existing index's set of reference kinds does not match SDF's, we
             // need to update the index. This is a stop-gap until "edda" comes into play. You can

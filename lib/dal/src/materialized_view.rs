@@ -66,40 +66,7 @@ pub async fn build_all_mv_for_change_set(
     let span = current_span_for_instrument_at!("debug");
     span.record("si.workspace.id", ctx.workspace_pk()?.to_string());
 
-    // Pretend everything has changed, and build all MVs.
-    let changes = ctx
-        .workspace_snapshot()?
-        .map_all_nodes_to_change_objects()
-        .instrument(tracing::info_span!("Generating Changes for all nodes"))
-        .await?;
-
-    let (frontend_objects, patches) = build_mv_inner(
-        ctx,
-        frigg,
-        ctx.workspace_pk()?,
-        ctx.change_set_id(),
-        &changes,
-    )
-    .instrument(tracing::info_span!("Building MVs"))
-    .await?;
-
-    let index_entries = frontend_objects.into_iter().map(Into::into).collect();
-    let mv_index = MvIndex::new(ctx.change_set_id(), index_entries);
-    let mv_index_frontend_object = FrontendObject::try_from(mv_index)?;
-    frigg
-        .insert_object(ctx.workspace_pk()?, &mv_index_frontend_object)
-        .await?;
-
-    let patch_batch = PatchBatch {
-        meta: PatchBatchMeta {
-            workspace_id: ctx.workspace_pk()?,
-            change_set_id: Some(ctx.change_set_id()),
-            snapshot_from_address: None,
-            snapshot_to_address: Some(ctx.workspace_snapshot()?.id().await),
-        },
-        kind: PATCH_BATCH_KIND,
-        patches,
-    };
+    let mv_index_frontend_object = build_all_mv_for_change_set_inner(ctx, frigg).await?;
 
     // This will fail if the index has already been created by something else.
     if let Err(error) = frigg
@@ -113,10 +80,6 @@ pub async fn build_all_mv_for_change_set(
         );
         return Ok(());
     }
-
-    DataCache::publish_patch_batch(ctx, patch_batch)
-        .instrument(tracing::info_span!("Publishing patch batch"))
-        .await?;
 
     Ok(())
 }
@@ -140,6 +103,35 @@ pub async fn build_all_mv_for_change_set_and_existing_index(
     frigg: &FriggStore,
     kv_revision_for_existing_index: KvRevision,
 ) -> Result<(), MaterializedViewError> {
+    let span = current_span_for_instrument_at!("debug");
+    span.record("si.workspace.id", ctx.workspace_pk()?.to_string());
+
+    let mv_index_frontend_object = build_all_mv_for_change_set_inner(ctx, frigg).await?;
+
+    frigg
+        .update_index(
+            ctx.workspace_pk()?,
+            &mv_index_frontend_object,
+            kv_revision_for_existing_index,
+        )
+        .await?;
+
+    Ok(())
+}
+
+#[instrument(
+    name = "materialized_view.build_all_mv_for_change_set_inner",
+    level = "debug",
+    skip_all,
+    fields(
+        si.workspace.id = Empty,
+        si.change_set.id = %ctx.change_set_id(),
+    ),
+)]
+async fn build_all_mv_for_change_set_inner(
+    ctx: &DalContext,
+    frigg: &FriggStore,
+) -> Result<FrontendObject, MaterializedViewError> {
     let span = current_span_for_instrument_at!("debug");
     span.record("si.workspace.id", ctx.workspace_pk()?.to_string());
 
@@ -178,19 +170,11 @@ pub async fn build_all_mv_for_change_set_and_existing_index(
         patches,
     };
 
-    frigg
-        .update_index(
-            ctx.workspace_pk()?,
-            &mv_index_frontend_object,
-            kv_revision_for_existing_index,
-        )
-        .await?;
-
     DataCache::publish_patch_batch(ctx, patch_batch)
         .instrument(tracing::info_span!("Publishing patch batch"))
         .await?;
 
-    Ok(())
+    Ok(mv_index_frontend_object)
 }
 
 #[instrument(
