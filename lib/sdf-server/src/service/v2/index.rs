@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use axum::{
     extract::{Path, Query},
@@ -9,7 +9,7 @@ use axum::{
 };
 use dal::{ChangeSet, ChangeSetId, WorkspacePk, WorkspaceSnapshotAddress};
 use hyper::StatusCode;
-use si_frontend_types::object::FrontendObject;
+use si_frontend_types::{index::MvIndex, object::FrontendObject, reference::ReferenceKind};
 use telemetry::prelude::*;
 use thiserror::Error;
 
@@ -26,10 +26,14 @@ use super::AccessBuilder;
 pub enum IndexError {
     #[error("change set error: {0}")]
     ChangeSet(#[from] dal::ChangeSetError),
+    #[error("deserializing mv index data error: {0}")]
+    DeserializingMvIndexData(#[source] serde_json::Error),
     #[error("frigg error: {0}")]
     Frigg(#[from] frigg::FriggError),
     #[error("index not found; workspace_pk={0}, change_set_id={1}")]
     IndexNotFound(WorkspacePk, ChangeSetId),
+    #[error("invalid string for reference kind: {0}")]
+    InvalidStringForReferenceKind(#[source] strum::ParseError),
     #[error("Materialized view error: {0}")]
     MaterializedView(#[from] dal::materialized_view::MaterializedViewError),
     #[error("transactions error: {0}")]
@@ -85,7 +89,57 @@ pub async fn get_change_set_index(
     let change_set = ChangeSet::get_by_id(&ctx, change_set_id).await?;
 
     let index = match frigg.get_index(workspace_pk, change_set_id).await? {
-        Some((index, _kv_revision)) => index,
+        Some((index, kv_revision)) => {
+            let mv_index: MvIndex = serde_json::from_value(index.data.to_owned())
+                .map_err(IndexError::DeserializingMvIndexData)?;
+
+            // NOTE(nick,jacob): even though this is moving to "edda", let's trace this to ensure
+            // that this stopgap solution does not bog the system down.
+            let span = info_span!("sdf.index.get_change_set_index.implemented_kinds");
+            let implemented_kinds = span.in_scope(|| {
+                let mut implemented_kinds = HashSet::new();
+                for index_ref in mv_index.mv_list {
+                    let kind = ReferenceKind::try_from(index_ref.kind.as_str())
+                        .map_err(IndexError::InvalidStringForReferenceKind)?;
+                    if kind.is_revision_sensitive() {
+                        implemented_kinds.insert(kind);
+                    }
+                }
+                IndexResult::Ok(implemented_kinds)
+            })?;
+
+            // NOTE(nick): if the existing index's set of reference kinds does not match SDF's, we
+            // need to update the index. This is a stop-gap until "edda" comes into play. You can
+            // already see where this can go sideways. What if you are using SI while multiple SDF
+            // instances are being updated? Do you experience multiple index updates? This could be
+            // a problem, but one that we know "edda" will solve.
+            if implemented_kinds == ReferenceKind::revision_sensitive() {
+                index
+            } else {
+                info!(
+                    "Index out of date for change_set {}; attempting full build",
+                    change_set_id,
+                );
+                // We know the change set exists, but the index is out of date, so
+                // we'll trigger a full MV build and then try again.
+                dal::materialized_view::build_all_mv_for_change_set_and_existing_index(
+                    &ctx,
+                    &frigg,
+                    kv_revision,
+                )
+                .instrument(tracing::info_span!(
+                    "New build of all materialized views for existing index"
+                ))
+                .await?;
+                ctx.commit_no_rebase().await?;
+
+                frigg
+                    .get_index(workspace_pk, change_set_id)
+                    .await?
+                    .map(|i| i.0)
+                    .ok_or(IndexError::IndexNotFound(workspace_pk, change_set_id))?
+            }
+        }
         None => {
             info!(
                 "Index not found for change_set {}; attempting full build",
