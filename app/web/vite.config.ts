@@ -112,7 +112,7 @@ export default (opts: { mode: string }) => {
       ],
     },
     build: {
-      manifest: true,
+      manifest: "manifest.json",
       rollupOptions: {
         input: {
           main: path.resolve(__dirname, "index.html"),
