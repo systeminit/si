@@ -1,25 +1,31 @@
 use dal::action::prototype::{ActionKind, ActionPrototype};
 use dal::action::Action;
+use dal::component::frame::Frame;
 use dal::diagram::Diagram;
 use dal::func::authoring::FuncAuthoringClient;
 use dal::prop::PropPath;
 use dal::schema::variant::authoring::VariantAuthoringClient;
-use dal::{AttributeValue, Component, ComponentType, DalContext, Prop, Schema, SchemaVariant};
+use dal::{
+    AttributeValue, Component, ComponentId, ComponentType, DalContext, InputSocket, OutputSocket,
+    Prop, Schema, SchemaVariant,
+};
 use dal_test::expected::{ExpectComponent, ExpectSchema, ExpectSchemaVariant};
 use dal_test::helpers::{
     create_component_for_default_schema_name_in_default_view, ChangeSetTestHelpers,
     PropEditorTestView,
 };
-use dal_test::test;
+use dal_test::{test, Result};
 use itertools::Itertools;
 use pretty_assertions_sorted::{assert_eq, assert_ne};
 use serde_json::json;
 use std::collections::VecDeque;
+
+use crate::integration_test::component::connectable_test::ConnectableTest;
 // TODO test that validates that components that exist on locked variants aren't auto upgraded, but can be upgraded manually
 
 // Components that exist on the unlocked variant get auto upgraded when it gets regenerated
 #[test]
-async fn auto_upgrade_component(ctx: &mut DalContext) {
+async fn auto_upgrade_component(ctx: &mut DalContext) -> Result<()> {
     // Let's create a new asset
     let variant_zero = VariantAuthoringClient::create_schema_and_variant(
         ctx,
@@ -29,17 +35,11 @@ async fn auto_upgrade_component(ctx: &mut DalContext) {
         "Integration Tests",
         "#00b0b0",
     )
-    .await
-    .expect("Unable to create new asset");
+    .await?;
 
-    let my_asset_schema = variant_zero
-        .schema(ctx)
-        .await
-        .expect("Unable to get the schema for the variant");
+    let my_asset_schema = variant_zero.schema(ctx).await?;
 
-    let default_schema_variant = Schema::default_variant_id(ctx, my_asset_schema.id())
-        .await
-        .expect("unable to get the default schema variant id");
+    let default_schema_variant = Schema::default_variant_id(ctx, my_asset_schema.id()).await?;
     assert_eq!(default_schema_variant, variant_zero.id());
 
     // Build Create Action Func
@@ -53,12 +53,9 @@ async fn auto_upgrade_component(ctx: &mut DalContext) {
         ActionKind::Create,
         variant_zero.id(),
     )
-    .await
-    .expect("could not create action func");
+    .await?;
 
-    FuncAuthoringClient::save_code(ctx, created_func.id, create_action_code.to_owned())
-        .await
-        .expect("could save func");
+    FuncAuthoringClient::save_code(ctx, created_func.id, create_action_code.to_owned()).await?;
 
     // Now let's update the variant
     let first_code_update = "function main() {\n
@@ -78,19 +75,14 @@ async fn auto_upgrade_component(ctx: &mut DalContext) {
         variant_zero.category(),
         variant_zero.description(),
         variant_zero.link(),
-        variant_zero
-            .get_color(ctx)
-            .await
-            .expect("get color from schema variant"),
+        variant_zero.get_color(ctx).await?,
         variant_zero.component_type(),
         Some(first_code_update),
     )
-    .await
-    .expect("save variant contents");
+    .await?;
 
-    let updated_variant_id = VariantAuthoringClient::regenerate_variant(ctx, variant_zero.id())
-        .await
-        .expect("unable to update asset");
+    let updated_variant_id =
+        VariantAuthoringClient::regenerate_variant(ctx, variant_zero.id()).await?;
 
     // We should still see that the schema variant we updated is the same as we have no components on the graph
     assert_eq!(variant_zero.id(), updated_variant_id);
@@ -101,17 +93,11 @@ async fn auto_upgrade_component(ctx: &mut DalContext) {
         my_asset_schema.name.clone(),
         "demo component",
     )
-    .await
-    .expect("could not create component");
-    let initial_diagram = Diagram::assemble_for_default_view(ctx)
-        .await
-        .expect("could not assemble diagram");
+    .await?;
+    let initial_diagram = Diagram::assemble_for_default_view(ctx).await?;
     assert_eq!(1, initial_diagram.components.len());
 
-    let domain_prop_av_id = initial_component
-        .domain_prop_attribute_value(ctx)
-        .await
-        .expect("able to get domain prop");
+    let domain_prop_av_id = initial_component.domain_prop_attribute_value(ctx).await?;
 
     // Set the domain so we get some array elements
     AttributeValue::update(
@@ -126,24 +112,17 @@ async fn auto_upgrade_component(ctx: &mut DalContext) {
             ]
         })),
     )
-    .await
-    .expect("update failed");
+    .await?;
 
     // see that there's one action enqueued
-    let mut actions = Action::find_for_component_id(ctx, initial_component.id())
-        .await
-        .expect("got the actions");
+    let mut actions = Action::find_for_component_id(ctx, initial_component.id()).await?;
     assert!(actions.len() == 1);
 
     // and the one action is a create
     let create_action_id = actions.pop().expect("has an action");
 
-    let create_prototype_id = Action::prototype_id(ctx, create_action_id)
-        .await
-        .expect("found action prototype");
-    let create_prototype = ActionPrototype::get_by_id(ctx, create_prototype_id)
-        .await
-        .expect("got prototype");
+    let create_prototype_id = Action::prototype_id(ctx, create_action_id).await?;
+    let create_prototype = ActionPrototype::get_by_id(ctx, create_prototype_id).await?;
     assert_eq!(create_prototype.kind, ActionKind::Create);
 
     // Let's ensure that our prop is visible in the component
@@ -152,13 +131,9 @@ async fn auto_upgrade_component(ctx: &mut DalContext) {
         updated_variant_id,
         &PropPath::new(["root", "domain", "testProp"]),
     )
-    .await
-    .expect("able to find testProp prop");
+    .await?;
 
-    let initial_component_schema_variant = initial_component
-        .schema_variant(ctx)
-        .await
-        .expect("Unable to get schema variant for component");
+    let initial_component_schema_variant = initial_component.schema_variant(ctx).await?;
     assert_eq!(initial_component_schema_variant.id(), variant_zero.id());
 
     // Now let's update the asset a second time!
@@ -180,19 +155,13 @@ async fn auto_upgrade_component(ctx: &mut DalContext) {
         variant_zero.category(),
         variant_zero.description(),
         variant_zero.link(),
-        variant_zero
-            .get_color(ctx)
-            .await
-            .expect("get color from schema variant"),
+        variant_zero.get_color(ctx).await?,
         variant_zero.component_type(),
         Some(second_code_update),
     )
-    .await
-    .expect("save variant contents");
+    .await?;
 
-    let variant_one = VariantAuthoringClient::regenerate_variant(ctx, variant_zero.id())
-        .await
-        .expect("upgrade variant");
+    let variant_one = VariantAuthoringClient::regenerate_variant(ctx, variant_zero.id()).await?;
 
     // We should have a NEW schema variant id as there is a component on the graph
     assert_ne!(variant_one, variant_zero.id());
@@ -203,21 +172,17 @@ async fn auto_upgrade_component(ctx: &mut DalContext) {
         variant_one,
         &PropPath::new(["root", "domain", "testProp"]),
     )
-    .await
-    .expect("able to find testProp prop for variant one");
+    .await?;
 
     Prop::find_prop_id_by_path(
         ctx,
         variant_one,
         &PropPath::new(["root", "domain", "anotherProp"]),
     )
-    .await
-    .expect("able to find anotherProp prop for variant one");
+    .await?;
 
     // Check that the component has been auto upgraded
-    let one_component_on_the_graph = Diagram::assemble_for_default_view(ctx)
-        .await
-        .expect("could not assemble diagram");
+    let one_component_on_the_graph = Diagram::assemble_for_default_view(ctx).await?;
     assert_eq!(one_component_on_the_graph.components.len(), 1);
     let my_upgraded_component = one_component_on_the_graph
         .components
@@ -230,31 +195,22 @@ async fn auto_upgrade_component(ctx: &mut DalContext) {
         .await
         .unwrap()
         .view(ctx)
-        .await
-        .expect("get component view");
+        .await?;
 
-    let root_id = Component::root_attribute_value_id(ctx, my_upgraded_component.id)
-        .await
-        .expect("unable to get root av id");
+    let root_id = Component::root_attribute_value_id(ctx, my_upgraded_component.id).await?;
 
     let mut value_q = VecDeque::from([root_id]);
 
     while let Some(current_av_id) = value_q.pop_front() {
-        let is_for = AttributeValue::is_for(ctx, current_av_id)
-            .await
-            .expect("get is for");
+        let is_for = AttributeValue::is_for(ctx, current_av_id).await?;
         if let Some(prop_id) = is_for.prop_id() {
             let prop_variant_id = Prop::schema_variant_id(ctx, prop_id)
-                .await
-                .expect("get sv for prop")
+                .await?
                 .expect("should have a sv");
 
             assert_eq!(variant_one, prop_variant_id);
         }
-        for child_av_id in AttributeValue::get_child_av_ids_in_order(ctx, current_av_id)
-            .await
-            .expect("unable to get child av ids")
-        {
+        for child_av_id in AttributeValue::get_child_av_ids_in_order(ctx, current_av_id).await? {
             value_q.push_back(child_av_id);
         }
     }
@@ -278,25 +234,17 @@ async fn auto_upgrade_component(ctx: &mut DalContext) {
     );
 
     // see that there's still only one action enqueued
-    let mut actions = Action::find_for_component_id(ctx, my_upgraded_component.id)
-        .await
-        .expect("got the actions");
+    let mut actions = Action::find_for_component_id(ctx, my_upgraded_component.id).await?;
     assert_eq!(actions.len(), 1);
 
     // and the one action is a create
     let create_action_id = actions.pop().expect("has an action");
 
-    let create_prototype_id = Action::prototype_id(ctx, create_action_id)
-        .await
-        .expect("found action prototype");
-    let create_prototype = ActionPrototype::get_by_id(ctx, create_prototype_id)
-        .await
-        .expect("got prototype");
+    let create_prototype_id = Action::prototype_id(ctx, create_action_id).await?;
+    let create_prototype = ActionPrototype::get_by_id(ctx, create_prototype_id).await?;
     assert_eq!(create_prototype.kind, ActionKind::Create);
 
-    let upgraded_graph = Diagram::assemble_for_default_view(ctx)
-        .await
-        .expect("could not assemble diagram");
+    let upgraded_graph = Diagram::assemble_for_default_view(ctx).await?;
     let upgraded_component = upgraded_graph
         .components
         .first()
@@ -305,10 +253,12 @@ async fn auto_upgrade_component(ctx: &mut DalContext) {
         upgraded_component.can_be_upgraded, false,
         "the old asset should not be on the graph anymore, and the current one should be upgraded"
     );
+
+    Ok(())
 }
 
 #[test]
-async fn upgrade_component_type(ctx: &mut DalContext) {
+async fn upgrade_component_type(ctx: &mut DalContext) -> Result<()> {
     //
     // Create a new schema and variant set to component_type: ConfigurationFrameDown
     //
@@ -321,8 +271,7 @@ async fn upgrade_component_type(ctx: &mut DalContext) {
             "Integration Tests",
             "#00b0b0",
         )
-        .await
-        .expect("Unable to create new asset")
+        .await?
         .id,
     );
     let updated = update_schema_variant_component_type(
@@ -330,7 +279,7 @@ async fn upgrade_component_type(ctx: &mut DalContext) {
         variant_zero,
         ComponentType::ConfigurationFrameDown,
     )
-    .await;
+    .await?;
     assert_eq!(variant_zero, updated);
     assert_eq!(
         ComponentType::ConfigurationFrameDown,
@@ -354,7 +303,7 @@ async fn upgrade_component_type(ctx: &mut DalContext) {
     // Update the variant to be a Component that can't have parents
     //
     let variant_one =
-        update_schema_variant_component_type(ctx, variant_zero, ComponentType::Component).await;
+        update_schema_variant_component_type(ctx, variant_zero, ComponentType::Component).await?;
     assert_eq!(variant_zero, variant_one);
     assert_eq!(ComponentType::Component, variant_one.get_type(ctx).await);
 
@@ -366,10 +315,12 @@ async fn upgrade_component_type(ctx: &mut DalContext) {
         ComponentType::ConfigurationFrameDown,
         component.get_type(ctx).await
     );
+
+    Ok(())
 }
 
 #[test]
-async fn upgrade_component_type_after_explicit_set(ctx: &mut DalContext) {
+async fn upgrade_component_type_after_explicit_set(ctx: &mut DalContext) -> Result<()> {
     //
     // Create a new schema and variant set to component_type: ConfigurationFrameDown
     //
@@ -382,8 +333,7 @@ async fn upgrade_component_type_after_explicit_set(ctx: &mut DalContext) {
             "Integration Tests",
             "#00b0b0",
         )
-        .await
-        .expect("Unable to create new asset")
+        .await?
         .id,
     );
     let updated = update_schema_variant_component_type(
@@ -391,7 +341,7 @@ async fn upgrade_component_type_after_explicit_set(ctx: &mut DalContext) {
         variant_zero,
         ComponentType::ConfigurationFrameDown,
     )
-    .await;
+    .await?;
     assert_eq!(variant_zero, updated);
     assert_eq!(
         ComponentType::ConfigurationFrameDown,
@@ -410,7 +360,7 @@ async fn upgrade_component_type_after_explicit_set(ctx: &mut DalContext) {
     //
     // Update the variant (we add a new description)
     //
-    let variant_one = update_schema_variant_description(ctx, variant_zero, "eek").await;
+    let variant_one = update_schema_variant_description(ctx, variant_zero, "eek").await?;
     assert_eq!(variant_zero, variant_one);
     assert_eq!(
         ComponentType::ConfigurationFrameDown,
@@ -422,12 +372,14 @@ async fn upgrade_component_type_after_explicit_set(ctx: &mut DalContext) {
     //
     assert_eq!(variant_one, component.schema_variant(ctx).await);
     assert_eq!(ComponentType::Component, component.get_type(ctx).await);
+
+    Ok(())
 }
 
 #[test]
 async fn create_unlocked_schema_variant_after_component_changes_component_type(
     ctx: &mut DalContext,
-) {
+) -> Result<()> {
     let swifty = ExpectSchema::find(ctx, "swifty")
         .await
         .default_variant(ctx)
@@ -464,10 +416,12 @@ async fn create_unlocked_schema_variant_after_component_changes_component_type(
         ComponentType::ConfigurationFrameUp,
         copy.get_type(ctx).await
     );
+
+    Ok(())
 }
 
 #[test]
-async fn upgrade_array_of_objects(ctx: &mut DalContext) {
+async fn upgrade_array_of_objects(ctx: &mut DalContext) -> Result<()> {
     let variant_code = r#"
     function main() {
         const networkInterfacesProp = new PropBuilder()
@@ -498,13 +452,9 @@ async fn upgrade_array_of_objects(ctx: &mut DalContext) {
         "#00b0b0",
         variant_code,
     )
-    .await
-    .expect("Unable to create new asset");
+    .await?;
 
-    let my_asset_schema = variant_zero
-        .schema(ctx)
-        .await
-        .expect("Unable to get the schema for the variant");
+    let my_asset_schema = variant_zero.schema(ctx).await?;
 
     // Create a component, add fields to array, set values
     let component = create_component_for_default_schema_name_in_default_view(
@@ -512,14 +462,12 @@ async fn upgrade_array_of_objects(ctx: &mut DalContext) {
         my_asset_schema.name.clone(),
         "demo component",
     )
-    .await
-    .expect("could not create component");
+    .await?;
 
     let things_path = &["root", "domain", "things"];
     let things_av_id = component
         .attribute_values_for_prop(ctx, things_path)
-        .await
-        .expect("find value ids for the prop things")
+        .await?
         .pop()
         .expect("there should only be one value id");
 
@@ -529,19 +477,14 @@ async fn upgrade_array_of_objects(ctx: &mut DalContext) {
         .map(|str| json!(str))
         .collect_vec();
     for value in &description_values {
-        let thing_av = AttributeValue::insert(ctx, things_av_id, None, None)
-            .await
-            .expect("unable to add field to array");
+        let thing_av = AttributeValue::insert(ctx, things_av_id, None, None).await?;
 
         let description_av_id = AttributeValue::all_object_children_to_leaves(ctx, thing_av)
-            .await
-            .expect("could not get child of thing")
+            .await?
             .pop()
             .expect("thing should have a child");
 
-        AttributeValue::update(ctx, description_av_id, Some(value.to_owned()))
-            .await
-            .expect("could not update thing description");
+        AttributeValue::update(ctx, description_av_id, Some(value.to_owned())).await?;
 
         description_av_ids.push(description_av_id);
     }
@@ -551,10 +494,8 @@ async fn upgrade_array_of_objects(ctx: &mut DalContext) {
         let index_str = index.to_string();
         let value_path = ["root", "domain", "things", &index_str, "description"];
         PropEditorTestView::for_component_id(ctx, component.id())
-            .await
-            .expect("could not get property editor test view")
-            .get_value(&value_path)
-            .expect("could not get description value");
+            .await?
+            .get_value(&value_path)?;
 
         let value = description_values
             .get(index)
@@ -566,9 +507,7 @@ async fn upgrade_array_of_objects(ctx: &mut DalContext) {
             .expect("unable to get reference av id")
             .to_owned();
 
-        let prop_id = AttributeValue::prop_id(ctx, av_id)
-            .await
-            .expect("get prop_id for attribute value");
+        let prop_id = AttributeValue::prop_id(ctx, av_id).await?;
 
         std::assert_eq!(
             json![{
@@ -584,38 +523,27 @@ async fn upgrade_array_of_objects(ctx: &mut DalContext) {
                 "overridden": true
             }], // expected
             PropEditorTestView::for_component_id(ctx, component.id())
-                .await
-                .expect("could not get property editor test view")
-                .get_value(&value_path)
-                .expect("could not get value")
+                .await?
+                .get_value(&value_path)?
         );
     }
 
     // Regenerate, check that the fields in the component are still there and with the correct values
-    VariantAuthoringClient::regenerate_variant(ctx, variant_zero.id())
-        .await
-        .expect("unable to update asset");
+    VariantAuthoringClient::regenerate_variant(ctx, variant_zero.id()).await?;
 
     // Since the variant was regenerated, we need to gather the description av ids back
-    let upgraded_component = Component::get_by_id(ctx, component.id())
-        .await
-        .expect("unable to find component after regeneration");
+    let upgraded_component = Component::get_by_id(ctx, component.id()).await?;
 
     let things_av_id = upgraded_component
         .attribute_values_for_prop(ctx, things_path)
-        .await
-        .expect("find value ids for the prop things")
+        .await?
         .pop()
         .expect("there should only be one value id");
 
     let mut regenerated_description_av_ids = vec![];
-    for thing_av in AttributeValue::get_child_av_ids_in_order(ctx, things_av_id)
-        .await
-        .expect("unable to get thing av ids")
-    {
+    for thing_av in AttributeValue::get_child_av_ids_in_order(ctx, things_av_id).await? {
         let description_av_id = AttributeValue::all_object_children_to_leaves(ctx, thing_av)
-            .await
-            .expect("could not get child of thing")
+            .await?
             .pop()
             .expect("thing should have a child");
 
@@ -627,8 +555,7 @@ async fn upgrade_array_of_objects(ctx: &mut DalContext) {
         let index_str = index.to_string();
         let value_path = ["root", "domain", "things", &index_str, "description"];
         PropEditorTestView::for_component_id(ctx, upgraded_component.id())
-            .await
-            .expect("could not get property editor test view")
+            .await?
             .get_value(&value_path)
             .expect("could not get description value");
 
@@ -642,9 +569,7 @@ async fn upgrade_array_of_objects(ctx: &mut DalContext) {
             .expect("unable to get reference av id")
             .to_owned();
 
-        let prop_id = AttributeValue::prop_id(ctx, av_id)
-            .await
-            .expect("get prop_id for attribute value");
+        let prop_id = AttributeValue::prop_id(ctx, av_id).await?;
 
         std::assert_eq!(
             json![{
@@ -660,16 +585,16 @@ async fn upgrade_array_of_objects(ctx: &mut DalContext) {
                 "overridden": true
             }], // expected
             PropEditorTestView::for_component_id(ctx, upgraded_component.id())
-                .await
-                .expect("could not get property editor test view")
-                .get_value(&value_path)
-                .expect("could not get value")
+                .await?
+                .get_value(&value_path)?
         );
     }
+
+    Ok(())
 }
 
 #[test]
-async fn upgrade_frame_with_child(ctx: &mut DalContext) {
+async fn upgrade_frame_with_child(ctx: &mut DalContext) -> Result<()> {
     let frame_original_code_definition = r#"
         function main() {
             const theProp = new PropBuilder()
@@ -704,8 +629,7 @@ async fn upgrade_frame_with_child(ctx: &mut DalContext) {
             "#0000ff",
             frame_original_code_definition,
         )
-        .await
-        .expect("Unable to create frame schema and variant")
+        .await?
         .id,
     );
     update_schema_variant_component_type(
@@ -713,7 +637,7 @@ async fn upgrade_frame_with_child(ctx: &mut DalContext) {
         original_frame_variant,
         ComponentType::ConfigurationFrameDown,
     )
-    .await;
+    .await?;
 
     let component_code_definition = r#"
         function main() {
@@ -751,8 +675,7 @@ async fn upgrade_frame_with_child(ctx: &mut DalContext) {
             "#0077cc",
             component_code_definition,
         )
-        .await
-        .expect("Unable to create child component schema and variant")
+        .await?
         .id,
     );
 
@@ -762,12 +685,8 @@ async fn upgrade_frame_with_child(ctx: &mut DalContext) {
     let child_component = child_variant.create_component_on_default_view(ctx).await;
     child_component.upsert_parent(ctx, frame_component).await;
 
-    let inferred_connections = child_component
-        .component(ctx)
-        .await
-        .inferred_incoming_connections(ctx)
-        .await
-        .expect("Unable to get inferred incoming connections for child component.");
+    let inferred_connections =
+        Component::inferred_incoming_connections(ctx, child_component.id()).await?;
 
     assert_eq!(1, inferred_connections.len());
     let inferred_connection = inferred_connections
@@ -775,15 +694,10 @@ async fn upgrade_frame_with_child(ctx: &mut DalContext) {
         .expect("Unable to get first element of a single element Vec.");
     assert_eq!(frame_component.id(), inferred_connection.from_component_id,);
 
-    ChangeSetTestHelpers::apply_change_set_to_base(ctx)
-        .await
-        .expect("Unable to apply change set");
-    let change_set = ChangeSetTestHelpers::fork_from_head_change_set(ctx)
-        .await
-        .expect("Unable to fork change set");
+    ChangeSetTestHelpers::apply_change_set_to_base(ctx).await?;
+    let change_set = ChangeSetTestHelpers::fork_from_head_change_set(ctx).await?;
     ctx.update_visibility_and_snapshot_to_visibility(change_set.id)
-        .await
-        .expect("Unable to update ctx");
+        .await?;
 
     let updated_frame_variant = original_frame_variant.create_unlocked_copy(ctx).await;
     let updated_frame_code_definition = r#"
@@ -822,48 +736,33 @@ async fn upgrade_frame_with_child(ctx: &mut DalContext) {
     VariantAuthoringClient::save_variant_content(
         ctx,
         updated_frame_variant.id(),
-        frame_variant
-            .schema(ctx)
-            .await
-            .expect("Unable to get frame schema.")
-            .name
-            .clone(),
+        frame_variant.schema(ctx).await?.name.clone(),
         frame_variant.display_name(),
         frame_variant.category(),
         frame_variant.description(),
         frame_variant.link(),
-        frame_variant
-            .get_color(ctx)
-            .await
-            .expect("Unable to get schema variant color."),
+        frame_variant.get_color(ctx).await?,
         frame_variant.component_type(),
         Some(updated_frame_code_definition),
     )
-    .await
-    .expect("Unable to update variant.");
+    .await?;
 
     let regenerated_frame_variant = ExpectSchemaVariant(
-        VariantAuthoringClient::regenerate_variant(ctx, updated_frame_variant.id())
-            .await
-            .expect("Unable to regenerate variant."),
+        VariantAuthoringClient::regenerate_variant(ctx, updated_frame_variant.id()).await?,
     );
 
     assert_ne!(original_frame_variant.id(), regenerated_frame_variant.id());
     assert_eq!(updated_frame_variant.id(), regenerated_frame_variant.id());
 
-    let upgraded_frame_component = frame_component
-        .component(ctx)
-        .await
-        .upgrade_to_new_variant(ctx, regenerated_frame_variant.id())
-        .await
-        .expect("Unable to upgrade frame component to new variant.");
+    let upgraded_frame_component = Component::upgrade_to_new_variant(
+        ctx,
+        frame_component.id(),
+        regenerated_frame_variant.id(),
+    )
+    .await?;
 
-    let inferred_connections = child_component
-        .component(ctx)
-        .await
-        .inferred_incoming_connections(ctx)
-        .await
-        .expect("Unable to get inferred incoming connections for child component.");
+    let inferred_connections =
+        Component::inferred_incoming_connections(ctx, child_component.id()).await?;
 
     assert_eq!(1, inferred_connections.len());
     let inferred_connection = inferred_connections
@@ -873,13 +772,253 @@ async fn upgrade_frame_with_child(ctx: &mut DalContext) {
         upgraded_frame_component.id(),
         inferred_connection.from_component_id
     );
+
+    Ok(())
+}
+
+#[test]
+async fn upgrade_component_multiplayer(ctx: &mut DalContext) -> Result<()> {
+    // Set up connectables with multiple inputs
+    let test = ConnectableTest::setup(ctx).await;
+    let parent = test.create_parent(ctx, "parent").await?;
+    let manager = test.create_manager(ctx, "manager").await?;
+    let input1 = test.create_connectable(ctx, "input1", None, []).await?;
+    let input2 = test.create_connectable(ctx, "input2", None, []).await?;
+    let component = test
+        .create_connectable(ctx, "component", Some(input1), [input1, input2])
+        .await?;
+    let output1 = test
+        .create_connectable(ctx, "output1", Some(component), [])
+        .await?;
+    let output2 = test
+        .create_connectable(ctx, "output2", Some(component), [])
+        .await?;
+    let managed = test.create_connectable(ctx, "managed", None, []).await?;
+    Frame::upsert_parent(ctx, component.id, parent.id).await?;
+    Component::manage_component(ctx, manager.id, component.id).await?;
+    Component::manage_component(ctx, component.id, managed.id).await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+    let expect_domain = json!({
+        "Value": "component",
+        "One": "input1",
+        "Many": [ "input1", "input2" ],
+        "Inferred": "parent",
+    });
+    let expect_conns = vec![
+        "[in] Many <- input1.Value",
+        "[in] Many <- input2.Value",
+        "[in] One <- input1.Value",
+        "[inferred] Inferred <- parent.Inferred",
+        "[managed] managed",
+        "[manager] manager",
+        "[out] Value -> output1.One",
+        "[out] Value -> output2.One",
+    ];
+    assert_eq!(expect_domain, component.domain(ctx).await?);
+    assert_eq!(expect_conns, connections(ctx, component.id).await?);
+    assert_eq!(
+        json!({
+            "Value": "output1",
+            "One": "component",
+        }),
+        output1.domain(ctx).await?
+    );
+    assert_eq!(
+        json!({
+            "Value": "output2",
+            "One": "component",
+        }),
+        output2.domain(ctx).await?
+    );
+
+    // Lock connectable so we can create an unlocked variant and upgrade to it in two separate
+    // changesets
+    SchemaVariant::get_by_id(ctx, test.connectable_variant_id)
+        .await?
+        .lock(ctx)
+        .await?;
+    let updated_variant_id =
+        VariantAuthoringClient::create_unlocked_variant_copy(ctx, test.connectable_variant_id)
+            .await?
+            .id();
+    assert_ne!(updated_variant_id, test.connectable_variant_id);
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+    // Update the component simultaneously in two multiplayer sessions
+    let (player1, player2) = (ctx.clone(), ctx.clone());
+    {
+        Component::upgrade_to_new_variant(&player1, component.id, updated_variant_id).await?;
+        player1.commit().await?;
+    }
+    {
+        Component::upgrade_to_new_variant(&player2, component.id, updated_variant_id).await?;
+        player2.commit().await?;
+    }
+
+    // Find out how the changeset ended up
+    ChangeSetTestHelpers::wait_for_dvu(ctx).await?;
+    ctx.update_snapshot_to_visibility().await?;
+    assert_eq!(expect_conns, connections(ctx, component.id).await?);
+    assert_eq!(expect_domain, component.domain(ctx).await?);
+
+    // Make sure output connections are still there
+    component.set_value(ctx, "upgraded").await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+    assert_eq!(
+        json!({
+            "Value": "output1",
+            "One": "upgraded",
+        }),
+        output1.domain(ctx).await?
+    );
+    assert_eq!(
+        json!({
+            "Value": "output2",
+            "One": "upgraded",
+        }),
+        output2.domain(ctx).await?
+    );
+
+    Ok(())
+}
+
+#[test]
+async fn upgrade_component_multiplayer_new_and_removed_sockets(ctx: &mut DalContext) -> Result<()> {
+    // Set up connectables with multiple inputs
+    let test = ConnectableTest::setup(ctx).await;
+    let parent = test.create_parent(ctx, "parent").await?;
+    let manager = test.create_manager(ctx, "manager").await?;
+    let input1 = test.create_connectable(ctx, "input1", None, []).await?;
+    let input2 = test.create_connectable(ctx, "input2", None, []).await?;
+    let component = test
+        .create_connectable(ctx, "component", Some(input1), [input1, input2])
+        .await?;
+    let output1 = test
+        .create_connectable(ctx, "output1", Some(component), [])
+        .await?;
+    let output2 = test
+        .create_connectable(ctx, "output2", Some(component), [])
+        .await?;
+    let managed = test.create_connectable(ctx, "managed", None, []).await?;
+    Frame::upsert_parent(ctx, component.id, parent.id).await?;
+    Component::manage_component(ctx, manager.id, component.id).await?;
+    Component::manage_component(ctx, component.id, managed.id).await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+    let expect_domain = json!({
+        "Value": "component",
+        "One": "input1",
+        "Many": [ "input1", "input2" ],
+        "Inferred": "parent",
+    });
+    let expect_conns = vec![
+        "[in] Many <- input1.Value",
+        "[in] Many <- input2.Value",
+        "[in] One <- input1.Value",
+        "[inferred] Inferred <- parent.Inferred",
+        "[managed] managed",
+        "[manager] manager",
+        "[out] Value -> output1.One",
+        "[out] Value -> output2.One",
+    ];
+    assert_eq!(expect_domain, component.domain(ctx).await?);
+    assert_eq!(expect_conns, connections(ctx, component.id).await?);
+    assert_eq!(
+        json!({
+            "Value": "output1",
+            "One": "component",
+        }),
+        output1.domain(ctx).await?
+    );
+    assert_eq!(
+        json!({
+            "Value": "output2",
+            "One": "component",
+        }),
+        output2.domain(ctx).await?
+    );
+
+    // Create an unlocked, updated component with all existing sockets removed and new ones added
+    SchemaVariant::get_by_id(ctx, test.connectable_variant_id)
+        .await?
+        .lock(ctx)
+        .await?;
+    let updated_variant_id =
+        VariantAuthoringClient::create_unlocked_variant_copy(ctx, test.connectable_variant_id)
+            .await?
+            .id();
+    assert_ne!(updated_variant_id, test.connectable_variant_id);
+    ExpectSchemaVariant(updated_variant_id).update_asset_func(ctx,
+        r#"
+            function main() {
+                return {
+                    props: [
+                        { name: "NewValue", kind: "string" },
+                        { name: "NewOne", kind: "string", valueFrom: { kind: "inputSocket", socket_name: "NewOne" } },
+                        { name: "NewMany", kind: "array",
+                            entry: { name: "ManyItem", kind: "string" },
+                            valueFrom: { kind: "inputSocket", socket_name: "NewMany" },
+                        },
+                    ],
+                    inputSockets: [
+                        { name: "NewOne", arity: "one", connectionAnnotations: "[\"Value\"]" },
+                        { name: "NewMany", arity: "many", connectionAnnotations: "[\"Value\"]" },
+                    ],
+                    outputSockets: [
+                        { name: "NewValue", arity: "one", valueFrom: { kind: "prop", prop_path: [ "root", "domain", "NewValue" ] }, connectionAnnotations: "[\"Value\"]" },
+                    ],
+                };
+            }
+        "#,
+    )
+    .await;
+    ExpectSchemaVariant(updated_variant_id)
+        .regenerate(ctx)
+        .await;
+
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+    // Update the component simultaneously in two multiplayer sessions
+    let (player1, player2) = (ctx.clone(), ctx.clone());
+    {
+        Component::upgrade_to_new_variant(&player1, component.id, updated_variant_id).await?;
+        player1.commit().await?;
+    }
+    {
+        Component::upgrade_to_new_variant(&player2, component.id, updated_variant_id).await?;
+        player2.commit().await?;
+    }
+
+    // Find out how the changeset ended up
+    ChangeSetTestHelpers::wait_for_dvu(ctx).await?;
+    ctx.update_snapshot_to_visibility().await?;
+    // Make absolutely sure the socket AVs were not duplicated
+    assert_eq!(
+        3,
+        Component::attribute_values_for_all_sockets(ctx, component.id)
+            .await?
+            .len()
+    );
+    assert_eq!(
+        vec!["[managed] managed", "[manager] manager",],
+        connections(ctx, component.id).await?
+    );
+    assert_eq!(json!({}), component.domain(ctx).await?);
+
+    // Make sure output connections are still there
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+    assert!(connections(ctx, output1.id).await?.is_empty());
+    assert!(connections(ctx, output2.id).await?.is_empty());
+    assert_eq!(json!({ "Value": "output1" }), output1.domain(ctx).await?);
+    assert_eq!(json!({ "Value": "output2" }), output2.domain(ctx).await?);
+
+    Ok(())
 }
 
 async fn update_schema_variant_component_type(
     ctx: &mut DalContext,
     variant: ExpectSchemaVariant,
     component_type: ComponentType,
-) -> ExpectSchemaVariant {
+) -> Result<ExpectSchemaVariant> {
     let variant = variant.schema_variant(ctx).await;
     VariantAuthoringClient::save_variant_content(
         ctx,
@@ -893,20 +1032,16 @@ async fn update_schema_variant_component_type(
         component_type,
         None as Option<String>,
     )
-    .await
-    .expect("save variant contents");
+    .await?;
 
-    SchemaVariant::get_by_id(ctx, variant.id)
-        .await
-        .expect("could not get updated variant")
-        .into()
+    Ok(SchemaVariant::get_by_id(ctx, variant.id).await?.into())
 }
 
 async fn update_schema_variant_description(
     ctx: &mut DalContext,
     variant: ExpectSchemaVariant,
     description: impl Into<String>,
-) -> ExpectSchemaVariant {
+) -> Result<ExpectSchemaVariant> {
     let variant = variant.schema_variant(ctx).await;
     VariantAuthoringClient::save_variant_content(
         ctx,
@@ -920,10 +1055,54 @@ async fn update_schema_variant_description(
         variant.component_type(),
         None as Option<String>,
     )
-    .await
-    .expect("save variant contents");
-    SchemaVariant::get_by_id(ctx, variant.id)
-        .await
-        .expect("could not get updated variant")
-        .into()
+    .await?;
+    Ok(SchemaVariant::get_by_id(ctx, variant.id).await?.into())
+}
+
+async fn connections(ctx: &DalContext, component_id: ComponentId) -> Result<Vec<String>> {
+    let mut result = vec![];
+    for connection in Component::incoming_connections_for_id(ctx, component_id).await? {
+        let from_component = Component::name_by_id(ctx, connection.from_component_id).await?;
+        let from = OutputSocket::get_by_id(ctx, connection.from_output_socket_id).await?;
+        let to = InputSocket::get_by_id(ctx, connection.to_input_socket_id).await?;
+        result.push(format!(
+            "[in] {} <- {}.{}",
+            to.name(),
+            from_component,
+            from.name(),
+        ));
+    }
+    for connection in Component::inferred_incoming_connections(ctx, component_id).await? {
+        let from_component = Component::name_by_id(ctx, connection.from_component_id).await?;
+        let from = OutputSocket::get_by_id(ctx, connection.from_output_socket_id).await?;
+        let to = InputSocket::get_by_id(ctx, connection.to_input_socket_id).await?;
+        result.push(format!(
+            "[inferred] {} <- {}.{}",
+            to.name(),
+            from_component,
+            from.name(),
+        ));
+    }
+    for connection in Component::outgoing_connections_for_id(ctx, component_id).await? {
+        let from = OutputSocket::get_by_id(ctx, connection.from_output_socket_id).await?;
+        let to_component = Component::name_by_id(ctx, connection.to_component_id).await?;
+        let to = InputSocket::get_by_id(ctx, connection.to_input_socket_id).await?;
+        result.push(format!(
+            "[out] {} -> {}.{}",
+            from.name(),
+            to_component,
+            to.name(),
+        ));
+    }
+    for manager_id in Component::managers_by_id(ctx, component_id).await? {
+        let manager = Component::name_by_id(ctx, manager_id).await?;
+        result.push(format!("[manager] {}", manager,));
+    }
+    let component = Component::get_by_id(ctx, component_id).await?;
+    for managed_id in component.get_managed(ctx).await? {
+        let managed = Component::name_by_id(ctx, managed_id).await?;
+        result.push(format!("[managed] {}", managed));
+    }
+    result.sort();
+    Ok(result)
 }

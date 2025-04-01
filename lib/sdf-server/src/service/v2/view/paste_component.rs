@@ -75,7 +75,8 @@ pub async fn paste_component(
                 .await?;
 
             // Inferred connections (parent-child)
-            let inferred_connections = pasted.inferred_incoming_connections(ctx).await?;
+            let inferred_connections =
+                Component::inferred_incoming_connections(ctx, pasted_component_id).await?;
             let inferred_edges = if !inferred_connections.is_empty() {
                 Some(
                     inferred_connections

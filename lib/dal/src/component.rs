@@ -3264,10 +3264,9 @@ impl Component {
     /// via FrameContains Edges.
     #[instrument(level = "debug", skip(ctx))]
     pub async fn inferred_incoming_connections(
-        &self,
         ctx: &DalContext,
+        to_component_id: ComponentId,
     ) -> ComponentResult<Vec<InferredConnection>> {
-        let to_component_id = self.id();
         let mut connections = vec![];
 
         let workspace_snapshot = ctx.workspace_snapshot()?;
@@ -3282,11 +3281,12 @@ impl Component {
             // Both "deleted" and not deleted Components can feed data into
             // "deleted" Components. **ONLY** not deleted Components can feed
             // data into not deleted Components.
-            let source_component =
-                Self::get_by_id(ctx, incoming_connection.source_component_id).await?;
-            let to_delete =
-                !Self::should_data_flow_between_components(ctx, self.id, source_component.id)
-                    .await?;
+            let to_delete = !Self::should_data_flow_between_components(
+                ctx,
+                to_component_id,
+                incoming_connection.source_component_id,
+            )
+            .await?;
 
             connections.push(InferredConnection {
                 to_component_id,
@@ -3351,11 +3351,13 @@ impl Component {
         destination_component_id: ComponentId,
         destination_input_socket_id: InputSocketId,
     ) -> ComponentResult<()> {
+        // InputSocket -> Prototype: AttributePrototype
         let input_socket_prototype_id =
             AttributePrototype::find_for_input_socket(ctx, destination_input_socket_id)
                 .await?
                 .ok_or_else(|| InputSocketError::MissingPrototype(destination_input_socket_id))?;
 
+        // -> PrototypeArgument:
         let attribute_prototype_arguments = ctx
             .workspace_snapshot()?
             .edges_directed_for_edge_weight_kind(
@@ -3366,6 +3368,7 @@ impl Component {
             .await?;
 
         for (_, _, attribute_prototype_arg_idx) in attribute_prototype_arguments {
+            // AttributePrototypeArgument { source, target }
             let node_weight = ctx
                 .workspace_snapshot()?
                 .get_node_weight(attribute_prototype_arg_idx)
@@ -3376,6 +3379,7 @@ impl Component {
                 if targets.source_component_id == source_component_id
                     && targets.destination_component_id == destination_component_id
                 {
+                    // -> PrototypeArgumentValue:
                     let data_sources = ctx
                         .workspace_snapshot()?
                         .edges_directed_for_edge_weight_kind(
@@ -3386,6 +3390,7 @@ impl Component {
                         .await?;
 
                     for (_, _, data_source_idx) in data_sources {
+                        // OutputSocket
                         let node_weight = ctx
                             .workspace_snapshot()?
                             .get_node_weight(data_source_idx)
@@ -3395,6 +3400,7 @@ impl Component {
                                 ContentAddressDiscriminants::OutputSocket,
                             )
                         {
+                            // OutputSocket
                             if output_socket_node_weight.id() == source_output_socket_id.into() {
                                 AttributePrototypeArgument::remove(
                                     ctx,
@@ -3434,11 +3440,11 @@ impl Component {
 
     #[instrument(level = "debug", skip(ctx))]
     pub async fn upgrade_to_new_variant(
-        &self,
         ctx: &DalContext,
+        component_id: ComponentId,
         schema_variant_id: SchemaVariantId,
     ) -> ComponentResult<Component> {
-        let original_component = Self::get_by_id(ctx, self.id).await?;
+        let original_component = Self::get_by_id(ctx, component_id).await?;
 
         // ================================================================================
         // Cache original component data
@@ -3447,8 +3453,8 @@ impl Component {
 
         let original_component_node_weight = snap.get_node_weight(original_component.id).await?;
 
-        let original_component_name = self.name(ctx).await?;
-        let original_component_id = self.id();
+        let original_component_name = Self::name_by_id(ctx, component_id).await?;
+        let original_component_id = component_id;
         let original_component_lineage_id = original_component_node_weight.lineage_id();
 
         let original_managed = original_component.get_managed(ctx).await?;
@@ -3459,7 +3465,7 @@ impl Component {
         let original_parent = original_component.parent(ctx).await?;
         let original_children = Component::get_children_for_id(ctx, original_component_id).await?;
 
-        let geometry_ids = Geometry::list_ids_by_component(ctx, self.id).await?;
+        let geometry_ids = Geometry::list_ids_by_component(ctx, component_id).await?;
 
         // ================================================================================
         // Create new component and run changes that depend on the old one still existing
@@ -3476,7 +3482,7 @@ impl Component {
         for geometry_id in geometry_ids {
             snap.remove_edge_for_ulids(
                 geometry_id,
-                self.id,
+                component_id,
                 EdgeWeightKindDiscriminants::Represents,
             )
             .await?;

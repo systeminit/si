@@ -64,8 +64,7 @@ pub async fn upgrade(
         return Err(ComponentError::UpgradeSkippedDueToActions);
     }
 
-    current_component
-        .upgrade_to_new_variant(&ctx, upgrade_target_variant.id())
+    Component::upgrade_to_new_variant(&ctx, current_component.id(), upgrade_target_variant.id())
         .await?;
 
     let comp_name = current_component.name(&ctx).await?;

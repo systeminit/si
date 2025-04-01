@@ -171,7 +171,7 @@ impl CorrectTransforms for GeometryNodeWeightV1 {
                     Direction::Outgoing,
                     EdgeWeightKindDiscriminants::DiagramObject,
                 )
-                .pop()
+                .last()
             {
                 // loop geometries of the DO. If any of them is contained by the self container, replace it.
                 for (_, geo_idx, _) in workspace_snapshot_graph.edges_directed_for_edge_weight_kind(
@@ -185,7 +185,7 @@ impl CorrectTransforms for GeometryNodeWeightV1 {
                             Direction::Incoming,
                             EdgeWeightKindDiscriminants::Use,
                         )
-                        .pop()
+                        .last()
                     else {
                         continue;
                     };

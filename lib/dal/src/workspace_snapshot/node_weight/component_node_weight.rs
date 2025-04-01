@@ -1,10 +1,8 @@
 use super::{
-    category_node_weight::CategoryNodeKind,
-    traits::CorrectTransformsResult,
-    NodeWeight,
-    NodeWeightDiscriminants::{self, Component},
-    NodeWeightError, NodeWeightResult,
+    category_node_weight::CategoryNodeKind, traits::CorrectTransformsResult, NodeWeight,
+    NodeWeightDiscriminants::Component, NodeWeightError, NodeWeightResult,
 };
+use super::{ArgumentTargets, NodeWeightDiscriminants};
 use crate::layer_db_types::{
     ComponentContent, ComponentContentDiscriminants, ComponentContentV2, GeometryContent,
     GeometryContentV1,
@@ -23,7 +21,8 @@ use crate::{
     DalContext, EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants, Timestamp,
     WorkspaceSnapshotGraphVCurrent,
 };
-use petgraph::{prelude::*, visit::EdgeRef, Direction::Incoming};
+use itertools::Itertools;
+use petgraph::{prelude::*, stable_graph::EdgeReference, Direction::Incoming};
 use serde::{Deserialize, Serialize};
 use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
 use si_id::{AttributeValueId, ComponentId};
@@ -400,148 +399,200 @@ impl CorrectTransforms for ComponentNodeWeight {
         mut updates: Vec<Update>,
         _from_different_change_set: bool,
     ) -> CorrectTransformsResult<Vec<Update>> {
-        let mut valid_frame_contains_source = None;
-        let mut existing_remove_edges = vec![];
-        let mut updates_to_remove = vec![];
-        let mut component_will_be_deleted = false;
+        // New components don't have any corrective transforms.
+        let component_id: ComponentId = self.id.into();
+        let Some(component) = graph.get_node_index_by_id_opt(component_id) else {
+            return Ok(updates);
+        };
 
-        for (i, update) in updates.iter().enumerate() {
+        // Helper to compactly match whether destination/source is us
+        let is_self = |node: &NodeInformation| node.id == self.id.into();
+
+        let mut component_will_be_deleted = false;
+        let mut remove_edges = vec![];
+        for update in &updates {
             match update {
+                // Single Parent Rule: Component: FrameContains <Self> <- FrameContains: Component
+                // When we're setting the parent for a component, we need to remove any existing
+                // FrameContains edges to other components.
                 Update::NewEdge {
-                    source,
                     destination,
                     edge_weight,
-                } if destination.id.into_inner() == self.id.inner() => {
-                    match edge_weight.kind().into() {
-                        EdgeWeightKindDiscriminants::FrameContains => {
-                            // If we get more than one frame contains edge in the set of
-                            // updates we will pick the last one. Although there should
-                            // never be more than one in a single batch, this makes it
-                            // resilient against replaying multiple transform batches
-                            // (in order). Last one wins!
-                            valid_frame_contains_source = match valid_frame_contains_source {
-                                None => Some((i, source.id)),
-                                Some((last_index, _)) => {
-                                    updates_to_remove.push(last_index);
-                                    Some((i, source.id))
-                                }
-                            }
-                        }
-                        EdgeWeightKindDiscriminants::Use => {
-                            let component_will_be_added = graph
-                                .get_node_weight_by_id_opt(source.id)
-                                .is_some_and(|node_weight| {
-                                    if let NodeWeight::Category(inner) = node_weight {
-                                        inner.kind() == CategoryNodeKind::Component
-                                    } else {
-                                        false
-                                    }
-                                });
-                            if component_will_be_added {
-                                component_will_be_deleted = false;
-                            }
-                        }
-                        _ => {}
-                    }
+                    ..
+                } if EdgeWeightKind::FrameContains == *edge_weight.kind()
+                    && is_self(destination) =>
+                {
+                    // We want to remove any existing FrameContains edges and honor this AddEdge.
+                    remove_edges
+                        .extend(graph.incoming_edges(component, EdgeWeightKind::FrameContains));
                 }
+
+                // If the component is being deleted, the RemoveEdges may be stale (from an old
+                // snapshot) and we need to ensure that we truly delete everything. Detected by
+                // noticing an edge was removed from the component category:
+                //
+                //   Category -> Use: <Self>
                 Update::RemoveEdge {
                     source,
                     destination,
                     edge_kind,
-                } if destination.id.into_inner() == self.id.inner() => match edge_kind {
-                    EdgeWeightKindDiscriminants::FrameContains => {
-                        if let Some(source_index) =
-                            graph.get_node_index_by_id_opt(source.id.into_inner())
-                        {
-                            existing_remove_edges.push(source_index);
-                        }
-                    }
-                    EdgeWeightKindDiscriminants::Use
-                        if source.node_weight_kind == NodeWeightDiscriminants::Category =>
-                    {
-                        component_will_be_deleted = graph
-                            .get_node_weight_by_id_opt(source.id)
-                            .is_some_and(|node_weight| {
-                                if let NodeWeight::Category(inner) = node_weight {
-                                    inner.kind() == CategoryNodeKind::Component
-                                } else {
-                                    false
-                                }
-                            })
-                    }
-                    _ => {}
-                },
+                } if EdgeWeightKindDiscriminants::Use == *edge_kind
+                    && is_self(destination)
+                    && Some(CategoryNodeKind::Component) == category_kind(graph, source) =>
+                {
+                    component_will_be_deleted = true;
+                }
+                Update::NewEdge {
+                    source,
+                    destination,
+                    edge_weight,
+                } if EdgeWeightKindDiscriminants::Use == edge_weight.kind().into()
+                    && is_self(destination)
+                    && Some(CategoryNodeKind::Component) == category_kind(graph, source) =>
+                {
+                    // If the edge was disconnected and then reconnected, the component will
+                    // not be deleted.
+                    component_will_be_deleted = false;
+                }
+
+                // If SchemaVariant gets set, we are upgrading a component, which disconnects
+                // and reconnects prop and socket values and connections. The disconnects may
+                // be stale (based on an old snapshot), so when we detect schema upgrade, we
+                // redo the disconnects.
+                Update::NewEdge {
+                    source,
+                    edge_weight,
+                    destination,
+                } if EdgeWeightKindDiscriminants::Use == edge_weight.kind().into()
+                    && is_self(source)
+                    && graph
+                        .get_node_weight_by_id_opt(destination.id)
+                        .is_some_and(|n| NodeWeightDiscriminants::SchemaVariant == n.into()) =>
+                {
+                    // Root props and sockets get all new AttributeValues during upgrade, but
+                    // the RemoveEdges for the old ones may be stale; RemoveEdge the real ones
+                    // just in case.
+                    remove_edges.extend(graph.outgoing_edges(component, EdgeWeightKind::Root));
+                    remove_edges
+                        .extend(graph.outgoing_edges(component, EdgeWeightKind::SocketValue));
+
+                    // Input and output sockets get new connection PrototypeArguments during
+                    // upgrade, but the RemoveEdge for the old ones may be stale; remove
+                    // all existing connection nodes just in case.
+                    let connections = sockets(graph, component).flat_map(|socket| {
+                        input_socket_connections(graph, component_id, socket)
+                            .chain(output_socket_connections(graph, component_id, socket))
+                    });
+                    // To actually remove the nodes, we have to remove all incoming edges to them.
+                    remove_edges.extend(
+                        connections.flat_map(|argument| graph.edges_directed(argument, Incoming)),
+                    );
+                }
+
                 _ => {}
             }
         }
 
         if component_will_be_deleted {
-            if let Some(component_idx) = graph.get_node_index_by_id_opt(self.id) {
-                updates.extend(remove_hanging_socket_connections(
-                    graph,
-                    self.id,
-                    component_idx,
-                )?);
+            updates.extend(remove_hanging_socket_connections(
+                graph, self.id, component,
+            )?);
 
-                // Also remove any incoming edges to the component in case there
-                // is a frame contains in another change set
-                updates.extend(graph.edges_directed(component_idx, Incoming).filter_map(
-                    |edge_ref| {
-                        graph
-                            .get_node_weight_opt(edge_ref.source())
-                            .map(|source_weight| Update::RemoveEdge {
-                                source: source_weight.into(),
-                                destination: self.into(),
-                                edge_kind: edge_ref.weight().kind().into(),
-                            })
-                    },
-                ));
-            }
-        } else {
-            if !updates_to_remove.is_empty() {
-                let mut idx = 0;
-                // Vec::remove is O(n) for the updates, which will likely always be
-                // > than the size of updates_to_remove
-                updates.retain(|_| {
-                    let should_retain = !updates_to_remove.contains(&idx);
-                    idx += 1;
-                    should_retain
-                })
-            }
+            // Also remove any incoming edges to the component in case there
+            // is a frame contains in another change set
+            remove_edges.extend(graph.edges_directed(component, Incoming));
+        }
 
-            // Add updates to remove any incoming FrameContains edges that don't
-            // have the source in valid_frame_contains_source. This ensures a
-            // component can only have one frame parent
-            if let Some((_, valid_frame_contains_source)) = valid_frame_contains_source {
-                if let (Some(valid_source), Some(self_index)) = (
-                    graph.get_node_index_by_id_opt(valid_frame_contains_source),
-                    graph.get_node_index_by_id_opt(self.id),
-                ) {
-                    updates.extend(
-                        graph
-                            .edges_directed(self_index, Incoming)
-                            // We only want to find incoming FrameContains edges
-                            // that  are not from the current valid source
-                            .filter(|edge_ref| {
-                                EdgeWeightKindDiscriminants::FrameContains
-                                    == edge_ref.weight().kind().into()
-                                    && edge_ref.source() != valid_source
-                                    && !existing_remove_edges.contains(&edge_ref.source())
-                            })
-                            .filter_map(|edge_ref| {
-                                graph
-                                    .get_node_weight_opt(edge_ref.source())
-                                    .map(|source_weight| Update::RemoveEdge {
-                                        source: source_weight.into(),
-                                        destination: self.into(),
-                                        edge_kind: EdgeWeightKindDiscriminants::FrameContains,
-                                    })
-                            }),
-                    );
-                }
-            }
+        // Prepend any RemoveEdges so they happen *before* any NewEdge
+        if !remove_edges.is_empty() {
+            let old_updates = updates;
+            updates = remove_edges
+                .into_iter()
+                .map(|edge| remove_edge(graph, edge))
+                .try_collect()?;
+            updates.extend(old_updates);
         }
 
         Ok(updates)
     }
+}
+
+// Get all Socket nodes for a given component (by going through its SocketValues).
+//
+// <COMPONENT> -> SocketValue -> Socket: <OUTPUT SOCKET> | <INPUT SOCKET>
+fn sockets(
+    graph: &WorkspaceSnapshotGraphVCurrent,
+    component: NodeIndex,
+) -> impl Iterator<Item = NodeIndex> + '_ {
+    graph
+        .targets(component, EdgeWeightKind::SocketValue)
+        .flat_map(|out_value| graph.targets(out_value, EdgeWeightKind::Socket))
+}
+
+/// Get all connection nodes (PrototypeArguments) to an input socket on a component.
+fn input_socket_connections(
+    graph: &WorkspaceSnapshotGraphVCurrent,
+    component_id: ComponentId,
+    input_socket: NodeIndex,
+) -> impl Iterator<Item = NodeIndex> + '_ {
+    // From the Socket, find all PrototypeArguments representing the connection:
+    // - <INPUT SOCKET> --Prototype-> --PrototypeArgument-> <ARG> --PrototypeArgumentValue-> <OUTPUT SOCKET>
+    graph
+        .targets(input_socket, EdgeWeightKindDiscriminants::Prototype)
+        .flat_map(|prototype| graph.targets(prototype, EdgeWeightKind::PrototypeArgument))
+        .filter(move |&argument| {
+            argument_targets(graph, argument)
+                .is_some_and(|t| component_id == t.destination_component_id)
+        })
+}
+
+/// Get all connection nodes (PrototypeArguments) from an output socket on a component.
+fn output_socket_connections(
+    graph: &WorkspaceSnapshotGraphVCurrent,
+    component_id: ComponentId,
+    output_socket: NodeIndex,
+) -> impl Iterator<Item = NodeIndex> + '_ {
+    // From the output socket, walk back to the PrototypeArguments representing connections
+    // - <INPUT SOCKET> --Prototype-> --PrototypeArgument-> <ARG> --PrototypeArgumentValue-> <OUTPUT SOCKET>
+    graph
+        .sources(output_socket, EdgeWeightKind::PrototypeArgumentValue)
+        .filter(move |&argument| {
+            argument_targets(graph, argument).is_some_and(|t| component_id == t.source_component_id)
+        })
+}
+
+fn category_kind(
+    graph: &WorkspaceSnapshotGraphVCurrent,
+    category: &NodeInformation,
+) -> Option<CategoryNodeKind> {
+    graph
+        .get_node_weight_by_id_opt(category.id)
+        .and_then(|node_weight| match node_weight {
+            NodeWeight::Category(inner) => Some(inner.kind()),
+            _ => None,
+        })
+}
+
+fn argument_targets(
+    graph: &WorkspaceSnapshotGraphVCurrent,
+    argument: NodeIndex,
+) -> Option<ArgumentTargets> {
+    match graph.get_node_weight_opt(argument) {
+        Some(NodeWeight::AttributePrototypeArgument(argument)) => argument.targets(),
+        _ => None,
+    }
+}
+
+/// Creates an Update::RemoveEdge from an EdgeReference by looking up the nodes.
+fn remove_edge(
+    graph: &WorkspaceSnapshotGraphVCurrent,
+    edge: EdgeReference<'_, EdgeWeight>,
+) -> CorrectTransformsResult<Update> {
+    let source = graph.get_node_weight(edge.source())?;
+    let destination = graph.get_node_weight(edge.target())?;
+    Ok(Update::RemoveEdge {
+        source: source.into(),
+        destination: destination.into(),
+        edge_kind: edge.weight().kind().into(),
+    })
 }
