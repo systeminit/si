@@ -294,6 +294,17 @@ export class DiagramSocketData extends DiagramElementData {
   static generateUniqueKey(parentKey: string, id: string | number) {
     return `${parentKey}--s-${id}`;
   }
+
+  // removing the circular reference in parent so this object can serialize
+  toJSON() {
+    return {
+      def: this.def,
+      uniqueKey: this.uniqueKey,
+      position: this.position,
+      parentId: this.parent.def.id,
+      parentKey: this.parent.uniqueKey,
+    };
+  }
 }
 
 export type SocketLocationInfo = { center: Vector2d };

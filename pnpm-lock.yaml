@@ -240,6 +240,9 @@ importers:
       '@tanstack/vue-table':
         specifier: ^8.20.5
         version: 8.20.5(vue@3.5.12(typescript@4.9.5))
+      '@tanstack/vue-virtual':
+        specifier: ^3.13.6
+        version: 3.13.6(vue@3.5.12(typescript@4.9.5))
       '@types/async':
         specifier: ^3.2.15
         version: 3.2.16
@@ -2941,6 +2944,9 @@ packages:
     resolution: {integrity: sha512-P9dF7XbibHph2PFRz8gfBKEXEY/HJPOhym8CHmjF8y3q5mWpKx9xtZapXQUWCgkqvsK0R46Azuz+VaxD4Xl+Tg==}
     engines: {node: '>=12'}
 
+  '@tanstack/virtual-core@3.13.6':
+    resolution: {integrity: sha512-cnQUeWnhNP8tJ4WsGcYiX24Gjkc9ALstLbHcBj1t3E7EimN6n6kHH+DPV4PpDnuw00NApQp+ViojMj1GRdwYQg==}
+
   '@tanstack/vue-query@5.67.3':
     resolution: {integrity: sha512-wJxD/PtzIm/KpJVPYQqc17MWjpgdS0Gs67pA053U02gvbexSPG+sXZhwBFei2YUySvu1ZEH+OVXLgFgviW86Bw==}
     peerDependencies:
@@ -2955,6 +2961,11 @@ packages:
     engines: {node: '>=12'}
     peerDependencies:
       vue: '>=3.2'
+
+  '@tanstack/vue-virtual@3.13.6':
+    resolution: {integrity: sha512-GYdZ3SJBQPzgxhuCE2fvpiH46qzHiVx5XzBSdtESgiqh4poj8UgckjGWYEhxaBbcVt1oLzh1m3Ql4TyH32TOzQ==}
+    peerDependencies:
+      vue: ^2.7.0 || ^3.0.0
 
   '@tapjs/after-each@1.1.17':
     resolution: {integrity: sha512-ia8sr00Wilni+2+wO4MKYCYikeRwUC41HamV8EPN63R2UmiBEOe/cMSf+KYADIh56JvxAiH7Xa0+GSFU+N2FQQ==}
@@ -13369,6 +13380,8 @@ snapshots:
 
   '@tanstack/table-core@8.20.5': {}
 
+  '@tanstack/virtual-core@3.13.6': {}
+
   '@tanstack/vue-query@5.67.3(vue@3.5.12(typescript@4.9.5))':
     dependencies:
       '@tanstack/match-sorter-utils': 8.19.4
@@ -13380,6 +13393,11 @@ snapshots:
   '@tanstack/vue-table@8.20.5(vue@3.5.12(typescript@4.9.5))':
     dependencies:
       '@tanstack/table-core': 8.20.5
+      vue: 3.5.12(typescript@4.9.5)
+
+  '@tanstack/vue-virtual@3.13.6(vue@3.5.12(typescript@4.9.5))':
+    dependencies:
+      '@tanstack/virtual-core': 3.13.6
       vue: 3.5.12(typescript@4.9.5)
 
   '@tapjs/after-each@1.1.17(@tapjs/core@1.4.6(@swc/core@1.3.36)(@types/node@18.16.20)(react-dom@18.3.1(react@18.2.0))(react@18.2.0))':
