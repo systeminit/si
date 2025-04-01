@@ -39,6 +39,8 @@ pub enum ClientError {
     RootConnectionClosed,
     #[error("subscriber error: {0}")]
     Subscriber(#[from] SubscriberError),
+    #[error("tokio join error: {0}")]
+    TokioJoinError(#[from] tokio::task::JoinError),
     #[error(transparent)]
     Transport(Box<dyn std::error::Error + Sync + Send + 'static>),
 }
@@ -212,31 +214,69 @@ impl Client {
         .await
     }
 
-    async fn execute_request<R>(
+    async fn execute_request<R: Serialize + CycloneRequestable<Response: DeserializeOwned>>(
         &self,
         subject: Subject,
         output_tx: Option<mpsc::Sender<OutputStream>>,
         request: &R,
         request_mode: RequestMode,
-    ) -> ClientResult<FunctionResult<R::Response>>
-    where
-        R: Serialize + CycloneRequestable,
-        R::Response: DeserializeOwned,
-    {
+    ) -> ClientResult<FunctionResult<R::Response>> {
+        // Subscribe to responses and send the request. These unsubscribe when dropped.
+        let (root_subscriber, mut result_subscriber, output_subscriber) =
+            self.send_request(subject, request, request_mode).await?;
+
+        // Forward output messages in the background
+        let cancel_output = CancellationToken::new();
+        if let Some(output_tx) = output_tx {
+            let cancel_output = cancel_output.clone();
+            tokio::spawn(cancel_output.run_until_cancelled_owned(forward_output(
+                output_subscriber,
+                output_tx,
+                Span::current(),
+            )));
+        }
+
+        tokio::select! {
+            result = result_subscriber.try_next() => {
+                let result = result?.ok_or(ClientError::NoResult)?;
+                Span::current().follows_from(result.process_span);
+                Ok(result.payload)
+            }
+
+            // Because the channel never responds on success, we have to await this simultaneously
+            // with the result. If it *does* fail, we cancel the output forwarder as well.
+            err = check_for_send_error(root_subscriber) => {
+                cancel_output.cancel();
+                Err(err)
+            }
+        }
+    }
+
+    async fn send_request<R: Serialize + CycloneRequestable<Response: DeserializeOwned>>(
+        &self,
+        subject: Subject,
+        request: &R,
+        request_mode: RequestMode,
+    ) -> ClientResult<(
+        si_data_nats::Subscriber,
+        Subscriber<FunctionResult<R::Response>>,
+        Subscriber<OutputStream>,
+    )> {
         let msg = serde_json::to_vec(request).map_err(ClientError::JSONSerialize)?;
         let reply_mailbox_root = self.nats.new_inbox();
 
-        // Construct a subscriber stream for the result
+        // Subscribe first! So we're already listening when the messages come in.
+
+        // Subscribe to the result
         let result_subscriber_subject = reply_mailbox_for_result(&reply_mailbox_root);
         trace!(
             messaging.destination = &result_subscriber_subject.as_str(),
             "subscribing for result messages"
         );
-        let mut result_subscriber: Subscriber<FunctionResult<R::Response>> =
-            Subscriber::create(result_subscriber_subject)
-                .final_message_header_key(FINAL_MESSAGE_HEADER_KEY)
-                .start(&self.nats)
-                .await?;
+        let result_subscriber = Subscriber::create(result_subscriber_subject)
+            .final_message_header_key(FINAL_MESSAGE_HEADER_KEY)
+            .start(&self.nats)
+            .await?;
 
         // Construct a subscriber stream for output messages
         let output_subscriber_subject = reply_mailbox_for_output(&reply_mailbox_root);
@@ -249,28 +289,14 @@ impl Client {
             .start(&self.nats)
             .await?;
 
-        let shutdown_token = CancellationToken::new();
-        let span = Span::current();
-
-        // If the caller wishes to receive forwarded output, spawn a task to forward output to the
-        // sender (provided by the caller).
-        if let Some(output_tx) = output_tx {
-            tokio::spawn(forward_output_task(
-                output_subscriber,
-                output_tx,
-                span,
-                shutdown_token.clone(),
-            ));
-        }
+        // Root reply mailbox will receive a reply if nobody is listening to the channel `subject`
+        let root_subscriber = self.nats.subscribe(reply_mailbox_root.clone()).await?;
 
         // Submit the request message
         trace!(
             messaging.destination = &subject.as_str(),
             "publishing message"
         );
-
-        // Root reply mailbox will receive a reply if nobody is listening to the channel `subject`
-        let mut root_subscriber = self.nats.subscribe(reply_mailbox_root.clone()).await?;
 
         // NOTE(nick,fletcher): based on the provided request mode, we will either communicate user core nats or
         // jetstream. We neither like nor endorse this behavior. This method should probably be broken up in the
@@ -280,7 +306,7 @@ impl Client {
                 self.nats
                     .publish_with_reply_and_headers(
                         subject,
-                        reply_mailbox_root.clone(),
+                        reply_mailbox_root,
                         propagation::empty_injected_headers(),
                         msg.into(),
                     )
@@ -288,7 +314,7 @@ impl Client {
             }
             RequestMode::Jetstream => {
                 let mut headers = propagation::empty_injected_headers();
-                headers.insert(REPLY_INBOX_HEADER_NAME, reply_mailbox_root.clone());
+                headers.insert(REPLY_INBOX_HEADER_NAME, reply_mailbox_root);
 
                 self.context
                     .publish_with_headers(subject, headers, msg.into())
@@ -301,77 +327,49 @@ impl Client {
             }
         }
 
-        let span = Span::current();
+        Ok((root_subscriber, result_subscriber, output_subscriber))
+    }
+}
 
-        tokio::select! {
-            // Wait for one message on the result reply mailbox
-            result = result_subscriber.try_next() => {
-                shutdown_token.cancel();
-
-                root_subscriber.unsubscribe_after(0).await?;
-                result_subscriber.unsubscribe_after(0).await?;
-                match result? {
-                    Some(result) => {
-                        span.follows_from(result.process_span);
-                        Ok(result.payload)
-                    }
-                    None => Err(ClientError::NoResult),
-                }
-            }
-            maybe_msg = root_subscriber.next() => {
-                shutdown_token.cancel();
-
-                match &maybe_msg {
-                    Some(msg) => {
-                        propagation::associate_current_span_from_headers(msg.headers());
-                        error!(
-                            subject = reply_mailbox_root,
-                            msg = ?msg,
-                            "received an unexpected message or error on reply subject prefix"
-                        )
-                    }
-                    None => {
-                        error!(
-                            subject = reply_mailbox_root,
-                            "reply subject prefix subscriber unexpectedly closed"
-                        )
-                    }
-                };
-
-                // In all cases, we're considering a message on this subscriber to be fatal and
-                // will return with an error
-                Err(ClientError::PublishingFailed(maybe_msg.ok_or(ClientError::RootConnectionClosed)?))
-            }
+async fn check_for_send_error(mut root_subscriber: si_data_nats::Subscriber) -> ClientError {
+    // Return an error if no one is listening.
+    match root_subscriber.next().await {
+        Some(msg) => {
+            propagation::associate_current_span_from_headers(msg.headers());
+            error!(
+                subject = root_subscriber.subject(),
+                msg = ?msg,
+                "received an unexpected message or error on reply subject prefix"
+            );
+            ClientError::PublishingFailed(msg)
+        }
+        None => {
+            error!(
+                subject = root_subscriber.subject(),
+                "reply subject prefix subscriber unexpectedly closed"
+            );
+            ClientError::RootConnectionClosed
         }
     }
 }
 
-async fn forward_output_task(
+async fn forward_output(
     mut output_subscriber: Subscriber<OutputStream>,
     output_tx: mpsc::Sender<OutputStream>,
     request_span: Span,
-    shutdown_token: CancellationToken,
 ) {
-    loop {
-        tokio::select! {
-            Some(msg) = output_subscriber.next() => {
-                match msg {
-                    Ok(output) => {
-                        output.process_span.follows_from(&request_span);
-                        if let Err(err) = output_tx.send(output.payload).await {
-                            warn!(si.error.message = ?err, "output forwarder failed to send message on channel");
-                        }
-                    }
-                    Err(err) => {
-                        warn!(si.error.message = ?err, "output forwarder received an error on its subscriber")
-                    }
+    // Return the loop where we listen for messages
+    while let Some(msg) = output_subscriber.next().await {
+        match msg {
+            Ok(output) => {
+                output.process_span.follows_from(&request_span);
+                if let Err(err) = output_tx.send(output.payload).await {
+                    warn!(si.error.message = ?err, "output forwarder failed to send message on channel");
                 }
             }
-            _ = shutdown_token.cancelled() => break,
-            else => break,
+            Err(err) => {
+                warn!(si.error.message = ?err, "output forwarder received an error on its subscriber");
+            }
         }
-    }
-    if let Err(err) = output_subscriber.unsubscribe_after(0).await {
-        warn!(si.error.message = ?err, "error when unsubscribing from output subscriber");
     }
 }

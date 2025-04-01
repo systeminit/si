@@ -50,6 +50,11 @@ impl Subscriber {
         }
     }
 
+    /// Get the subject of this subscription.
+    pub fn subject(&self) -> &str {
+        &self.metadata.messaging_destination_name
+    }
+
     /// Unsubscribes from subscription, draining all remaining messages.
     ///
     /// # Examples
