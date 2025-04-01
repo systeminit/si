@@ -3,11 +3,7 @@
     <div
       class="flex flex-col border-2 h-[80vh] rounded-sm"
       @click="focusOnInput"
-      @keydown.up.prevent="highlightPrev"
-      @keydown.down.prevent="highlightNext"
-      @keydown.enter.prevent="processHighlighted"
-      @keydown.tab.exact.prevent="processHighlighted"
-      @keydown.shift.tab.prevent="undoASelection"
+      @keydown="debouncedListener"
     >
       <div class="flex flex-row w-full children:basis-1/2">
         <VormInput
@@ -16,12 +12,14 @@
           class="border-r-2"
           label="Search"
           noLabel
+          autocomplete="off"
         />
         <VormInput
           ref="inputBRef"
           v-model="searchStringB"
           label="Search"
           noLabel
+          autocomplete="off"
         />
       </div>
       <div class="flex flex-row grow border-t-2 min-h-0">
@@ -62,7 +60,6 @@ import {
   reactive,
   ref,
   watch,
-  watchEffect,
 } from "vue";
 import { Fzf } from "fzf";
 import {
@@ -169,7 +166,7 @@ const undoASelection = () => {
 
 // Generate the options on both sides
 // TODO Break this into computed variables
-watchEffect(() => {
+const updateMenu = async () => {
   if (!modalRef.value?.isOpen) {
     return;
   }
@@ -324,7 +321,16 @@ watchEffect(() => {
 
   activeSideList.value = activeSideSocketsWithPeers;
   otherSideList.value = deduplicatedOtherSideSockets;
+};
+const debouncedUpdate = _.debounce(updateMenu, 20, {
+  leading: true,
+  trailing: false,
 });
+watch(activeSide, debouncedUpdate, { immediate: true });
+watch(searchStringA, debouncedUpdate, { immediate: true });
+watch(searchStringB, debouncedUpdate, { immediate: true });
+watch(componentsStore.diagramEdgesById, debouncedUpdate, { immediate: true });
+watch(componentsStore.allComponentsById, debouncedUpdate, { immediate: true });
 
 const highlightedIndex = ref(0);
 // Try to keep the selected option selected when list changes, else reset selected to 0
@@ -340,6 +346,38 @@ const highlightedIndex = ref(0);
 //
 //   selectedIndex.value = 0;
 // })
+
+const keyListener = (e: KeyboardEvent) => {
+  switch (e.key) {
+    case "ArrowUp": {
+      highlightPrev();
+      e.preventDefault();
+      break;
+    }
+    case "ArrowDown": {
+      highlightNext();
+      e.preventDefault();
+      break;
+    }
+    case "Enter": {
+      processHighlighted();
+      e.preventDefault();
+      break;
+    }
+    case "Tab": {
+      if (e.shiftKey) undoASelection();
+      else processHighlighted();
+      e.preventDefault();
+      break;
+    }
+    default:
+      break;
+  }
+};
+const debouncedListener = _.debounce(keyListener, 10, {
+  leading: true,
+  trailing: false,
+});
 
 const highlightNext = () => {
   const upperLimit =
