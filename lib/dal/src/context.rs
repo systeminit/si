@@ -423,9 +423,14 @@ impl DalContext {
         &self,
     ) -> Result<Option<WorkspaceSnapshotAddress>, TransactionsError> {
         if let Some(snapshot) = &self.workspace_snapshot {
-            Ok(Some(snapshot.write(self).await.map_err(|err| {
-                TransactionsError::WorkspaceSnapshot(Box::new(err))
-            })?))
+            Ok(Some(
+                snapshot
+                    .as_legacy_snapshot()
+                    .map_err(|err| TransactionsError::WorkspaceSnapshot(Box::new(err)))?
+                    .write(self)
+                    .await
+                    .map_err(|err| TransactionsError::WorkspaceSnapshot(Box::new(err)))?,
+            ))
         } else {
             Ok(None)
         }
@@ -616,6 +621,7 @@ impl DalContext {
                     WorkspaceSnapshot::find_for_change_set(self, head_change_set_id).await?;
                 head_snapshot.detect_changes(workspace_snapshot).await
             }
+            _ => todo!("implement this!"),
         }
     }
 

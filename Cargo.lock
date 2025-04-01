@@ -1995,6 +1995,7 @@ dependencies = [
  "si-pkg",
  "si-runtime",
  "si-settings",
+ "si-split-graph",
  "si-std",
  "sodiumoxide",
  "strum",
