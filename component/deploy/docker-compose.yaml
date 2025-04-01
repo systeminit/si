@@ -45,18 +45,6 @@ services:
       - /:/rootfs:ro
       - /var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket:ro
 
-  pgbouncer:
-    container_name: pgbouncer
-    image: systeminit/pgbouncer:${INIT_VERSION:-stable}
-    profiles: [rebaser, pinga, sdf, forklift]
-    ports:
-      - 5432:5432
-    volumes:
-      - config:/etc/pgbouncer/
-    depends_on:
-      init:
-        condition: service_completed_successfully
-
   vector:
     container_name: vector
     image: timberio/vector:0.X-debian
@@ -81,17 +69,6 @@ services:
       - "config:/etc/prometheus/"
     depends_on:
       - otelcol
-
-  pgbouncer-prom-exporter:
-    container_name: pgbouncer-prom-exporter
-    image: systeminit/pgbouncer-prom-exporter:${INIT_VERSION:-stable}
-    profiles: [forklift, rebaser, pinga, sdf]
-    environment:
-      - BOUNCER_ADMIN_PASSWORD=${SI_BOUNCER_ADMIN_PASSWORD}
-    ports:
-      - 9127:9127
-    depends_on:
-      - pgbouncer
 
 volumes:
   config:

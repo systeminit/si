@@ -11,11 +11,6 @@ scrape_configs:
    static_configs:
     - targets:
       - node-exporter:9100
- - job_name: pgbouncer_metrics
-   metrics_path: /metrics
-   static_configs:
-    - targets:
-       - pgbouncer-prom-exporter:9127
 remote_write:
   - url: $SI_PROMETHEUS_REMOTE_WRITE_URL
     sigv4:
