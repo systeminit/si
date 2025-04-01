@@ -176,6 +176,9 @@ export const useFuncRunsStore = () => {
           {
             eventType: "FuncRunLogUpdated",
             callback: (payload) => {
+              // If the func run already exists, update it
+              if (this.funcRuns[payload.funcRunId])
+                this.GET_FUNC_RUN(payload.funcRunId);
               if (payload.actionId)
                 this.lastRuns[payload.actionId] = new Date();
             },
