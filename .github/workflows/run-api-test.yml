@@ -17,6 +17,7 @@ on:
         options:
           - tools
           - production
+          - perf
   repository_dispatch:
     types:
       - webhook

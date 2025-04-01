@@ -23,6 +23,7 @@ on:
         options:
           - tools
           - production
+          - perf
 
 jobs:
   garbage_collect:

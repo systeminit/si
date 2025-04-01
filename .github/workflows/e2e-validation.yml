@@ -17,6 +17,7 @@ on:
         options:
           - tools
           - production
+          - perf
 
 jobs:
   define-test-matrix:

@@ -22,6 +22,7 @@ on:
         options:
           - tools
           - production
+          - perf
 
 jobs:
   down:

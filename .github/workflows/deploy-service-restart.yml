@@ -19,6 +19,7 @@ on:
         options:
           - tools
           - production
+          - perf
 
 # We only one one deploy happening at a time per environment, so if one is
 # in progress, we'll wait for it to finish before starting the
