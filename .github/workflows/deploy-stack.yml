@@ -25,6 +25,7 @@ on:
         options:
           - tools
           - production
+          - perf
       version:
         type: string
         required: true
