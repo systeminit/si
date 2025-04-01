@@ -11,14 +11,14 @@ use si_events::{
 use si_id::ulid::Ulid;
 use thiserror::Error;
 
-mod opt_zip;
+pub mod opt_zip;
 pub mod subgraph;
 pub mod subgraph_address;
 pub mod updates;
 
-use subgraph::{SubGraph, SubGraphEdgeIndex, SubGraphNodeIndex};
+pub use subgraph::{SubGraph, SubGraphEdgeIndex, SubGraphNodeIndex};
 pub use subgraph_address::SubGraphAddress;
-use updates::Update;
+pub use updates::Update;
 
 pub const MAX_NODES: usize = ((u16::MAX / 2) - 1) as usize;
 

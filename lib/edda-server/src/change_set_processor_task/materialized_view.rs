@@ -106,7 +106,7 @@ pub async fn build_all_mv_for_change_set(
             workspace_id: ctx.workspace_pk()?,
             change_set_id: Some(ctx.change_set_id()),
             snapshot_from_address: None,
-            snapshot_to_address: Some(ctx.workspace_snapshot()?.id().await),
+            snapshot_to_address: Some(ctx.workspace_snapshot()?.as_legacy_snapshot()?.id().await),
         },
         kind: PATCH_BATCH_KIND,
         patches,

@@ -20,6 +20,7 @@ use si_events::workspace_snapshot::{Change, Checksum};
 use si_events::{ulid::Ulid, ContentHash, WorkspaceSnapshotAddress};
 use si_id::{ApprovalRequirementDefinitionId, EntityId};
 use si_layer_cache::LayerDbError;
+use si_split_graph::SplitGraphError;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::{Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard};
@@ -60,6 +61,7 @@ pub mod lamport_clock;
 pub mod migrator;
 pub mod node_weight;
 pub mod selector;
+pub mod split_snapshot;
 pub mod traits;
 pub mod update;
 pub mod vector_clock;
@@ -141,6 +143,8 @@ pub enum WorkspaceSnapshotError {
     SerdeJson(#[from] serde_json::Error),
     #[error("slow runtime error: {0}")]
     SlowRuntime(#[from] SlowRuntimeError),
+    #[error("split graph error: {0}")]
+    SplitGraph(#[from] SplitGraphError),
     #[error("tenancy error: {0}")]
     Tenancy(#[from] TenancyError),
     #[error("transactions error: {0}")]

@@ -1174,17 +1174,6 @@ impl AttributeValue {
         Ok(new_attribute_value.id)
     }
 
-    pub async fn order(
-        &self,
-        ctx: &DalContext,
-    ) -> AttributeValueResult<Option<Vec<AttributeValueId>>> {
-        Ok(ctx
-            .workspace_snapshot()?
-            .ordering_node_for_container(self.id())
-            .await?
-            .map(|node| node.order().clone().into_iter().map(Into::into).collect()))
-    }
-
     async fn populate_nested_values(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
@@ -2643,12 +2632,18 @@ impl AttributeValue {
                         PropKind::Array => {
                             match ctx
                                 .workspace_snapshot()?
-                                .ordering_node_for_container(pav_id)
+                                .ordered_children_for_node(pav_id)
                                 .await?
                             {
-                                Some(ordering_node) => {
-                                    let index = ordering_node.get_index_for_id(child_id.into())?;
-                                    Some(KeyOrIndex::Index(index))
+                                Some(order) => {
+                                    let index = order
+                                        .iter()
+                                        .position(|id| *id == child_id.into())
+                                        .ok_or(NodeWeightError::MissingKeyForChildEntry(
+                                            child_id.into(),
+                                        ))?;
+
+                                    Some(KeyOrIndex::Index(index as i64))
                                 }
                                 None => None,
                             }

@@ -341,7 +341,11 @@ impl Workspace {
 
         migrate_intrinsics_no_commit(ctx).await.map_err(Box::new)?;
 
-        let workspace_snapshot_address = ctx.workspace_snapshot()?.write(ctx).await?;
+        let workspace_snapshot_address = ctx
+            .workspace_snapshot()?
+            .as_legacy_snapshot()?
+            .write(ctx)
+            .await?;
 
         let mut head_change_set = ChangeSet::new(
             ctx,
