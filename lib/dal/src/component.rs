@@ -541,12 +541,12 @@ impl Component {
             if should_descend {
                 match prop_kind {
                     PropKind::Object => {
-                        let ordering_node_weight = workspace_snapshot
-                            .ordering_node_for_container(prop_id)
+                        let ordered_children = workspace_snapshot
+                            .ordered_children_for_node(prop_id)
                             .await?
                             .ok_or(ComponentError::ObjectPropHasNoOrderingNode(prop_id))?;
 
-                        for &child_prop_id in ordering_node_weight.order() {
+                        for child_prop_id in ordered_children {
                             work_queue.push_back((
                                 child_prop_id.into(),
                                 Some(attribute_value.id()),

@@ -1,7 +1,9 @@
 use std::num::TryFromIntError;
 
+use category_node_weight::CategoryNodeKind;
 use finished_dependent_value_root_node_weight::FinishedDependentValueRootNodeWeight;
 use serde::{Deserialize, Serialize};
+use si_events::workspace_snapshot::EntityKind;
 use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash, EncryptedSecretKey};
 use si_layer_cache::LayerDbError;
 use strum::{EnumDiscriminants, EnumIter};
@@ -1193,6 +1195,109 @@ impl CorrectExclusiveOutgoingEdge for NodeWeight {
             NodeWeight::View(weight) => weight.exclusive_outgoing_edges(),
             NodeWeight::DiagramObject(weight) => weight.exclusive_outgoing_edges(),
             NodeWeight::ApprovalRequirementDefinition(weight) => weight.exclusive_outgoing_edges(),
+        }
+    }
+}
+
+impl si_split_graph::CustomNodeWeight for NodeWeight {
+    fn id(&self) -> si_split_graph::SplitGraphNodeId {
+        self.id()
+    }
+
+    fn lineage_id(&self) -> si_split_graph::SplitGraphNodeId {
+        self.lineage_id()
+    }
+
+    fn entity_kind(&self) -> EntityKind {
+        self.into()
+    }
+
+    fn set_merkle_tree_hash(&mut self, hash: MerkleTreeHash) {
+        self.set_merkle_tree_hash(hash);
+    }
+
+    fn merkle_tree_hash(&self) -> MerkleTreeHash {
+        self.merkle_tree_hash()
+    }
+
+    fn node_hash(&self) -> ContentHash {
+        self.node_hash()
+    }
+}
+
+impl From<&NodeWeight> for EntityKind {
+    fn from(value: &NodeWeight) -> Self {
+        match value {
+            NodeWeight::Action(_) => EntityKind::Action,
+            NodeWeight::ActionPrototype(_) => EntityKind::ActionPrototype,
+            NodeWeight::AttributePrototypeArgument(_) => EntityKind::AttributePrototypeArgument,
+            NodeWeight::AttributeValue(_) => EntityKind::AttributeValue,
+            NodeWeight::Category(category_node_weight) => match category_node_weight.kind() {
+                CategoryNodeKind::Action => EntityKind::CategoryAction,
+                CategoryNodeKind::Component => EntityKind::CategoryComponent,
+                CategoryNodeKind::DeprecatedActionBatch => {
+                    EntityKind::CategoryDeprecatedActionBatch
+                }
+                CategoryNodeKind::Func => EntityKind::CategoryFunc,
+                CategoryNodeKind::Module => EntityKind::CategoryModule,
+                CategoryNodeKind::Schema => EntityKind::CategorySchema,
+                CategoryNodeKind::Secret => EntityKind::CategorySecret,
+                CategoryNodeKind::DependentValueRoots => EntityKind::CategoryDependentValueRoots,
+                CategoryNodeKind::View => EntityKind::CategoryView,
+                CategoryNodeKind::DiagramObject => EntityKind::CategoryDiagramObject,
+            },
+            NodeWeight::Component(_) => EntityKind::Component,
+            NodeWeight::Content(content_node_weight) => match content_node_weight
+                .content_address_discriminants()
+            {
+                ContentAddressDiscriminants::ActionPrototype => EntityKind::ActionPrototype,
+                ContentAddressDiscriminants::AttributePrototype => EntityKind::AttributePrototype,
+                ContentAddressDiscriminants::Component => EntityKind::Component,
+                ContentAddressDiscriminants::Func => EntityKind::Func,
+                // NOTE(nick): we are treating "FuncArg" and "FuncArgument" as the same entity.
+                ContentAddressDiscriminants::FuncArg => EntityKind::FuncArgument,
+                ContentAddressDiscriminants::Geometry => EntityKind::Geometry,
+                ContentAddressDiscriminants::InputSocket => EntityKind::InputSocket,
+                ContentAddressDiscriminants::JsonValue => EntityKind::JsonValue,
+                ContentAddressDiscriminants::ManagementPrototype => EntityKind::ManagementPrototype,
+                ContentAddressDiscriminants::Module => EntityKind::Module,
+                ContentAddressDiscriminants::OutputSocket => EntityKind::OutputSocket,
+                ContentAddressDiscriminants::Prop => EntityKind::Prop,
+                ContentAddressDiscriminants::Root => EntityKind::Root,
+                ContentAddressDiscriminants::Schema => EntityKind::Schema,
+                ContentAddressDiscriminants::SchemaVariant => EntityKind::SchemaVariant,
+                ContentAddressDiscriminants::Secret => EntityKind::Secret,
+                ContentAddressDiscriminants::StaticArgumentValue => EntityKind::StaticArgumentValue,
+                ContentAddressDiscriminants::ValidationOutput => EntityKind::ValidationOutput,
+                ContentAddressDiscriminants::ValidationPrototype => EntityKind::ValidationPrototype,
+                ContentAddressDiscriminants::View => EntityKind::View,
+                ContentAddressDiscriminants::ApprovalRequirementDefinition => {
+                    EntityKind::ApprovalRequirementDefinition
+                }
+                ContentAddressDiscriminants::DeprecatedAction => EntityKind::DeprecatedAction,
+                ContentAddressDiscriminants::DeprecatedActionBatch => {
+                    EntityKind::DeprecatedActionBatch
+                }
+                ContentAddressDiscriminants::DeprecatedActionRunner => {
+                    EntityKind::DeprecatedActionRunner
+                }
+            },
+            NodeWeight::DependentValueRoot(_) => EntityKind::DependentValueRoot,
+            NodeWeight::Func(_) => EntityKind::Func,
+            NodeWeight::FuncArgument(_) => EntityKind::FuncArgument,
+            NodeWeight::Ordering(_) => EntityKind::Ordering,
+            NodeWeight::Prop(_) => EntityKind::Prop,
+            NodeWeight::Secret(_) => EntityKind::Secret,
+            NodeWeight::FinishedDependentValueRoot(_) => EntityKind::FinishedDependentValueRoot,
+            NodeWeight::InputSocket(_) => EntityKind::InputSocket,
+            NodeWeight::SchemaVariant(_) => EntityKind::SchemaVariant,
+            NodeWeight::ManagementPrototype(_) => EntityKind::ManagementPrototype,
+            NodeWeight::Geometry(_) => EntityKind::Geometry,
+            NodeWeight::View(_) => EntityKind::View,
+            NodeWeight::DiagramObject(_) => EntityKind::DiagramObject,
+            NodeWeight::ApprovalRequirementDefinition(_) => {
+                EntityKind::ApprovalRequirementDefinition
+            }
         }
     }
 }

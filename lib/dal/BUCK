@@ -31,6 +31,7 @@ rust_library(
         "//lib/si-pkg:si-pkg",
         "//lib/si-runtime-rs:si-runtime",
         "//lib/si-settings:si-settings",
+        "//lib/si-split-graph:si-split-graph",
         "//lib/si-std:si-std",
         "//lib/telemetry-nats-rs:telemetry-nats",
         "//lib/telemetry-rs:telemetry",
