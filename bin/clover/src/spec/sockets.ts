@@ -57,7 +57,7 @@ export function createInputSocketFromProp(
   return socket;
 }
 
-function createSocketFromPropInner(
+export function createSocketFromPropInner(
   prop: ExpandedPropSpec,
   kind: "input" | "output",
   arity: SocketSpecArity,
