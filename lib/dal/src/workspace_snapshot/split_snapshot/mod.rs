@@ -4,7 +4,7 @@ use std::{
 };
 
 use async_trait::async_trait;
-use petgraph::Direction;
+use petgraph::Direction::{self, Incoming, Outgoing};
 use serde::{Deserialize, Serialize};
 use si_events::{
     merkle_tree_hash::MerkleTreeHash,
@@ -34,7 +34,7 @@ use super::{
     node_weight::{category_node_weight::CategoryNodeKind, NodeWeight},
     traits::{approval_requirement::ApprovalRequirementExt, diagram::view::ViewExt, prop::PropExt},
     CycleCheckGuard, DependentValueRoot, EntityKindExt, InferredConnectionsWriteGuard,
-    InputSocketExt, SchemaVariantExt, WorkspaceSnapshotResult,
+    InputSocketExt, SchemaVariantExt, WorkspaceSnapshotError, WorkspaceSnapshotResult,
 };
 
 pub type SplitSnapshotGraphV1 = SplitGraph<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>;
@@ -158,19 +158,23 @@ impl SplitSnapshot {
     }
 
     pub async fn generate_ulid(&self) -> WorkspaceSnapshotResult<Ulid> {
-        todo!()
+        // XXX: do we need to use the generator for monotonically increasing IDs? is that really necessary?
+        Ok(Ulid::new())
     }
 
     pub async fn enable_cycle_check(&self) -> CycleCheckGuard {
-        todo!()
+        self.cycle_check
+            .store(true, std::sync::atomic::Ordering::Relaxed);
+        CycleCheckGuard::new(self.cycle_check.clone())
     }
 
     pub async fn disable_cycle_check(&self) {
-        todo!()
+        self.cycle_check
+            .store(false, std::sync::atomic::Ordering::Relaxed);
     }
 
     pub async fn cycle_check(&self) -> bool {
-        todo!()
+        self.cycle_check.load(std::sync::atomic::Ordering::Relaxed)
     }
 
     pub async fn serialized(&self) -> WorkspaceSnapshotResult<Vec<u8>> {
@@ -182,11 +186,15 @@ impl SplitSnapshot {
     }
 
     pub async fn add_or_replace_node(&self, node: NodeWeight) -> WorkspaceSnapshotResult<()> {
-        todo!()
+        self.working_copy_mut().await.add_or_replace_node(node)?;
+
+        Ok(())
     }
 
     pub async fn add_ordered_node(&self, node: NodeWeight) -> WorkspaceSnapshotResult<()> {
-        todo!()
+        self.working_copy_mut().await.add_ordered_node(node)?;
+
+        Ok(())
     }
 
     pub async fn update_content(
@@ -194,16 +202,28 @@ impl SplitSnapshot {
         id: Ulid,
         new_content_hash: ContentHash,
     ) -> WorkspaceSnapshotResult<()> {
-        todo!()
+        let mut working_copy = self.working_copy_mut().await;
+
+        match working_copy.node_weight_mut(id) {
+            Some(node_weight_mut) => {
+                node_weight_mut.new_content_hash(new_content_hash)?;
+                working_copy.touch_node(id);
+                Ok(())
+            }
+            None => Err(WorkspaceSnapshotError::NodeNotFoundAtId(id)),
+        }
     }
 
     pub async fn add_edge(
         &self,
-        from_node_id: impl Into<Ulid>,
+        from_id: impl Into<Ulid>,
         edge_weight: EdgeWeight,
-        to_node_id: impl Into<Ulid>,
+        to_id: impl Into<Ulid>,
     ) -> WorkspaceSnapshotResult<()> {
-        todo!()
+        self.working_copy_mut()
+            .await
+            .add_edge(from_id.into(), edge_weight, to_id.into())?;
+        Ok(())
     }
 
     pub async fn add_edge_unchecked(
@@ -212,31 +232,32 @@ impl SplitSnapshot {
         edge_weight: EdgeWeight,
         to_id: impl Into<Ulid>,
     ) -> WorkspaceSnapshotResult<()> {
-        todo!()
+        // TODO: Implement add_edge_unchecked
+        self.add_edge(from_id, edge_weight, to_id).await
     }
 
     pub async fn add_ordered_edge(
         &self,
-        from_node_id: impl Into<Ulid>,
+        from_id: impl Into<Ulid>,
         edge_weight: EdgeWeight,
-        to_node_id: impl Into<Ulid>,
+        to_id: impl Into<Ulid>,
     ) -> WorkspaceSnapshotResult<()> {
-        todo!()
+        self.working_copy_mut().await.add_ordered_edge(
+            from_id.into(),
+            edge_weight,
+            to_id.into(),
+        )?;
+        Ok(())
     }
 
     pub async fn detect_changes(
         &self,
         updated_snapshot: &Self,
     ) -> WorkspaceSnapshotResult<Vec<Change>> {
-        todo!()
-    }
-
-    pub async fn calculate_checksum(
-        &self,
-        ctx: &DalContext,
-        ids_with_hashes: Vec<(EntityId, MerkleTreeHash)>,
-    ) -> WorkspaceSnapshotResult<Checksum> {
-        todo!()
+        Ok(self
+            .working_copy()
+            .await
+            .detect_changes(&*updated_snapshot.working_copy().await)?)
     }
 
     pub async fn import_component_subgraph(
@@ -251,35 +272,45 @@ impl SplitSnapshot {
         &self,
         id: impl Into<Ulid>,
     ) -> WorkspaceSnapshotResult<NodeWeight> {
-        todo!()
+        let id = id.into();
+        Ok(self
+            .get_node_weight_opt(id)
+            .await
+            .ok_or(WorkspaceSnapshotError::NodeNotFoundAtId(id))?)
     }
 
     pub async fn get_node_weight_opt(&self, id: impl Into<Ulid>) -> Option<NodeWeight> {
-        todo!()
+        self.working_copy().await.node_weight(id.into()).cloned()
     }
 
     pub async fn cleanup(&self) -> WorkspaceSnapshotResult<()> {
-        todo!()
+        self.working_copy_mut().await.cleanup();
+        Ok(())
     }
 
     pub async fn cleanup_and_merkle_tree_hash(&self) -> WorkspaceSnapshotResult<()> {
-        todo!()
+        self.working_copy_mut().await.cleanup_and_merkle_tree_hash();
+        Ok(())
     }
 
     pub async fn nodes(&self) -> WorkspaceSnapshotResult<Vec<NodeWeight>> {
-        todo!()
+        Ok(self.working_copy().await.nodes().cloned().collect())
     }
 
     pub async fn edges(&self) -> WorkspaceSnapshotResult<Vec<(EdgeWeight, Ulid, Ulid)>> {
-        todo!()
-    }
-
-    pub async fn dot(&self) {
-        todo!()
+        Ok(self
+            .working_copy()
+            .await
+            .edges()
+            .map(|(weight, src, dst)| (weight.clone(), src, dst))
+            .collect())
     }
 
     pub async fn node_exists(&self, id: impl Into<Ulid>) -> bool {
-        todo!()
+        self.working_copy()
+            .await
+            .node_id_to_index(id.into())
+            .is_some()
     }
 
     pub async fn get_category_node_or_err(
@@ -303,7 +334,18 @@ impl SplitSnapshot {
         id: impl Into<Ulid>,
         direction: Direction,
     ) -> WorkspaceSnapshotResult<Vec<(EdgeWeight, Ulid, Ulid)>> {
-        todo!()
+        Ok(self
+            .working_copy()
+            .await
+            .edges_directed(id.into(), direction)?
+            .filter_map(|edge_ref| {
+                edge_ref
+                    .weight()
+                    .custom()
+                    .cloned()
+                    .map(|weight| (weight, edge_ref.source(), edge_ref.target()))
+            })
+            .collect())
     }
 
     pub async fn edges_directed_for_edge_weight_kind(
@@ -312,7 +354,19 @@ impl SplitSnapshot {
         direction: Direction,
         edge_kind: EdgeWeightKindDiscriminants,
     ) -> WorkspaceSnapshotResult<Vec<(EdgeWeight, Ulid, Ulid)>> {
-        todo!()
+        Ok(self
+            .working_copy()
+            .await
+            .edges_directed(id.into(), direction)?
+            .filter_map(|edge_ref| {
+                edge_ref
+                    .weight()
+                    .custom()
+                    .cloned()
+                    .map(|weight| (weight, edge_ref.source(), edge_ref.target()))
+            })
+            .filter(|(weight, _, _)| edge_kind == weight.kind().into())
+            .collect())
     }
 
     pub async fn remove_all_edges(&self, id: impl Into<Ulid>) -> WorkspaceSnapshotResult<()> {
@@ -324,7 +378,21 @@ impl SplitSnapshot {
         id: impl Into<Ulid>,
         edge_weight_kind_discrim: EdgeWeightKindDiscriminants,
     ) -> WorkspaceSnapshotResult<Vec<Ulid>> {
-        todo!()
+        Ok(self
+            .working_copy()
+            .await
+            .edges_directed(id.into(), Incoming)?
+            .filter_map(|edge_ref| match edge_ref.weight().custom() {
+                Some(weight) => {
+                    if edge_weight_kind_discrim == weight.kind().into() {
+                        Some(edge_ref.source())
+                    } else {
+                        None
+                    }
+                }
+                None => None,
+            })
+            .collect())
     }
 
     pub async fn outgoing_targets_for_edge_weight_kind(
@@ -332,7 +400,21 @@ impl SplitSnapshot {
         id: impl Into<Ulid>,
         edge_weight_kind_discrim: EdgeWeightKindDiscriminants,
     ) -> WorkspaceSnapshotResult<Vec<Ulid>> {
-        todo!()
+        Ok(self
+            .working_copy()
+            .await
+            .edges_directed(id.into(), Outgoing)?
+            .filter_map(|edge_ref| match edge_ref.weight().custom() {
+                Some(weight) => {
+                    if edge_weight_kind_discrim == weight.kind().into() {
+                        Some(edge_ref.target())
+                    } else {
+                        None
+                    }
+                }
+                None => None,
+            })
+            .collect())
     }
 
     pub async fn all_outgoing_targets(

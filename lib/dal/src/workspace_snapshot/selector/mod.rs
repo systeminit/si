@@ -7,7 +7,7 @@ use std::{
 use petgraph::prelude::*;
 use si_events::{
     merkle_tree_hash::MerkleTreeHash,
-    workspace_snapshot::{Change, Checksum, EntityKind},
+    workspace_snapshot::{Change, EntityKind},
     ContentHash, WorkspaceSnapshotAddress,
 };
 use si_id::{
@@ -15,7 +15,6 @@ use si_id::{
     InputSocketId, PropId, SchemaId, SchemaVariantId, UserPk, ViewId,
 };
 use strum::EnumDiscriminants;
-use telemetry::prelude::*;
 
 use crate::{
     approval_requirement::{
@@ -30,7 +29,7 @@ use crate::{
 
 use super::{
     graph::LineageId,
-    node_weight::{category_node_weight::CategoryNodeKind, NodeWeight, OrderingNodeWeight},
+    node_weight::{category_node_weight::CategoryNodeKind, NodeWeight},
     split_snapshot::SplitSnapshot,
     traits::{diagram::view::ViewExt, prop::PropExt},
     CycleCheckGuard, DependentValueRoot, EntityKindExt, InferredConnectionsWriteGuard,
@@ -212,21 +211,6 @@ impl WorkspaceSnapshotSelector {
         }
     }
 
-    pub async fn calculate_checksum(
-        &self,
-        ctx: &DalContext,
-        ids_with_hashes: Vec<(EntityId, MerkleTreeHash)>,
-    ) -> WorkspaceSnapshotResult<Checksum> {
-        match self {
-            Self::LegacySnapshot(snapshot) => {
-                snapshot.calculate_checksum(ctx, ids_with_hashes).await
-            }
-            Self::SplitSnapshot(snapshot) => {
-                snapshot.calculate_checksum(ctx, ids_with_hashes).await
-            }
-        }
-    }
-
     pub async fn import_component_subgraph(
         &self,
         other: &WorkspaceSnapshotSelector,
@@ -290,13 +274,6 @@ impl WorkspaceSnapshotSelector {
         match self {
             Self::LegacySnapshot(snapshot) => snapshot.edges().await,
             Self::SplitSnapshot(snapshot) => snapshot.edges().await,
-        }
-    }
-
-    pub async fn dot(&self) {
-        match self {
-            Self::LegacySnapshot(snapshot) => snapshot.dot().await,
-            Self::SplitSnapshot(snapshot) => snapshot.dot().await,
         }
     }
 

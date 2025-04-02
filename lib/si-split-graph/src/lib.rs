@@ -511,13 +511,21 @@ where
         self.add_node_to_subgraph(subgraph_index, SplitGraphNodeWeight::Custom(node))
     }
 
+    pub fn add_ordered_node(&mut self, node: N) -> SplitGraphResult<SplitGraphNodeIndex> {
+        let split_graph_index = self.add_or_replace_node(node)?;
+        let subgraph = self.get_subgraph_mut(split_graph_index.subgraph as usize)?;
+        subgraph.add_or_get_ordering_node_for_node_index(split_graph_index.index);
+
+        Ok(split_graph_index)
+    }
+
     fn node_weight_by_index(&self, index: SplitGraphNodeIndex) -> Option<&SplitGraphNodeWeight<N>> {
         self.subgraphs
             .get(index.subgraph as usize)
             .and_then(|sub| sub.graph.node_weight(index.index))
     }
 
-    pub fn subgraph_for_node(&self, node_id: SplitGraphNodeId) -> Option<usize> {
+    pub fn subgraph_index_for_node(&self, node_id: SplitGraphNodeId) -> Option<usize> {
         for (index, sub) in self.subgraphs.iter().enumerate() {
             if sub.node_index_by_id.contains_key(&node_id) {
                 return Some(index);
@@ -1116,6 +1124,20 @@ where
                 }
             }
         }
+    }
+
+    pub fn nodes(&self) -> impl Iterator<Item = &N> {
+        self.subgraphs
+            .iter()
+            .flat_map(|subgraph| subgraph.nodes())
+            .filter_map(|n| n.custom())
+    }
+
+    pub fn edges(&self) -> impl Iterator<Item = (&E, SplitGraphNodeId, SplitGraphNodeId)> {
+        self.subgraphs
+            .iter()
+            .flat_map(|subgraph| subgraph.edges())
+            .filter_map(|(e, source, target)| e.custom().map(|custom| (custom, source, target)))
     }
 
     pub fn tiny_dot_to_file(&self, prefix: &str) {

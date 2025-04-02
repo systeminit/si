@@ -15,7 +15,6 @@ use petgraph::prelude::*;
 use selector::WorkspaceSnapshotSelectorDiscriminants;
 use serde::{Deserialize, Serialize};
 use si_data_pg::PgError;
-use si_events::merkle_tree_hash::MerkleTreeHash;
 use si_events::workspace_snapshot::{Change, Checksum};
 use si_events::{ulid::Ulid, ContentHash, WorkspaceSnapshotAddress};
 use si_id::{ApprovalRequirementDefinitionId, EntityId};
@@ -127,6 +126,8 @@ pub enum WorkspaceSnapshotError {
     MissingVectorClockForChangeSet(ChangeSetId),
     #[error("monotonic error: {0}")]
     Monotonic(#[from] ulid::MonotonicError),
+    #[error("node not found at node id: {0}")]
+    NodeNotFoundAtId(Ulid),
     #[error("node not found at node index: {0:?}")]
     NodeNotFoundAtIndex(NodeIndex),
     #[error("NodeWeight error: {0}")]
@@ -240,6 +241,12 @@ pub struct WorkspaceSnapshot {
 #[must_use = "if unused the cycle check will be immediately disabled"]
 pub struct CycleCheckGuard {
     cycle_check: Arc<AtomicBool>,
+}
+
+impl CycleCheckGuard {
+    pub(crate) fn new(cycle_check: Arc<AtomicBool>) -> Self {
+        Self { cycle_check }
+    }
 }
 
 impl Drop for CycleCheckGuard {
@@ -758,42 +765,6 @@ impl WorkspaceSnapshot {
                 .detect_changes(&*onto_clone.working_copy().await)
         })?
         .await??)
-    }
-
-    /// Calculates the checksum based on a list of IDs with hashes passed in.
-    #[instrument(
-        name = "workspace_snapshot.calculate_checksum",
-        level = "debug",
-        skip_all
-    )]
-    pub async fn calculate_checksum(
-        &self,
-        ctx: &DalContext,
-        mut ids_with_hashes: Vec<(EntityId, MerkleTreeHash)>,
-    ) -> WorkspaceSnapshotResult<Checksum> {
-        // If an empty list of IDs with hashes wass passed in, then we use the root node's ID and
-        // merkle tree hash as our sole ID and hash so that algorithms using the checksum can
-        // "invalidate" as needed.
-        if ids_with_hashes.is_empty() {
-            let root_node_id = ctx.workspace_snapshot()?.root().await?;
-            let root_node = ctx
-                .workspace_snapshot()?
-                .get_node_weight(root_node_id)
-                .await?;
-            ids_with_hashes.push((root_node_id.into(), root_node.merkle_tree_hash()));
-        }
-
-        // We MUST sort IDs (not hashes) before creating the checksum. This is so that we have
-        // stable checksum calculation.
-        ids_with_hashes.sort_by_key(|(id, _)| *id);
-
-        // Now that we have strictly ordered IDs with hasesh and there's at least one group
-        // present, we can create the checksum.
-        let mut hasher = Checksum::hasher();
-        for (_, hash) in ids_with_hashes {
-            hasher.update(hash.as_bytes());
-        }
-        Ok(hasher.finalize())
     }
 
     /// Gives the exact node index endpoints of an edge.
