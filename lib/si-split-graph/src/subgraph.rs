@@ -360,25 +360,12 @@ where
             .for_each(|parent_idx| self.touch_node(parent_idx));
     }
 
-    pub(crate) fn add_ordered_edge(
+    pub(crate) fn add_or_get_ordering_node_for_node_index(
         &mut self,
-        from_index: SubGraphNodeIndex,
-        edge_weight: SplitGraphEdgeWeight<E, K>,
-        to_index: SubGraphNodeIndex,
-    ) -> SplitGraphResult<()> {
-        let target_id = self
-            .graph
-            .node_weight(to_index)
-            .map(|n| n.id())
-            .ok_or(SplitGraphError::NodeNotFoundAtIndex)?;
-
-        let ordering_node_index = match self
-            .graph
-            .edges_directed(from_index, Outgoing)
-            .find(|edge_ref| matches!(edge_ref.weight(), SplitGraphEdgeWeight::Ordering))
-            .map(|edge_ref| edge_ref.target())
-        {
-            Some(target) => target,
+        node_index: SubGraphNodeIndex,
+    ) -> SubGraphNodeIndex {
+        match self.ordering_node_for_node_index(node_index) {
+            Some(existing_ordering_node_index) => existing_ordering_node_index,
             None => {
                 let new_ordering_node_id = SplitGraphNodeId::new();
                 let ordering_node_index = self.graph.add_node(SplitGraphNodeWeight::Ordering {
@@ -391,14 +378,32 @@ where
                     .insert(new_ordering_node_id, ordering_node_index);
 
                 self.add_edge_raw(
-                    from_index,
+                    node_index,
                     SplitGraphEdgeWeight::Ordering,
                     ordering_node_index,
                 );
 
+                self.touch_node(node_index);
+                self.touch_node(ordering_node_index);
+
                 ordering_node_index
             }
-        };
+        }
+    }
+
+    pub(crate) fn add_ordered_edge(
+        &mut self,
+        from_index: SubGraphNodeIndex,
+        edge_weight: SplitGraphEdgeWeight<E, K>,
+        to_index: SubGraphNodeIndex,
+    ) -> SplitGraphResult<()> {
+        let target_id = self
+            .graph
+            .node_weight(to_index)
+            .map(|n| n.id())
+            .ok_or(SplitGraphError::NodeNotFoundAtIndex)?;
+
+        let ordering_node_index = self.add_or_get_ordering_node_for_node_index(from_index);
 
         if let Some(SplitGraphNodeWeight::Ordering { order, .. }) =
             self.graph.node_weight_mut(ordering_node_index)
@@ -495,6 +500,35 @@ where
 
             self.graph.remove_edge(edge_index);
         }
+    }
+
+    pub(crate) fn nodes(&self) -> impl Iterator<Item = &SplitGraphNodeWeight<N>> {
+        self.graph
+            .node_indices()
+            .filter_map(|node_index| self.graph.node_weight(node_index))
+    }
+
+    pub(crate) fn edges(
+        &self,
+    ) -> impl Iterator<
+        Item = (
+            &SplitGraphEdgeWeight<E, K>,
+            SplitGraphNodeId,
+            SplitGraphNodeId,
+        ),
+    > {
+        self.graph.edge_indices().filter_map(|edge_index| {
+            self.graph.edge_weight(edge_index).and_then(|edge_weight| {
+                self.graph
+                    .edge_endpoints(edge_index)
+                    .and_then(|(source_idx, target_idx)| {
+                        self.graph
+                            .node_weight(source_idx)
+                            .zip(self.graph.node_weight(target_idx))
+                            .map(|(source, target)| (edge_weight, source.id(), target.id()))
+                    })
+            })
+        })
     }
 
     pub(crate) fn tiny_dot_to_file(&self, name: &str) {

@@ -815,7 +815,7 @@ fn detect_and_perform_updates_ordered_containers() -> SplitGraphResult<()> {
 
         updated_graph.reorder_node(damaya.id(), |order| order.iter().copied().rev().collect())?;
 
-        let subgraph_for_damaya = updated_graph.subgraph_for_node(damaya.id()).unwrap();
+        let subgraph_for_damaya = updated_graph.subgraph_index_for_node(damaya.id()).unwrap();
         let updated_root_merkle_before_calculation = updated_graph
             .raw_node_weight(updated_graph.subgraph_root_id(subgraph_for_damaya).unwrap())
             .unwrap()
