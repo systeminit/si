@@ -443,7 +443,7 @@ fn otel_tracer(config: &TelemetryConfig) -> Result<Tracer> {
         .with_trace_config(Config::default().with_resource(telemetry_resource(config)))
         .with_batch_config(
             trace::BatchConfigBuilder::default()
-                .with_max_queue_size(4096)
+                .with_max_queue_size(40960)
                 .build(),
         )
         .install_batch(runtime::Tokio)?

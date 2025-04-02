@@ -42,7 +42,7 @@ async fn async_main(args: args::Args) -> Result<()> {
             .service_namespace("si")
             .log_env_var_prefix("SI")
             .app_modules(vec![BIN_NAME, LIB_NAME])
-            .interesting_modules(vec!["naxum", "si_data_nats", "si_service"])
+            .interesting_modules(vec!["async_nats", "naxum", "si_data_nats", "si_service"])
             .build()?;
 
         telemetry_application::init(config, &telemetry_tracker, telemetry_token.clone())?

@@ -652,34 +652,34 @@ pub fn detect_and_configure_development(config: &mut ConfigFile) -> Result<()> {
 fn buck2_development(config: &mut ConfigFile) -> Result<()> {
     let resources = Buck2Resources::read().map_err(ConfigError::cyclone_spec_build)?;
 
-    let cyclone_cmd_path = resources
-        .get_ends_with("cyclone")
-        .map_err(ConfigError::cyclone_spec_build)?
-        .to_string_lossy()
-        .to_string();
-    let decryption_key_path = resources
-        .get_ends_with("dev.decryption.key")
-        .map_err(ConfigError::cyclone_spec_build)?
-        .to_string_lossy()
-        .to_string();
-    let lang_server_cmd_path = resources
-        .get_ends_with("lang-js")
-        .map_err(ConfigError::cyclone_spec_build)?
-        .to_string_lossy()
-        .to_string();
+    // let cyclone_cmd_path = resources
+    //     .get_ends_with("cyclone")
+    //     .map_err(ConfigError::cyclone_spec_build)?
+    //     .to_string_lossy()
+    //     .to_string();
+    // let decryption_key_path = resources
+    //     .get_ends_with("dev.decryption.key")
+    //     .map_err(ConfigError::cyclone_spec_build)?
+    //     .to_string_lossy()
+    //     .to_string();
+    // let lang_server_cmd_path = resources
+    //     .get_ends_with("lang-js")
+    //     .map_err(ConfigError::cyclone_spec_build)?
+    //     .to_string_lossy()
+    //     .to_string();
 
-    warn!(
-        cyclone_cmd_path = cyclone_cmd_path.as_str(),
-        decryption_key_path = decryption_key_path.as_str(),
-        lang_server_cmd_path = lang_server_cmd_path,
-        "detected development run",
-    );
-
-    config.cyclone.set_cyclone_cmd_path(cyclone_cmd_path);
-    config.crypto.decryption_key_file = decryption_key_path.parse().ok();
-    config
-        .cyclone
-        .set_lang_server_cmd_path(lang_server_cmd_path.to_string());
+    // warn!(
+    //     cyclone_cmd_path = cyclone_cmd_path.as_str(),
+    //     decryption_key_path = decryption_key_path.as_str(),
+    //     lang_server_cmd_path = lang_server_cmd_path,
+    //     "detected development run",
+    // );
+    //
+    // config.cyclone.set_cyclone_cmd_path(cyclone_cmd_path);
+    // config.crypto.decryption_key_file = decryption_key_path.parse().ok();
+    // config
+    //     .cyclone
+    //     .set_lang_server_cmd_path(lang_server_cmd_path.to_string());
 
     Ok(())
 }
