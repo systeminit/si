@@ -38,7 +38,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, computed, onMounted, watch } from "vue";
+import { ref, computed, onMounted } from "vue";
 import clsx from "clsx";
 import {
   DropdownMenu,
@@ -82,7 +82,6 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: "showLatestRunTab", id: FuncRunId, slug: string): void;
-  (e: "runUpdated", id: FuncRunId): void;
 }>();
 
 const request = funcStore.getRequestStatus(
@@ -118,12 +117,6 @@ const componentViews = computed(() =>
       !!viewsStore.viewsById[viewId]?.groups[props.component.def.id],
   ),
 );
-
-watch(latestRunId, (latest) => {
-  if (latest) {
-    emit("runUpdated", latest);
-  }
-});
 
 const lastExecution = computed<FuncRun | null>(() => {
   if (latestRunId.value) {

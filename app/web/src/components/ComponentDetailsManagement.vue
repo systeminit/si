@@ -32,7 +32,6 @@
           :prototype="prototype"
           :component="props.component"
           @showLatestRunTab="showLatestRunTab"
-          @runUpdated="updateFuncRunTab"
           @click="hideFuncRun"
         />
       </template>
@@ -65,7 +64,7 @@ import {
   ManagementHistoryItem,
   useManagementRunsStore,
 } from "@/store/management_runs.store";
-import { FuncRun, FuncRunId, useFuncRunsStore } from "@/store/func_runs.store";
+import { FuncRunId, useFuncRunsStore } from "@/store/func_runs.store";
 import { useViewsStore } from "@/store/views.store";
 import ManagementRunPrototype from "./ManagementRunPrototype.vue";
 import ManagementHistoryCard from "./Management/ManagementHistoryCard.vue";
@@ -85,33 +84,24 @@ const resourceId = ref("");
 
 const selectedFuncRunId = ref<FuncRunId | undefined>();
 const selectedTab = ref<string | undefined>();
-const funcRun = ref<FuncRun | undefined>();
+const funcRun = computed(() => {
+  if (!selectedFuncRunId.value) return undefined;
+  // If it doesn't exist, start a fetch to get it
+  if (!funcRunStore.funcRuns[selectedFuncRunId.value])
+    funcRunStore.GET_FUNC_RUN(selectedFuncRunId.value);
+  return funcRunStore.funcRuns[selectedFuncRunId.value];
+});
 const openFuncRunTab = ref(false);
-
-const getFuncRun = async (id: FuncRunId) => {
-  if (funcRunStore.funcRuns[id]) {
-    funcRun.value = funcRunStore.funcRuns[id];
-  } else {
-    await funcRunStore.GET_FUNC_RUN(id);
-    funcRun.value = funcRunStore.funcRuns[id];
-  }
-};
 
 const showLatestRunTab = async (id: FuncRunId, slug: string) => {
   openFuncRunTab.value = true;
   selectedFuncRunId.value = id;
-  await getFuncRun(id);
   selectedTab.value = slug;
-};
-
-const updateFuncRunTab = async (id: FuncRunId) => {
-  await getFuncRun(id);
 };
 
 const clickItem = async (item: ManagementHistoryItem, _e: MouseEvent) => {
   openFuncRunTab.value = true;
   selectedFuncRunId.value = item.funcRunId;
-  await getFuncRun(item.funcRunId);
 };
 
 const hideFuncRun = () => {
