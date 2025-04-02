@@ -3,6 +3,7 @@ import _logger from "../logger.ts";
 import {
   createInputSocketFromProp,
   createOutputSocketFromProp,
+  createSocketFromPropInner,
   ExpandedSocketSpec,
   setAnnotationOnSocket,
 } from "../spec/sockets.ts";
@@ -14,7 +15,9 @@ import {
   findPropByName,
 } from "../spec/props.ts";
 import { PropUsageMap } from "./addDefaultPropsAndSockets.ts";
-import { MANAGEMENT_FUNCS, modifyFunc } from "../spec/funcs.ts";
+import { createFunc, MANAGEMENT_FUNCS, modifyFunc, strippedBase64 } from "../spec/funcs.ts";
+import { ulid } from "https://deno.land/x/ulid@v0.3.0/mod.ts";
+import { FuncArgumentSpec } from "../bindings/FuncArgumentSpec.ts";
 
 const logger = _logger.ns("assetOverrides").seal();
 
@@ -48,21 +51,53 @@ const overrides = new Map<string, OverrideFn>([
   }],
   ["AWS::EC2::Instance", (spec: ExpandedPkgSpec) => {
     const variant = spec.schemas[0].variants[0];
+    
+    const overrideUserDataAttributeFuncCode = Deno.readTextFileSync(
+      "./src/cloud-control-funcs/overrides/AWS::EC2::Instance/base64EncodeUserData.ts"
+    );
+    const overrideUserDataAttributeFuncArgs: FuncArgumentSpec[] = [
+      {
+        name: "data",
+        kind: "string",
+        elementKind: null,
+        uniqueId: ulid(),
+        deleted: false,
+      },
+    ];
+
+    const base64EncodedUserDataFunc = createFunc(
+      "Set UserData prop and base64 encode if needed",
+      "jsAttribute",
+      "json",
+      strippedBase64(overrideUserDataAttributeFuncCode),
+      "5a5b8c9d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b",
+      overrideUserDataAttributeFuncArgs,
+    );
+    spec.funcs.push(base64EncodedUserDataFunc);
 
     const userDataProp = propForOverride(variant.domain, "UserData");
     if (!userDataProp) return;
     userDataProp!.data.widgetKind = "CodeEditor";
 
-    const userDataSocket = createInputSocketFromProp(
+    const userDataSocket = createSocketFromPropInner(
       userDataProp,
-      [
-        { tokens: ["UserData"] },
-        { tokens: ["User Data"] },
-      ],
+      "input",
+      "one",
       "User Data",
+      [{ tokens: ["UserData"] }, { tokens: ["User Data"] }],
     );
+    userDataProp.data.inputs = [
+      {
+        unique_id: ulid(),
+        kind: "inputSocket",
+        name: "data",
+        deleted: false,
+        socket_name: "User Data"
+      },
+    ];
+    userDataProp.data.funcUniqueId = "5a5b8c9d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b";
     variant.sockets.push(userDataSocket);
-    
+  
     const launchTemplateProp = propForOverride(variant.domain, "LaunchTemplate");
     if (!launchTemplateProp || launchTemplateProp.kind !== "object") return;
     
