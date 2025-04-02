@@ -60,6 +60,7 @@
     "@sqlite.org/sqlite-wasm": "3.48.0-build4",
     "@tanstack/vue-query": "^5.67.3",
     "@tanstack/vue-table": "^8.20.5",
+    "@tanstack/vue-virtual": "^3.13.6",
     "@types/async": "^3.2.15",
     "@typescript/vfs": "^1.4.0",
     "@vueuse/head": "^1.1.15",

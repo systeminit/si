@@ -10,54 +10,66 @@
   >
     <div
       v-if="listItems.length"
+      ref="scrollRef"
       :class="
         clsx(
-          'flex flex-col grow shrink-0 px-2xs gap-2xs py-3xs min-h-0 overflow-auto',
+          'flex flex-col px-2xs gap-2xs py-3xs min-h-0 overflow-auto relative',
           !active && 'text-neutral-400',
         )
       "
     >
       <div
-        v-for="(item, index) in listItems"
-        :key="index"
+        v-for="item in socketList"
+        :key="item.index"
+        :data-index="item.index"
         :class="
           clsx(
             'flex gap-xs align-middle items-center',
             active &&
-              index === localHighlightedIndex &&
+              item.index === localHighlightedIndex &&
               'bg-action-600 text-white',
             active &&
-              index !== localHighlightedIndex &&
+              item.index !== localHighlightedIndex &&
               'hover:bg-action-200 hover:text-black',
             !active &&
-              item.socket.def.id !== selectedSocket?.def.id &&
+              props.listItems[item.index]!.socket.def.id !== selectedSocket?.def.id &&
               'hover:bg-neutral-400 hover:text-black',
-            index !== localHighlightedIndex &&
-              item.socket.def.id === selectedSocket?.def.id &&
+            item.index !== localHighlightedIndex &&
+            props.listItems[item.index]!.socket.def.id === selectedSocket?.def.id &&
               'bg-neutral-600 text-white',
             'rounded cursor-pointer',
             'py-xs px-2xs my-0.5',
           )
         "
-        @click="emit('select', index)"
+        :style="{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: `${item.size}px`,
+          transform: `translateY(${item.start}px)`,
+        }"
+        @click="emit('select', item.index)"
       >
         <Icon
-          :class="clsx(item.socket.def.direction === 'output' && 'rotate-180')"
+          :class="clsx(props.listItems[item.index]!.socket.def.direction === 'output' && 'rotate-180')"
           :name="
-            item.socket.def.direction === 'output'
+            props.listItems[item.index]!.socket.def.direction === 'output'
               ? 'output-socket'
               : 'input-socket'
           "
           size="sm"
         />
-
         <span>
           <template
-            v-for="(part, partIndex) in item.label.split('')"
+            v-for="(part, partIndex) in props.listItems[item.index]!.label.split('')"
             :key="partIndex"
           >
             <span v-if="part === '/'" class="text-neutral-400"> / </span>
-            <b v-else-if="item.labelHighlights?.has(partIndex)">{{ part }}</b>
+            <b
+              v-else-if="props.listItems[item.index]!.labelHighlights?.has(partIndex)"
+              >{{ part }}</b
+            >
             <span v-else>{{ part }}</span>
           </template>
         </span>
@@ -89,9 +101,10 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, PropType, reactive, watchEffect } from "vue";
+import { computed, PropType, reactive, ref, watchEffect } from "vue";
 import clsx from "clsx";
 import { Icon } from "@si/vue-lib/design-system";
+import { useVirtualizer } from "@tanstack/vue-virtual";
 import CodeEditor from "@/components/CodeEditor.vue";
 import {
   DiagramGroupData,
@@ -122,6 +135,17 @@ const props = defineProps({
 const localHighlightedIndex = computed(() =>
   props.active ? props.highlightedIndex : undefined,
 );
+
+const scrollRef = ref<HTMLDivElement>();
+
+const virtualList = useVirtualizer({
+  count: props.listItems.length,
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  getScrollElement: () => scrollRef.value!,
+  estimateSize: () => 37,
+  overscan: 3,
+});
+const socketList = computed(() => virtualList.value.getVirtualItems());
 
 const socketToShow = reactive<{ uniqueKey?: string; value?: string }>({});
 
