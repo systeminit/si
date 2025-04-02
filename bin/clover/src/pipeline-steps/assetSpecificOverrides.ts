@@ -49,9 +49,19 @@ const overrides = new Map<string, OverrideFn>([
   ["AWS::EC2::Instance", (spec: ExpandedPkgSpec) => {
     const variant = spec.schemas[0].variants[0];
 
-    const prop = propForOverride(variant.domain, "UserData");
-    if (!prop) return;
-    prop!.data.widgetKind = "CodeEditor";
+    const userDataProp = propForOverride(variant.domain, "UserData");
+    if (!userDataProp) return;
+    userDataProp!.data.widgetKind = "CodeEditor";
+
+    const userDataSocket = createInputSocketFromProp(
+      userDataProp,
+      [
+        { tokens: ["UserData"] },
+        { tokens: ["User Data"] },
+      ],
+      "User Data",
+    );
+    variant.sockets.push(userDataSocket);
     
     const launchTemplateProp = propForOverride(variant.domain, "LaunchTemplate");
     if (!launchTemplateProp || launchTemplateProp.kind !== "object") return;
