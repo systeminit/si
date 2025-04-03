@@ -17,7 +17,15 @@
       />
     </DropdownMenu>
 
-    <IconButton icon="play" :requestStatus="request" @click="runClick" />
+    <IconButton
+      icon="play"
+      :requestStatus="request"
+      :disabled="isLoading"
+      :tooltip="
+        isLoading ? `Wait for component finish updating` : `Run Function`
+      "
+      @click="runClick"
+    />
 
     <TruncateWithTooltip class="grow">{{
       `Run ${props.prototype.label}`
@@ -56,6 +64,7 @@ import {
   useFuncRunsStore,
 } from "@/store/func_runs.store";
 import { useManagementRunsStore } from "@/store/management_runs.store";
+import { useStatusStore } from "@/store/status.store";
 import { useViewsStore } from "@/store/views.store";
 import { ViewId } from "@/api/sdf/dal/views";
 import { ComponentType } from "@/api/sdf/dal/schema";
@@ -69,6 +78,7 @@ import FuncRunTabDropdown from "./FuncRunTabDropdown.vue";
 const funcStore = useFuncStore();
 const viewStore = useViewsStore();
 const router = useRouter();
+const statusStore = useStatusStore();
 const managementRunsStore = useManagementRunsStore();
 const viewsStore = useViewsStore();
 const funcRunStore = useFuncRunsStore();
@@ -88,6 +98,10 @@ const request = funcStore.getRequestStatus(
   "RUN_MGMT_PROTOTYPE",
   props.prototype.managementPrototypeId,
   props.component.def.id,
+);
+
+const isLoading = computed(() =>
+  statusStore.componentIsLoading(props.component.def.id),
 );
 
 const historicalFuncRun = ref<FuncRun | null>(null);

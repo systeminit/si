@@ -46,6 +46,7 @@ import { IRect } from "konva/lib/types";
 import { ComponentType } from "@/api/sdf/dal/schema";
 import { useComponentsStore } from "@/store/components.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
+import { useStatusStore } from "@/store/status.store";
 import {
   BindingWithDisplayName,
   useFuncStore,
@@ -68,6 +69,7 @@ import { FindChildrenByBoundingBox } from "../ModelingDiagram/utils/childrenByBo
 const contextMenuRef = ref<InstanceType<typeof DropdownMenu>>();
 
 const changeSetsStore = useChangeSetsStore();
+const statusStore = useStatusStore();
 const componentsStore = useComponentsStore();
 const funcStore = useFuncStore();
 const actionsStore = useActionsStore();
@@ -135,6 +137,12 @@ const getActionToggleState = (id: string) => {
     .find((a) => a.prototypeId === id);
   return !!a;
 };
+
+const isLoading = computed(
+  () =>
+    selectedComponent.value?.def &&
+    statusStore.componentIsLoading(selectedComponent.value?.def.id),
+);
 
 const removeFromView = () => {
   viewsStore.removeSelectedViewComponentFromCurrentView();
@@ -391,17 +399,27 @@ const rightClickMenuItems = computed(() => {
   }
 
   // management funcs for a single selected component
+  // check if the component is currently updating, as if so we don't
+  // want to let the user dispatch a management function
   if (funcStore.managementFunctionsForSelectedComponent.length > 0) {
     const submenuItems: DropdownMenuItemObjectDef[] = [];
-    funcStore.managementFunctionsForSelectedComponent.forEach((fn) => {
-      submenuItems.push({
-        label: fn.label,
-        icon: "play",
-        onSelect: () => {
-          runManagementFunc(fn);
-        },
+    if (!isLoading.value) {
+      funcStore.managementFunctionsForSelectedComponent.forEach((fn) => {
+        submenuItems.push({
+          label: fn.label,
+          icon: "play",
+          onSelect: () => {
+            runManagementFunc(fn);
+          },
+        });
       });
-    });
+    } else {
+      submenuItems.push({
+        label: "Updating...",
+        header: true,
+      });
+    }
+
     items.push({
       label: "Management",
       icon: "func",
