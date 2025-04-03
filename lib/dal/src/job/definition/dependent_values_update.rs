@@ -1,4 +1,6 @@
 use audit_log::DependentValueUpdateAuditLogError;
+use si_frontend_types::DiagramSocket;
+use si_id::SchemaVariantId;
 use std::{
     collections::{hash_map::Entry, HashMap, HashSet},
     convert::TryFrom,
@@ -30,8 +32,8 @@ use crate::{
     status::{StatusMessageState, StatusUpdate, StatusUpdateError},
     workspace_snapshot::DependentValueRoot,
     AccessBuilder, AttributeValue, AttributeValueId, ChangeSet, ChangeSetError, ChangeSetStatus,
-    ComponentError, ComponentId, DalContext, Func, TransactionsError, Visibility, WorkspacePk,
-    WorkspaceSnapshotError, WsEvent, WsEventError,
+    Component, ComponentError, ComponentId, DalContext, Func, TransactionsError, Visibility,
+    WorkspacePk, WorkspaceSnapshotError, WsEvent, WsEventError,
 };
 
 #[remain::sorted]
@@ -555,11 +557,38 @@ async fn send_status_update(
     ctx: &DalContext,
     status_update: StatusUpdate,
 ) -> DependentValueUpdateResult<()> {
-    WsEvent::status_update(ctx, status_update)
+    WsEvent::status_update(ctx, status_update.clone())
         .await?
         .publish_immediately(ctx)
         .await?;
+    // If this is the finished event, we should also ensure we send
+    // component_updated when the rebase happens in the job.
 
+    // another wack-a-mole event needed that I'm excited to not have to do
+    // ever again.
+    if let StatusUpdate::DependentValueUpdate {
+        status,
+        component_id,
+        ..
+    } = status_update
+    {
+        if status == StatusMessageState::StatusFinished {
+            let mut diagram_sockets: HashMap<SchemaVariantId, Vec<DiagramSocket>> = HashMap::new();
+            let component = Component::get_by_id(ctx, component_id).await?;
+            let payload = component
+                .into_frontend_type_for_default_view(
+                    ctx,
+                    component.change_status(ctx).await?,
+                    &mut diagram_sockets,
+                )
+                .await?;
+            // don't publish immediately, we want this fired when the rebase lands
+            WsEvent::component_updated(ctx, payload)
+                .await?
+                .publish_on_commit(ctx)
+                .await?;
+        }
+    }
     Ok(())
 }
 
