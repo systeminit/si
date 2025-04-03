@@ -67,6 +67,7 @@ use crate::socket::input::InputSocketError;
 use crate::socket::output::OutputSocketError;
 use crate::validation::{ValidationError, ValidationOutput};
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
+use crate::workspace_snapshot::dependent_value_root::DependentValueRootError;
 use crate::workspace_snapshot::edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants};
 use crate::workspace_snapshot::node_weight::{
     AttributeValueNodeWeight, NodeWeight, NodeWeightDiscriminants, NodeWeightError,
@@ -126,6 +127,8 @@ pub enum AttributeValueError {
     ChangeSet(#[from] ChangeSetError),
     #[error("component error: {0}")]
     Component(#[from] Box<ComponentError>),
+    #[error("dependent value root error: {0}")]
+    DependentValueRoot(#[from] DependentValueRootError),
     #[error("duplicate key or index {key_or_index} for attribute values {child1} and {child2}")]
     DuplicateKeyOrIndex {
         key_or_index: KeyOrIndex,
@@ -1829,7 +1832,7 @@ impl AttributeValue {
             ))?;
 
         ctx.workspace_snapshot()?
-            .remove_edge_for_ulids(
+            .remove_edge(
                 attribute_value_id,
                 prototype_id,
                 EdgeWeightKindDiscriminants::Prototype,

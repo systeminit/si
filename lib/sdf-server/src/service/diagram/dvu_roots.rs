@@ -1,5 +1,5 @@
 use axum::extract::{Json, Query};
-use dal::Visibility;
+use dal::{workspace_snapshot::DependentValueRoot, Visibility};
 use serde::{Deserialize, Serialize};
 
 use super::DiagramResult;
@@ -24,9 +24,7 @@ pub async fn dvu_roots(
 ) -> DiagramResult<Json<DvuRootsResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let count = ctx
-        .workspace_snapshot()?
-        .get_dependent_value_roots()
+    let count = DependentValueRoot::get_dependent_value_roots(&ctx)
         .await?
         .len();
 

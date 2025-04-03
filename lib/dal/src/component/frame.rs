@@ -9,6 +9,7 @@ use crate::component::inferred_connection_graph::InferredConnection;
 use crate::diagram::SummaryDiagramInferredEdge;
 use crate::socket::input::InputSocketError;
 use crate::socket::output::OutputSocketError;
+use crate::workspace_snapshot::dependent_value_root::DependentValueRootError;
 use crate::workspace_snapshot::edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
@@ -28,6 +29,8 @@ pub enum FrameError {
     AttributeValueError(#[from] AttributeValueError),
     #[error("component error: {0}")]
     Component(#[from] ComponentError),
+    #[error("dependent value root error: {0}")]
+    DependentValueRoot(#[from] DependentValueRootError),
     #[error("InferredConnectionGraph error: {0}")]
     InferredConnectionGraph(#[from] InferredConnectionGraphError),
     #[error("input socket error: {0}")]

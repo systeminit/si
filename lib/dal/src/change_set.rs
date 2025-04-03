@@ -18,7 +18,9 @@ use tokio::time;
 
 use crate::billing_publish::BillingPublishError;
 use crate::slow_rt::SlowRuntimeError;
+use crate::workspace_snapshot::dependent_value_root::DependentValueRootError;
 use crate::workspace_snapshot::graph::RebaseBatch;
+use crate::workspace_snapshot::DependentValueRoot;
 use crate::{
     action::{ActionError, ActionId},
     ChangeSetStatus, ComponentError, DalContext, HistoryActor, HistoryEvent, HistoryEventError,
@@ -48,6 +50,8 @@ pub enum ChangeSetError {
     ChangeSetNotFound(ChangeSetId),
     #[error("default change set {0} has no workspace snapshot pointer")]
     DefaultChangeSetNoWorkspaceSnapshotPointer(ChangeSetId),
+    #[error("dependent value root error: {0}")]
+    DependentValueRoot(#[from] DependentValueRootError),
     #[error("dvu roots are not empty for change set: {0}")]
     DvuRootsNotEmpty(ChangeSetId),
     #[error("enum parse error: {0}")]
@@ -439,14 +443,7 @@ impl ChangeSet {
         dangerous_skip_status_check: bool,
     ) -> ChangeSetResult<()> {
         // Ensure that DVU roots are empty before continuing.
-        if !ctx
-            .workspace_snapshot()
-            .map_err(Box::new)?
-            .get_dependent_value_roots()
-            .await
-            .map_err(Box::new)?
-            .is_empty()
-        {
+        if !DependentValueRoot::roots_exist(ctx).await? {
             // TODO(nick): we should consider requiring this check in integration tests too. Why did I
             // not do this at the time of writing? Tests have multiple ways to call "apply", whether
             // its via helpers or through the change set methods directly. In addition, they test

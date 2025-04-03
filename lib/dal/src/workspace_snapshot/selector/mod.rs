@@ -479,26 +479,6 @@ impl WorkspaceSnapshotSelector {
         }
     }
 
-    pub async fn remove_edge_for_ulids(
-        &self,
-        source_node_id: impl Into<Ulid>,
-        target_node_id: impl Into<Ulid>,
-        edge_kind: EdgeWeightKindDiscriminants,
-    ) -> WorkspaceSnapshotResult<()> {
-        match self {
-            Self::LegacySnapshot(snapshot) => {
-                snapshot
-                    .remove_edge_for_ulids(source_node_id, target_node_id, edge_kind)
-                    .await
-            }
-            Self::SplitSnapshot(snapshot) => {
-                snapshot
-                    .remove_edge_for_ulids(source_node_id, target_node_id, edge_kind)
-                    .await
-            }
-        }
-    }
-
     pub async fn mark_prop_as_able_to_be_used_as_prototype_arg(
         &self,
         id: impl Into<Ulid>,
@@ -547,50 +527,10 @@ impl WorkspaceSnapshotSelector {
         }
     }
 
-    pub async fn socket_edges_removed_relative_to_base(
-        &self,
-        ctx: &DalContext,
-    ) -> WorkspaceSnapshotResult<Vec<Connection>> {
+    pub async fn dvu_root_check(&self, root: DependentValueRoot) -> bool {
         match self {
-            Self::LegacySnapshot(snapshot) => {
-                snapshot.socket_edges_removed_relative_to_base(ctx).await
-            }
-            Self::SplitSnapshot(snapshot) => {
-                snapshot.socket_edges_removed_relative_to_base(ctx).await
-            }
-        }
-    }
-
-    pub async fn add_dependent_value_root(
-        &self,
-        root: DependentValueRoot,
-    ) -> WorkspaceSnapshotResult<()> {
-        match self {
-            Self::LegacySnapshot(snapshot) => snapshot.add_dependent_value_root(root).await,
-            Self::SplitSnapshot(snapshot) => snapshot.add_dependent_value_root(root).await,
-        }
-    }
-
-    pub async fn has_dependent_value_roots(&self) -> WorkspaceSnapshotResult<bool> {
-        match self {
-            Self::LegacySnapshot(snapshot) => snapshot.has_dependent_value_roots().await,
-            Self::SplitSnapshot(snapshot) => snapshot.has_dependent_value_roots().await,
-        }
-    }
-
-    pub async fn take_dependent_values(&self) -> WorkspaceSnapshotResult<Vec<DependentValueRoot>> {
-        match self {
-            Self::LegacySnapshot(snapshot) => snapshot.take_dependent_values().await,
-            Self::SplitSnapshot(snapshot) => snapshot.take_dependent_values().await,
-        }
-    }
-
-    pub async fn get_dependent_value_roots(
-        &self,
-    ) -> WorkspaceSnapshotResult<Vec<DependentValueRoot>> {
-        match self {
-            Self::LegacySnapshot(snapshot) => snapshot.get_dependent_value_roots().await,
-            Self::SplitSnapshot(snapshot) => snapshot.get_dependent_value_roots().await,
+            Self::LegacySnapshot(snapshot) => snapshot.dvu_root_check(root).await,
+            Self::SplitSnapshot(snapshot) => snapshot.dvu_root_check(root).await,
         }
     }
 

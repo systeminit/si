@@ -26,6 +26,7 @@ use crate::management::prototype::ManagementPrototypeError;
 use crate::prop::PropError;
 use crate::schema::variant::leaves::LeafKind;
 use crate::socket::output::OutputSocketError;
+use crate::workspace_snapshot::dependent_value_root::DependentValueRootError;
 use crate::{
     socket::input::InputSocketError, AttributePrototypeId, ComponentError, DalContext, Func,
     FuncError, FuncId, PropId, SchemaVariantError, SchemaVariantId,
@@ -70,6 +71,8 @@ pub enum FuncBindingError {
     CannotSetIntrinsicForComponent(ComponentId),
     #[error("component error: {0}")]
     ComponentError(#[from] ComponentError),
+    #[error("dependent value root error: {0}")]
+    DependentValueRoot(#[from] DependentValueRootError),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
     #[error("func argument error: {0}")]

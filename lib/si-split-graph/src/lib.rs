@@ -93,10 +93,26 @@ where
         }
     }
 
+    pub fn set_id(&mut self, new_id: SplitGraphNodeId) {
+        match self {
+            SplitGraphNodeWeight::Custom(n) => n.set_id(new_id),
+            SplitGraphNodeWeight::ExternalTarget { id, .. }
+            | SplitGraphNodeWeight::Ordering { id, .. }
+            | SplitGraphNodeWeight::GraphRoot { id, .. }
+            | SplitGraphNodeWeight::SubGraphRoot { id, .. } => *id = new_id,
+        }
+    }
+
     pub fn lineage_id(&self) -> SplitGraphNodeId {
         match self {
             SplitGraphNodeWeight::Custom(n) => n.lineage_id(),
             other => other.id(),
+        }
+    }
+
+    pub fn set_lineage_id(&mut self, new_lineage_id: SplitGraphNodeId) {
+        if let SplitGraphNodeWeight::Custom(n) = self {
+            n.set_lineage_id(new_lineage_id);
         }
     }
 
@@ -317,7 +333,11 @@ pub trait EdgeKind: std::hash::Hash + PartialEq + Eq + Copy + Clone + std::fmt::
 
 pub trait CustomNodeWeight: PartialEq + Eq + Clone + std::fmt::Debug {
     fn id(&self) -> SplitGraphNodeId;
+    fn set_id(&mut self, id: SplitGraphNodeId);
+
     fn lineage_id(&self) -> SplitGraphNodeId;
+    fn set_lineage_id(&mut self, id: SplitGraphNodeId);
+
     fn entity_kind(&self) -> EntityKind;
 
     fn set_merkle_tree_hash(&mut self, hash: MerkleTreeHash);
@@ -594,6 +614,51 @@ where
                     .get(&id)
                     .map(|subgraph_index| SplitGraphNodeIndex::new(idx as u16, *subgraph_index))
             })
+    }
+
+    pub fn remove_node(&mut self, node_id: SplitGraphNodeId) -> SplitGraphResult<()> {
+        let node_index = self
+            .node_id_to_index(node_id)
+            .ok_or(SplitGraphError::NodeNotFound(node_id))?;
+
+        let subgraph_idx = node_index.subgraph;
+        let subgraph = self.get_subgraph_mut(subgraph_idx as usize)?;
+
+        subgraph.remove_node(node_index.index);
+
+        Ok(())
+    }
+
+    pub fn find_edge(
+        &self,
+        from_id: SplitGraphNodeId,
+        to_id: SplitGraphNodeId,
+        edge_weight_kind: K,
+    ) -> Option<&E> {
+        let from_index = self.node_id_to_index(from_id.into())?;
+
+        let from_subgraph_idx = from_index.subgraph;
+
+        let subgraph = self.subgraphs.get(from_subgraph_idx as usize)?;
+
+        subgraph
+            .graph
+            .edges_directed(from_index.index, Outgoing)
+            .find(|edge_ref| {
+                if Some(edge_weight_kind) == edge_ref.weight().custom().map(|edge| edge.kind()) {
+                    match subgraph.graph.node_weight(edge_ref.target()) {
+                        Some(node) => match node {
+                            SplitGraphNodeWeight::Custom(c) => c.id() == to_id,
+                            SplitGraphNodeWeight::ExternalTarget { target, .. } => *target == to_id,
+                            _ => false,
+                        },
+                        None => false,
+                    }
+                } else {
+                    false
+                }
+            })
+            .and_then(|edge_ref| edge_ref.weight().custom())
     }
 
     pub fn remove_edge(

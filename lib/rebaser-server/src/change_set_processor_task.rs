@@ -275,7 +275,11 @@ async fn graceful_shutdown_signal(
 mod handlers {
     use std::result;
 
-    use dal::{billing_publish, ChangeSet, Workspace, WorkspaceSnapshot, WsEvent};
+    use dal::{
+        billing_publish,
+        workspace_snapshot::{dependent_value_root::DependentValueRootError, DependentValueRoot},
+        ChangeSet, Workspace, WorkspaceSnapshot, WsEvent,
+    };
     use naxum::{
         extract::State,
         response::{IntoResponse, Response},
@@ -311,6 +315,8 @@ mod handlers {
         /// When failing to create a DAL context
         #[error("error creating a dal ctx: {0}")]
         DalTransactions(#[from] dal::TransactionsError),
+        #[error("dependent value root error: {0}")]
+        DependentValueRoot(#[from] DependentValueRootError),
         #[error("error publishing reply: {0}")]
         PublishReply(#[source] si_data_nats::Error),
         /// Failures related to rebasing/updating a snapshot or change set pointer.
@@ -383,11 +389,7 @@ mod handlers {
         if matches!(rebase_status, RebaseStatus::Success { .. }) {
             // If we find dependent value roots, then notify the serial dvu task to run at least
             // one more dvu
-            if ctx
-                .workspace_snapshot()?
-                .has_dependent_value_roots()
-                .await?
-            {
+            if DependentValueRoot::roots_exist(&ctx).await? {
                 run_notify.notify_one();
             }
 
