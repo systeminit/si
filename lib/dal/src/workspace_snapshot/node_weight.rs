@@ -286,93 +286,123 @@ impl NodeWeight {
         }
     }
 
-    pub fn set_id_and_lineage(&mut self, id: impl Into<Ulid>, lineage_id: LineageId) {
+    pub fn set_id(&mut self, id: impl Into<Ulid>) {
         match self {
-            NodeWeight::Action(weight) => {
-                weight.id = id.into();
-                weight.lineage_id = lineage_id;
+            NodeWeight::Action(action_node_weight) => action_node_weight.id = id.into(),
+            NodeWeight::ActionPrototype(action_prototype_node_weight) => {
+                action_prototype_node_weight.id = id.into()
             }
-            NodeWeight::ActionPrototype(weight) => {
-                weight.id = id.into();
-                weight.lineage_id = lineage_id;
+            NodeWeight::AttributePrototypeArgument(attribute_prototype_argument_node_weight) => {
+                attribute_prototype_argument_node_weight.id = id.into()
             }
-            NodeWeight::AttributePrototypeArgument(weight) => {
-                weight.id = id.into();
-                weight.lineage_id = lineage_id;
+            NodeWeight::AttributeValue(attribute_value_node_weight) => {
+                attribute_value_node_weight.id = id.into()
             }
-            NodeWeight::AttributeValue(weight) => {
-                weight.id = id.into();
-                weight.lineage_id = lineage_id;
+            NodeWeight::Category(category_node_weight) => category_node_weight.id = id.into(),
+            NodeWeight::Component(component_node_weight) => component_node_weight.id = id.into(),
+            NodeWeight::Content(content_node_weight) => content_node_weight.id = id.into(),
+            NodeWeight::DependentValueRoot(dependent_value_root_node_weight) => {
+                dependent_value_root_node_weight.id = id.into()
             }
-            NodeWeight::Category(weight) => {
-                weight.id = id.into();
-                weight.lineage_id = lineage_id;
+            NodeWeight::Func(func_node_weight) => func_node_weight.id = id.into(),
+            NodeWeight::FuncArgument(func_argument_node_weight) => {
+                func_argument_node_weight.id = id.into()
             }
-            NodeWeight::Component(weight) => {
-                weight.id = id.into();
-                weight.lineage_id = lineage_id;
+            NodeWeight::Ordering(ordering_node_weight) => ordering_node_weight.id = id.into(),
+            NodeWeight::Prop(prop_node_weight) => prop_node_weight.id = id.into(),
+            NodeWeight::Secret(secret_node_weight) => secret_node_weight.id = id.into(),
+            NodeWeight::FinishedDependentValueRoot(finished_dependent_value_root_node_weight) => {
+                finished_dependent_value_root_node_weight.id = id.into()
             }
-            NodeWeight::Content(weight) => {
-                weight.id = id.into();
-                weight.lineage_id = lineage_id;
+            NodeWeight::InputSocket(input_socket_node_weight) => {
+                input_socket_node_weight.set_id(id.into());
             }
-            NodeWeight::Func(weight) => {
-                weight.id = id.into();
-                weight.lineage_id = lineage_id;
+            NodeWeight::SchemaVariant(schema_variant_node_weight) => {
+                schema_variant_node_weight.set_id(id.into());
             }
-            NodeWeight::FuncArgument(weight) => {
-                weight.id = id.into();
-                weight.lineage_id = lineage_id;
+            NodeWeight::ManagementPrototype(management_prototype_node_weight) => {
+                management_prototype_node_weight.set_id(id.into());
             }
-            NodeWeight::Ordering(weight) => {
-                weight.id = id.into();
-                weight.lineage_id = lineage_id;
+            NodeWeight::Geometry(geometry_node_weight) => {
+                geometry_node_weight.set_id(id.into());
             }
-            NodeWeight::Prop(weight) => {
-                weight.id = id.into();
-                weight.lineage_id = lineage_id;
+            NodeWeight::View(view_node_weight) => {
+                view_node_weight.set_id(id.into());
             }
-            NodeWeight::Secret(weight) => {
-                weight.id = id.into();
-                weight.lineage_id = lineage_id;
+            NodeWeight::DiagramObject(diagram_object_node_weight) => {
+                diagram_object_node_weight.set_id(id.into());
             }
-            NodeWeight::DependentValueRoot(weight) => {
-                weight.id = id.into();
-                weight.lineage_id = lineage_id;
-            }
-            NodeWeight::FinishedDependentValueRoot(weight) => {
-                weight.id = id.into();
-                weight.lineage_id = lineage_id;
-            }
-            NodeWeight::InputSocket(weight) => {
-                weight.set_id(id.into());
-                weight.set_lineage_id(lineage_id);
-            }
-            NodeWeight::SchemaVariant(weight) => {
-                weight.set_id(id.into());
-                weight.set_lineage_id(lineage_id);
-            }
-            NodeWeight::ManagementPrototype(weight) => {
-                weight.set_id(id.into());
-                weight.set_lineage_id(lineage_id);
-            }
-            NodeWeight::Geometry(weight) => {
-                weight.set_id(id.into());
-                weight.set_lineage_id(lineage_id);
-            }
-            NodeWeight::View(weight) => {
-                weight.set_id(id.into());
-                weight.set_lineage_id(lineage_id);
-            }
-            NodeWeight::DiagramObject(weight) => {
-                weight.set_id(id.into());
-                weight.set_lineage_id(lineage_id);
-            }
-            NodeWeight::ApprovalRequirementDefinition(weight) => {
-                weight.set_id(id.into());
-                weight.set_lineage_id(lineage_id);
+            NodeWeight::ApprovalRequirementDefinition(
+                approval_requirement_definition_node_weight,
+            ) => {
+                approval_requirement_definition_node_weight.set_id(id.into());
             }
         }
+    }
+
+    pub fn set_lineage_id(&mut self, lineage_id: LineageId) {
+        match self {
+            NodeWeight::Action(action_node_weight) => action_node_weight.lineage_id = lineage_id,
+            NodeWeight::ActionPrototype(action_prototype_node_weight) => {
+                action_prototype_node_weight.lineage_id = lineage_id
+            }
+            NodeWeight::AttributePrototypeArgument(attribute_prototype_argument_node_weight) => {
+                attribute_prototype_argument_node_weight.lineage_id = lineage_id
+            }
+            NodeWeight::AttributeValue(attribute_value_node_weight) => {
+                attribute_value_node_weight.lineage_id = lineage_id
+            }
+            NodeWeight::Category(category_node_weight) => {
+                category_node_weight.lineage_id = lineage_id
+            }
+            NodeWeight::Component(component_node_weight) => {
+                component_node_weight.lineage_id = lineage_id
+            }
+            NodeWeight::Content(content_node_weight) => content_node_weight.lineage_id = lineage_id,
+            NodeWeight::DependentValueRoot(dependent_value_root_node_weight) => {
+                dependent_value_root_node_weight.lineage_id = lineage_id
+            }
+            NodeWeight::Func(func_node_weight) => func_node_weight.lineage_id = lineage_id,
+            NodeWeight::FuncArgument(func_argument_node_weight) => {
+                func_argument_node_weight.lineage_id = lineage_id
+            }
+            NodeWeight::Ordering(ordering_node_weight) => {
+                ordering_node_weight.lineage_id = lineage_id
+            }
+            NodeWeight::Prop(prop_node_weight) => prop_node_weight.lineage_id = lineage_id,
+            NodeWeight::Secret(secret_node_weight) => secret_node_weight.lineage_id = lineage_id,
+            NodeWeight::FinishedDependentValueRoot(finished_dependent_value_root_node_weight) => {
+                finished_dependent_value_root_node_weight.lineage_id = lineage_id
+            }
+            NodeWeight::InputSocket(input_socket_node_weight) => {
+                input_socket_node_weight.set_lineage_id(lineage_id);
+            }
+            NodeWeight::SchemaVariant(schema_variant_node_weight) => {
+                schema_variant_node_weight.set_lineage_id(lineage_id);
+            }
+            NodeWeight::ManagementPrototype(management_prototype_node_weight) => {
+                management_prototype_node_weight.set_lineage_id(lineage_id);
+            }
+            NodeWeight::Geometry(geometry_node_weight) => {
+                geometry_node_weight.set_lineage_id(lineage_id);
+            }
+            NodeWeight::View(view_node_weight) => {
+                view_node_weight.set_lineage_id(lineage_id);
+            }
+            NodeWeight::DiagramObject(diagram_object_node_weight) => {
+                diagram_object_node_weight.set_lineage_id(lineage_id);
+            }
+            NodeWeight::ApprovalRequirementDefinition(
+                approval_requirement_definition_node_weight,
+            ) => {
+                approval_requirement_definition_node_weight.set_lineage_id(lineage_id);
+            }
+        }
+    }
+
+    pub fn set_id_and_lineage(&mut self, id: impl Into<Ulid>, lineage_id: LineageId) {
+        self.set_id(id);
+        self.set_lineage_id(lineage_id);
     }
 
     pub fn merkle_tree_hash(&self) -> MerkleTreeHash {
@@ -1204,8 +1234,16 @@ impl si_split_graph::CustomNodeWeight for NodeWeight {
         self.id()
     }
 
+    fn set_id(&mut self, id: si_split_graph::SplitGraphNodeId) {
+        self.set_id(id);
+    }
+
     fn lineage_id(&self) -> si_split_graph::SplitGraphNodeId {
         self.lineage_id()
+    }
+
+    fn set_lineage_id(&mut self, lineage_id: si_split_graph::SplitGraphNodeId) {
+        self.set_lineage_id(lineage_id.into());
     }
 
     fn entity_kind(&self) -> EntityKind {

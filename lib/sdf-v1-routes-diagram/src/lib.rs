@@ -14,7 +14,7 @@ use dal::{
     pkg::PkgError,
     slow_rt::SlowRuntimeError,
     socket::{input::InputSocketError, output::OutputSocketError},
-    workspace_snapshot::WorkspaceSnapshotError,
+    workspace_snapshot::{dependent_value_root::DependentValueRootError, WorkspaceSnapshotError},
     ChangeSetError, FuncError, SchemaError, SchemaId, SchemaVariantId, StandardModelError,
     TransactionsError, WsEventError,
 };
@@ -67,6 +67,8 @@ pub enum DiagramError {
     DalSchemaVariant(#[from] dal::schema::variant::SchemaVariantError),
     #[error("dal schema view error: {0}")]
     DalSchemaView(#[from] dal::schema::view::SchemaViewError),
+    #[error("dependent value root error: {0}")]
+    DependentValueRoot(#[from] DependentValueRootError),
     #[error("duplicated connection")]
     DuplicatedConnection,
     #[error("edge not found")]

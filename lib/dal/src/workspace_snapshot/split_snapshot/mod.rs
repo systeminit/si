@@ -421,14 +421,28 @@ impl SplitSnapshot {
         &self,
         id: impl Into<Ulid>,
     ) -> WorkspaceSnapshotResult<Vec<NodeWeight>> {
-        todo!()
+        let working_copy = self.working_copy().await;
+        let targets = working_copy
+            .edges_directed(id.into(), Outgoing)?
+            .filter_map(|edge_ref| working_copy.node_weight(edge_ref.target()))
+            .cloned()
+            .collect();
+
+        Ok(targets)
     }
 
     pub async fn all_incoming_sources(
         &self,
         id: impl Into<Ulid>,
     ) -> WorkspaceSnapshotResult<Vec<NodeWeight>> {
-        todo!()
+        let working_copy = self.working_copy().await;
+        let sources = working_copy
+            .edges_directed(id.into(), Incoming)?
+            .filter_map(|edge_ref| working_copy.node_weight(edge_ref.source()))
+            .cloned()
+            .collect();
+
+        Ok(sources)
     }
 
     pub async fn remove_incoming_edges_of_kind(
@@ -436,7 +450,27 @@ impl SplitSnapshot {
         target_id: impl Into<Ulid>,
         kind: EdgeWeightKindDiscriminants,
     ) -> WorkspaceSnapshotResult<()> {
-        todo!()
+        let target_id = target_id.into();
+        let mut working_copy = self.working_copy_mut().await;
+        let sources: Vec<_> = working_copy
+            .edges_directed(target_id, Incoming)?
+            .filter_map(|edge_ref| match edge_ref.weight().custom() {
+                Some(weight) => {
+                    if kind == weight.kind().into() {
+                        Some(edge_ref.source())
+                    } else {
+                        None
+                    }
+                }
+                None => None,
+            })
+            .collect();
+
+        for source_id in sources {
+            working_copy.remove_edge(source_id, kind, target_id)?;
+        }
+
+        Ok(())
     }
 
     pub async fn get_edges_between_nodes(
@@ -444,11 +478,26 @@ impl SplitSnapshot {
         from_node_id: Ulid,
         to_node_id: Ulid,
     ) -> WorkspaceSnapshotResult<Vec<EdgeWeight>> {
-        todo!()
+        Ok(self
+            .working_copy()
+            .await
+            .edges_directed(from_node_id, Outgoing)?
+            .filter_map(|edge_ref| match edge_ref.weight().custom() {
+                Some(weight) => {
+                    if edge_ref.target() == to_node_id {
+                        Some(weight.clone())
+                    } else {
+                        None
+                    }
+                }
+                None => None,
+            })
+            .collect())
     }
 
     pub async fn remove_node_by_id(&self, id: impl Into<Ulid>) -> WorkspaceSnapshotResult<()> {
-        todo!()
+        self.working_copy_mut().await.remove_node(id.into())?;
+        Ok(())
     }
 
     pub async fn remove_edge(
@@ -457,7 +506,10 @@ impl SplitSnapshot {
         target_id: impl Into<Ulid>,
         edge_kind: EdgeWeightKindDiscriminants,
     ) -> WorkspaceSnapshotResult<()> {
-        todo!()
+        self.working_copy_mut()
+            .await
+            .remove_edge(source_id.into(), edge_kind, target_id.into())?;
+        Ok(())
     }
 
     pub async fn find_edge(
@@ -466,7 +518,10 @@ impl SplitSnapshot {
         to_id: impl Into<Ulid>,
         edge_weight_kind: EdgeWeightKindDiscriminants,
     ) -> Option<EdgeWeight> {
-        todo!()
+        self.working_copy()
+            .await
+            .find_edge(from_id.into(), to_id.into(), edge_weight_kind)
+            .cloned()
     }
 
     pub async fn remove_edge_for_ulids(
@@ -491,21 +546,35 @@ impl SplitSnapshot {
         new_id: impl Into<Ulid>,
         new_lineage_id: LineageId,
     ) -> WorkspaceSnapshotResult<()> {
-        todo!()
+        let current_id = current_id.into();
+        let mut working_copy = self.working_copy_mut().await;
+        let node_weight = working_copy
+            .node_weight_mut(current_id)
+            .ok_or(WorkspaceSnapshotError::NodeNotFoundAtId(current_id))?;
+
+        node_weight.set_id_and_lineage(new_id, new_lineage_id);
+
+        Ok(())
     }
 
     pub async fn ordered_children_for_node(
         &self,
         id: impl Into<Ulid>,
     ) -> WorkspaceSnapshotResult<Option<Vec<Ulid>>> {
-        todo!()
+        Ok(self.working_copy().await.ordered_children(id.into()))
     }
 
-    pub async fn socket_edges_removed_relative_to_base(
-        &self,
-        ctx: &DalContext,
-    ) -> WorkspaceSnapshotResult<Vec<Connection>> {
-        todo!()
+    pub async fn dvu_root_check(&self, root: DependentValueRoot) -> bool {
+        // ensure we don't grow the graph unnecessarily by adding the same value
+        // in a single edit session
+        let mut dvu_roots = self.dvu_roots.lock().await;
+
+        if dvu_roots.contains(&root) {
+            true
+        } else {
+            dvu_roots.insert(root);
+            false
+        }
     }
 
     pub async fn add_dependent_value_root(

@@ -29,8 +29,16 @@ impl CustomNodeWeight for TestNodeWeight {
         self.id
     }
 
+    fn set_id(&mut self, id: SplitGraphNodeId) {
+        self.id = id;
+    }
+
     fn lineage_id(&self) -> SplitGraphNodeId {
         self.id
+    }
+
+    fn set_lineage_id(&mut self, id: SplitGraphNodeId) {
+        self.id = id;
     }
 
     fn entity_kind(&self) -> EntityKind {
