@@ -1,5 +1,10 @@
 <template>
-  <Modal ref="modalRef" size="max" title="Create Connection">
+  <Modal
+    ref="modalRef"
+    size="max"
+    title="Create Connection"
+    @click="focusOnInput"
+  >
     <div
       class="flex flex-col border-2 h-[80vh] rounded-sm"
       @click="focusOnInput"
