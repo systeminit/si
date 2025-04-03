@@ -63,6 +63,7 @@
                   }[size],
                 )
               "
+              @click="onChromeClick"
             >
               <!-- fake input to prevent initial focus... only way to stop headless UI -->
               <input
@@ -250,10 +251,15 @@ function exitHandler() {
 
 const saveLabel = toRef(props, "saveLabel", "Create");
 
+const onChromeClick = () => {
+  emit("click");
+};
+
 const emit = defineEmits<{
   close: [];
   closeComplete: [];
   save: [];
+  click: [];
 }>();
 
 defineExpose({ open, close, isOpen });

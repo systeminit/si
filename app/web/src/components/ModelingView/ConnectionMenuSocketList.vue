@@ -96,6 +96,7 @@
         v-model="socketToShow.value"
         :recordId="''"
         disabled
+        noVim
         json
       />
       <div
