@@ -21,7 +21,8 @@
     <div
       class="text-sm text-neutral-700 dark:text-neutral-300 p-xs italic border-b dark:border-neutral-600"
     >
-      The functions below will run immediately in a change set
+      <div v-if="isLoading">Component update in progress...</div>
+      <div v-else>The functions below will run immediately in a change set</div>
     </div>
     <ul class="text-sm">
       <template
@@ -66,6 +67,7 @@ import {
 } from "@/store/management_runs.store";
 import { FuncRunId, useFuncRunsStore } from "@/store/func_runs.store";
 import { useViewsStore } from "@/store/views.store";
+import { useStatusStore } from "@/store/status.store";
 import ManagementRunPrototype from "./ManagementRunPrototype.vue";
 import ManagementHistoryCard from "./Management/ManagementHistoryCard.vue";
 import {
@@ -79,6 +81,7 @@ const funcRunStore = useFuncRunsStore();
 const componentsStore = useComponentsStore();
 const viewStore = useViewsStore();
 const mgmtStore = useManagementRunsStore();
+const statusStore = useStatusStore();
 
 const resourceId = ref("");
 
@@ -112,6 +115,10 @@ const hideFuncRun = () => {
 const props = defineProps<{
   component: DiagramGroupData | DiagramNodeData;
 }>();
+
+const isLoading = computed(() =>
+  statusStore.componentIsLoading(props.component.def.id),
+);
 
 watch(
   () => props.component.def.resourceId,
