@@ -20,6 +20,7 @@ import {
   createActionFuncSpec,
   createFunc,
   MANAGEMENT_FUNCS,
+  ACTION_FUNC_SPECS,
   modifyFunc,
   strippedBase64,
 } from "../spec/funcs.ts";
@@ -712,6 +713,13 @@ const overrides = new Map<string, OverrideFn>([
     defaultValue["createOnly"] = createOnly;
     defaultValue["updatable"] = updatable;
     propUsageMapProp!.data.defaultValue = JSON.stringify(defaultValue);
+
+    const updateTargetId = ACTION_FUNC_SPECS["Update Asset"].id;
+    const newUpdateId =
+      "7eb4e58626f9fd7ee003bb9a1de814ab31cbb8ea2ae87d844864058bc4296c63";
+    const newUpdatePath =
+        "./src/cloud-control-funcs/overrides/AWS::ECS::TaskDefinition/actions/update.ts";
+    modifyFunc(spec, updateTargetId, newUpdateId, newUpdatePath);
   }],
   ["AWS::ECR::RegistryPolicy", (spec: ExpandedPkgSpec) => {
     const variant = spec.schemas[0].variants[0];
