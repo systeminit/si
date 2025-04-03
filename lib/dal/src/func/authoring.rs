@@ -47,6 +47,7 @@ use crate::prop::PropError;
 use crate::schema::variant::authoring::{VariantAuthoringClient, VariantAuthoringError};
 use crate::schema::variant::leaves::{LeafInputLocation, LeafKind};
 use crate::socket::output::OutputSocketError;
+use crate::workspace_snapshot::dependent_value_root::DependentValueRootError;
 use crate::{
     AttributePrototype, AttributePrototypeId, ComponentError, ComponentId, DalContext, Func,
     FuncBackendKind, FuncBackendResponseType, FuncError, FuncId, SchemaVariant, SchemaVariantError,
@@ -82,6 +83,8 @@ pub enum FuncAuthoringError {
     CannotUnlockNonDefaultSchemaVariant(SchemaVariantId),
     #[error("component error: {0}")]
     Component(#[from] ComponentError),
+    #[error("dependent value root error: {0}")]
+    DependentValueRoot(#[from] DependentValueRootError),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
     #[error("func argument error: {0}")]
