@@ -167,3 +167,18 @@ impl FromRequestParts<AppState> for FriggStore {
         Ok(Self(state.frigg().clone()))
     }
 }
+
+#[derive(Clone, Debug, Deref, Into)]
+pub struct EddaClient(pub edda_client::EddaClient);
+
+#[async_trait]
+impl FromRequestParts<AppState> for EddaClient {
+    type Rejection = ErrorResponse;
+
+    async fn from_request_parts(
+        _parts: &mut Parts,
+        state: &AppState,
+    ) -> Result<Self, Self::Rejection> {
+        Ok(Self(state.edda_client().clone()))
+    }
+}

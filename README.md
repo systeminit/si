@@ -119,15 +119,7 @@ Every service should eventually have a green checkmark next to them, which ensur
 If you would like to learn more on what's running, check out the [docs](DOCS.md).
 In our documentation, you can also learn more about running the stack locally and a deeper dive into system requirements.
 
-### (6) Troubleshooting in Tilt
-
-If some services failed to start, you can restart them on the Tilt dashboard.
-
-- A backend service fails (e.g. `sdf`): restart them in the following order: `forklift`, `veritech`, `rebaser`, `pinga`, `sdf`
-- A frontend service fails (e.g. `web`): restart the service individually
-- A dependent service fails (e.g. PostgreSQL): tear down the stack and restart
-
-### (7) Tearing Down the Stack
+### (6) Tearing Down the Stack
 
 The following command will stop all running services and containers.
 It will also remove the containers and, consequentially, the data held in them.

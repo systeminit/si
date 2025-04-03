@@ -3,6 +3,7 @@ use std::{ops::Deref, sync::Arc};
 use asset_sprayer::AssetSprayer;
 use audit_database::AuditDatabaseContext;
 use axum::extract::FromRef;
+use edda_client::EddaClient;
 use frigg::FriggStore;
 use nats_multiplexer_client::MultiplexerClient;
 use si_data_spicedb::SpiceDbClient;
@@ -40,6 +41,7 @@ pub struct AppState {
     spicedb_client: Option<SpiceDbClient>,
     frigg: FriggStore,
     audit_database_context: AuditDatabaseContext,
+    edda_client: EddaClient,
 }
 
 impl AppState {
@@ -61,6 +63,7 @@ impl AppState {
         spicedb_client: Option<SpiceDbClient>,
         frigg: FriggStore,
         audit_database_context: AuditDatabaseContext,
+        edda_client: EddaClient,
     ) -> Self {
         let nats_multiplexer_clients = NatsMultiplexerClients {
             ws: Arc::new(Mutex::new(ws_multiplexer_client)),
@@ -84,6 +87,7 @@ impl AppState {
             spicedb_client,
             frigg,
             audit_database_context,
+            edda_client,
         }
     }
 
@@ -137,6 +141,10 @@ impl AppState {
 
     pub fn frigg(&self) -> &FriggStore {
         &self.frigg
+    }
+
+    pub fn edda_client(&self) -> &EddaClient {
+        &self.edda_client
     }
 }
 

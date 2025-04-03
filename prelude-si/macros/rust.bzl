@@ -22,14 +22,15 @@ def rust_binary(
         deps,
         crate_root = "src/main.rs",
         edition = "2021",
+        env = {},
         resources = [],
         test_unit_deps = [],
         test_unit_srcs = [],
+        test_unit_env = {},
         test_unit_resources = {},
         extra_test_targets = [],
         visibility = ["PUBLIC"],
         **kwargs):
-
     native.rust_binary(
         name = name,
         edition = edition,
@@ -37,6 +38,7 @@ def rust_binary(
         deps = deps,
         crate_root = crate_root,
         resources = resources,
+        env = env,
         visibility = visibility,
         **kwargs
     )
@@ -54,8 +56,8 @@ def rust_binary(
             deps = deps + test_unit_deps,
             crate_root = crate_root,
             resources = test_unit_resources,
+            env = env | test_unit_env,
             visibility = visibility,
-            **kwargs
         )
 
         _clippy_check(
@@ -163,15 +165,16 @@ def rust_library(
         deps,
         crate_root = "src/lib.rs",
         edition = "2021",
+        env = {},
         resources = [],
         test_unit_deps = [],
         test_unit_srcs = [],
+        test_unit_env = {},
         test_unit_resources = {},
         extra_test_targets = [],
         proc_macro = False,
         visibility = ["PUBLIC"],
         **kwargs):
-
     native.rust_library(
         name = name,
         edition = edition,
@@ -179,6 +182,7 @@ def rust_library(
         deps = deps,
         crate_root = crate_root,
         resources = resources,
+        env = env,
         proc_macro = proc_macro,
         visibility = visibility,
         **kwargs
@@ -197,8 +201,8 @@ def rust_library(
             deps = deps + test_unit_deps,
             crate_root = crate_root,
             resources = test_unit_resources,
+            env = env | test_unit_env,
             visibility = visibility,
-            **kwargs
         )
 
         _clippy_check(
@@ -305,7 +309,6 @@ def rust_test(
         edition = "2021",
         visibility = ["PUBLIC"],
         **kwargs):
-
     native.rust_test(
         name = name,
         edition = edition,

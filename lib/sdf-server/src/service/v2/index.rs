@@ -1,5 +1,7 @@
+use futures_lite::StreamExt;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
+use std::time::Duration;
 
 use axum::{
     extract::{Path, Query},
@@ -14,12 +16,14 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{
-    extract::{FriggStore, HandlerContext},
+    extract::{EddaClient, FriggStore, HandlerContext},
     service::ApiError,
     AppState,
 };
 
 use super::AccessBuilder;
+
+const WATCH_INDEX_TIMEOUT: Duration = Duration::from_secs(30);
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -28,16 +32,18 @@ pub enum IndexError {
     ChangeSet(#[from] dal::ChangeSetError),
     #[error("deserializing mv index data error: {0}")]
     DeserializingMvIndexData(#[source] serde_json::Error),
+    #[error("edda client error: {0}")]
+    EddaClient(#[from] edda_client::ClientError),
     #[error("frigg error: {0}")]
     Frigg(#[from] frigg::FriggError),
     #[error("index not found; workspace_pk={0}, change_set_id={1}")]
     IndexNotFound(WorkspacePk, ChangeSetId),
     #[error("invalid string for reference kind: {0}")]
     InvalidStringForReferenceKind(#[source] strum::ParseError),
-    #[error("Materialized view error: {0}")]
-    MaterializedView(#[from] dal::materialized_view::MaterializedViewError),
     #[error("transactions error: {0}")]
     Transactions(#[from] dal::TransactionsError),
+    #[error("timed out when watching index with duration: {0:?}")]
+    WatchIndexTimeout(Duration),
 }
 
 pub type IndexResult<T> = Result<T, IndexError>;
@@ -81,6 +87,7 @@ pub async fn get_change_set_index(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(access_builder): AccessBuilder,
     FriggStore(frigg): FriggStore,
+    EddaClient(edda_client): EddaClient,
     Path((workspace_pk, change_set_id)): Path<(WorkspacePk, ChangeSetId)>,
 ) -> IndexResult<Json<FrontEndObjectMeta>> {
     let ctx = builder
@@ -89,12 +96,12 @@ pub async fn get_change_set_index(
     let change_set = ChangeSet::get_by_id(&ctx, change_set_id).await?;
 
     let index = match frigg.get_index(workspace_pk, change_set_id).await? {
-        Some((index, kv_revision)) => {
+        Some((index, _kv_revision)) => {
             let mv_index: MvIndex = serde_json::from_value(index.data.to_owned())
                 .map_err(IndexError::DeserializingMvIndexData)?;
 
-            // NOTE(nick,jacob): even though this is moving to "edda", let's trace this to ensure
-            // that this stopgap solution does not bog the system down.
+            // NOTE(nick,jacob): this may or may not be better suited for "edda". Let's trace this
+            // to ensure that this stopgap solution does not bog the system down.
             let span = info_span!("sdf.index.get_change_set_index.implemented_kinds");
             let implemented_kinds = span.in_scope(|| {
                 let mut implemented_kinds = HashSet::new();
@@ -108,11 +115,6 @@ pub async fn get_change_set_index(
                 IndexResult::Ok(implemented_kinds)
             })?;
 
-            // NOTE(nick): if the existing index's set of reference kinds does not match SDF's, we
-            // need to update the index. This is a stop-gap until "edda" comes into play. You can
-            // already see where this can go sideways. What if you are using SI while multiple SDF
-            // instances are being updated? Do you experience multiple index updates? This could be
-            // a problem, but one that we know "edda" will solve.
             if implemented_kinds == ReferenceKind::revision_sensitive() {
                 index
             } else {
@@ -120,19 +122,8 @@ pub async fn get_change_set_index(
                     "Index out of date for change_set {}; attempting full build",
                     change_set_id,
                 );
-                // We know the change set exists, but the index is out of date, so
-                // we'll trigger a full MV build and then try again.
-                dal::materialized_view::build_all_mv_for_change_set_and_existing_index(
-                    &ctx,
-                    &frigg,
-                    kv_revision,
-                )
-                .instrument(tracing::info_span!(
-                    "New build of all materialized views for existing index"
-                ))
-                .await?;
-                ctx.commit_no_rebase().await?;
-
+                request_rebuild_and_watch(&frigg, &edda_client, workspace_pk, change_set_id)
+                    .await?;
                 frigg
                     .get_index(workspace_pk, change_set_id)
                     .await?
@@ -145,15 +136,7 @@ pub async fn get_change_set_index(
                 "Index not found for change_set {}; attempting full build",
                 change_set_id,
             );
-            // We know the change set exists, but the index hasn't been built yet, so
-            // we'll trigger a full MV build and then try again.
-            dal::materialized_view::build_all_mv_for_change_set(&ctx, &frigg)
-                .instrument(tracing::info_span!(
-                    "Initial build of all materialized views"
-                ))
-                .await?;
-            ctx.commit_no_rebase().await?;
-
+            request_rebuild_and_watch(&frigg, &edda_client, workspace_pk, change_set_id).await?;
             frigg
                 .get_index(workspace_pk, change_set_id)
                 .await?
@@ -166,6 +149,28 @@ pub async fn get_change_set_index(
         workspace_snapshot_address: change_set.workspace_snapshot_address,
         front_end_object: index,
     }))
+}
+
+#[instrument(
+    level = "info",
+    name = "sdf.index.get_change_set_index.request_rebuild_and_watch",
+    skip_all
+)]
+async fn request_rebuild_and_watch(
+    frigg: &frigg::FriggStore,
+    edda_client: &edda_client::EddaClient,
+    workspace_pk: WorkspacePk,
+    change_set_id: ChangeSetId,
+) -> IndexResult<()> {
+    let mut watch = frigg.watch_index(workspace_pk, change_set_id).await?;
+    edda_client
+        .rebuild_for_change_set(workspace_pk, change_set_id)
+        .await?;
+    let timeout = WATCH_INDEX_TIMEOUT;
+    tokio::select! {
+        _ = tokio::time::sleep(timeout) => Err(IndexError::WatchIndexTimeout(timeout)),
+        _ = watch.next() => Ok(())
+    }
 }
 
 #[derive(Deserialize, Serialize, Debug)]

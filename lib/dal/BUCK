@@ -52,7 +52,6 @@ rust_library(
         "//third-party/rust:iftree",
         "//third-party/rust:indexmap",
         "//third-party/rust:itertools",
-        "//third-party/rust:json-patch",
         "//third-party/rust:jwt-simple",
         "//third-party/rust:lazy_static",
         "//third-party/rust:once_cell",

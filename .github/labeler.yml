@@ -117,6 +117,17 @@ A-forklift:
       - Cargo.lock
       - rust-toolchain
       - rustfmt.toml
+A-edda:
+  - changed-files:
+    - any-glob-to-any-file:
+      - bin/edda/**/*
+      - lib/edda-client/**/*
+      - lib/edda-core/**/*
+      - lib/edda-server/**/*
+      - .cargo/**/*
+      - Cargo.lock
+      - rust-toolchain
+      - rustfmt.toml
 
 #
 # System Initiative libs (i.e. crates/packages/libraries)

@@ -10,6 +10,11 @@ load(
 )
 
 alias(
+    name = "edda",
+    actual = "//bin/edda:edda",
+)
+
+alias(
     name = "forklift",
     actual = "//bin/forklift:forklift",
 )
