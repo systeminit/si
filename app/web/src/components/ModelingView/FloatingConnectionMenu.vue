@@ -144,13 +144,17 @@ const selectedSocketB = computed(() =>
   ),
 );
 
-const highlightedSocket = computed(
-  () =>
-    (activeSide.value === "a"
+// this needs to compute based on allComponentsById changes to socket values
+const highlightedSocket = computed(() => {
+  const highlighted =
+    activeSide.value === "a"
       ? listAItems.value[highlightedIndex.value]
-      : listBItems.value[highlightedIndex.value]
-    )?.socket,
-);
+      : listBItems.value[highlightedIndex.value];
+  if (!highlighted) return undefined;
+  return componentsStore.allComponentsById[
+    highlighted.component.def.id
+  ]?.sockets.find((s) => s.def.id === highlighted.socket.def.id);
+});
 
 const activeSide = ref<"a" | "b">("a");
 // TODO this will undo the previous connection
@@ -183,7 +187,9 @@ const updateMenu = async () => {
   const activeSearchString =
     activeSide.value === "a" ? searchStringA.value : searchStringB.value;
 
-  const edges = _.values(componentsStore.diagramEdgesById);
+  const edges = _.values(componentsStore.diagramEdgesById).filter(
+    (e) => e.def.toDelete === false && e.def.changeStatus !== "deleted",
+  );
 
   const componentsActiveSide = _.filter(
     activeSideData.componentId
@@ -324,11 +330,12 @@ const updateMenu = async () => {
 };
 const debouncedUpdate = _.debounce(updateMenu, 20, {
   leading: true,
-  trailing: false,
+  trailing: true,
 });
 watch(activeSide, debouncedUpdate, { immediate: true });
 watch(searchStringA, debouncedUpdate, { immediate: true });
 watch(searchStringB, debouncedUpdate, { immediate: true });
+watch(connectionData, debouncedUpdate, { immediate: true });
 watch(componentsStore.diagramEdgesById, debouncedUpdate, { immediate: true });
 watch(componentsStore.allComponentsById, debouncedUpdate, { immediate: true });
 

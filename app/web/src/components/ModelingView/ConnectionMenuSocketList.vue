@@ -13,66 +13,74 @@
       ref="scrollRef"
       :class="
         clsx(
-          'flex flex-col px-2xs gap-2xs py-3xs min-h-0 overflow-auto relative',
+          'flex flex-col px-2xs gap-2xs py-3xs min-h-0 overflow-auto',
           !active && 'text-neutral-400',
         )
       "
     >
       <div
-        v-for="item in socketList"
-        :key="item.index"
-        :data-index="item.index"
-        :class="
-          clsx(
-            'flex gap-xs align-middle items-center',
-            active &&
-              item.index === localHighlightedIndex &&
-              'bg-action-600 text-white',
-            active &&
-              item.index !== localHighlightedIndex &&
-              'hover:bg-action-200 hover:text-black',
-            !active &&
-              props.listItems[item.index]!.socket.def.id !== selectedSocket?.def.id &&
-              'hover:bg-neutral-400 hover:text-black',
-            item.index !== localHighlightedIndex &&
-            props.listItems[item.index]!.socket.def.id === selectedSocket?.def.id &&
-              'bg-neutral-600 text-white',
-            'rounded cursor-pointer',
-            'py-xs px-2xs my-0.5',
-          )
-        "
         :style="{
-          position: 'absolute',
-          top: 0,
-          left: 0,
+          height: `${socketListSize}px`,
           width: '100%',
-          height: `${item.size}px`,
-          transform: `translateY(${item.start}px)`,
+          position: 'relative',
         }"
-        @click="emit('select', item.index)"
       >
-        <Icon
-          :class="clsx(props.listItems[item.index]!.socket.def.direction === 'output' && 'rotate-180')"
-          :name="
-            props.listItems[item.index]!.socket.def.direction === 'output'
-              ? 'output-socket'
-              : 'input-socket'
+        <div
+          v-for="item in socketList"
+          :key="item.index"
+          :data-index="item.index"
+          :class="
+            clsx(
+              'flex gap-xs align-middle items-center',
+              active &&
+                item.index === localHighlightedIndex &&
+                'bg-action-600 text-white',
+              active &&
+                item.index !== localHighlightedIndex &&
+                'hover:bg-action-200 hover:text-black',
+              !active &&
+                props.listItems[item.index]!.socket.def.id !== selectedSocket?.def.id &&
+                'hover:bg-neutral-400 hover:text-black',
+              item.index !== localHighlightedIndex &&
+              props.listItems[item.index]!.socket.def.id === selectedSocket?.def.id &&
+                'bg-neutral-600 text-white',
+              'rounded cursor-pointer',
+              'py-xs px-2xs my-0.5',
+            )
           "
-          size="sm"
-        />
-        <span>
-          <template
-            v-for="(part, partIndex) in props.listItems[item.index]!.label.split('')"
-            :key="partIndex"
-          >
-            <span v-if="part === '/'" class="text-neutral-400"> / </span>
-            <b
-              v-else-if="props.listItems[item.index]!.labelHighlights?.has(partIndex)"
-              >{{ part }}</b
+          :style="{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: `${item.size}px`,
+            transform: `translateY(${item.start}px)`,
+          }"
+          @click="emit('select', item.index)"
+        >
+          <Icon
+            :class="clsx(props.listItems[item.index]!.socket.def.direction === 'output' && 'rotate-180')"
+            :name="
+              props.listItems[item.index]!.socket.def.direction === 'output'
+                ? 'output-socket'
+                : 'input-socket'
+            "
+            size="sm"
+          />
+          <span>
+            <template
+              v-for="(part, partIndex) in props.listItems[item.index]!.label.split('')"
+              :key="partIndex"
             >
-            <span v-else>{{ part }}</span>
-          </template>
-        </span>
+              <span v-if="part === '/'" class="text-neutral-400"> / </span>
+              <b
+                v-else-if="props.listItems[item.index]!.labelHighlights?.has(partIndex)"
+                >{{ part }}</b
+              >
+              <span v-else>{{ part }}</span>
+            </template>
+          </span>
+        </div>
       </div>
     </div>
     <div
@@ -138,14 +146,20 @@ const localHighlightedIndex = computed(() =>
 
 const scrollRef = ref<HTMLDivElement>();
 
-const virtualList = useVirtualizer({
-  count: props.listItems.length,
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  getScrollElement: () => scrollRef.value!,
-  estimateSize: () => 37,
-  overscan: 3,
+const virtualizerOptions = computed(() => {
+  return {
+    count: props.listItems.length,
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    getScrollElement: () => scrollRef.value!,
+    estimateSize: () => 37,
+    overscan: 3,
+  };
 });
+
+const virtualList = useVirtualizer(virtualizerOptions);
+
 const socketList = computed(() => virtualList.value.getVirtualItems());
+const socketListSize = computed(() => virtualList.value.getTotalSize());
 
 const socketToShow = reactive<{ uniqueKey?: string; value?: string }>({});
 
