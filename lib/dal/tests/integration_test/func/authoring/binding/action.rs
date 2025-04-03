@@ -108,7 +108,7 @@ async fn detach_attach_then_delete_action_func_while_enqueued(ctx: &mut DalConte
         let _func_run_id = ctx
             .layer_db()
             .func_run()
-            .get_last_run_for_action_id(ctx.events_tenancy().workspace_pk, action.id())
+            .get_last_run_for_action_id_opt(ctx.events_tenancy().workspace_pk, action.id())
             .await
             .expect("unable to get func run id")
             .map(|f| f.id());

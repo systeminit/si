@@ -2,8 +2,8 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use si_events::{
-    ActionId, ActionResultState, Actor, AttributeValueId, ChangeSetId, ComponentId, ContentHash,
-    FuncId, FuncRun, FuncRunId, Tenancy, WebEvent, WorkspacePk,
+    ActionId, Actor, AttributeValueId, ChangeSetId, ComponentId, FuncId, FuncRun, FuncRunId,
+    Tenancy, WebEvent, WorkspacePk,
 };
 use telemetry::prelude::*;
 
@@ -104,7 +104,7 @@ impl FuncRunDb {
     }
 
     #[instrument(level = "debug", skip_all)]
-    pub async fn get_last_run_for_action_id(
+    pub async fn get_last_run_for_action_id_opt(
         &self,
         workspace_pk: WorkspacePk,
         action_id: ActionId,
@@ -125,6 +125,16 @@ impl FuncRunDb {
         };
 
         Ok(maybe_func)
+    }
+
+    pub async fn get_last_run_for_action_id(
+        &self,
+        workspace_pk: WorkspacePk,
+        action_id: ActionId,
+    ) -> LayerDbResult<FuncRun> {
+        self.get_last_run_for_action_id_opt(workspace_pk, action_id)
+            .await?
+            .ok_or_else(|| LayerDbError::ActionIdNotFound(action_id))
     }
 
     pub async fn list_management_history(
@@ -225,7 +235,7 @@ impl FuncRunDb {
         let sort_key: Arc<str> = value.tenancy().workspace_pk.to_string().into();
 
         self.cache
-            .insert_or_update(cache_key.clone(), value.clone(), size_hint);
+            .insert_or_update(cache_key.clone(), value, size_hint);
 
         let event = LayeredEvent::new(
             LayeredEventKind::FuncRunWrite,
@@ -239,121 +249,6 @@ impl FuncRunDb {
         );
         let reader = self.persister_client.write_event(event)?;
         let _ = reader.get_status().await;
-
-        Ok(())
-    }
-
-    pub async fn set_values_and_set_state_to_success(
-        &self,
-        func_run_id: FuncRunId,
-        unprocessed_value_cas: Option<ContentHash>,
-        value_cas: Option<ContentHash>,
-        tenancy: Tenancy,
-        actor: Actor,
-    ) -> LayerDbResult<()> {
-        let func_run_old = self.try_read(func_run_id).await?;
-        let mut func_run_new = Arc::unwrap_or_clone(func_run_old);
-        func_run_new.set_result_unprocessed_value_cas_address(unprocessed_value_cas);
-        func_run_new.set_result_value_cas_address(value_cas);
-        func_run_new.set_state_to_success();
-
-        self.write(Arc::new(func_run_new), None, tenancy, actor)
-            .await?;
-
-        Ok(())
-    }
-
-    pub async fn set_management_result_success(
-        &self,
-        func_run_id: FuncRunId,
-        run_result: ActionResultState,
-        unprocessed_value_cas: Option<ContentHash>,
-        value_cas: Option<ContentHash>,
-        tenancy: Tenancy,
-        actor: Actor,
-    ) -> LayerDbResult<()> {
-        let func_run_old = self.try_read(func_run_id).await?;
-        let mut func_run_new = Arc::unwrap_or_clone(func_run_old);
-        func_run_new.set_result_unprocessed_value_cas_address(unprocessed_value_cas);
-        func_run_new.set_result_value_cas_address(value_cas);
-        func_run_new.set_state_to_success();
-        func_run_new.set_action_result_state(Some(run_result));
-
-        self.write(Arc::new(func_run_new), None, tenancy, actor)
-            .await?;
-
-        Ok(())
-    }
-
-    pub async fn set_state_to_success(
-        &self,
-        func_run_id: FuncRunId,
-        tenancy: Tenancy,
-        actor: Actor,
-    ) -> LayerDbResult<()> {
-        let func_run_old = self.try_read(func_run_id).await?;
-        let mut func_run_new = Arc::unwrap_or_clone(func_run_old);
-        func_run_new.set_state_to_success();
-
-        self.write(Arc::new(func_run_new), None, tenancy, actor)
-            .await?;
-
-        Ok(())
-    }
-
-    pub async fn set_state_to_killed(
-        &self,
-        func_run_id: FuncRunId,
-        tenancy: Tenancy,
-        actor: Actor,
-    ) -> LayerDbResult<()> {
-        let func_run_old = self.try_read(func_run_id).await?;
-        let mut func_run_new = Arc::unwrap_or_clone(func_run_old);
-        func_run_new.set_state_to_killed();
-
-        self.write(Arc::new(func_run_new), None, tenancy, actor)
-            .await?;
-
-        Ok(())
-    }
-
-    pub async fn set_action_result_state(
-        &self,
-        func_run_id: FuncRunId,
-        action_result_state: ActionResultState,
-        tenancy: Tenancy,
-        actor: Actor,
-    ) -> LayerDbResult<()> {
-        let func_run_old = self.try_read(func_run_id).await?;
-        let mut func_run_new = Arc::unwrap_or_clone(func_run_old);
-        func_run_new.set_action_result_state(Some(action_result_state));
-
-        self.write(Arc::new(func_run_new), None, tenancy, actor)
-            .await?;
-
-        Ok(())
-    }
-
-    pub async fn set_action_result_state_for_action_id(
-        &self,
-        action_id: ActionId,
-        action_result_state: ActionResultState,
-        tenancy: Tenancy,
-        actor: Actor,
-    ) -> LayerDbResult<()> {
-        let maybe_row = self
-            .cache
-            .pg()
-            .query_opt(
-                &self.get_last_action_by_action_id,
-                &[&tenancy.workspace_pk, &action_id],
-            )
-            .await?
-            .ok_or_else(|| LayerDbError::ActionIdNotFound(action_id))?;
-        let mut func_run: FuncRun = serialize::from_bytes(maybe_row.get("value"))?;
-        func_run.set_action_result_state(Some(action_result_state));
-
-        self.write(Arc::new(func_run), None, tenancy, actor).await?;
 
         Ok(())
     }

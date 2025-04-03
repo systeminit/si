@@ -226,7 +226,17 @@ pub enum AttributeValueError {
 
 impl From<ComponentError> for AttributeValueError {
     fn from(value: ComponentError) -> Self {
-        Self::Component(Box::new(value))
+        Box::new(value).into()
+    }
+}
+impl From<FuncRunnerError> for AttributeValueError {
+    fn from(value: FuncRunnerError) -> Self {
+        Box::new(value).into()
+    }
+}
+impl From<SecretError> for AttributeValueError {
+    fn from(value: SecretError) -> Self {
+        Box::new(value).into()
     }
 }
 
@@ -549,8 +559,7 @@ impl AttributeValue {
             prototype_func_id,
             prepared_args.clone(),
         )
-        .await
-        .map_err(Box::new)?;
+        .await?;
 
         // We have gathered all our inputs and so no longer need a lock on the graph. Be sure not to
         // add graph walk operations below this drop.
@@ -558,8 +567,7 @@ impl AttributeValue {
 
         let mut func_values = result_channel
             .await
-            .map_err(|_| AttributeValueError::FuncRunnerSend)?
-            .map_err(Box::new)?;
+            .map_err(|_| AttributeValueError::FuncRunnerSend)??;
 
         // If the value is for a prop, we need to make sure container-type props are initialized
         // properly when the unprocessed value is populated.
@@ -618,16 +626,10 @@ impl AttributeValue {
 
         let func = Func::get_by_id(ctx, prototype_func_id).await?;
         if !func.is_intrinsic() {
-            ctx.layer_db()
-                .func_run()
-                .set_values_and_set_state_to_success(
-                    func_values.func_run_id(),
-                    unprocessed_value_address,
-                    value_address,
-                    ctx.events_tenancy(),
-                    ctx.events_actor(),
-                )
-                .await?;
+            FuncRunner::update_run(ctx, func_values.func_run_id(), |func_run| {
+                func_run.set_success(unprocessed_value_address, value_address);
+            })
+            .await?;
         }
 
         Ok((func_values, func, input_attribute_value_ids))
@@ -695,9 +697,7 @@ impl AttributeValue {
                             ]
                         }
                         ValueSource::Secret(secret_id) => {
-                            vec![Secret::payload_for_prototype_execution(ctx, secret_id)
-                                .await
-                                .map_err(Box::new)?]
+                            vec![Secret::payload_for_prototype_execution(ctx, secret_id).await?]
                         }
                         other_source => {
                             let mut values = vec![];
@@ -1935,13 +1935,10 @@ impl AttributeValue {
         };
 
         let result_channel =
-            FuncRunner::run_attribute_value(ctx, attribute_value_id, func_id, func_args)
-                .await
-                .map_err(Box::new)?;
+            FuncRunner::run_attribute_value(ctx, attribute_value_id, func_id, func_args).await?;
         let func_values = result_channel
             .await
-            .map_err(|_| AttributeValueError::FuncRunnerSend)?
-            .map_err(Box::new)?;
+            .map_err(|_| AttributeValueError::FuncRunnerSend)??;
 
         Self::set_real_values(ctx, attribute_value_id, func_values, func).await?;
         Ok(())
@@ -1995,16 +1992,10 @@ impl AttributeValue {
         };
 
         if !func.is_intrinsic() {
-            ctx.layer_db()
-                .func_run()
-                .set_values_and_set_state_to_success(
-                    func_run_value.func_run_id(),
-                    unprocessed_value_address,
-                    value_address,
-                    ctx.events_tenancy(),
-                    ctx.events_actor(),
-                )
-                .await?;
+            FuncRunner::update_run(ctx, func_run_value.func_run_id(), |func_run| {
+                func_run.set_success(unprocessed_value_address, value_address);
+            })
+            .await?;
         }
 
         let mut new_av_node_weight = av_node_weight.clone();
