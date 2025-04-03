@@ -1,4 +1,5 @@
 use si_frontend_types::object::patch::PatchBatch;
+use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{DalContext, TransactionsError};
@@ -17,6 +18,7 @@ pub enum DataCacheError {
 pub struct DataCache;
 
 impl DataCache {
+    #[instrument(name = "data_cache.publish_patch_batch", level = "info", skip_all)]
     pub async fn publish_patch_batch(
         ctx: &DalContext,
         patch_batch: PatchBatch,
