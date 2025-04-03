@@ -594,7 +594,7 @@ const mjolnir = async (
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let req: undefined | AxiosResponse<IndexObjectMeta, any>;
 
-  tracer.startActiveSpan(`GET ${desc}`, async (span) => {
+  await tracer.startActiveSpan(`GET ${desc}`, async (span) => {
     span.setAttributes({ workspaceId, changeSetId, kind, id, checksum });
     try {
       req = await sdf<IndexObjectMeta>({

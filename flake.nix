@@ -328,6 +328,8 @@
             '';
           };
 
+          edda = binDerivation {pkgName = "edda";};
+
           forklift = binDerivation {pkgName = "forklift";};
 
           module-index = binDerivation {pkgName = "module-index";};
@@ -386,6 +388,7 @@
             [
               alejandra
               buildkite-test-collector-rust
+              cargo-insta
               docker-compose
               jq
               nats-top

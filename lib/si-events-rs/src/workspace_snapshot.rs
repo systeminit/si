@@ -8,7 +8,7 @@ use crate::merkle_tree_hash::MerkleTreeHash;
 
 create_xxhash_type!(Checksum);
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
 pub struct Change {
     pub entity_id: EntityId,
     pub entity_kind: EntityKind,

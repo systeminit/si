@@ -13,6 +13,7 @@ use si_crypto::VeritechEncryptionKey;
 use si_data_nats::{jetstream, NatsClient, NatsError, NatsTxn};
 use si_data_pg::{InstrumentedClient, PgError, PgPool, PgPoolError, PgPoolResult, PgTxn};
 use si_events::audit_log::AuditLogKind;
+use si_events::change_batch::{ChangeBatch, ChangeBatchAddress};
 use si_events::rebase_batch_address::RebaseBatchAddress;
 use si_events::workspace_snapshot::Change;
 use si_events::AuthenticationMethod;
@@ -535,6 +536,30 @@ impl DalContext {
             blocking: self.blocking,
             no_dependent_values: self.no_dependent_values,
         }
+    }
+
+    #[instrument(name = "context.write_change_batch", level = "debug", skip_all)]
+    pub async fn write_change_batch(
+        &self,
+        changes: Vec<Change>,
+    ) -> TransactionsResult<ChangeBatchAddress> {
+        let layer_db = self.layer_db().clone();
+        let events_tenancy = self.events_tenancy();
+        let events_actor = self.events_actor();
+
+        let change_batch_address = slow_rt::spawn(async move {
+            let (change_batch_address, _) = layer_db.change_batch().write(
+                Arc::new(ChangeBatch::new(changes)),
+                None,
+                events_tenancy,
+                events_actor,
+            )?;
+
+            Ok::<ChangeBatchAddress, TransactionsError>(change_batch_address)
+        })?
+        .await??;
+
+        Ok(change_batch_address)
     }
 
     #[instrument(name = "context.write_rebase_batch", level = "debug", skip_all)]

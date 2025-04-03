@@ -65,6 +65,8 @@ pub enum ServerError {
     AuditDatabaseContext(#[from] AuditDatabaseContextError),
     #[error("axum error: {0}")]
     Axum(#[source] hyper::Error),
+    #[error("edda client error: {0}")]
+    EddaClient(#[from] edda_client::ClientError),
     #[error("error while initializing: {0}")]
     Init(#[from] init::InitError),
     #[error("kv store error: {0}")]

@@ -6,7 +6,7 @@ rust_library(
         "//lib/audit-logs-stream:audit-logs-stream",
         "//lib/buck2-resources:buck2-resources",
         "//lib/dal:dal",
-        "//lib/frigg:frigg",
+        "//lib/edda-client:edda-client",
         "//lib/naxum:naxum",
         "//lib/pending-events:pending-events",
         "//lib/rebaser-client:rebaser-client",

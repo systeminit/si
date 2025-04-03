@@ -3,12 +3,11 @@ use dal::{
     billing_publish,
     change_set::{ChangeSet, ChangeSetError, ChangeSetId},
     data_cache::DataCacheError,
-    materialized_view::MaterializedViewError,
     workspace_snapshot::WorkspaceSnapshotError,
     ChangeSetStatus, DalContext, TransactionsError, Workspace, WorkspaceError, WorkspacePk,
     WorkspaceSnapshot, WsEvent, WsEventError,
 };
-use frigg::{FriggError, FriggStore};
+use edda_client::EddaClient;
 use pending_events::PendingEventsError;
 use rebaser_core::api_types::{
     enqueue_updates_request::EnqueueUpdatesRequest, enqueue_updates_response::v1::RebaseStatus,
@@ -32,12 +31,10 @@ pub(crate) enum RebaseError {
     ChangeSet(#[from] ChangeSetError),
     #[error("Data Cache error: {0}")]
     DataCache(#[from] DataCacheError),
-    #[error("frigg error: {0}")]
-    Frigg(#[from] FriggError),
+    #[error("edda client error: {0}")]
+    EddaClient(#[from] edda_client::ClientError),
     #[error("layerdb error: {0}")]
     LayerDb(#[from] LayerDbError),
-    #[error("Materialized view error: {0}")]
-    MaterializedView(#[from] MaterializedViewError),
     #[error("missing rebase batch {0}")]
     MissingRebaseBatch(RebaseBatchAddress),
     #[error("pending events error: {0}")]
@@ -72,10 +69,11 @@ type RebaseResult<T> = Result<T, RebaseError>;
         si.updates.count = Empty,
         si.corrected_updates.count = Empty,
         si.workspace.id = %request.workspace_id,
+        si.edda.update_request.id = Empty
     ))]
 pub async fn perform_rebase(
     ctx: &mut DalContext,
-    frigg: &FriggStore,
+    edda: &EddaClient,
     request: &EnqueueUpdatesRequest,
     server_tracker: &TaskTracker,
     features: Features,
@@ -163,36 +161,26 @@ pub async fn perform_rebase(
     info!("rebase performed: {:?}", start.elapsed());
 
     if features.generate_mvs {
-        if frigg
-            .get_index(ctx.workspace_pk()?, ctx.change_set_id())
-            .await?
-            .is_some()
-        {
-            info!("Frigg index found, triggering rebuild of materialized views");
-            let changes = original_workspace_snapshot
-                .detect_changes(&to_rebase_workspace_snapshot)
-                .instrument(tracing::info_span!(
-                    "Detect changes for materialized view rebuild"
-                ))
-                .await?;
-            dal::materialized_view::build_mv_for_changes_in_change_set(
-                ctx,
-                frigg,
-                ctx.change_set_id(),
-                original_workspace_snapshot.id().await,
-                to_rebase_workspace_snapshot.id().await,
-                &changes,
-            )
-            .instrument(tracing::info_span!("Rebuild affected materialized views"))
+        let changes = original_workspace_snapshot
+            .detect_changes(&to_rebase_workspace_snapshot)
+            .instrument(tracing::info_span!(
+                "Detect changes for materialized view rebuild"
+            ))
             .await?;
-        } else {
-            info!("No Frigg index found, triggering initial build of materialized views");
-            dal::materialized_view::build_all_mv_for_change_set(ctx, frigg)
-                .instrument(tracing::info_span!(
-                    "Initial build of all materialized views"
-                ))
-                .await?;
-        }
+        let change_batch_address = ctx.write_change_batch(changes).await?;
+        let edda_update_request_id = edda
+            .update_from_workspace_snapshot(
+                request.workspace_id,
+                request.change_set_id,
+                original_workspace_snapshot.id().await,
+                to_rebase_workspace_snapshot_address,
+                change_batch_address,
+            )
+            .await?;
+        span.record(
+            "si.edda.update_request.id",
+            edda_update_request_id.to_string(),
+        );
     }
 
     // Before replying to the requester, we must commit.

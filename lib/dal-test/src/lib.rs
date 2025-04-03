@@ -695,6 +695,34 @@ pub async fn pinga_server(
     Ok(server)
 }
 
+/// Configures and builds an [`edda_server::Server`] suitable for running alongside DAL
+/// object-related tests.
+pub async fn edda_server(
+    services_context: ServicesContext,
+    shutdown_token: CancellationToken,
+) -> Result<edda_server::Server> {
+    let config: edda_server::Config = {
+        let mut config_file = edda_server::ConfigFile::default();
+        edda_server::detect_and_configure_development(&mut config_file)
+            .wrap_err("failed to detect and configure Edda ConfigFile")?;
+        config_file
+            .try_into()
+            .wrap_err("failed to build Edda server config")?
+    };
+
+    let server = edda_server::Server::from_services(
+        config.instance_id(),
+        config.concurrency_limit(),
+        services_context,
+        config.quiescent_period(),
+        shutdown_token,
+    )
+    .await
+    .wrap_err("failed to create Edda server")?;
+
+    Ok(server)
+}
+
 /// Configures and builds a [`rebaser_server::Server`] suitable for running alongside DAL
 /// object-related tests.
 pub async fn rebaser_server(
@@ -875,6 +903,14 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
         .await;
     let pinga_server = pinga_server(srv_services_ctx, token.clone()).await?;
     tracker.spawn(pinga_server.run());
+
+    // Start up an Edda server as a task exclusively to allow the migrations to run
+    info!("starting Edda server for initial migrations");
+    let srv_services_ctx = test_context
+        .create_services_context(token.clone(), tracker.clone())
+        .await;
+    let edda_server = edda_server(srv_services_ctx, token.clone()).await?;
+    tracker.spawn(edda_server.run());
 
     // Start up a Rebaser server for migrations
     info!("starting Rebaser server for initial migrations");

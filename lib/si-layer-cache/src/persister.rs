@@ -324,6 +324,8 @@ impl PersistEventTask {
         let pg_layer = PgLayer::new(self.pg_pool.clone(), event.payload.db_name.as_ref());
         match event.event_kind {
             LayeredEventKind::CasInsertion
+            | LayeredEventKind::ChangeBatchEvict
+            | LayeredEventKind::ChangeBatchWrite
             | LayeredEventKind::EncryptedSecretInsertion
             | LayeredEventKind::Raw
             | LayeredEventKind::RebaseBatchEvict

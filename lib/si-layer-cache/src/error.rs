@@ -52,8 +52,6 @@ pub enum LayerDbError {
     IncompleteKey(String),
     #[error("failed to convert integer: {0}")]
     IntConvert(#[from] TryFromIntError),
-    #[error("invalid cache name: {0}")]
-    InvalidCacheName(String),
     #[error("io error: {0}")]
     Io(#[from] std::io::Error),
     #[error("join error: {0}")]
