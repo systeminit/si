@@ -52,7 +52,7 @@ pub enum MaterializedViewError {
 /// It assumes there is no existing [`MvIndex`] for the change set.
 #[instrument(
     name = "materialized_view.build_all_mv_for_change_set",
-    level = "debug",
+    level = "info",
     skip_all,
     fields(
         si.workspace.id = Empty,
@@ -63,14 +63,16 @@ pub async fn build_all_mv_for_change_set(
     ctx: &DalContext,
     frigg: &FriggStore,
 ) -> Result<(), MaterializedViewError> {
-    let span = current_span_for_instrument_at!("debug");
+    let span = current_span_for_instrument_at!("info");
     span.record("si.workspace.id", ctx.workspace_pk()?.to_string());
 
     // Pretend everything has changed, and build all MVs.
     let changes = ctx
         .workspace_snapshot()?
         .map_all_nodes_to_change_objects()
-        .instrument(tracing::info_span!("Generating Changes for all nodes"))
+        .instrument(tracing::info_span!(
+            "materialized_view.build_all_mv_for_change_set.make_changes_for_all_nodes"
+        ))
         .await?;
 
     let (frontend_objects, patches) = build_mv_inner(
@@ -80,7 +82,6 @@ pub async fn build_all_mv_for_change_set(
         ctx.change_set_id(),
         &changes,
     )
-    .instrument(tracing::info_span!("Building MVs"))
     .await?;
 
     let index_entries = frontend_objects.into_iter().map(Into::into).collect();
@@ -105,16 +106,14 @@ pub async fn build_all_mv_for_change_set(
         .put_index(ctx.workspace_pk()?, &mv_index_frontend_object)
         .await?;
 
-    DataCache::publish_patch_batch(ctx, patch_batch)
-        .instrument(tracing::info_span!("Publishing patch batch"))
-        .await?;
+    DataCache::publish_patch_batch(ctx, patch_batch).await?;
 
     Ok(())
 }
 
 #[instrument(
     name = "materialized_view.build_mv_for_changes_in_change_set",
-    level = "debug",
+    level = "info",
     skip_all,
     fields(
         si.workspace.id = Empty,
@@ -132,7 +131,7 @@ pub async fn build_mv_for_changes_in_change_set(
 ) -> Result<(), MaterializedViewError> {
     let workspace_pk = ctx.workspace_pk()?;
 
-    let span = current_span_for_instrument_at!("debug");
+    let span = current_span_for_instrument_at!("info");
     span.record("si.workspace.id", workspace_pk.to_string());
 
     let (index_frontend_object, index_kv_revision) = frigg
@@ -206,6 +205,15 @@ pub async fn build_mv_for_changes_in_change_set(
     Ok(())
 }
 
+#[instrument(
+    name = "materialized_view.build_mv_inner",
+    level = "info",
+    skip_all,
+    fields(
+        si.workspace.id = %workspace_pk,
+        si.change_set_id = %change_set_id,
+    ),
+)]
 async fn build_mv_inner(
     ctx: &DalContext,
     frigg: &FriggStore,
