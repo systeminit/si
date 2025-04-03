@@ -7,7 +7,8 @@ use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use si_events::{
     ActionId, ActionResultState, CasValue, ContentHash, EncryptedSecretKey, FuncRun,
-    FuncRunBuilder, FuncRunBuilderError, FuncRunId, FuncRunLog, FuncRunLogId, FuncRunValue,
+    FuncRunBuilder, FuncRunBuilderError, FuncRunId, FuncRunLog, FuncRunLogId, FuncRunState,
+    FuncRunValue,
 };
 use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
@@ -1186,10 +1187,10 @@ impl FuncRunner {
                 // state. For cancellation, there is no other entity. We need to do that here. Because of that, we also
                 // need to know what the result of the cancellation request was. Therefore, this entire operation is
                 // blocking and we do not return a result channel.
-                ctx.layer_db()
-                    .func_run()
-                    .set_state_to_killed(func_run_id, ctx.events_tenancy(), ctx.events_actor())
-                    .await?;
+                FuncRunner::update_run(ctx, func_run_id, |func_run| {
+                    func_run.set_state(FuncRunState::Killed)
+                })
+                .await?;
 
                 // NOTE(nick): we may need to consider action result state as well as other fields on the func run
                 // struct. This will require more testing and investigation. For now, I think what we have will
@@ -1198,6 +1199,50 @@ impl FuncRunner {
             }
             FunctionResult::Failure(err) => Err(FuncRunnerError::KillExecutionFailure(err)),
         }
+    }
+
+    // Update the given func run in LayerDB, setting tenancy/actor to ctx.events_tenancy()/events_actor()).
+    pub async fn update_run(
+        ctx: &DalContext,
+        id: FuncRunId,
+        update_fn: impl FnOnce(&mut FuncRun),
+    ) -> FuncRunnerResult<()> {
+        let mut func_run = Arc::unwrap_or_clone(ctx.layer_db().func_run().try_read(id).await?);
+        update_fn(&mut func_run);
+        Ok(ctx
+            .layer_db()
+            .func_run()
+            .write(
+                Arc::new(func_run),
+                None,
+                ctx.events_tenancy(),
+                ctx.events_actor(),
+            )
+            .await?)
+    }
+
+    // Update the latest func run for the given action in LayerDB, setting tenancy/actor to ctx.events_tenancy()/events_actor()).
+    pub async fn update_run_for_action_id(
+        ctx: &DalContext,
+        action_id: ActionId,
+        update_fn: impl FnOnce(&mut FuncRun),
+    ) -> FuncRunnerResult<()> {
+        let mut func_run = ctx
+            .layer_db()
+            .func_run()
+            .get_last_run_for_action_id(ctx.events_tenancy().workspace_pk, action_id)
+            .await?;
+        update_fn(&mut func_run);
+        Ok(ctx
+            .layer_db()
+            .func_run()
+            .write(
+                Arc::new(func_run),
+                None,
+                ctx.events_tenancy(),
+                ctx.events_actor(),
+            )
+            .await?)
     }
 
     fn id(&self) -> FuncRunId {
@@ -1608,21 +1653,11 @@ impl FuncRunnerExecutionTask {
     }
 
     async fn try_run(self) -> FuncRunnerResult<()> {
-        let mut running_state_func_run_inner = Arc::unwrap_or_clone(self.func_run.clone());
-        running_state_func_run_inner.set_state_to_running();
-        let running_state_func_run = Arc::new(running_state_func_run_inner);
-
         if !self.func.is_intrinsic() {
-            self.ctx
-                .layer_db()
-                .func_run()
-                .write(
-                    running_state_func_run.clone(),
-                    None,
-                    self.ctx.events_tenancy(),
-                    self.ctx.events_actor(),
-                )
-                .await?;
+            FuncRunner::update_run(&self.ctx, self.func_run.id(), |func_run| {
+                func_run.set_state(FuncRunState::Running);
+            })
+            .await?;
         }
 
         let execution_result = match self.func_run.backend_kind().into() {
@@ -1770,25 +1805,17 @@ impl FuncRunnerExecutionTask {
                     value = None;
                 }
 
-                let mut next_state_inner = Arc::unwrap_or_clone(running_state_func_run.clone());
-                next_state_inner.set_state_to_post_processing();
-                let next_state = Arc::new(next_state_inner);
-
                 if !self.func.is_intrinsic() {
-                    self.ctx
-                        .layer_db()
-                        .func_run()
-                        .write(
-                            next_state.clone(),
-                            None,
-                            self.ctx.events_tenancy(),
-                            self.ctx.events_actor(),
-                        )
-                        .await?;
+                    FuncRunner::update_run(&self.ctx, self.func_run.id(), |func_run| {
+                        func_run.set_state(FuncRunState::PostProcessing);
+                    })
+                    .await?;
                 }
 
-                let _ = self.result_tx.send(Ok(FuncRunValue::new(
-                    next_state.id(),
+                // Don't stop running the function just because we can't send the result
+                #[allow(unused_must_use)]
+                self.result_tx.send(Ok(FuncRunValue::new(
+                    self.func_run.id(),
                     unprocessed_value,
                     value,
                 )));
@@ -1798,47 +1825,32 @@ impl FuncRunnerExecutionTask {
                 message,
                 backend,
             }) => {
-                let mut next_state_inner = Arc::unwrap_or_clone(running_state_func_run.clone());
-                next_state_inner.set_state_to_failure();
-                let next_state = Arc::new(next_state_inner);
                 if !self.func.is_intrinsic() {
-                    self.ctx
-                        .layer_db()
-                        .func_run()
-                        .write(
-                            next_state.clone(),
-                            None,
-                            self.ctx.events_tenancy(),
-                            self.ctx.events_actor(),
-                        )
-                        .await?;
+                    FuncRunner::update_run(&self.ctx, self.func_run.id(), |func_run| {
+                        func_run.set_state(FuncRunState::Failure);
+                    })
+                    .await?;
                 }
 
-                let _ = self.result_tx.send(Err(FuncRunnerError::ResultFailure {
+                // Don't stop running the function just because we can't send the result
+                #[allow(unused_must_use)]
+                self.result_tx.send(Err(FuncRunnerError::ResultFailure {
                     kind,
                     message,
                     backend,
                 }));
             }
             Err(err) => {
-                let mut next_state_inner = Arc::unwrap_or_clone(running_state_func_run.clone());
-                next_state_inner.set_state_to_failure();
-                let next_state = Arc::new(next_state_inner);
-
                 if !self.func.is_intrinsic() {
-                    self.ctx
-                        .layer_db()
-                        .func_run()
-                        .write(
-                            next_state.clone(),
-                            None,
-                            self.ctx.events_tenancy(),
-                            self.ctx.events_actor(),
-                        )
-                        .await?;
+                    FuncRunner::update_run(&self.ctx, self.func_run.id(), |func_run| {
+                        func_run.set_state(FuncRunState::Failure);
+                    })
+                    .await?;
                 }
 
-                let _ = self.result_tx.send(Err(err.into()));
+                // Don't stop running the function just because we can't send the result
+                #[allow(unused_must_use)]
+                self.result_tx.send(Err(err.into()));
             }
         }
 

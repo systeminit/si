@@ -5,7 +5,7 @@ use std::{sync::Arc, time::Duration};
 
 use si_events::{
     Actor, ChangeSetId, ContentHash, FuncBackendKind, FuncBackendResponseType, FuncKind, FuncRun,
-    FuncRunBuilder, FuncRunId, Tenancy, UserPk, WorkspacePk,
+    FuncRunBuilder, FuncRunId, FuncRunState, Tenancy, UserPk, WorkspacePk,
 };
 use si_layer_cache::db::serialize;
 use si_layer_cache::LayerDb;
@@ -123,7 +123,7 @@ async fn update() {
 
     // Update the state to success
     let mut update_func_run_inner = Arc::unwrap_or_clone(value);
-    update_func_run_inner.set_state_to_success();
+    update_func_run_inner.set_state(FuncRunState::Success);
     let update_func_run = Arc::new(update_func_run_inner);
 
     ldb.func_run()

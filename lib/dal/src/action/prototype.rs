@@ -347,16 +347,10 @@ impl ActionPrototype {
             None => None,
         };
 
-        ctx.layer_db()
-            .func_run()
-            .set_values_and_set_state_to_success(
-                func_run_value.func_run_id(),
-                unprocessed_value_address,
-                value_address,
-                ctx.events_tenancy(),
-                ctx.events_actor(),
-            )
-            .await?;
+        FuncRunner::update_run(ctx, func_run_value.func_run_id(), |func_run| {
+            func_run.set_success(unprocessed_value_address, value_address);
+        })
+        .await?;
 
         let maybe_run_result = match func_run_value.value() {
             Some(value) => Some(serde_json::from_value::<ActionRunResultSuccess>(
@@ -369,28 +363,18 @@ impl ActionPrototype {
             // If we have a resource and an ok status
             Some(ResourceStatus::Ok) => {
                 // Set the `FuncRun`'s action-specific metadata to successful
-                ctx.layer_db()
-                    .func_run()
-                    .set_action_result_state(
-                        func_run_value.func_run_id(),
-                        ActionResultState::Success,
-                        ctx.events_tenancy(),
-                        ctx.events_actor(),
-                    )
-                    .await?;
+                FuncRunner::update_run(ctx, func_run_value.func_run_id(), |func_run| {
+                    func_run.set_action_result_state(Some(ActionResultState::Success))
+                })
+                .await?;
             }
             // In all other cases
             Some(_) | None => {
                 // Set the `FuncRun`'s action-specific metadata to falure
-                ctx.layer_db()
-                    .func_run()
-                    .set_action_result_state(
-                        func_run_value.func_run_id(),
-                        ActionResultState::Failure,
-                        ctx.events_tenancy(),
-                        ctx.events_actor(),
-                    )
-                    .await?;
+                FuncRunner::update_run(ctx, func_run_value.func_run_id(), |func_run| {
+                    func_run.set_action_result_state(Some(ActionResultState::Failure))
+                })
+                .await?;
             }
         }
 

@@ -7,12 +7,12 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use si_data_nats::NatsError;
 use si_data_pg::PgPoolError;
-use si_layer_cache::LayerDbError;
 use thiserror::Error;
 use tokio::task::JoinError;
 
 use crate::billing_publish::BillingPublishError;
 use crate::diagram::DiagramError;
+use crate::func::runner::FuncRunnerError;
 use crate::prop::PropError;
 use crate::validation::ValidationError;
 use crate::{
@@ -55,14 +55,14 @@ pub enum JobConsumerError {
     Diagram(#[from] DiagramError),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
+    #[error("func runner error: {0}")]
+    FuncRunner(#[from] FuncRunnerError),
     #[error("Invalid job arguments. Expected: {0} Actual: {1:?}")]
     InvalidArguments(String, Vec<Value>),
     #[error("std io error: {0}")]
     Io(#[from] ::std::io::Error),
     #[error("job producer error: {0}")]
     JobProducer(#[from] JobProducerError),
-    #[error("layer db error: {0}")]
-    LayerDb(#[from] LayerDbError),
     #[error("nats error: {0}")]
     Nats(#[from] NatsError),
     #[error("nats is unavailable")]
