@@ -65,6 +65,14 @@
               @update:model-value="setDelete"
             />
           </div>
+          <div class="text-neutral-700 type-bold-sm dark:text-neutral-50">
+            <SiCheckBox
+              id="update"
+              v-model="isUpdate"
+              title="This action updates a resource"
+              @update:model-value="setUpdate"
+            />
+          </div>
         </template>
         <SelectMenu
           v-if="funcKind.value === FuncKind.Attribute"
@@ -325,6 +333,7 @@ const open = async (
   isCreate.value = false;
   isDelete.value = false;
   isRefresh.value = false;
+  isUpdate.value = false;
   selectedFuncCode.value = "";
   selectedExistingFunc.value =
     existingFuncOptions.value.find((o) => o.value === funcId) || noneFunction;
@@ -383,9 +392,15 @@ const commonBindingConstruction = () => {
       const action = binding as Action;
       action.bindingKind = FuncBindingKind.Action;
       if (isCreate.value) action.kind = ActionKind.Create;
+      if (isUpdate.value) action.kind = ActionKind.Update;
       if (isDelete.value) action.kind = ActionKind.Destroy;
       if (isRefresh.value) action.kind = ActionKind.Refresh;
-      if (!isRefresh.value && !isDelete.value && !isCreate.value)
+      if (
+        !isRefresh.value &&
+        !isDelete.value &&
+        !isCreate.value &&
+        !isUpdate.value
+      )
         action.kind = ActionKind.Manual;
       return action;
     case FuncKind.CodeGeneration:
@@ -500,22 +515,33 @@ defineExpose({ open, close });
 const isCreate = ref(false);
 const isDelete = ref(false);
 const isRefresh = ref(false);
+const isUpdate = ref(false);
 
 const setCreate = () => {
   if (!isCreate.value) return;
   isDelete.value = false;
   isRefresh.value = false;
+  isUpdate.value = false;
 };
 
 const setRefresh = () => {
   if (!isRefresh.value) return;
   isCreate.value = false;
   isDelete.value = false;
+  isUpdate.value = false;
 };
 
 const setDelete = () => {
   if (!isDelete.value) return;
   isCreate.value = false;
+  isRefresh.value = false;
+  isUpdate.value = false;
+};
+
+const setUpdate = () => {
+  if (!isUpdate.value) return;
+  isCreate.value = false;
+  isDelete.value = false;
   isRefresh.value = false;
 };
 </script>

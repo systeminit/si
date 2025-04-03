@@ -27,6 +27,15 @@
         @update:model-value="setDelete"
       />
     </div>
+    <div class="text-neutral-700 type-bold-sm dark:text-neutral-50">
+      <SiCheckBox
+        id="update"
+        v-model="isUpdate"
+        title="This action updates a resource"
+        :disabled="disabled || func?.isLocked"
+        @update:model-value="setUpdate"
+      />
+    </div>
   </div>
 </template>
 
@@ -56,6 +65,7 @@ const props = defineProps<{
 const isCreate = ref(false);
 const isDelete = ref(false);
 const isRefresh = ref(false);
+const isUpdate = ref(false);
 
 const func = computed(() => {
   return funcStore.funcsById[props.funcId];
@@ -80,6 +90,7 @@ watch(
     isCreate.value = binding.value?.kind === ActionKind.Create;
     isDelete.value = binding.value?.kind === ActionKind.Destroy;
     isRefresh.value = binding.value?.kind === ActionKind.Refresh;
+    isUpdate.value = binding.value?.kind === ActionKind.Update;
   },
   { immediate: true },
 );
@@ -88,6 +99,7 @@ const setCreate = () => {
   if (!isCreate.value) return updateKind();
   isDelete.value = false;
   isRefresh.value = false;
+  isUpdate.value = false;
   updateKind();
 };
 
@@ -95,12 +107,22 @@ const setRefresh = () => {
   if (!isRefresh.value) return updateKind();
   isCreate.value = false;
   isDelete.value = false;
+  isUpdate.value = false;
   updateKind();
 };
 
 const setDelete = () => {
   if (!isDelete.value) return updateKind();
   isCreate.value = false;
+  isRefresh.value = false;
+  isUpdate.value = false;
+  updateKind();
+};
+
+const setUpdate = () => {
+  if (!isUpdate.value) return updateKind();
+  isCreate.value = false;
+  isDelete.value = false;
   isRefresh.value = false;
   updateKind();
 };
@@ -126,6 +148,7 @@ const updateKind = () => {
     if (isCreate.value) binding.value.kind = ActionKind.Create;
     if (isDelete.value) binding.value.kind = ActionKind.Destroy;
     if (isRefresh.value) binding.value.kind = ActionKind.Refresh;
+    if (isUpdate.value) binding.value.kind = ActionKind.Update;
     funcStore.UPDATE_BINDING(props.funcId, [binding.value]);
   }
 };
