@@ -437,6 +437,7 @@ watch(
     () => props.yaml,
     () => props.noLint,
     () => authStore.user?.name,
+    () => props.modelValue,
     editorMount,
   ],
   mountEditor,
