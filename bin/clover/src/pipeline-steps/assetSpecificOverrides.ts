@@ -119,52 +119,34 @@ const overrides = new Map<string, OverrideFn>([
     variant.sockets.push(launchTemplateNameSocket);
     
     // Create the Reboot Action
-    const rebootFuncCode = Deno.readTextFileSync(
-      "./src/cloud-control-funcs/overrides/AWS::EC2::Instance/actions/reboot.ts"
+    const { func: rebootFunc, actionFuncSpec: rebootActionFuncSpec } = attachExtraActionFunction(
+      "./src/cloud-control-funcs/overrides/AWS::EC2::Instance/actions/reboot.ts", 
+      "Reboot Ec2 Instance", 
+      "other", 
+      "5e38470604abb5c3ccc2ab60b31c5c0a05e9b381a2db73a15f4f8d55ec441bbd"
     );
-    const base64EncodedRebootFunc = createFunc(
-      "Reboot Ec2 Instance",
-      "jsAction",
-      "action",
-      strippedBase64(rebootFuncCode),
-      "5e38470604abb5c3ccc2ab60b31c5c0a05e9b381a2db73a15f4f8d55ec441bbd",
-      [],
-    );
-    base64EncodedRebootFunc.data!.displayName = "Reboot Ec2 Instance";
-    spec.funcs.push(base64EncodedRebootFunc);
-    variant.actionFuncs.push(createActionFuncSpec("other", base64EncodedRebootFunc.uniqueId))
-    
+    spec.funcs.push(rebootFunc);
+    variant.actionFuncs.push(rebootActionFuncSpec)
+
     // Create the Stop Action
-    const stopFuncCode = Deno.readTextFileSync(
-      "./src/cloud-control-funcs/overrides/AWS::EC2::Instance/actions/stop.ts"
+    const { func: stopFunc, actionFuncSpec: stopActionFuncSpec } = attachExtraActionFunction(
+      "./src/cloud-control-funcs/overrides/AWS::EC2::Instance/actions/stop.ts", 
+      "Stop Ec2 Instance", 
+      "other", 
+      "de2c03b1caff5e7a1011a8c0ac6dc6dc99af77d15d0bc1f93e7c4eb9d7307f22"
     );
-    const base64EncodedStopFunc = createFunc(
-      "Stop Ec2 Instance",
-      "jsAction",
-      "action",
-      strippedBase64(stopFuncCode),
-      "de2c03b1caff5e7a1011a8c0ac6dc6dc99af77d15d0bc1f93e7c4eb9d7307f22",
-      [],
-    );
-    base64EncodedStopFunc.data!.displayName = "Stop Ec2 Instance";
-    spec.funcs.push(base64EncodedStopFunc);
-    variant.actionFuncs.push(createActionFuncSpec("other", base64EncodedStopFunc.uniqueId))
-    
+    spec.funcs.push(stopFunc);
+    variant.actionFuncs.push(stopActionFuncSpec)
+
     // Create the Start Action
-    const startFuncCode = Deno.readTextFileSync(
-      "./src/cloud-control-funcs/overrides/AWS::EC2::Instance/actions/start.ts"
+    const { func: startFunc, actionFuncSpec: startActionFuncSpec } = attachExtraActionFunction(
+      "./src/cloud-control-funcs/overrides/AWS::EC2::Instance/actions/start.ts", 
+      "Start Ec2 Instance", 
+      "other", 
+      "f78a129cebfdb45c688df8622056e5ee2b81a41d8896c2ce7b24d0a709102d1f"
     );
-    const base64EncodedStartFunc = createFunc(
-      "Start Ec2 Instance",
-      "jsAction",
-      "action",
-      strippedBase64(startFuncCode),
-      "f78a129cebfdb45c688df8622056e5ee2b81a41d8896c2ce7b24d0a709102d1f",
-      [],
-    );
-    base64EncodedStartFunc.data!.displayName = "Start Ec2 Instance";
-    spec.funcs.push(base64EncodedStartFunc);
-    variant.actionFuncs.push(createActionFuncSpec("other", base64EncodedStartFunc.uniqueId))
+    spec.funcs.push(startFunc);
+    variant.actionFuncs.push(startActionFuncSpec)
   }],
   ["AWS::EC2::LaunchTemplate", (spec: ExpandedPkgSpec) => {
     const variant = spec.schemas[0].variants[0];
@@ -646,6 +628,28 @@ const overrides = new Map<string, OverrideFn>([
     variant.sockets.push(policyDocumentSocket);    
   }],
 ]);
+
+function attachExtraActionFunction(
+  funcPath: string, 
+  name: string, 
+  kind: ActionFuncSpecKind, 
+  uniqueId: string
+): { func: FuncSpec; actionFuncSpec: ActionFuncSpec } {
+  const funcCode = Deno.readTextFileSync(funcPath);
+  const func = createFunc(
+    name,
+    "jsAction",
+    "action",
+    strippedBase64(funcCode),
+    uniqueId,
+    [],
+  );
+  func.data!.displayName = name;
+  
+  const actionFuncSpec = createActionFuncSpec(kind, func.uniqueId);
+  
+  return { func, actionFuncSpec };
+}
 
 function addSecretProp(
   secretKind: string,
