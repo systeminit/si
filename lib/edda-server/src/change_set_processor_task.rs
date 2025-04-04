@@ -372,28 +372,39 @@ mod handlers {
                     update_request.to_snapshot_address,
                     change_batch.changes(),
                 )
-                .instrument(tracing::info_span!("Build materialized views for changes"))
-                .await?;
-                return Ok(());
+                .instrument(tracing::info_span!(
+                    "edda.change_set_processor_task.build_mv_for_changes_in_change_set"
+                ))
+                .await
+                .map_err(Into::into)
             }
             EddaRequestKind::Update(update_request)
                 if ctx.workspace_snapshot()?.id().await != update_request.to_snapshot_address =>
             {
-                info!("Workspace snapshot moved; rebuild of all materialized views");
+                materialized_view::build_all_mv_for_change_set(&ctx, &frigg)
+                    .instrument(tracing::info_span!(
+                        "edda.change_set_processor_task.build_all_mv_for_change_set.snapshot_moved"
+                    ))
+                    .await
+                    .map_err(Into::into)
             }
             EddaRequestKind::Update(_) => {
-                info!("No frigg index found; initial build of all materialized views")
+                materialized_view::build_all_mv_for_change_set(&ctx, &frigg)
+                    .instrument(tracing::info_span!(
+                        "edda.change_set_processor_task.build_all_mv_for_change_set.initial_build"
+                    ))
+                    .await
+                    .map_err(Into::into)
             }
             EddaRequestKind::Rebuild(_) => {
-                info!("Explicit rebuild of all materialized views")
+                materialized_view::build_all_mv_for_change_set(&ctx, &frigg)
+                    .instrument(tracing::info_span!(
+                "edda.change_set_processor_task.build_all_mv_for_change_set.explicit_rebuild"
+            ))
+                    .await
+                    .map_err(Into::into)
             }
         }
-
-        materialized_view::build_all_mv_for_change_set(&ctx, &frigg)
-            .instrument(tracing::info_span!("Rebuild of all materialized views"))
-            .await?;
-
-        Ok(())
     }
 }
 
