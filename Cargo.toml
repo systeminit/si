@@ -134,7 +134,7 @@ crossbeam-queue = { version = "0.3.11" }
 darling = "0.20.10"
 dashmap = "6.1.0"
 deadpool = { version = "0.12.1", features = ["rt_tokio_1"] }
-deadpool-postgres = "0.14.0"
+deadpool-postgres = { version = "0.14.0", features = ["serde"] }
 derive_builder = "0.20.2"
 derive_more = "0.99.17"
 devicemapper = { version = "=0.34.1" }
