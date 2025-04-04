@@ -154,7 +154,10 @@ pub async fn get_change_set_index(
 #[instrument(
     level = "info",
     name = "sdf.index.get_change_set_index.request_rebuild_and_watch",
-    skip_all
+    skip_all,
+    fields(
+        si.edda_request.id = Empty
+    )
 )]
 async fn request_rebuild_and_watch(
     frigg: &frigg::FriggStore,
@@ -162,10 +165,13 @@ async fn request_rebuild_and_watch(
     workspace_pk: WorkspacePk,
     change_set_id: ChangeSetId,
 ) -> IndexResult<()> {
+    let span = Span::current();
     let mut watch = frigg.watch_index(workspace_pk, change_set_id).await?;
-    edda_client
+    let request_id = edda_client
         .rebuild_for_change_set(workspace_pk, change_set_id)
         .await?;
+    span.record("si.edda_request.id", request_id.to_string());
+
     let timeout = WATCH_INDEX_TIMEOUT;
     tokio::select! {
         _ = tokio::time::sleep(timeout) => Err(IndexError::WatchIndexTimeout(timeout)),
