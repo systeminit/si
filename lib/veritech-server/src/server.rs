@@ -21,7 +21,7 @@ use naxum::{
     MessageHead, ServiceBuilder, ServiceExt as _, TowerServiceExt as _,
 };
 use si_crypto::VeritechDecryptionKey;
-use si_data_nats::{async_nats, jetstream, NatsClient, Subscriber};
+use si_data_nats::{async_nats, jetstream, NatsClient, NatsConfig, Subscriber};
 use si_pool_noodle::{
     instance::cyclone::{LocalUdsInstance, LocalUdsInstanceSpec},
     pool_noodle::PoolNoodleConfig,
@@ -81,7 +81,12 @@ impl Server {
         config: Config,
         token: CancellationToken,
     ) -> ServerResult<(Self, Option<HeartbeatApp>)> {
-        let nats = Self::connect_to_nats(&config).await?;
+        let nats = Self::connect_to_nats(config.nats()).await?;
+        let mut nats_config = config.nats().clone();
+        if let Some(name) = nats_config.connection_name {
+            nats_config.connection_name = Some(format!("{}-stream", name));
+        }
+        let nats_jetstream = Self::connect_to_nats(&nats_config).await?;
 
         let metadata = Arc::new(ServerMetadata {
             instance_id: config.instance_id().into(),
@@ -153,6 +158,7 @@ impl Server {
                     Arc::new(decryption_key),
                     config.cyclone_client_execution_timeout(),
                     nats.clone(),
+                    nats_jetstream.clone(),
                     kill_senders.clone(),
                     token.clone(),
                 )
@@ -224,16 +230,20 @@ impl Server {
         decryption_key: Arc<VeritechDecryptionKey>,
         cyclone_client_execution_timeout: Duration,
         nats: NatsClient,
+        nats_jetstream: NatsClient,
         kill_senders: Arc<Mutex<HashMap<ExecutionId, oneshot::Sender<()>>>>,
         token: CancellationToken,
     ) -> ServerResult<Box<dyn Future<Output = io::Result<()>> + Unpin + Send>> {
-        let connection_metadata = nats.metadata_clone();
+        let connection_metadata = nats_jetstream.metadata_clone();
 
         // Take the *active* subject prefix from the connected NATS client
-        let prefix = nats.metadata().subject_prefix().map(|s| s.to_owned());
+        let prefix = nats_jetstream
+            .metadata()
+            .subject_prefix()
+            .map(|s| s.to_owned());
 
         let incoming = {
-            let context = jetstream::new(nats.clone());
+            let context = jetstream::new(nats_jetstream);
             veritech_work_queue(&context, prefix.as_deref())
                 .await?
                 .create_consumer(Self::incoming_consumer_config(prefix.as_deref()))
@@ -326,8 +336,8 @@ impl Server {
     }
 
     #[instrument(name = "veritech.init.connect_to_nats", level = "info", skip_all)]
-    async fn connect_to_nats(config: &Config) -> ServerResult<NatsClient> {
-        let client = NatsClient::new(config.nats())
+    async fn connect_to_nats(config: &NatsConfig) -> ServerResult<NatsClient> {
+        let client = NatsClient::new(config)
             .await
             .map_err(ServerError::NatsClient)?;
         debug!("successfully connected nats client");
