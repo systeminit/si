@@ -737,6 +737,17 @@ const overrides = new Map<string, OverrideFn>([
     ], "Policy Document");
     variant.sockets.push(policyDocumentSocket);
   }],
+  ["AWS::EKS::Cluster", (spec: ExpandedPkgSpec) => {
+    const variant = spec.schemas[0].variants[0];
+
+    const nameOutputSocket = variant.sockets.find(
+      (s: ExpandedSocketSpec) => s.name === "Name" && s.data.kind === "output",
+    );
+    if (!nameOutputSocket) return;
+
+    setAnnotationOnSocket(nameOutputSocket, { tokens: ["Cluster Name"] });
+    setAnnotationOnSocket(nameOutputSocket, { tokens: ["ClusterName"] });
+  }],
 ]);
 
 function attachExtraActionFunction(
