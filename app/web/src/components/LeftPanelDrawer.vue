@@ -139,6 +139,9 @@ const viewAddMutation = useMutation({
           views: [],
         };
       }
+      if (!old.views || !Array.isArray(old.views)) {
+        old.views = [];
+      }
       old.views = [
         ...old.views,
         {
