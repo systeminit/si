@@ -358,8 +358,15 @@ async fn forward_output(
     output_tx: mpsc::Sender<OutputStream>,
     request_span: Span,
 ) {
-    // Return the loop where we listen for messages
-    while let Some(msg) = output_subscriber.next().await {
+    // Listen for messages
+    while let Some(msg) = tokio::select! {
+        next = output_subscriber.next() => next,
+        // Exit early if the output channel is closed; no one cares about the output!
+        _ = output_tx.closed() => {
+            warn!("cancelling output forwarder: receiver closed early");
+            None
+        }
+    } {
         match msg {
             Ok(output) => {
                 output.process_span.follows_from(&request_span);
