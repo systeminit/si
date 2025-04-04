@@ -106,6 +106,10 @@ pub(crate) struct Args {
     #[arg(long)]
     pub(crate) pg_cert_base64: Option<SensitiveString>,
 
+    /// PostgreSQL connection recycling method [default: Fast]
+    #[arg(long)]
+    pub(crate) pg_recycling_method: Option<String>,
+
     /// NATS connection URL [example: demo.nats.io]
     #[arg(long)]
     pub(crate) nats_url: Option<String>,
@@ -316,6 +320,13 @@ impl TryFrom<Args> for Config {
                 config_map.set(
                     "layer_db_config.pg_pool_config.certificate_path",
                     cert_path.display().to_string(),
+                );
+            }
+            if let Some(recycling_method) = args.pg_recycling_method {
+                config_map.set("pg.recycling_method", recycling_method.clone());
+                config_map.set(
+                    "layer_db_config.pg_pool_config.recycling_method",
+                    recycling_method,
                 );
             }
             if let Some(cert) = args.pg_cert_base64 {

@@ -66,7 +66,7 @@ const TEST_QUERY: &str = "SELECT 1";
 // We set `CLIENT_MIN_MESSAGES` to `ERROR` to silence the possible warning from `ROLLBACK` about
 // there not being any open transaction. We immediately set it back to the default value
 // (`WARNING`) after so we're not hiding any "real" warnings that might happen.
-const CONNECTION_RECYCLING_METHOD: &str = r#"
+pub const CONNECTION_RECYCLING_METHOD: &str = r#"
     SET CLIENT_MIN_MESSAGES TO ERROR;
     ROLLBACK;
     SET CLIENT_MIN_MESSAGES TO WARNING;
@@ -147,6 +147,7 @@ pub struct PgPoolConfig {
     pub pool_timeout_wait_secs: Option<u64>,
     pub pool_timeout_create_secs: Option<u64>,
     pub pool_timeout_recycle_secs: Option<u64>,
+    pub recycling_method: Option<RecyclingMethod>,
 }
 
 impl Default for PgPoolConfig {
@@ -167,6 +168,7 @@ impl Default for PgPoolConfig {
             pool_timeout_wait_secs: None,
             pool_timeout_create_secs: None,
             pool_timeout_recycle_secs: None,
+            recycling_method: None,
         }
     }
 }
@@ -223,9 +225,15 @@ impl PgPool {
         cfg.password = Some(settings.password.clone().into());
         cfg.dbname = Some(settings.dbname.clone());
         cfg.application_name = Some(settings.application_name.clone());
+
         cfg.manager = Some(ManagerConfig {
-            recycling_method: RecyclingMethod::Custom(CONNECTION_RECYCLING_METHOD.to_string()),
+            recycling_method: settings
+                .recycling_method
+                .as_ref()
+                .cloned()
+                .unwrap_or(RecyclingMethod::Fast),
         });
+
         let mut pool_config = PoolConfig::new(settings.pool_max_size);
         if let Some(secs) = settings.pool_timeout_wait_secs {
             pool_config.timeouts.wait = Some(Duration::from_secs(secs));
