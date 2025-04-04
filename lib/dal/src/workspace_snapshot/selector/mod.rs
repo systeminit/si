@@ -112,13 +112,6 @@ impl WorkspaceSnapshotSelector {
         }
     }
 
-    pub async fn serialized(&self) -> WorkspaceSnapshotResult<Vec<u8>> {
-        match self {
-            Self::LegacySnapshot(snapshot) => snapshot.serialized().await,
-            Self::SplitSnapshot(snapshot) => snapshot.serialized().await,
-        }
-    }
-
     pub async fn is_acyclic_directed(&self) -> bool {
         match self {
             Self::LegacySnapshot(snapshot) => snapshot.is_acyclic_directed().await,
@@ -479,24 +472,6 @@ impl WorkspaceSnapshotSelector {
         }
     }
 
-    pub async fn mark_prop_as_able_to_be_used_as_prototype_arg(
-        &self,
-        id: impl Into<Ulid>,
-    ) -> WorkspaceSnapshotResult<()> {
-        match self {
-            Self::LegacySnapshot(snapshot) => {
-                snapshot
-                    .mark_prop_as_able_to_be_used_as_prototype_arg(id)
-                    .await
-            }
-            Self::SplitSnapshot(snapshot) => {
-                snapshot
-                    .mark_prop_as_able_to_be_used_as_prototype_arg(id)
-                    .await
-            }
-        }
-    }
-
     pub async fn update_node_id(
         &self,
         current_id: impl Into<Ulid>,
@@ -578,13 +553,6 @@ impl WorkspaceSnapshotSelector {
         match self {
             Self::LegacySnapshot(snapshot) => snapshot.clear_inferred_connection_graph().await,
             Self::SplitSnapshot(snapshot) => snapshot.clear_inferred_connection_graph().await,
-        }
-    }
-
-    pub async fn map_all_nodes_to_change_objects(&self) -> WorkspaceSnapshotResult<Vec<Change>> {
-        match self {
-            Self::LegacySnapshot(snapshot) => snapshot.map_all_nodes_to_change_objects().await,
-            Self::SplitSnapshot(snapshot) => snapshot.map_all_nodes_to_change_objects().await,
         }
     }
 
@@ -782,47 +750,6 @@ impl InputSocketExt for WorkspaceSnapshotSelector {
             Self::SplitSnapshot(snapshot) => {
                 snapshot
                     .get_input_socket_by_name_opt(ctx, name, schema_variant_id)
-                    .await
-            }
-        }
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    async fn new_input_socket(
-        &self,
-        ctx: &DalContext,
-        schema_variant_id: SchemaVariantId,
-        name: String,
-        func_id: FuncId,
-        arity: SocketArity,
-        kind: SocketKind,
-        connection_annotations: Option<Vec<ConnectionAnnotation>>,
-    ) -> WorkspaceSnapshotResult<InputSocket> {
-        match self {
-            Self::LegacySnapshot(snapshot) => {
-                snapshot
-                    .new_input_socket(
-                        ctx,
-                        schema_variant_id,
-                        name,
-                        func_id,
-                        arity,
-                        kind,
-                        connection_annotations,
-                    )
-                    .await
-            }
-            Self::SplitSnapshot(snapshot) => {
-                snapshot
-                    .new_input_socket(
-                        ctx,
-                        schema_variant_id,
-                        name,
-                        func_id,
-                        arity,
-                        kind,
-                        connection_annotations,
-                    )
                     .await
             }
         }

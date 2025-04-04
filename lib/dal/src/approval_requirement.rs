@@ -175,6 +175,15 @@ impl ApprovalRequirementDefinition {
         Err(ApprovalRequirementError::EntityNotFound(entity_id))
     }
 
+    /// delete me
+    pub fn fake() -> Self {
+        Self {
+            id: ApprovalRequirementDefinitionId::new(),
+            required_count: 0,
+            approvers: HashSet::new(),
+        }
+    }
+
     pub fn assemble(
         id: ApprovalRequirementDefinitionId,
         content: ApprovalRequirementDefinitionContentV1,
