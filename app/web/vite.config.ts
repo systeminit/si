@@ -134,7 +134,7 @@ export default (opts: { mode: string }) => {
           manualChunks(id) {
             // we need to make sure that the comlink lib has its own chunk
             // so that we can put COOP/COEP headers on it (in addition to webworker.js)
-            if (/comlink/.test(id)) {
+            if (/comlink/.test(id) || /heimdall/.test(id)) {
               return "comlink";
             }
           },
