@@ -21,13 +21,13 @@ use ulid::Generator;
 use crate::{
     layer_db_types::{ViewContent, ViewContentV1},
     workspace_snapshot::{
-        content_address::ContentAddress,
+        content_address::{ContentAddress, ContentAddressDiscriminants},
         graph::{
             detector::{Detector, Update},
             MerkleTreeHash, WorkspaceSnapshotGraphError, WorkspaceSnapshotGraphResult,
         },
         node_weight::{CategoryNodeWeight, NodeWeight},
-        CategoryNodeKind, ContentAddressDiscriminants, LineageId, OrderingNodeWeight,
+        CategoryNodeKind, LineageId, OrderingNodeWeight,
     },
     DalContext, EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants, NodeWeightDiscriminants,
     Timestamp,

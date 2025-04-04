@@ -8,11 +8,11 @@ use petgraph::Direction::{self, Incoming, Outgoing};
 use serde::{Deserialize, Serialize};
 use si_events::{
     merkle_tree_hash::MerkleTreeHash,
-    workspace_snapshot::{Change, Checksum, EntityKind},
+    workspace_snapshot::{Change, EntityKind},
     ContentHash, WorkspaceSnapshotAddress,
 };
 use si_id::{
-    ulid::Ulid, ApprovalRequirementDefinitionId, AttributeValueId, ComponentId, EntityId, FuncId,
+    ulid::Ulid, ApprovalRequirementDefinitionId, AttributeValueId, ComponentId, EntityId,
     InputSocketId, PropId, SchemaId, SchemaVariantId, UserPk, ViewId,
 };
 use si_split_graph::SplitGraph;
@@ -23,16 +23,21 @@ use crate::{
     approval_requirement::{
         ApprovalRequirement, ApprovalRequirementApprover, ApprovalRequirementDefinition,
     },
-    component::{inferred_connection_graph::InferredConnectionGraph, ComponentResult, Connection},
+    component::{inferred_connection_graph::InferredConnectionGraph, ComponentResult},
     prop::PropResult,
-    socket::connection_annotation::ConnectionAnnotation,
-    DalContext, EdgeWeight, EdgeWeightKindDiscriminants, InputSocket, SocketArity, SocketKind,
+    socket::input::InputSocketError,
+    ComponentError, DalContext, EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants,
+    InputSocket, NodeWeightDiscriminants, SchemaVariantError,
 };
 
 use super::{
+    content_address::ContentAddressDiscriminants,
     graph::LineageId,
-    node_weight::{category_node_weight::CategoryNodeKind, NodeWeight},
-    traits::{approval_requirement::ApprovalRequirementExt, diagram::view::ViewExt, prop::PropExt},
+    node_weight::{category_node_weight::CategoryNodeKind, NodeWeight, NodeWeightError},
+    traits::{
+        approval_requirement::ApprovalRequirementExt, diagram::view::ViewExt, prop::PropExt,
+        socket::input::input_socket_from_node_weight,
+    },
     CycleCheckGuard, DependentValueRoot, EntityKindExt, InferredConnectionsWriteGuard,
     InputSocketExt, SchemaVariantExt, WorkspaceSnapshotError, WorkspaceSnapshotResult,
 };
@@ -177,12 +182,9 @@ impl SplitSnapshot {
         self.cycle_check.load(std::sync::atomic::Ordering::Relaxed)
     }
 
-    pub async fn serialized(&self) -> WorkspaceSnapshotResult<Vec<u8>> {
-        todo!()
-    }
-
     pub async fn is_acyclic_directed(&self) -> bool {
-        todo!()
+        // XXX: actually implement this
+        true
     }
 
     pub async fn add_or_replace_node(&self, node: NodeWeight) -> WorkspaceSnapshotResult<()> {
@@ -265,7 +267,7 @@ impl SplitSnapshot {
         other: &Arc<Self>,
         component_id: ComponentId,
     ) -> WorkspaceSnapshotResult<()> {
-        todo!()
+        todo!("actually implement importing component subgraph")
     }
 
     pub async fn get_node_weight(
@@ -318,7 +320,9 @@ impl SplitSnapshot {
         source: Option<Ulid>,
         kind: CategoryNodeKind,
     ) -> WorkspaceSnapshotResult<Ulid> {
-        todo!()
+        self.get_category_node(source, kind)
+            .await?
+            .ok_or(WorkspaceSnapshotError::CategoryNodeNotFound(kind))
     }
 
     pub async fn get_category_node(
@@ -326,7 +330,17 @@ impl SplitSnapshot {
         source: Option<Ulid>,
         kind: CategoryNodeKind,
     ) -> WorkspaceSnapshotResult<Option<Ulid>> {
-        todo!()
+        let working_copy = self.working_copy().await;
+        let source_id = source.unwrap_or(working_copy.root_id()?);
+        Ok(working_copy
+            .edges_directed(source_id, Outgoing)?
+            .find(
+                |edge_ref| match working_copy.node_weight(edge_ref.target()) {
+                    Some(NodeWeight::Category(category_node)) => category_node.kind() == kind,
+                    _ => false,
+                },
+            )
+            .map(|edge_ref| edge_ref.target()))
     }
 
     pub async fn edges_directed(
@@ -357,7 +371,7 @@ impl SplitSnapshot {
         Ok(self
             .working_copy()
             .await
-            .edges_directed(id.into(), direction)?
+            .edges_directed_for_edge_weight_kind(id.into(), direction, edge_kind)?
             .filter_map(|edge_ref| {
                 edge_ref
                     .weight()
@@ -365,12 +379,15 @@ impl SplitSnapshot {
                     .cloned()
                     .map(|weight| (weight, edge_ref.source(), edge_ref.target()))
             })
-            .filter(|(weight, _, _)| edge_kind == weight.kind().into())
             .collect())
     }
 
     pub async fn remove_all_edges(&self, id: impl Into<Ulid>) -> WorkspaceSnapshotResult<()> {
-        todo!()
+        // Removing all edges to and from a node is the same as removing the node
+        // the remove node method will handle the bookkeeping necessary for recalculating the
+        // merkle tree
+        self.working_copy_mut().await.remove_node(id.into())?;
+        Ok(())
     }
 
     pub async fn incoming_sources_for_edge_weight_kind(
@@ -524,22 +541,6 @@ impl SplitSnapshot {
             .cloned()
     }
 
-    pub async fn remove_edge_for_ulids(
-        &self,
-        source_node_id: impl Into<Ulid>,
-        target_node_id: impl Into<Ulid>,
-        edge_kind: EdgeWeightKindDiscriminants,
-    ) -> WorkspaceSnapshotResult<()> {
-        todo!()
-    }
-
-    pub async fn mark_prop_as_able_to_be_used_as_prototype_arg(
-        &self,
-        id: impl Into<Ulid>,
-    ) -> WorkspaceSnapshotResult<()> {
-        todo!()
-    }
-
     pub async fn update_node_id(
         &self,
         current_id: impl Into<Ulid>,
@@ -577,58 +578,85 @@ impl SplitSnapshot {
         }
     }
 
-    pub async fn add_dependent_value_root(
-        &self,
-        root: DependentValueRoot,
-    ) -> WorkspaceSnapshotResult<()> {
-        todo!()
-    }
-
-    pub async fn has_dependent_value_roots(&self) -> WorkspaceSnapshotResult<bool> {
-        todo!()
-    }
-
-    pub async fn take_dependent_values(&self) -> WorkspaceSnapshotResult<Vec<DependentValueRoot>> {
-        todo!()
-    }
-
-    pub async fn get_dependent_value_roots(
-        &self,
-    ) -> WorkspaceSnapshotResult<Vec<DependentValueRoot>> {
-        todo!()
-    }
-
     pub async fn schema_variant_id_for_component_id(
         &self,
         component_id: ComponentId,
     ) -> ComponentResult<SchemaVariantId> {
-        todo!()
+        let component_id = component_id.into();
+        let working_copy = self.working_copy().await;
+        if working_copy.node_id_to_index(component_id).is_none() {
+            return Err(ComponentError::NotFound(component_id.into()));
+        }
+
+        let sv_id = working_copy
+            .edges_directed(component_id, Outgoing)?
+            .find(|edge_ref| {
+                matches!(
+                    edge_ref.weight().custom().map(|c| c.kind()),
+                    Some(EdgeWeightKind::Use { .. })
+                ) && matches!(
+                    working_copy.node_weight(edge_ref.target()),
+                    Some(NodeWeight::SchemaVariant(_))
+                )
+            })
+            .map(|edge_ref| edge_ref.target().into())
+            .ok_or(ComponentError::SchemaVariantNotFound(component_id.into()))?;
+
+        Ok(sv_id)
     }
 
     pub async fn frame_contains_components(
         &self,
         component_id: ComponentId,
     ) -> ComponentResult<Vec<ComponentId>> {
-        todo!()
+        let component_id = component_id.into();
+        let working_copy = self.working_copy().await;
+        if working_copy.node_id_to_index(component_id).is_none() {
+            return Err(ComponentError::NotFound(component_id.into()));
+        }
+
+        let contained: Vec<ComponentId> = working_copy
+            .edges_directed(component_id, Outgoing)?
+            .filter(|edge_ref| {
+                matches!(
+                    edge_ref.weight().custom().map(|c| c.kind()),
+                    Some(EdgeWeightKind::FrameContains)
+                ) && matches!(
+                    working_copy.node_weight(edge_ref.target()),
+                    Some(NodeWeight::Component(_))
+                )
+            })
+            .map(|edge_ref| edge_ref.target().into())
+            .collect();
+
+        Ok(contained)
     }
 
     pub async fn inferred_connection_graph(
         &self,
         ctx: &DalContext,
     ) -> WorkspaceSnapshotResult<InferredConnectionsWriteGuard<'_>> {
-        todo!()
+        let mut inferred_connection_write_guard = self.inferred_connection_graph.write().await;
+        if inferred_connection_write_guard.is_none() {
+            *inferred_connection_write_guard =
+                Some(InferredConnectionGraph::new(ctx).await.map_err(Box::new)?);
+        }
+
+        Ok(InferredConnectionsWriteGuard {
+            inferred_connection_graph: inferred_connection_write_guard,
+        })
     }
 
     pub async fn clear_inferred_connection_graph(&self) {
-        todo!()
-    }
-
-    pub async fn map_all_nodes_to_change_objects(&self) -> WorkspaceSnapshotResult<Vec<Change>> {
-        todo!()
+        let mut inferred_connection_write_guard = self.inferred_connection_graph.write().await;
+        *inferred_connection_write_guard = None;
     }
 
     pub async fn revert(&self) {
-        todo!()
+        let mut working_copy = self.working_copy.write().await;
+        if working_copy.is_some() {
+            *working_copy = None;
+        }
     }
 }
 #[async_trait]
@@ -640,14 +668,16 @@ impl ApprovalRequirementExt for SplitSnapshot {
         minimum_approvers_count: usize,
         approvers: HashSet<ApprovalRequirementApprover>,
     ) -> WorkspaceSnapshotResult<ApprovalRequirementDefinitionId> {
-        todo!()
+        // XXX: do not merge
+        Ok(ApprovalRequirementDefinitionId::new())
     }
 
     async fn remove_definition(
         &self,
         approval_requirement_definition_id: ApprovalRequirementDefinitionId,
     ) -> WorkspaceSnapshotResult<()> {
-        todo!()
+        // XXX: do not merge
+        Ok(())
     }
 
     async fn add_individual_approver_for_definition(
@@ -656,7 +686,7 @@ impl ApprovalRequirementExt for SplitSnapshot {
         id: ApprovalRequirementDefinitionId,
         user_id: UserPk,
     ) -> WorkspaceSnapshotResult<()> {
-        todo!()
+        Ok(())
     }
 
     async fn remove_individual_approver_for_definition(
@@ -665,7 +695,7 @@ impl ApprovalRequirementExt for SplitSnapshot {
         id: ApprovalRequirementDefinitionId,
         user_id: UserPk,
     ) -> WorkspaceSnapshotResult<()> {
-        todo!()
+        Ok(())
     }
 
     async fn approval_requirements_for_changes(
@@ -674,7 +704,7 @@ impl ApprovalRequirementExt for SplitSnapshot {
         changes: &[Change],
     ) -> WorkspaceSnapshotResult<(Vec<ApprovalRequirement>, HashMap<EntityId, MerkleTreeHash>)>
     {
-        todo!()
+        Ok((Vec::new(), HashMap::new()))
     }
 
     async fn approval_requirement_definitions_for_entity_id_opt(
@@ -682,14 +712,14 @@ impl ApprovalRequirementExt for SplitSnapshot {
         ctx: &DalContext,
         entity_id: EntityId,
     ) -> WorkspaceSnapshotResult<Option<Vec<ApprovalRequirementDefinition>>> {
-        todo!()
+        Ok(None)
     }
 
     async fn entity_id_for_approval_requirement_definition_id(
         &self,
         id: ApprovalRequirementDefinitionId,
     ) -> WorkspaceSnapshotResult<EntityId> {
-        todo!()
+        Ok(EntityId::new())
     }
 
     async fn get_approval_requirement_definition_by_id(
@@ -697,7 +727,7 @@ impl ApprovalRequirementExt for SplitSnapshot {
         ctx: &DalContext,
         id: ApprovalRequirementDefinitionId,
     ) -> WorkspaceSnapshotResult<ApprovalRequirementDefinition> {
-        todo!()
+        Ok(ApprovalRequirementDefinition::fake())
     }
 }
 
@@ -708,7 +738,24 @@ impl InputSocketExt for SplitSnapshot {
         ctx: &DalContext,
         id: InputSocketId,
     ) -> WorkspaceSnapshotResult<InputSocket> {
-        todo!()
+        let working_copy = self.working_copy().await;
+        let node_weight = working_copy
+            .node_weight(id.into())
+            .ok_or(WorkspaceSnapshotError::NodeNotFoundAtId(id.into()))?;
+
+        let input_socket_node_weight = match node_weight {
+            NodeWeight::InputSocket(input_socket_node_weight) => input_socket_node_weight,
+            unexpected => {
+                return Err(NodeWeightError::UnexpectedNodeWeightVariant(
+                    unexpected.into(),
+                    NodeWeightDiscriminants::InputSocket,
+                ))?;
+            }
+        };
+
+        Ok(input_socket_from_node_weight(ctx, input_socket_node_weight)
+            .await
+            .map_err(Box::new)?)
     }
 
     async fn get_input_socket_by_name_opt(
@@ -717,28 +764,33 @@ impl InputSocketExt for SplitSnapshot {
         name: &str,
         schema_variant_id: SchemaVariantId,
     ) -> WorkspaceSnapshotResult<Option<InputSocket>> {
-        todo!()
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    async fn new_input_socket(
-        &self,
-        ctx: &DalContext,
-        schema_variant_id: SchemaVariantId,
-        name: String,
-        func_id: FuncId,
-        arity: SocketArity,
-        kind: SocketKind,
-        connection_annotations: Option<Vec<ConnectionAnnotation>>,
-    ) -> WorkspaceSnapshotResult<InputSocket> {
-        todo!()
+        Ok(self
+            .list_input_sockets(ctx, schema_variant_id)
+            .await?
+            .into_iter()
+            .find(|socket| socket.name() == name))
     }
 
     async fn list_input_socket_ids_for_schema_variant(
         &self,
         schema_variant_id: SchemaVariantId,
     ) -> WorkspaceSnapshotResult<Vec<InputSocketId>> {
-        todo!()
+        let working_copy = self.working_copy().await;
+        let result: Vec<_> = working_copy
+            .edges_directed_for_edge_weight_kind(
+                schema_variant_id.into(),
+                Outgoing,
+                EdgeWeightKindDiscriminants::Socket,
+            )?
+            .filter_map(
+                |edge_ref| match working_copy.node_weight(edge_ref.target()) {
+                    Some(NodeWeight::InputSocket(_)) => Some(edge_ref.target().into()),
+                    _ => None,
+                },
+            )
+            .collect();
+
+        Ok(result)
     }
 
     async fn list_input_sockets(
@@ -746,14 +798,54 @@ impl InputSocketExt for SplitSnapshot {
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
     ) -> WorkspaceSnapshotResult<Vec<InputSocket>> {
-        todo!()
+        let working_copy = self.working_copy().await;
+        let input_sockets = working_copy
+            .edges_directed_for_edge_weight_kind(
+                schema_variant_id.into(),
+                Outgoing,
+                EdgeWeightKindDiscriminants::Socket,
+            )?
+            .filter_map(
+                |edge_ref| match working_copy.node_weight(edge_ref.target()) {
+                    Some(NodeWeight::InputSocket(inner)) => Some(inner),
+                    _ => None,
+                },
+            );
+
+        let mut result = vec![];
+
+        for input_socket_node_weight in input_sockets {
+            result.push(
+                input_socket_from_node_weight(ctx, input_socket_node_weight)
+                    .await
+                    .map_err(Box::new)?,
+            );
+        }
+
+        Ok(result)
     }
 
     async fn all_attribute_value_ids_everywhere_for_input_socket_id(
         &self,
         input_socket_id: InputSocketId,
     ) -> WorkspaceSnapshotResult<Vec<AttributeValueId>> {
-        todo!()
+        let working_copy = self.working_copy().await;
+
+        let result: Vec<_> = working_copy
+            .edges_directed_for_edge_weight_kind(
+                input_socket_id.into(),
+                Incoming,
+                EdgeWeightKindDiscriminants::Socket,
+            )?
+            .filter_map(
+                |edge_ref| match working_copy.node_weight(edge_ref.target()) {
+                    Some(NodeWeight::AttributeValue(_)) => Some(edge_ref.target().into()),
+                    _ => None,
+                },
+            )
+            .collect();
+
+        Ok(result)
     }
 
     async fn component_attribute_value_id_for_input_socket_id(
@@ -761,14 +853,70 @@ impl InputSocketExt for SplitSnapshot {
         input_socket_id: InputSocketId,
         component_id: ComponentId,
     ) -> WorkspaceSnapshotResult<AttributeValueId> {
-        todo!()
+        let working_copy = self.working_copy().await;
+
+        let mut result = None;
+        for socket_value_edge_ref in working_copy.edges_directed_for_edge_weight_kind(
+            component_id.into(),
+            Outgoing,
+            EdgeWeightKindDiscriminants::SocketValue,
+        )? {
+            for _ in working_copy
+                .edges_directed_for_edge_weight_kind(
+                    socket_value_edge_ref.target(),
+                    Incoming,
+                    EdgeWeightKindDiscriminants::Socket,
+                )?
+                .filter(|edge_ref| input_socket_id == edge_ref.target().into())
+            {
+                if result.is_some() {
+                    return Err(Box::new(InputSocketError::FoundTooManyForInputSocketId(
+                        input_socket_id,
+                        component_id,
+                    ))
+                    .into());
+                }
+                result = Some(socket_value_edge_ref.target().into());
+            }
+        }
+
+        if let Some(av_id) = result {
+            Ok(av_id)
+        } else {
+            Err(
+                Box::new(InputSocketError::MissingAttributeValueForComponent(
+                    input_socket_id,
+                    component_id,
+                ))
+                .into(),
+            )
+        }
     }
 
     async fn input_socket_id_find_for_attribute_value_id(
         &self,
         attribute_value_id: AttributeValueId,
     ) -> WorkspaceSnapshotResult<Option<InputSocketId>> {
-        todo!()
+        let working_copy = self.working_copy().await;
+
+        let mut result = None;
+
+        let av_as_ulid = attribute_value_id.into();
+        for edge_ref in working_copy.edges_directed_for_edge_weight_kind(
+            av_as_ulid,
+            Outgoing,
+            EdgeWeightKindDiscriminants::Socket,
+        )? {
+            if result.is_some() {
+                return Err(Box::new(
+                    InputSocketError::MultipleSocketsForAttributeValue(attribute_value_id),
+                ))?;
+            }
+
+            result = Some(edge_ref.target().into());
+        }
+
+        Ok(result)
     }
 }
 
@@ -778,7 +926,39 @@ impl SchemaVariantExt for SplitSnapshot {
         &self,
         schema_variant_id: SchemaVariantId,
     ) -> WorkspaceSnapshotResult<SchemaId> {
-        todo!()
+        let working_copy = self.working_copy().await;
+
+        let sv_ulid = schema_variant_id.into();
+
+        let mut schemas = working_copy
+            .edges_directed_for_edge_weight_kind(
+                sv_ulid,
+                Incoming,
+                EdgeWeightKindDiscriminants::Use,
+            )?
+            .filter_map(
+                |edge_ref| match working_copy.node_weight(edge_ref.source()) {
+                    Some(NodeWeight::Content(content))
+                        if content.content_address_discriminants()
+                            == ContentAddressDiscriminants::Schema =>
+                    {
+                        Some(edge_ref.source())
+                    }
+                    _ => None,
+                },
+            );
+
+        let schema_id = schemas
+            .next()
+            .ok_or_else(|| Box::new(SchemaVariantError::SchemaNotFound(schema_variant_id)))?;
+
+        if schemas.next().is_some() {
+            return Err(Box::new(SchemaVariantError::MoreThanOneSchemaFound(
+                schema_variant_id,
+            )))?;
+        }
+
+        Ok(schema_id.into())
     }
 
     async fn schema_variant_add_edge_to_input_socket(
@@ -786,21 +966,35 @@ impl SchemaVariantExt for SplitSnapshot {
         schema_variant_id: SchemaVariantId,
         input_socket_id: InputSocketId,
     ) -> WorkspaceSnapshotResult<()> {
-        todo!()
+        let mut working_copy = self.working_copy_mut().await;
+
+        working_copy.add_edge(
+            schema_variant_id.into(),
+            EdgeWeight::new(EdgeWeightKind::Socket),
+            input_socket_id.into(),
+        )?;
+
+        Ok(())
     }
 }
 
 #[async_trait]
 impl EntityKindExt for SplitSnapshot {
     async fn get_entity_kind_for_id(&self, id: EntityId) -> WorkspaceSnapshotResult<EntityKind> {
-        todo!()
+        let id = id.into();
+        Ok(self
+            .working_copy()
+            .await
+            .node_weight(id)
+            .ok_or(WorkspaceSnapshotError::NodeNotFoundAtId(id))?
+            .into())
     }
 }
 
 #[async_trait]
 impl ViewExt for SplitSnapshot {
     async fn view_remove(&self, view_id: ViewId) -> WorkspaceSnapshotResult<()> {
-        todo!()
+        Ok(())
     }
 
     async fn list_for_component_id(&self, id: ComponentId) -> WorkspaceSnapshotResult<Vec<ViewId>> {
@@ -811,6 +1005,6 @@ impl ViewExt for SplitSnapshot {
 #[async_trait]
 impl PropExt for SplitSnapshot {
     async fn ts_type(&self, prop_id: PropId) -> PropResult<String> {
-        todo!()
+        Ok("any".to_string())
     }
 }

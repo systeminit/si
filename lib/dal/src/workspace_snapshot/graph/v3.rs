@@ -19,13 +19,13 @@ use ulid::Generator;
 
 use crate::{
     workspace_snapshot::{
-        content_address::ContentAddress,
+        content_address::{ContentAddress, ContentAddressDiscriminants},
         graph::{
             detector::Update, MerkleTreeHash, WorkspaceSnapshotGraphError,
             WorkspaceSnapshotGraphResult,
         },
         node_weight::{CategoryNodeWeight, NodeWeight},
-        CategoryNodeKind, ContentAddressDiscriminants, LineageId, OrderingNodeWeight,
+        CategoryNodeKind, LineageId, OrderingNodeWeight,
     },
     EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants, NodeWeightDiscriminants,
 };

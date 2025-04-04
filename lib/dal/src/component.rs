@@ -5,6 +5,7 @@ use itertools::Itertools;
 use petgraph::Direction::Outgoing;
 use serde::{Deserialize, Serialize};
 use si_pkg::KeyOrIndex;
+use si_split_graph::SplitGraphError;
 use socket::{ComponentInputSocket, ComponentOutputSocket};
 use std::collections::{hash_map, HashMap, HashSet, VecDeque};
 use std::num::{ParseFloatError, ParseIntError};
@@ -204,6 +205,8 @@ pub enum ComponentError {
     SchemaVariantNotFound(ComponentId),
     #[error("serde_json error: {0}")]
     Serde(#[from] serde_json::Error),
+    #[error("split graph error: {0}")]
+    SplitGraph(#[from] SplitGraphError),
     #[error("standard model error: {0}")]
     StandardModel(#[from] StandardModelError),
     #[error("too many explicit connection sources ({0:?}) for component ({1}) and input socket ({2}) with an arity of one")]

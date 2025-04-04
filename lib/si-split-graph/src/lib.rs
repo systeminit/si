@@ -902,6 +902,19 @@ where
         Ok(result)
     }
 
+    pub fn edges_directed_for_edge_weight_kind<'a>(
+        &'a self,
+        from_id: SplitGraphNodeId,
+        direction: Direction,
+        kind: K,
+    ) -> SplitGraphResult<impl Iterator<Item = SplitGraphEdgeReference<'a, E, K>> + 'a> {
+        let iter = self
+            .edges_directed(from_id, direction)?
+            .filter(move |edge_ref| edge_ref.weight().custom().is_some_and(|c| c.kind() == kind));
+
+        Ok(iter)
+    }
+
     pub fn edges_directed(
         &self,
         from_id: SplitGraphNodeId,
