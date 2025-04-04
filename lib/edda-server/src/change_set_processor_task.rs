@@ -355,6 +355,7 @@ mod handlers {
                     && ctx.workspace_snapshot()?.id().await
                         == update_request.to_snapshot_address =>
             {
+                span.record("si.edda_request.id", update_request.id.to_string());
                 let change_batch = ctx
                     .layer_db()
                     .change_batch()
@@ -381,6 +382,7 @@ mod handlers {
             EddaRequestKind::Update(update_request)
                 if ctx.workspace_snapshot()?.id().await != update_request.to_snapshot_address =>
             {
+                span.record("si.edda_request.id", update_request.id.to_string());
                 materialized_view::build_all_mv_for_change_set(&ctx, &frigg)
                     .instrument(tracing::info_span!(
                         "edda.change_set_processor_task.build_all_mv_for_change_set.snapshot_moved"
@@ -388,7 +390,8 @@ mod handlers {
                     .await
                     .map_err(Into::into)
             }
-            EddaRequestKind::Update(_) => {
+            EddaRequestKind::Update(update_request) => {
+                span.record("si.edda_request.id", update_request.id.to_string());
                 materialized_view::build_all_mv_for_change_set(&ctx, &frigg)
                     .instrument(tracing::info_span!(
                         "edda.change_set_processor_task.build_all_mv_for_change_set.initial_build"
@@ -396,7 +399,8 @@ mod handlers {
                     .await
                     .map_err(Into::into)
             }
-            EddaRequestKind::Rebuild(_) => {
+            EddaRequestKind::Rebuild(rebuild_request) => {
+                span.record("si.edda_request.id", rebuild_request.id.to_string());
                 materialized_view::build_all_mv_for_change_set(&ctx, &frigg)
                     .instrument(tracing::info_span!(
                 "edda.change_set_processor_task.build_all_mv_for_change_set.explicit_rebuild"
