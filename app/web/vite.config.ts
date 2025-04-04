@@ -132,8 +132,10 @@ export default (opts: { mode: string }) => {
             "react-dom": "ReactDOM",
           },
           manualChunks(id) {
-            if (/dynamicEnvVars.ts/.test(id)) {
-              return "projectEnvVariables";
+            // we need to make sure that the comlink lib has its own chunk
+            // so that we can put COOP/COEP headers on it (in addition to webworker.js)
+            if (/comlink/.test(id)) {
+              return "comlink";
             }
           },
         },
