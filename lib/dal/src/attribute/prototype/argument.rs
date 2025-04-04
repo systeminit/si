@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 use thiserror::Error;
 
+use crate::workspace_snapshot::dependent_value_root::DependentValueRootError;
 use crate::workspace_snapshot::graph::WorkspaceSnapshotGraphError;
 use crate::workspace_snapshot::node_weight::traits::SiNodeWeight;
 use crate::{
@@ -51,6 +52,8 @@ pub enum AttributePrototypeArgumentError {
     AttributeValue(String),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
+    #[error("dependent value root error: {0}")]
+    DependentValueRoot(#[from] DependentValueRootError),
     #[error("func argument error: {0}")]
     FuncArgument(#[from] FuncArgumentError),
     #[error("helper error: {0}")]

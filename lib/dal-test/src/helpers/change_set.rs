@@ -6,6 +6,7 @@ use color_eyre::eyre::eyre;
 use color_eyre::Result;
 use dal::action::dependency_graph::ActionDependencyGraph;
 use dal::action::{Action, ActionState};
+use dal::workspace_snapshot::DependentValueRoot;
 use dal::{ChangeSet, DalContext, Func, Schema, SchemaVariant};
 
 use crate::helpers::generate_fake_name;
@@ -217,11 +218,7 @@ impl ChangeSetTestHelpers {
         loop {
             let mut ctx_clone = ctx.clone();
             ctx_clone.update_snapshot_to_visibility().await?;
-            if !ctx_clone
-                .workspace_snapshot()?
-                .has_dependent_value_roots()
-                .await?
-            {
+            if !DependentValueRoot::roots_exist(&ctx_clone).await? {
                 break;
             }
             tokio::time::sleep(Duration::from_millis(25)).await;

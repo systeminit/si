@@ -7,7 +7,10 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use si_data_pg::{PgError, PgRow};
 use si_events::audit_log::AuditLogKind;
+use si_events::merkle_tree_hash::MerkleTreeHash;
+use si_events::workspace_snapshot::Checksum;
 use si_events::{ulid::Ulid, WorkspaceSnapshotAddress};
+use si_id::EntityId;
 use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -15,7 +18,9 @@ use tokio::time;
 
 use crate::billing_publish::BillingPublishError;
 use crate::slow_rt::SlowRuntimeError;
+use crate::workspace_snapshot::dependent_value_root::DependentValueRootError;
 use crate::workspace_snapshot::graph::RebaseBatch;
+use crate::workspace_snapshot::DependentValueRoot;
 use crate::{
     action::{ActionError, ActionId},
     ChangeSetStatus, ComponentError, DalContext, HistoryActor, HistoryEvent, HistoryEventError,
@@ -45,6 +50,8 @@ pub enum ChangeSetError {
     ChangeSetNotFound(ChangeSetId),
     #[error("default change set {0} has no workspace snapshot pointer")]
     DefaultChangeSetNoWorkspaceSnapshotPointer(ChangeSetId),
+    #[error("dependent value root error: {0}")]
+    DependentValueRoot(#[from] DependentValueRootError),
     #[error("dvu roots are not empty for change set: {0}")]
     DvuRootsNotEmpty(ChangeSetId),
     #[error("enum parse error: {0}")]
@@ -436,14 +443,7 @@ impl ChangeSet {
         dangerous_skip_status_check: bool,
     ) -> ChangeSetResult<()> {
         // Ensure that DVU roots are empty before continuing.
-        if !ctx
-            .workspace_snapshot()
-            .map_err(Box::new)?
-            .get_dependent_value_roots()
-            .await
-            .map_err(Box::new)?
-            .is_empty()
-        {
+        if !DependentValueRoot::roots_exist(ctx).await? {
             // TODO(nick): we should consider requiring this check in integration tests too. Why did I
             // not do this at the time of writing? Tests have multiple ways to call "apply", whether
             // its via helpers or through the change set methods directly. In addition, they test
@@ -1040,4 +1040,43 @@ impl std::fmt::Debug for ChangeSet {
             )
             .finish()
     }
+}
+
+/// Calculates the checksum based on a list of IDs with hashes passed in.
+#[instrument(name = "calculate_checksum", level = "debug", skip_all)]
+pub async fn calculate_checksum(
+    ctx: &DalContext,
+    mut ids_with_hashes: Vec<(EntityId, MerkleTreeHash)>,
+) -> ChangeSetResult<Checksum> {
+    // If an empty list of IDs with hashes wass passed in, then we use the root node's ID and
+    // merkle tree hash as our sole ID and hash so that algorithms using the checksum can
+    // "invalidate" as needed.
+    if ids_with_hashes.is_empty() {
+        let root_node_id = ctx
+            .workspace_snapshot()
+            .map_err(Box::new)?
+            .root()
+            .await
+            .map_err(Box::new)?;
+        let root_node = ctx
+            .workspace_snapshot()
+            .map_err(Box::new)?
+            .get_node_weight(root_node_id)
+            .await
+            .map_err(Box::new)?;
+
+        ids_with_hashes.push((root_node_id.into(), root_node.merkle_tree_hash()));
+    }
+
+    // We MUST sort IDs (not hashes) before creating the checksum. This is so that we have
+    // stable checksum calculation.
+    ids_with_hashes.sort_by_key(|(id, _)| *id);
+
+    // Now that we have strictly ordered IDs with hasesh and there's at least one group
+    // present, we can create the checksum.
+    let mut hasher = Checksum::hasher();
+    for (_, hash) in ids_with_hashes {
+        hasher.update(hash.as_bytes());
+    }
+    Ok(hasher.finalize())
 }

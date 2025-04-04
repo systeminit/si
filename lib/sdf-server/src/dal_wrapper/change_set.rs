@@ -4,7 +4,7 @@ use std::{collections::HashMap, str::FromStr};
 
 use dal::{
     approval_requirement::{ApprovalRequirement, ApprovalRequirementApprover},
-    change_set::approval::ChangeSetApproval,
+    change_set::{approval::ChangeSetApproval, calculate_checksum},
     ChangeSet, DalContext, HistoryActor, User, UserPk, WorkspacePk,
 };
 use permissions::{Permission, PermissionBuilder};
@@ -169,9 +169,7 @@ async fn inner_determine_latest_approvals_and_populate_caches(
         }
 
         // Based on the approving IDs, get the checksum.
-        let checksum = ctx
-            .workspace_snapshot()?
-            .calculate_checksum(ctx, approving_requirement_ids_with_hashes.to_owned())
+        let checksum = calculate_checksum(ctx, approving_requirement_ids_with_hashes.to_owned())
             .await?
             .to_string();
 

@@ -67,6 +67,7 @@ use crate::socket::input::InputSocketError;
 use crate::socket::output::OutputSocketError;
 use crate::validation::{ValidationError, ValidationOutput};
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
+use crate::workspace_snapshot::dependent_value_root::DependentValueRootError;
 use crate::workspace_snapshot::edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants};
 use crate::workspace_snapshot::node_weight::{
     AttributeValueNodeWeight, NodeWeight, NodeWeightDiscriminants, NodeWeightError,
@@ -126,6 +127,8 @@ pub enum AttributeValueError {
     ChangeSet(#[from] ChangeSetError),
     #[error("component error: {0}")]
     Component(#[from] Box<ComponentError>),
+    #[error("dependent value root error: {0}")]
+    DependentValueRoot(#[from] DependentValueRootError),
     #[error("duplicate key or index {key_or_index} for attribute values {child1} and {child2}")]
     DuplicateKeyOrIndex {
         key_or_index: KeyOrIndex,
@@ -1174,17 +1177,6 @@ impl AttributeValue {
         Ok(new_attribute_value.id)
     }
 
-    pub async fn order(
-        &self,
-        ctx: &DalContext,
-    ) -> AttributeValueResult<Option<Vec<AttributeValueId>>> {
-        Ok(ctx
-            .workspace_snapshot()?
-            .ordering_node_for_container(self.id())
-            .await?
-            .map(|node| node.order().clone().into_iter().map(Into::into).collect()))
-    }
-
     async fn populate_nested_values(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
@@ -1840,7 +1832,7 @@ impl AttributeValue {
             ))?;
 
         ctx.workspace_snapshot()?
-            .remove_edge_for_ulids(
+            .remove_edge(
                 attribute_value_id,
                 prototype_id,
                 EdgeWeightKindDiscriminants::Prototype,
@@ -2652,12 +2644,18 @@ impl AttributeValue {
                         PropKind::Array => {
                             match ctx
                                 .workspace_snapshot()?
-                                .ordering_node_for_container(pav_id)
+                                .ordered_children_for_node(pav_id)
                                 .await?
                             {
-                                Some(ordering_node) => {
-                                    let index = ordering_node.get_index_for_id(child_id.into())?;
-                                    Some(KeyOrIndex::Index(index))
+                                Some(order) => {
+                                    let index = order
+                                        .iter()
+                                        .position(|id| *id == child_id.into())
+                                        .ok_or(NodeWeightError::MissingKeyForChildEntry(
+                                            child_id.into(),
+                                        ))?;
+
+                                    Some(KeyOrIndex::Index(index as i64))
                                 }
                                 None => None,
                             }

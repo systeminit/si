@@ -37,6 +37,7 @@ use crate::jetstream_streams::JetstreamStreams;
 use crate::job::definition::AttributeValueBasedJobIdentifier;
 use crate::layer_db_types::ContentTypes;
 use crate::slow_rt::SlowRuntimeError;
+use crate::workspace_snapshot::dependent_value_root::DependentValueRootError;
 use crate::workspace_snapshot::graph::{RebaseBatch, WorkspaceSnapshotGraph};
 use crate::workspace_snapshot::{
     DependentValueRoot, WorkspaceSnapshotResult, WorkspaceSnapshotSelector,
@@ -423,9 +424,14 @@ impl DalContext {
         &self,
     ) -> Result<Option<WorkspaceSnapshotAddress>, TransactionsError> {
         if let Some(snapshot) = &self.workspace_snapshot {
-            Ok(Some(snapshot.write(self).await.map_err(|err| {
-                TransactionsError::WorkspaceSnapshot(Box::new(err))
-            })?))
+            Ok(Some(
+                snapshot
+                    .as_legacy_snapshot()
+                    .map_err(|err| TransactionsError::WorkspaceSnapshot(Box::new(err)))?
+                    .write(self)
+                    .await
+                    .map_err(|err| TransactionsError::WorkspaceSnapshot(Box::new(err)))?,
+            ))
         } else {
             Ok(None)
         }
@@ -616,6 +622,7 @@ impl DalContext {
                     WorkspaceSnapshot::find_for_change_set(self, head_change_set_id).await?;
                 head_snapshot.detect_changes(workspace_snapshot).await
             }
+            _ => todo!("implement this!"),
         }
     }
 
@@ -857,11 +864,13 @@ impl DalContext {
     pub async fn add_dependent_values_and_enqueue(
         &self,
         ids: Vec<impl Into<si_events::ulid::Ulid>>,
-    ) -> Result<(), WorkspaceSnapshotError> {
+    ) -> Result<(), DependentValueRootError> {
         for id in ids {
-            self.workspace_snapshot()?
-                .add_dependent_value_root(DependentValueRoot::Unfinished(id.into()))
-                .await?;
+            DependentValueRoot::add_dependent_value_root(
+                self,
+                DependentValueRoot::Unfinished(id.into()),
+            )
+            .await?;
         }
 
         self.enqueue_dependent_values_update().await?;

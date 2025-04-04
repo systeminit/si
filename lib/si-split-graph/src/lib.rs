@@ -1,6 +1,5 @@
 use std::collections::{HashSet, VecDeque};
 
-use async_trait::async_trait;
 use opt_zip::OptZip;
 use petgraph::{prelude::*, stable_graph};
 use serde::{Deserialize, Serialize};
@@ -12,14 +11,14 @@ use si_events::{
 use si_id::ulid::Ulid;
 use thiserror::Error;
 
-mod opt_zip;
+pub mod opt_zip;
 pub mod subgraph;
 pub mod subgraph_address;
 pub mod updates;
 
-use subgraph::{SubGraph, SubGraphEdgeIndex, SubGraphNodeIndex};
+pub use subgraph::{SubGraph, SubGraphEdgeIndex, SubGraphNodeIndex};
 pub use subgraph_address::SubGraphAddress;
-use updates::Update;
+pub use updates::Update;
 
 pub const MAX_NODES: usize = ((u16::MAX / 2) - 1) as usize;
 
@@ -47,36 +46,6 @@ pub type SplitGraphResult<T> = Result<T, SplitGraphError>;
 
 pub type SplitGraphNodeId = Ulid;
 pub type SubGraphIndex = u16;
-
-#[async_trait]
-pub trait SubGraphReader<N, E, K>: Clone + std::fmt::Debug
-where
-    N: CustomNodeWeight,
-    E: CustomEdgeWeight<K>,
-    K: EdgeKind,
-{
-    type Error: std::error::Error;
-
-    async fn read_subgraph(
-        &self,
-        address: SubGraphAddress,
-    ) -> Result<SubGraph<N, E, K>, Self::Error>;
-}
-
-#[async_trait]
-pub trait SubGraphWriter<Node, Edge, K>: Clone + std::fmt::Debug
-where
-    Node: CustomNodeWeight,
-    Edge: CustomEdgeWeight<K>,
-    K: EdgeKind,
-{
-    type Error: std::error::Error;
-
-    async fn write_subgraph(
-        &mut self,
-        graph: &SubGraph<Node, Edge, K>,
-    ) -> Result<SubGraphAddress, Self::Error>;
-}
 
 #[derive(PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub enum SplitGraphNodeWeight<N>
@@ -124,10 +93,26 @@ where
         }
     }
 
+    pub fn set_id(&mut self, new_id: SplitGraphNodeId) {
+        match self {
+            SplitGraphNodeWeight::Custom(n) => n.set_id(new_id),
+            SplitGraphNodeWeight::ExternalTarget { id, .. }
+            | SplitGraphNodeWeight::Ordering { id, .. }
+            | SplitGraphNodeWeight::GraphRoot { id, .. }
+            | SplitGraphNodeWeight::SubGraphRoot { id, .. } => *id = new_id,
+        }
+    }
+
     pub fn lineage_id(&self) -> SplitGraphNodeId {
         match self {
             SplitGraphNodeWeight::Custom(n) => n.lineage_id(),
             other => other.id(),
+        }
+    }
+
+    pub fn set_lineage_id(&mut self, new_lineage_id: SplitGraphNodeId) {
+        if let SplitGraphNodeWeight::Custom(n) = self {
+            n.set_lineage_id(new_lineage_id);
         }
     }
 
@@ -348,13 +333,16 @@ pub trait EdgeKind: std::hash::Hash + PartialEq + Eq + Copy + Clone + std::fmt::
 
 pub trait CustomNodeWeight: PartialEq + Eq + Clone + std::fmt::Debug {
     fn id(&self) -> SplitGraphNodeId;
+    fn set_id(&mut self, id: SplitGraphNodeId);
+
     fn lineage_id(&self) -> SplitGraphNodeId;
+    fn set_lineage_id(&mut self, id: SplitGraphNodeId);
+
     fn entity_kind(&self) -> EntityKind;
 
     fn set_merkle_tree_hash(&mut self, hash: MerkleTreeHash);
     fn merkle_tree_hash(&self) -> MerkleTreeHash;
     fn node_hash(&self) -> ContentHash;
-    fn ordered(&self) -> bool;
 }
 
 pub trait CustomEdgeWeight<K>: std::hash::Hash + PartialEq + Eq + Clone + std::fmt::Debug
@@ -395,30 +383,23 @@ pub struct SuperGraph {
 }
 
 #[derive(Clone, Debug)]
-pub struct SplitGraph<'a, 'b, N, E, K, R, W>
+pub struct SplitGraph<N, E, K>
 where
     N: CustomNodeWeight,
     E: CustomEdgeWeight<K>,
     K: EdgeKind,
-    R: SubGraphReader<N, E, K>,
-    W: SubGraphWriter<N, E, K>,
 {
     supergraph: SuperGraph,
     subgraphs: Vec<SubGraph<N, E, K>>,
-    reader: &'a R,
-    #[allow(unused)]
-    writer: &'b W,
 }
 
-impl<'a, 'b, N, E, K, R, W> SplitGraph<'a, 'b, N, E, K, R, W>
+impl<N, E, K> SplitGraph<N, E, K>
 where
     N: CustomNodeWeight,
     K: EdgeKind,
     E: CustomEdgeWeight<K>,
-    R: SubGraphReader<N, E, K>,
-    W: SubGraphWriter<N, E, K>,
 {
-    pub fn new(reader: &'a R, writer: &'b W, split_max: u16) -> Self {
+    pub fn new(split_max: u16) -> Self {
         let mut first_subgraph = SubGraph::new();
         let root_id = Ulid::new();
         let root_index = first_subgraph
@@ -440,8 +421,13 @@ where
                 split_max,
             },
             subgraphs: vec![first_subgraph],
-            reader,
-            writer,
+        }
+    }
+
+    pub fn from_parts(supergraph: SuperGraph, subgraphs: Vec<SubGraph<N, E, K>>) -> Self {
+        Self {
+            supergraph,
+            subgraphs,
         }
     }
 
@@ -459,40 +445,6 @@ where
 
     pub fn subgraph_count(&self) -> usize {
         self.subgraphs.len()
-    }
-
-    pub async fn new_with_addresses(
-        reader: &'a R,
-        writer: &'b W,
-        addresses: &[SubGraphAddress],
-        split_max: u16,
-    ) -> SplitGraphResult<Self> {
-        // We need to do this without creating a root node
-        let mut split_graph = Self::new(reader, writer, split_max);
-        split_graph.add_subgraphs(addresses).await?;
-
-        Ok(split_graph)
-    }
-
-    pub async fn add_subgraphs(
-        &mut self,
-        subgraph_addresses: &[SubGraphAddress],
-    ) -> SplitGraphResult<()> {
-        self.supergraph.addresses.extend(subgraph_addresses.iter());
-
-        for (idx, address) in self.supergraph.addresses.iter().enumerate() {
-            if self.subgraphs.get(idx).is_none() {
-                let subgraph = self
-                    .reader
-                    .read_subgraph(*address)
-                    .await
-                    .map_err(|err| SplitGraphError::SubGraphRead(*address, err.to_string()))?;
-
-                self.subgraphs.push(subgraph);
-            }
-        }
-
-        Ok(())
     }
 
     pub fn recalculate_merkle_tree_hashes_based_on_touched_nodes(&mut self) {
@@ -579,13 +531,21 @@ where
         self.add_node_to_subgraph(subgraph_index, SplitGraphNodeWeight::Custom(node))
     }
 
+    pub fn add_ordered_node(&mut self, node: N) -> SplitGraphResult<SplitGraphNodeIndex> {
+        let split_graph_index = self.add_or_replace_node(node)?;
+        let subgraph = self.get_subgraph_mut(split_graph_index.subgraph as usize)?;
+        subgraph.add_or_get_ordering_node_for_node_index(split_graph_index.index);
+
+        Ok(split_graph_index)
+    }
+
     fn node_weight_by_index(&self, index: SplitGraphNodeIndex) -> Option<&SplitGraphNodeWeight<N>> {
         self.subgraphs
             .get(index.subgraph as usize)
             .and_then(|sub| sub.graph.node_weight(index.index))
     }
 
-    pub fn subgraph_for_node(&self, node_id: SplitGraphNodeId) -> Option<usize> {
+    pub fn subgraph_index_for_node(&self, node_id: SplitGraphNodeId) -> Option<usize> {
         for (index, sub) in self.subgraphs.iter().enumerate() {
             if sub.node_index_by_id.contains_key(&node_id) {
                 return Some(index);
@@ -654,6 +614,51 @@ where
                     .get(&id)
                     .map(|subgraph_index| SplitGraphNodeIndex::new(idx as u16, *subgraph_index))
             })
+    }
+
+    pub fn remove_node(&mut self, node_id: SplitGraphNodeId) -> SplitGraphResult<()> {
+        let node_index = self
+            .node_id_to_index(node_id)
+            .ok_or(SplitGraphError::NodeNotFound(node_id))?;
+
+        let subgraph_idx = node_index.subgraph;
+        let subgraph = self.get_subgraph_mut(subgraph_idx as usize)?;
+
+        subgraph.remove_node(node_index.index);
+
+        Ok(())
+    }
+
+    pub fn find_edge(
+        &self,
+        from_id: SplitGraphNodeId,
+        to_id: SplitGraphNodeId,
+        edge_weight_kind: K,
+    ) -> Option<&E> {
+        let from_index = self.node_id_to_index(from_id.into())?;
+
+        let from_subgraph_idx = from_index.subgraph;
+
+        let subgraph = self.subgraphs.get(from_subgraph_idx as usize)?;
+
+        subgraph
+            .graph
+            .edges_directed(from_index.index, Outgoing)
+            .find(|edge_ref| {
+                if Some(edge_weight_kind) == edge_ref.weight().custom().map(|edge| edge.kind()) {
+                    match subgraph.graph.node_weight(edge_ref.target()) {
+                        Some(node) => match node {
+                            SplitGraphNodeWeight::Custom(c) => c.id() == to_id,
+                            SplitGraphNodeWeight::ExternalTarget { target, .. } => *target == to_id,
+                            _ => false,
+                        },
+                        None => false,
+                    }
+                } else {
+                    false
+                }
+            })
+            .and_then(|edge_ref| edge_ref.weight().custom())
     }
 
     pub fn remove_edge(
@@ -749,11 +754,30 @@ where
         Ok(())
     }
 
+    pub fn add_ordered_edge(
+        &mut self,
+        from_id: SplitGraphNodeId,
+        edge: E,
+        to_id: SplitGraphNodeId,
+    ) -> SplitGraphResult<()> {
+        self.add_edge_inner(from_id, edge, to_id, true)
+    }
+
     pub fn add_edge(
         &mut self,
         from_id: SplitGraphNodeId,
         edge: E,
         to_id: SplitGraphNodeId,
+    ) -> SplitGraphResult<()> {
+        self.add_edge_inner(from_id, edge, to_id, false)
+    }
+
+    fn add_edge_inner(
+        &mut self,
+        from_id: SplitGraphNodeId,
+        edge: E,
+        to_id: SplitGraphNodeId,
+        ordered: bool,
     ) -> SplitGraphResult<()> {
         let from_index = self
             .node_id_to_index(from_id)
@@ -762,15 +786,21 @@ where
             .node_id_to_index(to_id)
             .ok_or(SplitGraphError::NodeNotFound(to_id))?;
 
+        let custom_edge_weight = SplitGraphEdgeWeight::Custom(edge.clone());
+
         let from_subgraph_idx = from_index.subgraph;
         let to_subgraph_idx = to_index.subgraph;
         if from_subgraph_idx == to_subgraph_idx {
             let from_subgraph = self.get_subgraph_mut(from_subgraph_idx as usize)?;
-            from_subgraph.add_edge(
-                from_index.index,
-                SplitGraphEdgeWeight::Custom(edge),
-                to_index.index,
-            )?;
+            if ordered {
+                from_subgraph.add_ordered_edge(
+                    from_index.index,
+                    custom_edge_weight,
+                    to_index.index,
+                )?;
+            } else {
+                from_subgraph.add_edge(from_index.index, custom_edge_weight, to_index.index)?;
+            }
         } else {
             let ext_target_id = SplitGraphNodeId::new();
             let ext_target_idx = self.add_node_to_subgraph(
@@ -782,12 +812,22 @@ where
                     merkle_tree_hash: MerkleTreeHash::nil(),
                 },
             )?;
+
             let from_subgraph = self.get_subgraph_mut(from_subgraph_idx as usize)?;
-            from_subgraph.add_edge(
-                from_index.index,
-                SplitGraphEdgeWeight::Custom(edge.clone()),
-                ext_target_idx.index,
-            )?;
+            if ordered {
+                from_subgraph.add_ordered_edge(
+                    from_index.index,
+                    custom_edge_weight,
+                    ext_target_idx.index,
+                )?;
+            } else {
+                from_subgraph.add_edge(
+                    from_index.index,
+                    custom_edge_weight,
+                    ext_target_idx.index,
+                )?;
+            }
+
             let to_subgraph = self.get_subgraph_mut(to_subgraph_idx as usize)?;
             to_subgraph.add_edge(
                 to_subgraph.root_index,
@@ -862,6 +902,19 @@ where
         Ok(result)
     }
 
+    pub fn edges_directed_for_edge_weight_kind<'a>(
+        &'a self,
+        from_id: SplitGraphNodeId,
+        direction: Direction,
+        kind: K,
+    ) -> SplitGraphResult<impl Iterator<Item = SplitGraphEdgeReference<'a, E, K>> + 'a> {
+        let iter = self
+            .edges_directed(from_id, direction)?
+            .filter(move |edge_ref| edge_ref.weight().custom().is_some_and(|c| c.kind() == kind));
+
+        Ok(iter)
+    }
+
     pub fn edges_directed(
         &self,
         from_id: SplitGraphNodeId,
@@ -897,10 +950,7 @@ where
     }
 
     /// Calculate the updates that this graph has relative to `base_graph`
-    pub fn detect_updates(
-        &self,
-        updated_graph: &SplitGraph<N, E, K, R, W>,
-    ) -> Vec<Update<N, E, K>> {
+    pub fn detect_updates(&self, updated_graph: &SplitGraph<N, E, K>) -> Vec<Update<N, E, K>> {
         let mut updates = vec![];
 
         let mut subgraph_iter = OptZip::new(
@@ -939,7 +989,7 @@ where
 
     pub fn detect_changes(
         &self,
-        updated_graph: &SplitGraph<N, E, K, R, W>,
+        updated_graph: &SplitGraph<N, E, K>,
     ) -> SplitGraphResult<Vec<Change>> {
         let mut changes = vec![];
 
@@ -1154,6 +1204,20 @@ where
         }
     }
 
+    pub fn nodes(&self) -> impl Iterator<Item = &N> {
+        self.subgraphs
+            .iter()
+            .flat_map(|subgraph| subgraph.nodes())
+            .filter_map(|n| n.custom())
+    }
+
+    pub fn edges(&self) -> impl Iterator<Item = (&E, SplitGraphNodeId, SplitGraphNodeId)> {
+        self.subgraphs
+            .iter()
+            .flat_map(|subgraph| subgraph.edges())
+            .filter_map(|(e, source, target)| e.custom().map(|custom| (custom, source, target)))
+    }
+
     pub fn tiny_dot_to_file(&self, prefix: &str) {
         for (idx, subgraph) in self.subgraphs.iter().enumerate() {
             subgraph.tiny_dot_to_file(&format!("{prefix}-subgraph-{}", idx + 1));
@@ -1292,25 +1356,21 @@ where
     }
 }
 
-impl<N, E, K, R, W> petgraph::visit::GraphBase for SplitGraph<'_, '_, N, E, K, R, W>
+impl<N, E, K> petgraph::visit::GraphBase for SplitGraph<N, E, K>
 where
     N: CustomNodeWeight,
     E: CustomEdgeWeight<K>,
     K: EdgeKind,
-    R: SubGraphReader<N, E, K>,
-    W: SubGraphWriter<N, E, K>,
 {
     type EdgeId = SplitGraphEdgeIndex;
     type NodeId = Ulid;
 }
 
-impl<N, E, K, R, W> petgraph::visit::Visitable for SplitGraph<'_, '_, N, E, K, R, W>
+impl<N, E, K> petgraph::visit::Visitable for SplitGraph<N, E, K>
 where
     N: CustomNodeWeight,
     E: CustomEdgeWeight<K>,
     K: EdgeKind,
-    R: SubGraphReader<N, E, K>,
-    W: SubGraphWriter<N, E, K>,
 {
     type Map = HashSet<Ulid>;
 

@@ -1,42 +1,20 @@
 use petgraph::prelude::*;
-use si_events::{ulid::Ulid, ContentHash};
+use si_events::ulid::Ulid;
 
 use crate::{
     socket::input::InputSocketError,
     workspace_snapshot::{
         graph::{
-            traits::socket::input::InputSocketExt, LineageId, WorkspaceSnapshotGraphResult,
+            traits::socket::input::InputSocketExt, WorkspaceSnapshotGraphResult,
             WorkspaceSnapshotGraphV4,
         },
         node_weight::{InputSocketNodeWeight, NodeWeight, NodeWeightError},
     },
-    AttributeValueId, ComponentId, EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants,
-    InputSocketId, NodeWeightDiscriminants, SchemaVariantId, SocketArity,
+    AttributeValueId, ComponentId, EdgeWeightKindDiscriminants, InputSocketId,
+    NodeWeightDiscriminants, SchemaVariantId,
 };
 
 impl InputSocketExt for WorkspaceSnapshotGraphV4 {
-    fn new_input_socket(
-        &mut self,
-        schema_variant_id: SchemaVariantId,
-        input_socket_id: InputSocketId,
-        lineage_id: LineageId,
-        arity: SocketArity,
-        content_hash: ContentHash,
-    ) -> WorkspaceSnapshotGraphResult<InputSocketNodeWeight> {
-        let node_weight =
-            NodeWeight::new_input_socket(input_socket_id.into(), lineage_id, arity, content_hash);
-        self.add_or_replace_node(node_weight)?;
-
-        let edge_weight = EdgeWeight::new(EdgeWeightKind::Socket);
-        self.add_edge_between_ids(
-            schema_variant_id.into(),
-            edge_weight,
-            input_socket_id.into(),
-        )?;
-
-        self.get_input_socket(input_socket_id)
-    }
-
     fn get_input_socket(
         &self,
         input_socket_id: crate::InputSocketId,
@@ -57,7 +35,7 @@ impl InputSocketExt for WorkspaceSnapshotGraphV4 {
 
     fn list_input_sockets_for_schema_variant(
         &self,
-        schema_variant_id: crate::SchemaVariantId,
+        schema_variant_id: SchemaVariantId,
     ) -> WorkspaceSnapshotGraphResult<Vec<InputSocketNodeWeight>> {
         let schema_variant_index = self.get_node_index_by_id(schema_variant_id)?;
 

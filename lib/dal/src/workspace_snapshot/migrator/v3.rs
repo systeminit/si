@@ -2,9 +2,9 @@ use telemetry::prelude::*;
 
 use crate::{
     workspace_snapshot::{
+        content_address::ContentAddressDiscriminants,
         graph::{WorkspaceSnapshotGraphV2, WorkspaceSnapshotGraphV3},
         node_weight::{InputSocketNodeWeight, NodeWeight, SchemaVariantNodeWeight},
-        ContentAddressDiscriminants,
     },
     DalContext,
 };

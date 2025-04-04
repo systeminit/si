@@ -9,7 +9,6 @@ use super::*;
 struct TestNodeWeight {
     id: SplitGraphNodeId,
     name: String,
-    ordered: bool,
     merkle_tree_hash: MerkleTreeHash,
 }
 
@@ -30,8 +29,16 @@ impl CustomNodeWeight for TestNodeWeight {
         self.id
     }
 
+    fn set_id(&mut self, id: SplitGraphNodeId) {
+        self.id = id;
+    }
+
     fn lineage_id(&self) -> SplitGraphNodeId {
         self.id
+    }
+
+    fn set_lineage_id(&mut self, id: SplitGraphNodeId) {
+        self.id = id;
     }
 
     fn entity_kind(&self) -> EntityKind {
@@ -50,34 +57,19 @@ impl CustomNodeWeight for TestNodeWeight {
         let mut hasher = ContentHash::hasher();
         hasher.update(&self.id.inner().to_bytes());
         hasher.update(self.name.as_bytes());
-        hasher.update(&[self.ordered as u8]);
         hasher.finalize()
     }
-
-    fn ordered(&self) -> bool {
-        self.ordered
-    }
 }
 
-#[derive(Clone, Debug)]
-struct TestReadWriter {
-    graphs: HashMap<
-        SubGraphAddress,
-        SubGraph<TestNodeWeight, TestEdgeWeight, TestEdgeWeightDiscriminants>,
-    >,
-}
-
-fn add_edges_to_splitgraph<'a, 'b, E, K, R, W>(
-    graph: &'a mut SplitGraph<TestNodeWeight, E, K, R, W>,
-    edges: &'a [(Option<&'b str>, E, &'b str)],
+fn add_edges_to_splitgraph<'a, 'b, E, K>(
+    graph: &'a mut SplitGraph<TestNodeWeight, E, K>,
+    edges: &'a [(Option<&'b str>, E, &'b str, bool)],
     node_id_map: &'a HashMap<&'b str, Ulid>,
 ) where
     E: CustomEdgeWeight<K>,
     K: EdgeKind,
-    R: SubGraphReader<TestNodeWeight, E, K>,
-    W: SubGraphWriter<TestNodeWeight, E, K>,
 {
-    for (source, edge, target) in edges {
+    for (source, edge, target, ordered) in edges {
         let from_id = match source {
             Some(source) => node_id_map
                 .get(source)
@@ -91,30 +83,33 @@ fn add_edges_to_splitgraph<'a, 'b, E, K, R, W>(
             .copied()
             .expect("target should be in map");
 
-        graph
-            .add_edge(from_id, edge.clone(), to_id)
-            .expect("add edge");
+        if *ordered {
+            graph
+                .add_ordered_edge(from_id, edge.clone(), to_id)
+                .expect("add ordered edge");
+        } else {
+            graph
+                .add_edge(from_id, edge.clone(), to_id)
+                .expect("add edge");
+        }
     }
 }
 
-fn add_nodes_to_splitgraph<'a, 'b, E, K, R, W>(
-    graph: &'a mut SplitGraph<TestNodeWeight, E, K, R, W>,
-    nodes: &'a [(&'b str, bool)],
+fn add_nodes_to_splitgraph<'a, 'b, E, K>(
+    graph: &'a mut SplitGraph<TestNodeWeight, E, K>,
+    nodes: &'a [&'b str],
 ) -> HashMap<&'b str, Ulid>
 where
     E: CustomEdgeWeight<K>,
     K: EdgeKind,
-    R: SubGraphReader<TestNodeWeight, E, K>,
-    W: SubGraphWriter<TestNodeWeight, E, K>,
 {
     let mut node_id_map = HashMap::new();
 
-    for &(node, ordered) in nodes {
+    for &node in nodes {
         let id = SplitGraphNodeId::new();
         let node_weight = TestNodeWeight {
             id,
             name: node.to_string(),
-            ordered,
             merkle_tree_hash: MerkleTreeHash::nil(),
         };
         graph
@@ -129,7 +124,7 @@ where
 
 fn add_nodes_to_subgraph<'a, 'b, E, K>(
     graph: &'a mut SubGraph<TestNodeWeight, E, K>,
-    nodes: &'a [(&'b str, bool)],
+    nodes: &'a [&'b str],
 ) -> HashMap<&'b str, Ulid>
 where
     E: CustomEdgeWeight<K>,
@@ -137,12 +132,11 @@ where
 {
     let mut node_id_map = HashMap::new();
 
-    for &(node, ordered) in nodes {
+    for &node in nodes {
         let id = SplitGraphNodeId::new();
         let node_weight = TestNodeWeight {
             id,
             name: node.to_string(),
-            ordered,
             merkle_tree_hash: MerkleTreeHash::nil(),
         };
         graph.add_node(SplitGraphNodeWeight::Custom(node_weight));
@@ -151,40 +145,6 @@ where
     }
 
     node_id_map
-}
-
-#[async_trait]
-impl SubGraphReader<TestNodeWeight, TestEdgeWeight, TestEdgeWeightDiscriminants>
-    for TestReadWriter
-{
-    type Error = SplitGraphError;
-
-    async fn read_subgraph(
-        &self,
-        address: SubGraphAddress,
-    ) -> Result<
-        SubGraph<TestNodeWeight, TestEdgeWeight, TestEdgeWeightDiscriminants>,
-        SplitGraphError,
-    > {
-        self.graphs
-            .get(&address)
-            .cloned()
-            .ok_or(SplitGraphError::SubGraphRead(address, "not found".into()))
-    }
-}
-
-#[async_trait]
-impl SubGraphWriter<TestNodeWeight, TestEdgeWeight, TestEdgeWeightDiscriminants>
-    for TestReadWriter
-{
-    type Error = SplitGraphError;
-
-    async fn write_subgraph(
-        &mut self,
-        _subgraph: &SubGraph<TestNodeWeight, TestEdgeWeight, TestEdgeWeightDiscriminants>,
-    ) -> Result<SubGraphAddress, SplitGraphError> {
-        todo!()
-    }
 }
 
 #[derive(EnumDiscriminants, Clone, Debug, PartialEq, Eq, Hash)]
@@ -227,11 +187,8 @@ impl CustomEdgeWeight<TestEdgeWeightDiscriminants> for TestEdgeWeight {
 }
 
 #[test]
-fn ordered_container() -> SplitGraphResult<()> {
-    let reader_writer = TestReadWriter {
-        graphs: HashMap::new(),
-    };
-    let mut splitgraph = SplitGraph::new(&reader_writer, &reader_writer, 10000);
+fn ordered_edges() -> SplitGraphResult<()> {
+    let mut splitgraph = SplitGraph::new(10000);
 
     let mut node_name_to_id_map = HashMap::new();
     let container_nodes: Vec<TestNodeWeight> = ["a"]
@@ -240,7 +197,6 @@ fn ordered_container() -> SplitGraphResult<()> {
             id: Ulid::new(),
             name: name.to_string(),
             merkle_tree_hash: MerkleTreeHash::nil(),
-            ordered: true,
         })
         .collect();
 
@@ -266,11 +222,10 @@ fn ordered_container() -> SplitGraphResult<()> {
             splitgraph.add_or_replace_node(TestNodeWeight {
                 id: node_id,
                 name: node_name,
-                ordered: false,
                 merkle_tree_hash: MerkleTreeHash::nil(),
             })?;
             nodes.push(node_id);
-            splitgraph.add_edge(container_node_id, TestEdgeWeight::EdgeA, node_id)?;
+            splitgraph.add_ordered_edge(container_node_id, TestEdgeWeight::EdgeA, node_id)?;
         }
         nodes_per_container.insert(container_node_id, nodes);
     }
@@ -302,10 +257,8 @@ fn ordered_container() -> SplitGraphResult<()> {
 
 #[test]
 fn replace_node() -> SplitGraphResult<()> {
-    let reader_writer = TestReadWriter {
-        graphs: HashMap::new(),
-    };
-    let mut splitgraph = SplitGraph::new(&reader_writer, &reader_writer, 2);
+    let mut splitgraph: SplitGraph<TestNodeWeight, TestEdgeWeight, TestEdgeWeightDiscriminants> =
+        SplitGraph::new(2);
 
     let mut nodes: Vec<TestNodeWeight> = ["1", "2", "3", "4", "5", "6"]
         .into_iter()
@@ -313,7 +266,6 @@ fn replace_node() -> SplitGraphResult<()> {
             id: Ulid::new(),
             name: name.to_string(),
             merkle_tree_hash: MerkleTreeHash::nil(),
-            ordered: false,
         })
         .collect();
 
@@ -341,12 +293,8 @@ fn replace_node() -> SplitGraphResult<()> {
 #[test]
 fn cross_graph_edges() -> SplitGraphResult<()> {
     for ordered in [false, true] {
-        let reader_writer = TestReadWriter {
-            graphs: HashMap::new(),
-        };
-
-        let mut splitgraph = SplitGraph::new(&reader_writer, &reader_writer, 9);
-        let mut unsplitgraph = SplitGraph::new(&reader_writer, &reader_writer, MAX_NODES as u16);
+        let mut splitgraph = SplitGraph::new(9);
+        let mut unsplitgraph = SplitGraph::new(MAX_NODES as u16);
 
         let nodes = [
             "graph-1-a",
@@ -419,13 +367,11 @@ fn cross_graph_edges() -> SplitGraphResult<()> {
                 id,
                 name: name.to_string(),
                 merkle_tree_hash: MerkleTreeHash::nil(),
-                ordered,
             })?;
             unsplitgraph.add_or_replace_node(TestNodeWeight {
                 id,
                 name: name.to_string(),
                 merkle_tree_hash: MerkleTreeHash::nil(),
-                ordered,
             })?;
             name_to_id_map.insert(name, id);
         }
@@ -459,8 +405,13 @@ fn cross_graph_edges() -> SplitGraphResult<()> {
 
             let to_id = name_to_id_map.get(&to_name).copied().unwrap();
 
-            splitgraph.add_edge(split_from_id, TestEdgeWeight::EdgeA, to_id)?;
-            unsplitgraph.add_edge(unsplit_from_id, TestEdgeWeight::EdgeA, to_id)?;
+            if ordered {
+                splitgraph.add_ordered_edge(split_from_id, TestEdgeWeight::EdgeA, to_id)?;
+                unsplitgraph.add_ordered_edge(unsplit_from_id, TestEdgeWeight::EdgeA, to_id)?;
+            } else {
+                splitgraph.add_edge(split_from_id, TestEdgeWeight::EdgeA, to_id)?;
+                unsplitgraph.add_edge(unsplit_from_id, TestEdgeWeight::EdgeA, to_id)?;
+            }
 
             expected_outgoing_targets
                 .entry(split_from_id)
@@ -616,11 +567,8 @@ fn cross_graph_edges() -> SplitGraphResult<()> {
 
 #[test]
 fn detect_changes_no_difference() -> SplitGraphResult<()> {
-    let reader_writer = TestReadWriter {
-        graphs: HashMap::new(),
-    };
-
-    let mut base_graph = SplitGraph::new(&reader_writer, &reader_writer, 200);
+    let mut base_graph: SplitGraph<TestNodeWeight, TestEdgeWeight, TestEdgeWeightDiscriminants> =
+        SplitGraph::new(200);
     base_graph.cleanup_and_merkle_tree_hash();
     let mut updated_graph = base_graph.clone();
     updated_graph.cleanup_and_merkle_tree_hash();
@@ -632,19 +580,15 @@ fn detect_changes_no_difference() -> SplitGraphResult<()> {
 
 #[test]
 fn detect_changes_simple() -> SplitGraphResult<()> {
-    let reader_writer = TestReadWriter {
-        graphs: HashMap::new(),
-    };
-
     for split_max in [1, 2, 3, 1000] {
-        let mut base_graph = SplitGraph::new(&reader_writer, &reader_writer, split_max);
+        let mut base_graph = SplitGraph::new(split_max);
         let nodes = [
-            ("severian", true),
-            ("thecla", true),
-            ("terminus est", false),
-            ("dorcas", false),
-            ("vodalus", false),
-            ("drotte", false),
+            ("severian"),
+            ("thecla"),
+            ("terminus est"),
+            ("dorcas"),
+            ("vodalus"),
+            ("drotte"),
         ];
 
         // root --> severian --> thecla --> vodalus --> drotte
@@ -652,12 +596,17 @@ fn detect_changes_simple() -> SplitGraphResult<()> {
         //                   --> vodalus (--> drotte)
 
         let edges = [
-            (None, TestEdgeWeight::EdgeA, "severian"),
-            (Some("severian"), TestEdgeWeight::EdgeA, "thecla"),
-            (Some("thecla"), TestEdgeWeight::EdgeA, "vodalus"),
-            (Some("severian"), TestEdgeWeight::EdgeA, "terminus est"),
-            (Some("severian"), TestEdgeWeight::EdgeA, "vodalus"),
-            (Some("vodalus"), TestEdgeWeight::EdgeA, "drotte"),
+            (None, TestEdgeWeight::EdgeA, "severian", false),
+            (Some("severian"), TestEdgeWeight::EdgeA, "thecla", true),
+            (Some("thecla"), TestEdgeWeight::EdgeA, "vodalus", false),
+            (
+                Some("severian"),
+                TestEdgeWeight::EdgeA,
+                "terminus est",
+                true,
+            ),
+            (Some("severian"), TestEdgeWeight::EdgeA, "vodalus", true),
+            (Some("vodalus"), TestEdgeWeight::EdgeA, "drotte", false),
         ];
 
         let node_id_map = add_nodes_to_splitgraph(&mut base_graph, &nodes);
@@ -789,12 +738,8 @@ fn detect_changes_simple() -> SplitGraphResult<()> {
 
 #[test]
 fn detect_and_perform_updates_ordered_containers() -> SplitGraphResult<()> {
-    let reader_writer = TestReadWriter {
-        graphs: HashMap::new(),
-    };
-
     for split_max in [1, 2, 1000] {
-        let mut base_graph = SplitGraph::new(&reader_writer, &reader_writer, split_max);
+        let mut base_graph = SplitGraph::new(split_max);
         base_graph.cleanup_and_merkle_tree_hash();
         let mut updated_graph = base_graph.clone();
         updated_graph.cleanup_and_merkle_tree_hash();
@@ -802,14 +747,12 @@ fn detect_and_perform_updates_ordered_containers() -> SplitGraphResult<()> {
         let damaya = TestNodeWeight {
             name: "damaya".to_string(),
             id: Ulid::new(),
-            ordered: true,
             merkle_tree_hash: MerkleTreeHash::nil(),
         };
 
         let evil_earth = TestNodeWeight {
             name: "evil_earth".to_string(),
             id: Ulid::new(),
-            ordered: false,
             merkle_tree_hash: MerkleTreeHash::nil(),
         };
 
@@ -829,13 +772,12 @@ fn detect_and_perform_updates_ordered_containers() -> SplitGraphResult<()> {
             let new_node = TestNodeWeight {
                 name: name.to_string(),
                 id: Ulid::new(),
-                ordered: true,
                 merkle_tree_hash: MerkleTreeHash::nil(),
             };
             ordered_child_ids.push(new_node.id());
             updated_graph.add_or_replace_node(new_node.clone())?;
             name_to_id_map.insert(name.to_string(), new_node.id());
-            updated_graph.add_edge(
+            updated_graph.add_ordered_edge(
                 damaya.id(),
                 TestEdgeWeight::EdgeB { is_default: false },
                 new_node.id(),
@@ -881,7 +823,7 @@ fn detect_and_perform_updates_ordered_containers() -> SplitGraphResult<()> {
 
         updated_graph.reorder_node(damaya.id(), |order| order.iter().copied().rev().collect())?;
 
-        let subgraph_for_damaya = updated_graph.subgraph_for_node(damaya.id()).unwrap();
+        let subgraph_for_damaya = updated_graph.subgraph_index_for_node(damaya.id()).unwrap();
         let updated_root_merkle_before_calculation = updated_graph
             .raw_node_weight(updated_graph.subgraph_root_id(subgraph_for_damaya).unwrap())
             .unwrap()
@@ -926,11 +868,7 @@ fn detect_and_perform_updates_ordered_containers() -> SplitGraphResult<()> {
 
 #[test]
 fn detect_updates_simple() -> SplitGraphResult<()> {
-    let reader_writer = TestReadWriter {
-        graphs: HashMap::new(),
-    };
-
-    let mut base_graph = SplitGraph::new(&reader_writer, &reader_writer, 3200);
+    let mut base_graph = SplitGraph::new(3200);
     base_graph.cleanup_and_merkle_tree_hash();
     let mut updated_graph = base_graph.clone();
     updated_graph.cleanup_and_merkle_tree_hash();
@@ -940,7 +878,6 @@ fn detect_updates_simple() -> SplitGraphResult<()> {
     let new_node = TestNodeWeight {
         name: "damaya".to_string(),
         id: Ulid::new(),
-        ordered: false,
         merkle_tree_hash: MerkleTreeHash::nil(),
     };
 
@@ -1051,8 +988,7 @@ fn single_subgraph_as_updates() -> SplitGraphResult<()> {
     ];
 
     let mut subgraph = SubGraph::new_with_root();
-    let nodes_with_order: Vec<_> = nodes.iter().cloned().map(|s| (s, false)).collect();
-    let node_id_map = add_nodes_to_subgraph(&mut subgraph, &nodes_with_order);
+    let node_id_map = add_nodes_to_subgraph(&mut subgraph, &nodes);
 
     for (source, target) in edges {
         let from_index = match source {

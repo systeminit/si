@@ -387,6 +387,23 @@ impl Prop {
             eligible_to_send_data: self.can_be_used_as_prototype_arg,
         })
     }
+
+    /// Mark whether a prop can be used as an input to a function. Props below
+    /// Maps and Arrays are not valid inputs. Only be used when
+    /// "finalizing" a schema variant.
+    pub async fn set_can_be_used_as_prototype_arg(
+        ctx: &DalContext,
+        prop_id: PropId,
+    ) -> PropResult<()> {
+        let snapshot = ctx.workspace_snapshot()?;
+        let mut prop_node_weight = snapshot.get_node_weight(prop_id).await?;
+        if let NodeWeight::Prop(prop_inner) = &mut prop_node_weight {
+            prop_inner.set_can_be_used_as_prototype_arg(true);
+        }
+        snapshot.add_or_replace_node(prop_node_weight).await?;
+        Ok(())
+    }
+
     pub fn assemble(prop_node_weight: PropNodeWeight, inner: PropContentV1) -> Self {
         Self {
             id: prop_node_weight.id().into(),
