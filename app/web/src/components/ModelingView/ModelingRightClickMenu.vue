@@ -627,6 +627,12 @@ function open(
   elementPosition?: { x: number; y: number },
 ) {
   if (elementPosition) elementPos.value = elementPosition;
+  if (
+    selectedEdge.value &&
+    featureFlagsStore.SIMPLE_SOCKET_UI &&
+    !selectedEdge.value.isManagement
+  )
+    return; // for now the right click is disabled on edges in the simple socket ui
   contextMenuRef.value?.open(e, anchorToMouse);
 }
 

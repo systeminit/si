@@ -111,19 +111,33 @@ abstract class DiagramNodeHasSockets extends DiagramElementData {
     }
 
     if (featureFlagsStore.SIMPLE_SOCKET_UI) {
-      let dataSocket;
-      if (leftManagementSocket) {
-        sockets.splice(2, sockets.length);
-        dataSocket = sockets[1];
-      } else {
+      let dataSocket: DiagramSocketData;
+      let oldSocket: DiagramSocketData;
+      if (leftManagementSocket && sockets[1]) {
+        oldSocket = sockets[1];
         sockets.splice(1, sockets.length);
-        dataSocket = sockets[0];
+        dataSocket = new DiagramSocketData(oldSocket.parent, {
+          ...oldSocket.def,
+        });
+      } else if (sockets[0]) {
+        oldSocket = sockets[0];
+        sockets.splice(0, sockets.length);
+        dataSocket = new DiagramSocketData(oldSocket.parent, {
+          ...oldSocket.def,
+        });
+      } else {
+        return {
+          x: (nodeWidth / 2) * -1,
+          y: this.socketStartingY,
+          sockets: [],
+        };
       }
       if (dataSocket) {
         dataSocket.def.label = "Input";
         dataSocket.def.connectionAnnotations = [];
         dataSocket.def.maxConnections = null;
         dataSocket.def.id = `${dataSocket.parent.def.id}-inputsocket`;
+        sockets.push(dataSocket);
       }
     }
 
@@ -169,19 +183,33 @@ abstract class DiagramNodeHasSockets extends DiagramElementData {
     }
 
     if (featureFlagsStore.SIMPLE_SOCKET_UI) {
-      let dataSocket;
-      if (rightManagementSocket) {
-        sockets.splice(2, sockets.length);
-        dataSocket = sockets[1];
-      } else {
+      let dataSocket: DiagramSocketData;
+      let oldSocket: DiagramSocketData;
+      if (rightManagementSocket && sockets[1]) {
+        oldSocket = sockets[1];
         sockets.splice(1, sockets.length);
-        dataSocket = sockets[0];
+        dataSocket = new DiagramSocketData(oldSocket.parent, {
+          ...oldSocket.def,
+        });
+      } else if (sockets[0]) {
+        oldSocket = sockets[0];
+        sockets.splice(0, sockets.length);
+        dataSocket = new DiagramSocketData(oldSocket.parent, {
+          ...oldSocket.def,
+        });
+      } else {
+        return {
+          x: (nodeWidth / 2) * -1,
+          y: this.socketStartingY,
+          sockets: [],
+        };
       }
       if (dataSocket) {
         dataSocket.def.label = "Output";
         dataSocket.def.connectionAnnotations = [];
         dataSocket.def.maxConnections = null;
         dataSocket.def.id = `${dataSocket.parent.def.id}-outputsocket`;
+        sockets.push(dataSocket);
       }
     }
 
@@ -388,6 +416,15 @@ export class DiagramEdgeData extends DiagramElementData {
 
   static generateUniqueKey(id: string | number) {
     return `e-${id}`;
+  }
+}
+
+export class DiagramEdgeDataWithConnectionCount extends DiagramEdgeData {
+  connectionCount: number;
+
+  constructor(readonly def: DiagramEdgeDef) {
+    super(def);
+    this.connectionCount = 1;
   }
 }
 

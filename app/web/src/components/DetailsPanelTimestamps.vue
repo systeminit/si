@@ -23,9 +23,13 @@
         tone="inherit"
       />
       <div v-if="created" class="grow truncate">
-        {{ formatters.timeAgo(created.timestamp) }} by
+        Created {{ formatters.timeAgo(created.timestamp) }} by
         {{ created.actor.label }}
       </div>
+      <div v-else-if="changeStatus === 'added'">
+        Created in this change set.
+      </div>
+      <div v-else>Created in a previous change set.</div>
     </div>
     <div
       v-if="
@@ -48,7 +52,7 @@
         tone="inherit"
       />
       <div v-if="modified" class="grow truncate">
-        {{ formatters.timeAgo(modified?.timestamp) }} by
+        Modified {{ formatters.timeAgo(modified?.timestamp) }} by
         {{ modified?.actor.label }}
       </div>
     </div>
@@ -64,9 +68,10 @@
         tone="inherit"
       />
       <div v-if="deleted" class="grow truncate">
-        {{ formatters.timeAgo(deleted?.timestamp) }} by
+        Deleted {{ formatters.timeAgo(deleted?.timestamp) }} by
         {{ deleted?.actor.label }}
       </div>
+      <div v-else>Set for deletion</div>
     </div>
   </div>
 </template>
