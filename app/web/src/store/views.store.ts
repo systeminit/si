@@ -238,6 +238,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
         // these are components, groups, or viewNodes
         selectedComponentIds: [] as ComponentId[],
         selectedEdgeId: null as EdgeId | null,
+        selectedDisplayEdgeId: null as EdgeId | null,
         selectedComponentDetailsTab: null as string | null,
         selectedViewDetailsId: null as ViewId | null,
         hoveredComponentId: null as ComponentId | null,
@@ -593,13 +594,18 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
           this.selectedViewDetailsId = id;
           this.selectedComponentIds = [];
           this.selectedEdgeId = null;
+          this.selectedDisplayEdgeId = null;
         },
-        setSelectedEdgeId(selection: EdgeId | null) {
+        setSelectedEdgeId(
+          selection: EdgeId | null,
+          displayEdgeId?: EdgeId | null,
+        ) {
           // clear component selection
           this.selectedViewDetailsId = null;
           this.selectedComponentIds = [];
           this.selectedEdgeId = selection;
           this.selectedComponentDetailsTab = null;
+          if (displayEdgeId) this.selectedDisplayEdgeId = displayEdgeId;
           this.syncSelectionIntoUrl();
         },
         setSelectedComponentId(
@@ -609,6 +615,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
           const key = `${changeSetId}_selected_component`;
           this.selectedViewDetailsId = null;
           this.selectedEdgeId = null;
+          this.selectedDisplayEdgeId = null;
           if (!selection || !selection.length) {
             this.selectedComponentIds = [];
             // forget which details tab is active when selection is cleared
@@ -1012,10 +1019,16 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
               orig.y = newPos.y;
 
               if (featureFlagsStore.SIMPLE_SOCKET_UI) {
-                const displaySockets = c.sockets.filter(
-                  (s) =>
-                    s.def.id.startsWith("mgmt_") || s.def.id.endsWith("socket"),
-                );
+                const width = c.def.isGroup
+                  ? this.groups[c.def.id]?.width
+                  : this.components[c.def.id]?.width;
+                if (!width) return;
+
+                const displaySockets = [
+                  ...c.layoutLeftSockets(width).sockets,
+                  ...c.layoutRightSockets(width).sockets,
+                ];
+
                 new Set(displaySockets.map((s) => s.uniqueKey)).forEach(
                   (uniqueKey) => {
                     const geo = this.sockets[uniqueKey];
@@ -2276,6 +2289,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
           this.selectedComponentIds = [];
           this.selectedViewDetailsId = null;
           this.selectedEdgeId = null;
+          this.selectedDisplayEdgeId = null;
           actionUnsub();
           realtimeStore.unsubscribe(`${this.$id}-changeset`);
           realtimeStore.unsubscribe(`${this.$id}-workspace`);
