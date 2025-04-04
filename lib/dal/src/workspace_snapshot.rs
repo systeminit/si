@@ -3,7 +3,7 @@
 //! having code outside of the specific graph version implementation that requires having knowledge
 //! of how the internals of that specific version of the graph work.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 
@@ -15,9 +15,9 @@ use petgraph::prelude::*;
 use selector::WorkspaceSnapshotSelectorDiscriminants;
 use serde::{Deserialize, Serialize};
 use si_data_pg::PgError;
-use si_events::workspace_snapshot::{Change, Checksum};
+use si_events::workspace_snapshot::Change;
 use si_events::{ulid::Ulid, ContentHash, WorkspaceSnapshotAddress};
-use si_id::{ApprovalRequirementDefinitionId, EntityId};
+use si_id::ApprovalRequirementDefinitionId;
 use si_layer_cache::LayerDbError;
 use si_split_graph::SplitGraphError;
 use telemetry::prelude::*;
@@ -37,8 +37,7 @@ use crate::slow_rt::{self, SlowRuntimeError};
 use crate::socket::connection_annotation::ConnectionAnnotationError;
 use crate::socket::input::InputSocketError;
 use crate::workspace_snapshot::{
-    content_address::ContentAddressDiscriminants,
-    edge_weight::{EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants},
+    edge_weight::{EdgeWeight, EdgeWeightKindDiscriminants},
     graph::{LineageId, WorkspaceSnapshotGraphDiscriminants},
     node_weight::{category_node_weight::CategoryNodeKind, NodeWeight},
 };
@@ -46,7 +45,9 @@ use crate::{
     workspace_snapshot::{graph::WorkspaceSnapshotGraphError, node_weight::NodeWeightError},
     DalContext, TransactionsError, WorkspaceSnapshotGraphVCurrent,
 };
-use crate::{ComponentError, ComponentId, SchemaVariantId, TenancyError, WorkspaceError};
+use crate::{
+    ComponentError, ComponentId, SchemaVariantError, SchemaVariantId, TenancyError, WorkspaceError,
+};
 
 use self::node_weight::{NodeWeightDiscriminants, OrderingNodeWeight};
 
@@ -139,6 +140,8 @@ pub enum WorkspaceSnapshotError {
     Postcard(#[from] postcard::Error),
     #[error("recently seen clocks missing for change set id {0}")]
     RecentlySeenClocksMissing(ChangeSetId),
+    #[error("SchemaVariant error: {0}")]
+    SchemaVariant(#[from] Box<SchemaVariantError>),
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("slow runtime error: {0}")]
@@ -1242,27 +1245,6 @@ impl WorkspaceSnapshot {
         .await??)
     }
 
-    /// Mark whether a prop can be used as an input to a function. Props below
-    /// Maps and Arrays are not valid inputs. Must only be used when
-    /// "finalizing" a schema variant!
-    pub async fn mark_prop_as_able_to_be_used_as_prototype_arg(
-        &self,
-        id: impl Into<Ulid>,
-    ) -> WorkspaceSnapshotResult<()> {
-        let node_index = self.get_node_index_by_id(id).await?;
-        self.working_copy_mut()
-            .await
-            .update_node_weight(node_index, |node_weight| match node_weight {
-                NodeWeight::Prop(prop_inner) => {
-                    prop_inner.set_can_be_used_as_prototype_arg(true);
-                    Ok(())
-                }
-                _ => Err(WorkspaceSnapshotGraphError::IncompatibleNodeTypes)?,
-            })?;
-
-        Ok(())
-    }
-
     pub async fn ordering_node_for_container(
         &self,
         id: impl Into<Ulid>,
@@ -1369,23 +1351,5 @@ impl WorkspaceSnapshot {
     pub async fn clear_inferred_connection_graph(&self) {
         let mut inferred_connection_write_guard = self.inferred_connection_graph.write().await;
         *inferred_connection_write_guard = None;
-    }
-
-    pub async fn map_all_nodes_to_change_objects(&self) -> WorkspaceSnapshotResult<Vec<Change>> {
-        use crate::workspace_snapshot::graph::traits::entity_kind::EntityKindExt as _;
-
-        let mut changes = Vec::new();
-        for node_weight in self.nodes().await? {
-            changes.push(Change {
-                entity_id: node_weight.id().into(),
-                entity_kind: self
-                    .working_copy()
-                    .await
-                    .get_entity_kind_for_id(node_weight.id().into())?,
-                merkle_tree_hash: node_weight.merkle_tree_hash(),
-            });
-        }
-
-        Ok(changes)
     }
 }

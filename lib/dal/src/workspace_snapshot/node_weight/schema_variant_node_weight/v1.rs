@@ -7,7 +7,9 @@ use serde::{Deserialize, Serialize};
 use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
 
 use super::{SchemaVariantNodeWeight, SchemaVariantNodeWeightError, SchemaVariantNodeWeightResult};
-use crate::workspace_snapshot::graph::WorkspaceSnapshotGraphV3;
+use crate::workspace_snapshot::{
+    content_address::ContentAddressDiscriminants, graph::WorkspaceSnapshotGraphV3,
+};
 use crate::{
     layer_db_types::{SchemaVariantContent, SchemaVariantContentV3},
     workspace_snapshot::{
@@ -18,7 +20,6 @@ use crate::{
             traits::{CorrectExclusiveOutgoingEdge, CorrectTransforms, SiNodeWeight},
             ContentNodeWeight, NodeWeight, NodeWeightDiscriminants, NodeWeightError,
         },
-        ContentAddressDiscriminants,
     },
     DalContext, EdgeWeightKindDiscriminants, SchemaId, SchemaVariantError, SchemaVariantId,
     Timestamp, WorkspaceSnapshotGraphVCurrent,
