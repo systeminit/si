@@ -82,6 +82,7 @@ impl Server {
         token: CancellationToken,
     ) -> ServerResult<(Self, Option<HeartbeatApp>)> {
         let nats = Self::connect_to_nats(&config).await?;
+        let nats_jetstream = Self::connect_to_nats(&config).await?;
 
         let metadata = Arc::new(ServerMetadata {
             instance_id: config.instance_id().into(),
@@ -153,6 +154,7 @@ impl Server {
                     Arc::new(decryption_key),
                     config.cyclone_client_execution_timeout(),
                     nats.clone(),
+                    nats_jetstream.clone(),
                     kill_senders.clone(),
                     token.clone(),
                 )
@@ -224,16 +226,20 @@ impl Server {
         decryption_key: Arc<VeritechDecryptionKey>,
         cyclone_client_execution_timeout: Duration,
         nats: NatsClient,
+        jetstream_nats: NatsClient,
         kill_senders: Arc<Mutex<HashMap<ExecutionId, oneshot::Sender<()>>>>,
         token: CancellationToken,
     ) -> ServerResult<Box<dyn Future<Output = io::Result<()>> + Unpin + Send>> {
-        let connection_metadata = nats.metadata_clone();
+        let connection_metadata = jetstream_nats.metadata_clone();
 
         // Take the *active* subject prefix from the connected NATS client
-        let prefix = nats.metadata().subject_prefix().map(|s| s.to_owned());
+        let prefix = jetstream_nats
+            .metadata()
+            .subject_prefix()
+            .map(|s| s.to_owned());
 
         let incoming = {
-            let context = jetstream::new(nats.clone());
+            let context = jetstream::new(jetstream_nats);
             veritech_work_queue(&context, prefix.as_deref())
                 .await?
                 .create_consumer(Self::incoming_consumer_config(prefix.as_deref()))
