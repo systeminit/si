@@ -17,6 +17,7 @@ use crate::{
     },
     billing_publish,
     change_status::ChangeStatus,
+    func::runner::FuncRunner,
     job::{
         consumer::{
             JobCompletionState, JobConsumer, JobConsumerError, JobConsumerMetadata,
@@ -334,15 +335,10 @@ async fn process_failed_action(ctx: &DalContext, action_id: ActionId) -> JobCons
 
     Action::set_state(ctx, action_id, ActionState::Failed).await?;
 
-    ctx.layer_db()
-        .func_run()
-        .set_action_result_state_for_action_id(
-            action_id,
-            ActionResultState::Failure,
-            ctx.events_tenancy(),
-            ctx.events_actor(),
-        )
-        .await?;
+    FuncRunner::update_run_for_action_id(ctx, action_id, |func_run| {
+        func_run.set_action_result_state(Some(ActionResultState::Failure))
+    })
+    .await?;
 
     ctx.commit().await?;
     Ok(())

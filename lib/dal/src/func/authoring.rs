@@ -299,16 +299,10 @@ impl FuncAuthoringClient {
         };
 
         if !is_intrinsic {
-            ctx.layer_db()
-                .func_run()
-                .set_values_and_set_state_to_success(
-                    func_run_value.func_run_id(),
-                    unprocessed_value_address,
-                    value_address,
-                    ctx.events_tenancy(),
-                    ctx.events_actor(),
-                )
-                .await?;
+            FuncRunner::update_run(ctx, func_run_value.func_run_id(), |func_run| {
+                func_run.set_success(unprocessed_value_address, value_address);
+            })
+            .await?;
         }
 
         Ok(func_run_id)

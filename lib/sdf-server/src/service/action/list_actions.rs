@@ -68,7 +68,7 @@ pub async fn list_actions(
         let func_run_id = ctx
             .layer_db()
             .func_run()
-            .get_last_run_for_action_id(ctx.events_tenancy().workspace_pk, action.id())
+            .get_last_run_for_action_id_opt(ctx.events_tenancy().workspace_pk, action.id())
             .await?
             .map(|f| f.id());
 

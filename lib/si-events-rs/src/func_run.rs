@@ -211,10 +211,6 @@ pub struct FuncRun {
 }
 
 impl FuncRun {
-    pub fn builder() -> FuncRunBuilder {
-        FuncRunBuilder::default()
-    }
-
     /// NOTE: We are also using this to record the success or failure state of a
     /// management function. Extending the ActionResult state should be fine as
     /// long as the three existing states remain (and we can't remove them or
@@ -224,47 +220,20 @@ impl FuncRun {
         self.updated_at = Utc::now();
     }
 
-    pub fn set_result_value_cas_address(&mut self, value: Option<ContentHash>) {
-        self.result_value_cas_address = value;
-        self.updated_at = Utc::now();
-    }
-
-    pub fn set_result_unprocessed_value_cas_address(
+    pub fn set_success(
         &mut self,
         unprocessed_value: Option<ContentHash>,
+        value: Option<ContentHash>,
     ) {
         self.result_unprocessed_value_cas_address = unprocessed_value;
-        self.updated_at = Utc::now();
-    }
-
-    pub fn set_state_to_dispatched(&mut self) {
-        self.updated_at = Utc::now();
-        self.state = FuncRunState::Dispatched;
-    }
-
-    pub fn set_state_to_running(&mut self) {
-        self.updated_at = Utc::now();
-        self.state = FuncRunState::Running;
-    }
-
-    pub fn set_state_to_post_processing(&mut self) {
-        self.updated_at = Utc::now();
-        self.state = FuncRunState::PostProcessing;
-    }
-
-    pub fn set_state_to_success(&mut self) {
-        self.updated_at = Utc::now();
+        self.result_value_cas_address = value;
         self.state = FuncRunState::Success;
+        self.updated_at = Utc::now();
     }
 
-    pub fn set_state_to_failure(&mut self) {
+    pub fn set_state(&mut self, state: FuncRunState) {
         self.updated_at = Utc::now();
-        self.state = FuncRunState::Failure;
-    }
-
-    pub fn set_state_to_killed(&mut self) {
-        self.updated_at = Utc::now();
-        self.state = FuncRunState::Killed;
+        self.state = state;
     }
 
     pub fn id(&self) -> FuncRunId {

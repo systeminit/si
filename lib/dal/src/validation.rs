@@ -3,6 +3,7 @@ use joi_validator::Validator;
 use serde::{Deserialize, Serialize};
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
+use si_events::FuncRunState;
 use si_layer_cache::LayerDbError;
 use std::collections::VecDeque;
 use std::sync::Arc;
@@ -394,14 +395,10 @@ async fn run_remotely(
         None => None,
     };
 
-    ctx.layer_db()
-        .func_run()
-        .set_state_to_success(
-            func_result_value.func_run_id(),
-            ctx.events_tenancy(),
-            ctx.events_actor(),
-        )
-        .await?;
+    FuncRunner::update_run(ctx, func_result_value.func_run_id(), |func_run| {
+        func_run.set_state(FuncRunState::Success)
+    })
+    .await?;
 
     Ok(ValidationOutput {
         status: match message {

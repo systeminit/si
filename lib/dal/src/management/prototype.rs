@@ -543,17 +543,11 @@ impl ManagementPrototype {
             })
             .unwrap_or(si_events::ActionResultState::Unknown);
 
-        ctx.layer_db()
-            .func_run()
-            .set_management_result_success(
-                func_run_id,
-                action_state,
-                None,
-                maybe_value_address,
-                ctx.events_tenancy(),
-                ctx.events_actor(),
-            )
-            .await?;
+        FuncRunner::update_run(ctx, func_run_id, |func_run| {
+            func_run.set_success(None, maybe_value_address);
+            func_run.set_action_result_state(Some(action_state));
+        })
+        .await?;
 
         // We publish this immediately because the management "operator" could
         // fail because of a bad function, but we stil want to know that the

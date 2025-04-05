@@ -110,8 +110,7 @@ async fn detach_attach_then_delete_action_func_while_enqueued(ctx: &mut DalConte
             .func_run()
             .get_last_run_for_action_id(ctx.events_tenancy().workspace_pk, action.id())
             .await
-            .expect("unable to get func run id")
-            .map(|f| f.id());
+            .expect("unable to get func run id");
         let _component_id = Action::component_id(ctx, action_id)
             .await
             .expect("unable to get component id");
