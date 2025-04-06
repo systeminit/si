@@ -215,9 +215,6 @@
       "blue-green-deployment"
     ]
   },
-  "This is a legacy property, and it is not recommended for most use cases. A majority of modern use cases in Amazon S3 no longer require the use of ACLs, and we recommend that you keep ACLs disabled. For more information, see [Controlling object ownership](https://docs.aws.amazon.com//AmazonS3/latest/userguide/about-object-ownership.html) in the *Amazon S3 User Guide*.\n  A canned access control list (ACL) that grants predefined permissions to the bucket. For more information about canned ACLs, see [Canned ACL](https://docs.aws.amazon.com/AmazonS3/latest/dev/acl-overview.html#canned-acl) in the *Amazon S3 User Guide*.\n  S3 buckets are created with ACLs disabled by default. Therefore, unless you explicitly set the [AWS::S3::OwnershipControls](https://docs.aws.amazon.com//AWSCloudFormation/latest/UserGuide/aws-properties-s3-bucket-ownershipcontrols.html) property to enable ACLs, your resource will fail to deploy with any value other than Private. Use cases requiring ACLs are uncommon.\n  The majority of access control configurations can be successfully and more easily achieved with bucket policies. For more information, see [AWS::S3::BucketPolicy](https://docs.aws.amazon.com//AWSCloudFormation/latest/UserGuide/aws-properties-s3-policy.html). For examples of common policy configurations, including S3 Server Access Logs buckets and more, see [Bucket policy examples](https://docs.aws.amazon.com/AmazonS3/latest/userguide/example-bucket-policies.html) in the *Amazon S3 User Guide*.": {
-    "enum": []
-  },
   "The node type to be provisioned for the cluster.Valid Values: ds2.xlarge | ds2.8xlarge | dc1.large | dc1.8xlarge | dc2.large | dc2.8xlarge | ra3.4xlarge | ra3.16xlarge": {
     "enum": [
       "ds2.xlarge",
@@ -317,6 +314,15 @@
     ]
   },
   "The storage type to associate with the DB instance.\n If you specify ``io1``, ``io2``, or ``gp3``, you must also include a value for the ``Iops`` parameter.\n This setting doesn't apply to Amazon Aurora DB instances. Storage is managed by the DB cluster.\n Valid Values: ``gp2 | gp3 | io1 | io2 | standard`` \n Default: ``io1``, if the ``Iops`` parameter is specified. Otherwise, ``gp2``.": {
+    "enum": [
+      "gp2",
+      "gp3",
+      "io1",
+      "io2",
+      "standard"
+    ]
+  },
+  "The storage type to associate with the DB instance.\n If you specify ``io1``, ``io2``, or ``gp3``, you must also include a value for the ``Iops`` parameter.\n This setting doesn't apply to Amazon Aurora DB instances. Storage is managed by the DB cluster.\n Valid Values: ``gp2 | gp3 | io1 | io2 | standard`` \n Default: ``io1``, if the ``Iops`` parameter is specified. Otherwise, ``gp3``.": {
     "enum": [
       "gp2",
       "gp3",
@@ -497,6 +503,14 @@
       "PASSTHROUGH",
       "SCTE35_ENHANCED",
       "DATERANGE"
+    ]
+  },
+  "The type of data catalog to create: LAMBDA for a federated catalog, GLUE for AWS Glue Catalog, or HIVE for an external hive metastore. FEDERATED is a federated catalog for which Athena creates the connection and the Lambda function for you based on the parameters that you pass.": {
+    "enum": [
+      "LAMBDA",
+      "GLUE",
+      "HIVE",
+      "FEDERATED"
     ]
   },
   "When an item in the table is modified, ``StreamViewType`` determines what information is written to the stream for this table. Valid values for ``StreamViewType`` are:\n  +   ``KEYS_ONLY`` - Only the key attributes of the modified item are written to the stream.\n  +   ``NEW_IMAGE`` - The entire item, as it appears after it was modified, is written to the stream.\n  +   ``OLD_IMAGE`` - The entire item, as it appeared before it was modified, is written to the stream.\n  +   ``NEW_AND_OLD_IMAGES`` - Both the new and the old item images of the item are written to the stream.": {
@@ -877,6 +891,13 @@
       "EXTERNAL"
     ]
   },
+  "The status of the Anycast static IP list. Valid values: ``Deployed``, ``Deploying``, or ``Failed``.": {
+    "enum": [
+      "Deployed",
+      "Deploying",
+      "Failed"
+    ]
+  },
   "Specifies whether the ``Value`` parameter represents days, months, or years.": {
     "enum": [
       "DAY",
@@ -1161,6 +1182,12 @@
     ]
   },
   "Enables or disables the HTTP metadata endpoint on your instances. If the parameter is not specified, the default state is ``enabled``.\n  If you specify a value of ``disabled``, you will not be able to access your instance metadata.": {
+    "enum": [
+      "enabled",
+      "disabled"
+    ]
+  },
+  "Set to ``enabled`` to allow access to instance tags from the instance metadata. Set to ``disabled`` to turn off access to instance tags from the instance metadata. For more information, see [View tags for your EC2 instances using instance metadata](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/work-with-tags-in-IMDS.html).\n Default: ``disabled``": {
     "enum": [
       "enabled",
       "disabled"
@@ -1460,6 +1487,12 @@
       "PAY_PER_REQUEST"
     ]
   },
+  "Specify how you are charged for read and write throughput and how you manage capacity.\n Valid values include:\n  +   ``PAY_PER_REQUEST`` - We recommend using ``PAY_PER_REQUEST`` for most DynamoDB workloads. ``PAY_PER_REQUEST`` sets the billing mode to [On-demand capacity mode](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/on-demand-capacity-mode.html). \n  +   ``PROVISIONED`` - We recommend using ``PROVISIONED`` for steady workloads with predictable growth where capacity requirements can be reliably forecasted. ``PROVISIONED`` sets the billing mode to [Provisioned capacity mode](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/provisioned-capacity-mode.html).\n  \n If not specified, the default is ``PROVISIONED``.": {
+    "enum": [
+      "PAY_PER_REQUEST",
+      "PROVISIONED"
+    ]
+  },
   "The concurrency type of deploying StackSets operations in regions, could be in parallel or one region at a time": {
     "enum": [
       "PARALLEL",
@@ -1554,6 +1587,12 @@
     "enum": [
       "IPv4",
       "IPv6"
+    ]
+  },
+  "Cluster supports IPv4 endpoints and Dual-stack IPv4 and IPv6 endpoints. NetworkType can be IPV4 or DUALSTACK.": {
+    "enum": [
+      "IPV4",
+      "DUALSTACK"
     ]
   },
   "The network type of the DB cluster.\n Valid values:\n  +   ``IPV4`` \n  +   ``DUAL`` \n  \n The network type is determined by the ``DBSubnetGroup`` specified for the DB cluster. A ``DBSubnetGroup`` can support only the IPv4 protocol or the IPv4 and IPv6 protocols (``DUAL``).\n For more information, see [Working with a DB instance in a VPC](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/USER_VPC.WorkingWithRDSInstanceinaVPC.html) in the *Amazon Aurora User Guide.* \n Valid for: Aurora DB clusters only": {
@@ -1683,6 +1722,12 @@
     ]
   },
   "The status of the schedule. Supported values are ENABLED and DISABLED.": {
+    "enum": [
+      "ENABLED",
+      "DISABLED"
+    ]
+  },
+  "Whether the task's elastic network interface receives a public IP address. \n Consider the following when you set this value:\n  +  When you use ``create-service`` or ``update-service``, the default is ``DISABLED``. \n  +  When the service ``deploymentController`` is ``ECS``, the value must be ``DISABLED``.": {
     "enum": [
       "ENABLED",
       "DISABLED"
@@ -2017,6 +2062,9 @@
       "1.0.0"
     ]
   },
+  "This is a legacy property, and it is not recommended for most use cases. A majority of modern use cases in Amazon S3 no longer require the use of ACLs, and we recommend that you keep ACLs disabled. For more information, see [Controlling object ownership](https://docs.aws.amazon.com//AmazonS3/latest/userguide/about-object-ownership.html) in the *Amazon S3 User Guide*.\n  A canned access control list (ACL) that grants predefined permissions to the bucket. For more information about canned ACLs, see [Canned ACL](https://docs.aws.amazon.com/AmazonS3/latest/dev/acl-overview.html#canned-acl) in the *Amazon S3 User Guide*.\n  S3 buckets are created with ACLs disabled by default. Therefore, unless you explicitly set the [AWS::S3::OwnershipControls](https://docs.aws.amazon.com//AWSCloudFormation/latest/UserGuide/aws-properties-s3-bucket-ownershipcontrols.html) property to enable ACLs, your resource will fail to deploy with any value other than Private. Use cases requiring ACLs are uncommon.\n  The majority of access control configurations can be successfully and more easily achieved with bucket policies. For more information, see [AWS::S3::BucketPolicy](https://docs.aws.amazon.com//AWSCloudFormation/latest/UserGuide/aws-properties-s3-policy.html). For examples of common policy configurations, including S3 Server Access Logs buckets and more, see [Bucket policy examples](https://docs.aws.amazon.com/AmazonS3/latest/userguide/example-bucket-policies.html) in the *Amazon S3 User Guide*.": {
+    "enum": []
+  },
   " An indication of whether the entitlement is enabled.": {
     "enum": null
   },
@@ -2075,6 +2123,9 @@
     "enum": null
   },
   "<p>A display name for the logical table.</p>": {
+    "enum": null
+  },
+  "<p>A row number to start reading data from.</p>": {
     "enum": null
   },
   "<p>Amazon S3 bucket.</p>": {
@@ -2249,6 +2300,9 @@
     "enum": null
   },
   "<p>The date time after which refresh is to be scheduled</p>": {
+    "enum": null
+  },
+  "<p>The delimiter between values in the file.</p>": {
     "enum": null
   },
   "<p>The description for a field folder.</p>": {
@@ -2437,6 +2491,9 @@
   "A DB subnet group to associate with the DB instance. If you update this value, the new subnet group must be a subnet group in a new VPC. \n If there's no DB subnet group, then the DB instance isn't a VPC DB instance.\n For more information about using Amazon RDS in a VPC, see [Amazon VPC and Amazon RDS](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_VPC.html) in the *Amazon RDS User Guide*. \n This setting doesn't apply to Amazon Aurora DB instances. The DB subnet group is managed by the DB cluster. If specified, the setting must match the DB cluster setting.": {
     "enum": null
   },
+  "A DB subnet group to associate with the DB instance. If you update this value, the new subnet group must be a subnet group in a new VPC. \n If you don't specify a DB subnet group, RDS uses the default DB subnet group if one exists. If a default DB subnet group does not exist, and you don't specify a ``DBSubnetGroupName``, the DB instance fails to launch. \n For more information about using Amazon RDS in a VPC, see [Amazon VPC and Amazon RDS](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_VPC.html) in the *Amazon RDS User Guide*. \n This setting doesn't apply to Amazon Aurora DB instances. The DB subnet group is managed by the DB cluster. If specified, the setting must match the DB cluster setting.": {
+    "enum": null
+  },
   "A JSON string containing a Definition with the same schema as the Definition property of this resource": {
     "enum": null
   },
@@ -2567,6 +2624,9 @@
     "enum": null
   },
   "A description about the connector that's being registered.": {
+    "enum": null
+  },
+  "A description about the dataset, and its functionality.": {
     "enum": null
   },
   "A description for the AWS Verified Access endpoint.": {
@@ -3025,6 +3085,12 @@
   "A prefix for all log object keys. If you store log files from multiple Amazon S3 buckets in a single bucket, you can use a prefix to distinguish which log files came from which bucket.": {
     "enum": null
   },
+  "A prefix for the names of the NDI sources that the flow creates. If a custom name isn't specified, MediaConnect generates a unique 12-character ID as the prefix.": {
+    "enum": null
+  },
+  "A quality setting for the NDI Speed HQ encoder.": {
+    "enum": null
+  },
   "A readable identifier for an existing EC2 launch template.": {
     "enum": null
   },
@@ -3059,6 +3125,9 @@
     "enum": null
   },
   "A set of custom game session properties, formatted as a single string value.": {
+    "enum": null
+  },
+  "A setting that controls whether NDI outputs can be used in the flow. Must be ENABLED to add NDI outputs. Default is DISABLED.": {
     "enum": null
   },
   "A short string appended to the end of the OriginEndpoint URL.": {
@@ -3121,6 +3190,9 @@
   "A string that you provide, which is combined with the service-provided prefix to form the complete role name.": {
     "enum": null
   },
+  "A string value that you can use to conditionally update your policy. You can provide the revision ID of your existing policy to make mutating requests against that policy. \n\n When you assign a policy revision ID, then later requests about that policy will be rejected with an InvalidPolicyRevisionIdException error if they don't provide the correct current revision ID.": {
+    "enum": null
+  },
   "A subdirectory in the Amazon S3 bucket. This subdirectory in Amazon S3 is used to read data from the S3 source location or write data to the S3 destination.": {
     "enum": null
   },
@@ -3131,6 +3203,9 @@
     "enum": null
   },
   "A subdivision or unit of the organization (such as sales or finance) with which the certificate subject is affiliated.": {
+    "enum": null
+  },
+  "A suffix for the names of the NDI sources that the flow creates. If a custom name isn't specified, MediaConnect uses the output name.": {
     "enum": null
   },
   "A summary description of the connector.": {
@@ -3362,6 +3437,9 @@
     "enum": null
   },
   "AMP Workspace alias.": {
+    "enum": null
+  },
+  "ARN for Neptune Analytics graph database.": {
     "enum": null
   },
   "ARN for the AWS S3 bucket to use as the source of DAGs and plugins for the environment.": {
@@ -3622,6 +3700,9 @@
   "An S3 link to the job document to use in the template. Required if you don't specify a value for document.": {
     "enum": null
   },
+  "An S3 location that is used to store files that have failed a direct upload.": {
+    "enum": null
+  },
   "An SNS topic ARN that is set up to receive game session placement notifications.": {
     "enum": null
   },
@@ -3848,6 +3929,12 @@
     "enum": null
   },
   "AvailabilityZone": {
+    "enum": null
+  },
+  "BGP ASN of the Route Server Peer": {
+    "enum": null
+  },
+  "BGP Liveness Detection": {
     "enum": null
   },
   "Base64 encoded contents of connect-distributed.properties file.": {
@@ -4204,6 +4291,9 @@
   "Description of data source": {
     "enum": null
   },
+  "Description of the DataAutomationProject": {
+    "enum": null
+  },
   "Description of the Environment": {
     "enum": null
   },
@@ -4271,6 +4361,12 @@
     "enum": null
   },
   "Determine how will parsed content be stored.": {
+    "enum": null
+  },
+  "Determines the percentage of traces indexed from CloudWatch Logs to X-Ray": {
+    "enum": null
+  },
+  "Determines the processing capacity and feature set of the flow. Set this optional parameter to LARGE if you want to enable NDI outputs on the flow.": {
     "enum": null
   },
   "Determines the type of UTCTiming included in the Media Presentation Description (MPD)": {
@@ -4349,6 +4445,12 @@
     "enum": null
   },
   "Encryption mode": {
+    "enum": null
+  },
+  "Enrichment Strategy method.": {
+    "enum": null
+  },
+  "Enrichment type to be used for the vector database.": {
     "enum": null
   },
   "Enum specifying whether the profile is local or associated with a trading partner.": {
@@ -4609,6 +4711,9 @@
   "How often the data should be pulled from data source.": {
     "enum": null
   },
+  "How often to perform refresh operation (e.g. '1s', '5s')": {
+    "enum": null
+  },
   "How the auto-merging process should resolve conflicts between different profiles.": {
     "enum": null
   },
@@ -4639,6 +4744,9 @@
   "ID of Index": {
     "enum": null
   },
+  "ID of the Anycast static IP list that is associated with the distribution.": {
+    "enum": null
+  },
   "ID of the CoreNetwork that the attachment will be attached to.": {
     "enum": null
   },
@@ -4646,6 +4754,9 @@
     "enum": null
   },
   "IP Address type.": {
+    "enum": null
+  },
+  "IP address of the Route Server Peer": {
     "enum": null
   },
   "IPv4 address for the customer gateway device's outside interface. The address must be static. If ``OutsideIpAddressType`` in your VPN connection options is set to ``PrivateIpv4``, you can use an RFC6598 or RFC1918 private IPv4 address. If ``OutsideIpAddressType`` is set to ``PublicIpv4``, you can use a public IPv4 address.": {
@@ -4879,13 +4990,22 @@
   "Indicates whether to enable or disable host recovery for the Dedicated Host. Host recovery is disabled by default.": {
     "enum": null
   },
+  "Indicates whether to enable the instance for AMD SEV-SNP. AMD SEV-SNP is supported with M6a, R6a, and C6a instance types only. For more information, see [AMD SEV-SNP for Amazon EC2 instances](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/sev-snp.html).": {
+    "enum": null
+  },
   "Indicates whether to enable the instance for AMD SEV-SNP. AMD SEV-SNP is supported with M6a, R6a, and C6a instance types only. For more information, see [AMD SEV-SNP](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/sev-snp.html).": {
     "enum": null
   },
   "Indicates whether to evaluate inbound security group rules for traffic sent to a Network Load Balancer through privatelink.": {
     "enum": null
   },
+  "Indicates whether to evaluate inbound security group rules for traffic sent to a Network Load Balancer through privatelink. The default is ``on``.": {
+    "enum": null
+  },
   "Indicates whether to use Availability Zone rebalancing for the service.\n For more information, see [Balancing an Amazon ECS service across Availability Zones](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/service-rebalancing.html) in the *Amazon Elastic Container Service Developer Guide*.": {
+    "enum": null
+  },
+  "Indicates whether trust store CA certificate names are advertised.": {
     "enum": null
   },
   "Information about the order in which events are evaluated and how actions are executed.": {
@@ -4963,6 +5083,9 @@
   "KMS key Arn for encrypting artifacts when uploading to S3. You must specify KMS key Arn for SSE_KMS encryption mode only.": {
     "enum": null
   },
+  "KMS key identifier": {
+    "enum": null
+  },
   "KMS key used to encrypt customer data within FinSpace Environment infrastructure": {
     "enum": null
   },
@@ -5027,6 +5150,9 @@
     "enum": null
   },
   "Location of file containing the template body. The URL must point to a template (max size: 460,800 bytes) that is located in an Amazon S3 bucket.": {
+    "enum": null
+  },
+  "Location of the access logs.": {
     "enum": null
   },
   "Log group  selection criteria to apply policy only to a subset of log groups. SelectionCriteria string can be up to 25KB and cloudwatchlogs determines the length of selectionCriteria by using its UTF-8 bytes": {
@@ -5113,6 +5239,9 @@
   "Maximum number of files": {
     "enum": null
   },
+  "Maximum number of pages the crawler can crawl.": {
+    "enum": null
+  },
   "Maximum number of read request units for the specified table.\n To specify a maximum ``OnDemandThroughput`` on your table, set the value of ``MaxReadRequestUnits`` as greater than or equal to 1. To remove the maximum ``OnDemandThroughput`` that is currently set on your table, set the value of ``MaxReadRequestUnits`` to -1.": {
     "enum": null
   },
@@ -5180,6 +5309,9 @@
     "enum": null
   },
   "Minimum worker compute units.": {
+    "enum": null
+  },
+  "Modality Type": {
     "enum": null
   },
   "Mode in which data transfer should be enabled. Private connection mode is currently enabled for Salesforce, Snowflake, Trendmicro and Singular": {
@@ -5335,7 +5467,13 @@
   "Name of the Amazon S3 bucket where chat activity will be logged.": {
     "enum": null
   },
+  "Name of the Blueprint": {
+    "enum": null
+  },
   "Name of the Cluster": {
+    "enum": null
+  },
+  "Name of the DataAutomationProject": {
     "enum": null
   },
   "Name of the Environment": {
@@ -5869,6 +6007,15 @@
   "Role associated with the device fleet": {
     "enum": null
   },
+  "Route Server Endpoint ID": {
+    "enum": null
+  },
+  "Route Server ID": {
+    "enum": null
+  },
+  "Route Table ID": {
+    "enum": null
+  },
   "Rule number to assign to the entry, such as 100. ACL entries are processed in ascending order by rule number. Entries can't use the same rule number unless one is an egress rule and the other is an ingress rule": {
     "enum": null
   },
@@ -6028,6 +6175,9 @@
   "Size of the Lightsail disk": {
     "enum": null
   },
+  "Size of the dynamic list for the nearest neighbors": {
+    "enum": null
+  },
   "Source Code Version Type": {
     "enum": null
   },
@@ -6059,6 +6209,21 @@
     "enum": null
   },
   "Specifies a favicon to display in the browser tab.": {
+    "enum": null
+  },
+  "Specifies a location to store the MDN file for an AS2 message.": {
+    "enum": null
+  },
+  "Specifies a location to store the failed files for an AS2 message.": {
+    "enum": null
+  },
+  "Specifies a location to store the payload file for an AS2 message.": {
+    "enum": null
+  },
+  "Specifies a location to store the status file for an AS2 message.": {
+    "enum": null
+  },
+  "Specifies a location to store the temporary processing file for an AS2 message.": {
     "enum": null
   },
   "Specifies a log group name using an Amazon Resource Name (ARN), a unique identifier that represents the log group to which CloudTrail logs will be delivered. Not required unless you specify CloudWatchLogsRoleArn.": {
@@ -6211,6 +6376,9 @@
   "Specifies the duration of each calendar interval. For example, if `Duration` is 1 and `DurationUnit` is `MONTH`, each interval is one month, aligned with the calendar.": {
     "enum": null
   },
+  "Specifies the duration of each interval. For example, if `Duration` is 1 and `DurationUnit` is `MONTH`, each interval is one month, aligned with the calendar.": {
+    "enum": null
+  },
   "Specifies the duration, in seconds, that the ReceiveMessage action call waits until a message is in the queue in order to include it in the response, rather than returning an empty response if a message isn't yet available. You can specify an integer from 1 to 20. Short polling is used as the default or when you specify 0 for this property. For more information, see [Consuming messages using long polling](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-short-and-long-polling.html#sqs-long-polling) in the *Developer Guide*.": {
     "enum": null
   },
@@ -6251,6 +6419,9 @@
     "enum": null
   },
   "Specifies the integration's HTTP method type.": {
+    "enum": null
+  },
+  "Specifies the interval unit.": {
     "enum": null
   },
   "Specifies the launch type on which your task is running. The launch type that you specify here must match one of the launch type (compatibilities) of the target task. The FARGATE value is supported only in the Regions where AWS Fargate with Amazon ECS is supported. For more information, see AWS Fargate on Amazon ECS in the Amazon Elastic Container Service Developer Guide.": {
@@ -6320,6 +6491,9 @@
     "enum": null
   },
   "Specifies the percentage of user sessions to use for RUM data collection. Choosing a higher percentage gives you more data but also incurs more costs. The number you specify is the percentage of user sessions that will be used. If you omit this parameter, the default of 10 is used.": {
+    "enum": null
+  },
+  "Specifies the performance options of your instance or sets it to default.": {
     "enum": null
   },
   "Specifies the platform version for the task. Specify only the numeric portion of the platform version, such as 1.1.0.": {
@@ -6395,6 +6569,9 @@
     "enum": null
   },
   "Specifies whether IAM Identity Center user assignment is REQUIRED or OPTIONAL. If the value is set to REQUIRED, users must be explicitly assigned to the Studio application to access the Studio.": {
+    "enum": null
+  },
+  "Specifies whether JavaScript error stack traces should be unminified for this app monitor. The default is for JavaScript error stack trace unminification to be DISABLED": {
     "enum": null
   },
   "Specifies whether the Studio authenticates users using single sign-on (SSO) or IAM. Amazon EMR Studio currently only supports SSO authentication.": {
@@ -6514,6 +6691,9 @@
   "String used to prefix all data in the bucket.": {
     "enum": null
   },
+  "Subnet ID": {
+    "enum": null
+  },
   "Subnet must be in the AZ of the Flow": {
     "enum": null
   },
@@ -6533,6 +6713,9 @@
     "enum": null
   },
   "Tenancy": {
+    "enum": null
+  },
+  "Text of the error that occurred during data catalog creation or deletion.": {
     "enum": null
   },
   "The 12-digit account ID of the AWS account that owns the domain.": {
@@ -6694,6 +6877,9 @@
   "The ARN of the Capacity Reservation resource group in which to run the instance.": {
     "enum": null
   },
+  "The ARN of the CloudFront VPC origin endpoint configuration.": {
+    "enum": null
+  },
   "The ARN of the Direct Connect Gateway.": {
     "enum": null
   },
@@ -6707,6 +6893,9 @@
     "enum": null
   },
   "The ARN of the IAM Identity Center instance.": {
+    "enum": null
+  },
+  "The ARN of the IAM role associated with the pull through cache rule.": {
     "enum": null
   },
   "The ARN of the IAM role for Identity Center application.": {
@@ -7027,6 +7216,9 @@
   "The AWS KMS Key ID (KMSKeyId) used for encryption of model package information.": {
     "enum": null
   },
+  "The AWS KMS customer managed key used to encrypt the data associated with the PartnerApp.": {
+    "enum": null
+  },
   "The AWS KMS customer master key (CMK) that should be used for the AWS KMS encryption. To specify a CMK, use its key ID, Amazon Resource Name (ARN), alias name, or alias ARN. ": {
     "enum": null
   },
@@ -7261,6 +7453,9 @@
   "The Amazon Resource Name (ARN) for the table bucket that's specified as the destination in the metadata table configuration. The destination table bucket must be in the same Region and AWS account as the general purpose bucket.": {
     "enum": null
   },
+  "The Amazon Resource Name (ARN) for the table bucket that's specified as the destination in the metadata table configuration. The destination table bucket must be in the same Region and AWS-account as the general purpose bucket.": {
+    "enum": null
+  },
   "The Amazon Resource Name (ARN) of a role with permission to access the data source being used for the inference.": {
     "enum": null
   },
@@ -7331,6 +7526,9 @@
     "enum": null
   },
   "The Amazon Resource Name (ARN) of the Amazon Web Services Outpost on which to allocate the Dedicated Host.": {
+    "enum": null
+  },
+  "The Amazon Resource Name (ARN) of the Anycast static IP list.": {
     "enum": null
   },
   "The Amazon Resource Name (ARN) of the App Runner ObservabilityConfiguration.": {
@@ -7573,6 +7771,9 @@
   "The Amazon Resource Name (ARN) of the service.": {
     "enum": null
   },
+  "The Amazon Resource Name (ARN) of the snapshot to restore from.": {
+    "enum": null
+  },
   "The Amazon Resource Name (ARN) of the source DB instance or DB cluster if this DB cluster is created as a read replica.\n Valid for: Aurora DB clusters only": {
     "enum": null
   },
@@ -7732,6 +7933,9 @@
   "The Amazon Simple Storage Service (Amazon S3) path where the sample payload are stored pointing to single gzip compressed tar archive.": {
     "enum": null
   },
+  "The Amazon Web Services account that owns the snapshot.": {
+    "enum": null
+  },
   "The Amazon resource name (ARN) for a customer managed key (CMK) in AWS Key Management Service (KMS). The KeyManagementServiceArn must be unique for each key signing key (KSK) in a single hosted zone.": {
     "enum": null
   },
@@ -7745,6 +7949,9 @@
     "enum": null
   },
   "The Amazon resource name of the billing view. You can get this value by using the billing view service public APIs.": {
+    "enum": null
+  },
+  "The Amazon-side ASN of the Route Server.": {
     "enum": null
   },
   "The App type that the Lifecycle Configuration is attached to.": {
@@ -7930,10 +8137,16 @@
   "The HTTP methods that are processed and forwarded to the distribution's origin.": {
     "enum": null
   },
+  "The HTTP port for the CloudFront VPC origin endpoint configuration. The default value is ``80``.": {
+    "enum": null
+  },
   "The HTTP port that CF uses to connect to the origin. Specify the HTTP port that the origin listens on.": {
     "enum": null
   },
   "The HTTPS method used for the notification subscription.": {
+    "enum": null
+  },
+  "The HTTPS port of the CloudFront VPC origin endpoint configuration. The default value is ``443``.": {
     "enum": null
   },
   "The HTTPS port that CF uses to connect to the origin. Specify the HTTPS port that the origin listens on.": {
@@ -8120,6 +8333,9 @@
     "enum": null
   },
   "The ID of the Amazon Virtual Private Cloud (VPC) that Studio uses for communication.": {
+    "enum": null
+  },
+  "The ID of the Anycast static IP list.": {
     "enum": null
   },
   "The ID of the Availability Zone in which to create the volume. For example, ``us-east-1a``.": {
@@ -8692,6 +8908,9 @@
   "The JSON repository policy text to apply to the repository. For more information, see https://docs.aws.amazon.com/AmazonECR/latest/userguide/RepositoryPolicyExamples.html": {
     "enum": null
   },
+  "The JSON to use as the resource policy. The document can be up to 4 KB in size. ": {
+    "enum": null
+  },
   "The JWT claim that the provider uses to return your groups.": {
     "enum": null
   },
@@ -8726,6 +8945,9 @@
     "enum": null
   },
   "The KMS key with which the guardrail was encrypted at rest": {
+    "enum": null
+  },
+  "The Key ID of the private key to remove": {
     "enum": null
   },
   "The Kinesis Data Firehose delivery stream that is the destination for log delivery.": {
@@ -8830,6 +9052,9 @@
   "The S3 URI to an analysis configuration file": {
     "enum": null
   },
+  "The S3 bucket": {
+    "enum": null
+  },
   "The S3 bucket that contains the OpenAPI definition to import. Required if you specify a ``BodyS3Location`` for an API.": {
     "enum": null
   },
@@ -8842,6 +9067,9 @@
   "The S3 bucket where AWS delivers the report.": {
     "enum": null
   },
+  "The S3 key": {
+    "enum": null
+  },
   "The S3 key name of the location where Identity Resolution Jobs write result files.": {
     "enum": null
   },
@@ -8849,6 +9077,12 @@
     "enum": null
   },
   "The S3 sub prefix of a registered location in your S3 Access Grants instance": {
+    "enum": null
+  },
+  "The S3 version": {
+    "enum": null
+  },
+  "The S3Uri of the bucket or folder that stores the source map files. It is required if status is ENABLED.": {
     "enum": null
   },
   "The SNS Topic Amazon Resource Name (ARN) of the infrastructure configuration.": {
@@ -9388,6 +9622,9 @@
   "The conditions of the rule.": {
     "enum": null
   },
+  "The configValue for configuring audit checks.": {
+    "enum": null
+  },
   "The configuration data for the extension, in this account and region.": {
     "enum": null
   },
@@ -9793,6 +10030,9 @@
   "The description of the configuration.": {
     "enum": null
   },
+  "The description of the connection.": {
+    "enum": null
+  },
   "The description of the contact flow module.": {
     "enum": null
   },
@@ -10162,6 +10402,9 @@
   "The duration for which data must be stored in the memory store.": {
     "enum": null
   },
+  "The duration of persistent routes in minutes": {
+    "enum": null
+  },
   "The duration of the policy's cooldown period, in seconds. When a cooldown period is specified here, it overrides the default cooldown period defined for the Auto Scaling group.": {
     "enum": null
   },
@@ -10195,6 +10438,9 @@
   "The encryption method used": {
     "enum": null
   },
+  "The encryption setting for the SAML provider": {
+    "enum": null
+  },
   "The encryption type to use.": {
     "enum": null
   },
@@ -10211,6 +10457,9 @@
     "enum": null
   },
   "The endpoint for the application.": {
+    "enum": null
+  },
+  "The endpoint for the collection.": {
     "enum": null
   },
   "The endpoint.": {
@@ -10259,6 +10508,12 @@
     "enum": null
   },
   "The event integration description.": {
+    "enum": null
+  },
+  "The execution role ARN assumed by Hooks to invoke Lambda.": {
+    "enum": null
+  },
+  "The execution role ARN assumed by hooks to read Guard rules from S3 and write Guard outputs to S3.": {
     "enum": null
   },
   "The execution role for the space.": {
@@ -10334,6 +10589,9 @@
     "enum": null
   },
   "The format in which Lambda sends your function's application and system logs to CloudWatch. Select between plain text and structured JSON.": {
+    "enum": null
+  },
+  "The format of the dataset source associated with the dataset.": {
     "enum": null
   },
   "The format of the key pair.\n Default: ``pem``": {
@@ -10612,6 +10870,12 @@
   "The identifier of the default outbound queue for this routing profile.": {
     "enum": null
   },
+  "The identifier of the domain in which the connection is created.": {
+    "enum": null
+  },
+  "The identifier of the environment in which the connection is created.": {
+    "enum": null
+  },
   "The identifier of the function's [runtime](https://docs.aws.amazon.com/lambda/latest/dg/lambda-runtimes.html). Runtime is required if the deployment package is a .zip file archive. Specifying a runtime results in an error if you're deploying a function using a container image.\n The following list includes deprecated runtimes. Lambda blocks creating new functions and updating existing functions shortly after each runtime is deprecated. For more information, see [Runtime use after deprecation](https://docs.aws.amazon.com/lambda/latest/dg/lambda-runtimes.html#runtime-deprecation-levels).\n For a list of all currently supported runtimes, see [Supported runtimes](https://docs.aws.amazon.com/lambda/latest/dg/lambda-runtimes.html#runtimes-supported).": {
     "enum": null
   },
@@ -10684,6 +10948,9 @@
   "The index name of a fleet metric": {
     "enum": null
   },
+  "The inline json job document associated with a software package version": {
+    "enum": null
+  },
   "The instance port where you're creating your load balancer.": {
     "enum": null
   },
@@ -10750,6 +11017,9 @@
   "The kinds of databases that the proxy can connect to.": {
     "enum": null
   },
+  "The knowledgeBaseArn details for the Kendra dataset source.": {
+    "enum": null
+  },
   "The label description.": {
     "enum": null
   },
@@ -10757,6 +11027,9 @@
     "enum": null
   },
   "The last name. This is required if you are using Amazon Connect or SAML for identity management.": {
+    "enum": null
+  },
+  "The last time the Anycast static IP list was modified.": {
     "enum": null
   },
   "The latest scheduled start time to return. If scheduled action names are provided, this parameter is ignored.": {
@@ -10994,6 +11267,9 @@
     "enum": null
   },
   "The maximum hourly price you are willing to pay for any Spot Instances launched to fulfill the request.": {
+    "enum": null
+  },
+  "The maximum hourly price you're willing to pay for a Spot Instance. We do not recommend using this parameter because it can lead to increased interruptions. If you do not specify this parameter, you will pay the current Spot price. If you do specify this parameter, it must be more than USD $0.001. Specifying a value below USD $0.001 will result in an ``InvalidParameterValue`` error message when the launch template is used to launch an instance.\n  If you specify a maximum price, your Spot Instances will be interrupted more frequently than if you do not specify this parameter.": {
     "enum": null
   },
   "The maximum hourly price you're willing to pay for the Spot Instances. We do not recommend using this parameter because it can lead to increased interruptions. If you do not specify this parameter, you will pay the current Spot price.\n  If you specify a maximum price, your Spot Instances will be interrupted more frequently than if you do not specify this parameter.": {
@@ -11308,6 +11584,9 @@
   "The mobile phone number.": {
     "enum": null
   },
+  "The mode of Database Insights to enable for the DB cluster.\n If you set this value to ``advanced``, you must also set the ``PerformanceInsightsEnabled`` parameter to ``true`` and the ``PerformanceInsightsRetentionPeriod`` parameter to 465.\n Valid for Cluster Type: Aurora DB clusters and Multi-AZ DB clusters": {
+    "enum": null
+  },
   "The mode of Database Insights to enable for the DB cluster.\n If you set this value to ``advanced``, you must also set the ``PerformanceInsightsEnabled`` parameter to ``true`` and the ``PerformanceInsightsRetentionPeriod`` parameter to 465.\n Valid for Cluster Type: Aurora DB clusters only": {
     "enum": null
   },
@@ -11339,6 +11618,9 @@
     "enum": null
   },
   "The name for a AWS source. This must be a Regionally unique value.": {
+    "enum": null
+  },
+  "The name for the DB subnet group. This value is stored as a lowercase string.\n\nConstraints: Must contain no more than 255 lowercase alphanumeric characters or hyphens. Must not be \"Default\".\n\nExample: mysubnetgroup\n\n": {
     "enum": null
   },
   "The name for the DB subnet group. This value is stored as a lowercase string.\n Constraints:\n  +  Must contain no more than 255 letters, numbers, periods, underscores, spaces, or hyphens.\n  +  Must not be default.\n  +  First character must be a letter.\n  \n Example: ``mydbsubnetgroup``": {
@@ -11390,6 +11672,9 @@
     "enum": null
   },
   "The name for the metadata table in your metadata table configuration. The specified metadata table name must be unique within the <code>aws_s3_metadata</code> namespace in the destination table bucket.": {
+    "enum": null
+  },
+  "The name for the metadata table in your metadata table configuration. The specified metadata table name must be unique within the ``aws_s3_metadata`` namespace in the destination table bucket.": {
     "enum": null
   },
   "The name for the new dataset group.": {
@@ -11548,6 +11833,9 @@
   "The name of the Amazon SageMaker Studio Lifecycle Configuration.": {
     "enum": null
   },
+  "The name of the Anycast static IP list.": {
+    "enum": null
+  },
   "The name of the AppSync API.": {
     "enum": null
   },
@@ -11558,6 +11846,9 @@
     "enum": null
   },
   "The name of the Auto Scaling group. This name must be unique per Region per account.\n The name can contain any ASCII character 33 to 126 including most punctuation characters, digits, and upper and lowercased letters.\n  You cannot use a colon (:) in the name.": {
+    "enum": null
+  },
+  "The name of the CloudFront VPC origin endpoint configuration.": {
     "enum": null
   },
   "The name of the CloudWatch alarm that you want Amazon Route 53 health checkers to use to determine whether this health check is healthy.": {
@@ -11647,6 +11938,9 @@
   "The name of the MatchingWorkflow": {
     "enum": null
   },
+  "The name of the Microsoft Teams channel": {
+    "enum": null
+  },
   "The name of the Multi Region Access Point to apply policy": {
     "enum": null
   },
@@ -11666,6 +11960,9 @@
     "enum": null
   },
   "The name of the ObservabilityAccessManager Sink.": {
+    "enum": null
+  },
+  "The name of the OpenSearch Serverless index.": {
     "enum": null
   },
   "The name of the Pipeline.": {
@@ -11893,6 +12190,9 @@
   "The name of the connection to the external metastore.": {
     "enum": null
   },
+  "The name of the connection.": {
+    "enum": null
+  },
   "The name of the connection. Connection names must be unique in an AWS user account.": {
     "enum": null
   },
@@ -11984,6 +12284,9 @@
     "enum": null
   },
   "The name of the database. For hive compatibility, this is folded to lowercase when it is stored.": {
+    "enum": null
+  },
+  "The name of the dataset.": {
     "enum": null
   },
   "The name of the dedicated IP pool to associate with the configuration set.": {
@@ -12850,6 +13153,9 @@
   "The number of I/O operations per second (IOPS). For ``gp3``, ``io1``, and ``io2`` volumes, this represents the number of IOPS that are provisioned for the volume. For ``gp2`` volumes, this represents the baseline performance of the volume and the rate at which the volume accumulates I/O credits for bursting.\n The following are the supported values for each volume type:\n  +   ``gp3``: 3,000 - 16,000 IOPS\n  +   ``io1``: 100 - 64,000 IOPS\n  +   ``io2``: 100 - 256,000 IOPS\n  \n For ``io2`` volumes, you can achieve up to 256,000 IOPS on [instances built on the Nitro System](https://docs.aws.amazon.com/ec2/latest/instancetypes/ec2-nitro-instances.html). On other instances, you can achieve performance up to 32,000 IOPS.\n This parameter is required for ``io1`` and ``io2`` volumes. The default for ``gp3`` volumes is 3,000 IOPS. This parameter is not supported for ``gp2``, ``st1``, ``sc1``, or ``standard`` volumes.": {
     "enum": null
   },
+  "The number of IP addresses in the Anycast static IP list.": {
+    "enum": null
+  },
   "The number of IPv4 prefixes to assign to a network interface. When you specify a number of IPv4 prefixes, Amazon EC2 selects these prefixes from your existing subnet CIDR reservations, if available, or from free spaces in the subnet. By default, these will be /28 prefixes. You can't specify a count of IPv4 prefixes if you've specified one of the following: specific IPv4 prefixes, specific private IPv4 addresses, or a count of private IPv4 addresses.": {
     "enum": null
   },
@@ -12869,6 +13175,9 @@
     "enum": null
   },
   "The number of ``cpu`` units used by the task. If you use the EC2 launch type, this field is optional. Any value can be used. If you use the Fargate launch type, this field is required. You must use one of the following values. The value that you choose determines your range of valid values for the ``memory`` parameter.\n If you use the EC2 launch type, this field is optional. Supported values are between ``128`` CPU units (``0.125`` vCPUs) and ``10240`` CPU units (``10`` vCPUs).\n The CPU units cannot be less than 1 vCPU when you use Windows containers on Fargate.\n  +  256 (.25 vCPU) - Available ``memory`` values: 512 (0.5 GB), 1024 (1 GB), 2048 (2 GB)\n  +  512 (.5 vCPU) - Available ``memory`` values: 1024 (1 GB), 2048 (2 GB), 3072 (3 GB), 4096 (4 GB)\n  +  1024 (1 vCPU) - Available ``memory`` values: 2048 (2 GB), 3072 (3 GB), 4096 (4 GB), 5120 (5 GB), 6144 (6 GB), 7168 (7 GB), 8192 (8 GB)\n  +  2048 (2 vCPU) - Available ``memory`` values: 4096 (4 GB) and 16384 (16 GB) in increments of 1024 (1 GB)\n  +  4096 (4 vCPU) - Available ``memory`` values: 8192 (8 GB) and 30720 (30 GB) in increments of 1024 (1 GB)\n  +  8192 (8 vCPU) - Available ``memory`` values: 16 GB and 60 GB in 4 GB increments\n This option requires Linux platform ``1.4.0`` or later.\n  +  16384 (16vCPU) - Available ``memory`` values: 32GB and 120 GB in 8 GB increments\n This option requires Linux platform ``1.4.0`` or later.": {
+    "enum": null
+  },
+  "The number of ``cpu`` units used by the task. If you use the EC2 launch type, this field is optional. Any value can be used. If you use the Fargate launch type, this field is required. You must use one of the following values. The value that you choose determines your range of valid values for the ``memory`` parameter.\n If you're using the EC2 launch type or the external launch type, this field is optional. Supported values are between ``128`` CPU units (``0.125`` vCPUs) and ``196608`` CPU units (``192`` vCPUs). The CPU units cannot be less than 1 vCPU when you use Windows containers on Fargate.\n  +  256 (.25 vCPU) - Available ``memory`` values: 512 (0.5 GB), 1024 (1 GB), 2048 (2 GB)\n  +  512 (.5 vCPU) - Available ``memory`` values: 1024 (1 GB), 2048 (2 GB), 3072 (3 GB), 4096 (4 GB)\n  +  1024 (1 vCPU) - Available ``memory`` values: 2048 (2 GB), 3072 (3 GB), 4096 (4 GB), 5120 (5 GB), 6144 (6 GB), 7168 (7 GB), 8192 (8 GB)\n  +  2048 (2 vCPU) - Available ``memory`` values: 4096 (4 GB) and 16384 (16 GB) in increments of 1024 (1 GB)\n  +  4096 (4 vCPU) - Available ``memory`` values: 8192 (8 GB) and 30720 (30 GB) in increments of 1024 (1 GB)\n  +  8192 (8 vCPU) - Available ``memory`` values: 16 GB and 60 GB in 4 GB increments\n This option requires Linux platform ``1.4.0`` or later.\n  +  16384 (16vCPU) - Available ``memory`` values: 32GB and 120 GB in 8 GB increments\n This option requires Linux platform ``1.4.0`` or later.": {
     "enum": null
   },
   "The number of capacity units that are allocated to this job.": {
@@ -12929,6 +13238,12 @@
     "enum": null
   },
   "The number of days to retain Performance Insights data.\n Valid for Cluster Type: Aurora DB clusters and Multi-AZ DB clusters\n Valid Values:\n  +   ``7`` \n  +   *month* * 31, where *month* is a number of months from 1-23. Examples: ``93`` (3 months * 31), ``341`` (11 months * 31), ``589`` (19 months * 31)\n  +   ``731`` \n  \n Default: ``7`` days\n If you specify a retention period that isn't valid, such as ``94``, Amazon RDS issues an error.": {
+    "enum": null
+  },
+  "The number of days to retain Performance Insights data. When creating a DB cluster without enabling Performance Insights, you can't specify the parameter ``PerformanceInsightsRetentionPeriod``.\n Valid for Cluster Type: Aurora DB clusters and Multi-AZ DB clusters\n Valid Values:\n  +   ``7`` \n  +   *month* * 31, where *month* is a number of months from 1-23. Examples: ``93`` (3 months * 31), ``341`` (11 months * 31), ``589`` (19 months * 31)\n  +   ``731`` \n  \n Default: ``7`` days\n If you specify a retention period that isn't valid, such as ``94``, Amazon RDS issues an error.": {
+    "enum": null
+  },
+  "The number of days to retain Performance Insights data. When creating a DB instance without enabling Performance Insights, you can't specify the parameter ``PerformanceInsightsRetentionPeriod``.\n This setting doesn't apply to RDS Custom DB instances.\n Valid Values:\n  +   ``7`` \n  +   *month* * 31, where *month* is a number of months from 1-23. Examples: ``93`` (3 months * 31), ``341`` (11 months * 31), ``589`` (19 months * 31)\n  +   ``731`` \n  \n Default: ``7`` days\n If you specify a retention period that isn't valid, such as ``94``, Amazon RDS returns an error.": {
     "enum": null
   },
   "The number of days to retain automated snapshot in the destination region after they are copied from the source region. If the value is -1, the manual snapshot is retained indefinitely. The value must be either -1 or an integer between 1 and 3,653.": {
@@ -13094,6 +13409,9 @@
     "enum": null
   },
   "The organization for the InfluxDB instance.": {
+    "enum": null
+  },
+  "The origin protocol policy for the CloudFront VPC origin endpoint configuration.": {
     "enum": null
   },
   "The outbound whisper flow to be used during an outbound call.": {
@@ -13417,6 +13735,9 @@
   "The private IPv4 address to assign to the NAT gateway. If you don't provide an address, a private IPv4 address will be automatically assigned.": {
     "enum": null
   },
+  "The private key from your external identity provider": {
+    "enum": null
+  },
   "The private key verification certificate.": {
     "enum": null
   },
@@ -13585,6 +13906,9 @@
   "The range of IP addresses that should be allowed to contribute content to your source. These IP addresses should be in the form of a Classless Inter-Domain Routing (CIDR) block; for example, 10.0.0.0/16.": {
     "enum": null
   },
+  "The recovery point id to restore from.": {
+    "enum": null
+  },
   "The recurring schedule for the action, in Unix cron syntax format. When StartTime and EndTime are specified with Recurrence , they form the boundaries of when the recurring action starts and stops.": {
     "enum": null
   },
@@ -13697,6 +14021,9 @@
     "enum": null
   },
   "The revision of the worker configuration to use.": {
+    "enum": null
+  },
+  "The roleARN details for the Kendra dataset source.": {
     "enum": null
   },
   "The roles key for Identity Center options.": {
@@ -13879,6 +14206,9 @@
   "The snapshot from which to create the volume. You must specify either a snapshot ID or a volume size.": {
     "enum": null
   },
+  "The snapshot name to restore from.": {
+    "enum": null
+  },
   "The snapshot retention limit of the Serverless Cache.": {
     "enum": null
   },
@@ -14035,6 +14365,9 @@
   "The status of the TopicRuleDestination.": {
     "enum": null
   },
+  "The status of the creation or deletion of the data catalog. LAMBDA, GLUE, and HIVE data catalog types are created synchronously. Their status is either CREATE_COMPLETE or CREATE_FAILED. The FEDERATED data catalog type is created asynchronously.": {
+    "enum": null
+  },
   "The status of the endpoint. For possible values of the status of an endpoint.": {
     "enum": null
   },
@@ -14132,6 +14465,9 @@
     "enum": null
   },
   "The suffix name of a Global Datastore. Amazon ElastiCache automatically applies a prefix to the Global Datastore ID when it is created. Each AWS Region has its own prefix. ": {
+    "enum": null
+  },
+  "The suffix that will be included in the user agent header.": {
     "enum": null
   },
   "The summary string.": {
@@ -14329,6 +14665,9 @@
   "The top-level internet domain name for which your application has administrative authority.": {
     "enum": null
   },
+  "The top-level internet domain name for which your application has administrative authority. The CreateAppMonitor requires either the domain or the domain list.": {
+    "enum": null
+  },
   "The topic for metrics export.": {
     "enum": null
   },
@@ -14398,6 +14737,9 @@
   "The type of client authentication used to connect to the Kafka cluster. Value NONE means that no client authentication is used.": {
     "enum": null
   },
+  "The type of connection for a FEDERATED data catalog": {
+    "enum": null
+  },
   "The type of content stored in the file source.": {
     "enum": null
   },
@@ -14405,6 +14747,9 @@
     "enum": null
   },
   "The type of customer-managed-key (CMK) used for encryption. The two types of supported CMKs are customer owned CMKs and AWS owned CMKs.": {
+    "enum": null
+  },
+  "The type of data source for the dataset.": {
     "enum": null
   },
   "The type of dataset": {
@@ -14695,6 +15040,9 @@
   "The upstream registry URL associated with the pull through cache rule.": {
     "enum": null
   },
+  "The upstream repository prefix associated with the pull through cache rule.": {
+    "enum": null
+  },
   "The upstreamRegistryUrl is the endpoint of upstream registry url of the public repository to be cached": {
     "enum": null
   },
@@ -14714,6 +15062,9 @@
     "enum": null
   },
   "The user data to make available to the instance. You must provide base64-encoded text. User data is limited to 16 KB. For more information, see [Run commands on your Amazon EC2 instance at launch](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/user-data.html) in the *Amazon EC2 User Guide*.\n If you are creating the launch template for use with BATCH, the user data must be provided in the [MIME multi-part archive format](https://docs.aws.amazon.com/https://cloudinit.readthedocs.io/en/latest/topics/format.html#mime-multi-part-archive). For more information, see [Amazon EC2 user data in launch templates](https://docs.aws.amazon.com/batch/latest/userguide/launch-templates.html) in the *User Guide*.": {
+    "enum": null
+  },
+  "The user data to make available to the instance. You must provide base64-encoded text. User data is limited to 16 KB. For more information, see [Run commands when you launch an EC2 instance with user data input](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/user-data.html) in the *Amazon EC2 User Guide*.\n If you are creating the launch template for use with BATCH, the user data must be provided in the [MIME multi-part archive format](https://docs.aws.amazon.com/https://cloudinit.readthedocs.io/en/latest/topics/format.html#mime-multi-part-archive). For more information, see [Amazon EC2 user data in launch templates](https://docs.aws.amazon.com/batch/latest/userguide/launch-templates.html#lt-user-data) in the *User Guide*.": {
     "enum": null
   },
   "The user friendly name of a workspace.": {
@@ -15238,6 +15589,9 @@
   "Using a ClientToken makes the call to CreateScheduledQuery idempotent, in other words, making the same request repeatedly will produce the same result. Making multiple identical CreateScheduledQuery requests has the same effect as making a single request. If CreateScheduledQuery is called without a ClientToken, the Query SDK generates a ClientToken on your behalf. After 8 hours, any request with the same ClientToken is treated as a new request.": {
     "enum": null
   },
+  "VPC ID": {
+    "enum": null
+  },
   "Valid IPv4 address within the address range of the specified subnet.": {
     "enum": null
   },
@@ -15307,6 +15661,9 @@
   "When restoring a DB cluster to a point in time, the identifier of the source DB cluster from which to restore.\n Constraints:\n  +  Must match the identifier of an existing DBCluster.\n  \n Valid for: Aurora DB clusters and Multi-AZ DB clusters": {
     "enum": null
   },
+  "When the SLO monitors a specific operation of the dependency, this field specifies the name of that operation in the dependency.": {
+    "enum": null
+  },
   "When the rule was created, in Unix time seconds.": {
     "enum": null
   },
@@ -15344,6 +15701,9 @@
     "enum": null
   },
   "Whether to enable or disable publishing of deployment status to source providers.": {
+    "enum": null
+  },
+  "Whether to enable persistent routes": {
     "enum": null
   },
   "Whether to include the notebook cell output when sharing the notebook. The default is Disabled.": {
