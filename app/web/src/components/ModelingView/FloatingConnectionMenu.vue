@@ -2,23 +2,41 @@
   <Modal
     ref="modalRef"
     size="max"
-    title="Create Connection"
+    title="Create a connection"
+    :capitalizeTitle="false"
     @click="focusOnInput"
   >
+    <template #titleIcons>
+      <div class="text-xs"><TextPill>ESC</TextPill> to exit</div>
+    </template>
     <div
       class="flex flex-col border-2 h-[80vh] rounded-sm"
       @click="focusOnInput"
       @keydown="debouncedListener"
     >
       <div class="flex flex-row w-full children:basis-1/2">
-        <VormInput
-          ref="inputARef"
-          v-model="searchStringA"
-          class="border-r-2"
-          label="Search"
-          noLabel
-          autocomplete="off"
-        />
+        <div
+          :class="
+            clsx(
+              'border-r-2 flex flex-row gap-xs px-xs',
+              themeClasses(
+                'focus-within:bg-shade-0 focus-within:border-action-500',
+                'focus-within:bg-shade-100 focus-within:border-action-300',
+              ),
+            )
+          "
+        >
+          <input
+            class="flex-1 border-none outline-none"
+            ref="inputARef"
+            v-model="searchStringA"
+          />
+          <div class="flex flex-row flex-none gap-2xs items-center text-xs">
+            <TextPill>Up</TextPill>
+            <TextPill>Down</TextPill>
+            <div>to navigate</div>
+          </div>
+        </div>
         <VormInput
           ref="inputBRef"
           v-model="searchStringB"
@@ -37,7 +55,7 @@
           :selectedComponent="selectedComponentA"
           :selectedSocket="selectedSocketA"
           class="border-r-2"
-          @select="(index:number) => selectAndProcess('a', index)"
+          @select="(index: number) => selectAndProcess('a', index)"
         />
         <!-- Socket B -->
         <ConnectionMenuSocketList
@@ -47,8 +65,53 @@
           :listItems="listBItems"
           :selectedComponent="selectedComponentB"
           :selectedSocket="selectedSocketB"
-          @select="(index:number) => selectAndProcess('b', index)"
+          @select="(index: number) => selectAndProcess('b', index)"
         />
+      </div>
+    </div>
+    <div
+      class="flex flex-row w-full h-8 mt-sm items-center justify-end gap-sm text-xs"
+    >
+      <div class="flex flex-row gap-2xs items-center">
+        <TextPill>Up</TextPill>
+        <TextPill>Down</TextPill>
+        <div>to navigate</div>
+      </div>
+      <div
+        :class="
+          clsx(
+            'border-l h-full',
+            themeClasses('border-neutral-300', 'border-neutral-600'),
+          )
+        "
+      />
+      <div class="flex flex-row gap-2xs items-center">
+        <TextPill>Tab</TextPill>
+        <div>to select</div>
+      </div>
+      <div
+        :class="
+          clsx(
+            'border-l h-full',
+            themeClasses('border-neutral-300', 'border-neutral-600'),
+          )
+        "
+      />
+      <div class="flex flex-row gap-2xs items-center">
+        <TextPill>Shift + Tab</TextPill>
+        <div>to switch back to the list on the left</div>
+      </div>
+      <div
+        :class="
+          clsx(
+            'border-l h-full',
+            themeClasses('border-neutral-300', 'border-neutral-600'),
+          )
+        "
+      />
+      <div class="flex flex-row gap-2xs items-center">
+        <TextPill>Enter</TextPill>
+        <div>to create a connection</div>
       </div>
     </div>
   </Modal>
@@ -56,7 +119,7 @@
 
 <script lang="ts" setup>
 import * as _ from "lodash-es";
-import { VormInput, Modal } from "@si/vue-lib/design-system";
+import { VormInput, Modal, themeClasses } from "@si/vue-lib/design-system";
 import {
   computed,
   nextTick,
@@ -66,6 +129,7 @@ import {
   ref,
   watch,
 } from "vue";
+import clsx from "clsx";
 import { Fzf } from "fzf";
 import {
   ConnectionMenuData,
@@ -73,6 +137,7 @@ import {
   useComponentsStore,
 } from "@/store/components.store";
 import { DiagramSocketData } from "@/components/ModelingDiagram/diagram_types";
+import TextPill from "@/components/TextPill.vue";
 import { useViewsStore } from "@/store/views.store";
 import ConnectionMenuSocketList, {
   SocketListEntry,

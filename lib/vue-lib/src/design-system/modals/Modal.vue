@@ -124,19 +124,22 @@
                 >
                   <slot name="title">{{ title }}</slot>
                 </DialogTitle>
-                <button
-                  v-if="!noExit"
-                  ref="exitButtonRef"
-                  :class="
-                    clsx(
-                      'modal-close-button',
-                      'hover:scale-110 rounded-full opacity-80 hover:opacity-100 -mr-2 -my-2',
-                    )
-                  "
-                  @click="close"
-                >
-                  <Icon name="x" size="md" />
-                </button>
+                <div class="flex gap-xs items-center">
+                  <slot name="titleIcons" />
+                  <button
+                    v-if="!noExit"
+                    ref="exitButtonRef"
+                    :class="
+                      clsx(
+                        'modal-close-button',
+                        'hover:scale-110 rounded-full opacity-80 hover:opacity-100 -mr-2 -my-2',
+                      )
+                    "
+                    @click="close"
+                  >
+                    <Icon name="x" size="md" />
+                  </button>
+                </div>
               </div>
 
               <!-- fake button to trap initial focus... only way to stop headless UI -->
