@@ -131,13 +131,6 @@ export default (opts: { mode: string }) => {
             react: "React",
             "react-dom": "ReactDOM",
           },
-          manualChunks(id) {
-            // comlink needs to get built for the webworker.js file, and once for the app
-            // need a fixed name in order to put COOP/COEP headers on the file that invokes the webworker
-            if (/heimdall/.test(id)) {
-              return "heimdall";
-            }
-          },
         },
       },
     },
