@@ -78,7 +78,7 @@ CREATE OR REPLACE VIEW workspace_verifications.workspace_update_events_before_su
     WITH
         workspace_update_events_summary AS (
             SELECT workspace_id, MIN(event_timestamp) AS first_event, MAX(event_timestamp) AS last_event
-              FROM workspace_update_events.workspace_update_events
+              FROM workspace_operations.workspace_update_events_clean
              GROUP BY workspace_id
         )
     SELECT
