@@ -2,7 +2,7 @@
   <div
     :class="
       clsx(
-        'basis-1/2 h-full min-h-0 ',
+        'basis-1/2 h-full min-h-0 border-x-2 border-b-2 p-xs ',
         active && 'bg-neutral-800',
         socketToShow?.uniqueKey ? 'children:h-1/2' : 'children:h-full',
       )
@@ -34,17 +34,18 @@
               'flex gap-xs align-middle items-center',
               active &&
                 item.index === localHighlightedIndex &&
-                'bg-action-600 text-white',
+                'bg-action-800 text-white',
               active &&
-                item.index !== localHighlightedIndex &&
-                'hover:bg-action-200 hover:text-black',
+                'dark:outline-action-300 hover:outline hover:outline-action-500 -outline-offset-1 hover:outline-1',
               !active &&
-                props.listItems[item.index]!.socket.def.id !== selectedSocket?.def.id &&
+                props.listItems[item.index]!.socket.def.id !==
+                  selectedSocket?.def.id &&
                 'hover:bg-neutral-400 hover:text-black',
               item.index !== localHighlightedIndex &&
-              props.listItems[item.index]!.socket.def.id === selectedSocket?.def.id &&
+                props.listItems[item.index]!.socket.def.id ===
+                  selectedSocket?.def.id &&
                 'bg-neutral-600 text-white',
-              'rounded cursor-pointer',
+              'cursor-pointer',
               'py-xs px-2xs my-0.5',
             )
           "
@@ -59,7 +60,12 @@
           @click="emit('select', item.index)"
         >
           <Icon
-            :class="clsx(props.listItems[item.index]!.socket.def.direction === 'output' && 'rotate-180')"
+            :class="
+              clsx(
+                props.listItems[item.index]!.socket.def.direction ===
+                  'output' && 'rotate-180',
+              )
+            "
             :name="
               props.listItems[item.index]!.socket.def.direction === 'output'
                 ? 'output-socket'
@@ -67,14 +73,19 @@
             "
             size="sm"
           />
-          <span class="line-clamp-2"> <!-- TODO(Wendy) - this should probably not just truncate, we need to see it! -->
+          <span class="line-clamp-2">
+            <!-- TODO(Wendy) - this should probably not just truncate, we need to see it! -->
             <template
-              v-for="(part, partIndex) in props.listItems[item.index]!.label.split('')"
+              v-for="(part, partIndex) in props.listItems[
+                item.index
+              ]!.label.split('')"
               :key="partIndex"
             >
               <span v-if="part === '/'" class="text-neutral-400"> / </span>
               <b
-                v-else-if="props.listItems[item.index]!.labelHighlights?.has(partIndex)"
+                v-else-if="
+                  props.listItems[item.index]!.labelHighlights?.has(partIndex)
+                "
                 >{{ part }}</b
               >
               <span v-else>{{ part }}</span>
@@ -89,7 +100,7 @@
     >
       No available sockets
     </div>
-    <div v-if="socketToShow?.uniqueKey" class="w-full border-t-2 min-h-0">
+    <div v-if="socketToShow?.uniqueKey" class="w-full min-h-0">
       <CodeEditor
         v-if="socketToShow.value"
         :id="`func-${socketToShow.uniqueKey}`"

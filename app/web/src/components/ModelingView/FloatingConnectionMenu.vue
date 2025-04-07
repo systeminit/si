@@ -10,15 +10,25 @@
       <div class="text-xs"><TextPill>ESC</TextPill> to exit</div>
     </template>
     <div
-      class="flex flex-col h-[80vh] rounded-sm"
+      class="flex flex-col h-[80vh] rounded-sm children:gap-sm"
       @click="focusOnInput"
       @keydown="debouncedListener"
     >
       <div class="flex flex-row w-full children:basis-1/2">
-        <FloatingConnectionMenuInput ref="inputARef" :focused="activeSide === 'a'" v-model="searchStringA" />
-        <FloatingConnectionMenuInput ref="inputBRef" :focused="activeSide === 'b'" v-model="searchStringB" />
+        <FloatingConnectionMenuInput
+          ref="inputARef"
+          :active="activeSide === 'a'"
+          :focused="activeSide === 'a'"
+          v-model="searchStringA"
+        />
+        <FloatingConnectionMenuInput
+          ref="inputBRef"
+          :active="activeSide === 'b'"
+          :focused="activeSide === 'b'"
+          v-model="searchStringB"
+        />
       </div>
-      <div class="flex flex-row grow border-x-2 border-b-2 min-h-0">
+      <div class="flex flex-row grow min-h-0">
         <!-- Socket A -->
         <ConnectionMenuSocketList
           :active="activeSide === 'a'"
@@ -27,7 +37,6 @@
           :listItems="listAItems"
           :selectedComponent="selectedComponentA"
           :selectedSocket="selectedSocketA"
-          class="border-r-2"
           @select="(index: number) => selectAndProcess('a', index)"
         />
         <!-- Socket B -->
