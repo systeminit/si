@@ -22,27 +22,27 @@ where
     K: EdgeKind,
 {
     NewEdge {
-        subgraph_index: u16,
+        subgraph_index: usize,
         source: SplitGraphNodeId,
         destination: SplitGraphNodeId,
         edge_weight: SplitGraphEdgeWeight<E, K>,
     },
     RemoveEdge {
-        subgraph_index: u16,
+        subgraph_index: usize,
         source: SplitGraphNodeId,
         destination: SplitGraphNodeId,
         edge_kind: SplitGraphEdgeWeightKind<K>,
     },
     RemoveNode {
-        subgraph_index: u16,
+        subgraph_index: usize,
         id: SplitGraphNodeId,
     },
     ReplaceNode {
-        subgraph_index: u16,
+        subgraph_index: usize,
         node_weight: SplitGraphNodeWeight<N>,
     },
     NewNode {
-        subgraph_index: u16,
+        subgraph_index: usize,
         node_weight: SplitGraphNodeWeight<N>,
     },
     NewSubGraph,
@@ -60,7 +60,7 @@ where
     E: CustomEdgeWeight<K>,
     K: EdgeKind,
 {
-    updated_graph_index: u16,
+    updated_graph_index: usize,
     base_graph: &'a SubGraph<N, E, K>,
     updated_graph: &'b SubGraph<N, E, K>,
 }
@@ -74,7 +74,7 @@ where
     pub fn new(
         base_graph: &'a SubGraph<N, E, K>,
         updated_graph: &'b SubGraph<N, E, K>,
-        updated_graph_index: u16,
+        updated_graph_index: usize,
     ) -> Self {
         Self {
             updated_graph_index,
@@ -452,7 +452,7 @@ where
 /// Transforms a subgraph into NewNode and NewEdge updates
 pub fn subgraph_as_updates<N, E, K>(
     subgraph: &SubGraph<N, E, K>,
-    subgraph_index: u16,
+    subgraph_index: usize,
 ) -> Vec<Update<N, E, K>>
 where
     N: CustomNodeWeight,

@@ -418,19 +418,14 @@ impl DalContext {
     /// Note: This does not guarantee that the [`ChangeSetId`] is contained within the [`WorkspacePk`]
     /// for the current [`DalContext`]
     pub async fn update_snapshot_to_visibility(&mut self) -> TransactionsResult<()> {
-        dbg!("update_snapshot_to_visibility start");
         let change_set = ChangeSet::get_by_id_across_workspaces(self, self.change_set_id()).await?;
-        dbg!("got change set");
-        let workspace = dbg!(self.workspace().await?);
-        dbg!(&workspace);
+        let workspace = self.workspace().await?;
 
         self.workspace_snapshot = Some(
             workspace
                 .snapshot_for_change_set(self, change_set.id)
                 .await?,
         );
-
-        dbg!("setting change set");
 
         self.set_change_set(change_set)?;
 
@@ -812,7 +807,6 @@ impl DalContext {
         &mut self,
         change_set_id: ChangeSetId,
     ) -> TransactionsResult<()> {
-        dbg!("update visibility and snapshot to visibility");
         self.update_visibility_deprecated(Visibility::new(change_set_id));
         self.update_snapshot_to_visibility().await?;
         Ok(())
@@ -852,7 +846,6 @@ impl DalContext {
     /// Clones a new context from this one with a "head" [`Visibility`] (default [`ChangeSet`] for
     /// the workspace).
     pub async fn clone_with_head(&self) -> TransactionsResult<Self> {
-        dbg!("clone with head");
         let mut new = self.clone();
         let default_change_set_id = new.get_workspace_default_change_set_id().await?;
         new.update_visibility_and_snapshot_to_visibility(default_change_set_id)
@@ -866,8 +859,6 @@ impl DalContext {
         let base_change_set_id = change_set
             .base_change_set_id
             .ok_or(TransactionsError::NoBaseChangeSet(change_set.id))?;
-
-        dbg!("clone with base");
 
         let mut new = self.clone();
         new.update_visibility_and_snapshot_to_visibility(base_change_set_id)
@@ -1304,8 +1295,6 @@ impl DalContextBuilder {
             authentication_method: AuthenticationMethod::System,
         };
 
-        dbg!("building for change set as system");
-
         ctx.update_snapshot_to_visibility().await?;
 
         Ok(ctx)
@@ -1337,7 +1326,6 @@ impl DalContextBuilder {
         // workspace's default change set id, but we are going to use a dummy visibility to do so.
         // We should probably just use the pg connection directly or derive the default change set
         // id through other means.
-        dbg!("build head");
         let default_change_set_id = ctx.get_workspace_default_change_set_id().await?;
         ctx.update_visibility_and_snapshot_to_visibility(default_change_set_id)
             .await?;
@@ -1383,8 +1371,6 @@ impl DalContextBuilder {
                 }
             }
         }
-
-        dbg!("dal context build");
 
         ctx.update_snapshot_to_visibility().await?;
 

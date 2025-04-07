@@ -947,7 +947,6 @@ async fn delete_with_frames_and_resources(ctx: &mut DalContext) {
     let total_count = 50;
     let mut count = 0;
 
-    dbg!("delete_with_frames");
     while count < total_count {
         ctx.update_snapshot_to_visibility()
             .await
@@ -1320,7 +1319,6 @@ async fn delete_with_multiple_frames(ctx: &mut DalContext) {
     // loop until the other components are removed
     let total_count = 50;
     let mut count = 0;
-    dbg!("delete_with_m_frames");
     while count < total_count {
         ctx.update_snapshot_to_visibility()
             .await

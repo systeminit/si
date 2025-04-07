@@ -6,11 +6,11 @@ use std::io::Write;
 
 use crate::{
     CustomEdgeWeight, CustomNodeWeight, EdgeKind, SplitGraphEdgeWeight, SplitGraphEdgeWeightKind,
-    SplitGraphError, SplitGraphNodeId, SplitGraphNodeWeight, SplitGraphResult, MAX_NODES,
+    SplitGraphError, SplitGraphNodeId, SplitGraphNodeWeight, SplitGraphResult,
 };
 
-pub type SubGraphNodeIndex = NodeIndex<u16>;
-pub type SubGraphEdgeIndex = EdgeIndex<u16>;
+pub type SubGraphNodeIndex = NodeIndex<usize>;
+pub type SubGraphEdgeIndex = EdgeIndex<usize>;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SubGraph<N, E, K>
@@ -19,7 +19,7 @@ where
     E: CustomEdgeWeight<K>,
     K: EdgeKind,
 {
-    pub(crate) graph: StableDiGraph<SplitGraphNodeWeight<N>, SplitGraphEdgeWeight<E, K>, u16>,
+    pub(crate) graph: StableDiGraph<SplitGraphNodeWeight<N>, SplitGraphEdgeWeight<E, K>, usize>,
     pub(crate) node_index_by_id: HashMap<SplitGraphNodeId, SubGraphNodeIndex>,
     pub(crate) node_indexes_by_lineage_id: HashMap<SplitGraphNodeId, HashSet<SubGraphNodeIndex>>,
     pub(crate) root_index: SubGraphNodeIndex,
@@ -47,7 +47,7 @@ where
 {
     pub(crate) fn new() -> Self {
         Self {
-            graph: StableDiGraph::with_capacity(MAX_NODES, MAX_NODES * 2),
+            graph: StableDiGraph::with_capacity(32768, 32768 * 2),
             node_index_by_id: HashMap::new(),
             node_indexes_by_lineage_id: HashMap::new(),
             root_index: NodeIndex::new(0),
@@ -58,7 +58,7 @@ where
 
     pub(crate) fn new_with_root() -> Self {
         let mut subgraph = Self {
-            graph: StableDiGraph::with_capacity(MAX_NODES, MAX_NODES * 2),
+            graph: StableDiGraph::with_capacity(32768, 32768 * 2),
             node_index_by_id: HashMap::new(),
             node_indexes_by_lineage_id: HashMap::new(),
             root_index: NodeIndex::new(0),
@@ -470,7 +470,7 @@ where
     /// Removes the edge specified by `edge_index`. Also handles edges to and
     /// from the ordering node, if one exists for `from_index`, and removes
     /// the target from the order.
-    pub(crate) fn remove_edge_by_index(&mut self, edge_index: EdgeIndex<u16>) {
+    pub(crate) fn remove_edge_by_index(&mut self, edge_index: EdgeIndex<usize>) {
         if let Some((from_index, to_index)) = self.graph.edge_endpoints(edge_index) {
             self.touch_node(from_index);
 

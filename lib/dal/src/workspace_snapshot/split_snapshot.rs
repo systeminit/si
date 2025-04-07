@@ -157,6 +157,10 @@ impl SplitSnapshot {
         *self.address.lock().await
     }
 
+    pub async fn subgraph_count(&self) -> usize {
+        self.working_copy().await.subgraph_count()
+    }
+
     fn add_category_nodes(graph: &mut SplitSnapshotGraphVCurrent) -> WorkspaceSnapshotResult<Ulid> {
         let mut view_category_id = Ulid::new();
 
@@ -217,7 +221,7 @@ impl SplitSnapshot {
     }
 
     pub async fn initial(ctx: &DalContext) -> WorkspaceSnapshotResult<Self> {
-        let mut graph = SplitSnapshotGraphVCurrent::new(5000);
+        let mut graph = SplitSnapshotGraphVCurrent::new(25000);
 
         let view_category_id = Self::add_category_nodes(&mut graph)?;
         Self::add_default_view(ctx, &mut graph, view_category_id).await?;
@@ -634,7 +638,7 @@ impl SplitSnapshot {
         Ok(self
             .working_copy()
             .await
-            .edges_directed(id.into(), direction)?
+            .edges_directed_custom(id.into(), direction)?
             .filter_map(|edge_ref| {
                 edge_ref
                     .weight()
@@ -681,7 +685,7 @@ impl SplitSnapshot {
         Ok(self
             .working_copy()
             .await
-            .edges_directed(id.into(), Incoming)?
+            .edges_directed_custom(id.into(), Incoming)?
             .filter_map(|edge_ref| match edge_ref.weight().custom() {
                 Some(weight) => {
                     if edge_weight_kind_discrim == weight.kind().into() {
@@ -703,7 +707,7 @@ impl SplitSnapshot {
         Ok(self
             .working_copy()
             .await
-            .edges_directed(id.into(), Outgoing)?
+            .edges_directed_custom(id.into(), Outgoing)?
             .filter_map(|edge_ref| match edge_ref.weight().custom() {
                 Some(weight) => {
                     if edge_weight_kind_discrim == weight.kind().into() {
@@ -723,7 +727,7 @@ impl SplitSnapshot {
     ) -> WorkspaceSnapshotResult<Vec<NodeWeight>> {
         let working_copy = self.working_copy().await;
         let targets = working_copy
-            .edges_directed(id.into(), Outgoing)?
+            .edges_directed_custom(id.into(), Outgoing)?
             .filter_map(|edge_ref| working_copy.node_weight(edge_ref.target()))
             .cloned()
             .collect();
@@ -737,7 +741,7 @@ impl SplitSnapshot {
     ) -> WorkspaceSnapshotResult<Vec<NodeWeight>> {
         let working_copy = self.working_copy().await;
         let sources = working_copy
-            .edges_directed(id.into(), Incoming)?
+            .edges_directed_custom(id.into(), Incoming)?
             .filter_map(|edge_ref| working_copy.node_weight(edge_ref.source()))
             .cloned()
             .collect();
@@ -753,7 +757,7 @@ impl SplitSnapshot {
         let target_id = target_id.into();
         let mut working_copy = self.working_copy_mut().await;
         let sources: Vec<_> = working_copy
-            .edges_directed(target_id, Incoming)?
+            .edges_directed_custom(target_id, Incoming)?
             .filter_map(|edge_ref| match edge_ref.weight().custom() {
                 Some(weight) => {
                     if kind == weight.kind().into() {
@@ -781,7 +785,7 @@ impl SplitSnapshot {
         Ok(self
             .working_copy()
             .await
-            .edges_directed(from_node_id, Outgoing)?
+            .edges_directed_custom(from_node_id, Outgoing)?
             .filter_map(|edge_ref| match edge_ref.weight().custom() {
                 Some(weight) => {
                     if edge_ref.target() == to_node_id {
@@ -872,7 +876,7 @@ impl SplitSnapshot {
         }
 
         let sv_id = working_copy
-            .edges_directed(component_id, Outgoing)?
+            .edges_directed_custom(component_id, Outgoing)?
             .find(|edge_ref| {
                 matches!(
                     edge_ref.weight().custom().map(|c| c.kind()),
@@ -899,7 +903,7 @@ impl SplitSnapshot {
         }
 
         let contained: Vec<ComponentId> = working_copy
-            .edges_directed(component_id, Outgoing)?
+            .edges_directed_custom(component_id, Outgoing)?
             .filter(|edge_ref| {
                 matches!(
                     edge_ref.weight().custom().map(|c| c.kind()),

@@ -69,6 +69,13 @@ impl WorkspaceSnapshotSelector {
         }
     }
 
+    pub async fn subgraph_count(&self) -> usize {
+        match self {
+            Self::LegacySnapshot(_) => 1,
+            Self::SplitSnapshot(snapshot) => snapshot.subgraph_count().await,
+        }
+    }
+
     pub async fn id(&self) -> WorkspaceSnapshotAddress {
         match self {
             Self::LegacySnapshot(snapshot) => snapshot.id().await,
