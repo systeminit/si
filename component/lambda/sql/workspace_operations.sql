@@ -3,6 +3,16 @@ CREATE SCHEMA IF NOT EXISTS workspace_operations;
 GRANT USAGE ON SCHEMA workspace_operations TO lambda_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA workspace_operations TO lambda_user;
 
+-- Parse an ISO-8601 timestamp in format 2025-04-03T22:19:42.999999945Z.
+-- SQL ::timestamp has a bug and can't parse .999999500-.999999999, so we truncate the last 3 digits.
+-- (We also truncate the Z, but Redshift still parses it as UTC)
+CREATE OR REPLACE FUNCTION workspace_operations.parse_timestamp(TEXT)
+    RETURNS TIMESTAMP
+    STABLE
+    AS $$
+        SELECT SUBSTRING($1, 1, 26)::timestamp
+    $$ LANGUAGE SQL;
+
 -- Imported mapping from a workspace to its owner.
 -- This table creation is untested (it was created manually and this description extracted)
 CREATE TABLE IF NOT EXISTS workspace_operations.workspace_owners (
@@ -16,7 +26,7 @@ CREATE TABLE IF NOT EXISTS workspace_operations.workspace_owners (
 CREATE OR REPLACE VIEW workspace_operations.si_hours AS
     WITH
         RECURSIVE hour_generator (hour_start) AS (
-            SELECT '2024-09-01 00:00:00'::timestamp
+            SELECT workspace_operations.parse_timestamp('2024-09-01T00:00:00.000000000Z')
             UNION ALL (
                 SELECT hour_start + INTERVAL '1 hour' HOUR
                 FROM hour_generator
@@ -57,17 +67,39 @@ CREATE OR REPLACE VIEW workspace_operations.owner_si_hours AS
      CROSS JOIN workspace_operations.owners;
 --     WHERE first_hour <= hour_start; TODO reintroduce this; it was removed to ensure identical results between old and new, but these are unnecessary extra resource_hour records that will get backfilled
 
--- Status of workspace_update_events ingestion, including when we consider events to be complete
-CREATE OR REPLACE VIEW workspace_operations.workspace_update_events_summary AS
-    SELECT
-        MIN(event_timestamp)::timestamp AS first_event,
-        MAX(event_timestamp)::timestamp AS last_incomplete_event,
-        last_incomplete_event - (INTERVAL '15 minutes' MINUTE) AS last_complete_event,
-        DATE_TRUNC('hour', last_complete_event) AS last_complete_hour_end,
-        last_complete_hour_end - (INTERVAL '1 hour' HOUR) AS last_complete_hour_start
+-- workspace_update_events, with data cleanup
+CREATE OR REPLACE VIEW workspace_operations.workspace_update_events_clean AS
+    SELECT workspace_id,
+           change_set_id,
+           workspace_operations.parse_timestamp(event_timestamp) AS event_timestamp,
+           workspace_snapshot_address,
+           change_set_status,
+           merge_requested_by_user_id,
+           resource_count,
+           component_id,
+           component_name,
+           schema_variant_id,
+           schema_id,
+           schema_name,
+           func_run_id,
+           kind,
+           partition_0,
+           partition_1,
+           partition_2,
+           partition_3
       FROM workspace_update_events.workspace_update_events
 WITH NO SCHEMA BINDING;
 
+-- Status of workspace_update_events ingestion, including when we consider events to be complete
+CREATE OR REPLACE VIEW workspace_operations.workspace_update_events_summary AS
+    SELECT
+        MIN(event_timestamp) AS first_event,
+        MAX(event_timestamp) AS last_incomplete_event,
+        last_incomplete_event - (INTERVAL '15 minutes' MINUTE) AS last_complete_event,
+        DATE_TRUNC('hour', last_complete_event) AS last_complete_hour_end,
+        last_complete_hour_end - (INTERVAL '1 hour' HOUR) AS last_complete_hour_start
+      FROM workspace_operations.workspace_update_events_clean
+WITH NO SCHEMA BINDING;
 
 -- The resource counts for each workspace after each time it changes
 CREATE OR REPLACE VIEW workspace_operations.workspace_resource_counts AS
@@ -75,17 +107,13 @@ CREATE OR REPLACE VIEW workspace_operations.workspace_resource_counts AS
         -- Get only events with actual resource_counts recorded (plus previous resource count for next step)
         workspace_resource_count_events AS (
             SELECT *, LAG(resource_count) OVER (PARTITION BY workspace_id ORDER BY event_timestamp) AS prev_resource_count
-            FROM workspace_update_events.workspace_update_events
+            FROM workspace_operations.workspace_update_events_clean
             WHERE resource_count IS NOT NULL
-        ),
-        -- Once we have only events with resource counts, get the ones where it changed (plus next_event_timestamp)
-        workspace_resource_count_change_events AS (
-            SELECT *, LEAD(event_timestamp) OVER (PARTITION BY workspace_id ORDER BY event_timestamp) AS next_event_timestamp
-              FROM workspace_resource_count_events
-             WHERE resource_count != prev_resource_count OR prev_resource_count IS NULL
         )
-    SELECT workspace_id, event_timestamp::timestamp, resource_count, next_event_timestamp::timestamp
-      FROM workspace_resource_count_change_events
+    -- Once we have only events with resource counts, get the ones where it changed (plus next_event_timestamp)
+    SELECT workspace_id, event_timestamp, resource_count, LEAD(event_timestamp) OVER (PARTITION BY workspace_id ORDER BY event_timestamp) AS next_event_timestamp
+        FROM workspace_resource_count_events
+        WHERE resource_count != prev_resource_count OR prev_resource_count IS NULL
 WITH NO SCHEMA BINDING;
 
 -- Get the resource counts for all workspaces anytime they change *and* at least once per hour
