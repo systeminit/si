@@ -48,11 +48,9 @@ pub async fn create_change_set_and_update_ctx(
     )
     .await
     .expect("could not create change set");
-    dbg!("updating");
     ctx.update_visibility_and_snapshot_to_visibility(change_set.id)
         .await
         .expect("could not update visibility and snapshot");
-    dbg!("done");
 }
 
 /// This function is used during macro expansion for setting up tracing in an integration test.
@@ -160,7 +158,6 @@ pub async fn workspace_signup(ctx: &mut DalContext) -> crate::Result<(WorkspaceS
     use color_eyre::eyre::WrapErr;
     ctx.update_tenancy(dal::Tenancy::new(WorkspacePk::NONE));
 
-    dbg!("workspace_signup");
     let mut ctx = ctx.clone_with_head().await?;
 
     let workspace_name = generate_fake_name().expect("could not generate fake name");

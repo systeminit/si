@@ -86,7 +86,7 @@ pub const SCHEMA_ID_FAKE_BUTANE: &str = "01JARH2BTA5DK4J9Q4Q0XH46SR";
 
 // allow expect here for the Ulid conversion. These will never panic.
 #[allow(clippy::expect_used)]
-pub(crate) async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
+pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
     migrate_test_exclusive_schema_starfield(
         ctx,
         ulid::Ulid::from_str(SCHEMA_ID_STARFIELD)

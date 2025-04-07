@@ -118,7 +118,7 @@ impl TryFrom<PgRow> for Workspace {
         let created_at: DateTime<Utc> = row.try_get("created_at")?;
         let updated_at: DateTime<Utc> = row.try_get("updated_at")?;
         let snapshot_version: String = row.try_get("snapshot_version")?;
-        let snapshot_kind: String = dbg!(row.try_get("snapshot_kind")?);
+        let snapshot_kind: String = row.try_get("snapshot_kind")?;
         let pk = row.try_get("pk")?;
 
         Ok(Self {
@@ -207,7 +207,6 @@ impl Workspace {
                 .update_default_change_set_id(ctx, new_change_set.id)
                 .await?;
 
-            dbg!("setup builtin");
             ctx.update_tenancy(Tenancy::new(*found_builtin.pk()));
             ctx.update_visibility_and_snapshot_to_visibility(found_builtin.default_change_set_id)
                 .await?;
@@ -250,8 +249,6 @@ impl Workspace {
         let workspace_pk = *workspace.pk();
 
         change_set.update_workspace_id(ctx, workspace_pk).await?;
-
-        dbg!("setup builtin 2");
 
         // Update our tenancy and visibility once it has been created.
         ctx.update_tenancy(Tenancy::new(workspace_pk));
@@ -354,11 +351,8 @@ impl Workspace {
     ) -> WorkspaceResult<Self> {
         let workspace_snapshot = WorkspaceSnapshot::initial(ctx).await?;
         ctx.set_workspace_snapshot(workspace_snapshot);
-        dbg!("migrating intrinsics");
 
         migrate_intrinsics_no_commit(ctx).await.map_err(Box::new)?;
-
-        dbg!("migrated intrinsics");
 
         let workspace_snapshot_address = ctx
             .workspace_snapshot()?
@@ -384,14 +378,11 @@ impl Workspace {
         )
         .await?;
 
-        dbg!(&workspace);
-
         head_change_set
             .update_workspace_id(ctx, workspace.pk)
             .await?;
 
         ctx.update_tenancy(Tenancy::new(pk));
-        dbg!("new for on demand");
         ctx.update_visibility_and_snapshot_to_visibility(head_change_set.id)
             .await?;
 
@@ -405,8 +396,6 @@ impl Workspace {
 
         // Create an entry in the workspace integrations table by default
         WorkspaceIntegration::new(ctx, None).await?;
-
-        dbg!("new for on demand finish1");
 
         Ok(workspace)
     }
@@ -450,7 +439,6 @@ impl Workspace {
             .await?;
 
         ctx.update_tenancy(Tenancy::new(pk));
-        dbg!("new split");
         ctx.update_visibility_and_snapshot_to_visibility(head_change_set.id)
             .await?;
 
@@ -574,7 +562,6 @@ impl Workspace {
 
         ctx.update_tenancy(Tenancy::new(new_workspace.pk));
 
-        dbg!("new from builtin");
         // TODO(nick,zack,jacob): convert visibility (or get rid of it?) to use our the new change set id.
         // should set_change_set and set_workspace_snapshot happen in update_visibility?
         ctx.update_visibility_and_snapshot_to_visibility(change_set.id)

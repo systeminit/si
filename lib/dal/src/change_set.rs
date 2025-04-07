@@ -201,15 +201,15 @@ impl ChangeSet {
         let id: Ulid = Ulid::new();
         let change_set_id: ChangeSetId = id.into();
 
-        let workspace_snapshot = WorkspaceSnapshot::find(ctx, workspace_snapshot_address)
-            .await
-            .map_err(Box::new)?;
-        // The workspace snapshot needs to be marked as seen by this new
-        // changeset, so that edit sessions are able to know what is net new in
-        // the edit session vs what the changeset already contained. The "onto"
-        // changeset needs to have seen the "to_rebase" or we will treat them as
-        // completely disjoint changesets.
-        let workspace_snapshot_address = workspace_snapshot.write(ctx).await.map_err(Box::new)?;
+        // let workspace_snapshot = WorkspaceSnapshot::find(ctx, workspace_snapshot_address)
+        //     .await
+        //     .map_err(Box::new)?;
+        // // The workspace snapshot needs to be marked as seen by this new
+        // // changeset, so that edit sessions are able to know what is net new in
+        // // the edit session vs what the changeset already contained. The "onto"
+        // // changeset needs to have seen the "to_rebase" or we will treat them as
+        // // completely disjoint changesets.
+        // let workspace_snapshot_address = workspace_snapshot.write(ctx).await.map_err(Box::new)?;
 
         let workspace_id = ctx.tenancy().workspace_pk_opt();
         let name = name.as_ref();

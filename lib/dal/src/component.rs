@@ -11,6 +11,7 @@ use std::collections::{hash_map, HashMap, HashSet, VecDeque};
 use std::num::{ParseFloatError, ParseIntError};
 use std::str::FromStr;
 use std::sync::Arc;
+use std::time::Instant;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::TryLockError;
@@ -481,6 +482,8 @@ impl Component {
         let component_category_id = workspace_snapshot
             .get_category_node_or_err(None, CategoryNodeKind::Component)
             .await?;
+
+        let start = Instant::now();
         Self::add_category_edge(
             ctx,
             component_category_id,

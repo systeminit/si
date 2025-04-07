@@ -20,8 +20,6 @@ pub use subgraph::{SubGraph, SubGraphEdgeIndex, SubGraphNodeIndex};
 pub use subgraph_address::SubGraphAddress;
 pub use updates::Update;
 
-pub const MAX_NODES: usize = ((u16::MAX / 2) - 1) as usize;
-
 #[derive(Error, Debug)]
 pub enum SplitGraphError {
     #[error("Node id {0} not found")]
@@ -45,7 +43,7 @@ pub enum SplitGraphError {
 pub type SplitGraphResult<T> = Result<T, SplitGraphError>;
 
 pub type SplitGraphNodeId = Ulid;
-pub type SubGraphIndex = u16;
+pub type SubGraphIndex = usize;
 
 #[derive(PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub enum SplitGraphNodeWeight<N>
@@ -206,6 +204,13 @@ where
     pub fn custom(&self) -> Option<&N> {
         match self {
             SplitGraphNodeWeight::Custom(inner) => Some(inner),
+            _ => None,
+        }
+    }
+
+    pub fn external_target_id(&self) -> Option<SplitGraphNodeId> {
+        match self {
+            SplitGraphNodeWeight::ExternalTarget { target, .. } => Some(*target),
             _ => None,
         }
     }
@@ -379,11 +384,11 @@ impl SplitGraphNodeIndex {
 pub struct SuperGraph {
     addresses: Vec<SubGraphAddress>,
     root_index: SplitGraphNodeIndex,
-    split_max: u16,
+    split_max: usize,
 }
 
 impl SuperGraph {
-    pub fn new(split_max: u16, root_index: SplitGraphNodeIndex) -> Self {
+    pub fn new(split_max: usize, root_index: SplitGraphNodeIndex) -> Self {
         Self {
             addresses: vec![],
             root_index,
@@ -391,7 +396,7 @@ impl SuperGraph {
         }
     }
 
-    pub fn split_max(&self) -> u16 {
+    pub fn split_max(&self) -> usize {
         self.split_max
     }
 
@@ -429,7 +434,7 @@ where
     K: EdgeKind,
     E: CustomEdgeWeight<K>,
 {
-    pub fn new(split_max: u16) -> Self {
+    pub fn new(split_max: usize) -> Self {
         let mut first_subgraph = SubGraph::new();
         let root_id = Ulid::new();
         let root_index = first_subgraph
@@ -493,21 +498,21 @@ where
         Ulid::new()
     }
 
-    fn new_subgraph(&mut self) -> u16 {
+    fn new_subgraph(&mut self) -> usize {
         self.supergraph.addresses.push(SubGraphAddress::nil());
 
         let subgraph = SubGraph::new_with_root();
-        let subgraph_index = self.subgraphs.len() as u16;
+        let subgraph_index = self.subgraphs.len();
         self.subgraphs.push(subgraph);
 
         subgraph_index
     }
 
-    fn new_empty_subgraph(&mut self) -> u16 {
+    fn new_empty_subgraph(&mut self) -> usize {
         self.supergraph.addresses.push(SubGraphAddress::nil());
 
         let subgraph = SubGraph::new();
-        let subgraph_index = self.subgraphs.len() as u16;
+        let subgraph_index = self.subgraphs.len();
         self.subgraphs.push(subgraph);
 
         subgraph_index
@@ -559,9 +564,9 @@ where
         let subgraph_index = if let Some((index, _)) =
             self.subgraphs.iter().enumerate().find(|(_, sub)| {
                 // We add one to the max so that the root node is not part of the count
-                sub.node_index_by_id.len() < ((self.supergraph.split_max + 1) as usize)
+                sub.node_index_by_id.len() < (self.supergraph.split_max + 1)
             }) {
-            index as u16
+            index
         } else {
             self.new_subgraph()
         };
@@ -650,7 +655,7 @@ where
             .and_then(|(idx, sub)| {
                 sub.node_index_by_id
                     .get(&id)
-                    .map(|subgraph_index| SplitGraphNodeIndex::new(idx as u16, *subgraph_index))
+                    .map(|subgraph_index| SplitGraphNodeIndex::new(idx, *subgraph_index))
             })
     }
 
@@ -947,8 +952,54 @@ where
         kind: K,
     ) -> SplitGraphResult<impl Iterator<Item = SplitGraphEdgeReference<'a, E, K>> + 'a> {
         let iter = self
-            .edges_directed(from_id, direction)?
+            .edges_directed_custom(from_id, direction)?
             .filter(move |edge_ref| edge_ref.weight().custom().is_some_and(|c| c.kind() == kind));
+
+        Ok(iter)
+    }
+
+    pub fn edges_directed_custom<'a>(
+        &'a self,
+        from_id: SplitGraphNodeId,
+        direction: Direction,
+    ) -> SplitGraphResult<impl Iterator<Item = SplitGraphEdgeReference<'a, E, K>> + 'a> {
+        let iter = self
+            .edges_directed(from_id, direction)?
+            .filter_map(|edge_ref| match edge_ref.weight() {
+                SplitGraphEdgeWeight::Custom(c) => Some(edge_ref),
+                SplitGraphEdgeWeight::ExternalSource {
+                    source_id,
+                    subgraph,
+                    edge_kind,
+                    ..
+                } => self
+                    .subgraphs()
+                    .get(*subgraph as usize)
+                    .and_then(|subgraph| match subgraph.node_id_to_index(*source_id) {
+                        Some(source_index) => subgraph
+                            .graph
+                            .edges_directed(source_index, Outgoing)
+                            .find(|subgraph_edge_ref| {
+                                subgraph_edge_ref
+                                    .weight()
+                                    .custom()
+                                    .is_some_and(|c| c.kind() == *edge_kind)
+                                    && subgraph
+                                        .graph
+                                        .node_weight(subgraph_edge_ref.target())
+                                        .and_then(|node| node.external_target_id())
+                                        .is_some_and(|target| target == edge_ref.target())
+                            })
+                            .map(|subgraph_edge_ref| SplitGraphEdgeReference {
+                                source_id: *source_id,
+                                target_id: edge_ref.target(),
+                                weight: subgraph_edge_ref.weight(),
+                            }),
+                        None => None,
+                    }),
+                SplitGraphEdgeWeight::Ordering => None,
+                SplitGraphEdgeWeight::Ordinal => None,
+            });
 
         Ok(iter)
     }
@@ -1001,22 +1052,15 @@ where
         {
             match maybe_base_subgraph {
                 Some(base_subgraph) => updates.extend(
-                    updates::Detector::new(
-                        base_subgraph,
-                        updated_subgraph,
-                        updated_subgraph_index as u16,
-                    )
-                    .detect_updates()
-                    .into_iter(),
+                    updates::Detector::new(base_subgraph, updated_subgraph, updated_subgraph_index)
+                        .detect_updates()
+                        .into_iter(),
                 ),
                 None => {
                     updates.push(Update::NewSubGraph);
                     updates.extend(
-                        updates::subgraph_as_updates(
-                            updated_subgraph,
-                            updated_subgraph_index as u16,
-                        )
-                        .into_iter(),
+                        updates::subgraph_as_updates(updated_subgraph, updated_subgraph_index)
+                            .into_iter(),
                     )
                 }
             }
@@ -1046,7 +1090,7 @@ where
                     let mut subgraph_changes = updates::Detector::new(
                         base_subgraph,
                         updated_subgraph,
-                        updated_subgraph_index as u16,
+                        updated_subgraph_index,
                     )
                     .detect_changes();
 
@@ -1154,7 +1198,7 @@ where
                     destination,
                     edge_weight,
                 } => {
-                    let Some(subgraph) = self.subgraphs.get_mut(*subgraph_index as usize) else {
+                    let Some(subgraph) = self.subgraphs.get_mut(*subgraph_index) else {
                         continue;
                     };
                     let Some((from_index, to_index)) = subgraph
