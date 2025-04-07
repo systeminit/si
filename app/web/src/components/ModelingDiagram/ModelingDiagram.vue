@@ -147,6 +147,7 @@ overflow hidden */
             :isHovered="elementIsHovered(edge)"
             :isSelected="elementIsSelected(edge)"
             :toPoint="getSocketLocationInfo('to', edge)?.center"
+            :connectionCount="featureFlagsStore.SIMPLE_SOCKET_UI && !edge.def.isManagement ? (edge as DiagramEdgeDataWithConnectionCount).connectionCount : undefined"
           />
           <DiagramGroupOverlay
             v-for="group in staticRenderGroups"
@@ -394,6 +395,7 @@ import {
   DiagramViewData,
   Bounds,
   toRequiredBounds,
+  DiagramEdgeDataWithConnectionCount,
 } from "./diagram_types";
 import DiagramNode from "./DiagramNode.vue";
 import DiagramCursor from "./DiagramCursor.vue";
@@ -1398,9 +1400,18 @@ function panToComponent(payload: {
 // ELEMENT SELECTION /////////////////////////////////////////////////////////////////////////////////
 const currentSelectionKeys = computed(() => {
   if (viewsStore.selectedEdgeId) {
-    return _.compact([
-      getDiagramElementKeyForEdgeId(viewsStore.selectedEdgeId),
-    ]);
+    if (
+      featureFlagsStore.SIMPLE_SOCKET_UI &&
+      viewsStore.selectedDisplayEdgeId
+    ) {
+      return _.compact([
+        getDiagramElementKeyForEdgeId(viewsStore.selectedDisplayEdgeId),
+      ]);
+    } else {
+      return _.compact([
+        getDiagramElementKeyForEdgeId(viewsStore.selectedEdgeId),
+      ]);
+    }
   } else {
     return _.compact(
       _.map(viewsStore.selectedComponentIds, (componentId) => {
@@ -3387,7 +3398,7 @@ onBeforeUnmount(() => {
   modelingEventBus.off("panToComponent", panToComponent);
   modelingEventBus.off("rename", renameOnDiagramByComponentId);
   modelingEventBus.off("setSelection", selectComponents);
-  modelingEventBus.on("renameView", refreshViewObjects);
+  modelingEventBus.off("renameView", refreshViewObjects);
 });
 
 const selectComponents = (components: ComponentId[]) => {
@@ -3409,16 +3420,31 @@ const displayEdges = computed(() => {
     const edges = viewsStore.edges;
     const connections = [] as string[];
     const displayEdges = [] as DiagramEdgeData[];
+    const displayEdgesByConnection = {} as Record<
+      string,
+      DiagramEdgeDataWithConnectionCount
+    >;
     edges.forEach((edge) => {
       const to = edge.toNodeKey.substring(2);
       const from = edge.fromNodeKey.substring(2);
       const connection = to + from;
       const isManagement = edge.def.isManagement;
+      const existingDisplayEdge = displayEdgesByConnection[connection];
       if (isManagement) {
         displayEdges.push(edge);
       } else if (!connections.includes(connection)) {
         connections.push(connection); // we have the one connection for these two components
-        displayEdges.push(edge); // only one edge gets pushed, who cares which one!
+        const displayEdge = new DiagramEdgeDataWithConnectionCount({
+          ...edge.def,
+        });
+        displayEdges.push(displayEdge);
+        displayEdgesByConnection[connection] = displayEdge;
+      } else if (existingDisplayEdge) {
+        // this is a repeat edge, multiple connections between the same components
+        if (existingDisplayEdge.def.changeStatus !== edge.def.changeStatus) {
+          existingDisplayEdge.def.changeStatus = "unmodified";
+        }
+        existingDisplayEdge.connectionCount++;
       }
     });
     return displayEdges;

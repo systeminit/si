@@ -29,7 +29,40 @@
     />
 
     <v-group
-      v-if="
+      v-if="connectionCount"
+      :config="{
+        x: centerPoint.x - COUNT_ICON_SIZE / 2,
+        y: centerPoint.y - COUNT_ICON_SIZE / 2,
+        listening: false,
+      }"
+    >
+      <v-rect
+        :config="{
+          x: 0,
+          y: 0,
+          width: COUNT_ICON_SIZE,
+          height: COUNT_ICON_SIZE,
+          fill: connectionCountColor,
+          cornerRadius: 4,
+        }"
+      />
+      <v-text
+        :config="{
+          x: 0,
+          y: 0,
+          width: COUNT_ICON_SIZE,
+          height: COUNT_ICON_SIZE,
+          align: 'center',
+          verticalAlign: 'middle',
+          text: connectionCountText,
+          fontSize: connectionCount < 10 ? 12 : 10,
+          fontStyle: 'bold',
+          fontFamily: DIAGRAM_FONT_FAMILY,
+        }"
+      />
+    </v-group>
+    <v-group
+      v-else-if="
         !edge.def.isInferred &&
         (isAdded || isDeleted || willDeleteIfPendingEdgeCreated)
       "
@@ -77,7 +110,11 @@ import {
 } from "@si/vue-lib/design-system";
 import { isDevMode } from "@/utils/debug";
 import { useViewsStore } from "@/store/views.store";
-import { SELECTION_COLOR, SOCKET_SIZE } from "./diagram_constants";
+import {
+  DIAGRAM_FONT_FAMILY,
+  SELECTION_COLOR,
+  SOCKET_SIZE,
+} from "./diagram_constants";
 import { DiagramEdgeData } from "./diagram_types";
 import { pointAlongLinePct, pointAlongLinePx } from "./utils/math";
 import DiagramIcon from "./DiagramIcon.vue";
@@ -88,6 +125,9 @@ const props = defineProps({
     type: Object as PropType<DiagramEdgeData>,
     required: true,
   },
+  connectionCount: {
+    type: Number,
+  },
   fromPoint: {
     type: Object as PropType<Vector2d>,
     default: undefined,
@@ -97,6 +137,25 @@ const props = defineProps({
   },
   isHovered: Boolean,
   isSelected: Boolean,
+});
+
+const COUNT_ICON_SIZE = 16;
+const connectionCountColor = computed(() => {
+  return `#${
+    props.edge.def.changeStatus
+      ? {
+          added: "4ADE80",
+          deleted: "EF4444",
+          modified: "F59E0B",
+          unmodified: "FFFFFF",
+        }[props.edge.def.changeStatus]
+      : "FFFFFF"
+  }`;
+});
+const connectionCountText = computed(() => {
+  if (!props.connectionCount) return "";
+  else if (props.connectionCount < 100) return `${props.connectionCount}`;
+  else return "~";
 });
 
 const emit = defineEmits(["hover:start", "hover:end"]);
