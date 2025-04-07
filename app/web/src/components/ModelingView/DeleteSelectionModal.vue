@@ -1,9 +1,9 @@
 <template>
   <Modal ref="modalRef" :title="'Are you sure?'">
     <div class="max-h-[70vh] overflow-hidden flex flex-col">
-      <template v-if="selectedEdge">
-        <p>You're about to delete the following edge:</p>
-        <EdgeCard :edgeId="selectedEdge.id" />
+      <template v-if="selectedConnection">
+        <p class="pb-xs">You're about to delete the following edge:</p>
+        <Connection :connection="selectedConnection" />
       </template>
       <template v-else-if="allErasableViews">
         <div class="pb-xs">
@@ -56,7 +56,7 @@
       </template>
       <div class="px-2xs py-xs">
         <template v-if="selectedEdge">
-          <p class="text-xs mt-sm">
+          <p class="text-xs">
             Items that exist on HEAD will be marked for deletion, and removed
             from the model when this change set is merged. Items that were
             created in this change set will be deleted immediately.
@@ -115,11 +115,34 @@ import { useComponentsStore } from "@/store/components.store";
 import { useViewsStore } from "@/store/views.store";
 import { ComponentType } from "@/api/sdf/dal/schema";
 import ComponentCard from "../ComponentCard.vue";
-import EdgeCard from "../EdgeCard.vue";
+import Connection from "../Connection.vue";
 
 const componentsStore = useComponentsStore();
 const viewStore = useViewsStore();
 const selectedEdge = computed(() => viewStore.selectedEdge);
+const selectedConnection = computed(() => {
+  if (!selectedEdge.value) return undefined;
+  const edge = selectedEdge.value;
+  const fromComponent =
+    componentsStore.allComponentsById[selectedEdge.value.fromComponentId];
+  const toComponent =
+    componentsStore.allComponentsById[selectedEdge.value.toComponentId];
+  if (!fromComponent || !toComponent) return undefined;
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  const fromSocket = fromComponent.sockets.find(
+    (socket) => socket.def.id === edge.fromSocketId,
+  )!;
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  const toSocket = toComponent.sockets.find(
+    (socket) => socket.def.id === edge.toSocketId,
+  )!;
+  return {
+    ...selectedEdge.value,
+    toSocket,
+    fromSocket,
+    isManagement: !!selectedEdge.value.isManagement,
+  };
+});
 
 const modalRef = ref<InstanceType<typeof Modal>>();
 const { open: openModal, close } = useModal(modalRef);
@@ -186,6 +209,7 @@ async function onConfirmDelete() {
       );
       if (resp.result.success) {
         viewStore.selectedEdgeId = null;
+        viewStore.selectedDisplayEdgeId = null;
       }
     } else if (viewStore.selectedViewId && erasableViews.value.length > 0) {
       await viewStore.REMOVE_VIEW_FROM(
