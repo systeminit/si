@@ -2,6 +2,8 @@ use change_batch::ChangeBatchDb;
 use serde::Deserialize;
 use si_data_pg::PgPoolConfig;
 use si_runtime::DedicatedExecutor;
+use split_snapshot_subgraph::SplitSnapshotSubGraphDb;
+use split_snapshot_supergraph::SplitSnapshotSuperGraphDb;
 use std::sync::Arc;
 use std::{future::IntoFuture, io};
 use tokio::try_join;
@@ -38,15 +40,25 @@ pub mod func_run;
 pub mod func_run_log;
 pub mod rebase_batch;
 pub mod serialize;
+pub mod split_snapshot_subgraph;
+pub mod split_snapshot_supergraph;
 pub mod workspace_snapshot;
 
 #[derive(Debug, Clone)]
-pub struct LayerDb<CasValue, EncryptedSecretValue, WorkspaceSnapshotValue, RebaseBatchValue>
-where
+pub struct LayerDb<
+    CasValue,
+    EncryptedSecretValue,
+    WorkspaceSnapshotValue,
+    RebaseBatchValue,
+    SplitSnapshotSubGraphValue,
+    SplitSnapshotSuperGraphValue,
+> where
     CasValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     EncryptedSecretValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     WorkspaceSnapshotValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     RebaseBatchValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+    SplitSnapshotSubGraphValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+    SplitSnapshotSuperGraphValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
     cas: CasDb<CasValue>,
     change_batch: ChangeBatchDb,
@@ -55,6 +67,8 @@ where
     func_run_log: FuncRunLogDb,
     rebase_batch: RebaseBatchDb<RebaseBatchValue>,
     workspace_snapshot: WorkspaceSnapshotDb<WorkspaceSnapshotValue>,
+    split_snapshot_subgraph: SplitSnapshotSubGraphDb<SplitSnapshotSubGraphValue>,
+    split_snapshot_supergraph: SplitSnapshotSuperGraphDb<SplitSnapshotSuperGraphValue>,
     pg_pool: PgPool,
     nats_client: NatsClient,
     persister_client: PersisterClient,
@@ -62,13 +76,29 @@ where
     instance_id: Ulid,
 }
 
-impl<CasValue, EncryptedSecretValue, WorkspaceSnapshotValue, RebaseBatchValue>
-    LayerDb<CasValue, EncryptedSecretValue, WorkspaceSnapshotValue, RebaseBatchValue>
+impl<
+        CasValue,
+        EncryptedSecretValue,
+        WorkspaceSnapshotValue,
+        RebaseBatchValue,
+        SplitSnapshotSubGraphValue,
+        SplitSnapshotSuperGraphValue,
+    >
+    LayerDb<
+        CasValue,
+        EncryptedSecretValue,
+        WorkspaceSnapshotValue,
+        RebaseBatchValue,
+        SplitSnapshotSubGraphValue,
+        SplitSnapshotSuperGraphValue,
+    >
 where
     CasValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     EncryptedSecretValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     WorkspaceSnapshotValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     RebaseBatchValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+    SplitSnapshotSubGraphValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+    SplitSnapshotSuperGraphValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
     #[instrument(name = "layer_db.init.from_config", level = "info", skip_all)]
     pub async fn from_config(
@@ -112,6 +142,8 @@ where
             func_run_log_cache,
             rebase_batch_cache,
             snapshot_cache,
+            split_snapshot_subgraph_cache,
+            split_snapshot_supergraph_cache,
         ) = try_join!(
             create_layer_cache(
                 cas::CACHE_NAME,
@@ -120,8 +152,8 @@ where
                 compute_executor.clone(),
                 tracker.clone(),
                 token.clone(),
-                25,
-                25
+                20,
+                20
             ),
             create_layer_cache(
                 change_batch::CACHE_NAME,
@@ -180,8 +212,28 @@ where
                 compute_executor.clone(),
                 tracker.clone(),
                 token.clone(),
-                50,
-                50
+                30,
+                30,
+            ),
+            create_layer_cache(
+                split_snapshot_subgraph::CACHE_NAME,
+                pg_pool.clone(),
+                cache_config.clone(),
+                compute_executor.clone(),
+                tracker.clone(),
+                token.clone(),
+                15,
+                15
+            ),
+            create_layer_cache(
+                split_snapshot_supergraph::CACHE_NAME,
+                pg_pool.clone(),
+                cache_config.clone(),
+                compute_executor.clone(),
+                tracker.clone(),
+                token.clone(),
+                5,
+                5
             )
         )?;
 
@@ -218,6 +270,12 @@ where
         let func_run_log = FuncRunLogDb::new(func_run_log_cache, persister_client.clone());
         let workspace_snapshot = WorkspaceSnapshotDb::new(snapshot_cache, persister_client.clone());
         let rebase_batch = RebaseBatchDb::new(rebase_batch_cache, persister_client.clone());
+        let split_snapshot_subgraph =
+            SplitSnapshotSubGraphDb::new(split_snapshot_subgraph_cache, persister_client.clone());
+        let split_snapshot_supergraph = SplitSnapshotSuperGraphDb::new(
+            split_snapshot_supergraph_cache,
+            persister_client.clone(),
+        );
 
         let activity = ActivityClient::new(instance_id, nats_client.clone(), token.clone());
         let graceful_shutdown = LayerDbGracefulShutdown { tracker, token };
@@ -235,6 +293,8 @@ where
             nats_client,
             instance_id,
             rebase_batch,
+            split_snapshot_subgraph,
+            split_snapshot_supergraph,
         };
 
         Ok((layerdb, graceful_shutdown))
@@ -278,6 +338,16 @@ where
 
     pub fn workspace_snapshot(&self) -> &WorkspaceSnapshotDb<WorkspaceSnapshotValue> {
         &self.workspace_snapshot
+    }
+
+    pub fn split_snapshot_subgraph(&self) -> &SplitSnapshotSubGraphDb<SplitSnapshotSubGraphValue> {
+        &self.split_snapshot_subgraph
+    }
+
+    pub fn split_snapshot_supergraph(
+        &self,
+    ) -> &SplitSnapshotSuperGraphDb<SplitSnapshotSuperGraphValue> {
+        &self.split_snapshot_supergraph
     }
 
     pub fn instance_id(&self) -> Ulid {

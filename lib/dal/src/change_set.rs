@@ -443,7 +443,7 @@ impl ChangeSet {
         dangerous_skip_status_check: bool,
     ) -> ChangeSetResult<()> {
         // Ensure that DVU roots are empty before continuing.
-        if !DependentValueRoot::roots_exist(ctx).await? {
+        if DependentValueRoot::roots_exist(ctx).await? {
             // TODO(nick): we should consider requiring this check in integration tests too. Why did I
             // not do this at the time of writing? Tests have multiple ways to call "apply", whether
             // its via helpers or through the change set methods directly. In addition, they test

@@ -382,6 +382,36 @@ pub struct SuperGraph {
     split_max: u16,
 }
 
+impl SuperGraph {
+    pub fn new(split_max: u16, root_index: SplitGraphNodeIndex) -> Self {
+        Self {
+            addresses: vec![],
+            root_index,
+            split_max,
+        }
+    }
+
+    pub fn split_max(&self) -> u16 {
+        self.split_max
+    }
+
+    pub fn root_index(&self) -> SplitGraphNodeIndex {
+        self.root_index
+    }
+
+    pub fn add_subgraph_address(&mut self, subgraph_address: SubGraphAddress) {
+        self.addresses.push(subgraph_address);
+    }
+
+    pub fn addresses(&self) -> &[SubGraphAddress] {
+        self.addresses.as_slice()
+    }
+
+    pub fn address_for_subgraph(&self, index: usize) -> Option<SubGraphAddress> {
+        self.addresses.get(index).copied()
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct SplitGraph<N, E, K>
 where
@@ -481,6 +511,14 @@ where
         self.subgraphs.push(subgraph);
 
         subgraph_index
+    }
+
+    pub fn supergraph(&self) -> &SuperGraph {
+        &self.supergraph
+    }
+
+    pub fn subgraphs(&self) -> &[SubGraph<N, E, K>] {
+        self.subgraphs.as_slice()
     }
 
     fn get_subgraph(&self, subgraph_index: usize) -> SplitGraphResult<&SubGraph<N, E, K>> {

@@ -12,11 +12,14 @@ use si_events::{
     ContentHash, WorkspaceSnapshotAddress,
 };
 use si_id::{
-    ulid::Ulid, ApprovalRequirementDefinitionId, AttributeValueId, ComponentId, EntityId,
-    InputSocketId, PropId, SchemaId, SchemaVariantId, UserPk, ViewId,
+    ulid::Ulid, ApprovalRequirementDefinitionId, AttributeValueId, ChangeSetId, ComponentId,
+    EntityId, InputSocketId, PropId, SchemaId, SchemaVariantId, UserPk, ViewId,
 };
-use si_split_graph::SplitGraph;
+use si_layer_cache::LayerDbError;
+use si_split_graph::{opt_zip::OptZip, SplitGraph, SubGraph, SuperGraph};
+use strum::IntoEnumIterator;
 use strum::{EnumDiscriminants, EnumIter, EnumString};
+use telemetry::prelude::*;
 use tokio::sync::{Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 use crate::{
@@ -24,16 +27,19 @@ use crate::{
         ApprovalRequirement, ApprovalRequirementApprover, ApprovalRequirementDefinition,
     },
     component::{inferred_connection_graph::InferredConnectionGraph, ComponentResult},
+    layer_db_types::{ViewContent, ViewContentV1},
     prop::PropResult,
     socket::input::InputSocketError,
     ComponentError, DalContext, EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants,
-    InputSocket, NodeWeightDiscriminants, SchemaVariantError,
+    InputSocket, NodeWeightDiscriminants, SchemaVariantError, Timestamp,
 };
 
 use super::{
     content_address::ContentAddressDiscriminants,
     graph::LineageId,
-    node_weight::{category_node_weight::CategoryNodeKind, NodeWeight, NodeWeightError},
+    node_weight::{
+        category_node_weight::CategoryNodeKind, CategoryNodeWeight, NodeWeight, NodeWeightError,
+    },
     traits::{
         approval_requirement::ApprovalRequirementExt, diagram::view::ViewExt, prop::PropExt,
         socket::input::input_socket_from_node_weight,
@@ -44,6 +50,16 @@ use super::{
 
 pub type SplitSnapshotGraphV1 = SplitGraph<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>;
 pub type SplitSnapshotGraphVCurrent = SplitSnapshotGraphV1;
+
+pub type SubGraphV1 = SubGraph<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>;
+pub type SubGraphVCurrent = SubGraphV1;
+
+#[derive(Serialize, Deserialize, Debug, Clone, EnumDiscriminants)]
+#[strum_discriminants(derive(strum::Display, Serialize, Deserialize, EnumString, EnumIter))]
+pub enum SplitSnapshotStorage {
+    SuperGraph(si_split_graph::SuperGraph),
+    SubGraphV1(si_split_graph::SubGraph<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>),
+}
 
 #[derive(Debug, Clone, EnumDiscriminants)]
 #[strum_discriminants(derive(strum::Display, Serialize, Deserialize, EnumString, EnumIter))]
@@ -139,6 +155,273 @@ pub struct SplitSnapshot {
 impl SplitSnapshot {
     pub async fn id(&self) -> WorkspaceSnapshotAddress {
         *self.address.lock().await
+    }
+
+    fn add_category_nodes(graph: &mut SplitSnapshotGraphVCurrent) -> WorkspaceSnapshotResult<Ulid> {
+        let mut view_category_id = Ulid::new();
+
+        // Implementation of add_category_nodes
+        for category_node_kind in CategoryNodeKind::iter() {
+            let id = Ulid::new();
+            let lineage_id = Ulid::new();
+
+            if category_node_kind == CategoryNodeKind::View {
+                view_category_id = id;
+            }
+
+            graph.add_or_replace_node(NodeWeight::Category(CategoryNodeWeight::new(
+                id,
+                lineage_id,
+                category_node_kind,
+            )))?;
+            graph.add_edge(
+                graph.root_id()?,
+                EdgeWeight::new(EdgeWeightKind::new_use()),
+                id,
+            )?;
+        }
+
+        Ok(view_category_id)
+    }
+
+    async fn add_default_view(
+        ctx: &DalContext,
+        graph: &mut SplitSnapshotGraphVCurrent,
+        view_category_id: Ulid,
+    ) -> WorkspaceSnapshotResult<()> {
+        let id = Ulid::new();
+        let lineage_id = Ulid::new();
+
+        let content = ViewContent::V1(ViewContentV1 {
+            timestamp: Timestamp::now(),
+            name: "DEFAULT".to_owned(),
+        });
+
+        let (content_address, _) = ctx.layer_db().cas().write(
+            Arc::new(content.clone().into()),
+            None,
+            ctx.events_tenancy(),
+            ctx.events_actor(),
+        )?;
+
+        let node_weight = NodeWeight::new_view(id, lineage_id, content_address);
+        graph.add_or_replace_node(node_weight.clone())?;
+
+        graph.add_edge(
+            view_category_id,
+            EdgeWeight::new(EdgeWeightKind::new_use_default()),
+            id,
+        )?;
+
+        Ok(())
+    }
+
+    pub async fn initial(ctx: &DalContext) -> WorkspaceSnapshotResult<Self> {
+        let mut graph = SplitSnapshotGraphVCurrent::new(5000);
+
+        let view_category_id = Self::add_category_nodes(&mut graph)?;
+        Self::add_default_view(ctx, &mut graph, view_category_id).await?;
+
+        // We do not care about any field other than "working_copy" because
+        // "write" will populate them using the assigned working copy.
+        let initial = Self {
+            address: Arc::new(Mutex::new(WorkspaceSnapshotAddress::nil())),
+            read_only_graph: Arc::new(SplitSnapshotGraph::V1(graph)),
+            working_copy: Arc::new(RwLock::new(None)),
+            cycle_check: Arc::new(AtomicBool::new(false)),
+            dvu_roots: Arc::new(Mutex::new(HashSet::new())),
+            inferred_connection_graph: Arc::new(RwLock::new(None)),
+        };
+
+        initial.write(ctx).await?;
+
+        Ok(initial)
+    }
+
+    #[instrument(name = "split_snapshot.find", level = "debug", skip_all, fields())]
+    pub async fn find(
+        ctx: &DalContext,
+        split_snapshot_supergraph_addr: WorkspaceSnapshotAddress,
+    ) -> WorkspaceSnapshotResult<Self> {
+        let snapshot = match ctx
+            .layer_db()
+            .split_snapshot_supergraph()
+            .read_wait_for_memory(&split_snapshot_supergraph_addr)
+            .await
+        {
+            Ok(supergraph) => {
+                let supergraph = supergraph.ok_or(
+                    WorkspaceSnapshotError::SplitSnapshotSuperGraphMissingAtAddress(
+                        split_snapshot_supergraph_addr,
+                    ),
+                )?;
+
+                let mut subgraphs = vec![];
+                for &subgraph_address in supergraph.addresses() {
+                    let subgraph_address = subgraph_address.into();
+                    let subgraph = ctx
+                        .layer_db()
+                        .split_snapshot_subgraph()
+                        .read_wait_for_memory(&subgraph_address)
+                        .await?
+                        .ok_or(
+                            WorkspaceSnapshotError::SplitSnapshotSubGraphMissingAtAddress(
+                                subgraph_address,
+                            ),
+                        )?;
+
+                    // xxx: we have to make the splitgraph constructable from arcs, it will
+                    // xxx: need to handle the copy-on-write behavior internally
+                    subgraphs.push(subgraph.as_ref().clone());
+                }
+
+                Arc::new(SplitSnapshotGraph::V1(
+                    SplitSnapshotGraphVCurrent::from_parts(supergraph.as_ref().clone(), subgraphs),
+                ))
+            }
+            Err(err) => match err {
+                LayerDbError::Postcard(_) => {
+                    return Err(WorkspaceSnapshotError::WorkspaceSnapshotNotMigrated(
+                        split_snapshot_supergraph_addr,
+                    ));
+                }
+                err => Err(err)?,
+            },
+        };
+
+        Ok(Self {
+            address: Arc::new(Mutex::new(split_snapshot_supergraph_addr)),
+            read_only_graph: snapshot,
+            working_copy: Arc::new(RwLock::new(None)),
+            cycle_check: Arc::new(AtomicBool::new(false)),
+            dvu_roots: Arc::new(Mutex::new(HashSet::new())),
+            inferred_connection_graph: Arc::new(RwLock::new(None)),
+        })
+    }
+
+    pub async fn find_for_change_set(
+        ctx: &DalContext,
+        change_set_id: ChangeSetId,
+    ) -> WorkspaceSnapshotResult<Self> {
+        // There's a race between finding which address to retrieve and actually retrieving it
+        // where it's possible for the content at the address to be garbage collected, and no
+        // longer be retrievable. We'll re-fetch which snapshot address to use, and will retry,
+        // hoping we don't get unlucky every time
+        let mut retries: u8 = 5;
+
+        while retries > 0 {
+            retries -= 1;
+
+            let row = ctx
+                .txns()
+                .await?
+                .pg()
+                .query_opt(
+                    "SELECT workspace_snapshot_address FROM change_set_pointers WHERE id = $1",
+                    &[&change_set_id],
+                )
+                .await?
+                .ok_or(
+                    WorkspaceSnapshotError::ChangeSetMissingWorkspaceSnapshotAddress(change_set_id),
+                )?;
+
+            let address: WorkspaceSnapshotAddress = row.try_get("workspace_snapshot_address")?;
+
+            match Self::find(ctx, address).await {
+                Ok(snapshot) => return Ok(snapshot),
+                Err(
+                    WorkspaceSnapshotError::SplitSnapshotSuperGraphMissingAtAddress(_)
+                    | WorkspaceSnapshotError::SplitSnapshotSubGraphMissingAtAddress(_),
+                ) => {
+                    warn!(
+                        "Unable to retrieve split snapshot {:?} for change set {:?}. Retries remaining: {}",
+                        address, change_set_id, retries
+                    );
+                    tokio::time::sleep(tokio::time::Duration::from_millis(5)).await;
+                    continue;
+                }
+                Err(e) => return Err(e),
+            }
+        }
+
+        error!(
+            "Retries exceeded trying to fetch split snapshot for change set {:?}",
+            change_set_id
+        );
+
+        Err(WorkspaceSnapshotError::WorkspaceSnapshotNotFetched)
+    }
+
+    pub async fn write(
+        &self,
+        ctx: &DalContext,
+    ) -> WorkspaceSnapshotResult<WorkspaceSnapshotAddress> {
+        let self_clone = self.clone();
+        let layer_db = ctx.layer_db().clone();
+        let events_tenancy = ctx.events_tenancy();
+        let events_actor = ctx.events_actor();
+
+        let mut working_copy = self_clone.working_copy_mut().await;
+        working_copy.cleanup_and_merkle_tree_hash();
+
+        let current_supergraph = working_copy.supergraph();
+        let mut new_supergraph = SuperGraph::new(
+            current_supergraph.split_max(),
+            current_supergraph.root_index(),
+        );
+
+        for (original_subgraph, new_subgraph) in OptZip::new(
+            self.read_only_graph.subgraphs().into_iter().enumerate(),
+            working_copy.subgraphs().into_iter(),
+        ) {
+            let subgraph_address = match (original_subgraph, new_subgraph) {
+                (Some((orig_idx, orig)), Some(working)) => {
+                    if orig.root_node_merkle_tree_hash() != working.root_node_merkle_tree_hash() {
+                        let (new_address, _) = layer_db.split_snapshot_subgraph().write(
+                            Arc::new(working.clone()),
+                            None,
+                            events_tenancy,
+                            events_actor,
+                        )?;
+
+                        new_address
+                    } else {
+                        let subgraph_address = self
+                            .read_only_graph
+                            .supergraph()
+                            .address_for_subgraph(orig_idx)
+                            .unwrap();
+
+                        subgraph_address.into()
+                    }
+                }
+                (None, Some(working)) => {
+                    let (new_address, _) = layer_db.split_snapshot_subgraph().write(
+                        Arc::new(working.clone()),
+                        None,
+                        events_tenancy,
+                        events_actor,
+                    )?;
+
+                    new_address
+                }
+                (Some(_), None) => {
+                    todo!("we've removed a subgraph")
+                }
+                (None, None) => unreachable!("opt zip will never produce this"),
+            };
+
+            new_supergraph.add_subgraph_address(subgraph_address.into());
+        }
+
+        let (supergraph_address, _) = layer_db.split_snapshot_supergraph().write(
+            Arc::new(new_supergraph),
+            None,
+            events_tenancy,
+            events_actor,
+        )?;
+
+        Ok(supergraph_address)
     }
 
     async fn working_copy(&self) -> SnapshotReadGuard<'_> {

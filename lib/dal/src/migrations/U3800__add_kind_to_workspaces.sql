@@ -1,2 +1,2 @@
 ALTER TABLE workspaces
-    ADD COLUMN snapshot_kind text DEFAULT 'legacy';
+    ADD COLUMN snapshot_kind text DEFAULT 'LegacySnapshot';
