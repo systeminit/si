@@ -2897,18 +2897,18 @@ cargo.rust_library(
 )
 
 http_archive(
-    name = "cc-1.2.17.crate",
-    sha256 = "1fcb57c740ae1daf453ae85f16e37396f672b039e00d9d866e07ddb24e328e3a",
-    strip_prefix = "cc-1.2.17",
-    urls = ["https://static.crates.io/crates/cc/1.2.17/download"],
+    name = "cc-1.2.18.crate",
+    sha256 = "525046617d8376e3db1deffb079e91cef90a89fc3ca5c185bbf8c9ecdd15cd5c",
+    strip_prefix = "cc-1.2.18",
+    urls = ["https://static.crates.io/crates/cc/1.2.18/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "cc-1.2.17",
-    srcs = [":cc-1.2.17.crate"],
+    name = "cc-1.2.18",
+    srcs = [":cc-1.2.18.crate"],
     crate = "cc",
-    crate_root = "cc-1.2.17.crate/src/lib.rs",
+    crate_root = "cc-1.2.18.crate/src/lib.rs",
     edition = "2018",
     features = ["parallel"],
     platform = {
@@ -4495,12 +4495,14 @@ cargo.rust_library(
         "default",
         "managed",
         "rt_tokio_1",
+        "serde",
         "unmanaged",
     ],
     visibility = [],
     deps = [
         ":deadpool-runtime-0.1.4",
         ":num_cpus-1.16.0",
+        ":serde-1.0.219",
         ":tokio-1.44.1",
     ],
 )
@@ -4528,6 +4530,7 @@ cargo.rust_library(
     features = [
         "default",
         "rt_tokio_1",
+        "serde",
     ],
     platform = {
         "linux-arm64": dict(
@@ -4553,6 +4556,7 @@ cargo.rust_library(
     deps = [
         ":async-trait-0.1.88",
         ":deadpool-0.12.2",
+        ":serde-1.0.219",
         ":tokio-1.44.1",
         ":tracing-0.1.41",
     ],
@@ -4606,7 +4610,7 @@ cargo.rust_library(
     deps = [
         ":const-oid-0.9.6",
         ":der_derive-0.7.3",
-        ":flagset-0.4.6",
+        ":flagset-0.4.7",
         ":pem-rfc7468-0.7.0",
         ":zeroize-1.8.1",
     ],
@@ -5648,18 +5652,18 @@ cargo.rust_library(
 )
 
 http_archive(
-    name = "errno-0.3.10.crate",
-    sha256 = "33d852cb9b869c2a9b3df2f71a3074817f01e1844f839a144f5fcef059a4eb5d",
-    strip_prefix = "errno-0.3.10",
-    urls = ["https://static.crates.io/crates/errno/0.3.10/download"],
+    name = "errno-0.3.11.crate",
+    sha256 = "976dd42dc7e85965fe702eb8164f21f450704bdde31faefd6471dba214cb594e",
+    strip_prefix = "errno-0.3.11",
+    urls = ["https://static.crates.io/crates/errno/0.3.11/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "errno-0.3.10",
-    srcs = [":errno-0.3.10.crate"],
+    name = "errno-0.3.11",
+    srcs = [":errno-0.3.11.crate"],
     crate = "errno",
-    crate_root = "errno-0.3.10.crate/src/lib.rs",
+    crate_root = "errno-0.3.11.crate/src/lib.rs",
     edition = "2018",
     features = ["std"],
     platform = {
@@ -6033,18 +6037,18 @@ cargo.rust_library(
 )
 
 http_archive(
-    name = "flagset-0.4.6.crate",
-    sha256 = "b3ea1ec5f8307826a5b71094dd91fc04d4ae75d5709b20ad351c7fb4815c86ec",
-    strip_prefix = "flagset-0.4.6",
-    urls = ["https://static.crates.io/crates/flagset/0.4.6/download"],
+    name = "flagset-0.4.7.crate",
+    sha256 = "b7ac824320a75a52197e8f2d787f6a38b6718bb6897a35142d749af3c0e8f4fe",
+    strip_prefix = "flagset-0.4.7",
+    urls = ["https://static.crates.io/crates/flagset/0.4.7/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "flagset-0.4.6",
-    srcs = [":flagset-0.4.6.crate"],
+    name = "flagset-0.4.7",
+    srcs = [":flagset-0.4.7.crate"],
     crate = "flagset",
-    crate_root = "flagset-0.4.6.crate/src/lib.rs",
+    crate_root = "flagset-0.4.7.crate/src/lib.rs",
     edition = "2021",
     visibility = [],
 )
@@ -6078,7 +6082,7 @@ cargo.rust_library(
     visibility = [],
     deps = [
         ":crc32fast-1.4.2",
-        ":miniz_oxide-0.8.5",
+        ":miniz_oxide-0.8.7",
     ],
 )
 
@@ -10450,23 +10454,23 @@ cargo.rust_library(
 
 alias(
     name = "miniz_oxide",
-    actual = ":miniz_oxide-0.8.5",
+    actual = ":miniz_oxide-0.8.7",
     visibility = ["PUBLIC"],
 )
 
 http_archive(
-    name = "miniz_oxide-0.8.5.crate",
-    sha256 = "8e3e04debbb59698c15bacbb6d93584a8c0ca9cc3213cb423d31f760d8843ce5",
-    strip_prefix = "miniz_oxide-0.8.5",
-    urls = ["https://static.crates.io/crates/miniz_oxide/0.8.5/download"],
+    name = "miniz_oxide-0.8.7.crate",
+    sha256 = "ff70ce3e48ae43fa075863cef62e8b43b71a4f2382229920e0df362592919430",
+    strip_prefix = "miniz_oxide-0.8.7",
+    urls = ["https://static.crates.io/crates/miniz_oxide/0.8.7/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "miniz_oxide-0.8.5",
-    srcs = [":miniz_oxide-0.8.5.crate"],
+    name = "miniz_oxide-0.8.7",
+    srcs = [":miniz_oxide-0.8.7.crate"],
     crate = "miniz_oxide",
-    crate_root = "miniz_oxide-0.8.5.crate/src/lib.rs",
+    crate_root = "miniz_oxide-0.8.7.crate/src/lib.rs",
     edition = "2021",
     features = [
         "default",
@@ -15249,7 +15253,7 @@ cargo.rust_library(
     platform = {
         "linux-arm64": dict(
             named_deps = {
-                "libc_errno": ":errno-0.3.10",
+                "libc_errno": ":errno-0.3.11",
             },
             deps = [
                 ":libc-0.2.171",
@@ -15258,7 +15262,7 @@ cargo.rust_library(
         ),
         "linux-x86_64": dict(
             named_deps = {
-                "libc_errno": ":errno-0.3.10",
+                "libc_errno": ":errno-0.3.11",
             },
             deps = [
                 ":libc-0.2.171",
@@ -15267,25 +15271,25 @@ cargo.rust_library(
         ),
         "macos-arm64": dict(
             named_deps = {
-                "libc_errno": ":errno-0.3.10",
+                "libc_errno": ":errno-0.3.11",
             },
             deps = [":libc-0.2.171"],
         ),
         "macos-x86_64": dict(
             named_deps = {
-                "libc_errno": ":errno-0.3.10",
+                "libc_errno": ":errno-0.3.11",
             },
             deps = [":libc-0.2.171"],
         ),
         "windows-gnu": dict(
             named_deps = {
-                "libc_errno": ":errno-0.3.10",
+                "libc_errno": ":errno-0.3.11",
             },
             deps = [":windows-sys-0.59.0"],
         ),
         "windows-msvc": dict(
             named_deps = {
-                "libc_errno": ":errno-0.3.10",
+                "libc_errno": ":errno-0.3.11",
             },
             deps = [":windows-sys-0.59.0"],
         ),
@@ -15359,7 +15363,7 @@ cargo.rust_library(
     platform = {
         "linux-arm64": dict(
             named_deps = {
-                "libc_errno": ":errno-0.3.10",
+                "libc_errno": ":errno-0.3.11",
             },
             deps = [
                 ":libc-0.2.171",
@@ -15368,7 +15372,7 @@ cargo.rust_library(
         ),
         "linux-x86_64": dict(
             named_deps = {
-                "libc_errno": ":errno-0.3.10",
+                "libc_errno": ":errno-0.3.11",
             },
             deps = [
                 ":libc-0.2.171",
@@ -15377,25 +15381,25 @@ cargo.rust_library(
         ),
         "macos-arm64": dict(
             named_deps = {
-                "libc_errno": ":errno-0.3.10",
+                "libc_errno": ":errno-0.3.11",
             },
             deps = [":libc-0.2.171"],
         ),
         "macos-x86_64": dict(
             named_deps = {
-                "libc_errno": ":errno-0.3.10",
+                "libc_errno": ":errno-0.3.11",
             },
             deps = [":libc-0.2.171"],
         ),
         "windows-gnu": dict(
             named_deps = {
-                "libc_errno": ":errno-0.3.10",
+                "libc_errno": ":errno-0.3.11",
             },
             deps = [":windows-sys-0.59.0"],
         ),
         "windows-msvc": dict(
             named_deps = {
-                "libc_errno": ":errno-0.3.10",
+                "libc_errno": ":errno-0.3.11",
             },
             deps = [":windows-sys-0.59.0"],
         ),
@@ -18137,7 +18141,7 @@ cargo.rust_binary(
         ":log-0.4.27",
         ":manyhow-0.11.4",
         ":mime_guess-2.0.4",
-        ":miniz_oxide-0.8.5",
+        ":miniz_oxide-0.8.7",
         ":mixtrics-0.0.3",
         ":monostate-0.1.14",
         ":names-0.14.0",

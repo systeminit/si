@@ -147,6 +147,7 @@ pub struct PgPoolConfig {
     pub pool_timeout_wait_secs: Option<u64>,
     pub pool_timeout_create_secs: Option<u64>,
     pub pool_timeout_recycle_secs: Option<u64>,
+    pub recycling_method: Option<RecyclingMethodConfig>,
 }
 
 impl Default for PgPoolConfig {
@@ -167,6 +168,28 @@ impl Default for PgPoolConfig {
             pool_timeout_wait_secs: None,
             pool_timeout_create_secs: None,
             pool_timeout_recycle_secs: None,
+            recycling_method: None,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub enum RecyclingMethodConfig {
+    Clean,
+    Custom,
+    Fast,
+    Verified,
+}
+
+impl From<RecyclingMethodConfig> for RecyclingMethod {
+    fn from(config: RecyclingMethodConfig) -> Self {
+        match config {
+            RecyclingMethodConfig::Clean => RecyclingMethod::Clean,
+            RecyclingMethodConfig::Custom => {
+                RecyclingMethod::Custom(CONNECTION_RECYCLING_METHOD.to_string())
+            }
+            RecyclingMethodConfig::Fast => RecyclingMethod::Fast,
+            RecyclingMethodConfig::Verified => RecyclingMethod::Verified,
         }
     }
 }
@@ -223,9 +246,16 @@ impl PgPool {
         cfg.password = Some(settings.password.clone().into());
         cfg.dbname = Some(settings.dbname.clone());
         cfg.application_name = Some(settings.application_name.clone());
+
         cfg.manager = Some(ManagerConfig {
-            recycling_method: RecyclingMethod::Custom(CONNECTION_RECYCLING_METHOD.to_string()),
+            recycling_method: settings
+                .recycling_method
+                .as_ref()
+                .cloned()
+                .unwrap_or(RecyclingMethodConfig::Fast)
+                .into(),
         });
+
         let mut pool_config = PoolConfig::new(settings.pool_max_size);
         if let Some(secs) = settings.pool_timeout_wait_secs {
             pool_config.timeouts.wait = Some(Duration::from_secs(secs));
