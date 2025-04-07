@@ -6,5 +6,5 @@ async function main(input: Input): Promise<Output> {
       { TargetGroupArn: tgArn },
     ];
   }
-  [];
+  return [];
 }
