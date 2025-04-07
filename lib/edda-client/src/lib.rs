@@ -19,6 +19,7 @@ use si_data_nats::{
 use si_events::{
     change_batch::ChangeBatchAddress, ChangeSetId, WorkspacePk, WorkspaceSnapshotAddress,
 };
+use telemetry::prelude::*;
 use telemetry_nats::propagation;
 use thiserror::Error;
 
@@ -77,6 +78,18 @@ impl Client {
 
     /// Asynchronously request an index update from a workspace past snapshot to the current
     /// snapshot & return a [`RequestId`].
+    #[instrument(
+        name = "edda.client.update_from_workspace_snapshot"
+        level = "info",
+        skip_all,
+        fields (
+            si.workspace.id = %workspace_id,
+            si.change_set.id = %change_set_id,
+            edda.client.request.update.from_snapshot_address = ?from_snapshot_address,
+            edda.client.request.update.to_snapshot_address = ?to_snapshot_address,
+            edda.client.request.update.change_batch_address = ?change_batch_address
+        )
+    )]
     pub async fn update_from_workspace_snapshot(
         &self,
         workspace_id: WorkspacePk,
@@ -104,6 +117,15 @@ impl Client {
         .await
     }
 
+    #[instrument(
+        name = "edda.client.rebuild_for_change_set"
+        level = "info",
+        skip_all,
+        fields (
+            si.workspace.id = %workspace_id,
+            si.change_set.id = %change_set_id,
+        )
+    )]
     pub async fn rebuild_for_change_set(
         &self,
         workspace_id: WorkspacePk,

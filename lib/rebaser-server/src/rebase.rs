@@ -69,7 +69,7 @@ type RebaseResult<T> = Result<T, RebaseError>;
         si.updates.count = Empty,
         si.corrected_updates.count = Empty,
         si.workspace.id = %request.workspace_id,
-        si.edda.update_request.id = Empty
+        si.edda_request.id = Empty
     ))]
 pub async fn perform_rebase(
     ctx: &mut DalContext,
@@ -164,7 +164,7 @@ pub async fn perform_rebase(
         let changes = original_workspace_snapshot
             .detect_changes(&to_rebase_workspace_snapshot)
             .instrument(tracing::info_span!(
-                "Detect changes for materialized view rebuild"
+                "rebaser.perform_rebase.detect_changes_for_edda_request"
             ))
             .await?;
         let change_batch_address = ctx.write_change_batch(changes).await?;
@@ -177,10 +177,7 @@ pub async fn perform_rebase(
                 change_batch_address,
             )
             .await?;
-        span.record(
-            "si.edda.update_request.id",
-            edda_update_request_id.to_string(),
-        );
+        span.record("si.edda_request.id", edda_update_request_id.to_string());
     }
 
     // Before replying to the requester, we must commit.
