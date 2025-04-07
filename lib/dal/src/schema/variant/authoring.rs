@@ -11,7 +11,7 @@ use thiserror::Error;
 
 use pkg::import::import_schema_variant;
 use si_events::ulid::Ulid;
-use si_events::FuncRunId;
+use si_events::{FuncRunId, FuncRunState};
 use si_layer_cache::LayerDbError;
 use si_pkg::{
     FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType, FuncSpecData, MergeSkip, PkgSpec,
@@ -831,14 +831,10 @@ impl VariantAuthoringClient {
             ));
         };
 
-        ctx.layer_db()
-            .func_run()
-            .set_state_to_success(
-                func_run_value.func_run_id(),
-                ctx.events_tenancy(),
-                ctx.events_actor(),
-            )
-            .await?;
+        FuncRunner::update_run(ctx, func_run_value.func_run_id(), |func_run| {
+            func_run.set_state(FuncRunState::Success)
+        })
+        .await?;
 
         Ok(definition)
     }
