@@ -133,6 +133,13 @@ const overrides = new Map<string, OverrideFn>([
     );
     variant.sockets.push(launchTemplateNameSocket);
 
+    const iamInstanceProfileProp = propForOverride(variant.domain, "IamInstanceProfile");
+    if (!iamInstanceProfileProp) return;
+
+    const iamInstanceProfileSocket = createInputSocketFromProp(iamInstanceProfileProp);
+    setAnnotationOnSocket(iamInstanceProfileSocket, { tokens: ["instance profile name"] });
+    variant.sockets.push(iamInstanceProfileSocket);
+
     // Create the Reboot Action
     const { func: rebootFunc, actionFuncSpec: rebootActionFuncSpec } =
       attachExtraActionFunction(
