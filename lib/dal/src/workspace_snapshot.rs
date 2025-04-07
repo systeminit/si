@@ -148,6 +148,10 @@ pub enum WorkspaceSnapshotError {
     SlowRuntime(#[from] SlowRuntimeError),
     #[error("split graph error: {0}")]
     SplitGraph(#[from] SplitGraphError),
+    #[error("split snapshot subgraph missing at address: {0}")]
+    SplitSnapshotSubGraphMissingAtAddress(WorkspaceSnapshotAddress),
+    #[error("split snapshot supergraph missing at address: {0}")]
+    SplitSnapshotSuperGraphMissingAtAddress(WorkspaceSnapshotAddress),
     #[error("tenancy error: {0}")]
     Tenancy(#[from] TenancyError),
     #[error("transactions error: {0}")]

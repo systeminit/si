@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashMap, HashSet},
     sync::Arc,
@@ -11,27 +12,25 @@ use si_events::{
     ContentHash, WorkspaceSnapshotAddress,
 };
 use si_id::{
-    ulid::Ulid, ApprovalRequirementDefinitionId, AttributeValueId, ComponentId, EntityId, FuncId,
+    ulid::Ulid, ApprovalRequirementDefinitionId, AttributeValueId, ComponentId, EntityId,
     InputSocketId, PropId, SchemaId, SchemaVariantId, UserPk, ViewId,
 };
-use strum::EnumDiscriminants;
+use strum::{EnumDiscriminants, EnumString};
 
 use crate::{
     approval_requirement::{
         ApprovalRequirement, ApprovalRequirementApprover, ApprovalRequirementDefinition,
     },
-    component::{ComponentResult, Connection},
+    component::ComponentResult,
     prop::PropResult,
-    socket::connection_annotation::ConnectionAnnotation,
-    workspace_snapshot::traits::approval_requirement::ApprovalRequirementExt,
-    DalContext, EdgeWeight, EdgeWeightKindDiscriminants, InputSocket, SocketArity, SocketKind,
+    DalContext, EdgeWeight, EdgeWeightKindDiscriminants, InputSocket,
 };
 
 use super::{
     graph::LineageId,
     node_weight::{category_node_weight::CategoryNodeKind, NodeWeight},
     split_snapshot::SplitSnapshot,
-    traits::{diagram::view::ViewExt, prop::PropExt},
+    traits::{approval_requirement::ApprovalRequirementExt, diagram::view::ViewExt, prop::PropExt},
     CycleCheckGuard, DependentValueRoot, EntityKindExt, InferredConnectionsWriteGuard,
     InputSocketExt, SchemaVariantExt, WorkspaceSnapshot, WorkspaceSnapshotError,
     WorkspaceSnapshotResult,
@@ -49,7 +48,7 @@ use super::{
 /// snapshots can remain implementation-agnostic and work with either snapshot type
 /// without needing to be aware of the underlying differences.
 #[derive(Clone, Debug, EnumDiscriminants)]
-#[strum_discriminants(derive(strum::Display))]
+#[strum_discriminants(derive(strum::Display, Serialize, Deserialize, EnumString))]
 pub enum WorkspaceSnapshotSelector {
     LegacySnapshot(Arc<WorkspaceSnapshot>),
     SplitSnapshot(Arc<SplitSnapshot>),

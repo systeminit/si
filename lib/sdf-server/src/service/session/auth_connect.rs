@@ -128,9 +128,13 @@ async fn find_or_create_user_and_workspace(
                 workspace.set_token(&ctx, auth_api_workspace.token).await?;
             }
 
+            dbg!("here");
+
             if workspace.snapshot_version() != WorkspaceSnapshotGraph::current_discriminant() {
                 return Err(SessionError::WorkspaceNotYetMigrated(*workspace.pk()));
             }
+
+            dbg!("there");
 
             workspace
         }
@@ -154,6 +158,7 @@ async fn find_or_create_user_and_workspace(
             }
 
             let workspace = if on_demand_assets {
+                dbg!("on demand");
                 Workspace::new_for_on_demand_assets(
                     &mut ctx,
                     auth_api_workspace.id,

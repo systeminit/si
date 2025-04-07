@@ -1,18 +1,15 @@
-use std::sync::Arc;
-
 use async_trait::async_trait;
 use telemetry::prelude::*;
 
 use crate::{
     layer_db_types::{InputSocketContent, InputSocketContentV2},
-    socket::{connection_annotation::ConnectionAnnotation, input::InputSocketResult},
+    socket::input::InputSocketResult,
     workspace_snapshot::{
-        graph::{InputSocketExt as InputSocketExtGraph, LineageId},
+        graph::InputSocketExt as InputSocketExtGraph,
         node_weight::{traits::SiVersionedNodeWeight, InputSocketNodeWeight},
         WorkspaceSnapshotResult,
     },
-    AttributePrototype, AttributeValueId, ComponentId, DalContext, EdgeWeight, EdgeWeightKind,
-    FuncId, InputSocket, InputSocketId, SchemaVariantId, SocketArity, SocketKind, Timestamp,
+    AttributeValueId, ComponentId, DalContext, InputSocket, InputSocketId, SchemaVariantId,
     WorkspaceSnapshot, WorkspaceSnapshotError,
 };
 

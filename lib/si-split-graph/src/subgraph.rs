@@ -236,8 +236,7 @@ where
         )
     }
 
-    #[allow(unused)]
-    pub(crate) fn root_node_merkle_tree_hash(&self) -> MerkleTreeHash {
+    pub fn root_node_merkle_tree_hash(&self) -> MerkleTreeHash {
         self.graph
             .node_weight(self.root_index)
             .map(|node| node.merkle_tree_hash())

@@ -5,10 +5,11 @@
 
 #![allow(clippy::expect_used, clippy::panic)]
 
-use dal::{ChangeSet, ChangeSetId, DalContext};
+use dal::{ChangeSet, ChangeSetId, DalContext, WorkspacePk};
 use jwt_simple::algorithms::RSAKeyPairLike;
 use jwt_simple::claims::Claims;
 use jwt_simple::prelude::Duration;
+use si_events::Tenancy;
 use si_jwt_public_key::SiJwtClaims;
 use tracing_subscriber::{fmt, util::SubscriberInitExt, EnvFilter, Registry};
 
@@ -47,9 +48,11 @@ pub async fn create_change_set_and_update_ctx(
     )
     .await
     .expect("could not create change set");
+    dbg!("updating");
     ctx.update_visibility_and_snapshot_to_visibility(change_set.id)
         .await
         .expect("could not update visibility and snapshot");
+    dbg!("done");
 }
 
 /// This function is used during macro expansion for setting up tracing in an integration test.
@@ -153,9 +156,11 @@ fn tracing_init_inner(span_events_env_var: &str, log_env_var: &str) {
 }
 
 /// This function is used during macro expansion for setting up the workspace for integration tests.
-pub async fn workspace_signup(ctx: &DalContext) -> crate::Result<(WorkspaceSignup, String)> {
+pub async fn workspace_signup(ctx: &mut DalContext) -> crate::Result<(WorkspaceSignup, String)> {
     use color_eyre::eyre::WrapErr;
+    ctx.update_tenancy(dal::Tenancy::new(WorkspacePk::NONE));
 
+    dbg!("workspace_signup");
     let mut ctx = ctx.clone_with_head().await?;
 
     let workspace_name = generate_fake_name().expect("could not generate fake name");

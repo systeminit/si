@@ -45,6 +45,7 @@ impl FromRequestParts<AppState> for ChangeSetDalContext {
             return Err(internal_error("Change set not found for given workspace"));
         }
 
+        dbg!("from req parts");
         // Update the DalContext to the given changeset.
         ctx.update_visibility_and_snapshot_to_visibility(change_set_id)
             .await

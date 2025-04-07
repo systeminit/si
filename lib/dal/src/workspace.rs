@@ -23,7 +23,9 @@ use crate::feature_flags::FeatureFlag;
 use crate::layer_db_types::ContentTypes;
 use crate::workspace_integrations::{WorkspaceIntegration, WorkspaceIntegrationsError};
 use crate::workspace_snapshot::graph::WorkspaceSnapshotGraphDiscriminants;
-use crate::workspace_snapshot::WorkspaceSnapshotError;
+use crate::workspace_snapshot::selector::WorkspaceSnapshotSelectorDiscriminants;
+use crate::workspace_snapshot::split_snapshot::SplitSnapshot;
+use crate::workspace_snapshot::{WorkspaceSnapshotError, WorkspaceSnapshotSelector};
 use crate::{
     standard_model, standard_model_accessor_ro, BuiltinsError, DalContext, HistoryActor,
     HistoryEvent, HistoryEventError, KeyPairError, StandardModelError, Tenancy, Timestamp,
@@ -81,6 +83,8 @@ pub enum WorkspaceError {
     StrumParse(#[from] strum::ParseError),
     #[error(transparent)]
     Transactions(#[from] TransactionsError),
+    #[error("unknown snapshot kind {0} for workspace: {1}")]
+    UnknownSnapshotKind(String, WorkspacePk),
     #[error(transparent)]
     User(#[from] UserError),
     #[error("workspace integration error: {0}")]
@@ -104,6 +108,7 @@ pub struct Workspace {
     token: Option<String>,
     snapshot_version: WorkspaceSnapshotGraphDiscriminants,
     component_concurrency_limit: Option<i32>,
+    snapshot_kind: WorkspaceSnapshotSelectorDiscriminants,
 }
 
 impl TryFrom<PgRow> for Workspace {
@@ -113,8 +118,11 @@ impl TryFrom<PgRow> for Workspace {
         let created_at: DateTime<Utc> = row.try_get("created_at")?;
         let updated_at: DateTime<Utc> = row.try_get("updated_at")?;
         let snapshot_version: String = row.try_get("snapshot_version")?;
+        let snapshot_kind: String = dbg!(row.try_get("snapshot_kind")?);
+        let pk = row.try_get("pk")?;
+
         Ok(Self {
-            pk: row.try_get("pk")?,
+            pk,
             name: row.try_get("name")?,
             default_change_set_id: row.try_get("default_change_set_id")?,
             uses_actions_v2: row.try_get("uses_actions_v2")?,
@@ -122,6 +130,7 @@ impl TryFrom<PgRow> for Workspace {
             token: row.try_get("token")?,
             snapshot_version: WorkspaceSnapshotGraphDiscriminants::from_str(&snapshot_version)?,
             component_concurrency_limit: row.try_get("component_concurrency_limit")?,
+            snapshot_kind: WorkspaceSnapshotSelectorDiscriminants::from_str(&snapshot_kind)?,
         })
     }
 }
@@ -145,6 +154,10 @@ impl Workspace {
 
     pub fn snapshot_version(&self) -> WorkspaceSnapshotGraphDiscriminants {
         self.snapshot_version
+    }
+
+    pub fn snapshot_kind(&self) -> WorkspaceSnapshotSelectorDiscriminants {
+        self.snapshot_kind
     }
 
     pub async fn set_token(&mut self, ctx: &DalContext, token: String) -> WorkspaceResult<()> {
@@ -194,6 +207,7 @@ impl Workspace {
                 .update_default_change_set_id(ctx, new_change_set.id)
                 .await?;
 
+            dbg!("setup builtin");
             ctx.update_tenancy(Tenancy::new(*found_builtin.pk()));
             ctx.update_visibility_and_snapshot_to_visibility(found_builtin.default_change_set_id)
                 .await?;
@@ -236,6 +250,8 @@ impl Workspace {
         let workspace_pk = *workspace.pk();
 
         change_set.update_workspace_id(ctx, workspace_pk).await?;
+
+        dbg!("setup builtin 2");
 
         // Update our tenancy and visibility once it has been created.
         ctx.update_tenancy(Tenancy::new(workspace_pk));
@@ -338,8 +354,11 @@ impl Workspace {
     ) -> WorkspaceResult<Self> {
         let workspace_snapshot = WorkspaceSnapshot::initial(ctx).await?;
         ctx.set_workspace_snapshot(workspace_snapshot);
+        dbg!("migrating intrinsics");
 
         migrate_intrinsics_no_commit(ctx).await.map_err(Box::new)?;
+
+        dbg!("migrated intrinsics");
 
         let workspace_snapshot_address = ctx
             .workspace_snapshot()?
@@ -355,12 +374,83 @@ impl Workspace {
         )
         .await?;
 
-        let workspace = Self::insert_workspace(ctx, pk, name, head_change_set.id, token).await?;
+        let workspace = Self::insert_workspace(
+            ctx,
+            pk,
+            name,
+            head_change_set.id,
+            token,
+            WorkspaceSnapshotSelectorDiscriminants::LegacySnapshot,
+        )
+        .await?;
+
+        dbg!(&workspace);
+
         head_change_set
             .update_workspace_id(ctx, workspace.pk)
             .await?;
 
         ctx.update_tenancy(Tenancy::new(pk));
+        dbg!("new for on demand");
+        ctx.update_visibility_and_snapshot_to_visibility(head_change_set.id)
+            .await?;
+
+        let _history_event = HistoryEvent::new(
+            ctx,
+            "workspace.create".to_owned(),
+            "Workspace created".to_owned(),
+            &serde_json::json![{ "visibility": ctx.visibility() }],
+        )
+        .await?;
+
+        // Create an entry in the workspace integrations table by default
+        WorkspaceIntegration::new(ctx, None).await?;
+
+        dbg!("new for on demand finish1");
+
+        Ok(workspace)
+    }
+
+    pub async fn new_split_graph_workspace(
+        ctx: &mut DalContext,
+        pk: WorkspacePk,
+        name: impl AsRef<str>,
+        token: impl AsRef<str>,
+    ) -> WorkspaceResult<Self> {
+        let workspace_snapshot = SplitSnapshot::initial(ctx).await?;
+        ctx.set_workspace_split_snapshot(workspace_snapshot);
+
+        migrate_intrinsics_no_commit(ctx).await.map_err(Box::new)?;
+
+        let workspace_snapshot_address = ctx
+            .workspace_snapshot()?
+            .as_split_snapshot()?
+            .write(ctx)
+            .await?;
+
+        let mut head_change_set = ChangeSet::new(
+            ctx,
+            DEFAULT_CHANGE_SET_NAME,
+            None,
+            workspace_snapshot_address,
+        )
+        .await?;
+
+        let workspace = Self::insert_workspace(
+            ctx,
+            pk,
+            name,
+            head_change_set.id,
+            token,
+            WorkspaceSnapshotSelectorDiscriminants::SplitSnapshot,
+        )
+        .await?;
+        head_change_set
+            .update_workspace_id(ctx, workspace.pk)
+            .await?;
+
+        ctx.update_tenancy(Tenancy::new(pk));
+        dbg!("new split");
         ctx.update_visibility_and_snapshot_to_visibility(head_change_set.id)
             .await?;
 
@@ -378,12 +468,32 @@ impl Workspace {
         Ok(workspace)
     }
 
+    pub async fn snapshot_for_change_set(
+        &self,
+        ctx: &DalContext,
+        change_set_id: ChangeSetId,
+    ) -> WorkspaceResult<WorkspaceSnapshotSelector> {
+        Ok(match self.snapshot_kind() {
+            WorkspaceSnapshotSelectorDiscriminants::LegacySnapshot => {
+                WorkspaceSnapshotSelector::LegacySnapshot(Arc::new(
+                    WorkspaceSnapshot::find_for_change_set(ctx, change_set_id).await?,
+                ))
+            }
+            WorkspaceSnapshotSelectorDiscriminants::SplitSnapshot => {
+                WorkspaceSnapshotSelector::SplitSnapshot(Arc::new(
+                    SplitSnapshot::find_for_change_set(ctx, change_set_id).await?,
+                ))
+            }
+        })
+    }
+
     async fn insert_workspace(
         ctx: &DalContext,
         pk: WorkspacePk,
         name: impl AsRef<str>,
         change_set_id: ChangeSetId,
         token: impl AsRef<str>,
+        kind: WorkspaceSnapshotSelectorDiscriminants,
     ) -> WorkspaceResult<Self> {
         let name = name.as_ref();
         let token = token.as_ref();
@@ -393,13 +503,31 @@ impl Workspace {
             .feature_flags_service()
             .feature_is_enabled(&FeatureFlag::ActionsV2);
 
+        let kind = kind.to_string();
+
         let row = ctx
             .txns()
             .await?
             .pg()
             .query_one(
-                "INSERT INTO workspaces (pk, name, default_change_set_id, uses_actions_v2, snapshot_version, token) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
-                &[&pk, &name, &change_set_id, &uses_actions_v2, &version_string, &token],
+                "INSERT INTO workspaces (
+                    pk,
+                    name,
+                    default_change_set_id,
+                    uses_actions_v2,
+                    snapshot_version,
+                    token,
+                    snapshot_kind
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *",
+                &[
+                    &pk,
+                    &name,
+                    &change_set_id,
+                    &uses_actions_v2,
+                    &version_string,
+                    &token,
+                    &kind,
+                ],
             )
             .await?;
 
@@ -431,13 +559,22 @@ impl Workspace {
         .await?;
         let change_set_id = change_set.id;
 
-        let new_workspace = Self::insert_workspace(ctx, pk, name, change_set_id, &token).await?;
+        let new_workspace = Self::insert_workspace(
+            ctx,
+            pk,
+            name,
+            change_set_id,
+            &token,
+            WorkspaceSnapshotSelectorDiscriminants::LegacySnapshot,
+        )
+        .await?;
         change_set
             .update_workspace_id(ctx, *new_workspace.pk())
             .await?;
 
         ctx.update_tenancy(Tenancy::new(new_workspace.pk));
 
+        dbg!("new from builtin");
         // TODO(nick,zack,jacob): convert visibility (or get rid of it?) to use our the new change set id.
         // should set_change_set and set_workspace_snapshot happen in update_visibility?
         ctx.update_visibility_and_snapshot_to_visibility(change_set.id)

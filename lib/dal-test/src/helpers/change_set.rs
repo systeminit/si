@@ -21,6 +21,7 @@ impl ChangeSetTestHelpers {
     /// First, this function performs a blocking commit which will return an error if
     /// there are conflicts.  Then, it updates the snapshot to the current visibility.
     pub async fn commit_and_update_snapshot_to_visibility(ctx: &mut DalContext) -> Result<()> {
+        dbg!("commit and update in helpers");
         Self::blocking_commit(ctx).await?;
         ctx.update_snapshot_to_visibility().await?;
         Ok(())
@@ -32,7 +33,7 @@ impl ChangeSetTestHelpers {
     pub async fn wait_for_actions_to_run(ctx: &mut DalContext) -> Result<()> {
         let total_count = 100;
         let mut count = 0;
-
+        dbg!("wait for actions to run");
         while count < total_count {
             ctx.update_snapshot_to_visibility().await?;
             let action_graph = ActionDependencyGraph::for_workspace(ctx).await?;
@@ -187,6 +188,7 @@ impl ChangeSetTestHelpers {
     ///
     /// If you'd like to provide a name, use [`Self::fork_from_head_change_set_with_name`].
     pub async fn fork_from_head_change_set(ctx: &mut DalContext) -> Result<ChangeSet> {
+        dbg!("fork from head");
         Self::fork_from_head_change_set_inner(ctx, generate_fake_name()?).await
     }
 
@@ -198,6 +200,7 @@ impl ChangeSetTestHelpers {
         ctx: &mut DalContext,
         name: impl AsRef<str>,
     ) -> Result<ChangeSet> {
+        dbg!("fork from head with name");
         Self::fork_from_head_change_set_inner(ctx, name).await
     }
 
@@ -215,6 +218,7 @@ impl ChangeSetTestHelpers {
 
     /// Wait for the changeset's DVUs to be completely processed before continuing
     pub async fn wait_for_dvu(ctx: &DalContext) -> Result<()> {
+        dbg!("wait for dvu");
         loop {
             let mut ctx_clone = ctx.clone();
             ctx_clone.update_snapshot_to_visibility().await?;
