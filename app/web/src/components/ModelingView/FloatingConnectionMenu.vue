@@ -10,42 +10,15 @@
       <div class="text-xs"><TextPill>ESC</TextPill> to exit</div>
     </template>
     <div
-      class="flex flex-col border-2 h-[80vh] rounded-sm"
+      class="flex flex-col h-[80vh] rounded-sm"
       @click="focusOnInput"
       @keydown="debouncedListener"
     >
       <div class="flex flex-row w-full children:basis-1/2">
-        <div
-          :class="
-            clsx(
-              'border-r-2 flex flex-row gap-xs px-xs',
-              themeClasses(
-                'focus-within:bg-shade-0 focus-within:border-action-500',
-                'focus-within:bg-shade-100 focus-within:border-action-300',
-              ),
-            )
-          "
-        >
-          <input
-            class="flex-1 border-none outline-none"
-            ref="inputARef"
-            v-model="searchStringA"
-          />
-          <div class="flex flex-row flex-none gap-2xs items-center text-xs">
-            <TextPill>Up</TextPill>
-            <TextPill>Down</TextPill>
-            <div>to navigate</div>
-          </div>
-        </div>
-        <VormInput
-          ref="inputBRef"
-          v-model="searchStringB"
-          label="Search"
-          noLabel
-          autocomplete="off"
-        />
+        <FloatingConnectionMenuInput ref="inputARef" :focused="activeSide === 'a'" v-model="searchStringA" />
+        <FloatingConnectionMenuInput ref="inputBRef" :focused="activeSide === 'b'" v-model="searchStringB" />
       </div>
-      <div class="flex flex-row grow border-t-2 min-h-0">
+      <div class="flex flex-row grow border-x-2 border-b-2 min-h-0">
         <!-- Socket A -->
         <ConnectionMenuSocketList
           :active="activeSide === 'a'"
@@ -119,7 +92,7 @@
 
 <script lang="ts" setup>
 import * as _ from "lodash-es";
-import { VormInput, Modal, themeClasses } from "@si/vue-lib/design-system";
+import { Modal, themeClasses } from "@si/vue-lib/design-system";
 import {
   computed,
   nextTick,
@@ -142,10 +115,11 @@ import { useViewsStore } from "@/store/views.store";
 import ConnectionMenuSocketList, {
   SocketListEntry,
 } from "./ConnectionMenuSocketList.vue";
+import FloatingConnectionMenuInput from "./FloatingConnectionMenuInput.vue";
 
 const modalRef = ref<InstanceType<typeof Modal>>();
-const inputARef = ref<InstanceType<typeof VormInput>>();
-const inputBRef = ref<InstanceType<typeof VormInput>>();
+const inputARef = ref<InstanceType<typeof FloatingConnectionMenuInput>>();
+const inputBRef = ref<InstanceType<typeof FloatingConnectionMenuInput>>();
 
 const componentsStore = useComponentsStore();
 const viewsStore = useViewsStore();

@@ -67,7 +67,7 @@
             "
             size="sm"
           />
-          <span>
+          <span class="line-clamp-2"> <!-- TODO(Wendy) - this should probably not just truncate, we need to see it! -->
             <template
               v-for="(part, partIndex) in props.listItems[item.index]!.label.split('')"
               :key="partIndex"
