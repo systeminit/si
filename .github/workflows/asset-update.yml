@@ -3,7 +3,7 @@ name: Weekly Update of CF Schemas
 on:
   schedule:
     # weekly
-    - cron: "0 0 * * 0"
+    - cron: "0 0 * * *"
 
 jobs:
   update-schemas:
@@ -25,6 +25,7 @@ jobs:
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v7
         with:
+          token: ${{ secrets.SYSTEMINIT_BOT_TOKEN }}
           commit-message: clover schema update
           title: "chore: clover schema update"
           body: "Update for clover schemas. Check the diff comment to understand what has changed."
