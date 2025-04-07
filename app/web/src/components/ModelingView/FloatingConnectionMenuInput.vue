@@ -16,18 +16,19 @@
         )
       "
     >
-      <input
-        class="flex-1 border-none outline-none bg-shade-100"
+      <VormInput
+        v-model="searchString"
+        :class="clsx('flex-1 border-none outline-none', themeClasses('bg-shade-0', 'bg-shade-100'))"
         ref="inputRef"
-        :value="modelValue"
+        noStyles
       />
       <div
         v-if="focused"
-        class="flex flex-row flex-none gap-2xs items-center text-2xs"
+        class="flex flex-row flex-none gap-3xs items-center text-2xs"
       >
-        <TextPill noVerticalPadding>Up</TextPill>
-        <TextPill noVerticalPadding>Down</TextPill>
-        <div>to navigate</div>
+        <TextPill tighter>Up</TextPill>
+        <TextPill tighter>Down</TextPill>
+        <div class="leading-snug">to navigate</div>
       </div>
     </div>
   </div>
@@ -35,21 +36,22 @@
 
 <script lang="ts" setup>
 import { clsx } from "clsx";
-import { themeClasses } from "@si/vue-lib/design-system";
+import { themeClasses, VormInput } from "@si/vue-lib/design-system";
 import { ref } from "vue";
 import TextPill from "../TextPill.vue";
 
-const inputRef = ref<InstanceType<typeof HTMLInputElement>>();
+const inputRef = ref<InstanceType<typeof VormInput>>();
 
 defineProps({
-  modelValue: { type: String },
   focused: { type: Boolean },
   active: { type: Boolean },
 });
+
+const searchString = ref("");
 
 const focus = () => {
   inputRef.value?.focus();
 };
 
-defineExpose({ focus });
+defineExpose({ focus, searchString });
 </script>

@@ -49,6 +49,7 @@ import Play from "~icons/ion/play-sharp";
 import Arrow from "~icons/heroicons-solid/arrow-up";
 import Chevron from "~icons/heroicons-solid/chevron-up";
 import Star from "~icons/heroicons-solid/star";
+import Sparkles from "~icons/heroicons/sparkles-solid";
 
 import Gear from "~icons/heroicons-solid/cog-8-tooth";
 import Save from "~icons/heroicons-solid/save";
@@ -201,7 +202,8 @@ import Func from "./custom-icons/func.svg?raw";
 import FrameUp from "./custom-icons/frameup.svg?raw";
 import FrameDown from "./custom-icons/framedown.svg?raw";
 
-import Sparkles from "~icons/heroicons/sparkles-solid";
+import LineMdArrowCloseLeft from "~icons/line-md/arrow-close-left";
+import LineMdArrowOpenRight from "~icons/line-md/arrow-open-right";
 
 // restricting the type here (Record<string, FunctionalComponent>) kills our IconName type below
 /* eslint sort-keys: "error" */
@@ -277,6 +279,7 @@ export const ICONS = Object.freeze({
   "git-merge": GitMerge,
   globe: Globe,
   hide: EyeOff,
+  "input-connection": LineMdArrowOpenRight,
   "input-socket": InputSocket,
   "input-type-number": InputTypeNumber,
   "input-type-select": InputTypeSelect,
@@ -305,6 +308,7 @@ export const ICONS = Object.freeze({
   "nested-arrow-right": NestedArrowRight,
   none: EmptyIcon,
   option: MaterialSymbolsKeyboardOptionKey,
+  "output-connection": LineMdArrowCloseLeft,
   "output-socket": OutputSocket,
   password: Password,
   play: Play,

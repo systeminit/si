@@ -19,13 +19,11 @@
           ref="inputARef"
           :active="activeSide === 'a'"
           :focused="activeSide === 'a'"
-          v-model="searchStringA"
         />
         <FloatingConnectionMenuInput
           ref="inputBRef"
           :active="activeSide === 'b'"
           :focused="activeSide === 'b'"
-          v-model="searchStringB"
         />
       </div>
       <div class="flex flex-row grow min-h-0">
@@ -129,6 +127,8 @@ import FloatingConnectionMenuInput from "./FloatingConnectionMenuInput.vue";
 const modalRef = ref<InstanceType<typeof Modal>>();
 const inputARef = ref<InstanceType<typeof FloatingConnectionMenuInput>>();
 const inputBRef = ref<InstanceType<typeof FloatingConnectionMenuInput>>();
+const searchStringA = computed(() => inputARef.value?.searchString);
+const searchStringB = computed(() => inputBRef.value?.searchString);
 
 const componentsStore = useComponentsStore();
 const viewsStore = useViewsStore();
@@ -141,8 +141,6 @@ onUnmounted(() => {
   componentsStore.eventBus.off("openConnectionsMenu", open);
 });
 
-const searchStringA = ref("");
-const searchStringB = ref("");
 const activeInputRef = computed(() =>
   activeSide.value === "a" ? inputARef : inputBRef,
 );
@@ -474,7 +472,9 @@ const processHighlighted = () => {
         : selectedItem.socket.def.direction;
     connectionData.A.componentId = selectedItem.component.def.id;
 
-    searchStringA.value = selectedItem.label;
+    if (inputARef.value) {
+      inputARef.value.searchString = selectedItem.label;
+    }
     activeSide.value = "b";
   } else {
     const selectedItem = listBItems.value[highlightedIndex.value];
@@ -538,7 +538,9 @@ function open(initialState: ConnectionMenuData) {
   connectionData.A = {};
   connectionData.B = {};
   activeSide.value = "a";
-  searchStringB.value = "";
+  if (inputBRef.value) {
+    inputBRef.value.searchString = "";
+  }
 
   let initialASearch = "";
   let aSocketSelected = false;
@@ -574,16 +576,17 @@ function open(initialState: ConnectionMenuData) {
     }
   }
 
-  searchStringA.value = initialASearch;
-
   modalRef.value?.open();
   // For some reason nextTick does not work but this does and UX feels fine
   setTimeout(() => {
+    if (inputARef.value) {
+      inputARef.value.searchString = initialASearch;
+    }
     activeInputRef.value.value?.focus();
     if (aSocketSelected) {
       processHighlighted();
     }
-  }, 100);
+  }, 50);
 }
 
 function close() {

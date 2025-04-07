@@ -3,7 +3,7 @@
     :class="
       clsx(
         'basis-1/2 h-full min-h-0 border-x-2 border-b-2 p-xs ',
-        active && 'bg-neutral-800',
+        active && themeClasses('bg-neutral-100', 'bg-neutral-800'),
         socketToShow?.uniqueKey ? 'children:h-1/2' : 'children:h-full',
       )
     "
@@ -14,7 +14,7 @@
       :class="
         clsx(
           'flex flex-col px-2xs gap-2xs py-3xs min-h-0 overflow-auto',
-          !active && 'text-neutral-400',
+          !active && themeClasses('text-neutral-500', 'text-neutral-400'),
         )
       "
     >
@@ -27,6 +27,7 @@
       >
         <div
           v-for="item in socketList"
+          ref="socketListItemsRef"
           :key="item.index"
           :data-index="item.index"
           :class="
@@ -34,17 +35,19 @@
               'flex gap-xs align-middle items-center',
               active &&
                 item.index === localHighlightedIndex &&
-                'bg-action-800 text-white',
+                themeClasses('bg-action-200', 'bg-action-800 text-white'),
               active &&
-                'dark:outline-action-300 hover:outline hover:outline-action-500 -outline-offset-1 hover:outline-1',
+                [ themeClasses('outline-action-500', 'outline-action-300'),
+              'hover:outline -outline-offset-1 hover:outline-1',
+              ],
               !active &&
                 props.listItems[item.index]!.socket.def.id !==
                   selectedSocket?.def.id &&
-                'hover:bg-neutral-400 hover:text-black',
+                ['hover:outline -outline-offset-1 hover:outline-1', themeClasses('hover:outline-neutral-500', 'hover:outline-neutral-400')],
               item.index !== localHighlightedIndex &&
                 props.listItems[item.index]!.socket.def.id ===
                   selectedSocket?.def.id &&
-                'bg-neutral-600 text-white',
+                ['text-white', themeClasses('bg-action-500', 'bg-action-600')],
               'cursor-pointer',
               'py-xs px-2xs my-0.5',
             )
@@ -68,12 +71,12 @@
             "
             :name="
               props.listItems[item.index]!.socket.def.direction === 'output'
-                ? 'output-socket'
-                : 'input-socket'
+                ? 'output-connection'
+                : 'input-connection'
             "
             size="sm"
           />
-          <span class="line-clamp-2">
+          <span class="line-clamp-2 text-xs">
             <!-- TODO(Wendy) - this should probably not just truncate, we need to see it! -->
             <template
               v-for="(part, partIndex) in props.listItems[
@@ -81,7 +84,7 @@
               ]!.label.split('')"
               :key="partIndex"
             >
-              <span v-if="part === '/'" class="text-neutral-400"> / </span>
+              <span v-if="part === '/'" :class="themeClasses('text-neutral-500', 'text-neutral-400')"> / </span>
               <b
                 v-else-if="
                   props.listItems[item.index]!.labelHighlights?.has(partIndex)
@@ -91,6 +94,10 @@
               <span v-else>{{ part }}</span>
             </template>
           </span>
+          <div v-if="item.index === localHighlightedIndex" class="flex flex-row flex-none gap-3xs items-center text-2xs">
+            <TextPill tighter>Tab</TextPill>
+            <div class="leading-snug">to select</div>
+          </div>
         </div>
       </div>
     </div>
@@ -121,9 +128,9 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, PropType, reactive, ref, watchEffect } from "vue";
+import { computed, PropType, reactive, ref, watch, watchEffect } from "vue";
 import clsx from "clsx";
-import { Icon } from "@si/vue-lib/design-system";
+import { Icon, themeClasses } from "@si/vue-lib/design-system";
 import { useVirtualizer } from "@tanstack/vue-virtual";
 import CodeEditor from "@/components/CodeEditor.vue";
 import {
@@ -131,6 +138,7 @@ import {
   DiagramNodeData,
   DiagramSocketData,
 } from "../ModelingDiagram/diagram_types";
+import TextPill from "../TextPill.vue";
 
 export type SocketListEntry = {
   component: DiagramNodeData | DiagramGroupData;
@@ -199,4 +207,12 @@ watchEffect(() => {
 const emit = defineEmits<{
   (e: "select", index: number): void;
 }>();
+
+const socketListItemsRef = ref<InstanceType<typeof HTMLDivElement>[]>([]);
+watch(() => localHighlightedIndex.value, (i) => {
+  if (socketListItemsRef.value && i !== undefined) {
+    console.log(i);
+    socketListItemsRef.value[i]?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+});
 </script>
