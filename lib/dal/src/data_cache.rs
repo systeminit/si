@@ -26,7 +26,7 @@ impl DataCache {
         ctx.txns()
             .await?
             .nats()
-            .publish(patch_batch.publish_subject(), &patch_batch)
+            .publish_immediately(patch_batch.publish_subject(), &patch_batch)
             .await?;
 
         Ok(())
