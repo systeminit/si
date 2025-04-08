@@ -2,32 +2,34 @@
   <Modal
     ref="modalRef"
     size="max"
-    title="Create Connection"
+    title="Create a connection"
+    hideExitButton
+    :capitalizeTitle="false"
     @click="focusOnInput"
   >
+    <template #titleIcons>
+      <div class="text-xs cursor-pointer" @click="modalRef?.close()">
+        <TextPill>ESC</TextPill> to exit
+      </div>
+    </template>
     <div
-      class="flex flex-col border-2 h-[80vh] rounded-sm"
+      class="flex flex-col h-[80vh] rounded-sm children:gap-sm"
       @click="focusOnInput"
       @keydown="debouncedListener"
     >
       <div class="flex flex-row w-full children:basis-1/2">
-        <VormInput
+        <FloatingConnectionMenuInput
           ref="inputARef"
-          v-model="searchStringA"
-          class="border-r-2"
-          label="Search"
-          noLabel
-          autocomplete="off"
+          :active="activeSide === 'a'"
+          :focused="activeSide === 'a'"
         />
-        <VormInput
+        <FloatingConnectionMenuInput
           ref="inputBRef"
-          v-model="searchStringB"
-          label="Search"
-          noLabel
-          autocomplete="off"
+          :active="activeSide === 'b'"
+          :focused="activeSide === 'b'"
         />
       </div>
-      <div class="flex flex-row grow border-t-2 min-h-0">
+      <div class="flex flex-row grow min-h-0">
         <!-- Socket A -->
         <ConnectionMenuSocketList
           :active="activeSide === 'a'"
@@ -36,8 +38,7 @@
           :listItems="listAItems"
           :selectedComponent="selectedComponentA"
           :selectedSocket="selectedSocketA"
-          class="border-r-2"
-          @select="(index:number) => selectAndProcess('a', index)"
+          @select="(index: number) => selectAndProcess('a', index)"
         />
         <!-- Socket B -->
         <ConnectionMenuSocketList
@@ -47,8 +48,53 @@
           :listItems="listBItems"
           :selectedComponent="selectedComponentB"
           :selectedSocket="selectedSocketB"
-          @select="(index:number) => selectAndProcess('b', index)"
+          @select="(index: number) => selectAndProcess('b', index)"
         />
+      </div>
+    </div>
+    <div
+      class="flex flex-row w-full h-8 mt-sm items-center justify-end gap-sm text-xs"
+    >
+      <div class="flex flex-row gap-2xs items-center">
+        <TextPill>Up</TextPill>
+        <TextPill>Down</TextPill>
+        <div>to navigate</div>
+      </div>
+      <div
+        :class="
+          clsx(
+            'border-l h-full',
+            themeClasses('border-neutral-300', 'border-neutral-600'),
+          )
+        "
+      />
+      <div class="flex flex-row gap-2xs items-center">
+        <TextPill>Tab</TextPill>
+        <div>to select</div>
+      </div>
+      <div
+        :class="
+          clsx(
+            'border-l h-full',
+            themeClasses('border-neutral-300', 'border-neutral-600'),
+          )
+        "
+      />
+      <div class="flex flex-row gap-2xs items-center">
+        <TextPill>Shift + Tab</TextPill>
+        <div>to switch back to the list on the left</div>
+      </div>
+      <div
+        :class="
+          clsx(
+            'border-l h-full',
+            themeClasses('border-neutral-300', 'border-neutral-600'),
+          )
+        "
+      />
+      <div class="flex flex-row gap-2xs items-center">
+        <TextPill>Enter</TextPill>
+        <div>to create a connection</div>
       </div>
     </div>
   </Modal>
@@ -56,7 +102,7 @@
 
 <script lang="ts" setup>
 import * as _ from "lodash-es";
-import { VormInput, Modal } from "@si/vue-lib/design-system";
+import { Modal, themeClasses } from "@si/vue-lib/design-system";
 import {
   computed,
   nextTick,
@@ -66,6 +112,7 @@ import {
   ref,
   watch,
 } from "vue";
+import clsx from "clsx";
 import { Fzf } from "fzf";
 import {
   ConnectionMenuData,
@@ -73,14 +120,18 @@ import {
   useComponentsStore,
 } from "@/store/components.store";
 import { DiagramSocketData } from "@/components/ModelingDiagram/diagram_types";
+import TextPill from "@/components/TextPill.vue";
 import { useViewsStore } from "@/store/views.store";
 import ConnectionMenuSocketList, {
   SocketListEntry,
 } from "./ConnectionMenuSocketList.vue";
+import FloatingConnectionMenuInput from "./FloatingConnectionMenuInput.vue";
 
 const modalRef = ref<InstanceType<typeof Modal>>();
-const inputARef = ref<InstanceType<typeof VormInput>>();
-const inputBRef = ref<InstanceType<typeof VormInput>>();
+const inputARef = ref<InstanceType<typeof FloatingConnectionMenuInput>>();
+const inputBRef = ref<InstanceType<typeof FloatingConnectionMenuInput>>();
+const searchStringA = computed(() => inputARef.value?.searchString);
+const searchStringB = computed(() => inputBRef.value?.searchString);
 
 const componentsStore = useComponentsStore();
 const viewsStore = useViewsStore();
@@ -93,8 +144,6 @@ onUnmounted(() => {
   componentsStore.eventBus.off("openConnectionsMenu", open);
 });
 
-const searchStringA = ref("");
-const searchStringB = ref("");
 const activeInputRef = computed(() =>
   activeSide.value === "a" ? inputARef : inputBRef,
 );
@@ -426,7 +475,9 @@ const processHighlighted = () => {
         : selectedItem.socket.def.direction;
     connectionData.A.componentId = selectedItem.component.def.id;
 
-    searchStringA.value = selectedItem.label;
+    if (inputARef.value) {
+      inputARef.value.searchString = selectedItem.label;
+    }
     activeSide.value = "b";
   } else {
     const selectedItem = listBItems.value[highlightedIndex.value];
@@ -490,7 +541,9 @@ function open(initialState: ConnectionMenuData) {
   connectionData.A = {};
   connectionData.B = {};
   activeSide.value = "a";
-  searchStringB.value = "";
+  if (inputBRef.value) {
+    inputBRef.value.searchString = "";
+  }
 
   let initialASearch = "";
   let aSocketSelected = false;
@@ -526,16 +579,17 @@ function open(initialState: ConnectionMenuData) {
     }
   }
 
-  searchStringA.value = initialASearch;
-
   modalRef.value?.open();
   // For some reason nextTick does not work but this does and UX feels fine
   setTimeout(() => {
+    if (inputARef.value) {
+      inputARef.value.searchString = initialASearch;
+    }
     activeInputRef.value.value?.focus();
     if (aSocketSelected) {
       processHighlighted();
     }
-  }, 100);
+  }, 50);
 }
 
 function close() {

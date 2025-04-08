@@ -15,15 +15,17 @@ you can pass in options as props too */
     ref="wrapperRef"
     :class="
       clsx(
-        computedClasses,
-        inlineLabel ? 'flex flex-row gap-xs items-center' : 'block',
-        compact ? 'vorm-input-compact' : 'vorm-input-standard',
+        !noStyles && [
+          computedClasses,
+          compact ? 'vorm-input-compact' : 'vorm-input-standard',
+          inlineLabel ? 'flex flex-row gap-xs items-center' : 'block',
+        ],
       )
     "
     class="vorm-input"
   >
     <label
-      v-if="!noLabel"
+      v-if="!noLabel && !noStyles"
       v-tooltip="
         compact
           ? {
@@ -45,7 +47,7 @@ you can pass in options as props too */
         {{ label || "&nbsp;" }}{{ required || requiredWarning ? "*" : "" }}
       </slot>
     </label>
-    <slot name="prompt">
+    <slot v-if="!noStyles" name="prompt">
       <div class="vorm-input__prompt pb-xs text-sm">{{ prompt }}</div>
     </slot>
     <Icon
@@ -57,27 +59,31 @@ you can pass in options as props too */
     <div
       :class="
         clsx(
-          'vorm-input__input-and-instructions-wrap',
-          compact && [
-            noLabel
-              ? 'flex-1'
-              : ['flex-none', compactWide ? 'w-[70%]' : 'w-[45%]'],
-            !rename && 'min-h-[30px]',
-            'border',
-            isFocus
-              ? [
-                  'z-[1]',
-                  themeClasses(
-                    'bg-shade-0 border-action-500',
-                    'bg-shade-100 border-action-300',
-                  ),
-                ]
-              : themeClasses(
-                  'bg-neutral-100 border-neutral-400',
-                  'bg-neutral-900 border-neutral-600',
-                ),
-            isError && 'border-destructive-600',
-          ],
+          noStyles
+            ? 'h-full'
+            : [
+                'vorm-input__input-and-instructions-wrap',
+                compact && [
+                  noLabel
+                    ? 'flex-1'
+                    : ['flex-none', compactWide ? 'w-[70%]' : 'w-[45%]'],
+                  !rename && 'min-h-[30px]',
+                  'border',
+                  isFocus
+                    ? [
+                        'z-[1]',
+                        themeClasses(
+                          'bg-shade-0 border-action-500',
+                          'bg-shade-100 border-action-300',
+                        ),
+                      ]
+                    : themeClasses(
+                        'bg-neutral-100 border-neutral-400',
+                        'bg-neutral-900 border-neutral-600',
+                      ),
+                  isError && 'border-destructive-600',
+                ],
+              ],
         )
       "
     >
@@ -93,11 +99,18 @@ you can pass in options as props too */
         "
         :class="
           clsx(
-            'vorm-input__input-wrap',
-            showCautionLines
-              ? themeClasses('bg-caution-lines-light', 'bg-caution-lines-dark')
-              : '',
-            compact && isError && 'border-b border-destructive-600',
+            noStyles
+              ? 'h-full'
+              : [
+                  'vorm-input__input-wrap',
+                  showCautionLines
+                    ? themeClasses(
+                        'bg-caution-lines-light',
+                        'bg-caution-lines-dark',
+                      )
+                    : '',
+                  compact && isError && 'border-b border-destructive-600',
+                ],
           )
         "
       >
@@ -244,7 +257,7 @@ you can pass in options as props too */
 
         <template v-else>
           <Icon
-            v-if="type === 'password' && allowShowPassword"
+            v-if="type === 'password' && allowShowPassword && !noStyles"
             :name="isPasswordMasked ? 'show' : 'hide'"
             allow-pointer-events
             class="vorm-input__pass-show-hide-toggle"
@@ -256,8 +269,16 @@ you can pass in options as props too */
             :autocomplete="autocomplete"
             :class="
               clsx(
-                compact ? 'vorm-input-compact__input' : 'vorm-input__input',
-                compact && rename && 'vorm-input-compact__input__rename',
+                noStyles
+                  ? [
+                      'bg-transparent border-none outline-none p-0 m-0 w-full h-full focus:ring-0',
+                    ]
+                  : [
+                      compact
+                        ? 'vorm-input-compact__input'
+                        : 'vorm-input__input',
+                      compact && rename && 'vorm-input-compact__input__rename',
+                    ],
               )
             "
             :disabled="disabledBySelfOrParent"
@@ -452,6 +473,9 @@ const props = defineProps({
   // new compact styling for VormInput
   compact: Boolean,
   compactWide: Boolean,
+
+  // remove all styles from VormInput and fill available area, only works for text input fields
+  noStyles: Boolean,
 
   // special styles for renaming on the ModelingDiagram
   rename: Boolean,
