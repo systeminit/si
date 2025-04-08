@@ -106,7 +106,9 @@ export function findPropByName(
     throw Error("findPropByName must be used on objects");
   }
 
-  return objPropSpec.entries.find((p) => p.name === propName);
+  return objPropSpec.entries.find((p) =>
+    p.name.toLowerCase() === propName.toLowerCase()
+  );
 }
 
 // Create top-level prop such as domain, resource_value, secrets, etc.
