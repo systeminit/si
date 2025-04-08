@@ -755,6 +755,26 @@ const overrides = new Map<string, OverrideFn>([
     setAnnotationOnSocket(nameOutputSocket, { tokens: ["Cluster Name"] });
     setAnnotationOnSocket(nameOutputSocket, { tokens: ["ClusterName"] });
   }],
+  ["AWS::EKS::Nodegroup", (spec: ExpandedPkgSpec) => {
+    const variant = spec.schemas[0].variants[0];
+    const domain = variant.domain;
+
+    const remoteAccessProp = findPropByName(domain, "RemoteAccess");
+    if (!remoteAccessProp || remoteAccessProp.kind !== "object") return;
+
+    const ec2SshKeyProp = findPropByName(remoteAccessProp, "Ec2SshKey");
+    if (!ec2SshKeyProp) return;
+
+    const sshKeySocket = createInputSocketFromProp(ec2SshKeyProp, [
+      { tokens: ["KeyName"] },
+      { tokens: ["Key Name"] },
+      { tokens: ["KeyPair"] }
+    ], "Key Name");
+
+    setAnnotationOnSocket(sshKeySocket, { tokens: ["ssh key"] });
+
+    variant.sockets.push(sshKeySocket);
+  }],
 ]);
 
 function attachExtraActionFunction(
