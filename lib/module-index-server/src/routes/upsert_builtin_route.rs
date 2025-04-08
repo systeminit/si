@@ -58,7 +58,7 @@ pub async fn upsert_builtin_route(
         user_claim,
         auth_token,
     }: Authorization,
-    ExtractedS3Bucket(s3_bucket): ExtractedS3Bucket,
+    ExtractedS3Bucket { s3_bucket, .. }: ExtractedS3Bucket,
     DbConnection(txn): DbConnection,
     State(state): State<AppState>,
     mut multipart: Multipart,

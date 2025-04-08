@@ -15,7 +15,7 @@ use crate::models::si_module::make_module_details_response;
 use crate::routes::upsert_module_route::UpsertModuleError;
 use crate::whoami::{is_systeminit_auth_token, WhoamiError};
 use crate::{
-    extract::{Authorization, DbConnection, ExtractedS3Bucket},
+    extract::{Authorization, DbConnection},
     models::si_module::{self, ModuleId},
 };
 
@@ -54,7 +54,6 @@ pub async fn promote_builtin_route(
         user_claim: _user_claim,
         auth_token,
     }: Authorization,
-    ExtractedS3Bucket(_s3_bucket): ExtractedS3Bucket,
     DbConnection(txn): DbConnection,
     State(state): State<AppState>,
     mut multipart: Multipart,

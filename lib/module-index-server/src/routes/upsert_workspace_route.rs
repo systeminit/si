@@ -62,7 +62,7 @@ impl IntoResponse for UpsertWorkspaceError {
 
 pub async fn upsert_workspace_route(
     Authorization { user_claim, .. }: Authorization,
-    ExtractedS3Bucket(s3_bucket): ExtractedS3Bucket,
+    ExtractedS3Bucket { s3_bucket, .. }: ExtractedS3Bucket,
     DbConnection(txn): DbConnection,
     mut multipart: Multipart,
 ) -> Result<(), UpsertWorkspaceError> {

@@ -8,6 +8,7 @@ pub struct S3Config {
     pub region: String,
     pub bucket: String,
     pub path_prefix: String,
+    pub cloudfront_domain: Option<String>,
 }
 
 impl Default for S3Config {
@@ -19,6 +20,7 @@ impl Default for S3Config {
             bucket: String::from("modules-index-sandbox"),
             // TODO? is this right?
             path_prefix: String::from("dev"),
+            cloudfront_domain: None,
         }
     }
 }
