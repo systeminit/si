@@ -2,6 +2,10 @@ import * as Comlink from "comlink";
 import { applyPatch as applyOperations } from "fast-json-patch";
 import sqlite3InitModule, {
   Database,
+  ExecBaseOptions,
+  ExecReturnResultRowsOptions,
+  ExecRowModeArrayOptions,
+  FlexibleString,
   Sqlite3Static,
   SqlValue,
 } from "@sqlite.org/sqlite-wasm";
@@ -83,11 +87,12 @@ function debug(...args: any | any[]) {
 let db: Database;
 let sdf: AxiosInstance;
 
-const start = async (sqlite3: Sqlite3Static) => {
+const start = async (sqlite3: Sqlite3Static, testing: boolean) => {
+  const dbname = testing ? "sitest.sqlite3" : "si.sqlite3";
   db =
     "opfs" in sqlite3
-      ? new sqlite3.oo1.OpfsDb("/si.sqlite3")
-      : new sqlite3.oo1.DB("/si.sqlite3", "ct");
+      ? new sqlite3.oo1.OpfsDb(`/${dbname}`)
+      : new sqlite3.oo1.DB(`/${dbname}`, "c");
   debug(
     "opfs" in sqlite3
       ? `OPFS is available, created persisted database at ${db.filename}`
@@ -96,10 +101,10 @@ const start = async (sqlite3: Sqlite3Static) => {
   await db.exec({ sql: "PRAGMA foreign_keys = ON;" });
 };
 
-const initializeSQLite = async () => {
+const initializeSQLite = async (testing: boolean) => {
   try {
     const sqlite3 = await sqlite3InitModule({ print: log, printErr: error });
-    await start(sqlite3);
+    await start(sqlite3, testing);
   } catch (err) {
     if (err instanceof Error)
       error("Initialization error:", err.name, err.message);
@@ -119,8 +124,8 @@ const dropTables = async () => {
 
 // INTEGER is 8 bytes, not large enough to store ULIDs
 // we'll go with string, though reading that putting the bytes as BLOBs would save space
-const ensureTables = async () => {
-  if (_START_FRESH) await dropTables();
+const ensureTables = async (testing: boolean) => {
+  if (_START_FRESH || testing) await dropTables();
   /**
    * GOAL: persist only data that is readable, once blob data is no longer viewable, get rid of it
    * PROBLEM: Objects exist across multiple changesets, so we cannot ever UPDATE atom
@@ -188,6 +193,15 @@ const ensureTables = async () => {
 
   return await db.exec({ sql });
 };
+
+// NOTE: this is just for external test usage, do not use this within this file
+const exec = (
+  opts: ExecBaseOptions &
+    ExecRowModeArrayOptions &
+    ExecReturnResultRowsOptions & {
+      sql: FlexibleString;
+    },
+): SqlValue[][] => db.exec(opts);
 
 const encodeDocumentForDB = async (doc: object) => {
   return await new Blob([JSON.stringify(doc)]).arrayBuffer();
@@ -839,12 +853,12 @@ const dbInterface: DBInterface = {
 
     sdf.interceptors.request.use(injectBearerTokenAuth);
   },
-  async initDB() {
-    return initializeSQLite();
+  async initDB(testing: boolean) {
+    return initializeSQLite(testing);
   },
 
-  async migrate() {
-    const result = ensureTables();
+  async migrate(testing: boolean) {
+    const result = ensureTables(testing);
     debug("Migration completed");
     return result;
   },
@@ -908,8 +922,8 @@ const dbInterface: DBInterface = {
   },
 
   async initBifrost() {
-    await Promise.all([this.initDB(), this.initSocket()]);
-    await this.migrate();
+    await Promise.all([this.initDB(false), this.initSocket()]);
+    await this.migrate(false);
   },
 
   async bifrostClose() {
@@ -939,6 +953,12 @@ const dbInterface: DBInterface = {
   atomChecksumsFor,
   pruneAtomsForClosedChangeSet,
   niflheim,
+  encodeDocumentForDB,
+  decodeDocumentFromDB,
+  handlePatchMessage,
+  exec,
+  oneInOne,
+  handleHammer,
 
   changeSetExists: async (workspaceId: string, changeSetId: ChangeSetId) => {
     const row = await db.exec({
@@ -970,448 +990,6 @@ const dbInterface: DBInterface = {
     const [changesets, snapshots, atoms, mtm] = await Promise.all([c, s, a, m]);
     return { changesets, snapshots, atoms, mtm };
   },
-
-  /*
-  async fullDiagnosticTest() {
-    log("~~ DIAGNOSTIC STARTED ~~");
-    const head = "HEAD";
-    const workspace = "W";
-    const checksum = "HEAD";
-    await db.exec({
-      sql: `
-        INSERT INTO snapshots (address)
-        VALUES (?);
-      `,
-      bind: [checksum],
-    });
-
-    await db.exec({
-      sql: `
-        INSERT INTO changesets (change_set_id, workspace_id, snapshot_address)
-        VALUES (?, ?, ?);
-      `,
-      bind: [head, workspace, checksum],
-    });
-
-    const testRecord = "testRecord";
-    await db.exec({
-      sql: `
-        INSERT INTO atoms (kind, args, checksum, data)
-        VALUES (?, ?, ?, ?);
-      `,
-      bind: [
-        testRecord,
-        "testId1",
-        "tr1",
-        await encodeDocumentForDB({ id: 1, name: "test record 1" }),
-      ],
-    });
-
-    await db.exec({
-      sql: `
-        INSERT INTO snapshots_mtm_atoms (snapshot_address, kind, args, checksum)
-        VALUES (?, ?, ?, ?);
-      `,
-      bind: [checksum, testRecord, "testId1", "tr1"],
-    });
-
-    await db.exec({
-      sql: `
-        INSERT INTO atoms (kind, args, checksum, data)
-        VALUES (?, ?, ?, ?);
-      `,
-      bind: [
-        testRecord,
-        "testId2",
-        "tr2",
-        await encodeDocumentForDB({ id: 2, name: "test record 2" }),
-      ],
-    });
-
-    await db.exec({
-      sql: `
-        INSERT INTO snapshots_mtm_atoms (snapshot_address, kind, args, checksum)
-        VALUES (?, ?, ?, ?);
-      `,
-      bind: [checksum, testRecord, "testId2", "tr2"],
-    });
-
-    const testList = "testList";
-    await db.exec({
-      sql: `
-        INSERT INTO atoms (kind, args, checksum, data)
-        VALUES (?, ?, ?, ?);
-      `,
-      bind: [
-        testList,
-        "changeSetId",
-        "tl1",
-        await encodeDocumentForDB({
-          list: [`${testRecord}:1:tr1`, `${testRecord}:2:tr2`],
-        }),
-      ],
-    });
-
-    await db.exec({
-      sql: `
-        INSERT INTO snapshots_mtm_atoms (snapshot_address, kind, args, checksum)
-        VALUES (?, ?, ?, ?);
-      `,
-      bind: [checksum, testList, "changeSetId", "tl1"],
-    });
-    log("~~ FIXTURE COMPLETED ~~");
-
-    /**
-     * OK, the above code gives us 3 atoms that represent a list and two items within it
-     * all hooked up to the snapshot and changeset tables
-     *
-     * Let's craft expected payloads over the web socket wire, and only call handle event
-     * and assert we have the rows we expect to have!
-     *
-     * First payload is changing the name of a view
-
-    const payload1: PatchBatch = {
-      meta: {
-        workspaceId: "W",
-        changeSetId: "new_change_set",
-        snapshotFromAddress: "HEAD",
-        snapshotToAddress: "new_change_set",
-      },
-      kind: MessageKind.PATCH,
-      patches: [
-        {
-          kind: testRecord,
-          fromChecksum: "tr1",
-          toChecksum: "tr1-new-name",
-          patch: [{ op: "replace", path: "/name", value: "new name" }],
-          id: "testId1",
-        },
-      ],
-    };
-    await tracer.startActiveSpan("handleEvent", async (span) => {
-      await handlePatchMessage(payload1, span);
-      span.end();
-    });
-    await assertUniqueAtoms();
-
-    const confirm1 = await db.exec({
-      sql: `SELECT count(snapshot_address) FROM snapshots_mtm_atoms WHERE snapshot_address = ?;`,
-      bind: ["HEAD"],
-      returnValue: "resultRows",
-    });
-    const count_old_snapshot_atoms = oneInOne(confirm1);
-    // one for each original atom
-    console.assert(
-      count_old_snapshot_atoms === 3,
-      `old snapshots ${String(count_old_snapshot_atoms)} === 3`,
-    );
-
-    const confirm2 = await db.exec({
-      sql: `SELECT count(snapshot_address) FROM snapshots_mtm_atoms WHERE snapshot_address = ?;`,
-      bind: ["new_change_set"],
-      returnValue: "resultRows",
-    });
-    const count_new_snapshot_atoms = oneInOne(confirm2);
-    // copied mtm & the patched atom
-    console.assert(
-      count_new_snapshot_atoms === 3,
-      `new snapshots ${String(count_new_snapshot_atoms)} === 3`,
-    );
-
-    const confirm3 = await db.exec({
-      sql: `SELECT count(*) FROM atoms;`,
-      returnValue: "resultRows",
-    });
-    const count_atoms = oneInOne(confirm3);
-    // three original atoms, plus the new patched atom
-    console.assert(
-      count_atoms === 4,
-      `payload1 atoms ${String(count_atoms)} === 4`,
-    );
-
-    const new_atom_data = await db.exec({
-      sql: `SELECT data FROM atoms WHERE checksum = ?`,
-      bind: ["tr1-new-name"],
-      returnValue: "resultRows",
-    });
-    const data = oneInOne(new_atom_data);
-    if (data === NOROW) throw new Error("Expected data, got nothing");
-    const doc = decodeDocumentFromDB(data as ArrayBuffer);
-    console.assert(
-      doc.id === 1 && doc.name === "new name",
-      `Document doesn't match (${JSON.stringify(doc)})`,
-    );
-
-    const addressQuery = await db.exec({
-      sql: "select snapshot_address from changesets where change_set_id = ?;",
-      bind: ["new_change_set"],
-      returnValue: "resultRows",
-    });
-    const address = oneInOne(addressQuery) as string;
-    console.assert(
-      address === "new_change_set",
-      `Changeset address didn't move forward ${address}`,
-    );
-
-    log("~~ FIRST PAYLOAD SUCCESS ~~");
-
-    /**
-     * Second payload is merging that change to HEAD
-
-    const payload2: PatchBatch = {
-      meta: {
-        workspaceId: "W",
-        changeSetId: "HEAD",
-        snapshotFromAddress: "HEAD",
-        snapshotToAddress: "new_change_set_on_head",
-      },
-      kind: MessageKind.PATCH,
-      patches: [
-        {
-          kind: testRecord,
-          fromChecksum: "tr1",
-          toChecksum: "tr1-new-name",
-          patch: [{ op: "replace", path: "/name", value: "new name" }],
-          id: "testId1",
-        },
-      ],
-    };
-    await tracer.startActiveSpan("handleEvent", async (span) => {
-      await handlePatchMessage(payload2);
-      span.end();
-    });
-    await assertUniqueAtoms();
-
-    const confirm4 = await db.exec({
-      sql: `SELECT count(snapshot_address) FROM snapshots_mtm_atoms WHERE snapshot_address = ?;`,
-      bind: [checksum],
-      returnValue: "resultRows",
-    });
-    const count_old_head_snapshot_atoms = oneInOne(confirm4);
-    // one for each original atom
-    console.assert(
-      count_old_head_snapshot_atoms === 0,
-      `old head snapshots ${String(count_old_head_snapshot_atoms)} === 0`,
-    );
-
-    const confirm5 = await db.exec({
-      sql: `SELECT count(snapshot_address) FROM snapshots_mtm_atoms WHERE snapshot_address != ?;`,
-      bind: [checksum],
-      returnValue: "resultRows",
-    });
-    const count_new_snapshot_atoms_again = oneInOne(confirm5);
-    // copied mtm & the patched atom, 3 for the changeset, 3 for HEAD
-    console.assert(
-      count_new_snapshot_atoms_again === 3 * 2,
-      `new snapshots ${String(count_new_snapshot_atoms_again)} === 3*2`,
-    );
-
-    const confirm6 = await db.exec({
-      sql: `SELECT count(*) FROM atoms;`,
-      returnValue: "resultRows",
-    });
-    const count_atoms_no_change = oneInOne(confirm6);
-    // same number of atoms no change
-    console.assert(
-      count_atoms_no_change === 3,
-      `payload2 atoms ${String(count_atoms_no_change)} === 3`,
-    );
-
-    log("~~ SECOND PAYLOAD SUCCESS ~~");
-
-    /**
-     * Third thing that happens, closing out that changeSet
-     * WE NEED AN EVENT TO TELL US THIS
-
-    const removed_record_before = await db.exec({
-      sql: `SELECT COUNT(snapshot_address) FROM snapshots_mtm_atoms WHERE checksum = ?`,
-      bind: ["tr1-new-name"],
-      returnValue: "resultRows",
-    });
-    const before = oneInOne(removed_record_before);
-
-    console.assert(before === 2, `Before state wrong ${removed_record_before}`);
-
-    await pruneAtomsForClosedChangeSet("W", "new_change_set");
-    const confirm7 = await db.exec({
-      sql: `SELECT count(snapshot_address) FROM snapshots_mtm_atoms WHERE snapshot_address != ?;`,
-      bind: [checksum],
-      returnValue: "resultRows",
-    });
-    const count_snapshots_after_purge = oneInOne(confirm7);
-    // 3 for HEAD
-    console.assert(
-      count_snapshots_after_purge === 3,
-      `new snapshots ${String(count_snapshots_after_purge)} === 3`,
-    );
-
-    const confirm8 = await db.exec({
-      sql: `SELECT count(*) FROM atoms;`,
-      returnValue: "resultRows",
-    });
-    const count_atoms_after_purge = oneInOne(confirm8);
-    // back to 3 atoms, like original
-    console.assert(
-      count_atoms_after_purge === 3,
-      `purge atoms ${String(count_atoms_after_purge)} === 3`,
-    );
-
-    const removed_record = await db.exec({
-      sql: `SELECT COUNT(snapshot_address) FROM snapshots_mtm_atoms WHERE checksum = ?`,
-      bind: ["tr1-new-name"],
-      returnValue: "resultRows",
-    });
-    const removed = oneInOne(removed_record);
-    console.assert(removed === 1, "Expected removed is still here");
-
-    log("~~ PURGE SUCCESS ~~");
-
-    /**
-     * Fourth thing that happens, add a new view, remove an existing view
-
-
-    const payload3: PatchBatch = {
-      meta: {
-        workspaceId: "W",
-        changeSetId: "add_remove",
-        snapshotFromAddress: "new_change_set_on_head",
-        snapshotToAddress: "add_remove_1",
-      },
-      kind: MessageKind.PATCH,
-      patches: [
-        {
-          kind: testRecord,
-          fromChecksum: "0",
-          toChecksum: "tr3-add",
-          patch: [
-            { op: "add", path: "/name", value: "record 3" },
-            { op: "add", path: "/id", value: 3 },
-          ],
-          id: "testId3",
-        },
-        {
-          kind: testRecord,
-          fromChecksum: "tr1-new-name",
-          toChecksum: "0",
-          patch: [],
-          id: "testId1",
-        },
-        {
-          kind: testList,
-          fromChecksum: "tl1",
-          toChecksum: "tl1-add-remove",
-          patch: [
-            { op: "remove", path: "/list/0" },
-            { op: "add", path: "/list/2", value: `${testRecord}:3:tr3-add` },
-          ],
-          id: "changeSetId",
-        },
-      ],
-    };
-    await tracer.startActiveSpan("handleEvent", async (span) => {
-      await handlePatchMessage(payload3);
-      span.end();
-    });
-    await assertUniqueAtoms();
-
-    const added_record = await db.exec({
-      sql: `SELECT data FROM atoms WHERE checksum = ?`,
-      bind: ["tr3-add"],
-      returnValue: "resultRows",
-    });
-    const added = oneInOne(added_record);
-    if (added === NOROW) throw new Error("Expected new record, got nothing");
-    const added_doc = decodeDocumentFromDB(added as ArrayBuffer);
-    console.assert(
-      added_doc.id === 3 && added_doc.name === "record 3",
-      `Added document doesn't match (${JSON.stringify(added_doc)})`,
-    );
-
-    const modlist = await db.exec({
-      sql: `SELECT data FROM atoms WHERE checksum = ?`,
-      bind: ["tl1-add-remove"],
-      returnValue: "resultRows",
-    });
-    const list = oneInOne(modlist);
-    if (list === NOROW) throw new Error("Expected list, got nothing");
-    const list_doc = decodeDocumentFromDB(list as ArrayBuffer);
-    console.assert(
-      list_doc.list[0] === `${testRecord}:2:tr2`,
-      `List item 1 is wrong (${JSON.stringify(list_doc)})`,
-    );
-    console.assert(
-      list_doc.list[1] === `${testRecord}:3:tr3-add`,
-      `List item 2 is wrong (${JSON.stringify(list_doc)})`,
-    );
-
-    const confirmCount = await db.exec({
-      sql: `SELECT count(*) FROM atoms;`,
-      returnValue: "resultRows",
-    });
-    const count_atoms_after_addremove = oneInOne(confirmCount);
-
-    console.assert(
-      count_atoms_after_addremove === 5,
-      `after mjolnir atom count ${String(count_atoms_after_addremove)} === 5`,
-    );
-
-    log("~~ ADD / REMOVE COMPLETED ~~");
-
-    // test mjolnir!
-    const hammer1: AtomMessage = {
-      kind: MessageKind.MJOLNIR,
-      atom: {
-        id: "fb1",
-        kind: "foobar",
-        toChecksum: "fb1",
-        workspaceId: "W",
-        changeSetId: "add_remove",
-        snapshotToAddress: "add_remove_1",
-      },
-      data: { foo: "bar" },
-    };
-
-    await tracer.startActiveSpan("handleEvent", async (span) => {
-      await handleHammer(hammer1);
-      span.end();
-    });
-    await assertUniqueAtoms();
-
-    const query = await db.exec({
-      sql: "select args from atoms where kind = ? and args = ? and checksum = ?",
-      bind: ["foobar", "fb1", "fb1"],
-      returnValue: "resultRows",
-    });
-    const fb = oneInOne(query);
-    console.assert(fb === "fb1", "Mjolnir atom doesn't exist");
-
-    const confirm9 = await db.exec({
-      sql: `SELECT count(*) FROM atoms;`,
-      returnValue: "resultRows",
-    });
-    const count_atoms_after_hammer = oneInOne(confirm9);
-
-    console.assert(
-      count_atoms_after_hammer === 6,
-      `after mjolnir atom count ${String(count_atoms_after_hammer)} === 6`,
-    );
-
-    const addressQuery2 = await db.exec({
-      sql: "select snapshot_address from changesets where change_set_id = ?;",
-      bind: ["add_remove"],
-      returnValue: "resultRows",
-    });
-    const address2 = oneInOne(addressQuery2) as string;
-    console.assert(
-      address2 === "add_remove_1",
-      `Changeset address didn't move forward ${address2}`,
-    );
-
-    log("~~ MJOLNIR COMPLETED ~~");
-
-    log("~~ DIAGNOSTIC COMPLETED ~~");
-  },
-  */
 };
 
 Comlink.expose(dbInterface);

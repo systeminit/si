@@ -1,5 +1,13 @@
-import { SqlValue } from "@sqlite.org/sqlite-wasm";
+import {
+  ExecBaseOptions,
+  ExecReturnResultRowsOptions,
+  ExecReturnThisOptions,
+  ExecRowModeArrayOptions,
+  FlexibleString,
+  SqlValue,
+} from "@sqlite.org/sqlite-wasm";
 import { Operation } from "fast-json-patch";
+import { Span } from "@opentelemetry/api";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { WorkspacePk } from "@/store/workspaces.store";
 import { WorkspaceMetadata } from "../../api/sdf/dal/workspace";
@@ -35,10 +43,10 @@ export type BustCacheFn = (
 ) => void;
 
 export interface DBInterface {
-  initDB: () => Promise<void>;
-  migrate: () => void;
+  initDB: (testing: boolean) => Promise<void>;
+  migrate: (testing: boolean) => void;
   setBearer: (token: string) => void;
-  initSocket(): void;
+  initSocket(): Promise<void>;
   initBifrost(): void;
   bifrostClose(): void;
   bifrostReconnect(): void;
@@ -70,7 +78,20 @@ export interface DBInterface {
     workspaceId: WorkspacePk,
     changeSetId: ChangeSetId,
   ): void;
-  // fullDiagnosticTest(): void;
+  /* these are used for testing purposes, and should not be used outside the web worker in production code */
+  oneInOne(rows: SqlValue[][]): SqlValue | typeof NOROW;
+  encodeDocumentForDB(doc: object): Promise<ArrayBuffer>;
+  decodeDocumentFromDB(doc: ArrayBuffer): AtomDocument;
+  handlePatchMessage(data: PatchBatch, span?: Span): Promise<void>;
+  handleHammer(msg: AtomMessage, span?: Span): Promise<void>;
+  exec(
+    opts: ExecBaseOptions &
+      ExecRowModeArrayOptions &
+      (ExecReturnThisOptions | ExecReturnResultRowsOptions) & {
+        sql: FlexibleString;
+      },
+  ): SqlValue[][];
+  // show me everything
   odin(): object;
 }
 

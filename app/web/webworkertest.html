@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" href="/favicon.png" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>System Init</title>
+
+  <style type="text/css">
+    html {
+      font-size: 16px;
+      font-family: monospace;
+    }
+
+    main {
+      display: flex;
+      margin-bottom: 1rlh;
+    }
+
+    main * {
+      width: 25vw;
+      margin-right: 1rem;
+    }
+
+    ul {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    #errors>ul>li:before {
+      content: "¤";
+      margin: 0 1rem;
+    }
+
+    #logs>ul>li:before {
+      content: "»";
+      margin: 0 1rem;
+    }
+
+    fieldset {
+      padding: 1rem;
+    }
+
+    legend {
+      width: auto;
+    }
+
+    #logs {
+      color: #006600;
+      border-color: #006600;
+    }
+
+    #errors {
+      color: #660000;
+      border-color: #660000;
+    }
+
+    #timestamp {
+      font-weight: bold;
+    }
+  </style>
+</head>
+
+<body>
+  <noscript>
+    <strong>
+      TESTING NEEDS JAVASCRIPT
+    </strong>
+  </noscript>
+
+  <main>
+    <fieldset id="logs">
+      <legend>Logs</legend>
+      <ul>
+      </ul>
+    </fieldset>
+    <fieldset id="errors">
+      <legend>Errors</legend>
+      <ul>
+      </ul>
+    </fieldset>
+  </main>
+  <p>Done at <span id="timestamp"></span>
+
+    <script type="module" src="/src/workers/webworker.test.ts"></script>
+</body>
+
+</html>
