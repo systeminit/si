@@ -18,7 +18,8 @@ import { Modal, RichText, Stack, VButton } from "@si/vue-lib/design-system";
 import axios from "axios";
 import { onBeforeUnmount, onMounted, ref } from "vue";
 
-const APP_FILENAME_REGEX = /\/?assets\/index-([0-9a-z]+).js/;
+// const APP_FILENAME_REGEX = /\/?assets\/index-([0-9a-z]+).js/;
+const getFilenameFromPath = (path: string) => path.split("/").pop();
 
 const runningHash = getRunningHash();
 
@@ -36,11 +37,12 @@ async function check() {
 
     const latestAppFileWithHash = res.data["index.html"].file;
 
-    const latestHash = latestAppFileWithHash.match(APP_FILENAME_REGEX)?.[1];
+    const latestHash = getFilenameFromPath(latestAppFileWithHash);
     if (runningHash && latestHash !== runningHash) {
       modalRef.value?.open();
     }
   } catch (err) {
+    // local dev errors here because the manifest file doesn't exist
     stopInterval();
   }
 }
@@ -52,10 +54,11 @@ function reloadBrowser() {
 function getRunningHash() {
   if (import.meta.env.SSR) return "";
   // look for script tag of our main entrypoint that includes a hash
-  const scriptEls = document.querySelectorAll("script[src^='/assets/index-']");
+  const scriptEls = document.querySelectorAll("script");
   for (const scriptEl of scriptEls) {
-    const matches = scriptEl.getAttribute("src")?.match(APP_FILENAME_REGEX);
-    if (matches) return matches[1];
+    // const matches = scriptEl.getAttribute("src")?.match(APP_FILENAME_REGEX);
+    const matches = getFilenameFromPath(scriptEl.getAttribute("src") ?? "");
+    if (matches?.includes("main")) return matches;
   }
 }
 
