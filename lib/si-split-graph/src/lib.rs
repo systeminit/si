@@ -1,4 +1,7 @@
-use std::collections::{HashSet, VecDeque};
+use std::{
+    collections::{HashMap, HashSet, VecDeque},
+    time::Instant,
+};
 
 use opt_zip::OptZip;
 use petgraph::{prelude::*, stable_graph};
@@ -316,18 +319,18 @@ where
         }
     }
 
-    pub fn edge_hash(&self) -> Option<ContentHash> {
+    pub fn edge_entropy(&self) -> Option<Vec<u8>> {
         match self {
-            SplitGraphEdgeWeight::Custom(c) => c.edge_hash(),
+            SplitGraphEdgeWeight::Custom(c) => c.edge_entropy(),
             SplitGraphEdgeWeight::ExternalSource {
                 source_id,
                 subgraph,
                 ..
             } => {
-                let mut hasher = ContentHash::hasher();
-                hasher.update(&source_id.inner().to_bytes());
-                hasher.update(&subgraph.to_le_bytes());
-                Some(hasher.finalize())
+                let mut entropy = vec![];
+                entropy.extend_from_slice(&source_id.inner().to_bytes());
+                entropy.extend_from_slice(&subgraph.to_le_bytes());
+                Some(entropy)
             }
             SplitGraphEdgeWeight::Ordering | SplitGraphEdgeWeight::Ordinal => None,
         }
@@ -355,7 +358,7 @@ where
     K: EdgeKind,
 {
     fn kind(&self) -> K;
-    fn edge_hash(&self) -> Option<ContentHash>;
+    fn edge_entropy(&self) -> Option<Vec<u8>>;
     // Default edges have a rule that there can be only *one* default edge of a certain kind
     // outgoing from a node. This rule will be enforced when updates are performed.
     fn is_default(&self) -> bool;
@@ -426,6 +429,7 @@ where
 {
     supergraph: SuperGraph,
     subgraphs: Vec<SubGraph<N, E, K>>,
+    id_to_split_graph_index: HashMap<SplitGraphNodeId, SplitGraphNodeIndex>,
 }
 
 impl<N, E, K> SplitGraph<N, E, K>
@@ -456,6 +460,7 @@ where
                 split_max,
             },
             subgraphs: vec![first_subgraph],
+            id_to_split_graph_index: HashMap::new(),
         }
     }
 
@@ -463,6 +468,7 @@ where
         Self {
             supergraph,
             subgraphs,
+            id_to_split_graph_index: HashMap::new(),
         }
     }
 
@@ -485,7 +491,10 @@ where
     pub fn recalculate_merkle_tree_hashes_based_on_touched_nodes(&mut self) {
         self.subgraphs
             .iter_mut()
-            .for_each(|subgraph| subgraph.recalculate_merkle_tree_hash_based_on_touched_nodes());
+            .enumerate()
+            .for_each(|(idx, subgraph)| {
+                subgraph.recalculate_merkle_tree_hash_based_on_touched_nodes(idx == 0)
+            });
     }
 
     pub fn recalculate_entire_merkle_tree_hashes(&mut self) {
@@ -589,13 +598,18 @@ where
     }
 
     pub fn subgraph_index_for_node(&self, node_id: SplitGraphNodeId) -> Option<usize> {
-        for (index, sub) in self.subgraphs.iter().enumerate() {
-            if sub.node_index_by_id.contains_key(&node_id) {
-                return Some(index);
+        match self.id_to_split_graph_index.get(&node_id).copied() {
+            Some(index) => Some(index.subgraph),
+            None => {
+                for (index, sub) in self.subgraphs.iter().enumerate() {
+                    if sub.node_index_by_id.contains_key(&node_id) {
+                        return Some(index);
+                    }
+                }
+
+                None
             }
         }
-
-        None
     }
 
     pub fn subgraph_root_id(&self, subgraph_index: usize) -> Option<SplitGraphNodeId> {
@@ -1034,8 +1048,15 @@ where
     }
 
     pub fn cleanup_and_merkle_tree_hash(&mut self) {
+        let start = Instant::now();
         self.cleanup();
+        println!("cleanup took {:?}", start.elapsed());
+        let start = Instant::now();
         self.recalculate_merkle_tree_hashes_based_on_touched_nodes();
+        println!(
+            "recalculate_merkle_tree_hashes_based_on_touched_nodes took {:?}",
+            start.elapsed()
+        );
     }
 
     /// Calculate the updates that this graph has relative to `base_graph`

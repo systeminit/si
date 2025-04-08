@@ -2,7 +2,9 @@ use petgraph::prelude::*;
 use serde::{Deserialize, Serialize};
 use si_events::merkle_tree_hash::MerkleTreeHash;
 use std::collections::{HashMap, HashSet};
+use std::env::args;
 use std::io::Write;
+use std::time::Instant;
 
 use crate::{
     CustomEdgeWeight, CustomNodeWeight, EdgeKind, SplitGraphEdgeWeight, SplitGraphEdgeWeightKind,
@@ -255,10 +257,20 @@ where
         }
     }
 
-    pub(crate) fn recalculate_merkle_tree_hash_based_on_touched_nodes(&mut self) {
+    pub(crate) fn recalculate_merkle_tree_hash_based_on_touched_nodes(&mut self, dbug: bool) {
+        let big_start = Instant::now();
         let mut dfs = petgraph::visit::DfsPostOrder::new(&self.graph, self.root_index);
 
         let mut discovered_nodes = HashSet::new();
+
+        if self.touched_nodes.is_empty() {
+            println!("merkle tree hash calculated in {:?}", big_start.elapsed());
+            return;
+        }
+
+        if dbug {
+            println!("touched_nodes: {:?}", self.touched_nodes.len());
+        }
 
         while let Some(node_index) = dfs.next(&self.graph) {
             if self.touched_nodes.contains(&node_index) || discovered_nodes.contains(&node_index) {
@@ -276,30 +288,45 @@ where
         }
 
         self.touched_nodes.clear();
+        println!("merkle tree hash calculated in {:?}", big_start.elapsed());
     }
 
     pub(crate) fn all_outgoing_stably_ordered(
         &self,
         node_index: SubGraphNodeIndex,
-    ) -> Vec<SubGraphNodeIndex> {
+    ) -> Vec<(&SplitGraphEdgeWeight<E, K>, SubGraphNodeIndex)> {
         let ordered_children = self.ordered_children(node_index).unwrap_or_default();
-        let mut unordered_children: Vec<(_, _)> = self
-            .graph
-            .neighbors_directed(node_index, Outgoing)
-            .filter(|child_idx| !ordered_children.contains(child_idx))
-            .filter_map(|child_idx| {
+        let ordered_children_edges: Vec<(_, _)> = ordered_children
+            .iter()
+            .flat_map(|child_index| {
                 self.graph
-                    .node_weight(child_idx)
-                    .map(|weight| (weight.id(), child_idx))
+                    .edges_connecting(node_index, *child_index)
+                    .map(|edge_ref| (edge_ref.weight(), *child_index))
             })
             .collect();
 
-        // We want to keep the "unordered" children stably sorted as well, so that we get the same hash every time if there are no changes
-        unordered_children.sort_by_cached_key(|(id, _)| *id);
+        let mut unordered_children: Vec<(_, _, _)> = self
+            .graph
+            .edges_directed(node_index, Outgoing)
+            .filter(|edge_ref| !ordered_children.contains(&edge_ref.target()))
+            .filter_map(|edge_ref| {
+                self.graph
+                    .node_weight(edge_ref.target())
+                    .map(|weight| (weight.id(), edge_ref.weight(), edge_ref.target()))
+            })
+            .collect();
+
+        // We want to keep the "unordered" children stably sorted as well,
+        // so that we get the same hash every time if there are no changes
+        unordered_children.sort_by_cached_key(|(id, _, _)| *id);
         let mut all_children =
             Vec::with_capacity(ordered_children.len() + unordered_children.len());
-        all_children.extend(ordered_children);
-        all_children.extend(unordered_children.into_iter().map(|(_, index)| index));
+        all_children.extend(ordered_children_edges);
+        all_children.extend(
+            unordered_children
+                .into_iter()
+                .map(|(_, weight, index)| (weight, index)),
+        );
 
         all_children
     }
@@ -311,18 +338,21 @@ where
         let mut hasher = MerkleTreeHash::hasher();
         hasher.update(self.graph.node_weight(node_index)?.node_hash().as_bytes());
 
-        for child_idx in self.all_outgoing_stably_ordered(node_index) {
-            hasher.update(
-                self.graph
-                    .node_weight(child_idx)?
-                    .merkle_tree_hash()
-                    .as_bytes(),
-            );
+        let all_outgoing_stably_ordered = self.all_outgoing_stably_ordered(node_index);
 
-            for edge_ref in self.graph.edges_connecting(node_index, child_idx) {
-                if let Some(edge_hash) = edge_ref.weight().edge_hash() {
-                    hasher.update(edge_hash.as_bytes());
-                }
+        let mut hashed_children = HashSet::new();
+        for (edge_weight, child_idx) in all_outgoing_stably_ordered {
+            if !hashed_children.contains(&child_idx) {
+                hasher.update(
+                    self.graph
+                        .node_weight(child_idx)?
+                        .merkle_tree_hash()
+                        .as_bytes(),
+                );
+                hashed_children.insert(child_idx);
+            }
+            if let Some(edge_entropy) = edge_weight.edge_entropy() {
+                hasher.update(edge_entropy.as_slice());
             }
         }
 

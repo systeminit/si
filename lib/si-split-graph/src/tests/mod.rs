@@ -161,17 +161,11 @@ impl CustomEdgeWeight<TestEdgeWeightDiscriminants> for TestEdgeWeight {
         self.into()
     }
 
-    fn edge_hash(&self) -> Option<ContentHash> {
-        let mut hasher = ContentHash::hasher();
-        match self {
-            TestEdgeWeight::EdgeA => hasher.update(&(1u8.to_le_bytes())),
-            TestEdgeWeight::EdgeB { is_default } => {
-                hasher.update(&(2u8.to_le_bytes()));
-                hasher.update(&[*is_default as u8]);
-            }
-        }
-
-        Some(hasher.finalize())
+    fn edge_entropy(&self) -> Option<Vec<u8>> {
+        Some(match self {
+            TestEdgeWeight::EdgeA => 1u8.to_le_bytes().to_vec(),
+            TestEdgeWeight::EdgeB { is_default } => [*is_default as u8].to_vec(),
+        })
     }
 
     fn clone_as_non_default(&self) -> Self {
@@ -294,7 +288,7 @@ fn replace_node() -> SplitGraphResult<()> {
 fn cross_graph_edges() -> SplitGraphResult<()> {
     for ordered in [false, true] {
         let mut splitgraph = SplitGraph::new(9);
-        let mut unsplitgraph = SplitGraph::new(MAX_NODES as u16);
+        let mut unsplitgraph = SplitGraph::new(32678);
 
         let nodes = [
             "graph-1-a",

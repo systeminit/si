@@ -24,6 +24,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::{Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard};
 use tokio::task::JoinError;
+use tokio::time::Instant;
 
 use crate::action::{Action, ActionError};
 use crate::attribute::prototype::argument::AttributePrototypeArgumentError;
@@ -508,8 +509,10 @@ impl WorkspaceSnapshot {
             // operation, so we throw it onto the "slow" runtime, the one not
             // listening for requests/processing a nats queue
             let new_address = slow_rt::spawn(async move {
+                let start = Instant::now();
                 let mut working_copy = self_clone.working_copy_mut().await;
                 working_copy.cleanup_and_merkle_tree_hash()?;
+                println!("cleanup_and_merkle_tree_hash took {:?}", start.elapsed());
 
                 let (new_address, _) = layer_db.workspace_snapshot().write(
                     Arc::new(WorkspaceSnapshotGraph::V4(working_copy.clone())),

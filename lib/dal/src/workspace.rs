@@ -405,8 +405,9 @@ impl Workspace {
         pk: WorkspacePk,
         name: impl AsRef<str>,
         token: impl AsRef<str>,
+        split_max: usize,
     ) -> WorkspaceResult<Self> {
-        let workspace_snapshot = SplitSnapshot::initial(ctx).await?;
+        let workspace_snapshot = SplitSnapshot::initial(ctx, split_max).await?;
         ctx.set_workspace_split_snapshot(workspace_snapshot);
 
         migrate_intrinsics_no_commit(ctx).await.map_err(Box::new)?;
