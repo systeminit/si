@@ -768,12 +768,22 @@ const overrides = new Map<string, OverrideFn>([
     const sshKeySocket = createInputSocketFromProp(ec2SshKeyProp, [
       { tokens: ["KeyName"] },
       { tokens: ["Key Name"] },
-      { tokens: ["KeyPair"] }
+      { tokens: ["KeyPair"] },
+      { tokens: ["ssh key"] },
     ], "Key Name");
-
-    setAnnotationOnSocket(sshKeySocket, { tokens: ["ssh key"] });
-
     variant.sockets.push(sshKeySocket);
+
+    const nodeRoleProp = findPropByName(domain, "NodeRole");
+    if (!nodeRoleProp) return;
+
+    const nodeRoleSocket = createInputSocketFromProp(nodeRoleProp, [
+      { tokens: ["RoleArn"] },
+      { tokens: ["Role ARN"] },
+      { tokens: ["IAM Role"] },
+      { tokens: ["arn"] },
+      { tokens: ["role"] },
+    ], "Node Role");
+    variant.sockets.push(nodeRoleSocket);
   }],
 ]);
 
