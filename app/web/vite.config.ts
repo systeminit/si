@@ -123,7 +123,7 @@ export default (opts: { mode: string }) => {
             if (chunk.name === "worker") {
               return "assets/webworker.js"; // Specify output path for web worker
             }
-            return "assets/[name].js";
+            return "assets/[name]-[hash].js";
           },
           sourcemap: "inline",
           format: "es",
