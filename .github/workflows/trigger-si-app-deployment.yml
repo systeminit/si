@@ -1,0 +1,42 @@
+name: Deploy Application via System Initiative
+
+on:
+  push:
+    tags:
+      - "bin/module-index/image/*"
+      - "bin/auth-api/image/*"
+
+jobs:
+  deploy-module-index:
+    if: startsWith(github.ref_name, 'bin/module-index/image/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: extract_version
+        run: |
+          VERSION=$(echo "${{ github.ref_name }}" | sed 's|bin/module-index/image/||')
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Use the extracted version
+        run: |
+          echo "Module Index Version is ${{ steps.extract_version.outputs.version }}"
+
+  deploy-auth-api:
+    if: startsWith(github.ref_name, 'bin/auth-api/image/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: extract_version
+        run: |
+          VERSION=$(echo "${{ github.ref_name }}" | sed 's|bin/auth-api/image/||')
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Use the extracted version
+        run: |
+          echo "Auth API Version is ${{ steps.extract_version.outputs.version }}"
