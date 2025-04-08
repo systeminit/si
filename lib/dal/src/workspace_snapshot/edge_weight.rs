@@ -117,7 +117,8 @@ impl si_split_graph::CustomEdgeWeight<EdgeWeightKindDiscriminants> for EdgeWeigh
         self.kind().into()
     }
 
-    fn edge_hash(&self) -> Option<si_events::ContentHash> {
+    fn edge_entropy(&self) -> Option<Vec<u8>> {
+        // XXX: implement this!
         None
     }
 

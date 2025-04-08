@@ -20,7 +20,11 @@ use si_split_graph::{opt_zip::OptZip, SplitGraph, SubGraph, SuperGraph};
 use strum::IntoEnumIterator;
 use strum::{EnumDiscriminants, EnumIter, EnumString};
 use telemetry::prelude::*;
-use tokio::sync::{Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard};
+use tokio::{
+    sync::{Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard},
+    task::JoinSet,
+    time::Instant,
+};
 
 use crate::{
     approval_requirement::{
@@ -29,6 +33,7 @@ use crate::{
     component::{inferred_connection_graph::InferredConnectionGraph, ComponentResult},
     layer_db_types::{ViewContent, ViewContentV1},
     prop::PropResult,
+    slow_rt,
     socket::input::InputSocketError,
     ComponentError, DalContext, EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants,
     InputSocket, NodeWeightDiscriminants, SchemaVariantError, Timestamp,
@@ -220,8 +225,8 @@ impl SplitSnapshot {
         Ok(())
     }
 
-    pub async fn initial(ctx: &DalContext) -> WorkspaceSnapshotResult<Self> {
-        let mut graph = SplitSnapshotGraphVCurrent::new(25000);
+    pub async fn initial(ctx: &DalContext, split_max: usize) -> WorkspaceSnapshotResult<Self> {
+        let mut graph = SplitSnapshotGraphVCurrent::new(split_max);
 
         let view_category_id = Self::add_category_nodes(&mut graph)?;
         Self::add_default_view(ctx, &mut graph, view_category_id).await?;
@@ -365,65 +370,128 @@ impl SplitSnapshot {
         let events_tenancy = ctx.events_tenancy();
         let events_actor = ctx.events_actor();
 
-        let mut working_copy = self_clone.working_copy_mut().await;
-        working_copy.cleanup_and_merkle_tree_hash();
+        let supergraph_address = slow_rt::spawn(async move {
+            let mut working_copy = self_clone.working_copy_mut().await;
+            let start = Instant::now();
+            working_copy.cleanup_and_merkle_tree_hash();
+            println!("cleaned up working copy in {:?}", start.elapsed());
 
-        let current_supergraph = working_copy.supergraph();
-        let mut new_supergraph = SuperGraph::new(
-            current_supergraph.split_max(),
-            current_supergraph.root_index(),
-        );
+            let current_supergraph = working_copy.supergraph();
+            let mut new_supergraph = SuperGraph::new(
+                current_supergraph.split_max(),
+                current_supergraph.root_index(),
+            );
 
-        for (original_subgraph, new_subgraph) in OptZip::new(
-            self.read_only_graph.subgraphs().into_iter().enumerate(),
-            working_copy.subgraphs().into_iter(),
-        ) {
-            let subgraph_address = match (original_subgraph, new_subgraph) {
-                (Some((orig_idx, orig)), Some(working)) => {
-                    if orig.root_node_merkle_tree_hash() != working.root_node_merkle_tree_hash() {
-                        let (new_address, _) = layer_db.split_snapshot_subgraph().write(
-                            Arc::new(working.clone()),
-                            None,
-                            events_tenancy,
-                            events_actor,
-                        )?;
+            let mut join_set = JoinSet::new();
 
-                        new_address
-                    } else {
-                        let subgraph_address = self
+            let subgraph_indexes = OptZip::new(
+                self_clone
+                    .read_only_graph
+                    .subgraphs()
+                    .into_iter()
+                    .enumerate()
+                    .map(|(idx, _)| idx),
+                working_copy
+                    .subgraphs()
+                    .into_iter()
+                    .enumerate()
+                    .map(|(idx, _)| idx),
+            )
+            .collect::<Vec<_>>();
+
+            drop(working_copy);
+
+            for (original_subgraph_idx, new_subgraph_idx) in subgraph_indexes {
+                let self_clone_clone = self_clone.clone();
+                let layer_db_clone = layer_db.clone();
+                join_set.spawn(async move {
+                    let start = Instant::now();
+                    let original_subgraph = original_subgraph_idx.and_then(|index| {
+                        self_clone_clone
                             .read_only_graph
-                            .supergraph()
-                            .address_for_subgraph(orig_idx)
-                            .unwrap();
+                            .subgraphs()
+                            .get(index)
+                            .map(|subgraph| (index, subgraph))
+                    });
 
-                        subgraph_address.into()
-                    }
-                }
-                (None, Some(working)) => {
-                    let (new_address, _) = layer_db.split_snapshot_subgraph().write(
-                        Arc::new(working.clone()),
-                        None,
-                        events_tenancy,
-                        events_actor,
-                    )?;
+                    let working_copy = self_clone_clone.working_copy().await;
+                    let new_subgraph = match new_subgraph_idx {
+                        Some(index) => working_copy
+                            .subgraphs()
+                            .get(index)
+                            .map(|subgraph| (index, subgraph)),
+                        None => None,
+                    };
 
-                    new_address
-                }
-                (Some(_), None) => {
-                    todo!("we've removed a subgraph")
-                }
-                (None, None) => unreachable!("opt zip will never produce this"),
-            };
+                    let subgraph_address_and_index = match (original_subgraph, new_subgraph) {
+                        (Some((orig_idx, orig)), Some((_, working))) => {
+                            if orig.root_node_merkle_tree_hash()
+                                != working.root_node_merkle_tree_hash()
+                            {
+                                let (new_address, _) =
+                                    layer_db_clone.split_snapshot_subgraph().write(
+                                        Arc::new(working.clone()),
+                                        None,
+                                        events_tenancy,
+                                        events_actor,
+                                    )?;
 
-            new_supergraph.add_subgraph_address(subgraph_address.into());
-        }
+                                println!("wrote subgraph in {:?}", start.elapsed());
+                                (orig_idx, new_address)
+                            } else {
+                                let subgraph_address = self_clone_clone
+                                    .read_only_graph
+                                    .supergraph()
+                                    .address_for_subgraph(orig_idx)
+                                    .unwrap();
 
-        let (supergraph_address, _) = layer_db.split_snapshot_supergraph().write(
-            Arc::new(new_supergraph),
-            None,
-            events_tenancy,
-            events_actor,
-        )?;
+                                (orig_idx, subgraph_address.into())
+                            }
+                        }
+                        (None, Some((new_index, working))) => {
+                            let (new_address, _) = layer_db_clone.split_snapshot_subgraph().write(
+                                Arc::new(working.clone()),
+                                None,
+                                events_tenancy,
+                                events_actor,
+                            )?;
+
+                            println!("wrote subgraph in {:?}", start.elapsed());
+                            (new_index, new_address)
+                        }
+                        (Some(_), None) => {
+                            todo!("we've removed a subgraph")
+                        }
+                        (None, None) => unreachable!("opt zip will never produce this"),
+                    };
+
+                    Ok::<_, WorkspaceSnapshotError>(subgraph_address_and_index)
+                });
+            }
+
+            let mut subgraph_addresses = vec![];
+            // Join all returns in the order that futures complete, not the order they were spawned, so we have to sort
+            for result in join_set.join_all().await {
+                let address_and_index = result?;
+                subgraph_addresses.push(address_and_index);
+            }
+            subgraph_addresses.sort_by_key(|(index, _)| *index);
+            for (_, address) in subgraph_addresses {
+                new_supergraph.add_subgraph_address(address.into());
+            }
+
+            let start = Instant::now();
+            let (supergraph_address, _) = layer_db.split_snapshot_supergraph().write(
+                Arc::new(new_supergraph),
+                None,
+                events_tenancy,
+                events_actor,
+            )?;
+            println!("wrote supergraph in {:?}", start.elapsed());
+
+            Ok::<WorkspaceSnapshotAddress, WorkspaceSnapshotError>(supergraph_address)
+        })?
+        .await??;
 
         Ok(supergraph_address)
     }

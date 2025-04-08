@@ -227,8 +227,7 @@ async fn through_the_wormholes_simple(ctx: &mut DalContext) -> Result<()> {
 
     let rigid_designator_values =
         Component::attribute_values_for_prop_id(ctx, component.id(), rigid_designator_prop_id)
-            .await
-            .expect("able to get attribute value for universe prop");
+            .await?;
 
     assert_eq!(1, rigid_designator_values.len());
 
