@@ -1411,6 +1411,69 @@ async fn incoming_connections_none(ctx: DalContext) -> Result<()> {
     Ok(())
 }
 
+#[test]
+async fn component_incoming_connections(ctx: DalContext) -> Result<()> {
+    // Create a manager with inferred connection to parent value
+    let mut test = connection_test::setup(ctx).await;
+    let input = test.create_input("input", None).await;
+    test.set(input, "Value", "input").await;
+    let component = test.create_output("component", None).await;
+    input.connect(&test.ctx, "Value", component, "Value").await;
+    let manager = test.create_output("manager", None).await;
+    Component::manage_component(&test.ctx, manager.id(), component.id()).await?;
+    test.commit().await?;
+    // Check that value propagated from input to component
+    assert_eq!(
+        component.domain(&test.ctx).await,
+        json!({ "Value": "input" })
+    );
+
+    // Call management function to count and delete component incoming connections.
+    test.remove_all_connections(manager).await;
+    test.commit().await?;
+
+    // Check that the connection was passed and removed
+    test.set(input, "Value", "new_input").await;
+    test.commit().await?;
+    assert_eq!(
+        component.domain(&test.ctx).await,
+        json!({ "IncomingConnectionsCount": 1 })
+    );
+
+    Ok(())
+}
+
+#[test]
+async fn component_incoming_connections_inferred_from_parent(ctx: DalContext) -> Result<()> {
+    // Create a manager with inferred connection to parent value
+    let mut test = connection_test::setup(ctx).await;
+    let parent = test.create_input("parent", None).await;
+    test.set(parent, "Value", "parent").await;
+    let component = test.create_output("component", parent).await;
+    let manager = test.create_output("manager", None).await;
+    Component::manage_component(&test.ctx, manager.id(), component.id()).await?;
+    test.commit().await?;
+    // Check that value propagated from parent to component
+    assert_eq!(
+        component.domain(&test.ctx).await,
+        json!({ "Value": "parent" })
+    );
+
+    // Call management function to count and delete component incoming connections.
+    test.remove_all_connections(manager).await;
+    test.commit().await?;
+
+    // Check that the connection was passed but the connection was not removed
+    test.set(parent, "Value", "new_parent").await;
+    test.commit().await?;
+    assert_eq!(
+        component.domain(&test.ctx).await,
+        json!({ "Value": "new_parent", "IncomingConnectionsCount": 1 })
+    );
+
+    Ok(())
+}
+
 pub mod connection_test {
     use dal::{ComponentType, DalContext};
     use dal_test::{
@@ -1474,6 +1537,7 @@ pub mod connection_test {
                     props: [
                         { name: "Value", kind: "string", valueFrom: { kind: "inputSocket", socket_name: "Value" } },
                         { name: "Value2", kind: "string", valueFrom: { kind: "inputSocket", socket_name: "Value2" } },
+                        { name: "IncomingConnectionsCount", kind: "integer" },
                     ],
                 };
             }
@@ -1513,12 +1577,57 @@ pub mod connection_test {
                 "#,
             )
             .await;
+
+        // Management func that creates a new component connected to our input
+        let remove_all_connections = output
+            .create_management_func(
+                &ctx,
+                r#"
+                    async function main({ components }: Input): Promise<Output> {
+                        function updateComponent(component: Input["components"][string]) {
+                            let connections = Object.entries(component.incomingConnections).flatMap(([to, from]) => {
+                                if (Array.isArray(from)) {
+                                    return from.map((from) => ({ to, from }));
+                                } else if (from) {
+                                    return [{ to, from }];
+                                } else {
+                                    return [];
+                                }
+                            });
+                            return {
+                                properties: {
+                                    domain: {
+                                        IncomingConnectionsCount: connections.length,
+                                    },
+                                },
+                                connect: {
+                                    remove: connections,
+                                },
+                            };
+                        }
+
+                        return {
+                            status: "ok",
+                            ops: {
+                                update: Object.fromEntries(
+                                    Object.entries(components).map(
+                                        ([name, component]) => [name, updateComponent(component)]
+                                    )
+                                ),
+                            }
+                        }
+                    }
+                "#,
+            )
+            .await;
+
         ConnectionTest {
             ctx,
             input,
             input2,
             output,
             create_output_and_copy_connection,
+            remove_all_connections,
         }
     }
 
@@ -1528,6 +1637,7 @@ pub mod connection_test {
         pub input2: ExpectSchemaVariant,
         pub output: ExpectSchemaVariant,
         pub create_output_and_copy_connection: ExpectFunc,
+        pub remove_all_connections: ExpectFunc,
     }
 
     impl ConnectionTest {
@@ -1605,6 +1715,12 @@ pub mod connection_test {
                 .pop()
                 .expect("should have a managed component")
                 .into())
+        }
+
+        pub async fn remove_all_connections(&self, manager: ExpectComponent) {
+            manager
+                .execute_management_func(&self.ctx, self.remove_all_connections)
+                .await;
         }
 
         pub async fn commit(&mut self) -> Result<()> {
