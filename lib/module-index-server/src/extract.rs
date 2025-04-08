@@ -2,13 +2,38 @@ use std::{fmt, ops::Deref};
 
 use axum::{async_trait, extract::FromRequestParts, http::request::Parts, Json};
 use hyper::StatusCode;
-use s3::{Bucket as S3Bucket, Region as AwsRegion};
+use s3::{error::S3Error, Bucket as S3Bucket, Region as AwsRegion};
 use sea_orm::{DatabaseTransaction, TransactionTrait};
 use si_jwt_public_key::{SiJwtClaimRole, SiJwtClaims};
 
 use super::app_state::AppState;
 
-pub struct ExtractedS3Bucket(pub S3Bucket);
+pub struct ExtractedS3Bucket {
+    pub s3_bucket: S3Bucket,
+    pub cloudfront_domain: Option<String>,
+}
+
+impl ExtractedS3Bucket {
+    pub async fn url_for_module(self, module_hash: String) -> Result<String, S3Error> {
+        let object_key = format!("{}.{}", module_hash, "sipkg");
+        self.get_url(object_key).await
+    }
+
+    pub async fn url_for_export(self, module_hash: String) -> Result<String, S3Error> {
+        let object_key = format!("{}.{}", module_hash, "workspace_export");
+        self.get_url(object_key).await
+    }
+
+    async fn get_url(self, object_key: String) -> Result<String, S3Error> {
+        let download_url = if let Some(domain) = self.cloudfront_domain {
+            format!("https://{}/{}", domain, object_key)
+        } else {
+            self.s3_bucket.presign_get(object_key, 60 * 5, None).await?
+        };
+
+        Ok(download_url)
+    }
+}
 
 #[async_trait]
 impl FromRequestParts<AppState> for ExtractedS3Bucket {
@@ -34,7 +59,7 @@ impl FromRequestParts<AppState> for ExtractedS3Bucket {
             }
         };
 
-        let bucket = S3Bucket::new(&state.s3_config().bucket, region, state.aws_creds().clone())
+        let s3_bucket = S3Bucket::new(&state.s3_config().bucket, region, state.aws_creds().clone())
             .map_err(|err| {
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
@@ -47,7 +72,12 @@ impl FromRequestParts<AppState> for ExtractedS3Bucket {
                     })),
                 )
             })?;
-        Ok(ExtractedS3Bucket(bucket))
+
+        let cloudfront_domain = state.s3_config().cloudfront_domain.clone();
+        Ok(ExtractedS3Bucket {
+            s3_bucket,
+            cloudfront_domain,
+        })
     }
 }
 

@@ -44,7 +44,7 @@ impl IntoResponse for DownloadBuiltinError {
 
 pub async fn download_builtin_route(
     Path(module_id): Path<ModuleId>,
-    ExtractedS3Bucket(s3_bucket): ExtractedS3Bucket,
+    bucket: ExtractedS3Bucket,
     DbConnection(txn): DbConnection,
 ) -> Result<Redirect, DownloadBuiltinError> {
     let module = match si_module::Entity::find_by_id(module_id).one(&txn).await? {
@@ -56,9 +56,7 @@ pub async fn download_builtin_route(
         return Err(DownloadBuiltinError::NotBuiltin(module_id));
     }
 
-    let download_url = s3_bucket
-        .presign_get(format!("{}.sipkg", module.latest_hash), 60 * 5, None)
-        .await?;
-
-    Ok(Redirect::temporary(&download_url))
+    Ok(Redirect::temporary(
+        &bucket.url_for_module(module.latest_hash).await?,
+    ))
 }

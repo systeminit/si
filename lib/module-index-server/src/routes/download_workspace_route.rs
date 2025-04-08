@@ -43,7 +43,7 @@ impl IntoResponse for DownloadModuleError {
 pub async fn download_workspace_route(
     Path(module_id): Path<ModuleId>,
     Authorization { .. }: Authorization,
-    ExtractedS3Bucket(s3_bucket): ExtractedS3Bucket,
+    bucket: ExtractedS3Bucket,
     DbConnection(txn): DbConnection,
 ) -> Result<Redirect, DownloadModuleError> {
     let module = match si_module::Entity::find_by_id(module_id).one(&txn).await? {
@@ -51,13 +51,7 @@ pub async fn download_workspace_route(
         _ => return Err(DownloadModuleError::NotFound(module_id)),
     };
 
-    let download_url = s3_bucket
-        .presign_get(
-            format!("{}.workspace_export", module.latest_hash),
-            60 * 5,
-            None,
-        )
-        .await?;
-
-    Ok(Redirect::temporary(&download_url))
+    Ok(Redirect::temporary(
+        &bucket.url_for_export(module.latest_hash).await?,
+    ))
 }
