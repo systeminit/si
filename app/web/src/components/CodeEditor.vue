@@ -428,20 +428,18 @@ const mountEditor = async () => {
 // always up the code editor with the new text that comes from the prop
 // Note: props are read only, and will change when the selected func/variant changes
 // this does not change as a result of a user typing
-watch(
-  [
-    () => props.id,
-    () => props.typescript,
-    () => props.disabled,
-    () => props.json,
-    () => props.yaml,
-    () => props.noLint,
-    () => authStore.user?.name,
-    () => props.modelValue,
-    editorMount,
-  ],
-  mountEditor,
-);
+const watching = computed(() => [
+  () => props.id,
+  () => props.typescript,
+  () => props.disabled,
+  () => props.json,
+  () => props.yaml,
+  () => props.noLint,
+  () => authStore.user?.name,
+  () => (props.disabled ? props.modelValue : null),
+  editorMount,
+]);
+watch(watching.value, mountEditor);
 
 function onVimExit() {
   emit("close");
