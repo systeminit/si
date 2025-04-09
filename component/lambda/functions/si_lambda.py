@@ -8,6 +8,7 @@ from typing import Any, NotRequired, Optional, TypedDict, cast, overload
 from si_redshift import Redshift
 from si_lago_api import LagoApi
 from si_auth_api import SiAuthApi
+from si_posthog_api import PosthogApi
 from si_types import WorkspaceId
 import logging
 
@@ -30,6 +31,11 @@ class SiLambdaEnv(TypedDict):
     LAGO_API_TOKEN: NotRequired[str]
     """ARN to an AWS secret containing the Lago API token"""
     LAGO_API_TOKEN_ARN: NotRequired[str]
+
+    """Posthog API URL. Defaults to https://us.i.posthog.com"""
+    POSTHOG_API_URL: NotRequired[str]
+    """Posthog project API key."""
+    POSTHOG_PROJECT_API_KEY: NotRequired[str]
 
     """Auth API URL. Defaults to https://auth-api.systeminit.com"""
     AUTH_API_URL: NotRequired[str]
@@ -59,6 +65,7 @@ class SiLambda:
         self._lago = None
         self._redshift = None
         self._auth_api = None
+        self._posthog_api = None
         logging.getLogger().setLevel(self.getenv("SI_LOG_LEVEL", self.getenv("LOG_LEVEL", "INFO")))
 
     @property
@@ -114,6 +121,17 @@ class SiLambda:
 
         return self._auth_api
 
+    @property
+    def posthog(self):
+        """Get the Posthog API client, configured from the lambda environment """
+        if self._posthog_api is None:
+            posthog_api_url = self.getenv("POSTHOG_API_URL", "https://us.i.posthog.com")
+            posthog_project_api_key = self.getenv("POSTHOG_PROJECT_API_KEY")
+            assert posthog_project_api_key is not None, "POSTHOG_PROJECT_API_KEY must be set"
+            self._posthog_api = PosthogApi(posthog_api_url, posthog_project_api_key)
+
+        return self._posthog_api
+
     @overload
     def getenv(self, key: str, default: str) -> str: ...
     @overload
@@ -143,4 +161,4 @@ class SiLambda:
         return secretsmanager.get_secret_value(SecretId=secret_id)
 
     @abstractmethod
-    def run(): ...
+    def run(self): ...
