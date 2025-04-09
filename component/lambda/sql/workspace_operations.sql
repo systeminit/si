@@ -65,14 +65,14 @@ CREATE OR REPLACE VIEW workspace_operations.workspaces AS
 CREATE OR REPLACE VIEW workspace_operations.workspace_si_hours AS
     SELECT *
       FROM workspace_operations.si_hours
-     CROSS JOIN workspace_operations.workspaces;
+     CROSS JOIN workspace_operations.workspaces
      WHERE first_hour <= hour_start;
 
--- One row per owner per hour from Sep. 2024 until now (excluding hours where an owner had no workspace)
+-- One row per workspace per hour from the workspace start time until now)
 CREATE OR REPLACE VIEW workspace_operations.owner_si_hours AS
     SELECT *
       FROM workspace_operations.si_hours
-     CROSS JOIN workspace_operations.owners;
+     CROSS JOIN workspace_operations.owners
      WHERE first_hour <= hour_start;
 
 -- workspace_update_events, with data cleanup
