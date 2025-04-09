@@ -154,11 +154,12 @@ async fn find_or_create_user_and_workspace(
             }
 
             let workspace = if on_demand_assets {
-                Workspace::new_for_on_demand_assets(
+                Workspace::new_split_graph_workspace(
                     &mut ctx,
                     auth_api_workspace.id,
                     auth_api_workspace.display_name.clone(),
                     auth_api_workspace.token,
+                    25_000,
                 )
                 .await?
             } else {

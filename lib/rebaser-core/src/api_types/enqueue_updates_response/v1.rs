@@ -1,6 +1,6 @@
 use naxum_api_types::RequestId;
 use serde::{Deserialize, Serialize};
-use si_events::{rebase_batch_address::RebaseBatchAddress, ChangeSetId, WorkspacePk};
+use si_events::{ChangeSetId, RebaseBatchAddressKind, WorkspacePk};
 
 #[derive(Clone, Debug, Deserialize, Eq, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -15,7 +15,7 @@ pub struct EnqueueUpdatesResponseV1 {
 #[serde(rename_all = "camelCase")]
 pub enum RebaseStatus {
     Success {
-        updates_performed: RebaseBatchAddress,
+        updates_performed: RebaseBatchAddressKind,
     },
     Error {
         message: String,

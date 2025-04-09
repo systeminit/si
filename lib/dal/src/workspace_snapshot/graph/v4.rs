@@ -1733,24 +1733,24 @@ impl WorkspaceSnapshotGraphV4 {
     /// we treat node weights as immutable and replace them by creating a new
     /// node with a new node weight and replacing references to point to the new
     /// node.
-    pub(crate) fn update_node_weight<L>(
-        &mut self,
-        node_idx: NodeIndex,
-        lambda: L,
-    ) -> WorkspaceSnapshotGraphResult<()>
-    where
-        L: FnOnce(&mut NodeWeight) -> WorkspaceSnapshotGraphResult<()>,
-    {
-        let node_weight = self
-            .graph
-            .node_weight_mut(node_idx)
-            .ok_or(WorkspaceSnapshotGraphError::NodeWeightNotFound)?;
+    // pub(crate) fn update_node_weight<L>(
+    //     &mut self,
+    //     node_idx: NodeIndex,
+    //     lambda: L,
+    // ) -> WorkspaceSnapshotGraphResult<()>
+    // where
+    //     L: FnOnce(&mut NodeWeight) -> WorkspaceSnapshotGraphResult<()>,
+    // {
+    //     let node_weight = self
+    //         .graph
+    //         .node_weight_mut(node_idx)
+    //         .ok_or(WorkspaceSnapshotGraphError::NodeWeightNotFound)?;
 
-        lambda(node_weight)?;
-        self.touch_node(node_idx);
+    //     lambda(node_weight)?;
+    //     self.touch_node(node_idx);
 
-        Ok(())
-    }
+    //     Ok(())
+    // }
 
     pub fn get_edge_weight_kind_target_idx(
         &self,

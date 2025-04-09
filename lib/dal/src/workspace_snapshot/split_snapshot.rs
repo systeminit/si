@@ -59,8 +59,10 @@ pub type SplitSnapshotGraphVCurrent = SplitSnapshotGraphV1;
 pub type SubGraphV1 = SubGraph<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>;
 pub type SubGraphVCurrent = SubGraphV1;
 
-pub type SplitRebaseBatchV1 =
-    Vec<si_split_graph::Update<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>>;
+pub type UpdateV1 = si_split_graph::Update<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>;
+pub type UpdateVCurrent = UpdateV1;
+
+pub type SplitRebaseBatchV1 = Vec<UpdateV1>;
 pub type SplitRebaseBatchVCurrent = SplitRebaseBatchV1;
 
 #[derive(Serialize, Deserialize, Debug, Clone, EnumDiscriminants)]
@@ -630,6 +632,18 @@ impl SplitSnapshot {
             .working_copy()
             .await
             .detect_changes(&*updated_snapshot.working_copy().await)?)
+    }
+
+    pub async fn perform_updates(&self, updates: &[UpdateVCurrent]) -> WorkspaceSnapshotResult<()> {
+        let self_clone = self.clone();
+        let updates = updates.to_vec();
+        Ok(slow_rt::spawn(async move {
+            self_clone
+                .working_copy_mut()
+                .await
+                .perform_updates(&updates)
+        })?
+        .await?)
     }
 
     pub async fn import_component_subgraph(
