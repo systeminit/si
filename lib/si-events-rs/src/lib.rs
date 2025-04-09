@@ -14,7 +14,6 @@ use rebase_batch_address::RebaseBatchAddress;
 use serde::{Deserialize, Serialize};
 pub use si_id::ulid;
 use split_snapshot_rebase_batch_address::SplitSnapshotRebaseBatchAddress;
-use strum::Display;
 
 mod actor;
 mod cas;
