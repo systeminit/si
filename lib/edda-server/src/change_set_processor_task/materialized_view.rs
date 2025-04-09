@@ -1,15 +1,21 @@
 use std::collections::HashSet;
 
 use dal::{
+    action::{
+        prototype::{ActionPrototype, ActionPrototypeError},
+        Action, ActionError,
+    },
     data_cache::{DataCache, DataCacheError},
     dependency_graph::DependencyGraph,
     diagram::DiagramError,
-    DalContext, SchemaVariantError, TransactionsError, WorkspaceSnapshotError,
+    DalContext, SchemaVariant, SchemaVariantError, TransactionsError, WorkspaceSnapshotError,
 };
 use frigg::{FriggError, FriggStore};
-use si_events::workspace_snapshot::Checksum;
+use si_events::workspace_snapshot::{Checksum, EntityKind};
 use si_events::{workspace_snapshot::Change, WorkspaceSnapshotAddress};
 use si_frontend_types::{
+    action::ActionPrototypeViewsByComponentId as ActionPrototypeViewsByComponentIdMv,
+    action::ActionViewList as ActionViewListMv,
     index::MvIndex,
     object::{
         patch::{ObjectPatch as FrontendObjectPatch, PatchBatch, PatchBatchMeta, PATCH_BATCH_KIND},
@@ -27,6 +33,10 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum MaterializedViewError {
+    #[error("Action error: {0}")]
+    Action(#[from] ActionError),
+    #[error("ActionPrototype error: {0}")]
+    ActionPrototype(#[from] ActionPrototypeError),
     #[error("DataCache error: {0}")]
     DataCache(#[from] DataCacheError),
     #[error("Diagram error: {0}")]
@@ -239,74 +249,134 @@ async fn build_mv_inner(
         for change in changes {
             for &mv_kind in &independent_mvs {
                 match mv_kind {
+                    ReferenceKind::ActionPrototypeViewsByComponentId => {
+                        if si_frontend_types::action::ActionPrototypeViewsByComponentId::trigger_entity() == change.entity_kind {
+                            let mut component_ids = HashSet::new();
+                            for maybe_action_change in changes {
+                                match maybe_action_change.entity_kind {
+                                    EntityKind::Action => {
+                                        if let Some(component_id) = Action::component_id(ctx, maybe_action_change.entity_id.into_inner().into()).await? {
+                                            component_ids.insert(component_id);
+                                        }
+                                    },
+                                    EntityKind::ActionPrototype => {
+                                        let schema_variant_id = ActionPrototype::schema_variant_id(ctx, maybe_action_change.entity_id.into_inner().into()).await?;
+                                        component_ids.extend(SchemaVariant::list_component_ids(ctx, schema_variant_id).await?);
+                                    },
+                                    _ => {}
+                                }
+                            }
+
+                            for component_id in component_ids {
+                                let mv_id = component_id.to_string();
+
+                                match si_frontend_types_macros::build_mv!(
+                                    ctx,
+                                    frigg,
+                                    change,
+                                    mv_id,
+                                    si_frontend_types::action::ActionPrototypeViewsByComponentId,
+                                    dal::action::prototype::ActionPrototype::as_frontend_list_type_by_component_id(ctx, component_id).await,
+                                ) {
+                                    Ok((maybe_patch, maybe_frontend_object)) => {
+                                        if let Some(patch) = maybe_patch {
+                                            patches.push(patch);
+                                        }
+                                        if let Some(object) = maybe_frontend_object {
+                                            frontend_objects.push(object);
+                                        }
+                                    }
+                                    Result::<_, MaterializedViewError>::Err(err) => return Err(err),
+                                }
+                            }
+                        }
+                    }
+                    ReferenceKind::ActionViewList => {
+                        let mv_id = change_set_id.to_string();
+
+                        match si_frontend_types_macros::build_mv!(
+                            ctx,
+                            frigg,
+                            change,
+                            mv_id,
+                            si_frontend_types::schema_variant::SchemaVariantCategories,
+                            dal::schema::variant::SchemaVariant::as_frontend_list_type_by_category(ctx).await,
+                        ) {
+                            Ok((maybe_patch, maybe_frontend_object)) => {
+                                if let Some(patch) = maybe_patch {
+                                    patches.push(patch);
+                                }
+                                if let Some(object) = maybe_frontend_object {
+                                    frontend_objects.push(object);
+                                }
+                            }
+                            Result::<_, MaterializedViewError>::Err(err) => return Err(err),
+                        };
+                    }
+                    ReferenceKind::SchemaVariantCategories => {
+                        let mv_id = change_set_id.to_string();
+
+                        match si_frontend_types_macros::build_mv!(
+                            ctx,
+                            frigg,
+                            change,
+                            mv_id,
+                            si_frontend_types::schema_variant::SchemaVariantCategories,
+                            dal::schema::variant::SchemaVariant::as_frontend_list_type_by_category(ctx).await,
+                        ) {
+                            Ok((maybe_patch, maybe_frontend_object)) => {
+                                if let Some(patch) = maybe_patch {
+                                    patches.push(patch);
+                                }
+                                if let Some(object) = maybe_frontend_object {
+                                    frontend_objects.push(object);
+                                }
+                            }
+                            Result::<_, MaterializedViewError>::Err(err) => return Err(err),
+                        }
+                    }
                     ReferenceKind::View => {
                         let mv_id = change.entity_id.to_string();
 
-                        let (maybe_patch, maybe_frontend_object) =
-                            si_frontend_types_macros::build_mv!(
-                                ctx,
-                                frigg,
-                                change,
-                                mv_id,
-                                si_frontend_types::view::View,
-                                dal::diagram::view::View::as_frontend_type(
-                                    ctx,
-                                    si_events::ulid::Ulid::from(change.entity_id).into()
-                                )
-                                .await,
-                            )
-                            .await?;
-
-                        if let Some(patch) = maybe_patch {
-                            patches.push(patch);
-                        }
-                        if let Some(object) = maybe_frontend_object {
-                            frontend_objects.push(object);
+                        match si_frontend_types_macros::build_mv!(
+                            ctx,
+                            frigg,
+                            change,
+                            mv_id,
+                            si_frontend_types::view::View,
+                            dal::diagram::view::View::as_frontend_type(ctx, si_events::ulid::Ulid::from(change.entity_id).into()).await,
+                        ) {
+                            Ok((maybe_patch, maybe_frontend_object)) => {
+                                if let Some(patch) = maybe_patch {
+                                    patches.push(patch);
+                                }
+                                if let Some(object) = maybe_frontend_object {
+                                    frontend_objects.push(object);
+                                }
+                            }
+                            Result::<_, MaterializedViewError>::Err(err) => return Err(err),
                         }
                     }
                     ReferenceKind::ViewList => {
                         let mv_id = change_set_id.to_string();
 
-                        let (maybe_patch, maybe_frontend_object) =
-                            si_frontend_types_macros::build_mv!(
-                                ctx,
-                                frigg,
-                                change,
-                                mv_id,
-                                si_frontend_types::view::ViewList,
-                                dal::diagram::view::View::as_frontend_list_type(ctx).await,
-                            )
-                            .await?;
-
-                        if let Some(patch) = maybe_patch {
-                            patches.push(patch);
-                        }
-                        if let Some(object) = maybe_frontend_object {
-                            frontend_objects.push(object);
-                        }
-                    }
-                    ReferenceKind::SchemaVariantCategories => {
-                        let mv_id = change_set_id.to_string();
-
-                        let (maybe_patch, maybe_frontend_object) =
-                            si_frontend_types_macros::build_mv!(
-                                ctx,
-                                frigg,
-                                change,
-                                mv_id,
-                                si_frontend_types::schema_variant::SchemaVariantCategories,
-                                dal::schema::variant::SchemaVariant::as_frontend_list_type_by_category(
-                                    ctx
-                                )
-                                .await,
-                            )
-                            .await?;
-
-                        if let Some(patch) = maybe_patch {
-                            patches.push(patch);
-                        }
-                        if let Some(object) = maybe_frontend_object {
-                            frontend_objects.push(object);
+                        match si_frontend_types_macros::build_mv!(
+                            ctx,
+                            frigg,
+                            change,
+                            mv_id,
+                            si_frontend_types::view::ViewList,
+                            dal::diagram::view::View::as_frontend_list_type(ctx).await,
+                        ) {
+                            Ok((maybe_patch, maybe_frontend_object)) => {
+                                if let Some(patch) = maybe_patch {
+                                    patches.push(patch);
+                                }
+                                if let Some(object) = maybe_frontend_object {
+                                    frontend_objects.push(object);
+                                }
+                            }
+                            Result::<_, MaterializedViewError>::Err(err) => return Err(err),
                         }
                     }
 
@@ -356,6 +426,16 @@ fn mv_dependency_graph() -> Result<DependencyGraph<ReferenceKind>, MaterializedV
         dependency_graph,
         ReferenceKind::SchemaVariantCategories,
         SchemaVariantCategoriesMv,
+    );
+    add_reference_dependencies_to_dependency_graph!(
+        dependency_graph,
+        ReferenceKind::ActionPrototypeViewsByComponentId,
+        ActionPrototypeViewsByComponentIdMv,
+    );
+    add_reference_dependencies_to_dependency_graph!(
+        dependency_graph,
+        ReferenceKind::ActionViewList,
+        ActionViewListMv,
     );
 
     // The MvIndex depends on everything else, but doesn't define any
