@@ -32,6 +32,7 @@
       <div class="flex flex-row grow min-h-0">
         <!-- Socket A -->
         <ConnectionMenuSocketList
+          :doneLoading="doneOpening"
           :active="activeSide === 'a'"
           :highlightedIndex="highlightedIndex"
           :highlightedSocket="highlightedSocket"
@@ -42,6 +43,7 @@
         />
         <!-- Socket B -->
         <ConnectionMenuSocketList
+          :doneLoading="doneOpening"
           :active="activeSide === 'b'"
           :highlightedIndex="highlightedIndex"
           :highlightedSocket="highlightedSocket"
@@ -135,6 +137,8 @@ const searchStringB = computed(() => inputBRef.value?.searchString);
 
 const componentsStore = useComponentsStore();
 const viewsStore = useViewsStore();
+
+const doneOpening = ref(false);
 
 onMounted(() => {
   componentsStore.eventBus.on("openConnectionsMenu", open);
@@ -238,8 +242,10 @@ const updateMenu = async () => {
       ? [listAItems, listBItems]
       : [listBItems, listAItems];
 
-  const activeSearchString =
-    activeSide.value === "a" ? searchStringA.value : searchStringB.value;
+  const [activeSearchString, otherSideSearchString] =
+    activeSide.value === "a"
+      ? [searchStringA.value, searchStringB.value]
+      : [searchStringB.value, searchStringA.value];
 
   const edges = _.values(componentsStore.diagramEdgesById).filter(
     (e) => e.def.toDelete === false && e.def.changeStatus !== "deleted",
@@ -307,7 +313,6 @@ const updateMenu = async () => {
   activeSideSockets.sort(sortFn);
 
   let matchedActiveSideSockets = activeSideSockets;
-
   if (activeSearchString) {
     const fzf = new Fzf(activeSideSockets, {
       casing: "case-insensitive",
@@ -379,8 +384,21 @@ const updateMenu = async () => {
 
   deduplicatedOtherSideSockets.sort(sortFn);
 
+  let matchedOtherSideSockets = deduplicatedOtherSideSockets;
+  if (otherSideSearchString) {
+    const fzf = new Fzf(deduplicatedOtherSideSockets, {
+      casing: "case-insensitive",
+      selector: (item) => item.label,
+    });
+
+    matchedOtherSideSockets = fzf.find(otherSideSearchString).map((e) => ({
+      ...e.item,
+      labelHighlights: e.positions,
+    }));
+  }
+
   activeSideList.value = activeSideSocketsWithPeers;
-  otherSideList.value = deduplicatedOtherSideSockets;
+  otherSideList.value = matchedOtherSideSockets;
 };
 const debouncedUpdate = _.debounce(updateMenu, 20, {
   leading: true,
@@ -537,6 +555,7 @@ const processHighlighted = () => {
 
 // Modal Mgmt
 function open(initialState: ConnectionMenuData) {
+  doneOpening.value = false;
   activeSide.value = "a";
   connectionData.A = {};
   connectionData.B = {};
@@ -544,14 +563,16 @@ function open(initialState: ConnectionMenuData) {
   if (inputBRef.value) {
     inputBRef.value.searchString = "";
   }
-
   let initialASearch = "";
+  let initialBSearch = "";
   let aSocketSelected = false;
-  const initialComponent =
+  const initialComponentA =
     componentsStore.allComponentsById[initialState.A.componentId || ""];
-  if (initialComponent) {
+  const initialComponentB =
+    componentsStore.allComponentsById[initialState.B.componentId || ""];
+  if (initialComponentA) {
     const componentViews =
-      viewsStore.viewNamesByComponentId[initialComponent.def.id];
+      viewsStore.viewNamesByComponentId[initialComponentA.def.id];
     if (componentViews && componentViews.length > 0) {
       const componentView = componentViews.includes(
         viewsStore.selectedView?.name ?? "",
@@ -564,9 +585,9 @@ function open(initialState: ConnectionMenuData) {
       }
     }
 
-    initialASearch += `${initialComponent.def.schemaName}/${initialComponent.def.displayName}/`;
+    initialASearch += `${initialComponentA.def.schemaName}/${initialComponentA.def.displayName}/`;
 
-    const filteredSockets = initialComponent.sockets.filter(
+    const filteredSockets = initialComponentA.sockets.filter(
       (s) => !s.def.isManagement,
     );
     const initialSocket =
@@ -578,18 +599,51 @@ function open(initialState: ConnectionMenuData) {
       initialASearch += `${initialSocket.def.label}`;
     }
   }
+  if (initialComponentB) {
+    const componentViews =
+      viewsStore.viewNamesByComponentId[initialComponentB.def.id];
+    if (componentViews && componentViews.length > 0) {
+      const componentView = componentViews.includes(
+        viewsStore.selectedView?.name ?? "",
+      )
+        ? viewsStore.selectedView?.name
+        : componentViews[0];
+
+      if (componentView) {
+        initialBSearch += `${componentView}/`;
+      }
+    }
+
+    initialBSearch += `${initialComponentB.def.schemaName}/${initialComponentB.def.displayName}/`;
+
+    const filteredSockets = initialComponentB.sockets.filter(
+      (s) => !s.def.isManagement,
+    );
+    const initialSocket =
+      filteredSockets.length === 1
+        ? filteredSockets[0]
+        : filteredSockets.find((s) => s.def.id === initialState.B.socketId);
+    if (initialSocket) {
+      initialBSearch += `${initialSocket.def.label}`;
+    }
+  }
 
   modalRef.value?.open();
-  // For some reason nextTick does not work but this does and UX feels fine
-  setTimeout(() => {
-    if (inputARef.value) {
-      inputARef.value.searchString = initialASearch;
+
+  const finishOpening = setInterval(async () => {
+    if (!inputARef.value || !inputBRef.value) {
+      return;
     }
+    inputARef.value.searchString = initialASearch;
+    inputBRef.value.searchString = initialBSearch;
     activeInputRef.value.value?.focus();
     if (aSocketSelected) {
       processHighlighted();
     }
-  }, 50);
+    await updateMenu();
+    doneOpening.value = true;
+    clearInterval(finishOpening);
+  }, 1);
 }
 
 function close() {

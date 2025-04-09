@@ -20,6 +20,8 @@ import {
   SOCKET_TOP_MARGIN,
 } from "./diagram_constants";
 
+const featureFlagsStore = useFeatureFlagsStore();
+
 export type Bounds = {
   left: number;
   top: number;
@@ -68,6 +70,7 @@ export interface DiagramSocketDataWithPosition extends DiagramSocketData {
 }
 abstract class DiagramNodeHasSockets extends DiagramElementData {
   public sockets: DiagramSocketData[];
+  public diagramSockets: DiagramSocketData[]; // contains both actual sockets and data sockets which show on the diagram in Simple Socket UI
   public readonly socketStartingY: number =
     NODE_HEADER_HEIGHT + SOCKET_TOP_MARGIN + SOCKET_MARGIN_TOP;
 
@@ -75,6 +78,15 @@ abstract class DiagramNodeHasSockets extends DiagramElementData {
     super();
     this.sockets =
       def.sockets?.map((s) => new DiagramSocketData(this, s)) || [];
+    if (featureFlagsStore.SIMPLE_SOCKET_UI) {
+      this.diagramSockets = [
+        ...this.diagramSocketsLeft(),
+        ...this.diagramSocketsRight(),
+        ...this.sockets,
+      ];
+    } else {
+      this.diagramSockets = this.sockets;
+    }
   }
 
   get socketEndingY() {
@@ -90,10 +102,17 @@ abstract class DiagramNodeHasSockets extends DiagramElementData {
     );
   }
 
-  layoutLeftSockets(nodeWidth: number) {
-    if (!this.sockets) return { x: 0, y: 0, sockets: [] };
+  inputSocketId() {
+    return `${this.def.id}-inputsocket`;
+  }
+
+  outputSocketId() {
+    return `${this.def.id}-outputsocket`;
+  }
+
+  diagramSocketsLeft() {
+    if (!this.sockets) return [];
     const featureFlagsStore = useFeatureFlagsStore();
-    const layout: DiagramSocketDataWithPosition[] = [];
     const leftManagementSocket = this.sockets.find(
       (s) => s.def.isManagement && s.def.nodeSide === "left",
     );
@@ -126,46 +145,22 @@ abstract class DiagramNodeHasSockets extends DiagramElementData {
           ...oldSocket.def,
         });
       } else {
-        return {
-          x: (nodeWidth / 2) * -1,
-          y: this.socketStartingY,
-          sockets: [],
-        };
+        return [];
       }
       if (dataSocket) {
         dataSocket.def.label = "Input";
         dataSocket.def.connectionAnnotations = [];
         dataSocket.def.maxConnections = null;
-        dataSocket.def.id = `${dataSocket.parent.def.id}-inputsocket`;
+        dataSocket.def.id = this.inputSocketId();
         sockets.push(dataSocket);
       }
     }
-
-    for (const [i, socket] of sockets.entries()) {
-      const y = i * SOCKET_GAP;
-      const x = 15;
-      socket.position = { x, y };
-      layout.push(socket as DiagramSocketDataWithPosition);
-    }
-    return {
-      x: (nodeWidth / 2) * -1,
-      y: this.socketStartingY,
-      sockets: layout,
-    };
+    return sockets;
   }
 
-  layoutRightSockets(nodeWidth: number) {
-    if (!this.sockets) return { x: 0, y: 0, sockets: [] };
+  diagramSocketsRight() {
+    if (!this.sockets) return [];
     const featureFlagsStore = useFeatureFlagsStore();
-    const numLeft = this.sockets
-      .filter((s) => s.def.nodeSide === "left")
-      .filter((s) => s.def.label !== "Frame").length;
-    const leftManagementSocket = this.sockets.find(
-      (s) => s.def.isManagement && s.def.nodeSide === "left",
-    );
-    let numLeftSimple = leftManagementSocket ? 2 : 1;
-    if (numLeft < 2) numLeftSimple = numLeft;
-    const layout: DiagramSocketDataWithPosition[] = [];
     const rightManagementSocket = this.sockets.find(
       (s) => s.def.isManagement && s.def.nodeSide === "right",
     );
@@ -198,20 +193,49 @@ abstract class DiagramNodeHasSockets extends DiagramElementData {
           ...oldSocket.def,
         });
       } else {
-        return {
-          x: (nodeWidth / 2) * -1,
-          y: this.socketStartingY,
-          sockets: [],
-        };
+        return [];
       }
       if (dataSocket) {
         dataSocket.def.label = "Output";
         dataSocket.def.connectionAnnotations = [];
         dataSocket.def.maxConnections = null;
-        dataSocket.def.id = `${dataSocket.parent.def.id}-outputsocket`;
+        dataSocket.def.id = this.outputSocketId();
         sockets.push(dataSocket);
       }
     }
+
+    return sockets;
+  }
+
+  layoutLeftSockets(nodeWidth: number) {
+    const sockets = this.diagramSocketsLeft();
+    const layout: DiagramSocketDataWithPosition[] = [];
+
+    for (const [i, socket] of sockets.entries()) {
+      const y = i * SOCKET_GAP;
+      const x = 15;
+      socket.position = { x, y };
+      layout.push(socket as DiagramSocketDataWithPosition);
+    }
+    return {
+      x: (nodeWidth / 2) * -1,
+      y: this.socketStartingY,
+      sockets: layout,
+    };
+  }
+
+  layoutRightSockets(nodeWidth: number) {
+    const sockets = this.diagramSocketsRight();
+    const layout: DiagramSocketDataWithPosition[] = [];
+
+    const numLeft = this.sockets
+      .filter((s) => s.def.nodeSide === "left")
+      .filter((s) => s.def.label !== "Frame").length;
+    const leftManagementSocket = this.sockets.find(
+      (s) => s.def.isManagement && s.def.nodeSide === "left",
+    );
+    let numLeftSimple = leftManagementSocket ? 2 : 1;
+    if (numLeft < 2) numLeftSimple = numLeft;
 
     for (const [i, socket] of sockets.entries()) {
       const y = i * SOCKET_GAP;

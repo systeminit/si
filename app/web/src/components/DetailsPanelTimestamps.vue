@@ -2,7 +2,8 @@
   <div
     :class="
       clsx(
-        'text-xs italic text-neutral-300 grow flex flex-col justify-between',
+        'text-xs italic grow flex flex-col justify-between',
+        themeClasses('text-neutral-500 ', 'text-neutral-300'),
         !noMargin && 'm-xs mt-0',
       )
     "
@@ -10,7 +11,8 @@
     <div
       :class="
         clsx(
-          changeStatus === 'added' && 'text-success-500',
+          changeStatus === 'added' &&
+            themeClasses('text-success-500', 'text-success-400'),
           'flex flex-row gap-2xs items-center',
         )
       "
@@ -80,6 +82,7 @@
 import { PropType } from "vue";
 import clsx from "clsx";
 import { formatters } from "@si/vue-lib";
+import { themeClasses } from "@si/vue-lib/design-system";
 import { ChangeStatus } from "@/api/sdf/dal/change_set";
 import { ActorAndTimestamp } from "@/api/sdf/dal/component";
 import StatusIndicatorIcon from "./StatusIndicatorIcon.vue";

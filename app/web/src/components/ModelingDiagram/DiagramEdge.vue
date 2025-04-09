@@ -58,6 +58,7 @@
           fontSize: connectionCount < 10 ? 12 : 10,
           fontStyle: 'bold',
           fontFamily: DIAGRAM_FONT_FAMILY,
+          fill: connectionCountColor === '#000000' ? '#FFFFFF' : '#000000',
         }"
       />
     </v-group>
@@ -139,18 +140,23 @@ const props = defineProps({
   isSelected: Boolean,
 });
 
+const { theme } = useTheme();
+
 const COUNT_ICON_SIZE = 16;
 const connectionCountColor = computed(() => {
-  return `#${
-    props.edge.def.changeStatus
-      ? {
-          added: "4ADE80",
-          deleted: "EF4444",
-          modified: "F59E0B",
-          unmodified: "FFFFFF",
-        }[props.edge.def.changeStatus]
-      : "FFFFFF"
-  }`;
+  const neutral = theme.value === "dark" ? "FFFFFF" : "000000";
+  if (!props.edge.def.changeStatus) {
+    return neutral;
+  }
+
+  const colors = {
+    added: "4ADE80",
+    deleted: "EF4444",
+    modified: "F59E0B",
+    unmodified: neutral,
+  };
+
+  return `#${colors[props.edge.def.changeStatus]}`;
 });
 const connectionCountText = computed(() => {
   if (!props.connectionCount) return "";
@@ -159,8 +165,6 @@ const connectionCountText = computed(() => {
 });
 
 const emit = defineEmits(["hover:start", "hover:end"]);
-
-const { theme } = useTheme();
 
 const diagramContext = useDiagramContext();
 const { drawEdgeState } = diagramContext;

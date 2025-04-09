@@ -11,30 +11,7 @@
       outputSocket
       :changeStatus="connection.changeStatus"
     />
-    <div
-      :class="
-        clsx(
-          '_connection-label',
-          'border-l-2',
-          connection.changeStatus
-            ? {
-                added: 'border-success-400',
-                deleted: 'border-destructive-500',
-                modified: 'border-warning-400',
-                unmodified: 'border-shade-0',
-              }[connection.changeStatus]
-            : 'border-shade-0',
-          connection.changeStatus
-            ? {
-                added: 'before:bg-success-400 after:bg-success-400',
-                deleted: 'before:bg-destructive-500 after:bg-destructive-500',
-                modified: 'before:bg-warning-400 after:bg-warning-400',
-                unmodified: 'before:bg-shade-0 after:bg-shade-0',
-              }[connection.changeStatus]
-            : 'before:bg-shade-0 after:bg-shade-0',
-        )
-      "
-    >
+    <div :class="clsx('_connection-label border-l-2', statusColors)">
       <div class="flex flex-row items-center">
         <DetailsPanelTimestamps
           noMargin
@@ -62,7 +39,9 @@ import clsx from "clsx";
 import {
   DropdownMenu,
   DropdownMenuItemObjectDef,
+  themeClasses,
 } from "@si/vue-lib/design-system";
+import { tw } from "@si/vue-lib";
 import { isDevMode } from "@/utils/debug";
 import { ChangeStatus } from "@/api/sdf/dal/change_set";
 import { ActorAndTimestamp } from "@/api/sdf/dal/component";
@@ -135,6 +114,24 @@ const triggerDelete = () => {
   viewsStore.setSelectedEdgeId(props.connection.id, viewsStore.selectedEdgeId);
   modelingEventBus.emit("deleteSelection");
 };
+
+const statusColors = computed(() => {
+  const unmodified = themeClasses(
+    tw`border-shade-100 before:bg-shade-100 after:bg-shade-100`,
+    tw`border-shade-0 before:bg-shade-0 after:bg-shade-0`,
+  );
+  if (!props.connection.changeStatus) return unmodified;
+  const colors = {
+    added: themeClasses(
+      tw`border-success-500 before:bg-success-500 after:bg-success-500`,
+      tw`border-success-400 before:bg-success-400 after:bg-success-400`,
+    ),
+    deleted: tw`border-destructive-500 before:bg-destructive-500 after:bg-destructive-500`,
+    modified: tw`border-warning-400 before:bg-warning-400 after:bg-warning-400`,
+    unmodified,
+  };
+  return colors[props.connection.changeStatus];
+});
 </script>
 
 <style lang="less">
