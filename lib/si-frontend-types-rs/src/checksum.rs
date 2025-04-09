@@ -1,11 +1,11 @@
 use chrono::{DateTime, Utc};
 use si_events::{
     workspace_snapshot::{Checksum, ChecksumHasher},
-    ChangeSetStatus, Timestamp,
+    ActionKind, ActionState, ChangeSetStatus, Timestamp,
 };
 use si_id::{
-    ChangeSetId, FuncId, InputSocketId, OutputSocketId, PropId, SchemaId, SchemaVariantId, ViewId,
-    WorkspaceId,
+    ActionId, ActionPrototypeId, ChangeSetId, ComponentId, FuncId, FuncRunId, InputSocketId,
+    OutputSocketId, PropId, SchemaId, SchemaVariantId, ViewId, WorkspaceId,
 };
 
 use crate::schema_variant::SchemaVariantsByCategory;
@@ -182,5 +182,41 @@ where
 impl FrontendChecksum for DateTime<Utc> {
     fn checksum(&self) -> Checksum {
         FrontendChecksum::checksum(&self.to_rfc3339())
+    }
+}
+
+impl FrontendChecksum for ActionId {
+    fn checksum(&self) -> Checksum {
+        FrontendChecksum::checksum(&self.to_string())
+    }
+}
+
+impl FrontendChecksum for ActionPrototypeId {
+    fn checksum(&self) -> Checksum {
+        FrontendChecksum::checksum(&self.to_string())
+    }
+}
+
+impl FrontendChecksum for ComponentId {
+    fn checksum(&self) -> Checksum {
+        FrontendChecksum::checksum(&self.to_string())
+    }
+}
+
+impl FrontendChecksum for ActionKind {
+    fn checksum(&self) -> Checksum {
+        FrontendChecksum::checksum(&self.to_string())
+    }
+}
+
+impl FrontendChecksum for ActionState {
+    fn checksum(&self) -> Checksum {
+        FrontendChecksum::checksum(&self.to_string())
+    }
+}
+
+impl FrontendChecksum for FuncRunId {
+    fn checksum(&self) -> Checksum {
+        FrontendChecksum::checksum(&self.to_string())
     }
 }

@@ -1,12 +1,12 @@
 import { defineStore } from "pinia";
 import * as _ from "lodash-es";
 import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
+import { IconNames } from "@si/vue-lib/design-system";
 import { Resource } from "@/api/sdf/dal/resource";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { DefaultMap } from "@/utils/defaultmap";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { ComponentId } from "@/api/sdf/dal/component";
-import { omit } from "@/utils/omit";
 import {
   ActionId,
   ActionKind,
@@ -73,6 +73,8 @@ export interface ActionProposedView extends ActionView {
   myDependencies: ActionId[];
   dependentOn: ActionId[];
   holdStatusInfluencedBy: ActionId[];
+  componentSchemaName?: string;
+  componentName?: string;
 }
 
 export interface ActionHistoryView extends ActionView {
@@ -93,6 +95,55 @@ export interface ChangeSetDetail {
   changeSetName: string;
   timestamp?: Date;
 }
+
+export const actionKindToAbbreviation = (actionKind: ActionKind) => {
+  return {
+    Create: "CRT",
+    Destroy: "DLT",
+    Refresh: "RFH",
+    Manual: "MNL",
+    Update: "UPT",
+  }[actionKind];
+};
+
+export const actionIconClass = (kind: ActionKind) => {
+  return {
+    Create: "text-success-600",
+    Destroy: "text-destructive-500 dark:text-destructive-600",
+    Refresh: "text-action-600",
+    Manual: "text-action-600",
+    Update: "text-warning-600",
+  }[kind];
+};
+
+export const actionIcon = (kind: ActionKind) => {
+  return {
+    Create: "plus",
+    Destroy: "trash",
+    Refresh: "refresh",
+    Manual: "play",
+    Update: "tilde",
+  }[kind] as IconNames;
+};
+
+export const resultIconClass = (result: ActionResultState) => {
+  return {
+    Success: "text-success-600",
+    Failure: "text-destructive-500 dark:text-destructive-600",
+    Unknown: "text-warning-600",
+  }[result];
+};
+
+export const resultIcon = (result: ActionResultState) => {
+  return {
+    // outlined icons represent status about the simulation
+    // filled icons represent status about resources in the real world
+    // so we used filled in icons here
+    Success: "check-hex",
+    Failure: "x-hex",
+    Unknown: "question-hex-outline", // TODO, get a non-outlined icon here
+  }[result] as IconNames;
+};
 
 // STUFF FOR BOTH ACTIONS V1 AND V2
 
@@ -195,36 +246,6 @@ export const useActionsStore = () => {
             }
             return r;
           },
-          actionsByComponentId(): Record<ComponentId, ComponentAndAction[]> {
-            return _.mapValues(
-              this.rawActionsByComponentId,
-              (actions, componentId) => {
-                return _.compact(
-                  _.map(actions, (actionPrototype) => {
-                    if (actionPrototype.name === "refresh") return;
-
-                    const actionInstance: ActionProposedView | undefined =
-                      _.find(this.actions, (pa: ActionProposedView) => {
-                        if (!pa) return false;
-                        return (
-                          pa.componentId === componentId &&
-                          pa.prototypeId === actionPrototype.id
-                        );
-                      });
-
-                    return {
-                      actionPrototypeId: actionPrototype.id,
-                      actionInstanceId: actionInstance?.id,
-                      componentId: actionInstance?.componentId,
-                      actor: actionInstance?.actor,
-                      ...omit(actionPrototype, "id"),
-                    };
-                  }),
-                );
-              },
-            );
-          },
-
           listActionsByComponentId(
             state,
           ): DefaultMap<ComponentId, Array<ActionProposedView>> {
@@ -241,7 +262,6 @@ export const useActionsStore = () => {
             });
             return d;
           },
-
           actionsById(state): Map<ActionId, ActionView> {
             const m = new Map();
             for (const a of state.actions) {
