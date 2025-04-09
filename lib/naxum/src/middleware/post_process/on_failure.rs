@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use futures::future::BoxFuture;
-use tracing::trace;
+use tracing::error;
 
 use crate::Head;
 
@@ -21,9 +21,13 @@ impl DefaultOnFailure {
 }
 
 impl OnFailure for DefaultOnFailure {
-    fn call(&mut self, _head: Arc<Head>, _info: Arc<Info>) -> BoxFuture<'static, ()> {
+    fn call(&mut self, head: Arc<Head>, info: Arc<Info>) -> BoxFuture<'static, ()> {
         Box::pin(async move {
-            trace!("message on failure");
+            error!(
+                subject = head.subject.as_str(),
+                stream_sequence = info.stream_sequence,
+                "message on failure",
+            );
         })
     }
 }

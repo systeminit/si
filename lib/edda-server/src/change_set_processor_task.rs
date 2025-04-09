@@ -131,7 +131,11 @@ impl ChangeSetProcessorTask {
                     )
                     .on_response(telemetry_nats::NatsOnResponse::new()),
             )
-            .layer(PostProcessLayer::new().on_success(DeleteMessageOnSuccess::new(stream)))
+            .layer(
+                PostProcessLayer::new()
+                    .on_success(DeleteMessageOnSuccess::new(stream.clone()))
+                    .on_failure(DeleteMessageOnFailure::new(stream)),
+            )
             .service(handlers::default.with_state(state))
             .map_response(Response::into_response);
 
@@ -193,6 +197,42 @@ impl post_process::OnSuccess for DeleteMessageOnSuccess {
             debug!("deleting message on success");
             if let Err(err) = stream.delete_message(info.stream_sequence).await {
                 warn!(
+                    si.error.message = ?err,
+                    subject = head.subject.as_str(),
+                    "failed to delete the message",
+                );
+            }
+        })
+    }
+}
+
+#[derive(Clone, Debug)]
+struct DeleteMessageOnFailure {
+    stream: jetstream::stream::Stream,
+}
+
+impl DeleteMessageOnFailure {
+    fn new(stream: jetstream::stream::Stream) -> Self {
+        Self { stream }
+    }
+}
+
+impl post_process::OnFailure for DeleteMessageOnFailure {
+    fn call(
+        &mut self,
+        head: Arc<naxum::Head>,
+        info: Arc<post_process::Info>,
+    ) -> BoxFuture<'static, ()> {
+        let stream = self.stream.clone();
+
+        Box::pin(async move {
+            error!(
+                stream_sequence = info.stream_sequence,
+                subject = head.subject.as_str(),
+                "deleting message on FAILURE"
+            );
+            if let Err(err) = stream.delete_message(info.stream_sequence).await {
+                error!(
                     si.error.message = ?err,
                     subject = head.subject.as_str(),
                     "failed to delete the message",
