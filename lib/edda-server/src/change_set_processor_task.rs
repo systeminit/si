@@ -273,6 +273,8 @@ async fn graceful_shutdown_signal(
 mod handlers {
     use std::result;
 
+    use dal::{ChangeSetId, DalContext, WorkspacePk};
+    use frigg::FriggStore;
     use naxum::{
         extract::State,
         response::{IntoResponse, Response},
@@ -342,9 +344,34 @@ mod handlers {
             .build_for_change_set_as_system(workspace_id, change_set_id, None)
             .await?;
 
-        let span = Span::current();
-        span.record("si.workspace.id", workspace_id.to_string());
-        span.record("si.change_set.id", change_set_id.to_string());
+        let span = current_span_for_instrument_at!("info");
+
+        if !span.is_disabled() {
+            span.record("si.workspace.id", workspace_id.to_string());
+            span.record("si.change_set.id", change_set_id.to_string());
+        }
+
+        handle_request(&ctx, &frigg, workspace_id, change_set_id, request).await
+    }
+
+    #[instrument(
+        name = "edda.change_set_processor_task.handle_request"
+        level = "info",
+        skip_all,
+        fields(
+            si.workspace.id = %workspace_id,
+            si.change_set.id = %change_set_id,
+            si.edda_request.id = Empty
+        )
+    )]
+    async fn handle_request(
+        ctx: &DalContext,
+        frigg: &FriggStore,
+        workspace_id: WorkspacePk,
+        change_set_id: ChangeSetId,
+        request: EddaRequestKind,
+    ) -> Result<()> {
+        let span = current_span_for_instrument_at!("info");
 
         match request {
             EddaRequestKind::Update(update_request)
@@ -355,7 +382,9 @@ mod handlers {
                     && ctx.workspace_snapshot()?.id().await
                         == update_request.to_snapshot_address =>
             {
-                span.record("si.edda_request.id", update_request.id.to_string());
+                if !span.is_disabled() {
+                    span.record("si.edda_request.id", update_request.id.to_string());
+                }
                 let change_batch = ctx
                     .layer_db()
                     .change_batch()
@@ -366,8 +395,8 @@ mod handlers {
                     ))?;
 
                 materialized_view::build_mv_for_changes_in_change_set(
-                    &ctx,
-                    &frigg,
+                    ctx,
+                    frigg,
                     change_set_id,
                     update_request.from_snapshot_address,
                     update_request.to_snapshot_address,
@@ -382,8 +411,10 @@ mod handlers {
             EddaRequestKind::Update(update_request)
                 if ctx.workspace_snapshot()?.id().await != update_request.to_snapshot_address =>
             {
-                span.record("si.edda_request.id", update_request.id.to_string());
-                materialized_view::build_all_mv_for_change_set(&ctx, &frigg)
+                if !span.is_disabled() {
+                    span.record("si.edda_request.id", update_request.id.to_string());
+                }
+                materialized_view::build_all_mv_for_change_set(ctx, frigg)
                     .instrument(tracing::info_span!(
                         "edda.change_set_processor_task.build_all_mv_for_change_set.snapshot_moved"
                     ))
@@ -391,8 +422,10 @@ mod handlers {
                     .map_err(Into::into)
             }
             EddaRequestKind::Update(update_request) => {
-                span.record("si.edda_request.id", update_request.id.to_string());
-                materialized_view::build_all_mv_for_change_set(&ctx, &frigg)
+                if !span.is_disabled() {
+                    span.record("si.edda_request.id", update_request.id.to_string());
+                }
+                materialized_view::build_all_mv_for_change_set(ctx, frigg)
                     .instrument(tracing::info_span!(
                         "edda.change_set_processor_task.build_all_mv_for_change_set.initial_build"
                     ))
@@ -400,11 +433,13 @@ mod handlers {
                     .map_err(Into::into)
             }
             EddaRequestKind::Rebuild(rebuild_request) => {
-                span.record("si.edda_request.id", rebuild_request.id.to_string());
-                materialized_view::build_all_mv_for_change_set(&ctx, &frigg)
+                if !span.is_disabled() {
+                    span.record("si.edda_request.id", rebuild_request.id.to_string());
+                }
+                materialized_view::build_all_mv_for_change_set(ctx, frigg)
                     .instrument(tracing::info_span!(
-                "edda.change_set_processor_task.build_all_mv_for_change_set.explicit_rebuild"
-            ))
+                        "edda.change_set_processor_task.build_all_mv_for_change_set.explicit_rebuild"
+                    ))
                     .await
                     .map_err(Into::into)
             }
