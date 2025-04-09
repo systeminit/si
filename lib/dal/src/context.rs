@@ -15,10 +15,11 @@ use si_data_pg::{InstrumentedClient, PgError, PgPool, PgPoolError, PgPoolResult,
 use si_events::audit_log::AuditLogKind;
 use si_events::change_batch::{ChangeBatch, ChangeBatchAddress};
 use si_events::rebase_batch_address::RebaseBatchAddress;
+use si_events::split_snapshot_rebase_batch_address::SplitSnapshotRebaseBatchAddress;
 use si_events::workspace_snapshot::Change;
-use si_events::AuthenticationMethod;
 use si_events::EventSessionId;
 use si_events::WorkspaceSnapshotAddress;
+use si_events::{AuthenticationMethod, RebaseBatchAddressKind};
 use si_layer_cache::activities::ActivityPayloadDiscriminants;
 use si_layer_cache::db::LayerDb;
 use si_layer_cache::LayerDbError;
@@ -40,7 +41,9 @@ use crate::layer_db_types::ContentTypes;
 use crate::slow_rt::SlowRuntimeError;
 use crate::workspace_snapshot::dependent_value_root::DependentValueRootError;
 use crate::workspace_snapshot::graph::{RebaseBatch, WorkspaceSnapshotGraph};
-use crate::workspace_snapshot::split_snapshot::{SplitSnapshot, SubGraphVCurrent};
+use crate::workspace_snapshot::split_snapshot::{
+    SplitRebaseBatchVCurrent, SplitSnapshot, SubGraphVCurrent,
+};
 use crate::workspace_snapshot::{
     DependentValueRoot, WorkspaceSnapshotResult, WorkspaceSnapshotSelector,
 };
@@ -65,6 +68,7 @@ pub type DalLayerDb = LayerDb<
     RebaseBatch,
     SubGraphVCurrent,
     SuperGraph,
+    SplitRebaseBatchVCurrent,
 >;
 
 /// A context type which contains handles to common core service dependencies.
@@ -453,7 +457,7 @@ impl DalContext {
         &self,
         workspace_pk: WorkspacePk,
         change_set_id: ChangeSetId,
-        updates_address: RebaseBatchAddress,
+        updates_address: RebaseBatchAddressKind,
     ) -> TransactionsResult<()> {
         rebase_with_reply(
             self.rebaser(),
@@ -469,7 +473,7 @@ impl DalContext {
         &self,
         workspace_pk: WorkspacePk,
         change_set_id: ChangeSetId,
-        updates_address: RebaseBatchAddress,
+        updates_address: RebaseBatchAddressKind,
         from_change_set_id: ChangeSetId,
     ) -> TransactionsResult<RequestId> {
         self.rebaser()
@@ -484,11 +488,11 @@ impl DalContext {
             .map_err(Into::into)
     }
 
-    pub async fn run_rebase_from_change_set_with_reply(
+    pub async fn run_rebase_from_legacy_change_set_with_reply(
         &self,
         workspace_pk: WorkspacePk,
         change_set_id: ChangeSetId,
-        updates_address: RebaseBatchAddress,
+        updates_address: RebaseBatchAddressKind,
         from_change_set_id: ChangeSetId,
     ) -> TransactionsResult<(
         RequestId,
@@ -508,7 +512,7 @@ impl DalContext {
 
     async fn commit_internal(
         &self,
-        rebase_batch: Option<RebaseBatchAddress>,
+        rebase_batch: Option<RebaseBatchAddressKind>,
     ) -> TransactionsResult<()> {
         let maybe_rebase = match rebase_batch {
             Some(updates_address) => DelayedRebaseWithReply::WithUpdates {
@@ -581,7 +585,7 @@ impl DalContext {
     }
 
     #[instrument(name = "context.write_rebase_batch", level = "debug", skip_all)]
-    pub async fn write_rebase_batch(
+    pub async fn write_legacy_rebase_batch(
         &self,
         rebase_batch: RebaseBatch,
     ) -> TransactionsResult<RebaseBatchAddress> {
@@ -604,24 +608,64 @@ impl DalContext {
         Ok(rebase_batch_address)
     }
 
+    #[instrument(
+        name = "context.write_split_snapshot_rebase_batch",
+        level = "debug",
+        skip_all
+    )]
+    pub async fn write_split_snapshot_rebase_batch(
+        &self,
+        rebase_batch: SplitRebaseBatchVCurrent,
+    ) -> TransactionsResult<SplitSnapshotRebaseBatchAddress> {
+        let layer_db = self.layer_db().clone();
+        let events_tenancy = self.events_tenancy();
+        let events_actor = self.events_actor();
+
+        let rebase_batch_address = slow_rt::spawn(async move {
+            let (rebase_batch_address, _) = layer_db.split_snapshot_rebase_batch().write(
+                Arc::new(rebase_batch),
+                None,
+                events_tenancy,
+                events_actor,
+            )?;
+
+            Ok::<SplitSnapshotRebaseBatchAddress, TransactionsError>(rebase_batch_address)
+        })?
+        .await??;
+
+        Ok(rebase_batch_address)
+    }
+
     #[instrument(name = "context.write_current_rebase_batch", level = "debug", skip_all)]
     async fn write_current_rebase_batch(
         &self,
-    ) -> Result<Option<RebaseBatchAddress>, TransactionsError> {
-        Ok(if let Some(snapshot) = &self.workspace_snapshot {
-            if let Some(rebase_batch) = snapshot
-                .as_legacy_snapshot()
-                .map_err(Box::new)?
-                .current_rebase_batch()
-                .await
-                .map_err(Box::new)?
-            {
-                Some(self.write_rebase_batch(rebase_batch).await?)
-            } else {
-                None
+    ) -> Result<Option<RebaseBatchAddressKind>, TransactionsError> {
+        Ok(match self.workspace_snapshot.as_ref() {
+            Some(WorkspaceSnapshotSelector::LegacySnapshot(legacy_snapshot)) => {
+                match legacy_snapshot
+                    .current_rebase_batch()
+                    .await
+                    .map_err(Box::new)?
+                {
+                    Some(rebase_batch) => Some(RebaseBatchAddressKind::Legacy(
+                        self.write_legacy_rebase_batch(rebase_batch).await?,
+                    )),
+                    None => None,
+                }
             }
-        } else {
-            None
+            Some(WorkspaceSnapshotSelector::SplitSnapshot(split_snapshot)) => {
+                match split_snapshot
+                    .current_rebase_batch()
+                    .await
+                    .map_err(Box::new)?
+                {
+                    Some(rebase_batch) => Some(RebaseBatchAddressKind::Split(
+                        self.write_split_snapshot_rebase_batch(rebase_batch).await?,
+                    )),
+                    None => None,
+                }
+            }
+            None => None,
         })
     }
 
@@ -634,7 +678,11 @@ impl DalContext {
                     WorkspaceSnapshot::find_for_change_set(self, head_change_set_id).await?;
                 head_snapshot.detect_changes(workspace_snapshot).await
             }
-            _ => todo!("implement this!"),
+            WorkspaceSnapshotSelector::SplitSnapshot(split_snapshot) => {
+                let head_snapshot =
+                    SplitSnapshot::find_for_change_set(self, head_change_set_id).await?;
+                head_snapshot.detect_changes(split_snapshot).await
+            }
         }
     }
 
@@ -1448,7 +1496,7 @@ pub enum TransactionsError {
     #[error("pg pool error: {0}")]
     PgPool(#[from] PgPoolError),
     #[error("rebase of batch {0} for change set id {1} failed: {2}")]
-    RebaseFailed(RebaseBatchAddress, ChangeSetId, String),
+    RebaseFailed(RebaseBatchAddressKind, ChangeSetId, String),
     #[error("rebaser client error: {0}")]
     Rebaser(#[from] rebaser_client::ClientError),
     #[error("rebaser reply deadline elapsed; waited={0:?}, request_id={1}")]
@@ -1706,7 +1754,7 @@ enum DelayedRebaseWithReply<'a> {
         rebaser: &'a RebaserClient,
         workspace_pk: WorkspacePk,
         change_set_id: ChangeSetId,
-        updates_address: RebaseBatchAddress,
+        updates_address: RebaseBatchAddressKind,
         event_session_id: EventSessionId,
     },
 }
@@ -1725,7 +1773,7 @@ async fn rebase_with_reply(
     rebaser: &RebaserClient,
     workspace_pk: WorkspacePk,
     change_set_id: ChangeSetId,
-    updates_address: RebaseBatchAddress,
+    updates_address: RebaseBatchAddressKind,
     event_session_id: EventSessionId,
 ) -> TransactionsResult<()> {
     let timeout = Duration::from_secs(60);

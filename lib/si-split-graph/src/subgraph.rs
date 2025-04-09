@@ -2,7 +2,6 @@ use petgraph::prelude::*;
 use serde::{Deserialize, Serialize};
 use si_events::merkle_tree_hash::MerkleTreeHash;
 use std::collections::{HashMap, HashSet};
-use std::env::args;
 use std::io::Write;
 use std::time::Instant;
 
@@ -249,7 +248,7 @@ where
         let mut dfs = petgraph::visit::DfsPostOrder::new(&self.graph, self.root_index);
 
         while let Some(node_index) = dfs.next(&self.graph) {
-            if let Some(hash) = self.calculate_merkle_hash_for_node(node_index) {
+            if let Some((hash, _)) = self.calculate_merkle_hash_for_node(node_index) {
                 if let Some(node_weight_mut) = self.graph.node_weight_mut(node_index) {
                     node_weight_mut.set_merkle_tree_hash(hash);
                 }
@@ -257,7 +256,12 @@ where
         }
     }
 
-    pub(crate) fn recalculate_merkle_tree_hash_based_on_touched_nodes(&mut self, dbug: bool) {
+    pub(crate) fn recalculate_merkle_tree_hash_based_on_touched_nodes(
+        &mut self,
+        dbug: bool,
+    ) -> (usize, usize) {
+        let mut node_count = 0;
+        let mut edge_count = 0;
         let big_start = Instant::now();
         let mut dfs = petgraph::visit::DfsPostOrder::new(&self.graph, self.root_index);
 
@@ -265,7 +269,7 @@ where
 
         if self.touched_nodes.is_empty() {
             println!("merkle tree hash calculated in {:?}", big_start.elapsed());
-            return;
+            return (0, 0);
         }
 
         if dbug {
@@ -273,8 +277,11 @@ where
         }
 
         while let Some(node_index) = dfs.next(&self.graph) {
+            node_count += 1;
             if self.touched_nodes.contains(&node_index) || discovered_nodes.contains(&node_index) {
-                if let Some(hash) = self.calculate_merkle_hash_for_node(node_index) {
+                if let Some((hash, edges_hashed)) = self.calculate_merkle_hash_for_node(node_index)
+                {
+                    edge_count += edges_hashed;
                     if let Some(node_weight_mut) = self.graph.node_weight_mut(node_index) {
                         node_weight_mut.set_merkle_tree_hash(hash);
                     }
@@ -289,6 +296,8 @@ where
 
         self.touched_nodes.clear();
         println!("merkle tree hash calculated in {:?}", big_start.elapsed());
+
+        (node_count, edge_count)
     }
 
     pub(crate) fn all_outgoing_stably_ordered(
@@ -334,7 +343,8 @@ where
     fn calculate_merkle_hash_for_node(
         &self,
         node_index: SubGraphNodeIndex,
-    ) -> Option<MerkleTreeHash> {
+    ) -> Option<(MerkleTreeHash, usize)> {
+        let mut edge_count = 0;
         let mut hasher = MerkleTreeHash::hasher();
         hasher.update(self.graph.node_weight(node_index)?.node_hash().as_bytes());
 
@@ -342,6 +352,7 @@ where
 
         let mut hashed_children = HashSet::new();
         for (edge_weight, child_idx) in all_outgoing_stably_ordered {
+            edge_count += 1;
             if !hashed_children.contains(&child_idx) {
                 hasher.update(
                     self.graph
@@ -356,7 +367,7 @@ where
             }
         }
 
-        Some(hasher.finalize())
+        Some((hasher.finalize(), edge_count))
     }
 
     pub(crate) fn node_id_to_index(&self, id: SplitGraphNodeId) -> Option<SubGraphNodeIndex> {

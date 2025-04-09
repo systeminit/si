@@ -1,8 +1,9 @@
 use std::{
-    collections::{HashMap, HashSet, VecDeque},
+    collections::{HashSet, VecDeque},
     time::Instant,
 };
 
+use dashmap::DashMap;
 use opt_zip::OptZip;
 use petgraph::{prelude::*, stable_graph};
 use serde::{Deserialize, Serialize};
@@ -429,7 +430,7 @@ where
 {
     supergraph: SuperGraph,
     subgraphs: Vec<SubGraph<N, E, K>>,
-    id_to_split_graph_index: HashMap<SplitGraphNodeId, SplitGraphNodeIndex>,
+    id_to_split_graph_index: DashMap<SplitGraphNodeId, SplitGraphNodeIndex>,
 }
 
 impl<N, E, K> SplitGraph<N, E, K>
@@ -460,7 +461,7 @@ where
                 split_max,
             },
             subgraphs: vec![first_subgraph],
-            id_to_split_graph_index: HashMap::new(),
+            id_to_split_graph_index: DashMap::new(),
         }
     }
 
@@ -468,7 +469,7 @@ where
         Self {
             supergraph,
             subgraphs,
-            id_to_split_graph_index: HashMap::new(),
+            id_to_split_graph_index: DashMap::new(),
         }
     }
 
@@ -493,7 +494,11 @@ where
             .iter_mut()
             .enumerate()
             .for_each(|(idx, subgraph)| {
-                subgraph.recalculate_merkle_tree_hash_based_on_touched_nodes(idx == 0)
+                let (nodes, edges) =
+                    subgraph.recalculate_merkle_tree_hash_based_on_touched_nodes(idx == 0);
+                if idx == 0 {
+                    println!("nodes: {}, edges: {}", nodes, edges);
+                }
             });
     }
 
@@ -580,7 +585,12 @@ where
             self.new_subgraph()
         };
 
-        self.add_node_to_subgraph(subgraph_index, SplitGraphNodeWeight::Custom(node))
+        let index =
+            self.add_node_to_subgraph(subgraph_index, SplitGraphNodeWeight::Custom(node))?;
+
+        self.id_to_split_graph_index.insert(node_id, index);
+
+        Ok(index)
     }
 
     pub fn add_ordered_node(&mut self, node: N) -> SplitGraphResult<SplitGraphNodeIndex> {
@@ -598,18 +608,8 @@ where
     }
 
     pub fn subgraph_index_for_node(&self, node_id: SplitGraphNodeId) -> Option<usize> {
-        match self.id_to_split_graph_index.get(&node_id).copied() {
-            Some(index) => Some(index.subgraph),
-            None => {
-                for (index, sub) in self.subgraphs.iter().enumerate() {
-                    if sub.node_index_by_id.contains_key(&node_id) {
-                        return Some(index);
-                    }
-                }
-
-                None
-            }
-        }
+        let index = self.node_id_to_index(node_id);
+        index.map(|index| index.subgraph)
     }
 
     pub fn subgraph_root_id(&self, subgraph_index: usize) -> Option<SplitGraphNodeId> {
@@ -620,31 +620,26 @@ where
     }
 
     pub fn raw_node_weight(&self, node_id: SplitGraphNodeId) -> Option<&SplitGraphNodeWeight<N>> {
-        for sub in &self.subgraphs {
-            if let Some(index) = sub.node_index_by_id.get(&node_id) {
-                return sub.graph.node_weight(*index);
-            }
-        }
-
-        None
+        self.node_id_to_index(node_id).and_then(|index| {
+            self.subgraphs
+                .get(index.subgraph)
+                .and_then(|subgraph| subgraph.graph.node_weight(index.index))
+        })
     }
 
     pub fn node_weight(&self, node_id: SplitGraphNodeId) -> Option<&N> {
-        self.raw_node_weight(node_id)
-            .and_then(|weight| weight.custom())
+        self.raw_node_weight(node_id).and_then(|node| node.custom())
     }
 
     pub fn raw_node_weight_mut(
         &mut self,
         node_id: SplitGraphNodeId,
     ) -> Option<&mut SplitGraphNodeWeight<N>> {
-        for sub in self.subgraphs.iter_mut() {
-            if let Some(index) = sub.node_index_by_id.get(&node_id) {
-                return sub.graph.node_weight_mut(*index);
-            }
-        }
-
-        None
+        self.node_id_to_index(node_id).and_then(|index| {
+            self.subgraphs
+                .get_mut(index.subgraph)
+                .and_then(|subgraph| subgraph.graph.node_weight_mut(index.index))
+        })
     }
 
     pub fn node_weight_mut(&mut self, node_id: SplitGraphNodeId) -> Option<&mut N> {
@@ -653,24 +648,41 @@ where
     }
 
     pub fn touch_node(&mut self, node_id: SplitGraphNodeId) {
-        for subgraph in self.subgraphs.iter_mut() {
-            if let Some(node_index) = subgraph.node_id_to_index(node_id) {
-                subgraph.touch_node(node_index);
-                break;
-            }
-        }
+        let Some(index) = self.node_id_to_index(node_id) else {
+            return;
+        };
+        let Some(subgraph) = self.subgraphs.get_mut(index.subgraph) else {
+            return;
+        };
+        subgraph.touch_node(index.index);
     }
 
     pub fn node_id_to_index(&self, id: SplitGraphNodeId) -> Option<SplitGraphNodeIndex> {
-        self.subgraphs
-            .iter()
-            .enumerate()
-            .find(|(_, sub)| sub.node_index_by_id.contains_key(&id))
-            .and_then(|(idx, sub)| {
-                sub.node_index_by_id
-                    .get(&id)
-                    .map(|subgraph_index| SplitGraphNodeIndex::new(idx, *subgraph_index))
-            })
+        match self
+            .id_to_split_graph_index
+            .get(&id)
+            .map(|entry_ref| *entry_ref.value())
+        {
+            Some(index) => Some(index),
+            None => {
+                let index = self
+                    .subgraphs
+                    .iter()
+                    .enumerate()
+                    .find(|(_, sub)| sub.node_index_by_id.contains_key(&id))
+                    .and_then(|(idx, sub)| {
+                        sub.node_index_by_id
+                            .get(&id)
+                            .map(|subgraph_index| SplitGraphNodeIndex::new(idx, *subgraph_index))
+                    });
+
+                if let Some(index) = index {
+                    self.id_to_split_graph_index.insert(id, index);
+                }
+
+                index
+            }
+        }
     }
 
     pub fn remove_node(&mut self, node_id: SplitGraphNodeId) -> SplitGraphResult<()> {

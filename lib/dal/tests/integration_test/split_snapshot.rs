@@ -11,8 +11,11 @@ use dal_test::{helpers::create_component_for_default_schema_name, test, Result};
 //use pretty_assertions_sorted::assert_eq;
 
 async fn set_av_for_prop_for_component(ctx: &DalContext, component_id: ComponentId) -> Result<()> {
+    let start = Instant::now();
     let variant_id = Component::schema_variant_id(ctx, component_id).await?;
+    println!("got variant id in {:?}", start.elapsed());
 
+    let start = Instant::now();
     let rigid_designator_prop_id = Prop::find_prop_id_by_path(
         ctx,
         variant_id,
@@ -27,10 +30,13 @@ async fn set_av_for_prop_for_component(ctx: &DalContext, component_id: Component
         ]),
     )
     .await?;
+    println!("got prop id {:?}", start.elapsed());
 
+    let start = Instant::now();
     let rigid_designator_values =
         Component::attribute_values_for_prop_id(ctx, component_id, rigid_designator_prop_id)
             .await?;
+    println!("got av id in {:?}", start.elapsed());
 
     let rigid_designation = serde_json::json!("hesperus");
 
@@ -39,14 +45,17 @@ async fn set_av_for_prop_for_component(ctx: &DalContext, component_id: Component
         .copied()
         .expect("should have a rigid_designator");
 
+    let start = Instant::now();
     AttributeValue::update(ctx, rigid_id, Some(rigid_designation)).await?;
+    println!("update in {:?}", start.elapsed());
 
     Ok(())
 }
 
 #[test]
 async fn create_split_snapshot_workspace(ctx: &mut DalContext) -> Result<()> {
-    const COMPONENTS_COUNT: usize = 500;
+    const COMPONENTS_COUNT: usize = 1000;
+    println!("test with {} components", COMPONENTS_COUNT);
 
     let mut legacy_components = vec![];
     let view_id = View::get_id_for_default(ctx).await?;
@@ -73,22 +82,23 @@ async fn create_split_snapshot_workspace(ctx: &mut DalContext) -> Result<()> {
 
     ctx.update_snapshot_to_visibility().await?;
 
-    let mut elapsed_total = Duration::ZERO;
-    for id in legacy_components.iter().take(2) {
-        let start = Instant::now();
-        set_av_for_prop_for_component(ctx, *id).await?;
-        let _ = ctx
-            .workspace_snapshot()?
-            .as_legacy_snapshot()?
-            .write(ctx)
-            .await?;
-        elapsed_total += start.elapsed();
-    }
+    println!("\nTEST LEGACY\n");
 
-    println!("elapsed total on legacy snapshot: {:?}", elapsed_total,);
+    let id = legacy_components.get(555).copied().unwrap();
+    let start = Instant::now();
+    println!("set av prop legacy");
+    set_av_for_prop_for_component(ctx, id).await?;
+    println!("set av legacy took: {:?}", start.elapsed());
+    let write_start = Instant::now();
+    let _ = ctx
+        .workspace_snapshot()?
+        .as_legacy_snapshot()?
+        .write(ctx)
+        .await?;
+    println!("legacy write took: {:?}", write_start.elapsed());
 
     for split_max in [5_000, 10_000, 25_000, 50_000] {
-        println!("\n\nnsplit_max: {}\n", split_max);
+        println!("\n\nnplit_max: {}\n", split_max);
         let workspace_pk = WorkspacePk::new();
         let mut clone_ctx = ctx.clone();
         let clone_ctx_mut_ref = &mut clone_ctx;
@@ -144,19 +154,21 @@ async fn create_split_snapshot_workspace(ctx: &mut DalContext) -> Result<()> {
             .await?;
         clone_ctx_mut_ref.update_snapshot_to_visibility().await?;
 
+        println!("\nTEST\n");
+
         let mut elapsed_total = Duration::ZERO;
-        for id in split_component_ids.iter().take(1) {
-            let start = Instant::now();
-            set_av_for_prop_for_component(clone_ctx_mut_ref, *id).await?;
-            println!("set av for prop in {:?}", start.elapsed());
-            let _ = clone_ctx_mut_ref
-                .workspace_snapshot()?
-                .as_split_snapshot()?
-                .write(clone_ctx_mut_ref)
-                .await?;
-            elapsed_total += start.elapsed();
-            println!("elapsed: {:?}", start.elapsed());
-        }
+        let id = split_component_ids.get(555).copied().unwrap();
+        let start = Instant::now();
+        set_av_for_prop_for_component(clone_ctx_mut_ref, id).await?;
+        println!("set av for prop in {:?}", start.elapsed());
+        let write_start = Instant::now();
+        let _ = clone_ctx_mut_ref
+            .workspace_snapshot()?
+            .as_split_snapshot()?
+            .write(clone_ctx_mut_ref)
+            .await?;
+        elapsed_total += start.elapsed();
+        println!("elapsed: {:?}", write_start.elapsed());
     }
 
     Ok(())

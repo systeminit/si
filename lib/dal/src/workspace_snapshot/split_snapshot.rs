@@ -59,6 +59,10 @@ pub type SplitSnapshotGraphVCurrent = SplitSnapshotGraphV1;
 pub type SubGraphV1 = SubGraph<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>;
 pub type SubGraphVCurrent = SubGraphV1;
 
+pub type SplitRebaseBatchV1 =
+    Vec<si_split_graph::Update<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>>;
+pub type SplitRebaseBatchVCurrent = SplitRebaseBatchV1;
+
 #[derive(Serialize, Deserialize, Debug, Clone, EnumDiscriminants)]
 #[strum_discriminants(derive(strum::Display, Serialize, Deserialize, EnumString, EnumIter))]
 pub enum SplitSnapshotStorage {
@@ -98,11 +102,6 @@ impl SplitSnapshotGraph {
             SplitSnapshotGraph::V1(inner) => inner,
         }
     }
-}
-
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct SplitGraphUpdates {
-    updates: Vec<si_split_graph::Update<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>>,
 }
 
 #[must_use = "if unused the lock will be released immediately"]
@@ -245,6 +244,22 @@ impl SplitSnapshot {
         initial.write(ctx).await?;
 
         Ok(initial)
+    }
+
+    pub async fn current_rebase_batch(
+        &self,
+    ) -> WorkspaceSnapshotResult<Option<SplitRebaseBatchVCurrent>> {
+        let self_clone = self.clone();
+
+        let updates = slow_rt::spawn(async move {
+            let mut working_copy = self_clone.working_copy_mut().await;
+            working_copy.cleanup_and_merkle_tree_hash();
+
+            self_clone.read_only_graph.detect_updates(&working_copy)
+        })?
+        .await?;
+
+        Ok((!updates.is_empty()).then_some(updates))
     }
 
     #[instrument(name = "split_snapshot.find", level = "debug", skip_all, fields())]

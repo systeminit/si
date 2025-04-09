@@ -88,7 +88,7 @@ impl ChangeSetTestHelpers {
     async fn has_updates(ctx: &mut DalContext) -> Result<bool> {
         let expected_rebase_batch = ctx
             .change_set()?
-            .detect_updates_that_will_be_applied(ctx)
+            .detect_updates_that_will_be_applied_legacy(ctx)
             .await?;
 
         Ok(expected_rebase_batch.is_some_and(|batch| !batch.updates().is_empty()))
