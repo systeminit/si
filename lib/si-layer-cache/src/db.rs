@@ -2,6 +2,7 @@ use change_batch::ChangeBatchDb;
 use serde::Deserialize;
 use si_data_pg::PgPoolConfig;
 use si_runtime::DedicatedExecutor;
+use split_snapshot_rebase_batch::SplitSnapshotRebaseBatchDb;
 use split_snapshot_subgraph::SplitSnapshotSubGraphDb;
 use split_snapshot_supergraph::SplitSnapshotSuperGraphDb;
 use std::sync::Arc;
@@ -40,6 +41,7 @@ pub mod func_run;
 pub mod func_run_log;
 pub mod rebase_batch;
 pub mod serialize;
+pub mod split_snapshot_rebase_batch;
 pub mod split_snapshot_subgraph;
 pub mod split_snapshot_supergraph;
 pub mod workspace_snapshot;
@@ -52,6 +54,7 @@ pub struct LayerDb<
     RebaseBatchValue,
     SplitSnapshotSubGraphValue,
     SplitSnapshotSuperGraphValue,
+    SplitSnapshotRebaseBatchValue,
 > where
     CasValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     EncryptedSecretValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
@@ -59,6 +62,7 @@ pub struct LayerDb<
     RebaseBatchValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     SplitSnapshotSubGraphValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     SplitSnapshotSuperGraphValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+    SplitSnapshotRebaseBatchValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
     cas: CasDb<CasValue>,
     change_batch: ChangeBatchDb,
@@ -69,6 +73,7 @@ pub struct LayerDb<
     workspace_snapshot: WorkspaceSnapshotDb<WorkspaceSnapshotValue>,
     split_snapshot_subgraph: SplitSnapshotSubGraphDb<SplitSnapshotSubGraphValue>,
     split_snapshot_supergraph: SplitSnapshotSuperGraphDb<SplitSnapshotSuperGraphValue>,
+    split_snapshot_rebase_batch: SplitSnapshotRebaseBatchDb<SplitSnapshotRebaseBatchValue>,
     pg_pool: PgPool,
     nats_client: NatsClient,
     persister_client: PersisterClient,
@@ -83,6 +88,7 @@ impl<
         RebaseBatchValue,
         SplitSnapshotSubGraphValue,
         SplitSnapshotSuperGraphValue,
+        SplitSnapshotRebaseBatchValue,
     >
     LayerDb<
         CasValue,
@@ -91,6 +97,7 @@ impl<
         RebaseBatchValue,
         SplitSnapshotSubGraphValue,
         SplitSnapshotSuperGraphValue,
+        SplitSnapshotRebaseBatchValue,
     >
 where
     CasValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
@@ -99,6 +106,7 @@ where
     RebaseBatchValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     SplitSnapshotSubGraphValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     SplitSnapshotSuperGraphValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+    SplitSnapshotRebaseBatchValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
     #[instrument(name = "layer_db.init.from_config", level = "info", skip_all)]
     pub async fn from_config(
@@ -144,6 +152,7 @@ where
             snapshot_cache,
             split_snapshot_subgraph_cache,
             split_snapshot_supergraph_cache,
+            split_snapshot_rebase_batch_cache,
         ) = try_join!(
             create_layer_cache(
                 cas::CACHE_NAME,
@@ -163,6 +172,7 @@ where
                 tracker.clone(),
                 token.clone(),
                 5,
+                // 25
                 5
             ),
             create_layer_cache(
@@ -173,6 +183,7 @@ where
                 tracker.clone(),
                 token.clone(),
                 5,
+                // 30
                 5
             ),
             create_layer_cache(
@@ -183,6 +194,7 @@ where
                 tracker.clone(),
                 token.clone(),
                 5,
+                // 35
                 5
             ),
             create_layer_cache(
@@ -193,6 +205,7 @@ where
                 tracker.clone(),
                 token.clone(),
                 5,
+                // 40
                 5
             ),
             create_layer_cache(
@@ -203,6 +216,7 @@ where
                 tracker.clone(),
                 token.clone(),
                 5,
+                // 45
                 5
             ),
             create_layer_cache(
@@ -212,8 +226,9 @@ where
                 compute_executor.clone(),
                 tracker.clone(),
                 token.clone(),
-                30,
-                30,
+                20,
+                // 65
+                20,
             ),
             create_layer_cache(
                 split_snapshot_subgraph::CACHE_NAME,
@@ -222,11 +237,23 @@ where
                 compute_executor.clone(),
                 tracker.clone(),
                 token.clone(),
-                15,
-                15
+                20,
+                // 85
+                20
             ),
             create_layer_cache(
                 split_snapshot_supergraph::CACHE_NAME,
+                pg_pool.clone(),
+                cache_config.clone(),
+                compute_executor.clone(),
+                tracker.clone(),
+                token.clone(),
+                5,
+                // 90
+                5
+            ),
+            create_layer_cache(
+                split_snapshot_rebase_batch::CACHE_NAME,
                 pg_pool.clone(),
                 cache_config.clone(),
                 compute_executor.clone(),
@@ -247,6 +274,9 @@ where
             func_run_log_cache.clone(),
             rebase_batch_cache.clone(),
             snapshot_cache.clone(),
+            split_snapshot_subgraph_cache.clone(),
+            split_snapshot_supergraph_cache.clone(),
+            split_snapshot_rebase_batch_cache.clone(),
             token.clone(),
         )
         .await?;
@@ -276,6 +306,10 @@ where
             split_snapshot_supergraph_cache,
             persister_client.clone(),
         );
+        let split_snapshot_rebase_batch = SplitSnapshotRebaseBatchDb::new(
+            split_snapshot_rebase_batch_cache,
+            persister_client.clone(),
+        );
 
         let activity = ActivityClient::new(instance_id, nats_client.clone(), token.clone());
         let graceful_shutdown = LayerDbGracefulShutdown { tracker, token };
@@ -295,6 +329,7 @@ where
             rebase_batch,
             split_snapshot_subgraph,
             split_snapshot_supergraph,
+            split_snapshot_rebase_batch,
         };
 
         Ok((layerdb, graceful_shutdown))
@@ -348,6 +383,12 @@ where
         &self,
     ) -> &SplitSnapshotSuperGraphDb<SplitSnapshotSuperGraphValue> {
         &self.split_snapshot_supergraph
+    }
+
+    pub fn split_snapshot_rebase_batch(
+        &self,
+    ) -> &SplitSnapshotRebaseBatchDb<SplitSnapshotRebaseBatchValue> {
+        &self.split_snapshot_rebase_batch
     }
 
     pub fn instance_id(&self) -> Ulid {

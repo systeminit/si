@@ -20,7 +20,8 @@ use si_data_nats::{
     HeaderMap, Message, NatsClient, Subject,
 };
 use si_events::{
-    rebase_batch_address::RebaseBatchAddress, ChangeSetId, EventSessionId, WorkspacePk,
+    rebase_batch_address::RebaseBatchAddress, ChangeSetId, EventSessionId, RebaseBatchAddressKind,
+    WorkspacePk,
 };
 use telemetry::prelude::*;
 use telemetry_nats::propagation;
@@ -100,7 +101,7 @@ impl Client {
         &self,
         workspace_id: WorkspacePk,
         change_set_id: ChangeSetId,
-        updates_address: RebaseBatchAddress,
+        updates_address: RebaseBatchAddressKind,
         event_session_id: EventSessionId,
     ) -> Result<RequestId> {
         self.call_async(
@@ -129,7 +130,7 @@ impl Client {
         &self,
         workspace_id: WorkspacePk,
         change_set_id: ChangeSetId,
-        updates_address: RebaseBatchAddress,
+        updates_address: RebaseBatchAddressKind,
         from_change_set_id: ChangeSetId,
         event_session_id: EventSessionId,
     ) -> Result<RequestId> {
@@ -159,7 +160,7 @@ impl Client {
         &self,
         workspace_id: WorkspacePk,
         change_set_id: ChangeSetId,
-        updates_address: RebaseBatchAddress,
+        updates_address: RebaseBatchAddressKind,
         event_session_id: EventSessionId,
     ) -> Result<(
         RequestId,
@@ -190,7 +191,7 @@ impl Client {
         &self,
         workspace_id: WorkspacePk,
         change_set_id: ChangeSetId,
-        updates_address: RebaseBatchAddress,
+        updates_address: RebaseBatchAddressKind,
         from_change_set_id: ChangeSetId,
         event_session_id: EventSessionId,
     ) -> Result<(
@@ -211,7 +212,7 @@ impl Client {
         &self,
         workspace_id: WorkspacePk,
         change_set_id: ChangeSetId,
-        updates_address: RebaseBatchAddress,
+        updates_address: RebaseBatchAddressKind,
         from_change_set_id: Option<ChangeSetId>,
         maybe_reply_inbox: Option<&Subject>,
         event_session_id: EventSessionId,
@@ -277,7 +278,7 @@ impl Client {
         &self,
         workspace_id: WorkspacePk,
         change_set_id: ChangeSetId,
-        updates_address: RebaseBatchAddress,
+        updates_address: RebaseBatchAddressKind,
         from_change_set_id: Option<ChangeSetId>,
         event_session_id: EventSessionId,
     ) -> Result<(
