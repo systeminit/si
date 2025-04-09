@@ -15,11 +15,19 @@ const debug = Debug("langJs:management");
 
 export interface ManagementFunc extends Func {
   currentView: string;
-  thisComponent: ComponentWithGeometry;
+  thisComponent: ThisComponent;
   components: {
     [key: string]: ComponentWithGeometry;
   };
   variantSocketMap: Record<SchemaName, number>;
+}
+
+export interface ThisComponent extends ComponentWithGeometry {
+  incomingConnections: {
+    [key: SocketName]: SocketRefAndValue[] | SocketRefAndValue | undefined;
+  };
+  // TODO outgoingConnections so we can automatically connect *output* from created components
+  // to existing components
 }
 
 export type ManagementFuncResult =

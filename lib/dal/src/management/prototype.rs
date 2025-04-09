@@ -116,6 +116,13 @@ pub struct ManagedComponent {
     kind: String,
     properties: Option<serde_json::Value>,
     geometry: HashMap<String, ManagementGeometry>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ManagerComponent {
+    #[serde(flatten)]
+    component: ManagedComponent,
     incoming_connections: HashMap<String, SocketRefsAndValues>,
 }
 
@@ -228,13 +235,25 @@ impl ManagedComponent {
         let component = Component::get_by_id(ctx, component_id).await?;
         let properties = component.view(ctx).await?;
         let geometry = build_management_geometry_map(ctx, component_id, views).await?;
-        let incoming_connections = build_incoming_connections(ctx, component_id).await?;
 
         Ok(Self {
             kind: kind.to_owned(),
             properties,
             geometry,
-            incoming_connections,
+        })
+    }
+}
+
+impl ManagerComponent {
+    pub async fn new(
+        ctx: &DalContext,
+        component_id: ComponentId,
+        kind: &str,
+        views: &HashMap<ViewId, String>,
+    ) -> ManagementPrototypeResult<ManagerComponent> {
+        Ok(ManagerComponent {
+            component: ManagedComponent::new(ctx, component_id, kind, views).await?,
+            incoming_connections: build_incoming_connections(ctx, component_id).await?,
         })
     }
 }
@@ -464,8 +483,8 @@ impl ManagementPrototype {
             .to_string();
 
         let manager_component =
-            ManagedComponent::new(ctx, manager_component_id, &this_schema, &views).await?;
-        let manager_component_geometry = manager_component.geometry.to_owned();
+            ManagerComponent::new(ctx, manager_component_id, &this_schema, &views).await?;
+        let manager_component_geometry = manager_component.component.geometry.to_owned();
 
         let variant_socket_map = Self::variant_socket_map(ctx).await?;
 
