@@ -363,7 +363,10 @@ import { useRoute } from "vue-router";
 import { useToast } from "vue-toastification";
 import { useCustomFontsLoaded } from "@/utils/useFontLoaded";
 import DiagramGroup from "@/components/ModelingDiagram/DiagramGroup.vue";
-import { useComponentsStore } from "@/store/components.store";
+import {
+  ConnectionDirection,
+  useComponentsStore,
+} from "@/store/components.store";
 import DiagramGroupOverlay from "@/components/ModelingDiagram/DiagramGroupOverlay.vue";
 import { DiagramCursorDef, usePresenceStore } from "@/store/presence.store";
 import { useRealtimeStore } from "@/store/realtime/realtime.store";
@@ -1011,17 +1014,30 @@ async function onKeyDown(e: KeyboardEvent) {
     e.key === "c"
   ) {
     e.preventDefault();
-    componentsStore.eventBus.emit("openConnectionsMenu", {
-      aDirection: undefined,
-      A: {
-        componentId: viewsStore.selectedComponentId ?? undefined,
-        socketId: undefined,
-      },
-      B: {
-        componentId: undefined,
-        socketId: undefined,
-      },
-    });
+    if (featureFlagsStore.SIMPLE_SOCKET_UI && viewsStore.selectedEdge) {
+      const selectedEdge = viewsStore.selectedEdge;
+      const fromId = selectedEdge.fromComponentId;
+      const toId = selectedEdge.toComponentId;
+
+      const menuData = {
+        aDirection: "output" as ConnectionDirection,
+        A: { componentId: fromId },
+        B: { componentId: toId },
+      };
+      componentsStore.eventBus.emit("openConnectionsMenu", menuData);
+    } else {
+      componentsStore.eventBus.emit("openConnectionsMenu", {
+        aDirection: undefined,
+        A: {
+          componentId: viewsStore.selectedComponentId ?? undefined,
+          socketId: undefined,
+        },
+        B: {
+          componentId: undefined,
+          socketId: undefined,
+        },
+      });
+    }
   }
 }
 
@@ -2481,13 +2497,24 @@ function onResizeMove() {
 // DRAWING EDGES ///////////////////////////////////////////////////////////////////////
 const drawEdgeActive = ref(false);
 const drawEdgeFromSocketKey = ref<DiagramElementUniqueKey>();
-const drawEdgeFromSocket = computed(
-  () => getElementByKey(drawEdgeFromSocketKey.value) as DiagramSocketData,
-);
+const drawEdgeFromSocket = computed(() => {
+  if (featureFlagsStore.SIMPLE_SOCKET_UI) {
+    return getDiagramSocketByKey(drawEdgeFromSocketKey.value);
+  }
+  return getElementByKey(drawEdgeFromSocketKey.value) as
+    | DiagramSocketData
+    | undefined;
+});
 const drawEdgeToSocketKey = ref<DiagramElementUniqueKey>();
-const drawEdgeToSocket = computed(
-  () => getElementByKey(drawEdgeToSocketKey.value) as DiagramSocketData,
-);
+const drawEdgeToSocket = computed(() => {
+  if (featureFlagsStore.SIMPLE_SOCKET_UI) {
+    return getDiagramSocketByKey(drawEdgeToSocketKey.value);
+  }
+
+  return getElementByKey(drawEdgeToSocketKey.value) as
+    | DiagramSocketData
+    | undefined;
+});
 const drawEdgePossibleTargetSocketKeys = computed(() => {
   if (!drawEdgeActive.value) return [];
 
@@ -2505,11 +2532,15 @@ const drawEdgePossibleTargetSocketKeys = computed(() => {
       ? edge.toSocketKey
       : edge.fromSocketKey,
   );
+
   const possibleSockets = _.filter(sockets.value, (possibleToSocket) => {
     // cannot connect sockets to other sockets on same node (at least not currently)
     if (possibleToSocket.parent === fromSocket.parent) return false;
-    // cannot connect to a socket that is already connected
-    if (existingConnectedSocketKeys.includes(possibleToSocket.uniqueKey))
+    // cannot connect to a socket that is already connected UNLESS in the new Simple Socket UI and not connecting a management socket
+    if (
+      existingConnectedSocketKeys.includes(possibleToSocket.uniqueKey) &&
+      (!featureFlagsStore.SIMPLE_SOCKET_UI || fromSocket.def.isManagement)
+    )
       return false;
     // inputs must be connected to outputs (or bidirectional sockets)
     if (fromSocket.def.direction === possibleToSocket.def.direction)
@@ -2520,6 +2551,10 @@ const drawEdgePossibleTargetSocketKeys = computed(() => {
       return (
         !!fromSocket.def.isManagement && !!possibleToSocket.def.isManagement
       );
+    }
+
+    if (featureFlagsStore.SIMPLE_SOCKET_UI) {
+      return true;
     }
 
     const [outputCAs, inputCAs] =
@@ -2639,7 +2674,14 @@ async function endDrawEdge() {
     socketId: toSocketId,
   };
 
-  if (adjustedFrom.def.isManagement) {
+  if (featureFlagsStore.SIMPLE_SOCKET_UI) {
+    const menuData = {
+      aDirection: "output" as ConnectionDirection,
+      A: { componentId: from.componentId },
+      B: { componentId: to.componentId },
+    };
+    modelingEventBus.emit("openConnectionsMenu", menuData);
+  } else if (adjustedFrom.def.isManagement) {
     await componentsStore.MANAGE_COMPONENT(from, to);
   } else {
     await componentsStore.CREATE_COMPONENT_CONNECTION(from, to);
@@ -3135,7 +3177,7 @@ const dragRenderViews = computed(() => {
 
 const sockets = computed(() => {
   const elements = _.concat(nodes.value, groups.value);
-  return _.compact(_.flatMap(elements, (i) => i.sockets));
+  return _.compact(_.flatMap(elements, (i) => i.diagramSockets));
 });
 
 // this will re-compute on every drag until all the position data is removed
@@ -3154,6 +3196,20 @@ const allElementsByKey = computed(() =>
 
 function getElementByKey(key?: DiagramElementUniqueKey) {
   return key ? allElementsByKey.value[key] : undefined;
+}
+
+function getDiagramSocketByKey(key?: DiagramElementUniqueKey) {
+  if (key) {
+    // We slice the id of the parent component out of the socket key
+    const parentId = key.slice(0, 28);
+    const parent = allElementsByKey.value[parentId] as
+      | DiagramNodeData
+      | DiagramGroupData;
+    if (parent) {
+      return parent.diagramSockets.find((socket) => socket.uniqueKey === key);
+    }
+  }
+  return undefined;
 }
 
 // Selection rects

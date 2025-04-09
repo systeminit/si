@@ -4,12 +4,17 @@
       clsx(
         'basis-1/2 h-full min-h-0 border-x-2 border-b-2 p-xs ',
         active && themeClasses('bg-neutral-100', 'bg-neutral-800'),
-        socketToShow?.uniqueKey ? 'children:h-1/2' : 'children:h-full',
+        socketToShow?.uniqueKey && doneLoading
+          ? 'children:h-1/2'
+          : 'children:h-full',
       )
     "
   >
+    <div v-if="!doneLoading" class="h-full flex flex-row items-center">
+      <LoadingMessage message="Loading socket data..." />
+    </div>
     <div
-      v-if="listItems.length"
+      v-else-if="listItems.length"
       ref="scrollRef"
       :class="
         clsx(
@@ -136,7 +141,7 @@
     >
       No available sockets
     </div>
-    <div v-if="socketToShow?.uniqueKey" class="w-full min-h-0">
+    <div v-if="socketToShow?.uniqueKey && doneLoading" class="w-full min-h-0">
       <CodeEditor
         v-if="socketToShow.value"
         :id="`func-${socketToShow.uniqueKey}`"
@@ -159,7 +164,7 @@
 <script lang="ts" setup>
 import { computed, PropType, reactive, ref, watch, watchEffect } from "vue";
 import clsx from "clsx";
-import { Icon, themeClasses } from "@si/vue-lib/design-system";
+import { Icon, LoadingMessage, themeClasses } from "@si/vue-lib/design-system";
 import { useVirtualizer } from "@tanstack/vue-virtual";
 import CodeEditor from "@/components/CodeEditor.vue";
 import {
@@ -188,6 +193,7 @@ const props = defineProps({
   highlightedIndex: { type: Number },
   highlightedSocket: { type: Object as PropType<DiagramSocketData> },
   active: { type: Boolean },
+  doneLoading: { type: Boolean },
 });
 const localHighlightedIndex = computed(() =>
   props.active ? props.highlightedIndex : undefined,

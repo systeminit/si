@@ -2,15 +2,9 @@
   <div
     :class="
       clsx(
-        'p-xs border-l-4 border relative bg-shade-100',
-        changeStatus
-          ? {
-              added: 'border-success-400',
-              deleted: 'border-destructive-500',
-              modified: 'border-warning-400',
-              unmodified: 'border-shade-0',
-            }[changeStatus]
-          : 'border-shade-0',
+        'p-xs border-l-4 border relative',
+        themeClasses('bg-shade-0', 'bg-shade-100'),
+        statusColors,
       )
     "
   >
@@ -61,18 +55,36 @@
 
 <script lang="ts" setup>
 import clsx from "clsx";
-import { Icon, Stack, TruncateWithTooltip } from "@si/vue-lib/design-system";
-import { PropType } from "vue";
+import {
+  Icon,
+  Stack,
+  themeClasses,
+  TruncateWithTooltip,
+} from "@si/vue-lib/design-system";
+import { computed, PropType } from "vue";
+import { tw } from "@si/vue-lib";
 import { useViewsStore } from "@/store/views.store";
 import { ChangeStatus } from "@/api/sdf/dal/change_set";
 import { DiagramSocketData } from "./ModelingDiagram/diagram_types";
 import StatusIndicatorIcon from "./StatusIndicatorIcon.vue";
 
-defineProps({
+const props = defineProps({
   socket: { type: Object as PropType<DiagramSocketData>, required: true },
   changeStatus: { type: String as PropType<ChangeStatus> },
   outputSocket: { type: Boolean },
 });
 
 const viewsStore = useViewsStore();
+
+const statusColors = computed(() => {
+  const unmodified = themeClasses(tw`border-shade-100`, tw`border-shade-0`);
+  if (!props.changeStatus) return unmodified;
+  const colors = {
+    added: themeClasses(tw`border-success-500`, tw`border-success-400`),
+    deleted: tw`border-destructive-500`,
+    modified: tw`border-warning-400`,
+    unmodified,
+  };
+  return colors[props.changeStatus];
+});
 </script>

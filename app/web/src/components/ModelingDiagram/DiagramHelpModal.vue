@@ -59,6 +59,14 @@
       <div class="flex flex-row items-center gap-xs">
         <div class="w-12 flex flex-row items-center justify-center">
           <div class="text-xl font-bold leading-none flex-grow text-center">
+            C
+          </div>
+        </div>
+        <div>Press C to open the connections menu.</div>
+      </div>
+      <div class="flex flex-row items-center gap-xs">
+        <div class="w-12 flex flex-row items-center justify-center">
+          <div class="text-xl font-bold leading-none flex-grow text-center">
             R
           </div>
         </div>
