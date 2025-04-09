@@ -1995,6 +1995,7 @@ dependencies = [
  "si-pkg",
  "si-runtime",
  "si-settings",
+ "si-split-graph",
  "si-std",
  "sodiumoxide",
  "strum",
@@ -7369,6 +7370,7 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "blake3",
+ "dashmap",
  "petgraph",
  "serde",
  "si-events",

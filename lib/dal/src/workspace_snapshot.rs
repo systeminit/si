@@ -3,7 +3,7 @@
 //! having code outside of the specific graph version implementation that requires having knowledge
 //! of how the internals of that specific version of the graph work.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 
@@ -15,15 +15,16 @@ use petgraph::prelude::*;
 use selector::WorkspaceSnapshotSelectorDiscriminants;
 use serde::{Deserialize, Serialize};
 use si_data_pg::PgError;
-use si_events::merkle_tree_hash::MerkleTreeHash;
-use si_events::workspace_snapshot::{Change, Checksum};
+use si_events::workspace_snapshot::Change;
 use si_events::{ulid::Ulid, ContentHash, WorkspaceSnapshotAddress};
-use si_id::{ApprovalRequirementDefinitionId, EntityId};
+use si_id::ApprovalRequirementDefinitionId;
 use si_layer_cache::LayerDbError;
+use si_split_graph::SplitGraphError;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::{Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard};
 use tokio::task::JoinError;
+use tokio::time::Instant;
 
 use crate::action::{Action, ActionError};
 use crate::attribute::prototype::argument::AttributePrototypeArgumentError;
@@ -32,13 +33,12 @@ use crate::change_set::{ChangeSetError, ChangeSetId};
 use crate::component::inferred_connection_graph::{
     InferredConnectionGraph, InferredConnectionGraphError,
 };
-use crate::component::{ComponentResult, Connection};
+use crate::component::ComponentResult;
 use crate::slow_rt::{self, SlowRuntimeError};
 use crate::socket::connection_annotation::ConnectionAnnotationError;
 use crate::socket::input::InputSocketError;
 use crate::workspace_snapshot::{
-    content_address::ContentAddressDiscriminants,
-    edge_weight::{EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants},
+    edge_weight::{EdgeWeight, EdgeWeightKindDiscriminants},
     graph::{LineageId, WorkspaceSnapshotGraphDiscriminants},
     node_weight::{category_node_weight::CategoryNodeKind, NodeWeight},
 };
@@ -47,23 +47,25 @@ use crate::{
     DalContext, TransactionsError, WorkspaceSnapshotGraphVCurrent,
 };
 use crate::{
-    Component, ComponentError, ComponentId, InputSocketId, OutputSocketId, SchemaId,
-    SchemaVariantId, TenancyError, Workspace, WorkspaceError,
+    ComponentError, ComponentId, SchemaVariantError, SchemaVariantId, TenancyError, WorkspaceError,
 };
 
 use self::node_weight::{NodeWeightDiscriminants, OrderingNodeWeight};
 
 pub mod content_address;
+pub mod dependent_value_root;
 pub mod edge_weight;
 pub mod graph;
 pub mod lamport_clock;
 pub mod migrator;
 pub mod node_weight;
 pub mod selector;
+pub mod split_snapshot;
 pub mod traits;
 pub mod update;
 pub mod vector_clock;
 
+pub use dependent_value_root::DependentValueRoot;
 pub use petgraph::Direction;
 pub use selector::WorkspaceSnapshotSelector;
 pub use si_id::WorkspaceSnapshotNodeId as NodeId;
@@ -125,6 +127,8 @@ pub enum WorkspaceSnapshotError {
     MissingVectorClockForChangeSet(ChangeSetId),
     #[error("monotonic error: {0}")]
     Monotonic(#[from] ulid::MonotonicError),
+    #[error("node not found at node id: {0}")]
+    NodeNotFoundAtId(Ulid),
     #[error("node not found at node index: {0:?}")]
     NodeNotFoundAtIndex(NodeIndex),
     #[error("NodeWeight error: {0}")]
@@ -137,10 +141,18 @@ pub enum WorkspaceSnapshotError {
     Postcard(#[from] postcard::Error),
     #[error("recently seen clocks missing for change set id {0}")]
     RecentlySeenClocksMissing(ChangeSetId),
+    #[error("SchemaVariant error: {0}")]
+    SchemaVariant(#[from] Box<SchemaVariantError>),
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("slow runtime error: {0}")]
     SlowRuntime(#[from] SlowRuntimeError),
+    #[error("split graph error: {0}")]
+    SplitGraph(#[from] SplitGraphError),
+    #[error("split snapshot subgraph missing at address: {0}")]
+    SplitSnapshotSubGraphMissingAtAddress(WorkspaceSnapshotAddress),
+    #[error("split snapshot supergraph missing at address: {0}")]
+    SplitSnapshotSuperGraphMissingAtAddress(WorkspaceSnapshotAddress),
     #[error("tenancy error: {0}")]
     Tenancy(#[from] TenancyError),
     #[error("transactions error: {0}")]
@@ -236,6 +248,12 @@ pub struct WorkspaceSnapshot {
 #[must_use = "if unused the cycle check will be immediately disabled"]
 pub struct CycleCheckGuard {
     cycle_check: Arc<AtomicBool>,
+}
+
+impl CycleCheckGuard {
+    pub(crate) fn new(cycle_check: Arc<AtomicBool>) -> Self {
+        Self { cycle_check }
+    }
 }
 
 impl Drop for CycleCheckGuard {
@@ -342,26 +360,6 @@ pub(crate) fn serde_value_to_string_type(value: &serde_json::Value) -> String {
         serde_json::Value::String(_) => "string",
     }
     .into()
-}
-
-#[derive(Copy, Clone, Hash, Debug, Serialize, Deserialize, PartialEq, Eq)]
-pub enum DependentValueRoot {
-    Finished(Ulid),
-    Unfinished(Ulid),
-}
-
-impl DependentValueRoot {
-    pub fn is_finished(&self) -> bool {
-        matches!(self, DependentValueRoot::Unfinished(_))
-    }
-}
-
-impl From<DependentValueRoot> for Ulid {
-    fn from(value: DependentValueRoot) -> Self {
-        match value {
-            DependentValueRoot::Finished(id) | DependentValueRoot::Unfinished(id) => id,
-        }
-    }
 }
 
 impl WorkspaceSnapshot {
@@ -511,8 +509,10 @@ impl WorkspaceSnapshot {
             // operation, so we throw it onto the "slow" runtime, the one not
             // listening for requests/processing a nats queue
             let new_address = slow_rt::spawn(async move {
+                let start = Instant::now();
                 let mut working_copy = self_clone.working_copy_mut().await;
                 working_copy.cleanup_and_merkle_tree_hash()?;
+                println!("cleanup_and_merkle_tree_hash took {:?}", start.elapsed());
 
                 let (new_address, _) = layer_db.workspace_snapshot().write(
                     Arc::new(WorkspaceSnapshotGraph::V4(working_copy.clone())),
@@ -754,42 +754,6 @@ impl WorkspaceSnapshot {
                 .detect_changes(&*onto_clone.working_copy().await)
         })?
         .await??)
-    }
-
-    /// Calculates the checksum based on a list of IDs with hashes passed in.
-    #[instrument(
-        name = "workspace_snapshot.calculate_checksum",
-        level = "debug",
-        skip_all
-    )]
-    pub async fn calculate_checksum(
-        &self,
-        ctx: &DalContext,
-        mut ids_with_hashes: Vec<(EntityId, MerkleTreeHash)>,
-    ) -> WorkspaceSnapshotResult<Checksum> {
-        // If an empty list of IDs with hashes wass passed in, then we use the root node's ID and
-        // merkle tree hash as our sole ID and hash so that algorithms using the checksum can
-        // "invalidate" as needed.
-        if ids_with_hashes.is_empty() {
-            let root_node_id = ctx.workspace_snapshot()?.root().await?;
-            let root_node = ctx
-                .workspace_snapshot()?
-                .get_node_weight(root_node_id)
-                .await?;
-            ids_with_hashes.push((root_node_id.into(), root_node.merkle_tree_hash()));
-        }
-
-        // We MUST sort IDs (not hashes) before creating the checksum. This is so that we have
-        // stable checksum calculation.
-        ids_with_hashes.sort_by_key(|(id, _)| *id);
-
-        // Now that we have strictly ordered IDs with hasesh and there's at least one group
-        // present, we can create the checksum.
-        let mut hasher = Checksum::hasher();
-        for (_, hash) in ids_with_hashes {
-            hasher.update(hash.as_bytes());
-        }
-        Ok(hasher.finalize())
     }
 
     /// Gives the exact node index endpoints of an edge.
@@ -1268,16 +1232,6 @@ impl WorkspaceSnapshot {
             .map(ToOwned::to_owned)
     }
 
-    pub async fn remove_edge_for_ulids(
-        &self,
-        source_node_id: impl Into<Ulid>,
-        target_node_id: impl Into<Ulid>,
-        edge_kind: EdgeWeightKindDiscriminants,
-    ) -> WorkspaceSnapshotResult<()> {
-        self.remove_edge(source_node_id, target_node_id, edge_kind)
-            .await
-    }
-
     /// Perform [`Updates`](Update) using [`self`](WorkspaceSnapshot) as the "to rebase" graph and
     /// another [`snapshot`](WorkspaceSnapshot) as the "onto" graph.
     #[instrument(
@@ -1296,27 +1250,6 @@ impl WorkspaceSnapshot {
                 .perform_updates(&updates)
         })?
         .await??)
-    }
-
-    /// Mark whether a prop can be used as an input to a function. Props below
-    /// Maps and Arrays are not valid inputs. Must only be used when
-    /// "finalizing" a schema variant!
-    pub async fn mark_prop_as_able_to_be_used_as_prototype_arg(
-        &self,
-        id: impl Into<Ulid>,
-    ) -> WorkspaceSnapshotResult<()> {
-        let node_index = self.get_node_index_by_id(id).await?;
-        self.working_copy_mut()
-            .await
-            .update_node_weight(node_index, |node_weight| match node_weight {
-                NodeWeight::Prop(prop_inner) => {
-                    prop_inner.set_can_be_used_as_prototype_arg(true);
-                    Ok(())
-                }
-                _ => Err(WorkspaceSnapshotGraphError::IncompatibleNodeTypes)?,
-            })?;
-
-        Ok(())
     }
 
     pub async fn ordering_node_for_container(
@@ -1362,86 +1295,6 @@ impl WorkspaceSnapshot {
         )
     }
 
-    #[instrument(
-        name = "workspace_snapshot.socket_edges_removed_relative_to_base",
-        level = "debug",
-        skip_all
-    )]
-    pub async fn socket_edges_removed_relative_to_base(
-        &self,
-        ctx: &DalContext,
-    ) -> WorkspaceSnapshotResult<Vec<Connection>> {
-        // Even though the default change set for a workspace can have a base change set, we don't
-        // want to consider anything as new/modified/removed when looking at the default change
-        // set.
-        let workspace = Workspace::get_by_pk(ctx, ctx.tenancy().workspace_pk()?)
-            .await
-            .map_err(Box::new)?;
-        if workspace.default_change_set_id() == ctx.change_set_id() {
-            return Ok(Vec::new());
-        }
-
-        let base_change_set_ctx = ctx.clone_with_base().await?;
-        let base_change_set_ctx = &base_change_set_ctx;
-
-        let base_components = Component::list(base_change_set_ctx)
-            .await
-            .map_err(Box::new)?;
-        #[derive(Hash, Clone, PartialEq, Eq)]
-        struct UniqueEdge {
-            to_component_id: ComponentId,
-            from_component_id: ComponentId,
-            from_socket_id: OutputSocketId,
-            to_socket_id: InputSocketId,
-        }
-        let mut base_incoming_edges = HashSet::new();
-        let mut base_incoming = HashMap::new();
-        for base_component in base_components {
-            let incoming_edges = base_component
-                .incoming_connections(base_change_set_ctx)
-                .await
-                .map_err(Box::new)?;
-
-            for conn in incoming_edges {
-                let hash = UniqueEdge {
-                    to_component_id: conn.to_component_id,
-                    from_socket_id: conn.from_output_socket_id,
-                    from_component_id: conn.from_component_id,
-                    to_socket_id: conn.to_input_socket_id,
-                };
-                base_incoming_edges.insert(hash.clone());
-                base_incoming.insert(hash, conn);
-            }
-        }
-
-        let current_components = Component::list(ctx).await.map_err(Box::new)?;
-        let mut current_incoming_edges = HashSet::new();
-        for current_component in current_components {
-            let incoming_edges: Vec<UniqueEdge> = current_component
-                .incoming_connections(ctx)
-                .await
-                .map_err(Box::new)?
-                .into_iter()
-                .map(|conn| UniqueEdge {
-                    to_component_id: conn.to_component_id,
-                    from_socket_id: conn.from_output_socket_id,
-                    from_component_id: conn.from_component_id,
-                    to_socket_id: conn.to_input_socket_id,
-                })
-                .collect();
-            current_incoming_edges.extend(incoming_edges);
-        }
-
-        let difference = base_incoming_edges.difference(&current_incoming_edges);
-        let mut differences = vec![];
-        for diff in difference {
-            if let Some(edge) = base_incoming.get(diff) {
-                differences.push(edge.clone());
-            }
-        }
-        Ok(differences)
-    }
-
     /// Returns whether or not any Actions were dispatched.
     pub async fn dispatch_actions(ctx: &DalContext) -> WorkspaceSnapshotResult<bool> {
         let mut did_dispatch = false;
@@ -1455,142 +1308,17 @@ impl WorkspaceSnapshot {
         Ok(did_dispatch)
     }
 
-    pub async fn add_dependent_value_root(
-        &self,
-        root: DependentValueRoot,
-    ) -> WorkspaceSnapshotResult<()> {
+    pub async fn dvu_root_check(&self, root: DependentValueRoot) -> bool {
         // ensure we don't grow the graph unnecessarily by adding the same value
         // in a single edit session
-        {
-            let mut dvu_roots = self.dvu_roots.lock().await;
-            if dvu_roots.contains(&root) {
-                return Ok(());
-            }
+        let mut dvu_roots = self.dvu_roots.lock().await;
+
+        if dvu_roots.contains(&root) {
+            true
+        } else {
             dvu_roots.insert(root);
+            false
         }
-
-        if let Some(dv_category_id) = self
-            .get_category_node(None, CategoryNodeKind::DependentValueRoots)
-            .await?
-        {
-            let id = self.generate_ulid().await?;
-            let lineage_id = self.generate_ulid().await?;
-
-            let node_weight = match root {
-                DependentValueRoot::Finished(value_id) => {
-                    NodeWeight::new_finished_dependent_value_root(id, lineage_id, value_id)
-                }
-                DependentValueRoot::Unfinished(value_id) => {
-                    NodeWeight::new_dependent_value_root(id, lineage_id, value_id)
-                }
-            };
-
-            self.add_or_replace_node(node_weight).await?;
-
-            self.add_edge(
-                dv_category_id,
-                EdgeWeight::new(EdgeWeightKind::new_use()),
-                id,
-            )
-            .await?;
-        }
-
-        Ok(())
-    }
-
-    pub async fn has_dependent_value_roots(&self) -> WorkspaceSnapshotResult<bool> {
-        Ok(
-            match self
-                .get_category_node(None, CategoryNodeKind::DependentValueRoots)
-                .await?
-            {
-                Some(dv_category_id) => !self
-                    .outgoing_targets_for_edge_weight_kind(
-                        dv_category_id,
-                        EdgeWeightKindDiscriminants::Use,
-                    )
-                    .await?
-                    .is_empty(),
-                None => false,
-            },
-        )
-    }
-
-    /// Removes all the dependent value nodes from the category and returns the value_ids
-    pub async fn take_dependent_values(&self) -> WorkspaceSnapshotResult<Vec<DependentValueRoot>> {
-        let dv_category_id = match self
-            .get_category_node(None, CategoryNodeKind::DependentValueRoots)
-            .await?
-        {
-            Some(cat_id) => cat_id,
-            None => {
-                return Ok(vec![]);
-            }
-        };
-
-        let mut value_ids = vec![];
-        let mut pending_removes = vec![];
-
-        for dv_node_id in self
-            .outgoing_targets_for_edge_weight_kind(dv_category_id, EdgeWeightKindDiscriminants::Use)
-            .await?
-        {
-            let root = match self.get_node_weight(dv_node_id).await? {
-                NodeWeight::DependentValueRoot(unfinished) => Some((
-                    DependentValueRoot::Unfinished(unfinished.value_id()),
-                    unfinished.id(),
-                )),
-                NodeWeight::FinishedDependentValueRoot(finished) => Some((
-                    DependentValueRoot::Finished(finished.value_id()),
-                    finished.id(),
-                )),
-                _ => None,
-            };
-
-            if let Some((root, node_weight_id)) = root {
-                value_ids.push(root);
-                pending_removes.push(node_weight_id);
-            }
-        }
-
-        for to_remove_id in pending_removes {
-            self.remove_node_by_id(to_remove_id).await?;
-        }
-
-        Ok(value_ids)
-    }
-
-    /// List all the `value_ids` from the dependent value nodes in the category.
-    pub async fn get_dependent_value_roots(
-        &self,
-    ) -> WorkspaceSnapshotResult<Vec<DependentValueRoot>> {
-        let dv_category_id = match self
-            .get_category_node(None, CategoryNodeKind::DependentValueRoots)
-            .await?
-        {
-            Some(cat_id) => cat_id,
-            None => {
-                return Ok(vec![]);
-            }
-        };
-
-        let mut roots = vec![];
-        for dv_node_idx in self
-            .outgoing_targets_for_edge_weight_kind(dv_category_id, EdgeWeightKindDiscriminants::Use)
-            .await?
-        {
-            match self.get_node_weight(dv_node_idx).await? {
-                NodeWeight::DependentValueRoot(unfinished) => {
-                    roots.push(DependentValueRoot::Unfinished(unfinished.value_id()));
-                }
-                NodeWeight::FinishedDependentValueRoot(finished) => {
-                    roots.push(DependentValueRoot::Finished(finished.value_id()));
-                }
-                _ => {}
-            }
-        }
-
-        Ok(roots)
     }
 
     pub async fn schema_variant_id_for_component_id(
@@ -1630,23 +1358,5 @@ impl WorkspaceSnapshot {
     pub async fn clear_inferred_connection_graph(&self) {
         let mut inferred_connection_write_guard = self.inferred_connection_graph.write().await;
         *inferred_connection_write_guard = None;
-    }
-
-    pub async fn map_all_nodes_to_change_objects(&self) -> WorkspaceSnapshotResult<Vec<Change>> {
-        use crate::workspace_snapshot::graph::traits::entity_kind::EntityKindExt as _;
-
-        let mut changes = Vec::new();
-        for node_weight in self.nodes().await? {
-            changes.push(Change {
-                entity_id: node_weight.id().into(),
-                entity_kind: self
-                    .working_copy()
-                    .await
-                    .get_entity_kind_for_id(node_weight.id().into())?,
-                merkle_tree_hash: node_weight.merkle_tree_hash(),
-            });
-        }
-
-        Ok(changes)
     }
 }

@@ -46,6 +46,7 @@ use crate::prop::{PropError, PropPath};
 use crate::schema::variant::root_prop::RootProp;
 use crate::socket::input::InputSocketError;
 use crate::socket::output::OutputSocketError;
+use crate::workspace_snapshot::dependent_value_root::DependentValueRootError;
 use crate::workspace_snapshot::{
     content_address::{ContentAddress, ContentAddressDiscriminants},
     edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants},
@@ -117,6 +118,8 @@ pub enum SchemaVariantError {
     ContentType(#[from] ContentTypeError),
     #[error("default variant not found: {0}")]
     DefaultVariantNotFound(String),
+    #[error("dependent value root error: {0}")]
+    DependentValueRoot(#[from] DependentValueRootError),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
     #[error("func argument error: {0}")]
@@ -1316,14 +1319,9 @@ impl SchemaVariant {
         work_queue.push_back(root_prop_node_weight.id());
 
         while let Some(prop_id) = work_queue.pop_front() {
-            workspace_snapshot
-                .mark_prop_as_able_to_be_used_as_prototype_arg(prop_id)
-                .await?;
+            Prop::set_can_be_used_as_prototype_arg(ctx, prop_id.into()).await?;
 
-            let node_weight = workspace_snapshot
-                .get_node_weight(prop_id)
-                .await?
-                .to_owned();
+            let node_weight = workspace_snapshot.get_node_weight(prop_id).await?;
             if let NodeWeight::Prop(prop) = node_weight {
                 // Only descend if we are an object.
                 if prop.kind() == PropKind::Object {
@@ -1454,7 +1452,7 @@ impl SchemaVariant {
         schema_variant_id: SchemaVariantId,
     ) -> SchemaVariantResult<()> {
         ctx.workspace_snapshot()?
-            .remove_edge_for_ulids(
+            .remove_edge(
                 schema_variant_id,
                 func_id,
                 EdgeWeightKindDiscriminants::AuthenticationPrototype,

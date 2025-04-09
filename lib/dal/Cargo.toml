@@ -33,6 +33,7 @@ si-layer-cache           = { path = "../../lib/si-layer-cache" }
 si-pkg                   = { path = "../../lib/si-pkg" }
 si-runtime               = { path = "../../lib/si-runtime-rs" }
 si-settings              = { path = "../../lib/si-settings" }
+si-split-graph           = { path = "../../lib/si-split-graph" }
 si-std                   = { path = "../../lib/si-std" }
 telemetry                = { path = "../../lib/telemetry-rs" }
 telemetry-nats           = { path = "../../lib/telemetry-nats-rs" }

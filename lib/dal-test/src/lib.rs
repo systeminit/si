@@ -71,7 +71,8 @@ pub mod prelude {
     pub use color_eyre::Result;
 }
 mod signup;
-mod test_exclusive_schemas;
+/// Test exclusive schema variants
+pub mod test_exclusive_schemas;
 
 pub use color_eyre::{
     self,

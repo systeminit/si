@@ -65,14 +65,15 @@ impl SnapshotGraphMigrator {
     }
 
     async fn should_migrate(&self, ctx: &DalContext) -> SnapshotGraphMigratorResult<bool> {
-        Ok(
-            if let Some(builtin_workspace) = Workspace::find_builtin(ctx).await? {
-                builtin_workspace.snapshot_version()
-                    != WorkspaceSnapshotGraph::current_discriminant()
-            } else {
-                false
-            },
-        )
+        Ok(false)
+        // Ok(
+        //     if let Some(builtin_workspace) = Workspace::find_builtin(ctx).await? {
+        //         builtin_workspace.snapshot_version()
+        //             != WorkspaceSnapshotGraph::current_discriminant()
+        //     } else {
+        //         false
+        //     },
+        // )
     }
 
     #[instrument(skip(self, ctx))]

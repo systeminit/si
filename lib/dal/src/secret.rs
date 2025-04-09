@@ -58,6 +58,7 @@ use crate::prop::PropError;
 use crate::schema::variant::root_prop::RootPropChild;
 use crate::serde_impls::base64_bytes_serde;
 use crate::serde_impls::nonce_serde;
+use crate::workspace_snapshot::dependent_value_root::DependentValueRootError;
 use crate::workspace_snapshot::edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants};
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::workspace_snapshot::node_weight::secret_node_weight::SecretNodeWeight;
@@ -102,6 +103,8 @@ pub enum SecretError {
     Component(#[from] ComponentError),
     #[error("error when decrypting encrypted secret")]
     DecryptionFailed,
+    #[error("dependent value root error: {0}")]
+    DependentValueRoot(#[from] DependentValueRootError),
     #[error("error deserializing message: {0}")]
     DeserializeMessage(#[source] serde_json::Error),
     #[error("encrypted secret key parse error: {0}")]

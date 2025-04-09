@@ -78,6 +78,12 @@ pub enum LayeredEventKind {
     RebaseBatchWrite,
     SnapshotEvict,
     SnapshotWrite,
+    SplitRebaseBatchEvict,
+    SplitRebaseBatchWrite,
+    SplitSnapshotSubGraphEvict,
+    SplitSnapshotSubGraphWrite,
+    SplitSnapshotSuperGraphEvict,
+    SplitSnapshotSuperGraphWrite,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

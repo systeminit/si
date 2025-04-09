@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
 
 use super::{InputSocketNodeWeight, InputSocketNodeWeightError, InputSocketNodeWeightResult};
+use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
 use crate::workspace_snapshot::graph::WorkspaceSnapshotGraphV3;
 use crate::{
     layer_db_types::{InputSocketContent, InputSocketContentV2},
@@ -14,7 +15,6 @@ use crate::{
             traits::{CorrectExclusiveOutgoingEdge, CorrectTransforms, SiNodeWeight},
             ContentNodeWeight, NodeWeight, NodeWeightDiscriminants, NodeWeightError,
         },
-        ContentAddressDiscriminants,
     },
     DalContext, EdgeWeightKindDiscriminants, SocketArity, Timestamp,
 };

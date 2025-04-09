@@ -6,6 +6,7 @@ use color_eyre::eyre::eyre;
 use color_eyre::Result;
 use dal::action::dependency_graph::ActionDependencyGraph;
 use dal::action::{Action, ActionState};
+use dal::workspace_snapshot::DependentValueRoot;
 use dal::{ChangeSet, DalContext, Func, Schema, SchemaVariant};
 
 use crate::helpers::generate_fake_name;
@@ -31,7 +32,6 @@ impl ChangeSetTestHelpers {
     pub async fn wait_for_actions_to_run(ctx: &mut DalContext) -> Result<()> {
         let total_count = 100;
         let mut count = 0;
-
         while count < total_count {
             ctx.update_snapshot_to_visibility().await?;
             let action_graph = ActionDependencyGraph::for_workspace(ctx).await?;
@@ -88,7 +88,7 @@ impl ChangeSetTestHelpers {
     async fn has_updates(ctx: &mut DalContext) -> Result<bool> {
         let expected_rebase_batch = ctx
             .change_set()?
-            .detect_updates_that_will_be_applied(ctx)
+            .detect_updates_that_will_be_applied_legacy(ctx)
             .await?;
 
         Ok(expected_rebase_batch.is_some_and(|batch| !batch.updates().is_empty()))
@@ -217,11 +217,7 @@ impl ChangeSetTestHelpers {
         loop {
             let mut ctx_clone = ctx.clone();
             ctx_clone.update_snapshot_to_visibility().await?;
-            if !ctx_clone
-                .workspace_snapshot()?
-                .has_dependent_value_roots()
-                .await?
-            {
+            if !DependentValueRoot::roots_exist(&ctx_clone).await? {
                 break;
             }
             tokio::time::sleep(Duration::from_millis(25)).await;
