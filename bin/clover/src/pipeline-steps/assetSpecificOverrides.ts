@@ -755,6 +755,15 @@ const overrides = new Map<string, OverrideFn>([
     setAnnotationOnSocket(nameOutputSocket, { tokens: ["Cluster Name"] });
     setAnnotationOnSocket(nameOutputSocket, { tokens: ["ClusterName"] });
   }],
+  ["AWS::WAFv2::WebACLAssociation", (spec: ExpandedPkgSpec) => {
+    const variant = spec.schemas[0].variants[0];
+    
+    const resourceArnSocket = variant.sockets.find(
+      (s: ExpandedSocketSpec) => s.name === "Resource Arn" && s.data.kind === "output",
+    );
+    if (!resourceArnSocket) return;
+    setAnnotationOnSocket(resourceArnSocket, { tokens: ["LoadBalancerArn"] });
+  }],
   ["AWS::EKS::Nodegroup", (spec: ExpandedPkgSpec) => {
     const variant = spec.schemas[0].variants[0];
     const domain = variant.domain;
