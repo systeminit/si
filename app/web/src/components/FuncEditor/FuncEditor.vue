@@ -64,7 +64,8 @@ const funcStore = useFuncStore();
 const selectedFuncSummary = computed(() => funcStore.selectedFuncSummary);
 const selectedFuncCode = computed(() => funcStore.selectedFuncCode);
 
-const editingFunc = ref<string>(selectedFuncCode.value?.code ?? "");
+// note this is a space on purpose, CodeEditor has a fit with a fully empty string
+const editingFunc = ref<string>(selectedFuncCode.value?.code ?? " ");
 
 const selectedAsset = computed(() => assetStore.selectedSchemaVariant);
 

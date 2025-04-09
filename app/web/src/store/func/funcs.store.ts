@@ -882,19 +882,19 @@ export const useFuncStore = () => {
           },
           {
             eventType: "FuncCodeSaved",
-            callback: ({ generated, funcCode: { funcId } }, metadata) => {
+            callback: ({ funcCode: { funcId } }, metadata) => {
               if (metadata.change_set_id !== selectedChangeSetId) return;
 
-              // TODO we update every time *any* function is generated unless you are in the
-              // function editor. That's because we can't tell from here if the function is
-              // the asset function editor from here (and we can't useAssetStore() because
-              // that would cause a circular dependency). We should fix this, but asset
-              // generation doesn't happen so often it's a giant problem right now.
-              if (
-                (funcId === this.selectedFuncId || !this.selectedFuncId) &&
-                generated
-              ) {
-                this.FETCH_CODE(funcId);
+              // TODO we update every time *any* function is generated unless you are the
+              // one that made the change in the function editor. If we were to remove that check
+              // every time your code editor saved, it would remount with the new code, and you'd lose
+              // your cursor. It would feel like you can't just keep typing, and you'd get angry
+              if (funcId === this.selectedFuncId || !this.selectedFuncId) {
+                const didIFireThisRequest =
+                  !!realtimeStore.inflightRequests.get(metadata.request_ulid);
+                if (metadata.actor === "System" || !didIFireThisRequest) {
+                  this.FETCH_CODE(funcId);
+                }
               }
             },
           },
