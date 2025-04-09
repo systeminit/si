@@ -465,7 +465,7 @@ impl WorkspaceSnapshot {
     /// those updates to ensure an incorrect graph is not created
     #[instrument(
         name = "workspace_snapshot.correct_transforms",
-        level = "info",
+        level = "debug",
         skip_all
     )]
     pub async fn correct_transforms(
@@ -1282,7 +1282,7 @@ impl WorkspaceSnapshot {
     /// another [`snapshot`](WorkspaceSnapshot) as the "onto" graph.
     #[instrument(
         name = "workspace_snapshot.perform_updates",
-        level = "info",
+        level = "debug",
         skip_all,
         fields()
     )]

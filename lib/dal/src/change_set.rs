@@ -320,7 +320,7 @@ impl ChangeSet {
         Ok(self.workspace(ctx).await?.default_change_set_id() == self.id)
     }
 
-    #[instrument(name = "change_set.update_pointer", level = "info", skip_all)]
+    #[instrument(name = "change_set.update_pointer", level = "debug", skip_all)]
     pub async fn update_pointer(
         &mut self,
         ctx: &DalContext,
