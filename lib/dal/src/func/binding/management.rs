@@ -95,6 +95,7 @@ impl ManagementBinding {
                                 kind: {json_name},
                                 properties?: {sv_type},
                                 geometry?: {{ [key: string]: Geometry }},
+                                incomingConnections?: {{ [socket: string]: {INCOMING_CONNECTION_TYPE} | {INCOMING_CONNECTION_TYPE}[] }},
                                 connect?: {{
                                     from: string,
                                     to: {{
