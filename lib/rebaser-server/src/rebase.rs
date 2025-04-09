@@ -69,7 +69,12 @@ type RebaseResult<T> = Result<T, RebaseError>;
         si.updates.count = Empty,
         si.corrected_updates.count = Empty,
         si.workspace.id = %request.workspace_id,
-        si.edda_request.id = Empty
+        si.edda_request.id = Empty,
+        si.rebase.rebase_time = Empty,
+        si.rebase.perform_updates_time = Empty,
+        si.rebase.correct_transforms_time = Empty,
+        si.rebase.snapshot_fetch_parse_time = Empty,
+        si.rebase.pointer_updated = Empty
     ))]
 pub async fn perform_rebase(
     ctx: &mut DalContext,
@@ -115,6 +120,10 @@ pub async fn perform_rebase(
         updates_address = %request.updates_address,
     );
     debug!("after snapshot fetch and parse: {:?}", start.elapsed());
+    span.record(
+        "si.rebase.snapshot_fetch_parse_time",
+        start.elapsed().as_millis(),
+    );
 
     let corrected_updates = to_rebase_workspace_snapshot
         .correct_transforms(
@@ -126,12 +135,19 @@ pub async fn perform_rebase(
         )
         .await?;
     debug!("corrected transforms: {:?}", start.elapsed());
-
+    span.record(
+        "si.rebase.correct_transforms_time",
+        start.elapsed().as_millis(),
+    );
     to_rebase_workspace_snapshot
         .perform_updates(&corrected_updates)
         .await?;
 
     debug!("updates complete: {:?}", start.elapsed());
+    span.record(
+        "si.rebase.perform_updates_time",
+        start.elapsed().as_millis(),
+    );
 
     if !corrected_updates.is_empty() {
         // Once all updates have been performed, we can write out, and update the pointer.
@@ -148,7 +164,7 @@ pub async fn perform_rebase(
         }
 
         debug!("pointer updated: {:?}", start.elapsed());
-
+        span.record("si.rebase.pointer_updated", start.elapsed().as_millis());
         ctx.set_workspace_snapshot(to_rebase_workspace_snapshot.clone());
     }
 
@@ -158,8 +174,8 @@ pub async fn perform_rebase(
         "si.corrected_updates.count",
         corrected_updates.len().to_string(),
     );
-    info!("rebase performed: {:?}", start.elapsed());
-
+    debug!("rebase performed: {:?}", start.elapsed());
+    span.record("si.rebase.rebase_time", start.elapsed().as_millis());
     if features.generate_mvs {
         let changes = original_workspace_snapshot
             .detect_changes(&to_rebase_workspace_snapshot)

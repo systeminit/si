@@ -153,7 +153,7 @@ where
         let token = graceful_token.clone();
         tracker.spawn(async move {
             signal.await;
-            info!("received graceful shutdown signal, telling tasks to shutdown");
+            debug!("received graceful shutdown signal, telling tasks to shutdown");
             token.cancel();
         });
 
@@ -170,7 +170,7 @@ where
                     biased;
 
                     _ = graceful_token.cancelled() => {
-                        info!("signal received, not accepting new messages");
+                        debug!("signal received, not accepting new messages");
                         tracker.close();
                         break;
                     }
