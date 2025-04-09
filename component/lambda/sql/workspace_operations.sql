@@ -3,6 +3,14 @@ CREATE SCHEMA IF NOT EXISTS workspace_operations;
 GRANT USAGE ON SCHEMA workspace_operations TO lambda_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA workspace_operations TO lambda_user;
 
+-- Used to track upload progress for various billing uploads
+CREATE TABLE IF NOT EXISTS workspace_operations.upload_progress (
+    -- The type of upload (e.g. "posthog-workspace_resource_hours")
+    upload_type TEXT PRIMARY KEY,
+    -- The time at which the upload stops (*exclusive*)
+    uploaded_to TIMESTAMP NOT NULL
+)
+
 -- Parse an ISO-8601 timestamp in format 2025-04-03T22:19:42.999999945Z.
 -- SQL ::timestamp has a bug and can't parse .999999500-.999999999, so we truncate the last 3 digits.
 -- (We also truncate the Z, but Redshift still parses it as UTC)
@@ -58,14 +66,14 @@ CREATE OR REPLACE VIEW workspace_operations.workspace_si_hours AS
     SELECT *
       FROM workspace_operations.si_hours
      CROSS JOIN workspace_operations.workspaces;
---     WHERE first_hour <= hour_start; TODO reintroduce this; it was removed to ensure identical results between old and new, but these are unnecessary extra resource_hour records that will get backfilled
+     WHERE first_hour <= hour_start;
 
 -- One row per owner per hour from Sep. 2024 until now (excluding hours where an owner had no workspace)
 CREATE OR REPLACE VIEW workspace_operations.owner_si_hours AS
     SELECT *
       FROM workspace_operations.si_hours
      CROSS JOIN workspace_operations.owners;
---     WHERE first_hour <= hour_start; TODO reintroduce this; it was removed to ensure identical results between old and new, but these are unnecessary extra resource_hour records that will get backfilled
+     WHERE first_hour <= hour_start;
 
 -- workspace_update_events, with data cleanup
 CREATE OR REPLACE VIEW workspace_operations.workspace_update_events_clean AS

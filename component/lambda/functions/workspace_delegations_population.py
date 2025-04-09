@@ -2,9 +2,8 @@ from collections.abc import Iterable
 import json
 from typing import NotRequired, Optional, TypedDict, Union, cast, overload
 import time
-from datetime import datetime
 from si_lambda import SiLambda, SiLambdaEnv
-from si_types import WorkspaceId, OwnerPk, SqlTimestamp
+from si_types import WorkspaceId, OwnerPk, SqlDatetime, iso_to_sql_days, iso_to_sql_datetime
 from si_lago_api import ExternalSubscriptionId, LagoSubscription, LagoSubscriptionsResponse, IsoTimestamp
 import logging
 from itertools import groupby
@@ -19,7 +18,7 @@ class WorkspaceDelegationsPopulation(SiLambda):
         if self.owner_pks is not None:
             assert len(self.owner_pks) > 0, "SI_OWNER_PKS must be non-empty. Did you mean to not set it?"
 
-    def update_subscriptions(self, current_timestamp: SqlTimestamp):
+    def update_subscriptions(self, current_timestamp: SqlDatetime):
         started_at = time.time()
         last_report = started_at
 
@@ -69,14 +68,14 @@ class WorkspaceDelegationsPopulation(SiLambda):
         logging.info(f"Subscription update complete: {sum([result['ResultRows'] for result in results])} subscriptions updated.")
         return [result['Status'] for result in results]
 
-    def update_owner_subscriptions(self, owner_pk: OwnerPk, current_timestamp: SqlTimestamp, si_subscriptions: list['LatestOwnerSubscription'], lago_subscriptions: Iterable[LagoSubscription]):
+    def update_owner_subscriptions(self, owner_pk: OwnerPk, current_timestamp: SqlDatetime, si_subscriptions: list['LatestOwnerSubscription'], lago_subscriptions: Iterable[LagoSubscription]):
         lago_subscriptions = list(lago_subscriptions)
         # Get Lago subscriptions for the owner
         lago_subscriptions_by_id = {
             sub['external_id']: self.lago_to_si_subscription(owner_pk, sub)
             for sub in lago_subscriptions
             # Skip subs that were started and terminated the same day
-            if not (sub['status'] == 'terminated' and iso_to_days(sub.get('started_at')) == iso_to_days(sub.get('terminated_at')))
+            if not (sub['status'] == 'terminated' and iso_to_sql_days(sub.get('started_at')) == iso_to_sql_days(sub.get('terminated_at')))
         }
 
         # Compare and decide whether to update subscriptions in SI
@@ -126,8 +125,8 @@ class WorkspaceDelegationsPopulation(SiLambda):
         return {
             'owner_pk': owner_pk,
             'subscription_id': lago_sub['lago_id'],
-            'subscription_start_date': convert_iso_to_datetime(lago_sub.get('started_at')),
-            'subscription_end_date': convert_iso_to_datetime(lago_sub.get('ending_at')),
+            'subscription_start_date': iso_to_sql_datetime(lago_sub.get('started_at')),
+            'subscription_end_date': iso_to_sql_datetime(lago_sub.get('ending_at')),
             'plan_code': lago_sub['plan_code'],
             'external_id': lago_sub['external_id']
         }
@@ -150,7 +149,7 @@ class WorkspaceDelegationsPopulation(SiLambda):
         assert(subs['meta']['total_count'] == len(subs['subscriptions']))
         return subs['subscriptions']
 
-    def insert_missing_workspaces(self, current_timestamp: SqlTimestamp):
+    def insert_missing_workspaces(self, current_timestamp: SqlDatetime):
         missing_workspace_inserts = [
             [
                 workspace_id,
@@ -204,7 +203,7 @@ class WorkspaceDelegationsPopulation(SiLambda):
 
     def run(self):
         # Get the current timestamp for record insertion
-        current_timestamp = cast(SqlTimestamp, time.strftime('%Y-%m-%d %H:%M:%S'))
+        current_timestamp = cast(SqlDatetime, time.strftime('%Y-%m-%d %H:%M:%S'))
 
         inserted_workspaces = self.insert_missing_workspaces(current_timestamp)
         updated_subscriptions = self.update_subscriptions(current_timestamp)
@@ -222,8 +221,8 @@ class WorkspaceDelegationsPopulation(SiLambda):
 class LatestOwnerSubscription(TypedDict):
     owner_pk: OwnerPk
     subscription_id: str
-    subscription_start_date: Optional[SqlTimestamp]
-    subscription_end_date: Optional[SqlTimestamp]
+    subscription_start_date: Optional[SqlDatetime]
+    subscription_end_date: Optional[SqlDatetime]
     plan_code: str
     external_id: ExternalSubscriptionId
 
@@ -232,30 +231,6 @@ class OwnerWithoutSubscriptions(TypedDict):
     subscription_id: None
     plan_code: None
     external_id: None
-
-
-# Convert ISO 8601 timestamp to the required format
-@overload
-def convert_iso_to_datetime(iso_str: IsoTimestamp) -> SqlTimestamp: ...
-@overload
-def convert_iso_to_datetime(iso_str: None) -> None: ...
-@overload
-def convert_iso_to_datetime(iso_str: Optional[IsoTimestamp]) -> Optional[SqlTimestamp]: ...
-def convert_iso_to_datetime(iso_str: Optional[IsoTimestamp]):
-    if iso_str is None:
-        return None
-    return datetime.strptime(iso_str, '%Y-%m-%dT%H:%M:%SZ').strftime('%Y-%m-%d %H:%M:%S')
-
-@overload
-def iso_to_days(iso_str: IsoTimestamp) -> str: ...
-@overload
-def iso_to_days(iso_str: None) -> None: ...
-@overload
-def iso_to_days(iso_str: Optional[IsoTimestamp]) -> Optional[str]: ...
-def iso_to_days(iso_str: Optional[IsoTimestamp]):
-    if iso_str is None:
-        return None
-    return datetime.strptime(iso_str, '%Y-%m-%dT%H:%M:%SZ').strftime('%Y-%m-%d')
 
 lambda_handler = WorkspaceDelegationsPopulation.lambda_handler
 
