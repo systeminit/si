@@ -47,7 +47,7 @@ services:
 
   vector:
     container_name: vector
-    image: timberio/vector:0.X-debian
+    image: timberio/vector:0.45.X-debian
     profiles: [edda, forklift, rebaser, pinga, sdf, veritech]
     ports:
       - 8686:8686
