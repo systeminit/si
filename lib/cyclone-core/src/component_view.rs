@@ -38,7 +38,6 @@ pub struct ComponentViewWithGeometry {
     pub kind: Option<String>,
     pub properties: Value,
     pub geometry: Value,
-    pub incoming_connections: Value,
 }
 
 impl Default for ComponentViewWithGeometry {
@@ -47,6 +46,23 @@ impl Default for ComponentViewWithGeometry {
             kind: None,
             properties: serde_json::json!({}),
             geometry: serde_json::json!({}),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
+pub struct ThisComponent {
+    #[serde(flatten)]
+    pub component: ComponentViewWithGeometry,
+    pub incoming_connections: Value,
+}
+
+impl Default for ThisComponent {
+    fn default() -> Self {
+        Self {
+            component: Default::default(),
             incoming_connections: serde_json::json!({}),
         }
     }
