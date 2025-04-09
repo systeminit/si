@@ -40,4 +40,4 @@ We contributors to System Initiative:
 * Henry Hermes (@sandalwing)
 * Mr Lizard (@Mr-Lizard)
 * Aaron Dernley (@aaron-dernley)
-* app/github-actions (@app/github-actions)
+* systeminitbot (@systeminitbot)

@@ -7606,6 +7606,9 @@
   "The Amazon Resource Name (ARN) of the Lifecycle Configuration to attach to the Resource.": {
     "enum": null
   },
+  "The Amazon Resource Name (ARN) of the OpenSearch domain.": {
+    "enum": null
+  },
   "The Amazon Resource Name (ARN) of the Outpost.": {
     "enum": null
   },
@@ -10454,6 +10457,9 @@
     "enum": null
   },
   "The endpoint URL for your index management page.": {
+    "enum": null
+  },
+  "The endpoint URL the OpenSearch domain.": {
     "enum": null
   },
   "The endpoint for the application.": {
@@ -14006,6 +14012,9 @@
     "enum": null
   },
   "The response mapping template.": {
+    "enum": null
+  },
+  "The retention period for automated backups in a different AWS Region. Use this parameter to set a unique retention period that only applies to cross-Region automated backups. To enable automated backups in a different Region, specify a positive value for the ``AutomaticBackupReplicationRegion`` parameter. \n If not specified, this parameter defaults to the value of the ``BackupRetentionPeriod`` parameter. The maximum allowed value is 35.": {
     "enum": null
   },
   "The retention period unit of the rule": {
