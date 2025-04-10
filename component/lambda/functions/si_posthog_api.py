@@ -74,15 +74,3 @@ class PosthogApi:
         def __init__(self, *args, json: Optional[ResponseJson], **kwargs):
             super().__init__(*args, **kwargs)
             self.json = json
-
-T = TypeVar("T")
-
-def batch(iterable: Iterable[T], n):
-    "Batch data into lists of length n. The last batch may be shorter."
-    # batched('ABCDEFG', 3) --> ABC DEF G
-    it = iter(iterable)
-    while True:
-        batch = list(islice(it, n))
-        if not batch:
-            return
-        yield batch

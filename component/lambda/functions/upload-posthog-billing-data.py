@@ -1,10 +1,6 @@
-from typing import Iterable, NotRequired, cast
-from datetime import date, datetime, timedelta, timezone
-import itertools
+from typing import NotRequired, cast
 import logging
 
-from si_posthog_api import PosthogApi
-from si_lago_api import ExternalSubscriptionId
 from si_lambda import SiLambda, SiLambdaEnv
 from si_types import OwnerPk, SqlTimestamp, WorkspaceId, sql_to_iso_timestamp
 
