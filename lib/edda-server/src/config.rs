@@ -133,8 +133,11 @@ impl Config {
 pub struct ConfigFile {
     #[serde(default = "random_instance_id")]
     instance_id: String,
+    // TODO(fnichol): this field is prefixed with `edda_` due to our current rendering of systemd
+    // units (i.e. our global `service.toml`) which will only render *one* concurrency limit for
+    // all service types
     #[serde(default = "default_concurrency_limit")]
-    concurrency_limit: Option<usize>,
+    edda_concurrency_limit: Option<usize>,
     #[serde(default)]
     pg: PgPoolConfig,
     #[serde(default)]
@@ -153,7 +156,7 @@ impl Default for ConfigFile {
     fn default() -> Self {
         Self {
             instance_id: random_instance_id(),
-            concurrency_limit: default_concurrency_limit(),
+            edda_concurrency_limit: default_concurrency_limit(),
             pg: Default::default(),
             nats: Default::default(),
             crypto: Default::default(),
@@ -180,7 +183,7 @@ impl TryFrom<ConfigFile> for Config {
         config.crypto(value.crypto);
         config.symmetric_crypto_service(value.symmetric_crypto_service.try_into()?);
         config.layer_db_config(value.layer_db_config);
-        config.concurrency_limit(value.concurrency_limit);
+        config.concurrency_limit(value.edda_concurrency_limit);
         config.instance_id(value.instance_id);
         config.quiescent_period(Duration::from_secs(value.quiescent_period_secs));
         config.build().map_err(Into::into)
