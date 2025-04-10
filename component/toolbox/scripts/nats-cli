@@ -1,0 +1,100 @@
+#!/bin/bash
+# ---------------------------------------------------------------------------------------------------
+# Opens a nats connection to the nats cluster associated with the given environment
+# ---------------------------------------------------------------------------------------------------
+
+set -eo pipefail
+
+IMPORT_DIR=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
+
+for script in ${IMPORT_DIR}/supporting-funcs/*.sh; do
+    if [[ -f "$script" ]]; then
+        source "$script"
+    fi
+done
+
+usage() {
+    echo
+    echo "nats"
+    echo "----------------------------------"
+    echo "This script will use aws creds to "
+    echo "get creds for a specific nats cluster"
+    echo "and open a nats-cli session for it."
+    echo "----------------------------------"
+    echo "Usage: nats [-p profile] [-r region] [-n nats]"
+    echo "  -p profile    AWS profile to use"
+    echo "  -r region     AWS region to use"
+    echo "  -n nats       NATs cluster to connect to"
+    echo
+    exit 1
+}
+
+if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
+    usage
+fi
+
+while getopts ":p:r:n:" opt; do
+    case ${opt} in
+        p)
+            profile=$OPTARG
+            ;;
+        r)
+            region=$OPTARG
+            ;;
+        n)
+            nats=$OPTARG
+            ;;
+        \?)
+            echo "Invalid option: -$OPTARG" >&2
+            usage
+            ;;
+        :)
+            echo "Option -$OPTARG requires an argument." >&2
+            usage
+            ;;
+    esac
+done
+
+profile=$(get_param_or_env "$profile" "AWS_PROFILE" "Enter the AWS profile to use")
+region=$(get_param_or_env "$region" "AWS_REGION" "Enter the AWS region (e.g., us-west-2)")
+nats=$(get_param_or_env "$nats" "NATS_CLUSTER" "Enter the nats cluster to connect to (tools-prod, prod, perf)")
+
+export AWS_PROFILE="$profile"
+export AWS_REGION="$region"
+
+case "$nats" in
+  tools-prod|perf)
+    url="nats://global.tools-internal.nats-si.com:4222"
+    ;;
+  prod)
+    url="nats://global.prod-internal.nats-si.com:4222"
+    ;;
+  *)
+    echo "Invalid value for nats: $nats. Must be one of (tools-prod, prod, perf)"
+    exit 1
+    ;;
+esac
+
+aws secretsmanager get-secret-value --secret-id "$nats-nats-creds" --query "SecretString" --output text > ./nats-creds
+
+nats context add \
+  "$nats" \
+   --server "$url" \
+   --creds ./nats-creds \
+   --select
+
+export PS1="\e[1;36m[NATS:$nats]\e[0m \w $ "
+
+cat << EOF
+🚀 Welcome to NATS CLI Interactive Shell 🚀
+----------------------------------------
+Connected to: $url
+NATS Context: $nats
+AWS Region:   $region
+AWS Profile:  $profile
+
+Type 'nats --help' for more commands
+----------------------------------------
+EOF
+
+exec bash --norc
