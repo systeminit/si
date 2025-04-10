@@ -123,8 +123,8 @@ pub(crate) async fn default(State(state): State<AppState>, subject: Subject) -> 
         change_set.id,
         ctx_builder,
         quiescent_period,
-        quiesced_notify,
-        quiesced_token,
+        quiesced_notify.clone(),
+        quiesced_token.clone(),
         tasks_token.clone(),
         server_tracker,
     );
@@ -159,6 +159,21 @@ pub(crate) async fn default(State(state): State<AppState>, subject: Subject) -> 
                 // retry
                 Err(_join_err) => Err(Error::ChangeSetProcessorJoin),
             }
+        }
+        // The processor tasks has signaled to shutdown from a quiet period
+        _ = quiesced_notify.notified() => {
+            info!(
+                service.instance.id = metadata.instance_id(),
+                si.workspace.id = %workspace.str,
+                si.change_set.id = %change_set.str,
+                "quiesced notified, starting to shut down",
+            );
+
+            // Fire the quiesced_token so that the processing task immediately stops
+            // processing additional requests
+            quiesced_token.cancel();
+
+            Ok(())
         }
     };
 
