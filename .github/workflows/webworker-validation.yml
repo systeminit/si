@@ -1,0 +1,44 @@
+name: Validation for frontend webworker changes
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/webworker-validation.yml'
+      - 'app/web/src/workers/**'
+      - 'app/web/webworkertest.html'
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18.18.2'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install Deps
+        working-directory: app/web
+        run: |
+          pnpm i
+          npx cypress install
+
+      - name: Run Cypress Tests
+        run: |
+          cd app/web
+          pnpm run start &
+          npx cypress run --spec cypress/e2e/webworker.cy.ts
+
+      - name: 'Upload Cypress Recordings to Github'
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: cypress-recordings-run-webworker
+          path: app/web/cypress/videos/**/*.mp4
+          retention-days: 5
