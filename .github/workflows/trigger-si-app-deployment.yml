@@ -20,9 +20,22 @@ jobs:
           VERSION=$(echo "${{ github.ref_name }}" | sed 's|bin/module-index/image/||')
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Use the extracted version
+      - name: Set dynamic date
+        id: set-date
         run: |
-          echo "Module Index Version is ${{ steps.extract_version.outputs.version }}"
+          DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          echo "DATE=$DATE" >> "$GITHUB_ENV"
+
+      - name: Trigger Module Index Deployment
+        uses: systeminit/actions@v0.1
+        with:
+          changeSet: Auto Deploy Module Index - ${{ env.DATE }}
+          componentId: 01JRGCHH41GWT5KQZYH1GHYP8Q
+          view: "shared-prod/ecs"
+          domain: |
+            Image: "systeminit/module-index:${{ steps.extract_version.outputs.version }}"
+          applyOnSuccess: true
+          apiToken: ${{ secrets.SI_PRODUCTION_SAAS_WORKSPACE_API_TOKEN }}
 
   deploy-auth-api:
     if: startsWith(github.ref_name, 'bin/auth-api/image/')
@@ -36,7 +49,20 @@ jobs:
         run: |
           VERSION=$(echo "${{ github.ref_name }}" | sed 's|bin/auth-api/image/||')
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-
-      - name: Use the extracted version
+          
+      - name: Set dynamic date
+        id: set-date
         run: |
-          echo "Auth API Version is ${{ steps.extract_version.outputs.version }}"
+          DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          echo "DATE=$DATE" >> "$GITHUB_ENV"
+
+      - name: Trigger Auth API Deployment
+        uses: systeminit/actions@v0.1
+        with:
+          changeSet: Auto Deploy Auth API - ${{ env.DATE }}
+          componentId: 01JRGHCSFE26G82QAMMYEJSWDB
+          view: "shared-prod/ecs"
+          domain: |
+            Image: "systeminit/auth-api:${{ steps.extract_version.outputs.version }}"
+          applyOnSuccess: true
+          apiToken: ${{ secrets.SI_PRODUCTION_SAAS_WORKSPACE_API_TOKEN }}
