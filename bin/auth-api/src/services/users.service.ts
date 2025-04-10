@@ -139,7 +139,6 @@ export async function createOrUpdateUserFromAuth0Details(
         auth0Details: auth0UserData as Prisma.JsonObject,
       },
     });
-    tracker.identifyUser(user);
   } else {
     isSignup = true;
     user = await prisma.user.create({
@@ -150,9 +149,9 @@ export async function createOrUpdateUserFromAuth0Details(
         ...setUserDataFromAuth0Details({}, auth0UserData, isSignup),
       },
     });
-
-    tracker.identifyUser(user);
   }
+
+  tracker.identifyUser(user);
 
   if (isSignup) {
     tracker.trackEvent(user, "auth_connected", {
