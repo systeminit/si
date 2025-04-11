@@ -3,10 +3,7 @@ use telemetry::prelude::*;
 
 use super::{AdminAPIResult, AdminUserContext};
 use crate::{
-    extract::{
-        workspace::{TargetWorkspaceIdFromToken, WorkspaceAuthorization},
-        PosthogClient,
-    },
+    extract::{workspace::TargetWorkspaceIdFromToken, PosthogClient},
     service::async_route::handle_error,
     track,
 };
@@ -26,16 +23,15 @@ pub struct UpdateModuleCacheResponse {
 
 #[instrument(name = "admin.update_module_cache", skip_all)]
 pub async fn update_module_cache(
-    _: TargetWorkspaceIdFromToken,
+    workspace_id: TargetWorkspaceIdFromToken,
     AdminUserContext(mut ctx): AdminUserContext,
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
     Host(host_name): Host,
-    WorkspaceAuthorization { workspace_id, .. }: WorkspaceAuthorization,
 ) -> AdminAPIResult<Json<UpdateModuleCacheResponse>> {
     let task_id = Ulid::new();
 
-    ctx.update_tenancy(Tenancy::new(workspace_id));
+    ctx.update_tenancy(Tenancy::new(workspace_id.into()));
     tokio::task::spawn(async move {
         if let Err(err) = update_cached_modules_inner(
             &ctx,
