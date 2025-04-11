@@ -4,6 +4,7 @@ use si_events::merkle_tree_hash::MerkleTreeHash;
 use std::collections::{HashMap, HashSet};
 use std::io::Write;
 use std::time::Instant;
+use telemetry::prelude::*;
 
 use crate::{
     CustomEdgeWeight, CustomNodeWeight, EdgeKind, SplitGraphEdgeWeight, SplitGraphEdgeWeightKind,
@@ -268,12 +269,12 @@ where
         let mut discovered_nodes = HashSet::new();
 
         if self.touched_nodes.is_empty() {
-            println!("merkle tree hash calculated in {:?}", big_start.elapsed());
+            warn!("merkle tree hash calculated in {:?}", big_start.elapsed());
             return (0, 0);
         }
 
         if dbug {
-            println!("touched_nodes: {:?}", self.touched_nodes.len());
+            warn!("touched_nodes: {:?}", self.touched_nodes.len());
         }
 
         while let Some(node_index) = dfs.next(&self.graph) {
@@ -295,7 +296,7 @@ where
         }
 
         self.touched_nodes.clear();
-        println!("merkle tree hash calculated in {:?}", big_start.elapsed());
+        warn!("merkle tree hash calculated in {:?}", big_start.elapsed());
 
         (node_count, edge_count)
     }

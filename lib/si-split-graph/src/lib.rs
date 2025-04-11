@@ -13,6 +13,7 @@ use si_events::{
     ContentHash,
 };
 use si_id::ulid::Ulid;
+use telemetry::prelude::*;
 use thiserror::Error;
 
 pub mod opt_zip;
@@ -497,7 +498,7 @@ where
                 let (nodes, edges) =
                     subgraph.recalculate_merkle_tree_hash_based_on_touched_nodes(idx == 0);
                 if idx == 0 {
-                    println!("nodes: {}, edges: {}", nodes, edges);
+                    warn!("nodes: {}, edges: {}", nodes, edges);
                 }
             });
     }
@@ -1062,10 +1063,10 @@ where
     pub fn cleanup_and_merkle_tree_hash(&mut self) {
         let start = Instant::now();
         self.cleanup();
-        println!("cleanup took {:?}", start.elapsed());
+        warn!("cleanup took {:?}", start.elapsed());
         let start = Instant::now();
         self.recalculate_merkle_tree_hashes_based_on_touched_nodes();
-        println!(
+        warn!(
             "recalculate_merkle_tree_hashes_based_on_touched_nodes took {:?}",
             start.elapsed()
         );

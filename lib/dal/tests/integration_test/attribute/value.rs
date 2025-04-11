@@ -7,14 +7,19 @@ use serde_json::json;
 
 #[test]
 async fn arguments_for_prototype_function_execution(ctx: &mut DalContext) -> Result<()> {
+    dbg!("starting");
+    std::io::stdout().flush().unwrap();
     // Create a component and commit. For context, the test exclusive schema has the identity
     // function set on "/root/domain/name" with an input from "/root/si/name". We need to ensure
     // that the value of "/root/si/name" comes in, as expected. The name is set when creating a
     // component, so we do not need to do additional setup.
     let expected = "you should see this name in the arguments";
     let component = ExpectComponent::create_named(ctx, "swifty", expected).await;
+    dbg!("made component");
     let name_prop = component.prop(ctx, ["root", "domain", "name"]).await;
+    dbg!("committing");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+    dbg!("done");
 
     // Ensure that the arguments look as we expect.
     let name_av_id = name_prop.attribute_value(ctx).await.id();

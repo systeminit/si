@@ -15,6 +15,8 @@ use thiserror::Error;
 
 use crate::approval_requirement::ApprovalRequirementError;
 use crate::workspace_snapshot::node_weight::NodeWeight;
+use crate::workspace_snapshot::selector::WorkspaceSnapshotSelectorDiscriminants;
+use crate::workspace_snapshot::split_snapshot::SplitSnapshot;
 use crate::workspace_snapshot::WorkspaceSnapshotSelector;
 use crate::{
     attribute::{
@@ -463,12 +465,24 @@ impl Diagram {
             return Ok((ctx.workspace_snapshot()?.clone(), false));
         }
 
-        Ok((
-            WorkspaceSnapshotSelector::LegacySnapshot(Arc::new(
-                WorkspaceSnapshot::find_for_change_set(ctx, base_change_set_id).await?,
-            )),
-            true,
-        ))
+        match workspace.snapshot_kind() {
+            WorkspaceSnapshotSelectorDiscriminants::SplitSnapshot => {
+                let split_snapshot =
+                    SplitSnapshot::find_for_change_set(ctx, base_change_set_id).await?;
+                Ok((
+                    WorkspaceSnapshotSelector::SplitSnapshot(split_snapshot.into()),
+                    true,
+                ))
+            }
+            WorkspaceSnapshotSelectorDiscriminants::LegacySnapshot => {
+                let legacy_snapshot =
+                    WorkspaceSnapshot::find_for_change_set(ctx, base_change_set_id).await?;
+                Ok((
+                    WorkspaceSnapshotSelector::LegacySnapshot(legacy_snapshot.into()),
+                    true,
+                ))
+            }
+        }
     }
 
     #[instrument(level = "info", skip_all)]

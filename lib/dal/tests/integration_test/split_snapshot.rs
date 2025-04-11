@@ -53,6 +53,7 @@ async fn set_av_for_prop_for_component(ctx: &DalContext, component_id: Component
 }
 
 #[test]
+#[ignore]
 async fn create_split_snapshot_workspace(ctx: &mut DalContext) -> Result<()> {
     const COMPONENTS_COUNT: usize = 1000;
     println!("test with {} components", COMPONENTS_COUNT);

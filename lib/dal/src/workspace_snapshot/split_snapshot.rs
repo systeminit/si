@@ -104,6 +104,12 @@ impl SplitSnapshotGraph {
             SplitSnapshotGraph::V1(inner) => inner,
         }
     }
+
+    pub fn current_discriminant() -> SplitSnapshotGraphDiscriminants {
+        SplitSnapshotGraphDiscriminants::iter()
+            .last()
+            .expect("Unable to get last element of an iterator guaranteed to have elements")
+    }
 }
 
 #[must_use = "if unused the lock will be released immediately"]
@@ -375,6 +381,8 @@ impl SplitSnapshot {
             change_set_id
         );
 
+        dbg!("ici");
+
         Err(WorkspaceSnapshotError::WorkspaceSnapshotNotFetched)
     }
 
@@ -391,7 +399,7 @@ impl SplitSnapshot {
             let mut working_copy = self_clone.working_copy_mut().await;
             let start = Instant::now();
             working_copy.cleanup_and_merkle_tree_hash();
-            println!("cleaned up working copy in {:?}", start.elapsed());
+            warn!("cleaned up working copy in {:?}", start.elapsed());
 
             let current_supergraph = working_copy.supergraph();
             let mut new_supergraph = SuperGraph::new(
@@ -453,7 +461,7 @@ impl SplitSnapshot {
                                         events_actor,
                                     )?;
 
-                                println!("wrote subgraph in {:?}", start.elapsed());
+                                warn!("wrote subgraph in {:?}", start.elapsed());
                                 (orig_idx, new_address)
                             } else {
                                 let subgraph_address = self_clone_clone
@@ -473,7 +481,7 @@ impl SplitSnapshot {
                                 events_actor,
                             )?;
 
-                            println!("wrote subgraph in {:?}", start.elapsed());
+                            warn!("wrote subgraph in {:?}", start.elapsed());
                             (new_index, new_address)
                         }
                         (Some(_), None) => {
@@ -504,7 +512,7 @@ impl SplitSnapshot {
                 events_tenancy,
                 events_actor,
             )?;
-            println!("wrote supergraph in {:?}", start.elapsed());
+            warn!("wrote supergraph in {:?}", start.elapsed());
 
             Ok::<WorkspaceSnapshotAddress, WorkspaceSnapshotError>(supergraph_address)
         })?
@@ -1248,7 +1256,7 @@ impl InputSocketExt for SplitSnapshot {
             for _ in working_copy
                 .edges_directed_for_edge_weight_kind(
                     socket_value_edge_ref.target(),
-                    Incoming,
+                    Outgoing,
                     EdgeWeightKindDiscriminants::Socket,
                 )?
                 .filter(|edge_ref| input_socket_id == edge_ref.target().into())

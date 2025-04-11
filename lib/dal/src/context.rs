@@ -1674,7 +1674,7 @@ impl Transactions {
     /// underlying connections. Blocking until all queued jobs have reported as finishing.
     #[instrument(
         name = "transactions.blocking_commit_into_conns",
-        level = "info",
+        level = "debug",
         skip_all,
         fields(
             si.change_set.id = Empty,

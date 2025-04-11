@@ -51,7 +51,7 @@ where
         let write_wait = Instant::now();
         let value_clone = value.clone();
         let (postcard_value, size_hint) = serialize::to_vec(&value)?;
-        println!("size: {}", size_hint);
+        warn!("size: {}", size_hint);
 
         span.record(
             "si.layer_cache.split_snapshot_subgraph.write_serialize",

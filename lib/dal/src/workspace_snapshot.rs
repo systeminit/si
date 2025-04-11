@@ -512,7 +512,7 @@ impl WorkspaceSnapshot {
                 let start = Instant::now();
                 let mut working_copy = self_clone.working_copy_mut().await;
                 working_copy.cleanup_and_merkle_tree_hash()?;
-                println!("cleanup_and_merkle_tree_hash took {:?}", start.elapsed());
+                warn!("cleanup_and_merkle_tree_hash took {:?}", start.elapsed());
 
                 let (new_address, _) = layer_db.workspace_snapshot().write(
                     Arc::new(WorkspaceSnapshotGraph::V4(working_copy.clone())),

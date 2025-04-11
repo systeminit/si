@@ -11,6 +11,9 @@ publish.workspace = true
 [dependencies]
 si-id = { path = "../../lib/si-id" }
 si-events = { path = "../../lib/si-events-rs" }
+telemetry = { path = "../../lib/telemetry-rs" }
+telemetry-nats = { path = "../../lib/telemetry-nats-rs" }
+telemetry-utils = { path = "../../lib/telemetry-utils-rs" }
 
 async-trait = { workspace = true }
 blake3 = { workspace = true }

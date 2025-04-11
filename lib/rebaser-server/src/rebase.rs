@@ -16,9 +16,7 @@ use rebaser_core::api_types::{
     enqueue_updates_request::EnqueueUpdatesRequest, enqueue_updates_response::v1::RebaseStatus,
 };
 use shuttle_server::ShuttleError;
-use si_events::{
-    rebase_batch_address::RebaseBatchAddress, RebaseBatchAddressKind, WorkspaceSnapshotAddress,
-};
+use si_events::{RebaseBatchAddressKind, WorkspaceSnapshotAddress};
 use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -90,8 +88,6 @@ pub async fn perform_rebase(
     server_tracker: &TaskTracker,
     features: Features,
 ) -> RebaseResult<RebaseStatus> {
-    let span = current_span_for_instrument_at!("info");
-
     let workspace = get_workspace(ctx).await?;
     let updating_head = request.change_set_id == workspace.default_change_set_id();
 
@@ -122,6 +118,7 @@ pub async fn perform_rebase(
             .await?;
         }
         WorkspaceSnapshotSelectorDiscriminants::SplitSnapshot => {
+            warn!("split rebase");
             rebase_split(
                 ctx,
                 to_rebase_workspace_snapshot_address,
@@ -247,13 +244,19 @@ async fn rebase_split(
         .await?
         .ok_or(RebaseError::MissingRebaseBatch(request.updates_address))?;
 
+    for update in rebase_batch.as_slice() {
+        dbg!(update);
+    }
+
     to_rebase_workspace_snapshot
         .perform_updates(rebase_batch.as_slice())
         .await?;
 
-    to_rebase_workspace_snapshot.write(ctx).await?;
+    let new_snapshot_address = to_rebase_workspace_snapshot.write(ctx).await?;
+    warn!("Workspace snapshot updated to {}", new_snapshot_address);
+
     to_rebase_change_set
-        .update_pointer(ctx, to_rebase_workspace_snapshot.id().await)
+        .update_pointer(ctx, new_snapshot_address)
         .await?;
 
     if let Err(err) =

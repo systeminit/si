@@ -235,10 +235,13 @@ impl ChangeSetTestHelpers {
             .job_queue()
             .remove_dependent_values_jobs()
             .await;
+        dbg!("remove dvu jobs");
         ctx.blocking_commit().await?;
+        dbg!("committed");
 
         // But we have to wait until the dvu jobs complete
         if has_roots {
+            dbg!("waiting for dvu");
             Self::wait_for_dvu(ctx).await?;
         }
 

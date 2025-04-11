@@ -58,6 +58,7 @@ pub type FrameResult<T> = Result<T, FrameError>;
 /// A unit struct containing logic for working with frames.
 pub struct Frame;
 
+#[derive(Debug)]
 pub struct InferredEdgeChanges {
     pub removed_edges: Vec<SummaryDiagramInferredEdge>,
     pub upserted_edges: Vec<SummaryDiagramInferredEdge>,
@@ -195,6 +196,7 @@ impl Frame {
         send_events: bool,
     ) -> FrameResult<Option<InferredEdgeChanges>> {
         // let's see if we need to even do anything
+        dbg!("upsert_parent_inner");
         if let Some(current_parent_id) = Component::get_parent_by_id(ctx, child_id).await? {
             if current_parent_id == new_parent_id {
                 return Ok(None);
@@ -203,10 +205,10 @@ impl Frame {
 
         match Component::get_type_by_id(ctx, new_parent_id).await? {
             ComponentType::ConfigurationFrameDown | ComponentType::ConfigurationFrameUp => {
-                Ok(Some(
+                Ok(Some(dbg!(
                     Self::attach_child_to_parent_inner(ctx, new_parent_id, child_id, send_events)
-                        .await?,
-                ))
+                        .await
+                )?))
             }
             ComponentType::Component => Err(FrameError::ParentIsNotAFrame(child_id, new_parent_id)),
             ComponentType::AggregationFrame => {
@@ -225,6 +227,7 @@ impl Frame {
         child_id: ComponentId,
         send_events: bool,
     ) -> FrameResult<InferredEdgeChanges> {
+        dbg!("attach_child_to_parent_inner");
         // cache current map of input <-> output sockets based on what the parent knows about right now!!!!
         let initial_impacted_values: HashSet<SocketAttributeValuePair> =
             Self::get_all_inferred_connections_for_component_tree(ctx, parent_id, child_id).await?;
@@ -250,6 +253,7 @@ impl Frame {
 
         let cycle_check_guard = ctx.workspace_snapshot()?.enable_cycle_check().await;
         // add the new edge
+        dbg!("add_edge_to_frame");
         Component::add_edge_to_frame(ctx, parent_id, child_id, EdgeWeightKind::FrameContains)
             .await?;
         drop(cycle_check_guard);
@@ -263,7 +267,7 @@ impl Frame {
         // get the latest state of the component tree
         let current_impacted_values =
             Self::get_all_inferred_connections_for_component_tree(ctx, parent_id, child_id).await?;
-
+        dbg!("second all inferred");
         // an edge has been removed if it exists in the state after we've detached the component, and it's not in current state
         values_to_run.extend(
             post_edge_removal_impacted_values
@@ -290,6 +294,7 @@ impl Frame {
             })
         }
 
+        dbg!("send events?");
         if send_events {
             WsEvent::remove_inferred_edges(ctx, inferred_edges_to_remove.clone())
                 .await?
@@ -315,6 +320,7 @@ impl Frame {
             }
         }
 
+        dbg!("send events 2?");
         if send_events {
             WsEvent::upsert_inferred_edges(ctx, inferred_edges_to_upsert.clone())
                 .await?
@@ -340,6 +346,7 @@ impl Frame {
         }
 
         // enqueue those values that we now know need to run
+        dbg!("enqueue dvus");
         ctx.add_dependent_values_and_enqueue(
             values_to_run
                 .into_iter()
@@ -455,6 +462,7 @@ impl Frame {
         parent_id: ComponentId,
         child_id: ComponentId,
     ) -> FrameResult<HashSet<SocketAttributeValuePair>> {
+        dbg!("get_all_inferred_connections_for_component_tree");
         let mut impacted_connections = HashSet::new();
         let workspace_snapshot = ctx.workspace_snapshot()?;
         let mut inferred_connections = workspace_snapshot.inferred_connection_graph(ctx).await?;
@@ -470,6 +478,7 @@ impl Frame {
                 .await?,
         );
         for incoming_connection in stack_inferred_connections {
+            dbg!("incoming_connection", &incoming_connection);
             let component_input_socket = ComponentInputSocket {
                 component_id: incoming_connection.destination_component_id,
                 input_socket_id: incoming_connection.input_socket_id,

@@ -24,7 +24,7 @@ use crate::layer_db_types::ContentTypes;
 use crate::workspace_integrations::{WorkspaceIntegration, WorkspaceIntegrationsError};
 use crate::workspace_snapshot::graph::WorkspaceSnapshotGraphDiscriminants;
 use crate::workspace_snapshot::selector::WorkspaceSnapshotSelectorDiscriminants;
-use crate::workspace_snapshot::split_snapshot::SplitSnapshot;
+use crate::workspace_snapshot::split_snapshot::{SplitSnapshot, SplitSnapshotGraph};
 use crate::workspace_snapshot::{WorkspaceSnapshotError, WorkspaceSnapshotSelector};
 use crate::{
     standard_model, standard_model_accessor_ro, BuiltinsError, DalContext, HistoryActor,
@@ -476,7 +476,7 @@ impl Workspace {
         })
     }
 
-    async fn insert_workspace(
+    pub async fn insert_workspace(
         ctx: &DalContext,
         pk: WorkspacePk,
         name: impl AsRef<str>,
@@ -486,7 +486,15 @@ impl Workspace {
     ) -> WorkspaceResult<Self> {
         let name = name.as_ref();
         let token = token.as_ref();
-        let version_string = WorkspaceSnapshotGraph::current_discriminant().to_string();
+        let version_string = match kind {
+            WorkspaceSnapshotSelectorDiscriminants::LegacySnapshot => {
+                WorkspaceSnapshotGraph::current_discriminant().to_string()
+            }
+            WorkspaceSnapshotSelectorDiscriminants::SplitSnapshot => {
+                SplitSnapshotGraph::current_discriminant().to_string()
+            }
+        };
+
         let uses_actions_v2 = ctx
             .services_context()
             .feature_flags_service()
