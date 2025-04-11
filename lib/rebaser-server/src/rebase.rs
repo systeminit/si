@@ -176,6 +176,10 @@ pub async fn perform_rebase(
     );
     debug!("rebase performed: {:?}", start.elapsed());
     span.record("si.rebase.rebase_time", start.elapsed().as_millis());
+
+    // Before replying to the requester or sending the Edda request, we must commit.
+    ctx.commit_no_rebase().await?;
+
     if features.generate_mvs {
         let changes = original_workspace_snapshot
             .detect_changes(&to_rebase_workspace_snapshot)
@@ -189,15 +193,12 @@ pub async fn perform_rebase(
                 request.workspace_id,
                 request.change_set_id,
                 original_workspace_snapshot.id().await,
-                to_rebase_workspace_snapshot_address,
+                to_rebase_workspace_snapshot.id().await,
                 change_batch_address,
             )
             .await?;
         span.record("si.edda_request.id", edda_update_request_id.to_string());
     }
-
-    // Before replying to the requester, we must commit.
-    ctx.commit_no_rebase().await?;
 
     {
         let ctx_clone = ctx.clone();
