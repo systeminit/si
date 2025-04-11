@@ -11,6 +11,7 @@ pub mod xxhash_type;
 
 pub use si_id::ulid;
 
+mod action;
 mod actor;
 mod cas;
 mod change_set_approval;
@@ -31,6 +32,7 @@ mod vector_clock_id;
 mod web_event;
 
 pub use crate::{
+    action::{ActionId, ActionKind, ActionPrototypeId, ActionResultState, ActionState},
     actor::Actor,
     actor::UserPk,
     authentication_method::{AuthenticationMethod, AuthenticationMethodRole},
@@ -43,10 +45,10 @@ pub use crate::{
     func::{FuncArgumentId, FuncId},
     func_execution::*,
     func_run::{
-        ActionId, ActionKind, ActionPrototypeId, ActionResultState, AttributePrototypeArgumentId,
-        AttributePrototypeId, AttributeValueId, ComponentId, FuncArgumentKind, FuncBackendKind,
-        FuncBackendResponseType, FuncKind, FuncRun, FuncRunBuilder, FuncRunBuilderError, FuncRunId,
-        FuncRunState, FuncRunValue, ManagementPrototypeId, ViewId,
+        AttributePrototypeArgumentId, AttributePrototypeId, AttributeValueId, ComponentId,
+        FuncArgumentKind, FuncBackendKind, FuncBackendResponseType, FuncKind, FuncRun,
+        FuncRunBuilder, FuncRunBuilderError, FuncRunId, FuncRunState, FuncRunValue,
+        ManagementPrototypeId, ViewId,
     },
     func_run_log::{FuncRunLog, FuncRunLogId, OutputLine},
     resource_metadata::{ResourceMetadata, ResourceStatus},

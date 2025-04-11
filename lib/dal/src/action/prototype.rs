@@ -25,21 +25,30 @@ use crate::{
         },
     },
     ActionPrototypeId, ChangeSetError, Component, ComponentError, ComponentId, DalContext,
-    EdgeWeightKind, EdgeWeightKindDiscriminants, HelperError, SchemaVariant, SchemaVariantError,
-    SchemaVariantId, TransactionsError, WorkspaceSnapshotError, WsEvent, WsEventError,
-    WsEventResult, WsPayload,
+    EdgeWeightKind, EdgeWeightKindDiscriminants, Func, FuncError, HelperError, SchemaVariant,
+    SchemaVariantError, SchemaVariantId, TransactionsError, WorkspaceSnapshotError, WsEvent,
+    WsEventError, WsEventResult, WsPayload,
 };
-use si_frontend_types::DiagramComponentView;
+use si_frontend_types::{
+    action::{ActionPrototypeView, ActionPrototypeViewsByComponentId},
+    DiagramComponentView,
+};
+
+use super::{Action, ActionError};
 
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ActionPrototypeError {
+    #[error("action error: {0}")]
+    Action(#[from] Box<ActionError>),
     #[error("Change Set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
     #[error("component error: {0}")]
     Component(#[from] ComponentError),
     #[error("diagram error: {0}")]
     Diagram(#[from] DiagramError),
+    #[error("func error: {0}")]
+    Func(#[from] FuncError),
     #[error("func not found for prototype: {0}")]
     FuncNotFoundForPrototype(ActionPrototypeId),
     #[error("func runner error: {0}")]
@@ -465,6 +474,39 @@ impl ActionPrototype {
         ctx.workspace_snapshot()?.remove_node_by_id(id).await?;
 
         Ok(())
+    }
+
+    pub async fn as_frontend_list_type_by_component_id(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> ActionPrototypeResult<ActionPrototypeViewsByComponentId> {
+        let mut views = Vec::new();
+
+        let schema_variant_id = Component::schema_variant_id(ctx, component_id).await?;
+
+        for action_prototype in Self::for_variant(ctx, schema_variant_id).await? {
+            let func_id = Self::func_id(ctx, action_prototype.id).await?;
+            let func = Func::get_by_id(ctx, func_id).await?;
+            let maybe_action_id =
+                Action::find_equivalent(ctx, action_prototype.id, Some(component_id))
+                    .await
+                    .map_err(Box::new)?;
+
+            views.push(ActionPrototypeView {
+                id: action_prototype.id,
+                func_id,
+                schema_variant_id,
+                kind: action_prototype.kind.into(),
+                display_name: func.display_name,
+                name: func.name,
+                action_id: maybe_action_id,
+            });
+        }
+
+        Ok(ActionPrototypeViewsByComponentId {
+            id: component_id,
+            action_prototypes: views,
+        })
     }
 }
 

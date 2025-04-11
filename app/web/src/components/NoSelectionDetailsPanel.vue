@@ -59,7 +59,14 @@
         trackingSlug="no-selection-details-panel"
       >
         <TabGroupItem label="Changes" slug="changes">
-          <ChangesPanelProposed />
+          <template
+            v-if="ffStore.FRONTEND_ARCH_VIEWS && ffStore.BIFROST_ACTIONS"
+          >
+            <BifrostChangesPanelProposed />
+          </template>
+          <template v-else>
+            <ChangesPanelProposed />
+          </template>
         </TabGroupItem>
         <TabGroupItem label="History" slug="history">
           <ChangesPanelHistory />
@@ -88,6 +95,8 @@ import clsx from "clsx";
 import { ref } from "vue";
 import ApplyChangeSetButton from "@/components/ApplyChangeSetButton.vue";
 import { useChangeSetsStore } from "@/store/change_sets.store";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
+import BifrostChangesPanelProposed from "@/mead-hall/ChangesPanelProposed.vue";
 import SidebarSubpanelTitle from "./SidebarSubpanelTitle.vue";
 import SecretsPanel from "./SecretsPanel.vue";
 import ChangesPanelProposed from "./ChangesPanelProposed.vue";
@@ -95,6 +104,7 @@ import ChangesPanelHistory from "./ChangesPanelHistory.vue";
 import DetailsPanelMenuIcon from "./DetailsPanelMenuIcon.vue";
 
 const changeSetsStore = useChangeSetsStore();
+const ffStore = useFeatureFlagsStore();
 
 const dropdownMenuRef = ref<InstanceType<typeof DropdownMenu>>();
 const renameModalRef = ref<InstanceType<typeof Modal>>();

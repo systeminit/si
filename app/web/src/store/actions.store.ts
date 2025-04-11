@@ -73,6 +73,8 @@ export interface ActionProposedView extends ActionView {
   myDependencies: ActionId[];
   dependentOn: ActionId[];
   holdStatusInfluencedBy: ActionId[];
+  componentSchemaName?: string;
+  componentName?: string;
 }
 
 export interface ActionHistoryView extends ActionView {
@@ -195,36 +197,6 @@ export const useActionsStore = () => {
             }
             return r;
           },
-          actionsByComponentId(): Record<ComponentId, ComponentAndAction[]> {
-            return _.mapValues(
-              this.rawActionsByComponentId,
-              (actions, componentId) => {
-                return _.compact(
-                  _.map(actions, (actionPrototype) => {
-                    if (actionPrototype.name === "refresh") return;
-
-                    const actionInstance: ActionProposedView | undefined =
-                      _.find(this.actions, (pa: ActionProposedView) => {
-                        if (!pa) return false;
-                        return (
-                          pa.componentId === componentId &&
-                          pa.prototypeId === actionPrototype.id
-                        );
-                      });
-
-                    return {
-                      actionPrototypeId: actionPrototype.id,
-                      actionInstanceId: actionInstance?.id,
-                      componentId: actionInstance?.componentId,
-                      actor: actionInstance?.actor,
-                      ...omit(actionPrototype, "id"),
-                    };
-                  }),
-                );
-              },
-            );
-          },
-
           listActionsByComponentId(
             state,
           ): DefaultMap<ComponentId, Array<ActionProposedView>> {
@@ -241,7 +213,6 @@ export const useActionsStore = () => {
             });
             return d;
           },
-
           actionsById(state): Map<ActionId, ActionView> {
             const m = new Map();
             for (const a of state.actions) {
