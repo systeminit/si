@@ -771,6 +771,7 @@ const get = async (
   changeSetId: ChangeSetId,
   kind: string,
   id: Id,
+  checksum?: string, // intentionally not used in sql, putting it on the wire for consistency & observability purposes
 ): Promise<-1 | object> => {
   const sql = `
     select
@@ -795,7 +796,7 @@ const get = async (
   const data = oneInOne(atomData);
   debug("❓ sql get", bind, " returns ?", !(data === NOROW));
   if (data === NOROW) {
-    mjolnir(workspaceId, changeSetId, kind, id);
+    mjolnir(workspaceId, changeSetId, kind, id, checksum);
     return -1;
   }
   const atomDoc = decodeDocumentFromDB(data as ArrayBuffer);
