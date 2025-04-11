@@ -1,5 +1,5 @@
 use module_index_types::{LatestModuleResponse, ModuleDetailsResponse};
-use sea_orm::{entity::prelude::*, sea_query, TryGetError};
+use sea_orm::{entity::prelude::*, sea_query, DeriveValueType};
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
@@ -37,7 +37,12 @@ pub struct Model {
     pub is_private_scoped: bool,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, DeriveValueType)]
+#[sea_orm(
+    value_type = "String",
+    from_str = "ModuleKind::from_str",
+    to_str = "ModuleKind::to_db_kind"
+)]
 #[serde(rename_all = "camelCase")]
 pub enum ModuleKind {
     Module,
@@ -61,47 +66,6 @@ impl FromStr for ModuleKind {
             "module" => ModuleKind::Module,
             "workspaceBackup" => ModuleKind::WorkspaceBackup,
             _ => return Err(sea_query::ValueTypeErr),
-        })
-    }
-}
-
-impl From<ModuleKind> for sea_orm::Value {
-    fn from(value: ModuleKind) -> Self {
-        value.to_db_kind().into()
-    }
-}
-
-impl sea_query::ValueType for ModuleKind {
-    fn try_from(v: Value) -> Result<Self, sea_query::ValueTypeErr> {
-        match v {
-            Value::String(Some(x)) => Ok(ModuleKind::from_str(x.as_str())?),
-            _ => Err(sea_query::ValueTypeErr),
-        }
-    }
-
-    fn type_name() -> String {
-        stringify!(ModuleId).to_owned()
-    }
-
-    fn array_type() -> sea_orm::sea_query::ArrayType {
-        sea_orm::sea_query::ArrayType::String
-    }
-
-    fn column_type() -> sea_query::ColumnType {
-        sea_query::ColumnType::String(StringLen::None)
-    }
-}
-
-impl sea_orm::TryGetable for ModuleKind {
-    fn try_get_by<I: sea_orm::ColIdx>(res: &QueryResult, idx: I) -> Result<Self, TryGetError> {
-        let json_str: String = res.try_get_by(idx).map_err(TryGetError::DbErr)?;
-
-        ModuleKind::from_str(&json_str).map_err(|e| {
-            TryGetError::DbErr(DbErr::TryIntoErr {
-                from: "database module kind",
-                into: "ModuleKind",
-                source: Box::new(e),
-            })
         })
     }
 }
