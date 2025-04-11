@@ -35,6 +35,18 @@ RUN set -eux; \
     ; \
     rm -rf /var/lib/apt/lists/*
 
+ARG BUILDEVENTS_VERSION=v0.17.0
+RUN set -eux; \
+    ARCH="$(dpkg --print-architecture)"; \
+    case "${ARCH}" in \
+        amd64) BUILDEVENTS_ARCH="linux-amd64" ;; \
+        arm64) BUILDEVENTS_ARCH="linux-arm64" ;; \
+        *) echo "Unsupported architecture: ${ARCH}" && exit 1 ;; \
+    esac && \
+    curl -L -o /usr/local/bin/buildevents \
+        "https://github.com/honeycombio/buildevents/releases/download/${BUILDEVENTS_VERSION}/buildevents-${BUILDEVENTS_ARCH}" && \
+    chmod +x /usr/local/bin/buildevents
+
 # Install Cypress Dependencies
 RUN apt-get update; \
     apt-get install -y --no-install-recommends \
