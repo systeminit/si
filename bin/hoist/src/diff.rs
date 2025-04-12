@@ -325,8 +325,8 @@ fn determine_patch_target(operation: &PatchOperation) -> Option<PatchTarget> {
             PatchTarget::Schema
         }
     } else {
-        dbg!(operation);
-        panic!("Unhandled patch operation")
+        dbg!("Unhandled patch operation", operation);
+        return None;
     };
 
     Some(target)
