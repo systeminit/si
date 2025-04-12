@@ -4990,6 +4990,9 @@
   "Indicates whether to enable or disable host recovery for the Dedicated Host. Host recovery is disabled by default.": {
     "enum": null
   },
+  "Indicates whether to enable private DNS only for inbound endpoints. This option is available only for services that support both gateway and interface endpoints. It routes traffic that originates from the VPC to the gateway endpoint and traffic that originates from on-premises to the interface endpoint.": {
+    "enum": null
+  },
   "Indicates whether to enable the instance for AMD SEV-SNP. AMD SEV-SNP is supported with M6a, R6a, and C6a instance types only. For more information, see [AMD SEV-SNP for Amazon EC2 instances](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/sev-snp.html).": {
     "enum": null
   },
@@ -7765,7 +7768,13 @@
   "The Amazon Resource Name (ARN) of the replicated automated backups from which to restore, for example, ``arn:aws:rds:us-east-1:123456789012:auto-backup:ab-L2IJCEXJP7XQ7HOJ4SIEXAMPLE``.\n This setting doesn't apply to RDS Custom.": {
     "enum": null
   },
+  "The Amazon Resource Name (ARN) of the resource configuration.": {
+    "enum": null
+  },
   "The Amazon Resource Name (ARN) of the role that is used for target invocation.": {
+    "enum": null
+  },
+  "The Amazon Resource Name (ARN) of the service network.": {
     "enum": null
   },
   "The Amazon Resource Name (ARN) of the service-linked role that the Auto Scaling group uses to call other AWS service on your behalf. By default, Amazon EC2 Auto Scaling uses a service-linked role named ``AWSServiceRoleForAutoScaling``, which it creates if it does not exist. For more information, see [Service-linked roles](https://docs.aws.amazon.com/autoscaling/ec2/userguide/autoscaling-service-linked-role.html) in the *Amazon EC2 Auto Scaling User Guide*.": {
@@ -8063,6 +8072,9 @@
     "enum": null
   },
   "The DNS name for users to reach your application.": {
+    "enum": null
+  },
+  "The DNS records created for the endpoint.": {
     "enum": null
   },
   "The Data Prepper pipeline configuration.": {
@@ -14480,6 +14492,9 @@
     "enum": null
   },
   "The summary string.": {
+    "enum": null
+  },
+  "The supported IP address types.": {
     "enum": null
   },
   "The supported authentication type to authenticate and connect to your Confluence instance.": {
