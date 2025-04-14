@@ -39,6 +39,7 @@
           :listItems="listAItems"
           :selectedComponent="selectedComponentA"
           :selectedSocket="selectedSocketA"
+          :filteringBySearchString="searchStringA"
           @select="(index: number) => selectAndProcess('a', index)"
         />
         <!-- Socket B -->
@@ -50,6 +51,7 @@
           :listItems="listBItems"
           :selectedComponent="selectedComponentB"
           :selectedSocket="selectedSocketB"
+          :filteringBySearchString="searchStringB"
           @select="(index: number) => selectAndProcess('b', index)"
         />
       </div>
@@ -117,6 +119,7 @@ import {
 import clsx from "clsx";
 import { Fzf } from "fzf";
 import {
+  ConnectionDirection,
   ConnectionMenuData,
   generateSocketPaths,
   useComponentsStore,
@@ -134,6 +137,8 @@ const inputARef = ref<InstanceType<typeof FloatingConnectionMenuInput>>();
 const inputBRef = ref<InstanceType<typeof FloatingConnectionMenuInput>>();
 const searchStringA = computed(() => inputARef.value?.searchString);
 const searchStringB = computed(() => inputBRef.value?.searchString);
+const startingSearchStringA = ref("");
+const startingSearchStringB = ref("");
 
 const componentsStore = useComponentsStore();
 const viewsStore = useViewsStore();
@@ -160,6 +165,8 @@ const focusOnInput = () => {
     activeInputRef.value.value?.focus();
   });
 };
+
+const fixedDirection = ref<ConnectionDirection | undefined>(undefined);
 
 // Selection data
 const connectionData = reactive<ConnectionMenuData>({
@@ -266,8 +273,19 @@ const updateMenu = async () => {
     componentsActiveSide?.map((c) =>
       c.sockets
         .filter((s) => !s.def.isManagement)
-        // If socket is unary and has connection, skip it
         .filter((s) => {
+          // If the panel is opened with a fixed direction, restrict which sockets are allowed based on it while the search string includes the original path
+          if (
+            fixedDirection.value &&
+            ((activeSide.value === "a" &&
+              s.def.direction !== fixedDirection.value) ||
+              (activeSide.value === "b" &&
+                s.def.direction === fixedDirection.value)) &&
+            searchStringA.value?.includes(startingSearchStringA.value)
+          ) {
+            return false;
+          }
+
           if (s.def.direction !== "input" || s.def.maxConnections === null) {
             return true;
           }
@@ -555,6 +573,7 @@ const processHighlighted = () => {
 
 // Modal Mgmt
 function open(initialState: ConnectionMenuData) {
+  highlightedIndex.value = 0;
   doneOpening.value = false;
   activeSide.value = "a";
   connectionData.A = {};
@@ -626,6 +645,16 @@ function open(initialState: ConnectionMenuData) {
     if (initialSocket) {
       initialBSearch += `${initialSocket.def.label}`;
     }
+  }
+
+  startingSearchStringA.value = initialASearch;
+  startingSearchStringB.value = initialBSearch;
+
+  if (initialState.aDirection && (initialASearch || initialBSearch)) {
+    // can only have a fixed direction for a starting component
+    fixedDirection.value = initialState.aDirection;
+  } else {
+    fixedDirection.value = undefined;
   }
 
   modalRef.value?.open();

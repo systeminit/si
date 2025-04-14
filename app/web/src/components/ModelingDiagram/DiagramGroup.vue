@@ -914,10 +914,10 @@ const cache = () => {
     const right = socketsRightRef.value?.getNode();
     if (left && right) {
       left.cache({
-        pixelRatio: Math.max(1, diagramContext.zoomLevel.value),
+        pixelRatio: diagramContext.zoomLevel.value,
       });
       right.cache({
-        pixelRatio: Math.max(1, diagramContext.zoomLevel.value),
+        pixelRatio: diagramContext.zoomLevel.value,
       });
     }
   });
