@@ -87,8 +87,20 @@ function debug(...args: any | any[]) {
 let db: Database;
 let sdf: AxiosInstance;
 
+const getDbName = (testing: boolean) => {
+  if (testing) return "sitest.sqlite3";
+  switch (import.meta.env.VITE_SI_ENV) {
+    case "production":
+      return "si.sqlite3";
+    case "staging":
+      return "si.staging.sqlite3";
+    default:
+      return "si.local.sqlite3";
+  }
+};
+
 const start = async (sqlite3: Sqlite3Static, testing: boolean) => {
-  const dbname = testing ? "sitest.sqlite3" : "si.sqlite3";
+  const dbname = getDbName(testing);
   db =
     "opfs" in sqlite3
       ? new sqlite3.oo1.OpfsDb(`/${dbname}`)
@@ -119,7 +131,7 @@ const dropTables = async () => {
   DROP TABLE IF EXISTS snapshots;
   DROP TABLE IF EXISTS changesets;
   `;
-  return await db.exec({ sql });
+  await db.exec({ sql });
 };
 
 // INTEGER is 8 bytes, not large enough to store ULIDs
@@ -960,6 +972,7 @@ const dbInterface: DBInterface = {
   exec,
   oneInOne,
   handleHammer,
+  bobby: dropTables,
 
   changeSetExists: async (workspaceId: string, changeSetId: ChangeSetId) => {
     const row = await db.exec({
@@ -971,21 +984,41 @@ const dbInterface: DBInterface = {
     return cId === changeSetId;
   },
 
-  async odin(): Promise<object> {
+  async odin(changeSetId: ChangeSetId): Promise<object> {
     const c = db.exec({
-      sql: "select * from changesets;",
+      sql: "select * from changesets where change_set_id=?;",
+      bind: [changeSetId],
       returnValue: "resultRows",
     });
     const s = db.exec({
-      sql: "select * from snapshots;",
-      returnValue: "resultRows",
-    });
-    const a = db.exec({
-      sql: "select * from atoms;",
+      sql: `select snapshots.* from snapshots
+            inner join changesets
+              on snapshots.address = changesets.snapshot_address
+            where changesets.change_set_id = ?;
+      `,
+      bind: [changeSetId],
       returnValue: "resultRows",
     });
     const m = db.exec({
-      sql: "select * from snapshots_mtm_atoms;",
+      sql: `select snapshots_mtm_atoms.* from snapshots_mtm_atoms
+            inner join changesets
+              on snapshots_mtm_atoms.snapshot_address = changesets.snapshot_address
+            where changesets.change_set_id = ?;
+      `,
+      bind: [changeSetId],
+      returnValue: "resultRows",
+    });
+    const a = db.exec({
+      sql: `select atoms.* from atoms
+            inner join snapshots_mtm_atoms
+              on snapshots_mtm_atoms.kind = atoms.kind
+              and snapshots_mtm_atoms.args = atoms.args
+              and snapshots_mtm_atoms.checksum = atoms.checksum
+            inner join changesets
+              on snapshots_mtm_atoms.snapshot_address = changesets.snapshot_address
+            where changesets.change_set_id = ?;
+      `,
+      bind: [changeSetId],
       returnValue: "resultRows",
     });
     const [changesets, snapshots, atoms, mtm] = await Promise.all([c, s, a, m]);

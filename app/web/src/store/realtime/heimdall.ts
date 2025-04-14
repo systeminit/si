@@ -144,15 +144,25 @@ export const makeArgs = (kind: string, id?: string) => {
   };
 };
 
-/*
-const fullDiagnosticTest = async () => {
-  await db.fullDiagnosticTest();
-}; */
-
-export const odin = async () => {
-  const allData = await db.odin();
+export const odin = async (changeSetId: string) => {
+  const allData = await db.odin(changeSetId);
   // eslint-disable-next-line no-console
   console.log("⚡ ODIN ⚡");
   // eslint-disable-next-line no-console
   console.log(allData);
+};
+
+export const bobby = async () => {
+  await db.bobby();
+  // eslint-disable-next-line no-console
+  console.log("🗑️ BOBBY DROP TABLE 🗑️");
+};
+
+export const mjolnir = async (
+  workspaceId: string,
+  changeSetId: string,
+  kind: string,
+  id: string,
+) => {
+  await db.mjolnir(workspaceId, changeSetId, kind, id);
 };
