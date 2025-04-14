@@ -36,7 +36,7 @@ class Redshift:
         session: boto3.Session,
         *,
         wait_interval_seconds: float = 0.25,
-        report_interval_seconds: float = 5,
+        report_interval_seconds: float = 10,
         **database_params: Unpack[DatabaseConnectParams],
     ):
         self._session = session
@@ -123,7 +123,7 @@ class Redshift:
 
             def log_status(status: str):
                 logging.log(logging.INFO,
-                    f"Query status: {status}. (Id={self.statement['Id']}, Elapsed={time.time() - self.started_at}s)"
+                    f"Query status: {status}. (Id={self.statement['Id']}, Elapsed={round(time.time() - self.started_at, 3)}s)"
                 )
                 self.last_report = time.time()
 
