@@ -4,9 +4,7 @@
       clsx(
         'basis-1/2 h-full min-h-0 border-x-2 border-b-2 p-xs ',
         active && themeClasses('bg-neutral-100', 'bg-neutral-800'),
-        socketToShow?.uniqueKey && doneLoading
-          ? 'children:h-1/2'
-          : 'children:h-full',
+        showCodeViewer ? 'children:h-1/2' : 'children:h-full',
       )
     "
   >
@@ -19,6 +17,7 @@
       :class="
         clsx(
           'flex flex-col px-2xs gap-2xs py-3xs min-h-0 overflow-auto',
+          !showCodeViewer && 'h-full',
           !active && themeClasses('text-neutral-500', 'text-neutral-400'),
         )
       "
@@ -32,7 +31,6 @@
       >
         <div
           v-for="item in socketList"
-          ref="socketListItemsRef"
           :key="item.index"
           :data-index="item.index"
           :class="
@@ -61,7 +59,7 @@
                   themeClasses('bg-action-500', 'bg-action-600'),
                 ],
               'cursor-pointer',
-              'py-xs px-2xs my-0.5',
+              'py-xs px-2xs my-3xs',
             )
           "
           :style="{
@@ -102,32 +100,48 @@
                 : "Input"
             }}
           </div>
-          <span class="line-clamp-2 text-xs flex-1">
-            <!-- TODO(Wendy) - this should probably not just truncate, we need to see it! -->
-            <template
-              v-for="(part, partIndex) in props.listItems[
-                item.index
-              ]!.label.split('')"
-              :key="partIndex"
+          <template v-if="filteringBySearchString">
+            <TruncateWithTooltip
+              class="text-xs font-bold flex-none max-w-[40%]"
+              :lineClamp="3"
             >
-              <span
-                v-if="part === '/'"
-                :class="themeClasses('text-neutral-500', 'text-neutral-400')"
+              {{ lastPart[item.index] }}
+            </TruncateWithTooltip>
+            <TruncateWithTooltip
+              :class="
+                clsx(
+                  'text-2xs flex-shrink ml-auto min-w-0 leading-tight',
+                  themeClasses('text-neutral-600', 'text-neutral-300'),
+                )
+              "
+              :lineClamp="3"
+            >
+              <template
+                v-for="(part, partIndex) in breadcrumbParts[item.index]"
+                :key="partIndex"
+                >{{ part }}</template
               >
-                /
-              </span>
-              <b
-                v-else-if="
-                  props.listItems[item.index]!.labelHighlights?.has(partIndex)
-                "
-                >{{ part }}</b
-              >
-              <span v-else>{{ part }}</span>
-            </template>
-          </span>
+            </TruncateWithTooltip>
+          </template>
+          <TruncateWithTooltip
+            v-else
+            :lineClamp="3"
+            class="text-xs leading-tight"
+          >
+            <span
+              v-for="(part, partIndex) in labelParts[item.index]"
+              :key="partIndex"
+              >{{ part }}</span
+            >
+          </TruncateWithTooltip>
           <div
             v-if="item.index === localHighlightedIndex"
-            class="flex flex-row flex-none gap-3xs items-center text-2xs"
+            :class="
+              clsx(
+                'flex flex-row flex-none gap-3xs items-center text-2xs',
+                !filteringBySearchString && 'ml-auto',
+              )
+            "
           >
             <TextPill tighter>Tab</TextPill>
             <div class="leading-snug">to select</div>
@@ -139,9 +153,9 @@
       v-else
       class="flex flex-col align-middle justify-center grow text-center text-neutral-600"
     >
-      No available sockets
+      No available sockets with possible connections
     </div>
-    <div v-if="socketToShow?.uniqueKey && doneLoading" class="w-full min-h-0">
+    <div v-if="showCodeViewer" class="w-full min-h-0">
       <CodeEditor
         v-if="socketToShow.value"
         :id="`func-${socketToShow.uniqueKey}`"
@@ -151,12 +165,6 @@
         noVim
         json
       />
-      <div
-        v-else
-        class="flex flex-col h-full align-middle justify-center grow text-center"
-      >
-        &lt;EMPTY&gt;
-      </div>
     </div>
   </div>
 </template>
@@ -164,7 +172,12 @@
 <script lang="ts" setup>
 import { computed, PropType, reactive, ref, watch, watchEffect } from "vue";
 import clsx from "clsx";
-import { Icon, LoadingMessage, themeClasses } from "@si/vue-lib/design-system";
+import {
+  Icon,
+  LoadingMessage,
+  themeClasses,
+  TruncateWithTooltip,
+} from "@si/vue-lib/design-system";
 import { useVirtualizer } from "@tanstack/vue-virtual";
 import CodeEditor from "@/components/CodeEditor.vue";
 import {
@@ -194,6 +207,7 @@ const props = defineProps({
   highlightedSocket: { type: Object as PropType<DiagramSocketData> },
   active: { type: Boolean },
   doneLoading: { type: Boolean },
+  filteringBySearchString: { type: String },
 });
 const localHighlightedIndex = computed(() =>
   props.active ? props.highlightedIndex : undefined,
@@ -206,7 +220,7 @@ const virtualizerOptions = computed(() => {
     count: props.listItems.length,
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     getScrollElement: () => scrollRef.value!,
-    estimateSize: () => 37,
+    estimateSize: () => 50,
     overscan: 3,
   };
 });
@@ -217,6 +231,25 @@ const socketList = computed(() => virtualList.value.getVirtualItems());
 const socketListSize = computed(() => virtualList.value.getTotalSize());
 
 const socketToShow = reactive<{ uniqueKey?: string; value?: string }>({});
+
+const showCodeViewer = computed(
+  () => socketToShow?.uniqueKey && props.doneLoading && socketToShow.value,
+);
+const labelParts = computed(() => {
+  return props.listItems.map((item) => {
+    return item.label.split(/(\/)/);
+  });
+});
+const breadcrumbParts = computed(() => {
+  return labelParts.value.map((item) => {
+    return item.slice(0, item.length - 1);
+  });
+});
+const lastPart = computed(() => {
+  return labelParts.value.map((item) => {
+    return item[item.length - 1];
+  });
+});
 
 watchEffect(() => {
   if (props.active && props.highlightedSocket) {
@@ -243,15 +276,11 @@ const emit = defineEmits<{
   (e: "select", index: number): void;
 }>();
 
-const socketListItemsRef = ref<InstanceType<typeof HTMLDivElement>[]>([]);
 watch(
   () => localHighlightedIndex.value,
   (i) => {
-    if (socketListItemsRef.value && i !== undefined) {
-      socketListItemsRef.value[i]?.scrollIntoView({
-        behavior: "smooth",
-        block: "nearest",
-      });
+    if (i !== undefined) {
+      virtualList.value.scrollToIndex(i, { align: "center" });
     }
   },
 );

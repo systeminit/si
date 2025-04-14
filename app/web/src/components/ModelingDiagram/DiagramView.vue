@@ -107,10 +107,12 @@ import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { DiagramViewDef, ElementHoverMeta } from "./diagram_types";
 import DiagramIcon from "./DiagramIcon.vue";
 import { checkRectanglesOverlap } from "./utils/math";
+import { useDiagramContext } from "./ModelingDiagram.vue";
 
 const { theme } = useTheme();
 
 const viewsStore = useViewsStore();
+const diagramContext = useDiagramContext();
 
 const props = defineProps<{
   view: DiagramViewDef;
@@ -319,6 +321,7 @@ const cache = () => {
         height: radius.value * 2,
         x: -radius.value,
         y: -radius.value,
+        pixelRatio: diagramContext.zoomLevel.value,
       });
     }
   });
@@ -349,6 +352,25 @@ watch(
   () => {
     cache();
   },
+);
+
+// re-run caching if the view name changes
+watch(
+  () => props.view.name,
+  () => {
+    cache();
+  },
+);
+
+// re-run caching when zoomed in close enough
+watch(
+  () => diagramContext.zoomLevel.value,
+  (zoomLevel) => {
+    if (zoomLevel > 1) {
+      cache();
+    }
+  },
+  { deep: true },
 );
 
 defineExpose({ clearCache });

@@ -97,6 +97,24 @@
             listening: false,
           }"
         />
+        <v-text
+          v-else-if="hideDetails === 'titles'"
+          ref="subtitleTextRef"
+          :config="{
+            x: -halfWidth + 5,
+            y: nodeHeight / 2 - 28,
+            verticalAlign: 'middle',
+            align: 'left',
+            text: truncatedNodeSubtitle,
+            width: nodeWidth - 10,
+            padding: 0,
+            fill: colors.bodyText,
+            fontFamily: DIAGRAM_FONT_FAMILY,
+            fontSize: NODE_TITLE_FONT_SIZE_TINY,
+            fontStyle: 'italic',
+            listening: false,
+          }"
+        />
 
         <!-- end header text -->
 
@@ -456,6 +474,7 @@ const connectedEdgesBySocketKey = computed(() => {
 const MAX_TITLE_LENGTH = 14;
 const MAX_TITLE_LENGTH_TINY = 8;
 const MAX_SUBTITLE_LENGTH = 20;
+const MAX_SUBTITLE_LENGTH_TINY = 35;
 
 const truncatedNodeTitle = computed(() => {
   if (
@@ -472,9 +491,16 @@ const truncatedNodeTitle = computed(() => {
 
 const truncatedNodeSubtitle = computed(() => {
   if (!props.node.def.subtitle) return "";
-  else if (props.node.def.subtitle.length > MAX_SUBTITLE_LENGTH) {
+  else if (
+    props.node.def.subtitle.length > MAX_SUBTITLE_LENGTH &&
+    props.hideDetails === "show"
+  ) {
     return `${props.node.def.subtitle
       .substring(0, MAX_SUBTITLE_LENGTH)
+      .trim()}...`;
+  } else if (props.node.def.subtitle.length > MAX_SUBTITLE_LENGTH_TINY) {
+    return `${props.node.def.subtitle
+      .substring(0, MAX_SUBTITLE_LENGTH_TINY)
       .trim()}...`;
   } else return props.node.def.subtitle;
 });
@@ -699,7 +725,7 @@ const cache = () => {
     const node = socketsRef.value?.getNode();
     if (node) {
       node.cache({
-        pixelRatio: Math.max(1, diagramContext.zoomLevel.value),
+        pixelRatio: diagramContext.zoomLevel.value,
       });
     }
   });
