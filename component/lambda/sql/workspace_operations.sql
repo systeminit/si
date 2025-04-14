@@ -101,16 +101,22 @@ WITH NO SCHEMA BINDING;
 -- Status of workspace_update_events ingestion, including when we consider events to be complete
 CREATE OR REPLACE VIEW workspace_operations.workspace_update_events_summary AS
     SELECT
+        workspace_operations.parse_timestamp('2024-09-01T00:00:00.000000000Z') AS launch_start,
         MIN(event_timestamp) AS first_event,
         MAX(event_timestamp) AS last_incomplete_event,
+        -- We assume there may be some events that come in out-of-order within a 15-minute
+        -- period, but that no more out-of-order events will come in from before that.
+        -- NOTE: If there is no activity (or very little activity) neither of these assumptions hold.
         last_incomplete_event - (INTERVAL '15 minutes' MINUTE) AS last_complete_event,
+        -- The last complete *hour* is the hour before that 15-minute cutoff (if there is an
+        -- hour with some complete events and some incomplete events, that hour is incomplete).
         DATE_TRUNC('hour', last_complete_event) AS last_complete_hour_end,
         last_complete_hour_end - (INTERVAL '1 hour' HOUR) AS last_complete_hour_start
       FROM workspace_operations.workspace_update_events_clean
 WITH NO SCHEMA BINDING;
 
 -- The resource counts for each workspace after each time it changes
-CREATE OR REPLACE VIEW workspace_operations.workspace_resource_counts AS
+CREATE OR REPLACE VIEW public.jkeiser_workspace_resource_counts AS
     WITH
         -- Get only events with actual resource_counts recorded (plus previous resource count for next step)
         workspace_resource_count_events AS (
@@ -119,18 +125,22 @@ CREATE OR REPLACE VIEW workspace_operations.workspace_resource_counts AS
             WHERE resource_count IS NOT NULL
         )
     -- Once we have only events with resource counts, get the ones where it changed (plus next_event_timestamp)
-    SELECT workspace_id, event_timestamp, resource_count, LEAD(event_timestamp) OVER (PARTITION BY workspace_id ORDER BY event_timestamp) AS next_event_timestamp
-        FROM workspace_resource_count_events
-        WHERE resource_count != prev_resource_count OR prev_resource_count IS NULL
+    SELECT workspace_id,
+           event_timestamp,
+           resource_count,
+           prev_resource_count,
+           LEAD(event_timestamp) OVER (PARTITION BY workspace_id ORDER BY event_timestamp) AS next_event_timestamp
+      FROM workspace_resource_count_events
+     WHERE resource_count != prev_resource_count OR prev_resource_count IS NULL
 WITH NO SCHEMA BINDING;
 
 -- Get the resource counts for all workspaces anytime they change *and* at least once per hour
-CREATE OR REPLACE VIEW workspace_operations.workspace_hourly_samples AS
+CREATE OR REPLACE VIEW public.jkeiser_workspace_hourly_samples AS
     WITH
         -- Get all times at which any workspace for an owner has changed
         workspace_change_events AS (
             SELECT owner_pk, event_timestamp
-            FROM workspace_operations.workspace_resource_counts
+            FROM public.jkeiser_workspace_resource_counts
             JOIN workspace_operations.workspace_owners USING (workspace_id)
         ),
         -- Get times at which we want to sample workspace resource counts
@@ -143,29 +153,42 @@ CREATE OR REPLACE VIEW workspace_operations.workspace_hourly_samples AS
             UNION
             (SELECT owner_pk, hour_start, hour_start FROM workspace_operations.owner_si_hours)
         )
-    SELECT owner_pk, hour_start, sample_time, workspace_id, event_timestamp, resource_count
+    SELECT owner_pk,
+           hour_start,
+           sample_time,
+           workspace_id,
+           event_timestamp,
+           resource_count,
+           -- prev_resource_count is only different if this event happened at the sample time
+           CASE WHEN sample_time = event_timestamp THEN prev_resource_count ELSE resource_count END AS prev_resource_count
       FROM sample_times
       JOIN workspace_operations.workspace_owners USING (owner_pk)
-      JOIN workspace_operations.workspace_resource_counts USING (workspace_id)
+      JOIN public.jkeiser_workspace_resource_counts USING (workspace_id)
      WHERE sample_time >= event_timestamp
        AND (next_event_timestamp IS NULL OR sample_time < next_event_timestamp)
 WITH NO SCHEMA BINDING;
 
 -- Get the maximum resource count for each owner at each hour (and the time at which it occurred)
-CREATE OR REPLACE VIEW workspace_operations.owner_resource_hours AS
+CREATE OR REPLACE VIEW public.jkeiser_owner_resource_hours AS
 WITH
     owner_samples AS (
         SELECT owner_pk,
                hour_start,
                sample_time,
                SUM(resource_count) AS owner_resource_count,
-               ROW_NUMBER() OVER (PARTITION BY owner_pk, hour_start ORDER BY owner_resource_count DESC) AS resource_count_order
-          FROM workspace_operations.workspace_hourly_samples
+               SUM(prev_resource_count) AS owner_prev_resource_count,
+               -- We want to pick the largest resource count for each owner at each hour
+               ROW_NUMBER() OVER (PARTITION BY owner_pk, hour_start ORDER BY owner_resource_count DESC, sample_time) AS resource_count_order
+          FROM public.jkeiser_workspace_hourly_samples
          GROUP BY owner_pk, hour_start, sample_time
     )
-    SELECT owner_pk, hour_start, sample_time, owner_resource_count AS resource_count
+    SELECT owner_pk,
+           hour_start,
+           sample_time,
+           owner_resource_count AS resource_count,
+           owner_prev_resource_count AS prev_resource_count
       FROM owner_samples
-      WHERE resource_count_order = 1
+     WHERE resource_count_order = 1
 WITH NO SCHEMA BINDING;
 
 -- Get the resource counts for all workspaces at the point of the maximum resource count of
