@@ -29,3 +29,11 @@ jobs:
         run: |
           cd bin/hoist
           cargo run -- upload-all-specs -y --non-interactive --max-concurrent 25 -t ../clover/si-specs
+
+      - name: Update Module Cache in Tools Prod
+        run: |
+          curl -X POST "https://tools.systeminit.com/api/v2/admin/update_module_cache" -H "Authorization: Bearer ${{ secrets.SI_PRODUCTION_SAAS_WORKSPACE_API_TOKEN }}"
+
+      - name: Update Module Cache in Prod
+        run: |
+          curl -X POST "https://app.systeminit.com/api/v2/admin/update_module_cache" -H "Authorization: Bearer ${{ secrets.SI_TECHNICAL_OPERATIONS_WORKSPACE_TOKEN }}"
