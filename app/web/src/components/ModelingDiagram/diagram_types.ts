@@ -20,8 +20,6 @@ import {
   SOCKET_TOP_MARGIN,
 } from "./diagram_constants";
 
-const featureFlagsStore = useFeatureFlagsStore();
-
 export type Bounds = {
   left: number;
   top: number;
@@ -78,6 +76,7 @@ abstract class DiagramNodeHasSockets extends DiagramElementData {
     super();
     this.sockets =
       def.sockets?.map((s) => new DiagramSocketData(this, s)) || [];
+    const featureFlagsStore = useFeatureFlagsStore();
     if (featureFlagsStore.SIMPLE_SOCKET_UI) {
       this.diagramSockets = [
         ...this.diagramSocketsLeft(),
@@ -243,6 +242,7 @@ abstract class DiagramNodeHasSockets extends DiagramElementData {
       socket.position = { x, y };
       layout.push(socket as DiagramSocketDataWithPosition);
     }
+    const featureFlagsStore = useFeatureFlagsStore();
     const socketGapMult = featureFlagsStore.SIMPLE_SOCKET_UI
       ? numLeftSimple
       : numLeft;
