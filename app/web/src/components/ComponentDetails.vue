@@ -160,7 +160,22 @@
                 />
               </Inline>
             </template>
-            <AssetActionsDetails :component="props.component" />
+            <template
+              v-if="
+                ffStore.FRONTEND_ARCH_VIEWS &&
+                ffStore.BIFROST_ACTIONS &&
+                viewStore.selectedComponentId
+              "
+            >
+              <BifrostAssetActionsDetails
+                :componentId="component.def.id"
+                :component="component"
+              />
+            </template>
+            <template v-else
+              >.selectedComponentId
+              <AssetActionsDetails :component="props.component" />
+            </template>
           </TabGroupItem>
           <TabGroupItem
             v-if="funcStore.managementFunctionsForSelectedComponent.length > 0"
@@ -197,6 +212,8 @@ import { useQualificationsStore } from "@/store/qualifications.store";
 import { ComponentType } from "@/api/sdf/dal/schema";
 import { useFuncStore } from "@/store/func/funcs.store";
 import { useViewsStore } from "@/store/views.store";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
+import BifrostAssetActionsDetails from "@/mead-hall/AssetActionsDetails.vue";
 import ComponentCard from "./ComponentCard.vue";
 import DetailsPanelTimestamps from "./DetailsPanelTimestamps.vue";
 import ComponentDetailsManagement from "./ComponentDetailsManagement.vue";
@@ -230,6 +247,7 @@ const viewStore = useViewsStore();
 const qualificationsStore = useQualificationsStore();
 const changeSetsStore = useChangeSetsStore();
 const funcStore = useFuncStore();
+const ffStore = useFeatureFlagsStore();
 
 const modelingEventBus = componentsStore.eventBus;
 

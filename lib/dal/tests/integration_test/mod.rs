@@ -13,6 +13,7 @@ mod frame;
 mod func;
 mod input_sources;
 mod management;
+mod materialized_view;
 mod module;
 mod node_weight;
 mod pkg;

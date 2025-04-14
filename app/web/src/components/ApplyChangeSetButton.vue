@@ -33,7 +33,20 @@
       />
     </template>
 
-    <ApprovalFlowModal ref="approvalFlowModalRef" votingKind="merge" />
+    <template
+      v-if="
+        featureFlagsStore.FRONTEND_ARCH_VIEWS &&
+        featureFlagsStore.BIFROST_ACTIONS
+      "
+    >
+      <BifrostApprovalFlowModal
+        ref="bifrostApprovalFlowModalRef"
+        votingKind="merge"
+      />
+    </template>
+    <template v-else>
+      <ApprovalFlowModal ref="approvalFlowModalRef" votingKind="merge" />
+    </template>
   </VButton>
 </template>
 
@@ -50,11 +63,14 @@ import clsx from "clsx";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { useStatusStore } from "@/store/status.store";
 import { useActionsStore } from "@/store/actions.store";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { ChangeSetStatus } from "@/api/sdf/dal/change_set";
+import BifrostApprovalFlowModal from "@/mead-hall/ApprovalFlowModal.vue";
 import ApprovalFlowModal from "./ApprovalFlowModal.vue";
 
 const actionsStore = useActionsStore();
 const changeSetsStore = useChangeSetsStore();
+const featureFlagsStore = useFeatureFlagsStore();
 const statusStore = useStatusStore();
 
 const displayCount = computed(() => actionsStore.proposedActions.length);
@@ -65,9 +81,19 @@ const applyChangeSetReqStatus =
 const approvalFlowModalRef = ref<InstanceType<typeof ApprovalFlowModal> | null>(
   null,
 );
+const bifrostApprovalFlowModalRef = ref<InstanceType<
+  typeof BifrostApprovalFlowModal
+> | null>(null);
 
 const openApprovalFlowModal = () => {
-  approvalFlowModalRef.value?.open();
+  if (
+    featureFlagsStore.FRONTEND_ARCH_VIEWS &&
+    featureFlagsStore.BIFROST_ACTIONS
+  ) {
+    bifrostApprovalFlowModalRef.value?.open();
+  } else {
+    approvalFlowModalRef.value?.open();
+  }
 };
 
 const disableApplyButton = computed(
