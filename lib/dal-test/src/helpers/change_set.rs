@@ -224,13 +224,18 @@ impl ChangeSetTestHelpers {
 
     /// Wait for the changeset's DVUs to be completely processed before continuing
     pub async fn wait_for_dvu(ctx: &DalContext) -> Result<()> {
+        let mut iters = 5_000;
         loop {
+            if iters <= 0 {
+                panic!("wait_for_dvu timed out");
+            }
             let mut ctx_clone = ctx.clone();
             ctx_clone.update_snapshot_to_visibility().await?;
             if !DependentValueRoot::roots_exist(&ctx_clone).await? {
                 break;
             }
             tokio::time::sleep(Duration::from_millis(25)).await;
+            iters -= 1;
         }
 
         Ok(())

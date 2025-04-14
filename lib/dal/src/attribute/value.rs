@@ -654,8 +654,10 @@ impl AttributeValue {
         // Gather the raw func bindings args into a map.
         let mut func_binding_args: HashMap<String, Vec<Value>> = HashMap::new();
         let apa_ids = AttributePrototypeArgument::list_ids_for_prototype(ctx, prototype_id).await?;
+        warn!("apa_ids: {:?}", apa_ids);
         for apa_id in apa_ids {
             let apa = AttributePrototypeArgument::get_by_id(ctx, apa_id).await?;
+            warn!("apa: {:?}", apa);
             let expected_source_component_id = apa
                 .targets()
                 .map(|targets| targets.source_component_id)
@@ -684,6 +686,7 @@ impl AttributeValue {
                     .get_func_argument_node_weight()?
                     .name()
                     .to_owned();
+                warn!("func_arg_name: {}", func_arg_name);
                 let values_for_arg =
                     match AttributePrototypeArgument::value_source_by_id(ctx, apa_id)
                         .await?
@@ -705,6 +708,8 @@ impl AttributeValue {
                         other_source => {
                             let mut values = vec![];
 
+                            warn!("other_source: {:?}", other_source);
+
                             for av_id in other_source
                                 .attribute_values_for_component_id(
                                     ctx,
@@ -724,6 +729,7 @@ impl AttributeValue {
                             values
                         }
                     };
+                warn!("values_for_arg: {:?}", values_for_arg);
 
                 func_binding_args
                     .entry(func_arg_name)

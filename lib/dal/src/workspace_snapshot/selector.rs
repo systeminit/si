@@ -543,12 +543,9 @@ impl WorkspaceSnapshotSelector {
                     .await
             }
             Self::SplitSnapshot(snapshot) => {
-                dbg!(&component_id);
-                dbg!(
-                    snapshot
-                        .schema_variant_id_for_component_id(component_id)
-                        .await
-                )
+                snapshot
+                    .schema_variant_id_for_component_id(component_id)
+                    .await
             }
         }
     }

@@ -69,16 +69,15 @@ RUST_RESOURCE_ARGS = {
 # get around this. If we get both, greedily choose the standard mode.
 def buck2_mode_and_targets(targets):
     targets_str = " ".join(targets)
-    return "@//mode/debug {}".format(targets_str)
 
-#    if cfg.get("standard-rustc-build-mode", False):
-#        return targets_str
-#    if cfg.get("debug-rustc-build-mode", False):
-#        return "@//mode/debug {}".format(targets_str)
-#    if cfg.get("debug-no-rebaser-rustc-build-mode", False) and "//bin/rebaser:rebaser" not in targets:
-#        return "@//mode/debug {}".format(targets_str)
-#
-#    return "@//mode/release {}".format(targets_str)
+    if cfg.get("standard-rustc-build-mode", False):
+        return targets_str
+    if cfg.get("debug-rustc-build-mode", False):
+        return "@//mode/debug {}".format(targets_str)
+    if cfg.get("debug-no-rebaser-rustc-build-mode", False) and "//bin/rebaser:rebaser" not in targets:
+        return "@//mode/debug {}".format(targets_str)
+
+    return "@//mode/release {}".format(targets_str)
 
 def buck2_build_deps(build_targets):
     return [

@@ -705,6 +705,7 @@ where
         let subgraph = self.get_subgraph_mut(subgraph_idx as usize)?;
 
         subgraph.remove_node(node_index.index);
+        self.id_to_split_graph_index.remove(&node_id);
 
         Ok(())
     }
@@ -867,8 +868,6 @@ where
             .ok_or(SplitGraphError::NodeNotFound(to_id))?;
 
         let custom_edge_weight = SplitGraphEdgeWeight::Custom(edge.clone());
-
-        let from_node = self.node_weight(from_id);
 
         let from_subgraph_idx = from_index.subgraph;
         let to_subgraph_idx = to_index.subgraph;
@@ -1072,6 +1071,7 @@ where
         for subgraph in self.subgraphs.iter_mut() {
             subgraph.cleanup();
         }
+        self.id_to_split_graph_index.clear();
     }
 
     pub fn cleanup_and_merkle_tree_hash(&mut self) {

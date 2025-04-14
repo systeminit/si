@@ -1041,7 +1041,7 @@ impl SplitSnapshot {
         }
 
         let contained: Vec<ComponentId> = working_copy
-            .edges_directed_custom(component_id, Outgoing)?
+            .edges_directed(component_id, Outgoing)?
             .filter(|edge_ref| {
                 matches!(
                     edge_ref.weight().custom().map(|c| c.kind()),
@@ -1263,8 +1263,8 @@ impl InputSocketExt for SplitSnapshot {
                 EdgeWeightKindDiscriminants::Socket,
             )?
             .filter_map(
-                |edge_ref| match working_copy.node_weight(edge_ref.target()) {
-                    Some(NodeWeight::AttributeValue(_)) => Some(edge_ref.target().into()),
+                |edge_ref| match working_copy.node_weight(edge_ref.source()) {
+                    Some(NodeWeight::AttributeValue(_)) => Some(edge_ref.source().into()),
                     _ => None,
                 },
             )

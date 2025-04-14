@@ -1,6 +1,7 @@
 use core::fmt;
 
 use si_events::ulid::Ulid;
+use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{
@@ -124,14 +125,20 @@ impl ValueSource {
         // one in particular treats OrphanedAttributeValue as an error.
         let mut result = vec![];
 
-        for value_id in self.all_attribute_values_everywhere(ctx).await? {
+        let all_attribute_values = self.all_attribute_values_everywhere(ctx).await?;
+        warn!("all_attribute_values: {:?}", all_attribute_values);
+
+        for value_id in all_attribute_values {
             let value_component_id = match AttributeValue::component_id(ctx, value_id).await {
                 Ok(component_id) => Some(component_id),
                 // If this is a child value of a value set by a dynamic
                 // function, we might encounter an orphaned value (since we're
                 // walking backwards from the prop to the values here). That's
                 // fine, just skip it. It will be cleaned up on write.
-                Err(AttributeValueError::OrphanedAttributeValue(_)) => None,
+                Err(AttributeValueError::OrphanedAttributeValue(_)) => {
+                    warn!("orphaned value encountered");
+                    None
+                }
                 Err(other_err) => Err(ValueSourceError::AttributeValue(other_err.to_string()))?,
             };
 

@@ -88,6 +88,7 @@ pub async fn perform_rebase(
     server_tracker: &TaskTracker,
     features: Features,
 ) -> RebaseResult<RebaseStatus> {
+    let start = Instant::now();
     let workspace = get_workspace(ctx).await?;
     let updating_head = request.change_set_id == workspace.default_change_set_id();
 
@@ -212,6 +213,8 @@ pub async fn perform_rebase(
             event.publish_immediately(ctx).await?;
         }
     }
+
+    warn!("rebase elapsed: {:?}", start.elapsed());
 
     Ok(RebaseStatus::Success {
         updates_performed: request.updates_address,

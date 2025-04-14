@@ -191,11 +191,13 @@ impl Connectable {
     }
 
     pub async fn run_management_func(self, ctx: &mut DalContext) -> Result<Value> {
+        dbg!("run_management_func");
         ExpectComponent(self.id)
             .execute_management_func(ctx, ExpectFunc(self.test.management_func_id))
             .await;
+        dbg!("management_func executed");
         ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
-
+        dbg!("committing");
         get_attribute_value_for_component(ctx, self.id, &["root", "domain", "ManagedValues"]).await
     }
 

@@ -577,6 +577,7 @@ async fn paste_child_only(ctx: &mut DalContext) -> Result<()> {
     let parent = test.create_parent(ctx, "parent").await?;
     let child = test.create_connectable(ctx, "child", None, []).await?;
     Frame::upsert_parent(ctx, child.id, parent.id).await?;
+    dbg!(child.domain(ctx).await?);
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
     assert_eq!(
         json!({
@@ -795,12 +796,14 @@ async fn paste_manager(ctx: &mut DalContext) -> Result<()> {
 #[test]
 async fn paste_managed(ctx: &mut DalContext) -> Result<()> {
     let test = ConnectableTest::setup(ctx).await;
+    dbg!("a");
 
     // manager and original
     let manager = test.create_manager(ctx, "manager").await?;
     let original = test.create_connectable(ctx, "original", None, []).await?;
     Component::manage_component(ctx, manager.id, original.id).await?;
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+    dbg!("b");
 
     // Copy/paste original -> pasted
     let pasted = {
@@ -815,15 +818,19 @@ async fn paste_managed(ctx: &mut DalContext) -> Result<()> {
         Connectable::new(test, pasted[0])
     };
 
+    dbg!("c");
+
     // Set the pasted component's value so we can tell the difference
     pasted.set_value(ctx, "pasted").await?;
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+    dbg!("d");
 
     // Make sure the original management function is unaltered
     assert_eq!(
         json!(["original", "pasted"]),
         manager.run_management_func(ctx).await?
     );
+    dbg!("d");
 
     Ok(())
 }
