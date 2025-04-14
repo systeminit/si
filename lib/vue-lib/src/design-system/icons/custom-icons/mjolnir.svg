@@ -1,0 +1,12 @@
+<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+  <!-- Transparent background is default -->
+  
+  <!-- Hammer handle -->
+  <rect x="11" y="10" width="2" height="11" fill="currentColor"/>
+  
+  <!-- Hammer head  -->
+  <path d="M8 4h8v6h-8z" fill="currentColor"/>
+  
+  <!-- Handle binding/wrap -->
+  <rect x="10.5" y="9.5" width="3" height="1.5" fill="currentColor"/>
+</svg>

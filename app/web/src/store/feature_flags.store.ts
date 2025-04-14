@@ -19,6 +19,7 @@ const FLAG_MAPPING = {
   FLOATING_CONNECTION_MENU: "floating-connection-menu",
   CONVERT_TO_VIEW: "convert-to-view",
   SIMPLE_SOCKET_UI: "simple-socket-ui",
+  SQLITE_TOOLS: "sqlite-tools",
 };
 
 const WORKSPACE_FLAG_MAPPING = {

@@ -41,10 +41,6 @@
         />
       </template>
 
-      <div v-if="ffStore.FRONTEND_ARCH_VIEWS && false">
-        <IconButton icon="circle-stack" size="md" @click="odin()" />
-      </div>
-
       <div>
         <ViewCard
           v-for="view in sortedViews"
@@ -95,7 +91,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/vue-query";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { useViewsStore } from "@/store/views.store";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
-import { bifrost, odin, makeKey, makeArgs } from "@/store/realtime/heimdall";
+import { bifrost, makeKey, makeArgs } from "@/store/realtime/heimdall";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { ViewDescription } from "@/api/sdf/dal/views";
 import { BifrostView, BifrostViewList } from "@/workers/types/dbinterface";

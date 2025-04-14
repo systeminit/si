@@ -203,6 +203,9 @@ import FrameUp from "./custom-icons/frameup.svg?raw";
 import FrameDown from "./custom-icons/framedown.svg?raw";
 import InputConnection from "./custom-icons/input-connection.svg?raw";
 import OutputConnection from "./custom-icons/output-connection.svg?raw";
+import Odin from "./custom-icons/odin.svg?raw";
+import Niflheim from "./custom-icons/snowflake.svg?raw";
+import Mjolnir from "./custom-icons/mjolnir.svg?raw";
 
 // restricting the type here (Record<string, FunctionalComponent>) kills our IconName type below
 /* eslint sort-keys: "error" */
@@ -300,12 +303,15 @@ export const ICONS = Object.freeze({
   "minus-hex": MinusHex,
   "minus-hex-outline": MinusHexOutline,
   "minus-square": MinusSquare,
+  mjolnir: Mjolnir,
   moon: Moon,
   "mouse-and-touchpad": MaterialSymbolsLightTouchpadMouseRounded,
   "mouse-scroll": IconoirMouseScrollWheel,
   multiselect: Boxes,
   "nested-arrow-right": NestedArrowRight,
+  niflheim: Niflheim,
   none: EmptyIcon,
+  odin: Odin,
   option: MaterialSymbolsKeyboardOptionKey,
   "output-connection": OutputConnection,
   "output-socket": OutputSocket,

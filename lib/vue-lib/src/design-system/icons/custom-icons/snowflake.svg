@@ -1,0 +1,49 @@
+<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+  <!-- Main vertical line -->
+  <line x1="12" y1="2" x2="12" y2="22" stroke="black" stroke-width="1.2"/>
+  
+  <!-- Main horizontal line -->
+  <line x1="2" y1="12" x2="22" y2="12" stroke="black" stroke-width="1.2"/>
+  
+  <!-- Diagonal lines (top-left to bottom-right) -->
+  <line x1="5" y1="5" x2="19" y2="19" stroke="black" stroke-width="1.2"/>
+  
+  <!-- Diagonal lines (top-right to bottom-left) -->
+  <line x1="19" y1="5" x2="5" y2="19" stroke="black" stroke-width="1.2"/>
+  
+  <!-- Small decorative branches -->
+  <!-- Top branch -->
+  <line x1="10" y1="4" x2="12" y2="6" stroke="black" stroke-width="0.8"/>
+  <line x1="14" y1="4" x2="12" y2="6" stroke="black" stroke-width="0.8"/>
+  
+  <!-- Right branch -->
+  <line x1="20" y1="10" x2="18" y2="12" stroke="black" stroke-width="0.8"/>
+  <line x1="20" y1="14" x2="18" y2="12" stroke="black" stroke-width="0.8"/>
+  
+  <!-- Bottom branch -->
+  <line x1="10" y1="20" x2="12" y2="18" stroke="black" stroke-width="0.8"/>
+  <line x1="14" y1="20" x2="12" y2="18" stroke="black" stroke-width="0.8"/>
+  
+  <!-- Left branch -->
+  <line x1="4" y1="10" x2="6" y2="12" stroke="black" stroke-width="0.8"/>
+  <line x1="4" y1="14" x2="6" y2="12" stroke="black" stroke-width="0.8"/>
+  
+  <!-- Diagonal branch (top-left) -->
+  <line x1="6" y1="6" x2="8" y2="8" stroke="black" stroke-width="0.8"/>
+  <line x1="8" y1="6" x2="8" y2="8" stroke="black" stroke-width="0.8"/>
+  
+  <!-- Diagonal branch (top-right) -->
+  <line x1="18" y1="6" x2="16" y2="8" stroke="black" stroke-width="0.8"/>
+  <line x1="16" y1="6" x2="16" y2="8" stroke="black" stroke-width="0.8"/>
+  
+  <!-- Diagonal branch (bottom-right) -->
+  <line x1="18" y1="18" x2="16" y2="16" stroke="black" stroke-width="0.8"/>
+  <line x1="16" y1="18" x2="16" y2="16" stroke="black" stroke-width="0.8"/>
+  
+  <!-- Diagonal branch (bottom-left) -->
+  <line x1="6" y1="18" x2="8" y2="16" stroke="black" stroke-width="0.8"/>
+  <line x1="8" y1="18" x2="8" y2="16" stroke="black" stroke-width="0.8"/>
+  
+  <!-- Center circle -->
+  <circle cx="12" cy="12" r="1.5" fill="black"/>
+</svg>

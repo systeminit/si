@@ -91,8 +91,9 @@ export interface DBInterface {
         sql: FlexibleString;
       },
   ): SqlValue[][];
+  bobby(): Promise<void>;
   // show me everything
-  odin(): object;
+  odin(changeSetId: ChangeSetId): object;
 }
 
 export class Ragnarok extends Error {
