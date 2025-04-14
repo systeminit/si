@@ -330,9 +330,9 @@ async fn build_mv_inner(
 }
 
 macro_rules! add_reference_dependencies_to_dependency_graph {
-    ($dependency_graph:expr, $mv_reference_kind:expr, $mv:ident $(,)?) => {
+    ($dependency_graph:expr, $mv:ident $(,)?) => {
         for reference_kind in <$mv as MaterializedView>::reference_dependencies() {
-            $dependency_graph.id_depends_on($mv_reference_kind, *reference_kind);
+            $dependency_graph.id_depends_on(<$mv as MaterializedView>::kind(), *reference_kind);
         }
     };
 }
@@ -346,17 +346,9 @@ fn mv_dependency_graph() -> Result<DependencyGraph<ReferenceKind>, MaterializedV
     let mut dependency_graph = DependencyGraph::new();
 
     // All `MaterializedView` types must be covered here for them to be built.
-    add_reference_dependencies_to_dependency_graph!(dependency_graph, ReferenceKind::View, ViewMv);
-    add_reference_dependencies_to_dependency_graph!(
-        dependency_graph,
-        ReferenceKind::ViewList,
-        ViewListMv,
-    );
-    add_reference_dependencies_to_dependency_graph!(
-        dependency_graph,
-        ReferenceKind::SchemaVariantCategories,
-        SchemaVariantCategoriesMv,
-    );
+    add_reference_dependencies_to_dependency_graph!(dependency_graph, ViewMv);
+    add_reference_dependencies_to_dependency_graph!(dependency_graph, ViewListMv,);
+    add_reference_dependencies_to_dependency_graph!(dependency_graph, SchemaVariantCategoriesMv,);
 
     // The MvIndex depends on everything else, but doesn't define any
     // `MaterializedView::reference_dependencies()` directly.
