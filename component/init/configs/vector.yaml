@@ -17,14 +17,20 @@ transforms:
     inputs: ["$SI_SERVICE-journal", "sdf-migration"]
     source: |-
       if exists(.message) {
-        level_match, err = parse_regex(.message, r'^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d+Z\\s+([A-Z]+)\\s')
+        message = string!(.message)
 
-        if err == null && exists(level_match[1]) {
-            .level = level_match[1]
-          } else {
-            .level = "INFO"
-          }
+        if contains(message, "ERROR") {
+          .level = "error"
+        } else if contains(message, "WARN") {
+          .level = "warn"
+        } else if contains(message, "DEBUG") {
+          .level = "debug"
+        } else if contains(message, "TRACE") {
+          .level = "trace"
+        } else {
+          .level = "info"
         }
+      }
 
 sinks:
   cloudwatch:
