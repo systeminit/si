@@ -33,6 +33,7 @@ use crate::func::{
 use crate::management::prototype::{
     ManagementFuncExecutedPayload, ManagementOperationsCompletePayload,
 };
+use crate::module::ModulesUpdatedPayload;
 use crate::pkg::{
     ImportWorkspaceVotePayload, WorkspaceActorPayload, WorkspaceImportApprovalActorPayload,
 };
@@ -127,6 +128,7 @@ pub enum WsPayload {
     ManagementFuncExecuted(ManagementFuncExecutedPayload),
     ManagementOperationsComplete(ManagementOperationsCompletePayload),
     ModuleImported(Vec<si_frontend_types::SchemaVariant>),
+    ModulesUpdated(ModulesUpdatedPayload),
     Online(OnlinePayload),
     PromptUpdated(PromptUpdatedPayload),
     ResourceRefreshed(ComponentUpdatedPayload),

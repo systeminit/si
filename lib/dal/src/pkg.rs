@@ -26,7 +26,7 @@ use crate::{
 };
 use crate::{AttributePrototypeId, FuncId, HistoryEventError, PropId, PropKind};
 
-use crate::module::ModuleError;
+use crate::module::{ModuleError, ModulesUpdatedPayload};
 use crate::socket::connection_annotation::ConnectionAnnotationError;
 pub use import::{import_pkg, import_pkg_from_pkg, ImportOptions};
 
@@ -290,14 +290,7 @@ pub struct WorkspaceImportPayload {
     workspace_pk: Option<WorkspacePk>,
     user_pk: Option<UserPk>,
 }
-//
-// #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
-// #[serde(rename_all = "camelCase")]
-// pub struct WorkspaceExportPayload {
-//     workspace_pk: Option<WorkspacePk>,
-//     user_pk: Option<UserPk>,
-// }
-//
+
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct ImportWorkspaceVotePayload {
@@ -329,6 +322,16 @@ impl WsEvent {
         schema_variants: Vec<si_frontend_types::SchemaVariant>,
     ) -> WsEventResult<Self> {
         WsEvent::new(ctx, WsPayload::ModuleImported(schema_variants)).await
+    }
+
+    pub async fn modules_updated(ctx: &DalContext) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::ModulesUpdated(ModulesUpdatedPayload {
+                change_set_id: ctx.change_set_id(),
+            }),
+        )
+        .await
     }
 
     pub async fn import_workspace_vote(

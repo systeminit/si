@@ -1,5 +1,6 @@
 import { defineStore } from "pinia";
 import * as _ from "lodash-es";
+import { useToast } from "vue-toastification";
 import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 import { URLPattern } from "@si/vue-lib";
 import { useWorkspacesStore } from "@/store/workspaces.store";
@@ -127,6 +128,7 @@ export const useModuleStore = () => {
   const workspaceId = workspacesStore.selectedWorkspacePk;
   const routerStore = useRouterStore();
   const realtimeStore = useRealtimeStore();
+  const toast = useToast();
 
   const API_PREFIX = [
     "v2",
@@ -146,6 +148,9 @@ export const useModuleStore = () => {
       `ws${workspaceId || "NONE"}/cs${changeSetId || "NONE"}/modules`,
       {
         state: () => ({
+          updatingModulesOperationId: null as string | null,
+          updatingModulesOperationError: undefined as string | undefined,
+          updatingModulesOperationRunning: false as boolean,
           upgradeableModules: {} as Record<SchemaVariantId, LatestModule>,
           contributableModules: [] as SchemaVariantId[],
           localModulesByName: {} as Record<ModuleName, LocalModuleSummary>,
@@ -403,7 +408,11 @@ export const useModuleStore = () => {
               changeSetsStore.creatingChangeSet = true;
             }
 
-            return new ApiRequest<{ id: string }>({
+            this.updatingModulesOperationRunning = true;
+            this.updatingModulesOperationId = null;
+            this.updatingModulesOperationError = undefined;
+
+            return new ApiRequest<string>({
               method: "post",
               url: "/module/upgrade_modules",
               keyRequestStatusBy: schemaIds,
@@ -411,12 +420,15 @@ export const useModuleStore = () => {
                 schemaIds,
                 ...getVisibilityParams(),
               },
+              optimistic: () => {
+                toast("Upgrading modules...");
+              },
               onFail: () => {
                 changeSetsStore.creatingChangeSet = false;
+                this.updatingModulesOperationRunning = false;
               },
-              onSuccess: () => {
-                // reset installed list
-                this.SYNC();
+              onSuccess: (response) => {
+                this.updatingModulesOperationId = response;
               },
             });
           },
@@ -534,6 +546,10 @@ export const useModuleStore = () => {
                 if (id === this.exportingWorkspaceOperationId) {
                   this.exportingWorkspaceOperationRunning = false;
                 }
+                if (id === this.updatingModulesOperationId) {
+                  this.updatingModulesOperationRunning = false;
+                  this.SYNC();
+                }
               },
             },
             {
@@ -557,6 +573,10 @@ export const useModuleStore = () => {
                 if (id === this.exportingWorkspaceOperationId) {
                   this.exportingWorkspaceOperationError = error;
                   this.exportingWorkspaceOperationRunning = false;
+                }
+                if (id === this.updatingModulesOperationId) {
+                  this.updatingModulesOperationError = error;
+                  this.updatingModulesOperationRunning = false;
                 }
               },
             },

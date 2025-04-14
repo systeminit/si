@@ -635,6 +635,13 @@ export const useAssetStore = (forceChangeSetId?: ChangeSetId) => {
             },
           },
           {
+            eventType: "ModulesUpdated",
+            callback: async (data) => {
+              if (data.changeSetId !== changeSetId) return;
+              this.LOAD_SCHEMA_VARIANT_LIST();
+            },
+          },
+          {
             eventType: "SchemaVariantUpdated",
             callback: (variant, metadata) => {
               if (metadata.change_set_id !== changeSetId) return;

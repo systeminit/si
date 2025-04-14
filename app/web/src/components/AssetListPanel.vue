@@ -39,9 +39,11 @@
           />
           <IconButton
             v-if="canUpdate"
-            :loading="updateModulesReqStatus.isPending"
+            :loading="moduleStore.updatingModulesOperationRunning"
+            :disabled="moduleStore.updatingModulesOperationRunning"
             icon="code-deployed"
             loadingIcon="loader"
+            loadingText="Upgrading Assets"
             size="sm"
             tooltip="Update All"
             tooltipPlacement="top"
@@ -152,7 +154,6 @@ const loadAssetsReqStatus = assetStore.getRequestStatus(
   "LOAD_SCHEMA_VARIANT_LIST",
 );
 const syncModulesReqStatus = moduleStore.getRequestStatus("SYNC");
-const updateModulesReqStatus = moduleStore.getRequestStatus("UPGRADE_MODULES");
 
 const contributeAssetSuccessModalRef = ref<InstanceType<typeof Modal>>();
 const newAssetModalRef = ref<InstanceType<typeof AssetNameModal>>();

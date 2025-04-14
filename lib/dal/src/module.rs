@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use si_events::ulid::Ulid;
 use si_events::ContentHash;
 use si_frontend_types as frontend_types;
+use si_id::ChangeSetId;
 use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -602,4 +603,10 @@ impl Module {
             variant.version().to_string(),
         ))
     }
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug, Eq, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ModulesUpdatedPayload {
+    pub change_set_id: ChangeSetId,
 }
