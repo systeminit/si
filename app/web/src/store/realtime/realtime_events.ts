@@ -238,6 +238,9 @@ export type WsEventPayloadMap = {
   };
 
   ModuleImported: SchemaVariant[];
+  ModulesUpdated: {
+    changeSetId: ChangeSetId;
+  };
   WorkspaceImportBeginApprovalProcess: {
     workspacePk: WorkspacePk;
     userPk: UserId;
