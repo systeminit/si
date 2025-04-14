@@ -62,17 +62,10 @@ pub async fn update_property_editor_value(
         }
     } else {
         AttributeValue::update(&ctx, request.attribute_value_id, request.value.to_owned()).await?;
-        // this is feature flagged! Check if the current workspace has the flag enabled, if so, do this!
-        // If anything goes wrong, just skip this and let the route handler continue
-        if posthog_client
-            .check_feature_flag(
-                "auto-enqueue-update-function".to_owned(),
-                ctx.workspace_pk()?.to_string(),
-            )
-            .await
-            .unwrap_or(false)
-            && request.value != before_value
-        {
+
+        if request.value != before_value {
+            // If the values have changed then we should enqueue an update action
+            // if the values haven't changed then we can skip this update action as it is usually a no-op
             Component::enqueue_relevant_update_actions(&ctx, request.attribute_value_id).await?;
         }
     }
