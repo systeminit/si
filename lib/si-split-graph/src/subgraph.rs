@@ -109,10 +109,14 @@ where
 
     pub(crate) fn add_node(&mut self, node: SplitGraphNodeWeight<N>) -> SubGraphNodeIndex {
         let node_id = node.id();
+        let lineage_id = node.lineage_id();
         let node_index = self.graph.add_node(node);
+        if node_index == NodeIndex::new(2085) {
+            warn!("adding {} at index {:?}", node_id, node_index);
+        }
         self.node_index_by_id.insert(node_id, node_index);
         self.node_indexes_by_lineage_id
-            .entry(node_id)
+            .entry(lineage_id)
             .and_modify(|set| {
                 set.insert(node_index);
             })
@@ -233,7 +237,17 @@ where
         Some(
             order
                 .iter()
-                .filter_map(|id| self.node_index_by_id.get(id).copied())
+                .filter_map(|id| {
+                    let idx = self.node_index_by_id.get(id).copied();
+                    if idx == Some(NodeIndex::new(2085)) {
+                        warn!(
+                            "2085, {}, {:?}",
+                            id,
+                            self.graph.node_weight(idx.clone().unwrap())
+                        );
+                    }
+                    idx
+                })
                 .collect(),
         )
     }
@@ -390,12 +404,25 @@ where
     }
 
     pub(crate) fn remove_node(&mut self, node_index: SubGraphNodeIndex) {
+        let Some((node_id, lineage_id)) = self
+            .graph
+            .node_weight(node_index)
+            .map(|n| (n.id(), n.lineage_id()))
+        else {
+            return;
+        };
+
         let parents: Vec<_> = self
             .graph
             .neighbors_directed(node_index, Incoming)
             .collect();
 
         self.graph.remove_node(node_index);
+        self.node_index_by_id.remove(&node_id);
+        if let Some(lineage_indexes) = self.node_indexes_by_lineage_id.get_mut(&lineage_id) {
+            lineage_indexes.retain(|idx| *idx != node_index);
+        }
+
         parents
             .into_iter()
             .for_each(|parent_idx| self.touch_node(parent_idx));
@@ -450,6 +477,7 @@ where
             self.graph.node_weight_mut(ordering_node_index)
         {
             if !order.contains(&target_id) {
+                let target_id = target_id;
                 order.push(target_id);
             }
             self.add_edge_raw(ordering_node_index, SplitGraphEdgeWeight::Ordinal, to_index);

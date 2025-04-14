@@ -55,6 +55,13 @@ pub enum WorkspaceSnapshotSelector {
 }
 
 impl WorkspaceSnapshotSelector {
+    pub async fn address(&self) -> WorkspaceSnapshotAddress {
+        match self {
+            Self::LegacySnapshot(snap) => snap.id().await,
+            Self::SplitSnapshot(snap) => snap.id().await,
+        }
+    }
+
     pub fn as_legacy_snapshot(&self) -> WorkspaceSnapshotResult<Arc<WorkspaceSnapshot>> {
         match self {
             Self::LegacySnapshot(snap) => Ok(snap.clone()),
@@ -66,6 +73,16 @@ impl WorkspaceSnapshotSelector {
         match self {
             Self::SplitSnapshot(snap) => Ok(snap.clone()),
             _ => Err(WorkspaceSnapshotError::UnexpectedSnapshotKind(self.into())),
+        }
+    }
+
+    pub async fn write(
+        &self,
+        ctx: &DalContext,
+    ) -> WorkspaceSnapshotResult<WorkspaceSnapshotAddress> {
+        match self {
+            Self::LegacySnapshot(snapshot) => snapshot.write(ctx).await,
+            Self::SplitSnapshot(snapshot) => snapshot.write(ctx).await,
         }
     }
 
@@ -526,9 +543,12 @@ impl WorkspaceSnapshotSelector {
                     .await
             }
             Self::SplitSnapshot(snapshot) => {
-                snapshot
-                    .schema_variant_id_for_component_id(component_id)
-                    .await
+                dbg!(&component_id);
+                dbg!(
+                    snapshot
+                        .schema_variant_id_for_component_id(component_id)
+                        .await
+                )
             }
         }
     }

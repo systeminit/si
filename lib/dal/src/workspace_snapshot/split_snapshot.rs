@@ -35,8 +35,9 @@ use crate::{
     prop::PropResult,
     slow_rt,
     socket::input::InputSocketError,
-    ComponentError, DalContext, EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants,
-    InputSocket, NodeWeightDiscriminants, SchemaVariantError, Timestamp,
+    ChangeSetError, ComponentError, DalContext, EdgeWeight, EdgeWeightKind,
+    EdgeWeightKindDiscriminants, InputSocket, NodeWeightDiscriminants, SchemaVariantError,
+    Timestamp,
 };
 
 use super::{
@@ -270,6 +271,38 @@ impl SplitSnapshot {
         Ok((!updates.is_empty()).then_some(updates))
     }
 
+    pub async fn detect_updates(
+        &self,
+        updated: &Self,
+    ) -> WorkspaceSnapshotResult<SplitRebaseBatchVCurrent> {
+        let self_clone = self.clone();
+        let updated_clone = updated.clone();
+
+        Ok(slow_rt::spawn(async move {
+            self_clone
+                .working_copy()
+                .await
+                .detect_updates(&*updated_clone.working_copy().await)
+        })?
+        .await?)
+    }
+
+    #[instrument(
+        name = "split_snapshot.calculate_rebase_batch",
+        level = "info",
+        skip_all
+    )]
+    pub async fn calculate_rebase_batch(
+        base_snapshot: Arc<Self>,
+        updated_snapshot: Arc<Self>,
+    ) -> WorkspaceSnapshotResult<Option<SplitRebaseBatchVCurrent>> {
+        let updates =
+            slow_rt::spawn(async move { base_snapshot.detect_updates(&updated_snapshot).await })?
+                .await??;
+
+        Ok((!updates.is_empty()).then_some(updates))
+    }
+
     #[instrument(name = "split_snapshot.find", level = "debug", skip_all, fields())]
     pub async fn find(
         ctx: &DalContext,
@@ -380,8 +413,6 @@ impl SplitSnapshot {
             "Retries exceeded trying to fetch split snapshot for change set {:?}",
             change_set_id
         );
-
-        dbg!("ici");
 
         Err(WorkspaceSnapshotError::WorkspaceSnapshotNotFetched)
     }
@@ -517,6 +548,8 @@ impl SplitSnapshot {
             Ok::<WorkspaceSnapshotAddress, WorkspaceSnapshotError>(supergraph_address)
         })?
         .await??;
+
+        *self.address.lock().await = supergraph_address;
 
         Ok(supergraph_address)
     }
@@ -812,7 +845,7 @@ impl SplitSnapshot {
         Ok(self
             .working_copy()
             .await
-            .edges_directed_custom(id.into(), Outgoing)?
+            .edges_directed(id.into(), Outgoing)?
             .filter_map(|edge_ref| match edge_ref.weight().custom() {
                 Some(weight) => {
                     if edge_weight_kind_discrim == weight.kind().into() {
@@ -981,7 +1014,7 @@ impl SplitSnapshot {
         }
 
         let sv_id = working_copy
-            .edges_directed_custom(component_id, Outgoing)?
+            .edges_directed(component_id, Outgoing)?
             .find(|edge_ref| {
                 matches!(
                     edge_ref.weight().custom().map(|c| c.kind()),

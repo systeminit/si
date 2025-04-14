@@ -9,6 +9,7 @@ use si_data_pg::{PgError, PgRow};
 use si_events::audit_log::AuditLogKind;
 use si_events::merkle_tree_hash::MerkleTreeHash;
 use si_events::workspace_snapshot::Checksum;
+use si_events::RebaseBatchAddressKind;
 use si_events::{ulid::Ulid, WorkspaceSnapshotAddress};
 use si_id::EntityId;
 use si_layer_cache::LayerDbError;
@@ -21,6 +22,7 @@ use crate::slow_rt::SlowRuntimeError;
 use crate::workspace_snapshot::dependent_value_root::DependentValueRootError;
 use crate::workspace_snapshot::graph::RebaseBatch;
 use crate::workspace_snapshot::selector::WorkspaceSnapshotSelectorDiscriminants;
+use crate::workspace_snapshot::split_snapshot::{SplitRebaseBatchVCurrent, SplitSnapshot};
 use crate::workspace_snapshot::DependentValueRoot;
 use crate::{
     action::{ActionError, ActionId},
@@ -771,6 +773,36 @@ impl ChangeSet {
 
     #[instrument(
         level = "info",
+        name = "change_set.detect_updates_that_will_be_applied_split",
+        skip_all
+    )]
+    pub async fn detect_updates_that_will_be_applied_split(
+        &self,
+        ctx: &DalContext,
+    ) -> ChangeSetResult<Option<SplitRebaseBatchVCurrent>> {
+        let base_change_set_id = self
+            .base_change_set_id
+            .ok_or(ChangeSetError::NoBaseChangeSet(self.id))?;
+
+        let base_snapshot = Arc::new(
+            SplitSnapshot::find_for_change_set(ctx, base_change_set_id)
+                .await
+                .map_err(Box::new)?,
+        );
+
+        Ok(SplitSnapshot::calculate_rebase_batch(
+            base_snapshot,
+            ctx.workspace_snapshot()
+                .map_err(Box::new)?
+                .as_split_snapshot()
+                .map_err(Box::new)?,
+        )
+        .await
+        .map_err(Box::new)?)
+    }
+
+    #[instrument(
+        level = "info",
         name = "change_set.detect_updates_that_will_be_applied_legacy",
         skip_all
     )]
@@ -813,33 +845,46 @@ impl ChangeSet {
             .base_change_set_id
             .ok_or(ChangeSetError::NoBaseChangeSet(self.id))?;
 
+        dbg!("snapshot_kind");
         let snapshot_kind: WorkspaceSnapshotSelectorDiscriminants =
             ctx.workspace_snapshot().map_err(Box::new)?.into();
+        dbg!(&snapshot_kind);
 
-        let maybe_reply_future_and_request_id = match snapshot_kind {
+        let maybe_rebase_batch_address = match snapshot_kind {
             WorkspaceSnapshotSelectorDiscriminants::LegacySnapshot => {
                 if let Some(rebase_batch) =
                     self.detect_updates_that_will_be_applied_legacy(ctx).await?
                 {
-                    let updates_address = ctx.write_legacy_rebase_batch(rebase_batch).await?;
-
-                    let (request_id, reply_fut) = ctx
-                        .run_rebase_from_legacy_change_set_with_reply(
-                            workspace_id,
-                            base_change_set_id,
-                            si_events::RebaseBatchAddressKind::Legacy(updates_address),
-                            self.id,
-                        )
-                        .await?;
-                    Some((reply_fut, request_id))
+                    Some(RebaseBatchAddressKind::Legacy(
+                        ctx.write_legacy_rebase_batch(rebase_batch).await?,
+                    ))
                 } else {
                     None
                 }
             }
-            WorkspaceSnapshotSelectorDiscriminants::SplitSnapshot => todo!(),
+            WorkspaceSnapshotSelectorDiscriminants::SplitSnapshot => {
+                if let Some(rebase_batch) =
+                    self.detect_updates_that_will_be_applied_split(ctx).await?
+                {
+                    Some(RebaseBatchAddressKind::Split(
+                        ctx.write_split_snapshot_rebase_batch(rebase_batch).await?,
+                    ))
+                } else {
+                    None
+                }
+            }
         };
 
-        if let Some((reply_fut, request_id)) = maybe_reply_future_and_request_id {
+        if let Some(rebase_batch_address) = maybe_rebase_batch_address {
+            let (request_id, reply_fut) = ctx
+                .run_rebase_from_change_set_with_reply(
+                    workspace_id,
+                    base_change_set_id,
+                    rebase_batch_address,
+                    self.id,
+                )
+                .await?;
+
             let reply_fut = reply_fut.instrument(info_span!(
                 "rebaser_client.await_response",
                 si.workspace.id = %workspace_id,
@@ -848,11 +893,13 @@ impl ChangeSet {
 
             // Wait on response from Rebaser after request has processed
             let timeout = Duration::from_secs(60);
-            let _reply = time::timeout(timeout, reply_fut)
+            let reply = time::timeout(timeout, reply_fut)
                 .await
                 .map_err(|_elapsed| {
                     TransactionsError::RebaserReplyDeadlineElasped(timeout, request_id)
                 })??;
+
+            dbg!(reply);
         }
 
         self.update_status(ctx, ChangeSetStatus::Applied).await?;

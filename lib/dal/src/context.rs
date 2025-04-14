@@ -440,14 +440,9 @@ impl DalContext {
         &self,
     ) -> Result<Option<WorkspaceSnapshotAddress>, TransactionsError> {
         if let Some(snapshot) = &self.workspace_snapshot {
-            Ok(Some(
-                snapshot
-                    .as_legacy_snapshot()
-                    .map_err(|err| TransactionsError::WorkspaceSnapshot(Box::new(err)))?
-                    .write(self)
-                    .await
-                    .map_err(|err| TransactionsError::WorkspaceSnapshot(Box::new(err)))?,
-            ))
+            Ok(Some(snapshot.write(self).await.map_err(|err| {
+                TransactionsError::WorkspaceSnapshot(Box::new(err))
+            })?))
         } else {
             Ok(None)
         }
@@ -488,7 +483,7 @@ impl DalContext {
             .map_err(Into::into)
     }
 
-    pub async fn run_rebase_from_legacy_change_set_with_reply(
+    pub async fn run_rebase_from_change_set_with_reply(
         &self,
         workspace_pk: WorkspacePk,
         change_set_id: ChangeSetId,

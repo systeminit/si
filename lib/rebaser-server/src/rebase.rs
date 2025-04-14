@@ -244,10 +244,6 @@ async fn rebase_split(
         .await?
         .ok_or(RebaseError::MissingRebaseBatch(request.updates_address))?;
 
-    for update in rebase_batch.as_slice() {
-        dbg!(update);
-    }
-
     to_rebase_workspace_snapshot
         .perform_updates(rebase_batch.as_slice())
         .await?;

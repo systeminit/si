@@ -203,48 +203,10 @@ async fn create_and_determine_lineage(ctx: &DalContext) -> Result<()> {
 
 #[test]
 async fn through_the_wormholes_simple(ctx: &mut DalContext) -> Result<()> {
-    dbg!("we begin");
     let name = "across the universe";
     let component =
         create_component_for_default_schema_name_in_default_view(ctx, "starfield", name).await?;
     let variant_id = Component::schema_variant_id(ctx, component.id()).await?;
-
-    let galaxies_prop_id = Prop::find_prop_id_by_path(
-        ctx,
-        variant_id,
-        &PropPath::new(["root", "domain", "universe", "galaxies"]),
-    )
-    .await?;
-    dbg!(galaxies_prop_id);
-
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
-    dbg!("post first commit");
-    let galaxies_prop_id = Prop::find_prop_id_by_path(
-        ctx,
-        variant_id,
-        &PropPath::new(["root", "domain", "universe", "galaxies"]),
-    )
-    .await?;
-    dbg!(galaxies_prop_id);
-
-    let galaxies_values =
-        Component::attribute_values_for_prop_id(ctx, component.id(), galaxies_prop_id).await?;
-
-    for &value_id in dbg!(&galaxies_values) {
-        let value = AttributeValue::get_by_id(ctx, value_id).await?;
-        dbg!(value.view(ctx).await?);
-    }
-
-    let galaxy = serde_json::json!([{ "sun": "Sol", "planets": 8  }]);
-    AttributeValue::update(ctx, galaxies_values[0], Some(galaxy)).await?;
-
-    let galaxies_values =
-        Component::attribute_values_for_prop_id(ctx, component.id(), galaxies_prop_id).await?;
-
-    for &value_id in dbg!(&galaxies_values) {
-        let value = AttributeValue::get_by_id(ctx, value_id).await?;
-        dbg!(value.view(ctx).await?);
-    }
 
     let rigid_designator_prop_id = Prop::find_prop_id_by_path(
         ctx,
@@ -292,16 +254,19 @@ async fn through_the_wormholes_simple(ctx: &mut DalContext) -> Result<()> {
     )
     .await?;
 
-    // let galaxies_prop_id = Prop::find_prop_id_by_path(
-    //     ctx,
-    //     variant_id,
-    //     &PropPath::new(["root", "domain", "galaxies"]),
-    // )
-    // .await?;
+    let galaxies_prop_id = Prop::find_prop_id_by_path(
+        ctx,
+        variant_id,
+        &PropPath::new(["root", "domain", "universe", "galaxies"]),
+    )
+    .await?;
 
-    // let value_ids =
-    //     Component::attribute_values_for_prop_id(ctx, component.id(), galaxies_prop_id).await?;
-    // dbg!(value_ids);
+    let value_ids =
+        Component::attribute_values_for_prop_id(ctx, component.id(), galaxies_prop_id).await?;
+    for value_id in dbg!(value_ids) {
+        let value = AttributeValue::get_by_id(ctx, value_id).await?;
+        dbg!(value.view(ctx).await?);
+    }
 
     let naming_and_necessity_value_id =
         Component::attribute_values_for_prop_id(ctx, component.id(), naming_and_necessity_prop_id)
@@ -376,6 +341,13 @@ async fn through_the_wormholes_simple(ctx: &mut DalContext) -> Result<()> {
         .view(ctx)
         .await?
         .expect("there is a value for the root value view");
+
+    let value_ids =
+        Component::attribute_values_for_prop_id(ctx, component.id(), galaxies_prop_id).await?;
+    for value_id in dbg!(value_ids) {
+        let value = AttributeValue::get_by_id(ctx, value_id).await?;
+        dbg!(value.view(ctx).await?);
+    }
 
     dbg!("everything ran (?)");
 

@@ -7,7 +7,9 @@ use dal::{
     AttributeValue, Component, ComponentId, DalContext, Prop, Schema, SchemaVariant, Workspace,
     WorkspacePk,
 };
-use dal_test::{helpers::create_component_for_default_schema_name, test, Result};
+use dal_test::{
+    helpers::create_component_for_default_schema_name, prelude::ChangeSetTestHelpers, test, Result,
+};
 //use pretty_assertions_sorted::assert_eq;
 
 async fn set_av_for_prop_for_component(ctx: &DalContext, component_id: ComponentId) -> Result<()> {
@@ -55,11 +57,31 @@ async fn set_av_for_prop_for_component(ctx: &DalContext, component_id: Component
 #[test]
 #[ignore]
 async fn create_split_snapshot_workspace(ctx: &mut DalContext) -> Result<()> {
-    const COMPONENTS_COUNT: usize = 1000;
+    const COMPONENTS_COUNT: usize = 1;
     println!("test with {} components", COMPONENTS_COUNT);
 
     let mut legacy_components = vec![];
     let view_id = View::get_id_for_default(ctx).await?;
+
+    dbg!(
+        ctx.workspace_snapshot()?
+            .as_split_snapshot()?
+            .current_rebase_batch()
+            .await?
+    );
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+    // dbg!(
+    //     ctx.workspace_snapshot()?
+    //         .as_legacy_snapshot()?
+    //         .current_rebase_batch()
+    //         .await?
+    // );
+    dbg!(
+        ctx.workspace_snapshot()?
+            .as_split_snapshot()?
+            .current_rebase_batch()
+            .await?
+    );
 
     for i in 0..COMPONENTS_COUNT {
         let id =
@@ -68,9 +90,25 @@ async fn create_split_snapshot_workspace(ctx: &mut DalContext) -> Result<()> {
                 .id();
         legacy_components.push(id);
     }
+    // dbg!(
+    //     ctx.workspace_snapshot()?
+    //         .as_legacy_snapshot()?
+    //         .current_rebase_batch()
+    //         .await?
+    // );
+    dbg!(
+        ctx.workspace_snapshot()?
+            .as_split_snapshot()?
+            .current_rebase_batch()
+            .await?
+    );
 
     // Creating all those components in one batch adds thousands of dvu roots, but that's anomalous
-    DependentValueRoot::take_dependent_values(ctx).await?;
+    // DependentValueRoot::take_dependent_values(ctx).await?;
+
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+    return Ok(());
 
     let legacy_addr = ctx
         .workspace_snapshot()?

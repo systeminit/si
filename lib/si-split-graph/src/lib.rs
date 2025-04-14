@@ -562,7 +562,14 @@ where
         node: SplitGraphNodeWeight<N>,
     ) -> SplitGraphResult<SplitGraphNodeIndex> {
         let subgraph = self.get_subgraph_mut(subgraph_index as usize)?;
+        let node_id = node.id();
         let node_index = subgraph.add_node(node);
+        if node_index == NodeIndex::new(2085) {
+            warn!(
+                "added node {} to {} at index {:?}",
+                node_id, subgraph_index, node_index
+            );
+        }
 
         Ok(SplitGraphNodeIndex::new(subgraph_index, node_index))
     }
@@ -571,6 +578,9 @@ where
         let node_id = node.id();
         if let Some(split_graph_index) = self.node_id_to_index(node_id) {
             let subgraph = self.get_subgraph_mut(split_graph_index.subgraph as usize)?;
+            if split_graph_index.index == NodeIndex::new(2085) {
+                warn!("replace node {} at index {:?}", node_id, split_graph_index);
+            }
             subgraph.replace_node(split_graph_index.index, SplitGraphNodeWeight::Custom(node));
 
             return Ok(split_graph_index);
@@ -858,6 +868,8 @@ where
 
         let custom_edge_weight = SplitGraphEdgeWeight::Custom(edge.clone());
 
+        let from_node = self.node_weight(from_id);
+
         let from_subgraph_idx = from_index.subgraph;
         let to_subgraph_idx = to_index.subgraph;
         if from_subgraph_idx == to_subgraph_idx {
@@ -910,6 +922,8 @@ where
                 to_index.index,
             )?;
         }
+
+        self.ordered_children(from_id);
 
         Ok(())
     }
@@ -1295,6 +1309,14 @@ where
                     let Some(node_index) = subgraph.node_id_to_index(node_weight.id()) else {
                         continue;
                     };
+                    if node_index == NodeIndex::new(2085) {
+                        warn!(
+                            "replacing node {} at {:?} in subgraph {}",
+                            node_weight.id(),
+                            node_index,
+                            *subgraph_index
+                        );
+                    }
                     subgraph.replace_node(node_index, node_weight.clone());
                 }
                 Update::NewNode {
@@ -1306,10 +1328,26 @@ where
                     };
                     match subgraph.node_id_to_index(node_weight.id()) {
                         Some(existing_index) => {
+                            if existing_index == NodeIndex::new(2085) {
+                                warn!(
+                                    "replacing node {} to subgraph {} in rebaser at index {:?}",
+                                    node_weight.id(),
+                                    *subgraph_index,
+                                    existing_index,
+                                );
+                            }
                             subgraph.replace_node(existing_index, node_weight.clone())
                         }
                         None => {
-                            subgraph.add_node(node_weight.clone());
+                            let index = subgraph.add_node(node_weight.clone());
+                            if index == NodeIndex::new(2085) {
+                                warn!(
+                                    "added node {} to subgraph {} and index {:?} in rebaser",
+                                    node_weight.id(),
+                                    *subgraph_index,
+                                    index,
+                                );
+                            }
                         }
                     }
                 }
