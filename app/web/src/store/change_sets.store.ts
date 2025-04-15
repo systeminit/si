@@ -331,8 +331,10 @@ export function useChangeSetsStore() {
               });
             },
             _delay: 2000,
-            onFail: () => {
-              // todo: show something!
+            onFail: (response) => {
+              if (response.response.data.error.message) {
+                toast(response.response.data.error.message, { timeout: 5000 });
+              }
             },
           });
         },
