@@ -6557,6 +6557,61 @@ dependencies = [
 ]
 
 [[package]]
+name = "sdf-core"
+version = "0.1.0"
+dependencies = [
+ "asset-sprayer",
+ "audit-database",
+ "auth-api-client",
+ "axum 0.6.20",
+ "dal",
+ "derive_more",
+ "edda-client",
+ "frigg",
+ "hyper 0.14.32",
+ "nats-multiplexer-client",
+ "permissions",
+ "remain",
+ "serde",
+ "serde_json",
+ "serde_with",
+ "si-data-spicedb",
+ "si-events",
+ "si-frontend-types",
+ "si-id",
+ "si-jwt-public-key",
+ "si-posthog",
+ "strum",
+ "telemetry",
+ "thiserror 2.0.12",
+ "tokio",
+ "tokio-util",
+ "tracing-tunnel",
+ "ulid",
+ "y-sync",
+]
+
+[[package]]
+name = "sdf-extract"
+version = "0.1.0"
+dependencies = [
+ "asset-sprayer",
+ "auth-api-client",
+ "axum 0.6.20",
+ "dal",
+ "derive_more",
+ "edda-client",
+ "frigg",
+ "sdf-core",
+ "serde",
+ "serde_json",
+ "si-data-nats",
+ "si-events",
+ "si-jwt-public-key",
+ "ulid",
+]
+
+[[package]]
 name = "sdf-server"
 version = "0.1.0"
 dependencies = [
@@ -6597,6 +6652,8 @@ dependencies = [
  "regex",
  "remain",
  "reqwest",
+ "sdf-core",
+ "sdf-extract",
  "sdf-test",
  "serde",
  "serde_json",
@@ -6640,6 +6697,7 @@ dependencies = [
  "dal",
  "dal-test",
  "rand 0.8.5",
+ "sdf-core",
  "sdf-server",
  "si-data-spicedb",
 ]

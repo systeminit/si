@@ -1,6 +1,5 @@
 use asset_sprayer::config::{AssetSprayerConfig, SIOpenAIConfig};
 use audit_database::AuditDatabaseConfig;
-use serde_with::{DeserializeFromStr, SerializeDisplay};
 use si_crypto::VeritechCryptoConfig;
 use si_data_spicedb::SpiceDbConfig;
 use si_jwt_public_key::{JwtAlgo, JwtConfig};
@@ -11,7 +10,6 @@ use std::{
     net::{SocketAddr, ToSocketAddrs},
     path::{Path, PathBuf},
 };
-use strum::{Display, EnumString, VariantNames};
 use ulid::Ulid;
 
 use buck2_resources::Buck2Resources;
@@ -27,40 +25,11 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 pub use dal::MigrationMode;
+pub use sdf_core::workspace_permissions::{WorkspacePermissions, WorkspacePermissionsMode};
 pub use si_settings::{StandardConfig, StandardConfigFile};
 
 const DEFAULT_MODULE_INDEX_URL: &str = "https://module-index.systeminit.com";
 const DEFAULT_AUTH_API_URL: &str = "https://auth-api.systeminit.com";
-
-#[derive(
-    Debug,
-    Default,
-    Clone,
-    Copy,
-    SerializeDisplay,
-    Display,
-    DeserializeFromStr,
-    EnumString,
-    VariantNames,
-    PartialEq,
-    Eq,
-)]
-#[strum(serialize_all = "camelCase")]
-pub enum WorkspacePermissionsMode {
-    #[default]
-    Closed,
-    Allowlist,
-    Open,
-}
-
-impl WorkspacePermissionsMode {
-    #[must_use]
-    pub const fn variants() -> &'static [&'static str] {
-        <WorkspacePermissionsMode as strum::VariantNames>::VARIANTS
-    }
-}
-
-pub type WorkspacePermissions = String;
 
 #[remain::sorted]
 #[derive(Debug, Error)]

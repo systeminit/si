@@ -1,7 +1,7 @@
 use axum::{async_trait, extract::FromRequestParts, http::request::Parts, RequestPartsExt as _};
 use derive_more::{Deref, Into};
 
-use crate::app_state::AppState;
+use sdf_core::app_state::AppState;
 
 use super::{
     workspace::{TargetWorkspaceIdFromToken, WorkspaceAuthorization},

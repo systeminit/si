@@ -8,7 +8,7 @@ use dal::{ChangeSet, ChangeSetId, DalContext};
 use derive_more::{Deref, Into};
 use serde::Deserialize;
 
-use crate::app_state::AppState;
+use sdf_core::app_state::AppState;
 
 use super::{bad_request, internal_error, workspace::WorkspaceAuthorization, ErrorResponse};
 

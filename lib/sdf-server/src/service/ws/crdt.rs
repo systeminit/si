@@ -1,4 +1,4 @@
-use std::{collections::hash_map::Entry, collections::HashMap, sync::Arc};
+use std::{collections::hash_map::Entry, sync::Arc};
 
 use axum::{
     extract::{
@@ -29,6 +29,8 @@ use crate::{
     nats_multiplexer::NatsMultiplexerClients,
 };
 
+pub use sdf_core::BroadcastGroups;
+
 pub mod y;
 
 // TODO: move source of truth to server, generating BroadcastGroup with data from the dal and
@@ -57,8 +59,6 @@ pub enum CrdtError {
 }
 
 pub type CrdtResult<T, E = CrdtError> = Result<T, E>;
-
-pub type BroadcastGroups = Arc<Mutex<HashMap<String, Arc<BroadcastGroup>>>>;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

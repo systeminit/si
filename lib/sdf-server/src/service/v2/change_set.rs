@@ -10,15 +10,15 @@ use dal::{
     workspace_integrations::WorkspaceIntegration, ChangeSetId, DalContext, HistoryEventError,
     WorkspacePk, WsEventError,
 };
-use sdf_core::{
-    api_error::ApiError, app_state::AppState, workspace_permission::WorkspacePermissionLayer,
-};
+use sdf_core::{api_error::ApiError, app_state::AppState, dal_wrapper::DalWrapperError};
 
 use reqwest::Client;
 use serde::Serialize;
 use si_data_spicedb::SpiceDbError;
 use telemetry::prelude::*;
 use thiserror::Error;
+
+use crate::middleware::WorkspacePermissionLayer;
 
 mod apply;
 mod approval_status;

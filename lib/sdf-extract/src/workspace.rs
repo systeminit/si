@@ -11,7 +11,7 @@ use si_events::AuthenticationMethod;
 use si_jwt_public_key::SiJwtClaimRole;
 use std::str::FromStr;
 
-use crate::app_state::AppState;
+use sdf_core::app_state::AppState;
 
 use super::{
     bad_request, internal_error,

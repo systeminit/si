@@ -1,5 +1,11 @@
 /// Adapted from: https://github.com/y-crdt/yrs-warp/blob/14a1abdf9085d71b6071e27c3e53ac5d0e07735d/src/ws.rs
-use std::{collections::HashMap, pin::Pin, sync::Arc, task::Context, task::Poll, time::Duration};
+use std::{
+    collections::HashMap,
+    pin::Pin,
+    sync::Arc,
+    task::{Context, Poll},
+    time::Duration,
+};
 
 use axum::extract::ws::Message;
 use dal::WorkspacePk;
