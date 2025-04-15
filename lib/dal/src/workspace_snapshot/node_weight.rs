@@ -1056,6 +1056,11 @@ impl NodeWeight {
             content_hash,
         ))
     }
+
+    pub fn dot_details(&self) -> String {
+        let discrim: NodeWeightDiscriminants = self.into();
+        discrim.to_string()
+    }
 }
 
 impl From<DeprecatedNodeWeightV1> for NodeWeight {
@@ -1232,6 +1237,10 @@ impl CorrectExclusiveOutgoingEdge for NodeWeight {
 impl si_split_graph::CustomNodeWeight for NodeWeight {
     fn id(&self) -> si_split_graph::SplitGraphNodeId {
         self.id()
+    }
+
+    fn dot_details(&self) -> String {
+        self.dot_details()
     }
 
     fn set_id(&mut self, id: si_split_graph::SplitGraphNodeId) {

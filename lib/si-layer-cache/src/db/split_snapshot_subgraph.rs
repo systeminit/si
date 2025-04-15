@@ -107,7 +107,7 @@ where
         let span = current_span_for_instrument_at!("debug");
 
         let key: Arc<str> = key.to_string().into();
-        const MAX_TRIES: i32 = 2000;
+        const MAX_TRIES: i32 = 25;
         let mut interval = tokio::time::interval(tokio::time::Duration::from_millis(1));
         let mut tried = 0;
         let read_wait = Instant::now();

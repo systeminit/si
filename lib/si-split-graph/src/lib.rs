@@ -37,6 +37,8 @@ pub enum SplitGraphError {
     OrderContentMismatch,
     #[error("reorder must be of the same length as original")]
     OrderLengthMismatch,
+    #[error("too many edges of kind {2} {1:?} to/from {0}")]
+    TooManyEdgesOfKind(SplitGraphNodeId, Direction, String),
     #[error("No subgraph at index: {0}")]
     SubGraphMissing(usize),
     #[error("error reading subgraph with address {0:?}: {1}")]
@@ -353,6 +355,8 @@ pub trait CustomNodeWeight: PartialEq + Eq + Clone + std::fmt::Debug {
     fn set_merkle_tree_hash(&mut self, hash: MerkleTreeHash);
     fn merkle_tree_hash(&self) -> MerkleTreeHash;
     fn node_hash(&self) -> ContentHash;
+
+    fn dot_details(&self) -> String;
 }
 
 pub trait CustomEdgeWeight<K>: std::hash::Hash + PartialEq + Eq + Clone + std::fmt::Debug
@@ -697,6 +701,40 @@ where
     }
 
     pub fn remove_node(&mut self, node_id: SplitGraphNodeId) -> SplitGraphResult<()> {
+        if self.node_id_to_index(node_id).is_none() {
+            return Ok(());
+        }
+
+        // Although removing a node is enough to remove its edges from a single subgraph,
+        // we have to call remove_edge here for all incoming and outgoing edges in order
+        // to ensure we remove cross graph edges (from external sources and to external targets)
+        let incoming_sources: Vec<_> = self
+            .edges_directed(node_id, Incoming)?
+            .filter_map(|edge_ref| {
+                edge_ref
+                    .weight()
+                    .custom()
+                    .map(|custom| (edge_ref.source(), custom.kind()))
+            })
+            .collect();
+
+        let outgoing_targets: Vec<_> = self
+            .edges_directed(node_id, Outgoing)?
+            .filter_map(|edge_ref| {
+                edge_ref
+                    .weight()
+                    .custom()
+                    .map(|custom| (edge_ref.target(), custom.kind()))
+            })
+            .collect();
+
+        for (incoming_source, kind) in incoming_sources {
+            self.remove_edge(incoming_source, kind, node_id)?;
+        }
+        for (outgoing_target, kind) in outgoing_targets {
+            self.remove_edge(node_id, kind, outgoing_target)?;
+        }
+
         let node_index = self
             .node_id_to_index(node_id)
             .ok_or(SplitGraphError::NodeNotFound(node_id))?;
@@ -754,6 +792,8 @@ where
         let to_index = self
             .node_id_to_index(to_id)
             .ok_or(SplitGraphError::NodeNotFound(to_id))?;
+
+        self.touch_node(from_id);
 
         let from_subgraph_idx = from_index.subgraph;
         let to_subgraph_idx = to_index.subgraph;
@@ -983,6 +1023,37 @@ where
         }
 
         Ok(result)
+    }
+
+    /// Find the outgoing or incoming neighbor of `from_id` which is connected to
+    /// `from_id` via an edge with kind `kind`. If there is no such neighbor,
+    /// returns `None`. But if there is more than one such neighbor, an error
+    /// is returned.
+    pub fn directed_unique_neighbor_of_edge_weight_kind(
+        &self,
+        from_id: SplitGraphNodeId,
+        direction: Direction,
+        kind: K,
+    ) -> SplitGraphResult<Option<Ulid>> {
+        let mut edges_of_kind =
+            self.edges_directed_for_edge_weight_kind(from_id, direction, kind)?;
+
+        let Some(edge_ref) = edges_of_kind.next() else {
+            return Ok(None);
+        };
+
+        if edges_of_kind.next().is_some() {
+            return Err(SplitGraphError::TooManyEdgesOfKind(
+                from_id,
+                direction,
+                format!("{:?}", kind),
+            ));
+        }
+
+        Ok(Some(match direction {
+            Outgoing => edge_ref.target(),
+            Incoming => edge_ref.source(),
+        }))
     }
 
     pub fn edges_directed_for_edge_weight_kind<'a>(
@@ -1238,6 +1309,7 @@ where
     }
 
     pub fn perform_updates(&mut self, updates: &[Update<N, E, K>]) {
+        let mut removed_node_ids = vec![];
         for update in updates {
             match update {
                 Update::NewEdge {
@@ -1283,10 +1355,6 @@ where
                         continue;
                     };
 
-                    // if matches!(edge_kind, SplitGraphEdgeWeightKind::Ordinal) {
-                    //     subgraph.remove_from_order(from_index, *destination);
-                    // }
-
                     subgraph.remove_edge_raw(from_index, *edge_kind, to_index);
                 }
                 Update::RemoveNode { subgraph_index, id } => {
@@ -1296,6 +1364,8 @@ where
                     let Some(node_index) = subgraph.node_id_to_index(*id) else {
                         continue;
                     };
+
+                    removed_node_ids.push((*subgraph_index, node_index));
 
                     subgraph.remove_node(node_index);
                 }
@@ -1356,6 +1426,10 @@ where
                 }
             }
         }
+
+        for (subgraph_idx, node_index) in removed_node_ids {
+            let subgraph = self.subgraphs().get(subgraph_idx).unwrap();
+        }
     }
 
     pub fn nodes(&self) -> impl Iterator<Item = &N> {
@@ -1407,6 +1481,7 @@ fn ensure_only_one_default_edge<N, E, K>(
     }
 }
 
+#[derive(Debug)]
 pub struct SplitGraphEdgeReference<'a, E, K>
 where
     E: 'a + CustomEdgeWeight<K>,

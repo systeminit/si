@@ -432,6 +432,11 @@ impl SplitSnapshot {
             working_copy.cleanup_and_merkle_tree_hash();
             warn!("cleaned up working copy in {:?}", start.elapsed());
 
+            warn!(
+                "current addresses: {:?}",
+                working_copy.supergraph().addresses()
+            );
+
             let current_supergraph = working_copy.supergraph();
             let mut new_supergraph = SuperGraph::new(
                 current_supergraph.split_max(),
@@ -492,9 +497,14 @@ impl SplitSnapshot {
                                         events_actor,
                                     )?;
 
-                                warn!("wrote subgraph in {:?}", start.elapsed());
+                                warn!(
+                                    "rewrote subgraph in {:?} new address {:?}",
+                                    start.elapsed(),
+                                    new_address
+                                );
                                 (orig_idx, new_address)
                             } else {
+                                warn!("root node merkle tree hash not different");
                                 let subgraph_address = self_clone_clone
                                     .read_only_graph
                                     .supergraph()
@@ -512,7 +522,11 @@ impl SplitSnapshot {
                                 events_actor,
                             )?;
 
-                            warn!("wrote subgraph in {:?}", start.elapsed());
+                            warn!(
+                                "wrote new subgraph in {:?}, address: {:?}",
+                                start.elapsed(),
+                                new_address
+                            );
                             (new_index, new_address)
                         }
                         (Some(_), None) => {
@@ -536,6 +550,8 @@ impl SplitSnapshot {
                 new_supergraph.add_subgraph_address(address.into());
             }
 
+            warn!("new subgraph_addresses: {:?}", new_supergraph.addresses());
+
             let start = Instant::now();
             let (supergraph_address, _) = layer_db.split_snapshot_supergraph().write(
                 Arc::new(new_supergraph),
@@ -543,7 +559,11 @@ impl SplitSnapshot {
                 events_tenancy,
                 events_actor,
             )?;
-            warn!("wrote supergraph in {:?}", start.elapsed());
+            warn!(
+                "wrote supergraph in {:?}, new address: {:?}",
+                start.elapsed(),
+                supergraph_address
+            );
 
             Ok::<WorkspaceSnapshotAddress, WorkspaceSnapshotError>(supergraph_address)
         })?
@@ -845,7 +865,7 @@ impl SplitSnapshot {
         Ok(self
             .working_copy()
             .await
-            .edges_directed(id.into(), Outgoing)?
+            .edges_directed_custom(id.into(), Outgoing)?
             .filter_map(|edge_ref| match edge_ref.weight().custom() {
                 Some(weight) => {
                     if edge_weight_kind_discrim == weight.kind().into() {
@@ -1014,7 +1034,7 @@ impl SplitSnapshot {
         }
 
         let sv_id = working_copy
-            .edges_directed(component_id, Outgoing)?
+            .edges_directed_custom(component_id, Outgoing)?
             .find(|edge_ref| {
                 matches!(
                     edge_ref.weight().custom().map(|c| c.kind()),
@@ -1041,7 +1061,7 @@ impl SplitSnapshot {
         }
 
         let contained: Vec<ComponentId> = working_copy
-            .edges_directed(component_id, Outgoing)?
+            .edges_directed_custom(component_id, Outgoing)?
             .filter(|edge_ref| {
                 matches!(
                     edge_ref.weight().custom().map(|c| c.kind()),
@@ -1419,11 +1439,132 @@ impl EntityKindExt for SplitSnapshot {
 #[async_trait]
 impl ViewExt for SplitSnapshot {
     async fn view_remove(&self, view_id: ViewId) -> WorkspaceSnapshotResult<()> {
+        // If there are any Components remaining in the View, this View _CANNOT_ be the only View they
+        // are in. If this View is the only View _ANY_ of the items are in, we do not allow removal
+        // of the View.
+
+        // View --Use--> Geometry --Represents-->
+        //   {Component, DiagramObject <--DiagramObject-- View (on canvas)}
+        //
+        // Component <--Represents-- Geometry <--Use-- View
+        //
+        // View (on canvas) --DiagramObject--> DiagramObject <--Represents-- Geometry <--Use-- View
+
+        let mut working_copy = self.working_copy_mut().await;
+
+        let mut would_be_orphaned_component_ids = Vec::new();
+
+        let view_id: Ulid = view_id.into();
+
+        for view_use_edge_ref in working_copy.edges_directed_for_edge_weight_kind(
+            view_id,
+            Outgoing,
+            EdgeWeightKindDiscriminants::Use,
+        )? {
+            let geometry_node_id = view_use_edge_ref.target();
+
+            // Find the "thing" this Geometry is representing, so we can make sure it is also
+            // represented by at least one Geometry in another View.
+            let Some(represented_thing_id) = working_copy
+                .directed_unique_neighbor_of_edge_weight_kind(
+                    geometry_node_id,
+                    Outgoing,
+                    EdgeWeightKindDiscriminants::Represents,
+                )?
+            else {
+                continue;
+            };
+
+            let Some(represented_thing_node_weight) =
+                working_copy.node_weight(represented_thing_id)
+            else {
+                continue;
+            };
+
+            if NodeWeightDiscriminants::Component != represented_thing_node_weight.into() {
+                // Components _MUST_ be in another View for this View to be able to be removed.
+                // Things with DiagramObjects (currently only Views) do not have to be part of
+                // another View for this View to be able to be removed.
+                continue;
+            }
+
+            let mut view_member_ids = HashSet::new();
+            for represents_edge_ref in working_copy.edges_directed_for_edge_weight_kind(
+                represented_thing_id,
+                Incoming,
+                EdgeWeightKindDiscriminants::Represents,
+            )? {
+                let geometry_id = represents_edge_ref.source();
+                let Some(geometry_view_id) = working_copy
+                    .directed_unique_neighbor_of_edge_weight_kind(
+                        geometry_id,
+                        Incoming,
+                        EdgeWeightKindDiscriminants::Use,
+                    )?
+                else {
+                    panic!("implement an error here");
+                };
+
+                if geometry_view_id != view_id {
+                    view_member_ids.insert(geometry_view_id);
+                }
+            }
+
+            if view_member_ids.is_empty() {
+                would_be_orphaned_component_ids.push(represented_thing_node_weight.id());
+            }
+        }
+
+        if !would_be_orphaned_component_ids.is_empty() {
+            return Err(WorkspaceSnapshotError::ViewRemovalWouldOrphanItems(
+                would_be_orphaned_component_ids,
+            ));
+        }
+
+        let mut nodes_to_delete = vec![view_id];
+
+        if let Some(diagram_object_id) = working_copy.directed_unique_neighbor_of_edge_weight_kind(
+            view_id,
+            Outgoing,
+            EdgeWeightKindDiscriminants::DiagramObject,
+        )? {
+            nodes_to_delete.extend(
+                working_copy
+                    .edges_directed_custom(diagram_object_id, Incoming)?
+                    .map(|edge_ref| edge_ref.source()),
+            );
+        }
+
+        for node_id in nodes_to_delete {
+            working_copy.remove_node(node_id)?;
+        }
+
         Ok(())
     }
 
     async fn list_for_component_id(&self, id: ComponentId) -> WorkspaceSnapshotResult<Vec<ViewId>> {
-        todo!()
+        if !self.node_exists(id).await {
+            return Ok(vec![]);
+        }
+
+        let mut view_ids_set = HashSet::new();
+        let working_copy = self.working_copy().await;
+
+        for represents_edge_ref in working_copy.edges_directed_for_edge_weight_kind(
+            id.into(),
+            Incoming,
+            EdgeWeightKindDiscriminants::Represents,
+        )? {
+            if let Some(view_id) = working_copy.directed_unique_neighbor_of_edge_weight_kind(
+                represents_edge_ref.source(),
+                Incoming,
+                EdgeWeightKindDiscriminants::Use,
+            )? {
+                view_ids_set.insert(view_id);
+            }
+        }
+
+        Ok(view_ids_set.into_iter().map(Into::into).collect())
     }
 }
 

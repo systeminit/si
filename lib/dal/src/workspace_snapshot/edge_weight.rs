@@ -118,8 +118,33 @@ impl si_split_graph::CustomEdgeWeight<EdgeWeightKindDiscriminants> for EdgeWeigh
     }
 
     fn edge_entropy(&self) -> Option<Vec<u8>> {
-        // XXX: implement this!
-        None
+        match self.kind() {
+            EdgeWeightKind::Contain(Some(key)) => Some(key.as_bytes().to_vec()),
+            EdgeWeightKind::Prototype(Some(key)) => Some(key.as_bytes().to_vec()),
+            EdgeWeightKind::Use { is_default } => Some(vec![*is_default as u8]),
+
+            EdgeWeightKind::Contain(None)
+            | EdgeWeightKind::Action
+            | EdgeWeightKind::ActionPrototype
+            | EdgeWeightKind::AuthenticationPrototype
+            | EdgeWeightKind::FrameContains
+            | EdgeWeightKind::Ordering
+            | EdgeWeightKind::Ordinal
+            | EdgeWeightKind::Prop
+            | EdgeWeightKind::Prototype(None)
+            | EdgeWeightKind::PrototypeArgument
+            | EdgeWeightKind::PrototypeArgumentValue
+            | EdgeWeightKind::Proxy
+            | EdgeWeightKind::Root
+            | EdgeWeightKind::Socket
+            | EdgeWeightKind::SocketValue
+            | EdgeWeightKind::ValidationOutput
+            | EdgeWeightKind::ManagementPrototype
+            | EdgeWeightKind::Represents
+            | EdgeWeightKind::Manages
+            | EdgeWeightKind::DiagramObject
+            | EdgeWeightKind::ApprovalRequirementDefinition => None,
+        }
     }
 
     fn is_default(&self) -> bool {

@@ -1,6 +1,6 @@
 use dal::{
     diagram::{geometry::Geometry, view::View, Diagram, DiagramError},
-    workspace_snapshot::graph::WorkspaceSnapshotGraphError,
+    workspace_snapshot::{graph::WorkspaceSnapshotGraphError, split_snapshot::SplitSnapshot},
     Component, DalContext, Ulid, WorkspaceSnapshotError,
 };
 use dal_test::{
@@ -128,12 +128,15 @@ async fn remove_view_with_no_components(ctx: &mut DalContext) {
         View::list(ctx).await.expect("Unable to list views").len()
     );
 
+    dbg!(View::list(ctx).await.expect("Unable to list views"));
+
     let alternative_diagram = Diagram::assemble(ctx, Some(new_view.id()))
         .await
         .expect("assemble default diagram");
 
     assert_eq!(0, alternative_diagram.components.len());
 
+    dbg!("removing view");
     View::remove(ctx, new_view.id())
         .await
         .expect("Unable to remove View");
@@ -146,7 +149,8 @@ async fn remove_view_with_no_components(ctx: &mut DalContext) {
 
     assert_eq!(
         1,
-        View::list(ctx).await.expect("Unable to list views").len()
+        View::list(ctx).await.expect("Unable to list views").len(),
+        "view is removed",
     );
 }
 
@@ -230,9 +234,14 @@ async fn remove_view_with_exclusive_components(ctx: &mut DalContext) {
     assert_eq!(1, alternative_diagram.components.len());
 
     let result = View::remove(ctx, new_view.id()).await;
-    let Err(DiagramError::WorkspaceSnapshot(WorkspaceSnapshotError::WorkspaceSnapshotGraph(
-        WorkspaceSnapshotGraphError::ViewRemovalWouldOrphanItems(orphans),
-    ))) = result
+    let Err(
+        DiagramError::WorkspaceSnapshot(WorkspaceSnapshotError::WorkspaceSnapshotGraph(
+            WorkspaceSnapshotGraphError::ViewRemovalWouldOrphanItems(orphans),
+        ))
+        | DiagramError::WorkspaceSnapshot(WorkspaceSnapshotError::ViewRemovalWouldOrphanItems(
+            orphans,
+        )),
+    ) = result
     else {
         panic!("View removal did not error appropriately: {:?}", result);
     };
@@ -334,11 +343,12 @@ async fn remove_view_that_previously_contained_another_view_that_has_been_remove
             .expect("Unable to list Geometry for containing View")
             .len()
     );
+
     expected::commit_and_update_snapshot_to_visibility(ctx).await;
 
     assert_eq!(
         2,
-        View::list(ctx).await.expect("Unable to list Views").len(),
+        dbg!(View::list(ctx).await.expect("Unable to list Views")).len(),
     );
 
     assert_eq!(

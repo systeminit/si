@@ -111,9 +111,6 @@ where
         let node_id = node.id();
         let lineage_id = node.lineage_id();
         let node_index = self.graph.add_node(node);
-        if node_index == NodeIndex::new(2085) {
-            warn!("adding {} at index {:?}", node_id, node_index);
-        }
         self.node_index_by_id.insert(node_id, node_index);
         self.node_indexes_by_lineage_id
             .entry(lineage_id)
@@ -283,13 +280,21 @@ where
         let mut discovered_nodes = HashSet::new();
 
         if self.touched_nodes.is_empty() {
-            warn!("merkle tree hash calculated in {:?}", big_start.elapsed());
+            warn!(
+                "touched nodes empty. merkle tree hash calculated in {:?}",
+                big_start.elapsed()
+            );
             return (0, 0);
         }
 
         if dbug {
-            warn!("touched_nodes: {:?}", self.touched_nodes.len());
+            warn!("touched_nodes: {:?}", self.touched_nodes);
         }
+
+        let root = self.root_index;
+        warn!("root: {:?}", root);
+
+        self.tiny_dot_to_file("before-merkle");
 
         while let Some(node_index) = dfs.next(&self.graph) {
             node_count += 1;
@@ -301,11 +306,10 @@ where
                         node_weight_mut.set_merkle_tree_hash(hash);
                     }
                 }
-                self.graph
-                    .neighbors_directed(node_index, Incoming)
-                    .for_each(|node_idx| {
-                        discovered_nodes.insert(node_idx);
-                    });
+                for incoming_source_idx in self.graph.neighbors_directed(node_index, Incoming) {
+                    discovered_nodes.insert(incoming_source_idx);
+                    warn!("discovered node: {:?}", incoming_source_idx);
+                }
             }
         }
 
@@ -503,6 +507,11 @@ where
     }
 
     pub(crate) fn touch_node(&mut self, node_index: SubGraphNodeIndex) {
+        warn!(
+            "touching node: {:?}, {:?}",
+            node_index,
+            self.graph.node_weight(node_index)
+        );
         self.touched_nodes.insert(node_index);
     }
 
@@ -514,6 +523,7 @@ where
         kind: SplitGraphEdgeWeightKind<K>,
         to_index: SubGraphNodeIndex,
     ) {
+        self.touch_node(from_index);
         let edge_indexes: Vec<_> = self
             .graph
             .edges_directed(from_index, Outgoing)
@@ -624,29 +634,32 @@ where
 
                 format!("label = \"{label}\"\ncolor = {color}")
             },
-            &|_, (_, node_weight)| {
+            &|_, (node_idx, node_weight)| {
                 let (label, color) = match node_weight {
                     SplitGraphNodeWeight::Custom(n) => {
-                        let node_dbg = format!("{n:?}")
-                            .replace("\"", "'")
-                            .replace("{", "{\n")
-                            .replace("}", "\n}");
-                        (format!("node: {}\n{node_dbg}", n.id()), "black")
+                        let node_dbg = n.dot_details();
+                        (
+                            format!("node: {} ({node_idx:?})\n{node_dbg}", n.id()),
+                            "black",
+                        )
                     }
                     SplitGraphNodeWeight::ExternalTarget {
                         target, subgraph, ..
                     } => (
-                        format!("external target: {target}\nsubgraph: {}", subgraph + 1),
+                        format!(
+                            "{node_idx:?}external target: {target}\nsubgraph: {}",
+                            subgraph + 1
+                        ),
                         "red",
                     ),
                     SplitGraphNodeWeight::GraphRoot { id, .. } => {
-                        (format!("graph root: {id}"), "blue")
+                        (format!("graph root: {id} ({node_idx:?})"), "blue")
                     }
                     SplitGraphNodeWeight::SubGraphRoot { id, .. } => {
-                        (format!("subgraph root: {id}"), "blue")
+                        (format!("subgraph root: {id} ({node_idx:?})"), "blue")
                     }
                     SplitGraphNodeWeight::Ordering { id, .. } => {
-                        (format!("ordering: {id}"), "green")
+                        (format!("ordering: {id} ({node_idx:?})"), "green")
                     }
                 };
 

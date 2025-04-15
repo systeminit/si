@@ -41,6 +41,10 @@ impl CustomNodeWeight for TestNodeWeight {
         self.id = id;
     }
 
+    fn dot_details(&self) -> String {
+        self.id.to_string()
+    }
+
     fn entity_kind(&self) -> EntityKind {
         EntityKind::Component
     }

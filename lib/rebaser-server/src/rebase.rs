@@ -133,8 +133,6 @@ pub async fn perform_rebase(
         }
     }
 
-    ctx.commit_no_rebase().await?;
-
     {
         let ctx_clone = ctx.clone();
         server_tracker.spawn(async move {
@@ -224,12 +222,17 @@ pub async fn perform_rebase(
 async fn rebase_split(
     ctx: &mut DalContext,
     to_rebase_workspace_snapshot_address: WorkspaceSnapshotAddress,
-    _edda: &EddaClient,
+    edda: &EddaClient,
     request: &EnqueueUpdatesRequest,
-    _features: Features,
+    features: Features,
     _updating_head: bool,
     to_rebase_change_set: &mut ChangeSet,
 ) -> RebaseResult<()> {
+    let span = current_span_for_instrument_at!("info");
+
+    let original_workspace_snapshot =
+        SplitSnapshot::find(ctx, to_rebase_workspace_snapshot_address).await?;
+
     let to_rebase_workspace_snapshot =
         SplitSnapshot::find(ctx, to_rebase_workspace_snapshot_address).await?;
 
@@ -246,6 +249,8 @@ async fn rebase_split(
         .read_wait_for_memory(batch_address)
         .await?
         .ok_or(RebaseError::MissingRebaseBatch(request.updates_address))?;
+
+    warn!("rebase batch: {:?}", rebase_batch);
 
     to_rebase_workspace_snapshot
         .perform_updates(rebase_batch.as_slice())
@@ -265,6 +270,21 @@ async fn rebase_split(
     }
 
     ctx.set_workspace_split_snapshot(to_rebase_workspace_snapshot.clone());
+
+    // Before replying to the requester or sending the Edda request, we must commit.
+    ctx.commit_no_rebase().await?;
+
+    if features.generate_mvs {
+        send_updates_to_edda_split_snapshot(
+            ctx,
+            &original_workspace_snapshot,
+            &to_rebase_workspace_snapshot,
+            edda,
+            request,
+            span,
+        )
+        .await?;
+    }
 
     Ok(())
 }
@@ -306,6 +326,10 @@ async fn rebase_legacy(
         updates_address = %request.updates_address,
     );
     debug!("after snapshot fetch and parse: {:?}", start.elapsed());
+    span.record(
+        "si.rebase.snapshot_fetch_parse_time",
+        start.elapsed().as_millis(),
+    );
 
     let corrected_updates = to_rebase_workspace_snapshot
         .correct_transforms(
@@ -317,6 +341,10 @@ async fn rebase_legacy(
         )
         .await?;
     debug!("corrected transforms: {:?}", start.elapsed());
+    span.record(
+        "si.rebase.correct_transforms_time",
+        start.elapsed().as_millis(),
+    );
 
     to_rebase_workspace_snapshot
         .perform_updates(&corrected_updates)
@@ -339,6 +367,7 @@ async fn rebase_legacy(
         }
 
         debug!("pointer updated: {:?}", start.elapsed());
+        span.record("si.rebase.pointer_updated", start.elapsed().as_millis());
 
         ctx.set_workspace_snapshot(to_rebase_workspace_snapshot.clone());
     }
@@ -349,28 +378,80 @@ async fn rebase_legacy(
         "si.corrected_updates.count",
         corrected_updates.len().to_string(),
     );
-    info!("rebase performed: {:?}", start.elapsed());
+    debug!("rebase performed: {:?}", start.elapsed());
+    span.record("si.rebase.rebase_time", start.elapsed().as_millis());
+
+    // Before replying to the requester or sending the Edda request, we must commit.
+    ctx.commit_no_rebase().await?;
 
     if features.generate_mvs {
-        let changes = original_workspace_snapshot
-            .detect_changes(&to_rebase_workspace_snapshot)
-            .instrument(tracing::info_span!(
-                "rebaser.perform_rebase.detect_changes_for_edda_request"
-            ))
-            .await?;
-        let change_batch_address = ctx.write_change_batch(changes).await?;
-        let edda_update_request_id = edda
-            .update_from_workspace_snapshot(
-                request.workspace_id,
-                request.change_set_id,
-                original_workspace_snapshot.id().await,
-                to_rebase_workspace_snapshot_address,
-                change_batch_address,
-            )
-            .await?;
-        span.record("si.edda_request.id", edda_update_request_id.to_string());
+        send_updates_to_edda_legacy_snapshot(
+            ctx,
+            &original_workspace_snapshot,
+            &to_rebase_workspace_snapshot,
+            edda,
+            request,
+            span,
+        )
+        .await?;
     }
 
+    Ok(())
+}
+
+async fn send_updates_to_edda_split_snapshot(
+    ctx: &DalContext,
+    original_workspace_snapshot: &SplitSnapshot,
+    to_rebase_workspace_snapshot: &SplitSnapshot,
+    edda: &edda_client::Client,
+    request: &EnqueueUpdatesRequest,
+    span: Span,
+) -> Result<(), RebaseError> {
+    let changes = original_workspace_snapshot
+        .detect_changes(&to_rebase_workspace_snapshot)
+        .instrument(tracing::info_span!(
+            "rebaser.perform_rebase.detect_changes_for_edda_request"
+        ))
+        .await?;
+    let change_batch_address = ctx.write_change_batch(changes).await?;
+    let edda_update_request_id = edda
+        .update_from_workspace_snapshot(
+            request.workspace_id,
+            request.change_set_id,
+            original_workspace_snapshot.id().await,
+            to_rebase_workspace_snapshot.id().await,
+            change_batch_address,
+        )
+        .await?;
+    span.record("si.edda_request.id", edda_update_request_id.to_string());
+    Ok(())
+}
+
+async fn send_updates_to_edda_legacy_snapshot(
+    ctx: &mut DalContext,
+    original_workspace_snapshot: &WorkspaceSnapshot,
+    to_rebase_workspace_snapshot: &WorkspaceSnapshot,
+    edda: &edda_client::Client,
+    request: &EnqueueUpdatesRequest,
+    span: Span,
+) -> Result<(), RebaseError> {
+    let changes = original_workspace_snapshot
+        .detect_changes(&to_rebase_workspace_snapshot)
+        .instrument(tracing::info_span!(
+            "rebaser.perform_rebase.detect_changes_for_edda_request"
+        ))
+        .await?;
+    let change_batch_address = ctx.write_change_batch(changes).await?;
+    let edda_update_request_id = edda
+        .update_from_workspace_snapshot(
+            request.workspace_id,
+            request.change_set_id,
+            original_workspace_snapshot.id().await,
+            to_rebase_workspace_snapshot.id().await,
+            change_batch_address,
+        )
+        .await?;
+    span.record("si.edda_request.id", edda_update_request_id.to_string());
     Ok(())
 }
 

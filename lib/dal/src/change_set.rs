@@ -845,10 +845,8 @@ impl ChangeSet {
             .base_change_set_id
             .ok_or(ChangeSetError::NoBaseChangeSet(self.id))?;
 
-        dbg!("snapshot_kind");
         let snapshot_kind: WorkspaceSnapshotSelectorDiscriminants =
             ctx.workspace_snapshot().map_err(Box::new)?.into();
-        dbg!(&snapshot_kind);
 
         let maybe_rebase_batch_address = match snapshot_kind {
             WorkspaceSnapshotSelectorDiscriminants::LegacySnapshot => {
@@ -893,13 +891,11 @@ impl ChangeSet {
 
             // Wait on response from Rebaser after request has processed
             let timeout = Duration::from_secs(60);
-            let reply = time::timeout(timeout, reply_fut)
+            let _reply = time::timeout(timeout, reply_fut)
                 .await
                 .map_err(|_elapsed| {
                     TransactionsError::RebaserReplyDeadlineElasped(timeout, request_id)
                 })??;
-
-            dbg!(reply);
         }
 
         self.update_status(ctx, ChangeSetStatus::Applied).await?;

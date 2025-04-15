@@ -169,6 +169,8 @@ pub enum WorkspaceSnapshotError {
     UnexpectedNumberOfIncomingEdges(EdgeWeightKindDiscriminants, NodeWeightDiscriminants, Ulid),
     #[error("Unexpected snapshot kind: {0}")]
     UnexpectedSnapshotKind(WorkspaceSnapshotSelectorDiscriminants),
+    #[error("Removing View would orphan items: {0:?}")]
+    ViewRemovalWouldOrphanItems(Vec<Ulid>),
     #[error("Workspace error: {0}")]
     Workspace(#[from] Box<WorkspaceError>),
     #[error("Tenancy missing Workspace")]
@@ -1250,14 +1252,6 @@ impl WorkspaceSnapshot {
                 .perform_updates(&updates)
         })?
         .await??)
-    }
-
-    pub async fn ordering_node_for_container(
-        &self,
-        id: impl Into<Ulid>,
-    ) -> WorkspaceSnapshotResult<Option<OrderingNodeWeight>> {
-        let idx = self.get_node_index_by_id(id).await?;
-        Ok(self.working_copy().await.ordering_node_for_container(idx)?)
     }
 
     pub async fn update_node_id(
