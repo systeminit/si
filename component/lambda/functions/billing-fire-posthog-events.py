@@ -27,7 +27,7 @@ class UploadPosthogBillingData(SiLambda):
         if batch_start >= batch_end:
             logging.info(f"No more events to upload! upload_range {batch_start} to {batch_end} is empty.")
             return False
-        print("Uploading events from {batch_start} to {batch_end}")
+        logging.info(f"Fetching events from {batch_start} to {batch_end}")
 
         #
         # Get the events to upload
@@ -89,6 +89,7 @@ class UploadPosthogBillingData(SiLambda):
             }
             for [owner_pk, sample_time, resource_count, prev_resource_count] in rum_changes
         ]
+        logging.info(f"Got {len(rum_change_events)} billing-rum_changed events.")
         owner_billing_month_events: list[PosthogApi.BatchEvent] = [
             {
                 "event": "billing-owner_billing_month",
@@ -102,6 +103,7 @@ class UploadPosthogBillingData(SiLambda):
             }
             for [owner_pk, month, max_resource_count, resource_hours, is_free] in owner_billing_months
         ]
+        logging.info(f"Got {len(owner_billing_month_events)} billing-owner_billing_month events.")
         workspace_resource_hours_events: list[PosthogApi.BatchEvent] = [
             {
                 "event": "billing-workspace_resource_hours",
@@ -116,11 +118,13 @@ class UploadPosthogBillingData(SiLambda):
             }
             for [workspace_id, hour_start, resource_count, owner_pk, event_timestamp, plan_code] in workspace_resource_hours
         ]
+        logging.info(f"Got {len(workspace_resource_hours_events)} billing-workspace_resource_hours events.")
 
         #
         # Upload the events to Posthog
         #
         all_events = rum_change_events + owner_billing_month_events + workspace_resource_hours_events
+        logging.info(f"Got {len(all_events)} events. Uploading to Posthog ...")
         historical_migration = batch_end != last_complete_hour_end
         self.posthog.post("/batch", {
             "historical_migration": historical_migration,
@@ -182,7 +186,7 @@ class UploadPosthogBillingData(SiLambda):
                         'posthog-workspace_resource_counts' AS upload_type,
                         :uploaded_to::timestamp AS uploaded_to
                     ) AS my_source
-                    ON jkeiser_upload_progress.upload_type = my_source.upload_type
+                    ON upload_progress.upload_type = my_source.upload_type
                     WHEN MATCHED THEN UPDATE SET uploaded_to = my_source.uploaded_to
                     WHEN NOT MATCHED THEN INSERT (upload_type, uploaded_to) VALUES (my_source.upload_type, my_source.uploaded_to)
             """,
@@ -190,5 +194,3 @@ class UploadPosthogBillingData(SiLambda):
         )
 
 lambda_handler = UploadPosthogBillingData.lambda_handler
-
-lambda_handler()

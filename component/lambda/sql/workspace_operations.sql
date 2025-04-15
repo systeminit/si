@@ -116,7 +116,7 @@ CREATE OR REPLACE VIEW workspace_operations.workspace_update_events_summary AS
 WITH NO SCHEMA BINDING;
 
 -- The resource counts for each workspace after each time it changes
-CREATE OR REPLACE VIEW public.jkeiser_workspace_resource_counts AS
+CREATE OR REPLACE VIEW workspace_operations.workspace_resource_counts AS
     WITH
         -- Get only events with actual resource_counts recorded (plus previous resource count for next step)
         workspace_resource_count_events AS (
@@ -135,12 +135,12 @@ CREATE OR REPLACE VIEW public.jkeiser_workspace_resource_counts AS
 WITH NO SCHEMA BINDING;
 
 -- Get the resource counts for all workspaces anytime they change *and* at least once per hour
-CREATE OR REPLACE VIEW public.jkeiser_workspace_hourly_samples AS
+CREATE OR REPLACE VIEW workspace_operations.workspace_hourly_samples AS
     WITH
         -- Get all times at which any workspace for an owner has changed
         workspace_change_events AS (
             SELECT owner_pk, event_timestamp
-            FROM public.jkeiser_workspace_resource_counts
+            FROM workspace_operations.workspace_resource_counts
             JOIN workspace_operations.workspace_owners USING (workspace_id)
         ),
         -- Get times at which we want to sample workspace resource counts
@@ -163,13 +163,13 @@ CREATE OR REPLACE VIEW public.jkeiser_workspace_hourly_samples AS
            CASE WHEN sample_time = event_timestamp THEN prev_resource_count ELSE resource_count END AS prev_resource_count
       FROM sample_times
       JOIN workspace_operations.workspace_owners USING (owner_pk)
-      JOIN public.jkeiser_workspace_resource_counts USING (workspace_id)
+      JOIN workspace_operations.workspace_resource_counts USING (workspace_id)
      WHERE sample_time >= event_timestamp
        AND (next_event_timestamp IS NULL OR sample_time < next_event_timestamp)
 WITH NO SCHEMA BINDING;
 
 -- Get the maximum resource count for each owner at each hour (and the time at which it occurred)
-CREATE OR REPLACE VIEW public.jkeiser_owner_resource_hours AS
+CREATE OR REPLACE VIEW workspace_operations.owner_resource_hours AS
 WITH
     owner_samples AS (
         SELECT owner_pk,
@@ -179,7 +179,7 @@ WITH
                SUM(prev_resource_count) AS owner_prev_resource_count,
                -- We want to pick the largest resource count for each owner at each hour
                ROW_NUMBER() OVER (PARTITION BY owner_pk, hour_start ORDER BY owner_resource_count DESC, sample_time) AS resource_count_order
-          FROM public.jkeiser_workspace_hourly_samples
+          FROM workspace_operations.workspace_hourly_samples
          GROUP BY owner_pk, hour_start, sample_time
     )
     SELECT owner_pk,
