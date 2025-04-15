@@ -255,14 +255,23 @@ const labelRef = ref<InstanceType<typeof VormInput>>();
 
 const viewName = ref("");
 
-const updateName = (e?: Event) => {
+const updateName = async (e?: Event) => {
   e?.preventDefault();
   if (!viewName.value) {
     labelRef.value?.setError("Name is required");
   } else {
-    viewsStore.UPDATE_VIEW_NAME(props.view.id, viewName.value);
-    modalRef.value?.close();
-    viewName.value = "";
+    const resp = await viewsStore.UPDATE_VIEW_NAME(
+      props.view.id,
+      viewName.value,
+    );
+    if (!resp.result.success) {
+      labelRef.value?.setError(
+        "Unable to update view. View names must be unique",
+      );
+    } else {
+      modalRef.value?.close();
+      viewName.value = "";
+    }
   }
 };
 
