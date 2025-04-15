@@ -1,12 +1,12 @@
 use chrono::{DateTime, Utc};
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
-use si_id::{ActionId, ActionPrototypeId};
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 
-use crate::{ActionKind, ActionResultState};
 use crate::{Actor, ChangeSetId, ContentHash, FuncId, Tenancy, WorkspacePk};
 
+pub use si_id::ActionId;
+pub use si_id::ActionPrototypeId;
 pub use si_id::AttributePrototypeArgumentId;
 pub use si_id::AttributePrototypeId;
 pub use si_id::AttributeValueId;
@@ -136,6 +136,30 @@ pub enum FuncBackendResponseType {
     Void,
     Management,
     Float,
+}
+
+#[remain::sorted]
+#[derive(AsRefStr, Debug, Copy, Clone, Deserialize, Serialize, PartialEq, Eq, Display, Hash)]
+pub enum ActionKind {
+    /// Create the "outside world" version of the modeled object.
+    Create,
+    /// Destroy the "outside world" version of the modeled object referenced in the resource.
+    Destroy,
+    /// This [`Action`][crate::Action] will only ever be manually queued.
+    Manual,
+    /// Refresh the resource to reflect the current state of the modeled object in the "outside
+    /// world".
+    Refresh,
+    /// Update the version of the modeled object in the "outside world" to match the state of the
+    /// model.
+    Update,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Display, Serialize, Deserialize)]
+pub enum ActionResultState {
+    Success,
+    Failure,
+    Unknown,
 }
 
 #[derive(Debug, Clone, Builder, Serialize, Deserialize)]

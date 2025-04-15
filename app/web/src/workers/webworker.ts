@@ -769,7 +769,7 @@ const niflheim = async (workspaceId: string, changeSetId: ChangeSetId) => {
 const ragnarok = async (workspaceId: string, changeSetId: string) => {
   // get rid of the snapshots we have for this changeset
   await db.exec({
-    sql: `delete from snapshots where address IN (select snapshot_address from changesets where workspace_id = ? and change_set_id = ? );`,
+    sql: `delete from snapshots where address IN (select snapshot_address from changesets where workspace_id = ? and changeset_id = ? );`,
     bind: [workspaceId, changeSetId],
   });
   // remove the atoms we have for this change set
@@ -973,7 +973,7 @@ const dbInterface: DBInterface = {
   oneInOne,
   handleHammer,
   bobby: dropTables,
-  ragnarok,
+
   changeSetExists: async (workspaceId: string, changeSetId: ChangeSetId) => {
     const row = await db.exec({
       sql: "select change_set_id from changesets where workspace_id = ? and change_set_id = ?",

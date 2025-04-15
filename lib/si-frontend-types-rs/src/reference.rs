@@ -24,8 +24,6 @@ use crate::{checksum::FrontendChecksum, object::FrontendObject};
 )]
 #[serde(rename_all = "PascalCase")]
 pub enum ReferenceKind {
-    ActionPrototypeViewsByComponentId,
-    ActionViewList,
     ChangeSetList,
     ChangeSetRecord,
     MvIndex,

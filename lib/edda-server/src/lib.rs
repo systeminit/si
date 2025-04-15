@@ -1,5 +1,3 @@
-#![recursion_limit = "256"]
-
 use thiserror::Error;
 
 mod app_state;

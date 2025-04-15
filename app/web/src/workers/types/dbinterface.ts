@@ -92,7 +92,6 @@ export interface DBInterface {
       },
   ): SqlValue[][];
   bobby(): Promise<void>;
-  ragnarok(workspaceId: string, changeSetId: string): Promise<void>;
   // show me everything
   odin(changeSetId: ChangeSetId): object;
 }

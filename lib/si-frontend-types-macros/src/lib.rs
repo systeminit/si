@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use darling::FromAttributes;
 use manyhow::{bail, emit, manyhow};
 use proc_macro2::TokenStream;
-use quote::quote;
+use quote::{format_ident, quote};
 use syn::{Data, DeriveInput, Path};
 
 #[manyhow]
@@ -359,36 +359,49 @@ pub fn build_mv(input: proc_macro2::TokenStream) -> syn::Result<proc_macro2::Tok
         build_fn,
     } = syn::parse::<BuildMv>(input.into())?;
 
+    let build_mv_ident = format_ident!(
+        "build_mv_{}",
+        mv_name
+            .segments
+            .iter()
+            .map(|segment| segment.ident.to_string())
+            .collect::<Vec<_>>()
+            .join("_")
+    );
+
     let output = quote! {
         {
-            let ctx = #ctx;
-            let frigg = #frigg;
-            let change = #change;
-            let mv_id = #mv_id;
+            async fn #build_mv_ident(
+                ctx: &DalContext,
+                frigg: &frigg::FriggStore,
+                change: &Change,
+                mv_id: String,
+            ) -> Result<(
+                Option<si_frontend_types::object::patch::ObjectPatch>,
+                Option<si_frontend_types::object::FrontendObject>,
+            ), MaterializedViewError> {
+                if <#mv_name as si_frontend_types::materialized_view::MaterializedView>::trigger_entity() == change.entity_kind {
+                    if !ctx
+                        .workspace_snapshot()?
+                        .node_exists(change.entity_id)
+                        .await
+                    {
+                        // Object was removed
+                        return Ok((
+                            Some(si_frontend_types::object::patch::ObjectPatch {
+                                kind: <#mv_name as si_frontend_types::materialized_view::MaterializedView>::kind().to_string(),
+                                id: mv_id,
+                                // TODO: we need to get the prior version of this
+                                from_checksum: Checksum::default().to_string(),
+                                to_checksum: "0".to_string(),
+                                patch: json_patch::Patch(vec![json_patch::PatchOperation::Remove(
+                                    json_patch::RemoveOperation::default(),
+                                )]),
+                            }),
+                            None,
+                        ));
+                    }
 
-            if <#mv_name as si_frontend_types::materialized_view::MaterializedView>::trigger_entity() != change.entity_kind {
-                Ok((None, None))
-            } else {
-                if !ctx
-                    .workspace_snapshot()?
-                    .node_exists(change.entity_id)
-                    .await
-                {
-                    // Object was removed
-                    Ok((
-                        Some(si_frontend_types::object::patch::ObjectPatch {
-                            kind: <#mv_name as si_frontend_types::materialized_view::MaterializedView>::kind().to_string(),
-                            id: mv_id,
-                            // TODO: we need to get the prior version of this
-                            from_checksum: Checksum::default().to_string(),
-                            to_checksum: "0".to_string(),
-                            patch: json_patch::Patch(vec![json_patch::PatchOperation::Remove(
-                                json_patch::RemoveOperation::default(),
-                            )]),
-                        }),
-                        None,
-                    ))
-                } else {
                     let mv = #build_fn?;
                     let mv_json = serde_json::to_value(&mv)?;
                     let to_checksum = si_frontend_types::checksum::FrontendChecksum::checksum(&mv).to_string();
@@ -412,8 +425,12 @@ pub fn build_mv(input: proc_macro2::TokenStream) -> syn::Result<proc_macro2::Tok
                         }),
                         Some(frontend_object),
                     ))
+                } else {
+                    Ok((None, None))
                 }
             }
+
+            #build_mv_ident(#ctx, #frigg, #change, #mv_id)
         }
     };
 

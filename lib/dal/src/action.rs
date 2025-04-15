@@ -4,9 +4,8 @@ use petgraph::prelude::*;
 use postgres_types::{FromSql, ToSql};
 use serde::{Deserialize, Serialize};
 use si_events::ulid::Ulid;
-use si_frontend_types::action::{ActionView, ActionViewList};
 use si_layer_cache::LayerDbError;
-use strum::{AsRefStr, Display, EnumIter, EnumString};
+use strum::{AsRefStr, Display, EnumDiscriminants, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
 
@@ -24,8 +23,8 @@ use crate::{
         category_node_weight::CategoryNodeKind, ActionNodeWeight, NodeWeight, NodeWeightError,
     },
     AttributeValue, ChangeSetError, ChangeSetId, Component, ComponentError, ComponentId,
-    DalContext, EdgeWeightKind, EdgeWeightKindDiscriminants, Func, FuncError, HelperError,
-    TransactionsError, WorkspaceSnapshotError, WsEvent, WsEventError, WsEventResult, WsPayload,
+    DalContext, EdgeWeightKind, EdgeWeightKindDiscriminants, HelperError, TransactionsError,
+    WorkspaceSnapshotError, WsEvent, WsEventError, WsEventResult, WsPayload,
 };
 
 pub mod dependency_graph;
@@ -44,8 +43,6 @@ pub enum ActionError {
     Component(#[from] ComponentError),
     #[error("component not found for action: {0}")]
     ComponentNotFoundForAction(ActionId),
-    #[error("func error: {0}")]
-    Func(#[from] FuncError),
     #[error("Helper error: {0}")]
     Helper(#[from] HelperError),
     #[error("InferredConnectionGraph error: {0}")]
@@ -68,9 +65,27 @@ pub enum ActionError {
 
 pub type ActionResult<T> = Result<T, ActionError>;
 
-pub use si_events::ActionState;
 pub use si_id::ActionId;
 pub use si_id::ActionPrototypeId;
+
+#[derive(Debug, Copy, Clone, Deserialize, Serialize, EnumDiscriminants, PartialEq, Eq, Display)]
+#[strum_discriminants(derive(strum::Display, Serialize, Deserialize))]
+pub enum ActionState {
+    /// Action has been determined to be eligible to run, and has had its job sent to the job
+    /// queue.
+    Dispatched,
+    /// Action failed during execution. See the job history for details.
+    Failed,
+    /// Action is "queued", but should not be considered as eligible to run, until moved to the
+    /// `Queued` state.
+    OnHold,
+    /// Action is available to be dispatched once all of its prerequisites have succeeded, and been
+    /// removed from the graph.
+    Queued,
+    /// Action has been dispatched, and started execution in the job system. See the job history
+    /// for details.
+    Running,
+}
 
 /// The completion status of a [`ActionRunner`]
 ///
@@ -601,70 +616,6 @@ impl Action {
         ctx.enqueue_action(ActionJob::new(ctx, action_id)).await?;
 
         Ok(())
-    }
-
-    #[instrument(name = "action.as_frontend_list_type", level = "info", skip_all)]
-    pub async fn as_frontend_list_type(ctx: &DalContext) -> ActionResult<ActionViewList> {
-        let action_ids = Self::list_topologically(ctx).await?;
-
-        let mut views = Vec::new();
-
-        let action_graph = ActionDependencyGraph::for_workspace(ctx).await?;
-        if !action_graph.is_acyclic() {
-            warn!("action graph has a cycle");
-        }
-
-        for action_id in action_ids {
-            let action = Self::get_by_id(ctx, action_id).await?;
-
-            let prototype_id = Self::prototype_id(ctx, action_id).await?;
-            let func_id = ActionPrototype::func_id(ctx, prototype_id).await?;
-            let func = Func::get_by_id(ctx, func_id).await?;
-            let prototype = ActionPrototype::get_by_id(ctx, prototype_id).await?;
-            let func_run_id = ctx
-                .layer_db()
-                .func_run()
-                .get_last_run_for_action_id_opt(ctx.events_tenancy().workspace_pk, action.id())
-                .await?
-                .map(|f| f.id());
-
-            let component_id = Self::component_id(ctx, action_id).await?;
-            let (component_schema_name, component_name) = match component_id {
-                Some(component_id) => {
-                    let schema = Component::schema_for_component_id(ctx, component_id).await?;
-                    let component_name = Component::name_by_id(ctx, component_id).await?;
-                    (Some(schema.name().to_owned()), Some(component_name))
-                }
-                None => (None, None),
-            };
-
-            views.push(ActionView {
-                id: action_id,
-                prototype_id: prototype.id(),
-                name: prototype.name().clone(),
-                component_id,
-                component_schema_name,
-                component_name,
-                description: func.display_name,
-                kind: prototype.kind.into(),
-                state: action.state(),
-                func_run_id,
-                originating_change_set_id: action.originating_changeset_id(),
-                my_dependencies: action_graph.get_all_dependencies(action_id),
-                dependent_on: action_graph.direct_dependencies_of(action_id),
-                hold_status_influenced_by: Self::get_hold_status_influenced_by(
-                    ctx,
-                    &action_graph,
-                    action_id,
-                )
-                .await?,
-            })
-        }
-
-        Ok(ActionViewList {
-            id: ctx.change_set_id(),
-            actions: views,
-        })
     }
 }
 
