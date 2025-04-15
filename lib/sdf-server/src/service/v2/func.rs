@@ -15,13 +15,14 @@ use dal::{
     ChangeSetError, ComponentError, DalContext, Func, FuncError, FuncId, SchemaVariantError,
     WorkspaceSnapshotError, WsEventError,
 };
+use sdf_core::api_error::ApiError;
 use si_frontend_types::FuncCode;
 use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
 use thiserror::Error;
 use veritech_client::FunctionResultFailureErrorKind;
 
-use crate::{service::ApiError, AppState};
+use crate::AppState;
 
 pub mod argument;
 pub mod binding;

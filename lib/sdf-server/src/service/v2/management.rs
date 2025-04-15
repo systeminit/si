@@ -16,6 +16,7 @@ use dal::{
     ChangeSet, ChangeSetError, ChangeSetId, ComponentId, Func, FuncError, FuncId,
     SchemaVariantError, TransactionsError, WorkspacePk, WsEvent, WsEventError,
 };
+use sdf_core::api_error::ApiError;
 use serde::{Deserialize, Serialize};
 use si_events::audit_log::AuditLogKind;
 use si_layer_cache::LayerDbError;
@@ -25,7 +26,7 @@ use veritech_client::ManagementFuncStatus;
 
 use crate::{
     extract::{HandlerContext, PosthogClient},
-    service::{force_change_set_response::ForceChangeSetResponse, v2::AccessBuilder, ApiError},
+    service::{force_change_set_response::ForceChangeSetResponse, v2::AccessBuilder},
     track, AppState,
 };
 

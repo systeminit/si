@@ -23,8 +23,8 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::task::JoinError;
 
-use super::ApiError;
 use crate::AppState;
+use sdf_core::api_error::ApiError;
 
 pub mod create_component;
 pub mod create_connection;

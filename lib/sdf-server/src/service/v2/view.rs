@@ -1,6 +1,6 @@
 use std::num::ParseIntError;
 
-use crate::{app_state::AppState, service::ApiError};
+use crate::app_state::AppState;
 use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
@@ -16,6 +16,7 @@ use dal::{
     ChangeSetError, ComponentError, ComponentId, FuncError, SchemaError, SchemaVariantError,
     TransactionsError, WorkspaceSnapshotError, WsEventError,
 };
+use sdf_core::api_error::ApiError;
 use serde::{Deserialize, Serialize};
 use si_id::ViewId;
 use thiserror::Error;

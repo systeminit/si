@@ -5,11 +5,12 @@ use axum::{
     Json, Router,
 };
 use dal::prompt_override::PromptOverride;
+use sdf_core::api_error::ApiError;
 use serde::{Deserialize, Serialize};
 use strum::IntoEnumIterator;
 use thiserror::Error;
 
-use crate::{service::ApiError, AppState};
+use crate::AppState;
 
 use super::AdminUserContext;
 

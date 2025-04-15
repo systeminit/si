@@ -21,7 +21,7 @@ use dal_test::{
 use indoc::indoc;
 use permissions::{ObjectType, Relation, RelationBuilder};
 use pretty_assertions_sorted::assert_eq;
-use sdf_server::dal_wrapper;
+use sdf_core::dal_wrapper;
 use si_data_spicedb::SpiceDbClient;
 use si_events::{workspace_snapshot::EntityKind, ChangeSetApprovalStatus};
 use si_frontend_types::RawGeometry;

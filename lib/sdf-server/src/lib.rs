@@ -22,7 +22,6 @@ use thiserror::Error;
 mod app;
 mod app_state;
 mod config;
-pub mod dal_wrapper;
 mod extract;
 mod garbage_collection;
 mod init;

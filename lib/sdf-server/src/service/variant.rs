@@ -8,13 +8,12 @@ use dal::{
     pkg::PkgError, schema::variant::authoring::VariantAuthoringError, ChangeSetError, FuncError,
     FuncId, SchemaError, SchemaId, SchemaVariantId, TransactionsError, WsEventError,
 };
+use sdf_core::api_error::ApiError;
 use si_pkg::{SiPkgError, SpecError};
 use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::AppState;
-
-use super::ApiError;
 
 pub mod clone_variant;
 pub mod create_variant;

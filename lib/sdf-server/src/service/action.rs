@@ -12,8 +12,8 @@ use dal::{
 };
 use dal::{ComponentError, ComponentId, StandardModelError, TransactionsError, UserError, UserPk};
 
-use super::ApiError;
 use crate::AppState;
+use sdf_core::api_error::ApiError;
 
 mod cancel;
 mod history;

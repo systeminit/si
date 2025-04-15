@@ -3,13 +3,9 @@ use axum::{
     Json,
 };
 use dal::{ChangeSetId, WorkspacePk};
+use sdf_core::dal_wrapper;
 
-use crate::{
-    dal_wrapper::{self},
-    extract::HandlerContext,
-    service::v2::AccessBuilder,
-    AppState,
-};
+use crate::{extract::HandlerContext, service::v2::AccessBuilder, AppState};
 
 use super::{ChangeSetAPIError, Result};
 

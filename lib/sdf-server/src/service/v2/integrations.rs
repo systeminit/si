@@ -5,9 +5,10 @@ use axum::{
 };
 use dal::UserPk;
 use hyper::StatusCode;
+use sdf_core::api_error::ApiError;
 use thiserror::Error;
 
-use crate::{service::ApiError, AppState};
+use crate::AppState;
 
 pub mod get_integrations;
 pub mod update_integration;

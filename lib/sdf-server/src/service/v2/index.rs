@@ -9,11 +9,12 @@ use axum::{
 };
 use dal::{ChangeSetId, WorkspacePk, WorkspaceSnapshotAddress};
 use hyper::StatusCode;
+use sdf_core::api_error::ApiError;
 use si_frontend_types::object::FrontendObject;
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::{service::ApiError, AppState};
+use crate::AppState;
 
 use super::AccessBuilder;
 

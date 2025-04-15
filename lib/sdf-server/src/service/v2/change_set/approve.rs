@@ -3,12 +3,12 @@ use axum::{
     Json,
 };
 use dal::{change_set::approval::ChangeSetApproval, ChangeSet, ChangeSetId, WorkspacePk, WsEvent};
+use sdf_core::dal_wrapper;
 use serde::Deserialize;
 use si_events::{audit_log::AuditLogKind, ChangeSetApprovalStatus};
 
 use super::{post_to_webhook, ChangeSetAPIError, Error, Result};
 use crate::{
-    dal_wrapper,
     extract::{HandlerContext, PosthogClient},
     service::v2::AccessBuilder,
     track, AppState,

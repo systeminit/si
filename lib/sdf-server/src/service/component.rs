@@ -1,6 +1,5 @@
 use std::num::ParseIntError;
 
-use super::ApiError;
 use crate::{service::component::conflicts_for_component::conflicts_for_component, AppState};
 use axum::{
     http::StatusCode,
@@ -23,6 +22,7 @@ use dal::{attribute::value::AttributeValueError, component::debug::ComponentDebu
 use dal::{prop::PropError, socket::output::OutputSocketError};
 use dal::{property_editor::PropertyEditorError, socket::input::InputSocketError};
 use dal::{ChangeSetError, TransactionsError};
+use sdf_core::api_error::ApiError;
 use si_posthog::PosthogError;
 use telemetry::prelude::*;
 use thiserror::Error;

@@ -16,6 +16,8 @@ rust_library(
         "//lib/nats-subscriber:nats-subscriber",
         "//lib/permissions:permissions",
         "//lib/rebaser-client:rebaser-client",
+        "//lib/sdf-core:sdf-core",
+        "//lib/si-data-nats:si-data-nats",
         "//lib/si-crypto:si-crypto",
         "//lib/si-data-nats:si-data-nats",
         "//lib/si-data-pg:si-data-pg",
