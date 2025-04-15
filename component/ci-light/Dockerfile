@@ -1,7 +1,7 @@
 FROM rust:1-alpine
 
 ARG BUILDEVENTS_VERSION=v0.17.0
-RUN apk add curl
+RUN apk add curl bash --no-cache
 RUN set -eux; \
     ARCH="$(arch)"; \
     case "${ARCH}" in \
