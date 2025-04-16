@@ -42,7 +42,7 @@
     <template v-for="item in componentManagementHistory" :key="item.funcRunId">
       <ManagementHistoryCard
         :item="item"
-        :selected="item.funcRunId === selectedFuncRunId"
+        :selected="item.id === selectedFuncRunId"
         @clickItem="clickItem"
       />
     </template>
@@ -104,7 +104,7 @@ const showLatestRunTab = async (id: FuncRunId, slug: string) => {
 
 const clickItem = async (item: ManagementHistoryItem, _e: MouseEvent) => {
   openFuncRunTab.value = true;
-  selectedFuncRunId.value = item.funcRunId;
+  selectedFuncRunId.value = item.id;
 };
 
 const hideFuncRun = () => {

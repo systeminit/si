@@ -3,7 +3,7 @@
     <template v-for="item in managementHistory" :key="item.funcRunId">
       <ManagementHistoryCard
         :item="item"
-        :selected="item.funcRunId === funcRunId"
+        :selected="item.id === funcRunId"
         @clickItem="clickItem"
         @history="openHistory"
       />

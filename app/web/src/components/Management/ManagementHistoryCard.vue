@@ -24,7 +24,9 @@
     >
       <StatusIndicatorIcon type="management" :status="status" />
 
-      <TruncateWithTooltip class="grow">{{ item.name }}</TruncateWithTooltip>
+      <TruncateWithTooltip class="grow">{{
+        item.functionDisplayName ?? item.functionName
+      }}</TruncateWithTooltip>
 
       <Timestamp
         :date="item.updatedAt"
@@ -36,7 +38,7 @@
       />
 
       <FuncRunTabDropdown
-        :funcRunId="item.funcRunId"
+        :funcRunId="item.id"
         @menuClick="(id, slug) => emit('history', id, slug)"
       />
     </div>
@@ -51,6 +53,7 @@ import {
   TruncateWithTooltip,
   Timestamp,
 } from "@si/vue-lib/design-system";
+import { funcRunStatus } from "@/store/func_runs.store";
 import { ManagementHistoryItem } from "@/store/management_runs.store";
 import StatusIndicatorIcon from "../StatusIndicatorIcon.vue";
 import FuncRunTabDropdown from "../FuncRunTabDropdown.vue";
@@ -61,16 +64,7 @@ const props = defineProps<{
 }>();
 
 // We're hijacking the action status here since that's what we store in the FuncRun
-const status = computed(() => {
-  switch (props.item.status) {
-    case "Success":
-      return "ok";
-    case "Failure":
-      return "error";
-    default:
-      return "unknown";
-  }
-});
+const status = computed(() => funcRunStatus(props.item));
 
 const emit = defineEmits<{
   (e: "history", id: string, tabSlug: string): void;

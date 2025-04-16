@@ -3,7 +3,7 @@ use chrono::{DateTime, Utc};
 use dal::Visibility;
 use serde::{Deserialize, Serialize};
 use si_events::{
-    ActionResultState, ChangeSetId, ComponentId, FuncId, FuncRun, FuncRunId, ManagementPrototypeId,
+    ActionResultState, ComponentId, FuncId, FuncRun, FuncRunId, FuncRunState, ManagementPrototypeId,
 };
 
 use crate::{extract::HandlerContext, service::v2::AccessBuilder};
@@ -17,20 +17,22 @@ pub struct ManagementHistoryRequest {
     pub visibility: Visibility,
 }
 
+// Fields that also exist in FuncRunView are given the same name here
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ManagementHistoryItem {
-    pub func_run_id: FuncRunId,
-    pub name: String,
+    pub id: FuncRunId,
+    pub state: FuncRunState,
+    pub function_name: String,
+    pub function_display_name: Option<String>,
     pub component_id: ComponentId,
     pub component_name: String,
-    pub prototype_id: ManagementPrototypeId,
+    pub management_prototype_id: ManagementPrototypeId,
     pub schema_name: String,
-    pub change_set_id: ChangeSetId,
     pub originating_change_set_name: String,
     pub func_id: FuncId,
     pub updated_at: DateTime<Utc>,
-    pub status: ActionResultState,
+    pub action_result_state: Option<ActionResultState>,
 }
 
 pub async fn history(
@@ -63,15 +65,12 @@ impl TryFrom<FuncRun> for ManagementHistoryItem {
 
     fn try_from(func_run: FuncRun) -> Result<Self, Self::Error> {
         Ok(Self {
-            func_run_id: func_run.id(),
-            status: func_run
-                .action_result_state()
-                .unwrap_or(ActionResultState::Unknown),
-            name: func_run
-                .function_display_name()
-                .unwrap_or_else(|| func_run.function_name())
-                .to_string(),
-            prototype_id: func_run.management_prototype_id().ok_or_else(|| {
+            id: func_run.id(),
+            state: func_run.state(),
+            action_result_state: func_run.action_result_state(),
+            function_name: func_run.function_name().to_string(),
+            function_display_name: func_run.function_display_name().map(str::to_string),
+            management_prototype_id: func_run.management_prototype_id().ok_or_else(|| {
                 ManagementApiError::ManagementHistoryFieldMissing("prototype_id".to_string())
             })?,
             component_id: func_run.component_id().ok_or_else(|| {
@@ -89,7 +88,6 @@ impl TryFrom<FuncRun> for ManagementHistoryItem {
                     ManagementApiError::ManagementHistoryFieldMissing("schema_name".to_string())
                 })?
                 .to_string(),
-            change_set_id: func_run.change_set_id(),
             func_id: func_run.func_id().ok_or_else(|| {
                 ManagementApiError::ManagementHistoryFieldMissing("func_id".to_string())
             })?,

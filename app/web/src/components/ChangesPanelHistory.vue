@@ -155,11 +155,11 @@ const deselectActionOrMgmtRun = () => {
 const clickActionOrMgmtRun = async (
   run: ActionHistoryView | ActionProposedView | ManagementHistoryItem,
 ): Promise<void> => {
-  if (selectedFuncRunId.value === run.funcRunId) {
+  if (selectedFuncRunId.value === run.id) {
     deselectActionOrMgmtRun();
   } else {
-    selectedFuncRunId.value = run.funcRunId;
-    await getFuncRun(run.funcRunId);
+    selectedFuncRunId.value = run.id;
+    await getFuncRun(run.id);
   }
 };
 
