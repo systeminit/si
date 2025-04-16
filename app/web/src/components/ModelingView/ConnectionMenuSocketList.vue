@@ -2,7 +2,7 @@
   <div
     :class="
       clsx(
-        'basis-1/2 h-full min-h-0 border-x-2 border-b-2 p-xs ',
+        'h-full min-h-0 border-x-2 border-b-2 p-xs pt-2xs ',
         active && themeClasses('bg-neutral-100', 'bg-neutral-800'),
         showCodeViewer ? 'children:h-1/2' : 'children:h-full',
       )
@@ -16,7 +16,8 @@
       ref="scrollRef"
       :class="
         clsx(
-          'flex flex-col px-2xs gap-2xs py-3xs min-h-0 overflow-auto',
+          'flex flex-col px-2xs gap-2xs py-3xs min-h-0 overflow-auto border',
+          themeClasses('border-neutral-300', 'border-neutral-600'),
           !showCodeViewer && 'h-full',
           !active && themeClasses('text-neutral-500', 'text-neutral-400'),
         )
@@ -29,124 +30,20 @@
           position: 'relative',
         }"
       >
-        <div
+        <ConnectionMenuSocketListItem
           v-for="item in socketList"
+          ref="socketListItemsRef"
           :key="item.index"
           :data-index="item.index"
-          :class="
-            clsx(
-              'flex gap-xs align-middle items-center',
-              active &&
-                item.index === localHighlightedIndex &&
-                themeClasses('bg-action-200', 'bg-action-800 text-white'),
-              active && [
-                themeClasses('outline-action-500', 'outline-action-300'),
-                'hover:outline -outline-offset-1 hover:outline-1',
-              ],
-              !active &&
-                props.listItems[item.index]!.socket.def.id !==
-                  selectedSocket?.def.id && [
-                  'hover:outline -outline-offset-1 hover:outline-1',
-                  themeClasses(
-                    'hover:outline-neutral-500',
-                    'hover:outline-neutral-400',
-                  ),
-                ],
-              item.index !== localHighlightedIndex &&
-                props.listItems[item.index]!.socket.def.id ===
-                  selectedSocket?.def.id && [
-                  'text-white',
-                  themeClasses('bg-action-500', 'bg-action-600'),
-                ],
-              'cursor-pointer',
-              'py-xs px-2xs my-3xs',
-            )
-          "
-          :style="{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: `${item.size}px`,
-            transform: `translateY(${item.start}px)`,
-          }"
-          @click="emit('select', item.index)"
-        >
-          <Icon
-            :class="
-              clsx(
-                'flex-none',
-                themeClasses('text-neutral-500', 'text-neutral-400'),
-              )
-            "
-            :name="
-              props.listItems[item.index]!.socket.def.direction === 'output'
-                ? 'output-connection'
-                : 'input-connection'
-            "
-            size="sm"
-          />
-          <div
-            :class="
-              clsx(
-                'w-8 text-2xs flex-none',
-                themeClasses('text-neutral-500', 'text-neutral-400'),
-              )
-            "
-          >
-            {{
-              props.listItems[item.index]!.socket.def.direction === "output"
-                ? "Output"
-                : "Input"
-            }}
-          </div>
-          <template v-if="filteringBySearchString">
-            <TruncateWithTooltip
-              class="text-xs font-bold flex-none max-w-[40%]"
-              :lineClamp="3"
-            >
-              {{ lastPart[item.index] }}
-            </TruncateWithTooltip>
-            <TruncateWithTooltip
-              :class="
-                clsx(
-                  'text-2xs flex-shrink ml-auto min-w-0 leading-tight',
-                  themeClasses('text-neutral-600', 'text-neutral-300'),
-                )
-              "
-              :lineClamp="3"
-            >
-              <template
-                v-for="(part, partIndex) in breadcrumbParts[item.index]"
-                :key="partIndex"
-                >{{ part }}</template
-              >
-            </TruncateWithTooltip>
-          </template>
-          <TruncateWithTooltip
-            v-else
-            :lineClamp="3"
-            class="text-xs leading-tight"
-          >
-            <span
-              v-for="(part, partIndex) in labelParts[item.index]"
-              :key="partIndex"
-              >{{ part }}</span
-            >
-          </TruncateWithTooltip>
-          <div
-            v-if="item.index === localHighlightedIndex"
-            :class="
-              clsx(
-                'flex flex-row flex-none gap-3xs items-center text-2xs',
-                !filteringBySearchString && 'ml-auto',
-              )
-            "
-          >
-            <TextPill tighter>Tab</TextPill>
-            <div class="leading-snug">to select</div>
-          </div>
-        </div>
+          :item="item"
+          :entry="listItems[item.index]!"
+          :highlighted="item.index === localHighlightedIndex"
+          :active="active"
+          :selected="listItems[item.index]!.socket.def.id === selectedSocket?.def.id"
+          :filteringBySearchString="filteringBySearchString"
+          :controlScheme="controlScheme"
+          @select="(index) => emit('select', index)"
+        />
       </div>
     </div>
     <div
@@ -172,12 +69,7 @@
 <script lang="ts" setup>
 import { computed, PropType, reactive, ref, watch, watchEffect } from "vue";
 import clsx from "clsx";
-import {
-  Icon,
-  LoadingMessage,
-  themeClasses,
-  TruncateWithTooltip,
-} from "@si/vue-lib/design-system";
+import { LoadingMessage, themeClasses } from "@si/vue-lib/design-system";
 import { useVirtualizer } from "@tanstack/vue-virtual";
 import CodeEditor from "@/components/CodeEditor.vue";
 import {
@@ -185,7 +77,7 @@ import {
   DiagramNodeData,
   DiagramSocketData,
 } from "../ModelingDiagram/diagram_types";
-import TextPill from "../TextPill.vue";
+import ConnectionMenuSocketListItem from "./ConnectionMenuSocketListItem.vue";
 
 export type SocketListEntry = {
   component: DiagramNodeData | DiagramGroupData;
@@ -208,6 +100,7 @@ const props = defineProps({
   active: { type: Boolean },
   doneLoading: { type: Boolean },
   filteringBySearchString: { type: String },
+  controlScheme: { type: String, default: "arrows" },
 });
 const localHighlightedIndex = computed(() =>
   props.active ? props.highlightedIndex : undefined,
@@ -235,21 +128,6 @@ const socketToShow = reactive<{ uniqueKey?: string; value?: string }>({});
 const showCodeViewer = computed(
   () => socketToShow?.uniqueKey && props.doneLoading && socketToShow.value,
 );
-const labelParts = computed(() => {
-  return props.listItems.map((item) => {
-    return item.label.split(/(\/)/);
-  });
-});
-const breadcrumbParts = computed(() => {
-  return labelParts.value.map((item) => {
-    return item.slice(0, item.length - 1);
-  });
-});
-const lastPart = computed(() => {
-  return labelParts.value.map((item) => {
-    return item[item.length - 1];
-  });
-});
 
 watchEffect(() => {
   if (props.active && props.highlightedSocket) {
@@ -284,4 +162,50 @@ watch(
     }
   },
 );
+
+// In order to use the CSS Custom Highlight API with Typescript we have to use some workarounds -
+// https://github.com/microsoft/TypeScript/issues/53003
+declare class Highlight {
+  add(range: Range): undefined;
+  constructor(...range: Range[]);
+}
+
+// eslint-disable-next-line @typescript-eslint/no-namespace
+declare namespace CSS {
+  const highlights: Map<string, Highlight>;
+}
+
+// END WORKAROUND CODE
+
+const socketListItemsRef =
+  ref<InstanceType<typeof ConnectionMenuSocketListItem>[]>();
+
+watchEffect(() => {
+  if (
+    !props.active ||
+    !props.filteringBySearchString ||
+    !socketListItemsRef.value
+  )
+    return;
+
+  const allHighlightRanges = [] as Range[];
+
+  socketListItemsRef.value.forEach((listItem) => {
+    allHighlightRanges.push(...listItem.highlightRanges);
+  });
+
+  try {
+    const fuzzySearchHighlight = new Highlight(...allHighlightRanges);
+    CSS.highlights.set("fuzzy-search-highlight", fuzzySearchHighlight);
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.log("This browser does not support the CSS Custom Highlight API");
+  }
+});
 </script>
+
+<style lang="css">
+::highlight(fuzzy-search-highlight) {
+  background-color: red;
+}
+</style>

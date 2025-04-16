@@ -99,6 +99,7 @@ export function useFeatureFlagsStore() {
         // You can override feature flags while working on a feature by setting them to true/false here
         // for example:
         // this.FEATURE_FLAG_NAME = false;
+        this.SIMPLE_SOCKET_UI = true;
       },
     }),
   )();

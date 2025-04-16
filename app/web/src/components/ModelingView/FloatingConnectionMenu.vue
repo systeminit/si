@@ -21,15 +21,15 @@
         <FloatingConnectionMenuInput
           ref="inputARef"
           :active="activeSide === 'a'"
-          :focused="activeSide === 'a'"
+          @click="undoASelection"
         />
         <FloatingConnectionMenuInput
           ref="inputBRef"
           :active="activeSide === 'b'"
-          :focused="activeSide === 'b'"
+          :disabled="activeSide === 'a'"
         />
       </div>
-      <div class="flex flex-row grow min-h-0">
+      <div class="flex flex-row grow min-h-0 children:basis-1/2">
         <!-- Socket A -->
         <ConnectionMenuSocketList
           :doneLoading="doneOpening"
@@ -40,6 +40,7 @@
           :selectedComponent="selectedComponentA"
           :selectedSocket="selectedSocketA"
           :filteringBySearchString="searchStringA"
+          :controlScheme="controlScheme"
           @select="(index: number) => selectAndProcess('a', index)"
         />
         <!-- Socket B -->
@@ -52,6 +53,7 @@
           :selectedComponent="selectedComponentB"
           :selectedSocket="selectedSocketB"
           :filteringBySearchString="searchStringB"
+          :controlScheme="controlScheme"
           @select="(index: number) => selectAndProcess('b', index)"
         />
       </div>
@@ -73,7 +75,11 @@
         "
       />
       <div class="flex flex-row gap-2xs items-center">
-        <TextPill>Tab</TextPill>
+        <TextPill>{{ controlScheme === "arrows" ? "Right" : "Tab" }}</TextPill>
+        <template v-if="controlScheme === 'arrows'">
+          <div>or</div>
+          <TextPill>Enter</TextPill>
+        </template>
         <div>to select</div>
       </div>
       <div
@@ -85,21 +91,25 @@
         "
       />
       <div class="flex flex-row gap-2xs items-center">
-        <TextPill>Shift + Tab</TextPill>
+        <TextPill>{{
+          controlScheme === "arrows" ? "Left" : "Shift + Tab"
+        }}</TextPill>
         <div>to switch back to the list on the left</div>
       </div>
-      <div
-        :class="
-          clsx(
-            'border-l h-full',
-            themeClasses('border-neutral-300', 'border-neutral-600'),
-          )
-        "
-      />
-      <div class="flex flex-row gap-2xs items-center">
-        <TextPill>Enter</TextPill>
-        <div>to create a connection</div>
-      </div>
+      <template v-if="controlScheme !== 'arrows'">
+        <div
+          :class="
+            clsx(
+              'border-l h-full',
+              themeClasses('border-neutral-300', 'border-neutral-600'),
+            )
+          "
+        />
+        <div class="flex flex-row gap-2xs items-center">
+          <TextPill>Enter</TextPill>
+          <div>to create a connection</div>
+        </div>
+      </template>
     </div>
   </Modal>
 </template>
@@ -144,6 +154,8 @@ const componentsStore = useComponentsStore();
 const viewsStore = useViewsStore();
 
 const doneOpening = ref(false);
+
+const controlScheme = "arrows";
 
 onMounted(() => {
   componentsStore.eventBus.on("openConnectionsMenu", open);
@@ -286,10 +298,12 @@ const updateMenu = async () => {
             return false;
           }
 
+          // Output sockets or input sockets that do not have a max number of connections always make it through this filter
           if (s.def.direction !== "input" || s.def.maxConnections === null) {
             return true;
           }
 
+          // this is to check if the socket is full already
           const incomingConnections = edges.filter(
             (e) => e.toSocketKey === s.uniqueKey,
           );
@@ -346,13 +360,13 @@ const updateMenu = async () => {
   // Get all valid peer sockets for the active sockets
   const peersFunction = componentsStore.possibleAndExistingPeerSocketsFn;
   type SocketListEntryWithOriginator = SocketListEntry & {
-    originatorSocketLabel: string;
+    originatorSocketPathKey: string;
   };
 
   const validPeers = matchedActiveSideSockets
     .flatMap(({ component, socket, label }) =>
       peersFunction(socket.def, component.def.id).possiblePeers.map((p) => ({
-        originatorSocketLabel: label,
+        originatorSocketPathKey: generateUniquePathKey(label, socket),
         ...p,
       })),
     )
@@ -370,7 +384,7 @@ const updateMenu = async () => {
       }
 
       return {
-        originatorSocketLabel: s.originatorSocketLabel,
+        originatorSocketPathKey: s.originatorSocketPathKey,
         component,
         socket: new DiagramSocketData(component, s),
       };
@@ -391,11 +405,11 @@ const updateMenu = async () => {
   const socketsWithPossiblePeers = new Set();
   for (const peer of _.compact(validPeers)) {
     otherSideSockets[peer.label] = peer;
-    socketsWithPossiblePeers.add(peer.originatorSocketLabel);
+    socketsWithPossiblePeers.add(peer.originatorSocketPathKey);
   }
 
   const activeSideSocketsWithPeers = matchedActiveSideSockets.filter((e) =>
-    socketsWithPossiblePeers.has(e.label),
+    socketsWithPossiblePeers.has(generateUniquePathKey(e.label, e.socket)),
   );
 
   const deduplicatedOtherSideSockets = _.values(otherSideSockets);
@@ -445,30 +459,62 @@ const highlightedIndex = ref(0);
 // })
 
 const keyListener = (e: KeyboardEvent) => {
-  switch (e.key) {
-    case "ArrowUp": {
-      highlightPrev();
-      e.preventDefault();
-      break;
+  if (controlScheme === "arrows") {
+    switch (e.key) {
+      case "ArrowUp": {
+        highlightPrev();
+        e.preventDefault();
+        break;
+      }
+      case "ArrowDown": {
+        highlightNext();
+        e.preventDefault();
+        break;
+      }
+      case "ArrowRight": {
+        processHighlighted();
+        e.preventDefault();
+        break;
+      }
+      case "Enter": {
+        processHighlighted();
+        e.preventDefault();
+        break;
+      }
+      case "ArrowLeft": {
+        undoASelection();
+        e.preventDefault();
+        break;
+      }
+      default:
+        break;
     }
-    case "ArrowDown": {
-      highlightNext();
-      e.preventDefault();
-      break;
+  } else {
+    switch (e.key) {
+      case "ArrowUp": {
+        highlightPrev();
+        e.preventDefault();
+        break;
+      }
+      case "ArrowDown": {
+        highlightNext();
+        e.preventDefault();
+        break;
+      }
+      case "Enter": {
+        processHighlighted();
+        e.preventDefault();
+        break;
+      }
+      case "Tab": {
+        if (e.shiftKey) undoASelection();
+        else processHighlighted();
+        e.preventDefault();
+        break;
+      }
+      default:
+        break;
     }
-    case "Enter": {
-      processHighlighted();
-      e.preventDefault();
-      break;
-    }
-    case "Tab": {
-      if (e.shiftKey) undoASelection();
-      else processHighlighted();
-      e.preventDefault();
-      break;
-    }
-    default:
-      break;
   }
 };
 const debouncedListener = _.debounce(keyListener, 10, {
@@ -519,14 +565,29 @@ const processHighlighted = () => {
     const selectedItem = listBItems.value[highlightedIndex.value];
     if (!selectedItem) return;
 
-    connectionData.B.socketId = selectedItem.socket.def.id;
-    connectionData.aDirection = invertDirection(
-      selectedItem.socket.def.direction === "bidirectional"
-        ? undefined
-        : selectedItem.socket.def.direction,
-    );
-
-    connectionData.B.componentId = selectedItem.component.def.id;
+    if (connectionData.A.socketId) {
+      connectionData.B.socketId = selectedItem.socket.def.id;
+      connectionData.aDirection = invertDirection(
+        selectedItem.socket.def.direction === "bidirectional"
+          ? undefined
+          : selectedItem.socket.def.direction,
+      );
+      connectionData.B.componentId = selectedItem.component.def.id;
+    } else {
+      connectionData.A.socketId = selectedItem.socket.def.id;
+      connectionData.aDirection =
+        selectedItem.socket.def.direction === "bidirectional"
+          ? undefined
+          : selectedItem.socket.def.direction;
+      connectionData.A.componentId = selectedItem.component.def.id;
+      if (inputARef.value && inputBRef.value) {
+        inputBRef.value.searchString = inputARef.value.searchString;
+        inputARef.value.searchString = selectedItem.label;
+      }
+      if (fixedDirection.value) {
+        fixedDirection.value = invertDirection(fixedDirection.value);
+      }
+    }
   }
 
   if (
@@ -682,4 +743,11 @@ function close() {
 const isOpen = computed(() => modalRef.value?.isOpen);
 
 defineExpose({ open, close, isOpen });
+</script>
+
+<script lang="ts">
+export const generateUniquePathKey = (
+  label: string,
+  socket: DiagramSocketData,
+) => `${label}-${socket.def.direction}-${socket.uniqueKey}`;
 </script>
