@@ -16,7 +16,9 @@ use si_data_spicedb::SpiceDbError;
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::{middleware::WorkspacePermissionLayer, service::ApiError, AppState};
+use crate::{
+    dal_wrapper::DalWrapperError, middleware::WorkspacePermissionLayer, service::ApiError, AppState,
+};
 
 mod apply;
 mod approval_status;
@@ -63,16 +65,27 @@ pub enum Error {
 
 impl IntoResponse for Error {
     fn into_response(self) -> axum::response::Response {
-        let status_code = match &self {
-            Self::ChangeSetApply(_) => StatusCode::CONFLICT,
-            Self::DvuRootsNotEmpty(_) => StatusCode::PRECONDITION_FAILED,
+        let (status_code, maybe_error_override) = match &self {
+            Self::DalWrapper(DalWrapperError::ApplyWithUnsatisfiedRequirements(_)) => (
+                StatusCode::FORBIDDEN,
+                Some(
+                    "Cannot apply change set with unsatisfied requirements. Please try again."
+                        .to_string(),
+                ),
+            ),
+            Self::ChangeSetApply(_) => (StatusCode::CONFLICT, None),
+            Self::DvuRootsNotEmpty(_) => (StatusCode::PRECONDITION_FAILED, None),
             Self::Transactions(dal::TransactionsError::BadWorkspaceAndChangeSet) => {
-                StatusCode::FORBIDDEN
+                (StatusCode::FORBIDDEN, None)
             }
-            _ => ApiError::DEFAULT_ERROR_STATUS_CODE,
+            _ => (ApiError::DEFAULT_ERROR_STATUS_CODE, None),
         };
 
-        ApiError::new(status_code, self).into_response()
+        ApiError::new(
+            status_code,
+            maybe_error_override.unwrap_or(self.to_string()),
+        )
+        .into_response()
     }
 }
 
