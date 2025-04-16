@@ -279,6 +279,7 @@ you can pass in options as props too */
                         : 'vorm-input__input',
                       compact && rename && 'vorm-input-compact__input__rename',
                     ],
+                noStyles && disabled && 'cursor-not-allowed',
               )
             "
             :disabled="disabledBySelfOrParent"

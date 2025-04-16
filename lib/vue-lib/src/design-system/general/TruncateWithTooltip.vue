@@ -94,7 +94,7 @@ const tooltip = computed(() => {
   // eslint-disable-next-line @typescript-eslint/no-unused-expressions
   forceRecompute.value;
   if (props.lineClamp) {
-    if (divRef.value && divRef.value.scrollHeight > divRef.value.offsetHeight) {
+    if (divRef.value && divRef.value.scrollHeight > divRef.value.clientHeight) {
       return {
         theme: "instant-show",
         content: innerText.value || divRef.value.innerText,
@@ -124,6 +124,19 @@ const toggleExpand = () => {
   if (!props.expandOnClick || !tooltip.value.content || props.lineClamp) return;
   else expanded.value = !expanded.value;
 };
+
+// This catches various difficult bugs that happen when computing line clamp tooltips - not elegant but it works!
+const lineClampRefresh = ref();
+onMounted(() => {
+  if (props.lineClamp) {
+    lineClampRefresh.value = setInterval(() => {
+      forceRecompute.value++;
+    }, 1000);
+  }
+});
+onBeforeUnmount(() => {
+  clearInterval(lineClampRefresh.value);
+});
 
 defineExpose({ tooltipActive });
 </script>
