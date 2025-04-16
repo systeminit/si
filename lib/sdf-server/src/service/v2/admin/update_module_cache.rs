@@ -4,7 +4,6 @@ use telemetry::prelude::*;
 use super::{AdminAPIResult, AdminUserContext};
 use crate::{
     extract::{workspace::TargetWorkspaceIdFromToken, PosthogClient},
-    service::async_route::handle_error,
     track,
 };
 use axum::{
@@ -13,6 +12,7 @@ use axum::{
     response::Json,
 };
 use dal::{cached_module::CachedModule, DalContext, Tenancy, WsEvent};
+use sdf_core::async_route::handle_error;
 use ulid::Ulid;
 
 #[derive(Serialize, Deserialize, Clone)]

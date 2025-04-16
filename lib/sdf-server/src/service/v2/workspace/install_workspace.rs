@@ -5,6 +5,7 @@ use axum::{
 };
 use dal::{DalContext, Workspace, WorkspacePk, WsEvent};
 use module_index_client::ModuleIndexClient;
+use sdf_core::async_route::handle_error;
 use serde::{Deserialize, Serialize};
 use si_events::audit_log::AuditLogKind;
 use si_pkg::WorkspaceExportContentV0;
@@ -13,7 +14,6 @@ use ulid::Ulid;
 
 use crate::{
     extract::{request::RawAccessToken, HandlerContext, PosthogClient},
-    service::async_route::handle_error,
     service::v2::AccessBuilder,
     track,
 };

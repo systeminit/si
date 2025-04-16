@@ -1,0 +1,37 @@
+[package]
+name = "sdf-v1-routes-module"
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+dal = { path = "../../lib/dal" }
+module-index-client = { path = "../../lib/module-index-client" }
+permissions = { path = "../../lib/permissions" }
+sdf-core = { path = "../../lib/sdf-core" }
+sdf-extract = { path = "../../lib/sdf-extract" }
+si-data-pg = { path = "../../lib/si-data-pg" }
+si-layer-cache = { path = "../../lib/si-layer-cache" }
+si-frontend-types = { path = "../../lib/si-frontend-types-rs" }
+si-pkg = { path = "../../lib/si-pkg" }
+si-std = { path = "../../lib/si-std" }
+
+async-trait = { workspace = true }
+axum = { workspace = true }
+convert_case = { workspace = true }
+futures = { workspace = true }
+hyper = { workspace = true }
+remain = { workspace = true }
+reqwest = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+telemetry = { path = "../../lib/telemetry-rs" }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+tokio-stream = { workspace = true }
+ulid = { workspace = true }
+url = { workspace = true }

@@ -6627,6 +6627,14 @@ dependencies = [
  "sdf-v1-routes-change-sets",
  "sdf-v1-routes-component",
  "sdf-v1-routes-diagram",
+ "sdf-v1-routes-graphviz",
+ "sdf-v1-routes-module",
+ "sdf-v1-routes-node-debug",
+ "sdf-v1-routes-qualification",
+ "sdf-v1-routes-secret",
+ "sdf-v1-routes-session",
+ "sdf-v1-routes-variant",
+ "sdf-v1-routes-ws",
  "serde",
  "serde_json",
  "serde_with",
@@ -6766,6 +6774,186 @@ dependencies = [
  "thiserror 2.0.12",
  "tokio",
  "ulid",
+]
+
+[[package]]
+name = "sdf-v1-routes-graphviz"
+version = "0.1.0"
+dependencies = [
+ "axum 0.6.20",
+ "dal",
+ "remain",
+ "sdf-core",
+ "sdf-extract",
+ "serde",
+ "serde_json",
+ "telemetry",
+ "thiserror 2.0.12",
+ "tokio",
+]
+
+[[package]]
+name = "sdf-v1-routes-module"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "axum 0.6.20",
+ "convert_case 0.6.0",
+ "dal",
+ "futures",
+ "hyper 0.14.32",
+ "module-index-client",
+ "permissions",
+ "remain",
+ "reqwest",
+ "sdf-core",
+ "sdf-extract",
+ "serde",
+ "serde_json",
+ "si-data-pg",
+ "si-frontend-types",
+ "si-layer-cache",
+ "si-pkg",
+ "si-std",
+ "telemetry",
+ "thiserror 2.0.12",
+ "tokio",
+ "tokio-stream",
+ "ulid",
+ "url",
+]
+
+[[package]]
+name = "sdf-v1-routes-node-debug"
+version = "0.1.0"
+dependencies = [
+ "axum 0.6.20",
+ "dal",
+ "remain",
+ "sdf-core",
+ "sdf-extract",
+ "serde",
+ "serde_json",
+ "telemetry",
+ "thiserror 2.0.12",
+ "ulid",
+]
+
+[[package]]
+name = "sdf-v1-routes-qualification"
+version = "0.1.0"
+dependencies = [
+ "axum 0.6.20",
+ "base64 0.22.1",
+ "dal",
+ "remain",
+ "sdf-core",
+ "sdf-extract",
+ "serde",
+ "serde_json",
+ "si-data-nats",
+ "si-data-pg",
+ "telemetry",
+ "thiserror 2.0.12",
+]
+
+[[package]]
+name = "sdf-v1-routes-secret"
+version = "0.1.0"
+dependencies = [
+ "axum 0.6.20",
+ "dal",
+ "hyper 0.14.32",
+ "remain",
+ "sdf-core",
+ "sdf-extract",
+ "serde",
+ "serde_json",
+ "si-data-nats",
+ "si-data-pg",
+ "si-events",
+ "telemetry",
+ "thiserror 2.0.12",
+]
+
+[[package]]
+name = "sdf-v1-routes-session"
+version = "0.1.0"
+dependencies = [
+ "axum 0.6.20",
+ "dal",
+ "hyper 0.14.32",
+ "permissions",
+ "remain",
+ "reqwest",
+ "sdf-core",
+ "sdf-extract",
+ "serde",
+ "serde_json",
+ "si-data-nats",
+ "si-data-pg",
+ "si-data-spicedb",
+ "si-events",
+ "strum",
+ "telemetry",
+ "thiserror 2.0.12",
+ "tokio",
+ "y-sync",
+]
+
+[[package]]
+name = "sdf-v1-routes-variant"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "axum 0.6.20",
+ "dal",
+ "hyper 0.14.32",
+ "remain",
+ "sdf-core",
+ "sdf-extract",
+ "serde",
+ "serde_json",
+ "si-events",
+ "si-frontend-types",
+ "si-pkg",
+ "telemetry",
+ "thiserror 2.0.12",
+ "tokio",
+]
+
+[[package]]
+name = "sdf-v1-routes-ws"
+version = "0.1.0"
+dependencies = [
+ "audit-database",
+ "axum 0.6.20",
+ "bytes",
+ "dal",
+ "edda-client",
+ "frigg",
+ "futures",
+ "futures-lite",
+ "nats-multiplexer-client",
+ "nats-subscriber",
+ "remain",
+ "sdf-core",
+ "sdf-extract",
+ "serde",
+ "serde_json",
+ "si-data-nats",
+ "si-data-pg",
+ "si-data-spicedb",
+ "si-events",
+ "si-frontend-types",
+ "si-posthog",
+ "telemetry",
+ "thiserror 2.0.12",
+ "tokio",
+ "tokio-stream",
+ "tokio-tungstenite",
+ "tokio-util",
+ "y-sync",
 ]
 
 [[package]]

@@ -5,10 +5,10 @@ use si_events::audit_log::AuditLogKind;
 use super::{SchemaVariantsAPIError, SchemaVariantsAPIResult};
 use crate::{
     extract::{HandlerContext, PosthogClient},
-    service::force_change_set_response::ForceChangeSetResponse,
     service::v2::AccessBuilder,
     track,
 };
+use sdf_core::force_change_set_response::ForceChangeSetResponse;
 
 pub async fn delete_unlocked_variant(
     HandlerContext(builder): HandlerContext,
