@@ -9,19 +9,12 @@ use axum::{
 use hyper::header;
 use hyper::Method;
 use serde_json::{json, Value};
-use si_data_nats::NatsError;
-use si_data_pg::PgError;
-use telemetry::prelude::*;
-use thiserror::Error;
 use tower_http::{
     compression::CompressionLayer,
     cors::{AllowOrigin, CorsLayer},
 };
 
-use crate::{
-    app_state::{AppState, ApplicationRuntimeMode},
-    ServerError,
-};
+use crate::app_state::{AppState, ApplicationRuntimeMode};
 
 const MAINTENANCE_MODE_MESSAGE: &str = concat!(
     " SI is currently in maintenance mode. ",
@@ -97,12 +90,12 @@ pub fn routes(state: AppState) -> Router {
 
 fn v1_routes() -> Router<AppState> {
     Router::new()
-        .nest("/action", crate::service::action::routes())
+        .nest("/action", sdf_v1_routes_actions::routes())
         .nest("/node_debug", crate::service::node_debug::routes())
-        .nest("/attribute", crate::service::attribute::routes())
-        .nest("/change_set", crate::service::change_set::routes())
-        .nest("/component", crate::service::component::routes())
-        .nest("/diagram", crate::service::diagram::routes())
+        .nest("/attribute", sdf_v1_routes_attribute::routes())
+        .nest("/change_set", sdf_v1_routes_change_sets::routes())
+        .nest("/component", sdf_v1_routes_component::routes())
+        .nest("/diagram", sdf_v1_routes_diagram::routes())
         .nest("/graphviz", crate::service::graphviz::routes())
         .nest("/qualification", crate::service::qualification::routes())
         .nest("/secret", crate::service::secret::routes())
@@ -125,32 +118,4 @@ pub fn dev_routes() -> Router<AppState> {
 pub fn dev_routes() -> Router<AppState> {
     telemetry::prelude::debug!("skipping dev routes...");
     Router::new()
-}
-
-#[allow(clippy::large_enum_variant)]
-#[remain::sorted]
-#[derive(Debug, Error)]
-pub enum AppError {
-    #[error(transparent)]
-    Nats(#[from] NatsError),
-    #[error(transparent)]
-    Pg(#[from] PgError),
-    #[error(transparent)]
-    Server(#[from] ServerError),
-}
-
-impl IntoResponse for AppError {
-    fn into_response(self) -> Response {
-        let (status, error_message) = (StatusCode::INTERNAL_SERVER_ERROR, self.to_string());
-
-        let body = Json(serde_json::json!({
-            "error": {
-                "message": error_message,
-                "code": 42,
-                "statusCode": status.as_u16(),
-            },
-        }));
-        error!(si.error.message = error_message);
-        (status, body).into_response()
-    }
 }
