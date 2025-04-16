@@ -1,4 +1,3 @@
-use asset_sprayer::AssetSprayerError;
 use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
@@ -42,8 +41,6 @@ pub mod update_func;
 pub enum FuncAPIError {
     #[error("action prototype error: {0}")]
     ActionPrototype(#[from] dal::action::prototype::ActionPrototypeError),
-    #[error("asset sprayer error: {0}")]
-    AssetSprayer(#[from] AssetSprayerError),
     #[error("cannot delete binding for func kind")]
     CannotDeleteBindingForFunc,
     #[error("cannot delete locked func: {0}")]
