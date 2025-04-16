@@ -9,6 +9,25 @@ fi
 
 DIR="/config"
 
+retry_command() {
+    local max_attempts=3
+    local attempt=1
+    local output=""
+
+    while [ $attempt -le $max_attempts ]; do
+        output=$($@ 2>&1)
+        if [ $? -eq 0 ]; then
+            echo "$output"
+            return 0
+        fi
+        echo "Attempt $attempt failed, retrying..."
+        attempt=$((attempt + 1))
+        sleep 1
+    done
+    echo "$output"
+    return 1
+}
+
 # Get a list of parameters that match the prefix
 PARAMETERS=$(aws ssm describe-parameters --query "Parameters[?starts_with(Name, '$SI_HOSTENV')]" --output json)
 if [ -z "$PARAMETERS" ]; then
@@ -22,7 +41,7 @@ for parameter_info in $(echo "$PARAMETERS" | jq -c '.[]'); do
 
     if [ -n "$env_var_name" ] && [ "$env_var_name" != "null" ]; then
         # Get the parameter value
-        resource_value=$(aws ssm get-parameter --name "$parameter_name" --query "Parameter.Value" --output json | tr -d '"' 2>/dev/null)
+        resource_value=$(retry_command aws ssm get-parameter --name "$parameter_name" --query "Parameter.Value" --output json | tr -d '"')
 
         # Export the environment variable
         export "${env_var_name}=${resource_value}"
@@ -39,10 +58,10 @@ fi
 
 # Loop through each secret
 for secret_name in $(echo "$SECRETS" | jq -r '.[]'); do
-    env_var_name=$(aws secretsmanager describe-secret --secret-id "$secret_name" --query "Description" --output json 2>/dev/null | tr -d '"')
+    env_var_name=$(retry_command aws secretsmanager describe-secret --secret-id "$secret_name" --query "Description" --output json | tr -d '"')
 
     if [ -n "$env_var_name" ] && [ "$env_var_name" != "null" ]; then
-        resource_value=$(aws secretsmanager get-secret-value --secret-id "$secret_name" --query "SecretString" --output json | tr -d '"' 2>/dev/null)
+        resource_value=$(retry_command aws secretsmanager get-secret-value --secret-id "$secret_name" --query "SecretString" --output json | tr -d '"')
         export "${env_var_name}=${resource_value}"
         echo "Exported Secret: $env_var_name"
     fi
