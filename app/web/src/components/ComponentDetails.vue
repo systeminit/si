@@ -172,8 +172,7 @@
                 :component="component"
               />
             </template>
-            <template v-else
-              >.selectedComponentId
+            <template v-else>
               <AssetActionsDetails :component="props.component" />
             </template>
           </TabGroupItem>
