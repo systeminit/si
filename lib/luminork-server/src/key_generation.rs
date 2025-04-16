@@ -5,7 +5,11 @@ use si_crypto::{
 };
 use telemetry::prelude::*;
 
-#[instrument(name = "sdf.util.generate_veritech_key_pair", level = "info", skip_all)]
+#[instrument(
+    name = "luminork.util.generate_veritech_key_pair",
+    level = "info",
+    skip_all
+)]
 pub async fn generate_veritech_key_pair(
     secret_key_path: impl AsRef<Path>,
     public_key_path: impl AsRef<Path>,
@@ -13,7 +17,11 @@ pub async fn generate_veritech_key_pair(
     VeritechKeyPair::create_and_write_files(secret_key_path, public_key_path).await
 }
 
-#[instrument(name = "sdf.util.generate_symmetric_key", level = "info", skip_all)]
+#[instrument(
+    name = "luminork.util.generate_symmetric_key",
+    level = "info",
+    skip_all
+)]
 pub async fn generate_symmetric_key(
     symmetric_key_path: impl AsRef<Path>,
 ) -> Result<(), SymmetricCryptoError> {

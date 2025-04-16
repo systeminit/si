@@ -31,9 +31,9 @@ mod routes;
 mod runnable;
 mod server;
 pub mod service;
-mod tracking;
 mod uds;
 
+pub(crate) use self::app_state::AppState;
 pub use self::{
     app::AxumApp,
     app_state::ApplicationRuntimeMode,
@@ -43,10 +43,6 @@ pub use self::{
     },
     nats_multiplexer::CRDT_MULTIPLEXER_SUBJECT,
     server::{Server, ServerMetadata, ServerSocket},
-};
-pub(crate) use self::{
-    app_state::AppState,
-    tracking::{track, track_no_ctx},
 };
 pub use dal::{
     feature_flags::{FeatureFlag, FeatureFlagService},

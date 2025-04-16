@@ -4,7 +4,6 @@ rust_library(
     name = "luminork-server",
     deps = [
         "//lib/audit-database:audit-database",
-        "//lib/asset-sprayer:asset-sprayer",
         "//lib/auth-api-client:auth-api-client",
         "//lib/buck2-resources:buck2-resources",
         "//lib/dal:dal",
@@ -69,6 +68,7 @@ rust_library(
         "//third-party/rust:tower-http",
         "//third-party/rust:tracing-tunnel",
         "//third-party/rust:ulid",
+        "//third-party/rust:utoipa",
         "//third-party/rust:url",
         "//third-party/rust:y-sync",
     ],

@@ -10,7 +10,6 @@ publish.workspace = true
 
 [dependencies]
 audit-database = { path = "../../lib/audit-database" }
-asset-sprayer = { path = "../../lib/asset-sprayer" }
 auth-api-client = { path = "../../lib/auth-api-client" }
 buck2-resources = { path = "../../lib/buck2-resources" }
 dal = { path = "../../lib/dal" }
@@ -76,12 +75,6 @@ tower = { workspace = true }
 tower-http = { workspace = true }
 tracing-tunnel = { workspace = true }
 ulid = { workspace = true }
+utoipa = { workspace = true }
 url = { workspace = true }
 y-sync = { workspace = true }
-
-[dev-dependencies]
-dal-test = { path = "../../lib/dal-test" }
-
-indoc = { workspace = true }
-pretty_assertions_sorted = { workspace = true }
-yrs = { workspace = true }

@@ -2,6 +2,7 @@ use axum::{response::IntoResponse, routing::get, Json, Router};
 use dal::{UserPk, WorkspacePk};
 use serde::{Deserialize, Serialize};
 use si_jwt_public_key::SiJwt;
+use utoipa::ToSchema;
 
 use crate::{
     extract::{
@@ -17,19 +18,34 @@ pub fn routes() -> Router<AppState> {
     Router::new().route("/", get(whoami))
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, ToSchema)]
 #[serde(rename_all = "camelCase")]
-struct WhoamiResponse {
+pub struct WhoamiResponse {
+    #[schema(value_type = String, example = "01H9ZQCBJ3E7HBTRN3J58JQX8K")]
     pub user_id: UserPk,
+
+    #[schema(example = "user@example.com")]
     pub user_email: String,
+
+    #[schema(value_type = String, example = "01H9ZQD35JPMBGHH69BT0Q79VY")]
     pub workspace_id: WorkspacePk,
+
+    #[schema(value_type = String, example = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...")]
     pub token: SiJwt,
 }
 
-async fn whoami(
-    // TODO this isn't really necessary; we don't need to check you have a workspace ID.
+#[utoipa::path(
+    get,
+    path = "/whoami",
+    tag = "whoami",
+    responses(
+        (status = 200, description = "Successfully retrieved user information", body = WhoamiResponse),
+        (status = 401, description = "Unauthorized - Invalid or expired token"),
+        (status = 403, description = "Forbidden - Insufficient permissions")
+    ),
+)]
+pub async fn whoami(
     _: TargetWorkspaceIdFromToken,
-    // Just because this is the most permissive role we have right now
     _: AuthorizedForAutomationRole,
     ValidatedToken(token): ValidatedToken,
     WorkspaceAuthorization {

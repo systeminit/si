@@ -4326,7 +4326,6 @@ dependencies = [
 name = "luminork-server"
 version = "0.1.0"
 dependencies = [
- "asset-sprayer",
  "async-openai",
  "async-trait",
  "audit-database",
@@ -4338,7 +4337,6 @@ dependencies = [
  "clap",
  "convert_case 0.6.0",
  "dal",
- "dal-test",
  "derive_builder",
  "derive_more",
  "edda-client",
@@ -4346,7 +4344,6 @@ dependencies = [
  "futures",
  "futures-lite",
  "hyper 0.14.32",
- "indoc",
  "itertools 0.13.0",
  "module-index-client",
  "names",
@@ -4357,7 +4354,6 @@ dependencies = [
  "once_cell",
  "pathdiff",
  "permissions",
- "pretty_assertions_sorted",
  "rand 0.8.5",
  "rebaser-client",
  "regex",
@@ -4398,7 +4394,6 @@ dependencies = [
  "utoipa",
  "veritech-client",
  "y-sync",
- "yrs",
 ]
 
 [[package]]

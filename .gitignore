@@ -26,6 +26,7 @@ bin/lang-js/docs/
 
 .turbo
 .netlify
+CLAUDE.md
 
 # vim temp files
 .*.swp

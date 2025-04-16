@@ -105,7 +105,7 @@ pub(crate) async fn services_context_from_config(
     Ok((services_context, layer_db_graceful_shutdown))
 }
 
-#[instrument(name = "sdf.init.load_encryption_key", level = "info", skip_all)]
+#[instrument(name = "luminork.init.load_encryption_key", level = "info", skip_all)]
 pub(crate) async fn load_encryption_key(
     crypto_config: VeritechCryptoConfig,
 ) -> InitResult<Arc<VeritechEncryptionKey>> {
@@ -114,7 +114,7 @@ pub(crate) async fn load_encryption_key(
     ))
 }
 
-#[instrument(name = "sdf.init.connect_to_nats", level = "info", skip_all)]
+#[instrument(name = "luminork.init.connect_to_nats", level = "info", skip_all)]
 pub(crate) async fn connect_to_nats(nats_config: &NatsConfig) -> InitResult<NatsClient> {
     let client = NatsClient::new(nats_config)
         .await
@@ -124,7 +124,7 @@ pub(crate) async fn connect_to_nats(nats_config: &NatsConfig) -> InitResult<Nats
 }
 
 #[instrument(
-    name = "sdf.init.get_or_create_jetstream_streams",
+    name = "luminork.init.get_or_create_jetstream_streams",
     level = "info",
     skip_all
 )]
@@ -138,14 +138,14 @@ pub(crate) async fn get_or_create_jetstream_streams(
     Ok(streams)
 }
 
-#[instrument(name = "sdf.init.create_pg_pool", level = "info", skip_all)]
+#[instrument(name = "luminork.init.create_pg_pool", level = "info", skip_all)]
 pub(crate) async fn create_pg_pool(pg_pool_config: &PgPoolConfig) -> InitResult<PgPool> {
     let pool = PgPool::new(pg_pool_config).await?;
     debug!("successfully started pg pool (note that not all connections may be healthy)");
     Ok(pool)
 }
 
-#[instrument(name = "sdf.init.create_rebaser_client", level = "info", skip_all)]
+#[instrument(name = "luminork.init.create_rebaser_client", level = "info", skip_all)]
 async fn create_rebaser_client(nats: NatsClient) -> InitResult<RebaserClient> {
     let client = RebaserClient::new(nats).await?;
     debug!("successfully initialized the rebaser client");
@@ -156,18 +156,22 @@ pub(crate) fn create_veritech_client(nats: NatsClient) -> veritech_client::Clien
     veritech_client::Client::new(nats)
 }
 
-#[instrument(name = "sdf.init.create_compute_executor", level = "info", skip_all)]
+#[instrument(
+    name = "luminork.init.create_compute_executor",
+    level = "info",
+    skip_all
+)]
 pub(crate) fn create_compute_executor() -> InitResult<DedicatedExecutor> {
-    dal::compute_executor("sdf").map_err(Into::into)
+    dal::compute_executor("luminork").map_err(Into::into)
 }
 
-#[instrument(name = "sdf.init.create_job_processor", level = "info", skip_all)]
+#[instrument(name = "luminork.init.create_job_processor", level = "info", skip_all)]
 pub(crate) fn create_job_processor(nats: NatsClient) -> Box<dyn JobQueueProcessor + Send + Sync> {
     Box::new(NatsProcessor::new(nats)) as Box<dyn JobQueueProcessor + Send + Sync>
 }
 
 #[instrument(
-    name = "sdf.init.create_symmetric_crypto_service",
+    name = "luminork.init.create_symmetric_crypto_service",
     level = "info",
     skip_all
 )]
@@ -179,7 +183,7 @@ pub(crate) async fn create_symmetric_crypto_service(
         .map_err(Into::into)
 }
 
-#[instrument(name = "sdf.init.initialize_layer_db", level = "info", skip_all)]
+#[instrument(name = "luminork.init.initialize_layer_db", level = "info", skip_all)]
 pub(crate) async fn initialize_layer_db(
     config: LayerDbConfig,
     compute_executor: DedicatedExecutor,
@@ -191,7 +195,7 @@ pub(crate) async fn initialize_layer_db(
 }
 
 #[instrument(
-    name = "sdf.init.load_jwt_public_signing_key",
+    name = "luminork.init.load_jwt_public_signing_key",
     level = "info",
     skip_all
 )]

@@ -337,6 +337,8 @@
           pinga = binDerivation {pkgName = "pinga";};
 
           rebaser = binDerivation {pkgName = "rebaser";};
+          
+          luminork = binDerivation {pkgName = "luminork";};
 
           sdf = binDerivation {pkgName = "sdf";};
 

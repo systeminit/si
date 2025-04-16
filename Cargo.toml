@@ -35,6 +35,7 @@ members = [
     "lib/forklift-server",
     "lib/frigg",
     "lib/joi-validator",
+    "lib/luminork-server",
     "lib/module-index-client",
     "lib/module-index-server",
     "lib/nats-dead-letter-queue",

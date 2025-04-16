@@ -1,4 +1,3 @@
-use asset_sprayer::config::{AssetSprayerConfig, SIOpenAIConfig};
 use audit_database::AuditDatabaseConfig;
 use si_crypto::VeritechCryptoConfig;
 use si_data_spicedb::SpiceDbConfig;
@@ -74,12 +73,6 @@ pub struct Config {
 
     #[builder(default = "default_auth_api_url()")]
     auth_api_url: String,
-
-    #[builder(default)]
-    openai: SIOpenAIConfig,
-
-    #[builder(default)]
-    asset_sprayer: AssetSprayerConfig,
 
     #[builder(default)]
     nats: NatsConfig,
@@ -201,16 +194,6 @@ impl Config {
         &self.auth_api_url
     }
 
-    /// OpenAI API configuration
-    pub fn openai(&self) -> &SIOpenAIConfig {
-        &self.openai
-    }
-
-    /// Prompts directory for the asset sprayer
-    pub fn asset_sprayer(&self) -> &AssetSprayerConfig {
-        &self.asset_sprayer
-    }
-
     /// Feature flags defined at boot time, via config files or the FEATURES env variable
     #[must_use]
     pub fn boot_feature_flags(&self) -> &HashSet<FeatureFlag> {
@@ -287,10 +270,6 @@ pub struct ConfigFile {
     pub module_index_url: String,
     #[serde(default = "default_auth_api_url")]
     pub auth_api_url: String,
-    #[serde(default)]
-    pub openai: SIOpenAIConfig,
-    #[serde(default)]
-    pub asset_sprayer: AssetSprayerConfig,
     #[serde(default = "default_symmetric_crypto_config")]
     symmetric_crypto_service: SymmetricCryptoServiceConfigFile,
     #[serde(default)]
@@ -320,8 +299,6 @@ impl Default for ConfigFile {
             layer_db_config: default_layer_db_config(),
             module_index_url: default_module_index_url(),
             auth_api_url: default_auth_api_url(),
-            openai: Default::default(),
-            asset_sprayer: Default::default(),
             symmetric_crypto_service: default_symmetric_crypto_config(),
             boot_feature_flags: Default::default(),
             create_workspace_permissions: Default::default(),
@@ -356,8 +333,6 @@ impl TryFrom<ConfigFile> for Config {
             posthog: value.posthog,
             module_index_url: value.module_index_url,
             auth_api_url: value.auth_api_url,
-            openai: value.openai,
-            asset_sprayer: value.asset_sprayer,
             symmetric_crypto_service: value.symmetric_crypto_service.try_into()?,
             layer_db_config: value.layer_db_config,
             boot_feature_flags: value.boot_feature_flags.into_iter().collect::<HashSet<_>>(),
@@ -404,7 +379,7 @@ fn random_instance_id() -> String {
 }
 
 fn default_pkgs_path() -> String {
-    "/run/sdf/pkgs/".to_string()
+    "/run/luninork/pkgs/".to_string()
 }
 
 fn default_symmetric_crypto_config() -> SymmetricCryptoServiceConfigFile {

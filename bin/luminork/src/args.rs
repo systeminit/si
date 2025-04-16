@@ -225,28 +225,6 @@ pub(crate) struct Args {
     #[arg(long, env = "SI_AUTH_API_URL")]
     pub(crate) auth_api_url: Option<String>,
 
-    /// Override for the openai API key
-    #[arg(long, env = "SI_OPENAI_API_KEY")]
-    // TODO This should be a SensitiveString but if it is, it gets passed as "..."
-    // pub(crate) openai_api_key: Option<SensitiveString>,
-    pub(crate) openai_api_key: Option<String>,
-
-    /// Override for the openai API base URL
-    #[arg(long, env = "SI_OPENAI_API_BASE")]
-    pub(crate) openai_api_base: Option<String>,
-
-    /// Override for the openai org id
-    #[arg(long, env = "SI_OPENAI_ORG_ID")]
-    pub(crate) openai_org_id: Option<String>,
-
-    /// Override for the openai project id
-    #[arg(long, env = "SI_OPENAI_PROJECT_ID")]
-    pub(crate) openai_project_id: Option<String>,
-
-    /// Directory to read prompts from (localdev)
-    #[arg(long, env = "SI_ASSET_SPRAYER_PROMPTS_DIR")]
-    pub(crate) asset_sprayer_prompts_dir: Option<String>,
-
     /// Instance ID [example: 01GWEAANW5BVFK5KDRVS6DEY0F"]
     ///
     /// And instance ID is used when tracking the execution of jobs in a way that can be traced
@@ -392,26 +370,6 @@ impl TryFrom<Args> for Config {
 
             if let Some(auth_api_url) = args.auth_api_url {
                 config_map.set("auth_api_url", auth_api_url);
-            }
-
-            if let Some(openai_api_key) = args.openai_api_key {
-                config_map.set("openai.api_key", openai_api_key.to_string());
-            }
-            if let Some(openai_api_base) = args.openai_api_base {
-                config_map.set("openai.api_base", openai_api_base);
-            }
-            if let Some(openai_org_id) = args.openai_org_id {
-                config_map.set("openai.org_id", openai_org_id);
-            }
-            if let Some(openai_project_id) = args.openai_project_id {
-                config_map.set("openai.project_id", openai_project_id);
-            }
-
-            if let Some(asset_sprayer_prompts_dir) = args.asset_sprayer_prompts_dir {
-                config_map.set(
-                    "asset_sprayer.prompts_dir",
-                    asset_sprayer_prompts_dir.to_string(),
-                );
             }
 
             config_map.set("boot_feature_flags", args.features);
