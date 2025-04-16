@@ -66,7 +66,6 @@
           </div>
         </Stack>
       </Stack>
-      <PromptEditor />
     </div>
   </div>
 </template>
@@ -85,7 +84,6 @@ import clsx from "clsx";
 import { useAdminStore } from "@/store/admin.store";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import WorkspaceAdmin from "@/components/AdminDashboard/WorkspaceAdmin.vue";
-import PromptEditor from "@/components/AdminDashboard/PromptAdmin.vue";
 
 const adminStore = useAdminStore();
 const featureFlagsStore = useFeatureFlagsStore();

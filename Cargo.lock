@@ -188,36 +188,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7c02d123df017efcdfbd739ef81735b36c5ba83ec3c59c80a9d7ecc718f92e50"
 
 [[package]]
-name = "asset-sprayer"
-version = "0.1.0"
-dependencies = [
- "async-openai",
- "remain",
- "reqwest",
- "serde",
- "serde_with",
- "serde_yaml",
- "si-std",
- "strum",
- "telemetry",
- "thiserror 2.0.12",
- "tokio",
-]
-
-[[package]]
-name = "asset-sprayer-prompts"
-version = "0.1.0"
-dependencies = [
- "asset-sprayer",
- "async-openai",
- "clap",
- "color-eyre",
- "serde_yaml",
- "strum",
- "tokio",
-]
-
-[[package]]
 name = "async-channel"
 version = "2.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6560,7 +6530,6 @@ dependencies = [
 name = "sdf-core"
 version = "0.1.0"
 dependencies = [
- "asset-sprayer",
  "audit-database",
  "auth-api-client",
  "axum 0.6.20",
@@ -6595,7 +6564,6 @@ dependencies = [
 name = "sdf-extract"
 version = "0.1.0"
 dependencies = [
- "asset-sprayer",
  "auth-api-client",
  "axum 0.6.20",
  "dal",
@@ -6615,7 +6583,6 @@ dependencies = [
 name = "sdf-server"
 version = "0.1.0"
 dependencies = [
- "asset-sprayer",
  "async-openai",
  "async-trait",
  "audit-database",

@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use asset_sprayer::AssetSprayer;
 use audit_database::AuditDatabaseContext;
 use axum::Router;
 use dal::ServicesContext;
@@ -31,7 +30,6 @@ impl AxumApp {
         jwt_public_signing_key_chain: JwtPublicSigningKeyChain,
         posthog_client: PosthogClient,
         auth_api_url: impl AsRef<str>,
-        asset_sprayer: Option<AssetSprayer>,
         ws_multiplexer_client: MultiplexerClient,
         crdt_multiplexer_client: MultiplexerClient,
         data_cache_multiplexer_client: MultiplexerClient,
@@ -49,7 +47,6 @@ impl AxumApp {
             jwt_public_signing_key_chain,
             posthog_client,
             auth_api_url,
-            asset_sprayer,
             false,
             ws_multiplexer_client,
             crdt_multiplexer_client,
@@ -77,7 +74,6 @@ impl AxumApp {
         jwt_public_signing_key_chain: JwtPublicSigningKeyChain,
         posthog_client: PosthogClient,
         auth_api_url: impl AsRef<str>,
-        asset_sprayer: Option<AssetSprayer>,
         ws_multiplexer_client: MultiplexerClient,
         crdt_multiplexer_client: MultiplexerClient,
         data_cache_multiplexer_client: MultiplexerClient,
@@ -95,7 +91,6 @@ impl AxumApp {
             jwt_public_signing_key_chain,
             posthog_client,
             auth_api_url,
-            asset_sprayer,
             true,
             ws_multiplexer_client,
             crdt_multiplexer_client,
@@ -121,7 +116,6 @@ impl AxumApp {
         jwt_public_signing_key_chain: JwtPublicSigningKeyChain,
         posthog_client: PosthogClient,
         auth_api_url: impl AsRef<str>,
-        asset_sprayer: Option<AssetSprayer>,
         for_tests: bool,
         ws_multiplexer_client: MultiplexerClient,
         crdt_multiplexer_client: MultiplexerClient,
@@ -140,7 +134,6 @@ impl AxumApp {
             jwt_public_signing_key_chain,
             posthog_client,
             auth_api_url,
-            asset_sprayer,
             for_tests,
             ws_multiplexer_client,
             crdt_multiplexer_client,

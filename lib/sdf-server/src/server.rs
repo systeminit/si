@@ -1,6 +1,5 @@
 use std::{fmt, future::IntoFuture as _, net::SocketAddr, path::PathBuf, sync::Arc};
 
-use asset_sprayer::AssetSprayer;
 use audit_database::AuditDatabaseContext;
 use axum::{async_trait, routing::IntoMakeService, Router};
 use dal::ServicesContext;
@@ -116,17 +115,6 @@ impl Server {
         )
         .await?;
 
-        let asset_sprayer = config
-            .openai()
-            .clone()
-            .into_openai_config_opt()
-            .map(|openai_config| {
-                AssetSprayer::new(
-                    async_openai::Client::with_config(openai_config),
-                    config.asset_sprayer().clone(),
-                )
-            });
-
         let application_runtime_mode = Arc::new(RwLock::new(ApplicationRuntimeMode::Running));
 
         let mut spicedb_client = None;
@@ -165,7 +153,6 @@ impl Server {
             jwt_public_signing_key,
             posthog_client,
             config.auth_api_url(),
-            asset_sprayer,
             ws_multiplexer_client,
             crdt_multiplexer_client,
             data_cache_multiplexer_client,
@@ -190,7 +177,6 @@ impl Server {
         jwt_public_signing_key_chain: JwtPublicSigningKeyChain,
         posthog_client: PosthogClient,
         auth_api_url: impl AsRef<str>,
-        asset_sprayer: Option<AssetSprayer>,
         ws_multiplexer_client: MultiplexerClient,
         crdt_multiplexer_client: MultiplexerClient,
         data_cache_multiplexer_client: MultiplexerClient,
@@ -208,7 +194,6 @@ impl Server {
             jwt_public_signing_key_chain,
             posthog_client,
             auth_api_url,
-            asset_sprayer,
             ws_multiplexer_client,
             crdt_multiplexer_client,
             data_cache_multiplexer_client,

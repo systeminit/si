@@ -3,7 +3,6 @@ load("@prelude-si//:macros.bzl", "rust_library")
 rust_library(
     name = "sdf-server",
     deps = [
-        "//lib/asset-sprayer:asset-sprayer",
         "//lib/audit-database:audit-database",
         "//lib/auth-api-client:auth-api-client",
         "//lib/buck2-resources:buck2-resources",

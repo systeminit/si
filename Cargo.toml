@@ -4,7 +4,6 @@ debug = true
 [workspace]
 resolver = "2"
 members = [
-    "bin/asset-sprayer-prompts",
     "bin/cyclone",
     "bin/edda",
     "bin/forklift",
@@ -15,7 +14,6 @@ members = [
     "bin/sdf",
     "bin/si-fs",
     "bin/veritech",
-    "lib/asset-sprayer",
     "lib/audit-database",
     "lib/audit-logs-stream",
     "lib/auth-api-client",

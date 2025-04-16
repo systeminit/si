@@ -9,7 +9,7 @@ use derive_more::{Deref, Into};
 
 use sdf_core::app_state::AppState;
 
-use super::{internal_error, not_found_error, request::RawAccessToken, ErrorResponse};
+use super::{internal_error, request::RawAccessToken, ErrorResponse};
 
 #[derive(Clone, Debug, Deref, Into)]
 pub struct HandlerContext(pub dal::DalContextBuilder);
@@ -28,24 +28,6 @@ impl FromRequestParts<AppState> for HandlerContext {
             .into_inner()
             .into_builder(state.for_tests());
         Ok(Self(builder))
-    }
-}
-
-#[derive(Clone, Debug, Deref, Into)]
-pub struct AssetSprayer(pub asset_sprayer::AssetSprayer);
-
-#[async_trait]
-impl FromRequestParts<AppState> for AssetSprayer {
-    type Rejection = ErrorResponse;
-
-    async fn from_request_parts(
-        _parts: &mut Parts,
-        state: &AppState,
-    ) -> Result<Self, Self::Rejection> {
-        let asset_sprayer = state
-            .asset_sprayer()
-            .ok_or(not_found_error("openai not configured"))?;
-        Ok(Self(asset_sprayer.clone()))
     }
 }
 
