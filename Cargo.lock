@@ -6655,6 +6655,11 @@ dependencies = [
  "sdf-core",
  "sdf-extract",
  "sdf-test",
+ "sdf-v1-routes-actions",
+ "sdf-v1-routes-attribute",
+ "sdf-v1-routes-change-sets",
+ "sdf-v1-routes-component",
+ "sdf-v1-routes-diagram",
  "serde",
  "serde_json",
  "serde_with",
@@ -6700,6 +6705,100 @@ dependencies = [
  "sdf-core",
  "sdf-server",
  "si-data-spicedb",
+]
+
+[[package]]
+name = "sdf-v1-routes-actions"
+version = "0.1.0"
+dependencies = [
+ "axum 0.6.20",
+ "chrono",
+ "dal",
+ "remain",
+ "sdf-core",
+ "sdf-extract",
+ "serde",
+ "si-events",
+ "si-layer-cache",
+ "telemetry",
+ "thiserror 2.0.12",
+]
+
+[[package]]
+name = "sdf-v1-routes-attribute"
+version = "0.1.0"
+dependencies = [
+ "axum 0.6.20",
+ "dal",
+ "remain",
+ "sdf-core",
+ "sdf-extract",
+ "serde",
+ "serde_json",
+ "telemetry",
+ "thiserror 2.0.12",
+]
+
+[[package]]
+name = "sdf-v1-routes-change-sets"
+version = "0.1.0"
+dependencies = [
+ "axum 0.6.20",
+ "dal",
+ "hyper 0.14.32",
+ "remain",
+ "sdf-core",
+ "sdf-extract",
+ "serde",
+ "serde_json",
+ "si-events",
+ "si-frontend-types",
+ "si-layer-cache",
+ "telemetry",
+ "thiserror 2.0.12",
+]
+
+[[package]]
+name = "sdf-v1-routes-component"
+version = "0.1.0"
+dependencies = [
+ "axum 0.6.20",
+ "dal",
+ "itertools 0.13.0",
+ "remain",
+ "sdf-core",
+ "sdf-extract",
+ "sdf-v1-routes-diagram",
+ "serde",
+ "serde_json",
+ "si-events",
+ "si-frontend-types",
+ "si-posthog",
+ "telemetry",
+ "thiserror 2.0.12",
+ "tokio",
+]
+
+[[package]]
+name = "sdf-v1-routes-diagram"
+version = "0.1.0"
+dependencies = [
+ "axum 0.6.20",
+ "dal",
+ "hyper 0.14.32",
+ "remain",
+ "sdf-core",
+ "sdf-extract",
+ "serde",
+ "serde_json",
+ "si-data-nats",
+ "si-data-pg",
+ "si-events",
+ "si-frontend-types",
+ "telemetry",
+ "thiserror 2.0.12",
+ "tokio",
+ "ulid",
 ]
 
 [[package]]

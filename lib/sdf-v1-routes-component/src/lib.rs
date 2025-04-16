@@ -1,6 +1,5 @@
 use std::num::ParseIntError;
 
-use crate::{service::component::conflicts_for_component::conflicts_for_component, AppState};
 use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
@@ -22,11 +21,13 @@ use dal::{attribute::value::AttributeValueError, component::debug::ComponentDebu
 use dal::{prop::PropError, socket::output::OutputSocketError};
 use dal::{property_editor::PropertyEditorError, socket::input::InputSocketError};
 use dal::{ChangeSetError, TransactionsError};
-use sdf_core::api_error::ApiError;
+use sdf_core::{api_error::ApiError, app_state::AppState};
 use si_posthog::PosthogError;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::task::JoinError;
+
+use crate::conflicts_for_component::conflicts_for_component;
 
 mod autoconnect;
 pub mod conflicts_for_component;

@@ -1,0 +1,23 @@
+[package]
+name = "sdf-v1-routes-actions"
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+dal = { path = "../../lib/dal" }
+sdf-core = { path = "../../lib/sdf-core" }
+sdf-extract = { path = "../../lib/sdf-extract" }
+si-events = { path = "../../lib/si-events-rs" }
+si-layer-cache = { path = "../../lib/si-layer-cache" }
+telemetry = { path = "../../lib/telemetry-rs" }
+
+axum = { workspace = true }
+chrono = { workspace = true }
+remain = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }
