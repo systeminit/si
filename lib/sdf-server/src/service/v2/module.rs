@@ -1,4 +1,3 @@
-use crate::{service::ApiError, AppState};
 use axum::extract::multipart::MultipartError;
 use axum::{
     http::StatusCode,
@@ -9,10 +8,13 @@ use axum::{
 use dal::cached_module::CachedModuleError;
 use dal::pkg::PkgError;
 use dal::{ChangeSetError, FuncError, UserError, WsEventError};
+use sdf_core::api_error::ApiError;
 use si_frontend_types as frontend_types;
 use si_pkg::SiPkgError;
 use telemetry::prelude::*;
 use thiserror::Error;
+
+use crate::AppState;
 
 mod builtins;
 mod contribute;

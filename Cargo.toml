@@ -53,6 +53,8 @@ members = [
     "lib/rebaser-client",
     "lib/rebaser-core",
     "lib/rebaser-server",
+    "lib/sdf-core",
+    "lib/sdf-extract",
     "lib/sdf-server",
     "lib/sdf-test",
     "lib/shuttle-core",

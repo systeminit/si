@@ -17,7 +17,7 @@ use thiserror::Error;
 
 use crate::AppState;
 
-use super::ApiError;
+use sdf_core::api_error::ApiError;
 
 pub mod abandon_change_set;
 pub mod add_action;

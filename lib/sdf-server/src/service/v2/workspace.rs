@@ -4,9 +4,10 @@ use axum::{
     routing::{get, post},
     Router,
 };
+use sdf_core::api_error::ApiError;
 use thiserror::Error;
 
-use crate::{app_state::AppState, service::ApiError};
+use crate::app_state::AppState;
 
 mod install_workspace;
 mod list_workspace_users;

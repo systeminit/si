@@ -3,9 +3,10 @@ use axum::{
     routing::get,
     Router,
 };
+use sdf_core::api_error::ApiError;
 use thiserror::Error;
 
-use crate::{service::ApiError, AppState};
+use crate::AppState;
 
 mod list_audit_logs;
 

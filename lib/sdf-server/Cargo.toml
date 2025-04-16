@@ -22,6 +22,8 @@ nats-multiplexer-client = { path = "../../lib/nats-multiplexer-client" }
 nats-subscriber = { path = "../../lib/nats-subscriber" }
 permissions = { path = "../../lib/permissions" }
 rebaser-client = { path = "../../lib/rebaser-client" }
+sdf-core = { path = "../../lib/sdf-core" }
+sdf-extract = { path = "../../lib/sdf-extract" }
 si-crypto = { path = "../../lib/si-crypto" }
 si-data-nats = { path = "../../lib/si-data-nats" }
 si-data-pg = { path = "../../lib/si-data-pg" }

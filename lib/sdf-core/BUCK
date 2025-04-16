@@ -1,0 +1,39 @@
+load("@prelude-si//:macros.bzl", "rust_library")
+
+rust_library(
+    name = "sdf-core",
+    deps = [
+        "//lib/asset-sprayer:asset-sprayer",
+        "//lib/audit-database:audit-database",
+        "//lib/dal:dal",
+        "//lib/edda-client:edda-client",
+        "//lib/frigg:frigg",
+        "//lib/nats-multiplexer-client:nats-multiplexer-client",
+        "//lib/permissions:permissions",
+        "//lib/si-data-spicedb:si-data-spicedb",
+        "//lib/si-events-rs:si-events",
+        "//lib/si-frontend-types-rs:si-frontend-types",
+        "//lib/si-id:si-id",
+        "//lib/si-jwt-public-key:si-jwt-public-key",
+        "//lib/si-posthog-rs:si-posthog",
+        "//lib/telemetry-rs:telemetry",
+
+        "//third-party/rust:axum",
+        "//third-party/rust:derive_more",
+        "//third-party/rust:hyper",
+        "//third-party/rust:remain",
+        "//third-party/rust:serde",
+        "//third-party/rust:serde_json",
+        "//third-party/rust:serde_with",
+        "//third-party/rust:strum",
+        "//third-party/rust:tokio",
+        "//third-party/rust:tokio-util",
+        "//third-party/rust:thiserror",
+        "//third-party/rust:tracing-tunnel",
+        "//third-party/rust:ulid",
+        "//third-party/rust:y-sync",
+    ],
+    srcs = glob([
+        "src/**/*.rs",
+    ]),
+)

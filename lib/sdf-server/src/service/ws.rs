@@ -2,14 +2,13 @@ use axum::{http::StatusCode, response::IntoResponse, response::Response, routing
 use crdt::CrdtError;
 use dal::{TransactionsError, WsEventError};
 use nats_multiplexer_client::MultiplexerClientError;
+use sdf_core::api_error::ApiError;
 use si_data_pg::{PgError, PgPoolError};
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::TryLockError;
 
 use crate::AppState;
-
-use super::ApiError;
 
 #[remain::sorted]
 #[derive(Debug, Error)]

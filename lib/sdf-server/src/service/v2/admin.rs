@@ -13,6 +13,7 @@ use dal::{
     workspace_snapshot::graph::WorkspaceSnapshotGraphDiscriminants, ChangeSet, ChangeSetId,
     ChangeSetStatus, UserPk, Workspace, WorkspacePk, WorkspaceSnapshotAddress,
 };
+use sdf_core::api_error::ApiError;
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -23,7 +24,6 @@ use crate::{
         request::{RequestUlidFromHeader, ValidatedToken},
         unauthorized_error, ErrorResponse, HandlerContext,
     },
-    service::ApiError,
     AppState,
 };
 

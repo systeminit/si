@@ -15,7 +15,7 @@ use thiserror::Error;
 
 use crate::AppState;
 
-use super::ApiError;
+use sdf_core::api_error::ApiError;
 
 pub mod get_summary;
 

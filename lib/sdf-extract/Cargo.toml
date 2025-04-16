@@ -1,0 +1,26 @@
+[package]
+name = "sdf-extract"
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+asset-sprayer = { path = "../../lib/asset-sprayer" }
+auth-api-client = { path = "../../lib/auth-api-client" }
+dal = { path = "../../lib/dal" }
+edda-client = { path = "../../lib/edda-client" }
+frigg = { path = "../../lib/frigg" }
+sdf-core = { path = "../../lib/sdf-core" }
+si-data-nats = { path = "../../lib/si-data-nats" }
+si-events = { path = "../../lib/si-events-rs" }
+si-jwt-public-key = { path = "../../lib/si-jwt-public-key" }
+
+axum = { workspace = true }
+derive_more = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+ulid = { workspace = true }

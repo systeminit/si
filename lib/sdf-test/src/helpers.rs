@@ -2,7 +2,7 @@
 
 use dal::{ChangeSet, DalContext};
 use dal_test::prelude::*;
-use sdf_server::dal_wrapper;
+use sdf_core::dal_wrapper;
 
 /// This unit struct providers helper functions when [dal_test::helpers] cannot perform helper
 /// tasks alone (e.g. need to talk to SpiceDB).

@@ -8,10 +8,11 @@ use dal::{
     cached_module::CachedModuleError, module::ModuleError, ChangeSetError, SchemaVariantId, UserPk,
     WsEventError,
 };
+use sdf_core::api_error::ApiError;
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::{service::ApiError, AppState};
+use crate::AppState;
 
 pub mod create_unlocked_copy;
 mod delete_unlocked_variant;

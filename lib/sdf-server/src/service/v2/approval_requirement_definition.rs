@@ -4,9 +4,10 @@ use axum::{
     Router,
 };
 use dal::{entity_kind::EntityKindError, WorkspaceSnapshotError, WsEventError};
+use sdf_core::api_error::ApiError;
 use thiserror::Error;
 
-use crate::{service::ApiError, AppState};
+use crate::AppState;
 
 mod add_individual_approver;
 mod list;

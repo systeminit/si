@@ -23,8 +23,8 @@ use thiserror::Error;
 use tokio::fs::read_dir;
 use ulid::Ulid;
 
-use super::ApiError;
 use crate::AppState;
+use sdf_core::api_error::ApiError;
 
 const PKG_EXTENSION: &str = "sipkg";
 const MAX_NAME_SEARCH_ATTEMPTS: usize = 100;

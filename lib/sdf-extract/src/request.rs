@@ -1,4 +1,3 @@
-use crate::app_state::AppState;
 use axum::{
     async_trait,
     extract::{FromRequestParts, Query},
@@ -6,6 +5,7 @@ use axum::{
     RequestPartsExt as _,
 };
 use derive_more::{Deref, Into};
+use sdf_core::app_state::AppState;
 use serde::Deserialize;
 use si_events::{authentication_method::AuthenticationMethodV1, AuthenticationMethod};
 use si_jwt_public_key::{validate_raw_token, JwtKeyResult, SiJwt, SiJwtClaimRole, SiJwtClaims};

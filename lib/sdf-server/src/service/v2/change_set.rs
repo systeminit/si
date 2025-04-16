@@ -10,15 +10,15 @@ use dal::{
     workspace_integrations::WorkspaceIntegration, ChangeSetId, DalContext, HistoryEventError,
     WorkspacePk, WsEventError,
 };
+use sdf_core::{api_error::ApiError, app_state::AppState, dal_wrapper::DalWrapperError};
+
 use reqwest::Client;
 use serde::Serialize;
 use si_data_spicedb::SpiceDbError;
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::{
-    dal_wrapper::DalWrapperError, middleware::WorkspacePermissionLayer, service::ApiError, AppState,
-};
+use crate::middleware::WorkspacePermissionLayer;
 
 mod apply;
 mod approval_status;
@@ -40,7 +40,7 @@ pub enum Error {
     #[error("change set approval error: {0}")]
     ChangeSetApproval(#[from] dal::change_set::approval::ChangeSetApprovalError),
     #[error("dal wrapper error: {0}")]
-    DalWrapper(#[from] crate::dal_wrapper::DalWrapperError),
+    DalWrapper(#[from] sdf_core::dal_wrapper::DalWrapperError),
     #[error("dvu roots are not empty for change set: {0}")]
     DvuRootsNotEmpty(ChangeSetId),
     #[error("history event: {0}")]

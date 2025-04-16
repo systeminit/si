@@ -7,7 +7,7 @@ use axum::{
 use dal::DalContext;
 use derive_more::{Deref, Into};
 
-use crate::app_state::AppState;
+use sdf_core::app_state::AppState;
 
 use super::{internal_error, not_found_error, request::RawAccessToken, ErrorResponse};
 
@@ -50,7 +50,7 @@ impl FromRequestParts<AppState> for AssetSprayer {
 }
 
 #[derive(Clone, Debug, Deref, Into)]
-pub struct PosthogClient(pub crate::app_state::PosthogClient);
+pub struct PosthogClient(pub sdf_core::app_state::PosthogClient);
 
 #[async_trait]
 impl FromRequestParts<AppState> for PosthogClient {
@@ -88,7 +88,7 @@ impl FromRequestParts<AppState> for Nats {
 #[derive(Clone)]
 pub struct PosthogEventTracker {
     // These last three are so endpoints can do request tracking (they all do it the same way)
-    pub posthog_client: crate::app_state::PosthogClient,
+    pub posthog_client: sdf_core::app_state::PosthogClient,
     pub original_uri: Uri,
     pub host: String,
 }
@@ -100,7 +100,7 @@ impl PosthogEventTracker {
         event_name: impl AsRef<str>,
         properties: serde_json::Value,
     ) {
-        crate::tracking::track(
+        sdf_core::tracking::track(
             &self.posthog_client,
             ctx,
             &self.original_uri,
