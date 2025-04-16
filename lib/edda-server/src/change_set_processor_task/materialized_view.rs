@@ -8,6 +8,7 @@ use dal::{
     data_cache::{DataCache, DataCacheError},
     dependency_graph::DependencyGraph,
     diagram::DiagramError,
+    workspace_snapshot::WorkspaceSnapshotSelector,
     DalContext, SchemaVariant, SchemaVariantError, TransactionsError, WorkspaceSnapshotError,
 };
 use frigg::{FriggError, FriggStore};
@@ -77,9 +78,7 @@ pub async fn build_all_mv_for_change_set(
     span.record("si.workspace.id", ctx.workspace_pk()?.to_string());
 
     // Pretend everything has changed, and build all MVs.
-    let changes = ctx
-        .workspace_snapshot()?
-        .map_all_nodes_to_change_objects()
+    let changes = map_all_nodes_to_change_objects(&ctx.workspace_snapshot()?)
         .instrument(tracing::info_span!(
             "materialized_view.build_all_mv_for_change_set.make_changes_for_all_nodes"
         ))
@@ -106,7 +105,7 @@ pub async fn build_all_mv_for_change_set(
             workspace_id: ctx.workspace_pk()?,
             change_set_id: Some(ctx.change_set_id()),
             snapshot_from_address: None,
-            snapshot_to_address: Some(ctx.workspace_snapshot()?.id().await),
+            snapshot_to_address: Some(ctx.workspace_snapshot()?.address().await),
         },
         kind: PATCH_BATCH_KIND,
         patches,
@@ -119,6 +118,21 @@ pub async fn build_all_mv_for_change_set(
     DataCache::publish_patch_batch(ctx, patch_batch).await?;
 
     Ok(())
+}
+
+pub async fn map_all_nodes_to_change_objects(
+    snapshot: &WorkspaceSnapshotSelector,
+) -> Result<Vec<Change>, MaterializedViewError> {
+    Ok(snapshot
+        .nodes()
+        .await?
+        .into_iter()
+        .map(|node| Change {
+            entity_id: node.id().into(),
+            entity_kind: (&node).into(),
+            merkle_tree_hash: node.merkle_tree_hash(),
+        })
+        .collect())
 }
 
 #[instrument(

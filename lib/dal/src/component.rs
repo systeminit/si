@@ -5,6 +5,7 @@ use itertools::Itertools;
 use petgraph::Direction::Outgoing;
 use serde::{Deserialize, Serialize};
 use si_pkg::KeyOrIndex;
+use si_split_graph::SplitGraphError;
 use socket::{ComponentInputSocket, ComponentOutputSocket};
 use std::collections::{hash_map, HashMap, HashSet, VecDeque};
 use std::num::{ParseFloatError, ParseIntError};
@@ -47,6 +48,7 @@ use crate::socket::input::InputSocketError;
 use crate::socket::output::OutputSocketError;
 use crate::validation::{ValidationError, ValidationOutput};
 use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
+use crate::workspace_snapshot::dependent_value_root::DependentValueRootError;
 use crate::workspace_snapshot::edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants};
 use crate::workspace_snapshot::node_weight::attribute_prototype_argument_node_weight::ArgumentTargets;
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
@@ -121,6 +123,8 @@ pub enum ComponentError {
     ComponentMissingTypeValueMaterializedView(ComponentId),
     #[error("component {0} has no attribute value for the {1} prop")]
     ComponentMissingValue(ComponentId, PropId),
+    #[error("dependent value root error: {0}")]
+    DependentValueRoot(#[from] DependentValueRootError),
     #[error("connection destination component {0} has no attribute value for input socket {1}")]
     DestinationComponentMissingAttributeValueForInputSocket(ComponentId, InputSocketId),
     #[error("diagram error: {0}")]
@@ -201,6 +205,8 @@ pub enum ComponentError {
     SchemaVariantNotFound(ComponentId),
     #[error("serde_json error: {0}")]
     Serde(#[from] serde_json::Error),
+    #[error("split graph error: {0}")]
+    SplitGraph(#[from] SplitGraphError),
     #[error("standard model error: {0}")]
     StandardModel(#[from] StandardModelError),
     #[error("too many explicit connection sources ({0:?}) for component ({1}) and input socket ({2}) with an arity of one")]
@@ -475,6 +481,7 @@ impl Component {
         let component_category_id = workspace_snapshot
             .get_category_node_or_err(None, CategoryNodeKind::Component)
             .await?;
+
         Self::add_category_edge(
             ctx,
             component_category_id,
@@ -541,12 +548,12 @@ impl Component {
             if should_descend {
                 match prop_kind {
                     PropKind::Object => {
-                        let ordering_node_weight = workspace_snapshot
-                            .ordering_node_for_container(prop_id)
+                        let ordered_children = workspace_snapshot
+                            .ordered_children_for_node(prop_id)
                             .await?
                             .ok_or(ComponentError::ObjectPropHasNoOrderingNode(prop_id))?;
 
-                        for &child_prop_id in ordering_node_weight.order() {
+                        for child_prop_id in ordered_children {
                             work_queue.push_back((
                                 child_prop_id.into(),
                                 Some(attribute_value.id()),
@@ -1958,7 +1965,7 @@ impl Component {
         child_id: ComponentId,
     ) -> ComponentResult<()> {
         ctx.workspace_snapshot()?
-            .remove_edge_for_ulids(
+            .remove_edge(
                 parent_id,
                 child_id,
                 EdgeWeightKindDiscriminants::FrameContains,
@@ -3480,7 +3487,7 @@ impl Component {
 
         // Move geometries to new component
         for geometry_id in geometry_ids {
-            snap.remove_edge_for_ulids(
+            snap.remove_edge(
                 geometry_id,
                 component_id,
                 EdgeWeightKindDiscriminants::Represents,
@@ -3863,7 +3870,7 @@ impl Component {
         managed_component_id: ComponentId,
     ) -> ComponentResult<()> {
         ctx.workspace_snapshot()?
-            .remove_edge_for_ulids(
+            .remove_edge(
                 manager_component_id,
                 managed_component_id,
                 EdgeWeightKindDiscriminants::Manages,

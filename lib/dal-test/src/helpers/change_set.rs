@@ -6,7 +6,10 @@ use color_eyre::eyre::eyre;
 use color_eyre::Result;
 use dal::action::dependency_graph::ActionDependencyGraph;
 use dal::action::{Action, ActionState};
+use dal::workspace_snapshot::selector::WorkspaceSnapshotSelectorDiscriminants;
+use dal::workspace_snapshot::DependentValueRoot;
 use dal::{ChangeSet, DalContext, Func, Schema, SchemaVariant};
+use si_layer_cache::db::workspace_snapshot::DBNAME;
 
 use crate::helpers::generate_fake_name;
 
@@ -31,7 +34,6 @@ impl ChangeSetTestHelpers {
     pub async fn wait_for_actions_to_run(ctx: &mut DalContext) -> Result<()> {
         let total_count = 100;
         let mut count = 0;
-
         while count < total_count {
             ctx.update_snapshot_to_visibility().await?;
             let action_graph = ActionDependencyGraph::for_workspace(ctx).await?;
@@ -86,12 +88,18 @@ impl ChangeSetTestHelpers {
     }
 
     async fn has_updates(ctx: &mut DalContext) -> Result<bool> {
-        let expected_rebase_batch = ctx
-            .change_set()?
-            .detect_updates_that_will_be_applied(ctx)
-            .await?;
-
-        Ok(expected_rebase_batch.is_some_and(|batch| !batch.updates().is_empty()))
+        Ok(match ctx.get_workspace().await?.snapshot_kind() {
+            WorkspaceSnapshotSelectorDiscriminants::LegacySnapshot => ctx
+                .change_set()?
+                .detect_updates_that_will_be_applied_legacy(ctx)
+                .await?
+                .is_some_and(|batch| !batch.updates().is_empty()),
+            WorkspaceSnapshotSelectorDiscriminants::SplitSnapshot => ctx
+                .change_set()?
+                .detect_updates_that_will_be_applied_split(ctx)
+                .await?
+                .is_some_and(|batch| !batch.is_empty()),
+        })
     }
 
     async fn apply_change_set_to_base_inner(ctx: &mut DalContext) -> Result<bool> {
@@ -102,8 +110,9 @@ impl ChangeSetTestHelpers {
             .collect::<Vec<(_, _)>>();
 
         let had_updates = Self::has_updates(ctx).await?;
+        dbg!("b");
         let applied_change_set = ChangeSet::apply_to_base_change_set(ctx).await?;
-
+        dbg!("c");
         ctx.update_visibility_and_snapshot_to_visibility(
             applied_change_set.base_change_set_id.ok_or(eyre!(
                 "base change set not found for change set: {}",
@@ -111,6 +120,7 @@ impl ChangeSetTestHelpers {
             ))?,
         )
         .await?;
+        dbg!("d");
 
         // Applying to head will replay the changes against any open change
         // sets. We want to be sure that we've waited until those changes are
@@ -214,17 +224,18 @@ impl ChangeSetTestHelpers {
 
     /// Wait for the changeset's DVUs to be completely processed before continuing
     pub async fn wait_for_dvu(ctx: &DalContext) -> Result<()> {
+        let mut iters = 5_000;
         loop {
+            if iters <= 0 {
+                panic!("wait_for_dvu timed out");
+            }
             let mut ctx_clone = ctx.clone();
             ctx_clone.update_snapshot_to_visibility().await?;
-            if !ctx_clone
-                .workspace_snapshot()?
-                .has_dependent_value_roots()
-                .await?
-            {
+            if !DependentValueRoot::roots_exist(&ctx_clone).await? {
                 break;
             }
             tokio::time::sleep(Duration::from_millis(25)).await;
+            iters -= 1;
         }
 
         Ok(())
@@ -239,10 +250,13 @@ impl ChangeSetTestHelpers {
             .job_queue()
             .remove_dependent_values_jobs()
             .await;
+        dbg!("remove dvu jobs");
         ctx.blocking_commit().await?;
+        dbg!("committed");
 
         // But we have to wait until the dvu jobs complete
         if has_roots {
+            dbg!("waiting for dvu");
             Self::wait_for_dvu(ctx).await?;
         }
 

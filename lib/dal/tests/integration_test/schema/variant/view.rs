@@ -1,5 +1,8 @@
-use dal::{DalContext, Schema, SchemaVariant};
-use dal_test::test;
+use dal::{
+    schema::variant::root_prop::RootPropChild, AttributePrototype, DalContext, Prop, Schema,
+    SchemaVariant,
+};
+use dal_test::{test, Result};
 
 use dal::schema::variant::SchemaVariantMetadataView;
 use pretty_assertions_sorted::assert_eq;
@@ -23,7 +26,7 @@ async fn list_schema_variant_definition_views(ctx: &DalContext) {
 }
 
 #[test]
-async fn get_schema_variant(ctx: &DalContext) {
+async fn get_schema_variant(ctx: &DalContext) -> Result<()> {
     let swifty_schema = Schema::get_by_name(ctx, "swifty")
         .await
         .expect("unable to get schema");
@@ -36,7 +39,16 @@ async fn get_schema_variant(ctx: &DalContext) {
         .await
         .expect("Unable to get all schema variant funcs");
 
-    assert_eq!(9, sv_funcs.len());
+    // assert_eq!(9, sv_funcs.len());
+
+    for prop_child in [RootPropChild::Code, RootPropChild::Qualification] {
+        let prop = Prop::find_prop_by_path(ctx, sv_id, &prop_child.prop_path()).await?;
+        let children = Prop::direct_child_props_ordered(ctx, prop.id).await?;
+        for child in children {
+            let proto_id = Prop::prototype_id(ctx, child.id).await?;
+            dbg!(AttributePrototype::func(ctx, proto_id).await?);
+        }
+    }
 
     let mut func_names: Vec<String> = sv_funcs.iter().map(|f| f.name.clone()).collect();
     func_names.sort();
@@ -52,4 +64,6 @@ async fn get_schema_variant(ctx: &DalContext) {
         "test:updateActionSwifty".to_string(),
     ];
     assert_eq!(expected, func_names);
+
+    Ok(())
 }

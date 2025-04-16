@@ -1398,15 +1398,23 @@ async fn incoming_connections_inferred_multiple_ancestors(ctx: DalContext) -> Re
 #[test]
 async fn incoming_connections_none(ctx: DalContext) -> Result<()> {
     // Create a manager with inferred connection
+    dbg!("a");
     let mut test = connection_test::setup(ctx).await;
+    dbg!("b");
     let manager = test.create_output("manager", None).await;
+    dbg!("c");
     test.commit().await?;
+    dbg!("d");
     assert_eq!(manager.domain(&test.ctx).await, json!({}));
+    dbg!("e");
 
     // Call management function to create component without incomingConnections.
     let component = test.create_output_and_copy_connection(manager).await?;
+    dbg!("f");
     test.commit().await?;
+    dbg!("g");
     assert_eq!(component.domain(&test.ctx).await, json!({}));
+    dbg!("h");
 
     Ok(())
 }

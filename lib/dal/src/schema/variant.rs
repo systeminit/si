@@ -46,6 +46,7 @@ use crate::prop::{PropError, PropPath};
 use crate::schema::variant::root_prop::RootProp;
 use crate::socket::input::InputSocketError;
 use crate::socket::output::OutputSocketError;
+use crate::workspace_snapshot::dependent_value_root::DependentValueRootError;
 use crate::workspace_snapshot::{
     content_address::{ContentAddress, ContentAddressDiscriminants},
     edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants},
@@ -117,6 +118,8 @@ pub enum SchemaVariantError {
     ContentType(#[from] ContentTypeError),
     #[error("default variant not found: {0}")]
     DefaultVariantNotFound(String),
+    #[error("dependent value root error: {0}")]
+    DependentValueRoot(#[from] DependentValueRootError),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
     #[error("func argument error: {0}")]
@@ -763,20 +766,11 @@ impl SchemaVariant {
             // Find and load any child props.
             match node_weight {
                 NodeWeight::Prop(_) => {
-                    if let Some(ordering_node_idx) = workspace_snapshot
-                        .outgoing_targets_for_edge_weight_kind(
-                            prop_id,
-                            EdgeWeightKindDiscriminants::Ordering,
-                        )
+                    if let Some(ordered_children) = workspace_snapshot
+                        .ordered_children_for_node(prop_id)
                         .await?
-                        .first()
                     {
-                        let ordering_node_weight = workspace_snapshot
-                            .get_node_weight(*ordering_node_idx)
-                            .await?
-                            .get_ordering_node_weight()?;
-
-                        for &id in ordering_node_weight.order() {
+                        for id in ordered_children {
                             work_queue.push_back(id.into());
                         }
                     }
@@ -1316,14 +1310,9 @@ impl SchemaVariant {
         work_queue.push_back(root_prop_node_weight.id());
 
         while let Some(prop_id) = work_queue.pop_front() {
-            workspace_snapshot
-                .mark_prop_as_able_to_be_used_as_prototype_arg(prop_id)
-                .await?;
+            Prop::set_can_be_used_as_prototype_arg(ctx, prop_id.into()).await?;
 
-            let node_weight = workspace_snapshot
-                .get_node_weight(prop_id)
-                .await?
-                .to_owned();
+            let node_weight = workspace_snapshot.get_node_weight(prop_id).await?;
             if let NodeWeight::Prop(prop) = node_weight {
                 // Only descend if we are an object.
                 if prop.kind() == PropKind::Object {
@@ -1454,7 +1443,7 @@ impl SchemaVariant {
         schema_variant_id: SchemaVariantId,
     ) -> SchemaVariantResult<()> {
         ctx.workspace_snapshot()?
-            .remove_edge_for_ulids(
+            .remove_edge(
                 schema_variant_id,
                 func_id,
                 EdgeWeightKindDiscriminants::AuthenticationPrototype,
@@ -2036,6 +2025,7 @@ impl SchemaVariant {
         // Gather all funcs for props.
         let prop_list = Self::all_prop_ids(ctx, schema_variant_id).await?;
         for prop_id in prop_list {
+            let prop = Prop::get_by_id(ctx, prop_id).await?;
             let keys_and_prototypes = Prop::prototypes_by_key(ctx, prop_id).await?;
             for (_, attribute_prototype_id) in keys_and_prototypes {
                 let func_id = AttributePrototype::func_id(ctx, attribute_prototype_id)

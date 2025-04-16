@@ -208,8 +208,6 @@ async fn through_the_wormholes_simple(ctx: &mut DalContext) -> Result<()> {
         create_component_for_default_schema_name_in_default_view(ctx, "starfield", name).await?;
     let variant_id = Component::schema_variant_id(ctx, component.id()).await?;
 
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
-
     let rigid_designator_prop_id = Prop::find_prop_id_by_path(
         ctx,
         variant_id,
@@ -227,8 +225,7 @@ async fn through_the_wormholes_simple(ctx: &mut DalContext) -> Result<()> {
 
     let rigid_designator_values =
         Component::attribute_values_for_prop_id(ctx, component.id(), rigid_designator_prop_id)
-            .await
-            .expect("able to get attribute value for universe prop");
+            .await?;
 
     assert_eq!(1, rigid_designator_values.len());
 
@@ -256,6 +253,20 @@ async fn through_the_wormholes_simple(ctx: &mut DalContext) -> Result<()> {
         ]),
     )
     .await?;
+
+    let galaxies_prop_id = Prop::find_prop_id_by_path(
+        ctx,
+        variant_id,
+        &PropPath::new(["root", "domain", "universe", "galaxies"]),
+    )
+    .await?;
+
+    let value_ids =
+        Component::attribute_values_for_prop_id(ctx, component.id(), galaxies_prop_id).await?;
+    for value_id in dbg!(value_ids) {
+        let value = AttributeValue::get_by_id(ctx, value_id).await?;
+        dbg!(value.view(ctx).await?);
+    }
 
     let naming_and_necessity_value_id =
         Component::attribute_values_for_prop_id(ctx, component.id(), naming_and_necessity_prop_id)
@@ -286,6 +297,7 @@ async fn through_the_wormholes_simple(ctx: &mut DalContext) -> Result<()> {
 
     let rigid_designation = serde_json::json!("hesperus");
 
+    dbg!("updating rigid_designator");
     AttributeValue::update(
         ctx,
         rigid_designator_value_id,
@@ -301,6 +313,7 @@ async fn through_the_wormholes_simple(ctx: &mut DalContext) -> Result<()> {
 
     assert_eq!(rigid_designation, view);
 
+    dbg!("committing");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
     let naming_and_necessity_view = AttributeValue::get_by_id(ctx, naming_and_necessity_value_id)
@@ -328,6 +341,15 @@ async fn through_the_wormholes_simple(ctx: &mut DalContext) -> Result<()> {
         .view(ctx)
         .await?
         .expect("there is a value for the root value view");
+
+    let value_ids =
+        Component::attribute_values_for_prop_id(ctx, component.id(), galaxies_prop_id).await?;
+    for value_id in dbg!(value_ids) {
+        let value = AttributeValue::get_by_id(ctx, value_id).await?;
+        dbg!(value.view(ctx).await?);
+    }
+
+    dbg!("everything ran (?)");
 
     assert_eq!(
         serde_json::json!({

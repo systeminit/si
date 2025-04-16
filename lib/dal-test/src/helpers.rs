@@ -99,6 +99,7 @@ pub async fn create_component_for_default_schema_name(
     name: impl AsRef<str>,
     view_id: ViewId,
 ) -> Result<Component> {
+    let start = Instant::now();
     let schema_variant_id = SchemaVariant::default_id_for_schema_name(ctx, schema_name).await?;
 
     Ok(Component::new(ctx, name.as_ref().to_string(), schema_variant_id, view_id).await?)

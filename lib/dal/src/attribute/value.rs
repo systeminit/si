@@ -67,6 +67,7 @@ use crate::socket::input::InputSocketError;
 use crate::socket::output::OutputSocketError;
 use crate::validation::{ValidationError, ValidationOutput};
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
+use crate::workspace_snapshot::dependent_value_root::DependentValueRootError;
 use crate::workspace_snapshot::edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants};
 use crate::workspace_snapshot::node_weight::{
     AttributeValueNodeWeight, NodeWeight, NodeWeightDiscriminants, NodeWeightError,
@@ -126,6 +127,8 @@ pub enum AttributeValueError {
     ChangeSet(#[from] ChangeSetError),
     #[error("component error: {0}")]
     Component(#[from] Box<ComponentError>),
+    #[error("dependent value root error: {0}")]
+    DependentValueRoot(#[from] DependentValueRootError),
     #[error("duplicate key or index {key_or_index} for attribute values {child1} and {child2}")]
     DuplicateKeyOrIndex {
         key_or_index: KeyOrIndex,
@@ -651,8 +654,10 @@ impl AttributeValue {
         // Gather the raw func bindings args into a map.
         let mut func_binding_args: HashMap<String, Vec<Value>> = HashMap::new();
         let apa_ids = AttributePrototypeArgument::list_ids_for_prototype(ctx, prototype_id).await?;
+        warn!("apa_ids: {:?}", apa_ids);
         for apa_id in apa_ids {
             let apa = AttributePrototypeArgument::get_by_id(ctx, apa_id).await?;
+            warn!("apa: {:?}", apa);
             let expected_source_component_id = apa
                 .targets()
                 .map(|targets| targets.source_component_id)
@@ -681,6 +686,7 @@ impl AttributeValue {
                     .get_func_argument_node_weight()?
                     .name()
                     .to_owned();
+                warn!("func_arg_name: {}", func_arg_name);
                 let values_for_arg =
                     match AttributePrototypeArgument::value_source_by_id(ctx, apa_id)
                         .await?
@@ -702,6 +708,8 @@ impl AttributeValue {
                         other_source => {
                             let mut values = vec![];
 
+                            warn!("other_source: {:?}", other_source);
+
                             for av_id in other_source
                                 .attribute_values_for_component_id(
                                     ctx,
@@ -721,6 +729,7 @@ impl AttributeValue {
                             values
                         }
                     };
+                warn!("values_for_arg: {:?}", values_for_arg);
 
                 func_binding_args
                     .entry(func_arg_name)
@@ -1172,17 +1181,6 @@ impl AttributeValue {
         }
 
         Ok(new_attribute_value.id)
-    }
-
-    pub async fn order(
-        &self,
-        ctx: &DalContext,
-    ) -> AttributeValueResult<Option<Vec<AttributeValueId>>> {
-        Ok(ctx
-            .workspace_snapshot()?
-            .ordering_node_for_container(self.id())
-            .await?
-            .map(|node| node.order().clone().into_iter().map(Into::into).collect()))
     }
 
     async fn populate_nested_values(
@@ -1840,7 +1838,7 @@ impl AttributeValue {
             ))?;
 
         ctx.workspace_snapshot()?
-            .remove_edge_for_ulids(
+            .remove_edge(
                 attribute_value_id,
                 prototype_id,
                 EdgeWeightKindDiscriminants::Prototype,
@@ -2288,53 +2286,6 @@ impl AttributeValue {
         Self::fetch_value_from_store(ctx, self.unprocessed_value).await
     }
 
-    pub async fn get_parent_av_id_for_ordered_child(
-        ctx: &DalContext,
-        id: AttributeValueId,
-    ) -> AttributeValueResult<Option<AttributeValueId>> {
-        let workspace_snapshot = ctx.workspace_snapshot()?;
-
-        let ordering_node_id = match workspace_snapshot
-            .incoming_sources_for_edge_weight_kind(id, EdgeWeightKindDiscriminants::Ordinal)
-            .await?
-            .first()
-            .copied()
-        {
-            Some(ordering_idx) => workspace_snapshot.get_node_weight(ordering_idx).await?.id(),
-            None => return Ok(None),
-        };
-
-        let parent_av_id = if let Some(parent_av_idx) = workspace_snapshot
-            .incoming_sources_for_edge_weight_kind(
-                ordering_node_id,
-                EdgeWeightKindDiscriminants::Ordering,
-            )
-            .await?
-            .first()
-            .copied()
-        {
-            let parent_av_id: AttributeValueId = workspace_snapshot
-                .get_node_weight(parent_av_idx)
-                .await?
-                .id()
-                .into();
-
-            let prop_id = AttributeValue::prop_id(ctx, parent_av_id).await?;
-
-            let parent_prop = Prop::get_by_id(ctx, prop_id).await?;
-
-            if ![PropKind::Map, PropKind::Array].contains(&parent_prop.kind) {
-                return Ok(None);
-            }
-
-            parent_av_id
-        } else {
-            return Ok(None);
-        };
-
-        Ok(Some(parent_av_id))
-    }
-
     async fn get_child_av_ids_from_ordering_node(
         ctx: &DalContext,
         id: AttributeValueId,
@@ -2532,7 +2483,7 @@ impl AttributeValue {
     }
 
     pub async fn remove_by_id(ctx: &DalContext, id: AttributeValueId) -> AttributeValueResult<()> {
-        let parent_av_id = Self::get_parent_av_id_for_ordered_child(ctx, id)
+        let parent_av_id = Self::parent_attribute_value_id(ctx, id)
             .await?
             .ok_or(AttributeValueError::RemovingWhenNotChildOrMapOrArray(id))?;
 
@@ -2643,12 +2594,18 @@ impl AttributeValue {
                         PropKind::Array => {
                             match ctx
                                 .workspace_snapshot()?
-                                .ordering_node_for_container(pav_id)
+                                .ordered_children_for_node(pav_id)
                                 .await?
                             {
-                                Some(ordering_node) => {
-                                    let index = ordering_node.get_index_for_id(child_id.into())?;
-                                    Some(KeyOrIndex::Index(index))
+                                Some(order) => {
+                                    let index = order
+                                        .iter()
+                                        .position(|id| *id == child_id.into())
+                                        .ok_or(NodeWeightError::MissingKeyForChildEntry(
+                                            child_id.into(),
+                                        ))?;
+
+                                    Some(KeyOrIndex::Index(index as i64))
                                 }
                                 None => None,
                             }

@@ -125,7 +125,7 @@ impl SerialDvuTask {
 
     #[instrument(
         name = "serial_dvu_task.run_dvu",
-        level = "info",
+        level = "debug",
         skip_all,
         fields(
             service.instance.id = self.metadata.instance_id(),

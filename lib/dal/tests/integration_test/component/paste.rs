@@ -577,6 +577,7 @@ async fn paste_child_only(ctx: &mut DalContext) -> Result<()> {
     let parent = test.create_parent(ctx, "parent").await?;
     let child = test.create_connectable(ctx, "child", None, []).await?;
     Frame::upsert_parent(ctx, child.id, parent.id).await?;
+    dbg!(child.domain(ctx).await?);
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
     assert_eq!(
         json!({
@@ -824,6 +825,7 @@ async fn paste_managed(ctx: &mut DalContext) -> Result<()> {
         json!(["original", "pasted"]),
         manager.run_management_func(ctx).await?
     );
+    dbg!("d");
 
     Ok(())
 }
