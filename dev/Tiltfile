@@ -23,6 +23,7 @@ groups = {
         "pinga",
         "rebaser",
         "sdf",
+
         "veritech",
         "rust-initial-build",
     ],
@@ -30,6 +31,7 @@ groups = {
         "auth-portal",
         "docs",
         "web",
+        "luminork",
     ],
     "testing": [
         "db-test",
@@ -273,6 +275,34 @@ si_buck2_resource(
     ),
     links = [
         link("http://127.0.0.1:5156", "api"),
+    ],
+    **RUST_RESOURCE_ARGS
+)
+
+# Locally build and run `luminork`
+si_buck2_resource(
+    "//bin/luminork:luminork",
+    resource_deps = [
+        "rust-initial-build",
+        "spicedb",
+        "nats",
+        "otelcol",
+        "pinga",
+        "postgres",
+        "veritech",
+        "rebaser",
+        "edda",
+        "forklift",
+    ],
+    readiness_probe = probe(
+        period_secs = 5,
+        http_get = http_get_action(
+            port = 5380,
+            path = "/",
+        ),
+    ),
+    links = [
+        link("http://127.0.0.1:5380"),
     ],
     **RUST_RESOURCE_ARGS
 )

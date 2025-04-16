@@ -4314,6 +4314,93 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "13dc2df351e3202783a1fe0d44375f7295ffb4049267b0f3018346dc122a1d94"
 
 [[package]]
+name = "luminork"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "luminork-server",
+ "si-service",
+]
+
+[[package]]
+name = "luminork-server"
+version = "0.1.0"
+dependencies = [
+ "asset-sprayer",
+ "async-openai",
+ "async-trait",
+ "audit-database",
+ "auth-api-client",
+ "axum 0.6.20",
+ "base64 0.22.1",
+ "buck2-resources",
+ "chrono",
+ "clap",
+ "convert_case 0.6.0",
+ "dal",
+ "dal-test",
+ "derive_builder",
+ "derive_more",
+ "edda-client",
+ "frigg",
+ "futures",
+ "futures-lite",
+ "hyper 0.14.32",
+ "indoc",
+ "itertools 0.13.0",
+ "module-index-client",
+ "names",
+ "nats-multiplexer",
+ "nats-multiplexer-client",
+ "nats-subscriber",
+ "nix 0.29.0",
+ "once_cell",
+ "pathdiff",
+ "permissions",
+ "pretty_assertions_sorted",
+ "rand 0.8.5",
+ "rebaser-client",
+ "regex",
+ "remain",
+ "reqwest",
+ "sdf-core",
+ "sdf-extract",
+ "serde",
+ "serde_json",
+ "serde_with",
+ "si-crypto",
+ "si-data-nats",
+ "si-data-pg",
+ "si-data-spicedb",
+ "si-events",
+ "si-frontend-types",
+ "si-id",
+ "si-jwt-public-key",
+ "si-layer-cache",
+ "si-pkg",
+ "si-posthog",
+ "si-settings",
+ "si-std",
+ "sodiumoxide",
+ "strum",
+ "telemetry",
+ "telemetry-http",
+ "thiserror 2.0.12",
+ "tokio",
+ "tokio-stream",
+ "tokio-tungstenite",
+ "tokio-util",
+ "tower 0.4.13",
+ "tower-http",
+ "tracing-tunnel",
+ "ulid",
+ "url",
+ "veritech-client",
+ "y-sync",
+ "yrs",
+]
+
+[[package]]
 name = "lz4"
 version = "1.28.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"

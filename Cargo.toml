@@ -8,6 +8,7 @@ members = [
     "bin/edda",
     "bin/forklift",
     "bin/hoist",
+    "bin/luminork",
     "bin/module-index",
     "bin/pinga",
     "bin/rebaser",
@@ -113,7 +114,9 @@ async-nats = { version = "0.39.0", features = ["service"] }
 async-openai = "0.26.0"
 async-recursion = "1.1.1"
 async-trait = "0.1.83"
-aws-config = { version = "=1.5.18", features = ["behavior-version-latest"] } # pinned because very next version (1.6.0) starts pulling in `aws-lc-rs`/`aws-lc-sys` which include native C code
+aws-config = { version = "=1.5.18", features = [
+    "behavior-version-latest",
+] } # pinned because very next version (1.6.0) starts pulling in `aws-lc-rs`/`aws-lc-sys` which include native C code
 aws-sdk-firehose = "=1.68.0" # pinned because very next version (1.69.0) starts pulling in `aws-lc-rs`/`aws-lc-sys` which include native C code
 axum = { version = "0.6.20", features = [
     "macros",
