@@ -2,10 +2,10 @@ import { createRouter, createWebHistory, RouteRecordRaw } from "vue-router";
 import * as _ from "lodash-es";
 import { nextTick } from "vue";
 import { posthog } from "@/utils/posthog";
+import { push as pushBreadcrumb } from "@/newhotness/logic_composables/navigation_stack";
 import { useAuthStore } from "./store/auth.store";
 import { useRouterStore } from "./store/router.store";
 import { isDevMode } from "./utils/debug";
-// import { useChangeSetsStore } from "./store/change_sets.store";
 
 // Cannot use inside the template directly.
 const AUTH_PORTAL_URL = import.meta.env.VITE_AUTH_PORTAL_URL;
@@ -20,6 +20,47 @@ const routes: RouteRecordRaw[] = [
     path: "/w",
     name: "workspace-index",
     redirect: { name: "home" },
+  },
+  {
+    name: "new-hotness",
+    // NOTE(nick,wendy): for @jobelenus, we removed the "/h" at the end because we believe it was
+    // not intentional. If that was wrong to do, please let us know. If that was right to do,
+    // please delete this comment!
+    path: "/n/:workspacePk/:changeSetId",
+    props: true,
+    component: () => import("@/newhotness/Workspace.vue"),
+    children: [
+      {
+        name: "new-hotness-view-list",
+        path: "views",
+        props: true,
+        component: () => import("@/newhotness/Workspace.vue"),
+      },
+      {
+        name: "new-hotness-view",
+        path: ":viewId/v/edit",
+        props: true,
+        component: () => import("@/newhotness/Workspace.vue"),
+      },
+      {
+        name: "new-hotness-secrets-list",
+        path: "secrets",
+        props: true,
+        component: () => import("@/newhotness/Workspace.vue"),
+      },
+      {
+        name: "new-hotness-view",
+        path: ":secretId/s/edit",
+        props: true,
+        component: () => import("@/newhotness/Workspace.vue"),
+      },
+      {
+        name: "new-hotness-component",
+        path: ":componentId/c",
+        props: true,
+        component: () => import("@/newhotness/Workspace.vue"),
+      },
+    ],
   },
   {
     name: "workspace-single",
@@ -225,6 +266,34 @@ router.beforeResolve((to) => {
 });
 
 router.afterEach((to) => {
+  /**
+   * Something about this operation seems to break the init render of the app
+   * I thought it might be a caught exception, it wasn't, hence the try catch
+   * The best way to test this is actually the /svg route, since its lightning fast and doesn't re-render
+   * I tried it in nextTick (like below), that still broke things
+   * I tried it with setTimeout 10ms, still broke most of the time, but worked some of the time
+   * 100ms, it works like 7 out of 10.
+   * Just going with 250 for now...
+   * That makes no sense, I will continue to investigate...
+   */
+  setTimeout(() => {
+    let name = "unknown";
+    try {
+      // NOTE: the `matched` array is least specific to most specific, so the one you want is the last one
+      const _name = to.matched.pop()?.name?.toString();
+      if (_name) name = _name;
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error("cant find name", e);
+    }
+    try {
+      pushBreadcrumb(to.path, name, { ...to.params });
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error("cant push", e);
+    }
+  }, 250);
+
   nextTick(() => {
     posthog.capture("$pageview", {
       $current_url: to.fullPath,
