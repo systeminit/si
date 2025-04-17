@@ -27,6 +27,7 @@ const WORKSPACE_FLAG_MAPPING = {
     "workspace-fine-grained-access-control",
   FRONTEND_ARCH_VIEWS: "workspace-frontend-arch-views",
   BIFROST_ACTIONS: "workspace-bifrost-actions",
+  NEW_HOTNESS: "workspace-new-hotness",
 };
 
 const ALL_FLAG_MAPPING: Record<FeatureFlags, string> = {
