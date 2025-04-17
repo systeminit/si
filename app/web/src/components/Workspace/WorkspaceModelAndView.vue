@@ -65,6 +65,14 @@
       />
     </template>
   </div>
+  <LiveDiagram
+        v-else-if="featureFlagsStore.LIVE_DIAGRAM"
+        ref="diagramRef"
+        class="h-full"
+        @mouseout="presenceStore.clearCursor"
+        @right-click-element="onRightClickElement"
+        @close-right-click-menu="closeRightClickMenu"
+      />
   <ModelingDiagram
     v-else
     ref="diagramRef"
@@ -163,6 +171,7 @@ import * as heimdall from "@/store/realtime/heimdall";
 import BifrostInsetApprovalModal from "@/mead-hall/InsetApprovalModal.vue";
 import LeftPanelDrawer from "../LeftPanelDrawer.vue";
 import ModelingDiagram from "../ModelingDiagram/ModelingDiagram.vue";
+import LiveDiagram from "../LiveDiagram/LiveDiagram.vue";
 import AutoconnectMenu from "../ModelingView/AutoconnectMenu.vue";
 import AssetPalette from "../AssetPalette.vue";
 import {

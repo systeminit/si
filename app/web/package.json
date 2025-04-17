@@ -73,6 +73,7 @@
     "codemirror": "^6.0.1",
     "comlink": "^4.4.2",
     "date-fns": "^2.29.2",
+    "elkjs": "^0.10.0",
     "fast-json-patch": "^3.1.1",
     "floating-vue": "^2.0.0-beta.20",
     "fontfaceobserver": "^2.3.0",

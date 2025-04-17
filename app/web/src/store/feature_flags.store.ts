@@ -20,6 +20,7 @@ const FLAG_MAPPING = {
   CONVERT_TO_VIEW: "convert-to-view",
   SIMPLE_SOCKET_UI: "simple-socket-ui",
   SQLITE_TOOLS: "sqlite-tools",
+  LIVE_DIAGRAM: "live-diagram",
 };
 
 const WORKSPACE_FLAG_MAPPING = {
@@ -99,6 +100,7 @@ export function useFeatureFlagsStore() {
         // You can override feature flags while working on a feature by setting them to true/false here
         // for example:
         // this.FEATURE_FLAG_NAME = false;
+        this.LIVE_DIAGRAM = true;
       },
     }),
   )();
