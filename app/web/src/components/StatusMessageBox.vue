@@ -2,7 +2,7 @@
   <div :class="divClasses" class="flex p-xs border rounded items-start">
     <StatusIndicatorIcon
       v-if="status"
-      :type="type"
+      type="qualification"
       :status="status"
       class="w-8 mr-2 shrink-0"
     />
@@ -16,14 +16,13 @@
 <script lang="ts" setup>
 import { computed, PropType } from "vue";
 import StatusIndicatorIcon, {
-  IconType,
   Status,
 } from "@/components/StatusIndicatorIcon.vue";
+import { QualificationResult } from "@/api/sdf/dal/qualification";
 
-const props = defineProps({
-  status: { type: String as PropType<Status> },
-  type: { type: String as PropType<IconType>, default: "qualification" },
-});
+const props = defineProps<{
+  status: QualificationResult["status"] | "running";
+}>();
 
 const divClasses = computed(() => {
   switch (true) {

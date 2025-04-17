@@ -47,16 +47,16 @@ const props = defineProps<{
 
 const icon = computed(() => {
   switch (props.health) {
-    case ResourceHealth.Ok:
+    case "ok":
       return { name: "check2" as IconNames, class: "text-success-500" };
-    case ResourceHealth.Warning:
+    case "warning":
       return { name: "alert-triangle" as IconNames, class: "text-warning-500" };
-    case ResourceHealth.Error:
+    case "error":
       return {
         name: "alert-triangle" as IconNames,
         class: "text-destructive-500 dark:text-destructive-600",
       };
-    case ResourceHealth.Unknown:
+    case "unknown":
     default:
       return {
         name: "question-circle" as IconNames,

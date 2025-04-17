@@ -1,17 +1,11 @@
-export enum ResourceHealth {
-  Ok = "ok",
-  Warning = "warning",
-  Error = "error",
-  Unknown = "unknown",
-}
+export type ResourceHealth = "ok" | "warning" | "error" | "unknown";
 
-export enum ResourceStatus {
-  Pending = "pending",
-  InProgress = "inProgress",
-  Created = "created",
-  Failed = "failed",
-  Deleted = "deleted",
-}
+export type ResourceStatus =
+  | "pending"
+  | "inProgress"
+  | "created"
+  | "failed"
+  | "deleted";
 
 export interface Resource {
   payload: unknown;

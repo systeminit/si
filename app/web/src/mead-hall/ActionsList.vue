@@ -58,7 +58,7 @@
             >
               <div class="mx-2xs">{{ cnt }}</div>
               <StatusIndicatorIcon
-                :status="actionKind.toString()"
+                :status="actionKind"
                 size="sm"
                 type="action"
               />
@@ -134,6 +134,7 @@ import StatusIndicatorIcon from "@/components/StatusIndicatorIcon.vue";
 import ActionCard from "./ActionCard.vue";
 import ActionHistoryCard from "./ActionHistoryCard.vue";
 import { ActionProposedViewWithHydratedChildren } from "./ChangesPanelProposed.vue";
+import { ActionKind } from "@/api/sdf/dal/action";
 
 export type ActionsListKind = "proposed" | "history";
 
@@ -187,11 +188,11 @@ const isSelected = (action: ActionView) => {
 const actionsByKind = computed(() => {
   const actions = props.proposedActions ?? props.historyActions;
   if (!actions) return {};
-  const counts = new DefaultMap<string, number>(() => 0);
+  const counts = new DefaultMap<ActionKind, number>(() => 0);
   for (const action of actions) {
     counts.set(action.kind, counts.get(action.kind) + 1);
   }
-  return Object.fromEntries(counts);
+  return Object.fromEntries(counts) as Record<ActionKind, number>;
 });
 
 const emit = defineEmits<{

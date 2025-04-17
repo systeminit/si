@@ -1,12 +1,13 @@
 <template>
   <Icon
-    :name="iconName"
-    :tone="tone !== 'inherit' ? iconTone : undefined"
+    :name="castIconName(icon?.iconName)"
+    :tone="props.tone !== 'inherit' ? (props.tone ?? icon?.tone) : undefined"
     :size="size"
   />
 </template>
 
 <script lang="ts">
+type Config = Record<string, { iconName: IconNames | "empty"; tone: Tones }>;
 const CONFIG = {
   change: {
     added: { iconName: "plus-square", tone: "success" },
@@ -67,16 +68,14 @@ const CONFIG = {
   management: {
     ok: { iconName: "check-circle", tone: "success" },
     error: { iconName: "x-circle", tone: "destructive" },
+    unknown: { iconName: "question-circle", tone: "warning" },
   },
-};
+} as const satisfies Record<string, Config>;
+
+const DEFAULT_ICON = { iconName: "question-circle", tone: "warning" } as const;
 
 export type IconType = keyof typeof CONFIG;
-</script>
-
-<!-- eslint-disable vue/component-tags-order,import/first -->
-<script lang="ts" setup>
-import { computed } from "vue";
-import { Icon, IconSizes, IconNames, Tones } from "@si/vue-lib/design-system";
+export type IconStatus<T extends IconType> = keyof typeof CONFIG[T];
 
 // TODO: remove this after refactoring StatusMessageBox
 // TODO(nick,paulo,paul,wendy): remove "neverStarted" once the fix flow is working again.
@@ -94,27 +93,25 @@ export type Status =
   | "show"
   | "pending"
   | "error";
+</script>
 
-// NOTE - would ideally pull in the real types here but generics are not yet supported
-// could also think about breaking this into multiple components, but it's nice to keep things consistent
+<!-- eslint-disable vue/component-tags-order,import/first -->
+<script lang="ts" setup generic="T extends IconType">
+import { computed } from "vue";
+import { Icon, IconSizes, IconNames, Tones } from "@si/vue-lib/design-system";
+
 const props = defineProps<{
-  type: keyof typeof CONFIG;
-  status?: string | null;
-  size?: IconSizes;
-  tone?: Tones | "inherit";
+    type: T;
+    status?: IconStatus<T> | null;
+    size?: IconSizes;
+    tone?: Tones | "inherit";
 }>();
 
-const iconName = computed<IconNames>(
-  () =>
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (CONFIG as any)[props.type]?.[props.status || "_default"]?.iconName ||
-    "question-circle",
-);
-const iconTone = computed<Tones>(
-  () =>
-    props.tone ||
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (CONFIG as any)[props.type]?.[props.status || "_default"]?.tone ||
-    "warning",
-);
+const icon = computed(() => {
+  return (CONFIG[props.type] as Partial<Config>)[props.status as string ?? "_default"] ?? DEFAULT_ICON;
+});
+// TODO remove weird cast, it's there because empty is not in IconNames
+function castIconName(iconName: IconNames | "empty"): IconNames {
+  return icon.value?.iconName as unknown as IconNames;
+}
 </script>

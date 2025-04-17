@@ -60,7 +60,7 @@
             >
               <div class="mx-2xs">{{ cnt }}</div>
               <StatusIndicatorIcon
-                :status="actionKind.toString()"
+                :status="actionKind"
                 size="sm"
                 type="action"
               />
@@ -112,6 +112,7 @@ import { DefaultMap } from "@/utils/defaultmap";
 import { ChangeSet } from "@/api/sdf/dal/change_set";
 import ActionCard from "./ActionCard.vue";
 import StatusIndicatorIcon from "../StatusIndicatorIcon.vue";
+import { ActionKind } from "@/api/sdf/dal/action";
 
 export type ActionsListKind = "proposed" | "history";
 
@@ -169,12 +170,12 @@ const displayActions = computed(() => {
   } else return actionsStore.actions;
 });
 
-function countActionsByKind(actions: ActionView[]): Record<string, number> {
-  const counts = new DefaultMap<string, number>(() => 0);
+function countActionsByKind(actions: ActionView[]) {
+  const counts = new DefaultMap<ActionKind, number>(() => 0);
   for (const action of actions) {
     counts.set(action.kind, counts.get(action.kind) + 1);
   }
-  return Object.fromEntries(counts);
+  return Object.fromEntries(counts) as Record<ActionKind, number>;
 }
 
 const emit = defineEmits<{
