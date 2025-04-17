@@ -23,8 +23,4 @@ export interface ActionPrototype {
   displayName: string;
 }
 
-export enum ActionResultState {
-  Success = "Success",
-  Failure = "Failure",
-  Unknown = "Unknown",
-}
+export type ActionResultState = "Success" | "Failure" | "Unknown";

@@ -60,7 +60,7 @@ import { useFuncStore, MgmtPrototype } from "@/store/func/funcs.store";
 import {
   FuncRun,
   FuncRunId,
-  FuncRunState,
+  funcRunStatus,
   useFuncRunsStore,
 } from "@/store/func_runs.store";
 import { useManagementRunsStore } from "@/store/management_runs.store";
@@ -142,17 +142,7 @@ const lastExecution = computed<FuncRun | null>(() => {
   }
 });
 
-const lastExecutionState = computed<"ok" | "error" | null>(() => {
-  switch (lastExecution.value?.state) {
-    case FuncRunState.Success:
-      return "ok";
-    case FuncRunState.Failure:
-      return "error";
-    default:
-      return null;
-  }
-});
-
+const lastExecutionState = computed(() => funcRunStatus(lastExecution.value));
 const runPrototype = async (viewId: ViewId) => {
   funcStore.RUN_MGMT_PROTOTYPE(
     props.prototype.managementPrototypeId,

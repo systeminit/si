@@ -65,8 +65,13 @@ const CONFIG = {
     _default: { iconName: "question-circle", tone: "warning" },
   },
   management: {
-    ok: { iconName: "check-circle", tone: "success" },
-    error: { iconName: "x-circle", tone: "destructive" },
+    Created: { iconName: "loader", tone: "neutral" },
+    Dispatched: { iconName: "loader", tone: "neutral" },
+    Running: { iconName: "loader", tone: "action" },
+    Postprocessing: { iconName: "loader", tone: "action" },
+    Failure: { iconName: "x-circle", tone: "destructive" },
+    ActionFailure: { iconName: "x-circle", tone: "destructive" },
+    Success: { iconName: "check-circle", tone: "success" },
   },
 };
 

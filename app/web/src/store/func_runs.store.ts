@@ -18,23 +18,21 @@ export type FuncRunId = string;
 export type FuncRunLogId = string;
 export type ContentHash = string;
 
-export enum FuncRunState {
-  Created = "Created",
-  Dispatched = "Dispatched",
-  Running = "Running",
-  PostProcessing = "Postprocessing",
-  Failure = "Failure",
-  Success = "Success",
-}
+export type FuncRunState =
+  | "Created"
+  | "Dispatched"
+  | "Running"
+  | "Postprocessing"
+  | "Failure"
+  | "Success";
 
-export enum FuncKind {
-  Action = "action",
-  Attribute = "attribute",
-  Authentication = "authentication",
-  CodeGeneration = "codeGeneration",
-  Intrinsic = "intrinsic",
-  Management = "management",
-}
+export type FuncKind =
+  | "action"
+  | "attribute"
+  | "authentication"
+  | "codeGeneration"
+  | "intrinsic"
+  | "management";
 
 export enum FuncBackendKind {
   Array,
@@ -91,6 +89,16 @@ export interface FuncRunLog {
   funcRunID: FuncRunId;
   logs: OutputLine[];
   finalized: boolean;
+}
+
+// Get the Status (for StatusIndicatorIcon) from the FuncRunState
+export function funcRunStatus(
+  funcRun?: Pick<FuncRun, "state" | "actionResultState"> | null,
+): FuncRunState | "ActionFailure" | undefined | null {
+  if (!funcRun) return funcRun;
+  // If actionResultState is Failure, it's an error even though state == Success
+  if (funcRun.actionResultState === "Failure") return "ActionFailure";
+  return funcRun.state;
 }
 
 export interface FuncRun {

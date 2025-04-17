@@ -6,22 +6,24 @@ import { useWorkspacesStore } from "./workspaces.store";
 import { useChangeSetsStore } from "./change_sets.store";
 import handleStoreError from "./errors";
 import { useRealtimeStore } from "./realtime/realtime.store";
-import { FuncRun, FuncRunId, useFuncRunsStore } from "./func_runs.store";
+import {
+  FuncRun,
+  FuncRunId,
+  FuncRunState,
+  useFuncRunsStore,
+} from "./func_runs.store";
 
 export interface ManagementHistoryItem {
-  funcRunId: FuncRunId;
-  name: string;
-  funcId: string;
-  originatingChangeSetName: string;
-  updatedAt: string;
-  resourceResult?: string;
-  codeExecuted?: string;
-  logs?: string;
-  arguments?: string;
+  id: FuncRunId;
+  state: FuncRunState;
+  functionName: string;
+  functionDisplayName?: string;
   componentId: string;
   componentName: string;
   schemaName: string;
-  status: ActionResultState;
+  originatingChangeSetName: string;
+  updatedAt: string;
+  actionResultState?: ActionResultState;
 }
 
 export const useManagementRunsStore = () => {
