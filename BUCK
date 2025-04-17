@@ -59,6 +59,16 @@ alias(
     actual = "//app/docs:dev",
 )
 
+alias(
+    name = "sync-cargo-deps",
+    actual = "//support/buck2:sync-cargo-deps",
+)
+
+alias(
+    name = "all-rust-targets",
+    actual = "//support/buck2:all-rust-targets",
+)
+
 export_file(
     name = ".editorconfig",
 )
