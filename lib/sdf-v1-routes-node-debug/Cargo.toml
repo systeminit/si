@@ -1,0 +1,16 @@
+[package]
+name = "sdf-v1-routes-node-debug"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+axum = { workspace = true }
+dal = { path = "../dal" }
+remain = { workspace = true }
+sdf-core = { path = "../sdf-core" }
+sdf-extract = { path = "../sdf-extract" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+telemetry = { path = "../telemetry-rs" }
+thiserror = { workspace = true }
+ulid = { workspace = true }

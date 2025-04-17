@@ -11,12 +11,10 @@ use dal::{
 use crate::{
     extract::{HandlerContext, PosthogClient},
     service::v2::AccessBuilder,
-    service::{
-        force_change_set_response::ForceChangeSetResponse,
-        variant::{SchemaVariantError, SchemaVariantResult},
-    },
     track,
 };
+use sdf_core::force_change_set_response::ForceChangeSetResponse;
+use sdf_v1_routes_variant::{SchemaVariantError, SchemaVariantResult};
 
 pub async fn create_unlocked_copy(
     HandlerContext(builder): HandlerContext,

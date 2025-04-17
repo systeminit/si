@@ -13,10 +13,9 @@ use futures::{Future, Sink, SinkExt, Stream};
 use futures_lite::future::FutureExt;
 use nats_multiplexer::Multiplexer;
 use nats_multiplexer_client::MultiplexerClient;
-use sdf_server::{
-    service::ws::crdt::{crdt_handle, BroadcastGroups, CrdtError},
-    CRDT_MULTIPLEXER_SUBJECT,
-};
+use sdf_core::nats_multiplexer::CRDT_MULTIPLEXER_SUBJECT;
+use sdf_core::BroadcastGroups;
+use sdf_v1_routes_ws::crdt::{crdt_handle, CrdtError};
 use si_data_nats::{NatsClient, NatsConfig, Subject};
 use tokio::{
     sync::broadcast, sync::Mutex, sync::Notify, sync::RwLock, task, task::JoinHandle, time::timeout,

@@ -25,7 +25,6 @@ pub mod module;
 pub mod variant;
 pub mod view;
 pub mod workspace;
-pub mod ws;
 
 pub fn routes(state: AppState) -> Router<AppState> {
     Router::new()
@@ -55,8 +54,6 @@ fn workspace_routes(state: AppState) -> Router<AppState> {
         .nest("/fs", fs::fs_routes(state.clone()))
         .nest("/index", index::v2_workspace_routes())
         .nest("/integrations", integrations::v2_routes())
-        // TODO: We eventually want things like the bifrost WS to live here, but the current setup throws an internal server error if we try to use it here.
-        // .nest("/ws", ws::router(state))
         .route_layer(middleware::from_extractor::<TargetWorkspaceIdFromPath>())
 }
 

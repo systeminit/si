@@ -1,0 +1,34 @@
+[package]
+name = "sdf-v1-routes-ws"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+audit-database = { path = "../audit-database" }
+axum = { workspace = true }
+bytes = { workspace = true }
+dal = { path = "../dal" }
+edda-client = { path = "../edda-client" }
+frigg = { path = "../frigg" }
+futures = { workspace = true }
+futures-lite = { workspace = true }
+nats-multiplexer-client = { path = "../nats-multiplexer-client" }
+nats-subscriber = { path = "../nats-subscriber" }
+remain = { workspace = true }
+sdf-core = { path = "../sdf-core" }
+sdf-extract = { path = "../sdf-extract" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+si-data-nats = { path = "../si-data-nats" }
+si-data-pg = { path = "../si-data-pg" }
+si-data-spicedb = { path = "../si-data-spicedb" }
+si-events = { path = "../si-events-rs" }
+si-frontend-types = { path = "../si-frontend-types-rs" }
+si-posthog = { path = "../si-posthog-rs" }
+telemetry = { path = "../telemetry-rs" }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+tokio-stream = { workspace = true }
+tokio-tungstenite = { workspace = true }
+tokio-util = { workspace = true }
+y-sync = { workspace = true }
