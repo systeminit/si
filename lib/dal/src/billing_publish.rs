@@ -87,7 +87,7 @@ pub async fn for_head_change_set_pointer_update(
         event_timestamp: Utc::now(),
         change_set_status: change_set.status.into(),
         change_set_id: change_set.id,
-        merge_requested_by_user_id: change_set.merge_requested_by_user_id.map(Into::into),
+        merge_requested_by_user_id: change_set.merge_requested_by_user_id,
 
         resource_count: Some(resource_count),
 
@@ -139,7 +139,7 @@ pub(crate) async fn for_change_set_status_update(
         event_timestamp: Utc::now(),
         change_set_status: change_set.status.into(),
         change_set_id: change_set.id,
-        merge_requested_by_user_id: change_set.merge_requested_by_user_id.map(Into::into),
+        merge_requested_by_user_id: change_set.merge_requested_by_user_id,
 
         resource_count: Some(resource_count),
 
@@ -195,7 +195,7 @@ pub(crate) async fn for_resource_create(
         event_timestamp: Utc::now(),
         change_set_status: change_set.status.into(),
         change_set_id: change_set.id,
-        merge_requested_by_user_id: change_set.merge_requested_by_user_id.map(Into::into),
+        merge_requested_by_user_id: change_set.merge_requested_by_user_id,
 
         resource_count: None,
 
@@ -251,7 +251,7 @@ pub(crate) async fn for_resource_delete(
         event_timestamp: Utc::now(),
         change_set_status: change_set.status.into(),
         change_set_id: change_set.id,
-        merge_requested_by_user_id: change_set.merge_requested_by_user_id.map(Into::into),
+        merge_requested_by_user_id: change_set.merge_requested_by_user_id,
 
         resource_count: None,
 

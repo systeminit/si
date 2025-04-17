@@ -1609,7 +1609,6 @@ impl WorkspaceSnapshot {
         self.working_copy()
             .await
             .frame_contains_components(component_id)
-            .map_err(Into::into)
     }
 
     pub async fn inferred_connection_graph(

@@ -155,9 +155,9 @@ impl PropertyEditorPropBuilder {
                 prop.widget_kind,
                 filtered_widget_options,
             ),
-            doc_link: prop.doc_link.map(Into::into),
-            documentation: prop.documentation.map(Into::into),
-            validation_format: prop.validation_format.map(Into::into),
+            doc_link: prop.doc_link,
+            documentation: prop.documentation,
+            validation_format: prop.validation_format,
             default_can_be_set_by_socket,
             is_origin_secret: match self.origin_secret_prop_id {
                 Some(prop_id) => prop_id == prop.id,

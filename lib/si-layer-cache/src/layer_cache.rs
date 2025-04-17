@@ -150,9 +150,7 @@ where
     }
 
     pub async fn deserialize_memory_value(&self, bytes: Arc<Vec<u8>>) -> LayerDbResult<V> {
-        serialize::from_bytes_async(&bytes)
-            .await
-            .map_err(Into::into)
+        serialize::from_bytes_async(&bytes).await
     }
 
     pub fn cache(&self) -> Cache<V> {
