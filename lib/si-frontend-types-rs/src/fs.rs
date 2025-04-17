@@ -209,7 +209,7 @@ impl Binding {
             Binding::Attribute { .. } => func_kind == FuncKind::Attribute,
             Binding::Authentication => func_kind == FuncKind::Authentication,
             Binding::CodeGeneration { .. } => func_kind == FuncKind::CodeGeneration,
-            Binding::Management { .. } => func_kind == FuncKind::Management,
+            Binding::Management => func_kind == FuncKind::Management,
             Binding::Qualification { .. } => func_kind == FuncKind::Qualification,
         }
     }
