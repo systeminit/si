@@ -70,7 +70,14 @@ async fn default(
     // failure until the last retry which will succeed. Remember, returning an error in this
     // handler triggers the `Ack` middleware to `nack()` this message and it will be immediately
     // redelivered.
-    if "fail" == msg.subject.as_str().split('.').last().unwrap_or_default() {
+    if "fail"
+        == msg
+            .subject
+            .as_str()
+            .split('.')
+            .next_back()
+            .unwrap_or_default()
+    {
         let mut retries = state.retries.lock().await;
         match retries.entry(payload.to_string()) {
             Entry::Occupied(mut entry) => {
