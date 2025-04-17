@@ -553,6 +553,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "aws-sdk-ssm"
+version = "1.71.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d07c58e00d2059c0080d11c40ffabb7a4802f7ddf35e04d181f0f090eaf20cab"
+dependencies = [
+ "aws-credential-types",
+ "aws-runtime",
+ "aws-smithy-async",
+ "aws-smithy-http 0.62.0",
+ "aws-smithy-json",
+ "aws-smithy-runtime",
+ "aws-smithy-runtime-api",
+ "aws-smithy-types",
+ "aws-types",
+ "bytes",
+ "fastrand",
+ "http 0.2.12",
+ "once_cell",
+ "regex-lite",
+ "tracing",
+]
+
+[[package]]
 name = "aws-sdk-sso"
 version = "1.64.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1217,9 +1240,9 @@ dependencies = [
 
 [[package]]
 name = "brotli-decompressor"
-version = "4.0.2"
+version = "4.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "74fa05ad7d803d413eb8380983b092cbbaf9a85f151b871360e7b00cd7060b37"
+checksum = "a334ef7c9e23abf0ce748e8cd309037da93e606ad52eb372e4ce327a0dcfbdfd"
 dependencies = [
  "alloc-no-stdlib",
  "alloc-stdlib",
@@ -3998,6 +4021,54 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.100",
+]
+
+[[package]]
+name = "innit"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "innit-server",
+ "si-service",
+]
+
+[[package]]
+name = "innit-core"
+version = "0.1.0"
+dependencies = [
+ "aws-sdk-ssm",
+ "chrono",
+ "serde",
+ "serde_json",
+ "ulid",
+]
+
+[[package]]
+name = "innit-server"
+version = "0.1.0"
+dependencies = [
+ "aws-config",
+ "aws-sdk-ssm",
+ "axum 0.6.20",
+ "derive_builder",
+ "futures",
+ "hyper 0.14.32",
+ "innit-core",
+ "remain",
+ "serde",
+ "serde_json",
+ "si-settings",
+ "si-std",
+ "telemetry",
+ "thiserror 2.0.12",
+ "tokio",
+ "tokio-stream",
+ "tokio-util",
+ "tower 0.4.13",
+ "tower-http",
+ "tracing-tunnel",
+ "ulid",
+ "url",
 ]
 
 [[package]]
@@ -7096,9 +7167,9 @@ dependencies = [
 
 [[package]]
 name = "sea-query"
-version = "0.32.3"
+version = "0.32.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f5a24d8b9fcd2674a6c878a3d871f4f1380c6c43cc3718728ac96864d888458e"
+checksum = "d99447c24da0cded00089e2021e1624af90878c65f7534319448d01da3df869d"
 dependencies = [
  "bigdecimal",
  "chrono",
