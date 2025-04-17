@@ -12,6 +12,11 @@ sh_binary(
     main = "buck2-update-prelude.sh",
 )
 
+sh_binary(
+    name = "all-rust-targets",
+    main = "buck2-all-rust-targets.sh",
+)
+
 python_bootstrap_binary(
     name = "sync-cargo-deps",
     main = "buck2-sync-cargo-deps.py",
