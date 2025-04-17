@@ -17,6 +17,7 @@ const envFiles = [
   `.env`, // defaults
 ];
 envFiles.forEach((filename) => {
+  console.log(filename)
   dotenv.config({
     path: path.resolve(`${__dirname}/../${filename}`),
   });

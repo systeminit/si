@@ -374,6 +374,7 @@
         devShells.default = mkShell {
           # Env Vars so bindgen can find libclang
           shellHook = ''
+            echo "testing 123"
             export LIBCLANG_PATH="${pkgs.llvmPackages.libclang.lib}/lib"
             export BINDGEN_EXTRA_CLANG_ARGS="\
               $(< ${pkgs.stdenv.cc}/nix-support/libc-crt1-cflags) \
