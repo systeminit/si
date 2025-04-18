@@ -52,6 +52,15 @@ A-sdf:
       - Cargo.lock
       - rust-toolchain
       - rustfmt.toml
+A-luminork:
+  - changed-files:
+    - any-glob-to-any-file:
+      - bin/luminork/**/*
+      - lib/luminork-server/**/*
+      - .cargo/**/*
+      - Cargo.lock
+      - rust-toolchain
+      - rustfmt.toml
 A-veritech:
   - changed-files:
     - any-glob-to-any-file:

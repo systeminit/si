@@ -2,7 +2,7 @@ use axum::{
     http::StatusCode,
     middleware,
     response::{IntoResponse, Response},
-    routing::{get, post},
+    routing::{delete, get, post},
     Router,
 };
 use thiserror::Error;
@@ -49,6 +49,7 @@ pub fn routes(state: AppState) -> Router<AppState> {
                         "/:change_set_id",
                         Router::new()
                             .route("/", get(super::change_sets::get::get_change_set))
+                            .route("/", delete(super::change_sets::delete::abandon_change_set))
                             .nest("/components", super::components::routes())
                             .nest("/management", super::management::routes())
                             .route(
