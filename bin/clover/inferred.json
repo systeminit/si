@@ -660,6 +660,13 @@
       "auto"
     ]
   },
+  "Specify the bandwidth weighting option to boost the associated type of baseline bandwidth, as follows:\n  + default This option uses the standard bandwidth configuration for your instance type. + vpc-1 This option boosts your networking baseline bandwidth and reduces your EBS baseline bandwidth. + ebs-1 This option boosts your EBS baseline bandwidth and reduces your networking baseline bandwidth.": {
+    "enum": [
+      "default",
+      "vpc-1",
+      "ebs-1"
+    ]
+  },
   "The placement strategy.": {
     "enum": [
       "cluster",
@@ -3493,6 +3500,9 @@
   "ARN of the IAM role that allows access to the stream processor, and provides Rekognition read permissions for KVS stream and write permissions to S3 bucket and SNS topic.": {
     "enum": null
   },
+  "ARN of the KMS key to use for encryption": {
+    "enum": null
+  },
   "ARN of the Kinesis Data Stream stream.": {
     "enum": null
   },
@@ -6131,6 +6141,9 @@
     "enum": null
   },
   "Select log version for Verified Access logs.": {
+    "enum": null
+  },
+  "Server-side encryption algorithm": {
     "enum": null
   },
   "Server-side encryption type": {
