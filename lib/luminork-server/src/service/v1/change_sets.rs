@@ -4,8 +4,8 @@ use axum::{
 };
 use thiserror::Error;
 
-// Import submodules
 pub mod create;
+pub mod delete;
 pub mod force_apply;
 pub mod get;
 pub mod list;
@@ -14,12 +14,13 @@ pub mod request_approval;
 
 use super::common::ErrorIntoResponse;
 
-// Common error type for all change set operations
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ChangeSetError {
     #[error("action error: {0}")]
     Action(#[from] dal::action::ActionError),
+    #[error("cannot abandon head change set")]
+    CannotAbandonHead,
     #[error("change set error: {0}")]
     ChangeSet(#[from] dal::ChangeSetError),
     #[error("change set apply error: {0}")]

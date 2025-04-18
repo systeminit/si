@@ -1,0 +1,65 @@
+use axum::response::Json;
+use dal::change_set::ChangeSet;
+use sdf_extract::change_set::ChangeSetDalContext;
+use serde::Serialize;
+use serde_json::json;
+use si_events::audit_log::AuditLogKind;
+use utoipa::ToSchema;
+
+use crate::extract::PosthogEventTracker;
+
+use crate::service::v1::ChangeSetError;
+
+#[utoipa::path(
+    delete,
+    path = "/v1/w/{workspace_id}/change-sets/{change_set_id}",
+    params(
+        ("workspace_id", description = "Workspace identifier"),
+        ("change_set_id", description = "Change set identifier")
+    ),
+    tag = "change_sets",
+    responses(
+        (status = 200, description = "Change set deleted successfully", body = DeleteChangeSetV1Response),
+        (status = 500, description = "Internal server error", body = crate::service::v1::common::ApiError)
+    )
+)]
+pub async fn abandon_change_set(
+    ChangeSetDalContext(ref mut ctx): ChangeSetDalContext,
+    tracker: PosthogEventTracker,
+) -> Result<Json<DeleteChangeSetV1Response>, ChangeSetError> {
+    let maybe_head_changeset = ctx.get_workspace_default_change_set_id().await?;
+    if maybe_head_changeset == ctx.change_set_id() {
+        return Err(ChangeSetError::CannotAbandonHead);
+    }
+
+    let mut change_set = ChangeSet::get_by_id(ctx, ctx.change_set_id()).await?;
+    let old_status = change_set.status;
+    ctx.update_visibility_and_snapshot_to_visibility(change_set.id)
+        .await?;
+    change_set.abandon(ctx).await?;
+
+    tracker.track(
+        ctx,
+        "api_create_change_set",
+        json!({"abandoned_change_set": ctx.change_set_id()}),
+    );
+
+    ctx.write_audit_log(
+        AuditLogKind::AbandonChangeSet {
+            from_status: old_status.into(),
+        },
+        change_set.name,
+    )
+    .await?;
+
+    ctx.commit_no_rebase().await?;
+
+    Ok(Json(DeleteChangeSetV1Response { success: true }))
+}
+
+#[derive(Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct DeleteChangeSetV1Response {
+    #[schema(example = "true")]
+    pub success: bool,
+}

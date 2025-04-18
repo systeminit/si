@@ -15,6 +15,7 @@ pub use workspaces::WorkspaceError;
 
 pub use change_sets::{
     create::{CreateChangeSetV1Request, CreateChangeSetV1Response},
+    delete::DeleteChangeSetV1Response,
     get::GetChangeSetV1Response,
     list::ListChangeSetV1Response,
     merge_status::{
@@ -50,6 +51,7 @@ pub use management::run_prototype::{
         change_sets::create::create_change_set,
         change_sets::list::list_change_sets,
         change_sets::get::get_change_set,
+        change_sets::delete::abandon_change_set,
         change_sets::force_apply::force_apply,
         change_sets::merge_status::merge_status,
         change_sets::request_approval::request_approval,
@@ -63,6 +65,7 @@ pub use management::run_prototype::{
             common::ApiSuccess<String>,
             CreateChangeSetV1Request,
             CreateChangeSetV1Response,
+            DeleteChangeSetV1Response,
             ListChangeSetV1Response,
             GetChangeSetV1Response,
             MergeStatusV1Response,
