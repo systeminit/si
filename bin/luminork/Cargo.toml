@@ -1,0 +1,18 @@
+[package]
+name = "luminork"
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "luminork"
+path = "src/main.rs"
+
+[dependencies]
+clap = { workspace = true }
+luminork-server = { path = "../../lib/luminork-server" }
+si-service = { path = "../../lib/si-service" }
