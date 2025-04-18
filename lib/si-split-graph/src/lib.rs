@@ -24,6 +24,7 @@ pub mod updates;
 
 pub use subgraph::{SubGraph, SubGraphEdgeIndex, SubGraphNodeIndex};
 pub use subgraph_address::SubGraphAddress;
+use updates::ExternalSourceData;
 pub use updates::Update;
 
 #[derive(Error, Debug)]
@@ -321,6 +322,22 @@ where
             },
             SplitGraphEdgeWeight::Ordering => SplitGraphEdgeWeight::Ordering,
             SplitGraphEdgeWeight::Ordinal => SplitGraphEdgeWeight::Ordinal,
+        }
+    }
+
+    pub fn external_source_data(&self) -> Option<ExternalSourceData<K>> {
+        match self {
+            SplitGraphEdgeWeight::ExternalSource {
+                source_id,
+                edge_kind,
+                ..
+            } => Some(ExternalSourceData {
+                source_id: *source_id,
+                kind: *edge_kind,
+            }),
+            SplitGraphEdgeWeight::Custom(_)
+            | SplitGraphEdgeWeight::Ordering
+            | SplitGraphEdgeWeight::Ordinal => None,
         }
     }
 
@@ -954,6 +971,13 @@ where
                     .map(|edge_ref| edge_ref.id())
                 {
                     to_subgraph.remove_edge_by_index(edge_idx);
+                    self.remove_external_source_edge_mapping(
+                        from_id,
+                        SplitGraphEdgeIndex {
+                            subgraph: to_subgraph_idx,
+                            index: edge_idx,
+                        },
+                    );
                 }
             }
         }
@@ -1216,6 +1240,19 @@ where
         })
     }
 
+    fn remove_external_source_edge_mapping(
+        &mut self,
+        from_id: SplitGraphNodeId,
+        edge_index: SplitGraphEdgeIndex,
+    ) {
+        self.supergraph
+            .external_source_map
+            .entry(from_id)
+            .and_modify(|edges| {
+                edges.retain(|existing_edge_index| *existing_edge_index != edge_index)
+            });
+    }
+
     pub fn cleanup(&mut self) {
         let mut external_source_edges_to_remove = vec![];
         for subgraph in self.subgraphs.iter_mut() {
@@ -1443,6 +1480,7 @@ where
                     source,
                     destination,
                     edge_kind,
+                    external_source_data,
                 } => {
                     let Some(subgraph) = self.subgraphs.get_mut(*subgraph_index as usize) else {
                         continue;
@@ -1454,7 +1492,16 @@ where
                         continue;
                     };
 
-                    subgraph.remove_edge_raw(from_index, *edge_kind, to_index);
+                    match external_source_data {
+                        Some(external_source_data) => {
+                            subgraph.remove_external_source_edge(
+                                from_index,
+                                to_index,
+                                *external_source_data,
+                            );
+                        }
+                        None => subgraph.remove_edge_raw(from_index, *edge_kind, to_index),
+                    }
                 }
                 Update::RemoveNode { subgraph_index, id } => {
                     let Some(subgraph) = self.subgraphs.get_mut(*subgraph_index as usize) else {

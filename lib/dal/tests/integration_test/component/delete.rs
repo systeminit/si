@@ -2,11 +2,13 @@ use std::time::Duration;
 
 use dal::action::prototype::{ActionKind, ActionPrototype};
 use dal::action::Action;
+use dal::attribute::value::DependentValueGraph;
 use dal::component::delete::{delete_components, ComponentDeletionStatus};
 use dal::component::frame::Frame;
 use dal::component::resource::ResourceData;
 use dal::func::intrinsics::IntrinsicFunc;
 use dal::prop::PropPath;
+use dal::workspace_snapshot::DependentValueRoot;
 use dal::{AttributeValue, ComponentType, Func, InputSocket, OutputSocket, Prop};
 use dal::{Component, DalContext, Schema, SchemaVariant};
 use dal_test::helpers::{

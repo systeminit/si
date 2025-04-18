@@ -6,6 +6,7 @@ use std::io::Write;
 use std::time::Instant;
 use telemetry::prelude::*;
 
+use crate::updates::ExternalSourceData;
 use crate::{
     CustomEdgeWeight, CustomNodeWeight, EdgeKind, SplitGraphEdgeWeight, SplitGraphEdgeWeightKind,
     SplitGraphError, SplitGraphNodeId, SplitGraphNodeWeight, SplitGraphResult,
@@ -543,6 +544,27 @@ where
         self.touched_nodes.insert(node_index);
     }
 
+    pub(crate) fn remove_external_source_edge(
+        &mut self,
+        from_index: SubGraphNodeIndex,
+        to_index: SubGraphNodeIndex,
+        external_source_data: ExternalSourceData<K>,
+    ) {
+        self.touch_node(from_index);
+        let edge_indexes: Vec<_> = self
+            .graph
+            .edges_connecting(from_index, to_index)
+            .filter(|edge_ref| {
+                edge_ref.weight().external_source_data() == Some(external_source_data)
+            })
+            .map(|edge_ref| edge_ref.id())
+            .collect();
+
+        for edge_index in edge_indexes {
+            self.graph.remove_edge(edge_index);
+        }
+    }
+
     /// Removes all edges between `from_index` and `to_index` that match the passed in kind.
     /// Also handles removing any correspond
     pub(crate) fn remove_edge_raw(
@@ -551,9 +573,6 @@ where
         kind: SplitGraphEdgeWeightKind<K>,
         to_index: SubGraphNodeIndex,
     ) {
-        if to_index == SubGraphNodeIndex::new(79) {
-            println!("removing {:?} {:?} to {:?}", from_index, kind, to_index);
-        }
         self.touch_node(from_index);
         let edge_indexes: Vec<_> = self
             .graph

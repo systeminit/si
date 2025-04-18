@@ -14,6 +14,15 @@ use crate::{
     SplitGraphNodeId, SplitGraphNodeWeight,
 };
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Deserialize, Serialize, Hash)]
+pub struct ExternalSourceData<K>
+where
+    K: EdgeKind,
+{
+    pub(crate) source_id: SplitGraphNodeId,
+    pub(crate) kind: K,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, EnumDiscriminants)]
 pub enum Update<N, E, K>
 where
@@ -32,6 +41,7 @@ where
         source: SplitGraphNodeId,
         destination: SplitGraphNodeId,
         edge_kind: SplitGraphEdgeWeightKind<K>,
+        external_source_data: Option<ExternalSourceData<K>>,
     },
     RemoveNode {
         subgraph_index: usize,
@@ -339,16 +349,6 @@ where
         }
 
         #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-        struct ExternalSourceData<K>
-        where
-            K: EdgeKind,
-        {
-            source_id: SplitGraphNodeId,
-            is_default: bool,
-            kind: K,
-        }
-
-        #[derive(Debug, Clone, PartialEq, Eq, Hash)]
         struct UniqueEdgeInfo<K>
         where
             K: EdgeKind,
@@ -397,12 +397,10 @@ where
                                         external_source_data: match edge_ref.weight() {
                                             SplitGraphEdgeWeight::ExternalSource {
                                                 source_id,
-                                                is_default,
                                                 edge_kind,
                                                 ..
                                             } => Some(ExternalSourceData {
                                                 source_id: *source_id,
-                                                is_default: *is_default,
                                                 kind: *edge_kind,
                                             }),
                                             SplitGraphEdgeWeight::Custom(_)
@@ -435,12 +433,10 @@ where
                                         external_source_data: match edge_ref.weight() {
                                             SplitGraphEdgeWeight::ExternalSource {
                                                 source_id,
-                                                is_default,
                                                 edge_kind,
                                                 ..
                                             } => Some(ExternalSourceData {
                                                 source_id: *source_id,
-                                                is_default: *is_default,
                                                 kind: *edge_kind,
                                             }),
                                             SplitGraphEdgeWeight::Custom(_)
@@ -469,6 +465,7 @@ where
                             source: edge_info.source_node,
                             destination: edge_info.target_node,
                             edge_kind: (&edge_info.edge_weight).into(),
+                            external_source_data: edge_info.edge_weight.external_source_data(),
                         }),
                 );
 
