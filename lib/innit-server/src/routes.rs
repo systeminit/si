@@ -6,10 +6,12 @@ use axum::{
 };
 use hyper::StatusCode;
 use serde_json::{json, Value};
+use si_data_ssm::ParameterStoreClientError;
 use thiserror::Error;
 use tower_http::compression::CompressionLayer;
 use tower_http::cors::CorsLayer;
 
+mod get_parameter;
 mod list_parameters;
 
 use crate::api_error::ApiError;
@@ -21,6 +23,7 @@ pub fn routes(state: AppState) -> Router {
     let mut router: Router<AppState> = Router::new();
     router = router
         .route("/", get(system_status_route))
+        .route("/parameter/*path", get(get_parameter::get_parameter_route))
         .route(
             "/parameters/*path",
             get(list_parameters::list_parameters_route),
@@ -39,6 +42,8 @@ async fn system_status_route() -> Json<Value> {
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum AppError {
+    #[error(transparent)]
+    ParameterStoreClient(#[from] ParameterStoreClientError),
     #[error(transparent)]
     Server(#[from] ServerError),
 }

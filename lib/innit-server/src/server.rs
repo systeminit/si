@@ -1,5 +1,5 @@
-use aws_sdk_ssm::Client;
 use axum::response::{IntoResponse, Response};
+use si_data_ssm::ParameterStoreClient;
 use std::io;
 use tokio_util::sync::CancellationToken;
 
@@ -43,10 +43,9 @@ impl Server<()> {
         config: Config,
         token: CancellationToken,
     ) -> ServerResult<Server<AddrIncoming>> {
-        let aws_config = aws_config::load_from_env().await;
-        let ssm_client = Client::new(&aws_config);
+        let parameter_store_client = ParameterStoreClient::new().await;
 
-        let service = build_service(ssm_client, token.clone())?;
+        let service = build_service(parameter_store_client, token.clone())?;
 
         info!(
             "binding to HTTP socket; socket_addr={}",
@@ -72,8 +71,11 @@ where
     }
 }
 
-pub fn build_service(client: Client, token: CancellationToken) -> ServerResult<Router> {
-    let state = AppState::new(client, token);
+pub fn build_service(
+    parameter_store_client: ParameterStoreClient,
+    token: CancellationToken,
+) -> ServerResult<Router> {
+    let state = AppState::new(parameter_store_client, token);
 
     let routes = routes::routes(state)
         .layer(

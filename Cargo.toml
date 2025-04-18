@@ -74,6 +74,7 @@ members = [
     "lib/si-data-nats",
     "lib/si-data-pg",
     "lib/si-data-spicedb",
+    "lib/si-data-ssm",
     "lib/si-events-rs",
     "lib/si-filesystem",
     "lib/si-firecracker",

@@ -33,7 +33,7 @@ WORKDIR /run/$BIN
 COPY --from=builder /tmp/nix-store-closure /nix/store
 COPY --from=builder /tmp/local-bin/* /usr/local/bin/
 
-EXPOSE 5157/tcp
+EXPOSE 5166/tcp
 
 ENTRYPOINT [ \
   "/sbin/runuser", "-u", "app", "--", "/usr/local/bin/innit", \

@@ -1193,6 +1193,58 @@ cargo.rust_library(
     ],
 )
 
+alias(
+    name = "aws-sdk-ssm",
+    actual = ":aws-sdk-ssm-1.71.0",
+    visibility = ["PUBLIC"],
+)
+
+http_archive(
+    name = "aws-sdk-ssm-1.71.0.crate",
+    sha256 = "d07c58e00d2059c0080d11c40ffabb7a4802f7ddf35e04d181f0f090eaf20cab",
+    strip_prefix = "aws-sdk-ssm-1.71.0",
+    urls = ["https://static.crates.io/crates/aws-sdk-ssm/1.71.0/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "aws-sdk-ssm-1.71.0",
+    srcs = [":aws-sdk-ssm-1.71.0.crate"],
+    crate = "aws_sdk_ssm",
+    crate_root = "aws-sdk-ssm-1.71.0.crate/src/lib.rs",
+    edition = "2021",
+    env = {
+        "CARGO_MANIFEST_DIR": "aws-sdk-ssm-1.71.0.crate",
+        "CARGO_PKG_AUTHORS": "AWS Rust SDK Team <aws-sdk-rust@amazon.com>:Russell Cohen <rcoh@amazon.com>",
+        "CARGO_PKG_DESCRIPTION": "AWS SDK for Amazon Simple Systems Manager (SSM)",
+        "CARGO_PKG_NAME": "aws-sdk-ssm",
+        "CARGO_PKG_REPOSITORY": "https://github.com/awslabs/aws-sdk-rust",
+        "CARGO_PKG_VERSION": "1.71.0",
+        "CARGO_PKG_VERSION_MAJOR": "1",
+        "CARGO_PKG_VERSION_MINOR": "71",
+        "CARGO_PKG_VERSION_PATCH": "0",
+    },
+    features = ["rt-tokio"],
+    visibility = [],
+    deps = [
+        ":aws-credential-types-1.2.2",
+        ":aws-runtime-1.5.6",
+        ":aws-smithy-async-1.2.5",
+        ":aws-smithy-http-0.62.0",
+        ":aws-smithy-json-0.61.3",
+        ":aws-smithy-runtime-1.8.1",
+        ":aws-smithy-runtime-api-1.7.4",
+        ":aws-smithy-types-1.3.0",
+        ":aws-types-1.3.6",
+        ":bytes-1.10.1",
+        ":fastrand-2.3.0",
+        ":http-0.2.12",
+        ":once_cell-1.21.3",
+        ":regex-lite-0.1.6",
+        ":tracing-0.1.41",
+    ],
+)
+
 http_archive(
     name = "aws-sdk-sso-1.64.0.crate",
     sha256 = "02d4bdb0e5f80f0689e61c77ab678b2b9304af329616af38aef5b6b967b8e736",
@@ -1461,6 +1513,12 @@ cargo.rust_library(
     ],
 )
 
+alias(
+    name = "aws-smithy-http-client",
+    actual = ":aws-smithy-http-client-1.0.1",
+    visibility = ["PUBLIC"],
+)
+
 http_archive(
     name = "aws-smithy-http-client-1.0.1.crate",
     sha256 = "8aff1159006441d02e57204bf57a1b890ba68bedb6904ffd2873c1c4c11c546b",
@@ -1476,11 +1534,14 @@ cargo.rust_library(
     crate_root = "aws-smithy-http-client-1.0.1.crate/src/lib.rs",
     edition = "2021",
     features = [
+        "default-client",
         "hyper-014",
         "legacy-rustls-ring",
+        "rustls-ring",
     ],
     named_deps = {
         "http_02x": ":http-0.2.12",
+        "http_1x": ":http-1.3.1",
         "http_body_04x": ":http-body-0.4.6",
         "hyper_0_14": ":hyper-0.14.32",
         "legacy_hyper_rustls": ":hyper-rustls-0.24.2",
@@ -1492,8 +1553,15 @@ cargo.rust_library(
         ":aws-smithy-runtime-api-1.7.4",
         ":aws-smithy-types-1.3.0",
         ":h2-0.4.9",
+        ":hyper-1.6.0",
+        ":hyper-rustls-0.27.5",
+        ":hyper-util-0.1.11",
         ":pin-project-lite-0.2.16",
+        ":rustls-0.23.26",
+        ":rustls-native-certs-0.8.1",
+        ":rustls-pki-types-1.11.0",
         ":tokio-1.44.2",
+        ":tower-0.5.2",
         ":tracing-0.1.41",
     ],
 )
@@ -1556,6 +1624,12 @@ cargo.rust_library(
         ":aws-smithy-types-1.3.0",
         ":urlencoding-2.1.3",
     ],
+)
+
+alias(
+    name = "aws-smithy-runtime",
+    actual = ":aws-smithy-runtime-1.8.1",
+    visibility = ["PUBLIC"],
 )
 
 http_archive(
@@ -2767,23 +2841,23 @@ cargo.rust_library(
     deps = [
         ":alloc-no-stdlib-2.0.4",
         ":alloc-stdlib-0.2.2",
-        ":brotli-decompressor-4.0.2",
+        ":brotli-decompressor-4.0.3",
     ],
 )
 
 http_archive(
-    name = "brotli-decompressor-4.0.2.crate",
-    sha256 = "74fa05ad7d803d413eb8380983b092cbbaf9a85f151b871360e7b00cd7060b37",
-    strip_prefix = "brotli-decompressor-4.0.2",
-    urls = ["https://static.crates.io/crates/brotli-decompressor/4.0.2/download"],
+    name = "brotli-decompressor-4.0.3.crate",
+    sha256 = "a334ef7c9e23abf0ce748e8cd309037da93e606ad52eb372e4ce327a0dcfbdfd",
+    strip_prefix = "brotli-decompressor-4.0.3",
+    urls = ["https://static.crates.io/crates/brotli-decompressor/4.0.3/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "brotli-decompressor-4.0.2",
-    srcs = [":brotli-decompressor-4.0.2.crate"],
+    name = "brotli-decompressor-4.0.3",
+    srcs = [":brotli-decompressor-4.0.3.crate"],
     crate = "brotli_decompressor",
-    crate_root = "brotli-decompressor-4.0.2.crate/src/lib.rs",
+    crate_root = "brotli-decompressor-4.0.3.crate/src/lib.rs",
     edition = "2015",
     features = [
         "alloc-stdlib",
@@ -3221,23 +3295,23 @@ buildscript_run(
 
 alias(
     name = "clap",
-    actual = ":clap-4.5.36",
+    actual = ":clap-4.5.37",
     visibility = ["PUBLIC"],
 )
 
 http_archive(
-    name = "clap-4.5.36.crate",
-    sha256 = "2df961d8c8a0d08aa9945718ccf584145eee3f3aa06cddbeac12933781102e04",
-    strip_prefix = "clap-4.5.36",
-    urls = ["https://static.crates.io/crates/clap/4.5.36/download"],
+    name = "clap-4.5.37.crate",
+    sha256 = "eccb054f56cbd38340b380d4a8e69ef1f02f1af43db2f0cc817a4774d80ae071",
+    strip_prefix = "clap-4.5.37",
+    urls = ["https://static.crates.io/crates/clap/4.5.37/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "clap-4.5.36",
-    srcs = [":clap-4.5.36.crate"],
+    name = "clap-4.5.37",
+    srcs = [":clap-4.5.37.crate"],
     crate = "clap",
-    crate_root = "clap-4.5.36.crate/src/lib.rs",
+    crate_root = "clap-4.5.37.crate/src/lib.rs",
     edition = "2021",
     features = [
         "color",
@@ -3253,24 +3327,24 @@ cargo.rust_library(
     ],
     visibility = [],
     deps = [
-        ":clap_builder-4.5.36",
+        ":clap_builder-4.5.37",
         ":clap_derive-4.5.32",
     ],
 )
 
 http_archive(
-    name = "clap_builder-4.5.36.crate",
-    sha256 = "132dbda40fb6753878316a489d5a1242a8ef2f0d9e47ba01c951ea8aa7d013a5",
-    strip_prefix = "clap_builder-4.5.36",
-    urls = ["https://static.crates.io/crates/clap_builder/4.5.36/download"],
+    name = "clap_builder-4.5.37.crate",
+    sha256 = "efd9466fac8543255d3b1fcad4762c5e116ffe808c8a3043d4263cd4fd4862a2",
+    strip_prefix = "clap_builder-4.5.37",
+    urls = ["https://static.crates.io/crates/clap_builder/4.5.37/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "clap_builder-4.5.36",
-    srcs = [":clap_builder-4.5.36.crate"],
+    name = "clap_builder-4.5.37",
+    srcs = [":clap_builder-4.5.37.crate"],
     crate = "clap_builder",
-    crate_root = "clap_builder-4.5.36.crate/src/lib.rs",
+    crate_root = "clap_builder-4.5.37.crate/src/lib.rs",
     edition = "2021",
     features = [
         "color",
@@ -4584,18 +4658,18 @@ cargo.rust_library(
 )
 
 http_archive(
-    name = "der-0.7.9.crate",
-    sha256 = "f55bf8e7b65898637379c1b74eb1551107c8294ed26d855ceb9fd1a09cfc9bc0",
-    strip_prefix = "der-0.7.9",
-    urls = ["https://static.crates.io/crates/der/0.7.9/download"],
+    name = "der-0.7.10.crate",
+    sha256 = "e7c1832837b905bbfb5101e07cc24c8deddf52f93225eee6ead5f4d63d53ddcb",
+    strip_prefix = "der-0.7.10",
+    urls = ["https://static.crates.io/crates/der/0.7.10/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "der-0.7.9",
-    srcs = [":der-0.7.9.crate"],
+    name = "der-0.7.10",
+    srcs = [":der-0.7.10.crate"],
     crate = "der",
-    crate_root = "der-0.7.9.crate/src/lib.rs",
+    crate_root = "der-0.7.10.crate/src/lib.rs",
     edition = "2021",
     features = [
         "alloc",
@@ -5206,7 +5280,7 @@ cargo.rust_library(
     ],
     visibility = [],
     deps = [
-        ":der-0.7.9",
+        ":der-0.7.10",
         ":digest-0.10.7",
         ":elliptic-curve-0.13.8",
         ":rfc6979-0.4.0",
@@ -6416,7 +6490,7 @@ cargo.rust_library(
         ":auto_enums-0.8.7",
         ":bincode-1.3.3",
         ":bytes-1.10.1",
-        ":clap-4.5.36",
+        ":clap-4.5.37",
         ":equivalent-1.0.2",
         ":fastrace-0.7.9",
         ":flume-0.11.1",
@@ -8010,6 +8084,7 @@ cargo.rust_library(
     edition = "2021",
     features = [
         "http1",
+        "http2",
         "native-tokio",
         "ring",
         "rustls-native-certs",
@@ -12330,7 +12405,7 @@ cargo.rust_library(
     ],
     visibility = [],
     deps = [
-        ":der-0.7.9",
+        ":der-0.7.10",
         ":pkcs8-0.10.2",
         ":spki-0.7.3",
     ],
@@ -12357,7 +12432,7 @@ cargo.rust_library(
     ],
     visibility = [],
     deps = [
-        ":der-0.7.9",
+        ":der-0.7.10",
         ":spki-0.7.3",
     ],
 )
@@ -15998,7 +16073,7 @@ cargo.rust_library(
         ":pgvector-0.4.0",
         ":rust_decimal-1.37.1",
         ":sea-orm-macros-1.1.10",
-        ":sea-query-0.32.3",
+        ":sea-query-0.32.4",
         ":sea-query-binder-0.7.0",
         ":serde-1.0.219",
         ":serde_json-1.0.140",
@@ -16047,18 +16122,18 @@ cargo.rust_library(
 )
 
 http_archive(
-    name = "sea-query-0.32.3.crate",
-    sha256 = "f5a24d8b9fcd2674a6c878a3d871f4f1380c6c43cc3718728ac96864d888458e",
-    strip_prefix = "sea-query-0.32.3",
-    urls = ["https://static.crates.io/crates/sea-query/0.32.3/download"],
+    name = "sea-query-0.32.4.crate",
+    sha256 = "d99447c24da0cded00089e2021e1624af90878c65f7534319448d01da3df869d",
+    strip_prefix = "sea-query-0.32.4",
+    urls = ["https://static.crates.io/crates/sea-query/0.32.4/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "sea-query-0.32.3",
-    srcs = [":sea-query-0.32.3.crate"],
+    name = "sea-query-0.32.4",
+    srcs = [":sea-query-0.32.4.crate"],
     crate = "sea_query",
-    crate_root = "sea-query-0.32.3.crate/src/lib.rs",
+    crate_root = "sea-query-0.32.4.crate/src/lib.rs",
     edition = "2021",
     features = [
         "backend-mysql",
@@ -16130,7 +16205,7 @@ cargo.rust_library(
         ":bigdecimal-0.4.8",
         ":chrono-0.4.40",
         ":rust_decimal-1.37.1",
-        ":sea-query-0.32.3",
+        ":sea-query-0.32.4",
         ":serde_json-1.0.140",
         ":sqlx-0.8.5",
         ":time-0.3.41",
@@ -16166,7 +16241,7 @@ cargo.rust_library(
     visibility = [],
     deps = [
         ":base16ct-0.2.0",
-        ":der-0.7.9",
+        ":der-0.7.10",
         ":generic-array-0.14.7",
         ":pkcs8-0.10.2",
         ":subtle-2.6.1",
@@ -17277,7 +17352,7 @@ cargo.rust_library(
     visibility = [],
     deps = [
         ":base64ct-1.7.3",
-        ":der-0.7.9",
+        ":der-0.7.10",
     ],
 )
 
@@ -18088,6 +18163,9 @@ cargo.rust_binary(
         ":async-trait-0.1.88",
         ":aws-config-1.5.18",
         ":aws-sdk-firehose-1.68.0",
+        ":aws-sdk-ssm-1.71.0",
+        ":aws-smithy-http-client-1.0.1",
+        ":aws-smithy-runtime-1.8.1",
         ":axum-0.6.20",
         ":backtrace-0.3.71",
         ":base64-0.22.1",
@@ -18096,7 +18174,7 @@ cargo.rust_binary(
         ":bytes-1.10.1",
         ":chrono-0.4.40",
         ":ciborium-0.2.2",
-        ":clap-4.5.36",
+        ":clap-4.5.37",
         ":color-eyre-0.6.3",
         ":config-0.14.1",
         ":console-subscriber-0.4.1",
@@ -21509,7 +21587,7 @@ cargo.rust_library(
     visibility = [],
     deps = [
         ":const-oid-0.9.6",
-        ":der-0.7.9",
+        ":der-0.7.10",
         ":spki-0.7.3",
         ":tls_codec-0.4.2",
     ],
@@ -21788,6 +21866,34 @@ cargo.rust_library(
         "CARGO_PKG_VERSION_MAJOR": "0",
         "CARGO_PKG_VERSION_MINOR": "8",
         "CARGO_PKG_VERSION_PATCH": "24",
+        "OUT_DIR": "$(location :zerocopy-0.8.24-build-script-run[out_dir])",
+    },
+    features = [
+        "derive",
+        "simd",
+        "zerocopy-derive",
+    ],
+    rustc_flags = ["@$(location :zerocopy-0.8.24-build-script-run[rustc_flags])"],
+    visibility = [],
+    deps = [":zerocopy-derive-0.8.24"],
+)
+
+cargo.rust_binary(
+    name = "zerocopy-0.8.24-build-script-build",
+    srcs = [":zerocopy-0.8.24.crate"],
+    crate = "build_script_build",
+    crate_root = "zerocopy-0.8.24.crate/build.rs",
+    edition = "2021",
+    env = {
+        "CARGO_MANIFEST_DIR": "zerocopy-0.8.24.crate",
+        "CARGO_PKG_AUTHORS": "Joshua Liebow-Feeser <joshlf@google.com>:Jack Wrenn <jswrenn@amazon.com>",
+        "CARGO_PKG_DESCRIPTION": "Zerocopy makes zero-cost memory manipulation effortless. We write \"unsafe\" so you don't have to.",
+        "CARGO_PKG_NAME": "zerocopy",
+        "CARGO_PKG_REPOSITORY": "https://github.com/google/zerocopy",
+        "CARGO_PKG_VERSION": "0.8.24",
+        "CARGO_PKG_VERSION_MAJOR": "0",
+        "CARGO_PKG_VERSION_MINOR": "8",
+        "CARGO_PKG_VERSION_PATCH": "24",
     },
     features = [
         "derive",
@@ -21795,7 +21901,18 @@ cargo.rust_library(
         "zerocopy-derive",
     ],
     visibility = [],
-    deps = [":zerocopy-derive-0.8.24"],
+)
+
+buildscript_run(
+    name = "zerocopy-0.8.24-build-script-run",
+    package_name = "zerocopy",
+    buildscript_rule = ":zerocopy-0.8.24-build-script-build",
+    features = [
+        "derive",
+        "simd",
+        "zerocopy-derive",
+    ],
+    version = "0.8.24",
 )
 
 http_archive(

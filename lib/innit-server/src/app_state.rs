@@ -1,5 +1,5 @@
-use aws_sdk_ssm::Client;
 use axum::extract::FromRef;
+use si_data_ssm::ParameterStoreClient;
 use tokio_util::sync::CancellationToken;
 
 #[remain::sorted]
@@ -8,15 +8,18 @@ pub enum ShutdownSource {}
 
 #[derive(Clone, Debug, FromRef)]
 pub struct AppState {
-    pub ssm_client: Client,
+    pub parameter_store_client: ParameterStoreClient,
     shutdown_token: CancellationToken,
 }
 
 impl AppState {
     #[allow(clippy::too_many_arguments)]
-    pub fn new(ssm_client: Client, shutdown_token: CancellationToken) -> Self {
+    pub fn new(
+        parameter_store_client: ParameterStoreClient,
+        shutdown_token: CancellationToken,
+    ) -> Self {
         Self {
-            ssm_client,
+            parameter_store_client,
             shutdown_token,
         }
     }

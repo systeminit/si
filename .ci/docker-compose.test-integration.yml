@@ -11,6 +11,7 @@ services:
       - "SI_TEST_PG_PORT=5432"
       - "SI_TEST_NATS_URL=nats"
       - "SI_TEST_SPICEDB_URL=http://spicedb:50051"
+      - "SI_TEST_LOCALSTACK_URL=http://localstack:4566"
       - "OTEL_EXPORTER_OTLP_ENDPOINT=http://otelcol:4317"
     ulimits:
       nofile:
@@ -22,6 +23,7 @@ services:
       - spicedb
       - jaeger
       - otelcol
+      - localstack
 
   # This is the same as the pgbouncer test setup in our dev environment
   postgres-test:

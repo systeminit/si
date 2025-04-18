@@ -19,7 +19,7 @@ rust_binary(
 docker_image(
     name = "image",
     image_name = "innit",
-    flake_lock = "//:flake.lock",
+    build_deps = ["//bin/innit:innit"],
 )
 
 nix_omnibus_pkg(

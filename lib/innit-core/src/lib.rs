@@ -19,6 +19,11 @@ impl From<AwsParameter> for Parameter {
 }
 
 #[derive(Debug, Clone, Serialize)]
+pub struct GetParameterResponse {
+    pub parameter: Parameter,
+}
+
+#[derive(Debug, Clone, Serialize)]
 pub struct ListParametersResponse {
     pub parameters: Vec<Parameter>,
 }
