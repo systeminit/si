@@ -30,11 +30,11 @@ use crate::{
     WsEventError, WsEventResult, WsPayload,
 };
 use si_frontend_types::{
-    action::{ActionPrototypeView, ActionPrototypeViewsByComponentId},
+    action::{prototype::ActionPrototypeViewList, ActionPrototypeView},
     DiagramComponentView,
 };
 
-use super::{Action, ActionError};
+use super::ActionError;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -476,35 +476,27 @@ impl ActionPrototype {
         Ok(())
     }
 
-    pub async fn as_frontend_list_type_by_component_id(
+    pub async fn as_frontend_list_type(
         ctx: &DalContext,
-        component_id: ComponentId,
-    ) -> ActionPrototypeResult<ActionPrototypeViewsByComponentId> {
+        schema_variant_id: SchemaVariantId,
+    ) -> ActionPrototypeResult<ActionPrototypeViewList> {
         let mut views = Vec::new();
-
-        let schema_variant_id = Component::schema_variant_id(ctx, component_id).await?;
 
         for action_prototype in Self::for_variant(ctx, schema_variant_id).await? {
             let func_id = Self::func_id(ctx, action_prototype.id).await?;
             let func = Func::get_by_id(ctx, func_id).await?;
-            let maybe_action_id =
-                Action::find_equivalent(ctx, action_prototype.id, Some(component_id))
-                    .await
-                    .map_err(Box::new)?;
 
             views.push(ActionPrototypeView {
                 id: action_prototype.id,
                 func_id,
-                schema_variant_id,
                 kind: action_prototype.kind.into(),
                 display_name: func.display_name,
                 name: func.name,
-                action_id: maybe_action_id,
             });
         }
 
-        Ok(ActionPrototypeViewsByComponentId {
-            id: component_id,
+        Ok(ActionPrototypeViewList {
+            id: schema_variant_id,
             action_prototypes: views,
         })
     }
