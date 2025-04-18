@@ -10,6 +10,8 @@ use ulid::Ulid;
 
 pub use si_settings::{StandardConfig, StandardConfigFile};
 
+use crate::tls::TlsConfig;
+
 const DEFAULT_CONCURRENCY_LIMIT: Option<usize> = None;
 
 const DEFAULT_QUIESCENT_PERIOD_SECS: u64 = 60 * 2;
@@ -44,6 +46,9 @@ pub struct Config {
 
     #[builder(default = "get_default_socket_addr()")]
     socket_addr: SocketAddr,
+
+    #[builder]
+    tls_config: TlsConfig,
 }
 
 impl StandardConfig for Config {
@@ -70,6 +75,10 @@ impl Config {
     pub fn socket_addr(&self) -> &SocketAddr {
         &self.socket_addr
     }
+
+    pub fn tls_config(&self) -> &TlsConfig {
+        &self.tls_config
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -82,6 +91,8 @@ pub struct ConfigFile {
     quiescent_period_secs: u64,
     #[serde(default = "get_default_socket_addr")]
     socket_addr: SocketAddr,
+    #[serde(default)]
+    tls_config: TlsConfig,
 }
 
 impl Default for ConfigFile {
@@ -91,6 +102,7 @@ impl Default for ConfigFile {
             concurrency_limit: default_concurrency_limit(),
             quiescent_period_secs: default_quiescent_period_secs(),
             socket_addr: get_default_socket_addr(),
+            tls_config: Default::default(),
         }
     }
 }
