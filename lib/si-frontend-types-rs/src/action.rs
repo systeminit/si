@@ -15,7 +15,7 @@ use crate::{
 pub mod prototype;
 
 pub use prototype::ActionPrototypeView;
-pub use prototype::ActionPrototypeViewsByComponentId;
+pub use prototype::ActionPrototypeViewList;
 
 #[derive(
     Debug, Serialize, Deserialize, PartialEq, Eq, Clone, si_frontend_types_macros::FrontendChecksum,

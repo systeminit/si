@@ -9,10 +9,10 @@
     "
     @click="clickHandler"
   >
-    <Toggle :selected="!!actionPrototypeView.actionId" class="flex-none" />
+    <Toggle :selected="!!props.actionId" class="flex-none" />
     <StatusIndicatorIcon
       type="action"
-      :status="FuncKind.Action"
+      :status="actionPrototypeView.kind"
       tone="inherit"
       class="flex-none"
     />
@@ -56,12 +56,13 @@ import {
   DiagramGroupData,
   DiagramNodeData,
 } from "@/components/ModelingDiagram/diagram_types";
-import { FuncKind } from "@/api/sdf/dal/func";
+import { ActionId } from "@/api/sdf/dal/action";
 import { ActionPrototypeView } from "./AssetActionsDetails.vue";
 
 const props = defineProps<{
   component: DiagramGroupData | DiagramNodeData;
   actionPrototypeView: ActionPrototypeView;
+  actionId?: ActionId;
 }>();
 
 const viewStore = useViewsStore();
@@ -70,8 +71,8 @@ const actionsStore = useActionsStore();
 const router = useRouter();
 
 function clickHandler() {
-  if (props.actionPrototypeView.actionId) {
-    actionsStore.CANCEL([props.actionPrototypeView.actionId]);
+  if (props.actionId) {
+    actionsStore.CANCEL([props.actionId]);
   } else {
     actionsStore.ADD_ACTION(
       props.component.def.id,
@@ -98,7 +99,7 @@ const addRequestStatus = actionsStore.getRequestStatus(
 );
 const removeRequestStatus = actionsStore.getRequestStatus(
   "CANCEL",
-  computed(() => props.actionPrototypeView.actionId),
+  computed(() => props.actionId),
   // ^ this won't accept [] which doesnt bode well
 );
 </script>

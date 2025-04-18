@@ -3,7 +3,7 @@ use si_events::{
     workspace_snapshot::{Checksum, ChecksumHasher, EntityKind},
     ActionKind,
 };
-use si_id::{ActionId, ActionPrototypeId, ComponentId, FuncId, SchemaVariantId};
+use si_id::{ActionPrototypeId, FuncId, SchemaVariantId};
 
 use crate::checksum::FrontendChecksum;
 use crate::{
@@ -19,12 +19,9 @@ use crate::{
 pub struct ActionPrototypeView {
     pub id: ActionPrototypeId,
     pub func_id: FuncId,
-    pub schema_variant_id: SchemaVariantId,
     pub kind: ActionKind,
     pub display_name: Option<String>,
     pub name: String,
-    // If this is "None", then there is no running or enqueued action for this prototype
-    pub action_id: Option<ActionId>,
 }
 
 #[derive(
@@ -40,10 +37,10 @@ pub struct ActionPrototypeView {
 )]
 #[serde(rename_all = "camelCase")]
 #[mv(
-    trigger_entity = EntityKind::Root,
-    reference_kind = ReferenceKind::ActionPrototypeViewsByComponentId,
+    trigger_entity = EntityKind::SchemaVariant,
+    reference_kind = ReferenceKind::ActionPrototypeViewList,
 )]
-pub struct ActionPrototypeViewsByComponentId {
-    pub id: ComponentId,
+pub struct ActionPrototypeViewList {
+    pub id: SchemaVariantId,
     pub action_prototypes: Vec<ActionPrototypeView>,
 }

@@ -167,10 +167,7 @@
                 viewStore.selectedComponentId
               "
             >
-              <BifrostAssetActionsDetails
-                :componentId="component.def.id"
-                :component="component"
-              />
+              <BifrostAssetActionsDetails :component="component" />
             </template>
             <template v-else>
               <AssetActionsDetails :component="props.component" />

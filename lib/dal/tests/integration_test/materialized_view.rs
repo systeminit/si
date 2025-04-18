@@ -62,10 +62,10 @@ async fn actions(ctx: &DalContext) -> Result<()> {
     );
 
     // Check the frontend payload for action prototypes.
-    let mv = ActionPrototype::as_frontend_list_type_by_component_id(ctx, component.id()).await?;
+    let mv = ActionPrototype::as_frontend_list_type(ctx, schema_variant_id).await?;
     assert_eq!(
-        component.id(), // expected
-        mv.id           // actual
+        schema_variant_id, // expected
+        mv.id              // actual
     );
     assert_eq!(
         4,                          // expected
@@ -73,21 +73,6 @@ async fn actions(ctx: &DalContext) -> Result<()> {
     );
     let mut kinds = HashSet::new();
     for action_prototype_view in mv.action_prototypes {
-        match action_prototype_view.kind {
-            ActionKind::Create => {
-                assert_eq!(
-                    create_action_prototype.id(), // expected
-                    action_prototype_view.id      // actual
-                );
-                assert_eq!(
-                    Some(create_action_id),          // expected
-                    action_prototype_view.action_id  // actual
-                );
-            }
-            _ => {
-                assert!(action_prototype_view.action_id.is_none());
-            }
-        }
         kinds.insert(action_prototype_view.kind);
     }
     assert_eq!(

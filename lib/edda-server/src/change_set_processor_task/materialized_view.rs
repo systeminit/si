@@ -1,20 +1,17 @@
 use std::collections::HashSet;
 
 use dal::{
-    action::{
-        prototype::{ActionPrototype, ActionPrototypeError},
-        Action, ActionError,
-    },
+    action::{prototype::ActionPrototypeError, ActionError},
     data_cache::{DataCache, DataCacheError},
     dependency_graph::DependencyGraph,
     diagram::DiagramError,
-    DalContext, SchemaVariant, SchemaVariantError, TransactionsError, WorkspaceSnapshotError,
+    DalContext, SchemaVariantError, TransactionsError, WorkspaceSnapshotError,
 };
 use frigg::{FriggError, FriggStore};
-use si_events::workspace_snapshot::{Checksum, EntityKind};
+use si_events::workspace_snapshot::Checksum;
 use si_events::{workspace_snapshot::Change, WorkspaceSnapshotAddress};
 use si_frontend_types::{
-    action::ActionPrototypeViewsByComponentId as ActionPrototypeViewsByComponentIdMv,
+    action::ActionPrototypeViewList as ActionPrototypeViewListMv,
     action::ActionViewList as ActionViewListMv,
     index::MvIndex,
     object::{
@@ -250,54 +247,31 @@ async fn build_mv_inner(
         for change in changes {
             for &mv_kind in &independent_mvs {
                 match mv_kind {
-                    ReferenceKind::ActionPrototypeViewsByComponentId => {
-                        if si_frontend_types::action::ActionPrototypeViewsByComponentId::trigger_entity() == change.entity_kind {
-                            let mut component_ids = HashSet::new();
-                            for maybe_action_change in changes {
-                                match maybe_action_change.entity_kind {
-                                    EntityKind::Action => {
-                                        match Action::component_id(ctx, maybe_action_change.entity_id.into_inner().into()).await {
-                                            Ok(Some(component_id)) => {
-                                                component_ids.insert(component_id);
-                                            }
-                                            Ok(None) => {}
-                                            Err(err) => error!(si.error.message = ?err, "error getting component for action")
-                                        }
-                                    },
-                                    EntityKind::ActionPrototype =>  match ActionPrototype::schema_variant_id(ctx, maybe_action_change.entity_id.into_inner().into()).await {
-                                        Ok(schema_variant_id) => match SchemaVariant::list_component_ids(ctx, schema_variant_id).await {
-                                            Ok(component_ids_for_prototype) => component_ids.extend(component_ids_for_prototype),
-                                            Err(err) => error!(si.error.message = ?err, "error getting components for schema variant")
-                                        }
-                                        Err(err) => error!(si.error.message = ?err, "error getting schema variant for action prototype")
-                                    },
-                                    _ => {}
+                    ReferenceKind::ActionPrototypeViewList => {
+                        let mv_id = change.entity_id.to_string();
+
+                        match si_frontend_types_macros::build_mv!(
+                            ctx,
+                            frigg,
+                            change,
+                            mv_id,
+                            si_frontend_types::action::prototype::ActionPrototypeViewList,
+                            dal::action::prototype::ActionPrototype::as_frontend_list_type(
+                                ctx,
+                                si_events::ulid::Ulid::from(change.entity_id).into()
+                            )
+                            .await,
+                        ) {
+                            Ok((maybe_patch, maybe_frontend_object)) => {
+                                if let Some(patch) = maybe_patch {
+                                    patches.push(patch);
+                                }
+                                if let Some(object) = maybe_frontend_object {
+                                    frontend_objects.push(object);
                                 }
                             }
-
-                            for component_id in component_ids {
-                                let mv_id = component_id.to_string();
-
-                                match si_frontend_types_macros::build_mv!(
-                                    ctx,
-                                    frigg,
-                                    change,
-                                    mv_id,
-                                    si_frontend_types::action::ActionPrototypeViewsByComponentId,
-                                    dal::action::prototype::ActionPrototype::as_frontend_list_type_by_component_id(ctx, component_id).await,
-                                ) {
-                                    Ok((maybe_patch, maybe_frontend_object)) => {
-                                        if let Some(patch) = maybe_patch {
-                                            patches.push(patch);
-                                        }
-                                        if let Some(object) = maybe_frontend_object {
-                                            frontend_objects.push(object);
-                                        }
-                                    }
-                                    Result::<_, MaterializedViewError>::Err(err) => return Err(err),
-                                }
-                            }
-                        }
+                            Result::<_, MaterializedViewError>::Err(err) => return Err(err),
+                        };
                     }
                     ReferenceKind::ActionViewList => {
                         let mv_id = change_set_id.to_string();
@@ -330,7 +304,10 @@ async fn build_mv_inner(
                             change,
                             mv_id,
                             si_frontend_types::schema_variant::SchemaVariantCategories,
-                            dal::schema::variant::SchemaVariant::as_frontend_list_type_by_category(ctx).await,
+                            dal::schema::variant::SchemaVariant::as_frontend_list_type_by_category(
+                                ctx
+                            )
+                            .await,
                         ) {
                             Ok((maybe_patch, maybe_frontend_object)) => {
                                 if let Some(patch) = maybe_patch {
@@ -352,7 +329,11 @@ async fn build_mv_inner(
                             change,
                             mv_id,
                             si_frontend_types::view::View,
-                            dal::diagram::view::View::as_frontend_type(ctx, si_events::ulid::Ulid::from(change.entity_id).into()).await,
+                            dal::diagram::view::View::as_frontend_type(
+                                ctx,
+                                si_events::ulid::Ulid::from(change.entity_id).into()
+                            )
+                            .await,
                         ) {
                             Ok((maybe_patch, maybe_frontend_object)) => {
                                 if let Some(patch) = maybe_patch {
@@ -427,11 +408,8 @@ fn mv_dependency_graph() -> Result<DependencyGraph<ReferenceKind>, MaterializedV
     add_reference_dependencies_to_dependency_graph!(dependency_graph, ViewMv);
     add_reference_dependencies_to_dependency_graph!(dependency_graph, ViewListMv);
     add_reference_dependencies_to_dependency_graph!(dependency_graph, SchemaVariantCategoriesMv);
-    add_reference_dependencies_to_dependency_graph!(
-        dependency_graph,
-        ActionPrototypeViewsByComponentIdMv
-    );
     add_reference_dependencies_to_dependency_graph!(dependency_graph, ActionViewListMv);
+    add_reference_dependencies_to_dependency_graph!(dependency_graph, ActionPrototypeViewListMv);
 
     // The MvIndex depends on everything else, but doesn't define any
     // `MaterializedView::reference_dependencies()` directly.
