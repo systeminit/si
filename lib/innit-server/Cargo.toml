@@ -20,6 +20,8 @@ derive_builder = { workspace = true }
 futures = { workspace = true }
 hyper = { workspace = true }
 remain = { workspace = true }
+rustls = { workspace = true }
+rustls-pemfile = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }

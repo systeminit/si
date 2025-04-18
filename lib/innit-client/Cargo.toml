@@ -1,0 +1,19 @@
+[package]
+name = "innit-client"
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+innit-core = { path = "../../lib/innit-core" }
+telemetry = { path = "../../lib/telemetry-rs" }
+
+remain = { workspace = true }
+reqwest = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+url = { workspace = true }

@@ -35,6 +35,7 @@ members = [
     "lib/edda-server",
     "lib/forklift-server",
     "lib/frigg",
+    "lib/innit-client",
     "lib/innit-core",
     "lib/innit-server",
     "lib/joi-validator",

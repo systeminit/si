@@ -4033,6 +4033,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "innit-client"
+version = "0.1.0"
+dependencies = [
+ "innit-core",
+ "remain",
+ "reqwest",
+ "serde_json",
+ "telemetry",
+ "thiserror 2.0.12",
+ "url",
+]
+
+[[package]]
 name = "innit-core"
 version = "0.1.0"
 dependencies = [
@@ -4053,6 +4066,8 @@ dependencies = [
  "hyper 0.14.32",
  "innit-core",
  "remain",
+ "rustls 0.23.26",
+ "rustls-pemfile 2.2.0",
  "serde",
  "serde_json",
  "si-data-ssm",

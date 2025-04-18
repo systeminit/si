@@ -17,6 +17,7 @@ use tokio::io::{AsyncRead, AsyncWrite};
 use tower::{buffer::BufferLayer, BoxError, ServiceBuilder};
 use tower_http::trace::{DefaultMakeSpan, TraceLayer};
 
+use crate::tls::{setup_tls_config, TlsError};
 use crate::{app_state::AppState, Config};
 
 #[remain::sorted]
@@ -28,6 +29,8 @@ pub enum ServerError {
     SerdeJson(#[from] serde_json::Error),
     #[error("failed to setup signal handler")]
     Signal(#[source] io::Error),
+    #[error(transparent)]
+    Tls(#[from] TlsError),
 }
 
 type ServerResult<T> = std::result::Result<T, ServerError>;
@@ -46,6 +49,7 @@ impl Server<()> {
         let parameter_store_client = ParameterStoreClient::new().await;
 
         let service = build_service(parameter_store_client, token.clone())?;
+        let tls = setup_tls_config(config.tls_config()).await?;
 
         info!(
             "binding to HTTP socket; socket_addr={}",
