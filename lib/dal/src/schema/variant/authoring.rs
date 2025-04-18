@@ -317,40 +317,45 @@ impl VariantAuthoringClient {
 
         let schema = schema_variant.schema(ctx).await?;
 
-        let components_in_use = SchemaVariant::list_component_ids(ctx, schema_variant_id).await?;
+        let components_in_use =
+            dbg!(SchemaVariant::list_component_ids(ctx, schema_variant_id).await)?;
 
         if components_in_use.is_empty() {
-            Self::update_existing_variant_and_regenerate(
-                ctx,
-                schema_variant_id,
-                schema.name,
-                schema_variant.display_name,
-                schema_variant.category,
-                schema_variant.color,
-                schema_variant.link,
-                schema_variant.description,
-                schema_variant.component_type,
-            )
-            .await?;
+            dbg!(
+                Self::update_existing_variant_and_regenerate(
+                    ctx,
+                    schema_variant_id,
+                    schema.name,
+                    schema_variant.display_name,
+                    schema_variant.category,
+                    schema_variant.color,
+                    schema_variant.link,
+                    schema_variant.description,
+                    schema_variant.component_type,
+                )
+                .await
+            )?;
             Ok(schema_variant_id)
         } else {
             let original_is_default = schema_variant.is_default(ctx).await?;
 
-            let new_variant = Self::generate_variant_with_updates(
-                ctx,
-                schema_variant_id,
-                &schema.name,
-                schema_variant.display_name,
-                schema_variant.category,
-                schema_variant.color,
-                schema_variant.link,
-                schema_variant.description,
-                schema_variant.component_type,
-            )
-            .await?;
+            let new_variant = dbg!(
+                Self::generate_variant_with_updates(
+                    ctx,
+                    schema_variant_id,
+                    &schema.name,
+                    schema_variant.display_name,
+                    schema_variant.category,
+                    schema_variant.color,
+                    schema_variant.link,
+                    schema_variant.description,
+                    schema_variant.component_type,
+                )
+                .await
+            )?;
 
             for component_id in components_in_use {
-                Component::upgrade_to_new_variant(ctx, component_id, new_variant.id).await?;
+                dbg!(Component::upgrade_to_new_variant(ctx, component_id, new_variant.id).await)?;
             }
 
             if original_is_default {

@@ -97,7 +97,7 @@ impl WorkspaceSignup {
             WorkspacePk::generate(),
             workspace_name,
             token,
-            2500,
+            500,
         )
         .await?;
 

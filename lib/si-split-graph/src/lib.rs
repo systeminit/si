@@ -1,5 +1,6 @@
 use std::{
-    collections::{HashSet, VecDeque},
+    collections::{BTreeMap, HashSet, VecDeque},
+    marker::PhantomData,
     time::Instant,
 };
 
@@ -389,19 +390,27 @@ impl SplitGraphNodeIndex {
     }
 }
 
+pub type ExternalSourceMap = BTreeMap<SplitGraphNodeId, Vec<SplitGraphEdgeIndex>>;
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SuperGraph {
     addresses: Vec<SubGraphAddress>,
     root_index: SplitGraphNodeIndex,
+    external_source_map: ExternalSourceMap,
     split_max: usize,
 }
 
 impl SuperGraph {
-    pub fn new(split_max: usize, root_index: SplitGraphNodeIndex) -> Self {
+    pub fn new(
+        split_max: usize,
+        root_index: SplitGraphNodeIndex,
+        external_source_map: ExternalSourceMap,
+    ) -> Self {
         Self {
             addresses: vec![],
             root_index,
             split_max,
+            external_source_map,
         }
     }
 
@@ -423,6 +432,10 @@ impl SuperGraph {
 
     pub fn address_for_subgraph(&self, index: usize) -> Option<SubGraphAddress> {
         self.addresses.get(index).copied()
+    }
+
+    pub fn external_source_map(&self) -> &ExternalSourceMap {
+        &self.external_source_map
     }
 }
 
@@ -464,6 +477,7 @@ where
                     subgraph: 0,
                 },
                 split_max,
+                external_source_map: ExternalSourceMap::new(),
             },
             subgraphs: vec![first_subgraph],
             id_to_split_graph_index: DashMap::new(),
@@ -499,8 +513,7 @@ where
             .iter_mut()
             .enumerate()
             .for_each(|(idx, subgraph)| {
-                let (nodes, edges) =
-                    subgraph.recalculate_merkle_tree_hash_based_on_touched_nodes(idx == 0);
+                let (nodes, edges) = subgraph.recalculate_merkle_tree_hash_based_on_touched_nodes();
                 if idx == 0 {
                     warn!("nodes: {}, edges: {}", nodes, edges);
                 }
@@ -662,6 +675,35 @@ where
             .and_then(|weight| weight.custom_mut())
     }
 
+    pub fn update_node_id(
+        &mut self,
+        current_node_id: SplitGraphNodeId,
+        new_id: SplitGraphNodeId,
+        new_lineage_id: SplitGraphNodeId,
+    ) -> SplitGraphResult<()> {
+        let index = self
+            .node_id_to_index(current_node_id)
+            .ok_or(SplitGraphError::NodeNotFound(current_node_id))?;
+        let node_weight_mut = self
+            .raw_node_weight_mut(current_node_id)
+            .ok_or(SplitGraphError::NodeNotFound(current_node_id))?;
+
+        let current_lineage_id = node_weight_mut.lineage_id();
+        node_weight_mut.set_id(new_id);
+        node_weight_mut.set_lineage_id(new_lineage_id);
+
+        if let Some(subgraph) = self.subgraphs.get_mut(index.subgraph) {
+            subgraph.remove_ids_from_indexes(current_node_id, current_lineage_id);
+            subgraph.add_ids_to_indexes(new_id, new_lineage_id, index.index);
+        }
+
+        self.id_to_split_graph_index.insert(new_id, index);
+        self.id_to_split_graph_index.remove(&current_node_id);
+        self.touch_node(new_id);
+
+        Ok(())
+    }
+
     pub fn touch_node(&mut self, node_id: SplitGraphNodeId) {
         let Some(index) = self.node_id_to_index(node_id) else {
             return;
@@ -672,6 +714,7 @@ where
         subgraph.touch_node(index.index);
     }
 
+    #[inline]
     pub fn node_id_to_index(&self, id: SplitGraphNodeId) -> Option<SplitGraphNodeIndex> {
         match self
             .id_to_split_graph_index
@@ -700,6 +743,64 @@ where
         }
     }
 
+    pub fn raw_outgoing_edges_from_subgraph_root(
+        &self,
+        subgraph: usize,
+    ) -> Option<Vec<(SplitGraphEdgeWeight<E, K>, SplitGraphNodeWeight<N>)>> {
+        let subgraph = self.subgraphs().get(subgraph)?;
+        let root = subgraph.root_index;
+
+        Some(
+            subgraph
+                .graph
+                .edges_directed(root, Outgoing)
+                .filter_map(|edge_ref| {
+                    subgraph
+                        .graph
+                        .node_weight(edge_ref.target())
+                        .map(|node| (edge_ref.weight().clone(), node.clone()))
+                })
+                .collect(),
+        )
+    }
+
+    pub fn raw_outgoing_edges(
+        &self,
+        node_id: SplitGraphNodeId,
+    ) -> Option<Vec<(SplitGraphEdgeWeight<E, K>, SplitGraphNodeWeight<N>)>> {
+        let index = self.node_id_to_index(node_id)?;
+        let subgraph = self.subgraphs().get(index.subgraph)?;
+
+        Some(
+            subgraph
+                .graph
+                .edges_directed(index.index, Outgoing)
+                .filter_map(|edge_ref| {
+                    subgraph
+                        .graph
+                        .node_weight(edge_ref.target())
+                        .map(|node| (edge_ref.weight().clone(), node.clone()))
+                })
+                .collect(),
+        )
+    }
+
+    pub fn raw_incoming_edges(
+        &self,
+        node_id: SplitGraphNodeId,
+    ) -> Option<Vec<SplitGraphEdgeWeight<E, K>>> {
+        let index = self.node_id_to_index(node_id)?;
+        let subgraph = self.subgraphs().get(index.subgraph)?;
+
+        Some(
+            subgraph
+                .graph
+                .edges_directed(index.index, Incoming)
+                .map(|edge_ref| edge_ref.weight().clone())
+                .collect(),
+        )
+    }
+
     pub fn remove_node(&mut self, node_id: SplitGraphNodeId) -> SplitGraphResult<()> {
         if self.node_id_to_index(node_id).is_none() {
             return Ok(());
@@ -710,22 +811,12 @@ where
         // to ensure we remove cross graph edges (from external sources and to external targets)
         let incoming_sources: Vec<_> = self
             .edges_directed(node_id, Incoming)?
-            .filter_map(|edge_ref| {
-                edge_ref
-                    .weight()
-                    .custom()
-                    .map(|custom| (edge_ref.source(), custom.kind()))
-            })
+            .map(|edge_ref| (edge_ref.source(), edge_ref.weight().kind()))
             .collect();
 
         let outgoing_targets: Vec<_> = self
             .edges_directed(node_id, Outgoing)?
-            .filter_map(|edge_ref| {
-                edge_ref
-                    .weight()
-                    .custom()
-                    .map(|custom| (edge_ref.target(), custom.kind()))
-            })
+            .map(|edge_ref| (edge_ref.target(), edge_ref.weight().kind()))
             .collect();
 
         for (incoming_source, kind) in incoming_sources {
@@ -843,26 +934,21 @@ where
                 })
                 .map(|edge_ref| edge_ref.id())
             {
+                // println!(
+                //     "attempting to find and remove external source to {:?}",
+                //     from_id
+                // );
                 from_subgraph.remove_edge_by_index(edge_idx);
                 let to_subgraph = self.get_subgraph_mut(to_subgraph_idx as usize)?;
-                let root_index = to_subgraph.root_index;
                 if let Some(edge_idx) = to_subgraph
                     .graph
-                    .edges_directed(root_index, Outgoing)
+                    .edges_directed(to_index.index, Incoming)
                     .find(|edge_ref| match edge_ref.weight() {
                         SplitGraphEdgeWeight::ExternalSource {
                             source_id,
                             edge_kind: ek,
                             ..
-                        } => {
-                            *source_id == from_id
-                                && *ek == edge_kind
-                                && to_subgraph
-                                    .graph
-                                    .node_weight(edge_ref.target())
-                                    .map(|node| node.id() == to_id)
-                                    .unwrap_or(false)
-                        }
+                        } => *source_id == from_id && *ek == edge_kind,
                         _ => false,
                     })
                     .map(|edge_ref| edge_ref.id())
@@ -920,7 +1006,7 @@ where
                     to_index.index,
                 )?;
             } else {
-                from_subgraph.add_edge(from_index.index, custom_edge_weight, to_index.index)?;
+                from_subgraph.add_edge(from_index.index, custom_edge_weight, to_index.index);
             }
         } else {
             let ext_target_id = SplitGraphNodeId::new();
@@ -942,15 +1028,11 @@ where
                     ext_target_idx.index,
                 )?;
             } else {
-                from_subgraph.add_edge(
-                    from_index.index,
-                    custom_edge_weight,
-                    ext_target_idx.index,
-                )?;
+                from_subgraph.add_edge(from_index.index, custom_edge_weight, ext_target_idx.index);
             }
 
             let to_subgraph = self.get_subgraph_mut(to_subgraph_idx as usize)?;
-            to_subgraph.add_edge(
+            if let Some(edge_index) = to_subgraph.add_edge(
                 to_subgraph.root_index,
                 SplitGraphEdgeWeight::ExternalSource {
                     source_id: from_id,
@@ -959,7 +1041,19 @@ where
                     edge_kind: edge.kind(),
                 },
                 to_index.index,
-            )?;
+            ) {
+                let source_edge_index = SplitGraphEdgeIndex {
+                    subgraph: to_subgraph_idx,
+                    index: edge_index,
+                };
+                self.supergraph
+                    .external_source_map
+                    .entry(from_id)
+                    .and_modify(|external_source_edges| {
+                        external_source_edges.push(source_edge_index)
+                    })
+                    .or_insert(vec![source_edge_index]);
+            }
         }
 
         self.ordered_children(from_id);
@@ -1063,58 +1157,15 @@ where
         kind: K,
     ) -> SplitGraphResult<impl Iterator<Item = SplitGraphEdgeReference<'a, E, K>> + 'a> {
         let iter = self
-            .edges_directed_custom(from_id, direction)?
-            .filter(move |edge_ref| edge_ref.weight().custom().is_some_and(|c| c.kind() == kind));
-
-        Ok(iter)
-    }
-
-    pub fn edges_directed_custom<'a>(
-        &'a self,
-        from_id: SplitGraphNodeId,
-        direction: Direction,
-    ) -> SplitGraphResult<impl Iterator<Item = SplitGraphEdgeReference<'a, E, K>> + 'a> {
-        let iter = self
             .edges_directed(from_id, direction)?
-            .filter_map(|edge_ref| match edge_ref.weight() {
-                SplitGraphEdgeWeight::Custom(c) => Some(edge_ref),
-                SplitGraphEdgeWeight::ExternalSource {
-                    source_id,
-                    subgraph,
-                    edge_kind,
-                    ..
-                } => self
-                    .subgraphs()
-                    .get(*subgraph as usize)
-                    .and_then(|subgraph| match subgraph.node_id_to_index(*source_id) {
-                        Some(source_index) => subgraph
-                            .graph
-                            .edges_directed(source_index, Outgoing)
-                            .find(|subgraph_edge_ref| {
-                                subgraph_edge_ref
-                                    .weight()
-                                    .custom()
-                                    .is_some_and(|c| c.kind() == *edge_kind)
-                                    && subgraph
-                                        .graph
-                                        .node_weight(subgraph_edge_ref.target())
-                                        .and_then(|node| node.external_target_id())
-                                        .is_some_and(|target| target == edge_ref.target())
-                            })
-                            .map(|subgraph_edge_ref| SplitGraphEdgeReference {
-                                source_id: *source_id,
-                                target_id: edge_ref.target(),
-                                weight: subgraph_edge_ref.weight(),
-                            }),
-                        None => None,
-                    }),
-                SplitGraphEdgeWeight::Ordering => None,
-                SplitGraphEdgeWeight::Ordinal => None,
-            });
+            .filter(move |edge_ref| edge_ref.weight().kind() == kind);
 
         Ok(iter)
     }
 
+    /// Produces an iterator akin to the petgraph edges_directed iterator, but supports cross-subgraph edges.
+    /// Note that this iterator does not expose "internal" split graph edges, such as Ordering, Ordinal,
+    /// or ExternalSource edges. Only the "custom" edges produced.
     pub fn edges_directed(
         &self,
         from_id: SplitGraphNodeId,
@@ -1131,17 +1182,65 @@ where
             .edges_directed(split_graph_index.index, direction);
 
         Ok(SplitGraphEdges {
-            subgraph,
+            this_subgraph: subgraph,
+            subgraphs: self.subgraphs(),
             edges,
             from_id,
             direction,
+            debug: false,
+        })
+    }
+
+    pub fn edges_directed_debug(
+        &self,
+        from_id: SplitGraphNodeId,
+        direction: Direction,
+    ) -> SplitGraphResult<SplitGraphEdges<N, E, K>> {
+        let split_graph_index = self
+            .node_id_to_index(from_id)
+            .ok_or(SplitGraphError::NodeNotFound(from_id))?;
+
+        let subgraph = self.get_subgraph(split_graph_index.subgraph as usize)?;
+
+        let edges = subgraph
+            .graph
+            .edges_directed(split_graph_index.index, direction);
+
+        Ok(SplitGraphEdges {
+            this_subgraph: subgraph,
+            subgraphs: self.subgraphs(),
+            edges,
+            from_id,
+            direction,
+            debug: true,
         })
     }
 
     pub fn cleanup(&mut self) {
+        let mut external_source_edges_to_remove = vec![];
         for subgraph in self.subgraphs.iter_mut() {
-            subgraph.cleanup();
+            let removed_ids = subgraph.cleanup();
+            for id in removed_ids {
+                let external_source_edges = self.supergraph.external_source_map.remove(&id);
+                let Some(external_source_edges) = external_source_edges else {
+                    continue;
+                };
+                external_source_edges_to_remove.extend(external_source_edges);
+                // dbg!(subgraph.node_id_to_index(id));
+            }
         }
+
+        for external_source_edge in external_source_edges_to_remove {
+            if let Some(subgraph) = self.subgraphs.get_mut(external_source_edge.subgraph) {
+                // dbg!(subgraph.graph.edge_weight(external_source_edge.index));
+                // let endpoints = subgraph.graph.edge_endpoints(external_source_edge.index);
+                // if let Some((_, target)) = endpoints {
+                //     dbg!(subgraph.graph.node_weight(target));
+                // }
+                subgraph.graph.remove_edge(external_source_edge.index);
+            }
+        }
+
         self.id_to_split_graph_index.clear();
     }
 
@@ -1379,56 +1478,35 @@ where
                     let Some(node_index) = subgraph.node_id_to_index(node_weight.id()) else {
                         continue;
                     };
-                    if node_index == NodeIndex::new(2085) {
-                        warn!(
-                            "replacing node {} at {:?} in subgraph {}",
+                    let previous_id = subgraph.replace_node(node_index, node_weight.clone());
+                    if previous_id.is_some_and(|previous_id| previous_id != node_weight.id()) {
+                        self.id_to_split_graph_index.insert(
                             node_weight.id(),
-                            node_index,
-                            *subgraph_index
+                            SplitGraphNodeIndex::new(*subgraph_index, node_index),
                         );
+                        self.id_to_split_graph_index.remove(&(previous_id.unwrap()));
                     }
-                    subgraph.replace_node(node_index, node_weight.clone());
                 }
                 Update::NewNode {
                     subgraph_index,
                     node_weight,
                 } => {
+                    if self.node_id_to_index(node_weight.id()).is_some() {
+                        continue;
+                    }
                     let Some(subgraph) = self.subgraphs.get_mut(*subgraph_index as usize) else {
                         continue;
                     };
-                    match subgraph.node_id_to_index(node_weight.id()) {
-                        Some(existing_index) => {
-                            if existing_index == NodeIndex::new(2085) {
-                                warn!(
-                                    "replacing node {} to subgraph {} in rebaser at index {:?}",
-                                    node_weight.id(),
-                                    *subgraph_index,
-                                    existing_index,
-                                );
-                            }
-                            subgraph.replace_node(existing_index, node_weight.clone())
-                        }
-                        None => {
-                            let index = subgraph.add_node(node_weight.clone());
-                            if index == NodeIndex::new(2085) {
-                                warn!(
-                                    "added node {} to subgraph {} and index {:?} in rebaser",
-                                    node_weight.id(),
-                                    *subgraph_index,
-                                    index,
-                                );
-                            }
-                        }
-                    }
+                    let index = subgraph.add_node(node_weight.clone());
+                    self.id_to_split_graph_index.insert(
+                        node_weight.id(),
+                        SplitGraphNodeIndex::new(*subgraph_index, index),
+                    );
                 }
                 Update::NewSubGraph => {
                     self.new_empty_subgraph();
                 }
             }
-        }
-
-        for (subgraph_idx, node_index) in removed_node_ids {
-            let subgraph = self.subgraphs().get(subgraph_idx).unwrap();
         }
     }
 
@@ -1489,14 +1567,24 @@ where
 {
     source_id: SplitGraphNodeId,
     target_id: SplitGraphNodeId,
-    weight: &'a SplitGraphEdgeWeight<E, K>,
+    weight: &'a E,
+    phantom_k: PhantomData<K>,
 }
 
-impl<E, K> SplitGraphEdgeReference<'_, E, K>
+impl<'a, E, K> SplitGraphEdgeReference<'a, E, K>
 where
     E: CustomEdgeWeight<K>,
     K: EdgeKind,
 {
+    pub fn new(source_id: SplitGraphNodeId, target_id: SplitGraphNodeId, weight: &'a E) -> Self {
+        Self {
+            source_id,
+            target_id,
+            weight,
+            phantom_k: PhantomData,
+        }
+    }
+
     pub fn source(&self) -> SplitGraphNodeId {
         self.source_id
     }
@@ -1505,7 +1593,7 @@ where
         self.target_id
     }
 
-    pub fn weight(&self) -> &SplitGraphEdgeWeight<E, K> {
+    pub fn weight(&self) -> &'a E {
         self.weight
     }
 }
@@ -1527,10 +1615,12 @@ where
     E: CustomEdgeWeight<K>,
     K: EdgeKind,
 {
-    subgraph: &'a SubGraph<N, E, K>,
+    this_subgraph: &'a SubGraph<N, E, K>,
+    subgraphs: &'a [SubGraph<N, E, K>],
     edges: stable_graph::Edges<'a, SplitGraphEdgeWeight<E, K>, Directed, SubGraphIndex>,
     from_id: SplitGraphNodeId,
     direction: Direction,
+    debug: bool,
 }
 
 impl<'a, N, E, K> Iterator for SplitGraphEdges<'a, N, E, K>
@@ -1543,44 +1633,90 @@ where
 
     fn next(&mut self) -> Option<Self::Item> {
         self.edges.next().and_then(|edge_ref| match self.direction {
-            Outgoing => {
-                if matches!(edge_ref.weight(), SplitGraphEdgeWeight::Ordering) {
-                    // Ordering nodes are hidden
-                    self.next()
-                } else {
-                    self.subgraph
-                        .graph
-                        .node_weight(edge_ref.target())
-                        .map(|n| match n {
-                            SplitGraphNodeWeight::ExternalTarget { target, .. } => *target,
-                            internal_target => internal_target.id(),
-                        })
-                        .map(|target_id| SplitGraphEdgeReference {
-                            source_id: self.from_id,
-                            target_id,
-                            weight: edge_ref.weight(),
-                        })
-                }
-            }
-            Incoming => {
-                let weight = edge_ref.weight();
-                match weight {
-                    SplitGraphEdgeWeight::Ordinal => {
-                        return self.next();
-                    }
-                    SplitGraphEdgeWeight::Custom(_) | SplitGraphEdgeWeight::Ordering => self
-                        .subgraph
-                        .graph
-                        .node_weight(edge_ref.source())
-                        .map(|source_node| source_node.id()),
-                    SplitGraphEdgeWeight::ExternalSource { source_id, .. } => Some(*source_id),
-                }
-                .map(|source_id| SplitGraphEdgeReference {
+            Outgoing => match edge_ref.weight() {
+                SplitGraphEdgeWeight::Custom(weight) => self
+                    .this_subgraph
+                    .graph
+                    .node_weight(edge_ref.target())
+                    .map(|n| match n {
+                        SplitGraphNodeWeight::ExternalTarget { target, .. } => *target,
+                        internal_target => internal_target.id(),
+                    })
+                    .map(|target_id| SplitGraphEdgeReference::new(self.from_id, target_id, weight)),
+                SplitGraphEdgeWeight::ExternalSource { .. }
+                | SplitGraphEdgeWeight::Ordering
+                | SplitGraphEdgeWeight::Ordinal => self.next(),
+            },
+            Incoming => match edge_ref.weight() {
+                SplitGraphEdgeWeight::Custom(weight) => self
+                    .this_subgraph
+                    .graph
+                    .node_weight(edge_ref.source())
+                    .map(|source_node| {
+                        SplitGraphEdgeReference::new(source_node.id(), self.from_id, weight)
+                    }),
+                SplitGraphEdgeWeight::ExternalSource {
                     source_id,
-                    target_id: self.from_id,
-                    weight,
-                })
-            }
+                    edge_kind,
+                    subgraph,
+                    ..
+                } => self.subgraphs.get(*subgraph).and_then(|ext_subgraph| {
+                    if self.debug {
+                        dbg!(source_id);
+                        dbg!(edge_kind);
+                        dbg!(ext_subgraph.node_id_to_index(*source_id));
+                    }
+
+                    match ext_subgraph.node_id_to_index(*source_id) {
+                        Some(source_index) => ext_subgraph
+                            .graph
+                            .edges_directed(source_index, Outgoing)
+                            .filter(|subgraph_edge_ref| {
+                                if self.debug {
+                                    dbg!(subgraph_edge_ref.weight().custom());
+                                }
+                                subgraph_edge_ref
+                                    .weight()
+                                    .custom()
+                                    .is_some_and(|e| e.kind() == *edge_kind)
+                            })
+                            .find(|subgraph_edge_ref| {
+                                if self.debug {
+                                    dbg!(ext_subgraph
+                                        .graph
+                                        .node_weight(subgraph_edge_ref.target()));
+                                }
+                                ext_subgraph
+                                    .graph
+                                    .node_weight(subgraph_edge_ref.target())
+                                    .is_some_and(|weight| {
+                                        weight.external_target_id() == Some(self.from_id)
+                                    })
+                            })
+                            .and_then(|subgraph_edge_ref| {
+                                subgraph_edge_ref.weight().custom().map(|weight| {
+                                    SplitGraphEdgeReference::new(*source_id, self.from_id, weight)
+                                })
+                            }),
+                        None => {
+                            println!("missing node for external source: {source_id:?}");
+                            for (index, subgraph) in self.subgraphs.iter().enumerate() {
+                                if let Some(bob) =
+                                    subgraph.graph().node_indices().find(|node_index| {
+                                        subgraph.graph().node_weight(*node_index).unwrap().id()
+                                            == *source_id
+                                    })
+                                {
+                                    println!("found {source_id:?} at {bob:?} in subgraph {index}");
+                                }
+                            }
+
+                            self.next()
+                        }
+                    }
+                }),
+                SplitGraphEdgeWeight::Ordinal | SplitGraphEdgeWeight::Ordering => self.next(),
+            },
         })
     }
 }

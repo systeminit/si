@@ -1,4 +1,5 @@
 use dal::code_view::CodeLanguage;
+use dal::diagram::view::View;
 use dal::{Component, DalContext};
 use dal_test::helpers::create_component_for_default_schema_name_in_default_view;
 use dal_test::helpers::ChangeSetTestHelpers;
@@ -44,10 +45,66 @@ async fn get_code_yaml_and_string(ctx: &mut DalContext) {
     )
     .await
     .expect("could not create component");
+    let view_id = View::get_id_for_default(ctx)
+        .await
+        .expect("get default view");
+    let geo = dbg!(component.geometry(ctx, view_id).await.expect("error"));
+    let geo_id = geo.id();
+    dbg!(
+        ctx.workspace_snapshot()
+            .unwrap()
+            .as_split_snapshot()
+            .unwrap()
+            .raw_outgoing_edges(geo_id)
+            .await
+    );
+    dbg!(
+        ctx.workspace_snapshot()
+            .unwrap()
+            .as_split_snapshot()
+            .unwrap()
+            .raw_incoming_edges(component.id())
+            .await
+    );
+
+    let updates = ctx
+        .workspace_snapshot()
+        .unwrap()
+        .as_split_snapshot()
+        .unwrap()
+        .current_rebase_batch()
+        .await
+        .unwrap()
+        .unwrap();
+
+    dbg!(component.id());
 
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
+
+    dbg!(
+        ctx.workspace_snapshot()
+            .unwrap()
+            .as_split_snapshot()
+            .unwrap()
+            .raw_incoming_edges(component.id())
+            .await
+    );
+    dbg!(ctx
+        .workspace_snapshot()
+        .unwrap()
+        .as_split_snapshot()
+        .unwrap()
+        .raw_outgoing_edges(geo_id)
+        .await
+        .unwrap());
+
+    ctx.workspace_snapshot()
+        .unwrap()
+        .get_node_weight(geo_id)
+        .await
+        .expect("node exists?");
 
     let (codegen_view, has_code) = Component::list_code_generated(ctx, component.id())
         .await

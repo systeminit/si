@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use si_id::ulid::Ulid;
+use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{DalContext, EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants};

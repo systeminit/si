@@ -205,10 +205,10 @@ impl Frame {
 
         match Component::get_type_by_id(ctx, new_parent_id).await? {
             ComponentType::ConfigurationFrameDown | ComponentType::ConfigurationFrameUp => {
-                Ok(Some(dbg!(
+                Ok(Some(
                     Self::attach_child_to_parent_inner(ctx, new_parent_id, child_id, send_events)
-                        .await
-                )?))
+                        .await?,
+                ))
             }
             ComponentType::Component => Err(FrameError::ParentIsNotAFrame(child_id, new_parent_id)),
             ComponentType::AggregationFrame => {
@@ -253,7 +253,6 @@ impl Frame {
 
         let cycle_check_guard = ctx.workspace_snapshot()?.enable_cycle_check().await;
         // add the new edge
-        dbg!("add_edge_to_frame");
         Component::add_edge_to_frame(ctx, parent_id, child_id, EdgeWeightKind::FrameContains)
             .await?;
         drop(cycle_check_guard);
@@ -267,7 +266,6 @@ impl Frame {
         // get the latest state of the component tree
         let current_impacted_values =
             Self::get_all_inferred_connections_for_component_tree(ctx, parent_id, child_id).await?;
-        dbg!("second all inferred");
         // an edge has been removed if it exists in the state after we've detached the component, and it's not in current state
         values_to_run.extend(
             post_edge_removal_impacted_values
@@ -294,7 +292,6 @@ impl Frame {
             })
         }
 
-        dbg!("send events?");
         if send_events {
             WsEvent::remove_inferred_edges(ctx, inferred_edges_to_remove.clone())
                 .await?
@@ -320,7 +317,6 @@ impl Frame {
             }
         }
 
-        dbg!("send events 2?");
         if send_events {
             WsEvent::upsert_inferred_edges(ctx, inferred_edges_to_upsert.clone())
                 .await?
@@ -346,7 +342,6 @@ impl Frame {
         }
 
         // enqueue those values that we now know need to run
-        dbg!("enqueue dvus");
         ctx.add_dependent_values_and_enqueue(
             values_to_run
                 .into_iter()

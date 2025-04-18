@@ -1003,7 +1003,7 @@ fn single_subgraph_as_updates() -> SplitGraphResult<()> {
             from_index,
             SplitGraphEdgeWeight::Custom(TestEdgeWeight::EdgeA),
             to_index,
-        )?;
+        );
     }
 
     subgraph.cleanup();

@@ -16,7 +16,10 @@ use si_id::{
     EntityId, InputSocketId, PropId, SchemaId, SchemaVariantId, UserPk, ViewId,
 };
 use si_layer_cache::LayerDbError;
-use si_split_graph::{opt_zip::OptZip, SplitGraph, SubGraph, SuperGraph};
+use si_split_graph::{
+    opt_zip::OptZip, SplitGraph, SplitGraphEdgeWeight, SplitGraphNodeIndex, SplitGraphNodeWeight,
+    SubGraph, SuperGraph,
+};
 use strum::IntoEnumIterator;
 use strum::{EnumDiscriminants, EnumIter, EnumString};
 use telemetry::prelude::*;
@@ -441,6 +444,7 @@ impl SplitSnapshot {
             let mut new_supergraph = SuperGraph::new(
                 current_supergraph.split_max(),
                 current_supergraph.root_index(),
+                current_supergraph.external_source_map().clone(),
             );
 
             let mut join_set = JoinSet::new();
@@ -715,6 +719,16 @@ impl SplitSnapshot {
         todo!("actually implement importing component subgraph")
     }
 
+    pub async fn raw_node_weight(
+        &self,
+        id: impl Into<Ulid>,
+    ) -> Option<SplitGraphNodeWeight<NodeWeight>> {
+        self.working_copy()
+            .await
+            .raw_node_weight(id.into())
+            .cloned()
+    }
+
     pub async fn get_node_weight(
         &self,
         id: impl Into<Ulid>,
@@ -724,6 +738,10 @@ impl SplitSnapshot {
             .get_node_weight_opt(id)
             .await
             .ok_or(WorkspaceSnapshotError::NodeNotFoundAtId(id))?)
+    }
+
+    pub async fn split_graph_node_index(&self, id: impl Into<Ulid>) -> Option<SplitGraphNodeIndex> {
+        self.working_copy().await.node_id_to_index(id.into())
     }
 
     pub async fn get_node_weight_opt(&self, id: impl Into<Ulid>) -> Option<NodeWeight> {
@@ -788,6 +806,25 @@ impl SplitSnapshot {
             .map(|edge_ref| edge_ref.target()))
     }
 
+    pub async fn edges_directed_debug(
+        &self,
+        id: impl Into<Ulid>,
+        direction: Direction,
+    ) -> WorkspaceSnapshotResult<Vec<(EdgeWeight, Ulid, Ulid)>> {
+        Ok(self
+            .working_copy()
+            .await
+            .edges_directed(id.into(), direction)?
+            .map(|edge_ref| {
+                (
+                    edge_ref.weight().clone(),
+                    edge_ref.source(),
+                    edge_ref.target(),
+                )
+            })
+            .collect())
+    }
+
     pub async fn edges_directed(
         &self,
         id: impl Into<Ulid>,
@@ -796,13 +833,13 @@ impl SplitSnapshot {
         Ok(self
             .working_copy()
             .await
-            .edges_directed_custom(id.into(), direction)?
-            .filter_map(|edge_ref| {
-                edge_ref
-                    .weight()
-                    .custom()
-                    .cloned()
-                    .map(|weight| (weight, edge_ref.source(), edge_ref.target()))
+            .edges_directed(id.into(), direction)?
+            .map(|edge_ref| {
+                (
+                    edge_ref.weight().clone(),
+                    edge_ref.source(),
+                    edge_ref.target(),
+                )
             })
             .collect())
     }
@@ -817,12 +854,12 @@ impl SplitSnapshot {
             .working_copy()
             .await
             .edges_directed_for_edge_weight_kind(id.into(), direction, edge_kind)?
-            .filter_map(|edge_ref| {
-                edge_ref
-                    .weight()
-                    .custom()
-                    .cloned()
-                    .map(|weight| (weight, edge_ref.source(), edge_ref.target()))
+            .map(|edge_ref| {
+                (
+                    edge_ref.weight().clone(),
+                    edge_ref.source(),
+                    edge_ref.target(),
+                )
             })
             .collect())
     }
@@ -835,6 +872,39 @@ impl SplitSnapshot {
         Ok(())
     }
 
+    pub async fn raw_incoming_edges(
+        &self,
+        id: impl Into<Ulid>,
+    ) -> Option<Vec<SplitGraphEdgeWeight<EdgeWeight, EdgeWeightKindDiscriminants>>> {
+        self.working_copy().await.raw_incoming_edges(id.into())
+    }
+
+    pub async fn raw_outgoing_edges_from_subgraph_root(
+        &self,
+        subgraph: usize,
+    ) -> Option<
+        Vec<(
+            SplitGraphEdgeWeight<EdgeWeight, EdgeWeightKindDiscriminants>,
+            SplitGraphNodeWeight<NodeWeight>,
+        )>,
+    > {
+        self.working_copy()
+            .await
+            .raw_outgoing_edges_from_subgraph_root(subgraph)
+    }
+
+    pub async fn raw_outgoing_edges(
+        &self,
+        id: impl Into<Ulid>,
+    ) -> Option<
+        Vec<(
+            SplitGraphEdgeWeight<EdgeWeight, EdgeWeightKindDiscriminants>,
+            SplitGraphNodeWeight<NodeWeight>,
+        )>,
+    > {
+        self.working_copy().await.raw_outgoing_edges(id.into())
+    }
+
     pub async fn incoming_sources_for_edge_weight_kind(
         &self,
         id: impl Into<Ulid>,
@@ -843,17 +913,8 @@ impl SplitSnapshot {
         Ok(self
             .working_copy()
             .await
-            .edges_directed_custom(id.into(), Incoming)?
-            .filter_map(|edge_ref| match edge_ref.weight().custom() {
-                Some(weight) => {
-                    if edge_weight_kind_discrim == weight.kind().into() {
-                        Some(edge_ref.source())
-                    } else {
-                        None
-                    }
-                }
-                None => None,
-            })
+            .edges_directed_for_edge_weight_kind(id.into(), Incoming, edge_weight_kind_discrim)?
+            .map(|edge_ref| edge_ref.source())
             .collect())
     }
 
@@ -865,17 +926,8 @@ impl SplitSnapshot {
         Ok(self
             .working_copy()
             .await
-            .edges_directed_custom(id.into(), Outgoing)?
-            .filter_map(|edge_ref| match edge_ref.weight().custom() {
-                Some(weight) => {
-                    if edge_weight_kind_discrim == weight.kind().into() {
-                        Some(edge_ref.target())
-                    } else {
-                        None
-                    }
-                }
-                None => None,
-            })
+            .edges_directed_for_edge_weight_kind(id.into(), Outgoing, edge_weight_kind_discrim)?
+            .map(|edge_ref| edge_ref.target())
             .collect())
     }
 
@@ -885,7 +937,7 @@ impl SplitSnapshot {
     ) -> WorkspaceSnapshotResult<Vec<NodeWeight>> {
         let working_copy = self.working_copy().await;
         let targets = working_copy
-            .edges_directed_custom(id.into(), Outgoing)?
+            .edges_directed(id.into(), Outgoing)?
             .filter_map(|edge_ref| working_copy.node_weight(edge_ref.target()))
             .cloned()
             .collect();
@@ -899,7 +951,7 @@ impl SplitSnapshot {
     ) -> WorkspaceSnapshotResult<Vec<NodeWeight>> {
         let working_copy = self.working_copy().await;
         let sources = working_copy
-            .edges_directed_custom(id.into(), Incoming)?
+            .edges_directed(id.into(), Incoming)?
             .filter_map(|edge_ref| working_copy.node_weight(edge_ref.source()))
             .cloned()
             .collect();
@@ -915,17 +967,8 @@ impl SplitSnapshot {
         let target_id = target_id.into();
         let mut working_copy = self.working_copy_mut().await;
         let sources: Vec<_> = working_copy
-            .edges_directed_custom(target_id, Incoming)?
-            .filter_map(|edge_ref| match edge_ref.weight().custom() {
-                Some(weight) => {
-                    if kind == weight.kind().into() {
-                        Some(edge_ref.source())
-                    } else {
-                        None
-                    }
-                }
-                None => None,
-            })
+            .edges_directed_for_edge_weight_kind(target_id, Incoming, kind)?
+            .map(|edge_ref| edge_ref.source())
             .collect();
 
         for source_id in sources {
@@ -943,17 +986,9 @@ impl SplitSnapshot {
         Ok(self
             .working_copy()
             .await
-            .edges_directed_custom(from_node_id, Outgoing)?
-            .filter_map(|edge_ref| match edge_ref.weight().custom() {
-                Some(weight) => {
-                    if edge_ref.target() == to_node_id {
-                        Some(weight.clone())
-                    } else {
-                        None
-                    }
-                }
-                None => None,
-            })
+            .edges_directed(from_node_id, Outgoing)?
+            .filter(|edge_ref| edge_ref.target() == to_node_id)
+            .map(|edge_ref| edge_ref.weight().clone())
             .collect())
     }
 
@@ -992,13 +1027,11 @@ impl SplitSnapshot {
         new_id: impl Into<Ulid>,
         new_lineage_id: LineageId,
     ) -> WorkspaceSnapshotResult<()> {
-        let current_id = current_id.into();
-        let mut working_copy = self.working_copy_mut().await;
-        let node_weight = working_copy
-            .node_weight_mut(current_id)
-            .ok_or(WorkspaceSnapshotError::NodeNotFoundAtId(current_id))?;
-
-        node_weight.set_id_and_lineage(new_id, new_lineage_id);
+        self.working_copy_mut().await.update_node_id(
+            current_id.into(),
+            new_id.into(),
+            new_lineage_id.into(),
+        )?;
 
         Ok(())
     }
@@ -1034,15 +1067,13 @@ impl SplitSnapshot {
         }
 
         let sv_id = working_copy
-            .edges_directed_custom(component_id, Outgoing)?
+            .edges_directed(component_id, Outgoing)?
             .find(|edge_ref| {
-                matches!(
-                    edge_ref.weight().custom().map(|c| c.kind()),
-                    Some(EdgeWeightKind::Use { .. })
-                ) && matches!(
-                    working_copy.node_weight(edge_ref.target()),
-                    Some(NodeWeight::SchemaVariant(_))
-                )
+                matches!(edge_ref.weight().kind(), EdgeWeightKind::Use { .. })
+                    && matches!(
+                        working_copy.node_weight(edge_ref.target()),
+                        Some(NodeWeight::SchemaVariant(_))
+                    )
             })
             .map(|edge_ref| edge_ref.target().into())
             .ok_or(ComponentError::SchemaVariantNotFound(component_id.into()))?;
@@ -1061,15 +1092,13 @@ impl SplitSnapshot {
         }
 
         let contained: Vec<ComponentId> = working_copy
-            .edges_directed_custom(component_id, Outgoing)?
+            .edges_directed(component_id, Outgoing)?
             .filter(|edge_ref| {
-                matches!(
-                    edge_ref.weight().custom().map(|c| c.kind()),
-                    Some(EdgeWeightKind::FrameContains)
-                ) && matches!(
-                    working_copy.node_weight(edge_ref.target()),
-                    Some(NodeWeight::Component(_))
-                )
+                matches!(edge_ref.weight().kind(), EdgeWeightKind::FrameContains)
+                    && matches!(
+                        working_copy.node_weight(edge_ref.target()),
+                        Some(NodeWeight::Component(_))
+                    )
             })
             .map(|edge_ref| edge_ref.target().into())
             .collect();
@@ -1530,7 +1559,7 @@ impl ViewExt for SplitSnapshot {
         )? {
             nodes_to_delete.extend(
                 working_copy
-                    .edges_directed_custom(diagram_object_id, Incoming)?
+                    .edges_directed(diagram_object_id, Incoming)?
                     .map(|edge_ref| edge_ref.source()),
             );
         }

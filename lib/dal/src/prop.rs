@@ -728,9 +728,20 @@ impl Prop {
             .incoming_sources_for_edge_weight_kind(prop_id, EdgeWeightKindDiscriminants::Prop)
             .await?;
 
-        for av_source_idx in av_sources {
+        if av_sources.is_empty() {
+            dbg!(prop_id);
+            dbg!(
+                workspace_snapshot
+                    .as_split_snapshot()
+                    .unwrap()
+                    .raw_incoming_edges(prop_id)
+                    .await
+            );
+        }
+
+        for av_source_id in av_sources {
             let av_id: AttributeValueId = workspace_snapshot
-                .get_node_weight(av_source_idx)
+                .get_node_weight(av_source_id)
                 .await?
                 .get_attribute_value_node_weight()?
                 .id()

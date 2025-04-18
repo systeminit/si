@@ -6,7 +6,8 @@ use dal::component::delete::{delete_components, ComponentDeletionStatus};
 use dal::component::frame::Frame;
 use dal::component::resource::ResourceData;
 use dal::func::intrinsics::IntrinsicFunc;
-use dal::{AttributeValue, ComponentType, Func, InputSocket, OutputSocket};
+use dal::prop::PropPath;
+use dal::{AttributeValue, ComponentType, Func, InputSocket, OutputSocket, Prop};
 use dal::{Component, DalContext, Schema, SchemaVariant};
 use dal_test::helpers::{
     create_component_for_default_schema_name_in_default_view,
@@ -16,6 +17,7 @@ use dal_test::helpers::{
 };
 use dal_test::helpers::{get_component_input_socket_value, ChangeSetTestHelpers};
 use dal_test::{test, Result};
+use petgraph::Direction;
 use pretty_assertions_sorted::assert_eq;
 use veritech_client::ResourceStatus;
 
@@ -698,11 +700,14 @@ async fn delete_with_frames_and_resources(ctx: &mut DalContext) {
     .expect("could not create component");
     let outer_frame_id = outer_frame.id();
 
+    dbg!("a");
+
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
     // cache id to use throughout the test
 
+    dbg!("b");
     // set a value on the outer frame that will pass to the component
     update_attribute_value_for_component(
         ctx,
@@ -712,6 +717,7 @@ async fn delete_with_frames_and_resources(ctx: &mut DalContext) {
     )
     .await
     .expect("could not set attribute value");
+    dbg!("c");
 
     let resource_data = ResourceData::new(
         ResourceStatus::Ok,
@@ -721,6 +727,7 @@ async fn delete_with_frames_and_resources(ctx: &mut DalContext) {
         .set_resource(ctx, resource_data.clone())
         .await
         .expect("could not set resource");
+    dbg!("d");
 
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
@@ -734,6 +741,7 @@ async fn delete_with_frames_and_resources(ctx: &mut DalContext) {
     )
     .await
     .expect("could not create component");
+    dbg!("e");
 
     let inner_frame_id = inner_frame.id();
 
@@ -769,6 +777,7 @@ async fn delete_with_frames_and_resources(ctx: &mut DalContext) {
             .await
             .expect("could not remove action");
     }
+    dbg!("f");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit");
@@ -785,6 +794,7 @@ async fn delete_with_frames_and_resources(ctx: &mut DalContext) {
         .parent_is_head()
         .await
         .expect("could not perform parent is head"));
+    dbg!("g");
 
     ChangeSetTestHelpers::apply_change_set_to_base(ctx)
         .await
@@ -872,6 +882,7 @@ async fn delete_with_frames_and_resources(ctx: &mut DalContext) {
         .expect("could not list components to be deleted");
     assert_eq!(components_to_delete.len(), 3);
 
+    dbg!("g");
     // make sure values propagated accordingly
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
@@ -926,6 +937,7 @@ async fn delete_with_frames_and_resources(ctx: &mut DalContext) {
         .expect("could not get action");
     assert_eq!(action_enqueued.is_eligible_to_dispatch(), true);
 
+    dbg!("h");
     // make sure values propagated accordingly
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
@@ -936,10 +948,12 @@ async fn delete_with_frames_and_resources(ctx: &mut DalContext) {
         .expect("should have a value");
     assert_eq!(component_av_six, "6");
 
+    dbg!("i");
     // apply and let the one delete action run
     ChangeSetTestHelpers::apply_change_set_to_base(ctx)
         .await
         .expect("could not apply to head");
+    dbg!("j");
     ChangeSetTestHelpers::wait_for_actions_to_run(ctx)
         .await
         .expect("could not run actions");
@@ -961,6 +975,7 @@ async fn delete_with_frames_and_resources(ctx: &mut DalContext) {
         tokio::time::sleep(Duration::from_millis(100)).await;
     }
 
+    dbg!("k");
     let components = Component::list(ctx)
         .await
         .expect("could not list components");
@@ -1402,15 +1417,15 @@ async fn delete_multiple_components(ctx: &mut DalContext) -> Result<()> {
     let expected_deletion_statuses = &[
         (component_to_delete.id(), ComponentDeletionStatus::Deleted),
         (
-            component_with_resource_to_delete.id(),
+            dbg!(component_with_resource_to_delete.id()),
             ComponentDeletionStatus::MarkedForDeletion,
         ),
         (
-            component_still_on_head.id(),
+            dbg!(component_still_on_head.id()),
             ComponentDeletionStatus::StillExistsOnHead,
         ),
         (
-            component_with_resource_to_erase.id(),
+            dbg!(component_with_resource_to_erase.id()),
             ComponentDeletionStatus::Deleted,
         ),
     ];

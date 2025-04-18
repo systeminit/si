@@ -17,6 +17,7 @@ use si_events::ContentHash;
 pub use si_frontend_types::RawGeometry;
 use std::collections::HashMap;
 use std::sync::Arc;
+use telemetry::prelude::*;
 
 const DEFAULT_COMPONENT_X_POSITION: &str = "0";
 const DEFAULT_COMPONENT_Y_POSITION: &str = "0";
@@ -343,6 +344,22 @@ impl Geometry {
         let snap = ctx.workspace_snapshot()?;
 
         let mut maybe_weight = None;
+        let incoming_sources = snap
+            .incoming_sources_for_edge_weight_kind(
+                component_id,
+                EdgeWeightKindDiscriminants::Represents,
+            )
+            .await?;
+        error!("component: {component_id:?}, {:?}", incoming_sources);
+        if incoming_sources.is_empty() {
+            error!(
+                "{:?}",
+                snap.as_split_snapshot()
+                    .unwrap()
+                    .raw_incoming_edges(component_id)
+                    .await
+            );
+        }
         for geometry_idx in snap
             .incoming_sources_for_edge_weight_kind(
                 component_id,

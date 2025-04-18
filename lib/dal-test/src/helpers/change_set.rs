@@ -224,7 +224,7 @@ impl ChangeSetTestHelpers {
 
     /// Wait for the changeset's DVUs to be completely processed before continuing
     pub async fn wait_for_dvu(ctx: &DalContext) -> Result<()> {
-        let mut iters = 5_000;
+        let mut iters = 1_000;
         loop {
             if iters <= 0 {
                 panic!("wait_for_dvu timed out");

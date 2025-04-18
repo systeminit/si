@@ -4147,6 +4147,7 @@ impl Component {
         diagram_sockets: &mut HashMap<SchemaVariantId, Vec<DiagramSocket>>,
     ) -> ComponentResult<DiagramComponentView> {
         let default_view_id = View::get_id_for_default(ctx).await?;
+        warn!("getting geometry for {:?}", self.id());
         let geometry = self.geometry(ctx, default_view_id).await?;
 
         self.into_frontend_type(ctx, Some(&geometry), change_status, diagram_sockets)

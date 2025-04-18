@@ -354,6 +354,7 @@ impl DependentValuesUpdate {
 
             // Wait for a task to finish
             if let Some(join_result) = update_join_set.join_next().await {
+                warn!("dvu loop iter start: {:?}", join_result);
                 let (task_id, execution_result, before_value) = join_result?;
 
                 metric!(counter.dvu.function_execution = -1);
@@ -407,6 +408,7 @@ impl DependentValuesUpdate {
                                         .await?;
                                     }
                                     Err(err) => {
+                                        warn!("execution error 1");
                                         execution_error(ctx, err.to_string(), finished_value_id)
                                             .await;
                                         dependency_graph.cycle_on_self(finished_value_id);
@@ -416,6 +418,7 @@ impl DependentValuesUpdate {
                                     dependency_graph.remove_value(finished_value_id);
                                 }
                                 Err(err) => {
+                                    warn!("execution error 2");
                                     execution_error(ctx, err.to_string(), finished_value_id).await;
                                     dependency_graph.cycle_on_self(finished_value_id);
                                 }
@@ -427,6 +430,7 @@ impl DependentValuesUpdate {
                             // nodes *without* outgoing edges. Thus we will never try to re-execute
                             // the function for this value, nor will we execute anything in the
                             // dependency graph connected to this value
+                            warn!("execution error 3");
                             let read_guard = self.set_value_lock.read().await;
                             execution_error(ctx, err.to_string(), finished_value_id).await;
                             drop(read_guard);
@@ -445,6 +449,7 @@ impl DependentValuesUpdate {
             }
 
             independent_value_ids = dependency_graph.independent_values().into_iter().collect();
+            warn!("dvu loop iter end");
         }
 
         let mut added_unfinished = false;
@@ -475,13 +480,14 @@ impl DependentValuesUpdate {
         if independent_value_ids.is_empty() || !added_unfinished {
             for status_update in tracker.finish_remaining() {
                 if let Err(err) = send_status_update(ctx, status_update).await {
+                    warn!("error 4");
                     error!(si.error.message = ?err, "status update finished event send for leftover component failed");
                 }
             }
             DependentValueRoot::take_dependent_values(ctx).await?;
         }
 
-        debug!("DependentValuesUpdate took: {:?}", start.elapsed());
+        warn!("DependentValuesUpdate took: {:?}", start.elapsed());
 
         ctx.commit().await?;
         Ok(JobCompletionState::Done)
@@ -580,8 +586,10 @@ async fn send_status_update(
     } = status_update
     {
         if status == StatusMessageState::StatusFinished {
+            warn!("sending component updated event for {:?}", component_id);
             let mut diagram_sockets: HashMap<SchemaVariantId, Vec<DiagramSocket>> = HashMap::new();
             let component = Component::get_by_id(ctx, component_id).await?;
+            warn!("calling into frontend type");
             let payload = component
                 .into_frontend_type_for_default_view(
                     ctx,
@@ -589,6 +597,7 @@ async fn send_status_update(
                     &mut diagram_sockets,
                 )
                 .await?;
+            warn!("finished into frontend type");
             // don't publish immediately, we want this fired when the rebase lands
             WsEvent::component_updated(ctx, payload)
                 .await?

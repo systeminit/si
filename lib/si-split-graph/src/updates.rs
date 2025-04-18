@@ -333,9 +333,19 @@ where
             E: CustomEdgeWeight<K>,
             K: EdgeKind,
         {
-            pub source_node: SplitGraphNodeId,
-            pub target_node: SplitGraphNodeId,
-            pub edge_weight: SplitGraphEdgeWeight<E, K>,
+            source_node: SplitGraphNodeId,
+            target_node: SplitGraphNodeId,
+            edge_weight: SplitGraphEdgeWeight<E, K>,
+        }
+
+        #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+        struct ExternalSourceData<K>
+        where
+            K: EdgeKind,
+        {
+            source_id: SplitGraphNodeId,
+            is_default: bool,
+            kind: K,
         }
 
         #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -343,8 +353,9 @@ where
         where
             K: EdgeKind,
         {
-            pub kind: SplitGraphEdgeWeightKind<K>,
-            pub target_lineage: SplitGraphNodeId,
+            kind: SplitGraphEdgeWeightKind<K>,
+            external_source_data: Option<ExternalSourceData<K>>,
+            target_lineage: SplitGraphNodeId,
         }
 
         let mut updates = vec![];
@@ -383,6 +394,21 @@ where
                                 (
                                     UniqueEdgeInfo {
                                         kind: edge_ref.weight().into(),
+                                        external_source_data: match edge_ref.weight() {
+                                            SplitGraphEdgeWeight::ExternalSource {
+                                                source_id,
+                                                is_default,
+                                                edge_kind,
+                                                ..
+                                            } => Some(ExternalSourceData {
+                                                source_id: *source_id,
+                                                is_default: *is_default,
+                                                kind: *edge_kind,
+                                            }),
+                                            SplitGraphEdgeWeight::Custom(_)
+                                            | SplitGraphEdgeWeight::Ordering
+                                            | SplitGraphEdgeWeight::Ordinal => None,
+                                        },
                                         target_lineage: target_node_weight.lineage_id(),
                                     },
                                     EdgeInfo {
@@ -406,6 +432,21 @@ where
                                 (
                                     UniqueEdgeInfo {
                                         kind: edge_ref.weight().into(),
+                                        external_source_data: match edge_ref.weight() {
+                                            SplitGraphEdgeWeight::ExternalSource {
+                                                source_id,
+                                                is_default,
+                                                edge_kind,
+                                                ..
+                                            } => Some(ExternalSourceData {
+                                                source_id: *source_id,
+                                                is_default: *is_default,
+                                                kind: *edge_kind,
+                                            }),
+                                            SplitGraphEdgeWeight::Custom(_)
+                                            | SplitGraphEdgeWeight::Ordering
+                                            | SplitGraphEdgeWeight::Ordinal => None,
+                                        },
                                         target_lineage: target_node_weight.lineage_id(),
                                     },
                                     EdgeInfo {

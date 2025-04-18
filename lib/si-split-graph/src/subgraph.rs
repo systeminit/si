@@ -58,6 +58,12 @@ where
         }
     }
 
+    pub fn graph(
+        &self,
+    ) -> &StableDiGraph<SplitGraphNodeWeight<N>, SplitGraphEdgeWeight<E, K>, usize> {
+        &self.graph
+    }
+
     pub(crate) fn new_with_root() -> Self {
         let mut subgraph = Self {
             graph: StableDiGraph::with_capacity(32768, 32768 * 2),
@@ -79,7 +85,7 @@ where
         subgraph
     }
 
-    pub(crate) fn cleanup(&mut self) {
+    pub(crate) fn cleanup(&mut self) -> Vec<SplitGraphNodeId> {
         loop {
             let orphaned_node_indexes: Vec<SubGraphNodeIndex> = self
                 .graph
@@ -96,8 +102,16 @@ where
             }
         }
 
-        self.node_index_by_id
-            .retain(|_id, index| self.graph.node_weight(*index).is_some());
+        let mut removed_ids = vec![];
+
+        self.node_index_by_id.retain(|id, index| {
+            if self.graph.node_weight(*index).is_some() {
+                true
+            } else {
+                removed_ids.push(*id);
+                false
+            }
+        });
         self.node_indexes_by_lineage_id
             .iter_mut()
             .for_each(|(_, node_indexes)| {
@@ -105,12 +119,16 @@ where
             });
         self.node_indexes_by_lineage_id
             .retain(|_, indexes| !indexes.is_empty());
+
+        removed_ids
     }
 
-    pub(crate) fn add_node(&mut self, node: SplitGraphNodeWeight<N>) -> SubGraphNodeIndex {
-        let node_id = node.id();
-        let lineage_id = node.lineage_id();
-        let node_index = self.graph.add_node(node);
+    pub(crate) fn add_ids_to_indexes(
+        &mut self,
+        node_id: SplitGraphNodeId,
+        lineage_id: SplitGraphNodeId,
+        node_index: SubGraphNodeIndex,
+    ) {
         self.node_index_by_id.insert(node_id, node_index);
         self.node_indexes_by_lineage_id
             .entry(lineage_id)
@@ -118,16 +136,59 @@ where
                 set.insert(node_index);
             })
             .or_insert(HashSet::from([node_index]));
+    }
+
+    pub(crate) fn remove_ids_from_indexes(
+        &mut self,
+        node_id: SplitGraphNodeId,
+        lineage_id: SplitGraphNodeId,
+    ) {
+        let node_index = self.node_index_by_id.remove(&node_id);
+
+        if let Some(node_index) = node_index {
+            if let Some(lineage_indexes) = self.node_indexes_by_lineage_id.get_mut(&lineage_id) {
+                lineage_indexes.retain(|idx| *idx != node_index);
+            }
+        }
+    }
+
+    pub(crate) fn add_node(&mut self, node: SplitGraphNodeWeight<N>) -> SubGraphNodeIndex {
+        let node_id = node.id();
+        let lineage_id = node.lineage_id();
+        let node_index = self.graph.add_node(node);
+        self.add_ids_to_indexes(node_id, lineage_id, node_index);
         self.touched_nodes.insert(node_index);
 
         node_index
     }
 
-    pub(crate) fn replace_node(&mut self, index: SubGraphNodeIndex, node: SplitGraphNodeWeight<N>) {
-        if let Some(node_ref) = self.graph.node_weight_mut(index) {
-            *node_ref = node;
+    pub(crate) fn replace_node(
+        &mut self,
+        index: SubGraphNodeIndex,
+        node: SplitGraphNodeWeight<N>,
+    ) -> Option<SplitGraphNodeId> {
+        let new_node_id = node.id();
+        let new_lineage_id = node.lineage_id();
+        let previous_ids = match self.graph.node_weight_mut(index) {
+            Some(existing_node_ref) => {
+                let node_id = existing_node_ref.id();
+                let lineage_id = existing_node_ref.id();
+                *existing_node_ref = node;
+                Some((node_id, lineage_id))
+            }
+            None => None,
+        };
+
+        if let Some((previous_node_id, previous_lineage_id)) = previous_ids {
+            if previous_node_id != new_node_id {
+                self.remove_ids_from_indexes(previous_node_id, previous_lineage_id);
+                self.add_ids_to_indexes(new_node_id, new_lineage_id, index);
+            }
         }
+
         self.touched_nodes.insert(index);
+
+        previous_ids.map(|(node_id, _)| node_id)
     }
 
     fn edge_exists(
@@ -234,17 +295,7 @@ where
         Some(
             order
                 .iter()
-                .filter_map(|id| {
-                    let idx = self.node_index_by_id.get(id).copied();
-                    if idx == Some(NodeIndex::new(2085)) {
-                        warn!(
-                            "2085, {}, {:?}",
-                            id,
-                            self.graph.node_weight(idx.clone().unwrap())
-                        );
-                    }
-                    idx
-                })
+                .filter_map(|id| self.node_index_by_id.get(id).copied())
                 .collect(),
         )
     }
@@ -268,10 +319,7 @@ where
         }
     }
 
-    pub(crate) fn recalculate_merkle_tree_hash_based_on_touched_nodes(
-        &mut self,
-        dbug: bool,
-    ) -> (usize, usize) {
+    pub(crate) fn recalculate_merkle_tree_hash_based_on_touched_nodes(&mut self) -> (usize, usize) {
         let mut node_count = 0;
         let mut edge_count = 0;
         let big_start = Instant::now();
@@ -287,15 +335,6 @@ where
             return (0, 0);
         }
 
-        if dbug {
-            warn!("touched_nodes: {:?}", self.touched_nodes);
-        }
-
-        let root = self.root_index;
-        warn!("root: {:?}", root);
-
-        self.tiny_dot_to_file("before-merkle");
-
         while let Some(node_index) = dfs.next(&self.graph) {
             node_count += 1;
             if self.touched_nodes.contains(&node_index) || discovered_nodes.contains(&node_index) {
@@ -308,7 +347,6 @@ where
                 }
                 for incoming_source_idx in self.graph.neighbors_directed(node_index, Incoming) {
                     discovered_nodes.insert(incoming_source_idx);
-                    warn!("discovered node: {:?}", incoming_source_idx);
                 }
             }
         }
@@ -400,10 +438,12 @@ where
         from_index: SubGraphNodeIndex,
         edge_weight: SplitGraphEdgeWeight<E, K>,
         to_index: SubGraphNodeIndex,
-    ) {
+    ) -> Option<SubGraphEdgeIndex> {
         if !self.edge_exists(from_index, &edge_weight, to_index) {
-            self.graph.add_edge(from_index, to_index, edge_weight);
             self.touch_node(from_index);
+            Some(self.graph.add_edge(from_index, to_index, edge_weight))
+        } else {
+            None
         }
     }
 
@@ -422,10 +462,7 @@ where
             .collect();
 
         self.graph.remove_node(node_index);
-        self.node_index_by_id.remove(&node_id);
-        if let Some(lineage_indexes) = self.node_indexes_by_lineage_id.get_mut(&lineage_id) {
-            lineage_indexes.retain(|idx| *idx != node_index);
-        }
+        self.remove_ids_from_indexes(node_id, lineage_id);
 
         parents
             .into_iter()
@@ -493,25 +530,16 @@ where
     }
 
     /// Add an edge between `from_index` and `to_index` if the edge does not exist.
-    /// Handles the creation of ordering nodes and the ordering edges if the node at
-    /// `from_index` is an ordered container.
     pub(crate) fn add_edge(
         &mut self,
         from_index: SubGraphNodeIndex,
         edge_weight: SplitGraphEdgeWeight<E, K>,
         to_index: SubGraphNodeIndex,
-    ) -> SplitGraphResult<()> {
-        self.add_edge_raw(from_index, edge_weight, to_index);
-
-        Ok(())
+    ) -> Option<SubGraphEdgeIndex> {
+        self.add_edge_raw(from_index, edge_weight, to_index)
     }
 
     pub(crate) fn touch_node(&mut self, node_index: SubGraphNodeIndex) {
-        warn!(
-            "touching node: {:?}, {:?}",
-            node_index,
-            self.graph.node_weight(node_index)
-        );
         self.touched_nodes.insert(node_index);
     }
 
@@ -523,6 +551,9 @@ where
         kind: SplitGraphEdgeWeightKind<K>,
         to_index: SubGraphNodeIndex,
     ) {
+        if to_index == SubGraphNodeIndex::new(79) {
+            println!("removing {:?} {:?} to {:?}", from_index, kind, to_index);
+        }
         self.touch_node(from_index);
         let edge_indexes: Vec<_> = self
             .graph

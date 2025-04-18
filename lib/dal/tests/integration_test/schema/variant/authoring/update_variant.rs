@@ -75,7 +75,7 @@ async fn update_variant(ctx: &mut DalContext) {
     assert_eq!(first_variant.id(), updated_sv_id);
 
     // Add a component to the diagram
-    create_component_for_default_schema_name_in_default_view(
+    let demo_component = create_component_for_default_schema_name_in_default_view(
         ctx,
         schema.name.clone(),
         "demo component",
@@ -120,6 +120,16 @@ async fn update_variant(ctx: &mut DalContext) {
     )
     .await
     .expect("save variant contents");
+
+    dbg!(demo_component.id());
+    dbg!(
+        ctx.workspace_snapshot()
+            .unwrap()
+            .as_split_snapshot()
+            .unwrap()
+            .split_graph_node_index(demo_component.id())
+            .await
+    );
 
     let second_updated_sv_id = VariantAuthoringClient::regenerate_variant(ctx, first_variant.id())
         .await
