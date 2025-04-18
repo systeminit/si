@@ -304,6 +304,10 @@ const overrides = new Map<string, OverrideFn>([
     "AWS::SecretsManager::Secret",
     addSecretProp("Secret String", "secretString", ["SecretString"]),
   ],
+  [
+    "AWS::RDS::DBCluster",
+    addSecretProp("Secret String", "secretString", ["MasterUserPassword"]),
+  ],
   ["AWS::EC2::NetworkInterface", (spec: ExpandedPkgSpec) => {
     const variant = spec.schemas[0].variants[0];
 
