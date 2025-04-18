@@ -1,0 +1,32 @@
+load("@prelude-si//:macros.bzl", "rust_library")
+
+rust_library(
+    name = "si-data-ssm",
+    deps = [
+        "//lib/telemetry-rs:telemetry",
+        "//third-party/rust:aws-config",
+        "//third-party/rust:aws-sdk-ssm",
+        "//third-party/rust:remain",
+        "//third-party/rust:thiserror",
+    ],
+    srcs = glob([
+        "src/**/*.rs",
+    ]),
+)
+
+rust_test(
+    name = "test-integration",
+    deps = [
+        "//third-party/rust:tokio",
+        ":si-data-ssm",
+    ],
+    srcs = glob([
+        "tests/**/*.rs",
+    ]),
+    crate_root = "tests/integration.rs",
+    env = {
+        "CARGO_PKG_NAME": "integration",
+        "RUSTC_BOOTSTRAP": "1",
+        "CI": "buildkite",
+    },
+)

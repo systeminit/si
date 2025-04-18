@@ -1,0 +1,18 @@
+[package]
+name = "si-data-ssm"
+edition = "2021"
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+telemetry = { path = "../../lib/telemetry-rs" }
+
+aws-config = { workspace = true }
+aws-sdk-ssm = { workspace = true }
+remain = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }

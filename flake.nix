@@ -332,6 +332,8 @@
 
           forklift = binDerivation {pkgName = "forklift";};
 
+          innit = binDerivation {pkgName = "innit";};
+
           module-index = binDerivation {pkgName = "module-index";};
 
           pinga = binDerivation {pkgName = "pinga";};

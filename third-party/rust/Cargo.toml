@@ -36,6 +36,10 @@ aws-config = { version = "=1.5.18", features = [
     "behavior-version-latest",
 ] } # pinned because very next version (1.6.0) starts pulling in `aws-lc-rs`/`aws-lc-sys` which include native C code
 aws-sdk-firehose = "=1.68.0" # pinned because very next version (1.69.0) starts pulling in `aws-lc-rs`/`aws-lc-sys` which include native C code
+aws-sdk-ssm = { version = "1.71.0", default-features = false, features = ["rt-tokio"] }
+# setting smithy like so to avoid pulling in aws-lc-rs for aws-sdk-ssm
+aws-smithy-http-client = { version = "1.0.0", features = ["rustls-ring"] }
+aws-smithy-runtime = { version = "1.8.1", features = ["client", "tls-rustls"] }
 axum = { version = "0.6.20", features = [
     "macros",
     "multipart",

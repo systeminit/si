@@ -1,0 +1,29 @@
+load(
+    "@prelude-si//:macros.bzl",
+    "docker_image",
+    "rust_binary",
+    "nix_omnibus_pkg",
+)
+
+rust_binary(
+    name = "innit",
+    deps = [
+        "//lib/innit-server:innit-server",
+        "//lib/si-service:si-service",
+        "//third-party/rust:clap",
+    ],
+    srcs = glob(["src/**/*.rs"]),
+    env = {"CARGO_BIN_NAME": "innit"},
+)
+
+docker_image(
+    name = "image",
+    image_name = "innit",
+    build_deps = ["//bin/innit:innit"],
+)
+
+nix_omnibus_pkg(
+    name = "omnibus",
+    pkg_name = "innit",
+    build_dep = "//bin/innit:innit",
+)
