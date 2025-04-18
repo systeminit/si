@@ -42,6 +42,15 @@ sinks:
     region: "us-east-1"
     group_name: "/ec2/$SI_HOSTENV-$SI_SERVICE"
     stream_name: "{{ host }}"
+  cloudwatch:
+    type: "aws_cloudwatch_logs"
+    inputs: ["docker"]
+    compression: "gzip"
+    encoding:
+      codec: "text"
+    region: "us-east-1"
+    group_name: "/ec2/$SI_HOSTENV-$SI_SERVICE-docker"
+    stream_name: "{{ host }}"
   honeycomb:
     type: "honeycomb"
     inputs: ["honeycomb_format"]
