@@ -5,10 +5,29 @@ outline:
 
 # Road map
 
-Updated March 21, 2025.
+Updated April 18, 2025.
 
 Want to influence the road map?
 [Learn more about how to work on System Initiative](../explanation/working-on-si.md).
+
+## Job specific interface (In development)
+
+We are adding a more purpose-built job specific user interface for interacting
+with System Initiative. The user interface will be focused on the model itself,
+allowing you to get to the work - building, editing, and visualizing
+infrastructure - quicker.
+
+## Better data connectivity (In development)
+
+We are enabling a user to be able to connect any data within the system.
+Currently, data connections are made via sockets, but we want to allow deeper
+connectivity of data between infrastructure
+
+## External API for integrations to System Initiative (In development)
+
+We are building an API that can be used from 3rd party applications (like CI/CD
+systems or custom internal developer platforms) to manage your infrastructure
+using System Initiative.
 
 ## Management components
 
@@ -46,7 +65,7 @@ to learn more about import functionality
 Discover builds on import where you can discover all infrastructure within a
 cloud environment
 
-### Visual Templates (In private beta)
+### Visual Templates (In public beta)
 
 <iframe width="560" height="315" src="https://www.youtube.com/embed/HSqf1w-PJco?si=hHMfnNx9VzEuFIf6" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
 
@@ -105,7 +124,7 @@ Read our
 [announcement blog post](https://www.systeminit.com/blog/announcing-views) to
 learn more about views.
 
-## GitHub Actions to drive SI (In private beta)
+## GitHub Actions to drive SI (In public beta)
 
 <iframe width="560" height="315" src="https://www.youtube.com/embed/UCZzTjBWSpg?si=co2wa47XcG4sqwfu" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
 
@@ -116,7 +135,7 @@ the status of the resulting action.
 
 [Read the blog post to learn more.](https://www.systeminit.com/blog/opportunity-github-actions-to-trigger-system-initiative)
 
-## Editor Integration (In private beta)
+## Editor Integration (In public beta)
 
 We are building a FUSE-based file system to allow for a user to mount a
 workspace and get access to all of the schemas and functions within their
@@ -128,17 +147,17 @@ System Initiative.
 ## Full Coverage of the AWS Cloud Control API (Generally Available)
 
 We have an integration with the
-[AWS Cloud Control API](https://aws.amazon.com/cloudcontrolapi/), providing complete
-coverage of all AWS resources supported by
+[AWS Cloud Control API](https://aws.amazon.com/cloudcontrolapi/), providing
+complete coverage of all AWS resources supported by
 [CloudFormation](https://aws.amazon.com/cloudformation/). This enables our
-platform to create, read, update, and delete any AWS resource
-CloudFormation supports.
+platform to create, read, update, and delete any AWS resource CloudFormation
+supports.
 
 This integration eliminates manual resource modeling and automatically
 synchronizes with AWS's service catalog. As AWS releases new resources or
 updates existing ones through CloudFormation, our platform supports these
 changes without additional development work.
 
-If there is something specific you want or need from these assets, or if you need
-support for something outside of AWS, come chat with us on
+If there is something specific you want or need from these assets, or if you
+need support for something outside of AWS, come chat with us on
 [Discord](https://discord.com/invite/q6H2ZyFh) anytime.
