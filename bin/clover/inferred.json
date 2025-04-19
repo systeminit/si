@@ -1104,6 +1104,18 @@
       "whitelist"
     ]
   },
+  "Must be `neptune1` for engine versions prior to 1.2.0.0, or `neptune1.2` for engine version `1.2.0.0` and higher.": {
+    "enum": [
+      "neptune1",
+      "neptune1.2"
+    ]
+  },
+  "Must be neptune1 for engine versions prior to 1.2.0.0, or neptune1.2 for engine version 1.2.0.0 and higher.": {
+    "enum": [
+      "neptune1",
+      "neptune1.2"
+    ]
+  },
   "For high throughput for FIFO queues, specifies whether message deduplication occurs at the message group or queue level. Valid values are ``messageGroup`` and ``queue``.\n To enable high throughput for a FIFO queue, set this attribute to ``messageGroup`` *and* set the ``FifoThroughputLimit`` attribute to ``perMessageGroupId``. If you set these attributes to anything other than these values, normal throughput is in effect and deduplication occurs as specified. For more information, see [High throughput for FIFO queues](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/high-throughput-fifo.html) and [Quotas related to messages](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/quotas-messages.html) in the *Developer Guide*.": {
     "enum": [
       "messageGroup",
@@ -4709,6 +4721,9 @@
   "HostResourceGroupArn": {
     "enum": null
   },
+  "How many days that metrics are retained in the workspace": {
+    "enum": null
+  },
   "How number (in seconds) pre-signed URLs are valid.": {
     "enum": null
   },
@@ -5444,6 +5459,9 @@
   "Name of a MongoDB Atlas index.": {
     "enum": null
   },
+  "Name of a MongoDB Atlas text index.": {
+    "enum": null
+  },
   "Name of accelerator.": {
     "enum": null
   },
@@ -5828,6 +5846,9 @@
   "Provides the ID of the kernel associated with the EC2 AMI.": {
     "enum": null
   },
+  "Provides the customer-specified description for this DB cluster parameter group.": {
+    "enum": null
+  },
   "Provides the customer-specified description for this DB parameter group.": {
     "enum": null
   },
@@ -5835,6 +5856,9 @@
     "enum": null
   },
   "Provides the name of the DB cluster parameter group.": {
+    "enum": null
+  },
+  "Provides the name of the DB parameter group.": {
     "enum": null
   },
   "Provides the name of the EC2 key pair.": {
@@ -6855,6 +6879,9 @@
     "enum": null
   },
   "The ARN of the AWS CloudTrail resource to which the policy applies.": {
+    "enum": null
+  },
+  "The ARN of the AWS Identity Center instance.": {
     "enum": null
   },
   "The ARN of the AWS Identity and Access Management (IAM) role that has permissions to access the AWS Key Management Service (KMS) key. Supplying an IAM role is only valid when also specifying a KMS key.": {
@@ -12423,6 +12450,9 @@
     "enum": null
   },
   "The name of the external provider where your third-party code repository is configured. You must specify either a ProviderType or a HostArn.": {
+    "enum": null
+  },
+  "The name of the field in which Amazon Bedrock stores custom metadata about the vector store.": {
     "enum": null
   },
   "The name of the field in which Amazon Bedrock stores metadata about the vector store.": {
