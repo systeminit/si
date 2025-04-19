@@ -96,6 +96,10 @@ import ComponentDetail from "./Component.vue";
 import { WSCS } from "./types";
 import Breadcrumbs from "./layout_components/Breadcrumbs.vue";
 import { startKeyEmitter } from "./logic_composables/key_emitter";
+import * as heimdall from "@/store/realtime/heimdall";
+import { useQueryClient } from "@tanstack/vue-query";
+import { useChangeSetsStore } from "@/store/change_sets.store";
+import { useAuthStore } from "@/store/auth.store";
 
 const props = defineProps<{
   workspacePk: string;
@@ -105,6 +109,8 @@ const props = defineProps<{
   secretId?: string;
 }>();
 
+const authStore = useAuthStore();
+const changeSetsStore = useChangeSetsStore();
 const featureFlagsStore = useFeatureFlagsStore();
 
 const wscs: WSCS = {
@@ -121,8 +127,8 @@ const compositionLink = computed(() => {
   const name = props.componentId
     ? "new-hotness-component"
     : props.viewId
-    ? "new-hotness-view"
-    : "new-hotness";
+      ? "new-hotness-view"
+      : "new-hotness";
   return {
     name,
     params: props,
@@ -132,13 +138,15 @@ const compositionLink = computed(() => {
 const route = useRoute();
 const router = useRouter();
 
+const queryClient = useQueryClient();
+
 onMounted(() => {
   // NOTE(nick,wendy): if you do not have the flag enabled, you will be re-directed. This will be
   // true for all of the new hotness routes, provided that they are all children of the parent
   // route that uses this component.
-  if (!featureFlagsStore.NEW_HOTNESS) {
-    router.push({ name: "workspace-index" });
-  }
+  if (!authStore.selectedOrDefaultAuthToken) return;
+  heimdall.init(authStore.selectedOrDefaultAuthToken, queryClient);
+  heimdall.niflheim(props.workspacePk, props.changeSetId, true);
 });
 
 const windowWidth = ref(window.innerWidth);
