@@ -7,6 +7,7 @@ use std::collections::{HashMap, HashSet};
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 
+use content_address::ContentAddress;
 use graph::correct_transforms::correct_transforms;
 use graph::detector::Update;
 use graph::{RebaseBatch, WorkspaceSnapshotGraph};
@@ -121,6 +122,8 @@ pub enum WorkspaceSnapshotError {
     MissingContentFromContentMap(ContentHash, ApprovalRequirementDefinitionId),
     #[error("missing content from store for id: {0}")]
     MissingContentFromStore(Ulid),
+    #[error("missing content from store for address: {0}")]
+    MissingContentFromStoreForAddress(ContentAddress),
     #[error("could not find a max vector clock for change set id {0}")]
     MissingVectorClockForChangeSet(ChangeSetId),
     #[error("monotonic error: {0}")]

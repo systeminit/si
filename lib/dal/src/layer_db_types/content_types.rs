@@ -42,6 +42,7 @@ pub type ContentTypeResult<T> = Result<T, ContentTypeError>;
 pub enum ContentTypes {
     Any(CasValue),
     AttributePrototype(AttributePrototypeContent),
+    AttributeValueSubscription(AttributeValueSubscriptionContent),
     Component(ComponentContent),
     DeprecatedAction(DeprecatedActionContent),
     DeprecatedActionBatch(DeprecatedActionBatchContent),
@@ -101,6 +102,7 @@ macro_rules! impl_into_content_types {
 
 impl_into_content_types!(DeprecatedActionPrototype);
 impl_into_content_types!(AttributePrototype);
+impl_into_content_types!(AttributeValueSubscription);
 impl_into_content_types!(Component);
 impl_into_content_types!(DeprecatedAction);
 impl_into_content_types!(DeprecatedActionBatch);
@@ -218,6 +220,16 @@ pub enum AttributePrototypeContent {
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct AttributePrototypeContentV1 {
     pub timestamp: Timestamp,
+}
+
+#[derive(Debug, Clone, EnumDiscriminants, Serialize, Deserialize, PartialEq)]
+pub enum AttributeValueSubscriptionContent {
+    V1(AttributeValueSubscriptionContentV1),
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+pub struct AttributeValueSubscriptionContentV1 {
+    pub json_pointer: String,
 }
 
 #[derive(Debug, Clone, EnumDiscriminants, Serialize, Deserialize, PartialEq)]

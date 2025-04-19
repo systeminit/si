@@ -681,46 +681,39 @@ impl AttributeValue {
                     .get_func_argument_node_weight()?
                     .name()
                     .to_owned();
-                let values_for_arg =
-                    match AttributePrototypeArgument::value_source_by_id(ctx, apa_id)
-                        .await?
-                        .ok_or(
-                            AttributeValueError::AttributePrototypeArgumentMissingValueSource(
-                                apa_id,
-                            ),
-                        )? {
-                        ValueSource::StaticArgumentValue(static_argument_value_id) => {
-                            vec![
-                                StaticArgumentValue::get_by_id(ctx, static_argument_value_id)
-                                    .await?
-                                    .value,
-                            ]
-                        }
-                        ValueSource::Secret(secret_id) => {
-                            vec![Secret::payload_for_prototype_execution(ctx, secret_id).await?]
-                        }
-                        other_source => {
-                            let mut values = vec![];
-
-                            for av_id in other_source
-                                .attribute_values_for_component_id(
-                                    ctx,
-                                    expected_source_component_id,
-                                )
+                let values_for_arg = match AttributePrototypeArgument::value_source(ctx, apa_id)
+                    .await?
+                    .ok_or(
+                        AttributeValueError::AttributePrototypeArgumentMissingValueSource(apa_id),
+                    )? {
+                    ValueSource::StaticArgumentValue(static_argument_value_id) => {
+                        vec![
+                            StaticArgumentValue::get_by_id(ctx, static_argument_value_id)
                                 .await?
-                            {
-                                input_attribute_value_ids.push(av_id);
-                                let attribute_value = AttributeValue::get_by_id(ctx, av_id).await?;
-                                // XXX: We need to properly handle the difference between "there is
-                                // XXX: no value" vs "the value is null", but right now we collapse
-                                // XXX: the two to just be "null" when passing these to a function.
-                                values
-                                    .push(attribute_value.view(ctx).await?.unwrap_or(Value::Null));
-                            }
+                                .value,
+                        ]
+                    }
+                    ValueSource::Secret(secret_id) => {
+                        vec![Secret::payload_for_prototype_execution(ctx, secret_id).await?]
+                    }
+                    other_source => {
+                        let mut values = vec![];
 
-                            values
+                        for av_id in other_source
+                            .attribute_values_for_component_id(ctx, expected_source_component_id)
+                            .await?
+                        {
+                            input_attribute_value_ids.push(av_id);
+                            let attribute_value = AttributeValue::get_by_id(ctx, av_id).await?;
+                            // XXX: We need to properly handle the difference between "there is
+                            // XXX: no value" vs "the value is null", but right now we collapse
+                            // XXX: the two to just be "null" when passing these to a function.
+                            values.push(attribute_value.view(ctx).await?.unwrap_or(Value::Null));
                         }
-                    };
+
+                        values
+                    }
+                };
 
                 func_binding_args
                     .entry(func_arg_name)
@@ -2089,14 +2082,11 @@ impl AttributeValue {
             {
                 let from_func_arg_id =
                     AttributePrototypeArgument::func_argument_id_by_id(ctx, from_apa_id).await?;
-                let from_value_source =
-                    AttributePrototypeArgument::value_source_by_id(ctx, from_apa_id)
-                        .await?
-                        .ok_or(
-                            AttributeValueError::MissingAttributePrototypeArgumentSource(
-                                from_apa_id,
-                            ),
-                        )?;
+                let from_value_source = AttributePrototypeArgument::value_source(ctx, from_apa_id)
+                    .await?
+                    .ok_or(
+                        AttributeValueError::MissingAttributePrototypeArgumentSource(from_apa_id),
+                    )?;
 
                 let dest_apa =
                     AttributePrototypeArgument::new(ctx, dest_prototype.id(), from_func_arg_id)

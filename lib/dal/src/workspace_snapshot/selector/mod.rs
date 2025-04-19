@@ -11,8 +11,9 @@ use si_events::{
     ContentHash, WorkspaceSnapshotAddress,
 };
 use si_id::{
-    ulid::Ulid, ApprovalRequirementDefinitionId, AttributeValueId, ComponentId, EntityId, FuncId,
-    InputSocketId, PropId, SchemaId, SchemaVariantId, UserPk, ViewId,
+    ulid::Ulid, ApprovalRequirementDefinitionId, AttributePrototypeArgumentId, AttributeValueId,
+    ComponentId, EntityId, FuncId, InputSocketId, PropId, SchemaId, SchemaVariantId, UserPk,
+    ViewId,
 };
 use strum::EnumDiscriminants;
 
@@ -20,6 +21,7 @@ use crate::{
     approval_requirement::{
         ApprovalRequirement, ApprovalRequirementApprover, ApprovalRequirementDefinition,
     },
+    attribute::prototype::argument::value_source::ValueSource,
     component::{ComponentResult, Connection},
     prop::PropResult,
     socket::connection_annotation::ConnectionAnnotation,
@@ -28,9 +30,12 @@ use crate::{
 };
 
 use super::{
-    graph::LineageId,
+    graph::{traits::attribute_prototype::argument::ArgumentValue, LineageId},
     node_weight::{category_node_weight::CategoryNodeKind, NodeWeight, OrderingNodeWeight},
-    traits::{diagram::view::ViewExt, prop::PropExt},
+    traits::{
+        attribute_prototype::argument::AttributePrototypeArgumentExt, diagram::view::ViewExt,
+        prop::PropExt,
+    },
     CycleCheckGuard, DependentValueRoot, EntityKindExt, InferredConnectionsWriteGuard,
     InputSocketExt, SchemaVariantExt, WorkspaceSnapshot, WorkspaceSnapshotResult,
 };
@@ -704,6 +709,27 @@ impl ApprovalRequirementExt for WorkspaceSnapshotSelector {
                     .get_approval_requirement_definition_by_id(ctx, id)
                     .await
             }
+        }
+    }
+}
+
+#[async_trait]
+impl AttributePrototypeArgumentExt for WorkspaceSnapshotSelector {
+    async fn value_source(
+        &self,
+        ctx: &DalContext,
+        apa_id: AttributePrototypeArgumentId,
+    ) -> WorkspaceSnapshotResult<Option<ValueSource>> {
+        match self {
+            Self::LegacySnapshot(snapshot) => snapshot.value_source(ctx, apa_id).await,
+        }
+    }
+    async fn argument_value(
+        &self,
+        apa_id: AttributePrototypeArgumentId,
+    ) -> WorkspaceSnapshotResult<Option<ArgumentValue>> {
+        match self {
+            Self::LegacySnapshot(snapshot) => snapshot.argument_value(apa_id).await,
         }
     }
 }

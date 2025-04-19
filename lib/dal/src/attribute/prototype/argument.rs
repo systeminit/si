@@ -9,8 +9,6 @@ use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::workspace_snapshot::graph::WorkspaceSnapshotGraphError;
-use crate::workspace_snapshot::node_weight::traits::SiNodeWeight;
 use crate::{
     change_set::ChangeSetError,
     func::argument::{FuncArgument, FuncArgumentError, FuncArgumentId},
@@ -19,10 +17,12 @@ use crate::{
     workspace_snapshot::{
         content_address::ContentAddressDiscriminants,
         edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants},
+        graph::WorkspaceSnapshotGraphError,
         node_weight::{
             AttributePrototypeArgumentNodeWeight, NodeWeight, NodeWeightDiscriminants,
             NodeWeightError,
         },
+        traits::attribute_prototype::argument::AttributePrototypeArgumentExt,
         WorkspaceSnapshotError,
     },
     AttributePrototype, AttributePrototypeId, AttributeValue, ComponentId, DalContext, HelperError,
@@ -77,14 +77,6 @@ pub enum AttributePrototypeArgumentError {
     Transactions(#[from] TransactionsError),
     #[error("could not acquire lock: {0}")]
     TryLock(#[from] tokio::sync::TryLockError),
-    #[error(
-    "PrototypeArgument {0} ArgumentValue edge pointing to unexpected content node weight kind: {1:?}"
-    )]
-    UnexpectedValueSourceContent(AttributePrototypeArgumentId, ContentAddressDiscriminants),
-    #[error(
-        "PrototypeArgument {0} ArgumentValue edge pointing to unexpected node weight kind: {1:?}"
-    )]
-    UnexpectedValueSourceNode(AttributePrototypeArgumentId, NodeWeightDiscriminants),
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
@@ -342,68 +334,10 @@ impl AttributePrototypeArgument {
     }
 
     pub async fn value_source(
-        &self,
-        ctx: &DalContext,
-    ) -> AttributePrototypeArgumentResult<Option<ValueSource>> {
-        Self::value_source_by_id(ctx, self.id).await
-    }
-
-    pub async fn value_source_by_id(
         ctx: &DalContext,
         apa_id: AttributePrototypeArgumentId,
     ) -> AttributePrototypeArgumentResult<Option<ValueSource>> {
-        let workspace_snapshot = ctx.workspace_snapshot()?;
-
-        if let Some(target) = workspace_snapshot
-            .outgoing_targets_for_edge_weight_kind(
-                apa_id,
-                EdgeWeightKindDiscriminants::PrototypeArgumentValue,
-            )
-            .await?
-            .into_iter()
-            .next()
-        {
-            match workspace_snapshot.get_node_weight(target).await? {
-                NodeWeight::Prop(inner) => {
-                    return Ok(Some(ValueSource::Prop(inner.id().into())));
-                }
-                NodeWeight::Secret(inner) => {
-                    return Ok(Some(ValueSource::Secret(inner.id().into())));
-                }
-                NodeWeight::Content(inner) => {
-                    let discrim: ContentAddressDiscriminants = inner.content_address().into();
-                    return Ok(Some(match discrim {
-                        ContentAddressDiscriminants::InputSocket => {
-                            ValueSource::InputSocket(inner.id().into())
-                        }
-                        ContentAddressDiscriminants::OutputSocket => {
-                            ValueSource::OutputSocket(inner.id().into())
-                        }
-                        ContentAddressDiscriminants::StaticArgumentValue => {
-                            ValueSource::StaticArgumentValue(inner.id().into())
-                        }
-                        other => {
-                            return Err(
-                                AttributePrototypeArgumentError::UnexpectedValueSourceContent(
-                                    apa_id, other,
-                                ),
-                            );
-                        }
-                    }));
-                }
-                NodeWeight::InputSocket(input_socket) => {
-                    return Ok(Some(ValueSource::InputSocket(input_socket.id().into())));
-                }
-                other => {
-                    return Err(AttributePrototypeArgumentError::UnexpectedValueSourceNode(
-                        apa_id,
-                        other.into(),
-                    ));
-                }
-            }
-        }
-
-        Ok(None)
+        Ok(ctx.workspace_snapshot()?.value_source(ctx, apa_id).await?)
     }
 
     pub async fn set_value_source(

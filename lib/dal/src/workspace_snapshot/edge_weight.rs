@@ -4,6 +4,8 @@ use crate::workspace_snapshot::graph::deprecated::v1::DeprecatedEdgeWeightV1;
 use serde::{Deserialize, Serialize};
 use strum::EnumDiscriminants;
 
+use super::content_address::ContentAddress;
+
 pub mod deprecated;
 
 /// This type is postcard serialized and new enum variants *MUST* be added to the end *ONLY*.
@@ -42,6 +44,12 @@ pub enum EdgeWeightKind {
     /// [`AttributePrototypeArgument`][crate::AttributePrototypeArgument] to the
     /// source for the value for this argument
     PrototypeArgumentValue,
+    /// An edge from an
+    /// [`AttributePrototypeArgument`][crate::AttributePrototypeArgument] representing a value
+    /// from a component, where the edge target points at the component/root av id, and the
+    /// optional [`ContentAddress`] points at a path to the AV (e.g.
+    /// `/domain/PolicyDocument/Statements/0/Operation`).
+    PrototypeArgumentValueSubscription(ContentAddress),
     Proxy,
     /// Indicates the "root" [`AttributeValue`](crate::AttributeValue) for a [`Component`](crate::Component).
     ///

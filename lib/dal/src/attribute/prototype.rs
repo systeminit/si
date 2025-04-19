@@ -481,7 +481,7 @@ impl AttributePrototype {
 
         let mut input_socket_ids = Vec::<InputSocketId>::new();
         for apa_id in apa_ids {
-            let maybe_value_source = AttributePrototypeArgument::value_source_by_id(ctx, apa_id)
+            let maybe_value_source = AttributePrototypeArgument::value_source(ctx, apa_id)
                 .await
                 .map_err(|e| AttributePrototypeError::AttributePrototypeArgument(e.to_string()))?;
             if let Some(ValueSource::InputSocket(socket_id)) = maybe_value_source {

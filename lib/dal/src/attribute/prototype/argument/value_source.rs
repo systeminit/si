@@ -42,6 +42,7 @@ pub type ValueSourceResult<T> = Result<T, ValueSourceError>;
 #[remain::sorted]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum ValueSource {
+    AttributeValue(AttributeValueId),
     InputSocket(InputSocketId),
     OutputSocket(OutputSocketId),
     Prop(PropId),

@@ -1,14 +1,16 @@
 use petgraph::prelude::*;
-use si_id::ViewId;
+use si_id::{AttributeValueId, ViewId};
 
 use crate::{
     component::ComponentResult,
     workspace_snapshot::{
         edge_weight::EdgeWeightKindDiscriminants,
-        graph::{WorkspaceSnapshotGraphResult, WorkspaceSnapshotGraphV4},
+        graph::{
+            traits::component::ComponentExt, WorkspaceSnapshotGraphResult, WorkspaceSnapshotGraphV4,
+        },
         node_weight::NodeWeightDiscriminants,
     },
-    ComponentError, ComponentId, SchemaVariantId, WorkspaceSnapshotError,
+    ComponentError, ComponentId, EdgeWeightKind, SchemaVariantId, WorkspaceSnapshotError,
 };
 
 impl WorkspaceSnapshotGraphV4 {
@@ -94,5 +96,32 @@ impl WorkspaceSnapshotGraphV4 {
         }
 
         Ok(results)
+    }
+}
+
+impl ComponentExt for WorkspaceSnapshotGraphV4 {
+    fn root_attribute_value(
+        &self,
+        component_id: ComponentId,
+    ) -> WorkspaceSnapshotGraphResult<AttributeValueId> {
+        let component_index = self.get_node_index_by_id(component_id)?;
+        let root_index = self.target(component_index, EdgeWeightKind::Root)?;
+        let root_id = self
+            .get_node_weight(root_index)?
+            // Make sure it's an AttributeValue before we cast to AttributeValueId
+            .get_attribute_value_node_weight()?
+            .id()
+            .into();
+        Ok(root_id)
+    }
+
+    fn resolve_attribute_value(
+        &self,
+        component_id: ComponentId,
+        _json_pointer: &str,
+    ) -> WorkspaceSnapshotGraphResult<Option<AttributeValueId>> {
+        let root = self.root_attribute_value(component_id)?;
+        // TODO actually look at the subscription
+        Ok(Some(root))
     }
 }

@@ -38,6 +38,8 @@ pub use v2::WorkspaceSnapshotGraphV2;
 pub use v3::WorkspaceSnapshotGraphV3;
 pub use v4::WorkspaceSnapshotGraphV4;
 
+use super::content_address::ContentAddressDiscriminants;
+
 pub type LineageId = Ulid;
 pub type WorkspaceSnapshotGraphVCurrent = WorkspaceSnapshotGraphV4;
 
@@ -99,6 +101,14 @@ pub enum WorkspaceSnapshotGraphError {
     TooManyOrderingForNode(NodeIndex),
     #[error("NodeIndex has too many Prop children: {0:?}")]
     TooManyPropForNode(NodeIndex),
+    #[error(
+        "PrototypeArgument {0:?} ArgumentValue edge pointing to unexpected content node weight kind: {1:?}"
+        )]
+    UnexpectedValueSourceContent(NodeIndex, ContentAddressDiscriminants),
+    #[error(
+        "PrototypeArgument {0:?} ArgumentValue edge pointing to EdgeWeightKindDiscriminants kind: {1:?}"
+    )]
+    UnexpectedValueSourceNode(NodeIndex, EdgeWeightKindDiscriminants),
     #[error("Removing View would orphan items: {0:?}")]
     ViewRemovalWouldOrphanItems(Vec<Ulid>),
     #[error("Workspace Snapshot has conflicts and must be rebased")]

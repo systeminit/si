@@ -922,19 +922,20 @@ impl Component {
 
         let mut new_value_sources = vec![];
 
-        for apa_id in &apa_ids {
-            let apa = AttributePrototypeArgument::get_by_id(ctx, *apa_id).await?;
+        for &apa_id in &apa_ids {
+            let func_arg_id =
+                AttributePrototypeArgument::func_argument_id_by_id(ctx, apa_id).await?;
 
-            let func_arg = apa.func_argument(ctx).await?;
-
-            if let Some(source) = apa.value_source(ctx).await? {
+            if let Some(source) =
+                AttributePrototypeArgument::value_source(ctx, apa_id).await?
+            {
                 match source {
                     ValueSource::InputSocket(input_socket_id) => {
                         // find matching input socket in self
                         let input_socket = InputSocket::get_by_id(ctx, input_socket_id).await?;
                         match self_input_sockets.get(input_socket.name()) {
                             Some(self_input_socket_id) => new_value_sources.push((
-                                func_arg.id,
+                                func_arg_id,
                                 ValueSource::InputSocket(*self_input_socket_id),
                             )),
                             None => {
@@ -950,7 +951,7 @@ impl Component {
                         let output_socket = OutputSocket::get_by_id(ctx, output_socket_id).await?;
                         match self_output_sockets.get(output_socket.name()) {
                             Some(self_output_socket_id) => new_value_sources.push((
-                                func_arg.id,
+                                func_arg_id,
                                 ValueSource::OutputSocket(*self_output_socket_id),
                             )),
                             None => {
@@ -962,7 +963,7 @@ impl Component {
                         let path = Prop::path_by_id(ctx, prop_id).await?.as_owned_parts();
                         match self_props.get(&path) {
                             Some(self_prop_id) => new_value_sources
-                                .push((func_arg.id, ValueSource::Prop(*self_prop_id))),
+                                .push((func_arg_id, ValueSource::Prop(*self_prop_id))),
                             None => {
                                 return Ok(());
                             }
@@ -970,7 +971,7 @@ impl Component {
                     }
                     ValueSource::Secret(_) | ValueSource::StaticArgumentValue(_) => {
                         // Should we determine if this secret is still compatible?
-                        new_value_sources.push((func_arg.id, source));
+                        new_value_sources.push((func_arg_id, source));
                     }
                 }
             }
@@ -2784,7 +2785,7 @@ impl Component {
                     // if any of the arguments are for an Input Socket, that means this value *could* have
                     // been set by a socket
                     for attr_arg_id in attribute_prototype_arg_ids {
-                        let value_source = AttributePrototypeArgument::value_source_by_id(
+                        let value_source = AttributePrototypeArgument::value_source(
                             ctx,
                             attr_arg_id,
                         )

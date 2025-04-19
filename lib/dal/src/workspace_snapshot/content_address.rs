@@ -4,7 +4,16 @@ use strum::EnumDiscriminants;
 use si_events::ContentHash;
 
 #[derive(
-    EnumDiscriminants, Debug, Serialize, Deserialize, Copy, Clone, PartialEq, Eq, strum::Display,
+    EnumDiscriminants,
+    Debug,
+    Serialize,
+    Deserialize,
+    Copy,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+    strum::Display,
 )]
 #[strum_discriminants(derive(strum::Display, Serialize, Deserialize))]
 /// The type of the object, and the content-addressable-storage address (content hash)

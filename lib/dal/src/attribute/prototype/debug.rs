@@ -136,7 +136,7 @@ impl AttributePrototypeDebugView {
 
                 let func_arg_name = FuncArgument::get_name_by_id(ctx, func_arg_id).await?;
                 let value_source =
-                    AttributePrototypeArgument::value_source_by_id(ctx, attribute_prototype_arg_id)
+                    AttributePrototypeArgument::value_source(ctx, attribute_prototype_arg_id)
                         .await?
                         .ok_or(
                             AttributeValueError::AttributePrototypeArgumentMissingValueSource(

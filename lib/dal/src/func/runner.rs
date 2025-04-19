@@ -1410,7 +1410,7 @@ impl FuncRunner {
                     None => continue,
                 };
 
-                match AttributePrototypeArgument::value_source_by_id(
+                match AttributePrototypeArgument::value_source(
                     ctx,
                     attribute_prototype_argument_id,
                 )
