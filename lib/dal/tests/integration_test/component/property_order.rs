@@ -1,6 +1,7 @@
 use dal::{
     AttributeValue,
     DalContext,
+    diagram::view::View,
     prop::Prop,
     schema::variant::authoring::VariantAuthoringClient,
 };
@@ -9,10 +10,12 @@ use dal_test::{
         ExpectComponent,
         ExpectComponentProp,
         ExpectSchemaVariant,
-        ExpectView,
         IntoPropPath,
     },
-    helpers::ChangeSetTestHelpers,
+    helpers::{
+        ChangeSetTestHelpers,
+        component,
+    },
     test,
 };
 use pretty_assertions_sorted::assert_eq;
@@ -152,8 +155,8 @@ async fn property_order_remains_after_update(ctx: &mut DalContext) -> dal_test::
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
     // Create components and verify they retain order on start
-    let abcdef_component = abcdef_schema.create_component_on_default_view(ctx).await;
-    let fedcba_component = fedcba_schema.create_component_on_default_view(ctx).await;
+    let abcdef_component = ExpectComponent(component::create(ctx, abcdef_schema, "abcdef").await?);
+    let fedcba_component = ExpectComponent(component::create(ctx, fedcba_schema, "fedcba").await?);
 
     let abcdef = abcdef_component.prop(ctx, ["root", "domain"]).await;
     let fedcba = fedcba_component.prop(ctx, ["root", "domain"]).await;
@@ -337,7 +340,7 @@ async fn child_property_value_remains_after_update_and_paste(
 
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
-    let default_view_id = ExpectView::get_id_for_default(ctx).await;
+    let default_view_id = View::get_id_for_default(ctx).await?;
 
     // Ensure they have the right values after copy/pasting
     let component_copy = ExpectComponent(

@@ -18,12 +18,14 @@ use super::{
     AttributeValueError,
     AttributeValueId,
     AttributeValueResult,
+    subscription::ValueSubscription,
 };
 use crate::{
     Component,
     ComponentError,
     ComponentId,
     DalContext,
+    EdgeWeightKind,
     Prop,
     PropKind,
     Secret,
@@ -171,6 +173,8 @@ impl DependentValueGraph {
     ) -> AttributeValueResult<()> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
+        // Map from subscribed_to to all its subscribers
+        let mut subscriptions: HashMap<AttributeValueId, Vec<AttributeValueId>> = HashMap::new();
         let mut controlling_funcs_for_component = HashMap::new();
         let mut work_queue = VecDeque::from_iter(values);
         let mut seen_list = HashSet::new();
@@ -185,6 +189,56 @@ impl DependentValueGraph {
 
             let current_component_id =
                 AttributeValue::component_id(ctx, current_attribute_value.id()).await?;
+
+            // Look for subscription edges to this AV, and resolve the paths to figure out what
+            // AV each subscription depends on
+            for (edge, subscriber_apa_id, _subscribed_to_av_id) in workspace_snapshot
+                .edges_directed(current_attribute_value.id(), Direction::Incoming)
+                .await?
+            {
+                if let EdgeWeightKind::ValueSubscription(path) = edge.kind {
+                    let subscription = ValueSubscription {
+                        attribute_value_id: current_attribute_value.id(),
+                        path,
+                    };
+                    if let Some(resolved_av_id) = subscription.resolve(ctx).await? {
+                        if let Some(subscriber_ap_id) = workspace_snapshot
+                            .source_opt(subscriber_apa_id, EdgeWeightKind::PrototypeArgument)
+                            .await?
+                        {
+                            for subscriber_av_ulid in workspace_snapshot
+                                .incoming_sources_for_edge_weight_kind(
+                                    subscriber_ap_id,
+                                    EdgeWeightKindDiscriminants::Prototype,
+                                )
+                                .await?
+                            {
+                                let subscriber_av_id = subscriber_av_ulid.into();
+                                if seen_list.contains(&resolved_av_id) {
+                                    // 1. If we've already processed the subscribed_to, add its subscribers to the work queue
+                                    work_queue
+                                        .push_back(WorkQueueValue::Discovered(subscriber_av_id));
+                                    self.value_depends_on(subscriber_av_id, resolved_av_id);
+                                } else {
+                                    // 2. If we *haven't* seen the subscribed_to, we may see it later, so stuff its subscribers
+                                    //    in the subscriptions map
+                                    let subscribers =
+                                        subscriptions.entry(resolved_av_id).or_default();
+                                    subscribers.push(subscriber_av_id);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // If we already discovered subscriptions to us, they are just as dirty as us
+            if let Some(subscribers) = subscriptions.get(&current_attribute_value.id()) {
+                for &subscriber_av_id in subscribers {
+                    work_queue.push_back(WorkQueueValue::Discovered(subscriber_av_id));
+                    self.value_depends_on(subscriber_av_id, current_attribute_value.id());
+                }
+            }
 
             // We need to be sure to only construct the graph out of
             // "controlling" values. However, controlled values can still be

@@ -1,5 +1,3 @@
-use core::fmt;
-
 use si_events::ulid::Ulid;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -17,7 +15,10 @@ use crate::{
     Prop,
     PropId,
     SecretId,
-    attribute::value::AttributeValueError,
+    attribute::value::{
+        AttributeValueError,
+        subscription::ValueSubscription,
+    },
     prop::PropError,
     socket::{
         input::{
@@ -37,7 +38,7 @@ pub enum ValueSourceError {
     Component(#[from] Box<ComponentError>),
     #[error("source has more than one attribute values when only one was expected: {0}")]
     ComponentHasMultipleValues(ComponentId, ValueSource),
-    #[error("source has no attribute values for component {1}: {0}")]
+    #[error("source has no attribute values for component {0} at path {1:?}")]
     ComponentHasNoValues(ComponentId, ValueSource),
     #[error("input socket error: {0}")]
     InputSocket(#[from] InputSocketError),
@@ -45,26 +46,21 @@ pub enum ValueSourceError {
     OutputSocket(#[from] OutputSocketError),
     #[error("prop error: {0}")]
     Prop(#[from] PropError),
-    #[error("source has no attribute values: {0}")]
+    #[error("source has no attribute values: {0:?}")]
     SourceHasNoValues(ValueSource),
 }
 
 pub type ValueSourceResult<T> = Result<T, ValueSourceError>;
 
 #[remain::sorted]
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ValueSource {
     InputSocket(InputSocketId),
     OutputSocket(OutputSocketId),
     Prop(PropId),
     Secret(SecretId),
     StaticArgumentValue(StaticArgumentValueId),
-}
-
-impl From<ValueSource> for si_events::ulid::Ulid {
-    fn from(value_source: ValueSource) -> Self {
-        value_source.into_inner_id()
-    }
+    ValueSubscription(ValueSubscription),
 }
 
 impl From<InputSocketId> for ValueSource {
@@ -99,20 +95,19 @@ impl ValueSource {
         ctx: &DalContext,
     ) -> ValueSourceResult<Vec<AttributeValueId>> {
         Ok(match self {
-            Self::Prop(prop_id) => {
-                Prop::all_attribute_values_everywhere_for_prop_id(ctx, *prop_id).await?
+            Self::InputSocket(ip_id) => {
+                InputSocket::all_attribute_values_everywhere_for_input_socket_id(ctx, *ip_id)
+                    .await?
             }
             Self::OutputSocket(ep_id) => {
                 OutputSocket::all_attribute_values_everywhere_for_output_socket_id(ctx, *ep_id)
                     .await?
             }
-            Self::InputSocket(ip_id) => {
-                InputSocket::all_attribute_values_everywhere_for_input_socket_id(ctx, *ip_id)
-                    .await?
+            Self::Prop(prop_id) => {
+                Prop::all_attribute_values_everywhere_for_prop_id(ctx, *prop_id).await?
             }
-            Self::Secret(_) => return Err(ValueSourceError::SourceHasNoValues(*self)),
-            Self::StaticArgumentValue(_) => {
-                return Err(ValueSourceError::SourceHasNoValues(*self));
+            Self::Secret(_) | Self::StaticArgumentValue(_) | Self::ValueSubscription(_) => {
+                return Err(ValueSourceError::SourceHasNoValues(self.clone()));
             }
         })
     }
@@ -124,6 +119,9 @@ impl ValueSource {
             ValueSource::Prop(id) => id.into(),
             ValueSource::Secret(id) => id.into(),
             ValueSource::StaticArgumentValue(id) => id.into(),
+            ValueSource::ValueSubscription(ValueSubscription {
+                attribute_value_id, ..
+            }) => attribute_value_id.into(),
         }
     }
 
@@ -168,34 +166,15 @@ impl ValueSource {
         if values.len() > 1 {
             return Err(ValueSourceError::ComponentHasMultipleValues(
                 component_id,
-                *self,
+                self.clone(),
             ));
         }
         match values.first() {
             Some(value) => Ok(*value),
-            None => Err(ValueSourceError::ComponentHasNoValues(component_id, *self)),
-        }
-    }
-}
-
-impl fmt::Display for ValueSource {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            ValueSource::InputSocket(input_socket_id) => {
-                write!(f, "ValueSource::InputSocket({input_socket_id})")
-            }
-            ValueSource::OutputSocket(output_socket_id) => {
-                write!(f, "ValueSource::OutputSocket({output_socket_id})")
-            }
-            ValueSource::Prop(prop_id) => {
-                write!(f, "ValueSource::Prop({prop_id})")
-            }
-            ValueSource::Secret(secret_id) => {
-                write!(f, "ValueSource::Secret({secret_id})")
-            }
-            ValueSource::StaticArgumentValue(id) => {
-                write!(f, "ValueSource::StaticArgumentValue({id})")
-            }
+            None => Err(ValueSourceError::ComponentHasNoValues(
+                component_id,
+                self.clone(),
+            )),
         }
     }
 }

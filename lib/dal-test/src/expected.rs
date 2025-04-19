@@ -23,24 +23,10 @@ use dal::{
     SchemaVariantId,
     component::socket::ComponentInputSocket,
     diagram::{
-        geometry::{
-            Geometry,
-            RawGeometry,
-        },
-        view::{
-            View,
-            ViewId,
-        },
+        geometry::RawGeometry,
+        view::View,
     },
     func::authoring::FuncAuthoringClient,
-    management::{
-        ManagementFuncReturn,
-        ManagementOperator,
-        prototype::{
-            ManagementPrototype,
-            ManagementPrototypeError,
-        },
-    },
     prop::{
         Prop,
         PropPath,
@@ -56,10 +42,18 @@ use derive_more::{
     Into,
 };
 use serde_json::Value;
-use si_id::ManagementPrototypeId;
-use veritech_client::ManagementFuncStatus;
 
-use crate::helpers::ChangeSetTestHelpers;
+use crate::helpers::{
+    ChangeSetTestHelpers,
+    component,
+    schema::{
+        SchemaKey as _,
+        variant::{
+            self,
+            SchemaVariantKey,
+        },
+    },
+};
 
 ///
 /// Things that you can pass as prop paths / ids
@@ -118,39 +112,6 @@ impl IntoPropPath for PropPath {
 impl<const N: usize> IntoPropPath for [&str; N] {
     fn into_prop_path(self) -> PropPath {
         PropPath::new(self)
-    }
-}
-
-///
-/// Things that you can pass as schema ids
-///
-pub trait SchemaKey {
-    ///
-    /// Turn this into a real SchemaId
-    ///
-    async fn lookup_schema(&self, ctx: &DalContext) -> SchemaId;
-}
-impl SchemaKey for SchemaId {
-    async fn lookup_schema(&self, _: &DalContext) -> SchemaId {
-        *self
-    }
-}
-impl SchemaKey for ExpectSchema {
-    async fn lookup_schema(&self, _: &DalContext) -> SchemaId {
-        self.id()
-    }
-}
-impl SchemaKey for Schema {
-    async fn lookup_schema(&self, _: &DalContext) -> SchemaId {
-        self.id()
-    }
-}
-impl SchemaKey for str {
-    async fn lookup_schema(&self, ctx: &DalContext) -> SchemaId {
-        Schema::get_by_name(ctx, self)
-            .await
-            .expect("find schema by name")
-            .id()
     }
 }
 
@@ -247,7 +208,12 @@ impl From<Schema> for ExpectSchema {
 
 impl ExpectSchema {
     pub async fn find(ctx: &DalContext, name: impl AsRef<str>) -> ExpectSchema {
-        ExpectSchema(name.as_ref().lookup_schema(ctx).await)
+        ExpectSchema(
+            name.as_ref()
+                .lookup_schema(ctx)
+                .await
+                .expect("lookup schema"),
+        )
     }
 
     pub async fn create(ctx: &DalContext) -> ExpectSchema {
@@ -277,24 +243,6 @@ impl ExpectSchema {
             .expect("get default variant id");
         ExpectSchemaVariant(schema_variant_id)
     }
-
-    pub async fn create_component(self, ctx: &DalContext) -> ExpectComponent {
-        self.default_variant(ctx)
-            .await
-            .create_component_on_default_view(ctx)
-            .await
-    }
-
-    pub async fn create_named_component(
-        self,
-        ctx: &DalContext,
-        name: impl AsRef<str>,
-    ) -> ExpectComponent {
-        self.default_variant(ctx)
-            .await
-            .create_named_component_on_default_view(ctx, name)
-            .await
-    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Deref, AsRef, From, Into)]
@@ -315,15 +263,6 @@ impl ExpectFunc {
         FuncAuthoringClient::save_code(ctx, self.id(), code.into())
             .await
             .expect("update code")
-    }
-
-    async fn management_prototype_id(self, ctx: &DalContext) -> ManagementPrototypeId {
-        let mut prototype_ids = ManagementPrototype::list_ids_for_func_id(ctx, self.id())
-            .await
-            .expect("list management prototypes");
-        let prototype_id = prototype_ids.pop().expect("management prototype exists");
-        assert!(prototype_ids.is_empty());
-        prototype_id
     }
 }
 
@@ -350,50 +289,10 @@ impl ExpectSchemaVariant {
         name: impl Into<String>,
         asset_func: impl Into<String>,
     ) -> ExpectSchemaVariant {
-        // Create an asset with a corresponding asset func. After that, commit.
-        let variant: ExpectSchemaVariant = VariantAuthoringClient::create_schema_and_variant(
-            ctx, name, None, None, "test", "FFFFFF",
-        )
-        .await
-        .expect("unable to create schema and variant")
-        .id
-        .into();
-        variant.update_asset_func(ctx, asset_func).await;
-        variant.regenerate(ctx).await;
-        variant
-    }
-
-    pub async fn create_management_func(
-        self,
-        ctx: &DalContext,
-        code: impl Into<String>,
-    ) -> ExpectFunc {
-        let func: ExpectFunc =
-            FuncAuthoringClient::create_new_management_func(ctx, None, self.id())
-                .await
-                .expect("create management func")
-                .into();
-        func.update_code(ctx, code).await;
-        func
-    }
-
-    pub async fn update_asset_func(self, ctx: &DalContext, asset_func: impl Into<String>) {
-        let schema = self.schema(ctx).await.schema(ctx).await;
-        let variant = self.schema_variant(ctx).await;
-        VariantAuthoringClient::save_variant_content(
-            ctx,
-            self.id(),
-            schema.name,
-            variant.display_name(),
-            variant.category(),
-            variant.description(),
-            variant.link(),
-            variant.color(),
-            variant.component_type(),
-            Some(asset_func.into()),
-        )
-        .await
-        .expect("update asset func")
+        let variant_id = variant::create(ctx, name, asset_func)
+            .await
+            .expect("create variant");
+        variant_id.into()
     }
 
     pub async fn regenerate(self, ctx: &DalContext) -> ExpectSchemaVariant {
@@ -468,22 +367,10 @@ impl ExpectSchemaVariant {
     }
 
     pub async fn create_component_on_default_view(self, ctx: &DalContext) -> ExpectComponent {
-        self.create_named_component_on_default_view(ctx, generate_fake_name())
-            .await
-    }
-
-    pub async fn create_named_component_on_default_view(
-        self,
-        ctx: &DalContext,
-        name: impl AsRef<str>,
-    ) -> ExpectComponent {
-        let view_id = ExpectView::get_id_for_default(ctx).await;
-
         ExpectComponent(
-            Component::new(ctx, name.as_ref().to_string(), self.0, view_id)
+            component::create(ctx, self, generate_fake_name())
                 .await
-                .expect("create component")
-                .id(),
+                .expect("create component"),
         )
     }
 }
@@ -498,22 +385,20 @@ impl From<Component> for ExpectComponent {
 }
 
 impl ExpectComponent {
-    pub async fn create(ctx: &mut DalContext, schema_name: impl AsRef<str>) -> ExpectComponent {
-        ExpectSchema::find(ctx, schema_name)
-            .await
-            .create_component(ctx)
-            .await
+    pub async fn create(ctx: &mut DalContext, variant: impl SchemaVariantKey) -> ExpectComponent {
+        Self::create_named(ctx, variant, generate_fake_name()).await
     }
 
     pub async fn create_named(
         ctx: &mut DalContext,
-        schema_name: impl AsRef<str>,
+        variant: impl SchemaVariantKey,
         name: impl AsRef<str>,
     ) -> ExpectComponent {
-        ExpectSchema::find(ctx, schema_name)
-            .await
-            .create_named_component(ctx, name)
-            .await
+        ExpectComponent(
+            component::create(ctx, variant, name)
+                .await
+                .expect("create component"),
+        )
     }
 
     pub async fn list(ctx: &DalContext) -> Vec<ExpectComponent> {
@@ -557,7 +442,9 @@ impl ExpectComponent {
     }
 
     pub async fn geometry_for_default(self, ctx: &DalContext) -> RawGeometry {
-        let view_id = ExpectView::get_id_for_default(ctx).await;
+        let view_id = View::get_id_for_default(ctx)
+            .await
+            .expect("get default view");
 
         self.component(ctx)
             .await
@@ -658,50 +545,10 @@ impl ExpectComponent {
             .expect("could not upsert parent");
     }
 
-    async fn view_id(self, ctx: &DalContext) -> ViewId {
-        let mut geometry_ids = Geometry::list_ids_by_component(ctx, self.id())
-            .await
-            .expect("list_ids_by_component");
-        let geometry_id = geometry_ids.pop().expect("at least one view for component");
-        assert!(geometry_ids.is_empty());
-        Geometry::get_view_id_by_id(ctx, geometry_id)
-            .await
-            .expect("get view id")
-    }
-
     pub async fn execute_management_func(self, ctx: &DalContext, func: ExpectFunc) {
-        let prototype_id = func.management_prototype_id(ctx).await;
-        let management_prototype = ManagementPrototype::get_by_id_opt(ctx, prototype_id)
+        component::execute_management_func(ctx, self.0, func.id())
             .await
-            .expect("get management prototype by func id")
-            .expect("management prototype exists");
-        let mut execution_result = management_prototype
-            .execute(ctx, self.id(), Some(self.view_id(ctx).await))
-            .await
-            .map_err(|err| {
-                if let ManagementPrototypeError::FuncExecutionFailure(ref err) = err {
-                    println!("Error: {}", err);
-                }
-                err
-            })
-            .expect("should execute management prototype func");
-        let result: ManagementFuncReturn = execution_result
-            .result
-            .take()
-            .expect("should have a result success")
-            .try_into()
-            .expect("should be a valid management func return");
-
-        assert_eq!(ManagementFuncStatus::Ok, result.status);
-
-        let operations = result.operations.expect("should have operations");
-
-        ManagementOperator::new(ctx, self.id(), operations, execution_result, None)
-            .await
-            .expect("should create operator")
-            .operate()
-            .await
-            .expect("should operate");
+            .expect("execute management func")
     }
 }
 
@@ -1118,7 +965,7 @@ impl ExpectPropertyEditorValues {
     pub async fn assemble(ctx: &DalContext, id: impl Into<ComponentId>) -> PropertyEditorValues {
         PropertyEditorValues::assemble(ctx, id.into())
             .await
-            .expect("able to list prop values")
+            .expect("unable to list prop values")
     }
 }
 
@@ -1156,12 +1003,6 @@ pub async fn commit_and_update_snapshot_to_visibility(ctx: &mut DalContext) {
 pub struct ExpectView;
 
 impl ExpectView {
-    pub async fn get_id_for_default(ctx: &DalContext) -> ViewId {
-        View::get_id_for_default(ctx)
-            .await
-            .expect("get default view id")
-    }
-
     pub async fn create(ctx: &DalContext) -> View {
         let name = generate_fake_name();
         View::new(ctx, name).await.expect("create view")

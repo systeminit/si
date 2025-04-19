@@ -782,6 +782,7 @@ impl WorkspaceSnapshotGraphV3 {
                     EdgeWeightKindDiscriminants::SocketValue => "purple",
                     EdgeWeightKindDiscriminants::Use => "black",
                     EdgeWeightKindDiscriminants::ValidationOutput => "darkcyan",
+                    EdgeWeightKindDiscriminants::ValueSubscription => "green",
                 };
 
                 match edgeref.weight().kind() {
@@ -1429,6 +1430,7 @@ impl WorkspaceSnapshotGraphV3 {
                     // This is the key representing an element in a container type corresponding
                     // to an AttributePrototype
                     EdgeWeightKind::Prototype(Some(key)) => hasher.update(key.as_bytes()),
+                    EdgeWeightKind::ValueSubscription(path) => hasher.update(path.as_bytes()),
 
                     // Nothing to do, as these EdgeWeightKind do not encode extra information
                     // in the edge itself.

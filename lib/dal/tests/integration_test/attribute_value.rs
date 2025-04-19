@@ -11,6 +11,8 @@ use dal_test::{
 use pretty_assertions_sorted::assert_eq;
 use serde_json::json;
 
+mod subscription;
+
 #[test]
 async fn arguments_for_prototype_function_execution(ctx: &mut DalContext) -> Result<()> {
     // Create a component and commit. For context, the test exclusive schema has the identity

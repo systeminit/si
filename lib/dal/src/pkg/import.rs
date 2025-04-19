@@ -1959,7 +1959,7 @@ pub async fn attach_resource_payload_to_value(
         Some(apa_id) => {
             if !{
                 if let Some(ValueSource::Prop(prop_id)) =
-                    AttributePrototypeArgument::value_source_by_id(ctx, apa_id).await?
+                    AttributePrototypeArgument::value_source_opt(ctx, apa_id).await?
                 {
                     prop_id == source_prop_id
                 } else {

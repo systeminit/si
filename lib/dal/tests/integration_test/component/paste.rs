@@ -152,7 +152,7 @@ async fn paste_component_with_dependent_value(ctx: &mut DalContext) -> Result<()
 
 #[test]
 async fn paste_components_with_connections(ctx: &mut DalContext) -> Result<()> {
-    let test = ConnectableTest::setup(ctx).await;
+    let test = ConnectableTest::setup(ctx).await?;
 
     // let out_one = OutputSocket::find_with_name_or_error(ctx, "One", connectable.id()).await?;
     // let one = InputSocket::find_with_name_or_error(ctx, "One", connectable.id()).await?;
@@ -305,7 +305,7 @@ async fn paste_components_with_connections(ctx: &mut DalContext) -> Result<()> {
 
 #[test]
 async fn paste_components_with_connections_opposite_order(ctx: &mut DalContext) -> Result<()> {
-    let test = ConnectableTest::setup(ctx).await;
+    let test = ConnectableTest::setup(ctx).await?;
 
     // let out_one = OutputSocket::find_with_name_or_error(ctx, "One", connectable.id()).await?;
     // let one = InputSocket::find_with_name_or_error(ctx, "One", connectable.id()).await?;
@@ -458,7 +458,7 @@ async fn paste_components_with_connections_opposite_order(ctx: &mut DalContext) 
 
 #[test]
 async fn paste_child_and_parent(ctx: &mut DalContext) -> Result<()> {
-    let test = ConnectableTest::setup(ctx).await;
+    let test = ConnectableTest::setup(ctx).await?;
 
     // parent and child
     let parent = test.create_parent(ctx, "parent").await?;
@@ -519,7 +519,7 @@ async fn paste_child_and_parent(ctx: &mut DalContext) -> Result<()> {
 
 #[test]
 async fn paste_child_and_parent_opposite_order(ctx: &mut DalContext) -> Result<()> {
-    let test = ConnectableTest::setup(ctx).await;
+    let test = ConnectableTest::setup(ctx).await?;
 
     // parent and child
     let parent = test.create_parent(ctx, "parent").await?;
@@ -580,7 +580,7 @@ async fn paste_child_and_parent_opposite_order(ctx: &mut DalContext) -> Result<(
 
 #[test]
 async fn paste_child_only(ctx: &mut DalContext) -> Result<()> {
-    let test = ConnectableTest::setup(ctx).await;
+    let test = ConnectableTest::setup(ctx).await?;
 
     // parent and child
     let parent = test.create_parent(ctx, "parent").await?;
@@ -634,7 +634,7 @@ async fn paste_child_only(ctx: &mut DalContext) -> Result<()> {
 
 #[test]
 async fn paste_child_into_new_parent(ctx: &mut DalContext) -> Result<()> {
-    let test = ConnectableTest::setup(ctx).await;
+    let test = ConnectableTest::setup(ctx).await?;
 
     // parent and child
     let parent = test.create_parent(ctx, "parent").await?;
@@ -681,7 +681,7 @@ async fn paste_child_into_new_parent(ctx: &mut DalContext) -> Result<()> {
 
 #[test]
 async fn paste_manager_and_managed(ctx: &mut DalContext) -> Result<()> {
-    let test = ConnectableTest::setup(ctx).await;
+    let test = ConnectableTest::setup(ctx).await?;
 
     // manager and original
     let manager = test.create_manager(ctx, "manager").await?;
@@ -724,7 +724,7 @@ async fn paste_manager_and_managed(ctx: &mut DalContext) -> Result<()> {
 
 #[test]
 async fn paste_manager_and_managed_opposite_order(ctx: &mut DalContext) -> Result<()> {
-    let test = ConnectableTest::setup(ctx).await;
+    let test = ConnectableTest::setup(ctx).await?;
 
     // manager and original
     let manager = test.create_manager(ctx, "manager").await?;
@@ -767,7 +767,7 @@ async fn paste_manager_and_managed_opposite_order(ctx: &mut DalContext) -> Resul
 
 #[test]
 async fn paste_manager(ctx: &mut DalContext) -> Result<()> {
-    let test = ConnectableTest::setup(ctx).await;
+    let test = ConnectableTest::setup(ctx).await?;
 
     // manager and original
     let manager = test.create_manager(ctx, "manager").await?;
@@ -803,7 +803,7 @@ async fn paste_manager(ctx: &mut DalContext) -> Result<()> {
 
 #[test]
 async fn paste_managed(ctx: &mut DalContext) -> Result<()> {
-    let test = ConnectableTest::setup(ctx).await;
+    let test = ConnectableTest::setup(ctx).await?;
 
     // manager and original
     let manager = test.create_manager(ctx, "manager").await?;

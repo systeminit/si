@@ -523,7 +523,29 @@ impl WorkspaceSnapshotGraphV4 {
         self.outgoing_edges(node_index, kind).map(|e| e.target())
     }
 
-    /// Get the source nodes of outgoing edges of the given kind
+    /// Get the target node of the outgoing edge of the given kind
+    /// Returns an error if there is more than one matching edge or the target node is not found
+    pub fn target(
+        &self,
+        node_index: NodeIndex,
+        kind: impl Into<EdgeWeightKindDiscriminants>,
+    ) -> WorkspaceSnapshotGraphResult<NodeIndex> {
+        Ok(self.outgoing_edge(node_index, kind)?.target())
+    }
+
+    /// Get the target node of the outgoing edge of the given kind
+    /// Returns an error if there is more than one matching edge
+    pub fn target_opt(
+        &self,
+        node_index: NodeIndex,
+        kind: impl Into<EdgeWeightKindDiscriminants>,
+    ) -> WorkspaceSnapshotGraphResult<Option<NodeIndex>> {
+        Ok(self
+            .outgoing_edge_opt(node_index, kind)?
+            .map(|edge| edge.target()))
+    }
+
+    /// Get the source nodes of incoming edges of the given kind
     pub fn sources(
         &self,
         node_index: NodeIndex,
@@ -532,7 +554,29 @@ impl WorkspaceSnapshotGraphV4 {
         self.incoming_edges(node_index, kind).map(|e| e.source())
     }
 
-    /// Get Incoming edges of the given kind
+    /// Get the source node of the incoming edge of the given kind
+    /// Returns an error if there is more than one matching edge or the target node is not found
+    pub fn source(
+        &self,
+        node_index: NodeIndex,
+        kind: impl Into<EdgeWeightKindDiscriminants>,
+    ) -> WorkspaceSnapshotGraphResult<NodeIndex> {
+        Ok(self.incoming_edge(node_index, kind)?.source())
+    }
+
+    /// Get the source node of the incoming edge of the given kind
+    /// Returns an error if there is more than one matching edge
+    pub fn source_opt(
+        &self,
+        node_index: NodeIndex,
+        kind: impl Into<EdgeWeightKindDiscriminants>,
+    ) -> WorkspaceSnapshotGraphResult<Option<NodeIndex>> {
+        Ok(self
+            .incoming_edge_opt(node_index, kind)?
+            .map(|edge| edge.source()))
+    }
+
+    /// Get incoming edges of the given kind
     pub fn incoming_edges(
         &self,
         node_index: NodeIndex,
@@ -543,7 +587,40 @@ impl WorkspaceSnapshotGraphV4 {
             .filter(move |e| kind == e.weight().kind().into())
     }
 
-    /// Get Outgoing edges of the given kind
+    /// Get the incoming edge of the given kind
+    /// Returns an error if there is more than one matching edge or no matching edges are found
+    pub fn incoming_edge(
+        &self,
+        node_index: NodeIndex,
+        kind: impl Into<EdgeWeightKindDiscriminants>,
+    ) -> WorkspaceSnapshotGraphResult<EdgeReference<'_, EdgeWeight>> {
+        let kind = kind.into();
+        self.incoming_edge_opt(node_index, kind)?.ok_or(
+            WorkspaceSnapshotGraphError::NoEdgesOfKindFound(node_index, kind),
+        )
+    }
+
+    /// Get the incoming edge of the given kind
+    /// Returns an error if there is more than one matching edge
+    pub fn incoming_edge_opt(
+        &self,
+        node_index: NodeIndex,
+        kind: impl Into<EdgeWeightKindDiscriminants>,
+    ) -> WorkspaceSnapshotGraphResult<Option<EdgeReference<'_, EdgeWeight>>> {
+        let kind = kind.into();
+        let mut edges = self.incoming_edges(node_index, kind);
+        let Some(edge) = edges.next() else {
+            return Ok(None);
+        };
+        if edges.next().is_some() {
+            return Err(WorkspaceSnapshotGraphError::TooManyEdgesOfKind(
+                node_index, kind,
+            ));
+        }
+        Ok(Some(edge))
+    }
+
+    /// Get outgoing edges of the given kind
     pub fn outgoing_edges(
         &self,
         node_index: NodeIndex,
@@ -552,6 +629,39 @@ impl WorkspaceSnapshotGraphV4 {
         let kind = kind.into();
         self.edges_directed(node_index, Outgoing)
             .filter(move |e| kind == e.weight().kind().into())
+    }
+
+    /// Get the outgoing edge of the given kind
+    /// Returns an error if there is more than one matching edge or no matching edges are found
+    pub fn outgoing_edge(
+        &self,
+        node_index: NodeIndex,
+        kind: impl Into<EdgeWeightKindDiscriminants>,
+    ) -> WorkspaceSnapshotGraphResult<EdgeReference<'_, EdgeWeight>> {
+        let kind = kind.into();
+        self.outgoing_edge_opt(node_index, kind)?.ok_or(
+            WorkspaceSnapshotGraphError::NoEdgesOfKindFound(node_index, kind),
+        )
+    }
+
+    /// Get the outgoing edge of the given kind
+    /// Returns an error if there is more than one matching edge
+    pub fn outgoing_edge_opt(
+        &self,
+        node_index: NodeIndex,
+        kind: impl Into<EdgeWeightKindDiscriminants>,
+    ) -> WorkspaceSnapshotGraphResult<Option<EdgeReference<'_, EdgeWeight>>> {
+        let kind = kind.into();
+        let mut edges = self.outgoing_edges(node_index, kind);
+        let Some(edge) = edges.next() else {
+            return Ok(None);
+        };
+        if edges.next().is_some() {
+            return Err(WorkspaceSnapshotGraphError::TooManyEdgesOfKind(
+                node_index, kind,
+            ));
+        }
+        Ok(Some(edge))
     }
 
     pub fn neighbors_directed(
@@ -967,6 +1077,7 @@ impl WorkspaceSnapshotGraphV4 {
                     EdgeWeightKindDiscriminants::SocketValue => "purple",
                     EdgeWeightKindDiscriminants::Use => "black",
                     EdgeWeightKindDiscriminants::ValidationOutput => "darkcyan",
+                    EdgeWeightKindDiscriminants::ValueSubscription => "green",
                 };
 
                 match edgeref.weight().kind() {
@@ -1636,6 +1747,7 @@ impl WorkspaceSnapshotGraphV4 {
                     // This is the key representing an element in a container type corresponding
                     // to an AttributePrototype
                     EdgeWeightKind::Prototype(Some(key)) => hasher.update(key.as_bytes()),
+                    EdgeWeightKind::ValueSubscription(path) => hasher.update(path.as_bytes()),
 
                     // Nothing to do, as these EdgeWeightKind do not encode extra information
                     // in the edge itself.

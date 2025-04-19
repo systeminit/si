@@ -43,7 +43,6 @@ use strum::IntoEnumIterator;
 use telemetry::prelude::*;
 
 use super::{
-    PkgError,
     PkgResult,
     import_pkg_from_pkg,
 };
@@ -68,6 +67,7 @@ use crate::{
     attribute::prototype::argument::{
         AttributePrototypeArgument,
         AttributePrototypeArgumentId,
+        value_source::ValueSource,
     },
     func::{
         FuncKind,
@@ -75,6 +75,7 @@ use crate::{
         intrinsics::IntrinsicFunc,
     },
     management::prototype::ManagementPrototype,
+    pkg::PkgError,
     prop::PropPath,
     schema::variant::leaves::{
         LeafInputLocation,
@@ -868,9 +869,9 @@ impl PkgExporter {
 
         let mut inputs = vec![];
 
-        for apa_id in &apas {
+        for &apa_id in &apas {
             let func_arg_id =
-                AttributePrototypeArgument::func_argument_id_by_id(ctx, *apa_id).await?;
+                AttributePrototypeArgument::func_argument_id_by_id(ctx, apa_id).await?;
             let func_arg = FuncArgument::get_by_id(ctx, func_arg_id).await?;
             let arg_name = func_arg.name;
 
@@ -878,10 +879,11 @@ impl PkgExporter {
             builder.unique_id(apa_id.to_string());
 
             builder.name(arg_name.clone());
-            let apa = AttributePrototypeArgument::get_by_id(ctx, *apa_id).await?;
-            if let Some(value_source) = apa.value_source(ctx).await? {
-                match value_source{
-                    crate::attribute::prototype::argument::value_source::ValueSource::InputSocket(input_socket_id) => {
+            if let Some(value_source) =
+                AttributePrototypeArgument::value_source_opt(ctx, apa_id).await?
+            {
+                match value_source {
+                    ValueSource::InputSocket(input_socket_id) => {
                         // get the input arg from the other end of the socket and add to the list
                         let input_socket = InputSocket::get_by_id(ctx, input_socket_id).await?;
                         inputs.push(
@@ -891,18 +893,17 @@ impl PkgExporter {
                                 .socket_name(input_socket.name())
                                 .build()?,
                         );
-                    },
-                    crate::attribute::prototype::argument::value_source::ValueSource::OutputSocket(_) => {
+                    }
+                    ValueSource::OutputSocket(_) => {
                         // We don't want to create these on import of schema variants, so we don't care if
                         // we find it or not. But we do need to ensure the input length is correct for when
                         // we do this on *component import*, so that we don't modify the inputs to the
                         // attribute function on the component.
-                    },
-                    crate::attribute::prototype::argument::value_source::ValueSource::Prop(prop_id) =>{
-                        let prop = Prop::get_by_id(ctx, prop_id)
-                            .await?
-                            .path(ctx)
-                            .await?;
+                    }
+
+                    ValueSource::Prop(prop_id) => {
+                        // get the prop name and add to the list
+                        let prop = Prop::get_by_id(ctx, prop_id).await?.path(ctx).await?;
 
                         inputs.push(
                             builder
@@ -910,11 +911,14 @@ impl PkgExporter {
                                 .prop_path(prop)
                                 .build()?,
                         );
-                    }, // get the prop name and add to the list
+                    }
                     // NOTE(nick): do we want to skip exporting secrets? Probably not... but maybe
                     // something that the user can toggle?
-                    crate::attribute::prototype::argument::value_source::ValueSource::Secret(_) => {},
-                    crate::attribute::prototype::argument::value_source::ValueSource::StaticArgumentValue(_) => {}, // do nothing as this is irrelevant for the schema variant!
+                    ValueSource::Secret(_)
+                    | ValueSource::StaticArgumentValue(_)
+                    | ValueSource::ValueSubscription(_) => {
+                        // do nothing as this is irrelevant for the schema variant!
+                    }
                 }
             }
         }

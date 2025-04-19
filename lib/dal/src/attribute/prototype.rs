@@ -11,6 +11,7 @@
 
 use std::sync::Arc;
 
+use argument::AttributePrototypeArgumentError;
 use content_node_weight::ContentNodeWeight;
 use petgraph::Direction;
 use serde::{
@@ -86,7 +87,7 @@ pub mod debug;
 #[derive(Error, Debug)]
 pub enum AttributePrototypeError {
     #[error("attribute prototype argument error: {0}")]
-    AttributePrototypeArgument(String),
+    AttributePrototypeArgument(#[from] Box<AttributePrototypeArgumentError>),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] Box<AttributeValueError>),
     #[error("change set error: {0}")]
@@ -124,6 +125,12 @@ pub enum AttributePrototypeError {
 }
 
 pub type AttributePrototypeResult<T> = Result<T, AttributePrototypeError>;
+
+impl From<AttributePrototypeArgumentError> for AttributePrototypeError {
+    fn from(value: AttributePrototypeArgumentError) -> Self {
+        Box::new(value).into()
+    }
+}
 
 /// Indicates the _one and only one_ eventual parent of a corresponding [`AttributePrototype`].
 ///
@@ -238,7 +245,7 @@ impl AttributePrototype {
         if let Some(prototype_idx) = workspace_snapshot
             .edges_directed(prop_id, Direction::Outgoing)
             .await?
-            .iter()
+            .into_iter()
             .find(|(edge_weight, _, _)| {
                 if let EdgeWeightKind::Prototype(maybe_key) = edge_weight.kind() {
                     maybe_key == key
@@ -248,7 +255,7 @@ impl AttributePrototype {
             })
             .map(|(_, _, target_idx)| target_idx)
         {
-            let node_weight = workspace_snapshot.get_node_weight(*prototype_idx).await?;
+            let node_weight = workspace_snapshot.get_node_weight(prototype_idx).await?;
 
             if matches!(
                 node_weight.content_address_discriminants(),
@@ -514,15 +521,12 @@ impl AttributePrototype {
         ctx: &DalContext,
         ap_id: AttributePrototypeId,
     ) -> AttributePrototypeResult<Vec<InputSocketId>> {
-        let apa_ids = AttributePrototypeArgument::list_ids_for_prototype(ctx, ap_id)
-            .await
-            .map_err(|e| AttributePrototypeError::AttributePrototypeArgument(e.to_string()))?;
+        let apa_ids = AttributePrototypeArgument::list_ids_for_prototype(ctx, ap_id).await?;
 
         let mut input_socket_ids = Vec::<InputSocketId>::new();
         for apa_id in apa_ids {
-            let maybe_value_source = AttributePrototypeArgument::value_source_by_id(ctx, apa_id)
-                .await
-                .map_err(|e| AttributePrototypeError::AttributePrototypeArgument(e.to_string()))?;
+            let maybe_value_source =
+                AttributePrototypeArgument::value_source_opt(ctx, apa_id).await?;
             if let Some(ValueSource::InputSocket(socket_id)) = maybe_value_source {
                 input_socket_ids.push(socket_id);
             }
@@ -739,12 +743,12 @@ impl AttributePrototype {
             return Err(AttributePrototypeError::NonIdentityFunc(func.id));
         }
         let args = AttributePrototype::list_arguments_for_id(ctx, ap_id).await?;
-        match args.first() {
-            None => Err(AttributePrototypeError::NoArgumentsToIdentityFunction(
+        let arg_id = args
+            .first()
+            .ok_or(AttributePrototypeError::NoArgumentsToIdentityFunction(
                 ap_id,
-            )),
-            Some(apa_id) => Ok(Some(*apa_id)),
-        }
+            ))?;
+        Ok(Some(*arg_id))
     }
 }
 

@@ -153,8 +153,6 @@ pub enum FuncRunnerError {
     DirectValidationFuncsNoLongerSupported(FuncId),
     #[error("do not have permission to kill execution")]
     DoNotHavePermissionToKillExecution,
-    #[error("empty value source for attribute prototype argument: {0}")]
-    EmptyValueSource(AttributePrototypeArgumentId),
     #[error("empty widget options for secret prop id: {0}")]
     EmptyWidgetOptionsForSecretProp(PropId),
     #[error("func error: {0}")]
@@ -1632,14 +1630,9 @@ impl FuncRunner {
                     None => continue,
                 };
 
-                match AttributePrototypeArgument::value_source_by_id(
-                    ctx,
-                    attribute_prototype_argument_id,
-                )
-                .await?
-                .ok_or(FuncRunnerError::EmptyValueSource(
-                    attribute_prototype_argument_id,
-                ))? {
+                match AttributePrototypeArgument::value_source(ctx, attribute_prototype_argument_id)
+                    .await?
+                {
                     ValueSource::InputSocket(input_socket_id) => {
                         let component_input_socket = ComponentInputSocket::get_by_ids_or_error(
                             ctx,

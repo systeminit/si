@@ -5,45 +5,49 @@
 
 use std::collections::HashSet;
 
+use petgraph::Direction;
 use serde::{
     Deserialize,
     Serialize,
 };
-use telemetry::prelude::*;
-use thiserror::Error;
-
-use self::{
-    static_value::{
-        StaticArgumentValue,
-        StaticArgumentValueId,
-    },
-    value_source::ValueSource,
-};
-use super::AttributePrototypeError;
-pub use crate::workspace_snapshot::node_weight::attribute_prototype_argument_node_weight::ArgumentTargets;
-use crate::{
-    AttributePrototype,
+use si_events::ulid::Ulid;
+use si_id::{
     AttributePrototypeId,
-    AttributeValue,
+    AttributeValueId,
     ComponentId,
-    DalContext,
-    HelperError,
+    FuncArgumentId,
+    InputSocketId,
     OutputSocketId,
     PropId,
     SecretId,
+    StaticArgumentValueId,
+};
+use static_value::StaticArgumentValue;
+use telemetry::prelude::*;
+use thiserror::Error;
+use value_source::ValueSource;
+
+use super::AttributePrototypeError;
+use crate::{
+    AttributePrototype,
+    AttributeValue,
+    DalContext,
+    HelperError,
     Timestamp,
     TransactionsError,
+    attribute::value::subscription::ValueSubscription,
     change_set::ChangeSetError,
     func::argument::{
         FuncArgument,
         FuncArgumentError,
-        FuncArgumentId,
     },
     implement_add_edge_to,
-    socket::input::InputSocketId,
     workspace_snapshot::{
         WorkspaceSnapshotError,
-        content_address::ContentAddressDiscriminants,
+        content_address::{
+            ContentAddress,
+            ContentAddressDiscriminants,
+        },
         dependent_value_root::DependentValueRootError,
         edge_weight::{
             EdgeWeightKind,
@@ -51,11 +55,12 @@ use crate::{
         },
         graph::WorkspaceSnapshotGraphError,
         node_weight::{
+            ArgumentTargets,
             AttributePrototypeArgumentNodeWeight,
             NodeWeight,
             NodeWeightDiscriminants,
             NodeWeightError,
-            traits::SiNodeWeight,
+            traits::SiNodeWeight as _,
         },
     },
 };
@@ -89,7 +94,7 @@ pub enum AttributePrototypeArgumentError {
     #[error("attribute prototype argument {0} has no func argument")]
     MissingFuncArgument(AttributePrototypeArgumentId),
     #[error("attribute prototype argument {0} has no value source")]
-    MissingSource(AttributePrototypeArgumentId),
+    MissingValueSource(AttributePrototypeArgumentId),
     #[error("node weight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
     #[error("no targets for prototype argument: {0}")]
@@ -103,13 +108,11 @@ pub enum AttributePrototypeArgumentError {
     #[error("could not acquire lock: {0}")]
     TryLock(#[from] tokio::sync::TryLockError),
     #[error(
-        "PrototypeArgument {0} ArgumentValue edge pointing to unexpected content node weight kind: {1:?}"
+        "PrototypeArgument {0} value edge pointing to unexpected content node weight kind: {1:?}"
     )]
     UnexpectedValueSourceContent(AttributePrototypeArgumentId, ContentAddressDiscriminants),
-    #[error(
-        "PrototypeArgument {0} ArgumentValue edge pointing to unexpected node weight kind: {1:?}"
-    )]
-    UnexpectedValueSourceNode(AttributePrototypeArgumentId, NodeWeightDiscriminants),
+    #[error("PrototypeArgument {0} value edge pointing to EdgeWeightKindDiscriminants kind: {1:?}")]
+    UnexpectedValueSourceNode(AttributePrototypeArgumentId, EdgeWeightKindDiscriminants),
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
@@ -192,11 +195,20 @@ impl AttributePrototypeArgument {
         result: AttributePrototypeArgumentResult,
     );
 
+    // This can be used for InputSocketId, OutputSocketId, PropId, SecretId, or StaticArgumentValueId
     implement_add_edge_to!(
         source_id: AttributePrototypeArgumentId,
-        destination_id: ValueSource,
+        destination_id: Ulid,
         add_fn: add_edge_to_value,
         discriminant: EdgeWeightKindDiscriminants::PrototypeArgumentValue,
+        result: AttributePrototypeArgumentResult,
+    );
+
+    implement_add_edge_to!(
+        source_id: AttributePrototypeArgumentId,
+        destination_id: AttributeValueId,
+        add_fn: add_value_subscription_edge,
+        discriminant: EdgeWeightKindDiscriminants::ValueSubscription,
         result: AttributePrototypeArgumentResult,
     );
 
@@ -367,67 +379,79 @@ impl AttributePrototypeArgument {
     }
 
     pub async fn value_source(
-        &self,
         ctx: &DalContext,
-    ) -> AttributePrototypeArgumentResult<Option<ValueSource>> {
-        Self::value_source_by_id(ctx, self.id).await
+        apa_id: AttributePrototypeArgumentId,
+    ) -> AttributePrototypeArgumentResult<ValueSource> {
+        Self::value_source_opt(ctx, apa_id)
+            .await?
+            .ok_or(AttributePrototypeArgumentError::MissingValueSource(apa_id))
     }
 
-    pub async fn value_source_by_id(
+    pub async fn value_source_opt(
         ctx: &DalContext,
         apa_id: AttributePrototypeArgumentId,
     ) -> AttributePrototypeArgumentResult<Option<ValueSource>> {
-        let workspace_snapshot = ctx.workspace_snapshot()?;
-
-        if let Some(target) = workspace_snapshot
-            .outgoing_targets_for_edge_weight_kind(
-                apa_id,
-                EdgeWeightKindDiscriminants::PrototypeArgumentValue,
-            )
-            .await?
-            .into_iter()
-            .next()
-        {
-            match workspace_snapshot.get_node_weight(target).await? {
-                NodeWeight::Prop(inner) => {
-                    return Ok(Some(ValueSource::Prop(inner.id().into())));
-                }
-                NodeWeight::Secret(inner) => {
-                    return Ok(Some(ValueSource::Secret(inner.id().into())));
-                }
-                NodeWeight::Content(inner) => {
-                    let discrim: ContentAddressDiscriminants = inner.content_address().into();
-                    return Ok(Some(match discrim {
-                        ContentAddressDiscriminants::InputSocket => {
-                            ValueSource::InputSocket(inner.id().into())
-                        }
-                        ContentAddressDiscriminants::OutputSocket => {
-                            ValueSource::OutputSocket(inner.id().into())
-                        }
-                        ContentAddressDiscriminants::StaticArgumentValue => {
-                            ValueSource::StaticArgumentValue(inner.id().into())
-                        }
-                        other => {
+        let snap = ctx.workspace_snapshot()?;
+        for (edge, _, target) in snap.edges_directed(apa_id, Direction::Outgoing).await? {
+            match edge.kind() {
+                // Handle APA -- PrototypeArgumentValue -> Prop/Secret/InputSocket/OutputSocket/StaticArgumentValue
+                EdgeWeightKind::PrototypeArgumentValue => {
+                    return Ok(Some(match snap.get_node_weight(target).await? {
+                        NodeWeight::Prop(node) => ValueSource::Prop(node.id().into()),
+                        NodeWeight::Secret(node) => ValueSource::Secret(node.id().into()),
+                        NodeWeight::Content(node) => match node.content_address() {
+                            ContentAddress::InputSocket(..) => {
+                                ValueSource::InputSocket(node.id().into())
+                            }
+                            ContentAddress::OutputSocket(..) => {
+                                ValueSource::OutputSocket(node.id().into())
+                            }
+                            ContentAddress::StaticArgumentValue(..) => {
+                                ValueSource::StaticArgumentValue(node.id().into())
+                            }
+                            other => {
+                                return Err(
+                                    AttributePrototypeArgumentError::UnexpectedValueSourceContent(
+                                        apa_id,
+                                        other.into(),
+                                    ),
+                                );
+                            }
+                        },
+                        NodeWeight::InputSocket(node) => ValueSource::InputSocket(node.id().into()),
+                        _ => {
                             return Err(
-                                AttributePrototypeArgumentError::UnexpectedValueSourceContent(
-                                    apa_id, other,
+                                AttributePrototypeArgumentError::UnexpectedValueSourceNode(
+                                    apa_id,
+                                    edge.kind().into(),
                                 ),
                             );
                         }
                     }));
                 }
-                NodeWeight::InputSocket(input_socket) => {
-                    return Ok(Some(ValueSource::InputSocket(input_socket.id().into())));
+
+                // Handle APA -- ValueSubscription(path) -> AttributeValue
+                EdgeWeightKind::ValueSubscription(path) => {
+                    return Ok(Some(match snap.get_node_weight(target).await? {
+                        NodeWeight::AttributeValue(node) => {
+                            ValueSource::ValueSubscription(ValueSubscription {
+                                attribute_value_id: node.id().into(),
+                                path: path.clone(),
+                            })
+                        }
+                        _ => {
+                            return Err(
+                                AttributePrototypeArgumentError::UnexpectedValueSourceNode(
+                                    apa_id,
+                                    edge.kind().into(),
+                                ),
+                            );
+                        }
+                    }));
                 }
-                other => {
-                    return Err(AttributePrototypeArgumentError::UnexpectedValueSourceNode(
-                        apa_id,
-                        other.into(),
-                    ));
-                }
+                _ => {}
             }
         }
-
         Ok(None)
     }
 
@@ -454,13 +478,33 @@ impl AttributePrototypeArgument {
                 .await?;
         }
 
-        Self::add_edge_to_value(
-            ctx,
-            apa_id,
-            value_source,
-            EdgeWeightKind::PrototypeArgumentValue,
-        )
-        .await?;
+        match value_source {
+            ValueSource::InputSocket(_)
+            | ValueSource::OutputSocket(_)
+            | ValueSource::Prop(_)
+            | ValueSource::Secret(_)
+            | ValueSource::StaticArgumentValue(_) => {
+                Self::add_edge_to_value(
+                    ctx,
+                    apa_id,
+                    value_source.into_inner_id(),
+                    EdgeWeightKind::PrototypeArgumentValue,
+                )
+                .await?
+            }
+            ValueSource::ValueSubscription(ValueSubscription {
+                attribute_value_id,
+                path,
+            }) => {
+                Self::add_value_subscription_edge(
+                    ctx,
+                    apa_id,
+                    attribute_value_id,
+                    EdgeWeightKind::ValueSubscription(path),
+                )
+                .await?
+            }
+        }
 
         Ok(())
     }

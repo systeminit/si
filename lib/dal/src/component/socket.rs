@@ -279,7 +279,7 @@ impl ComponentInputSocket {
             }) = apa.targets()
             {
                 if let Some(ValueSource::OutputSocket(from_output_socket_id)) =
-                    apa.value_source(ctx).await?
+                    AttributePrototypeArgument::value_source_opt(ctx, apa_id).await?
                 {
                     result.push((source_component_id, from_output_socket_id, apa));
                 }

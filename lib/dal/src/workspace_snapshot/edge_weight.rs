@@ -8,7 +8,8 @@ use serde::{
 };
 use strum::EnumDiscriminants;
 
-use crate::workspace_snapshot::graph::deprecated::v1::DeprecatedEdgeWeightV1;
+use super::graph::deprecated::v1::DeprecatedEdgeWeightV1;
+use crate::attribute::value::subscription::ValueSubscriptionPath;
 
 pub mod deprecated;
 
@@ -77,6 +78,12 @@ pub enum EdgeWeightKind {
     DiagramObject,
     /// Indicates if there is an corresponding approval requirement definition.
     ApprovalRequirementDefinition,
+    /// An edge from an
+    /// [`AttributePrototypeArgument`][crate::AttributePrototypeArgument] representing a value
+    /// from a component, where the edge target points at the component/root av id, and the
+    /// [`ValueSubscriptionPath`] is a path to a nested child AV (e.g.
+    /// `/domain/PolicyDocument/Statements/0/Operation`).
+    ValueSubscription(ValueSubscriptionPath),
 }
 
 impl EdgeWeightKind {
@@ -95,7 +102,7 @@ impl EdgeWeightKind {
 
 #[derive(Hash, Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct EdgeWeight {
-    kind: EdgeWeightKind,
+    pub kind: EdgeWeightKind,
 }
 
 impl EdgeWeight {
@@ -126,6 +133,7 @@ impl si_split_graph::CustomEdgeWeight<EdgeWeightKindDiscriminants> for EdgeWeigh
             EdgeWeightKind::Contain(Some(key)) => Some(key.as_bytes().to_vec()),
             EdgeWeightKind::Prototype(Some(key)) => Some(key.as_bytes().to_vec()),
             EdgeWeightKind::Use { is_default } => Some(vec![*is_default as u8]),
+            EdgeWeightKind::ValueSubscription(path) => Some(path.as_bytes().to_vec()),
 
             EdgeWeightKind::Contain(None)
             | EdgeWeightKind::Action
@@ -174,7 +182,8 @@ impl si_split_graph::CustomEdgeWeight<EdgeWeightKindDiscriminants> for EdgeWeigh
             | EdgeWeightKind::Represents
             | EdgeWeightKind::Manages
             | EdgeWeightKind::DiagramObject
-            | EdgeWeightKind::ApprovalRequirementDefinition => false,
+            | EdgeWeightKind::ApprovalRequirementDefinition
+            | EdgeWeightKind::ValueSubscription(_) => false,
         }
     }
 
@@ -201,7 +210,8 @@ impl si_split_graph::CustomEdgeWeight<EdgeWeightKindDiscriminants> for EdgeWeigh
             | EdgeWeightKind::Represents
             | EdgeWeightKind::Manages
             | EdgeWeightKind::DiagramObject
-            | EdgeWeightKind::ApprovalRequirementDefinition => self.clone(),
+            | EdgeWeightKind::ApprovalRequirementDefinition
+            | EdgeWeightKind::ValueSubscription(_) => self.clone(),
         }
     }
 }

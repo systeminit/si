@@ -2493,7 +2493,8 @@ impl SchemaVariant {
                 | EdgeWeightKindDiscriminants::ValidationOutput
                 | EdgeWeightKindDiscriminants::Manages
                 | EdgeWeightKindDiscriminants::DiagramObject
-                | EdgeWeightKindDiscriminants::ApprovalRequirementDefinition => {}
+                | EdgeWeightKindDiscriminants::ApprovalRequirementDefinition
+                | EdgeWeightKindDiscriminants::ValueSubscription => {}
             }
         }
 

@@ -175,6 +175,7 @@ use crate::{
             EdgeWeightKind,
             EdgeWeightKindDiscriminants,
         },
+        graph::WorkspaceSnapshotGraphError,
         node_weight::{
             ComponentNodeWeight,
             NodeWeight,
@@ -351,6 +352,8 @@ pub enum ComponentError {
     WorkspacePkNone,
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
+    #[error("workspace snapshot graph error: {0}")]
+    WorkspaceSnapshotGraphError(#[from] WorkspaceSnapshotGraphError),
     #[error("attribute value {0} has wrong type for operation: {0}")]
     WrongAttributeValueType(AttributeValueId, ValueIsFor),
     #[error("Attribute Prototype Argument used by too many Attribute Prototypes: {0}")]
@@ -1046,19 +1049,18 @@ impl Component {
 
         let mut new_value_sources = vec![];
 
-        for apa_id in &apa_ids {
-            let apa = AttributePrototypeArgument::get_by_id(ctx, *apa_id).await?;
+        for &apa_id in &apa_ids {
+            let func_arg_id =
+                AttributePrototypeArgument::func_argument_id_by_id(ctx, apa_id).await?;
 
-            let func_arg = apa.func_argument(ctx).await?;
-
-            if let Some(source) = apa.value_source(ctx).await? {
+            if let Some(source) = AttributePrototypeArgument::value_source_opt(ctx, apa_id).await? {
                 match source {
                     ValueSource::InputSocket(input_socket_id) => {
                         // find matching input socket in self
                         let input_socket = InputSocket::get_by_id(ctx, input_socket_id).await?;
                         match self_input_sockets.get(input_socket.name()) {
                             Some(self_input_socket_id) => new_value_sources.push((
-                                func_arg.id,
+                                func_arg_id,
                                 ValueSource::InputSocket(*self_input_socket_id),
                             )),
                             None => {
@@ -1074,7 +1076,7 @@ impl Component {
                         let output_socket = OutputSocket::get_by_id(ctx, output_socket_id).await?;
                         match self_output_sockets.get(output_socket.name()) {
                             Some(self_output_socket_id) => new_value_sources.push((
-                                func_arg.id,
+                                func_arg_id,
                                 ValueSource::OutputSocket(*self_output_socket_id),
                             )),
                             None => {
@@ -1086,15 +1088,17 @@ impl Component {
                         let path = Prop::path_by_id(ctx, prop_id).await?.as_owned_parts();
                         match self_props.get(&path) {
                             Some(self_prop_id) => new_value_sources
-                                .push((func_arg.id, ValueSource::Prop(*self_prop_id))),
+                                .push((func_arg_id, ValueSource::Prop(*self_prop_id))),
                             None => {
                                 return Ok(());
                             }
                         }
                     }
-                    ValueSource::Secret(_) | ValueSource::StaticArgumentValue(_) => {
+                    ValueSource::Secret(_)
+                    | ValueSource::StaticArgumentValue(_)
+                    | ValueSource::ValueSubscription(_) => {
                         // Should we determine if this secret is still compatible?
-                        new_value_sources.push((func_arg.id, source));
+                        new_value_sources.push((func_arg_id, source));
                     }
                 }
             }
@@ -1673,9 +1677,8 @@ impl Component {
         ctx: &DalContext,
         resource: ResourceData,
     ) -> ComponentResult<()> {
-        let av_for_resource = self
-            .attribute_value_for_prop(ctx, &["root", "resource"])
-            .await?;
+        let av_for_resource =
+            Component::attribute_value_for_prop(ctx, self.id(), &["root", "resource"]).await?;
 
         AttributeValue::update(ctx, av_for_resource, Some(serde_json::to_value(resource)?)).await?;
 
@@ -1683,9 +1686,8 @@ impl Component {
     }
 
     pub async fn clear_resource(&self, ctx: &DalContext) -> ComponentResult<()> {
-        let av_for_resource = self
-            .attribute_value_for_prop(ctx, &["root", "resource"])
-            .await?;
+        let av_for_resource =
+            Component::attribute_value_for_prop(ctx, self.id(), &["root", "resource"]).await?;
 
         AttributeValue::update(ctx, av_for_resource, Some(serde_json::json!({}))).await?;
 
@@ -1702,7 +1704,7 @@ impl Component {
         ctx: &DalContext,
         id: ComponentId,
     ) -> ComponentResult<Option<ResourceData>> {
-        let value_id = Self::attribute_value_for_prop_by_id(ctx, id, &["root", "resource"]).await?;
+        let value_id = Self::attribute_value_for_prop(ctx, id, &["root", "resource"]).await?;
 
         let av = AttributeValue::get_by_id(ctx, value_id).await?;
 
@@ -1726,7 +1728,7 @@ impl Component {
     /// Returns the name of a [`Component`] for a given [`ComponentId`](Component).
     pub async fn name_by_id(ctx: &DalContext, id: ComponentId) -> ComponentResult<String> {
         let name_value_id =
-            Self::attribute_value_for_prop_by_id(ctx, id, &["root", "si", "name"]).await?;
+            Self::attribute_value_for_prop(ctx, id, &["root", "si", "name"]).await?;
 
         let name_av = AttributeValue::get_by_id(ctx, name_value_id).await?;
 
@@ -1763,9 +1765,8 @@ impl Component {
     }
 
     pub async fn color(&self, ctx: &DalContext) -> ComponentResult<Option<String>> {
-        let color_value_id = self
-            .attribute_value_for_prop(ctx, &["root", "si", "color"])
-            .await?;
+        let color_value_id =
+            Component::attribute_value_for_prop(ctx, self.id(), &["root", "si", "color"]).await?;
         let color_av = AttributeValue::get_by_id(ctx, color_value_id).await?;
 
         Ok(match color_av.view(ctx).await? {
@@ -1780,8 +1781,7 @@ impl Component {
         component_id: ComponentId,
     ) -> ComponentResult<ComponentType> {
         let type_value_id =
-            Self::attribute_value_for_prop_by_id(ctx, component_id, &["root", "si", "type"])
-                .await?;
+            Self::attribute_value_for_prop(ctx, component_id, &["root", "si", "type"]).await?;
         let type_value = AttributeValue::get_by_id(ctx, type_value_id)
             .await?
             .view(ctx)
@@ -1802,8 +1802,7 @@ impl Component {
         new_type: ComponentType,
     ) -> ComponentResult<()> {
         let type_value_id =
-            Self::attribute_value_for_prop_by_id(ctx, component_id, &["root", "si", "type"])
-                .await?;
+            Self::attribute_value_for_prop(ctx, component_id, &["root", "si", "type"]).await?;
         let value = serde_json::to_value(new_type)?;
 
         AttributeValue::update(ctx, type_value_id, Some(value)).await?;
@@ -1869,9 +1868,8 @@ impl Component {
     }
 
     async fn set_type(&self, ctx: &DalContext, new_type: ComponentType) -> ComponentResult<()> {
-        let type_value_id = self
-            .attribute_value_for_prop(ctx, &["root", "si", "type"])
-            .await?;
+        let type_value_id =
+            Component::attribute_value_for_prop(ctx, self.id(), &["root", "si", "type"]).await?;
 
         let value = serde_json::to_value(new_type)?;
 
@@ -1995,7 +1993,7 @@ impl Component {
 
     // Get a single attribute value for this component and a given prop path
     // Errors if there is no value, or if more than one value exists.
-    pub async fn attribute_value_for_prop_by_id(
+    pub async fn attribute_value_for_prop(
         ctx: &DalContext,
         component_id: ComponentId,
         prop_path: &[&str],
@@ -2006,29 +2004,17 @@ impl Component {
         Self::attribute_value_for_prop_id(ctx, component_id, prop_id).await
     }
 
-    // Get a single attribute value for this component and a given prop path.
-    // Errors if there is no value, or if more than one value exists.
-    pub async fn attribute_value_for_prop(
-        &self,
-        ctx: &DalContext,
-        prop_path: &[&str],
-    ) -> ComponentResult<AttributeValueId> {
-        Self::attribute_value_for_prop_by_id(ctx, self.id(), prop_path).await
-    }
-
     pub async fn domain_prop_attribute_value(
         &self,
         ctx: &DalContext,
     ) -> ComponentResult<AttributeValueId> {
-        self.attribute_value_for_prop(ctx, &["root", "domain"])
-            .await
+        Component::attribute_value_for_prop(ctx, self.id(), &["root", "domain"]).await
     }
     pub async fn resource_value_prop_attribute_value(
         &self,
         ctx: &DalContext,
     ) -> ComponentResult<AttributeValueId> {
-        self.attribute_value_for_prop(ctx, &["root", "resource_value"])
-            .await
+        Component::attribute_value_for_prop(ctx, self.id(), &["root", "resource_value"]).await
     }
 
     pub async fn attribute_values_for_all_sockets(
@@ -2356,7 +2342,7 @@ impl Component {
             match base_prototype_arg_to_output_socket_edges.first() {
                 Some(edge_weight) => edge_weight,
                 None => {
-                    return Err(AttributePrototypeArgumentError::MissingSource(
+                    return Err(AttributePrototypeArgumentError::MissingValueSource(
                         base_change_set_connection.attribute_prototype_argument_id,
                     )
                     .into());
@@ -2922,16 +2908,8 @@ impl Component {
                     // if any of the arguments are for an Input Socket, that means this value *could* have
                     // been set by a socket
                     for attr_arg_id in attribute_prototype_arg_ids {
-                        let value_source = AttributePrototypeArgument::value_source_by_id(
-                            ctx,
-                            attr_arg_id,
-                        )
-                        .await?
-                        .ok_or(
-                            AttributeValueError::AttributePrototypeArgumentMissingValueSource(
-                                attr_arg_id,
-                            ),
-                        )?;
+                        let value_source =
+                            AttributePrototypeArgument::value_source(ctx, attr_arg_id).await?;
                         if let ValueSource::InputSocket(input_socket_id) = value_source {
                             // find this specific input socket and see if it already has a connection (actual one)
                             if !incoming_connections

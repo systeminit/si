@@ -129,8 +129,6 @@ pub enum FuncBindingError {
     MalformedInput(AttributeBindingMalformedInput),
     #[error("management prototype error: {0}")]
     ManagementPrototype(#[from] ManagementPrototypeError),
-    #[error("missing value source for attribute prototype argument id {0}")]
-    MissingValueSource(AttributePrototypeArgumentId),
     #[error("no input location given for attribute prototype id ({0}) and func argument id ({1})")]
     NoInputLocationGiven(AttributePrototypeId, FuncArgumentId),
     #[error("no output location given for func: {0}")]

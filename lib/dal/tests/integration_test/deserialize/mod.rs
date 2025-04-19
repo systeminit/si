@@ -28,6 +28,7 @@ use dal::{
         prototype::ActionKind,
     },
     approval_requirement::ApprovalRequirementApprover,
+    attribute::value::subscription::ValueSubscriptionPath,
     func::{
         FuncKind,
         argument::FuncArgumentKind,
@@ -242,24 +243,19 @@ fn make_me_one_with_everything(graph: &mut WorkspaceSnapshotGraphVCurrent) {
     let mut last_node = 0;
 
     for edge_kind in EdgeWeightKindDiscriminants::iter() {
-        if last_node + 1 == node_indexes.len() {
-            last_node = 0;
-        };
         let edge_weight_kind = match edge_kind {
             EdgeWeightKindDiscriminants::Action => EdgeWeightKind::Action,
             EdgeWeightKindDiscriminants::ActionPrototype => EdgeWeightKind::ActionPrototype,
             EdgeWeightKindDiscriminants::AuthenticationPrototype => {
                 EdgeWeightKind::AuthenticationPrototype
             }
-            EdgeWeightKindDiscriminants::Contain => {
-                EdgeWeightKind::Contain(Some("foo".to_string()))
-            }
+            EdgeWeightKindDiscriminants::Contain => EdgeWeightKind::Contain(Some("foo".to_owned())),
             EdgeWeightKindDiscriminants::FrameContains => EdgeWeightKind::FrameContains,
             EdgeWeightKindDiscriminants::Ordering => EdgeWeightKind::Ordering,
             EdgeWeightKindDiscriminants::Ordinal => EdgeWeightKind::Ordinal,
             EdgeWeightKindDiscriminants::Prop => EdgeWeightKind::Prop,
             EdgeWeightKindDiscriminants::Prototype => {
-                EdgeWeightKind::Prototype(Some("bar".to_string()))
+                EdgeWeightKind::Prototype(Some("bar".to_owned()))
             }
             EdgeWeightKindDiscriminants::PrototypeArgument => EdgeWeightKind::PrototypeArgument,
             EdgeWeightKindDiscriminants::PrototypeArgumentValue => {
@@ -278,6 +274,13 @@ fn make_me_one_with_everything(graph: &mut WorkspaceSnapshotGraphVCurrent) {
             EdgeWeightKindDiscriminants::ApprovalRequirementDefinition => {
                 EdgeWeightKind::ApprovalRequirementDefinition
             }
+            EdgeWeightKindDiscriminants::ValueSubscription => EdgeWeightKind::ValueSubscription(
+                ValueSubscriptionPath::from_json_pointer("/json_pointer"),
+            ),
+        };
+
+        if last_node + 1 == node_indexes.len() {
+            last_node = 0;
         };
 
         let edge_weight = EdgeWeight::new(edge_weight_kind);

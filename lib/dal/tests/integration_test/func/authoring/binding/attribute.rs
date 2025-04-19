@@ -182,10 +182,9 @@ async fn create_attribute_prototype_with_attribute_prototype_argument(ctx: &mut 
             .pop()
             .expect("empty attribute prototype argument ids");
         let value_source =
-            AttributePrototypeArgument::value_source_by_id(ctx, attribute_prototype_argument_id)
+            AttributePrototypeArgument::value_source(ctx, attribute_prototype_argument_id)
                 .await
-                .expect("could not get value source")
-                .expect("value source not found");
+                .expect("could not get value source");
 
         if existing_attribute_prototype_id == attribute_prototype_id {
             // Assemble the expected bag for the existing prototype.

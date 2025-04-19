@@ -4817,23 +4817,23 @@ cargo.rust_library(
 
 alias(
     name = "derive_more",
-    actual = ":derive_more-0.99.19",
+    actual = ":derive_more-0.99.20",
     visibility = ["PUBLIC"],
 )
 
 http_archive(
-    name = "derive_more-0.99.19.crate",
-    sha256 = "3da29a38df43d6f156149c9b43ded5e018ddff2a855cf2cfd62e8cd7d079c69f",
-    strip_prefix = "derive_more-0.99.19",
-    urls = ["https://static.crates.io/crates/derive_more/0.99.19/download"],
+    name = "derive_more-0.99.20.crate",
+    sha256 = "6edb4b64a43d977b8e99788fe3a04d483834fba1215a7e02caa415b626497f7f",
+    strip_prefix = "derive_more-0.99.20",
+    urls = ["https://static.crates.io/crates/derive_more/0.99.20/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "derive_more-0.99.19",
-    srcs = [":derive_more-0.99.19.crate"],
+    name = "derive_more-0.99.20",
+    srcs = [":derive_more-0.99.20.crate"],
     crate = "derive_more",
-    crate_root = "derive_more-0.99.19.crate/src/lib.rs",
+    crate_root = "derive_more-0.99.20.crate/src/lib.rs",
     edition = "2018",
     features = [
         "add",
@@ -9147,6 +9147,12 @@ cargo.rust_library(
         ":serde_json-1.0.140",
         ":thiserror-1.0.69",
     ],
+)
+
+alias(
+    name = "jsonptr",
+    actual = ":jsonptr-0.7.1",
+    visibility = ["PUBLIC"],
 )
 
 http_archive(
@@ -18251,7 +18257,7 @@ cargo.rust_binary(
         ":deadpool-0.12.2",
         ":deadpool-postgres-0.14.1",
         ":derive_builder-0.20.2",
-        ":derive_more-0.99.19",
+        ":derive_more-0.99.20",
         ":devicemapper-0.34.1",
         ":diff-0.1.13",
         ":directories-5.0.1",
@@ -18276,6 +18282,7 @@ cargo.rust_binary(
         ":insta-1.42.2",
         ":itertools-0.13.0",
         ":json-patch-4.0.0",
+        ":jsonptr-0.7.1",
         ":jwt-simple-0.12.12",
         ":krata-loopdev-0.0.21",
         ":lazy_static-1.5.0",

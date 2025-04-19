@@ -35,6 +35,7 @@ use dal_test::{
         ChangeSetTestHelpers,
         PropEditorTestView,
         create_component_for_default_schema_name_in_default_view,
+        schema::variant,
     },
     test,
 };
@@ -803,7 +804,7 @@ async fn upgrade_frame_with_child(ctx: &mut DalContext) -> Result<()> {
 #[test]
 async fn upgrade_component_multiplayer(ctx: &mut DalContext) -> Result<()> {
     // Set up connectables with multiple inputs
-    let test = ConnectableTest::setup(ctx).await;
+    let test = ConnectableTest::setup(ctx).await?;
     let parent = test.create_parent(ctx, "parent").await?;
     let manager = test.create_manager(ctx, "manager").await?;
     let input1 = test.create_connectable(ctx, "input1", None, []).await?;
@@ -909,7 +910,7 @@ async fn upgrade_component_multiplayer(ctx: &mut DalContext) -> Result<()> {
 #[test]
 async fn upgrade_component_multiplayer_new_and_removed_sockets(ctx: &mut DalContext) -> Result<()> {
     // Set up connectables with multiple inputs
-    let test = ConnectableTest::setup(ctx).await;
+    let test = ConnectableTest::setup(ctx).await?;
     let parent = test.create_parent(ctx, "parent").await?;
     let manager = test.create_manager(ctx, "manager").await?;
     let input1 = test.create_connectable(ctx, "input1", None, []).await?;
@@ -971,7 +972,8 @@ async fn upgrade_component_multiplayer_new_and_removed_sockets(ctx: &mut DalCont
             .await?
             .id();
     assert_ne!(updated_variant_id, test.connectable_variant_id);
-    ExpectSchemaVariant(updated_variant_id).update_asset_func(ctx,
+    variant::update_asset_func(ctx,
+        updated_variant_id,
         r#"
             function main() {
                 return {
@@ -994,10 +996,7 @@ async fn upgrade_component_multiplayer_new_and_removed_sockets(ctx: &mut DalCont
             }
         "#,
     )
-    .await;
-    ExpectSchemaVariant(updated_variant_id)
-        .regenerate(ctx)
-        .await;
+    .await?;
 
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 

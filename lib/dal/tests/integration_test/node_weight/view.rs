@@ -258,7 +258,9 @@ async fn correct_transforms_remove_view_no_other_views(ctx: &mut DalContext) {
 
 #[test]
 async fn correct_transforms_remove_view_with_component_in_another_view(ctx: &mut DalContext) {
-    let default_view_id = ExpectView::get_id_for_default(ctx).await;
+    let default_view_id = View::get_id_for_default(ctx)
+        .await
+        .expect("get default view");
     let new_view = ExpectView::create(ctx).await;
     let component = create_component_for_default_schema_name(
         ctx,
@@ -324,7 +326,7 @@ async fn correct_transforms_remove_view_with_component_in_another_view(ctx: &mut
 async fn correct_transforms_remove_view_components_moved_to_another_view(
     ctx: &mut DalContext,
 ) -> Result<()> {
-    let default_view_id = ExpectView::get_id_for_default(ctx).await;
+    let default_view_id = View::get_id_for_default(ctx).await?;
     let new_view = ExpectView::create(ctx).await;
     let component = create_component_for_default_schema_name(
         ctx,

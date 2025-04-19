@@ -94,46 +94,33 @@ impl AttributeArgumentBinding {
 
     pub async fn assemble(
         ctx: &DalContext,
-        attribute_prototype_argument_id: AttributePrototypeArgumentId,
+        apa_id: AttributePrototypeArgumentId,
     ) -> FuncBindingResult<Self> {
-        let attribute_prototype_argument =
-            AttributePrototypeArgument::get_by_id(ctx, attribute_prototype_argument_id).await?;
-
         let attribute_func_input_location =
-            match attribute_prototype_argument.value_source(ctx).await? {
-                Some(value_source) => match value_source {
-                    ValueSource::InputSocket(input_socket_id) => {
-                        AttributeFuncArgumentSource::InputSocket(input_socket_id)
-                    }
-                    ValueSource::Prop(prop_id) => AttributeFuncArgumentSource::Prop(prop_id),
-                    ValueSource::StaticArgumentValue(static_argument_id) => {
-                        let static_value =
-                            StaticArgumentValue::get_by_id(ctx, static_argument_id).await?;
-                        AttributeFuncArgumentSource::StaticArgument(static_value.value)
-                    }
-                    value_source => {
-                        return Err(FuncBindingError::UnexpectedValueSource(
-                            value_source,
-                            attribute_prototype_argument_id,
-                        ));
-                    }
-                },
-                None => {
-                    return Err(FuncBindingError::MissingValueSource(
-                        attribute_prototype_argument_id,
+            match AttributePrototypeArgument::value_source(ctx, apa_id).await? {
+                ValueSource::InputSocket(input_socket_id) => {
+                    AttributeFuncArgumentSource::InputSocket(input_socket_id)
+                }
+                ValueSource::Prop(prop_id) => AttributeFuncArgumentSource::Prop(prop_id),
+                ValueSource::StaticArgumentValue(static_argument_id) => {
+                    let static_value =
+                        StaticArgumentValue::get_by_id(ctx, static_argument_id).await?;
+                    AttributeFuncArgumentSource::StaticArgument(static_value.value)
+                }
+                value_source => {
+                    return Err(FuncBindingError::UnexpectedValueSource(
+                        value_source,
+                        apa_id,
                     ));
                 }
             };
 
-        let func_argument_id = AttributePrototypeArgument::func_argument_id_by_id(
-            ctx,
-            attribute_prototype_argument_id,
-        )
-        .await?;
+        let func_argument_id =
+            AttributePrototypeArgument::func_argument_id_by_id(ctx, apa_id).await?;
 
         Ok(Self {
             func_argument_id,
-            attribute_prototype_argument_id: Some(attribute_prototype_argument_id),
+            attribute_prototype_argument_id: Some(apa_id),
             attribute_func_input_location,
         })
     }
