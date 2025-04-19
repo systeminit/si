@@ -85,12 +85,23 @@
 <script lang="ts" setup>
 import { useRoute, useRouter } from "vue-router";
 import clsx from "clsx";
-import { computed, onBeforeUnmount, onMounted, ref, provide, toRef } from "vue";
+import {
+  computed,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+  provide,
+  toRef,
+  watch,
+} from "vue";
+import { useQueryClient } from "@tanstack/vue-query";
 import NavbarPanelLeft from "@/components/layout/navbar/NavbarPanelLeft.vue";
 import NavbarPanelRight from "@/components/layout/navbar/NavbarPanelRight.vue";
 import NavbarButton from "@/components/layout/navbar/NavbarButton.vue";
 import RealtimeStatusPageState from "@/components/RealtimeStatusPageState.vue";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
+import * as heimdall from "@/store/realtime/heimdall";
+import { useAuthStore } from "@/store/auth.store";
 import Explore from "./Explore.vue";
 import ComponentDetail from "./Component.vue";
 import { WSCS } from "./types";
@@ -105,6 +116,7 @@ const props = defineProps<{
   secretId?: string;
 }>();
 
+const authStore = useAuthStore();
 const featureFlagsStore = useFeatureFlagsStore();
 
 const wscs: WSCS = {
@@ -132,12 +144,46 @@ const compositionLink = computed(() => {
 const route = useRoute();
 const router = useRouter();
 
-onMounted(() => {
+const queryClient = useQueryClient();
+
+onMounted(async () => {
   // NOTE(nick,wendy): if you do not have the flag enabled, you will be re-directed. This will be
   // true for all of the new hotness routes, provided that they are all children of the parent
-  // route that uses this component.
-  if (!featureFlagsStore.NEW_HOTNESS) {
-    router.push({ name: "workspace-index" });
+  // route that uses this component. This is wrapped in a "setTimeout" to ensure that the feature
+  // flag loads in time.
+  setTimeout(() => {
+    if (!featureFlagsStore.NEW_HOTNESS) {
+      router.push({ name: "workspace-index" });
+    }
+  }, 500);
+
+  // Activate the norse stack, which is explicitly NOT flagged for the job-specific UI.
+  if (!authStore.selectedOrDefaultAuthToken)
+    throw new Error("no auth token selected");
+  await heimdall.init(authStore.selectedOrDefaultAuthToken, queryClient);
+  watch(
+    connectionShouldBeEnabled,
+    async () => {
+      if (connectionShouldBeEnabled.value) {
+        // NOTE(nick,wendy): this says "reconnect", but it must run once on startup.
+        await heimdall.bifrostReconnect();
+      } else {
+        await heimdall.bifrostClose();
+      }
+    },
+    { immediate: true },
+  );
+  heimdall.niflheim(props.workspacePk, props.changeSetId, true);
+});
+
+const connectionShouldBeEnabled = computed(() => {
+  try {
+    const authStore = useAuthStore();
+    return (
+      authStore.userIsLoggedInAndInitialized && authStore.selectedWorkspaceToken
+    );
+  } catch (_err) {
+    return false;
   }
 });
 
