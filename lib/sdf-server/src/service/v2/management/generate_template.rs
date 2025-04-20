@@ -63,47 +63,10 @@ pub async fn generate_template(
         .build();
 
     // Auto-generated below here
-    const environments = new PropBuilder()
-        .setName("Views")
-        .setKind("array")
-        .setEntry(
-            new PropBuilder()
-            .setName("View")
-            .setKind("object")
-            .addChild(
-                new PropBuilder()
-                .setName("Name")
-                .setKind("string")
-                .build()
-            )
-            .addChild(
-                new PropBuilder()
-                .setName("Sync")
-                .setKind("boolean")
-                .build()
-            )
-            .build()
-        )
-        .build();
-    asset.addProp(environments);
-
     const template = new PropBuilder()
         .setName("Template")
         .setKind("object")
-        .addChild(
-            new PropBuilder()
-            .setName("Default")
-            .setKind("object")
-            .addChild(templateProps)
-            .build()
-        )
-        .addChild(
-            new PropBuilder()
-            .setName("Override")
-            .setKind("object")
-            .addChild(templateProps)
-            .build()
-        )
+        .addChild(templateProps)
         .build();
     asset.addProp(template);
 
@@ -158,7 +121,12 @@ pub async fn generate_template(
         ["properties", "si", "name"],
         "unknown",
     );
-    const vars = template.variables(thisComponent);
+    const vars = _.get(thisComponent, [
+      "properties",
+      "domain",
+      "Template",
+      "Values",
+    ]);
     const specs: Output["ops"]["create"][string][] = [];
 "#
     .to_string();
@@ -197,32 +165,6 @@ pub async fn generate_template(
     );
 
     FuncAuthoringClient::save_code(&ctx, func.id, component_sync_code).await?;
-
-    let mut vars_func_name = request.func_name.clone();
-    vars_func_name.push_str("Sync");
-
-    let vars_func = FuncAuthoringClient::create_new_management_func(
-        &ctx,
-        Some(vars_func_name),
-        new_variant.id(),
-    )
-    .await?;
-    FuncAuthoringClient::update_func(
-        &ctx,
-        vars_func.id,
-        Some("Push Variables to Views".to_string()),
-        Some("Creates a view for every specified view, places an identical management component inside it, and pushes the current set of templat values to the default values for the view component".to_string()),
-    )
-    .await?;
-    let vars_func_code = format!(
-        r#"async function main(input: Input): Promise < Output > {{
-    const result = template.updateVarsInViews("{mgmtComponentName}", input.currentView, input.thisComponent, input.components);
-    return result;
-}}
-"#,
-        mgmtComponentName = request.asset_name,
-    );
-    FuncAuthoringClient::save_code(&ctx, vars_func.id, vars_func_code).await?;
 
     let schema_variant_id = new_variant.id();
     WsEvent::schema_variant_created(&ctx, schema_id, new_variant.clone())
