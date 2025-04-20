@@ -43,6 +43,9 @@
         <slot name="iconRight">
           <Icon v-if="iconRight" class="vbutton__icon" :name="iconRight" />
         </slot>
+        <slot name="pill">
+          <TextPill v-if="pill" tighter class="ml-xs" mono>{{ pill }}</TextPill>
+        </slot>
       </template>
     </div>
   </component>
@@ -60,6 +63,7 @@ import Icon from "../icons/Icon.vue";
 import { IconNames } from "../icons/icon_set";
 import { Tones } from "../utils/color_utils";
 import { useTheme } from "../utils/theme_tools";
+import TextPill from "./TextPill.vue";
 
 const SHOW_SUCCESS_DELAY = 2000;
 
@@ -102,6 +106,7 @@ const props = defineProps({
 
   square: { type: Boolean },
   rounded: { type: Boolean },
+  pill: { type: String, required: false },
 
   hoverGlow: Boolean,
 });
