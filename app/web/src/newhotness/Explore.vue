@@ -66,13 +66,19 @@
     </div>
     <div class="grid grid-rows-subgrid gap-sm" :style="collapsingStyles">
       <CollapsingGridItem ref="actions">
-        <template #header>Actions</template>
+        <!-- TODO(nick,wendy): remove or replace the crude counter. This is solely used for development of the new UI. -->
+        <template #header>Actions ({{ actionViewList.length }})</template>
         <ul class="actions list">
           <!-- eslint-disable-next-line vue/no-unused-vars -->
-          <li v-for="(_, idx) in new Array(35)" :key="idx" class="item">
-            <Icon name="plus" tone="success" />
-            <h2>Action Name</h2>
-            <h3>component name</h3>
+          <li v-for="action in actionViewList" :key="action.id" class="item">
+            <StatusIndicatorIcon
+              :status="action.kind.toString()"
+              type="action"
+            />
+            <h2>{{ action.name }}</h2>
+            <h3>
+              {{ action.componentName ?? "- component name not found -" }}
+            </h3>
             <DetailsPanelMenuIcon
               @click="
                 (e) => {
@@ -119,6 +125,10 @@ import {
   DropdownMenuItem,
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
+import { useQuery } from "@tanstack/vue-query";
+import { bifrost, makeArgs, makeKey } from "@/store/realtime/heimdall";
+import { ActionViewList } from "@/mead-hall/ChangesPanelProposed.vue";
+import StatusIndicatorIcon from "@/components/StatusIndicatorIcon.vue";
 import { collapsingGridStyles } from "./util";
 import CollapsingGridItem from "./layout_components/CollapsingGridItem.vue";
 import InstructiveVormInput from "./layout_components/InstructiveVormInput.vue";
@@ -132,6 +142,16 @@ const contextMenuRef = ref<InstanceType<typeof DropdownMenu>>();
 // TODO this is where you do a tanStack query like this:
 // https://github.com/systeminit/si/blob/main/app/web/src/workers/webworker.ts#L818
 // const components = [];
+
+const queryKey = makeKey("ActionViewList");
+const actionViewListRaw = useQuery<ActionViewList | null>({
+  queryKey,
+  queryFn: async () =>
+    await bifrost<ActionViewList>(makeArgs("ActionViewList")),
+});
+const actionViewList = computed(
+  () => actionViewListRaw.data.value?.actions ?? [],
+);
 
 const searchString = ref("searching...");
 
